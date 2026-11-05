@@ -360,12 +360,13 @@ module render {
     field aoMapRotation f32 "The uv rotation of aoMap, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation." {
       unit rad
     }
-    field wireframe bool "Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide, in color plus the emissive light, unlit, depth tested; drawn as lines, not a polygon mode (WebGPU has none). Its meshes cast no shadow."
+    field wireframe bool "Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide, in the colour the surface shows along each edge (color times map and the vertex colours, plus emissive times emissiveMap) or wireframeColor, unlit, depth tested; drawn as lines, not a polygon mode (WebGPU has none). Its meshes cast no shadow."
     field wireframeAngle f32 "With wireframe: only the mesh's feature edges, its open borders and the edges whose two faces meet at more than this angle (welded by position, so uv seams and split hard edges do not show): a box's 12 edges, nothing across a smooth sphere but where it ends. 0 is every triangle edge." {
       min 0
       max 180
       unit deg
     }
+    field wireframeColor Color "With wireframe: one colour for every edge (linear, above 1 blooms) instead of the colour the surface shows along it; black (the zero value) is the surface's."
     field paintDetail f32 "How much of its detail the painterly filter (Stylise.paintRadius) keeps on this material, times Stylise.paintDetail: 0 painted at the full radius, 1 kept as drawn (a face, a hand, a sign's lettering)." {
       min 0
       max 1
@@ -1752,13 +1753,14 @@ module render {
       tunable true
     }
     field outlinePlace OutlinePlace "Where outlines lie against an object's silhouette: inside (the zero value, its own edge pixels), outside (round it, at any width, anti-aliased) or both. Creases between objects stay inside."
-    field wireframe bool "Draw every lit material's feature edges over its faces (StandardMaterialDesc.wireframe's edges, with wireframeAngle from this style where the material sets none), in its colour plus its emissive light, so emissive colours glow through bloom; the faces stay drawn as usual and hide the edges behind them, as vector displays drew with hidden lines removed: vector and neon looks, whose dark materials make the fill. A material's own wireframe draws its edges alone."
+    field wireframe bool "Draw every lit material's feature edges over its faces (StandardMaterialDesc.wireframe's edges, with wireframeAngle and wireframeColor from this style where the material sets none), in the colour the surface shows along each edge (its colour times its maps, plus its emissive light, so emissive colours glow through bloom) or wireframeColor; the faces stay drawn as usual and hide the edges behind them, as vector displays drew with hidden lines removed: vector and neon looks, whose dark materials make the fill. A material's own wireframe draws its edges alone."
     field wireframeAngle f32 "The crease angle wireframe draws past (StandardMaterialDesc.wireframeAngle); 0 every triangle edge." {
       default 30
       min 0
       max 180
       unit deg
     }
+    field wireframeColor Color "The look's line colour for wireframe (StandardMaterialDesc.wireframeColor), linear, above 1 blooms; black (the zero value) draws each edge in the colour its surface shows there."
   }
 
   struct LookInfo {

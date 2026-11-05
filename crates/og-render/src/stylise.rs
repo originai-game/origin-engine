@@ -526,11 +526,15 @@ pub struct MaterialStyle {
     /// `ArtLine.place`).
     pub outline_place: OutlinePlace,
     /// Every lit material's feature edges (`wireframe_angle`) drawn over
-    /// its faces, in its colour plus its emissive light, the faces hiding
+    /// its faces, in the colour its surface shows along them (its colour
+    /// and maps plus its emissive light) or `wireframe_color`, the faces hiding
     /// the edges behind them: vector and neon looks.
     pub wireframe: bool,
     /// The crease angle of `wireframe` in degrees (0: every edge).
     pub wireframe_angle: f32,
+    /// The look's line colour for `wireframe` (linear); black: each edge
+    /// in the colour its surface shows there.
+    pub wireframe_color: [f32; 3],
 }
 
 /// Where an outline lies against its object's silhouette.
@@ -589,6 +593,7 @@ impl Default for MaterialStyle {
             outline_place: OutlinePlace::Inside,
             wireframe: false,
             wireframe_angle: DEFAULT_WIREFRAME_ANGLE,
+            wireframe_color: [0.0; 3],
         }
     }
 }

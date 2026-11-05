@@ -89,8 +89,7 @@ impl Renderer {
             .lines
             .prepare(&self.device, &self.queue, scene, any_wire, eye, |m| {
                 let g = materials.get(m)?;
-                let (color, angle) = g.wireframe?;
-                Some((color, angle, !g.transparent && (g.outline || scene_outline)))
+                Some((g.wireframe?, !g.transparent && (g.outline || scene_outline)))
             });
         self.lines.set_scene_uniform(
             &self.queue,

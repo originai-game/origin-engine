@@ -328,6 +328,7 @@ const STANDARD_FIELDS: &[&str] = &[
     "weathering",
     "wireframe",
     "wireframeAngle",
+    "wireframeColor",
 ];
 
 /// Material fields that hold a colour: a hex number or `#rrggbb` becomes `color.fromHex`.
@@ -340,6 +341,7 @@ const COLOR_FIELDS: &[&str] = &[
     "outlineColor",
     "flashColor",
     "dissolveEdgeColor",
+    "wireframeColor",
 ];
 
 /// Material constructors and the fields each adds before the author's.

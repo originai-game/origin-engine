@@ -1007,6 +1007,7 @@ impl Renderer {
         let glass = glass::GlassPasses::new(&device, &queue, output_format);
         let lines = lines::LineRenderer::new(
             &device,
+            &material_layout,
             samples,
             output_format,
             offscreen_linear.or(surface_linear),

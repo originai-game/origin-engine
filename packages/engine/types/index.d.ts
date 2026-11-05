@@ -6386,7 +6386,7 @@ export interface StandardMaterialDesc {
    */
   readonly aoMapRotation?: number;
   /**
-   * Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide, in color plus the emissive light, unlit, depth tested; drawn as lines, not a polygon mode (WebGPU has none). Its meshes cast no shadow.
+   * Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide, in the colour the surface shows along each edge (color times map and the vertex colours, plus emissive times emissiveMap) or wireframeColor, unlit, depth tested; drawn as lines, not a polygon mode (WebGPU has none). Its meshes cast no shadow.
    *
    * @default false
    */
@@ -6399,6 +6399,12 @@ export interface StandardMaterialDesc {
    * @unit deg (degrees)
    */
   readonly wireframeAngle?: number;
+  /**
+   * With wireframe: one colour for every edge (linear, above 1 blooms) instead of the colour the surface shows along it; black (the zero value) is the surface's.
+   *
+   * @default { r: 0, g: 0, b: 0 }
+   */
+  readonly wireframeColor?: Color;
   /**
    * How much of its detail the painterly filter (Stylise.paintRadius) keeps on this material, times Stylise.paintDetail: 0 painted at the full radius, 1 kept as drawn (a face, a hand, a sign's lettering).
    *
@@ -8552,7 +8558,7 @@ export interface MaterialStyle {
    */
   outlinePlace: OutlinePlace;
   /**
-   * Draw every lit material's feature edges over its faces (StandardMaterialDesc.wireframe's edges, with wireframeAngle from this style where the material sets none), in its colour plus its emissive light, so emissive colours glow through bloom; the faces stay drawn as usual and hide the edges behind them, as vector displays drew with hidden lines removed: vector and neon looks, whose dark materials make the fill. A material's own wireframe draws its edges alone.
+   * Draw every lit material's feature edges over its faces (StandardMaterialDesc.wireframe's edges, with wireframeAngle and wireframeColor from this style where the material sets none), in the colour the surface shows along each edge (its colour times its maps, plus its emissive light, so emissive colours glow through bloom) or wireframeColor; the faces stay drawn as usual and hide the edges behind them, as vector displays drew with hidden lines removed: vector and neon looks, whose dark materials make the fill. A material's own wireframe draws its edges alone.
    */
   wireframe: boolean;
   /**
@@ -8563,6 +8569,10 @@ export interface MaterialStyle {
    * @unit deg (degrees)
    */
   wireframeAngle: number;
+  /**
+   * The look's line colour for wireframe (StandardMaterialDesc.wireframeColor), linear, above 1 blooms; black (the zero value) draws each edge in the colour its surface shows there.
+   */
+  wireframeColor: Color;
 }
 
 /** A loaded look: where it came from and what applying it sets. */
@@ -49331,7 +49341,7 @@ export declare namespace og {
   /**
    * Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; a terrain (og.Terrain) takes toon (the built-in three bands, matte) and shadowTint; unlit and shader materials, materials with StandardMaterialDesc.styled false, sprites and the UI are untouched, and toon passes by a material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, ior), which keeps its physical shading. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.
    */
-  const MaterialStyle: ResourceType<{ readonly toon: FieldSpec<"bool">; readonly gradientMap: FieldSpec<"Texture">; readonly shadowTint: FieldSpec<"Color">; readonly shadowTintAmount: FieldSpec<"f32">; readonly shadowDarkness: FieldSpec<"f32">; readonly rimColor: FieldSpec<"Color">; readonly rimIntensity: FieldSpec<"f32">; readonly rimPower: FieldSpec<"f32">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDistance: FieldSpec<"f32">; readonly flatShading: FieldSpec<"bool">; readonly surface: FieldSpec<"MaterialSurface">; readonly surfaceStrength: FieldSpec<"f32">; readonly surfaceScale: FieldSpec<"f32">; readonly toonAmbient: FieldSpec<"f32">; readonly toonSoftness: FieldSpec<"f32">; readonly outlinePlace: FieldSpec<"OutlinePlace">; readonly wireframe: FieldSpec<"bool">; readonly wireframeAngle: FieldSpec<"f32"> }, MaterialStyle>;
+  const MaterialStyle: ResourceType<{ readonly toon: FieldSpec<"bool">; readonly gradientMap: FieldSpec<"Texture">; readonly shadowTint: FieldSpec<"Color">; readonly shadowTintAmount: FieldSpec<"f32">; readonly shadowDarkness: FieldSpec<"f32">; readonly rimColor: FieldSpec<"Color">; readonly rimIntensity: FieldSpec<"f32">; readonly rimPower: FieldSpec<"f32">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDistance: FieldSpec<"f32">; readonly flatShading: FieldSpec<"bool">; readonly surface: FieldSpec<"MaterialSurface">; readonly surfaceStrength: FieldSpec<"f32">; readonly surfaceScale: FieldSpec<"f32">; readonly toonAmbient: FieldSpec<"f32">; readonly toonSoftness: FieldSpec<"f32">; readonly outlinePlace: FieldSpec<"OutlinePlace">; readonly wireframe: FieldSpec<"bool">; readonly wireframeAngle: FieldSpec<"f32">; readonly wireframeColor: FieldSpec<"Color"> }, MaterialStyle>;
   /**
    * 2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. A texture with a normal map (`normal auto` or `normal "file.png"` in its import settings' texture block) is shaded by where its surface faces each light, which stands Light2D.height above the plane; a flat area keeps exactly the light it had. Other layers (and the overlay) are drawn as authored. Off by default.
    */

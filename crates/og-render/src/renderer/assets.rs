@@ -590,12 +590,12 @@ impl Renderer {
                 lean: false,
                 flat: material.flatShading != 0,
                 wire_only: material.wireframe == 1,
-                wireframe: (material.wireframe != 0).then(|| {
-                    let c = material.color + material.emissive * material.emissiveIntensity;
-                    (
-                        [c.x, c.y, c.z, material.opacity],
-                        material.wireframeAngle.clamp(0.0, 180.0),
-                    )
+                wireframe: (material.wireframe != 0).then(|| crate::lines::Wire {
+                    color: (material.wireframeColor != glam::Vec3::ZERO).then(|| {
+                        let c = material.wireframeColor;
+                        [c.x, c.y, c.z, material.opacity]
+                    }),
+                    angle: material.wireframeAngle.clamp(0.0, 180.0),
                 }),
             };
             let gpu = GpuMaterial {

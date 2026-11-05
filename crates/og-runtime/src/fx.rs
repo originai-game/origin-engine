@@ -841,6 +841,7 @@ fn stylise(
             },
             wireframe: on(&m, "wireframe", false),
             wireframe_angle: f(&m, "wireframeAngle", og_render::DEFAULT_WIREFRAME_ANGLE),
+            wireframe_color: rgb(&m["wireframeColor"], Vec3::ZERO),
         };
     }
     out

@@ -235,10 +235,10 @@ pub(crate) struct GpuMaterial {
     pub(crate) lean: bool,
     /// Flat-shaded: its normals come from screen derivatives.
     pub(crate) flat: bool,
-    /// Its triangles' edges drawn in this colour (`lines.rs`): every edge,
-    /// or with a feature angle above 0 its borders and creases past that
+    /// Its triangles' edges drawn as lines (`lines.rs`): every edge, or
+    /// with a feature angle above 0 its borders and creases past that
     /// angle (`lines::feature_edges`).
-    pub(crate) wireframe: Option<([f32; 4], f32)>,
+    pub(crate) wireframe: Option<crate::lines::Wire>,
     /// The edges alone, not the triangles (StandardMaterial.wireframe 1:
     /// three.js's wireframe). MaterialStyle.wireframe's (2) keeps the
     /// triangles under its edges, so they hide what lies behind them.

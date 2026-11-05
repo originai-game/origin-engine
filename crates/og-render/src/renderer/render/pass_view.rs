@@ -274,9 +274,13 @@ impl Renderer {
             }
             // Trails, ribbons and beams facing the view's eye.
             stats.draw_calls += draw_strips(&mut pass, &view_ribbons[i]);
-            let n =
-                self.lines
-                    .draw_scene_with(&mut pass, line_frame, &view_line_groups[i], p.layers);
+            let n = self.lines.draw_scene_with(
+                &mut pass,
+                line_frame,
+                &view_line_groups[i],
+                p.layers,
+                &|m| &self.cache.materials[m].bind_group,
+            );
             if n > 0 {
                 stats.draw_calls += n;
                 pass.set_bind_group(0, &view_groups[i].0, &[]);

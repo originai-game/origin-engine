@@ -386,6 +386,7 @@ impl Renderer {
                     line_frame,
                     &face_line_groups[k],
                     u32::MAX,
+                    &|m| &self.cache.materials[m].bind_group,
                 );
                 if n > 0 {
                     stats.draw_calls += n;

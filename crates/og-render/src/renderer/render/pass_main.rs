@@ -563,7 +563,9 @@ impl Renderer {
         // Lines, points and wireframes (lines.rs), with their own group 0.
         let n = self
             .lines
-            .draw_scene(&mut pass, line_frame, scene.camera_layers);
+            .draw_scene(&mut pass, line_frame, scene.camera_layers, &|m| {
+                &self.cache.materials[m].bind_group
+            });
         if n > 0 {
             stats.draw_calls += n;
             pass.set_bind_group(0, frame_bind_group, &[]);

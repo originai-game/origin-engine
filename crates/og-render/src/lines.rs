@@ -17,7 +17,11 @@
 //! A material with `wireframe` draws its instances' triangle edges here
 //! (scene, depth tested, one CSS pixel): instead of their triangles (1),
 //! or over them (2, a look's wireframe). The unique edges of a mesh are
-//! found once per mesh revision.
+//! found once per mesh revision. An edge takes the colour its surface
+//! shows along it, sampled from the material's own group (its colour,
+//! map and vertex colours plus its emissive light and map: a textured
+//! crate's wire is its texture's colour there, not the material's white),
+//! or the material's one `wireframeColor` ([`Wire`]).
 
 use crate::deferred::Sampled;
 use crate::scene::{MeshData, RenderScene};
@@ -102,6 +106,35 @@ pub(crate) struct LineInstance {
 }
 
 pub(crate) const LINE_STRIDE: u64 = std::mem::size_of::<LineInstance>() as u64;
+
+/// A material's wireframe (`GpuMaterial::wireframe`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Wire {
+    /// One linear colour for every edge (`wireframeColor`, with the
+    /// opacity); `None`: the colour the surface shows along each edge.
+    pub color: Option<[f32; 4]>,
+    /// The feature angle ([`feature_edges`]).
+    pub angle: f32,
+}
+
+/// A wireframe edge (`vs_wire` in lines.wgsl): a line whose `params.z` is
+/// 1 when it takes the surface's colour (`color_a`, `color_b` then the
+/// vertex colours), with the surface's uv at each end.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub(crate) struct WireInstance {
+    pub line: LineInstance,
+    /// xy at the start, zw at the end.
+    pub uv: [f32; 4],
+}
+
+const WIRE_STRIDE: u64 = std::mem::size_of::<WireInstance>() as u64;
+
+const WIRE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
+    array_stride: WIRE_STRIDE,
+    step_mode: wgpu::VertexStepMode::Instance,
+    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Float32x4, 5 => Float32x4],
+};
 
 const LINE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: LINE_STRIDE,
@@ -315,6 +348,9 @@ pub(crate) struct LineFrame {
     pub overlay: (u32, u32),
     /// Segments and points drawn (wireframe edges included).
     pub instances: u32,
+    /// The wireframe edges' ranges in the wire buffer: (mask, material,
+    /// first, count), drawn with the material's group.
+    pub wires: Vec<(u32, u32, u32, u32)>,
     /// The scene sets' instance ranges in the buffer with their layer
     /// masks, in buffer order: (mask, first, count). A camera draws the
     /// ranges whose masks share a bit with its own (`views.rs`).
@@ -323,7 +359,7 @@ pub(crate) struct LineFrame {
 
 impl LineFrame {
     pub fn scene_empty(&self) -> bool {
-        self.depth.1 == 0 && self.over.1 == 0
+        self.depth.1 == 0 && self.over.1 == 0 && self.wires.is_empty()
     }
 }
 
@@ -372,9 +408,13 @@ pub(crate) struct LineRenderer {
     overlay_uniform: wgpu::Buffer,
     overlay_group: wgpu::BindGroup,
     buffer: wgpu::Buffer,
+    /// The wireframes' edges ([`WireInstance`]).
+    wire_buffer: wgpu::Buffer,
     /// Scene pipelines: depth tested, and drawn over the scene.
     depth: Sampled<wgpu::RenderPipeline>,
     over: Sampled<wgpu::RenderPipeline>,
+    /// Wireframe edges, depth tested, with their material's group (1).
+    wire: Sampled<wgpu::RenderPipeline>,
     /// Overlay pipelines: in the output's format and its sRGB view's.
     output: Sampled<wgpu::RenderPipeline>,
     linear: Option<Sampled<wgpu::RenderPipeline>>,
@@ -383,12 +423,14 @@ pub(crate) struct LineRenderer {
     edges: HashMap<(usize, u32), (u64, Edges)>,
 }
 
-/// The lines module (`crate::shaders` validates it).
-pub(crate) const LINES_WGSL: &str = wgsl!("lines.wgsl");
+/// The lines module (`crate::shaders` validates it), after the standard
+/// material's uniform (the wires' group 1).
+pub(crate) const LINES_WGSL: &str = concat!(wgsl!("material.wgsl"), wgsl!("lines.wgsl"));
 
 impl LineRenderer {
     pub fn new(
         device: &wgpu::Device,
+        material_layout: &wgpu::BindGroupLayout,
         samples: u32,
         output_format: wgpu::TextureFormat,
         linear_format: Option<wgpu::TextureFormat>,
@@ -430,13 +472,26 @@ impl LineRenderer {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
+        let wire_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("lines (wireframe)"),
+            bind_group_layouts: &[Some(&layout), Some(material_layout)],
+            immediate_size: 0,
+        });
         let module = crate::deferred::module(device, "lines", LINES_WGSL.to_string());
         const BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] = &[Some(LINE_LAYOUT)];
+        const WIRE_BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] = &[Some(WIRE_LAYOUT)];
         let pipeline = |label: &'static str,
                         format: wgpu::TextureFormat,
                         depth: Option<wgpu::CompareFunction>,
-                        samples: u32| {
-            let (device, pl, module) = (device.clone(), pl.clone(), module.clone());
+                        samples: u32,
+                        wire: bool| {
+            let (device, module) = (device.clone(), module.clone());
+            let pl = if wire { wire_pl.clone() } else { pl.clone() };
+            let (vs, fs, buffers) = if wire {
+                ("vs_wire", "fs_wire", WIRE_BUFFERS)
+            } else {
+                ("vs", "fs", BUFFERS)
+            };
             Sampled::new(samples, move |samples| {
                 use crate::deferred::AsModule;
                 device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -444,9 +499,9 @@ impl LineRenderer {
                     layout: Some(&pl),
                     vertex: wgpu::VertexState {
                         module: module.module(),
-                        entry_point: Some("vs"),
+                        entry_point: Some(vs),
                         compilation_options: Default::default(),
-                        buffers: BUFFERS,
+                        buffers,
                     },
                     primitive: Default::default(),
                     depth_stencil: depth.map(|compare| wgpu::DepthStencilState {
@@ -462,7 +517,7 @@ impl LineRenderer {
                     },
                     fragment: Some(wgpu::FragmentState {
                         module: module.module(),
-                        entry_point: Some("fs"),
+                        entry_point: Some(fs),
                         compilation_options: Default::default(),
                         targets: &[Some(wgpu::ColorTargetState {
                             format,
@@ -481,6 +536,12 @@ impl LineRenderer {
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let wire_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("lines (wireframe)"),
+            size: WIRE_STRIDE * 256,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         LineRenderer {
             layout,
             scene_uniform,
@@ -488,20 +549,31 @@ impl LineRenderer {
             overlay_uniform,
             overlay_group,
             buffer,
+            wire_buffer,
             depth: pipeline(
                 "lines (depth tested)",
                 crate::HDR_FORMAT,
                 Some(wgpu::CompareFunction::LessEqual),
                 samples,
+                false,
             ),
             over: pipeline(
                 "lines (over the scene)",
                 crate::HDR_FORMAT,
                 Some(wgpu::CompareFunction::Always),
                 samples,
+                false,
             ),
-            output: pipeline("lines (overlay)", output_format, None, 1),
-            linear: linear_format.map(|f| pipeline("lines (overlay, sRGB view)", f, None, 1)),
+            wire: pipeline(
+                "lines (wireframe)",
+                crate::HDR_FORMAT,
+                Some(wgpu::CompareFunction::LessEqual),
+                samples,
+                true,
+            ),
+            output: pipeline("lines (overlay)", output_format, None, 1, false),
+            linear: linear_format
+                .map(|f| pipeline("lines (overlay, sRGB view)", f, None, 1, false)),
             edges: HashMap::new(),
         }
     }
@@ -511,11 +583,13 @@ impl LineRenderer {
     pub fn set_samples(&self, samples: u32) {
         self.depth.set_samples(samples);
         self.over.set_samples(samples);
+        self.wire.set_samples(samples);
     }
 
     /// Makes one of its pipelines no frame used yet (Renderer::warm).
     pub fn warm(&self) -> bool {
-        let mut all: Vec<&dyn crate::deferred::Warm> = vec![&self.depth, &self.over, &self.output];
+        let mut all: Vec<&dyn crate::deferred::Warm> =
+            vec![&self.depth, &self.over, &self.wire, &self.output];
         if let Some(l) = &self.linear {
             all.push(l);
         }
@@ -524,9 +598,8 @@ impl LineRenderer {
 
     /// Builds and uploads the frame's instances: the scene's line and point
     /// sets and its wireframe instances (`wire(material index)`: the
-    /// material's wireframe colour, feature angle ([`feature_edges`]) and
-    /// whether an outline lines it, `None` for a material drawn as
-    /// triangles; `any_wire`: some material is).
+    /// material's [`Wire`] and whether an outline lines it, `None` for a
+    /// material drawn as triangles; `any_wire`: some material is).
     ///
     /// An outlined material's silhouette edges, seen from `eye` (the main
     /// camera's position, w 1, or the direction towards an orthographic
@@ -540,7 +613,7 @@ impl LineRenderer {
         scene: &RenderScene,
         any_wire: bool,
         eye: glam::Vec4,
-        wire: impl Fn(usize) -> Option<([f32; 4], f32, bool)>,
+        wire: impl Fn(usize) -> Option<(Wire, bool)>,
     ) -> LineFrame {
         let mut groups: [Vec<LineInstance>; 3] = Default::default();
         // Per scene slot: (mask, first in the slot, count) of each set.
@@ -579,15 +652,18 @@ impl LineRenderer {
                 before,
             );
         }
+        let mut wires: Vec<WireInstance> = Vec::new();
+        let mut wire_sets: Vec<(u32, u32, u32, u32)> = Vec::new();
         if any_wire {
             let live: std::collections::HashSet<usize> =
                 scene.instances.iter().map(|i| i.mesh.index()).collect();
             self.edges.retain(|(m, _), _| live.contains(m));
             for (i, inst) in scene.instances.iter().enumerate() {
-                let Some((color, angle, outlined)) = wire(inst.material.index()) else {
+                let Some((w, outlined)) = wire(inst.material.index()) else {
                     continue;
                 };
-                let before = groups[0].len();
+                let angle = w.angle;
+                let before = wires.len();
                 let Some(mesh) = scene.mesh(inst.mesh) else {
                     continue;
                 };
@@ -602,45 +678,66 @@ impl LineRenderer {
                     }
                 };
                 let local_eye = outlined.then(|| inst.transform.inverse() * eye);
-                let out = &mut groups[0];
-                out.reserve(edges.len());
+                wires.reserve(edges.len());
+                let surface = w.color.is_none() as u32 as f32;
                 for e in edges.iter() {
-                    let [a, b] = e.pair;
-                    let a = Vec3::from(mesh.vertices[a as usize].position);
+                    let [va, vb] = e.pair.map(|v| &mesh.vertices[v as usize]);
+                    let a = Vec3::from(va.position);
                     if local_eye.is_some_and(|eye| e.silhouette(eye, a)) {
                         continue;
                     }
                     let pa = inst.transform.transform_point3(a);
-                    let pb = inst
-                        .transform
-                        .transform_point3(Vec3::from(mesh.vertices[b as usize].position));
-                    out.push(LineInstance {
-                        a: pa.extend(0.0).to_array(),
-                        b: pb.extend(0.0).to_array(),
-                        color_a: color,
-                        color_b: color,
-                        params: [1.0, 0.0, 0.0, 0.0],
+                    let pb = inst.transform.transform_point3(Vec3::from(vb.position));
+                    let (color_a, color_b) = w.color.map_or((va.color, vb.color), |c| (c, c));
+                    wires.push(WireInstance {
+                        line: LineInstance {
+                            a: pa.extend(0.0).to_array(),
+                            b: pb.extend(0.0).to_array(),
+                            color_a,
+                            color_b,
+                            params: [1.0, 0.0, surface, 0.0],
+                        },
+                        uv: [va.uv[0], va.uv[1], vb.uv[0], vb.uv[1]],
                     });
                 }
-                let mask = crate::views::layer_of(&scene.instance_layers, i);
-                record(&mut groups, 0, mask, before);
+                let n = (wires.len() - before) as u32;
+                if n > 0 {
+                    let mask = crate::views::layer_of(&scene.instance_layers, i);
+                    let material = inst.material.index() as u32;
+                    match wire_sets.last_mut() {
+                        Some(r) if r.0 == mask && r.1 == material => r.3 += n,
+                        _ => wire_sets.push((mask, material, before as u32, n)),
+                    }
+                }
             }
         }
         let counts = groups.each_ref().map(|g| g.len() as u32);
         let all: Vec<LineInstance> = groups.concat();
-        let mut frame = LineFrame {
+        let frame = LineFrame {
             depth: (0, counts[0]),
             over: (counts[0], counts[1]),
             overlay: (counts[0] + counts[1], counts[2]),
-            instances: all.len() as u32,
+            instances: (all.len() + wires.len()) as u32,
+            wires: wire_sets,
             sets: sets[0]
                 .iter()
                 .copied()
                 .chain(sets[1].iter().map(|&(m, f, n)| (m, f + counts[0], n)))
                 .collect(),
         };
+        if !wires.is_empty() {
+            let bytes = wires.len() as u64 * WIRE_STRIDE;
+            if self.wire_buffer.size() < bytes {
+                self.wire_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("lines (wireframe)"),
+                    size: bytes.next_power_of_two(),
+                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                });
+            }
+            queue.write_buffer(&self.wire_buffer, 0, bytemuck::cast_slice(&wires));
+        }
         if all.is_empty() {
-            frame.instances = 0;
             return frame;
         }
         let bytes = all.len() as u64 * LINE_STRIDE;
@@ -675,21 +772,29 @@ impl LineRenderer {
     }
 
     /// The scene's sets on the main camera's layers (`mask`), in the main
-    /// pass (its group 0 is rebound: the caller sets its own again after).
-    /// Answers the draws made.
-    pub fn draw_scene(&self, pass: &mut wgpu::RenderPass, frame: &LineFrame, mask: u32) -> u32 {
-        self.draw_scene_with(pass, frame, &self.scene_group, mask)
+    /// pass (its groups 0 and 1 are rebound: the caller sets its own again
+    /// after), the wireframes with their material's standard group
+    /// (`material(index)`). Answers the draws made.
+    pub fn draw_scene<'a>(
+        &self,
+        pass: &mut wgpu::RenderPass,
+        frame: &LineFrame,
+        mask: u32,
+        material: &dyn Fn(usize) -> &'a wgpu::BindGroup,
+    ) -> u32 {
+        self.draw_scene_with(pass, frame, &self.scene_group, mask, material)
     }
 
     /// The scene's sets on a camera's layers (`mask`) with that camera's
     /// uniform `group` (a secondary camera's, [`LineRenderer::view_group`]).
     /// The admitted sets next to each other are one draw.
-    pub fn draw_scene_with(
+    pub fn draw_scene_with<'a>(
         &self,
         pass: &mut wgpu::RenderPass,
         frame: &LineFrame,
         group: &wgpu::BindGroup,
         mask: u32,
+        material: &dyn Fn(usize) -> &'a wgpu::BindGroup,
     ) -> u32 {
         if frame.scene_empty() {
             return 0;
@@ -714,6 +819,25 @@ impl LineRenderer {
                 self.draw(pass, r);
                 draws += 1;
             }
+        }
+        let mut wire_set = false;
+        for &(m, index, first, count) in &frame.wires {
+            if m & mask == 0 {
+                continue;
+            }
+            if !wire_set {
+                pass.set_pipeline(&self.wire);
+                wire_set = true;
+            }
+            pass.set_bind_group(1, material(index as usize), &[]);
+            let start = first as u64 * WIRE_STRIDE;
+            pass.set_vertex_buffer(
+                0,
+                self.wire_buffer
+                    .slice(start..start + count as u64 * WIRE_STRIDE),
+            );
+            pass.draw(0..6, 0..count);
+            draws += 1;
         }
         draws
     }

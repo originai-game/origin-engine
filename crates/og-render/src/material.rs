@@ -336,8 +336,10 @@ pub struct StandardMaterial {
     /// 0 none.
     #[reflect(min = 0.0, max = 1.0, default = 1.0, tunable)]
     pub weathering: f32,
-    /// 1: drawn as the edges of its triangles, one CSS pixel wide, in its
-    /// colour plus its emissive light, depth tested and unlit (three.js
+    /// 1: drawn as the edges of its triangles, one CSS pixel wide, in the
+    /// colour its surface shows along each edge (`color` times `map` and
+    /// the vertex colours, plus `emissive` times `emissiveMap`) or
+    /// `wireframeColor`, depth tested and unlit (three.js
     /// `wireframe`, on every backend: lines, not a polygon mode). Its instances
     /// cast no shadow. 2 (what [`crate::MaterialStyle::wireframe`] sets):
     /// those edges over its triangles, drawn as usual.
@@ -348,6 +350,9 @@ pub struct StandardMaterial {
     /// neon outline of its form); 0 every triangle edge.
     #[reflect(min = 0.0, max = 180.0, default = 0.0, tunable)]
     pub wireframeAngle: f32,
+    /// With `wireframe`: every edge in this linear colour instead of the
+    /// surface's; black (the default) is the surface's.
+    pub wireframeColor: Vec3,
     /// The uv offset `map` is sampled with, as three.js Texture.offset
     /// and glTF `KHR_texture_transform`: uv' = offset + rotate(rotation) *
     /// (repeat * uv), glTF's order.
@@ -479,6 +484,7 @@ impl Default for StandardMaterial {
             weathering: 1.0,
             wireframe: 0,
             wireframeAngle: 0.0,
+            wireframeColor: Vec3::ZERO,
             mapOffset: Vec2::ZERO,
             mapRepeat: Vec2::ONE,
             mapRotation: 0.0,
@@ -1002,6 +1008,9 @@ pub(crate) fn styled(m: &StandardMaterial, style: &crate::MaterialStyle) -> Stan
         // neon-vector sample: hills and sky gone, every back edge drawn).
         s.wireframe = 2;
         s.wireframeAngle = style.wireframe_angle.max(0.0);
+    }
+    if style.wireframe && s.wireframeColor == Vec3::ZERO {
+        s.wireframeColor = Vec3::from(style.wireframe_color);
     }
     s
 }

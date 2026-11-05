@@ -129,7 +129,8 @@ fn set(engine: u32, entity: f64, x: u32, y: u32, tile: i32) {
 /// (to 52ef5ac7cfa6538a) and UI state version 16, the touch control holding a finger
 /// (to c950ccbacfe91a63) and RenderSettings.upscaler (to 0ece0b71c16b6488) and
 /// PostEffects' ssrMaxRoughness and ssrResolution (to f917a356541f94e3), then Stylise.hatchingPaper (to 87e387f06096ffc6), then Cloth, SoftBody
-/// and Garment's simulation (to 3e79197f349b1840), each of which moves every raw world hash.
+/// and Garment's simulation (to 3e79197f349b1840), then MaterialStyle.wireframeColor
+/// (to f6c957ee4976ed4a), each of which moves every raw world hash.
 #[test]
 fn a_world_of_loaded_maps_keeps_its_hash() {
     set_hooks(Rc::new(Game));
@@ -140,7 +141,7 @@ fn a_world_of_loaded_maps_keeps_its_hash() {
     frame(engine);
     set(engine, entity, 2, 1, 0);
     frame(engine);
-    assert_eq!(hash(engine), "3e79197f349b1840");
+    assert_eq!(hash(engine), "f6c957ee4976ed4a");
 }
 
 #[test]

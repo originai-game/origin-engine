@@ -5,6 +5,17 @@
 // tested or not) and over the finished frame after post (debug draw and
 // screen lines). Colours are linear; dashes measure the distance along the
 // line (world units, or CSS pixels for screen lines).
+//
+// A wireframe's edges (lines.rs `WireInstance`, `vs_wire` and `fs_wire`)
+// draw with their material's standard group (material.wgsl, prepended) and
+// take the colour the surface shows along the edge: its colour times its
+// map and the vertex colours, plus its emissive light times its emissive
+// map, sampled at the edge's uvs; or one line colour (wireframeColor).
+
+// The standard material group's maps (material_maps.wgsl's bindings).
+@group(1) @binding(1) var base_color_tex: texture_2d<f32>;
+@group(1) @binding(5) var emissive_tex: texture_2d<f32>;
+@group(1) @binding(7) var material_sampler: sampler;
 
 struct LineFrame {
   view_proj: mat4x4<f32>,
@@ -31,6 +42,8 @@ struct LineOut {
   @location(1) across: vec4<f32>,
   @location(2) dist: f32,
   @location(3) dash: vec2<f32>,
+  // A wire's: xy the surface's uv there, z 1 to take the surface's colour.
+  @location(4) surface: vec3<f32>,
 };
 
 fn to_clip(p: vec3<f32>, screen: bool) -> vec4<f32> {
@@ -41,12 +54,33 @@ fn to_clip(p: vec3<f32>, screen: bool) -> vec4<f32> {
   return lf.view_proj * vec4<f32>(p, 1.0);
 }
 
-@vertex
-fn vs(@builtin(vertex_index) vi: u32, l: LineIn) -> LineOut {
+// The quad's corner `vi`: x 0 at the start, 1 at the end; y across.
+fn corner(vi: u32) -> vec2<f32> {
   var corners = array<vec2<f32>, 6>(
     vec2<f32>(0.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
     vec2<f32>(0.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(0.0, 1.0));
-  let c = corners[vi];
+  return corners[vi];
+}
+
+@vertex
+fn vs(@builtin(vertex_index) vi: u32, l: LineIn) -> LineOut {
+  return expand(vi, l);
+}
+
+// A wireframe edge: a line with the surface's uv at each end (xy, zw) and
+// whether it takes the surface's colour (`l.params.z` 1; a wire is never
+// dashed).
+@vertex
+fn vs_wire(@builtin(vertex_index) vi: u32, l: LineIn, @location(5) uv: vec4<f32>) -> LineOut {
+  var plain = l;
+  plain.params.z = 0.0;
+  var o = expand(vi, plain);
+  o.surface = vec3<f32>(mix(uv.xy, uv.zw, corner(vi).x), l.params.z);
+  return o;
+}
+
+fn expand(vi: u32, l: LineIn) -> LineOut {
+  let c = corner(vi);
   let flags = u32(l.params.y + 0.5);
   let screen = (flags & 4u) != 0u;
   let point = (flags & 2u) != 0u;
@@ -99,6 +133,7 @@ fn vs(@builtin(vertex_index) vi: u32, l: LineIn) -> LineOut {
   o.color = mix(l.color_a, l.color_b, c.x);
   o.dist = mix(da, db, c.x);
   o.dash = l.params.zw;
+  o.surface = vec3<f32>(0.0);
   return o;
 }
 
@@ -111,6 +146,25 @@ fn encode(c: vec3<f32>) -> vec3<f32> {
 
 @fragment
 fn fs(in: LineOut) -> @location(0) vec4<f32> {
+  return shade(in, in.color);
+}
+
+@fragment
+fn fs_wire(in: LineOut) -> @location(0) vec4<f32> {
+  // Sampled before any branch: the derivatives run along the line.
+  let base = textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.surface.xy));
+  let glow = textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, in.surface.xy)).rgb;
+  var c = in.color;
+  if (in.surface.z > 0.5) {
+    c = vec4<f32>(
+      material.base_color.rgb * base.rgb * c.rgb + material.emissive.rgb * glow,
+      material.base_color.a * base.a * c.a);
+  }
+  return shade(in, c);
+}
+
+// The line's coverage, dashes and encoding over its colour `color`.
+fn shade(in: LineOut, color: vec4<f32>) -> vec4<f32> {
   if (in.dash.y > 0.0) {
     let period = in.dash.x + in.dash.y;
     if (in.dist - floor(in.dist / period) * period > in.dash.x) {
@@ -121,7 +175,7 @@ fn fs(in: LineOut) -> @location(0) vec4<f32> {
   if (in.across.w > 0.5) {
     d = max(abs(in.across.x), abs(in.across.y));
   }
-  var c = in.color;
+  var c = color;
   c.a *= clamp(in.across.z + 0.5 - d, 0.0, 1.0);
   if (c.a <= 0.0) {
     discard;

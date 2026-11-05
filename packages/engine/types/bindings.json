@@ -10334,6 +10334,15 @@
           "name": "wireframeAngle",
           "column": "f32",
           "default": 30
+        },
+        {
+          "name": "wireframeColor",
+          "column": "Color",
+          "default": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          }
         }
       ]
     },
