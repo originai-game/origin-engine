@@ -7,7 +7,7 @@
 import { playtest } from "@origingame/engine/playtest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { press, race, script, tap, texts } from "./lib.ts";
+import { elements, press, race, script, tap, texts } from "./lib.ts";
 import { referencesDir } from "./frames.ts";
 
 /** The English table's strings, `{arguments}` cut out. */
@@ -63,6 +63,11 @@ export default playtest({
     t.ok(texts(run, "settings.json").includes("Einstellungen"), "the settings in German");
     t.ok(texts(run, "results.json").includes("Im Ziel") || texts(run, "results.json").includes("Neuer Rundenrekord"), "the results in German");
     t.ok(texts(run, "results.json").includes("Gesamtzeit"), "the results' headline is the total time, in German");
+    // The actions two by two in equal columns: German's long "Wiederholung
+    // ansehen" took the wider half of a wrapping row.
+    const actions = elements(run, "results.json").filter((e) => e.kind === "button" && ["again", "replay", "board", "title"].includes(e.id));
+    const widths = actions.map((e) => e.width);
+    t.ok(actions.length >= 3 && Math.max(...widths) - Math.min(...widths) < 1, `the results' actions share equal columns: ${widths.join(", ")}`);
     // The racing HUD's own words (FINDINGS #8): its desc's, from the table.
     const hud = texts(run, "hud.json");
     t.ok(hud.includes("Runde"), "the racing HUD says `Runde` under the lap");
