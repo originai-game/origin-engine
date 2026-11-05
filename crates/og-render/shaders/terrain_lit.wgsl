@@ -381,12 +381,24 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   let albedo = grass_far(look.albedo, p, in.local, n_geo, point.control);
   let roughness = toksvig_roughness(look.roughness, point.variance);
   // A displaced ground's shading takes the relief no normal map draws.
-  // Its shadow lookup and weathering keep the field's normal: offset along
-  // the drawn one, a face turned towards a low sun gets less of the
-  // normal-offset bias and shadows itself in squares of shadow texels,
-  // and the drawn one is interpolated per vertex, faceted.
+  // Its weathering keeps the field's normal (the drawn one is faceted).
+  // Its shadow lookup takes the drawn triangle's own plane, the surface
+  // the shadow passes drew: the receiver plane its filter compares along
+  // and its offset follow the stone's steep side, which the field's
+  // level normal does not (a tent of texels on that side stood above
+  // the plane and shadowed the joint at its foot in round black specks);
+  // and an interpolated normal is neither (its faces turned to a low sun
+  // shadowed themselves in squares of shadow texels).
   let n_shade = terrain_tilt(point, look.normal, in.relief.zw);
-  return terrain_shade(in.clip.xy, p, in.local, 1.0, albedo, n_shade, roughness, n_geo, n_geo, look.height);
+  var n_shadow = n_geo;
+  if (terrain.displace.x > 0.0) {
+    var facet = normalize(cross(dpx, dpy));
+    facet = select(facet, -facet, dot(facet, n_geo) < 0.0);
+    let reach = terrain.displace.x * length(terrain.model[0].xyz);
+    let near = 1.0 - smoothstep(0.6 * reach, reach, distance(p, frame.view_pos.xyz));
+    n_shadow = normalize(mix(n_geo, facet, near));
+  }
+  return terrain_shade(in.clip.xy, p, in.local, 1.0, albedo, n_shade, roughness, n_geo, n_shadow, look.height);
 }
 
 // The terrain's shading of a fragment at world `p` (the ground or one of
