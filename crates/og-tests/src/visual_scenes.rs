@@ -10,9 +10,10 @@
 
 use glam::{Mat4, Quat, Vec3};
 use og_render::{
-    Background, Bloom, Camera, DirectionalLight, Environment, Exposure, Material, MeshData,
-    ProceduralSky, RenderScene, SceneCollider, SimulationSurface, StandardMaterial, Vertex,
-    VisualBody, day_night, shapes,
+    Background, Bloom, Camera, DeformedVertices, DirectionalLight, Environment, Exposure,
+    GarmentDeformation, GarmentTopology, JointPalette, Material, MeshData, ProceduralSky,
+    RenderScene, SceneCollider, SimulationSurface, SkinData, SkinnedInstance, StandardMaterial,
+    Vertex, VisualBody, VisualGarment, day_night, shapes,
 };
 use std::sync::Arc;
 
@@ -156,11 +157,9 @@ fn body(
     handle
 }
 
-/// The courtyard's bodies and colliders; `visual` false leaves every body
-/// at its rest shape (what a device without compute draws).
-pub fn visual_bodies_scene(visual: bool) -> RenderScene {
+/// An empty scene in the courtyard's afternoon light, at 60 ticks a second.
+fn daylight() -> RenderScene {
     let mut scene = RenderScene::new();
-    let mut bodies = Vec::new();
     let look = day_night(15.5, 35.0, -35.0);
     scene.light = DirectionalLight {
         direction_to_light: look.light_direction,
@@ -183,6 +182,14 @@ pub fn visual_bodies_scene(visual: bool) -> RenderScene {
     };
     scene.post.bloom = Some(Bloom::default());
     scene.tick_rate = 60.0;
+    scene
+}
+
+/// The courtyard's bodies and colliders; `visual` false leaves every body
+/// at its rest shape (what a device without compute draws).
+pub fn visual_bodies_scene(visual: bool) -> RenderScene {
+    let mut scene = daylight();
+    let mut bodies = Vec::new();
     scene.camera = Camera {
         position: Vec3::new(0.4, 2.1, 6.4),
         target: Vec3::new(0.0, 1.15, 0.0),
@@ -204,6 +211,11 @@ pub fn visual_bodies_scene(visual: bool) -> RenderScene {
         base_color: [0.78, 0.6, 0.3, 1.0],
         metallic: 1.0,
         roughness: 0.35,
+        ..Default::default()
+    });
+    let rope = scene.add_material(Material {
+        base_color: [0.32, 0.26, 0.2, 1.0],
+        roughness: 0.9,
         ..Default::default()
     });
     let ground = scene.add_mesh(shapes::plane(30.0, 10.0));
@@ -281,8 +293,8 @@ pub fn visual_bodies_scene(visual: bool) -> RenderScene {
         bending: 0.2,
         ..VisualBody::default()
     };
-    // Three banners, 14 x 22 points 8 cm apart, from the beam's front.
-    let (columns, rows, spacing) = (14u32, 22u32, 0.08);
+    // Three banners, 27 x 43 points 4 cm apart, from the beam's front.
+    let (columns, rows, spacing) = (27u32, 43u32, 0.04);
     for (k, color) in [
         Vec3::new(0.62, 0.06, 0.07),
         Vec3::new(0.08, 0.16, 0.45),
@@ -302,15 +314,18 @@ pub fn visual_bodies_scene(visual: bool) -> RenderScene {
         );
         let mut pinned: Vec<u32> = (0..columns).collect();
         if k == 2 {
-            // Curtain rings: every fourth point of the top row.
-            pinned.retain(|x| x % 4 == 0 || x + 1 == columns);
+            // Curtain rings: every eighth point of the top row.
+            pinned.retain(|x| x % 8 == 0 || x + 1 == columns);
         }
         let material = cloth_material(&mut scene, color, 0.5);
         bodies.push(body(
             &mut scene,
             mesh,
             SimulationSurface::Cloth { columns, rows },
-            cloth(pinned, Vec3::new(6.0, 0.0, 1.5)),
+            VisualBody {
+                bending: 0.04,
+                ..cloth(pinned, Vec3::new(6.5, 0.0, 2.0))
+            },
             material,
         ));
     }
@@ -364,8 +379,18 @@ pub fn visual_bodies_scene(visual: bool) -> RenderScene {
         soft(Vec::new(), 0.25),
         jelly,
     ));
-    // The balloon on its hook: its top pinned.
-    let balloon = icosphere(3, 0.26, Vec3::new(2.3, 2.62, -0.4));
+    // The balloon on a cord from the hook: its top pinned to the cord.
+    let (cord_top, cord_end) = (2.91, 2.36);
+    scene.add_instance(
+        cube,
+        rope,
+        Mat4::from_scale_rotation_translation(
+            Vec3::new(0.014, cord_top - cord_end + 0.02, 0.014),
+            Quat::IDENTITY,
+            Vec3::new(2.3, (cord_top + cord_end) * 0.5, -0.4),
+        ),
+    );
+    let balloon = icosphere(3, 0.26, Vec3::new(2.3, cord_end - 0.26, -0.4));
     let top = balloon
         .vertices
         .iter()
@@ -398,4 +423,196 @@ pub fn visual_bodies_scene(visual: bool) -> RenderScene {
 /// A frame's update: the next tick.
 pub fn next_tick(scene: &mut RenderScene, frame: u32) {
     scene.tick = u64::from(frame) + 1;
+}
+
+/// The ticks the garment runs before its frame.
+pub const GARMENT_TICKS: u32 = 120;
+
+/// A skirt on a mannequin in a gusting wind (og.Garment's
+/// SIMULATION_VISUAL): hung from its waist (the top ring held), each ring
+/// below free to stray further from the skin's pose, held off the legs and
+/// hips by their colliders and the backstop. `visual` false draws the
+/// skin's pose (what a device without compute draws).
+pub fn visual_garment_scene(visual: bool) -> RenderScene {
+    let mut scene = daylight();
+    scene.camera = Camera {
+        position: Vec3::new(0.3, 0.9, 1.95),
+        target: Vec3::new(0.0, 0.66, 0.0),
+        exposure: Exposure::linear(0.85),
+        ..Default::default()
+    };
+    let stone = scene.add_material(Material {
+        base_color: [0.56, 0.52, 0.47, 1.0],
+        roughness: 0.9,
+        ..Default::default()
+    });
+    let ground = scene.add_mesh(shapes::plane(30.0, 10.0));
+    scene.add_instance(ground, stone, Mat4::IDENTITY);
+    scene.colliders.push(SceneCollider::Plane {
+        normal: Vec3::Y,
+        offset: 0.0,
+    });
+    // The mannequin: legs, hips, torso and head, its legs and hips solid.
+    let form = scene.add_material(Material {
+        base_color: [0.78, 0.72, 0.64, 1.0],
+        roughness: 0.55,
+        ..Default::default()
+    });
+    let ball = scene.add_mesh(shapes::sphere(32, 20));
+    let part = |scene: &mut RenderScene, at: Vec3, size: Vec3| {
+        let t = Mat4::from_scale_rotation_translation(size, Quat::IDENTITY, at);
+        scene.add_instance(ball, form, t);
+    };
+    for x in [-0.1f32, 0.1] {
+        part(
+            &mut scene,
+            Vec3::new(x, 0.5, 0.0),
+            Vec3::new(0.15, 1.0, 0.15),
+        );
+        scene.colliders.push(SceneCollider::Capsule {
+            a: Vec3::new(x, 0.1, 0.0),
+            b: Vec3::new(x, 0.9, 0.0),
+            radius: 0.07,
+        });
+    }
+    part(
+        &mut scene,
+        Vec3::new(0.0, 0.98, 0.0),
+        Vec3::new(0.38, 0.3, 0.27),
+    );
+    part(
+        &mut scene,
+        Vec3::new(0.0, 1.35, 0.0),
+        Vec3::new(0.34, 0.62, 0.22),
+    );
+    part(
+        &mut scene,
+        Vec3::new(0.0, 1.82, 0.0),
+        Vec3::new(0.2, 0.25, 0.22),
+    );
+    scene.colliders.push(SceneCollider::Capsule {
+        a: Vec3::new(-0.06, 0.98, 0.0),
+        b: Vec3::new(0.06, 0.98, 0.0),
+        radius: 0.13,
+    });
+    // The skirt: rings from the waist (r 0.2 at 1.03 m) flaring to the hem
+    // (r 0.46 at 0.3 m), welded around; the drawn seam repeats a column.
+    let (rings, sides) = (24u32, 48u32);
+    let mut rest = Vec::new();
+    let mut normals = Vec::new();
+    for j in 0..rings {
+        let t = j as f32 / (rings - 1) as f32;
+        let (y, r) = (1.03 - 0.73 * t, 0.2 + 0.26 * t.powf(0.8));
+        let slope = 0.26 * 0.8 * t.max(0.02).powf(-0.2) / 0.73;
+        for i in 0..sides {
+            let a = std::f32::consts::TAU * i as f32 / sides as f32;
+            let (sin, cos) = a.sin_cos();
+            rest.push(Vec3::new(r * cos, y, r * sin));
+            normals.push(Vec3::new(cos, slope, sin).normalize());
+        }
+    }
+    let point = |j: u32, i: u32| j * sides + i % sides;
+    let mut triangles = Vec::new();
+    for j in 0..rings - 1 {
+        for i in 0..sides {
+            let (a, b, c, d) = (
+                point(j, i),
+                point(j, i + 1),
+                point(j + 1, i),
+                point(j + 1, i + 1),
+            );
+            triangles.extend([[a, c, b], [b, c, d]]);
+        }
+    }
+    let mut vertices = Vec::new();
+    let mut map = Vec::new();
+    for j in 0..rings {
+        for i in 0..=sides {
+            let p = point(j, i);
+            map.push((p, 1.0));
+            vertices.push(Vertex {
+                position: rest[p as usize].to_array(),
+                normal: normals[p as usize].to_array(),
+                uv: [i as f32 / sides as f32 * 4.0, j as f32 / (rings - 1) as f32],
+                ..Default::default()
+            });
+        }
+    }
+    let mut indices = Vec::new();
+    for j in 0..rings - 1 {
+        for i in 0..sides {
+            let v = |j: u32, i: u32| j * (sides + 1) + i;
+            indices.extend([
+                v(j, i),
+                v(j + 1, i),
+                v(j, i + 1),
+                v(j, i + 1),
+                v(j + 1, i),
+                v(j + 1, i + 1),
+            ]);
+        }
+    }
+    let n = vertices.len();
+    let topology = Arc::new(GarmentTopology {
+        rest: rest.clone(),
+        normals: normals.clone(),
+        skin: vec![([0; 4], [1.0, 0.0, 0.0, 0.0]); rest.len()],
+        triangles,
+        vertices: map,
+    });
+    let reach: Vec<f32> = (0..rings)
+        .flat_map(|j| {
+            let t = j as f32 / (rings - 1) as f32;
+            std::iter::repeat_n(if j == 0 { 0.0 } else { 0.45 * t }, sides as usize)
+        })
+        .collect();
+    let body = VisualBody {
+        pinned: (0..sides).collect(),
+        reach: reach.into(),
+        // Deep enough that the legs and hips, not the skin's cone, hold the
+        // windward side.
+        backstop: 0.3,
+        substeps: 24,
+        damping: 0.985,
+        wind: Vec3::new(4.5, 0.0, 1.2),
+        gust: 0.7,
+        radius: 0.015,
+        friction: 0.3,
+        stiffness: 1.0,
+        bending: 0.06,
+        garment: Some(VisualGarment {
+            rest: Arc::new(rest.clone()),
+            normals: Arc::new(normals),
+        }),
+        ..VisualBody::default()
+    };
+    let silk = cloth_material(&mut scene, Vec3::new(0.5, 0.05, 0.12), 0.7);
+    let mesh = scene.add_skinned_mesh(
+        MeshData { vertices, indices },
+        SkinData {
+            joints: vec![[0; 4]; n],
+            weights: vec![[0.0; 4]; n],
+        },
+    );
+    scene
+        .joint_palettes
+        .push(JointPalette::from(vec![Mat4::IDENTITY]));
+    let points = Arc::new(rest);
+    scene.deformed_vertices.push(DeformedVertices {
+        garment: Some(GarmentDeformation {
+            key: (1, 0),
+            topology,
+            palette: Arc::new(vec![Mat4::IDENTITY]),
+            points: points.clone(),
+            targets: points,
+            world: Mat4::IDENTITY,
+            output_transform: Mat4::IDENTITY,
+            visual: visual.then(|| Arc::new(body)),
+        }),
+        ..Default::default()
+    });
+    let mut skirt = SkinnedInstance::new(mesh, silk, Mat4::IDENTITY, 0);
+    skirt.deformed = Some(0);
+    scene.skinned_instances.push(skirt);
+    scene
 }

@@ -106,10 +106,23 @@ fn planar(p: vec3<f32>) -> vec3<f32> {
 
 fn inv_mass(i: u32) -> f32 { return word(body[INV_MASS] + i); }
 
-// The gust noise of og-physics' verlet.rs (`noise`, `gust`), bit for bit in
-// u32 arithmetic.
-fn noise(a: u32, b: u32, c: u32) -> f32 {
-    var h = a * 0x9e3779b1u + b * 0x85ebca77u + c * 0xc2b2ae3du;
+// ---- wind ---------------------------------------------------------------
+// The air moves along `wind` at its magnitude in metres a second, gusting
+// and eddying as it goes (`air`), so the pressure differs across a cloth
+// and its folds run down it. Each
+// triangle meets it with its own velocity: drag along the relative flow
+// and lift across it, by the flat-plate split of the normal pressure that
+// NVIDIA NvCloth documents for its cloth wind (drag ∝ |cos θ| |v|², lift
+// ∝ cos θ sin θ |v|²); a point takes a third of each of its triangles'
+// force over a third of their area. Scaled so a still face square to the
+// wind feels `wind` (the og.Cloth field's acceleration).
+const DRAG: f32 = 1.0;
+const LIFT: f32 = 0.7;
+
+// Smooth value noise in [-1, 1] on a unit lattice.
+fn lattice(c: vec3<i32>, salt: u32) -> f32 {
+    var h = (bitcast<u32>(c.x) * 0x8da6b343u) ^ (bitcast<u32>(c.y) * 0xd8163841u)
+        ^ (bitcast<u32>(c.z) * 0xcb1ab31fu) ^ (salt * 0x9e3779b9u);
     h ^= h >> 15u;
     h *= 0x2c1b3c6du;
     h ^= h >> 12u;
@@ -118,30 +131,73 @@ fn noise(a: u32, b: u32, c: u32) -> f32 {
     return f32(h >> 8u) / f32(1u << 23u) - 1.0;
 }
 
-fn gust(x: u32, y: u32, tick: u32) -> f32 {
-    let period = 24u;
-    let k = tick / period;
-    let t = f32(tick % period) / f32(period);
-    let cx = x / 3u;
-    let cy = y / 3u;
-    let a = noise(cx, cy, k);
-    let b = noise(cx, cy, k + 1u);
-    return a + (b - a) * (t * t * (3.0 - 2.0 * t));
+fn value_noise(p: vec3<f32>, salt: u32) -> f32 {
+    let c = floor(p);
+    let f = p - c;
+    let w = f * f * (3.0 - 2.0 * f);
+    let i = vec3<i32>(c);
+    var out = 0.0;
+    for (var k = 0u; k < 8u; k++) {
+        let o = vec3<i32>(i32(k & 1u), i32((k >> 1u) & 1u), i32(k >> 2u));
+        let wx = select(1.0 - w.x, w.x, o.x == 1);
+        let wy = select(1.0 - w.y, w.y, o.y == 1);
+        let wz = select(1.0 - w.z, w.z, o.z == 1);
+        out += wx * wy * wz * lattice(i + o, salt);
+    }
+    return out;
 }
 
-// The normal of a cloth point from its grid neighbours (verlet.rs `normal`).
-fn grid_normal(i: u32) -> vec3<f32> {
-    let cols = body[COLUMNS];
-    let rows = body[ROWS];
-    let x = i % cols;
-    let y = i / cols;
-    let x0 = select(x - 1u, 0u, x == 0u);
-    let x1 = min(x + 1u, cols - 1u);
-    let y0 = select(y - 1u, 0u, y == 0u);
-    let y1 = min(y + 1u, rows - 1u);
-    let dx = state[at_pos(y * cols + x1)].xyz - state[at_pos(y * cols + x0)].xyz;
-    let dy = state[at_pos(y1 * cols + x)].xyz - state[at_pos(y0 * cols + x)].xyz;
-    return unit(cross(dx, dy));
+// The air at `p`, `t` seconds in: `wind` with gusts as frozen turbulence
+// carried along at the wind's speed (Taylor's hypothesis): a swell 2.5 m
+// across in its strength, and eddies 0.9 m and 0.35 m across in all three
+// directions, which are what make a banner ripple rather than lean.
+fn air(p: vec3<f32>, t: f32) -> vec3<f32> {
+    let w = vec(WIND);
+    let speed = length(w);
+    if speed <= 0.0 { return w; }
+    let along = w / speed;
+    let g = word(GUST);
+    let q = p - w * t;
+    let swell = value_noise(q / 2.5 + vec3<f32>(0.0, 0.0, 0.3 * t), 1u);
+    var eddy = vec3<f32>(0.0);
+    for (var k = 0u; k < 3u; k++) {
+        eddy[k] = 0.65 * value_noise(q / 0.9 + vec3<f32>(0.7 * t), 2u + k)
+            + 0.35 * value_noise(q / 0.35 + vec3<f32>(1.6 * t), 5u + k);
+    }
+    return w * (1.0 + g * swell) + eddy * (0.6 * g * speed);
+}
+
+fn aero(i: u32, h: f32, t: f32) -> vec3<f32> {
+    let speed = length(vec(WIND));
+    if speed <= 0.0 { return vec3<f32>(0.0); }
+    let tris = body[TRIANGLES];
+    let csr = body[CSR];
+    let first = body[csr + i];
+    let last = body[csr + i + 1u];
+    let rows = csr + body[N] + 1u;
+    var force = vec3<f32>(0.0);
+    var area = 0.0;
+    for (var k = first; k < last; k++) {
+        let f = tris + body[rows + k] * 3u;
+        let a = body[f]; let b = body[f + 1u]; let c = body[f + 2u];
+        let pa = state[at_pos(a)].xyz; let pb = state[at_pos(b)].xyz; let pc = state[at_pos(c)].xyz;
+        let e = cross(pb - pa, pc - pa);
+        let twice = length(e);
+        if twice < 1e-10 { continue; }
+        let n = e / twice;
+        let share = twice / 6.0;
+        area += share;
+        let v = (pa + pb + pc - state[at_prev(a)].xyz - state[at_prev(b)].xyz - state[at_prev(c)].xyz) / (3.0 * h);
+        let rel = air((pa + pb + pc) / 3.0, t) - v;
+        let len = length(rel);
+        if len < 1e-5 { continue; }
+        let flow = rel / len;
+        let cos_t = dot(n, flow);
+        let q = len * len / (speed * speed);
+        force += share * q * (DRAG * abs(cos_t) * flow + LIFT * cos_t * (n - flow * cos_t));
+    }
+    if area <= 0.0 { return vec3<f32>(0.0); }
+    return force * (speed / area);
 }
 
 // ---- scene colliders -------------------------------------------------------
@@ -499,14 +555,16 @@ fn solve(@builtin(local_invocation_index) lid: u32) {
     let keep = word(KEEP);
     let gravity = vec(GRAVITY);
     let wind = vec(WIND);
-    let windy = kind == CLOTH && dot(wind, wind) > 0.0;
+    let windy = (kind == CLOTH || kind == GARMENT) && dot(wind, wind) > 0.0 && body[TRIANGLE_COUNT] > 0u;
     for (var s = 0u; s < steps; s++) {
         let tick = body[TICK] + s;
         if word(THICKNESS) > 0.0 { build_neighbours(lid); }
         for (var k = 0u; k < sub; k++) {
             let t = f32(s * sub + k + 1u) / total;
+            // Seconds since tick 0, wrapped every 2^16 ticks to keep it exact.
+            let clock = (f32(tick & 0xffffu) + f32(k + 1u) / f32(sub)) * word(DT);
             if windy {
-                for (var i = lid; i < n; i += WG) { state[at_delta(i)] = vec4<f32>(grid_normal(i), 0.0); }
+                for (var i = lid; i < n; i += WG) { state[at_delta(i)] = vec4<f32>(aero(i, h, clock), 0.0); }
                 sync();
             }
             // Integrate: the pins and garment targets move to this
@@ -520,15 +578,7 @@ fn solve(@builtin(local_invocation_index) lid: u32) {
                     continue;
                 }
                 var a = gravity;
-                if windy {
-                    let cols = body[COLUMNS];
-                    let w = wind * (1.0 + word(GUST) * gust(i % cols, i / cols, tick));
-                    let nrm = state[at_delta(i)].xyz;
-                    a += nrm * dot(nrm, w) + w * 0.15;
-                } else if kind == GARMENT && dot(wind, wind) > 0.0 {
-                    let w = wind * (1.0 + word(GUST) * gust(i, 0u, tick));
-                    a += w;
-                }
+                if windy { a += state[at_delta(i)].xyz; }
                 let v = (p - state[at_prev(i)].xyz) * keep;
                 state[at_prev(i)] = vec4<f32>(p, 0.0);
                 state[at_pos(i)] = vec4<f32>(planar(p + v + a * h2), 0.0);

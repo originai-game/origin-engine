@@ -472,7 +472,9 @@ impl Topology {
             margin = 8.0;
         }
         let mut rest_volume = 0.0;
-        if kind == 1 {
+        // The triangles and each point's incident ones: a soft volume's
+        // volume, a cloth's and a garment's aerodynamics.
+        if kind != 2 && !triangles.is_empty() {
             w[h::TRIANGLES] = w.len() as u32;
             w[h::TRIANGLE_COUNT] = triangles.len() as u32;
             w.extend(triangles.iter().flatten());
@@ -490,6 +492,8 @@ impl Topology {
             }
             w.push(end);
             w.extend(incident.into_iter().flatten());
+        }
+        if kind == 1 {
             rest_volume = volume(rest, triangles);
         } else if kind == 2 {
             rest_volume = area(rest);

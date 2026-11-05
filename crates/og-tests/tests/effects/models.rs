@@ -623,7 +623,7 @@ fn a_visual_garment_is_simulated_on_the_gpu_from_its_skin() {
     let (a, b) = (right(&skin, 90..170), right(&blown, 90..170));
     println!("hem's right edge: skin {a}, blown {b}");
     assert!(a > 0, "the skin is drawn");
-    assert!(b >= a + 4, "the hem stayed on the skin ({a} -> {b})");
+    assert!(b >= a + 10, "the hem stayed on the skin ({a} -> {b})");
     // The top ring is pinned: it stays where the skin draws it.
     let (a, b) = (right(&skin, 20..40), right(&blown, 20..40));
     assert!(a.abs_diff(b) <= 3, "the pinned top moved ({a} -> {b})");

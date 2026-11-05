@@ -19,10 +19,22 @@ independently implement, from the published papers, the techniques of:
   and Markus Gross, **Optimized Spatial Hashing for Collision Detection of
   Deformable Objects**, VMV 2003 (the self-collision grid).
 
+Wind is aerodynamic, per triangle against its own velocity: drag along
+the relative flow and lift across it, the flat-plate split of the normal
+pressure (drag ∝ |cos θ|·|v|², lift ∝ cos θ·sin θ·|v|²) that NVIDIA's
+NvCloth (BSD-3-Clause) documents for its cloth wind
+(<https://nvidiagameworks.github.io/NvCloth/1.1/UserGuide/Index.html>,
+"Drag lift and wind": per-triangle drag and lift coefficients against the
+wind velocity, which it advises varying for gusts), with the flag model of
+Keckeisen, Kimmerle, Thomaszewski and Wacker (*Modelling Effects of Wind
+Fields in Cloth Animations*, WSCG 2004). The model was written from that
+description; no NvCloth code was copied. The air gusts in bands that
+travel with it, so the pressure differs across the cloth and folds run
+down it.
+
 Distance constraints are graph-coloured (greedy edge colouring) so each
 colour solves in parallel without atomics; one workgroup steps a body
-through every tick of the frame. The gust noise is og-physics' `verlet.rs`
-hash, bit for bit.
+through every tick of the frame.
 
 AVBD (Giles, Diaz and Yuksel, *Augmented Vertex Block Descent*, SIGGRAPH
 2025) was considered: its per-vertex block solve pays off for stiff contact

@@ -49,6 +49,14 @@ fn the_courtyard_matches_its_reference() {
 }
 
 #[test]
+fn the_garment_matches_its_reference() {
+    match gfx::check("visual-garment", &out_dir()) {
+        Ok(report) => println!("{report}"),
+        Err(e) => panic!("{e}"),
+    }
+}
+
+#[test]
 fn visual_bodies_move_on_the_gpu_while_the_host_meshes_stay_at_rest() {
     let mut visual = visual_scenes::visual_bodies_scene(true);
     // The renderer reads the scene (`&RenderScene`): its meshes stay the

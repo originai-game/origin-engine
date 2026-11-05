@@ -382,6 +382,15 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.update = Some(crate::visual_scenes::next_tick);
             Ok(())
         },
+        // A visual garment on the GPU: a skirt on a mannequin in a gusting
+        // wind, held off the legs and hips, after GARMENT_TICKS ticks.
+        "visual-garment" => |g, _| {
+            g.scene = crate::visual_scenes::visual_garment_scene(true);
+            g.desc.antialias = Antialias::Taa;
+            g.frames = crate::visual_scenes::GARMENT_TICKS;
+            g.update = Some(crate::visual_scenes::next_tick);
+            Ok(())
+        },
         // A 400 m field with pillars from 3 m to 190 m: shadows in every cascade.
         "cascades-200m" => |g, _| {
             g.scene = cascades_200m(true);
