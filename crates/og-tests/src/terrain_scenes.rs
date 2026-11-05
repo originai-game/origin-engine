@@ -1038,23 +1038,34 @@ pub fn displaced_height(z: f32) -> f32 {
 }
 
 /// `displaced_scene`'s setts: metres per repeat of the texture, courses
-/// per repeat (20 cm each), stones per course (25 cm), texels a side, and
-/// the joint's width and the rim's rounding (in courses: 2 cm each).
+/// per repeat (20 cm each), stones per course (25 cm), texels a side (a
+/// millimetre each, so an arris and a pick's pit are drawn), and in
+/// courses (2 cm each): the joint's width, the arris's chamfer and the
+/// stone's wall (a texel: the side stands vertical).
 const COBBLE_TILE: f32 = 1.0;
 const COBBLE_COURSES: i32 = 5;
 const COBBLE_PER_COURSE: i32 = 4;
-const COBBLE_TEXELS: u32 = 512;
+const COBBLE_TEXELS: u32 = 1024;
 const COBBLE_JOINT: f32 = 0.1;
-const COBBLE_RIM: f32 = 0.1;
+const COBBLE_ARRIS: f32 = 0.025;
+const COBBLE_WALL: f32 = 0.005;
+/// The heights (0 to 1 of the displacement) of the mortar's fill, the
+/// lowest and highest stone's top, and how far the arris's chamfer drops
+/// below a top (45° over `COBBLE_ARRIS`: 5 mm of 10 cm).
+const COBBLE_MORTAR: f32 = 0.3;
+const COBBLE_TOP: [f32; 2] = [0.55, 0.75];
+const COBBLE_CHAMFER: f32 = 0.05;
 
-/// A point of the sett texture: its height (0 in the joints, each stone
-/// flat on top at its own height and tilt, rounded only over its rim),
-/// how much of it is stone, its distance from the joint's middle and its
+/// A point of the sett texture: its height (the mortar's fill in the
+/// joints, each stone flat on top at its own height and tilt, pitted by
+/// the dressing pick, its arris chamfered over a vertical side), how
+/// much of it is stone, how deep a pit it lies in (0 to 1) and its
 /// stone's id (0 to 1).
+#[derive(Clone, Copy)]
 struct Cobble {
     height: f32,
     stone: f32,
-    edge: f32,
+    pit: f32,
     id: f32,
 }
 
@@ -1063,7 +1074,10 @@ struct Cobble {
 /// hash (so they never line up course to course) and each joint by a
 /// little more, each stone a rounded rectangle (its signed distance,
 /// Quílez's 2D box with rounded corners) whose edges a little noise
-/// breaks, as hand-dressed edges are.
+/// breaks, as hand-dressed edges are. A dressed sett's top is flat and
+/// worked with a pick: pits a millimetre or two deep and 2 to 5 mm across
+/// over a fine grain; its arris is a narrow chamfer that catches the light
+/// over a near-vertical side, and the pits chip it here and there.
 fn cobble(u: f32, v: f32) -> Cobble {
     let (n, k) = (COBBLE_COURSES, COBBLE_PER_COURSE);
     // Course units: a course is 1 tall; along it, k stones fill n units.
@@ -1085,33 +1099,84 @@ fn cobble(u: f32, v: f32) -> Cobble {
         j -= 1;
     }
     let (x0, x1) = (joint(j), joint(j + 1));
-    let id = hash2(row, j.rem_euclid(k), 79);
+    let stone_key = j.rem_euclid(k);
+    let id = hash2(row, stone_key, 79);
     // The stone's rounded rectangle, the joint's half taken off each side.
     let centre = Vec2::new((x0 + x1) * 0.5, y.floor() + 0.5);
     let half = Vec2::new((x1 - x0) * 0.5, 0.5) - COBBLE_JOINT * 0.5;
     let r = 0.12;
     let q = (Vec2::new(x, y) - centre).abs() - half + r;
-    let rough = 0.025 * (tiling_fbm(u, v, 32, 95) - 0.5);
+    let rough = 0.02 * (tiling_fbm(u, v, 32, 95) - 0.5);
     let d = q.max(Vec2::ZERO).length() + q.max_element().min(0.0) - r + rough;
     let inside = (-d).max(0.0);
-    // Flat on top at its own height and tilt, rounded over its rim only:
-    // a superellipse of power 4, so the top stays flat to within about
-    // half the rim of the edge and drops there over a tight arris into a
-    // steep side (a circle, power 2, domes the whole rim into a pillow).
-    let t = (inside / COBBLE_RIM).min(1.0);
-    let rim = (1.0 - (1.0 - t).powi(4)).powf(0.25);
-    let tilt = Vec2::new(
-        hash2(row, j.rem_euclid(k), 97),
-        hash2(row, j.rem_euclid(k), 99),
-    ) - 0.5;
-    let lean = 0.12 * tilt.dot((Vec2::new(x, y) - centre) / half.max(Vec2::splat(0.1)));
-    let top = 0.62 + 0.26 * id + lean;
+    let tilt = Vec2::new(hash2(row, stone_key, 97), hash2(row, stone_key, 99)) - 0.5;
+    let lean = 0.08 * tilt.dot((Vec2::new(x, y) - centre) / half.max(Vec2::splat(0.1)));
+    let top = COBBLE_TOP[0] + (COBBLE_TOP[1] - COBBLE_TOP[0]) * id + lean;
+    // The pick's pits: one possible pit per 6 mm cell (0.03 courses), each
+    // at its own place and size, about one in seven struck (a third read as
+    // pumice).
+    let pit_cell = 0.03;
+    let (px, py) = (x / pit_cell, y / pit_cell);
+    let mut pit: f32 = 0.0;
+    for dy in -1..=1 {
+        for dx in -1..=1 {
+            let (cx, cy) = (px.floor() as i32 + dx, py.floor() as i32 + dy);
+            // (The cells wrap with the texture: n / pit_cell cells a repeat.)
+            let period = (n as f32 / pit_cell).round() as i32;
+            let (wx, wy) = (cx.rem_euclid(period), cy.rem_euclid(period));
+            if hash2(wx, wy, 211) > 0.15 {
+                continue;
+            }
+            let at = Vec2::new(
+                cx as f32 + hash2(wx, wy, 223),
+                cy as f32 + hash2(wx, wy, 227),
+            );
+            let radius = 0.15 + 0.2 * hash2(wx, wy, 229);
+            let t = (Vec2::new(px, py) - at).length() / radius;
+            if t < 1.0 {
+                pit = pit.max((1.0 - t * t) * (0.5 + 0.5 * hash2(wx, wy, 233)));
+            }
+        }
+    }
+    // A fine grain over the worked face (a few tenths of a millimetre).
+    let grain = tiling_fbm(u, v, 160, 241) - 0.5;
+    // Flat on top, the arris a 45° chamfer (rounded a little where it meets
+    // the top) over a side that stands vertical down to the mortar.
+    let t = (inside / COBBLE_ARRIS).min(1.0);
+    let chamfer = COBBLE_CHAMFER * (1.0 - t) * (1.0 - t * 0.35);
+    let face = top - chamfer - 0.014 * pit + 0.006 * grain;
+    // The mortar: a sandy fill lying a little higher against each stone.
+    let edge = (COBBLE_JOINT * 0.5 - d.max(0.0)).max(0.0) / (COBBLE_JOINT * 0.5);
+    let mortar = COBBLE_MORTAR - 0.03 * edge + 0.01 * (tiling_fbm(u, v, 96, 251) - 0.5);
+    let wall = (inside / COBBLE_WALL).min(1.0);
     Cobble {
-        height: rim * top,
-        stone: (inside / 0.02).min(1.0),
-        edge: (COBBLE_JOINT * 0.5 - d.max(0.0)).max(0.0),
+        height: mortar + (face - mortar) * wall,
+        stone: wall,
+        pit,
         id,
     }
+}
+
+/// `cobble` at every texel of the texture, row by row (made once).
+fn cobbles() -> &'static [Cobble] {
+    static GRID: OnceLock<Vec<Cobble>> = OnceLock::new();
+    GRID.get_or_init(|| {
+        let n = COBBLE_TEXELS;
+        (0..n * n)
+            .map(|i| {
+                let (x, y) = (i % n, i / n);
+                cobble((x as f32 + 0.5) / n as f32, (y as f32 + 0.5) / n as f32)
+            })
+            .collect()
+    })
+}
+
+/// The sett texture's texel at (u, v) (texel centres, wrapping).
+fn cobble_at(u: f32, v: f32) -> Cobble {
+    let n = COBBLE_TEXELS as i32;
+    let x = ((u * n as f32).floor() as i32).rem_euclid(n);
+    let y = ((v * n as f32).floor() as i32).rem_euclid(n);
+    cobbles()[(y * n + x) as usize]
 }
 
 /// T4: a 128 m terrain sampled every 50 cm, a gentle crest running along
@@ -1143,34 +1208,46 @@ pub fn displaced_scene(displacement: f32) -> RenderScene {
         holes: None,
     });
     let albedo = scene.add_texture(texture(COBBLE_TEXELS, ColorSpace::Srgb, |u, v| {
-        let c = cobble(u, v);
-        // Each stone its own grey-brown, with grain; the mortar a dark
-        // sandy grey, darker still deep in the joints.
+        let c = cobble_at(u, v);
+        // Each stone its own granite, grey to warm grey, speckled as granite
+        // is at a millimetre (dark mica, pale quartz and feldspar), not
+        // clouded; the pits hold a little grime. The mortar a sandy grey.
         let tone = [
-            Vec3::new(0.3, 0.24, 0.18),
-            Vec3::new(0.22, 0.21, 0.2),
-            Vec3::new(0.34, 0.27, 0.19),
-            Vec3::new(0.25, 0.21, 0.18),
-            Vec3::new(0.18, 0.18, 0.19),
+            Vec3::new(0.29, 0.26, 0.23),
+            Vec3::new(0.24, 0.235, 0.23),
+            Vec3::new(0.31, 0.27, 0.235),
+            Vec3::new(0.26, 0.24, 0.22),
+            Vec3::new(0.21, 0.21, 0.215),
         ][(c.id * 5.0) as usize % 5];
-        let grain = 0.75 + 0.45 * tiling_fbm(u, v, 64, 83) + 0.2 * tiling_fbm(u, v, 16, 84);
-        let stone = tone * grain * (0.9 + 0.1 * c.height);
-        let joint = Vec3::new(0.09, 0.08, 0.07) * (0.6 + 0.4 * (c.edge / COBBLE_JOINT).min(1.0));
+        let n = COBBLE_TEXELS as f32;
+        let fleck = noise2(u * n * 0.6, v * n * 0.6, 263);
+        let speck = if fleck < 0.18 {
+            0.55
+        } else if fleck > 0.8 {
+            1.35
+        } else {
+            0.92 + 0.16 * noise2(u * n * 0.25, v * n * 0.25, 269)
+        };
+        let worn = 0.95 + 0.1 * tiling_fbm(u, v, 8, 271);
+        let stone = tone * speck * worn * (1.0 - 0.2 * c.pit);
+        let sand = 0.85 + 0.3 * noise2(u * n * 0.4, v * n * 0.4, 277);
+        let joint = Vec3::new(0.13, 0.115, 0.095) * sand;
         let col = joint.lerp(stone, c.stone);
         let srgb = |x: f32| (x.max(0.0).powf(1.0 / 2.2) * 255.0).min(255.0) as u8;
         [
             srgb(col.x),
             srgb(col.y),
             srgb(col.z),
-            (c.height * 255.0) as u8,
+            (c.height.clamp(0.0, 1.0) * 255.0) as u8,
         ]
     }));
-    // The same relief as the height in alpha, for `displacement` metres of it.
+    // The same relief as the height in alpha, for `displacement` metres of
+    // it, differenced over a texel.
     let normal = scene.add_texture(texture(COBBLE_TEXELS, ColorSpace::Linear, |u, v| {
         let e = 1.0 / COBBLE_TEXELS as f32;
         let per_metre = displacement.max(DISPLACED_RELIEF) / (2.0 * e * COBBLE_TILE);
-        let dx = (cobble(u + e, v).height - cobble(u - e, v).height) * per_metre;
-        let dy = (cobble(u, v + e).height - cobble(u, v - e).height) * per_metre;
+        let dx = (cobble_at(u + e, v).height - cobble_at(u - e, v).height) * per_metre;
+        let dy = (cobble_at(u, v + e).height - cobble_at(u, v - e).height) * per_metre;
         let n = Vec3::new(-dx, -dy, 1.0).normalize();
         [
             ((n.x * 0.5 + 0.5) * 255.0) as u8,
