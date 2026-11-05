@@ -541,7 +541,7 @@ session. At most 20 load failures go per sample and 100 a session.
 | Message | Fields added (all optional to the play origin) |
 |---|---|
 | `crash` | `cause` (`panic`, `error`, `hang`), `tick` (the world's, or null), `lane` (a panic's lanes site), `location` (a panic's `crates/…:line:col`), `stack` (string[], at most 48 frames of 240 characters, `at f (game.js:1:2345)` or `f@game.js:1:2345`), `engine` (version), `build` (og-build.json `sourcemaps.build`), `browser { name, major, os }`, `device { class: phone \| tablet \| desktop, cores, memory, dpr, touch }`, `gpu { vendor, architecture, fallback, limits: { maxTextureDimension2D, … }, features: string[] } \| null` (the device the engine renders with, its limits and the features it was created with), `memory { linear, heapLive, heapPeak, streamUsed, streamBudget, audio, entities, gpuTotal, gpuTextures, gpuTargets, deviceLosses } \| null` (bytes; entities a count; the gpu figures the renderer's GPU memory, ProbeMemory.gpu; deviceLosses the GPU devices lost and recovered, ProbeMemory.deviceLosses) |
-| `sample` `phase: "boot"` (once, at the first frame) | beside `renderer` and `timings`: `stages` (the Worker's boot in ms: `wasm`, `bundle`, `create`, `attach`, `transcode`, `prime`, `settle`, `present`), `lanes { on, threads }`, `engine`, `build`, `browser`, `device`, `gpu`, `memory`, `failures` |
+| `sample` `phase: "boot"` (once, at the first frame) | beside `renderer` and `timings`: `stages` (the Worker's boot in ms: `wasm`, `bundle`, `create`, `attach`, `transcode`, `prime`, `settle`, `present`), `pipelines { mode, reason }` (the frame pipelines' mode run, §Pipelines: `auto`'s pick and why, or the build's), `lanes { on, threads }`, `engine`, `build`, `browser`, `device`, `gpu`, `memory`, `failures` |
 | `sample` `phase: "unsupported"` (once, before `fail`, on a browser without WebGPU: no `navigator.gpu`, or no adapter) | `renderer: "none"`, `reason` (`webGpuMissing`'s words), `engine`, `build`, `browser`, `device`, `gpu: null`; the page shows the card that says why and what to do, `fail` is `engine_start` and not retryable, and the engine never starts (`tests/web/unsupported.ts`) |
 | `sample` `phase: "play"` | `frames { count, ms, bins, interval, work, hitches, longHitches, max }` (`bins`: the 11 upper edges in ms, 8.4 to 250; `interval` and `work`: 12 counts each, the last above 250 ms; a hitch is an interval of 50 ms or more, a long one 250 ms or more), `memory`, `failures [{ file, reason: http_<status> \| timeout \| network }]`, `session { ms, samples }` (play time so far and the play samples sent) |
 | `sample` `phase: "end"` (on `pagehide`) | `memory` as last read, `failures` not yet sent, `session` |
@@ -581,7 +581,7 @@ publish {
   short_name "Runner"     # the installed app's name
   color_textures etc1s    # etc1s | uastc: this export's colour textures (default: cook's)
   telemetry on            # on | off: field telemetry (§Telemetry)
-  pipelines sync          # sync | async | prewarm: how the frame pipelines compile (§Pipelines)
+  pipelines auto          # auto | sync | async | prewarm: how the frame pipelines compile (§Pipelines; auto: async on a mobile GPU)
 }
 ```
 
@@ -604,9 +604,28 @@ earlier build; a build that fails after replacing it removes what it wrote.
 
 ### Pipelines
 
-`pipelines sync`, the default, makes each render pipeline with
+`pipelines auto`, the default, picks one of the modes below when the
+Worker meets the adapter (`src/web/pipelines.ts` `choose`): `async` when
+`GPUAdapterInfo.vendor` is a mobile GPU's (`img-tec`, `arm`, `qualcomm`:
+PowerVR, Mali, Adreno; or its `architecture` names one), and `sync` for
+any other vendor. A browser that names none (Firefox reports empty
+strings) is `async` when `navigator.userAgentData.mobile` says so and
+`sync` otherwise. Apple GPUs stay `sync`, an iPhone's included, until
+Safari on iOS is measured. The two platforms measured disagree, which is
+why the default picks: on a phone `sync` leaves the page without a frame
+for tens of seconds, on a Mac `async` makes a cold boot 2.5-5x later (the
+tables below). `sync`, `async` and `prewarm` written in project.ogt are
+kept on every GPU. The mode run and why
+(`auto: a mobile GPU (img-tec d-series)`, `publish { pipelines sync }`)
+are `mode` and `reason` on `__runtime_probe__.boot.pipelines`, the
+Worker's console (`[og] pipelines async: …`) and the boot telemetry
+sample's `pipelines` (§Telemetry), so a slow boot in the field names it.
+
+`pipelines sync` makes each render pipeline with
 `createRenderPipeline` when a pass first draws with it (og-render
-`deferred.rs`), and the renderer warms the rest behind the play gate.
+`deferred.rs`), and the renderer warms the rest behind the play gate,
+one pipeline at a time with an empty submit after each, so the browser's
+GPU process compiles it then, not all at the tap's first submit.
 `pipelines async` (fork s60, `src/web/pipelines.ts`) asks the browser for
 the frame's pipelines with `createRenderPipelineAsync`: a pass whose
 pipeline still compiles skips its draws, the first frame is drawn again
@@ -615,12 +634,30 @@ frame span around the passes it draws again every frame (og-render
 `FrameSpan`, `FramePass::redrawn`); the passes whose output later frames
 keep (shadow maps, captures, IBL, mips) make theirs at once. A harness's
 `frame` call and a probe `capture` or `sweep` are always drawn whole.
-`__runtime_probe__.boot.pipelines` counts the pipelines made each way.
+`__runtime_probe__.boot.pipelines` counts the pipelines made each way, at
+the first frame and again when the warm-up behind the gate ends or the
+tap stops it.
 
-`async` exists for a large game whose first frame meets dozens of
-pipelines, where one synchronous compile after another holds the
-browser's GPU process. It is opt-in because it costs a small game its
-boot. Measured on 2026-11-05 on macrunner with Chrome for Testing 150
+`async` exists for the browsers whose GPU process compiles a synchronous
+pipeline on its main thread, holding the page's frames while it does:
+a large game's first frame meets dozens of pipelines, and its warm-up
+behind the gate a hundred more. On a Pixel 10 (Chrome 156, PowerVR
+D-Series, fx-showcase dev export, warm cache, `tests/evidence/compat/android/NOTES.md`
+on the android branch) PowerVR's own pipeline compile took 35.9 s of
+Dawn time for the 128 pipelines with `sync`, and the page drew no
+compositor frame from just after its first frame until then:
+
+| fx-showcase, Pixel 10 | `sync` | `prewarm` | `async` |
+|---|---|---|---|
+| first frame, from navigation | 3.7-4.4 s | 3.7-4.4 s | 17.8-17.9 s |
+| a screenshot asked 1 s after the first frame returns | 22.7 s later | 22.7 s later | 96 ms later (96-152 ms up to +42 s) |
+| the screen live, from navigation | about 27.5 s | about 27.5 s | about 18 s |
+| the warm-up behind the gate ends | first frame + 38.5 s | + 25.9 s | + 4.8 s |
+| the tick frozen after a tap at 1 s | at most 0.52 s | 0.03 s | 0 |
+
+`async`'s first frame waits for its own compiles, but every frame after
+it draws; `sync` and `prewarm` show a first frame and then freeze. On a
+Mac the opposite holds, which costs a small game its boot. Measured on 2026-11-05 on macrunner with Chrome for Testing 150
 (headless, Metal), using `tests/web/dogfood.ts --boot`: the first frame
 in ms from navigation, publish build, cross-origin isolated. "Cold"
 cleared the Chrome GPU helper's Metal shader cache before each run, as a
@@ -663,7 +700,13 @@ warm-up behind the gate: cold, Dawn's asynchronous compile took the
 remaining pipelines 5.0 s (hollowbell's 58) and 11.7-14.9 s
 (lantern-vale's), against 0.3 s synchronously, so a tap in that window
 meets pipelines still compiling and makes them at once anyway. It stays
-opt-in; `sync` is the default.
+opt-in.
+
+`auto` against `sync` on the Mac, where it picks `sync` (the Apple GPU's
+vendor), measured as above on DATE_AUTO (BUILD_AUTO, every GPU slot held
+per run):
+
+AUTO_TABLE
 
 ## The shell
 

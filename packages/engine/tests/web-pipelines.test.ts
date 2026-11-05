@@ -334,3 +334,39 @@ test("frame pipelines that reached the browser without the wrappers are named, n
   expect(p.bypassed(lost, 4)).toMatch(/none through createRenderPipelineAsync/);
   p.enable(true);
 });
+
+test("auto picks async on a mobile GPU only, and the page reports the pick and why", () => {
+  const mode = (asked: Parameters<typeof p.choose>[0], info: Parameters<typeof p.choose>[1], mobile?: boolean) => p.choose(asked, info, mobile).mode;
+  // The adapter's vendor or architecture names it; it outranks the user agent's hint.
+  expect(mode(undefined, { vendor: "img-tec", architecture: "d-series" })).toBe("async");
+  expect(mode(undefined, { vendor: "qualcomm", architecture: "adreno-7xx" })).toBe("async");
+  expect(mode(undefined, { vendor: "arm", architecture: "" })).toBe("async");
+  expect(mode(undefined, { vendor: "", architecture: "valhall" })).toBe("async");
+  expect(mode(undefined, { vendor: "nvidia", architecture: "blackwell" }, true)).toBe("sync");
+  // Apple GPUs stay sync until iOS is measured, an iPhone's included.
+  expect(mode(undefined, { vendor: "apple", architecture: "metal-3" }, true)).toBe("sync");
+  // Firefox's empty strings: navigator.userAgentData.mobile where it exists, else sync.
+  expect(mode(undefined, { vendor: "", architecture: "" }, true)).toBe("async");
+  expect(mode(undefined, { vendor: "", architecture: "" }, false)).toBe("sync");
+  expect(mode(undefined, undefined, undefined)).toBe("sync");
+  // What the build asked is kept, on any GPU.
+  expect(mode("sync", { vendor: "qualcomm" }, true)).toBe("sync");
+  expect(mode("prewarm", { vendor: "apple" }, false)).toBe("prewarm");
+  expect(p.choose(undefined, { vendor: "qualcomm", architecture: "adreno-7xx" }, undefined).reason).toMatch(/mobile GPU \(qualcomm adreno-7xx\)/);
+
+  // Auto's sync on a desktop: the renderer's hook stays installed, but its spans make nothing asynchronous and count nothing.
+  p.use(p.choose(undefined, { vendor: "apple", architecture: "metal-3" }, false));
+  const before = p.stats();
+  expect([before.mode, before.reason]).toEqual(["sync", "auto: an Apple GPU (apple metal-3), sync until iOS is measured"]);
+  calls.length = 0;
+  p.frameSpan(true);
+  device.createRenderPipeline(desc({ module: "m" }, "desktop"));
+  p.frameSpan(false);
+  expect(made("createRenderPipeline").length).toBe(1);
+  expect(made("createRenderPipelineAsync").length).toBe(0);
+  const after = p.stats();
+  expect([after.spans - before.spans, after.sync - before.sync, after.async - before.async]).toEqual([0, 1, 0]);
+  p.use(p.choose(undefined, { vendor: "img-tec", architecture: "d-series" }, undefined));
+  expect(p.stats().mode).toBe("async");
+  p.enable(false);
+});

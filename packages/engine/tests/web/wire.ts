@@ -7,13 +7,15 @@
 //
 // For the runner archetype's dev build (every member) and publish build (the
 // player members), each cross-origin isolated (the request ring) and not
-// (postMessage), and each built twice, with the frame pipelines made
-// synchronously (the default) and with `publish { pipelines async }`, and the publish build a third
-// time with `publish { pipelines prewarm }`, it asserts: the unsolicited hello; hello, tick, state,
+// (postMessage), and each built twice, with the frame pipelines' mode picked
+// at the adapter (`auto`, the default: sync on a desktop GPU, async on a mobile one) and with
+// `publish { pipelines async }`, and the publish build again with `publish { pipelines sync }` and
+// `publish { pipelines prewarm }`, it asserts: the unsolicited hello; hello, tick, state,
 // entities, entity, capture (full and fitted) and record answers in the
 // contract's shapes; the clock held behind the play gate and released by a
-// real tap; the render pipelines made the way the build asked (none through
-// createRenderPipelineAsync by default, the frame's through it with async,
+// real tap; the render pipelines made the way the build asked, the mode and why
+// on the probe's boot (auto's pick the one the adapter's vendor calls for; none through
+// createRenderPipelineAsync with sync, the frame's through it with async,
 // only the warm-up behind the gate's with prewarm);
 // real keyboard input reaching the engine; dev-only pause, advance,
 // bounds, patch (and their `unsupported` in a publish build); `refused`
@@ -67,12 +69,12 @@ const pngSize = (b64: string) => {
 // ── the builds ─────────────────────────────────────────────────────────
 cookProject(project, repo);
 type Kind = "dev" | "publish";
-type Pipelines = "sync" | "async" | "prewarm";
+type Pipelines = "auto" | "sync" | "async" | "prewarm";
 const dists: Record<string, string> = {};
 const settings = settingsOf(project);
 for (const kind of ["dev", "publish"] as const)
-  for (const pipelines of kind === "publish" ? (["sync", "async", "prewarm"] as const) : (["sync", "async"] as const)) {
-    const out = join(work, pipelines === "sync" ? kind : `${kind}-${pipelines}`);
+  for (const pipelines of kind === "publish" ? (["auto", "sync", "async", "prewarm"] as const) : (["auto", "async"] as const)) {
+    const out = join(work, pipelines === "auto" ? kind : `${kind}-${pipelines}`);
     const b = await webBuild(project, join(project, "src", "main.ts"), out, kind === "publish", { ...settings, publish: { ...settings.publish, pipelines } });
     if (!b.ok) throw new Error(b.reason);
     dists[`${kind} ${pipelines}`] = out;
@@ -108,7 +110,7 @@ window.foreign = () => foreign;
 </script></body></html>`;
 
 async function run(kind: Kind, isolate: boolean, pipelines: Pipelines, browser: Browser): Promise<void> {
-  const label = `${kind}${isolate ? " isolated" : ""}${pipelines === "sync" ? "" : ` ${pipelines}`}`;
+  const label = `${kind}${isolate ? " isolated" : ""}${pipelines === "auto" ? "" : ` ${pipelines}`}`;
   let told: string | null = null;
   // One server, two host names: the parent at 127.0.0.1, the game at localhost (another origin).
   const pages: Record<string, string> = {};
@@ -158,11 +160,15 @@ async function run(kind: Kind, isolate: boolean, pipelines: Pipelines, browser: 
     check(t2.result === t1.result, `${label}: the clock holds behind the play gate`, { before: t1.result, after: t2.result });
     // Fork s60: with `pipelines async` the first frame's pipelines went through createRenderPipelineAsync
     // (src/web/pipelines.ts): a wgpu that reaches the browser's createRenderPipeline another way fails here,
-    // not silently slower. By default none did and the renderer opened no span.
-    const pl = await page.evalChild<{ async: number; sync: number; fallback: number; spans: number; bypassed?: string } | null>("localhost", "__runtime_probe__.boot?.pipelines ?? null");
+    // not silently slower. With sync none did and the renderer opened no span.
+    const pl = await page.evalChild<{ async: number; sync: number; fallback: number; spans: number; bypassed?: string; mode?: string; reason?: string } | null>("localhost", "__runtime_probe__.boot?.pipelines ?? null");
     check(!!pl, `${label}: the probe's boot counts the render pipelines`, pl);
-    if (pipelines === "async") check(!!pl && pl.spans > 0 && pl.async > 0 && !pl.bypassed, `${label}: the frame pipelines compile through createRenderPipelineAsync`, pl);
-    else if (pipelines === "prewarm") {
+    // Auto (the default) picks at the adapter: async for a mobile GPU's vendor (PowerVR, Mali, Adreno), sync for any other.
+    const vendor = await page.evalChild<string>("localhost", "navigator.gpu.requestAdapter().then((a) => a?.info?.vendor ?? '')");
+    const ran = pipelines === "auto" ? (["img-tec", "arm", "qualcomm"].includes(vendor) ? "async" : "sync") : pipelines;
+    check(!!pl && pl.mode === ran && (pipelines === "auto" ? /^auto: /.test(pl.reason ?? "") : pl.reason === `publish { pipelines ${pipelines} }`), `${label}: the probe's boot says the pipelines run ${ran} and why`, { vendor, pl });
+    if (ran === "async") check(!!pl && pl.spans > 0 && pl.async > 0 && !pl.bypassed, `${label}: the frame pipelines compile through createRenderPipelineAsync`, pl);
+    else if (ran === "prewarm") {
       // The first frame made its pipelines at once; the warm-up behind the gate then asks for the rest
       // asynchronously, and the counts are reported again when it ends.
       check(!!pl && pl.sync > 0 && pl.fallback === 0, `${label}: the first frame's pipelines are made synchronously`, pl);
@@ -174,7 +180,7 @@ async function run(kind: Kind, isolate: boolean, pipelines: Pipelines, browser: 
       check(!!warmed && warmed.async > 0 && warmed.fallback === 0 && !warmed.bypassed, `${label}: the warm-up behind the gate compiles through createRenderPipelineAsync`, warmed);
       const t2b = await c("tick");
       check(t2b.result === t1.result, `${label}: the clock still holds while it warms`, { before: t1.result, after: t2b.result });
-    } else check(!!pl && pl.sync > 0 && pl.async === 0 && pl.fallback === 0 && pl.spans === 0, `${label}: by default the pipelines are made synchronously`, pl);
+    } else check(!!pl && pl.sync > 0 && pl.async === 0 && pl.fallback === 0 && pl.spans === 0, `${label}: the pipelines are made synchronously`, pl);
     // A real tap on the gate (the middle of the frame) starts it.
     await page.tap(400, 225);
     await new Promise((r) => setTimeout(r, 600));
@@ -289,7 +295,7 @@ async function run(kind: Kind, isolate: boolean, pipelines: Pipelines, browser: 
 async function inPage(browser: Browser): Promise<void> {
   const label = "dev in-page";
   let told: string | null = null;
-  const live = serve({ dist: dists["dev sync"]!, isolate: false, told: () => told });
+  const live = serve({ dist: dists["dev auto"]!, isolate: false, told: () => told });
   told = `http://127.0.0.1:${live.port}`;
   browser.reverse(live.port);
   const log: string[] = [];
@@ -328,8 +334,8 @@ async function inPage(browser: Browser): Promise<void> {
 
 const browser = await Browser.from(args, { chrome, reverse: [] });
 try {
-  for (const pipelines of ["sync", "async"] as const) for (const kind of ["dev", "publish"] as const) for (const isolate of [true, false]) await run(kind, isolate, pipelines, browser);
-  for (const isolate of [true, false]) await run("publish", isolate, "prewarm", browser);
+  for (const pipelines of ["auto", "async"] as const) for (const kind of ["dev", "publish"] as const) for (const isolate of [true, false]) await run(kind, isolate, pipelines, browser);
+  for (const pipelines of ["sync", "prewarm"] as const) for (const isolate of [true, false]) await run("publish", isolate, pipelines, browser);
   await inPage(browser);
 } finally {
   await browser.close();

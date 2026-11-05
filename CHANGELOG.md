@@ -70,6 +70,23 @@ is one line here, written at the merge that changes
   release's breaking entry; `og upgrade` lists the lines naming `#tex`).
   Frames do not change.
 
+- **Web: frame pipelines `auto` by default.** project.ogt
+  `publish { pipelines }` takes `auto`, now the default: the Worker picks
+  `async` on a mobile GPU (`GPUAdapterInfo.vendor` `img-tec`, `arm` or
+  `qualcomm`, or `navigator.userAgentData.mobile` when the browser names
+  no adapter) and `sync` elsewhere, Apple GPUs included until iOS is
+  measured. On a Pixel 10 `sync` left the page without a frame for about
+  23 s behind the gate (live at about 27.5 s from navigation, against
+  about 18 s with `async`); on a Mac `async` made a cold boot 2.5-5x
+  later, and `auto` runs `sync` there (docs/web-export.md §Pipelines).
+  `sync`, `async` and `prewarm` stay as explicit choices. The mode run
+  and why are `mode` and `reason` on the probe's `boot.pipelines` and
+  `pipelines { mode, reason }` in the boot telemetry sample, and
+  `boot.pipelines` is reported again when the tap stops the warm-up.
+  Behaviour change: a game that set no `pipelines` runs `async` on a
+  phone's PowerVR, Mali or Adreno GPU; `pipelines sync` keeps the old
+  default.
+
 - **Stylise: conformed art under a tone curve, washes and fading strokes.**
   The quantise tells conformed art by the lit colour before exposure and
   the tone curve, so a tone-mapped look keeps it unstepped too.

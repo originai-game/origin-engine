@@ -62,7 +62,7 @@ import type { HostError } from "./shell.ts";
 import { PlatformCounter, settle, SETTLE_FIRST_MS, SETTLE_MS } from "./settle.ts";
 import { Trace, unixMs } from "../trace.ts";
 import * as pipelines from "./pipelines.ts";
-import type { PipelineStats } from "./pipelines.ts";
+import type { PipelineChoice, PipelineStats } from "./pipelines.ts";
 import * as gpuErrors from "./gpu-errors.ts";
 
 // Fork s61: a lost WebGPU device and its first validation errors are said in the console (the
@@ -70,6 +70,8 @@ import * as gpuErrors from "./gpu-errors.ts";
 // Fork s60: GPUDevice makes the renderer's frame pipelines asynchronously (pipelines.ts), installed
 // on the prototype before the wasm's glue loads.
 // A GPUInternalError popped from an error scope reaches wgpu as one it can read (gpu-errors.ts).
+/** Called with the adapter as the renderer asks it for its device (before any pipeline is made): auto's pick. */
+let onAdapter: ((adapter: { info?: { vendor?: string; architecture?: string } }) => void) | null = null;
 {
   const g = globalThis as Partial<gpuErrors.ErrorClasses> & { GPUDevice?: { prototype: unknown } };
   const device = g.GPUDevice?.prototype;
@@ -81,6 +83,7 @@ import * as gpuErrors from "./gpu-errors.ts";
   if (proto) {
     const requestDevice = proto.requestDevice;
     proto.requestDevice = async function (this: unknown, ...a: unknown[]) {
+      onAdapter?.(this as { info?: { vendor?: string; architecture?: string } });
       const device = await requestDevice.apply(this, a);
       gpuQueue = device.queue;
       void device.lost.then((l) => console.error(`[og] WebGPU device lost: reason=${l.reason} message=${l.message}`));
@@ -141,10 +144,10 @@ interface Start {
   /** Fork s61: the page draws its own loading screen and hears the game's stages (worker globals ogBootStage, ogBootIdle). */
   stages?: boolean;
   /**
-   * Fork s60: project.ogt `publish { pipelines }`: `async`, the frame pipelines with createRenderPipelineAsync;
+   * Fork s60: project.ogt `publish { pipelines }`, absent for `auto` (pipelines.ts `choose`): `sync`; `async`, the frame pipelines with createRenderPipelineAsync;
    * `prewarm`, only the warm-up behind the gate's; absent: synchronously.
    */
-  pipelines?: "async" | "prewarm";
+  pipelines?: "sync" | "async" | "prewarm";
   /** The URL base whose `cooked/` bundle the engine opens (`.` next to the page). */
   root?: string;
   /** The Basis transcoder's script and module. */
@@ -847,18 +850,22 @@ function isPendingCapture(frame: string, answer: string): boolean {
  * it idle: the warm tail after the 1072-cell boot was 4-8 s at two.
  */
 const WARM_COMPILING = 6;
-/** Display frames a pending `capture` is asked again on before it is given up on. */
-const CAPTURE_RETRIES = 60;
+/**
+ * How long a pending `capture` is asked again, once a display frame, before it is given up on (ms).
+ * Wall-clock, not frames: at 60 frames a playing page gave up after 1 s, while a GPU process with
+ * a cold shader cache (Edge on D3D12) was still compiling the pipelines queued before the readback.
+ */
+const CAPTURE_MS = 20_000;
 
-/** Frames a `sweep` may wait: each value needs at least one call, at most 64 values. */
-function retriesOf(frame: string): number {
+/** How long a request may wait for its readbacks: a `sweep` 250 ms more for each value (at most 64). */
+function waitOf(frame: string): number {
   try {
     const request = JSON.parse(frame) as { method?: string; params?: { values?: unknown[] } };
-    if (request.method === "sweep") return 2 * (request.params?.values?.length ?? 0) + CAPTURE_RETRIES;
+    if (request.method === "sweep") return 250 * (request.params?.values?.length ?? 0) + CAPTURE_MS;
   } catch {
     /* not a sweep */
   }
-  return CAPTURE_RETRIES;
+  return CAPTURE_MS;
 }
 
 /** The most log lines the Worker keeps for a crash card. */
@@ -905,8 +912,8 @@ export function describeHostError(e: HostError): string {
  */
 export type BootPhases = Partial<Record<"wasm" | "bundle" | "create" | "attach" | "transcode" | "prime" | "settle" | "present", number>> & {
   at?: number;
-  /** Fork s60: the render pipelines made each way (pipelines.ts), at the first frame and again when the warm-up ends, with `bypassed` when the frame pipelines lost createRenderPipelineAsync. */
-  pipelines?: PipelineStats & { bypassed?: string };
+  /** Fork s60: the render pipelines made each way (pipelines.ts), at the first frame and again when the warm-up ends or play stops it, with the mode chosen and why (`auto`'s pick) and `bypassed` when the frame pipelines lost createRenderPipelineAsync. */
+  pipelines?: PipelineStats & Partial<PipelineChoice> & { bypassed?: string };
 };
 
 /** Run `game` in this Worker, driven by the shell's messages. */
@@ -950,7 +957,7 @@ export function startWorker(game: GameToken): void {
   let glueRef: (WebGlue & WebExtras & WebAudioGlue) | null = null;
   let audio: WorkerAudio | null = null;
   /** Captures waiting for their readback (requested on tick N, answered on N + 1). */
-  const retries: Array<{ frame: string; left: number; viaRing: boolean }> = [];
+  const retries: Array<{ frame: string; until: number; viaRing: boolean }> = [];
 
   // The console and the engine's log reach the shell (the crash card's last lines).
   const log = (text: string) => self.postMessage({ type: "log", lines: [text] });
@@ -1109,7 +1116,7 @@ export function startWorker(game: GameToken): void {
       return;
     }
     if (rendering && isPendingCapture(frame, out)) {
-      retries.push({ frame, left: retriesOf(frame), viaRing });
+      retries.push({ frame, until: performance.now() + waitOf(frame), viaRing });
       schedule();
     } else answer(out, viaRing);
   };
@@ -1119,8 +1126,7 @@ export function startWorker(game: GameToken): void {
     for (let i = retries.length - 1; i >= 0; i--) {
       const r = retries[i]!;
       const out = pipelines.drawnWhole(() => engine!.call(r.frame));
-      r.left--;
-      if (!isPendingCapture(r.frame, out) || r.left <= 0) {
+      if (!isPendingCapture(r.frame, out) || performance.now() >= r.until) {
         retries.splice(i, 1);
         answer(out, r.viaRing);
       }
@@ -1249,7 +1255,9 @@ export function startWorker(game: GameToken): void {
     const began = performance.now();
     let made = 0;
     const step = () => {
-      if (playing || crashed || !engine) return;
+      if (crashed || !engine) return;
+      // Play stopped the warm-up: its counts so far, over the first frame's.
+      if (playing) return reportPipelines(made);
       // Fork s60: with the pipelines asynchronous a warm call returns at once; at most WARM_COMPILING
       // (s75) compile at a time, so the ones a frame needs are not queued behind every pass's.
       if (pipelines.compiling() >= WARM_COMPILING || warmInFlight) {
@@ -1477,12 +1485,18 @@ export function startWorker(game: GameToken): void {
         glueRef = glue;
         // Fork s63: at most UPLOAD_BUDGET texture bytes a frame; the rest in the frames after.
         glue.og_web_upload_budget?.(UPLOAD_BUDGET);
-        // Fork s60: the frame pipelines compile off the browser's GPU-process main task (pipelines.ts),
-        // when the build asks for it: on Chrome/Metal a cold shader cache compiles them asynchronously
-        // several times slower than synchronously (docs/web-export.md §Pipelines).
-        if (data.pipelines && glue.og_web_frame_pipelines) {
-          pipelines.enable(true, data.pipelines === "prewarm");
+        // Fork s60: the frame pipelines compile off the browser's GPU-process main task (pipelines.ts)
+        // as the build asks, or for auto (absent) on a mobile GPU, picked at the adapter: a phone's
+        // browser compiles synchronous ones on its GPU process's main thread, while on Chrome/Metal a
+        // cold shader cache compiles them asynchronously several times slower (docs/web-export.md §Pipelines).
+        if (glue.og_web_frame_pipelines) {
+          const asked = data.pipelines;
           glue.og_web_frame_pipelines(pipelines.frameSpan);
+          onAdapter = (adapter) => {
+            const choice = pipelines.choose(asked, adapter.info, (navigator as { userAgentData?: { mobile?: boolean } }).userAgentData?.mobile);
+            pipelines.use(choice);
+            console.info(`[og] pipelines ${choice.mode}: ${choice.reason}`);
+          };
         }
         // Fork s70: frames prepare without drawing while the page's loading screen covers the canvas.
         if (covered) glue.og_web_covered?.(true);

@@ -115,14 +115,16 @@ export interface PublishSettings {
   readonly telemetry: "on" | "off";
   /**
    * How the web page makes the renderer's frame pipelines (docs/web-export.md
-   * §Pipelines): `sync` (the default) with createRenderPipeline when a pass
-   * first needs one; `async` with createRenderPipelineAsync, the frame's draws
-   * of one still compiling skipped (src/web/pipelines.ts). `async` keeps a
-   * large game's first frame from holding the browser's GPU process, but on
-   * Chrome/Metal with a cold shader cache it made the first frame of a small
-   * game 2.5-5x later (the table in §Pipelines).
+   * §Pipelines): `auto` (the default) picks at the adapter, `async` on a
+   * mobile GPU and `sync` elsewhere (src/web/pipelines.ts `choose`); `sync`
+   * with createRenderPipeline when a pass first needs one; `async` with
+   * createRenderPipelineAsync, the frame's draws of one still compiling
+   * skipped; `prewarm`, only the warm-up behind the gate's. On a Pixel 10
+   * sync left the page without a frame for about 23 s behind the gate; on
+   * Chrome/Metal with a cold shader cache async made the first frame of a
+   * small game 2.5-5x later (the tables in §Pipelines).
    */
-  readonly pipelines: "sync" | "async" | "prewarm";
+  readonly pipelines: "auto" | "sync" | "async" | "prewarm";
 }
 
 export interface ProjectSettings {
@@ -149,7 +151,7 @@ export const DEFAULT_PUBLISH: PublishSettings = {
   icon: null,
   shortName: null,
   telemetry: "on",
-  pipelines: "sync",
+  pipelines: "auto",
 };
 
 /** The settings of a project read without og (tests): name, id, engine and profile; publish defaults. */
@@ -870,7 +872,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     fullscreen: p.fullscreen,
     gate: p.gate,
     madeWith: p.madeWith,
-    ...(p.pipelines !== "sync" ? { pipelines: p.pipelines } : {}),
+    ...(p.pipelines !== "auto" ? { pipelines: p.pipelines } : {}),
     serviceWorker: publish,
     expect: { wasm: wasmBytes, cooked: cookedBytes, lanes: lanes ? statSync(join(out, served("origin-engine-lanes_bg.wasm"))).size : 0 },
     files: names,
