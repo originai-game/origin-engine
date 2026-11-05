@@ -410,7 +410,7 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, local: vec3<f32>, ground: f32, a
   s.roughness = clamp(roughness, 0.04, 1.0);
   s.f0 = vec3<f32>(0.04);
   // The weather on the ground, its hollows (the layers' relief) first.
-  let weathered = weather_surface_at(s, n, n_geo, p, terrain_cavity(height), 1.0, 1.0);
+  let weathered = weather_surface_at(s, n, n_geo, p, terrain_cavity(height), 1.0, WEATHER_GROUND);
   s = weathered.s;
   n = weathered.n;
   if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) {
@@ -512,7 +512,7 @@ struct TerrainPrepass {
 fn terrain_prepass_out(p: vec3<f32>, n: vec3<f32>, n_geo: vec3<f32>, layers: vec2<f32>, cur_clip: vec4<f32>, prev_clip: vec4<f32>) -> TerrainPrepass {
   let cur = cur_clip.xy / cur_clip.w;
   let prev = prev_clip.xy / max(prev_clip.w, 1e-6);
-  let g = weather_gloss(clamp(layers.x, 0.04, 1.0), 0.0, n, n_geo, p, terrain_cavity(layers.y), 1.0);
+  let g = weather_gloss(clamp(layers.x, 0.04, 1.0), 0.0, n, n_geo, p, terrain_cavity(layers.y), 1.0, WEATHER_GROUND);
   var o: TerrainPrepass;
   o.gbuffer = vec4<f32>(oct_encode(g.n), (cur - prev) * vec2<f32>(0.5, -0.5));
   let reflectivity = reflectivity_bits(g.s.roughness, g.s.metallic);

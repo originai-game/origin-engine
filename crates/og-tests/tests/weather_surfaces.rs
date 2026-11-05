@@ -413,7 +413,10 @@ fn puddles_on_a_terrain_fill_its_layers_hollows_first() {
         "dry halves alike"
     );
     assert!(
-        wet.1 > 0.05 && wet.1 > 1.8 * wet.0,
+        // (The crests take a fine drying mottle of their own: the hollows'
+        // standing water still mottles them well over 1.4 times as much;
+        // with no relief the halves came out alike, 0.82.)
+        wet.1 > 0.05 && wet.1 > 1.4 * wet.0,
         "the hollow (right) half holds more water: {wet:?}"
     );
 }

@@ -15,6 +15,18 @@
 // rendering of Remember Me" (GDC 2013: wet cavities first, drying from the
 // tops, streaks running down walls).
 
+// How water lies on a surface (weather_surface_at's `standing`): it runs
+// off (a grass blade: no puddles, no splashes); it stands where the
+// surface is level and flat over a puddle's width, judged from the
+// change of its normal across the pixel (a mesh: none on a ball's crown
+// or a rock's top); or it stands on the ground wherever it is level (a
+// terrain: its field is flat at a puddle's width, and its normal, read
+// from the map level each pixel's footprint picks, steps where that level
+// changes, which read as a crease and left dry pin-points in the water).
+const WEATHER_RUNS_OFF: f32 = 0.0;
+const WEATHER_STANDS: f32 = 1.0;
+const WEATHER_GROUND: f32 = 2.0;
+
 struct Weathered {
   s: Surface,
   n: vec3<f32>,
@@ -40,7 +52,11 @@ fn weather_fbm(p: vec2<f32>) -> f32 {
 // Raindrop rings on standing water: a drop per cell, each at its own time
 // in a one-second cycle, its ring widening and fading. The normal's
 // horizontal tilt.
-fn weather_ripples(p: vec2<f32>, t: f32) -> vec2<f32> {
+fn weather_ripples(p: vec2<f32>, t: f32, footprint: f32) -> vec2<f32> {
+  // A ring's crests are about 4 cm apart: where a pixel covers a
+  // centimetre they alias into stripes, so they fade out first.
+  let fade = 1.0 - smoothstep(0.004, 0.012, footprint);
+  if (fade <= 0.0) { return vec2<f32>(0.0); }
   var tilt = vec2<f32>(0.0);
   for (var k = 0; k < 2; k++) {
     let q = p * 3.0 + vec2<f32>(f32(k) * 0.37, f32(k) * 0.71);
@@ -54,7 +70,7 @@ fn weather_ripples(p: vec2<f32>, t: f32) -> vec2<f32> {
     let wave = sin(ring * 50.0) * exp(-ring * ring * 300.0) * (1.0 - phase);
     tilt += to / max(r, 1e-3) * wave;
   }
-  return tilt * 0.35;
+  return tilt * 0.35 * fade;
 }
 
 // How open `p` (frame coordinates) is to the rain and snow, 0 under a roof
@@ -158,9 +174,15 @@ fn weather_streaks(p: vec3<f32>, geo: vec3<f32>, t: f32, footprint: f32) -> f32 
   return min(profile * present * run * band * along * 1.8, 1.0);
 }
 
-// Drops hitting a wet surface: a crown of tiny splashes, one per cell at
-// its own time in a third of a second, as the normal's horizontal tilt.
-fn weather_splashes(p: vec2<f32>, t: f32) -> vec2<f32> {
+// Drops hitting a wet surface: each throws a tiny crown that spreads as
+// a ring through the film and dies within a third of a second, one per
+// cell at its own time. The normal's horizontal tilt. Rings a pixel
+// cannot resolve (`footprint`, metres a pixel covers) fade out rather
+// than sparkle, and a ring is never a bump: a bump at a cell's centre
+// read as a puncture in a wet stone seen close up.
+fn weather_splashes(p: vec2<f32>, t: f32, footprint: f32) -> vec2<f32> {
+  let fade = 1.0 - smoothstep(0.002, 0.008, footprint);
+  if (fade <= 0.0) { return vec2<f32>(0.0); }
   let q = p * 9.0;
   let c = floor(q);
   let ci = vec2<i32>(c);
@@ -168,16 +190,17 @@ fn weather_splashes(p: vec2<f32>, t: f32) -> vec2<f32> {
   let phase = fract(t * 3.0 + lattice_hash(vec3<i32>(ci, 71)));
   let to = q - centre;
   let r = length(to);
-  let bump = exp(-r * r * 60.0) * (1.0 - phase) * (1.0 - phase);
-  return to / max(r, 1e-3) * bump;
+  let ring = r - (0.03 + 0.2 * phase);
+  let crest = exp(-ring * ring * 900.0) * (1.0 - phase) * (1.0 - phase);
+  return to / max(r, 1e-3) * crest * 0.15 * fade;
 }
 
 // The weather on one surface: `geo` its geometric normal, `p_frame` its
 // point (frame coordinates), `cavity` how high it lies in its own relief
 // (0 a hollow, 1 a crest, 0.5 none known: a terrain's blended layer
 // height), `amount` how much of the weather reaches it (its material's
-// weathering), `standing` 1 where water can stand and drops splash (a
-// solid surface), 0 where it runs off (a grass blade).
+// weathering), `standing` how water lies on it (WEATHER_RUNS_OFF,
+// WEATHER_STANDS, WEATHER_GROUND).
 fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>, cavity: f32, amount: f32, standing: f32) -> Weathered {
   var o: Weathered;
   o.s = s_in;
@@ -192,7 +215,7 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
   // flat over a puddle's width, not on a rock's crown or a ball's top.
   // (Taken here, in uniform control flow, before the masks branch.)
   let footprint = length(fwidth(p_frame));
-  let bend = length(fwidth(geo)) / max(footprint, 1e-5);
+  let bend = select(length(fwidth(geo)) / max(footprint, 1e-5), 0.0, standing > 1.5);
   let surf_wet = shore_wetness(p_frame) * amount;
   if (max(max(max(w.x, w.y), w.z), max(dust, surf_wet)) <= 0.0) { return o; }
   // Under a roof: dry, no puddles, no snow (the drip line softened). Dust
@@ -269,8 +292,8 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
     let level = smoothstep(0.93, 0.985, up);
     let edge = 1.0 - w.y * 0.65;
     let flat_enough = 1.0 - smoothstep(0.08, 0.35, bend);
-    puddle = smoothstep(edge, edge + 0.1, hollow) * level * flat_enough * (1.0 - snow) * standing;
-    shore = smoothstep(edge - 0.12, edge, hollow) * level * flat_enough * (1.0 - snow) * standing;
+    puddle = smoothstep(edge, edge + 0.1, hollow) * level * flat_enough * (1.0 - snow) * min(standing, 1.0);
+    shore = smoothstep(edge - 0.12, edge, hollow) * level * flat_enough * (1.0 - snow) * min(standing, 1.0);
     wet = max(wet, shore * w.x);
   }
 
@@ -290,14 +313,27 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
   // water, so each lamp stretches into a long streak down the street
   // (GGX elongates a point light's reflection at grazing views). The film
   // drains when the rain stops, leaving the pores' modest gloss.
+  // The film drains off what stands proud of the relief (a sett's crown
+  // keeps only its pores' gloss, its low edges stay sheeted) and off
+  // whatever the shading normal tilts away from the surface (a stone's
+  // rounded edge, a crack's wall). Where the film is gone the stone dries
+  // and wets in fine patches: a grainy, broken highlight, not a varnish.
+  // (With no relief known, cavity 0.5, the film covers the level ground.)
+  let relief_film = clamp(1.0 - (cavity - 0.5) * 3.0, 0.0, 1.0);
+  let lying = smoothstep(0.85, 0.97, dot(o.n, geo));
   if (raining) {
-    let sheet = wet * smoothstep(0.75, 0.95, up) * min(w.w * 1.5, 1.0);
+    let sheet = wet * smoothstep(0.75, 0.95, up) * min(w.w * 1.5, 1.0) * relief_film * lying;
     o.s.roughness = mix(o.s.roughness, min(o.s.roughness, 0.2), sheet * sheet);
+  }
+  let exposed = wet * porosity * (1.0 - relief_film * lying);
+  if (exposed > 0.0) {
+    let grain = weather_noise(p.xz * 31.0 + 3.0) * 0.6 + weather_noise(p.xz * 7.0 + 11.0) * 0.4;
+    o.s.roughness = mix(o.s.roughness, mix(0.32, 0.7, grain), exposed);
   }
 
   // Drops splash on the wet level ground outside the puddles.
   if (raining && wet > 0.0 && standing > 0.0) {
-    let tilt = weather_splashes(p.xz, frame.time.x) * w.w * wet * up * (1.0 - puddle) * 0.6 * standing;
+    let tilt = weather_splashes(p.xz, frame.time.x, footprint) * w.w * wet * up * (1.0 - puddle) * min(standing, 1.0);
     o.n = normalize(o.n + vec3<f32>(tilt.x, 0.0, tilt.y));
   }
 
@@ -307,13 +343,18 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
     o.s.albedo *= mix(1.0, 0.25, puddle);
     o.s.f0 = mix(o.s.f0, vec3<f32>(0.02), puddle);
     o.s.metallic = mix(o.s.metallic, 0.0, puddle);
-    o.s.roughness = mix(o.s.roughness, 0.03, puddle);
+    // The water's own mirror and flat face take over only where it covers
+    // the surface: across its shore the surface is partly drowned, and a
+    // half-smooth, half-tilted normal there drew a bright seam along the
+    // foot of each stone (the steep face sharply mirroring the ground).
+    let covered = smoothstep(0.5, 0.9, puddle);
+    o.s.roughness = mix(o.s.roughness, 0.03, covered);
     var flat_n = geo;
     if (raining) {
-      let tilt = weather_ripples(p.xz, frame.time.x) * w.w;
+      let tilt = weather_ripples(p.xz, frame.time.x, footprint) * w.w;
       flat_n = normalize(geo + vec3<f32>(tilt.x, 0.0, tilt.y));
     }
-    o.n = normalize(mix(o.n, flat_n, puddle));
+    o.n = normalize(mix(o.n, flat_n, covered));
   }
 
   if (snow > 0.0) {
@@ -330,20 +371,20 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
 // The weather on a surface with no relief known and every material's
 // share (the terrain's call until its layers pass their height).
 fn weather_surface(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>) -> Weathered {
-  return weather_surface_at(s_in, n_in, geo, p_frame, 0.5, 1.0, 1.0);
+  return weather_surface_at(s_in, n_in, geo, p_frame, 0.5, 1.0, WEATHER_STANDS);
 }
 
 // What the depth-normal prepass writes of the weather: the gloss, metalness
 // and normal the lit pass shades with (the same masks; the colour is not
 // needed, but the relief is the lit pass's), so screen-space reflections
 // see wet ground and puddles as mirrors where the lit pass draws them.
-fn weather_gloss(roughness: f32, metalness: f32, n: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>, cavity: f32, amount: f32) -> Weathered {
+fn weather_gloss(roughness: f32, metalness: f32, n: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>, cavity: f32, amount: f32, standing: f32) -> Weathered {
   var s: Surface;
   s.albedo = vec3<f32>(1.0);
   s.metallic = metalness;
   s.roughness = roughness;
   s.f0 = mix(vec3<f32>(0.04), s.albedo, metalness);
-  return weather_surface_at(s, n, geo, p_frame, cavity, amount, 1.0);
+  return weather_surface_at(s, n, geo, p_frame, cavity, amount, standing);
 }
 
 // The weather on a grass blade (grass.wgsl): wet blades darken and gloss,
@@ -355,7 +396,7 @@ fn weather_gloss(roughness: f32, metalness: f32, n: vec3<f32>, geo: vec3<f32>, p
 // standing out of it, not frosted grass.
 fn weather_grass(s_in: Surface, n_in: vec3<f32>, p_frame: vec3<f32>, t: f32) -> Weathered {
   let geo = normalize(n_in * 0.35 + vec3<f32>(0.0, 1.0, 0.0));
-  var o = weather_surface_at(s_in, n_in, geo, p_frame, 0.5, 1.0, 0.0);
+  var o = weather_surface_at(s_in, n_in, geo, p_frame, 0.5, 1.0, WEATHER_RUNS_OFF);
   let cover = frame.weather.z;
   if (cover > 0.0) {
     let pw = p_frame + frame.origin.xyz;

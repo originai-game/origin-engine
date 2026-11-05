@@ -65,7 +65,7 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   // (weather_surface.wgsl weather_gloss): reflections see the puddles as
   // mirrors and their ripples, and the normal is the water's.
   if (!unlit) {
-    let g = weather_gloss(clamp(roughness, 0.04, 1.0), metalness, n, n, in.world_pos, weather_cavity(in.uv), material.uv[3].w);
+    let g = weather_gloss(clamp(roughness, 0.04, 1.0), metalness, n, n, in.world_pos, weather_cavity(in.uv), material.uv[3].w, WEATHER_STANDS);
     roughness = g.s.roughness;
     metalness = g.s.metallic;
     o.gbuffer = vec4<f32>(oct_encode(g.n), velocity);

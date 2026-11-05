@@ -323,7 +323,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // Rain, streaks, puddles, snow and dust (weather_surface.wgsl): the
   // frame's uniforms, the material's weathering (uv[3].w) and its relief
   // from the AO map, whose crevices hold water and dust first.
-  let weathered = weather_surface_at(s, n, normalize(n_vertex * face), in.world_pos, weather_cavity(uv), material.uv[3].w, 1.0);
+  let weathered = weather_surface_at(s, n, normalize(n_vertex * face), in.world_pos, weather_cavity(uv), material.uv[3].w, WEATHER_STANDS);
   s = weathered.s;
   n = weathered.n;
   s.coat = material.coat.x;
