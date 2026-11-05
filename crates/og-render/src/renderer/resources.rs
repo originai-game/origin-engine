@@ -290,7 +290,7 @@ pub(crate) struct SceneCache {
     /// Their lit pipelines by (shader, side, blended, effects, skinned).
     pub(crate) hook_pipelines: HashMap<(usize, Side, bool, bool, bool), wgpu::RenderPipeline>,
     /// Their shadow and prepass pipelines by (shader, side, skinned).
-    pub(crate) hook_shadow_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
+    pub(crate) hook_shadow_pipelines: HashMap<(usize, Side, bool), ShadowSet>,
     pub(crate) hook_prepass_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
     pub(crate) surface_prepass_pipelines:
         HashMap<(Option<usize>, Side, bool), wgpu::RenderPipeline>,
@@ -537,8 +537,9 @@ pub(crate) fn indirect_list(
     }
 }
 
-/// A shadow map: one R32Float array the lit shaders read, a view per layer,
-/// and the depth buffer its passes test against.
+/// A shadow map: one array the lit shaders read (R32Float for the cascades,
+/// [`LOCAL_SHADOW_FORMAT`] for the local lights), a view per layer, and the
+/// depth buffer its passes test against.
 pub(crate) struct ShadowMap {
     /// The array itself (area.rs names it to know when it was made anew).
     pub(crate) texture: wgpu::Texture,
@@ -558,18 +559,15 @@ pub(crate) struct CachedShadow {
 }
 
 impl CachedShadow {
-    pub(crate) fn new(device: &wgpu::Device, size: u32) -> CachedShadow {
+    pub(crate) fn new(
+        device: &wgpu::Device,
+        size: u32,
+        format: wgpu::TextureFormat,
+    ) -> CachedShadow {
         let usage = wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST;
         CachedShadow {
             size,
-            color: target_texture(
-                device,
-                "cached shadow",
-                size,
-                size,
-                wgpu::TextureFormat::R32Float,
-                usage,
-            ),
+            color: target_texture(device, "cached shadow", size, size, format, usage),
             depth: target_texture(
                 device,
                 "cached shadow depth",
@@ -583,7 +581,13 @@ impl CachedShadow {
 }
 
 impl ShadowMap {
-    pub(crate) fn new(device: &wgpu::Device, label: &str, size: u32, layers: u32) -> ShadowMap {
+    pub(crate) fn new(
+        device: &wgpu::Device,
+        label: &str,
+        size: u32,
+        layers: u32,
+        format: wgpu::TextureFormat,
+    ) -> ShadowMap {
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some(label),
             size: wgpu::Extent3d {
@@ -594,12 +598,9 @@ impl ShadowMap {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::R32Float,
-            // Storage: a local layer's midpoint is resolved in place
-            // (shadow_mid.rs).
+            format,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::STORAGE_BINDING
                 | wgpu::TextureUsages::COPY_SRC
                 | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],

@@ -796,7 +796,7 @@ fn base_strip(img: &RgbaImage, from: f32, to: f32) -> Vec<(u32, u32)> {
 /// paraboloid, which compares half a texel past to cover its straight-
 /// edged triangles' misdrawn texels (Metal at a quarter texel: mean
 /// 0.039, 0.286 at most). Local layers now hold their casters' midpoint
-/// (shadow_mid.rs): the box's bottom face and top face meet halfway, well
+/// (lighting.wgsl local_depth): the box's bottom face and top face meet halfway, well
 /// above the floor, and every receiver compares as an open one.
 ///
 /// Measured as the share of the light's direct light that reaches the
@@ -889,7 +889,7 @@ fn local_shadows_touch_their_casters() {
 /// down-facing quad is a caster at the floor's own depth, and a layer of
 /// far sides compared under the closed rule (past its depth, lighting.wgsl
 /// shadow_closed) shadowed the floor with itself, halving the station's
-/// spot pool. With midpoints (shadow_mid.rs) the two quads resolve to
+/// spot pool. With midpoints (lighting.wgsl local_depth) the two quads resolve to
 /// their shared plane, which the floor compares before. Measured as in
 /// [`local_shadows_touch_their_casters`]: the share of the direct light
 /// that reaches the floor in the lower half of the frame.

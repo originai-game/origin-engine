@@ -1822,19 +1822,13 @@ impl Renderer {
                     scene.origin,
                     self.local_shadow_size,
                 );
-                let mut plan = self.shadow_cache.plan(
+                let plan = self.shadow_cache.plan(
                     CASCADES + layer,
                     key,
                     f,
                     overlay_in(CASCADES + layer, f),
                     shadow_split.any_static,
                 );
-                // A local layer holds its midpoint once resolved
-                // (shadow_mid.rs), never its static casters alone: what the
-                // cache would copy from it is drawn again.
-                if plan.save && !plan.draw_static {
-                    plan.draw_static = true;
-                }
                 local_plans[layer] = plan;
                 let list = if !plan.draw_static && !plan.overlay {
                     Default::default()
@@ -1876,27 +1870,21 @@ impl Renderer {
             }
         }
         self.cull_inside = cull_inside;
-        if !local_shadows.is_empty() {
-            self.local_mid
-                .ensure(&self.device, &self.local_map, cookie_base as usize);
-        }
         // The cache textures this frame's plans copy through, made at their
         // layer's side on first need.
         let local_side = self.local_shadow_size;
-        // Each local layer's mirrored raster (shadow_mid.rs) follows its
-        // layer's plan through a cache texture of its own.
         let copied = cascade_plans
             .iter()
             .enumerate()
-            .map(|(i, p)| (i, p, shadow_size))
-            .chain(local_plans.iter().enumerate().flat_map(|(l, p)| {
-                [
-                    (CASCADES + l, p, local_side),
-                    (NEAR_SLOT + l, p, local_side),
-                ]
-            }))
-            .filter(|(_, p, _)| p.save || p.restore);
-        for (slot, _, side) in copied {
+            .map(|(i, p)| (i, p, shadow_size, wgpu::TextureFormat::R32Float))
+            .chain(
+                local_plans
+                    .iter()
+                    .enumerate()
+                    .map(|(l, p)| (CASCADES + l, p, local_side, LOCAL_SHADOW_FORMAT)),
+            )
+            .filter(|(_, p, _, _)| p.save || p.restore);
+        for (slot, _, side, format) in copied {
             if self.shadow_cache_maps.len() <= slot {
                 self.shadow_cache_maps.resize_with(slot + 1, || None);
             }
@@ -1904,7 +1892,7 @@ impl Renderer {
                 .as_ref()
                 .is_none_or(|c| c.size != side)
             {
-                self.shadow_cache_maps[slot] = Some(CachedShadow::new(&self.device, side));
+                self.shadow_cache_maps[slot] = Some(CachedShadow::new(&self.device, side, format));
             }
         }
 
@@ -2392,12 +2380,6 @@ impl Renderer {
                     paraboloid: local_paraboloid(ls.paraboloid, face, self.local_shadow_size),
                     foliage_wind: uniform.foliage_wind[0],
                 };
-                // The mirrored raster: x negated in the projection, a
-                // paraboloid's through its side's sign (shadow_mirror).
-                let mut near = shadow_slots[CASCADES + layer];
-                near.view_proj = mirrored(near.view_proj);
-                near.paraboloid[2] = -(self.local_shadow_size as f32);
-                shadow_slots[NEAR_SLOT + layer] = near;
             }
         }
         // The weather occlusion map: its view and its layer, the array's
@@ -3993,7 +3975,7 @@ impl Renderer {
             .iter()
             .map(|b| self.lit_pipeline_of(b, true, false))
             .collect();
-        let shadow_skinned: Vec<&wgpu::RenderPipeline> = skinned_batches
+        let shadow_skinned: Vec<&ShadowSet> = skinned_batches
             .iter()
             .map(|b| match b.shader {
                 Some(sh) => &self.cache.hook_shadow_pipelines[&(sh, b.side, true)],
@@ -4112,6 +4094,7 @@ impl Renderer {
                 pass,
                 list: &part_list,
                 lit: true,
+                shadow: ShadowTarget::Cascade,
                 current: &mut None,
                 physical_fx,
                 probes,
@@ -4172,6 +4155,7 @@ impl Renderer {
                 pass,
                 list,
                 lit,
+                shadow: ShadowTarget::Cascade,
                 current,
                 physical_fx,
                 probes,
@@ -4405,6 +4389,7 @@ impl Renderer {
                         None,
                         false,
                         card_source(None),
+                        ShadowTarget::Cascade,
                     )
                     .0;
             }
@@ -4429,79 +4414,87 @@ impl Renderer {
                            // still for its key (weather::shelter_key): no
                            // skinned casters, no scattered copies (grass must
                            // not keep the ground under it dry).
-                           all_casters: bool| {
+                           all_casters: bool,
+                           // The draws of every caster, in order, each into
+                           // its target (shadow_target.rs): a cascade's, or a
+                           // local layer's far sides then near sides.
+                           targets: &[ShadowTarget]| {
             stats.shadow_passes += 1;
             stats.shadow_cached += plan.cached() as u32;
             // What every pass of every caster draws besides the instances.
-            let draw_rest = |pass: &mut wgpu::RenderPass, stats: &mut FrameStats| {
-                // The clustered casters (meshlet_gpu.rs), each one draw of
-                // the clusters the pass's view kept.
-                if view > 0
-                    && let Some(m) = self.meshlet.as_ref()
-                {
-                    stats.draw_calls += m.draw_shadow(pass, &batches, view, |b| {
-                        &self.cache.materials[b.material].bind_group
-                    });
-                }
-                // Terrain levels that reach into the pass's volume.
-                if let Some(indices) = terrain_indices
-                    && terrain_casters
-                {
-                    let (n, _) = terrain::draw_levels(
+            let draw_rest =
+                |pass: &mut wgpu::RenderPass, shadow: ShadowTarget, stats: &mut FrameStats| {
+                    // The clustered casters (meshlet_gpu.rs), each one draw of
+                    // the clusters the pass's view kept.
+                    if view > 0
+                        && let Some(m) = self.meshlet.as_ref()
+                    {
+                        stats.draw_calls += m.draw_shadow(pass, shadow, &batches, view, |b| {
+                            &self.cache.materials[b.material].bind_group
+                        });
+                    }
+                    // Terrain levels that reach into the pass's volume.
+                    if let Some(indices) = terrain_indices
+                        && terrain_casters
+                    {
+                        let (n, _) = terrain::draw_levels(
+                            pass,
+                            &terrain_draws,
+                            indices,
+                            terrain::TerrainPass::Shadow(shadow),
+                            frustum,
+                            None,
+                        );
+                        stats.draw_calls += n;
+                        stats.terrain_shadow_draws += n;
+                    }
+                    if !all_casters {
+                        return;
+                    }
+                    // Skinned casters: those GPU culling's pass for the layer
+                    // kept (its counts hold them), unculled on the CPU path.
+                    let g = lists[0].indirect.or(lists[1].indirect);
+                    let pipelines: Vec<&wgpu::RenderPipeline> =
+                        shadow_skinned.iter().map(|s| s.get(shadow)).collect();
+                    let n = draw_skinned(
                         pass,
-                        &terrain_draws,
-                        indices,
-                        terrain::TerrainPass::Shadow,
-                        frustum,
+                        &skinned_batches,
+                        false,
+                        1,
+                        2,
+                        &pipelines,
                         None,
+                        None,
+                        g,
                     );
                     stats.draw_calls += n;
-                    stats.terrain_shadow_draws += n;
-                }
-                if !all_casters {
-                    return;
-                }
-                // Skinned casters: those GPU culling's pass for the layer
-                // kept (its counts hold them), unculled on the CPU path.
-                let g = lists[0].indirect.or(lists[1].indirect);
-                let n = draw_skinned(
-                    pass,
-                    &skinned_batches,
-                    false,
-                    1,
-                    2,
-                    &shadow_skinned,
-                    None,
-                    None,
-                    g,
-                );
-                stats.draw_calls += n;
-                if !(skinned_gpu && g.is_some()) {
-                    stats.shadow_casters += skinned_batches
-                        .iter()
-                        .filter(|b| !b.transparent && b.cast)
-                        .map(|b| b.count)
-                        .sum::<u32>();
-                }
-                let (n, _) = self.scatter.draw(
-                    pass,
-                    scatter::ScatterPass::Shadow,
-                    &scatter_batches,
-                    scatter_material,
-                    scatter_mesh,
-                    |c, r| frustum.intersects_sphere(c, r),
-                    None,
-                    None,
-                    false,
-                    card_source(g),
-                );
-                stats.draw_calls += n; // Grass casts into the first cascades only (grass.rs).
-                if slot < grass::SHADOW_CASCADES {
-                    stats.draw_calls +=
-                        self.grass
-                            .draw(pass, grass::GrassPass::Shadow, &grass_frame, None);
-                }
-            };
+                    if !(skinned_gpu && g.is_some()) {
+                        stats.shadow_casters += skinned_batches
+                            .iter()
+                            .filter(|b| !b.transparent && b.cast)
+                            .map(|b| b.count)
+                            .sum::<u32>();
+                    }
+                    let (n, _) = self.scatter.draw(
+                        pass,
+                        scatter::ScatterPass::Shadow,
+                        &scatter_batches,
+                        scatter_material,
+                        scatter_mesh,
+                        |c, r| frustum.intersects_sphere(c, r),
+                        None,
+                        None,
+                        false,
+                        card_source(g),
+                        shadow,
+                    );
+                    stats.draw_calls += n; // Grass casts into the first cascades only (grass.rs).
+                    if slot < grass::SHADOW_CASCADES {
+                        stats.draw_calls +=
+                            self.grass
+                                .draw(pass, grass::GrassPass::Shadow, &grass_frame, None);
+                    }
+                };
             let draw = |encoder: &mut crate::Encoder,
                         list: &DrawList,
                         rest: bool,
@@ -4516,12 +4509,27 @@ impl Renderer {
                     &self.shadow_bind_group,
                     &[(slot as u64 * SHADOW_SLOT_STRIDE) as u32],
                 );
-                draw_list(&mut pass, list, false, &mut None, None, None, None);
-                stats.draw_calls += list.ranges.len() as u32;
-                stats.shadow_casters += list.instances;
-                if rest {
-                    draw_rest(&mut pass, stats);
+                for &shadow in targets {
+                    self.frame_draw_list(DrawListInputs {
+                        pass: &mut pass,
+                        list,
+                        lit: false,
+                        shadow,
+                        current: &mut None,
+                        physical_fx: None,
+                        probes: None,
+                        fx: None,
+                        batches: &batches,
+                        culled_gpu,
+                        fx_lean_of: &fx_lean_of,
+                        oit: None,
+                    });
+                    stats.draw_calls += list.ranges.len() as u32;
+                    if rest {
+                        draw_rest(&mut pass, shadow, stats);
+                    }
                 }
+                stats.shadow_casters += list.instances;
             };
             // The layer and its cache texture (and both depths), one way.
             let copy = |encoder: &mut crate::Encoder, into_cache: bool| {
@@ -4599,6 +4607,7 @@ impl Renderer {
                     cascade_views.get(i as usize).copied().unwrap_or(0),
                     &mut stats,
                     true,
+                    &[ShadowTarget::Cascade],
                 ),
                 FramePass::Shelter => {
                     let s = shelter.as_ref().expect("a shelter pass has its view");
@@ -4618,40 +4627,31 @@ impl Renderer {
                         shelter_view,
                         &mut stats,
                         false,
+                        &[ShadowTarget::Cascade],
                     )
                 }
                 FramePass::LocalFace(layer) => {
-                    // Both rasters of the face, then its midpoint
-                    // (shadow_mid.rs) where either drew or was restored.
                     let l = layer as usize;
-                    let lists = local_lists[l].as_ref().expect("a list per shadowed face");
-                    let frustum = local_frustums[l]
-                        .as_ref()
-                        .expect("a frustum per shadowed face");
-                    let near = self.local_mid.near();
-                    // One face is one shadow pass (and one cached layer)
-                    // in the stats; both rasters' draws count.
-                    let counted = (stats.shadow_passes, stats.shadow_cached);
-                    for (map, slot) in [(&self.local_map, CASCADES + l), (near, NEAR_SLOT + l)] {
-                        (stats.shadow_passes, stats.shadow_cached) = counted;
-                        shadow_pass(
-                            &mut encoder,
-                            &map.layers[l],
-                            &map.depth,
-                            (&map.texture, layer, &map.depth_texture),
-                            slot,
-                            lists,
-                            local_plans[l],
-                            frustum,
-                            local_views[l],
-                            &mut stats,
-                            true,
-                        );
-                    }
-                    let plan = local_plans[l];
-                    if plan.draw_static || plan.restore || plan.overlay {
-                        self.local_mid.resolve(&mut encoder, l);
-                    }
+                    shadow_pass(
+                        &mut encoder,
+                        &self.local_map.layers[l],
+                        &self.local_map.depth,
+                        (
+                            &self.local_map.texture,
+                            layer,
+                            &self.local_map.depth_texture,
+                        ),
+                        CASCADES + l,
+                        local_lists[l].as_ref().expect("a list per shadowed face"),
+                        local_plans[l],
+                        local_frustums[l]
+                            .as_ref()
+                            .expect("a frustum per shadowed face"),
+                        local_views[l],
+                        &mut stats,
+                        true,
+                        &ShadowTarget::LOCAL,
+                    )
                 }
                 FramePass::Prepass => self.encode_prepass(PrepassPassInputs {
                     water_draws: &water_draws,

@@ -316,6 +316,7 @@ impl Renderer {
             Some(fx_group),
             true,
             cards,
+            ShadowTarget::Cascade,
         );
         if n > 0 {
             // The copies' group 2 is theirs: the effects' back for what follows.

@@ -272,6 +272,7 @@ mod garment;
 mod garment_gpu;
 pub mod ocean_fft;
 mod shadow_cache;
+mod shadow_target;
 mod shadows;
 pub mod shapes;
 mod skin;
@@ -418,6 +419,7 @@ use frame::{CASCADES, Cascade, Frustum};
 use glam::{Mat4, Vec2, Vec3};
 use material::MaterialUniform;
 use post::FramePass;
+use shadow_target::{LOCAL_SHADOW_FORMAT, ShadowSet, ShadowTarget};
 use shadows::LOCAL_SHADOW_LAYERS;
 use sprites::{FontLayout, RunSource, SPRITE_LAYOUT, SPRITE_STRIDE};
 use std::collections::HashMap;
@@ -533,9 +535,6 @@ pub struct Renderer {
     post: post::PostPasses,
     cascade_map: ShadowMap,
     local_map: ShadowMap,
-    /// The local layers' near-side rasters and their midpoint pass
-    /// (shadow_mid.rs).
-    local_mid: LocalMid,
     /// The cascades' side at [`RenderQuality::shadow_map_scale`] 1 (the
     /// [`RenderDesc`]'s, clamped); [`RenderInfo::shadow_map_size`] is the
     /// side drawn now.
@@ -596,7 +595,7 @@ pub struct Renderer {
     /// Lit pipelines, each made when a batch first needs it (or by
     /// [`Renderer::warm`]).
     pbr_pipelines: HashMap<PbrKey, wgpu::RenderPipeline>,
-    shadow_pipelines: HashMap<ShadowKey, wgpu::RenderPipeline>,
+    shadow_pipelines: HashMap<ShadowKey, ShadowSet>,
     /// Prepass pipelines by (side, skinned).
     prepass_pipelines: HashMap<(Side, bool), wgpu::RenderPipeline>,
     /// The lean lit pipelines of plain materials, made at first use.
@@ -605,7 +604,7 @@ pub struct Renderer {
     lean_prepass_pipelines: HashMap<(Side, bool, bool), wgpu::RenderPipeline>,
     /// The shadow pipelines of compact casters (lean, from the compact
     /// vertices) by side.
-    compact_shadow_pipelines: HashMap<Side, wgpu::RenderPipeline>,
+    compact_shadow_pipelines: HashMap<Side, ShadowSet>,
     /// Stylise's object pass, made the first frame a pattern is laid in
     /// object space (`stylise_object.rs`).
     stylise_object: Option<stylise_object::ObjectPass>,

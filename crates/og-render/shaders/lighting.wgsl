@@ -149,7 +149,7 @@ fn cascade_tint(c: u32) -> vec3<f32> {
 // past the face 53 % lit under the tent with the plane, 24 % without;
 // under 1 % this way with local_wide, the floor before its lit face 98 %
 // lit 2 mm from it). The cascades alone read it: a local layer holds its
-// casters' midpoint (shadow_mid.rs), where no receiver is in the map
+// casters' midpoint ([`local_depth`]), where no receiver is in the map
 // itself, closed or not. A closed floor of two coplanar quads facing apart
 // (window-room.glb's) is a caster at its own depth and shadows itself
 // under this rule; moving the cascades to midpoints too is a follow-up.
@@ -353,7 +353,7 @@ fn perspective_uv_ref(light: LocalLight, layer: u32, q: vec3<f32>, k: f32) -> ve
 
 // The factor on a receiver's distance it is compared at: a tenth of a
 // texel towards the light (`cone.w`). Every receiver is open here: a local
-// layer holds its casters' midpoint (shadow_mid.rs), inside a closed caster
+// layer holds its casters' midpoint ([`local_depth`]), inside a closed caster
 // and at a zero-thickness one's plane, so a surface lies before the depth
 // it is compared with and the receivers behind a caster past it. The flat,
 // past-its-depth rule of a closed receiver (`shadow_closed`) is the
@@ -399,7 +399,7 @@ fn local_wide(uv: vec2<f32>, layer: u32, ref_depth: f32, slope: vec2<f32>) -> f3
       let wx = select(select(1.0, f.x, i == 7), 1.0 - f.x, i == 0);
       let nx = select(0.0, select(select(1.0, f.x, i == 5), 1.0 - f.x, i == 2), i >= 2 && i <= 5);
       let at = clamp(base + vec2<i32>(i, j), vec2<i32>(0), size - 1);
-      let d = textureLoad(local_shadow_map, at, i32(layer), 0).r;
+      let d = local_depth(at, layer);
       let r = ref_depth + dot(slope, vec2<f32>(f32(i - 3), f32(j - 3)) - f);
       let w = wx * wy;
       if (r <= d) {
@@ -417,10 +417,40 @@ fn local_wide(uv: vec2<f32>, layer: u32, ref_depth: f32, slope: vec2<f32>) -> f3
   return mix(narrow / 9.0, wide / 49.0, t);
 }
 
+// A local layer's depth at a texel: the midpoint of its casters' far
+// sides (red) and near sides (green), each the nearest of its kind
+// (shadow_target.rs; Woo, "The Shadow Depth Map Revisited", Graphics Gems
+// III, 1992). It lies inside a closed caster and at the plane of a
+// zero-thickness one (a double-sided card, two coplanar quads facing
+// apart), so no surface compares against itself. Where no far side was
+// drawn (1: past the range) nothing is: a single-sided open surface (a
+// plane, a wall) casts nothing, as it did when the layers held far sides
+// alone, rather than shadowing the receivers it meets at a crease through
+// the filter's taps on it. Where no near side was drawn, the far side is
+// the depth.
+fn local_depth(at: vec2<i32>, layer: u32) -> f32 {
+  let v = textureLoad(local_shadow_map, at, i32(layer), 0);
+  return select(0.5 * (v.r + v.g), v.r, v.r >= 1.0 || v.g >= 1.0);
+}
+
+// `pcf` over a local layer's depths ([`local_depth`]).
+fn pcf_local(uv: vec2<f32>, layer: u32, ref_depth: f32) -> f32 {
+  let size = vec2<i32>(textureDimensions(local_shadow_map));
+  let p = uv * vec2<f32>(size) - 0.5;
+  let base = vec2<i32>(floor(p));
+  let f = fract(p);
+  var lit: array<f32, 4>;
+  for (var i = 0; i < 4; i++) {
+    let at = clamp(base + vec2<i32>(i & 1, i >> 1u), vec2<i32>(0), size - 1);
+    lit[i] = select(0.0, 1.0, ref_depth <= local_depth(at, layer));
+  }
+  return mix(mix(lit[0], lit[1], f.x), mix(lit[2], lit[3], f.x), f.y);
+}
+
 // One filter of a local layer: the 2x2 PCF (`wide` false) or
 // [`local_wide`].
 fn local_filter(uv: vec2<f32>, layer: u32, ref_depth: f32, slope: vec2<f32>, wide: bool) -> f32 {
-  if (!wide) { return pcf(local_shadow_map, uv, layer, ref_depth, vec2<f32>(0.0)); }
+  if (!wide) { return pcf_local(uv, layer, ref_depth); }
   return local_wide(uv, layer, ref_depth, slope);
 }
 

@@ -749,8 +749,13 @@ impl Renderer {
         if self.cascade_map.layers.len() as u32 == wanted {
             return;
         }
-        self.cascade_map =
-            ShadowMap::new(&self.device, "cascades", self.info.shadow_map_size, wanted);
+        self.cascade_map = ShadowMap::new(
+            &self.device,
+            "cascades",
+            self.info.shadow_map_size,
+            wanted,
+            wgpu::TextureFormat::R32Float,
+        );
         self.shelter_key = None;
         self.shadow_cache.forget_layers();
         self.environment = None;
@@ -803,6 +808,7 @@ impl Renderer {
             "local shadows",
             self.local_shadow_size,
             needed as u32,
+            LOCAL_SHADOW_FORMAT,
         );
         self.shadow_cache.forget_layers();
         self.environment = None;

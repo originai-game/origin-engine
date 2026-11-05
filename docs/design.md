@@ -589,8 +589,8 @@ tests in orbs and CI, and the probe's CPU description of a frame.
   dual-paraboloid hemispheres for up to 8 point/spot lights, the brightest
   at the camera first (cube by default, paraboloid as the cheaper choice;
   `RenderOptions.pointShadows`). A local light's layer holds the midpoint
-  of its casters' near and far sides (Woo's midpoint shadow map, two
-  rasters per face, the second mirrored: `shadow_mid.rs`), so neither a
+  of its casters' near and far sides (Woo's midpoint shadow map, both in
+  one pass into two channels: `shadow_target.rs`), so neither a
   closed receiver nor a zero-thickness one compares against itself. The
   cascades still store far sides and compare a closed receiver past its
   own depth (a follow-up: the same midpoint for them).

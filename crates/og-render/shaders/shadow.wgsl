@@ -162,54 +162,55 @@ fn vs_skinned_hooked(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInst
 
 // `dx`, `dy`: the world position's derivatives, taken first (before any
 // discard) for a paraboloid pass's ray to the triangle's plane.
-fn shadow_value(in: VsOut, dx: vec3<f32>, dy: vec3<f32>) -> vec4<f32> {
-  return shadow_depth(in.world, in.clip, dx, dy);
+fn shadow_value(in: VsOut, dx: vec3<f32>, dy: vec3<f32>, front: bool) -> vec4<f32> {
+  return shadow_depth(in.world, in.clip, dx, dy, front);
 }
 
-// What a caster's fragment at `world` (`frag`: its position builtin) stores.
-fn shadow_depth(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>) -> vec4<f32> {
+// What a caster's fragment at `world` (`frag`: its position builtin,
+// `front`: its front_facing) stores.
+fn shadow_depth(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>, front: bool) -> vec4<f32> {
   if (shadow_pass.light.w > 0.0) {
-    return vec4<f32>(local_distance(world, frag, dx, dy), 0.0, 0.0, 1.0);
+    return local_value(world, frag, dx, dy, front);
   }
   return vec4<f32>(frag.z, 0.0, 0.0, 1.0);
 }
 
 @fragment
-fn fs(in: VsOut) -> @location(0) vec4<f32> {
+fn fs(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let dx = dpdx(in.world);
   let dy = dpdy(in.world);
-  return shadow_value(in, dx, dy);
+  return shadow_value(in, dx, dy, front);
 }
 
 @fragment
-fn fs_lean(in: LeanVsOut) -> @location(0) vec4<f32> {
+fn fs_lean(in: LeanVsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let dx = dpdx(in.world);
   let dy = dpdy(in.world);
-  return shadow_depth(in.world, in.clip, dx, dy);
+  return shadow_depth(in.world, in.clip, dx, dy, front);
 }
 
 // Dissolving and alpha-tested casters: the dissolved pixels, and those under
 // the material's alpha cutoff (leaf and grass cards), cast no shadow.
 @fragment
-fn fs_dissolve(in: VsOut) -> @location(0) vec4<f32> {
+fn fs_dissolve(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let dx = dpdx(in.world);
   let dy = dpdy(in.world);
   let base_uv = material_uv(UV_MAP, in.uv);
   let alpha = material.base_color.a * textureSample(base_color_tex, material_sampler, base_uv).a * in.color.a;
   if (dissolve_at(in.uv, in.local_pos).w > 0.5) { discard; }
   if (material.emissive.w >= 0.0 && alpha < material.emissive.w) { discard; }
-  return shadow_value(in, dx, dy);
+  return shadow_value(in, dx, dy, front);
 }
 
 // Casters with a material shader: what its surface_color cuts below the
 // alpha test (and the dissolve) casts no shadow, as it is not drawn lit.
 @fragment
-fn fs_hooked(in: VsOut) -> @location(0) vec4<f32> {
+fn fs_hooked(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let dx = dpdx(in.world);
   let dy = dpdy(in.world);
   let base_uv = material_uv(UV_MAP, in.uv);
   let base = surface_color(shadow_hook(in), shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, base_uv) * in.color);
   let dissolved = dissolve_at(in.uv, in.local_pos).w > 0.5;
   if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved) { discard; }
-  return shadow_value(in, dx, dy);
+  return shadow_value(in, dx, dy, front);
 }

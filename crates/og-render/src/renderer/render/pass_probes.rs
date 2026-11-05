@@ -283,6 +283,7 @@ impl Renderer {
                     Some(fx_group),
                     false,
                     scatter::CardSource::Cpu,
+                    ShadowTarget::Cascade,
                 );
                 if n > 0 {
                     pass.set_bind_group(2, fx_group, &[]);

@@ -6,7 +6,7 @@ struct ShadowPass {
   view_proj: mat4x4<f32>,
   light: vec4<f32>,       // xyz: light position, w: range (0: directional, write depth)
   time: vec4<f32>,        // x: the scene clock in seconds (the hooks' h.time), yzw: the scene's origin (h.origin)
-  paraboloid: vec4<f32>,  // x: 1 for a paraboloid hemisphere, y: +1 the one below the light, -1 above, z: the map's side (negative: the mirrored raster), w: the projection's scale
+  paraboloid: vec4<f32>,  // x: 1 for a paraboloid hemisphere, y: +1 the one below the light, -1 above, z: the map's side, w: the projection's scale
   foliage_wind: array<vec4f, 9>, // current deformation only; FoliageWind
 };
 @group(0) @binding(0) var<uniform> shadow_pass: ShadowPass;
@@ -19,15 +19,6 @@ const PARABOLOID_MARGIN: f32 = 0.1;
 // down for +1, up for -1) along +z.
 fn paraboloid_local(v: vec3<f32>, sigma: f32) -> vec3<f32> {
   return vec3<f32>(v.x, sigma * v.z, -sigma * v.y);
-}
-
-// -1 in a local face's mirrored raster, 1 otherwise. A local face is drawn
-// twice (shadow_mid.rs): as it is, where the casters' culling keeps their
-// far sides, and mirrored in x, whose flipped winding makes the same
-// pipelines keep their near sides. A perspective face's mirror is in its
-// view projection; a paraboloid's is here.
-fn shadow_mirror() -> f32 {
-  return select(1.0, -1.0, shadow_pass.paraboloid.z < 0.0);
 }
 
 // The clip position of a world point in this pass. A paraboloid hemisphere
@@ -46,7 +37,7 @@ fn shadow_project(world: vec4<f32>, flat: vec4<f32>) -> vec4<f32> {
   let l = paraboloid_local(world.xyz - shadow_pass.light.xyz, shadow_pass.paraboloid.y);
   let d = max(length(l), 1e-6);
   let q = l / d;
-  let xy = vec2<f32>(-q.x * shadow_mirror(), q.y) * (shadow_pass.paraboloid.w / max(1.0 + q.z, 0.05));
+  let xy = vec2<f32>(-q.x, q.y) * (shadow_pass.paraboloid.w / max(1.0 + q.z, 0.05));
   return vec4<f32>(xy, clamp(d / shadow_pass.light.w, 0.0, 1.0), 1.0);
 }
 
@@ -63,8 +54,8 @@ fn local_distance(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32
   if (shadow_pass.paraboloid.x > 0.5) {
     let sigma = shadow_pass.paraboloid.y;
     if (paraboloid_local(to, sigma).z < -PARABOLOID_MARGIN * dist) { discard; }
-    let size = abs(shadow_pass.paraboloid.z);
-    let ndc = vec2<f32>((1.0 - frag.x / size * 2.0) * shadow_mirror(), 1.0 - frag.y / size * 2.0) / shadow_pass.paraboloid.w;
+    let size = shadow_pass.paraboloid.z;
+    let ndc = vec2<f32>(1.0 - frag.x / size * 2.0, 1.0 - frag.y / size * 2.0) / shadow_pass.paraboloid.w;
     let r2 = dot(ndc, ndc);
     let q = vec3<f32>(2.0 * ndc, 1.0 - r2) / (1.0 + r2);
     let ray = vec3<f32>(q.x, -sigma * q.z, sigma * q.y);
@@ -77,4 +68,22 @@ fn local_distance(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32
     }
   }
   return dist / shadow_pass.light.w;
+}
+
+// The material's sides as its shadow pipeline was made (shadow_target.rs
+// `ShadowTarget::constants`): 0 front-sided, 1 back-sided, 2 double-sided.
+override SHADOW_SIDE: u32 = 0u;
+
+// What a local light's caster fragment stores (shadow_target.rs): in red
+// the layer's far sides, the surfaces facing away from the light (a
+// front-sided caster's back faces, which the cascades keep too), in green its near sides, those facing it; 1 (past the range)
+// in the channel this fragment is not. Both channels keep their nearest,
+// by MIN blending in one pass or by a depth test per channel in two, and
+// the lit shaders compare against the midpoint of the two
+// (lighting.wgsl `local_depth`). A double-sided caster is both.
+fn local_value(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>, front: bool) -> vec4<f32> {
+  let d = local_distance(world, frag, dx, dy);
+  let near = SHADOW_SIDE == 2u || (front == (SHADOW_SIDE == 0u));
+  let far = SHADOW_SIDE == 2u || !near;
+  return vec4<f32>(select(1.0, d, far), select(1.0, d, near), 0.0, 1.0);
 }

@@ -1305,7 +1305,7 @@ pub(crate) struct ArrayMaps {
     pub prepass: std::collections::HashMap<(Side, bool), wgpu::RenderPipeline>,
     /// Unskinned casters by (side, dissolve) (skinned instances carry no
     /// layer: the standard shadow pipelines draw them).
-    pub shadow: std::collections::HashMap<(Side, bool), wgpu::RenderPipeline>,
+    pub shadow: std::collections::HashMap<(Side, bool), crate::ShadowSet>,
     /// One-layer stand-ins for a missing array: white, and the flat normal.
     pub white: wgpu::TextureView,
     pub flat_normal: wgpu::TextureView,

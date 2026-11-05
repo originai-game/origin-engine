@@ -379,10 +379,21 @@ facing apart (fx-showcase's window-room.glb) with itself: its down quad
 is a caster at the floor's depth, and the closed-receiver rule then
 compared the floor past it (the volumetric station's spot pool lost half
 its light). A local layer now holds the midpoint of its casters' near
-and far sides (Woo 1992, `shadow_mid.rs`): each face is drawn a second
-time mirrored in x, whose flipped winding makes the same pipelines keep
-the near sides, and a compute pass writes the midpoint into the layer.
-It lies inside a closed caster and at a zero-thickness one's plane, so
+and far sides (Woo 1992, `shadow_target.rs`): the layer is Rg32Float,
+the far sides (faces turned from the light) in red and the near sides
+in green, and the lit shaders compare against the midpoint of the two
+(`lighting.wgsl` `local_depth`). Both are drawn in one render pass per
+face: every caster's far sides, depth-tested, then its near sides over
+them, tested less-or-equal, each into its channel. A first version drew
+each face's near sides in a second render pass, mirrored in x, and
+resolved the midpoint in a compute pass. With 8 cube point lights (48
+faces) moving at 1080p on the M4 Pro, the shadow passes added 4.5 ms of
+GPU time and 3.3 ms of encoding to a frame that way, 3.2 and 2.0 now,
+and 1.3 and 1.9 with far sides alone; reading two channels costs the
+lit pass about 0.7 ms more. (Summing each pass's own timestamps
+overstates a tile-based GPU's time where passes overlap: these are the
+frame's wall time, moving against still, less its encoding.)
+The midpoint lies inside a closed caster and at a zero-thickness one's plane, so
 every receiver compares as an open one (`a_twin_floor_is_lit_by_local_lights`),
 and a box's base stays shadowed (the 8x8 filter's blocker search now
 sees the box's middle, which also straightened the stepped far edge of

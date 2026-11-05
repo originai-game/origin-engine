@@ -26,7 +26,7 @@
 //!
 //! Cookies ([`LightCookie`]) take layers of the local shadow array past the
 //! shadow layers, each texel the cookie's linear colour packed 8:8:8 in an
-//! exact integer (the array is R32Float, read with `textureLoad`, so no
+//! exact integer in red (the array is Rg32Float, read with `textureLoad`, so no
 //! texture slot either): one layer per spot cookie, six faces per point
 //! cookie (the texture is six square faces stacked top to bottom, +X, -X,
 //! +Y, -Y, +Z, -Z). A spot carries its layer in `color_kind.w` (2 + layer),
@@ -229,10 +229,11 @@ impl Cookies {
                 module: &module,
                 entry_point: Some("fs_cookie"),
                 compilation_options: Default::default(),
+                // The local array's (shadow_target.rs); the cookie in red.
                 targets: &[Some(wgpu::ColorTargetState {
-                    format: wgpu::TextureFormat::R32Float,
+                    format: crate::LOCAL_SHADOW_FORMAT,
                     blend: None,
-                    write_mask: wgpu::ColorWrites::ALL,
+                    write_mask: wgpu::ColorWrites::RED,
                 })],
             }),
             multiview_mask: None,
