@@ -1,0 +1,13 @@
+== dx12
+VARIANT half (default): ["identical", "identical", "identical", "identical", "identical"]
+VARIANT full: ["identical", "identical", "identical", "identical", "identical"]
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 492 filtered out; finished in 74.63s 
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 492 filtered out; finished in 72.35s 
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 492 filtered out; finished in 64.60s 
+== vulkan
+VARIANT half (default): ["identical", "identical", "identical", "identical", "identical"]
+VARIANT full: ["identical", "identical", "identical", "identical", "identical"]
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 492 filtered out; finished in 15.76s 
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 492 filtered out; finished in 12.34s 
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 492 filtered out; finished in 12.40s 
+done-ssrfix

@@ -64,6 +64,7 @@ pub const SCENES: &[&str] = &[
     "light-volume-mirror",
     "light-volume-glossy",
     "light-volume-rough",
+    "ssr-wet-floor",
     "dof-low",
     "dof-high",
     "god-rays",
@@ -1189,7 +1190,6 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::depth_render_scenes::probe_scene(true);
             Ok(())
         },
-        #[cfg(not(target_arch = "wasm32"))]
         "ssr-wet-floor" => |g, _| {
             g.scene = crate::depth_render_scenes::ssr_scene(true);
             g.frames = crate::depth_render_scenes::SSR_FRAMES;

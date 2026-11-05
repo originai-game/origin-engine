@@ -30,9 +30,8 @@ pub mod terrain_scenes;
 /// The frames a screen-space reflection scene is drawn for before it is
 /// read: its rays read the previous frame's lit image, and the denoiser
 /// accumulates them (`og_render`'s `ssr.rs`), so the first frame reflects
-/// nothing and the reflection settles over the next few. Here, not in the
-/// native-only depth_render_scenes, because the weather scenes the browser
-/// tiers draw use it too.
+/// nothing and the reflection settles over the next few. Shared by the
+/// depth-render and weather scenes on native and browser tiers.
 pub const SSR_FRAMES: u32 = 16;
 
 pub mod ui_scenes;
@@ -42,8 +41,7 @@ pub mod wind_scenes;
 // Posed by og-anim (native only).
 #[cfg(not(target_arch = "wasm32"))]
 pub mod skeleton_scenes;
-// Reflection probes and SSR (native only; its cooked `lod-levels` is og-tests-cooked's).
-#[cfg(not(target_arch = "wasm32"))]
+// Procedural reflection probes and SSR; cooked `lod-levels` is og-tests-cooked's.
 pub mod depth_render_scenes;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod probe_scenes;

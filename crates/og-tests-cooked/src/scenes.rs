@@ -22,7 +22,6 @@ pub const NATIVE_SCENES: &[&str] = &[
     "meshlet-far",
     "meshlet-sway",
     "probe-interior",
-    "ssr-wet-floor",
     "baked-cornell",
     "probe-two-rooms",
     "probe-outdoor",
