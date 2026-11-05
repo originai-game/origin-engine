@@ -542,10 +542,35 @@ impl Ui {
                         self.part_commands(part, r.snapped(dpr), *fill, alpha, clip, cmds);
                     }
                 }
+                Shape::DressedRect {
+                    frame,
+                    part,
+                    radius,
+                    color,
+                } if self.dress.resolve(part).matched > 0 => {
+                    let r = frame.resolve(&n.rect);
+                    if !r.is_empty() {
+                        self.part_commands_at(
+                            part,
+                            r.snapped(dpr),
+                            Some(*color),
+                            *radius,
+                            alpha,
+                            clip,
+                            cmds,
+                        );
+                    }
+                }
                 Shape::Rect {
                     frame,
                     radius,
                     color,
+                }
+                | Shape::DressedRect {
+                    frame,
+                    radius,
+                    color,
+                    ..
                 } => {
                     let r = frame.resolve(&n.rect);
                     if r.is_empty() {

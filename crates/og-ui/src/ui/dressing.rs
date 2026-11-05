@@ -353,6 +353,27 @@ impl Ui {
         let t = &self.theme;
         let r = self.dress.resolve(part);
         let radius = crate::dress::corner_of(r.shape(part, t)).1;
+        self.part_commands_at(part, rect, fill, radius, alpha, clip, cmds);
+    }
+
+    /// A classless decorative part retains its authored fallback radius.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn part_commands_at(
+        &self,
+        part: &crate::dress::PartRef,
+        rect: Rect,
+        fill: Option<Srgba>,
+        radius: f32,
+        alpha: f32,
+        clip: Rect,
+        cmds: &mut Vec<DrawCmd>,
+    ) {
+        let t = &self.theme;
+        let r = self.dress.resolve(part);
+        let radius = r
+            .frame
+            .shape
+            .map_or(radius, |s| crate::dress::corner_of(s).1);
         if let (Some(slice), Some(_)) = (r.frame.slice, t.art.atlas) {
             if let Some(bg) = fill {
                 let tint = r.draw.ornament_tint.as_ref().map(|c| c.resolve(t));

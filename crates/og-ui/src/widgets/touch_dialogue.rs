@@ -307,6 +307,14 @@ impl Ui {
         }
         let knob = size * 0.4;
         let travel = radius - knob / 2.0 - 2.0;
+        let disc = |part, x, y, d, color| Shape::DressedRect {
+            frame: Frame::centered(x, y, d, d),
+            part: crate::dress::PartRef::of("Joystick", part, None)
+                .flag_if(out.active, "active")
+                .flag_if(desc.disabled, "disabled"),
+            radius: d,
+            color,
+        };
         let n = &mut self.nodes[i];
         if desc.disabled {
             n.props.opacity = DISABLED_OPACITY;
@@ -318,15 +326,26 @@ impl Ui {
             let len = (kx * kx + ky * ky).sqrt().max(1e-3);
             let (ux, uy) = (kx / len, ky / len);
             let at = radius - knob * 0.35;
-            n.shapes
-                .push(disc(ux * at, uy * at, knob * 0.7, p.primary.fade(0.35)));
+            n.shapes.push(disc(
+                "direction",
+                ux * at,
+                uy * at,
+                knob * 0.7,
+                p.primary.fade(0.35),
+            ));
         }
         // The knob: a drop, a rim, its face in the knob's colour, a sheen.
-        n.shapes
-            .push(disc(kx, ky + 2.0, knob + 2.0, p.shadow.fade(0.45)));
-        n.shapes
-            .push(disc(kx, ky, knob + 2.0, p.line_strong.fade(0.8)));
         n.shapes.push(disc(
+            "shadow",
+            kx,
+            ky + 2.0,
+            knob + 2.0,
+            p.shadow.fade(0.45),
+        ));
+        n.shapes
+            .push(disc("rim", kx, ky, knob + 2.0, p.line_strong.fade(0.8)));
+        n.shapes.push(disc(
+            "knob",
             kx,
             ky,
             knob - 2.0,
@@ -336,8 +355,13 @@ impl Ui {
                 p.knob.mix(p.hud, 0.25).fade(0.92)
             },
         ));
-        n.shapes
-            .push(disc(kx, ky - knob * 0.16, knob * 0.5, p.sheen.fade(0.35)));
+        n.shapes.push(disc(
+            "sheen",
+            kx,
+            ky - knob * 0.16,
+            knob * 0.5,
+            p.sheen.fade(0.35),
+        ));
         out
     }
 

@@ -155,7 +155,14 @@ impl Ui {
             } else {
                 color.fade(0.4)
             };
-            n.shapes.push(seg(0.0, ghost, trail));
+            n.shapes.push(Shape::DressedRect {
+                frame: Frame::left(0.0, ghost),
+                part: crate::dress::PartRef::of("Meter", "trail", None)
+                    .attr("kind", kind)
+                    .flag_if(a.b < a.a || frac < ghost, "loss"),
+                radius: t.radius.bar,
+                color: trail,
+            });
         }
         if main > 0.0 && flat_fill {
             n.shapes.push(seg(0.0, main, color));
@@ -171,7 +178,8 @@ impl Ui {
         if desc.segments > 1 {
             for k in 1..desc.segments {
                 let x = k as f32 / desc.segments as f32;
-                n.shapes.push(Shape::Rect {
+                n.shapes.push(Shape::DressedRect {
+                    part: crate::dress::PartRef::of("Meter", "separator", None).attr("kind", kind),
                     frame: Frame {
                         fx: x,
                         x: -1.0,

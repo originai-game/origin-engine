@@ -175,6 +175,84 @@ fn a_parts_spacing_relayouts_its_children_from_style_data() {
 }
 
 #[test]
+fn meter_trails_and_separators_take_their_own_dressings() {
+    let mut ui = dressed(concat!(
+        "dress \"Meter.trail[loss]\" {\n fill \"#ff00ff\"\n}\n",
+        "dress \"Meter.separator\" {\n fill \"#00ffff\"\n}\n",
+    ));
+    for value in [80.0, 20.0] {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.meter(
+            "Health",
+            value,
+            100.0,
+            &MeterDesc {
+                width: Some(Size::Fixed(100.0)),
+                height: 10.0,
+                segments: 4,
+                ..MeterDesc::default()
+            },
+        );
+        ui.end();
+    }
+    let fills: Vec<_> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|i| i.cmd.filled())
+        .collect();
+    let trails: Vec<_> = fills
+        .iter()
+        .filter(|(_, c)| near(*c, Srgba::rgb(255, 0, 255)))
+        .collect();
+    assert_eq!(trails.len(), 1);
+    assert_eq!(trails[0].0.width, 80.0);
+    let separators: Vec<_> = fills
+        .iter()
+        .filter(|(_, c)| near(*c, Srgba::rgb(0, 255, 255)))
+        .collect();
+    assert_eq!(separators.len(), 3);
+    assert!(separators.iter().all(|(r, _)| r.width == 2.0));
+}
+
+#[test]
+fn a_joystick_knob_can_be_recoloured_without_changing_its_radius() {
+    let mut ui = dressed("dress \"Joystick.knob\" {\n fill \"#ff00ff\"\n}\n");
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    ui.joystick(
+        "Move",
+        JoystickDesc {
+            size: 150.0,
+            ..JoystickDesc::default()
+        },
+    );
+    ui.end();
+    let knob = ui
+        .frame()
+        .items
+        .iter()
+        .find_map(|item| {
+            let (rect, color) = item.cmd.filled()?;
+            if !near(color, Srgba::rgb(255, 0, 255)) {
+                return None;
+            }
+            let radius = match &item.cmd {
+                DrawCmd::Quad { radius, .. } => *radius,
+                DrawCmd::Shape { shape, .. } => match shape.geometry {
+                    og_render::UiGeometry::Rect { radii, .. } => radii[0],
+                    _ => return None,
+                },
+                _ => return None,
+            };
+            Some((rect, radius.min(rect.width / 2.0).min(rect.height / 2.0)))
+        })
+        .expect("the styled knob is drawn");
+    assert_eq!(knob.0.width, 58.0);
+    assert_eq!(knob.0.height, 58.0);
+    assert_eq!(knob.1, 29.0);
+}
+
+#[test]
 fn the_most_specific_dressing_wins_whatever_order_the_style_writes_them() {
     let ui = dressed(concat!(
         "dress \"Button.base[primary][pressed]\" {\n  fill \"#00ff00\"\n}\n",

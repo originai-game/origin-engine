@@ -3,6 +3,13 @@ use super::*;
 /// Extra drawing of a widget, in its own frame, after its background.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Shape {
+    /// A decorative rectangle with an exact legacy fallback until dressed.
+    DressedRect {
+        frame: Frame,
+        part: crate::dress::PartRef,
+        radius: f32,
+        color: Srgba,
+    },
     /// A rounded rectangle (`radius` ≥ half the short side: a capsule or disc).
     Rect {
         frame: Frame,

@@ -785,6 +785,17 @@ dress "Card.frame" {
 }
 ```
 
+HUD decorations expose `Meter.trail` and `Meter.separator`, both with the
+meter's `[kind=health|mana|xp|primary|custom]` attribute. The trail has
+`[loss]` when it follows a decrease. A joystick exposes `Joystick.knob`,
+`Joystick.rim`, `Joystick.shadow`, `Joystick.sheen`, and
+`Joystick.direction`, with `[active]` and `[disabled]` states. These parts
+accept the same fills, shapes, strokes, effects, and materials as other
+parts. An undressed decoration keeps its original drawing. Dressing only
+its fill retains its radius and adds no implicit outline or shadow.
+Input ownership, dead-zone rescaling, and meter interpolation remain
+engine logic, independent of these decorations.
+
 A game shipped with a version 1 style keeps the screens it shipped with:
 an engine update may draw them better (antialiasing, contrast, a cleaner
 fill) but never changes what is on them or where. Its dialogs' titles take
