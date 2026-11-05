@@ -285,13 +285,21 @@ fn puddles_fill_the_low_parts_of_a_surface_first() {
         puddles: 0.45,
         ..SurfaceWeather::default()
     }));
-    println!("dry {dry:?}, puddled {wet:?}");
+    // The same ground wet with no standing water: its drained crests dry in
+    // a mottle of their own, so what the puddles add is measured over it.
+    let damp = halves(Some(SurfaceWeather {
+        wetness: 1.0,
+        puddles: 0.0,
+        ..SurfaceWeather::default()
+    }));
+    let gain = (wet.0 - damp.0, wet.1 - damp.1);
+    println!("dry {dry:?}, wet {damp:?}, puddled {wet:?}: the puddles add {gain:?}");
     assert!((dry.0 - dry.1).abs() < DRY_ALIKE, "dry halves alike");
-    // Standing water mirrors the sky over the dark wet ground: the half
-    // that holds it is a mottle, the other an even wet grey.
+    // Standing water mirrors the sky over the dark wet ground: it mottles
+    // the half that holds it, and the other far less.
     assert!(
-        wet.0 > 0.05 && wet.0 > 1.8 * wet.1,
-        "the hollow half holds more water: {wet:?}"
+        gain.0 > 0.04 && gain.0 > 1.8 * gain.1,
+        "the hollow half holds more water: the puddles add {gain:?}"
     );
 }
 
@@ -415,14 +423,20 @@ fn puddles_on_a_terrain_fill_its_layers_hollows_first() {
         puddles: 0.45,
         ..SurfaceWeather::default()
     }));
-    println!("terrain: dry {dry:?}, puddled {wet:?}");
+    // The same ground wet with no standing water (its drained crests dry in
+    // a mottle of their own): what the puddles add is measured over it.
+    let damp = halves(Some(SurfaceWeather {
+        wetness: 1.0,
+        puddles: 0.0,
+        ..SurfaceWeather::default()
+    }));
+    let gain = (wet.0 - damp.0, wet.1 - damp.1);
+    println!("terrain: dry {dry:?}, wet {damp:?}, puddled {wet:?}: the puddles add {gain:?}");
     assert!((dry.0 - dry.1).abs() < DRY_ALIKE, "dry halves alike");
     assert!(
-        // (The crests take a fine drying mottle of their own: the hollows'
-        // standing water still mottles them well over 1.4 times as much;
-        // with no relief the halves came out alike, 0.82.)
-        wet.1 > 0.05 && wet.1 > 1.4 * wet.0,
-        "the hollow (right) half holds more water: {wet:?}"
+        // (With no relief the halves came out alike.)
+        gain.1 > 0.04 && gain.1 > 1.8 * gain.0,
+        "the hollow (right) half holds more water: the puddles add {gain:?}"
     );
 }
 

@@ -319,7 +319,11 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
   let relief_film = clamp(1.0 - (cavity - 0.5) * 3.0, 0.0, 1.0);
   let lying = smoothstep(0.85, 0.97, dot(o.n, geo));
   let drained = 1.0 - relief_film * lying;
-  let mottle = smoothstep(0.3, 0.7, weather_noise(p.xz * 23.0 + 5.0) * 0.6 + weather_noise(p.xz * 67.0 + 9.0) * 0.4);
+  // (Each scale fades to its mean where a pixel covers half its 4 or 1.5 cm
+  // patches: unfiltered, the far ground took them in aliased blotches.)
+  let m1 = mix(0.5, weather_noise(p.xz * 23.0 + 5.0), 1.0 - smoothstep(0.01, 0.022, footprint));
+  let m2 = mix(0.5, weather_noise(p.xz * 67.0 + 9.0), 1.0 - smoothstep(0.004, 0.008, footprint));
+  let mottle = smoothstep(0.3, 0.7, m1 * 0.6 + m2 * 0.4);
   let soaked = wet * mix(1.0, mix(0.3, 1.0, mottle), drained * (1.0 - puddle));
   o.s.albedo *= mix(1.0, 0.3, soaked * porosity);
   o.s.roughness = mix(o.s.roughness, max(o.s.roughness * 0.5, 0.1), wet * wet * (1.0 - porosity));
