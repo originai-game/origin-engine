@@ -152,6 +152,89 @@ fn toktx_version() -> Result<String, CookError> {
     }
 }
 
+/// A level of [`dilate_transparent`]'s pyramid: width, height, colours and
+/// whether each is known.
+type Level = (usize, usize, Vec<[f32; 3]>, Vec<bool>);
+
+/// Fills the colour of every fully transparent texel from its visible
+/// neighbourhood (push-pull: a pyramid of the visible texels' mean colour,
+/// read back from the finest level that has any). Unseen at full size, that
+/// colour is what the mips average into the visible texels: left black (a
+/// canvas export premultiplies, so alpha 0 comes out black), leaf and petal
+/// cards darkened with distance. Visible texels are untouched. `None` when
+/// no texel is transparent, or every one is.
+fn dilate_transparent(img: &Image) -> Option<Image> {
+    let texels = img.rgba.as_chunks::<4>().0;
+    if !texels.iter().any(|p| p[3] == 0) || texels.iter().all(|p| p[3] == 0) {
+        return None;
+    }
+    // Push: level 0 is the image, each next one its 2x2 visible means.
+    let mut levels: Vec<Level> = vec![(
+        img.width as usize,
+        img.height as usize,
+        texels
+            .iter()
+            .map(|p| [p[0] as f32, p[1] as f32, p[2] as f32])
+            .collect(),
+        texels.iter().map(|p| p[3] > 0).collect(),
+    )];
+    while let Some((w, h, c, k)) = levels.last().filter(|l| l.0 > 1 || l.1 > 1) {
+        let (w, h) = (*w, *h);
+        let (nw, nh) = (w.div_ceil(2), h.div_ceil(2));
+        let mut nc = vec![[0.0f32; 3]; nw * nh];
+        let mut nk = vec![false; nw * nh];
+        for y in 0..nh {
+            for x in 0..nw {
+                let (mut sum, mut n) = ([0.0f32; 3], 0.0f32);
+                for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+                    let (sx, sy) = ((2 * x + dx).min(w - 1), (2 * y + dy).min(h - 1));
+                    let i = sy * w + sx;
+                    if k[i] {
+                        for j in 0..3 {
+                            sum[j] += c[i][j];
+                        }
+                        n += 1.0;
+                    }
+                }
+                if n > 0.0 {
+                    nc[y * nw + x] = [sum[0] / n, sum[1] / n, sum[2] / n];
+                    nk[y * nw + x] = true;
+                }
+            }
+        }
+        levels.push((nw, nh, nc, nk));
+    }
+    // Pull: unknown texels take their parent's colour, coarsest first.
+    for l in (0..levels.len() - 1).rev() {
+        let (finer, coarser) = levels.split_at_mut(l + 1);
+        let (pw, _, pc, _) = &coarser[0];
+        let (w, h, c, k) = &mut finer[l];
+        for y in 0..*h {
+            for x in 0..*w {
+                let i = y * *w + x;
+                if !k[i] {
+                    c[i] = pc[(y / 2) * pw + x / 2];
+                    k[i] = true;
+                }
+            }
+        }
+    }
+    let c = &levels[0].2;
+    let mut rgba = img.rgba.clone();
+    for (p, c) in rgba.as_chunks_mut::<4>().0.iter_mut().zip(c) {
+        if p[3] == 0 {
+            p[0] = c[0].round() as u8;
+            p[1] = c[1].round() as u8;
+            p[2] = c[2].round() as u8;
+        }
+    }
+    Some(Image {
+        width: img.width,
+        height: img.height,
+        rgba,
+    })
+}
+
 fn has_alpha(img: &Image) -> bool {
     img.rgba.as_chunks::<4>().0.iter().any(|p| p[3] != 255)
 }
@@ -332,6 +415,19 @@ pub fn cook(img: &Image, k: u32, opts: &TextureOptions, stamp: u64) -> Result<Ve
     } else {
         (img, alpha)
     };
+    // Transparent texels of a mipmapped colour texture take their visible
+    // neighbours' colour, so the mips do not average black into the edges.
+    let dilated;
+    let img = match (k == kind::COLOR && alpha && opts.mipmaps)
+        .then(|| dilate_transparent(img))
+        .flatten()
+    {
+        Some(d) => {
+            dilated = d;
+            &dilated
+        }
+        None => img,
+    };
     #[cfg(feature = "basis")]
     let ktx = if opts.force_toktx {
         toktx(img, k, opts)
@@ -367,4 +463,32 @@ pub fn cook(img: &Image, k: u32, opts: &TextureOptions, stamp: u64) -> Result<Ve
     w.table("meta", &[meta], row_hash::<TextureMeta>())
         .raw("ktx2", ktx, 16);
     Ok(w.finish())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn transparent_texels_take_their_nearest_visible_colour() {
+        // Red, two transparent black texels, half-transparent blue: each
+        // hidden texel takes the colour of the visible one beside it (not
+        // the mean of both), keeps alpha 0, and the visible ones keep theirs.
+        let img = Image {
+            width: 4,
+            height: 1,
+            rgba: vec![255, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 128],
+        };
+        let d = dilate_transparent(&img).expect("has transparent texels");
+        assert_eq!(
+            d.rgba,
+            [255, 0, 0, 255, 255, 0, 0, 0, 0, 0, 255, 0, 0, 0, 255, 128]
+        );
+        let opaque = Image {
+            width: 1,
+            height: 1,
+            rgba: vec![9, 9, 9, 255],
+        };
+        assert!(dilate_transparent(&opaque).is_none());
+    }
 }

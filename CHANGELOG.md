@@ -31,6 +31,25 @@ is one line here, written at the merge that changes
   light comes from farther than 4 m; set `maxDistance: 4` to keep the
   old reach.
 
+- **Image-based light, shadows and textures as three.js draws them (PR #8:
+  s42, s55, s14, s18, s36).** The environment's specular is Karis's split
+  sum, F0 times the LUT's scale plus its bias, in every lit shader (the
+  standard, physical, scatter, terrain, grass, crowd-card, impostor and
+  custom-lit paths): the bias already carries the Fresnel rise, so rough
+  surfaces seen edge-on no longer reflect three to four times the sky. The
+  standard material reads its reflection bent towards the normal by
+  roughness squared (three.js's getIBLRadiance), so a rough back face no
+  longer mirrors the sky behind it. Alpha-tested materials cast cut-out
+  shadows (leaf and grass cards no longer cast solid quads). The material
+  sampler's anisotropy follows the sprites' rule, so a software
+  rasterizer stays at 1. The cook fills a mipmapped colour texture's
+  transparent texels from their visible neighbours (push-pull) before its
+  mips, so cut-out foliage no longer darkens with distance;
+  COOKER_VERSION r10 -> r11, so every game re-cooks once (the release's
+  breaking entry). No IDL change. Behaviour change: frames with rough
+  surfaces at grazing angles, alpha-tested casters or cut-out textures
+  move.
+
 - **Stylise: conformed art under a tone curve, washes and fading strokes.**
   The quantise tells conformed art by the lit colour before exposure and
   the tone curve, so a tone-mapped look keeps it unstepped too.
