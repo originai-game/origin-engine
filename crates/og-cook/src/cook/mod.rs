@@ -969,7 +969,13 @@ pub fn cook_project_with_texture_cache(
                     outs.push((
                         format!("{}#fracture", s.rel),
                         format::Fracture::NAME,
-                        stamp(&[b"fracture", &hash]),
+                        // The asset's layout too: a new og_destruct version
+                        // recooks what the runtime would refuse.
+                        stamp(&[
+                            b"fracture",
+                            &og_destruct::ASSET_VERSION.to_le_bytes(),
+                            &hash,
+                        ]),
                         Work::Fracture(s),
                     ));
                 }
