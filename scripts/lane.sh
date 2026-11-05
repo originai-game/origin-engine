@@ -81,10 +81,20 @@ case "${1:-}" in
     b="$(base)"
     cur="$(git -C "$dir" rev-parse --abbrev-ref HEAD)"
     if [ "$cur" != HEAD ]; then
-      # Merged means every commit's patch is on origin/main: the art runner
-      # rebases before it lands, so the branch's own SHAs never are.
-      if git -C "$main" cherry "$b" "$cur" | grep -q '^+'; then
-        echo "lane.sh: $cur is not merged into $b (git cherry $b $cur lists its unlanded commits)" >&2; exit 1
+      # Merged means every commit landed on origin/main: the art runner
+      # rebases before it lands (so the SHAs differ) and may amend a
+      # regenerated file into it (so the patch differs too). A commit counts
+      # as landed when its patch is there (git cherry) or a commit with its
+      # subject is, since the branch left origin/main.
+      since="$(git -C "$main" merge-base "$b" "$cur")"
+      landed="$(git -C "$main" log --format=%s "$since..$b")"
+      missing=""
+      for c in $(git -C "$main" cherry "$b" "$cur" | sed -n 's/^+ //p'); do
+        s="$(git -C "$main" log -1 --format=%s "$c")"
+        printf '%s\n' "$landed" | grep -qxF -- "$s" || missing="$missing $(git -C "$main" rev-parse --short "$c")"
+      done
+      if [ -n "$missing" ]; then
+        echo "lane.sh: $cur is not merged into $b: unlanded$missing" >&2; exit 1
       fi
     fi
     if [ "$cur" = HEAD ] && ! idle "$dir"; then
