@@ -1,6 +1,6 @@
 // The browser tiers of og-ui's kit frames: templates/ui-kit's reference
 // playtests (tests/<playtest>.og.ts: frames-desktop, frames-phone, players,
-// locales and the style-* style packs) each as the same fresh run in headless
+// locales and the style packs' approved states) each as the same fresh run in headless
 // Chrome through reference.ts, on WebGPU, compared
 // with crates/og-ui/references/<tier>/ (each frame on its own falling back
 // to metal's) under og-tests' rule: a channel off by more than 32/255 is an
@@ -8,11 +8,13 @@
 //
 // Each playtest module is bundled and imported as `og test` does
 // (src/node/playtest-run.ts), so its script, its size and its screenshots
-// are the playtest's own: the script runs without its screenshots, `quit`
-// and `dump_*`, and each screenshot at t seconds becomes a shot at tick
+// are the playtest's own: its setup (lib.ts: the pack's plain ground) runs
+// first, at tick 0, then the script without its screenshots, `quit` and
+// `dump_*`, and each screenshot at t seconds becomes a shot at tick
 // round(60 t) named <prefix><file>, the reference the playtest checks it
-// against (frames.ts `checkFrames`). A style pack's shots are compared with
-// their cells of kit-style-<pack>[-phone].png, box-filtered as styles.ts does.
+// against (frames.ts `checkFrames`). A style pack's approved states are
+// compared with their cells of kit-style-<pack>[-phone]-states.png,
+// box-filtered as styles.ts does.
 //
 //   bun tests/web/reference-ui.ts [--record] [--only a,b] [--chrome <path> | --safari | --firefox [<path>]]
 //
@@ -51,12 +53,13 @@ const PREFIX: Record<string, string> = {
   players: "kit-desktop-",
   locales: "kit-locale-",
 };
-/** A style pack's sheet per surface (styles.ts SURFACES): the box filter and the cells a row. */
+/** A style pack's states sheet per surface (styles.ts SURFACES): the box filter and the cells a row. */
 const SHEETS: Record<string, { factor: number; cols: number }> = {
   "1280x720": { factor: 2, cols: 7 },
   "1170x2532": { factor: 3, cols: 10 },
 };
-const PACKS = ["cartoon", "fantasy", "pixel", "scifi"];
+/** The packs whose approved states the browser tier judges (styles.ts STYLE_STATES). */
+const PACKS = ["fantasy", "scifi"];
 /** Every reference playtest of the kit. */
 const SET = [...Object.keys(PREFIX), ...PACKS.flatMap((p) => [`style-${p}`, `style-${p}-phone`])];
 
@@ -76,36 +79,25 @@ for (const name of only) {
   const { default: desc, referenceFiles }: { default: PlaytestDesc; referenceFiles?: readonly string[] } = await import(pathToFileURL(bundled).href);
   const size = desc.size ?? "1280x720";
   const pack = /^style-([a-z]+)(-phone)?$/.exec(name);
-  const script: string[] = [];
+  // What a host does before the first tick (the kit's plain ground) comes first, at tick 0.
+  const script: string[] = (desc.setup ?? "").split(";").filter(Boolean).map((s) => `0:${s}`);
   const shots: string[] = [];
-  // A style pack's approved states (styles.ts STYLE_STATES, PHONE_STYLE_STATES: its `state-*` frames, after
-  // its screens) are cells of their own sheet, kit-style-<pack>[-phone]-states.png, not of the screens'.
-  const states: string[] = [];
   for (const step of desc.commands.split(";")) {
     const [at, action, ...rest] = step.split(":");
     if (action === "screenshot") {
       if (referenceFiles && !referenceFiles.includes(rest[0]!)) continue;
       const file = rest[0]!.replace(/\.png$/, "");
-      // A style pack's sheet has no gallery (styles.ts).
-      if (pack && file === "gallery") continue;
-      (pack && file.startsWith("state-") ? states : shots).push(`${pack ? `kit-style-${pack[1]}${pack[2] ?? ""}-` : PREFIX[name]}${file}@${Math.round(Number(at) * 60)}`);
+      shots.push(`${pack ? `kit-style-${pack[1]}${pack[2] ?? ""}-` : PREFIX[name]}${file}@${Math.round(Number(at) * 60)}`);
     } else if (action !== "quit" && !action!.startsWith("dump_")) script.push(step);
   }
   const sheet = pack ? SHEETS[size] : undefined;
   if (pack && !sheet) throw new Error(`${name}: no sheet layout for ${size}`);
-  // One run per sheet: the screens' into <out>, the states' (the same script played again) into <out>/states.
-  const runs: { shots: string[]; out: string; sheet?: string }[] = [{ shots, out, ...(pack ? { sheet: `kit-style-${pack[1]}${pack[2] ?? ""}.png` } : {}) }];
-  if (pack && states.length > 0) runs.push({ shots: states, out: join(out, "states"), sheet: `kit-style-${pack[1]}${pack[2] ?? ""}-states.png` });
-  let ok = true;
-  for (const run of runs) {
-    const cmd = ["bun", join(here, "reference.ts"), ...pass, "--project", "templates/ui-kit", "--references", "crates/og-ui/references", "--size", size, "--script", script.join(";"), "--shots", run.shots.join(","), "--out", run.out];
-    if (run.sheet) cmd.push("--sheet", `${run.sheet},${sheet!.factor},${sheet!.cols}`);
-    console.log(`---- ${name}${run.out === out ? "" : " states"} (${tier}, ${size}, ${run.shots.length} frames)`);
-    const r = Bun.spawnSync(cmd, { cwd: pkg, stdout: "inherit", stderr: "inherit" });
-    if (r.exitCode !== 0) ok = false;
-  }
+  const cmd = ["bun", join(here, "reference.ts"), ...pass, "--project", "templates/ui-kit", "--references", "crates/og-ui/references", "--size", size, "--script", script.join(";"), "--shots", shots.join(","), "--out", out];
+  if (pack) cmd.push("--sheet", `kit-style-${pack[1]}${pack[2] ?? ""}-states.png,${sheet!.factor},${sheet!.cols}`);
+  console.log(`---- ${name} (${tier}, ${size}, ${shots.length} frames)`);
+  const ok = Bun.spawnSync(cmd, { cwd: pkg, stdout: "inherit", stderr: "inherit" }).exitCode === 0;
   if (!ok) failed++;
-  (summary["playtests"] as Record<string, unknown>)[name] = { size, frames: shots.length + states.length, ok, ms: Math.round(performance.now() - ts), json: join(out, `reference-${tier}.json`).slice(repo.length + 1) };
+  (summary["playtests"] as Record<string, unknown>)[name] = { size, frames: shots.length, ok, ms: Math.round(performance.now() - ts), json: join(out, `reference-${tier}.json`).slice(repo.length + 1) };
 }
 summary["ms"] = Math.round(performance.now() - t0);
 writeFileSync(join(work, `reference-ui-${tier}.json`), JSON.stringify(summary, null, 2) + "\n");

@@ -77,8 +77,13 @@ and `kit-phone-<screen>.png` come from: `tests/frames-desktop.og.ts` and
 `tests/frames-phone.og.ts` show each screen, wait for its entrance, take its
 frame and compare it with the reference under og-tests' rule (a channel off
 by more than 32/255 is an outlier; fail above 0.5 % outliers or RMSE 0.01).
-Every frame, locale screen and style sheet is committed for `metal`; a
-tier without its own references compares with `metal` and says so. The
+Every playtest draws its UI over the pack's plain ground (`demo:ground:pack`,
+set by the kit's `playtest` in `tests/lib.ts`), never over the key art,
+painted scenes or 3D circuit the demo shows: a UI frame is judged over a
+plain, solid-colour ground, and a scene by its own tests (docs/ui.md
+§15.4). Every frame, locale screen and states sheet is committed for
+`metal`; a tier without its own references compares with `metal` and says
+so. The
 browser tier, WebGPU, runs these same
 playtests through `packages/engine/tests/web/reference-ui.ts` (`docs/ci.md`
 §Browser reference tiers).
@@ -98,8 +103,8 @@ playtests through `packages/engine/tests/web/reference-ui.ts` (`docs/ci.md`
 | `phone` | on a phone the HUD corners sit in the safe area, every touch control is at least 44 CSS px, a tap on Jump answers once |
 | `tutorial` | the action tutorial's card sits under each step's target and Next walks to the end |
 | `ui-check` | `og ui check` finds no undeclared overlap on the action and shooter HUDs on a phone |
-| `style-<pack>` (six) | every screen but the gallery, in that style pack at 1280×720, matches its 640×360 cell of `crates/og-ui/references/<tier>/kit-style-<pack>.png` (7 × 3 cells in `FRAME_SCREENS` order) |
-| `style-<pack>-phone` (six) | the same on a phone in portrait (390×844@3 with the notch and home indicator), each screen box-filtered to its 390×844 CSS pixels against its cell of `kit-style-<pack>-phone.png` (10 × 2 cells) |
+| `style-<pack>` (fantasy, scifi) | the pack's approved states (`STYLE_STATES`: the selected bag cells at 100 and 150 % text), each over the pack's plain ground, match their cells of `crates/og-ui/references/<tier>/kit-style-<pack>-states.png`; a pack's own pages are `og ui sheet`'s (docs/ui.md §15.4) |
+| `style-<pack>-phone` (fantasy, scifi, storybook) | the same on a phone in portrait (`PHONE_STYLE_STATES`: the horror HUD at 100 and 150 % text) against `kit-style-<pack>-phone-states.png` |
 | `juice` | an iris transition switches screens at full cover; UI events start voices on the ui bus |
 | `text` | the text screen draws every script without a missing glyph (no warning), matching `kit-desktop-text.png`; a tap on the name field and `type:Ada Lovelace` fill it once, Shift+← ×4 selects "lace" (`kit-desktop-text-select.png`); in the notes area Enter breaks the line, `compose:にほん` shows underlined at the caret (`kit-desktop-text-compose.png`) and `commit:日本` lands in the value |
 
