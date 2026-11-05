@@ -184,15 +184,18 @@ pub fn limit(pal: &Palette, used: &[u64], ramp: u32, max: u32) -> Vec<usize> {
     kept
 }
 
-/// An asset's own palette, from its opaque texels: its distinct colours
-/// when there are at most `max` of them (none changes), else a variance
-/// cut in Oklab to `max` ([`median_cut`]); then each hue family merged to `ramp` shades by
+/// An asset's own palette, from its opaque texels (`w` texels a row): its
+/// distinct colours when there are at most `max` of them (none changes),
+/// else a variance cut in Oklab to `max` ([`median_cut`]) with each texel
+/// weighed by how much a change of colour would show there
+/// ([`importance`]); then each hue family merged to `ramp` shades by
 /// joining the two nearest in lightness (weighted by their texels). Sorted
 /// dark to light.
-pub fn adaptive(px: &[[u8; 4]], max: u32, ramp: u32) -> Palette {
+pub fn adaptive(px: &[[u8; 4]], w: u32, max: u32, ramp: u32) -> Palette {
+    let weight = importance(px, w);
     let mut counts: HashMap<[u8; 3], u64> = HashMap::new();
-    for p in px.iter().filter(|p| p[3] > 0) {
-        *counts.entry([p[0], p[1], p[2]]).or_default() += 1;
+    for (p, wt) in px.iter().zip(&weight).filter(|(p, _)| p[3] > 0) {
+        *counts.entry([p[0], p[1], p[2]]).or_default() += u64::from(*wt);
     }
     let mut entries: Vec<([u8; 3], Lab, u64)> = counts
         .into_iter()
@@ -212,6 +215,51 @@ pub fn adaptive(px: &[[u8; 4]], max: u32, ramp: u32) -> Palette {
     colours.sort_by_key(|c| (c.1[0], c.1[1], c.1[2], c.0));
     colours.dedup_by_key(|c| c.0);
     Palette::new(colours.into_iter().map(|c| c.0).collect())
+}
+
+/// The texel activity (Oklab distance to its most different opaque
+/// neighbour) at which a texel weighs half: about twice a just noticeable
+/// difference.
+const ACTIVITY: f64 = 0.04;
+
+/// Each texel's weight in the cut, 1 to [`WEIGHT`]: full in a smooth field
+/// (a sky, a cloud, a lawn), falling as 1 / (1 + (a / ACTIVITY)²) with
+/// its activity `a` in busy detail (foliage, line work, a jpeg's noise),
+/// where a colour error is masked by its neighbours (the activity masking
+/// of perceptual quantisers, as libimagequant's importance map). A busy
+/// backdrop's thousands of detail shades thus no longer outweigh its sky,
+/// whose blue and clouds' white kept one merged colour under a plain
+/// texel count.
+const WEIGHT: f64 = 64.0;
+
+fn importance(px: &[[u8; 4]], w: u32) -> Vec<u32> {
+    let w = w.max(1) as usize;
+    let lab: Vec<Lab> = px.iter().map(|p| colour::lab([p[0], p[1], p[2]])).collect();
+    (0..px.len())
+        .map(|i| {
+            let (x, y) = (i % w, i / w);
+            let mut a2 = 0i64;
+            let mut near = |j: usize| {
+                if px[j][3] > 0 {
+                    a2 = a2.max(colour::dist2(lab[i], lab[j]));
+                }
+            };
+            if x > 0 {
+                near(i - 1);
+            }
+            if x + 1 < w && i + 1 < px.len() {
+                near(i + 1);
+            }
+            if y > 0 {
+                near(i - w);
+            }
+            if i + w < px.len() {
+                near(i + w);
+            }
+            let a = (a2 as f64).sqrt() / colour::ONE / ACTIVITY;
+            (WEIGHT / (1.0 + a * a)).round().max(1.0) as u32
+        })
+        .collect()
 }
 
 fn mean(group: &[([u8; 3], Lab, u64)]) -> ([u8; 3], Lab, u64) {
@@ -462,20 +510,65 @@ mod tests {
             [200, 100, 0, 255],
             [1, 2, 3, 0],
         ];
-        let p = adaptive(&px, 4, 0);
+        let p = adaptive(&px, px.len() as u32, 4, 0);
         assert_eq!(p.rgb, vec![[10, 20, 30], [200, 100, 0]]);
         // Four greys over two shades: the two nearest in lightness join
-        // (200 and 255, L 0.83 and 1), then the next (0 and 20).
-        let px = [
-            [0, 0, 0, 255],
-            [20, 20, 20, 255],
-            [200, 200, 200, 255],
-            [255, 255, 255, 255],
-        ];
-        let p = adaptive(&px, 0, 2);
+        // (200 and 255, L 0.83 and 1), then the next (0 and 20). Each grey
+        // is an 8 x 8 field of a 32 x 8 image, so its texels weigh alike.
+        let greys = [0u8, 20, 200, 255];
+        let px: Vec<[u8; 4]> = (0..32 * 8)
+            .map(|i| {
+                let g = greys[(i % 32) / 8];
+                [g, g, g, 255]
+            })
+            .collect();
+        let p = adaptive(&px, 32, 0, 2);
         assert_eq!(p.rgb.len(), 2);
         assert!(p.rgb[0][0] > 0 && p.rgb[0][0] < 20, "{:?}", p.rgb);
         assert!(p.rgb[1][0] > 200 && p.rgb[1][0] < 255, "{:?}", p.rgb);
+    }
+
+    /// A busy landscape under a sky with a cloud, cut to five colours, keeps
+    /// the sky and the cloud apart: the smooth quarter of the texels is two
+    /// flat fields, the rest a fine noise of greens and browns from dark to
+    /// light. Counted texel by texel the noise's spread took every split and
+    /// the sky and its cloud shared one pale grey-blue.
+    #[test]
+    fn a_cut_keeps_a_sky_and_its_cloud_apart_over_busy_detail() {
+        let (w, h) = (64u32, 64u32);
+        let (sky, cloud) = ([185u8, 220, 235], [249u8, 241, 231]);
+        let mut seed = 7u32;
+        let px: Vec<[u8; 4]> = (0..w * h)
+            .map(|i| {
+                let (x, y) = (i % w, i / w);
+                if y < 16 {
+                    let c = if x < 32 { sky } else { cloud };
+                    return [c[0], c[1], c[2], 255];
+                }
+                seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+                let t = f64::from(seed >> 24) / 255.0;
+                let c = if seed & 0x100 == 0 {
+                    [30.0 + 140.0 * t, 50.0 + 150.0 * t, 20.0 + 70.0 * t]
+                } else {
+                    [50.0 + 150.0 * t, 30.0 + 110.0 * t, 15.0 + 60.0 * t]
+                };
+                [c[0] as u8, c[1] as u8, c[2] as u8, 255]
+            })
+            .collect();
+        let p = adaptive(&px, w, 5, 0);
+        let nearest = |c: [u8; 3]| {
+            let lab = colour::lab(c);
+            (0..p.rgb.len())
+                .min_by_key(|&i| colour::dist2(lab, p.lab[i]))
+                .unwrap()
+        };
+        assert_ne!(
+            nearest(sky),
+            nearest(cloud),
+            "the sky and its cloud share {:?} of {:?}",
+            p.rgb[nearest(sky)],
+            p.rgb
+        );
     }
 
     /// A landscape cut to four colours keeps its sky's colour: a quarter of
@@ -498,7 +591,7 @@ mod tests {
             };
             px.push([c[0] as u8, c[1] as u8, c[2] as u8, 255]);
         }
-        let p = adaptive(&px, 4, 0);
+        let p = adaptive(&px, px.len() as u32, 4, 0);
         // The sky's own mean, within Oklab 0.03 (a shade no one would call
         // another colour) of one of the four.
         let sky = mean(

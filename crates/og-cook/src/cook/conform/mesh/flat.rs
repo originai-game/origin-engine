@@ -63,7 +63,7 @@ pub fn flatten(img: &mut Image, max: u32, ramp: u32) -> Option<(usize, usize, us
     let (radius, area) = scale(img.width, img.height);
     let mut px = kuwahara(&src, w, h, radius);
     px = kuwahara(&px, w, h, radius);
-    let pal = palette::adaptive(&px, max, ramp);
+    let pal = palette::adaptive(&px, w as u32, max, ramp);
     if pal.rgb.is_empty() {
         return None;
     }
