@@ -34,7 +34,8 @@
 // crates/og-tests/perf/<tier>-chrome-<adapter>/<scene>.json beside the
 // native baselines, with the median wall time of one render call (the CPU
 // cost of encoding and submitting a frame) and the last frame's counts.
-// The perf-only city scenes (CITY: city-street, city-aerial) are timed only
+// The perf-only city scenes (CITY: city-street, city-aerial) and crowds (CROWDS:
+// crowd-2k to crowd-50k, og-render's GPU-driven crowd path) are timed only
 // when --scene names them, as is any scene --scene names (with --time),
 // the shadows-aa cost scenes (COSTS) among them. --cpu-culling culls on the CPU on WebGPU too
 // (og-render's Culling::Cpu); --perf-out writes the
@@ -88,6 +89,8 @@ const PERF = ["gltf-reference", "spheres-20k", "point-spot-lights", "showcase", 
 const RUNS = 7;
 /** Perf-only scenes (scenes::build, not SCENES), timed when --scene names them. */
 const CITY = ["city-street", "city-aerial"];
+/** Perf-only crowds (scenes::build, not SCENES), timed when --scene names them. */
+const CROWDS = ["crowd-2k", "crowd-5k", "crowd-20k", "crowd-50k"];
 /** The shadows-aa round's cost scenes (scenes::build only): each forced point shadow
  * storage, PCSS on and off, FXAA and TAA's refinements against their plain frames. */
 const COSTS = [
@@ -232,7 +235,7 @@ try {
   const only = opt("--scene")?.split(",");
   const timed = Number(opt("--time") ?? 0);
   const scenes = only ?? (timed > 0 ? [...all, ...PERF.filter((p) => !all.includes(p))] : all);
-  for (const s of scenes) if (!all.includes(s) && !PERF.includes(s) && !CITY.includes(s) && !COSTS.includes(s)) throw new Error(`no scene ${s} (og-tests knows ${all.join(", ")})`);
+  for (const s of scenes) if (!all.includes(s) && !PERF.includes(s) && !CITY.includes(s) && !CROWDS.includes(s) && !COSTS.includes(s)) throw new Error(`no scene ${s} (og-tests knows ${all.join(", ")})`);
   for (const scene of scenes) {
     const row: Record<string, unknown> = {};
     rows[scene] = row;
@@ -254,7 +257,8 @@ try {
       const o = shot.opened;
       Object.assign(row, { tier: o.tier, adapter: o.adapter, antialias: o.antialias, frames: o.frames });
       result["adapter"] ??= o.adapter;
-      if (o.tier !== tier) throw new Error(`rendered on ${o.tier}, not ${tier}`);
+      // A phone draws on the browsers' webgpu backend; webgpu-android names only its references.
+      if (o.tier !== (android ? "webgpu" : tier)) throw new Error(`rendered on ${o.tier}, not ${tier}`);
       row["renderMs"] = +shot.renderMs!.toFixed(1);
       const img: Image = { width: o.width, height: o.height, rgba: Uint8Array.from(atob(shot.rgba!), (c) => c.charCodeAt(0)) };
       const png = encodePng(img);
