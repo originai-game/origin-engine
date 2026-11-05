@@ -697,6 +697,10 @@ export async function play(): Promise<PlayHandle> {
   };
   addEventListener("resize", onResize);
   globalThis.visualViewport?.addEventListener("resize", onResize);
+  // A frame not laid out yet when this ran read a 0×0 viewport (a 1×1 canvas), and its first size
+  // fires no window resize: the root's own size is observed too, first after layout (a cold boot in
+  // a cross-origin frame captured 1×1 for good, wire.ts).
+  if (typeof ResizeObserver !== "undefined") new ResizeObserver(onResize).observe(document.documentElement);
   screen.orientation?.addEventListener?.("change", onResize);
   // The first layout's safe area reaches the UI too.
   shell.resize(box.width, box.height, box.safeArea, backCover());
