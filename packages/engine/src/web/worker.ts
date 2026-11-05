@@ -63,14 +63,19 @@ import { PlatformCounter, settle, SETTLE_FIRST_MS, SETTLE_MS } from "./settle.ts
 import { Trace, unixMs } from "../trace.ts";
 import * as pipelines from "./pipelines.ts";
 import type { PipelineStats } from "./pipelines.ts";
+import * as gpuErrors from "./gpu-errors.ts";
 
 // Fork s61: a lost WebGPU device and its first validation errors are said in the console (the
 // renderer is made inside the wasm, so its device is met here, where the Worker asks for it).
 // Fork s60: GPUDevice makes the renderer's frame pipelines asynchronously (pipelines.ts), installed
 // on the prototype before the wasm's glue loads.
+// A GPUInternalError popped from an error scope reaches wgpu as one it can read (gpu-errors.ts).
 {
-  const device = (globalThis as { GPUDevice?: { prototype: unknown } }).GPUDevice?.prototype;
+  const g = globalThis as Partial<gpuErrors.ErrorClasses> & { GPUDevice?: { prototype: unknown } };
+  const device = g.GPUDevice?.prototype;
   if (device) pipelines.install(device as Parameters<typeof pipelines.install>[0]);
+  if (device && g.GPUInternalError && g.GPUValidationError)
+    gpuErrors.install(device as Parameters<typeof gpuErrors.install>[0], { GPUInternalError: g.GPUInternalError, GPUValidationError: g.GPUValidationError });
   const proto = (globalThis as { GPUAdapter?: { prototype: { requestDevice(...a: unknown[]): Promise<GPUDeviceLike> } } }).GPUAdapter?.prototype;
   type GPUDeviceLike = { lost: Promise<{ reason: string; message: string }>; queue: GpuQueue; addEventListener(t: string, f: (e: { error?: { message?: string } }) => void): void };
   if (proto) {
