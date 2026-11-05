@@ -311,6 +311,7 @@ impl Ui {
                 .str("step")
                 .and_then(|name| crate::style_file::ramp_step(&mut ramp, name).copied());
             let n = &mut self.nodes[i];
+            n.el = Self::box_of(&r, n.el);
             if let Some(opacity) = r.num("opacity") {
                 n.props.opacity = opacity.clamp(0.0, 1.0);
             }

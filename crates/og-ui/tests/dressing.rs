@@ -142,6 +142,39 @@ fn widget_entrances_use_the_styles_curve_instead_of_a_fixed_curve() {
 }
 
 #[test]
+fn a_parts_spacing_relayouts_its_children_from_style_data() {
+    let mut ui =
+        dressed("dress \"Card.frame\" {\n appearance {\n padding 13 3 7 11\n gap 17\n }\n}\n");
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    ui.open_panel(
+        "Row",
+        PanelDesc {
+            row: true,
+            ..PanelDesc::default()
+        },
+    );
+    for (name, width) in [("First", 10.0), ("Second", 20.0)] {
+        ui.open(
+            name,
+            Element {
+                width: Size::Fixed(width),
+                height: Size::Fixed(15.0),
+                ..Element::default()
+            },
+        );
+        ui.close();
+    }
+    ui.close();
+    ui.end();
+    let row = ui.frame().element("Row").unwrap();
+    let first = ui.frame().element("Row/First").unwrap();
+    let second = ui.frame().element("Row/Second").unwrap();
+    assert_eq!((row.width, row.height), (67.0, 29.0));
+    assert_eq!((first.x - row.x, first.y - row.y), (13.0, 3.0));
+    assert_eq!(second.x - first.x - first.width, 17.0);
+}
+
+#[test]
 fn the_most_specific_dressing_wins_whatever_order_the_style_writes_them() {
     let ui = dressed(concat!(
         "dress \"Button.base[primary][pressed]\" {\n  fill \"#00ff00\"\n}\n",

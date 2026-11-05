@@ -66,7 +66,7 @@ pub const DRAW_KEYS: [&str; 13] = [
 ];
 
 /// Element properties a dressing can set, using the document reflection schema.
-pub const APPEARANCE_PROPS: &[&str] = &["opacity", "motion", "color", "step"];
+pub const APPEARANCE_PROPS: &[&str] = &["opacity", "motion", "color", "step", "padding", "gap"];
 
 /// `Component.part[flag][key=value]…`.
 #[derive(Clone, Debug, Eq)]

@@ -763,6 +763,10 @@ marked `dressing` in `documentSchema` are accepted. `opacity` applies to
 the whole element, including its label and children; `motion` controls
 changes to its animatable properties. `color` and `step` apply when the
 part is a text element. Shape-only subparts still use paints and `ink`.
+`padding` and `gap` override the part's container spacing before layout,
+including the measured size of a fit container. Four padding values are
+left, top, right, bottom, as in documents. A single value applies to all
+sides. These properties do not change hit slop or input routing.
 These overrides apply after the widget and responsive variants are built,
 before layout and motion. Unset properties retain the widget's defaults;
 more-specific selectors override only the properties they set.
@@ -771,6 +775,12 @@ more-specific selectors override only the properties they set.
 dress "ActionButton.face[disabled]" {
   appearance {
     opacity 0.3
+  }
+}
+dress "Card.frame" {
+  appearance {
+    padding 13 3 7 11
+    gap 17
   }
 }
 ```
