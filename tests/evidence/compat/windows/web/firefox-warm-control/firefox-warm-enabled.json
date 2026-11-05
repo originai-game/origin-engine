@@ -1,0 +1,1141 @@
+{
+ "browser": "C:/Program Files/Mozilla Firefox/firefox.exe",
+ "failures": 1,
+ "transcript": [
+  {
+   "check": "dev isolated: unsolicited hello",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: crossOriginIsolated is true",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: the game page has its canvas",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "hello",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c1",
+    "result": {
+     "protocol": 5,
+     "substrate": "origin-engine"
+    },
+    "ms": 4.4
+   }
+  },
+  {
+   "check": "dev isolated: hello answers {protocol: 5, substrate}",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c2",
+    "result": 1,
+    "ms": 4421
+   }
+  },
+  {
+   "check": "dev isolated: tick answers a number",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "state",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c3",
+    "result": {
+     "tick": 1,
+     "paused": false,
+     "timings": {
+      "frameMs": 11.2199999999998
+     }
+    },
+    "ms": 10.3
+   }
+  },
+  {
+   "check": "dev isolated: state answers {tick, paused, timings: {frameMs}}",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c4",
+    "result": 1,
+    "ms": 1.2
+   }
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c5",
+    "result": 1,
+    "ms": 1
+   }
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c6",
+    "result": 1,
+    "ms": 1.2
+   }
+  },
+  {
+   "check": "dev isolated: the clock holds behind the play gate (only settling ticks, within SETTLE_MS)",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: the probe's boot counts the render pipelines",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: the probe's boot says the pipelines run sync and why",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: the pipelines are made synchronously",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c7",
+    "result": 1,
+    "ms": 897.8
+   }
+  },
+  {
+   "check": "dev isolated: a tap on the gate starts the clock",
+   "ok": false,
+   "detail": {
+    "before": 1,
+    "after": 1
+   }
+  },
+  {
+   "run": "dev isolated",
+   "diagnostic": {
+    "page": [
+     {
+      "event": "pointerdown",
+      "at": 1793884083145.98,
+      "trusted": true
+     },
+     {
+      "event": "pointerup",
+      "at": 1793884083178.36,
+      "trusted": true
+     },
+     {
+      "event": "page-play-send",
+      "at": 1793884083178.5,
+      "on": true
+     },
+     {
+      "event": "click",
+      "at": 1793884083184.18,
+      "trusted": true
+     }
+    ],
+    "worker": [
+     {
+      "event": "pipeline-start",
+      "at": 1793884076561.6,
+      "id": 0,
+      "method": "createComputePipeline",
+      "label": "local shadow midpoint",
+      "entry": "resolve"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884076561.62,
+      "id": 0,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884076562.18,
+      "id": 2,
+      "method": "createComputePipeline",
+      "label": "probe grid",
+      "entry": "cs_project"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884076562.18,
+      "id": 2,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884076565.26,
+      "id": 4,
+      "method": "createComputePipeline",
+      "label": "scatter cull",
+      "entry": "cull"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884076565.26,
+      "id": 4,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884077494.48,
+      "id": 6,
+      "method": "createRenderPipeline",
+      "label": "fs_sky",
+      "entry": "fs_sky"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884077494.54,
+      "id": 6,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884077494.7,
+      "id": 8,
+      "method": "createRenderPipeline",
+      "label": "fs_downsample",
+      "entry": "fs_downsample"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884077494.7,
+      "id": 8,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884077495.28,
+      "id": 10,
+      "method": "createRenderPipeline",
+      "label": "fs_irradiance",
+      "entry": "fs_irradiance"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884077495.3,
+      "id": 10,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884077495.3801,
+      "id": 12,
+      "method": "createRenderPipeline",
+      "label": "fs_prefilter",
+      "entry": "fs_prefilter"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884077495.3801,
+      "id": 12,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884077495.52,
+      "id": 14,
+      "method": "createRenderPipeline",
+      "label": "fs_brdf_lut",
+      "entry": "fs_brdf_lut"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884077495.52,
+      "id": 14,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884077496.02,
+      "id": 16,
+      "method": "createRenderPipeline",
+      "label": "tiles",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884077496.04,
+      "id": 16,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884077496.94,
+      "id": 18,
+      "method": "createRenderPipeline",
+      "label": "sprite",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884077496.98,
+      "id": 18,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884077497.12,
+      "id": 20,
+      "method": "createRenderPipeline",
+      "label": "msdf text",
+      "entry": "fs_msdf"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884077497.1401,
+      "id": 20,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884077497.18,
+      "id": 22,
+      "method": "createRenderPipeline",
+      "label": "tonemap",
+      "entry": "fs_srgb_encode"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884077497.2,
+      "id": 22,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "warm-start",
+      "at": 1793884081964.5,
+      "id": 24
+     },
+     {
+      "event": "queue-before-warm-requested",
+      "at": 1793884081964.76,
+      "id": 24
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884081965.2,
+      "id": 26,
+      "method": "createRenderPipeline",
+      "label": "sprite cover",
+      "entry": "fs_cover"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884081965.24,
+      "id": 26,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "warm-return",
+      "at": 1793884081965.26,
+      "id": 24,
+      "more": true
+     },
+     {
+      "event": "queue-after-warm-requested",
+      "at": 1793884081965.28,
+      "id": 24
+     },
+     {
+      "event": "warm-start",
+      "at": 1793884082016.52,
+      "id": 30
+     },
+     {
+      "event": "queue-before-warm-requested",
+      "at": 1793884082016.54,
+      "id": 30
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884082016.84,
+      "id": 32,
+      "method": "createRenderPipeline",
+      "label": "sprite untonemapped",
+      "entry": "fs_untonemapped"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884082016.8801,
+      "id": 32,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "warm-return",
+      "at": 1793884082016.94,
+      "id": 30,
+      "more": true
+     },
+     {
+      "event": "queue-after-warm-requested",
+      "at": 1793884082016.94,
+      "id": 30
+     },
+     {
+      "event": "warm-start",
+      "at": 1793884082017.84,
+      "id": 36
+     },
+     {
+      "event": "queue-before-warm-requested",
+      "at": 1793884082017.84,
+      "id": 36
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884082017.92,
+      "id": 38,
+      "method": "createRenderPipeline",
+      "label": "sprite additive",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884082017.94,
+      "id": 38,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "warm-return",
+      "at": 1793884082017.96,
+      "id": 36,
+      "more": true
+     },
+     {
+      "event": "queue-after-warm-requested",
+      "at": 1793884082017.96,
+      "id": 36
+     },
+     {
+      "event": "queue-before-warm-done",
+      "at": 1793884082018.04,
+      "id": 24
+     },
+     {
+      "event": "queue-after-warm-done",
+      "at": 1793884083128.28,
+      "id": 24
+     },
+     {
+      "event": "queue-before-warm-done",
+      "at": 1793884083128.28,
+      "id": 30
+     },
+     {
+      "event": "queue-after-warm-done",
+      "at": 1793884083128.28,
+      "id": 30
+     },
+     {
+      "event": "queue-before-warm-done",
+      "at": 1793884083128.28,
+      "id": 36
+     },
+     {
+      "event": "queue-after-warm-done",
+      "at": 1793884083128.3,
+      "id": 36
+     },
+     {
+      "event": "warm-start",
+      "at": 1793884083131.54,
+      "id": 48
+     },
+     {
+      "event": "queue-before-warm-requested",
+      "at": 1793884083131.54,
+      "id": 48
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884083131.68,
+      "id": 50,
+      "method": "createRenderPipeline",
+      "label": "sprite glow",
+      "entry": "fs_glow"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884083131.72,
+      "id": 50,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "warm-return",
+      "at": 1793884083131.76,
+      "id": 48,
+      "more": true
+     },
+     {
+      "event": "queue-after-warm-requested",
+      "at": 1793884083131.76,
+      "id": 48
+     },
+     {
+      "event": "warm-start",
+      "at": 1793884083136.08,
+      "id": 54
+     },
+     {
+      "event": "queue-before-warm-requested",
+      "at": 1793884083136.08,
+      "id": 54
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884083136.2,
+      "id": 56,
+      "method": "createRenderPipeline",
+      "label": "overlay sprite",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884083136.24,
+      "id": 56,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "warm-return",
+      "at": 1793884083136.28,
+      "id": 54,
+      "more": true
+     },
+     {
+      "event": "queue-after-warm-requested",
+      "at": 1793884083136.28,
+      "id": 54
+     },
+     {
+      "event": "warm-start",
+      "at": 1793884083140.6,
+      "id": 60
+     },
+     {
+      "event": "queue-before-warm-requested",
+      "at": 1793884083140.62,
+      "id": 60
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884083140.76,
+      "id": 62,
+      "method": "createRenderPipeline",
+      "label": "overlay msdf",
+      "entry": "fs_msdf"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884083140.78,
+      "id": 62,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "warm-return",
+      "at": 1793884083140.8,
+      "id": 60,
+      "more": true
+     },
+     {
+      "event": "queue-after-warm-requested",
+      "at": 1793884083140.82,
+      "id": 60
+     },
+     {
+      "event": "worker-play",
+      "at": 1793884083178.6,
+      "tick": 1
+     },
+     {
+      "event": "frame-completed",
+      "at": 1793884084687.84,
+      "tick": 1,
+      "began": 1793884084685.96
+     },
+     {
+      "event": "queue-before-warm-done",
+      "at": 1793884084688.32,
+      "id": 48
+     },
+     {
+      "event": "queue-after-warm-done",
+      "at": 1793884084688.32,
+      "id": 48
+     },
+     {
+      "event": "queue-before-warm-done",
+      "at": 1793884084688.32,
+      "id": 54
+     },
+     {
+      "event": "queue-after-warm-done",
+      "at": 1793884084688.34,
+      "id": 54
+     },
+     {
+      "event": "queue-before-warm-done",
+      "at": 1793884084688.34,
+      "id": 60
+     },
+     {
+      "event": "queue-after-warm-done",
+      "at": 1793884084688.34,
+      "id": 60
+     },
+     {
+      "event": "frame-completed",
+      "at": 1793884084701.8,
+      "tick": 1,
+      "began": 1793884084700.3801
+     },
+     {
+      "event": "frame-completed",
+      "at": 1793884084738.02,
+      "tick": 3,
+      "began": 1793884084731.32
+     }
+    ]
+   },
+   "before": 1,
+   "after": 1
+  },
+  {
+   "check": "dev: unsolicited hello",
+   "ok": true
+  },
+  {
+   "check": "dev: crossOriginIsolated is false",
+   "ok": true
+  },
+  {
+   "check": "dev: the game page has its canvas",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "hello",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c1",
+    "result": {
+     "protocol": 5,
+     "substrate": "origin-engine"
+    },
+    "ms": 0
+   }
+  },
+  {
+   "check": "dev: hello answers {protocol: 5, substrate}",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c2",
+    "result": 1,
+    "ms": 4304
+   }
+  },
+  {
+   "check": "dev: tick answers a number",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "state",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c3",
+    "result": {
+     "tick": 1,
+     "paused": false,
+     "timings": {
+      "frameMs": 10
+     }
+    },
+    "ms": 11
+   }
+  },
+  {
+   "check": "dev: state answers {tick, paused, timings: {frameMs}}",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c4",
+    "result": 1,
+    "ms": 1
+   }
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c5",
+    "result": 1,
+    "ms": 1
+   }
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c6",
+    "result": 1,
+    "ms": 1
+   }
+  },
+  {
+   "check": "dev: the clock holds behind the play gate (only settling ticks, within SETTLE_MS)",
+   "ok": true
+  },
+  {
+   "check": "dev: the probe's boot counts the render pipelines",
+   "ok": true
+  },
+  {
+   "check": "dev: the probe's boot says the pipelines run sync and why",
+   "ok": true
+  },
+  {
+   "check": "dev: the pipelines are made synchronously",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c7",
+    "result": 36,
+    "ms": 3
+   }
+  },
+  {
+   "check": "dev: a tap on the gate starts the clock",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "diagnostic": {
+    "page": [
+     {
+      "event": "pointerdown",
+      "at": 1793884094766,
+      "trusted": true
+     },
+     {
+      "event": "pointerup",
+      "at": 1793884094781,
+      "trusted": true
+     },
+     {
+      "event": "page-play-send",
+      "at": 1793884094781,
+      "on": true
+     },
+     {
+      "event": "click",
+      "at": 1793884094787,
+      "trusted": true
+     }
+    ],
+    "worker": [
+     {
+      "event": "pipeline-start",
+      "at": 1793884088422,
+      "id": 0,
+      "method": "createComputePipeline",
+      "label": "local shadow midpoint",
+      "entry": "resolve"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884088422,
+      "id": 0,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884088423,
+      "id": 2,
+      "method": "createComputePipeline",
+      "label": "probe grid",
+      "entry": "cs_project"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884088423,
+      "id": 2,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884088425,
+      "id": 4,
+      "method": "createComputePipeline",
+      "label": "scatter cull",
+      "entry": "cull"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884088425,
+      "id": 4,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884089300,
+      "id": 6,
+      "method": "createRenderPipeline",
+      "label": "fs_sky",
+      "entry": "fs_sky"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884089300,
+      "id": 6,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884089300,
+      "id": 8,
+      "method": "createRenderPipeline",
+      "label": "fs_downsample",
+      "entry": "fs_downsample"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884089300,
+      "id": 8,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884089301,
+      "id": 10,
+      "method": "createRenderPipeline",
+      "label": "fs_irradiance",
+      "entry": "fs_irradiance"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884089301,
+      "id": 10,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884089301,
+      "id": 12,
+      "method": "createRenderPipeline",
+      "label": "fs_prefilter",
+      "entry": "fs_prefilter"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884089301,
+      "id": 12,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884089301,
+      "id": 14,
+      "method": "createRenderPipeline",
+      "label": "fs_brdf_lut",
+      "entry": "fs_brdf_lut"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884089301,
+      "id": 14,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884089301,
+      "id": 16,
+      "method": "createRenderPipeline",
+      "label": "tiles",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884089301,
+      "id": 16,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884089302,
+      "id": 18,
+      "method": "createRenderPipeline",
+      "label": "sprite",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884089302,
+      "id": 18,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884089302,
+      "id": 20,
+      "method": "createRenderPipeline",
+      "label": "msdf text",
+      "entry": "fs_msdf"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884089302,
+      "id": 20,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884089302,
+      "id": 22,
+      "method": "createRenderPipeline",
+      "label": "tonemap",
+      "entry": "fs_srgb_encode"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884089302,
+      "id": 22,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "warm-start",
+      "at": 1793884093572,
+      "id": 24
+     },
+     {
+      "event": "queue-before-warm-requested",
+      "at": 1793884093572,
+      "id": 24
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884093573,
+      "id": 26,
+      "method": "createRenderPipeline",
+      "label": "sprite cover",
+      "entry": "fs_cover"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884093573,
+      "id": 26,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "warm-return",
+      "at": 1793884093573,
+      "id": 24,
+      "more": true
+     },
+     {
+      "event": "queue-after-warm-requested",
+      "at": 1793884093573,
+      "id": 24
+     },
+     {
+      "event": "warm-start",
+      "at": 1793884093626,
+      "id": 30
+     },
+     {
+      "event": "queue-before-warm-requested",
+      "at": 1793884093626,
+      "id": 30
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884093626,
+      "id": 32,
+      "method": "createRenderPipeline",
+      "label": "sprite untonemapped",
+      "entry": "fs_untonemapped"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884093626,
+      "id": 32,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "warm-return",
+      "at": 1793884093626,
+      "id": 30,
+      "more": true
+     },
+     {
+      "event": "queue-after-warm-requested",
+      "at": 1793884093626,
+      "id": 30
+     },
+     {
+      "event": "warm-start",
+      "at": 1793884093627,
+      "id": 36
+     },
+     {
+      "event": "queue-before-warm-requested",
+      "at": 1793884093627,
+      "id": 36
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793884093627,
+      "id": 38,
+      "method": "createRenderPipeline",
+      "label": "sprite additive",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793884093627,
+      "id": 38,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "warm-return",
+      "at": 1793884093627,
+      "id": 36,
+      "more": true
+     },
+     {
+      "event": "queue-after-warm-requested",
+      "at": 1793884093627,
+      "id": 36
+     },
+     {
+      "event": "queue-before-warm-done",
+      "at": 1793884093627,
+      "id": 24
+     },
+     {
+      "event": "queue-after-warm-done",
+      "at": 1793884094753,
+      "id": 24
+     },
+     {
+      "event": "queue-before-warm-done",
+      "at": 1793884094753,
+      "id": 30
+     },
+     {
+      "event": "queue-after-warm-done",
+      "at": 1793884094753,
+      "id": 30
+     },
+     {
+      "event": "queue-before-warm-done",
+      "at": 1793884094753,
+      "id": 36
+     },
+     {
+      "event": "queue-after-warm-done",
+      "at": 1793884094753,
+      "id": 36
+     },
+     {
+      "event": "worker-play",
+      "at": 1793884094781,
+      "tick": 1
+     },
+     {
+      "event": "frame-completed",
+      "at": 1793884094804,
+      "tick": 1,
+      "began": 1793884094801
+     },
+     {
+      "event": "frame-completed",
+      "at": 1793884094838,
+      "tick": 2,
+      "began": 1793884094833
+     }
+    ]
+   },
+   "before": 1,
+   "after": 36
+  }
+ ]
+}
