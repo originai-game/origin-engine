@@ -8,9 +8,8 @@
 // Ways it could fail: a widget without a role or a control without a name
 // (an icon button, a card), Tab taking another order than the tree's, or
 // og.ui.a11y answering a different tree than the probe's.
-import { playtest } from "@origingame/engine/playtest";
 import { FRAME_SCREENS } from "./script.ts";
-import { type UiElement, demo, key, ui } from "./lib.ts";
+import { demo, key, playtest, type UiElement, ui } from "./lib.ts";
 
 const SCREENS = [...FRAME_SCREENS, "players"] as const;
 /** Roles a person operates: each needs a name. */

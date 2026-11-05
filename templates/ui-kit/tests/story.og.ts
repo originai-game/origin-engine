@@ -6,10 +6,9 @@
 // Track, and the HUD's tracker; then right to left, in Japanese, Korean
 // and Chinese, and at 150 % text, each frame compared with
 // crates/og-ui/references/<tier>/kit-story-<file>.
-import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
 import { storyScript } from "./patterns.ts";
-import { ui } from "./lib.ts";
+import { playtest, ui } from "./lib.ts";
 
 const script = storyScript(false);
 

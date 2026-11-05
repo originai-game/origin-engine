@@ -3,10 +3,9 @@
 // showcase), fantasy and kawaii, the hangar with another class picked, then
 // right to left, in Japanese and at 150 % text, each frame compared with
 // crates/og-ui/references/<tier>/kit-starship-<file>.
-import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
 import { starshipScript } from "./starship.ts";
-import { ui } from "./lib.ts";
+import { playtest, ui } from "./lib.ts";
 
 const script = starshipScript(false);
 

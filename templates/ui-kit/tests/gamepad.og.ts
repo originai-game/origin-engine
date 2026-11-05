@@ -3,8 +3,7 @@
 // gallery's fourth row (the management showcase), A opens it on its HUD, B
 // closes it, and the left stick past half-way
 // steps focus as the d-pad does (once per push, one intent per edge). No `pad:` game command and no mapped keys.
-import { playtest } from "@origingame/engine/playtest";
-import { SCREEN, demo, ui } from "./lib.ts";
+import { demo, playtest, SCREEN, ui } from "./lib.ts";
 
 const press = (t: number, button: string): string => [`${t.toFixed(2)}:gamepad:${button}`, `${(t + 0.05).toFixed(2)}:gamepad:-`].join(";");
 

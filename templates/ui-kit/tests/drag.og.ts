@@ -3,8 +3,7 @@
 // column, sixth row (an empty cell), and a release there moves the stack
 // to that cell; the cell it left is empty and the backpack holds as many
 // items as before.
-import { playtest } from "@origingame/engine/playtest";
-import { SCREEN, demo, ui, type UiElement } from "./lib.ts";
+import { demo, playtest, SCREEN, type UiElement, ui } from "./lib.ts";
 import { rpg } from "@origingame/engine/extensions/rpg/index.ts";
 
 const CELLS = "Gear/Body/View/Content/Split/Bags/Bag/Cells";

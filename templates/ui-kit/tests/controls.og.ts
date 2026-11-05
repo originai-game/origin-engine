@@ -3,10 +3,9 @@
 // pressed, focused and disabled; a hold, a drag, a capture's conflict, the
 // on-screen keyboard; right to left and at 150 % text. Each frame is
 // compared with crates/og-ui/references/<tier>/kit-controls-<file>.
-import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
 import { controlsScript } from "./controls.ts";
-import { ui } from "./lib.ts";
+import { playtest, ui } from "./lib.ts";
 
 const script = controlsScript(false);
 

@@ -10,9 +10,8 @@
 // field that drops typed text or types a key twice, a selection or a
 // composition not drawn, a commit that does not land in the value, a value
 // that never reaches the world.
-import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
-import { type UiElement, key, tap, ui } from "./lib.ts";
+import { key, playtest, tap, type UiElement, ui } from "./lib.ts";
 
 const shiftLeft = (t: number, n: number): string =>
   [

@@ -19,9 +19,8 @@
 // Left, Right and Down), and the HUD components' own accessible names of
 // their regions (Ammunition, Standings, Minimap…), which the engine's
 // components name in English (reported, not this kit's words).
-import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
-import { ui } from "./lib.ts";
+import { playtest, ui } from "./lib.ts";
 
 const LOCALES = ["en", "zh-CN", "ja", "ko", "ar"] as const;
 const SCREENS = ["actionTitle", "actionPause"] as const;

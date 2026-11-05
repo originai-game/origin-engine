@@ -4,8 +4,7 @@
 // showcase's results take a touch on Play again into the HUD; a generator's
 // Buy buys one; the visual novel's box finishes a typing line on the first
 // press, then advances on the second.
-import { playtest } from "@origingame/engine/playtest";
-import { SCREEN, demo, key, tap, tapText, ui, type UiElement } from "./lib.ts";
+import { demo, key, playtest, SCREEN, tap, tapText, type UiElement, ui } from "./lib.ts";
 
 const STORE = "Shop/Body/View/Content/Store";
 const LINE = "Novel/Talk/Caption/Words/Line";

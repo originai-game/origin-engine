@@ -12,8 +12,7 @@
 // Ways it could fail: a run drawn from a face without its characters (a
 // missing-glyph warning), the label falling back to one face, a key
 // missing from a table (a warning), the label not shown.
-import { playtest } from "@origingame/engine/playtest";
-import { type UiElement, ui } from "./lib.ts";
+import { playtest, type UiElement, ui } from "./lib.ts";
 
 const LOCALES = ["en", "zh-CN", "ja", "ko", "ar"] as const;
 const SCREENS = ["actionTitle", "actionPause"] as const;

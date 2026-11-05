@@ -7,9 +7,8 @@
 // Ways it could fail: an extra pad moves the shared focus or another pad's,
 // its A picks for player 1 or for no one, its ring is not drawn, or the
 // link is not an element (or not clickable).
-import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
-import { SCREEN, demo, tap } from "./lib.ts";
+import { demo, playtest, SCREEN, tap } from "./lib.ts";
 
 const pad = (t: number, buttons: string, n: number): string =>
   [`${t.toFixed(2)}:gamepad:${buttons}@${n}`, `${(t + 0.05).toFixed(2)}:gamepad:-@${n}`].join(";");

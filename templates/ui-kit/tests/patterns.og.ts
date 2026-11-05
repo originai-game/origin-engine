@@ -4,10 +4,9 @@
 // item menu, a lit tag, a selection, the key cursor and a key carry, then
 // right to left and at 150 % text, each frame compared with
 // crates/og-ui/references/<tier>/kit-patterns-<file>.
-import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
 import { patternsScript } from "./patterns.ts";
-import { ui } from "./lib.ts";
+import { playtest, ui } from "./lib.ts";
 
 const script = patternsScript(false);
 

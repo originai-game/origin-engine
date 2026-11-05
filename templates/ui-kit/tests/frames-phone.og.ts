@@ -1,9 +1,9 @@
 // Every screen of the kit on a phone in portrait: 390×844 CSS px at 3×
 // (1170×2532 device px) with a 47 px notch and a 34 px home indicator,
 // compared with crates/og-ui/references/<tier>/kit-phone-<screen>.png.
-import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
 import { framesScript } from "./script.ts";
+import { playtest } from "./lib.ts";
 
 const script = framesScript(0.5);
 

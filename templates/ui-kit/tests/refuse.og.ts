@@ -5,8 +5,7 @@
 // confirmation. Ways it could fail: the press is ignored (no shake), the
 // card never moves or never comes back, the refusal is silent, the confirm
 // opens, or the price is taken anyway.
-import { playtest } from "@origingame/engine/playtest";
-import { SCREEN, demo, tap, ui } from "./lib.ts";
+import { demo, playtest, SCREEN, tap, ui } from "./lib.ts";
 
 const SAMPLES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 const TIDE = "Shop/Body/View/Content/Store/Sections/featured/Offers/tide";

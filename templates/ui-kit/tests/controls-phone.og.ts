@@ -3,10 +3,9 @@
 // only: every part a finger presses is a whole 44 px target (where the scroll
 // shows it whole). Each frame is
 // compared with crates/og-ui/references/<tier>/kit-controls-phone-<file>.
-import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
 import { controlsScript } from "./controls.ts";
-import { ui } from "./lib.ts";
+import { playtest, ui } from "./lib.ts";
 
 const script = controlsScript(true);
 const PRESSED = new Set(["button", "switch", "checkbox", "radio", "slider", "combobox", "textbox", "spinbutton"]);

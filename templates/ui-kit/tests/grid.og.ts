@@ -5,8 +5,7 @@
 // the featured row's three offers side by side on a desktop and, asked for
 // two columns on a phone, the featured bundle across the width with the
 // next two sharing a row, each offer's name inside its card.
-import { playtest } from "@origingame/engine/playtest";
-import { ui, type UiElement } from "./lib.ts";
+import { playtest, type UiElement, ui } from "./lib.ts";
 
 const CELLS = (stack: string) => `Gear/Body/View/Content/${stack}/Bags/Bag/Cells`;
 const OFFERS = "Shop/Body/View/Content/Store/Sections/featured/Offers";

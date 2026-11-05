@@ -2,8 +2,7 @@
 // settings tree (its Audio page) Tab walks the page tabs to the Master
 // slider, Left steps it down twice, the change waits as pending (the row
 // marked changed, Apply and Revert enabled), and Escape closes the screen.
-import { playtest } from "@origingame/engine/playtest";
-import { SCREEN, demo, key, ui } from "./lib.ts";
+import { demo, key, playtest, SCREEN, ui } from "./lib.ts";
 
 /** Tab presses from the screen's start to the Master slider: the Gallery button, the six page tabs, then the slider. */
 const TABS = 8;

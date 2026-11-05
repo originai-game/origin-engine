@@ -7,10 +7,11 @@
 // showcase HUD and document in all twelve seeds; these show each family as
 // its game would ship it, the pattern pages included.
 
-import { playtest, type PlaytestDesc } from "@origingame/engine/playtest";
+import type { PlaytestDesc } from "@origingame/engine/playtest";
 import { SHOWCASES, type Showcase } from "../src/showcases.ts";
 import { STYLE_SETTLE } from "./script.ts";
 import { sheetCheck, SURFACES, unsettled, withSettleDumps } from "./styles.ts";
+import { playtest } from "./lib.ts";
 
 /** The light and dark packs a family is checked in besides its own. */
 const LIGHT = (s: Showcase): string => s.light ?? (s.pack === "storybook" ? "kawaii" : "storybook");

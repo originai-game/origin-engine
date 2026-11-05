@@ -7,8 +7,7 @@
 // On a phone the card spans the screen (12 px from each edge): the desktop
 // places it at the target's centre, where the odd steps' card runs past the
 // screen's end edge (reported, not driven here).
-import { playtest } from "@origingame/engine/playtest";
-import { SCREEN, demo, tap, ui, type UiElement } from "./lib.ts";
+import { demo, playtest, SCREEN, tap, type UiElement, ui } from "./lib.ts";
 
 const NEXT = "tutorial/Tutorial/Card/Foot/Next";
 

@@ -4,10 +4,9 @@
 // loading, empty, error), then again at 150 % text (text150-*), each frame
 // compared with
 // crates/og-ui/references/<tier>/kit-components-<file>.
-import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
 import { componentsScript } from "./components.ts";
-import { ui } from "./lib.ts";
+import { playtest, ui } from "./lib.ts";
 
 const script = componentsScript(false);
 

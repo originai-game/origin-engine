@@ -1,8 +1,7 @@
 // UI sounds are on by default (og-taste §6: every input is answered by a
 // sound): without `sounds:on`, a press in the gallery starts a voice on the
 // ui bus and is heard; after `sounds:off` the same press is silent.
-import { playtest } from "@origingame/engine/playtest";
-import { tapText } from "./lib.ts";
+import { playtest, tapText } from "./lib.ts";
 
 type WorldDump = { archetypes: { components: string[]; count: number }[] };
 
