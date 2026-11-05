@@ -104,22 +104,30 @@ What the crops show (render scale 0.5):
 
 `fsr::cost` (`OG_FSR_COST_SCENE=thin`), Metal on macrunner (Apple M4
 Pro), the thin geometry, `taaSharpen` 0.5, each output size and scale run
-alone under `og_gpu_acquire_all`: the frame's GPU time, the median of 64
-frames after 16, in milliseconds. The frame's total, not the `taa`
-pass's: Apple's pass timestamps move work between neighbouring passes
-(`main` read 0.97 ms under TAAU and 0.29 ms under FSR in the same
-scene), while their sum holds. In the near-grass scene, whose frame is
-26 ms to 45 ms, the same differences are smaller and noisier (+0.1 ms to
-+4.9 ms).
+alone under `og_gpu_acquire_all`, the median of 64 frames after 16, in
+milliseconds. The frame's total is the measure, not the `taa` pass's:
+Apple's pass timestamps move work between neighbouring passes (`main` once
+read 0.97 ms under TAAU and 0.29 ms under FSR in the same scene), while
+their sum holds. The machine shared its GPU with other lanes (load 7 to
+10), so each row is the median of three runs of the pair, with the range
+of FSR's extra over them; the resolve's extra (the `taa` and `taa-sharpen`
+passes) is the steadier second reading.
 
-| output | scale | TAAU frame | FSR 3.1 frame | FSR's extra |
-|---|---|---|---|---|
-| 1920x1080 | 0.5 | 1.699 | 3.104 | +1.41 |
-| 1920x1080 | 0.67 | 1.926 | 3.955 | +2.03 |
-| 1920x1080 | 0.77 | 1.307 | 4.525 | +3.22 |
-| 2560x1440 | 0.5 | 2.180 | 5.438 | +3.26 |
-| 2560x1440 | 0.67 | 2.129 | 6.923 | +4.79 |
-| 2560x1440 | 0.77 | 2.289 | 7.960 | +5.67 |
+| output | scale | TAAU frame | FSR 3.1 frame | FSR's extra (range) | resolve's extra | extra before (2026-11-05) |
+|---|---|---|---|---|---|---|
+| 1920x1080 | 0.5 | 1.83 | 3.28 | +1.09 (+0.52 to +1.52) | +1.22 | +1.41 |
+| 1920x1080 | 0.67 | 3.30 | 3.31 | +0.23 (−0.04 to +1.86) | +1.06 | +2.03 |
+| 1920x1080 | 0.77 | 2.78 | 4.31 | +1.87 (−0.40 to +3.26) | +1.90 | +3.22 |
+| 2560x1440 | 0.5 | 2.15 | 3.40 | +1.25 (+0.50 to +1.43) | +1.25 | +3.26 |
+| 2560x1440 | 0.67 | 3.22 | 4.03 | +0.82 (+0.53 to +1.53) | +1.27 | +4.79 |
+| 2560x1440 | 0.77 | 3.35 | 4.57 | +1.22 (−0.24 to +1.22) | +1.65 | +5.67 |
+
+Where the time went before (per pass at 1080p from 0.77): naga writes
+every WGSL loop as a guarded `while (true)` that Metal does not unroll,
+so the passes' 3x3 and 4x4 sample arrays sat in stack memory. Written out
+straight (`third_party/fidelityfx/README.md`), the shading change pyramid
+went from 1.10 ms to 0.17, reactivity from 0.81 to 0.23 and the
+accumulation from 2.30 to about 1.0, where it is still the largest pass.
 
 ## The choice
 
@@ -130,8 +138,7 @@ on grass and particles. So:
 
 - **Default and medium: TAAU.** The default is also every native run's
   resolve at render scale 1 (`og run`, `og test`, the references); FSR
-  there would cost every game 1.4 ms to 3 ms at 1080p before its cost is
-  brought down.
+  there would cost every game about 1 ms to 2 ms at 1080p and 1440p.
 - **High: FSR 3.1** (`og.render.applyQuality(world, "high")`, the
   `upscaler` row of its table). A game sets `RenderSettings.upscaler`
   itself at any preset.
@@ -143,10 +150,9 @@ on grass and particles. So:
   (a cap takes the cheaper upscaler), the history starting again at
   that step.
 
-Open: FSR's cost. On Apple the port's frame is 2.5x the full AMD graph
-pmndrs/upscaler measured at the same ratio (1.10 ms at 1080p, ratio 2),
-and it grows with the render scale, so the render-resolution passes
-(input preparation with its depth scatter, the two pyramids, reactivity)
-are where to look first, pmndrs' fused passes the measured reference.
-Once FSR costs near TAAU, it becomes the default. The browser tiers run
-the same shaders and are measured at the wave's end.
+Open: FSR's cost. It is now about 1 ms to 2 ms over TAAU (from 1.4 ms to
+5.7 ms), but its resolve is still about twice TAAU's. The accumulation is
+the pass left to bring down (its 16 history loads and the per-tap
+exposure), and Apple's numbers need a quiet machine to settle within
+0.5 ms. Once FSR costs near TAAU, it becomes the default. The browser
+tiers run the same shaders and are measured at the wave's end.
