@@ -992,6 +992,7 @@ fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
     let start = (start_depth - light_z) / s0 * depth_scale + 1.0;
     var hard = 1.0;
     var shadow = vec4<f32>(1.0);
+    var prev = start_depth;
     for (var k = 0; k < samples; k++) {
       let along = f32(k + 1) * direction;
       let s = s0 + along;
@@ -1004,8 +1005,14 @@ fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
       let offset = select(vec2<i32>(side, 0), vec2<i32>(0, side), x_major);
       let dx = contact_depth(read, size);
       let dy = contact_depth(read + offset, size);
-      let edge = abs(dx - dy) > dx * bilinear_threshold;
-      let shadowing = select(dx - abs(dx - dy), dx, edge);
+      // A sample on a depth edge is skipped (Bend's IgnoreEdgePixels),
+      // and the ray's own axis counts as an edge too, against the previous
+      // sample: where a ray grazes a caster's silhouette, successive
+      // samples step through its depth faster than the slab, and testing
+      // them one by one speckles the shadow's rim.
+      let edge = abs(dx - dy) > dx * bilinear_threshold || abs(dx - prev) > dx * bilinear_threshold;
+      prev = dx;
+      let shadowing = select(dx - abs(dx - dy), 1e20, edge);
       let delta = abs(start - (shadowing - light_z) / s * depth_scale);
       if (k < CONTACT_HARD_SAMPLES) {
         hard = min(hard, delta);
