@@ -48297,7 +48297,7 @@ export interface Destructible {
    */
   friction: number;
   /**
-   * The stress its bonds hold pulled apart, as a fraction of strength (shear and compression keep strength's). Masonry and dry stone hold almost none: mortar cracks long before brick does, so brickwork stands by its weight and friction (Heyman's no-tension masonry, the premise of masonry limit analysis), and at about 0.1 no block is left hanging from the course above over air, and a wall shot out at its foot steps back course by course over its piers. 1 is tension at strength.
+   * The stress its bonds hold pulled apart, as a fraction of strength (shear and compression keep strength's). Masonry and dry stone hold almost none: mortar cracks long before brick does, so brickwork stands by its weight and friction (Heyman's no-tension masonry, the premise of masonry limit analysis), and at about 0.1 no block is left hanging from the course above over air, and a wall shot out at its foot steps back course by course over its piers. At 0.1 or below (with a strength above 0) a block of what stands also needs its weight within the middle third of what bears it from below, the blocks under it (a cracked bed joint bears as well as a sound one) or its foundation: one held only from its side, or by a tie-in into the wall beside it, comes loose whole, and the blocks it bore are judged again. 1 is tension at strength.
    *
    * @default 1
    * @range 0..1

@@ -72,7 +72,9 @@ is one line here, written at the merge that changes
   `anchor bottom|ends|none`, `interiorScale`, `interior`), written as
   `<model>#fracture` (`og.Fracture`). New `og.Destructible` (toughness,
   strength, friction (Mohr–Coulomb), tension (a fraction of strength:
-  masonry about 0.1), density, impactThreshold,
+  masonry about 0.1; at 0.1 or below a standing block needs its weight
+  within the middle third of what bears it from below, or comes loose),
+  density, impactThreshold,
   impactRadius, anchored, breakFx, hitFx,
   debris; a hit drives the pieces it breaks loose along its path; written fractured, broken, loose), `og.Chunk`, the event
   `og.Fractured`, the resource `og.Destruction` (maxChunks, debrisVolume,

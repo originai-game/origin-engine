@@ -77,8 +77,8 @@ Pick the style by what it is made of; each breaks as that material does:
   fit its thickness: a pillar 0.5 m across and 3 m tall wants about 2 ×
   12 × 2, 40 to 50, where 16 cut it into thin discs that fall as one
   drum. A
-  `brick` wall's count is its bricks over two (a 4 × 2.4 m wall of
-  0.25 × 0.1 bricks, about 400 bricks: 200); its blocks never run past
+  `brick` wall's count is its bricks over two (a 5 × 2.4 m wall of
+  0.25 × 0.1 bricks, about 480 bricks: 250); its blocks never run past
   three bricks or one course. More chunks cost more bodies when it falls.
 - `children` gives large chunks something to crumble into: a pillar 4 to
   6, a brick wall any count (its blocks' bricks, up to 32), a crate or a
@@ -135,8 +135,14 @@ break, then as its chunks.
   limit analysis): at 0.1 a block hanging from the course above over
   air falls, and so does one resting on the corner of the block below
   with its weight past the edge (each joint is judged at both its edges,
-  so a load far off a joint's middle opens it). A wall shot out at its
-  foot then steps back course by course over its piers.
+  so a load far off a joint's middle opens it). At 0.1 or below a block
+  of what stands also needs its weight within the middle third of what
+  bears it from below (the blocks under it, a cracked bed joint bearing
+  as well as a sound one, or its foundation): one held only from its
+  side or by a tie-in into the wall beside it comes loose whole, and so
+  do the blocks it bore, in turn. A wall shot out at its foot then steps
+  back course by course over its piers, and a pier whose foot is gone
+  comes down.
 - `friction` (default 0.7): shear a bond gains from the compression
   across it. Joints pressed by what stands on them hold and unloaded
   ones slip, so a brick wall shot at its foot drops what hung over the
@@ -147,8 +153,10 @@ break, then as its chunks.
   arch) crumbles into its pieces 30 ticks after it broke free. A charge
   that takes the wall's middle to its top leaves two toothed piers and a
   pile; a smaller one leaves a sound arch of brickwork over the hole, as
-  real walls do (the 4 × 2.4 m wall needs `radius` about 1.8 and
-  `innerRadius` 1 at its foot). 0 makes
+  real walls do, and one that reaches the wall's ends takes the piers'
+  feet, and with no-tension masonry nothing stands (the 5 × 2.4 m wall
+  needs `radius` 1.7 to 1.9 and `innerRadius` 1 at its foot; a 4 m wall
+  has no radius that does both). 0 makes
   every joint as weak as the next (a Voronoi prop of no grain).
 - `impactThreshold`: the collision impulse (og.CollisionStarted.impulse)
   that does nothing; what is above it is the hit's damage, spread over

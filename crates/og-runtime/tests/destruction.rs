@@ -44,14 +44,15 @@ fracture {
 }
 "#;
 
-/// A brick wall tied in at both ends, as a wall between two others is.
+/// A brick wall tied in at both ends, as a wall between two others is:
+/// demolition-yard's, 5 × 2.4 m.
 const BRICK: &str = r#"type model
 version 1
 ---
 part "wall" {
   position 0 1.2 0
   boxGeometry {
-    width 4
+    width 5
     height 2.4
     depth 0.3
   }
@@ -59,7 +60,7 @@ part "wall" {
 fracture {
   style brick
   brick 0.25 0.1
-  chunks 200
+  chunks 250
   seed 11
   children 32
   anchor bottom ends
@@ -431,11 +432,11 @@ fn a_prop_dropped_on_the_ground_breaks_where_it_lands() {
 
 #[test]
 fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_over_the_hole() {
-    // Charges either side of the example's, each big enough to take the
+    // The example's charge and one either side, each big enough to take the
     // wall's middle to its top (a smaller one leaves a sound flat arch over
-    // the hole, as brickwork does): loose blocks jammed between the piers
-    // would hold one at some of them.
-    for radius in [1.8, 1.9, 2.0] {
+    // the hole, as brickwork does) and small enough to spare the piers'
+    // feet (one reaching the wall's ends leaves them nothing to stand on).
+    for radius in [1.7, 1.8, 1.9] {
         let (w, wall) = start_with(
             "props/brick.ogt",
             json!({ "toughness": 800, "strength": 3000, "density": 1900, "tension": 0.1 }),
@@ -530,7 +531,7 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
         let pier = |side: f64| -> f64 {
             chunks
                 .iter()
-                .filter(|(x, _)| x * side > 0.9 && x * side < 2.1)
+                .filter(|(x, _)| x * side > 0.9 && x * side < 2.6)
                 .map(|&(_, y)| y)
                 .fold(0.0, f64::max)
         };
@@ -563,9 +564,10 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
                 "radius {radius}: the pier at {side} is {wide} m wide through its middle: {chunks:?}"
             );
         }
-        // No block left standing hangs a whole brick over air: each above
-        // the bottom course rests on the course below over all but half a
-        // brick of its length (an end tied into the wall beside it aside).
+        // No block left standing hangs a whole brick over air, not even
+        // one tied into the wall beside it: each above the bottom course
+        // rests on the course below over all but half a brick of its
+        // length.
         let bundle = og_cook::runtime::Bundle::open(&project().join("cooked")).unwrap();
         let bytes = bundle.read("props/brick.ogt#fracture").unwrap();
         let a = og_destruct::FractureAsset::from_bytes(
@@ -595,7 +597,7 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
             })
             .collect();
         for &(i, lo, hi, y) in &standing {
-            if y < 0.1 || lo < -1.99 || hi > 1.99 {
+            if y < 0.1 {
                 continue;
             }
             let below: Vec<(f32, f32)> = standing

@@ -282,6 +282,104 @@ impl Instance {
         any
     }
 
+    /// The chunks of anchored `islands` that nothing holds from below:
+    /// masonry stands by its weight alone (Heyman's no-tension masonry), so
+    /// a block stays only with its centre of mass within the middle third of
+    /// what bears it (the masonry rule that keeps a joint closed), the
+    /// standing blocks under it across a bed joint (a bond facing down,
+    /// within 45° of `-up`: a cracked joint bears as well as a sound one,
+    /// the brick still sits on the brick) or a foundation (an intact anchor
+    /// under it). A block held only from its side, by the blocks beside it
+    /// or a tie-in, or reaching past its bearing (a whole brick over air),
+    /// is listed.
+    pub fn unsupported(&self, a: &FractureAsset, islands: &[Island], up: Vec3) -> Vec<u32> {
+        let (u, v) = up.any_orthonormal_pair();
+        let span = |c: usize| {
+            let ch = &a.chunks[c];
+            let mut r = [f32::MAX, f32::MIN, f32::MAX, f32::MIN];
+            for h in &ch.hull {
+                let p = ch.centroid + *h;
+                r[0] = r[0].min(p.dot(u));
+                r[1] = r[1].max(p.dot(u));
+                r[2] = r[2].min(p.dot(v));
+                r[3] = r[3].max(p.dot(v));
+            }
+            r
+        };
+        let mut standing = vec![false; a.support as usize];
+        for c in islands
+            .iter()
+            .filter(|i| i.anchored)
+            .flat_map(|i| i.chunks.iter())
+        {
+            standing[*c as usize] = true;
+        }
+        let mut out = Vec::new();
+        for c in islands
+            .iter()
+            .filter(|i| i.anchored)
+            .flat_map(|i| i.chunks.iter())
+        {
+            let c = *c as usize;
+            let ch = &a.chunks[c];
+            // A foundation: an intact anchor lying under the block (one
+            // anchor stands for all of a chunk's faces on the world, so a
+            // corner block's lies under it and to its side).
+            let below = ch.hull.iter().map(|h| -h.dot(up)).fold(0.0f32, f32::max);
+            if self.anchors[c] > 0.0
+                && ch.anchor_area > 0.0
+                && (ch.centroid - ch.anchor_centroid).dot(up) > 0.25 * below
+            {
+                continue;
+            }
+            let own = span(c);
+            // The bearing: the overlap of this block and each block under
+            // it, across both horizontal axes.
+            let mut bear = [f32::MAX, f32::MIN, f32::MAX, f32::MIN];
+            for b in &a.bonds {
+                if b.a as usize != c && b.b as usize != c {
+                    continue;
+                }
+                let (o, down) = if b.a as usize == c {
+                    (b.b as usize, b.normal)
+                } else {
+                    (b.a as usize, -b.normal)
+                };
+                if !standing[o] || down.dot(-up) < 0.7 {
+                    continue;
+                }
+                let s = span(o);
+                bear[0] = bear[0].min(s[0].max(own[0]));
+                bear[1] = bear[1].max(s[1].min(own[1]));
+                bear[2] = bear[2].min(s[2].max(own[2]));
+                bear[3] = bear[3].max(s[3].min(own[3]));
+            }
+            // The middle-third rule: its weight within the middle third of
+            // its bearing on both axes (a joint pressed off-centre further
+            // than that opens at its far edge).
+            let (cu, cv) = (ch.centroid.dot(u), ch.centroid.dot(v));
+            let third = |c: f32, lo: f32, hi: f32| {
+                hi >= lo && (c - 0.5 * (lo + hi)).abs() <= (hi - lo) / 6.0 + 1e-3
+            };
+            if !(third(cu, bear[0], bear[1]) && third(cv, bear[2], bear[3])) {
+                out.push(c as u32);
+            }
+        }
+        out
+    }
+
+    /// Frees chunk `c` from the graph: every bond it has and its anchor
+    /// break, so it falls on its own.
+    pub fn free(&mut self, a: &FractureAsset, c: u32) {
+        for (k, b) in a.bonds.iter().enumerate() {
+            if b.a == c || b.b == c {
+                self.bonds[k] = 0.0;
+            }
+        }
+        self.anchors[c as usize] = 0.0;
+        self.dirty = true;
+    }
+
     /// The islands of the support graph: support chunks (not shattered)
     /// joined by intact bonds, each anchored when one of its chunks keeps
     /// an intact anchor; ordered by their first chunk.

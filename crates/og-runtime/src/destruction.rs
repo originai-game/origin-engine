@@ -999,6 +999,21 @@ fn run(
             }
             p.inst.dirty |= held;
         }
+        // No-tension masonry (tension at most a tenth of a strength above
+        // 0; strength 0 turns stress off, and with it this): a block
+        // of what stands that nothing bears from below comes loose, whole,
+        // and what it bore is judged again the next time.
+        if anchors
+            && tick.is_multiple_of(REST_EVERY)
+            && s.mat.limits.shear_elastic.is_finite()
+            && s.mat.limits.tension_elastic <= 0.1 * s.mat.limits.shear_elastic
+        {
+            let up = -(frame.1.inverse() * gravity).normalize_or_zero();
+            for c in p.inst.unsupported(&a, &islands_of(&p.inst), up) {
+                p.inst.free(&a, c);
+                cause.get_or_insert(CAUSE_STRESS);
+            }
+        }
         let broken_now: Vec<bool> = (0..before.len())
             .map(|i| before[i] > 0.0 && p.inst.bonds[i] <= 0.0)
             .collect();
