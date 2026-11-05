@@ -5,6 +5,7 @@ version 1
 # rounding each channel on its own crushes the blue-grey haze into flat
 # grey and violet bands (tests/evidence/art/samples/NOTES.md).
 name "Gothic ornamental linework"
+mood "dark"
 ui "fantasy"
 Stylise {
   ink true

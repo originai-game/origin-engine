@@ -342,6 +342,7 @@ pub(crate) fn info(eng: &Engine, index: usize) -> Result<Value, String> {
         "path": look.id,
         "name": name,
         "extends": look.file.extends,
+        "mood": look.file.mood,
         "resources": look.file.resources(),
         "style": look.style.map(handle_value),
         "antialias": look.file.antialias,

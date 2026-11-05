@@ -7,6 +7,7 @@ version 1
 # channels land on different steps and turn olive and pink (at 4 tones,
 # still visibly at 8; tests/evidence/art/samples/NOTES.md).
 name "Rubber-hose animation"
+mood "high-contrast"
 ui "cartoon"
 MaterialStyle {
   toon true

@@ -1,0 +1,10 @@
+type look
+version 1
+---
+# monochrome-dither-3d in a warm mood: the ink and paper swapped for the mood's.
+Stylise {
+  palette "@palettes/1bit-warm"
+}
+ArtPalette {
+  colors "@palettes/1bit-warm"
+}

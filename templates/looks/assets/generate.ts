@@ -212,6 +212,49 @@ const palettes: Record<string, { about: string; colors: string[] }> = {
     about: "One bit: black and white.",
     colors: ["000000", "ffffff"],
   },
+  // The moods of the two palette-bound styles (templates/looks/moods/<mood>/):
+  // monochrome-pixel draws in handheld4 (its own mood, soft), and
+  // monochrome-dither-3d in 1bit (its own, high-contrast).
+  "handheld4-bright": {
+    about: "Four handheld greens in a bright mood: a lifted lime ramp, darkest to lightest.",
+    colors: ["1f3a1a", "4f8a2e", "a8cf45", "eef7b0"],
+  },
+  "handheld4-dark": {
+    about: "Four handheld greens in a dark mood: deep greens down to near-black, darkest to lightest.",
+    colors: ["0a120c", "1c3320", "3d6234", "78935a"],
+  },
+  "handheld4-warm": {
+    about: "Four handheld tones in a warm mood: amber and sepia, darkest to lightest.",
+    colors: ["2b1a10", "6b4423", "b8823d", "f0d9a0"],
+  },
+  "handheld4-cold": {
+    about: "Four handheld tones in a cold mood: ice blues, darkest to lightest.",
+    colors: ["101c2c", "2f4f6e", "6f9bb8", "c8e4ef"],
+  },
+  "handheld4-high-contrast": {
+    about: "Four handheld greens in a high-contrast mood: near-black and near-white with two greens between.",
+    colors: ["0b0f0a", "2e4a26", "9cc24a", "f4fbe0"],
+  },
+  "1bit-bright": {
+    about: "One bit in a bright mood: a lifted charcoal ink and white.",
+    colors: ["3a3a44", "ffffff"],
+  },
+  "1bit-dark": {
+    about: "One bit in a dark mood: black and a dim grey.",
+    colors: ["000000", "8a8a92"],
+  },
+  "1bit-warm": {
+    about: "One bit in a warm mood: a brown ink and cream paper.",
+    colors: ["2a1408", "f4e2c0"],
+  },
+  "1bit-cold": {
+    about: "One bit in a cold mood: a navy ink and pale ice.",
+    colors: ["0b1a2e", "d6ecf5"],
+  },
+  "1bit-soft": {
+    about: "One bit in a soft mood: a grey-violet ink and warm off-white, close in value.",
+    colors: ["4a4658", "e9e4dc"],
+  },
 };
 
 mkdirSync(join(here, "canvas"), { recursive: true });

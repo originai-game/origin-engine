@@ -1,0 +1,16 @@
+type look
+version 1
+---
+# Dark: less light, deeper and cooler shadows, muted colour, closed edges.
+RenderSettings {
+  exposure 0.72
+  environmentIntensity 0.35
+}
+PostEffects {
+  temperature -0.06
+  contrast 0.12
+  saturation -0.2
+  balanceShadows -0.02 0 0.04
+  vignette true
+  vignetteIntensity 0.55
+}

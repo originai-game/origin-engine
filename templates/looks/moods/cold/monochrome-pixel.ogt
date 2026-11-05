@@ -1,0 +1,10 @@
+type look
+version 1
+---
+# monochrome-pixel in a cold mood: the four handheld tones swapped for the mood's.
+Stylise {
+  palette "@palettes/handheld4-cold"
+}
+ArtPalette {
+  colors "@palettes/handheld4-cold"
+}

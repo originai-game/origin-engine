@@ -5,6 +5,7 @@ version 1
 # feature edges (creases past 30 degrees and its borders) in its colour and
 # emissive light, blooming, with a bright outline round the silhouettes.
 name "Neon vector-like graphics"
+mood "dark"
 ui "cyber"
 MaterialStyle {
   outlineWidth 2

@@ -4,6 +4,7 @@ version 1
 # Cel shading with thick outlines, ink on every edge and six flat tones, the
 # shade printed as four-colour process dots a pixel out of register.
 name "Bold comic illustration"
+mood "high-contrast"
 ui "fantasy"
 MaterialStyle {
   toon true

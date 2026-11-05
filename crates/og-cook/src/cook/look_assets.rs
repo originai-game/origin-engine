@@ -153,6 +153,94 @@ pub const PRESETS: &[(&str, &str)] = &[
     ),
 ];
 
+/// The moods' layers (`templates/looks/moods/`, docs/art.md §2.9), compiled
+/// into the cook: `(mood, None)` is the layer for every style, `(mood,
+/// Some(slug))` one style's in its place. A look asking a preset for a mood
+/// other than the preset's own has the layer laid over the preset
+/// (`cook::look::lay_mood`).
+pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
+    (
+        "bright",
+        None,
+        include_str!("../../../../templates/looks/moods/bright.ogt"),
+    ),
+    (
+        "bright",
+        Some("monochrome-dither-3d"),
+        include_str!("../../../../templates/looks/moods/bright/monochrome-dither-3d.ogt"),
+    ),
+    (
+        "bright",
+        Some("monochrome-pixel"),
+        include_str!("../../../../templates/looks/moods/bright/monochrome-pixel.ogt"),
+    ),
+    (
+        "dark",
+        None,
+        include_str!("../../../../templates/looks/moods/dark.ogt"),
+    ),
+    (
+        "dark",
+        Some("monochrome-dither-3d"),
+        include_str!("../../../../templates/looks/moods/dark/monochrome-dither-3d.ogt"),
+    ),
+    (
+        "dark",
+        Some("monochrome-pixel"),
+        include_str!("../../../../templates/looks/moods/dark/monochrome-pixel.ogt"),
+    ),
+    (
+        "warm",
+        None,
+        include_str!("../../../../templates/looks/moods/warm.ogt"),
+    ),
+    (
+        "warm",
+        Some("monochrome-dither-3d"),
+        include_str!("../../../../templates/looks/moods/warm/monochrome-dither-3d.ogt"),
+    ),
+    (
+        "warm",
+        Some("monochrome-pixel"),
+        include_str!("../../../../templates/looks/moods/warm/monochrome-pixel.ogt"),
+    ),
+    (
+        "cold",
+        None,
+        include_str!("../../../../templates/looks/moods/cold.ogt"),
+    ),
+    (
+        "cold",
+        Some("monochrome-dither-3d"),
+        include_str!("../../../../templates/looks/moods/cold/monochrome-dither-3d.ogt"),
+    ),
+    (
+        "cold",
+        Some("monochrome-pixel"),
+        include_str!("../../../../templates/looks/moods/cold/monochrome-pixel.ogt"),
+    ),
+    (
+        "soft",
+        None,
+        include_str!("../../../../templates/looks/moods/soft.ogt"),
+    ),
+    (
+        "soft",
+        Some("monochrome-dither-3d"),
+        include_str!("../../../../templates/looks/moods/soft/monochrome-dither-3d.ogt"),
+    ),
+    (
+        "high-contrast",
+        None,
+        include_str!("../../../../templates/looks/moods/high-contrast.ogt"),
+    ),
+    (
+        "high-contrast",
+        Some("monochrome-pixel"),
+        include_str!("../../../../templates/looks/moods/high-contrast/monochrome-pixel.ogt"),
+    ),
+];
+
 /// The engine's built-in look assets, by bundle id: the canvas textures a
 /// look names in `Stylise.paintCanvas` and the palettes it names in
 /// `Stylise.palette`, made by `templates/looks/assets/generate.ts` (CC0)
@@ -174,6 +262,26 @@ pub static BUILTINS: &[(&str, &[u8])] = &[
         include_bytes!("../../../../templates/looks/assets/canvas/watercolor.png"),
     ),
     (
+        "@palettes/1bit-bright.hex",
+        include_bytes!("../../../../templates/looks/assets/palettes/1bit-bright.hex"),
+    ),
+    (
+        "@palettes/1bit-cold.hex",
+        include_bytes!("../../../../templates/looks/assets/palettes/1bit-cold.hex"),
+    ),
+    (
+        "@palettes/1bit-dark.hex",
+        include_bytes!("../../../../templates/looks/assets/palettes/1bit-dark.hex"),
+    ),
+    (
+        "@palettes/1bit-soft.hex",
+        include_bytes!("../../../../templates/looks/assets/palettes/1bit-soft.hex"),
+    ),
+    (
+        "@palettes/1bit-warm.hex",
+        include_bytes!("../../../../templates/looks/assets/palettes/1bit-warm.hex"),
+    ),
+    (
         "@palettes/1bit.hex",
         include_bytes!("../../../../templates/looks/assets/palettes/1bit.hex"),
     ),
@@ -184,6 +292,26 @@ pub static BUILTINS: &[(&str, &[u8])] = &[
     (
         "@palettes/dusk16.hex",
         include_bytes!("../../../../templates/looks/assets/palettes/dusk16.hex"),
+    ),
+    (
+        "@palettes/handheld4-bright.hex",
+        include_bytes!("../../../../templates/looks/assets/palettes/handheld4-bright.hex"),
+    ),
+    (
+        "@palettes/handheld4-cold.hex",
+        include_bytes!("../../../../templates/looks/assets/palettes/handheld4-cold.hex"),
+    ),
+    (
+        "@palettes/handheld4-dark.hex",
+        include_bytes!("../../../../templates/looks/assets/palettes/handheld4-dark.hex"),
+    ),
+    (
+        "@palettes/handheld4-high-contrast.hex",
+        include_bytes!("../../../../templates/looks/assets/palettes/handheld4-high-contrast.hex"),
+    ),
+    (
+        "@palettes/handheld4-warm.hex",
+        include_bytes!("../../../../templates/looks/assets/palettes/handheld4-warm.hex"),
     ),
     (
         "@palettes/handheld4.hex",

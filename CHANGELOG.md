@@ -21,6 +21,16 @@ is one line here, written at the merge that changes
   the UI tick. Origin Desktop still needs the window's OS adapter
   (platform ask 25); the engine never takes a window handle. No IDL change.
 
+- **A look takes a mood.** `mood "<word>"` (bright, dark, warm, cold,
+  soft, high-contrast) in a look file: every built-in preset names the
+  mood it is drawn in, and a game's look naming another has the mood's
+  layer (`templates/looks/moods/`: grading, exposure, ambient light, and
+  for monochrome-pixel and monochrome-dither-3d a palette of the mood)
+  laid over its preset before its own fields (docs/art.md §2.9). Ten
+  built-in palettes join (`@palettes/handheld4-<mood>`,
+  `@palettes/1bit-<mood>`). render: `LookInfo.mood` added. A game whose
+  look names no mood draws as before.
+
 - **A flat look's mesh textures keep their patches again.** The flat
   abstraction of a 3D look's colour textures (two Kuwahara passes, then
   the asset's own palette) counts every texel alike in the palette's cut

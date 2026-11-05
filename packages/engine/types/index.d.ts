@@ -8633,6 +8633,10 @@ export interface LookInfo {
    */
   readonly extends: readonly string[];
   /**
+   * The mood it is drawn in (bright, dark, warm, cold, soft or high-contrast): a preset's own, or the one the game's look asked for, whose layer the cook laid over the preset (docs/art.md §2.9); unset for a look that names none.
+   */
+  readonly mood: string | null;
+  /**
    * The resources it sets, by IDL name (RenderSettings, PostEffects, Stylise, MaterialStyle, Fog, Sky, Environment, and the art contract: ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion, ArtCamera). Applying it replaces each of them whole: the fields the look names take its values, the rest their defaults.
    */
   readonly resources: readonly string[];

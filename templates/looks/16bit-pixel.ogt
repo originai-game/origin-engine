@@ -5,6 +5,7 @@ version 1
 # frame's quantise holds anything to the look, while art the cook conformed
 # (64 colours in 6-step ramps, ArtPalette) keeps its own colours.
 name "16-bit-inspired pixel art"
+mood "bright"
 ui "pixel"
 antialias off
 Stylise {

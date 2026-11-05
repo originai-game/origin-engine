@@ -7,6 +7,7 @@ version 1
 # with turbulence, the paper's tooth left bare under the lightest washes and
 # every edge wavering with the relief, a bright exposure.
 name "Watercolor washes"
+mood "soft"
 ui "storybook"
 Stylise {
   paintRadius 3

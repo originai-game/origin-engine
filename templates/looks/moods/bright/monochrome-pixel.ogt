@@ -1,0 +1,10 @@
+type look
+version 1
+---
+# monochrome-pixel in a bright mood: the four handheld tones swapped for the mood's.
+Stylise {
+  palette "@palettes/handheld4-bright"
+}
+ArtPalette {
+  colors "@palettes/handheld4-bright"
+}

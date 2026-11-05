@@ -3,6 +3,7 @@ version 1
 ---
 # Light brush strokes over a bright, blooming scene.
 name "Lush painted worlds"
+mood "warm"
 ui "fantasy"
 Stylise {
   paintRadius 2

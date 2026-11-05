@@ -378,7 +378,7 @@ fn the_built_ins_are_the_template_assets() {
             let colours = crate::look::parse_palette(id, std::str::from_utf8(bytes).unwrap())
                 .unwrap_or_else(|e| panic!("{id}: {e}"));
             let digits: String = id.chars().filter(char::is_ascii_digit).collect();
-            let want: usize = if *id == "@palettes/1bit.hex" {
+            let want: usize = if id.starts_with("@palettes/1bit") {
                 2
             } else {
                 digits.parse().unwrap()
@@ -536,4 +536,178 @@ fn every_preset_checks_against_the_records_with_the_built_ins() {
             assert!(builtin_ids.contains(&id), "{slug}: {id}");
         }
     }
+}
+
+fn number_of(l: &LookFile, resource: &str, field: &str) -> Option<Vec<f64>> {
+    l.blocks
+        .iter()
+        .find(|b| b.resource == resource)?
+        .get(field)?
+        .iter()
+        .map(|v| v.as_number().map(Number::as_f64))
+        .collect()
+}
+
+#[test]
+fn a_mood_is_laid_over_the_preset_and_the_games_fields_still_win() {
+    // A preset drawn warm with its own exposure and a vignette at 0.6.
+    let preset = "type look\nversion 1\n---\nmood \"warm\"\nRenderSettings {\n  exposure 0.8\n}\nPostEffects {\n  vignette true\n  vignetteIntensity 0.6\n  contrast 0.9\n}\n";
+    let presets = [("p", preset)];
+    let cook_in = |game: &str| {
+        let root = project(&[("looks/g.ogt", &format!("{HEAD}extends \"p\"\n{game}"))]);
+        let s = source(&root, "looks/g.ogt");
+        resolve(&s, &root, &|_: &str| true, &presets).map(|(l, _)| l)
+    };
+    // Its own mood, asked or not: the preset as drawn.
+    for game in ["", "mood \"warm\"\n"] {
+        let l = cook_in(game).unwrap();
+        assert_eq!(number_of(&l, "RenderSettings", "exposure"), Some(vec![0.8]));
+        assert_eq!(l.mood.as_deref(), Some("warm"));
+    }
+    // Dark: exposure 0.72 over the default 1 moves 0.8 to 0.52; the
+    // vignette 0.55 over its default 0.35 moves 0.6 to 0.8; contrast 0.12
+    // over 0 clamps 0.9 + 0.12 at the field's 1; a field the preset leaves
+    // unset moves from its default (temperature -0.06, balanceShadows).
+    let l = cook_in("mood \"dark\"\n").unwrap();
+    assert_eq!(l.mood.as_deref(), Some("dark"));
+    assert_eq!(
+        number_of(&l, "RenderSettings", "exposure"),
+        Some(vec![0.52])
+    );
+    assert_eq!(
+        number_of(&l, "PostEffects", "vignetteIntensity"),
+        Some(vec![0.8])
+    );
+    assert_eq!(number_of(&l, "PostEffects", "contrast"), Some(vec![1.0]));
+    assert_eq!(
+        number_of(&l, "PostEffects", "temperature"),
+        Some(vec![-0.06])
+    );
+    assert_eq!(
+        number_of(&l, "PostEffects", "balanceShadows"),
+        Some(vec![-0.02, 0.0, 0.04])
+    );
+    // The game's own field is laid after the mood and wins whole.
+    let l = cook_in("mood \"dark\"\nRenderSettings {\n  exposure 1.3\n}\n").unwrap();
+    assert_eq!(number_of(&l, "RenderSettings", "exposure"), Some(vec![1.3]));
+    // A flashback in another mood extends the game's look: its mood wins
+    // for the whole chain, laid over the preset once.
+    let root = project(&[
+        (
+            "looks/g.ogt",
+            &format!("{HEAD}extends \"p\"\nmood \"cold\"\n"),
+        ),
+        (
+            "looks/f.ogt",
+            &format!("{HEAD}extends \"looks/g.ogt\"\nmood \"dark\"\n"),
+        ),
+    ]);
+    let s = source(&root, "looks/f.ogt");
+    let (l, _) = resolve(&s, &root, &|_: &str| true, &presets).unwrap();
+    assert_eq!(l.mood.as_deref(), Some("dark"));
+    assert_eq!(
+        number_of(&l, "RenderSettings", "exposure"),
+        Some(vec![0.52])
+    );
+    assert_eq!(
+        number_of(&l, "PostEffects", "temperature"),
+        Some(vec![-0.06])
+    );
+    // A chain without a preset takes the layer under its root.
+    let root = project(&[("looks/solo.ogt", &format!("{HEAD}mood \"cold\"\n"))]);
+    let l = cook(&root, "looks/solo.ogt", &[]).unwrap();
+    assert_eq!(
+        number_of(&l, "PostEffects", "temperature"),
+        Some(vec![-0.3])
+    );
+    assert!(LookFile::parse(&l.to_text()).unwrap().mood.as_deref() == Some("cold"));
+}
+
+#[test]
+fn a_palette_bound_preset_swaps_its_palette_for_the_moods() {
+    let root = project(&[(
+        "looks/g.ogt",
+        &format!("{HEAD}extends \"monochrome-pixel\"\nmood \"warm\"\n"),
+    )]);
+    let s = source(&root, "looks/g.ogt");
+    let (l, bases) = resolve(&s, &root, &|_: &str| true, PRESETS).unwrap();
+    let palette = |r: &str, f: &str| {
+        l.blocks
+            .iter()
+            .find(|b| b.resource == r)
+            .unwrap()
+            .get(f)
+            .unwrap()[0]
+            .as_str()
+            .map(str::to_string)
+    };
+    assert_eq!(
+        palette("Stylise", "palette").as_deref(),
+        Some("@palettes/handheld4-warm.hex")
+    );
+    assert_eq!(
+        palette("ArtPalette", "colors").as_deref(),
+        Some("@palettes/handheld4-warm.hex")
+    );
+    // Its own layer replaces the generic one: no grading from warm.ogt.
+    assert_eq!(number_of(&l, "PostEffects", "temperature"), None);
+    assert!(bases.iter().any(|b| b.id == "@moods/warm/monochrome-pixel"));
+    // The cook bundles the palette the mood names.
+    let files = builtin_files(
+        "looks/g.ogt",
+        &std::fs::read_to_string(root.join("looks/g.ogt")).unwrap(),
+        &root,
+    );
+    assert!(
+        files
+            .iter()
+            .any(|(id, _)| *id == "@palettes/handheld4-warm.hex")
+    );
+}
+
+#[test]
+fn every_preset_names_its_mood_and_every_mood_lays_on_every_preset() {
+    for (slug, text) in PRESETS {
+        let preset = LookFile::parse(text).unwrap();
+        let own = preset
+            .mood
+            .as_deref()
+            .unwrap_or_else(|| panic!("{slug}: no mood line"));
+        for mood in crate::look::MOODS {
+            let root = project(&[(
+                "looks/g.ogt",
+                &format!("{HEAD}extends \"{slug}\"\nmood \"{mood}\"\n"),
+            )]);
+            let s = source(&root, "looks/g.ogt");
+            let (l, _) = resolve(&s, &root, &|_: &str| true, PRESETS)
+                .unwrap_or_else(|e| panic!("{slug} in {mood}: {e}"));
+            assert_eq!(l.mood.as_deref(), Some(mood));
+            if mood == own {
+                assert_eq!(
+                    l.blocks.len(),
+                    preset.blocks.len(),
+                    "{slug}: its own mood lays nothing"
+                );
+            }
+        }
+    }
+    // Every layer sets only what a mood may, and names fields that exist.
+    for (mood, slug, _) in MOOD_LAYERS {
+        assert!(crate::look::MOODS.contains(mood), "{mood}");
+        lay_mood(&LookFile::default(), mood, *slug).unwrap_or_else(|e| panic!("{e}"));
+        if let Some(slug) = slug {
+            assert!(
+                PRESETS.iter().any(|(s, _)| s == slug),
+                "{mood}/{slug}: no such preset"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_mood_layer_never_changes_the_art_contracts_sizes() {
+    assert!(mood_sets("PostEffects", "contrast"));
+    assert!(mood_sets("ArtPalette", "colors"));
+    assert!(!mood_sets("ArtPixels", "unit"));
+    assert!(!mood_sets("Stylise", "posterize"));
 }

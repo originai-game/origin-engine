@@ -20,10 +20,16 @@
 //!   the game's bundle under that id ([`builtin_references`]), so the
 //!   runtime loads it as any other asset. Paths under `assets/` starting
 //!   with `@` are the engine's, and refused as a game's own.
+//! - `mood "<word>"` in a preset names the mood it is drawn in; in any other
+//!   look it asks for a mood: when it differs from the preset's own, the
+//!   mood's layer ([`MOOD_LAYERS`], `templates/looks/moods/`) is laid over
+//!   the preset the chain reaches ([`lay_mood`]) before the looks above it,
+//!   so the game's own fields still win. A chain that reaches no preset
+//!   lays the layer under its deepest look.
 //! - The stamp covers every look in the chain, so editing a base re-cooks
 //!   the looks built on it.
 
-pub use super::look_assets::{BUILTINS, PRESETS};
+pub use super::look_assets::{BUILTINS, MOOD_LAYERS, PRESETS};
 pub use super::look_styles::{StyleFile, style_licences, styles, styles_dir};
 use super::{CookError, Source};
 use crate::format::{self, BlobKind};
@@ -305,6 +311,20 @@ fn flatten(
     seen: &mut Vec<String>,
     bases: &mut Vec<Base>,
 ) -> Result<LookFile, String> {
+    flatten_asked(id, text, root, presets, seen, bases, None)
+}
+
+/// [`flatten`] with the mood a look above asked for (`asked`), which wins
+/// over this look's own `mood`.
+fn flatten_asked(
+    id: &str,
+    text: &str,
+    root: &Path,
+    presets: &[(&str, &str)],
+    seen: &mut Vec<String>,
+    bases: &mut Vec<Base>,
+    asked: Option<&str>,
+) -> Result<LookFile, String> {
     let mut look = LookFile::parse(text).map_err(|e| {
         if seen.len() > 1 {
             format!("{id}: {e}")
@@ -312,7 +332,21 @@ fn flatten(
             e
         }
     })?;
+    // The mood asked here: the one asked from above (the nearest look's
+    // wins for the whole chain), else this look's own.
+    let asked = asked.map(str::to_string).or_else(|| look.mood.clone());
     let Some(name) = look.extends.first().cloned() else {
+        // A chain that reaches no preset: the mood lies under its root.
+        if let Some(m) = asked.as_deref()
+            && !presets.iter().any(|(s, _)| *s == id)
+        {
+            let (layer, layer_base) = lay_mood(&LookFile::default(), m, None)?;
+            bases.insert(0, layer_base);
+            let mut merged = look.over(&layer, "");
+            merged.extends.clear();
+            merged.mood = Some(m.to_string());
+            return Ok(merged);
+        }
         return Ok(look);
     };
     if look.extends.len() > 1 {
@@ -332,11 +366,160 @@ fn flatten(
         ));
     }
     seen.push(base.id.clone());
-    let base_look = flatten(&base.id, &base.text, root, presets, seen, bases)?;
+    let mut base_look = flatten_asked(
+        &base.id,
+        &base.text,
+        root,
+        presets,
+        seen,
+        bases,
+        asked.as_deref(),
+    )?;
+    let is_preset = presets.iter().any(|(s, _)| *s == base.id);
+    if let Some(m) = asked.as_deref()
+        && is_preset
+        && base_look.mood.as_deref() != Some(m)
+    {
+        let (layered, layer_base) = lay_mood(&base_look, m, Some(&base.id))?;
+        base_look = layered;
+        bases.insert(0, layer_base);
+    }
     look.extends.clear();
     let merged = look.over(&base_look, &base.id);
     bases.insert(0, base);
     Ok(merged)
+}
+
+/// The moods' layer for `slug`: its own (`moods/<mood>/<slug>.ogt`), else
+/// every style's (`moods/<mood>.ogt`), with its id.
+fn mood_layer(mood: &str, slug: Option<&str>) -> Option<(String, &'static str)> {
+    let own = slug.and_then(|s| {
+        MOOD_LAYERS
+            .iter()
+            .find(|(m, l, _)| *m == mood && *l == Some(s))
+            .map(|(_, _, t)| (format!("@moods/{mood}/{s}"), *t))
+    });
+    own.or_else(|| {
+        MOOD_LAYERS
+            .iter()
+            .find(|(m, l, _)| *m == mood && l.is_none())
+            .map(|(_, _, t)| (format!("@moods/{mood}"), *t))
+    })
+}
+
+/// The resources and fields a mood's layer may set: the frame's grading,
+/// light and palette, never the art contract's sizes, shapes or lines.
+fn mood_sets(resource: &str, field: &str) -> bool {
+    matches!(
+        resource,
+        "PostEffects" | "RenderSettings" | "Environment" | "Fog" | "Sky"
+    ) || (resource, field) == ("Stylise", "palette")
+        || (resource, field) == ("ArtPalette", "colors")
+}
+
+/// The numbers of a field's default (its JSON: `1`, `[0,0,0]`); empty when
+/// it is not numbers.
+fn default_numbers(json: &str) -> Vec<f64> {
+    json.trim()
+        .trim_start_matches('[')
+        .trim_end_matches(']')
+        .split(',')
+        .map(|t| t.trim().parse::<f64>())
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap_or_default()
+}
+
+/// `base` laid in `mood` (docs/art.md §2.9): the mood's layer for `slug`
+/// over it, a number moving the base's value (else the field's default) by
+/// the layer's distance from the default, clamped to the field's range and
+/// rounded for a whole-number field; any other value replacing the base's.
+/// Returns the laid look, carrying the mood, and the layer as a base for the
+/// stamp.
+fn lay_mood(base: &LookFile, mood: &str, slug: Option<&str>) -> Result<(LookFile, Base), String> {
+    let (id, text) = mood_layer(mood, slug)
+        .ok_or_else(|| format!("mood \"{mood}\": one of {}", crate::look::MOODS.join(", ")))?;
+    let layer = LookFile::parse(text).map_err(|e| format!("{id}: {e}"))?;
+    let mut out = base.clone();
+    for block in &layer.blocks {
+        let schema = format!("og.{}", block.resource);
+        let record = og_records::RECORDS
+            .iter()
+            .find(|r| r.schema == schema && r.kind == "resource")
+            .ok_or_else(|| format!("{id}: {} is not a resource of this engine", block.resource))?;
+        for (field, values, _) in &block.fields {
+            if !mood_sets(&block.resource, field) {
+                return Err(format!(
+                    "{id}: {}.{field}: a mood sets the frame's grading, light and palette only",
+                    block.resource
+                ));
+            }
+            let decl = record
+                .fields
+                .iter()
+                .find(|f| f.name == field)
+                .ok_or_else(|| format!("{id}: {} has no field '{field}'", block.resource))?;
+            let target = match out.blocks.iter_mut().find(|b| b.resource == block.resource) {
+                Some(b) => b,
+                None => {
+                    out.blocks.push(crate::look::LookBlock {
+                        resource: block.resource.clone(),
+                        fields: Vec::new(),
+                    });
+                    out.blocks.last_mut().expect("just pushed")
+                }
+            };
+            let layer_numbers: Option<Vec<f64>> = values
+                .iter()
+                .map(|v| v.as_number().map(Number::as_f64))
+                .collect();
+            let default = default_numbers(decl.default);
+            let numeric = matches!(decl.column, "f32" | "u32" | "i32" | "Vector2" | "Vector3");
+            let value = match layer_numbers {
+                Some(l) if numeric && !l.is_empty() && l.len() == default.len() => {
+                    let have: Vec<f64> = target
+                        .get(field)
+                        .and_then(|v| {
+                            v.iter()
+                                .map(|x| x.as_number().map(Number::as_f64))
+                                .collect::<Option<Vec<f64>>>()
+                        })
+                        .filter(|v| v.len() == default.len())
+                        .unwrap_or_else(|| default.clone());
+                    have.iter()
+                        .zip(&l)
+                        .zip(&default)
+                        .map(|((h, l), d)| {
+                            let mut x = h + (l - d);
+                            if let Some(lo) = decl.min {
+                                x = x.max(lo);
+                            }
+                            if let Some(hi) = decl.max {
+                                x = x.min(hi);
+                            }
+                            if matches!(decl.column, "u32" | "i32") {
+                                x = x.round();
+                            }
+                            // Six decimals: the layer's sums are written as text.
+                            number((x * 1e6).round() / 1e6)
+                        })
+                        .collect()
+                }
+                _ => values.clone(),
+            };
+            match target.fields.iter_mut().find(|(n, _, _)| n == field) {
+                Some(slot) => slot.1 = value,
+                None => target.fields.push((field.clone(), value, 0)),
+            }
+        }
+    }
+    out.mood = Some(mood.to_string());
+    Ok((
+        out,
+        Base {
+            id,
+            text: text.to_string(),
+        },
+    ))
 }
 
 /// What a handle column takes: the asset kinds by extension.

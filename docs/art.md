@@ -108,8 +108,8 @@ schema and premise inference through `@origingame/create-game`.
 `resolveCreationChoices` adds catalogue matching. These exports are
 additive public contracts beside the art brief; existing signatures stay
 unchanged. The UI choice defaults to the look's `ui` line but can override
-it. Mood and music currently record intent only; this step does not change
-`artBrief`, the catalogue or look rendering. See create's README for the
+it, and the mood to the look's own (§2.9), which the game's look then
+names. Music still records intent only. See create's README for the
 function signatures and `docs/platform-asks.md` for the creation UI ask.
 
 ### 2.2 Produce: every request carries the contract
@@ -629,6 +629,44 @@ additive contract, kept stable like it (a change is a break with a
 
 The platform's music and sound generation (origin-agent) takes these
 requests as they are: `docs/platform-asks.md` ask 26.
+
+### 2.10 Mood: a parameter of the look
+
+A look takes `mood "<word>"`, one of `bright`, `dark`, `warm`, `cold`,
+`soft`, `high-contrast` (og-bundle's `MOODS`, the creation choice's words
+in `packages/create/bin/choices.ts`). Every preset names the mood it is
+drawn in (the catalogue's `look.mood`). A game's look that names another
+mood asks the preset for it: the cook lays the mood's layer over the
+preset its `extends` chain reaches, before the looks above it, so the
+game's own fields still win (`og-cook`'s `cook::look`). A chain without a
+preset lays the layer under its deepest look. The cooked look carries the
+mood (`LookInfo.mood`).
+
+The layers are data, `templates/looks/moods/` (its README), compiled into
+the cook:
+
+- `<mood>.ogt`, one for every style: the frame's grading (`PostEffects`'
+  white balance, contrast, saturation, vibrance, colour balance and
+  vignette, which the renderer bakes into its LUT with the look's own
+  table), its light (`RenderSettings.exposure` and the ambient
+  `environmentIntensity`) written as the mood reads over a neutral look.
+  A number moves the preset's value by its distance from the field's
+  default, clamped to the field's range: `dark`'s `exposure 0.72` takes a
+  preset at 0.8 to 0.52. Any other value replaces the preset's.
+- `<mood>/<slug>.ogt`, one style's layer in place of the generic one: the
+  two palette-bound styles quantise every pixel to a fixed palette after
+  the grading, so grading alone barely moves them; their layers swap the
+  palette (`Stylise.palette` and `ArtPalette.colors`) for the mood's
+  (`@palettes/handheld4-<mood>`, `@palettes/1bit-<mood>`).
+
+A layer sets the frame's grading, light and palette only (`PostEffects`,
+`RenderSettings`, `Environment`, `Fog`, `Sky`, `Stylise.palette`,
+`ArtPalette.colors`); the art contract's sizes, shapes, lines and motion
+never change with the mood. The art brief reads the mood and the palette
+the layer names (§2.2): its prompt gains a `Mood` line, so generated
+assets are lit and coloured for it. `og new --mood <word>` writes the
+line into the game's look; with no mood asked, the game keeps its
+preset's.
 
 ## 3. Streams
 

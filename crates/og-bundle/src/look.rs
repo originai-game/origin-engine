@@ -14,6 +14,11 @@
 //! extends "anime-cel-3d"        # a built-in preset (templates/looks/<slug>.ogt),
 //!                               # the game's own assets/looks/<slug>.ogt first,
 //!                               # or another look's asset id ("looks/base.ogt")
+//! mood "warm"                   # bright, dark, warm, cold, soft or high-contrast:
+//!                               # in a preset, the mood it is drawn in; in any
+//!                               # other look, the mood asked of the preset its
+//!                               # chain reaches (`MOODS`, the cook lays the
+//!                               # mood's layer over that preset)
 //! ui "paper"                   # the UI style applied with the look: a built-in
 //!                               # (templates/styles/<slug>), the game's own
 //!                               # styles/<slug>/style.ogt first, or an asset id
@@ -98,11 +103,17 @@ pub const ANIMATED_FIELDS: [(&str, &str); 2] =
 /// The values of `antialias` (the IDL's `render.Antialias`).
 pub const ANTIALIAS: [&str; 4] = ["tier", "off", "msaa4", "taa"];
 
+/// The moods a look takes (`mood "<word>"`), the creation choice's words
+/// (`packages/create/bin/choices.ts`, held equal by its tests). Each is a
+/// layer of the frame's grading, light and, for a palette-bound style, its
+/// palette (`templates/looks/moods/`), docs/art.md §2.9.
+pub const MOODS: [&str; 6] = ["bright", "dark", "warm", "cold", "soft", "high-contrast"];
+
 /// The longest `extends` chain the cook follows.
 pub const MAX_EXTENDS: usize = 8;
 
 /// The top-level keys of a look file.
-const TOP: [&str; 4] = ["name", "extends", "ui", "antialias"];
+const TOP: [&str; 5] = ["name", "extends", "mood", "ui", "antialias"];
 
 /// One resource block: its IDL name and its fields in file order, each with
 /// its values as written (numbers, `true`/`false`, a variant word, or a
@@ -128,6 +139,9 @@ impl LookBlock {
 pub struct LookFile {
     pub name: Option<String>,
     pub extends: Vec<String>,
+    /// The mood: a preset's own, or the one a game's look asks of its
+    /// preset; the cooked look carries the mood it was laid in.
+    pub mood: Option<String>,
     pub ui: Option<String>,
     pub antialias: Option<String>,
     pub blocks: Vec<LookBlock>,
@@ -218,6 +232,17 @@ impl LookFile {
             seen_top.push(TOP.iter().find(|k| **k == e.key).expect("a top key"));
             match e.key.as_str() {
                 "name" => look.name = Some(one_string(e)?),
+                "mood" => {
+                    let m = one_string(e)?;
+                    if !MOODS.contains(&m.as_str()) {
+                        return Err(format!(
+                            "line {}: 'mood' is one of {}",
+                            e.line,
+                            MOODS.join(", ")
+                        ));
+                    }
+                    look.mood = Some(m);
+                }
                 "ui" => look.ui = Some(one_string(e)?),
                 "extends" => {
                     look.extends = e
@@ -287,6 +312,10 @@ impl LookFile {
             e.values = self.extends.iter().cloned().map(Value::String).collect();
             doc.body.push(e);
         }
+        if let Some(m) = &self.mood {
+            doc.body
+                .push(Entry::new("mood").with(Value::String(m.clone())));
+        }
         if let Some(s) = &self.ui {
             doc.body
                 .push(Entry::new("ui").with(Value::String(s.clone())));
@@ -312,7 +341,8 @@ impl LookFile {
     /// This look laid over `base` (the look it extends): the name is this
     /// look's own (a look is not called after its base), its ui style and
     /// antialias win where given, a resource either names takes both
-    /// blocks' fields with this look's winning field by field, and `extends`
+    /// blocks' fields with this look's winning field by field, the mood
+    /// this look's where it names one, and `extends`
     /// becomes `base_id` followed by `base`'s own chain.
     pub fn over(&self, base: &LookFile, base_id: &str) -> LookFile {
         let mut blocks: Vec<LookBlock> = base.blocks.clone();
@@ -334,6 +364,7 @@ impl LookFile {
         LookFile {
             name: self.name.clone(),
             extends,
+            mood: self.mood.clone().or_else(|| base.mood.clone()),
             ui: self.ui.clone().or_else(|| base.ui.clone()),
             antialias: self.antialias.clone().or_else(|| base.antialias.clone()),
             blocks,
@@ -472,6 +503,25 @@ mod tests {
         assert_eq!(LookFile::default().over(&base, "b").name, None);
         assert_eq!(l.ui.as_deref(), Some("styles/a/style.ogt"));
         assert_eq!(l.extends, vec!["looks/base.ogt"]);
+        let moody = |m: &str| {
+            LookFile::parse(&format!("type look\nversion 1\n---\nmood \"{m}\"\n")).unwrap()
+        };
+        assert_eq!(
+            moody("cold").over(&moody("warm"), "b").mood.as_deref(),
+            Some("cold")
+        );
+        assert_eq!(
+            LookFile::default()
+                .over(&moody("warm"), "b")
+                .mood
+                .as_deref(),
+            Some("warm")
+        );
+        let text = moody("high-contrast").to_text();
+        assert_eq!(
+            LookFile::parse(&text).unwrap().mood.as_deref(),
+            Some("high-contrast")
+        );
         let s = l.blocks.iter().find(|b| b.resource == "Stylise").unwrap();
         assert_eq!(
             s.get("posterize").unwrap()[0].as_number().unwrap().text(),
@@ -491,6 +541,10 @@ mod tests {
         assert!(bad("antialias fxaa\n").contains("one of tier, off, msaa4, taa"));
         assert!(bad("palette \"p.hex\"\n").contains("not a look entry"));
         assert!(bad("Stylise {\n  posterize 4\n  posterize 5\n}\n").contains("set twice"));
+        assert!(
+            bad("mood \"gloomy\"\n")
+                .contains("one of bright, dark, warm, cold, soft, high-contrast")
+        );
     }
 
     #[test]

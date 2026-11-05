@@ -5,6 +5,7 @@ version 1
 # anything to the look, while art the cook conformed (16 colours, ArtPalette)
 # keeps its own colours, so its far layer is not flattened into one mass.
 name "Coarse minimal pixel art"
+mood "dark"
 ui "pixel"
 antialias off
 Stylise {

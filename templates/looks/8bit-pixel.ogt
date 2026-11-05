@@ -8,6 +8,7 @@ version 1
 # the cook conformed (16 colours in 4-step ramps, ArtPalette) keeps its own
 # colours, so its flat fields stay flat instead of turning to a checker.
 name "8-bit-inspired pixel art"
+mood "bright"
 ui "pixel"
 antialias off
 Stylise {

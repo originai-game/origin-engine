@@ -1,0 +1,10 @@
+type look
+version 1
+---
+# monochrome-dither-3d in a dark mood: the ink and paper swapped for the mood's.
+Stylise {
+  palette "@palettes/1bit-dark"
+}
+ArtPalette {
+  colors "@palettes/1bit-dark"
+}

@@ -7,6 +7,7 @@ version 1
 # where a doodle carries its shade in strokes. Its paper is a warm
 # sketchbook white: on white a grey floor's cool tint read as lavender-grey.
 name "Fine-line doodle worlds"
+mood "bright"
 ui "storybook"
 Stylise {
   ink true

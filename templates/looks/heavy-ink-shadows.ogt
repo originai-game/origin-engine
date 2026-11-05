@@ -5,6 +5,7 @@ version 1
 # (MaterialStyle.shadowDarkness 1: no sun and no ambient light there), thick
 # ink, six muted tones, a near-black sky and a blood-red haze.
 name "Heavy ink and shadow"
+mood "dark"
 ui "fantasy"
 MaterialStyle {
   toon true
