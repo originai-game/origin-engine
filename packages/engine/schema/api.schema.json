@@ -80089,6 +80089,14 @@
           "maximum": 4,
           "x-og-tunable": true
         },
+        "tension": {
+          "type": "number",
+          "description": "The stress its bonds hold pulled apart, as a fraction of strength (shear and compression keep strength's). Masonry and dry stone hold almost none: mortar cracks long before brick does, so brickwork stands by its weight and friction (Heyman's no-tension masonry, the premise of masonry limit analysis), and at about 0.1 no block is left hanging from the course above over air, and a wall shot out at its foot steps back course by course over its piers. 1 is tension at strength.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
         "density": {
           "type": "number",
           "description": "The chunks' density: their mass as bodies and their weight in the stress solver.",

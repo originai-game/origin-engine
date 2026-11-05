@@ -7717,6 +7717,12 @@
           "tunable": true
         },
         {
+          "name": "tension",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
           "name": "density",
           "column": "f32",
           "default": 1000,

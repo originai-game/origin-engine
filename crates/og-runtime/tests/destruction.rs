@@ -438,7 +438,7 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
     for radius in [1.8, 1.9, 2.0] {
         let (w, wall) = start_with(
             "props/brick.ogt",
-            json!({ "toughness": 800, "strength": 3000, "density": 1900 }),
+            json!({ "toughness": 800, "strength": 3000, "density": 1900, "tension": 0.1 }),
         );
         let chips = value(og_load_emitter(w, "fx/chips.ogt".into()))
             .as_f64()
@@ -447,7 +447,7 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
             w,
             wall,
             "og.Destructible".into(),
-            Some(json!({ "toughness": 800, "strength": 3000, "density": 1900, "debris": chips, "impactThreshold": 400 }).to_string()),
+            Some(json!({ "toughness": 800, "strength": 3000, "density": 1900, "debris": chips, "impactThreshold": 400, "tension": 0.1 }).to_string()),
         ));
         // A floor for what falls.
         let g = value(og_runtime::og_world_spawn(
@@ -561,6 +561,63 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
             assert!(
                 wide >= 0.4,
                 "radius {radius}: the pier at {side} is {wide} m wide through its middle: {chunks:?}"
+            );
+        }
+        // No block left standing hangs a whole brick over air: each above
+        // the bottom course rests on the course below over all but half a
+        // brick of its length (an end tied into the wall beside it aside).
+        let bundle = og_cook::runtime::Bundle::open(&project().join("cooked")).unwrap();
+        let bytes = bundle.read("props/brick.ogt#fracture").unwrap();
+        let a = og_destruct::FractureAsset::from_bytes(
+            &bundle.fracture("props/brick.ogt#fracture", &bytes).unwrap(),
+        )
+        .unwrap();
+        let standing: Vec<(u64, f32, f32, f32)> = near
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e.as_f64().unwrap())
+            .filter(|&e| og_world_has(w, e, "og.Chunk".into()))
+            .map(|e| value(og_world_get(w, e, "og.Chunk".into())))
+            .filter(|c| c["looseTick"].as_u64() == Some(u32::MAX as u64))
+            .map(|c| {
+                let i = c["chunk"].as_u64().unwrap();
+                let ch = &a.chunks[i as usize];
+                let x = |f: fn(f32, f32) -> f32, from: f32| {
+                    ch.hull.iter().map(|v| v.x).fold(from, f) + ch.centroid.x
+                };
+                (
+                    i,
+                    x(f32::min, f32::MAX),
+                    x(f32::max, f32::MIN),
+                    ch.centroid.y,
+                )
+            })
+            .collect();
+        for &(i, lo, hi, y) in &standing {
+            if y < 0.1 || lo < -1.99 || hi > 1.99 {
+                continue;
+            }
+            let below: Vec<(f32, f32)> = standing
+                .iter()
+                .filter(|s| (s.3 - (y - 0.1)).abs() < 0.03)
+                .map(|s| (s.1, s.2))
+                .collect();
+            let (mut run, mut over) = (0.0f32, 0.0f32);
+            let step = 0.005;
+            let mut x = lo;
+            while x <= hi {
+                if below.iter().any(|b| x >= b.0 - step && x <= b.1 + step) {
+                    run = 0.0;
+                } else {
+                    run += step;
+                    over = over.max(run);
+                }
+                x += step;
+            }
+            assert!(
+                over <= 0.13,
+                "radius {radius}: block {i} ({lo:.3} to {hi:.3}, at {y:.2} m) hangs {over:.3} m over air"
             );
         }
         let info = value(og_destruction_info(w, wall));

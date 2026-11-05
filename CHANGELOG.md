@@ -55,7 +55,8 @@ is one line here, written at the merge that changes
   `seed`, `children`, `brick`, `pattern volume|slab|auto`, `impact`,
   `anchor bottom|ends|none`, `interiorScale`, `interior`), written as
   `<model>#fracture` (`og.Fracture`). New `og.Destructible` (toughness,
-  strength, friction (Mohr–Coulomb), density, impactThreshold,
+  strength, friction (Mohr–Coulomb), tension (a fraction of strength:
+  masonry about 0.1), density, impactThreshold,
   impactRadius, anchored, breakFx, hitFx,
   debris; a hit drives the pieces it breaks loose along its path; written fractured, broken, loose), `og.Chunk`, the event
   `og.Fractured`, the resource `og.Destruction` (maxChunks, debrisVolume,
@@ -65,7 +66,8 @@ is one line here, written at the merge that changes
   `ExplosionDesc`, `DestructibleInfo`, `DestructionCapabilities`,
   `CAUSE_*`, and `og.destruction.damage`, `explode`, `fracture`, `info`,
   `capabilities`. Prelude units `m3`, `pascal`, `newtonSecondPerM2`. The
-  stress solver is NVIDIA Blast's (BSD-3). Lazy: a world without
+  stress solver is NVIDIA Blast's (BSD-3), each joint judged at both its
+  edges (a pressed joint whose load lies off its middle opens). Lazy: a world without
   destructibles keeps its hash. The skill `og-destruction`; the example
   `examples/demolition-yard`. `type model` materials take `map`,
   `normalMap` and `normalScale` (image files beside the model) and the

@@ -1,6 +1,6 @@
 ---
 name: og-destruction
-description: Props that break on Origin Engine with og.destruction — walls, crates, pillars, glass panes and small structures prefractured by the cook (`fracture { }`: a fracture profile per material — brick along its mortar, chunky concrete, wood splintering along its grain, glass cracking radially from a blow, plain Voronoi — pieces each chunk shatters into, an interior material with its own maps for the cut faces), made breakable with og.Destructible (toughness, strength, friction, density, impact threshold), broken by hits, og.destruction.damage, explode and fracture, brought down by NVIDIA Blast's stress solver when their support is shot away, with og.Fractured for sound and camera shake, each material's break and hit fx (dust, splinters, glass shards and glints) and GPU debris through particle emitters, and budgets for loose chunks. Use when anything in a game should shatter, splinter, crumble or collapse.
+description: Props that break on Origin Engine with og.destruction — walls, crates, pillars, glass panes and small structures prefractured by the cook (`fracture { }`: a fracture profile per material — brick along its mortar, chunky concrete, wood splintering along its grain, glass cracking radially from a blow, plain Voronoi — pieces each chunk shatters into, an interior material with its own maps for the cut faces), made breakable with og.Destructible (toughness, strength, friction, density, impact threshold), broken by hits, og.destruction.damage, explode and fracture, brought down by NVIDIA Blast's stress solver when their support is shot away, with og.Fractured for sound and camera shake, each material's break and hit fx (dust, splinters, glass shards that glint) and GPU debris through particle emitters, and budgets for loose chunks. Use when anything in a game should shatter, splinter, crumble or collapse.
 ---
 
 A breakable prop on Origin Engine is a model the cook has already cut
@@ -105,7 +105,7 @@ Pick the style by what it is made of; each breaks as that material does:
 
 ```ts
 const wall = must(world.instantiate(must(og.load.gltf(world, "props/wall.ogt")), { position: { x: -3, y: 0, z: 0 } }));
-must(world.insert(wall, og.Destructible, { toughness: 800, strength: 3000, density: 1900, impactThreshold: 400, breakFx: brickDust, hitFx: brickChips, debris: chips }));
+must(world.insert(wall, og.Destructible, { toughness: 800, strength: 3000, tension: 0.1, density: 1900, impactThreshold: 400, breakFx: brickDust, hitFx: brickChips, debris: chips }));
 ```
 
 A standing prop (no og.RigidBody, or a static one) is its chunks from the
@@ -115,12 +115,12 @@ the entity's own og.Collider and og.RigidBody are removed. A moving prop
 then fly on with its velocity. The model draws whole until the first
 break, then as its chunks.
 
-| material | toughness (N·s/m²) | strength (Pa) | density (kg/m³) | impactThreshold (N·s) |
-|---|---|---|---|---|
-| glass | 25 to 60 | 0 (no stress) | 2500 | 2 |
-| wood | 120 to 400 | 0 to 3000 | 600 | 30 to 50 |
-| brick | 600 to 1000 | 2000 to 5000 | 1900 | 300 to 500 |
-| concrete | 1500 to 2500 | 15000 to 30000 | 2400 | 60 to 150 (150 where flying bricks reach it) |
+| material | toughness (N·s/m²) | strength (Pa) | tension | density (kg/m³) | impactThreshold (N·s) |
+|---|---|---|---|---|---|
+| glass | 25 to 60 | 0 (no stress) | 1 | 2500 | 2 |
+| wood | 120 to 400 | 0 to 3000 | 1 | 600 | 30 to 50 |
+| brick, stone | 600 to 1000 | 2000 to 5000 | 0.1 | 1900 | 300 to 500 |
+| concrete | 1500 to 2500 | 15000 to 30000 | 1 | 2400 | 60 to 150 (150 where flying bricks reach it) |
 
 - `toughness`: how much a square metre of bond takes. A blow's `amount`
   (N·s) over a bond's area times toughness is the share of its health it
@@ -129,6 +129,14 @@ break, then as its chunks.
   shear (thirty times it in compression). Low, what hangs over a hole
   comes down; high, it hangs on whatever is left. 0 turns the solver off
   (glass, a free crate).
+- `tension` (default 1): what a bond holds pulled apart, as a fraction
+  of `strength`. Mortar cracks long before brick does, so masonry stands
+  by its weight and friction (no-tension masonry, the premise of masonry
+  limit analysis): at 0.1 a block hanging from the course above over
+  air falls, and so does one resting on the corner of the block below
+  with its weight past the edge (each joint is judged at both its edges,
+  so a load far off a joint's middle opens it). A wall shot out at its
+  foot then steps back course by course over its piers.
 - `friction` (default 0.7): shear a bond gains from the compression
   across it. Joints pressed by what stands on them hold and unloaded
   ones slip, so a brick wall shot at its foot drops what hung over the
@@ -215,7 +223,7 @@ for (const f of world.events(og.Fractured)) {
   | brick | a warm clay puff (alpha, lit) | clay chips (`render mesh tetrahedron`, `lit true`, `collision`) |
   | concrete | a grey puff | grey grit chips |
   | wood | a little pale sawdust | splinters (small brown tumbling meshes) |
-  | glass | small pale shards (lit meshes, `collision`) with a `subEmitter birth` glint each (an additive white flash, `align velocity`) | the same shards |
+  | glass | small shards nearly clear and smooth (lit meshes, `blend alpha` at an alpha about 0.2, `roughness 0.04`, `collision`): each glints only where it faces the sun or the sky, never as white salt | the same shards |
   | metal | none | a few sparks (additive, `align velocity`, `collision`), not a shower |
 
   Sparks (orange, additive, bright) read as metal, a grinder or a

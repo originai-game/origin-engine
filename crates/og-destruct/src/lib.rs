@@ -456,8 +456,9 @@ impl Instance {
             } else {
                 *normal
             };
-            let (sn, ss) = stress::bond_stress(j[k], normal, *area, disp.length());
-            let mult = m.limits.damage(sn, ss);
+            let mult = m
+                .limits
+                .damage(stress::bond_stress(j[k], normal, *area, disp.length()));
             if mult <= 0.0 {
                 continue;
             }

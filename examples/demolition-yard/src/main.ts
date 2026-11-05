@@ -51,9 +51,11 @@ function build(world: World): void {
   world.insert(frame, og.Collider, { shape: SHAPE_BOX, size: { x: 1, y: 1, z: 1 } });
 
   // Brick: tough bonds, weak mortar (strength) held by friction where it is
-  // pressed (the default friction): a hole at its foot drops what hung over
-  // it and leaves the loaded piers standing; fine pieces are GPU debris.
-  prop(world, "props/wall.ogt", "wall", WALL, { toughness: 800, strength: 3000, density: 1900, impactThreshold: 400, ...brick });
+  // pressed (the default friction) and next to nothing pulled apart
+  // (tension): a hole at its foot drops what hung over it, steps the piers
+  // back course by course and leaves no brick hanging over air; fine pieces
+  // are GPU debris.
+  prop(world, "props/wall.ogt", "wall", WALL, { toughness: 800, strength: 3000, tension: 0.1, density: 1900, impactThreshold: 400, ...brick });
   prop(world, "props/pillar.ogt", "pillar", PILLAR, { toughness: 2000, strength: 20000, density: 2400, impactThreshold: 150, ...concrete });
   // Wood: a dynamic crate, broken by its own landing.
   const crate = prop(world, "props/crate.ogt", "crate", CRATE, { toughness: 120, density: 600, impactThreshold: 40, impactRadius: 0.9, anchored: false, ...wood });

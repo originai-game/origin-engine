@@ -78,7 +78,7 @@ fn damage {
 }
 ```
 
-<sub>`api.ogt` line 28788</sub>
+<sub>`api.ogt` line 28794</sub>
 
 <a id="fn-explode"></a>
 
@@ -108,7 +108,7 @@ fn explode {
 }
 ```
 
-<sub>`api.ogt` line 28796</sub>
+<sub>`api.ogt` line 28802</sub>
 
 <a id="fn-fracture"></a>
 
@@ -138,7 +138,7 @@ fn fracture {
 }
 ```
 
-<sub>`api.ogt` line 28803</sub>
+<sub>`api.ogt` line 28809</sub>
 
 <a id="fn-info"></a>
 
@@ -168,7 +168,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 28810</sub>
+<sub>`api.ogt` line 28816</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -196,7 +196,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 28817</sub>
+<sub>`api.ogt` line 28823</sub>
 
 ## Components, resources and events
 
@@ -215,6 +215,7 @@ Token `og.Destructible`, registered under the schema name `og.Destructible`; its
 | `toughness` | `number` | `800` | ≥ 0 | `newtonSecondPerM2` | tunable | How much damage a square metre of bond takes before it breaks: an impulse of that many newton-seconds through 1 m² (a hit spreads over impactRadius). Glass about 50, wood 300, brick 800, concrete 2000. |
 | `strength` | `number` | `30000` | ≥ 0 | `pascal` | tunable | The stress its bonds hold in tension and shear before they weaken (compression holds thirty times as much, shear more for the compression across it (friction), and a bond breaks outright at twice the stress): low, an overhang falls and a wall shot out at its foot comes down; high, it holds whatever is left. 0 turns the stress solver off. |
 | `friction` | `number` | `0.7` | 0 … 4 | — | tunable | How much more shear a bond holds for the compression across it, per pascal (Mohr–Coulomb, the tangent of the friction angle): a joint pressed by what stands on it holds where an unloaded one slips, so a wall shot out at its foot keeps its loaded piers and drops what hung over the hole, cracking in steps along its courses. 0 is shear at strength alone. |
+| `tension` | `number` | `1` | 0 … 1 | — | tunable | The stress its bonds hold pulled apart, as a fraction of strength (shear and compression keep strength's). Masonry and dry stone hold almost none: mortar cracks long before brick does, so brickwork stands by its weight and friction (Heyman's no-tension masonry, the premise of masonry limit analysis), and at about 0.1 no block is left hanging from the course above over air, and a wall shot out at its foot steps back course by course over its piers. 1 is tension at strength. |
 | `density` | `number` | `1000` | ≥ 1 | `kgPerM3` | tunable | The chunks' density: their mass as bodies and their weight in the stress solver. |
 | `impactThreshold` | `number` | `30` | ≥ 0 | `newtonSecond` | tunable | A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit, and, on a prop that stood still, the push the pieces it breaks loose take along the striker's path (shared by falloff, none faster than the striker closed), so a ball through a pane carries its shards on; a moving prop's pieces keep the velocity its hit left it. |
 | `impactRadius` | `number` | `0.4` | ≥ 0.01 | `m` | tunable | How far a hit's damage reaches round its point (all of it within a third of this, falling to nothing at it). |
@@ -246,6 +247,12 @@ component Destructible {
     default 0.7
     min 0
     max 4
+    tunable true
+  }
+  field tension f32 "The stress its bonds hold pulled apart, as a fraction of strength (shear and compression keep strength's). Masonry and dry stone hold almost none: mortar cracks long before brick does, so brickwork stands by its weight and friction (Heyman's no-tension masonry, the premise of masonry limit analysis), and at about 0.1 no block is left hanging from the course above over air, and a wall shot out at its foot steps back course by course over its piers. 1 is tension at strength." {
+    default 1
+    min 0
+    max 1
     tunable true
   }
   field density f32 "The chunks' density: their mass as bodies and their weight in the stress solver." {
@@ -324,7 +331,7 @@ component Chunk {
 }
 ```
 
-<sub>`api.ogt` line 28640</sub>
+<sub>`api.ogt` line 28646</sub>
 
 <a id="record-Fractured"></a>
 
@@ -364,7 +371,7 @@ event Fractured {
 }
 ```
 
-<sub>`api.ogt` line 28660</sub>
+<sub>`api.ogt` line 28666</sub>
 
 <a id="record-Destruction"></a>
 
@@ -422,7 +429,7 @@ resource Destruction {
 }
 ```
 
-<sub>`api.ogt` line 28678</sub>
+<sub>`api.ogt` line 28684</sub>
 
 ## Types
 
@@ -470,7 +477,7 @@ struct DamageDesc {
 }
 ```
 
-<sub>`api.ogt` line 28715</sub>
+<sub>`api.ogt` line 28721</sub>
 
 <a id="type-ExplosionDesc"></a>
 
@@ -518,7 +525,7 @@ struct ExplosionDesc {
 }
 ```
 
-<sub>`api.ogt` line 28741</sub>
+<sub>`api.ogt` line 28747</sub>
 
 <a id="type-DestructibleInfo"></a>
 
@@ -552,7 +559,7 @@ struct DestructibleInfo {
 }
 ```
 
-<sub>`api.ogt` line 28769</sub>
+<sub>`api.ogt` line 28775</sub>
 
 <a id="type-DestructionCapabilities"></a>
 
@@ -571,7 +578,7 @@ struct DestructionCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 28783</sub>
+<sub>`api.ogt` line 28789</sub>
 
 ## Constants
 

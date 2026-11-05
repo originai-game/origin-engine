@@ -48297,6 +48297,14 @@ export interface Destructible {
    */
   friction: number;
   /**
+   * The stress its bonds hold pulled apart, as a fraction of strength (shear and compression keep strength's). Masonry and dry stone hold almost none: mortar cracks long before brick does, so brickwork stands by its weight and friction (Heyman's no-tension masonry, the premise of masonry limit analysis), and at about 0.1 no block is left hanging from the course above over air, and a wall shot out at its foot steps back course by course over its piers. 1 is tension at strength.
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  tension: number;
+  /**
    * The chunks' density: their mass as bodies and their weight in the stress solver.
    *
    * @default 1000
@@ -54441,7 +54449,7 @@ export declare namespace og {
    * Makes the entity's og.Model, a model cooked with a `fracture` block, break into its chunks. A prop that stands (no og.RigidBody, or a static one) is its chunks from the first tick: each a static og.Collider (the hull of its piece) on an entity with og.Chunk, and the entity's own og.Collider and og.RigidBody are removed, so hits land on the chunks. A prop that moves (a dynamic or kinematic og.RigidBody) collides as itself until its first break, when its chunks take its place, moving as it moved, and it loses its og.Collider, og.RigidBody and og.Velocity. Until the first break the model is drawn whole; from it the model is hidden and each chunk draws its piece of it (with og.Model's tint, variant and shadows). Anchored islands stay static, the rest fall.
    * Scale it uniformly: a chunk's collider and mass follow og.Transform.scale's mean.
    */
-  const Destructible: ComponentType<{ readonly toughness: FieldSpec<"f32">; readonly strength: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly impactThreshold: FieldSpec<"f32">; readonly impactRadius: FieldSpec<"f32">; readonly anchored: FieldSpec<"bool">; readonly breakFx: FieldSpec<"ParticleEmitter">; readonly hitFx: FieldSpec<"ParticleEmitter">; readonly debris: FieldSpec<"ParticleEmitter">; readonly fractured: FieldSpec<"bool">; readonly broken: FieldSpec<"u32">; readonly loose: FieldSpec<"u32"> }, Destructible>;
+  const Destructible: ComponentType<{ readonly toughness: FieldSpec<"f32">; readonly strength: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly tension: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly impactThreshold: FieldSpec<"f32">; readonly impactRadius: FieldSpec<"f32">; readonly anchored: FieldSpec<"bool">; readonly breakFx: FieldSpec<"ParticleEmitter">; readonly hitFx: FieldSpec<"ParticleEmitter">; readonly debris: FieldSpec<"ParticleEmitter">; readonly fractured: FieldSpec<"bool">; readonly broken: FieldSpec<"u32">; readonly loose: FieldSpec<"u32"> }, Destructible>;
   /**
    * One chunk of an og.Destructible, written by og.destruction when the prop fractures. A loose chunk is a dynamic body (with og.RigidBody and og.Velocity, or a child collider of its island's body); an anchored one a static collider. Drawn with its part of the destructible's model. Despawn it to clear it away.
    */

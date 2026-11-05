@@ -309,25 +309,41 @@ impl StressProcessor {
     }
 }
 
+/// A bond's stress, in pascals: `normal` along the bond normal (negative
+/// is compression), `bend` the bending moment's stress at the joint's
+/// edges (on one edge it adds to `normal`, on the other it takes from it)
+/// and `shear` across it.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct BondStress {
+    pub normal: f32,
+    pub bend: f32,
+    pub shear: f32,
+}
+
 /// A bond's stress from its force (`calcSolverBondStresses`): `normal`
-/// (along the bond normal, aligned with the displacement from node 0 to
-/// node 1; negative is compression) and `shear`, over `area`, with the
-/// angular part read as linear stress across `node_dist`.
-pub fn bond_stress(force: AngLin6, normal: Vec3, area: f32, node_dist: f32) -> (f32, f32) {
+/// along the bond normal, aligned with the displacement from node 0 to
+/// node 1, and `shear`, over `area`, with the angular part read as linear
+/// stress across `node_dist` (twist as shear, bending as `bend`).
+pub fn bond_stress(force: AngLin6, normal: Vec3, area: f32, node_dist: f32) -> BondStress {
     if area <= 0.0 {
-        return (0.0, 0.0);
+        return BondStress::default();
     }
     let n_lin = force.lin.dot(normal);
-    let mut stress_normal = n_lin / area;
-    let mut stress_shear = (force.lin.length_squared() - n_lin * n_lin).max(0.0).sqrt() / area;
+    let mut shear = (force.lin.length_squared() - n_lin * n_lin).max(0.0).sqrt() / area;
     let n_ang = force.ang.dot(normal).abs();
     let twist = n_ang / area;
-    let bend = (force.ang.length_squared() - n_ang * n_ang).max(0.0).sqrt() / area;
+    let mut bend = (force.ang.length_squared() - n_ang * n_ang).max(0.0).sqrt() / area;
     if node_dist > 0.0 {
-        stress_shear += twist * 2.0 / node_dist;
-        stress_normal += (bend * 2.0 / node_dist).copysign(stress_normal);
+        shear += twist * 2.0 / node_dist;
+        bend *= 2.0 / node_dist;
+    } else {
+        bend = 0.0;
     }
-    (stress_normal, stress_shear)
+    BondStress {
+        normal: n_lin / area,
+        bend,
+        shear,
+    }
 }
 
 /// The limits of a material, in pascals (`ExtStressSolverSettings`): below
@@ -350,13 +366,14 @@ pub struct StressLimits {
 }
 
 impl StressLimits {
-    /// og.Destructible.strength's limits: `strength` in tension and shear,
+    /// og.Destructible.strength's limits: `strength` in shear and that times
+    /// `tension` (og.Destructible.tension, a fraction) in tension,
     /// thirty times it in compression (masonry's and concrete's ratio at a
     /// game's low strengths: a pier that stands on its weight is not
     /// crushed by it), each fatal at twice its elastic
     /// limit, and `friction` (Mohr–Coulomb); strength 0 none (the solver
     /// breaks nothing).
-    pub fn from_strength(strength: f32, friction: f32) -> StressLimits {
+    pub fn from_strength(strength: f32, friction: f32, tension: f32) -> StressLimits {
         if strength <= 0.0 {
             let inf = f32::INFINITY;
             return StressLimits {
@@ -372,8 +389,8 @@ impl StressLimits {
         StressLimits {
             compression_elastic: strength * 30.0,
             compression_fatal: strength * 60.0,
-            tension_elastic: strength,
-            tension_fatal: strength * 2.0,
+            tension_elastic: strength * tension,
+            tension_fatal: strength * tension * 2.0,
             shear_elastic: strength,
             shear_fatal: strength * 2.0,
             friction: friction.max(0.0),
@@ -382,7 +399,16 @@ impl StressLimits {
 
     /// The share of a bond's health a stress takes in one evaluation
     /// (`ExtStressSolverImpl::generateFractureCommand`'s multiplier).
-    pub fn damage(&self, stress_normal: f32, stress_shear: f32) -> f32 {
+    ///
+    /// Blast adds the bending to the normal stress in its own sign, so a
+    /// joint in compression only ever sees more compression; here each edge
+    /// is judged, `normal` plus and minus `bend`: a compressed joint whose
+    /// load lies far enough off its middle (a block resting on the corner of
+    /// the one below, its weight past the edge) pulls apart at its far edge,
+    /// the eccentricity check of masonry limit analysis, and a joint that
+    /// holds no tension lets the block tip off. Friction holds by the
+    /// compression of the whole joint.
+    pub fn damage(&self, s: BondStress) -> f32 {
         let excess = |s: f32, e: f32, f: f32| {
             if s > e {
                 let d = f - e;
@@ -391,28 +417,22 @@ impl StressLimits {
                 0.0
             }
         };
+        let compression = (s.bend - s.normal).max(0.0);
+        let tension = (s.normal + s.bend).max(0.0);
         let mut m = 0.0;
-        let (compression, tension) = if stress_normal <= 0.0 {
-            (-stress_normal, 0.0)
-        } else {
-            (0.0, stress_normal)
-        };
         if compression > self.compression_elastic {
             m += excess(
                 compression,
                 self.compression_elastic,
                 self.compression_fatal,
             );
-        } else if tension > self.tension_elastic {
+        }
+        if tension > self.tension_elastic {
             m += excess(tension, self.tension_elastic, self.tension_fatal);
         }
         // Compression across the bond holds it against shear (Coulomb).
-        let held = self.friction * compression;
-        m + excess(
-            stress_shear,
-            self.shear_elastic + held,
-            self.shear_fatal + held,
-        )
+        let held = self.friction * (-s.normal).max(0.0);
+        m + excess(s.shear, self.shear_elastic + held, self.shear_fatal + held)
     }
 }
 
@@ -449,7 +469,7 @@ mod tests {
         // The bond pushes node 1 up with its weight: J applied to node 1
         // with the minus sign of rmul, so J.lin is -m g's opposite.
         let force = j[0];
-        let (normal, shear) = bond_stress(force, Vec3::Y, 1.0, 0.5);
+        let BondStress { normal, shear, .. } = bond_stress(force, Vec3::Y, 1.0, 0.5);
         assert!((normal.abs() - 98.1).abs() < 0.1, "{force:?} {normal}");
         assert!(shear.abs() < 1e-2);
         assert!(normal < 0.0, "compression: {normal}");
@@ -483,8 +503,8 @@ mod tests {
         // Shear 98.1 N across the x-normal bond, torque 98.1 N·m about z.
         assert!((j[0].lin.y.abs() - 98.1).abs() < 0.1, "{:?}", j[0]);
         assert!((j[0].ang.z.abs() - 98.1).abs() < 0.5, "{:?}", j[0]);
-        let (normal, shear) = bond_stress(j[0], Vec3::X, 0.1, 1.0);
-        assert!(shear > 900.0 && normal.abs() > 1900.0, "{normal} {shear}");
+        let BondStress { bend, shear, .. } = bond_stress(j[0], Vec3::X, 0.1, 1.0);
+        assert!(shear > 900.0 && bend > 1900.0, "{bend} {shear}");
     }
 
     #[test]
@@ -498,16 +518,31 @@ mod tests {
             shear_fatal: 30.0,
             friction: 0.0,
         };
-        assert_eq!(l.damage(-50.0, 0.0), 0.0);
-        assert_eq!(l.damage(-150.0, 0.0), 0.5);
-        assert_eq!(l.damage(15.0, 20.0), 0.5 + 0.5);
+        assert_eq!(l.damage(st(-50.0, 0.0, 0.0)), 0.0);
+        assert_eq!(l.damage(st(-150.0, 0.0, 0.0)), 0.5);
+        assert_eq!(l.damage(st(15.0, 0.0, 20.0)), 0.5 + 0.5);
         // Friction: the same shear slips an unloaded joint and is held by
         // one pressed at 40 Pa (0.5 × 40 = 20 more it holds).
         let f = StressLimits { friction: 0.5, ..l };
-        assert_eq!(f.damage(0.0, 20.0), 0.5);
-        assert_eq!(f.damage(-40.0, 20.0), 0.0);
-        assert_eq!(f.damage(-40.0, 40.0), 0.5);
+        assert_eq!(f.damage(st(0.0, 0.0, 20.0)), 0.5);
+        assert_eq!(f.damage(st(-40.0, 0.0, 20.0)), 0.0);
+        assert_eq!(f.damage(st(-40.0, 0.0, 40.0)), 0.5);
         // Tension takes nothing from it.
-        assert_eq!(f.damage(5.0, 20.0), 0.5);
+        assert_eq!(f.damage(st(5.0, 0.0, 20.0)), 0.5);
+        // A pressed joint bent past its compression pulls apart at one
+        // edge (50 − 40 = 10 Pa, at the elastic limit: no damage; 55 − 40
+        // = 15, half way to fatal), and crushes at the other only past the
+        // compression limit (40 + 55 = 95 < 100).
+        assert_eq!(l.damage(st(-40.0, 50.0, 0.0)), 0.0);
+        assert_eq!(l.damage(st(-40.0, 55.0, 0.0)), 0.5);
+        assert_eq!(l.damage(st(-60.0, 55.0, 0.0)), 0.15);
+    }
+
+    fn st(normal: f32, bend: f32, shear: f32) -> BondStress {
+        BondStress {
+            normal,
+            bend,
+            shear,
+        }
     }
 }

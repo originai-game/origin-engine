@@ -499,6 +499,7 @@ impl Settings {
                 limits: StressLimits::from_strength(
                     num(v, "strength", 30000.0),
                     num(v, "friction", 0.7),
+                    num(v, "tension", 1.0).clamp(0.0, 1.0),
                 ),
                 density: num(v, "density", 1000.0).max(1.0),
             },
