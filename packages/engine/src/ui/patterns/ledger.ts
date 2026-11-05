@@ -117,7 +117,13 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
     const gap = u(phone ? 8 : 12);
     // Two a row on a phone, one at a large text size: a seven-digit treasury in a wide face does not fit half of it.
     const cols = portrait ? (ts > 1.2 ? 1 : 2) : list.length;
-    const tileW = Math.floor((W - gap * (cols - 1)) / cols);
+    // The tiles share the row's own width, which on a phone is the scrolling page's, narrower than the ledger by its
+    // scroll bar: split from the ledger's, two tiles ran 8 px past the row and wrapped one a line.
+    const rowPath = `${kit.openPath()}/Figures`;
+    const seen = kit.bounds(rowPath)?.width ?? 0;
+    if (seen > 0) kit.remember(`~le.fw.${id}`, seen);
+    const room = kit.memory(`~le.fw.${id}`, 0) || W;
+    const tileW = Math.floor((room - gap * (cols - 1)) / cols);
     kit.row("Figures", { width: grow(), gap, wrap: portrait }, () => {
       for (const f of list) {
         const k = f.key ?? "";
