@@ -20,7 +20,14 @@
 //! 3. pigment pooling at the edges of regions as a pigment density (MNPR,
 //!    Montesdeoca et al. 2018: the colour raised to 1 + density), the
 //!    density from the smoothed tensor's edge strength;
-//! 4. colour bleeding from a ring two radii out, and the canvas's grain.
+//! 4. colour bleeding from a ring two radii out, and the canvas's grain;
+//! 5. the watercolour wash over the painted texels ([`Wash`], the frame's
+//!    `watercolor` pass): a pigment density about 1 (Bousseau et al. 2006,
+//!    C' = C(1 - (1 - C)(d - 1)) relative to the paper) from the paper's
+//!    height about its mean (granulation) and a slow value noise
+//!    (turbulence), MNPR's edge darkening in a rim where the painted
+//!    regions meet, the dry brush on the paper's peaks, and the texels
+//!    read displaced by the paper's relief and a slow waver (wobble).
 //!
 //! Radii are in the texture's texels, the canvas `paintCanvasScale`
 //! canvas texels per texel from each cell's corner. A transparent texel
@@ -210,6 +217,91 @@ pub fn pool(c: [f64; 3], darkening: f64, edge: f64) -> [f64; 3] {
     c.map(|v| v.max(0.0).powf(1.0 + density))
 }
 
+/// Canvas texels per cell of the turbulence's noise, as stylise.wgsl's
+/// `WASH_TURBULENCE_CELL`.
+pub const WASH_TURBULENCE_CELL: f64 = 40.0;
+/// Canvas texels per cell of the waver's noise (`WASH_WOBBLE_CELL`).
+pub const WASH_WOBBLE_CELL: f64 = 14.0;
+/// Density per unit of the paper's height about its mean (`WASH_GRAIN_GAIN`).
+pub const WASH_GRAIN_GAIN: f64 = 2.5;
+/// Waver per unit of the paper's height gradient (`WASH_RELIEF_GAIN`).
+pub const WASH_RELIEF_GAIN: f64 = 4.0;
+/// The height above the mean that is a peak the dry brush skips (`WASH_PEAK`).
+pub const WASH_PEAK: f64 = 0.08;
+
+/// The watercolour wash's fields (`Stylise.watercolor*`), at their frame
+/// meaning.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Wash {
+    pub edge: f64,
+    pub granulation: f64,
+    pub turbulence: f64,
+    pub dry_brush: f64,
+    pub wobble: f64,
+    /// The paper's colour, linear.
+    pub paper: [f64; 3],
+}
+
+impl Default for Wash {
+    fn default() -> Self {
+        Wash {
+            edge: 0.0,
+            granulation: 0.0,
+            turbulence: 0.0,
+            dry_brush: 0.0,
+            wobble: 0.0,
+            paper: [1.0; 3],
+        }
+    }
+}
+
+impl Wash {
+    pub fn active(&self) -> bool {
+        self.edge > 0.0
+            || self.granulation > 0.0
+            || self.turbulence > 0.0
+            || self.dry_brush > 0.0
+            || self.wobble > 0.0
+    }
+
+    /// Whether the wash reads the paper's grain.
+    pub fn reads_paper(&self) -> bool {
+        self.granulation > 0.0 || self.dry_brush > 0.0 || self.wobble > 0.0
+    }
+}
+
+/// A hash of an integer cell, 0 to 1 (stylise.wgsl `wash_hash`).
+fn wash_hash(c: [i64; 3], seed: u32) -> f64 {
+    let [x, y, z] = c.map(|v| v as i32 as u32);
+    let mut h = x.wrapping_mul(0x8da6_b343)
+        ^ y.wrapping_mul(0xd816_3841)
+        ^ z.wrapping_mul(0xcb1a_b31f)
+        ^ seed.wrapping_mul(0x9e37_79b9);
+    h = (h ^ (h >> 15)).wrapping_mul(0x2c1b_3c6d);
+    h = (h ^ (h >> 12)).wrapping_mul(0x297a_2d39);
+    h ^= h >> 15;
+    f64::from(h & 0xff_ffff) / 16_777_215.0
+}
+
+/// Smooth value noise, 0 to 1 about 0.5, one cell per unit (stylise.wgsl
+/// `wash_noise`).
+fn wash_noise(p: [f64; 3], seed: u32) -> f64 {
+    let i = p.map(|v| v.floor() as i64);
+    let u = p.map(|v| {
+        let f = v - v.floor();
+        f * f * (3.0 - 2.0 * f)
+    });
+    (0..8)
+        .map(|k| {
+            let o = [k & 1, (k >> 1) & 1, k >> 2];
+            let w: f64 = (0..3)
+                .map(|a| if o[a] == 1 { u[a] } else { 1.0 - u[a] })
+                .product();
+            wash_hash([i[0] + o[0], i[1] + o[1], i[2] + o[2]], seed) * w
+        })
+        .sum()
+}
+
 /// The paint fields, at their frame meaning.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Paint {
@@ -221,6 +313,7 @@ pub struct Paint {
     pub canvas: Option<(Vec<f64>, u32, u32)>,
     pub canvas_strength: f64,
     pub canvas_scale: f64,
+    pub wash: Wash,
 }
 
 impl Paint {
@@ -229,6 +322,7 @@ impl Paint {
             || self.bleed > 0.0
             || self.edge > 0.0
             || (self.canvas.is_some() && self.canvas_strength > 0.0)
+            || self.wash.active()
     }
 
     pub fn describe(&self) -> String {
@@ -251,7 +345,155 @@ impl Paint {
         if self.canvas.is_some() && self.canvas_strength > 0.0 {
             v.push(format!("canvas grain {}", self.canvas_strength));
         }
+        let w = &self.wash;
+        for (name, value) in [
+            ("wash edge darkening", w.edge),
+            ("granulation", w.granulation),
+            ("turbulence", w.turbulence),
+            ("dry brush", w.dry_brush),
+            ("wobble", w.wobble),
+        ] {
+            if value > 0.0 {
+                v.push(format!("{name} {value}"));
+            }
+        }
         v.join(", ")
+    }
+
+    /// The watercolour wash over the painted texels `lin` (linear), the
+    /// frame's `watercolor` pass in texel space: `opaque` says which texels
+    /// belong to the shape, and a read off it takes the texel asked from.
+    fn wash(
+        &self,
+        lin: &[[f64; 3]],
+        w: u32,
+        h: u32,
+        opaque: &dyn Fn(i64, i64) -> bool,
+    ) -> Vec<[f64; 3]> {
+        let ws = &self.wash;
+        let paper = ws.paper.map(|v| v.max(1e-3));
+        let (mean, height) = match &self.canvas {
+            Some((grain, gw, gh)) => {
+                let mean = grain.iter().sum::<f64>() / grain.len().max(1) as f64;
+                let scale = self.canvas_scale;
+                let at = move |x: f64, y: f64| sample_repeat(grain, *gw, *gh, x * scale, y * scale);
+                (mean, Some(at))
+            }
+            None => (0.5, None),
+        };
+        let height = |x: f64, y: f64| height.as_ref().map_or(0.5, |at| at(x, y));
+        let texel = |x: i64, y: i64| lin[(y as u32 * w + x as u32) as usize];
+        let load = |x: i64, y: i64, from: (i64, i64)| -> [f64; 3] {
+            let (x, y) = if opaque(x, y) { (x, y) } else { from };
+            texel(x, y)
+        };
+        // A 3 x 3 Sobel's gradient of the painted texels at (x, y).
+        let sobel = |x: i64, y: i64, from: (i64, i64)| -> f64 {
+            let t = |dx: i64, dy: i64| load(x + dx, y + dy, from);
+            let mut s = 0.0;
+            for k in 0..3 {
+                let sx = (t(1, -1)[k] + 2.0 * t(1, 0)[k] + t(1, 1)[k])
+                    - (t(-1, -1)[k] + 2.0 * t(-1, 0)[k] + t(-1, 1)[k]);
+                let sy = (t(-1, 1)[k] + 2.0 * t(0, 1)[k] + t(1, 1)[k])
+                    - (t(-1, -1)[k] + 2.0 * t(0, -1)[k] + t(1, -1)[k]);
+                s += sx * sx + sy * sy;
+            }
+            s.sqrt() * 0.25
+        };
+        let smoothstep = |a: f64, b: f64, x: f64| {
+            let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
+            t * t * (3.0 - 2.0 * t)
+        };
+        let mut out = lin.to_vec();
+        for y in 0..i64::from(h) {
+            for x in 0..i64::from(w) {
+                if !opaque(x, y) {
+                    continue;
+                }
+                let at = (x, y);
+                let (px, py) = (x as f64 + 0.5, y as f64 + 0.5);
+                let q = [px * self.canvas_scale, py * self.canvas_scale, 0.0];
+                let hgt = height(px, py);
+                // Wobble: the texels read where the relief and the waver
+                // displace them (bilinear, within the shape).
+                let mut off = [0.0, 0.0];
+                if ws.wobble > 0.0 {
+                    let cell = q.map(|v| v / WASH_WOBBLE_CELL);
+                    let wave = [
+                        wash_noise(cell, 7) * 2.0 - 1.0,
+                        wash_noise(cell, 11) * 2.0 - 1.0,
+                    ];
+                    let relief = [
+                        (height(px + 1.0, py) - height(px - 1.0, py)) * 0.5,
+                        (height(px, py + 1.0) - height(px, py - 1.0)) * 0.5,
+                    ];
+                    for a in 0..2 {
+                        off[a] = ws.wobble
+                            * (wave[a] * 2.0 + relief[a] * WASH_RELIEF_GAIN).clamp(-1.0, 1.0);
+                    }
+                }
+                let (sx, sy) = (px + off[0] - 0.5, py + off[1] - 0.5);
+                let (x0, y0) = (sx.floor(), sy.floor());
+                let (tx, ty) = (sx - x0, sy - y0);
+                let (x0, y0) = (x0 as i64, y0 as i64);
+                let mut c = [0.0; 3];
+                for (dx, dy, wgt) in [
+                    (0, 0, (1.0 - tx) * (1.0 - ty)),
+                    (1, 0, tx * (1.0 - ty)),
+                    (0, 1, (1.0 - tx) * ty),
+                    (1, 1, tx * ty),
+                ] {
+                    let t = load(x0 + dx, y0 + dy, at);
+                    for k in 0..3 {
+                        c[k] += t[k] * wgt;
+                    }
+                }
+                // Edge darkening: the rim where the painted regions meet,
+                // the gradient blurred over the texel's 3 x 3 (a binomial
+                // weight) so the rim is a soft band, not a line.
+                let mut rim = 0.0;
+                if ws.edge > 0.0 {
+                    let o = ((px + off[0]).floor() as i64, (py + off[1]).floor() as i64);
+                    let mut g = 0.0;
+                    for dy in -1..=1_i64 {
+                        for dx in -1..=1_i64 {
+                            let wgt = ((2 - dx.abs()) * (2 - dy.abs())) as f64;
+                            g += sobel(o.0 + dx, o.1 + dy, at) * wgt;
+                        }
+                    }
+                    rim = smoothstep(0.02, 0.22, g / 16.0);
+                }
+                // The pigment density: granulation and turbulence.
+                let mut d = 1.0;
+                if ws.granulation > 0.0 {
+                    d += ws.granulation * ((mean - hgt) * WASH_GRAIN_GAIN).clamp(-1.0, 1.0);
+                }
+                if ws.turbulence > 0.0 {
+                    let n = wash_noise(q.map(|v| v / WASH_TURBULENCE_CELL), 3) * 0.6
+                        + wash_noise(q.map(|v| v / (WASH_TURBULENCE_CELL * 0.5)), 5) * 0.4;
+                    d += ws.turbulence * ((n - 0.5) * 3.0).clamp(-1.0, 1.0);
+                }
+                let mut t2 = [0.0; 3];
+                for k in 0..3 {
+                    let t = (c[k] / paper[k]).clamp(0.0, 1.0);
+                    t2[k] = (t * (1.0 - (1.0 - t) * (d - 1.0))).clamp(0.0, 1.0);
+                }
+                if ws.dry_brush > 0.0 {
+                    let peak = smoothstep(0.0, WASH_PEAK, hgt - mean);
+                    let thin = 0.2126 * t2[0] + 0.7152 * t2[1] + 0.0722 * t2[2];
+                    let k = ws.dry_brush * peak * thin * thin;
+                    t2 = t2.map(|v| v + (1.0 - v) * k);
+                }
+                for k in 0..3 {
+                    c[k] = t2[k] * paper[k];
+                    if rim > 0.0 {
+                        c[k] = c[k].max(0.0).powf(1.0 + ws.edge * rim);
+                    }
+                }
+                out[(y as u32 * w + x as u32) as usize] = c;
+            }
+        }
+        out
     }
 
     /// Paints one `w` x `h` cell of RGBA texels in place.
@@ -328,6 +570,9 @@ impl Paint {
                 }
                 out[(y as u32 * w + x as u32) as usize] = c;
             }
+        }
+        if self.wash.active() {
+            out = self.wash(&out, w, h, &opaque);
         }
         for (p, c) in px.iter_mut().zip(out) {
             if p[3] > 0 {
@@ -467,5 +712,91 @@ mod tests {
         assert_eq!(px[12], [200, 200, 200, 255]);
         assert_eq!(px[0], [0, 0, 0, 0]);
         assert_eq!(px[1], [200, 200, 200, 255]);
+    }
+
+    /// A grain with pits and peaks about its mean: 4 x 4 texels, 0.3 to 0.7.
+    fn grain() -> (Vec<f64>, u32, u32) {
+        let g = (0..16i32)
+            .map(|i| 0.5 + 0.2 * f64::from(i * 7 % 5 - 2) / 2.0)
+            .collect();
+        (g, 4, 4)
+    }
+
+    fn mean_grey(px: &[[u8; 4]]) -> f64 {
+        px.iter().map(|p| colour::to_linear(p[0])).sum::<f64>() / px.len() as f64
+    }
+
+    /// The wash's granulation keeps a mid-grey field's mean (the density
+    /// thins as much as it thickens) where the canvas multiply only
+    /// darkens it, and a field with no wash set is left as it was.
+    #[test]
+    fn granulation_keeps_the_mean_the_canvas_multiply_lowers() {
+        let (w, h) = (32u32, 32u32);
+        let field = vec![[140u8, 140, 140, 255]; (w * h) as usize];
+        let before = mean_grey(&field);
+        let mut untouched = field.clone();
+        Paint {
+            canvas: Some(grain()),
+            canvas_scale: 1.0,
+            ..Paint::default()
+        }
+        .apply(&mut untouched, w, h);
+        assert_eq!(untouched, field);
+        let mut multiplied = field.clone();
+        Paint {
+            canvas: Some(grain()),
+            canvas_strength: 0.6,
+            canvas_scale: 1.0,
+            ..Paint::default()
+        }
+        .apply(&mut multiplied, w, h);
+        let mut washed = field.clone();
+        Paint {
+            canvas: Some(grain()),
+            canvas_scale: 1.0,
+            wash: Wash {
+                granulation: 0.6,
+                ..Wash::default()
+            },
+            ..Paint::default()
+        }
+        .apply(&mut washed, w, h);
+        let (m, g) = (mean_grey(&multiplied), mean_grey(&washed));
+        assert!(m < before * 0.92, "multiply {m:.3} before {before:.3}");
+        assert!(
+            (g - before).abs() < before * 0.03,
+            "wash {g:.3} before {before:.3}"
+        );
+        // And it is a texture, not a flat shift: the grain's pits and
+        // peaks differ.
+        let spread =
+            washed.iter().map(|p| p[0]).max().unwrap() - washed.iter().map(|p| p[0]).min().unwrap();
+        assert!(spread >= 8, "spread {spread}");
+    }
+
+    /// The wash's rim darkens the two texels either side of a boundary
+    /// between painted regions and nothing farther away, where the paint
+    /// pass's pooling spreads over the source's structure.
+    #[test]
+    fn the_wash_rim_hugs_a_region_boundary() {
+        let (w, h) = (16u32, 9u32);
+        let mut px = vec![[200u8, 200, 200, 255]; (w * h) as usize];
+        for y in 0..h {
+            for x in 8..w {
+                px[(y * w + x) as usize] = [90, 90, 90, 255];
+            }
+        }
+        Paint {
+            wash: Wash {
+                edge: 1.0,
+                ..Wash::default()
+            },
+            ..Paint::default()
+        }
+        .apply(&mut px, w, h);
+        let row = |x: u32| px[(4 * w + x) as usize][0];
+        assert!(row(7) < 200 && row(8) < 90, "rim {} {}", row(7), row(8));
+        assert_eq!(row(3), 200);
+        assert_eq!(row(12), 90);
     }
 }

@@ -174,7 +174,7 @@ pub struct Conform {
 pub const DEFAULT_MESH_TEXTURE: &str = "conformed as a mesh texture (no model claims it; a HUD or UI image takes `conform ui` in its import settings)";
 
 /// Moves painted mesh textures' stamps when the paint steps change.
-const PAINT_VERSION: u32 = 2;
+const PAINT_VERSION: u32 = 3;
 
 /// Moves flattened mesh textures' stamps when the palette limit's steps
 /// change (`flatten`).
@@ -385,8 +385,9 @@ impl Conform {
                     h.write(&g.to_bits().to_le_bytes());
                 }
             }
+            let w = &p.wash;
             format!(
-                " paint {} radius {} anisotropy {} edge {} bleed {} canvas {} scale {} {:016x}",
+                " paint {} radius {} anisotropy {} edge {} bleed {} canvas {} scale {} wash {} {} {} {} {} {:?} {:016x}",
                 PAINT_VERSION,
                 p.radius,
                 p.anisotropy,
@@ -394,6 +395,12 @@ impl Conform {
                 p.bleed,
                 p.canvas_strength,
                 p.canvas_scale,
+                w.edge,
+                w.granulation,
+                w.turbulence,
+                w.dry_brush,
+                w.wobble,
+                w.paper,
                 h.finish()
             )
         });

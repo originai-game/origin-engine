@@ -649,7 +649,9 @@ tests in orbs and CI, and the probe's CPU description of a frame.
   with the camera and sprites snapped to it, posterise and palette
   quantisation through ordered or blue-noise dither, halftone,
   cross-hatching, ink lines, painterly (Kuwahara) smoothing with pigment
-  pooling, bleed and a canvas, flat depth bands, retro-3D vertex snapping,
+  pooling, bleed and a canvas, a watercolour wash over it (Bousseau's
+  pigment density from the paper's grain and a turbulence, rims where the
+  painted regions meet, dry brush, wobble), flat depth bands, retro-3D vertex snapping,
   affine texturing and coarse depth, and scene-wide material defaults
   (toon, rim, outlines thinning with distance, tinted shadows, flat
   facets); every primitive off at zero and then free, on both tiers.

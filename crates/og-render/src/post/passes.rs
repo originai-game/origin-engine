@@ -530,6 +530,7 @@ impl PostPasses {
                 FramePass::Fxaa | FramePass::SmaaBlend => "fs",
                 FramePass::SmaaResolve => "fs_smaa",
                 FramePass::Paint => "fs_paint",
+                FramePass::Watercolor => "fs_watercolor",
                 FramePass::Lines => "fs_lines",
                 FramePass::Lens => "fs_lens",
                 FramePass::Quantize => "fs_quantize",

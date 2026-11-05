@@ -51,6 +51,8 @@ struct Stylise {
   lens: vec4<f32>,            // x: lens distortion (above 0 barrel), y: the scale keeping a barrel's farthest corner on the image, zw: the centre (uv)
   paint2: vec4<f32>,          // x: paintDetail (how far detail keeps its shape), y: paintCharacterDetail, z: 1 with the prepass bound (object ids, detail), w: 0
   dither_space: vec4<f32>,    // x: where the dither's cells lie (0 screen, 1 world, 2 object space, StyliseSpace::code)
+  wash: vec4<f32>,            // the watercolour wash: x edge darkening, y granulation, z turbulence, w dry brush
+  wash_paper: vec4<f32>,      // xyz: the wash's paper colour (linear), w: wobble (logical pixels)
   print: vec4<f32>,           // x: halftone mode (0 one ink, 1 cmyk), y: misregistration (logical pixels), z: halftone region (0 every tone, 1 shade, 2 highlight), w: 1 hatching keeps the colour under its strokes
   hatching_paper: vec4<f32>,  // rgb: the paper the hatching lies on (linear; white without hatching)
 };
@@ -548,6 +550,163 @@ fn fs_paint(in: VsOut) -> @location(0) vec4<f32> {
 @fragment
 fn fs_paint_srgb(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(srgb_encode(clamp(paint(in), vec3<f32>(0.0), vec3<f32>(1.0))), 1.0);
+}
+
+// --- watercolour -----------------------------------------------------------
+// The wash over the painted frame (a pass after `paint`, reading its
+// output), from Bousseau et al. 2006, "Interactive watercolor rendering
+// with temporal coherence and abstraction", and MNPR (Montesdeoca et al.
+// 2018, third_party/mnpr). A pigment density d about 1 modulates each
+// colour, C' = C (1 - (1 - C)(d - 1)) relative to the paper: thinner
+// towards the paper where d < 1, thicker where d > 1, strongest in the
+// middle tones and leaving the paper and black alone, so the wash keeps
+// its mean value where a multiply by the grain only darkens. The density
+// comes from the paper's height about its mean (granulation: pigment
+// settles in the pits) and from a slow value noise (turbulence: a wash
+// dries patchy); pigment pools in a rim two to three pixels wide where the
+// painted regions meet (edge darkening, MNPR's pow(C, 1 + d) from the
+// painted frame's gradient); the dry brush leaves the paper's peaks bare
+// under light colours; and the frame is read displaced by the paper's
+// relief and a slow waver (substrate distortion, wobble). The cook's
+// texel-space copy is og-cook's paint.rs `Wash`.
+
+const WASH_TURBULENCE_CELL: f32 = 40.0;  // canvas texels per cell of the turbulence's noise
+const WASH_WOBBLE_CELL: f32 = 14.0;      // canvas texels per cell of the waver's noise
+const WASH_GRAIN_GAIN: f32 = 2.5;        // density per unit of the paper's height about its mean
+const WASH_RELIEF_GAIN: f32 = 4.0;       // waver per unit of the paper's height gradient
+const WASH_PEAK: f32 = 0.08;             // the height above the mean that is a peak (dry brush)
+
+// A hash of an integer cell, 0 to 1 (the cook's `wash_hash`).
+fn wash_hash(c: vec3<i32>, seed: u32) -> f32 {
+  let u = bitcast<vec3<u32>>(c);
+  var h = (u.x * 0x8da6b343u) ^ (u.y * 0xd8163841u) ^ (u.z * 0xcb1ab31fu) ^ (seed * 0x9e3779b9u);
+  h = (h ^ (h >> 15u)) * 0x2c1b3c6du;
+  h = (h ^ (h >> 12u)) * 0x297a2d39u;
+  h = h ^ (h >> 15u);
+  return f32(h & 0xffffffu) / 16777215.0;
+}
+
+// Smooth value noise, 0 to 1 about 0.5, one cell per unit.
+fn wash_noise(p: vec3<f32>, seed: u32) -> f32 {
+  let i = vec3<i32>(floor(p));
+  let f = fract(p);
+  let u = f * f * (3.0 - 2.0 * f);
+  var n = 0.0;
+  for (var k = 0; k < 8; k++) {
+    let o = vec3<i32>(k & 1, (k >> 1) & 1, (k >> 2) & 1);
+    let w = select(1.0 - u, u, o == vec3<i32>(1));
+    n += wash_hash(i + o, seed) * w.x * w.y * w.z;
+  }
+  return n;
+}
+
+// The paper's height (its canvas's red, 0 to 1) under a logical pixel
+// position, where the canvas lies (the screen, or the surfaces); 0.5 flat
+// without a canvas.
+fn paper_height(p: vec2<f32>) -> f32 {
+  if (st.offset.z < 0.5) { return 0.5; }
+  if (st.surface.x > 0.5) { return canvas_surface(p); }
+  let size = vec2<f32>(textureDimensions(canvas));
+  return textureSampleLevel(canvas, repeat_sampler, p * st.canvas.y / size, log2(max(st.canvas.y, 1.0))).r;
+}
+
+// The painted frame's gradient (a 3 x 3 Sobel of the colour over the 5 x 5
+// block `b`) at the block's texel (x, y), 1 to 3.
+fn wash_sobel(b: ptr<function, array<vec3<f32>, 25>>, x: i32, y: i32) -> f32 {
+  let k = y * 5 + x;
+  let sx = ((*b)[k - 5 + 1] + 2.0 * (*b)[k + 1] + (*b)[k + 5 + 1]) - ((*b)[k - 5 - 1] + 2.0 * (*b)[k - 1] + (*b)[k + 5 - 1]);
+  let sy = ((*b)[k + 5 - 1] + 2.0 * (*b)[k + 5] + (*b)[k + 5 + 1]) - ((*b)[k - 5 - 1] + 2.0 * (*b)[k - 5] + (*b)[k - 5 + 1]);
+  return sqrt(dot(sx, sx) + dot(sy, sy)) * 0.25;
+}
+
+fn watercolor(in: VsOut) -> vec3<f32> {
+  let p = in.pos.xy;
+  let paper = max(st.wash_paper.xyz, vec3<f32>(1e-3));
+  let canvas_on = st.offset.z > 0.5;
+  // The paper's point under the pixel, in canvas texels (the screen's, or
+  // the surfaces' where the canvas lies on them), its height there and
+  // the paper's mean height (the canvas's smallest mip).
+  var q = vec3<f32>(p * st.canvas.y, 0.0);
+  if (canvas_on && st.surface.x > 0.5) {
+    var s = surface_at(p);
+    if (st.surface.x > 1.5) { s = object_at(p, s); }
+    if (s.ok) { q = s.p * st.surface.y; }
+  }
+  let height = paper_height(p);
+  var mean = 0.5;
+  if (canvas_on) {
+    mean = textureSampleLevel(canvas, repeat_sampler, vec2<f32>(0.5), 16.0).r;
+  }
+  // Wobble: the frame read where the paper's relief and a slow waver
+  // displace it.
+  var off = vec2<f32>(0.0);
+  if (st.wash_paper.w > 0.0) {
+    let wave = vec2<f32>(wash_noise(q / WASH_WOBBLE_CELL, 7u), wash_noise(q / WASH_WOBBLE_CELL, 11u)) * 2.0 - 1.0;
+    var relief = vec2<f32>(0.0);
+    if (canvas_on) {
+      relief = vec2<f32>(
+        paper_height(p + vec2<f32>(1.0, 0.0)) - paper_height(p - vec2<f32>(1.0, 0.0)),
+        paper_height(p + vec2<f32>(0.0, 1.0)) - paper_height(p - vec2<f32>(0.0, 1.0))) * 0.5;
+    }
+    off = st.wash_paper.w * clamp(wave * 2.0 + relief * WASH_RELIEF_GAIN, vec2<f32>(-1.0), vec2<f32>(1.0));
+  }
+  let size = vec2<f32>(textureDimensions(source));
+  var c = clamp(textureSampleLevel(source, clamp_sampler, (p + off) / size, 0.0).rgb, vec3<f32>(0.0), vec3<f32>(1.0));
+  // Edge darkening: the rim where the painted regions meet, the gradient
+  // blurred over the pixel's 3 x 3 (a binomial weight), so the rim is a
+  // soft band a few pixels wide and not a line (MNPR blurs its edge map
+  // the same way).
+  var rim = 0.0;
+  if (st.wash.x > 0.0) {
+    let o = vec2<i32>(floor(p + off));
+    var b: array<vec3<f32>, 25>;
+    for (var j = -2; j <= 2; j++) {
+      for (var i = -2; i <= 2; i++) {
+        b[(j + 2) * 5 + i + 2] = load(o + vec2<i32>(i, j));
+      }
+    }
+    var g = 0.0;
+    for (var j = 1; j <= 3; j++) {
+      for (var i = 1; i <= 3; i++) {
+        g += wash_sobel(&b, i, j) * f32((2 - abs(i - 2)) * (2 - abs(j - 2)));
+      }
+    }
+    rim = smoothstep(0.02, 0.22, g / 16.0);
+  }
+  // The pigment density: granulation from the paper's height about its
+  // mean, turbulence from the noise.
+  var d = 1.0;
+  if (st.wash.y > 0.0) {
+    d += st.wash.y * clamp((mean - height) * WASH_GRAIN_GAIN, -1.0, 1.0);
+  }
+  if (st.wash.z > 0.0) {
+    let n = wash_noise(q / WASH_TURBULENCE_CELL, 3u) * 0.6 + wash_noise(q / (WASH_TURBULENCE_CELL * 0.5), 5u) * 0.4;
+    d += st.wash.z * clamp((n - 0.5) * 3.0, -1.0, 1.0);
+  }
+  // Bousseau's density on the pigment's transmittance over the paper.
+  let t = clamp(c / paper, vec3<f32>(0.0), vec3<f32>(1.0));
+  var t2 = clamp(t * (1.0 - (1.0 - t) * (d - 1.0)), vec3<f32>(0.0), vec3<f32>(1.0));
+  // Dry brush: the paper's peaks left bare under the thinnest washes.
+  if (st.wash.w > 0.0) {
+    let peak = smoothstep(0.0, WASH_PEAK, height - mean);
+    let thin = luma(t2);
+    t2 = mix(t2, vec3<f32>(1.0), st.wash.w * peak * thin * thin);
+  }
+  c = t2 * paper;
+  if (rim > 0.0) {
+    c = pow(max(c, vec3<f32>(0.0)), vec3<f32>(1.0 + st.wash.x * rim));
+  }
+  return c;
+}
+
+@fragment
+fn fs_watercolor(in: VsOut) -> @location(0) vec4<f32> {
+  return vec4<f32>(watercolor(in), 1.0);
+}
+
+@fragment
+fn fs_watercolor_srgb(in: VsOut) -> @location(0) vec4<f32> {
+  return vec4<f32>(srgb_encode(clamp(watercolor(in), vec3<f32>(0.0), vec3<f32>(1.0))), 1.0);
 }
 
 // --- lines ---------------------------------------------------------------

@@ -9,7 +9,7 @@
     "coarse-pixel": { "reads": true, "why": "a few huge pixels per figure, one dominant night-blue mass, the lamp the only warm point" },
     "topdown-tile-pixel": { "reads": true, "why": "a strict 16 px tile grid seen from above: a raised ledge with its cliff face and stone steps, an auto-tiled dirt path and pond, grass with bushes and stumps, upright y-sorted sprites standing on it; floor, path, wall face and water stay apart in greyscale" },
     "expressionist-painting": { "reads": true, "why": "clashing violet and orange brush masses, broken edges, the figures painted into the scene" },
-    "watercolor-wash": { "reads": true, "why": "translucent washes with pooled rims on white paper, the cook's texel-space paint on every sprite" },
+    "watercolor-wash": { "reads": true, "why": "translucent washes mottled by granulation and turbulence, pigment pooled in soft rims where the regions meet, the paper's tooth bare under the lightest colours (the watercolor wash over the Kuwahara, in texel space on every sprite and over the frame)" },
     "illuminated-manuscript": { "reads": true, "why": "parchment, gold sun, ink-outlined flat figures, an ornamental border and floral frieze" },
     "rubber-hose-animation": { "reads": true, "why": "the sepia film print with grain and scratches, the hose figure and inked props in flat fills; the inked line still measures 5 to 7 px against ArtLine.width 3, the generated art's ink", "missing": ["frame-by-frame animation is content: flipbooks drawn on 12s"] },
     "gothic-contour": { "reads": true, "why": "misty blue-grey spires fading into haze behind dark ornamental arches, the pale hooded figure, ink contours and the vignette", "missing": ["ornament is content: architecture and characters drawn for the style"] },

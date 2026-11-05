@@ -10188,6 +10188,45 @@
           "tunable": true
         },
         {
+          "name": "watercolorEdgeDarkening",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "watercolorGranulation",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "watercolorTurbulence",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "watercolorDryBrush",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "watercolorWobble",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "watercolorPaper",
+          "column": "Color",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        {
           "name": "ditherSpace",
           "column": "StyliseSpace",
           "default": "screen"

@@ -185,6 +185,19 @@ impl Renderer {
                     ]
                 }),
                 dither_space: [q.map_or(0.0, |q| q.space.code()), 0.0, 0.0, 0.0],
+                wash: pt.map_or([0.0; 4], |p| {
+                    let w = p.watercolor;
+                    [
+                        w.edge_darkening.clamp(0.0, 1.0),
+                        w.granulation.clamp(0.0, 1.0),
+                        w.turbulence.clamp(0.0, 1.0),
+                        w.dry_brush.clamp(0.0, 1.0),
+                    ]
+                }),
+                wash_paper: pt.map_or([1.0; 4], |p| {
+                    let w = p.watercolor;
+                    [w.paper[0], w.paper[1], w.paper[2], w.wobble.clamp(0.0, 4.0)]
+                }),
                 print: [
                     ht.map_or(0.0, |h| f32::from(h.mode == stylise::HalftoneMode::Cmyk)),
                     ht.map_or(0.0, |h| h.misregistration.clamp(0.0, 8.0)),

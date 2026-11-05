@@ -132,6 +132,8 @@ fn set(engine: u32, entity: f64, x: u32, y: u32, tile: i32) {
 /// and Garment's simulation (to 3e79197f349b1840), then MaterialStyle.wireframeColor
 /// (to f6c957ee4976ed4a), then Fluid3D's simulation (to c53a68e4d5af79aa), each of
 /// which moves every raw world hash.
+/// PostEffects' ssrMaxRoughness and ssrResolution (to f917a356541f94e3) and
+/// Stylise's watercolour fields (to 7439ab402dfd18a7), each of which moves every raw world hash.
 #[test]
 fn a_world_of_loaded_maps_keeps_its_hash() {
     set_hooks(Rc::new(Game));

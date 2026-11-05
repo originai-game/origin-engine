@@ -108,6 +108,25 @@ is one line here, written at the merge that changes
   white, as paper confetti. Its wood and glass props now have debris
   too.
 
+- **A watercolour wash over the painted frame.** `Stylise` gains
+  `watercolorEdgeDarkening`, `watercolorGranulation`,
+  `watercolorTurbulence`, `watercolorDryBrush`, `watercolorWobble` and
+  `watercolorPaper`: a pass after the painterly strokes that ports
+  Bousseau et al. 2006 and MNPR (Montesdeoca et al. 2018,
+  `third_party/mnpr`). A pigment density about one, from the paper's
+  grain (granulation) and a slow noise (turbulence), thins each colour
+  towards the paper or thickens it, C(1 − (1 − C)(d − 1)), so the wash
+  keeps its mean value where `paintCanvasStrength`'s multiply only
+  darkened; pigment pools in a soft rim a few pixels wide where the
+  painted regions meet (the painted frame's gradient blurred, raised to
+  one plus the strength); the dry brush leaves the paper's peaks bare
+  under light colours; and the frame is read displaced by the relief
+  and a waver. The cook applies the same wash in texel space on painted
+  2D sprites and painted 3D colour textures (`PAINT_VERSION` 3, so
+  painted textures recook). Every field is off at zero, so no existing
+  look moves; `watercolor-wash` uses them and now reads as translucent
+  washes on white paper rather than oil paint.
+
 - **Whole-turn primitives are closed solids; fractured cylinders break
   into lumps.** `cylinderGeometry`, `coneGeometry`, `capsuleGeometry`,
   `torusGeometry`, `ringGeometry`, `circleGeometry`, `tubeGeometry` and

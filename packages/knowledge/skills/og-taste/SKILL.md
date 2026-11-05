@@ -52,7 +52,7 @@ game can hold on every frame. Some premises and where they land:
 | a fighting or character-action game | `anime-cel-3d` | toon bands, cool-tinted shadows, outlines that thin with distance |
 | survival horror, lonely and uncanny | `low-resolution-3d` | early-console 3D: snapped vertices, affine textures, fog |
 | an arcade shooter, rhythm or racing game | `neon-vector` | bright outlines that bloom on a dark scene; a large ground plane keeps its outline only where it ends, and with `outlineDistance` a line grows at most four times its width near the camera |
-| a narrative puzzle, gentle and sad | `watercolor-wash` | bleeding strokes pooling at their rims on paper |
+| a narrative puzzle, gentle and sad | `watercolor-wash` | translucent washes granulated into the paper, pigment pooled in thin rims where they meet |
 
 `og new <dir> --premise "<one line>"` does this match
 for a new game and writes the result (`--look <slug>` names it instead):
@@ -715,7 +715,10 @@ og.render.look(world)?.name;                                              // the
   (`posterize`, `palette` from `og.load.palette` of a `.hex` or `.gpl`,
   `dither`, `ditherStrength`), `halftone`, `hatching`, painterly
   smoothing (`paintRadius`, `paintEdgeDarkening`, `paintBleed`,
-  `paintCanvas`), `ink` lines (with `inkDepth` for silhouettes and
+  `paintCanvas`), the watercolour wash over it (`watercolorEdgeDarkening`
+  rims where the painted regions meet, `watercolorGranulation` and
+  `watercolorTurbulence` thinning and thickening the pigment about the
+  paper, `watercolorDryBrush`, `watercolorWobble`), `ink` lines (with `inkDepth` for silhouettes and
   creases), `depthBands`, and early-3D `vertexSnap`, `affineTexturing`
   and `depthBits`. The UI and screen sprites stay unstylised.
 - **`og.MaterialStyle`** sets every lit material that leaves the field at

@@ -327,7 +327,10 @@ impl FrameGraph {
         // hatching, halftone or dither on surfaces, ink on depth edges)
         // when the frame has one; the other passes bind placeholders.
         let prepass_of = |p: FramePass| {
-            let lines = matches!(p, FramePass::Paint | FramePass::Lines | FramePass::Quantize);
+            let lines = matches!(
+                p,
+                FramePass::Paint | FramePass::Watercolor | FramePass::Lines | FramePass::Quantize
+            );
             (
                 self.try_view("lindepth")
                     .filter(|_| lines)
@@ -905,6 +908,7 @@ impl FrameGraph {
                 1
             }
             FramePass::Paint
+            | FramePass::Watercolor
             | FramePass::Lines
             | FramePass::Lens
             | FramePass::Quantize

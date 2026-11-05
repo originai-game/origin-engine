@@ -778,12 +778,16 @@ fn stylise(
                 "paintCharacterDetail",
                 og_render::DEFAULT_CHARACTER_DETAIL,
             ),
+            watercolor: og_render::Watercolor {
+                edge_darkening: f(&s, "watercolorEdgeDarkening", 0.0),
+                granulation: f(&s, "watercolorGranulation", 0.0),
+                turbulence: f(&s, "watercolorTurbulence", 0.0),
+                dry_brush: f(&s, "watercolorDryBrush", 0.0),
+                wobble: f(&s, "watercolorWobble", 0.0),
+                paper: rgb(&s["watercolorPaper"], Vec3::ONE),
+            },
         };
-        if paint.radius > 0.0
-            || paint.edge_darkening > 0.0
-            || paint.bleed > 0.0
-            || (paint.canvas.is_some() && paint.canvas_strength > 0.0)
-        {
+        if paint.paints() || paint.watercolor.active() {
             out.paint = Some(paint);
         }
         if on(&s, "ink", false) {

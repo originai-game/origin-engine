@@ -2972,8 +2972,11 @@ impl Renderer {
         // The stylisation chain (post.rs `chain_passes`), then FXAA, then
         // the pixel grid scaled up to the output.
         let st = &scene.stylise;
-        if st.paint.is_some() {
+        if st.paint.is_some_and(|p| p.paints()) {
             passes.push(FramePass::Paint);
+        }
+        if st.paint.is_some_and(|p| p.watercolor.active()) {
+            passes.push(FramePass::Watercolor);
         }
         if st.hatching.is_some() || st.halftone.is_some() || st.ink.is_some() {
             passes.push(FramePass::Lines);

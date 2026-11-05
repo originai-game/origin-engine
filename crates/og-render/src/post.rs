@@ -231,6 +231,12 @@ pub(crate) struct StyliseUniform {
     pub paint2: [f32; 4],
     /// x: where the dither's cells lie (`StyliseSpace::code`).
     pub dither_space: [f32; 4],
+    /// The watercolour wash (`Watercolor`): x edge darkening, y
+    /// granulation, z turbulence, w dry brush.
+    pub wash: [f32; 4],
+    /// xyz: the wash's paper colour (linear), w: the wobble in logical
+    /// pixels.
+    pub wash_paper: [f32; 4],
     /// x: the halftone's mode (0 one ink, 1 CMYK), y: the plates'
     /// misregistration in logical pixels, z: the region it prints on (0
     /// every tone, 1 shade, 2 highlight), w: 1 when hatching keeps the

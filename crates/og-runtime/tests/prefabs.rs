@@ -289,6 +289,7 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// Cloth, SoftBody and Garment version 2 (simulation), then to
 /// 11b306c51fde2306, MaterialStyle.wireframeColor, then to
 /// 892f0ccf9ecd891a, Fluid3D version 2 (simulation)).
+/// default of 64, then Stylise's watercolour fields).
 const BY_HAND_HASH: &str = "892f0ccf9ecd891a";
 
 #[test]

@@ -395,7 +395,7 @@ pub use stylise::{
     DEFAULT_TOON_SOFTNESS, DEFAULT_WIREFRAME_ANGLE, DepthBands, DitherPattern, Halftone,
     HalftoneMode, HalftoneRegion, Hatching, Ink, MAX_PALETTE_COLORS, MaterialStyle,
     MaterialSurface, OutlinePlace, Paint, Palette, PaletteHandle, PixelFit, PixelScale, Quantize,
-    Retro3d, STYLISE_DRAWN, Stylise, StyliseSpace,
+    Retro3d, STYLISE_DRAWN, Stylise, StyliseSpace, Watercolor,
 };
 pub use targets::{RenderTargetDesc, RenderTargetHandle, TargetFormat, TargetKind, TargetTexture};
 pub use terrain::{

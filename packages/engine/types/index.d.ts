@@ -8415,6 +8415,51 @@ export interface Stylise {
    */
   paintCharacterDetail: number;
   /**
+   * The watercolour wash (Bousseau et al. 2006, Montesdeoca et al. 2018), drawn over the painted frame after paintRadius's strokes: pigment pooled in a rim a few pixels wide where the painted colour regions meet, the colour there raised to one plus the step's strength, as a wash dries darker at its border. The rim follows the painted regions, so the texture the strokes flattened gets none, where paintEdgeDarkening pools broadly over the source's structure; 0 is none.
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  watercolorEdgeDarkening: number;
+  /**
+   * Pigment settling into the paper's grain (paintCanvas): a pigment density about one from the paper's height, each colour thinned towards the paper (watercolorPaper) where the density is under one and thickened where it is over (Bousseau's C(1 - (1 - C)(d - 1))), strongest in the middle tones and leaving the paper and black alone, so the wash keeps its mean value where paintCanvasStrength's grain only darkens it; 0 is none.
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  watercolorGranulation: number;
+  /**
+   * Pigment drifting as the wash dries: the same density from a smooth noise a few dozen pixels across, laid where the canvas lies (paintCanvasSpace), so a wash is patchy, lighter here and darker there; 0 is none.
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  watercolorTurbulence: number;
+  /**
+   * The paper's peaks left bare where the wash is thin: the lighter a colour, the more of the paper's high grain shows the paper itself, a dry brush skipping over the tooth; 0 is none.
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  watercolorDryBrush: number;
+  /**
+   * The painted frame displaced by the paper's relief, up to this many logical pixels, so every edge wavers with the tooth as a wash's does (MNPR's substrate distortion); 0 is none.
+   *
+   * @range 0..4
+   * @tunable
+   */
+  watercolorWobble: number;
+  /**
+   * The paper's colour (linear): what the wash thins towards and the dry brush leaves bare.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  watercolorPaper: Color;
+  /**
    * Where the dither's cells lie: screen, a grid over the frame (a moving camera slides the scene under it, so the pattern crawls); surface, cells on the surfaces at least ditherScale pixels on the screen each way (each surface axis by whole octaves, so a receding floor's cells are long along its depth), so the pattern stays on what it shades as the camera moves (Lucas Pope's Obra Dinn), and the sky's on a cube round the camera so turning carries them; object, in each mesh instance's own space, so a moving object carries its pattern. Off screen the frame runs the prepass.
    */
   ditherSpace: StyliseSpace;
@@ -9998,7 +10043,7 @@ export interface RenderCapabilities {
   /** The render target height in device pixels. */
   readonly height: number;
   /**
-   * The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, shadowDarkness, rim, outline, outlineDistance, flatShading, surface, toonAmbient, outlinePlace and wireframe of MaterialStyle; paintDetail of Stylise. A look that uses one this list lacks still applies; that primitive is not drawn.
+   * The Stylise and MaterialStyle primitives this renderer draws, by group: pixel, posterize, palette, dither, halftone, hatching, paint, watercolor (the watercolor* fields), ink, inkDepth, depthBands, retro3d, surfaceSpace (paintCanvasSpace, hatchingSpace and halftoneSpace surface) and objectSpace (the same object) of Stylise; toon, shadowTint, shadowDarkness, rim, outline, outlineDistance, flatShading, surface, toonAmbient, outlinePlace and wireframe of MaterialStyle; paintDetail of Stylise. A look that uses one this list lacks still applies; that primitive is not drawn.
    */
   readonly stylise: readonly string[];
   /** Whether PostEffects.ssr draws: true with a renderer, false without one. */
@@ -49371,7 +49416,7 @@ export declare namespace og {
    * Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation.
    * Order in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised.
    */
-  const Stylise: ResourceType<{ readonly pixelHeight: FieldSpec<"u32">; readonly pixelUpscale: FieldSpec<"u32">; readonly pixelSnap: FieldSpec<"bool">; readonly posterize: FieldSpec<"u32">; readonly palette: FieldSpec<"Palette">; readonly dither: FieldSpec<"DitherPattern">; readonly ditherStrength: FieldSpec<"f32">; readonly ditherScale: FieldSpec<"u32">; readonly halftone: FieldSpec<"f32">; readonly halftoneSize: FieldSpec<"f32">; readonly halftoneAngle: FieldSpec<"f32">; readonly halftoneColor: FieldSpec<"Color">; readonly halftoneSpace: FieldSpec<"StyliseSpace">; readonly hatching: FieldSpec<"f32">; readonly hatchingScale: FieldSpec<"f32">; readonly hatchingLevels: FieldSpec<"u32">; readonly hatchingAngle: FieldSpec<"f32">; readonly hatchingColor: FieldSpec<"Color">; readonly hatchingPaper: FieldSpec<"Color">; readonly hatchingSpace: FieldSpec<"StyliseSpace">; readonly hatchingDepth: FieldSpec<"f32">; readonly paintRadius: FieldSpec<"f32">; readonly paintAnisotropy: FieldSpec<"f32">; readonly paintEdgeDarkening: FieldSpec<"f32">; readonly paintBleed: FieldSpec<"f32">; readonly paintCanvas: FieldSpec<"Texture">; readonly paintCanvasStrength: FieldSpec<"f32">; readonly paintCanvasScale: FieldSpec<"f32">; readonly paintCanvasSpace: FieldSpec<"StyliseSpace">; readonly paintCanvasWorldScale: FieldSpec<"f32">; readonly ink: FieldSpec<"bool">; readonly inkThreshold: FieldSpec<"f32">; readonly inkWidth: FieldSpec<"f32">; readonly inkColor: FieldSpec<"Color">; readonly inkDepth: FieldSpec<"f32">; readonly inkDepthThreshold: FieldSpec<"f32">; readonly inkNormalThreshold: FieldSpec<"f32">; readonly depthBands: FieldSpec<"u32">; readonly depthBandsNear: FieldSpec<"f32">; readonly depthBandsFar: FieldSpec<"f32">; readonly depthBandsNearColor: FieldSpec<"Color">; readonly depthBandsFarColor: FieldSpec<"Color">; readonly depthBandsFlatten: FieldSpec<"f32">; readonly vertexSnap: FieldSpec<"f32">; readonly affineTexturing: FieldSpec<"f32">; readonly depthBits: FieldSpec<"u32">; readonly paintDetail: FieldSpec<"f32">; readonly paintCharacterDetail: FieldSpec<"f32">; readonly ditherSpace: FieldSpec<"StyliseSpace">; readonly halftoneMode: FieldSpec<"HalftoneMode">; readonly halftoneMisregistration: FieldSpec<"f32">; readonly halftoneRegion: FieldSpec<"HalftoneRegion">; readonly hatchingKeepColor: FieldSpec<"bool"> }, Stylise>;
+  const Stylise: ResourceType<{ readonly pixelHeight: FieldSpec<"u32">; readonly pixelUpscale: FieldSpec<"u32">; readonly pixelSnap: FieldSpec<"bool">; readonly posterize: FieldSpec<"u32">; readonly palette: FieldSpec<"Palette">; readonly dither: FieldSpec<"DitherPattern">; readonly ditherStrength: FieldSpec<"f32">; readonly ditherScale: FieldSpec<"u32">; readonly halftone: FieldSpec<"f32">; readonly halftoneSize: FieldSpec<"f32">; readonly halftoneAngle: FieldSpec<"f32">; readonly halftoneColor: FieldSpec<"Color">; readonly halftoneSpace: FieldSpec<"StyliseSpace">; readonly hatching: FieldSpec<"f32">; readonly hatchingScale: FieldSpec<"f32">; readonly hatchingLevels: FieldSpec<"u32">; readonly hatchingAngle: FieldSpec<"f32">; readonly hatchingColor: FieldSpec<"Color">; readonly hatchingPaper: FieldSpec<"Color">; readonly hatchingSpace: FieldSpec<"StyliseSpace">; readonly hatchingDepth: FieldSpec<"f32">; readonly paintRadius: FieldSpec<"f32">; readonly paintAnisotropy: FieldSpec<"f32">; readonly paintEdgeDarkening: FieldSpec<"f32">; readonly paintBleed: FieldSpec<"f32">; readonly paintCanvas: FieldSpec<"Texture">; readonly paintCanvasStrength: FieldSpec<"f32">; readonly paintCanvasScale: FieldSpec<"f32">; readonly paintCanvasSpace: FieldSpec<"StyliseSpace">; readonly paintCanvasWorldScale: FieldSpec<"f32">; readonly ink: FieldSpec<"bool">; readonly inkThreshold: FieldSpec<"f32">; readonly inkWidth: FieldSpec<"f32">; readonly inkColor: FieldSpec<"Color">; readonly inkDepth: FieldSpec<"f32">; readonly inkDepthThreshold: FieldSpec<"f32">; readonly inkNormalThreshold: FieldSpec<"f32">; readonly depthBands: FieldSpec<"u32">; readonly depthBandsNear: FieldSpec<"f32">; readonly depthBandsFar: FieldSpec<"f32">; readonly depthBandsNearColor: FieldSpec<"Color">; readonly depthBandsFarColor: FieldSpec<"Color">; readonly depthBandsFlatten: FieldSpec<"f32">; readonly vertexSnap: FieldSpec<"f32">; readonly affineTexturing: FieldSpec<"f32">; readonly depthBits: FieldSpec<"u32">; readonly paintDetail: FieldSpec<"f32">; readonly paintCharacterDetail: FieldSpec<"f32">; readonly watercolorEdgeDarkening: FieldSpec<"f32">; readonly watercolorGranulation: FieldSpec<"f32">; readonly watercolorTurbulence: FieldSpec<"f32">; readonly watercolorDryBrush: FieldSpec<"f32">; readonly watercolorWobble: FieldSpec<"f32">; readonly watercolorPaper: FieldSpec<"Color">; readonly ditherSpace: FieldSpec<"StyliseSpace">; readonly halftoneMode: FieldSpec<"HalftoneMode">; readonly halftoneMisregistration: FieldSpec<"f32">; readonly halftoneRegion: FieldSpec<"HalftoneRegion">; readonly hatchingKeepColor: FieldSpec<"bool"> }, Stylise>;
   /**
    * Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; a terrain (og.Terrain) takes toon (the built-in three bands, matte) and shadowTint; unlit and shader materials, materials with StandardMaterialDesc.styled false, sprites and the UI are untouched, and toon passes by a material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, ior), which keeps its physical shading. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.
    */

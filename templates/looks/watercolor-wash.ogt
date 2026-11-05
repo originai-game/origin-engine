@@ -1,16 +1,25 @@
 type look
 version 1
 ---
-# Soft strokes that bleed into each other and pool at their rims on cold-pressed paper (the engine's @canvas/watercolor), a bright exposure.
+# Soft strokes that bleed into each other on cold-pressed paper (the engine's
+# @canvas/watercolor), then the watercolour wash: pigment pooled in thin rims
+# where the colour regions meet, granulated into the paper's pits, patchy
+# with turbulence, the paper's tooth left bare under the lightest washes and
+# every edge wavering with the relief, a bright exposure.
 name "Watercolor washes"
 ui "storybook"
 Stylise {
   paintRadius 3
   paintAnisotropy 0.4
-  paintEdgeDarkening 0.8
+  paintEdgeDarkening 0.25
   paintBleed 0.8
   paintCanvas "@canvas/watercolor"
-  paintCanvasStrength 0.6
+  paintCanvasStrength 0.15
+  watercolorEdgeDarkening 0.4
+  watercolorGranulation 0.3
+  watercolorTurbulence 0.4
+  watercolorDryBrush 0.4
+  watercolorWobble 1.0
 }
 RenderSettings {
   exposure 1.15

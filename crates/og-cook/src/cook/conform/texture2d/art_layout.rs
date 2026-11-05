@@ -83,6 +83,10 @@ fn named(assets: &Path, id: &str) -> Option<Vec<u8>> {
 /// colour textures (`mesh::Conform::paint`). Inactive when the look sets
 /// none of them.
 pub(in crate::cook) fn paint_of(full: &LookFile, assets: &Path) -> Result<Paint, String> {
+    let paper = match block(full, "Stylise", "watercolorPaper") {
+        Some(v) if v.len() == 3 => [0, 1, 2].map(|i| v[i].as_number().map_or(1.0, |n| n.as_f64())),
+        _ => [1.0; 3],
+    };
     let mut paint = Paint {
         radius: num(full, "Stylise", "paintRadius"),
         anisotropy: num(full, "Stylise", "paintAnisotropy"),
@@ -91,9 +95,17 @@ pub(in crate::cook) fn paint_of(full: &LookFile, assets: &Path) -> Result<Paint,
         canvas: None,
         canvas_strength: num(full, "Stylise", "paintCanvasStrength"),
         canvas_scale: num(full, "Stylise", "paintCanvasScale"),
+        wash: Wash {
+            edge: num(full, "Stylise", "watercolorEdgeDarkening"),
+            granulation: num(full, "Stylise", "watercolorGranulation"),
+            turbulence: num(full, "Stylise", "watercolorTurbulence"),
+            dry_brush: num(full, "Stylise", "watercolorDryBrush"),
+            wobble: num(full, "Stylise", "watercolorWobble"),
+            paper,
+        },
     };
     if let Some([Value::String(id)]) = block(full, "Stylise", "paintCanvas")
-        && paint.canvas_strength > 0.0
+        && (paint.canvas_strength > 0.0 || paint.wash.reads_paper())
         && let Some(bytes) = named(assets, id)
     {
         let img = Rgba::decode(&bytes).map_err(|e| format!("Stylise.paintCanvas {id}: {e}"))?;
@@ -143,7 +155,11 @@ impl Art {
             h.write(&bytes);
         }
         for b in full.blocks.iter().filter(|b| b.resource == "Stylise") {
-            for (f, v, _) in b.fields.iter().filter(|(f, _, _)| f.starts_with("paint")) {
+            for (f, v, _) in b
+                .fields
+                .iter()
+                .filter(|(f, _, _)| f.starts_with("paint") || f.starts_with("watercolor"))
+            {
                 h.write_str(&format!("{f} {v:?}"));
             }
         }

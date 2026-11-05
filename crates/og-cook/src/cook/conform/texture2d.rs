@@ -46,7 +46,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use outline::Brush;
-use paint::Paint;
+use paint::{Paint, Wash};
 use palette::{Dither, Palette};
 
 /// Moves every conformed output's stamp when the pass's algorithms change.

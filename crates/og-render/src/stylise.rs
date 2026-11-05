@@ -13,7 +13,8 @@
 /// The primitive groups this renderer draws, by the names
 /// `RenderCapabilities.stylise` reports: `pixel`, `posterize`, `palette`,
 /// `dither`, `halftone`, `hatching`, `paint`, `paintDetail` (the painterly
-/// filter's object edges and detail), `ink`, `inkDepth`,
+/// filter's object edges and detail), `watercolor` (the wash over the
+/// painted frame, [`Watercolor`]), `ink`, `inkDepth`,
 /// `depthBands`, `retro3d`, `surfaceSpace` (the canvas, hatching and
 /// halftone laid on surfaces, [`StyliseSpace::Surface`]), `objectSpace`
 /// (laid in each instance's own space, [`StyliseSpace::Object`]),
@@ -35,6 +36,7 @@ pub const STYLISE_DRAWN: &[&str] = &[
     "hatching",
     "paint",
     "paintDetail",
+    "watercolor",
     "ink",
     "inkDepth",
     "depthBands",
@@ -350,6 +352,57 @@ pub struct Paint {
     /// The detail of a skinned instance's pixels (a character's face and
     /// hands), 0 to 1, where its material sets no more.
     pub character_detail: f32,
+    /// The watercolour wash drawn over the painted frame.
+    pub watercolor: Watercolor,
+}
+
+/// The watercolour wash (stylise.wgsl `watercolor`, a pass after `paint`
+/// that reads the painted frame): Bousseau et al. 2006's pigment density
+/// about 1, which thins a colour towards the paper or thickens it, from
+/// the paper's granulation and a slow turbulence; MNPR's (Montesdeoca et
+/// al. 2018, `third_party/mnpr`) edge darkening as a density in a rim
+/// where the painted regions meet, dry brush over the paper's peaks and
+/// substrate distortion. Every field 0 draws no pass.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Watercolor {
+    /// Pigment pooled in a thin rim at the painted regions' edges, 0 to 1.
+    pub edge_darkening: f32,
+    /// The density's amplitude from the paper's grain ([`Paint::canvas`]).
+    pub granulation: f32,
+    /// The density's amplitude from a smooth noise a few dozen pixels
+    /// across, where the canvas lies.
+    pub turbulence: f32,
+    /// The paper's peaks left bare where the wash is thin, 0 to 1.
+    pub dry_brush: f32,
+    /// How far the paper's relief displaces the frame, logical pixels.
+    pub wobble: f32,
+    /// The paper's colour (linear), what the wash thins towards.
+    pub paper: [f32; 3],
+}
+
+impl Watercolor {
+    pub const DEFAULT: Watercolor = Watercolor {
+        edge_darkening: 0.0,
+        granulation: 0.0,
+        turbulence: 0.0,
+        dry_brush: 0.0,
+        wobble: 0.0,
+        paper: [1.0; 3],
+    };
+
+    /// Whether the wash draws at all.
+    pub fn active(&self) -> bool {
+        self.edge_darkening > 0.0
+            || self.granulation > 0.0
+            || self.turbulence > 0.0
+            || self.dry_brush > 0.0
+            || self.wobble > 0.0
+    }
+
+    /// Whether the wash reads the paper's grain.
+    pub fn reads_paper(&self) -> bool {
+        self.granulation > 0.0 || self.dry_brush > 0.0 || self.wobble > 0.0
+    }
 }
 
 /// [`Paint::detail`]'s default: detail keeps its shape fully.
@@ -377,6 +430,7 @@ impl Paint {
         canvas_world_scale: 0.0,
         detail: DEFAULT_PAINT_DETAIL,
         character_detail: DEFAULT_CHARACTER_DETAIL,
+        watercolor: Watercolor::DEFAULT,
     };
 
     /// Whether the filter reads the prepass's object ids and detail.
@@ -384,9 +438,25 @@ impl Paint {
         self.radius > 0.0 && self.detail > 0.0
     }
 
+    /// Whether the paint pass draws (the Kuwahara, the bleed, the pooling
+    /// or the canvas's grain): the watercolour wash alone draws only its
+    /// own pass.
+    pub fn paints(&self) -> bool {
+        self.radius > 0.0
+            || self.edge_darkening > 0.0
+            || self.bleed > 0.0
+            || (self.canvas.is_some() && self.canvas_strength > 0.0)
+    }
+
+    /// Whether the frame binds the canvas texture: laid over the frame by
+    /// `canvas_strength`, or read as the wash's paper.
+    pub fn uses_canvas(&self) -> bool {
+        self.canvas.is_some() && (self.canvas_strength > 0.0 || self.watercolor.reads_paper())
+    }
+
     /// Whether the canvas is drawn on surfaces (the frame runs the prepass).
     pub fn canvas_on_surfaces(&self) -> bool {
-        self.canvas_space.on_surfaces() && self.canvas.is_some() && self.canvas_strength > 0.0
+        self.canvas_space.on_surfaces() && self.uses_canvas()
     }
 }
 
@@ -718,7 +788,7 @@ impl Stylise {
                 .filter(|q| q.dither != DitherPattern::None)
                 .map(|q| q.space),
             self.paint
-                .filter(|p| p.canvas.is_some() && p.canvas_strength > 0.0)
+                .filter(Paint::uses_canvas)
                 .map(|p| p.canvas_space),
             self.hatching.filter(|h| h.strength > 0.0).map(|h| h.space),
             self.halftone.filter(|h| h.strength > 0.0).map(|h| h.space),
@@ -760,8 +830,9 @@ impl Stylise {
             self.quantize.is_some(),
             self.halftone.is_some(),
             self.hatching.is_some(),
-            self.paint.is_some(),
+            self.paint.is_some_and(|p| p.paints()),
             self.ink.is_some(),
+            self.paint.is_some_and(|p| p.watercolor.active()),
             self.depth_bands.is_some(),
             self.retro.is_some(),
             self.material.is_active(),

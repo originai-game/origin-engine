@@ -78,6 +78,13 @@ is its parent's pid, so a lock's owner looks unchanged across runs.
 Never rewrite a shell script in place while a running `sh` is still
 reading it.
 
+The look presets (`templates/looks/*.ogt`) are `include_str!` into og-cook
+(`look_assets.rs`): a preset edit reaches `og` only after `cargo build -p
+og-cli` and the addon rebuild, so a capture after a look edit without a
+rebuild records the old look. A reference capture started by a killed
+script keeps running (`og test` outlives its bash): check `ps` for
+`target/debug/og` before re-recording into the same files.
+
 ## 2026-11-05 — Take a lane only through `scripts/lane.sh take`
 
 `lane.sh --list` showed lane-12 idle, so a bare `git switch safari` there

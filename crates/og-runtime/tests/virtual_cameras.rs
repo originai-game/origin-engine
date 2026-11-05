@@ -212,6 +212,8 @@ fn a_world_without_virtual_cameras_keeps_its_hash() {
 /// of 100, after Stylise.hatchingPaper, and after Cloth, SoftBody and Garment
 /// version 2 (simulation), after MaterialStyle.wireframeColor, and after
 /// Fluid3D version 2 (simulation); R10 leaves it unmoved on either side).
+/// of 100 and after Stylise's watercolour fields; R10 leaves it
+/// unmoved on either side).
 const PINNED_HASH: &str = "35f45c8bb950dc7e";
 
 #[test]

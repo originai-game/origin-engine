@@ -116,6 +116,9 @@ pub(crate) enum FramePass {
     /// posterise and palette quantisation, FXAA, and the pixel grid scaled
     /// up to the output.
     Paint,
+    /// The watercolour wash over the painted frame (stylise.wgsl
+    /// `watercolor`).
+    Watercolor,
     Lines,
     Lens,
     Quantize,
@@ -150,6 +153,7 @@ pub(crate) fn chain_passes(passes: &[FramePass]) -> Vec<FramePass> {
     [
         FramePass::SmaaResolve,
         FramePass::Paint,
+        FramePass::Watercolor,
         FramePass::Lines,
         FramePass::Lens,
         FramePass::Quantize,
@@ -224,6 +228,7 @@ impl FramePass {
                 | FramePass::FlareBlurY
                 | FramePass::Tonemap
                 | FramePass::Paint
+                | FramePass::Watercolor
                 | FramePass::Lines
                 | FramePass::Lens
                 | FramePass::Quantize
@@ -286,6 +291,7 @@ impl FramePass {
             FramePass::Tonemap => "tonemap".into(),
             FramePass::DepthBands => "depth-bands".into(),
             FramePass::Paint => "paint".into(),
+            FramePass::Watercolor => "watercolor".into(),
             FramePass::Lines => "lines".into(),
             FramePass::Lens => "lens".into(),
             FramePass::Quantize => "quantize".into(),
@@ -1084,6 +1090,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 g.pass(name, &reads, &[write])
             }
             FramePass::Paint
+            | FramePass::Watercolor
             | FramePass::Lines
             | FramePass::Lens
             | FramePass::Quantize
@@ -1108,7 +1115,11 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 if p == FramePass::SmaaBlend {
                     reads.push("smaa.weights");
                 }
-                if matches!(p, FramePass::Paint | FramePass::Lines) && prepass {
+                if matches!(
+                    p,
+                    FramePass::Paint | FramePass::Watercolor | FramePass::Lines
+                ) && prepass
+                {
                     reads.extend(["lindepth", "gbuffer", "outline-id"]);
                     if cfg.object_space {
                         reads.push("object-space");
