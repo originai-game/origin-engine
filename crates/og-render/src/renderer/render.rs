@@ -2099,6 +2099,11 @@ impl Renderer {
                     );
                 }
             }
+            if self.meshlet.as_ref().is_some_and(|m| !m.frame.is_empty())
+                && let Some(gc) = self.gpu_cull.as_mut()
+            {
+                gc.counted_by_meshlets(&meshlet_views[0].taken);
+            }
             commands
         } else {
             if let Some(m) = self.meshlet.as_mut() {

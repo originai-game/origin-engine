@@ -1243,6 +1243,9 @@ mod canvas {
                 p.landed = p.req.is_ready();
                 kept
             });
+            // GPU culling's counts come back a frame or two late, read
+            // back only when asked: the probe's triangles are its.
+            self.renderer.request_culling_counts();
             match self.renderer.render(scene, &RenderTarget::Surface) {
                 Ok(s) => {
                     self.triangles = s.triangles;

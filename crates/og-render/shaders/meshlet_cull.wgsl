@@ -41,7 +41,8 @@ struct Params {
   // of `vis` (its first word), z: this frame's.
   phase: vec4<u32>,
   // The soft list (meshlet_gpu.rs `plan`): x its first item, y its
-  // capacity in clusters (0: none), z its count's word in `draws`.
+  // capacity in clusters (0: none), z its count's word in `draws`; w the
+  // word that sums the camera's drawn triangles (FrameStats::triangles).
   soft: vec4<u32>,
 };
 
@@ -249,6 +250,8 @@ fn cull_clusters(@builtin(workgroup_id) wid: vec3<u32>,
       }
       if (phase == 0u) { vis[params.phase.z + slot] = 1u; }
     }
+    // Drawn by the camera, here or in the visibility buffer: counted once.
+    if (view == 0u) { atomicAdd(&draws[params.soft.w], clusters[ci * 3u].y); }
     // meshlet.rs `soft`: a small cluster past the near plane goes to the
     // visibility buffer (while the list has room).
     if ((row.b.y & 2u) != 0u && perspective) {

@@ -1197,6 +1197,7 @@ impl MeshletGpu {
         // Two phases with the pyramid and its depth, one without.
         let pyramid = gc.pyramid();
         let depth = gc.occluder_depth().filter(|_| pyramid.is_some());
+        let triangles_word = rows.len() as u32 * 4 + 1;
         let params = |phase: u32| Params {
             view_proj: view_proj.to_cols_array_2d(),
             lod: [
@@ -1207,9 +1208,11 @@ impl MeshletGpu {
             ],
             sizes: [width, height, pyramid.map_or(0, |p| p.1), rows.len() as u32],
             phase: [phase, read as u32, write as u32, 0],
+            // w: the word after the soft list's count that sums the
+            // camera's drawn clusters' triangles (FrameStats::triangles).
             soft: match list {
-                Some((first, cap)) => [first, cap, rows.len() as u32 * 4, 0],
-                None => [0; 4],
+                Some((first, cap)) => [first, cap, rows.len() as u32 * 4, triangles_word],
+                None => [0, 0, 0, triangles_word],
             },
         };
         let (first, second) = if depth.is_some() { (1, 2) } else { (0, 0) };
@@ -1380,6 +1383,17 @@ impl MeshletGpu {
             });
             gc.rebuild_pyramid(&mut pass);
             dispatch(&mut pass, PARAMS_SLOT);
+        }
+        // The camera's drawn triangles, into the word of GPU culling's
+        // counts that takes them (`GpuCulling::meshlet_triangles_word`).
+        if let Some(word) = gc.meshlet_triangles_word() {
+            encoder.copy_buffer_to_buffer(
+                &self.draws,
+                triangles_word as u64 * 4,
+                &gc.args,
+                word as u64 * 4,
+                4,
+            );
         }
         // The soft list both phases appended, rasterised once.
         if let (Some(list), Some(pools)) = (list, self.pools.as_ref()) {

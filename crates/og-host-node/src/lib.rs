@@ -498,6 +498,9 @@ impl OffscreenBackend {
     /// the scene again on this frame, so the game goes on.
     fn draw(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
         self.recreate()?;
+        // GPU culling's counts come back a frame or two late, read back
+        // only when asked: the probe's triangles are its.
+        self.renderer.request_culling_counts();
         self.renderer
             .render(scene, &og_render::RenderTarget::Offscreen)
             .map(|s| {

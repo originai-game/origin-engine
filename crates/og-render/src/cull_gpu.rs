@@ -199,9 +199,13 @@ pub(crate) struct GpuCounts {
 /// (`crowd_cull.wgsl` `counts`) adds its own counts into: the members'
 /// records outside the camera's planes, inside them but occluded, the
 /// occluded ones' triangles, the camera's drawn triangles and the shadow
-/// passes' records. Zeroed by [`GpuCulling::encode`]; a frame without
-/// crowds leaves them so.
+/// passes' records; then the camera's triangles the meshlet path drew
+/// (`meshlet_cull.wgsl`, copied by `MeshletGpu::encode`). Zeroed by
+/// [`GpuCulling::encode`]; a frame without crowds or meshlets leaves them so.
 pub(crate) const CROWD_COUNT_WORDS: u64 = 8;
+
+/// The word after the crowds' counts that holds the meshlet path's triangles.
+const MESHLET_TRIANGLES: usize = 5;
 
 /// What a readback's words mean.
 #[derive(Clone)]
@@ -265,7 +269,7 @@ impl CountLayout {
         c.culled += crowd[0];
         c.occluded += crowd[1];
         c.occluded_triangles += crowd[2] as u64;
-        c.triangles += crowd[3] as u64;
+        c.triangles += crowd[3] as u64 + crowd[MESHLET_TRIANGLES] as u64;
         c.shadow_casters += crowd[4];
         c
     }
@@ -1619,6 +1623,27 @@ impl GpuCulling {
         self.last.as_ref().map_or(0, |(l, _)| {
             CountLayout::crowd_word(l.kinds.len(), l.batches) as u32
         })
+    }
+
+    /// The word of [`Self::args`] the meshlet path copies the camera's drawn
+    /// cluster triangles to, for the frame [`Self::encode`] encoded.
+    pub fn meshlet_triangles_word(&self) -> Option<u32> {
+        self.last.as_ref().map(|(l, _)| {
+            CountLayout::crowd_word(l.kinds.len(), l.batches) as u32 + MESHLET_TRIANGLES as u32
+        })
+    }
+
+    /// The batches the meshlet path drew this frame (`batches` indices):
+    /// their triangles are its clusters' at the levels it picked, which it
+    /// counts itself, not their instances times their whole mesh's.
+    pub fn counted_by_meshlets(&mut self, batches: &[u32]) {
+        if let Some((l, _)) = self.last.as_mut() {
+            for &b in batches {
+                if let Some(t) = l.triangles.get_mut(b as usize) {
+                    *t = 0;
+                }
+            }
+        }
     }
 
     /// Copies the frame's counts to a free readback, when `encode` was

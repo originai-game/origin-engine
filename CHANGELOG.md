@@ -101,6 +101,12 @@ is one line here, written at the merge that changes
   clear and deep water darkens to its colour. A visual fluid also turns
   hard-stopped or thrown-loose water to white foam, and a pour narrows and
   breaks up as it falls. Frames of 3D fluids change; no IDL change.
+- **The probe's triangles count GPU-culled and meshlet draws.** Both hosts
+  ask for GPU culling's counts every frame, so `state().timings.triangles`
+  and `dump_render`'s `triangles` hold the camera's drawn triangles a frame
+  or two late instead of 0, and the meshlet path counts its clusters'
+  triangles at the levels it picked instead of its instances' whole meshes.
+
 - **Every IDL column factory is exported.** `Upscaler`, `GiMethod`,
   `OutlinePlace`, `HalftoneMode`, `HalftoneRegion` and `WindMotorKind`
   were declared but not named exports. The column factories and constants
