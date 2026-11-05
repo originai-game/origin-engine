@@ -405,7 +405,10 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let gi = gi_sample_at(in.world_pos, ambient_n);
   let irradiance = ambient_irradiance(ambient_light_from(ambient_n, in.world_pos, gi), in.world_pos, n);
   var diffuse_ibl = (irradiance * frame.params.x + hemi_irradiance(n)) * s.albedo;
-  let r = reflect(-v, n);
+  // three.js's getIBLRadiance (r170): the reflection bent towards the normal by roughness squared before the prefiltered map is
+  // read (rough surfaces reflect around their normal, not the mirror direction). A back-facing leaf card's normal turned
+  // away from the eye (three's back-face rule) otherwise mirrors the bright sky behind it: grey-blue crowns.
+  let r = normalize(mix(reflect(-v, n), n, s.roughness * s.roughness));
   let mip = s.roughness * frame.params.y;
   // Relit by the realtime light volumes where there are (lightmap.rs).
   var prefiltered = gi_reflected_from(volume_reflected(reflected_light(r, in.world_pos, mip), in.world_pos, r, s.roughness), r, in.world_pos, gi) * frame.params.x;
