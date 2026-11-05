@@ -147,6 +147,12 @@ R included, is complete.
   to play (iOS below 26, Android below 12, Firefox for Android), an estimate
   from caniuse. The share is measured on the platform's real traffic and
   the owner decides then; until then the WebGL2 tier stays retired.
+  Reconfirmed 2026-11-05 (the owner): WebGPU only, with a to-do left open
+  to study a fallback. The study measures the share without WebGPU on
+  real traffic and costs the options: three.js's route (`WebGPURenderer`
+  falling back to a WebGL 2 backend, its TSL materials emitting GLSL) and
+  what has no WebGL 2 form here (compute, indirect draws, storage
+  buffers: GPU culling, OIT, SSSR, GPU crowds, the visibility buffer).
 - **Real devices, PC and phone alike.** PC is measured as fully as phones:
   Windows with NVIDIA, AMD and Intel integrated GPUs, a Mac on Apple
   silicon, Linux with a Vulkan GPU, each in Chrome, Edge, Firefox and
