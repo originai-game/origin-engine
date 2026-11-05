@@ -1222,6 +1222,34 @@ fn ssr_reflection_does_not_trail_a_moving_object() {
     assert!(trail < 35.0, "the reflection trails the slab: {trail:.1}");
 }
 
+/// A ray that passes behind an occluder and comes out past its edge hits
+/// the surface it crossed while hidden: in weather-street-wet, the wall
+/// reflected in the puddle at the foot of the barrier's reflection
+/// (about x 772..789, y 505..518) is the wall all the way through. A march
+/// that drops such rays (the thickness test, or iterations spent crawling
+/// along the occluder) leaves a black block there with a bright rim where
+/// its neighbours' filtered reads caught a lamp.
+#[test]
+fn ssr_ray_out_from_behind_an_occluder_hits_the_surface_past_it() {
+    let desc = scenes::base_desc();
+    let scene = og_tests::weather_scenes::weather_scene("weather-street-wet");
+    let img = frame(&desc, &scene, 24).0;
+    let (mut black, mut rim) = (0, 0);
+    for y in 505..518 {
+        for x in 772..789 {
+            let [r, g, b] = region_mean(&img, x..x + 1, y..y + 1);
+            let luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            black += usize::from(luma < 15.0);
+            rim += usize::from(luma > 180.0);
+        }
+    }
+    println!("puddle past the barrier's foot: {black} black px, {rim} rim px");
+    assert!(
+        black <= 4 && rim <= 2,
+        "a hole in the reflection past an occluder: {black} black px, {rim} rim px"
+    );
+}
+
 /// `maxRoughness` bounds what is traced: a floor rougher than it reflects
 /// only the probes and the environment (black here), so the slab's
 /// reflection is gone; below it, the reflection is there.

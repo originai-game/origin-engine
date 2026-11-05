@@ -9692,7 +9692,7 @@
         {
           "name": "ssrSteps",
           "column": "u32",
-          "default": 32
+          "default": 64
         },
         {
           "name": "ssrFade",

@@ -284,8 +284,9 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// b06093a615447620, then area 4's lazy og.TerrainScatter and og.Wind to
 /// f21f6a4b0639cc74, then UI state version 16, the touch control holding a finger,
 /// and to 4479609532682b52, then PostEffects' ssrMaxRoughness and ssrResolution,
-/// then PostEffects.ssrMaxDistance's default of 100).
-const BY_HAND_HASH: &str = "59a338cf7568c132";
+/// then PostEffects.ssrMaxDistance's default of 100, then PostEffects.ssrSteps'
+/// default of 64).
+const BY_HAND_HASH: &str = "e0fe3babe9ce5352";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {

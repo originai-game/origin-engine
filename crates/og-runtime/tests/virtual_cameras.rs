@@ -211,7 +211,7 @@ fn a_world_without_virtual_cameras_keeps_its_hash() {
 /// ssrMaxRoughness and ssrResolution and after its ssrMaxDistance's default
 /// of 100; R10 leaves it
 /// unmoved on either side).
-const PINNED_HASH: &str = "2862f68213bfa03e";
+const PINNED_HASH: &str = "cb0c6b4d9aa6895e";
 
 #[test]
 fn the_brain_picks_by_priority_then_the_later_enabled_and_a_solo_outranks_both() {

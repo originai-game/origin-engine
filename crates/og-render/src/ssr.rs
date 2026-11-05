@@ -5,7 +5,7 @@
 //! depth-normal prepass (and the AO passes) and the main pass, records
 //! `ssr.wgsl`'s compute passes:
 //!
-//! 1. the nearest-depth pyramid of the prepass's view depth;
+//! 1. the min-max depth pyramid of the prepass's view depth;
 //! 2. one ray a pixel ([`ScreenSpaceReflections::resolution`] full), or a
 //!    2x2 block (half), drawn from the GGX distribution of visible
 //!    normals for the pixel's roughness (its grazing rim left out,
@@ -86,7 +86,7 @@ impl Default for ScreenSpaceReflections {
         ScreenSpaceReflections {
             max_distance: 100.0,
             thickness: 0.3,
-            steps: 32,
+            steps: 64,
             fade: 0.15,
             intensity: 1.0,
             max_roughness: 0.6,
@@ -146,7 +146,7 @@ fn block_offset(frame: u64) -> [f32; 2] {
     [[0.0, 0.0], [1.0, 1.0], [1.0, 0.0], [0.0, 1.0]][(frame % 4) as usize]
 }
 
-/// The nearest-depth pyramid's levels above the prepass's view depth
+/// The min-max depth pyramid's levels above the prepass's view depth
 /// (level 0): two dispatches of four (`ssr.wgsl` `hiz_down`), the coarsest
 /// a cell of 256 pixels.
 const PYRAMID_LEVELS: u32 = 8;
@@ -235,7 +235,7 @@ impl Targets {
             device,
             "ssr depth pyramid",
             pyramid_size(size.0, size.1),
-            wgpu::TextureFormat::R32Float,
+            wgpu::TextureFormat::Rg32Float,
             PYRAMID_LEVELS,
         );
         let hiz_levels = (0..PYRAMID_LEVELS)
@@ -575,24 +575,24 @@ impl Pipelines {
             "ssr",
             &[uniform, texture(1, false), texture(2, false), sampler],
         );
-        let r32 = wgpu::TextureFormat::R32Float;
+        let rg32 = wgpu::TextureFormat::Rg32Float;
         let layouts = [
             layout(
                 "ssr hiz base",
                 &[
-                    storage(0, r32),
-                    storage(19, r32),
-                    storage(20, r32),
-                    storage(21, r32),
+                    storage(0, rg32),
+                    storage(19, rg32),
+                    storage(20, rg32),
+                    storage(21, rg32),
                 ],
             ),
             layout(
                 "ssr hiz reduce",
                 &[
-                    storage(0, r32),
-                    storage(19, r32),
-                    storage(20, r32),
-                    storage(21, r32),
+                    storage(0, rg32),
+                    storage(19, rg32),
+                    storage(20, rg32),
+                    storage(21, rg32),
                     texture(1, false),
                 ],
             ),

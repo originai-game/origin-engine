@@ -434,7 +434,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
             post.ssr = Some(og_render::ScreenSpaceReflections {
                 max_distance: f(&p, "ssrMaxDistance", 100.0),
                 thickness: f(&p, "ssrThickness", 0.3),
-                steps: u(&p, "ssrSteps", 32),
+                steps: u(&p, "ssrSteps", 64),
                 fade: f(&p, "ssrFade", 0.15),
                 intensity: f(&p, "ssrIntensity", 1.0),
                 max_roughness: f(&p, "ssrMaxRoughness", 0.6),

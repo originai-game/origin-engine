@@ -1031,10 +1031,15 @@ S6).
   `third_party/fidelityfx-sssr`) and Frostbite's SSR (Stachowiak 2015)
   (`ssr.rs`, `ssr.wgsl`). One graph pass, `ssr`, between the prepass (and
   the AO passes) and the main pass, records compute passes: the
-  nearest-depth pyramid of the prepass's view depth; one ray a pixel (or a
+  min-max depth pyramid of the prepass's view depth; one ray a pixel (or a
   2x2 block at half resolution, a different pixel each frame) drawn from
   the GGX distribution of visible normals for the pixel's roughness and
-  marched through the pyramid in (uv, 1/z), with FidelityFX's hit
+  marched through the pyramid in (uv, 1/z), a ray more than the
+  thickness behind a cell's farthest surface crossing it on that level
+  (Uludag 2014's min-max Hi-Z) instead of stopping on the first pixel
+  behind a thin occluder, and a ray coming out from behind an occluder
+  into a surface it was in front of when it went hidden hitting that
+  surface past the occluder's edge (rather than a hole), with FidelityFX's hit
   validation (the lobe's grazing rim is never sampled, Stachowiak's
   bias, and each pixel's frames walk the R2 sequence); the resolve, where
   each pixel weighs its neighbours' rays by its own lobe over each ray's

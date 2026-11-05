@@ -6890,7 +6890,7 @@ export interface RenderSettings {
    */
   aoResolution: AoResolutionSetting;
   /**
-   * PostEffects.ssrSteps times this (within the 4 to 128 steps the pass takes): 2 is 64 steps for the default 32, finer contact with thin and distant reflected surfaces at twice the pass's GPU time. PostEffects keeps its steps.
+   * PostEffects.ssrSteps times this (within the 4 to 128 steps the pass takes): 2 is 128 steps for the default 64, finer contact with thin and distant reflected surfaces at a higher GPU time. PostEffects keeps its steps.
    *
    * @default 1
    * @range 0..32
@@ -7694,9 +7694,9 @@ export interface PostEffects {
    */
   ssrThickness: number;
   /**
-   * The hierarchical march's iterations along each ray: each crosses a cell of the depth pyramid's current level, so 32 reaches across the screen.
+   * The hierarchical march's iterations along each ray: each crosses a cell of the min-max depth pyramid's current level, and a ray behind everything in a cell crosses it on that level too. 64 lets a ray that passes behind thin and distant things (lamp posts down a street) reach what it reflects; a ray out of steps keeps the probes' reflection. Only the rays that need the steps pay for them.
    *
-   * @default 32
+   * @default 64
    * @range 4..128
    */
   ssrSteps: number;

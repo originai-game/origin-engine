@@ -2086,7 +2086,7 @@ Token `og.RenderSettings`, registered under the schema name `og.RenderSettings`;
 | `screenSpaceReflections` | `boolean` | `true` | — | — | — | PostEffects.ssr draws; false leaves smooth surfaces the reflection probes' and the environment's reflection. PostEffects keeps its settings either way. |
 | `ambientOcclusion` | `boolean` | `true` | — | — | — | PostEffects.ao darkens creases; false draws none. PostEffects keeps its settings either way. |
 | `aoResolution` | `AoResolutionSetting` | `"postEffects"` | — | — | — | The resolution ambient occlusion is searched at: postEffects (the default) draws PostEffects.aoResolution; full or half is drawn in its place, and PostEffects keeps its own for when this is postEffects again. The renderer reads this first, so the probe's RenderSettings and PostEffects together say what is drawn. |
-| `ssrStepScale` | `number` | `1` | 0 … 32 | — | — | PostEffects.ssrSteps times this (within the 4 to 128 steps the pass takes): 2 is 64 steps for the default 32, finer contact with thin and distant reflected surfaces at twice the pass's GPU time. PostEffects keeps its steps. |
+| `ssrStepScale` | `number` | `1` | 0 … 32 | — | — | PostEffects.ssrSteps times this (within the 4 to 128 steps the pass takes): 2 is 128 steps for the default 64, finer contact with thin and distant reflected surfaces at a higher GPU time. PostEffects keeps its steps. |
 | `volumetricStepScale` | `number` | `1` | 0 … 4 | — | — | An og.VolumetricFog's samples along each view ray times this: the froxel grid's 64 slices deep (8 to 256), each thinner, so a shaft's edge in depth and the fog just in front of a surface resolve more finely, or the raymarch's 24 steps per pixel (4 to 96) where the renderer draws one (RenderCapabilities.volumetricFog). The froxel grid's GPU time and memory grow with its slices; changing it makes the grid again at the next frame. |
 | `msaaSamples` | `number` | `4` | 1 … 4 | — | — | Samples per pixel where the antialiasing multisamples (msaa4): 4, or 1, which draws FXAA instead. RenderCapabilities.maxMsaaSamples caps it, as maxShadowedLights caps shadowedLights: where the device resolved no MSAA (TAA, FXAA, off, or FXAA for want of a multisampled HDR format) it is 1, and one sample is drawn whatever this says; RenderCapabilities.antialias is what is drawn now. Changing it makes the multisampled targets and pipelines again at the next frame. |
 | `upscaler` | `Upscaler` | `"taau"` | — | — | — | Under TAA, the temporal resolve that takes the frame from the render scale (DisplaySettings.renderScale, automatic quality's) to the output: taau (the default, the low and medium presets) or fsr3 (the high preset). Automatic quality keeps it while it lowers the render scale and draws taau once its preset steps cap the quality at medium or low. A device that draws only some (RenderCapabilities.upscalers) draws taau for one it lacks. Switching starts the history again at the next frame. |
@@ -2192,7 +2192,7 @@ resource RenderSettings {
     default true
   }
   field aoResolution AoResolutionSetting "The resolution ambient occlusion is searched at: postEffects (the default) draws PostEffects.aoResolution; full or half is drawn in its place, and PostEffects keeps its own for when this is postEffects again. The renderer reads this first, so the probe's RenderSettings and PostEffects together say what is drawn."
-  field ssrStepScale f32 "PostEffects.ssrSteps times this (within the 4 to 128 steps the pass takes): 2 is 64 steps for the default 32, finer contact with thin and distant reflected surfaces at twice the pass's GPU time. PostEffects keeps its steps." {
+  field ssrStepScale f32 "PostEffects.ssrSteps times this (within the 4 to 128 steps the pass takes): 2 is 128 steps for the default 64, finer contact with thin and distant reflected surfaces at a higher GPU time. PostEffects keeps its steps." {
     default 1
     min 0
     max 32
@@ -2417,7 +2417,7 @@ Token `og.PostEffects`, registered under the schema name `og.PostEffects`; its v
 | `ssr` | `boolean` | `false` | — | — | — | Screen-space reflections, stochastic and denoised (after AMD FidelityFX SSSR and Frostbite's SSR): each pixel up to ssrMaxRoughness casts one ray drawn from its GGX lobe, marched through a hierarchical depth pyramid of the depth-normal prepass; neighbours' rays are reused and the result accumulated over frames, so mirrors stay sharp and rough metal blurs as its lobe does. A hit reflects the previous frame's lit image (a frame after a cut has none yet). Lit surfaces blend it over the reflection probes', the probe GI's and the environment's reflection by how much of the lobe the screen resolved: where a ray leaves the screen, hits the sky or misses, those show. Opaque surfaces of a perspective 3D camera only; it turns on the depth-normal prepass. |
 | `ssrMaxDistance` | `number` | `100` | ≥ 0 | `m` | tunable | How far a reflected ray marches, in world units; the last fifth fades into the probes'. The hierarchical march's cost is set by ssrSteps, not by the distance, so a long reach is cheap: the default lets a wet street mirror lights 40 m down it. |
 | `ssrThickness` | `number` | `0.3` | ≥ 0 | `m` | tunable | How far behind the depth buffer a surface is taken to extend: a ray passing behind a surface by less than this hits it. |
-| `ssrSteps` | `number` | `32` | 4 … 128 | — | — | The hierarchical march's iterations along each ray: each crosses a cell of the depth pyramid's current level, so 32 reaches across the screen. |
+| `ssrSteps` | `number` | `64` | 4 … 128 | — | — | The hierarchical march's iterations along each ray: each crosses a cell of the min-max depth pyramid's current level, and a ray behind everything in a cell crosses it on that level too. 64 lets a ray that passes behind thin and distant things (lamp posts down a street) reach what it reflects; a ray out of steps keeps the probes' reflection. Only the rays that need the steps pay for them. |
 | `ssrFade` | `number` | `0.15` | 0 … 1 | `ratio` | — | The fraction of the screen's edge over which a reflection fades into the probes' (the last fifth of ssrMaxDistance fades too). |
 | `ssrIntensity` | `number` | `1` | 0 … 1 | — | tunable | How much of the reflection replaces the probes' and the environment's where it resolved; 1 is physical (weighted by the surface's Fresnel and lobe as the probes' are). |
 | `ssrMaxRoughness` | `number` | `0.6` | 0 … 1 | `ratio` | tunable | The roughest surface traced: rougher ones keep the probes' reflection, and the last quarter below it fades into them. Rays on rough surfaces cost the same as on mirrors, and the denoiser accumulates them over more frames. |
@@ -2720,8 +2720,8 @@ resource PostEffects {
     unit m
     tunable true
   }
-  field ssrSteps u32 "The hierarchical march's iterations along each ray: each crosses a cell of the depth pyramid's current level, so 32 reaches across the screen." {
-    default 32
+  field ssrSteps u32 "The hierarchical march's iterations along each ray: each crosses a cell of the min-max depth pyramid's current level, and a ray behind everything in a cell crosses it on that level too. 64 lets a ray that passes behind thin and distant things (lamp posts down a street) reach what it reflects; a ray out of steps keeps the probes' reflection. Only the rays that need the steps pay for them." {
+    default 64
     min 4
     max 128
   }

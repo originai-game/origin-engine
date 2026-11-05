@@ -2,7 +2,7 @@
 // depth-normal prepass and the main pass, whose lit shaders blend the
 // result over the reflection probes' radiance (pbr_fs.wgsl, physical.wgsl).
 //
-// 1. hiz_base, hiz_reduce: the prepass's view depth and its nearest-depth
+// 1. hiz_base, hiz_reduce: the prepass's view depth and its min-max depth
 //    pyramid.
 // 2. trace: one ray a pixel (or a 2x2 block at half resolution), its
 //    direction drawn from the GGX distribution of visible normals (Dupuy
@@ -46,13 +46,14 @@ struct Ssr {
 
 // The pyramid's four levels a dispatch writes (hiz_down), and the level it
 // reads (the second dispatch's).
-@group(1) @binding(0) var hiz_out0: texture_storage_2d<r32float, write>;
-@group(1) @binding(19) var hiz_out1: texture_storage_2d<r32float, write>;
-@group(1) @binding(20) var hiz_out2: texture_storage_2d<r32float, write>;
-@group(1) @binding(21) var hiz_out3: texture_storage_2d<r32float, write>;
+@group(1) @binding(0) var hiz_out0: texture_storage_2d<rg32float, write>;
+@group(1) @binding(19) var hiz_out1: texture_storage_2d<rg32float, write>;
+@group(1) @binding(20) var hiz_out2: texture_storage_2d<rg32float, write>;
+@group(1) @binding(21) var hiz_out3: texture_storage_2d<rg32float, write>;
 @group(1) @binding(1) var hiz_in: texture_2d<f32>;
-// Levels 1 to 8 of the pyramid as mips 0 to 7; level 0 is the prepass's
-// view depth itself.
+// Levels 1 to 8 of the pyramid as mips 0 to 7, r the nearest view depth
+// under each texel and g the farthest; level 0 is the prepass's view depth
+// itself.
 @group(1) @binding(2) var hiz: texture_2d<f32>;
 @group(1) @binding(3) var prev_lit: texture_2d<f32>;
 @group(1) @binding(4) var ray_radiance_out: texture_storage_2d<rgba16float, write>;
@@ -258,34 +259,39 @@ fn ssr_vndf(wi: vec3<f32>, alpha: f32, u: vec2<f32>) -> vec3<f32> {
   return normalize(vec3<f32>(h_std.xy * alpha, max(h_std.z, 1e-6)));
 }
 
-// ---- 1. The nearest-depth pyramid.
+// ---- 1. The min-max depth pyramid.
 
 // After FidelityFX SPD (MIT): a workgroup reduces a 16x16 block of the
 // level below to its next four levels in workgroup memory, so the whole
 // pyramid is two dispatches, not one barrier-bound dispatch a level. The
 // pyramid spans the screen padded to 256 texels, where every level halves
 // exactly; past the screen it holds no surface.
-var<workgroup> hiz_lds: array<f32, 64>;
+var<workgroup> hiz_lds: array<vec2<f32>, 64>;
 
-fn hiz_down(first: f32, lid: vec2<u32>, wg: vec2<u32>) {
+// The nearest and the farthest of four (min, max) pairs.
+fn hiz_join(a: vec2<f32>, b: vec2<f32>, c: vec2<f32>, d: vec2<f32>) -> vec2<f32> {
+  return vec2<f32>(min(min(a.x, b.x), min(c.x, d.x)), max(max(a.y, b.y), max(c.y, d.y)));
+}
+
+fn hiz_down(first: vec2<f32>, lid: vec2<u32>, wg: vec2<u32>) {
   // first: this invocation's texel of the first level written.
-  textureStore(hiz_out0, wg * 8u + lid, vec4<f32>(first, 0.0, 0.0, 1.0));
+  textureStore(hiz_out0, wg * 8u + lid, vec4<f32>(first, 0.0, 1.0));
   hiz_lds[lid.y * 8u + lid.x] = first;
   workgroupBarrier();
   var n = 4u;
   for (var k = 1u; k < 4u; k++) {
-    var v = SSR_BIG;
+    var v = vec2<f32>(SSR_BIG, 0.0);
     let on = all(lid < vec2<u32>(n));
     if (on) {
       let c = lid * 2u;
-      v = min(min(hiz_lds[c.y * 8u + c.x], hiz_lds[c.y * 8u + c.x + 1u]),
-              min(hiz_lds[(c.y + 1u) * 8u + c.x], hiz_lds[(c.y + 1u) * 8u + c.x + 1u]));
+      v = hiz_join(hiz_lds[c.y * 8u + c.x], hiz_lds[c.y * 8u + c.x + 1u],
+                   hiz_lds[(c.y + 1u) * 8u + c.x], hiz_lds[(c.y + 1u) * 8u + c.x + 1u]);
     }
     workgroupBarrier();
     if (on) {
       hiz_lds[lid.y * 8u + lid.x] = v;
       let at = wg * n + lid;
-      let o = vec4<f32>(v, 0.0, 0.0, 1.0);
+      let o = vec4<f32>(v, 0.0, 1.0);
       if (k == 1u) { textureStore(hiz_out1, at, o); }
       if (k == 2u) { textureStore(hiz_out2, at, o); }
       if (k == 3u) { textureStore(hiz_out3, at, o); }
@@ -299,11 +305,15 @@ fn hiz_down(first: f32, lid: vec2<u32>, wg: vec2<u32>) {
 @compute @workgroup_size(8, 8)
 fn hiz_base(@builtin(local_invocation_id) lid: vec3<u32>, @builtin(workgroup_id) wg: vec3<u32>) {
   let p = vec2<i32>((wg.xy * 8u + lid.xy) * 2u);
-  var v = SSR_BIG;
+  // Past the screen: no surface (nearest at infinity, farthest at 0).
+  var v = vec2<f32>(SSR_BIG, 0.0);
   for (var y = 0; y < 2; y++) {
     for (var x = 0; x < 2; x++) {
       let q = p + vec2<i32>(x, y);
-      if (all(q < ssr_size())) { v = min(v, textureLoad(ssr_depth, q, 0).r); }
+      if (all(q < ssr_size())) {
+        let d = textureLoad(ssr_depth, q, 0).r;
+        v = vec2<f32>(min(v.x, d), max(v.y, d));
+      }
     }
   }
   hiz_down(v, lid.xy, wg.xy);
@@ -313,33 +323,43 @@ fn hiz_base(@builtin(local_invocation_id) lid: vec3<u32>, @builtin(workgroup_id)
 @compute @workgroup_size(8, 8)
 fn hiz_reduce(@builtin(local_invocation_id) lid: vec3<u32>, @builtin(workgroup_id) wg: vec3<u32>) {
   let p = (wg.xy * 8u + lid.xy) * 2u;
-  let v = min(min(textureLoad(hiz_in, p, 0).r, textureLoad(hiz_in, p + vec2<u32>(1u, 0u), 0).r),
-              min(textureLoad(hiz_in, p + vec2<u32>(0u, 1u), 0).r, textureLoad(hiz_in, p + vec2<u32>(1u, 1u), 0).r));
+  let v = hiz_join(textureLoad(hiz_in, p, 0).rg, textureLoad(hiz_in, p + vec2<u32>(1u, 0u), 0).rg,
+                   textureLoad(hiz_in, p + vec2<u32>(0u, 1u), 0).rg, textureLoad(hiz_in, p + vec2<u32>(1u, 1u), 0).rg);
   hiz_down(v, lid.xy, wg.xy);
 }
 
 // ---- 2. The trace.
 
-// The surface the pyramid holds at `pos` (screen space) on `level`, as q.
-fn ssr_hiz_q(pos: vec2<f32>, res: vec2<f32>, level: i32) -> f32 {
-  var depth: f32;
+// The nearest and the farthest view depth the pyramid holds at `pos`
+// (screen space) on `level`.
+fn ssr_hiz(pos: vec2<f32>, res: vec2<f32>, level: i32) -> vec2<f32> {
   if (level == 0) {
-    depth = ssr_view_depth(vec2<i32>(floor(pos * res)));
-  } else {
-    let dims = vec2<i32>(textureDimensions(hiz, level - 1));
-    let cell = clamp(vec2<i32>(floor(pos * res)), vec2<i32>(0), dims - 1);
-    depth = textureLoad(hiz, cell, level - 1).r;
+    return vec2<f32>(ssr_view_depth(vec2<i32>(floor(pos * res))));
   }
-  return -1.0 / max(depth, 1e-6);
+  let dims = vec2<i32>(textureDimensions(hiz, level - 1));
+  let cell = clamp(vec2<i32>(floor(pos * res)), vec2<i32>(0), dims - 1);
+  return textureLoad(hiz, cell, level - 1).rg;
 }
 
 // FidelityFX SSSR's hierarchical march (ffx_sssr.h, MIT) from `origin`
 // along `dir` (both screen space, (uv, q)) up to `t_max` of `dir`: the
-// point it stops at, w 1 where it reached a surface on the finest level.
+// point it stops at, w 1 where it reached a surface on the finest level, 2
+// where it came out from behind an occluder into a surface it crossed
+// while hidden, 0 where it reached none.
+// The pyramid is min-max (Uludag 2014, "Hi-Z Screen-Space Cone-Traced
+// Reflections", GPU Pro 5): a ray more than the thickness behind the
+// farthest surface of a cell where it enters and where it leaves passed
+// behind everything there, and crosses the cell on that level and climbs,
+// as a ray in front of it does. FidelityFX's min-only march went down to
+// the pixels instead and stopped on the first: the thickness test then
+// threw the hit away (a hole where the ray's neighbours reflect what lies
+// past the occluder), or a ray behind a wide occluder crept along it a
+// pixel a step until its iterations ran out (another hole).
 fn ssr_march(origin: vec3<f32>, dir: vec3<f32>, t_max: f32) -> vec4<f32> {
   let size0 = ssr.screen.xy;
   let levels = i32(ssr.flags.w);
   let iterations = u32(ssr.trace.z);
+  let thickness = ssr.trace.y;
   let inv_dir = vec3<f32>(
     select(SSR_BIG, 1.0 / dir.x, dir.x != 0.0),
     select(SSR_BIG, 1.0 / dir.y, dir.y != 0.0),
@@ -359,18 +379,42 @@ fn ssr_march(origin: vec3<f32>, dir: vec3<f32>, t_max: f32) -> vec4<f32> {
   }
   var pos = origin + dir * t;
   var i = 0u;
+  // The ray's view depth where it went behind an occluder, 0 while it is in
+  // view.
+  var hidden_from = 0.0;
+  var emerged = false;
   while (i < iterations && level >= 0 && t <= t_max) {
-    let surface = ssr_hiz_q(pos.xy, res, level);
+    let cell = ssr_hiz(pos.xy, res, level);
+    let surface = -1.0 / max(cell.x, 1e-6);
     let plane = (floor(pos.xy * res) + floor_offset) / res + uv_offset;
     var tt = (vec3<f32>(plane, surface) - origin) * inv_dir;
     // The depth plane only stops a ray moving away from the camera.
     if (dir.z <= 0.0) { tt.z = SSR_BIG; }
     let t_cell = min(tt.x, tt.y);
     let above = surface > pos.z;
-    // Through the cell's side without meeting its nearest surface: up a
-    // level; else down to look closer.
-    let skipped = above && t_cell < tt.z;
+    // Behind the cell's farthest surface by more than the thickness where
+    // the ray enters the cell and where it leaves it (view depth is -1/q).
+    let depth = -1.0 / pos.z;
+    let back = cell.y + thickness;
+    let through = !above && depth > back && -1.0 / (origin.z + dir.z * t_cell) > back;
+    // Out from behind an occluder and behind a surface it was still in
+    // front of when it went hidden (by any amount, the thickness is the
+    // occluder's): it crossed that surface's depth where the occluder hides
+    // it, and hits there. Every pixel of the cell lies past the occluder,
+    // so the one it enters by is the first pixel of the surface past the
+    // occluder's edge, on any level.
+    if (!above && hidden_from > 0.0 && cell.x > hidden_from) {
+      emerged = true;
+      level = -1;
+      break;
+    }
+    if (through && hidden_from == 0.0) { hidden_from = depth; }
+    if (above) { hidden_from = 0.0; }
+    // Through the cell's side without meeting its nearest surface, or
+    // behind all of it: up a level; else down to look closer.
+    let skipped = (above && t_cell < tt.z) || through;
     if (above) { t = min(t_cell, tt.z); }
+    if (through) { t = t_cell; }
     pos = origin + dir * t;
     if (skipped) {
       level = min(level + 1, levels - 1);
@@ -380,7 +424,8 @@ fn ssr_march(origin: vec3<f32>, dir: vec3<f32>, t_max: f32) -> vec4<f32> {
     res = size0 * exp2(-f32(max(level, 0)));
     i++;
   }
-  return vec4<f32>(pos, select(0.0, 1.0, level < 0 && t <= t_max));
+  let found = level < 0 && t <= t_max;
+  return vec4<f32>(pos, select(0.0, select(1.0, 2.0, emerged), found));
 }
 
 // The pixel a ray texel traces: itself, or at half resolution this frame's
@@ -467,7 +512,10 @@ fn trace(@builtin(global_invocation_id) gid: vec3<u32>) {
     let hit = march.xyz;
     let hit_px = vec2<i32>(hit.xy * ssr.screen.xy);
     let surface_depth = ssr_view_depth(hit_px);
-    let ray_depth = -1.0 / hit.z;
+    // A ray out from behind an occluder met the surface where it is
+    // hidden, at about the depth it shows past the occluder's edge.
+    let emerged = march.w > 1.5;
+    let ray_depth = select(-1.0 / hit.z, surface_depth, emerged);
     hit_view = ssr_view_pos(hit.xy, ray_depth);
     // FidelityFX's validation: not on the starting pixel, not the sky, not
     // a back face, and within the thickness behind the surface.
@@ -480,8 +528,12 @@ fn trace(@builtin(global_invocation_id) gid: vec3<u32>) {
         * (1.0 - smoothstep(vec2<f32>(1.0 - fade), vec2<f32>(1.0), hit.xy));
       let far = 1.0 - smoothstep(0.8, 1.0, length(hit_view - origin) / max(ssr.trace.x, 1e-3));
       var confidence = behind * behind * border.x * border.y * far;
-      // The light the hit point sent last frame, where it was then.
-      let prev = hit.xy - ssr_velocity(hit_px);
+      // The light the hit point sent last frame, where it was then: from
+      // the middle of its pixel, as the march stops on the edge of the
+      // pixel it enters by and a filtered read there is half the pixel the
+      // ray came over (a bright rim where that was a lamp).
+      let at = (vec2<f32>(hit_px) + 0.5) * ssr.screen.zw;
+      let prev = at - ssr_velocity(hit_px);
       if (ssr.flags.x < 0.5 || any(prev < vec2<f32>(0.0)) || any(prev > vec2<f32>(1.0))) {
         confidence = 0.0;
       }
