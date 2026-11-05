@@ -7726,7 +7726,7 @@ export interface PostEffects {
    */
   ssrMaxRoughness: number;
   /**
-   * Half (the default): one ray per 2x2 block, a different pixel of the block each frame, denoised on the blocks and upsampled to the pixels by their depth, normal and roughness, so edges stay sharp: about a third of Full's cost (under 1.5 ms at 1080p on an M4 Pro), with slightly softer reflected detail and a coarser grain on rough surfaces while the camera moves. Full: one ray per pixel, denoised at full resolution: the sharpest mirrors.
+   * Half (the default): one ray per 2x2 block, a different pixel of the block each frame, denoised on the blocks and upsampled to the pixels by their depth, normal and roughness, so edges stay sharp: under half of Full's cost (about 1.6 ms at 1080p on an M4 Pro), with slightly softer near-mirror detail. Full: one ray per pixel, denoised at full resolution: the sharpest mirrors.
    *
    * @default "half"
    */

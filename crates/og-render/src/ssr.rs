@@ -22,7 +22,9 @@
 //!    resolves a glossy reflection;
 //! 4. the spatial prefilter: the FidelityFX denoiser's edge-stopping blur
 //!    over 15 Halton neighbours (normal, depth, roughness and distance from
-//!    the local mean), wider as the lobe widens; mirrors skip it;
+//!    the local mean), wider as the lobe widens; mirrors skip it; at half
+//!    resolution a second, a-trous pass at twice the step on rough lobes
+//!    (Dammertz et al. 2010), since a block grid has a quarter of the rays;
 //! 5. the temporal pass: the FidelityFX reflection denoiser's reprojection
 //!    (a mirror follows its reflected point's parallax, a rough surface its
 //!    own motion; a disoccluded history is dropped) and its temporal
@@ -168,8 +170,8 @@ fn pyramid_size(width: u32, height: u32) -> (u32, u32) {
 
 struct Pipelines {
     common: wgpu::BindGroupLayout,
-    layouts: [wgpu::BindGroupLayout; 7],
-    passes: [wgpu::ComputePipeline; 7],
+    layouts: [wgpu::BindGroupLayout; 8],
+    passes: [wgpu::ComputePipeline; 8],
     sampler: wgpu::Sampler,
 }
 
@@ -181,6 +183,7 @@ const RESOLVE: usize = 3;
 const PREFILTER: usize = 4;
 const TEMPORAL: usize = 5;
 const UPSAMPLE: usize = 6;
+const PREFILTER_WIDE: usize = 7;
 
 struct Targets {
     size: (u32, u32),
@@ -506,11 +509,22 @@ impl SsrRenderer {
                 (23, tex(&t.guide)),
             ],
         );
+        // At half resolution the wide pass filters the prefilter's output
+        // into the ray radiance, which nothing reads after the resolve.
+        let wide = t.divisor > 1;
+        let prefilter_wide = group(
+            PREFILTER_WIDE,
+            &[
+                (9, tex(&t.filtered)),
+                (15, tex(&t.ray_radiance)),
+                (23, tex(&t.guide)),
+            ],
+        );
         let temporal = group(
             TEMPORAL,
             &[
                 (7, tex(&t.ray_hit)),
-                (9, tex(&t.filtered)),
+                (9, tex(if wide { &t.ray_radiance } else { &t.filtered })),
                 (16, tex(&t.resolved)),
                 (10, tex(&t.history[1 - slot])),
                 (11, tex(&t.meta[1 - slot])),
@@ -549,6 +563,9 @@ impl SsrRenderer {
         dispatch(TRACE, &trace, t.ray_size);
         dispatch(RESOLVE, &resolve, t.ray_size);
         dispatch(PREFILTER, &prefilter, t.ray_size);
+        if wide {
+            dispatch(PREFILTER_WIDE, &prefilter_wide, t.ray_size);
+        }
         dispatch(TEMPORAL, &temporal, t.ray_size);
         if t.divisor > 1 {
             dispatch(UPSAMPLE, &upsample, t.size);
@@ -666,6 +683,10 @@ impl Pipelines {
                 "ssr upsample",
                 &[texture(10, true), texture(23, false), storage(25, FORMAT)],
             ),
+            layout(
+                "ssr prefilter wide",
+                &[texture(9, true), storage(15, FORMAT), texture(23, false)],
+            ),
         ];
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("ssr"),
@@ -679,6 +700,7 @@ impl Pipelines {
             "prefilter",
             "temporal",
             "upsample",
+            "prefilter_wide",
         ];
         let passes = std::array::from_fn(|i| {
             let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {

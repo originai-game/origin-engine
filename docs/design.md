@@ -1035,8 +1035,10 @@ S6).
   2x2 block at half resolution, the default, a different pixel each
   frame, with the resolve, prefilter and temporal pass then run on the
   blocks and a joint bilateral upsample by depth, normal and roughness
-  writing the pixels: about a third of the full chain's cost, under
-  1.5 ms at 1080p on an M4 Pro) drawn from
+  writing the pixels, after a second, a-trous pass of the prefilter at
+  twice the step on rough lobes (the blocks have a quarter of the rays):
+  under 1.6 ms at 1080p on an M4 Pro, about 40 % of the full chain's)
+  drawn from
   the GGX distribution of visible normals for the pixel's roughness and
   marched through the pyramid in (uv, 1/z), a ray more than the
   thickness behind a cell's farthest surface crossing it on that level

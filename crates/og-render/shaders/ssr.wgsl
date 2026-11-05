@@ -655,7 +655,22 @@ const SSR_RADIANCE_BIAS: f32 = 0.6;
 
 @compute @workgroup_size(8, 8)
 fn prefilter(@builtin(global_invocation_id) gid: vec3<u32>) {
-  let px = vec2<i32>(gid.xy);
+  ssr_prefilter(vec2<i32>(gid.xy), 1.0, 2u);
+}
+
+// At half resolution a second pass over the first's output at twice the
+// step (an a-trous iteration, Dammertz et al. 2010, as SVGF's): a block
+// grid has a quarter of the rays a screen area has at full resolution, so
+// one pass left the rough lobes' noise as blotches of the filter's size,
+// which crawled when the camera moved.
+@compute @workgroup_size(8, 8)
+fn prefilter_wide(@builtin(global_invocation_id) gid: vec3<u32>) {
+  ssr_prefilter(vec2<i32>(gid.xy), 2.0, 3u);
+}
+
+// The edge-stopping filter of `resolved` into `filtered_out` at `step`
+// times its footprint, rotated by random stream `stream`.
+fn ssr_prefilter(px: vec2<i32>, step: f32, stream: u32) {
   if (any(px >= ssr_chain_size())) { return; }
   let center = textureLoad(resolved, px, 0);
   let own = ssr_guide(px);
@@ -677,11 +692,11 @@ fn prefilter(@builtin(global_invocation_id) gid: vec3<u32>) {
     + textureSampleLevel(resolved, ssr_linear, corner + ssr.chain.zw, 0.0));
   // The footprint grows with the lobe: a pixel at roughness 0.6 reaches
   // twice FidelityFX's 3 texels.
-  let scale = mix(0.75, 2.0, smoothstep(SSR_MIRROR, 0.6, roughness));
+  let scale = mix(0.75, 2.0, smoothstep(SSR_MIRROR, 0.6, roughness)) * step;
   let w0 = max(exp(-SSR_RADIANCE_BIAS * length(center.rgb - mean.rgb)), 1e-2);
   var sum = center * w0;
   var weight = w0;
-  let angle = 2.0 * SSR_PI * ssr_rand(px, 2u).x;
+  let angle = 2.0 * SSR_PI * ssr_rand(px, stream).x;
   let rot = mat2x2<f32>(cos(angle), sin(angle), -sin(angle), cos(angle));
   var taps = SSR_HALTON;
   for (var i = 0; i < 15; i++) {
@@ -700,7 +715,10 @@ fn prefilter(@builtin(global_invocation_id) gid: vec3<u32>) {
     sum += s * w;
     weight += w;
   }
-  textureStore(filtered_out, px, sum / weight);
+  // The wide pass only where the lobe is wide: a near-mirror's blotches
+  // are small and its detail is not.
+  let wide = smoothstep(0.1, 0.25, roughness) * (step - 1.0) + (2.0 - step);
+  textureStore(filtered_out, px, mix(center, sum / weight, wide));
 }
 
 // ---- 5. The temporal pass.
