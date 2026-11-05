@@ -13,6 +13,7 @@
 # gfx    og-tests gfx scenes           tests/web/reference-gfx.ts (--scene a,b, --cpu-culling)
 # ui     og-ui kit frames              tests/web/reference-ui.ts
 # wire   the og-probe wire             tests/web/wire.ts
+# probe  a scratch WebGPU probe script (bun <script>), for a minimal repro
 #
 # Without --chrome the run is Safari's (--safari, the webgpu-safari tier);
 # with it, the same run in Chrome for Testing, the control a Safari frame is
@@ -53,6 +54,7 @@ case "$run" in
   gfx) set -- tests/web/reference-gfx.ts "$@" ;;
   ui) set -- tests/web/reference-ui.ts "$@" ;;
   wire) set -- tests/web/wire.ts "$@" ;;
+  probe) set -- "$(cd "$(dirname "${1:?probe: a script}")" && pwd)/$(basename "$1")" ;;
   *) echo "run.sh: no run $run" >&2; exit 2 ;;
 esac
 
@@ -81,6 +83,7 @@ started="$(date +%s)"
 status=0
 case "$run" in
   wire) bun "$@" $flag --out "$out/transcript.json" || status=$? ;;
+  probe) bun "$@" || status=$? ;;
   ui) bun "$@" $flag || status=$? ;;
   *) bun "$@" $flag --out "$out" || status=$? ;;
 esac
