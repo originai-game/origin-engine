@@ -5,10 +5,15 @@
 #
 #   scripts/lane.sh take NAME [STREAM]   a free lane (or the one already on
 #                                        STREAM) switched to a new branch
-#                                        STREAM from main; prints its path
-#   scripts/lane.sh free NAME            after the stream merged: the lane idle
-#                                        (detached at main), the branch deleted
+#                                        STREAM from origin/main; prints its path
+#   scripts/lane.sh free NAME            after the stream merged into
+#                                        origin/main: the lane idle (detached
+#                                        there), the branch deleted
 #   scripts/lane.sh --list               every lane and the branch it carries
+#
+# Both fetch origin/main first and work from it, never from the main
+# checkout's local `main`, which nobody but its owner may move and which
+# lags behind what has landed.
 #
 # A lane is a worktree /Volumes/app/origin-engine-lane-N made once by
 # scripts/worktree.sh (its target/ stays); NAME is lane-N or any existing
@@ -22,6 +27,7 @@
 # merging.
 set -eu -o pipefail
 main="$(git worktree list --porcelain | awk '/^worktree / { print substr($0, 10); exit }')"
+base() { git -C "$main" fetch -q origin main 2>/dev/null || echo "lane.sh: fetch failed; using the last fetched origin/main" >&2; echo origin/main; }
 lanes() { git -C "$main" worktree list --porcelain | awk '/^worktree / { print substr($0, 10) }' | grep -- "-lane-" || true; }
 mark() { echo "$(git -C "$1" rev-parse --absolute-git-dir)/lane-idle"; }
 idle() {
@@ -31,7 +37,7 @@ idle() {
   [ ! -e "$g/BISECT_LOG" ] && [ ! -d "$g/rebase-merge" ] && [ ! -d "$g/rebase-apply" ] && [ ! -e "$g/MERGE_HEAD" ] || return 1
   [ -z "$(git -C "$d" status --porcelain)" ] || return 1
   [ ! -d "$g/lane-claim" ] || return 1
-  [ -e "$g/lane-idle" ] || git -C "$d" reflog -1 --format=%gs HEAD | grep -q ' to main$'
+  [ -e "$g/lane-idle" ] || git -C "$d" reflog -1 --format=%gs HEAD | grep -Eq ' to (origin/)?main$'
 }
 case "${1:-}" in
   --list)
@@ -52,6 +58,7 @@ case "${1:-}" in
       touch "$(mark "$dir")"
     fi
     if [ -n "$stream" ]; then
+      b="$(base)"
       cur="$(git -C "$dir" rev-parse --abbrev-ref HEAD)"
       if [ "$cur" != HEAD ] && [ "$cur" != "$stream" ]; then
         echo "lane.sh: $dir carries $cur; free it first" >&2; exit 1
@@ -64,16 +71,17 @@ case "${1:-}" in
         claim="$(git -C "$dir" rev-parse --absolute-git-dir)/lane-claim"
         mkdir "$claim" 2>/dev/null || { echo "lane.sh: $dir is being taken by another session; take another lane" >&2; exit 1; }
         echo "$$ $stream $(date +%s)" > "$claim/owner"
-        git -C "$dir" switch -q -c "$stream" main
+        git -C "$dir" switch -q -c "$stream" --no-track "$b"
         rm -f "$(mark "$dir")"
       fi
     fi
     echo "$dir" ;;
   free)
     name="${2:?lane name}"; dir="$main-$name"
+    b="$(base)"
     cur="$(git -C "$dir" rev-parse --abbrev-ref HEAD)"
     if [ "$cur" != HEAD ]; then
-      git -C "$main" merge-base --is-ancestor "$cur" main || { echo "lane.sh: $cur is not merged into main" >&2; exit 1; }
+      git -C "$main" merge-base --is-ancestor "$cur" "$b" || { echo "lane.sh: $cur is not merged into $b" >&2; exit 1; }
     fi
     if [ "$cur" = HEAD ] && ! idle "$dir"; then
       g="$(git -C "$dir" rev-parse --absolute-git-dir)"
@@ -81,10 +89,12 @@ case "${1:-}" in
         echo "lane.sh: $dir is detached mid-bisect, mid-rebase or with uncommitted work; finish it first" >&2; exit 1
       fi
     fi
-    git -C "$dir" switch -q --detach main
+    git -C "$dir" switch -q --detach "$b"
     rm -rf "$(git -C "$dir" rev-parse --absolute-git-dir)/lane-claim"
-    [ "$cur" = HEAD ] || git -C "$main" branch -q -d "$cur"
+    # -D: merged was checked against origin/main above; -d would check the
+    # main checkout's HEAD, which may lag.
+    [ "$cur" = HEAD ] || git -C "$main" branch -q -D "$cur"
     touch "$(mark "$dir")"
-    echo "$dir idle at main" ;;
-  *) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+    echo "$dir idle at $b ($(git -C "$dir" rev-parse --short HEAD))" ;;
+  *) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac
