@@ -135,7 +135,8 @@ if [ -n "$report" ]; then
     printf '`crates/og-ecs/tests/support/bouncing_boxes.rs`, seed 42, 3600 ticks.\n'
     printf 'The host release runs with lanes off and on (crates/og-lanes: the\n'
     printf "1,000-body pen's rapier step on a four-thread pool, the beyond scenario\n"
-    printf "below og-physics's grain; the walk's few skeletons stay below og-anim's\n"
+    printf "and the 60 compounds of convex hulls below og-physics's grain; the walk's\n"
+    printf "few skeletons stay below og-anim's\n"
     printf 'grain, so animation runs serially either way); the scalar and simd128\n'
     printf 'wasm builds are single-threaded, with rapier built without its parallel\n'
     printf 'feature; the lanes builds (one per physics profile, as the 3D and 2D\n'

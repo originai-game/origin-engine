@@ -13,7 +13,12 @@
 //!   a fluid group, ragdolls) in 3D after 600 ticks, and of a pen of 1,000
 //!   of the pile's bodies (`tests/support/pile.rs`) after 300, enough bodies
 //!   for the step to go to four lanes (og-physics's `pool_bodies`: 500 on
-//!   four), so the host's lanes run steps it on rapier's parallel build;
+//!   four), so the host's lanes run steps it on rapier's parallel build,
+//!   and of 60 compound bodies of convex hulls (`pile::compounds`, built as
+//!   destruction's loose islands are) after 300: a hull's and a compound's
+//!   mass properties are diagonalised by glamx's eigensolver, which went
+//!   through the host's libm until `third_party/glamx` and the two hosts
+//!   drifted apart;
 //! - [`physics2d_hash`]: the same scenario in 2D after 600 ticks. A build
 //!   with one physics profile (the `physics2d` or `physics3d` feature alone,
 //!   as og-host-web's per-profile modules are built) has only its own;
@@ -172,6 +177,9 @@ pub fn physics3d_hash() -> u64 {
     let mut h = StableHasher::new();
     h.write_u64(beyond_hash(og_physics::PROFILE_3D));
     let (mut w, _p) = pile::pen(1000, 11);
+    pile::run(&mut w, 300);
+    h.write_u64(w.world_hash());
+    let (mut w, _p) = pile::compounds(60, 13);
     pile::run(&mut w, 300);
     h.write_u64(w.world_hash());
     h.finish()

@@ -259,6 +259,53 @@ pub fn pen(n: usize, seed: u32) -> (World, PhysicsSystem) {
     (w, physics)
 }
 
+/// `n` compound bodies dropped into the empty pen: each a convex hull (the
+/// octahedron) with two more hulls on child entities, one of them under a
+/// turned intermediate child, as destruction's loose islands are built
+/// (a root chunk and its `og.Parent` chunks). Their mass properties are a
+/// sum of hulls', diagonalised by parry through glamx's eigensolver, the
+/// path that drifted between hosts until `third_party/glamx`; the
+/// cross-target check (`tools/wasm-determinism`) hashes this world.
+pub fn compounds(n: usize, seed: u32) -> (World, PhysicsSystem) {
+    let (mut w, physics) = pen(0, seed);
+    let mut rng = *w.resource::<Rng>().unwrap();
+    for _ in 0..n {
+        let (t, body, _) = random_body_in(&mut rng, 1.5);
+        let root = w.spawn((t, body, Collider::convex(CONVEX_MESH))).unwrap();
+        let arm = rng.range_f32(0.5, 0.9);
+        w.spawn((
+            at(-arm, 0.0, 0.0),
+            Collider::convex(CONVEX_MESH),
+            Parent {
+                entity: root.to_bits(),
+            },
+        ))
+        .unwrap();
+        let axis = Vec3::new(rng.range_f32(-1.0, 1.0), 1.0, rng.range_f32(-1.0, 1.0)).normalize();
+        let mid = w
+            .spawn((
+                Transform {
+                    quaternion: quat_from_axis_angle(axis, rng.range_f32(0.0, 3.0)),
+                    ..at(0.0, 0.0, 0.0)
+                },
+                Parent {
+                    entity: root.to_bits(),
+                },
+            ))
+            .unwrap();
+        w.spawn((
+            at(0.0, 0.0, arm),
+            Collider::convex(CONVEX_MESH),
+            Parent {
+                entity: mid.to_bits(),
+            },
+        ))
+        .unwrap();
+    }
+    *w.resource_mut::<Rng>().unwrap() = rng;
+    (w, physics)
+}
+
 /// An octahedron of radius `r`, a convex hull every run builds the same.
 pub fn octahedron(r: f32) -> MeshDesc {
     MeshDesc {
