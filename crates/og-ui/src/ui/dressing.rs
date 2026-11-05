@@ -375,7 +375,7 @@ impl Ui {
 
     /// A classless decorative part retains its authored fallback radius.
     #[allow(clippy::too_many_arguments)]
-    pub(super) fn part_commands_at(
+    pub(crate) fn part_commands_at(
         &self,
         part: &crate::dress::PartRef,
         rect: Rect,

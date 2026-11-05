@@ -255,6 +255,53 @@ fn hud(ui: &mut Ui, input: InputFrame, editor: bool) -> (bool, HudEditorResponse
 }
 
 #[test]
+fn editor_marks_are_dressed_without_moving_the_customizable_element() {
+    let source = format!(
+        "{}\ndress \"HudEditor.handle[selected]\" {{\n fill \"#ff00ff\"\n appearance {{\n width 14\n height 10\n }}\n}}\ndress \"HudEditor.outline[selected][side=top]\" {{\n fill \"#00ffff\"\n appearance {{\n height 3\n }}\n}}\n",
+        include_str!("../../../templates/styles/storybook/style.ogt")
+    );
+    let style = parse_style(&source).unwrap();
+    let mut ui = Ui::new(UiDesc::default());
+    ui.set_theme(style.theme(None, [0; 6]));
+    ui.set_dressings(style.dressings);
+    ui.set_hud_edit(true);
+    hud(&mut ui, InputFrame::default(), false);
+    let original = bounds(&ui, "Map");
+    hud(
+        &mut ui,
+        InputFrame {
+            pressed: true,
+            down: true,
+            ..at(Vec2::new(500.0, 100.0))
+        },
+        false,
+    );
+    assert_eq!(ui.hud_edit().selected, "Map");
+    assert_eq!(bounds(&ui, "Map"), original);
+    let fills: Vec<_> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|item| item.cmd.filled())
+        .collect();
+    let handles: Vec<_> = fills
+        .iter()
+        .filter(|(_, color)| *color == Srgba::rgb(255, 0, 255).linear())
+        .collect();
+    assert_eq!(handles.len(), 4);
+    assert!(
+        handles
+            .iter()
+            .all(|(r, _)| r.width == 14.0 && r.height == 10.0)
+    );
+    assert!(
+        fills
+            .iter()
+            .any(|(r, color)| r.height == 3.0 && *color == Srgba::rgb(0, 255, 255).linear())
+    );
+}
+
+#[test]
 fn a_saved_layout_moves_and_scales_the_element_and_where_it_is_pressed() {
     let mut ui = Ui::new(UiDesc::default());
     hud(&mut ui, InputFrame::default(), false);

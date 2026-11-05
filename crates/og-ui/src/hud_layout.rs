@@ -461,11 +461,26 @@ impl Ui {
         }
         let p = &self.theme.palette;
         let screen = Rect::new(0.0, 0.0, self.viewport.width, self.viewport.height);
-        let quad = |r: Rect, color: Srgba| DrawCmd::Quad {
-            rect: r,
-            radius: 0.0,
-            color: color.linear(),
-            clip: screen,
+        let mut quad = |part: crate::dress::PartRef, r: Rect, owner: Rect, color: Srgba| {
+            let dressing = self.dress.resolve(&part);
+            if dressing.matched == 0 {
+                cmds.push(DrawCmd::Quad {
+                    rect: r,
+                    radius: 0.0,
+                    color: color.linear(),
+                    clip: screen,
+                });
+            } else {
+                self.part_commands_at(
+                    &part,
+                    dressing.draw.subpart_rect(r, owner),
+                    Some(dressing.draw.subpart_color(color, &self.theme)),
+                    0.0,
+                    1.0,
+                    screen,
+                    cmds,
+                );
+            }
         };
         for t in &hud.targets {
             let selected = t.key == hud.selected;
@@ -475,13 +490,20 @@ impl Ui {
                 (1.0, p.ink.fade(0.6))
             };
             let r = t.shown.outset(3.0);
-            for side in [
-                Rect::new(r.x, r.y, r.width, w),
-                Rect::new(r.x, r.bottom() - w, r.width, w),
-                Rect::new(r.x, r.y, w, r.height),
-                Rect::new(r.right() - w, r.y, w, r.height),
+            for (side, edge) in [
+                ("top", Rect::new(r.x, r.y, r.width, w)),
+                ("bottom", Rect::new(r.x, r.bottom() - w, r.width, w)),
+                ("left", Rect::new(r.x, r.y, w, r.height)),
+                ("right", Rect::new(r.right() - w, r.y, w, r.height)),
             ] {
-                cmds.push(quad(side, color));
+                quad(
+                    crate::dress::PartRef::of("HudEditor", "outline", None)
+                        .flag_if(selected, "selected")
+                        .attr("side", side),
+                    edge,
+                    t.shown,
+                    color,
+                );
             }
             if selected {
                 let k = 8.0;
@@ -491,7 +513,12 @@ impl Ui {
                     (r.x, r.bottom()),
                     (r.right(), r.bottom()),
                 ] {
-                    cmds.push(quad(Rect::new(x - k / 2.0, y - k / 2.0, k, k), p.focus));
+                    quad(
+                        crate::dress::PartRef::of("HudEditor", "handle", None).flag("selected"),
+                        Rect::new(x - k / 2.0, y - k / 2.0, k, k),
+                        t.shown,
+                        p.focus,
+                    );
                 }
             }
         }

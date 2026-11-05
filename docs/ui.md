@@ -850,6 +850,11 @@ sector, not a rectangular fill. These parts are:
   their square em box centred in it. The icon's layout box is unchanged.
   `Dpad.indicator[pressed][direction=Up|Down|Left|Right]` and `Burst.spark`
   accept the rectangle decoration properties.
+- HUD edit marks use `HudEditor.outline[side=top|bottom|left|right]`
+  (flagged `selected` on the selected element) and
+  `HudEditor.handle[selected]`. Their geometry, fill, radius, and effects
+  are decorations only: drag constraints, scale steps, and the saved
+  placement still operate on the customized element's box.
 
 A game shipped with a version 1 style keeps the screens it shipped with:
 an engine update may draw them better (antialiasing, contrast, a cleaner
