@@ -400,13 +400,13 @@ fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
   // spans their period across it (some 0.6 m; past that they alias into a regular comb along the wind). In the surf
   // zone, broad churning masses with the backwash's dark gaps between them: the surf's foam is churned by the bores,
   // not drawn out by the wind (its age's streaks made the whole band a comb).
-  let streak_mod = mix(smoothstep(0.25, 0.75, streak) * 1.5, 0.75, smoothstep(0.3, 0.8, fwidth(ws.y) * 16.0));
+  let streak_mod = mix(smoothstep(0.25, 0.75, streak) * 1.5, 0.75, smoothstep(0.3, 0.8, fwidthFine(ws.y) * 16.0));
   let zone = surf_zone(p);
   let masses = smoothstep(0.3, 0.7, foam_noise(p * 0.15) * 0.65 + foam_noise(p * 0.47 + vec2<f32>(3.1, 7.9)) * 0.35) * 1.4;
   cover *= mix(mix(streak_mod, masses, zone), 1.0, fresh_k * (1.0 - 0.6 * zone));
   let pat = textureSample(heights, ripple_sampler, p * 0.23 + water.foam_uv[0].xy, first + 2u).r * 0.78
     + textureSample(heights, ripple_sampler, p * 0.71 + water.foam_uv[0].zw, first + 2u).g * 0.22;
-  let fw = fwidth(pat) + 0.03;
+  let fw = fwidthFine(pat) + 0.03;
   let soft = 0.04 + 0.14 * (1.0 - clamp(cover, 0.0, 1.0));
   var fm = smoothstep(1.0 - cover - fw - soft, 1.0 - cover + fw + soft, pat);
   // Where a pixel spans the pattern (its change across the pixel near its range), the mask is what the pattern's cut
@@ -441,7 +441,7 @@ fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
   // threads' centres at whole x).
   let r = spray_rand(spray_hash(bitcast<u32>(i32(floor(x + 0.5))) + 0x2545f491u));
   let seg = textureSample(heights, ripple_sampler, vec2<f32>(along_m * 0.004 + r * 7.0, r * 3.1), first + 2u).a;
-  let lw = fwidth(x) * 2.0 + 0.05;
+  let lw = fwidthFine(x) * 2.0 + 0.05;
   // (Old foam, the whitecaps' residue, lies over two to three times the whitecaps' share: some 20 to 30 % of a gale's
   // sea against their 10 %, Monahan and O'Muircheartaigh's stage B; the threads' weights and lengths keep 0.3 of it.)
   let lace_cover = clamp(lace_amount * 3.0, 0.0, 1.0);
@@ -808,13 +808,16 @@ fn ripple_map(uv: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> vec3<f32> {
 // normal = (r * 2 - 1, b, g * 2 - 1). Either is scaled by the wave strength.
 fn map_slope(world: vec2<f32>, uv: vec2<f32>, t: f32) -> Detail {
   let flow = water.normals.yz;
+  // Every derivative in this file is Fine: plain dpdx/fwidth are the backend's choice, and HLSL's ddx is coarse
+  // (one value per 2x2 quad) on D3D12, which sharpened the ripples' mips and their glints there. Metal's dfdx and
+  // the Vulkan drivers' OpDPdx are already per pixel.
   var n: vec3<f32>;
   // The slopes' variance the mips averaged away (Toksvig), as a share of the normal's (isotropic).
   var lost = 0.0;
   if (dot(flow, flow) < 1e-12) {
     let p = world * water.normals.x;
-    let gx = dpdx(p);
-    let gy = dpdy(p);
+    let gx = dpdxFine(p);
+    let gy = dpdyFine(p);
     let tt = t * water.waves.y;
     // `world` is from the frame's origin: each layer adds its uv there.
     let o = water.layers;
@@ -840,8 +843,8 @@ fn map_slope(world: vec2<f32>, uv: vec2<f32>, t: f32) -> Detail {
     // cycle at full weight each cycle (a pop every 0.15 / speed seconds).
     let o1 = (o0 + half_cycle) % cycle;
     let p = uv * water.normals.x;
-    let gx = dpdx(p);
-    let gy = dpdy(p);
+    let gx = dpdxFine(p);
+    let gy = dpdyFine(p);
     let a = ripple_map(p + dir * o0, gx, gy);
     let b = ripple_map(p + dir * o1, gx, gy);
     let wb = abs(half_cycle - o0) / half_cycle;
@@ -1016,7 +1019,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let t = frame.time.x;
   // (The map's gradients are taken in uniform control flow: the branch is on a uniform.)
   // The pixel's footprint on the surface (m) the detail waves are filtered over; a sea fades its own below.
-  let reach = select(max(length(dpdx(in.local)), length(dpdy(in.local))), 0.0, water.ocean.x > 0.5);
+  let reach = select(max(length(dpdxFine(in.local)), length(dpdyFine(in.local))), 0.0, water.ocean.x > 0.5);
   var detail = wave_slope(in.local, t, reach);
   if (water.normals.w > 0.5) {
     detail = map_slope(in.world.xz, in.uv, t);
@@ -1038,18 +1041,18 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let to = in.world - frame.view_pos.xyz;
     let along = (water.model[3].y - frame.view_pos.y) / min(to.y, -1e-6);
     let flat_hit = frame.view_pos.xz + to.xz * select(1.0, along, to.y < -0.01 * length(to) && along > 0.0);
-    var gx = dpdx(flat_hit);
-    var gy = dpdy(flat_hit);
+    var gx = dpdxFine(flat_hit);
+    var gy = dpdyFine(flat_hit);
     if (frame.view_pos.w > 0.5) {
-      gx = dpdx(in.rest);
-      gy = dpdy(in.rest);
+      gx = dpdxFine(in.rest);
+      gy = dpdyFine(in.rest);
       footprint = max(length(gx), length(gy));
     }
     let sea = ocean_normal(in.rest, in.world.xz, footprint, gx, gy);
     base = sea.n;
     // web-ocean: the slopes' change across the pixel widens the lobe (specular anti-aliasing).
-    let dsx = dpdx(sea.slope);
-    let dsy = dpdy(sea.slope);
+    let dsx = dpdxFine(sea.slope);
+    let dsy = dpdyFine(sea.slope);
     let aa = vec3<f32>(dsx.x * dsx.x + dsy.x * dsy.x, dsx.y * dsx.y + dsy.y * dsy.y, dsx.x * dsx.y + dsy.x * dsy.y) * 0.5;
     sea_cov = sea.cov + aa * min(1.0, 0.03 / max(max(aa.x, aa.y), 1e-8));
     sea_f = sea_foam(in.rest, sea.jac);
@@ -1304,8 +1307,8 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let h = normalize(l + v);
     let hs = -h.xz / max(h.y, 1e-3);
     let ms = n.xz / max(n.y, 1e-3);
-    let dsx = dpdx(ms);
-    let dsy = dpdy(ms);
+    let dsx = dpdxFine(ms);
+    let dsy = dpdyFine(ms);
     let aa = vec3<f32>(dsx.x * dsx.x + dsy.x * dsy.x, dsx.y * dsx.y + dsy.y * dsy.y, dsx.x * dsx.y + dsy.x * dsy.y) * 0.5;
     let cov = detail.cov + aa * min(1.0, 0.03 / max(max(aa.x, aa.y), 1e-8)) + vec3<f32>(SUN_DISC, SUN_DISC, 0.0);
     let dsl = hs + ms;
@@ -1676,7 +1679,7 @@ fn fs_waterline(in: LineOut) -> @location(0) vec4<f32> {
   let near = n4.xyz / n4.w;
   let s = near.y - waterline_height(near.xz);
   // Its distance from the line in pixels (the height's change across a pixel).
-  let px = s / max(fwidth(s), 1e-7);
+  let px = s / max(fwidthFine(s), 1e-7);
   let under = 1.0 - smoothstep(-0.5, 0.5, px);
   // What lies under it: fogged by the water over its distance (the depth prepass's view depth along the view's ray).
   let f4 = frame.inv_view_proj * vec4<f32>(in.ndc, 1.0, 1.0);
