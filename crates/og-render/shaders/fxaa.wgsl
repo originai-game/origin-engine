@@ -36,7 +36,7 @@ fn luma_at(px: vec2<i32>, size: vec2<i32>) -> f32 {
 }
 
 fn luma_uv(uv: vec2<f32>) -> f32 {
-  return fxaa_luma(textureSampleLevel(source, source_sampler, uv, 0.0).rgb);
+  return fxaa_luma(sample_exact(source, source_sampler, uv).rgb);
 }
 
 fn fxaa(pos: vec2<f32>) -> vec3<f32> {
@@ -125,7 +125,7 @@ fn fxaa(pos: vec2<f32>) -> vec3<f32> {
   let offset = max(edge_offset, subpix);
   var final_uv = uv;
   if (horizontal) { final_uv.y += offset * step_len; } else { final_uv.x += offset * step_len; }
-  return textureSampleLevel(source, source_sampler, final_uv, 0.0).rgb;
+  return sample_exact(source, source_sampler, final_uv).rgb;
 }
 
 fn fxaa_srgb_encode(c: vec3<f32>) -> vec3<f32> {

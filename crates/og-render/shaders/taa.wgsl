@@ -65,15 +65,15 @@ fn history_catmull_rom(uv: vec2<f32>) -> vec3<f32> {
   let t3 = (t1 + 2.0) / size;
   let t12 = (t1 + w2 / w12) / size;
   var c = vec3<f32>(0.0);
-  c += textureSampleLevel(history, linear_sampler, vec2<f32>(t0.x, t0.y), 0.0).rgb * (w0.x * w0.y);
-  c += textureSampleLevel(history, linear_sampler, vec2<f32>(t12.x, t0.y), 0.0).rgb * (w12.x * w0.y);
-  c += textureSampleLevel(history, linear_sampler, vec2<f32>(t3.x, t0.y), 0.0).rgb * (w3.x * w0.y);
-  c += textureSampleLevel(history, linear_sampler, vec2<f32>(t0.x, t12.y), 0.0).rgb * (w0.x * w12.y);
-  c += textureSampleLevel(history, linear_sampler, vec2<f32>(t12.x, t12.y), 0.0).rgb * (w12.x * w12.y);
-  c += textureSampleLevel(history, linear_sampler, vec2<f32>(t3.x, t12.y), 0.0).rgb * (w3.x * w12.y);
-  c += textureSampleLevel(history, linear_sampler, vec2<f32>(t0.x, t3.y), 0.0).rgb * (w0.x * w3.y);
-  c += textureSampleLevel(history, linear_sampler, vec2<f32>(t12.x, t3.y), 0.0).rgb * (w12.x * w3.y);
-  c += textureSampleLevel(history, linear_sampler, vec2<f32>(t3.x, t3.y), 0.0).rgb * (w3.x * w3.y);
+  c += sample_exact(history, linear_sampler, vec2<f32>(t0.x, t0.y)).rgb * (w0.x * w0.y);
+  c += sample_exact(history, linear_sampler, vec2<f32>(t12.x, t0.y)).rgb * (w12.x * w0.y);
+  c += sample_exact(history, linear_sampler, vec2<f32>(t3.x, t0.y)).rgb * (w3.x * w0.y);
+  c += sample_exact(history, linear_sampler, vec2<f32>(t0.x, t12.y)).rgb * (w0.x * w12.y);
+  c += sample_exact(history, linear_sampler, vec2<f32>(t12.x, t12.y)).rgb * (w12.x * w12.y);
+  c += sample_exact(history, linear_sampler, vec2<f32>(t3.x, t12.y)).rgb * (w3.x * w12.y);
+  c += sample_exact(history, linear_sampler, vec2<f32>(t0.x, t3.y)).rgb * (w0.x * w3.y);
+  c += sample_exact(history, linear_sampler, vec2<f32>(t12.x, t3.y)).rgb * (w12.x * w3.y);
+  c += sample_exact(history, linear_sampler, vec2<f32>(t3.x, t3.y)).rgb * (w3.x * w3.y);
   return max(c, vec3<f32>(0.0));
 }
 
@@ -126,7 +126,7 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   // filtered to the output (bilinear at the jittered place).
   var fresh = cur4;
   if (upscale) {
-    fresh = textureSampleLevel(current, linear_sampler, (s + jitter) / vec2<f32>(size), 0.0);
+    fresh = sample_exact(current, linear_sampler, (s + jitter) / vec2<f32>(size));
   }
   let cur = cur4.rgb;
   if (taa.params.x >= 1.0) { return fresh; }
@@ -186,9 +186,9 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
       return fresh;
     }
     if (catmull_rom) {
-      hist4 = vec4<f32>(history_catmull_rom(prev_uv), textureSampleLevel(history, linear_sampler, prev_uv, 0.0).a);
+      hist4 = vec4<f32>(history_catmull_rom(prev_uv), sample_exact(history, linear_sampler, prev_uv).a);
     } else {
-      hist4 = textureSampleLevel(history, linear_sampler, prev_uv, 0.0);
+      hist4 = sample_exact(history, linear_sampler, prev_uv);
     }
   }
   // Under TAAU a sample counts as much as it is near this pixel's centre

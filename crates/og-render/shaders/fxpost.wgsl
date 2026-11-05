@@ -766,7 +766,7 @@ fn fs_dof_coc(in: VsOut) -> @location(0) vec4<f32> {
 @fragment
 fn fs_dof_blur(in: VsOut) -> @location(0) vec4<f32> {
   let size = vec2<f32>(textureDimensions(tex_a));
-  let center = textureSampleLevel(tex_a, fx_linear, in.uv, 0.0);
+  let center = sample_exact(tex_a, fx_linear, in.uv);
   let c0 = center.a;
   let taps = u32(fxp.dof2.x);
   let max_r = fxp.dof.z * 0.5;
@@ -797,7 +797,7 @@ fn fs_dof_blur(in: VsOut) -> @location(0) vec4<f32> {
 @fragment
 fn fs_dof_composite(in: VsOut) -> @location(0) vec4<f32> {
   let sharp = textureLoad(tex_a, vec2<i32>(in.pos.xy), 0);
-  let b = textureSampleLevel(tex_b, fx_linear, in.uv, 0.0);
+  let b = sample_exact(tex_b, fx_linear, in.uv);
   return vec4<f32>(mix(sharp.rgb, b.rgb, b.a), sharp.a);
 }
 
@@ -873,7 +873,7 @@ fn fs_godrays_mask(in: VsOut) -> @location(0) vec4<f32> {
   let to_sun = (in.uv - fxp.god.xy) * vec2<f32>(aspect, 1.0);
   let fall = clamp(1.0 - length(to_sun) / 0.5, 0.0, 1.0);
   // Only the sky brighter than its surroundings carries rays: the sun and its glow.
-  let c = textureSampleLevel(tex_a, fx_linear, in.uv, 0.0).rgb;
+  let c = sample_exact(tex_a, fx_linear, in.uv).rgb;
   let lum = dot(c, LUMA);
   let bright = max(lum - fxp.god2.w, 0.0) / max(lum, 1e-4);
   return vec4<f32>(min(c * bright, vec3<f32>(32.0)) * pow(fall, 3.0), 1.0);

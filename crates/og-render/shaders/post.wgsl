@@ -106,7 +106,7 @@ fn tonemapped(uv: vec2<f32>) -> vec3<f32> {
   // Untonemapped sprites (sprite.wgsl `fs_untonemapped`) left the alpha at
   // the fraction of the pixel to tone map: the rest is their colour as
   // given, without exposure, bloom or the curve.
-  let lit = textureSampleLevel(source, linear_sampler, uv, 0.0);
+  let lit = sample_exact(source, linear_sampler, uv);
   return mix(clamp(lit.rgb, vec3<f32>(0.0), vec3<f32>(1.0)), curved, clamp(lit.a, 0.0, 1.0));
 }
 
@@ -154,10 +154,10 @@ fn curve(uv: vec2<f32>) -> vec3<f32> {
     let off = d * length(d) * 2.0 * post.vignette.w;
     lit = vec3<f32>(
       textureSampleLevel(source, linear_sampler, uv - off, 0.0).r,
-      textureSampleLevel(source, linear_sampler, uv, 0.0).g,
+      sample_exact(source, linear_sampler, uv).g,
       textureSampleLevel(source, linear_sampler, uv + off, 0.0).b);
   } else {
-    lit = textureSampleLevel(source, linear_sampler, uv, 0.0).rgb;
+    lit = sample_exact(source, linear_sampler, uv).rgb;
   }
   var c = lit * exposure();
   if (post.bloom.z > 0.0) {
@@ -276,7 +276,7 @@ fn bloom_source_size() -> vec2<f32> {
 // the lit image's colour weighted by its alpha, the tone-mapped fraction,
 // so those sprites neither bloom nor dim the bloom round them.
 fn bloom_tap(uv: vec2<f32>) -> vec3<f32> {
-  let s = textureSampleLevel(source, linear_sampler, uv, 0.0);
+  let s = sample_exact(source, linear_sampler, uv);
   if (post.extra.y > 0.5) { return s.rgb * clamp(s.a, 0.0, 1.0); }
   return s.rgb;
 }

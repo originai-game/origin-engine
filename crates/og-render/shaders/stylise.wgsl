@@ -1197,7 +1197,7 @@ fn lens(in: VsOut) -> vec3<f32> {
   if (st.output.z > 1.5) {
     return textureLoad(source, clamp(vec2<i32>(floor(uv * size)), vec2<i32>(0), vec2<i32>(size) - 1), 0).rgb;
   }
-  return textureSampleLevel(source, clamp_sampler, uv, 0.0).rgb;
+  return sample_exact(source, clamp_sampler, uv).rgb;
 }
 
 @fragment
@@ -1225,7 +1225,7 @@ fn fs_quantize_srgb(in: VsOut) -> @location(0) vec4<f32> {
 fn upscale(in: VsOut) -> vec3<f32> {
   // The render scale's frame (output.z 0): the whole output, bilinear.
   if (st.output.z < 0.5) {
-    return textureSampleLevel(source, clamp_sampler, in.uv, 0.0).rgb;
+    return sample_exact(source, clamp_sampler, in.uv).rgb;
   }
   let scale = max(st.output.z, 1.0);
   let p = (in.pos.xy - st.offset.xy) / scale;
