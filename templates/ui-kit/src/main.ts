@@ -601,6 +601,7 @@ function gallery(d: DemoState): void {
 
 /** The most characters the text screen's field and area take. */
 const NAME_CHARS = 24;
+const VERSE_CHARS = 16;
 const NOTES_CHARS = 256;
 
 /**
@@ -611,6 +612,8 @@ const NOTES_CHARS = 256;
 export const Typed = defineResource("Typed", {
   name: str(NAME_CHARS * 4, "", { label: "Name" }),
   notes: str(NOTES_CHARS * 4, "", { label: "Notes" }),
+  verse: str(VERSE_CHARS * 4, "曲径通幽处", { label: "Verse" }),
+  reply: str(VERSE_CHARS * 4, "", { label: "Reply" }),
 });
 
 /** Type and scripts: the display and rounded faces kerned, labels cut with
@@ -638,6 +641,17 @@ function textScreen(world: World): void {
     });
     const typed = world.resource(Typed);
     if (!typed.ok) return;
+    // The 大观园 page: an inscription is a line in a box the page draws itself, its field tight to the line (no inset,
+    // the line's height) and bare (the box is its frame), dressed as Verse.
+    for (const [id, key, hint] of [["Verse", "verse", "题一匾额"], ["Reply", "reply", "续一句"]] as const) {
+      og.ui.row(`${id}Box`, { width: grow, padding: { left: t.space.md, top: t.space.sm, right: t.space.md, bottom: t.space.sm } }, () => {
+        // The page's own box: its ground and its rule, drawn by the page, not by the field.
+        const r = t.radius.control;
+        og.ui.setDraw({ shape: { kind: "rect", radii: [r, r, r, r] }, fills: [{ kind: "solid", color: { token: "well" } }], strokes: [{ width: 1.5, align: "inside", paint: { kind: "solid", color: { token: "lineStrong" } } }] });
+        const v = og.ui.textField(id, typed.value[key], { placeholder: hint, width: grow, maxChars: VERSE_CHARS, bare: true, tight: true, component: "Verse" }).value;
+        if (v !== typed.value[key]) typed.value[key] = v;
+      });
+    }
     const name = og.ui.textField("Name", typed.value.name, { placeholder: "Your name", width: grow, maxChars: NAME_CHARS }).value;
     if (name !== typed.value.name) typed.value.name = name;
     const notes = og.ui.textArea("Notes", typed.value.notes, { placeholder: "Notes", rows: 3, width: grow, maxChars: NOTES_CHARS }).value;
