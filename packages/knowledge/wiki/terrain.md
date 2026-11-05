@@ -18,7 +18,7 @@ module terrain {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 26503</sub>
+<sub>`api.ogt` line 26505</sub>
 
 ## Contents
 
@@ -81,7 +81,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 27122</sub>
+<sub>`api.ogt` line 27124</sub>
 
 <a id="fn-sample"></a>
 
@@ -111,7 +111,7 @@ fn sample {
 }
 ```
 
-<sub>`api.ogt` line 27129</sub>
+<sub>`api.ogt` line 27131</sub>
 
 <a id="fn-bounds"></a>
 
@@ -153,7 +153,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 27136</sub>
+<sub>`api.ogt` line 27138</sub>
 
 <a id="fn-edit"></a>
 
@@ -185,7 +185,7 @@ fn edit {
 }
 ```
 
-<sub>`api.ogt` line 27152</sub>
+<sub>`api.ogt` line 27154</sub>
 
 <a id="fn-stamp"></a>
 
@@ -215,7 +215,7 @@ fn stamp {
 }
 ```
 
-<sub>`api.ogt` line 27160</sub>
+<sub>`api.ogt` line 27162</sub>
 
 <a id="fn-unstamp"></a>
 
@@ -247,7 +247,7 @@ fn unstamp {
 }
 ```
 
-<sub>`api.ogt` line 27167</sub>
+<sub>`api.ogt` line 27169</sub>
 
 <a id="fn-layer"></a>
 
@@ -279,7 +279,7 @@ fn layer {
 }
 ```
 
-<sub>`api.ogt` line 27175</sub>
+<sub>`api.ogt` line 27177</sub>
 
 <a id="fn-setLayer"></a>
 
@@ -313,7 +313,7 @@ fn setLayer {
 }
 ```
 
-<sub>`api.ogt` line 27183</sub>
+<sub>`api.ogt` line 27185</sub>
 
 ## Components, resources and events
 
@@ -374,7 +374,7 @@ component Terrain {
 }
 ```
 
-<sub>`api.ogt` line 26535</sub>
+<sub>`api.ogt` line 26537</sub>
 
 <a id="record-TerrainStamp"></a>
 
@@ -413,7 +413,7 @@ component TerrainStamp {
 }
 ```
 
-<sub>`api.ogt` line 26571</sub>
+<sub>`api.ogt` line 26573</sub>
 
 <a id="record-TerrainScatter"></a>
 
@@ -541,7 +541,7 @@ component TerrainScatter {
 }
 ```
 
-<sub>`api.ogt` line 26590</sub>
+<sub>`api.ogt` line 26592</sub>
 
 <a id="record-Grass"></a>
 
@@ -746,7 +746,7 @@ component Grass {
 }
 ```
 
-<sub>`api.ogt` line 26682</sub>
+<sub>`api.ogt` line 26684</sub>
 
 <a id="record-GrassType"></a>
 
@@ -804,7 +804,7 @@ component GrassType {
 }
 ```
 
-<sub>`api.ogt` line 26841</sub>
+<sub>`api.ogt` line 26843</sub>
 
 <a id="record-GrassPusher"></a>
 
@@ -847,7 +847,7 @@ component GrassPusher {
 }
 ```
 
-<sub>`api.ogt` line 26878</sub>
+<sub>`api.ogt` line 26880</sub>
 
 ## Types
 
@@ -863,7 +863,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TerrainData "A loaded terrain: its heights, control map and layers."
 ```
 
-<sub>`api.ogt` line 26509</sub>
+<sub>`api.ogt` line 26511</sub>
 
 <a id="type-TerrainBrushMode"></a>
 
@@ -896,7 +896,7 @@ enum TerrainBrushMode {
 }
 ```
 
-<sub>`api.ogt` line 26518</sub>
+<sub>`api.ogt` line 26520</sub>
 
 <a id="type-TerrainStampMode"></a>
 
@@ -919,7 +919,7 @@ enum TerrainStampMode {
 }
 ```
 
-<sub>`api.ogt` line 26529</sub>
+<sub>`api.ogt` line 26531</sub>
 
 <a id="type-TerrainInfo"></a>
 
@@ -968,7 +968,7 @@ struct TerrainInfo {
 }
 ```
 
-<sub>`api.ogt` line 26903</sub>
+<sub>`api.ogt` line 26905</sub>
 
 <a id="type-TerrainSampleDesc"></a>
 
@@ -1008,7 +1008,7 @@ struct TerrainSampleDesc {
 }
 ```
 
-<sub>`api.ogt` line 26927</sub>
+<sub>`api.ogt` line 26929</sub>
 
 <a id="type-TerrainSample"></a>
 
@@ -1039,7 +1039,7 @@ struct TerrainSample {
 }
 ```
 
-<sub>`api.ogt` line 26946</sub>
+<sub>`api.ogt` line 26948</sub>
 
 <a id="type-TerrainBounds"></a>
 
@@ -1064,7 +1064,7 @@ struct TerrainBounds {
 }
 ```
 
-<sub>`api.ogt` line 26959</sub>
+<sub>`api.ogt` line 26961</sub>
 
 <a id="type-TerrainBrush"></a>
 
@@ -1122,7 +1122,7 @@ struct TerrainBrush {
 }
 ```
 
-<sub>`api.ogt` line 26969</sub>
+<sub>`api.ogt` line 26971</sub>
 
 <a id="type-TerrainEdit"></a>
 
@@ -1151,7 +1151,7 @@ struct TerrainEdit {
 }
 ```
 
-<sub>`api.ogt` line 27003</sub>
+<sub>`api.ogt` line 27005</sub>
 
 <a id="type-TerrainStampDesc"></a>
 
@@ -1203,7 +1203,7 @@ struct TerrainStampDesc {
 }
 ```
 
-<sub>`api.ogt` line 27015</sub>
+<sub>`api.ogt` line 27017</sub>
 
 <a id="type-TerrainLayerDesc"></a>
 
@@ -1314,7 +1314,7 @@ struct TerrainLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 27042</sub>
+<sub>`api.ogt` line 27044</sub>
 
 ## Column kinds
 
@@ -1333,4 +1333,4 @@ column TerrainData {
 }
 ```
 
-<sub>`api.ogt` line 26511</sub>
+<sub>`api.ogt` line 26513</sub>

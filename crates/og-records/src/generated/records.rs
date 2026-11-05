@@ -7550,7 +7550,7 @@ pub const RECORDS: &[RecordDecl] = &[
             FieldDecl {
                 name: "ssrResolution",
                 column: "AoResolution",
-                default: "\"full\"",
+                default: "\"half\"",
                 readonly: false,
                 tunable: false,
                 min: None,
@@ -7559,7 +7559,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Full: one ray per pixel. Half: one ray per 2x2 block, a different pixel of the block each frame, resolved at full resolution: a quarter of the rays for softer contact detail."),
+                doc: doc!("Half (the default): one ray per 2x2 block, a different pixel of the block each frame, denoised on the blocks and upsampled to the pixels by their depth, normal and roughness, so edges stay sharp: about a third of Full's cost (under 1.5 ms at 1080p on an M4 Pro), with slightly softer reflected detail and a coarser grain on rough surfaces while the camera moves. Full: one ray per pixel, denoised at full resolution: the sharpest mirrors."),
                 variants: &["full", "half"],
                 capacity: 0,
                 list: 0,

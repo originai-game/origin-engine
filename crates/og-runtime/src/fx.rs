@@ -450,8 +450,12 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
                 fade: f(&p, "ssrFade", 0.15),
                 intensity: f(&p, "ssrIntensity", 1.0),
                 max_roughness: f(&p, "ssrMaxRoughness", 0.6),
-                resolution: [AoResolution::Full, AoResolution::Half]
-                    [variant(&p["ssrResolution"], &["full", "half"]).min(1)],
+                resolution: if p["ssrResolution"].is_null() {
+                    AoResolution::Half
+                } else {
+                    [AoResolution::Full, AoResolution::Half]
+                        [variant(&p["ssrResolution"], &["full", "half"]).min(1)]
+                },
             });
         }
         if on(&p, "glow", false) {

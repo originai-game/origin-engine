@@ -37,6 +37,7 @@ struct Ssr {
   params: vec4<f32>,           // x: edge fade, y: near, z: far, w: the frame's noise index
   flags: vec4<f32>,            // x: 1 with the previous lit image, y: 1 with the history, z: the ray divisor (1 or 2), w: pyramid levels
   ray: vec4<f32>,              // xy: the ray textures' size, zw: the half-resolution ray's pixel in its 2x2 block
+  chain: vec4<f32>,            // the denoiser's grid (the rays'): w, h, 1/w, 1/h
 };
 
 @group(0) @binding(0) var<uniform> ssr: Ssr;
@@ -84,6 +85,9 @@ struct Ssr {
 // edge-stopping inputs are one load, not two.
 @group(1) @binding(22) var guide_out: texture_storage_2d<rgba16float, write>;
 @group(1) @binding(23) var guide: texture_2d<f32>;
+// At half resolution, the full-resolution reflections the lit shaders
+// read, upsampled from the history.
+@group(1) @binding(25) var lit_out: texture_storage_2d<rgba16float, write>;
 
 const SSR_PI: f32 = 3.14159265359;
 const SSR_BIG: f32 = 3.0e38;
@@ -103,6 +107,22 @@ fn ssr_size() -> vec2<i32> {
 
 fn ssr_clamp_px(px: vec2<i32>) -> vec2<i32> {
   return clamp(px, vec2<i32>(0), ssr_size() - 1);
+}
+
+// The denoiser's grid: the screen at full resolution, its 2x2 blocks at
+// half.
+fn ssr_chain_size() -> vec2<i32> {
+  return vec2<i32>(ssr.chain.xy);
+}
+
+fn ssr_clamp_chain(c: vec2<i32>) -> vec2<i32> {
+  return clamp(c, vec2<i32>(0), ssr_chain_size() - 1);
+}
+
+// The pixel that stands for denoiser texel `c` (its block's first): its
+// depth, normal and roughness are the texel's, the same every frame.
+fn ssr_rep(c: vec2<i32>) -> vec2<i32> {
+  return ssr_clamp_px(c * i32(ssr.flags.z));
 }
 
 fn ssr_view_depth(px: vec2<i32>) -> f32 {
@@ -143,8 +163,8 @@ fn ssr_world_normal(px: vec2<i32>) -> vec3<f32> {
   return ssr_oct_decode(textureLoad(ssr_gbuffer, ssr_clamp_px(px), 0).xy);
 }
 
-fn ssr_guide(px: vec2<i32>) -> vec4<f32> {
-  return textureLoad(guide, ssr_clamp_px(px), 0);
+fn ssr_guide(c: vec2<i32>) -> vec4<f32> {
+  return textureLoad(guide, ssr_clamp_chain(c), 0);
 }
 
 fn ssr_view_normal(px: vec2<i32>) -> vec3<f32> {
@@ -435,21 +455,16 @@ fn ssr_ray_origin(rt: vec2<i32>) -> vec2<i32> {
   return ssr_clamp_px(rt * 2 + vec2<i32>(ssr.ray.zw));
 }
 
-// One ray a ray texel, and the guide of the pixels it spans.
+// One ray a ray texel, and the guide of its denoiser texel.
 @compute @workgroup_size(8, 8)
 fn trace(@builtin(global_invocation_id) gid: vec3<u32>) {
   let rt = vec2<i32>(gid.xy);
   if (any(rt >= vec2<i32>(ssr.ray.xy))) { return; }
-  let divisor = i32(ssr.flags.z);
-  for (var y = 0; y < divisor; y++) {
-    for (var x = 0; x < divisor; x++) {
-      let q = rt * divisor + vec2<i32>(x, y);
-      if (all(q < ssr_size())) {
-        let dr = textureLoad(ssr_depth, q, 0).rg;
-        let oct = textureLoad(ssr_gbuffer, q, 0).xy;
-        textureStore(guide_out, q, vec4<f32>(oct, dr.r, ssr_decode_roughness(dr.g)));
-      }
-    }
+  {
+    let q = ssr_rep(rt);
+    let dr = textureLoad(ssr_depth, q, 0).rg;
+    let oct = textureLoad(ssr_gbuffer, q, 0).xy;
+    textureStore(guide_out, rt, vec4<f32>(oct, dr.r, ssr_decode_roughness(dr.g)));
   }
   let px = ssr_ray_origin(rt);
   let d = ssr_view_depth(px);
@@ -558,27 +573,27 @@ const SSR_REUSE: array<vec2<f32>, 8> = array<vec2<f32>, 8>(
 @compute @workgroup_size(8, 8)
 fn resolve(@builtin(global_invocation_id) gid: vec3<u32>) {
   let px = vec2<i32>(gid.xy);
-  if (any(px >= ssr_size())) { return; }
-  let d = ssr_view_depth(px);
-  let roughness = ssr_roughness(px);
+  if (any(px >= ssr_chain_size())) { return; }
+  let rp = ssr_rep(px);
+  let d = ssr_view_depth(rp);
+  let roughness = ssr_roughness(rp);
   if (ssr_is_sky(d) || roughness > ssr.trace.w) {
     textureStore(resolved_out, px, vec4<f32>(0.0));
     return;
   }
-  let uv = (vec2<f32>(px) + 0.5) * ssr.screen.zw;
+  let uv = (vec2<f32>(rp) + 0.5) * ssr.screen.zw;
   let p = ssr_view_pos(uv, d);
-  let world_n = ssr_world_normal(px);
+  let world_n = ssr_world_normal(rp);
   let n = normalize((ssr.view * vec4<f32>(world_n, 0.0)).xyz);
   let v = -normalize(p);
   let n_dot_v = max(dot(n, v), 1e-4);
   let alpha = ssr_alpha(roughness);
   let a2 = alpha * alpha;
-  let divisor = i32(ssr.flags.z);
   let ray_size = vec2<i32>(ssr.ray.xy);
-  let home = min(px / divisor, ray_size - 1);
+  let home = px;
   // Mirrors take their own ray (a neighbour's lies off their lobe); rougher
   // surfaces the ring, wider as the lobe widens.
-  let count = select(9, 1, roughness < SSR_MIRROR && divisor == 1);
+  let count = select(9, 1, roughness < SSR_MIRROR);
   let angle = 2.0 * SSR_PI * ssr_rand(px, 1u).x;
   let rot = mat2x2<f32>(cos(angle), sin(angle), -sin(angle), cos(angle));
   let radius = mix(1.0, 2.5, smoothstep(0.1, 0.6, roughness));
@@ -595,11 +610,10 @@ fn resolve(@builtin(global_invocation_id) gid: vec3<u32>) {
     // A neighbour's ray started on another surface only if its pixel
     // differs in depth or facing.
     let opx = ssr_ray_origin(rt);
-    let og = ssr_guide(opx);
     // (Normals compared in the world: the dot is the same in view space.)
-    let facing = max(dot(ssr_oct_decode(og.xy), world_n), 1e-6);
-    var bilateral = exp(16.0 * log(facing) - abs(og.z - d) / max(d, 1e-3) * 32.0);
-    if (all(opx == px)) { bilateral = 1.0; }
+    let facing = max(dot(ssr_world_normal(opx), world_n), 1e-6);
+    var bilateral = exp(16.0 * log(facing) - abs(ssr_view_depth(opx) - d) / max(d, 1e-3) * 32.0);
+    if (k == 0) { bilateral = 1.0; }
     let l = normalize(hit.xyz - p);
     let n_dot_l = dot(n, l);
     if (n_dot_l <= 0.0) { continue; }
@@ -642,13 +656,13 @@ const SSR_RADIANCE_BIAS: f32 = 0.6;
 @compute @workgroup_size(8, 8)
 fn prefilter(@builtin(global_invocation_id) gid: vec3<u32>) {
   let px = vec2<i32>(gid.xy);
-  if (any(px >= ssr_size())) { return; }
+  if (any(px >= ssr_chain_size())) { return; }
   let center = textureLoad(resolved, px, 0);
   let own = ssr_guide(px);
   let d = own.z;
   let roughness = own.w;
   // A mirror keeps its own ray: a blur would soften what it reflects.
-  if (ssr_is_sky(ssr_view_depth(px)) || roughness > ssr.trace.w || roughness < SSR_MIRROR) {
+  if (ssr_is_sky(d) || roughness > ssr.trace.w || roughness < SSR_MIRROR) {
     textureStore(filtered_out, px, center);
     return;
   }
@@ -656,11 +670,11 @@ fn prefilter(@builtin(global_invocation_id) gid: vec3<u32>) {
   // The local mean the radiance weight compares against, so a lone bright
   // sample is pulled down as FidelityFX's average radiance does: a 3x3
   // tent in four bilinear reads at the pixel's corners.
-  let corner = vec2<f32>(px) * ssr.screen.zw;
+  let corner = vec2<f32>(px) * ssr.chain.zw;
   let mean = 0.25 * (textureSampleLevel(resolved, ssr_linear, corner, 0.0)
-    + textureSampleLevel(resolved, ssr_linear, corner + vec2<f32>(ssr.screen.z, 0.0), 0.0)
-    + textureSampleLevel(resolved, ssr_linear, corner + vec2<f32>(0.0, ssr.screen.w), 0.0)
-    + textureSampleLevel(resolved, ssr_linear, corner + ssr.screen.zw, 0.0));
+    + textureSampleLevel(resolved, ssr_linear, corner + vec2<f32>(ssr.chain.z, 0.0), 0.0)
+    + textureSampleLevel(resolved, ssr_linear, corner + vec2<f32>(0.0, ssr.chain.w), 0.0)
+    + textureSampleLevel(resolved, ssr_linear, corner + ssr.chain.zw, 0.0));
   // The footprint grows with the lobe: a pixel at roughness 0.6 reaches
   // twice FidelityFX's 3 texels.
   let scale = mix(0.75, 2.0, smoothstep(SSR_MIRROR, 0.6, roughness));
@@ -671,7 +685,7 @@ fn prefilter(@builtin(global_invocation_id) gid: vec3<u32>) {
   let rot = mat2x2<f32>(cos(angle), sin(angle), -sin(angle), cos(angle));
   var taps = SSR_HALTON;
   for (var i = 0; i < 15; i++) {
-    let q = ssr_clamp_px(px + vec2<i32>(round(rot * taps[i] * scale)));
+    let q = ssr_clamp_chain(px + vec2<i32>(round(rot * taps[i] * scale)));
     let s = textureLoad(resolved, q, 0);
     let g = ssr_guide(q);
     // The edge-stopping weights' logarithms, summed under one exp: the
@@ -709,8 +723,7 @@ fn ssr_disocclusion(n: vec3<f32>, history_n: vec3<f32>, d: f32, history_d: f32) 
 
 // The history's meta at `uv`: x sample count, y view depth, zw oct normal.
 fn ssr_meta(uv: vec2<f32>) -> vec4<f32> {
-  let px = clamp(vec2<i32>(uv * ssr.screen.xy), vec2<i32>(0), ssr_size() - 1);
-  return textureLoad(history_meta, px, 0);
+  return textureLoad(history_meta, ssr_clamp_chain(vec2<i32>(uv * ssr.chain.xy)), 0);
 }
 
 fn ssr_on_screen(uv: vec2<f32>) -> bool {
@@ -720,10 +733,11 @@ fn ssr_on_screen(uv: vec2<f32>) -> bool {
 @compute @workgroup_size(8, 8)
 fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
   let px = vec2<i32>(gid.xy);
-  if (any(px >= ssr_size())) { return; }
-  let d = ssr_view_depth(px);
-  let world_n = ssr_world_normal(px);
-  let roughness = ssr_roughness(px);
+  if (any(px >= ssr_chain_size())) { return; }
+  let rp = ssr_rep(px);
+  let d = ssr_view_depth(rp);
+  let world_n = ssr_world_normal(rp);
+  let roughness = ssr_roughness(rp);
   let center = textureLoad(resolved, px, 0);
   if (ssr_is_sky(d) || roughness > ssr.trace.w) {
     textureStore(history_out, px, vec4<f32>(0.0));
@@ -734,16 +748,18 @@ fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
   }
   // The neighbourhood's mean and deviation over FidelityFX's 9x9 window
   // (radius 4), Gaussian-weighted with its K of 3, read every second texel
-  // (25 taps): a 3x3 window's moments are as noisy as one frame of a rough
-  // surface, and a box clipped to them threw the converged history away.
+  // within the diamond (13 taps; the corners' Gaussian weight is a fifth of
+  // the centre's or less, and their loads were a fifth of the pass): a 3x3
+  // window's moments are as noisy as one frame of a rough surface, and a
+  // box clipped to them threw the converged history away.
   var m1 = vec4<f32>(0.0);
   var m2 = vec4<f32>(0.0);
   var mw = 0.0;
   for (var y = -2; y <= 2; y++) {
-    for (var x = -2; x <= 2; x++) {
+    for (var x = -2 + abs(y); x <= 2 - abs(y); x++) {
       let o = vec2<f32>(f32(x), f32(y)) * 2.0;
       let w = exp(-3.0 * dot(o, o) / 25.0);
-      let s = textureLoad(unfiltered, ssr_clamp_px(px + vec2<i32>(x, y) * 2), 0);
+      let s = textureLoad(unfiltered, ssr_clamp_chain(px + vec2<i32>(x, y) * 2), 0);
       m1 += s * w;
       m2 += s * s * w;
       mw += w;
@@ -756,19 +772,21 @@ fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
   var out = center;
   var samples = 1.0;
   if (ssr.flags.y > 0.5) {
-    let uv = (vec2<f32>(px) + 0.5) * ssr.screen.zw;
+    let uv = (vec2<f32>(rp) + 0.5) * ssr.screen.zw;
+    // The texel's own centre, where its history lies (the representative
+    // pixel's is a quarter texel off it at half resolution).
+    let uv_c = (vec2<f32>(px) + 0.5) * ssr.chain.zw;
     let p = ssr_view_pos(uv, d);
     // The surface's own motion, and for a mirror the reflected point's:
     // a ray of the reflection's length straight through the surface
     // (FidelityFX's hit position reprojection).
-    let surface_uv = uv - ssr_velocity(px);
+    let surface_uv = uv_c - ssr_velocity(rp);
     var history_uv = surface_uv;
-    let rt = min(px / i32(ssr.flags.z), vec2<i32>(ssr.ray.xy) - 1);
-    let hit = textureLoad(ray_hit, rt, 0);
+    let hit = textureLoad(ray_hit, px, 0);
     if (roughness < 0.25 && hit.w > 0.0) {
       let through = p + normalize(p) * length(hit.xyz - p);
       let c = ssr.prev_view_proj * (ssr.inv_view * vec4<f32>(through, 1.0));
-      let hit_uv = vec2<f32>(c.x / c.w * 0.5 + 0.5, 0.5 - c.y / c.w * 0.5);
+      let hit_uv = vec2<f32>(c.x / c.w * 0.5 + 0.5, 0.5 - c.y / c.w * 0.5) + uv_c - uv;
       let hit_meta = ssr_meta(hit_uv);
       let surface_meta = ssr_meta(surface_uv);
       let hit_similar = dot(ssr_oct_decode(hit_meta.zw), world_n);
@@ -783,12 +801,12 @@ fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
       if (kept > SSR_DISOCCLUSION_THRESHOLD && m.x > 0.0) {
         // How still the history is on screen: 1 for a still camera over a
         // still surface.
-        let still = 1.0 - smoothstep(0.05, 0.5, length((history_uv - uv) * ssr.screen.xy));
+        let still = 1.0 - smoothstep(0.05, 0.5, length((history_uv - uv_c) * ssr.screen.xy));
         // A still history accumulates up to 64 frames on rough surfaces.
         let most = max(8.0, mix(32.0, 64.0, still) * (1.0 - exp(-roughness * 100.0)));
         samples = min(most, m.x * kept + 1.0);
         let old = textureSampleLevel(history, ssr_linear, history_uv, 0.0);
-        let history_px = clamp(vec2<i32>(history_uv * ssr.screen.xy), vec2<i32>(0), ssr_size() - 1);
+        let history_px = ssr_clamp_chain(vec2<i32>(history_uv * ssr.chain.xy));
         // The fast history: the neighbourhood's mean over the last four
         // frames (NRD's fast history, Zhdan 2021), far steadier than one
         // frame's mean, which on a rough lobe's heavy tail swings with
@@ -837,4 +855,48 @@ fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
   textureStore(meta_out, px, vec4<f32>(samples, d, ssr_oct_encode(world_n)));
   textureStore(fast_out, px, fast);
   textureStore(spread_out, px, spread);
+}
+
+// ---- 6. The upsample (half resolution).
+
+// Each pixel's reflection from the four denoiser texels round it, each
+// weighed by its bilinear share and by how like the pixel its surface is
+// (normal, depth, roughness; a joint bilateral upsample, Kopf et al. 2007):
+// across an edge a pixel takes its own side's texels, not the blend of
+// both. A pixel none of the four matches takes the likest.
+@compute @workgroup_size(8, 8)
+fn upsample(@builtin(global_invocation_id) gid: vec3<u32>) {
+  let px = vec2<i32>(gid.xy);
+  if (any(px >= ssr_size())) { return; }
+  let d = ssr_view_depth(px);
+  let roughness = ssr_roughness(px);
+  if (ssr_is_sky(d) || roughness > ssr.trace.w) {
+    textureStore(lit_out, px, vec4<f32>(0.0));
+    return;
+  }
+  let n = ssr_world_normal(px);
+  let c = (vec2<f32>(px) + 0.5) * ssr.chain.xy * ssr.screen.zw - 0.5;
+  let base = vec2<i32>(floor(c));
+  let f = c - vec2<f32>(base);
+  var sum = vec4<f32>(0.0);
+  var weight = 0.0;
+  var likest = vec4<f32>(0.0);
+  var likeness = -1.0;
+  for (var k = 0; k < 4; k++) {
+    let o = vec2<i32>(k & 1, k >> 1);
+    let q = ssr_clamp_chain(base + o);
+    let g = textureLoad(guide, q, 0);
+    let facing = max(dot(n, ssr_oct_decode(g.xy)), 1e-6);
+    let like = exp(16.0 * log(facing) - abs(g.z - d) / max(d, 1e-3) * 32.0
+      - abs(g.w - roughness) * 16.0);
+    let share = select(1.0 - f.x, f.x, o.x == 1) * select(1.0 - f.y, f.y, o.y == 1);
+    let v = textureLoad(history, q, 0);
+    sum += v * share * like;
+    weight += share * like;
+    if (like > likeness) {
+      likeness = like;
+      likest = v;
+    }
+  }
+  textureStore(lit_out, px, select(likest, sum / weight, weight > 1e-4));
 }

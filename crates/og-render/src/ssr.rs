@@ -7,7 +7,9 @@
 //!
 //! 1. the min-max depth pyramid of the prepass's view depth;
 //! 2. one ray a pixel ([`ScreenSpaceReflections::resolution`] full), or a
-//!    2x2 block (half), drawn from the GGX distribution of visible
+//!    2x2 block (half, the default; the denoiser then runs on the blocks
+//!    too, and a joint bilateral upsample by depth, normal and roughness
+//!    writes the pixels), drawn from the GGX distribution of visible
 //!    normals for the pixel's roughness (its grazing rim left out,
 //!    Stachowiak's bias; each pixel's frames walk the R2 sequence) and
 //!    marched through the pyramid (FidelityFX's hierarchical march and its
@@ -77,7 +79,9 @@ pub struct ScreenSpaceReflections {
     /// The roughest surface traced (0 to 1): rougher ones keep the probes'
     /// reflection, and the last quarter below it fades into them.
     pub max_roughness: f32,
-    /// One ray a pixel, or one a 2x2 block resolved at full resolution.
+    /// Half (the default): one ray a 2x2 block, denoised on the blocks and
+    /// upsampled to the pixels by their depth, normal and roughness; Full:
+    /// one ray a pixel, denoised at full resolution.
     pub resolution: AoResolution,
 }
 
@@ -90,7 +94,7 @@ impl Default for ScreenSpaceReflections {
             fade: 0.15,
             intensity: 1.0,
             max_roughness: 0.6,
-            resolution: AoResolution::Full,
+            resolution: AoResolution::Half,
         }
     }
 }
@@ -128,6 +132,7 @@ struct SsrUniform {
     params: [f32; 4],
     flags: [f32; 4],
     ray: [f32; 4],
+    chain: [f32; 4],
 }
 
 /// The camera of the frame the reflections are traced for.
@@ -163,8 +168,8 @@ fn pyramid_size(width: u32, height: u32) -> (u32, u32) {
 
 struct Pipelines {
     common: wgpu::BindGroupLayout,
-    layouts: [wgpu::BindGroupLayout; 6],
-    passes: [wgpu::ComputePipeline; 6],
+    layouts: [wgpu::BindGroupLayout; 7],
+    passes: [wgpu::ComputePipeline; 7],
     sampler: wgpu::Sampler,
 }
 
@@ -175,6 +180,7 @@ const TRACE: usize = 2;
 const RESOLVE: usize = 3;
 const PREFILTER: usize = 4;
 const TEMPORAL: usize = 5;
+const UPSAMPLE: usize = 6;
 
 struct Targets {
     size: (u32, u32),
@@ -250,7 +256,9 @@ impl Targets {
         let view = |label: &str, size, format| {
             texture(device, label, size, format, 1).create_view(&Default::default())
         };
-        let history_textures = [0, 1].map(|_| texture(device, "ssr history", size, FORMAT, 1));
+        // The denoiser runs on the ray grid; at half resolution the
+        // upsample writes the full-resolution image the lit shaders read.
+        let history_textures = [0, 1].map(|_| texture(device, "ssr history", ray_size, FORMAT, 1));
         let lit_texture = texture(device, "ssr", size, FORMAT, 1);
         Targets {
             size,
@@ -260,16 +268,16 @@ impl Targets {
             hiz: hiz.create_view(&Default::default()),
             ray_radiance: view("ssr rays", ray_size, FORMAT),
             ray_hit: view("ssr ray hits", ray_size, FORMAT),
-            resolved: view("ssr resolved", size, FORMAT),
-            filtered: view("ssr filtered", size, FORMAT),
+            resolved: view("ssr resolved", ray_size, FORMAT),
+            filtered: view("ssr filtered", ray_size, FORMAT),
             history: [0, 1].map(|i| history_textures[i].create_view(&Default::default())),
             history_textures,
-            meta: [0, 1].map(|_| view("ssr history meta", size, FORMAT)),
-            spread: [0, 1].map(|_| view("ssr history spread", size, FORMAT)),
-            fast: [0, 1].map(|_| view("ssr history fast", size, FORMAT)),
+            meta: [0, 1].map(|_| view("ssr history meta", ray_size, FORMAT)),
+            spread: [0, 1].map(|_| view("ssr history spread", ray_size, FORMAT)),
+            fast: [0, 1].map(|_| view("ssr history fast", ray_size, FORMAT)),
             lit: lit_texture.create_view(&Default::default()),
             lit_texture,
-            guide: view("ssr guide", size, FORMAT),
+            guide: view("ssr guide", ray_size, FORMAT),
         }
     }
 }
@@ -419,6 +427,12 @@ impl SsrRenderer {
                 let [x, y] = block_offset(frame);
                 [t.ray_size.0 as f32, t.ray_size.1 as f32, x, y]
             },
+            chain: [
+                t.ray_size.0 as f32,
+                t.ray_size.1 as f32,
+                1.0 / t.ray_size.0 as f32,
+                1.0 / t.ray_size.1 as f32,
+            ],
         };
         queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&u));
         self.history = Some((frame, camera.view_proj));
@@ -508,6 +522,14 @@ impl SsrRenderer {
                 (24, tex(&t.fast[1 - slot])),
             ],
         );
+        let upsample = group(
+            UPSAMPLE,
+            &[
+                (10, tex(&t.history[slot])),
+                (23, tex(&t.guide)),
+                (25, tex(&t.lit)),
+            ],
+        );
         let groups = |(w, h): (u32, u32)| (w.div_ceil(8), h.div_ceil(8));
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("ssr"),
@@ -525,16 +547,21 @@ impl SsrRenderer {
         dispatch(HIZ_BASE, &base, (w, h));
         dispatch(HIZ_REDUCE, &reduce, (w >> 4, h >> 4));
         dispatch(TRACE, &trace, t.ray_size);
-        dispatch(RESOLVE, &resolve, t.size);
-        dispatch(PREFILTER, &prefilter, t.size);
-        dispatch(TEMPORAL, &temporal, t.size);
-        drop(pass);
-        // The lit shaders read a view that is the same every frame.
-        encoder.copy_texture_to_texture(
-            t.history_textures[slot].as_image_copy(),
-            t.lit_texture.as_image_copy(),
-            t.history_textures[slot].size(),
-        );
+        dispatch(RESOLVE, &resolve, t.ray_size);
+        dispatch(PREFILTER, &prefilter, t.ray_size);
+        dispatch(TEMPORAL, &temporal, t.ray_size);
+        if t.divisor > 1 {
+            dispatch(UPSAMPLE, &upsample, t.size);
+            drop(pass);
+        } else {
+            drop(pass);
+            // The lit shaders read a view that is the same every frame.
+            encoder.copy_texture_to_texture(
+                t.history_textures[slot].as_image_copy(),
+                t.lit_texture.as_image_copy(),
+                t.history_textures[slot].size(),
+            );
+        }
     }
 }
 
@@ -635,6 +662,10 @@ impl Pipelines {
                     texture(24, false),
                 ],
             ),
+            layout(
+                "ssr upsample",
+                &[texture(10, true), texture(23, false), storage(25, FORMAT)],
+            ),
         ];
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("ssr"),
@@ -647,6 +678,7 @@ impl Pipelines {
             "resolve",
             "prefilter",
             "temporal",
+            "upsample",
         ];
         let passes = std::array::from_fn(|i| {
             let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -659,7 +691,14 @@ impl Pipelines {
                 layout: Some(&pl),
                 module: &module,
                 entry_point: Some(entries[i]),
-                compilation_options: Default::default(),
+                // Every pass writes its shared memory before it reads it
+                // (behind a barrier), so the zeroing WebGPU asks for is a
+                // second barrier and a store of every byte for nothing (the
+                // browsers zero it regardless).
+                compilation_options: wgpu::PipelineCompilationOptions {
+                    zero_initialize_workgroup_memory: false,
+                    ..Default::default()
+                },
                 cache: None,
             })
         });

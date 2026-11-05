@@ -9714,7 +9714,7 @@
         {
           "name": "ssrResolution",
           "column": "AoResolution",
-          "default": "full"
+          "default": "half"
         },
         {
           "name": "custom",

@@ -286,7 +286,7 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// and to 4479609532682b52, then PostEffects' ssrMaxRoughness and ssrResolution,
 /// then PostEffects.ssrMaxDistance's default of 100, then PostEffects.ssrSteps'
 /// default of 64).
-const BY_HAND_HASH: &str = "e0fe3babe9ce5352";
+const BY_HAND_HASH: &str = "8fd3428b7bf7c65b";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {
