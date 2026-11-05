@@ -8,9 +8,11 @@
 //!    `fluid.zbuf` for the depth test), cut by the depth prepass;
 //! 2. the same spheres add up their chords through each pixel weighted by
 //!    the fluid's optical density, and their colour (`fluid.thick`);
-//! 3. two passes of a separable bilateral filter smooth the depth
-//!    (`fluid.blur`, then `fluid.smooth`) over the drawn radius times the
-//!    smoothing, as seen at that depth;
+//! 3. six passes of the narrow-range filter (Truong and Yuksel 2018, as
+//!    matsuoka-601/Splash runs it: four one-dimensional, two over a small
+//!    square) smooth the depth, ping-ponging between `fluid.blur` and
+//!    `fluid.smooth`, over the drawn radius times the smoothing as seen at
+//!    that depth, rounding free surfaces and silhouettes off;
 //! 4. the composite, in the main pass after the scene is copied (as for
 //!    water), rebuilds normals from the smoothed depth, refracts and
 //!    absorbs the scene behind by the thickness, scatters the sun, the
@@ -25,7 +27,7 @@
 //! All the frame's fluids share the surface: they merge where they meet,
 //! each particle carrying its own colour and density; the look (how much
 //! it reflects and refracts, how much it is smoothed) is the first fluid's.
-//! Marching cubes was not built: the screen-space surface costs four
+//! Marching cubes was not built: the screen-space surface costs eight
 //! passes over the pixels the fluid covers whatever the particle count,
 //! where a polygonised surface needs a density grid and a mesh rebuilt
 //! every frame.
@@ -222,7 +224,7 @@ pub(crate) struct Fluid3dCamera {
 pub(crate) struct Fluid3dFrame {
     instances: u32,
     spheres: wgpu::BindGroup,
-    blur: [wgpu::BindGroup; 2],
+    blur: [wgpu::BindGroup; 5],
     composite: wgpu::BindGroup,
 }
 
@@ -236,7 +238,7 @@ pub(crate) struct Fluid3dRenderer {
     composite: crate::deferred::Sampled<wgpu::RenderPipeline>,
     sampler: wgpu::Sampler,
     uniform: wgpu::Buffer,
-    blur_uniforms: [wgpu::Buffer; 2],
+    blur_uniforms: [wgpu::Buffer; 3],
     instances: wgpu::Buffer,
     capacity: u64,
     scratch: Vec<Instance>,
@@ -482,6 +484,7 @@ impl Fluid3dRenderer {
             blur_uniforms: [
                 buffer("fluid 3d blur x", blur_size),
                 buffer("fluid 3d blur y", blur_size),
+                buffer("fluid 3d blur square", blur_size),
             ],
             instances: instance_buffer(device, 1024),
             capacity: 1024,
@@ -570,8 +573,8 @@ impl Fluid3dRenderer {
         for (buffer, b) in self.blur_uniforms.iter().zip(&blur) {
             queue.write_buffer(buffer, 0, bytemuck::bytes_of(b));
         }
-        let [x, y] = &self.blur_uniforms;
-        Some(self.frame(device, &self.uniform, [x, y], views, count as u32))
+        let [x, y, square] = &self.blur_uniforms;
+        Some(self.frame(device, &self.uniform, [x, y, square], views, count as u32))
     }
 
     /// The frame's fluid as another camera draws it (a reflection probe's
@@ -608,8 +611,8 @@ impl Fluid3dRenderer {
             )
         };
         let uniform = buffer("fluid 3d (camera)", bytemuck::bytes_of(&gpu));
-        let [x, y] = blur.map(|b| buffer("fluid 3d blur (camera)", bytemuck::bytes_of(&b)));
-        Some(self.frame(device, &uniform, [&x, &y], views, main.instances))
+        let [x, y, square] = blur.map(|b| buffer("fluid 3d blur (camera)", bytemuck::bytes_of(&b)));
+        Some(self.frame(device, &uniform, [&x, &y, &square], views, main.instances))
     }
 
     /// The bind groups of a camera's fluid over its uniforms and targets.
@@ -617,7 +620,7 @@ impl Fluid3dRenderer {
         &self,
         device: &wgpu::Device,
         uniform: &wgpu::Buffer,
-        blur_uniforms: [&wgpu::Buffer; 2],
+        blur_uniforms: [&wgpu::Buffer; 3],
         views: &Fluid3dViews,
         instances: u32,
     ) -> Fluid3dFrame {
@@ -630,7 +633,16 @@ impl Fluid3dRenderer {
                 (5, tex(views.scene_depth)),
             ],
         );
-        let blur = [(0, views.depth), (1, views.blur)].map(|(i, src)| {
+        // The smoothing's passes (encode): x from the depth, y, x, y, then
+        // two square ones, ping-ponging between blur and smooth.
+        let blur = [
+            (0, views.depth),
+            (1, views.blur),
+            (0, views.smooth),
+            (2, views.smooth),
+            (2, views.blur),
+        ]
+        .map(|(i, src)| {
             group(
                 device,
                 &self.blur_layout,
@@ -720,7 +732,15 @@ impl Fluid3dRenderer {
             pass.set_vertex_buffer(0, self.instances.slice(..));
             pass.draw(0..6, 0..frame.instances);
         }
-        for (target, group) in [(views.blur, &frame.blur[0]), (views.smooth, &frame.blur[1])] {
+        let [x_depth, y, x, square_smooth, square_blur] = &frame.blur;
+        for (target, group) in [
+            (views.blur, x_depth),
+            (views.smooth, y),
+            (views.blur, x),
+            (views.smooth, y),
+            (views.blur, square_smooth),
+            (views.smooth, square_blur),
+        ] {
             crate::post::fullscreen_pass(
                 encoder,
                 "fluid 3d smoothing",
@@ -730,7 +750,7 @@ impl Fluid3dRenderer {
                 group,
             );
         }
-        4
+        8
     }
 
     /// Draws the surface into the main pass (group 0: the frame). Returns
@@ -749,7 +769,7 @@ fn camera_uniforms(
     first: &Fluid3d,
     camera: &Fluid3dCamera,
     screen: (u32, u32),
-) -> (FluidGpu, [BlurGpu; 2]) {
+) -> (FluidGpu, [BlurGpu; 3]) {
     let (w, h) = (screen.0 as f32, screen.1 as f32);
     let screen_v = [w, h, 1.0 / w.max(1.0), 1.0 / h.max(1.0)];
     let right = camera.view.row(0).truncate();
@@ -761,12 +781,17 @@ fn camera_uniforms(
         right: right.extend(scale).to_array(),
         up: up.extend(first.reflectivity.max(0.0)).to_array(),
         screen: screen_v,
-        look: [first.refraction.max(0.0), ortho, 0.0, 0.0],
+        look: [
+            first.refraction.max(0.0),
+            ortho,
+            -(1.0 - first.opacity.clamp(0.0, 0.999)).ln(),
+            0.0,
+        ],
     };
     let radius = first.radius.max(1e-4) * first.smoothing.max(0.0);
-    let blur = [[1.0, 0.0], [0.0, 1.0]].map(|dir| BlurGpu {
+    let blur = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]].map(|dir| BlurGpu {
         dir: [dir[0], dir[1], ortho, MAX_BLUR_PX],
-        params: [scale, radius, first.radius.max(1e-4) * 2.0, 0.0],
+        params: [scale, radius, first.radius.max(1e-4), dir[2]],
         screen: screen_v,
     });
     (gpu, blur)

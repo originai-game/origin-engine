@@ -4,10 +4,10 @@
 // view depth (a depth test, its own target) and once added up for the
 // thickness and colour (each sphere's chord through the pixel, weighted
 // by the fluid's optical density). fluid3d_blur.wgsl smooths the depth
-// with a separable bilateral filter, and the composite, drawn in the main
+// with the narrow-range filter, and the composite, drawn in the main
 // pass after the scene is copied, rebuilds the surface from it: normals
-// from the smoothed depth, the copied scene refracted through it and
-// absorbed by its thickness, the sun (with its shadows), the image-based
+// from the smoothed depth, the copied scene seen along the ray refracted
+// through its thickness and absorbed per channel (Beer-Lambert), the sun (with its shadows), the image-based
 // light and the clustered local lights scattered by its colour, the
 // environment reflected by Schlick's Fresnel, and fog. It writes its
 // depth, so what is drawn after it sorts against it. No storage buffer,
@@ -18,7 +18,7 @@ struct FluidUniform {
   right: vec4<f32>,    // xyz: the camera's right, w: pixels per metre at view depth 1 (perspective) or per metre (orthographic)
   up: vec4<f32>,       // xyz: the camera's up, w: reflectivity
   screen: vec4<f32>,   // w, h, 1/w, 1/h
-  look: vec4<f32>,     // x: refraction, y: 1 orthographic, zw: unused
+  look: vec4<f32>,     // x: refraction, y: 1 orthographic, z: optical density per metre of fluid, w: unused
 };
 
 @group(1) @binding(0) var<uniform> fluid: FluidUniform;
@@ -166,26 +166,40 @@ fn fs_composite(in: FullOut) -> CompositeOut {
   let p = world_at(in.pos.xy, d);
   let tx = tangent(px, p, d, vec2<i32>(1, 0));
   let ty = tangent(px, p, d, vec2<i32>(0, 1));
-  var n = normalize(cross(ty, tx));
   let v = select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  // A pixel whose neighbours are all at its own point (a lone sphere's
+  // rim) has no tangent plane: it faces the eye.
+  let nc = cross(ty, tx);
+  var n = select(v, nc * inverseSqrt(max(dot(nc, nc), 1e-30)), dot(nc, nc) > 1e-20);
   if (dot(n, v) < 0.0) { n = -n; }
 
   let thick = textureLoad(fluid_thick, px, 0);
   let a = max(thick.a, 1e-5);
   let color = clamp(thick.rgb / a, vec3<f32>(0.0), vec3<f32>(1.0));
-  let transmit = exp(-a);
+  // Beer-Lambert per channel: the colour is the light left after a unit
+  // of optical depth, scaled so the channels' mean extinction is the
+  // optical depth's. Shallow water stays clear, deep water darkens to its
+  // colour, and a white body (foam) absorbs evenly.
+  let ext = -log(clamp(color, vec3<f32>(0.02), vec3<f32>(0.98)));
+  let mean_ext = (ext.r + ext.g + ext.b) / 3.0;
+  let transmit3 = exp(-a * ext / max(mean_ext, 1e-4));
+  let transmit = (transmit3.r + transmit3.g + transmit3.b) / 3.0;
 
-  // What lies behind, shifted by the normal across the screen, unless the
-  // shifted sample is in front of the surface.
+  // What lies behind, seen along the ray refracted into the body (water's
+  // index) to the far side of its thickness, unless that is in front of
+  // the surface.
   let uv = in.pos.xy * fluid.screen.zw;
-  let bend = vec2<f32>(dot(n, fluid.right.xyz), -dot(n, fluid.up.xyz));
-  var ruv = clamp(uv + bend * fluid.look.x * 0.03 * vec2<f32>(fluid.screen.y * fluid.screen.z, 1.0), vec2<f32>(0.0), vec2<f32>(1.0));
+  let path = min(a / max(fluid.look.z, 1e-4), 2.0);
+  let into = refract(-v, n, 1.0 / 1.333);
+  let exit = frame.view_proj * vec4<f32>(p + into * path * fluid.look.x, 1.0);
+  var ruv = uv;
+  if (exit.w > 1e-4) {
+    ruv = clamp(vec2<f32>(exit.x, -exit.y) / exit.w * 0.5 + 0.5, vec2<f32>(0.0), vec2<f32>(1.0));
+  }
   let behind = textureLoad(scene_depth, vec2<i32>(ruv * fluid.screen.xy), 0).r;
   if (behind < d) { ruv = uv; }
   let background = textureSampleLevel(scene_color, fluid_sampler, ruv, 0.0).rgb;
-  // Light passing through is tinted by the fluid's colour as it thins out.
-  let tint = mix(color / max(max(color.r, max(color.g, color.b)), 1e-3), vec3<f32>(1.0), transmit);
-  let through = background * tint * transmit;
+  let through = background * transmit3;
 
   // Light scattered by the body: the sun, the image-based light, the local lights.
   var s: Surface;

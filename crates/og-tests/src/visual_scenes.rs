@@ -694,6 +694,13 @@ pub fn visual_fluid_scene(visual: bool) -> RenderScene {
         center: ball_at,
         radius: ball_r,
     });
+    // A brass spout over the basin's right end, pouring from its mouth.
+    let spout = Mat4::from_scale_rotation_translation(
+        Vec3::new(1.2, 0.17, 0.17),
+        Quat::IDENTITY,
+        Vec3::new(1.64, 1.78, 0.3),
+    );
+    scene.add_instance(cube, brass, spout);
     let fluid = og_render::VisualFluid {
         key: 1,
         count: 60_000,
@@ -705,20 +712,22 @@ pub fn visual_fluid_scene(visual: bool) -> RenderScene {
         max_count: 110_000,
         substeps: 2,
         seed: 7,
-        // A spout: 3000 particles a second at 3.3 m/s is a jet about 9 cm
-        // across, thin enough to read as a pour, thick enough to stay whole.
-        emit_rate: 3000.0,
-        emit_at: Vec3::new(1.05, 1.3, 0.3),
-        emit_radius: 0.04,
-        emit_velocity: Vec3::new(-0.9, -3.2, 0.0),
+        // The spout's mouth: 1500 particles a second leave it at 1.6 m/s
+        // about 16 cm across and land at over 5 m/s, the stream arcing
+        // out and narrowing as it falls.
+        emit_rate: 1500.0,
+        emit_at: Vec3::new(1.02, 1.76, 0.3),
+        emit_radius: 0.07,
+        emit_velocity: Vec3::new(-1.0, -1.2, 0.0),
         ..og_render::VisualFluid::default()
     };
     let volume = 1.0 * 0.9 * 2.0 / 60_000.0;
     let mut drawn = og_render::Fluid3d {
-        // Clear basin water: deep blue-green where it is thick, the spacing
-        // (3 cm) covered twice over so thin sheets stay whole.
+        // Basin water: clear where shallow, deep blue-green where it is
+        // thick, the spacing (3 cm) covered twice over so thin sheets stay
+        // whole.
         color: Vec3::new(0.06, 0.32, 0.42),
-        opacity: 0.75,
+        opacity: 0.93,
         radius: 0.065,
         smoothing: 1.3,
         volume,

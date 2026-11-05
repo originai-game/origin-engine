@@ -14,7 +14,8 @@
 //! Units: the solver works in grid cells and in upstream's time unit of
 //! which one step is 0.2; a step is `1 / (tick rate · substeps)` seconds,
 //! so gravity and the emitter's velocity are scaled into it, and enough
-//! substeps are taken that gravity stays within upstream's stable range.
+//! substeps are taken that gravity stays within upstream's stable range
+//! and the fastest fall stays under the shader's speed clamp.
 //!
 //! Bindings: one compute-only layout of six storage buffers (the header
 //! and its tick records, the frame's colliders, the particles, the grid,
@@ -45,6 +46,9 @@ const MAX_CELLS: f32 = 2_097_152.0;
 const PER_CELL: (f32, f32) = (2.0, 8.0);
 /// Upstream's gravity, cells per time unit², the largest it is stable at.
 const MAX_GRAVITY: f32 = 0.3;
+/// The fastest a particle moves, cells per time unit (`MAX_SPEED` in the
+/// shader, which clamps there).
+const MAX_SPEED: f32 = 3.0;
 /// Upstream's step, in its time unit.
 const STEP: f32 = 0.2;
 
@@ -137,7 +141,10 @@ mod h {
     pub const COLOR: usize = 50;
     pub const DENSITY_K: usize = 53;
     pub const OUT: usize = 54;
-    pub const ALIVE: usize = 56;
+    pub const FOAM_KEEP: usize = 55;
+    pub const METRE_SPEED: usize = 56;
+    pub const SUBSTEPS: usize = 57;
+    pub const ALIVE: usize = 58;
     pub const LEN: usize = ALIVE + crate::visual_sim::MAX_CATCH_UP as usize + 1;
 }
 
@@ -193,7 +200,15 @@ impl Grid {
         let g = f.gravity.length() / cell;
         let mut substeps = f.substeps.clamp(1, 16);
         let unit = |s: u32| tick_dt / s as f32 / STEP;
-        while substeps < 16 && g * unit(substeps).powi(2) > MAX_GRAVITY {
+        // And enough that the fastest the fluid can fall (from its emitter
+        // or the top of its block to the bottom of the block, plus the
+        // emitter's speed) stays under the shader's clamp, which would
+        // otherwise hold falling water at a terminal speed and keep a pour
+        // from thinning as it speeds up.
+        let fastest = fastest_fall(f, size) * 1.1 / cell;
+        while substeps < 16
+            && (g * unit(substeps).powi(2) > MAX_GRAVITY || fastest * unit(substeps) > MAX_SPEED)
+        {
             substeps += 1;
         }
         let (lattice, spawn_step, rest_density) = if count > 0 {
@@ -228,6 +243,27 @@ impl Grid {
     fn cells(&self) -> u32 {
         self.dims.iter().product()
     }
+}
+
+/// How fast (m/s) the fluid can fall: from the higher of its emitter and
+/// its block's top to its block's bottom, along gravity, from the
+/// emitter's speed.
+fn fastest_fall(f: &VisualFluid, size: Vec3) -> f32 {
+    let g = f.gravity.length();
+    if !(g.is_finite() && g > 0.0) {
+        return 0.0;
+    }
+    let up = -f.gravity / g;
+    let half = (size * up).abs().dot(Vec3::ONE) * 0.5;
+    let base = f.centre.dot(up);
+    let emitting = f.emit_rate > 0.0 && f.emit_velocity.is_finite() && f.emit_at.is_finite();
+    let mut top = base + half;
+    let mut v0 = 0.0f32;
+    if emitting {
+        top = top.max(f.emit_at.dot(up));
+        v0 = f.emit_velocity.length();
+    }
+    (v0 * v0 + 2.0 * g * (top - (base - half)).max(0.0)).sqrt()
 }
 
 /// The particles alive `ticks` after the fluid started: its spawn and
@@ -318,6 +354,11 @@ pub(crate) fn header(
     put3(&mut w, h::COLOR, draw.1);
     put(&mut w, h::DENSITY_K, draw.2);
     w[h::OUT] = out;
+    // Foam fades with a time constant of 0.8 s.
+    let step = tick_dt / g.substeps.max(1) as f32;
+    put(&mut w, h::FOAM_KEEP, (-step / 0.8).exp());
+    put(&mut w, h::METRE_SPEED, unit / cell);
+    w[h::SUBSTEPS] = g.substeps;
     // The alive counts: before the frame's first tick, then after each.
     let before = elapsed.saturating_sub(u64::from(plan.steps));
     for k in 0..=plan.steps as usize {
@@ -627,6 +668,42 @@ pub fn at_rest(f: &VisualFluid) -> Vec<Vec3> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_high_pour_gets_the_steps_to_land_faster_than_the_clamp_allowed() {
+        // A spout 1.75 m over a basin: its water lands at about 6 m/s.
+        // Two steps a tick held every particle under 3.6 m/s, so the pour
+        // fell at a terminal speed and never thinned.
+        let f = VisualFluid {
+            count: 60_000,
+            centre: Vec3::new(-1.0, 0.45, 0.0),
+            size: Vec3::new(1.0, 0.9, 2.0),
+            bounds: Vec3::new(5.0, 3.0, 2.0),
+            cell: 0.05,
+            emit_rate: 1500.0,
+            emit_at: Vec3::new(1.05, 1.75, 0.3),
+            emit_velocity: Vec3::new(-0.5, -1.5, 0.0),
+            ..VisualFluid::default()
+        };
+        let g = Grid::of(&f, 1.0 / 60.0);
+        let limit = MAX_SPEED * g.cell / g.unit;
+        let landing = (1.58f32.powi(2) + 2.0 * 9.81 * 1.75).sqrt();
+        assert!(limit > landing, "{limit} m/s at {} steps", g.substeps);
+        // Without an emitter only the block's own fall counts.
+        let still = Grid::of(
+            &VisualFluid {
+                emit_rate: 0.0,
+                ..f.clone()
+            },
+            1.0 / 60.0,
+        );
+        assert!(
+            still.substeps < g.substeps,
+            "{} {}",
+            still.substeps,
+            g.substeps
+        );
+    }
 
     #[test]
     fn the_grid_holds_the_container_in_cells_of_about_the_radius() {

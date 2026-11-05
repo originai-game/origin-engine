@@ -26,3 +26,21 @@ spawn lattice, an emitter and a sink; the scene's colliders
 clamped for the fixed-point range; and the particles written straight
 into the screen-space fluid's instances. The SPH half and the renderer
 of upstream are not used (the engine's `fluid3d.wgsl` draws).
+
+## Splash (the surface's depth filter)
+
+- Upstream: <https://github.com/matsuoka-601/Splash>
+- Revision: `3df5d621e6f153d7269037cbd8606bd83796f3fd`
+- Licence: MIT, Copyright (c) 2025 matsuoka-601, word for word the
+  `LICENSE` here (checked identical)
+- File ported: `render/narrowRangeFilter.wgsl` (with the pass order of
+  `render/fluidRender.ts`: one-dimensional twice over x and y, then the
+  two-dimensional square)
+- Into: `crates/og-render/shaders/fluid3d_blur.wgsl`, driven by
+  `crates/og-render/src/fluid3d.rs`. Changes: the range constants are
+  given in the fluid's drawn particle radius instead of upstream's fixed
+  0.6, the filter size follows the fluid's smoothing, and an empty tap
+  counts as a farther one.
+
+The method is Truong and Yuksel, *A Narrow-Range Filter for Screen-Space
+Fluid Rendering* (I3D 2018).

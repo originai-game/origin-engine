@@ -21,9 +21,10 @@
 @group(0) @binding(5) var<storage, read_write> instances: array<vec4<f32>>;
 
 struct Particle {
-    // xyz in cells; w 1 alive, 0 not.
+    // xyz in cells; w 0 not alive, else 1 plus its foam (0 to 1).
     position: vec4<f32>,
-    // xyz in cells a time unit.
+    // xyz in cells a time unit; w its density over the rest density, from
+    // p2g_2 (for g2p's foam and the drawn radius).
     v: vec4<f32>,
     C: mat3x3<f32>,
 }
@@ -59,8 +60,14 @@ const DRAW_RADIUS: u32 = 49u;
 const COLOR: u32 = 50u;
 const DENSITY_K: u32 = 53u;
 const OUT: u32 = 54u;
+// What is left of a particle's foam after a step.
+const FOAM_KEEP: u32 = 55u;
+// Cells a time unit in one metre a second.
+const METRE_SPEED: u32 = 56u;
+// Steps a tick.
+const SUBSTEPS: u32 = 57u;
 // The alive counts: before the frame, then after each of its ticks.
-const ALIVE: u32 = 56u;
+const ALIVE: u32 = 58u;
 
 const DT: f32 = 0.2;
 // The fastest a particle moves, cells a time unit: under a cell a step,
@@ -109,9 +116,25 @@ fn weights(diff: vec3<f32>) -> array<vec3<f32>, 3> {
 fn at_emitter(i: u32, n: u32) {
     let r = word(EMIT_RADIUS);
     let s = head[SEED] ^ 0x5bd1e995u;
-    let k = vec3<f32>(hash(s, n, 0u), hash(s, n, 1u), hash(s, n, 2u)) - 0.5;
-    particles[i].position = vec4<f32>(to_cells(vec(EMIT_AT) + k * 2.0 * r), 1.0);
-    particles[i].v = vec4<f32>(vec(EMIT_V), 0.0);
+    let k = vec3<f32>(hash(s, n, 0u), hash(s, n, 1u), hash(s, n, 2u));
+    let v = vec(EMIT_V);
+    // The nozzle's disc, across the flow, and as far along it as the flow
+    // runs in a tick: the jet leaves at the rest density, not as a loose
+    // cloud that would read as spray.
+    let speed = length(v);
+    let axis = select(vec3<f32>(0.0, -1.0, 0.0), v / speed, speed > 1e-6);
+    let side = normalize(select(cross(axis, vec3<f32>(0.0, 1.0, 0.0)), cross(axis, vec3<f32>(1.0, 0.0, 0.0)), abs(axis.y) > 0.9));
+    let other = cross(axis, side);
+    let angle = 6.2831853 * k.x;
+    let disc = (side * cos(angle) + other * sin(angle)) * (r * sqrt(k.y));
+    let along = v * (DT * f32(head[SUBSTEPS]) * k.z);
+    // A real nozzle's flow is never laminar: each particle leaves a little
+    // faster or slower (twenty per cent) and a little off the axis (three),
+    // so the stream stretches into lumps and frays as it falls.
+    let j = vec3<f32>(hash(s, n, 3u), hash(s, n, 4u), hash(s, n, 5u)) - 0.5;
+    let spread = j * 0.06 * speed;
+    particles[i].position = vec4<f32>(to_cells(vec(EMIT_AT) + disc) + along, 1.0);
+    particles[i].v = vec4<f32>(v * (1.0 + 0.4 * j.x) + spread - v * dot(spread, v) / max(dot(v, v), 1e-12), 1.0);
     particles[i].C = mat3x3<f32>();
 }
 
@@ -135,7 +158,7 @@ fn spawn(@builtin(global_invocation_id) id: vec3<u32>) {
         let j = vec3<f32>(hash(head[SEED], i, 0u), hash(head[SEED], i, 1u), hash(head[SEED], i, 2u)) - 0.5;
         let step = vec(SPAWN_STEP);
         particles[i].position = vec4<f32>(to_cells(vec(SPAWN_AT) + (g + j * 0.3) * step), 1.0);
-        particles[i].v = vec4<f32>(0.0);
+        particles[i].v = vec4<f32>(0.0, 0.0, 0.0, 1.0);
         particles[i].C = mat3x3<f32>();
     } else {
         at_emitter(i, i - head[COUNT]);
@@ -193,6 +216,7 @@ fn p2g_2(@builtin(global_invocation_id) id: vec3<u32>) {
             }
         }
     }
+    particles[id.x].v.w = density / word(REST_DENSITY);
     let volume = 1.0 / max(density, 1e-4);
     let pressure = max(0.0, word(STIFFNESS) * (pow(density / word(REST_DENSITY), 5.0) - 1.0));
     var stress = mat3x3<f32>(-pressure, 0.0, 0.0, 0.0, -pressure, 0.0, 0.0, 0.0, -pressure);
@@ -271,6 +295,14 @@ fn g2p(@builtin(global_invocation_id) id: vec3<u32>) {
     }
     let speed = length(v);
     if speed > MAX_SPEED { v *= MAX_SPEED / speed; }
+    // Whitewater (after Ihmsen et al. 2012, "Unified spray, foam and
+    // bubbles"): a particle the flow stops hard (an impact, a breaking
+    // crest) or one thrown loose from the body fast (spray) turns to foam,
+    // which fades over about a second.
+    let per_ms = 1.0 / max(word(METRE_SPEED), 1e-6);
+    let jolt = length(v - p.v.xyz - vec(GRAVITY) * DT) * per_ms;
+    let loose = (1.0 - smoothstep(0.08, 0.2, p.v.w)) * smoothstep(1.5, 3.0, length(v) * per_ms);
+    let foam = max((p.position.w - 1.0) * word(FOAM_KEEP), max(smoothstep(0.25, 1.0, jolt), loose));
     let d = vec3<f32>(dims());
     var x = clamp(p.position.xyz + v * DT, vec3<f32>(1.0), d - 2.0);
     // The scene's colliders: pushed out, the velocity into them taken away.
@@ -284,8 +316,8 @@ fn g2p(@builtin(global_invocation_id) id: vec3<u32>) {
     let lo = vec(WALL_MIN);
     let hi = vec(WALL_MAX);
     v += 0.3 * (max(lo - ahead, vec3<f32>(0.0)) - max(ahead - hi, vec3<f32>(0.0)));
-    p.position = vec4<f32>(x, 1.0);
-    p.v = vec4<f32>(v, 0.0);
+    p.position = vec4<f32>(x, 1.0 + clamp(foam, 0.0, 1.0));
+    p.v = vec4<f32>(v, p.v.w);
     p.C = B * 4.0;
     particles[i] = p;
     if head[SINKING] != 0u {
@@ -305,14 +337,23 @@ fn g2p(@builtin(global_invocation_id) id: vec3<u32>) {
 fn next_tick() { cursor[0] += 1u; }
 
 // The particles as the screen-space fluid's instances: world position and
-// drawn radius, colour and optical density (radius 0: not drawn).
+// drawn radius, colour and optical density (radius 0: not drawn). Foam is
+// white and sixteen times as dense (air bubbles scatter where water
+// absorbs), so it reads at the surface instead of tinting the column.
+const FOAM: vec3<f32> = vec3<f32>(0.86, 0.9, 0.92);
 @compute @workgroup_size(64)
 fn draw(@builtin(global_invocation_id) id: vec3<u32>) {
     let i = id.x;
     if i >= head[N] { return; }
     let p = particles[i];
     let out = (head[OUT] + i) * 2u;
-    let r = select(0.0, word(DRAW_RADIUS), p.position.w != 0.0);
+    // A particle the flow has pulled apart from its neighbours (a jet
+    // thinning as it speeds up, a sheet breaking into drops) draws as
+    // small as the volume it now covers, down to half: the drawn surface
+    // follows the stretching instead of bridging it at the rest spacing.
+    let spread = clamp(pow(max(p.v.w, 1e-3), 1.0 / 3.0), 0.5, 1.0);
+    let r = select(0.0, word(DRAW_RADIUS) * spread, p.position.w != 0.0);
     instances[out] = vec4<f32>(to_world(p.position.xyz), r);
-    instances[out + 1u] = vec4<f32>(vec(COLOR), word(DENSITY_K));
+    let foam = clamp(p.position.w - 1.0, 0.0, 1.0);
+    instances[out + 1u] = vec4<f32>(mix(vec(COLOR), FOAM, foam), word(DENSITY_K) * (1.0 + 15.0 * foam));
 }

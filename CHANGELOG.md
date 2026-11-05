@@ -51,6 +51,16 @@ is one line here, written at the merge that changes
   `maxCount` reach 262 144 (the tick still simulates at most 32 768).
   og.Fluid3D is schema version 2; the default keeps every game as it was.
 
+- **3D fluid surface: rounded, refracting, absorbing.** Every og.Fluid3D
+  (CPU or visual) is smoothed with the narrow-range filter (Truong and
+  Yuksel 2018, as matsuoka-601/Splash runs it, MIT), so free surfaces and
+  silhouettes round off instead of showing the particles' flat faces. The
+  scene behind is seen along the ray refracted through the body's
+  thickness and absorbed per channel (Beer-Lambert), so shallow water is
+  clear and deep water darkens to its colour. A visual fluid also turns
+  hard-stopped or thrown-loose water to white foam, and a pour narrows and
+  breaks up as it falls. Frames of 3D fluids change; no IDL change.
+
 - **Stylise.hatchingPaper.** The paper hatching lies on: one-ink hatching
   lifts its ground towards it, and under `hatchingKeepColor` the wash lies
   on the paper's colour at its own lightness. Under `hatchingKeepColor` a
