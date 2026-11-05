@@ -816,6 +816,27 @@ Further decorative parts are `Minimap.marker[player]`,
 `Stepper.mark[axis=horizontal|vertical]` has hover, pressed, and disabled
 states; `Radio.mark` has on, hover, pressed, and focused states.
 
+Embedded strokes, sectors, and labels accept the same geometry and opacity
+properties, plus `appearance.color` (or `ink`). Labels also accept
+`appearance.step`. They retain their primitive drawing: a sector stays a
+sector, not a rectangular fill. These parts are:
+
+- `Checkbox.mark[stroke=short|long][on]`,
+  `Select.chevron[side=left|right][open][disabled]`,
+  `Dpad.chevron[direction=Up|Down|Left|Right][pressed]`,
+  `Dialogue.continue[side=left|right]`, and `Burst.ray`.
+- `Cooldown.track`, `Cooldown.sweep[ready]`, `Cooldown.mask`, and
+  `Cooldown.core[pressed][ready]`; the same track, sweep, mask, and core
+  parts on `ActionButton` dress its charge ring. The mask covers the unused
+  half of a partial sector; give it the track's colour. The core covers the
+  middle; its size controls ring thickness. Sector angle and the mask's
+  antialias overlap remain engine geometry.
+- `Meter.label[surface=fill|track]`, `Cooldown.label[ready]`,
+  `ActionButton.label[disabled][pressed]`, `Minimap.north`,
+  `Dialogue.initial`, and `ArtSlot.label`. Meter label clipping still
+  follows the current value; changing its type or colour does not move
+  that boundary.
+
 A game shipped with a version 1 style keeps the screens it shipped with:
 an engine update may draw them better (antialiasing, contrast, a cleaner
 fill) but never changes what is on them or where. Its dialogs' titles take

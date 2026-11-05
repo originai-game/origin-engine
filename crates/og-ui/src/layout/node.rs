@@ -18,6 +18,7 @@ pub(crate) enum Shape {
     },
     /// A solid bar rotated by `angle` (radians, clockwise on screen) about its centre.
     Bar {
+        part: crate::dress::PartRef,
         frame: Frame,
         angle: f32,
         color: Srgba,
@@ -25,6 +26,7 @@ pub(crate) enum Shape {
     /// The half of a disc on the side `angle` points to (0: the right half,
     /// clockwise on screen).
     Half {
+        part: crate::dress::PartRef,
         frame: Frame,
         angle: f32,
         color: Srgba,
@@ -40,6 +42,7 @@ pub(crate) enum Shape {
     /// (`Frame::FULL`: the whole element; a meter's label is two of these,
     /// one ink over the fill and one over the track).
     Text {
+        part: crate::dress::PartRef,
         frame: Frame,
         text: String,
         step: TypeStep,

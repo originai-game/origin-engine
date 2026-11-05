@@ -159,6 +159,7 @@ impl Ui {
                 (None, None) => {
                     let initial: String = desc.speaker.chars().take(1).collect();
                     ui.nodes[s].shapes.push(Shape::Text {
+                        part: crate::dress::PartRef::of("Dialogue", "initial", None),
                         frame: Frame::FULL,
                         text: initial,
                         step: t.type_ramp.display_sm,
@@ -220,6 +221,8 @@ impl Ui {
             };
             for side in [-1.0f32, 1.0] {
                 self.nodes[i].shapes.push(Shape::Bar {
+                    part: crate::dress::PartRef::of("Dialogue", "continue", None)
+                        .attr("side", if side < 0.0 { "left" } else { "right" }),
                     frame: Frame {
                         fx: 1.0,
                         fy: 1.0,
@@ -494,6 +497,10 @@ impl Ui {
                 let back = *angle + side * 3.0 * FRAC_PI_4;
                 let (ox, oy) = (tip.0 + cos(back) * len * 0.5, tip.1 + sin(back) * len * 0.5);
                 n.shapes.push(Shape::Bar {
+                    part: crate::dress::PartRef::of("Dpad", "chevron", None)
+                        .flag_if(held, "pressed")
+                        .attr("direction", name)
+                        .attr("side", if side < 0.0 { "left" } else { "right" }),
                     frame: Frame::centered(ox, oy, len, 3.0),
                     angle: back,
                     color: ink,
@@ -616,13 +623,15 @@ impl Ui {
             let behind = self.behind(i);
             let track = p.well.over(behind);
             let full = Frame::centered(0.0, 0.0, size, size);
-            let mut shapes = vec![Shape::Rect {
+            let mut shapes = vec![Shape::DressedRect {
+                part: crate::dress::PartRef::of("ActionButton", "track", None),
                 frame: full,
                 radius: size,
                 color: track,
             }];
             if done >= 1.0 {
-                shapes.push(Shape::Rect {
+                shapes.push(Shape::DressedRect {
+                    part: crate::dress::PartRef::of("ActionButton", "sweep", None).flag("ready"),
                     frame: full,
                     radius: size,
                     color: lit,
@@ -630,18 +639,21 @@ impl Ui {
             } else if done > 0.0 {
                 let turn = 2.0 * std::f32::consts::PI * done;
                 shapes.push(Shape::Half {
+                    part: crate::dress::PartRef::of("ActionButton", "sweep", None),
                     frame: full,
                     angle: 0.0,
                     color: lit,
                 });
                 if done <= 0.5 {
                     shapes.push(Shape::Half {
+                        part: crate::dress::PartRef::of("ActionButton", "mask", None),
                         frame: Frame::centered(0.0, 0.0, size + 1.0, size + 1.0),
                         angle: turn,
                         color: track,
                     });
                 } else {
                     shapes.push(Shape::Half {
+                        part: crate::dress::PartRef::of("ActionButton", "sweep", None),
                         frame: full,
                         angle: turn - std::f32::consts::PI,
                         color: lit,
@@ -649,7 +661,10 @@ impl Ui {
                 }
             }
             let face = size - 2.0 * band;
-            shapes.push(Shape::Rect {
+            shapes.push(Shape::DressedRect {
+                part: crate::dress::PartRef::of("ActionButton", "core", None)
+                    .flag_if(r.pressed, "pressed")
+                    .flag_if(desc.disabled, "disabled"),
                 frame: Frame::centered(0.0, 0.0, face, face),
                 radius: face,
                 // Opaque, so the lit ring never shows through a glassy pad.
@@ -698,6 +713,9 @@ impl Ui {
         match icon {
             Some(s) => n.shapes.push(s),
             None => n.shapes.push(Shape::Text {
+                part: crate::dress::PartRef::of("ActionButton", "label", None)
+                    .flag_if(desc.disabled, "disabled")
+                    .flag_if(r.pressed, "pressed"),
                 frame: Frame::FULL,
                 text: text.to_owned(),
                 step: t.type_ramp.sm,

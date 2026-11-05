@@ -199,6 +199,8 @@ impl Ui {
             ] {
                 if clip.fw > 0.0 {
                     n.shapes.push(Shape::Text {
+                        part: crate::dress::PartRef::of("Meter", "label", None)
+                            .attr("surface", if clip.fx == 0.0 { "fill" } else { "track" }),
                         frame: Frame::FULL,
                         text: desc.label.clone(),
                         step: t.type_ramp.caption,
@@ -253,7 +255,8 @@ impl Ui {
         let fill = if rem <= 0.0 { p.primary } else { p.ink_muted };
         let inner = p.panel_raised.over(behind);
         let full = Frame::centered(0.0, 0.0, size, size);
-        let mut shapes = vec![Shape::Rect {
+        let mut shapes = vec![Shape::DressedRect {
+            part: crate::dress::PartRef::of("Cooldown", "track", None),
             frame: full,
             radius: size,
             color: track,
@@ -261,7 +264,8 @@ impl Ui {
         // The pie of `done` from the top, clockwise, as halves of the disc:
         // the right half, then another half that covers back (≤ 1/2) or extends (> 1/2).
         if done >= 1.0 {
-            shapes.push(Shape::Rect {
+            shapes.push(Shape::DressedRect {
+                part: crate::dress::PartRef::of("Cooldown", "sweep", None).flag("ready"),
                 frame: full,
                 radius: size,
                 color: fill,
@@ -269,6 +273,7 @@ impl Ui {
         } else if done > 0.0 {
             let turn = 2.0 * PI * done;
             shapes.push(Shape::Half {
+                part: crate::dress::PartRef::of("Cooldown", "sweep", None),
                 frame: full,
                 angle: 0.0,
                 color: fill,
@@ -276,12 +281,14 @@ impl Ui {
             if done <= 0.5 {
                 // Half a pixel larger, so no primary fringe shows at its edge.
                 shapes.push(Shape::Half {
+                    part: crate::dress::PartRef::of("Cooldown", "mask", None),
                     frame: Frame::centered(0.0, 0.0, size + 1.0, size + 1.0),
                     angle: turn,
                     color: track,
                 });
             } else {
                 shapes.push(Shape::Half {
+                    part: crate::dress::PartRef::of("Cooldown", "sweep", None),
                     frame: full,
                     angle: turn - PI,
                     color: fill,
@@ -290,7 +297,10 @@ impl Ui {
         }
         let ring = t.space.xs.max(size / 14.0);
         let core = size - 2.0 * ring;
-        shapes.push(Shape::Rect {
+        shapes.push(Shape::DressedRect {
+            part: crate::dress::PartRef::of("Cooldown", "core", None)
+                .flag_if(r.pressed, "pressed")
+                .flag_if(rem <= 0.0, "ready"),
             frame: Frame::centered(0.0, 0.0, core, core),
             radius: core,
             color: if r.pressed {
@@ -305,6 +315,8 @@ impl Ui {
             shapes.extend(self.icon_shape(&desc.icon, Frame::centered(0.0, 0.0, s, s), ink));
         } else if !desc.label.is_empty() {
             shapes.push(Shape::Text {
+                part: crate::dress::PartRef::of("Cooldown", "label", None)
+                    .flag_if(rem <= 0.0, "ready"),
                 frame: Frame::centered(0.0, 0.0, core, core),
                 text: desc.label.clone(),
                 step: t.type_ramp.lg,
@@ -483,6 +495,7 @@ impl Ui {
             }
         }
         shapes.push(Shape::Text {
+            part: crate::dress::PartRef::of("Minimap", "north", None),
             frame: Frame {
                 fx: 0.5,
                 x: -10.0,

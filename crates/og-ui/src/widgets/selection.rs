@@ -286,6 +286,10 @@ impl Ui {
             let flip = if open { -1.0 } else { 1.0 };
             for side in [-1.0f32, 1.0] {
                 n.shapes.push(Shape::Bar {
+                    part: crate::dress::PartRef::of("Select", "chevron", None)
+                        .flag_if(open, "open")
+                        .flag_if(desc.disabled, "disabled")
+                        .attr("side", if side < 0.0 { "left" } else { "right" }),
                     frame: Frame {
                         fx: 1.0,
                         fy: 0.5,
@@ -719,6 +723,9 @@ impl Ui {
                 let s = box_ / 16.0;
                 let w = 2.0f32.max(s * 2.0);
                 n.shapes.push(Shape::Bar {
+                    part: crate::dress::PartRef::of("Checkbox", "mark", None)
+                        .flag_if(on, "on")
+                        .attr("stroke", "short"),
                     frame: Frame {
                         fy: 0.5,
                         x: 3.5 * s,
@@ -731,6 +738,9 @@ impl Ui {
                     color: ink,
                 });
                 n.shapes.push(Shape::Bar {
+                    part: crate::dress::PartRef::of("Checkbox", "mark", None)
+                        .flag_if(on, "on")
+                        .attr("stroke", "long"),
                     frame: Frame {
                         fy: 0.5,
                         x: 5.5 * s,

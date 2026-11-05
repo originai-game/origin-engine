@@ -526,6 +526,7 @@ impl Ui {
             if named {
                 let step = self.type_step(crate::tokens::TypeRole::Caption);
                 self.nodes[i].shapes.push(Shape::Text {
+                    part: crate::dress::PartRef::of("ArtSlot", "label", None),
                     frame: Frame {
                         fy: 0.72,
                         fh: 0.2,

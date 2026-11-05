@@ -326,6 +326,57 @@ fn a_parts_layout_size_and_translation_are_style_data() {
 }
 
 #[test]
+fn embedded_marks_sectors_and_labels_read_their_dressings() {
+    let mut ui = dressed(concat!(
+        "dress \"Checkbox.mark[stroke=long]\" {\n appearance {\n color \"#ff00ff\"\n width 17\n height 3\n opacity 0.4\n }\n}\n",
+        "dress \"Cooldown.sweep\" {\n appearance {\n color \"#00ffff\"\n }\n}\n",
+        "dress \"Cooldown.label\" {\n appearance {\n color \"#ff00ff\"\n step caption\n }\n}\n",
+    ));
+    ui.set_fonts(Fonts {
+        body: add_test_font(&mut og_render::RenderScene::new()),
+        ..Fonts::default()
+    });
+    for remaining in [0.75, 0.25, 0.0] {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.checkbox("Check", &mut true, "Check");
+        ui.cooldown(
+            "Skill",
+            remaining,
+            &CooldownDesc {
+                label: "Q".into(),
+                size: 64.0,
+                ..CooldownDesc::default()
+            },
+        );
+        ui.end();
+        let commands: Vec<_> = ui.frame().items.iter().map(|item| &item.cmd).collect();
+        assert!(commands.iter().any(|cmd| matches!(cmd,
+            DrawCmd::Bar { w, h, color, .. }
+                if *w == 17.0 && *h == 3.0 && near(*color, Srgba::rgb(255, 0, 255)) && color[3] == 0.4
+        )));
+        assert!(
+            commands.iter().any(|cmd| matches!(cmd,
+                DrawCmd::Text { text, size, color, .. }
+                    if text == "Q" && *size == 14.0 && near(*color, Srgba::rgb(255, 0, 255))
+            )),
+            "{commands:?}"
+        );
+        if remaining > 0.0 {
+            assert!(commands.iter().any(|cmd| matches!(cmd,
+                DrawCmd::Half { radius, color, .. }
+                    if *radius == 32.0 && near(*color, Srgba::rgb(0, 255, 255))
+            )));
+        } else {
+            assert!(commands.iter().any(|cmd| {
+                cmd.filled().is_some_and(|(r, color)| {
+                    r.width == 64.0 && near(color, Srgba::rgb(0, 255, 255))
+                })
+            }));
+        }
+    }
+}
+
+#[test]
 fn the_most_specific_dressing_wins_whatever_order_the_style_writes_them() {
     let ui = dressed(concat!(
         "dress \"Button.base[primary][pressed]\" {\n  fill \"#00ff00\"\n}\n",

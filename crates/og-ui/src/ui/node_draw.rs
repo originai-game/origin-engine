@@ -531,6 +531,7 @@ impl Ui {
 
 impl Ui {
     fn shape_commands(&self, n: &Node, cmds: &mut Vec<DrawCmd>) {
+        let t = &self.theme;
         let clip = n.clip;
         let alpha = n.alpha;
         let dpr = self.viewport.dpr();
@@ -552,16 +553,13 @@ impl Ui {
                     radius,
                     color,
                 } if self.dress.resolve(part).matched > 0 => {
-                    let r = self
-                        .dress
-                        .resolve(part)
-                        .draw
-                        .subpart_rect(frame.resolve(&n.rect), n.rect);
+                    let draw = self.dress.resolve(part).draw;
+                    let r = draw.subpart_rect(frame.resolve(&n.rect), n.rect);
                     if !r.is_empty() {
                         self.part_commands_at(
                             part,
                             r.snapped(dpr),
-                            Some(*color),
+                            Some(draw.subpart_color(*color, t)),
                             *radius,
                             alpha,
                             clip,
@@ -592,11 +590,15 @@ impl Ui {
                     });
                 }
                 Shape::Bar {
+                    part,
                     frame,
                     angle,
                     color,
                 } => {
-                    let r = frame.resolve(&n.rect);
+                    let draw = self.dress.resolve(part).draw;
+                    let r = draw.subpart_rect(frame.resolve(&n.rect), n.rect);
+                    let color = draw.subpart_color(*color, t);
+                    let alpha = alpha * draw.subpart_opacity();
                     cmds.push(DrawCmd::Bar {
                         center: r.center(),
                         w: r.width,
@@ -607,11 +609,15 @@ impl Ui {
                     });
                 }
                 Shape::Half {
+                    part,
                     frame,
                     angle,
                     color,
                 } => {
-                    let r = frame.resolve(&n.rect);
+                    let draw = self.dress.resolve(part).draw;
+                    let r = draw.subpart_rect(frame.resolve(&n.rect), n.rect);
+                    let color = draw.subpart_color(*color, t);
+                    let alpha = alpha * draw.subpart_opacity();
                     cmds.push(DrawCmd::Half {
                         center: r.center(),
                         radius: r.width.min(r.height) / 2.0,
@@ -633,6 +639,7 @@ impl Ui {
                     clip,
                 }),
                 Shape::Text {
+                    part,
                     frame,
                     text,
                     step,
@@ -640,13 +647,25 @@ impl Ui {
                     font,
                     clip: within,
                 } => {
+                    let draw = self.dress.resolve(part).draw;
+                    let color = draw.subpart_color(*color, t);
+                    let alpha = alpha * draw.subpart_opacity();
+                    let mut ramp = t.type_ramp;
+                    let step = match draw.appearance_value("step") {
+                        Some(crate::doc::Lit::Str(name)) => {
+                            crate::style_file::ramp_step(&mut ramp, name)
+                                .map(|s| &*s)
+                                .unwrap_or(step)
+                        }
+                        _ => step,
+                    };
                     let clip = clip.intersect(&within.resolve(&n.rect));
                     let f = self.fonts.for_text(*font, text);
                     if f.handle.is_none() {
                         continue;
                     }
                     let m = &f.metrics;
-                    let r = frame.resolve(&n.rect);
+                    let r = draw.subpart_rect(frame.resolve(&n.rect), n.rect);
                     // A pixel font on its grid (crate::layout::snap_pixel_text).
                     let size = m.pixel_size(step.size * n.scale);
                     let tracking = m.pixel_tracking(crate::layout::step_tracking(step, text));

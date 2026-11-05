@@ -370,6 +370,23 @@ impl DressDraw {
             .map(|(_, value)| value)
     }
 
+    pub(crate) fn subpart_color(&self, fallback: Srgba, theme: &Theme) -> Srgba {
+        use crate::doc::{Lit, Paint};
+        match self.appearance_value("color") {
+            Some(Lit::Paint(Paint::Color(c))) => Some(*c),
+            Some(Lit::Paint(Paint::Token(name))) => theme.color(name),
+            _ => self.ink.as_ref().and_then(|ink| ink.srgb(theme)),
+        }
+        .unwrap_or(fallback)
+    }
+
+    pub(crate) fn subpart_opacity(&self) -> f32 {
+        match self.appearance_value("opacity") {
+            Some(crate::doc::Lit::Num(opacity)) => opacity.clamp(0.0, 1.0),
+            _ => 1.0,
+        }
+    }
+
     /// Resize a decorative subpart about its centre, then offset it.
     /// Percent and grow use the owning widget's box, not the previous size.
     pub(crate) fn subpart_rect(&self, rect: crate::Rect, parent: crate::Rect) -> crate::Rect {

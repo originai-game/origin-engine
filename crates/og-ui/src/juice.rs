@@ -329,6 +329,7 @@ impl Ui {
             let len = (size * 0.45 * (1.0 - e)).max(2.0);
             let w = (size * 0.08).max(2.0);
             self.nodes[i].shapes.push(Shape::Bar {
+                part: crate::dress::PartRef::of("Burst", "ray", None),
                 frame: Frame::centered(c * dist, s * dist, len, w),
                 angle: a,
                 color: color.fade(fade),
