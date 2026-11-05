@@ -184,15 +184,15 @@ pub fn limit(pal: &Palette, used: &[u64], ramp: u32, max: u32) -> Vec<usize> {
     kept
 }
 
-/// An asset's own palette, from its opaque texels (`w` texels a row): its
-/// distinct colours when there are at most `max` of them (none changes),
-/// else a variance cut in Oklab to `max` ([`median_cut`]) with each texel
-/// weighed by how much a change of colour would show there
-/// ([`importance`]); then each hue family merged to `ramp` shades by
-/// joining the two nearest in lightness (weighted by their texels). Sorted
-/// dark to light.
-pub fn adaptive(px: &[[u8; 4]], w: u32, max: u32, ramp: u32) -> Palette {
-    let weight = importance(px, w);
+/// An asset's own palette, from its opaque texels: its distinct colours
+/// when there are at most `max` of them (none changes), else a variance
+/// cut in Oklab to `max` ([`median_cut`]) with each texel weighed, given
+/// `w` texels a row, by how much a change of colour would show there
+/// ([`importance`]), or counted alike without; then each hue family merged
+/// to `ramp` shades by joining the two nearest in lightness (weighted by
+/// their texels). Sorted dark to light.
+pub fn adaptive(px: &[[u8; 4]], w: Option<u32>, max: u32, ramp: u32) -> Palette {
+    let weight = w.map_or_else(|| vec![1; px.len()], |w| importance(px, w));
     let mut counts: HashMap<[u8; 3], u64> = HashMap::new();
     for (p, wt) in px.iter().zip(&weight).filter(|(p, _)| p[3] > 0) {
         *counts.entry([p[0], p[1], p[2]]).or_default() += u64::from(*wt);
@@ -510,7 +510,7 @@ mod tests {
             [200, 100, 0, 255],
             [1, 2, 3, 0],
         ];
-        let p = adaptive(&px, px.len() as u32, 4, 0);
+        let p = adaptive(&px, Some(px.len() as u32), 4, 0);
         assert_eq!(p.rgb, vec![[10, 20, 30], [200, 100, 0]]);
         // Four greys over two shades: the two nearest in lightness join
         // (200 and 255, L 0.83 and 1), then the next (0 and 20). Each grey
@@ -522,7 +522,7 @@ mod tests {
                 [g, g, g, 255]
             })
             .collect();
-        let p = adaptive(&px, 32, 0, 2);
+        let p = adaptive(&px, Some(32), 0, 2);
         assert_eq!(p.rgb.len(), 2);
         assert!(p.rgb[0][0] > 0 && p.rgb[0][0] < 20, "{:?}", p.rgb);
         assert!(p.rgb[1][0] > 200 && p.rgb[1][0] < 255, "{:?}", p.rgb);
@@ -555,7 +555,7 @@ mod tests {
                 [c[0] as u8, c[1] as u8, c[2] as u8, 255]
             })
             .collect();
-        let p = adaptive(&px, w, 5, 0);
+        let p = adaptive(&px, Some(w), 5, 0);
         let nearest = |c: [u8; 3]| {
             let lab = colour::lab(c);
             (0..p.rgb.len())
@@ -591,7 +591,7 @@ mod tests {
             };
             px.push([c[0] as u8, c[1] as u8, c[2] as u8, 255]);
         }
-        let p = adaptive(&px, px.len() as u32, 4, 0);
+        let p = adaptive(&px, Some(px.len() as u32), 4, 0);
         // The sky's own mean, within Oklab 0.03 (a shade no one would call
         // another colour) of one of the four.
         let sky = mean(

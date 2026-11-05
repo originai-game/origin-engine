@@ -171,7 +171,7 @@ pub(super) fn run(art: &Art, src: &Rgba, role: &Role, size: Option<u32>) -> Done
                 } else {
                     0
                 };
-                let p = palette::adaptive(&img.px, img.w, max, art.ramp_steps);
+                let p = palette::adaptive(&img.px, Some(img.w), max, art.ramp_steps);
                 let all: Vec<usize> = (0..p.rgb.len()).collect();
                 let ix = if p.rgb.is_empty() {
                     vec![None; img.px.len()]

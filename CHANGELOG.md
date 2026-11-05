@@ -15,6 +15,16 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **A flat look's mesh textures keep their patches again.** The flat
+  abstraction of a 3D look's colour textures (two Kuwahara passes, then
+  the asset's own palette) counts every texel alike in the palette's cut
+  again: the activity weighting db74d4ea4 gave the 2D cut, applied after
+  the filter, weighed down the borders of the shapes it keeps, so a
+  lawn's darker patches merged into the field (anime-cel-3d's ground drew
+  one olive, bold-comic-illustration's moved 12.6 %). 2D textures keep the
+  weighting. Frames of flat 3D looks move back towards those before
+  db74d4ea4; no IDL change.
+
 - **Particles meet the scene's colliders on the GPU.** An emitter's
   `collision` line takes what its particles meet: `collision 0.4 0.2
   colliders` bounces compute particles off the game's og.Collider boxes,
