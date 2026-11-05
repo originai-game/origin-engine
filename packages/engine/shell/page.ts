@@ -82,8 +82,8 @@ export interface ShellConfig {
    * og:first-frame and og:failed {message}; absent or "engine": the splash.
    */
   readonly bootScreen?: "engine" | "page";
-  /** project.ogt `publish { pipelines }` (src/web/pipelines.ts): "async", the frame pipelines with createRenderPipelineAsync; "prewarm", only the warm-up behind the gate's; absent: synchronously. */
-  readonly pipelines?: "async" | "prewarm";
+  /** project.ogt `publish { pipelines }` (src/web/pipelines.ts): "sync"; "async", the frame pipelines with createRenderPipelineAsync; "prewarm", only the warm-up behind the gate's; absent: auto, picked at the adapter. */
+  readonly pipelines?: "sync" | "async" | "prewarm";
   /** Bytes the boot fetches; `lanes` is the lanes variant's module, 0 when the build ships none. */
   readonly expect: { readonly wasm: number; readonly cooked: number; readonly lanes: number };
   /**
@@ -180,7 +180,7 @@ export function readConfig(doc: Document = document): ShellConfig {
     serviceWorker: c.serviceWorker === true,
     ...(c.stageLabels && typeof c.stageLabels === "object" ? { stageLabels: c.stageLabels } : {}),
     ...(c.bootScreen === "page" ? { bootScreen: "page" as const } : {}),
-    ...(c.pipelines === "async" || c.pipelines === "prewarm" ? { pipelines: c.pipelines } : {}),
+    ...(c.pipelines === "sync" || c.pipelines === "async" || c.pipelines === "prewarm" ? { pipelines: c.pipelines } : {}),
     expect: { wasm: c.expect?.wasm ?? 0, cooked: c.expect?.cooked ?? 0, lanes: c.expect?.lanes ?? 0 },
     files: c.files && typeof c.files === "object" ? c.files : {},
   };
@@ -594,14 +594,15 @@ export async function play(): Promise<PlayHandle> {
   const bootSample = async () => {
     for (let i = 0; !shellRef && i < 100; i++) await new Promise((r) => setTimeout(r, 20));
     const memory = await readMemory();
-    // The stages are milliseconds; the pipelines' counts (fork s60) stay on the probe's `boot`.
-    const { at: _at, pipelines: _pipelines, ...stages } = shellRef?.boot ?? {};
+    // The stages are milliseconds; the pipelines' counts (fork s60) stay on the probe's `boot`, their mode and why go too.
+    const { at: _at, pipelines: made, ...stages } = shellRef?.boot ?? {};
     const lanes = shellRef?.ready.lanes;
     player.sample({
       phase: "boot",
       renderer: shellRef?.tier ?? "unknown",
       timings: { firstFrame: Math.round(firstFrameAt), boot: Math.round(firstFrameAt - t0) },
       stages,
+      ...(made?.mode ? { pipelines: { mode: made.mode, reason: made.reason ?? "" } } : {}),
       ...(lanes ? { lanes: { on: lanes.on, threads: lanes.threads } } : {}),
       ...context,
       ...(memory ? { memory } : {}),

@@ -33,7 +33,12 @@
 //   (Tint) in the pipeline requests' tasks, not all in the task that
 //   registered them; any other use makes it then.
 //
-// Off (the default), every call goes straight to the browser.
+// Off, every call goes straight to the browser. Which mode a page runs is
+// project.ogt `publish { pipelines }`; `auto` (the default) picks one when the
+// Worker meets its adapter (`choose`): async on a mobile GPU, whose browsers
+// compile synchronous pipelines on the GPU process's main thread (a Pixel 10
+// drew no frame for about 23 s behind the gate), sync elsewhere, where async
+// made a cold boot on Chrome/Metal 2.5-5x later (docs/web-export.md §Pipelines).
 //
 // A wgpu that reached the browser's createRenderPipeline some other way would
 // lose all this silently: frames would compile synchronously again. So the
@@ -85,6 +90,41 @@ let draining = false;
 /** The browser's own methods, taken from the prototype at `install`: what the wrappers call. */
 let native: { createShaderModule: Device["createShaderModule"]; createRenderPipeline: Device["createRenderPipeline"] } | null = null;
 
+/** How the page makes its frame pipelines: project.ogt `publish { pipelines }`, or `auto`'s pick. */
+export type PipelineMode = "sync" | "async" | "prewarm";
+
+/** The mode a page runs and why: what its build asked, or what `auto` read of the adapter. */
+export interface PipelineChoice {
+  mode: PipelineMode;
+  reason: string;
+}
+
+/** The adapter's vendors whose GPUs are mobile ones (GPUAdapterInfo.vendor: PowerVR, Mali, Adreno). */
+const MOBILE_VENDORS = ["img-tec", "arm", "qualcomm"];
+/** The same GPUs named by GPUAdapterInfo.architecture, for a browser that reports it without the vendor. */
+const MOBILE_ARCHITECTURE = /powervr|rogue|mali|valhall|bifrost|adreno/;
+
+/**
+ * The mode a page runs: `asked` (its build's `publish { pipelines }`, absent for auto) as is, or for
+ * auto, async on a mobile GPU named by the adapter's `info`; when the browser names none (Firefox
+ * reports empty strings), async when `mobile` (navigator.userAgentData.mobile) says so; otherwise
+ * sync. Apple GPUs stay sync until iOS is measured (docs/web-export.md §Pipelines).
+ */
+export function choose(asked: PipelineMode | undefined, info: { vendor?: string; architecture?: string } | null | undefined, mobile: boolean | undefined): PipelineChoice {
+  if (asked) return { mode: asked, reason: `publish { pipelines ${asked} }` };
+  const vendor = (info?.vendor ?? "").toLowerCase();
+  const architecture = (info?.architecture ?? "").toLowerCase();
+  const named = [vendor, architecture].filter(Boolean).join(" ");
+  if (MOBILE_VENDORS.includes(vendor) || MOBILE_ARCHITECTURE.test(architecture)) return { mode: "async", reason: `auto: a mobile GPU (${named})` };
+  if (vendor === "apple") return { mode: "sync", reason: `auto: an Apple GPU (${named}), sync until iOS is measured` };
+  if (named) return { mode: "sync", reason: `auto: not a mobile GPU (${named})` };
+  if (mobile === true) return { mode: "async", reason: "auto: no adapter info; navigator.userAgentData.mobile" };
+  if (mobile === false) return { mode: "sync", reason: "auto: no adapter info; navigator.userAgentData not mobile" };
+  return { mode: "sync", reason: "auto: no adapter info, no navigator.userAgentData" };
+}
+
+let chosen: PipelineChoice | null = null;
+
 /** The render pipelines made each way since the Worker started. */
 export interface PipelineStats {
   /** Asked for with createRenderPipelineAsync (inside a frame span). */
@@ -98,9 +138,9 @@ export interface PipelineStats {
 }
 const counts: PipelineStats = { async: 0, sync: 0, fallback: 0, spans: 0 };
 
-/** A copy of the counts so far. */
-export function stats(): PipelineStats {
-  return { ...counts };
+/** A copy of the counts so far, with the mode chosen and why (once `enable` ran). */
+export function stats(): PipelineStats & Partial<PipelineChoice> {
+  return { ...counts, ...(chosen ?? {}) };
 }
 
 /**
@@ -125,6 +165,12 @@ export function enable(on: boolean, prewarm = false): void {
   warmSpans = 0;
 }
 
+/** Runs the page as `choice` says (the Worker, when it meets the adapter), and reports it in `stats`. */
+export function use(choice: PipelineChoice): void {
+  chosen = choice;
+  enable(choice.mode !== "sync", choice.mode === "prewarm");
+}
+
 /** Runs `f`, the renderer's warm-up of a pipeline no frame drew yet (og_web_warm): asynchronous under prewarm too. */
 export function warming<T>(f: () => T): T {
   warmingDepth++;
@@ -137,7 +183,8 @@ export function warming<T>(f: () => T): T {
 
 /** The renderer begins (true) or ends (false) making its frame pipelines (og_web_frame_pipelines). */
 export function frameSpan(on: boolean): void {
-  if (on && span === 0) {
+  // The renderer's hook is installed in every mode (auto picks one only at the adapter); spans count while on.
+  if (on && span === 0 && enabled) {
     counts.spans++;
     if (warmingDepth > 0) warmSpans++;
   }
