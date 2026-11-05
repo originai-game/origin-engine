@@ -150,7 +150,8 @@ fn weather_streaks(p: vec3<f32>, geo: vec3<f32>, t: f32, footprint: f32) -> f32 
   // Rivulets meander a little as they run down.
   let u = across + (weather_noise(vec2<f32>(across * 1.3, p.y * 0.9)) - 0.5) * 0.03;
   // One possible rivulet per 8 cm strip, at its own place in the strip,
-  // 1.3 to 3.2 cm wide; seven strips in ten run.
+  // 1.3 to 3.2 cm wide; three strips in ten run (seven in ten combed a
+  // wall into dark stripes: a weathered wall sheds in a few runs).
   let cell = 0.08;
   let c = i32(floor(u / cell));
   let f = u / cell - f32(c);
@@ -160,7 +161,7 @@ fn weather_streaks(p: vec3<f32>, geo: vec3<f32>, t: f32, footprint: f32) -> f32 
   // A dark core and, round it, the stone the water soaks a little wider.
   let core = (1.0 - smoothstep(0.0, blur, abs(f - centre))) * min(half / blur, 1.0);
   let profile = max(core, 0.5 * (1.0 - smoothstep(0.0, 0.5, abs(f - centre))));
-  let present = step(0.3, lattice_hash(vec3<i32>(c, 0, 101)));
+  let present = step(0.7, lattice_hash(vec3<i32>(c, 0, 101)));
   // Its runs: one start every 3 to 8 m down the wall, each fading over
   // 1.5 to 4.5 m below its start (`d`, metres under it).
   let period = 3.0 + 5.0 * lattice_hash(vec3<i32>(c, 0, 97));
@@ -171,7 +172,8 @@ fn weather_streaks(p: vec3<f32>, geo: vec3<f32>, t: f32, footprint: f32) -> f32 
   // the water is uneven along each one, sliding down in the rain.
   let band = mix(0.55, 1.0, smoothstep(0.3, 0.6, weather_noise(vec2<f32>(across * 0.7, 17.0))));
   let along = 0.7 + 0.3 * weather_noise(vec2<f32>(across * 20.0 + 41.0, p.y * 3.0 + t * 0.9));
-  return min(profile * present * run * band * along * 1.8, 1.0);
+  // At most 0.7: a rivulet is a darker, damper run, not ink.
+  return min(profile * present * run * band * along * 1.2, 0.7);
 }
 
 // Drops hitting a wet surface: each throws a tiny crown that spreads as
@@ -305,7 +307,21 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
   // the puddles'); sealed surfaces (smooth or metal: no pores to fill)
   // gloss under a film instead.
   let porosity = (1.0 - o.s.metallic) * smoothstep(0.15, 0.85, o.s.roughness);
-  o.s.albedo *= mix(1.0, 0.3, wet * porosity);
+  // The film drains off what stands proud of the relief (a sett's crown
+  // keeps only its pores' gloss, its low edges stay sheeted) and off
+  // whatever the shading normal tilts away from the surface (a stone's
+  // rounded edge, a crack's wall). Where the film is gone the stone dries
+  // and wets in fine patches: its pores fill unevenly (the drops' last
+  // landings, the stone's own grain), so a drained crown is mottled, dark
+  // where it is soaked and paler where it is only damp, under a grainy,
+  // broken highlight, not a varnish.
+  // (With no relief known, cavity 0.5, the film covers the level ground.)
+  let relief_film = clamp(1.0 - (cavity - 0.5) * 3.0, 0.0, 1.0);
+  let lying = smoothstep(0.85, 0.97, dot(o.n, geo));
+  let drained = 1.0 - relief_film * lying;
+  let mottle = smoothstep(0.3, 0.7, weather_noise(p.xz * 23.0 + 5.0) * 0.6 + weather_noise(p.xz * 67.0 + 9.0) * 0.4);
+  let soaked = wet * mix(1.0, mix(0.3, 1.0, mottle), drained * (1.0 - puddle));
+  o.s.albedo *= mix(1.0, 0.3, soaked * porosity);
   o.s.roughness = mix(o.s.roughness, max(o.s.roughness * 0.5, 0.1), wet * wet * (1.0 - porosity));
   o.s.roughness = mix(o.s.roughness, max(o.s.roughness * 0.75, 0.4), wet * wet * porosity);
   // In the rain the pores are full and a film of water runs over the
@@ -313,19 +329,11 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
   // water, so each lamp stretches into a long streak down the street
   // (GGX elongates a point light's reflection at grazing views). The film
   // drains when the rain stops, leaving the pores' modest gloss.
-  // The film drains off what stands proud of the relief (a sett's crown
-  // keeps only its pores' gloss, its low edges stay sheeted) and off
-  // whatever the shading normal tilts away from the surface (a stone's
-  // rounded edge, a crack's wall). Where the film is gone the stone dries
-  // and wets in fine patches: a grainy, broken highlight, not a varnish.
-  // (With no relief known, cavity 0.5, the film covers the level ground.)
-  let relief_film = clamp(1.0 - (cavity - 0.5) * 3.0, 0.0, 1.0);
-  let lying = smoothstep(0.85, 0.97, dot(o.n, geo));
   if (raining) {
     let sheet = wet * smoothstep(0.75, 0.95, up) * min(w.w * 1.5, 1.0) * relief_film * lying;
     o.s.roughness = mix(o.s.roughness, min(o.s.roughness, 0.2), sheet * sheet);
   }
-  let exposed = wet * porosity * (1.0 - relief_film * lying);
+  let exposed = wet * porosity * drained;
   if (exposed > 0.0) {
     let grain = weather_noise(p.xz * 31.0 + 3.0) * 0.6 + weather_noise(p.xz * 7.0 + 11.0) * 0.4;
     o.s.roughness = mix(o.s.roughness, mix(0.32, 0.7, grain), exposed);
