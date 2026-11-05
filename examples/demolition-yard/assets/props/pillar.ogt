@@ -23,7 +23,7 @@ part "shaft" {
 }
 fracture {
   style concrete
-  chunks 16
+  chunks 44
   seed 5
   children 5
   interiorScale 2.5

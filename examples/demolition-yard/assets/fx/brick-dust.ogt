@@ -1,0 +1,27 @@
+type particles
+version 1
+---
+# breakFx for brick: a warm clay puff where a piece breaks loose, lit by the sun.
+maxParticles 256
+shape sphere 0.3
+spread 180
+rate 0
+burst 0 36
+duration 0.4
+looping false
+lifetime 1.6 2.8
+speed 0.3 1.1
+size 0.35 0.7
+sizeOverLife 0 0.6 1 2.2
+colorOverLife {
+  key 0 0.62 0.47 0.38 0
+  key 0.1 0.62 0.47 0.38 0.45
+  key 1 0.66 0.55 0.47 0
+}
+rotation 0 360
+angularVelocity -40 40
+gravity 0 -0.2 0
+drag 1.2
+blend alpha
+lit true
+softDistance 0.3

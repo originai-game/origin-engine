@@ -1,11 +1,12 @@
 type model
 version 1
 ---
-# A glass pane, 1.6 × 1.2 m and 1 cm thick: clear, it refracts what lies
-# behind it and reflects the sky; struck, it cracks radially and in rings
-# from the blow, its shards' edges catching the light.
+# A glass pane, 1.6 × 1.2 m and 1 cm thick: clear float glass with its faint
+# green, it refracts what lies behind it and reflects the sky; struck, it
+# cracks radially and in rings from the blow, its shards' edges catching
+# the light. It stands in a metal frame (src/main.ts), not part of it.
 material "glass" {
-  color 0.92 0.97 0.97
+  color 0.84 0.95 0.9
   metalness 0
   roughness 0.02
   transmission 1

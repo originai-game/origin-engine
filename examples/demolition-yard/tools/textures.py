@@ -99,10 +99,12 @@ def brick_interior():
     n = 512
     g = noise(n, 12, 5)
     crumbs = noise(n, 80, 2)
-    rgb = np.array([0.36, 0.27, 0.22]) * (0.8 + 0.3 * g[..., None])
-    # Lighter dust and darker grit.
-    rgb = np.where((crumbs > 0.7)[..., None], rgb * 1.25 + 0.05, rgb)
-    rgb = np.where((crumbs < 0.22)[..., None], rgb * 0.7, rgb)
+    # Fired clay inside: salmon to orange-red, lighter than the face (whose
+    # mean is about 0.39 0.16 0.09 linear), never grey.
+    rgb = np.array([0.55, 0.25, 0.135]) * (0.85 + 0.25 * g[..., None])
+    # Lighter clay dust and darker grit, both warm.
+    rgb = np.where((crumbs > 0.7)[..., None], rgb * 1.15 + np.array([0.06, 0.04, 0.025]), rgb)
+    rgb = np.where((crumbs < 0.22)[..., None], rgb * 0.72, rgb)
     save("brick_cut.png", rgb)
     h = 0.6 * g + 0.4 * crumbs
     save("brick_cut_n.png", normal_map(h, 10.0), srgb=False)

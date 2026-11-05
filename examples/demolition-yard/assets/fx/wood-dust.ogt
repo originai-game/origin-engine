@@ -1,0 +1,26 @@
+type particles
+version 1
+---
+# breakFx for wood: a little pale sawdust where a piece breaks loose.
+maxParticles 128
+shape sphere 0.2
+spread 180
+rate 0
+burst 0 10
+duration 0.3
+looping false
+lifetime 0.8 1.4
+speed 0.2 0.7
+size 0.15 0.3
+sizeOverLife 0 0.7 1 1.8
+colorOverLife {
+  key 0 0.62 0.52 0.38 0
+  key 0.15 0.62 0.52 0.38 0.3
+  key 1 0.66 0.58 0.46 0
+}
+rotation 0 360
+gravity 0 -0.3 0
+drag 1.5
+blend alpha
+lit true
+softDistance 0.3

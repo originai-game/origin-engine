@@ -3,7 +3,8 @@ version 1
 ---
 # A brick wall, 4 × 2.4 × 0.3 m, standing on its foot and tied in at both
 # ends: a running bond of 0.25 × 0.1 m bricks, broken along its mortar into
-# blocks of brickwork, each falling apart into its bricks.
+# runs of one to three bricks along a course, each falling apart into its
+# bricks.
 material "brick" {
   color 1 1 1
   roughness 0.9
@@ -23,7 +24,7 @@ part "wall" {
 fracture {
   style brick
   brick 0.25 0.1
-  chunks 80
+  chunks 200
   seed 11
   children 32          # a block's bricks (brick style: up to 32)
   anchor bottom ends

@@ -28,10 +28,14 @@ function prop(world: World, model: string, name: string, at: { x: number; y: num
 }
 
 function build(world: World): void {
-  const dust = must(og.load.emitter(world, "fx/dust.ogt"));
-  const sparks = must(og.load.emitter(world, "fx/sparks.ogt"));
-  const chips = must(og.load.emitter(world, "fx/chips.ogt"));
-  const grit = must(og.load.emitter(world, "fx/grit.ogt"));
+  // Each material its own fx: what breaks loose (breakFx), what a hit
+  // knocks off (hitFx) and the fine debris the GPU draws (debris).
+  const fx = (id: string) => must(og.load.emitter(world, `fx/${id}.ogt`));
+  const brick = { breakFx: fx("brick-dust"), hitFx: fx("brick-chips"), debris: fx("chips") };
+  const concrete = { breakFx: fx("stone-dust"), hitFx: fx("stone-grit"), debris: fx("grit") };
+  const wood = { breakFx: fx("wood-dust"), hitFx: fx("splinters") };
+  const shards = fx("glass-shards");
+  const glass = { breakFx: shards, hitFx: shards };
 
   // The yard: a concrete slab the chunks land on.
   const box = must(og.render.boxGeometry(world, {}));
@@ -49,14 +53,28 @@ function build(world: World): void {
   // Brick: tough bonds, weak mortar (strength) held by friction where it is
   // pressed (the default friction): a hole at its foot drops what hung over
   // it and leaves the loaded piers standing; fine pieces are GPU debris.
-  prop(world, "props/wall.ogt", "wall", WALL, { toughness: 800, strength: 3000, density: 1900, impactThreshold: 400, dust, sparks, debris: chips });
-  prop(world, "props/pillar.ogt", "pillar", PILLAR, { toughness: 2000, strength: 20000, density: 2400, dust, sparks, debris: grit });
+  prop(world, "props/wall.ogt", "wall", WALL, { toughness: 800, strength: 3000, density: 1900, impactThreshold: 400, ...brick });
+  prop(world, "props/pillar.ogt", "pillar", PILLAR, { toughness: 2000, strength: 20000, density: 2400, impactThreshold: 150, ...concrete });
   // Wood: a dynamic crate, broken by its own landing.
-  const crate = prop(world, "props/crate.ogt", "crate", CRATE, { toughness: 120, density: 600, impactThreshold: 40, impactRadius: 0.9, anchored: false, dust });
+  const crate = prop(world, "props/crate.ogt", "crate", CRATE, { toughness: 120, density: 600, impactThreshold: 40, impactRadius: 0.9, anchored: false, ...wood });
   world.insert(crate, og.RigidBody, { kind: BODY_DYNAMIC, gravityScale: 0 });
   world.insert(crate, og.Collider, { shape: SHAPE_BOX, size: { x: 0.8, y: 0.8, z: 0.8 }, density: 600 });
+  // A slim steel frame round the pane (posts and a head rail), standing
+  // when the glass goes: it says "a pane" where clear glass alone is hard
+  // to see at a glance.
+  const steel = must(og.render.standardMaterial(world, { color: { r: 0.06, g: 0.065, b: 0.07 }, metalness: 0.85, roughness: 0.38 }));
+  const bar = (name: string, x: number, y: number, sx: number, sy: number) => {
+    const e = must(world.spawn({ name, position: { x, y, z: PANE.z } }));
+    world.set(e, og.Transform, { scale: { x: sx, y: sy, z: 0.06 } });
+    world.insert(e, og.Mesh, { geometry: box, material: steel, castShadow: true });
+    world.insert(e, og.RigidBody, { kind: BODY_STATIC });
+    world.insert(e, og.Collider, { shape: SHAPE_BOX, size: { x: 1, y: 1, z: 1 } });
+  };
+  bar("post-left", PANE.x - 0.83, PANE.y + 0.62, 0.05, 1.24);
+  bar("post-right", PANE.x + 0.83, PANE.y + 0.62, 0.05, 1.24);
+  bar("rail", PANE.x, PANE.y + 1.225, 1.71, 0.05);
   // Glass: weak, light, shattering at a touch.
-  prop(world, "props/pane.ogt", "pane", PANE, { toughness: 25, strength: 0, density: 2500, impactThreshold: 2, impactRadius: 0.8, sparks });
+  prop(world, "props/pane.ogt", "pane", PANE, { toughness: 25, strength: 0, density: 2500, impactThreshold: 2, impactRadius: 0.8, ...glass });
 
   const sun = must(world.spawn({ name: "sun", quaternion: og.transform.lookAt({ x: 0, y: 0, z: 0 }, { x: 0.4, y: -0.75, z: -0.5 }) }));
   world.insert(sun, og.DirectionalLight, { intensity: 3.2, castShadow: true });
@@ -81,10 +99,10 @@ export default og.game({
   start: build,
   commands: {
     boom: (world) => {
-      must(og.destruction.explode(world, { point: { x: WALL.x, y: 0.3, z: 0.15 }, radius: 1.4, innerRadius: 0.8, damage: 6000, impulse: 300 }));
+      must(og.destruction.explode(world, { point: { x: WALL.x, y: 0.3, z: 0.15 }, radius: 1.8, innerRadius: 1.0, damage: 6000, impulse: 300 }));
     },
     strike: (world) => {
-      must(og.destruction.damage(world, find(world, "pillar"), { point: { x: PILLAR.x, y: 1.4, z: PILLAR.z + 0.25 }, radius: 0.5, innerRadius: 0.25, amount: 8000 }));
+      must(og.destruction.damage(world, find(world, "pillar"), { point: { x: PILLAR.x, y: 1.4, z: PILLAR.z + 0.25 }, radius: 0.5, innerRadius: 0.25, amount: 8000, impulse: { x: 0, y: 0, z: -600 } }));
     },
     drop: (world) => {
       must(world.set(find(world, "crate"), og.RigidBody, { gravityScale: 1 }));

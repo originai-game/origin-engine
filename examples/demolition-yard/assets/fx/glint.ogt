@@ -1,22 +1,23 @@
 type particles
 version 1
 ---
-# Chips off a hit: a short burst of hot grit.
-maxParticles 256
+# A glint off a glass shard: a brief white flash stretched along its flight
+# (glass-shards' sub-emitter). Sparks are for metal; glass catches light.
+maxParticles 512
 shape point
-spread 70
+spread 0
 rate 0
-burst 0 24
-duration 0.2
+burst 0 1
+duration 0.1
 looping false
-lifetime 0.3 0.7
-speed 2.5 5
-size 0.02 0.04
+lifetime 0.08 0.35
+speed 0 0
+size 0.025 0.05
 colorOverLife {
-  key 0 5 2.6 0.9 1
-  key 1 1.5 0.4 0.1 0
+  key 0 3 3.2 3.3 1
+  key 0.5 2 2.2 2.3 0.8
+  key 1 1 1 1 0
 }
 gravity 0 -9.8 0
 blend additive
-align velocity 0.04
-collision 0.35 0.3
+align velocity 0.03

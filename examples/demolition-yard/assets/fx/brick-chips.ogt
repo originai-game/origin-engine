@@ -1,0 +1,26 @@
+type particles
+version 1
+---
+# hitFx for brick: clay chips knocked off a blow, falling to the ground.
+maxParticles 256
+shape sphere 0.08
+spread 75
+rate 0
+burst 0 26
+duration 0.15
+looping false
+lifetime 1.5 2.5
+speed 1.5 4
+size 0.015 0.045
+colorOverLife {
+  key 0 0.55 0.25 0.16 1
+  key 0.85 0.55 0.25 0.16 1
+  key 1 0.55 0.25 0.16 0
+}
+rotation 0 360
+angularVelocity -500 500
+gravity 0 -9.8 0
+drag 0.15
+render mesh tetrahedron
+lit true
+collision 0.25 0.7
