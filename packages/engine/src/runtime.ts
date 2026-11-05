@@ -130,6 +130,10 @@ export interface FieldSpec {
   readonly list?: number;
 }
 
+/** A field factory's spec (`f32()`, `Vector3()`): frozen, as declarations keep it. */
+export const fieldSpec = (kind: string, value: unknown, options: unknown): FieldSpec =>
+  Object.freeze({ kind, default: value, options: Object.freeze({ ...((options as object | undefined) ?? {}) }) });
+
 export interface Token {
   readonly kind: "component" | "resource" | "event";
   readonly name: string;

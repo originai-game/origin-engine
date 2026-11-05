@@ -196,13 +196,11 @@ impl<'a> Gen<'a, '_> {
                 Item::Fn(_) => {}
                 Item::Const(c) => {
                     self.jsdoc("", &c.doc, &[]);
-                    let lit = match &c.value {
-                        og_core::ogt::Value::String(s) => {
-                            Json::str(s.clone()).render().trim_end().to_string()
-                        }
-                        v => crate::values::show(v),
-                    };
-                    self.line(&format!("export declare const {}: {lit};", c.name));
+                    self.line(&format!(
+                        "export declare const {}: {};",
+                        c.name,
+                        const_literal(c)
+                    ));
                 }
                 Item::Handle(h) => {
                     self.jsdoc("", &h.doc, &["A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.".to_string()]);
@@ -640,6 +638,74 @@ impl<'a> Gen<'a, '_> {
             "ComponentType" | "ResourceType" => format!("{name}<{}>", arg(0)),
             other => other.to_string(),
         }
+    }
+}
+
+/// `packages/engine/src/generated/exports.ts`: every column factory but the
+/// ones that take a capacity (`str`, `list`, written by hand in `index.ts`)
+/// and every constant, as the package's named exports. Generated, so a
+/// column or a constant the IDL gains is exported without a hand edit.
+pub fn exports_ts(ix: &Index<'_>) -> String {
+    let mut out = format!(
+        "// {GENERATED_BY}\n\
+         // The column factories and constants the IDL declares, re-exported by src/index.ts.\n\
+         // A factory's default is its kind's zero value: an enum's first variant, a null handle.\n\n\
+         import type * as Api from \"@origingame/engine\";\n\
+         import {{ fieldSpec as spec }} from \"../runtime.ts\";\n"
+    );
+    for m in &ix.api.modules {
+        let columns: Vec<&Column> = m
+            .items
+            .iter()
+            .filter_map(|i| match i {
+                Item::Column(c) if !c.capacity && !c.list => Some(c),
+                _ => None,
+            })
+            .collect();
+        let consts: Vec<&Const> = m
+            .items
+            .iter()
+            .filter_map(|i| match i {
+                Item::Const(c) => Some(c),
+                _ => None,
+            })
+            .collect();
+        if columns.is_empty() && consts.is_empty() {
+            continue;
+        }
+        let _ = writeln!(out, "\n// {}", m.name);
+        for c in columns {
+            let value = default_json(ix, &c.value, None)
+                .unwrap_or_else(|| panic!("column `{}` has no default value", c.name));
+            let value = match ix.decl(c.value.name()) {
+                Some(TypeDecl::Enum(_) | TypeDecl::Handle(_)) => {
+                    format!("{} as Api.{}", compact(&value), c.value.name())
+                }
+                _ => compact(&value),
+            };
+            let _ = writeln!(
+                out,
+                "export const {n} = ((value = {value}, options) => spec(\"{n}\", value, options)) as typeof Api.{n};",
+                n = c.name
+            );
+        }
+        for c in consts {
+            let _ = writeln!(
+                out,
+                "export const {n}: typeof Api.{n} = {};",
+                const_literal(c),
+                n = c.name
+            );
+        }
+    }
+    out
+}
+
+/// A constant's value as a TypeScript literal (its declared type too).
+fn const_literal(c: &Const) -> String {
+    match &c.value {
+        og_core::ogt::Value::String(s) => Json::str(s.clone()).render().trim_end().to_string(),
+        v => crate::values::show(v),
     }
 }
 

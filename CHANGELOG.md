@@ -101,6 +101,11 @@ is one line here, written at the merge that changes
   clear and deep water darkens to its colour. A visual fluid also turns
   hard-stopped or thrown-loose water to white foam, and a pour narrows and
   breaks up as it falls. Frames of 3D fluids change; no IDL change.
+- **Every IDL column factory is exported.** `Upscaler`, `GiMethod`,
+  `OutlinePlace`, `HalftoneMode`, `HalftoneRegion` and `WindMotorKind`
+  were declared but not named exports. The column factories and constants
+  are now generated from the IDL (`src/generated/exports.ts`, drift-checked
+  by `og api check`), so a new one is exported with its declaration.
 
 - **Stylise.hatchingPaper.** The paper hatching lies on: one-ink hatching
   lifts its ground towards it, and under `hatchingKeepColor` the wash lies
