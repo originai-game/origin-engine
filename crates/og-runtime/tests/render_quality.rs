@@ -283,6 +283,7 @@ impl RenderBackend for Device {
             transparency: og_render::Transparency::Weighted,
             gpu_crowds: false,
             visual_simulation: true,
+            indirect_per_draw: false,
         })
     }
     fn render(&mut self, _: &RenderScene) -> Result<(), String> {
