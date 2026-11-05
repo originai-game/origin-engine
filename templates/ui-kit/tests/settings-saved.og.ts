@@ -40,7 +40,9 @@ export default playtest({
     const value = stored[0]?.args["value"] as { language?: string; muted?: boolean; display?: { renderScale?: number } } | undefined;
     t.ok(stored.length === 1 && value?.language === "zh-CN" && value.muted === true, "og.settings written once, with the language and the mute");
     const page = new Set(ui(run, "graphics.json").map((e) => e.text));
-    t.ok(["QUALITY PRESET", "RENDER SCALE", "FRAME CAP", "VERTICAL SYNC", "FULLSCREEN"].every((w) => page.has(w)), "the Graphics page holds the display's entries");
+    // The entries' words as written: the tree draws them in capitals (a label's locale-aware `uppercase`), and the
+    // probe keeps a label's source text.
+    t.ok(["Quality preset", "Render scale", "Frame cap", "Vertical sync", "Fullscreen"].every((w) => page.has(w)), "the Graphics page holds the display's entries");
     t.equal(value?.display?.renderScale, 0.75, "and the render scale is saved in the display's settings");
 
     const next = run.then[0]!;
