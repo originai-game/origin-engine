@@ -77,10 +77,20 @@ impl Renderer {
         // drawn in the main pass and over the finished frame.
         let any_wire = self.cache.materials.iter().any(|m| m.wireframe.is_some());
         let materials = &self.cache.materials;
+        // The camera's eye (a point, or the direction towards an
+        // orthographic one): an outlined wire leaves it the silhouette.
+        let eye = if cam.orthographic {
+            (-cam.forward).extend(0.0)
+        } else {
+            cam.view.inverse().w_axis
+        };
+        let scene_outline = scene.post.outline.is_some();
         let line_frame = self
             .lines
-            .prepare(&self.device, &self.queue, scene, any_wire, |m| {
-                materials.get(m).and_then(|g| g.wireframe)
+            .prepare(&self.device, &self.queue, scene, any_wire, eye, |m| {
+                let g = materials.get(m)?;
+                let (color, angle) = g.wireframe?;
+                Some((color, angle, !g.transparent && (g.outline || scene_outline)))
             });
         self.lines.set_scene_uniform(
             &self.queue,

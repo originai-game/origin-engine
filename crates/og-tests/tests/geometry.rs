@@ -73,3 +73,70 @@ fn a_wireframe_draws_its_edges_not_its_faces() {
     assert!(wire > total / 20, "the wire is drawn ({wire} of {total})");
     assert!(wire < total / 2, "the faces are not ({wire} of {total})");
 }
+
+/// A look's wireframe under its outline (neon-vector): the outline owns the
+/// silhouette, the wire the creases inside it. An unlit black cube seen
+/// from a corner, its red feature edges drawn over its faces and a green
+/// outline inside its silhouette, on a blue background: the three edges
+/// meeting at the near corner are red, and no red pixel touches the
+/// background. Before, the wire's line was drawn on the silhouette too,
+/// half outside the outline: a second, red edge round the shape.
+#[test]
+fn an_outlined_wireframe_leaves_the_silhouette_to_the_outline() {
+    use glam::{Mat4, Vec3};
+    use og_render::{
+        Background, Camera, DirectionalLight, Exposure, MaterialStyle, RenderScene, RenderTarget,
+        Renderer, StandardMaterial, shapes,
+    };
+    let mut scene = RenderScene::new();
+    let red = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(1.0, 0.0, 0.0),
+        ..Default::default()
+    });
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    scene.add_instance(cube, red, Mat4::IDENTITY);
+    scene.stylise.material = MaterialStyle {
+        outline_color: [0.0, 1.0, 0.0],
+        outline_width: 2.0,
+        wireframe: true,
+        ..Default::default()
+    };
+    scene.environment.background = Background::Color(Vec3::new(0.0, 0.0, 0.6));
+    scene.environment.intensity = 0.0;
+    scene.light = DirectionalLight {
+        intensity: 0.0,
+        ..Default::default()
+    };
+    scene.camera = Camera {
+        position: Vec3::new(2.2, 1.8, 2.6),
+        target: Vec3::ZERO,
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    let mut renderer = Renderer::new_blocking(&og_tests::scenes::base_desc()).expect("renderer");
+    renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("render");
+    let img = renderer.read_offscreen().expect("capture");
+    let is_red = |p: [u8; 3]| p[0] > 100 && p[1] < 80;
+    let is_background = |p: [u8; 3]| p[2] > 100 && p[0] < 60 && p[1] < 60;
+    let (mut wire, mut touching) = (0, 0);
+    for y in 1..img.height - 1 {
+        for x in 1..img.width - 1 {
+            if !is_red(px(&img, x, y)) {
+                continue;
+            }
+            wire += 1;
+            if [(1, 0), (-1, 0), (0, 1), (0, -1)].iter().any(|&(dx, dy)| {
+                is_background(px(&img, (x as i32 + dx) as u32, (y as i32 + dy) as u32))
+            }) {
+                touching += 1;
+            }
+        }
+    }
+    assert!(wire > 100, "the creases are drawn: {wire} red pixels");
+    assert_eq!(
+        touching, 0,
+        "{touching} of {wire} red pixels touch the background"
+    );
+}

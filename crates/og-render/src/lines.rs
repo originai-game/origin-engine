@@ -185,17 +185,43 @@ pub fn wire_edges(mesh: &MeshData) -> Vec<[u32; 2]> {
     edges
 }
 
+/// A wireframe edge with the faces it joins, in the mesh's own space.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct WireEdge {
+    pub pair: [u32; 2],
+    /// Its two faces' unit normals (by their winding); a border's second
+    /// is zero, and both are for an edge of three or more faces or of none.
+    pub faces: [Vec3; 2],
+}
+
+impl WireEdge {
+    /// Whether the edge lies on the silhouette seen from `eye` (the mesh's
+    /// own space; w 0: a direction towards an orthographic camera) through
+    /// its point `p`: a border, or one face turned towards the eye and the
+    /// other away (a plane's side is kept by any affine transform, so the
+    /// test holds in the mesh's space whatever the instance's scale).
+    pub fn silhouette(&self, eye: glam::Vec4, p: Vec3) -> bool {
+        let [a, b] = self.faces;
+        if a == Vec3::ZERO {
+            return false;
+        }
+        if b == Vec3::ZERO {
+            return true;
+        }
+        let to_eye = eye.truncate() - p * eye.w;
+        a.dot(to_eye) * b.dot(to_eye) <= 0.0
+    }
+}
+
 /// The feature edges of a mesh (a vector or neon wireframe): its borders
 /// and the edges whose two faces meet at more than `angle_degrees`, the
 /// triangles welded by position first, so a mesh split at its uv seams or
 /// hard edges (a cooked or flat-shaded mesh) shows no seam and its hard
 /// edges are found across the split. Each edge once, by the vertex indices
-/// of its first triangle. 0 is every edge ([`wire_edges`]). A cube gives
-/// its 12 edges, a smooth sphere none.
-pub fn feature_edges(mesh: &MeshData, angle_degrees: f32) -> Vec<[u32; 2]> {
-    if angle_degrees <= 0.0 {
-        return wire_edges(mesh);
-    }
+/// of its first triangle, with its faces ([`WireEdge`]). 0 is every edge
+/// ([`wire_edges`]), their faces found across the weld. A cube gives its
+/// 12 edges, a smooth sphere none.
+pub(crate) fn feature_edges(mesh: &MeshData, angle_degrees: f32) -> Vec<WireEdge> {
     let n = mesh.vertices.len() as u32;
     let cos = angle_degrees.to_radians().cos();
     // Welded ids by position, to a millionth of the mesh's size (a seam's
@@ -214,6 +240,10 @@ pub fn feature_edges(mesh: &MeshData, angle_degrees: f32) -> Vec<[u32; 2]> {
             *weld.entry(key).or_insert(next)
         })
         .collect();
+    let welded = |[a, b]: [u32; 2]| {
+        let (wa, wb) = (ids[a as usize], ids[b as usize]);
+        [wa.min(wb), wa.max(wb)]
+    };
     // Per welded edge: its first vertex pair and its faces' normals.
     let mut faces: HashMap<[u32; 2], ([u32; 2], Vec<Vec3>)> = HashMap::new();
     let mut order: Vec<[u32; 2]> = Vec::new();
@@ -234,14 +264,29 @@ pub fn feature_edges(mesh: &MeshData, angle_degrees: f32) -> Vec<[u32; 2]> {
         }
         let normal = normal.normalize();
         for (a, b) in [(t[0], t[1]), (t[1], t[2]), (t[2], t[0])] {
-            let (wa, wb) = (ids[a as usize], ids[b as usize]);
-            let key = [wa.min(wb), wa.max(wb)];
+            let key = welded([a, b]);
             let e = faces.entry(key).or_insert_with(|| {
                 order.push(key);
                 ([a.min(b), a.max(b)], Vec::new())
             });
             e.1.push(normal);
         }
+    }
+    let of = |normals: &[Vec3]| match normals {
+        [a] => [*a, Vec3::ZERO],
+        [a, b] => [*a, *b],
+        _ => [Vec3::ZERO; 2],
+    };
+    if angle_degrees <= 0.0 {
+        return wire_edges(mesh)
+            .into_iter()
+            .map(|pair| WireEdge {
+                pair,
+                faces: faces
+                    .get(&welded(pair))
+                    .map_or([Vec3::ZERO; 2], |(_, f)| of(f)),
+            })
+            .collect();
     }
     order
         .into_iter()
@@ -252,7 +297,10 @@ pub fn feature_edges(mesh: &MeshData, angle_degrees: f32) -> Vec<[u32; 2]> {
                 [a, b] => a.dot(*b) < cos,
                 _ => true,
             };
-            feature.then_some(*pair)
+            feature.then(|| WireEdge {
+                pair: *pair,
+                faces: of(normals),
+            })
         })
         .collect()
 }
@@ -314,7 +362,7 @@ impl LineUniform {
 }
 
 /// A mesh's unique edges, shared by its instances.
-type Edges = std::rc::Rc<Vec<[u32; 2]>>;
+type Edges = std::rc::Rc<Vec<WireEdge>>;
 
 pub(crate) struct LineRenderer {
     /// The uniform's layout, for a secondary camera's group (`views.rs`).
@@ -476,16 +524,23 @@ impl LineRenderer {
 
     /// Builds and uploads the frame's instances: the scene's line and point
     /// sets and its wireframe instances (`wire(material index)`: the
-    /// material's wireframe colour and feature angle ([`feature_edges`]),
-    /// `None` for a material drawn as triangles; `any_wire`: some
-    /// material is).
+    /// material's wireframe colour, feature angle ([`feature_edges`]) and
+    /// whether an outline lines it, `None` for a material drawn as
+    /// triangles; `any_wire`: some material is).
+    ///
+    /// An outlined material's silhouette edges, seen from `eye` (the main
+    /// camera's position, w 1, or the direction towards an orthographic
+    /// one, w 0), are left to the outline: the line, a pixel wide and
+    /// centred on the edge, would lie half outside the shape along the
+    /// outline drawn inside it, a second edge in the wire's colour.
     pub fn prepare(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         scene: &RenderScene,
         any_wire: bool,
-        wire: impl Fn(usize) -> Option<([f32; 4], f32)>,
+        eye: glam::Vec4,
+        wire: impl Fn(usize) -> Option<([f32; 4], f32, bool)>,
     ) -> LineFrame {
         let mut groups: [Vec<LineInstance>; 3] = Default::default();
         // Per scene slot: (mask, first in the slot, count) of each set.
@@ -529,7 +584,7 @@ impl LineRenderer {
                 scene.instances.iter().map(|i| i.mesh.index()).collect();
             self.edges.retain(|(m, _), _| live.contains(m));
             for (i, inst) in scene.instances.iter().enumerate() {
-                let Some((color, angle)) = wire(inst.material.index()) else {
+                let Some((color, angle, outlined)) = wire(inst.material.index()) else {
                     continue;
                 };
                 let before = groups[0].len();
@@ -546,12 +601,16 @@ impl LineRenderer {
                         e
                     }
                 };
+                let local_eye = outlined.then(|| inst.transform.inverse() * eye);
                 let out = &mut groups[0];
                 out.reserve(edges.len());
-                for &[a, b] in edges.iter() {
-                    let pa = inst
-                        .transform
-                        .transform_point3(Vec3::from(mesh.vertices[a as usize].position));
+                for e in edges.iter() {
+                    let [a, b] = e.pair;
+                    let a = Vec3::from(mesh.vertices[a as usize].position);
+                    if local_eye.is_some_and(|eye| e.silhouette(eye, a)) {
+                        continue;
+                    }
+                    let pa = inst.transform.transform_point3(a);
                     let pb = inst
                         .transform
                         .transform_point3(Vec3::from(mesh.vertices[b as usize].position));
@@ -761,5 +820,40 @@ mod tests {
         assert_eq!(feature_edges(&cube, 0.0).len(), 6 * 5);
         assert_eq!(feature_edges(&shapes::sphere(48, 32), 30.0).len(), 0);
         assert_eq!(feature_edges(&shapes::plane(1.0, 1.0), 30.0).len(), 4);
+    }
+
+    /// Silhouette edges (left to an outline): a cube seen from a corner
+    /// shows a hexagon, its six rim edges, while the three edges meeting
+    /// at the near corner (both faces towards the eye) stay lines; seen
+    /// face on, the near face's four sides. A border is always one, and
+    /// an orthographic eye (a direction) gives the same as a far point.
+    /// Ways this could fail: the sign test inverted (the near creases
+    /// dropped instead), the eye's w ignored (a direction read as a point
+    /// near the origin).
+    #[test]
+    fn silhouette_edges_are_the_rim_seen_from_the_eye() {
+        let cube = shapes::cuboid(Vec3::ONE);
+        let edges = feature_edges(&cube, 30.0);
+        let p = |e: &WireEdge| Vec3::from(cube.vertices[e.pair[0] as usize].position);
+        let rim = |eye: glam::Vec4| edges.iter().filter(|e| e.silhouette(eye, p(e))).count();
+        assert_eq!(rim(glam::Vec4::new(5.0, 4.0, 3.0, 1.0)), 6);
+        assert_eq!(rim(glam::Vec4::new(5.0, 4.0, 3.0, 0.0)), 6);
+        assert_eq!(rim(glam::Vec4::new(0.0, 0.0, 10.0, 1.0)), 4);
+        // The near corner's three edges are kept, not dropped.
+        let near = edges
+            .iter()
+            .filter(|e| {
+                e.pair
+                    .iter()
+                    .any(|&i| Vec3::from(cube.vertices[i as usize].position) == Vec3::splat(0.5))
+            })
+            .filter(|e| !e.silhouette(glam::Vec4::new(5.0, 4.0, 3.0, 1.0), p(e)))
+            .count();
+        assert_eq!(near, 3);
+        let quad = feature_edges(&shapes::plane(1.0, 1.0), 30.0);
+        assert!(
+            quad.iter()
+                .all(|e| e.silhouette(glam::Vec4::new(0.0, 5.0, 0.0, 1.0), Vec3::ZERO))
+        );
     }
 }
