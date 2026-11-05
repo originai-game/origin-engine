@@ -72,11 +72,12 @@ import type { PipelineStats } from "./pipelines.ts";
   const device = (globalThis as { GPUDevice?: { prototype: unknown } }).GPUDevice?.prototype;
   if (device) pipelines.install(device as Parameters<typeof pipelines.install>[0]);
   const proto = (globalThis as { GPUAdapter?: { prototype: { requestDevice(...a: unknown[]): Promise<GPUDeviceLike> } } }).GPUAdapter?.prototype;
-  type GPUDeviceLike = { lost: Promise<{ reason: string; message: string }>; addEventListener(t: string, f: (e: { error?: { message?: string } }) => void): void };
+  type GPUDeviceLike = { lost: Promise<{ reason: string; message: string }>; queue: GpuQueue; addEventListener(t: string, f: (e: { error?: { message?: string } }) => void): void };
   if (proto) {
     const requestDevice = proto.requestDevice;
     proto.requestDevice = async function (this: unknown, ...a: unknown[]) {
       const device = await requestDevice.apply(this, a);
+      gpuQueue = device.queue;
       void device.lost.then((l) => console.error(`[og] WebGPU device lost: reason=${l.reason} message=${l.message}`));
       let errors = 0;
       device.addEventListener("uncapturederror", (e) => {
@@ -85,6 +86,33 @@ import type { PipelineStats } from "./pipelines.ts";
       return device;
     };
   }
+}
+
+type GpuQueue = { submit(buffers: unknown[]): void; onSubmittedWorkDone(): Promise<unknown> };
+/** The renderer's device queue (set when the wasm asks for its device). */
+let gpuQueue: GpuQueue | null = null;
+/**
+ * A warmed pipeline the GPU process has not finished yet. A synchronous createRenderPipeline returns at once in
+ * the Worker; Chrome sends it to the GPU process only when something flushes its wire (a submit), and the GPU
+ * process compiles it there, in order, on the task that also runs every frame's and readback's commands. Behind
+ * the gate nothing submitted, so the whole warm-up reached the GPU process with the tap's first frame and froze
+ * it (11 s on a Pixel 10, warm cache; 15 s for a probe capture on a cold Metal cache). So each warm call is
+ * flushed (an empty submit) and the next one waits until the queue's work so far, its compile included, is done:
+ * the warm-up compiles behind the gate, and a tap or a capture waits for one compile at most.
+ */
+let warmInFlight = false;
+/** Runs one warm call; until its compile is done in the GPU process, `warmInFlight`. */
+function warmPaced(warm: () => boolean): boolean {
+  const more = warm();
+  if (more && gpuQueue) {
+    warmInFlight = true;
+    const done = () => {
+      warmInFlight = false;
+    };
+    gpuQueue.submit([]);
+    gpuQueue.onSubmittedWorkDone().then(done, done);
+  }
+  return more;
 }
 
 interface Start {
@@ -1145,9 +1173,10 @@ export function startWorker(game: GameToken): void {
         if (typeof answered.tick === "number") lastTick = answered.tick;
         // Fork s70: a covered frame sets no pass, so the pipelines a pass makes when it first sets one
         // (og-render warm) are made here, one a frame, at most WARM_COMPILING compiling (s75).
-        if (covered && coveredWarmLeft && glueRef?.og_web_warm && pipelines.compiling() < WARM_COMPILING) {
+        if (covered && coveredWarmLeft && !warmInFlight && glueRef?.og_web_warm && pipelines.compiling() < WARM_COMPILING) {
           // Before the first frame: synchronous under prewarm (only warmBehindGate's are `warming`).
-          coveredWarmLeft = glueRef.og_web_warm(engine.id);
+          const warm = glueRef.og_web_warm;
+          coveredWarmLeft = warmPaced(() => warm(engine!.id));
           if (coveredWarmLeft) coveredWarm++;
           else reportPipelines(coveredWarm);
         }
@@ -1218,13 +1247,13 @@ export function startWorker(game: GameToken): void {
       if (playing || crashed || !engine) return;
       // Fork s60: with the pipelines asynchronous a warm call returns at once; at most WARM_COMPILING
       // (s75) compile at a time, so the ones a frame needs are not queued behind every pass's.
-      if (pipelines.compiling() >= WARM_COMPILING) {
+      if (pipelines.compiling() >= WARM_COMPILING || warmInFlight) {
         setTimeout(step, 50);
         return;
       }
       let more: boolean;
       try {
-        more = pipelines.warming(() => warm(engine!.id));
+        more = warmPaced(() => pipelines.warming(() => warm(engine!.id)));
       } catch (e) {
         crash(e instanceof Error ? e.message : String(e));
         return;
