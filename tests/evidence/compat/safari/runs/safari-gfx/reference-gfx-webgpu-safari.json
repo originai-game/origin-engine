@@ -1,23 +1,23 @@
 {
   "tier": "webgpu-safari",
-  "buildMs": 1917,
+  "buildMs": 2592,
   "scenes": {},
   "bisect": {
-    "spheres-20k [gpu,noshadow,keep:1000,samemat]": {
-      "outliers": 99.951,
-      "rmse": 0.58115,
-      "gpuMs": 15858,
-      "cpuMs": 68,
+    "spheres-20k [gpu,noshadow,keep:518]": {
+      "outliers": 99.634,
+      "rmse": 0.57263,
+      "gpuMs": 16277,
+      "cpuMs": 102,
       "same": false
     },
-    "spheres-20k [gpu,noshadow,keep:1000,samemesh]": {
-      "outliers": 100,
-      "rmse": 0.47948,
-      "gpuMs": 13379,
-      "cpuMs": 75,
-      "same": false
+    "spheres-20k [gpu,noshadow,keep:518,direct]": {
+      "outliers": 0,
+      "rmse": 0,
+      "gpuMs": 111,
+      "cpuMs": 107,
+      "same": true
     }
   },
-  "ms": 30174,
+  "ms": 22307,
   "log": []
 }

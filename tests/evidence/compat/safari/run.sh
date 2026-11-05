@@ -13,6 +13,8 @@
 # gfx    og-tests gfx scenes           tests/web/reference-gfx.ts (--scene a,b, --cpu-culling)
 # ui     og-ui kit frames              tests/web/reference-ui.ts
 # wire   the og-probe wire             tests/web/wire.ts
+# tp     third-person's frames         tests/web/reference.ts --project templates/archetypes/third-person
+# example <name>  an example's frames  tests/web/reference.ts --project examples/<name> --playtest
 # probe  a scratch WebGPU probe script (bun <script>), for a minimal repro
 #
 # Without --chrome the run is Safari's (--safari, the webgpu-safari tier);
@@ -54,6 +56,14 @@ case "$run" in
   gfx) set -- tests/web/reference-gfx.ts "$@" ;;
   ui) set -- tests/web/reference-ui.ts "$@" ;;
   wire) set -- tests/web/wire.ts "$@" ;;
+  # The templates' playtests, as scripts/check.sh web-reference runs them.
+  tp) set -- tests/web/reference.ts --project templates/archetypes/third-person \
+    --script "1.0:run;1.1:warp:0;1.3:key_down:KeyF;3.5:key_up:KeyF;3.6:light:1;3.7:light:2;3.8:light:3" \
+    --shots title@54,beacon@204,dawn@432 ;;
+  example)
+    name="${1:?example: a name under examples/}"
+    run="example-$name"
+    set -- tests/web/reference.ts --project "examples/$name" --playtest tests/frames.og.ts ;;
   probe) set -- "$(cd "$(dirname "${1:?probe: a script}")" && pwd)/$(basename "$1")" ;;
   *) echo "run.sh: no run $run" >&2; exit 2 ;;
 esac

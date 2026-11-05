@@ -259,7 +259,10 @@ for (const s of scenes) if (!all.includes(s) && !PERF.includes(s) && !CITY.inclu
   // the two frames compared: the first cut-down whose frames agree names
   // what the GPU path's frame needs to go wrong. No reference is read.
   const bisect = opt("--bisect");
-  for (const spec of bisect ? bisect.split(";") : []) {
+  for (const row of bisect ? bisect.split(";") : []) {
+    // A row's "dump" knob: read the args back after its GPU frame (as --cull-dump).
+    const dump = cullDump || row.split(",").includes("dump");
+    const spec = row.split(",").filter((k) => k !== "dump").join(",");
     for (const scene of scenes) {
       const frames: Image[] = [];
       const ms: number[] = [];
@@ -273,6 +276,27 @@ for (const s of scenes) if (!all.includes(s) && !PERF.includes(s) && !CITY.inclu
           const stats = JSON.parse(gfx.og_gfx_render(o.frames));
           const px = await gfx.og_gfx_capture();
           const ms = performance.now() - t;
+          stats.passes = JSON.parse(gfx.og_gfx_passes());
+          if (${dump} && !${cpu}) {
+            const layout = JSON.parse(gfx.og_gfx_cull_layout());
+            if (layout) {
+              const b = await gfx.og_gfx_cull_buffer("args");
+              stats.batches = layout.batches;
+              stats.args = Array.from(new Uint32Array(b.buffer, b.byteOffset, b.byteLength >> 2)).slice(0, 40);
+              // The instances: region 0 the uploaded records, region 1 the first pass's
+              // culled copy (nothing culled: the same records in the same order).
+              const ib = await gfx.og_gfx_cull_buffer("instances");
+              const w = new Uint32Array(ib.buffer, ib.byteOffset, ib.byteLength >> 2);
+              const n = layout.instances, differ = [];
+              for (let i = 0; i < n; i++)
+                for (let k = 0; k < 16; k++)
+                  if (w[i * 16 + k] !== w[(n + i) * 16 + k]) { differ.push(i); break; }
+              stats.instancesBytes = ib.byteLength;
+              stats.regionDiffer = { count: differ.length, first: differ.slice(0, 8) };
+              stats.record0 = Array.from(new Float32Array(ib.buffer, ib.byteOffset, 16));
+              stats.region1record0 = Array.from(new Float32Array(ib.buffer, ib.byteOffset + n * 64, 16));
+            }
+          }
           gfx.og_gfx_close();
           let bin = "";
           for (let i = 0; i < px.length; i += 0x8000) bin += String.fromCharCode.apply(null, px.subarray(i, i + 0x8000));
@@ -282,13 +306,13 @@ for (const s of scenes) if (!all.includes(s) && !PERF.includes(s) && !CITY.inclu
         frames.push(img);
         ms.push(Math.round(shot.ms));
         writeFileSync(join(dir, `${scene}.bisect-${spec.replace(/[^a-z0-9]+/gi, "_") || "none"}-${cpu ? "cpu" : "gpu"}.png`), encodePng(img));
-        if (!cpu) console.log(`     ${scene} [${spec}] GPU culling: ${JSON.stringify(shot.stats)}`);
+        if (!cpu) console.log(`     ${scene} [${row}] GPU culling: ${JSON.stringify(shot.stats)}`);
       }
       const d = compare(frames[0]!, frames[1]!, 32);
       const same = d.outliers <= 0.005 && d.rmse <= 0.01;
       (result["bisect"] as Record<string, unknown> | undefined) ?? (result["bisect"] = {});
-      (result["bisect"] as Record<string, unknown>)[`${scene} [${spec}]`] = { outliers: +(d.outliers * 100).toFixed(3), rmse: +d.rmse.toFixed(5), gpuMs: ms[0], cpuMs: ms[1], same };
-      console.log(`${same ? "same" : "DIFF"} ${scene} [${spec}]: GPU against CPU culling ${(d.outliers * 100).toFixed(3)} % outliers, RMSE ${d.rmse.toFixed(5)}; ${ms[0]} ms against ${ms[1]} ms`);
+      (result["bisect"] as Record<string, unknown>)[`${scene} [${row}]`] = { outliers: +(d.outliers * 100).toFixed(3), rmse: +d.rmse.toFixed(5), gpuMs: ms[0], cpuMs: ms[1], same };
+      console.log(`${same ? "same" : "DIFF"} ${scene} [${row}]: GPU against CPU culling ${(d.outliers * 100).toFixed(3)} % outliers, RMSE ${d.rmse.toFixed(5)}; ${ms[0]} ms against ${ms[1]} ms`);
     }
   }
   if (bisect) scenes.length = 0;

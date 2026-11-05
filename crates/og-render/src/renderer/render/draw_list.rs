@@ -164,7 +164,13 @@ impl Renderer {
                 pass.set_vertex_buffer(2, uvs.slice(..));
             }
             pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+            #[cfg(not(feature = "publish"))]
+            let direct = crate::renderer::settings::DEBUG_CULL_DIRECT
+                .load(std::sync::atomic::Ordering::Relaxed);
+            #[cfg(feature = "publish")]
+            let direct = false;
             match (list.indirect, culled_gpu) {
+                (Some(_), Some(_)) if direct => pass.draw_indexed(0..mesh.index_count, 0, 0..count),
                 (Some(g), Some(gc)) => pass.draw_indexed_indirect(&gc.args, gc.draw_offset(g, b)),
                 _ => pass.draw_indexed(0..mesh.index_count, 0, 0..count),
             }

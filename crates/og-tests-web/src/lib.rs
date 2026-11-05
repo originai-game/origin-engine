@@ -170,8 +170,11 @@ mod web {
     /// first instance's mesh, the rest kept), `first` (only the first
     /// instance's mesh), `noshadow` (the sun casts none), `nomeshlets` (no
     /// batch draws through the meshlet path), `apart` (the cull submitted
-    /// before the frame, not with it), `samemat` and `samemesh` (every
-    /// instance the first's material or mesh). Empty: none.
+    /// before the frame, not with it), `direct` (the lit passes draw the
+    /// culled regions with `draw_indexed`, not the indirect args), `samemat` and `samemesh` (every
+    /// instance the first's material or mesh), `sphere:<segments>x<rings>`
+    /// (the first instance's mesh's instances drawn with that sphere).
+    /// Empty: none.
     #[wasm_bindgen]
     pub fn og_gfx_bisect(spec: String) {
         BISECT.with(|b| *b.borrow_mut() = spec);
@@ -180,6 +183,7 @@ mod web {
     fn cut_down(built: &mut GfxScene) -> Result<(), String> {
         let spec = BISECT.with(|b| b.borrow().clone());
         Renderer::debug_cull_apart(false);
+        Renderer::debug_cull_direct(false);
         for knob in spec.split(',').map(str::trim).filter(|k| !k.is_empty()) {
             let scene = &mut built.scene;
             let mesh = scene.instances.first().map(|i| i.mesh);
@@ -189,6 +193,7 @@ mod web {
                 None if knob == "noshadow" => scene.light.cast_shadows = false,
                 None if knob == "nomeshlets" => scene.meshlets = false,
                 None if knob == "apart" => Renderer::debug_cull_apart(true),
+                None if knob == "direct" => Renderer::debug_cull_direct(true),
                 None if knob == "samemat" => {
                     let m = scene.instances.first().map(|i| i.material);
                     for i in &mut scene.instances {
@@ -198,6 +203,16 @@ mod web {
                 None if knob == "samemesh" => {
                     for i in &mut scene.instances {
                         i.mesh = mesh.expect("an instance");
+                    }
+                }
+                Some(("sphere", sr)) => {
+                    let (a, b) = sr
+                        .split_once('x')
+                        .and_then(|(a, b)| Some((a.parse().ok()?, b.parse().ok()?)))
+                        .ok_or_else(|| format!("bisect: sphere:{sr}"))?;
+                    let m = scene.add_mesh(og_render::shapes::sphere(a, b));
+                    for i in scene.instances.iter_mut().filter(|i| Some(i.mesh) == mesh) {
+                        i.mesh = m;
                     }
                 }
                 Some(("keep", n)) => {
@@ -363,6 +378,22 @@ mod web {
                     )
                 }
             })
+        })
+    }
+
+    /// The open scene's last frame's render-graph passes in execution
+    /// order, as a JSON array of names (a bisect reads which passes drew).
+    #[wasm_bindgen]
+    pub fn og_gfx_passes() -> Result<String, JsValue> {
+        OPEN.with(|o| {
+            let o = o.borrow();
+            let open = o.as_ref().ok_or_else(|| err("no scene open"))?;
+            let names = open
+                .renderer
+                .frame_graph()
+                .map(|p| p.ordered_names())
+                .unwrap_or_default();
+            Ok(format!("{names:?}"))
         })
     }
 
