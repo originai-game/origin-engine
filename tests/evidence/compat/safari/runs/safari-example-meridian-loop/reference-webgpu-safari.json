@@ -44,16 +44,16 @@
       "tick": 1140,
       "size": "1280x720",
       "against": "examples/meridian-loop/references/metal/race.png",
-      "outliers": 2.66,
-      "rmse": 0.03738,
-      "ok": false
+      "outliers": 0.132,
+      "rmse": 0.00892,
+      "ok": true
     },
     "ghost": {
       "tick": 4620,
       "size": "1280x720",
       "against": "examples/meridian-loop/references/metal/ghost.png",
-      "outliers": 1.932,
-      "rmse": 0.03416,
+      "outliers": 1.913,
+      "rmse": 0.034,
       "ok": false
     },
     "pause": {
@@ -95,17 +95,17 @@
   "refused": "probe.commands: script must be a string, not object",
   "ticks": 7272,
   "engine": [
-    "[og] boot stage \"wasm\" done in 118 ms",
-    "[og] boot stage \"bundle\" done in 92 ms",
-    "[og] boot stage \"create\" done in 28 ms",
+    "[og] boot stage \"wasm\" done in 163 ms",
+    "[og] boot stage \"bundle\" done in 64 ms",
+    "[og] boot stage \"create\" done in 41 ms",
     "[og] pipelines sync: auto: an Apple GPU (apple apple), sync until iOS is measured",
-    "[og] boot stage \"attach\" done in 54 ms",
-    "[og] boot stage \"transcode\" done in 96 ms",
-    "[og] boot stage \"prime\" done in 1 ms",
+    "[og] boot stage \"attach\" done in 55 ms",
+    "[og] boot stage \"transcode\" done in 111 ms",
+    "[og] boot stage \"prime\" done in 2 ms",
     "[og] boot stage \"settle\" done in 0 ms",
-    "[og] boot stage \"present\" done in 136 ms",
-    "[og] first frame at 572 ms"
+    "[og] boot stage \"present\" done in 128 ms",
+    "[og] first frame at 626 ms"
   ],
-  "ms": 106837,
+  "ms": 126891,
   "log": []
 }
