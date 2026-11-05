@@ -24,8 +24,11 @@ impl Ui {
         Some((sh.dx * k, sh.dy * k, sh.blur * k, sh.color))
     }
 
-    /// Hollow focus strokes, after the rim and selection, before children
-    /// (including raised badges). No background-coloured cut can cover art.
+    /// Hollow focus strokes, drawn after the whole subtree of the screen
+    /// they are in (`Ui::ring_over`): over the control's children, its
+    /// neighbours and the fade and bars of a scroll around it, clipped to
+    /// that scroll widened by the ring's reach. No background-coloured cut
+    /// can cover art.
     pub(super) fn focus_ring_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>) {
         let t = &self.theme;
         let p = &t.palette;

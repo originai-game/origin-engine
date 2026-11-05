@@ -146,6 +146,8 @@ impl Ui {
         let mut frozen: IdMap<u64, crate::motion::state::Frozen> = IdMap::new();
         // Open subtrees: (node, its first command, the order position past it).
         let mut open: Vec<(usize, usize, usize)> = Vec::new();
+        // Focus rings waiting for the subtree they draw over (`ring_over`).
+        let mut rings: Vec<(usize, Vec<(DrawCmd, Affine)>)> = Vec::new();
         // Elements whose commands and ancestors' fills are as last frame
         // (docs/ui.md §6.3): their commands are last frame's.
         let mut same = vec![false; self.nodes.len()];
@@ -155,6 +157,10 @@ impl Ui {
         // An element's draw (crate::paint) in its layout box, at its
         // opacity; its clip is the screen's (bake leaves draw commands be).
         let press_scale = theme.press_scale;
+        let marked = |n: &crate::layout::Node| {
+            n.el.part
+                .is_some_and(|p| p.has("selected") || p.has("focused"))
+        };
         let placed = |n: &crate::layout::Node| crate::paint::Placed {
             rect: part_rect(n, press_scale),
             radius: n.el.radius,
@@ -178,12 +184,16 @@ impl Ui {
             if let Some(d) = &draw {
                 cmds.extend(d.enter(&theme, &placed(n)).into_iter().map(|c| (c, world)));
                 // One order for game and style draws: ground, rim,
-                // content/selection, focus, then children and raised badges.
-                cmds.extend(
-                    d.strokes(&theme, &placed(n))
-                        .into_iter()
-                        .map(|c| (c, world)),
-                );
+                // content, then children and raised badges; a selected or
+                // focused part's rim (its mark) after its children
+                // (`marked`), so the item's art never covers it.
+                if !marked(n) {
+                    cmds.extend(
+                        d.strokes(&theme, &placed(n))
+                            .into_iter()
+                            .map(|c| (c, world)),
+                    );
+                }
             }
             let twin = self.kept.twin.get(i).copied().unwrap_or(NONE);
             // Rich text draws from the tick (its moving spans), focus and
@@ -234,7 +244,12 @@ impl Ui {
                 self.drawing = Affine::IDENTITY;
                 self.nodes[i].clip = screen_clip;
             }
-            cmds.extend(ring.into_iter().map(|c| (c, world)));
+            if !ring.is_empty() {
+                rings.push((
+                    self.ring_over(i),
+                    ring.into_iter().map(|c| (c, world)).collect(),
+                ));
+            }
             if let Some(d) = &draw {
                 let at = placed(&self.nodes[i]);
                 cmds.extend(d.children(&at).into_iter().map(|c| (c, world)));
@@ -265,13 +280,25 @@ impl Ui {
                     cmds.extend(bars.into_iter().map(|c| (c, w)));
                 }
                 let w = self.nodes[j].world;
-                if let Some(d) = self.draws.get(&j) {
+                if let Some(d) = self.draws.get(&j).or_else(|| self.part_draws.get(&j)) {
                     let at = placed(&self.nodes[j]);
-                    cmds.extend(d.leave_stroked(&at).into_iter().map(|c| (c, w)));
-                } else if let Some(d) = self.part_draws.get(&j) {
-                    let at = placed(&self.nodes[j]);
-                    cmds.extend(d.leave_stroked(&at).into_iter().map(|c| (c, w)));
+                    let leave = if marked(&self.nodes[j]) {
+                        d.leave(&theme, &at)
+                    } else {
+                        d.leave_stroked(&at)
+                    };
+                    cmds.extend(leave.into_iter().map(|c| (c, w)));
                 }
+                // Focus rings over everything their subtree drew: later
+                // siblings, a scroll's fade and bars (an outline's paint
+                // order in CSS).
+                rings.retain_mut(|(over, ring)| {
+                    if *over != j {
+                        return true;
+                    }
+                    cmds.append(ring);
+                    false
+                });
                 if let Some(m) = self.world_marks(key) {
                     cmds.extend(m.leave.iter().map(|c| (c.clone(), Affine::IDENTITY)));
                 }
@@ -385,6 +412,20 @@ impl Ui {
 
     /// A scroll container's bars, over its content.
     /// A scroll container's clip in its own space.
+    /// The subtree node `i`'s focus ring draws after: its screen's (the
+    /// root's child it is in), or the world-placed element's it is in, so
+    /// a ring stays in that element's space.
+    fn ring_over(&self, i: usize) -> usize {
+        let mut j = i;
+        loop {
+            let parent = self.nodes[j].parent;
+            if parent == NONE || parent == 0 || self.world_marks(self.nodes[j].key).is_some() {
+                return j;
+            }
+            j = parent;
+        }
+    }
+
     fn scroll_clip(&self, s: usize) -> Rect {
         let sn = &self.nodes[s];
         if sn.world.is_identity() {
