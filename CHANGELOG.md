@@ -387,8 +387,10 @@ is one line here, written at the merge that changes
   runtime-loaded materials still take the look's steps and dither. Under
   `halftoneRegion` shade or highlight the dots are Ben-Day dots, a tint
   over the region's colour at most 0.4 of a cell wide, so a deep shade no
-  longer merges into ink with a checker of paper holes. Behaviour change:
-  shade and highlight halftones, and the pixel and doodle looks, move.
+  longer merges into ink with a checker of paper holes, and they fade to
+  flat ink on surfaces turned away from the camera, so a floor's cast
+  shadow stays one colour. Behaviour change: shade and highlight
+  halftones, the pixel and doodle looks and bold-comic, move.
 - **Scatter model space.** `load.GltfInfo.parts` exposes each primitive's
   geometry, material and primitive-to-model matrix; `geometries` remains
   mesh-local. TerrainScatter applies the named impostor model's placements

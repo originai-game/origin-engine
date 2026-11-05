@@ -769,9 +769,21 @@ fn cmyk(p: vec2<f32>, surf: Surf, osurf: Surf, c: vec3<f32>, paper: vec3<f32>, r
 // ink with a grid of paper holes between them: a checker, not dots.
 const BEN_DAY_REACH: f32 = 0.55;
 
-fn halftone_region(t: f32) -> f32 {
-  if (st.print.z > 1.5) { return smoothstep(0.6, 0.75, t); }
-  if (st.print.z > 0.5) { return 1.0 - smoothstep(0.25, 0.4, t); }
+// Under a region the dots fade on surfaces turned away from the camera,
+// their normal more than about 30 to 55 degrees off the view ray (the
+// prepass's): a floor's cast shadow seen from a game camera's height keeps
+// flat ink, where dots squeezed into its few rows read as a checker. Where
+// no surface lies (the sky, a 2D scene) the dots print.
+fn facing(p: vec2<f32>) -> f32 {
+  let px = vec2<i32>(p);
+  let d = view_depth(px);
+  if (!(d > 0.0 && d < st.ink_depth.x * 0.999)) { return 1.0; }
+  return smoothstep(0.6, 0.85, abs(dot(normal_at(px), view_dir(p))));
+}
+
+fn halftone_region(p: vec2<f32>, t: f32) -> f32 {
+  if (st.print.z > 1.5) { return smoothstep(0.6, 0.75, t) * facing(p); }
+  if (st.print.z > 0.5) { return (1.0 - smoothstep(0.25, 0.4, t)) * facing(p); }
   return 1.0;
 }
 
@@ -838,7 +850,7 @@ fn lines(in: VsOut) -> vec3<f32> {
       let paper = mix(c, ground, st.halftone.x);
       printed = mix(paper, st.halftone_color.rgb, dot_cover * st.halftone.x);
     }
-    c = mix(c, printed, halftone_region(t));
+    c = mix(c, printed, halftone_region(p, t));
   }
   if (st.ink.x > 0.5) {
     // Luminance edges, widened by the max over the line's width.

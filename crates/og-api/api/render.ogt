@@ -1675,7 +1675,7 @@ module render {
       max 8
       tunable true
     }
-    field halftoneRegion HalftoneRegion "Which tones the halftone prints on: all (the dots reproduce the tone on white paper, merging in the darks as print does), the shade only or the highlights only (the darkest or lightest third of the tones). Under a region the dots are Ben-Day dots: a tint printed over the region's own colour, at most 0.4 of their cell wide so they never touch, and a flat shade stays one colour with separate dots on it."
+    field halftoneRegion HalftoneRegion "Which tones the halftone prints on: all (the dots reproduce the tone on white paper, merging in the darks as print does), the shade only or the highlights only (the darkest or lightest third of the tones). Under a region the dots are Ben-Day dots: a tint printed over the region's own colour, at most 0.4 of their cell wide so they never touch, and a flat shade stays one colour with separate dots on it. They fade to flat ink on surfaces turned away from the camera (a floor seen from a game camera's height), where dots squeezed into a few rows read as a checker."
     field hatchingKeepColor bool "Colour hatching: the ground keeps its colour and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground."
   }
 

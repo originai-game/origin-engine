@@ -14,7 +14,9 @@
 //! - Shade-only halftone prints Ben-Day dots that never touch: the ground
 //!   between them is one connected field. Old code reproduced the
 //!   shade's full tone, so its dots merged into ink round a grid of
-//!   isolated paper holes, a checker.
+//!   isolated paper holes, a checker. On a surface seen edge-on (a floor
+//!   at a grazing angle) the dots fade to flat ink; old code printed them
+//!   there too, a checker in the floor's shadows.
 //! - The dither in surface space moves with the surface: an orthographic
 //!   camera panned by three logical pixels sees the same pattern three
 //!   pixels over; in screen space the pattern stays on the screen.
@@ -445,4 +447,73 @@ fn colour_hatching_keeps_the_hue_under_its_strokes() {
     println!("stroke chroma: kept {kept:.4}, one ink {grey:.4}");
     assert!(kept > 0.05, "the strokes stay red ({kept})");
     assert!(grey < 0.03, "one-ink strokes are grey ({grey})");
+}
+
+/// A dark wall facing the camera, turned `tilt` degrees about x away from
+/// it, under shade-only Ben-Day dots.
+fn turned_wall(tilt: f32) -> RenderScene {
+    let mut scene = RenderScene::new();
+    scene.post.tonemap = Tonemap::None;
+    let dark = scene.add_standard_material(StandardMaterial {
+        color: Vec3::splat(0.08),
+        roughness: 1.0,
+        ..Default::default()
+    });
+    let mesh = scene.add_mesh(shapes::plane_xy(60.0, 60.0));
+    scene.add_instance(mesh, dark, glam::Mat4::from_rotation_x(-tilt.to_radians()));
+    scene.light = DirectionalLight {
+        direction_to_light: Vec3::Z,
+        intensity: 1.0,
+        cast_shadows: false,
+        ..Default::default()
+    };
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 0.0, 10.0),
+        target: Vec3::ZERO,
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    scene.stylise.halftone = Some(Halftone {
+        strength: 1.0,
+        size: 5.0,
+        angle_degrees: 45.0,
+        color: [0.0; 3],
+        space: StyliseSpace::Screen,
+        mode: HalftoneMode::Ink,
+        misregistration: 0.0,
+        region: HalftoneRegion::Shade,
+    });
+    scene
+}
+
+#[test]
+fn shade_dots_print_flat_on_a_surface_seen_edge_on() {
+    let mut renderer = Renderer::new_blocking(&desc()).expect("renderer");
+    // The luma range over the frame's middle rows.
+    let range = |px: &[u8]| {
+        let luma =
+            |i: usize| u32::from(px[i]) * 3 + u32::from(px[i + 1]) * 6 + u32::from(px[i + 2]);
+        let (mut lo, mut hi) = (u32::MAX, 0);
+        for y in H / 2 - 4..H / 2 + 4 {
+            for x in W / 4..W * 3 / 4 {
+                let l = luma((y * W + x) * 4);
+                lo = lo.min(l);
+                hi = hi.max(l);
+            }
+        }
+        hi - lo
+    };
+    let facing = range(&frame(&mut renderer, &turned_wall(0.0)));
+    let edge_on = range(&frame(&mut renderer, &turned_wall(80.0)));
+    println!("luma range: facing {facing}, edge-on {edge_on}");
+    assert!(
+        facing > 300,
+        "a wall facing the camera prints its dots ({facing})"
+    );
+    // Old code printed the same dots on the grazing wall, squeezed into a
+    // checker.
+    assert!(
+        edge_on < 60,
+        "a wall seen edge-on keeps flat ink ({edge_on})"
+    );
 }

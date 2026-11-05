@@ -329,10 +329,12 @@ impl Renderer {
             || depth_bands.is_some()
             || ink_depth
             || scene.stylise.on_surfaces()
-            // The painterly filter's object edges and detail, where meshes
+            // The painterly filter's object edges and detail, and the
+            // Ben-Day dots' facing (halftone_faces), where meshes
             // are drawn (a 2D scene's prepass would hold nothing).
             || (WORLD_3D
-                && scene.stylise.paint.is_some_and(|p| p.detail_aware())
+                && (scene.stylise.paint.is_some_and(|p| p.detail_aware())
+                    || scene.stylise.halftone_faces())
                 && !(batches.is_empty() && skinned_batches.is_empty()))
             || outline
             || dof.is_some()

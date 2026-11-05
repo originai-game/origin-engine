@@ -685,6 +685,14 @@ impl Stylise {
             .any(|s| s.is_some_and(StyliseSpace::on_surfaces))
     }
 
+    /// Whether the halftone prints under a region (Ben-Day dots), whose
+    /// dots fade on surfaces seen edge-on: the frame runs the prepass for
+    /// their normals where it draws meshes.
+    pub fn halftone_faces(&self) -> bool {
+        self.halftone
+            .is_some_and(|h| h.strength > 0.0 && h.region != HalftoneRegion::All)
+    }
+
     /// Whether a pattern is laid in object space: the frame runs the
     /// object pass after the prepass.
     pub fn in_object_space(&self) -> bool {
