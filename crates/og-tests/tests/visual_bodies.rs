@@ -56,6 +56,16 @@ fn the_garment_matches_its_reference() {
     }
 }
 
+/// A grinder's sparks, compute particles meeting the scene's colliders:
+/// they ricochet off a steel block, a ball and the floor.
+#[test]
+fn the_sparks_match_their_reference() {
+    match gfx::check("visual-particles", &out_dir()) {
+        Ok(report) => println!("{report}"),
+        Err(e) => panic!("{e}"),
+    }
+}
+
 #[test]
 fn the_fluid_matches_its_reference() {
     match gfx::check("visual-fluid", &out_dir()) {

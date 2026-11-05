@@ -15,6 +15,19 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Particles meet the scene's colliders on the GPU.** An emitter's
+  `collision` line takes what its particles meet: `collision 0.4 0.2
+  colliders` bounces compute particles off the game's og.Collider boxes,
+  spheres, capsules and terrains (and scene planes) through the shared
+  scene-collider kernel, on or off screen, with nothing read back; `depth`
+  (the default) keeps the depth-prepass bounce. Sprite-mode emitters,
+  which already simulated in compute, now meet the colliders instead of
+  passing through and being counted as skipped (no shipped emitter had
+  sprite-mode collision, so no frame moves). Events and sub-emitters stay
+  on the CPU, which now also bounces sprite-mode particles off the
+  colliders. og-render: `ParticleCollision::against`, `CollisionTarget`.
+  IDL doc changes only.
+
 - **Destruction: broken joints shed clay and mortar grit.** Every bond
   that breaks in a prop with og.Destructible.debris sheds three or four
   small chips through the GPU debris layer: one centimetre to five and

@@ -1,9 +1,12 @@
 // The particle simulation (compute): one invocation per slot of a
 // system's ring, one dispatch per tick. A slot either receives the newest
 // particle the tick spawns into it or, while alive, integrates one fixed
-// step; then live world-space particles bounce off the depth prepass. The
-// spawn and step formulas are `spawn` and `integrate` in particles.rs.
-// Prepended by noise.wgsl and particle_common.wgsl.
+// step; then live world-space particles bounce off the depth prepass or,
+// where the emitter names them (emitter.collision.w; its list in
+// emitter.info.z), the scene's colliders. Nothing is read back. The spawn
+// and step formulas are `spawn`, `integrate` and `collide` in
+// particles.rs. Prepended by noise.wgsl, particle_common.wgsl and
+// scene_colliders.wgsl.
 
 @group(0) @binding(0) var<uniform> emitter: Emitter;
 @group(0) @binding(1) var<uniform> view: ParticleView;
@@ -11,6 +14,7 @@
 @group(0) @binding(3) var<storage, read> mesh_points: array<vec4<f32>>;
 @group(0) @binding(4) var scene_depth: texture_2d<f32>;
 @group(0) @binding(5) var scene_gbuffer: texture_2d<f32>;
+@group(0) @binding(6) var<storage, read> colliders: array<vec4<f32>>;
 
 const TAU: f32 = 6.28318530718;
 
@@ -111,7 +115,28 @@ fn integrate(p: Particle) -> Particle {
   vel *= 1.0 / (1.0 + max(emitter.forces.w, 0.0) * dt);
   let before = pos;
   pos += vel * dt;
-  if (emitter.collision.x > 0.5 && emitter.ranges2.z < 0.5) {
+  if (emitter.collision.w > 0.5) {
+    // The scene's colliders, as the CPU path's `collide` meets them: a
+    // step from outside to inside reflects the normal part of the
+    // velocity by `bounce`, takes `friction` off the rest and is taken
+    // again from before; one that starts inside (born in a brazier's box)
+    // leaves freely.
+    let list = emitter.info.z;
+    if (!push_out(before, 0.0, list).hit) {
+      let h = push_out(pos, 0.0, list);
+      if (h.hit) {
+        let vn = dot(vel, h.n);
+        if (vn < 0.0) {
+          let normal_part = h.n * vn;
+          vel = (vel - normal_part) * (1.0 - emitter.collision.z) - normal_part * emitter.collision.y;
+          pos = before + vel * dt;
+          // A corner or a second shape the new step still enters: out to its surface.
+          let again = push_out(pos, 0.0, list);
+          if (again.hit) { pos = again.p; }
+        }
+      }
+    }
+  } else if (emitter.collision.x > 0.5 && emitter.ranges2.z < 0.5) {
     // The prepass depth along the camera's forward axis at the particle's pixel.
     let clip = view.view_proj * vec4<f32>(pos, 1.0);
     if (clip.w > 0.0) {

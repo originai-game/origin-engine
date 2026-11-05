@@ -40,7 +40,10 @@
 //! space world                       # world | local
 //! align camera                      # camera | velocity <stretch>
 //! softDistance 0
-//! collision 0.4 0.2                 # <bounce> <friction> (depth-buffer collision in compute)
+//! collision 0.4 0.2 depth           # <bounce> <friction> [depth | colliders]: in compute,
+//!                                   #   the depth prepass (what the camera sees) or the
+//!                                   #   scene's colliders (og.Collider shapes, on or off
+//!                                   #   screen); sprite mode always meets the colliders
 //! render billboard                  # billboard | sprite <layer> (2D: drawn as sprites)
 //!                                   #   | mesh <box | sphere | tetrahedron | "<model asset id>">
 //! lit false                         # lit by the scene's lights (3D: billboards and meshes)
@@ -75,10 +78,10 @@
 
 use og_core::ogt::{Document, Entry, Value};
 use og_render::{
-    Burst, ColorCurve, ColorLut, Curve, EmitterHandle, EmitterShape, MAX_CURVE_KEYS,
-    MAX_SUB_EMITTERS, MeshHandle, ParticleAlign, ParticleBlend, ParticleCollision, ParticleEmitter,
-    ParticleEventKind, ParticleRender, SheetMode, SimulationSpace, SubEmitter, TextureArrayHandle,
-    TextureHandle,
+    Burst, CollisionTarget, ColorCurve, ColorLut, Curve, EmitterHandle, EmitterShape,
+    MAX_CURVE_KEYS, MAX_SUB_EMITTERS, MeshHandle, ParticleAlign, ParticleBlend, ParticleCollision,
+    ParticleEmitter, ParticleEventKind, ParticleRender, SheetMode, SimulationSpace, SubEmitter,
+    TextureArrayHandle, TextureHandle,
 };
 
 /// The built-in meshes `render mesh <name>` names.
@@ -441,11 +444,30 @@ pub fn parse_emitter_linked(
             }
             "softDistance" => em.soft_distance = one(e)?.max(0.0),
             "collision" => {
-                let v = nums(e)?;
+                // <bounce> <friction> numbers, then what it meets.
                 let d = ParticleCollision::default();
+                let mut v = Vec::new();
+                let mut against = d.against;
+                for (i, value) in e.values.iter().enumerate() {
+                    match (value.as_number(), value.as_word()) {
+                        (Some(n), _) if i < 2 && v.len() == i => v.push(n.as_f32()),
+                        (_, Some("depth")) if i == e.values.len() - 1 => {
+                            against = CollisionTarget::Depth
+                        }
+                        (_, Some("colliders")) if i == e.values.len() - 1 => {
+                            against = CollisionTarget::Colliders
+                        }
+                        _ => {
+                            return Err(format!(
+                                "line {line}: collision [<bounce> [<friction>]] [depth | colliders]"
+                            ));
+                        }
+                    }
+                }
                 em.collision = Some(ParticleCollision {
                     bounce: v.first().copied().unwrap_or(d.bounce),
                     friction: v.get(1).copied().unwrap_or(d.friction),
+                    against,
                 });
             }
             "render" => {

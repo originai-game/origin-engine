@@ -15,12 +15,16 @@
 //!
 //! **Two paths, one description.** By default the simulation runs in a
 //! compute shader (`shaders/particles_sim.wgsl`) into a storage buffer the
-//! draw reads as instance data; with [`ParticleSimulation::Cpu`],
-//! [`CpuParticles`] runs the same steps in Rust
-//! and uploads the state. Sprite-mode emitters ([`ParticleRender::Sprite`])
-//! always simulate on the CPU and draw through the sprite batch; one with a
-//! texture array ([`ParticleEmitter::array`]) draws each particle from a
-//! layer of it, the layers being the sheet's frames.
+//! draw reads as instance data, with nothing read back: it is visual only.
+//! Colliding particles meet the depth prepass or, explicitly
+//! ([`CollisionTarget::Colliders`], and always in sprite mode), the scene's
+//! colliders through `shaders/scene_colliders.wgsl`. With
+//! [`ParticleSimulation::Cpu`], [`CpuParticles`] runs the same steps in
+//! Rust and uploads the state. Sprite-mode emitters
+//! ([`ParticleRender::Sprite`]) simulate in compute too and draw through
+//! the sprite batch; one with a texture array ([`ParticleEmitter::array`])
+//! draws each particle from a layer of it, the layers being the sheet's
+//! frames.
 //!
 //! **Events and sub-emitters.** The CPU path reports what happens to its
 //! particles ([`ParticleEvent`]: births, deaths, collisions) and spawns
@@ -281,18 +285,20 @@ pub enum ParticleAlign {
     Velocity { stretch: f32 },
 }
 
-/// Particles bounce off the depth buffer in compute (turning the depth
-/// prepass on), and off [`crate::RenderScene::colliders`] on the
-/// CPU path ([`ParticleSimulation::Cpu`], sprite-mode emitters); a CPU
+/// Particles bounce off what [`ParticleCollision::against`] names, in
+/// compute with nothing read back; on the CPU path
+/// ([`ParticleSimulation::Cpu`], a host's simulation, sub-emitters) they
+/// bounce off [`crate::RenderScene::colliders`] whatever it names. A CPU
 /// system with no colliders to meet passes through and
-/// [`crate::FrameStats::particle_collision_skipped`] counts it, as does a
-/// sprite-mode one. World space only.
+/// [`crate::FrameStats::particle_collision_skipped`] counts it. World
+/// space only.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ParticleCollision {
     /// Fraction of the normal speed kept (0 sticks, 1 bounces fully).
     pub bounce: f32,
     /// Fraction of the tangential speed lost per hit.
     pub friction: f32,
+    pub against: CollisionTarget,
 }
 
 impl Default for ParticleCollision {
@@ -300,7 +306,35 @@ impl Default for ParticleCollision {
         ParticleCollision {
             bounce: 0.4,
             friction: 0.2,
+            against: CollisionTarget::Depth,
         }
+    }
+}
+
+/// What compute-simulated particles bounce off ([`ParticleCollision::against`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum CollisionTarget {
+    /// The depth prepass (turning it on): whatever the camera sees, and
+    /// nothing it does not (off screen, behind something). Billboards and
+    /// meshes; a sprite-mode emitter, which has no depth to read, meets
+    /// the colliders instead.
+    #[default]
+    Depth,
+    /// The scene's colliders ([`crate::RenderScene::colliders`]: the
+    /// game's boxes, spheres, capsules, planes and height fields), as the
+    /// CPU path meets them, on or off screen. Every render mode.
+    Colliders,
+}
+
+impl ParticleEmitter {
+    /// Whether its compute simulation meets the scene's colliders (world
+    /// space, `collision` against them, or a sprite-mode emitter's).
+    pub(crate) fn collides_with_colliders(&self) -> bool {
+        self.space == SimulationSpace::World
+            && self.collision.is_some_and(|c| {
+                c.against == CollisionTarget::Colliders
+                    || matches!(self.render, ParticleRender::Sprite { .. })
+            })
     }
 }
 

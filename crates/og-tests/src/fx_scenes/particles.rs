@@ -119,6 +119,7 @@ pub fn campfire(scene: &mut RenderScene) -> Campfire {
         collision: Some(ParticleCollision {
             bounce: 0.35,
             friction: 0.3,
+            ..Default::default()
         }),
         ..Default::default()
     });
@@ -448,6 +449,7 @@ pub fn particles_lit_scene() -> RenderScene {
         collision: Some(ParticleCollision {
             bounce: 0.35,
             friction: 0.4,
+            ..Default::default()
         }),
         render: ParticleRender::Mesh { mesh: shard },
         lit: true,

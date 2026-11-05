@@ -163,6 +163,36 @@ fn a_cube_and_an_emitter_cook_and_load() {
     assert_eq!(em.soft_distance, 0.3);
     let c = em.collision.unwrap();
     assert_eq!((c.bounce, c.friction), (0.6, 0.1));
+    assert_eq!(c.against, og_render::CollisionTarget::Depth);
+    // `collision` names what compute particles meet: the depth prepass
+    // (unsaid) or the scene's colliders; a third word or a third number is
+    // refused.
+    let collision = |line: &str| {
+        let text = format!("type particles\nversion 1\n---\n{line}\n");
+        parse_emitter(&text, &mut |_| Ok(None)).map(|e| e.collision.unwrap())
+    };
+    let c = collision("collision 0.3 0.5 colliders").unwrap();
+    assert_eq!(
+        (c.bounce, c.friction, c.against),
+        (0.3, 0.5, og_render::CollisionTarget::Colliders)
+    );
+    let c = collision("collision colliders").unwrap();
+    assert_eq!(
+        (c.bounce, c.against),
+        (0.4, og_render::CollisionTarget::Colliders)
+    );
+    assert_eq!(
+        collision("collision 0.3 depth").unwrap().against,
+        og_render::CollisionTarget::Depth
+    );
+    for bad in [
+        "collision 0.3 0.5 walls",
+        "collision 0.3 0.5 0.1",
+        "collision colliders 0.3",
+    ] {
+        let err = collision(bad).unwrap_err();
+        assert!(err.contains("depth | colliders"), "{bad}: {err}");
+    }
     assert_eq!(em.render, ParticleRender::Sprite { layer: 7 });
     assert_eq!(em.glow, 1.5);
 }

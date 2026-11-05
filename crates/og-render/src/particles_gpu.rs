@@ -15,6 +15,7 @@ use std::collections::HashMap;
 
 const COMMON_WGSL: &str = wgsl!("particle_common.wgsl");
 const SIM_WGSL: &str = wgsl!("particles_sim.wgsl");
+const COLLIDERS_WGSL: &str = wgsl!("scene_colliders.wgsl");
 const DRAW_WGSL: &str = wgsl!("particles.wgsl");
 const SPRITES_WGSL: &str = wgsl!("particle_sprites.wgsl");
 pub(crate) const NOISE_WGSL: &str = wgsl!("noise.wgsl");
@@ -375,6 +376,9 @@ pub(crate) struct ParticleRenderer {
     draw_pl: wgpu::PipelineLayout,
     emitter_buffer: wgpu::Buffer,
     pub view_buffer: wgpu::Buffer,
+    /// The scene's colliders as `scene_colliders.rs` packs them, with a
+    /// list per system that meets them (`emitter.info.z`).
+    colliders: wgpu::Buffer,
     systems: HashMap<u64, SystemState>,
     scene_id: u64,
     /// Sampled mesh surfaces per emitter index.
@@ -466,6 +470,7 @@ impl ParticleRenderer {
                 storage_entry(3, true),
                 depth_entry(4, wgpu::ShaderStages::COMPUTE),
                 depth_entry(5, wgpu::ShaderStages::COMPUTE),
+                storage_entry(6, true),
             ],
         });
         let sim = {
@@ -569,6 +574,7 @@ impl ParticleRenderer {
             draw_pl,
             emitter_buffer,
             view_buffer,
+            colliders: collider_buffer(device, 256),
             systems: HashMap::new(),
             scene_id: 0,
             points: HashMap::new(),
@@ -599,6 +605,9 @@ impl ParticleRenderer {
         let dt = 1.0 / tick_rate;
         let mut out = ParticleFrame::default();
         let mut entries: Vec<EmitterGpu> = Vec::new();
+        // Compute systems meeting the scene's colliders: their entries and
+        // the box their particles can reach.
+        let mut colliding: Vec<(std::ops::Range<u32>, (Vec3, Vec3))> = Vec::new();
         for (i, sys) in scene.particles.iter().enumerate() {
             let layers = crate::views::layer_of(&scene.particle_layers, i);
             let e = scene.emitters().get(sys.emitter.index()).ok_or_else(|| {
@@ -748,16 +757,17 @@ impl ParticleRenderer {
                 .iter()
                 .find(|(id, _)| *id == sys.id)
                 .map(|(_, p)| p);
-            let sprite_mode = matches!(e.render, ParticleRender::Sprite { .. });
-            // The CPU path bounces world-space billboards off the scene's
-            // colliders; sprite systems and a scene without colliders pass through.
+            // The CPU path bounces world-space particles off the scene's
+            // colliders, as compute does where the emitter names them (and
+            // in sprite mode); with none to meet they pass through.
             let colliders: &[crate::particles::SceneCollider] =
-                if e.collision.is_some() && e.space == SimulationSpace::World && !sprite_mode {
+                if e.collision.is_some() && e.space == SimulationSpace::World {
                     &scene.colliders
                 } else {
                     &[]
                 };
-            if e.collision.is_some() && (sprite_mode || (!gpu && colliders.is_empty())) {
+            let meets_colliders = !gpu || e.collides_with_colliders();
+            if e.collision.is_some() && meets_colliders && scene.colliders.is_empty() {
                 out.collision_skipped += 1;
             }
             // Sprite mode: its layer, and an array emitter's array with its
@@ -794,7 +804,7 @@ impl ParticleRenderer {
                     None => {
                         out.ticks += state
                             .cpu
-                            .advance(e, sys, tick_rate, points, &[], &subs, None)
+                            .advance(e, sys, tick_rate, points, colliders, &subs, None)
                     }
                 }
                 out.cpu_alive += state.cpu.alive() as u32;
@@ -833,10 +843,11 @@ impl ParticleRenderer {
             }
             let depth = (sys.transform.w_axis.truncate() - eye).dot(forward);
             let textured = e.texture.is_some();
-            let collide = gpu
-                && e.collision.is_some()
-                && e.space == SimulationSpace::World
-                && sprite.is_none();
+            // In compute: the depth prepass, unless the emitter meets the
+            // scene's colliders (`collider_lists` gives it their list).
+            let to_colliders = gpu && e.collides_with_colliders();
+            let collide =
+                gpu && e.collision.is_some() && e.space == SimulationSpace::World && !to_colliders;
             // Soft particles fade against the depth behind them, where the
             // frame's quality lets them (RenderQuality::soft_particles).
             let soft = if scene.quality.soft_particles && sprite.is_none() {
@@ -926,6 +937,12 @@ impl ParticleRenderer {
                 ));
                 for g in &mut entries[first_entry as usize..] {
                     g.noise_origin = noise_origin;
+                }
+                if to_colliders {
+                    colliding.push((
+                        first_entry..entries.len() as u32,
+                        reach(e, sys.transform, tick_rate),
+                    ));
                 }
                 out.ticks += steps.len() as u32;
                 out.any_gpu = true;
@@ -1080,6 +1097,23 @@ impl ParticleRenderer {
                 .then(a.id.cmp(&b.id))
                 .then(a.child.cmp(&b.child))
         });
+        // The scene's colliders near each colliding system, one list each
+        // (`emitter.info.z`), in the buffer the simulation reads.
+        if !colliding.is_empty() {
+            let bounds: Vec<(Vec3, Vec3)> = colliding.iter().map(|(_, b)| *b).collect();
+            let (words, lists) = crate::scene_colliders::pack(&scene.colliders, &bounds);
+            for ((range, _), list) in colliding.iter().zip(lists) {
+                for g in &mut entries[range.start as usize..range.end as usize] {
+                    g.collision[3] = 1.0;
+                    g.info[2] = list;
+                }
+            }
+            let bytes: &[u8] = bytemuck::cast_slice(&words);
+            if bytes.len() as u64 > self.colliders.size() {
+                self.colliders = collider_buffer(device, (bytes.len() as u64).next_power_of_two());
+            }
+            queue.write_buffer(&self.colliders, 0, bytes);
+        }
         if !entries.is_empty() {
             let size = EMITTER_STRIDE * entries.len() as u64;
             if size > self.emitter_buffer.size() {
@@ -1265,6 +1299,10 @@ impl ParticleRenderer {
                     wgpu::BindGroupEntry {
                         binding: 5,
                         resource: wgpu::BindingResource::TextureView(gbuffer),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 6,
+                        resource: self.colliders.as_entire_binding(),
                     },
                 ],
             });
@@ -1651,7 +1689,41 @@ pub(crate) fn sprites_source() -> String {
 
 /// The particle simulation's module (compute).
 pub(crate) fn sim_source() -> String {
-    format!("{NOISE_WGSL}{COMMON_WGSL}{SIM_WGSL}")
+    format!("{NOISE_WGSL}{COMMON_WGSL}{COLLIDERS_WGSL}{SIM_WGSL}")
+}
+
+fn collider_buffer(device: &wgpu::Device, size: u64) -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("particle colliders"),
+        size,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    })
+}
+
+/// The box a system's particles can reach in their longest life: the
+/// emitter's shape, plus the furthest its fastest particle travels under
+/// gravity and turbulence (drag only shortens it), clamped at 500 m.
+fn reach(e: &ParticleEmitter, transform: Mat4, tick_rate: f32) -> (Vec3, Vec3) {
+    let scale = transform
+        .to_scale_rotation_translation()
+        .0
+        .abs()
+        .max_element();
+    let shape = match e.shape {
+        EmitterShape::Point => 0.0,
+        EmitterShape::Sphere { radius, .. } => radius,
+        EmitterShape::Cone { radius, .. } => radius,
+        EmitterShape::Box { half_extents } => half_extents.length(),
+        // Unknown without the mesh: the reach below is generous.
+        EmitterShape::Mesh { .. } => 2.0,
+    } * scale;
+    let life = e.max_lifetime() + 1.0 / tick_rate;
+    let speed = e.speed[0].abs().max(e.speed[1].abs()) * scale;
+    let pull = e.gravity.length() + e.noise.strength.abs();
+    let r = (shape + speed * life + 0.5 * pull * life * life + 0.5).min(500.0);
+    let at = transform.w_axis.truncate();
+    (at - Vec3::splat(r), at + Vec3::splat(r))
 }
 
 /// The particle draw module after the frame group, the light tables and

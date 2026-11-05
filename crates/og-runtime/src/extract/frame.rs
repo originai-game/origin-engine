@@ -1113,10 +1113,10 @@ fn throw_crumb(
 /// the debris layer's pieces land on (`RenderScene::colliders`): every
 /// og.Collider that is a box, a sphere, a capsule or a terrain's height
 /// field, placed as physics places it, while the frame has debris, a
-/// visual body or a particle system with collision. The compute path reads
-/// the depth buffer instead; `ParticleSimulation::Cpu` and sprite-mode
-/// emitters read these, so their sparks bounce on the ground and on solid
-/// shapes too.
+/// visual body or a particle system with collision. Compute particles
+/// read these where their emitter names them (`collision ... colliders`)
+/// and in sprite mode, the depth buffer otherwise; the CPU path always
+/// reads these, so sparks bounce on the ground and on solid shapes.
 fn colliders(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     rs.scene.colliders.clear();
     let colliding = !rs.scene.debris.is_empty()

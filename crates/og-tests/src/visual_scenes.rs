@@ -741,3 +741,211 @@ pub fn visual_fluid_scene(visual: bool) -> RenderScene {
     scene.fluids_3d.push(drawn);
     scene
 }
+
+/// The ticks the spark spray runs before its frame.
+pub const SPARK_TICKS: u32 = 90;
+
+/// A grinder's sparks in a dark workshop (compute particles meeting the
+/// scene's colliders, `CollisionTarget::Colliders`): a spray of hot
+/// sparks off a wheel ricochets from a steel block's top, skips down a
+/// sloped plate, glances off a brass ball and dies out on the floor,
+/// every surface a collider and none read from the depth prepass.
+pub fn visual_particles_scene() -> RenderScene {
+    use og_render::{
+        Background, CollisionTarget, ColorCurve, Curve, EmitterShape, Light, ParticleAlign,
+        ParticleBlend, ParticleCollision, ParticleEmitter, ParticleSystem,
+    };
+    let mut scene = RenderScene::new();
+    let moon = Vec3::new(-0.4, 0.7, -0.5);
+    scene.light = DirectionalLight {
+        direction_to_light: moon,
+        color: Vec3::new(0.55, 0.65, 1.0),
+        intensity: 0.15,
+        ..Default::default()
+    };
+    scene.environment = Environment {
+        sky: ProceduralSky {
+            sun_direction: moon,
+            sun_color: Vec3::new(0.3, 0.35, 0.5),
+            look: None,
+        },
+        intensity: 0.05,
+        background: Background::Color(Vec3::new(0.006, 0.007, 0.012)),
+        ..Environment::default()
+    };
+    scene.tick_rate = 60.0;
+    scene.camera = Camera {
+        position: Vec3::new(-0.7, 2.1, 3.3),
+        target: Vec3::new(-0.2, 0.4, 0.0),
+        exposure: Exposure::linear(1.6),
+        ..Default::default()
+    };
+    let concrete = scene.add_material(Material {
+        base_color: [0.32, 0.31, 0.3, 1.0],
+        roughness: 0.85,
+        ..Default::default()
+    });
+    let steel = scene.add_material(Material {
+        base_color: [0.55, 0.56, 0.58, 1.0],
+        metallic: 1.0,
+        roughness: 0.38,
+        ..Default::default()
+    });
+    let dark = scene.add_material(Material {
+        base_color: [0.08, 0.08, 0.09, 1.0],
+        metallic: 0.6,
+        roughness: 0.5,
+        ..Default::default()
+    });
+    // The grinding wheel's abrasive: matte grey grit.
+    let grit = scene.add_material(Material {
+        base_color: [0.12, 0.115, 0.11, 1.0],
+        roughness: 0.95,
+        ..Default::default()
+    });
+    let brick = scene.add_material(Material {
+        base_color: [0.3, 0.2, 0.16, 1.0],
+        roughness: 0.9,
+        ..Default::default()
+    });
+    let brass = scene.add_material(Material {
+        base_color: [0.78, 0.6, 0.3, 1.0],
+        metallic: 1.0,
+        roughness: 0.3,
+        ..Default::default()
+    });
+    let ground = scene.add_mesh(shapes::plane(30.0, 10.0));
+    scene.add_instance(ground, concrete, Mat4::IDENTITY);
+    // The workshop's back wall.
+    let wall = scene.add_mesh(shapes::cuboid(Vec3::new(14.0, 5.0, 0.3)));
+    scene.add_instance(
+        wall,
+        brick,
+        Mat4::from_translation(Vec3::new(0.0, 2.5, -2.2)),
+    );
+    scene.colliders.push(SceneCollider::Plane {
+        normal: Vec3::Y,
+        offset: 0.0,
+    });
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    let solid = |scene: &mut RenderScene, material, transform: Mat4| {
+        scene.add_instance(cube, material, transform);
+        scene.colliders.push(SceneCollider::Box {
+            transform,
+            half_extents: Vec3::splat(0.5),
+        });
+    };
+    // The steel block the wheel grinds at its right end.
+    solid(
+        &mut scene,
+        steel,
+        Mat4::from_scale_rotation_translation(
+            Vec3::new(1.1, 0.5, 0.55),
+            Quat::IDENTITY,
+            Vec3::new(0.0, 0.25, 0.0),
+        ),
+    );
+    // A plate leaning off its left end, down to the floor.
+    solid(
+        &mut scene,
+        steel,
+        Mat4::from_scale_rotation_translation(
+            Vec3::new(0.9, 0.025, 0.7),
+            Quat::from_rotation_z(0.42),
+            Vec3::new(-0.92, 0.2, 0.05),
+        ),
+    );
+    // The grinder: its wheel standing over the block's right end, on a guard.
+    let wheel_at = Vec3::new(0.62, 0.66, 0.0);
+    let ball = scene.add_mesh(shapes::sphere(32, 20));
+    scene.add_instance(
+        ball,
+        grit,
+        Mat4::from_scale_rotation_translation(
+            Vec3::new(0.34, 0.34, 0.06),
+            Quat::IDENTITY,
+            wheel_at,
+        ),
+    );
+    scene.add_instance(
+        cube,
+        dark,
+        Mat4::from_scale_rotation_translation(
+            Vec3::new(0.5, 0.12, 0.12),
+            Quat::from_rotation_z(0.3),
+            wheel_at + Vec3::new(0.32, 0.16, 0.0),
+        ),
+    );
+    // A brass ball in the spray's path on the floor.
+    let (ball_at, ball_r) = (Vec3::new(-1.15, 0.16, 0.45), 0.16);
+    scene.add_instance(
+        ball,
+        brass,
+        Mat4::from_scale_rotation_translation(Vec3::splat(ball_r * 2.0), Quat::IDENTITY, ball_at),
+    );
+    scene.colliders.push(SceneCollider::Sphere {
+        center: ball_at,
+        radius: ball_r,
+    });
+    let spark = crate::fx_scenes::spark_texture(&mut scene);
+    let sparks = scene.add_emitter(ParticleEmitter {
+        max_particles: 2048,
+        shape: EmitterShape::Cone {
+            angle_degrees: 16.0,
+            radius: 0.01,
+        },
+        rate: 900.0,
+        lifetime: [0.7, 1.5],
+        speed: [3.5, 6.5],
+        size: [0.012, 0.022],
+        size_over_life: Curve::new(&[(0.0, 1.0), (0.7, 0.8), (1.0, 0.3)]),
+        color_over_life: ColorCurve::new(&[
+            (0.0, [1.0, 0.95, 0.8, 1.0]),
+            (0.25, [1.0, 0.7, 0.3, 1.0]),
+            (0.7, [1.0, 0.35, 0.08, 0.9]),
+            (1.0, [0.6, 0.1, 0.02, 0.0]),
+        ]),
+        color: [7.0, 4.6, 2.0, 1.0],
+        gravity: Vec3::new(0.0, -9.8, 0.0),
+        drag: 0.35,
+        texture: Some(spark),
+        blend: ParticleBlend::Additive,
+        align: ParticleAlign::Velocity { stretch: 0.035 },
+        collision: Some(ParticleCollision {
+            bounce: 0.45,
+            friction: 0.25,
+            against: CollisionTarget::Colliders,
+        }),
+        ..Default::default()
+    });
+    // Off the wheel's bottom-left, across the block and down the plate.
+    let grind = wheel_at + Vec3::new(-0.2, -0.17, 0.0);
+    let towards = Vec3::new(-1.0, 0.12, 0.08).normalize();
+    scene.particles.push(ParticleSystem::new(
+        1,
+        sparks,
+        Mat4::from_rotation_translation(Quat::from_rotation_arc(Vec3::Y, towards), grind),
+        11,
+        0,
+    ));
+    // The sparks' glow: above and in front of the grind, so the wheel is
+    // not lit flat; no shadows (it would throw the wheel across the wall).
+    scene.lights = vec![Light {
+        position: grind + Vec3::new(-0.35, 0.3, 0.7),
+        color: Vec3::new(1.0, 0.55, 0.22),
+        intensity: 1.6,
+        range: 5.0,
+        ..Default::default()
+    }];
+    scene.post.bloom = Some(Bloom {
+        threshold: 1.0,
+        knee: 0.6,
+        intensity: 0.45,
+    });
+    scene
+}
+
+/// Steps a scene's clock and its particle systems' to `frame + 1`.
+pub fn next_particle_tick(scene: &mut RenderScene, frame: u32) {
+    crate::fx_scenes::tick_all(scene, u64::from(frame) + 1);
+}

@@ -391,6 +391,15 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.update = Some(crate::visual_scenes::next_tick);
             Ok(())
         },
+        // Compute particles meeting the scene's colliders: a grinder's
+        // sparks ricocheting off a block, a plate, a ball and the floor.
+        "visual-particles" => |g, _| {
+            g.scene = crate::visual_scenes::visual_particles_scene();
+            g.desc.antialias = Antialias::Taa;
+            g.frames = crate::visual_scenes::SPARK_TICKS;
+            g.update = Some(crate::visual_scenes::next_particle_tick);
+            Ok(())
+        },
         // A visual fluid on the GPU (MLS-MPM): a dam break in a basin
         // round a ball, with a spout pouring in, after FLUID_TICKS ticks.
         "visual-fluid" => |g, _| {

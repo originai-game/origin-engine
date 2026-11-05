@@ -279,6 +279,81 @@ fn cpu_particles_bounce_off_the_scene_colliders() {
     }
 }
 
+/// Compute particles meet the scene's colliders where the emitter names
+/// them (`collision ... colliders`), and always in sprite mode, with
+/// nothing read back to the CPU: with no ground drawn (so no depth to
+/// bounce off) a plane, a height field or a box under the fountain keeps
+/// them above it, some on their way back up. Before, a sprite-mode
+/// fountain passed through every collider and was counted as skipped,
+/// and a billboard one met only what the depth prepass drew.
+#[test]
+fn compute_particles_bounce_off_the_scene_colliders() {
+    let run_with = |sprite: bool, colliders: Vec<og_render::SceneCollider>| {
+        let mut scene = collision_scene(true);
+        // Nothing drawn under the fountain: only the colliders are there.
+        scene.instances.clear();
+        let e = scene.particles[0].emitter;
+        let mut emitter = scene.emitter(e).expect("emitter").clone();
+        emitter.collision = Some(ParticleCollision {
+            against: og_render::CollisionTarget::Colliders,
+            ..Default::default()
+        });
+        if sprite {
+            emitter.render = ParticleRender::Sprite { layer: 0 };
+            // A sprite-mode emitter meets the colliders whatever it names.
+            emitter.collision = Some(ParticleCollision::default());
+            scene.camera = Camera::orthographic_2d(Vec2::new(0.0, 0.5), 6.0);
+        }
+        scene.set_emitter(e, emitter);
+        scene.colliders = colliders;
+        let (_, stats, r) = run(&small(), &mut scene, 90, |s, f| fx::tick_all(s, f as u64));
+        assert_eq!(stats.particles_cpu, 0, "simulated in compute");
+        let live: Vec<_> = r
+            .read_particles(1)
+            .expect("system")
+            .into_iter()
+            .filter(|p| p.alive())
+            .collect();
+        assert!(live.len() > 50, "{} alive", live.len());
+        let lowest = live.iter().map(|p| p.pos_age[1]).fold(f32::MAX, f32::min);
+        let bounced = live
+            .iter()
+            .filter(|p| p.vel_life[1] > 0.0 && p.pos_age[1] < 1.0)
+            .count();
+        (lowest, bounced, stats.particle_collision_skipped)
+    };
+    let plane = og_render::SceneCollider::Plane {
+        normal: Vec3::Y,
+        offset: 0.0,
+    };
+    let field = og_render::SceneCollider::HeightField {
+        data: og_render::TerrainData::flat(Vec2::splat(40.0), 9, 9),
+        transform: Mat4::IDENTITY,
+    };
+    let block = og_render::SceneCollider::Box {
+        transform: Mat4::from_translation(Vec3::new(0.0, -1.0, 0.0)),
+        half_extents: Vec3::new(10.0, 1.0, 10.0),
+    };
+    for sprite in [false, true] {
+        let (without, _, skipped) = run_with(sprite, Vec::new());
+        assert!(
+            without < -1.0,
+            "sprite {sprite}: without colliders the lowest is {without}"
+        );
+        assert_eq!(skipped, 1, "sprite {sprite}: nothing to meet");
+        for (name, c) in [("plane", &plane), ("height field", &field), ("box", &block)] {
+            let (lowest, bounced, skipped) = run_with(sprite, vec![c.clone()]);
+            println!("sprite {sprite}, {name}: lowest {lowest}, {bounced} bounced");
+            assert_eq!(skipped, 0, "sprite {sprite}, {name}");
+            assert!(
+                lowest > -0.1,
+                "sprite {sprite}, {name}: a particle sank to {lowest}"
+            );
+            assert!(bounced > 5, "sprite {sprite}, {name}: {bounced} bounced");
+        }
+    }
+}
+
 fn collision_scene(collide: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     let ground = scene.add_mesh(shapes::plane(20.0, 1.0));

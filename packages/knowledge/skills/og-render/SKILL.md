@@ -188,7 +188,7 @@ blend additive            # additive (fire, sparks, magic) | alpha (smoke, dust)
 space world               # world: born at the emitter, then free | local: carried with it
 align camera              # camera | velocity <stretch>: stretched along its motion (sparks, rain)
 softDistance 0            # fade where the quad nears the scene behind it (0: off)
-collision 0.4 0.2         # <bounce> <friction>: bounce off the depth buffer (3D billboards, world space)
+collision 0.4 0.2 depth   # <bounce> <friction> [depth | colliders], world space: depth bounces off what is drawn; colliders off the game's og.Collider shapes, on or off screen (sprite mode always), both on the GPU
 render billboard          # billboard (3D) | sprite <layer>: 2D, drawn in the sprite batch on that layer
 glow 0                    # sprite mode: strength in the 2D glow
 array "fx/smoke.ogt" random   # sprite mode: draw from a texture array, [<layers>] [off | life <cycles> | fps <n> | random]
