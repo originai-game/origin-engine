@@ -1551,8 +1551,9 @@ pub fn cook_project_with_texture_cache(
                     // glyphs; "font 3": the field is of each glyph's outline
                     // union; "font 4": negative-bearing fill and post-sign error
                     // correction; "font 5": every face carries OpenType data
-                    // for paragraph layout. A font cooked before re-cooks.
-                    let st = stamp(&[b"font 5", f.describe().as_bytes(), &hash]);
+                    // for paragraph layout; "font 6": default substitutions
+                    // and referenced contextual lookups. Older fonts re-cook.
+                    let st = stamp(&[b"font 6", f.describe().as_bytes(), &hash]);
                     outs.push((s.rel.clone(), format::Font::NAME, st, Work::Font(s, f)));
                 }
                 Err(e) => early_errors.push((s.rel.clone(), "font", e)),

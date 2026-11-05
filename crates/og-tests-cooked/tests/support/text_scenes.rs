@@ -156,8 +156,12 @@ fn add(scene: &mut RenderScene, f: &CookedFont, kern: bool) -> UiFont {
             Vec::new()
         },
     };
-    let metrics = FontMetrics::from_msdf(&font)
-        .with_file(f.ttf.clone().and_then(|t| FontFile::new(Arc::new(t))));
+    // The unkerned control is atlas-only: retaining OpenType data would
+    // let the paragraph shaper read GPOS despite clearing the atlas pairs.
+    let metrics = FontMetrics::from_msdf(&font).with_file(
+        kern.then(|| f.ttf.clone().and_then(|t| FontFile::new(Arc::new(t))))
+            .flatten(),
+    );
     UiFont {
         handle: Some(scene.add_font(font)),
         metrics,
@@ -383,8 +387,22 @@ fn kerning_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
         3,
         "one cut line and two clamped: {cut_text:?}"
     );
-    // The body face cooks Latin-1 only: its ellipsis is three stops.
-    let ends_cut = |t: &str| t.ends_with("...") || t.ends_with('…');
+    // GSUB can turn three stops into one glyph; the drawn command uses
+    // atlas glyph keys, not the source string. Check its shaped suffix.
+    let dots = if f.body.metrics.has('…') {
+        "…"
+    } else {
+        "..."
+    };
+    let suffix: String = f
+        .body
+        .metrics
+        .visual(dots, og_i18n::Direction::Ltr, 0.0)
+        .iter()
+        .map(|g| g.ch)
+        .collect();
+    assert!(!suffix.is_empty());
+    let ends_cut = |t: &str| t.ends_with(&suffix);
     assert!(
         ends_cut(&cut_text[0]) && ends_cut(&cut_text[2]) && !ends_cut(&cut_text[1]),
         "{cut_text:?}"

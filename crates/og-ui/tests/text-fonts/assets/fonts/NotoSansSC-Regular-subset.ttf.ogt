@@ -3,5 +3,6 @@ version 1
 ---
 font {
   charset latin
+  chars "…"
   px_range 4
 }

@@ -35,6 +35,55 @@ fn feature_lookups(face: &ttf_parser::Face, tags: &[String]) -> std::collections
                 out.extend(f.lookup_indices);
             }
         }
+        // Contextual lookups reference other lookups which need not be
+        // listed by a feature. Follow that graph before closing glyphs.
+        use ttf_parser::gsub::SubstitutionSubtable as S;
+        use ttf_parser::opentype_layout::{
+            ChainedContextLookup as Chain, ContextLookup as Context,
+        };
+        let mut pending: Vec<_> = out.iter().copied().collect();
+        while let Some(index) = pending.pop() {
+            let Some(lookup) = gsub.lookups.get(index) else {
+                continue;
+            };
+            let mut visit = |records: ttf_parser::LazyArray16<
+                '_,
+                ttf_parser::opentype_layout::SequenceLookupRecord,
+            >| {
+                for record in records {
+                    if out.insert(record.lookup_list_index) {
+                        pending.push(record.lookup_list_index);
+                    }
+                }
+            };
+            for k in 0..lookup.subtables.len() {
+                match lookup.subtables.get::<S>(k) {
+                    Some(S::Context(
+                        Context::Format1 { sets, .. } | Context::Format2 { sets, .. },
+                    )) => {
+                        for set in sets {
+                            for rule in set {
+                                visit(rule.lookups);
+                            }
+                        }
+                    }
+                    Some(S::ChainContext(
+                        Chain::Format1 { sets, .. } | Chain::Format2 { sets, .. },
+                    )) => {
+                        for set in sets {
+                            for rule in set {
+                                visit(rule.lookups);
+                            }
+                        }
+                    }
+                    Some(
+                        S::Context(Context::Format3 { lookups, .. })
+                        | S::ChainContext(Chain::Format3 { lookups, .. }),
+                    ) => visit(lookups),
+                    _ => {}
+                }
+            }
+        }
     }
     out
 }
@@ -100,6 +149,11 @@ fn closure_of(
                                         set.insert(lig.glyph.0);
                                     }
                                 }
+                            }
+                        }
+                        S::ReverseChainSingle(r) => {
+                            if let Some(o) = r.coverage.get(g).and_then(|i| r.substitutes.get(i)) {
+                                set.insert(o.0);
                             }
                         }
                         _ => {}
@@ -512,14 +566,17 @@ pub fn cook(
             "the charset selects no glyph of this font".into(),
         ));
     }
-    // Shaped scripts: every form the substitutions reach, as glyph ids.
+    // Every cooked face is shaped. Seed complex-script closure with the
+    // whole charset, including its digits and punctuation.
     let shaped: Vec<ttf_parser::GlyphId> = wanted
         .iter()
         .filter_map(|&cp| char::from_u32(cp))
-        .filter(|&c| og_i18n::needs_shaping(c))
         .filter_map(|c| face.glyph_index(c))
         .collect();
-    let shaping = !shaped.is_empty();
+    let shaping = wanted
+        .iter()
+        .filter_map(|&cp| char::from_u32(cp))
+        .any(og_i18n::needs_shaping);
     if shaping {
         // The marks and joiners shaping inserts or keeps.
         let mut start = shaped;
@@ -528,6 +585,22 @@ pub fn cook(
         }
         let forms = substitution_closure(&face, &start);
         wanted.extend(forms.into_iter().map(|g| GLYPH_PUA + u32::from(g)));
+        wanted.sort_unstable();
+        wanted.dedup();
+    } else if s.pixel == 0 {
+        // HarfRust's common/horizontal features, directional mirroring,
+        // and automatic fractions (ot_shape.rs collect_features).
+        let defaults = [
+            "abvm", "blwm", "ccmp", "locl", "mark", "mkmk", "rlig", "calt", "clig", "curs", "dist",
+            "kern", "liga", "rclt", "rvrn", "ltra", "ltrm", "rtla", "rtlm", "frac", "numr", "dnom",
+        ]
+        .map(String::from);
+        let lookups = feature_lookups(&face, &defaults);
+        wanted.extend(
+            closure_of(&face, &shaped, Some(&lookups))
+                .into_iter()
+                .map(|g| GLYPH_PUA + u32::from(g)),
+        );
         wanted.sort_unstable();
         wanted.dedup();
     }
@@ -877,7 +950,36 @@ mod tests {
         );
         assert!(with.contains(&(GLYPH_PUA + u32::from(a.0))), "a by id too");
         let (without, ships) = cooked(&[]);
-        assert!(ships && without.iter().all(|&c| c < GLYPH_PUA));
+        assert!(ships);
+        assert!(!without.contains(&(GLYPH_PUA + u32::from(small_a[0]))));
+        assert!(without.contains(&(GLYPH_PUA + u32::from(a.0))));
+    }
+
+    #[test]
+    fn latin_default_contextual_glyphs_are_cooked() {
+        let bytes = std::fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../templates/ui-kit/assets/fonts/Inter-Display.ttf"
+        ))
+        .unwrap();
+        let (blob, _) = cook(
+            &bytes,
+            &FontSettings {
+                charset: vec!["ascii".into()],
+                em_px: 16.0,
+                ..Default::default()
+            },
+            2,
+            0,
+        )
+        .unwrap();
+        let blob = og_blob::Blob::parse(&blob, "Inter").unwrap();
+        let rows = blob
+            .table::<GlyphRow>("glyphs", row_hash::<GlyphRow>())
+            .unwrap();
+        // This fixture's calt numeric hyphen in "Level 1-2": a nested
+        // lookup, not a lookup directly listed by the feature record.
+        assert!(rows.iter().any(|g| g.codepoint == GLYPH_PUA + 213));
     }
 
     /// Subtexel samples of `c`'s field at `em_px` whose position lies in the

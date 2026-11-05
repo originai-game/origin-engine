@@ -200,4 +200,19 @@ fn cooked_soft_hyphens_draw_only_at_a_taken_break() {
             assert!(!drawn[0].0.contains('-'));
         }
     }
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    ui.label(
+        "Text",
+        "ab\u{ad}\n\ncd\n",
+        LabelDesc {
+            step: Some(step),
+            width: Size::Fixed(wide),
+            ..Default::default()
+        },
+    );
+    ui.end();
+    assert_eq!(
+        ui.frame().element("Text").unwrap().height,
+        step.line_height * 4.0
+    );
 }

@@ -76,6 +76,15 @@ pub(super) fn discretionary(
     if !text.contains('\u{ad}') {
         return None;
     }
+    if text.contains('\n') {
+        return Some(
+            text.split('\n')
+                .flat_map(|paragraph| {
+                    super::break_lines(paragraph, metrics, size, tracking, features, max)
+                })
+                .collect(),
+        );
+    }
     let max = max? / size;
     let shaped = layout(
         metrics,
@@ -126,14 +135,6 @@ pub(super) fn discretionary(
             if prefix[at] - prefix[start] + extra <= max {
                 best = at;
             }
-        }
-        let source = &text[c.text_range()];
-        if source.contains('\n') {
-            ranges.push((start, at + 1, false));
-            at += 1;
-            start = at;
-            best = at;
-            continue;
         }
         if prefix[at + 1] - prefix[start] > max && at > start {
             let mut end = if best > start { best } else { at };
