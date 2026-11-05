@@ -27,6 +27,14 @@ pub mod sky_scenes;
 pub mod stylise_scenes;
 pub mod target_scenes;
 pub mod terrain_scenes;
+/// The frames a screen-space reflection scene is drawn for before it is
+/// read: its rays read the previous frame's lit image, and the denoiser
+/// accumulates them (`og_render`'s `ssr.rs`), so the first frame reflects
+/// nothing and the reflection settles over the next few. Here, not in the
+/// native-only depth_render_scenes, because the weather scenes the browser
+/// tiers draw use it too.
+pub const SSR_FRAMES: u32 = 16;
+
 pub mod ui_scenes;
 pub mod weather_scenes;
 pub mod wind_scenes;
