@@ -742,6 +742,61 @@ fn vs_mesh(@location(0) position: vec3<f32>, @location(1) normal: vec3<f32>, @lo
   return o;
 }
 
+// The slopes' variance of a lake's capillary ripples, the centimetre wavelets no wave or normal map draws (some
+// 2.5°; Cox and Munk's light-wind slopes are wider, but their longer waves are the ones the detail draws), at the
+// default wave strength (0.35): the wind raises both, and still water (strength 0) has none and mirrors the sun's
+// disc whole.
+const CAPILLARY: f32 = 0.002;
+// How many capillary facets a square metre of a lake holds (a facet some 4 mm across: a capillary wavelet's face).
+const LAKE_FACETS: f32 = 60000.0;
+
+// One draw of a Poisson count of mean `mu` from the uniform `u`: by its CDF while the mean is small, by its normal
+// approximation (rounded, never negative) past 12.
+fn poisson_count(mu: f32, u: f32, z: f32) -> f32 {
+  if (mu > 12.0) { return max(floor(mu + sqrt(mu) * z + 0.5), 0.0); }
+  var k = 0.0;
+  var term = exp(-mu);
+  var cdf = term;
+  for (var i = 1; i < 40 && u > cdf; i++) {
+    term *= mu / f32(i);
+    cdf += term;
+    k += 1.0;
+  }
+  return k;
+}
+
+// The lake's glints: how many times its mean glitter a pixel at `p` (local xz, covering `footprint` square metres)
+// shows, where `share` of the facets face the sun. The surface is cut into cells the size of the pixel's footprint
+// (at two powers of two, blended by where the footprint lies between them, so the cells never pop as the eye moves),
+// each holding LAKE_FACETS per square metre, and each cell's count of facets that face the sun is drawn from its own
+// hash (a Poisson law of its expected count), rerolled six times a second at the waves' own speed (never on water
+// whose waves stand still): discrete counting of glinty facets per footprint, after Zirr and Kaplanyan ("Real-time
+// Rendering of Procedural Multiscale Materials", I3D 2016) and Deliot and Belcour ("Real-Time Rendering of Glinty
+// Appearances using Distributed Binomial Laws on Anisotropic Grids", HPG 2023), the binomial taken as its Poisson
+// limit (a facet facing the sun is rare). A near pixel holds a few facets and shows one glint now and then, sharp and
+// bright; a far one holds thousands and averages to the lobe.
+fn lake_glints(p: vec2<f32>, footprint: f32, share: f32, t: f32) -> f32 {
+  let area = max(footprint, 1e-10);
+  let at = 0.5 * log2(area);
+  let lo = floor(at);
+  var sum = 0.0;
+  for (var j = 0; j < 2; j++) {
+    let level = lo + f32(j);
+    let size = exp2(level);
+    let cell = vec2<i32>(floor(p / size));
+    let mu = LAKE_FACETS * size * size * share;
+    let id = spray_hash(bitcast<u32>(cell.x) * 73856093u ^ bitcast<u32>(cell.y) * 19349663u ^ bitcast<u32>(i32(level)) * 83492791u);
+    let step = floor(t * 6.0 * max(water.waves.y, 0.0) + spray_rand(id));
+    let h = spray_hash(id ^ (bitcast<u32>(i32(step)) * 2654435761u));
+    let u = spray_rand(h);
+    let z = sqrt(-2.0 * log(max(spray_rand(h + 1u), 1e-7))) * cos(6.2831853 * spray_rand(h + 2u));
+    let k = poisson_count(mu, u, z);
+    let w = select(1.0 - (at - lo), at - lo, j == 1);
+    sum += w * select(1.0, k / mu, mu > 1e-6);
+  }
+  return sum;
+}
+
 // The detail normal's slope (local xz) as a pixel of the surface sees it, and the covariance of the slopes inside the
 // pixel that its mean leaves out (xx, zz, xz): LEAN mapping (Olano & Baker, "LEAN Mapping", I3D 2010) for the detail
 // waves. Each wave a pixel cannot hold is faded out of the mean slope (as sea_keep fades the sea's), and its share of
@@ -1001,6 +1056,25 @@ fn depth_texel(p: vec2<f32>) -> vec2<i32> {
   return min(vec2<i32>(p), vec2<i32>(textureDimensions(scene_depth)) - vec2<i32>(1));
 }
 
+// `r` moved out of the sun's disc in the environment to its edge (the sky just beside the sun, continuous with the sky
+// outside the disc): the sun at the light's direction, its disc the frame's sky look's (its outer edge) or the
+// built-in sky's (ibl.wgsl fs_sky: 1.8°, its soft edge out to 2.16°), widened by the blur of the mip read: a texel of
+// the 128-texel faces (0.7°) and the GGX lobe that mip was filtered with (its roughness the mip over the last, some
+// two alphas wide).
+fn off_sun(r: vec3<f32>, mip: f32) -> vec3<f32> {
+  let l = normalize(frame.light_dir.xyz);
+  let outer = select(0.99929, frame.sky_sun.x, frame.sky_zenith.w > 0.5 && frame.sky_sun.z > 0.0);
+  let rough = clamp(mip / max(frame.params.y, 1.0), 0.0, 1.0);
+  let edge = min(acos(clamp(outer, -1.0, 1.0)) + radians(0.7) + 2.0 * rough * rough, 1.0);
+  let c = dot(r, l);
+  if (c <= cos(edge)) { return r; }
+  let side = r - l * c;
+  let len = length(side);
+  // (Straight at the sun: any side.)
+  let t = select(normalize(cross(l, select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(l.y) > 0.9))), side / len, len > 1e-5);
+  return l * cos(edge) + t * sin(edge);
+}
+
 // The sky mirrored along `r` (`c`, from the reflection maps, which hold no clouds) under the frame's cloud cover:
 // greyed as the clouds' own ambient is (sky.wgsl clouds_over), and under an overcast the deck itself, brighter
 // overhead than at the horizon (a clear horizon mirrored at the sea's grazing rim drew a white line under a storm).
@@ -1019,7 +1093,11 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let t = frame.time.x;
   // (The map's gradients are taken in uniform control flow: the branch is on a uniform.)
   // The pixel's footprint on the surface (m) the detail waves are filtered over; a sea fades its own below.
-  let reach = select(max(length(dpdxFine(in.local)), length(dpdyFine(in.local))), 0.0, water.ocean.x > 0.5);
+  let dlx = dpdxFine(in.local);
+  let dly = dpdyFine(in.local);
+  let reach = select(max(length(dlx), length(dly)), 0.0, water.ocean.x > 0.5);
+  // Its area (m², the glints' cells: lake_glints).
+  let foot_area = abs(dlx.x * dly.y - dlx.y * dly.x);
   var detail = wave_slope(in.local, t, reach);
   if (water.normals.w > 0.5) {
     detail = map_slope(in.world.xz, in.uv, t);
@@ -1225,7 +1303,11 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // twilight's adaptation (water.ao.w), which lifts the light on surfaces but not the sky they mirror. Under a cloud
   // deck the sky mirrored is the clouds' grey, as they light it (sky.wgsl).
   let sky_mirror = frame.params.x * water.ao.w * 1.8;
-  var reflected = overcast(reflected_light(r, in.world, mip) * sky_mirror, r);
+  // A lake mirrors the sun by its glitter alone (below), its facets counted: the environment's sun disc, mirrored by
+  // every ripple face turned to it, drew a soft disc twice the sun's width under each glint, and bloomed.
+  let lake = !sea && !water2 && !water_js;
+  let r_env = select(r, off_sun(r, mip), lake);
+  var reflected = overcast(reflected_light(r_env, in.world, mip) * sky_mirror, r_env);
   if (water.extra.y > 0.5) {
     // The mirrored scene, flipped left to right, shifted by the waves.
     var shift_r = (n - in.normal).xz * water.screen.zw * 60.0;
@@ -1300,17 +1382,19 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   } else if (!water2) {
     // (Water2 has no highlight of its own: the sun shows only in what it reflects.)
     // The sun's glitter, the sea's (web-ocean's Gaussian of the facets' slopes) about the lake's own ripples: the
-    // slopes a pixel leaves out (LEAN) and the slopes' change across it (specular anti-aliasing) widen it, and the
-    // sun's disc bounds how narrow it gets. A Blinn-Phong lobe of power 220 is some 5° wide, twenty suns, so every
-    // ripple face near the sun's mirror angle lit whole and clipped into a flat white field instead of a glitter path
-    // of sparkles.
+    // slopes a pixel leaves out (LEAN), the slopes' change across it and the capillary ripples no wave draws widen
+    // it, and the sun's disc bounds how narrow it gets. That lobe is what a pixel reflects on average; the glints are
+    // the few facets in it that face the sun (`lake_glints`). (A Blinn-Phong lobe of power 220 is some 5° wide,
+    // twenty suns, so every ripple face near the sun's mirror angle lit whole and clipped into a flat white field.)
     let h = normalize(l + v);
     let hs = -h.xz / max(h.y, 1e-3);
     let ms = n.xz / max(n.y, 1e-3);
     let dsx = dpdxFine(ms);
     let dsy = dpdyFine(ms);
     let aa = vec3<f32>(dsx.x * dsx.x + dsy.x * dsy.x, dsx.y * dsx.y + dsy.y * dsy.y, dsx.x * dsx.y + dsy.x * dsy.y) * 0.5;
-    let cov = detail.cov + aa * min(1.0, 0.03 / max(max(aa.x, aa.y), 1e-8)) + vec3<f32>(SUN_DISC, SUN_DISC, 0.0);
+    let capillary = CAPILLARY * clamp(water.waves.z / 0.35, 0.0, 1.0);
+    let micro = detail.cov + aa * min(1.0, 0.03 / max(max(aa.x, aa.y), 1e-8)) + vec3<f32>(capillary, capillary, 0.0);
+    let cov = micro + vec3<f32>(SUN_DISC, SUN_DISC, 0.0);
     let dsl = hs + ms;
     let det = max(cov.x * cov.y - cov.z * cov.z, 1e-10);
     let e = (dsl.x * dsl.x * cov.y + dsl.y * dsl.y * cov.x - 2.0 * dsl.x * dsl.y * cov.z) / det;
@@ -1320,7 +1404,14 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let g = 1.0 / (1.0 + smith_lambda(v, cov) + smith_lambda(l, cov));
     let fh = f0 + (1.0 - f0) * pow(1.0 - clamp(dot(v, h), 0.0, 1.0), 5.0);
     let spec = fh * dm * g / (4.0 * max(v.y, 0.02)) * step(0.0, l.y);
-    color += sun_e * spec * water.look.x;
+    // The share of the facets whose slope lies on the sun's disc (its area in slope space, 2π its variance).
+    let share = clamp(pdf * 6.2831853 * SUN_DISC, 0.0, 1.0);
+    let glint = sun_e * spec * water.look.x * lake_glints(in.local, foot_area, share, t);
+    // Each glint soft-capped at some eight times the sunlit white: a facet mirrors the sun's own radiance, which no
+    // display holds, and uncapped each pinpoint bloomed into a halo many pixels wide.
+    let gl = dot(glint, vec3<f32>(0.2126, 0.7152, 0.0722));
+    let cap = 8.0 * max(dot(sun_e, vec3<f32>(0.2126, 0.7152, 0.0722)), 1e-4);
+    color += glint / (1.0 + gl / cap);
   }
 
   // Foam: a band where the water meets geometry, broken up by noise, and on steep crests.

@@ -1178,3 +1178,58 @@ fn the_waterline_splits_the_frame_where_the_near_plane_meets_the_sea() {
         "no meniscus along the line ({band} against {below})"
     );
 }
+
+/// The lake's glitter (water-3d, the low sun ahead and to the left) is many
+/// small hard pinpoints, not a few soft blobs: the bright spots of the
+/// lake's left quarter, where the sun's mirror falls (luma past 235 of 255,
+/// joined by their sides, under the horizon, clear of the floaters' foam)
+/// number more than 60 and average under 4 pixels, none past 40. (The code
+/// before: a few dozen spots averaging some 40 pixels, the largest over
+/// three hundred: the environment's sun disc mirrored by every ripple face
+/// turned to it, a soft disc twice the sun's width blooming under each.)
+#[test]
+fn a_lakes_glitter_is_many_small_pinpoints() {
+    let img = frame(&scenes::build("water-3d").expect("scene").scene);
+    let (w, h) = (img.width as usize, img.height as usize);
+    let y0 = h * 2 / 5;
+    let bright: Vec<bool> = (0..w * h)
+        .map(|i| {
+            i / w >= y0 && i % w < w / 4 && luma(px(&img, (i % w) as u32, (i / w) as u32)) > 235.0
+        })
+        .collect();
+    let mut seen = vec![false; w * h];
+    let mut sizes = Vec::new();
+    for start in 0..w * h {
+        if !bright[start] || seen[start] {
+            continue;
+        }
+        let (mut stack, mut size) = (vec![start], 0usize);
+        seen[start] = true;
+        while let Some(i) = stack.pop() {
+            size += 1;
+            let (x, y) = (i % w, i / w);
+            for (nx, ny) in [
+                (x.wrapping_sub(1), y),
+                (x + 1, y),
+                (x, y.wrapping_sub(1)),
+                (x, y + 1),
+            ] {
+                if nx < w && ny < h && bright[ny * w + nx] && !seen[ny * w + nx] {
+                    seen[ny * w + nx] = true;
+                    stack.push(ny * w + nx);
+                }
+            }
+        }
+        sizes.push(size);
+    }
+    let count = sizes.len();
+    let mean = sizes.iter().sum::<usize>() as f32 / count.max(1) as f32;
+    let largest = sizes.iter().copied().max().unwrap_or(0);
+    println!("lake glitter: {count} spots averaging {mean} px, the largest {largest}");
+    assert!(count > 60, "too few glints on the lake ({count})");
+    assert!(
+        mean < 4.0,
+        "the lake's glints are blobs ({mean} px on average)"
+    );
+    assert!(largest <= 40, "a glint blooms over {largest} px");
+}

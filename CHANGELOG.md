@@ -38,6 +38,16 @@ is one line here, written at the merge that changes
   texels along the edge. The setts of terrain-displaced and
   weather-cobbles-wet vary from stone to stone.
 
+- **A lake glitters in pinpoints.** The lake's glints are counted: each
+  pixel-sized cell of the surface holds its capillary facets, and a
+  hash per cell draws how many of them face the sun (Zirr and
+  Kaplanyan 2016, Deliot and Belcour 2023), so a near pixel shows a hard
+  glint now and then and a far one averages to the lobe. Each glint is
+  soft-capped at eight times the sunlit white. A lake's reflection no
+  longer mirrors the sky's sun disc, which every ripple face turned to it
+  drew as a soft disc twice the sun's width that bloomed (water-3d, the
+  fx-showcase water station).
+
 - **Destruction: broken joints shed clay and mortar grit.** Every bond
   that breaks in a prop with og.Destructible.debris sheds three or four
   small chips through the GPU debris layer: one centimetre to five and
