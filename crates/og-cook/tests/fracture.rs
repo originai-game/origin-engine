@@ -177,13 +177,13 @@ fracture {
 "#;
 
 #[test]
-fn brick_breaks_along_its_mortar_into_blocks_of_whole_courses_and_their_bricks() {
+fn brick_breaks_along_its_mortar_into_runs_of_whole_bricks_along_a_course_and_their_bricks() {
     let a = asset(&cook("og-cook-fracture-brick", BRICK, 0));
     let support = &a.chunks[..a.support as usize];
     let volume: f32 = support.iter().map(|c| c.volume).sum();
     assert!((volume - 0.4).abs() < 1e-4, "{volume}");
     // A block is a box of the half-brick grid: its cracks run in the
-    // mortar, whole courses high (its volume its bounds').
+    // mortar (its volume its bounds').
     let on = |x: f32, step: f32| ((x / step).round() * step - x).abs() < 1e-4;
     for c in support {
         let (lo, hi) = c.hull.iter().fold(
@@ -199,6 +199,18 @@ fn brick_breaks_along_its_mortar_into_blocks_of_whole_courses_and_their_bricks()
             "a box: {e} {}",
             c.volume
         );
+        // One course of whole bricks, at most three: its ends on the
+        // course's joints (or the wall's), so no joint runs up the wall.
+        assert!((e.y - 0.1).abs() < 1e-4, "a course high: {e}");
+        assert!(e.x <= 0.75 + 1e-4, "at most three bricks: {e}");
+        let course = (c.centroid.y / 0.1).floor() as i32;
+        let offset = if course % 2 == 1 { 0.125 } else { 0.0 };
+        for x in [lo.x + 1.0, hi.x + 1.0] {
+            assert!(
+                on(x - offset, 0.25) || x < 1e-4 || x > 2.0 - 1e-4,
+                "course {course}: a block ends at {x}, inside a brick"
+            );
+        }
     }
     // Its children are its bricks: a course high and at most a brick long,
     // laid in a running bond (a brick's ends on the half grid, offset a half

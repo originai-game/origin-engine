@@ -619,9 +619,9 @@ fn radial(mesh: &Mesh, s: &Settings, thin: usize) -> Vec<Vec<fracture::Plane>> {
 /// Brick: a running bond of `s.brick` bricks along the longest level axis,
 /// through the thickness. The model is cut into half-brick cells (one
 /// neighbour across every face, so their bonds are exact), which are
-/// joined into rectangular blocks of the grid (support chunks: convex, so
-/// their hulls are their shapes) and, within each block, into its bricks
-/// (the children; a brick a block's edge crosses is cut there).
+/// joined into blocks of one to three whole bricks along a course (support
+/// chunks: boxes, so their hulls are their shapes; laid in the bond, so
+/// they interlock) and, within each block, into its bricks (the children).
 fn brick(
     mesh: &Mesh,
     material: &[u32],
@@ -689,52 +689,40 @@ fn brick(
             },
         )
     };
-    // Blocks: from the lowest free cell, a rectangle of random size (about
-    // the area a chunk takes, smaller near the impact), as far as it is free.
-    let total = (rows * cols) as f64;
-    let target = (total / f64::from(s.chunks)).max(1.0);
-    let mut block = vec![usize::MAX; rows * cols];
+    // Blocks: runs of whole bricks along each course, one to three long
+    // (about the bricks a chunk takes, fewer near the impact). Never more
+    // than a course high, so no joint runs straight up the wall: every
+    // block bears on two below and carries two above, and a crack steps
+    // along the courses, leaving toothed piers as brickwork does.
+    let spans_of = |r: usize| -> Vec<(usize, usize)> {
+        let mut spans: Vec<(usize, usize)> = Vec::new();
+        for c in 0..cols {
+            match spans.last_mut() {
+                Some((c0, w)) if brick_of(r, *c0) == brick_of(r, c) => *w += 1,
+                _ => spans.push((c, 1)),
+            }
+        }
+        spans
+    };
+    let bricks: usize = (0..rows).map(|r| spans_of(r).len()).sum();
+    let target = (bricks as f64 / f64::from(s.chunks)).max(1.0);
     let mut blocks: Vec<(usize, usize, usize, usize)> = Vec::new();
     for r in 0..rows {
-        for c in 0..cols {
-            if block[r * cols + c] != usize::MAX {
-                continue;
-            }
-            let mut area = target * (0.55 + 0.9 * rng.next_f64());
+        let spans = spans_of(r);
+        let mut i = 0;
+        while i < spans.len() {
+            let mut n = target * (0.55 + 0.9 * rng.next_f64());
             if let Some((p, rad)) = s.impact {
                 let mut q = DVec3::ZERO;
-                q[along] = lo[along] + half * (c as f64 + 0.5);
+                q[along] = lo[along] + half * (spans[i].0 as f64 + 0.5);
                 q.y = lo.y + bh * (r as f64 + 0.5);
                 let d = ((q[along] - p[along]).powi(2) + (q.y - p.y).powi(2)).sqrt();
-                area *= (0.3 + 0.7 * (d / (rad * 2.5)).min(1.0)).max(0.3);
+                n *= (0.3 + 0.7 * (d / (rad * 2.5)).min(1.0)).max(0.3);
             }
-            // Wider than tall in metres, as masonry cracks step along courses.
-            let aspect = 1.4 + rng.next_f64() * 1.2;
-            let w_m = (area * half * bh * aspect).sqrt();
-            // At most two bricks long and four courses high: a block is
-            // rigid, so one longer than a hole a blow opens would lie
-            // across it on the piers, where brickwork falls through.
-            let h = ((w_m / aspect / bh).round() as usize).clamp(1, (rows - r).min(4));
-            let w = ((area / h as f64).round() as usize)
-                .clamp(1, 4)
-                .min(cols - c);
-            // As far as the row is free.
-            let mut fw = 0;
-            while fw < w && block[r * cols + c + fw] == usize::MAX {
-                fw += 1;
-            }
-            let w = fw.max(1);
-            let mut fh = 1;
-            while fh < h && (c..c + w).all(|cc| block[(r + fh) * cols + cc] == usize::MAX) {
-                fh += 1;
-            }
-            let k = blocks.len();
-            for rr in r..r + fh {
-                for cc in c..c + w {
-                    block[rr * cols + cc] = k;
-                }
-            }
-            blocks.push((r, c, fh, w));
+            let n = (n.round() as usize).clamp(1, 3).min(spans.len() - i);
+            let w = spans[i..i + n].iter().map(|s| s.1).sum();
+            blocks.push((r, spans[i].0, 1, w));
+            i += n;
         }
     }
     let mut support_groups: Vec<Vec<u32>> = Vec::new();
