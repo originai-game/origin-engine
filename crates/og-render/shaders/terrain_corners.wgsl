@@ -20,5 +20,5 @@ fn write_corners(@builtin(global_invocation_id) id: vec3<u32>) {
   let h = field_height(s);
   let r = terrain_relief(c, s, h, level.center.z);
   let total = h + r.d + terrain_snow_lift(s, level.center.z);
-  corners_out[u32(level.corners.z) + id.x] = vec4<u32>(bitcast<u32>(total), pack2x16float(r.slope), pack2x16float(r.bare), 0u);
+  corners_out[u32(level.corners.z) + id.x] = vec4<u32>(bitcast<u32>(total), corner_pack(r.slope), corner_pack(r.bare), 0u);
 }

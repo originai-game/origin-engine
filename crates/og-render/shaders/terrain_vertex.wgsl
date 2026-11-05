@@ -31,9 +31,38 @@
 
 @group(2) @binding(1) var<storage, read> terrain_corners: array<vec4<u32>>;
 
+// Two floats as IEEE halves in one word, packed and read by hand (as
+// area.wgsl's table): pack2x16float and unpack2x16float need a capability
+// some backends lack. Rounded to nearest; past a half's range clamped to
+// its largest, under its smallest normal flushed to zero.
+fn corner_half(x: f32) -> u32 {
+  let b = bitcast<u32>(x);
+  let r = (b & 0x7fffffffu) + 0x1000u;
+  let e = i32(r >> 23u) - 112;
+  let sign = (b >> 16u) & 0x8000u;
+  if (e <= 0) { return sign; }
+  if (e >= 31) { return sign | 0x7bffu; }
+  return sign | (u32(e) << 10u) | ((r >> 13u) & 0x3ffu);
+}
+
+fn corner_pack(v: vec2<f32>) -> u32 {
+  return corner_half(v.x) | (corner_half(v.y) << 16u);
+}
+
+fn corner_float(h: u32) -> f32 {
+  let e = (h >> 10u) & 31u;
+  let sign = (h & 0x8000u) << 16u;
+  if (e == 0u) { return bitcast<f32>(sign); }
+  return bitcast<f32>(sign | ((e + 112u) << 23u) | ((h & 0x3ffu) << 13u));
+}
+
+fn corner_unpack(w: u32) -> vec2<f32> {
+  return vec2<f32>(corner_float(w & 0xffffu), corner_float(w >> 16u));
+}
+
 // The cached corner at whole grid position `g` (0 to n) of the level whose
 // first corner is `first`: x its height's bits, y and z its relief's
-// slope and bare slope (pack2x16float).
+// slope and bare slope (corner_pack).
 fn cached_corner(first: f32, g: vec2<f32>) -> vec4<u32> {
   let n = u32(level.grid.x) + 1u;
   let i = vec2<u32>(clamp(g + 0.5, vec2<f32>(0.0), vec2<f32>(f32(n) - 0.5)));
@@ -316,7 +345,7 @@ fn terrain_local_vertex(vi: u32) -> vec3<f32> {
 // four corners'.
 fn corner_relief(g: vec2<f32>) -> vec4<f32> {
   let c = cached_corner(level.corners.z, g);
-  return vec4<f32>(unpack2x16float(c.y), unpack2x16float(c.z));
+  return vec4<f32>(corner_unpack(c.y), corner_unpack(c.z));
 }
 
 fn terrain_vertex_relief(vi: u32) -> vec4<f32> {
