@@ -30,8 +30,9 @@ export default playtest({
     // The crate has landed by 2 s.
     "2:screenshot:inspector-entity.png",
     "2:dump_inspector:entity.json",
-    // Its scale's x field (Inspector/Detail/F:crate.og.Transform.scale/P0).
-    "2.2:touch_move:1072,573",
+    // Its scale's x field (Inspector/Detail/F:crate.og.Transform.scale/P0),
+    // left of the detail pane's scrollbar gutter.
+    "2.2:touch_move:1070,573",
     "2.25:touch_start",
     "2.3:touch_end",
     // Its one character cleared (Ctrl+A is the line's start on a Mac).
@@ -66,7 +67,7 @@ export default playtest({
     t.equal(entity.selected, "crate", "on the crate");
     const at = (d: InspectorDump, path: string) => d.elements.find((e) => e.path === path);
     const field = at(entity, "Inspector/Detail/F:crate.og.Transform.scale/P0");
-    t.ok(field !== undefined && Math.abs(field.x + field.width / 2 - 1072) < 1 && Math.abs(field.y + field.height / 2 - 573) < 1, "the scale's x field is where the script clicks");
+    t.ok(field !== undefined && Math.abs(field.x + field.width / 2 - 1070) < 1 && Math.abs(field.y + field.height / 2 - 573) < 1, "the scale's x field is where the script clicks");
     const edited = run.json<InspectorDump>("edited.json");
     t.equal(edited.dirty.join(","), "crate.og.Transform.scale", "the edit is marked unsaved");
     t.equal(at(edited, "Inspector/Bar/Save")?.text, "Save (1)", "Save counts it");
