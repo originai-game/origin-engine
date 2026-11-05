@@ -1,8 +1,10 @@
 type look
 version 1
 ---
-# A coarse grid, no antialiasing, four tones per channel through a gentle
-# Bayer 2 dither: the frame's quantise holds anything to the look, while art
+# A coarse grid, no antialiasing, four tones per channel and no dither, so
+# fields stay flat and gradients step in bands, as NES art does (a Bayer
+# dither, however narrow, turned a floor whose tone sat on a step into a
+# checker): the frame's quantise holds anything to the look, while art
 # the cook conformed (16 colours in 4-step ramps, ArtPalette) keeps its own
 # colours, so its flat fields stay flat instead of turning to a checker.
 name "8-bit-inspired pixel art"
@@ -12,8 +14,7 @@ Stylise {
   pixelHeight 192
   pixelSnap true
   posterize 4
-  dither bayer2
-  ditherStrength 0.5
+  dither none
 }
 RenderSettings {
   toneMapping none
