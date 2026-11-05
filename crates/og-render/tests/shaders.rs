@@ -189,3 +189,105 @@ fn the_volumetric_raymarch_reads_the_local_lights() {
         );
     }
 }
+
+/// The texture reads entry point `entry` compiles to once every call is
+/// inlined, as the backends' compilers (DXC, the Vulkan drivers, Tint,
+/// Metal's) inline them: each read site counts once per path of calls
+/// reaching it (loops are counted once, not unrolled).
+fn inlined_reads(module: &naga::Module, entry: &naga::EntryPoint) -> u64 {
+    use naga::{Block, Expression, Function, Statement};
+    use std::collections::HashMap;
+    fn reads(f: &Function) -> u64 {
+        f.expressions
+            .iter()
+            .filter(|(_, e)| {
+                matches!(
+                    e,
+                    Expression::ImageSample { .. } | Expression::ImageLoad { .. }
+                )
+            })
+            .count() as u64
+    }
+    fn calls(block: &Block, out: &mut Vec<naga::Handle<Function>>) {
+        for s in block.iter() {
+            match s {
+                Statement::Call { function, .. } => out.push(*function),
+                Statement::Block(b) => calls(b, out),
+                Statement::If { accept, reject, .. } => {
+                    calls(accept, out);
+                    calls(reject, out);
+                }
+                Statement::Loop {
+                    body, continuing, ..
+                } => {
+                    calls(body, out);
+                    calls(continuing, out);
+                }
+                Statement::Switch { cases, .. } => cases.iter().for_each(|c| calls(&c.body, out)),
+                _ => {}
+            }
+        }
+    }
+    fn cost(
+        module: &naga::Module,
+        f: &Function,
+        h: Option<naga::Handle<Function>>,
+        memo: &mut HashMap<naga::Handle<Function>, u64>,
+    ) -> u64 {
+        if let Some(c) = h.and_then(|h| memo.get(&h)) {
+            return *c;
+        }
+        let mut callees = Vec::new();
+        calls(&f.body, &mut callees);
+        let c = reads(f)
+            + callees
+                .into_iter()
+                .map(|g| cost(module, &module.functions[g], Some(g), memo))
+                .sum::<u64>();
+        if let Some(h) = h {
+            memo.insert(h, c);
+        }
+        c
+    }
+    cost(module, &entry.function, None, &mut HashMap::new())
+}
+
+/// The terrain's vertex stages stay small for the backends' compilers: a
+/// pipeline's first frame waits for its compile, and the compile grows with
+/// the inlined code. Every vertex entry point reads the corner cache
+/// (terrain_corners.wgsl) instead of sampling the layers for each corner:
+/// with the layers' displacement sampled in each vertex stage (T4, a dozen
+/// inlined copies of terrain_relief), terrain-tiling's first frame took
+/// 36 s on DX12 and 34 s in Chrome against 5 s and 62 ms before, every
+/// backend compiling the same unrolled code (Metal's shader cache hid it
+/// on macrunner after the first run).
+#[test]
+fn the_terrain_vertex_stages_inline_few_texture_reads() {
+    let mut over = Vec::new();
+    let mut vertex = 0;
+    for s in og_render::shader_sources()
+        .iter()
+        .filter(|s| s.label.starts_with("terrain"))
+    {
+        let (module, _) = checked(&s.label, &s.wgsl, &s.constants, full_capabilities()).unwrap();
+        for e in &module.entry_points {
+            let n = inlined_reads(&module, e);
+            println!(
+                "{} {:?} {}: {n} inlined texture reads",
+                s.label, e.stage, e.name
+            );
+            // (Main at T4: the vertex stage 1144, the lit fragment stage 80,
+            // the corner cache's writer 108.)
+            let vs = e.stage == naga::ShaderStage::Vertex;
+            vertex += usize::from(vs);
+            if n > if vs { 16 } else { 128 } {
+                over.push(format!("{} {:?} {}: {n}", s.label, e.stage, e.name));
+            }
+        }
+    }
+    assert!(vertex >= 8, "{vertex} terrain vertex entry points");
+    assert!(
+        over.is_empty(),
+        "inlined texture reads past the bound: {over:?}"
+    );
+}

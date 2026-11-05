@@ -132,6 +132,11 @@ pub fn shader_sources() -> Vec<ShaderSource> {
         "terrain shadow (layer arrays)",
         crate::terrain::terrain_shadow_array_source(),
     );
+    add("terrain corners", crate::terrain::terrain_corners_source());
+    add(
+        "terrain corners (layer arrays)",
+        crate::terrain::terrain_array_source(&crate::terrain::terrain_corners_source()),
+    );
     add(
         "water",
         crate::water::water_source(crate::FRAME_WGSL, crate::LIGHTING_WGSL),
