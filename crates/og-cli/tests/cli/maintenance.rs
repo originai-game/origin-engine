@@ -44,6 +44,32 @@ fn upgrade_migrates_style_typography_without_discarding_legacy_values() {
     let v2 = og_ui::upgrade_style(&old).unwrap();
     std::fs::write(assets.join("legacy.ogt"), &old).unwrap();
     std::fs::write(assets.join("modern.ogt"), &v2).unwrap();
+    // A version 2 style written before hero existed has no hero line (meridian-loop's):
+    // its ramp's own displayXl2, else the old default, is what its hero keeps.
+    let mut skip = false;
+    let no_hero: String = v2
+        .split_inclusive('\n')
+        .filter(|l| {
+            if l.starts_with("  hero ") {
+                skip = l.trim_end().ends_with('{');
+                return false;
+            }
+            if skip {
+                skip = l.trim_end() != "  }";
+                return false;
+            }
+            true
+        })
+        .collect();
+    assert_ne!(no_hero, v2, "the upgraded style writes a hero line");
+    std::fs::write(assets.join("bare.ogt"), &no_hero).unwrap();
+    let titled = no_hero.replacen(
+        "  body 19 27 31 0.07 0.02\n",
+        "  body 19 27 31 0.07 0.02\n  displayXl2 50 54\n",
+        1,
+    );
+    assert_ne!(titled, no_hero);
+    std::fs::write(assets.join("titled.ogt"), &titled).unwrap();
     let scene = "type scene\nversion 1\n---\nramp { body 23 31 }\n";
     std::fs::write(assets.join("scene.ogt"), scene).unwrap();
     let run = |dry: bool| {
@@ -59,7 +85,7 @@ fn upgrade_migrates_style_typography_without_discarding_legacy_values() {
         assert_eq!(out.status.code(), Some(3), "{}", text(&out));
         serde_json::from_slice::<serde_json::Value>(&out.stdout).unwrap()
     };
-    assert_eq!(run(true)["codemods"].as_array().unwrap().len(), 2);
+    assert_eq!(run(true)["codemods"].as_array().unwrap().len(), 4);
     assert_eq!(
         std::fs::read_to_string(assets.join("legacy.ogt")).unwrap(),
         old
@@ -68,7 +94,26 @@ fn upgrade_migrates_style_typography_without_discarding_legacy_values() {
         std::fs::read_to_string(assets.join("modern.ogt")).unwrap(),
         v2
     );
-    assert_eq!(run(false)["codemods"].as_array().unwrap().len(), 2);
+    assert_eq!(run(false)["codemods"].as_array().unwrap().len(), 4);
+    // Without a hero line, hero is display × 1.5: a legacy displayXl2 (a
+    // countdown's 60 px line) grew to 81. The upgrade keeps what it drew.
+    for (name, size, line) in [
+        ("legacy", 56.0, 60.0),
+        ("bare", 56.0, 60.0),
+        ("titled", 50.0, 54.0),
+    ] {
+        let migrated = std::fs::read_to_string(assets.join(format!("{name}.ogt"))).unwrap();
+        let hero = og_ui::parse_style(&migrated)
+            .unwrap()
+            .theme
+            .type_ramp
+            .display_xl2;
+        assert_eq!(
+            (hero.size, hero.line_height),
+            (size, line),
+            "{name}: {migrated}"
+        );
+    }
     for name in ["legacy", "modern"] {
         let migrated = std::fs::read_to_string(assets.join(format!("{name}.ogt"))).unwrap();
         assert!(migrated.contains("# ramp {"));

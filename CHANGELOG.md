@@ -75,6 +75,18 @@ is one line here, written at the merge that changes
   `typography` drives every legacy ramp alias, including weight and tracking;
   `hero` adds the top step and `case upper` uses locale-aware Unicode casing.
   `og upgrade` converts v1 styles and archives redundant v2 ramps for review.
+  What moves on a shipped screen, and the fix for each: `xl3` (and `xl4`)
+  follow the title role, so a ramp's `xl3 30 34` draws at the title's size;
+  keep it by setting title, or accept the title's size, since one role
+  cannot hold both. `displayXl2` (and `xl7`, `xl8`, `displayXl`) follow
+  `hero`, which without a line of its own is display × 1.5 (a 60 px line
+  drew at 81); `og upgrade` now writes a `hero` line keeping what
+  displayXl2 drew. `meta` follows caption, as every style's ramp had it.
+  Separately, text in the numeric font role (`font: "mono"`) now sets
+  tabular lining figures, so a timer holds its width as it ticks; its
+  digits take the widest figure's advance (a lone "1" widens from 8 px to
+  14, a lap time by about 3). Leave room for that, or set digits that must
+  stay proportional in another font role.
   Parent rims now draw below selection, hollow focus and raised child badges.
   New `LabelDesc.onScene`, `IconDesc.secondary` and `IconDesc.secondaryTint`
   support scheme-aware scene text and two-tone icons. Document `tabs`,

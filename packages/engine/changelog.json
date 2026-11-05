@@ -12,10 +12,16 @@
       },
       {
         "member": "UI typography and TypeStepName aliases",
-        "change": "The typography hierarchy now drives legacy ramp names, including weights, tracking and breakpoint sizes. Several legacy sizes alias one semantic role; hero adds the largest step. Version 1 styles derive that hierarchy from their ramp. UI frames and wrapping can change.",
-        "fix": "og upgrade converts v1 styles to v2 and archives a v2 style's superseded ramp as comments. Edit typography, not ramp. Review heading/title/display/hero and phone/150% sheets; conflicting old aliases cannot all keep their different sizes.",
+        "change": "The typography hierarchy now drives legacy ramp names, including weights, tracking and breakpoint sizes. Several legacy sizes alias one semantic role; hero adds the largest step. Version 1 styles derive that hierarchy from their ramp. UI frames and wrapping can change: xl3 and xl4 follow title (a ramp xl3 30 34 draws at the title size); displayXl2, displayXl, xl7 and xl8 follow hero, which without its own line is display x 1.5 (a 60 px line drew at 81); meta follows caption.",
+        "fix": "og upgrade converts v1 styles to v2, archives a v2 style's superseded ramp as comments and writes a hero line keeping what displayXl2 drew (the ramp line, else 56 60). Edit typography, not ramp. xl3: set title to the old xl3 or accept the title size (one role cannot keep both). Review heading/title/display/hero and phone/150% sheets.",
         "find": ["typography"],
         "codemod": { "kind": "ui-typography" }
+      },
+      {
+        "member": "Numeric font role figures",
+        "change": "Text in the numeric font role (font: \"mono\": scores, timers, HUD numerals) sets tabular lining figures (tnum lnum), and a face without tnum sets its digits on the widest figure's advance, so a ticking number holds its width. Proportional digits widen: a lone \"1\" from 8 px to 14, a lap time by about 3 px.",
+        "fix": "Leave room where a mono number sits in a fixed width; set digits that must stay proportional in another font role (body, display). Review HUD timers and score columns in the baseline sheets.",
+        "find": ["\"mono\""]
       },
       {
         "member": "UI rim, selection, focus and badge stacking",
