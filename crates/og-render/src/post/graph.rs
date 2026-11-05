@@ -1,7 +1,6 @@
 //! Render graph realization, bindings and post encoding.
 
 use super::*;
-use crate::frame::CONTACT_LIGHTS;
 
 /// The post passes' bind groups for one realization of the graph. Groups
 /// in pairs are per TAA history slot.
@@ -19,9 +18,9 @@ struct Bindings {
     up: Vec<wgpu::BindGroup>,
     post: [wgpu::BindGroup; 2],
     fx: HashMap<FramePass, [wgpu::BindGroup; 2]>,
-    /// The contact shadows (`contact.rs`): one group per light's mask,
-    /// and the compose's.
-    contact: Option<([wgpu::BindGroup; CONTACT_LIGHTS], wgpu::BindGroup)>,
+    /// The contact shadows (`contact.rs`): the lights' group, the
+    /// compose's, and the masks both bind.
+    contact: Option<(wgpu::BindGroup, wgpu::BindGroup, wgpu::Buffer)>,
     /// The lens flare's passes (`flare.rs`).
     flare: HashMap<FramePass, [wgpu::BindGroup; 2]>,
 }
@@ -627,31 +626,29 @@ impl FrameGraph {
             };
             fx.insert(p, groups);
         }
-        // The contact shadows (contact.rs): per light its mask, then the
+        // The contact shadows (contact.rs): the lights' masks, then the
         // compose of the masks with the AO it passes through (white
         // without the AO passes) into `ao`.
         let contact = has(FramePass::Contact).then(|| {
             let c = &passes.contact;
-            let masks = super::plan::CONTACT_MASKS.map(|m| self.view(m));
+            let masks = super::contact::mask_buffer(device, (cfg.width, cfg.height));
             let dispatch = wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                 buffer: &c.buffer,
                 offset: 0,
                 size: wgpu::BufferSize::new(c.stride as u64),
             });
-            let groups = masks.map(|mask| {
-                crate::volumetric::bind_at(
-                    device,
-                    "contact",
-                    &c.layout,
-                    &[
-                        (0, passes.fx_buffer.as_entire_binding()),
-                        (1, dispatch.clone()),
-                        (2, tex(depth)),
-                        (3, tex(gbuffer)),
-                        (4, tex(mask)),
-                    ],
-                )
-            });
+            let lights = crate::volumetric::bind_at(
+                device,
+                "contact",
+                &c.layout,
+                &[
+                    (0, passes.fx_buffer.as_entire_binding()),
+                    (1, dispatch),
+                    (2, tex(depth)),
+                    (3, tex(gbuffer)),
+                    (4, masks.as_entire_binding()),
+                ],
+            );
             let compose = crate::volumetric::bind_at(
                 device,
                 "contact compose",
@@ -659,13 +656,11 @@ impl FrameGraph {
                 &[
                     (0, passes.fx_buffer.as_entire_binding()),
                     (5, tex(self.try_view("ao.pre").unwrap_or(&passes.white))),
-                    (6, tex(masks[0])),
-                    (7, tex(masks[1])),
-                    (8, tex(masks[2])),
+                    (6, masks.as_entire_binding()),
                     (9, tex(self.view("ao"))),
                 ],
             );
-            (groups, compose)
+            (lights, compose, masks)
         });
         // The lens flare's passes: (source, view depth, exposure,
         // visibility) per slot, placeholders where a pass reads none.
@@ -806,8 +801,8 @@ impl FrameGraph {
         }
         match pass {
             FramePass::Contact => {
-                let (groups, compose) = b.contact.as_ref().expect("contact bound");
-                passes.contact.encode(encoder, groups, compose)
+                let (lights, compose, masks) = b.contact.as_ref().expect("contact bound");
+                passes.contact.encode(encoder, lights, compose, masks)
             }
             FramePass::Taa if passes.fsr.active() => passes.fsr.encode(encoder),
             FramePass::TaaSharpen if passes.fsr.active() => passes.fsr.encode_rcas(encoder),

@@ -319,7 +319,14 @@ threads per run of pixels along the line, the run's depths read once
 into workgroup memory and shared by every thread's samples, each light's
 runs dispatched from the screen edges in towards its pixel
 (`post/contact.rs` `dispatch_list`), and a thread whose pixel the light
-does not reach returns before it walks. The masks share the AO texture
+does not reach returns before it walks. The runs of neighbouring lines
+converge towards the light, so near it several threads (up to some
+hundred) write one pixel: each `atomicMax`es a key into the light's
+screen of the mask buffer (its frame, how near its line passes to the
+pixel's centre, the mask), so the nearest line's shadow is kept whatever
+order the GPU runs them in, and a frame is the same frame every time
+(with plain stores, the last writer won and some 50 pixels of
+point-spot-lights changed from one frame to the next). The masks share the AO texture
 (its gba, the AO in r), so they
 are off with screen-space GI, and only the standard and physical lit
 shaders read them (not terrain, scattered copies, custom lit shaders,

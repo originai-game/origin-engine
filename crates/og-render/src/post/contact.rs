@@ -8,9 +8,10 @@
 //! light's pixel in up to eight dispatches of 64-pixel runs of the lines
 //! through it, one 64-thread workgroup per run; `WriteScreenSpaceShadow`
 //! (bend_sss_gpu.h) reads each run's depths once into workgroup memory and
-//! walks them for every pixel of the run. The pass writes one mask texture
-//! per light (`contact.0` to `contact.2`, `plan.rs`); the compose reads
-//! them with the AO passes' target into `ao`.
+//! walks them for every pixel of the run. The pass writes one screen of
+//! keys per light into one buffer ([`mask_buffer`]), each thread's
+//! `atomicMax` keeping the line nearest a pixel's centre where several
+//! cross it; the compose reads them with the AO passes' target into `ao`.
 
 use super::fsr::{self, B};
 use crate::deferred::Deferred;
@@ -19,9 +20,18 @@ use glam::Vec4;
 
 const WGSL: &str = concat!(wgsl!("fxpost_uniform.wgsl"), wgsl!("contact.wgsl"));
 
-/// A light's mask (`contact.N`, plan.rs): one channel used, in a storage
-/// format every host writes (core WebGPU has no one-channel 8-bit one).
-pub(crate) const MASK_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+/// The lights' masks for a screen of `size` pixels: one u32 key per pixel
+/// and light row (contact.wgsl `masks`), zeroed. Four bytes a pixel, as
+/// the rgba8unorm mask each light had; kept across frames (the keys carry
+/// their frame), so it is the graph's own buffer, not a transient.
+pub(crate) fn mask_buffer(device: &wgpu::Device, size: (u32, u32)) -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("contact masks"),
+        size: (CONTACT_LIGHTS as u64 * size.0 as u64 * size.1 as u64 * 4).max(4),
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    })
+}
 
 /// The contact module's source, for validation (`shaders.rs`).
 pub(crate) fn source() -> String {
@@ -41,7 +51,7 @@ struct DispatchUniform {
     light: [f32; 4],
     wave_offset: [i32; 2],
     index: u32,
-    pad: u32,
+    frame: u32,
 }
 
 /// One of Bend's `DispatchData`: its workgroups and its `WaveOffset`.
@@ -243,9 +253,14 @@ pub(crate) struct ContactPasses {
     /// offsets' alignment).
     pub buffer: wgpu::Buffer,
     pub stride: u32,
-    /// The frame's lights' dispatches: (the light's row, its list).
-    lights: Vec<(usize, Vec<Dispatch>)>,
+    /// The frame's lights' dispatch lists (each dispatch's uniform names
+    /// its light's row).
+    lights: Vec<Vec<Dispatch>>,
     size: (u32, u32),
+    /// The frame's tag in its keys (contact.wgsl `ContactDispatch`), 1 to
+    /// 255; at 1 the masks are cleared first, so no key of a frame 255
+    /// tags back outranks the frame's own.
+    frame: u32,
 }
 
 impl ContactPasses {
@@ -287,7 +302,7 @@ impl ContactPasses {
                 (0, B::Uniform),
                 (2, B::Tex(false)),
                 (3, B::Tex(false)),
-                (4, B::Storage(MASK_FORMAT)),
+                (4, B::Rw),
             ],
             Some(&dispatch),
         );
@@ -296,9 +311,7 @@ impl ContactPasses {
             &[
                 (0, B::Uniform),
                 (5, B::Tex(false)),
-                (6, B::Tex(false)),
-                (7, B::Tex(false)),
-                (8, B::Tex(false)),
+                (6, B::Ro),
                 (9, B::Storage(super::CONTACT_FORMAT)),
             ],
             None,
@@ -337,6 +350,7 @@ impl ContactPasses {
             stride,
             lights: Vec::new(),
             size: (0, 0),
+            frame: 0,
         }
     }
 
@@ -353,6 +367,7 @@ impl ContactPasses {
     ) {
         self.lights.clear();
         self.size = size;
+        self.frame = self.frame % 255 + 1;
         let mut uniforms = Vec::with_capacity(CONTACT_LIGHTS * MAX_DISPATCHES);
         for (index, row) in rows.iter().take(CONTACT_LIGHTS).enumerate() {
             if row[3] < 0.5 {
@@ -365,9 +380,9 @@ impl ContactPasses {
                 light,
                 wave_offset: d.wave_offset,
                 index: index as u32,
-                pad: 0,
+                frame: self.frame,
             }));
-            self.lights.push((index, list));
+            self.lights.push(list);
         }
         if uniforms.is_empty() {
             return;
@@ -381,15 +396,20 @@ impl ContactPasses {
         queue.write_buffer(&self.buffer, 0, &bytes);
     }
 
-    /// Records the lights' dispatches (`groups`: one bind group per mask,
-    /// by the light's row) and the compose; returns the dispatches.
+    /// Records the lights' dispatches (`lights`: their bind group, over
+    /// `masks`, the [`mask_buffer`]) and the compose; returns the
+    /// dispatches.
     pub fn encode(
         &self,
         encoder: &mut crate::Encoder,
-        groups: &[wgpu::BindGroup; CONTACT_LIGHTS],
+        lights: &wgpu::BindGroup,
         compose: &wgpu::BindGroup,
+        masks: &wgpu::Buffer,
     ) -> u32 {
         let mut dispatches = 0;
+        if self.frame == 1 {
+            encoder.clear_buffer(masks, 0, None);
+        }
         if !self.lights.is_empty() {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("contact"),
@@ -397,9 +417,9 @@ impl ContactPasses {
             });
             pass.set_pipeline(self.pipeline.get());
             let mut slice = 0;
-            for (index, list) in &self.lights {
+            for list in &self.lights {
                 for d in list {
-                    pass.set_bind_group(0, &groups[*index], &[slice * self.stride]);
+                    pass.set_bind_group(0, lights, &[slice * self.stride]);
                     pass.dispatch_workgroups(d.workgroups[0], d.workgroups[1], d.workgroups[2]);
                     slice += 1;
                     dispatches += 1;

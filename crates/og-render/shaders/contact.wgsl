@@ -15,7 +15,13 @@
 // also against the previous sample along the line (the shadow's rim
 // speckled where a line grazed a caster's silhouette), and a pixel facing
 // away from the light, or in the sky, is lit without walking
-// (`EarlyOutPixel`). Prepended by fxpost_uniform.wgsl.
+// (`EarlyOutPixel`). The runs of neighbouring lines converge towards the
+// light, so a pixel near it lies on several (up to some hundred threads
+// of a list write one pixel); each writes a key, `atomicMax`, so the line
+// passing nearest the pixel's centre gives it its shadow whatever order
+// the GPU runs them in (Bend's plain store kept whichever wrote last, and
+// a frame differed from the same frame drawn again). Prepended by
+// fxpost_uniform.wgsl.
 
 // Bend's per-dispatch parameters (contact.rs `Dispatch`).
 struct ContactDispatch {
@@ -26,20 +32,24 @@ struct ContactDispatch {
   wave_offset: vec2<i32>,
   // The light's row of `fxp.contact`.
   index: u32,
-  pad: u32,
+  // The frame's tag, 1 to 255 (contact.rs `ContactPasses::prepare`):
+  // the top byte of every key, so a key of this frame outranks every
+  // earlier one and the masks need no clearing between frames.
+  frame: u32,
 };
 
 @group(0) @binding(0) var<uniform> fxp: FxPost;
 @group(0) @binding(1) var<uniform> dispatch: ContactDispatch;
 @group(0) @binding(2) var tex_depth: texture_2d<f32>;    // the prepass view depth
 @group(0) @binding(3) var tex_gbuffer: texture_2d<f32>;  // oct normal, velocity
-@group(0) @binding(4) var mask: texture_storage_2d<rgba8unorm, write>;  // this light's mask (r)
+// The lights' masks, one screen of keys per light by its row (contact.rs
+// `mask_buffer`): the frame's tag in the top byte, then how near the
+// writing line passes to the pixel's centre (16 bits), then the mask.
+@group(0) @binding(4) var<storage, read_write> masks: array<atomic<u32>>;
 // The compose (`cs_contact_compose`): the AO and the lights' masks into
 // the AO texture (post.rs `CONTACT_FORMAT`).
 @group(0) @binding(5) var tex_ao: texture_2d<f32>;
-@group(0) @binding(6) var mask_0: texture_2d<f32>;
-@group(0) @binding(7) var mask_1: texture_2d<f32>;
-@group(0) @binding(8) var mask_2: texture_2d<f32>;
+@group(0) @binding(6) var<storage, read> mask_keys: array<u32>;
 @group(0) @binding(9) var composed: texture_storage_2d<rgba8unorm, write>;
 
 const WAVE_SIZE: i32 = 64;
@@ -91,6 +101,17 @@ fn unlit(px: vec2<i32>, size: vec2<i32>) -> bool {
   return dot(fxp.contact[dispatch.index].xyz - p, n) <= 0.0;
 }
 
+// The mask `value` at `px` from a thread whose line passes `near` (0 to
+// 65535) to the pixel's centre: kept unless a line nearer it, or as near
+// with a lighter value, wrote this frame. The value rounds to 8 bits as
+// the rgba8unorm mask did.
+fn put(px: vec2<i32>, size: vec2<i32>, near: u32, value: f32) {
+  if (any(px < vec2<i32>(0)) || any(px >= size)) { return; }
+  let key = (dispatch.frame << 24u) | (near << 8u) | u32(round(saturate(value) * 255.0));
+  let at = (dispatch.index * u32(size.y) + u32(px.y)) * u32(size.x) + u32(px.x);
+  atomicMax(&masks[at], key);
+}
+
 // Bend's DepthData: the depths along the run, perspective-corrected so
 // every line's rays are parallel; and the raw depths, for the edge test
 // against the previous sample.
@@ -135,6 +156,9 @@ fn cs_contact(@builtin(workgroup_id) group_id: vec3<u32>, @builtin(local_invocat
   var pixel_xy = mix(start_xy, end_xy, thread_step / f32(WAVE_SIZE));
   let pixel_distance = major_start - thread_step + ma_light_frac;
   let write_xy = vec2<i32>(floor(pixel_xy));
+  // How near the thread's point on its line lies to its pixel's centre.
+  let off = pixel_xy - (floor(pixel_xy) + 0.5);
+  let near = u32(round(saturate(1.0 - 2.0 * dot(off, off)) * 65535.0));
 
   // The two depths of each of the thread's pixels: its own and the one
   // bilinearly towards the line on the minor axis, which shadows from the
@@ -180,12 +204,12 @@ fn cs_contact(@builtin(workgroup_id) group_id: vec3<u32>, @builtin(local_invocat
   // short of it, contact.rs `dispatch_list_covers_the_screen`): the
   // innermost run's thread nearest it writes it lit.
   if (major_start <= f32(WAVE_SIZE) && thread_step == f32(WAVE_SIZE - 1)) {
-    textureStore(mask, vec2<i32>(floor(light.xy)), vec4<f32>(1.0));
+    put(vec2<i32>(floor(light.xy)), size, 65535u, 1.0);
   }
   // A pixel within one of the light's: lit (Bend's +direction bias makes
   // it lit or shadowed whole).
   if (sample_distance[0] < 1.0 || unlit(write_xy, size)) {
-    textureStore(mask, write_xy, vec4<f32>(1.0));
+    put(write_xy, size, near, 1.0);
     return;
   }
   let start_depth = sampling_depth[0];
@@ -208,7 +232,7 @@ fn cs_contact(@builtin(workgroup_id) group_id: vec3<u32>, @builtin(local_invocat
   }
   shadow = saturate(shadow * contrast + (1.0 - contrast));
   hard = saturate(hard * contrast + (1.0 - contrast));
-  textureStore(mask, write_xy, vec4<f32>(min(hard, dot(shadow, vec4<f32>(0.25)))));
+  put(write_xy, size, near, min(hard, dot(shadow, vec4<f32>(0.25))));
 }
 
 // The AO texture with the contact shadows: the AO (`tex_ao`, white
@@ -220,9 +244,11 @@ fn cs_contact_compose(@builtin(global_invocation_id) id: vec3<u32>) {
   let px = vec2<i32>(id.xy);
   let ao_size = vec2<i32>(textureDimensions(tex_ao));
   let ao = textureLoad(tex_ao, min(px, ao_size - 1), 0).r;
-  var masks = vec3<f32>(1.0);
-  if (fxp.contact[0].w > 0.5) { masks.x = textureLoad(mask_0, px, 0).r; }
-  if (fxp.contact[1].w > 0.5) { masks.y = textureLoad(mask_1, px, 0).r; }
-  if (fxp.contact[2].w > 0.5) { masks.z = textureLoad(mask_2, px, 0).r; }
-  textureStore(composed, px, vec4<f32>(ao, masks));
+  var lit = vec3<f32>(1.0);
+  let screen = size.x * size.y;
+  let at = id.y * size.x + id.x;
+  for (var i = 0u; i < 3u; i++) {
+    if (fxp.contact[i].w > 0.5) { lit[i] = f32(mask_keys[i * screen + at] & 255u) / 255.0; }
+  }
+  textureStore(composed, px, vec4<f32>(ao, lit));
 }
