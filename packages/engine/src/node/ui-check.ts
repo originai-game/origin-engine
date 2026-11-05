@@ -1170,16 +1170,25 @@ const ACCENTS: Record<string, string> = {
   a: "á", e: "é", i: "í", o: "ö", u: "ü", c: "ç", n: "ñ", y: "ý", A: "Á", E: "É", I: "Í", O: "Ö", U: "Ü", C: "Ç", N: "Ñ", Y: "Ý",
 };
 
+/** A rich text tag (og.ui.richText's: `[b]`, `[color=info]`, `[/color]`): markup, not words. */
+const TAG = /\[\/?(?:b|i|u|s|outline|color|size|font|icon|img|action|link|wave|shake|pulse)(?:=[^\][]*)?\]/g;
+
 /**
  * The pseudo-locale (§15.3): accents on the Latin letters, 40 % longer
- * (padded with the text's own letters), then in brackets.
- * Text without letters (a score, a time) is data and stays as it is.
+ * (padded with the text's own letters), then in brackets. Rich text tags
+ * stay as they are and count for nothing: `[color=info]` accented was no
+ * tag, and printed. Text without letters (a score, a time) is data and
+ * stays as it is.
  */
 export function pseudo(text: string): string {
-  if (!/\p{L}/u.test(text) || /^\[.*\]$/su.test(text)) return text;
-  const accented = [...text].map((c) => ACCENTS[c] ?? c).join("");
-  const letters = [...text].filter((c) => /\p{L}/u.test(c));
-  const extra = Math.max(1, Math.round([...text].length * 0.4));
+  const words = text.replace(TAG, "");
+  if (!/\p{L}/u.test(words) || /^\[.*\]$/su.test(words)) return text;
+  const accented = text
+    .split(new RegExp(`(${TAG.source})`, "g"))
+    .map((run, k) => (k % 2 ? run : [...run].map((c) => ACCENTS[c] ?? c).join("")))
+    .join("");
+  const letters = [...words].filter((c) => /\p{L}/u.test(c));
+  const extra = Math.max(1, Math.round([...words].length * 0.4));
   let pad = "";
   for (let k = 0; k < extra; k++) pad += (ACCENTS[letters[k % letters.length]!] ?? letters[k % letters.length]!).toLowerCase();
   return `[${accented} ${pad}]`;

@@ -355,6 +355,18 @@ test("the pseudo-locale is 40 % longer, accented and bracketed; numbers stay as 
   expect(pseudo(p)).toBe(p);
 });
 
+test("the pseudo-locale leaves rich text's tags whole and counts only their words", () => {
+  const p = pseudo("Gain [color=info]Energy[/color] now");
+  expect(p).toContain("[color=info]");
+  expect(p).toContain("[/color]");
+  expect(p).toContain("Éñérgý");
+  // "Gain Energy now": 15 characters, 6 more (40 %), none from the tags.
+  expect([...p.replace(/\[\/?color(=info)?\]/g, "")].length).toBe(15 + 6 + 1 + 2);
+  const bold = pseudo("[b]Play[/b]");
+  expect(bold).toContain("[b]Pláý[/b]");
+  expect(pseudo(bold)).toBe(bold);
+});
+
 test("paths come from the accessibility tree, else the parent chain; findings merge across cells", () => {
   const f = frame({
     elements: [el("Hud", "", "anchor", "", [0, 0, 100, 40]), el("Score", "Hud", "label", "text", [0, 0, 60, 20], { text: "1" })],
