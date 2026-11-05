@@ -7,6 +7,9 @@ use super::*;
 pub(crate) enum FramePass {
     /// Directional light cascade `i`.
     Cascade(u32),
+    /// The soft sun's moment pyramid of the cascades (shadow_moments.rs),
+    /// into the cascade array's layers after them.
+    ShadowMoments,
     /// Local light shadow layer (6 per point light, 1 per spot).
     LocalFace(u32),
     /// The weather occlusion map, the cascade array's last layer (weather.rs
@@ -241,6 +244,7 @@ impl FramePass {
             FramePass::Cascade(i) => format!("cascade.{i}"),
             FramePass::LocalFace(i) => format!("local-shadow.{i}"),
             FramePass::Shelter => "shelter".into(),
+            FramePass::ShadowMoments => "shadow-moments".into(),
             FramePass::Prepass => "prepass".into(),
             FramePass::Ao => "ao".into(),
             FramePass::AoBlur => "ao-blur".into(),
@@ -804,6 +808,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         let name = p.name();
         match p {
             FramePass::Cascade(_) | FramePass::Shelter => g.pass(name, &[], &["cascades"]),
+            FramePass::ShadowMoments => g.pass(name, &["cascades"], &["cascades"]),
             FramePass::LocalFace(_) => g.pass(name, &[], &["local-shadows"]),
             FramePass::Prepass => {
                 let mut writes = vec!["pre-depth", "gbuffer", "lindepth", "outline-id"];

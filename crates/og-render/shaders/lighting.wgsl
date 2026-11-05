@@ -151,99 +151,225 @@ fn cascade_tint(c: u32) -> vec3<f32> {
 // lit 2 mm from it; a paraboloid's 2 % and 67 %, [`local_bias`]).
 var<private> shadow_closed: bool = false;
 
-// A turn in [0, 2π) for PCSS's spiral at `texel` (a position in shadow
-// texels): interleaved gradient noise (Jimenez, "Next Generation Post
-// Processing in Call of Duty: Advanced Warfare", SIGGRAPH 2014; Bevy turns
-// its shadow spirals the same way), so neighbouring pixels turn their
-// spirals apart, and under TAA (frame.shadow.w: 1 + the drawn frame of 16)
-// every drawn frame again, so the history averages the 16 taps into the
-// smooth disc they sample.
-fn shadow_turn(texel: vec2<f32>) -> f32 {
-  let k = max(frame.shadow.w - 1.0, 0.0);
-  return 6.2831853 * fract(52.9829189 * fract(dot(texel + k * 5.588238, vec2<f32>(0.06711056, 0.00583715))));
-}
-
-// The sun's soft shadows (PCSS, `DirectionalLight::shadow_softness`, and
-// the weather's: frame.shadow.x): a blocker search over the widest
-// penumbra the cascade allows, then 16 bilinear PCF taps over the penumbra
-// the blockers' mean depth gives (softness × the distance from blocker to
-// receiver, in texels). A Vogel disc spreads the taps, turned per pixel
-// and per drawn frame ([`shadow_turn`]): a fixed disc printed its spiral
-// as rings of copies across a wide penumbra. A slope term keeps the wide
-// kernel off a receiver tilted from the light (an open one; a closed one
-// compares past its own depth, as [`shadow_closed`]). Every read is a
-// textureLoad compare, as pcf's.
-const PCSS_TAPS: i32 = 16;
+// The sun's soft shadows (PCSS's framework, `DirectionalLight::shadow_softness`
+// and the weather's: frame.shadow.x) by moment soft shadow mapping
+// (Peters, Münstermann, Wetzstein and Klein, "Improved Moment Shadow Maps
+// for Translucent Occluders, Soft Shadows and Single Scattering", JCGT
+// 6(1), 2017, §4; the Hamburger four-moment functions below are ported
+// from the paper's demo, Shadow.fx, which its author dedicated to the
+// public domain, CC0 1.0). The blocker search and the filter each read the
+// cascade's moment pyramid (shadow_moments.wgsl) over their region once,
+// trilinearly, instead of sampling it: every texel in the region weighs
+// in, so a pole or a wire a texel or less across keeps its share of each
+// region it crosses and the penumbra is the same smooth ramp in every
+// pixel and frame, where 16 rotated taps printed a thin caster's shadow as
+// grain and dashes without TAA (art on plain-soft, after area 8).
+//
+// The pyramid starts at blocks of 4 x 4 texels; a penumbra narrower than
+// that is the hard sun's tent blended into the pyramid's first level by
+// the share that matches the light's disc (their variances, below), so a
+// contact edge is as sharp as the hard sun's and widens continuously.
 const PCSS_MAX_TEXELS: f32 = 24.0;
+const MOMENT_LEVEL0: u32 = 2u;
+// The variance (texels², per axis) of pcf_tent's kernel: a bilinear PCF
+// (1/6) at two points half a texel either side (1/4).
+const TENT_VARIANCE: f32 = 0.41666667;
+// The moment bias for 32-bit float moments (Shadow.fx Sample4MomentShadowMap).
+const MOMENT_BIAS: f32 = 3.0e-7;
 
-fn vogel(i: i32, n: i32, radius: f32, turn: f32) -> vec2<f32> {
-  let r = sqrt((f32(i) + 0.5) / f32(n)) * radius;
-  let a = f32(i) * 2.39996323 + turn;
-  return vec2<f32>(cos(a), sin(a)) * r;
+// Where (cascade c, level l) starts in its moments layer, in texels
+// (shadow_moments.wgsl `origin`, the same packing): a moment texel is
+// 2 x 2 texels holding z, z² / z³, z⁴.
+fn moment_origin(c: u32, l: u32, size: u32) -> vec2<i32> {
+  var base = 0u;
+  for (var j = MOMENT_LEVEL0; j < l; j++) { base += 2u * (size >> j); }
+  let slot = c % 3u;
+  return vec2<i32>(vec2<u32>(base) + vec2<u32>(slot & 1u, slot >> 1u) * (2u * (size >> l)));
 }
 
-fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f32 {
-  let size = vec2<f32>(textureDimensions(cascade_map));
-  let isize = vec2<i32>(size);
+// Level l's moments, bilinear at uv (moments filter linearly).
+fn moments_level(uv: vec2<f32>, c: u32, l: u32) -> vec4<f32> {
+  let size = textureDimensions(cascade_map).x;
+  let n = i32(size >> l);
+  let layer = i32(frame.shadow.w) - 1 + i32(c / 3u);
+  let o = moment_origin(c, l, size);
+  let p = uv * f32(n) - 0.5;
+  let base = vec2<i32>(floor(p));
+  let f = fract(p);
+  var m: array<vec4<f32>, 4>;
+  for (var i = 0; i < 4; i++) {
+    let t = clamp(base + vec2<i32>(i & 1, i >> 1u), vec2<i32>(0), vec2<i32>(n - 1));
+    let at = o + 2 * t;
+    m[i] = vec4<f32>(
+      textureLoad(cascade_map, at, layer, 0).r,
+      textureLoad(cascade_map, at + vec2<i32>(1, 0), layer, 0).r,
+      textureLoad(cascade_map, at + vec2<i32>(0, 1), layer, 0).r,
+      textureLoad(cascade_map, at + vec2<i32>(1, 1), layer, 0).r,
+    );
+  }
+  return mix(mix(m[0], m[1], f.x), mix(m[2], m[3], f.x), f.y);
+}
+
+// The moments over the region round uv at (fractional) pyramid level
+// `level`, trilinear between levels, biased towards a fixed distribution
+// so rounding never leaves them impossible (Shadow.fx).
+fn moments_at(uv: vec2<f32>, c: u32, level: f32) -> vec4<f32> {
+  let top = moment_top();
+  let l = clamp(level, f32(MOMENT_LEVEL0), top);
+  let l0 = u32(floor(l));
+  var m = moments_level(uv, c, l0);
+  let t = l - f32(l0);
+  if (t > 0.0) { m = mix(m, moments_level(uv, c, l0 + 1u), t); }
+  return mix(m, vec4<f32>(0.0, 0.375, 0.0, 0.375), MOMENT_BIAS);
+}
+
+// The pyramid's deepest level (shadow_moments.rs `levels`): blocks of at
+// most 128 texels, at least one of them.
+fn moment_top() -> f32 {
+  return min(7.0, floor(log2(f32(textureDimensions(cascade_map).x))));
+}
+
+// The pyramid level whose kernel's variance (per axis, texels²) is v: a
+// level-l texel is a box 2^l wide read bilinearly, variance 4^l / 4.
+fn moment_level(v: f32) -> f32 {
+  return 1.0 + 0.5 * log2(max(v, 1e-6));
+}
+
+// Half the width (texels) of what level `level` reads round a point: a
+// 2^l box plus the bilinear step to its neighbours.
+fn moment_reach(level: f32) -> f32 {
+  return 1.5 * exp2(clamp(level, f32(MOMENT_LEVEL0), moment_top()));
+}
+
+// Shadow.fx Compute4MomentShadowIntensity: the share of the region nearer
+// than z (in [-1, 1]), the sharpest lower bound four moments allow
+// (Peters and Klein, "Moment Shadow Mapping", I3D 2015, Algorithm 1, with
+// the bounded support's four-delta solution).
+fn msm_shadow(b: vec4<f32>, z: f32) -> f32 {
+  let l21d11 = -b.x * b.y + b.z;
+  let d11 = -b.x * b.x + b.y;
+  let squared_variance = -b.y * b.y + b.w;
+  let d22d11 = dot(vec2<f32>(squared_variance, -l21d11), vec2<f32>(d11, l21d11));
+  let inv_d11 = 1.0 / d11;
+  let l21 = l21d11 * inv_d11;
+  var c = vec3<f32>(1.0, z, z * z);
+  c.y -= b.x;
+  c.z -= b.y + l21 * c.y;
+  c.y *= inv_d11;
+  c.z *= d11 / d22d11;
+  c.y -= l21 * c.z;
+  c.x -= dot(c.yz, b.xy);
+  let p = c.y / c.z;
+  let q = c.x / c.z;
+  let r = sqrt(max(p * p / 4.0 - q, 0.0));
+  let z1 = -p / 2.0 - r;
+  let z2 = -p / 2.0 + r;
+  var shadow: f32;
+  if (z1 < -1.0 || z2 > 1.0) {
+    let free = ((b.x - b.z) * z + b.w - b.y) / (z + b.z - b.x - b.y * z);
+    let w1 = select(0.0, 1.0, z > free);
+    let nx = w1 / ((free - z) * (free * free - 1.0));
+    let ny = 0.5 / ((free + 1.0) * (z + 1.0));
+    var poly = vec4<f32>(free * ny + nx, nx - ny, 0.0, 0.0);
+    poly.z = poly.y;
+    poly.y = poly.y * -z + poly.x;
+    poly.x *= -z;
+    poly.w = poly.z;
+    poly = vec4<f32>(-poly.x, poly.x - poly.y, poly.y - poly.z, poly.w);
+    shadow = dot(poly, vec4<f32>(1.0, b.xyz));
+  } else {
+    let sw = select(select(vec4<f32>(0.0), vec4<f32>(z, z1, 0.0, 1.0), z1 < z), vec4<f32>(z1, z, 1.0, 1.0), z2 < z);
+    let quotient = (sw.x * z2 - b.x * (sw.x + z2) + b.y) / ((z2 - sw.y) * (z - z1));
+    shadow = sw.z + sw.w * quotient;
+  }
+  return clamp(shadow, 0.0, 1.0);
+}
+
+// Shadow.fx Compute4MomentAverageBlockerDepth: the share of the region
+// nearer than z and their mean depth (x: depth in [-1, 1], y: share). A
+// region with next to no blockers answers z itself (εz0 = 1e-3, the
+// paper's eq. 4), so the filter stays at its smallest.
+fn msm_blockers(b: vec4<f32>, z: f32) -> vec2<f32> {
+  let l21d11 = -b.x * b.y + b.z;
+  let d11 = -b.x * b.x + b.y;
+  let squared_variance = -b.y * b.y + b.w;
+  let d22d11 = dot(vec2<f32>(squared_variance, -l21d11), vec2<f32>(d11, l21d11));
+  let inv_d11 = 1.0 / d11;
+  let l21 = l21d11 * inv_d11;
+  var c = vec3<f32>(1.0, z, z * z);
+  c.y -= b.x;
+  c.z -= b.y + l21 * c.y;
+  c.y *= inv_d11;
+  c.z *= d11 / d22d11;
+  c.y -= l21 * c.z;
+  c.x -= dot(c.yz, b.xy);
+  let p = c.y / c.z;
+  let q = c.x / c.z;
+  let r = sqrt(max(p * p * 0.25 - q, 0.0));
+  let z1 = -0.5 * p - r;
+  let z2 = -0.5 * p + r;
+  let w1 = (z * z2 - b.x * (z + z2) + b.y) / ((z2 - z1) * (z - z1));
+  let w2 = 1.0 - w1 - (z1 * z2 - b.x * (z1 + z2) + b.y) / ((z - z1) * (z - z2));
+  let s1 = select(0.0, w1, z1 < z);
+  let s2 = select(0.0, w2, z2 < z);
+  let share = clamp(s1 + s2, 0.0, 1.0);
+  let depth = clamp((1.0e-3 * z + s1 * z1 + s2 * z2) / (1.0e-3 + s1 + s2), -1.0, 1.0);
+  return vec2<f32>(depth, share);
+}
+
+// `uv`, `ref_depth` and `bias` as cascade_sample's; `slope`, the receiver
+// plane's depth change per texel (zero on a closed receiver, which is
+// compared a quarter texel past its depth instead, as shadow_closed says).
+fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, slope: vec2<f32>) -> f32 {
   // World units per texel, and the cascade's depth range in world units.
   let texel = bias.x;
   let depth_range = texel / max(bias.y, 1e-12);
   let softness = frame.shadow.x;
-  // How the receiver's light-space depth changes per texel along it (an
-  // open receiver's; a closed one is compared a quarter texel past its
-  // depth instead, as shadow_closed says).
-  let slope = select(bias.y * min(tan_l, 4.0), 0.0, shadow_closed);
   let reference = select(ref_depth, ref_depth + 1.25 * bias.y, shadow_closed);
-  let turn = shadow_turn(uv * size);
+  let tent = pcf_tent(cascade_map, uv, c, reference, slope);
+  // How far the receiver's own plane rises towards the light across a
+  // region reaching r texels: the plane's depth there is compared past,
+  // so the surface does not shadow itself (Peters et al. §4.4 size the
+  // bias with the filter).
+  let tilt = abs(slope.x) + abs(slope.y);
+  // The blocker search: the region the widest penumbra could come from.
   let search = clamp(softness * ref_depth * depth_range / texel, 1.0, PCSS_MAX_TEXELS);
-  var blockers = 0.0;
-  var sum = 0.0;
-  for (var i = 0; i < PCSS_TAPS; i++) {
-    let o = vogel(i, PCSS_TAPS, search, turn);
-    let at = clamp(vec2<i32>(floor(uv * size + o)), vec2<i32>(0), isize - 1);
-    let d = textureLoad(cascade_map, at, i32(c), 0).r;
-    if (d < reference - slope * length(o)) {
-      blockers += 1.0;
-      sum += d;
-    }
+  let search_level = moment_level(search * search / 4.0);
+  let z_search = 2.0 * (reference - tilt * moment_reach(search_level)) - 1.0;
+  let blockers = msm_blockers(moments_at(uv, c, search_level), z_search);
+  let blocker = 0.5 * blockers.x + 0.5;
+  // The light's disc of radius `disc` texels convolved with the hard
+  // sun's own filter, as a soft shadow is the hard one blurred by the
+  // light: their variances add (a disc's is r² / 4 per axis).
+  let disc = min(softness * max(reference - blocker, 0.0) * depth_range / texel, PCSS_MAX_TEXELS);
+  let wide = disc * disc / 4.0;
+  var lit = tent;
+  if (wide > 0.0) {
+    let v = wide + TENT_VARIANCE;
+    let first = 4.0; // level 2's variance
+    let level = select(moment_level(v), f32(MOMENT_LEVEL0), v < first);
+    let z = 2.0 * (reference - tilt * moment_reach(level)) - 1.0;
+    let soft = 1.0 - msm_shadow(moments_at(uv, c, level), z);
+    // Below the pyramid's first level, the tent's and its kernels mixed
+    // so the mixture's variance is the target's.
+    lit = mix(tent, soft, clamp(wide / (first - TENT_VARIANCE), 0.0, 1.0));
   }
-  if (blockers < 0.5) { return 1.0; }
-  let blocker = sum / blockers;
-  // The light's penumbra (its disc's radius in texels) convolved with the
-  // hard sun's own filter, as a soft shadow is the hard one blurred by the
-  // light: their variances add. pcf_tent averages two bilinear PCFs half
-  // a texel either side per axis (variance 1/4 beyond the bilinear each
-  // tap here already takes), the disc of radius r has r² / 4, so the disc
-  // that carries both has r² + 1. A soft sun is then never sharper than
-  // the hard one at contact (a texel there) and every edge is the light's
-  // width on top of the map's filter, not the larger of the two.
-  let disc = softness * (ref_depth - blocker) * depth_range / texel;
-  let penumbra = min(sqrt(disc * disc + 1.0), PCSS_MAX_TEXELS);
-  var lit = 0.0;
-  for (var i = 0; i < PCSS_TAPS; i++) {
-    let o = vogel(i, PCSS_TAPS, penumbra, turn);
-    lit += pcf(cascade_map, uv + o / size, c, reference - slope * length(o), vec2<f32>(0.0));
-  }
-  lit /= f32(PCSS_TAPS);
   let fill = frame.shadow.z;
   if (fill <= 0.0) { return lit; }
   // The light a cover scatters (frame.shadow.z, at most 0.65 of the beam)
   // leaves the cloud near-diffuse, multiply scattered: it reaches the
   // shadow as far as the sky over the receiver is open, read in the map
   // over a 45-degree cone (the cosine lobe's median angle) round the light:
-  // a disc as wide as the blockers stand above it, the share of its taps
+  // a region as wide as the blockers stand above it, the share of it
   // nothing blocks. Under a pole or a plank most of it is open and the
   // shadow fills in; under a roof, a bridge or at a box's foot it stays
   // shade (a uniform fill lit the floor under a snowed-in shelter as the
   // open snow beside it, and floated the shelter).
-  let cone = min((ref_depth - blocker) * depth_range / texel, 4.0 * PCSS_MAX_TEXELS);
-  var open = 0.0;
-  for (var i = 0; i < PCSS_TAPS; i++) {
-    let o = vogel(i, PCSS_TAPS, cone, turn + 1.3);
-    let at = clamp(vec2<i32>(floor(uv * size + o)), vec2<i32>(0), isize - 1);
-    open += select(0.0, 1.0, textureLoad(cascade_map, at, i32(c), 0).r >= reference - slope * length(o));
-  }
-  return mix(lit, 1.0, fill * open / f32(PCSS_TAPS));
+  let cone = min(max(reference - blocker, 0.0) * depth_range / texel, 4.0 * PCSS_MAX_TEXELS);
+  let cone_level = moment_level(max(cone * cone / 4.0, 4.0));
+  let z_cone = 2.0 * (reference - tilt * moment_reach(cone_level)) - 1.0;
+  let open = 1.0 - msm_shadow(moments_at(uv, c, cone_level), z_cone);
+  return mix(lit, 1.0, fill * open);
 }
 
 // One cascade's shadow at p (-1: beyond its depth, lit). The bias is in
@@ -263,12 +389,13 @@ fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) 
   // inFrustum does; the PCF taps clamp to the edge texel and would otherwise
   // extend whatever caster sits on the border across everything beyond it.
   if (sp.z > 1.0 || any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) { return -1.0; }
-  if (frame.shadow.x > 0.0) {
-    return pcss(uv, c, sp.z - bias.y, bias, sin_l / max(n_dot_l, 0.05));
-  }
-  if (!wide) { return pcf(cascade_map, uv, c, sp.z - bias.y, vec2<f32>(0.0)); }
+  let soft = frame.shadow.x > 0.0 && frame.shadow.w > 0.0;
+  if (!wide && !soft) { return pcf(cascade_map, uv, c, sp.z - bias.y, vec2<f32>(0.0)); }
   // A closed receiver: a quarter texel past its own depth, flat.
-  if (shadow_closed) { return pcf_tent(cascade_map, uv, c, sp.z + 0.25 * bias.y, vec2<f32>(0.0)); }
+  if (shadow_closed) {
+    if (soft) { return pcss(uv, c, sp.z - bias.y, bias, vec2<f32>(0.0)); }
+    return pcf_tent(cascade_map, uv, c, sp.z + 0.25 * bias.y, vec2<f32>(0.0));
+  }
   // The receiver plane, a texel along each tangent (orthographic: exact).
   let t = plane_tangents(n);
   let sb = frame.cascade_view_proj[c] * vec4<f32>(offset + t[0] * bias.x, 1.0);
@@ -281,6 +408,7 @@ fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) 
     size,
     n_dot_l,
   );
+  if (soft) { return pcss(uv, c, sp.z - bias.y, bias, slope); }
   return pcf_tent(cascade_map, uv, c, sp.z - bias.y, slope);
 }
 

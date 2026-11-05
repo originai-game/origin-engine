@@ -272,6 +272,7 @@ mod garment;
 mod garment_gpu;
 pub mod ocean_fft;
 mod shadow_cache;
+mod shadow_moments;
 mod shadows;
 pub mod shapes;
 mod skin;
@@ -532,6 +533,9 @@ pub struct Renderer {
     shelter_key: Option<u64>,
     post: post::PostPasses,
     cascade_map: ShadowMap,
+    /// The soft sun's moment pyramid's pass, made with its first soft
+    /// frame (`shadow_moments.rs`).
+    shadow_moments: Option<shadow_moments::ShadowMoments>,
     local_map: ShadowMap,
     /// The cascades' side at [`RenderQuality::shadow_map_scale`] 1 (the
     /// [`RenderDesc`]'s, clamped); [`RenderInfo::shadow_map_size`] is the

@@ -1105,6 +1105,7 @@ impl Renderer {
             previous_wind: None,
             previous_sway: Vec::new(),
             shadow_cache: Default::default(),
+            shadow_moments: None,
             shadow_cache_maps: Vec::new(),
             warned_planar: false,
             fx_groups: None,

@@ -2243,6 +2243,15 @@ impl Renderer {
             None => (0, 0),
         };
 
+        // The soft sun's moment pyramid's layers this frame
+        // (`shadow_moments.rs`; `fit_shelter_layer` made them).
+        let moments = if cascades.is_empty() {
+            0
+        } else {
+            self.moment_layers(scene)
+        };
+        let moments_first = self.frame_cascades(scene);
+
         // Uniforms.
         let mut uniform = frame::FrameUniform {
             view_proj: cam.jittered_view_proj.to_cols_array_2d(),
@@ -2300,10 +2309,10 @@ impl Renderer {
                     if cascades.is_empty() { 0.0 } else { softness },
                     (self.info.point_shadows == PointShadows::Paraboloid) as u32 as f32,
                     fill,
-                    // The shadow filters' spiral turns per drawn frame
-                    // under TAA (lighting.wgsl shadow_turn).
-                    if taa {
-                        1.0 + (self.frame_index % 16) as f32
+                    // The moment pyramid's first layer + 1, after the
+                    // cascades' (shadow_moments.rs; 0: none).
+                    if moments > 0 {
+                        1.0 + moments_first as f32
                     } else {
                         0.0
                     },
@@ -2751,6 +2760,9 @@ impl Renderer {
             )
             .chain((0..cascades.len() as u32).map(FramePass::Cascade))
             .collect();
+        if moments > 0 {
+            passes.push(FramePass::ShadowMoments);
+        }
         if shelter_redraw {
             passes.push(FramePass::Shelter);
         }
@@ -4582,6 +4594,19 @@ impl Renderer {
                     &mut stats,
                     true,
                 ),
+                FramePass::ShadowMoments => self
+                    .shadow_moments
+                    .as_ref()
+                    .expect("fit_shelter_layer made it")
+                    .encode(
+                        &self.device,
+                        &self.queue,
+                        &mut encoder,
+                        &self.cascade_map.texture,
+                        self.info.shadow_map_size,
+                        cascades.len() as u32,
+                        moments_first,
+                    ),
                 FramePass::Shelter => {
                     let s = shelter.as_ref().expect("a shelter pass has its view");
                     shadow_pass(
