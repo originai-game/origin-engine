@@ -432,11 +432,12 @@ fn a_prop_dropped_on_the_ground_breaks_where_it_lands() {
 
 #[test]
 fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_over_the_hole() {
-    // The example's charge and one either side, each big enough to take the
-    // wall's middle to its top (a smaller one leaves a sound flat arch over
-    // the hole, as brickwork does) and small enough to spare the piers'
-    // feet (one reaching the wall's ends leaves them nothing to stand on).
-    for radius in [1.7, 1.8, 1.9] {
+    // The example's charge (1.5 m, full within 0.8 m) and one either side,
+    // each big enough to take the wall's middle to its top and small enough
+    // to spare the piers' feet: a pier steps back about half a brick a
+    // course, so its height follows the width of the foot the charge
+    // leaves it.
+    for radius in [1.4, 1.5, 1.6] {
         let (w, wall) = start_with(
             "props/brick.ogt",
             json!({ "toughness": 800, "strength": 3000, "density": 1900, "tension": 0.1 }),
@@ -505,7 +506,7 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
         value(og_runtime::og_destruction_explode(
             w,
             Some(
-                json!({ "point": { "x": 0, "y": 0.3, "z": 0.15 }, "radius": radius, "innerRadius": 1.0, "damage": 6000, "impulse": 2500 })
+                json!({ "point": { "x": 0, "y": 0.3, "z": 0.15 }, "radius": radius, "innerRadius": 0.8, "damage": 6000, "impulse": 2500 })
                     .to_string(),
             ),
         ));
@@ -586,11 +587,11 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
             .collect();
         // A lone brick may fly (a blast's front is uneven); a spray of them
         // metres out is a push that does not taper.
-        let past = landed.iter().map(|p| p.0).fold(0.0, f64::max);
+        let past = landed.iter().filter(|p| p.0 > 1.5).count();
         let far = landed.iter().filter(|p| p.1 > 4.0).count();
         assert!(
-            past < 1.5 && far <= 2,
-            "radius {radius}: a piece lands {past} m past the wall's ends, {far} land over 4 m from the wall"
+            past <= 1 && far <= 2,
+            "radius {radius}: {past} pieces land over 1.5 m past the wall's ends, {far} over 4 m from the wall"
         );
         // What still stands: the chunks within 10 cm of where they were
         // before the blast (a block freed whole and resting where it stood
@@ -617,9 +618,10 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
                 .map(|&(_, y)| y)
                 .fold(0.0, f64::max)
         };
+        // Both piers stand, and one stands a third of the wall's 2.4 m.
         assert!(
-            pier(-1.0) > 0.5 && pier(1.0) > 0.5,
-            "radius {radius}: a pier stands at each end, unmoved brickwork centred above 0.5 m: {} {} of {chunks:?}",
+            pier(-1.0) > 0.5 && pier(1.0) > 0.5 && pier(-1.0).max(pier(1.0)) > 0.8,
+            "radius {radius}: a pier stands at each end, unmoved brickwork centred above 0.5 m, one above 0.8 m: {} {} of {chunks:?}",
             pier(-1.0),
             pier(1.0)
         );

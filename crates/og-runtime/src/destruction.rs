@@ -157,6 +157,9 @@ const REST_EVERY: u64 = 6;
 /// (mortar holds nothing pulled apart, so what breaks loose is its blocks,
 /// each a cluster of bricks, never a run of them bonded into a beam).
 const RUN: usize = 1;
+/// How unevenly a blast pushes the pieces near it: each takes its push
+/// times 1 ± SHARE / 2.
+const SHARE: f32 = 0.6;
 /// A blast's turn on a piece: this much of its push's speed over its size
 /// (rad/s per m/s per m), enough to open its joints as it goes, not to
 /// spin it into what stands.
@@ -164,8 +167,8 @@ const SPIN: f32 = 0.1;
 /// The fastest turn (rad/s) a blast gives a piece.
 const TURN_MAX: f32 = 12.0;
 
-/// A fixed scramble of a body's bits (splitmix64's finaliser, public
-/// domain): its own share of a blast, the same on every run and host.
+/// A fixed scramble of `x` (splitmix64's finaliser, public domain): a
+/// piece's own share of a blast, the same on every run and host.
 fn scramble(mut x: u64) -> u64 {
     x = (x ^ (x >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
     x = (x ^ (x >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
@@ -1321,18 +1324,26 @@ fn run(
                 if j <= 0.0 {
                     continue;
                 }
-                // A blast's front is not a smooth field: each piece takes
-                // its own share of the push (0.7 to 1.3 of it) and a small
-                // turn from the uneven pressure on its face, so the blocks
-                // of a wall go their own ways rather than in step. Fixed
-                // per body.
-                let r = scramble(b);
+                // A blast's front is not a smooth field near the charge:
+                // each piece there takes its own share of the push (up to
+                // SHARE either way) and a small turn from the uneven
+                // pressure on its face, both fading with the push to none
+                // at the pier feet it barely reaches, so the blocks of a
+                // wall go their own ways rather than in step and the piers
+                // keep their footing. Fixed per piece by its first chunk,
+                // so the same chunk of a model takes the same share in any
+                // scene.
+                let first = (0..p.entities.len())
+                    .find(|&c| p.entities[c] == b || (c < a.support as usize && p.body[c] == b))
+                    .unwrap_or(0);
+                let r = scramble(first as u64);
                 let u = |s: u32| ((r >> s) & 0x3ff) as f32 / 1023.0;
                 let axis = Vec3::new(u(0) - 0.5, u(10) - 0.5, u(20) - 0.5).normalize_or(Vec3::X);
                 let dir = (at - point).normalize_or(Vec3::Y);
-                let dv = dir * (j / m) * (0.7 + 0.6 * u(40));
+                let near = falloff.at(at) / impulse;
+                let dv = dir * (j / m) * (1.0 + near * SHARE * (u(40) - 0.5));
                 let size = og_core::math::pow(m / density, 1.0 / 3.0).max(0.02);
-                let dw = axis * (SPIN * dv.length() / size).min(TURN_MAX);
+                let dw = axis * (near * SPIN * dv.length() / size).min(TURN_MAX);
                 match made.get_mut(&b) {
                     Some(v) => {
                         v.0 += dv;
@@ -1981,8 +1992,9 @@ const MATERIALS: [[f32; 7]; 5] = [
     // hundreds of N·s, so a lower threshold lets falling blocks knock
     // the piers apart.
     [800.0, 3000.0, 0.7, 0.1, 1900.0, 400.0, 0.4],
-    // Concrete.
-    [2000.0, 20000.0, 0.7, 1.0, 2400.0, 150.0, 0.4],
+    // Concrete: a column's top, dropping onto its stump when its middle is
+    // shot out, lands at over 1000 N·s; below 1500 that crushes the stump.
+    [2000.0, 20000.0, 0.7, 1.0, 2400.0, 1500.0, 0.4],
     // Wood: weak across the grain, a hit spread over most of a crate.
     [120.0, 30000.0, 0.7, 1.0, 600.0, 40.0, 0.9],
     // Glass: shatters at a touch, no stress solver.

@@ -124,7 +124,7 @@ break, then as its chunks.
 | glass | 25 to 60 | 0 (no stress) | 1 | 2500 | 2 |
 | wood | 120 to 400 | 0 to 3000 | 1 | 600 | 30 to 50 |
 | brick, stone | 600 to 1000 | 2000 to 5000 | 0.1 | 1900 | 300 to 500 |
-| concrete | 1500 to 2500 | 15000 to 30000 | 1 | 2400 | 60 to 150 (150 where flying bricks reach it) |
+| concrete | 1500 to 2500 | 15000 to 30000 | 1 | 2400 | 1000 to 2000 (a column's own top, landing on its stump at over 1000 N·s, crushes it below that) |
 
 - `toughness`: how much a square metre of bond takes. A blow's `amount`
   (N·s) over a bond's area times toughness is the share of its health it
