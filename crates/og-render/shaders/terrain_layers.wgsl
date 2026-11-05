@@ -350,7 +350,9 @@ fn taps_normal(i: u32, t: PlaneTaps, w: vec3<f32>) -> TapsNormal {
     + turn2(m1.xy, t.turn[1]) / max(m1.z, 0.05) * w.y
     + turn2(m2.xy, t.turn[2]) / max(m2.z, 0.05) * w.z;
   o.normal = normalize(vec3<f32>(d, 1.0));
-  o.tone = cell_tone(m0.w + t.seed.x, s) * w.x + cell_tone(m1.w + t.seed.y, s) * w.y + cell_tone(m2.w + t.seed.z, s) * w.z;
+  o.tone = cell_tone(m0.w + t.seed.x, select(s, 0.0, m0.w == 1.0)) * w.x
+    + cell_tone(m1.w + t.seed.y, select(s, 0.0, m1.w == 1.0)) * w.y
+    + cell_tone(m2.w + t.seed.z, select(s, 0.0, m2.w == 1.0)) * w.z;
   return o;
 }
 
