@@ -1248,7 +1248,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // read the frame before: they draw its 16.
         "weather-street-wet" | "weather-puddles" => |g, name| {
             g.scene = crate::weather_scenes::weather_scene(name);
-            g.frames = crate::depth_render_scenes::SSR_FRAMES;
+            g.frames = crate::SSR_FRAMES;
             Ok(())
         },
         "weather-snow-buildup" | "weather-dust-desert" | "materials-cloth" => |g, name| {

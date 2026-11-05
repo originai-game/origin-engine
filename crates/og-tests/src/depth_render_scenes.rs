@@ -129,11 +129,7 @@ pub fn probe_scene(probe: bool) -> RenderScene {
     scene
 }
 
-/// The frames a screen-space reflection scene is drawn for before it is
-/// read: its rays read the previous frame's lit image, and the denoiser
-/// accumulates them (`og_render`'s `ssr.rs`), so the first frame reflects
-/// nothing and the reflection settles over the next few.
-pub const SSR_FRAMES: u32 = 16;
+pub use crate::SSR_FRAMES;
 
 /// `ssr-wet-floor` (module docs); `ssr` false turns the reflections off.
 pub fn ssr_scene(ssr: bool) -> RenderScene {
