@@ -112,6 +112,12 @@ fn cs_blend(@builtin(local_invocation_index) t: u32, @builtin(workgroup_id) grou
   let at = u32(gp.grid1.w) + flat * GI_STRIDE;
   let state = probes[at];
   let fresh = abs(state.w) != key || gp.blend.w > 0.5;
+  // Its last update found it inside geometry (and moved it out): what it
+  // has seen so far is the dark inside, so its light and distances start
+  // again from this update's rays, as a fresh probe's do. Kept, they
+  // would hold it dark for as long as the estimator takes to catch up (a
+  // probe on a wall's plane would mottle the wall for a hundred frames).
+  let restart = fresh || state.w == -key;
   let range = gp.blend.x;
   let first_ray = gp.misc.y + k * rays;
 
@@ -158,7 +164,7 @@ fn cs_blend(@builtin(local_invocation_index) t: u32, @builtin(workgroup_id) grou
     let word = gp.misc.z + (flat * TEXELS + t) * WORDS;
     var s = load_estimate(word);
     let y = select(s.mean, light / max(light_weight, 1e-6), light_weight > 1e-4);
-    if (fresh) {
+    if (restart) {
       s.mean = y;
       s.short_mean = y;
       s.variance = vec3<f32>(0.0);
@@ -174,7 +180,7 @@ fn cs_blend(@builtin(local_invocation_index) t: u32, @builtin(workgroup_id) grou
   let old_at = at + GI_DEPTH_AT + (t >> 1u);
   let old = select(probes[old_at].xy, probes[old_at].zw, (t & 1u) == 1u);
   var m = select(old, moments / max(moment_weight, 1e-6), moment_weight > 1e-4);
-  if (!fresh) { m = mix(old, m, gp.blend.z); }
+  if (!restart) { m = mix(old, m, gp.blend.z); }
   depth[t] = m;
   workgroupBarrier();
   if (t < GI_DEPTH * GI_DEPTH / 2u) {
