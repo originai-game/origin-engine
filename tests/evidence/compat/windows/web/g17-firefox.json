@@ -1,0 +1,50 @@
+{
+  "browser": "firefox",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:159.0) Gecko/20100101 Firefox/159.0",
+  "dprEvents": [
+    1.5,
+    2.5,
+    1.25
+  ],
+  "keys": [
+    {
+      "code": "KeyQ",
+      "key": "q"
+    },
+    {
+      "code": "KeyA",
+      "key": "a"
+    },
+    {
+      "code": "KeyZ",
+      "key": "z"
+    },
+    {
+      "code": "KeyW",
+      "key": "w"
+    },
+    {
+      "code": "KeyM",
+      "key": "m"
+    },
+    {
+      "code": "Digit1",
+      "key": "1"
+    },
+    {
+      "code": "Escape",
+      "key": "Escape"
+    }
+  ],
+  "lock": [
+    "raw:resolved",
+    "change:true"
+  ],
+  "fullscreen": [
+    "resolved",
+    "change:true"
+  ],
+  "dpr0": 2,
+  "keyboardLayoutMap": false,
+  "devicePixelRatioAfter": 1.25
+}
