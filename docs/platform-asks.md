@@ -261,7 +261,7 @@ an update API. All exports above are additions. `artBrief`, `readLook`,
 
 ## Music and sound generation from the audio brief (A9, 2026-11-05)
 
-**Ask 25, open.** origin-agent's music and sound generation takes its
+**Ask 26, open.** origin-agent's music and sound generation takes its
 requests from the engine's `audioBrief`, as its image and model generation
 takes them from `artBrief` (ask 12, `docs/art.md` §2.2), instead of
 writing prompts of its own:

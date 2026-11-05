@@ -628,7 +628,7 @@ additive contract, kept stable like it (a change is a break with a
   <dir>] [--music --mood --genre] [--premise "<line>"] [--json]`.
 
 The platform's music and sound generation (origin-agent) takes these
-requests as they are: `docs/platform-asks.md` ask 25.
+requests as they are: `docs/platform-asks.md` ask 26.
 
 ## 3. Streams
 
