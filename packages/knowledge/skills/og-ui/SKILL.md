@@ -9,6 +9,22 @@ tick, the engine lays it out, draws it in the game's UI style (a look's
 prototypes only) and answers the probe (`dump_ui`, `touch_move_to`, `move_to_text`). The API
 reference is `og api show ui`; this skill is how to use it well.
 
+## Find a starting point
+
+Run `og ui find "inventory" --json` (or search a purpose such as `party`,
+`cooldown` or `settings`). The generated catalogue lists components, patterns,
+screens, kits and styles with their source, call example and install commands.
+Its mounted copy is `catalogue/catalogue.json` beside this skill. Names are
+stable IDs; words match case-insensitively, and every word must match.
+
+These are **starting points to restyle, not finished game UI**. Keep the
+mechanics, input and localization; change typography, palette, spacing,
+hierarchy and art for the game's look. Eject documents before changing them.
+For temporary icons, `og ui add development-fallback-icons` supplies 100
+MIT-licensed vectors and a `fallbackIcons` descriptor. They are explicitly
+development assets: replace them before publishing, rather than disguising
+their asset paths. See the installed kit's `using-development-icons/SKILL.md`.
+
 ## What works
 
 Games written from this package alone (`examples/lantern-vale`,

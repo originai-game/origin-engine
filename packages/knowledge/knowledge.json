@@ -4,6 +4,7 @@
   "overlay": "origin-engine-ts",
   "mounts": [
     { "from": "skills/", "to": "game/skills/" },
+    { "from": "ui/catalogue.json", "to": "game/skills/og-ui/catalogue/catalogue.json" },
     { "from": "looks/", "to": "game/skills/og-taste/looks/" },
     { "from": "presets/", "to": "game/skills/og-taste/looks/presets/" },
     { "from": "guides/", "to": "game/skills/og-game/guides/" },

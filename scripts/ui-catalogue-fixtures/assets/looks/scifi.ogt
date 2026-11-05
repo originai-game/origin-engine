@@ -1,0 +1,5 @@
+type look
+version 1
+---
+name "Catalogue fixtures on a plain ground"
+ui "scifi"

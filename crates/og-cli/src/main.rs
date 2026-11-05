@@ -182,6 +182,9 @@ commands:
                       a contact sheet per screen and style (a row per breakpoint, a column per
                       locale) and index.json of every cell, or a filmstrip of a motion at the
                       chosen times after the screen settles (default <project>/og-out/ui-preview)
+  ui find <query> [--json] [--project DIR]
+                      search the generated component, pattern, screen, kit and style catalogue;
+                      case-insensitive words must all match; JSON returns entries (empty [] is success)
   ui eject <screen> [project] [--force] | ui eject --list [project]
                       copy one of the library's screen documents (the engine package's
                       src/ui/screens/, one for every screen type of docs/ui.md Appendix B) into

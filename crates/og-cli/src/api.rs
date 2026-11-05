@@ -65,11 +65,18 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let files = if wiki {
+    let mut files = if wiki {
         og_idl::generate_wiki(&api)
     } else {
         og_idl::generate(&api)
     };
+    match crate::ui::catalogue::generate(root, &api) {
+        Ok(file) => files.push(file),
+        Err(e) => {
+            eprintln!("og api gen: {e}");
+            return ExitCode::FAILURE;
+        }
+    }
     let written = match og_idl::write(root, &files) {
         Ok(written) => written,
         Err(e) => {
@@ -120,6 +127,22 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
 }
 
 fn api_check(root: &Path) -> ExitCode {
+    let catalogue = og_idl::read(&root.join(og_idl::IDL_PATH))
+        .map_err(|e| e.to_string())
+        .and_then(|api| crate::ui::catalogue::generate(root, &api));
+    match catalogue {
+        Ok(file)
+            if std::fs::read_to_string(root.join(&file.path)).is_ok_and(|s| s == file.contents) => {
+        }
+        Ok(file) => {
+            eprintln!("og api check: {} differs; run og api gen", file.path);
+            return ExitCode::FAILURE;
+        }
+        Err(e) => {
+            eprintln!("og api check: {e}");
+            return ExitCode::FAILURE;
+        }
+    }
     match og_idl::check(root) {
         Err(e) => {
             eprint!("og api check: {e}");

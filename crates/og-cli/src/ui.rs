@@ -38,6 +38,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::{Command, ExitCode, ExitStatus};
 
+pub mod catalogue;
 pub mod extensions;
 mod sheet;
 
@@ -58,6 +59,9 @@ const VALUED: [&str; 10] = [
 ];
 
 pub fn run(args: &[&str]) -> ExitCode {
+    if let ["find", rest @ ..] = args {
+        return catalogue::find(rest);
+    }
     if let ["sheet", rest @ ..] = args {
         return sheet::run(rest);
     }

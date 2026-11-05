@@ -111,7 +111,8 @@ rule_wasm() { echo "crates third_party $RULE_COMMON"; }
 rule_drift() {
   echo "crates/og-api $(og_crate_dirs -p og-idl -e normal,build | og_words) crates/og-cli \
 packages/engine/types packages/engine/schema packages/engine/src/generated \
-crates/og-records/src/generated crates/og-host-web/src/generated crates/og-host-node/src/generated packages/knowledge/wiki $RULE_COMMON"
+crates/og-records/src/generated crates/og-host-web/src/generated crates/og-host-node/src/generated packages/knowledge/wiki \
+packages/engine/src/ui packages/engine/extensions templates/styles packages/knowledge/ui scripts/fallback-icons.ts third_party/iconoir $RULE_COMMON"
 }
 # check-conformance: what the two checkers read (the engine package, the
 # templates, the examples), the comparer, and where the pins are stated.
@@ -644,7 +645,7 @@ step_drift() {
   if skip_unchanged drift "drift" "$(rule_drift)"; then return $SKIP; fi
   help="$(cargo run -q -p og-cli -- --help 2>&1)" || help=""
   if printf '%s\n' "$help" | grep -Eq '^[[:space:]]*api([[:space:]]|$)'; then
-    cargo run -q -p og-cli -- api check
+    cargo run -q -p og-cli -- api check && bun scripts/fallback-icons.ts --check
     return $?
   fi
   if [ "$required" = required ]; then
