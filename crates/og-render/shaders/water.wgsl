@@ -1402,8 +1402,12 @@ fn fs_ao_depth(in: WaterOut) -> @location(0) vec4<f32> {
 // point on the foam level about the camera (toroidal, so a droplet's point stays in the world as the camera moves) and
 // keeps it only where the foam is freshest (a crest breaking now) and the wind carries spray (from some 10 m/s,
 // Beaufort 5's "some spray", to a full gale's at 20 m/s; Andreas et al. 1995, "The spray contribution to net
-// evaporation from the sea"). It leaves the drawn crest with part of the crest's speed downwind and a throw upwards, and flies under gravity and the air's drag
-// towards the wind (a droplet's velocity relaxing to the air's at its response rate), in closed form.
+// evaporation from the sea"). The wind tears it off the drawn crest rather than the crest throwing it: it leaves with
+// the crest's speed downwind and a small lift, which the wind's shear flattens as it strengthens, and flies under
+// gravity and the air's drag in the wind over the sea (a droplet's velocity relaxing to the air's at its response
+// rate), in closed form. The air is the sea's wind brought down to the spray's height by the log profile over a sea
+// (Charnock's roughness, Garratt's drag coefficient), gusting along the wind, so a gale's spray streams low and
+// downwind off the crests in sheets instead of standing over them in plumes.
 //
 // Two populations: droplets over the fine foam level (64 m, sprites some 0.1 to 0.4 m), spume over the coarse one
 // (512 m, sheets some 1 to 4 m torn off the crests in a gale).
@@ -1418,6 +1422,16 @@ fn spray_hash(x: u32) -> u32 {
 
 fn spray_rand(h: u32) -> f32 {
   return f32(spray_hash(h) >> 8u) / 16777216.0;
+}
+
+// The wind's speed `z` metres over the sea under a 10 m wind of `u10` m/s: the neutral log profile
+// u(z) = u* / κ ln(z / z0), with the friction velocity from Garratt's (1977) drag coefficient
+// (Cd = (0.75 + 0.067 u10) 10⁻³) and Charnock's roughness (z0 = 0.011 u*² / g): some 0.8 of the 10 m wind at 1.5 m
+// in a gale, 0.6 at a decimetre.
+fn sea_wind_at(u10: f32, z: f32) -> f32 {
+  let ustar = u10 * sqrt((0.75 + 0.067 * u10) * 1e-3);
+  let z0 = max(0.011 * ustar * ustar / 9.81, 1e-5);
+  return u10 * log(max(z, 2.0 * z0) / z0) / log(10.0 / z0);
 }
 
 struct SprayOut {
@@ -1496,25 +1510,39 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   // Where the drawn surface carries it.
   let d = ocean_displace(rest, ts);
   let start = vec3<f32>(rest.x, water.model[3].y, rest.y) + d;
-  // Thrown off with part of the crest's speed downwind and upwards; drifting towards the wind near the surface.
+  // Torn off with the crest's speed downwind (a breaking crest of the wind sea runs at some 0.4 to 0.7 of the wind)
+  // and a small lift: the stronger the wind, the flatter its shear lays the spray (at 12 m/s a droplet rises some
+  // 0.4 m, in a gale some 0.15; the spume's sheets, heavier and caught broadside, less). (Thrown up at 1 to 7 m/s, a
+  // gale's spume stood over its crest in a plume as tall as the crest.)
   let wd = water.sea_wind.xy;
   let side = vec2<f32>(-wd.y, wd.x);
-  let along = wind * mix(0.15, 0.45, spray_rand(hm + 3u));
-  let across = wind * 0.08 * (spray_rand(hm + 4u) * 2.0 - 1.0);
-  let up = mix(1.0, 3.2, spray_rand(hm + 5u)) * mix(0.7, 1.4, gust) * select(1.0, 1.6, pop == 1u);
+  let along = wind * mix(0.4, 0.7, spray_rand(hm + 3u));
+  let across = wind * 0.06 * (spray_rand(hm + 4u) * 2.0 - 1.0);
+  let flat = mix(1.0, 0.55, smoothstep(12.0, 24.0, wind));
+  let up = mix(1.2, 3.4, spray_rand(hm + 5u)) * flat * select(1.0, 0.75, pop == 1u);
   let v0 = vec3<f32>(wd.x * along + side.x * across, up, wd.y * along + side.y * across);
-  let air = vec3<f32>(wd.x, 0.0, wd.y) * wind * 0.75;
+  // The air it flies in: the wind at a metre and a half over the crest (droplets) or half a metre (the spume's sheets,
+  // skimming), gusting along the wind: the gust noise of 40 m patches carried downwind at the wind's speed, the same
+  // for a plume's members, so neighbouring plumes stream together.
+  let gusting = 0.8 + 0.4 * foam_noise((rest - wd * wind * water.spray.y) / 40.0);
+  let air = vec3<f32>(wd.x, 0.0, wd.y) * sea_wind_at(wind, select(1.5, 0.5, pop == 1u)) * gusting;
   // The response rate (1/s): small droplets follow the air within a fraction of a second, sheets of spume slower.
   let k = select(2.2, 1.1, pop == 1u);
   let decay = (1.0 - exp(-k * tau)) / k;
-  let g = 9.81;
   var p = start + air * tau + (v0 - air) * decay;
-  p.y = start.y + (v0.y + g / k) * decay - g * tau / k;
+  // Vertically it settles at its fall speed in the gale's turbulence, which holds the spray up (droplets some 1 m/s,
+  // the spume's sheets 1.8), reached at the rate gravity sets: falling at its terminal speed in still air (g / k, 4.5
+  // and 9 m/s) a low-flying droplet was back in the sea within half a second.
+  let vs = select(1.0, 1.8, pop == 1u);
+  let kv = 9.81 / vs;
+  let ev = exp(-kv * tau);
+  p.y = start.y + (v0.y + vs) * (1.0 - ev) / kv - vs * tau;
   // The sprite: growing as the spray spreads, fading in as it leaves the crest and out as it settles or falls back.
   let rnd = spray_rand(hm + 6u);
   var size = select(mix(0.2, 0.7, rnd), mix(0.6, 2.0, rnd), pop == 1u) * (1.0 + 1.5 * tau / life);
   var alpha = smoothstep(0.0, 0.12 * life, tau) * (1.0 - smoothstep(0.55 * life, life, tau));
-  alpha *= smoothstep(start.y - 0.4, start.y + 0.2, p.y) * select(0.6, 0.55, pop == 1u) * mix(0.6, 1.0, keep) * edge;
+  // (Faded as it sinks back towards the crest's foot: the crest it left falls away under it as it flies.)
+  alpha *= smoothstep(start.y - 1.5, start.y - 0.3, p.y) * select(0.6, 0.55, pop == 1u) * mix(0.6, 1.0, keep) * edge;
   // At least a pixel and a half across: a smaller one is drawn that size with its coverage kept (no shimmer).
   let dist = length(p - frame.view_pos.xyz);
   // Spray is seen near: past some 35 m (the spume's sheets, torn off a gale's crests in
@@ -1536,7 +1564,7 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   let to_eye = normalize(frame.view_pos.xyz - p);
   let e = exp(-k * tau);
   var vel = air + (v0 - air) * e;
-  vel.y = (v0.y + g / k) * e - g / k;
+  vel.y = (v0.y + vs) * ev - vs;
   var along_v = vel - to_eye * dot(vel, to_eye);
   if (dot(along_v, along_v) < 1e-6) { along_v = cross(vec3<f32>(0.0, 1.0, 0.0), to_eye) + vec3<f32>(1e-5, 0.0, 0.0); }
   let right = normalize(along_v);
