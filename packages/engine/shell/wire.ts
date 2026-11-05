@@ -251,9 +251,14 @@ export function createWire(options: WireOptions) {
             recorder.onstop = () => {
               recorder.stream.getTracks().forEach((t) => t.stop());
               const mime = recorder.mimeType || "video/webm";
+              if (!chunks.length) return reject(new WireError("failed", "the recorder produced no data"));
               resolve({ blob: new Blob(chunks, { type: mime }), mime, durationMs: Math.round(now() - started) });
             };
-            recorder.start(1000);
+            // No timeslice: the whole recording arrives in the one dataavailable before stop. Safari
+            // (27.2) answers a stop() that lands on a timeslice's boundary with one empty chunk and
+            // drops the slice's data: start(1000) stopped at 1000 ms was empty 16 times in 16
+            // (tests/evidence/compat/safari/NOTES.md).
+            recorder.start();
             setTimeout(() => recorder.state !== "inactive" && recorder.stop(), seconds * 1000);
           });
           return { mime: made.mime, base64: await blobBase64(made.blob), durationMs: made.durationMs };
