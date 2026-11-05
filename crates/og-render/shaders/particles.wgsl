@@ -127,6 +127,36 @@ fn particle_light(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
   return c;
 }
 
+// A smooth lit mesh particle (emitter.look.w, its roughness, below 1):
+// its body `c` lit as a matte one and blended at its alpha, with what its
+// surface reflects (the sun's GGX highlight, the local lights', the sky's
+// at Schlick's Fresnel) added over it at full strength, the alpha raised to
+// carry it: glass shards that stay clear and glint where they face the
+// light, as a transparent material keeps its specular.
+fn particle_gloss(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, c: vec4<f32>, rough: f32) -> vec4<f32> {
+  var s: Surface;
+  s.albedo = vec3<f32>(0.0);
+  s.metallic = 0.0;
+  s.roughness = clamp(rough, 0.02, 1.0);
+  s.f0 = vec3<f32>(0.04);
+  s.coat = 0.0;
+  s.coat_roughness = 1.0;
+  s.coat_normal = n;
+  let v = select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let l = normalize(frame.light_dir.xyz);
+  let n_dot_l = max(dot(n, l), 0.0);
+  var shadow = 1.0;
+  if (frame.light_dir.w > 0.5) { shadow = cascade_shadow(p, n, n_dot_l); }
+  var spec = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
+  spec += surface_local_lights(frag, s, p, n, v);
+  let fres = f_schlick_roughness(max(dot(n, v), 0.0), s.f0, s.roughness);
+  spec += fres * reflected_light(reflect(-v, n), p, s.roughness * frame.params.y) * frame.params.x;
+  let body = c.rgb * particle_light(frag, p, n) * c.a;
+  let a = clamp(c.a + max(spec.r, max(spec.g, spec.b)), 0.0, 1.0);
+  if (a <= 0.0) { return vec4<f32>(0.0); }
+  return vec4<f32>((body + spec) / a, a);
+}
+
 // A billboard's normal at `facing` (ParticleOut's, the rotation applied:
 // a puff's lit side faces the light whatever its spin): a ball facing the
 // camera, so a lit puff shades away from the light. The ball spans the middle of the quad (its rim at
@@ -205,7 +235,9 @@ fn vs_mesh(p: ParticleIn, m: MeshIn) -> ParticleOut {
 @fragment
 fn fs_mesh(in: ParticleOut) -> @location(0) vec4<f32> {
   var c = in.color;
-  if (emitter.look.x > 0.5) {
+  if (emitter.look.x > 0.5 && emitter.look.w < 1.0) {
+    c = particle_gloss(in.clip.xy, in.world, normalize(in.normal), c, emitter.look.w);
+  } else if (emitter.look.x > 0.5) {
     c = vec4<f32>(c.rgb * particle_light(in.clip.xy, in.world, normalize(in.normal)), c.a);
   }
   c = vec4<f32>(apply_fog(c.rgb, in.world), c.a);

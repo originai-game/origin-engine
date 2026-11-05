@@ -42,6 +42,8 @@
 //! render billboard                  # billboard | sprite <layer> (2D: drawn as sprites)
 //!                                   #   | mesh <box | sphere | tetrahedron | "<model asset id>">
 //! lit false                         # lit by the scene's lights (3D: billboards and meshes)
+//! roughness 1                       # a lit mesh's surface: 1 matte; below it smooth, its
+//!                                   #   reflection over an alpha body (glass shards)
 //! distortion 0                      # > 0: bends the scene behind (heat haze), this fraction
 //!                                   #   of the screen at most; billboards only
 //! subEmitter death "fx/sparks.ogt" 8 0.3
@@ -488,6 +490,13 @@ pub fn parse_emitter_linked(
                     .first()
                     .and_then(Value::as_bool)
                     .ok_or_else(|| format!("line {line}: lit true | false"))?
+            }
+            "roughness" => {
+                let v = one(e)?;
+                if !(0.0..=1.0).contains(&v) {
+                    return Err(format!("line {line}: roughness is from 0 to 1"));
+                }
+                em.roughness = v;
             }
             "distortion" => {
                 let v = one(e)?;

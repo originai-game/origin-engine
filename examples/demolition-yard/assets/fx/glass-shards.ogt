@@ -1,8 +1,9 @@
 type particles
 version 1
 ---
-# breakFx and hitFx for glass: small shards that catch the light, thrown
-# off and scattered on the ground, each trailing a short glint.
+# breakFx and hitFx for glass: small shards thrown off and scattered on the
+# ground, nearly clear (a faint green body, the edge of thick glass) and
+# smooth, so each glints only where it faces the sun or the sky.
 maxParticles 512
 shape sphere 0.25
 spread 180
@@ -13,17 +14,18 @@ looping false
 lifetime 2.5 4
 speed 0.8 3
 size 0.02 0.06
-color 1.6 1.8 1.8 1
+color 0.5 0.7 0.62 0.22
 colorOverLife {
-  key 0 0.75 0.85 0.85 1
-  key 0.9 0.75 0.85 0.85 1
-  key 1 0.75 0.85 0.85 0
+  key 0 0.5 0.7 0.62 0.22
+  key 0.9 0.5 0.7 0.62 0.22
+  key 1 0.5 0.7 0.62 0
 }
+blend alpha
 rotation 0 360
 angularVelocity -700 700
 gravity 0 -9.8 0
 drag 0.05
 render mesh tetrahedron
 lit true
+roughness 0.04
 collision 0.15 0.6
-subEmitter birth "fx/glint.ogt" 1 0.9

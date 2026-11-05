@@ -195,6 +195,7 @@ array "fx/smoke.ogt" random   # sprite mode: draw from a texture array, [<layers
 round false               # sprite mode: fade each particle to a round edge over its texture or layer
 render mesh box           # or sphere | tetrahedron | "models/shard.glb": each particle a small tumbling shape (3D)
 lit true                  # billboards and meshes shaded by the sun, the sky and local lights (default false: unlit)
+roughness 0.04            # a lit mesh's surface (default 1: matte): below 1 its highlight and the sky's reflection lie over the body at full strength (glass shards)
 distortion 0.006          # billboards bend the scene behind them by up to this fraction of the screen height (heat haze 0.004 to 0.01)
 events death collision    # birth | death | collision: send og.ParticleEvent for these (simulated in the tick)
 subEmitter death "fx/pop.ogt" 12 0.3   # <birth | death | collision> "<emitter id>" <count> [<inherit velocity>], up to 4
@@ -223,7 +224,11 @@ subEmitter death "fx/pop.ogt" 12 0.3   # <birth | death | collision> "<emitter i
   look, never gameplay: particles never touch the simulation.
 - `render mesh` draws each particle as a shape (debris, shards, leaves)
   scaled by its size and turned by its rotation; `lit true` shades it
-  (and lit billboards: smoke the sun lights from one side). `distortion`
+  (and lit billboards: smoke the sun lights from one side). A lit mesh
+  with `roughness` below 1 is smooth: the sun's and the lights' highlight
+  and the sky's Fresnel reflection are added over its body at full
+  strength, so with `blend alpha` at a low alpha a shard stays clear and
+  glints only where it faces the light. `distortion`
   draws a billboard as a bend in the scene behind it rather than a colour:
   without a texture a rising waver (heat haze), with one along its red and
   green as a normal map (a shock ring), shaped by its alpha; not on a mesh

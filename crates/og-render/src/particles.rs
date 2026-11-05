@@ -427,6 +427,12 @@ pub struct ParticleEmitter {
     /// shades. A billboard is lit as a soft ball facing the camera; a mesh
     /// by its normals. 3D modes only.
     pub lit: bool,
+    /// A lit mesh's surface roughness: 1 (the default) matte; below it a
+    /// smooth surface whose reflection (the sun's highlight, the lights',
+    /// the sky's at a grazing angle) is added over the body at full
+    /// strength, so an alpha-blended body stays clear and glints where it
+    /// faces the light (glass shards, ice, wet pebbles). Meshes only.
+    pub roughness: f32,
     /// Above 0 the particles bend the image behind them instead of adding
     /// colour (heat haze, shock rings, a portal's shimmer): the opaque scene
     /// behind each one is drawn shifted by up to this fraction of the
@@ -481,6 +487,7 @@ impl Default for ParticleEmitter {
             render: ParticleRender::Billboard,
             glow: 0.0,
             lit: false,
+            roughness: 1.0,
             distortion: 0.0,
             sub_emitters: Vec::new(),
             events: Vec::new(),

@@ -195,7 +195,7 @@ fn emitter_gpu(
             e.lit as u32 as f32,
             e.distortion,
             matches!(e.render, ParticleRender::Mesh { .. }) as u32 as f32,
-            0.0,
+            e.roughness,
         ],
     }
 }
