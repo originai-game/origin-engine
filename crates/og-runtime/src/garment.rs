@@ -104,7 +104,7 @@ pub(crate) fn weld(
         draw: Vec::new(),
     };
     for &p in &prims {
-        let data = scene.mesh(scene.mesh_handle(info.base + p)?)?;
+        let data = scene.mesh(*info.meshes.get(p)?)?;
         let stream = skin.streams.iter().find(|s| s.primitive == p)?;
         if stream.joints.len() != data.vertices.len() {
             return None;
@@ -328,7 +328,7 @@ pub(crate) fn deformed(
     if posed != asset {
         return out;
     }
-    let Some(base) = fx.models.get(&asset).map(|i| i.base) else {
+    let Some(meshes) = fx.models.get(&asset).map(|i| i.meshes.clone()) else {
         return out;
     };
     let Some(w) = fx.garments.welds.get_mut(&(asset, mesh)) else {
@@ -348,11 +348,7 @@ pub(crate) fn deformed(
         let zero = match w.zero[k] {
             Some(h) => h,
             None => {
-                let Some(data) = scene
-                    .mesh_handle(base + p)
-                    .and_then(|h| scene.mesh(h))
-                    .cloned()
-                else {
+                let Some(data) = meshes.get(p).and_then(|h| scene.mesh(*h)).cloned() else {
                     continue;
                 };
                 let v = data.vertices.len();
@@ -415,7 +411,7 @@ mod tests {
         scene.add_mesh(quad(0.5, 1.0));
         let info = super::super::fx::ModelInfo {
             id: "cape.glb".into(),
-            base: 0,
+            meshes: (0..2).filter_map(|i| scene.mesh_handle(i)).collect(),
             prim_mesh: vec![3, 3],
             part_nodes: vec![],
             part_shown: vec![],

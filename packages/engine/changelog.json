@@ -144,6 +144,12 @@
         "member": "Cooked textures (COOKER_VERSION r11)",
         "change": "A mipmapped colour texture with alpha now fills its fully transparent texels from their visible neighbours (push-pull) before its mips are made, so the mips no longer average black into cut-out edges: leaf, grass and petal cards no longer darken with distance. Visible texels are unchanged. COOKER_VERSION moves r10 -> r11, so every game re-cooks every asset once at its next cook.",
         "fix": "Nothing to edit: run og cook (or any command that cooks) once; the first cook after upgrading re-cooks the whole bundle. Review frames with alpha-tested foliage at a distance."
+      },
+      {
+        "member": "glTF texture ids (<model>#tex<n>)",
+        "change": "A glTF texture outside a streaming group and an art contract is cooked once per image and use, whichever models name it, under _gltf/<image hash>-<kind>[-stream]#tex instead of <model>#tex<n>, and models loaded at run time share it (and identical meshes). A <model>#tex<n> id of such a texture no longer exists after the next cook: og.load.texture of it fails. Each model keeps its own materials (og.render.updateMaterial and setMaterialShader on one never change another).",
+        "fix": "Where game code or a scene names a glTF's texture by <model>#tex<n> (og.load.texture, og.ui.image, a sprite), load the image itself instead: place the image file under assets/ and name its own path (it cooks once beside the model's copy). og upgrade lists every line naming #tex.",
+        "find": ["#tex"]
       }
     ],
     "added": [

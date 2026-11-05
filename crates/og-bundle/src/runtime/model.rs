@@ -943,12 +943,67 @@ impl CookedModel {
         })
     }
 
+    /// [`CookedModel::add_lod_levels`] for a model added with
+    /// [`CookedModel::add_to_shared`]: a primitive whose mesh came from a
+    /// model added before (`meshes`, its answer) takes that mesh's levels, so
+    /// the shared copies batch at every level too.
+    pub fn add_lod_levels_shared(
+        &self,
+        scene: &mut RenderScene,
+        meshes: &[MeshHandle],
+        shared: &mut SharedParts,
+    ) -> Vec<Vec<(MeshHandle, f32)>> {
+        self.primitives
+            .iter()
+            .zip(meshes)
+            .map(|(p, mesh)| {
+                shared
+                    .lods
+                    .entry(*mesh)
+                    .or_insert_with(|| {
+                        (1..p.lods.len())
+                            .map(|l| (scene.add_mesh(p.mesh_compact(l)), p.lods[l].error))
+                            .collect()
+                    })
+                    .clone()
+            })
+            .collect()
+    }
+
     /// [`CookedModel::add_to`] with textures of either kind (transcoded to
     /// the device's format: [`CookedTexture::to_texture_source`]).
     pub fn add_to_with(&self, scene: &mut RenderScene, textures: &[TextureSource]) -> ModelParts {
+        self.add_to_shared(scene, textures, None).0
+    }
+
+    /// [`CookedModel::add_to_with`], sharing with the models added before
+    /// through `shared`: a texture of the same cooked id (the cook writes
+    /// one per image and use: [`gltf_texture_id`]) and a mesh of the same vertices, indices and
+    /// foliage reuse that model's handle, so copies of one tree in many
+    /// models upload once. Materials stay the model's own (an edit of one
+    /// never shows on another model), each drawn in the batches of an
+    /// identical one added before ([`RenderScene::alias_material`]), so the
+    /// copies still draw in one instanced batch. Also answers each
+    /// primitive's mesh (shared ones are not the consecutive handles a
+    /// model adds alone).
+    pub fn add_to_shared(
+        &self,
+        scene: &mut RenderScene,
+        textures: &[TextureSource],
+        mut shared: Option<&mut SharedParts>,
+    ) -> (ModelParts, Vec<MeshHandle>) {
         let handles: Vec<_> = textures
             .iter()
-            .map(|t| scene.add_texture_source(t.clone()))
+            .zip(&self.textures)
+            .map(
+                |(t, c)| match shared.as_deref_mut().filter(|_| is_shared_texture(&c.id)) {
+                    Some(s) => *s
+                        .textures
+                        .entry(c.id.clone())
+                        .or_insert_with(|| scene.add_texture_source(t.clone())),
+                    None => scene.add_texture_source(t.clone()),
+                },
+            )
             .collect();
         // Pixel art (an art contract's `ArtTexels.filter nearest`) is
         // sampled nearest, as og.load.texture samples it.
@@ -961,27 +1016,79 @@ impl CookedModel {
         // transform is added as the standard material it draws as, the
         // others in their glTF shape.
         let materials: Vec<MaterialHandle> = (0..self.materials.len())
-            .map(|i| match self.materials[i].needs_standard() {
-                false => scene.add_material(self.material(i, &handles)),
-                true => scene.add_standard_material(self.standard_material(i, &handles)),
+            .map(|i| {
+                let h = match self.materials[i].needs_standard() {
+                    false => scene.add_material(self.material(i, &handles)),
+                    true => scene.add_standard_material(self.standard_material(i, &handles)),
+                };
+                if let Some(s) = shared.as_deref_mut() {
+                    let same = s
+                        .materials
+                        .entry(self.materials[i].name.clone())
+                        .or_default();
+                    if !same.iter().any(|&o| scene.alias_material(h, o)) {
+                        same.push(h);
+                    }
+                }
+                h
             })
             .collect();
+        let foliage: Vec<_> = (0..self.primitives.len())
+            .map(|i| self.mesh_foliage(i))
+            .collect();
+        let mut added = vec![true; self.primitives.len()];
+        let mut own = Vec::new();
         let meshes: Vec<MeshHandle> = self
             .primitives
             .iter()
-            .map(|p| scene.add_mesh(p.mesh(0)))
+            .enumerate()
+            .map(|(i, p)| {
+                let mesh = p.mesh(0);
+                let Some(s) = shared
+                    .as_deref_mut()
+                    .filter(|_| mesh.vertices.len() <= SHARED_MESH_VERTICES)
+                else {
+                    return scene.add_mesh(mesh);
+                };
+                // The same vertices and indices sway alike only with the
+                // same foliage (it holds the model's top and canopy).
+                // Across models only: a model's primitives keep a mesh each
+                // (a skin or a garment finds its primitive by its mesh).
+                let key = shared_mesh_key(&mesh);
+                let same = s.meshes.get(&key).and_then(|hs| {
+                    hs.iter().copied().find(|&h| {
+                        !own.contains(&h)
+                            && scene.mesh(h).is_some_and(|m| *m == mesh)
+                            && scene.mesh_foliage(h) == foliage[i].as_ref()
+                    })
+                });
+                let h = same.inspect(|_| added[i] = false).unwrap_or_else(|| {
+                    let h = scene.add_mesh(mesh);
+                    s.meshes.entry(key).or_default().push(h);
+                    h
+                });
+                own.push(h);
+                h
+            })
             .collect();
         // Each mesh's levels as clusters, for the meshlet path (og-render's
-        // `meshlet`): its instances' levels are then picked on the GPU.
-        for (p, &m) in self.primitives.iter().zip(&meshes) {
+        // `meshlet`): its instances' levels are then picked on the GPU. A
+        // shared mesh has its own already.
+        for ((p, &m), _) in self
+            .primitives
+            .iter()
+            .zip(&meshes)
+            .zip(&added)
+            .filter(|x| *x.1)
+        {
             if let Some(c) = p.mesh_clusters() {
                 scene.set_mesh_clusters(m, Some(c));
             }
         }
         // And its foliage: an instance sways by its `sway` (0: still).
-        for (i, &m) in meshes.iter().enumerate() {
-            if let Some(f) = self.mesh_foliage(i) {
-                scene.set_mesh_foliage(m, Some(f));
+        for ((&m, f), _) in meshes.iter().zip(foliage).zip(&added).filter(|x| *x.1) {
+            if f.is_some() {
+                scene.set_mesh_foliage(m, f);
             }
         }
         let world = self.node_world();
@@ -1008,13 +1115,67 @@ impl CookedModel {
                 }
             }
         }
-        ModelParts {
-            parts,
-            nodes,
-            shown,
-            variants,
-            textures: handles,
+        (
+            ModelParts {
+                parts,
+                nodes,
+                shown,
+                variants,
+                textures: handles,
+            },
+            meshes,
+        )
+    }
+}
+
+/// A shared mesh's key ([`SharedParts`]), a word-at-a-time multiplicative
+/// hash of its vertices and indices (FxHash's mix). It only picks the
+/// meshes compared in full, so it need not resist collisions; SipHash over
+/// the same bytes was 1.5 s of a web boot that loads 1072 models.
+fn shared_mesh_key(mesh: &MeshData) -> u64 {
+    const K: u64 = 0x517c_c1b7_2722_0a95;
+    let mix = |h: u64, w: u64| (h.rotate_left(5) ^ w).wrapping_mul(K);
+    let mut h = mix(mesh.vertices.len() as u64, mesh.indices.len() as u64);
+    for bytes in [
+        bytemuck::cast_slice::<_, u8>(&mesh.vertices),
+        bytemuck::cast_slice::<_, u8>(&mesh.indices),
+    ] {
+        let (words, rest) = bytes.as_chunks::<8>();
+        for w in words {
+            h = mix(h, u64::from_le_bytes(*w));
         }
+        let mut tail = [0u8; 8];
+        tail[..rest.len()].copy_from_slice(rest);
+        h = mix(h, u64::from_le_bytes(tail));
+    }
+    h
+}
+
+/// Meshes bigger than this are not compared ([`SharedParts`]): one of a kind.
+const SHARED_MESH_VERTICES: usize = 65_536;
+
+/// What models added with [`CookedModel::add_to_shared`] share: textures by
+/// cooked id ([`is_shared_texture`] ones), meshes by vertices, indices and foliage, and a shared mesh's
+/// coarser levels; and, per material name, the materials the next model's
+/// identical ones draw in the batches of.
+#[derive(Default)]
+pub struct SharedParts {
+    textures: std::collections::HashMap<String, TextureHandle>,
+    materials: std::collections::HashMap<String, Vec<MaterialHandle>>,
+    meshes: std::collections::HashMap<u64, Vec<MeshHandle>>,
+    lods: std::collections::HashMap<MeshHandle, Vec<(MeshHandle, f32)>>,
+}
+
+impl SharedParts {
+    /// Whether the texture of this cooked id is already in the scene (its
+    /// source then need not be decoded again).
+    pub fn has_texture(&self, id: &str) -> bool {
+        self.textures.contains_key(id)
+    }
+
+    /// The shared textures with their cooked ids.
+    pub fn textures(&self) -> impl Iterator<Item = (&str, TextureHandle)> {
+        self.textures.iter().map(|(id, &h)| (id.as_str(), h))
     }
 }
 

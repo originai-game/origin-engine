@@ -34,7 +34,7 @@ fn cook(root: &Path, cache: Option<&Path>, options: &CookOptions) -> (Report, Ve
         .assets
         .iter()
         .flat_map(|a| &a.outputs)
-        .find(|o| o.id == "texture.png" || o.id == "model.gltf#tex0")
+        .find(|o| o.id == "texture.png" || o.id.starts_with("_gltf/"))
         .unwrap();
     let bytes = std::fs::read(root.join("cooked").join(&output.file)).unwrap();
     (r, bytes)

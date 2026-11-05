@@ -116,20 +116,32 @@ pub(crate) struct LoadedLut {
     pub handle: Option<og_render::LutHandle>,
 }
 
-/// One loaded model's primitives, for skinning: the scene mesh of its first
-/// primitive (they are consecutive), the glTF mesh of each primitive, and
+/// One loaded model's primitives, for skinning: the scene mesh of each
+/// primitive, the glTF mesh of each primitive, and
 /// the node of each of its parts (`og_bundle::runtime::ModelParts::nodes`)
 /// and whether each is drawn at rest (`ModelParts::shown`).
 #[derive(Clone, Debug)]
 pub(crate) struct ModelInfo {
     pub id: String,
-    pub base: usize,
+    /// The scene mesh of each primitive (shared with other models when
+    /// identical: not consecutive).
+    pub meshes: Vec<og_render::MeshHandle>,
     pub prim_mesh: Vec<u32>,
     pub part_nodes: Vec<usize>,
     pub part_shown: Vec<bool>,
     /// Per `KHR_materials_variants` variant, each part's material
     /// (`ModelParts::variants`): og.Model.variant draws with these.
     pub part_variants: Vec<Vec<og_render::MaterialHandle>>,
+}
+
+impl ModelInfo {
+    /// The primitive drawn with scene mesh `mesh` (`usize::MAX` for none).
+    pub fn primitive(&self, mesh: og_render::MeshHandle) -> usize {
+        self.meshes
+            .iter()
+            .position(|&h| h == mesh)
+            .unwrap_or(usize::MAX)
+    }
 }
 
 /// A model's skin and morph data from its `#anim` blob, and the skinned
@@ -1172,11 +1184,7 @@ fn skinned_meshes(
         if stream.is_none() && morph.is_none() {
             continue;
         }
-        let Some(mesh) = scene
-            .mesh_handle(info.base + p)
-            .and_then(|h| scene.mesh(h))
-            .cloned()
-        else {
+        let Some(mesh) = info.meshes.get(p).and_then(|h| scene.mesh(*h)).cloned() else {
             continue;
         };
         let n = mesh.vertices.len();
@@ -1335,7 +1343,7 @@ pub(crate) fn posed_model(
         if nodes.is_some_and(|n| out.drawn.get(n[k]) == Some(&false)) {
             continue;
         }
-        let p = mesh.index().wrapping_sub(info.base);
+        let p = info.primitive(mesh);
         match meshes.get(p).copied().flatten() {
             Some(skinned) => {
                 let mut inst = SkinnedInstance::new(skinned, material, world_matrix, palette);
@@ -1550,7 +1558,7 @@ pub(crate) fn crowd_model(
     let skinned: Vec<og_render::CrowdPart> = parts
         .iter()
         .filter_map(|&(mesh, material, _)| {
-            let p = mesh.index().wrapping_sub(info.base);
+            let p = info.primitive(mesh);
             meshes
                 .get(p)
                 .copied()
@@ -1584,7 +1592,7 @@ pub(crate) fn crowd_model(
         row.members.push(member);
     }
     for (k, &(mesh, material, local)) in parts.iter().enumerate() {
-        let p = mesh.index().wrapping_sub(info.base);
+        let p = info.primitive(mesh);
         match meshes.get(p).copied().flatten() {
             Some(_) => {}
             None => {

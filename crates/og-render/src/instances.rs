@@ -271,9 +271,11 @@ impl SortedInstances {
                     format!("instance {i}: material {}", k.1)
                 }));
             }
+            // A material batches under the one it is an alias of
+            // (RenderScene::alias_material): its instances join that run.
             let k = (
                 k.0 as u32,
-                k.1 as u32,
+                scene.drawn_material(k.1) as u32,
                 inst.cast_shadows,
                 crate::views::layer_of(&scene.instance_layers, i),
             );
@@ -354,7 +356,7 @@ impl SortedInstances {
             let inst = &instances[i];
             (
                 inst.mesh,
-                inst.material,
+                scene.drawn_material(inst.material.index()),
                 !inst.cast_shadows,
                 layers(i),
                 probe_of(i),
@@ -370,7 +372,7 @@ impl SortedInstances {
             let inst = &instances[i];
             let (mesh, material, cast, mask, probe) = (
                 inst.mesh.index(),
-                inst.material.index(),
+                scene.drawn_material(inst.material.index()),
                 inst.cast_shadows,
                 layers(i),
                 probe_of(i),
@@ -549,6 +551,47 @@ mod tests {
         kept.set_probes(Vec::new());
         let none = update(&mut kept, &scene);
         assert_eq!(runs(&none), vec![(crate::probe_select::NONE, 3)]);
+    }
+
+    /// Copies of one material aliased together (RenderScene::alias_material)
+    /// draw as one run of the first; an edit of either ends it: two runs,
+    /// the other copy keeping its value. A copy of another value is
+    /// refused.
+    #[test]
+    fn aliased_materials_batch_together_until_one_changes() {
+        let mut scene = RenderScene::new();
+        let mesh = scene.add_mesh(MeshData::default());
+        let [a, b, c] = [0.2, 0.2, 0.9].map(|r| {
+            scene.add_standard_material(crate::StandardMaterial {
+                roughness: r,
+                ..Default::default()
+            })
+        });
+        assert!(scene.alias_material(b, a));
+        assert!(!scene.alias_material(c, a), "another value");
+        for m in [a, b, b] {
+            scene.add_instance(mesh, m, Mat4::IDENTITY);
+        }
+        let mut kept = SortedInstances::default();
+        let mut runs = |s: &RenderScene| {
+            let sorted = kept
+                .update(s, 1, info, 3, |_, _| None, |_| false, |_| false)
+                .unwrap();
+            let runs: Vec<_> = sorted.runs.iter().map(|r| (r.material, r.count)).collect();
+            kept.restore(sorted.transforms, sorted.spheres);
+            runs
+        };
+        assert_eq!(runs(&scene), vec![(a.index(), 3)]);
+        // Editing the one aliased to splits them; b keeps its value.
+        let red = crate::StandardMaterial {
+            roughness: 0.2,
+            color: Vec3::X,
+            ..Default::default()
+        };
+        assert!(scene.set_standard_material(a, red));
+        assert_eq!(runs(&scene), vec![(a.index(), 1), (b.index(), 2)]);
+        assert_eq!(scene.standard_material(b).unwrap().roughness, 0.2);
+        assert_ne!(scene.standard_material(b).unwrap().color, Vec3::X);
     }
 
     /// Kept, refreshed or rebuilt, a frame's sorted instances are a fresh

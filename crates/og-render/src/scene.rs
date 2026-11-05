@@ -64,6 +64,10 @@ pub struct RenderScene {
     /// The glTF-shaped form of the materials added as [`Material`].
     gltf_materials: Vec<Option<Material>>,
     material_revisions: Vec<u64>,
+    /// Per material: the one it draws in the batches of
+    /// ([`RenderScene::alias_material`]), with both revisions when it was
+    /// set; it holds only while both are unchanged.
+    material_aliases: Vec<Option<(u32, u64, u64)>>,
     fonts: Vec<MsdfFont>,
     /// Bumped by [`RenderScene::set_font`].
     font_revisions: Vec<u64>,

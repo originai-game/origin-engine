@@ -32,6 +32,24 @@ pub fn mips_id(id: &str) -> String {
     format!("{id}#mips")
 }
 
+/// The id of a glTF texture cooked once per image and use, whichever models
+/// name it (outside streaming groups and art contracts): its image's hash,
+/// its kind, and whether it streams its levels (a model's
+/// `stream_textures`). Models loaded at run time share it
+/// ([`SharedParts`](super::SharedParts)).
+pub fn gltf_texture_id(image_hash: u64, kind: u32, streamed: bool) -> String {
+    let stream = if streamed { "-stream" } else { "" };
+    format!("{SHARED_TEXTURES}{image_hash:016x}-{kind}{stream}#tex")
+}
+
+/// Whether `id` names a texture [`gltf_texture_id`] made: the same bytes
+/// for every model naming it.
+pub fn is_shared_texture(id: &str) -> bool {
+    id.starts_with(SHARED_TEXTURES)
+}
+
+const SHARED_TEXTURES: &str = "_gltf/";
+
 impl MipChain {
     /// The blob section `mips` (three little-endian u32s), as the cook
     /// writes it.

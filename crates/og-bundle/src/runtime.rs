@@ -5,7 +5,8 @@
 //! A [`Bundle`] is the cook manifest (`cooked/.cook.ogt`) read as an index:
 //! asset id to output file, type and cook stamp. Every load names an asset id
 //! (the source path under `assets/`, `assets/` prefix optional; a glTF's
-//! textures are `<model>#tex<n>`), finds the output in the manifest and
+//! textures are `<model>#tex<n>`, or [`gltf_texture_id`] where the cook
+//! writes one per image and use), finds the output in the manifest and
 //! refuses a blob whose type, schema version or cook stamp disagrees with it
 //! (`docs/design.md` §6). Bytes come from the host (`fetch` on the web); on
 //! native targets [`Bundle::open`] and the `load_*` methods read files.

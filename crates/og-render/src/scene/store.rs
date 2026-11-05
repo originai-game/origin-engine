@@ -35,6 +35,7 @@ impl RenderScene {
             shaders: Vec::new(),
             gltf_materials: Vec::new(),
             material_revisions: Vec::new(),
+            material_aliases: Vec::new(),
             fonts: Vec::new(),
             font_revisions: Vec::new(),
             instances: Vec::new(),
@@ -1449,6 +1450,46 @@ impl RenderScene {
         self.gltf_materials[i] = None;
         self.material_revisions[i] += 1;
         true
+    }
+
+    /// Draws `copy` in the batches of `of` while neither changes: two
+    /// materials of one value (models that each hold their own copy of one
+    /// glTF material) draw in one instanced batch. Copy-on-write: any edit
+    /// of either (a `set_*`, a shader, a removed texture or the removal of
+    /// either) ends it, and each draws as its own from that frame on, so an
+    /// edit of one never shows on the other. False, and nothing changes,
+    /// unless both are live and draw the same now (equal values, no
+    /// material shader).
+    pub fn alias_material(&mut self, copy: MaterialHandle, of: MaterialHandle) -> bool {
+        let live = |h: MaterialHandle| self.material_slots.live(h.index(), h.generation());
+        if !live(copy) || !live(of) {
+            return false;
+        }
+        let (c, o) = (copy.index(), self.drawn_material(of.index()));
+        let unshaded = |i: usize| self.material_shaders.get(i).is_none_or(Option::is_none);
+        if c == o || self.materials[c] != self.materials[o] || !unshaded(c) || !unshaded(o) {
+            return false;
+        }
+        if self.material_aliases.len() <= c {
+            self.material_aliases.resize(c + 1, None);
+        }
+        let revisions = &self.material_revisions;
+        self.material_aliases[c] = Some((o as u32, revisions[c], revisions[o]));
+        true
+    }
+
+    /// The material index material `i`'s instances batch under: the one
+    /// [`RenderScene::alias_material`] gave it while that holds, else its own.
+    pub(crate) fn drawn_material(&self, i: usize) -> usize {
+        match self.material_aliases.get(i).copied().flatten() {
+            Some((o, rc, ro))
+                if self.material_revisions[i] == rc
+                    && self.material_revisions[o as usize] == ro =>
+            {
+                o as usize
+            }
+            _ => i,
+        }
     }
 
     /// Adds one instance (the same as pushing onto [`RenderScene::instances`]).

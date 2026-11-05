@@ -456,9 +456,14 @@ fn a_streamed_texture_cooks_its_mip_tail_and_its_whole_chain() {
             whole.ktx2.len()
         ));
     }
+    // A glTF's texture is cooked once per image and use, under the id its
+    // model names (`_gltf/<image hash>-<kind>-stream#tex`).
+    let gltf_tex = b.load_model("tex/m.gltf").unwrap().textures[0].id.clone();
+    assert!(gltf_tex.starts_with("_gltf/") && gltf_tex.ends_with("-stream#tex"));
     let (tail, whole) = (
-        b.load_texture("tex/m.gltf#tex0").unwrap(),
-        b.load_texture("tex/m.gltf#tex0#mips").unwrap(),
+        b.load_texture(&gltf_tex).unwrap(),
+        b.load_texture(&og_cook::runtime::mips_id(&gltf_tex))
+            .unwrap(),
     );
     assert_eq!(
         (

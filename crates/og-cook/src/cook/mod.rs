@@ -819,6 +819,12 @@ pub fn cook_project_with_texture_cache(
 
     // Plan every output with its stamp.
     let mut plan: Vec<Planned> = Vec::new();
+    // glTF textures of models outside streaming groups are cooked once per
+    // image and use, whichever models use them: a scene exported in many
+    // glTFs (cells, tiles) repeats its images in every file, and a copy per
+    // model multiplied the cooked bytes, the load's transcoding and the
+    // GPU's memory (og-runtime's add_gltf shares them by these ids).
+    let mut planned_textures = std::collections::HashSet::new();
     for (si, s) in sources.iter().enumerate() {
         if s.error.is_some() {
             continue;
@@ -866,9 +872,29 @@ pub fn cook_project_with_texture_cache(
                     }
                 };
                 let mut ids = Vec::new();
+                let grouped = group_of.contains_key(&s.rel);
                 for (i, u) in g.textures.iter().enumerate() {
-                    let id = format!("{}#tex{i}", s.rel);
                     let image_hash = hash_bytes(&g.images[u.image]).to_le_bytes();
+                    // One cooked texture per image and use: its kind, and
+                    // whether it streams its levels (a model's
+                    // `stream_textures` splits it into a tail and a chain).
+                    // A model's own unless an art contract makes it depend
+                    // on the model (a density is per metre of the model) or
+                    // it is in a streaming group's pack.
+                    let shared = !grouped && texture_desc.is_empty();
+                    let id = if shared {
+                        crate::runtime::gltf_texture_id(
+                            u64::from_le_bytes(image_hash),
+                            u.kind,
+                            stream_textures,
+                        )
+                    } else {
+                        format!("{}#tex{i}", s.rel)
+                    };
+                    if shared && !planned_textures.insert(id.clone()) {
+                        ids.push(id);
+                        continue;
+                    }
                     // A density is per metre of the model: its hash too.
                     let kind = u.kind.to_le_bytes();
                     let st = |word: &[u8]| {

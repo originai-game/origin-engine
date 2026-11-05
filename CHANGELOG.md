@@ -50,6 +50,26 @@ is one line here, written at the merge that changes
   surfaces at grazing angles, alpha-tested casters or cut-out textures
   move.
 
+- **Models share identical textures and meshes (PR #8: s24, s72).** The
+  cook writes a glTF texture outside a streaming group and an art contract
+  once per image and use (`_gltf/<image hash>-<kind>#tex`, `-stream` for a
+  `stream_textures` model's), whichever models name it, instead of once per
+  model (`<model>#tex<n>`): a scene exported as many glTFs (cells, tiles)
+  cooks, downloads, transcodes and uploads each image once (Grand View
+  Garden: cooked bytes 1.5 GB -> 791 MB). At load, unstreamed models share
+  those textures and meshes of the same vertices, indices and foliage (and
+  their levels of detail), and a model's materials, still its own, draw in
+  the instanced batch of an identical material loaded before
+  (`RenderScene::alias_material`, copy-on-write: an edit of either ends
+  it), so one tree in many cells draws in one batch while
+  `og.render.updateMaterial` on one model's material never changes another
+  model. A shared mesh's key is a word-at-a-time hash (SipHash over every
+  mesh was 1.5 s of a 1072-model web boot). `og dev` decodes a shared
+  texture again in place when its output changes. No IDL change. Breaking:
+  a glTF texture's `<model>#tex<n>` id is gone after the next cook (the
+  release's breaking entry; `og upgrade` lists the lines naming `#tex`).
+  Frames do not change.
+
 - **Stylise: conformed art under a tone curve, washes and fading strokes.**
   The quantise tells conformed art by the lit colour before exposure and
   the tone curve, so a tone-mapped look keeps it unstepped too.

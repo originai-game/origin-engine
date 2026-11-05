@@ -51,6 +51,7 @@ mod scatter_model_space;
 mod scene_string;
 mod seabed;
 mod shadow_flags;
+mod shared_models;
 mod sky_off;
 mod sprite_arrays;
 mod stream_chunked;

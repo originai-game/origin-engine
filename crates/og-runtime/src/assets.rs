@@ -491,6 +491,12 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
         };
         let mut textures = Vec::with_capacity(model.textures.len());
         for t in &model.textures {
+            // A texture another unstreamed model loaded (the cook writes one
+            // per image and use, under one id) is shared, not decoded again.
+            if group.is_none() && eng.render.borrow().shared.has_texture(&t.id) {
+                textures.push(og_render::TextureSource::Rgba(super::stream::placeholder()));
+                continue;
+            }
             textures.push(texture(&t.id)?);
         }
         // The impostor's atlases: a model whose atlases are missing draws
@@ -568,6 +574,9 @@ fn scatter_meshes(
 /// `impostor` holds its impostor's atlases (albedo, normal, and the
 /// material atlas when it was baked), when it
 /// has one. Answers the asset index and the model's textures in the scene.
+/// A registered, unstreamed model shares identical textures and meshes with
+/// the models loaded before, and its materials, its own, draw in the
+/// batches of identical ones (og_bundle's `SharedParts`).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn insert_model(
     eng: &Engine,
@@ -588,7 +597,7 @@ pub(crate) fn insert_model(
         None => id.clone(),
     };
     let mut rs = eng.render.borrow_mut();
-    // The model's primitives become consecutive scene meshes from here.
+    // The meshes the model adds itself start here (the others are shared).
     let base = rs.scene.mesh_count();
     let mut prim_mesh = vec![0u32; model.primitives.len()];
     for (m, mesh) in model.meshes.iter().enumerate() {
@@ -599,7 +608,13 @@ pub(crate) fn insert_model(
         }
     }
     let material_base = rs.scene.material_count();
-    let parts = model.add_to_with(&mut rs.scene, textures);
+    // Unstreamed models share identical textures and meshes with those
+    // loaded before (a streamed one swaps its own stand-ins in place).
+    let (parts, prim_meshes) = {
+        let rs = &mut *rs;
+        let shared = (registered && group.is_none()).then_some(&mut rs.shared);
+        model.add_to_shared(&mut rs.scene, textures, shared)
+    };
     for (h, t) in parts.textures.iter().zip(&model.textures) {
         rs.decoded.ids.insert(*h, t.id.clone());
     }
@@ -610,23 +625,30 @@ pub(crate) fn insert_model(
         Vec::new()
     };
     // Each primitive's raycast BVH, cooked into the blob: loaded with the
-    // mesh, so the first og.render.raycast builds nothing.
+    // mesh, so the first og.render.raycast builds nothing (a mesh shared
+    // with a model loaded before has its own already).
     for (p, prim) in model.primitives.iter().enumerate() {
-        if let Some(h) = rs.scene.mesh_handle(base + p) {
+        if let Some(&h) = prim_meshes.get(p)
+            && h.index() >= base
+        {
             super::geometry::adopt_cooked_bvh(&mut rs, h, prim)
                 .map_err(|e| format!("{source}: primitive {p}: {e}"))?;
         }
     }
-    // The coarser levels of detail join the scene after the full meshes, so
-    // the model's primitives stay consecutive from `base`. A streamed model
-    // draws its proxy (one level) and then its full meshes without levels.
+    // The coarser levels of detail join the scene after the full meshes (a
+    // shared mesh's are shared too). A streamed model draws its proxy (one
+    // level) and then its full meshes without levels.
     let lods = match group {
         Some(_) => None,
         None => {
-            let levels = model.add_lod_levels(&mut rs.scene);
-            let prim_of = |mesh| {
-                (0..model.primitives.len()).find(|&p| rs.scene.mesh_handle(base + p) == Some(mesh))
+            let levels = match registered {
+                true => {
+                    let rs = &mut *rs;
+                    model.add_lod_levels_shared(&mut rs.scene, &prim_meshes, &mut rs.shared)
+                }
+                false => model.add_lod_levels(&mut rs.scene),
             };
+            let prim_of = |mesh| prim_meshes.iter().position(|&m| m == mesh);
             // Each part's levels with their errors in the model's units: a
             // part's node scale is folded in.
             let parts: Vec<Vec<(og_render::MeshHandle, f32)>> = parts
@@ -683,11 +705,9 @@ pub(crate) fn insert_model(
         }
     };
     let stand_in = group.as_ref().map(|_| {
-        let meshes: Vec<_> = (0..model.primitives.len())
-            .filter_map(|p| {
-                let h = rs.scene.mesh_handle(base + p)?;
-                Some((h, rs.scene.mesh(h)?.clone()))
-            })
+        let meshes: Vec<_> = prim_meshes
+            .iter()
+            .filter_map(|&h| Some((h, rs.scene.mesh(h)?.clone())))
             .collect();
         let materials: Vec<_> = rs
             .scene
@@ -717,8 +737,9 @@ pub(crate) fn insert_model(
             .unwrap_or(0);
         if !geometries.contains(&handle(g)) {
             geometries.push(handle(g));
-            let bake = (0..model.primitives.len())
-                .find(|&p| rs.scene.mesh_handle(base + p) == Some(mesh))
+            let bake = prim_meshes
+                .iter()
+                .position(|&m| m == mesh)
                 .and_then(|p| model.primitives[p].collider.clone());
             baked.extend(bake.map(|b| (handle(g), b)));
         }
@@ -753,7 +774,7 @@ pub(crate) fn insert_model(
         handle(index),
         super::fx::ModelInfo {
             id: id.clone(),
-            base,
+            meshes: prim_meshes,
             prim_mesh,
             part_nodes: parts.nodes,
             part_shown: parts.shown,
@@ -836,6 +857,16 @@ pub(crate) fn refresh(eng: &Engine) -> (Vec<String>, Vec<String>) {
             })
             .collect()
     };
+    // The textures models share (assets the models name, not their own
+    // `#` outputs): decoded again in place when theirs changed, so every
+    // model naming one draws the edit.
+    let shared: Vec<(og_render::TextureHandle, String, Vec<u64>)> = {
+        let (rs, assets) = (eng.render.borrow(), eng.assets.borrow());
+        rs.shared
+            .textures()
+            .map(|(id, h)| (h, id.to_string(), outputs(&assets, id)))
+            .collect()
+    };
     // Every manifest is read again, models or not: timelines and the
     // other assets read again after this compare against it.
     {
@@ -854,6 +885,23 @@ pub(crate) fn refresh(eng: &Engine) -> (Vec<String>, Vec<String>) {
         }
     }
     let (mut loaded, mut failed) = (Vec::new(), Vec::new());
+    for (h, id, before) in shared {
+        if outputs(&eng.assets.borrow(), &id) == before {
+            continue;
+        }
+        let decoded = decode(eng, &id);
+        let mut rs = eng.render.borrow_mut();
+        match decoded {
+            Fetch::Ready((source, _)) => super::stream::replace_texture(&mut rs.scene, h, source),
+            Fetch::Pending => {
+                rs.scene.set_texture(h, super::stream::placeholder());
+                rs.decoded.pending.push((h, id.clone()));
+            }
+            Fetch::Failed(e) => failed.push(format!("{id}: {e}")),
+        }
+        drop(rs);
+        super::stream::mips::reset(eng, h);
+    }
     for (index, id, before) in models {
         let now = outputs(&eng.assets.borrow(), &id);
         if now.is_empty() || now == before {
