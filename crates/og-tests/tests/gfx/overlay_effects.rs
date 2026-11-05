@@ -1330,21 +1330,28 @@ fn ssr_reflection_does_not_trail_a_moving_object() {
 /// (about x 772..789, y 505..518) is the wall all the way through. A march
 /// that drops such rays (the thickness test, or iterations spent crawling
 /// along the occluder) leaves a black block there with a bright rim where
-/// its neighbours' filtered reads caught a lamp.
+/// its neighbours' filtered reads caught a lamp. Black is a fifth of the
+/// patch's upper quartile (the wall's reflection: about luma 31 since the
+/// split sum's exact Fresnel at this grazing angle, 47 before; its own dark
+/// details stay above 7.9), so how bright the reflection is does not
+/// decide, and a hole over most of the patch still counts.
 #[test]
 fn ssr_ray_out_from_behind_an_occluder_hits_the_surface_past_it() {
     let desc = scenes::base_desc();
     let scene = og_tests::weather_scenes::weather_scene("weather-street-wet");
     let img = frame(&desc, &scene, 24).0;
-    let (mut black, mut rim) = (0, 0);
+    let mut lumas = Vec::new();
     for y in 505..518 {
         for x in 772..789 {
             let [r, g, b] = region_mean(&img, x..x + 1, y..y + 1);
-            let luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-            black += usize::from(luma < 15.0);
-            rim += usize::from(luma > 180.0);
+            lumas.push(0.2126 * r + 0.7152 * g + 0.0722 * b);
         }
     }
+    let mut sorted = lumas.clone();
+    sorted.sort_by(|a, b| a.total_cmp(b));
+    let upper = sorted[sorted.len() * 3 / 4];
+    let black = lumas.iter().filter(|&&l| l < 0.2 * upper).count();
+    let rim = lumas.iter().filter(|&&l| l > 180.0).count();
     println!("puddle past the barrier's foot: {black} black px, {rim} rim px");
     assert!(
         black <= 4 && rim <= 2,

@@ -243,10 +243,18 @@ fn dust_settles_and_weathering_0_keeps_a_material_as_it_is() {
     );
 }
 
+/// How far apart two dry halves' spreads may be and still be alike: half a
+/// grey level. A dry ground's spread is under one (0.0013 to 0.0028 on
+/// metal, 2026-11-05: quantisation), so a tenth of it, the bound before,
+/// failed on noise when the split sum's grazing specular dimmed the far
+/// ground; puddles spread 0.03 to 0.1.
+const DRY_ALIKE: f32 = 0.5 / 255.0;
+
 /// Puddles fill a surface's own hollows first: a ground whose AO map is
 /// dark (a hollow) on its left and white (a crest) on its right, lit the
 /// same (aoMapIntensity 0), takes more standing water on its left. Dry,
-/// the two halves are alike.
+/// the two halves are alike: both flat, their spreads within half a grey
+/// level ([`DRY_ALIKE`]) of each other.
 #[test]
 fn puddles_fill_the_low_parts_of_a_surface_first() {
     let relief = TextureData {
@@ -278,7 +286,7 @@ fn puddles_fill_the_low_parts_of_a_surface_first() {
         ..SurfaceWeather::default()
     }));
     println!("dry {dry:?}, puddled {wet:?}");
-    assert!((dry.0 - dry.1).abs() < 0.1 * dry.0, "dry halves alike");
+    assert!((dry.0 - dry.1).abs() < DRY_ALIKE, "dry halves alike");
     // Standing water mirrors the sky over the dark wet ground: the half
     // that holds it is a mottle, the other an even wet grey.
     assert!(
@@ -408,10 +416,7 @@ fn puddles_on_a_terrain_fill_its_layers_hollows_first() {
         ..SurfaceWeather::default()
     }));
     println!("terrain: dry {dry:?}, puddled {wet:?}");
-    assert!(
-        (dry.0 - dry.1).abs() < 0.1 * dry.0.max(0.01),
-        "dry halves alike"
-    );
+    assert!((dry.0 - dry.1).abs() < DRY_ALIKE, "dry halves alike");
     assert!(
         // (The crests take a fine drying mottle of their own: the hollows'
         // standing water still mottles them well over 1.4 times as much;
