@@ -1,7 +1,7 @@
 //! Probe global illumination (`docs/design.md` §2.6): dynamic diffuse
 //! global illumination (Majercik et al., "Dynamic Diffuse Global
-//! Illumination with Ray-Traced Irradiance Fields", JCGT 2019) in camera-
-//! centred cascades, traced in software against a simplified scene
+//! Illumination with Ray-Traced Irradiance Fields", JCGT 2019) in cascades
+//! that scroll ahead of the camera, traced in software against a simplified scene
 //! (`gi_scene.rs`), the path Lumen takes where there is no hardware ray
 //! tracing. A port of Wicked Engine's DDGI (MIT,
 //! `third_party/wicked-ddgi`); NVIDIA's RTXGI is under the NVIDIA RTX SDK
@@ -34,9 +34,10 @@
 //!
 //! The cascades are [`COUNTS`] probes each, the first
 //! [`ProbeGlobalIllumination::spacing`] apart, each next one twice as far
-//! apart: on the world's cells of their spacing, so a camera moving
-//! through a cell's width moves the grid by one plane of probes and the
-//! rest keep what they hold. Cascade `c` updates a `2^c`-th of its probes a
+//! apart, centred [`AHEAD`] of their extent ahead of the camera: on the
+//! world's cells of their spacing, so a camera moving or turning through
+//! a cell's width moves the grid by one plane of probes and the rest keep
+//! what they hold. Cascade `c` updates a `2^c`-th of its probes a
 //! frame (all of them on the first frame).
 
 use crate::gi_scene::{GiScene, Placed, Source};
@@ -72,6 +73,12 @@ impl Default for ProbeGlobalIllumination {
 
 /// The most cascades.
 pub const CASCADES: usize = 4;
+/// How far ahead of the camera a cascade's centre lies, as a share of its
+/// extent along each axis ([`plan`]): looking along an axis, five of its
+/// sixteen cells, so the camera sits three to four cells in from the face
+/// behind it, clear of the fade over a cascade's outer two cells, and the
+/// cascade reaches nine cells ahead at full weight.
+const AHEAD: f32 = 0.3125;
 /// Each cascade's probes along x, y and z.
 pub const COUNTS: [u32; 3] = [16, 8, 16];
 /// The header rows after the light volumes' (`gi_common.wgsl`).
@@ -151,12 +158,20 @@ pub(crate) struct Slice {
     pub first_ray: u32,
 }
 
-/// The cascades of `desc` around the camera at `eye`, their probes from
-/// vec4 `region`, and the slices frame `frame` updates (`reset`: every
-/// probe of every cascade).
+/// The cascades of `desc` for the camera at `eye` looking along unit
+/// `forward`, their probes from vec4 `region`, and the slices frame
+/// `frame` updates (`reset`: every probe of every cascade).
+///
+/// Each cascade is centred [`AHEAD`] of its extent ahead of the eye,
+/// not on it: what the frame shows lies ahead, so a camera-centred grid
+/// spends half its probes behind the camera and lights the surfaces it
+/// looks at from the next, twice as coarse cascade. A camera 8 m from a
+/// room's back wall lit it from 1.5 m probes instead of 0.75 m ones and
+/// lost a third of the red wall's bleed on the floor and walls beside it.
 pub(crate) fn plan(
     desc: &ProbeGlobalIllumination,
     eye: Vec3,
+    forward: Vec3,
     region: usize,
     frame: u64,
     reset: bool,
@@ -170,7 +185,8 @@ pub(crate) fn plan(
     let mut first_ray = 0u32;
     for c in 0..n {
         let spacing = desc.spacing.max(0.05) * (1 << c) as f32;
-        let centre = (eye / spacing).floor().as_ivec3();
+        let ahead = forward * Vec3::from(COUNTS.map(|c| c as f32)) * (spacing * AHEAD);
+        let centre = ((eye + ahead) / spacing).floor().as_ivec3();
         cascades.push(Cascade {
             start: centre - counts / 2,
             spacing,
@@ -562,6 +578,7 @@ impl GiProbes {
         }
         self.desc = Some(desc);
         let eye = scene.camera.position;
+        let forward = (scene.camera.target - eye).normalize_or_zero();
         let placed = placed(scene, &mut self.scene, eye);
         self.scene.update(&placed, |s| match s {
             Source::Mesh(i, _) => scene
@@ -596,7 +613,7 @@ impl GiProbes {
                 bytemuck::cast_slice(&words[at..]),
             );
         }
-        let (cascades, slices) = plan(&desc, eye, region, self.frame, reset);
+        let (cascades, slices) = plan(&desc, eye, forward, region, self.frame, reset);
         let rays = rays(&desc);
         let probes = cascades.len() * probes_per_cascade();
         // A reset traces every probe at once.
@@ -769,8 +786,8 @@ mod tests {
     fn a_scrolled_grid_keeps_its_cells_where_they_were() {
         let counts = IVec3::new(16, 8, 16);
         let desc = ProbeGlobalIllumination::default();
-        let (a, _) = plan(&desc, Vec3::new(-3.2, 1.0, 40.5), 0, 0, false);
-        let (b, _) = plan(&desc, Vec3::new(-2.2, 1.0, 40.5), 0, 0, false);
+        let (a, _) = plan(&desc, Vec3::new(-3.2, 1.0, 40.5), Vec3::NEG_Z, 0, 0, false);
+        let (b, _) = plan(&desc, Vec3::new(-2.2, 1.0, 40.5), Vec3::NEG_Z, 0, 0, false);
         assert_eq!(b[0].start - a[0].start, IVec3::X);
         let cells = |s: IVec3| {
             (0..counts.x).flat_map(move |x| {
@@ -797,6 +814,35 @@ mod tests {
         assert_eq!(moved, 8 * 16, "one plane of probes");
     }
 
+    /// What the camera looks at is lit by the finest cascade at full
+    /// weight (gi_probes.wgsl `gi_cascade`'s fade over the outer two
+    /// cells), and so is the camera's own spot: gi-room's camera, 8 m in
+    /// front of the back wall, saw that wall from the second cascade's
+    /// 1.5 m probes while half the first cascade lay behind it.
+    #[test]
+    fn the_finest_cascade_covers_what_the_camera_looks_at() {
+        let weight = |c: &Cascade, p: Vec3| {
+            let g = p / c.spacing - c.start.as_vec3();
+            let top = Vec3::from(COUNTS.map(|n| n as f32)) - 1.0;
+            (g.min(top - g).min_element() * 0.5).clamp(0.0, 1.0)
+        };
+        let desc = ProbeGlobalIllumination {
+            spacing: 0.75,
+            cascades: 2,
+            ..Default::default()
+        };
+        let (eye, target) = (Vec3::new(0.0, 2.2, 6.0), Vec3::new(0.0, 0.9, -1.0));
+        let (c, _) = plan(&desc, eye, (target - eye).normalize(), 0, 0, false);
+        assert_eq!(weight(&c[0], eye), 1.0, "under the camera");
+        for p in [
+            Vec3::new(-2.5, 1.5, -2.4),
+            Vec3::new(2.5, 0.0, -2.4),
+            Vec3::new(0.0, 0.0, 1.0),
+        ] {
+            assert!(weight(&c[0], p) >= 0.9, "{p}: {}", weight(&c[0], p));
+        }
+    }
+
     /// Cascade c updates a 2^c-th of its probes a frame, so every probe
     /// over 2^c frames, each once; a reset updates them all at once, and
     /// the slices' rays lie one after another.
@@ -811,7 +857,7 @@ mod tests {
             let period = 1u32 << c;
             let mut seen = vec![0u32; probes_per_cascade()];
             for frame in 0..period as u64 {
-                let s = plan(&desc, Vec3::ZERO, 0, frame, false).1[c];
+                let s = plan(&desc, Vec3::ZERO, Vec3::NEG_Z, 0, frame, false).1[c];
                 assert_eq!(s.period, period);
                 for k in 0..s.probes {
                     seen[(s.phase + k * s.period) as usize] += 1;
@@ -819,10 +865,17 @@ mod tests {
             }
             assert!(seen.iter().all(|&n| n == 1), "cascade {c}");
         }
-        let (_, all) = plan(&desc, Vec3::ZERO, 0, 5, true);
+        let (_, all) = plan(&desc, Vec3::ZERO, Vec3::NEG_Z, 0, 5, true);
         assert!(all.iter().all(|s| s.period == 1 && s.probes == 2048));
         assert_eq!(all[2].first_ray, 2 * 2048 * 64);
-        let (c, _) = plan(&desc, Vec3::new(100.0, 0.0, 0.0), 1000, 0, false);
+        let (c, _) = plan(
+            &desc,
+            Vec3::new(100.0, 0.0, 0.0),
+            Vec3::NEG_Z,
+            1000,
+            0,
+            false,
+        );
         assert_eq!(c[1].first, 1000 + 2048 * STRIDE);
         assert_eq!(c[2].spacing, 4.0);
         assert_eq!(region_vec4s(&desc), 3 * 2048 * STRIDE);

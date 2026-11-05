@@ -1091,7 +1091,11 @@ S6).
   `third_party/wicked-ddgi`; `gi_probes.rs`, `gi_*.wgsl`).
   - **Probes.** Cascades of 16 × 8 × 16 probes scroll with the camera,
     `probeSpacing` apart in the first cascade and twice as far in each
-    next one. Cascade c relights 1/2^c of its probes a frame.
+    next one. Each is centred 0.3125 of its extent ahead of the camera,
+    so what the frame shows is lit by the finest cascade. Centred on the
+    camera, half the grid lay behind it, and a room's far wall took its
+    colour bleed from probes twice as coarse. Cascade c relights 1/2^c
+    of its probes a frame.
   - **Tracing.** Each probe traces `probeRays` rays in software through a
     two-level BVH of the scene, simplified to at most 8192 triangles a
     mesh and 129² samples a terrain (`gi_scene.rs`). WebGPU has no
@@ -1115,10 +1119,20 @@ S6).
     it. The screen GI's bounce and the contact shadows' masks use the
     same channels, so either one turns the bent normals off.
   - **Radiance Cascades** were measured against the probes and not
-    ported (`tests/evidence/gi-area/NOTES.md`). In a BVH a short interval
-    still costs 57% of a full ray, so world-space RC needs about 6× the
-    probes' tracing, and screen-space RC reaches no further than the
+    ported (`tests/evidence/gi-area/NOTES.md`,
+    `tests/evidence/gi-rest/NOTES.md`). In a BVH a short interval still
+    costs 57% of a full ray, so world-space RC needs about 6× the probes'
+    tracing. Lighting from a 0.2 m emitter was no closer to the reference
+    than DDGI at the same spacing (0.61 against 0.60 mean relative error).
+    Split RC, the newest 3D variant, needs hardware rays and still leaks
+    below its spacing. Screen-space RC reaches no further than the
     screen GI.
+  - **Leaks and cost.** Walls a twentieth of the probe spacing leak under
+    0.1% of the light outside, so the visibility is complete. RTXGI is
+    under the NVIDIA RTX SDK licence, so it is cited, not ported. On
+    Metal at 1080p, gi-room-probes' tracing takes 1.7 ms. The lit pass's
+    reading of 8 probes a cascade takes about 6 ms, the next thing to
+    optimise.
 - **The live sky (R3).** While the background is the per-pixel sky
   (`Background::Procedural`: og.Sky, og.DayNight, og.PhysicalSky,
   og.Clouds) and no environment map replaces it, the image-based light

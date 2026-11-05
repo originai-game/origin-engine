@@ -13,10 +13,11 @@
 //          bias and w the view bias (in spacings)
 //   per cascade c, rows 1 + 2c and 2 + 2c: (its first cell, spacing) and
 //          (its probes along x, y, z, its first probe's vec4)
-// A cascade is a camera-centred grid of probes on the world's cells of its
-// spacing: the probe of world cell w sits at w × spacing (plus its
-// relocation offset) and is stored at slot w mod counts, so the grid
-// scrolls with the camera without moving what it keeps. A probe's record
+// A cascade is a grid of probes ahead of the camera (gi_probes.rs `plan`)
+// on the world's cells of its spacing: the probe of world cell w sits at
+// w × spacing (plus its relocation offset) and is stored at slot w mod
+// counts, so the grid scrolls with the camera without moving what it
+// keeps. A probe's record
 // (GI_STRIDE vec4):
 //   0: its state: xyz its offset (spacings), w its key (+ active, - inside
 //      geometry, 0 never traced): which world cell the slot holds now
