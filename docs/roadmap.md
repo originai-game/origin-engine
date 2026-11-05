@@ -187,7 +187,7 @@ run on Claude Fable 5.1 (AGENTS.md).
 | W7, a deterministic CPU FFT band for buoyancy | deferred | — |
 | wgpu 31 | upstream unpublished (`docs/release.md` F5) | — |
 
-**Implemented, below target** (PowerVR's 1:1 linear-sample error was fixed with `sample_exact` for post passes at 2a5ac7165, Metal 481/481 unmoved, with a webgpu-android smaa reference. SSSR met its 2 ms target on 2026-11-05, b4d1c9506: half-resolution denoiser and a joint bilateral upsample, rough metal 3.85 → 1.60 ms, wet street 3.62 → 1.52 ms, mirror 2.57 → 0.97 ms; `ssrResolution` defaults to `half`)
+**Implemented, below target** (neon-vector closed on 2026-11-05: the outline owns silhouette edges at 481203728, and the wireframe takes the surface's colour or `wireframeColor` at 5ccff020f. PowerVR's 1:1 linear-sample error was fixed with `sample_exact` for post passes at 2a5ac7165, Metal 481/481 unmoved, with a webgpu-android smaa reference. SSSR met its 2 ms target on 2026-11-05, b4d1c9506: half-resolution denoiser and a joint bilateral upsample, rough metal 3.85 → 1.60 ms, wet street 3.62 → 1.52 ms, mirror 2.57 → 0.97 ms; `ssrResolution` defaults to `half`)
 
 | Item | Now | Target or problem | Thread |
 |---|---|---|---|
@@ -197,7 +197,6 @@ run on Claude Fable 5.1 (AGENTS.md).
 | First frame | terrain 7–12 s on DX12 after the corner cache; the Pixel's first frame 14–17 s | the shader compile budget; measured at the wave's end and in §3 | web boot [T-01a1a707](https://ampcode.com/threads/T-01a1a707-5055-70bb-ae28-ae6fad4e0388) |
 | Crowds at 50k | 24.35 ms a frame (cull 0.30 ms) | prepass 10–13 ms and main pass 10 ms dominate | — |
 | Watercolour look | reads as oil: the Kuwahara picks dark low-variance sectors; Bousseau rims made it muddier | a watercolour primitive (Bousseau, MNPR) | Fable: [T-01a1aaad-12fe](https://ampcode.com/threads/T-01a1aaad-12fe-75c0-b190-6d9c79b16005) |
-| neon-vector | the doubled silhouette edge is fixed on main at 481203728; the wireframe on interior creases is plain white beside the texture's borders | the wire takes the surface's colour at the edge or the look's line colour | [T-01a1aaa2-fedd](https://ampcode.com/threads/T-01a1aaa2-fedd-7001-99f9-052f974ca1ab) |
 | Destruction looks | pillar shells fixed at 784328ee0; rubble chips at f83a7439e (thick convex chips in the cut-face material, no more additive confetti) | last round: lit mesh particles default to alpha blending (a CHANGELOG break), broken brick bonds shed clay and mortar chips; then the area closes | [T-01a1a830](https://ampcode.com/threads/T-01a1a830-c145-7314-bf21-5deb23366ee8) |
 | World polish | landed at 349f7f3af (setts, specks, gale spray, weather, lake grit ring and glitter, doodle paper; 16 references re-recorded); sunlit-lake frames move with the glitter | next round: per-stone sett tone, tighter glitter, stronger spindrift | [T-01a1aaee](https://ampcode.com/threads/T-01a1aaee-c40f-716b-890d-206155d44796) |
 | og.motion | the jump's pitch is clamped, not fixed at the source; the wave goal idles at 12 s | — | [T-cd152924](https://ampcode.com/threads/T-cd152924-03dd-42d3-a4dc-b5ef6716af67) |
