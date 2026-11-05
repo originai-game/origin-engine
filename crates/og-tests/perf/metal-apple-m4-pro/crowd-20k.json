@@ -1,0 +1,10 @@
+{
+  "scene": "crowd-20k",
+  "tier": "metal",
+  "adapter": "Apple M4 Pro",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [13.017, 13.495, 13.640, 13.669, 13.882, 14.026, 14.266],
+  "frame_ms": 13.017
+}
