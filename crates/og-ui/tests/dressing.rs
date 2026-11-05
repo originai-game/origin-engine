@@ -1422,3 +1422,145 @@ dress "Poem.placeholder" {
         );
     }
 }
+
+/// A selected part's rim is its mark: it draws over the item's art (a
+/// selected inventory slot's frame over the sword that fills it), where an
+/// unselected part's rim stays under its content
+/// (`a_rim_draws_before_content_and_raised_badges`).
+#[test]
+fn a_selected_parts_rim_draws_over_its_items_art() {
+    let mut ui = ui_with_font(test_font_metrics());
+    let blue = Srgba::rgb(0, 0, 255);
+    ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+    ui.open(
+        "Slot",
+        Element {
+            width: Size::Fixed(80.0),
+            height: Size::Fixed(80.0),
+            part: Some(PartRef::new("Slot", "frame", ElementClass::Slot).flag("selected")),
+            ..Element::column()
+        },
+    );
+    ui.set_draw(og_ui::paint::ElementDraw {
+        strokes: vec![og_ui::paint::Stroke {
+            width: 4.0,
+            align: og_ui::paint::StrokeAlign::Inside,
+            dash: [0.0; 2],
+            dash_offset: 0.0,
+            dash_cap: og_ui::paint::Cap::Butt,
+            paint: og_ui::paint::Paint::Solid(Srgba::rgb(0, 255, 0).into()),
+        }],
+        ..Default::default()
+    });
+    ui.container(
+        "Art",
+        Element {
+            width: Size::grow(),
+            height: Size::grow(),
+            background: Some(blue),
+            ..Element::default()
+        },
+        |_| {},
+    );
+    ui.close();
+    ui.end();
+    let items = &ui.frame().items;
+    let art = items
+        .iter()
+        .position(|i| i.cmd.filled().is_some_and(|(_, c)| near(c, blue)))
+        .expect("the art");
+    let rim = items
+        .iter()
+        .position(|i| matches!(&i.cmd, DrawCmd::Shape { shape, .. } if matches!(shape.mode, og_render::UiMode::Stroke(_))))
+        .expect("the rim");
+    assert!(rim > art, "the selected rim ({rim}) over the art ({art})");
+}
+
+/// A focus ring draws over everything around its control: the next
+/// control in a tight column and the fade of the scroll it sits in both
+/// came after it and covered its edge.
+#[test]
+fn a_focus_ring_draws_over_its_neighbours_and_its_scrolls_fade() {
+    let mut ui = ui_with_font(test_font_metrics());
+    let build = |ui: &mut Ui, input: InputFrame| {
+        ui.begin(input, Viewport::new(800.0, 600.0));
+        ui.scroll(
+            "List",
+            ScrollDesc {
+                width: Size::Fixed(300.0),
+                height: Size::Fixed(150.0),
+                fade: 32.0,
+                ..ScrollDesc::default()
+            },
+            |ui| {
+                for k in 0..8 {
+                    ui.button(
+                        format!("B{k}"),
+                        "Go",
+                        ButtonDesc {
+                            width: Some(Size::grow()),
+                            ..ButtonDesc::default()
+                        },
+                    );
+                }
+            },
+        );
+        ui.end();
+    };
+    build(&mut ui, InputFrame::default());
+    build(
+        &mut ui,
+        InputFrame {
+            keys: vec![UiKey::Tab],
+            ..InputFrame::default()
+        },
+    );
+    build(&mut ui, InputFrame::default());
+    let f = ui.frame();
+    let b0 = f.element("List/B0").expect("B0").clone();
+    assert!(b0.states.iter().any(|s| s == "focused"), "B0 has focus");
+    let b1 = f.element("List/B1").expect("B1").clone();
+    let center = |c: &DrawCmd| match c {
+        DrawCmd::Shape { shape, .. } => Some((shape.center.x, shape.center.y, shape.half.x)),
+        DrawCmd::Quad { rect, .. } => Some((
+            rect.x + rect.width / 2.0,
+            rect.y + rect.height / 2.0,
+            rect.width / 2.0,
+        )),
+        _ => None,
+    };
+    let (b0x, b0y) = b0.center();
+    let ring = f
+        .items
+        .iter()
+        .rposition(|i| {
+            matches!(&i.cmd, DrawCmd::Shape { shape, .. } if matches!(shape.mode, og_render::UiMode::Stroke(_)))
+                && center(&i.cmd).is_some_and(|(x, y, hx)| {
+                    (x - b0x).abs() < 1.0 && (y - b0y).abs() < 1.0 && hx > b0.width / 2.0
+                })
+        })
+        .expect("B0's focus ring");
+    let (b1x, b1y) = b1.center();
+    let next = f
+        .items
+        .iter()
+        .rposition(|i| {
+            i.cmd.filled().is_some()
+                && center(&i.cmd)
+                    .is_some_and(|(x, y, _)| (x - b1x).abs() < 1.0 && (y - b1y).abs() < 1.0)
+        })
+        .expect("B1's fill");
+    let fade = f
+        .items
+        .iter()
+        .rposition(|i| matches!(&i.cmd, DrawCmd::Shape { shape, .. } if matches!(shape.paint, og_render::UiPaint::Gradient(_))))
+        .expect("the list's fade");
+    assert!(
+        ring > next,
+        "the ring ({ring}) over the next button ({next})"
+    );
+    assert!(
+        ring > fade,
+        "the ring ({ring}) over the scroll's fade ({fade})"
+    );
+}
