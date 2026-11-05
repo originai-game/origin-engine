@@ -1,22 +1,22 @@
 // The install test inside an InstaBox machine (docs/release.md §3 and §4
 // stage D): the development sandbox the platform's threads run on
 // (dashboard.instabox.sh), checked the way an author's machine and the
-// linux-x64 container are, from the registry or from the release tarballs.
+// linux-x64 container are, from the release archives.
 //
-//   bun tests/install/instabox.ts --version <v> (--registry | --from <dir>) [--manifest <manifest.json>]
+//   bun tests/install/instabox.ts --version <v> --from <dir> [--record <release.json>] [--pubkey <key>] [--core]
 //                                 [--template agent-browser] [--machine <id>] [--keep]
 //
 // It creates a machine from the template (agent-browser, the one the free
 // plan creates from; 4 vCPU, 8 GiB, a 20 GiB /data: the account's one
 // spec), installs bun 1.4.4 beside the machine's node and
 // git as tests/install/Dockerfile does and nothing of the engine, uploads
-// run.ts (and, from the tarballs, the four packages in 8 MiB parts: a file
+// run.ts and the linux-x64 archive with SHA256SUMS (in 8 MiB parts: a file
 // write is 10 MiB at most), runs `run.ts --host-only` there in the
 // background (a foreground command is capped at ten minutes and its output
 // is not streamed), follows its log, and deletes the machine unless --keep
 // (a failed run keeps it to look at; --machine reuses one, a kept one for
 // instance, instead of creating it). With
-// --manifest the pass is recorded as verified.instabox. The key is
+// --record the pass is recorded in release.json as verified.instabox. The key is
 // INSTABOX_API_KEY in the environment, read by the SDK; it never reaches
 // the machine (commands travel through the API), and the machine takes no
 // Vault secrets (vault: false), so nothing of it is worth keeping.
@@ -34,8 +34,9 @@ const opt = (name: string): string | undefined => {
 const flag = (name: string) => args.includes(name);
 const VERSION = opt("--version");
 const FROM = opt("--from") ? resolve(opt("--from")!) : undefined;
-const REGISTRY = flag("--registry");
-const MANIFEST = opt("--manifest") ? resolve(opt("--manifest")!) : undefined;
+const RECORD = opt("--record") ? resolve(opt("--record")!) : undefined;
+const PUBKEY = opt("--pubkey");
+const CORE = flag("--core");
 const TEMPLATE = opt("--template") ?? "agent-browser"; // the one template the free plan creates from; a paid plan may name universal
 const MACHINE = opt("--machine");
 const KEEP = flag("--keep");
@@ -44,8 +45,8 @@ const HERE = dirname(new URL(import.meta.url).pathname);
 const PART = 8 << 20;
 const RUN_TIMEOUT_MS = 30 * 60_000;
 
-if (!VERSION || (!FROM && !REGISTRY)) {
-  process.stderr.write("usage: bun tests/install/instabox.ts --version <v> (--registry | --from <dir>) [--manifest <file>] [--template <id>] [--machine <id>] [--keep]\n");
+if (!VERSION || !FROM) {
+  process.stderr.write("usage: bun tests/install/instabox.ts --version <v> --from <dir> [--record <release.json>] [--pubkey <key>] [--core] [--template <id>] [--machine <id>] [--keep]\n");
   process.exit(2);
 }
 if (!process.env.INSTABOX_API_KEY) {
@@ -91,7 +92,7 @@ async function upload(sbx: Sandbox, local: string, remote: string): Promise<void
 }
 
 async function main(): Promise<void> {
-  const source = REGISTRY ? "registry" : "tarballs";
+  const source = "archives";
   let sbx: Sandbox;
   if (MACHINE) {
     log(`connecting to ${MACHINE}`);
@@ -120,23 +121,21 @@ async function main(): Promise<void> {
       if (v) throw new Error(`the machine has ${env}=${v}; the install test wants none`);
     }
 
-    // run.ts and, from the tarballs, the packages, under HOME (/data/home on
+    // run.ts and the archive, under HOME (/data/home on
     // the persistent disk; /data itself is not the guest user's).
     log("uploading");
     const REMOTE = `${(await sh(sbx, "echo $HOME")).trim()}/og-install`;
-    await sh(sbx, `rm -rf ${REMOTE} && mkdir -p ${REMOTE}/tgz ${REMOTE}/fixtures`);
+    await sh(sbx, `rm -rf ${REMOTE} && mkdir -p ${REMOTE}/release ${REMOTE}/fixtures`);
     await upload(sbx, join(HERE, "run.ts"), `${REMOTE}/run.ts`);
     await upload(sbx, join(HERE, "fixtures", "tone.mp3"), `${REMOTE}/fixtures/tone.mp3`);
-    if (FROM) {
-      for (const name of ["engine", "engine-linux-x64", "create-game"]) {
-        const f = join(FROM, `origingame-${name}-${VERSION}.tgz`);
-        if (!existsSync(f)) throw new Error(`no ${f}`);
-        await upload(sbx, f, `${REMOTE}/tgz/${basename(f)}`);
-      }
+    for (const name of [`origin-engine-${VERSION}-x86_64-unknown-linux-gnu.tar.gz`, "SHA256SUMS", "SHA256SUMS.minisig"]) {
+      const f = join(FROM, name);
+      if (!existsSync(f)) throw new Error(`no ${f}`);
+      await upload(sbx, f, `${REMOTE}/release/${basename(f)}`);
     }
 
     // The test, in the background, its log followed from here.
-    const inner = ["bun", `${REMOTE}/run.ts`, "--version", VERSION!, "--host-only", ...(REGISTRY ? ["--registry"] : ["--from", `${REMOTE}/tgz`])].join(" ");
+    const inner = ["bun", `${REMOTE}/run.ts`, "--version", VERSION!, "--host-only", "--from", `${REMOTE}/release`, ...(CORE ? ["--core"] : []), ...(PUBKEY ? ["--pubkey", PUBKEY] : [])].join(" ");
     log(`$ ${inner}`);
     await sbx.commands.run(`export PATH="$HOME/.bun/bin:$PATH"; cd /tmp && (${inner} > ${REMOTE}/log 2>&1; echo $? > ${REMOTE}/exit)`, { background: true });
     let offset = 0;
@@ -157,10 +156,10 @@ async function main(): Promise<void> {
     if (exit !== "0") throw new Error(`run.ts exited ${exit} in the machine`);
     passed = true;
     log(`PASS in ${sbx.sandboxId} (${TEMPLATE}, ${source})`);
-    if (MANIFEST) {
-      const m = JSON.parse(readFileSync(MANIFEST, "utf8")) as { verified?: Record<string, unknown> };
+    if (RECORD) {
+      const m = JSON.parse(readFileSync(RECORD, "utf8")) as { verified?: Record<string, unknown> };
       m.verified = { ...m.verified, instabox: { at: new Date().toISOString(), platform: `linux-x64 (instabox ${TEMPLATE})`, machine: sbx.sandboxId, source } };
-      writeFileSync(MANIFEST, `${JSON.stringify(m, null, 2)}\n`);
+      writeFileSync(RECORD, `${JSON.stringify(m, null, 2)}\n`);
     }
   } finally {
     if (KEEP || !passed) {

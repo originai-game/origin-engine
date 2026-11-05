@@ -1,4 +1,4 @@
-# Release: public packages first, the local loop, the development sandbox on InstaBox, E2B last
+# Release: signed archives at /downloads/engine, the local loop, the development sandbox on InstaBox, E2B last
 
 Normative for how the engine leaves this repository and how the rest of
 the work to launch is ordered. `docs/design.md` is the design, `docs/ci.md`
@@ -9,7 +9,110 @@ and the plan of what is still to be developed and tested, in order, with
 what passes each step. The platform's side of the same plan is
 `origingame/goals/origin-engine/plan.md` §四 (decision E10).
 
-## 1. The decision (owner, 2026-10-22)
+## 1. The decision (owner, 2026-11-05): the engine releases itself
+
+**The engine is no longer published to npm.** Every version is released
+as signed archives at `https://origingame.ai/downloads/engine/<version>/`,
+one per target, and that is what an author's `og`, the platform's
+runner, Origin Desktop, the development sandbox and an E2B image install.
+The versions already on npm (0.1.0 to 0.7.7, and 0.7.8-dev.17) stay
+there as they are; nothing is published to npm again. This replaces the
+channel of the decision of 2026-10-22 (below): its order (local first,
+then the development sandbox, E2B last) and the pin as a version string
+still hold. The contract is shared with the platform (the download route,
+the upload endpoint, the mirror) and origin-agent (the runner, the
+server, Desktop), in the plan "引擎自发版：/downloads/engine 取代 npm"
+(ampcode.com artifact 8a19fae0).
+
+**What a version is.** Under `/downloads/engine/`:
+
+| Path | What | Cache |
+|---|---|---|
+| `<version>/origin-engine-<version>-<target>.tar.gz` | one target's dist, its root directory `origin-engine-<version>-<target>/` | immutable |
+| `<version>/manifest.json` | `{version, releasedAt, revision, channel: "release"\|"dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig", targets: {<target>: {url, sha256, size}}}` | immutable |
+| `<version>/SHA256SUMS`, `<version>/SHA256SUMS.minisig` | every archive's sha256, signed with the engine's key (below) | immutable |
+| `latest/manifest.json` | the newest release (never a dev build) | no-cache |
+| `install.sh`, `install.ps1` | install the `og` launcher (`packages/launcher`) | no-cache |
+
+`<version>` is `x.y.z` or a dev build `x.y.z-dev.n` (`channel: "dev"`).
+The targets are `x86_64-unknown-linux-gnu`, `aarch64-apple-darwin` and
+`x86_64-pc-windows-msvc`, each a `.tar.gz` (Windows 10 and later carry
+`tar.exe`). `revision` is the commit the version was built from.
+
+**The dist** (one archive's root; `scripts/release-dist.ts` assembles it,
+and it runs unpacked, with no npm and no `bun install`):
+
+- `origin-engine.json`: the scaffold overlay's `origin-engine.json` with
+  `build {package, version, revision, target, triple, og, addon, wasm,
+  wasmPublish, wasmPublish2d, wasmLanes}` (the sha256 of each binary);
+- `overlay/`: the knowledge's `game-scaffold/origin-engine-ts`;
+- `files/<path>`: the binaries `distribution.json` names, sha256-checked;
+- `archetypes/<name>/`: every archetype, as stored (`gitignore`, `gitattributes`);
+- `bin/og` (`bin/og.exe` on Windows);
+- `engine/`: what `@origingame/engine` carried (src, types, schema,
+  shell, `dist/web*`, `knowledge/`, `styles/`, motion weights) with
+  `native/origin-engine.<platform>.node`; this is `OG_ENGINE_PACKAGE`;
+- `create/`: the project templates and `bin/create.ts` (`og new` runs it;
+  `bin/brief.ts` is the art brief the platform calls);
+- `design/`: `tokens.json` and `design-language.md` (from 0.7.8; the
+  package was never on npm);
+- `node_modules/@tsrs/<platform>/`: the type checker `og check` finds
+  beside the engine (none on Windows, where og check uses tsgo).
+
+Two names inside differ from the plan and are deliberate: the addon and
+tsrs keep the node platform names (`origin-engine.linux-x64.node`,
+`@tsrs/linux-x64-gnu`), because every version's loader (`src/node`,
+`og check`) looks for those; `build.target` is that platform
+(`linux-x64`, what origin-agent's layout reader already uses) and
+`build.triple` the archive's target. `create/` and `design/` are added,
+so that `og new`, the art brief and the design tokens need no npm either.
+
+**The release key** is a minisign (Ed25519) pair, the owner's,
+2026-11-05:
+
+```text
+untrusted comment: minisign public key F6CC11AC12997D89
+RWSJfZkSrBHM9kOnWQNC0WoGXEFI+9NMCj8+Wy6WJDkYl9pgPGkoCoxt
+```
+
+The secret key is the project secret `OG_ENGINE_MINISIGN_KEY` of
+`origingame/origin-engine` (the unencrypted key file's content); signing
+writes it to a 0600 temporary file for `minisign` and removes it after,
+and it is never a file in this repository. The public key is pinned by
+the launcher (`packages/launcher/og.ts`, whose installers refuse to build
+with another), by the platform's upload endpoint and mirror, and by
+origin-agent's runner. A new key is a new launcher and a note to both.
+
+**Publishing** is an upload to the platform (`scripts/release.sh
+publish`, §3), which verifies the signature and every sha256, serves the
+files and refuses to overwrite a version. There is no GitHub release
+and no npm publish (the owner, 2026-11-05).
+
+**The cache** every consumer shares is `$ORIGIN_ENGINE_CACHE` (default
+`~/.cache/origin-engine`), a version at `engines/<version>/<target>/`
+(the archive's root). An install downloads `SHA256SUMS` and its
+signature, verifies it with the pinned key, downloads the archive and
+checks its sha256 against the signed list, unpacks into a temporary
+directory and renames it into place: a version is complete or absent, and
+nothing writes into it after. Its files keep the archive's modes and are
+not made read-only: every released version's own tools copy files out of
+the dist and keep the modes they copy (create's template files, `og
+build`'s publish wasm, `snippets/` and `basis/`), so read-only files made a
+new game's `project.ogt` unwritable and a second `og build` fail (found by
+the install test, 2026-11-05).
+
+**The launcher.** An author installs `og` once (`curl -fsSL
+https://origingame.ai/downloads/engine/install.sh | sh`, or `irm
+…/install.ps1 | iex`: `~/.origin/bin/og`). It reads `project.ogt`'s
+`engine "<v>"`, installs that version into the cache when it is missing,
+and runs that version's `og` with `OG_ENGINE_PACKAGE` set; `og new`
+scaffolds a game (the latest release, or `--engine <v>`), `og upgrade`
+moves the pin, and `og engine install <v> | list | path | prune` manages
+the cache. A game has no `node_modules`: `og` keeps `.og/engine` (ignored
+by Git) pointing at the engine it runs with, and the templates'
+`tsconfig.json` maps `@origingame/engine` there for editors.
+
+### The decision of 2026-10-22 (its npm channel replaced on 2026-11-05)
 
 **The engine is consumed as public npm packages pinned by version, developed
 and tested locally against them, then in the development sandbox, and only
@@ -412,18 +515,34 @@ changed fails as "re-record" (`--update`). A change that moves the
 simulation on purpose sets `simulation: "changed"` in the same merge and
 re-records the goldens, so the published entry says it.
 
-**`scripts/release.sh`** (§4 row R3), one verb per step of the path:
+**`scripts/release.sh`** (§4 row R3), one verb per step of the path
+(from 2026-11-05: archives at /downloads/engine, §1; no npm, no GitHub
+release):
 
 ```sh
 scripts/release.sh bump <version>     # every occurrence of the version, CHANGELOG.md's heading
-scripts/release.sh pack               # on the Mac: OG_RELEASE=1 pack.sh --linux-x64 (the wasm once, the engine with knowledge/, the darwin-arm64 and linux-x64 platform packages), then create-game, into dist/release/<version>/ with manifest.json
+scripts/release.sh pack               # on the Mac: OG_RELEASE=1 pack.sh --linux-x64, create-game, design as tarballs (build intermediates), then archive
 # on studio-win, Git Bash, the same commit: OG_RELEASE=1 sh packages/engine/scripts/build.sh --native && sh packages/engine/scripts/pack.sh --native
-scripts/release.sh manifest <dir>     # on the Mac, after copying the win32-x64 tarball into dist/release/<version>/: one manifest over the five
-scripts/release.sh verify [--registry] [--instabox]  # the install test (below) from the tarballs, or from the registry after publishing; --instabox once more inside an InstaBox machine
-scripts/release.sh publish            # npm publish, the three platform packages first, then engine, create-game, design; git tag v<version>; prints the install line
-gh workflow run release.yml --ref main  # a fallback when a machine is unavailable: the same pack on GitHub-hosted runners (below)
-scripts/release.sh fetch <run-id>     # that run's release-<version> artifact into dist/release/<version>/
+#   then copy packages/engine/dist/pack/origingame-engine-win32-x64-<v>.tgz into the Mac's dist/release/<v>/
+scripts/release.sh archive            # scripts/release-dist.ts: an archive per target, manifest.json, a release's install.sh/install.ps1, SHA256SUMS, signed when OG_ENGINE_MINISIGN_KEY is set
+scripts/release.sh pack <version>     # a version npm carries (0.5.0 and later, 0.7.8-dev.17): its published tarballs, integrity-checked, archived (the backfill)
+scripts/release.sh verify [<v>] [--core] [--instabox]  # the install test (below) from the archives, host and linux-x64 container; --core for a backfill
+scripts/release.sh sign [<v>]         # sign again over archives in place (a thread that has OG_ENGINE_MINISIGN_KEY); the install test's passes stand
+scripts/release.sh publish [<v>]      # the platform's upload: PUT SHA256SUMS, SHA256SUMS.minisig, every listed file, then POST publish (OG_PLATFORM_ENGINE_UPLOAD_TOKEN)
+gh workflow run release.yml --ref main  # a fallback when a machine is unavailable: the same tarballs on GitHub-hosted runners
+scripts/release.sh fetch <run-id>     # that run's tarballs into dist/release/<version>/, archived here
 ```
+
+`publish` refuses a dirty pack, a missing target, an unsigned
+`SHA256SUMS` or one that does not verify with §1's key, archives the
+install test has not passed on this machine and in the container (a dev
+build from `release.sh dev` excepted), and for the checkout's version a
+HEAD whose packaged inputs moved since the pack. The platform verifies the
+signature and every sha256 again, checks the manifest (version, channel,
+each target's url and sha256) and refuses to overwrite a published
+version; `latest/` and the installers move only with a newer release.
+Every archive is at most 210 MiB (the platform's request limit; `archive`
+refuses a larger one).
 
 **The pack runs on the Amp runners, not on Actions (the owner,
 2026-11-01).** CI is never a precondition of a release and nothing runs
@@ -504,29 +623,27 @@ machine is free, `verify --registry --instabox` (D4).
 
 **The install test** (`tests/install/`, bun; §4 row R4) is what `verify`
 runs, on this machine (darwin-arm64) and in a `node:22-bookworm-slim`
-container with bun (linux-x64, the executor's platform), from the tarballs
-or the registry:
+container with bun (linux-x64, the executor's platform), from the archives
+in `dist/release/<v>/`, served to the launcher as a channel laid out like
+`/downloads/engine/`; no npm and no `bun install` anywhere:
 
-1. an empty directory; `bun add` the engine (and, from tarballs, the
-   platform package and the create-game tarball) at the version;
-2. `bunx create-game demo --name Demo --no-prompt`, then `bun install` in
-   it, with no `OG_ENGINE_PACKAGE`, `OG_NATIVE_ADDON` or `ORIGIN_OG_BIN`
-   in the environment;
-3. `bunx og --version` prints the version; `og doctor` passes (bun, the
-   package, the addon, both wasm files, tsrs beside the package; the
-   renderer line is `none` in the container and not a failure);
-4. `og check`, `og test` (the template's two playtests; frames unchecked
-   in the container, checked on this machine), `og build --publish`
-   (`og-build.json` names the version, the publish wasm's sha256 equals
-   the tarball's);
-5. `--archetype runner` once more through steps 2 to 4;
-6. the knowledge inside the installed engine (`knowledge/validate.ts`), and
-   `knowledge/scripts/mount.ts --package <the engine package> --check`
-   against a stand-in platform tree;
-7. a project with an MP3 sound (`tests/install/fixtures/tone.mp3`, the
-   format the platform's generators return): `og run` cooks it with the
-   installed og and plays it, `og.AudioPlayback`'s playhead at 0.5 s and
-   the mixer's last half second not silent (from 0.7.7).
+1. the launcher's `install.sh` into an empty `ORIGIN_HOME`; `og engine
+   install <v>` verifies `SHA256SUMS.minisig` and the archive's sha256 and
+   unpacks it into an empty cache; the build record and the layout;
+2. `og new demo --engine <v>`: the pin, no `node_modules`, `.og/engine`
+   linked to the dist's `engine/`;
+3. `og --version` prints the version; `og doctor` passes (the renderer
+   line is `none` in the container and not a failure);
+4. `og check`, `og test`, `og build --publish` (`og-build.json` names the
+   version, the publish wasm is the dist's byte for byte), and `og ui
+   check`, `og style check --sizes`, `og frame measure`;
+5. `--archetype runner` through `og test`; 6. the 2D starter;
+7. the knowledge in the dist's `engine/knowledge/`: `validate.ts`, and
+   `mount.ts --package` and `--check` against a stand-in platform tree;
+8. an MP3 sound cooks and plays; 9. a built-in UI style from `engine/styles/`.
+
+`--core` (a backfilled version) runs 1 to 5 and 7's validate: what every
+version from 0.5.0 has.
 
 It is also a stage of the wave's end (`scripts/wave-end.sh release`:
 `pack` and `verify`, the tarballs it leaves are the ones `publish`

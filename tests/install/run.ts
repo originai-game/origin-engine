@@ -1,37 +1,50 @@
 // The install test (docs/release.md §3): what an author does on a machine
-// that has never seen this repository, from the release tarballs or from the
-// registry, on this machine and in the linux-x64 container.
+// that has never seen this repository, from the release archives (the
+// download channel's files, scripts/release.sh pack), on this machine and in
+// the linux-x64 container. No npm, no bun install: the og launcher
+// (packages/launcher, through its install.sh or install.ps1) downloads the
+// version from a channel laid out like /downloads/engine (the parent of
+// --from) and runs it.
 //
-//   bun tests/install/run.ts --from dist/release/<v> --version <v> [--manifest <manifest.json>]
-//                            [--registry] [--host-only | --container-only] [--keep] [--image <name>]
+//   bun tests/install/run.ts --from dist/release/<v> --version <v> [--record <release.json>] [--pubkey <key>]
+//                            [--installer <install.sh|install.ps1>] [--core] [--host-only | --container-only]
+//                            [--keep] [--image <name>]
+//
+// --core runs steps 1 to 5 and 7's validate only: what every version from
+// 0.5.0 has (a backfilled archive of an older version, docs/release.md §3);
+// 4b, 6, 7's mount, 8 and 9 probe features of later versions.
 //
 // Steps, in an empty directory with no OG_ENGINE_PACKAGE, OG_NATIVE_ADDON or
 // ORIGIN_OG_BIN in the environment:
-//   1. a consumer that installs @origingame/create-game; `create-game demo`
-//   2. the demo's `bun install` (from the tarballs: the engine and this
-//      platform's package as file: specs; tsrs from the registry)
+//   1. the launcher's installer (built from packages/launcher, or --installer)
+//      into an empty ORIGIN_HOME; `og engine install <v>` verifies
+//      SHA256SUMS.minisig (with --pubkey, else the engine's pinned key) and the
+//      archive's sha256 and unpacks it into an empty cache
+//      (engines/<v>/<target>/); its layout and origin-engine.json's build record
+//   2. `og new demo --engine <v>` scaffolds from the dist's create/: the pin,
+//      no node_modules, `.og/engine` pointing at the dist's engine/
 //   3. `og --version` prints the version; `og doctor` passes (the renderer
 //      line may be `none`)
 //   4. `og check`, `og test` (frames unchecked without a renderer), `og build
 //      --publish`: og-build.json names the version, the shipped publish wasm is
-//      the package's byte for byte
-//   5. the runner archetype through steps 1 to 4's test
-//   6. the 2D starter (`create-game --profile 2d`) through the same test
-//   7. the knowledge inside the engine package (knowledge/): its validate.ts,
+//      the dist's byte for byte
+//   5. the runner archetype through steps 2 to 4's test
+//   6. the 2D starter (`--profile 2d`) through the same test
+//   7. the knowledge inside the dist's engine/ (knowledge/): its validate.ts,
 //      mount.ts --package into a stand-in origin-agent knowledge/ tree, then --check
 //   8. a project with an MP3 sound (fixtures/tone.mp3): og run cooks it, plays
 //      it (og.AudioPlayback's playhead at 0.5 s) and the mix is not silent
 //   9. a look naming the built-in fantasy style: og cook reads it from the
-//      package's styles/ and the bundle carries that pack only
+//      engine's styles/ and the bundle carries that pack only
 //
 // --container builds tests/install/Dockerfile (node 22, bun) and runs this
-// script inside it with --host-only, the tarballs mounted read-only. With
-// --manifest the pass is recorded in manifest.json (verified.host,
+// script inside it with --host-only, the archives mounted read-only. With
+// --record the pass is recorded in release.json (verified.host,
 // verified.container) for scripts/release.sh publish to read.
 
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -44,18 +57,24 @@ const opt = (name: string): string | undefined => {
 const flag = (name: string) => args.includes(name);
 const FROM = opt("--from") ? resolve(opt("--from")!) : undefined;
 const VERSION = opt("--version");
-const MANIFEST = opt("--manifest") ? resolve(opt("--manifest")!) : undefined;
-const REGISTRY = flag("--registry");
+const RECORD = opt("--record") ? resolve(opt("--record")!) : undefined;
+const PUBKEY = opt("--pubkey");
+const INSTALLER = opt("--installer") ? resolve(opt("--installer")!) : undefined;
+const CORE = flag("--core");
 const KEEP = flag("--keep");
 const IMAGE = opt("--image") ?? "og-install:node22-bun";
 const HOST_ONLY = flag("--host-only");
 const CONTAINER_ONLY = flag("--container-only");
 const PLATFORM = `${process.platform}-${process.arch}`;
-const SCOPE = "@origingame";
+const TRIPLE = ({ "linux-x64": "x86_64-unknown-linux-gnu", "darwin-arm64": "aarch64-apple-darwin", "win32-x64": "x86_64-pc-windows-msvc" } as Record<string, string>)[PLATFORM];
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-if (!VERSION || (!FROM && !REGISTRY)) {
-  process.stderr.write("usage: bun tests/install/run.ts --from <dir> --version <v> [--registry] [--manifest <file>] [--host-only|--container-only] [--keep] [--image <name>]\n");
+if (!VERSION || !FROM) {
+  process.stderr.write("usage: bun tests/install/run.ts --from <dir> --version <v> [--record <release.json>] [--host-only|--container-only] [--keep] [--image <name>]\n");
+  process.exit(2);
+}
+if (!TRIPLE) {
+  process.stderr.write(`the engine ships no archive for ${PLATFORM}\n`);
   process.exit(2);
 }
 
@@ -71,10 +90,12 @@ class Step {
   }
 }
 
-/** The environment a fresh author has: no engine checkout, no overrides. */
+/** The environment a fresh author has: no engine checkout, no overrides; the launcher's home, cache and channel. */
+const launcherEnv: Record<string, string> = {};
 function env(): NodeJS.ProcessEnv {
   const e = { ...process.env };
-  for (const k of ["OG_ENGINE_PACKAGE", "OG_NATIVE_ADDON", "ORIGIN_OG_BIN", "OG_TSRS", "CARGO_TARGET_DIR"]) delete e[k];
+  for (const k of ["OG_ENGINE_PACKAGE", "OG_NATIVE_ADDON", "ORIGIN_OG_BIN", "OG_TSRS", "CARGO_TARGET_DIR", "OG_ENGINE_VERSION", "ORIGIN_ENGINE_PUBKEY"]) delete e[k];
+  Object.assign(e, launcherEnv);
   e.CI = "1";
   return e;
 }
@@ -105,20 +126,45 @@ function wavRms(path: string): number {
   return Math.sqrt(sum / Math.max(1, n));
 }
 
-function tarball(name: string): string {
-  const f = join(FROM!, `origingame-${name}-${VERSION}.tgz`);
-  if (!existsSync(f)) throw new Error(`no ${f}`);
-  return f;
+/** Installs the launcher with its installer, then this version through it; returns the dist in the cache. */
+function install(step: Step, work: string): string {
+  const home = join(work, "home");
+  Object.assign(launcherEnv, { ORIGIN_HOME: home, ORIGIN_ENGINE_CACHE: join(work, "cache"), ORIGIN_ENGINE_DOWNLOADS: dirname(FROM!) }, PUBKEY ? { ORIGIN_ENGINE_PUBKEY: PUBKEY } : {});
+  const windows = process.platform === "win32";
+  let installer = INSTALLER;
+  if (!installer) {
+    // In a checkout: the installers as publish builds them (the container gets them through --installer).
+    const build = join(HERE, "..", "..", "packages", "launcher", "build.ts");
+    run(step, ["bun", build, work], work);
+    installer = join(work, windows ? "install.ps1" : "install.sh");
+  }
+  run(step, windows ? ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", installer] : ["sh", installer], work);
+  ogCmd = windows ? ["cmd", "/c", join(home, "bin", "og.cmd")] : [join(home, "bin", "og")];
+  if (!existsSync(ogCmd.at(-1)!)) step.fail(`the installer wrote no ${ogCmd.at(-1)}`);
+  const installed = run(step, [...ogCmd, "engine", "install", VERSION!], work);
+  if (!installed.stderr.includes(`downloading engine ${VERSION}`)) step.fail(`og engine install downloaded nothing:\n${installed.stderr}`);
+  const dist = join(work, "cache", "engines", VERSION!, TRIPLE!);
+  const build = (JSON.parse(readFileSync(join(dist, "origin-engine.json"), "utf8")) as { build: { version: string; target: string; triple: string; og: string } }).build;
+  if (build.version !== VERSION || build.target !== PLATFORM || build.triple !== TRIPLE) step.fail(`origin-engine.json's build record: ${JSON.stringify(build)}`);
+  if (sha256(join(dist, "bin", windows ? "og.exe" : "og")) !== build.og) step.fail("bin/og is not the build record's og");
+  for (const f of ["overlay/project.ogt", "archetypes/runner/project.ogt", "create/bin/create.ts", "engine/dist/web-publish/origin-engine_bg.wasm", "engine/dist/web-publish-2d/origin-engine_bg.wasm", "engine/dist/web-publish/origin-engine-lanes_bg.wasm", "engine/shell", "engine/types/index.d.ts", "engine/schema/api.schema.json", `engine/native/origin-engine.${PLATFORM}.node`]) {
+    if (!existsSync(join(dist, f))) step.fail(`the dist has no ${f}`);
+  }
+  const list = run(step, [...ogCmd, "engine", "list"], work);
+  if (!list.stdout.includes(VERSION!)) step.fail(`og engine list:\n${list.stdout}`);
+  return dist;
 }
 
-/** The dependency spec of a package: the registry's version, or the tarball. */
-function spec(name: string): string {
-  return REGISTRY ? VERSION! : `file:${tarball(name)}`;
-}
-
-/** package.json `overrides` so the engine's optionalDependency on this platform's package resolves to the tarball. */
-function overrides(): Record<string, string> {
-  return REGISTRY ? {} : { [`${SCOPE}/engine-${PLATFORM}`]: `file:${tarball(`engine-${PLATFORM}`)}` };
+/** `og new <name> --engine <v>` in the work directory; returns the game. */
+function scaffold(step: Step, work: string, name: string, ...args: string[]): string {
+  run(step, [...ogCmd, "new", name, "--engine", VERSION!, ...args, "--no-prompt"], work);
+  const game = join(work, name);
+  const pinned = /^engine\s+"([^"]+)"/m.exec(readFileSync(join(game, "project.ogt"), "utf8"))?.[1];
+  if (pinned !== VERSION) step.fail(`${name}/project.ogt pins engine "${pinned}", expected "${VERSION}"`);
+  if (existsSync(join(game, "node_modules"))) step.fail(`${name} has a node_modules/: nothing is installed into a game`);
+  if (!lstatSync(join(game, ".og", "engine")).isSymbolicLink() && process.platform !== "win32") step.fail(`${name}/.og/engine is not a link`);
+  if (realpathSync(join(game, ".og", "engine")) !== realpathSync(enginePkg)) step.fail(`${name}/.og/engine points at ${realpathSync(join(game, ".og", "engine"))}`);
+  return game;
 }
 
 function writeJson(path: string, value: unknown): void {
@@ -126,53 +172,28 @@ function writeJson(path: string, value: unknown): void {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-/** Points a scaffolded project's engine dependency at what this run installs. */
-function pinProject(dir: string): void {
-  const p = join(dir, "package.json");
-  const pkg = JSON.parse(readFileSync(p, "utf8")) as { dependencies: Record<string, string>; overrides?: Record<string, string> };
-  if (pkg.dependencies[`${SCOPE}/engine`] !== VERSION) throw new Error(`${p}: depends on ${SCOPE}/engine ${pkg.dependencies[`${SCOPE}/engine`]}, the scaffold should write ${VERSION}`);
-  if (!REGISTRY) {
-    pkg.dependencies[`${SCOPE}/engine`] = spec("engine");
-    pkg.overrides = { ...pkg.overrides, ...overrides() };
-    writeJson(p, pkg);
-  }
-}
-
+let ogCmd: string[] = [];
+let enginePkg = "";
 function og(step: Step, project: string, ...rest: string[]): SpawnSyncReturns<string> {
-  return run(step, ["bun", "x", "og", ...rest], project);
+  return run(step, [...ogCmd, ...rest], project);
 }
 
 function host(): void {
   const work = mkdtempSync(join(tmpdir(), "og-install-"));
-  log(`work directory ${work} (${PLATFORM}, ${REGISTRY ? "from the registry" : `from ${FROM}`})`);
+  log(`work directory ${work} (${PLATFORM}, ${TRIPLE}, from ${FROM})`);
   try {
-    // 1. The consumer and the scaffold.
-    let step = new Step("1 create-game");
-    const consumer = join(work, "consumer");
-    writeJson(join(consumer, "package.json"), { name: "consumer", private: true, dependencies: { [`${SCOPE}/create-game`]: spec("create-game") } });
-    run(step, ["bun", "install"], consumer);
-    const create = join(consumer, "node_modules", SCOPE, "create-game", "bin", "create.ts");
-    if (!existsSync(create)) step.fail(`${create} is not installed`);
-    run(step, ["bun", create, join(work, "demo"), "--name", "Demo", "--no-prompt"], consumer);
-    const demo = join(work, "demo");
-    for (const f of ["project.ogt", "src/main.ts", "package.json", "tests", "assets/looks/demo.ogt", ".gitignore", ".gitattributes"]) {
+    // 1. The launcher, and the version through it.
+    let step = new Step("1 the launcher, og engine install");
+    const dist = install(step, work);
+    enginePkg = join(dist, "engine");
+
+    // 2. The scaffold: og new, from the dist's create/.
+    step = new Step("2 og new");
+    const demo = scaffold(step, work, "demo", "--name", "Demo");
+    for (const f of ["project.ogt", "src/main.ts", "tests", "assets/looks/demo.ogt", ".gitignore", ".gitattributes"]) {
       if (!existsSync(join(demo, f))) step.fail(`the scaffold wrote no ${f}`);
     }
-    const pinned = /^engine\s+"([^"]+)"/m.exec(readFileSync(join(demo, "project.ogt"), "utf8"))?.[1];
-    if (pinned !== VERSION) step.fail(`project.ogt pins engine "${pinned}", expected "${VERSION}"`);
-
-    // 2. The project's install.
-    step = new Step("2 bun install");
-    pinProject(demo);
-    run(step, ["bun", "install"], demo);
-    const enginePkg = join(demo, "node_modules", SCOPE, "engine");
-    const installed = (JSON.parse(readFileSync(join(enginePkg, "package.json"), "utf8")) as { version: string }).version;
-    if (installed !== VERSION) step.fail(`installed ${SCOPE}/engine is ${installed}`);
-    const ogBin = join(demo, "node_modules", SCOPE, `engine-${PLATFORM}`, process.platform === "win32" ? "og.exe" : "og");
-    if (!existsSync(ogBin)) step.fail(`no ${ogBin}: the platform package did not install`);
-    for (const f of ["dist/web-publish/origin-engine_bg.wasm", "dist/web-publish-2d/origin-engine_bg.wasm", "dist/web-publish/origin-engine-lanes_bg.wasm", "shell", "types/index.d.ts", "schema/api.schema.json"]) {
-      if (!existsSync(join(enginePkg, f))) step.fail(`the engine package has no ${f}`);
-    }
+    if (!CORE && readFileSync(join(demo, "package.json"), "utf8").includes("@origingame/engine")) step.fail("the scaffold's package.json depends on @origingame/engine");
 
     // 3. og --version, og doctor.
     step = new Step("3 og --version, og doctor");
@@ -201,128 +222,134 @@ function host(): void {
     const shipped = join(demo, "dist", "origin-engine_bg.wasm");
     if (!existsSync(shipped)) step.fail("the build has no origin-engine_bg.wasm");
     const packaged = join(enginePkg, "dist", "web-publish", "origin-engine_bg.wasm");
-    if (sha256(shipped) !== sha256(packaged)) step.fail("the shipped publish wasm differs from the package's dist/web-publish/origin-engine_bg.wasm");
+    if (sha256(shipped) !== sha256(packaged)) step.fail("the shipped publish wasm differs from the dist's engine/dist/web-publish/origin-engine_bg.wasm");
 
-    // 4b. og ui check from the package (src/node/ui-run.ts): a reviewer's contrast numbers come from it, so the
-    // package must carry it (0.7.8-dev.17 did not). Exit 3 is findings, still a run; its JSON names each
-    // finding's value, bar and box, and every cell's frame.
-    step = new Step("4b og ui check, og style check --sizes, og frame measure");
-    const ui = run(step, ["bun", "x", "og", "ui", "check", ".", "--breakpoints", "desktop,phoneLandscape", "--locales", "game", "--scales", "100", "--json"], demo, { allowFail: true });
-    if (ui.status !== 0 && ui.status !== 3) step.fail(`og ui check exited ${ui.status}\n${ui.stderr.slice(-2000)}`);
-    const checked = JSON.parse(ui.stdout.trim().split("\n").at(-1)!) as { cells: number; findings: Array<{ at?: unknown[] }>; frames?: Array<{ viewport: number[] }> };
-    if (!(checked.cells > 0) || checked.frames?.length !== checked.cells) step.fail(`og ui check --json: ${ui.stdout.slice(0, 400)}`);
-    if (checked.findings.some((f) => !Array.isArray(f.at))) step.fail("og ui check --json: a finding without its places (at)");
-    log(`   og ui check: ${checked.cells} cell(s), ${checked.findings.length} finding(s)`);
-    // The reviewer's other two: og style check at desktop and phone size (labelled frames with their tier), and a region
-    // of one of them measured by og frame measure.
-    // Exit 3 is the template's dropship off faceted-low-poly's face budget (project.ogt says so): still a run.
-    const style = run(step, ["bun", "x", "og", "style", "check", ".", "--title", "0.5:screenshot", "--sizes", "desktop,phone", "--json"], demo, { allowFail: true });
-    if (style.status !== 0 && style.status !== 3) step.fail(`og style check exited ${style.status}\n${style.stderr.slice(-2000)}`);
-    const styled = JSON.parse(style.stdout.trim().split("\n").at(-1)!) as { frames: Array<{ label: string; path: string; size: number[] }> };
-    const labels = styled.frames.map((f) => f.label).sort();
-    if (labels.join(",") !== "title@desktop,title@phoneLandscape") step.fail(`og style check --sizes framed ${labels.join(", ")}`);
-    const measured = og(step, demo, "frame", "measure", styled.frames[0]!.path, "--units", "fraction", "--region", "0,0,0.5,0.5", "--json");
-    const ratio = (JSON.parse(measured.stdout) as { metrics: { contrast: { ratio: number } } }).metrics.contrast.ratio;
-    if (!(ratio >= 1)) step.fail(`og frame measure printed ${measured.stdout.slice(0, 200)}`);
+    if (!CORE) {
+      // 4b. og ui check from the package (src/node/ui-run.ts): a reviewer's contrast numbers come from it, so the
+      // package must carry it (0.7.8-dev.17 did not). Exit 3 is findings, still a run; its JSON names each
+      // finding's value, bar and box, and every cell's frame.
+      step = new Step("4b og ui check, og style check --sizes, og frame measure");
+      const ui = run(step, [...ogCmd, "ui", "check", ".", "--breakpoints", "desktop,phoneLandscape", "--locales", "game", "--scales", "100", "--json"], demo, { allowFail: true });
+      if (ui.status !== 0 && ui.status !== 3) step.fail(`og ui check exited ${ui.status}\n${ui.stderr.slice(-2000)}`);
+      const checked = JSON.parse(ui.stdout.trim().split("\n").at(-1)!) as { cells: number; findings: Array<{ at?: unknown[] }>; frames?: Array<{ viewport: number[] }> };
+      if (!(checked.cells > 0) || checked.frames?.length !== checked.cells) step.fail(`og ui check --json: ${ui.stdout.slice(0, 400)}`);
+      if (checked.findings.some((f) => !Array.isArray(f.at))) step.fail("og ui check --json: a finding without its places (at)");
+      log(`   og ui check: ${checked.cells} cell(s), ${checked.findings.length} finding(s)`);
+      // The reviewer's other two: og style check at desktop and phone size (labelled frames with their tier), and a region
+      // of one of them measured by og frame measure.
+      // Exit 3 is the template's dropship off faceted-low-poly's face budget (project.ogt says so): still a run.
+      const style = run(step, [...ogCmd, "style", "check", ".", "--title", "0.5:screenshot", "--sizes", "desktop,phone", "--json"], demo, { allowFail: true });
+      if (style.status !== 0 && style.status !== 3) step.fail(`og style check exited ${style.status}\n${style.stderr.slice(-2000)}`);
+      const styled = JSON.parse(style.stdout.trim().split("\n").at(-1)!) as { frames: Array<{ label: string; path: string; size: number[] }> };
+      const labels = styled.frames.map((f) => f.label).sort();
+      if (labels.join(",") !== "title@desktop,title@phoneLandscape") step.fail(`og style check --sizes framed ${labels.join(", ")}`);
+      const measured = og(step, demo, "frame", "measure", styled.frames[0]!.path, "--units", "fraction", "--region", "0,0,0.5,0.5", "--json");
+      const ratio = (JSON.parse(measured.stdout) as { metrics: { contrast: { ratio: number } } }).metrics.contrast.ratio;
+      if (!(ratio >= 1)) step.fail(`og frame measure printed ${measured.stdout.slice(0, 200)}`);
+
+    
+    }
 
     // 5. An archetype.
     step = new Step("5 the runner archetype");
-    const runner = join(work, "demo-runner");
-    run(step, ["bun", create, runner, "--name", "Demo Runner", "--archetype", "runner", "--no-prompt"], consumer);
+    const runner = scaffold(step, work, "demo-runner", "--name", "Demo Runner", "--archetype", "runner");
     for (const f of [".gitignore", ".gitattributes"]) if (!existsSync(join(runner, f))) step.fail(`the archetype scaffold wrote no ${f}`);
-    pinProject(runner);
-    run(step, ["bun", "install"], runner);
     og(step, runner, "test", ".");
 
-    // 6. The 2D starter: the package's template-2d/, written for --profile 2d.
-    step = new Step("6 the 2D starter (--profile 2d)");
-    const flat = join(work, "demo-2d");
-    run(step, ["bun", create, flat, "--name", "Demo 2D", "--profile", "2d", "--no-prompt"], consumer);
-    for (const f of ["project.ogt", "src/main.ts", "tests", "assets/looks/demo-2d.ogt", ".gitignore", ".gitattributes"]) {
-      if (!existsSync(join(flat, f))) step.fail(`the 2D scaffold wrote no ${f}`);
+    if (!CORE) {
+      // 6. The 2D starter: create/'s template-2d/, written for --profile 2d.
+      step = new Step("6 the 2D starter (--profile 2d)");
+      const flat = scaffold(step, work, "demo-2d", "--name", "Demo 2D", "--profile", "2d");
+      for (const f of ["project.ogt", "src/main.ts", "tests", "assets/looks/demo-2d.ogt", ".gitignore", ".gitattributes"]) {
+        if (!existsSync(join(flat, f))) step.fail(`the 2D scaffold wrote no ${f}`);
+      }
+      const manifest2d = readFileSync(join(flat, "project.ogt"), "utf8");
+      if (!/^profile\s+"2d"/m.test(manifest2d)) step.fail("the 2D scaffold's project.ogt has no `profile \"2d\"` line");
+      const pinned2d = /^engine\s+"([^"]+)"/m.exec(manifest2d)?.[1];
+      if (pinned2d !== VERSION) step.fail(`the 2D scaffold's project.ogt pins engine "${pinned2d}", expected "${VERSION}"`);
+      og(step, flat, "check", ".");
+      const test2d = og(step, flat, "test", ".");
+      log(`   og test: ${test2d.stdout.trim().split("\n").slice(-2).join(" | ")}`);
+
+    
     }
-    const manifest2d = readFileSync(join(flat, "project.ogt"), "utf8");
-    if (!/^profile\s+"2d"/m.test(manifest2d)) step.fail("the 2D scaffold's project.ogt has no `profile \"2d\"` line");
-    const pinned2d = /^engine\s+"([^"]+)"/m.exec(manifest2d)?.[1];
-    if (pinned2d !== VERSION) step.fail(`the 2D scaffold's project.ogt pins engine "${pinned2d}", expected "${VERSION}"`);
-    pinProject(flat);
-    run(step, ["bun", "install"], flat);
-    og(step, flat, "check", ".");
-    const test2d = og(step, flat, "test", ".");
-    log(`   og test: ${test2d.stdout.trim().split("\n").slice(-2).join(" | ")}`);
 
     // 7. The knowledge, inside the installed engine package (knowledge/).
     step = new Step("7 knowledge: validate, mount --package, --check");
     const knPkg = join(enginePkg, "knowledge");
     if (!existsSync(join(knPkg, "knowledge.json"))) step.fail(`${enginePkg} carries no knowledge/`);
     run(step, ["bun", join(knPkg, "scripts", "validate.ts")], demo);
-    const platform = join(work, "platform");
-    mkdirSync(join(platform, "knowledge/game/skills/someone-else"), { recursive: true });
-    writeFileSync(join(platform, "knowledge/game/skills/someone-else/SKILL.md"), "---\nname: someone-else\ndescription: not ours\n---\n");
-    mkdirSync(join(platform, "knowledge/game-scaffold/three"), { recursive: true });
-    writeFileSync(join(platform, "knowledge/game-scaffold/three/package.json"), "{}\n");
-    const mounted = run(step, ["bun", join(knPkg, "scripts", "mount.ts"), platform, "--package", enginePkg], demo);
-    if (!/text files: \d+/.test(mounted.stdout)) step.fail(`mount printed no summary:\n${mounted.stdout}`);
-    run(step, ["bun", join(knPkg, "scripts", "mount.ts"), platform, "--package", enginePkg, "--check"], demo);
-    if (!existsSync(join(platform, "knowledge/game/skills/og-game/SKILL.md"))) step.fail("the mount wrote no og-game skill");
-    if (!existsSync(join(platform, "knowledge/game-scaffold/origin-engine-ts/project.ogt"))) step.fail("the mount wrote no scaffold overlay");
-    if (!existsSync(join(platform, "knowledge/game/skills/someone-else/SKILL.md"))) step.fail("the mount removed someone else's skill");
-
-    // 8. A compressed sound: an MP3 (the platform's generators return MP3) cooks with the installed og and plays.
-    step = new Step("8 an MP3 sound cooks and plays");
-    const sound = join(work, "demo-sound");
-    run(step, ["bun", create, sound, "--name", "Demo Sound", "--no-prompt"], consumer);
-    pinProject(sound);
-    run(step, ["bun", "install"], sound);
-    rmSync(join(sound, "tests"), { recursive: true, force: true });
-    mkdirSync(join(sound, "assets", "audio"), { recursive: true });
-    // tone.mp3: 1 s, 44.1 kHz stereo, a 0.5-amplitude sine (og-cook's tests/fixtures/audio/tone.mp3).
-    cpSync(join(HERE, "fixtures", "tone.mp3"), join(sound, "assets", "audio", "tone.mp3"));
-    writeFileSync(
-      join(sound, "src", "main.ts"),
-      `import { og } from "@origingame/engine";
-
-export default og.game({
-  tick: 60,
-  seed: 1,
-  start(world) {
-    const sound = og.load.sound(world, "audio/tone.mp3");
-    if (!sound.ok) throw new Error(sound.reason);
-    const voice = world.spawn({ name: "tone" });
-    if (!voice.ok) throw new Error(voice.reason);
-    const put = world.insert(voice.value, og.AudioSource, { sound: sound.value, playing: true });
-    if (!put.ok) throw new Error(put.reason);
-  },
-});
-`,
-    );
-    const heard = join(sound, "og-out", "sound");
-    og(step, sound, "run", ".", "--headless", "--commands", "0.5:get:tone.og.AudioPlayback;0.5:listen:tone.wav:0.5;0.6:quit", "--out", heard);
-    const got = join(heard, "get-000030.json");
-    if (!existsSync(got)) step.fail(`og run wrote no ${got}`);
-    const playback = (JSON.parse(readFileSync(got, "utf8")) as { value?: { cursor: number; loopEnd: number } }).value;
-    // Half a second into a 1 s sound at 44.1 kHz: the playhead near 22,050 frames, the sound 44,100 long.
-    if (!playback || Math.abs(playback.cursor - 22_050) > 1_000 || Math.abs(playback.loopEnd - 44_100) > 1_300) step.fail(`tone's og.AudioPlayback at 0.5 s: ${JSON.stringify(playback)}`);
-    const rms = wavRms(join(heard, "tone.wav"));
-    if (rms < 0.2) step.fail(`the mixer's last 0.5 s is near silent (RMS ${rms.toFixed(3)})`);
-    log(`   tone.mp3: cursor ${playback.cursor} of ${playback.loopEnd} frames at 0.5 s, mix RMS ${rms.toFixed(3)}`);
-
-    // 9. A built-in style, read from the installed package's styles/ (og
-    // compiles none in): a look naming fantasy cooks that pack, its three
-    // densities, and no other pack.
-    step = new Step("9 a built-in UI style from the package's styles/");
-    if (!existsSync(join(enginePkg, "styles", "fantasy", "atlas@3x.png"))) step.fail(`${enginePkg} carries no styles/fantasy/atlas@3x.png`);
-    writeFileSync(join(demo, "assets", "looks", "fantasy-ui.ogt"), "type look\nversion 1\n---\nui \"fantasy\"\n");
-    og(step, demo, "cook", ".");
-    const cooked = readFileSync(join(demo, "cooked", ".cook.ogt"), "utf8");
-    for (const f of ["style.ogt", "atlas.png", "atlas@2x.png", "atlas@3x.png"]) {
-      if (!cooked.includes(`@styles/fantasy/${f}`)) step.fail(`the cook has no @styles/fantasy/${f}`);
+    // The mount layout follows origin-agent (the agent-repo split, 0.6.5): not a step for older versions.
+    if (!CORE) {
+      const platform = join(work, "platform");
+      mkdirSync(join(platform, "knowledge/game/skills/someone-else"), { recursive: true });
+      writeFileSync(join(platform, "knowledge/game/skills/someone-else/SKILL.md"), "---\nname: someone-else\ndescription: not ours\n---\n");
+      mkdirSync(join(platform, "knowledge/game-scaffold/three"), { recursive: true });
+      writeFileSync(join(platform, "knowledge/game-scaffold/three/package.json"), "{}\n");
+      const mounted = run(step, ["bun", join(knPkg, "scripts", "mount.ts"), platform, "--package", enginePkg], demo);
+      if (!/text files: \d+/.test(mounted.stdout)) step.fail(`mount printed no summary:\n${mounted.stdout}`);
+      run(step, ["bun", join(knPkg, "scripts", "mount.ts"), platform, "--package", enginePkg, "--check"], demo);
+      if (!existsSync(join(platform, "knowledge/game/skills/og-game/SKILL.md"))) step.fail("the mount wrote no og-game skill");
+      if (!existsSync(join(platform, "knowledge/game-scaffold/origin-engine-ts/project.ogt"))) step.fail("the mount wrote no scaffold overlay");
+      if (!existsSync(join(platform, "knowledge/game/skills/someone-else/SKILL.md"))) step.fail("the mount removed someone else's skill");
     }
-    const others = [...new Set([...cooked.matchAll(/@styles\/([a-z0-9-]+)\//g)].map(m => m[1]))].filter(p => p !== "fantasy");
-    if (others.length) step.fail(`a game naming fantasy cooked other packs too: ${others.join(", ")}`);
-    rmSync(join(demo, "assets", "looks", "fantasy-ui.ogt"));
 
-    log(`PASS on ${PLATFORM}`);
+    if (!CORE) {
+      // 8. A compressed sound: an MP3 (the platform's generators return MP3) cooks with the installed og and plays.
+      step = new Step("8 an MP3 sound cooks and plays");
+      const sound = scaffold(step, work, "demo-sound", "--name", "Demo Sound");
+      rmSync(join(sound, "tests"), { recursive: true, force: true });
+      mkdirSync(join(sound, "assets", "audio"), { recursive: true });
+      // tone.mp3: 1 s, 44.1 kHz stereo, a 0.5-amplitude sine (og-cook's tests/fixtures/audio/tone.mp3).
+      cpSync(join(HERE, "fixtures", "tone.mp3"), join(sound, "assets", "audio", "tone.mp3"));
+      writeFileSync(
+        join(sound, "src", "main.ts"),
+        `import { og } from "@origingame/engine";
+
+  export default og.game({
+    tick: 60,
+    seed: 1,
+    start(world) {
+      const sound = og.load.sound(world, "audio/tone.mp3");
+      if (!sound.ok) throw new Error(sound.reason);
+      const voice = world.spawn({ name: "tone" });
+      if (!voice.ok) throw new Error(voice.reason);
+      const put = world.insert(voice.value, og.AudioSource, { sound: sound.value, playing: true });
+      if (!put.ok) throw new Error(put.reason);
+    },
+  });
+  `,
+      );
+      const heard = join(sound, "og-out", "sound");
+      og(step, sound, "run", ".", "--headless", "--commands", "0.5:get:tone.og.AudioPlayback;0.5:listen:tone.wav:0.5;0.6:quit", "--out", heard);
+      const got = join(heard, "get-000030.json");
+      if (!existsSync(got)) step.fail(`og run wrote no ${got}`);
+      const playback = (JSON.parse(readFileSync(got, "utf8")) as { value?: { cursor: number; loopEnd: number } }).value;
+      // Half a second into a 1 s sound at 44.1 kHz: the playhead near 22,050 frames, the sound 44,100 long.
+      if (!playback || Math.abs(playback.cursor - 22_050) > 1_000 || Math.abs(playback.loopEnd - 44_100) > 1_300) step.fail(`tone's og.AudioPlayback at 0.5 s: ${JSON.stringify(playback)}`);
+      const rms = wavRms(join(heard, "tone.wav"));
+      if (rms < 0.2) step.fail(`the mixer's last 0.5 s is near silent (RMS ${rms.toFixed(3)})`);
+      log(`   tone.mp3: cursor ${playback.cursor} of ${playback.loopEnd} frames at 0.5 s, mix RMS ${rms.toFixed(3)}`);
+
+      // 9. A built-in style, read from the dist's engine/styles/ (og
+      // compiles none in): a look naming fantasy cooks that pack, its three
+      // densities, and no other pack.
+      step = new Step("9 a built-in UI style from the engine's styles/");
+      if (!existsSync(join(enginePkg, "styles", "fantasy", "atlas@3x.png"))) step.fail(`${enginePkg} carries no styles/fantasy/atlas@3x.png`);
+      writeFileSync(join(demo, "assets", "looks", "fantasy-ui.ogt"), "type look\nversion 1\n---\nui \"fantasy\"\n");
+      og(step, demo, "cook", ".");
+      const cooked = readFileSync(join(demo, "cooked", ".cook.ogt"), "utf8");
+      for (const f of ["style.ogt", "atlas.png", "atlas@2x.png", "atlas@3x.png"]) {
+        if (!cooked.includes(`@styles/fantasy/${f}`)) step.fail(`the cook has no @styles/fantasy/${f}`);
+      }
+      const others = [...new Set([...cooked.matchAll(/@styles\/([a-z0-9-]+)\//g)].map(m => m[1]))].filter(p => p !== "fantasy");
+      if (others.length) step.fail(`a game naming fantasy cooked other packs too: ${others.join(", ")}`);
+      rmSync(join(demo, "assets", "looks", "fantasy-ui.ogt"));
+
+    
+    }
+
+    log(`PASS on ${PLATFORM}${CORE ? " (core steps)" : ""}`);
     if (!KEEP) rmSync(work, { recursive: true, force: true });
   } catch (e) {
     log(`FAIL on ${PLATFORM}: ${e instanceof Error ? e.message : String(e)}`);
@@ -335,18 +362,20 @@ function container(): void {
   const step = new Step("container (linux-x64)");
   const repo = resolve(HERE, "..", "..");
   run(step, ["docker", "build", "-q", "-t", IMAGE, "--platform", "linux/amd64", HERE], repo, { timeoutMs: 15 * 60_000 });
-  const mounts = ["-v", `${HERE}:/install:ro`];
-  if (FROM) mounts.push("-v", `${FROM}:/tgz:ro`);
-  const inner = ["bun", "/install/run.ts", "--version", VERSION!, "--host-only", ...(REGISTRY ? ["--registry"] : ["--from", "/tgz"])];
+  // The installers as publish builds them; the channel is --from's parent, as /downloads/engine/ holds <version>/.
+  const launcher = mkdtempSync(join(tmpdir(), "og-install-launcher-"));
+  run(step, ["bun", join(repo, "packages", "launcher", "build.ts"), launcher], repo);
+  const mounts = ["-v", `${HERE}:/install:ro`, "-v", `${launcher}:/launcher:ro`, "-v", `${FROM}:/channel/${VERSION}:ro`];
+  const inner = ["bun", "/install/run.ts", "--version", VERSION!, "--host-only", "--from", `/channel/${VERSION}`, "--installer", "/launcher/install.sh", ...(CORE ? ["--core"] : []), ...(PUBKEY ? ["--pubkey", PUBKEY] : [])];
   const r = spawnSync("docker", ["run", "--rm", "--platform", "linux/amd64", ...mounts, "-w", "/tmp", IMAGE, ...inner], { encoding: "utf8", stdio: ["ignore", "inherit", "inherit"], timeout: 60 * 60_000 });
   if (r.status !== 0) step.fail(`the container run exited ${r.status}`);
 }
 
 function record(where: "host" | "container"): void {
-  if (!MANIFEST) return;
-  const m = JSON.parse(readFileSync(MANIFEST, "utf8")) as { verified?: Record<string, unknown> };
-  m.verified = { ...m.verified, [where]: { at: new Date().toISOString(), platform: where === "host" ? PLATFORM : "linux-x64 (container)", source: REGISTRY ? "registry" : "tarballs" } };
-  writeFileSync(MANIFEST, `${JSON.stringify(m, null, 2)}\n`);
+  if (!RECORD) return;
+  const m = JSON.parse(readFileSync(RECORD, "utf8")) as { verified?: Record<string, unknown> };
+  m.verified = { ...m.verified, [where]: { at: new Date().toISOString(), platform: where === "host" ? PLATFORM : "linux-x64 (container)", source: "archives" } };
+  writeFileSync(RECORD, `${JSON.stringify(m, null, 2)}\n`);
 }
 
 try {

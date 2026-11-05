@@ -15,13 +15,16 @@ what remains to launch, `docs/release.md`.
   `og` tool, the project templates and the generated wiki. It never owns
   accounts, money, publishing, threads or the agent loop: those stay in the
   platform, reached through the host ABI with game-scoped tokens.
-- The platform consumes this repository only through published packages
-  (`@origingame/engine`, `@origingame/create-game`, the knowledge package) pinned
-  by version, installed from the npm registry: never a layout built from a
-  git revision, never a checkout or `cargo` on the platform's side
-  (`docs/release.md` §1, the owner's decision of 2026-10-22). A version is
-  tested locally (the install test, the platform's local stack) before a
-  sandbox installs it. The sandbox of the development stage is an InstaBox
+- The platform consumes this repository only through released versions
+  pinned by version: the signed archives at
+  `https://origingame.ai/downloads/engine/<version>/`, one per target, each
+  the dist layout (`engine/` with the knowledge, `create/`, `bin/og`, the
+  scaffold overlay and archetypes), downloaded into the shared cache
+  (`docs/release.md` §1, the owner's decision of 2026-11-05, which replaced
+  npm: nothing is published to npm again, and the versions there stay).
+  Never a layout built from a git revision, never a checkout or `cargo` on
+  the platform's side. A version is tested locally (the install test, the
+  platform's local stack) before a sandbox installs it. The sandbox of the development stage is an InstaBox
   machine (dashboard.instabox.sh; the owner, 2026-10-22), where the install
   test runs too (`tests/install/instabox.ts`); E2B is production's provider
   and the last consumer of a version. No engine script targets E2B for
@@ -37,7 +40,8 @@ what remains to launch, `docs/release.md`.
   `summary` from `packages/knowledge/scripts/mount.ts`: their signatures
   are a public contract, and changing them is a break (a minor version
   with a `changelog.json` breaking entry). The platform also reads the
-  knowledge straight from the installed package, with no mounted copy,
+  knowledge straight from a version's dist (`engine/knowledge/`), with no
+  mounted copy,
   through `packages/knowledge/scripts/lib.ts`: `payload(roots: Roots):
   PayloadFile[]` (every mounted file at its production path, sorted by
   path) and `defaultRoots(pkg?: string): Roots`, with the shapes
@@ -103,13 +107,14 @@ what remains to launch, `docs/release.md`.
   platform.** The engine and origin-agent share their own design language,
   decoupled from the platform's (`origingame/docs/design-language.md`
   styles the portal, ops and mail; the owner, 2026-11-02). This repository
-  owns it: `packages/design` (published as `@origingame/design`) holds the
+  owns it: `packages/design` (`@origingame/design`, released as a dist's
+  `design/`) holds the
   language document and its `tokens.json`, seeded from the platform's
   language of 2026-11-02 (the neutral ladder, flat glass on floating chrome
   only, borderless controls) and evolving here from then on. og-ui's
   default style, which replaces the grey `prototype`, is generated from it
   into `crates/og-ui/src/theme.rs` and checked for drift; origin-agent pins
-  the published package by version, as it pins the engine. Roles only
+  it by version, as it pins the engine. Roles only
   games need (health, mana, xp, gold, the HUD) live in the same tokens. The
   default style is for origin-agent and prototypes only: every game ships
   its own style (`type style`, a look's `ui` line), and a publish build

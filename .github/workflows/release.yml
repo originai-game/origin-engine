@@ -3,14 +3,15 @@
 # addon and og by cargo zigbuild, the engine package with its knowledge/,
 # create-game), and the macOS and Windows jobs build only their native addon
 # and og (`build.sh --native`, `pack.sh --native`). The assemble job puts the
-# five tarballs together under one manifest. A release publishes nothing
-# here: the tarballs come back to a machine with `scripts/release.sh fetch <run-id>`,
-# and `verify` then `publish` run there as before, by hand (docs/release.md
-# §3). Run it from the Actions tab or `gh workflow run release.yml --ref
-# main`; its logic stays in the scripts so a local pack is the same.
-# `-f dev=true` is a dev build (docs/release.md §1a): the checkouts carry
-# <next patch>-dev.<run number>, and it is published under npm's `dev` tag
-# with no verify (scripts/release.sh dev).
+# tarballs together and archives them unsigned (scripts/release.sh archive)
+# for the install test's host half. Nothing is published or signed here:
+# the tarballs come back to the Mac with `scripts/release.sh fetch <run-id>`
+# (or `scripts/release.sh dev <run-id>` for a dev build), which archives and
+# signs them with the project secret OG_ENGINE_MINISIGN_KEY, and `verify`
+# then `publish` run there by hand (docs/release.md §3). Run it from the
+# Actions tab or `gh workflow run release.yml --ref main`; its logic stays in
+# the scripts so a local pack is the same. `-f dev=true` is a dev build
+# (docs/release.md §1a): the checkouts carry <next patch>-dev.<run number>.
 name: release
 
 on:
@@ -125,10 +126,10 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
 
-  # The five tarballs under one manifest (scripts/release.sh manifest), and
-  # the install test's host half on this runner as a smoke of the Linux
-  # tarballs (no renderer here: frames unchecked; the machine that publishes
-  # runs `verify`, host and container, on what it fetched).
+  # The tarballs archived (scripts/release.sh archive, unsigned), and the
+  # install test's host half on this runner as a smoke of the linux-x64
+  # archive (no renderer here: frames unchecked; the Mac runs `verify`, host
+  # and container, on what it archives and signs from the fetched tarballs).
   assemble:
     needs: [native, web]
     runs-on: ubuntu-latest
@@ -148,25 +149,13 @@ jobs:
       - name: Dev version
         if: inputs.dev
         run: bun scripts/release-bump.ts --dev "${{ github.run_number }}"
-      - name: Manifest
-        run: scripts/release.sh manifest "dist/release/${{ needs.web.outputs.version }}"
-      - name: Install test (host, from the tarballs)
+      - name: Archive (unsigned)
+        run: scripts/release.sh archive "${{ needs.web.outputs.version }}"
+      - name: Install test (host, from the archive)
         run: bun tests/install/run.ts --from "dist/release/${{ needs.web.outputs.version }}" --version "${{ needs.web.outputs.version }}" --host-only
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ needs.web.outputs.version }}
-          path: |
-            dist/release/${{ needs.web.outputs.version }}/*.tgz
-            dist/release/${{ needs.web.outputs.version }}/manifest.json
+          path: dist/release/${{ needs.web.outputs.version }}/*.tgz
           if-no-files-found: error
           retention-days: 30
-      # A dev build publishes itself when the repository has the NPM_TOKEN
-      # secret; otherwise `scripts/release.sh dev <run-id>` from a machine
-      # that has it.
-      - name: Publish the dev build (npm dist-tag dev)
-        if: inputs.dev
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          if [ -z "$NPM_TOKEN" ]; then echo "no NPM_TOKEN secret: run scripts/release.sh dev ${{ github.run_id }}"; exit 0; fi
-          scripts/release.sh dev "dist/release/${{ needs.web.outputs.version }}"
