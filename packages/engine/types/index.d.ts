@@ -48377,7 +48377,7 @@ export interface Destructible {
    */
   hitFx: ParticleEmitter;
   /**
-   * Fine debris, as visuals only: a mesh-particle emitter (`render mesh`, best with `collision` and `lit true`) burst where a chunk shatters, in place of its pieces smaller than og.Destruction.debrisVolume, which then never become bodies. It is simulated and drawn on the GPU (og.destruction.capabilities' visualDebris) and never touches the simulation, so the world is the same on every device. 0: every piece is a body.
+   * Fine debris, as visuals only: where a chunk shatters, its pieces smaller than og.Destruction.debrisVolume never become bodies. They fly on the GPU instead, each its own shape and materials, from where and how fast it broke off (the blast's push included), tumbling and landing on the colliders that are boxes, spheres and terrains, and this mesh-particle emitter (`render mesh`, best with `collision` and `lit true`) bursts its chips there too. They never touch the simulation, so the world is the same on every device, and a device without the GPU layer draws none of them (og.destruction.capabilities' visualDebris). They last og.Destruction.debrisLifetime. 0: every piece is a body.
    */
   debris: ParticleEmitter;
   /**
@@ -48644,6 +48644,10 @@ export interface DestructibleInfo {
    * @range 0..1
    */
   readonly health: number;
+  /**
+   * Its fine pieces on the GPU now (og.Destructible.debris): broken off within og.Destruction.debrisLifetime, whether or not this device draws them.
+   */
+  readonly debris: number;
 }
 
 /**
@@ -48689,9 +48693,17 @@ export interface DestructibleMaterial {
 /** What destruction does on this device. */
 export interface DestructionCapabilities {
   /**
-   * Whether og.Destructible.debris bursts are simulated and drawn on the GPU here (a renderer with compute passes: og.render.capabilities' compute); false draws none of them. The bodies are the same either way: pieces given to `debris` are never bodies, on any device, so a game never depends on it.
+   * Whether og.Destructible.debris pieces and bursts are simulated and drawn on the GPU here (a renderer with compute passes: og.render.capabilities' compute); false draws none of them. The bodies are the same either way: pieces given to `debris` are never bodies, on any device, so a game never depends on it.
    */
   readonly visualDebris: boolean;
+  /**
+   * The most fine pieces the GPU layer holds at once: past it the oldest go first (og.Destruction.debrisLifetime takes them sooner).
+   */
+  readonly maxVisualDebris: number;
+  /**
+   * What the GPU pieces collide with: `world` (the colliders that are boxes, spheres and terrains); they pass through each other and through the chunks that are bodies.
+   */
+  readonly visualDebrisContacts: string;
 }
 
 

@@ -241,13 +241,20 @@ for (const f of world.events(og.Fractured)) {
   Sparks (orange, additive, bright) read as metal, a grinder or a
   weld: on stone, wood or glass they look wrong. `examples/demolition-yard`
   has an emitter for each row but metal under `assets/fx/`.
-- `debris`: fine pieces as visuals only. A mesh-particle emitter
-  (`render mesh tetrahedron`, `lit true`, `collision`) burst where a
-  chunk shatters, in place of its pieces smaller than
-  og.Destruction.debrisVolume, which then never become bodies: hundreds
-  of chips cost no physics. It runs on the GPU and never touches the
-  simulation; `og.destruction.capabilities(world).visualDebris` says
-  whether this device draws it, and the bodies are the same either way.
+- `debris`: fine pieces as visuals only. Where a chunk shatters, its
+  pieces smaller than og.Destruction.debrisVolume never become bodies:
+  they fly on the GPU instead, each with its own shape and cut faces,
+  from where and how fast it broke off (the blast's push included). They
+  tumble and land on the colliders that are boxes, spheres and terrains.
+  The emitter (`render mesh tetrahedron`, `lit true`, `collision`)
+  bursts its chips there too. Hundreds of pieces cost no physics, and
+  they never touch the simulation. `og.destruction.capabilities(world)`
+  says whether this device draws them (`visualDebris`) and how many it
+  holds (`maxVisualDebris`), and `og.destruction.info(world, e).debris`
+  counts a prop's. The bodies are the same either way. The pieces pass
+  through each other and through the chunks that are bodies, so keep
+  `debrisVolume` below what a player would see stack: a fist-sized
+  piece, about 0.004 m³.
 - Light the broken pieces from below. A Voronoi chunk's cut faces
   interlock, so a stump or a broken pier is left with overhangs whose
   undersides face the ground; under the sky alone they take only its

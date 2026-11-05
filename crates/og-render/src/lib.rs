@@ -81,6 +81,7 @@ mod crowd_gpu;
 mod crowd_impostor;
 mod cull_gpu;
 mod custom;
+mod debris;
 pub mod debug;
 mod deferred;
 mod effects;
@@ -266,6 +267,7 @@ mod ribbons_gpu;
 mod scatter;
 mod scatter_cull;
 mod scene;
+mod scene_colliders;
 mod shaders;
 pub use shaders::{ShaderSource, shader_sources};
 mod garment;
@@ -322,6 +324,7 @@ pub use capture::{
 pub use clouds::Clouds;
 pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS};
 pub use custom::{FULL_SHADER_ENTRIES, example as example_full_shader};
+pub use debris::{DEBRIS_POINTS, DEBRIS_SETTLE_TICKS, DebrisPiece, MAX_DEBRIS};
 pub use effects::*;
 #[cfg(feature = "bake")]
 pub use environment::bake;
@@ -766,6 +769,8 @@ pub struct Renderer {
     wind_field: wind_field::WindFieldSim,
     /// The grass trample map (`trample.rs`).
     trample: trample::Trample,
+    /// The debris layer's bodies (`debris.rs`).
+    debris: debris::DebrisLayer,
     /// The frame whose lit image screen-space GI's copy holds
     /// (`Persistent::gi`, without TAA); forgotten with the TAA history.
     gi_history: Option<u64>,

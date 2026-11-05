@@ -164,7 +164,16 @@ is one line here, written at the merge that changes
   A blast's uneven share and turn per piece fade with its push, so the
   pier feet it barely reaches keep their footing. The og-destruction
   skill has breakables lit with og.GlobalIllumination `both`: a stump's
-  overhanging cut faces face the ground and read black without bounce. A loose run of
+  overhanging cut faces face the ground and read black without bounce.
+  The debris layer: a shattered chunk's pieces given to `debris` fly on
+  the GPU as rigid bodies (og-render `DebrisPiece`, XPBD rigid bodies of
+  Müller et al. 2020, `third_party/gpu-debris.md`). Each is drawn as an
+  ordinary instance of its own cut piece, starting where and how fast it
+  broke off, landing on the scene's box, sphere and terrain colliders.
+  Nothing is read back. `DestructibleInfo.debris` counts them, and
+  `DestructionCapabilities` gains `maxVisualDebris` and
+  `visualDebrisContacts`. The scene's collider packing for compute
+  (`scene_colliders`) is shared with the GPU visual-body solver. A loose run of
   no-tension masonry longer than three blocks comes apart into its
   blocks as it breaks loose. Prelude units `m3`, `pascal`, `newtonSecondPerM2`. The
   stress solver is NVIDIA Blast's (BSD-3), each joint judged at both its

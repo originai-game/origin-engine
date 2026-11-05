@@ -32363,7 +32363,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Fine debris, as visuals only: a mesh-particle emitter (`render mesh`, best with `collision` and `lit true`) burst where a chunk shatters, in place of its pieces smaller than og.Destruction.debrisVolume, which then never become bodies. It is simulated and drawn on the GPU (og.destruction.capabilities' visualDebris) and never touches the simulation, so the world is the same on every device. 0: every piece is a body."),
+                doc: doc!("Fine debris, as visuals only: where a chunk shatters, its pieces smaller than og.Destruction.debrisVolume never become bodies. They fly on the GPU instead, each its own shape and materials, from where and how fast it broke off (the blast's push included), tumbling and landing on the colliders that are boxes, spheres and terrains, and this mesh-particle emitter (`render mesh`, best with `collision` and `lit true`) bursts its chips there too. They never touch the simulation, so the world is the same on every device, and a device without the GPU layer draws none of them (og.destruction.capabilities' visualDebris). They last og.Destruction.debrisLifetime. 0: every piece is a body."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

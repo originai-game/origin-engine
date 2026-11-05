@@ -952,8 +952,20 @@ impl Renderer {
                 mapped_at_creation: false,
             })
         };
-        let instance_buffer = vertex_buffer("instances", INSTANCE_STRIDE * 1024);
-        let prev_instance_buffer = vertex_buffer("previous instances", INSTANCE_STRIDE * 1024);
+        // The instances' records: the debris layer writes its pieces'
+        // transforms into them in compute (`debris.rs`).
+        let instance_records = |label: &str| {
+            device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some(label),
+                size: INSTANCE_STRIDE * 1024,
+                usage: wgpu::BufferUsages::VERTEX
+                    | wgpu::BufferUsages::COPY_DST
+                    | wgpu::BufferUsages::STORAGE,
+                mapped_at_creation: false,
+            })
+        };
+        let instance_buffer = instance_records("instances");
+        let prev_instance_buffer = instance_records("previous instances");
         let skinned_buffer = vertex_buffer("skinned instances", skin::SKINNED_INSTANCE_STRIDE * 64);
         let ribbon_buffer = vertex_buffer("strips", 48 * 1024);
         let sprite_buffer = vertex_buffer("sprites", SPRITE_STRIDE * 1024);
@@ -1155,6 +1167,7 @@ impl Renderer {
             taa_history_frames: 0,
             wind_field,
             trample,
+            debris: Default::default(),
             gi_history: None,
             ssr,
             drawn_origin: Vec3::ZERO,

@@ -88,11 +88,22 @@ impl Renderer {
         let (mut batches, sorted_instances) = self.build_batches(scene)?;
         let instances::Sorted {
             mut transforms,
-            spheres,
+            mut spheres,
             submission,
-            sphere_box,
+            mut sphere_box,
             ..
         } = sorted_instances;
+        // The debris layer's instances are culled by everywhere their
+        // pieces can reach: the GPU moves them (debris.rs).
+        let debris_instances = crate::debris::instances(scene);
+        if !debris_instances.is_empty() {
+            for (s, &i) in submission.iter().enumerate().take(spheres.len()) {
+                if let Some(&(p, _)) = debris_instances.get(&i) {
+                    spheres[s] = scene.debris[p].sphere();
+                }
+            }
+            sphere_box = instances::fold_box(None, spheres.iter().copied());
+        }
         let mut origins = submission.clone();
         self.prepare_full_meshes(scene, &batches);
         // The meshlet path's cluster pools (meshlet_gpu.rs), once the
@@ -351,7 +362,7 @@ impl Renderer {
             // culling and the meshlet path carry the previous transforms
             // too: cull_gpu.rs `previous`).
             || (taa_on
-                && (skinned_motion == Some(true) || batches.iter().any(|b| b.simulated) || !skinned.garments.is_empty() || skinned.baked_moved || objects_moved(scene)));
+                && (skinned_motion == Some(true) || batches.iter().any(|b| b.simulated) || !skinned.garments.is_empty() || skinned.baked_moved || objects_moved(scene) || crate::debris::moving(scene)));
         let (face_fluid, face_depth, object_space) =
             self.prepare_frame_pipelines(PrepareFramePipelinesInputs {
                 scene,
@@ -907,6 +918,15 @@ impl Renderer {
                     )
                 })
                 .collect();
+            // A batch drawing debris that may still move is redrawn each
+            // frame: the GPU moves it where the CPU cannot see.
+            let debris_moving = crate::debris::moving(scene);
+            let moves = |b: &Batch| {
+                debris_moving
+                    && submission[b.first as usize..(b.first + b.count) as usize]
+                        .iter()
+                        .any(|i| debris_instances.contains_key(i))
+            };
             let info: Vec<shadow_cache::BatchInfo> = batches
                 .iter()
                 .map(|b| shadow_cache::BatchInfo {
@@ -914,7 +934,8 @@ impl Renderer {
                     count: b.count,
                     cast: b.cast,
                     always_dynamic: b.simulated
-                        || shadow_cache::deforms(b.foliage, swaying, b.shader.is_some()),
+                        || shadow_cache::deforms(b.foliage, swaying, b.shader.is_some())
+                        || moves(b),
                 })
                 .collect();
             self.shadow_cache.split(
@@ -2158,6 +2179,45 @@ impl Renderer {
             // Not written this frame: what it holds is not known next time.
             self.prev_instance_upload.invalidate();
         }
+        // The debris layer: its pieces stepped and their transforms
+        // written into the records just uploaded (and last frame's beside
+        // them), in a command buffer submitted before any that reads them
+        // (debris.rs).
+        let debris_commands = {
+            let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
+            let record = |k: usize| -> Option<(usize, glam::Mat4)> {
+                let i = origins[k];
+                let &(p, local) = debris_instances.get(&i)?;
+                let inst = &scene.instances[i as usize];
+                let d = Self::dequant(meshes, materials, inst.mesh.index(), inst.material.index());
+                Some((p, d.map_or(local, |d| local * d)))
+            };
+            let records =
+                |range: std::ops::Range<usize>, base: usize| -> Vec<(u32, usize, glam::Mat4)> {
+                    if debris_instances.is_empty() {
+                        return Vec::new();
+                    }
+                    range
+                        .filter_map(|k| record(k).map(|(p, l)| ((k - base) as u32, p, l)))
+                        .collect()
+                };
+            let mut targets = Vec::new();
+            if gpu_cull && let Some(gc) = &self.gpu_cull {
+                targets.push(crate::debris::Target {
+                    instances: &gc.instances,
+                    previous: auxiliary_instances.then_some(&gc.previous),
+                    records: records(0..sorted as usize, 0),
+                });
+            }
+            let base = if gpu_cull { sorted as usize } else { 0 };
+            targets.push(crate::debris::Target {
+                instances: &self.instance_buffer,
+                previous: auxiliary_instances.then_some(&self.prev_instance_buffer),
+                records: records(base..base + cpu_instances.len(), base),
+            });
+            self.debris
+                .encode(&self.device, &self.queue, scene, &targets)
+        };
         self.sorted.restore(transforms, spheres);
         if !skinned_data.is_empty() || crowd_gpu {
             grow_and_write(
@@ -5207,9 +5267,12 @@ impl Renderer {
         {
             self.keep_presented(&mut encoder, &frame.texture);
         }
-        let _submission = self
-            .queue
-            .submit(cull_commands.into_iter().chain(Some(encoder.finish())));
+        let _submission = self.queue.submit(
+            debris_commands
+                .into_iter()
+                .chain(cull_commands)
+                .chain(Some(encoder.finish())),
+        );
         #[cfg(not(target_arch = "wasm32"))]
         if matches!(target, RenderTarget::Offscreen) {
             self.offscreen_submissions.push_back(_submission);

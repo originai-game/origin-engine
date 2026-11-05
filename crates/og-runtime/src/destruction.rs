@@ -80,6 +80,24 @@ pub(crate) struct State {
     ops: Vec<Op>,
     /// breakFx and hitFx bursts: (entity bits, the tick it is despawned at).
     fx: Vec<(u64, u64)>,
+    /// Fine pieces broken off as visuals only (og.Destructible.debris):
+    /// the renderer's debris layer moves and draws them from here; they
+    /// are never bodies.
+    debris: Vec<Debris>,
+}
+
+/// A fine piece as it broke off: the renderer simulates it from here.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+struct Debris {
+    /// Its og.Destructible's entity bits and its chunk.
+    prop: u64,
+    chunk: u32,
+    /// The tick it broke off.
+    tick: u64,
+    /// Its centre of mass, rotation (x y z w) and scale then.
+    pose: [f32; 10],
+    velocity: [f32; 3],
+    angular: [f32; 3],
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -173,6 +191,37 @@ fn scramble(mut x: u64) -> u64 {
     x = (x ^ (x >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
     x = (x ^ (x >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
     x ^ (x >> 31)
+}
+
+/// A blast's push on a piece of mass `m` at `at` (its velocity and turn),
+/// `None` where it does not reach. A blast's front is not a smooth field
+/// near the charge: each piece there takes its own share of the push (up
+/// to SHARE either way) and a small turn from the uneven pressure on its
+/// face, both fading with the push to none at the pier feet it barely
+/// reaches, so the blocks of a wall go their own ways rather than in step
+/// and the piers keep their footing. Fixed per piece by `first`, its first
+/// chunk, so the same chunk of a model takes the same share in any scene.
+fn blast_push(
+    falloff: &Damage,
+    impulse: f32,
+    at: Vec3,
+    m: f32,
+    density: f32,
+    first: u64,
+) -> Option<(Vec3, Vec3)> {
+    let j = falloff.at(at) * face(m / density);
+    if m <= 0.0 || j <= 0.0 {
+        return None;
+    }
+    let r = scramble(first);
+    let u = |s: u32| ((r >> s) & 0x3ff) as f32 / 1023.0;
+    let axis = Vec3::new(u(0) - 0.5, u(10) - 0.5, u(20) - 0.5).normalize_or(Vec3::X);
+    let dir = (at - falloff.point).normalize_or(Vec3::Y);
+    let near = falloff.at(at) / impulse;
+    let dv = dir * (j / m) * (1.0 + near * SHARE * (u(40) - 0.5));
+    let size = og_core::math::pow(m / density, 1.0 / 3.0).max(0.02);
+    let dw = axis * (near * SPIN * dv.length() / size).min(TURN_MAX);
+    Some((dv, dw))
 }
 
 /// Below this speed (m/s) a loose island is at rest.
@@ -900,6 +949,8 @@ fn run(
     // the explosions' push).
     let mut made: BTreeMap<u64, (Vec3, Vec3)> = BTreeMap::new();
     let mut fresh_bodies: Vec<u64> = Vec::new();
+    // Fine pieces broken off this tick, and their mass.
+    let mut fresh_debris: Vec<(Debris, f32)> = Vec::new();
     let mut stress_budget = match res["stressBudget"].as_u64().unwrap_or(200_000) {
         0 => u64::MAX,
         n => n,
@@ -1271,13 +1322,26 @@ fn run(
                 let kid = &a.chunks[i as usize];
                 let v = kid.volume * scale * scale * scale;
                 volume += v;
+                let kp = (place_on(&cp, ch.centroid, kid.centroid), cp.1, cp.2);
                 // Pieces below debrisVolume, given a debris emitter, are
-                // its burst on the GPU: never bodies.
+                // the GPU's (its burst, and the pieces themselves in the
+                // renderer's debris layer): never bodies.
                 if s.debris != 0 && v < debris_volume {
                     fine += 1;
+                    let at = kp.0;
+                    fresh_debris.push((
+                        Debris {
+                            prop: k,
+                            chunk: i,
+                            tick,
+                            pose: frame_of_pose(kp),
+                            velocity: (lin + ang.cross(at - cp.0)).to_array(),
+                            angular: ang.to_array(),
+                        },
+                        v * s.mat.density,
+                    ));
                     continue;
                 }
-                let kp = (place_on(&cp, ch.centroid, kid.centroid), cp.1, cp.2);
                 let ke = spawn_chunk(ctx, l, k, p, i, 2, &kp, Role::Root, 0, tick)?;
                 body = if body == 0 { ke } else { body };
                 made.insert(ke, (lin + ang.cross(kp.0 - cp.0), ang));
@@ -1320,30 +1384,13 @@ fn run(
                 if m <= 0.0 {
                     continue;
                 }
-                let j = falloff.at(at) * face(m / density);
-                if j <= 0.0 {
-                    continue;
-                }
-                // A blast's front is not a smooth field near the charge:
-                // each piece there takes its own share of the push (up to
-                // SHARE either way) and a small turn from the uneven
-                // pressure on its face, both fading with the push to none
-                // at the pier feet it barely reaches, so the blocks of a
-                // wall go their own ways rather than in step and the piers
-                // keep their footing. Fixed per piece by its first chunk,
-                // so the same chunk of a model takes the same share in any
-                // scene.
                 let first = (0..p.entities.len())
                     .find(|&c| p.entities[c] == b || (c < a.support as usize && p.body[c] == b))
                     .unwrap_or(0);
-                let r = scramble(first as u64);
-                let u = |s: u32| ((r >> s) & 0x3ff) as f32 / 1023.0;
-                let axis = Vec3::new(u(0) - 0.5, u(10) - 0.5, u(20) - 0.5).normalize_or(Vec3::X);
-                let dir = (at - point).normalize_or(Vec3::Y);
-                let near = falloff.at(at) / impulse;
-                let dv = dir * (j / m) * (1.0 + near * SHARE * (u(40) - 0.5));
-                let size = og_core::math::pow(m / density, 1.0 / 3.0).max(0.02);
-                let dw = axis * (near * SPIN * dv.length() / size).min(TURN_MAX);
+                let Some((dv, dw)) = blast_push(&falloff, impulse, at, m, density, first as u64)
+                else {
+                    continue;
+                };
                 match made.get_mut(&b) {
                     Some(v) => {
                         v.0 += dv;
@@ -1360,6 +1407,29 @@ fn run(
                         }
                     }
                 }
+            }
+        }
+    }
+    // The blasts' push on the fine pieces broken off this tick, as on a
+    // body (the pieces already on the GPU are the renderer's).
+    for &(point, inner, radius, impulse) in &explosions {
+        if impulse <= 0.0 {
+            continue;
+        }
+        let falloff = Damage {
+            point,
+            min_radius: inner,
+            max_radius: radius,
+            amount: impulse,
+        };
+        for (d, m) in &mut fresh_debris {
+            let density = settings.get(&d.prop).map_or(1000.0, |s| s.mat.density);
+            let at = Vec3::new(d.pose[0], d.pose[1], d.pose[2]);
+            if let Some((dv, dw)) =
+                blast_push(&falloff, impulse, at, *m, density, u64::from(d.chunk))
+            {
+                d.velocity = (Vec3::from(d.velocity) + dv).to_array();
+                d.angular = (Vec3::from(d.angular) + dw).to_array();
             }
         }
     }
@@ -1389,13 +1459,28 @@ fn run(
         // One velocity for the whole freed mass, scaled by falloff: the
         // momentum is conserved and the lightest piece is not flung.
         let weighed: f32 = freed.iter().map(|&(_, m, w)| m * w).sum();
+        // The fine pieces it broke off this tick move with them.
+        let pieces: f32 = fresh_debris
+            .iter()
+            .filter(|(d, _)| d.prop == k)
+            .map(|(d, m)| m * falloff.at(Vec3::new(d.pose[0], d.pose[1], d.pose[2])))
+            .sum();
+        let weighed = weighed + pieces;
         for (b, _, w) in freed {
             let dv = (amount * w / weighed).min(speed);
             if let Some(v) = made.get_mut(&b) {
                 v.0 += dir * dv;
             }
         }
+        for (d, _) in fresh_debris.iter_mut().filter(|(d, _)| d.prop == k) {
+            let w = falloff.at(Vec3::new(d.pose[0], d.pose[1], d.pose[2]));
+            if w > 0.0 && weighed > 0.0 {
+                let dv = (amount * w / weighed).min(speed);
+                d.velocity = (Vec3::from(d.velocity) + dir * dv).to_array();
+            }
+        }
     }
+    st.debris.extend(fresh_debris.into_iter().map(|(d, _)| d));
     for b in fresh_bodies {
         let (lin, ang) = made[&b];
         let vb = l.velocity.1.enc(
@@ -1467,6 +1552,14 @@ fn run(
             }
         }
     }
+    // Fine pieces: gone after debrisLifetime, or with their prop, and the
+    // oldest past what the renderer's debris layer holds.
+    let props = &st.props;
+    st.debris.retain(|d| {
+        props.contains_key(&d.prop) && !(lifetime > 0.0 && tick >= d.tick.saturating_add(life))
+    });
+    let over = st.debris.len().saturating_sub(og_render::MAX_DEBRIS);
+    st.debris.drain(..over);
 
     // What the game reads: each destructible's written fields.
     for (&k, p) in &st.props {
@@ -1759,6 +1852,9 @@ impl StateBlock for Block {
         for p in st.props.values_mut() {
             m(&mut p.frame);
         }
+        for d in &mut st.debris {
+            m(&mut d.pose);
+        }
         for op in &mut st.ops {
             match op {
                 Op::Damage { point, .. } | Op::Explode { point, .. } => m(point),
@@ -1778,6 +1874,45 @@ impl StateBlock for Block {
 pub(crate) struct Drawn {
     pub entity: u64,
     pub chunks: Vec<(u64, u32, Vec3, u32)>,
+    /// Its fine pieces, the renderer's to move (og_render::DebrisPiece).
+    pub debris: Vec<DrawnDebris>,
+}
+
+/// A fine piece as extraction hands it to the renderer: an id stable while
+/// it lives, the glTF node that draws it and its centre in the model, the
+/// tick it broke off with its pose (centre of mass, rotation, scale) and
+/// velocities then, and the points it collides at (its hull's vertices
+/// about its centre of mass, at most og_render::DEBRIS_POINTS).
+pub(crate) struct DrawnDebris {
+    pub id: u64,
+    pub node: u32,
+    pub centre: Vec3,
+    pub tick: u64,
+    pub pose: (Vec3, Quat, Vec3),
+    pub velocity: Vec3,
+    pub angular: Vec3,
+    pub points: Vec<Vec3>,
+}
+
+/// Up to `n` of `hull`'s points spread over it (farthest-point sampling
+/// from the first): what a fine piece collides at.
+fn spread(hull: &[Vec3], n: usize) -> Vec<Vec3> {
+    if hull.len() <= n {
+        return hull.to_vec();
+    }
+    let mut out = vec![hull[0]];
+    let mut near: Vec<f32> = hull.iter().map(|p| p.distance_squared(hull[0])).collect();
+    while out.len() < n {
+        let (far, _) = near
+            .iter()
+            .enumerate()
+            .fold((0, -1.0f32), |b, (i, &d)| if d > b.1 { (i, d) } else { b });
+        out.push(hull[far]);
+        for (d, p) in near.iter_mut().zip(hull) {
+            *d = d.min(p.distance_squared(hull[far]));
+        }
+    }
+    out
 }
 
 /// Engine `engine`'s fractured props.
@@ -1813,6 +1948,24 @@ pub(crate) fn drawn(engine: u32) -> Vec<Drawn> {
                 let h = (k ^ (k >> 32)) as u32 ^ of.wrapping_mul(0x9e37_79b9);
                 (h ^ (h >> 15)).wrapping_mul(0x2c1b_3c6d).max(1)
             };
+            let debris = st
+                .debris
+                .iter()
+                .filter(|d| d.prop == k)
+                .filter_map(|d| {
+                    let c = a.chunks.get(d.chunk as usize)?;
+                    Some(DrawnDebris {
+                        id: scramble(k.rotate_left(17) ^ (u64::from(d.chunk) << 1 | 1)),
+                        node: c.node,
+                        centre: c.centroid,
+                        tick: d.tick,
+                        pose: pose_of_frame(&d.pose),
+                        velocity: Vec3::from(d.velocity),
+                        angular: Vec3::from(d.angular),
+                        points: spread(&c.hull, og_render::DEBRIS_POINTS),
+                    })
+                })
+                .collect();
             Some(Drawn {
                 entity: k,
                 chunks: p
@@ -1822,6 +1975,7 @@ pub(crate) fn drawn(engine: u32) -> Vec<Drawn> {
                     .filter(|(_, e)| **e != 0)
                     .map(|(c, &e)| (e, a.chunks[c].node, a.chunks[c].centroid, group(c)))
                     .collect(),
+                debris,
             })
         })
         .collect()
@@ -1944,12 +2098,18 @@ pub fn og_destruction_info(world: u32, entity: f64) -> String {
                 e.to_bits()
             )
         })?;
-        let inst = lock(&shared(world))
-            .props
-            .get(&e.to_bits())
-            .filter(|p| p.asset == asset)
-            .map(|p| p.inst.clone())
-            .unwrap_or_else(|| Instance::new(&a));
+        let (inst, debris) = {
+            let sh = shared(world);
+            let st = lock(&sh);
+            let inst = st
+                .props
+                .get(&e.to_bits())
+                .filter(|p| p.asset == asset)
+                .map(|p| p.inst.clone())
+                .unwrap_or_else(|| Instance::new(&a));
+            let k = e.to_bits();
+            (inst, st.debris.iter().filter(|d| d.prop == k).count())
+        };
         let total: f32 = a.bonds.iter().map(|b| b.area).sum();
         let left: f32 = a
             .bonds
@@ -1966,6 +2126,7 @@ pub fn og_destruction_info(world: u32, entity: f64) -> String {
             "islands": inst.islands(&a).len(),
             "anchored": (0..support).filter(|&c| inst.anchors[c] > 0.0 && !inst.shattered[c]).count(),
             "health": if total > 0.0 { left / total } else { 1.0 },
+            "debris": debris,
         }))
     })();
     match r {
@@ -2022,9 +2183,14 @@ pub fn og_destruction_material(world: u32, kind: u32) -> String {
 }
 
 pub fn og_destruction_capabilities(world: u32) -> String {
-    // og.Destructible.debris is a GPU particle burst: drawn where a
-    // renderer runs compute passes (every renderer the engine makes:
-    // og.render.capabilities' compute).
+    // og.Destructible.debris is the renderer's debris layer and a GPU
+    // particle burst: drawn where a renderer runs compute passes (every
+    // renderer the engine makes: og.render.capabilities' compute).
     let compute = engine(world).is_ok_and(|e| e.render.borrow().backend.is_some());
-    json!({ "visualDebris": compute }).to_string()
+    json!({
+        "visualDebris": compute,
+        "maxVisualDebris": og_render::MAX_DEBRIS,
+        "visualDebrisContacts": "world",
+    })
+    .to_string()
 }

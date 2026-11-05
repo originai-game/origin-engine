@@ -331,6 +331,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // The meshlet path draws the level picked here too (one per model, with
     // hysteresis), so both paths draw the same picture.
     rs.scene.instance_levels.clear();
+    rs.scene.debris.clear();
     rs.scene.impostors.clear();
     // A fractured destructible's model is drawn by its chunks (og.Chunk):
     // each its node of the model at its own transform, with the model's look.
@@ -372,6 +373,51 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 });
                 keys.push((chunk, k as u32));
             }
+        }
+        // Its fine pieces: instances the renderer's debris layer moves,
+        // given where each broke off (og_render::DebrisPiece).
+        for d in &fractured[&e].debris {
+            let (position, rotation, scale) = d.pose;
+            let body = Mat4::from_scale_rotation_translation(scale, rotation, position);
+            let mut drawn_by = Vec::new();
+            for (k, &(mesh, material, local)) in parts.iter().enumerate() {
+                if nodes.get(k) != Some(&(d.node as usize)) {
+                    continue;
+                }
+                let to_mesh = Mat4::from_translation(-d.centre) * local;
+                if rs.scene.meshlet_drawable(mesh, material) {
+                    let at = rs.scene.instances.len();
+                    rs.scene.instance_levels.resize(at + 1, u8::MAX);
+                    rs.scene.instance_levels[at] = 0;
+                }
+                drawn_by.push((rs.scene.instances.len() as u32, to_mesh));
+                rs.scene.instances.push(og_render::Instance {
+                    mesh,
+                    material,
+                    transform: body * to_mesh,
+                    material_layer: None,
+                    fx: look.fx,
+                    cast_shadows: look.cast,
+                    receive_shadows: look.receive,
+                    sway: 0.0,
+                });
+                // Keyed by the piece, so its previous transform is its own.
+                keys.push((d.id, k as u32));
+            }
+            rs.scene.debris.push(og_render::DebrisPiece {
+                id: d.id,
+                tick: d.tick,
+                position,
+                rotation,
+                scale,
+                velocity: d.velocity,
+                angular_velocity: d.angular,
+                points: d.points.clone(),
+                friction: 0.6,
+                restitution: 0.15,
+                reach: DEBRIS_REACH,
+                instances: drawn_by,
+            });
         }
     }
     for (e, asset, mut parts, mut look, bias, sway) in model_parts {
@@ -811,6 +857,10 @@ fn rebase(scene: &mut og_render::RenderScene, origin: Vec3, forward: Option<Vec3
     }
 }
 
+/// How far (m) a fine piece may fly from where it broke off before it is
+/// no longer drawn (og_render::DebrisPiece::reach): its culling sphere.
+const DEBRIS_REACH: f32 = 12.0;
+
 /// The colliders CPU-simulated particles bounce off
 /// (`RenderScene::particle_colliders`): every og.Collider that is a box, a
 /// sphere or a terrain's height field, placed as physics places it, while
@@ -820,11 +870,13 @@ fn rebase(scene: &mut og_render::RenderScene, origin: Vec3, forward: Option<Vec3
 /// shapes too.
 fn particle_colliders(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     rs.scene.particle_colliders.clear();
-    let colliding = rs.scene.particles.iter().any(|s| {
-        rs.scene
-            .emitter(s.emitter)
-            .is_some_and(|e| e.collision.is_some())
-    });
+    // The debris layer's pieces land on them too (og_render::DebrisPiece).
+    let colliding = !rs.scene.debris.is_empty()
+        || rs.scene.particles.iter().any(|s| {
+            rs.scene
+                .emitter(s.emitter)
+                .is_some_and(|e| e.collision.is_some())
+        });
     let Some(layout) = rs.draw.collider.clone().filter(|_| colliding) else {
         return;
     };

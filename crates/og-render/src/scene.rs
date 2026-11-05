@@ -155,6 +155,11 @@ pub struct RenderScene {
     /// path's stand-in for the depth buffer the compute path reads;
     /// [`crate::ParticleCollider`]). Empty by default.
     pub particle_colliders: Vec<crate::ParticleCollider>,
+    /// Fine pieces of broken props, simulated and drawn on the GPU only
+    /// ([`crate::DebrisPiece`], `debris.rs`): each drawn by instances of
+    /// [`RenderScene::instances`] whose transforms the GPU writes. They
+    /// collide with [`RenderScene::particle_colliders`]. Empty by default.
+    pub debris: Vec<crate::DebrisPiece>,
     /// Systems the host simulated itself (its tick ran
     /// [`crate::CpuParticles::advance`] to read their events), by
     /// [`ParticleSystem::id`]: the renderer draws these particles and their

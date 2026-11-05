@@ -319,11 +319,11 @@ fn pieces_given_to_debris_are_never_bodies() {
         "og.Destructible".into(),
         Some(json!({ "toughness": 400, "strength": 4000, "debris": chips }).to_string()),
     ));
-    // Every piece of a shattered chunk is debris here.
+    // Every piece of a shattered chunk is debris here, for a second.
     value(og_engine_write_resource(
         w,
         "og.Destruction".into(),
-        json!({ "debrisVolume": 1.0 }).to_string(),
+        json!({ "debrisVolume": 1.0, "debrisLifetime": 1.0 }).to_string(),
     ));
     frames(w, 2);
     shoot_foot(w, wall);
@@ -336,11 +336,29 @@ fn pieces_given_to_debris_are_never_bodies() {
         .filter(|e| e["cause"] == 4)
         .collect();
     assert!(!shattered.is_empty(), "the shot shatters chunks: {events}");
-    for e in shattered {
+    for e in &shattered {
         assert_eq!(e["chunks"], 0, "no piece became a body: {e}");
         assert_eq!(e["body"], 0);
         assert!(e["volume"].as_f64().unwrap() > 0.0);
     }
+    // Each shattered chunk's 4 children are the GPU's pieces now: world
+    // state, so a snapshot restores them and the world hashes the same.
+    let pieces = value(og_destruction_info(w, wall))["debris"]
+        .as_u64()
+        .unwrap();
+    assert_eq!(pieces, 4 * shattered.len() as u64);
+    let saved = value(og_world_snapshot(w, None))
+        .as_str()
+        .unwrap()
+        .to_string();
+    let before = hash(w);
+    frames(w, 10);
+    value(og_world_restore(w, saved, None));
+    assert_eq!(hash(w), before);
+    assert_eq!(value(og_destruction_info(w, wall))["debris"], pieces);
+    // Gone after debrisLifetime.
+    frames(w, 61);
+    assert_eq!(value(og_destruction_info(w, wall))["debris"], 0);
     // No renderer here: the bursts are not drawn, the world is the same.
     let caps: Value = serde_json::from_str(&og_destruction_capabilities(w)).unwrap();
     assert_eq!(caps["visualDebris"], false);

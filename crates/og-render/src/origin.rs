@@ -25,7 +25,7 @@ impl RenderScene {
     /// Moves the scene's zero to `origin`, a point in its current
     /// coordinates: subtracts it from every world-space position the frame
     /// draws (instances, the camera and secondary cameras, lights, sprites,
-    /// text, particle systems, trails, ribbons, beams, lines and points,
+    /// text, particle systems, debris, trails, ribbons, beams, lines and points,
     /// decals, probes and light volumes, water, terrains, fog heights, 2D
     /// lights and fluids, wind motors, grass pushers) and adds it to [`RenderScene::origin`]. Screen
     /// lines, screen points and the overlay are screen space and stay.
@@ -112,6 +112,9 @@ impl RenderScene {
                 | ParticleCollider::HeightField { transform, .. } => moved(transform, d),
                 ParticleCollider::Sphere { center, .. } => *center += d,
             }
+        }
+        for p in &mut self.debris {
+            p.position += d;
         }
         for t in &mut self.trails {
             t.position += d;

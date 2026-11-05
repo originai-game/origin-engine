@@ -85,7 +85,7 @@ fn damage {
 }
 ```
 
-<sub>`api.ogt` line 28822</sub>
+<sub>`api.ogt` line 28825</sub>
 
 <a id="fn-explode"></a>
 
@@ -115,7 +115,7 @@ fn explode {
 }
 ```
 
-<sub>`api.ogt` line 28830</sub>
+<sub>`api.ogt` line 28833</sub>
 
 <a id="fn-fracture"></a>
 
@@ -145,7 +145,7 @@ fn fracture {
 }
 ```
 
-<sub>`api.ogt` line 28837</sub>
+<sub>`api.ogt` line 28840</sub>
 
 <a id="fn-info"></a>
 
@@ -175,7 +175,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 28844</sub>
+<sub>`api.ogt` line 28847</sub>
 
 <a id="fn-material"></a>
 
@@ -205,7 +205,7 @@ fn material {
 }
 ```
 
-<sub>`api.ogt` line 28851</sub>
+<sub>`api.ogt` line 28854</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -233,7 +233,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 28858</sub>
+<sub>`api.ogt` line 28861</sub>
 
 ## Components, resources and events
 
@@ -259,7 +259,7 @@ Token `og.Destructible`, registered under the schema name `og.Destructible`; its
 | `anchored` | `boolean` | `true` | — | — | — | Whether its anchors (the chunks on its floor) hold it to the world; false, every island falls. |
 | `breakFx` | `ParticleEmitter` | `0` | — | — | — | A one-shot emitter (og.load.emitter, `looping false`) burst where each island breaks loose, at its broken faces: the material's own, a lit dust puff for stone and brick, splinters and a little dust for wood, shards and glints for glass. 0 none. |
 | `hitFx` | `ParticleEmitter` | `0` | — | — | — | A one-shot emitter burst at each hit that damages it: the material's own, grit and a puff off stone, splinters off wood, glints off glass; sparks only off metal, and a few. 0 none. |
-| `debris` | `ParticleEmitter` | `0` | — | — | — | Fine debris, as visuals only: a mesh-particle emitter (`render mesh`, best with `collision` and `lit true`) burst where a chunk shatters, in place of its pieces smaller than og.Destruction.debrisVolume, which then never become bodies. It is simulated and drawn on the GPU (og.destruction.capabilities' visualDebris) and never touches the simulation, so the world is the same on every device. 0: every piece is a body. |
+| `debris` | `ParticleEmitter` | `0` | — | — | — | Fine debris, as visuals only: where a chunk shatters, its pieces smaller than og.Destruction.debrisVolume never become bodies. They fly on the GPU instead, each its own shape and materials, from where and how fast it broke off (the blast's push included), tumbling and landing on the colliders that are boxes, spheres and terrains, and this mesh-particle emitter (`render mesh`, best with `collision` and `lit true`) bursts its chips there too. They never touch the simulation, so the world is the same on every device, and a device without the GPU layer draws none of them (og.destruction.capabilities' visualDebris). They last og.Destruction.debrisLifetime. 0: every piece is a body. |
 | `fractured` | `boolean` | `false` | — | — | read only | Written: true from its first break (the model hidden, its chunks drawn). |
 | `broken` | `number` | `0` | — | — | read only | Written: its bonds broken so far. |
 | `loose` | `number` | `0` | — | — | read only | Written: its chunks that have broken loose and still exist. |
@@ -315,7 +315,7 @@ component Destructible {
   }
   field breakFx ParticleEmitter "A one-shot emitter (og.load.emitter, `looping false`) burst where each island breaks loose, at its broken faces: the material's own, a lit dust puff for stone and brick, splinters and a little dust for wood, shards and glints for glass. 0 none."
   field hitFx ParticleEmitter "A one-shot emitter burst at each hit that damages it: the material's own, grit and a puff off stone, splinters off wood, glints off glass; sparks only off metal, and a few. 0 none."
-  field debris ParticleEmitter "Fine debris, as visuals only: a mesh-particle emitter (`render mesh`, best with `collision` and `lit true`) burst where a chunk shatters, in place of its pieces smaller than og.Destruction.debrisVolume, which then never become bodies. It is simulated and drawn on the GPU (og.destruction.capabilities' visualDebris) and never touches the simulation, so the world is the same on every device. 0: every piece is a body."
+  field debris ParticleEmitter "Fine debris, as visuals only: where a chunk shatters, its pieces smaller than og.Destruction.debrisVolume never become bodies. They fly on the GPU instead, each its own shape and materials, from where and how fast it broke off (the blast's push included), tumbling and landing on the colliders that are boxes, spheres and terrains, and this mesh-particle emitter (`render mesh`, best with `collision` and `lit true`) bursts its chips there too. They never touch the simulation, so the world is the same on every device, and a device without the GPU layer draws none of them (og.destruction.capabilities' visualDebris). They last og.Destruction.debrisLifetime. 0: every piece is a body."
   field fractured bool "Written: true from its first break (the model hidden, its chunks drawn)." {
     readonly true
   }
@@ -579,6 +579,7 @@ What a destructible holds and how much of it stands (og.destruction.info).
 | `islands` | `number` | `0` | — | — | — | Its islands now. |
 | `anchored` | `number` | `0` | — | — | — | Its support chunks still held to the world. |
 | `health` | `number` | `0` | 0 … 1 | — | — | Its bonds' remaining health over their total, 1 intact to 0 rubble. |
+| `debris` | `number` | `0` | — | — | — | Its fine pieces on the GPU now (og.Destructible.debris): broken off within og.Destruction.debrisLifetime, whether or not this device draws them. |
 
 ```ogt
 struct DestructibleInfo {
@@ -593,6 +594,7 @@ struct DestructibleInfo {
     min 0
     max 1
   }
+  field debris u32 "Its fine pieces on the GPU now (og.Destructible.debris): broken off within og.Destruction.debrisLifetime, whether or not this device draws them."
 }
 ```
 
@@ -637,7 +639,7 @@ struct DestructibleMaterial {
 }
 ```
 
-<sub>`api.ogt` line 28796</sub>
+<sub>`api.ogt` line 28797</sub>
 
 <a id="type-DestructionCapabilities"></a>
 
@@ -647,16 +649,20 @@ What destruction does on this device.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `visualDebris` | `boolean` | `false` | — | — | — | Whether og.Destructible.debris bursts are simulated and drawn on the GPU here (a renderer with compute passes: og.render.capabilities' compute); false draws none of them. The bodies are the same either way: pieces given to `debris` are never bodies, on any device, so a game never depends on it. |
+| `visualDebris` | `boolean` | `false` | — | — | — | Whether og.Destructible.debris pieces and bursts are simulated and drawn on the GPU here (a renderer with compute passes: og.render.capabilities' compute); false draws none of them. The bodies are the same either way: pieces given to `debris` are never bodies, on any device, so a game never depends on it. |
+| `maxVisualDebris` | `number` | `0` | — | — | — | The most fine pieces the GPU layer holds at once: past it the oldest go first (og.Destruction.debrisLifetime takes them sooner). |
+| `visualDebrisContacts` | `string` | `""` | — | — | — | What the GPU pieces collide with: `world` (the colliders that are boxes, spheres and terrains); they pass through each other and through the chunks that are bodies. |
 
 ```ogt
 struct DestructionCapabilities {
   doc "What destruction does on this device."
-  field visualDebris bool "Whether og.Destructible.debris bursts are simulated and drawn on the GPU here (a renderer with compute passes: og.render.capabilities' compute); false draws none of them. The bodies are the same either way: pieces given to `debris` are never bodies, on any device, so a game never depends on it."
+  field visualDebris bool "Whether og.Destructible.debris pieces and bursts are simulated and drawn on the GPU here (a renderer with compute passes: og.render.capabilities' compute); false draws none of them. The bodies are the same either way: pieces given to `debris` are never bodies, on any device, so a game never depends on it."
+  field maxVisualDebris u32 "The most fine pieces the GPU layer holds at once: past it the oldest go first (og.Destruction.debrisLifetime takes them sooner)."
+  field visualDebrisContacts String "What the GPU pieces collide with: `world` (the colliders that are boxes, spheres and terrains); they pass through each other and through the chunks that are bodies."
 }
 ```
 
-<sub>`api.ogt` line 28817</sub>
+<sub>`api.ogt` line 28818</sub>
 
 ## Constants
 

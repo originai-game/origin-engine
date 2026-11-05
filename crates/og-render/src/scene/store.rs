@@ -96,6 +96,7 @@ impl RenderScene {
             interpolation: None,
             particles: Vec::new(),
             particle_colliders: Vec::new(),
+            debris: Vec::new(),
             hosted_particles: Vec::new(),
             trails: Vec::new(),
             ribbons: Vec::new(),
