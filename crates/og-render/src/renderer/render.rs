@@ -5474,7 +5474,7 @@ impl Timings {
 /// nothing nearer) or loaded over what the layer holds, its depth kept
 /// for a later pass or not.
 fn shadow_target<'e>(
-    encoder: &'e mut wgpu::CommandEncoder,
+    encoder: &'e mut crate::Encoder,
     color: &wgpu::TextureView,
     depth: &wgpu::TextureView,
     load: bool,
