@@ -217,13 +217,14 @@ export class SafariPage {
   /**
    * Evaluate an expression (awaiting a Promise) as CDP's Runtime.evaluate
    * does: global scope, its completion value, through JSON. The page's
-   * collected errors come back with it into `log`.
+   * collected errors come back with it into `log`. A function comes back as
+   * `{}` (CDP's returnByValue), so `until("window.wire")` sees it.
    */
   async eval<T = unknown>(expression: string): Promise<T> {
     const script = `const done = arguments[arguments.length - 1];
       const drain = () => { const b = globalThis.__og_wd_log__; return b ? b.splice(0) : []; };
       Promise.resolve().then(() => (0, eval)(arguments[0])).then(
-        (v) => done({ v: v === undefined ? undefined : JSON.stringify(v), log: drain() }),
+        (v) => done({ v: v === undefined ? undefined : typeof v === "function" ? "{}" : JSON.stringify(v), log: drain() }),
         (e) => done({ e: String((e && (e.stack ? (e.message + "\\n" + e.stack) : e.message)) || e), log: drain() }));`;
     const r = await this.#cmd<{ v?: string; e?: string; log?: string[] }>("POST", "/execute/async", { script, args: [expression] });
     if (r?.log?.length) this.log.push(...r.log);

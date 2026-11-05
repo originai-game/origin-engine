@@ -50,6 +50,11 @@ mod web {
         /// `cooked/`.
         static TEXT_MANIFEST: RefCell<Option<String>> = const { RefCell::new(None) };
         static TEXT_FILES: RefCell<BTreeMap<String, Vec<u8>>> = const { RefCell::new(BTreeMap::new()) };
+        /// The open renderer's uncaptured WebGPU errors since it opened. The
+        /// browser only prints them to its own console (natively wgpu
+        /// panics on one: presentation.rs `watch`); a capture with any fails
+        /// with them, so the runner names the error behind a broken frame.
+        static GPU_ERRORS: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
     }
 
     fn err(e: impl std::fmt::Display) -> JsValue {
@@ -181,6 +186,12 @@ mod web {
             built.desc.culling = og_render::Culling::Cpu;
         }
         let mut renderer = Renderer::new(&built.desc).await.map_err(err)?;
+        GPU_ERRORS.with(|e| e.borrow_mut().clear());
+        renderer
+            .device()
+            .on_uncaptured_error(std::sync::Arc::new(|e: og_render::wgpu::Error| {
+                GPU_ERRORS.with(|errors| errors.borrow_mut().push(e.to_string()));
+            }));
         renderer.set_render_scale(built.render_scale);
         let info = renderer.info();
         let t = &built.tolerance;
@@ -259,6 +270,10 @@ mod web {
                 request.try_finish(&open.renderer).map_err(err)
             })?;
             if let Some(image) = done {
+                let errors = GPU_ERRORS.with(|e| std::mem::take(&mut *e.borrow_mut()));
+                if !errors.is_empty() {
+                    return Err(err(format!("WebGPU errors: {}", errors.join("\n"))));
+                }
                 return Ok(image.pixels);
             }
             tick().await?;

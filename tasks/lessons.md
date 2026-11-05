@@ -77,3 +77,12 @@ waiting on one long single-slot job blocks everyone else. A subshell's `$$`
 is its parent's pid, so a lock's owner looks unchanged across runs.
 Never rewrite a shell script in place while a running `sh` is still
 reading it.
+
+## 2026-11-05 — Take a lane only through `scripts/lane.sh take`
+
+`lane.sh --list` showed lane-12 idle, so a bare `git switch safari` there
+looked safe; nine seconds earlier another stream had taken it, and its
+`git reset --hard origin/main` threw away this stream's conflicted rebase.
+Always claim with `scripts/lane.sh take lane-N <stream>` (for a branch
+that already exists, take first and then switch inside the claimed lane),
+never with a bare `git switch` in a lane.
