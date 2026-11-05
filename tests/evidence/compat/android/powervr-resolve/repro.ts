@@ -42,6 +42,8 @@ try {
       const [fs, ...kv] = spec.split("@");
       const constants = { EFFECTS: 1, ANALYTIC: 1 };
       for (const p of kv) { const [k, v] = p.split("="); constants[k] = Number(v); }
+      const t0 = performance.now();
+      const ms = () => " (" + Math.round(performance.now() - t0) + " ms)";
       try {
         await d.createRenderPipelineAsync({
           layout: "auto",
@@ -49,8 +51,8 @@ try {
           fragment: { module: m, entryPoint: fs, constants, targets: [{ format: "rgba16float" }] },
           depthStencil: { format: "depth32float", depthCompare: "less", depthWriteEnabled: true },
         });
-        out[spec] = "ok";
-      } catch (e) { out[spec] = "refused (" + (e.reason || "") + "): " + String(e.message).split("\\n")[0]; }
+        out[spec] = "ok" + ms();
+      } catch (e) { out[spec] = "refused (" + (e.reason || "") + "): " + String(e.message).split("\\n")[0] + ms(); }
     }
     return out;
   })()`);
