@@ -27,6 +27,7 @@ pub(crate) fn new_ui(tick: u32, previous: Option<&SharedUi>) -> SharedUi {
     ui.set_icons(icons);
     if let Some(p) = previous {
         ui.set_images(p.lock().images().clone());
+        ui.set_dressings(p.lock().dressings().dressings().to_vec());
     }
     ui.set_style_name(&style_name);
     // A hot reload keeps the documents loaded (and the timelines they define).
@@ -62,7 +63,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
         let d = merged_ui_desc(&eng.state.borrow().ui_desc, parse(desc.as_deref())?)?;
         // The style's other faces as loaded: (face, font handle).
         let mut style_faces: Vec<(og_ui::style_file::StyleFace, f64)> = Vec::new();
-        let style = match d["style"].as_f64() {
+        let mut style = match d["style"].as_f64() {
             Some(h) => {
                 let i = super::assets::index_of(h)
                     .ok_or_else(|| format!("style: {h} is not a UI style"))?;
@@ -83,6 +84,9 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             }
             None => None,
         };
+        if let Some((file, ..)) = &mut style {
+            super::ui_draw::bind_style_materials(&eng, file)?;
+        }
         let scheme = match d["scheme"].as_str() {
             Some("light") => Scheme::Light,
             _ => Scheme::Dark,

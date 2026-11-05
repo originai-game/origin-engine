@@ -423,7 +423,10 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         }
     }));
     if let Some(ui) = eng.state.borrow().ui.as_ref() {
-        probe.set_ui(ui.probe());
+        probe.set_ui(Box::new(super::ui_draw::MaterialProbe {
+            ui: ui.probe(),
+            render: eng.render.clone(),
+        }));
     }
     // describe and pick: the id pass over the extracted frame, with or
     // without a renderer.
@@ -613,7 +616,10 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
         for (name, usage, doc) in new_commands {
             let _ = register_one(&mut probe, eng.id, &name, &usage, &doc);
         }
-        probe.set_ui(a.mounted.ui.probe());
+        probe.set_ui(Box::new(super::ui_draw::MaterialProbe {
+            ui: a.mounted.ui.probe(),
+            render: eng.render.clone(),
+        }));
     }
     let (camera, settings, draw) = extract_layouts(eng);
     let mut rs = eng.render.borrow_mut();

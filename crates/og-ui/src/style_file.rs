@@ -99,6 +99,14 @@ impl StyleFile {
                 out.push(v);
             }
         }
+        for d in &self.dressings {
+            if let Some(material) = &d.draw.material
+                && let Some(path) = &material.asset
+                && !out.contains(path)
+            {
+                out.push(path.clone());
+            }
+        }
         out
     }
 
@@ -201,6 +209,11 @@ impl StyleFile {
         for d in &mut self.dressings {
             for (_, v) in &mut d.draw.vectors {
                 at(v);
+            }
+            if let Some(material) = &mut d.draw.material
+                && let Some(path) = &mut material.asset
+            {
+                at(path);
             }
         }
     }

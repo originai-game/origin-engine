@@ -1176,14 +1176,28 @@ the cooked shader and defaults after the manifest refresh. The renderer
 invalidates its pipeline when the shader or parameter declaration changes.
 A failed cook leaves the previous material running.
 
+Custom materials in `dress` blocks resolve relative to the style file,
+are included in its cooked dependencies, and bind when the style is
+configured. Reloading rebinds their defaults and preserves the style's
+part dressings.
+
+For live tuning, `dump_ui.materials` lists each loaded asset's parameter
+names, WGSL types, defaults and current values directly from the cooked
+material declaration. `ui:material:effect.ogt.amount=0.6` changes the
+default uniform without a cook or shader compilation. Vectors take
+space-separated numbers; an empty value resets that parameter to its
+file default. Explicit per-layer parameters retain precedence. These are
+session edits: a changed material reloads its file defaults, and `ui:save`
+does not write material edits. Persist a chosen value in the material's
+`param` line (or the style's explicit material parameters).
+
 On macrunner's Metal host, a one-material `og dev` smoke test on 2026-11-05
 reported 131.0 ms for an external WGSL edit and 148.1 ms for a parameter
 default edit (one sample each, dev profile). Both included a rendered frame
 and met the 300 ms reload budget. The captured swatch changed from red to
 green without restarting the game. These are the dev command's
 rebuild-plus-swap timings, not a throughput benchmark or a bound for large
-projects. Direct material-parameter editing in Tune remains separate from
-this file-reload path.
+projects.
 
 ### 16.4 Preview
 

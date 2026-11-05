@@ -229,7 +229,7 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
             Err(e) => failed.push(format!("og dev: {e} (the old style stays)")),
         }
     }
-    if changed {
+    if changed || eng.state.borrow().ui_desc["style"].as_f64().is_some() {
         let r: Value = serde_json::from_str(&super::og_ui_configure(eng.id, Some("{}".into())))
             .unwrap_or(Value::Null);
         if r["ok"] == json!(false) {
@@ -524,7 +524,7 @@ pub fn og_ui_save_edits(world: u32) -> String {
 
 // ── the probe's ui: commands ────────────────────────────────────────────────
 
-const USAGE: &str = "ui:set:<path>.<prop>=<value> | ui:state:<path>.<group>=<state> | ui:play:<path>.<timeline> | ui:seek:<path>.<timeline>=<ms> | ui:push:<screen>[:<fixture>] | ui:pop | ui:save | ui:clear[:<path>] | ui:action:<name>";
+const USAGE: &str = "ui:set:<path>.<prop>=<value> | ui:material:<asset>.<parameter>=<numbers> | ui:state:<path>.<group>=<state> | ui:play:<path>.<timeline> | ui:seek:<path>.<timeline>=<ms> | ui:push:<screen>[:<fixture>] | ui:pop | ui:save | ui:clear[:<path>] | ui:action:<name>";
 
 pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine_id: u32) {
     let _ = probe.register_command(
@@ -550,6 +550,13 @@ fn command(engine_id: u32, args: &[String]) -> Result<(), String> {
     let eng = engine(engine_id)?;
     let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
     match verb {
+        "material" => {
+            let (target, value) = rest.split_once('=').ok_or_else(|| {
+                format!("write ui:material:<asset>.<parameter>=<numbers>; {USAGE}")
+            })?;
+            let (path, parameter) = split_target(target)?;
+            super::super::ui_draw::tune_material(&eng, path, parameter, value)
+        }
         "set" => {
             let (target, value) = rest
                 .split_once('=')
