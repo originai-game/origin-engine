@@ -792,6 +792,23 @@ fn a_gales_foam_streaks_along_the_wind_and_its_crests_throw_spray() {
         "the foam does not streak along the wind ({along})"
     );
     assert!(d_spray > 0.01, "no spray ({d_spray})");
+    // Spindrift read at a storm's distance: the share of the sea 60 to 200 m out (a point every 2 m) the spray
+    // lifts visibly (by 6 of 255 in luma) over the frame without it. (The code before: about 0.6 %, faded out by 60 m
+    // and sub-pixel there, the gale's spume too sparse to read as streams off the crests.)
+    let far: Vec<(u32, u32)> = (-50..=50)
+        .flat_map(|x| (30..=100).map(move |z| Vec3::new(2.0 * x as f32, 0.0, -2.0 * z as f32)))
+        .filter_map(|p| pixel_of(&scene, p, w, h))
+        .collect();
+    let lifted = far
+        .iter()
+        .filter(|&&(x, y)| luma(px(&sprayed, x, y)) - luma(px(&streaked, x, y)) > 6.0)
+        .count() as f32
+        / far.len() as f32;
+    println!("gale: the spray lifts {lifted} of the sea 60 to 200 m out");
+    assert!(
+        lifted > 0.03,
+        "the gale's spray does not read at a storm's distance ({lifted})"
+    );
     // A breeze (9 m/s), under spray's threshold, throws none.
     let breeze = |spray: f32| {
         let mut s = ocean_scene("water-ocean");

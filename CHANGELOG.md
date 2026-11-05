@@ -48,6 +48,14 @@ is one line here, written at the merge that changes
   drew as a soft disc twice the sun's width that bloomed (water-3d, the
   fx-showcase water station).
 
+- **A gale's spume streams off its crests.** The spume's sheets skim the
+  sea instead of settling into it behind the next wave, so they read at a
+  storm's distance. Past 17 m/s they tear off any crest within a third of
+  folding, not only breaking ones. Each sheet is 1 to 2.6 m, three to six
+  times as long as wide along its flight, and comes in from 12 m away.
+  Droplets are seen to 130 m and spume to 320 m (water-ocean-storm,
+  water-shore-storm).
+
 - **Destruction: broken joints shed clay and mortar grit.** Every bond
   that breaks in a prop with og.Destructible.debris sheds three or four
   small chips through the GPU debris layer: one centimetre to five and

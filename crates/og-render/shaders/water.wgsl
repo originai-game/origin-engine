@@ -1597,21 +1597,23 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   // looks (about the camera, two thirds of the slots fell behind it or under the frame).
   let fwd = frame.view_forward.xz;
   let ahead = select(vec2<f32>(0.0), fwd / max(length(fwd), 1e-6), dot(fwd, fwd) > 1e-6);
-  // The spume's window is the near 200 m where its sheets are seen, not its level's 512 m: over that, nine in ten of
-  // its plumes fell past the fade or out of the frame, and a gale's spume all but never showed.
-  let win = select(lv.w * 0.9, 200.0, pop == 1u);
+  // The spume's window is the near 320 m where its sheets are seen (to its fade's end), not its level's 512 m: over
+  // that, nine in ten of its plumes fell past the fade or out of the frame, and a gale's spume all but never showed.
+  let win = select(lv.w * 0.9, 320.0, pop == 1u);
   let cam = frame.view_pos.xz + ahead * (0.33 * win);
   let cam_uv = cam / win;
   // Only where a crest breaks now: where the surface folds (its Jacobian, the whitecaps' own test in sea_foam) or the
   // foam level's freshest foam was laid. (The level's freshness alone, decaying within a second, rarely held a slot.)
-  // A gale's crests break over a few percent of the sea, so each life tries up to six points for one.
+  // A gale's crests break over a few percent of the sea, so each life tries up to six points for one (the spume, its
+  // sheets fewer and seen further, ten).
   let first = 3u * u32(water.fft.x);
   let ts = lv.w / 256.0;
   var rest = vec2<f32>(0.0);
   var edge = 0.0;
   var keep = 0.0;
   var found = false;
-  for (var t = 0u; t < 6u && !found; t++) {
+  let tries = select(6u, 10u, pop == 1u);
+  for (var t = 0u; t < tries && !found; t++) {
     let ht = h + 16u * t;
     let off = fract(vec2<f32>(spray_rand(ht), spray_rand(ht + 1u)) - cam_uv + 0.5) - 0.5;
     rest = cam + off * win;
@@ -1620,8 +1622,11 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
     // (At the fine level's texel, for either population: the coarse level's 2 m smoothed every gale crest's fold
     // away, and its spume never found a crest to leave.)
     let jac = ocean_normal(rest, rest, water.foam_levels[0].w / 256.0, vec2<f32>(0.0), vec2<f32>(0.0)).jac;
-    let breaking = clamp((water.ocean.z - jac) * water.ocean.w, 0.0, 1.0);
-    keep = smoothstep(0.05, 0.5, max(breaking, fw.g)) * gust;
+    // The spume is torn off every steep crest in a full gale, breaking or not (Beaufort 9 and past: dense streaks of
+    // spume blown off the crests): its test takes crests within a third of folding as the wind rises past 17 m/s.
+    let torn = select(0.0, 0.35 * smoothstep(17.0, 25.0, wind), pop == 1u);
+    let breaking = clamp((water.ocean.z + torn - jac) * water.ocean.w, 0.0, 1.0);
+    keep = smoothstep(0.03, 0.35, max(breaking, fw.g)) * gust;
     found = spray_rand(ht + 2u) < keep;
   }
   if (!found) { return o; }
@@ -1657,16 +1662,30 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   p.y = start.y + (v0.y + vs) * (1.0 - ev) / kv - vs * tau;
   // The sprite: growing as the spray spreads, fading in as it leaves the crest and out as it settles or falls back.
   let rnd = spray_rand(hm + 6u);
-  var size = select(mix(0.2, 0.7, rnd), mix(0.6, 2.0, rnd), pop == 1u) * (1.0 + 1.5 * tau / life);
+  var size = select(mix(0.2, 0.7, rnd) * (1.0 + 1.5 * tau / life), mix(1.0, 2.6, rnd) * (1.0 + 0.8 * tau / life), pop == 1u);
   var alpha = smoothstep(0.0, 0.12 * life, tau) * (1.0 - smoothstep(0.55 * life, life, tau));
-  // (Faded as it sinks back towards the crest's foot: the crest it left falls away under it as it flies.)
-  alpha *= smoothstep(start.y - 1.5, start.y - 0.3, p.y) * select(0.6, 0.55, pop == 1u) * mix(0.6, 1.0, keep) * edge;
+  // The sea under it (its rest point taken as where it flies: the sea's sideways sway is a metre or two).
+  let sea_y = water.model[3].y + ocean_displace(p.xz, ts).y;
+  if (pop == 1u) {
+    // The spume is torn foam: a sheet the wind carries along the sea, skimming its surface (its drops settle, the
+    // sheet does not), at least two fifths of its size over the water under it. (Settling at its drops' 1.5 m/s and
+    // faded below the crest it left, it sank behind the next wave within half a second and a gale's spume never
+    // showed: the spray seen at a storm's distance was its near droplets alone.)
+    p.y = max(p.y, sea_y + 0.4 * size);
+  } else {
+    // A droplet falls back into the sea: faded as it nears the water under it.
+    alpha *= smoothstep(sea_y - 0.2, sea_y + 0.3, p.y);
+  }
+  alpha *= select(0.85, 0.8, pop == 1u) * mix(0.6, 1.0, keep) * edge;
   // At least a pixel and a half across: a smaller one is drawn that size with its coverage kept (no shimmer).
   let dist = length(p - frame.view_pos.xyz);
-  // Spray is seen near: past some 60 m (the spume's sheets, torn off a gale's crests in
-  // streams seen far across the sea, 220 m) it is a haze over the crests, not sprites. (Its droplets stream 15 to 40 m
-  // downwind in a life; faded from 15 to 35 m, a gale's sheets left the view before they read as sheets.)
-  alpha *= 1.0 - smoothstep(select(25.0, 80.0, pop == 1u), select(60.0, 220.0, pop == 1u), dist);
+  // Spray is seen near: past some 130 m (the spume's sheets, torn off a gale's crests in streams seen far across the
+  // sea, 320 m) it is a haze over the crests, not sprites. (Its droplets stream 15 to 40 m downwind in a life; faded
+  // from 15 to 35 m, then 25 to 60 m, a gale's spray left the view before it read as spindrift.)
+  alpha *= 1.0 - smoothstep(select(50.0, 120.0, pop == 1u), select(130.0, 320.0, pop == 1u), dist);
+  // (The spume's sheets come in from 12 to 35 m: nearer, a sheet metres wide fogged the lens; the near spray is the
+  // droplets'.)
+  alpha *= select(1.0, smoothstep(12.0, 35.0, dist), pop == 1u);
   let scale = length(vec3<f32>(frame.view_proj[0].y, frame.view_proj[1].y, frame.view_proj[2].y));
   let floor_size = 1.5 * dist * 2.0 / max(scale * water.screen.y, 1e-6);
   if (size < floor_size) {
@@ -1688,9 +1707,10 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   if (dot(along_v, along_v) < 1e-6) { along_v = cross(vec3<f32>(0.0, 1.0, 0.0), to_eye) + vec3<f32>(1e-5, 0.0, 0.0); }
   let right = normalize(along_v);
   let upv = cross(to_eye, right);
-  // Longer the faster it flies across the view (three times as long as wide at rest, up to eight in a gale's sheet
-  // at some 25 m/s), the same area.
-  let stretch = sqrt(clamp(length(along_v) * 0.32, 3.0, 8.0));
+  // Longer the faster it flies across the view, the same area: a droplet's streak twice to four times as long as wide
+  // (up to eight, a far streak thinned into a needle a pixel wide and read as rain), a spume sheet three to six times
+  // (a round sheet read as a puff of smoke hanging over the sea, not spindrift).
+  let stretch = sqrt(select(clamp(length(along_v) * 0.16, 2.0, 4.0), clamp(length(along_v) * 0.3, 3.0, 6.0), pop == 1u));
   let world = p + (right * c.x * stretch + upv * c.y / stretch) * size * 0.5;
   o.clip = frame.view_proj * vec4<f32>(world, 1.0);
   o.world = world;
@@ -1703,7 +1723,7 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
 fn fs_spray(in: SprayOut) -> @location(0) vec4<f32> {
   let r2 = dot(in.corner, in.corner);
   if (r2 >= 1.0) { discard; }
-  let a = in.alpha * exp(-3.0 * r2) * (1.0 - r2);
+  let a = in.alpha * exp(-2.0 * r2) * (1.0 - r2);
   // Droplets scatter forward (a Henyey–Greenstein lobe of g 0.75, mixed with an even share for the many bounces in a
   // dense cloud of them), lit by the sun through the shadows and by the sky above.
   let l = normalize(frame.light_dir.xyz);
