@@ -76595,7 +76595,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Quads per side of every clipmap level at least (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4). The levels grow to 128 quads where a coarser level's height error would show (`lodError`); 256 draws every level that large, at about 3 ms more on an M4 Pro.",
+          "description": "Quads per side of every clipmap level at least (0: the terrain file's, else 64, or 256 for a terrain whose layers displace it; 16 to 256, rounded to a multiple of 4). The levels grow to 128 quads where a coarser level's height error would show (`lodError`); 256 draws every level that large, at about 3 ms more on an M4 Pro.",
           "default": 0,
           "minimum": 0,
           "maximum": 256
@@ -76610,7 +76610,7 @@
         },
         "displacementDistance": {
           "type": "number",
-          "description": "Metres from the camera within which layers with a `displacement` raise and lower the drawn ground by their height maps, fading out over the last 40%. Near the camera the clipmap's levels then grow finer than the samples (down to a 32nd of the finest displacing layer's `tile`, a 32nd of a sample at most; `lodSpacing` above 0 decides instead) to carry the relief, which costs vertices, mostly in the depth prepass (island-near with every layer displaced 8 cm: 0.9 to 2.8 ms of prepass on an M4 Pro). 0: no displacement.",
+          "description": "Metres from the camera within which layers with a `displacement` raise and lower the drawn ground by their height maps, fading out over the last 40%. Near the camera the clipmap's levels then grow finer than the samples (down to a 128th of the finest displacing layer's `tile`, a 128th of a sample at most; `lodSpacing` above 0 decides instead) and denser (256 quads a side unless `lodRing` says) to carry the relief: a sett's joint and arris are drawn by vertices, not stepped across a grid cell. Each corner is evaluated once a frame for every pass (T4's cobbled crest: 6.5 ms of GPU a frame on an M4 Pro against 3.8 with the default 64-quad levels). 0: no displacement.",
           "default": 40,
           "minimum": 0,
           "maximum": 1000,

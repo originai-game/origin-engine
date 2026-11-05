@@ -601,7 +601,13 @@ impl Terrain {
         };
         let local = self.transform.inverse().transform_point3(view.camera);
         let camera = (Vec2::new(local.x, local.z) + layout.size * 0.5) / unit;
-        let base = self.lod.ring_quads();
+        // A displaced terrain's levels are denser unless its lod says
+        // otherwise ([`DISPLACED_RING`]).
+        let base = if self.lod.ring == 0 && self.displaces() {
+            DISPLACED_RING
+        } else {
+            self.lod.ring_quads()
+        };
         // A level's inner edge, where the finer level meets it, lies under
         // ring / 4 + 1 of its quads from the camera; the morph starts past
         // it, or that edge's odd vertices would slide off the finer level's
@@ -680,20 +686,33 @@ pub struct TerrainStampDraw {
 /// is kept.
 pub const AUTO_RING: u32 = 128;
 
+/// Quads a side of a displaced terrain's levels when its lod gives no
+/// ring: a clipmap's quad spans about 4 / ring of the view's focal length
+/// in pixels wherever it is (each level twice as far and twice as
+/// coarse), some 10 px at 720p for 256 against 39 for the default 64, at
+/// which a sett's joints and edges are drawn by a vertex or two and its
+/// silhouette steps in teeth a grid cell wide. The corner cache
+/// (terrain_corners.wgsl) keeps the four times denser mesh cheap: the
+/// displaced corners are evaluated once a frame, not per pass.
+pub const DISPLACED_RING: u32 = 256;
+
 /// A displaced terrain's reach when it gives none ([`Terrain::new`]).
 pub const DEFAULT_DISPLACEMENT_DISTANCE: f32 = 40.0;
 
 /// The finest clipmap spacing of a displaced terrain whose lod gives none,
-/// for sample spacing `cell`: halved until it is at most a 32nd of the
+/// for sample spacing `cell`: halved until it is at most a 128th of the
 /// finest repeat (`tile`, the terrain's horizontal metres) of a layer that
-/// displaces, at most five times (a 32nd of a cell). The relief is then
-/// drawn with about 32 vertices across a repeat of its height map near
-/// the eye (a 2 m pebble texture: 6 cm), coarser with each level out, as
-/// a clipmap's triangles keep about the same size on screen.
+/// displaces, at most seven times (a 128th of a cell). The relief is then
+/// drawn with about 128 vertices across a repeat of its height map near
+/// the eye (a metre of setts: 7.8 mm, four to a 3 cm joint; a 2 m pebble
+/// texture: 1.6 cm), coarser with each level out, as a clipmap's
+/// triangles keep about the same size on screen. (At a 32nd, 3 cm, a
+/// sett's 2 cm joint fell between two vertices: the stones swelled over
+/// it and their edges stepped from vertex to vertex.)
 fn displaced_unit(cell: f32, tile: f32) -> f32 {
     let mut unit = cell;
-    for _ in 0..5 {
-        if unit <= tile / 32.0 {
+    for _ in 0..7 {
+        if unit <= tile / 128.0 {
             break;
         }
         unit *= 0.5;
