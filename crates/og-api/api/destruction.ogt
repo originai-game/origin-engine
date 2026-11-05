@@ -10,6 +10,11 @@ module destruction {
   const CAUSE_EXPLOSION u32 2 "Fractured.cause: og.destruction.explode."
   const CAUSE_STRESS u32 3 "Fractured.cause: the stress solver: a part that could no longer hold its own weight."
   const CAUSE_SHATTER u32 4 "Fractured.cause: a chunk with children (the fracture block's `children`) took three times the damage that breaks a bond of its cross-section, and broke into them: they fly free, each its own body, leaving a hole."
+  const MATERIAL_BRICK u32 0 "og.destruction.material: brickwork in mortar (no-tension masonry: stands by its weight, steps back over its piers)."
+  const MATERIAL_CONCRETE u32 1 "og.destruction.material: plain concrete (strong, breaks in chunky lumps, holds what is left)."
+  const MATERIAL_WOOD u32 2 "og.destruction.material: timber boards (light and weak across the grain: splinters where it lands or is struck)."
+  const MATERIAL_GLASS u32 3 "og.destruction.material: a glass pane (shatters at a touch, no stress solver)."
+  const MATERIAL_STONE u32 4 "og.destruction.material: dry-laid stone (masonry with no mortar: no tension, heavier and tougher than brick)."
   const CAUSE_FRACTURE u32 5 "Fractured.cause: og.destruction.fracture."
 
   component Destructible {
@@ -196,10 +201,10 @@ module destruction {
       min 0
       unit newtonSecond
     }
-    field impulse f32 "The push outwards given to every loose chunk in reach, as an impulse at its centre, falling off as the damage does." {
-      default 200
+    field impulse f32 "The push outwards on every loose piece in reach, per square metre of the face it shows the blast (the two-thirds power of its volume), at its centre, falling off as the damage does: a blast pushes on surfaces, so a lone brick flies faster than a run of bricks, but not by their count. The pieces it drives apart pull on the bonds between them, so a run of bricks by the charge breaks up rather than flying off whole. Brick by a demolition charge about 2500." {
+      default 2000
       min 0
-      unit newtonSecond
+      unit newtonSecondPerM2
     }
   }
 
@@ -214,6 +219,27 @@ module destruction {
     field health f32 "Its bonds' remaining health over their total, 1 intact to 0 rubble." {
       min 0
       max 1
+    }
+  }
+
+  struct DestructibleMaterial {
+    doc "A material's og.Destructible fields (og.destruction.material): spread it into the component and add the material's fx, `{ ...og.destruction.material(world, MATERIAL_BRICK), breakFx }`, so a prop is tuned by what it is made of rather than by numbers in the scene. Its fields are og.Destructible's, for a prop of about a metre; override any one after the spread."
+    field toughness f32 "og.Destructible.toughness." {
+      unit newtonSecondPerM2
+    }
+    field strength f32 "og.Destructible.strength." {
+      unit pascal
+    }
+    field friction f32 "og.Destructible.friction."
+    field tension f32 "og.Destructible.tension."
+    field density f32 "og.Destructible.density." {
+      unit kgPerM3
+    }
+    field impactThreshold f32 "og.Destructible.impactThreshold." {
+      unit newtonSecond
+    }
+    field impactRadius f32 "og.Destructible.impactRadius." {
+      unit m
     }
   }
 
@@ -249,6 +275,13 @@ module destruction {
     param world World "The world."
     param entity Entity "An entity with og.Destructible."
     returns Result.DestructibleInfo "Refused for an entity without one, or one whose model is not loaded or has no fracture."
+  }
+
+  fn material {
+    doc "A material's og.Destructible tuning (MATERIAL_*): toughness, strength, friction, tension, density and how hard a hit must be to hurt it, measured against the props of the demolition-yard example (a brick wall, a concrete pillar, a crate, a pane). Pair it with a model whose fracture block has the same `style` (brick, concrete, wood, glass)."
+    param world World "The world."
+    param kind u32 "MATERIAL_*."
+    returns Result.DestructibleMaterial "Refused for a kind that is none of MATERIAL_*."
   }
 
   fn capabilities {

@@ -48268,6 +48268,29 @@ export declare const CAUSE_STRESS: 3;
  */
 export declare const CAUSE_SHATTER: 4;
 
+/**
+ * og.destruction.material: brickwork in mortar (no-tension masonry: stands by its weight, steps back over its piers).
+ */
+export declare const MATERIAL_BRICK: 0;
+
+/**
+ * og.destruction.material: plain concrete (strong, breaks in chunky lumps, holds what is left).
+ */
+export declare const MATERIAL_CONCRETE: 1;
+
+/**
+ * og.destruction.material: timber boards (light and weak across the grain: splinters where it lands or is struck).
+ */
+export declare const MATERIAL_WOOD: 2;
+
+/** og.destruction.material: a glass pane (shatters at a touch, no stress solver). */
+export declare const MATERIAL_GLASS: 3;
+
+/**
+ * og.destruction.material: dry-laid stone (masonry with no mortar: no tension, heavier and tougher than brick).
+ */
+export declare const MATERIAL_STONE: 4;
+
 /** Fractured.cause: og.destruction.fracture. */
 export declare const CAUSE_FRACTURE: 5;
 
@@ -48592,11 +48615,11 @@ export interface ExplosionDesc {
    */
   readonly damage?: number;
   /**
-   * The push outwards given to every loose chunk in reach, as an impulse at its centre, falling off as the damage does.
+   * The push outwards on every loose piece in reach, per square metre of the face it shows the blast (the two-thirds power of its volume), at its centre, falling off as the damage does: a blast pushes on surfaces, so a lone brick flies faster than a run of bricks, but not by their count. The pieces it drives apart pull on the bonds between them, so a run of bricks by the charge breaks up rather than flying off whole. Brick by a demolition charge about 2500.
    *
-   * @default 200
+   * @default 2000
    * @range 0..
-   * @unit newtonSecond (newton-seconds: an impulse, the momentum that changes a kilogram's velocity by one metre per second)
+   * @unit newtonSecondPerM2 (newton-seconds per square metre: an impulse spread over an area)
    */
   readonly impulse?: number;
 }
@@ -48623,6 +48646,46 @@ export interface DestructibleInfo {
   readonly health: number;
 }
 
+/**
+ * A material's og.Destructible fields (og.destruction.material): spread it into the component and add the material's fx, `{ ...og.destruction.material(world, MATERIAL_BRICK), breakFx }`, so a prop is tuned by what it is made of rather than by numbers in the scene. Its fields are og.Destructible's, for a prop of about a metre; override any one after the spread.
+ */
+export interface DestructibleMaterial {
+  /**
+   * og.Destructible.toughness.
+   *
+   * @unit newtonSecondPerM2 (newton-seconds per square metre: an impulse spread over an area)
+   */
+  readonly toughness: number;
+  /**
+   * og.Destructible.strength.
+   *
+   * @unit pascal (pascals: newtons per square metre, a stress)
+   */
+  readonly strength: number;
+  /** og.Destructible.friction. */
+  readonly friction: number;
+  /** og.Destructible.tension. */
+  readonly tension: number;
+  /**
+   * og.Destructible.density.
+   *
+   * @unit kgPerM3 (kilograms per cubic metre (per square metre in the 2D profile))
+   */
+  readonly density: number;
+  /**
+   * og.Destructible.impactThreshold.
+   *
+   * @unit newtonSecond (newton-seconds: an impulse, the momentum that changes a kilogram's velocity by one metre per second)
+   */
+  readonly impactThreshold: number;
+  /**
+   * og.Destructible.impactRadius.
+   *
+   * @unit m (metres)
+   */
+  readonly impactRadius: number;
+}
+
 /** What destruction does on this device. */
 export interface DestructionCapabilities {
   /**
@@ -48630,6 +48693,7 @@ export interface DestructionCapabilities {
    */
   readonly visualDebris: boolean;
 }
+
 
 
 
@@ -54508,6 +54572,14 @@ export declare namespace og {
      * @returns Refused for an entity without one, or one whose model is not loaded or has no fracture.
      */
     function info(world: World, entity: Entity): Result<DestructibleInfo>;
+    /**
+     * A material's og.Destructible tuning (MATERIAL_*): toughness, strength, friction, tension, density and how hard a hit must be to hurt it, measured against the props of the demolition-yard example (a brick wall, a concrete pillar, a crate, a pane). Pair it with a model whose fracture block has the same `style` (brick, concrete, wood, glass).
+     *
+     * @param world The world.
+     * @param kind MATERIAL_*.
+     * @returns Refused for a kind that is none of MATERIAL_*.
+     */
+    function material(world: World, kind: number): Result<DestructibleMaterial>;
     /**
      * What destruction does on this device.
      *

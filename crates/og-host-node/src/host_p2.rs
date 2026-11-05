@@ -163,6 +163,9 @@ impl DestructionApi for NodeHost {
     fn og_destruction_info(&self, world: u32, entity: f64) -> String {
         rt::og_destruction_info(world, entity)
     }
+    fn og_destruction_material(&self, world: u32, kind: u32) -> String {
+        rt::og_destruction_material(world, kind)
+    }
     fn og_destruction_capabilities(&self, world: u32) -> String {
         rt::og_destruction_capabilities(world)
     }

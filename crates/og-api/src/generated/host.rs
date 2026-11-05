@@ -1455,6 +1455,8 @@ pub trait DestructionApi: Wire {
     fn og_destruction_fracture(&self, world: u32, entity: f64) -> String;
     /// `og.destruction.info`
     fn og_destruction_info(&self, world: u32, entity: f64) -> String;
+    /// `og.destruction.material`
+    fn og_destruction_material(&self, world: u32, kind: u32) -> String;
     /// `og.destruction.capabilities`
     fn og_destruction_capabilities(&self, world: u32) -> String;
 }
@@ -2090,6 +2092,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_destruction_explode",
     "og_destruction_fracture",
     "og_destruction_info",
+    "og_destruction_material",
     "og_destruction_capabilities",
 ];
 

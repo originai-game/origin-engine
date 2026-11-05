@@ -31,6 +31,11 @@ module destruction {
 | [`CAUSE_EXPLOSION`](#const-CAUSE_EXPLOSION) | constant | Fractured.cause: og.destruction.explode. |
 | [`CAUSE_STRESS`](#const-CAUSE_STRESS) | constant | Fractured.cause: the stress solver: a part that could no longer hold its own weight. |
 | [`CAUSE_SHATTER`](#const-CAUSE_SHATTER) | constant | Fractured.cause: a chunk with children (the fracture block's `children`) took three times the damage that breaks a bond of its cross-section, and broke into them: they fly free, each its own body, leaving a hole. |
+| [`MATERIAL_BRICK`](#const-MATERIAL_BRICK) | constant | og.destruction.material: brickwork in mortar (no-tension masonry: stands by its weight, steps back over its piers). |
+| [`MATERIAL_CONCRETE`](#const-MATERIAL_CONCRETE) | constant | og.destruction.material: plain concrete (strong, breaks in chunky lumps, holds what is left). |
+| [`MATERIAL_WOOD`](#const-MATERIAL_WOOD) | constant | og.destruction.material: timber boards (light and weak across the grain: splinters where it lands or is struck). |
+| [`MATERIAL_GLASS`](#const-MATERIAL_GLASS) | constant | og.destruction.material: a glass pane (shatters at a touch, no stress solver). |
+| [`MATERIAL_STONE`](#const-MATERIAL_STONE) | constant | og.destruction.material: dry-laid stone (masonry with no mortar: no tension, heavier and tougher than brick). |
 | [`CAUSE_FRACTURE`](#const-CAUSE_FRACTURE) | constant | Fractured.cause: og.destruction.fracture. |
 | [`og.Destructible`](#record-Destructible) | component | Makes the entity's og.Model, a model cooked with a `fracture` block, break into its chunks. A prop that stands (no og.RigidBody, or a static one) is its chunks from the first tick: each a static og.Collider (the hull of its piece) on an entity with og.Chunk, and the entity's own og.Collider and og.RigidBody are removed, so hits land on the chunks. A prop that moves (a dynamic or kinematic og.RigidBody) collides as itself until its first break, when its chunks take its place, moving as it moved, and it loses its og.Collider, og.RigidBody and og.Velocity. Until the first break the model is drawn whole; from it the model is hidden and each chunk draws its piece of it (with og.Model's tint, variant and shadows). Anchored islands stay static, the rest fall. |
 | [`og.Chunk`](#record-Chunk) | component | One chunk of an og.Destructible, written by og.destruction when the prop fractures. A loose chunk is a dynamic body (with og.RigidBody and og.Velocity, or a child collider of its island's body); an anchored one a static collider. Drawn with its part of the destructible's model. Despawn it to clear it away. |
@@ -39,11 +44,13 @@ module destruction {
 | [`DamageDesc`](#type-DamageDesc) | desc struct | A radial damage for og.destruction.damage. |
 | [`ExplosionDesc`](#type-ExplosionDesc) | desc struct | An explosion for og.destruction.explode. |
 | [`DestructibleInfo`](#type-DestructibleInfo) | struct | What a destructible holds and how much of it stands (og.destruction.info). |
+| [`DestructibleMaterial`](#type-DestructibleMaterial) | struct | A material's og.Destructible fields (og.destruction.material): spread it into the component and add the material's fx, `{ ...og.destruction.material(world, MATERIAL_BRICK), breakFx }`, so a prop is tuned by what it is made of rather than by numbers in the scene. Its fields are og.Destructible's, for a prop of about a metre; override any one after the spread. |
 | [`DestructionCapabilities`](#type-DestructionCapabilities) | struct | What destruction does on this device. |
 | [`og.destruction.damage`](#fn-damage) | function | Damage a destructible at a point: every bond, anchor and chunk within reach takes the amount, all of it within innerRadius and falling to nothing at radius. Applied by og.destruction after the game's systems this tick (in the order called), so a bond broken now splits the prop before this tick's physics step. |
 | [`og.destruction.explode`](#fn-explode) | function | An explosion: damage to every destructible in reach (as og.destruction.damage), then a push outwards to their loose chunks. Applied by og.destruction this tick, as damage. Push other bodies with og.physics.applyImpulse. |
 | [`og.destruction.fracture`](#fn-fracture) | function | Break every bond of a destructible at once (this tick, as damage): its anchored chunks stay, the rest fall. |
 | [`og.destruction.info`](#fn-info) | function | How much of a destructible stands. |
+| [`og.destruction.material`](#fn-material) | function | A material's og.Destructible tuning (MATERIAL_*): toughness, strength, friction, tension, density and how hard a hit must be to hurt it, measured against the props of the demolition-yard example (a brick wall, a concrete pillar, a crate, a pane). Pair it with a model whose fracture block has the same `style` (brick, concrete, wood, glass). |
 | [`og.destruction.capabilities`](#fn-capabilities) | function | What destruction does on this device. |
 
 ## Functions
@@ -78,7 +85,7 @@ fn damage {
 }
 ```
 
-<sub>`api.ogt` line 28796</sub>
+<sub>`api.ogt` line 28822</sub>
 
 <a id="fn-explode"></a>
 
@@ -108,7 +115,7 @@ fn explode {
 }
 ```
 
-<sub>`api.ogt` line 28804</sub>
+<sub>`api.ogt` line 28830</sub>
 
 <a id="fn-fracture"></a>
 
@@ -138,7 +145,7 @@ fn fracture {
 }
 ```
 
-<sub>`api.ogt` line 28811</sub>
+<sub>`api.ogt` line 28837</sub>
 
 <a id="fn-info"></a>
 
@@ -168,7 +175,37 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 28818</sub>
+<sub>`api.ogt` line 28844</sub>
+
+<a id="fn-material"></a>
+
+### `og.destruction.material`
+
+A material's og.Destructible tuning (MATERIAL_*): toughness, strength, friction, tension, density and how hard a hit must be to hurt it, measured against the props of the demolition-yard example (a brick wall, a concrete pillar, a crate, a pane). Pair it with a model whose fracture block has the same `style` (brick, concrete, wood, glass).
+
+```ts
+og.destruction.material(world: World, kind: number): Result<DestructibleMaterial>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `kind` | `number` | no | MATERIAL_*. |
+
+**Returns** `Result<DestructibleMaterial>`: Refused for a kind that is none of MATERIAL_*.
+
+Binding symbol `og_destruction_material` · publish builds: kept
+
+```ogt
+fn material {
+  doc "A material's og.Destructible tuning (MATERIAL_*): toughness, strength, friction, tension, density and how hard a hit must be to hurt it, measured against the props of the demolition-yard example (a brick wall, a concrete pillar, a crate, a pane). Pair it with a model whose fracture block has the same `style` (brick, concrete, wood, glass)."
+  param world World "The world."
+  param kind u32 "MATERIAL_*."
+  returns Result.DestructibleMaterial "Refused for a kind that is none of MATERIAL_*."
+}
+```
+
+<sub>`api.ogt` line 28851</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -196,7 +233,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 28825</sub>
+<sub>`api.ogt` line 28858</sub>
 
 ## Components, resources and events
 
@@ -291,7 +328,7 @@ component Destructible {
 }
 ```
 
-<sub>`api.ogt` line 28586</sub>
+<sub>`api.ogt` line 28591</sub>
 
 <a id="record-Chunk"></a>
 
@@ -331,7 +368,7 @@ component Chunk {
 }
 ```
 
-<sub>`api.ogt` line 28648</sub>
+<sub>`api.ogt` line 28653</sub>
 
 <a id="record-Fractured"></a>
 
@@ -371,7 +408,7 @@ event Fractured {
 }
 ```
 
-<sub>`api.ogt` line 28668</sub>
+<sub>`api.ogt` line 28673</sub>
 
 <a id="record-Destruction"></a>
 
@@ -429,7 +466,7 @@ resource Destruction {
 }
 ```
 
-<sub>`api.ogt` line 28686</sub>
+<sub>`api.ogt` line 28691</sub>
 
 ## Types
 
@@ -477,7 +514,7 @@ struct DamageDesc {
 }
 ```
 
-<sub>`api.ogt` line 28723</sub>
+<sub>`api.ogt` line 28728</sub>
 
 <a id="type-ExplosionDesc"></a>
 
@@ -493,7 +530,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `radius` | `number` | `3` | ≥ 0 | `m` | — | How far it reaches. |
 | `innerRadius` | `number` | `0.5` | ≥ 0 | `m` | — | Within this everything takes the whole damage and push. |
 | `damage` | `number` | `3000` | ≥ 0 | `newtonSecond` | — | The damage to every destructible's bonds in reach, as og.destruction.damage's amount. |
-| `impulse` | `number` | `200` | ≥ 0 | `newtonSecond` | — | The push outwards given to every loose chunk in reach, as an impulse at its centre, falling off as the damage does. |
+| `impulse` | `number` | `2000` | ≥ 0 | `newtonSecondPerM2` | — | The push outwards on every loose piece in reach, per square metre of the face it shows the blast (the two-thirds power of its volume), at its centre, falling off as the damage does: a blast pushes on surfaces, so a lone brick flies faster than a run of bricks, but not by their count. The pieces it drives apart pull on the bonds between them, so a run of bricks by the charge breaks up rather than flying off whole. Brick by a demolition charge about 2500. |
 
 ```ogt
 struct ExplosionDesc {
@@ -517,15 +554,15 @@ struct ExplosionDesc {
     min 0
     unit newtonSecond
   }
-  field impulse f32 "The push outwards given to every loose chunk in reach, as an impulse at its centre, falling off as the damage does." {
-    default 200
+  field impulse f32 "The push outwards on every loose piece in reach, per square metre of the face it shows the blast (the two-thirds power of its volume), at its centre, falling off as the damage does: a blast pushes on surfaces, so a lone brick flies faster than a run of bricks, but not by their count. The pieces it drives apart pull on the bonds between them, so a run of bricks by the charge breaks up rather than flying off whole. Brick by a demolition charge about 2500." {
+    default 2000
     min 0
-    unit newtonSecond
+    unit newtonSecondPerM2
   }
 }
 ```
 
-<sub>`api.ogt` line 28749</sub>
+<sub>`api.ogt` line 28754</sub>
 
 <a id="type-DestructibleInfo"></a>
 
@@ -559,7 +596,48 @@ struct DestructibleInfo {
 }
 ```
 
-<sub>`api.ogt` line 28777</sub>
+<sub>`api.ogt` line 28782</sub>
+
+<a id="type-DestructibleMaterial"></a>
+
+### `DestructibleMaterial` (struct)
+
+A material's og.Destructible fields (og.destruction.material): spread it into the component and add the material's fx, `{ ...og.destruction.material(world, MATERIAL_BRICK), breakFx }`, so a prop is tuned by what it is made of rather than by numbers in the scene. Its fields are og.Destructible's, for a prop of about a metre; override any one after the spread.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `toughness` | `number` | `0` | — | `newtonSecondPerM2` | — | og.Destructible.toughness. |
+| `strength` | `number` | `0` | — | `pascal` | — | og.Destructible.strength. |
+| `friction` | `number` | `0` | — | — | — | og.Destructible.friction. |
+| `tension` | `number` | `0` | — | — | — | og.Destructible.tension. |
+| `density` | `number` | `0` | — | `kgPerM3` | — | og.Destructible.density. |
+| `impactThreshold` | `number` | `0` | — | `newtonSecond` | — | og.Destructible.impactThreshold. |
+| `impactRadius` | `number` | `0` | — | `m` | — | og.Destructible.impactRadius. |
+
+```ogt
+struct DestructibleMaterial {
+  doc "A material's og.Destructible fields (og.destruction.material): spread it into the component and add the material's fx, `{ ...og.destruction.material(world, MATERIAL_BRICK), breakFx }`, so a prop is tuned by what it is made of rather than by numbers in the scene. Its fields are og.Destructible's, for a prop of about a metre; override any one after the spread."
+  field toughness f32 "og.Destructible.toughness." {
+    unit newtonSecondPerM2
+  }
+  field strength f32 "og.Destructible.strength." {
+    unit pascal
+  }
+  field friction f32 "og.Destructible.friction."
+  field tension f32 "og.Destructible.tension."
+  field density f32 "og.Destructible.density." {
+    unit kgPerM3
+  }
+  field impactThreshold f32 "og.Destructible.impactThreshold." {
+    unit newtonSecond
+  }
+  field impactRadius f32 "og.Destructible.impactRadius." {
+    unit m
+  }
+}
+```
+
+<sub>`api.ogt` line 28796</sub>
 
 <a id="type-DestructionCapabilities"></a>
 
@@ -578,7 +656,7 @@ struct DestructionCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 28791</sub>
+<sub>`api.ogt` line 28817</sub>
 
 ## Constants
 
@@ -589,6 +667,11 @@ struct DestructionCapabilities {
 | <a id="const-CAUSE_EXPLOSION"></a>`CAUSE_EXPLOSION` | `number` | `2` | Fractured.cause: og.destruction.explode. |
 | <a id="const-CAUSE_STRESS"></a>`CAUSE_STRESS` | `number` | `3` | Fractured.cause: the stress solver: a part that could no longer hold its own weight. |
 | <a id="const-CAUSE_SHATTER"></a>`CAUSE_SHATTER` | `number` | `4` | Fractured.cause: a chunk with children (the fracture block's `children`) took three times the damage that breaks a bond of its cross-section, and broke into them: they fly free, each its own body, leaving a hole. |
+| <a id="const-MATERIAL_BRICK"></a>`MATERIAL_BRICK` | `number` | `0` | og.destruction.material: brickwork in mortar (no-tension masonry: stands by its weight, steps back over its piers). |
+| <a id="const-MATERIAL_CONCRETE"></a>`MATERIAL_CONCRETE` | `number` | `1` | og.destruction.material: plain concrete (strong, breaks in chunky lumps, holds what is left). |
+| <a id="const-MATERIAL_WOOD"></a>`MATERIAL_WOOD` | `number` | `2` | og.destruction.material: timber boards (light and weak across the grain: splinters where it lands or is struck). |
+| <a id="const-MATERIAL_GLASS"></a>`MATERIAL_GLASS` | `number` | `3` | og.destruction.material: a glass pane (shatters at a touch, no stress solver). |
+| <a id="const-MATERIAL_STONE"></a>`MATERIAL_STONE` | `number` | `4` | og.destruction.material: dry-laid stone (masonry with no mortar: no tension, heavier and tougher than brick). |
 | <a id="const-CAUSE_FRACTURE"></a>`CAUSE_FRACTURE` | `number` | `5` | Fractured.cause: og.destruction.fracture. |
 
 ```ogt
@@ -622,7 +705,37 @@ const CAUSE_SHATTER u32 4 "Fractured.cause: a chunk with children (the fracture 
 <sub>`api.ogt` line 28583</sub>
 
 ```ogt
-const CAUSE_FRACTURE u32 5 "Fractured.cause: og.destruction.fracture."
+const MATERIAL_BRICK u32 0 "og.destruction.material: brickwork in mortar (no-tension masonry: stands by its weight, steps back over its piers)."
 ```
 
 <sub>`api.ogt` line 28584</sub>
+
+```ogt
+const MATERIAL_CONCRETE u32 1 "og.destruction.material: plain concrete (strong, breaks in chunky lumps, holds what is left)."
+```
+
+<sub>`api.ogt` line 28585</sub>
+
+```ogt
+const MATERIAL_WOOD u32 2 "og.destruction.material: timber boards (light and weak across the grain: splinters where it lands or is struck)."
+```
+
+<sub>`api.ogt` line 28586</sub>
+
+```ogt
+const MATERIAL_GLASS u32 3 "og.destruction.material: a glass pane (shatters at a touch, no stress solver)."
+```
+
+<sub>`api.ogt` line 28587</sub>
+
+```ogt
+const MATERIAL_STONE u32 4 "og.destruction.material: dry-laid stone (masonry with no mortar: no tension, heavier and tougher than brick)."
+```
+
+<sub>`api.ogt` line 28588</sub>
+
+```ogt
+const CAUSE_FRACTURE u32 5 "Fractured.cause: og.destruction.fracture."
+```
+
+<sub>`api.ogt` line 28589</sub>

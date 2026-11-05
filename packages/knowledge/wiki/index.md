@@ -176,7 +176,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2292 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2299 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -454,6 +454,7 @@ Field units the docs and Tune use.
 | [`DescribedView`](probe.md#type-DescribedView) | struct | probe | — |
 | [`Description`](probe.md#type-Description) | struct | probe | — |
 | [`DestructibleInfo`](destruction.md#type-DestructibleInfo) | struct | destruction | — |
+| [`DestructibleMaterial`](destruction.md#type-DestructibleMaterial) | struct | destruction | — |
 | [`DestructionCapabilities`](destruction.md#type-DestructionCapabilities) | struct | destruction | — |
 | [`DesyncDump`](probe.md#type-DesyncDump) | struct | probe | — |
 | [`DialogAction`](ui.md#type-DialogAction) | desc struct | ui | — |
@@ -779,6 +780,11 @@ Field units the docs and Tune use.
 | [`MatchStatsDesc`](ui.md#type-MatchStatsDesc) | desc struct | ui | — |
 | [`Material`](render.md#type-Material) | handle | render | — |
 | [`Material()`](render.md#column-Material) | column kind | render | — |
+| [`MATERIAL_BRICK`](destruction.md#const-MATERIAL_BRICK) | constant | destruction | — |
+| [`MATERIAL_CONCRETE`](destruction.md#const-MATERIAL_CONCRETE) | constant | destruction | — |
+| [`MATERIAL_GLASS`](destruction.md#const-MATERIAL_GLASS) | constant | destruction | — |
+| [`MATERIAL_STONE`](destruction.md#const-MATERIAL_STONE) | constant | destruction | — |
+| [`MATERIAL_WOOD`](destruction.md#const-MATERIAL_WOOD) | constant | destruction | — |
 | [`MaterialName`](ui.md#type-MaterialName) | enum | ui | — |
 | [`MaterialSurface`](render.md#type-MaterialSurface) | enum | render | — |
 | [`MaterialSurface()`](render.md#column-MaterialSurface) | column kind | render | — |
@@ -975,6 +981,7 @@ Field units the docs and Tune use.
 | [`og.destruction.explode`](destruction.md#fn-explode) | function | destruction | `og_destruction_explode` |
 | [`og.destruction.fracture`](destruction.md#fn-fracture) | function | destruction | `og_destruction_fracture` |
 | [`og.destruction.info`](destruction.md#fn-info) | function | destruction | `og_destruction_info` |
+| [`og.destruction.material`](destruction.md#fn-material) | function | destruction | `og_destruction_material` |
 | [`og.Desync`](net.md#record-Desync) | event | net | — |
 | [`og.DialogueCheck`](story.md#record-DialogueCheck) | event | story | — |
 | [`og.DialogueEnded`](story.md#record-DialogueEnded) | event | story | — |

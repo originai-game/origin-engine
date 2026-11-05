@@ -470,13 +470,42 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
             Some(json!({ "shape": 0, "size": { "x": 20, "y": 0.5, "z": 20 } }).to_string()),
         ));
         frames(w, 10);
+        // Where each chunk stands before the blast (every one static, at
+        // its own place).
+        let before = value(og_runtime::og_physics_overlap(
+            w,
+            Some(
+                json!({ "shape": { "shape": 0, "size": { "x": 12, "y": 6, "z": 12 } }, "position": { "x": 0, "y": 2.5, "z": 0 } })
+                    .to_string(),
+            ),
+        ));
+        let rest: std::collections::BTreeMap<u64, (f64, f64)> = before
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e.as_f64().unwrap())
+            .filter(|&e| og_world_has(w, e, "og.Chunk".into()))
+            .map(|e| {
+                let c = value(og_world_get(w, e, "og.Chunk".into()))["chunk"]
+                    .as_u64()
+                    .unwrap();
+                let t = value(og_world_get(w, e, "og.Transform".into()));
+                (
+                    c,
+                    (
+                        t["position"]["x"].as_f64().unwrap(),
+                        t["position"]["y"].as_f64().unwrap(),
+                    ),
+                )
+            })
+            .collect();
         // demolition-yard's charge: at the face of its foot, in the middle.
         // Masonry's impactThreshold (heavy blocks land at hundreds of N·s, so
         // a lower one lets every falling block knock the piers apart).
         value(og_runtime::og_destruction_explode(
             w,
             Some(
-                json!({ "point": { "x": 0, "y": 0.3, "z": 0.15 }, "radius": radius, "innerRadius": 1.0, "damage": 6000, "impulse": 300 })
+                json!({ "point": { "x": 0, "y": 0.3, "z": 0.15 }, "radius": radius, "innerRadius": 1.0, "damage": 6000, "impulse": 2500 })
                     .to_string(),
             ),
         ));
@@ -528,16 +557,67 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
             .filter(|&e| og_world_has(w, e, "og.Chunk".into()))
             .map(at)
             .collect();
+        // A blast pushes on faces, not once per body: the outer courses are
+        // nudged where the middle is thrown, and no brick lands metres past
+        // the wall's ends (out of frame), nor far before or behind it.
+        let all = value(og_runtime::og_physics_overlap(
+            w,
+            Some(
+                json!({ "shape": { "shape": 0, "size": { "x": 60, "y": 20, "z": 60 } }, "position": { "x": 0, "y": 5, "z": 0 } })
+                    .to_string(),
+            ),
+        ));
+        let landed: Vec<(f64, f64)> = all
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e.as_f64().unwrap())
+            .filter(|&e| {
+                og_world_has(w, e, "og.Chunk".into()) && !og_world_has(w, e, "og.Parent".into())
+            })
+            .map(|e| {
+                let t = value(og_world_get(w, e, "og.Transform".into()));
+                let (x, z) = (
+                    t["position"]["x"].as_f64().unwrap(),
+                    t["position"]["z"].as_f64().unwrap(),
+                );
+                ((x.abs() - 2.5).max(0.0), (x.abs() - 2.5).max(0.0).hypot(z))
+            })
+            .collect();
+        let past = landed.iter().map(|p| p.0).fold(0.0, f64::max);
+        let away = landed.iter().map(|p| p.1).fold(0.0, f64::max);
+        assert!(
+            past < 1.5 && away < 4.5,
+            "radius {radius}: a piece lands {past} m past the wall's ends, one {away} m from the wall"
+        );
+        // What still stands: the chunks within 10 cm of where they were
+        // before the blast (a block freed whole and resting where it stood
+        // stands; rubble heaped against a pier is not the pier).
+        let standing: Vec<(f64, f64)> = near
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e.as_f64().unwrap())
+            .filter(|&e| og_world_has(w, e, "og.Chunk".into()))
+            .filter_map(|e| {
+                let c = value(og_world_get(w, e, "og.Chunk".into()))["chunk"]
+                    .as_u64()
+                    .unwrap();
+                let (x0, y0) = *rest.get(&c)?;
+                let (x, y) = at(e);
+                ((x - x0).hypot(y - y0) < 0.1).then_some((x, y))
+            })
+            .collect();
         let pier = |side: f64| -> f64 {
-            chunks
+            standing
                 .iter()
                 .filter(|(x, _)| x * side > 0.9 && x * side < 2.6)
                 .map(|&(_, y)| y)
                 .fold(0.0, f64::max)
         };
         assert!(
-            pier(-1.0) > 0.8 && pier(1.0) > 0.8,
-            "radius {radius}: a pier stands at each end, a chunk of it centred above 0.8 m: {} {} of {chunks:?}",
+            pier(-1.0) > 0.5 && pier(1.0) > 0.5,
+            "radius {radius}: a pier stands at each end, unmoved brickwork centred above 0.5 m: {} {} of {chunks:?}",
             pier(-1.0),
             pier(1.0)
         );
@@ -550,11 +630,13 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
             "radius {radius}: nothing is left over the hole above its rubble (no lintel or wedged blocks span the piers): {over:?}"
         );
         // Each pier is brickwork at least two bricks wide through its
-        // middle: no column a brick wide is left standing.
+        // middle (half its height, a stump's or a tall pier's): no column a
+        // brick wide is left standing.
         for side in [-1.0, 1.0] {
-            let xs: Vec<f64> = chunks
+            let h = pier(side);
+            let xs: Vec<f64> = standing
                 .iter()
-                .filter(|&&(x, y)| x * side > 0.6 && (0.8..1.6).contains(&y))
+                .filter(|&&(x, y)| x * side > 0.6 && (0.35 * h..0.65 * h).contains(&y))
                 .map(|&(x, _)| x * side)
                 .collect();
             let wide = xs.iter().copied().fold(f64::MIN, f64::max)

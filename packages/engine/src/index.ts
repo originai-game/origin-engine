@@ -238,6 +238,17 @@ export const STREAM_QUEUED: typeof Api.STREAM_QUEUED = 1;
 export const STREAM_LOADING: typeof Api.STREAM_LOADING = 2;
 export const STREAM_RESIDENT: typeof Api.STREAM_RESIDENT = 3;
 export const STREAM_FAILED: typeof Api.STREAM_FAILED = 4;
+export const CAUSE_IMPACT: typeof Api.CAUSE_IMPACT = 0;
+export const CAUSE_DAMAGE: typeof Api.CAUSE_DAMAGE = 1;
+export const CAUSE_EXPLOSION: typeof Api.CAUSE_EXPLOSION = 2;
+export const CAUSE_STRESS: typeof Api.CAUSE_STRESS = 3;
+export const CAUSE_SHATTER: typeof Api.CAUSE_SHATTER = 4;
+export const CAUSE_FRACTURE: typeof Api.CAUSE_FRACTURE = 5;
+export const MATERIAL_BRICK: typeof Api.MATERIAL_BRICK = 0;
+export const MATERIAL_CONCRETE: typeof Api.MATERIAL_CONCRETE = 1;
+export const MATERIAL_WOOD: typeof Api.MATERIAL_WOOD = 2;
+export const MATERIAL_GLASS: typeof Api.MATERIAL_GLASS = 3;
+export const MATERIAL_STONE: typeof Api.MATERIAL_STONE = 4;
 
 export const og: typeof Api.og = Object.freeze({
   ...BUILTINS,

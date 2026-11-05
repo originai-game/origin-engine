@@ -19754,6 +19754,7 @@
         "DamageDesc",
         "ExplosionDesc",
         "DestructibleInfo",
+        "DestructibleMaterial",
         "DestructionCapabilities"
       ],
       "consts": [
@@ -19786,6 +19787,36 @@
           "type": "u32",
           "value": 4,
           "doc": "Fractured.cause: a chunk with children (the fracture block's `children`) took three times the damage that breaks a bond of its cross-section, and broke into them: they fly free, each its own body, leaving a hole."
+        },
+        {
+          "name": "MATERIAL_BRICK",
+          "type": "u32",
+          "value": 0,
+          "doc": "og.destruction.material: brickwork in mortar (no-tension masonry: stands by its weight, steps back over its piers)."
+        },
+        {
+          "name": "MATERIAL_CONCRETE",
+          "type": "u32",
+          "value": 1,
+          "doc": "og.destruction.material: plain concrete (strong, breaks in chunky lumps, holds what is left)."
+        },
+        {
+          "name": "MATERIAL_WOOD",
+          "type": "u32",
+          "value": 2,
+          "doc": "og.destruction.material: timber boards (light and weak across the grain: splinters where it lands or is struck)."
+        },
+        {
+          "name": "MATERIAL_GLASS",
+          "type": "u32",
+          "value": 3,
+          "doc": "og.destruction.material: a glass pane (shatters at a touch, no stress solver)."
+        },
+        {
+          "name": "MATERIAL_STONE",
+          "type": "u32",
+          "value": 4,
+          "doc": "og.destruction.material: dry-laid stone (masonry with no mortar: no tension, heavier and tougher than brick)."
         },
         {
           "name": "CAUSE_FRACTURE",
@@ -19883,6 +19914,27 @@
           ],
           "returns": "Result<DestructibleInfo>",
           "returnsDoc": "Refused for an entity without one, or one whose model is not loaded or has no fracture.",
+          "publish": true
+        },
+        {
+          "name": "material",
+          "doc": "A material's og.Destructible tuning (MATERIAL_*): toughness, strength, friction, tension, density and how hard a hit must be to hurt it, measured against the props of the demolition-yard example (a brick wall, a concrete pillar, a crate, a pane). Pair it with a model whose fracture block has the same `style` (brick, concrete, wood, glass).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "kind",
+              "type": "u32",
+              "optional": false,
+              "doc": "MATERIAL_*."
+            }
+          ],
+          "returns": "Result<DestructibleMaterial>",
+          "returnsDoc": "Refused for a kind that is none of MATERIAL_*.",
           "publish": true
         },
         {
@@ -80431,10 +80483,10 @@
         },
         "impulse": {
           "type": "number",
-          "description": "The push outwards given to every loose chunk in reach, as an impulse at its centre, falling off as the damage does.",
-          "default": 200,
+          "description": "The push outwards on every loose piece in reach, per square metre of the face it shows the blast (the two-thirds power of its volume), at its centre, falling off as the damage does: a blast pushes on surfaces, so a lone brick flies faster than a run of bricks, but not by their count. The pieces it drives apart pull on the bonds between them, so a run of bricks by the charge breaks up rather than flying off whole. Brick by a demolition charge about 2500.",
+          "default": 2000,
           "minimum": 0,
-          "x-og-unit": "newtonSecond"
+          "x-og-unit": "newtonSecondPerM2"
         }
       },
       "additionalProperties": false
@@ -80496,6 +80548,57 @@
         "islands",
         "anchored",
         "health"
+      ],
+      "additionalProperties": false
+    },
+    "DestructibleMaterial": {
+      "x-og-kind": "struct",
+      "x-og-module": "destruction",
+      "description": "A material's og.Destructible fields (og.destruction.material): spread it into the component and add the material's fx, `{ ...og.destruction.material(world, MATERIAL_BRICK), breakFx }`, so a prop is tuned by what it is made of rather than by numbers in the scene. Its fields are og.Destructible's, for a prop of about a metre; override any one after the spread.",
+      "type": "object",
+      "properties": {
+        "toughness": {
+          "type": "number",
+          "description": "og.Destructible.toughness.",
+          "x-og-unit": "newtonSecondPerM2"
+        },
+        "strength": {
+          "type": "number",
+          "description": "og.Destructible.strength.",
+          "x-og-unit": "pascal"
+        },
+        "friction": {
+          "type": "number",
+          "description": "og.Destructible.friction."
+        },
+        "tension": {
+          "type": "number",
+          "description": "og.Destructible.tension."
+        },
+        "density": {
+          "type": "number",
+          "description": "og.Destructible.density.",
+          "x-og-unit": "kgPerM3"
+        },
+        "impactThreshold": {
+          "type": "number",
+          "description": "og.Destructible.impactThreshold.",
+          "x-og-unit": "newtonSecond"
+        },
+        "impactRadius": {
+          "type": "number",
+          "description": "og.Destructible.impactRadius.",
+          "x-og-unit": "m"
+        }
+      },
+      "required": [
+        "toughness",
+        "strength",
+        "friction",
+        "tension",
+        "density",
+        "impactThreshold",
+        "impactRadius"
       ],
       "additionalProperties": false
     },

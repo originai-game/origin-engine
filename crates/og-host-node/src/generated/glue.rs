@@ -3913,6 +3913,12 @@ pub fn og_destruction_info(env: Env, world: u32, entity: f64) -> String {
     <Host as DestructionApi>::og_destruction_info(&Host, world, entity)
 }
 
+#[napi(js_name = "og_destruction_material")]
+pub fn og_destruction_material(env: Env, world: u32, kind: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DestructionApi>::og_destruction_material(&Host, world, kind)
+}
+
 #[napi(js_name = "og_destruction_capabilities")]
 pub fn og_destruction_capabilities(env: Env, world: u32) -> String {
     let _env = crate::EnvScope::enter(&env);

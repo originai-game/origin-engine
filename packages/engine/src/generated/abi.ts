@@ -1297,6 +1297,8 @@ export interface HostAbi<A, V> {
   og_destruction_fracture(world: number, entity: number): string;
   /** `og.destruction.info` */
   og_destruction_info(world: number, entity: number): string;
+  /** `og.destruction.material` */
+  og_destruction_material(world: number, kind: number): string;
   /** `og.destruction.capabilities` */
   og_destruction_capabilities(world: number): string;
 }
@@ -1927,6 +1929,7 @@ export const SYMBOLS: readonly string[] = [
   "og_destruction_explode",
   "og_destruction_fracture",
   "og_destruction_info",
+  "og_destruction_material",
   "og_destruction_capabilities",
   "og_host_set_dispatcher",
   "og_engine_create",

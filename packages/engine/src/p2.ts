@@ -74,6 +74,7 @@ export const destruction = Object.freeze({
   explode: (world: W, desc?: unknown) => parse(abi().og_destruction_explode(world.id, json(desc))),
   fracture: (world: W, entity: number) => parse(abi().og_destruction_fracture(world.id, entity)),
   info: (world: W, entity: number) => parse(abi().og_destruction_info(world.id, entity)),
+  material: (world: W, kind: number) => parse(abi().og_destruction_material(world.id, kind)),
   capabilities: (world: W) => parse(abi().og_destruction_capabilities(world.id)),
 });
 

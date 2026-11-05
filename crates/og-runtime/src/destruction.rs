@@ -153,6 +153,8 @@ pub(crate) fn set_physics(engine: u32, physics: &og_physics::PhysicsSystem) {
 
 /// How often (in ticks) a loose island at rest is solved on what holds it.
 const REST_EVERY: u64 = 6;
+/// The most blocks of no-tension masonry that fly loose as one piece.
+const RUN: usize = 3;
 /// Below this speed (m/s) a loose island is at rest.
 const REST_SPEED: f32 = 0.5;
 
@@ -973,11 +975,18 @@ fn run(
                     .get_bytes(Entity::from_bits(body), l.velocity.0)
                     .map(|vb| v3(&l.velocity.1.decode(&vb)["linear"]).length())
                     .unwrap_or(0.0);
-                if speed > REST_SPEED {
+                // Moving or not, what rests on something is solved on it: a
+                // long run of loose courses pivoting off a pier is a
+                // cantilever, and cracks at the pivot as it swings rather
+                // than turning away whole like a plank.
+                if speed > REST_SPEED && isl.chunks.len() < 2 {
                     continue;
                 }
                 let supports = supports_of(&q, &a, pose, &isl.chunks, body, gravity);
                 if supports.is_empty() {
+                    if speed > REST_SPEED {
+                        continue;
+                    }
                     let freed = isl.chunks.iter().map(|&c| p.loose[c as usize]).min();
                     if freed.is_some_and(|t| tick.saturating_sub(t) >= WEDGED_AFTER) {
                         crumble(&a, &mut p.inst, &isl.chunks, &mut shatter);
@@ -1020,6 +1029,29 @@ fn run(
             for c in p.inst.unsupported(&a, &islands_of(&p.inst), up) {
                 p.inst.free(&a, c);
                 cause.get_or_insert(CAUSE_STRESS);
+            }
+        }
+        // No-tension masonry in the air holds no bending: a loose run of
+        // mortared blocks longer than RUN comes apart at its joints the
+        // tick it breaks loose, into its blocks (each its own cluster of
+        // bricks), so the top of a blown wall goes up as a spray of short
+        // runs, not a sheet that bends away whole.
+        if s.mat.limits.shear_elastic.is_finite()
+            && s.mat.limits.tension_elastic <= 0.1 * s.mat.limits.shear_elastic
+            && (0..before.len()).any(|i| before[i] > 0.0 && p.inst.bonds[i] <= 0.0)
+        {
+            let mut run = vec![false; a.chunks.len()];
+            for isl in islands_of(&p.inst)
+                .into_iter()
+                .filter(|i| !i.anchored && i.chunks.len() > RUN)
+            {
+                isl.chunks.iter().for_each(|&c| run[c as usize] = true);
+            }
+            for (k, b) in a.bonds.iter().enumerate() {
+                if run[b.a as usize] && p.inst.bonds[k] > 0.0 {
+                    p.inst.bonds[k] = 0.0;
+                    p.inst.dirty = true;
+                }
             }
         }
         let broken_now: Vec<bool> = (0..before.len())
@@ -1264,8 +1296,11 @@ fn run(
             let density = settings.get(&k).map_or(1000.0, |s| s.mat.density);
             let bodies = loose_bodies(ctx, l, p, a, scale, density, &poses[&k], &made, point);
             for (b, (m, at)) in bodies {
-                let j = falloff.at(at);
-                if j <= 0.0 || m <= 0.0 {
+                if m <= 0.0 {
+                    continue;
+                }
+                let j = falloff.at(at) * face(m / density);
+                if j <= 0.0 {
                     continue;
                 }
                 let dir = (at - point).normalize_or(Vec3::Y);
@@ -1811,7 +1846,7 @@ pub fn og_destruction_explode(world: u32, desc: Option<String>) -> String {
             radius: radius(&d, "radius", 3.0)?.max(1e-3),
             inner: radius(&d, "innerRadius", 0.5)?,
             damage: radius(&d, "damage", 3000.0)?,
-            impulse: radius(&d, "impulse", 200.0)?,
+            impulse: radius(&d, "impulse", 2000.0)?,
         };
         // A world with no destructible has nothing to break.
         if eng.world()?.systems().contains(&SYSTEM) {
@@ -1873,6 +1908,52 @@ pub fn og_destruction_info(world: u32, entity: f64) -> String {
         Ok(v) => ok(v),
         Err(e) => refuse(e),
     }
+}
+
+/// The face a piece of `volume` m³ shows a blast (m²): a blast's push is
+/// its impulse per square metre times that, so a brick is thrown faster
+/// than a run of twenty bricks, by the cube root of twenty, not twenty
+/// times (a blast pushes on surfaces: its momentum to a piece grows with
+/// the piece's face, not as one shove per body however small).
+fn face(volume: f32) -> f32 {
+    og_core::math::pow(volume.max(0.0), 2.0 / 3.0)
+}
+
+/// og.destruction.material: (toughness, strength, friction, tension,
+/// density, impactThreshold, impactRadius) per MATERIAL_*, the values the
+/// demolition-yard props were tuned to.
+const MATERIALS: [[f32; 7]; 5] = [
+    // Brick: tough bricks, weak mortar held by friction where it is
+    // pressed and next to nothing pulled apart; heavy blocks land at
+    // hundreds of N·s, so a lower threshold lets falling blocks knock
+    // the piers apart.
+    [800.0, 3000.0, 0.7, 0.1, 1900.0, 400.0, 0.4],
+    // Concrete.
+    [2000.0, 20000.0, 0.7, 1.0, 2400.0, 150.0, 0.4],
+    // Wood: weak across the grain, a hit spread over most of a crate.
+    [120.0, 30000.0, 0.7, 1.0, 600.0, 40.0, 0.9],
+    // Glass: shatters at a touch, no stress solver.
+    [25.0, 0.0, 0.7, 1.0, 2500.0, 2.0, 0.8],
+    // Dry stone: no mortar, no tension.
+    [1500.0, 4000.0, 0.8, 0.0, 2600.0, 500.0, 0.4],
+];
+
+pub fn og_destruction_material(world: u32, kind: u32) -> String {
+    if let Err(e) = engine(world) {
+        return refuse(e);
+    }
+    let Some(m) = MATERIALS.get(kind as usize) else {
+        return refuse(format!("{kind} is none of og.MATERIAL_*"));
+    };
+    ok(json!({
+        "toughness": m[0],
+        "strength": m[1],
+        "friction": m[2],
+        "tension": m[3],
+        "density": m[4],
+        "impactThreshold": m[5],
+        "impactRadius": m[6],
+    }))
 }
 
 pub fn og_destruction_capabilities(world: u32) -> String {

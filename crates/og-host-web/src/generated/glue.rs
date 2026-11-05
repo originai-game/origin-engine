@@ -3268,6 +3268,11 @@ pub fn og_destruction_info(world: u32, entity: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_destruction_material(world: u32, kind: u32) -> String {
+    <Host as DestructionApi>::og_destruction_material(&Host, world, kind)
+}
+
+#[wasm_bindgen]
 pub fn og_destruction_capabilities(world: u32) -> String {
     <Host as DestructionApi>::og_destruction_capabilities(&Host, world)
 }

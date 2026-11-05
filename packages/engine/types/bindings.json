@@ -26521,6 +26521,28 @@
     {
       "id": 624,
       "kind": "fn",
+      "path": "og.destruction.material",
+      "symbol": "og_destruction_material",
+      "module": "destruction",
+      "name": "material",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "kind",
+          "type": "u32",
+          "optional": false
+        }
+      ],
+      "returns": "Result<DestructibleMaterial>",
+      "publish": true
+    },
+    {
+      "id": 625,
+      "kind": "fn",
       "path": "og.destruction.capabilities",
       "symbol": "og_destruction_capabilities",
       "module": "destruction",

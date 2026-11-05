@@ -115,7 +115,7 @@ pub use baked::og_render_baked_lighting;
 pub use codec::{Kind, Layout, RecordKind};
 pub use destruction::{
     og_destruction_capabilities, og_destruction_damage, og_destruction_explode,
-    og_destruction_fracture, og_destruction_info,
+    og_destruction_fracture, og_destruction_info, og_destruction_material,
 };
 pub use display::{
     lose_device, og_render_display, og_render_reset_display, og_render_set_display,

@@ -82,8 +82,14 @@ is one line here, written at the merge that changes
   converges, stressBudget: a tick's solver work in bond-iterations, past
   which a solve waits for the next tick), `DamageDesc`,
   `ExplosionDesc`, `DestructibleInfo`, `DestructionCapabilities`,
-  `CAUSE_*`, and `og.destruction.damage`, `explode`, `fracture`, `info`,
-  `capabilities`. Prelude units `m3`, `pascal`, `newtonSecondPerM2`. The
+  `CAUSE_*`, `MATERIAL_*` (brick, concrete, wood, glass, stone) with
+  `DestructibleMaterial`, and `og.destruction.damage`, `explode` (its
+  `impulse` per square metre of the face each piece shows the blast, so a
+  brick flies faster than a run of bricks but not by their count),
+  `fracture`, `info`, `material` (a material's og.Destructible tuning, to
+  spread into the component) and `capabilities`. A loose run of
+  no-tension masonry longer than three blocks comes apart into its
+  blocks as it breaks loose. Prelude units `m3`, `pascal`, `newtonSecondPerM2`. The
   stress solver is NVIDIA Blast's (BSD-3), each joint judged at both its
   edges (a pressed joint whose load lies off its middle opens). Lazy: a world without
   destructibles keeps its hash. The skill `og-destruction`; the example
