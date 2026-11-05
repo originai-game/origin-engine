@@ -20,7 +20,7 @@ module destruction {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 28416</sub>
+<sub>`api.ogt` line 28501</sub>
 
 ## Contents
 
@@ -78,7 +78,7 @@ fn damage {
 }
 ```
 
-<sub>`api.ogt` line 28626</sub>
+<sub>`api.ogt` line 28711</sub>
 
 <a id="fn-explode"></a>
 
@@ -108,7 +108,7 @@ fn explode {
 }
 ```
 
-<sub>`api.ogt` line 28634</sub>
+<sub>`api.ogt` line 28719</sub>
 
 <a id="fn-fracture"></a>
 
@@ -138,7 +138,7 @@ fn fracture {
 }
 ```
 
-<sub>`api.ogt` line 28641</sub>
+<sub>`api.ogt` line 28726</sub>
 
 <a id="fn-info"></a>
 
@@ -168,7 +168,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 28648</sub>
+<sub>`api.ogt` line 28733</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -196,7 +196,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 28655</sub>
+<sub>`api.ogt` line 28740</sub>
 
 ## Components, resources and events
 
@@ -284,7 +284,7 @@ component Destructible {
 }
 ```
 
-<sub>`api.ogt` line 28430</sub>
+<sub>`api.ogt` line 28515</sub>
 
 <a id="record-Chunk"></a>
 
@@ -324,7 +324,7 @@ component Chunk {
 }
 ```
 
-<sub>`api.ogt` line 28486</sub>
+<sub>`api.ogt` line 28571</sub>
 
 <a id="record-Fractured"></a>
 
@@ -364,7 +364,7 @@ event Fractured {
 }
 ```
 
-<sub>`api.ogt` line 28506</sub>
+<sub>`api.ogt` line 28591</sub>
 
 <a id="record-Destruction"></a>
 
@@ -416,7 +416,7 @@ resource Destruction {
 }
 ```
 
-<sub>`api.ogt` line 28524</sub>
+<sub>`api.ogt` line 28609</sub>
 
 ## Types
 
@@ -460,7 +460,7 @@ struct DamageDesc {
 }
 ```
 
-<sub>`api.ogt` line 28556</sub>
+<sub>`api.ogt` line 28641</sub>
 
 <a id="type-ExplosionDesc"></a>
 
@@ -508,7 +508,7 @@ struct ExplosionDesc {
 }
 ```
 
-<sub>`api.ogt` line 28579</sub>
+<sub>`api.ogt` line 28664</sub>
 
 <a id="type-DestructibleInfo"></a>
 
@@ -542,7 +542,7 @@ struct DestructibleInfo {
 }
 ```
 
-<sub>`api.ogt` line 28607</sub>
+<sub>`api.ogt` line 28692</sub>
 
 <a id="type-DestructionCapabilities"></a>
 
@@ -561,7 +561,7 @@ struct DestructionCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 28621</sub>
+<sub>`api.ogt` line 28706</sub>
 
 ## Constants
 
@@ -578,34 +578,34 @@ struct DestructionCapabilities {
 const CAUSE_IMPACT u32 0 "Fractured.cause: a collision's impulse (og.CollisionStarted) past the prop's impactThreshold."
 ```
 
-<sub>`api.ogt` line 28423</sub>
+<sub>`api.ogt` line 28508</sub>
 
 ```ogt
 const CAUSE_DAMAGE u32 1 "Fractured.cause: og.destruction.damage."
 ```
 
-<sub>`api.ogt` line 28424</sub>
+<sub>`api.ogt` line 28509</sub>
 
 ```ogt
 const CAUSE_EXPLOSION u32 2 "Fractured.cause: og.destruction.explode."
 ```
 
-<sub>`api.ogt` line 28425</sub>
+<sub>`api.ogt` line 28510</sub>
 
 ```ogt
 const CAUSE_STRESS u32 3 "Fractured.cause: the stress solver: a part that could no longer hold its own weight."
 ```
 
-<sub>`api.ogt` line 28426</sub>
+<sub>`api.ogt` line 28511</sub>
 
 ```ogt
 const CAUSE_SHATTER u32 4 "Fractured.cause: a chunk with children (the fracture block's `children`) took three times the damage that breaks a bond of its cross-section, and broke into them: they fly free, each its own body, leaving a hole."
 ```
 
-<sub>`api.ogt` line 28427</sub>
+<sub>`api.ogt` line 28512</sub>
 
 ```ogt
 const CAUSE_FRACTURE u32 5 "Fractured.cause: og.destruction.fracture."
 ```
 
-<sub>`api.ogt` line 28428</sub>
+<sub>`api.ogt` line 28513</sub>
