@@ -1536,10 +1536,10 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   let k = select(2.2, 1.1, pop == 1u);
   let decay = (1.0 - exp(-k * tau)) / k;
   var p = start + air * tau + (v0 - air) * decay;
-  // Vertically it settles at its fall speed in the gale's turbulence, which holds the spray up (droplets some 1 m/s,
-  // the spume's sheets 1.8), reached at the rate gravity sets: falling at its terminal speed in still air (g / k, 4.5
-  // and 9 m/s) a low-flying droplet was back in the sea within half a second.
-  let vs = select(1.0, 1.8, pop == 1u);
+  // Vertically it settles at its fall speed (a cloud of fine spray droplets, some 50 µm, 0.4 m/s; the spume's
+  // drops, half a millimetre and more, 1.5), reached at the rate gravity sets: falling at its terminal speed in still
+  // air (g / k, 4.5 and 9 m/s) a low-flying droplet was back in the sea within half a second.
+  let vs = select(0.4, 1.5, pop == 1u);
   let kv = 9.81 / vs;
   let ev = exp(-kv * tau);
   p.y = start.y + (v0.y + vs) * (1.0 - ev) / kv - vs * tau;
@@ -1551,9 +1551,10 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   alpha *= smoothstep(start.y - 1.5, start.y - 0.3, p.y) * select(0.6, 0.55, pop == 1u) * mix(0.6, 1.0, keep) * edge;
   // At least a pixel and a half across: a smaller one is drawn that size with its coverage kept (no shimmer).
   let dist = length(p - frame.view_pos.xyz);
-  // Spray is seen near: past some 35 m (the spume's sheets, torn off a gale's crests in
-  // streams seen far across the sea, 220 m) it is a haze over the crests, not sprites.
-  alpha *= 1.0 - smoothstep(select(15.0, 80.0, pop == 1u), select(35.0, 220.0, pop == 1u), dist);
+  // Spray is seen near: past some 60 m (the spume's sheets, torn off a gale's crests in
+  // streams seen far across the sea, 220 m) it is a haze over the crests, not sprites. (Its droplets stream 15 to 40 m
+  // downwind in a life; faded from 15 to 35 m, a gale's sheets left the view before they read as sheets.)
+  alpha *= 1.0 - smoothstep(select(25.0, 80.0, pop == 1u), select(60.0, 220.0, pop == 1u), dist);
   let scale = length(vec3<f32>(frame.view_proj[0].y, frame.view_proj[1].y, frame.view_proj[2].y));
   let floor_size = 1.5 * dist * 2.0 / max(scale * water.screen.y, 1e-6);
   if (size < floor_size) {
@@ -1565,7 +1566,7 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
     vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
     vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0));
   let c = corners[vi % 6u];
-  // Drawn as a wisp along its flight (three times as long as wide, the same area), not a round puff: spindrift
+  // Drawn as a wisp along its flight, not a round puff: spindrift
   // streams off a crest, and a lone round sprite read as a dot hanging over the sea.
   let to_eye = normalize(frame.view_pos.xyz - p);
   let e = exp(-k * tau);
@@ -1575,7 +1576,10 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   if (dot(along_v, along_v) < 1e-6) { along_v = cross(vec3<f32>(0.0, 1.0, 0.0), to_eye) + vec3<f32>(1e-5, 0.0, 0.0); }
   let right = normalize(along_v);
   let upv = cross(to_eye, right);
-  let world = p + (right * c.x * 1.73 + upv * c.y * 0.577) * size * 0.5;
+  // Longer the faster it flies across the view (three times as long as wide at rest, up to eight in a gale's sheet
+  // at some 25 m/s), the same area.
+  let stretch = sqrt(clamp(length(along_v) * 0.32, 3.0, 8.0));
+  let world = p + (right * c.x * stretch + upv * c.y / stretch) * size * 0.5;
   o.clip = frame.view_proj * vec4<f32>(world, 1.0);
   o.world = world;
   o.corner = c;
