@@ -426,7 +426,7 @@ impl TypeScale {
             base: step(Body),
             body: step(Body),
             caption: step(Caption),
-            meta: step(Label),
+            meta: step(Caption),
             reading: step(Body),
             lg: step(Numeric),
             xl: step(Heading),

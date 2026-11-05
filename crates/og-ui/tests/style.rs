@@ -2267,3 +2267,23 @@ fn a_version_1_styles_burst_is_drawn_rays_and_sparks_not_particles() {
     let (_, mass) = run(&today);
     assert!(mass > 0, "a version 2 style's burst is particles");
 }
+
+/// `meta` is the caption-sized line (a footer's hint, a row's subtext), as
+/// every shipped style's ramp had it: aliased to the label role, a style
+/// whose labels are larger or bolder grew every meta line and re-wrapped
+/// shipped screens (brasswick's title footer, 18 px lines to 22).
+#[test]
+fn the_meta_step_follows_the_caption_role_not_the_label() {
+    let file = v2_with("label ", "  label 19 26 0.06 700 body").unwrap();
+    let typo = &file.theme.tokens.typography;
+    let caption = typo.get(tokens::TypeRole::Caption, Breakpoint::Desktop);
+    assert_ne!(
+        caption.size, 19.0,
+        "the test needs a label unlike the caption"
+    );
+    let meta = file.theme.type_ramp.meta;
+    assert_eq!(
+        (meta.size, meta.line_height, meta.weight),
+        (caption.size, caption.line_height, caption.weight)
+    );
+}
