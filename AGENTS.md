@@ -214,7 +214,9 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   a port of a paper with no simple form.
   Claude Code is the default, not a rule for everything (the owner,
   2026-11-04): macrunner, hard logic and backend work, and splitting
-  oversized source files may run in new Amp `high` threads. An Amp
+  oversized source files may run in new Amp `high` threads.
+  Compatibility work (Windows, Safari, Android, web boot) runs in Amp
+  `high` threads, not Claude Code (the owner, 2026-11-05). An Amp
   `high` thread other than macrunner is archived once its in-flight
   work lands, its open items going into a new thread's brief, in the
   mode the item needs. A file split is briefed to move code verbatim (only
