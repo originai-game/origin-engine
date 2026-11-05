@@ -203,7 +203,10 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   fixes (its attempts and evidence recorded) goes to a new Claude Code
   thread with features `["model:claude-fable-5-1", "effort:high"]`, briefed
   with every failed attempt and its evidence; the original thread stops on
-  that problem.
+  that problem. Widened (the owner, 2026-11-05): a hard problem may go
+  to Fable from the start, without waiting for failed rounds: a cost
+  target missed by a wide margin, a look the art runner has bounced, or
+  a port of a paper with no simple form.
   Claude Code is the default, not a rule for everything (the owner,
   2026-11-04): macrunner, hard logic and backend work, and splitting
   oversized source files may run in new Amp `high` threads. An Amp

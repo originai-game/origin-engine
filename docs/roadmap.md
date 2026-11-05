@@ -163,7 +163,64 @@ R included, is complete.
 
 ## 4. Status
 
-**Wave B (the owner, 2026-11-02: speed first; macrunner's Metal stays the only pixel judge, authors never touch a GPU; wave A stopped with its work pushed and its findings carried into these briefs):**
+**2026-11-05 (the coordinator, from each thread's last report).** Every
+wave of §2 has landed apart from what is listed here. The feature areas
+of the three audits (2026-11-04) landed on main: GI area 1 (DDGI cascades
+ahead of the camera, screen GI across the screen, `both` no longer double
+counting), atmosphere and clouds, terrain v2 with the first-frame corner
+cache, grass, water area 5 (W7 deferred), stylisation areas 6 and 7,
+shadows and the midpoint local shadow maps, weather on surfaces, SSSR
+with the min-max Hi-Z march, FSR 3.1, GPU-culled crowds, destruction
+M1–M9 (GPU XPBD rigid debris), PR #8's fork077 sections (s42, s55, s14,
+s18, s36 with COOKER r11, s24+s72), `pipelines auto`, and Windows native
+compatibility. Threads that own each open item are named; hard problems
+run on Claude Fable 5.1 (AGENTS.md).
+
+**Not implemented yet**
+
+| Item | State | Thread |
+|---|---|---|
+| Visual simulation: garment, MPM fluid, GPU particles | cloth and soft body's GPU visual mode done, rebasing onto destruction's shared collider module; the other three not started | [T-01a1a6f6](https://ampcode.com/threads/T-01a1a6f6-09cf-74ab-8b0b-9cad0149f65a) |
+| GPU scatter placement | grass already places on the GPU; scatter still builds chunks on the CPU (16 a frame). `copy_at`/`copy_ruled` to a compute pass feeding scatter_cull, as a visual mode; the CPU answer stays for gameplay; the recursive footprint rule is the hard part | [T-01a1aaa2-f809](https://ampcode.com/threads/T-01a1aaa2-f809-707d-a8ee-0d482177372a) |
+| UI 1B M2; PR #8 s65 (span exact size) and s66 (`blend srgb`) | in progress; s67 not taken (conflicts with `FieldDesc.bare`, needs an API decision) | [T-01a1a7e2](https://ampcode.com/threads/T-01a1a7e2-6d0c-7749-a1dd-5164fae10d1e) |
+| HDR output accepted on a real HDR display | landed opt-in; acceptance in §3 | — |
+| W7, a deterministic CPU FFT band for buoyancy | deferred | — |
+| wgpu 31 | upstream unpublished (`docs/release.md` F5) | — |
+
+**Implemented, below target**
+
+| Item | Now | Target or problem | Thread |
+|---|---|---|---|
+| Local shadow maps, 8 moving cube lights | 5.2–6.1 ms (2.1 before the midpoint maps) | about 2.2 ms; a ball-rim stipple; then pcss-moments | Fable: [T-01a1aaad-0c24](https://ampcode.com/threads/T-01a1aaad-0c24-7058-a7c7-c9d72b11cba3) |
+| SSSR | 4–5 ms on Metal at 1080p | about 2 ms; the half-resolution head (1.4 ms) bounced for 10–20 px blotches, a wider spatial pass next | [T-01a1a835-8e84](https://ampcode.com/threads/T-01a1a835-8e84-769e-8707-c8878ee447e4) |
+| FSR 3.1 | costlier than TAAU | TAAU's cost, then the default upscaler | [T-01a1a835-8371](https://ampcode.com/threads/T-01a1a835-8371-7519-a4b0-6d33cc38f6a4) |
+| GI probes | main pass 3.70 ms (1.48 without GI); `both` frame 12.70 ms | screen GI reaches 0.65 of the path-traced reference (ceiling 0.72–0.80, the rest off screen); probes 0.81 at 32 frames | area 1 closed; next optimisation when the product needs it |
+| First frame | terrain 7–12 s on DX12 after the corner cache; the Pixel's first frame 14–17 s | the shader compile budget; measured at the wave's end and in §3 | web boot [T-01a1a707](https://ampcode.com/threads/T-01a1a707-5055-70bb-ae28-ae6fad4e0388) |
+| Crowds at 50k | 24.35 ms a frame (cull 0.30 ms) | prepass 10–13 ms and main pass 10 ms dominate | — |
+| Watercolour look | reads as oil: the Kuwahara picks dark low-variance sectors; Bousseau rims made it muddier | a watercolour primitive (Bousseau, MNPR) | Fable: [T-01a1aaad-12fe](https://ampcode.com/threads/T-01a1aaad-12fe-75c0-b190-6d9c79b16005) |
+| neon-vector | the wireframe line doubles the outline on silhouettes | the outline owns silhouette edges | [T-01a1aaa2-fedd](https://ampcode.com/threads/T-01a1aaa2-fedd-7001-99f9-052f974ca1ab) |
+| Destruction looks | pillar chunks read as thin shells and cards; the stump leans 10° | art notes, non-blocking | [T-01a1a830](https://ampcode.com/threads/T-01a1a830-c145-7314-bf21-5deb23366ee8) |
+| PowerVR linear sampling | 1/255 from the neighbour texel at 1:1 (og-ui/glass; smaa likely) | 1:1 passes read with textureLoad | Android [T-01a1a869](https://ampcode.com/threads/T-01a1a869-a893-7314-9a61-22d51cee1b8c) |
+| World polish | setts, specks, teeth, spray, weather mottle and rivulets, funnel grit ring, ripple glare, doodle paper warmth | one head to the art runner | [T-01a1a94b](https://ampcode.com/threads/T-01a1a94b-d95c-76b2-9cec-46d2ba332c0c) |
+| og.motion | the jump's pitch is clamped, not fixed at the source; the wave goal idles at 12 s | — | [T-cd152924](https://ampcode.com/threads/T-cd152924-03dd-42d3-a4dc-b5ef6716af67) |
+| Distant impostors | no shadow of their own, a view from below draws the horizon frame, cards don't sway (R6's limits) | not yet taken up | — |
+
+**Implemented, not yet verified**
+
+| Item | Where | Thread |
+|---|---|---|
+| Wasm build, size, determinism, the browser tiers; destruction's replay hash on wasm and Chrome; the browser checks of video, uncooked load and the platform ABI | the wave's end | [T-01a1a993-ffa2](https://ampcode.com/threads/T-01a1a993-ffa2-70d9-9645-0ad77ddbd60a) |
+| Safari's full tiers | macrunner, branch `safari` | [T-01a1a993-f7d5](https://ampcode.com/threads/T-01a1a993-f7d5-7486-914f-ff0c299edeca) |
+| Windows: terrain first frame and `pipelines auto` wire reruns, per-backend ui-kit references (BC7 against Metal's ASTC) | studio-win | [T-01a1a7ab](https://ampcode.com/threads/T-01a1a7ab-8f7c-76a1-ad03-2730fb3a22ec) |
+| Phones: G1-4's power mode, automatic quality and device loss; iOS's pipeline mode (Apple stays sync until measured) | §3 | — |
+| The wasm budget's meaning (row 44) | the owner | — |
+
+Deferred by the owner: UI text scale at 200 %, accessibility, the genre
+archetypes, the overlay's GPU cost, the WebGL 2 fallback (a study only,
+§3), the platform asks' joint review. Ray tracing is a non-goal; Radiance
+Cascades were measured and not ported (`docs/design.md` §2.6).
+
+**Wave B, 2026-11-02 (history)** (the owner, 2026-11-02: speed first; macrunner's Metal stays the only pixel judge, authors never touch a GPU; wave A stopped with its work pushed and its findings carried into these briefs):
 
 | Thread | Owns |
 |---|---|
