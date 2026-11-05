@@ -36,6 +36,7 @@ import { fileURLToPath } from "node:url";
 import { webBuild, settingsOf } from "../../src/node/web-build.ts";
 import { androidOf, Browser, chromePath, type Page } from "./cdp.ts";
 import { serve } from "./serve.ts";
+import { SETTLE_MS, SETTLE_TICKS } from "../../src/web/settle.ts";
 import { cookProject } from "../support/og-bin.ts";
 
 const args = process.argv.slice(2);
@@ -137,6 +138,8 @@ async function run(kind: Kind, isolate: boolean, pipelines: Pipelines, browser: 
   try {
     // The page says hello on its own once the engine is ready.
     const hello = await page.until<{ protocol: number; substrate: string }>("hellos.find((h) => h.protocol === 5)", 60_000);
+    // The engine's first tick ran before the hello: settling may take ticks until SETTLE_MS after it.
+    const helloAt = performance.now();
     check(hello.protocol === 5 && hello.substrate === "origin-engine", `${label}: unsolicited hello`, hello);
     const iso = await page.evalChild<boolean>("localhost", "crossOriginIsolated");
     check(iso === isolate, `${label}: crossOriginIsolated is ${isolate}`, iso);
@@ -154,10 +157,19 @@ async function run(kind: Kind, isolate: boolean, pipelines: Pipelines, browser: 
       `${label}: state answers {tick, paused, timings: {frameMs}}`,
       st,
     );
-    // Behind the play gate the clock holds.
+    // Behind the play gate the clock holds. Only settling ticks may pass (src/web/settle.ts): the
+    // platform's answers that land after the first frame are applied, at most SETTLE_TICKS ticks within
+    // SETTLE_MS of the first tick (a cold GPU process can push the store's answer past the first frame);
+    // after that window, not one tick.
     await new Promise((r) => setTimeout(r, 400));
     const t2 = await c("tick");
-    check(t2.result === t1.result, `${label}: the clock holds behind the play gate`, { before: t1.result, after: t2.result });
+    const settledBy = helloAt + SETTLE_MS - performance.now();
+    if (settledBy > 0) await new Promise((r) => setTimeout(r, settledBy));
+    const tSettled = await c("tick");
+    await new Promise((r) => setTimeout(r, 400));
+    const tHeld = await c("tick");
+    const [n1, n2, n3, n4] = [t1, t2, tSettled, tHeld].map((t) => t.result as number);
+    check(n2! >= n1! && n3! >= n2! && n3! - n1! <= SETTLE_TICKS && n4 === n3, `${label}: the clock holds behind the play gate (only settling ticks, within SETTLE_MS)`, { first: n1, after400ms: n2, afterSettle: n3, after400msMore: n4 });
     // Fork s60: with `pipelines async` the first frame's pipelines went through createRenderPipelineAsync
     // (src/web/pipelines.ts): a wgpu that reaches the browser's createRenderPipeline another way fails here,
     // not silently slower. With sync none did and the renderer opened no span.
@@ -179,13 +191,13 @@ async function run(kind: Kind, isolate: boolean, pipelines: Pipelines, browser: 
       }
       check(!!warmed && warmed.async > 0 && warmed.fallback === 0 && !warmed.bypassed, `${label}: the warm-up behind the gate compiles through createRenderPipelineAsync`, warmed);
       const t2b = await c("tick");
-      check(t2b.result === t1.result, `${label}: the clock still holds while it warms`, { before: t1.result, after: t2b.result });
+      check(t2b.result === tHeld.result, `${label}: the clock still holds while it warms`, { before: tHeld.result, after: t2b.result });
     } else check(!!pl && pl.sync > 0 && pl.async === 0 && pl.fallback === 0 && pl.spans === 0, `${label}: the pipelines are made synchronously`, pl);
     // A real tap on the gate (the middle of the frame) starts it.
     await page.tap(400, 225);
     await new Promise((r) => setTimeout(r, 600));
     const t3 = await c("tick");
-    check(typeof t3.result === "number" && t3.result > (t2.result as number), `${label}: a tap on the gate starts the clock`, { before: t2.result, after: t3.result });
+    check(typeof t3.result === "number" && t3.result > (tHeld.result as number), `${label}: a tap on the gate starts the clock`, { before: tHeld.result, after: t3.result });
 
     // Real keyboard input reaches the engine (the input ring when isolated, messages otherwise).
     if (kind === "dev") {

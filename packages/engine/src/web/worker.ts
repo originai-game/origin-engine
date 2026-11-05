@@ -1603,7 +1603,9 @@ export function startWorker(game: GameToken): void {
           phase("settle");
           present();
           if (primed && (platformCounter.waiting > 0 || platformCounter.fresh || behindGate.pending() > 0)) {
-            void settle(platformCounter, behindGate.advance, { until: at + SETTLE_MS, stop: behindGate.stop, pending: behindGate.pending, drawn: present }).catch((e: unknown) => crash(e instanceof Error ? e.message : String(e)));
+            void settle(platformCounter, behindGate.advance, { until: at + SETTLE_MS, stop: behindGate.stop, pending: behindGate.pending, drawn: present })
+              .then((n) => n > 0 && console.info(`[og] behind the gate: ${n} settling tick(s) applied answers that landed after the first frame`))
+              .catch((e: unknown) => crash(e instanceof Error ? e.message : String(e)));
           }
         }
       } catch (e) {
