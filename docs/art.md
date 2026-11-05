@@ -579,6 +579,57 @@ whose parents the art lacks; a head drawn below the pelvis or a foot
 above the hips; parts that overflow the atlas; a `pivot` for a part the
 art does not have.
 
+### 2.9 The audio brief: every cue and effect a game needs
+
+The audio counterpart of §2.2 (plan item A9, 2026-11-05). The knowledge
+package's `scripts/brief.ts` exports `audioBrief(input: AudioBriefInput):
+AudioBrief`, re-exported by `@origingame/create-game` beside `artBrief`; an
+additive contract, kept stable like it (a change is a break with a
+`changelog.json` breaking entry). It is pure and deterministic.
+
+- **Input**: `{ music, mood, genre, premise? }`, the creation choices'
+  values (`CREATION_CHOICES.music`, `.mood`, `.genre`; create-game's tests
+  hold every combination accepted) and the premise as written.
+  `readAudioChoices(projectDir)` reads the first three from project.ogt's
+  `create` block. An unknown value throws naming the known ones.
+- **Output**: `{ music, mood, genre, premise, direction, avoid, cues,
+  sfx, presets }`. `direction` is what every request shares (the style's
+  instruments and texture, the mood, the effects' character); `avoid` what
+  none may contain (the style's, plus lyrics, copyrighted material,
+  clipping, silence at a loop's ends).
+- **`cues: MusicCueBrief[]`**: the title theme, the genre's cues (an RPG's
+  town, field, battle and boss; a rhythm game's song and calibration loop;
+  an idle game's loop and milestone stinger) and the victory and defeat
+  jingles. Each has `id`, `role` (`title`, `explore`, `action`, `boss`,
+  `calm`, `victory`, `defeat`, `stinger`), `prompt`, `bpm` (the style's
+  tempo range at the mood's place in it, offset by the cue), `mode`,
+  `beatsPerBar` 4, `bars`, `seconds`, `loop` (seamless at the bar line;
+  jingles and stingers play once), `stems` (the style's layers for the
+  play loops, sample-aligned so og-audio §5 can bring them in and out),
+  `intensity`, `file` (`music/<id>.ogg`) and `format` (Ogg Vorbis, 48 kHz
+  stereo, −16 LUFS, true peak −1 dBFS). A rhythm song's prompt asks for a
+  strict tempo and a count-in, since the game judges presses on
+  og.Music's clock at that bpm.
+- **`sfx: SfxBrief[]`**: the four UI sounds, then the genre's events
+  (jump, land, footsteps, coins for a platformer; swap, match, cascade for
+  a match-3). Each has `id`, `event`, `prompt`, `seconds`, `bus` (`ui` or
+  `sfx`), `variants` (takes, so repeats do not machine-gun), `preset`
+  (the stand-in's id or null), `file` (`audio/<id>.wav`) and `format`
+  (WAV, 48 kHz mono, peak −1 dBFS).
+- **`presets: SfxPresetBrief[]`**: for each effect one of og cook's
+  procedural presets fits (`SFX_PRESETS`, held equal to og-cook's
+  `sfx::PRESETS` by the knowledge tests), the `type sfx` document to write
+  to `assets/audio/<id>.ogt`, its seed from the id and its pitch and length
+  from the style and mood (chiptune 1 and 0.9, orchestral 0.9 and 1.2; a
+  dark mood 0.85, a bright one 1.08). A game plays the preset until the
+  generated file exists, then switches the load to the `.wav`. An engine
+  loop or wind ambience has no preset and waits for its file.
+- **Command line**: `bun <knowledge>/scripts/brief.ts audio [--project
+  <dir>] [--music --mood --genre] [--premise "<line>"] [--json]`.
+
+The platform's music and sound generation (origin-agent) takes these
+requests as they are: `docs/platform-asks.md` ask 25.
+
 ## 3. Streams
 
 Each stream is one thread on branch `art/<stream>` from the main named in

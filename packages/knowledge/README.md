@@ -141,3 +141,25 @@ Outside the engine repository the presets and palettes are read from
 `presets/` (copied from `templates/looks` by `scripts/pack.ts`, not
 mounted for the platform), the catalogue from `looks/` and the previews
 from `previews/`.
+
+## The audio brief
+
+`audioBrief({ music, mood, genre, premise? })` (same file, re-exported by
+`@origingame/create-game`) returns the request for every music cue and
+sound effect a game needs, and the og cook presets that stand in until the
+files exist (docs/art.md §2.9 in the engine repository):
+
+```ts
+import { audioBrief, readAudioChoices } from "@origingame/create-game";
+const b = audioBrief({ ...readAudioChoices("path/to/game"), premise: "a bakery that keeps time" });
+b.cues;     // [{ id, role, prompt, bpm, mode, bars, seconds, loop, stems, intensity, file: "music/<id>.ogg", format }]
+b.sfx;      // [{ id, event, prompt, seconds, bus, variants, preset, file: "audio/<id>.wav", format }]
+b.presets;  // [{ id, preset, seed, pitch, length, volume, file: "audio/<id>.ogt", ogt }]: write ogt to assets/<file>
+```
+
+These are a public contract like the art brief: `audioBrief`,
+`readAudioChoices`, `MUSIC_STYLES`, `SFX_PRESETS` and the shapes
+`AudioBriefInput`, `AudioBrief`, `MusicCueBrief`, `SfxBrief`,
+`SfxPresetBrief`, `AudioFormat`, `MusicRole`, `MusicStyle`, `SfxPreset`.
+On the command line: `bun scripts/brief.ts audio [--project <dir>]
+[--music --mood --genre] [--premise "<line>"] [--json]`.

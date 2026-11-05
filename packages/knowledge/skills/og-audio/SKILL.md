@@ -47,6 +47,23 @@ given and taken, pickups, a door, a death, a win and a loss, every UI press.
 
 ## 2. Presets: sounds without files
 
+### Starting from the choice
+
+A game created with a music style (`og new --music`, project.ogt's
+`create` block) asks for its audio through the audio brief, never a prompt
+written from scratch: `bun <knowledge>/scripts/brief.ts audio --premise
+"<the game in a line>" --json` (or `audioBrief` from
+`@origingame/create-game`) lists every music cue (its bpm, mode, bars, loop
+and stems, `music/<id>.ogg`) and sound effect (`audio/<id>.wav`, its bus
+and takes) the genre needs, in the style and mood chosen. Write each
+`presets[].ogt` to `assets/<file>` first and load those, so the game is
+heard from the first build; when a generated file arrives, change that
+load to it. Start music stems together (§5) and set `og.Music`'s `bpm` to
+the cue's.
+
+### The library
+
+
 `og sfx` lists the procedural presets (`coin`, `pickup`, `powerup`, `jump`,
 `land`, `footstep`, `hit`, `hurt`, `explosion`, `laser`, `whoosh`, `door`,
 `death`, `click`, `select`, `back`, `error`, `levelup`). `og sfx jump --out

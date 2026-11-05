@@ -42,6 +42,10 @@ export { PSEUDO_LOCALE, pseudoMessage, pseudoTable } from "./pseudo-locale.ts";
 // equal); README §The art brief.
 export { ART_KINDS, ART_RESOURCES, artBrief, colourName, parseLook, parsePalette, presetLook, readLook, styleArtBriefs } from "./brief.ts";
 export type { ArtBlocks, ArtBrief, ArtKind, ArtResource, ArtValue, BriefLook, BriefOptions, BriefPalette, BriefReference, BriefStyle, ImageParams, ModelParams, PaletteColour, ReadLookOptions, StyleArtBrief, StyleArtRequests } from "./brief.ts";
+// The audio brief (docs/art.md §2.9): the music cues and sound effects a game
+// needs, from its music style, mood, genre and premise, with og cook's presets.
+export { audioBrief, MUSIC_STYLES, readAudioChoices, SFX_PRESETS } from "./brief.ts";
+export type { AudioBrief, AudioBriefInput, AudioFormat, MusicCueBrief, MusicRole, MusicStyle, SfxBrief, SfxPreset, SfxPresetBrief } from "./brief.ts";
 // The auto-rig's layer contract (docs/art.md §2.8): a template's parts, back
 // to front, held equal to og-cook's templates by its rig_parts test.
 export { RIG_TEMPLATES, rigParts } from "./brief.ts";

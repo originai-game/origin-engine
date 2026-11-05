@@ -9,7 +9,7 @@ import { afterAll, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ART_KINDS, artBrief, colourName, parsePalette, presetLook, readLook, RIG_TEMPLATES, rigParts, styleArtBriefs, UI_KINDS, uiAllows, type BriefLook } from "../scripts/brief.ts";
+import { ART_KINDS, artBrief, audioBrief, readAudioChoices, SFX_PRESETS, colourName, parsePalette, presetLook, readLook, RIG_TEMPLATES, rigParts, styleArtBriefs, UI_KINDS, uiAllows, type BriefLook } from "../scripts/brief.ts";
 
 const temps: string[] = [];
 afterAll(() => {
@@ -311,4 +311,69 @@ test("rigParts lists a template's layers back to front, each with its side, its 
   expect([...RIG_TEMPLATES]).toEqual(["humanoid-side", "humanoid-front", "quadruped", "creature"]);
   // Another name is refused, naming the four.
   expect(() => rigParts("humanoid")).toThrow("'humanoid' is not an auto-rig template: use one of humanoid-side, humanoid-front, quadruped, creature");
+});
+
+// The audio brief (docs/art.md §2.9). Tempos worked by hand: a cue's bpm is
+// the style's range at the mood's place in it plus the cue's own offset
+// (chiptune 120-160; warm 0.45; an action cue +0.2, a title +0), its length
+// bars x 4 beats x 60 / bpm.
+test("the audio brief times each cue from the style's tempo range and the mood, and a rhythm song holds its bpm", () => {
+  const b = audioBrief({ music: "chiptune", mood: "warm", genre: "rhythm", premise: "a bakery that keeps time" });
+  expect(b.cues.map((c) => c.id)).toEqual(["title", "song", "calibrate", "victory", "defeat"]);
+  const song = b.cues.find((c) => c.id === "song")!;
+  expect([song.bpm, song.seconds, song.loop, song.file]).toEqual([146, 105.21, true, "music/song.ogg"]); // 120 + 40 x 0.65; 64 x 240 / 146
+  expect(song.stems).toEqual(["lead", "harmony", "bass", "drums"]);
+  expect(song.prompt).toContain("Hold the tempo exactly at the bpm");
+  expect(song.prompt).toContain("a bakery that keeps time");
+  const title = b.cues[0]!;
+  expect([title.bpm, title.seconds, title.stems.length]).toEqual([138, 55.65, 0]); // 120 + 40 x 0.45; 32 x 240 / 138
+  const victory = b.cues.find((c) => c.id === "victory")!;
+  expect([victory.loop, victory.prompt.includes("plays once")]).toEqual([false, true]);
+});
+
+test("the mood and style change the requests: a dark orchestral RPG is slower, minor, acoustic, its victory still major", () => {
+  const b = audioBrief({ music: "orchestral", mood: "dark", genre: "rpg" });
+  const battle = b.cues.find((c) => c.id === "battle")!;
+  expect([battle.bpm, battle.mode]).toEqual([103, "minor"]); // 70 + 60 x (0.35 + 0.2)
+  expect(b.cues.find((c) => c.id === "victory")!.mode).toBe("major");
+  expect(b.cues.find((c) => c.id === "defeat")!.mode).toBe("minor");
+  expect(b.avoid).toContain("synthesisers");
+  expect(b.sfx.find((e) => e.id === "swing")!.prompt).toContain("recorded foley");
+  expect(audioBrief({ music: "electronic", mood: "dark", genre: "rpg" }).sfx.find((e) => e.id === "swing")!.prompt).not.toContain("foley");
+});
+
+test("every effect names the file and bus it goes to, and its stand-in is a type sfx document og cook reads", () => {
+  const b = audioBrief({ music: "chiptune", mood: "bright", genre: "racing" });
+  expect(b.sfx.slice(0, 4).map((e) => [e.id, e.bus])).toEqual([["ui-hover", "ui"], ["ui-press", "ui"], ["ui-back", "ui"], ["ui-error", "ui"]]);
+  // An engine has no preset: it is requested with no stand-in.
+  expect(b.sfx.find((e) => e.id === "engine-loop")!.preset).toBeNull();
+  expect(b.presets.some((p) => p.id === "engine-loop")).toBeFalse();
+  const skid = b.presets.find((p) => p.id === "skid")!;
+  expect([skid.preset, skid.pitch, skid.length, skid.file]).toEqual(["whoosh", 1.08, 0.9, "audio/skid.ogt"]); // chiptune 1 x bright 1.08; chiptune's length 0.9
+  expect(skid.ogt).toMatch(/^type sfx\nversion 1\n---\n/);
+  expect(skid.ogt).toContain('preset "whoosh"\nseed ');
+  expect(b.presets.find((p) => p.id === "ui-hover")!.volume).toBe(0.3);
+  // Seeds differ between effects sharing a preset.
+  const whooshes = b.presets.filter((p) => p.preset === "whoosh").map((p) => p.seed);
+  expect(new Set(whooshes).size).toBe(whooshes.length);
+});
+
+test("the stand-in presets are og cook's: SFX_PRESETS is og-cook's sfx::PRESETS", () => {
+  const rs = readFileSync(join(import.meta.dir, "..", "..", "..", "crates", "og-cook", "src", "cook", "sfx.rs"), "utf8");
+  const block = /pub const PRESETS[^=]*= &\[([\s\S]*?)\];/.exec(rs)![1]!;
+  expect([...block.matchAll(/\("([a-z]+)", "/g)].map((m) => m[1])).toEqual([...SFX_PRESETS]);
+  for (const genre of ["action-platformer", "shooter", "rpg", "puzzle-match", "strategy-tower-defense", "racing", "runner", "roguelike-card", "idle", "rhythm", "arena", "open-world"]) {
+    for (const p of audioBrief({ music: "rock", mood: "soft", genre }).presets) expect(SFX_PRESETS).toContain(p.preset);
+  }
+});
+
+test("an unknown style, mood or genre is refused with the values; a project's create block is read", () => {
+  expect(() => audioBrief({ music: "jazz", mood: "warm", genre: "rpg" })).toThrow("music 'jazz' is not one of chiptune, orchestral");
+  expect(() => audioBrief({ music: "folk", mood: "warm", genre: "mmo" })).toThrow("genre 'mmo'");
+  const dir = mkdtempSync(join(tmpdir(), "og-audio-"));
+  writeFileSync(join(dir, "project.ogt"), 'type project\nversion 1\n---\nname "x"\ncreate {\n  genre "idle"\n  mood "cold"\n  music "folk"\n}\n');
+  expect(readAudioChoices(dir)).toEqual({ music: "folk", mood: "cold", genre: "idle" });
+  writeFileSync(join(dir, "project.ogt"), 'type project\nversion 1\n---\nname "x"\n');
+  expect(() => readAudioChoices(dir)).toThrow("no create block");
+  rmSync(dir, { recursive: true, force: true });
 });

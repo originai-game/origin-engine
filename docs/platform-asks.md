@@ -258,3 +258,46 @@ fields record the choices for A2/A3, A4 and A8/A9. Changes after creation
 need the corresponding authored source/settings update; `--force` is not
 an update API. All exports above are additions. `artBrief`, `readLook`,
 `presetLook` and the knowledge mounting contracts keep their signatures.
+
+## Music and sound generation from the audio brief (A9, 2026-11-05)
+
+**Ask 25, open.** origin-agent's music and sound generation takes its
+requests from the engine's `audioBrief`, as its image and model generation
+takes them from `artBrief` (ask 12, `docs/art.md` §2.2), instead of
+writing prompts of its own:
+
+- **Where the request comes from.** For a game, call
+  `audioBrief({ ...readAudioChoices(projectDir), premise })` from the
+  released `@origingame/create-game` (or the dist's
+  `engine/knowledge/scripts/brief.ts`); before the game exists, from the
+  creation form's confirmed `music`, `mood` and `genre` (ask 24). The
+  premise is the one the maker wrote. Shapes: `docs/art.md` §2.9 and the
+  knowledge README §The audio brief.
+- **Music.** Generate each `cues[]` entry from its `prompt`, at its `bpm`,
+  `mode`, `beatsPerBar` and `seconds`, honouring `loop` (seamless at the
+  bar line, no fade or tail) and, when `stems` is not empty, one file per
+  stem of identical length, sample-aligned, named
+  `music/<id>-<stem>.ogg` beside the mix `music/<id>.ogg`. Deliver
+  `format` (Ogg Vorbis, 48 kHz stereo, −16 LUFS integrated, true peak
+  −1 dBFS); og cook decodes it with no converter (og-audio §5). A rhythm
+  song's tempo must be exact: verify the delivered file's beat grid
+  against `bpm` (a drift of more than 5 ms over the song is a refusal)
+  before writing it.
+- **Sound effects.** Generate each `sfx[]` entry from its `prompt`,
+  `variants` takes as `audio/<id>.wav`, `audio/<id>-2.wav`, …, in
+  `format` (WAV, 48 kHz mono, peak −1 dBFS), trimmed to start on the
+  transient.
+- **Writing it.** Put each file at `assets/<file>` in the game's project
+  through the agent's own file edits, and record the model and request in
+  the game's asset log as for art (`ai.mark` at publication, ask 6). Leave
+  `presets[]`' `.ogt` stand-ins in place: the build agent switches each
+  load once its file exists (og-audio §2). Never overwrite a file the
+  maker replaced by hand.
+- **Budget.** A game's full request is about 4 to 6 cues (1 to 3 minutes
+  of music, with stems for the play loops) and 10 to 20 effects; the
+  platform decides what it generates at creation and what on request,
+  and the presets keep the game audible meanwhile.
+
+Until then the engine's side stands alone: `og new` records the choices,
+`audioBrief` lists the requests, and the presets synthesised by og cook
+give every game its sounds. Nothing is generated.

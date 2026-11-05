@@ -5,7 +5,7 @@ import { afterAll, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
-import { artBrief, CREATION_CHOICES, localeScript, pseudoMessage, creationBlock, creationSchema, inferCreationChoices, parseCreationInput, resolveCreationChoices, pickStyle, premiseProfile, presetLook, readCatalogue, readLook, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
+import { artBrief, audioBrief, CREATION_CHOICES, localeScript, pseudoMessage, creationBlock, creationSchema, inferCreationChoices, parseCreationInput, resolveCreationChoices, pickStyle, premiseProfile, presetLook, readCatalogue, readLook, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
 import { cpSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { SKIN_ELSEWHERE } from "../../knowledge/scripts/validate.ts";
@@ -543,4 +543,12 @@ test("the pseudo-locale accents words, not message syntax", () => {
   expect(pseudoMessage("{n, plural, one {# coin} other {# coins}} [b]now[/b]")).toBe("[{n, plural, one {# çöíñ} other {# çöíñs}} [b]ñöw[/b] çöíñçö]");
   expect(pseudoMessage("{score}")).toBe("{score}");
   expect(pseudoMessage("'{'literal'}'")).toMatch(/^\['\{'lítérál/);
+});
+
+test("audioBrief takes every music, mood and genre the creation choices offer", () => {
+  for (const music of CREATION_CHOICES.music) for (const mood of CREATION_CHOICES.mood) for (const genre of CREATION_CHOICES.genre) {
+    const b = audioBrief({ music, mood, genre });
+    expect(b.cues.length).toBeGreaterThan(2);
+    expect(b.sfx.length).toBeGreaterThan(4);
+  }
 });

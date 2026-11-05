@@ -20,6 +20,8 @@
 //
 //   bun scripts/brief.ts <kind> "<subject>" [--project <dir> | --look <slug>]
 //                        [--reference <path>]... [--metres <n>] [--json]
+//   bun scripts/brief.ts audio [--project <dir>] [--music <style> --mood <mood> --genre <genre>]
+//                        [--premise "<line>"] [--json]
 
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -1021,9 +1023,36 @@ prompt, then the references and the generator's parameters.
   --reference  an accepted asset of the game to pass as a reference (repeat)
   --metres     the asset's size in metres (a prop 1, a character 2)
   --aspect     a UI kind's aspect, w:h (one its slot allows)
-  --json       the whole brief as JSON`;
+  --json       the whole brief as JSON
+
+audio [--project <dir>] [--music --mood --genre] [--premise "<line>"] [--json]
+prints audioBrief's requests: every music cue and sound effect the game needs
+(the create block's music, mood and genre unless all three are given).`;
+
+function audioMain(argv: string[]): number {
+  let project = ".";
+  const asked: Record<string, string> = {};
+  let json = false;
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i]!;
+    if (a === "--json") json = true;
+    else if (["--project", "--music", "--mood", "--genre", "--premise"].includes(a) && argv[i + 1] !== undefined) {
+      if (a === "--project") project = argv[++i]!;
+      else asked[a.slice(2)] = argv[++i]!;
+    } else throw new Error(`unknown option ${a}. ${USAGE}`);
+  }
+  const from = asked.music && asked.mood && asked.genre ? {} : readAudioChoices(project);
+  const brief = audioBrief({ ...from, ...asked } as AudioBriefInput);
+  if (json) console.log(JSON.stringify(brief, null, 2));
+  else {
+    for (const c of brief.cues) console.log(`# music ${c.id} -> assets/${c.file}\n${c.prompt}\n`);
+    for (const e of brief.sfx) console.log(`# sfx ${e.id} -> assets/${e.file}${e.preset ? ` (until then assets/audio/${e.preset}.ogt)` : ""}\n${e.prompt}\n`);
+  }
+  return 0;
+}
 
 function main(argv: string[]): number {
+  if (argv[0] === "audio") return audioMain(argv.slice(1));
   const [kind, subject, ...rest] = argv;
   if (!kind || kind === "-h" || kind === "--help" || subject === undefined) {
     console.log(USAGE);
@@ -1060,14 +1089,6 @@ function main(argv: string[]): number {
   return 0;
 }
 
-if (import.meta.main) {
-  try {
-    process.exit(main(process.argv.slice(2)));
-  } catch (e) {
-    console.error(`brief: ${e instanceof Error ? e.message : String(e)}`);
-    process.exit(1);
-  }
-}
 
 // ------------------------------------------------------- a style's art
 
@@ -1340,4 +1361,371 @@ export function rigParts(template: string): RigPart[] {
       note,
     };
   });
+}
+
+// ------------------------------------------------------- the audio brief
+
+// The audio counterpart of artBrief (docs/art.md §2.9): from a game's music
+// style, mood and genre (project.ogt's create block, or the platform's
+// creation form) and its premise, the request for each music cue and each
+// sound effect the game needs, plus the procedural presets `og cook`
+// synthesises instead (`type sfx`, og-audio §2), so a game is never silent
+// while its generated audio is pending. Pure and deterministic; a public
+// contract beside artBrief (README §The audio brief).
+
+/** The music styles a game is created with (create-game's `CREATION_CHOICES.music`, held equal by its tests). */
+export const MUSIC_STYLES = ["chiptune", "orchestral", "electronic", "ambient", "folk", "rock"] as const;
+export type MusicStyle = (typeof MUSIC_STYLES)[number];
+
+/** og cook's procedural sound presets (og-cook's `sfx::PRESETS`, held equal by the knowledge tests). */
+export const SFX_PRESETS = ["coin", "pickup", "powerup", "jump", "land", "footstep", "hit", "hurt", "explosion", "laser", "whoosh", "door", "death", "click", "select", "back", "error", "levelup"] as const;
+export type SfxPreset = (typeof SFX_PRESETS)[number];
+
+/** What a cue is for: when the game plays it. */
+export type MusicRole = "title" | "explore" | "action" | "boss" | "calm" | "victory" | "defeat" | "stinger";
+
+export interface AudioBriefInput {
+  /** `CREATION_CHOICES.music`. */
+  readonly music: string;
+  /** `CREATION_CHOICES.mood`: bright, dark, warm, cold, soft, high-contrast. */
+  readonly mood: string;
+  /** `CREATION_CHOICES.genre`. */
+  readonly genre: string;
+  /** The game in one line; the prompts carry it as written. */
+  readonly premise?: string;
+}
+
+/** The file a generator returns, as og cook reads it (og-audio §5). */
+export interface AudioFormat {
+  /** `ogg` (Vorbis) for music, `wav` for effects; og cook decodes either to QOA. */
+  readonly container: "ogg" | "wav";
+  readonly sampleRate: 48000;
+  readonly channels: 1 | 2;
+  /** Integrated loudness to master to (LUFS); effects are judged by peak. */
+  readonly lufs: number | null;
+  /** The true peak not to pass (dBFS). */
+  readonly peakDb: number;
+}
+
+/** The request for one music cue. */
+export interface MusicCueBrief {
+  /** Stable within the brief (`title`, `explore`, `boss`). */
+  readonly id: string;
+  readonly role: MusicRole;
+  /** The whole request as text, one statement per line. */
+  readonly prompt: string;
+  readonly style: MusicStyle;
+  readonly bpm: number;
+  /** Major or minor (a mode name for modal styles). */
+  readonly mode: string;
+  readonly beatsPerBar: number;
+  /** Its length in whole bars at `bpm` (a stinger 1 to 2). */
+  readonly bars: number;
+  readonly seconds: number;
+  /** Loops seamlessly (AudioSource.loop); a stinger and the endings do not. */
+  readonly loop: boolean;
+  /** Layers to deliver as separate, sample-aligned files (og-audio §5's stems); empty: one mix. */
+  readonly stems: readonly string[];
+  /** 0 calm to 1 the most intense of the game's cues. */
+  readonly intensity: number;
+  /** Where the game puts it: an asset id under assets/ (`music/<id>.ogg`). */
+  readonly file: string;
+  readonly format: AudioFormat;
+}
+
+/** The request for one sound effect, with the preset that stands in until it exists. */
+export interface SfxBrief {
+  readonly id: string;
+  /** The game event that plays it. */
+  readonly event: string;
+  readonly prompt: string;
+  readonly seconds: number;
+  /** og.audio's bus (og-audio §4). */
+  readonly bus: "sfx" | "ui";
+  /** Takes to deliver, so repeats do not machine-gun (og-audio §1); 1 for UI sounds. */
+  readonly variants: number;
+  /** The preset (`presets[].id`) the game plays until this file exists; null: none fits. */
+  readonly preset: string | null;
+  /** `audio/<id>.wav`; variants add `-2`, `-3` before the extension. */
+  readonly file: string;
+  readonly format: AudioFormat;
+}
+
+/** A procedural sound og cook synthesises: write `ogt` to `assets/<file>`, then `og.load.sound(world, file)`. */
+export interface SfxPresetBrief {
+  readonly id: string;
+  readonly preset: SfxPreset;
+  readonly seed: number;
+  readonly pitch: number;
+  readonly length: number;
+  readonly volume: number;
+  /** `audio/<id>.ogt`. */
+  readonly file: string;
+  /** The `type sfx` document, as `og sfx <preset> --out` writes it. */
+  readonly ogt: string;
+}
+
+export interface AudioBrief {
+  readonly music: MusicStyle;
+  readonly mood: string;
+  readonly genre: string;
+  readonly premise: string;
+  /** The direction every request shares (instruments, texture, tempo), one statement per line. */
+  readonly direction: string;
+  /** What no cue or effect may contain. */
+  readonly avoid: readonly string[];
+  readonly cues: readonly MusicCueBrief[];
+  readonly sfx: readonly SfxBrief[];
+  readonly presets: readonly SfxPresetBrief[];
+}
+
+interface StyleSpec {
+  readonly instruments: string;
+  readonly texture: string;
+  readonly bpm: readonly [number, number];
+  readonly stems: readonly string[];
+  readonly sfx: string;
+  readonly avoid: readonly string[];
+  /** Preset variation: pitch and length multipliers. */
+  readonly pitch: number;
+  readonly length: number;
+}
+
+const STYLES: Readonly<Record<MusicStyle, StyleSpec>> = {
+  chiptune: { instruments: "pulse waves at 12.5, 25 and 50 % duty, a triangle bass, a noise channel for drums; four voices at most, as a 1980s sound chip", texture: "fast arpeggios for chords, short echo by a delayed quieter voice, no reverb", bpm: [120, 160], stems: ["lead", "harmony", "bass", "drums"], sfx: "synthesised in the same chip voices: square and noise, short envelopes, pitch sweeps, no recorded sound", avoid: ["sampled or acoustic instruments", "reverb tails", "more than four voices at once"], pitch: 1, length: 0.9 },
+  orchestral: { instruments: "strings (violins, violas, cellos, basses), French horns, woodwinds, timpani and harp; brass and choir held back for the biggest moments", texture: "a clear melody over sustained harmony, dynamics that swell, recorded in a concert hall", bpm: [70, 130], stems: ["strings", "brass", "woodwinds", "percussion"], sfx: "acoustic and tactile, recorded foley with a short natural room, cut close", avoid: ["synthesisers", "drum machines", "electric guitars"], pitch: 0.9, length: 1.2 },
+  electronic: { instruments: "analogue-style synthesisers (a saw lead, a sub bass, pads), a drum machine with four-on-the-floor kick, side-chained pads", texture: "steady pulse, filter sweeps for builds, a clean wide stereo mix", bpm: [110, 140], stems: ["drums", "bass", "pads", "lead"], sfx: "synthesised, clean transients, filter sweeps and digital tails", avoid: ["acoustic instruments as lead", "lo-fi hiss", "vocals with words"], pitch: 1.05, length: 1 },
+  ambient: { instruments: "soft pads, piano with long sustain, bowed textures, distant field recordings", texture: "slowly evolving, few notes, lots of space, no hard downbeat, gentle reverb", bpm: [60, 90], stems: ["pads", "melody", "texture"], sfx: "soft and rounded, low transients, airy tails that sit under the music", avoid: ["loud drums", "busy melodies", "sudden dynamics"], pitch: 0.95, length: 1.25 },
+  folk: { instruments: "acoustic guitar, fiddle, flute or tin whistle, accordion, hand drums and frame drum", texture: "a singable modal melody, dance rhythms, played by a small band in a warm room", bpm: [90, 140], stems: ["melody", "strings", "rhythm"], sfx: "wood, cloth, metal and hands: recorded foley, warm and dry", avoid: ["synthesisers", "electronic drums", "orchestral brass"], pitch: 0.95, length: 1.1 },
+  rock: { instruments: "overdriven electric guitars (rhythm and lead), bass guitar, a live drum kit, occasional organ", texture: "driving eighth-note rhythm, power chords, a guitar lead in place of vocals", bpm: [110, 170], stems: ["drums", "bass", "rhythm guitar", "lead guitar"], sfx: "punchy and loud, distorted impacts, cymbal and amp accents", avoid: ["soft pads as lead", "vocals with words", "orchestral strings"], pitch: 1, length: 1 },
+};
+
+interface MoodSpec {
+  readonly words: string;
+  readonly mode: string;
+  /** Where in the style's tempo range cues sit, 0 slowest to 1 fastest. */
+  readonly tempo: number;
+  readonly pitch: number;
+}
+
+const MOODS: Readonly<Record<string, MoodSpec>> = {
+  bright: { words: "bright, hopeful and playful", mode: "major", tempo: 0.7, pitch: 1.08 },
+  dark: { words: "dark, tense and uneasy", mode: "minor", tempo: 0.35, pitch: 0.85 },
+  warm: { words: "warm, cosy and friendly", mode: "major", tempo: 0.45, pitch: 0.97 },
+  cold: { words: "cold, distant and lonely", mode: "dorian", tempo: 0.4, pitch: 1.03 },
+  soft: { words: "soft, gentle and calm", mode: "lydian", tempo: 0.25, pitch: 1 },
+  "high-contrast": { words: "bold, punchy and dramatic, loud against quiet", mode: "phrygian", tempo: 0.8, pitch: 0.95 },
+};
+
+type Cue = readonly [id: string, role: MusicRole, bars: number, intensity: number, tempo: number];
+type Effect = readonly [id: string, variants?: number];
+
+interface GenreSpec {
+  readonly cues: readonly Cue[];
+  readonly sfx: readonly Effect[];
+  readonly note?: string;
+}
+
+/** Every game's: the title theme, the menu's sounds and the endings. */
+const BASE_CUES: readonly Cue[] = [["title", "title", 32, 0.4, 0], ["victory", "victory", 4, 0.7, 0.1], ["defeat", "defeat", 4, 0.3, -0.2]];
+const UI_SFX: readonly Effect[] = [["ui-hover"], ["ui-press"], ["ui-back"], ["ui-error"]];
+
+const GENRES: Readonly<Record<string, GenreSpec>> = {
+  "action-platformer": { cues: [["level", "explore", 48, 0.6, 0.1], ["boss", "boss", 32, 1, 0.2]], sfx: [["jump", 3], ["land", 3], ["footstep", 4], ["coin", 3], ["hit", 3], ["hurt", 2], ["powerup"], ["death"], ["checkpoint"]] },
+  shooter: { cues: [["combat", "action", 48, 0.85, 0.2], ["calm", "calm", 32, 0.3, -0.2], ["boss", "boss", 32, 1, 0.25]], sfx: [["shot", 4], ["reload", 2], ["hit", 3], ["hurt", 2], ["explosion", 2], ["pickup", 2], ["footstep", 4], ["death"], ["empty"]] },
+  rpg: { cues: [["town", "calm", 48, 0.3, -0.2], ["field", "explore", 64, 0.5, 0], ["battle", "action", 48, 0.8, 0.2], ["boss", "boss", 48, 1, 0.2]], sfx: [["swing", 3], ["hit", 3], ["hurt", 2], ["spell", 2], ["heal"], ["levelup"], ["door"], ["chest"], ["footstep", 4], ["coin", 2]] },
+  "puzzle-match": { cues: [["board", "calm", 48, 0.4, 0], ["hurry", "action", 16, 0.7, 0.3]], sfx: [["swap", 2], ["match", 3], ["cascade", 3], ["invalid"], ["special"], ["clear"]] },
+  "strategy-tower-defense": { cues: [["build", "calm", 32, 0.35, -0.1], ["wave", "action", 48, 0.75, 0.1], ["boss", "boss", 32, 1, 0.2]], sfx: [["place", 2], ["shot", 4], ["hit", 3], ["explosion", 2], ["upgrade"], ["wave-start"], ["leak"], ["coin", 2]] },
+  racing: { cues: [["race", "action", 64, 0.85, 0.3], ["lobby", "calm", 32, 0.4, 0]], sfx: [["engine-loop"], ["boost"], ["skid", 2], ["crash", 2], ["countdown"], ["lap"], ["pickup", 2]] },
+  runner: { cues: [["run", "action", 64, 0.75, 0.3]], sfx: [["jump", 3], ["land", 3], ["slide"], ["coin", 4], ["hit"], ["powerup"], ["death"]] },
+  "roguelike-card": { cues: [["map", "calm", 32, 0.35, -0.1], ["combat", "action", 48, 0.7, 0.1], ["boss", "boss", 32, 1, 0.2], ["shop", "calm", 16, 0.25, -0.1]], sfx: [["card-draw", 3], ["card-play", 3], ["shuffle"], ["hit", 3], ["block", 2], ["hurt", 2], ["coin", 2], ["relic"], ["death"]] },
+  idle: { cues: [["loop", "calm", 64, 0.3, -0.1], ["milestone", "stinger", 2, 0.7, 0]], sfx: [["tap", 4], ["coin", 4], ["buy"], ["milestone"], ["prestige"]] },
+  rhythm: { cues: [["song", "action", 64, 0.8, 0.2], ["calibrate", "calm", 16, 0.3, 0]], sfx: [["perfect"], ["good"], ["miss"], ["combo"], ["fail"]], note: "Hold the tempo exactly at the bpm with no rubato, start on a downbeat with one bar of count-in, and keep every beat audible: the game judges presses against og.Music's clock at this bpm." },
+  arena: { cues: [["fight", "action", 48, 0.85, 0.2], ["lobby", "calm", 32, 0.4, 0]], sfx: [["swing", 3], ["hit", 4], ["hurt", 2], ["dash"], ["ko"], ["countdown"], ["round-start"]] },
+  "open-world": { cues: [["day", "explore", 96, 0.4, -0.1], ["night", "calm", 64, 0.25, -0.3], ["danger", "action", 48, 0.8, 0.2]], sfx: [["footstep", 6], ["swing", 3], ["hit", 3], ["hurt", 2], ["pickup", 2], ["door"], ["discover"], ["wind-loop"]] },
+};
+
+/** Each effect's description, length (s), bus and the preset that stands in for it. */
+const EFFECTS: Readonly<Record<string, readonly [what: string, seconds: number, bus: "sfx" | "ui", preset: SfxPreset | null]>> = {
+  "ui-hover": ["a tiny soft tick as focus moves to a button, quiet", 0.06, "ui", "click"],
+  "ui-press": ["a crisp confirm click for a pressed button", 0.1, "ui", "select"],
+  "ui-back": ["a short falling cancel for closing a menu", 0.15, "ui", "back"],
+  "ui-error": ["a low double buzz for a refused action", 0.25, "ui", "error"],
+  jump: ["a quick light upward whoop as the hero leaves the ground", 0.2, "sfx", "jump"],
+  land: ["a soft low thud of feet landing", 0.15, "sfx", "land"],
+  footstep: ["one footstep on the ground, short", 0.12, "sfx", "footstep"],
+  coin: ["a bright two-note pickup chime for a coin", 0.3, "sfx", "coin"],
+  pickup: ["a short rising blip for picking up an item", 0.25, "sfx", "pickup"],
+  powerup: ["a rising shimmering sweep as a power-up is taken", 0.6, "sfx", "powerup"],
+  hit: ["a punchy impact of a blow landing", 0.2, "sfx", "hit"],
+  hurt: ["a short pained hit on the player, distinct from hitting an enemy", 0.3, "sfx", "hurt"],
+  death: ["a long falling defeat sound as the player dies", 1, "sfx", "death"],
+  checkpoint: ["a warm two-step chime for reaching a checkpoint", 0.5, "sfx", "select"],
+  shot: ["one weapon shot, sharp attack and a short tail", 0.3, "sfx", "laser"],
+  reload: ["a mechanical reload: clip out, clip in", 0.8, "sfx", "door"],
+  explosion: ["an explosion with a deep boom and debris", 1.2, "sfx", "explosion"],
+  empty: ["a dry click of an empty weapon", 0.1, "sfx", "click"],
+  swing: ["a weapon swing whooshing through the air", 0.25, "sfx", "whoosh"],
+  spell: ["a magic spell cast, a bright swirl", 0.7, "sfx", "powerup"],
+  heal: ["a soft rising sparkle of healing", 0.6, "sfx", "pickup"],
+  levelup: ["a three-note rising fanfare for a level up", 0.9, "sfx", "levelup"],
+  door: ["a door opening: a creak and a thump", 0.7, "sfx", "door"],
+  chest: ["a treasure chest opening with a sparkle", 0.8, "sfx", "coin"],
+  swap: ["two pieces sliding past each other on a board", 0.15, "sfx", "whoosh"],
+  match: ["pieces matching and popping, satisfying", 0.3, "sfx", "pickup"],
+  cascade: ["a chain reaction pop, one step higher than the last", 0.3, "sfx", "coin"],
+  invalid: ["a soft bump for a move that is not allowed", 0.2, "sfx", "error"],
+  special: ["a special piece forming, a bright charge", 0.5, "sfx", "powerup"],
+  clear: ["the board cleared, a short celebration", 1, "sfx", "levelup"],
+  place: ["a tower set down on the ground with a solid thunk", 0.3, "sfx", "land"],
+  upgrade: ["an upgrade completing, a rising ratchet", 0.6, "sfx", "powerup"],
+  "wave-start": ["a horn or alarm announcing the next wave", 1, "sfx", "levelup"],
+  leak: ["a warning tone as an enemy gets through", 0.4, "sfx", "error"],
+  "engine-loop": ["a vehicle engine at a steady mid rpm, seamless loop (pitched by speed in game)", 2, "sfx", null],
+  boost: ["a boost kicking in, a rising rush", 0.8, "sfx", "whoosh"],
+  skid: ["tyres skidding on asphalt", 0.8, "sfx", "whoosh"],
+  crash: ["a vehicle crash, metal and impact", 1, "sfx", "explosion"],
+  countdown: ["one countdown beep (the last one higher is a separate take)", 0.3, "sfx", "select"],
+  lap: ["a lap completed, a short bright chime", 0.5, "sfx", "coin"],
+  slide: ["a quick slide along the ground", 0.4, "sfx", "whoosh"],
+  "card-draw": ["a card drawn from the deck, paper flick", 0.15, "sfx", "whoosh"],
+  "card-play": ["a card slapped onto the table", 0.2, "sfx", "hit"],
+  shuffle: ["a deck shuffled", 0.8, "sfx", "whoosh"],
+  block: ["a blow blocked by a shield, a solid thud", 0.3, "sfx", "land"],
+  relic: ["a relic obtained, a mysterious chime", 0.8, "sfx", "powerup"],
+  tap: ["a light tap on the main button, satisfying and short", 0.08, "sfx", "click"],
+  buy: ["a purchase made, a register ching", 0.3, "sfx", "coin"],
+  milestone: ["a milestone reached, a rising fanfare", 0.9, "sfx", "levelup"],
+  prestige: ["a prestige reset, a big sweeping whoosh into a chime", 1.5, "sfx", "powerup"],
+  perfect: ["a bright accent for a perfect hit, in the song's key", 0.15, "sfx", "select"],
+  good: ["a softer accent for a good hit", 0.12, "sfx", "click"],
+  miss: ["a dull muted thud for a miss", 0.15, "sfx", "error"],
+  combo: ["a combo milestone, a quick rising chime", 0.4, "sfx", "levelup"],
+  fail: ["the song failing, a record-scratch fall", 0.8, "sfx", "death"],
+  dash: ["a quick dash whoosh", 0.25, "sfx", "whoosh"],
+  ko: ["a knockout, a heavy final impact", 0.8, "sfx", "explosion"],
+  "round-start": ["a round begins, a gong or bell", 1, "sfx", "levelup"],
+  discover: ["a new place discovered, a short wondrous chime", 1, "sfx", "levelup"],
+  "wind-loop": ["outdoor wind ambience, seamless loop", 4, "sfx", null],
+};
+
+const MUSIC_FORMAT: AudioFormat = { container: "ogg", sampleRate: 48000, channels: 2, lufs: -16, peakDb: -1 };
+const SFX_FORMAT: AudioFormat = { container: "wav", sampleRate: 48000, channels: 1, lufs: null, peakDb: -1 };
+
+/** A seed from an id: the same id gets the same take, ids differ by seed. */
+function seedOf(id: string): number {
+  let h = 2166136261;
+  for (const c of id) h = Math.imul(h ^ c.codePointAt(0)!, 16777619) >>> 0;
+  return 1 + (h % 9999);
+}
+
+const round2 = (x: number) => Math.round(x * 100) / 100;
+
+function known<T extends string>(what: string, value: string, keys: readonly T[]): T {
+  if (!(keys as readonly string[]).includes(value)) throw new Error(`audioBrief: ${what} '${value}' is not one of ${keys.join(", ")}`);
+  return value as T;
+}
+
+/**
+ * The audio a game needs, as requests for a generator: one per music cue
+ * and per sound effect, in the game's music style and mood, each with the
+ * file it goes to and the format to deliver, and the procedural presets
+ * that stand in until the files exist. Pure; throws naming the values for
+ * an unknown style, mood or genre.
+ */
+export function audioBrief(input: AudioBriefInput): AudioBrief {
+  const music = known("music", input.music, MUSIC_STYLES);
+  const mood = known("mood", input.mood, Object.keys(MOODS));
+  const genre = known("genre", input.genre, Object.keys(GENRES));
+  const premise = (input.premise ?? "").trim();
+  const s = STYLES[music];
+  const m = MOODS[mood]!;
+  const g = GENRES[genre]!;
+  const about = premise ? `for a ${genre.replace(/-/g, " ")} game: ${premise}` : `for a ${genre.replace(/-/g, " ")} game`;
+  const direction = [
+    `Music style: ${music}. ${s.instruments[0]!.toUpperCase()}${s.instruments.slice(1)}.`,
+    `Texture: ${s.texture}.`,
+    `Mood: ${m.words}.`,
+    `Sound effects: ${s.sfx}, ${m.words.split(",")[0]} in character.`,
+  ].join("\n");
+  const avoid = [...s.avoid, "vocals with lyrics", "copyrighted melodies or samples", "clipping or limiting artefacts", "silence at the start or end of a loop"];
+  const beatsPerBar = 4;
+  const cues: MusicCueBrief[] = [...BASE_CUES.slice(0, 1), ...g.cues, ...BASE_CUES.slice(1)].map(([id, role, bars, intensity, tempo]) => {
+    const t = Math.min(1, Math.max(0, m.tempo + tempo));
+    const bpm = Math.round(s.bpm[0] + (s.bpm[1] - s.bpm[0]) * t);
+    const loop = role !== "victory" && role !== "defeat" && role !== "stinger";
+    const seconds = round2((bars * beatsPerBar * 60) / bpm);
+    const mode = role === "defeat" ? (m.mode === "major" ? "minor" : m.mode) : role === "victory" ? "major" : m.mode;
+    const stems = loop && (role === "action" || role === "explore" || role === "boss") ? s.stems : [];
+    const lines = [
+      `A ${music} ${ROLE_WORDS[role]} ${about}.`,
+      direction,
+      `Tempo: ${bpm} bpm, ${beatsPerBar}/4 time, in a ${mode} key; ${bars} bars (${seconds} s).`,
+      `Intensity: ${Math.round(intensity * 10)} of 10 among the game's cues.`,
+      loop ? "Loop: it must loop seamlessly: end on the bar line leading back into the first bar, with no fade, reverb tail or silence at either end." : "Ending: it plays once, ends cleanly with a short tail, no fade-in.",
+      stems.length ? `Stems: deliver ${stems.join(", ")} as separate files of exactly the same length, sample-aligned, that sum to the mix; the game brings layers in and out.` : "",
+      genre === "rhythm" && role === "action" && g.note ? g.note : "",
+      `Deliver: ${MUSIC_FORMAT.container.toUpperCase()} Vorbis, 48 kHz stereo, mastered to ${MUSIC_FORMAT.lufs} LUFS integrated, true peak below ${MUSIC_FORMAT.peakDb} dBFS.`,
+      `Avoid: ${avoid.join("; ")}.`,
+    ].filter(Boolean);
+    return { id, role, prompt: lines.join("\n"), style: music, bpm, mode, beatsPerBar, bars, seconds, loop, stems, intensity, file: `music/${id}.ogg`, format: MUSIC_FORMAT };
+  });
+  const presets: SfxPresetBrief[] = [];
+  const sfx: SfxBrief[] = [...UI_SFX, ...g.sfx].map(([id, variants = 1]) => {
+    const [what, seconds, bus, preset] = EFFECTS[id]!;
+    const lines = [
+      `A sound effect ${about}: ${what}.`,
+      `Sound effects: ${s.sfx}; ${m.words}.`,
+      `Length: about ${seconds} s, starting on its transient with no silence before it${/-loop$/.test(id) ? "; a seamless loop" : ""}.`,
+      variants > 1 ? `Takes: ${variants} variations of the same sound, slightly different in pitch and texture, so repeats do not sound identical.` : "",
+      bus === "ui" ? "It is a UI sound: short, quiet and clean, never louder than gameplay." : "",
+      `Deliver: WAV, 48 kHz mono, peak below ${SFX_FORMAT.peakDb} dBFS, no reverb tail longer than the sound.`,
+      `Avoid: ${[...s.avoid, "voices", "music"].join("; ")}.`,
+    ].filter(Boolean);
+    let presetId: string | null = null;
+    if (preset) {
+      presetId = id;
+      const seed = seedOf(id);
+      const pitch = round2(s.pitch * m.pitch);
+      const length = round2(s.length);
+      const volume = bus === "ui" ? (id === "ui-hover" ? 0.3 : 0.6) : 1;
+      presets.push({
+        id, preset, seed, pitch, length, volume, file: `audio/${id}.ogt`,
+        ogt: `type sfx\nversion 1\n---\n# ${what} (audioBrief: ${music}, ${mood}). og.load.sound(world, "audio/${id}.ogt") plays it until audio/${id}.wav exists.\npreset ${JSON.stringify(preset)}\nseed ${seed}\npitch ${pitch}\nlength ${length}\nvolume ${volume}\n`,
+      });
+    }
+    return { id, event: what, prompt: lines.join("\n"), seconds, bus, variants, preset: presetId, file: `audio/${id}.wav`, format: SFX_FORMAT };
+  });
+  return { music, mood, genre, premise, direction, avoid, cues, sfx, presets };
+}
+
+const ROLE_WORDS: Readonly<Record<MusicRole, string>> = {
+  title: "title theme, the game's main melody, played on the title screen",
+  explore: "exploration loop for the main play",
+  action: "action loop for the most active play",
+  boss: "boss loop, the game's most intense cue",
+  calm: "calm loop for menus, building or resting",
+  victory: "victory jingle",
+  defeat: "defeat jingle",
+  stinger: "short stinger that plays over the loop at a highlight",
+};
+
+/** The audio choices of a project's create block (project.ogt): `music`, `mood` and `genre`. */
+export function readAudioChoices(projectDir: string): AudioBriefInput {
+  const text = readFileSync(join(projectDir, "project.ogt"), "utf8");
+  const block = /^create[ \t]*\{([\s\S]*?)^\}/m.exec(text)?.[1];
+  if (!block) throw new Error(`${join(projectDir, "project.ogt")} has no create block: pass music, mood and genre (og new --music --mood --genre)`);
+  const field = (k: string) => new RegExp(`^\\s*${k}\\s+"([^"]*)"`, "m").exec(block)?.[1];
+  const music = field("music"), mood = field("mood"), genre = field("genre");
+  if (!music || !mood || !genre) throw new Error("the create block lacks music, mood or genre");
+  return { music, mood, genre };
+}
+
+if (import.meta.main) {
+  try {
+    process.exit(main(process.argv.slice(2)));
+  } catch (e) {
+    console.error(`brief: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(1);
+  }
 }
