@@ -17,7 +17,7 @@ const N: u32 = \${n}u; const B: u32 = \${blocks}u;
 var<workgroup> s: array<u32, 256>;
 fn hs(li: u32) { for (var k = 1u; k < 256u; k <<= 1u) { var v = s[li]; if (li >= k) { v += s[li - k]; } workgroupBarrier(); s[li] = v; workgroupBarrier(); } }
 @compute @workgroup_size(256) fn mark(@builtin(global_invocation_id) g: vec3<u32>, @builtin(local_invocation_index) li: u32, @builtin(workgroup_id) w: vec3<u32>) {
-  var v = 0u; if (g.x < N) { v = (g.x * 2654435761u >> 7u) & 1u; scan[g.x] = v; }
+  var v = 0u; if (g.x < N) { v = ((g.x * 2654435761u) >> 7u) & 1u; scan[g.x] = v; }
   s[li] = v; workgroupBarrier();
   for (var k = 128u; k > 0u; k >>= 1u) { if (li < k) { s[li] += s[li + k]; } workgroupBarrier(); }
   if (li == 0u) { scan[N + 1u + w.x] = s[0]; } }
