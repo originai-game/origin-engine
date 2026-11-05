@@ -1,0 +1,539 @@
+{
+ "at": "2026-11-05T08:26:29.451Z",
+ "device": "Pixel 10 (58051FDCR007QL)",
+ "boot": {
+  "firstFrameMs": 4915,
+  "readyMs": 4680,
+  "boot": {
+   "wasm": 1495,
+   "bundle": 2118,
+   "create": 92,
+   "attach": 107,
+   "transcode": 521,
+   "prime": 150,
+   "settle": 0,
+   "present": 87,
+   "at": 4687,
+   "pipelines": {
+    "async": 0,
+    "sync": 41,
+    "fallback": 0,
+    "spans": 0
+   }
+  },
+  "viewport": [
+   411,
+   801,
+   2.625
+  ]
+ },
+ "capabilities": {
+  "antialias": "taa",
+  "compute": true,
+  "exrDecode": false,
+  "gpuCrowds": true,
+  "gpuTimestamps": true,
+  "hdr": false,
+  "hdrSupported": true,
+  "height": 1603,
+  "maxCustomPosts": 8,
+  "maxLightCookies": 24,
+  "maxLights": 256,
+  "maxMsaaSamples": 1,
+  "maxRenderTargetSize": 16384,
+  "maxShadowedLights": 16,
+  "planarReflections": 1,
+  "pointShadows": "cube",
+  "reflectionProbes": 8,
+  "renderTargetDepth": true,
+  "ssr": true,
+  "stylise": [
+   "pixel",
+   "posterize",
+   "palette",
+   "dither",
+   "halftone",
+   "hatching",
+   "paint",
+   "paintDetail",
+   "ink",
+   "inkDepth",
+   "depthBands",
+   "retro3d",
+   "surfaceSpace",
+   "objectSpace",
+   "ditherSpace",
+   "halftoneCmyk",
+   "hatchingColor",
+   "toon",
+   "shadowTint",
+   "shadowDarkness",
+   "rim",
+   "outline",
+   "outlineDistance",
+   "flatShading",
+   "surface",
+   "toonAmbient",
+   "outlinePlace",
+   "wireframe"
+  ],
+  "tier": "webgpu",
+  "transparency": "weighted",
+  "upscalers": [
+   "taau",
+   "fsr3"
+  ],
+  "visibilityBuffer": false,
+  "visibilityBufferRefused": "internal error: CreateGraphicsPipelines failed with VK_ERROR_UNKNOWN\n - While initializing [RenderPipeline \"meshlet resolve\"]\n - While calling [Device \"og-render\"].CreateRenderPipeline([RenderPipelineDescriptor \"\"meshlet resolve\"\"]).\n    at CheckVkSuccessImpl (../../third_party/dawn/src/dawn/native/vulkan/VulkanError.cpp:106)\n",
+  "volumetricFog": "froxel",
+  "volumetricLights": 64,
+  "width": 823,
+  "world3d": true
+ },
+ "displayDefault": {
+  "deviceLosses": 0,
+  "displayHz": 59.93407252020998,
+  "frameMs": 25.70891273026983,
+  "fullscreen": false,
+  "gpu": {
+   "buffers": 2198608,
+   "meshes": 3415004,
+   "renderTargets": 133751796,
+   "textures": 9607156,
+   "total": 148972564
+  },
+  "maxFps": 60,
+  "powerPreference": "highPerformance",
+  "presenting": true,
+  "presetSteps": 1,
+  "renderScale": 0.5,
+  "restartNeeded": false,
+  "sceneHeight": 802,
+  "sceneWidth": 412,
+  "settings": {
+   "autoMinScale": 0.5,
+   "autoPresetSteps": 1,
+   "autoQuality": true,
+   "batterySaver": false,
+   "clothSubdivisions": 0,
+   "frameCap": "auto",
+   "fullscreen": false,
+   "powerPreference": "highPerformance",
+   "quality": null,
+   "renderScale": 1
+  },
+  "vsync": true
+ },
+ "thermalStart": {
+  "status": 0,
+  "skin": 37,
+  "soc": 43.7,
+  "big": 58,
+  "mid": 55,
+  "little": 54,
+  "battery": 36.3
+ },
+ "frameCap": {
+  "display": {
+   "fps": 49.3,
+   "ticksPerSecond": 60.3,
+   "interval": {
+    "n": 296,
+    "median": 16.63,
+    "p5": 16.55,
+    "p95": 24.95,
+    "p99": 41.53
+   },
+   "work": {
+    "n": 296,
+    "median": 7.53,
+    "p5": 5,
+    "p95": 11.38,
+    "p99": 12.82
+   },
+   "display": {
+    "deviceLosses": 0,
+    "displayHz": 59.93407252020998,
+    "frameMs": 0,
+    "fullscreen": false,
+    "gpu": {
+     "buffers": 2198608,
+     "meshes": 3415004,
+     "renderTargets": 133751796,
+     "textures": 9607156,
+     "total": 148972564
+    },
+    "maxFps": 0,
+    "powerPreference": "highPerformance",
+    "presenting": true,
+    "presetSteps": 0,
+    "renderScale": 0.5,
+    "restartNeeded": false,
+    "sceneHeight": 802,
+    "sceneWidth": 412,
+    "settings": {
+     "autoMinScale": 0.5,
+     "autoPresetSteps": 1,
+     "autoQuality": false,
+     "batterySaver": false,
+     "clothSubdivisions": 0,
+     "frameCap": "display",
+     "fullscreen": false,
+     "powerPreference": "highPerformance",
+     "quality": null,
+     "renderScale": 0.5
+    },
+    "vsync": true
+   }
+  },
+  "fps60": {
+   "fps": 49.3,
+   "ticksPerSecond": 60.1,
+   "interval": {
+    "n": 296,
+    "median": 16.64,
+    "p5": 16.58,
+    "p95": 24.94,
+    "p99": 25.02
+   },
+   "work": {
+    "n": 296,
+    "median": 7.58,
+    "p5": 4.64,
+    "p95": 11.77,
+    "p99": 13.59
+   },
+   "display": {
+    "deviceLosses": 0,
+    "displayHz": 59.93407252020998,
+    "frameMs": 0,
+    "fullscreen": false,
+    "gpu": {
+     "buffers": 2198608,
+     "meshes": 3415004,
+     "renderTargets": 133751796,
+     "textures": 9607156,
+     "total": 148972564
+    },
+    "maxFps": 60,
+    "powerPreference": "highPerformance",
+    "presenting": true,
+    "presetSteps": 0,
+    "renderScale": 0.5,
+    "restartNeeded": false,
+    "sceneHeight": 802,
+    "sceneWidth": 412,
+    "settings": {
+     "autoMinScale": 0.5,
+     "autoPresetSteps": 1,
+     "autoQuality": false,
+     "batterySaver": false,
+     "clothSubdivisions": 0,
+     "frameCap": "fps60",
+     "fullscreen": false,
+     "powerPreference": "highPerformance",
+     "quality": null,
+     "renderScale": 0.5
+    },
+    "vsync": true
+   }
+  },
+  "fps30": {
+   "fps": 30.1,
+   "ticksPerSecond": 60.1,
+   "interval": {
+    "n": 181,
+    "median": 33.22,
+    "p5": 33.13,
+    "p95": 33.29,
+    "p99": 33.38
+   },
+   "work": {
+    "n": 181,
+    "median": 11.96,
+    "p5": 8.93,
+    "p95": 15.24,
+    "p99": 15.99
+   },
+   "display": {
+    "deviceLosses": 0,
+    "displayHz": 119.90407673865933,
+    "frameMs": 0,
+    "fullscreen": false,
+    "gpu": {
+     "buffers": 2198608,
+     "meshes": 3415004,
+     "renderTargets": 133751796,
+     "textures": 9607156,
+     "total": 148972564
+    },
+    "maxFps": 30,
+    "powerPreference": "highPerformance",
+    "presenting": true,
+    "presetSteps": 0,
+    "renderScale": 0.5,
+    "restartNeeded": false,
+    "sceneHeight": 802,
+    "sceneWidth": 412,
+    "settings": {
+     "autoMinScale": 0.5,
+     "autoPresetSteps": 1,
+     "autoQuality": false,
+     "batterySaver": false,
+     "clothSubdivisions": 0,
+     "frameCap": "fps30",
+     "fullscreen": false,
+     "powerPreference": "highPerformance",
+     "quality": null,
+     "renderScale": 0.5
+    },
+    "vsync": true
+   }
+  }
+ },
+ "renderScaleHalf": {
+  "fps": 49.9,
+  "ticksPerSecond": 60.1,
+  "interval": {
+   "n": 200,
+   "median": 16.63,
+   "p5": 8.3,
+   "p95": 33.2,
+   "p99": 41.56
+  },
+  "work": {
+   "n": 200,
+   "median": 7.6,
+   "p5": 4.34,
+   "p95": 11.68,
+   "p99": 14.28
+  },
+  "display": {
+   "deviceLosses": 0,
+   "displayHz": 60.51437216341012,
+   "frameMs": 0,
+   "fullscreen": false,
+   "gpu": {
+    "buffers": 2198608,
+    "meshes": 3415004,
+    "renderTargets": 133751796,
+    "textures": 9607156,
+    "total": 148972564
+   },
+   "maxFps": 0,
+   "powerPreference": "highPerformance",
+   "presenting": true,
+   "presetSteps": 0,
+   "renderScale": 0.5,
+   "restartNeeded": false,
+   "sceneHeight": 802,
+   "sceneWidth": 412,
+   "settings": {
+    "autoMinScale": 0.5,
+    "autoPresetSteps": 1,
+    "autoQuality": false,
+    "batterySaver": false,
+    "clothSubdivisions": 0,
+    "frameCap": "display",
+    "fullscreen": false,
+    "powerPreference": "highPerformance",
+    "quality": null,
+    "renderScale": 0.5
+   },
+   "vsync": true
+  },
+  "canvas": [
+   823,
+   1603
+  ]
+ },
+ "batterySaver": {
+  "fps": 30.1,
+  "ticksPerSecond": 59.9,
+  "interval": {
+   "n": 181,
+   "median": 33.22,
+   "p5": 33.13,
+   "p95": 33.31,
+   "p99": 33.53
+  },
+  "work": {
+   "n": 181,
+   "median": 11.36,
+   "p5": 9.14,
+   "p95": 13.22,
+   "p99": 13.78
+  },
+  "display": {
+   "deviceLosses": 0,
+   "displayHz": 118.90606420943104,
+   "frameMs": 28.985595976042852,
+   "fullscreen": false,
+   "gpu": {
+    "buffers": 3843448,
+    "meshes": 3415004,
+    "renderTargets": 159246816,
+    "textures": 9607156,
+    "total": 176112424
+   },
+   "maxFps": 30,
+   "powerPreference": "highPerformance",
+   "presenting": true,
+   "presetSteps": 0,
+   "renderScale": 0.75,
+   "restartNeeded": false,
+   "sceneHeight": 1202,
+   "sceneWidth": 617,
+   "settings": {
+    "autoMinScale": 0.5,
+    "autoPresetSteps": 1,
+    "autoQuality": false,
+    "batterySaver": true,
+    "clothSubdivisions": 0,
+    "frameCap": "auto",
+    "fullscreen": false,
+    "powerPreference": "highPerformance",
+    "quality": null,
+    "renderScale": 1
+   },
+   "vsync": true
+  }
+ },
+ "autoQuality": [
+  {
+   "t": 5,
+   "fps": 42.1,
+   "interval": 24.9,
+   "p95": 33.34,
+   "work": 7.96,
+   "thermal": {
+    "status": 0,
+    "skin": 37.7,
+    "soc": 44.5,
+    "big": 60,
+    "mid": 57,
+    "little": 56,
+    "battery": 37.4
+   }
+  },
+  {
+   "t": 10,
+   "fps": 49.5,
+   "interval": 16.64,
+   "p95": 24.94,
+   "work": 7.54,
+   "thermal": {
+    "status": 0,
+    "skin": 37.8,
+    "soc": 44.9,
+    "big": 59,
+    "mid": 59,
+    "little": 56,
+    "battery": 37.5
+   }
+  },
+  {
+   "t": 15,
+   "fps": 49.1,
+   "interval": 16.64,
+   "p95": 33.2,
+   "work": 7.41,
+   "thermal": {
+    "status": 0,
+    "skin": 38,
+    "soc": 45.3,
+    "big": 59,
+    "mid": 60,
+    "little": 56,
+    "battery": 37.7
+   }
+  },
+  {
+   "t": 21,
+   "fps": 47.8,
+   "interval": 16.75,
+   "p95": 33.18,
+   "work": 7.67,
+   "thermal": {
+    "status": 0,
+    "skin": 38.2,
+    "soc": 45.6,
+    "big": 62,
+    "mid": 58,
+    "little": 56,
+    "battery": 37.8
+   }
+  },
+  {
+   "t": 26,
+   "fps": 46.3,
+   "interval": 24.89,
+   "p95": 33.23,
+   "work": 7.58,
+   "thermal": {
+    "status": 0,
+    "skin": 38.3,
+    "soc": 45.6,
+    "big": 58,
+    "mid": 58,
+    "little": 56,
+    "battery": 37.9
+   }
+  },
+  {
+   "t": 32,
+   "fps": 46,
+   "interval": 24.89,
+   "p95": 24.95,
+   "work": 7.85,
+   "thermal": {
+    "status": 0,
+    "skin": 38.3,
+    "soc": 45.6,
+    "big": 61,
+    "mid": 57,
+    "little": 56,
+    "battery": 38.1
+   }
+  }
+ ],
+ "memory": {
+  "audio": 0,
+  "deviceLosses": 0,
+  "gpu": {
+   "buffers": 2198608,
+   "meshes": 3415004,
+   "renderTargets": 133751796,
+   "textures": 9607156,
+   "total": 148972564
+  },
+  "heap": {
+   "allocations": 12031775,
+   "live": 66559948,
+   "peak": 70810708
+  },
+  "host": "web",
+  "linear": 78118912,
+  "resident": null,
+  "stream": {
+   "budget": 268435456,
+   "peak": 0,
+   "used": 0
+  },
+  "world": {
+   "entities": 49
+  }
+ },
+ "chromeMeminfo": "  Native Heap    10162     8588     1572    15914    10484    37056    29309     3565\r\n   EGL mtrack    51720    51720        0        0    51720                           \r\n    GL mtrack    25344    25344        0        0    25344                           \r\n         Native Heap:     8588                          10484\r\n            Graphics:    77064                          77064\r\n           TOTAL PSS:   510688            TOTAL RSS:   621272       TOTAL SWAP PSS:    93311\r\n",
+ "gpuMem": "Memory snapshot for GPU 0:\r\nGlobal total: 4516421632\r\nProc 497 total: 149282816\r\nProc 977 total: 2527232\r\nProc 1693 total: 6217728\r\nProc 2879 total: 66809856\r\nProc 3225 total: 61440\r\nProc 5755 total: 108781568\r\nProc 9754 total: 12451840\r\nProc 16732 total: 13787136\r\nProc 18178 total: 61440\r\nProc 18181 total: 3969933312\r\nProc 20088 total: 61440\r\nProc 22440 total: 4960256\r\nProc 24002 total: 61440\r\nProc 24194 total: 15908864\r\nProc 26490 total: 1441792\r\nProc 27329 total: 7557120\r\nProc 28396 total: 61440\r\nProc 30055 total: 78913536\r\n",
+ "thermalEnd": {
+  "status": 0,
+  "skin": 38.4,
+  "soc": 45.6,
+  "big": 61,
+  "mid": 57,
+  "little": 56,
+  "battery": 38.1
+ },
+ "errors": []
+}
