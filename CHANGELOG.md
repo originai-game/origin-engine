@@ -15,6 +15,22 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Global illumination: screen rays across the screen, `both` counted
+  once, cheaper probe sampling.** `og.GlobalIllumination.maxDistance`
+  defaults to 16 m (it was 4): a screen ray stops where it leaves the
+  screen and spreads its steps over what it crosses there, so it
+  gathers about 0.65 of a room's bounce where it gathered 0.40. With
+  `method: both` the screen rays reach one probe spacing and replace the
+  probes' light only from the directions they hit, so the bounce is no
+  longer counted twice (it was 1.1 to 1.2 times a path-traced
+  reference). A lit surface gathers the probes once for its diffuse
+  light and its reflections' occlusion (the probe GI's main pass at
+  1080p on Metal: 7.98 ms to 3.70 ms), and a probe moved out of a wall
+  no longer leaves a dark spot on it. Doc change on `maxDistance`.
+  Behaviour change: frames with the screen GI on are brighter where
+  light comes from farther than 4 m; set `maxDistance: 4` to keep the
+  old reach.
+
 - **Stylise: conformed art under a tone curve, washes and fading strokes.**
   The quantise tells conformed art by the lit colour before exposure and
   the tone curve, so a tone-mapped look keeps it unstepped too.

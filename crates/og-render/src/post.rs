@@ -36,7 +36,12 @@ const LUMINANCE_WGSL: &str = wgsl!("luminance.wgsl");
 const EXPOSURE_WGSL: &str = wgsl!("exposure.wgsl");
 // Screen-space global illumination (ssgi.rs) is more effect passes of the
 // module.
-const FXPOST_WGSL: &str = concat!(wgsl!("fxpost.wgsl"), wgsl!("ssgi.wgsl"));
+const FXPOST_WGSL: &str = concat!(
+    wgsl!("fxpost.wgsl"),
+    wgsl!("gi_common.wgsl"),
+    wgsl!("gi_sample.wgsl"),
+    wgsl!("ssgi.wgsl")
+);
 /// The full-resolution AO blur by gathers (`fs_ao_blur_gather`), appended
 /// to the effect module ([`fx_source`]).
 const FX_GATHER_WGSL: &str = wgsl!("fxpost_gather.wgsl");

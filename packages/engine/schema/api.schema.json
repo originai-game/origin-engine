@@ -27836,8 +27836,8 @@
         },
         "maxDistance": {
           "type": "number",
-          "description": "How far each ray travels: the reach of a bounce.",
-          "default": 4,
+          "description": "How far each ray travels at most: the reach of a bounce. A ray also stops where it leaves the screen, its steps spread over what it crosses on screen. With probes (`both`) the rays reach one probe spacing at most: farther, the probes give the light.",
+          "default": 16,
           "minimum": 0,
           "x-og-unit": "m",
           "x-og-tunable": true

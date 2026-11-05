@@ -88,6 +88,17 @@ impl PostPasses {
                     6,
                     wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
                 ),
+                // The light volumes' buffer with the probe GI's probes
+                // (the frame group's binding 10): the screen GI takes
+                // from them what its rays replace (ssgi.wgsl).
+                layout_entry(
+                    7,
+                    wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                ),
             ],
         });
         let taa_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

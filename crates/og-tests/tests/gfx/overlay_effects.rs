@@ -734,6 +734,70 @@ fn probe_gi_bleeds_each_walls_colour() {
     );
 }
 
+/// The light the GI adds to gi-room under a black sky, where every light
+/// it adds is a bounce: summed over the frame in linear light, with the
+/// probe GI and the screen GI each on or off, against neither.
+fn room_bounce(probes: bool, screen: bool) -> f64 {
+    let render = |probes: bool, screen: bool| {
+        let mut g = built("gi-room-probes");
+        g.scene = og_tests::fx_scenes::gi_probe_scene(probes);
+        g.scene.post.gi = screen.then(og_render::ScreenSpaceGlobalIllumination::default);
+        g.scene.environment.intensity = 1e-3;
+        g.scene.environment.background = og_render::Background::Color(Vec3::ZERO);
+        g.scene.camera.exposure = og_render::Exposure::linear(1.0);
+        g.scene.post.tonemap = og_render::Tonemap::None;
+        gfx::render_built(&mut g).expect("rendered").image
+    };
+    let linear = |b: u8| {
+        let c = b as f64 / 255.0;
+        if c <= 0.04045 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    let (on, off) = (render(probes, screen), render(false, false));
+    on.pixels
+        .iter()
+        .zip(&off.pixels)
+        .enumerate()
+        .filter(|(i, _)| i % 4 != 3)
+        .map(|(_, (a, b))| linear(*a) - linear(*b))
+        .sum()
+}
+
+/// The screen GI over the probe GI (`method: both`) counts the bounce
+/// once: the light both add stays within a tenth of what the probes add
+/// alone. Taking an even share of the probes' light for the screen rays'
+/// hits, the old pairing added 1.3 times the probes' light: the walls the
+/// rays hit are brighter than the sky they do not.
+#[test]
+fn screen_and_probe_gi_count_the_bounce_once() {
+    let probes = room_bounce(true, false);
+    let ratio = room_bounce(true, true) / probes;
+    println!("both over probes alone: {ratio:.3}");
+    assert!(probes > 0.0);
+    assert!(
+        (0.9..1.1).contains(&ratio),
+        "both add {ratio:.3} times the probes' bounce"
+    );
+}
+
+/// The screen GI alone gathers the bounce from across the room: its rays
+/// reach the screen's edge, so the light it adds comes to most of what the
+/// probes (which see the whole room) add. Stopped 4 m out on world-space
+/// steps, the old rays never reached the far wall 6 m across and added
+/// under half of it.
+#[test]
+fn screen_gi_reaches_across_the_room() {
+    let ratio = room_bounce(false, true) / room_bounce(true, false);
+    println!("screen over probes: {ratio:.3}");
+    assert!(
+        ratio > 0.65,
+        "the screen GI adds {ratio:.3} of the probes' bounce"
+    );
+}
+
 /// The probes occlude the sky: under the porch's roof (the frame's middle)
 /// the floor is darker with them than lit by the environment alone, while
 /// the open ground in front (the bottom rows) stays within a few levels.
@@ -772,6 +836,44 @@ fn probe_gi_occludes_the_sky_under_a_roof() {
         (open_on - open_off).abs() < 0.1 * open_off,
         "the open ground sees it: {open_on:.1} against {open_off:.1}"
     );
+}
+
+/// Probes that start on a surface's plane light it evenly from their
+/// first frames: gi-shelter's 1 m probes lie on its back wall's plane, so
+/// the first trace finds some inside the wall and the relocation moves
+/// them out, after which their light starts again from what they see
+/// outside. At frame 8 no spot of the wall under the roof is darker than
+/// the ring 24 pixels around it by more than a settled frame's few levels.
+/// Keeping the dark inside in their estimators, the old blend left a row
+/// of dark spots on the wall, one at each such probe (16 levels deep at
+/// frame 8, still 4 at frame 32).
+#[test]
+fn probes_moved_out_of_a_wall_light_it_at_once() {
+    let mut g = built("gi-shelter");
+    g.frames = 8;
+    let img = gfx::render_built(&mut g).expect("rendered").image;
+    let (w, h) = (img.width as i32, img.height as i32);
+    let at = |x: i32, y: i32| {
+        let i = ((y * w + x) * 4) as usize;
+        luma(img.pixels[i..i + 4].try_into().expect("rgba"))
+    };
+    let ring: Vec<(i32, i32)> = (0..16)
+        .map(|k| {
+            let a = k as f32 * std::f32::consts::PI / 8.0;
+            ((24.0 * a.cos()) as i32, (24.0 * a.sin()) as i32)
+        })
+        .collect();
+    // The back wall's middle under the roof: clear of the roof's edge, the
+    // left wall, the floor and the sphere.
+    let mut deepest = 0.0f32;
+    for y in (h * 15 / 100..h * 38 / 100).step_by(2) {
+        for x in (w * 37 / 100..w * 55 / 100).step_by(2) {
+            let around = ring.iter().map(|&(dx, dy)| at(x + dx, y + dy)).sum::<f32>() / 16.0;
+            deepest = deepest.max(around - at(x, y));
+        }
+    }
+    println!("the deepest spot on the back wall at frame 8: {deepest:.2} levels");
+    assert!(deepest < 6.0, "a dark spot {deepest:.2} levels deep");
 }
 
 #[test]

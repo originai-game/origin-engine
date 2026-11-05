@@ -2854,7 +2854,7 @@ Token `og.GlobalIllumination`, registered under the schema name `og.GlobalIllumi
 | `enabled` | `boolean` | `false` | — | — | — | Bounce the light. |
 | `method` | `GiMethod` | `"screen"` | — | — | — | In screen space, with probes, or both. |
 | `intensity` | `number` | `1` | ≥ 0 | — | tunable | Scales the bounced light; 1 is physical. With probes the sky's light and emission are not scaled, only what surfaces bounce. |
-| `maxDistance` | `number` | `4` | ≥ 0 | `m` | tunable | How far each ray travels: the reach of a bounce. |
+| `maxDistance` | `number` | `16` | ≥ 0 | `m` | tunable | How far each ray travels at most: the reach of a bounce. A ray also stops where it leaves the screen, its steps spread over what it crosses on screen. With probes (`both`) the rays reach one probe spacing at most: farther, the probes give the light. |
 | `thickness` | `number` | `0.5` | ≥ 0 | `m` | tunable | How far behind the depth buffer a surface is taken to extend: a ray passing behind a surface by less than this hits it. |
 | `steps` | `number` | `12` | 4 … 64 | — | — | Steps along each ray. |
 | `rays` | `number` | `4` | 1 … 16 | — | — | Rays per pixel each frame: more is smoother and costlier (TAA adds the frames' rays together). |
@@ -2875,8 +2875,8 @@ resource GlobalIllumination {
     min 0
     tunable true
   }
-  field maxDistance f32 "How far each ray travels: the reach of a bounce." {
-    default 4
+  field maxDistance f32 "How far each ray travels at most: the reach of a bounce. A ray also stops where it leaves the screen, its steps spread over what it crosses on screen. With probes (`both`) the rays reach one probe spacing at most: farther, the probes give the light." {
+    default 16
     min 0
     unit m
     tunable true

@@ -1080,7 +1080,14 @@ S6).
   bounce, so the lit passes read it through the effect group's AO
   texture and no lit binding is added (the lit stages sit at 16 of 16
   sampled textures). Each pixel casts cosine-weighted rays from its
-  prepass normal and marches them through the view depth; a hit on a
+  prepass normal and marches them through the view depth, each cut where
+  it leaves the view frustum and its `steps` spread over what it crosses
+  on screen (perspective-correct, finer near the pixel), so a ray reaches
+  across the screen rather than a fixed world distance (`maxDistance`,
+  16 m, caps it). Marching 4 m on world-space steps it gathered 0.40 of
+  a path-traced gi-room's bounce; across the screen it gathers 0.65,
+  of the 0.72 to 0.80 the screen shows at all (the rest is off screen
+  or behind what it shows). A hit on a
   surface facing the ray reads the previous frame's lit image where the
   hit pixel's velocity puts it: TAA's history under TAA, else a copy of
   the main pass's image kept between frames. One bounce a frame, many
@@ -1110,14 +1117,38 @@ S6).
   - **Probe data.** Each probe keeps deringed L1 harmonics and a 12²
     octahedral map of distance moments. Lit fragments read 8 probes a
     cascade, weighed by a Chebyshev visibility test, so light does not
-    leak through walls.
+    leak through walls. A probe whose rays find it inside geometry is
+    left out and moved out through the nearest back face; its next
+    update starts its light and distances again, so what it saw inside
+    does not hold it dark while its estimator catches up (a probe on a
+    wall's plane left a dark spot on the wall for dozens of frames).
+  - **Sampling (`gi_sample.wgsl`).** A lit fragment gathers the 8 probes
+    around it in each cascade once, into their weighted harmonics, and
+    evaluates them along its normal for the diffuse light and along the
+    reflected ray for the reflections' occlusion. The ring buffer's slot
+    and key are worked out for the base corner alone. On Metal at 1080p
+    (gi-room-probes) the main pass went from 7.98 ms to 3.70 ms against
+    1.48 ms with no GI: a second gather for the reflections took 3.2 ms
+    and the corners' integer division 1.5 ms.
   - **Bindings.** The probes share the light volumes' storage buffer
     (frame binding 10): the lit stages have no texture slot left, and
-    nothing beyond the default limits is requested.
+    nothing beyond the default limits is requested. The effect passes
+    bind it too (binding 7), for the screen GI.
+  - **With the screen GI (`both`).** The screen rays reach one probe
+    spacing at most, and their hits replace the probes' light from the
+    directions they hit: the screen GI's pass gathers the probes and
+    takes their L1 light along the hits (h c0 + 1.5 c1·s over π, with h
+    the hits' share and s their mean direction), not an even share of
+    every direction's, which counted a bright wall's light twice (1.11 to
+    1.21 of a path-traced gi-room). L1 is too smooth to say how much of
+    the probes' light came from far hits, so long screen rays still
+    overcount (1.07 at 2.5 m with exact probes); within a spacing the
+    sum is within 3% of the probes' own. Both now give 0.87 to 0.97 of
+    the reference, as the probes alone (0.85 to 0.97).
   - **Sky occlusion.** The sky reaches a point only through the probes'
     rays that miss, so a roof, a room or a street of buildings hides it.
     Reflections outside every reflection probe are scaled by what the
-    probes see along the reflected ray (`gi_reflected`).
+    probes see along the reflected ray (`gi_reflected_from`).
   - **GTAO bent normals (XeGTAO, MIT, `third_party/xegtao`).** With
     `PostEffects.ao`'s GTAO on, the AO targets become RGBA16F and carry
     the world bent normal in gba. The lit passes read the probes along
@@ -1135,9 +1166,8 @@ S6).
   - **Leaks and cost.** Walls a twentieth of the probe spacing leak under
     0.1% of the light outside, so the visibility is complete. RTXGI is
     under the NVIDIA RTX SDK licence, so it is cited, not ported. On
-    Metal at 1080p, gi-room-probes' tracing takes 1.7 ms. The lit pass's
-    reading of 8 probes a cascade takes about 6 ms, the next thing to
-    optimise.
+    Metal at 1080p, gi-room-probes' tracing takes 1.6 ms and the lit
+    pass's sampling 2.2 ms (Sampling, above).
 - **The live sky (R3).** While the background is the per-pixel sky
   (`Background::Procedural`: og.Sky, og.DayNight, og.PhysicalSky,
   og.Clouds) and no environment map replaces it, the image-based light

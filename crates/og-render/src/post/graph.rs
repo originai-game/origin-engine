@@ -149,6 +149,7 @@ impl FrameGraph {
         cfg: &GraphConfig,
         post: &PostPasses,
         persistent: &Persistent,
+        probes: &wgpu::Buffer,
         lut: (Option<(u64, usize)>, &wgpu::TextureView),
         stylise: (
             &wgpu::TextureView,
@@ -208,6 +209,7 @@ impl FrameGraph {
             device,
             post,
             persistent,
+            probes,
             &passes,
             cfg,
             lut.1,
@@ -228,6 +230,7 @@ impl FrameGraph {
         device: &wgpu::Device,
         passes: &PostPasses,
         persistent: &Persistent,
+        probes: &wgpu::Buffer,
         frame: &[FramePass],
         cfg: &GraphConfig,
         lut: &wgpu::TextureView,
@@ -555,6 +558,7 @@ impl FrameGraph {
                     tex(gbuffer),
                     tex(b),
                     wgpu::BindingResource::Sampler(&passes.nearest_sampler),
+                    probes.as_entire_binding(),
                 ],
             )
         };

@@ -581,7 +581,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     {
         post.gi = Some(og_render::ScreenSpaceGlobalIllumination {
             intensity: f(&g, "intensity", 1.0),
-            max_distance: f(&g, "maxDistance", 4.0),
+            max_distance: f(&g, "maxDistance", 16.0),
             thickness: f(&g, "thickness", 0.5),
             steps: u(&g, "steps", 12),
             rays: u(&g, "rays", 4),

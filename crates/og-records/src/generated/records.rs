@@ -7853,7 +7853,7 @@ pub const RECORDS: &[RecordDecl] = &[
             FieldDecl {
                 name: "maxDistance",
                 column: "f32",
-                default: "4",
+                default: "16",
                 readonly: false,
                 tunable: true,
                 min: Some(0.0),
@@ -7862,7 +7862,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "m",
                 worldspace: "",
                 label: "",
-                doc: doc!("How far each ray travels: the reach of a bounce."),
+                doc: doc!("How far each ray travels at most: the reach of a bounce. A ray also stops where it leaves the screen, its steps spread over what it crosses on screen. With probes (`both`) the rays reach one probe spacing at most: farther, the probes give the light."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

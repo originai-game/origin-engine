@@ -37,7 +37,10 @@ pub(crate) const GI_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Flo
 pub struct ScreenSpaceGlobalIllumination {
     /// Scales the bounced light (0: none; 1 is physical).
     pub intensity: f32,
-    /// How far each ray travels, in world units.
+    /// How far each ray travels at most, in world units. A ray also stops
+    /// where it leaves the screen (its steps are spread over what it
+    /// crosses on screen), and with the probe GI on, one probe spacing
+    /// past its pixel: farther, the probes give the light.
     pub max_distance: f32,
     /// How far behind a surface a ray may pass and still hit it (world units).
     pub thickness: f32,
@@ -59,7 +62,7 @@ impl Default for ScreenSpaceGlobalIllumination {
     fn default() -> Self {
         ScreenSpaceGlobalIllumination {
             intensity: 1.0,
-            max_distance: 4.0,
+            max_distance: 16.0,
             thickness: 0.5,
             steps: 12,
             rays: 4,

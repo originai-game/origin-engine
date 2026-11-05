@@ -94,7 +94,10 @@ impl Renderer {
             .lightmaps
             .ensure_capacity(&self.device, &self.queue, need)
         {
+            // The groups binding the buffer: the frame's and the effect
+            // passes' (the screen GI reads the probes).
             self.environment = None;
+            self.graph.invalidate();
             g.restart();
         }
         g.prepare(&self.device, &self.queue, scene, desc, region);

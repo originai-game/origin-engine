@@ -187,3 +187,145 @@ relocation, classification), and the measurement above shows they work.
   `gi_shelter_matches_its_reference`: re-recorded on Metal.
 - `probe_gi_bleeds_each_walls_colour` and
   `probe_gi_occludes_the_sky_under_a_roof`: pass.
+
+# Second head: `both`, the screen GI's reach, the lit pass's cost, relocated probes
+
+Measured on macrunner (M4 Pro, Metal), from main 574f1a091. The method
+is the first head's: the gi-room geometry path-traced on the CPU (sky
+black, four bounces) against the GPU's indirect light, summed over the
+image (r / g / b). "Exact probes" is the same CPU model's DDGI with
+probes path-traced to convergence.
+
+## 1. `method: both` counted the bounce twice
+
+| | Before | After |
+|---|---|---|
+| Probes alone | 0.85 / 0.93 / 0.97 | 0.85 / 0.93 / 0.97 |
+| Screen GI and probes (`both`) | 1.11 / 1.18 / 1.21 | 0.87 / 0.94 / 0.97 |
+
+**Cause.** The lit pass multiplied the probes' light by the screen rays'
+ambient occlusion: the rays that hit took an even share of the probes'
+light from every direction. The walls the rays hit are brighter than the
+sky they miss, so too little was taken and the screen's light of those
+walls came on top. With exact probes the CPU model gives 1.19 / 1.22 /
+1.22 for that pairing: the error is in the pairing, not the probes.
+
+**Fix (ssgi.wgsl, gi_sample.wgsl).** The screen GI's pass gathers the
+probes once and takes their light along the hits' directions: with E/π
+along n c0 + c1·n, the radiance is L1, so the hits' share over π is
+h c0 + 1.5 c1·s (h the hits' weight, s their weighted mean direction).
+The bounce carries the difference from what the lit pass removes.
+L1 is too smooth to say how much light came from far hits:
+
+| Screen ray reach (exact probes, L1 share) | Sum / reference |
+|---|---|
+| 4 m | 1.09 / 1.13 / 1.13 |
+| 2.5 m | 1.04 / 1.08 / 1.07 |
+| 1.5 m | 1.00 / 1.03 / 1.03 |
+| 1.0 m | 0.98 / 1.02 / 1.02 |
+| 0.5 m | 0.97 / 1.01 / 1.02 |
+| Probes alone | 0.96 / 1.02 / 1.02 |
+
+So with the probes on, the screen rays reach one spacing of the finest
+cascade: the near field the probes cannot resolve. Rays whose light the
+screen cannot give (no history, a hit that was off screen) count as
+misses, so the probes give that direction.
+
+`screen_and_probe_gi_count_the_bounce_once`: the light both add over
+no GI against the probes' alone, 1.345 on the old code, 1.035 now.
+
+## 2. The screen GI alone gathered 0.40
+
+| Screen rays can see (CPU) | Share of the reference |
+|---|---|
+| Every on-screen hit | 0.80 / 0.74 / 0.72 |
+| Within the old 4 m (faded from 2.4 m) | 0.49 / 0.46 / 0.45 |
+
+| GPU, gi-room | Share of the reference |
+|---|---|
+| Old: 4 m, 12 world-space steps | 0.39 / 0.41 / 0.42 |
+| Old march, 16 m, 12 steps | 0.60 / 0.61 / 0.64 |
+| Old march, 16 m, 32 steps | 0.67 / 0.67 / 0.67 |
+| New march, 16 m, 12 steps (the new default) | 0.65 / 0.65 / 0.66 |
+| New march, 16 m, 32 steps | 0.71 / 0.71 / 0.72 |
+
+**Cause.** Not the bounces, the thickness or the normalisation: the
+rays marched a fixed 4 m on world-space steps, so they never reached
+the far wall of a 6 m room, and lengthening them spent the steps off
+screen. **Fix.** Each ray is cut where it leaves the view frustum (the
+projected ray is linear before the divide, so each side plane cuts it
+at one t) and its steps are spread over what it crosses on screen,
+perspective-correct and finer near the pixel. `maxDistance` defaults
+to 16 m (it was 4): with the cut it costs 0.4 ms more at 1080p, not a
+step more. What remains (0.65 against 0.72 to 0.80) is the step count
+and the off-screen share no screen method sees.
+
+`screen_gi_reaches_across_the_room`: the screen GI's light against the
+probes', 0.521 on the old code, 0.796 now.
+
+## 3. The lit pass's probe sampling
+
+Metal, 1080p, frames 20 to 60, every GPU slot held. "Before" is main
+574f1a091 measured in the same session.
+
+| Pass (scene) | Before | After |
+|---|---|---|
+| main, no GI (gi-room-probes) | 1.46–2.04 ms | 1.41–2.08 ms |
+| main (gi-room-probes) | 7.98 ms | 3.70 ms |
+| gi-probes (gi-room-probes) | 1.73 ms | 1.64 ms |
+| frame (gi-room-probes) | 9.80 ms | 5.43 ms |
+| ao, the screen GI (gi-room) | 10.20 ms | 11.51 ms |
+| frame (gi-room) | 13.27 ms | 14.56 ms |
+| ao (`both`) | 2.26 ms | 5.74 ms |
+| main (`both`) | 8.39 ms | 4.38 ms |
+| gi-probes (`both`) | 9.28 ms | 1.72 ms |
+| frame (`both`) | 20.86 ms | 12.70 ms |
+| gi-probes (gi-shelter) | 4.61 ms | 4.49 ms |
+| main (gi-shelter) | 7.74 ms | 4.02 ms |
+
+Under `both` the old frame's pass timers read 2.26 ms for the ao pass
+(10.20 ms alone) and 9.28 ms for gi-probes (1.73 ms alone): how the two
+were split is not clear, so compare the frame totals. The screen GI
+alone costs 1.3 ms more (gi-room's ao pass): 0.9 ms for the new march
+(the frustum cut, the perspective-correct steps) and 0.4 ms for the
+16 m cap, on the same 12 steps. Under `both` its rays reach one probe
+spacing and its pass gathers the probes once.
+
+Where the main pass's time went, on the way (gi-room-probes):
+
+| Change | main |
+|---|---|
+| Before | 7.98 ms |
+| No reflection-occlusion gather (experiment) | 4.81 ms |
+| No visibility test (experiment) | 7.10 ms |
+| One gather shared by the diffuse light and the reflections' occlusion | 5.17 ms |
+| And the ring buffer's slot and key worked out once, not per corner | 3.70 ms |
+
+**Changes (gi_sample.wgsl, gi_probes.wgsl, frame.wgsl).** A gather
+returns the 8 probes' weighted harmonics (12 floats), linear in the
+direction; the lit pass evaluates them along the normal and along the
+reflected ray. The reflections' occlusion now uses the visibility-tested
+probes, where it had its own unweighted gather. The corners' slot and
+key came from a vector modulo and division per corner; they are the base
+corner's plus one, wrapping. The trace's bounce reads the same gather.
+
+## 4. Dark spots on gi-shelter's back wall (the art runner's note)
+
+gi-shelter's 1 m probes lie on its back wall's and roof's planes. The
+first trace finds some just inside the slabs (back faces on more than a
+quarter of their rays), and the relocation moves them out at once; at
+frame 32 every one of them was active and 0.13 of a spacing off the
+surfaces (read back from the probe buffer). But their radiance estimator
+and distance moments kept what they saw inside, black, and the
+estimator's catch-up is slow, so each left a dark spot on the wall for
+dozens of frames: with the classification off the spots went, with the
+relocation off they stayed, with the spacing at 0.97 m (no probe on a
+plane) they went.
+
+**Fix (gi_blend.wgsl).** A probe whose last update found it inside
+starts its light and distances again from this update's rays, as a fresh
+probe does.
+
+`probes_moved_out_of_a_wall_light_it_at_once`: the deepest spot on the
+back wall's middle at frame 8 against the ring 24 px around it, 16.43
+levels on the old code, 2.71 now (a settled frame: 2.6).

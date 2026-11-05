@@ -9826,7 +9826,7 @@
         {
           "name": "maxDistance",
           "column": "f32",
-          "default": 4,
+          "default": 16,
           "tunable": true
         },
         {

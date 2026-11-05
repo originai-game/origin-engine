@@ -3084,6 +3084,7 @@ impl Renderer {
                 },
                 &self.post,
                 &self.persistent,
+                &self.lightmaps.probe_buffer,
                 (lut_key, lut_view),
                 (palette_view, canvas_view, &self.conformed.1, stylise_key),
             )

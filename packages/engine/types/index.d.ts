@@ -7869,9 +7869,9 @@ export interface GlobalIllumination {
    */
   intensity: number;
   /**
-   * How far each ray travels: the reach of a bounce.
+   * How far each ray travels at most: the reach of a bounce. A ray also stops where it leaves the screen, its steps spread over what it crosses on screen. With probes (`both`) the rays reach one probe spacing at most: farther, the probes give the light.
    *
-   * @default 4
+   * @default 16
    * @range 0..
    * @unit m (metres)
    * @tunable
