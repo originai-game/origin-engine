@@ -462,6 +462,7 @@ impl PostPasses {
             fx,
             flare: FlarePasses::new(device),
             fsr: fsr::FsrPasses::new(device),
+            contact: contact::ContactPasses::new(device),
             source_layout,
             post_layout,
             taa_layout,

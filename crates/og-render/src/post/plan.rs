@@ -22,8 +22,9 @@ pub(crate) enum FramePass {
     /// half resolution and this pass writes the full-resolution `ao`.
     AoUpsample,
     /// Screen-space contact shadows for the shadowed local lights
-    /// (fxpost.wgsl `fs_contact`): writes `ao`, the AO (from `ao.pre`, the
-    /// AO passes' target with it) in r and the lights' masks in gba.
+    /// (contact.wgsl, compute): writes the lights' masks (`contact.0` to
+    /// `contact.2`), then `ao`, the AO (from `ao.pre`, the AO passes'
+    /// target with it) in r and the masks in gba.
     Contact,
     /// The particle simulation (compute).
     Particles,
@@ -469,6 +470,10 @@ pub(super) fn lit_names(passes: &[FramePass]) -> LitNames {
     }
 }
 
+/// The contact lights' masks (`FramePass::Contact`), by the light's row.
+pub(crate) const CONTACT_MASKS: [&str; crate::frame::CONTACT_LIGHTS] =
+    ["contact.0", "contact.1", "contact.2"];
+
 /// The render graph of a frame made of `passes` (in recording order).
 pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGraph {
     let attach_bind = wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING;
@@ -618,7 +623,13 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             .transient(ao_out, desc(w, h, ao_format, 1, attach_bind));
     }
     if contact {
-        g.transient("ao", desc(w, h, CONTACT_FORMAT, 1, attach_bind));
+        // The contact pass computes the masks (one per light) and composes
+        // them with the AO into `ao` (contact.rs).
+        let storage = wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING;
+        g.transient("ao", desc(w, h, CONTACT_FORMAT, 1, attach_bind | storage));
+        for name in CONTACT_MASKS {
+            g.transient(name, desc(w, h, super::contact::MASK_FORMAT, 1, storage));
+        }
     }
     if has(FramePass::Light2d) {
         let (lw, lh) = cfg.lightmap;
@@ -838,10 +849,16 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             }
             FramePass::AoBlur => g.pass(name, &["ao.raw", "lindepth", "gbuffer"], &[ao_out]),
             FramePass::AoUpsample => g.pass(name, &["ao.blur", "lindepth"], &[ao_out]),
-            FramePass::Contact if has(FramePass::AoBlur) => {
-                g.pass(name, &["ao.pre", "lindepth", "gbuffer"], &["ao"])
-            }
-            FramePass::Contact => g.pass(name, &["lindepth", "gbuffer"], &["ao"]),
+            FramePass::Contact if has(FramePass::AoBlur) => g.pass(
+                name,
+                &["ao.pre", "lindepth", "gbuffer"],
+                &["ao", "contact.0", "contact.1", "contact.2"],
+            ),
+            FramePass::Contact => g.pass(
+                name,
+                &["lindepth", "gbuffer"],
+                &["ao", "contact.0", "contact.1", "contact.2"],
+            ),
             FramePass::Particles if prepass => {
                 g.pass(name, &["lindepth", "gbuffer"], &["particles"])
             }
@@ -1482,6 +1499,15 @@ mod tests {
             // texture with `outline-id` (the same format, unread without
             // an outline pass), which the prepass draws into.
             assert_ne!(plan.slot("ao"), plan.slot("outline-id"), "ao {ao}");
+            // The masks the compose reads into `ao`: their own textures.
+            let slots: Vec<_> = CONTACT_MASKS
+                .iter()
+                .map(|m| plan.slot(m).expect("mask"))
+                .chain(plan.slot("ao"))
+                .collect();
+            for (i, a) in slots.iter().enumerate() {
+                assert!(!slots[..i].contains(a), "ao {ao}: {slots:?}");
+            }
             if ao {
                 assert!(at(FramePass::AoBlur) < at(FramePass::Contact));
                 assert_eq!(format("ao.pre"), Some(AO_FORMAT));

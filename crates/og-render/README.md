@@ -301,8 +301,8 @@ first frame its view stays. `FrameStats::shadow_cached` counts the layers
 whose static casters came from the cache (`shadow_passes` still counts
 every layer). Nothing feeds back into the simulation.
 
-**Contact shadows** (fxpost.wgsl `fs_contact`, `frame.rs`
-`contact_lights`). Only the three shadowed point and spot lights brightest
+**Contact shadows** (contact.wgsl `cs_contact`, `post/contact.rs`,
+`frame.rs` `contact_lights`). Only the three shadowed point and spot lights brightest
 at the camera (the shadows' importance: radiance over squared distance,
 ties in scene order) get screen-space contact shadows; every other
 shadowed light keeps its shadow map alone, and rect lights never get them.
@@ -314,9 +314,13 @@ is affine along that line, where every pixel is a slab 0.5 % of its depth
 to the far plane thick. A sample hides the light only where the ray passes
 through that slab, so a silhouette in front of a far surface never
 shadows it; the first four samples shadow hard, the rest average in four
-groups, the last eight fade out. It runs as one fragment per pixel
-rather than Bend's compute wave per line of pixels (the same samples,
-not shared). The masks share the AO texture (its gba, the AO in r), so they
+groups, the last eight fade out. It runs as Bend's compute wave: 64
+threads per run of pixels along the line, the run's depths read once
+into workgroup memory and shared by every thread's samples, each light's
+runs dispatched from the screen edges in towards its pixel
+(`post/contact.rs` `dispatch_list`), and a thread whose pixel the light
+does not reach returns before it walks. The masks share the AO texture
+(its gba, the AO in r), so they
 are off with screen-space GI, and only the standard and physical lit
 shaders read them (not terrain, scattered copies, custom lit shaders,
 probe faces, views or planar reflections). They resolve the centimetres

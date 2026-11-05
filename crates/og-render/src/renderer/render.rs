@@ -292,7 +292,7 @@ impl Renderer {
         // The AO passes run (for the AO, the GI or both).
         let ao_target = ao.is_some() || gi.is_some();
         // Screen-space contact shadows for the shadowed point and spot
-        // lights (fxpost.wgsl `fs_contact`): they resolve the centimetres
+        // lights (contact.wgsl, `post/contact.rs`): they resolve the centimetres
         // where a caster meets its receiver, which a local shadow map's
         // texels (a few centimetres at a few metres) cannot. Their masks
         // share the AO texture (gba), which the GI's bounce fills instead.
@@ -1774,6 +1774,13 @@ impl Renderer {
                 lights_gpu[ls.record].direction_slot[3] += 0.25 * (c + 1) as f32;
             }
             contact_rows[3] = CONTACT_PARAMS;
+            self.post.contact.prepare(
+                &self.queue,
+                &cam,
+                camera.far,
+                &contact_rows,
+                (self.width, self.height),
+            );
         }
         // Cookies in the local shadow array past its shadow layers (area.rs).
         let cookie_base =
@@ -5535,7 +5542,7 @@ fn local_paraboloid(paraboloid: bool, face: usize, side: u32) -> [f32; 4] {
     }
 }
 
-/// Contact shadows (fxpost.wgsl `fs_contact`, `FxPost::contact` row 3):
+/// Contact shadows (contact.wgsl, `FxPost::contact` row 3):
 /// Bend Studio's recommended defaults (third_party/bend-sss): every pixel a
 /// slab 0.5 % of its depth to the far plane thick, an edge where two
 /// neighbours' depths differ by 2 %, a contrast of 4, 60 samples (the

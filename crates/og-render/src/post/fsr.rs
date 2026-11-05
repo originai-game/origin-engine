@@ -70,15 +70,36 @@ struct FsrUniform {
 /// glass, smoke and particles keep some (`fsr_prepare_reactivity.wgsl`).
 const REACTIVE_CAP: f32 = 0.9;
 
-/// What one binding is.
+/// What one binding of a compute pass is (also the contact-shadow pass's,
+/// `contact.rs`).
 #[derive(Clone, Copy)]
-enum B {
+pub(super) enum B {
     Uniform,
     Tex(bool),
     Storage(wgpu::TextureFormat),
     Rw,
     Ro,
     Sampler,
+}
+
+pub(super) fn binding_type(b: B) -> wgpu::BindingType {
+    match b {
+        B::Uniform => UNIFORM,
+        B::Tex(filterable) => float_texture(filterable),
+        B::Storage(format) => wgpu::BindingType::StorageTexture {
+            access: wgpu::StorageTextureAccess::WriteOnly,
+            format,
+            view_dimension: wgpu::TextureViewDimension::D2,
+        },
+        B::Rw | B::Ro => wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Storage {
+                read_only: matches!(b, B::Ro),
+            },
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        B::Sampler => wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+    }
 }
 
 fn layout(device: &wgpu::Device, label: &str, bindings: &[B]) -> wgpu::BindGroupLayout {
@@ -88,23 +109,7 @@ fn layout(device: &wgpu::Device, label: &str, bindings: &[B]) -> wgpu::BindGroup
         .map(|(i, b)| wgpu::BindGroupLayoutEntry {
             binding: i as u32,
             visibility: wgpu::ShaderStages::COMPUTE,
-            ty: match *b {
-                B::Uniform => UNIFORM,
-                B::Tex(filterable) => float_texture(filterable),
-                B::Storage(format) => wgpu::BindingType::StorageTexture {
-                    access: wgpu::StorageTextureAccess::WriteOnly,
-                    format,
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                },
-                B::Rw | B::Ro => wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage {
-                        read_only: matches!(b, B::Ro),
-                    },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                B::Sampler => wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-            },
+            ty: binding_type(*b),
             count: None,
         })
         .collect();

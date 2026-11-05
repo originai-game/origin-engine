@@ -548,7 +548,7 @@ pub(crate) fn spot_cone(angle_degrees: f32, penumbra: f32) -> (f32, f32) {
 }
 
 /// The most shadowed lights a frame draws screen-space contact shadows for
-/// (fxpost.wgsl `fs_contact`): one each in the AO texture's g, b and a.
+/// (contact.wgsl `cs_contact`): one each in the AO texture's g, b and a.
 pub(crate) const CONTACT_LIGHTS: usize = 3;
 
 /// The shadowed point and spot lights whose contact shadows a frame draws:

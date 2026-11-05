@@ -5,6 +5,7 @@
 //! depth-normal prepass. Also the size-dependent targets they and the main
 //! pass draw into, as render graph targets.
 
+pub(crate) mod contact;
 mod flare;
 pub(crate) mod fsr;
 mod graph;
@@ -37,6 +38,7 @@ const EXPOSURE_WGSL: &str = wgsl!("exposure.wgsl");
 // Screen-space global illumination (ssgi.rs) is more effect passes of the
 // module.
 const FXPOST_WGSL: &str = concat!(
+    wgsl!("fxpost_uniform.wgsl"),
     wgsl!("fxpost.wgsl"),
     wgsl!("gi_common.wgsl"),
     wgsl!("gi_sample.wgsl"),
@@ -75,8 +77,8 @@ pub(crate) const OUTLINE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba
 /// nearest seed's packed offset, its line, its depth and the pixel's own.
 pub(crate) const JFA_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
 pub(crate) const AO_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
-/// The AO texture with contact shadows (fxpost.wgsl `fs_contact`): the AO
-/// in r, the contact lights' masks in gba.
+/// The AO texture with contact shadows (contact.wgsl `cs_contact_compose`):
+/// the AO in r, the contact lights' masks in gba.
 pub(crate) const CONTACT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 /// The view depth the prepass clears to (sky).
 pub(crate) const FAR_DEPTH: f32 = 1.0e9;
@@ -174,8 +176,8 @@ pub(crate) struct FxPostUniform {
     /// Screen-space global illumination
     /// (`ScreenSpaceGlobalIllumination::rows`).
     pub gi: [[f32; 4]; 3],
-    /// Screen-space contact shadows (fxpost.wgsl `fs_contact`): rows 0 to 2
-    /// the contact lights' view-space positions (w 1: drawn), row 3 Bend's
+    /// Screen-space contact shadows (contact.wgsl): rows 0 to 2 the
+    /// contact lights' view-space positions (w 1: drawn), row 3 Bend's
     /// surface thickness, bilinear threshold, shadow contrast and sample
     /// count.
     pub contact: [[f32; 4]; 4],
@@ -472,6 +474,8 @@ pub(crate) struct PostPasses {
     /// FSR 3.1's upscaler (`fsr.rs`): the `taa` pass's resolve when the
     /// frame's quality asks for it.
     pub fsr: fsr::FsrPasses,
+    /// The contact shadows' compute passes (`contact.rs`).
+    pub contact: contact::ContactPasses,
 }
 
 /// A 3D RGBA8 LUT texture from a 32³ table.
@@ -572,7 +576,6 @@ const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
     ("fs_ssao", AO_FORMAT),
     ("fs_ao_blur", AO_FORMAT),
     ("fs_ao_upsample", AO_FORMAT),
-    ("fs_contact", CONTACT_FORMAT),
     ("fs_outline", HDR_FORMAT),
     ("fs_outline_seed", JFA_FORMAT),
     ("fs_jfa_16", JFA_FORMAT),
@@ -628,5 +631,6 @@ pub(crate) fn post_sources() -> Vec<(&'static str, String)> {
     ]
     .into_iter()
     .map(|(label, body)| (label, fullscreen_source(body)))
+    .chain([("contact", contact::source())])
     .collect()
 }

@@ -61,7 +61,7 @@ const SCREEN_AO_WGSL: &str = "fn screen_ao(p: vec3<f32>) -> f32 {
   return textureSampleLevel(ssao_tex, fx_sampler, vec2<f32>(0.5 + 0.5 * ndc.x, 0.5 - 0.5 * ndc.y), 0.0).r;
 }
 // A local light's screen-space contact shadow at world point `p`
-// (fxpost.wgsl `fs_contact`, its mask in the effect group's AO texture's
+// (contact.wgsl `cs_contact`, its mask in the effect group's AO texture's
 // g, b or a): a contact light's shadow slot carries a quarter, a half or
 // three quarters past its layer (render.rs). 1 for every other light, in a
 // reflection probe's face (no clusters: the mask is the camera's) and

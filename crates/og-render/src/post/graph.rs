@@ -1,6 +1,7 @@
 //! Render graph realization, bindings and post encoding.
 
 use super::*;
+use crate::frame::CONTACT_LIGHTS;
 
 /// The post passes' bind groups for one realization of the graph. Groups
 /// in pairs are per TAA history slot.
@@ -18,6 +19,9 @@ struct Bindings {
     up: Vec<wgpu::BindGroup>,
     post: [wgpu::BindGroup; 2],
     fx: HashMap<FramePass, [wgpu::BindGroup; 2]>,
+    /// The contact shadows (`contact.rs`): one group per light's mask,
+    /// and the compose's.
+    contact: Option<([wgpu::BindGroup; CONTACT_LIGHTS], wgpu::BindGroup)>,
     /// The lens flare's passes (`flare.rs`).
     flare: HashMap<FramePass, [wgpu::BindGroup; 2]>,
 }
@@ -595,10 +599,6 @@ impl FrameGraph {
                 }
                 FramePass::AoBlur => pair(&|_| fx_group(black, self.view("ao.raw"))),
                 FramePass::AoUpsample => pair(&|_| fx_group(black, self.view("ao.blur"))),
-                // The AO it passes through (none without the AO passes).
-                FramePass::Contact => {
-                    pair(&|_| fx_group(black, self.try_view("ao.pre").unwrap_or(&passes.white)))
-                }
                 FramePass::DepthBands => pair(&|_| fx_group(self.view("hdr"), black)),
                 FramePass::Outline => {
                     pair(&|_| fx_group(self.view(names.lit), self.view("outline-id")))
@@ -627,6 +627,46 @@ impl FrameGraph {
             };
             fx.insert(p, groups);
         }
+        // The contact shadows (contact.rs): per light its mask, then the
+        // compose of the masks with the AO it passes through (white
+        // without the AO passes) into `ao`.
+        let contact = has(FramePass::Contact).then(|| {
+            let c = &passes.contact;
+            let masks = super::plan::CONTACT_MASKS.map(|m| self.view(m));
+            let dispatch = wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                buffer: &c.buffer,
+                offset: 0,
+                size: wgpu::BufferSize::new(c.stride as u64),
+            });
+            let groups = masks.map(|mask| {
+                crate::volumetric::bind_at(
+                    device,
+                    "contact",
+                    &c.layout,
+                    &[
+                        (0, passes.fx_buffer.as_entire_binding()),
+                        (1, dispatch.clone()),
+                        (2, tex(depth)),
+                        (3, tex(gbuffer)),
+                        (4, tex(mask)),
+                    ],
+                )
+            });
+            let compose = crate::volumetric::bind_at(
+                device,
+                "contact compose",
+                &c.compose_layout,
+                &[
+                    (0, passes.fx_buffer.as_entire_binding()),
+                    (5, tex(self.try_view("ao.pre").unwrap_or(&passes.white))),
+                    (6, tex(masks[0])),
+                    (7, tex(masks[1])),
+                    (8, tex(masks[2])),
+                    (9, tex(self.view("ao"))),
+                ],
+            );
+            (groups, compose)
+        });
         // The lens flare's passes: (source, view depth, exposure,
         // visibility) per slot, placeholders where a pass reads none.
         let mut flare = HashMap::new();
@@ -674,6 +714,7 @@ impl FrameGraph {
             up,
             post,
             fx,
+            contact,
         }
     }
 
@@ -711,7 +752,6 @@ impl FrameGraph {
             FramePass::AoBlur => Some((AO_BLUR_GATHER, ao)),
             FramePass::AoUpsample if gi || bent => Some(("fs_gi_upsample", ao)),
             FramePass::AoUpsample => Some(("fs_ao_upsample", ao)),
-            FramePass::Contact => Some(("fs_contact", "ao")),
             FramePass::Outline => Some(("fs_outline", "hdr.outline")),
             FramePass::OutlineSeed => Some(("fs_outline_seed", "outline-jfa.a")),
             FramePass::OutlineJump(i) => Some((
@@ -765,6 +805,10 @@ impl FrameGraph {
             return 1;
         }
         match pass {
+            FramePass::Contact => {
+                let (groups, compose) = b.contact.as_ref().expect("contact bound");
+                passes.contact.encode(encoder, groups, compose)
+            }
             FramePass::Taa if passes.fsr.active() => passes.fsr.encode(encoder),
             FramePass::TaaSharpen if passes.fsr.active() => passes.fsr.encode_rcas(encoder),
             FramePass::Taa => {
@@ -954,7 +998,6 @@ impl FrameGraph {
             FramePass::Ao
             | FramePass::AoBlur
             | FramePass::AoUpsample
-            | FramePass::Contact
             | FramePass::Outline
             | FramePass::OutlineSeed
             | FramePass::OutlineJump(_)
