@@ -195,19 +195,21 @@ The remaining API modules: `og.game` (the game entry), `og.system` and
 ## Install
 
 ```sh
-npm create @origingame/game my-game       # or: bun create @origingame/game my-game; --archetype runner, --premise "one line"
-cd my-game && bun install                 # @origingame/engine, this platform's og and addon, tsrs
-bunx og doctor && bunx og test . && bunx og dev .
+curl -fsSL https://origingame.ai/downloads/engine/install.sh | sh   # Windows: irm https://origingame.ai/downloads/engine/install.ps1 | iex
+og new my-game                            # the latest release; --archetype runner, --premise "one line", --engine <version>
+cd my-game && og doctor && og test . && og dev .
 ```
 
-`@origingame/engine` (the API, the runtime, both web hosts, the shell, and
-the agents' knowledge in `knowledge/`), `@origingame/engine-darwin-arm64`,
-`@origingame/engine-linux-x64` and `@origingame/engine-win32-x64` (the native
-addon and `og`) and `@origingame/create-game` (the 3D and 2D templates, nine
-archetypes, the looks) are published together at one version
-(`docs/release.md`). Nothing else is needed: no Rust, no checkout. linux-arm64
-has no prebuilt `og` yet. Inside this repository, a project runs against the
-checkout with `OG_ENGINE_PACKAGE=packages/engine`.
+`og` is a launcher (`packages/launcher`): it runs the engine version a
+game's `project.ogt` pins, downloading it once into
+`~/.cache/origin-engine` from `https://origingame.ai/downloads/engine/`,
+signed with the engine's key (`docs/release.md` §1). A version is one
+archive per platform (darwin-arm64, linux-x64, win32-x64) carrying the API,
+the runtime, both web hosts, the shell, `og` and the native addon, the
+templates and archetypes, and the agents' knowledge. It needs bun; no npm,
+no Rust, no checkout. linux-arm64 has no prebuilt `og` yet. Inside this
+repository, a project runs against the checkout with
+`OG_ENGINE_PACKAGE=packages/engine`.
 
 ## Repository layout
 
@@ -247,10 +249,11 @@ crates/            Rust workspace
   og-cli           the `og` tool
   og-tests         gfx reference harness; og-tests-cooked, og-tests-web: cooked and in-browser variants
 packages/
-  engine           npm @origingame/engine: TypeScript API and runtime, web hosts, shell, the UI kit (src/ui)
-  create           npm @origingame/create-game
-  design           @origingame/design: the design language and tokens shared with origin-agent
+  engine           @origingame/engine: TypeScript API and runtime, web hosts, shell, the UI kit (src/ui); a dist's engine/
+  create           @origingame/create-game: the templates `og new` writes; a dist's create/
+  design           @origingame/design: the design language and tokens shared with origin-agent; a dist's design/
   knowledge        skills, guides, the generated wiki, looks, scaffold (shipped inside the engine package)
+  launcher         og, the launcher: install.sh, install.ps1 and the version a game pins (docs/release.md §1)
 templates/         game (3D), game-2d, archetypes/, looks/, styles/, ui-kit, fx-showcase
 examples/          art-style samples, sample games and feature samples (autorig, motion-course, uncooked-load, ...)
 tests/             evidence/, install/ (the install test), replay/ (replay goldens)

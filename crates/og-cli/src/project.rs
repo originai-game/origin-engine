@@ -97,7 +97,7 @@ impl Project {
         let root = PathBuf::from(typescript_path(&root.canonicalize().unwrap_or(root)));
         if !manifest.is_file() {
             return Err(format!(
-                "{}: no project.ogt; scaffold a project with `npm create @origingame/game` or pass a game entry file",
+                "{}: no project.ogt; scaffold a project with `og new <dir>` or pass a game entry file",
                 root.display()
             ));
         }
@@ -147,25 +147,40 @@ impl Project {
     }
 }
 
-/// The engine package that runs games: `OG_ENGINE_PACKAGE`, the project's
-/// `node_modules/@origingame/engine`, or `packages/engine` of the
-/// origin-engine checkout `og` runs in or from.
+/// The engine package that runs games: `OG_ENGINE_PACKAGE` (what the `og`
+/// launcher and the platform's runner set: a dist's `engine/`), the
+/// project's `.og/engine` link, its `node_modules/@origingame/engine` (an
+/// npm install of a version before 0.7.8), or `packages/engine` of the
+/// origin-engine checkout `og` runs in or from. A game found with a package
+/// gets its `.og/engine` pointed at it ([`link_engine`]).
 pub fn engine_package(project: Option<&Path>) -> Option<PathBuf> {
     let ok = |p: &Path| p.join("src/node/run.ts").is_file();
+    let found = |p: PathBuf| {
+        if let Some(root) = project {
+            link_engine(root, &p);
+        }
+        Some(p)
+    };
     if let Ok(p) = std::env::var("OG_ENGINE_PACKAGE") {
-        return Some(PathBuf::from(p));
+        return found(PathBuf::from(p));
     }
     if let Some(root) = project {
+        // Through the link to where it points: tsrs is looked for beside the package.
+        if let Ok(p) = root.join(LINK).canonicalize()
+            && ok(&p)
+        {
+            return Some(p);
+        }
         for dir in root.ancestors() {
             let p = dir.join("node_modules/@origingame/engine");
             if ok(&p) {
-                return Some(p);
+                return found(p);
             }
         }
         if let Some(repo) = crate::find_root(root) {
             let p = repo.join("packages/engine");
             if ok(&p) {
-                return Some(p);
+                return found(p);
             }
         }
     }
@@ -176,6 +191,73 @@ pub fn engine_package(project: Option<&Path>) -> Option<PathBuf> {
     })?;
     let p = repo.join("packages/engine");
     ok(&p).then_some(p)
+}
+
+/// The link beside a game to the engine package og runs it with: what its
+/// `tsconfig.json` paths and an editor read (docs/release.md §1), ignored by
+/// Git with the rest of `.og/`.
+pub const LINK: &str = ".og/engine";
+
+/// Points `<root>/.og/engine` at `package` when `root` is a game
+/// (`project.ogt`) and the link is missing or points elsewhere: a symlink,
+/// a junction on Windows. A directory there (not a link) is left alone.
+/// Best effort: a game without the link still runs; only its tsconfig paths
+/// need it.
+pub fn link_engine(root: &Path, package: &Path) {
+    if !root.join("project.ogt").is_file() {
+        return;
+    }
+    let link = root.join(LINK);
+    let Ok(target) = package.canonicalize() else {
+        return;
+    };
+    match std::fs::symlink_metadata(&link) {
+        Ok(m) if m.file_type().is_symlink() || is_junction(&link) => {
+            if link.canonicalize().ok().as_deref() == Some(target.as_path()) {
+                return;
+            }
+            if std::fs::remove_file(&link)
+                .or_else(|_| std::fs::remove_dir(&link))
+                .is_err()
+            {
+                return;
+            }
+        }
+        Ok(_) => return,
+        Err(_) => {}
+    }
+    if let Some(dir) = link.parent()
+        && std::fs::create_dir_all(dir).is_err()
+    {
+        return;
+    }
+    #[cfg(unix)]
+    let _ = std::os::unix::fs::symlink(&target, &link);
+    #[cfg(windows)]
+    let _ = std::os::windows::fs::symlink_dir(&target, &link).or_else(|_| {
+        Command::new("cmd")
+            .args(["/C", "mklink", "/J"])
+            .arg(&link)
+            .arg(&target)
+            .output()
+            .map(|_| ())
+    });
+}
+
+/// Whether `p` is a Windows junction (a mount-point reparse point, which
+/// `symlink_metadata` does not call a symlink).
+fn is_junction(p: &Path) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const REPARSE_POINT: u32 = 0x400;
+        std::fs::symlink_metadata(p).is_ok_and(|m| m.file_attributes() & REPARSE_POINT != 0)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = p;
+        false
+    }
 }
 
 /// The installed engine package's version: `version` of its package.json.
@@ -215,12 +297,12 @@ pub fn pin_notice(project: &Project, package: &Path) -> Option<String> {
     let installed = package_version(package)?;
     (pinned != installed && !compatible(pinned, &installed)).then(|| {
         format!(
-            "project.ogt pins engine \"{pinned}\" and the installed @origingame/engine is {installed}, another minor (or older): the installed one runs; `og upgrade` moves the game to it and lists what to edit, or install the pinned version (bun add @origingame/engine@{pinned})"
+            "project.ogt pins engine \"{pinned}\" and og runs engine {installed}, another minor (or older): {installed} runs; `og upgrade --to {installed}` moves the game to it and lists what to edit, or run the pinned version through the og launcher (docs/release.md §1)"
         )
     })
 }
 
-pub const NO_ENGINE: &str = "no engine package: run `bun install` in the project (it depends on @origingame/engine), set OG_ENGINE_PACKAGE to packages/engine of an origin-engine checkout, or run inside one";
+pub const NO_ENGINE: &str = "no engine package: run og through its launcher (curl -fsSL https://origingame.ai/downloads/engine/install.sh | sh), which runs the version project.ogt pins, set OG_ENGINE_PACKAGE to an engine (a dist's engine/, or packages/engine of an origin-engine checkout), or run inside a checkout";
 
 /// `bun <script> <args>` with the script resolved in the engine package.
 pub fn bun(package: &Path, script: &str) -> Command {

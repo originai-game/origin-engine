@@ -85,7 +85,7 @@ const TOOLS: &[Tool] = &[
         install: |pin| {
             match pin {
             Some(v) => format!("run scripts/install-tools.sh (tsrs {v}), or set OG_TSRS to the binary"),
-            None => "`bun install` in the project (@origingame/engine brings @tsrs/<platform>), or set OG_TSRS to the binary".into(),
+            None => "run og through its launcher: the engine's dist carries node_modules/@tsrs/<platform> beside the engine; or set OG_TSRS to the binary".into(),
         }
         },
         repo_only: false,
@@ -509,7 +509,7 @@ fn engine_checks(out: &mut Out, cwd: &Path) -> EngineReport {
                         "differs",
                         "pin",
                         &format!("project.ogt pins engine \"{pinned}\", installed {inst}: not compatible (another minor, or older)"),
-                        Some(format!("`og upgrade` moves the game to {inst} (and lists what to edit); otherwise bun add @origingame/engine@{pinned}")),
+                        Some(format!("`og upgrade --to {inst}` moves the game to {inst} (and lists what to edit); otherwise run og through its launcher, which runs the pinned {pinned}")),
                     );
                 }
             }

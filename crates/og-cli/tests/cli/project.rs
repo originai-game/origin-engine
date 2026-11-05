@@ -39,7 +39,7 @@ fn project_commands_without_a_project_name_the_fix() {
         assert_eq!(out.status.code(), Some(1), "og {cmd}");
         let t = text(&out);
         assert!(t.contains("no project.ogt"), "og {cmd}: {t}");
-        assert!(t.contains("npm create @origingame/game"), "og {cmd}: {t}");
+        assert!(t.contains("og new <dir>"), "og {cmd}: {t}");
         assert!(!empty.join("cooked").exists() && !empty.join("dist").exists());
     }
     let probe = og().arg("probe").output().unwrap();
@@ -803,4 +803,46 @@ setInterval(() => {
     assert_eq!(reloads, 2, "{events:?}");
     assert!(pending.is_none(), "{events:?}");
     assert!(status.success(), "{status:?}");
+}
+
+/// A game run with an engine package gets `.og/engine` pointing at it (what
+/// the templates' tsconfig paths read, docs/release.md §1), repointed when
+/// the game runs with another engine; a directory there is left alone.
+#[cfg(unix)]
+#[test]
+fn a_game_links_its_engine_at_dot_og_engine() {
+    let dir = std::env::temp_dir().join(format!("og-cli-link-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let game = dir.join("game");
+    std::fs::create_dir_all(&game).unwrap();
+    std::fs::write(
+        game.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"g\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    let engine = |name: &str| {
+        let p = dir.join(name);
+        std::fs::create_dir_all(p.join("src/node")).unwrap();
+        std::fs::write(p.join("src/node/run.ts"), "").unwrap();
+        p.canonicalize().unwrap()
+    };
+    let (a, b) = (engine("a"), engine("b"));
+    let link = game.join(".og/engine");
+    let run_with = |package: &Path| {
+        og().args(["api", "find", "transform"])
+            .current_dir(&game)
+            .env("OG_ENGINE_PACKAGE", package)
+            .output()
+            .unwrap()
+    };
+    run_with(&a);
+    assert_eq!(std::fs::read_link(&link).unwrap(), a);
+    run_with(&b);
+    assert_eq!(std::fs::read_link(&link).unwrap(), b);
+    std::fs::remove_file(&link).unwrap();
+    std::fs::create_dir_all(&link).unwrap();
+    run_with(&a);
+    let kept = std::fs::symlink_metadata(&link).unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(kept.is_dir() && !kept.file_type().is_symlink());
 }

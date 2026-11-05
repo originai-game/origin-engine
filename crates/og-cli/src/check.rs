@@ -237,7 +237,7 @@ fn tsgo_panic(stderr: &str) -> Option<(PathBuf, String)> {
     ))
 }
 
-pub const NO_TSRS: &str = "no tsrs: `bun install` in the project (@origingame/engine brings @tsrs/<platform>), run scripts/install-tools.sh in an engine checkout, or set OG_TSRS to the binary";
+pub const NO_TSRS: &str = "no tsrs: run og through its launcher (the engine's dist carries node_modules/@tsrs/<platform>), run scripts/install-tools.sh in an engine checkout, or set OG_TSRS to the binary";
 
 /// One diagnostic, as the checker printed it.
 #[derive(Clone, Debug, PartialEq)]
@@ -435,7 +435,7 @@ pub fn locate_tsrs(package: Option<&Path>) -> Result<Option<Tsrs>, String> {
     let dir = real.parent().unwrap_or(Path::new("."));
     if !dir.join("lib.es2022.d.ts").is_file() {
         return Err(format!(
-            "{} has no lib.es2022.d.ts beside it in {}: tsrs reads its lib files from its own directory; reinstall the whole package (scripts/install-tools.sh or bun install)",
+            "{} has no lib.es2022.d.ts beside it in {}: tsrs reads its lib files from its own directory; reinstall the whole package (scripts/install-tools.sh, or the engine's dist: og engine install)",
             path.display(),
             dir.display()
         ));
@@ -725,6 +725,11 @@ impl Target {
             let template: serde_json::Value =
                 serde_json::from_str(TEMPLATE_TSCONFIG).expect("templates/game/tsconfig.json");
             let mut options = template["compilerOptions"].clone();
+            // The template's paths name `.og/engine` relative to a game's
+            // own tsconfig, not to this generated one.
+            if let Some(o) = options.as_object_mut() {
+                o.remove("paths");
+            }
             if let Some(paths) = engine_paths.filter(|_| !engine_in_node_modules) {
                 options["paths"] = paths;
             }

@@ -1,6 +1,6 @@
 # The 2D starter
 
-What `npm create @origingame/game` writes for a 2D game (`--profile 2d`, or
+What `og new` writes for a 2D game (`--profile 2d`, or
 a premise that says 2D, platformer, side-scroller, metroidvania or pixel
 art): the smallest whole 2D Origin Engine project. A courier runs and jumps
 the rooftops of one level, takes coins, jumps up through one-way ledges and

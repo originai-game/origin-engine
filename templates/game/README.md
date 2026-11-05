@@ -1,6 +1,6 @@
 # The game template
 
-What `npm create @origingame/game` writes: the smallest whole Origin Engine
+What `og new` writes: the smallest whole Origin Engine
 project, and the hello of the engine's design grown into a scene. A menu's
 Start button (or S, or Enter) spins the trickster and drops a crate onto
 the ground; a guard patrols the yard, sees only inside its cone and not

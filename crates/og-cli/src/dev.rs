@@ -246,7 +246,8 @@ impl EngineLoop {
                     package.display()
                 )
             })?;
-        let dir = project.work_dir().join("engine");
+        // Not `.og/engine`: that is the link to the engine package (project::LINK).
+        let dir = project.work_dir().join("dev-engine");
         std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         eprintln!(
             "og dev: building the engine in {} (cargo build -p og-host-node -p og-cli)",

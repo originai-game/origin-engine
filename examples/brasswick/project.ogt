@@ -2,7 +2,7 @@ type project
 version 1
 ---
 # The project manifest (og-game §2): `og run`, `og build`, `og cook`, `og dev`
-# and `og test` read it. Written by `npm create @origingame/game`, then made
+# and `og test` read it. Written by `og new`, then made
 # 2D: no scenes (the levels are tilemaps built in `start`).
 name "Brasswick"
 id "brasswick"

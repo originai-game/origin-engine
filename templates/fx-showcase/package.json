@@ -11,8 +11,5 @@
     "cook": "og cook .",
     "check": "og check .",
     "test": "og test ."
-  },
-  "dependencies": {
-    "@origingame/engine": "0.7.7"
   }
 }

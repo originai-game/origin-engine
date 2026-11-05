@@ -4,8 +4,7 @@ description: Building a game on Origin Engine — the entry point: the project l
 ---
 
 An Origin Engine project is plain files: TypeScript in `src/`, source assets
-in `assets/`, text scenes, and a manifest. `npm create @origingame/game`
-produces it; everything after that is code and text, never an editor. This
+in `assets/`, text scenes, and a manifest. `og new <dir>` produces it; everything after that is code and text, never an editor. This
 skill is where to start: what a game is made of, and which skill to read
 next for each part.
 
@@ -15,9 +14,8 @@ next for each part.
 `examples/<name>` in this package's skills is a game in the engine's
 source repository (https://github.com/originai-game/origin-engine/tree/main/examples),
 not installed with the package; read one there when a skill points to it.
-What a game starts from is installed: the archetypes of
-`@origingame/create-game` (`npm create @origingame/game -- --archetype <name>`,
-or Origin's `engine_scaffold`).
+What a game starts from is installed: the archetypes in the engine's dist
+(`og new <dir> --archetype <name>`, or Origin's `engine_scaffold`).
 
 Three games were written from this package alone: `examples/lantern-vale`
 (a 3D top-down adventure), `examples/hollowbell` (a 2D platformer) and
@@ -50,8 +48,8 @@ change, without a warning, and its refusals named the line and the fix.
 The order the games found productive:
 
 1. **`project.ogt`** (§2): name, id, the engine pin, the profile, tick and
-   seed. The scaffold writes it (`npm create @origingame/game --profile
-   2d` writes the 2D starter, a platformer with sprites, a tilemap and 2D
+   seed. The scaffold writes it (`og new <dir> --profile 2d`
+   writes the 2D starter, a platformer with sprites, a tilemap and 2D
    physics, as does a premise that says 2D, platformer, side-scroller,
    metroidvania or pixel art; `3d`, the default, the 3D template; an
    archetype brings its own); change it there and nowhere else.

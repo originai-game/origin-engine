@@ -6,7 +6,7 @@ version 1
 # from the catalogue's 16bit-pixel preset (a 224-pixel-tall frame, eight-tone
 # ramps, a Bayer dither: the camera's 14 units are 16 pixels each, one per
 # texel of the tiles); a block written below wins over the preset field by
-# field, and `extends` takes any catalogue slug. `npm create @origingame/game`
-# writes the game's own look from its premise, or from --look <slug>.
+# field, and `extends` takes any catalogue slug. `og new` writes
+# the game's own look from its premise, or from --look <slug>.
 name "Origin Game 2D"
 extends "16bit-pixel"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// `npm create @origingame/game` (and `bun create`): scaffolds the Origin
+// `og new` (the og launcher runs this from the engine dist's create/): scaffolds the Origin
 // Engine project template (templates/game) into a directory, naming the game.
 //
 //   create [dir] [--name "Name"] [--id slug] [--profile 2d|3d] [--archetype runner|match3|...]

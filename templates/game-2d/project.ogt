@@ -2,7 +2,7 @@ type project
 version 1
 ---
 # The project manifest (docs/design.md §2.5): `og run`, `og build`, `og cook`,
-# `og dev` and `og test` read it. `npm create @origingame/game` writes this
+# `og dev` and `og test` read it. `og new` writes this
 # 2D starter for a 2D premise (or `--profile 2d`) and fills in the name and id.
 name "Origin Game 2D"
 id "origin-game-2d"

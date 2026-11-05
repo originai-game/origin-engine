@@ -54,7 +54,7 @@ game can hold on every frame. Some premises and where they land:
 | an arcade shooter, rhythm or racing game | `neon-vector` | bright outlines that bloom on a dark scene; a large ground plane keeps its outline only where it ends, and with `outlineDistance` a line grows at most four times its width near the camera |
 | a narrative puzzle, gentle and sad | `watercolor-wash` | bleeding strokes pooling at their rims on paper |
 
-`npm create @origingame/game -- --premise "<one line>"` does this match
+`og new <dir> --premise "<one line>"` does this match
 for a new game and writes the result (`--look <slug>` names it instead):
 `assets/looks/<game>.ogt` extending the preset, named by `GameDesc.look`
 and by project.ogt's `look` line, with a README section on changing it.

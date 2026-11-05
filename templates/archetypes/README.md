@@ -3,9 +3,8 @@
 Complete games a Maker starts from, each a project like `templates/game`
 and the 2D starter `templates/game-2d` (`project.ogt`, `src/`, `assets/`,
 `tests/`, `package.json`, `tsconfig.json`) that `og run`, `og test` and
-`og build` take as is; `npm create @origingame/game --archetype <name>`
-writes one, with its own profile. They
-rebuild the platform's six Godot Discover prototypes on Origin Engine,
+`og build` take as is; `og new <dir> --archetype <name>` writes one, with
+its own profile. They rebuild the platform's six Godot Discover prototypes on Origin Engine,
 keeping each prototype's premise and lessons and none of its code or art,
 and add a top-down room built for the engine's 2D and game-feel modules
 and a third-person vale, the engine's mid-size 3D slice.

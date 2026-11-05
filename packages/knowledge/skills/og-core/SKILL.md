@@ -15,9 +15,8 @@ that works on one host, one seed or one machine and not the next.
 `examples/<name>` in this package's skills is a game in the engine's
 source repository (https://github.com/originai-game/origin-engine/tree/main/examples),
 not installed with the package; read one there when a skill points to it.
-What a game starts from is installed: the archetypes of
-`@origingame/create-game` (`npm create @origingame/game -- --archetype <name>`,
-or Origin's `engine_scaffold`).
+What a game starts from is installed: the archetypes in the engine's dist
+(`og new <dir> --archetype <name>`, or Origin's `engine_scaffold`).
 
 Two games written from this package alone (`examples/lantern-vale`, a 3D
 adventure, and `examples/hollowbell`, a 2D platformer) hold these rules

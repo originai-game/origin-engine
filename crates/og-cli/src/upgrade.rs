@@ -4,14 +4,15 @@
 //! The installed engine package's `changelog.json` says what each version
 //! between the pin (`project.ogt`'s `engine`) and the target (`--to`, else
 //! the installed version) changed: `og upgrade` writes the target into
-//! project.ogt's `engine` line and package.json's `@origingame/engine`
-//! dependency, applies the mechanical rewrites (`codemod`) of the breaking
-//! entries it crosses to the game's sources (`src/`, `assets/` text), and
-//! lists every place the other breaking entries' identifiers (`find`)
-//! appear, with the change and its fix, as `og migrate three` lists what it
-//! cannot rewrite. A breaking entry without identifiers is listed under
-//! `review`. It does not install the package (`bun install` does, with the
-//! new dependency) and never downgrades.
+//! project.ogt's `engine` line (the one pin: a game has no package.json
+//! dependency on the engine since 0.7.8, docs/release.md §1), applies the
+//! mechanical rewrites (`codemod`) of the breaking entries it crosses to the
+//! game's sources (`src/`, `assets/` text), and lists every place the other
+//! breaking entries' identifiers (`find`) appear, with the change and its
+//! fix, as `og migrate three` lists what it cannot rewrite. A breaking entry
+//! without identifiers is listed under `review`. It never downgrades; the og
+//! launcher's `og upgrade` installs the target version and runs this with
+//! it.
 //!
 //! Exit status: 0 done (nothing left to edit by hand), 3 done with places
 //! to edit by hand (`manual`), 1 failed (nothing written), 2 usage.
@@ -101,7 +102,7 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
         Err(e) => {
             return failed(
                 format!(
-                    "the engine package at {} has no readable changelog.json ({e}); upgrade @origingame/engine to 0.6.2 or later first",
+                    "the engine package at {} has no readable changelog.json ({e}); run og upgrade with an engine of 0.6.2 or later (the og launcher's og upgrade does)",
                     package.display()
                 ),
                 base,
@@ -117,7 +118,7 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
     if !known(&to) {
         return failed(
             format!(
-                "{to} is not in the installed engine's changelog (the installed engine is {installed}): install @origingame/engine@{to} and run its og upgrade"
+                "{to} is not in the installed engine's changelog (the installed engine is {installed}): run og upgrade --to {to} through the og launcher, which installs {to} and runs its og upgrade"
             ),
             base,
         );
@@ -276,12 +277,6 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
                 }
             },
             Err(e) => return failed(format!("project.ogt: {e}"), base),
-        }
-        let pkg = p.root.join("package.json");
-        if let Ok(text) = std::fs::read_to_string(&pkg)
-            && let Some(t) = set_dependency(&text, &to)
-        {
-            writes.push((pkg, t));
         }
     }
     writes.extend(
@@ -472,17 +467,6 @@ fn set_engine_line(text: &str, to: &str) -> Option<String> {
     hit.then(|| lines.join("\n"))
 }
 
-/// package.json with its `"@origingame/engine": "<v>"` set to `to`.
-fn set_dependency(text: &str, to: &str) -> Option<String> {
-    let key = "\"@origingame/engine\"";
-    let at = text.find(key)? + key.len();
-    let rest = &text[at..];
-    let open = at + rest.find('"')?;
-    let close = open + 1 + text[open + 1..].find('"')?;
-    (text[at..open].trim() == ":")
-        .then(|| format!("{}\"{to}\"{}", &text[..open], &text[close + 1..]))
-}
-
 fn print_text(r: &Value, dry: bool) {
     if r["status"] == "failed" {
         eprintln!("og upgrade: {}", r["reason"].as_str().unwrap_or("failed"));
@@ -539,7 +523,7 @@ fn print_text(r: &Value, dry: bool) {
         );
     }
     if !dry {
-        println!("  then: bun install, og check, og test");
+        println!("  then: og check, og test");
     }
 }
 
@@ -548,7 +532,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_pin_and_the_dependency_are_rewritten_in_place() {
+    fn the_pin_is_rewritten_in_place() {
         let ogt =
             "type project\nversion 1\n---\nname \"x\"\nengine \"0.5.0\"\nentry \"src/main.ts\"\n";
         assert_eq!(
@@ -556,10 +540,5 @@ mod tests {
             ogt.replace("0.5.0", "0.6.2")
         );
         assert!(set_engine_line("type project\n---\nengineer \"a\"\n", "1.0.0").is_none());
-        let pkg = "{\n  \"dependencies\": {\n    \"@origingame/engine\": \"^0.5.0\",\n    \"x\": \"1\"\n  }\n}\n";
-        assert_eq!(
-            set_dependency(pkg, "0.6.2").unwrap(),
-            pkg.replace("^0.5.0", "0.6.2")
-        );
     }
 }

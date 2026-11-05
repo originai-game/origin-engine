@@ -565,9 +565,9 @@ fn doctor_outside_the_repository_needs_only_bun_and_the_engine() {
     }
     assert!(line("node").starts_with("optional"), "{t}");
     assert!(line("bun").starts_with("ok"), "{t}");
-    // No tsrs: the fix outside the repository is the project's bun install.
+    // No tsrs: the fix outside the repository is the launcher's dist.
     assert!(line("tsrs").starts_with("missing"), "{t}");
-    assert!(t.contains("fix: `bun install` in the project"), "{t}");
+    assert!(t.contains("fix: run og through its launcher"), "{t}");
     // Outside the repository a tsrs found is not compared with any pin.
     let fake_dir = std::env::temp_dir().join(format!("og-cli-doctor-out-{}", std::process::id()));
     let fake = fake_tsrs(&fake_dir, "9.9.9", "", 0, true);
@@ -814,8 +814,9 @@ fn upgrade_rewrites_the_pin_applies_codemods_and_lists_hand_edits() {
     );
     let pinned = std::fs::read_to_string(dir.join("project.ogt")).unwrap();
     assert_eq!(pinned, manifest("0.6.1"));
+    // project.ogt is the one pin: a package.json is left as it is.
     let pkg = std::fs::read_to_string(dir.join("package.json")).unwrap();
-    assert!(pkg.contains("\"@origingame/engine\": \"0.6.1\""), "{pkg}");
+    assert!(pkg.contains("\"@origingame/engine\": \"^0.6.0\""), "{pkg}");
     // doctor's pin: an older patch of the installed minor is compatible, an
     // older minor is not.
     let pin = |engine: &str| {

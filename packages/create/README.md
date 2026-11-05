@@ -6,8 +6,9 @@ repository, the 3D template `templates/game` or the 2D starter
 `package.json` and `tsconfig.json`, with the game's name and id filled in.
 
 ```sh
+og new my-game --name "My Game"                              # the og launcher: the latest release's create
 bun packages/create/bin/create.ts my-game --name "My Game"   # in the engine repository
-cd my-game && bun install && og cook && og run .
+cd my-game && og cook && og run .
 ```
 
 `create [dir] [--name "Name"] [--id slug] [--profile 2d|3d] [--archetype name] [--premise "one line"] [--look slug] [--force]`: the
@@ -93,8 +94,7 @@ its own name it would route the engine repository's plain-blob media through
 LFS too. `bun run test` scaffolds into a
 temporary directory and checks the result.
 
-Note on the name: npm maps `npm create @origingame/game` to the package
-`@origingame/create-game` and `npm create @origingame` to `@origingame/create-game`.
-This package is `@origingame/create-game` (design §9); publishing it also as
-`@origingame/create-game`, or documenting `npm create @origingame`, is the
-publisher's choice.
+Authors reach it as `og new <dir> [options]`: the og launcher runs this
+package's `bin/create.ts` from the engine's dist (`create/`, docs/release.md
+§1). It is no longer published to npm; the versions on npm up to 0.7.8-dev.17
+stay there.
