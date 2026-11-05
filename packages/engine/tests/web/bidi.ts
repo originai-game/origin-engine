@@ -165,7 +165,7 @@ export class FirefoxPage {
     });
   }
 
-  /** The two CDP commands the reference runners send to a page, in BiDi. */
+  /** The CDP commands the browser tests send to a page, in BiDi. */
   async send(method: string, params: Record<string, unknown> = {}): Promise<void> {
     if (method === "Emulation.setDeviceMetricsOverride") {
       await this.#browser.send("browsingContext.setViewport", {
@@ -175,14 +175,18 @@ export class FirefoxPage {
       });
     } else if (method === "Page.navigate") {
       await this.#browser.send("browsingContext.navigate", { context: this.context, url: params["url"], wait: "none" });
+    } else if (method === "Page.reload") {
+      await this.#browser.send("browsingContext.reload", { context: this.context, wait: "none" });
+    } else if (method === "Page.close") {
+      await this.#browser.send("browsingContext.close", { context: this.context });
     } else throw new Error(`bidi.ts: no ${method} (cdp.ts's Page has it)`);
   }
 
-  /** Evaluate an expression (awaiting a Promise) in the page; the value goes through JSON. */
-  async eval<T = unknown>(expression: string): Promise<T> {
+  /** Evaluate an expression (awaiting a Promise) in the page, or in a frame's context; the value goes through JSON. */
+  async eval<T = unknown>(expression: string, context = this.context): Promise<T> {
     const r = await this.#browser.send<{ type: string; result?: Remote; exceptionDetails?: { text: string } }>("script.evaluate", {
       expression: `(async () => JSON.stringify(await (${expression})))()`,
-      target: { context: this.context },
+      target: { context },
       awaitPromise: true,
       resultOwnership: "none",
     });
@@ -190,12 +194,13 @@ export class FirefoxPage {
     return (r.result?.type === "string" ? JSON.parse(r.result.value as string) : undefined) as T;
   }
 
-  /** Wait until `expression` is truthy (polled; the value itself need not go through JSON). */
-  async until(expression: string, timeoutMs = 30_000): Promise<true> {
+  /** Wait until `expression` is truthy (polled), and answer its value (`true` where it does not go through JSON). */
+  async until<T = true>(expression: string, timeoutMs = 30_000): Promise<T> {
     const t0 = performance.now();
     for (;;) {
       try {
-        if (await this.eval<boolean>(`!!(${expression})`)) return true;
+        const v = await this.eval<T | null>(`(async () => { const v = await (${expression}); if (!v) return null; try { return JSON.stringify(v) === undefined ? true : v; } catch { return true; } })()`);
+        if (v) return v;
       } catch {
         /* the page is still loading */
       }
@@ -203,4 +208,93 @@ export class FirefoxPage {
       await new Promise((r) => setTimeout(r, 50));
     }
   }
+
+  /** Evaluate in the child frame whose URL contains `part` (cross-origin frames too: BiDi reaches every context). */
+  async evalChild<T = unknown>(part: string, expression: string): Promise<T> {
+    const { contexts } = await this.#browser.send<{ contexts: Array<{ context: string; url: string; children?: unknown[] }> }>("browsingContext.getTree", { root: this.context });
+    type Node = { context: string; url: string; children?: Node[] };
+    const all: Node[] = [];
+    const walk = (n: Node) => {
+      all.push(n);
+      for (const c of n.children ?? []) walk(c);
+    };
+    for (const c of contexts as Node[]) for (const k of c.children ?? []) walk(k);
+    const child = all.find((n) => n.url.includes(part));
+    if (!child) throw new Error(`no frame at ${part} (frames: ${all.map((n) => n.url).join(", ") || "none"})`);
+    return this.eval<T>(expression, child.context);
+  }
+
+  /**
+   * The frame an input action goes to: Firefox dispatches a top-level
+   * context's actions in that document only, never into a cross-origin
+   * iframe (out of process), so each action goes to the frame that would
+   * receive it, the one under the point (`at`, with the point in its own
+   * coordinates) or the one with focus (no `at`), descending through iframes.
+   */
+  async #inputTarget(at?: { x: number; y: number }): Promise<{ context: string; x: number; y: number }> {
+    type Node = { context: string; url: string; children?: Node[] };
+    const { contexts } = await this.#browser.send<{ contexts: Node[] }>("browsingContext.getTree", { root: this.context });
+    let node = contexts[0]!;
+    let x = at?.x ?? 0, y = at?.y ?? 0;
+    for (;;) {
+      const kids = node.children ?? [];
+      if (kids.length === 0) break;
+      const frames = await this.eval<Array<{ src: string; left: number; top: number; right: number; bottom: number; focused: boolean }>>(
+        `[...document.querySelectorAll("iframe")].map((f) => { const r = f.getBoundingClientRect(); return { src: f.src, left: r.left + f.clientLeft, top: r.top + f.clientTop, right: r.right, bottom: r.bottom, focused: document.activeElement === f }; })`,
+        node.context,
+      );
+      const hit = frames.find((f) => (at ? x >= f.left && x < f.right && y >= f.top && y < f.bottom : f.focused));
+      const kid = hit && kids.find((k) => k.url.split("#")[0] === hit.src.split("#")[0]);
+      if (!hit || !kid) break;
+      x -= hit.left;
+      y -= hit.top;
+      node = kid;
+    }
+    return { context: node.context, x: Math.round(x), y: Math.round(y) };
+  }
+
+  async #pointer(pointerType: "touch" | "mouse", x: number, y: number): Promise<void> {
+    const t = await this.#inputTarget({ x, y });
+    await this.#browser.send("input.performActions", {
+      context: t.context,
+      actions: [{ type: "pointer", id: pointerType, parameters: { pointerType }, actions: [{ type: "pointerMove", x: t.x, y: t.y }, { type: "pointerDown", button: 0 }, { type: "pointerUp", button: 0 }] }],
+    });
+  }
+
+  /** A tap (touch) at CSS pixel x, y of the page. */
+  tap(x: number, y: number): Promise<void> {
+    return this.#pointer("touch", x, y);
+  }
+
+  click(x: number, y: number): Promise<void> {
+    return this.#pointer("mouse", x, y);
+  }
+
+  /**
+   * A key press, named as cdp.ts names it (`code`, `key`). WebDriver sends a
+   * key by its value and the browser derives the code from a US layout, so
+   * a named key goes as WebDriver's code point for it.
+   */
+  async key(code: string, key = code): Promise<void> {
+    const value = WEBDRIVER_KEYS[key] ?? (key.length === 1 ? key : undefined);
+    if (value === undefined) throw new Error(`bidi.ts: no WebDriver value for key ${key} (code ${code})`);
+    await this.#browser.send("input.performActions", {
+      context: (await this.#inputTarget()).context,
+      actions: [{ type: "key", id: "keyboard", actions: [{ type: "keyDown", value }, { type: "keyUp", value }] }],
+    });
+  }
 }
+
+/** WebDriver's code points for the named keys the tests press (the WebDriver spec's keyboard table). */
+const WEBDRIVER_KEYS: Record<string, string> = {
+  Enter: "\uE007",
+  Escape: "\uE00C",
+  Tab: "\uE004",
+  Backspace: "\uE003",
+  ArrowLeft: "\uE012",
+  ArrowUp: "\uE013",
+  ArrowRight: "\uE014",
+  ArrowDown: "\uE015",
+  Shift: "\uE008",
+  Control: "\uE009",
+};
