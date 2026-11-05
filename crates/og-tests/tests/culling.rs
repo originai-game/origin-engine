@@ -213,7 +213,9 @@ fn gpu_culling_draws_the_cpu_paths_frame() {
 /// shared args buffer draws, pixel for pixel: over the occluders' depth
 /// (city-street), the shadow passes (shadows-local-8), skinned batches
 /// (skinning, crowd-culling), the prepass (motion-blur) and spheres-20k,
-/// which Safari tore when its draws shared the buffer.
+/// which Safari tore when its draws shared the buffer; and the crowds'
+/// and scatter's culls, whose draws share theirs (crowd-lods,
+/// impostor-scatter).
 #[test]
 fn per_draw_indirect_args_draw_the_shared_buffers_frame() {
     let mut failures = Vec::new();
@@ -224,6 +226,11 @@ fn per_draw_indirect_args_draw_the_shared_buffers_frame() {
         ("crowd-culling", 3),
         ("motion-blur", 3),
         ("spheres-20k", 1),
+        // The other culls that write one args buffer: crowds' levels and
+        // cards (crowd_gpu.rs), scatter's copies and impostors
+        // (scatter_cull.rs).
+        ("crowd-lods", 3),
+        ("impostor-scatter", 2),
     ] {
         let run = |per_draw: bool| {
             render_with(name, frames, |d| {
@@ -232,9 +239,10 @@ fn per_draw_indirect_args_draw_the_shared_buffers_frame() {
             })
         };
         let (shared, own) = (run(false), run(true));
-        assert!(
-            own.gpu_frames.iter().all(|&x| x),
-            "{name}: culled on the GPU"
+        // Scatter's own cull runs whether or not instances are GPU-culled.
+        assert_eq!(
+            own.gpu_frames, shared.gpu_frames,
+            "{name}: the same frames GPU-culled"
         );
         let exact = Tolerance {
             channel: 0,

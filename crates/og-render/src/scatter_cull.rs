@@ -115,6 +115,10 @@ pub(crate) struct ScatterCull {
     sampler: wgpu::Sampler,
     /// This frame's chunks: their uniform rows written, their maps.
     frame: Vec<Option<crate::TextureHandle>>,
+    /// Each item's two draws' args copied after the cull (slots 2k and
+    /// 2k + 1), which draws read instead of `draws` on WebKit
+    /// (`indirect_own.rs`); `None` elsewhere.
+    per_draw: Option<crate::indirect_own::OwnArgs>,
 }
 
 fn texture_1x1(
@@ -148,7 +152,7 @@ fn texture_1x1(
 }
 
 impl ScatterCull {
-    pub(crate) fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> ScatterCull {
+    pub(crate) fn new(device: &wgpu::Device, queue: &wgpu::Queue, per_draw: bool) -> ScatterCull {
         let cs = wgpu::ShaderStages::COMPUTE;
         let entry = |binding, ty| wgpu::BindGroupLayoutEntry {
             binding,
@@ -266,6 +270,7 @@ impl ScatterCull {
                 ..Default::default()
             }),
             frame: Vec::new(),
+            per_draw: per_draw.then(Default::default),
         }
     }
 
@@ -274,7 +279,8 @@ impl ScatterCull {
     }
 
     fn draws_usage() -> wgpu::BufferUsages {
-        wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT
+        // COPY_SRC: copied to each draw's own args on WebKit (`per_draw`).
+        wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_SRC
     }
 
     /// A chunk's copies as the cull reads them (its buffer has STORAGE).
@@ -305,6 +311,9 @@ impl ScatterCull {
         let n = items.len() as u64;
         if n == 0 {
             return Vec::new();
+        }
+        if let Some(own) = &mut self.per_draw {
+            own.ensure(device, 2 * n as usize);
         }
         let make = |label, size, usage| {
             device.create_buffer(&wgpu::BufferDescriptor {
@@ -464,6 +473,34 @@ impl ScatterCull {
             pass.set_bind_group(1, *group, &[]);
             pass.set_bind_group(2, map, &[]);
             pass.dispatch_workgroups(1, 1, 1);
+        }
+        drop(pass);
+        if let Some(own) = &self.per_draw {
+            for k in 0..self.frame.len() {
+                let at = Culled {
+                    item: k as u32,
+                    first: 0,
+                };
+                own.copy(encoder, &self.draws, at.mesh_draw(), 2 * k, 20);
+                own.copy(encoder, &self.draws, at.card_draw(), 2 * k + 1, 16);
+            }
+        }
+    }
+
+    /// The buffer and byte offset `at`'s indexed (mesh) draw reads its
+    /// args from: `draws`, or its own copy on WebKit.
+    pub fn mesh_args(&self, at: &Culled) -> (&wgpu::Buffer, u64) {
+        match &self.per_draw {
+            Some(own) => (own.get(2 * at.item as usize), 0),
+            None => (&self.draws, at.mesh_draw()),
+        }
+    }
+
+    /// [`Self::mesh_args`] of `at`'s plain (card) draw.
+    pub fn card_args(&self, at: &Culled) -> (&wgpu::Buffer, u64) {
+        match &self.per_draw {
+            Some(own) => (own.get(2 * at.item as usize + 1), 0),
+            None => (&self.draws, at.card_draw()),
         }
     }
 }

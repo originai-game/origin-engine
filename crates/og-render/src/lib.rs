@@ -59,6 +59,7 @@ macro_rules! wgsl3d {
 /// none of them (`RenderCapabilities.world3d`).
 pub const WORLD_3D: bool = cfg!(not(feature = "profile2d"));
 
+mod indirect_own;
 mod renderer;
 pub use renderer::*;
 

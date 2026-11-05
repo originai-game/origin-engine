@@ -77,6 +77,9 @@ pub(crate) struct CrowdCulling {
     pub n: u32,
     pub d: u32,
     pub rows_of: Vec<Option<u32>>,
+    /// Each (row, draw)'s args copied after the cull, which draws read
+    /// instead of `args` on WebKit (`indirect_own.rs`); `None` elsewhere.
+    per_draw: Option<crate::indirect_own::OwnArgs>,
 }
 
 fn storage(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
@@ -107,7 +110,7 @@ fn buffer(
 }
 
 impl CrowdCulling {
-    pub fn new(device: &wgpu::Device, max_binding: u64) -> CrowdCulling {
+    pub fn new(device: &wgpu::Device, max_binding: u64, per_draw: bool) -> CrowdCulling {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("crowd cull"),
             entries: &[
@@ -215,6 +218,7 @@ impl CrowdCulling {
             n: 0,
             d: 0,
             rows_of: Vec::new(),
+            per_draw: per_draw.then(Default::default),
         }
     }
 
@@ -235,8 +239,17 @@ impl CrowdCulling {
     }
 
     /// The byte offset of row `row`'s draw `draw` in [`Self::args`].
-    pub fn draw_offset(&self, row: u32, draw: u32) -> u64 {
+    fn draw_offset(&self, row: u32, draw: u32) -> u64 {
         (row as u64 * self.d as u64 + draw as u64) * 20
+    }
+
+    /// The buffer and byte offset row `row`'s draw `draw` reads its
+    /// indirect args from: [`Self::args`], or its own copy on WebKit.
+    pub fn draw_args(&self, row: u32, draw: u32) -> (&wgpu::Buffer, u64) {
+        match &self.per_draw {
+            Some(own) => (own.get((row * self.d + draw) as usize), 0),
+            None => (&self.args, self.draw_offset(row, draw)),
+        }
     }
 
     /// Grows `buf` to `size` bytes, keeping its usage; whether it was replaced.
@@ -426,6 +439,12 @@ impl CrowdCulling {
             pass.set_pipeline(&self.totals);
             pass.dispatch_workgroups(1, 1, 1);
             drop(pass);
+            if let Some(own) = &mut self.per_draw {
+                own.ensure(device, (r * d) as usize);
+                for k in 0..r * d {
+                    own.copy(encoder, &self.args, k as u64 * 20, k as usize, 20);
+                }
+            }
             encoder.copy_buffer_to_buffer(
                 &self.args,
                 r as u64 * d as u64 * 20,

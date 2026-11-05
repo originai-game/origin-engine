@@ -361,18 +361,10 @@ pub(crate) struct GpuCulling {
     pub b: u32,
     /// The first skinned batch in the batch table (after the instances').
     skinned_base_batch: u32,
-    /// Where draws read their args from instead of `args` on WebKit
-    /// ([`crate::RenderInfo::indirect_per_draw`]): each (pass, batch)
-    /// draw's five words copied to a buffer of its own after the cull.
-    /// WebKit's Metal backend (Safari 27.2, its 7625 branch) clamps every
-    /// indirect draw's args into one 20-byte slot owned by the indirect
-    /// buffer and fetches the draw's args from that slot, with nothing
-    /// ordering one draw's fetch before the next draw's clamp writes it:
-    /// draws in one pass then read each other's counts and draw torn
-    /// (spheres-20k, tests/evidence/compat/safari/NOTES.md; fixed upstream
-    /// by WebKit 6dca6330db, bug 321876, per-draw scratch). A buffer per
-    /// draw is a slot per draw. `None` elsewhere: draws read `args`.
-    per_draw: Option<Vec<wgpu::Buffer>>,
+    /// Each (pass, batch) draw's args copied after the cull, which draws
+    /// read instead of `args` on WebKit (`indirect_own.rs`); `None`
+    /// elsewhere.
+    per_draw: Option<crate::indirect_own::OwnArgs>,
 }
 
 fn storage(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
@@ -634,7 +626,7 @@ impl GpuCulling {
             n: 0,
             b: 0,
             skinned_base_batch: 0,
-            per_draw: per_draw.then(Vec::new),
+            per_draw: per_draw.then(Default::default),
         }
     }
 
@@ -712,7 +704,7 @@ impl GpuCulling {
     /// own copy ([`Self::per_draw`]).
     pub fn draw_args(&self, g: u32, b: u32) -> (&wgpu::Buffer, u64) {
         match &self.per_draw {
-            Some(own) => (&own[(g * self.b + b) as usize], 0),
+            Some(own) => (own.get((g * self.b + b) as usize), 0),
             None => (&self.args, self.draw_offset(g, b)),
         }
     }
@@ -724,10 +716,14 @@ impl GpuCulling {
 
     /// Copies passes `groups`' draw args to their own buffers
     /// ([`Self::per_draw`]; nothing without them), after the cull that
-    /// wrote them. `passes`: the frame's pass count.
-    /// (Fields, not `self`: `encode` holds the pyramid meanwhile.)
+    /// wrote them. `passes`: the frame's pass count. (Fields, not `self`:
+    /// `encode` holds the pyramid meanwhile.)
     fn copy_per_draw(
-        (per_draw, args, b): (&mut Option<Vec<wgpu::Buffer>>, &wgpu::Buffer, u32),
+        (per_draw, args, b): (
+            &mut Option<crate::indirect_own::OwnArgs>,
+            &wgpu::Buffer,
+            u32,
+        ),
         device: &wgpu::Device,
         encoder: &mut wgpu::CommandEncoder,
         passes: u32,
@@ -736,18 +732,11 @@ impl GpuCulling {
         let Some(own) = per_draw else {
             return;
         };
-        while own.len() < (passes * b) as usize {
-            own.push(buffer(
-                device,
-                "cull draw",
-                20,
-                wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
-            ));
-        }
+        own.ensure(device, (passes * b) as usize);
         for g in groups {
             for k in 0..b {
                 let d = g * b + k;
-                encoder.copy_buffer_to_buffer(args, d as u64 * 20, &own[d as usize], 0, 20);
+                own.copy(encoder, args, d as u64 * 20, d as usize, 20);
             }
         }
     }

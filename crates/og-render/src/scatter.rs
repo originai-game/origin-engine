@@ -996,6 +996,9 @@ pub(crate) struct ScatterPipelines<'a> {
     pub trample: wgpu::TextureView,
     /// Whether compute runs: the main camera's copies are culled on the GPU.
     pub compute: bool,
+    /// [`crate::RenderInfo::indirect_per_draw`]: the cull's draws read
+    /// args of their own (`indirect_own.rs`).
+    pub indirect_per_draw: bool,
 }
 
 /// Draws [`ScatterDraw`]s from cached chunks.
@@ -1213,7 +1216,7 @@ impl ScatterRenderer {
             card_instances: None,
             cull: p
                 .compute
-                .then(|| crate::scatter_cull::ScatterCull::new(device, queue)),
+                .then(|| crate::scatter_cull::ScatterCull::new(device, queue, p.indirect_per_draw)),
             culled_chunks: Vec::new(),
             place: p
                 .compute
@@ -2383,7 +2386,8 @@ impl ScatterRenderer {
                 match culled {
                     Some((cull, at)) => {
                         pass.set_vertex_buffer(1, cull.list.slice(at.list_offset()..));
-                        pass.draw_indexed_indirect(&cull.draws, at.mesh_draw());
+                        let (args, offset) = cull.mesh_args(&at);
+                        pass.draw_indexed_indirect(args, offset);
                     }
                     None => {
                         pass.set_vertex_buffer(1, buffer.slice(..));
@@ -2428,7 +2432,8 @@ impl ScatterRenderer {
                 match culled {
                     Some((cull, at)) => {
                         pass.set_vertex_buffer(0, cull.list.slice(at.list_offset()..));
-                        pass.draw_indirect(&cull.draws, at.card_draw());
+                        let (args, offset) = cull.card_args(&at);
+                        pass.draw_indirect(args, offset);
                     }
                     None => {
                         pass.set_vertex_buffer(0, buffer.slice(..));
@@ -2500,7 +2505,8 @@ impl ScatterRenderer {
                 pass.set_index_buffer(self.card_quad.slice(..), wgpu::IndexFormat::Uint32);
                 match gpu {
                     Some((cc, row)) => {
-                        pass.draw_indexed_indirect(&cc.args, cc.draw_offset(row, b.input.draw))
+                        let (args, at) = cc.draw_args(row, b.input.draw);
+                        pass.draw_indexed_indirect(args, at)
                     }
                     None => pass.draw_indexed(0..6, 0, 0..count),
                 }

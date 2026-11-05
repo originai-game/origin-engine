@@ -194,7 +194,13 @@ impl Renderer {
                 culls
                     && self
                         .crowd_gpu
-                        .get_or_insert_with(|| crowd_gpu::CrowdCulling::new(&self.device, max))
+                        .get_or_insert_with(|| {
+                            crowd_gpu::CrowdCulling::new(
+                                &self.device,
+                                max,
+                                self.info.indirect_per_draw,
+                            )
+                        })
                         .fits(crowd_frame.len(), rows)
             };
         // The CPU path's card records (`crowd_impostor.rs` draws them whole).

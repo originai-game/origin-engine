@@ -937,6 +937,7 @@ impl Renderer {
                 wind_field: wind_field.lean_view.clone(),
                 trample: trample.view.clone(),
                 compute: vegetation_compute,
+                indirect_per_draw: info.indirect_per_draw,
             },
         );
         let grass = grass::GrassRenderer::new(

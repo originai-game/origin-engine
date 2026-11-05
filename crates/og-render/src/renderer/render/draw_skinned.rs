@@ -99,7 +99,8 @@ impl Renderer {
                 (Some(d), Some((cc, row))) => {
                     let start = cc.row_offset(row);
                     pass.set_vertex_buffer(1, cc.records.slice(start..cc.row_offset(row + 1)));
-                    pass.draw_indexed_indirect(&cc.args, cc.draw_offset(row, d));
+                    let (args, at) = cc.draw_args(row, d);
+                    pass.draw_indexed_indirect(args, at);
                 }
                 _ => {
                     let (records, first) = match indirect {
