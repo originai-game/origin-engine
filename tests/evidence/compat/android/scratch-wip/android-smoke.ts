@@ -1,0 +1,14 @@
+import { Browser } from "../../../packages/engine/tests/web/cdp.ts";
+const server = Bun.serve({ port: 0, fetch: () => new Response("<!doctype html><canvas></canvas>", { headers: { "content-type": "text/html" } }) });
+const b = await Browser.from(["--android"], { reverse: [server.port] });
+console.log("device", b.device);
+const log: string[] = [];
+const p = await b.open(`http://127.0.0.1:${server.port}/`, log);
+await p.until("document.readyState === 'complete'", 15000);
+await p.send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 720, deviceScaleFactor: 1, mobile: false });
+console.log(await p.eval("JSON.stringify({ secure: isSecureContext, gpu: !!navigator.gpu, w: innerWidth, h: innerHeight, dpr: devicePixelRatio, host: location.host })"));
+await b.close();
+server.stop();
+const r = Bun.spawnSync(["adb", "reverse", "--list"]);
+const f = Bun.spawnSync(["adb", "forward", "--list"]);
+console.log("reverse after close:", JSON.stringify(new TextDecoder().decode(r.stdout)), "forward:", JSON.stringify(new TextDecoder().decode(f.stdout)));
