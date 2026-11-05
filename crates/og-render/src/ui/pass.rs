@@ -684,7 +684,7 @@ impl UiRenderer {
             pipelines.push((kind, p));
         }
         let mut pending = Box::pin(scope.pop());
-        // Native devices answer at once; the web's on a later frame.
+        // Native devices answer at once; the web's on a later turn (drawn meanwhile: custom_pipeline).
         let waker = std::task::Waker::noop();
         let mut cx = std::task::Context::from_waker(waker);
         let pending = match pending.as_mut().poll(&mut cx) {
@@ -718,8 +718,13 @@ impl UiRenderer {
         material: super::UiMaterialHandle,
         kind: TargetKind,
     ) -> Option<&wgpu::RenderPipeline> {
+        // Drawn while its error scope is still pending, as a custom post pass is
+        // (post_custom.rs): the web's pop answers only on a later turn of the
+        // browser's event loop, after the frames a harness or the first frame
+        // draw in one, and `material.check()` has validated the module already.
+        // A scope that then reports an error makes it Failed (`prepare`).
         match self.custom.get(&(scene, material.index())) {
-            Some((_, Compiled::Ready { pipelines, pending })) if pending.is_none() => {
+            Some((_, Compiled::Ready { pipelines, .. })) => {
                 pipelines.iter().find(|(k, _)| *k == kind).map(|(_, p)| p)
             }
             _ => None,
