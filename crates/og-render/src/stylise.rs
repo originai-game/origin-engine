@@ -403,6 +403,13 @@ impl Watercolor {
     pub fn reads_paper(&self) -> bool {
         self.granulation > 0.0 || self.dry_brush > 0.0 || self.wobble > 0.0
     }
+
+    /// Whether the wash reads its outer boundaries (the prepass's object
+    /// edges, silhouettes and creases): where its rim pools and its dry
+    /// brush skips.
+    pub fn edges(&self) -> bool {
+        self.edge_darkening > 0.0 || self.dry_brush > 0.0
+    }
 }
 
 /// [`Paint::detail`]'s default: detail keeps its shape fully.

@@ -730,6 +730,10 @@ pub struct Renderer {
     /// The conformed colours' hash table the stylise quantiser reads
     /// (`stylise::conformed_table`) and the scene revision it was made at.
     conformed: (u64, wgpu::TextureView),
+    /// The paint canvas's mean height and spread (linear red; the
+    /// watercolour wash reads the paper's relief in those units), and the
+    /// texture slot and revision they were measured from.
+    canvas_stats: (Option<(usize, u64)>, [f32; 2]),
     default_normal: wgpu::TextureView,
     white_sprite_group: wgpu::BindGroup,
     instance_buffer: wgpu::Buffer,

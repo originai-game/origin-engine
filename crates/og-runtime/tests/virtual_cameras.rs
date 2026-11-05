@@ -211,10 +211,9 @@ fn a_world_without_virtual_cameras_keeps_its_hash() {
 /// ssrMaxRoughness and ssrResolution and after its ssrMaxDistance's default
 /// of 100, after Stylise.hatchingPaper, and after Cloth, SoftBody and Garment
 /// version 2 (simulation), after MaterialStyle.wireframeColor, and after
-/// Fluid3D version 2 (simulation); R10 leaves it unmoved on either side).
-/// of 100 and after Stylise's watercolour fields; R10 leaves it
-/// unmoved on either side).
-const PINNED_HASH: &str = "35f45c8bb950dc7e";
+/// Fluid3D version 2 (simulation), and after Stylise's watercolour fields;
+/// R10 leaves it unmoved on either side).
+const PINNED_HASH: &str = "02abaf723eb06bcf";
 
 #[test]
 fn the_brain_picks_by_priority_then_the_later_enabled_and_a_solo_outranks_both() {

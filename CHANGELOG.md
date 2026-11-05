@@ -113,16 +113,21 @@ is one line here, written at the merge that changes
   `watercolorTurbulence`, `watercolorDryBrush`, `watercolorWobble` and
   `watercolorPaper`: a pass after the painterly strokes that ports
   Bousseau et al. 2006 and MNPR (Montesdeoca et al. 2018,
-  `third_party/mnpr`). A pigment density about one, from the paper's
-  grain (granulation) and a slow noise (turbulence), thins each colour
-  towards the paper or thickens it, C(1 − (1 − C)(d − 1)), so the wash
-  keeps its mean value where `paintCanvasStrength`'s multiply only
-  darkened; pigment pools in a soft rim a few pixels wide where the
-  painted regions meet (the painted frame's gradient blurred, raised to
-  one plus the strength); the dry brush leaves the paper's peaks bare
-  under light colours; and the frame is read displaced by the relief
+  `third_party/mnpr`). A pigment density about one, weighed by the
+  pigment load so the paper and the palest washes stay clean, thins each
+  colour towards the paper or thickens it, C(1 − (1 − C)(d − 1)), so the
+  wash keeps its mean value where `paintCanvasStrength`'s multiply only
+  darkened: granulation settles the pigment into the paper's pits and
+  off its peaks (the canvas's relief about its mean, in units of its
+  spread, so any canvas reads as paper), turbulence drifts it with a
+  slow noise about a hundred texels across seeded per object; pigment
+  pools in a rim two to three pixels wide at a wash's outer boundary (a
+  colour step wider than a line, or a silhouette; a seam, a crease or a
+  like-coloured neighbour is none, so a tiled floor is one wash); the
+  dry brush leaves the paper's peaks bare in that rim and on the
+  light-catching tones; and the frame is read displaced by the relief
   and a waver. The cook applies the same wash in texel space on painted
-  2D sprites and painted 3D colour textures (`PAINT_VERSION` 3, so
+  2D sprites and painted 3D colour textures (`PAINT_VERSION` 4, so
   painted textures recook); on painted 2D (a `profile "2d"` project under
   the art contract, docs/art.md §2.3) the frame then draws neither the
   paint nor the watercolour pass, so a sprite is painted and washed once

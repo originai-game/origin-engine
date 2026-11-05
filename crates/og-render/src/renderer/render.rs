@@ -357,6 +357,10 @@ impl Renderer {
             // are drawn (a 2D scene's prepass would hold nothing).
             || (WORLD_3D
                 && (scene.stylise.paint.is_some_and(|p| p.detail_aware())
+                    // The watercolour wash's outer boundaries (object
+                    // edges, silhouettes, creases), where its rim pools
+                    // and its dry brush skips.
+                    || scene.stylise.paint.is_some_and(|p| p.watercolor.edges())
                     || scene.stylise.halftone_faces())
                 && !(batches.is_empty() && skinned_batches.is_empty()))
             || outline
@@ -3042,6 +3046,14 @@ impl Renderer {
                 .map_or(u64::MAX, |t| t.index() as u64);
             scene.id() ^ p.rotate_left(16) ^ c.rotate_left(40) ^ self.conformed.0.rotate_left(56)
         };
+        // The canvas's mean height and spread, measured once per texture
+        // revision: the wash reads the paper's relief about them.
+        if let Some(t) = st.paint.and_then(|p| p.canvas) {
+            let key = Some((t.index(), scene.texture_revision(t.index())));
+            if key != self.canvas_stats.0 {
+                self.canvas_stats = (key, scene.texture(t).map_or([0.0; 2], canvas_stats));
+            }
+        }
         self.write_frame_stylise_uniform(
             st,
             scene,
@@ -3050,6 +3062,7 @@ impl Renderer {
             grid_offset,
             lens,
             prepass,
+            self.canvas_stats.1,
         );
         let lightmap_scale = scene
             .lighting_2d
@@ -5523,6 +5536,32 @@ fn local_paraboloid(paraboloid: bool, face: usize, side: u32) -> [f32; 4] {
 /// neighbours' depths differ by 2 %, a contrast of 4, 60 samples (the
 /// shadow's reach in pixels).
 const CONTACT_PARAMS: [f32; 4] = [0.005, 0.02, 4.0, 60.0];
+
+/// A paint canvas's mean height and spread (standard deviation), its red
+/// channel in linear light, so the watercolour wash reads any canvas's
+/// relief in units of its own grain (stylise.wgsl `paper_relief`).
+fn canvas_stats(t: &TextureData) -> [f32; 2] {
+    let decode = |v: u8| {
+        let c = f64::from(v) / 255.0;
+        match t.color_space {
+            ColorSpace::Srgb if c > 0.04045 => ((c + 0.055) / 1.055).powf(2.4),
+            ColorSpace::Srgb => c / 12.92,
+            ColorSpace::Linear => c,
+        }
+    };
+    let n = (t.rgba.len() / 4).max(1) as f64;
+    let (sum, sum2) = t
+        .rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .fold((0.0, 0.0), |(s, s2), p| {
+            let v = decode(p[0]);
+            (s + v, s2 + v * v)
+        });
+    let mean = sum / n;
+    [mean as f32, (sum2 / n - mean * mean).max(0.0).sqrt() as f32]
+}
 
 /// Whether an instance was drawn elsewhere in the previous frame
 /// ([`RenderScene::previous_transforms`]): TAA then needs the prepass's

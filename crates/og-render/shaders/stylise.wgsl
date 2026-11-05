@@ -39,7 +39,7 @@ struct Stylise {
   hatching: vec4<f32>,        // x: strength, y: spacing, z: levels, w: angle (rad)
   hatching_color: vec4<f32>,
   paint: vec4<f32>,           // x: radius, y: anisotropy, z: edge darkening, w: bleed
-  canvas: vec4<f32>,          // x: strength, y: texels per logical pixel
+  canvas: vec4<f32>,          // x: strength, y: texels per logical pixel, z: the canvas's mean height, w: its spread (linear red)
   ink: vec4<f32>,             // x: 1 on, y: threshold, z: width, w: depth edges' strength (0: luminance only)
   ink_color: vec4<f32>,
   ink_depth: vec4<f32>,       // x: the camera's far plane (sky), y: relative depth step, z: normal turn (1 - cos), w: hatching from depth edges (0: off)
@@ -49,7 +49,7 @@ struct Stylise {
   surface: vec4<f32>,         // where the canvas (x), hatching (z) and halftone (w) lie: 0 screen, 1 world, 2 object space; y: canvas texels per metre
   canvas_origin: vec4<f32>,   // the canvas uv at the surface origin: x along x, y along y, z along z as u, w along z as v
   lens: vec4<f32>,            // x: lens distortion (above 0 barrel), y: the scale keeping a barrel's farthest corner on the image, zw: the centre (uv)
-  paint2: vec4<f32>,          // x: paintDetail (how far detail keeps its shape), y: paintCharacterDetail, z: 1 with the prepass bound (object ids, detail), w: 0
+  paint2: vec4<f32>,          // x: paintDetail (how far detail keeps its shape), y: paintCharacterDetail, z: 1 with the prepass bound for the paint (object ids, detail), w: 1 with the prepass bound at all (the wash's boundaries)
   dither_space: vec4<f32>,    // x: where the dither's cells lie (0 screen, 1 world, 2 object space, StyliseSpace::code)
   wash: vec4<f32>,            // the watercolour wash: x edge darkening, y granulation, z turbulence, w dry brush
   wash_paper: vec4<f32>,      // xyz: the wash's paper colour (linear), w: wobble (logical pixels)
@@ -561,20 +561,35 @@ fn fs_paint_srgb(in: VsOut) -> @location(0) vec4<f32> {
 // towards the paper where d < 1, thicker where d > 1, strongest in the
 // middle tones and leaving the paper and black alone, so the wash keeps
 // its mean value where a multiply by the grain only darkens. The density
-// comes from the paper's height about its mean (granulation: pigment
-// settles in the pits) and from a slow value noise (turbulence: a wash
-// dries patchy); pigment pools in a rim two to three pixels wide where the
-// painted regions meet (edge darkening, MNPR's pow(C, 1 + d) from the
-// painted frame's gradient); the dry brush leaves the paper's peaks bare
-// under light colours; and the frame is read displaced by the paper's
-// relief and a slow waver (substrate distortion, wobble). The cook's
-// texel-space copy is og-cook's paint.rs `Wash`.
+// is weighed by the pigment load (one minus the lightest channel over the
+// paper): bare paper and the palest washes stay clean, dark and saturated
+// ones granulate and drift. Granulation is the pigment settling heavier in
+// the paper's pits and thinner on its peaks (the paper's relief: its
+// height about its mean in units of its spread, st.canvas.zw, so any
+// canvas reads as paper; a flat paper's tooth is a noise a few texels
+// across), broken by a grain two to three texels across; turbulence a
+// slow noise about a hundred texels across seeded by the object under the
+// pixel, so no blotch runs across two washes. Pigment pools in a rim two
+// to three pixels wide at a wash's outer boundary (MNPR's pow(C, 1 + d)
+// from the painted frame's gradient): a step between two colour regions
+// wider than a line (the colour averaged over six pixels either side
+// differs), and the prepass's silhouettes. A seam, a crease or another
+// object of the same colour is no boundary, since one wash covers them,
+// so a texture's seams and a tiled floor get no rim. The dry brush skips
+// the paper's peaks (the relief past half its spread, in the paper's own
+// clusters, never a pixel salt) in that rim and on the light-catching
+// tones, leaving them bare; and the frame is read displaced by the
+// paper's relief and a slow waver (substrate distortion, wobble). The
+// cook's texel-space copy is og-cook's paint.rs `Wash`.
 
-const WASH_TURBULENCE_CELL: f32 = 40.0;  // canvas texels per cell of the turbulence's noise
+const WASH_TURBULENCE_CELL: f32 = 96.0;  // canvas texels per cell of the turbulence's noise
+const WASH_TURBULENCE_GAIN: f32 = 1.5;   // density per unit of that noise about 0.5
+const WASH_GRAIN_CELL: f32 = 2.5;        // canvas texels per cell of the granulation's grain
+const WASH_TOOTH_CELL: f32 = 6.0;        // canvas texels per cell of a flat paper's tooth (no canvas)
 const WASH_WOBBLE_CELL: f32 = 14.0;      // canvas texels per cell of the waver's noise
-const WASH_GRAIN_GAIN: f32 = 2.5;        // density per unit of the paper's height about its mean
-const WASH_RELIEF_GAIN: f32 = 4.0;       // waver per unit of the paper's height gradient
-const WASH_PEAK: f32 = 0.08;             // the height above the mean that is a peak (dry brush)
+const WASH_RELIEF_GAIN: f32 = 4.0;       // waver per unit of the paper's relief gradient
+const WASH_STEP_REACH: f32 = 4.5;        // logical pixels from the pixel to the colour step's nearest box
+const WASH_BOUNDARY_REACH: i32 = 2;      // pixels within which a wash's silhouette counts as near
 
 // A hash of an integer cell, 0 to 1 (the cook's `wash_hash`).
 fn wash_hash(c: vec3<i32>, seed: u32) -> f32 {
@@ -601,13 +616,25 @@ fn wash_noise(p: vec3<f32>, seed: u32) -> f32 {
 }
 
 // The paper's height (its canvas's red, 0 to 1) under a logical pixel
-// position, where the canvas lies (the screen, or the surfaces); 0.5 flat
-// without a canvas.
+// position, where the canvas lies (the screen, or the surfaces).
 fn paper_height(p: vec2<f32>) -> f32 {
-  if (st.offset.z < 0.5) { return 0.5; }
   if (st.surface.x > 0.5) { return canvas_surface(p); }
   let size = vec2<f32>(textureDimensions(canvas));
   return textureSampleLevel(canvas, repeat_sampler, p * st.canvas.y / size, log2(max(st.canvas.y, 1.0))).r;
+}
+
+// The paper's relief under a logical pixel position: its height about the
+// paper's mean in units of twice the paper's spread (st.canvas.zw), -1 in
+// the deepest pits to 1 on the peaks; 0 flat without a canvas.
+fn paper_relief(p: vec2<f32>) -> f32 {
+  if (st.offset.z < 0.5) { return 0.0; }
+  return clamp((paper_height(p) - st.canvas.z) / max(2.0 * st.canvas.w, 1e-3), -1.0, 1.0);
+}
+
+// The painted frame at a logical pixel position (bilinear).
+fn wash_read(p: vec2<f32>) -> vec3<f32> {
+  let size = vec2<f32>(textureDimensions(source));
+  return clamp(textureSampleLevel(source, clamp_sampler, p / size, 0.0).rgb, vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
 // The painted frame's gradient (a 3 x 3 Sobel of the colour over the 5 x 5
@@ -619,82 +646,151 @@ fn wash_sobel(b: ptr<function, array<vec3<f32>, 25>>, x: i32, y: i32) -> f32 {
   return sqrt(dot(sx, sx) + dot(sy, sy)) * 0.25;
 }
 
+// The painted frame's gradient blurred over the pixel's 3 x 3 (a binomial
+// weight), 0 to 1: the fine edge, a soft band two to three pixels wide
+// where the colour changes (MNPR blurs its edge map the same way).
+fn wash_fine_edge(o: vec2<i32>) -> f32 {
+  var b: array<vec3<f32>, 25>;
+  for (var j = -2; j <= 2; j++) {
+    for (var i = -2; i <= 2; i++) {
+      b[(j + 2) * 5 + i + 2] = load(o + vec2<i32>(i, j));
+    }
+  }
+  var g = 0.0;
+  for (var j = 1; j <= 3; j++) {
+    for (var i = 1; i <= 3; i++) {
+      g += wash_sobel(&b, i, j) * f32((2 - abs(i - 2)) * (2 - abs(j - 2)));
+    }
+  }
+  return smoothstep(0.02, 0.22, g / 16.0);
+}
+
+// The colour step across the pixel: the painted frame averaged over six
+// pixels on one side against six on the other, along x and along y, the
+// larger. A boundary between two washes is a step; a seam, a stroke or a
+// line between two like colours is not (both sides average the same), so
+// a texture's detail pools no pigment.
+fn wash_step(s: vec2<f32>) -> f32 {
+  var step = 0.0;
+  for (var a = 0; a < 2; a++) {
+    let axis = select(vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 0.0), a == 0);
+    var l = vec3<f32>(0.0);
+    var r = vec3<f32>(0.0);
+    for (var k = 0; k < 3; k++) {
+      let reach = WASH_STEP_REACH + 2.0 * f32(k);
+      l += wash_read(s - axis * reach);
+      r += wash_read(s + axis * reach);
+    }
+    step = max(step, length(l - r) / 3.0);
+  }
+  return step;
+}
+
+// The object under a pixel for the wash (0 without the prepass: one wash).
+fn wash_object(px: vec2<i32>) -> u32 {
+  if (st.paint2.w < 0.5) { return 0u; }
+  let size = vec2<i32>(textureDimensions(pre_outline));
+  return u32(round(textureLoad(pre_outline, prepass_px(px, size), 0).a * 255.0));
+}
+
+// Whether the surface under the pixel ends `r` pixels away against
+// something farther behind it (with the prepass): its silhouette, as the
+// ink's contours find it (contour_at). Only the near side counts, so the
+// rim pools on the wash and the paper beyond it stays clean; an object
+// edge or a crease with no depth behind it is no boundary (one wash
+// covers a tiled floor), the colour step finds the ones that matter.
+fn wash_silhouette(px: vec2<i32>, r: i32) -> bool {
+  if (st.paint2.w < 0.5) { return false; }
+  let d0 = view_depth(px);
+  if (d0 >= st.ink_depth.x * 0.999) { return false; }
+  for (var a = 0; a < 2; a++) {
+    let o = select(vec2<i32>(0, r), vec2<i32>(r, 0), a == 0);
+    if (d0 / view_depth(px + o) + d0 / view_depth(px - o) - 2.0 < -st.ink_depth.y) { return true; }
+  }
+  return false;
+}
+
+// How far the nearest silhouette is, 1 to WASH_BOUNDARY_REACH pixels, or
+// one more when none is that near.
+fn wash_near(px: vec2<i32>) -> f32 {
+  for (var r = 1; r <= WASH_BOUNDARY_REACH; r++) {
+    if (wash_silhouette(px, r)) { return f32(r); }
+  }
+  return f32(WASH_BOUNDARY_REACH + 1);
+}
+
 fn watercolor(in: VsOut) -> vec3<f32> {
   let p = in.pos.xy;
   let paper = max(st.wash_paper.xyz, vec3<f32>(1e-3));
   let canvas_on = st.offset.z > 0.5;
   // The paper's point under the pixel, in canvas texels (the screen's, or
-  // the surfaces' where the canvas lies on them), its height there and
-  // the paper's mean height (the canvas's smallest mip).
+  // the surfaces' where the canvas lies on them), and its relief there.
   var q = vec3<f32>(p * st.canvas.y, 0.0);
   if (canvas_on && st.surface.x > 0.5) {
     var s = surface_at(p);
     if (st.surface.x > 1.5) { s = object_at(p, s); }
     if (s.ok) { q = s.p * st.surface.y; }
   }
-  let height = paper_height(p);
-  var mean = 0.5;
-  if (canvas_on) {
-    mean = textureSampleLevel(canvas, repeat_sampler, vec2<f32>(0.5), 16.0).r;
+  var relief = paper_relief(p);
+  if (!canvas_on) {
+    // A flat paper's tooth, in the relief's units.
+    relief = clamp((wash_noise(q / WASH_TOOTH_CELL, 17u) - 0.5) * 4.0, -1.0, 1.0);
   }
   // Wobble: the frame read where the paper's relief and a slow waver
   // displace it.
   var off = vec2<f32>(0.0);
   if (st.wash_paper.w > 0.0) {
     let wave = vec2<f32>(wash_noise(q / WASH_WOBBLE_CELL, 7u), wash_noise(q / WASH_WOBBLE_CELL, 11u)) * 2.0 - 1.0;
-    var relief = vec2<f32>(0.0);
+    var slope = vec2<f32>(0.0);
     if (canvas_on) {
-      relief = vec2<f32>(
-        paper_height(p + vec2<f32>(1.0, 0.0)) - paper_height(p - vec2<f32>(1.0, 0.0)),
-        paper_height(p + vec2<f32>(0.0, 1.0)) - paper_height(p - vec2<f32>(0.0, 1.0))) * 0.5;
+      slope = vec2<f32>(
+        paper_relief(p + vec2<f32>(1.0, 0.0)) - paper_relief(p - vec2<f32>(1.0, 0.0)),
+        paper_relief(p + vec2<f32>(0.0, 1.0)) - paper_relief(p - vec2<f32>(0.0, 1.0))) * 0.5;
     }
-    off = st.wash_paper.w * clamp(wave * 2.0 + relief * WASH_RELIEF_GAIN, vec2<f32>(-1.0), vec2<f32>(1.0));
+    off = st.wash_paper.w * clamp(wave * 2.0 + slope * WASH_RELIEF_GAIN, vec2<f32>(-1.0), vec2<f32>(1.0));
   }
-  let size = vec2<f32>(textureDimensions(source));
-  var c = clamp(textureSampleLevel(source, clamp_sampler, (p + off) / size, 0.0).rgb, vec3<f32>(0.0), vec3<f32>(1.0));
-  // Edge darkening: the rim where the painted regions meet, the gradient
-  // blurred over the pixel's 3 x 3 (a binomial weight), so the rim is a
-  // soft band a few pixels wide and not a line (MNPR blurs its edge map
-  // the same way).
-  var rim = 0.0;
-  if (st.wash.x > 0.0) {
-    let o = vec2<i32>(floor(p + off));
-    var b: array<vec3<f32>, 25>;
-    for (var j = -2; j <= 2; j++) {
-      for (var i = -2; i <= 2; i++) {
-        b[(j + 2) * 5 + i + 2] = load(o + vec2<i32>(i, j));
-      }
-    }
-    var g = 0.0;
-    for (var j = 1; j <= 3; j++) {
-      for (var i = 1; i <= 3; i++) {
-        g += wash_sobel(&b, i, j) * f32((2 - abs(i - 2)) * (2 - abs(j - 2)));
-      }
-    }
-    rim = smoothstep(0.02, 0.22, g / 16.0);
+  let s = p + off;
+  let o = vec2<i32>(floor(s));
+  var c = wash_read(s);
+  // The pigment's transmittance over the paper and its load: 0 bare
+  // paper, 1 where the darkest channel is black.
+  let t = clamp(c / paper, vec3<f32>(0.0), vec3<f32>(1.0));
+  let pig = 1.0 - min(t.x, min(t.y, t.z));
+  // The wash's edge, where pigment pools and the dry brush skips: the fine
+  // edge where the colour steps, and the silhouette within two pixels.
+  var edge = 0.0;
+  if (st.wash.x > 0.0 || st.wash.w > 0.0) {
+    let gate = smoothstep(0.08, 0.2, wash_step(s));
+    edge = max(wash_fine_edge(o) * gate, clamp(1.5 - wash_near(o) * 0.5, 0.0, 1.0));
   }
-  // The pigment density: granulation from the paper's height about its
-  // mean, turbulence from the noise.
+  // The pigment density: granulation from the pigment settling in the
+  // paper's pits (broken by the grain), turbulence from the slow noise,
+  // each weighed by the pigment load so the paper and the palest washes
+  // stay clean.
   var d = 1.0;
+  let grain = wash_noise(q / WASH_GRAIN_CELL, 13u);
   if (st.wash.y > 0.0) {
-    d += st.wash.y * clamp((mean - height) * WASH_GRAIN_GAIN, -1.0, 1.0);
+    let settle = clamp((grain - 0.5) * 0.8 - relief * 2.0, -1.0, 1.0);
+    d += st.wash.y * smoothstep(0.1, 0.6, pig) * settle;
   }
   if (st.wash.z > 0.0) {
-    let n = wash_noise(q / WASH_TURBULENCE_CELL, 3u) * 0.6 + wash_noise(q / (WASH_TURBULENCE_CELL * 0.5), 5u) * 0.4;
-    d += st.wash.z * clamp((n - 0.5) * 3.0, -1.0, 1.0);
+    let seed = wash_object(o) * 0x9e37u;
+    let n = wash_noise(q / WASH_TURBULENCE_CELL, 3u ^ seed) * 0.6 + wash_noise(q / (WASH_TURBULENCE_CELL * 0.5), 5u ^ seed) * 0.4;
+    d += st.wash.z * smoothstep(0.05, 0.4, pig) * clamp((n - 0.5) * WASH_TURBULENCE_GAIN, -1.0, 1.0);
   }
   // Bousseau's density on the pigment's transmittance over the paper.
-  let t = clamp(c / paper, vec3<f32>(0.0), vec3<f32>(1.0));
   var t2 = clamp(t * (1.0 - (1.0 - t) * (d - 1.0)), vec3<f32>(0.0), vec3<f32>(1.0));
-  // Dry brush: the paper's peaks left bare under the thinnest washes.
+  // Dry brush: the paper's peaks (its relief past half a spread, broken
+  // by the grain) left bare at the wash's edge and on the light-catching
+  // tones.
   if (st.wash.w > 0.0) {
-    let peak = smoothstep(0.0, WASH_PEAK, height - mean);
-    let thin = luma(t2);
-    t2 = mix(t2, vec3<f32>(1.0), st.wash.w * peak * thin * thin);
+    let tooth = smoothstep(0.3, 0.9, relief + (grain - 0.5) * 0.4);
+    let light = smoothstep(0.65, 0.95, luma(t2));
+    t2 = mix(t2, vec3<f32>(1.0), st.wash.w * max(light * 0.7, edge) * tooth);
   }
   c = t2 * paper;
-  if (rim > 0.0) {
-    c = pow(max(c, vec3<f32>(0.0)), vec3<f32>(1.0 + st.wash.x * rim));
+  if (st.wash.x > 0.0 && edge > 0.0) {
+    c = pow(max(c, vec3<f32>(0.0)), vec3<f32>(1.0 + st.wash.x * edge));
   }
   return c;
 }

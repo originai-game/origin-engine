@@ -1153,6 +1153,7 @@ impl Renderer {
             transmission: None,
             environment: None,
             conformed,
+            canvas_stats: (None, [0.0; 2]),
             default_white,
             default_normal,
             white_sprite_group,

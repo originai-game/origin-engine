@@ -13,6 +13,7 @@ impl Renderer {
         grid_offset: (u32, u32),
         lens: Option<LensDistortion>,
         prepass: bool,
+        canvas_stats: [f32; 2],
     ) {
         {
             // The chain's frame: the output's under TAAU (its prepass
@@ -125,8 +126,8 @@ impl Renderer {
                     [
                         p.canvas_strength.clamp(0.0, 1.0),
                         p.canvas_scale.max(0.125),
-                        0.0,
-                        0.0,
+                        canvas_stats[0],
+                        canvas_stats[1],
                     ]
                 }),
                 ink: ink.map_or([0.0; 4], |i| {
@@ -176,12 +177,21 @@ impl Renderer {
                     let fit = 1.0 / (1.0 + amount.max(0.0) * far);
                     [amount, fit, l.center.x, l.center.y]
                 }),
-                paint2: pt.filter(|p| p.detail_aware()).map_or([0.0; 4], |p| {
+                paint2: pt.map_or([0.0; 4], |p| {
+                    let detail = p.detail_aware();
                     [
-                        p.detail.clamp(0.0, 1.0),
-                        p.character_detail.clamp(0.0, 1.0),
+                        if detail {
+                            p.detail.clamp(0.0, 1.0)
+                        } else {
+                            0.0
+                        },
+                        if detail {
+                            p.character_detail.clamp(0.0, 1.0)
+                        } else {
+                            0.0
+                        },
+                        (detail && prepass) as u32 as f32,
                         prepass as u32 as f32,
-                        0.0,
                     ]
                 }),
                 dither_space: [q.map_or(0.0, |q| q.space.code()), 0.0, 0.0, 0.0],

@@ -196,6 +196,9 @@ pub(crate) struct StyliseUniform {
     pub hatching: [f32; 4],
     pub hatching_color: [f32; 4],
     pub paint: [f32; 4],
+    /// x: the canvas's strength, y: its texels per logical pixel, z: its
+    /// mean height and w: its spread (linear red), the units the
+    /// watercolour wash reads the paper's relief in.
     pub canvas: [f32; 4],
     pub ink: [f32; 4],
     pub ink_color: [f32; 4],

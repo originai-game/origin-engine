@@ -288,9 +288,9 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// default of 64, then to 8ff3942bdc5bdfce, Stylise.hatchingPaper, then
 /// Cloth, SoftBody and Garment version 2 (simulation), then to
 /// 11b306c51fde2306, MaterialStyle.wireframeColor, then to
-/// 892f0ccf9ecd891a, Fluid3D version 2 (simulation)).
-/// default of 64, then Stylise's watercolour fields).
-const BY_HAND_HASH: &str = "892f0ccf9ecd891a";
+/// 892f0ccf9ecd891a, Fluid3D version 2 (simulation), then to
+/// 08de39dee3b96ead, Stylise's watercolour fields).
+const BY_HAND_HASH: &str = "08de39dee3b96ead";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {

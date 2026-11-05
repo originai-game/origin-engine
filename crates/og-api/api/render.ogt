@@ -1674,25 +1674,25 @@ module render {
       unit ratio
       tunable true
     }
-    field watercolorEdgeDarkening f32 "The watercolour wash (Bousseau et al. 2006, Montesdeoca et al. 2018), drawn over the painted frame after paintRadius's strokes: pigment pooled in a rim a few pixels wide where the painted colour regions meet, the colour there raised to one plus the step's strength, as a wash dries darker at its border. The rim follows the painted regions, so the texture the strokes flattened gets none, where paintEdgeDarkening pools broadly over the source's structure; 0 is none." {
+    field watercolorEdgeDarkening f32 "The watercolour wash (Bousseau et al. 2006, Montesdeoca et al. 2018), drawn over the painted frame after paintRadius's strokes: pigment pooled in a rim two to three pixels wide at a wash's outer boundary, the colour there raised to one plus the strength, as a wash dries darker at its border. A boundary is a step between two colour regions wider than a line (the colour averaged over six pixels either side differs) or a silhouette against something farther behind; a seam, a crease or another object of the same colour is none, since one wash covers them, so a texture's seams and a tiled floor get no rim, where paintEdgeDarkening pools broadly over the source's structure; 0 is none." {
       min 0
       max 1
       unit ratio
       tunable true
     }
-    field watercolorGranulation f32 "Pigment settling into the paper's grain (paintCanvas): a pigment density about one from the paper's height, each colour thinned towards the paper (watercolorPaper) where the density is under one and thickened where it is over (Bousseau's C(1 - (1 - C)(d - 1))), strongest in the middle tones and leaving the paper and black alone, so the wash keeps its mean value where paintCanvasStrength's grain only darkens it; 0 is none." {
+    field watercolorGranulation f32 "Pigment settling into the paper's grain: a pigment density about one from the paper's relief (paintCanvas's height about its mean, in units of its spread, so any canvas reads as paper; a noise a few pixels across without one), heavier in the pits and thinner on the peaks and broken by a grain two to three pixels across, each colour thinned towards the paper (watercolorPaper) where the density is under one and thickened where it is over (Bousseau's C(1 - (1 - C)(d - 1))). The density is weighed by the pigment load, so bare paper and the palest washes stay clean and the dark and saturated ones granulate, and the wash keeps its mean value where paintCanvasStrength's grain only darkens it; 0 is none." {
       min 0
       max 1
       unit ratio
       tunable true
     }
-    field watercolorTurbulence f32 "Pigment drifting as the wash dries: the same density from a smooth noise a few dozen pixels across, laid where the canvas lies (paintCanvasSpace), so a wash is patchy, lighter here and darker there; 0 is none." {
+    field watercolorTurbulence f32 "Pigment drifting as the wash dries: the same density from a slow noise about a hundred canvas texels across (and half that), laid where the canvas lies (paintCanvasSpace) and seeded by the object under the pixel so no blotch runs across two washes, weighed by the pigment load so the paper and the palest washes stay even; a wash is patchy, lighter here and darker there; 0 is none." {
       min 0
       max 1
       unit ratio
       tunable true
     }
-    field watercolorDryBrush f32 "The paper's peaks left bare where the wash is thin: the lighter a colour, the more of the paper's high grain shows the paper itself, a dry brush skipping over the tooth; 0 is none." {
+    field watercolorDryBrush f32 "A dry brush skipping over the paper's tooth: its peaks (the relief past half its spread, in the paper's own clusters) left bare as the paper (watercolorPaper) in the rim at a wash's outer boundary (watercolorEdgeDarkening's) and on the light-catching tones, the brightest washes first; 0 is none." {
       min 0
       max 1
       unit ratio
