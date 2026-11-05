@@ -22,7 +22,7 @@ impl TerrainRenderer {
     /// Makes one of its pipelines no frame used yet (Renderer::warm).
     pub(crate) fn warm(&self) -> bool {
         let p = &self.passes;
-        crate::deferred::warm_one(&[&*p.lit, &*p.prepass, &*p.shadow])
+        crate::deferred::warm_one(&[&*p.lit, &*p.prepass, &*p.shadow, &*p.corners])
     }
 
     /// Drops every terrain's bind group (a layer texture was replaced):
@@ -93,10 +93,13 @@ impl TerrainRenderer {
                 shadow: &self.shadow_layout,
                 terrain: &layout,
                 stamp: &self.stamp_layout,
+                corners: &self.corners_layout,
+                corners_write: &self.corners_write_layout,
             },
             self.samples,
             terrain_array_source(&self.lit_source),
             terrain_shadow_array_source(),
+            terrain_array_source(&terrain_corners_source()),
             false,
         );
         let solid = |label, rgba: [u8; 4]| {
@@ -137,18 +140,20 @@ impl TerrainRenderer {
     /// first needs them (the variant's layout made before).
     fn holed_passes(&mut self, device: &wgpu::Device, arrayed: bool) -> TerrainPasses {
         if self.holed[usize::from(arrayed)].is_none() {
-            let (layout, lit, shadow) = if arrayed {
+            let (layout, lit, shadow, corners) = if arrayed {
                 let (layout, _) = self.arrays.as_ref().expect("the variant is made first");
                 (
                     layout,
                     terrain_array_source(&self.lit_source),
                     terrain_shadow_array_source(),
+                    terrain_array_source(&terrain_corners_source()),
                 )
             } else {
                 (
                     &self.layout,
                     self.lit_source.clone(),
                     terrain_shadow_source(),
+                    terrain_corners_source(),
                 )
             };
             let passes = terrain_passes(
@@ -158,10 +163,13 @@ impl TerrainRenderer {
                     shadow: &self.shadow_layout,
                     terrain: layout,
                     stamp: &self.stamp_layout,
+                    corners: &self.corners_layout,
+                    corners_write: &self.corners_write_layout,
                 },
                 self.samples,
                 lit,
                 shadow,
+                corners,
                 true,
             );
             self.holed[usize::from(arrayed)] = Some(passes);
@@ -233,6 +241,25 @@ impl TerrainRenderer {
                 count: None,
             }],
         });
+        let storage = |read_only, visibility| {
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("terrain corners"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: u32::from(read_only),
+                    visibility,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            })
+        };
+        // Read at binding 1 (the stamps' passes have their uniform at 0 of
+        // group 2), written at 0 of the writer's group 0.
+        let corners_layout = storage(true, wgpu::ShaderStages::VERTEX);
+        let corners_write_layout = storage(false, wgpu::ShaderStages::COMPUTE);
         let passes = terrain_passes(
             device,
             TerrainPassLayouts {
@@ -240,10 +267,13 @@ impl TerrainRenderer {
                 shadow: p.shadow_layout,
                 terrain: &layout,
                 stamp: &stamp_layout,
+                corners: &corners_layout,
+                corners_write: &corners_write_layout,
             },
             p.samples,
             terrain_lit_source(p.frame_wgsl, p.light_tables_wgsl, p.lighting_wgsl),
             terrain_shadow_source(),
+            terrain_corners_source(),
             false,
         );
         let layer_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -321,6 +351,8 @@ impl TerrainRenderer {
             max_layers: device.limits().max_texture_array_layers.min(256),
             uploads: 0,
             resident: 0,
+            corners_layout,
+            corners_write_layout,
             stamp_layout,
             stamp_slots: None,
             stamp_meshes: Default::default(),
@@ -851,6 +883,7 @@ impl TerrainRenderer {
                     mapped_at_creation: false,
                 }),
                 group: None,
+                corners: None,
             });
         }
         let mut draws = Vec::with_capacity(scene.terrains.len());
@@ -1029,6 +1062,7 @@ impl TerrainRenderer {
             // The camera's height in the terrain's space (the displacement's reach).
             let eye_y = model.inverse().transform_point3(camera).y;
             let morph_width = clipmap.morph_width;
+            let corner_count = (n + 1) * (n + 1);
             let mut level_bytes = vec![0u8; LEVEL_STRIDE as usize * list.len().max(1)];
             let mut out = Vec::with_capacity(list.len());
             let (hmin, hmax) = data.range;
@@ -1048,6 +1082,15 @@ impl TerrainRenderer {
                         0.0,
                     ],
                     camera: [cam.x, cam.y, unit, eye_y],
+                    corners: {
+                        let coarse = list.get(k + 1).map_or([0.0; 2], |c| c.center);
+                        [
+                            coarse[0] as f32,
+                            coarse[1] as f32,
+                            (k as u32 * corner_count) as f32,
+                            ((k as u32 + 1).min(list.len() as u32 - 1) * corner_count) as f32,
+                        ]
+                    },
                 };
                 let at = k * LEVEL_STRIDE as usize;
                 level_bytes[at..at + std::mem::size_of::<LevelGpu>()]
@@ -1090,6 +1133,33 @@ impl TerrainRenderer {
                 });
             }
             queue.write_buffer(&slot.levels, 0, &level_bytes);
+            // The corner cache: every level's corners, 16 bytes each.
+            let needed = u64::from(corner_count) * list.len().max(1) as u64;
+            if slot
+                .corners
+                .as_ref()
+                .is_none_or(|(have, ..)| *have < needed)
+            {
+                let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("terrain corners"),
+                    size: needed * 16,
+                    usage: wgpu::BufferUsages::STORAGE,
+                    mapped_at_creation: false,
+                });
+                let group = |layout, binding| {
+                    device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("terrain corners"),
+                        layout,
+                        entries: &[wgpu::BindGroupEntry {
+                            binding,
+                            resource: buffer.as_entire_binding(),
+                        }],
+                    })
+                };
+                let read = group(&self.corners_layout, 1);
+                let write = group(&self.corners_write_layout, 0);
+                slot.corners = Some((needed, buffer, read, write));
+            }
             let key: GroupKey = (di, data.generation, handles, t.layer_arrays);
             if slot.group.as_ref().is_none_or(|(k, _)| *k != key) && arrayed {
                 let (layout, _) = self.arrays.as_ref().expect("made above");
@@ -1181,8 +1251,12 @@ impl TerrainRenderer {
                 });
                 slot.group = Some((key, group));
             }
+            let (_, _, corners, corners_write) = slot.corners.as_ref().expect("made above");
             draws.push(TerrainDraw {
                 group: slot.group.as_ref().expect("made above").1.clone(),
+                corners: corners.clone(),
+                corners_write: corners_write.clone(),
+                corner_count,
                 passes: match (holed, &self.arrays) {
                     (Some(passes), _) => passes,
                     (None, Some((_, passes))) if arrayed => passes.clone(),
@@ -1423,6 +1497,26 @@ pub(crate) fn world_sphere(model: Mat4, lo: Vec3, hi: Vec3) -> (Vec3, f32) {
     (center, radius)
 }
 
+/// Fills each terrain's corner cache for this frame (`terrain_corners.wgsl`):
+/// every level's corners, before any pass draws them.
+pub(crate) fn encode_corners(encoder: &mut crate::Encoder, draws: &[TerrainDraw]) {
+    if draws.is_empty() {
+        return;
+    }
+    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+        label: Some("terrain corners"),
+        timestamp_writes: None,
+    });
+    for d in draws {
+        pass.set_pipeline(d.passes.corners.get());
+        pass.set_bind_group(0, &d.corners_write, &[]);
+        for l in &d.levels {
+            pass.set_bind_group(1, &d.group, &[l.offset]);
+            pass.dispatch_workgroups(d.corner_count.div_ceil(64), 1, 1);
+        }
+    }
+}
+
 /// Draws the levels of `draws` that touch `frustum`, each level's blocks
 /// culled by their boxes (group 1: the terrain;
 /// group 0 bound by the caller, or per level the reflection probe's frame
@@ -1449,6 +1543,7 @@ pub(crate) fn draw_levels(
             TerrainPass::Prepass => d.passes.prepass.get(),
             TerrainPass::Shadow => d.passes.shadow.get(),
         });
+        pass.set_bind_group(2, &d.corners, &[]);
         for l in &d.levels {
             if !frustum.intersects_sphere(l.center, l.radius) {
                 continue;

@@ -37,9 +37,7 @@ fn vs(@builtin(vertex_index) vi: u32) -> TerrainOut {
   o.cur_clip = terrain.view_proj * vec4<f32>(p, 1.0);
   o.prev_clip = terrain.prev_view_proj * vec4<f32>(p, 1.0);
   if (terrain.displace.x > 0.0) {
-    let c = (local.xz - terrain_min()) / level.camera.z;
-    let r = terrain_relief(c, c * level.camera.z / terrain_cell(), local.y, level.center.z, true);
-    o.relief = vec4<f32>(r.slope, r.bare);
+    o.relief = terrain_vertex_relief(vi);
   }
   return o;
 }

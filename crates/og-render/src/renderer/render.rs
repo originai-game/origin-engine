@@ -3958,6 +3958,8 @@ impl Renderer {
                 self.cache.garments.clear();
             }
         }
+        // Every terrain level's corners, before every pass that draws them.
+        terrain::encode_corners(&mut encoder, &terrain_draws);
         // The grass's blades, generated before every pass that draws them.
         self.grass
             .encode(&mut encoder, &grass_frame, &terrain_draws);

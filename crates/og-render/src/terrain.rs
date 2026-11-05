@@ -768,6 +768,9 @@ struct LevelGpu {
     center: [f32; 4],
     grid: [f32; 4],
     camera: [f32; 4],
+    /// xy: the coarser level's centre (grid units), z: this level's first
+    /// corner in the corner cache, w: the coarser level's.
+    corners: [f32; 4],
 }
 
 const LEVEL_STRIDE: u64 = 256;
@@ -809,6 +812,12 @@ pub(crate) fn visible_ranges(
 /// One terrain ready to draw in this frame's passes.
 pub(crate) struct TerrainDraw {
     pub group: wgpu::BindGroup,
+    /// Its corner cache (`terrain_vertex.wgsl`), read by every pass that
+    /// draws its levels (group 2), and written by [`encode_corners`].
+    pub corners: wgpu::BindGroup,
+    pub corners_write: wgpu::BindGroup,
+    /// Corners per level: (ring + 1)².
+    pub corner_count: u32,
     /// Its pipelines (the layer-array variant's when its layers sample
     /// arrays).
     pub passes: TerrainPasses,
@@ -1380,6 +1389,9 @@ struct Slot {
     /// The bind group and what it was made from: (data index, data
     /// generation, the layers' textures).
     group: Option<(GroupKey, wgpu::BindGroup)>,
+    /// Its corner cache: the buffer's corners, the buffer, and its groups
+    /// to read and to write it (made again, larger, when it is outgrown).
+    corners: Option<(u64, wgpu::Buffer, wgpu::BindGroup, wgpu::BindGroup)>,
 }
 
 type GroupKey = (
@@ -1426,6 +1438,10 @@ pub(crate) struct TerrainRenderer {
     /// Tiles uploaded in the last prepare and resident after it.
     pub uploads: u32,
     pub resident: u32,
+    /// The corner cache's group layouts: read by the levels' passes, written
+    /// by its writer.
+    corners_layout: wgpu::BindGroupLayout,
+    corners_write_layout: wgpu::BindGroupLayout,
     /// The stamps' group layout (one uniform slot, dynamic offset), their
     /// uniform slots and group, and their meshes uploaded (by mesh index:
     /// the scene, the mesh's revision, its vertices and indices).
@@ -1474,6 +1490,8 @@ pub(crate) struct TerrainPasses {
     pub stamp_lit: Rc<crate::deferred::Sampled<wgpu::RenderPipeline>>,
     pub stamp_prepass: Rc<Deferred<wgpu::RenderPipeline>>,
     pub stamp_shadow: Rc<Deferred<wgpu::RenderPipeline>>,
+    /// The corner cache's writer (`terrain_corners.wgsl`).
+    pub corners: Rc<Deferred<wgpu::ComputePipeline>>,
 }
 
 /// Which pass [`draw_levels`] draws: each terrain sets its own pipeline.
@@ -1490,6 +1508,9 @@ pub(crate) struct TerrainPassLayouts<'a> {
     pub shadow: &'a wgpu::BindGroupLayout,
     pub terrain: &'a wgpu::BindGroupLayout,
     pub stamp: &'a wgpu::BindGroupLayout,
+    /// The corner cache read (the levels' passes) and written.
+    pub corners: &'a wgpu::BindGroupLayout,
+    pub corners_write: &'a wgpu::BindGroupLayout,
 }
 
 /// The pipelines in [`TerrainPasses`] over `layouts`, from these modules;
@@ -1502,11 +1523,13 @@ fn terrain_passes(
     samples: u32,
     lit_source: String,
     shadow_source: String,
+    corners_source: String,
     holes: bool,
 ) -> TerrainPasses {
     // Made when a terrain is first drawn (deferred.rs).
     let lit_module = crate::deferred::module(device, "terrain", lit_source);
     let shadow_module = crate::deferred::module(device, "terrain shadow", shadow_source);
+    let corners_module = crate::deferred::module(device, "terrain corners", corners_source);
     let pl = |label, layouts: &[&wgpu::BindGroupLayout]| {
         let layouts: Vec<_> = layouts.iter().map(|l| Some(*l)).collect();
         device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -1515,8 +1538,15 @@ fn terrain_passes(
             immediate_size: 0,
         })
     };
-    let lit_layout = pl("terrain", &[layouts.frame, layouts.terrain]);
-    let shadow_layout = pl("terrain shadow", &[layouts.shadow, layouts.terrain]);
+    let lit_layout = pl(
+        "terrain",
+        &[layouts.frame, layouts.terrain, layouts.corners],
+    );
+    let shadow_layout = pl(
+        "terrain shadow",
+        &[layouts.shadow, layouts.terrain, layouts.corners],
+    );
+    let corners_layout = pl("terrain corners", &[layouts.corners_write, layouts.terrain]);
     let stamp_lit_layout = pl(
         "terrain stamp",
         &[layouts.frame, layouts.terrain, layouts.stamp],
@@ -1692,6 +1722,19 @@ fn terrain_passes(
             "fs_stamp_shadow",
             STAMP_BUFFERS,
         )),
+        corners: Rc::new({
+            let device = device.clone();
+            Deferred::new(move || {
+                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("terrain corners"),
+                    layout: Some(&corners_layout),
+                    module: corners_module.module(),
+                    entry_point: Some("write_corners"),
+                    compilation_options: Default::default(),
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                })
+            })
+        }),
     }
 }
 
@@ -1856,6 +1899,16 @@ fn layer_normal_map(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec3
 /// same entry points; the layer arrays declared).
 pub(crate) fn terrain_shadow_array_source() -> String {
     terrain_array_source(&terrain_shadow_source())
+}
+
+/// The corner cache's writer module (its layer-array variant:
+/// [`terrain_array_source`] of it).
+pub(crate) fn terrain_corners_source() -> String {
+    format!(
+        "{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{TERRAIN_LAYERS_WGSL}{TERRAIN_VERTEX_WGSL}{}",
+        crate::wind::WIND_COMMON_WGSL,
+        wgsl3d!("terrain_corners.wgsl")
+    )
 }
 
 /// The terrain's shadow module.

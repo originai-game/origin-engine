@@ -16,6 +16,41 @@
 // diagonal flips mid-morph. Zero-area triangles along each morphing
 // level's outer edge (its skirt) close the T-junctions where its odd
 // corners meet the coarser level's edges.
+//
+// A corner's own height (the field's, displaced and lifted by snow) and
+// its relief are evaluated once a frame, by terrain_corners.wgsl, into
+// the corner cache: every level's (n + 1)² corners, one after another.
+// Every pass (the lit pass, the prepass, each shadow cascade, the
+// reflections and probes) draws a vertex from them: a corner reads its
+// own and, in the morph band, the coarser cell's four; a centre its four
+// corners (and the coarser four). A displaced corner reads the layers'
+// height maps several times, and each vertex needs up to eight corners,
+// so evaluating them per vertex and per pass made the displaced near
+// ground vertex-bound (GPU-driven terrain caches its vertices once a
+// frame for every view the same way, as Far Cry 5's and Frostbite's do).
+
+@group(2) @binding(1) var<storage, read> terrain_corners: array<vec4<u32>>;
+
+// The cached corner at whole grid position `g` (0 to n) of the level whose
+// first corner is `first`: x its height's bits, y and z its relief's
+// slope and bare slope (pack2x16float).
+fn cached_corner(first: f32, g: vec2<f32>) -> vec4<u32> {
+  let n = u32(level.grid.x) + 1u;
+  let i = vec2<u32>(clamp(g + 0.5, vec2<f32>(0.0), vec2<f32>(f32(n) - 0.5)));
+  return terrain_corners[u32(first) + i.y * n + i.x];
+}
+
+// This level's own height at its grid corner `g`.
+fn own_height(g: vec2<f32>) -> f32 {
+  return bitcast<f32>(cached_corner(level.corners.z, g).x);
+}
+
+// The coarser level's own height at grid units `p` (a multiple of twice
+// this level's quad: one of its corners).
+fn coarse_corner_height(p: vec2<f32>) -> f32 {
+  let g = (p - level.corners.xy) / (2.0 * level.center.z) + level.grid.x * 0.5;
+  return bitcast<f32>(cached_corner(level.corners.w, g).x);
+}
 
 // The level's grid units (its corners' positions are whole numbers of
 // them from the terrain's -x, -z corner) to field coordinates, clamped to
@@ -53,21 +88,11 @@ fn split_height(h: vec4<f32>, f: vec2<f32>) -> f32 {
   return h.x + f.y * (h.z - h.x) + f.x * (h.w - h.z);
 }
 
-// The height (the terrain's space) a level of `step` grid units a quad
-// draws at clamped grid point `c`: the field's, displaced near the camera
-// by its layers' heights. The coarser level's corners are read at its own
-// step, so both levels draw a corner they share alike.
-fn grid_height(c: vec2<f32>, step: f32) -> f32 {
-  let s = c * level.camera.z / terrain_cell();
-  let h = field_height(s);
-  return h + terrain_displacement(c, s, h, step) + terrain_snow_lift(s, step);
-}
-
 // How far lying snow lifts the drawn ground at field coordinates `s`, in
 // the terrain's units: `terrain.displace.w` world metres (terrain.rs
 // snow_lift, from the weather's lying depth) on level ground, none on
 // slopes steeper than about 45 degrees. On every level of the clipmap
-// and in every pass (here, not in terrain_displacement, which fades with
+// and in every pass (here, not in terrain_relief, which fades with
 // distance and slope), so the coarser level's morph target carries it
 // too and no crack opens. Only drawn: collision, og.terrain.sample, the
 // id pass, the clipmap's error measure and what stands on the ground
@@ -96,17 +121,10 @@ fn terrain_snow_lift(s: vec2<f32>, step: f32) -> f32 {
 // a tessellator (WebGPU has none). Only drawn: collision,
 // og.terrain.sample and the id pass keep the field.
 
-// The displacement at clamped grid point `c`, field coordinates `s`,
-// over field height `h`, read for a level of `step` grid units a quad
-// (`terrain_relief`'s `d`).
-fn terrain_displacement(c: vec2<f32>, s: vec2<f32>, h: f32, step: f32) -> f32 {
-  return terrain_relief(c, s, h, step, false).d;
-}
-
 // The displaced surface at a grid point (the terrain's space): `d` the
-// height it adds, `slope` d's change along x and z (per metre; with
-// `gradient`, else 0) and `bare` the part of `slope` from layers without
-// a normal map, whose relief the shading then has to draw itself. The
+// height it adds, `slope` d's change along x and z (per metre) and
+// `bare` the part of `slope` from layers without a normal map, whose
+// relief the shading then has to draw itself. The
 // slope is the layers' heights differenced over the level's spacing (the
 // footprint their maps are read over), their weights held.
 struct Relief {
@@ -115,7 +133,7 @@ struct Relief {
   bare: vec2<f32>,
 };
 
-fn terrain_relief(c: vec2<f32>, s: vec2<f32>, h: f32, step: f32, gradient: bool) -> Relief {
+fn terrain_relief(c: vec2<f32>, s: vec2<f32>, h: f32, step: f32) -> Relief {
   var out: Relief;
   let reach = terrain.displace.x;
   if (reach <= 0.0) { return out; }
@@ -160,7 +178,7 @@ fn terrain_relief(c: vec2<f32>, s: vec2<f32>, h: f32, step: f32, gradient: bool)
       let l = terrain.layers[pick.ids[k]];
       let amount = l.offset.w * w[k] * scale;
       out.d += relief[k] * amount;
-      if (gradient && amount != 0.0 && (u32(l.mapping.w) & 1u) != 0u) {
+      if (amount != 0.0 && (u32(l.mapping.w) & 1u) != 0u) {
         let sx = (layer_height(pick.ids[k], p + dpx, n, dpx, dpy) - 0.5 - relief[k]) * amount / spacing;
         let sz = (layer_height(pick.ids[k], p + dpy, n, dpx, dpy) - 0.5 - relief[k]) * amount / spacing;
         out.slope += vec2<f32>(sx, sz);
@@ -201,11 +219,12 @@ fn coarse_cell(c: vec2<f32>) -> Coarse {
   var o: Coarse;
   o.lo = grid_clamp(p);
   o.hi = grid_clamp(p + s2);
+  // Its corners as that level reads them (at their clamped places).
   o.h = vec4<f32>(
-    grid_height(o.lo, s2),
-    grid_height(vec2<f32>(o.hi.x, o.lo.y), s2),
-    grid_height(vec2<f32>(o.lo.x, o.hi.y), s2),
-    grid_height(o.hi, s2),
+    coarse_corner_height(p),
+    coarse_corner_height(p + vec2<f32>(s2, 0.0)),
+    coarse_corner_height(p + vec2<f32>(0.0, s2)),
+    coarse_corner_height(p + s2),
   );
   return o;
 }
@@ -236,7 +255,7 @@ fn morphed(c: vec2<f32>, m: vec2<f32>, h: f32, k: Coarse) -> f32 {
 fn terrain_grid_corner(g: vec2<f32>) -> vec3<f32> {
   let c = grid_corner(g);
   let m = grid_clamp(c);
-  var h = grid_height(m, level.center.z);
+  var h = own_height(g);
   if (morph_alpha(c) > 0.0) {
     h = morphed(c, m, h, coarse_cell(c));
   }
@@ -254,8 +273,9 @@ fn terrain_cell_centre(g: vec2<f32>) -> vec3<f32> {
   let cs = array<vec2<f32>, 4>(c00, c00 + vec2<f32>(s, 0.0), c00 + vec2<f32>(0.0, s), c00 + vec2<f32>(s, s));
   var own: vec4<f32>;
   var morphing = morph_alpha(c00 + 0.5 * s) > 0.0;
+  let gs = array<vec2<f32>, 4>(g, g + vec2<f32>(1.0, 0.0), g + vec2<f32>(0.0, 1.0), g + vec2<f32>(1.0, 1.0));
   for (var i = 0u; i < 4u; i++) {
-    own[i] = grid_height(grid_clamp(cs[i]), s);
+    own[i] = own_height(gs[i]);
     morphing = morphing || morph_alpha(cs[i]) > 0.0;
   }
   let flip = zigzag(own.x, own.y, own.z, own.w);
@@ -291,3 +311,22 @@ fn terrain_local_vertex(vi: u32) -> vec3<f32> {
   return terrain_cell_centre(vec2<f32>(f32(k % n), f32(k / n)));
 }
 
+// The displaced surface's relief at vertex `vi` (terrain_relief's slope in
+// xy, its bare part in zw): a corner's own, a centre's the mean of its
+// four corners'.
+fn corner_relief(g: vec2<f32>) -> vec4<f32> {
+  let c = cached_corner(level.corners.z, g);
+  return vec4<f32>(unpack2x16float(c.y), unpack2x16float(c.z));
+}
+
+fn terrain_vertex_relief(vi: u32) -> vec4<f32> {
+  let n = u32(level.grid.x);
+  let corners = (n + 1u) * (n + 1u);
+  if (vi < corners) {
+    return corner_relief(vec2<f32>(f32(vi % (n + 1u)), f32(vi / (n + 1u))));
+  }
+  let k = vi - corners;
+  let g = vec2<f32>(f32(k % n), f32(k / n));
+  return 0.25 * (corner_relief(g) + corner_relief(g + vec2<f32>(1.0, 0.0))
+    + corner_relief(g + vec2<f32>(0.0, 1.0)) + corner_relief(g + vec2<f32>(1.0, 1.0)));
+}

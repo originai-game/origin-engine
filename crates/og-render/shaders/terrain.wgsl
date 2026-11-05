@@ -77,6 +77,7 @@ struct TerrainLevel {
   center: vec4<f32>,    // xy: the level's centre (grid units), z: grid units per quad, w: level
   grid: vec4<f32>,      // x: quads per side, y: morph start (quads from the camera), z: morph width (0: none)
   camera: vec4<f32>,    // xy: the camera (grid units), z: metres per grid unit
+  corners: vec4<f32>,   // xy: the coarser level's centre (grid units), z: this level's first corner in the corner cache, w: the coarser level's (terrain_vertex.wgsl)
 };
 
 // Every tile's slot and fade, four to a vector: (slot + 1) * 256 + fade * 255; 0 when not resident.
