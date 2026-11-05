@@ -50,6 +50,16 @@ impl ColorRef {
             ColorRef::Literal(c) => c.linear(),
         }
     }
+
+    /// The sRGB colour through `theme` (`None`: an unknown token).
+    pub fn srgb(&self, theme: &Theme) -> Option<Srgba> {
+        match self {
+            ColorRef::Token { name, alpha } => {
+                theme.color(name).map(|c| c.fade(alpha.clamp(0.0, 1.0)))
+            }
+            ColorRef::Literal(c) => Some(*c),
+        }
+    }
 }
 
 impl From<Srgba> for ColorRef {

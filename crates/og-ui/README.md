@@ -502,6 +502,8 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `input` | text | field | The field's text (written back). Two-way. |
 | `placeholder` | text | field | Shown while it is empty. |
 | `maxChars` | number | field | The most characters it takes. |
+| `tight` | bool | field | No inset and its text's line height: the text sits where the field is laid (in a box the screen draws). |
+| `component` | name | field | The component its style dresses it as (`Poem`, `Search[large]`): `<component>.frame`, `.text` and `.placeholder`; else Field. |
 | `invalid` | bool | field | Its text is wrong: the danger frame. |
 | `tone` | neutral \| info \| success \| warn \| danger \| accent | badge | Its tone. |
 | `vertical` | bool | divider | Upright. |

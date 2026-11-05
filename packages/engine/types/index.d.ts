@@ -23999,6 +23999,18 @@ export interface FieldDesc {
    * @default false
    */
   readonly bare?: boolean;
+  /**
+   * No inset and the height of its text's line (on a touch screen at least the 44 CSS px touch target, the line centred): the text sits exactly where the field is laid, in a box the caller draws or on a line of a page. With or without bare.
+   *
+   * @default false
+   */
+  readonly tight?: boolean;
+  /**
+   * The component its style dresses it as (`Poem`, `Search[large]`): its frame `<component>.frame`, its text `<component>.text` and its placeholder `<component>.placeholder`, in its states (focused, invalid, disabled); `ink` and `step` on the text parts set the text's colour and type step. Null: Field.
+   *
+   * @default null
+   */
+  readonly component?: string | null;
 }
 
 /**
@@ -24043,6 +24055,18 @@ export interface TextAreaDesc {
    * @default false
    */
   readonly bare?: boolean;
+  /**
+   * No inset and rows lines of its text's height (FieldDesc.tight).
+   *
+   * @default false
+   */
+  readonly tight?: boolean;
+  /**
+   * The component its style dresses it as (FieldDesc.component). Null: Field.
+   *
+   * @default null
+   */
+  readonly component?: string | null;
 }
 
 /**

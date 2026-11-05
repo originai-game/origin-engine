@@ -280,6 +280,8 @@ pub(crate) enum Widget {
         text: String,
         placeholder: String,
         line_height: f32,
+        /// Its text's step and inks, as its style dresses them.
+        ink: crate::ui::FieldInk,
     },
     Tooltip,
     /// A virtualised list or grid's filler: no drawing.
@@ -301,6 +303,8 @@ pub(crate) struct EditView {
     pub caret_on: bool,
     /// The caret is drawn after the glyph before it (`caret_x_at`).
     pub upstream: bool,
+    /// The control shows its placeholder (its value is empty).
+    pub placeholder: bool,
 }
 
 pub(crate) const NONE: usize = usize::MAX;

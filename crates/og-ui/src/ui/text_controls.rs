@@ -21,14 +21,33 @@ impl Ui {
     ) -> Response {
         let t = self.theme;
         let sizes = self.sizes();
-        // A bare field sits in a component's own frame, beside its icon.
-        let pad = if desc.bare { t.space.xs } else { t.space.md };
+        // A bare field sits in a component's own frame, beside its icon; a
+        // tight one has no inset at all.
+        let pad = if desc.tight {
+            0.0
+        } else if desc.bare {
+            t.space.xs
+        } else {
+            t.space.md
+        };
+        let base = self.field_component(desc.component.as_deref());
+        // Its frame's states are known once it is laid; its text's step is
+        // the same in every state (its height must not move as it focuses).
+        let ink = self.field_ink(base, false, desc.invalid, false);
+        let step = ink.step;
+        // Tight is the line's height, but never under a finger's reach on a
+        // touch screen, where the line is centred in the taller box.
+        let height = if desc.tight {
+            ink.line_height(value).max(self.touch_min())
+        } else {
+            sizes.control_md
+        };
         let i = self.leaf(
             "field",
             id.into(),
             Element {
                 width: desc.width.unwrap_or(Size::grow()),
-                height: Size::Fixed(sizes.control_md),
+                height: Size::Fixed(height),
                 padding: Insets::xy(pad, 0.0),
                 interactive: true,
                 radius: t.radius.control,
@@ -39,7 +58,6 @@ impl Ui {
         self.nodes[i].nav = true;
         let key = self.nodes[i].key;
         let mut r = self.respond(key);
-        let step = t.type_ramp.body;
         if r.focused {
             let inner = self.hit(key).map(|h| h.full.inset(&Insets::xy(pad, 0.0)));
             let e = self.edit(
@@ -67,17 +85,20 @@ impl Ui {
         } else {
             shown
         };
-        let color = if placeholder {
-            t.palette.ink_faint
+        let disabled = self.nodes[i].disabled;
+        let ink = self.field_ink(base, focused, desc.invalid, disabled);
+        let (step, color) = if placeholder {
+            (ink.placeholder_step, ink.placeholder)
         } else {
-            t.palette.ink
+            (ink.step, ink.ink)
         };
         let mut content = self.text_content(&shown, step, color);
         content.wrap = false;
         // A placeholder longer than the field ends in an ellipsis; a value scrolls.
         content.ellipsis = placeholder;
-        let edit = self.edit_view(key, focused, value, composition, false);
-        self.field_part(i, focused, desc.invalid, desc.bare);
+        let mut edit = self.edit_view(key, focused, value, composition, false);
+        edit.placeholder = placeholder;
+        self.field_part(i, base, focused, desc.invalid, desc.bare);
         let n = &mut self.nodes[i];
         n.content = Content::Text(content);
         n.widget = Widget::Field(edit);
@@ -98,7 +119,14 @@ impl Ui {
     /// from `control` to `panel` on the `ui` spring as it takes the focus.
     /// A bare field draws no frame and no ring: its component frames it
     /// and shows its focus.
-    fn field_part(&mut self, i: usize, focused: bool, invalid: bool, bare: bool) {
+    fn field_part(
+        &mut self,
+        i: usize,
+        base: crate::dress::PartRef,
+        focused: bool,
+        invalid: bool,
+        bare: bool,
+    ) {
         if bare {
             let n = &mut self.nodes[i];
             n.el.background = None;
@@ -110,7 +138,7 @@ impl Ui {
         let f = self.spring_to(child_key(key, "focus"), if focused { 1.0 } else { 0.0 });
         let n = &mut self.nodes[i];
         n.el.background = Some(mix_srgba(p.control, p.panel, f.clamp(0.0, 1.0)));
-        let part = crate::dress::PartRef::new("Field", "frame", crate::tokens::ElementClass::Field)
+        let part = base
             .flag_if(focused, "focused")
             .flag_if(invalid, "invalid")
             .flag_if(n.disabled, "disabled");
@@ -130,20 +158,22 @@ impl Ui {
         desc: &TextAreaDesc,
     ) -> Response {
         let t = self.theme;
-        let step = t.type_ramp.body;
+        let base = self.field_component(desc.component.as_deref());
+        let ink = self.field_ink(base, false, desc.invalid, false);
+        let step = ink.step;
         let rows = if desc.rows == 0 { 4 } else { desc.rows };
-        let lh = if value.chars().any(crate::text::is_cjk) {
-            step.cjk_line_height
+        let lh = ink.line_height(value);
+        let pad = if desc.tight {
+            Insets::default()
         } else {
-            step.line_height
+            Insets::xy(t.space.md, t.space.sm)
         };
-        let pad = Insets::xy(t.space.md, t.space.sm);
         let i = self.leaf(
             "textarea",
             id.into(),
             Element {
                 width: desc.width.unwrap_or(Size::grow()),
-                height: Size::Fixed(rows as f32 * lh + pad.vertical()),
+                height: Size::Fixed((rows as f32 * lh + pad.vertical()).max(self.touch_min())),
                 padding: pad,
                 interactive: true,
                 radius: t.radius.control,
@@ -176,14 +206,18 @@ impl Ui {
         }
         let focused = r.focused;
         let (shown, composition) = self.shown_text(value, focused);
-        let edit = self.edit_view(key, focused, value, composition, true);
-        self.field_part(i, focused, desc.invalid, desc.bare);
+        let mut edit = self.edit_view(key, focused, value, composition, true);
+        edit.placeholder = shown.is_empty();
+        let disabled = self.nodes[i].disabled;
+        let ink = self.field_ink(base, focused, desc.invalid, disabled);
+        self.field_part(i, base, focused, desc.invalid, desc.bare);
         let n = &mut self.nodes[i];
         n.widget = Widget::TextArea {
             edit,
             text: shown,
             placeholder: desc.placeholder.clone(),
             line_height: lh,
+            ink,
         };
         n.probe_text = if value.is_empty() {
             desc.placeholder.clone()
@@ -194,6 +228,63 @@ impl Ui {
         n.a11y.description = Some(desc.placeholder.clone());
         n.a11y.value = Some(value.clone());
         r
+    }
+
+    /// The frame part a text control dresses as: its component's
+    /// (`Poem`, `Search[large]`; `None`: `Field`), qualifiers kept. A name
+    /// that is not a component warns and dresses as `Field`.
+    fn field_component(&mut self, component: Option<&str>) -> crate::dress::PartRef {
+        let class = crate::tokens::ElementClass::Field;
+        let field = crate::dress::PartRef::new("Field", "frame", class);
+        let Some(c) = component else {
+            return field;
+        };
+        let (head, quals) = c.split_at(c.find('[').unwrap_or(c.len()));
+        match crate::dress::PartRef::parse(&format!("{head}.frame{quals}"), class) {
+            Ok(p) if !head.contains('.') => p,
+            _ => {
+                self.warnings.push(format!(
+                    "text control: component '{c}' is not a PascalCase component with [qualifiers] (Poem, Search[large]); it dresses as Field"
+                ));
+                field
+            }
+        }
+    }
+
+    /// A text control's text step and inks: its component's `text` and
+    /// `placeholder` parts in its states (`ink`, `step`), else the body
+    /// step in ink and the placeholder in inkFaint at the text's step.
+    fn field_ink(
+        &self,
+        base: crate::dress::PartRef,
+        focused: bool,
+        invalid: bool,
+        disabled: bool,
+    ) -> FieldInk {
+        let t = &self.theme;
+        let of = |part: &'static str| {
+            let mut p = base
+                .flag_if(focused, "focused")
+                .flag_if(invalid, "invalid")
+                .flag_if(disabled, "disabled");
+            p.part = part;
+            self.dress.resolve(&p).draw
+        };
+        let (text, hint) = (of("text"), of("placeholder"));
+        let step_of = |name: Option<&str>| {
+            let mut ramp = t.type_ramp;
+            name.and_then(|n| crate::style_file::ramp_step(&mut ramp, n).copied())
+        };
+        let step = step_of(text.step).unwrap_or(t.type_ramp.body);
+        FieldInk {
+            step,
+            placeholder_step: step_of(hint.step).unwrap_or(step),
+            ink: text.ink.and_then(|c| c.srgb(t)).unwrap_or(t.palette.ink),
+            placeholder: hint
+                .ink
+                .and_then(|c| c.srgb(t))
+                .unwrap_or(t.palette.ink_faint),
+        }
     }
 
     /// A text control's text as shown: its value with the composition (if
@@ -251,6 +342,7 @@ impl Ui {
             scroll: self.state.edit_scroll,
             caret_on: self.caret_shown(),
             upstream: self.state.caret_upstream && n == 0,
+            placeholder: false,
         }
     }
 }
@@ -325,17 +417,16 @@ impl Ui {
             text,
             placeholder,
             line_height,
+            ink,
         } = &n.widget
         else {
             return;
         };
         let t = &self.theme;
-        let p = &t.palette;
-        let step = t.type_ramp.body;
-        let (shown, color) = if text.is_empty() {
-            (placeholder.as_str(), p.ink_faint)
+        let (shown, color, step) = if text.is_empty() {
+            (placeholder.as_str(), ink.placeholder, ink.placeholder_step)
         } else {
-            (text.as_str(), p.ink)
+            (text.as_str(), ink.ink, ink.step)
         };
         let font = self.fonts.for_text(FontRole::Body, shown);
         if font.handle.is_none() {
@@ -420,5 +511,30 @@ impl Ui {
             }
             marks(false, cmds);
         }
+    }
+}
+
+/// A text control's text, as its style dresses it ([`Ui::field_ink`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct FieldInk {
+    pub step: TypeStep,
+    pub placeholder_step: TypeStep,
+    pub ink: Srgba,
+    pub placeholder: Srgba,
+}
+
+impl FieldInk {
+    /// One line of `value` (or its placeholder): the taller of its value's
+    /// and its placeholder's lines, CJK's where the value has CJK.
+    pub fn line_height(&self, value: &str) -> f32 {
+        let cjk = value.chars().any(crate::text::is_cjk);
+        let lh = |s: &TypeStep| {
+            if cjk {
+                s.cjk_line_height
+            } else {
+                s.line_height
+            }
+        };
+        lh(&self.step).max(lh(&self.placeholder_step))
     }
 }

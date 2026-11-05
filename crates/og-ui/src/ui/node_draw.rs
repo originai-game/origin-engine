@@ -323,7 +323,7 @@ impl Ui {
                             };
                         // A focused field: scrolled, its selection under the text.
                         let x = match &field {
-                            Some(e) if e.focused && tc.color != p.ink_faint => {
+                            Some(e) if e.focused && !e.placeholder => {
                                 let x = x - e.scroll;
                                 self.edit_marks(
                                     &EditMarks {
@@ -479,11 +479,7 @@ impl Ui {
                         && e.focused
                     {
                         // The composition's underline and the caret, over the text.
-                        let text = if tc.color != p.ink_faint {
-                            tc.text.as_str()
-                        } else {
-                            ""
-                        };
+                        let text = if !e.placeholder { tc.text.as_str() } else { "" };
                         // An empty field's caret sits at its start.
                         let x = if text.is_empty() {
                             if self.direction == og_i18n::Direction::Rtl {

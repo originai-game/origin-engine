@@ -37,7 +37,9 @@
 //!   lineStrong inside`, `effect innerShadow 0 2 4 "#00000066"` (the
 //!   grammar is [`crate::paint_entry`]'s). `fill`, `stroke` and `effect`
 //!   lines stack in order; a later block of the same selector that sets
-//!   one of them replaces the earlier block's list.
+//!   one of them replaces the earlier block's list. On a text part
+//!   ([`TEXT_PARTS`]: `Field.text`, `Field.placeholder`), `ink <colour>`
+//!   and `step <TypeStepName>` set the text's colour and type step.
 
 use crate::paint::{Blend, Effect, Layer, Mask, Paint, Stroke};
 use crate::paint_entry::AtlasContext;
@@ -47,7 +49,7 @@ use og_core::ogt::Entry;
 use std::fmt;
 
 /// The dressing keys of the UI pass's types ([`DressDraw`]).
-pub const DRAW_KEYS: [&str; 10] = [
+pub const DRAW_KEYS: [&str; 12] = [
     "fill",
     "stroke",
     "effect",
@@ -58,6 +60,8 @@ pub const DRAW_KEYS: [&str; 10] = [
     "mask",
     "sound",
     "segments",
+    "ink",
+    "step",
 ];
 
 /// `Component.part[flag][key=value]…`.
@@ -285,7 +289,17 @@ pub struct DressDraw {
     /// `segments <count> <gap> [ramp <from> <to>]`, on a slider's or a
     /// meter's track: the track drawn as segments, filled whole ones.
     pub segments: Option<Segments>,
+    /// `ink <colour>`, on a text part (`Field.text`, `Field.placeholder`):
+    /// the text's colour.
+    pub ink: Option<crate::paint::ColorRef>,
+    /// `step <TypeStepName>`, on a text part: the text's type step, scaled
+    /// with the player's text size as every step is.
+    pub step: Option<&'static str>,
 }
+
+/// The parts the `ink` and `step` dress keys apply to: the text a widget
+/// draws as a part of its own (a field's value and placeholder).
+pub const TEXT_PARTS: [&str; 2] = ["text", "placeholder"];
 
 /// A track drawn as `count` segments `gap` CSS px apart, its fill a whole
 /// number of segments (the nearest to the value); with `ramp`, filled
@@ -423,6 +437,26 @@ impl DressDraw {
             "blend" => self.blend = Some(crate::paint_entry::blend_from_entry(e)?),
             "mask" => self.mask = Some(Mask::from_entry(e, atlas)?),
             "segments" => self.segments = Some(crate::paint_entry::segments_from_entry(e, atlas)?),
+            "ink" => self.ink = Some(crate::paint_entry::color_from_entry(e, atlas)?),
+            "step" => {
+                let name = match e.values.as_slice() {
+                    [og_core::ogt::Value::Word(w)] => w.as_str(),
+                    _ => {
+                        return Err(format!(
+                            "line {}: `step` takes one TypeStepName (body, caption, lg…)",
+                            e.line
+                        ));
+                    }
+                };
+                let mut ramp = crate::theme::TYPE_RAMP;
+                if crate::style_file::ramp_step(&mut ramp, name).is_none() {
+                    return Err(format!(
+                        "line {}: `step {name}`: not a TypeStepName (body, caption, lg…)",
+                        e.line
+                    ));
+                }
+                self.step = Some(intern(name));
+            }
             "sound" => {
                 let (s, path) = crate::paint_entry::sound_from_entry(e)?;
                 self.sounds.retain(|(k, _)| *k != s);
@@ -720,6 +754,10 @@ impl DressSet {
             if a.segments.is_some() {
                 b.segments = a.segments.clone();
             }
+            if a.ink.is_some() {
+                b.ink = a.ink.clone();
+            }
+            b.step = a.step.or(b.step);
             for (e, s) in &a.sounds {
                 b.sounds.retain(|(k, _)| k != e);
                 b.sounds.push((*e, s.clone()));

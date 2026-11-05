@@ -5,6 +5,16 @@ use super::*;
 pub(crate) const TOUCH_TARGET: f32 = 44.0;
 
 impl Ui {
+    /// The minimum touch target in og-ui units (44 CSS px) on a touch
+    /// screen, zero with a fine pointer.
+    pub(crate) fn touch_min(&self) -> f32 {
+        if self.viewport.coarse_pointer {
+            TOUCH_TARGET / self.unit.max(0.01)
+        } else {
+            0.0
+        }
+    }
+
     /// Lays out the frame, updates the interaction state and returns the frame.
     pub fn end(&mut self) -> &UiFrame {
         if !self.building {
@@ -496,11 +506,7 @@ impl Ui {
         let mut top_scope = 0u64;
         let mut top_locked = false;
         // The minimum touch target, in og-ui units (44 CSS px), on a touch screen.
-        let touch_min = if self.viewport.coarse_pointer {
-            TOUCH_TARGET / self.unit.max(0.01)
-        } else {
-            0.0
-        };
+        let touch_min = self.touch_min();
         for &i in &order[1..] {
             let n = &self.nodes[i];
             let (role, name, description, value, states) = self.a11y_info(i);

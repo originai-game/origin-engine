@@ -638,6 +638,18 @@ pub const PROPS: &[PropSpec] = &[
         "The most characters it takes."
     ),
     p!(
+        "tight",
+        Ty::Bool,
+        ["field"],
+        "No inset and its text's line height: the text sits where the field is laid (in a box the screen draws)."
+    ),
+    p!(
+        "component",
+        Ty::Name,
+        ["field"],
+        "The component its style dresses it as (`Poem`, `Search[large]`): `<component>.frame`, `.text` and `.placeholder`; else Field."
+    ),
+    p!(
         "invalid",
         Ty::Bool,
         ["field"],

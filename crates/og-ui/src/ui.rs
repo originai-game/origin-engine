@@ -15,6 +15,7 @@ pub(crate) use commands::bake;
 pub use descriptors::*;
 use dressing::scaled_xy;
 use node_draw::part_rect;
+pub(crate) use text_controls::FieldInk;
 
 use crate::draw::{DrawCmd, DrawItem, EmitDesc, assign_levels, emit};
 use crate::element::{Affine, LayoutStats, Overlap};

@@ -1266,3 +1266,159 @@ fn a_focus_ring_in_a_scroll_keeps_its_sides() {
         );
     }
 }
+
+/// A tight field has no inset and its text's line for a height, so a
+/// caller's own box holds the line exactly (the 大观园 page's verse box);
+/// its style's text parts set the text's step and inks per component,
+/// and an `ink` on a frame is refused. Wrong: the text took the
+/// body step and ink, the placeholder inkFaint, inside a control's inset.
+#[test]
+fn a_tight_field_takes_its_components_text_parts() {
+    let style = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../templates/styles/storybook/style.ogt"
+    ))
+    .unwrap();
+    let dress = r##"dress "Poem.text" {
+  ink "#c0392b"
+  step lg
+}
+dress "Poem.placeholder" {
+  ink "#7f8c8d"
+}
+"##;
+    let file = parse_style(&format!("{style}{dress}")).unwrap_or_else(|e| panic!("{e}"));
+    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    ui.set_theme(file.theme(None, [0; 6]));
+    ui.set_dressings(file.dressings.clone());
+    let lg = ui.theme().type_ramp.lg;
+    let body = ui.theme().type_ramp.body;
+    let texts = |ui: &Ui| -> Vec<(String, f32, f32, [f32; 4])> {
+        ui.frame()
+            .items
+            .iter()
+            .filter_map(|it| match &it.cmd {
+                DrawCmd::Text {
+                    text,
+                    x,
+                    size,
+                    color,
+                    ..
+                } => Some((text.clone(), *x, *size, *color)),
+                DrawCmd::StyledText { text, .. } => match &**text {
+                    DrawCmd::Text {
+                        text,
+                        x,
+                        size,
+                        color,
+                        ..
+                    } => Some((text.clone(), *x, *size, *color)),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .collect()
+    };
+    let run = |ui: &mut Ui, poem: &str, plain: &str| {
+        ui.begin(InputFrame::default(), Viewport::new(600.0, 300.0));
+        ui.column("Page", Element::column(), |ui| {
+            ui.text_field(
+                "Verse",
+                &mut poem.to_string(),
+                &FieldDesc {
+                    placeholder: "A line".into(),
+                    width: Some(Size::Fixed(320.0)),
+                    bare: true,
+                    tight: true,
+                    component: Some("Poem".into()),
+                    ..FieldDesc::default()
+                },
+            );
+            ui.text_field("Plain", &mut plain.to_string(), &FieldDesc::default());
+        });
+        ui.end();
+    };
+    run(&mut ui, "", "x");
+    let verse = ui
+        .frame()
+        .elements
+        .iter()
+        .find(|e| e.path == "Page/Verse")
+        .cloned()
+        .unwrap();
+    assert_eq!(
+        verse.height, lg.line_height,
+        "one line of its lg text, no inset"
+    );
+    let t = texts(&ui);
+    let hint = t.iter().find(|x| x.0 == "A line").expect("the placeholder");
+    assert!(
+        (hint.1 - verse.x).abs() < 0.5,
+        "no inset: {} at {}",
+        hint.1,
+        verse.x
+    );
+    assert_eq!(hint.2, lg.size, "the placeholder takes the text's step");
+    assert!(
+        near(hint.3, og_ui::style_file::parse_color("#7f8c8d").unwrap()),
+        "{:?}",
+        hint.3
+    );
+    let plain = t
+        .iter()
+        .find(|x| x.0 == "x")
+        .expect("the plain field's value");
+    assert_eq!(plain.2, body.size, "an undressed field keeps the body step");
+    assert!(near(plain.3, ui.theme().palette.ink));
+    run(&mut ui, "Spring", "x");
+    let line = texts(&ui)
+        .into_iter()
+        .find(|x| x.0 == "Spring")
+        .expect("the value");
+    assert_eq!(line.2, lg.size);
+    assert!(
+        near(line.3, og_ui::style_file::parse_color("#c0392b").unwrap()),
+        "{:?}",
+        line.3
+    );
+    let e = parse_style(&format!(
+        "{style}dress \"Poem.frame\" {{\n  ink accent\n}}\n"
+    ))
+    .unwrap_err();
+    assert!(e.contains("text part"), "{e}");
+    // On a touch screen a tight field is still a finger's target.
+    let touch = Viewport {
+        coarse_pointer: true,
+        ..Viewport::new(600.0, 300.0)
+    };
+    ui.begin(InputFrame::default(), touch);
+    ui.column("Page", Element::column(), |ui| {
+        let tight = FieldDesc {
+            bare: true,
+            tight: true,
+            ..FieldDesc::default()
+        };
+        ui.text_field("Verse", &mut String::new(), &tight);
+        let area = TextAreaDesc {
+            rows: 1,
+            tight: true,
+            ..TextAreaDesc::default()
+        };
+        ui.text_area("Line", &mut String::new(), &area);
+    });
+    ui.end();
+    for path in ["Page/Verse", "Page/Line"] {
+        let e = ui
+            .frame()
+            .elements
+            .iter()
+            .find(|e| e.path == path)
+            .cloned()
+            .unwrap();
+        assert!(
+            e.height >= 44.0 - 0.01,
+            "{path} is {} tall on a touch screen",
+            e.height
+        );
+    }
+}

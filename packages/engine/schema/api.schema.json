@@ -47488,6 +47488,23 @@
           "type": "boolean",
           "description": "No frame and no focus ring of its own, a small inset: a component frames it (an input with an icon and a clear button) and shows its focus.",
           "default": false
+        },
+        "tight": {
+          "type": "boolean",
+          "description": "No inset and the height of its text's line (on a touch screen at least the 44 CSS px touch target, the line centred): the text sits exactly where the field is laid, in a box the caller draws or on a line of a page. With or without bare.",
+          "default": false
+        },
+        "component": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The component its style dresses it as (`Poem`, `Search[large]`): its frame `<component>.frame`, its text `<component>.text` and its placeholder `<component>.placeholder`, in its states (focused, invalid, disabled); `ink` and `step` on the text parts set the text's colour and type step. Null: Field.",
+          "default": null
         }
       },
       "additionalProperties": false
@@ -47538,6 +47555,23 @@
           "type": "boolean",
           "description": "No frame and no focus ring of its own: a component frames it.",
           "default": false
+        },
+        "tight": {
+          "type": "boolean",
+          "description": "No inset and rows lines of its text's height (FieldDesc.tight).",
+          "default": false
+        },
+        "component": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The component its style dresses it as (FieldDesc.component). Null: Field.",
+          "default": null
         }
       },
       "additionalProperties": false

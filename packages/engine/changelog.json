@@ -162,6 +162,14 @@
         "summary": "An icon set that draws the names the atlas (the game's icons, else the style's) lacks, for og.ui.icon, rich text, action glyphs and art placeholders; a pack keeps the icons it paints."
       },
       {
+        "member": "FieldDesc and TextAreaDesc tight, component; document field tight, component",
+        "summary": "tight lays a field with no inset at its text's line height (rows lines for a text area; on a touch screen at least the 44 CSS px target), with or without bare, for a field inside a box the caller draws. component dresses it as <component>.frame, .text and .placeholder instead of Field, keeping its focused, invalid and disabled states."
+      },
+      {
+        "member": "Style dress keys ink and step",
+        "summary": "A text part (a field's text or placeholder) takes ink <colour> and step <type step>, so a style sets a field's text size and colours without per-field members."
+      },
+      {
         "member": "Document scroll fade and fadeInto",
         "summary": "The scroll kind in .ogt documents takes fade and fadeInto, as og.ui.scrollArea does, so a cut row reads as more content, not a clip."
       },

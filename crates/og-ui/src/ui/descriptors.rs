@@ -970,6 +970,15 @@ pub struct FieldDesc {
     /// No frame and no focus ring of its own, a small inset: a component
     /// frames it (an input with an icon and a clear button).
     pub bare: bool,
+    /// No inset and the height of its text's line: the text sits exactly
+    /// where the caller lays the field (in a box it draws, a line of a
+    /// page). With or without `bare`.
+    pub tight: bool,
+    /// The component its style dresses it as (`Poem`, `Search[large]`):
+    /// its frame `<component>.frame`, its text `<component>.text` and its
+    /// placeholder `<component>.placeholder`, with its states (focused,
+    /// invalid, disabled). `None`: `Field`.
+    pub component: Option<String>,
 }
 
 /// How a multi-line text area looks ([`Ui::text_area`]).
@@ -987,4 +996,8 @@ pub struct TextAreaDesc {
     pub invalid: bool,
     /// No frame and no focus ring of its own: a component frames it.
     pub bare: bool,
+    /// No inset and `rows` lines of its text's height ([`FieldDesc::tight`]).
+    pub tight: bool,
+    /// The component its style dresses it as ([`FieldDesc::component`]).
+    pub component: Option<String>,
 }

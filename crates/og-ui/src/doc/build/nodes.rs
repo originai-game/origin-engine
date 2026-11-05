@@ -393,6 +393,8 @@ impl Ui {
                         max_chars: r.num("maxChars").unwrap_or(0.0) as u32,
                         invalid: r.flag("invalid"),
                         bare: false,
+                        tight: r.flag("tight"),
+                        component: r.str("component").map(str::to_string),
                     },
                 );
                 if resp.changed {

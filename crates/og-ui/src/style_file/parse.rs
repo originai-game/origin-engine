@@ -711,7 +711,17 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                         }
                         "press" => d.frame.press = Some(press_at(&q)?),
                         "hover" => d.frame.hover = Some(hover_at(&q)?),
-                        k if DRAW_KEYS.contains(&k) => d.draw.apply(c, &atlas, &mut seen)?,
+                        k if DRAW_KEYS.contains(&k) => {
+                            if matches!(k, "ink" | "step")
+                                && !crate::dress::TEXT_PARTS.contains(&d.selector.part.as_str())
+                            {
+                                return Err(q.err(&format!(
+                                    "`{k}` dresses a text part ({}.text, {}.placeholder), not .{}",
+                                    d.selector.component, d.selector.component, d.selector.part
+                                )));
+                            }
+                            d.draw.apply(c, &atlas, &mut seen)?
+                        }
                         _ => {
                             return Err(q.err(&format!(
                                 "is not a dressing setting: slice, tone, shadow, glow, glass, corners, crest, edges, tile, shape, press, hover, or (for the UI pass) {}",
