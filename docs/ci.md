@@ -73,7 +73,7 @@ not silently recorded. `crates/og-tests/references/dx12/` and `vulkan/`
 Metal's legitimately, each with its reason in the commit that recorded it:
 nearest-sampled texels whose edges fall on pixel centres (sprites-array,
 tilemap-lit), and NVIDIA's Vulkan anisotropic filter (post-adjust,
-sprites-20k, water-ocean, terrain-tiling). Every other scene is held to
+sprites-20k, water-ocean, water-shore, water-wake, terrain-tiling). Every other scene is held to
 Metal's. `og check` and the package's typecheck command use the pinned tsgo
 through Bun because there is no Windows tsrs package.
 
