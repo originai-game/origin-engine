@@ -194,7 +194,11 @@ fn loose_bodies(
     made: &BTreeMap<u64, (Vec3, Vec3)>,
     fallback: Vec3,
 ) -> BTreeMap<u64, (f32, Vec3)> {
+    // An island's place is its centre of mass (its chunks' centres by
+    // their masses), not its root chunk's: a long island whose root lies
+    // by a blast is pushed as a whole far from it is.
     let mut bodies: BTreeMap<u64, (f32, Vec3)> = BTreeMap::new();
+    let mut placed: BTreeMap<u64, f32> = BTreeMap::new();
     for (c, &b) in p.body.iter().enumerate() {
         if b == 0 || p.entities[c] == 0 {
             continue;
@@ -202,10 +206,14 @@ fn loose_bodies(
         let m = a.chunks[c].volume * scale * scale * scale * density;
         let e = bodies.entry(b).or_insert((0.0, Vec3::ZERO));
         e.0 += m;
-        if p.entities[c] == b
-            && let Some(ps) = poses[c]
-        {
-            e.1 = ps.0;
+        if let Some(ps) = poses[c] {
+            e.1 += ps.0 * m;
+            *placed.entry(b).or_default() += m;
+        }
+    }
+    for (b, e) in bodies.iter_mut() {
+        if let Some(&m) = placed.get(b).filter(|&&m| m > 0.0) {
+            e.1 /= m;
         }
     }
     for c in a.support as usize..a.chunks.len() {
