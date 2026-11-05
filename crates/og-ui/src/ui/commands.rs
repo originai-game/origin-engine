@@ -544,6 +544,28 @@ impl Ui {
         let dpr = self.viewport.dpr();
         let sn = &self.nodes[s];
         let clip = self.scroll_clip(s);
+        let bar = |axis, rect: Rect, cmds: &mut Vec<DrawCmd>| {
+            let part = crate::dress::PartRef::of("Scroll", "bar", None).attr("axis", axis);
+            let dressing = self.dress.resolve(&part);
+            if dressing.matched == 0 {
+                cmds.push(DrawCmd::Quad {
+                    rect: rect.snapped(dpr),
+                    radius: t.radius.bar,
+                    color: p.control_strong.linear(),
+                    clip,
+                });
+            } else {
+                self.part_commands_at(
+                    &part,
+                    dressing.draw.subpart_rect(rect, sn.rect).snapped(dpr),
+                    Some(dressing.draw.subpart_color(p.control_strong, t)),
+                    t.radius.bar,
+                    1.0,
+                    clip,
+                    cmds,
+                );
+            }
+        };
         let max_x = sn.max_scroll_x();
         if max_x > 0.0 {
             let inner_w = sn.w - sn.el.padding.horizontal();
@@ -552,12 +574,11 @@ impl Ui {
             let off = self.state.scroll_x.get(&sn.key).copied().unwrap_or(0.0);
             let x = crate::scroll::bar_start(track.x, track.width, bar_w, off, max_x);
             let h = t.space.xs;
-            cmds.push(DrawCmd::Quad {
-                rect: Rect::new(x, track.bottom() - h - t.space.xxs, bar_w, h).snapped(dpr),
-                radius: t.radius.bar,
-                color: p.control_strong.linear(),
-                clip,
-            });
+            bar(
+                "horizontal",
+                Rect::new(x, track.bottom() - h - t.space.xxs, bar_w, h),
+                cmds,
+            );
         }
         let max = sn.max_scroll();
         if max > 0.0 {
@@ -573,12 +594,11 @@ impl Ui {
                 .clamp(0.0, max);
             let y = track.y + (track.height - bar_h) * off / max;
             let w = t.space.xs;
-            cmds.push(DrawCmd::Quad {
-                rect: Rect::new(track.right() - w - t.space.xxs, y, w, bar_h).snapped(dpr),
-                radius: t.radius.bar,
-                color: p.control_strong.linear(),
-                clip,
-            });
+            bar(
+                "vertical",
+                Rect::new(track.right() - w - t.space.xxs, y, w, bar_h),
+                cmds,
+            );
         }
     }
 }

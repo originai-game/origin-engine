@@ -507,12 +507,10 @@ impl Ui {
                             }
                         }
                         text(0.0, 0.0, tc.color, glow, cmds);
-                        // The flourish frames a title, never a smaller
-                        // heading (under 28 px it crowds the words), at
-                        // the words' cap height (art review, 2026-11-04).
+                        // Undressed flourishes frame titles at cap height.
+                        // A dressing can opt smaller headings in as well.
                         if n.heading
                             && k == 0
-                            && tc.step.size >= FLOURISH_MIN_TITLE
                             && let Some(o) = t.art.flourish.filter(|_| t.art.atlas.is_some())
                         {
                             let cy = ly + lh / 2.0;
@@ -522,26 +520,36 @@ impl Ui {
                             let left = Rect::new(x - gap - w, cy - h / 2.0, w, h);
                             let right = Rect::new(x + line.width * sk + gap, cy - h / 2.0, w, h);
                             // Both sides of a centred heading; the side away from the edge otherwise.
-                            if tc.align != TextAlign::Start {
+                            for (side, rect, flip, visible) in [
+                                ("left", left, false, tc.align != TextAlign::Start),
+                                ("right", right, true, tc.align != TextAlign::End),
+                            ] {
+                                let part = crate::dress::PartRef::of("Heading", "flourish", None)
+                                    .attr("side", side);
+                                let dressing = self.dress.resolve(&part);
+                                if !visible
+                                    || (tc.step.size < FLOURISH_MIN_TITLE && dressing.matched == 0)
+                                {
+                                    continue;
+                                }
+                                let draw = dressing.draw;
+                                let tint = if draw.appearance_value("color").is_some()
+                                    || draw.ink.is_some()
+                                {
+                                    Some(draw.subpart_color(Srgba::WHITE, t).linear())
+                                } else {
+                                    draw.ornament_tint
+                                        .as_ref()
+                                        .map(|c| c.resolve(t))
+                                        .or(ornament_tint)
+                                };
                                 self.ornament(
                                     o,
-                                    left,
+                                    draw.subpart_rect(rect, n.rect),
+                                    flip,
                                     false,
-                                    false,
-                                    ornament_tint,
-                                    alpha,
-                                    clip,
-                                    cmds,
-                                );
-                            }
-                            if tc.align != TextAlign::End {
-                                self.ornament(
-                                    o,
-                                    right,
-                                    true,
-                                    false,
-                                    ornament_tint,
-                                    alpha,
+                                    tint,
+                                    alpha * draw.subpart_opacity(),
                                     clip,
                                     cmds,
                                 );

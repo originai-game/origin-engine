@@ -1879,6 +1879,115 @@ fn a_selected_parts_rim_draws_over_its_items_art() {
 }
 
 #[test]
+fn scroll_bars_and_heading_flourishes_have_independent_dressings() {
+    for authored in [false, true] {
+        let mut ui = dressed(if authored {
+            concat!(
+                "dress \"Scroll.bar[axis=horizontal]\" {\n fill \"#ff00ff\"\n appearance {\n height 7\n }\n}\n",
+                "dress \"Scroll.bar[axis=vertical]\" {\n fill \"#00ffff\"\n appearance {\n width 9\n }\n}\n",
+                "dress \"Heading.flourish\" {\n appearance {\n width 12\n height 5\n color \"#ff00ff\"\n opacity 0.4\n }\n}\n",
+            )
+        } else {
+            ""
+        });
+        let mut scene = og_render::RenderScene::new();
+        let mut fonts = ui.fonts().clone();
+        fonts.body = add_test_font(&mut scene);
+        ui.set_fonts(fonts);
+        let texture = scene.add_texture(og_render::TextureData {
+            width: 2,
+            height: 2,
+            rgba: vec![255; 16],
+            color_space: og_render::ColorSpace::Srgb,
+            mips: og_render::Mips::None,
+        });
+        let mut theme = *ui.theme();
+        theme.art.atlas = Some(texture);
+        theme.art.flourish = Some(og_ui::style_file::Ornament {
+            uv: [0.0, 0.0, 1.0, 1.0],
+            w: 10.0,
+            h: 10.0,
+            ink: og_ui::style_file::Ink::Authored,
+            offset: 0.0,
+        });
+        ui.set_theme(theme);
+        ui.begin(InputFrame::default(), Viewport::new(200.0, 130.0));
+        ui.column("Content", Element::column(), |ui| {
+            ui.label(
+                "Title",
+                "Go",
+                LabelDesc {
+                    heading: true,
+                    align: TextAlign::Center,
+                    step: Some(TypeStep {
+                        size: 16.0,
+                        ..theme.type_ramp.body
+                    }),
+                    ..Default::default()
+                },
+            );
+            ui.scroll(
+                "List",
+                ScrollDesc {
+                    width: Size::Fixed(100.0),
+                    height: Size::Fixed(50.0),
+                    axes: ScrollAxes::Both,
+                    ..Default::default()
+                },
+                |ui| {
+                    ui.open(
+                        "Content",
+                        Element {
+                            width: Size::Fixed(200.0),
+                            height: Size::Fixed(120.0),
+                            ..Default::default()
+                        },
+                    );
+                    ui.close();
+                },
+            );
+        });
+        ui.end();
+        let frame = ui.frame();
+        assert_eq!(frame.element("List").unwrap().width, 100.0);
+        let flourishes: Vec<_> = frame
+            .items
+            .iter()
+            .filter_map(|item| match &item.cmd {
+                DrawCmd::Image { rect, color, .. } => Some((*rect, *color)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            flourishes.len(),
+            if authored { 2 } else { 0 },
+            "small headings opt in only when dressed"
+        );
+        if authored {
+            for (rect, color) in flourishes {
+                assert_eq!((rect.width, rect.height), (12.0, 5.0));
+                assert_eq!(color, Srgba::rgb(255, 0, 255).fade(0.4).linear());
+            }
+            let fills: Vec<_> = frame
+                .items
+                .iter()
+                .filter_map(|item| item.cmd.filled())
+                .collect();
+            assert!(
+                fills
+                    .iter()
+                    .any(|(r, c)| r.height == 7.0 && *c == Srgba::rgb(255, 0, 255).linear())
+            );
+            assert!(
+                fills
+                    .iter()
+                    .any(|(r, c)| r.width == 9.0 && *c == Srgba::rgb(0, 255, 255).linear())
+            );
+        }
+    }
+}
+
+#[test]
 fn loading_indicators_take_geometry_and_period_from_the_style() {
     let mut ui = dressed(concat!(
         "dress \"Skeleton.frame\" {\n appearance {\n width 100\n gap 9\n }\n}\n",

@@ -762,7 +762,8 @@ document property's reflected type and literal grammar (§10); properties
 marked `dressing` in `documentSchema` are accepted. `opacity` applies to
 the whole element, including its label and children; `motion` controls
 changes to its animatable properties. `color` and `step` apply when the
-part is a text element. Shape-only subparts still use paints and `ink`.
+part is a text element. Decorative parts also accept paints and `ink`;
+their appearance overrides are listed below.
 `padding` and `gap` override the part's container spacing before layout,
 including the measured size of a fit container. Four padding values are
 left, top, right, bottom, as in documents. A single value applies to all
@@ -877,6 +878,26 @@ sector, not a rectangular fill. These parts are:
   `appearance.motion` duration as the cycle period and a tween's curve
   as the phase curve. `instant` stops at phase zero. Unset motion keeps
   the skeleton's 1600 ms and the spinner's twice-`slow` periods.
+- `Scroll.bar[axis=horizontal|vertical]` controls scrollbar geometry,
+  radius, paint, and effects. Scroll extent and drag mapping do not change.
+  `Heading.flourish[side=left|right]` controls the atlas ornament's size,
+  offset, tint, and opacity. A matching dressing opts headings below the
+  legacy 28 px threshold in. Alignment still chooses which sides fit;
+  `opacity 0` hides either side. The style supplies the ornament asset.
+
+The engine retains input and layout rules: touch target floors, hit slop,
+pointer ownership, dead zones, value mapping, scroll extents, focus order,
+text shaping and selection, and HUD placement constraints. These are not
+appearance overrides. Primitive topology, clipping, pixel snapping, sector
+angles, and antialias overlap also remain in Rust. Paints, materials, and
+assets change their presentation without changing the interaction model.
+
+Legacy fallbacks retain their original numbers when no dressing applies,
+including text shadow reach and pixel-font effect quantization. Authored
+text effects through `og.ui.setDraw` replace the legacy text drop. This
+preserves existing styles rather than changing their frames to make a
+default more configurable. An authored value goes through the reflected
+property grammar, not a second list of widget-specific numeric tokens.
 
 A game shipped with a version 1 style keeps the screens it shipped with:
 an engine update may draw them better (antialiasing, contrast, a cleaner
