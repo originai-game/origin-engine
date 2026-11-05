@@ -63,6 +63,10 @@ case "$run" in
   example)
     name="${1:?example: a name under examples/}"
     run="example-$name"
+    # The assets a clone lacks (generated, git-ignored), made before the slot.
+    if [ -f "$repo/examples/$name/tools/make-assets.ts" ]; then
+      (cd "$repo/examples/$name" && bun tools/make-assets.ts) || exit 1
+    fi
     set -- tests/web/reference.ts --project "examples/$name" --playtest tests/frames.og.ts ;;
   probe) set -- "$(cd "$(dirname "${1:?probe: a script}")" && pwd)/$(basename "$1")" ;;
   *) echo "run.sh: no run $run" >&2; exit 2 ;;

@@ -1,0 +1,39 @@
+{
+  "tier": "webgpu-safari",
+  "size": "1280x720",
+  "tolerance": {
+    "channel": 32,
+    "outliers": 0.005,
+    "rmse": 0.01
+  },
+  "script": "0.5:station:weather",
+  "stations": {
+    "weather": {
+      "tick": 300,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/weather.png",
+      "outliers": 0,
+      "rmse": 0.002,
+      "ok": true
+    }
+  },
+  "renderer": "webgpu",
+  "textureFormat": "bc7+rgba8+bc5",
+  "textures": 45,
+  "refused": "probe.commands: script must be a string, not object",
+  "ticks": 300,
+  "engine": [
+    "[og] boot stage \"wasm\" done in 105 ms",
+    "[og] boot stage \"bundle\" done in 85 ms",
+    "[og] boot stage \"create\" done in 19 ms",
+    "[og] pipelines sync: auto: an Apple GPU (apple apple), sync until iOS is measured",
+    "[og] boot stage \"attach\" done in 32 ms",
+    "[og] boot stage \"transcode\" done in 162 ms",
+    "[og] boot stage \"prime\" done in 0 ms",
+    "[og] boot stage \"settle\" done in 0 ms",
+    "[og] boot stage \"present\" done in 62 ms",
+    "[og] first frame at 495 ms"
+  ],
+  "ms": 4267,
+  "log": []
+}

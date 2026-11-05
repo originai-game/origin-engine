@@ -1,0 +1,90 @@
+{
+  "tier": "webgpu-safari",
+  "playtests": {
+    "frames-desktop": {
+      "size": "1280x720",
+      "frames": 28,
+      "ok": true,
+      "ms": 361579,
+      "json": "packages/engine/dist/test-reference/ui/frames-desktop/reference-webgpu-safari.json"
+    },
+    "frames-phone": {
+      "size": "1170x2532",
+      "frames": 28,
+      "ok": true,
+      "ms": 46946,
+      "json": "packages/engine/dist/test-reference/ui/frames-phone/reference-webgpu-safari.json"
+    },
+    "players": {
+      "size": "1280x720",
+      "frames": 1,
+      "ok": true,
+      "ms": 7893,
+      "json": "packages/engine/dist/test-reference/ui/players/reference-webgpu-safari.json"
+    },
+    "locales": {
+      "size": "1280x720",
+      "frames": 10,
+      "ok": true,
+      "ms": 16639,
+      "json": "packages/engine/dist/test-reference/ui/locales/reference-webgpu-safari.json"
+    },
+    "style-cartoon": {
+      "size": "1280x720",
+      "frames": 27,
+      "ok": false,
+      "ms": 43994,
+      "json": "packages/engine/dist/test-reference/ui/style-cartoon/reference-webgpu-safari.json"
+    },
+    "style-cartoon-phone": {
+      "size": "1170x2532",
+      "frames": 27,
+      "ok": false,
+      "ms": 47873,
+      "json": "packages/engine/dist/test-reference/ui/style-cartoon-phone/reference-webgpu-safari.json"
+    },
+    "style-fantasy": {
+      "size": "1280x720",
+      "frames": 33,
+      "ok": true,
+      "ms": 84565,
+      "json": "packages/engine/dist/test-reference/ui/style-fantasy/reference-webgpu-safari.json"
+    },
+    "style-fantasy-phone": {
+      "size": "1170x2532",
+      "frames": 29,
+      "ok": true,
+      "ms": 100165,
+      "json": "packages/engine/dist/test-reference/ui/style-fantasy-phone/reference-webgpu-safari.json"
+    },
+    "style-pixel": {
+      "size": "1280x720",
+      "frames": 27,
+      "ok": true,
+      "ms": 36319,
+      "json": "packages/engine/dist/test-reference/ui/style-pixel/reference-webgpu-safari.json"
+    },
+    "style-pixel-phone": {
+      "size": "1170x2532",
+      "frames": 27,
+      "ok": true,
+      "ms": 55203,
+      "json": "packages/engine/dist/test-reference/ui/style-pixel-phone/reference-webgpu-safari.json"
+    },
+    "style-scifi": {
+      "size": "1280x720",
+      "frames": 33,
+      "ok": true,
+      "ms": 85112,
+      "json": "packages/engine/dist/test-reference/ui/style-scifi/reference-webgpu-safari.json"
+    },
+    "style-scifi-phone": {
+      "size": "1170x2532",
+      "frames": 29,
+      "ok": true,
+      "ms": 100718,
+      "json": "packages/engine/dist/test-reference/ui/style-scifi-phone/reference-webgpu-safari.json"
+    }
+  },
+  "ms": 987008
+}
