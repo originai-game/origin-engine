@@ -1827,7 +1827,7 @@ unchanged.
   answers the same copies within `distance` on the CPU (tests, tools):
   nearest rows first, at most 65,536. `FrameStats::scatter_draws`,
   `scatter_copies`, `scatter_built`. With `TerrainScatter::gpu` (a visual
-  mode; og.TerrainScatter `gpuPlacement`) a chunk is placed by a compute
+  mode, on by default; og.TerrainScatter `gpuPlacement`) a chunk is placed by a compute
   job instead (`src/scatter_place.rs`, `shaders/scatter_place.wgsl`): the
   same rules read from the level-0 tiles the GPU holds, its copies, count
   and indirect draws written into its buffer with nothing read back

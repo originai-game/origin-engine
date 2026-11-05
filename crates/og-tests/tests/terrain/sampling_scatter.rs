@@ -110,13 +110,14 @@ fn the_grass_scene_in_the_wind_matches_its_reference() {
     check("terrain-grass-wind");
 }
 
+/// Its grass is placed on the GPU by default: chunks are built and drawn,
+/// and no copy is placed on the CPU (`scatter_copies` counts only those).
 #[test]
 fn the_grass_scene_matches_its_reference() {
     let r = check("terrain-grass");
-    assert!(
-        r.stats.scatter_copies > 5_000,
-        "{} copies drawn",
-        r.stats.scatter_copies
+    assert_eq!(
+        r.stats.scatter_copies, 0,
+        "every chunk placed on the GPU by default"
     );
     assert!(r.stats.scatter_draws > 0 && r.stats.scatter_built > 0);
 }

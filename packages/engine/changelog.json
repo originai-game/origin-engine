@@ -548,6 +548,10 @@
       {
         "member": "skill:visual-acceptance §5, §6",
         "summary": "The skill gains §5, the art bar a frame that passes every check is still held to (hierarchy, art, numerals, selection, depth, spacing, motion: each worded relative to the game's own look and decided by a number og frame measure, og ui check or og style check reproduces), and §6, verdicts: approve or hold, every hold a frame, a region, a criterion (style-check-N, bible:, contract:, measure:, bar:<item>), the measured value and what passes; a preference is a note, contrast is judged at the bar the engine's check states and never stricter, and a resubmission is judged on the held notes and regressions only. The skill keeps its name; its body is a new pack version. og-build §8, og-ui §8 and og-taste §12 describe the new measures."
+      },
+      {
+        "member": "og.TerrainScatter.gpuPlacement",
+        "summary": "Places the scatter's chunks with a compute pass when they come into range, by the same rules as the CPU (layer weight, holes, noiseThreshold, avoidWater, the footprints of the scatters placed before it) from the terrain's finest tiles, with nothing per copy on the CPU: on a moving camera over three chained scatters, 60.3 ms of CPU a frame drops to 14.3 ms for 0.21 ms of GPU. On by default; gpuPlacement: false places every chunk on the CPU. Where the renderer has no compute, or a footprint chain is too long or too wide, the CPU places them. The copies match the CPU's placement but for the last bits of the arithmetic: every scatter scene's reference frame (terrain-grass, terrain-grass-wind, terrain-hidden, terrain-scatter-unshadowed, impostor-scatter, probe-outdoor) holds within its tolerance, so a game draws as before. Visual only; the simulation is unchanged."
       }
     ],
     "fixed": [

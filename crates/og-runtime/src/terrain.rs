@@ -1330,7 +1330,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 avoid_water: f(&v, "avoidWater", 0.0),
                 density_map: super::fx::handle_index(&v["densityMap"])
                     .and_then(|i| rs.textures.get(i).copied()),
-                gpu: on(&v, "gpuPlacement", false),
+                gpu: on(&v, "gpuPlacement", true),
             },
             cast_shadows: on(&v, "castShadows", true),
             impostor,

@@ -77,7 +77,8 @@ is one line here, written at the merge that changes
   fracture of a cylinder changes and is recooked.
 
 - **Scatter placement on the GPU.** New `og.TerrainScatter.gpuPlacement`
-  (off by default): the scatter's chunks are placed by a compute pass
+  (on by default; `gpuPlacement: false` places every chunk on the CPU
+  as before): the scatter's chunks are placed by a compute pass
   when they come into range, by the same rules (layer weight, holes,
   `noiseThreshold`, `avoidWater` and the footprints of the scatters
   placed before it) from the terrain's finest tiles, with nothing per
@@ -85,7 +86,10 @@ is one line here, written at the merge that changes
   6 copies per m², about 3.5 new chunks a frame) a frame's CPU time
   drops from 60.3 ms to 14.3 ms (dev build) for 0.21 ms of GPU; the
   frame matches the CPU placement's pixel for pixel. Without compute,
-  the CPU places them as before.
+  the CPU places them as before. Not a break: every scatter scene's
+  reference frame (terrain-grass, terrain-grass-wind, terrain-hidden,
+  terrain-scatter-unshadowed, impostor-scatter, probe-outdoor) holds
+  within its tolerance with the GPU placing it.
 
 - **Global illumination: screen rays across the screen, `both` counted
   once, cheaper probe sampling.** `og.GlobalIllumination.maxDistance`

@@ -7138,7 +7138,7 @@
         {
           "name": "gpuPlacement",
           "column": "bool",
-          "default": false
+          "default": true
         }
       ]
     },

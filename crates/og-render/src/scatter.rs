@@ -103,6 +103,7 @@ pub struct TerrainScatter {
     /// ([`Terrain::scatter_among`], still the answer for gameplay) but for
     /// the last bits of the arithmetic. Where compute does not run (or a
     /// chunk's footprint chain is too long or wide), the CPU places it.
+    /// On by default; false places every chunk on the CPU.
     pub gpu: bool,
 }
 
@@ -179,7 +180,7 @@ impl Default for TerrainScatter {
             priority: 0,
             avoid_water: 0.0,
             density_map: None,
-            gpu: false,
+            gpu: true,
         }
     }
 }
