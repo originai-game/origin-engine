@@ -46,6 +46,9 @@ mod web {
     thread_local! {
         static OPEN: RefCell<Option<Open>> = const { RefCell::new(None) };
         static CPU_CULLING: Cell<bool> = const { Cell::new(false) };
+        /// A bisect's cut-down ([`og_gfx_bisect`]), applied to every scene
+        /// opened after it.
+        static BISECT: RefCell<String> = const { RefCell::new(String::new()) };
         /// The text fonts' cook: its manifest and its files by path under
         /// `cooked/`.
         static TEXT_MANIFEST: RefCell<Option<String>> = const { RefCell::new(None) };
@@ -161,6 +164,59 @@ mod web {
         CPU_CULLING.with(|c| c.set(cpu));
     }
 
+    /// Cuts every scene opened from now on down, to bisect a frame that
+    /// draws wrong on one backend: a comma list of `gpu` (GPU culling
+    /// whatever the frame's size), `keep:<n>` (the first n instances of the
+    /// first instance's mesh, the rest kept), `first` (only the first
+    /// instance's mesh), `noshadow` (the sun casts none), `nomeshlets` (no
+    /// batch draws through the meshlet path), `apart` (the cull submitted
+    /// before the frame, not with it), `samemat` and `samemesh` (every
+    /// instance the first's material or mesh). Empty: none.
+    #[wasm_bindgen]
+    pub fn og_gfx_bisect(spec: String) {
+        BISECT.with(|b| *b.borrow_mut() = spec);
+    }
+
+    fn cut_down(built: &mut GfxScene) -> Result<(), String> {
+        let spec = BISECT.with(|b| b.borrow().clone());
+        Renderer::debug_cull_apart(false);
+        for knob in spec.split(',').map(str::trim).filter(|k| !k.is_empty()) {
+            let scene = &mut built.scene;
+            let mesh = scene.instances.first().map(|i| i.mesh);
+            match knob.split_once(':') {
+                None if knob == "gpu" => built.desc.culling = og_render::Culling::Gpu,
+                None if knob == "first" => scene.instances.retain(|i| Some(i.mesh) == mesh),
+                None if knob == "noshadow" => scene.light.cast_shadows = false,
+                None if knob == "nomeshlets" => scene.meshlets = false,
+                None if knob == "apart" => Renderer::debug_cull_apart(true),
+                None if knob == "samemat" => {
+                    let m = scene.instances.first().map(|i| i.material);
+                    for i in &mut scene.instances {
+                        i.material = m.expect("an instance");
+                    }
+                }
+                None if knob == "samemesh" => {
+                    for i in &mut scene.instances {
+                        i.mesh = mesh.expect("an instance");
+                    }
+                }
+                Some(("keep", n)) => {
+                    let n: usize = n.parse().map_err(|_| format!("bisect: keep:{n}"))?;
+                    let mut kept = 0;
+                    scene.instances.retain(|i| {
+                        if Some(i.mesh) != mesh {
+                            return true;
+                        }
+                        kept += 1;
+                        kept <= n
+                    });
+                }
+                _ => return Err(format!("bisect: no knob {knob}")),
+            }
+        }
+        Ok(())
+    }
+
     /// Builds `scene` (an og-tests scene, or `og-ui/<name>`) and its renderer
     /// (WebGPU, headless). Resolves to a JSON description: tier, adapter,
     /// antialiasing, whether the scene has a reference on this tier, the
@@ -182,6 +238,7 @@ mod web {
         }
         .map_err(err)?;
         built.desc.backend = Backend::WebGpu;
+        cut_down(&mut built).map_err(err)?;
         if CPU_CULLING.with(Cell::get) {
             built.desc.culling = og_render::Culling::Cpu;
         }

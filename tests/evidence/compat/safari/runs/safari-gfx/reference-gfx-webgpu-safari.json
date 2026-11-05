@@ -1,26 +1,23 @@
 {
   "tier": "webgpu-safari",
-  "buildMs": 4571,
-  "scenes": {
-    "spheres-20k": {
-      "tier": "webgpu",
-      "adapter": "apple",
-      "antialias": "Off",
-      "frames": 1,
-      "renderMs": 31572,
-      "metal": {
-        "outliers": 99.036,
-        "rmse": 0.60435,
-        "ok": false
-      },
-      "against": "crates/og-tests/references/metal/spheres-20k.png",
-      "outliers": 99.036,
-      "rmse": 0.60435,
-      "ok": false,
-      "ms": 32575
+  "buildMs": 1917,
+  "scenes": {},
+  "bisect": {
+    "spheres-20k [gpu,noshadow,keep:1000,samemat]": {
+      "outliers": 99.951,
+      "rmse": 0.58115,
+      "gpuMs": 15858,
+      "cpuMs": 68,
+      "same": false
+    },
+    "spheres-20k [gpu,noshadow,keep:1000,samemesh]": {
+      "outliers": 100,
+      "rmse": 0.47948,
+      "gpuMs": 13379,
+      "cpuMs": 75,
+      "same": false
     }
   },
-  "adapter": "apple",
-  "ms": 32914,
+  "ms": 30174,
   "log": []
 }

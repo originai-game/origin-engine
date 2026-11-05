@@ -44,6 +44,14 @@ impl Renderer {
             .map(|c| (c.n, c.b))
     }
 
+    /// Dev builds only, a bisect's knob: whether GPU culling's command
+    /// buffers go in a submit of their own before the frame's (rather than
+    /// in the frame's submit), for every renderer in the process.
+    #[cfg(not(feature = "publish"))]
+    pub fn debug_cull_apart(apart: bool) {
+        DEBUG_CULL_APART.store(apart, std::sync::atomic::Ordering::Relaxed);
+    }
+
     /// Dev builds only: GPU culling's buffers by name (empty before a frame
     /// culled on the GPU).
     #[cfg(not(feature = "publish"))]
@@ -290,3 +298,8 @@ mod tests {
         assert_eq!(super::render_scaled((5000, 3000), 2.0, 8192), (8192, 6000));
     }
 }
+
+/// [`Renderer::debug_cull_apart`]'s setting.
+#[cfg(not(feature = "publish"))]
+pub(super) static DEBUG_CULL_APART: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);

@@ -20,7 +20,7 @@
 // served beside the module and handed to it before any scene opens; that
 // needs the og a build put in packages/engine/native/ (or $OG_BIN).
 //
-//   bun tests/web/reference-gfx.ts [--record] [--scene a,b] [--time <frames>] [--cpu-culling] [--cull-dump] [--perf-out <dir>] [--out <dir>] [--chrome <path> | --firefox [<path>] | --safari]
+//   bun tests/web/reference-gfx.ts [--record] [--scene a,b] [--time <frames>] [--cpu-culling] [--cull-dump] [--bisect <spec;spec>] [--perf-out <dir>] [--out <dir>] [--chrome <path> | --firefox [<path>] | --safari]
 //
 // First, every WGSL module the renderer compiles (og_gfx_shader_sources)
 // goes through the browser's own compiler; one it refuses fails the run.
@@ -38,7 +38,10 @@
 // crowd-2k to crowd-50k, og-render's GPU-driven crowd path) are timed only
 // when --scene names them, as is any scene --scene names (with --time),
 // the shadows-aa cost scenes (COSTS) among them. --cpu-culling culls on the CPU on WebGPU too
-// (og-render's Culling::Cpu); --cull-dump writes <scene>.cull.json beside
+// (og-render's Culling::Cpu); --bisect "<spec>;<spec>" draws each
+// cut-down of each scene with GPU and with CPU culling and compares the two
+// (og-tests-web og_gfx_bisect has the knobs), instead of the references;
+// --cull-dump writes <scene>.cull.json beside
 // each frame: the GPU cull's buffers after it (args and scan whole, the
 // others hashed per 4 KiB; og-tests-web og_gfx_cull_buffer, dev builds
 // only), for comparing one frame's cull between two browsers
@@ -250,7 +253,45 @@ try {
   const only = opt("--scene")?.split(",");
   const timed = Number(opt("--time") ?? 0);
   const scenes = only ?? (timed > 0 ? [...all, ...PERF.filter((p) => !all.includes(p))] : all);
-  for (const s of scenes) if (!all.includes(s) && !PERF.includes(s) && !CITY.includes(s) && !CROWDS.includes(s) && !COSTS.includes(s)) throw new Error(`no scene ${s} (og-tests knows ${all.join(", ")})`);
+for (const s of scenes) if (!all.includes(s) && !PERF.includes(s) && !CITY.includes(s) && !CROWDS.includes(s) && !COSTS.includes(s)) throw new Error(`no scene ${s} (og-tests knows ${all.join(", ")})`);
+  // --bisect "a;b;...": each cut-down (og-tests-web og_gfx_bisect) of each
+  // scene drawn with GPU culling and with CPU culling in the same browser,
+  // the two frames compared: the first cut-down whose frames agree names
+  // what the GPU path's frame needs to go wrong. No reference is read.
+  const bisect = opt("--bisect");
+  for (const spec of bisect ? bisect.split(";") : []) {
+    for (const scene of scenes) {
+      const frames: Image[] = [];
+      const ms: number[] = [];
+      for (const cpu of [false, true]) {
+        const shot = await bounded(tab.eval<{ w: number; h: number; rgba: string; ms: number; stats: unknown }>(`(async () => {
+          const gfx = globalThis.__gfx;
+          gfx.og_gfx_bisect(${JSON.stringify(spec)});
+          gfx.og_gfx_cpu_culling(${cpu});
+          const o = JSON.parse(await gfx.og_gfx_open(${JSON.stringify(scene)}));
+          const t = performance.now();
+          const stats = JSON.parse(gfx.og_gfx_render(o.frames));
+          const px = await gfx.og_gfx_capture();
+          const ms = performance.now() - t;
+          gfx.og_gfx_close();
+          let bin = "";
+          for (let i = 0; i < px.length; i += 0x8000) bin += String.fromCharCode.apply(null, px.subarray(i, i + 0x8000));
+          return { w: o.width, h: o.height, rgba: btoa(bin), ms, stats };
+        })()`), `${scene} [${spec}]`);
+        const img: Image = { width: shot.w, height: shot.h, rgba: Uint8Array.from(atob(shot.rgba), (c) => c.charCodeAt(0)) };
+        frames.push(img);
+        ms.push(Math.round(shot.ms));
+        writeFileSync(join(dir, `${scene}.bisect-${spec.replace(/[^a-z0-9]+/gi, "_") || "none"}-${cpu ? "cpu" : "gpu"}.png`), encodePng(img));
+        if (!cpu) console.log(`     ${scene} [${spec}] GPU culling: ${JSON.stringify(shot.stats)}`);
+      }
+      const d = compare(frames[0]!, frames[1]!, 32);
+      const same = d.outliers <= 0.005 && d.rmse <= 0.01;
+      (result["bisect"] as Record<string, unknown> | undefined) ?? (result["bisect"] = {});
+      (result["bisect"] as Record<string, unknown>)[`${scene} [${spec}]`] = { outliers: +(d.outliers * 100).toFixed(3), rmse: +d.rmse.toFixed(5), gpuMs: ms[0], cpuMs: ms[1], same };
+      console.log(`${same ? "same" : "DIFF"} ${scene} [${spec}]: GPU against CPU culling ${(d.outliers * 100).toFixed(3)} % outliers, RMSE ${d.rmse.toFixed(5)}; ${ms[0]} ms against ${ms[1]} ms`);
+    }
+  }
+  if (bisect) scenes.length = 0;
   for (const scene of scenes) {
     const row: Record<string, unknown> = {};
     rows[scene] = row;

@@ -5279,6 +5279,21 @@ impl Renderer {
         {
             self.keep_presented(&mut encoder, &frame.texture);
         }
+        // A bisect's knob (dev builds): the debris and cull command buffers
+        // in a submit of their own, before the frame's (settings.rs
+        // `debug_cull_apart`).
+        #[cfg(not(feature = "publish"))]
+        let (debris_commands, cull_commands) =
+            if super::settings::DEBUG_CULL_APART.load(std::sync::atomic::Ordering::Relaxed) {
+                self.queue
+                    .submit(debris_commands.into_iter().chain(cull_commands));
+                (Vec::new(), Vec::new())
+            } else {
+                (
+                    debris_commands.into_iter().collect::<Vec<_>>(),
+                    cull_commands.into_iter().collect::<Vec<_>>(),
+                )
+            };
         let _submission = self.queue.submit(
             debris_commands
                 .into_iter()
