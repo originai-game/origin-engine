@@ -6,7 +6,7 @@ Props that break: walls, crates, pillars, glass. A model cooked with a `fracture
 
 **Deterministic.** Damage, bonds, islands and the stress solver are fixed f32 arithmetic in the tick (og.destruction runs after the game's systems and before og.physics), the chunks are world entities and the bonds' health is in a state block: snapshots, restores, replays and the world hash cover the whole fracture, on both hosts.
 
-**What a game sees.** og.Fractured, the tick after, for every island that breaks loose (play a sound by its volume, shake the camera); each loose chunk is an entity with og.Chunk (its body is a dynamic og.RigidBody: query it, push it, despawn it). Dust and sparks: the og.Destructible's `dust` and `sparks` emitters burst at each break. Budgets (og.Destruction): a loose island (a body and the chunks it carries) smaller than `debrisVolume` despawns after `debrisLifetime`, and past `maxChunks` loose chunks the oldest islands go first.
+**What a game sees.** og.Fractured, the tick after, for every island that breaks loose (play a sound by its volume, shake the camera); each loose chunk is an entity with og.Chunk (its body is a dynamic og.RigidBody: query it, push it, despawn it). Its look: the og.Destructible's `breakFx` emitter bursts where each island breaks loose and `hitFx` at each damaging hit, each the material's own (dust for stone, splinters for wood, shards and glints for glass, a few sparks only for metal). Budgets (og.Destruction): a loose island (a body and the chunks it carries) smaller than `debrisVolume` despawns after `debrisLifetime`, and past `maxChunks` loose chunks the oldest islands go first.
 
 3D profile only. The chunks of a dynamic prop (a crate with an og.RigidBody) fly with its velocity; a prop without a body, or with a static one, stands on its anchors.
 
@@ -216,11 +216,11 @@ Token `og.Destructible`, registered under the schema name `og.Destructible`; its
 | `strength` | `number` | `30000` | ≥ 0 | `pascal` | tunable | The stress its bonds hold in tension and shear before they weaken (compression holds thirty times as much, shear more for the compression across it (friction), and a bond breaks outright at twice the stress): low, an overhang falls and a wall shot out at its foot comes down; high, it holds whatever is left. 0 turns the stress solver off. |
 | `friction` | `number` | `0.7` | 0 … 4 | — | tunable | How much more shear a bond holds for the compression across it, per pascal (Mohr–Coulomb, the tangent of the friction angle): a joint pressed by what stands on it holds where an unloaded one slips, so a wall shot out at its foot keeps its loaded piers and drops what hung over the hole, cracking in steps along its courses. 0 is shear at strength alone. |
 | `density` | `number` | `1000` | ≥ 1 | `kgPerM3` | tunable | The chunks' density: their mass as bodies and their weight in the stress solver. |
-| `impactThreshold` | `number` | `30` | ≥ 0 | `newtonSecond` | tunable | A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit. |
+| `impactThreshold` | `number` | `30` | ≥ 0 | `newtonSecond` | tunable | A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit, and the push the pieces it breaks loose take along the striker's path (shared by falloff, none faster than the striker closed), so a ball through a pane carries its shards on. |
 | `impactRadius` | `number` | `0.4` | ≥ 0.01 | `m` | tunable | How far a hit's damage reaches round its point (all of it within a third of this, falling to nothing at it). |
 | `anchored` | `boolean` | `true` | — | — | — | Whether its anchors (the chunks on its floor) hold it to the world; false, every island falls. |
-| `dust` | `ParticleEmitter` | `0` | — | — | — | An emitter (og.load.emitter, `looping false`) burst where each island breaks loose, at its broken faces: dust, splinters, glass grit. 0 none. |
-| `sparks` | `ParticleEmitter` | `0` | — | — | — | An emitter burst at each hit that damages it (sparks off metal, chips off stone). 0 none. |
+| `breakFx` | `ParticleEmitter` | `0` | — | — | — | A one-shot emitter (og.load.emitter, `looping false`) burst where each island breaks loose, at its broken faces: the material's own, a lit dust puff for stone and brick, splinters and a little dust for wood, shards and glints for glass. 0 none. |
+| `hitFx` | `ParticleEmitter` | `0` | — | — | — | A one-shot emitter burst at each hit that damages it: the material's own, grit and a puff off stone, splinters off wood, glints off glass; sparks only off metal, and a few. 0 none. |
 | `debris` | `ParticleEmitter` | `0` | — | — | — | Fine debris, as visuals only: a mesh-particle emitter (`render mesh`, best with `collision` and `lit true`) burst where a chunk shatters, in place of its pieces smaller than og.Destruction.debrisVolume, which then never become bodies. It is simulated and drawn on the GPU (og.destruction.capabilities' visualDebris) and never touches the simulation, so the world is the same on every device. 0: every piece is a body. |
 | `fractured` | `boolean` | `false` | — | — | read only | Written: true from its first break (the model hidden, its chunks drawn). |
 | `broken` | `number` | `0` | — | — | read only | Written: its bonds broken so far. |
@@ -254,7 +254,7 @@ component Destructible {
     unit kgPerM3
     tunable true
   }
-  field impactThreshold f32 "A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit." {
+  field impactThreshold f32 "A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit, and the push the pieces it breaks loose take along the striker's path (shared by falloff, none faster than the striker closed), so a ball through a pane carries its shards on." {
     default 30
     min 0
     unit newtonSecond
@@ -269,8 +269,8 @@ component Destructible {
   field anchored bool "Whether its anchors (the chunks on its floor) hold it to the world; false, every island falls." {
     default true
   }
-  field dust ParticleEmitter "An emitter (og.load.emitter, `looping false`) burst where each island breaks loose, at its broken faces: dust, splinters, glass grit. 0 none."
-  field sparks ParticleEmitter "An emitter burst at each hit that damages it (sparks off metal, chips off stone). 0 none."
+  field breakFx ParticleEmitter "A one-shot emitter (og.load.emitter, `looping false`) burst where each island breaks loose, at its broken faces: the material's own, a lit dust puff for stone and brick, splinters and a little dust for wood, shards and glints for glass. 0 none."
+  field hitFx ParticleEmitter "A one-shot emitter burst at each hit that damages it: the material's own, grit and a puff off stone, splinters off wood, glints off glass; sparks only off metal, and a few. 0 none."
   field debris ParticleEmitter "Fine debris, as visuals only: a mesh-particle emitter (`render mesh`, best with `collision` and `lit true`) burst where a chunk shatters, in place of its pieces smaller than og.Destruction.debrisVolume, which then never become bodies. It is simulated and drawn on the GPU (og.destruction.capabilities' visualDebris) and never touches the simulation, so the world is the same on every device. 0: every piece is a body."
   field fractured bool "Written: true from its first break (the model hidden, its chunks drawn)." {
     readonly true
@@ -379,8 +379,8 @@ Token `og.Destruction`, registered under the schema name `og.Destruction`; its v
 | `maxChunks` | `number` | `256` | 1 … 4096 | — | tunable | The most loose chunks alive at once, over every destructible: past it the oldest loose islands (the smallest first among those that broke in the same tick) despawn, each with every chunk it carries. |
 | `debrisVolume` | `number` | `0.004` | ≥ 0 | `m3` | tunable | A loose island smaller than this is debris: it despawns debrisLifetime after it broke loose. |
 | `debrisLifetime` | `number` | `8` | ≥ 0 | `s` | tunable | How long debris lasts (0: until maxChunks takes it). |
-| `fxLifetime` | `number` | `3` | ≥ 0 | `s` | — | How long a dust or sparks burst's entity lasts before og.destruction despawns it. |
-| `stressIterations` | `number` | `48` | 1 … 1000 | — | — | The stress solver's iterations a destructible a tick (Blast's maxIter): more settles larger structures in one tick. |
+| `fxLifetime` | `number` | `3` | ≥ 0 | `s` | — | How long a breakFx or hitFx burst's entity lasts before og.destruction despawns it. |
+| `stressIterations` | `number` | `0` | 0 … 1000 | — | — | The stress solver's iterations when a destructible's support changes (Blast's maxIter). 0, the default, solves until it converges (at most six times its bonds), so a large structure's weight reaches every bond it rests on; a cap is cheaper on a slow device, but an unconverged solve loads distant bonds too little, and what should fall can stand. |
 
 ```ogt
 resource Destruction {
@@ -403,14 +403,14 @@ resource Destruction {
     unit s
     tunable true
   }
-  field fxLifetime f32 "How long a dust or sparks burst's entity lasts before og.destruction despawns it." {
+  field fxLifetime f32 "How long a breakFx or hitFx burst's entity lasts before og.destruction despawns it." {
     default 3
     min 0
     unit s
   }
-  field stressIterations u32 "The stress solver's iterations a destructible a tick (Blast's maxIter): more settles larger structures in one tick." {
-    default 48
-    min 1
+  field stressIterations u32 "The stress solver's iterations when a destructible's support changes (Blast's maxIter). 0, the default, solves until it converges (at most six times its bonds), so a large structure's weight reaches every bond it rests on; a cap is cheaper on a slow device, but an unconverged solve loads distant bonds too little, and what should fall can stand." {
+    default 0
+    min 0
     max 1000
   }
 }

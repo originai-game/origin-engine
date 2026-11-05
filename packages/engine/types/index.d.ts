@@ -48238,7 +48238,7 @@ export interface MotionCapabilities {
 // ── destruction ─────────────────────────────────────────────────
 // Props that break: walls, crates, pillars, glass. A model cooked with a `fracture { }` block (at the top of a `type model`, or in a glTF's import settings) is cut by the cook into Voronoi chunks bonded where they touch, and the chunks resting on its floor are anchored to the world. Give the entity that draws it (its og.Model) an og.Destructible: hits, og.destruction.damage and og.destruction.explode wear the bonds down, a broken bond splits the prop into islands, an island anchored to the world stays put and every other island falls as one rigid body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight, so a wall shot out at its foot comes down.
 // **Deterministic.** Damage, bonds, islands and the stress solver are fixed f32 arithmetic in the tick (og.destruction runs after the game's systems and before og.physics), the chunks are world entities and the bonds' health is in a state block: snapshots, restores, replays and the world hash cover the whole fracture, on both hosts.
-// **What a game sees.** og.Fractured, the tick after, for every island that breaks loose (play a sound by its volume, shake the camera); each loose chunk is an entity with og.Chunk (its body is a dynamic og.RigidBody: query it, push it, despawn it). Dust and sparks: the og.Destructible's `dust` and `sparks` emitters burst at each break. Budgets (og.Destruction): a loose island (a body and the chunks it carries) smaller than `debrisVolume` despawns after `debrisLifetime`, and past `maxChunks` loose chunks the oldest islands go first.
+// **What a game sees.** og.Fractured, the tick after, for every island that breaks loose (play a sound by its volume, shake the camera); each loose chunk is an entity with og.Chunk (its body is a dynamic og.RigidBody: query it, push it, despawn it). Its look: the og.Destructible's `breakFx` emitter bursts where each island breaks loose and `hitFx` at each damaging hit, each the material's own (dust for stone, splinters for wood, shards and glints for glass, a few sparks only for metal). Budgets (og.Destruction): a loose island (a body and the chunks it carries) smaller than `debrisVolume` despawns after `debrisLifetime`, and past `maxChunks` loose chunks the oldest islands go first.
 // 3D profile only. The chunks of a dynamic prop (a crate with an og.RigidBody) fly with its velocity; a prop without a body, or with a static one, stands on its anchors.
 
 /**
@@ -48306,7 +48306,7 @@ export interface Destructible {
    */
   density: number;
   /**
-   * A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit.
+   * A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit, and the push the pieces it breaks loose take along the striker's path (shared by falloff, none faster than the striker closed), so a ball through a pane carries its shards on.
    *
    * @default 30
    * @range 0..
@@ -48330,13 +48330,13 @@ export interface Destructible {
    */
   anchored: boolean;
   /**
-   * An emitter (og.load.emitter, `looping false`) burst where each island breaks loose, at its broken faces: dust, splinters, glass grit. 0 none.
+   * A one-shot emitter (og.load.emitter, `looping false`) burst where each island breaks loose, at its broken faces: the material's own, a lit dust puff for stone and brick, splinters and a little dust for wood, shards and glints for glass. 0 none.
    */
-  dust: ParticleEmitter;
+  breakFx: ParticleEmitter;
   /**
-   * An emitter burst at each hit that damages it (sparks off metal, chips off stone). 0 none.
+   * A one-shot emitter burst at each hit that damages it: the material's own, grit and a puff off stone, splinters off wood, glints off glass; sparks only off metal, and a few. 0 none.
    */
-  sparks: ParticleEmitter;
+  hitFx: ParticleEmitter;
   /**
    * Fine debris, as visuals only: a mesh-particle emitter (`render mesh`, best with `collision` and `lit true`) burst where a chunk shatters, in place of its pieces smaller than og.Destruction.debrisVolume, which then never become bodies. It is simulated and drawn on the GPU (og.destruction.capabilities' visualDebris) and never touches the simulation, so the world is the same on every device. 0: every piece is a body.
    */
@@ -48468,7 +48468,7 @@ export interface Destruction {
    */
   debrisLifetime: number;
   /**
-   * How long a dust or sparks burst's entity lasts before og.destruction despawns it.
+   * How long a breakFx or hitFx burst's entity lasts before og.destruction despawns it.
    *
    * @default 3
    * @range 0..
@@ -48476,10 +48476,10 @@ export interface Destruction {
    */
   fxLifetime: number;
   /**
-   * The stress solver's iterations a destructible a tick (Blast's maxIter): more settles larger structures in one tick.
+   * The stress solver's iterations when a destructible's support changes (Blast's maxIter). 0, the default, solves until it converges (at most six times its bonds), so a large structure's weight reaches every bond it rests on; a cap is cheaper on a slow device, but an unconverged solve loads distant bonds too little, and what should fall can stand.
    *
-   * @default 48
-   * @range 1..1000
+   * @default 0
+   * @range 0..1000
    */
   stressIterations: number;
 }
@@ -54426,7 +54426,7 @@ export declare namespace og {
    * Makes the entity's og.Model, a model cooked with a `fracture` block, break into its chunks. A prop that stands (no og.RigidBody, or a static one) is its chunks from the first tick: each a static og.Collider (the hull of its piece) on an entity with og.Chunk, and the entity's own og.Collider and og.RigidBody are removed, so hits land on the chunks. A prop that moves (a dynamic or kinematic og.RigidBody) collides as itself until its first break, when its chunks take its place, moving as it moved, and it loses its og.Collider, og.RigidBody and og.Velocity. Until the first break the model is drawn whole; from it the model is hidden and each chunk draws its piece of it (with og.Model's tint, variant and shadows). Anchored islands stay static, the rest fall.
    * Scale it uniformly: a chunk's collider and mass follow og.Transform.scale's mean.
    */
-  const Destructible: ComponentType<{ readonly toughness: FieldSpec<"f32">; readonly strength: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly impactThreshold: FieldSpec<"f32">; readonly impactRadius: FieldSpec<"f32">; readonly anchored: FieldSpec<"bool">; readonly dust: FieldSpec<"ParticleEmitter">; readonly sparks: FieldSpec<"ParticleEmitter">; readonly debris: FieldSpec<"ParticleEmitter">; readonly fractured: FieldSpec<"bool">; readonly broken: FieldSpec<"u32">; readonly loose: FieldSpec<"u32"> }, Destructible>;
+  const Destructible: ComponentType<{ readonly toughness: FieldSpec<"f32">; readonly strength: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly impactThreshold: FieldSpec<"f32">; readonly impactRadius: FieldSpec<"f32">; readonly anchored: FieldSpec<"bool">; readonly breakFx: FieldSpec<"ParticleEmitter">; readonly hitFx: FieldSpec<"ParticleEmitter">; readonly debris: FieldSpec<"ParticleEmitter">; readonly fractured: FieldSpec<"bool">; readonly broken: FieldSpec<"u32">; readonly loose: FieldSpec<"u32"> }, Destructible>;
   /**
    * One chunk of an og.Destructible, written by og.destruction when the prop fractures. A loose chunk is a dynamic body (with og.RigidBody and og.Velocity, or a child collider of its island's body); an anchored one a static collider. Drawn with its part of the destructible's model. Despawn it to clear it away.
    */
@@ -54440,7 +54440,7 @@ export declare namespace og {
   /**
    * Props that break: walls, crates, pillars, glass. A model cooked with a `fracture { }` block (at the top of a `type model`, or in a glTF's import settings) is cut by the cook into Voronoi chunks bonded where they touch, and the chunks resting on its floor are anchored to the world. Give the entity that draws it (its og.Model) an og.Destructible: hits, og.destruction.damage and og.destruction.explode wear the bonds down, a broken bond splits the prop into islands, an island anchored to the world stays put and every other island falls as one rigid body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight, so a wall shot out at its foot comes down.
    * **Deterministic.** Damage, bonds, islands and the stress solver are fixed f32 arithmetic in the tick (og.destruction runs after the game's systems and before og.physics), the chunks are world entities and the bonds' health is in a state block: snapshots, restores, replays and the world hash cover the whole fracture, on both hosts.
-   * **What a game sees.** og.Fractured, the tick after, for every island that breaks loose (play a sound by its volume, shake the camera); each loose chunk is an entity with og.Chunk (its body is a dynamic og.RigidBody: query it, push it, despawn it). Dust and sparks: the og.Destructible's `dust` and `sparks` emitters burst at each break. Budgets (og.Destruction): a loose island (a body and the chunks it carries) smaller than `debrisVolume` despawns after `debrisLifetime`, and past `maxChunks` loose chunks the oldest islands go first.
+   * **What a game sees.** og.Fractured, the tick after, for every island that breaks loose (play a sound by its volume, shake the camera); each loose chunk is an entity with og.Chunk (its body is a dynamic og.RigidBody: query it, push it, despawn it). Its look: the og.Destructible's `breakFx` emitter bursts where each island breaks loose and `hitFx` at each damaging hit, each the material's own (dust for stone, splinters for wood, shards and glints for glass, a few sparks only for metal). Budgets (og.Destruction): a loose island (a body and the chunks it carries) smaller than `debrisVolume` despawns after `debrisLifetime`, and past `maxChunks` loose chunks the oldest islands go first.
    * 3D profile only. The chunks of a dynamic prop (a crate with an og.RigidBody) fly with its velocity; a prop without a body, or with a static one, stands on its anchors.
    */
   namespace destruction {

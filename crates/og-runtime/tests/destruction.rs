@@ -59,10 +59,32 @@ part "wall" {
 fracture {
   style brick
   brick 0.25 0.1
-  chunks 80
+  chunks 200
   seed 11
   children 32
   anchor bottom ends
+}
+"#;
+
+/// A glass pane, 1.6 × 1.2 m and 1 cm thick, cracking from its middle.
+const PANE: &str = r#"type model
+version 1
+---
+part "pane" {
+  position 0 0.6 0
+  boxGeometry {
+    width 1.6
+    height 1.2
+    depth 0.01
+  }
+}
+fracture {
+  style glass
+  chunks 25
+  rings 3
+  seed 9
+  children 0
+  impact 0 0.6 0 0.25
 }
 "#;
 
@@ -102,6 +124,7 @@ fn project() -> &'static std::path::Path {
         std::fs::create_dir_all(root.join("assets/props")).unwrap();
         std::fs::write(root.join("assets/props/wall.ogt"), WALL).unwrap();
         std::fs::write(root.join("assets/props/brick.ogt"), BRICK).unwrap();
+        std::fs::write(root.join("assets/props/pane.ogt"), PANE).unwrap();
         std::fs::create_dir_all(root.join("assets/fx")).unwrap();
         std::fs::write(root.join("assets/fx/chips.ogt"), CHIPS).unwrap();
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
@@ -370,9 +393,11 @@ fn a_prop_dropped_on_the_ground_breaks_where_it_lands() {
 
 #[test]
 fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_over_the_hole() {
-    // Blast radii either side of the example's: loose blocks jammed between
-    // the piers would hold a flat arch over the hole at some of them.
-    for radius in [1.3, 1.4, 1.5] {
+    // Charges either side of the example's, each big enough to take the
+    // wall's middle to its top (a smaller one leaves a sound flat arch over
+    // the hole, as brickwork does): loose blocks jammed between the piers
+    // would hold one at some of them.
+    for radius in [1.8, 1.9, 2.0] {
         let (w, wall) = start_with(
             "props/brick.ogt",
             json!({ "toughness": 800, "strength": 3000, "density": 1900 }),
@@ -412,7 +437,7 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
         value(og_runtime::og_destruction_explode(
             w,
             Some(
-                json!({ "point": { "x": 0, "y": 0.3, "z": 0.15 }, "radius": radius, "innerRadius": 0.8, "damage": 6000, "impulse": 300 })
+                json!({ "point": { "x": 0, "y": 0.3, "z": 0.15 }, "radius": radius, "innerRadius": 1.0, "damage": 6000, "impulse": 300 })
                     .to_string(),
             ),
         ));
@@ -479,16 +504,121 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
         );
         let over: Vec<_> = chunks
             .iter()
-            .filter(|(x, y)| x.abs() < 0.4 && *y > 1.5)
+            .filter(|(x, y)| x.abs() < 0.25 && *y > 1.5)
             .collect();
         assert!(
             over.is_empty(),
             "radius {radius}: nothing is left over the hole above its rubble (no lintel or wedged blocks span the piers): {over:?}"
         );
+        // Each pier is brickwork at least two bricks wide through its
+        // middle: no column a brick wide is left standing.
+        for side in [-1.0, 1.0] {
+            let xs: Vec<f64> = chunks
+                .iter()
+                .filter(|&&(x, y)| x * side > 0.6 && (0.8..1.6).contains(&y))
+                .map(|&(x, _)| x * side)
+                .collect();
+            let wide = xs.iter().copied().fold(f64::MIN, f64::max)
+                - xs.iter().copied().fold(f64::MAX, f64::min);
+            assert!(
+                wide >= 0.4,
+                "radius {radius}: the pier at {side} is {wide} m wide through its middle: {chunks:?}"
+            );
+        }
         let info = value(og_destruction_info(w, wall));
         assert!(
             info["islands"].as_u64().unwrap() > 1,
             "radius {radius}: {info}"
         );
     }
+}
+
+#[test]
+fn a_ball_through_a_pane_carries_its_shards_on() {
+    // The pane stands on the floor at z 0; a 5 kg ball crosses it along +z
+    // at 12 m/s. The shards it breaks loose take what it gave up breaking
+    // through and fly on with it, landing beyond the pane, where pieces let
+    // fall at rest would drop around its foot.
+    let (w, pane) = start_with(
+        "props/pane.ogt",
+        json!({ "toughness": 25, "strength": 0, "density": 2500, "impactThreshold": 2, "impactRadius": 0.8 }),
+    );
+    let g = value(og_runtime::og_world_spawn(
+        w,
+        Some(json!({ "position": { "x": 0, "y": -0.25, "z": 0 } }).to_string()),
+    ))
+    .as_f64()
+    .unwrap();
+    value(og_world_insert(
+        w,
+        g,
+        "og.RigidBody".into(),
+        Some(json!({ "kind": 1 }).to_string()),
+    ));
+    value(og_world_insert(
+        w,
+        g,
+        "og.Collider".into(),
+        Some(json!({ "shape": 0, "size": { "x": 20, "y": 0.5, "z": 20 } }).to_string()),
+    ));
+    let ball = value(og_runtime::og_world_spawn(
+        w,
+        Some(json!({ "position": { "x": 0, "y": 0.6, "z": -0.6 } }).to_string()),
+    ))
+    .as_f64()
+    .unwrap();
+    value(og_world_insert(
+        w,
+        ball,
+        "og.RigidBody".into(),
+        Some(json!({ "kind": 0, "mass": 5, "gravityScale": 0 }).to_string()),
+    ));
+    value(og_world_insert(
+        w,
+        ball,
+        "og.Collider".into(),
+        Some(json!({ "shape": 1, "radius": 0.12 }).to_string()),
+    ));
+    value(og_world_insert(
+        w,
+        ball,
+        "og.Velocity".into(),
+        Some(json!({ "linear": { "x": 0, "y": 0, "z": 12 } }).to_string()),
+    ));
+    frames(w, 120);
+    assert_eq!(
+        destructible(w, pane)["fractured"],
+        true,
+        "the ball breaks it"
+    );
+    let near = value(og_runtime::og_physics_overlap(
+        w,
+        Some(
+            json!({ "shape": { "shape": 0, "size": { "x": 20, "y": 4, "z": 20 } }, "position": { "x": 0, "y": 1, "z": 0 } })
+                .to_string(),
+        ),
+    ));
+    let zs: Vec<f64> = near
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e.as_f64().unwrap())
+        .filter(|&e| og_world_has(w, e, "og.Chunk".into()))
+        .filter(|&e| {
+            // Loose shards from around the hole (the ring cells about it).
+            let c = value(og_world_get(w, e, "og.Chunk".into()));
+            c["looseTick"].as_f64().is_some_and(|t| t < 4294967295.0)
+        })
+        .map(|e| {
+            value(og_world_get(w, e, "og.Transform".into()))["position"]["z"]
+                .as_f64()
+                .unwrap()
+        })
+        .collect();
+    assert!(zs.len() >= 4, "shards broke loose: {zs:?}");
+    let beyond = zs.iter().filter(|&&z| z > 0.4).count();
+    assert!(
+        beyond * 2 >= zs.len(),
+        "most shards land beyond the pane, along the ball's flight: {zs:?}"
+    );
 }

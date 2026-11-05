@@ -7740,12 +7740,12 @@
           "default": true
         },
         {
-          "name": "dust",
+          "name": "breakFx",
           "column": "ParticleEmitter",
           "default": 0
         },
         {
-          "name": "sparks",
+          "name": "hitFx",
           "column": "ParticleEmitter",
           "default": 0
         },
@@ -11647,7 +11647,7 @@
         {
           "name": "stressIterations",
           "column": "u32",
-          "default": 48
+          "default": 0
         }
       ]
     }

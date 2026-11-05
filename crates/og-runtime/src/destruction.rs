@@ -57,7 +57,7 @@ const ANCHORED: u32 = u32::MAX;
 /// Physics mesh handles of the chunks' hulls: the tag, the model's asset
 /// index (24 bits) and the chunk (16 bits), below 2^53.
 const HULL_TAG: u64 = 0xd5 << 40;
-/// The most dust and sparks bursts spawned in one tick.
+/// The most breakFx and hitFx bursts spawned in one tick.
 const MAX_BURSTS: usize = 8;
 
 /// og.Transform's position, rotation and scale.
@@ -78,7 +78,7 @@ pub(crate) struct State {
     props: BTreeMap<u64, Prop>,
     /// Calls queued for the next run, in the order made.
     ops: Vec<Op>,
-    /// Dust and sparks bursts: (entity bits, the tick it is despawned at).
+    /// breakFx and hitFx bursts: (entity bits, the tick it is despawned at).
     fx: Vec<(u64, u64)>,
 }
 
@@ -174,6 +174,49 @@ fn crumble(a: &FractureAsset, inst: &mut Instance, chunks: &[u32], shatter: &mut
         }
     }
     inst.dirty = true;
+}
+
+/// Each loose body of prop `p` (a support chunk's body with the chunks it
+/// carries, or a shattered piece on its own): its mass and place. A body
+/// made this run has no transform yet: a piece's place is then `fallback`.
+#[allow(clippy::too_many_arguments)]
+fn loose_bodies(
+    ctx: &SystemContext<'_>,
+    l: &Ls,
+    p: &Prop,
+    a: &FractureAsset,
+    scale: f32,
+    density: f32,
+    poses: &[Option<Pose>],
+    made: &BTreeMap<u64, (Vec3, Vec3)>,
+    fallback: Vec3,
+) -> BTreeMap<u64, (f32, Vec3)> {
+    let mut bodies: BTreeMap<u64, (f32, Vec3)> = BTreeMap::new();
+    for (c, &b) in p.body.iter().enumerate() {
+        if b == 0 || p.entities[c] == 0 {
+            continue;
+        }
+        let m = a.chunks[c].volume * scale * scale * scale * density;
+        let e = bodies.entry(b).or_insert((0.0, Vec3::ZERO));
+        e.0 += m;
+        if p.entities[c] == b
+            && let Some(ps) = poses[c]
+        {
+            e.1 = ps.0;
+        }
+    }
+    for c in a.support as usize..a.chunks.len() {
+        let e = p.entities[c];
+        if e != 0 && !bodies.contains_key(&e) {
+            let m = a.chunks[c].volume * scale * scale * scale * density;
+            let at = match made.contains_key(&e) {
+                true => None,
+                false => world_pose(ctx, l, Entity::from_bits(e)).map(|x| x.0),
+            };
+            bodies.insert(e, (m, at.unwrap_or(fallback)));
+        }
+    }
+    bodies
 }
 
 /// The supports of loose island `chunks` (its body `body`, at rest): for
@@ -440,8 +483,8 @@ struct Settings {
     threshold: f32,
     radius: f32,
     anchored: bool,
-    dust: u64,
-    sparks: u64,
+    break_fx: u64,
+    hit_fx: u64,
     debris: u64,
 }
 
@@ -459,8 +502,8 @@ impl Settings {
             threshold: num(v, "impactThreshold", 30.0).max(0.0),
             radius: num(v, "impactRadius", 0.4).max(0.01),
             anchored: v["anchored"].as_bool().unwrap_or(true),
-            dust: bits(v, "dust"),
-            sparks: bits(v, "sparks"),
+            break_fx: bits(v, "breakFx"),
+            hit_fx: bits(v, "hitFx"),
             debris: bits(v, "debris"),
         }
     }
@@ -690,6 +733,10 @@ fn run(
             owner.insert(e, k);
         }
     }
+    // Hits that break pieces off drive them on: (prop, point, the
+    // striker's direction, impactRadius, impulse past the threshold, its
+    // closing speed).
+    let mut strikes: Vec<(u64, Vec3, Vec3, f32, f32, f32)> = Vec::new();
     for ev in ctx.events_bytes(l.collision.0)? {
         let v = l.collision.1.decode(&ev);
         let point = v3(&v["point"]);
@@ -720,6 +767,11 @@ fn run(
             let s = &settings[&k];
             let amount = impulse - s.threshold;
             if amount > 0.0 && point.is_finite() {
+                // The striker's motion through the prop: a's velocity
+                // relative to b, turned round when the prop is a.
+                let rel = v3(&v["relativeVelocity"]) * if side == "b" { 1.0 } else { -1.0 };
+                let along = v3(&v["normal"]) * if side == "b" { 1.0 } else { -1.0 };
+                strikes.push((k, point, rel.normalize_or(along), s.radius, amount, closing));
                 hits.entry(k).or_default().damage.push((
                     Damage {
                         point,
@@ -729,8 +781,8 @@ fn run(
                     },
                     CAUSE_IMPACT,
                 ));
-                if s.sparks != 0 {
-                    bursts.push((s.sparks, point));
+                if s.hit_fx != 0 {
+                    bursts.push((s.hit_fx, point));
                 }
             }
         }
@@ -758,8 +810,8 @@ fn run(
                         },
                         CAUSE_DAMAGE,
                     ));
-                    if s.sparks != 0 {
-                        bursts.push((s.sparks, point));
+                    if s.hit_fx != 0 {
+                        bursts.push((s.hit_fx, point));
                     }
                 }
             }
@@ -858,7 +910,7 @@ fn run(
                 down,
                 scale,
                 &s.mat,
-                res["stressIterations"].as_u64().unwrap_or(48) as u32,
+                res["stressIterations"].as_u64().unwrap_or(0) as u32,
             );
             if n > 0 && cause.is_none() {
                 cause = Some(CAUSE_STRESS);
@@ -912,7 +964,7 @@ fn run(
                     root.1.inverse() * gravity,
                     scale,
                     &s.mat,
-                    res["stressIterations"].as_u64().unwrap_or(48) as u32,
+                    res["stressIterations"].as_u64().unwrap_or(0) as u32,
                 );
                 if n > 0 && cause.is_none() {
                     cause = Some(CAUSE_STRESS);
@@ -1082,8 +1134,8 @@ fn run(
                     "volume": volume, "mass": mass, "cause": cause,
                 })),
             )?);
-            if s.dust != 0 {
-                bursts.push((s.dust, point));
+            if s.break_fx != 0 {
+                bursts.push((s.break_fx, point));
             }
         }
         // Shattered chunks: their children fly, each its own body.
@@ -1136,8 +1188,8 @@ fn run(
                     "mass": volume * s.mat.density, "cause": CAUSE_SHATTER,
                 })),
             )?);
-            if s.dust != 0 {
-                bursts.push((s.dust, cp.0));
+            if s.break_fx != 0 {
+                bursts.push((s.break_fx, cp.0));
             }
             if fine > 0 {
                 bursts.push((s.debris, cp.0));
@@ -1160,32 +1212,7 @@ fn run(
             let a = &assets[&p.asset];
             let scale = uniform(pose_of_frame(&p.frame).2);
             let density = settings.get(&k).map_or(1000.0, |s| s.mat.density);
-            // Each body's mass and place.
-            let mut bodies: BTreeMap<u64, (f32, Vec3)> = BTreeMap::new();
-            for (c, &b) in p.body.iter().enumerate() {
-                if b == 0 || p.entities[c] == 0 {
-                    continue;
-                }
-                let m = a.chunks[c].volume * scale * scale * scale * density;
-                let e = bodies.entry(b).or_insert((0.0, Vec3::ZERO));
-                e.0 += m;
-                if p.entities[c] == b
-                    && let Some(ps) = poses[&k][c]
-                {
-                    e.1 = ps.0;
-                }
-            }
-            for c in a.support as usize..a.chunks.len() {
-                let e = p.entities[c];
-                if e != 0 && !bodies.contains_key(&e) {
-                    let m = a.chunks[c].volume * scale * scale * scale * density;
-                    let at = match made.contains_key(&e) {
-                        true => None,
-                        false => world_pose(ctx, l, Entity::from_bits(e)).map(|x| x.0),
-                    };
-                    bodies.insert(e, (m, at.unwrap_or(point)));
-                }
-            }
+            let bodies = loose_bodies(ctx, l, p, a, scale, density, &poses[&k], &made, point);
             for (b, (m, at)) in bodies {
                 let j = falloff.at(at);
                 if j <= 0.0 || m <= 0.0 {
@@ -1205,6 +1232,36 @@ fn run(
                         }
                     }
                 }
+            }
+        }
+    }
+    // A hit's push on the pieces it broke loose: the impulse past the
+    // threshold, shared by falloff over them (momentum the striker gave
+    // up breaking through), none driven faster than the striker closed.
+    for &(k, point, dir, radius, amount, speed) in &strikes {
+        let (Some(p), Some(s)) = (st.props.get(&k), settings.get(&k)) else {
+            continue;
+        };
+        let a = &assets[&p.asset];
+        let scale = uniform(pose_of_frame(&p.frame).2);
+        let falloff = Damage {
+            point,
+            min_radius: radius / 3.0,
+            max_radius: radius,
+            amount: 1.0,
+        };
+        let freed: Vec<(u64, f32, f32)> =
+            loose_bodies(ctx, l, p, a, scale, s.mat.density, &poses[&k], &made, point)
+                .into_iter()
+                .filter(|(b, _)| made.contains_key(b))
+                .map(|(b, (m, at))| (b, m, falloff.at(at)))
+                .filter(|&(_, m, w)| m > 0.0 && w > 0.0)
+                .collect();
+        let total: f32 = freed.iter().map(|f| f.2).sum();
+        for (b, m, w) in freed {
+            let dv = (amount * w / total / m).min(speed);
+            if let Some(v) = made.get_mut(&b) {
+                v.0 += dir * dv;
             }
         }
     }
@@ -1302,7 +1359,7 @@ fn run(
     for ev in events {
         ctx.send_bytes(l.fractured.0, &ev)?;
     }
-    // Dust and sparks: a one-shot burst each, despawned after fxLifetime.
+    // breakFx and hitFx: a one-shot burst each, despawned after fxLifetime.
     let fx_life = ticks_of(num(&res, "fxLifetime", 3.0)).max(1);
     for (i, (emitter, at)) in bursts.into_iter().take(MAX_BURSTS).enumerate() {
         let t = l
