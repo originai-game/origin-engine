@@ -544,6 +544,39 @@ version; `latest/` and the installers move only with a newer release.
 Every archive is at most 210 MiB (the platform's request limit; `archive`
 refuses a larger one).
 
+**The next release, step by step (the first built from source since the
+channel moved, 2026-11-05).** The backfill (every version from 0.5.0, and
+0.7.8-dev.17) archived the tarballs npm already carried; the path that
+builds the checkout's version, `scripts/release.sh pack` with no version,
+has not yet run end to end. Its archive step is the code the backfill
+ran, so what is new is the pack before it and the Windows hand-off. The
+next release runs it in this order and records each step in its receipt:
+
+1. On the Mac (`macrunner`, the release worktree at the release commit,
+   clean tree): `scripts/release.sh bump <v>`, commit, then
+   `nice -n 10 scripts/release.sh pack`. It packs the darwin-arm64 and
+   linux-x64 tarballs, create-game and design into `dist/release/<v>/`
+   and archives those two targets; it ends by naming the missing
+   win32-x64 tarball.
+2. On studio-win (Git Bash, `E:\src\origin-engine` at the same commit):
+   `OG_RELEASE=1 sh packages/engine/scripts/build.sh --native && sh
+   packages/engine/scripts/pack.sh --native`. The Windows thread sends
+   `packages/engine/dist/pack/origingame-engine-win32-x64-<v>.tgz` to the
+   Mac thread by Amp's thread file transfer.
+3. On the Mac: copy it into `dist/release/<v>/`, then `scripts/release.sh
+   archive` (all three archives, `manifest.json`, `install.sh`,
+   `install.ps1`, `SHA256SUMS`; signed when `OG_ENGINE_MINISIGN_KEY` is
+   set), `scripts/release.sh verify` (the full install test, not
+   `--core`, host and container), then `scripts/release.sh sign` in a
+   thread that has the key if this one has not, and `scripts/release.sh
+   publish` with `OG_PLATFORM_ENGINE_UPLOAD_TOKEN`.
+4. Check the result as an author would: `curl -fsSL
+   https://origingame.ai/downloads/engine/install.sh | sh`, `og new demo`,
+   `og test .` in the new game: `latest/manifest.json` names `<v>`.
+
+A failure in step 1 or 3's `verify` is fixed on main and packed again;
+nothing is uploaded until both platforms' archives pass.
+
 **The pack runs on the Amp runners, not on Actions (the owner,
 2026-11-01).** CI is never a precondition of a release and nothing runs
 on GitHub by itself (`docs/ci.md` §CI). The Mac (`macrunner`,
