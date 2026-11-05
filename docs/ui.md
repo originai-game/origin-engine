@@ -864,6 +864,12 @@ sector, not a rectangular fill. These parts are:
   motion does. For example, `motion tween 100 linear` blinks for six ticks
   shown and six hidden at 60 Hz. An edit or caret move restarts the shown
   phase.
+- Focus outlines use the control's component with part `focus`, such as
+  `Button.focus[player=0]`. `player=1`, `2`, and `3` identify the extra
+  local-player rings. The accessibility outline also has `[outline]`.
+  Controls without a part use `Element.focus`. Geometry, shape, strokes,
+  and opacity change only the ring, never its control's hit box or focus.
+  An unset stroke keeps the legacy ring; `stroke none` removes it.
 
 A game shipped with a version 1 style keeps the screens it shipped with:
 an engine update may draw them better (antialiasing, contrast, a cleaner

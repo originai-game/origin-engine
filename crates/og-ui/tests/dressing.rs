@@ -1878,6 +1878,50 @@ fn a_selected_parts_rim_draws_over_its_items_art() {
     assert!(rim > art, "the selected rim ({rim}) over the art ({art})");
 }
 
+#[test]
+fn a_dressed_focus_ring_keeps_navigation_and_changes_only_its_drawing() {
+    let mut ui = dressed(
+        "dress \"Button.focus[player=0]\" {\n stroke 7 \"#ff00ff\" outside\n appearance {\n width 140\n height 55\n x 9\n }\n}\n",
+    );
+    for keys in [vec![], vec![UiKey::Tab], vec![]] {
+        ui.begin(
+            InputFrame {
+                keys,
+                ..InputFrame::default()
+            },
+            Viewport::new(800.0, 600.0),
+        );
+        ui.open(
+            "Inset",
+            Element {
+                padding: Insets::all(40.0),
+                ..Element::default()
+            },
+        );
+        ui.button(
+            "Go",
+            "Go",
+            ButtonDesc {
+                width: Some(Size::Fixed(100.0)),
+                ..ButtonDesc::default()
+            },
+        );
+        ui.close();
+        ui.end();
+    }
+    let frame = ui.frame();
+    let button = frame.element("Go").unwrap();
+    assert_eq!(button.width, 100.0);
+    assert!(button.states.iter().any(|s| s == "focused"));
+    let ring = frame.items.iter().find_map(|item| match &item.cmd {
+        DrawCmd::Shape { shape, .. } if matches!(shape.mode, og_render::UiMode::Stroke(s) if s.width == 7.0) => Some(shape),
+        _ => None,
+    }).expect("authored focus stroke");
+    assert_eq!(ring.half.x * 2.0, 140.0);
+    assert_eq!(ring.half.y * 2.0, 55.0);
+    assert_eq!(ring.center.x, button.x + button.width / 2.0 + 9.0);
+}
+
 /// A focus ring draws over everything around its control: the next
 /// control in a tight column and the fade of the scroll it sits in both
 /// came after it and covered its edge.

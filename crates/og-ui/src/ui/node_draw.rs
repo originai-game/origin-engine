@@ -47,9 +47,17 @@ impl Ui {
             }
             _ => n.clip,
         };
-        let ring = |gap: f32, width: f32, color: Srgba| {
+        let ring = |player: usize, gap: f32, width: f32, color: Srgba, outline: bool| {
             use crate::paint::{Cap, ElementDraw, Paint, Placed, Stroke, StrokeAlign};
-            ElementDraw {
+            let mut part = n.el.part.unwrap_or_default();
+            part.part = "focus";
+            part.class = None;
+            part.level = None;
+            part = part
+                .attr("player", ["0", "1", "2", "3"][player])
+                .flag_if(outline, "outline");
+            let dressing = self.dress.resolve(&part);
+            let mut draw = ElementDraw {
                 strokes: vec![Stroke {
                     width,
                     align: StrokeAlign::Outside,
@@ -59,16 +67,45 @@ impl Ui {
                     paint: Paint::Solid(color.into()),
                 }],
                 ..ElementDraw::default()
+            };
+            let mut at = Placed {
+                rect: rect.outset(gap),
+                radius: n.el.radius + gap,
+                clip,
+                alpha: n.alpha,
+            };
+            if dressing.matched == 0 {
+                return draw.strokes(t, &at);
             }
-            .strokes(
-                t,
-                &Placed {
-                    rect: rect.outset(gap),
-                    radius: n.el.radius + gap,
-                    clip,
-                    alpha: n.alpha,
-                },
-            )
+            let fallback = draw.strokes;
+            draw = dressing.element_draw(&part, t, None);
+            if dressing.draw.strokes.is_empty()
+                && dressing.draw.cleared & crate::dress::CLEAR_STROKES == 0
+            {
+                draw.strokes = fallback;
+                draw.strokes[0].paint = Paint::Solid(dressing.draw.subpart_color(color, t).into());
+            }
+            at.rect = dressing.draw.subpart_rect(at.rect, rect);
+            at.alpha *= dressing.draw.subpart_opacity();
+            // The authored ring's complete bounds, including its strokes,
+            // may extend beyond the legacy clip reach.
+            if n.clip_src != NONE && self.drawing.is_identity() {
+                let width = draw.strokes.iter().map(|s| s.width).fold(0.0_f32, f32::max);
+                let reach = [
+                    rect.x - at.rect.x,
+                    rect.y - at.rect.y,
+                    at.rect.right() - rect.right(),
+                    at.rect.bottom() - rect.bottom(),
+                ]
+                .into_iter()
+                .fold(0.0_f32, f32::max)
+                    + width;
+                at.clip = n.clip.outset(reach).intersect(&self.nodes[n.clip_src].clip);
+            }
+            let mut commands = draw.enter(t, &at);
+            commands.extend(draw.children(&at));
+            commands.extend(draw.leave(t, &at));
+            commands
         };
         if n.pad_rings != 0 {
             // Pads 1 to 3 outside pad 0's ring, outermost first.
@@ -76,7 +113,7 @@ impl Ui {
             for k in (0..3).rev().filter(|k| n.pad_rings & (1 << k) != 0) {
                 let at = w * (2.0 * k as f32 + 3.0);
                 let color = [p.info, p.success, p.warn][k];
-                cmds.extend(ring(at, w, color));
+                cmds.extend(ring(k + 1, at, w, color, false));
             }
         }
         // A bare field (no frame of its own) leaves the ring to its frame.
@@ -105,7 +142,7 @@ impl Ui {
             } else {
                 t.space.xxs
             };
-            cmds.extend(ring(gap, w, color));
+            cmds.extend(ring(0, gap, w, color, outline && !field_ring && !n.ring));
         }
     }
 
