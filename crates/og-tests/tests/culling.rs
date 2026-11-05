@@ -34,8 +34,13 @@ struct Run {
 
 /// Renders `frames` frames of the scene `name` with `culling`.
 fn render(name: &str, culling: Culling, frames: u32) -> Run {
+    render_with(name, frames, |d| d.culling = culling)
+}
+
+/// Renders `frames` frames of the scene `name` with its desc changed by `f`.
+fn render_with(name: &str, frames: u32, f: impl Fn(&mut og_render::RenderDesc)) -> Run {
     let mut built = scenes::build(name).expect("scene");
-    built.desc.culling = culling;
+    f(&mut built.desc);
     let mut renderer = Renderer::new_blocking(&built.desc).expect("renderer");
     let mut stats = FrameStats::default();
     let mut gpu_frames = Vec::new();
@@ -199,6 +204,68 @@ fn gpu_culling_draws_the_cpu_paths_frame() {
     }
     std::fs::write(dir.join("report.txt"), &log).expect("report");
     print!("{log}");
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// WebKit's path (`RenderInfo::indirect_per_draw`, cull_gpu.rs
+/// `per_draw`): every GPU-culled indirect draw reads its args from a
+/// buffer of its own, copied after the cull, and draws the frame the
+/// shared args buffer draws, pixel for pixel: over the occluders' depth
+/// (city-street), the shadow passes (shadows-local-8), skinned batches
+/// (skinning, crowd-culling), the prepass (motion-blur) and spheres-20k,
+/// which Safari tore when its draws shared the buffer.
+#[test]
+fn per_draw_indirect_args_draw_the_shared_buffers_frame() {
+    let mut failures = Vec::new();
+    for (name, frames) in [
+        ("city-street", 3),
+        ("shadows-local-8", 2),
+        ("skinning", 2),
+        ("crowd-culling", 3),
+        ("motion-blur", 3),
+        ("spheres-20k", 1),
+    ] {
+        let run = |per_draw: bool| {
+            render_with(name, frames, |d| {
+                d.culling = Culling::Gpu;
+                d.indirect_per_draw = per_draw;
+            })
+        };
+        let (shared, own) = (run(false), run(true));
+        assert!(
+            own.gpu_frames.iter().all(|&x| x),
+            "{name}: culled on the GPU"
+        );
+        let exact = Tolerance {
+            channel: 0,
+            max_outlier_fraction: 0.0,
+            rmse: 0.0,
+        };
+        let diff = compare(
+            &own.image.pixels,
+            &shared.image.pixels,
+            own.image.width,
+            own.image.height,
+            &exact,
+        )
+        .expect("same size");
+        if let Err(e) = diff.check(&exact) {
+            failures.push(format!(
+                "{name}: per-draw args differ from the shared buffer's: {e}"
+            ));
+        }
+        if (own.stats.draw_calls, own.stats.triangles)
+            != (shared.stats.draw_calls, shared.stats.triangles)
+        {
+            failures.push(format!(
+                "{name}: draws {} / triangles {} with per-draw args, {} / {} shared",
+                own.stats.draw_calls,
+                own.stats.triangles,
+                shared.stats.draw_calls,
+                shared.stats.triangles
+            ));
+        }
+    }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 

@@ -2657,6 +2657,7 @@ dependencies = [
  "glam 0.34.1",
  "gltf",
  "image",
+ "js-sys",
  "libc",
  "log",
  "mach2",
@@ -2672,6 +2673,7 @@ dependencies = [
  "serde",
  "serde_json",
  "uds_windows",
+ "wasm-bindgen",
  "wgpu",
  "windows",
 ]

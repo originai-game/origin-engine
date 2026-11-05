@@ -110,8 +110,10 @@ impl Renderer {
                     let end = start + batch.count as u64 * skin::SKINNED_INSTANCE_STRIDE;
                     pass.set_vertex_buffer(1, records.slice(start..end));
                     match indirect {
-                        Some((gc, g)) => pass
-                            .draw_indexed_indirect(&gc.args, gc.skinned_draw_offset(g, k as u32)),
+                        Some((gc, g)) => {
+                            let (args, at) = gc.skinned_draw_args(g, k as u32);
+                            pass.draw_indexed_indirect(args, at)
+                        }
                         None => pass.draw_indexed(0..mesh.index_count, 0, 0..batch.count),
                     }
                 }

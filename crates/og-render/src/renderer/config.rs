@@ -243,6 +243,11 @@ pub struct RenderDesc {
     /// tests: `INDIRECT_FIRST_INSTANCE` takes crowds off the GPU-driven
     /// path, [`RenderInfo::gpu_crowds`]). Empty by default.
     pub without_features: wgpu::Features,
+    /// Every GPU-culled indirect draw reads its args from a buffer of its
+    /// own, as on WebKit, where it always does
+    /// ([`RenderInfo::indirect_per_draw`]): reproduces that path on any
+    /// device. False by default.
+    pub indirect_per_draw: bool,
     /// How point lights' shadows are stored: cube faces, or dual-paraboloid
     /// hemispheres (two passes instead of six; [`PointShadows`]). `Auto`:
     /// cube.
@@ -344,6 +349,7 @@ impl Default for RenderDesc {
             particles: ParticleSimulation::Auto,
             culling: Culling::Auto,
             without_features: wgpu::Features::empty(),
+            indirect_per_draw: false,
             point_shadows: PointShadows::Auto,
             taa_history: TaaHistory::Bilinear,
             taa_sharpen: 0.0,
@@ -443,6 +449,12 @@ pub struct RenderInfo {
     /// runs compute and reads storage in the vertex stage. Without, they
     /// draw their rest shape.
     pub visual_simulation: bool,
+    /// Whether GPU culling's indirect draws each read their args from a
+    /// buffer of their own, copied after the cull, rather than from one
+    /// buffer at their offsets (`cull_gpu.rs` `per_draw`): on WebKit,
+    /// whose Metal backend races indirect draws that share a buffer, and
+    /// where [`RenderDesc::indirect_per_draw`] asks for it.
+    pub indirect_per_draw: bool,
 }
 
 /// The anisotropy clamp of the sprite sampler where the device filters

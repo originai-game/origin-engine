@@ -183,7 +183,9 @@ impl Renderer {
                 // passes): checked for every instance the frame may sort.
                 let culls = self
                     .gpu_cull
-                    .get_or_insert_with(|| cull_gpu::GpuCulling::new(&self.device, max))
+                    .get_or_insert_with(|| {
+                        cull_gpu::GpuCulling::new(&self.device, max, self.info.indirect_per_draw)
+                    })
                     .fits(
                         scene.instances.len() as u32,
                         scene.skinned_instances.len() as u32,
@@ -1049,6 +1051,7 @@ impl Renderer {
                             limits
                                 .max_storage_buffer_binding_size
                                 .min(limits.max_buffer_size),
+                            self.info.indirect_per_draw,
                         )
                     });
                     gc.fits(sorted, skinned_n, max_passes)
@@ -4437,7 +4440,10 @@ impl Renderer {
                 }
                 pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
                 match indirect {
-                    Some((g, gc)) => pass.draw_indexed_indirect(&gc.args, gc.draw_offset(g, b)),
+                    Some((g, gc)) => {
+                        let (args, at) = gc.draw_args(g, b);
+                        pass.draw_indexed_indirect(args, at)
+                    }
                     None => pass.draw_indexed(0..mesh.index_count, 0, 0..count),
                 }
                 draws += 1;

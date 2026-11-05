@@ -253,7 +253,7 @@ try {
   const only = opt("--scene")?.split(",");
   const timed = Number(opt("--time") ?? 0);
   const scenes = only ?? (timed > 0 ? [...all, ...PERF.filter((p) => !all.includes(p))] : all);
-for (const s of scenes) if (!all.includes(s) && !PERF.includes(s) && !CITY.includes(s) && !CROWDS.includes(s) && !COSTS.includes(s)) throw new Error(`no scene ${s} (og-tests knows ${all.join(", ")})`);
+  for (const s of scenes) if (!all.includes(s) && !PERF.includes(s) && !CITY.includes(s) && !CROWDS.includes(s) && !COSTS.includes(s)) throw new Error(`no scene ${s} (og-tests knows ${all.join(", ")})`);
   // --bisect "a;b;...": each cut-down (og-tests-web og_gfx_bisect) of each
   // scene drawn with GPU culling and with CPU culling in the same browser,
   // the two frames compared: the first cut-down whose frames agree names

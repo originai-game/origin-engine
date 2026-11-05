@@ -293,6 +293,16 @@ fn render_scaled(out: (u32, u32), scale: f32, max: u32) -> (u32, u32) {
     (side(out.0), side(out.1))
 }
 
+/// [`Renderer::debug_cull_apart`]'s setting.
+#[cfg(not(feature = "publish"))]
+pub(super) static DEBUG_CULL_APART: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+/// [`Renderer::debug_cull_direct`]'s setting.
+#[cfg(not(feature = "publish"))]
+pub(super) static DEBUG_CULL_DIRECT: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
 #[cfg(test)]
 mod tests {
     /// A fractional scale rounds each side on its own (the aspect is kept
@@ -307,13 +317,3 @@ mod tests {
         assert_eq!(super::render_scaled((5000, 3000), 2.0, 8192), (8192, 6000));
     }
 }
-
-/// [`Renderer::debug_cull_apart`]'s setting.
-#[cfg(not(feature = "publish"))]
-pub(super) static DEBUG_CULL_APART: std::sync::atomic::AtomicBool =
-    std::sync::atomic::AtomicBool::new(false);
-
-/// [`Renderer::debug_cull_direct`]'s setting.
-#[cfg(not(feature = "publish"))]
-pub(super) static DEBUG_CULL_DIRECT: std::sync::atomic::AtomicBool =
-    std::sync::atomic::AtomicBool::new(false);

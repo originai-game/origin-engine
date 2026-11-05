@@ -265,6 +265,7 @@ impl Renderer {
             visual_simulation: ribbons_gpu::GpuTrails::supported(
                 adapter.get_downlevel_capabilities().flags,
             ),
+            indirect_per_draw: desc.indirect_per_draw || webkit(),
         };
         info.volumetric_lights = volumetric::lights(info.volumetric);
         log::info!(
@@ -1203,5 +1204,55 @@ fn power_preference(desc: &RenderDesc) -> wgpu::PowerPreference {
         wgpu::PowerPreference::LowPower
     } else {
         wgpu::PowerPreference::HighPerformance
+    }
+}
+
+/// Whether the renderer runs in WebKit (`navigator.userAgent`, in a Worker
+/// or a page): its indirect draws need buffers of their own
+/// ([`RenderInfo::indirect_per_draw`]).
+#[cfg(target_arch = "wasm32")]
+fn webkit() -> bool {
+    let get = |o: &wasm_bindgen::JsValue, k: &str| js_sys::Reflect::get(o, &k.into()).ok();
+    get(&js_sys::global().into(), "navigator")
+        .and_then(|n| get(&n, "userAgent"))
+        .and_then(|u| u.as_string())
+        .is_some_and(|u| is_webkit(&u))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn webkit() -> bool {
+    false
+}
+
+/// Whether a user agent string is WebKit's (Safari, and every browser on
+/// iOS): `AppleWebKit/` without Blink's `Chrome/`, which Chromium's
+/// desktop and Android agents carry beside it.
+#[cfg(any(target_arch = "wasm32", test))]
+fn is_webkit(user_agent: &str) -> bool {
+    user_agent.contains("AppleWebKit/") && !user_agent.contains("Chrome/")
+}
+
+#[cfg(test)]
+mod webkit_tests {
+    #[test]
+    fn webkit_is_safari_and_ios_not_blink_or_gecko() {
+        let webkit = [
+            // Safari 27.2 on macOS (tests/evidence/compat/safari/adapter-macos.json).
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15",
+            // Chrome on iOS: WebKit underneath.
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 27_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/150.0.0.0 Mobile/15E148 Safari/604.1",
+        ];
+        let not = [
+            // Chrome on the same Mac (adapter-chrome.json): AppleWebKit/537.36 beside Chrome/.
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Linux; Android 16; Pixel 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Mobile Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.0; rv:150.0) Gecko/20100101 Firefox/150.0",
+        ];
+        for ua in webkit {
+            assert!(super::is_webkit(ua), "{ua}");
+        }
+        for ua in not {
+            assert!(!super::is_webkit(ua), "{ua}");
+        }
     }
 }

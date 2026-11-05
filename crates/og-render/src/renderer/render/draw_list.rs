@@ -171,7 +171,10 @@ impl Renderer {
             let direct = false;
             match (list.indirect, culled_gpu) {
                 (Some(_), Some(_)) if direct => pass.draw_indexed(0..mesh.index_count, 0, 0..count),
-                (Some(g), Some(gc)) => pass.draw_indexed_indirect(&gc.args, gc.draw_offset(g, b)),
+                (Some(g), Some(gc)) => {
+                    let (args, at) = gc.draw_args(g, b);
+                    pass.draw_indexed_indirect(args, at)
+                }
                 _ => pass.draw_indexed(0..mesh.index_count, 0, 0..count),
             }
         }

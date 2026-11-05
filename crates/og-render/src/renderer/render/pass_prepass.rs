@@ -159,7 +159,10 @@ impl Renderer {
             }
             p.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
             match (main_list.indirect, culled_gpu) {
-                (Some(g), Some(gc)) => p.draw_indexed_indirect(&gc.args, gc.draw_offset(g, b)),
+                (Some(g), Some(gc)) => {
+                    let (args, at) = gc.draw_args(g, b);
+                    p.draw_indexed_indirect(args, at)
+                }
                 _ => p.draw_indexed(0..mesh.index_count, 0, 0..count),
             }
             stats.prepass_draws += 1;
@@ -251,7 +254,10 @@ impl Renderer {
                 p.set_vertex_buffer(1, instances.slice(start..end));
                 p.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
                 match (main_list.indirect, culled_gpu) {
-                    (Some(g), Some(gc)) => p.draw_indexed_indirect(&gc.args, gc.draw_offset(g, b)),
+                    (Some(g), Some(gc)) => {
+                        let (args, at) = gc.draw_args(g, b);
+                        p.draw_indexed_indirect(args, at)
+                    }
                     _ => p.draw_indexed(0..mesh.index_count, 0, 0..count),
                 }
                 stats.draw_calls += 1;
