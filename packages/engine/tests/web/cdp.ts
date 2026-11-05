@@ -10,7 +10,9 @@
 // its DevTools socket forwarded here and the test server's ports reversed to
 // the phone, so the page's 127.0.0.1 and localhost are this machine's (a
 // secure context, as on the desktop). The phone's Chrome is the user's own:
-// a run opens its tabs there and closes only those.
+// a run opens its tabs there and closes only those. Its tabs answer pointer
+// and hover media queries as a desktop's mouse (MOUSE below) unless opened
+// with `touch`.
 
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -24,6 +26,22 @@ declare const Bun: {
   spawn(cmd: string[], o?: { stdout?: string; stderr?: string }): { kill(): void; exited: Promise<number> };
   spawnSync(cmd: string[], o?: { stdout?: string; stderr?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
 };
+
+/**
+ * A phone's tab answers pointer and hover media queries as desktop Chrome's
+ * does, for a mouse (fine, hover): the runners' frames and every reference
+ * are a desktop's input, and on a coarse pointer the engine's shell says so
+ * (`coarsePointer`) and og-ui's kits lay out touch-sized, so every kit frame
+ * differed (the Pixel 10, 2026-11-05). CDP's `Emulation.setEmulatedMedia`
+ * does not change these features on a touch device (Chrome 156 ignores it),
+ * so the page's matchMedia answers them, before its scripts run.
+ */
+const MOUSE = `(() => {
+  const media = window.matchMedia.bind(window);
+  const yes = "(min-width: 0px)", no = "(min-width: 99999999px)";
+  const mouse = { "pointer:fine": yes, "pointer:coarse": no, "pointer:none": no, "hover:hover": yes, "hover:none": no };
+  window.matchMedia = (q) => media(String(q).replace(/\\(\\s*(any-)?(pointer|hover)\\s*:\\s*([a-z]+)\\s*\\)/g, (all, _any, f, v) => mouse[f + ":" + v] ?? all));
+})()`;
 
 export function chromePath(argv: string[] = process.argv): string {
   const i = argv.indexOf("--chrome");
@@ -204,14 +222,19 @@ export class Browser {
     return () => this.#listeners.delete(fn);
   }
 
-  /** A new tab at `url`, attached; console messages and exceptions go to `log`. */
-  async open(url: string, log: string[] = []): Promise<Page> {
+  /**
+   * A new tab at `url`, attached; console messages and exceptions go to `log`.
+   * On a phone the tab answers as a desktop's mouse (MOUSE); `touch` keeps the
+   * phone's own pointer (a measurement of the phone as its player has it).
+   */
+  async open(url: string, log: string[] = [], o: { touch?: boolean } = {}): Promise<Page> {
     const { targetId } = await this.send<{ targetId: string }>("Target.createTarget", { url: "about:blank" });
     this.#targets.add(targetId);
     const { sessionId } = await this.send<{ sessionId: string }>("Target.attachToTarget", { targetId, flatten: true });
     const page = new Page(this, sessionId, log);
     await page.send("Page.enable");
     await page.send("Runtime.enable");
+    if (this.#android && !o.touch) await page.send("Page.addScriptToEvaluateOnNewDocument", { source: MOUSE });
     await page.attachFrames();
     await page.send("Page.navigate", { url });
     return page;
