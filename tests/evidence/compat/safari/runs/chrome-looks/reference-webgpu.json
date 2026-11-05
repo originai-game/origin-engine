@@ -1,0 +1,328 @@
+{
+  "tier": "webgpu",
+  "size": "1280x720",
+  "tolerance": {
+    "channel": 32,
+    "outliers": 0.005,
+    "rmse": 0.01
+  },
+  "script": "0.5:station:looks;1.00:look:expressionist-painting;1.50:look:bold-comic-illustration;2.00:look:watercolor-wash;2.50:look:pixel-3d-hybrid;3.00:look:faceted-low-poly;3.50:look:sculpted-clay;4.00:look:8bit-pixel;4.50:look:voxel-worlds;5.00:look:illuminated-manuscript;5.50:look:rubber-hose-animation;6.00:look:pencil-hatching;6.50:look:gothic-contour;7.00:look:lush-painted-worlds;7.50:look:decorative-storybook;8.00:look:classical-painting-collage;8.50:look:detailed-doodle;9.00:look:black-figure-pottery;9.50:look:heavy-ink-shadows;10.00:look:monochrome-pixel;10.50:look:16bit-pixel;11.00:look:detailed-pixel;11.50:look:luminous-pixel;12.00:look:topdown-tile-pixel;12.50:look:low-resolution-3d;13.00:look:coarse-pixel;13.50:look:anime-cel-3d;14.00:look:inked-comic-3d;14.50:look:paper-craft;15.00:look:miniature-diorama;15.50:look:painterly-3d;16.00:look:cinematic-realism;16.50:look:muted-cinematic-3d;17.00:look:layered-silhouette;17.50:look:minimal-geometric;18.00:look:neon-vector;18.50:look:monochrome-dither-3d;19.00:look:luminous-layered-painting;19.50:look:none",
+  "stations": {
+    "looks-expressionist-painting": {
+      "tick": 84,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-expressionist-painting.png",
+      "outliers": 0.001,
+      "rmse": 0.00311,
+      "ok": true
+    },
+    "looks-bold-comic-illustration": {
+      "tick": 114,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-bold-comic-illustration.png",
+      "outliers": 0.026,
+      "rmse": 0.00229,
+      "ok": true
+    },
+    "looks-watercolor-wash": {
+      "tick": 144,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-watercolor-wash.png",
+      "outliers": 0,
+      "rmse": 0.00296,
+      "ok": true
+    },
+    "looks-pixel-3d-hybrid": {
+      "tick": 174,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-pixel-3d-hybrid.png",
+      "outliers": 0,
+      "rmse": 0.00094,
+      "ok": true
+    },
+    "looks-faceted-low-poly": {
+      "tick": 204,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-faceted-low-poly.png",
+      "outliers": 0,
+      "rmse": 0.00277,
+      "ok": true
+    },
+    "looks-sculpted-clay": {
+      "tick": 234,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-sculpted-clay.png",
+      "outliers": 0.04,
+      "rmse": 0.0094,
+      "ok": true
+    },
+    "looks-8bit-pixel": {
+      "tick": 264,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-8bit-pixel.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true
+    },
+    "looks-voxel-worlds": {
+      "tick": 294,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-voxel-worlds.png",
+      "outliers": 0.001,
+      "rmse": 0.00905,
+      "ok": true
+    },
+    "looks-illuminated-manuscript": {
+      "tick": 324,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-illuminated-manuscript.png",
+      "outliers": 0.064,
+      "rmse": 0.00232,
+      "ok": true
+    },
+    "looks-rubber-hose-animation": {
+      "tick": 354,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-rubber-hose-animation.png",
+      "outliers": 0.817,
+      "rmse": 0.02436,
+      "ok": false
+    },
+    "looks-pencil-hatching": {
+      "tick": 384,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-pencil-hatching.png",
+      "outliers": 0.317,
+      "rmse": 0.02225,
+      "ok": false
+    },
+    "looks-gothic-contour": {
+      "tick": 414,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-gothic-contour.png",
+      "outliers": 0.466,
+      "rmse": 0.02055,
+      "ok": false
+    },
+    "looks-lush-painted-worlds": {
+      "tick": 444,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-lush-painted-worlds.png",
+      "outliers": 0.091,
+      "rmse": 0.00799,
+      "ok": true
+    },
+    "looks-decorative-storybook": {
+      "tick": 474,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-decorative-storybook.png",
+      "outliers": 0.433,
+      "rmse": 0.02295,
+      "ok": false
+    },
+    "looks-classical-painting-collage": {
+      "tick": 504,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-classical-painting-collage.png",
+      "outliers": 0.042,
+      "rmse": 0.00505,
+      "ok": true
+    },
+    "looks-detailed-doodle": {
+      "tick": 534,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-detailed-doodle.png",
+      "outliers": 0.365,
+      "rmse": 0.05014,
+      "ok": false
+    },
+    "looks-black-figure-pottery": {
+      "tick": 564,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-black-figure-pottery.png",
+      "outliers": 0.22,
+      "rmse": 0.01946,
+      "ok": false
+    },
+    "looks-heavy-ink-shadows": {
+      "tick": 594,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-heavy-ink-shadows.png",
+      "outliers": 1.305,
+      "rmse": 0.02072,
+      "ok": false
+    },
+    "looks-monochrome-pixel": {
+      "tick": 624,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-monochrome-pixel.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true
+    },
+    "looks-16bit-pixel": {
+      "tick": 654,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-16bit-pixel.png",
+      "outliers": 0.009,
+      "rmse": 0.00077,
+      "ok": true
+    },
+    "looks-detailed-pixel": {
+      "tick": 684,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-detailed-pixel.png",
+      "outliers": 0.005,
+      "rmse": 0.00705,
+      "ok": true
+    },
+    "looks-luminous-pixel": {
+      "tick": 714,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-luminous-pixel.png",
+      "outliers": 0.008,
+      "rmse": 0.00073,
+      "ok": true
+    },
+    "looks-topdown-tile-pixel": {
+      "tick": 744,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-topdown-tile-pixel.png",
+      "outliers": 0.005,
+      "rmse": 0.0006,
+      "ok": true
+    },
+    "looks-low-resolution-3d": {
+      "tick": 774,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-low-resolution-3d.png",
+      "outliers": 0.021,
+      "rmse": 0.00801,
+      "ok": true
+    },
+    "looks-coarse-pixel": {
+      "tick": 804,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-coarse-pixel.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true
+    },
+    "looks-anime-cel-3d": {
+      "tick": 834,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-anime-cel-3d.png",
+      "outliers": 0.59,
+      "rmse": 0.02268,
+      "ok": false
+    },
+    "looks-inked-comic-3d": {
+      "tick": 864,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-inked-comic-3d.png",
+      "outliers": 0.449,
+      "rmse": 0.02954,
+      "ok": false
+    },
+    "looks-paper-craft": {
+      "tick": 894,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-paper-craft.png",
+      "outliers": 0.613,
+      "rmse": 0.02183,
+      "ok": false
+    },
+    "looks-miniature-diorama": {
+      "tick": 924,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-miniature-diorama.png",
+      "outliers": 0.035,
+      "rmse": 0.00394,
+      "ok": true
+    },
+    "looks-painterly-3d": {
+      "tick": 954,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-painterly-3d.png",
+      "outliers": 0.003,
+      "rmse": 0.00343,
+      "ok": true
+    },
+    "looks-cinematic-realism": {
+      "tick": 984,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-cinematic-realism.png",
+      "outliers": 0,
+      "rmse": 0.00253,
+      "ok": true
+    },
+    "looks-muted-cinematic-3d": {
+      "tick": 1014,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-muted-cinematic-3d.png",
+      "outliers": 0,
+      "rmse": 0.00232,
+      "ok": true
+    },
+    "looks-layered-silhouette": {
+      "tick": 1044,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-layered-silhouette.png",
+      "outliers": 0.018,
+      "rmse": 0.00245,
+      "ok": true
+    },
+    "looks-minimal-geometric": {
+      "tick": 1074,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-minimal-geometric.png",
+      "outliers": 0.007,
+      "rmse": 0.00095,
+      "ok": true
+    },
+    "looks-neon-vector": {
+      "tick": 1104,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-neon-vector.png",
+      "outliers": 0.047,
+      "rmse": 0.00431,
+      "ok": true
+    },
+    "looks-monochrome-dither-3d": {
+      "tick": 1134,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-monochrome-dither-3d.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true
+    },
+    "looks-luminous-layered-painting": {
+      "tick": 1164,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/looks-luminous-layered-painting.png",
+      "outliers": 0.002,
+      "rmse": 0.00302,
+      "ok": true
+    }
+  },
+  "renderer": "webgpu",
+  "textureFormat": "bc7+rgba8+bc5",
+  "textures": 45,
+  "refused": "probe.commands: script must be a string, not object",
+  "ticks": 1164,
+  "engine": [
+    "[og] boot stage \"wasm\" done in 31 ms",
+    "[og] boot stage \"bundle\" done in 33 ms",
+    "[og] boot stage \"create\" done in 23 ms",
+    "[og] pipelines sync: auto: an Apple GPU (apple metal-3), sync until iOS is measured",
+    "[og] boot stage \"attach\" done in 78 ms",
+    "[og] boot stage \"transcode\" done in 105 ms",
+    "[og] boot stage \"prime\" done in 0 ms",
+    "[og] boot stage \"settle\" done in 0 ms",
+    "[og] boot stage \"present\" done in 74 ms",
+    "[og] first frame at 366 ms",
+    "renderer: 64 pipelines made behind the gate in 2953 ms"
+  ],
+  "ms": 10575,
+  "log": []
+}

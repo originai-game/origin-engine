@@ -1,0 +1,71 @@
+{
+  "tier": "webgpu-safari",
+  "size": "1280x720",
+  "tolerance": {
+    "channel": 32,
+    "outliers": 0.005,
+    "rmse": 0.01
+  },
+  "script": "1.1:station:lens;2.1:station:fx;4.1:station:2d;5.1:station:stylised",
+  "stations": {
+    "post": {
+      "tick": 60,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/post.png",
+      "outliers": 0.014,
+      "rmse": 0.0065,
+      "ok": true
+    },
+    "lens": {
+      "tick": 120,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/lens.png",
+      "outliers": 0.01,
+      "rmse": 0.00456,
+      "ok": true
+    },
+    "fx": {
+      "tick": 240,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/fx.png",
+      "outliers": 0.022,
+      "rmse": 0.00848,
+      "ok": true
+    },
+    "2d": {
+      "tick": 300,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/2d.png",
+      "outliers": 0.105,
+      "rmse": 0.00894,
+      "ok": true
+    },
+    "stylised": {
+      "tick": 420,
+      "size": "1280x720",
+      "against": "templates/fx-showcase/references/metal/stylised.png",
+      "outliers": 0.02,
+      "rmse": 0.00354,
+      "ok": true
+    }
+  },
+  "renderer": "webgpu",
+  "textureFormat": "bc7+rgba8+bc5",
+  "textures": 45,
+  "refused": "probe.commands: script must be a string, not object",
+  "ticks": 420,
+  "engine": [
+    "[og] boot stage \"wasm\" done in 109 ms",
+    "[og] boot stage \"bundle\" done in 79 ms",
+    "[og] boot stage \"create\" done in 18 ms",
+    "[og] pipelines sync: auto: an Apple GPU (apple apple), sync until iOS is measured",
+    "[og] boot stage \"attach\" done in 43 ms",
+    "[og] boot stage \"transcode\" done in 154 ms",
+    "[og] boot stage \"prime\" done in 1 ms",
+    "[og] boot stage \"settle\" done in 0 ms",
+    "[og] boot stage \"present\" done in 57 ms",
+    "[og] first frame at 495 ms"
+  ],
+  "ms": 17272,
+  "log": []
+}
