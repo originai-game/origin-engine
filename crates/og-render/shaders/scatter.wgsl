@@ -93,13 +93,13 @@ struct ScatterFx {
 fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let h = scatter_hook(in, front);
   let base = surface_color(h, shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)) * in.color);
-  let dpx = dpdx(in.world);
-  let dpy = dpdy(in.world);
+  let dpx = dpdxFine(in.world);
+  let dpy = dpdyFine(in.world);
   // Alpha to coverage (mode 16, an alpha-tested material, as pbr_fs.wgsl): alpha past the cut-off over one pixel's change
   // of it is the share of the MSAA samples covered (three.js' alphaToCoverage on grass and foliage cards).
   let mode = u32(material.flags.w);
   let a2c = (mode & 16u) != 0u && material.emissive.w >= 0.0;
-  let coverage = clamp((base.a - material.emissive.w) / max(fwidth(base.a), 1e-4) + 0.5, 0.0, 1.0);
+  let coverage = clamp((base.a - material.emissive.w) / max(fwidthFine(base.a), 1e-4) + 0.5, 0.0, 1.0);
   // One discard for the cut-off and the fade (Metal ignored a second one).
   if ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || scatter_dropped(in.clip.xy, in.fade)) {
     discard;
@@ -194,7 +194,7 @@ struct ScatterPrepass {
 @fragment
 fn fs_prepass(in: ScatterOut, @builtin(front_facing) front: bool) -> ScatterPrepass {
   let base = surface_color(scatter_hook(in, front), shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)) * in.color);
-  let flat_n = normalize(cross(dpdx(in.world), dpdy(in.world)));
+  let flat_n = normalize(cross(dpdxFine(in.world), dpdyFine(in.world)));
   if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || scatter_dropped(in.clip.xy, in.fade)) {
     discard;
   }

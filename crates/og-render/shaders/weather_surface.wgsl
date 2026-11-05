@@ -216,8 +216,8 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
   // its position's across the pixel): standing water lies only on what is
   // flat over a puddle's width, not on a rock's crown or a ball's top.
   // (Taken here, in uniform control flow, before the masks branch.)
-  let footprint = length(fwidth(p_frame));
-  let bend = select(length(fwidth(geo)) / max(footprint, 1e-5), 0.0, standing > 1.5);
+  let footprint = length(fwidthFine(p_frame));
+  let bend = select(length(fwidthFine(geo)) / max(footprint, 1e-5), 0.0, standing > 1.5);
   let surf_wet = shore_wetness(p_frame) * amount;
   if (max(max(max(w.x, w.y), w.z), max(dust, surf_wet)) <= 0.0) { return o; }
   // Under a roof: dry, no puddles, no snow (the drip line softened). Dust

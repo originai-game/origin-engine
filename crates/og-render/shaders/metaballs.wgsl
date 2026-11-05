@@ -66,7 +66,7 @@ fn fs_composite(in: FullOut) -> @location(0) vec4<f32> {
   let raw = textureLoad(field, vec2<i32>(in.clip.xy), 0) * fluid.channel;
   let f = raw.x + raw.y + raw.z + raw.w;
   let th = fluid.params.x;
-  let aa = max(fwidth(f), 1e-4);
+  let aa = max(fwidthFine(f), 1e-4);
   let alpha = smoothstep(th - aa, th + aa, f);
   if (alpha <= 0.0) { discard; }
   let depth = clamp((f - th) / max(th * 3.0, 1e-4), 0.0, 1.0);

@@ -66,7 +66,7 @@ fn terrain_tilt(point: TerrainPoint, n: vec3<f32>, slope: vec2<f32>) -> vec3<f32
 
 fn terrain_point(local: vec3<f32>) -> TerrainPoint {
   let s = (local.xz - terrain_min()) / terrain_cell();
-  let m = terrain_maps_at(s, dpdx(s), dpdy(s));
+  let m = terrain_maps_at(s, dpdxFine(s), dpdyFine(s));
   var o: TerrainPoint;
   o.local_normal = normalize(m.normal);
   o.normal = normalize(terrain.normal * o.local_normal);
@@ -264,7 +264,7 @@ fn terrain_roughness(p: vec3<f32>, n_geo: vec3<f32>, control: array<vec4<f32>, 4
 // The toon ramp's three bands for the terrain (pbr.wgsl toon_ramp's built-in
 // one), each edge smoothed over a pixel of t.
 fn terrain_band(t: f32) -> f32 {
-  let e = max(fwidth(t), 1e-4);
+  let e = max(fwidthFine(t), 1e-4);
   return 0.22 + 0.38 * smoothstep(0.08 - e, 0.08 + e, t) + 0.4 * smoothstep(0.45 - e, 0.45 + e, t);
 }
 
@@ -324,12 +324,12 @@ fn terrain_debug(in: TerrainOut, point: TerrainPoint) -> vec3<f32> {
   // Every derivative before the first branch: the views below return early on
   // per-pixel values (a layer's flags), and WGSL refuses a derivative in control
   // flow that depends on one (Tint, so the browser, rejects the whole module).
-  let vertical = dpdy(in.world);
+  let vertical = dpdyFine(in.world);
   let samples = (in.local.xz - terrain_min()) / terrain_cell();
-  let gx = dpdx(samples);
-  let gy = dpdy(samples);
+  let gx = dpdxFine(samples);
+  let gy = dpdyFine(samples);
   let cell = (in.local.xz - terrain_min()) / (level.camera.z * level.center.z);
-  let edge = abs(fract(cell - 0.5) - 0.5) / max(fwidth(cell), vec2<f32>(1e-5));
+  let edge = abs(fract(cell - 0.5) - 0.5) / max(fwidthFine(cell), vec2<f32>(1e-5));
   if (frame.light_color.w > 9.5) {
     let pick = pick_layers(in.world, point.normal, point.control);
     let layer = terrain.layers[pick.ids.x];
@@ -370,8 +370,8 @@ fn terrain_debug(in: TerrainOut, point: TerrainPoint) -> vec3<f32> {
 fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   if (terrain_hole_at(in.local)) { discard; }
   let p = in.world;
-  let dpx = dpdx(p);
-  let dpy = dpdy(p);
+  let dpx = dpdxFine(p);
+  let dpy = dpdyFine(p);
   let point = terrain_point(in.local);
   if (frame.light_color.w > 6.5) {
     return vec4<f32>(terrain_debug(in, point), 1.0);
@@ -537,7 +537,7 @@ fn fs_prepass(in: TerrainOut) -> TerrainPrepass {
   let point = terrain_point(in.local);
   // The layers' roughness as the lit pass shades it, for screen-space
   // reflections (a terrain is never metal): their weights alone.
-  let layers = terrain_roughness(in.world, point.normal, point.control, dpdx(in.world), dpdy(in.world));
+  let layers = terrain_roughness(in.world, point.normal, point.control, dpdxFine(in.world), dpdyFine(in.world));
   let roughness = toksvig_roughness(layers.x, point.variance);
   return terrain_prepass_out(in.world, terrain_tilt(point, point.normal, in.relief.xy), point.normal, vec2<f32>(roughness, layers.y), in.cur_clip, in.prev_clip);
 }
@@ -601,7 +601,7 @@ fn stamp_ground(p: vec3<f32>, n_mesh: vec3<f32>) -> StampGround {
   let n_local = (stamp.to_terrain * vec4<f32>(n_mesh, 0.0)).xyz;
   let out = n_local.xz / max(length(n_local), 1e-6) * 1.5 * terrain_cell();
   let s = (local.xz + out - terrain_min()) / terrain_cell();
-  let m = terrain_maps_at(s, dpdx(s), dpdy(s));
+  let m = terrain_maps_at(s, dpdxFine(s), dpdyFine(s));
   let above = (local.y - terrain_height_at(0u, s)) * stamp.params.y;
   var o: StampGround;
   // Wholly the ground over the band's lowest third, so the mesh's foot is
@@ -618,8 +618,8 @@ fn stamp_ground(p: vec3<f32>, n_mesh: vec3<f32>) -> StampGround {
 @fragment
 fn fs_stamp(in: StampOut) -> @location(0) vec4<f32> {
   let p = in.world;
-  let dpx = dpdx(p);
-  let dpy = dpdy(p);
+  let dpx = dpdxFine(p);
+  let dpy = dpdyFine(p);
   let g = stamp_ground(p, normalize(in.normal));
   let look = terrain_look(p, g.normal, g.control, dpx, dpy);
   let albedo = mix(look.albedo, grass_far(look.albedo, p, g.local, g.normal, g.control), g.ground);
@@ -630,6 +630,6 @@ fn fs_stamp(in: StampOut) -> @location(0) vec4<f32> {
 fn fs_stamp_prepass(in: StampOut) -> TerrainPrepass {
   let p = in.world;
   let g = stamp_ground(p, normalize(in.normal));
-  let roughness = terrain_roughness(p, g.normal, g.control, dpdx(p), dpdy(p));
+  let roughness = terrain_roughness(p, g.normal, g.control, dpdxFine(p), dpdyFine(p));
   return terrain_prepass_out(p, g.normal, g.normal, roughness, in.cur_clip, in.prev_clip);
 }

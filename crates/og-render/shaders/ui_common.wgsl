@@ -800,7 +800,7 @@ fn glass_shadow_reach(sh: vec4<f32>, a: f32) -> f32 {
 
 // Local units per device pixel at this fragment (call in uniform control flow).
 fn local_px(local: vec2<f32>) -> f32 {
-  return max(0.5 * (length(dpdx(local)) + length(dpdy(local))), 1e-6);
+  return max(0.5 * (length(dpdxFine(local)) + length(dpdyFine(local))), 1e-6);
 }
 
 // The shape's distance at `p` (x) and the length along a polyline there (y).

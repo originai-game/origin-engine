@@ -429,7 +429,7 @@ fn fs_mass(in: MassOut) -> @location(0) vec4<f32> {
   var a = in.color.a;
   let sample = textureSample(sprite_tex, sprite_sampler, in.uv);
   let unit_range = vec2<f32>(sprite_params.msdf.x) / max(sprite_params.msdf.yz, vec2<f32>(1.0));
-  let screen_tex_size = vec2<f32>(1.0) / max(fwidth(in.uv), vec2<f32>(1e-6));
+  let screen_tex_size = vec2<f32>(1.0) / max(fwidthFine(in.uv), vec2<f32>(1e-6));
   let px_range = max(0.5 * dot(unit_range, screen_tex_size), 1.0);
   if (kind == KIND_NUMBER || kind == KIND_TEXT) {
     let reach = 0.5 * px_range - 0.5;

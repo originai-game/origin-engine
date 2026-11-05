@@ -81,18 +81,18 @@ fn toon_edges(n_dot_l: f32) {
   if (ANALYTIC) {
     toon_aa = 0.01 * px;
   } else {
-    toon_aa = clamp(fwidth(n_dot_l), 1e-4, 0.25) * px;
+    toon_aa = clamp(fwidthFine(n_dot_l), 1e-4, 0.25) * px;
   }
 }
 
 fn world_dx(p: vec3<f32>) -> vec3<f32> {
   if (ANALYTIC) { return analytic_dx; }
-  return dpdx(p);
+  return dpdxFine(p);
 }
 
 fn world_dy(p: vec3<f32>) -> vec3<f32> {
   if (ANALYTIC) { return analytic_dy; }
-  return dpdy(p);
+  return dpdyFine(p);
 }
 
 @fragment
@@ -172,7 +172,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // Alpha to coverage (mode 16, an alpha-tested material): alpha past the cut-off over one pixel's change of it is the
   // share of samples covered (three.js's ALPHA_TO_COVERAGE alpha test); it is cut only where nothing is covered.
   let a2c = (mode & 16u) != 0u && material.emissive.w >= 0.0;
-  let coverage = clamp((base.a - material.emissive.w) / max(fwidth(base.a), 1e-4) + 0.5, 0.0, 1.0);
+  let coverage = clamp((base.a - material.emissive.w) / max(fwidthFine(base.a), 1e-4) + 0.5, 0.0, 1.0);
   if (DISCARD && ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || dissolve.w > 0.5)) {
     discard;
   }
@@ -284,7 +284,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     if (ANALYTIC) {
       footprint = max(length(analytic_local_dx), length(analytic_local_dy));
     } else {
-      footprint = max(length(dpdx(in.local_pos)), length(dpdy(in.local_pos)));
+      footprint = max(length(dpdxFine(in.local_pos)), length(dpdyFine(in.local_pos)));
     }
     let fade = clamp((ms.z / max(footprint, 1e-6) - 3.0) / 6.0, 0.0, 1.0);
     let made = material_surface(kind, ms.y, in.local_pos / ms.z, s, fade);
@@ -307,7 +307,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
       let hy = material_surface(kind, ms.y, (in.local_pos + analytic_local_dy) / ms.z, s, fade).height * ms.z;
       dh = vec2<f32>(hx - hm, hy - hm);
     } else {
-      dh = vec2<f32>(dpdx(hm), dpdy(hm));
+      dh = vec2<f32>(dpdxFine(hm), dpdyFine(hm));
     }
     let grad = sign(det) * (dh.x * r1 + dh.y * r2);
     // det is n · (dpx × dpy): where the shading normal lies in the face (a

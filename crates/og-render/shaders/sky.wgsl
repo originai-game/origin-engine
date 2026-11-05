@@ -129,7 +129,7 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
   let angle = atan2(length(cross(d, sun)), cos_d);
   // The legacy SkyLook uniforms bracket the authored radius at 0.8/1.2.
   let radius = 0.5 * (acos(clamp(frame.sky_sun.x, -1.0, 1.0)) + acos(clamp(frame.sky_sun.y, -1.0, 1.0)));
-  let pixel_angle = max(max(length(dpdx(d)), length(dpdy(d))), 1e-7);
+  let pixel_angle = max(max(length(dpdxFine(d)), length(dpdyFine(d))), 1e-7);
   var disc = 0.0;
   if (radius > 0.0) {
     disc = clamp((radius - angle) / pixel_angle + 0.5, 0.0, 1.0);

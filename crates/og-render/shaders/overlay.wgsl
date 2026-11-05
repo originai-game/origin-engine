@@ -94,7 +94,7 @@ fn median(r: f32, g: f32, b: f32) -> f32 {
 fn fs_msdf(in: OverlayOut) -> @location(0) vec4<f32> {
   let m = textureSample(sprite_tex, sprite_sampler, in.uv);
   let unit_range = vec2<f32>(sprite_params.msdf.x) / sprite_params.msdf.yz;
-  let screen_tex_size = vec2<f32>(1.0) / fwidth(in.uv);
+  let screen_tex_size = vec2<f32>(1.0) / fwidthFine(in.uv);
   let screen_px_range = max(0.5 * dot(unit_range, screen_tex_size), 1.0);
   // Signed distance to the glyph's edge in device pixels, inside positive,
   // thickened by the weight. The field is flat past half its range, so the

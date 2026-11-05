@@ -265,7 +265,7 @@ var<private> imp_level: f32;
 // any sample; called first in a fragment stage, in uniform control flow.
 fn imp_set_level(uv: vec2<f32>) {
   let texels = f32(textureDimensions(base_color_tex, 0).x) / (2.0 * f32(imp_grid()));
-  let d = max(length(dpdx(uv)), length(dpdy(uv))) * texels;
+  let d = max(length(dpdxFine(uv)), length(dpdyFine(uv))) * texels;
   imp_level = max(log2(max(d, 1e-6)), 0.0);
 }
 

@@ -70,7 +70,7 @@ fn fs_crowd_card(in: CardOut) -> CardLit {
   card_set_level(in.local);
   let s = card_sample(in.local, in.cols, in.blend.x, in.rows, in.blend.y);
   let a2c = scatter.impostor_grid.z > 0.5;
-  let coverage = clamp((s.coverage - 0.5) / max(fwidth(s.coverage), 1e-4) + 0.5, 0.0, 1.0);
+  let coverage = clamp((s.coverage - 0.5) / max(fwidthFine(s.coverage), 1e-4) + 0.5, 0.0, 1.0);
   if (select(s.coverage < 0.5, coverage <= 0.0, a2c)) {
     discard;
   }

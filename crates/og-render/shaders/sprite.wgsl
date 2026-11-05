@@ -66,10 +66,10 @@ fn normal_light(clip: vec2<f32>, lit: f32, n: vec3<f32>) -> vec3<f32> {
 // derivatives, so a turned, mirrored or bent receiver is lit right. Its
 // z is rebuilt from x and y (two-channel encodings keep only those).
 fn normal_at(uv: vec2<f32>, world: vec2<f32>) -> vec3<f32> {
-  let dpx = dpdx(world);
-  let dpy = dpdy(world);
-  let dux = dpdx(uv);
-  let duy = dpdy(uv);
+  let dpx = dpdxFine(world);
+  let dpy = dpdyFine(world);
+  let dux = dpdxFine(uv);
+  let duy = dpdyFine(uv);
   let m = textureSample(sprite_normal, sprite_sampler, uv).xy * 2.0 - 1.0;
   let det = dux.x * duy.y - duy.x * dux.y;
   if (abs(det) < 1e-20) { return vec3<f32>(0.0, 0.0, 1.0); }
@@ -461,7 +461,7 @@ fn msdf_fragment(in: SpriteOut) -> vec4<f32> {
   // The distance range in screen pixels: atlas range scaled by how many
   // screen pixels one atlas pixel covers here.
   let unit_range = vec2<f32>(sprite_params.msdf.x) / sprite_params.msdf.yz;
-  let screen_tex_size = vec2<f32>(1.0) / fwidth(in.uv);
+  let screen_tex_size = vec2<f32>(1.0) / fwidthFine(in.uv);
   let screen_px_range = max(0.5 * dot(unit_range, screen_tex_size), 1.0);
   let sd = median(m.r, m.g, m.b) - 0.5;
   let fill = clamp(screen_px_range * sd + 0.5, 0.0, 1.0);

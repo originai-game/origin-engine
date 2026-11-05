@@ -123,7 +123,7 @@ fn grass_canopy(above: f32, l: vec3<f32>, far: f32) -> f32 {
 
 // The toon ramp's three bands (terrain_lit.wgsl terrain_band).
 fn grass_band(t: f32) -> f32 {
-  let e = max(fwidth(t), 1e-4);
+  let e = max(fwidthFine(t), 1e-4);
   return 0.22 + 0.38 * smoothstep(0.08 - e, 0.08 + e, t) + 0.4 * smoothstep(0.45 - e, 0.45 + e, t);
 }
 

@@ -176,15 +176,15 @@ fn shadow_depth(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>)
 
 @fragment
 fn fs(in: VsOut) -> @location(0) vec4<f32> {
-  let dx = dpdx(in.world);
-  let dy = dpdy(in.world);
+  let dx = dpdxFine(in.world);
+  let dy = dpdyFine(in.world);
   return shadow_value(in, dx, dy);
 }
 
 @fragment
 fn fs_lean(in: LeanVsOut) -> @location(0) vec4<f32> {
-  let dx = dpdx(in.world);
-  let dy = dpdy(in.world);
+  let dx = dpdxFine(in.world);
+  let dy = dpdyFine(in.world);
   return shadow_depth(in.world, in.clip, dx, dy);
 }
 
@@ -192,8 +192,8 @@ fn fs_lean(in: LeanVsOut) -> @location(0) vec4<f32> {
 // the material's alpha cutoff (leaf and grass cards), cast no shadow.
 @fragment
 fn fs_dissolve(in: VsOut) -> @location(0) vec4<f32> {
-  let dx = dpdx(in.world);
-  let dy = dpdy(in.world);
+  let dx = dpdxFine(in.world);
+  let dy = dpdyFine(in.world);
   let base_uv = material_uv(UV_MAP, in.uv);
   let alpha = material.base_color.a * textureSample(base_color_tex, material_sampler, base_uv).a * in.color.a;
   if (dissolve_at(in.uv, in.local_pos).w > 0.5) { discard; }
@@ -205,8 +205,8 @@ fn fs_dissolve(in: VsOut) -> @location(0) vec4<f32> {
 // alpha test (and the dissolve) casts no shadow, as it is not drawn lit.
 @fragment
 fn fs_hooked(in: VsOut) -> @location(0) vec4<f32> {
-  let dx = dpdx(in.world);
-  let dy = dpdy(in.world);
+  let dx = dpdxFine(in.world);
+  let dy = dpdyFine(in.world);
   let base_uv = material_uv(UV_MAP, in.uv);
   let base = surface_color(shadow_hook(in), shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, base_uv) * in.color);
   let dissolved = dissolve_at(in.uv, in.local_pos).w > 0.5;

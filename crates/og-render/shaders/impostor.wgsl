@@ -199,7 +199,7 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   // MSAA (the pipeline then has none) the edge is the cut, as a cut-out
   // copy's is (scatter.wgsl).
   let a2c = scatter.impostor_grid.z > 0.5;
-  let coverage = clamp((alpha - imp_cutoff()) / max(fwidth(alpha), 1e-4) + 0.5, 0.0, 1.0);
+  let coverage = clamp((alpha - imp_cutoff()) / max(fwidthFine(alpha), 1e-4) + 0.5, 0.0, 1.0);
   if (select(alpha < imp_cutoff(), coverage <= 0.0, a2c) || imp_dropped(in.clip.xy, in.fade.x, in.fade.y)) {
     discard;
   }

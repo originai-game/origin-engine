@@ -24,8 +24,8 @@ fn vs_shadow(@builtin(vertex_index) vi: u32) -> TerrainShadowOut {
 fn fs_shadow(in: TerrainShadowOut) -> @location(0) vec4<f32> {
   // Light falls through the holes.
   if (terrain_hole_at(in.local)) { discard; }
-  let dx = dpdx(in.world);
-  let dy = dpdy(in.world);
+  let dx = dpdxFine(in.world);
+  let dy = dpdyFine(in.world);
   if (shadow_pass.light.w > 0.0) {
     return vec4<f32>(local_distance(in.world, in.clip, dx, dy), 0.0, 0.0, 1.0);
   }
@@ -53,7 +53,7 @@ fn vs_stamp_shadow(@location(0) position: vec3<f32>) -> StampShadowOut {
 @fragment
 fn fs_stamp_shadow(in: StampShadowOut) -> @location(0) vec4<f32> {
   if (shadow_pass.light.w > 0.0) {
-    return vec4<f32>(local_distance(in.world, in.clip, dpdx(in.world), dpdy(in.world)), 0.0, 0.0, 1.0);
+    return vec4<f32>(local_distance(in.world, in.clip, dpdxFine(in.world), dpdyFine(in.world)), 0.0, 0.0, 1.0);
   }
   return vec4<f32>(in.clip.z, 0.0, 0.0, 1.0);
 }

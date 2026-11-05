@@ -356,7 +356,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   shadow_closed = (mode & 32u) != 0u;
   // Alpha to coverage (mode 16): as pbr_fs.wgsl.
   let a2c = (mode & 16u) != 0u && material.emissive.w >= 0.0;
-  let coverage = clamp((base.a - material.emissive.w) / max(fwidth(base.a), 1e-4) + 0.5, 0.0, 1.0);
+  let coverage = clamp((base.a - material.emissive.w) / max(fwidthFine(base.a), 1e-4) + 0.5, 0.0, 1.0);
   if ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || dissolve.w > 0.5) {
     discard;
   }
@@ -369,8 +369,8 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let sheen_maps = pack_sample(physical.layers.z, pack_uv); // sheen colour (sRGB), its roughness
   let film_maps = pack_sample(physical.layers.w, pack_uv);  // the coat's normal, iridescence
   let aniso_maps = pack_sample(physical.layers2.x, pack_uv); // anisotropy, the film's thickness
-  let dpx = dpdx(in.world_pos);
-  let dpy = dpdy(in.world_pos);
+  let dpx = dpdxFine(in.world_pos);
+  let dpy = dpdyFine(in.world_pos);
   var s: Surface;
   s.metallic = clamp(material.mr.x * maps.r, 0.0, 1.0);
   s.roughness = clamp(material.mr.y * maps.g, 0.04, 1.0);

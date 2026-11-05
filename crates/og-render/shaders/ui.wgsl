@@ -161,8 +161,8 @@ fn fs_shape(in: UiOut) -> @location(0) vec4<f32> {
   let s = instances[in.instance];
   let px = local_px(in.local);
   let im = image_uv(s, in.local);
-  let gx = dpdx(im.raw);
-  let gy = dpdy(im.raw);
+  let gx = dpdxFine(im.raw);
+  let gy = dpdyFine(im.raw);
   let cov = mode_coverage(s, in.local, px);
   let c = shape_color(s, in, im, gx, gy);
   let a = clamp(cov * c.a * s.extra.x * instance_clip(s, in.position.xy), 0.0, 1.0);
@@ -203,8 +203,8 @@ fn fs_shape_dst(in: UiOut) -> @location(0) vec4<f32> {
   let s = instances[in.instance];
   let px = local_px(in.local);
   let im = image_uv(s, in.local);
-  let gx = dpdx(im.raw);
-  let gy = dpdy(im.raw);
+  let gx = dpdxFine(im.raw);
+  let gy = dpdyFine(im.raw);
   let cov = mode_coverage(s, in.local, px);
   let c = shape_color(s, in, im, gx, gy);
   let a = clamp(cov * c.a * s.extra.x * instance_clip(s, in.position.xy), 0.0, 1.0);

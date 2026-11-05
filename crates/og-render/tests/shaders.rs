@@ -291,3 +291,31 @@ fn the_terrain_vertex_stages_inline_few_texture_reads() {
         "inlined texture reads past the bound: {over:?}"
     );
 }
+
+/// Every derivative the renderer takes says it is per pixel (`dpdxFine`,
+/// `dpdyFine`, `fwidthFine`). WGSL leaves plain `dpdx`/`dpdy`/`fwidth` coarse
+/// or fine to the backend: naga writes them as HLSL `ddx`, which D3D12
+/// evaluates coarse (one value per 2x2 quad), while Metal's `dfdx` and
+/// NVIDIA's Vulkan `OpDPdx` are per pixel, so DX12, Chrome and Firefox drew
+/// a quad-wide footprint where Metal drew a pixel's: sharper mips and
+/// brighter glints on the water (water-shallows 0.209 %, water-wake 0.754 %
+/// against Metal). A derivative meant to be coarse says so (`dpdxCoarse`).
+#[test]
+fn every_derivative_is_fine_or_coarse_by_name() {
+    let mut plain = Vec::new();
+    for s in og_render::shader_sources() {
+        let module = naga::front::wgsl::parse_str(&s.wgsl)
+            .unwrap_or_else(|e| panic!("{}: {}", s.label, e.emit_to_string(&s.wgsl)));
+        let functions = module.functions.iter().map(|(_, f)| f);
+        for f in functions.chain(module.entry_points.iter().map(|e| &e.function)) {
+            for (_, e) in f.expressions.iter() {
+                if let naga::Expression::Derivative { axis, ctrl: naga::DerivativeControl::None, .. } = e {
+                    plain.push(format!("{}: {} {axis:?}", s.label, f.name.as_deref().unwrap_or("?")));
+                }
+            }
+        }
+    }
+    plain.sort();
+    plain.dedup();
+    assert!(plain.is_empty(), "plain derivatives (coarse on D3D12; write dpdxFine, dpdyFine or fwidthFine): {plain:#?}");
+}

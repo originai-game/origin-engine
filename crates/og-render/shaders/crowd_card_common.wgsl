@@ -98,7 +98,7 @@ var<private> card_level: f32;
 // stage, in uniform control flow.
 fn card_set_level(local: vec3<f32>) {
   let size = f32(textureDimensions(base_color_tex, 0).x) / f32(card_views());
-  let d = max(length(dpdx(local)), length(dpdy(local))) * size * 0.5;
+  let d = max(length(dpdxFine(local)), length(dpdyFine(local))) * size * 0.5;
   let top = f32(textureNumLevels(base_color_tex) - 1u);
   card_level = clamp(log2(max(d, 1e-6)), 0.0, top);
 }

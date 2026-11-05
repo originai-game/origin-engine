@@ -41,8 +41,8 @@ struct CardShadowFrag {
 @fragment
 fn fs_crowd_card_shadow(in: CardShadowOut) -> CardShadowFrag {
   card_set_level(in.local);
-  let dx = dpdx(in.world);
-  let dy = dpdy(in.world);
+  let dx = dpdxFine(in.world);
+  let dy = dpdyFine(in.world);
   let s = card_sample(in.local, in.cols, in.blend.x, in.rows, in.blend.y);
   if (s.coverage < 0.5) {
     discard;
