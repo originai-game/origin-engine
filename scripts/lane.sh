@@ -81,7 +81,11 @@ case "${1:-}" in
     b="$(base)"
     cur="$(git -C "$dir" rev-parse --abbrev-ref HEAD)"
     if [ "$cur" != HEAD ]; then
-      git -C "$main" merge-base --is-ancestor "$cur" "$b" || { echo "lane.sh: $cur is not merged into $b" >&2; exit 1; }
+      # Merged means every commit's patch is on origin/main: the art runner
+      # rebases before it lands, so the branch's own SHAs never are.
+      if git -C "$main" cherry "$b" "$cur" | grep -q '^+'; then
+        echo "lane.sh: $cur is not merged into $b (git cherry $b $cur lists its unlanded commits)" >&2; exit 1
+      fi
     fi
     if [ "$cur" = HEAD ] && ! idle "$dir"; then
       g="$(git -C "$dir" rev-parse --absolute-git-dir)"
