@@ -123,7 +123,10 @@ is one line here, written at the merge that changes
   under light colours; and the frame is read displaced by the relief
   and a waver. The cook applies the same wash in texel space on painted
   2D sprites and painted 3D colour textures (`PAINT_VERSION` 3, so
-  painted textures recook). Every field is off at zero, so no existing
+  painted textures recook); on painted 2D (a `profile "2d"` project under
+  the art contract, docs/art.md §2.3) the frame then draws neither the
+  paint nor the watercolour pass, so a sprite is painted and washed once
+  and the look is tuned once for both. Every field is off at zero, so no existing
   look moves; `watercolor-wash` uses them and now reads as translucent
   washes on white paper rather than oil paint.
 

@@ -8227,7 +8227,7 @@ export interface Stylise {
    */
   hatchingDepth: number;
   /**
-   * Painterly smoothing (an anisotropic Kuwahara filter with eight sectors over a smoothed structure tensor, Kyprianidis 2009 and 2010): flat regions and incoherent texture (grass, noise) become strokes of one colour this many logical pixels across, while edges and thin lines keep their shape; with the prepass no stroke crosses an object's edge and detail (paintDetail) keeps its shape; 0 is off.
+   * Painterly smoothing (an anisotropic Kuwahara filter with eight sectors over a smoothed structure tensor, Kyprianidis 2009 and 2010): flat regions and incoherent texture (grass, noise) become strokes of one colour this many logical pixels across, while edges and thin lines keep their shape; with the prepass no stroke crosses an object's edge and detail (paintDetail) keeps its shape; 0 is off. In a profile 2d project under the art contract the paint and watercolor fields are the cook's, applied in each texture's own texels, and the frame draws neither pass, so a sprite is painted once.
    *
    * @range 0..8
    * @tunable

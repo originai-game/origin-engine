@@ -252,6 +252,28 @@ impl LookFile {
         Ok(look)
     }
 
+    /// Whether the look's art blocks ([`ART_RESOURCES`]) set any field off
+    /// its zero value: the art contract's switch (docs/art.md §2.3). Under
+    /// a look whose art blocks are absent or all at zero the cook conforms
+    /// no texture, painted or not, and a painted 2D frame paints on screen.
+    pub fn constrains_art(&self) -> bool {
+        self.blocks
+            .iter()
+            .filter(|b| ART_RESOURCES.contains(&b.resource.as_str()))
+            .any(|b| {
+                b.fields.iter().any(|(_, v, _)| {
+                    v.iter().any(|x| match x {
+                        Value::Number(n) => n.as_f64() != 0.0,
+                        Value::Word(w) => !matches!(
+                            w.as_str(),
+                            "false" | "free" | "any" | "none" | "outside" | "diamond"
+                        ),
+                        Value::String(_) => true,
+                    })
+                })
+            })
+    }
+
     /// The canonical text: top-level keys, then the blocks in
     /// [`LOOK_RESOURCES`] order, fields as given.
     pub fn to_text(&self) -> String {

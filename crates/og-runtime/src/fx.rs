@@ -554,6 +554,11 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
         &fx.look.palettes,
         textures,
     );
+    // Painted 2D (super::art::texel_paint): the cook painted and washed
+    // each texture in its own texels, and the frame draws neither pass.
+    if art.texel_paint {
+        scene.stylise.paint = None;
+    }
     if let Some(p) = resource(world, layouts.lens_flare.as_ref())
         && on(&p, "enabled", false)
     {

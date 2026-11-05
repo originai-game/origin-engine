@@ -310,8 +310,10 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
     let mut transparency = og_render::TransparencyStats::default();
     let notes = {
         let world = eng.world()?;
+        let texel_paint = super::art::texel_paint(eng);
         let mut rs = eng.render.borrow_mut();
         rs.art.contract = super::art::contract(eng);
+        rs.art.texel_paint = texel_paint;
         rs.interp.alpha = alpha;
         rs.interp.display = true;
         super::extract::extract(world, &mut rs);

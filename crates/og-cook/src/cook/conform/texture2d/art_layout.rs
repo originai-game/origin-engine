@@ -191,23 +191,7 @@ impl Art {
         // them all at zero) changes no texture, painted or not.
         let constrains =
             art.pixels || art.palette_active() || art.line > 0.0 || art.rotation_steps >= 2;
-        Ok((art.any_field(contract) && (constrains || art.paint.active())).then_some(art))
-    }
-
-    /// Any art field of the contract set off its zero value.
-    fn any_field(&self, contract: &LookFile) -> bool {
-        contract.blocks.iter().any(|b| {
-            b.fields.iter().any(|(_, v, _)| {
-                v.iter().any(|x| match x {
-                    Value::Number(n) => n.as_f64() != 0.0,
-                    Value::Word(w) => !matches!(
-                        w.as_str(),
-                        "false" | "free" | "any" | "none" | "outside" | "diamond"
-                    ),
-                    Value::String(_) => true,
-                })
-            })
-        })
+        Ok((contract.constrains_art() && (constrains || art.paint.active())).then_some(art))
     }
 
     pub(super) fn palette_active(&self) -> bool {

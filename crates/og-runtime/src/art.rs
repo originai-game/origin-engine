@@ -88,6 +88,8 @@ pub(crate) fn mesh_line(art: &ArtFrame, style: &mut og_render::MaterialStyle) {
 pub(crate) struct ArtState {
     /// The project names its look: the defaults apply.
     pub contract: bool,
+    /// Painted 2D ([`texel_paint`]): the frame draws no paint pass.
+    pub texel_paint: bool,
     pub frame: ArtFrame,
     /// A texture's index texture (the cook's `<id>#index`), by the render
     /// handle of the texture; an index texture loaded by its own id maps
@@ -105,6 +107,29 @@ pub(crate) fn contract(eng: &Engine) -> bool {
         .project
         .as_ref()
         .is_some_and(|p| p.look.is_some())
+}
+
+/// Painted 2D (docs/art.md §2.3): in a `profile "2d"` project whose look
+/// carries the art contract (`LookFile::constrains_art`, the switch the
+/// cook conforms by), the look's paint and watercolour fields are the
+/// cook's, applied in each texture's own texels, and the frame draws
+/// neither the paint nor the watercolour pass, so a sprite is painted once
+/// and the look is tuned once. A 3D frame paints on screen as well.
+pub(crate) fn texel_paint(eng: &Engine) -> bool {
+    let st = eng.state.borrow();
+    if st.profile != og_physics::PROFILE_2D {
+        return false;
+    }
+    let Some(id) = st.project.as_ref().and_then(|p| p.look.as_deref()) else {
+        return false;
+    };
+    let rs = eng.render.borrow();
+    let looks = &rs.fx.look;
+    looks
+        .by_path
+        .get(id)
+        .and_then(|&i| looks.looks.get(i))
+        .is_some_and(|l| l.file.constrains_art())
 }
 
 /// og-anim's default step under the contract: `ArtMotion.stepFps`, read by
