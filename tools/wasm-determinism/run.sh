@@ -84,12 +84,15 @@ if [ "${calls:-0}" -eq 0 ] || [ "${threads:-1}" -le 1 ]; then
 fi
 record "$host release, lanes on ($threads threads, $calls parallel calls)" "$lanes"
 
+og_need wasm-bindgen || exit 1
 for variant in scalar simd128; do
   rustflags=""; [ "$variant" = simd128 ] && rustflags="-C target-feature=+simd128"
   RUSTFLAGS="$rustflags" CARGO_TARGET_DIR="$out/wasm-$variant" \
     cargo build --quiet --locked --release --manifest-path "$manifest" --lib --target wasm32-unknown-unknown
   wasm="$out/wasm-$variant/wasm32-unknown-unknown/release/wasm_determinism.wasm"
-  record "wasm32 $variant (node $(node --version))" "$(node "$here/load.mjs" "$wasm")"
+  wasm-bindgen --target web --out-dir "$out/bound-$variant" --out-name wasm_determinism "$wasm"
+  record "wasm32 $variant (node $(node --version))" \
+    "$(node "$here/load.mjs" "$out/bound-$variant/wasm_determinism_bg.wasm" "$out/bound-$variant/wasm_determinism.js")"
 done
 
 # The lanes wasm per profile: scripts/wasm-lanes.sh, the one place its flags
@@ -97,7 +100,6 @@ done
 # dependency but og-physics and this crate), bound by wasm-bindgen as the
 # lanes modules are (og-lanes' rayon on wasm reads the JS global through
 # wasm-bindgen), then run under node through that glue (load.mjs).
-og_need wasm-bindgen || exit 1
 for p in 3d 2d; do
   CARGO_TARGET_DIR="$out/lanes" "$OG_ROOT/scripts/wasm-lanes.sh" --quiet --locked --release \
     --manifest-path "$manifest" --lib --no-default-features --features "physics$p"

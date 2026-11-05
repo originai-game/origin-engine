@@ -2,9 +2,10 @@
 // format the host binary prints. Each export the module has is printed (a
 // one-profile build has one physics hash).
 //
-//   node load.mjs <file.wasm>                   a single-threaded build (no imports)
-//   node load.mjs <file_bg.wasm> <glue.js>      a lanes build, bound by wasm-bindgen
+//   node load.mjs <file.wasm>                   an import-free module
+//   node load.mjs <file_bg.wasm> <glue.js>      a module bound by wasm-bindgen
 //
+// Fontique brings wasm-bindgen imports into scalar builds too.
 // A lanes build (run.sh, through scripts/wasm-lanes.sh: wasm atomics, the
 // shared memory imported, og-lanes' rayon with wasm-bindgen-rayon) is
 // instantiated through its wasm-bindgen glue (--target web), which creates
