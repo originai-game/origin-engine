@@ -76,6 +76,9 @@ for (const name of only) {
   const pack = /^style-([a-z]+)(-phone)?$/.exec(name);
   const script: string[] = [];
   const shots: string[] = [];
+  // A style pack's approved states (styles.ts STYLE_STATES, PHONE_STYLE_STATES: its `state-*` frames, after
+  // its screens) are cells of their own sheet, kit-style-<pack>[-phone]-states.png, not of the screens'.
+  const states: string[] = [];
   for (const step of desc.commands.split(";")) {
     const [at, action, ...rest] = step.split(":");
     if (action === "screenshot") {
@@ -83,17 +86,24 @@ for (const name of only) {
       const file = rest[0]!.replace(/\.png$/, "");
       // A style pack's sheet has no gallery (styles.ts).
       if (pack && file === "gallery") continue;
-      shots.push(`${pack ? `kit-style-${pack[1]}${pack[2] ?? ""}-` : PREFIX[name]}${file}@${Math.round(Number(at) * 60)}`);
+      (pack && file.startsWith("state-") ? states : shots).push(`${pack ? `kit-style-${pack[1]}${pack[2] ?? ""}-` : PREFIX[name]}${file}@${Math.round(Number(at) * 60)}`);
     } else if (action !== "quit" && !action!.startsWith("dump_")) script.push(step);
   }
   const sheet = pack ? SHEETS[size] : undefined;
   if (pack && !sheet) throw new Error(`${name}: no sheet layout for ${size}`);
-  const cmd = ["bun", join(here, "reference.ts"), ...pass, "--project", "templates/ui-kit", "--references", "crates/og-ui/references", "--size", size, "--script", script.join(";"), "--shots", shots.join(","), "--out", out];
-  if (pack) cmd.push("--sheet", `kit-style-${pack[1]}${pack[2] ?? ""}.png,${sheet!.factor},${sheet!.cols}`);
-  console.log(`---- ${name} (${tier}, ${size}, ${shots.length} frames)`);
-  const r = Bun.spawnSync(cmd, { cwd: pkg, stdout: "inherit", stderr: "inherit" });
-  if (r.exitCode !== 0) failed++;
-  (summary["playtests"] as Record<string, unknown>)[name] = { size, frames: shots.length, ok: r.exitCode === 0, ms: Math.round(performance.now() - ts), json: join(out, `reference-${tier}.json`).slice(repo.length + 1) };
+  // One run per sheet: the screens' into <out>, the states' (the same script played again) into <out>/states.
+  const runs: { shots: string[]; out: string; sheet?: string }[] = [{ shots, out, ...(pack ? { sheet: `kit-style-${pack[1]}${pack[2] ?? ""}.png` } : {}) }];
+  if (pack && states.length > 0) runs.push({ shots: states, out: join(out, "states"), sheet: `kit-style-${pack[1]}${pack[2] ?? ""}-states.png` });
+  let ok = true;
+  for (const run of runs) {
+    const cmd = ["bun", join(here, "reference.ts"), ...pass, "--project", "templates/ui-kit", "--references", "crates/og-ui/references", "--size", size, "--script", script.join(";"), "--shots", run.shots.join(","), "--out", run.out];
+    if (run.sheet) cmd.push("--sheet", `${run.sheet},${sheet!.factor},${sheet!.cols}`);
+    console.log(`---- ${name}${run.out === out ? "" : " states"} (${tier}, ${size}, ${run.shots.length} frames)`);
+    const r = Bun.spawnSync(cmd, { cwd: pkg, stdout: "inherit", stderr: "inherit" });
+    if (r.exitCode !== 0) ok = false;
+  }
+  if (!ok) failed++;
+  (summary["playtests"] as Record<string, unknown>)[name] = { size, frames: shots.length + states.length, ok, ms: Math.round(performance.now() - ts), json: join(out, `reference-${tier}.json`).slice(repo.length + 1) };
 }
 summary["ms"] = Math.round(performance.now() - t0);
 writeFileSync(join(work, `reference-ui-${tier}.json`), JSON.stringify(summary, null, 2) + "\n");
