@@ -251,6 +251,48 @@ fn preset_steps_cap_the_quality_drawn_not_the_settings() {
     );
 }
 
+#[test]
+fn probe_frames_neither_train_nor_apply_automatic_quality() {
+    let (e, seen) = engine(true);
+    og_runtime::og_render_apply_quality(e, "high".into());
+    og_render_set_display(e, Some(json!({ "autoPresetSteps": 2 }).to_string()));
+    og_runtime::set_probe_frame(e, true);
+    for _ in 0..2000 {
+        assert_eq!(answer(og_engine_frame(e, 100.0))["ok"], json!(true));
+    }
+    let info = answer(og_render_display(e));
+    assert_eq!(info["renderScale"], json!(1.0), "{info}");
+    assert_eq!(
+        info["frameMs"],
+        json!(0.0),
+        "probe work is not a display sample"
+    );
+
+    og_runtime::set_probe_frame(e, false);
+    for _ in 0..2000 {
+        assert_eq!(answer(og_engine_frame(e, 100.0))["ok"], json!(true));
+    }
+    let adapted = answer(og_render_display(e));
+    assert_eq!(adapted["presetSteps"], json!(2));
+    assert_eq!(adapted["renderScale"], json!(0.5));
+
+    og_runtime::set_probe_frame(e, true);
+    frames(e, 1);
+    let probe = answer(og_render_display(e));
+    assert_eq!(probe["renderScale"], json!(1.0));
+    assert_eq!(probe["presetSteps"], json!(0));
+    assert_eq!(probe["frameMs"], adapted["frameMs"]);
+    assert_eq!(
+        seen.borrow().quality,
+        Some(RenderQuality::preset(QualityPreset::High))
+    );
+
+    og_runtime::set_probe_frame(e, false);
+    frames(e, 1);
+    assert_eq!(answer(og_render_display(e))["presetSteps"], json!(2));
+    assert_eq!(seen.borrow().scales.last(), Some(&0.5));
+}
+
 // ── a device that comes back taking other texture encodings ─────────────
 
 /// Reads the cooked files from disk; textures transcode natively (the

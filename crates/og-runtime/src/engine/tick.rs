@@ -190,6 +190,8 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         "maxFps": max_fps, "fullscreen": page["fullscreen"],
         "lowPower": page["lowPower"], "rawMouse": page["rawMouse"],
         "cursor": cursor,
+        "diagScale": eng.render.borrow().display.scale, "diagStep": eng.render.borrow().display.step,
+        "diagHistory": eng.render.borrow().backend.as_ref().and_then(|b| b.history()),
     });
     if let Some(c) = copy {
         answer["copy"] = json!(c);

@@ -1,0 +1,3736 @@
+{
+ "browser": "C:/Program Files/Mozilla Firefox/firefox.exe",
+ "failures": 2,
+ "transcript": [
+  {
+   "check": "dev isolated: unsolicited hello",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: crossOriginIsolated is true",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: the game page has its canvas",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "hello",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c1",
+    "result": {
+     "protocol": 5,
+     "substrate": "origin-engine"
+    },
+    "ms": 0.7
+   }
+  },
+  {
+   "check": "dev isolated: hello answers {protocol: 5, substrate}",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c2",
+    "result": 1,
+    "ms": 4494.3
+   }
+  },
+  {
+   "check": "dev isolated: tick answers a number",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "state",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c3",
+    "result": {
+     "tick": 1,
+     "paused": false,
+     "timings": {
+      "frameMs": 12.659999999999968
+     }
+    },
+    "ms": 9.3
+   }
+  },
+  {
+   "check": "dev isolated: state answers {tick, paused, timings: {frameMs}}",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c4",
+    "result": 1,
+    "ms": 1
+   }
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c5",
+    "result": 1,
+    "ms": 1
+   }
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c6",
+    "result": 1,
+    "ms": 1.1
+   }
+  },
+  {
+   "check": "dev isolated: the clock holds behind the play gate (only settling ticks, within SETTLE_MS)",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: the probe's boot counts the render pipelines",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: the probe's boot says the pipelines run sync and why",
+   "ok": true
+  },
+  {
+   "check": "dev isolated: the pipelines are made synchronously",
+   "ok": true
+  },
+  {
+   "run": "dev isolated",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c7",
+    "result": 1,
+    "ms": 850.6
+   }
+  },
+  {
+   "check": "dev isolated: a tap on the gate starts the clock",
+   "ok": false,
+   "detail": {
+    "before": 1,
+    "after": 1
+   }
+  },
+  {
+   "run": "dev isolated",
+   "diagnostic": {
+    "page": [
+     {
+      "event": "pointerdown",
+      "at": 1793882943970.84,
+      "trusted": true
+     },
+     {
+      "event": "pointerup",
+      "at": 1793882944006.02,
+      "trusted": true
+     },
+     {
+      "event": "page-play-send",
+      "at": 1793882944006.16,
+      "on": true
+     },
+     {
+      "event": "click",
+      "at": 1793882944013.1199,
+      "trusted": true
+     }
+    ],
+    "worker": [
+     {
+      "event": "pipeline-start",
+      "at": 1793882937324.28,
+      "id": 0,
+      "method": "createComputePipeline",
+      "label": "local shadow midpoint",
+      "entry": "resolve"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882937324.3,
+      "id": 0,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882937324.84,
+      "id": 2,
+      "method": "createComputePipeline",
+      "label": "probe grid",
+      "entry": "cs_project"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882937324.8599,
+      "id": 2,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882937328.1,
+      "id": 4,
+      "method": "createComputePipeline",
+      "label": "scatter cull",
+      "entry": "cull"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882937328.1,
+      "id": 4,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882938310.38,
+      "id": 6,
+      "method": "createRenderPipeline",
+      "label": "fs_sky",
+      "entry": "fs_sky"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882938310.42,
+      "id": 6,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882938310.66,
+      "id": 8,
+      "method": "createRenderPipeline",
+      "label": "fs_downsample",
+      "entry": "fs_downsample"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882938310.68,
+      "id": 8,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882938311.1199,
+      "id": 10,
+      "method": "createRenderPipeline",
+      "label": "fs_irradiance",
+      "entry": "fs_irradiance"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882938311.14,
+      "id": 10,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882938311.22,
+      "id": 12,
+      "method": "createRenderPipeline",
+      "label": "fs_prefilter",
+      "entry": "fs_prefilter"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882938311.22,
+      "id": 12,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882938311.3599,
+      "id": 14,
+      "method": "createRenderPipeline",
+      "label": "fs_brdf_lut",
+      "entry": "fs_brdf_lut"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882938311.38,
+      "id": 14,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882938312,
+      "id": 16,
+      "method": "createRenderPipeline",
+      "label": "tiles",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882938312.02,
+      "id": 16,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882938313.16,
+      "id": 18,
+      "method": "createRenderPipeline",
+      "label": "sprite",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882938313.2,
+      "id": 18,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882938313.38,
+      "id": 20,
+      "method": "createRenderPipeline",
+      "label": "msdf text",
+      "entry": "fs_msdf"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882938313.4,
+      "id": 20,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882938313.52,
+      "id": 22,
+      "method": "createRenderPipeline",
+      "label": "tonemap",
+      "entry": "fs_srgb_encode"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882938313.52,
+      "id": 22,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882942795.8,
+      "id": 24,
+      "method": "createRenderPipeline",
+      "label": "sprite cover",
+      "entry": "fs_cover"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882942795.8599,
+      "id": 24,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882942845.5,
+      "id": 26,
+      "method": "createRenderPipeline",
+      "label": "sprite untonemapped",
+      "entry": "fs_untonemapped"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882942845.58,
+      "id": 26,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882942846.64,
+      "id": 28,
+      "method": "createRenderPipeline",
+      "label": "sprite additive",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882942846.68,
+      "id": 28,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882943960.82,
+      "id": 30,
+      "method": "createRenderPipeline",
+      "label": "sprite glow",
+      "entry": "fs_glow"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882943960.88,
+      "id": 30,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882943965.44,
+      "id": 32,
+      "method": "createRenderPipeline",
+      "label": "overlay sprite",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882943965.48,
+      "id": 32,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882943969.92,
+      "id": 34,
+      "method": "createRenderPipeline",
+      "label": "overlay msdf",
+      "entry": "fs_msdf"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882943969.94,
+      "id": 34,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "worker-play",
+      "at": 1793882944006.32,
+      "tick": 1
+     },
+     {
+      "event": "frame-completed",
+      "at": 1793882945469.38,
+      "tick": 1,
+      "began": 1793882945467.22
+     },
+     {
+      "event": "frame-completed",
+      "at": 1793882945502.06,
+      "tick": 2,
+      "began": 1793882945497.4
+     }
+    ]
+   },
+   "before": 1,
+   "after": 1
+  },
+  {
+   "check": "dev: unsolicited hello",
+   "ok": true
+  },
+  {
+   "check": "dev: crossOriginIsolated is false",
+   "ok": true
+  },
+  {
+   "check": "dev: the game page has its canvas",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "hello",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c1",
+    "result": {
+     "protocol": 5,
+     "substrate": "origin-engine"
+    },
+    "ms": 1
+   }
+  },
+  {
+   "check": "dev: hello answers {protocol: 5, substrate}",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c2",
+    "result": 1,
+    "ms": 4227
+   }
+  },
+  {
+   "check": "dev: tick answers a number",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "state",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c3",
+    "result": {
+     "tick": 1,
+     "paused": false,
+     "timings": {
+      "frameMs": 9
+     }
+    },
+    "ms": 11
+   }
+  },
+  {
+   "check": "dev: state answers {tick, paused, timings: {frameMs}}",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c4",
+    "result": 1,
+    "ms": 1
+   }
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c5",
+    "result": 1,
+    "ms": 1
+   }
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c6",
+    "result": 1,
+    "ms": 1
+   }
+  },
+  {
+   "check": "dev: the clock holds behind the play gate (only settling ticks, within SETTLE_MS)",
+   "ok": true
+  },
+  {
+   "check": "dev: the probe's boot counts the render pipelines",
+   "ok": true
+  },
+  {
+   "check": "dev: the probe's boot says the pipelines run sync and why",
+   "ok": true
+  },
+  {
+   "check": "dev: the pipelines are made synchronously",
+   "ok": true
+  },
+  {
+   "run": "dev",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c7",
+    "result": 1,
+    "ms": 855
+   }
+  },
+  {
+   "check": "dev: a tap on the gate starts the clock",
+   "ok": false,
+   "detail": {
+    "before": 1,
+    "after": 1
+   }
+  },
+  {
+   "run": "dev",
+   "diagnostic": {
+    "page": [
+     {
+      "event": "pointerdown",
+      "at": 1793882955627,
+      "trusted": true
+     },
+     {
+      "event": "pointerup",
+      "at": 1793882955643,
+      "trusted": true
+     },
+     {
+      "event": "page-play-send",
+      "at": 1793882955643,
+      "on": true
+     },
+     {
+      "event": "click",
+      "at": 1793882955650,
+      "trusted": true
+     }
+    ],
+    "worker": [
+     {
+      "event": "pipeline-start",
+      "at": 1793882949278,
+      "id": 0,
+      "method": "createComputePipeline",
+      "label": "local shadow midpoint",
+      "entry": "resolve"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882949278,
+      "id": 0,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882949278,
+      "id": 2,
+      "method": "createComputePipeline",
+      "label": "probe grid",
+      "entry": "cs_project"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882949278,
+      "id": 2,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882949281,
+      "id": 4,
+      "method": "createComputePipeline",
+      "label": "scatter cull",
+      "entry": "cull"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882949281,
+      "id": 4,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882950183,
+      "id": 6,
+      "method": "createRenderPipeline",
+      "label": "fs_sky",
+      "entry": "fs_sky"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882950183,
+      "id": 6,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882950183,
+      "id": 8,
+      "method": "createRenderPipeline",
+      "label": "fs_downsample",
+      "entry": "fs_downsample"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882950183,
+      "id": 8,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882950184,
+      "id": 10,
+      "method": "createRenderPipeline",
+      "label": "fs_irradiance",
+      "entry": "fs_irradiance"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882950184,
+      "id": 10,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882950184,
+      "id": 12,
+      "method": "createRenderPipeline",
+      "label": "fs_prefilter",
+      "entry": "fs_prefilter"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882950184,
+      "id": 12,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882950184,
+      "id": 14,
+      "method": "createRenderPipeline",
+      "label": "fs_brdf_lut",
+      "entry": "fs_brdf_lut"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882950184,
+      "id": 14,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882950184,
+      "id": 16,
+      "method": "createRenderPipeline",
+      "label": "tiles",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882950184,
+      "id": 16,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882950185,
+      "id": 18,
+      "method": "createRenderPipeline",
+      "label": "sprite",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882950185,
+      "id": 18,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882950185,
+      "id": 20,
+      "method": "createRenderPipeline",
+      "label": "msdf text",
+      "entry": "fs_msdf"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882950185,
+      "id": 20,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882950185,
+      "id": 22,
+      "method": "createRenderPipeline",
+      "label": "tonemap",
+      "entry": "fs_srgb_encode"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882950186,
+      "id": 22,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882954399,
+      "id": 24,
+      "method": "createRenderPipeline",
+      "label": "sprite cover",
+      "entry": "fs_cover"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882954399,
+      "id": 24,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882954444,
+      "id": 26,
+      "method": "createRenderPipeline",
+      "label": "sprite untonemapped",
+      "entry": "fs_untonemapped"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882954444,
+      "id": 26,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882954446,
+      "id": 28,
+      "method": "createRenderPipeline",
+      "label": "sprite additive",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882954446,
+      "id": 28,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882955611,
+      "id": 30,
+      "method": "createRenderPipeline",
+      "label": "sprite glow",
+      "entry": "fs_glow"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882955611,
+      "id": 30,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882955615,
+      "id": 32,
+      "method": "createRenderPipeline",
+      "label": "overlay sprite",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882955615,
+      "id": 32,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882955619,
+      "id": 34,
+      "method": "createRenderPipeline",
+      "label": "overlay msdf",
+      "entry": "fs_msdf"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882955620,
+      "id": 34,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "worker-play",
+      "at": 1793882955642,
+      "tick": 1
+     },
+     {
+      "event": "frame-completed",
+      "at": 1793882957109,
+      "tick": 1,
+      "began": 1793882957107
+     },
+     {
+      "event": "frame-completed",
+      "at": 1793882957134,
+      "tick": 2,
+      "began": 1793882957129
+     }
+    ]
+   },
+   "before": 1,
+   "after": 1
+  },
+  {
+   "check": "dev isolated async: unsolicited hello",
+   "ok": true
+  },
+  {
+   "check": "dev isolated async: crossOriginIsolated is true",
+   "ok": true
+  },
+  {
+   "check": "dev isolated async: the game page has its canvas",
+   "ok": true
+  },
+  {
+   "run": "dev isolated async",
+   "method": "hello",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c1",
+    "result": {
+     "protocol": 5,
+     "substrate": "origin-engine"
+    },
+    "ms": 0.7
+   }
+  },
+  {
+   "check": "dev isolated async: hello answers {protocol: 5, substrate}",
+   "ok": true
+  },
+  {
+   "run": "dev isolated async",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c2",
+    "result": 2,
+    "ms": 18
+   }
+  },
+  {
+   "check": "dev isolated async: tick answers a number",
+   "ok": true
+  },
+  {
+   "run": "dev isolated async",
+   "method": "state",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c3",
+    "result": {
+     "tick": 2,
+     "paused": false,
+     "timings": {
+      "frameMs": 6.600000000000364
+     }
+    },
+    "ms": 1265.8
+   }
+  },
+  {
+   "check": "dev isolated async: state answers {tick, paused, timings: {frameMs}}",
+   "ok": true
+  },
+  {
+   "run": "dev isolated async",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c4",
+    "result": 2,
+    "ms": 1.1
+   }
+  },
+  {
+   "run": "dev isolated async",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c5",
+    "result": 2,
+    "ms": 1.3
+   }
+  },
+  {
+   "run": "dev isolated async",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c6",
+    "result": 2,
+    "ms": 1.1
+   }
+  },
+  {
+   "check": "dev isolated async: the clock holds behind the play gate (only settling ticks, within SETTLE_MS)",
+   "ok": true
+  },
+  {
+   "check": "dev isolated async: the probe's boot counts the render pipelines",
+   "ok": true
+  },
+  {
+   "check": "dev isolated async: the probe's boot says the pipelines run async and why",
+   "ok": true
+  },
+  {
+   "check": "dev isolated async: the frame pipelines compile through createRenderPipelineAsync",
+   "ok": true
+  },
+  {
+   "run": "dev isolated async",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c7",
+    "result": 35,
+    "ms": 4.1
+   }
+  },
+  {
+   "check": "dev isolated async: a tap on the gate starts the clock",
+   "ok": true
+  },
+  {
+   "run": "dev isolated async",
+   "diagnostic": {
+    "page": [
+     {
+      "event": "pointerdown",
+      "at": 1793882974999.96,
+      "trusted": true
+     },
+     {
+      "event": "pointerup",
+      "at": 1793882975016.56,
+      "trusted": true
+     },
+     {
+      "event": "page-play-send",
+      "at": 1793882975016.7,
+      "on": true
+     },
+     {
+      "event": "click",
+      "at": 1793882975023.36,
+      "trusted": true
+     }
+    ],
+    "worker": [
+     {
+      "event": "pipeline-start",
+      "at": 1793882960822.0999,
+      "id": 0,
+      "method": "createComputePipeline",
+      "label": "local shadow midpoint",
+      "entry": "resolve"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882960822.1199,
+      "id": 0,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882960822.5999,
+      "id": 2,
+      "method": "createComputePipeline",
+      "label": "probe grid",
+      "entry": "cs_project"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882960822.5999,
+      "id": 2,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882960825.4,
+      "id": 4,
+      "method": "createComputePipeline",
+      "label": "scatter cull",
+      "entry": "cull"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882960825.4,
+      "id": 4,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882961669.5798,
+      "id": 6,
+      "method": "createRenderPipeline",
+      "label": "fs_sky",
+      "entry": "fs_sky"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882961669.6199,
+      "id": 6,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882961669.72,
+      "id": 8,
+      "method": "createRenderPipeline",
+      "label": "fs_downsample",
+      "entry": "fs_downsample"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882961669.72,
+      "id": 8,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882961670.14,
+      "id": 10,
+      "method": "createRenderPipeline",
+      "label": "fs_irradiance",
+      "entry": "fs_irradiance"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882961670.16,
+      "id": 10,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882961670.22,
+      "id": 12,
+      "method": "createRenderPipeline",
+      "label": "fs_prefilter",
+      "entry": "fs_prefilter"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882961670.22,
+      "id": 12,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882961670.4,
+      "id": 14,
+      "method": "createRenderPipeline",
+      "label": "fs_brdf_lut",
+      "entry": "fs_brdf_lut"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882961670.44,
+      "id": 14,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882962075.5398,
+      "id": 16,
+      "method": "createRenderPipelineAsync",
+      "label": "tiles",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882962075.5999,
+      "id": 16,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882962075.7598,
+      "id": 18,
+      "method": "createRenderPipelineAsync",
+      "label": "sprite",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882962075.7798,
+      "id": 18,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882965391.2598,
+      "id": 20,
+      "method": "createRenderPipelineAsync",
+      "label": "msdf text",
+      "entry": "fs_msdf"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882965391.3198,
+      "id": 20,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882965391.38,
+      "id": 22,
+      "method": "createRenderPipelineAsync",
+      "label": "tonemap",
+      "entry": "fs_srgb_encode"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882965391.4,
+      "id": 22,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882965391.68,
+      "id": 16,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882965391.68,
+      "id": 18,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882965425.8198,
+      "id": 20,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882966254.96,
+      "id": 22,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882966329.8398,
+      "id": 28,
+      "method": "createRenderPipelineAsync",
+      "label": "sprite cover",
+      "entry": "fs_cover"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882966329.8599,
+      "id": 28,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882966358.5398,
+      "id": 30,
+      "method": "createRenderPipelineAsync",
+      "label": "sprite untonemapped",
+      "entry": "fs_untonemapped"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882966358.64,
+      "id": 30,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882967627.0398,
+      "id": 32,
+      "method": "createRenderPipelineAsync",
+      "label": "sprite additive",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882967627.0999,
+      "id": 32,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882967627.14,
+      "id": 28,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882967749.24,
+      "id": 30,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882967749.3198,
+      "id": 32,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882967753.64,
+      "id": 37,
+      "method": "createRenderPipelineAsync",
+      "label": "sprite glow",
+      "entry": "fs_glow"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882967753.68,
+      "id": 37,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882967758.0999,
+      "id": 39,
+      "method": "createRenderPipelineAsync",
+      "label": "overlay sprite",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882967758.14,
+      "id": 39,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882967762.5,
+      "id": 41,
+      "method": "createRenderPipelineAsync",
+      "label": "overlay msdf",
+      "entry": "fs_msdf"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882967762.5398,
+      "id": 41,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882968911.3198,
+      "id": 37,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882969006.8198,
+      "id": 39,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882969309.46,
+      "id": 41,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882969327.18,
+      "id": 46,
+      "method": "createRenderPipelineAsync",
+      "label": "overlay glass",
+      "entry": "fs_glass"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882969327.2,
+      "id": 46,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882969331.44,
+      "id": 48,
+      "method": "createRenderPipelineAsync",
+      "label": "overlay sprite",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882969331.46,
+      "id": 48,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882969335.9,
+      "id": 50,
+      "method": "createRenderPipelineAsync",
+      "label": "overlay msdf",
+      "entry": "fs_msdf"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882969335.92,
+      "id": 50,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882969404.94,
+      "id": 46,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882969406.0598,
+      "id": 48,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882969407.14,
+      "id": 50,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882969441.6199,
+      "id": 55,
+      "method": "createRenderPipelineAsync",
+      "label": "overlay glass",
+      "entry": "fs_glass"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882969441.64,
+      "id": 55,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882969443.0999,
+      "id": 55,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882969446.22,
+      "id": 58,
+      "method": "createRenderPipelineAsync",
+      "label": "meter",
+      "entry": "fs_meter"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882969446.22,
+      "id": 58,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882969450.46,
+      "id": 60,
+      "method": "createRenderPipelineAsync",
+      "label": "meter reduce",
+      "entry": "fs_reduce"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882969450.48,
+      "id": 60,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882969454.68,
+      "id": 62,
+      "method": "createRenderPipelineAsync",
+      "label": "exposure adapt",
+      "entry": "fs_adapt"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882969454.7,
+      "id": 62,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882969470.7598,
+      "id": 58,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882969486.48,
+      "id": 60,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882969502.68,
+      "id": 62,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882969509.7,
+      "id": 67,
+      "method": "createRenderPipelineAsync",
+      "label": "bloom prefilter",
+      "entry": "fs_bloom_prefilter"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882969509.72,
+      "id": 67,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882969514.2598,
+      "id": 69,
+      "method": "createRenderPipelineAsync",
+      "label": "bloom down",
+      "entry": "fs_bloom_down"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882969514.2798,
+      "id": 69,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882969518.7798,
+      "id": 71,
+      "method": "createRenderPipelineAsync",
+      "label": "bloom up",
+      "entry": "fs_bloom_up"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882969518.7998,
+      "id": 71,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882969634.1199,
+      "id": 67,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882969728.22,
+      "id": 69,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882969747.92,
+      "id": 71,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882969775.6199,
+      "id": 76,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_gtao",
+      "entry": "fs_gtao"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882969775.64,
+      "id": 76,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882969780.0999,
+      "id": 78,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_ssao",
+      "entry": "fs_ssao"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882969780.1199,
+      "id": 78,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882969784.6199,
+      "id": 80,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_ao_blur",
+      "entry": "fs_ao_blur"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882969784.6199,
+      "id": 80,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882969861.74,
+      "id": 76,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882969921.38,
+      "id": 78,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882969949.1199,
+      "id": 80,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882969990.96,
+      "id": 85,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_ao_upsample",
+      "entry": "fs_ao_upsample"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882969990.98,
+      "id": 85,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882969995.42,
+      "id": 87,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_contact",
+      "entry": "fs_contact"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882969995.44,
+      "id": 87,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882969999.98,
+      "id": 89,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_outline",
+      "entry": "fs_outline"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970000,
+      "id": 89,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970019,
+      "id": 85,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970076.88,
+      "id": 87,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970136.7998,
+      "id": 89,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970155.9,
+      "id": 94,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_outline_seed",
+      "entry": "fs_outline_seed"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970155.94,
+      "id": 94,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970160.3599,
+      "id": 96,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_jfa_16",
+      "entry": "fs_jfa_16"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970160.38,
+      "id": 96,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970164.96,
+      "id": 98,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_jfa_8",
+      "entry": "fs_jfa_8"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970164.98,
+      "id": 98,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970187.94,
+      "id": 94,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970216.66,
+      "id": 96,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970245.3599,
+      "id": 98,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970269.7798,
+      "id": 103,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_jfa_4",
+      "entry": "fs_jfa_4"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970269.8198,
+      "id": 103,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970274.0198,
+      "id": 105,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_jfa_2",
+      "entry": "fs_jfa_2"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970274.0398,
+      "id": 105,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970278.18,
+      "id": 107,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_jfa_1",
+      "entry": "fs_jfa_1"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970278.2,
+      "id": 107,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970298.14,
+      "id": 103,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970327.5999,
+      "id": 105,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970356.18,
+      "id": 107,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970383.64,
+      "id": 112,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_outline_wide",
+      "entry": "fs_outline_wide"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970383.66,
+      "id": 112,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970387.8398,
+      "id": 114,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_dof_coc",
+      "entry": "fs_dof_coc"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970387.8599,
+      "id": 114,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970392.0198,
+      "id": 116,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_dof_blur",
+      "entry": "fs_dof_blur"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970392.0398,
+      "id": 116,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970405.72,
+      "id": 112,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970426.8599,
+      "id": 114,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970452.0398,
+      "id": 116,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970497.96,
+      "id": 121,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_dof_composite",
+      "entry": "fs_dof_composite"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970497.98,
+      "id": 121,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970502.46,
+      "id": 123,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_motion_blur",
+      "entry": "fs_motion_blur"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970502.48,
+      "id": 123,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970507.0198,
+      "id": 125,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_screen_blur",
+      "entry": "fs_screen_blur"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970507.0398,
+      "id": 125,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970515.46,
+      "id": 121,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970543.92,
+      "id": 123,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970566.3198,
+      "id": 125,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970612.1199,
+      "id": 130,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_godrays_mask",
+      "entry": "fs_godrays_mask"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970612.14,
+      "id": 130,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970616.3398,
+      "id": 132,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_godrays_blur",
+      "entry": "fs_godrays_blur"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970616.3599,
+      "id": 132,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970620.9,
+      "id": 134,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_depth_bands",
+      "entry": "fs_depth_bands"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970620.92,
+      "id": 134,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970635.44,
+      "id": 130,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970654.2598,
+      "id": 132,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882970688.14,
+      "id": 134,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970726.3398,
+      "id": 139,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_ssgi",
+      "entry": "fs_ssgi"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970726.3599,
+      "id": 139,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970731.0999,
+      "id": 141,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_gi_blur",
+      "entry": "fs_gi_blur"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970731.1199,
+      "id": 141,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882970735.46,
+      "id": 143,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_gi_upsample",
+      "entry": "fs_gi_upsample"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882970735.46,
+      "id": 143,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882971027.74,
+      "id": 139,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882971064.6199,
+      "id": 141,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882971095.3599,
+      "id": 143,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882971142.98,
+      "id": 148,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_gtao_bent",
+      "entry": "fs_gtao_bent"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882971143,
+      "id": 148,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882971147.5,
+      "id": 150,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_ao_blur_gather",
+      "entry": "fs_ao_blur_gather"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882971147.5198,
+      "id": 150,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882971152.0999,
+      "id": 152,
+      "method": "createRenderPipelineAsync",
+      "label": "flare occlusion",
+      "entry": "fs_flare_occlusion"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882971152.1199,
+      "id": 152,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882971221.8398,
+      "id": 148,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882971250.74,
+      "id": 150,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882971284.5999,
+      "id": 152,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882971307.74,
+      "id": 157,
+      "method": "createRenderPipelineAsync",
+      "label": "flare",
+      "entry": "fs_flare"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882971307.7798,
+      "id": 157,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882971312.5398,
+      "id": 159,
+      "method": "createRenderPipelineAsync",
+      "label": "flare blur x",
+      "entry": "fs_flare_blur_x"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882971312.5398,
+      "id": 159,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882971317.0598,
+      "id": 161,
+      "method": "createRenderPipelineAsync",
+      "label": "flare blur y",
+      "entry": "fs_flare_blur_y"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882971317.0798,
+      "id": 161,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882971408.68,
+      "id": 157,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882971426.7,
+      "id": 159,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882971444.5598,
+      "id": 161,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882971472.94,
+      "id": 166,
+      "method": "createRenderPipelineAsync",
+      "label": "sky",
+      "entry": "fs_sky"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882971472.96,
+      "id": 166,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882971477.5,
+      "id": 168,
+      "method": "createRenderPipelineAsync",
+      "label": "sky",
+      "entry": "fs_sky_look"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882971477.5398,
+      "id": 168,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882971481.7998,
+      "id": 170,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_env_copy",
+      "entry": "fs_env_copy"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882971481.8198,
+      "id": 170,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882971525.7,
+      "id": 166,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882974962.16,
+      "id": 168,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882974979.5598,
+      "id": 170,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882975014.68,
+      "id": 175,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_env_irradiance",
+      "entry": "fs_env_irradiance"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882975014.74,
+      "id": 175,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "worker-play",
+      "at": 1793882975016.88,
+      "tick": 2
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882975019.2598,
+      "id": 178,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_probe_copy",
+      "entry": "fs_probe_copy"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882975019.2998,
+      "id": 178,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882975066.6199,
+      "id": 175,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882975066.64,
+      "id": 178,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "frame-completed",
+      "at": 1793882975072.74,
+      "tick": 2,
+      "began": 1793882975070.9
+     },
+     {
+      "event": "frame-completed",
+      "at": 1793882975088.5398,
+      "tick": 2,
+      "began": 1793882975086.98
+     },
+     {
+      "event": "frame-completed",
+      "at": 1793882975126,
+      "tick": 4,
+      "began": 1793882975118.7998
+     }
+    ]
+   },
+   "before": 2,
+   "after": 35
+  },
+  {
+   "check": "dev async: unsolicited hello",
+   "ok": true
+  },
+  {
+   "check": "dev async: crossOriginIsolated is false",
+   "ok": true
+  },
+  {
+   "check": "dev async: the game page has its canvas",
+   "ok": true
+  },
+  {
+   "run": "dev async",
+   "method": "hello",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c1",
+    "result": {
+     "protocol": 5,
+     "substrate": "origin-engine"
+    },
+    "ms": 1
+   }
+  },
+  {
+   "check": "dev async: hello answers {protocol: 5, substrate}",
+   "ok": true
+  },
+  {
+   "run": "dev async",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c2",
+    "result": 2,
+    "ms": 2166
+   }
+  },
+  {
+   "check": "dev async: tick answers a number",
+   "ok": true
+  },
+  {
+   "run": "dev async",
+   "method": "state",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c3",
+    "result": {
+     "tick": 2,
+     "paused": false,
+     "timings": {
+      "frameMs": 5
+     }
+    },
+    "ms": 96
+   }
+  },
+  {
+   "check": "dev async: state answers {tick, paused, timings: {frameMs}}",
+   "ok": true
+  },
+  {
+   "run": "dev async",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c4",
+    "result": 2,
+    "ms": 2
+   }
+  },
+  {
+   "run": "dev async",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c5",
+    "result": 2,
+    "ms": 2
+   }
+  },
+  {
+   "run": "dev async",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c6",
+    "result": 2,
+    "ms": 1
+   }
+  },
+  {
+   "check": "dev async: the clock holds behind the play gate (only settling ticks, within SETTLE_MS)",
+   "ok": true
+  },
+  {
+   "check": "dev async: the probe's boot counts the render pipelines",
+   "ok": true
+  },
+  {
+   "check": "dev async: the probe's boot says the pipelines run async and why",
+   "ok": true
+  },
+  {
+   "check": "dev async: the frame pipelines compile through createRenderPipelineAsync",
+   "ok": true
+  },
+  {
+   "run": "dev async",
+   "method": "tick",
+   "params": {},
+   "answer": {
+    "og": "probe",
+    "v": 1,
+    "kind": "result",
+    "id": "c7",
+    "result": 35,
+    "ms": 5
+   }
+  },
+  {
+   "check": "dev async: a tap on the gate starts the clock",
+   "ok": true
+  },
+  {
+   "run": "dev async",
+   "diagnostic": {
+    "page": [
+     {
+      "event": "pointerdown",
+      "at": 1793882993073,
+      "trusted": true
+     },
+     {
+      "event": "pointerup",
+      "at": 1793882993090,
+      "trusted": true
+     },
+     {
+      "event": "page-play-send",
+      "at": 1793882993090,
+      "on": true
+     },
+     {
+      "event": "click",
+      "at": 1793882993096,
+      "trusted": true
+     }
+    ],
+    "worker": [
+     {
+      "event": "pipeline-start",
+      "at": 1793882979382,
+      "id": 0,
+      "method": "createComputePipeline",
+      "label": "local shadow midpoint",
+      "entry": "resolve"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882979382,
+      "id": 0,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882979383,
+      "id": 2,
+      "method": "createComputePipeline",
+      "label": "probe grid",
+      "entry": "cs_project"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882979383,
+      "id": 2,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882979386,
+      "id": 4,
+      "method": "createComputePipeline",
+      "label": "scatter cull",
+      "entry": "cull"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882979386,
+      "id": 4,
+      "method": "createComputePipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882980230,
+      "id": 6,
+      "method": "createRenderPipeline",
+      "label": "fs_sky",
+      "entry": "fs_sky"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882980230,
+      "id": 6,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882980230,
+      "id": 8,
+      "method": "createRenderPipeline",
+      "label": "fs_downsample",
+      "entry": "fs_downsample"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882980230,
+      "id": 8,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882980231,
+      "id": 10,
+      "method": "createRenderPipeline",
+      "label": "fs_irradiance",
+      "entry": "fs_irradiance"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882980231,
+      "id": 10,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882980231,
+      "id": 12,
+      "method": "createRenderPipeline",
+      "label": "fs_prefilter",
+      "entry": "fs_prefilter"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882980231,
+      "id": 12,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882980231,
+      "id": 14,
+      "method": "createRenderPipeline",
+      "label": "fs_brdf_lut",
+      "entry": "fs_brdf_lut"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882980231,
+      "id": 14,
+      "method": "createRenderPipeline"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882980627,
+      "id": 16,
+      "method": "createRenderPipelineAsync",
+      "label": "tiles",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882980627,
+      "id": 16,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882980627,
+      "id": 18,
+      "method": "createRenderPipelineAsync",
+      "label": "sprite",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882980627,
+      "id": 18,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882983783,
+      "id": 20,
+      "method": "createRenderPipelineAsync",
+      "label": "msdf text",
+      "entry": "fs_msdf"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882983783,
+      "id": 20,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882983783,
+      "id": 22,
+      "method": "createRenderPipelineAsync",
+      "label": "tonemap",
+      "entry": "fs_srgb_encode"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882983783,
+      "id": 22,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882983783,
+      "id": 16,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882983783,
+      "id": 18,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882983817,
+      "id": 20,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882984604,
+      "id": 22,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882984685,
+      "id": 28,
+      "method": "createRenderPipelineAsync",
+      "label": "sprite cover",
+      "entry": "fs_cover"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882984686,
+      "id": 28,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882984690,
+      "id": 30,
+      "method": "createRenderPipelineAsync",
+      "label": "sprite untonemapped",
+      "entry": "fs_untonemapped"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882984690,
+      "id": 30,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882984695,
+      "id": 32,
+      "method": "createRenderPipelineAsync",
+      "label": "sprite additive",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882984695,
+      "id": 32,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882984699,
+      "id": 34,
+      "method": "createRenderPipelineAsync",
+      "label": "sprite glow",
+      "entry": "fs_glow"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882984699,
+      "id": 34,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882984700,
+      "id": 28,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882986969,
+      "id": 30,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882986969,
+      "id": 32,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882986969,
+      "id": 34,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882987024,
+      "id": 40,
+      "method": "createRenderPipelineAsync",
+      "label": "overlay sprite",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882987024,
+      "id": 40,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882987028,
+      "id": 42,
+      "method": "createRenderPipelineAsync",
+      "label": "overlay msdf",
+      "entry": "fs_msdf"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882987028,
+      "id": 42,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882987033,
+      "id": 44,
+      "method": "createRenderPipelineAsync",
+      "label": "overlay glass",
+      "entry": "fs_glass"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882987033,
+      "id": 44,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882987118,
+      "id": 40,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882987413,
+      "id": 42,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882987493,
+      "id": 44,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882987541,
+      "id": 49,
+      "method": "createRenderPipelineAsync",
+      "label": "overlay sprite",
+      "entry": "fs"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882987541,
+      "id": 49,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882987543,
+      "id": 49,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882987546,
+      "id": 52,
+      "method": "createRenderPipelineAsync",
+      "label": "overlay msdf",
+      "entry": "fs_msdf"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882987546,
+      "id": 52,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882987547,
+      "id": 52,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882987549,
+      "id": 55,
+      "method": "createRenderPipelineAsync",
+      "label": "overlay glass",
+      "entry": "fs_glass"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882987549,
+      "id": 55,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882987551,
+      "id": 55,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882987554,
+      "id": 58,
+      "method": "createRenderPipelineAsync",
+      "label": "meter",
+      "entry": "fs_meter"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882987554,
+      "id": 58,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882987558,
+      "id": 60,
+      "method": "createRenderPipelineAsync",
+      "label": "meter reduce",
+      "entry": "fs_reduce"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882987558,
+      "id": 60,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882987563,
+      "id": 62,
+      "method": "createRenderPipelineAsync",
+      "label": "exposure adapt",
+      "entry": "fs_adapt"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882987563,
+      "id": 62,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882987579,
+      "id": 58,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882987595,
+      "id": 60,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882987612,
+      "id": 62,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882987618,
+      "id": 67,
+      "method": "createRenderPipelineAsync",
+      "label": "bloom prefilter",
+      "entry": "fs_bloom_prefilter"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882987618,
+      "id": 67,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882987622,
+      "id": 69,
+      "method": "createRenderPipelineAsync",
+      "label": "bloom down",
+      "entry": "fs_bloom_down"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882987622,
+      "id": 69,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882987627,
+      "id": 71,
+      "method": "createRenderPipelineAsync",
+      "label": "bloom up",
+      "entry": "fs_bloom_up"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882987627,
+      "id": 71,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882987733,
+      "id": 67,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882987828,
+      "id": 69,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882987848,
+      "id": 71,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882987883,
+      "id": 76,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_gtao",
+      "entry": "fs_gtao"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882987883,
+      "id": 76,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882987888,
+      "id": 78,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_ssao",
+      "entry": "fs_ssao"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882987888,
+      "id": 78,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882987892,
+      "id": 80,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_ao_blur",
+      "entry": "fs_ao_blur"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882987892,
+      "id": 80,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882987969,
+      "id": 76,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988029,
+      "id": 78,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988057,
+      "id": 80,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988101,
+      "id": 85,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_ao_upsample",
+      "entry": "fs_ao_upsample"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988101,
+      "id": 85,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988104,
+      "id": 87,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_contact",
+      "entry": "fs_contact"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988104,
+      "id": 87,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988109,
+      "id": 89,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_outline",
+      "entry": "fs_outline"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988109,
+      "id": 89,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988128,
+      "id": 85,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988185,
+      "id": 87,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988245,
+      "id": 89,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988265,
+      "id": 94,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_outline_seed",
+      "entry": "fs_outline_seed"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988265,
+      "id": 94,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988270,
+      "id": 96,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_jfa_16",
+      "entry": "fs_jfa_16"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988270,
+      "id": 96,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988274,
+      "id": 98,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_jfa_8",
+      "entry": "fs_jfa_8"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988274,
+      "id": 98,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988297,
+      "id": 94,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988326,
+      "id": 96,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988354,
+      "id": 98,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988379,
+      "id": 103,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_jfa_4",
+      "entry": "fs_jfa_4"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988379,
+      "id": 103,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988384,
+      "id": 105,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_jfa_2",
+      "entry": "fs_jfa_2"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988384,
+      "id": 105,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988388,
+      "id": 107,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_jfa_1",
+      "entry": "fs_jfa_1"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988388,
+      "id": 107,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988408,
+      "id": 103,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988437,
+      "id": 105,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988465,
+      "id": 107,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988493,
+      "id": 112,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_outline_wide",
+      "entry": "fs_outline_wide"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988493,
+      "id": 112,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988497,
+      "id": 114,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_dof_coc",
+      "entry": "fs_dof_coc"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988497,
+      "id": 114,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988501,
+      "id": 116,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_dof_blur",
+      "entry": "fs_dof_blur"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988501,
+      "id": 116,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988516,
+      "id": 112,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988536,
+      "id": 114,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988562,
+      "id": 116,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988607,
+      "id": 121,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_dof_composite",
+      "entry": "fs_dof_composite"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988607,
+      "id": 121,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988612,
+      "id": 123,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_motion_blur",
+      "entry": "fs_motion_blur"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988612,
+      "id": 123,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988617,
+      "id": 125,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_screen_blur",
+      "entry": "fs_screen_blur"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988617,
+      "id": 125,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988625,
+      "id": 121,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988653,
+      "id": 123,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988676,
+      "id": 125,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988722,
+      "id": 130,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_godrays_mask",
+      "entry": "fs_godrays_mask"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988722,
+      "id": 130,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988726,
+      "id": 132,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_godrays_blur",
+      "entry": "fs_godrays_blur"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988726,
+      "id": 132,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988731,
+      "id": 134,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_depth_bands",
+      "entry": "fs_depth_bands"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988731,
+      "id": 134,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988746,
+      "id": 130,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988764,
+      "id": 132,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882988799,
+      "id": 134,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988835,
+      "id": 139,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_ssgi",
+      "entry": "fs_ssgi"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988835,
+      "id": 139,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988840,
+      "id": 141,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_gi_blur",
+      "entry": "fs_gi_blur"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988840,
+      "id": 141,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882988844,
+      "id": 143,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_gi_upsample",
+      "entry": "fs_gi_upsample"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882988844,
+      "id": 143,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882989139,
+      "id": 139,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882989176,
+      "id": 141,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882989207,
+      "id": 143,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882989253,
+      "id": 148,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_gtao_bent",
+      "entry": "fs_gtao_bent"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882989253,
+      "id": 148,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882989257,
+      "id": 150,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_ao_blur_gather",
+      "entry": "fs_ao_blur_gather"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882989257,
+      "id": 150,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882989261,
+      "id": 152,
+      "method": "createRenderPipelineAsync",
+      "label": "flare occlusion",
+      "entry": "fs_flare_occlusion"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882989261,
+      "id": 152,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882989329,
+      "id": 148,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882989358,
+      "id": 150,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882989395,
+      "id": 152,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882989417,
+      "id": 157,
+      "method": "createRenderPipelineAsync",
+      "label": "flare",
+      "entry": "fs_flare"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882989417,
+      "id": 157,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882989422,
+      "id": 159,
+      "method": "createRenderPipelineAsync",
+      "label": "flare blur x",
+      "entry": "fs_flare_blur_x"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882989422,
+      "id": 159,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882989426,
+      "id": 161,
+      "method": "createRenderPipelineAsync",
+      "label": "flare blur y",
+      "entry": "fs_flare_blur_y"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882989426,
+      "id": 161,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882989518,
+      "id": 157,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882989536,
+      "id": 159,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882989554,
+      "id": 161,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882989582,
+      "id": 166,
+      "method": "createRenderPipelineAsync",
+      "label": "sky",
+      "entry": "fs_sky"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882989582,
+      "id": 166,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882989586,
+      "id": 168,
+      "method": "createRenderPipelineAsync",
+      "label": "sky",
+      "entry": "fs_sky_look"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882989586,
+      "id": 168,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882989591,
+      "id": 170,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_env_copy",
+      "entry": "fs_env_copy"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882989591,
+      "id": 170,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882989636,
+      "id": 166,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882993038,
+      "id": 168,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882993055,
+      "id": 170,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882993073,
+      "id": 175,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_env_irradiance",
+      "entry": "fs_env_irradiance"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882993073,
+      "id": 175,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882993077,
+      "id": 177,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_probe_copy",
+      "entry": "fs_probe_copy"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882993077,
+      "id": 177,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-start",
+      "at": 1793882993082,
+      "id": 179,
+      "method": "createRenderPipelineAsync",
+      "label": "fs_equirect",
+      "entry": "fs_equirect"
+     },
+     {
+      "event": "pipeline-return",
+      "at": 1793882993082,
+      "id": 179,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "worker-play",
+      "at": 1793882993090,
+      "tick": 2
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882993097,
+      "id": 175,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882993148,
+      "id": 177,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "frame-completed",
+      "at": 1793882993151,
+      "tick": 2,
+      "began": 1793882993148
+     },
+     {
+      "event": "pipeline-resolved",
+      "at": 1793882993151,
+      "id": 179,
+      "method": "createRenderPipelineAsync"
+     },
+     {
+      "event": "frame-completed",
+      "at": 1793882993184,
+      "tick": 3,
+      "began": 1793882993179
+     }
+    ]
+   },
+   "before": 2,
+   "after": 35
+  }
+ ]
+}

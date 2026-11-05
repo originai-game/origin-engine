@@ -296,6 +296,8 @@ export interface WebExtras {
   og_web_warm?(engine: number): boolean;
   /** The display's refresh interval the Worker measured, ms (automatic quality's budget at no frame cap). */
   og_web_display_interval?(engine: number, ms: number): void;
+  /** Brackets a probe-driven frame, excluding it from automatic display quality. */
+  og_web_probe_frame(engine: number, on: boolean): void;
   /** Test hook: destroy the GPU device; the renderer is made again on a new one and the game goes on. */
   og_web_lose_device?(engine: number): boolean;
   /** Fork s60: `span(on)` around the renderer's frame pipelines (og-render set_frame_pipelines_hook), which pipelines.ts makes asynchronously. */
@@ -1391,7 +1393,14 @@ export function startWorker(game: GameToken): void {
     fault: (_, [site]) => glueRef?.og_web_lanes_fault?.(String(site)) ?? false,
     frame: (e, [ms]) => {
       // Fork s60: a harness's frame is compared with the native one: nothing in it skipped for a pipeline compiling.
-      const answered = pipelines.drawnWhole(() => e.frame(Number(ms)));
+      const answered = pipelines.drawnWhole(() => {
+        glueRef!.og_web_probe_frame(e.id, true);
+        try {
+          return e.frame(Number(ms));
+        } finally {
+          glueRef!.og_web_probe_frame(e.id, false);
+        }
+      });
       relay(answered);
       pumpRoom(e);
       return answered;

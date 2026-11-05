@@ -1,0 +1,18 @@
+    Blocking waiting for file lock on package cache
+   Compiling og-runtime v0.7.7 (/Volumes/app/origin-engine-lane-12/crates/og-runtime)
+    Finished `test` profile [unoptimized] target(s) in 15.27s
+     Running tests/main.rs (target/debug/deps/tests-3487d13e418f0835)
+
+running 10 tests
+test display::the_memory_report_counts_gpu_memory ... ok
+test display::the_field_of_view_is_hor_plus ... ok
+test display::the_page_reports_fullscreen_power_and_raw_mouse ... ok
+test display::a_presenting_host_draws_at_the_render_scale_and_a_native_run_at_one ... ok
+test display::graphics_settings_round_trip_and_apply ... ok
+test display::display_settings_never_reach_the_world ... ok
+test display::graphics_settings_and_page_reports_never_reach_the_world ... ok
+test display::a_device_back_with_other_encodings_gets_its_textures_transcoded_again ... ok
+test display::preset_steps_cap_the_quality_drawn_not_the_settings ... ok
+test display::probe_frames_neither_train_nor_apply_automatic_quality ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 156 filtered out; finished in 5.60s

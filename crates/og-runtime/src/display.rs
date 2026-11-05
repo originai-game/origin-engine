@@ -213,6 +213,8 @@ pub(crate) struct DisplayState {
     /// The display's interval as the host measured it, ms (0: unknown).
     pub display_ms: f64,
     pub auto: Option<AutoQuality>,
+    /// The host is drawing a probe-driven frame, not a display interval.
+    pub probe_frame: bool,
     /// The render scale and preset steps the last frame drew with.
     pub scale: f32,
     pub step: u8,
@@ -292,7 +294,9 @@ pub(crate) fn before_render(rs: &mut RenderState) {
     }
     let phone = phone(rs);
     let d = &mut rs.display;
-    let (scale, step) = if d.settings.auto() {
+    let (scale, step) = if d.probe_frame {
+        (d.settings.max_scale(), 0)
+    } else if d.settings.auto() {
         let bounds = d.bounds(phone);
         let auto = d.auto.get_or_insert_with(|| AutoQuality::new(bounds));
         if auto.bounds() != bounds {
@@ -331,7 +335,7 @@ pub(crate) fn after_frame(
     cpu_ms: f64,
     gpu_ms: Option<f64>,
 ) {
-    if interval_ms <= 0.0 {
+    if rs.display.probe_frame || interval_ms <= 0.0 {
         return;
     }
     if let Some(auto) = rs.display.auto.as_mut() {
@@ -347,6 +351,13 @@ pub(crate) fn after_frame(
 /// frame answer's `maxFps`.
 pub(crate) fn max_fps(rs: &RenderState) -> u32 {
     rs.display.settings.max_fps(phone(rs))
+}
+
+/// Brackets a host's probe-driven frame so its work cannot tune live quality.
+pub fn set_probe_frame(id: u32, on: bool) {
+    if let Ok(eng) = engine(id) {
+        eng.render.borrow_mut().display.probe_frame = on;
+    }
 }
 
 /// The display's interval as the host measured it (the web Worker's

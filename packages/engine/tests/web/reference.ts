@@ -263,6 +263,8 @@ try {
         const answer = await shell.call("frame", 1000 / ${TICK_RATE});
         if (!answer || answer.ok === false) throw new Error("frame refused at tick " + tick + ": " + JSON.stringify(answer));
         tick = answer.tick ?? tick + 1;
+        if (answer.diagScale !== globalThis.__diag_last__) { (globalThis.__diag__ ??= []).push([tick, answer.diagScale, answer.diagStep]); globalThis.__diag_last__ = answer.diagScale; }
+        if (tick <= 3 || tick === want) (globalThis.__diag_history__ ??= []).push([tick, answer.diagHistory]);
       }
       globalThis.__og_shots__ = shots;
       // The web's capture is deferred: null means the frame's readback has
@@ -279,6 +281,8 @@ try {
     return tick;
   })()`);
   result["ticks"] = frames;
+  console.log("DIAG scale changes [tick, scale, step]: " + JSON.stringify(await tab.eval("globalThis.__diag__ ?? []")));
+  console.log("DIAG history [tick, history]: " + JSON.stringify(await tab.eval("globalThis.__diag_history__ ?? []")));
   // The engine's own log (wgpu's validation errors land there).
   result["engine"] = (await tab.eval<string[]>("globalThis.__og_log__ ?? []")).slice(-40);
   const timed = Number(opt("--time") ?? 0);

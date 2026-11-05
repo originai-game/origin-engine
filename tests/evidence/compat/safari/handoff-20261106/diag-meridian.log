@@ -1,0 +1,16 @@
+meridian-loop: assets written
+run.sh: development is queued for the GPU; safari example-meridian-loop waits
+gpu: all 3 slots busy, waiting (safari compat example-meridian-loop (safari))
+DIAG scale changes [tick, scale, step]: [[1,1,0],[461,0.8999999761581421,0],[611,1,0],[1163,0.8999999761581421,0],[1326,1,0],[4979,0.8999999761581421,0],[5129,1,0]]
+FAIL title (webgpu-safari, tick 72): 2.441 % outliers (≤ 0.5 %), RMSE 0.04133 (≤ 0.01) against examples/meridian-loop/references/metal/title.png
+FAIL jump (webgpu-safari, tick 189): 3.101 % outliers (≤ 0.5 %), RMSE 0.03963 (≤ 0.01) against examples/meridian-loop/references/metal/jump.png
+FAIL slide (webgpu-safari, tick 285): 1.762 % outliers (≤ 0.5 %), RMSE 0.03438 (≤ 0.01) against examples/meridian-loop/references/metal/slide.png
+FAIL countdown (webgpu-safari, tick 438): 1.213 % outliers (≤ 0.5 %), RMSE 0.02692 (≤ 0.01) against examples/meridian-loop/references/metal/countdown.png
+FAIL race (webgpu-safari, tick 1140): 2.689 % outliers (≤ 0.5 %), RMSE 0.03800 (≤ 0.01) against examples/meridian-loop/references/metal/race.png
+FAIL ghost (webgpu-safari, tick 4620): 3.227 % outliers (≤ 0.5 %), RMSE 0.04238 (≤ 0.01) against examples/meridian-loop/references/metal/ghost.png
+FAIL pause (webgpu-safari, tick 4956): 0.693 % outliers (≤ 0.5 %), RMSE 0.01809 (≤ 0.01) against examples/meridian-loop/references/metal/pause.png
+FAIL results (webgpu-safari, tick 6900): 0.755 % outliers (≤ 0.5 %), RMSE 0.01678 (≤ 0.01) against examples/meridian-loop/references/metal/results.png
+FAIL board (webgpu-safari, tick 7044): 0.588 % outliers (≤ 0.5 %), RMSE 0.01808 (≤ 0.01) against examples/meridian-loop/references/metal/board.png
+FAIL settings-de (webgpu-safari, tick 7272): 0.966 % outliers (≤ 0.5 %), RMSE 0.02260 (≤ 0.01) against examples/meridian-loop/references/metal/settings-de.png
+FAIL webgpu-safari references: 10 stations in 111357 ms; /Volumes/app/origin-engine-lane-12/packages/engine/dist/compat/safari-example-meridian-loop/reference-webgpu-safari.json
+run.sh: safari compat example-meridian-loop (safari) exited 1 in 157 s; frames in /Volumes/app/origin-engine-lane-12/packages/engine/dist/compat/safari-example-meridian-loop, JSON in /Volumes/app/origin-engine-lane-12/tests/evidence/compat/safari/runs/safari-example-meridian-loop

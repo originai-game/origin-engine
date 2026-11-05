@@ -1,0 +1,29 @@
+   Compiling og-physics v0.7.7 (/Volumes/app/origin-engine-lane-12/crates/og-physics)
+   Compiling og-geom v0.7.7 (/Volumes/app/origin-engine-lane-12/crates/og-geom)
+   Compiling og-motion v0.7.7 (/Volumes/app/origin-engine-lane-12/crates/og-motion)
+   Compiling og-net v0.7.7 (/Volumes/app/origin-engine-lane-12/crates/og-net)
+   Compiling og-cook v0.7.7 (/Volumes/app/origin-engine-lane-12/crates/og-cook)
+   Compiling og-runtime v0.7.7 (/Volumes/app/origin-engine-lane-12/crates/og-runtime)
+    Finished `test` profile [unoptimized] target(s) in 28.68s
+     Running tests/main.rs (target/debug/deps/tests-3487d13e418f0835)
+
+running 1 test
+test display::probe_frames_neither_train_nor_apply_automatic_quality ... FAILED
+
+failures:
+
+---- display::probe_frames_neither_train_nor_apply_automatic_quality stdout ----
+
+thread 'display::probe_frames_neither_train_nor_apply_automatic_quality' (197947486) panicked at crates/og-runtime/tests/display.rs:264:5:
+assertion `left == right` failed: {"deviceLosses":0,"displayHz":0.0,"frameMs":100.0,"fullscreen":false,"gpu":{"buffers":4.0,"meshes":200.0,"renderTargets":30.0,"textures":1000.0,"total":1234.0},"maxFps":0,"powerPreference":"highPerformance","presenting":true,"presetSteps":2,"renderScale":0.5,"restartNeeded":false,"sceneHeight":100,"sceneWidth":200,"settings":{"autoMinScale":0.5,"autoPresetSteps":2,"autoQuality":true,"batterySaver":false,"clothSubdivisions":0,"frameCap":"auto","fullscreen":false,"powerPreference":"highPerformance","quality":null,"renderScale":1.0},"vsync":true}
+  left: Number(0.5)
+ right: Number(1.0)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    display::probe_frames_neither_train_nor_apply_automatic_quality
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 165 filtered out; finished in 2.69s
+
+error: test failed, to rerun pass `-p og-runtime --test tests`

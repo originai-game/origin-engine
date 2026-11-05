@@ -1,0 +1,39 @@
+{
+  "tier": "webgpu-safari",
+  "size": "1280x720",
+  "tolerance": {
+    "channel": 32,
+    "outliers": 0.005,
+    "rmse": 0.01
+  },
+  "script": "3:race",
+  "stations": {
+    "title": {
+      "tick": 72,
+      "size": "1280x720",
+      "against": "examples/meridian-loop/references/metal/title.png",
+      "outliers": 2.441,
+      "rmse": 0.04132,
+      "ok": false
+    }
+  },
+  "renderer": "webgpu",
+  "textureFormat": "bc7",
+  "textures": 11,
+  "refused": "probe.commands: script must be a string, not object",
+  "ticks": 72,
+  "engine": [
+    "[og] boot stage \"wasm\" done in 114 ms",
+    "[og] boot stage \"bundle\" done in 39 ms",
+    "[og] boot stage \"create\" done in 23 ms",
+    "[og] pipelines sync: auto: an Apple GPU (apple apple), sync until iOS is measured",
+    "[og] boot stage \"attach\" done in 40 ms",
+    "[og] boot stage \"transcode\" done in 69 ms",
+    "[og] boot stage \"prime\" done in 1 ms",
+    "[og] boot stage \"settle\" done in 0 ms",
+    "[og] boot stage \"present\" done in 104 ms",
+    "[og] first frame at 432 ms"
+  ],
+  "ms": 2207,
+  "log": []
+}
