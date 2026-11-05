@@ -62,3 +62,18 @@ the pixels disagree. Repeated `Text` IDs and identical strings can belong
 to different elements; preserve the element index or full path. Compare
 the drawn ink colour with the sampled ground before trusting a pixel vote
 that can mistake a light background for dark text.
+
+## 2026-11-05 — Timing series take every GPU slot per run, not per series
+
+A boot-timing loop that holds `og_gpu_acquire_all` across a whole series,
+or re-takes it the moment it frees, starves every single-slot job on
+macrunner (30 minutes for UI sheet renders). Take every slot for one
+measured run, release, and let queued single-slot jobs go between runs.
+Anything a run moves aside under the lock, such as Chrome's shared Metal
+shader cache for a cold run, goes back before the slots free. Wait until
+the GPU is idle (no slot held, nobody queued) before calling
+`og_gpu_acquire_all`: it holds `gpu-all` while waiting for slots, so
+waiting on one long single-slot job blocks everyone else. A subshell's `$$`
+is its parent's pid, so a lock's owner looks unchanged across runs.
+Never rewrite a shell script in place while a running `sh` is still
+reading it.
