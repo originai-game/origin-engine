@@ -186,7 +186,7 @@ run on Claude Fable 5.1 (AGENTS.md).
 | W7, a deterministic CPU FFT band for buoyancy | deferred | — |
 | wgpu 31 | upstream unpublished (`docs/release.md` F5) | — |
 
-**Implemented, below target** (Destruction closed on 2026-11-05 at de54293ff: closed primitive seams, rubble chips in each material, brick joints shedding clay and mortar grit, lit mesh particles blending alpha by default (a CHANGELOG break); its cross-host replay hash awaits the wave's end. neon-vector closed on 2026-11-05: the outline owns silhouette edges at 481203728, and the wireframe takes the surface's colour or `wireframeColor` at 5ccff020f. PowerVR's 1:1 linear-sample error was fixed with `sample_exact` for post passes at 2a5ac7165, Metal 481/481 unmoved, with a webgpu-android smaa reference. SSSR met its 2 ms target on 2026-11-05, b4d1c9506: half-resolution denoiser and a joint bilateral upsample, rough metal 3.85 → 1.60 ms, wet street 3.62 → 1.52 ms, mirror 2.57 → 0.97 ms; `ssrResolution` defaults to `half`)
+**Implemented, below target** (Destruction closed on 2026-11-05 at de54293ff: closed primitive seams, rubble chips in each material, brick joints shedding clay and mortar grit, lit mesh particles blending alpha by default (a CHANGELOG break); its cross-host replay hash awaits the wave's end. neon-vector closed on 2026-11-05: the outline owns silhouette edges at 481203728, and the wireframe takes the surface's colour or `wireframeColor` at 5ccff020f. PowerVR's 1:1 linear-sample error was fixed with `sample_exact` for post passes at 2a5ac7165, Metal 481/481 unmoved, with a webgpu-android smaa reference. SSSR met its 2 ms target on 2026-11-05, b4d1c9506: half-resolution denoiser and a joint bilateral upsample, rough metal 3.85 → 1.60 ms, wet street 3.62 → 1.52 ms, mirror 2.57 → 0.97 ms; `ssrResolution` defaults to `half`; its D3D12 race (the upsample wrote the `lit` texture the lit pass reads) was fixed at 8ae87efac, DX12 and Vulkan reruns byte-identical, Chrome 3/3 against Metal, with ssr-wet-floor in the shared browser registry at 226f11fbf)
 
 | Item | Now | Target or problem | Thread |
 |---|---|---|---|
@@ -206,7 +206,7 @@ run on Claude Fable 5.1 (AGENTS.md).
 |---|---|---|
 | Wasm build, size, determinism, the browser tiers; destruction's replay hash on wasm and Chrome; the browser checks of video, uncooked load and the platform ABI | the wave's end | [T-01a1a993-ffa2](https://ampcode.com/threads/T-01a1a993-ffa2-70d9-9645-0ad77ddbd60a) |
 | Safari's full tiers | macrunner, branch `safari` | [T-01a1a993-f7d5](https://ampcode.com/threads/T-01a1a993-f7d5-7486-914f-ff0c299edeca) |
-| Windows: terrain first frame and `pipelines auto` wire reruns, per-backend ui-kit references (BC7 against Metal's ASTC) | studio-win | [T-01a1a7ab](https://ampcode.com/threads/T-01a1a7ab-8f7c-76a1-ad03-2730fb3a22ec) |
+| Windows: the derivative audit, Vulkan water references, webgpu style sheets, G1-7; the Firefox sync first-tap delay (first rAF about 1.5 s after the tap) | studio-win | [T-01a1ab9d](https://ampcode.com/threads/T-01a1ab9d-3662-750e-b906-7429d51e0ebd) |
 | Phones: G1-4's automatic quality and device loss; iOS's pipeline mode (Apple stays sync until measured). The frame cap is verified on the Pixel 10 (fps30 gives 30.1 fps with GPU headroom; GPU-bound, Android runs the panel at the rate the page sustains); Android gfx tier 212/219 | §3 | Android [T-01a1a869](https://ampcode.com/threads/T-01a1a869-a893-7314-9a61-22d51cee1b8c) |
 | The wasm budget's meaning (row 44) | the owner | — |
 
