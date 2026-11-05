@@ -109,7 +109,9 @@ for pack in "$here"/../../templates/styles/*/; do
   name=$(basename "$pack")
   mkdir -p "$here/styles/$name"
   # Preserve nested assets and each extension's authoring skill, not art sources.
-  (cd "$pack" && tar --exclude='./art' --exclude='./.*' -cf - .) |
+  # Name the top-level entries rather than excluding by pattern: macOS bsdtar
+  # matched `./.*` against `.` itself and wrote an empty archive.
+  (cd "$pack" && find . -mindepth 1 -maxdepth 1 ! -name '.*' ! -name art -print0 | xargs -0 tar -cf -) |
     (cd "$here/styles/$name" && tar -xf -)
 done
 [ -f "$here/styles/fantasy/style.ogt" ] || { echo "pack: templates/styles was not copied into styles/" >&2; exit 1; }
