@@ -114,8 +114,9 @@ module net {
   }
 
   struct InputDesc {
-    doc "This peer's player's input: og.PlayerInput's fields but `player` and `tick`."
+    doc "This peer's player's input: og.PlayerInput's fields but `tick`, and `player` for a local seat."
     desc true
+    field player Option.u32 "Local multiplayer: the seat this input is for, when several players share one device. Alone (no room running) any local seat, 0 to 7, each driving the og.PlayerInput whose `player` it is; in a running room only this peer's own seat (og.Lockstep.localPlayer), else refused. Omitted: the local player (seat 0 alone)."
     field buttons u32 "The buttons held, one bit each."
     field x f32 "The move axis, -1 to 1."
     field y f32 "The move axis, -1 to 1."
@@ -191,9 +192,10 @@ module net {
 
   fn submit {
     doc "Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call, so a game calls it once a tick from a system that reads og.Input (or og.Gamepad, or the UI's touch controls). Callable from a system."
+    doc "Local multiplayer goes through the same call: outside a room, `player` names the local seat each input is for (one call per seat each tick), so a game reads every seat from og.PlayerInput alone, on one device or over a room, with the same one-tick latency and the same replay."
     param world World "The world."
     param input InputDesc "The buttons and axes."
-    returns Result.Void "Refused for an axis that is not finite."
+    returns Result.Void "Refused for an axis that is not finite, or a `player` that is not a local seat (another peer's in a running room, or past 7)."
   }
 
   fn shape {
@@ -204,7 +206,7 @@ module net {
   }
 
   fn submitInput {
-    doc "Give this peer's player's input when og.net.shape named an input component: its fields as og.net.submit's (`player` and `tick` are the engine's). It holds until the next call. Callable from a system."
+    doc "Give this peer's player's input when og.net.shape named an input component: its fields as og.net.submit's (`tick` is the engine's; `player` names a local seat as og.net.submit's does). It holds until the next call. Callable from a system."
     generic C AnyComponent
     param world World "The world."
     param component C "The input component og.net.shape named."
@@ -214,11 +216,12 @@ module net {
 
   fn command {
     doc "Give a command for this peer's player: in lockstep, for the tick inputDelay ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system."
+    doc "Its `player` is the engine's: omitted, the local player. Outside a room it may name a local seat (local multiplayer: og.net.commands then reads it as that seat's); in a running room only this peer's own."
     generic C AnyComponent
     param world World "The world."
     param component C "The command component og.net.shape named."
-    param value Partial.Value.C "Its fields (`player` is the engine's)."
-    returns Result.Void "Refused with no command shape, for another component, or past maxCommands this tick."
+    param value Partial.Value.C "Its fields (`player`, when given, a local seat)."
+    returns Result.Void "Refused with no command shape, for another component, past maxCommands this tick, or for a `player` that is not a local seat."
   }
 
   fn commands {

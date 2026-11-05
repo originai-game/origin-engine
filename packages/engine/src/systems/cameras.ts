@@ -1,5 +1,5 @@
 // The camera controllers of og.systems.cameras (IDL `camera`: og.OrbitCamera,
-// og.FollowCamera, og.Follow2D). They are game-level systems the engine ships
+// og.FollowCamera, og.FirstPersonCamera, og.Follow2D). They are game-level systems the engine ships
 // in TypeScript: a game lists them in GameDesc.systems, so the schedule shows
 // them and nothing moves the camera unless the game asked. Each drives
 // og.Camera from the first entity in query order that carries its component.
@@ -21,7 +21,11 @@ const Input = T.Input!;
 const Camera = T.Camera!;
 const OrbitCamera = T.OrbitCamera!;
 const FollowCamera = T.FollowCamera!;
+const FirstPersonCamera = T.FirstPersonCamera!;
 const Follow2D = T.Follow2D!;
+const Pointers = T.Pointers!;
+const PointerLock = T.PointerLock!;
+const Gamepad = T.Gamepad!;
 
 const PI = 3.141592653589793;
 const TAU = 2 * PI;
@@ -191,6 +195,71 @@ export const followCamera = defineSystem(
   },
 );
 
+interface PadValue {
+  axis(axis: string, pad?: number): number;
+  connected(pad?: number): boolean;
+}
+
+/** The right stick past a radial dead zone, y down as og.Gamepad's: the pad `gamepad - 1`, or the most deflected of all. */
+function rightStick(world: WorldImpl, gamepad: number): { x: number; y: number } {
+  const pads = world.resource(Gamepad);
+  if (!pads.ok) return { x: 0, y: 0 };
+  const g = pads.value as unknown as PadValue;
+  let best = { x: 0, y: 0, m: 0 };
+  for (let pad = gamepad > 0 ? gamepad - 1 : 0; pad < (gamepad > 0 ? gamepad : 8); pad++) {
+    if (!g.connected(pad)) continue;
+    const x = g.axis("rightX", pad);
+    const y = g.axis("rightY", pad);
+    const m = Math.sqrt(x * x + y * y);
+    if (m > best.m) best = { x, y, m };
+  }
+  const dead = 0.15;
+  if (best.m <= dead) return { x: 0, y: 0 };
+  const k = Math.min(1, (best.m - dead) / (1 - dead)) / best.m;
+  return { x: best.x * k, y: best.y * k };
+}
+
+/** og.firstPersonCamera: mouse-look while the pointer is locked and the right stick, or the game's own yaw and pitch. */
+export const firstPersonCamera = defineSystem(
+  "og.firstPersonCamera",
+  { reads: [Transform, Pointers, PointerLock, Gamepad], writes: [FirstPersonCamera, Camera] },
+  (q: QueryLike, time: { dt: number }, world: WorldImpl) => {
+    for (const a of q.archetypes()) {
+      if (a.count === 0) continue;
+      const f = a.column(FirstPersonCamera);
+      const p = a.column(Transform).position;
+      let yaw = f.yaw[0]!;
+      let pitch = f.pitch[0]!;
+      if (f.enabled[0]) {
+        const flip = f.invertY[0] ? -1 : 1;
+        const lock = world.resource(PointerLock);
+        const ptr = world.resource(Pointers);
+        if (lock.ok && ptr.ok && (lock.value as unknown as { locked: boolean }).locked) {
+          const m = (ptr.value as unknown as { movement: { x: number; y: number } }).movement;
+          yaw -= m.x * f.sensitivity[0]!;
+          pitch -= m.y * f.sensitivity[0]! * flip;
+        }
+        const stick = rightStick(world, f.gamepad[0]!);
+        const turn = f.stickSpeed[0]! * time.dt;
+        yaw -= stick.x * turn;
+        pitch -= stick.y * turn * flip;
+      }
+      yaw -= Math.floor((yaw + PI) / TAU) * TAU;
+      pitch = clamp(pitch, f.minPitch[0]!, f.maxPitch[0]!);
+      f.yaw[0] = yaw;
+      f.pitch[0] = pitch;
+      const cam = camera(world);
+      if (!cam) return;
+      // rotation = Ry(yaw) * Rx(pitch), from half angles.
+      const [sy, cy] = sincos(yaw / 2);
+      const [sp, cp] = sincos(pitch / 2);
+      cam.position = { x: p[0]! + f.eye[0]!, y: p[1]! + f.eye[1]!, z: p[2]! + f.eye[2]! };
+      cam.quaternion = { x: cy * sp, y: sy * cp, z: -sy * sp, w: cy * cp };
+      return;
+    }
+  },
+);
+
 /** og.follow2D: a dead-zone follower in the xy plane, with look-ahead and per-axis smoothing. */
 export const follow2D = defineSystem(
   "og.follow2D",
@@ -244,4 +313,4 @@ export const follow2D = defineSystem(
 );
 
 /** og.systems.cameras, in the IDL's order. */
-export const cameras: readonly SystemToken[] = Object.freeze([orbitCamera, followCamera, follow2D]);
+export const cameras: readonly SystemToken[] = Object.freeze([orbitCamera, followCamera, firstPersonCamera, follow2D]);

@@ -1,0 +1,45 @@
+// Written by og check (crates/og-cli/src/check.rs): the project's type-check
+// configuration with the engine package og resolved. Do not edit; it is rewritten.
+{
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "exactOptionalPropertyTypes": true,
+    "isolatedModules": true,
+    "lib": [
+      "ES2022"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@origingame/engine": [
+        "/Volumes/app/origin-engine-lane-27/packages/engine/types/index.d.ts"
+      ],
+      "@origingame/engine/extensions/*": [
+        "/Volumes/app/origin-engine-lane-27/packages/engine/extensions/*"
+      ],
+      "@origingame/engine/playtest": [
+        "/Volumes/app/origin-engine-lane-27/packages/engine/src/playtest.ts"
+      ],
+      "@origingame/engine/ui-check": [
+        "/Volumes/app/origin-engine-lane-27/packages/engine/src/node/ui-check.ts"
+      ],
+      "@origingame/engine/ui-extensions": [
+        "/Volumes/app/origin-engine-lane-27/packages/engine/src/ui-extensions.ts"
+      ],
+      "@origingame/engine/ui-parts/*": [
+        "/Volumes/app/origin-engine-lane-27/packages/engine/src/ui-parts/*.ts"
+      ]
+    },
+    "strict": true,
+    "target": "ES2022",
+    "types": [],
+    "verbatimModuleSyntax": true
+  },
+  "include": [
+    "/Volumes/app/origin-engine-lane-27/packages/engine/tests/fixtures/platform-session/src/**/*.ts",
+    "/Volumes/app/origin-engine-lane-27/packages/engine/tests/fixtures/platform-session/tests/**/*.ts",
+    "/Volumes/app/origin-engine-lane-27/packages/engine/tests/fixtures/platform-session/host.d.ts"
+  ]
+}

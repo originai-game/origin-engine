@@ -3136,6 +3136,13 @@ export interface InputBinding {
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
   readonly radius?: number;
+  /**
+   * Its pad controls read only this pad, counted from 1 (local multiplayer: each seat's actions on its own pad, og.Gamepad's pad gamepad - 1); 0 reads every pad, the one that reads most. Pad bindings on two different pads never conflict, and a rebinding keeps its slot's pad.
+   *
+   * @default 0
+   * @range ..8
+   */
+  readonly gamepad?: number;
 }
 
 /**
@@ -4697,7 +4704,7 @@ export interface A11yAction {
 
 // ── camera ──────────────────────────────────────────────────────
 // The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.
-// Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras.
+// Camera controllers are components (OrbitCamera, FollowCamera, FirstPersonCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras.
 
 /**
  * The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation.
@@ -5073,6 +5080,85 @@ export interface FollowCamera {
    * @tunable
    */
   smoothTime: number;
+}
+
+/**
+ * Looks out of the entity carrying it: a first-person 3D view whose eye sits `eye` above the entity's position and turns by `yaw` about +Y and `pitch` up from the horizon (three.js PointerLockControls, with a pad's right stick). With `enabled` it turns by the mouse's movement while the pointer is locked (og.Pointers.movement; set og.PointerLock.wanted during play) and by the right stick of `gamepad`; otherwise the game sets yaw and pitch, as a lockstep game does from og.PlayerInput's aim. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.
+ * It moves only og.Camera and its own yaw and pitch: the game turns the body and walks it along `yaw` (forward is (-sin yaw, 0, -cos yaw)). Every angle is computed with deterministic arithmetic, so a replay looks the same way on every host.
+ *
+ * The value of the `FirstPersonCamera` component (token `og.FirstPersonCamera`).
+ */
+export interface FirstPersonCamera {
+  /**
+   * Where the eye sits relative to the entity's position, in world axes (a capsule's head height).
+   *
+   * @default { x: 0, y: 1.6, z: 0 }
+   * @unit m (metres)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
+   */
+  eye: Vector3;
+  /**
+   * The heading about +Y: 0 looks along -Z, and it grows turning left (counter-clockwise from above).
+   *
+   * @unit rad (radians)
+   * @tunable
+   */
+  yaw: number;
+  /**
+   * How far above the horizon it looks (below 0 looks down), held between minPitch and maxPitch.
+   *
+   * @unit rad (radians)
+   * @tunable
+   */
+  pitch: number;
+  /**
+   * The lowest pitch: just short of straight down by default.
+   *
+   * @default -1.48
+   * @range -1.5707..0
+   * @unit rad (radians)
+   */
+  minPitch: number;
+  /**
+   * The highest pitch: just short of straight up by default.
+   *
+   * @default 1.48
+   * @range 0..1.5707
+   * @unit rad (radians)
+   */
+  maxPitch: number;
+  /**
+   * With enabled: the turn per CSS pixel of mouse movement while the pointer is locked (0.0021, about 0.12 degrees).
+   *
+   * @default 0.0021
+   * @range 0..
+   * @unit rad (radians)
+   * @tunable
+   */
+  sensitivity: number;
+  /**
+   * With enabled: the turn per second at the right stick's full deflection (2.6, about 150 degrees).
+   *
+   * @default 2.6
+   * @range 0..
+   * @unit radps (radians per second)
+   * @tunable
+   */
+  stickSpeed: number;
+  /**
+   * With enabled: the pad whose right stick turns it, counted from 1; 0 every pad.
+   *
+   * @range ..8
+   */
+  gamepad: number;
+  /** With enabled: moving the mouse or the stick up looks down. */
+  invertY: boolean;
+  /**
+   * Turn by the mouse while the pointer is locked and by the right stick; false: the game sets yaw and pitch (a lockstep game, where both come from og.PlayerInput).
+   *
+   * @default true
+   */
+  enabled: boolean;
 }
 
 /**
@@ -47485,11 +47571,17 @@ export interface PeerStalled {
 }
 
 /**
- * This peer's player's input: og.PlayerInput's fields but `player` and `tick`.
+ * This peer's player's input: og.PlayerInput's fields but `tick`, and `player` for a local seat.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
 export interface InputDesc {
+  /**
+   * Local multiplayer: the seat this input is for, when several players share one device. Alone (no room running) any local seat, 0 to 7, each driving the og.PlayerInput whose `player` it is; in a running room only this peer's own seat (og.Lockstep.localPlayer), else refused. Omitted: the local player (seat 0 alone).
+   *
+   * @default null
+   */
+  readonly player?: number | null;
   /**
    * The buttons held, one bit each.
    *
@@ -49357,6 +49449,11 @@ export declare namespace og {
    */
   const FollowCamera: ComponentType<{ readonly offset: FieldSpec<"Vector3">; readonly lookOffset: FieldSpec<"Vector3">; readonly followRotation: FieldSpec<"bool">; readonly smoothTime: FieldSpec<"f32"> }, FollowCamera>;
   /**
+   * Looks out of the entity carrying it: a first-person 3D view whose eye sits `eye` above the entity's position and turns by `yaw` about +Y and `pitch` up from the horizon (three.js PointerLockControls, with a pad's right stick). With `enabled` it turns by the mouse's movement while the pointer is locked (og.Pointers.movement; set og.PointerLock.wanted during play) and by the right stick of `gamepad`; otherwise the game sets yaw and pitch, as a lockstep game does from og.PlayerInput's aim. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.
+   * It moves only og.Camera and its own yaw and pitch: the game turns the body and walks it along `yaw` (forward is (-sin yaw, 0, -cos yaw)). Every angle is computed with deterministic arithmetic, so a replay looks the same way on every host.
+   */
+  const FirstPersonCamera: ComponentType<{ readonly eye: FieldSpec<"Vector3">; readonly yaw: FieldSpec<"f32">; readonly pitch: FieldSpec<"f32">; readonly minPitch: FieldSpec<"f32">; readonly maxPitch: FieldSpec<"f32">; readonly sensitivity: FieldSpec<"f32">; readonly stickSpeed: FieldSpec<"f32">; readonly gamepad: FieldSpec<"u32">; readonly invertY: FieldSpec<"bool">; readonly enabled: FieldSpec<"bool"> }, FirstPersonCamera>;
+  /**
    * Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime (smoothTimeY for y when set) and, with clamp, stays inside the bounds; lookAhead leads it in the direction the entity moves. The camera keeps its z, rotation and projection. Driven by og.systems.cameras; og.CameraZone entities then keep the view inside the zone the entity is in.
    */
   const Follow2D: ComponentType<{ readonly offset: FieldSpec<"Vector2">; readonly deadZone: FieldSpec<"Vector2">; readonly smoothTime: FieldSpec<"f32">; readonly smoothTimeY: FieldSpec<"f32">; readonly lookAhead: FieldSpec<"f32">; readonly lookAheadMax: FieldSpec<"Vector2">; readonly lookAheadSmoothing: FieldSpec<"f32">; readonly lead: FieldSpec<"Vector2">; readonly last: FieldSpec<"Vector2">; readonly clamp: FieldSpec<"bool">; readonly boundsMin: FieldSpec<"Vector2">; readonly boundsMax: FieldSpec<"Vector2"> }, Follow2D>;
@@ -49383,7 +49480,7 @@ export declare namespace og {
   const CameraCut: EventType<CameraCut>;
   /**
    * The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.
-   * Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras.
+   * Camera controllers are components (OrbitCamera, FollowCamera, FirstPersonCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras.
    */
   namespace camera {
     /**
@@ -54041,7 +54138,7 @@ export declare namespace og {
    */
   namespace systems {
     /**
-     * The camera controllers, in this order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera) and og.follow2D (og.Follow2D). Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`.
+     * The camera controllers, in this order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera), og.firstPersonCamera (og.FirstPersonCamera) and og.follow2D (og.Follow2D). Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`.
      */
     const cameras: readonly System[];
   }
@@ -54507,10 +54604,11 @@ export declare namespace og {
   namespace net {
     /**
      * Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call, so a game calls it once a tick from a system that reads og.Input (or og.Gamepad, or the UI's touch controls). Callable from a system.
+     * Local multiplayer goes through the same call: outside a room, `player` names the local seat each input is for (one call per seat each tick), so a game reads every seat from og.PlayerInput alone, on one device or over a room, with the same one-tick latency and the same replay.
      *
      * @param world The world.
      * @param input The buttons and axes.
-     * @returns Refused for an axis that is not finite.
+     * @returns Refused for an axis that is not finite, or a `player` that is not a local seat (another peer's in a running room, or past 7).
      */
     function submit(world: World, input?: InputDesc): Result<void>;
     /**
@@ -54522,7 +54620,7 @@ export declare namespace og {
      */
     function shape(world: World, desc?: NetShapeDesc): Result<void>;
     /**
-     * Give this peer's player's input when og.net.shape named an input component: its fields as og.net.submit's (`player` and `tick` are the engine's). It holds until the next call. Callable from a system.
+     * Give this peer's player's input when og.net.shape named an input component: its fields as og.net.submit's (`tick` is the engine's; `player` names a local seat as og.net.submit's does). It holds until the next call. Callable from a system.
      *
      * @param world The world.
      * @param component The input component og.net.shape named.
@@ -54532,11 +54630,12 @@ export declare namespace og {
     function submitInput<C extends AnyComponent>(world: World, component: C, value: Partial<Value<C>>): Result<void>;
     /**
      * Give a command for this peer's player: in lockstep, for the tick inputDelay ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system.
+     * Its `player` is the engine's: omitted, the local player. Outside a room it may name a local seat (local multiplayer: og.net.commands then reads it as that seat's); in a running room only this peer's own.
      *
      * @param world The world.
      * @param component The command component og.net.shape named.
-     * @param value Its fields (`player` is the engine's).
-     * @returns Refused with no command shape, for another component, or past maxCommands this tick.
+     * @param value Its fields (`player`, when given, a local seat).
+     * @returns Refused with no command shape, for another component, past maxCommands this tick, or for a `player` that is not a local seat.
      */
     function command<C extends AnyComponent>(world: World, component: C, value: Partial<Value<C>>): Result<void>;
     /**

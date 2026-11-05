@@ -103,6 +103,9 @@ pub struct Binding {
     pub zone: Zone,
     /// A touch stick's full deflection, CSS px (0: 64).
     pub radius: f32,
+    /// Only pad `gamepad - 1` drives its pad controls (local seats each on
+    /// their own pad); 0: any pad.
+    pub gamepad: u32,
 }
 
 impl Default for Binding {
@@ -120,6 +123,7 @@ impl Default for Binding {
             deadzone: 0.0,
             zone: Zone::default(),
             radius: 0.0,
+            gamepad: 0,
         }
     }
 }
@@ -263,6 +267,7 @@ impl Binding {
             deadzone: self.deadzone,
             zone: self.zone,
             radius: self.radius,
+            gamepad: self.gamepad,
         }
     }
 
@@ -370,6 +375,18 @@ impl Binding {
             deadzone: f32_of(v, "deadzone", 0.0)?,
             zone,
             radius: f32_of(v, "radius", 0.0)?,
+            gamepad: match v.get("gamepad") {
+                None | Some(Value::Null) => 0,
+                Some(g) => g
+                    .as_u64()
+                    .filter(|g| *g <= crate::MAX_GAMEPADS as u64)
+                    .ok_or_else(|| {
+                        format!(
+                            "a binding's gamepad is 0 (any pad) or 1 to {} (that pad); got {g}",
+                            crate::MAX_GAMEPADS
+                        )
+                    })? as u32,
+            },
         })
     }
 
@@ -407,6 +424,9 @@ impl Binding {
         }
         if self.radius != 0.0 {
             m.insert("radius".into(), json!(self.radius));
+        }
+        if self.gamepad != 0 {
+            m.insert("gamepad".into(), json!(self.gamepad));
         }
         Value::Object(m)
     }
@@ -1576,9 +1596,16 @@ impl ActionMap {
                     continue;
                 }
                 let theirs = b.controls();
+                // Pad controls on two different pads (two local seats) never meet.
+                let apart = |c: Control| {
+                    c.class().is_pad()
+                        && binding.gamepad != 0
+                        && b.gamepad != 0
+                        && binding.gamepad != b.gamepad
+                };
                 if let Some((_, c)) = mine
                     .iter()
-                    .find(|(_, c)| theirs.iter().any(|(_, t)| overlaps(*c, *t)))
+                    .find(|(_, c)| !apart(*c) && theirs.iter().any(|(_, t)| overlaps(*c, *t)))
                 {
                     out.push(Conflict {
                         action: other.desc.name.clone(),
@@ -1638,6 +1665,12 @@ impl ActionMap {
                 .all(|(_, c)| c.class() == Device::Touch)
         {
             out.zone = old.zone;
+        }
+        // A seat's slot stays on its pad (the capture names the control, not the pad).
+        if out.gamepad == 0
+            && let Some(old) = list.get(slot as usize)
+        {
+            out.gamepad = old.gamepad;
         }
         out.check(a.desc.kind)
             .map_err(|e| format!("{}: {e}", a.desc.name))?;

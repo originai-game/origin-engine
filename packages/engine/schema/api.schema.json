@@ -4237,13 +4237,14 @@
     },
     {
       "name": "camera",
-      "doc": "The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.\nCamera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras.",
+      "doc": "The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.\nCamera controllers are components (OrbitCamera, FollowCamera, FirstPersonCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras.",
       "place": "namespace",
       "publish": true,
       "types": [
         "Camera",
         "OrbitCamera",
         "FollowCamera",
+        "FirstPersonCamera",
         "Follow2D",
         "CameraZone",
         "CameraRail",
@@ -17654,7 +17655,7 @@
         {
           "name": "cameras",
           "type": "List<System>",
-          "doc": "The camera controllers, in this order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera) and og.follow2D (og.Follow2D). Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`."
+          "doc": "The camera controllers, in this order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera), og.firstPersonCamera (og.FirstPersonCamera) and og.follow2D (og.Follow2D). Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`."
         }
       ],
       "functions": [],
@@ -19248,7 +19249,7 @@
       "functions": [
         {
           "name": "submit",
-          "doc": "Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call, so a game calls it once a tick from a system that reads og.Input (or og.Gamepad, or the UI's touch controls). Callable from a system.",
+          "doc": "Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call, so a game calls it once a tick from a system that reads og.Input (or og.Gamepad, or the UI's touch controls). Callable from a system.\nLocal multiplayer goes through the same call: outside a room, `player` names the local seat each input is for (one call per seat each tick), so a game reads every seat from og.PlayerInput alone, on one device or over a room, with the same one-tick latency and the same replay.",
           "params": [
             {
               "name": "world",
@@ -19264,7 +19265,7 @@
             }
           ],
           "returns": "Result<Void>",
-          "returnsDoc": "Refused for an axis that is not finite.",
+          "returnsDoc": "Refused for an axis that is not finite, or a `player` that is not a local seat (another peer's in a running room, or past 7).",
           "publish": true
         },
         {
@@ -19290,7 +19291,7 @@
         },
         {
           "name": "submitInput",
-          "doc": "Give this peer's player's input when og.net.shape named an input component: its fields as og.net.submit's (`player` and `tick` are the engine's). It holds until the next call. Callable from a system.",
+          "doc": "Give this peer's player's input when og.net.shape named an input component: its fields as og.net.submit's (`tick` is the engine's; `player` names a local seat as og.net.submit's does). It holds until the next call. Callable from a system.",
           "generics": [
             {
               "name": "C",
@@ -19323,7 +19324,7 @@
         },
         {
           "name": "command",
-          "doc": "Give a command for this peer's player: in lockstep, for the tick inputDelay ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system.",
+          "doc": "Give a command for this peer's player: in lockstep, for the tick inputDelay ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system.\nIts `player` is the engine's: omitted, the local player. Outside a room it may name a local seat (local multiplayer: og.net.commands then reads it as that seat's); in a running room only this peer's own.",
           "generics": [
             {
               "name": "C",
@@ -19347,11 +19348,11 @@
               "name": "value",
               "type": "Partial<Value<C>>",
               "optional": false,
-              "doc": "Its fields (`player` is the engine's)."
+              "doc": "Its fields (`player`, when given, a local seat)."
             }
           ],
           "returns": "Result<Void>",
-          "returnsDoc": "Refused with no command shape, for another component, or past maxCommands this tick.",
+          "returnsDoc": "Refused with no command shape, for another component, past maxCommands this tick, or for a `player` that is not a local seat.",
           "publish": true
         },
         {
@@ -21986,6 +21987,14 @@
           "default": 0,
           "minimum": 0,
           "x-og-unit": "cssPx"
+        },
+        "gamepad": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its pad controls read only this pad, counted from 1 (local multiplayer: each seat's actions on its own pad, og.Gamepad's pad gamepad - 1); 0 reads every pad, the one that reads most. Pad bindings on two different pads never conflict, and a rebinding keeps its slot's pad.",
+          "default": 0,
+          "maximum": 8
         }
       },
       "additionalProperties": false
@@ -24684,6 +24693,90 @@
           "minimum": 0,
           "x-og-unit": "s",
           "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "FirstPersonCamera": {
+      "x-og-kind": "component",
+      "x-og-module": "camera",
+      "description": "Looks out of the entity carrying it: a first-person 3D view whose eye sits `eye` above the entity's position and turns by `yaw` about +Y and `pitch` up from the horizon (three.js PointerLockControls, with a pad's right stick). With `enabled` it turns by the mouse's movement while the pointer is locked (og.Pointers.movement; set og.PointerLock.wanted during play) and by the right stick of `gamepad`; otherwise the game sets yaw and pitch, as a lockstep game does from og.PlayerInput's aim. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.\nIt moves only og.Camera and its own yaw and pitch: the game turns the body and walks it along `yaw` (forward is (-sin yaw, 0, -cos yaw)). Every angle is computed with deterministic arithmetic, so a replay looks the same way on every host.",
+      "type": "object",
+      "properties": {
+        "eye": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the eye sits relative to the entity's position, in world axes (a capsule's head height).",
+          "default": {
+            "x": 0,
+            "y": 1.6,
+            "z": 0
+          },
+          "x-og-unit": "m",
+          "x-og-worldspace": "none"
+        },
+        "yaw": {
+          "type": "number",
+          "description": "The heading about +Y: 0 looks along -Z, and it grows turning left (counter-clockwise from above).",
+          "default": 0,
+          "x-og-unit": "rad",
+          "x-og-tunable": true
+        },
+        "pitch": {
+          "type": "number",
+          "description": "How far above the horizon it looks (below 0 looks down), held between minPitch and maxPitch.",
+          "default": 0,
+          "x-og-unit": "rad",
+          "x-og-tunable": true
+        },
+        "minPitch": {
+          "type": "number",
+          "description": "The lowest pitch: just short of straight down by default.",
+          "default": -1.48,
+          "minimum": -1.5707,
+          "maximum": 0,
+          "x-og-unit": "rad"
+        },
+        "maxPitch": {
+          "type": "number",
+          "description": "The highest pitch: just short of straight up by default.",
+          "default": 1.48,
+          "minimum": 0,
+          "maximum": 1.5707,
+          "x-og-unit": "rad"
+        },
+        "sensitivity": {
+          "type": "number",
+          "description": "With enabled: the turn per CSS pixel of mouse movement while the pointer is locked (0.0021, about 0.12 degrees).",
+          "default": 0.0021,
+          "minimum": 0,
+          "x-og-unit": "rad",
+          "x-og-tunable": true
+        },
+        "stickSpeed": {
+          "type": "number",
+          "description": "With enabled: the turn per second at the right stick's full deflection (2.6, about 150 degrees).",
+          "default": 2.6,
+          "minimum": 0,
+          "x-og-unit": "radps",
+          "x-og-tunable": true
+        },
+        "gamepad": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "With enabled: the pad whose right stick turns it, counted from 1; 0 every pad.",
+          "default": 0,
+          "maximum": 8
+        },
+        "invertY": {
+          "type": "boolean",
+          "description": "With enabled: moving the mouse or the stick up looks down.",
+          "default": false
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Turn by the mouse while the pointer is locked and by the right stick; false: the game sets yaw and pitch (a lockstep game, where both come from og.PlayerInput).",
+          "default": true
         }
       },
       "additionalProperties": false
@@ -79136,9 +79229,23 @@
     "InputDesc": {
       "x-og-kind": "desc",
       "x-og-module": "net",
-      "description": "This peer's player's input: og.PlayerInput's fields but `player` and `tick`.",
+      "description": "This peer's player's input: og.PlayerInput's fields but `tick`, and `player` for a local seat.",
       "type": "object",
       "properties": {
+        "player": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Local multiplayer: the seat this input is for, when several players share one device. Alone (no room running) any local seat, 0 to 7, each driving the og.PlayerInput whose `player` it is; in a running room only this peer's own seat (og.Lockstep.localPlayer), else refused. Omitted: the local player (seat 0 alone).",
+          "default": null
+        },
         "buttons": {
           "type": "integer",
           "minimum": 0,

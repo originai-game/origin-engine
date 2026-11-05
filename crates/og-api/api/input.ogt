@@ -76,6 +76,9 @@ module input {
       min 0
       unit cssPx
     }
+    field gamepad u32 "Its pad controls read only this pad, counted from 1 (local multiplayer: each seat's actions on its own pad, og.Gamepad's pad gamepad - 1); 0 reads every pad, the one that reads most. Pad bindings on two different pads never conflict, and a rebinding keeps its slot's pad." {
+      max 8
+    }
   }
 
   struct ActionDesc {

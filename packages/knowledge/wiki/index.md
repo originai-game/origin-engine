@@ -176,7 +176,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2303 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2304 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -988,6 +988,7 @@ Field units the docs and Tune use.
 | [`og.DialogueShown`](story.md#record-DialogueShown) | event | story | — |
 | [`og.DirectionalLight`](render.md#record-DirectionalLight) | component | render | — |
 | [`og.Environment`](render.md#record-Environment) | resource | render | — |
+| [`og.FirstPersonCamera`](camera.md#record-FirstPersonCamera) | component | camera | — |
 | [`og.Flipbook`](anim.md#record-Flipbook) | component | anim | — |
 | [`og.FlipbookEvent`](anim.md#record-FlipbookEvent) | event | anim | — |
 | [`og.Fluid2D`](physics.md#record-Fluid2D) | component | physics | — |

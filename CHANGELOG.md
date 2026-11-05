@@ -91,6 +91,16 @@ is one line here, written at the merge that changes
   frames now draw at the configured render scale and preset and are no
   sample of automatic quality; a game's display frames adapt as before.
   No IDL change.
+- **Local seats and a first-person camera.** `og.net.submit` (and
+  `submitInput`, `command`) takes a `player`: outside a room each local
+  seat's input drives its own `og.PlayerInput`, so a game that reads seats
+  plays two on one device and over a room unchanged; in a running room
+  only this peer's seat is accepted. `InputBinding.gamepad` puts a
+  binding's pad controls on one pad, so each seat's actions read its own
+  pad (no cross-seat conflicts; rebinding keeps the pad). New
+  `og.FirstPersonCamera` in `og.systems.cameras`: an eye above the entity
+  turned by the locked mouse and the right stick, or by the game's yaw and
+  pitch. Additive; no world changes for games that use none of them.
 
 - **A flat look's mesh textures keep their patches again.** The flat
   abstraction of a 3D look's colour textures (two Kuwahara passes, then

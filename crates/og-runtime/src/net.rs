@@ -124,11 +124,57 @@ struct Net {
     delivered: BTreeMap<u64, Vec<(&'static str, Value)>>,
     cost: Cost,
     shape: Shape,
-    /// This peer's commands given this tick (og.net.command, packed).
-    given: Vec<Vec<u8>>,
-    /// Outside a run: the local player's commands for a tick, given the
-    /// tick before (og.net.commands reads them as seat 0's).
-    local_commands: (u64, Vec<Vec<u8>>),
+    /// This peer's commands given this tick (og.net.command, packed), each
+    /// with the local seat that gave it (always this peer's in a run).
+    given: Vec<(u32, Vec<u8>)>,
+    /// Outside a run: the local seats' commands for a tick, given the tick
+    /// before (og.net.commands reads them by seat).
+    local_commands: (u64, Vec<(u32, Vec<u8>)>),
+    /// Outside a run: the inputs given for local seats past 0 (og.net.submit
+    /// with `player`: several players on one device); seat 0's is the
+    /// lockstep's local input, as a lobby's.
+    local_seats: BTreeMap<u32, Vec<u8>>,
+}
+
+/// The most local seats one device drives outside a room (og.Gamepad's pads).
+const LOCAL_SEATS: u64 = 8;
+
+/// The seat an og.net.submit or og.net.command names with `player`: omitted,
+/// the local player; alone, any local seat; in a run, only this peer's.
+fn local_seat(engine: u32, value: &Value, what: &str) -> Result<Option<u32>, String> {
+    let Some(p) = value.get("player").filter(|p| !p.is_null()) else {
+        return Ok(None);
+    };
+    let Some(seat) = p.as_u64().filter(|s| *s < LOCAL_SEATS) else {
+        return Err(format!(
+            "{what}: `player` is a local seat, 0 to {}; got {p}",
+            LOCAL_SEATS - 1
+        ));
+    };
+    let seat = seat as u32;
+    let tick = tick_of(engine);
+    with(engine, |n| {
+        if !n.ls.running() {
+            return Ok(Some(seat));
+        }
+        match n.ls.seat(tick) {
+            Some(mine) if mine == seat => Ok(Some(seat)),
+            mine => Err(format!(
+                "{what}: in a running room this peer gives only its own seat's input (og.Lockstep.localPlayer {}), not seat {seat}",
+                mine.map_or("none: it watches".to_string(), |m| m.to_string())
+            )),
+        }
+    })
+}
+
+/// Keeps this peer's input for `seat` (None: the local player).
+fn set_input(n: &mut Net, seat: Option<u32>, bytes: Vec<u8>) {
+    match seat {
+        Some(s) if s > 0 && !n.ls.running() => {
+            n.local_seats.insert(s, bytes);
+        }
+        _ => n.ls.set_local(bytes),
+    }
 }
 
 /// og.net.shape: the game's input record and its commands.
@@ -550,6 +596,10 @@ pub fn og_net_submit(world: u32, input: Option<String>) -> String {
         Ok(d) => d,
         Err(e) => return refuse(e),
     };
+    let seat = match local_seat(world, &d, "og.net.submit") {
+        Ok(s) => s,
+        Err(e) => return refuse(e),
+    };
     let mut fields = serde_json::Map::new();
     for k in ["buttons", "x", "y", "aimX", "aimY"] {
         match d.get(k) {
@@ -561,11 +611,15 @@ pub fn og_net_submit(world: u32, input: Option<String>) -> String {
         }
     }
     if let Some(k) = d.as_object().and_then(|o| {
-        o.keys()
-            .find(|k| !matches!(k.as_str(), "buttons" | "x" | "y" | "aimX" | "aimY"))
+        o.keys().find(|k| {
+            !matches!(
+                k.as_str(),
+                "player" | "buttons" | "x" | "y" | "aimX" | "aimY"
+            )
+        })
     }) {
         return refuse(format!(
-            "og.net.submit takes buttons, x, y, aimX and aimY; not '{k}'"
+            "og.net.submit takes player, buttons, x, y, aimX and aimY; not '{k}'"
         ));
     }
     if let Some(input) = with(world, |n| {
@@ -586,7 +640,7 @@ pub fn og_net_submit(world: u32, input: Option<String>) -> String {
         Ok(b) => b,
         Err(e) => return refuse(e),
     };
-    with(world, |n| n.ls.set_local(bytes));
+    with(world, |n| set_input(n, seat, bytes));
     ok_void()
 }
 
@@ -739,6 +793,7 @@ pub fn og_net_shape(world: u32, desc: Option<String>) -> String {
         }
         n.shape = shape;
         n.given.clear();
+        n.local_seats.clear();
     });
     ok_void()
 }
@@ -766,15 +821,23 @@ pub fn og_net_submit_input(world: u32, component: String, value: String) -> Stri
         Ok(v) => v,
         Err(e) => return refuse(e),
     };
-    if v.get("player").is_some() || v.get("tick").is_some() {
-        return refuse("og.net.submitInput: `player` and `tick` are the engine's");
+    if v.get("tick").is_some() {
+        return refuse("og.net.submitInput: `tick` is the engine's");
+    }
+    let seat = match local_seat(world, &v, "og.net.submitInput") {
+        Ok(s) => s,
+        Err(e) => return refuse(e),
+    };
+    let mut v = v;
+    if let Some(o) = v.as_object_mut() {
+        o.remove("player");
     }
     let Some(layout) = eng.state.borrow().layouts.get(&name).cloned() else {
         return refuse(format!("'{name}' is not registered in this world"));
     };
     match layout.encode(None, Some(&v)) {
         Ok(bytes) => {
-            with(world, |n| n.ls.set_local(bytes));
+            with(world, |n| set_input(n, seat, bytes));
             ok_void()
         }
         Err(e) => refuse(e),
@@ -804,8 +867,13 @@ pub fn og_net_command(world: u32, component: String, value: String) -> String {
         Ok(v) => v,
         Err(e) => return refuse(e),
     };
-    if v.get("player").is_some() {
-        return refuse("og.net.command: `player` is the engine's (the seat that gave it)");
+    let seat = match local_seat(world, &v, "og.net.command") {
+        Ok(s) => s.unwrap_or(0),
+        Err(e) => return refuse(e),
+    };
+    let mut v = v;
+    if let Some(o) = v.as_object_mut() {
+        o.remove("player");
     }
     let Some(layout) = eng.state.borrow().layouts.get(&name).cloned() else {
         return refuse(format!("'{name}' is not registered in this world"));
@@ -826,7 +894,7 @@ pub fn og_net_command(world: u32, component: String, value: String) -> String {
                 shape.max_commands
             ));
         }
-        n.given.push(bytes);
+        n.given.push((seat, bytes));
         ok_void()
     })
 }
@@ -855,11 +923,15 @@ pub fn og_net_commands(world: u32, component: String) -> String {
     let size = shape.command_bytes.max(1);
     let by_seat: Vec<(u32, Vec<Vec<u8>>)> = with(world, |n| {
         if !n.ls.running() {
-            return if n.local_commands.0 == tick {
-                vec![(0, n.local_commands.1.clone())]
-            } else {
-                Vec::new()
-            };
+            if n.local_commands.0 != tick {
+                return Vec::new();
+            }
+            // By seat, then in the order given.
+            let mut by: BTreeMap<u32, Vec<Vec<u8>>> = BTreeMap::new();
+            for (seat, c) in &n.local_commands.1 {
+                by.entry(*seat).or_default().push(c.clone());
+            }
+            return by.into_iter().collect();
         }
         (0..n.ls.players().unwrap_or(0))
             .map(|seat| {
@@ -1107,7 +1179,7 @@ pub(crate) fn after_tick(engine: u32, world: &mut World) {
                 let zero = state_zero(engine, n.shape.input());
                 n.ls.set_local(zero);
             }
-            for c in &given {
+            for (_, c) in &given {
                 n.ls.push_commands(c);
             }
         }
@@ -1176,7 +1248,7 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
                 .filter_map(|n| st.layouts.get(*n).map(|l| (n.to_string(), l.clone())));
                 og_core::sort::map(rows)
             };
-            let (events, desync, running, seat, players, local, seats, input) =
+            let (events, desync, running, seat, players, local, local_seats, seats, input) =
                 with(engine_id, |n| {
                     for m in n.messages.iter_mut().filter(|m| m.tick.is_none()) {
                         m.tick = Some(tick);
@@ -1207,6 +1279,7 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
                         n.ls.seat(tick),
                         n.ls.players(),
                         n.ls.local().to_vec(),
+                        n.local_seats.clone(),
                         n.ls.seat_events(tick),
                         n.shape.input().to_string(),
                     )
@@ -1299,6 +1372,8 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
                         .unwrap_or_else(|| zero.clone())
                 } else if player == 0 && !local.is_empty() {
                     local.clone()
+                } else if let Some(b) = local_seats.get(&player) {
+                    b.clone()
                 } else {
                     zero.clone()
                 };

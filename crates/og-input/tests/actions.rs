@@ -913,3 +913,67 @@ fn key_glyphs_follow_the_layouts_printed_keys() {
     og_input::set_key_labels([]);
     assert_eq!(og_input::key_glyph("KeyQ").text, "Q");
 }
+
+#[test]
+fn two_seats_on_two_pads_read_and_rebind_apart() {
+    // Two local seats: each seat's jump and move on its own pad. The
+    // failure modes: pad 1's A firing seat 0's jump (any-pad reading), the
+    // two seats' `pad.a` reported as a conflict, a rebinding that drops
+    // the slot's pad, and a pad number past the eighth accepted.
+    let on = |pad: u32, b: Binding| Binding { gamepad: pad, ..b };
+    let seat = |n: u32| {
+        [
+            action(
+                &format!("jump@{n}"),
+                ActionKind::Button,
+                vec![on(n + 1, Binding::control("pad.a"))],
+            ),
+            action(
+                &format!("move@{n}"),
+                ActionKind::Axis2,
+                vec![on(n + 1, Binding::control("pad.leftXY"))],
+            ),
+        ]
+    };
+    let mut rig = Rig::new(&[seat(0), seat(1)].concat());
+    rig.tick(&[
+        pad(0, &[], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0], None),
+        pad(1, &["a"], [1.0, 0.0, 0.0, 0.0], [0.0, 0.0], None),
+    ]);
+    assert!(!rig.state("jump@0").down, "pad 1's A is seat 1's alone");
+    assert!(rig.state("jump@1").pressed);
+    assert!(close(rig.state("move@0").value, 0.0));
+    assert!(close(rig.state("move@1").value, 1.0));
+
+    let mut map = rig.map.lock().unwrap();
+    assert!(
+        map.conflicts("jump@0", 0, &on(1, Binding::control("pad.a")))
+            .is_empty()
+    );
+    assert_eq!(
+        map.conflicts("jump@0", 0, &on(2, Binding::control("pad.a")))
+            .len(),
+        1,
+        "both on pad 2 do meet"
+    );
+    // A capture names the control only: the slot keeps seat 0's pad.
+    map.rebind(&RebindDesc {
+        action: "jump@0".into(),
+        slot: 0,
+        part: String::new(),
+        binding: Binding::control("pad.b"),
+        policy: ConflictPolicy::Refuse,
+    })
+    .unwrap();
+    let text = map.save_bindings();
+    drop(map);
+    assert!(text.contains("\"gamepad\":1"), "{text}");
+    rig.tick(&[pad(1, &["b"], [0.0; 4], [0.0, 0.0], None)]);
+    assert!(
+        !rig.state("jump@0").down,
+        "seat 0's B still reads pad 0 only"
+    );
+    rig.tick(&[pad(0, &["b"], [0.0; 4], [0.0, 0.0], None)]);
+    assert!(rig.state("jump@0").pressed);
+    assert!(Binding::from_json(&serde_json::json!({ "control": "pad.a", "gamepad": 9 })).is_err());
+}

@@ -370,6 +370,18 @@ pub struct ReadOptions {
     pub zone: Zone,
     /// A touch stick's full deflection, CSS px (0: 64).
     pub radius: f32,
+    /// Only pad `gamepad - 1` (0: every pad).
+    pub gamepad: u32,
+}
+
+impl ReadOptions {
+    /// The pads a pad control reads.
+    fn pads(&self) -> std::ops::Range<u32> {
+        match self.gamepad {
+            0 => 0..MAX_GAMEPADS as u32,
+            g => (g - 1).min(MAX_GAMEPADS as u32)..g.min(MAX_GAMEPADS as u32),
+        }
+    }
 }
 
 impl Reader<'_> {
@@ -426,7 +438,7 @@ impl Reader<'_> {
                 }
             }
             Control::PadButton(i) => {
-                for pad in 0..MAX_GAMEPADS as u32 {
+                for pad in o.pads() {
                     let (held, pressed, released) = self.pads.masks(pad);
                     let bit = 1u32 << i;
                     if held & bit != 0 || pressed & bit != 0 {
@@ -462,7 +474,7 @@ impl Reader<'_> {
                     Axis::WheelY => (-self.input.wheel.y / 100.0, Device::KeyboardMouse),
                     Axis::Pad(a) => {
                         let mut best = (0.0f32, Device::Xbox);
-                        for pad in 0..MAX_GAMEPADS as u32 {
+                        for pad in o.pads() {
                             if !self.pads.is_connected(pad) {
                                 continue;
                             }
@@ -505,7 +517,7 @@ impl Reader<'_> {
                     } else {
                         (GamepadAxis::RightX, GamepadAxis::RightY)
                     };
-                    for pad in 0..MAX_GAMEPADS as u32 {
+                    for pad in o.pads() {
                         if !self.pads.is_connected(pad) {
                             continue;
                         }

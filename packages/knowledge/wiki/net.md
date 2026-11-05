@@ -22,7 +22,7 @@ module net {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 27862</sub>
+<sub>`api.ogt` line 27914</sub>
 
 ## Contents
 
@@ -36,13 +36,13 @@ module net {
 | [`og.SeatDropped`](#record-SeatDropped) | event | A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeout. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined. |
 | [`og.SeatRejoined`](#record-SeatRejoined) | event | A seat held before is taken again, by its returning player (og.Lockstep.rejoin) or a newcomer: sent at the start of the first tick of its new holder's input, the same tick on every peer (hashed). |
 | [`og.PeerStalled`](#record-PeerStalled) | event | A running peer has sent nothing for a second (or half of stallTimeout, if shorter): for a "waiting for player" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent. |
-| [`InputDesc`](#type-InputDesc) | desc struct | This peer's player's input: og.PlayerInput's fields but `player` and `tick`. |
+| [`InputDesc`](#type-InputDesc) | desc struct | This peer's player's input: og.PlayerInput's fields but `tick`, and `player` for a local seat. |
 | [`NetShapeDesc`](#type-NetShapeDesc) | desc struct | A game's own input shape (og.net.shape): the record each seat's input fills in place of og.PlayerInput, and the commands a seat gives on single ticks (an RTS's orders). |
 | [`LockstepSeat`](#type-LockstepSeat) | struct | One peer's hold on a seat. |
 | [`LockstepStatus`](#type-LockstepStatus) | struct | Lockstep on this peer, as the probe and a HUD read it. |
 | [`og.net.submit`](#fn-submit) | function | Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call, so a game calls it once a tick from a system that reads og.Input (or og.Gamepad, or the UI's touch controls). Callable from a system. |
 | [`og.net.shape`](#fn-shape) | function | Give the room a game's own input shape: a component of the game's in place of og.PlayerInput, and commands (an RTS's orders, a card played, a unit built) that act on one tick only, never repeated by a prediction. Call it in setup or start, outside a system and before the room starts, the same on every peer: a peer whose shape differs is refused the room's start. Without a call, og.PlayerInput and no commands. |
-| [`og.net.submitInput`](#fn-submitInput) | function | Give this peer's player's input when og.net.shape named an input component: its fields as og.net.submit's (`player` and `tick` are the engine's). It holds until the next call. Callable from a system. |
+| [`og.net.submitInput`](#fn-submitInput) | function | Give this peer's player's input when og.net.shape named an input component: its fields as og.net.submit's (`tick` is the engine's; `player` names a local seat as og.net.submit's does). It holds until the next call. Callable from a system. |
 | [`og.net.command`](#fn-command) | function | Give a command for this peer's player: in lockstep, for the tick inputDelay ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system. |
 | [`og.net.commands`](#fn-commands) | function | The commands every seat gave for the tick now running, the same list on every peer: by seat, then in the order given, each with `player` set to its seat. Empty without a command shape. Callable from a system. |
 | [`og.net.status`](#fn-status) | function | Lockstep on this peer: running, the seats and who it waits for. |
@@ -58,6 +58,8 @@ module net {
 
 Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call, so a game calls it once a tick from a system that reads og.Input (or og.Gamepad, or the UI's touch controls). Callable from a system.
 
+Local multiplayer goes through the same call: outside a room, `player` names the local seat each input is for (one call per seat each tick), so a game reads every seat from og.PlayerInput alone, on one device or over a room, with the same one-tick latency and the same replay.
+
 ```ts
 og.net.submit(world: World, input?: InputDesc): Result<void>
 ```
@@ -67,20 +69,21 @@ og.net.submit(world: World, input?: InputDesc): Result<void>
 | `world` | `World` | no | The world. |
 | `input` | `InputDesc` | yes | The buttons and axes. |
 
-**Returns** `Result<void>`: Refused for an axis that is not finite.
+**Returns** `Result<void>`: Refused for an axis that is not finite, or a `player` that is not a local seat (another peer's in a running room, or past 7).
 
 Binding symbol `og_net_submit` · publish builds: kept
 
 ```ogt
 fn submit {
   doc "Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call, so a game calls it once a tick from a system that reads og.Input (or og.Gamepad, or the UI's touch controls). Callable from a system."
+  doc "Local multiplayer goes through the same call: outside a room, `player` names the local seat each input is for (one call per seat each tick), so a game reads every seat from og.PlayerInput alone, on one device or over a room, with the same one-tick latency and the same replay."
   param world World "The world."
   param input InputDesc "The buttons and axes."
-  returns Result.Void "Refused for an axis that is not finite."
+  returns Result.Void "Refused for an axis that is not finite, or a `player` that is not a local seat (another peer's in a running room, or past 7)."
 }
 ```
 
-<sub>`api.ogt` line 28053</sub>
+<sub>`api.ogt` line 28106</sub>
 
 <a id="fn-shape"></a>
 
@@ -110,13 +113,13 @@ fn shape {
 }
 ```
 
-<sub>`api.ogt` line 28060</sub>
+<sub>`api.ogt` line 28114</sub>
 
 <a id="fn-submitInput"></a>
 
 ### `og.net.submitInput`
 
-Give this peer's player's input when og.net.shape named an input component: its fields as og.net.submit's (`player` and `tick` are the engine's). It holds until the next call. Callable from a system.
+Give this peer's player's input when og.net.shape named an input component: its fields as og.net.submit's (`tick` is the engine's; `player` names a local seat as og.net.submit's does). It holds until the next call. Callable from a system.
 
 ```ts
 og.net.submitInput<C extends AnyComponent>(world: World, component: C, value: Partial<Value<C>>): Result<void>
@@ -134,7 +137,7 @@ Binding symbol `og_net_submit_input` · publish builds: kept
 
 ```ogt
 fn submitInput {
-  doc "Give this peer's player's input when og.net.shape named an input component: its fields as og.net.submit's (`player` and `tick` are the engine's). It holds until the next call. Callable from a system."
+  doc "Give this peer's player's input when og.net.shape named an input component: its fields as og.net.submit's (`tick` is the engine's; `player` names a local seat as og.net.submit's does). It holds until the next call. Callable from a system."
   generic C AnyComponent
   param world World "The world."
   param component C "The input component og.net.shape named."
@@ -143,13 +146,15 @@ fn submitInput {
 }
 ```
 
-<sub>`api.ogt` line 28067</sub>
+<sub>`api.ogt` line 28121</sub>
 
 <a id="fn-command"></a>
 
 ### `og.net.command`
 
 Give a command for this peer's player: in lockstep, for the tick inputDelay ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system.
+
+Its `player` is the engine's: omitted, the local player. Outside a room it may name a local seat (local multiplayer: og.net.commands then reads it as that seat's); in a running room only this peer's own.
 
 ```ts
 og.net.command<C extends AnyComponent>(world: World, component: C, value: Partial<Value<C>>): Result<void>
@@ -159,24 +164,25 @@ og.net.command<C extends AnyComponent>(world: World, component: C, value: Partia
 |---|---|---|---|
 | `world` | `World` | no | The world. |
 | `component` | `C` | no | The command component og.net.shape named. |
-| `value` | `Partial<Value<C>>` | no | Its fields (`player` is the engine's). |
+| `value` | `Partial<Value<C>>` | no | Its fields (`player`, when given, a local seat). |
 
-**Returns** `Result<void>`: Refused with no command shape, for another component, or past maxCommands this tick.
+**Returns** `Result<void>`: Refused with no command shape, for another component, past maxCommands this tick, or for a `player` that is not a local seat.
 
 Binding symbol `og_net_command` · publish builds: kept
 
 ```ogt
 fn command {
   doc "Give a command for this peer's player: in lockstep, for the tick inputDelay ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system."
+  doc "Its `player` is the engine's: omitted, the local player. Outside a room it may name a local seat (local multiplayer: og.net.commands then reads it as that seat's); in a running room only this peer's own."
   generic C AnyComponent
   param world World "The world."
   param component C "The command component og.net.shape named."
-  param value Partial.Value.C "Its fields (`player` is the engine's)."
-  returns Result.Void "Refused with no command shape, for another component, or past maxCommands this tick."
+  param value Partial.Value.C "Its fields (`player`, when given, a local seat)."
+  returns Result.Void "Refused with no command shape, for another component, past maxCommands this tick, or for a `player` that is not a local seat."
 }
 ```
 
-<sub>`api.ogt` line 28076</sub>
+<sub>`api.ogt` line 28130</sub>
 
 <a id="fn-commands"></a>
 
@@ -207,7 +213,7 @@ fn commands {
 }
 ```
 
-<sub>`api.ogt` line 28085</sub>
+<sub>`api.ogt` line 28140</sub>
 
 <a id="fn-status"></a>
 
@@ -235,7 +241,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 28093</sub>
+<sub>`api.ogt` line 28148</sub>
 
 <a id="fn-resimulating"></a>
 
@@ -263,7 +269,7 @@ fn resimulating {
 }
 ```
 
-<sub>`api.ogt` line 28099</sub>
+<sub>`api.ogt` line 28154</sub>
 
 <a id="fn-finalHash"></a>
 
@@ -293,7 +299,7 @@ fn finalHash {
 }
 ```
 
-<sub>`api.ogt` line 28105</sub>
+<sub>`api.ogt` line 28160</sub>
 
 <a id="fn-hash"></a>
 
@@ -321,7 +327,7 @@ fn hash {
 }
 ```
 
-<sub>`api.ogt` line 28112</sub>
+<sub>`api.ogt` line 28167</sub>
 
 ## Components, resources and events
 
@@ -392,7 +398,7 @@ resource Lockstep {
 }
 ```
 
-<sub>`api.ogt` line 27883</sub>
+<sub>`api.ogt` line 27935</sub>
 
 <a id="record-PlayerInput"></a>
 
@@ -433,7 +439,7 @@ component PlayerInput {
 }
 ```
 
-<sub>`api.ogt` line 27927</sub>
+<sub>`api.ogt` line 27979</sub>
 
 <a id="record-Desync"></a>
 
@@ -458,7 +464,7 @@ event Desync {
 }
 ```
 
-<sub>`api.ogt` line 27946</sub>
+<sub>`api.ogt` line 27998</sub>
 
 <a id="record-SeatDropped"></a>
 
@@ -485,7 +491,7 @@ event SeatDropped {
 }
 ```
 
-<sub>`api.ogt` line 27953</sub>
+<sub>`api.ogt` line 28005</sub>
 
 <a id="record-SeatRejoined"></a>
 
@@ -510,7 +516,7 @@ event SeatRejoined {
 }
 ```
 
-<sub>`api.ogt` line 27961</sub>
+<sub>`api.ogt` line 28013</sub>
 
 <a id="record-PeerStalled"></a>
 
@@ -537,7 +543,7 @@ event PeerStalled {
 }
 ```
 
-<sub>`api.ogt` line 27968</sub>
+<sub>`api.ogt` line 28020</sub>
 
 ## Types
 
@@ -562,18 +568,19 @@ enum NetMode {
 }
 ```
 
-<sub>`api.ogt` line 27870</sub>
+<sub>`api.ogt` line 27922</sub>
 
 <a id="type-InputDesc"></a>
 
 ### `InputDesc` (desc struct)
 
-This peer's player's input: og.PlayerInput's fields but `player` and `tick`.
+This peer's player's input: og.PlayerInput's fields but `tick`, and `player` for a local seat.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
+| `player` | `number \| null` | `null` | — | — | — | Local multiplayer: the seat this input is for, when several players share one device. Alone (no room running) any local seat, 0 to 7, each driving the og.PlayerInput whose `player` it is; in a running room only this peer's own seat (og.Lockstep.localPlayer), else refused. Omitted: the local player (seat 0 alone). |
 | `buttons` | `number` | `0` | — | — | — | The buttons held, one bit each. |
 | `x` | `number` | `0` | — | — | — | The move axis, -1 to 1. |
 | `y` | `number` | `0` | — | — | — | The move axis, -1 to 1. |
@@ -582,8 +589,9 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct InputDesc {
-  doc "This peer's player's input: og.PlayerInput's fields but `player` and `tick`."
+  doc "This peer's player's input: og.PlayerInput's fields but `tick`, and `player` for a local seat."
   desc true
+  field player Option.u32 "Local multiplayer: the seat this input is for, when several players share one device. Alone (no room running) any local seat, 0 to 7, each driving the og.PlayerInput whose `player` it is; in a running room only this peer's own seat (og.Lockstep.localPlayer), else refused. Omitted: the local player (seat 0 alone)."
   field buttons u32 "The buttons held, one bit each."
   field x f32 "The move axis, -1 to 1."
   field y f32 "The move axis, -1 to 1."
@@ -592,7 +600,7 @@ struct InputDesc {
 }
 ```
 
-<sub>`api.ogt` line 27977</sub>
+<sub>`api.ogt` line 28029</sub>
 
 <a id="type-NetShapeDesc"></a>
 
@@ -622,7 +630,7 @@ struct NetShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 27987</sub>
+<sub>`api.ogt` line 28040</sub>
 
 <a id="type-LockstepSeat"></a>
 
@@ -653,7 +661,7 @@ struct LockstepSeat {
 }
 ```
 
-<sub>`api.ogt` line 27999</sub>
+<sub>`api.ogt` line 28052</sub>
 
 <a id="type-LockstepStatus"></a>
 
@@ -728,7 +736,7 @@ struct LockstepStatus {
 }
 ```
 
-<sub>`api.ogt` line 28012</sub>
+<sub>`api.ogt` line 28065</sub>
 
 ## Column kinds
 
@@ -747,4 +755,4 @@ column NetMode {
 }
 ```
 
-<sub>`api.ogt` line 27876</sub>
+<sub>`api.ogt` line 27928</sub>

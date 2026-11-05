@@ -1,7 +1,7 @@
 module camera {
   skill og-feel
   doc "The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names."
-  doc "Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras."
+  doc "Camera controllers are components (OrbitCamera, FollowCamera, FirstPersonCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras."
 
   resource Camera {
     doc "The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation."
@@ -233,6 +233,55 @@ module camera {
       min 0
       unit s
       tunable true
+    }
+  }
+
+  component FirstPersonCamera {
+    doc "Looks out of the entity carrying it: a first-person 3D view whose eye sits `eye` above the entity's position and turns by `yaw` about +Y and `pitch` up from the horizon (three.js PointerLockControls, with a pad's right stick). With `enabled` it turns by the mouse's movement while the pointer is locked (og.Pointers.movement; set og.PointerLock.wanted during play) and by the right stick of `gamepad`; otherwise the game sets yaw and pitch, as a lockstep game does from og.PlayerInput's aim. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera."
+    doc "It moves only og.Camera and its own yaw and pitch: the game turns the body and walks it along `yaw` (forward is (-sin yaw, 0, -cos yaw)). Every angle is computed with deterministic arithmetic, so a replay looks the same way on every host."
+    field eye Vector3 "Where the eye sits relative to the entity's position, in world axes (a capsule's head height)." {
+      default 0 1.6 0
+      worldspace none
+      unit m
+    }
+    field yaw f32 "The heading about +Y: 0 looks along -Z, and it grows turning left (counter-clockwise from above)." {
+      unit rad
+      tunable true
+    }
+    field pitch f32 "How far above the horizon it looks (below 0 looks down), held between minPitch and maxPitch." {
+      unit rad
+      tunable true
+    }
+    field minPitch f32 "The lowest pitch: just short of straight down by default." {
+      default -1.48
+      min -1.5707
+      max 0
+      unit rad
+    }
+    field maxPitch f32 "The highest pitch: just short of straight up by default." {
+      default 1.48
+      min 0
+      max 1.5707
+      unit rad
+    }
+    field sensitivity f32 "With enabled: the turn per CSS pixel of mouse movement while the pointer is locked (0.0021, about 0.12 degrees)." {
+      default 0.0021
+      min 0
+      unit rad
+      tunable true
+    }
+    field stickSpeed f32 "With enabled: the turn per second at the right stick's full deflection (2.6, about 150 degrees)." {
+      default 2.6
+      min 0
+      unit radps
+      tunable true
+    }
+    field gamepad u32 "With enabled: the pad whose right stick turns it, counted from 1; 0 every pad." {
+      max 8
+    }
+    field invertY bool "With enabled: moving the mouse or the stick up looks down."
+    field enabled bool "Turn by the mouse while the pointer is locked and by the right stick; false: the game sets yaw and pitch (a lockstep game, where both come from og.PlayerInput)." {
+      default true
     }
   }
 
