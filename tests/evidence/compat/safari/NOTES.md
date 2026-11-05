@@ -75,6 +75,26 @@ says so.
 | og-probe wire (wire.ts) | 110 of 117 | (1) dev isolated: the first tap on the gate did not start the clock; later runs' taps did. Likely the first pointer action in a new Safari window (harness), to confirm. (2) record {seconds: 1} answered 0 bytes in 2 of 4 runs (video/webm; codecs=vp8): shell/wire.ts stops a start(1000) MediaRecorder at 1000 ms; an engine race to fix (a probe page, .amp-side, was queued). (3) after Page.reload the parent page's `window.wire` never appeared in 4 runs: the harness's reload over WebDriver, to debug. |
 | fx-showcase E5 and looks, iOS Simulator | not run | stopped by the pause |
 
+## Resumed (2026-11-05): triage
+
+Rebased onto origin/main 6f27e2201 in lane-12. Development has the GPU
+until the wave-end run reports, so only the GPU-free rows moved so far;
+`run.sh` (beside this file) is how every remaining run is made, one GPU
+slot each, queued behind development's waiters.
+
+| Finding | Class | State |
+|---|---|---|
+| `record {seconds: 1}` answered 0 bytes (2 of 4 runs) | engine bug (Safari behaviour the engine tripped) | fixed, f5958a92b. Safari 27.2 answers a `stop()` on a MediaRecorder timeslice boundary with one empty chunk: on a 2D canvas's capture stream, `start(1000)` stopped at 1000 ms was empty 16 of 16, `start()` 0 of 16. The wire now records without a timeslice and answers `failed` on no data. wire.ts `--safari` is the test that fails on the old code; to rerun. |
+| `window.wire` never appeared after a reload (4 of 4) | harness | fixed, 60fe1ae67: webdriver.ts's eval JSON-stringified a function to `undefined`, so `until("window.wire")` never passed (CDP returns `{}`). A static page's reload now passes 3 of 3. |
+| first tap on the gate did not start the clock (1 run) | harness (probably) | 60fe1ae67 polls for 3 s. Taps reach a cross-origin frame on the first try in a plain page; the transcript shows the `tick` after the tap answered 594 ms late and stale, the clock running by the next calls. Hypothesis to confirm on a GPU run: the gate's `fullscreen()` transition stalls Safari's page. |
+| 26 black frames: every terrain-*, the terrain_scenes water-* (water-planar, -shadows, -underwater), grass-*, impostor-scatter, sprites-shadow-terrain | engine or WebKit bug, not legitimate | open. The common part is the terrain renderer, not GPU culling: the water scenes in fork_scenes.rs (no terrain) pass. The frames are black including the sky, which reads as a rejected command buffer (a WebGPU validation error drops the whole submit), not shading. The earlier run's log was empty because the browser prints uncaptured errors only to its own console: og-tests-web now fails the capture with them (60fe1ae67). Next: gfx `--scene terrain-steep,spheres-20k` in Safari. |
+| spheres-20k torn triangles | engine or WebKit bug | open; with and without `--cpu-culling` next. |
+| skinned limbs scattered (stylise-*, fx lens) | engine or WebKit bug | open. |
+| point-spot-lights, post-sharpen RMSE 0.015-0.016 | unknown | needs the Chrome control. |
+| 61 pipelines in 23 s behind the gate | performance, shared with web boot (T-01a1a707) | needs Chrome's number on the same Mac. |
+| og-ui kit frames | stale Metal references then | rerun against current main. |
+| iOS Simulator: `requestAdapter()` null | legitimate (no WebGPU in the Simulator) | noted, not chased. |
+
 ## To resume
 
 Run the Chrome controls first (fx, gfx, e5, ui, wire) and compare each
