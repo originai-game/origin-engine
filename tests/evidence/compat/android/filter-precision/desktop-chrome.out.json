@@ -1,0 +1,37 @@
+{
+ "adapter": "nvidia blackwell",
+ "rgba8unorm": {
+  "distinctValues": 257,
+  "worstError": 0.001961,
+  "atCentre": {
+   "0": 0,
+   "-0.0001": 0,
+   "-0.00001": 0,
+   "0.00001": 0,
+   "0.0001": 0
+  }
+ },
+ "rgba16float": {
+  "distinctValues": 257,
+  "worstError": 0.001953,
+  "atCentre": {
+   "0": 0,
+   "-0.0001": 0,
+   "-0.00001": 0,
+   "0.00001": 0,
+   "0.0001": 0
+  }
+ },
+ "pass-interpolated": {
+  "wrongPixels": 0,
+  "worst": 0,
+  "columns": [],
+  "row0": "255 255 255 255 0 0 0 0 255 255 255 255 0 0 0 0"
+ },
+ "pass-from_position": {
+  "wrongPixels": 0,
+  "worst": 0,
+  "columns": [],
+  "row0": "255 255 255 255 0 0 0 0 255 255 255 255 0 0 0 0"
+ }
+}
