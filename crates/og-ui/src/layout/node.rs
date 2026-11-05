@@ -22,6 +22,16 @@ pub(crate) enum Shape {
         angle: f32,
         color: Srgba,
     },
+    /// A ring's arc on the circle the frame holds: `sweep` radians from
+    /// `start` (clockwise from +x on screen), `thickness` CSS px inwards,
+    /// round ends.
+    Arc {
+        frame: Frame,
+        start: f32,
+        sweep: f32,
+        thickness: f32,
+        color: Srgba,
+    },
     /// A texture region.
     Image {
         frame: Frame,

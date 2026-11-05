@@ -587,6 +587,34 @@ impl Ui {
                         clip,
                     });
                 }
+                Shape::Arc {
+                    frame,
+                    start,
+                    sweep,
+                    thickness,
+                    color,
+                } => {
+                    use crate::paint::{Cap, ElementDraw, Paint, Placed, ShapeKind};
+                    let draw = ElementDraw {
+                        shape: ShapeKind::Arc {
+                            start: *start,
+                            sweep: *sweep,
+                            thickness: *thickness,
+                            cap: Cap::Round,
+                        },
+                        fills: vec![Paint::Solid((*color).into())],
+                        ..ElementDraw::default()
+                    };
+                    cmds.extend(draw.enter(
+                        &self.theme,
+                        &Placed {
+                            rect: frame.resolve(&n.rect),
+                            radius: 0.0,
+                            clip,
+                            alpha,
+                        },
+                    ));
+                }
                 Shape::Image {
                     frame,
                     texture,

@@ -306,21 +306,15 @@ impl Ui {
             out.active = true;
         }
         let knob = size * 0.4;
-        let travel = radius - knob / 2.0 - 2.0;
+        // The knob (its rim disc knob + 2 across) stops a pixel inside the
+        // base's 2 px rim: pushed full, it leans on the ring, never over it.
+        let rim = 2.0;
+        let travel = radius - rim - 1.0 - (knob + 2.0) / 2.0;
         let n = &mut self.nodes[i];
         if desc.disabled {
             n.props.opacity = DISABLED_OPACITY;
         }
-        // Held, a lit arc of the rim toward the push: the primary along the
-        // edge the thumb leans to.
         let (kx, ky) = (kx * travel, ky * travel);
-        if out.active && (kx != 0.0 || ky != 0.0) {
-            let len = (kx * kx + ky * ky).sqrt().max(1e-3);
-            let (ux, uy) = (kx / len, ky / len);
-            let at = radius - knob * 0.35;
-            n.shapes
-                .push(disc(ux * at, uy * at, knob * 0.7, p.primary.fade(0.35)));
-        }
         // The knob: a drop, a rim, its face in the knob's colour, a sheen.
         n.shapes
             .push(disc(kx, ky + 2.0, knob + 2.0, p.shadow.fade(0.45)));
@@ -338,6 +332,20 @@ impl Ui {
         ));
         n.shapes
             .push(disc(kx, ky - knob * 0.16, knob * 0.5, p.sheen.fade(0.35)));
+        // Held, the base's rim lit toward the push, after the knob (whose
+        // drop reaches the rim), brighter as the push grows: the primary
+        // along the edge the thumb leans to, a fifth of the way round.
+        if out.active && (kx != 0.0 || ky != 0.0) {
+            let lean = (kx * kx + ky * ky).sqrt() / travel.max(1e-3);
+            let sweep = 0.4 * std::f32::consts::PI;
+            n.shapes.push(Shape::Arc {
+                frame: Frame::FULL,
+                start: ky.atan2(kx) - sweep / 2.0,
+                sweep,
+                thickness: rim + 1.0,
+                color: p.primary.fade(0.4 + 0.6 * lean.min(1.0)),
+            });
+        }
         out
     }
 
