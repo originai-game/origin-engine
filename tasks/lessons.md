@@ -77,3 +77,14 @@ waiting on one long single-slot job blocks everyone else. A subshell's `$$`
 is its parent's pid, so a lock's owner looks unchanged across runs.
 Never rewrite a shell script in place while a running `sh` is still
 reading it.
+Push a head's branch to origin before naming it to the landing thread:
+the lander then lands that exact commit instead of cherry-picking from
+a lane (the art runner, 2026-11-05, midpoint shadows).
+Keep one GPU slot's job short: never chain a long suite (ui-kit's og test
+ran 25 minutes) behind the frames that matter; it held a slot everyone
+waited on, my own all-slot timing included.
+Don't judge a render-pass change on Apple GPUs by summing each pass's
+own timestamps: tile-based passes overlap, so the sum overstates the
+cost (12.4 ms summed for under 5 ms of real frame time). Measure the
+frame's wall time moving against still, less the CPU encode, with every
+binary built the same way.
