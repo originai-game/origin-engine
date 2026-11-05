@@ -644,10 +644,9 @@ function textScreen(world: World): void {
     // The 大观园 page: an inscription is a line in a box the page draws itself, its field tight to the line (no inset,
     // the line's height) and bare (the box is its frame), dressed as Verse.
     for (const [id, key, hint] of [["Verse", "verse", "题一匾额"], ["Reply", "reply", "续一句"]] as const) {
-      og.ui.row(`${id}Box`, { width: grow, padding: { left: t.space.md, top: t.space.sm, right: t.space.md, bottom: t.space.sm } }, () => {
-        // The page's own box: its ground and its rule, drawn by the page, not by the field.
-        const r = t.radius.control;
-        og.ui.setDraw({ shape: { kind: "rect", radii: [r, r, r, r] }, fills: [{ kind: "solid", color: { token: "well" } }], strokes: [{ width: 1.5, align: "inside", paint: { kind: "solid", color: { token: "lineStrong" } } }] });
+      // The page's own box, not the field's: the style's field frame (a pack's ornament, a seed's ground and rule).
+      const box = { left: t.space.md, top: t.space.sm, right: t.space.md, bottom: t.space.sm };
+      og.ui.row(`${id}Box`, { width: grow, padding: box, background: { token: "well" }, radius: t.radius.control, frame: "field" }, () => {
         const v = og.ui.textField(id, typed.value[key], { placeholder: hint, width: grow, maxChars: VERSE_CHARS, bare: true, tight: true, component: "Verse" }).value;
         if (v !== typed.value[key]) typed.value[key] = v;
       });

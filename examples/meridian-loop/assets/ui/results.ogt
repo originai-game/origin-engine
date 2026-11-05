@@ -53,36 +53,38 @@ column Results {
       width grow
       gap 12
     }
-    # Two by two at every width: four labels in one row ran past the
-    # panel's 372 px (Title over its border), German's further.
-    row Actions {
+    # Two by two at every width, in equal columns: four labels in one row
+    # ran past the panel's 372 px (Title over its border), German's
+    # further, and a wrapping row gave German's long "Watch replay" the
+    # wider half.
+    grid Actions {
       width grow
       gap 8
-      wrap true
+      columns "1fr" "1fr"
       button again {
         key "results.again"
         text "Again"
         variant primary
-        width grow 160
+        width grow
         on click emit again
       }
       button replay {
         key "results.replay"
         text "Watch replay"
-        width grow 160
+        width grow
         visible bind replay
         on click emit replay
       }
       button board {
         key "results.board"
         text "Leaderboard"
-        width grow 160
+        width grow
         on click emit board
       }
       button title {
         key "results.title"
         text "Title"
-        width grow 160
+        width grow
         on click emit title
       }
     }
