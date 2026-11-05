@@ -1,11 +1,15 @@
 {
-  "schemaVersion": 2,
-  "about": "Origin Engine's style catalogue: 37 art styles in the engine's own words, each with what a critic checks on a rendered frame and what it must not hold as a defect (`intended`: the traits that look like defects but are the style, such as hard pixel steps, dither or broken edges; it never names the style, so a blind critic reads it too), the premises it fits, the look preset it maps to (an .ogt of type look; `extends \"<slug>\"` in a game's own look builds on it), the built-in UI style its look's `ui` line names, palette and asset specs, and an art-bible direction the agent expands per project. `preview` is a picture of the style as a game, 960x540 (previews/<slug>.webp against the root of the package that carries the catalogue: @origingame/engine/knowledge and @origingame/create-game; not in the platform mount, whose payload is text). `look.layers` names what the style needs: frame (the look's render resources), conform (the cook makes the assets meet the look's art contract), runtime (sprite outline, palette swap, pixel-art rotation, camera presets), authored (art no conformance makes); `look.support` follows from them: full when every layer but authored is implemented, content when authored art is needed, partial otherwise, with `missing` naming what (docs/art.md). `look.family` is the sample scene the style is proven on. og-taste §12 explains how to use it. The descriptions are original; no game or studio is the reference for a style.",
+  "schemaVersion": 3,
+  "about": "Origin Engine's style catalogue: 37 art styles in the engine's own words, each with what a critic checks on a rendered frame and what it must not hold as a defect (`intended`: the traits that look like defects but are the style, such as hard pixel steps, dither or broken edges; it never names the style, so a blind critic reads it too), the premises it fits, the look preset it maps to (an .ogt of type look; `extends \"<slug>\"` in a game's own look builds on it), the built-in UI style its look's `ui` line names, palette and asset specs, and an art-bible direction the agent expands per project. `preview` is a picture of the style as a game, 960x540 (previews/<slug>.webp against the root of the package that carries the catalogue: @origingame/engine/knowledge and @origingame/create-game; not in the platform mount, whose payload is text). `look.layers` names what the style needs: frame (the look's render resources), conform (the cook makes the assets meet the look's art contract), runtime (sprite outline, palette swap, pixel-art rotation, camera presets), authored (art no conformance makes); `look.support` follows from them: full when every layer but authored is implemented, content when authored art is needed, partial otherwise, with `missing` naming what, and a content style's `look.authored` the art it needs, each a kind of the art brief and what it must be (artBrief asks for exactly that, docs/art.md). `category` groups the styles in plain terms (`categories` names each group); `look.views` lists the views it suits (side-2d, top-down-2d, isometric-2.5d, third-person-3d, first-person-3d: the creation choice's words), only those its profiles draw; `look.mood` is the mood its preset is drawn in, one of bright, dark, warm, cold, soft and high-contrast, any of which a game's look may ask for instead (docs/art.md §2.9). og-taste §12 explains how to use it. The descriptions are original; no game or studio is the reference for a style.",
   "categories": {
-    "pixel": "Pixel and retro",
-    "paint": "Paint and line",
-    "shape": "Shape and material",
-    "render": "3D rendering"
+    "pixel": "Pixel art",
+    "retro-3d": "Retro 3D",
+    "painted": "Hand-drawn and painted",
+    "ink": "Ink and comic",
+    "toon-3d": "Toon and stylised 3D",
+    "crafted-3d": "Low-poly, toy and handmade 3D",
+    "graphic": "Flat and graphic",
+    "realistic": "Realistic"
   },
   "ui": [
     "pixel",
@@ -20,7 +24,7 @@
     {
       "slug": "expressionist-painting",
       "name": "Expressionist paint",
-      "category": "paint",
+      "category": "painted",
       "descriptor": "Visible brush marks, clashing colour masses and distorted faces turn every frame into an emotional painting.",
       "preview": "previews/expressionist-painting.webp",
       "checks": [
@@ -44,11 +48,16 @@
           "conform",
           "authored"
         ],
-        "family": "paint-2d",
         "profiles": [
           "2d",
           "3d"
         ],
+        "views": [
+          "side-2d",
+          "isometric-2.5d",
+          "third-person-3d"
+        ],
+        "mood": "high-contrast",
         "primitives": [
           "Stylise.paintRadius",
           "Stylise.paintCanvas",
@@ -56,6 +65,16 @@
         ],
         "missing": [
           "the painting is content: painted portraits and backdrops"
+        ],
+        "authored": [
+          {
+            "kind": "portrait",
+            "what": "painted by hand in thick, visible brush strokes: the face distorted for feeling, shadows in saturated greens and violets, edges between colour masses broken"
+          },
+          {
+            "kind": "backdrop",
+            "what": "painted by hand as one canvas: three to five clashing colour masses, every surface carrying the brush, no photographic texture or clean gradient"
+          }
         ]
       },
       "ui": "storybook",
@@ -82,7 +101,7 @@
     {
       "slug": "bold-comic-illustration",
       "name": "Bold comic illustration",
-      "category": "paint",
+      "category": "ink",
       "descriptor": "Strong contours, sharply grouped values and saturated accents against deep shadow, for instant readability in motion.",
       "preview": "previews/bold-comic-illustration.webp",
       "checks": [
@@ -106,11 +125,17 @@
           "conform",
           "runtime"
         ],
-        "family": "ink-3d",
         "profiles": [
           "2d",
           "3d"
         ],
+        "views": [
+          "side-2d",
+          "top-down-2d",
+          "isometric-2.5d",
+          "third-person-3d"
+        ],
+        "mood": "high-contrast",
         "primitives": [
           "StandardMaterialDesc.toon",
           "PostEffects.outline",
@@ -143,7 +168,7 @@
     {
       "slug": "watercolor-wash",
       "name": "Watercolour wash",
-      "category": "paint",
+      "category": "painted",
       "descriptor": "Transparent layers, pooled pigment at the edges and open paper space give scenes a soft, breathing quality.",
       "preview": "previews/watercolor-wash.webp",
       "checks": [
@@ -166,11 +191,17 @@
           "frame",
           "conform"
         ],
-        "family": "paint-2d",
         "profiles": [
           "2d",
           "3d"
         ],
+        "views": [
+          "side-2d",
+          "top-down-2d",
+          "isometric-2.5d",
+          "third-person-3d"
+        ],
+        "mood": "soft",
         "primitives": [
           "Stylise.paintEdgeDarkening",
           "Stylise.paintBleed",
@@ -203,7 +234,7 @@
     {
       "slug": "pixel-3d-hybrid",
       "name": "Pixel sprites in 3D sets",
-      "category": "pixel",
+      "category": "retro-3d",
       "descriptor": "Pixel-art characters and props stand in lit 3D sets with depth of field, shadows and reflections, while their own edges stay crisp.",
       "preview": "previews/pixel-3d-hybrid.webp",
       "checks": [
@@ -227,10 +258,14 @@
           "conform",
           "runtime"
         ],
-        "family": "pixel-3d",
         "profiles": [
           "3d"
         ],
+        "views": [
+          "isometric-2.5d",
+          "third-person-3d"
+        ],
+        "mood": "warm",
         "primitives": [
           "PostEffects.depthOfField",
           "PostEffects.ao",
@@ -265,7 +300,7 @@
     {
       "slug": "faceted-low-poly",
       "name": "Faceted low poly",
-      "category": "render",
+      "category": "crafted-3d",
       "descriptor": "Visible polygon facets and simplified meshes, broad colour fields in place of textures, depth from silhouettes and layers.",
       "preview": "previews/faceted-low-poly.webp",
       "checks": [
@@ -288,10 +323,15 @@
           "frame",
           "conform"
         ],
-        "family": "shape-3d",
         "profiles": [
           "3d"
         ],
+        "views": [
+          "isometric-2.5d",
+          "third-person-3d",
+          "first-person-3d"
+        ],
+        "mood": "soft",
         "primitives": [
           "StandardMaterialDesc.flatShading",
           "Fog",
@@ -323,7 +363,7 @@
     {
       "slug": "sculpted-clay",
       "name": "Sculpted clay",
-      "category": "render",
+      "category": "crafted-3d",
       "descriptor": "Tactile, slightly lumpy surfaces with blunt edges and fingerprint irregularity, often moving with the stutter of stop motion.",
       "preview": "previews/sculpted-clay.webp",
       "checks": [
@@ -347,10 +387,14 @@
           "conform",
           "authored"
         ],
-        "family": "shape-3d",
         "profiles": [
           "3d"
         ],
+        "views": [
+          "isometric-2.5d",
+          "third-person-3d"
+        ],
+        "mood": "warm",
         "primitives": [
           "StandardMaterialDesc.roughness",
           "StandardMaterialDesc.sheen",
@@ -362,6 +406,16 @@
         ],
         "missing": [
           "sculpted forms: chunky, rounded, hand-modelled characters and props (the engine draws the clay surface, MaterialStyle.surface clay, and bevels on whatever it is given; primitive blockouts stay primitives and do not read as clay at play distance)"
+        ],
+        "authored": [
+          {
+            "kind": "character",
+            "what": "hand-modelled in clay: chunky, rounded, slightly lumpy forms with thumb-pressed dents, thick limbs and no thin parts; the engine adds the clay surface and bevels, the forms must be clay already"
+          },
+          {
+            "kind": "prop",
+            "what": "hand-modelled in clay: chunky, rounded, soft-cornered forms with uneven, pressed surfaces; never a primitive blockout"
+          }
         ]
       },
       "ui": "cartoon",
@@ -412,10 +466,14 @@
           "conform",
           "runtime"
         ],
-        "family": "pixel-side",
         "profiles": [
           "2d"
         ],
+        "views": [
+          "side-2d",
+          "top-down-2d"
+        ],
+        "mood": "bright",
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.palette",
@@ -449,7 +507,7 @@
     {
       "slug": "voxel-worlds",
       "name": "Voxel worlds",
-      "category": "render",
+      "category": "crafted-3d",
       "descriptor": "Cubes build characters, architecture and terrain, visible in stepped silhouettes and broken edges, under any lighting.",
       "preview": "previews/voxel-worlds.webp",
       "checks": [
@@ -472,10 +530,15 @@
           "frame",
           "conform"
         ],
-        "family": "shape-3d",
         "profiles": [
           "3d"
         ],
+        "views": [
+          "isometric-2.5d",
+          "third-person-3d",
+          "first-person-3d"
+        ],
+        "mood": "bright",
         "primitives": [
           "StandardMaterialDesc.flatShading",
           "PostEffects.ao",
@@ -507,7 +570,7 @@
     {
       "slug": "illuminated-manuscript",
       "name": "Manuscript page",
-      "category": "paint",
+      "category": "painted",
       "descriptor": "Scenes composed like a decorated page: flat figures, ink lines, ornamental borders and lettering woven into the image.",
       "preview": "previews/illuminated-manuscript.webp",
       "checks": [
@@ -531,10 +594,14 @@
           "conform",
           "authored"
         ],
-        "family": "paint-2d",
         "profiles": [
           "2d"
         ],
+        "views": [
+          "side-2d",
+          "top-down-2d"
+        ],
+        "mood": "warm",
         "primitives": [
           "Stylise.paintCanvas",
           "Stylise.ink",
@@ -542,6 +609,20 @@
         ],
         "missing": [
           "the page is content: figures, borders and lettering"
+        ],
+        "authored": [
+          {
+            "kind": "character",
+            "what": "drawn as a manuscript figure: flat, stylised, in profile or three-quarter, ink contours filled with flat pigment and gold leaf, no cast shadows"
+          },
+          {
+            "kind": "styleFrame",
+            "what": "an illuminated page border: interlaced vines, knotwork and gold, drawn by hand around a plain vellum centre"
+          },
+          {
+            "kind": "ornament",
+            "what": "a decorated initial or marginal flourish drawn by hand: ink line, flat pigment and gold leaf on vellum"
+          }
         ]
       },
       "ui": "storybook",
@@ -568,7 +649,7 @@
     {
       "slug": "rubber-hose-animation",
       "name": "Rubber-hose cartoon",
-      "category": "paint",
+      "category": "painted",
       "descriptor": "Round-headed characters with bendy tube limbs, pie-cut eyes and constant squash and stretch, inked like early theatrical cartoons.",
       "preview": "previews/rubber-hose-animation.webp",
       "checks": [
@@ -592,10 +673,13 @@
           "conform",
           "authored"
         ],
-        "family": "paint-2d",
         "profiles": [
           "2d"
         ],
+        "views": [
+          "side-2d"
+        ],
+        "mood": "high-contrast",
         "primitives": [
           "PostEffects.filmGrain",
           "PostEffects.vignette",
@@ -604,6 +688,16 @@
         ],
         "missing": [
           "frame-by-frame animation is content: flipbooks drawn on 12s"
+        ],
+        "authored": [
+          {
+            "kind": "character",
+            "what": "drawn frame by frame for animation on 12s: limbs as bending hoses without elbows or knees, white gloves, pie-cut eyes, a bouncing squash and stretch in every pose, heavy black ink"
+          },
+          {
+            "kind": "sprite",
+            "what": "drawn frame by frame on 12s as one flipbook sheet, each frame a new drawing, never one drawing moved or rotated"
+          }
         ]
       },
       "ui": "cartoon",
@@ -630,7 +724,7 @@
     {
       "slug": "pencil-hatching",
       "name": "Pencil and hatching",
-      "category": "paint",
+      "category": "ink",
       "descriptor": "Shadow built from line density and direction over paper, in greys or sepia, whether drawn flat or wrapped around 3D forms.",
       "preview": "previews/pencil-hatching.webp",
       "checks": [
@@ -653,10 +747,14 @@
           "frame",
           "conform"
         ],
-        "family": "ink-3d",
         "profiles": [
           "3d"
         ],
+        "views": [
+          "third-person-3d",
+          "first-person-3d"
+        ],
+        "mood": "soft",
         "primitives": [
           "Stylise.hatching",
           "Stylise.hatchingLevels",
@@ -689,7 +787,7 @@
     {
       "slug": "gothic-contour",
       "name": "Gothic ornament",
-      "category": "paint",
+      "category": "painted",
       "descriptor": "Clean-contoured simple characters inside intricate, curling architecture and misty depth, dark but delicate.",
       "preview": "previews/gothic-contour.webp",
       "checks": [
@@ -713,10 +811,13 @@
           "conform",
           "authored"
         ],
-        "family": "paint-2d",
         "profiles": [
           "2d"
         ],
+        "views": [
+          "side-2d"
+        ],
+        "mood": "dark",
         "primitives": [
           "Fog",
           "PostEffects.glow",
@@ -726,6 +827,16 @@
         ],
         "missing": [
           "ornament is content: architecture and characters drawn for the style"
+        ],
+        "authored": [
+          {
+            "kind": "backdrop",
+            "what": "gothic architecture drawn for the style: pointed arches, tracery and spires in long dark contours over muted washes"
+          },
+          {
+            "kind": "character",
+            "what": "drawn for the style: elongated figures in flowing garments, outlined in long dark contours with ornament worked into the clothes"
+          }
         ]
       },
       "ui": "fantasy",
@@ -752,7 +863,7 @@
     {
       "slug": "lush-painted-worlds",
       "name": "Lush opaque painting",
-      "category": "paint",
+      "category": "painted",
       "descriptor": "Opaque, weighty colour masses with selective brushwork and rich warm-cool contrast build dense painted environments.",
       "preview": "previews/lush-painted-worlds.webp",
       "checks": [
@@ -776,11 +887,16 @@
           "conform",
           "authored"
         ],
-        "family": "paint-2d",
         "profiles": [
           "2d",
           "3d"
         ],
+        "views": [
+          "side-2d",
+          "isometric-2.5d",
+          "third-person-3d"
+        ],
+        "mood": "warm",
         "primitives": [
           "Stylise.paintRadius",
           "Stylise.paintCanvas",
@@ -789,6 +905,12 @@
         ],
         "missing": [
           "painted backdrops are content; Stylise.paint* for 3D props"
+        ],
+        "authored": [
+          {
+            "kind": "backdrop",
+            "what": "painted by hand in opaque gouache-like strokes: rich, saturated layers of foliage, sky and stone, depth by colour temperature, every area painted rather than textured"
+          }
         ]
       },
       "ui": "fantasy",
@@ -815,7 +937,7 @@
     {
       "slug": "decorative-storybook",
       "name": "Storybook ornament",
-      "category": "paint",
+      "category": "painted",
       "descriptor": "Gentle contours, patterned plants and soft colour shapes make explorable picture-book worlds.",
       "preview": "previews/decorative-storybook.webp",
       "checks": [
@@ -839,11 +961,17 @@
           "conform",
           "authored"
         ],
-        "family": "paint-2d",
         "profiles": [
           "2d",
           "3d"
         ],
+        "views": [
+          "side-2d",
+          "top-down-2d",
+          "isometric-2.5d",
+          "third-person-3d"
+        ],
+        "mood": "soft",
         "primitives": [
           "Stylise.ink",
           "Stylise.paintCanvas",
@@ -851,6 +979,16 @@
         ],
         "missing": [
           "illustration is content; Stylise.ink and paintCanvas"
+        ],
+        "authored": [
+          {
+            "kind": "backdrop",
+            "what": "illustrated by hand like a picture-book spread: patterned foliage, decorative borders and flat ornamented shapes over a textured paper"
+          },
+          {
+            "kind": "character",
+            "what": "illustrated by hand like a picture-book character: simple charming shapes, patterned clothes and an ink line"
+          }
         ]
       },
       "ui": "cartoon",
@@ -877,7 +1015,7 @@
     {
       "slug": "classical-painting-collage",
       "name": "Old-master collage",
-      "category": "paint",
+      "category": "painted",
       "descriptor": "Figures and landscapes from classical painting recombined into moving scenes, oil surfaces meeting visible cut seams.",
       "preview": "previews/classical-painting-collage.webp",
       "checks": [
@@ -901,10 +1039,13 @@
           "conform",
           "authored"
         ],
-        "family": "paint-2d",
         "profiles": [
           "2d"
         ],
+        "views": [
+          "side-2d"
+        ],
+        "mood": "warm",
         "primitives": [
           "sprites with transforms",
           "PostEffects.vignette",
@@ -912,6 +1053,16 @@
         ],
         "missing": [
           "the source paintings and cut-outs are content (public-domain scans or original painting); no engine primitive is missing"
+        ],
+        "authored": [
+          {
+            "kind": "backdrop",
+            "what": "painted in the manner of an old-master oil, original work: glazed light, dark varnished ground, a classical landscape or interior"
+          },
+          {
+            "kind": "character",
+            "what": "an old-master painted figure cut out along its silhouette with a hard paper edge, ready to be moved as a cut-out puppet"
+          }
         ]
       },
       "ui": "storybook",
@@ -938,7 +1089,7 @@
     {
       "slug": "detailed-doodle",
       "name": "Fine-line doodle worlds",
-      "category": "paint",
+      "category": "painted",
       "descriptor": "Countless tiny people and objects drawn with simple, slightly irregular lines, like a giant hand-drawn map.",
       "preview": "previews/detailed-doodle.webp",
       "checks": [
@@ -962,10 +1113,14 @@
           "conform",
           "authored"
         ],
-        "family": "paint-2d",
         "profiles": [
           "2d"
         ],
+        "views": [
+          "side-2d",
+          "top-down-2d"
+        ],
+        "mood": "bright",
         "primitives": [
           "Stylise.ink",
           "unlit materials",
@@ -973,6 +1128,20 @@
         ],
         "missing": [
           "the drawing is content; Stylise.ink can outline 3D props to match"
+        ],
+        "authored": [
+          {
+            "kind": "backdrop",
+            "what": "drawn by hand in fine black pen: dense, busy doodled detail, hatching and tiny objects filling every area"
+          },
+          {
+            "kind": "character",
+            "what": "drawn by hand in fine black pen with doodled detail and a few flat colour fills"
+          },
+          {
+            "kind": "prop",
+            "what": "drawn by hand in fine black pen, every surface filled with small doodled detail"
+          }
         ]
       },
       "ui": "storybook",
@@ -999,7 +1168,7 @@
     {
       "slug": "black-figure-pottery",
       "name": "Black-figure pottery",
-      "category": "paint",
+      "category": "painted",
       "descriptor": "Flat dark silhouettes with fine incised detail on ochre grounds, framed by meanders and horizontal bands.",
       "preview": "previews/black-figure-pottery.webp",
       "checks": [
@@ -1023,11 +1192,14 @@
           "conform",
           "authored"
         ],
-        "family": "paint-2d",
         "profiles": [
           "2d",
           "3d"
         ],
+        "views": [
+          "side-2d"
+        ],
+        "mood": "warm",
         "primitives": [
           "Stylise.palette",
           "Stylise.posterize",
@@ -1035,6 +1207,16 @@
         ],
         "missing": [
           "silhouettes are content; Stylise.palette locks the colours"
+        ],
+        "authored": [
+          {
+            "kind": "character",
+            "what": "a black-figure silhouette: the figure solid glossy black on terracotta, its details incised as thin terracotta lines, in strict profile"
+          },
+          {
+            "kind": "prop",
+            "what": "a black-figure silhouette: solid black on terracotta with incised details, in strict profile"
+          }
         ]
       },
       "ui": "fantasy",
@@ -1061,7 +1243,7 @@
     {
       "slug": "heavy-ink-shadows",
       "name": "Heavy ink and shadow",
-      "category": "paint",
+      "category": "ink",
       "descriptor": "Solid black shadows, rough hatching and muted colour shape distorted figures, with highlights saved for danger.",
       "preview": "previews/heavy-ink-shadows.webp",
       "checks": [
@@ -1084,10 +1266,14 @@
           "frame",
           "conform"
         ],
-        "family": "ink-3d",
         "profiles": [
           "3d"
         ],
+        "views": [
+          "third-person-3d",
+          "first-person-3d"
+        ],
+        "mood": "dark",
         "primitives": [
           "MaterialStyle.shadowDarkness",
           "Stylise.posterize",
@@ -1145,10 +1331,14 @@
           "conform",
           "runtime"
         ],
-        "family": "pixel-side",
         "profiles": [
           "2d"
         ],
+        "views": [
+          "side-2d",
+          "top-down-2d"
+        ],
+        "mood": "soft",
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.palette",
@@ -1205,10 +1395,14 @@
           "conform",
           "runtime"
         ],
-        "family": "pixel-side",
         "profiles": [
           "2d"
         ],
+        "views": [
+          "side-2d",
+          "top-down-2d"
+        ],
+        "mood": "bright",
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.pixelSnap",
@@ -1265,10 +1459,14 @@
           "conform",
           "runtime"
         ],
-        "family": "pixel-side",
         "profiles": [
           "2d"
         ],
+        "views": [
+          "side-2d",
+          "top-down-2d"
+        ],
+        "mood": "warm",
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.pixelSnap",
@@ -1326,10 +1524,14 @@
           "conform",
           "runtime"
         ],
-        "family": "pixel-side",
         "profiles": [
           "2d"
         ],
+        "views": [
+          "side-2d",
+          "top-down-2d"
+        ],
+        "mood": "dark",
         "primitives": [
           "Stylise.pixelHeight",
           "Lighting2D",
@@ -1387,10 +1589,13 @@
           "conform",
           "runtime"
         ],
-        "family": "pixel-topdown",
         "profiles": [
           "2d"
         ],
+        "views": [
+          "top-down-2d"
+        ],
+        "mood": "bright",
         "primitives": [
           "tilemap layers",
           "Sprite.sortY",
@@ -1423,7 +1628,7 @@
     {
       "slug": "low-resolution-3d",
       "name": "Low-resolution 3D",
-      "category": "render",
+      "category": "retro-3d",
       "descriptor": "Simplified models, small textures and pixelated output recall early 3D consoles, often with modern lighting on top.",
       "preview": "previews/low-resolution-3d.webp",
       "checks": [
@@ -1446,10 +1651,14 @@
           "frame",
           "conform"
         ],
-        "family": "pixel-3d",
         "profiles": [
           "3d"
         ],
+        "views": [
+          "third-person-3d",
+          "first-person-3d"
+        ],
+        "mood": "dark",
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.vertexSnap",
@@ -1509,10 +1718,14 @@
           "conform",
           "runtime"
         ],
-        "family": "pixel-side",
         "profiles": [
           "2d"
         ],
+        "views": [
+          "side-2d",
+          "top-down-2d"
+        ],
+        "mood": "dark",
         "primitives": [
           "Stylise.pixelHeight",
           "Stylise.palette",
@@ -1544,7 +1757,7 @@
     {
       "slug": "anime-cel-3d",
       "name": "Anime cel-shaded 3D",
-      "category": "render",
+      "category": "toon-3d",
       "descriptor": "3D models drawn with the hard shadow shapes and contour lines of 2D animation, framed and timed like an anime cut.",
       "preview": "previews/anime-cel-3d.webp",
       "checks": [
@@ -1568,10 +1781,14 @@
           "conform",
           "runtime"
         ],
-        "family": "toon-3d",
         "profiles": [
           "3d"
         ],
+        "views": [
+          "isometric-2.5d",
+          "third-person-3d"
+        ],
+        "mood": "bright",
         "primitives": [
           "StandardMaterialDesc.toon",
           "StandardMaterialDesc.gradientMap",
@@ -1606,7 +1823,7 @@
     {
       "slug": "inked-comic-3d",
       "name": "Inked comic 3D",
-      "category": "render",
+      "category": "toon-3d",
       "descriptor": "Volumetric models keep bold outlines, drawn surface marks and exaggerated colour: a comic page given depth.",
       "preview": "previews/inked-comic-3d.webp",
       "checks": [
@@ -1629,10 +1846,14 @@
           "frame",
           "conform"
         ],
-        "family": "toon-3d",
         "profiles": [
           "3d"
         ],
+        "views": [
+          "third-person-3d",
+          "first-person-3d"
+        ],
+        "mood": "high-contrast",
         "primitives": [
           "PostEffects.outline",
           "StandardMaterialDesc.toon",
@@ -1667,7 +1888,7 @@
     {
       "slug": "paper-craft",
       "name": "Paper craft",
-      "category": "shape",
+      "category": "crafted-3d",
       "descriptor": "Folded planes, visible sheet thickness and layered cut paper become the world's construction.",
       "preview": "previews/paper-craft.webp",
       "checks": [
@@ -1691,10 +1912,14 @@
           "conform",
           "authored"
         ],
-        "family": "shape-3d",
         "profiles": [
           "3d"
         ],
+        "views": [
+          "isometric-2.5d",
+          "third-person-3d"
+        ],
+        "mood": "soft",
         "primitives": [
           "StandardMaterialDesc.flatShading",
           "MaterialStyle.flatShading",
@@ -1705,6 +1930,16 @@
         ],
         "missing": [
           "the art is content: models built as card sheets with og-model's paper fold recipe (examples/art-shape-3d/styles/paper-craft: folded cones, cut card hills stood in layers, a card plateau); the engine draws the card grain (MaterialStyle.surface paper) on whatever it is given"
+        ],
+        "authored": [
+          {
+            "kind": "character",
+            "what": "built as folded card: flat sheets with crisp folds, scored edges and visible thickness, no curved surfaces (og-model's paper fold recipe)"
+          },
+          {
+            "kind": "prop",
+            "what": "built as card sheets folded and stood in layers, crisp creases and flat faces (og-model's paper fold recipe)"
+          }
         ]
       },
       "ui": "storybook",
@@ -1731,7 +1966,7 @@
     {
       "slug": "miniature-diorama",
       "name": "Miniature diorama",
-      "category": "render",
+      "category": "crafted-3d",
       "descriptor": "High, often isometric framing, small rounded architecture and soft shadows make the world look like a tabletop model.",
       "preview": "previews/miniature-diorama.webp",
       "checks": [
@@ -1756,10 +1991,14 @@
           "runtime",
           "authored"
         ],
-        "family": "shape-3d",
         "profiles": [
           "3d"
         ],
+        "views": [
+          "isometric-2.5d",
+          "third-person-3d"
+        ],
+        "mood": "bright",
         "primitives": [
           "PostEffects.depthOfField",
           "PostEffects.ao",
@@ -1770,6 +2009,16 @@
         ],
         "missing": [
           "a tabletop scene: toy-scale props and buildings on a bounded base seen from 30 to 60 degrees above (the engine draws tilt-shift, plastic and painted-wood surfaces and bevels; a low camera over a few primitives does not read as a model)"
+        ],
+        "authored": [
+          {
+            "kind": "prop",
+            "what": "a toy-scale model on a tabletop: chunky simplified buildings and props of painted wood and plastic, rounded edges, sized for a bounded base seen from 30 to 60 degrees above"
+          },
+          {
+            "kind": "character",
+            "what": "a toy figure: chunky, simplified, painted plastic or wood with a small base"
+          }
         ]
       },
       "ui": "cartoon",
@@ -1796,7 +2045,7 @@
     {
       "slug": "painterly-3d",
       "name": "Painterly 3D",
-      "category": "render",
+      "category": "toon-3d",
       "descriptor": "3D spaces whose simplified materials, shaped forms and painterly colour step away from the photographic.",
       "preview": "previews/painterly-3d.webp",
       "checks": [
@@ -1820,10 +2069,15 @@
           "conform",
           "authored"
         ],
-        "family": "cinematic-3d",
         "profiles": [
           "3d"
         ],
+        "views": [
+          "isometric-2.5d",
+          "third-person-3d",
+          "first-person-3d"
+        ],
+        "mood": "warm",
         "primitives": [
           "Stylise.paintRadius",
           "Stylise.paintAnisotropy",
@@ -1833,6 +2087,20 @@
         ],
         "missing": [
           "hand-painted textures and shaped, exaggerated forms on the characters and props (the cook paints a model's own colour textures; untextured blockouts stay flat)"
+        ],
+        "authored": [
+          {
+            "kind": "character",
+            "what": "shaped and exaggerated forms (big hands, tapered limbs, chunky silhouettes) with hand-painted colour textures: brush strokes and painted light in the texture, no photographic detail"
+          },
+          {
+            "kind": "prop",
+            "what": "exaggerated, slightly lopsided forms with hand-painted colour textures: painted edges and light in the texture"
+          },
+          {
+            "kind": "texture",
+            "what": "hand-painted: visible brush strokes, painted highlights and shadows, no photographic detail"
+          }
         ]
       },
       "ui": "fantasy",
@@ -1859,7 +2127,7 @@
     {
       "slug": "cinematic-realism",
       "name": "Cinematic realism",
-      "category": "render",
+      "category": "realistic",
       "descriptor": "Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control.",
       "preview": "previews/cinematic-realism.webp",
       "checks": [
@@ -1882,10 +2150,14 @@
           "frame",
           "conform"
         ],
-        "family": "cinematic-3d",
         "profiles": [
           "3d"
         ],
+        "views": [
+          "third-person-3d",
+          "first-person-3d"
+        ],
+        "mood": "cold",
         "primitives": [
           "StandardMaterial (PBR)",
           "Environment",
@@ -1921,7 +2193,7 @@
     {
       "slug": "muted-cinematic-3d",
       "name": "Muted theatrical light",
-      "category": "render",
+      "category": "realistic",
       "descriptor": "Simplified 3D forms in restrained colour, lit by local beams and haze like a stage, where tonal layers tell the story.",
       "preview": "previews/muted-cinematic-3d.webp",
       "checks": [
@@ -1944,10 +2216,14 @@
           "frame",
           "conform"
         ],
-        "family": "cinematic-3d",
         "profiles": [
           "3d"
         ],
+        "views": [
+          "third-person-3d",
+          "first-person-3d"
+        ],
+        "mood": "dark",
         "primitives": [
           "PostEffects.godRays",
           "Fog",
@@ -1982,7 +2258,7 @@
     {
       "slug": "layered-silhouette",
       "name": "Layered silhouettes",
-      "category": "shape",
+      "category": "graphic",
       "descriptor": "Foregrounds as solid contours against lighter, hazier layers behind, so shape and value carry the depth.",
       "preview": "previews/layered-silhouette.webp",
       "checks": [
@@ -2005,11 +2281,14 @@
           "frame",
           "conform"
         ],
-        "family": "cinematic-3d",
         "profiles": [
           "2d",
           "3d"
         ],
+        "views": [
+          "side-2d"
+        ],
+        "mood": "high-contrast",
         "primitives": [
           "Stylise.depthBands",
           "Fog",
@@ -2042,7 +2321,7 @@
     {
       "slug": "minimal-geometric",
       "name": "Minimal geometry",
-      "category": "shape",
+      "category": "graphic",
       "descriptor": "Rectangles, circles and triangles in a small set of colours, ordered by proportion, rhythm and empty space.",
       "preview": "previews/minimal-geometric.webp",
       "checks": [
@@ -2065,11 +2344,17 @@
           "frame",
           "conform"
         ],
-        "family": "shape-3d",
         "profiles": [
           "2d",
           "3d"
         ],
+        "views": [
+          "side-2d",
+          "top-down-2d",
+          "isometric-2.5d",
+          "third-person-3d"
+        ],
+        "mood": "soft",
         "primitives": [
           "unlit materials",
           "boxGeometry/sphereGeometry/planeGeometry",
@@ -2102,7 +2387,7 @@
     {
       "slug": "neon-vector",
       "name": "Neon vector lines",
-      "category": "shape",
+      "category": "graphic",
       "descriptor": "Thin glowing lines, grids and bright particles on dark fields, like a vector display.",
       "preview": "previews/neon-vector.webp",
       "checks": [
@@ -2125,11 +2410,16 @@
           "frame",
           "conform"
         ],
-        "family": "shape-3d",
         "profiles": [
           "2d",
           "3d"
         ],
+        "views": [
+          "side-2d",
+          "top-down-2d",
+          "third-person-3d"
+        ],
+        "mood": "dark",
         "primitives": [
           "RenderSettings.bloom",
           "emissive unlit materials",
@@ -2164,7 +2454,7 @@
     {
       "slug": "monochrome-dither-3d",
       "name": "Monochrome dithered 3D",
-      "category": "render",
+      "category": "retro-3d",
       "descriptor": "3D scenes reduced to one or two colours where dot patterns carry every tonal transition while perspective stays real.",
       "preview": "previews/monochrome-dither-3d.webp",
       "checks": [
@@ -2187,10 +2477,14 @@
           "frame",
           "conform"
         ],
-        "family": "pixel-3d",
         "profiles": [
           "3d"
         ],
+        "views": [
+          "third-person-3d",
+          "first-person-3d"
+        ],
+        "mood": "high-contrast",
         "primitives": [
           "Stylise.posterize",
           "Stylise.palette",
@@ -2223,7 +2517,7 @@
     {
       "slug": "luminous-layered-painting",
       "name": "Luminous layered depths",
-      "category": "render",
+      "category": "painted",
       "descriptor": "Painterly side-on scenery in many foreground and background layers with strong luminous focal points against dark masses.",
       "preview": "previews/luminous-layered-painting.webp",
       "checks": [
@@ -2247,11 +2541,14 @@
           "conform",
           "authored"
         ],
-        "family": "paint-2d",
         "profiles": [
           "2d",
           "3d"
         ],
+        "views": [
+          "side-2d"
+        ],
+        "mood": "cold",
         "primitives": [
           "sprite layers",
           "Fog",
@@ -2262,6 +2559,16 @@
         ],
         "missing": [
           "the art is content: characters 60 to 150 px, drawn for the style"
+        ],
+        "authored": [
+          {
+            "kind": "character",
+            "what": "drawn for the style at 60 to 150 px tall: a glowing silhouette with soft inner light and luminous edges, readable against painted depths"
+          },
+          {
+            "kind": "backdrop",
+            "what": "painted in layered depths: a dark foreground silhouette, glowing midground and luminous misty background, light blooming between the layers"
+          }
         ]
       },
       "ui": "fantasy",

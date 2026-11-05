@@ -8,8 +8,8 @@ frame regression it is). Evidence and the per-style table:
 
 ## The scenes
 
-`examples/art-<family>` for the eight `look.family` values of the style
-catalogue: pixel-side, pixel-topdown, pixel-3d, paint-2d, ink-3d,
+`examples/art-<scene>` for the eight sample scenes, each style's named in
+`scenes.json` (internal to these tools; the catalogue does not carry it): pixel-side, pixel-topdown, pixel-3d, paint-2d, ink-3d,
 shape-3d, toon-3d, cinematic-3d. Each is a small game project (no game
 logic) with the same beats: a hero, a stepped tree, a crate, a lantern,
 the ground and a far layer. Its `project.ogt` names `looks/sample.ogt`,
@@ -33,11 +33,13 @@ the art brief it was requested with (kind, subject, metres).
 
 ## The tools
 
-- `capture.ts [--out DIR] [--size WxH] [--only slug|family,...]`: for each
-  style, copies its family's scene, sets the look to extend the style,
+- `capture.ts [--out DIR] [--size WxH] [--only slug|scene,...] [--mood
+  MOOD,...]`: for each style, copies its scene, sets the look to extend the style,
   runs `prepare.ts`, runs `og run --headless` for one frame at 1.5 s
   (`DIR/<slug>.png`) and `og style check --no-frames --json`
-  (`DIR/<slug>.style.json`). Use the `og` and addon of the commit under
+  (`DIR/<slug>.style.json`). `--mood bright,dark,...` (and `own`, the
+  preset's own mood) runs each mood the sample's look asks for
+  (docs/art.md §2.9) into `DIR/<slug>@<mood>.png`. Use the `og` and addon of the commit under
   test (`OG_NATIVE_ADDON`, `OG_ENGINE_PACKAGE`).
 - `prepare.ts <project>`: briefs every beat with `artBrief` under the
   project's look and writes each image's import settings (`conform { size

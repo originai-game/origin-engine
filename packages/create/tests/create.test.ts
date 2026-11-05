@@ -5,7 +5,7 @@ import { afterAll, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
-import { artBrief, audioBrief, CREATION_CHOICES, localeScript, pseudoMessage, creationBlock, creationSchema, inferCreationChoices, parseCreationInput, resolveCreationChoices, pickStyle, premiseProfile, presetLook, readCatalogue, readLook, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
+import { artBrief, audioBrief, authoredArt, CREATION_CHOICES, localeScript, MOODS, pseudoMessage, creationBlock, creationSchema, inferCreationChoices, parseCreationInput, resolveCreationChoices, pickStyle, premiseProfile, presetLook, readCatalogue, readLook, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
 import { cpSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { SKIN_ELSEWHERE } from "../../knowledge/scripts/validate.ts";
@@ -46,6 +46,10 @@ test("choice flags write a canonical create block and reject bad choices before 
   expect(manifest).toContain('  lang "ja" "en"');
   expect(manifest).toContain('  music "chiptune"');
   expect(manifest).toContain('orientation portrait');
+  // --mood soft is the game's look's mood line, beside extends; the art brief reads it.
+  const lookText = readFileSync(join(scratch, "choices/assets/looks/choices.ogt"), "utf8");
+  expect(lookText).toMatch(/^extends "[^"]+"\nmood "soft"$/m);
+  expect(readLook(join(scratch, "choices")).mood).toBe("soft");
   expect(readFileSync(join(scratch, "choices/assets/looks/choices.ogt"), "utf8")).toContain('ui "styles/pixel/style.ogt"');
   expect(existsSync(join(scratch, "choices/assets/styles/pixel/atlas.png"))).toBeTrue();
   expect(cli("bad-choice", "--mood", "invalid").code).toBe(1);
@@ -563,4 +567,20 @@ test("audioBrief takes every music, mood and genre the creation choices offer", 
     expect(b.cues.length).toBeGreaterThan(2);
     expect(b.sfx.length).toBeGreaterThan(4);
   }
+});
+
+test("the mood vocabulary is one across choices, the brief and the catalogue; an unasked mood is the preset's own", () => {
+  expect([...CREATION_CHOICES.mood]).toEqual([...MOODS]);
+  const cat = readCatalogue();
+  for (const st of cat) {
+    expect(MOODS as readonly string[]).toContain(st.look.mood);
+    for (const v of st.look.views) expect(CREATION_CHOICES.view as readonly string[]).toContain(v);
+  }
+  // muted-cinematic-3d is drawn dark: no mood asked, the choice is its own; asked, the flag wins.
+  expect(resolveCreationChoices("", { look: "muted-cinematic-3d" }).mood).toBe("dark");
+  expect(resolveCreationChoices("", { look: "muted-cinematic-3d", mood: "warm" }).mood).toBe("warm");
+  // The view narrows the premise's match: a first-person premise never lands on a side-on-only style.
+  const pick = pickStyle("first-person horror", cat, "3d", "first-person-3d");
+  expect(pick && pick.style.look.views).toContain("first-person-3d");
+  expect(authoredArt(presetLook("rubber-hose-animation")).map((a) => a.kind)).toEqual(["character", "sprite"]);
 });

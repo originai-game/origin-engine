@@ -40,8 +40,8 @@ export { PSEUDO_LOCALE, pseudoMessage, pseudoTable } from "./pseudo-locale.ts";
 // for one asset. bin/brief.ts is a copy of the knowledge package's
 // scripts/brief.ts (scripts/pack-template.ts writes it; the tests hold it
 // equal); README §The art brief.
-export { ART_KINDS, ART_RESOURCES, artBrief, colourName, parseLook, parsePalette, presetLook, readLook, styleArtBriefs } from "./brief.ts";
-export type { ArtBlocks, ArtBrief, ArtKind, ArtResource, ArtValue, BriefLook, BriefOptions, BriefPalette, BriefReference, BriefStyle, ImageParams, ModelParams, PaletteColour, ReadLookOptions, StyleArtBrief, StyleArtRequests } from "./brief.ts";
+export { ART_KINDS, ART_RESOURCES, artBrief, authoredArt, colourName, MOODS, parseLook, parsePalette, presetLook, readLook, styleArtBriefs } from "./brief.ts";
+export type { ArtBlocks, ArtBrief, ArtKind, ArtResource, ArtValue, AuthoredArt, BriefLook, BriefOptions, BriefPalette, BriefReference, BriefStyle, ImageParams, ModelParams, Mood, PaletteColour, ReadLookOptions, StyleArtBrief, StyleArtRequests } from "./brief.ts";
 // The audio brief (docs/art.md §2.9): the music cues and sound effects a game
 // needs, from its music style, mood, genre and premise, with og cook's presets.
 export { audioBrief, MUSIC_STYLES, readAudioChoices, SFX_PRESETS } from "./brief.ts";
@@ -132,7 +132,8 @@ export interface Style {
   readonly descriptor: string;
   readonly premise: Readonly<Record<string, string>>;
   /** `profiles`: the project profiles the look draws for, `2d`, `3d` or both (a flipbook or hand-pixelled style is 2D only, a style of meshes and lit materials 3D only). */
-  readonly look: { readonly presetReady: boolean; readonly support: string; readonly profiles: readonly Profile[]; readonly missing: readonly string[] };
+  /** `views`: the creation views it suits; `mood`: the mood its preset is drawn in (catalogue schema 3). */
+  readonly look: { readonly presetReady: boolean; readonly support: string; readonly profiles: readonly Profile[]; readonly views: readonly string[]; readonly mood: string; readonly missing: readonly string[] };
   readonly ui: string;
 }
 
@@ -169,9 +170,10 @@ export function words(text: string): string[] {
  * Null when no word matches any style. Only styles with a preset that draw
  * for the project's profile (`look.profiles`, 3D unless `2d`) are chosen: a
  * 3D party premise never lands on a flipbook style, a 2D platformer never on
- * a style of lit meshes. `--look` is not weighed here and may pick any.
+ * a style of lit meshes. Given a creation view, only the styles that suit it
+ * (`look.views`) are weighed. `--look` is not weighed here and may pick any.
  */
-export function pickStyle(premise: string, styles: readonly Style[], profile: Profile = "3d"): { style: Style; score: number } | null {
+export function pickStyle(premise: string, styles: readonly Style[], profile: Profile = "3d", view?: string): { style: Style; score: number } | null {
   const asked = new Set(words(premise));
   if (asked.size === 0) return null;
   const weights: [(s: Style) => string, number][] = [
@@ -184,6 +186,7 @@ export function pickStyle(premise: string, styles: readonly Style[], profile: Pr
   let best: { style: Style; score: number; full: boolean } | null = null;
   for (const style of styles) {
     if (!style.look.presetReady || !style.look.profiles.includes(profile)) continue;
+    if (view !== undefined && !style.look.views.includes(view)) continue;
     let score = 0;
     for (const [field, weight] of weights) {
       const have = new Set(words(field(style)));
@@ -470,7 +473,7 @@ export function create(options: CreateOptions): Created {
   if (selection) {
     writeFileSync(manifest, `${readFileSync(manifest, "utf8")}\n${creationBlock(selection)}`);
     for (const f of applyCreation(dir, selection, look.file, entryOf(dir)!, options.archetype, profile.value, notes)) if (!written.includes(f)) written.push(f);
-    notes.push("genre/view camera presets and mood rendering are subsequent steps; the create block records their requested values");
+    notes.push("genre/view camera presets and music generation are subsequent steps; the create block records their requested values");
   }
   return { dir, name, id, files: written, profile, look, notes, ...(selection ? { choices: selection } : {}) };
 }
@@ -480,10 +483,11 @@ export function resolveCreationChoices(premise: string, input: CreationInput = {
   const asked = inferCreationChoices(premise, input);
   const styles = readCatalogue(catalogue);
   const effectiveProfile = profile ?? (asked.view.endsWith("2d") ? "2d" : "3d");
-  const slug = input.look ?? pickStyle(premise, styles, effectiveProfile)?.style.slug ?? (effectiveProfile === "2d" ? "16bit-pixel" : "faceted-low-poly");
+  const slug = input.look ?? pickStyle(premise, styles, effectiveProfile, asked.view)?.style.slug ?? (effectiveProfile === "2d" ? "16bit-pixel" : "faceted-low-poly");
   const style = styles.find(s => s.slug === slug && s.look.presetReady);
   if (!style) throw new Error(`no look preset '${slug}'`);
-  return inferCreationChoices(premise, { ...input, look: slug, ui: parseCreationInput({ ui: input.ui ?? style.ui }).ui! });
+  // The mood defaults to the one the preset is drawn in; the premise's or the flag's wins.
+  return inferCreationChoices(premise, { ...input, look: slug, ui: parseCreationInput({ ui: input.ui ?? style.ui }).ui! }, parseCreationInput({ mood: style.look.mood }));
 }
 
 /**
@@ -580,7 +584,7 @@ Scaffolds an Origin Engine game into dir (default: ./origin-game).
   --premise    the game in one line (genre, mood, setting, audience): its look extends the style catalogue's best match among the styles drawn for the game's profile (asked for on a terminal when neither this nor --look is given)
   --look   the style catalogue slug the look extends (og-taste §12), such as anime-cel-3d or 16bit-pixel; it wins over the premise and the profile
   --genre --view --mood --ui --platform --input --players --lang --music
-           creation choices (values listed in the prompts); --lang en,zh; any choice flag opts into the create block
+           creation choices (values listed in the prompts); --lang en,zh; any choice flag opts into the create block. --mood (${CREATION_CHOICES.mood.join(", ")}) is also the game's look's mood line, which the cook lays over the preset and the art brief reads (unset: the preset's own)
   --choices  use inferred creation choices even without a choice flag
   --no-prompt  never ask for the premise
   --force  write into a directory that is not empty`;

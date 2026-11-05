@@ -21,6 +21,19 @@ is one line here, written at the merge that changes
   the UI tick. Origin Desktop still needs the window's OS adapter
   (platform ask 25); the engine never takes a window handle. No IDL change.
 
+- **The style catalogue goes to schema 3.** `look.family` (an internal
+  sample-scene name) leaves the catalogue for `tools/art-samples/scenes.json`.
+  `category` now groups the 37 styles in plain terms (pixel art, retro 3D,
+  hand-drawn and painted, ink and comic, toon and stylised 3D, low-poly,
+  toy and handmade 3D, flat and graphic, realistic). New: `look.views` (the
+  creation views each suits), `look.mood` (its preset's mood) and, for the
+  14 `content` styles, `look.authored` (each brief kind they need made and
+  what it must be). Slugs are unchanged. The art brief gains a `Mood` line
+  and, for authored kinds, an `Authored` line; `presetLook(slug, { mood })`,
+  `authoredArt(look)`, `MOODS` and `BriefLook.mood` are additive. `og new
+  --mood` writes the game's look's mood line, and the premise's style
+  match keeps to the chosen view. A reader of `look.family` falls back to
+  `category`.
 - **A look takes a mood.** `mood "<word>"` (bright, dark, warm, cold,
   soft, high-contrast) in a look file: every built-in preset names the
   mood it is drawn in, and a game's look naming another has the mood's

@@ -25,6 +25,7 @@ import {
   type PayloadFile,
   type Roots,
 } from "./lib.ts";
+import { ART_KINDS } from "./brief.ts";
 
 export interface Rules {
   payload: { roots: string[] };
@@ -550,7 +551,18 @@ interface Style {
   /** The traits that look like defects but are the style, one sentence a blind critic reads beside the checks. */
   intended: string;
   premise: Record<string, string>;
-  look: { preset: string; presetReady: boolean; support: string; layers: string[]; family: string; profiles: string[]; primitives: string[]; missing: string[] };
+  look: {
+    preset: string;
+    presetReady: boolean;
+    support: string;
+    layers: string[];
+    profiles: string[];
+    views: string[];
+    mood: string;
+    primitives: string[];
+    missing: string[];
+    authored?: { kind: string; what: string }[];
+  };
   ui: string;
   palette: { size: string; rules: string };
   assets: Record<string, string>;
@@ -563,8 +575,10 @@ export const SUPPORT = ["full", "partial", "planned", "content"] as const;
 export const PROFILES = ["2d", "3d"] as const;
 /** What `look.layers` may name (docs/art.md §2.6): the look's render resources, the cook's asset conformance, the runtime pieces, authored art. */
 export const LAYERS = ["frame", "conform", "runtime", "authored"] as const;
-/** The sample scenes a style is proven on (`look.family`, docs/art.md §3 A7). */
-export const FAMILIES = ["pixel-side", "pixel-topdown", "pixel-3d", "paint-2d", "ink-3d", "shape-3d", "toon-3d", "cinematic-3d"] as const;
+/** What `look.views` may name: the creation choice's views (create's choices.ts, held equal by its tests); a `-2d` view needs the 2d profile, the rest 3d. */
+export const VIEWS = ["side-2d", "top-down-2d", "isometric-2.5d", "third-person-3d", "first-person-3d"] as const;
+/** What `look.mood` may name: the moods a look takes (og-bundle's MOODS, create's choices.ts; docs/art.md §2.9). */
+export const MOODS = ["bright", "dark", "warm", "cold", "soft", "high-contrast"] as const;
 /** The placeholders the art-bible template may use. */
 export const BIBLE_FIELDS = ["title", "premise", "camera", "platform", "name", "descriptor", "direction", "palette", "assets", "ui", "avoid", "game", "slug", "checks"] as const;
 const PREMISE = ["genre", "mood", "era", "audience"];
@@ -593,7 +607,7 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
     problems.push(`${at}: not JSON (${(e as Error).message})`);
     return;
   }
-  if (cat.schemaVersion !== 2) problems.push(`${at}: schemaVersion ${cat.schemaVersion}, expected 2`);
+  if (cat.schemaVersion !== 3) problems.push(`${at}: schemaVersion ${cat.schemaVersion}, expected 3`);
   const categories = Object.keys(cat.categories ?? {});
   const packs = cat.ui ?? [];
   for (const p of packs) {
@@ -643,7 +657,18 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
     const layers = Array.isArray(look.layers) ? look.layers : [];
     if (!layers.includes("frame") || new Set(layers).size !== layers.length || !layers.every((l) => (LAYERS as readonly string[]).includes(l))) problems.push(`${id}: look.layers must include frame and name only ${LAYERS.join(", ")}, each once`);
     if (layers.includes("authored") !== (look.support === "content")) problems.push(`${id}: support ${look.support} disagrees with look.layers (content exactly when authored art is needed)`);
-    if (!(FAMILIES as readonly string[]).includes(look.family)) problems.push(`${id}: look.family ${look.family} is none of ${FAMILIES.join(", ")}`);
+    if ("family" in look) problems.push(`${id}: look.family is gone (schema 3): the sample scene is tools/art-samples/scenes.json's, not a reader's`);
+    const views = Array.isArray(look.views) ? look.views : [];
+    if (views.length === 0 || new Set(views).size !== views.length || !views.every((v) => (VIEWS as readonly string[]).includes(v))) problems.push(`${id}: look.views must name the views the style suits, each once, among ${VIEWS.join(", ")}`);
+    for (const v of views) if (!profiles.includes(v.endsWith("-2d") ? "2d" : "3d")) problems.push(`${id}: look.views names ${v}, which its profiles (${profiles.join(", ")}) do not draw`);
+    if (!(MOODS as readonly string[]).includes(look.mood)) problems.push(`${id}: look.mood ${look.mood} is none of ${MOODS.join(", ")}`);
+    const authored = Array.isArray(look.authored) ? look.authored : [];
+    if (layers.includes("authored") !== authored.length > 0) problems.push(`${id}: look.authored names the art exactly when look.layers needs authored art`);
+    for (const a of authored) {
+      if (!(ART_KINDS as readonly string[]).includes(a.kind)) problems.push(`${id}: look.authored names ${a.kind}, which is not an art brief kind`);
+      if (!text(a.what)) problems.push(`${id}: look.authored's ${a.kind} says not what the art must be`);
+    }
+    if (new Set(authored.map((a) => a.kind)).size !== authored.length) problems.push(`${id}: look.authored names a kind twice`);
     const missing = look.missing ?? [];
     if (look.support === "full" && missing.length > 0) problems.push(`${id}: support full, yet it names missing primitives`);
     if (look.support !== "full" && !missing.some(text)) problems.push(`${id}: support ${look.support} must name what is missing (the primitive or the authored art)`);
@@ -663,15 +688,17 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
         // The preset dresses the UI in the style the catalogue gives it.
         const ui = /^ui[ \t]+"([^"]+)"/m.exec(body)?.[1];
         if (ui !== s.ui) problems.push(`${id}: ${look.preset} has ${ui ? `ui "${ui}"` : "no ui line"}; the catalogue says ui "${s.ui}"`);
+        const mood = /^mood[ \t]+"([^"]+)"/m.exec(body)?.[1];
+        if (mood !== look.mood) problems.push(`${id}: ${look.preset} has ${mood ? `mood "${mood}"` : "no mood line"}; the catalogue says mood "${look.mood}"`);
       }
     }
     if (tasteText && !tasteText.includes(`\`${s.slug}\``)) problems.push(`skills/og-taste/SKILL.md: the style catalogue (§12) does not list \`${s.slug}\``);
     else if (tasteText) {
-      // §12's row for the style says what the catalogue says: family, name, support, ui style.
+      // §12's row for the style says what the catalogue says: group, name, support, ui style.
       const row = new RegExp(`^\\| \`${s.slug.replace(/[-]/g, "\\-")}\` \\| ([^|]+) \\| ([^|]+) \\| ([^|]+) \\| \`([^\`]+)\` \\|$`, "m").exec(tasteText);
       const want = [cat.categories?.[s.category] ?? s.category, s.name, look.support, s.ui];
       const have = row?.slice(1, 5).map((x) => x.trim());
-      if (!have) problems.push(`skills/og-taste/SKILL.md: §12's table has no row for \`${s.slug}\` (| slug | family | style | support | ui |)`);
+      if (!have) problems.push(`skills/og-taste/SKILL.md: §12's table has no row for \`${s.slug}\` (| slug | group | style | support | ui |)`);
       else if (have.join("|") !== want.join("|")) problems.push(`skills/og-taste/SKILL.md: §12's row for \`${s.slug}\` reads ${have.join(", ")}; the catalogue says ${want.join(", ")}`);
     }
     const all = JSON.stringify(s);

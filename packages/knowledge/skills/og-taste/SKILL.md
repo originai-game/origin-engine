@@ -389,8 +389,10 @@ which one you pick and how you tune it.
 
 **Pick from the catalogue.** `looks/catalogue.json` (this skill's file:
 `skill {name: "og-taste", file: "looks/catalogue.json"}`)
-describes 37 styles in four families (pixel and retro, paint and line,
-shape and material, 3D rendering). For each: a one-line descriptor, three
+describes 37 styles in eight groups (`category`, named by `categories`:
+pixel art, retro 3D, hand-drawn and painted, ink and comic, toon and
+stylised 3D, low-poly, toy and handmade 3D, flat and graphic, realistic).
+For each: a one-line descriptor, three
 checks a critic can judge on a captured frame, the premises it fits
 (genre, mood, era, audience, as §1 asks them), the preset it maps to, the
 UI style (`ui`), palette constraints, asset specs (logical resolution, sprite
@@ -424,6 +426,25 @@ cut-outs, `["3d"]` for lit meshes, toon materials and voxels, both for a
 post treatment that frames either. `create --premise` matches only among the
 styles of the game's profile (`--profile`, else the premise's, else 3D);
 `--look` names any style and wins.
+
+**Read `look.views` and `look.mood`.** `views` names the views a style
+suits (`side-2d`, `top-down-2d`, `isometric-2.5d`, `third-person-3d`,
+`first-person-3d`, the creation choice's words), only those its profiles
+draw: shortlist among the styles that suit the game's view. `mood` is the
+mood the preset is drawn in, one of `bright`, `dark`, `warm`, `cold`,
+`soft` and `high-contrast`. A game asks another with one line in its look,
+`mood "dark"` (`og new --mood dark` writes it): the cook lays the mood's
+grading, light and, for a palette-bound style, its palette over the
+preset, and your own fields still win (§13). The art brief reads it, so
+every asset is requested lit and coloured for the mood; change the mood
+before the assets are made, not after.
+
+**Budget for a `content` style's art.** `look.authored` lists the art such
+a style cannot get from conformance, each an art brief kind and what it
+must be (painted backdrops, frame-by-frame flipbooks, hand-modelled clay).
+`artBrief` writes that into every request of the kind (an `Authored`
+line), and `authoredArt(look)` lists them, so request each one the game
+needs through the brief and accept it only when it is that art.
 
 **Write the look.** Start from the style's preset (this skill's file:
 `skill {name: "og-taste", file: "looks/presets/<slug>.ogt"}`) and change
@@ -624,45 +645,45 @@ in its style step (`docs/platform-asks.md` in the engine repository): the
 catalogue entry chosen from the premise, the look written, and the
 entry's three checks handed to the critic that reads the frames.
 
-| Slug | Family | Style | Support | UI |
+| Slug | Group | Style | Support | UI |
 |---|---|---|---|---|
-| `expressionist-painting` | Paint and line | Expressionist paint | content | `storybook` |
-| `bold-comic-illustration` | Paint and line | Bold comic illustration | full | `fantasy` |
-| `watercolor-wash` | Paint and line | Watercolour wash | full | `storybook` |
-| `pixel-3d-hybrid` | Pixel and retro | Pixel sprites in 3D sets | full | `fantasy` |
-| `faceted-low-poly` | 3D rendering | Faceted low poly | full | `storybook` |
-| `sculpted-clay` | 3D rendering | Sculpted clay | content | `cartoon` |
-| `8bit-pixel` | Pixel and retro | Early console pixels | full | `pixel` |
-| `voxel-worlds` | 3D rendering | Voxel worlds | full | `pixel` |
-| `illuminated-manuscript` | Paint and line | Manuscript page | content | `storybook` |
-| `rubber-hose-animation` | Paint and line | Rubber-hose cartoon | content | `cartoon` |
-| `pencil-hatching` | Paint and line | Pencil and hatching | full | `storybook` |
-| `gothic-contour` | Paint and line | Gothic ornament | content | `fantasy` |
-| `lush-painted-worlds` | Paint and line | Lush opaque painting | content | `fantasy` |
-| `decorative-storybook` | Paint and line | Storybook ornament | content | `cartoon` |
-| `classical-painting-collage` | Paint and line | Old-master collage | content | `storybook` |
-| `detailed-doodle` | Paint and line | Fine-line doodle worlds | content | `storybook` |
-| `black-figure-pottery` | Paint and line | Black-figure pottery | content | `fantasy` |
-| `heavy-ink-shadows` | Paint and line | Heavy ink and shadow | full | `fantasy` |
-| `monochrome-pixel` | Pixel and retro | One-ink pixels | full | `pixel` |
-| `16bit-pixel` | Pixel and retro | Late console pixels | full | `pixel` |
-| `detailed-pixel` | Pixel and retro | Dense illustrative pixels | full | `fantasy` |
-| `luminous-pixel` | Pixel and retro | Glowing pixels on dark ground | full | `cyber` |
-| `topdown-tile-pixel` | Pixel and retro | Top-down tile worlds | full | `fantasy` |
-| `low-resolution-3d` | 3D rendering | Low-resolution 3D | full | `scifi` |
-| `coarse-pixel` | Pixel and retro | Minimal low-count pixels | full | `pixel` |
-| `anime-cel-3d` | 3D rendering | Anime cel-shaded 3D | full | `cyber` |
-| `inked-comic-3d` | 3D rendering | Inked comic 3D | full | `scifi` |
-| `paper-craft` | Shape and material | Paper craft | content | `storybook` |
-| `miniature-diorama` | 3D rendering | Miniature diorama | content | `cartoon` |
-| `painterly-3d` | 3D rendering | Painterly 3D | content | `fantasy` |
-| `cinematic-realism` | 3D rendering | Cinematic realism | full | `scifi` |
-| `muted-cinematic-3d` | 3D rendering | Muted theatrical light | full | `scifi` |
-| `layered-silhouette` | Shape and material | Layered silhouettes | full | `cyber` |
-| `minimal-geometric` | Shape and material | Minimal geometry | full | `cyber` |
-| `neon-vector` | Shape and material | Neon vector lines | full | `cyber` |
-| `monochrome-dither-3d` | 3D rendering | Monochrome dithered 3D | full | `pixel` |
-| `luminous-layered-painting` | 3D rendering | Luminous layered depths | content | `fantasy` |
+| `expressionist-painting` | Hand-drawn and painted | Expressionist paint | content | `storybook` |
+| `bold-comic-illustration` | Ink and comic | Bold comic illustration | full | `fantasy` |
+| `watercolor-wash` | Hand-drawn and painted | Watercolour wash | full | `storybook` |
+| `pixel-3d-hybrid` | Retro 3D | Pixel sprites in 3D sets | full | `fantasy` |
+| `faceted-low-poly` | Low-poly, toy and handmade 3D | Faceted low poly | full | `storybook` |
+| `sculpted-clay` | Low-poly, toy and handmade 3D | Sculpted clay | content | `cartoon` |
+| `8bit-pixel` | Pixel art | Early console pixels | full | `pixel` |
+| `voxel-worlds` | Low-poly, toy and handmade 3D | Voxel worlds | full | `pixel` |
+| `illuminated-manuscript` | Hand-drawn and painted | Manuscript page | content | `storybook` |
+| `rubber-hose-animation` | Hand-drawn and painted | Rubber-hose cartoon | content | `cartoon` |
+| `pencil-hatching` | Ink and comic | Pencil and hatching | full | `storybook` |
+| `gothic-contour` | Hand-drawn and painted | Gothic ornament | content | `fantasy` |
+| `lush-painted-worlds` | Hand-drawn and painted | Lush opaque painting | content | `fantasy` |
+| `decorative-storybook` | Hand-drawn and painted | Storybook ornament | content | `cartoon` |
+| `classical-painting-collage` | Hand-drawn and painted | Old-master collage | content | `storybook` |
+| `detailed-doodle` | Hand-drawn and painted | Fine-line doodle worlds | content | `storybook` |
+| `black-figure-pottery` | Hand-drawn and painted | Black-figure pottery | content | `fantasy` |
+| `heavy-ink-shadows` | Ink and comic | Heavy ink and shadow | full | `fantasy` |
+| `monochrome-pixel` | Pixel art | One-ink pixels | full | `pixel` |
+| `16bit-pixel` | Pixel art | Late console pixels | full | `pixel` |
+| `detailed-pixel` | Pixel art | Dense illustrative pixels | full | `fantasy` |
+| `luminous-pixel` | Pixel art | Glowing pixels on dark ground | full | `cyber` |
+| `topdown-tile-pixel` | Pixel art | Top-down tile worlds | full | `fantasy` |
+| `low-resolution-3d` | Retro 3D | Low-resolution 3D | full | `scifi` |
+| `coarse-pixel` | Pixel art | Minimal low-count pixels | full | `pixel` |
+| `anime-cel-3d` | Toon and stylised 3D | Anime cel-shaded 3D | full | `cyber` |
+| `inked-comic-3d` | Toon and stylised 3D | Inked comic 3D | full | `scifi` |
+| `paper-craft` | Low-poly, toy and handmade 3D | Paper craft | content | `storybook` |
+| `miniature-diorama` | Low-poly, toy and handmade 3D | Miniature diorama | content | `cartoon` |
+| `painterly-3d` | Toon and stylised 3D | Painterly 3D | content | `fantasy` |
+| `cinematic-realism` | Realistic | Cinematic realism | full | `scifi` |
+| `muted-cinematic-3d` | Realistic | Muted theatrical light | full | `scifi` |
+| `layered-silhouette` | Flat and graphic | Layered silhouettes | full | `cyber` |
+| `minimal-geometric` | Flat and graphic | Minimal geometry | full | `cyber` |
+| `neon-vector` | Flat and graphic | Neon vector lines | full | `cyber` |
+| `monochrome-dither-3d` | Retro 3D | Monochrome dithered 3D | full | `pixel` |
+| `luminous-layered-painting` | Hand-drawn and painted | Luminous layered depths | content | `fantasy` |
 
 **What looks like a defect but is the style.** Each entry's `intended`
 says, in one sentence that never names the style, which traits of its
@@ -693,6 +714,7 @@ version 1
 ---
 name "Harbour"
 extends "anime-cel-3d"           # a built-in preset (templates/looks/<slug>.ogt) or another look's id
+mood "cold"                      # bright, dark, warm, cold, soft or high-contrast; unset, the preset's own
 ui "styles/harbour/style.ogt"     # the game's own UI style, or a built-in by slug (ui "fantasy")
 Stylise {
   ink true
@@ -721,8 +743,17 @@ og.render.look(world)?.name;                                              // the
   `assets/looks/<slug>.ogt` of the game's own replaces the preset of that
   slug for every look that extends it. The cook refuses an unknown field,
   a value out of range and an asset not in the bundle, naming the line.
+- `mood` asks the preset for a mood other than its own: the cook lays the
+  mood's layer (`templates/looks/moods/`) over the preset before the
+  looks above it. A number there moves the preset's value by its distance
+  from the field's default (`dark`'s `exposure 0.72` takes 0.8 to 0.52), so
+  the style keeps its own grading, moved; a bool, colour or palette
+  replaces. A mood sets the grading, exposure, ambient light and, for
+  `monochrome-pixel` and `monochrome-dither-3d`, the palette, never the art
+  contract's sizes or lines. A flashback in another mood is a second look
+  with `extends` the game's look and its own `mood` line.
 - `og.load.lookInfo` (and `og.render.look`) answer `LookInfo`: `name`,
-  `extends`, `resources`, `style`, `antialias`. A look's `antialias` (tier,
+  `extends`, `mood`, `resources`, `style`, `antialias`. A look's `antialias` (tier,
   off, msaa4 or taa) is the renderer's when `GameDesc.render` names none.
 - **`og.Stylise`** moves the frame away from the photographic, every
   primitive off at zero: the pixel grid (`pixelHeight`, `pixelUpscale`,

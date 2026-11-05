@@ -9,7 +9,7 @@ import { afterAll, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ART_KINDS, artBrief, audioBrief, readAudioChoices, SFX_PRESETS, colourName, parsePalette, presetLook, readLook, RIG_TEMPLATES, rigParts, styleArtBriefs, UI_KINDS, uiAllows, type BriefLook } from "../scripts/brief.ts";
+import { ART_KINDS, artBrief, audioBrief, authoredArt, readAudioChoices, SFX_PRESETS, colourName, MOODS, parsePalette, presetLook, readLook, RIG_TEMPLATES, rigParts, styleArtBriefs, UI_KINDS, uiAllows, type BriefLook } from "../scripts/brief.ts";
 
 const temps: string[] = [];
 afterAll(() => {
@@ -376,4 +376,49 @@ test("an unknown style, mood or genre is refused with the values; a project's cr
   writeFileSync(join(dir, "project.ogt"), 'type project\nversion 1\n---\nname "x"\n');
   expect(() => readAudioChoices(dir)).toThrow("no create block");
   rmSync(dir, { recursive: true, force: true });
+});
+
+test("the mood: the preset's own, or the one the game's look asks, reaches every request", () => {
+  // faceted-low-poly is drawn soft; nothing asked, the brief says soft.
+  expect(presetLook("faceted-low-poly").mood).toBe("soft");
+  expect(artBrief(presetLook("faceted-low-poly"), "prop", "a rock").prompt).toContain("Mood: soft: gentle low-contrast light");
+  expect(artBrief(presetLook("faceted-low-poly", { mood: "dark" }), "prop", "a rock").prompt).toContain("Mood: dark: low-key light");
+  expect(() => presetLook("faceted-low-poly", { mood: "gloomy" as never })).toThrow(/one of bright, dark/);
+  // The nearest look naming a mood wins: a flashback in dark over a game drawn warm.
+  const dir = project({
+    "project.ogt": manifest("looks/flashback.ogt"),
+    "assets/looks/game.ogt": 'type look\nversion 1\n---\nextends "monochrome-pixel"\nmood "warm"\n',
+    "assets/looks/flashback.ogt": 'type look\nversion 1\n---\nextends "looks/game.ogt"\nmood "dark"\n',
+  });
+  const look = readLook(dir);
+  expect(look.mood).toBe("dark");
+  // monochrome-pixel's own palette is handheld4; its dark layer swaps in handheld4-dark, darkest first.
+  expect(look.palette?.id).toBe("@palettes/handheld4-dark");
+  expect(look.palette?.colours.map((c) => c.hex)).toEqual(["#0a120c", "#1c3320", "#3d6234", "#78935a"]);
+  expect(artBrief(look, "sprite", "a lamp").prompt).toContain("#78935a");
+  // In its own mood the preset keeps its palette.
+  expect(presetLook("monochrome-pixel").palette?.colours.map((c) => c.hex)).toEqual(["#14261b", "#3d6234", "#84a440", "#c9da8f"]);
+  expect(presetLook("monochrome-pixel", { mood: "soft" }).palette?.id).toBe("@palettes/handheld4");
+  // Every mood reads on every preset.
+  for (const s of catalogue.styles.filter((x) => x.look.presetReady)) for (const m of MOODS) expect(artBrief(presetLook(s.slug, { mood: m }), "backdrop", "a quay").prompt).toContain(`Mood: ${m === "high-contrast" ? "high contrast" : m}:`);
+});
+
+test("a content style's authored art is what its brief asks for, by kind", () => {
+  const clay = presetLook("sculpted-clay");
+  expect(authoredArt(clay).map((a) => a.kind)).toEqual(["character", "prop"]);
+  const hero = artBrief(clay, "character", "a baker");
+  expect(hero.prompt).toContain("Authored: this style's character art is made for it");
+  expect(hero.prompt).toContain("hand-modelled in clay");
+  // A kind the style does not author carries no such line, and a full style authors nothing.
+  expect(artBrief(clay, "icon", "a loaf").prompt).not.toContain("Authored:");
+  expect(authoredArt(presetLook("16bit-pixel"))).toEqual([]);
+  // Every content style names its art, each kind a brief kind whose prompt asks for it.
+  const content = (JSON.parse(readFileSync(join(import.meta.dir, "..", "looks", "catalogue.json"), "utf8")) as { styles: { slug: string; look: { support: string } }[] }).styles.filter((s) => s.look.support === "content");
+  expect(content.length).toBe(14);
+  for (const s of content) {
+    const look = presetLook(s.slug);
+    const art = authoredArt(look);
+    expect(art.length).toBeGreaterThan(0);
+    for (const a of art) expect(artBrief(look, a.kind, "the hero").prompt).toContain(a.what);
+  }
 });

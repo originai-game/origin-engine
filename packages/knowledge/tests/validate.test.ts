@@ -215,6 +215,8 @@ test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
       c.look.profiles = ["2d", "4d"];
       c.look.layers = ["conform", "authored"];
       c.look.family = "pixel-moon";
+      c.look.views = ["first-person-3d", "sideways"];
+      c.look.mood = "gloomy";
       c.preview = "previews/nowhere.webp";
       cat.styles.push({ ...cat.styles[3] });
       cat.styles.push({ ...cat.styles[4], slug: "a-new-look" });
@@ -233,7 +235,12 @@ test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
       `looks/catalogue.json: ${c}: look.profiles must name the profiles the style draws for, one or both of 2d, 3d (create matches a premise only among the game's)`,
       `looks/catalogue.json: ${c}: look.layers must include frame and name only frame, conform, runtime, authored, each once`,
       `looks/catalogue.json: ${c}: support ${cat.styles[2]!.look.support} disagrees with look.layers (content exactly when authored art is needed)`,
-      `looks/catalogue.json: ${c}: look.family pixel-moon is none of pixel-side, pixel-topdown, pixel-3d, paint-2d, ink-3d, shape-3d, toon-3d, cinematic-3d`,
+      `looks/catalogue.json: ${c}: look.family is gone (schema 3): the sample scene is tools/art-samples/scenes.json's, not a reader's`,
+      `looks/catalogue.json: ${c}: look.views must name the views the style suits, each once, among side-2d, top-down-2d, isometric-2.5d, third-person-3d, first-person-3d`,
+      `looks/catalogue.json: ${c}: look.views names first-person-3d, which its profiles (2d, 4d) do not draw`,
+      `looks/catalogue.json: ${c}: look.views names sideways, which its profiles (2d, 4d) do not draw`,
+      `looks/catalogue.json: ${c}: look.mood gloomy is none of bright, dark, warm, cold, soft, high-contrast`,
+      `looks/catalogue.json: ${c}: look.authored names the art exactly when look.layers needs authored art`,
       `looks/catalogue.json: ${c}: preview is previews/nowhere.webp, expected previews/${c}.webp`,
       `looks/catalogue.json: ${a}: needs intended, one sentence naming the traits that look like defects but are the style ("… are the style, not …")`,
       `looks/catalogue.json: ${c}: intended names the style; a blind critic reads it`,
@@ -275,12 +282,12 @@ test("a field written as `key: value` or in a token's object literal is one the 
 test("og-taste §12's table is held to the catalogue, row by row", () => {
   const p = added((r) =>
     edit(join(r.pkg, "skills/og-taste/SKILL.md"), (s) =>
-      s.replace("| `voxel-worlds` | 3D rendering | Voxel worlds | full | `pixel` |", "| `voxel-worlds` | 3D rendering | Voxel worlds | content | `cartoon` |").replace(/^\| `neon-vector` \|.*\n/m, "Also `neon-vector`.\n"),
+      s.replace("| `voxel-worlds` | Low-poly, toy and handmade 3D | Voxel worlds | full | `pixel` |", "| `voxel-worlds` | Low-poly, toy and handmade 3D | Voxel worlds | content | `cartoon` |").replace(/^\| `neon-vector` \|.*\n/m, "Also `neon-vector`.\n"),
     ),
   );
   expect(p.sort()).toEqual([
-    "skills/og-taste/SKILL.md: §12's row for `voxel-worlds` reads 3D rendering, Voxel worlds, content, cartoon; the catalogue says 3D rendering, Voxel worlds, full, pixel",
-    "skills/og-taste/SKILL.md: §12's table has no row for `neon-vector` (| slug | family | style | support | ui |)",
+    "skills/og-taste/SKILL.md: §12's row for `voxel-worlds` reads Low-poly, toy and handmade 3D, Voxel worlds, content, cartoon; the catalogue says Low-poly, toy and handmade 3D, Voxel worlds, full, pixel",
+    "skills/og-taste/SKILL.md: §12's table has no row for `neon-vector` (| slug | group | style | support | ui |)",
   ]);
 });
 

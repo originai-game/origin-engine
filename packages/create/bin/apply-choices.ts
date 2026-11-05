@@ -113,7 +113,10 @@ export function applyCreation(dir: string, c: CreationChoices, lookFile: string,
   const target = join(dir, "assets/styles", c.ui);
   mkdirSync(dirname(target), { recursive: true });
   cpSync(style, target, { recursive: true });
-  const look = readFileSync(join(dir, lookFile), "utf8").replace(/^ui\s+"[^"]*"\s*$/gm, "");
+  // The mood asked of the preset (docs/art.md §2.9) goes beside `extends`; the cook lays its layer, the art brief reads it.
+  let look = readFileSync(join(dir, lookFile), "utf8").replace(/^ui\s+"[^"]*"\s*$/gm, "").replace(/^mood\s+"[^"]*"\s*\n/gm, "");
+  const moodLine = `mood "${c.mood}"`;
+  look = /^extends\s+"[^"]*"\s*$/m.test(look) ? look.replace(/^(extends\s+"[^"]*")\s*$/m, `$1\n${moodLine}`) : `${look.replace(/\n*$/, "\n")}${moodLine}\n`;
   writeFileSync(join(dir, lookFile), `${look}\nui "styles/${c.ui}/style.ogt"\n`);
 
   const manifest = join(dir, "project.ogt");

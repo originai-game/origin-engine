@@ -339,7 +339,18 @@ build (numbers cannot judge a style, og-taste §11).
   needed layer but `authored` is implemented, `content` when `authored`
   is needed, `partial` otherwise with `missing` naming what.
 - `look.family`: one of eight sample scenes (§3 stream A7, `examples/art-<family>`) the style is
-  proven on.
+  proven on. **Removed in schema 3** (A4, 2026-11-05): a sample scene is
+  the tools' business, not a reader's, so it lives in
+  `tools/art-samples/scenes.json`. Schema 3 adds, for a creation UI to
+  filter and group by: `category` in plain terms (pixel art, retro 3D,
+  hand-drawn and painted, ink and comic, toon and stylised 3D, low-poly,
+  toy and handmade 3D, flat and graphic, realistic), `look.views` (the
+  creation views it suits, within its profiles), `look.mood` (the mood its
+  preset is drawn in, §2.9) and, for the 14 `content` styles,
+  `look.authored`: each art brief kind the style needs made and what it
+  must be. `artBrief` writes that into every request of the kind (an
+  `Authored` line) and `authoredArt(look)` lists them. Slugs are
+  unchanged.
 
 The showcase's 37-preset station stays as the frame regression it is; the
 proof that a style reads is its family's sample scene with conformed

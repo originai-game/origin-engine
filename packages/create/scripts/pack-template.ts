@@ -71,6 +71,7 @@ rmSync(presetsTarget, { recursive: true, force: true });
 mkdirSync(join(presetsTarget, "assets"), { recursive: true });
 for (const name of readdirSync(looksDir)) if (name.endsWith(".ogt")) cpSync(join(looksDir, name), join(presetsTarget, name));
 cpSync(join(looksDir, "assets", "palettes"), join(presetsTarget, "assets", "palettes"), { recursive: true });
+cpSync(join(looksDir, "moods"), join(presetsTarget, "moods"), { recursive: true });
 console.log(`pack-template: ${brief} -> bin/brief.ts, ${looksDir} -> presets/`);
 
 const stylesTarget = join(pkg, "styles");

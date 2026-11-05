@@ -2,7 +2,7 @@
 """Makes the style catalogue honest per style (docs/art.md §2.6, stream A7)
 from the sample frames: `look.support` is `content` where the style needs
 authored art, `full` where its frame reads as the style (verdicts.json) and
-`og style check` passed on its family's scene, else `partial` with
+`og style check` passed on its sample scene, else `partial` with
 `missing` naming what is still not there. og-taste §12's table follows.
 Also writes the evidence: the check's summary per style and the notes'
 37-row table.
@@ -18,6 +18,7 @@ cap, evidence = sys.argv[1], sys.argv[2]
 cat_path = os.path.join(repo, "packages/knowledge/looks/catalogue.json")
 taste_path = os.path.join(repo, "packages/knowledge/skills/og-taste/SKILL.md")
 cat = json.load(open(cat_path))
+scenes = json.load(open(os.path.join(os.path.dirname(__file__), "scenes.json")))
 verdicts = json.load(open(os.path.join(os.path.dirname(__file__), "verdicts.json")))["styles"]
 STALE = re.compile(r"^the (cook's asset conformance|runtime pieces of docs/art.md)")
 
@@ -54,9 +55,9 @@ for s in cat["styles"]:
             if not any(o.split(":")[0] in m for m in missing):
                 missing.append(f"og style check on the sample: {o}")
     look["support"], look["missing"] = support, missing
-    summary[slug] = {"family": look["family"], "ok": ok, "off": off}
+    summary[slug] = {"family": scenes[slug], "ok": ok, "off": off}
     frame = f"frames/{slug}.jpg"
-    rows.append(f"| `{slug}` | {look['family']} | [{slug}.jpg]({frame}) | {'yes' if v['reads'] else 'no'}: {v['why']} | {'pass' if ok else 'off: ' + '; '.join(off)} | {support} |")
+    rows.append(f"| `{slug}` | {scenes[slug]} | [{slug}.jpg]({frame}) | {'yes' if v['reads'] else 'no'}: {v['why']} | {'pass' if ok else 'off: ' + '; '.join(off)} | {support} |")
 
 json.dump(cat, open(cat_path, "w"), indent=2, ensure_ascii=False)
 open(cat_path, "a").write("\n")
