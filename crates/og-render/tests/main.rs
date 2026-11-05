@@ -10,3 +10,4 @@ mod shaders;
 mod shared_frames;
 mod surface;
 mod tier;
+mod wgsl_rules;

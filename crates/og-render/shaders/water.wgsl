@@ -785,7 +785,7 @@ fn lake_glints(p: vec2<f32>, footprint: f32, share: f32, t: f32) -> f32 {
     let size = exp2(level);
     let cell = vec2<i32>(floor(p / size));
     let mu = LAKE_FACETS * size * size * share;
-    let id = spray_hash(bitcast<u32>(cell.x) * 73856093u ^ bitcast<u32>(cell.y) * 19349663u ^ bitcast<u32>(i32(level)) * 83492791u);
+    let id = spray_hash((bitcast<u32>(cell.x) * 73856093u) ^ (bitcast<u32>(cell.y) * 19349663u) ^ (bitcast<u32>(i32(level)) * 83492791u));
     let step = floor(t * 6.0 * max(water.waves.y, 0.0) + spray_rand(id));
     let h = spray_hash(id ^ (bitcast<u32>(i32(step)) * 2654435761u));
     let u = spray_rand(h);
@@ -1161,6 +1161,12 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     // reflection then points down, into the sea: see below).
     n = normalize(n + v * max(0.05 - dot(n, v), 0.0));
   } else if (dot(n, v) < 0.0 && !three_water) { n = -n; }
+  // The lake glitter's mean slope and its change across the pixel (below), taken here: every derivative comes before
+  // the first return on a per-pixel value (`below_view`), as WGSL's uniformity rules require (Tint refuses the whole
+  // module otherwise, and the frame drew black in the browser).
+  let ms = n.xz / max(n.y, 1e-3);
+  let dsx = dpdxFine(ms);
+  let dsy = dpdyFine(ms);
   let l = normalize(frame.light_dir.xyz);
   var sun = 1.0;
   if (water.extra.x > 0.0 && frame.light_dir.w > 0.5) {
@@ -1388,9 +1394,6 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     // twenty suns, so every ripple face near the sun's mirror angle lit whole and clipped into a flat white field.)
     let h = normalize(l + v);
     let hs = -h.xz / max(h.y, 1e-3);
-    let ms = n.xz / max(n.y, 1e-3);
-    let dsx = dpdxFine(ms);
-    let dsy = dpdyFine(ms);
     let aa = vec3<f32>(dsx.x * dsx.x + dsy.x * dsy.x, dsx.y * dsx.y + dsy.y * dsy.y, dsx.x * dsx.y + dsy.x * dsy.y) * 0.5;
     let capillary = CAPILLARY * clamp(water.waves.z / 0.35, 0.0, 1.0);
     let micro = detail.cov + aa * min(1.0, 0.03 / max(max(aa.x, aa.y), 1e-8)) + vec3<f32>(capillary, capillary, 0.0);
