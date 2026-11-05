@@ -378,7 +378,7 @@ impl Ui {
     }
 
     /// The focusable controls of last frame in reading order, inside the open scope.
-    fn focusables(&self) -> Vec<Hit> {
+    pub(crate) fn focusables(&self) -> Vec<Hit> {
         let scope = self.state.scope;
         self.state
             .hits

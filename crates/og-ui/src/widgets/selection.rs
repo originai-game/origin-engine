@@ -428,6 +428,16 @@ impl Ui {
             focused: spun.focused,
             ..Response::default()
         };
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            out.changed |= self.accessibility_number(
+                spin_key,
+                value,
+                if bounded { lo } else { f32::MIN },
+                if bounded { hi } else { f32::MAX },
+                step,
+            );
+        }
         let digits = desc.decimals as usize;
         for (name, sign) in [("Dec", -1), ("Inc", 1)] {
             if name == "Inc" {

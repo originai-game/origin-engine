@@ -1062,7 +1062,9 @@ stay, and the bar rises to the Xbox Accessibility Guidelines:
 - every hold has a toggle; every timed choice has a setting;
 - remapping through the settings components;
 - subtitles per XAG 104;
-- the native host mirrors the tree to the OS through AccessKit.
+- the native host sends incremental AccessKit trees over `ORIGIN_FRAMES_SOCKET`
+  (docs/design.md §2.6). The window-owning Origin Desktop applies them to
+  the OS and returns actions; its adapter remains platform ask 24.
 
 ### 15.3 Localization
 

@@ -165,6 +165,49 @@ it hands back (a player, a friend, a purchase, an invite) is opaque, at most
 |---|---|---|---|
 | 22 | The Stage (origin-agent's host of a dev build, the `og-probe` wire 1 at protocol 5, `origin-agent/packages/contracts/src/probe.ts`) accepts one pushed event from the page, `{ og: "probe", v: 1, kind: "scene_saved", scenes: [{ source, text }] }`, posted to the origin in `window.__OG_STAGE_HOST__` under the wire's rules (never `"*"`): `source` is a scene's project-relative path (`assets/scenes/main.ogt`, the boot scene's first), `text` its whole new text, at most 1 MiB a scene and 64 scenes an event. The Stage writes each `text` over `source` in the game's project (the sandbox's checkout, as the agent's own edits are written), refusing a `source` outside `assets/` or not ending in `.ogt`, and answers nothing on the wire; the creator sees the files changed as they see an agent's edit. Advertise it in the Stage's `hello` reply to the page as `capabilities: ["scene_saved"]`. | The inspector's Save (F1 in a development build, `docs/design.md` §3.6) is `save_scene`: natively the engine writes the scene files itself, but a web page writes no files (`shell/page.ts`, `saveScene` answers the text), so on the Stage an edit made in the panel is lost unless the page can hand the text to the host that owns the project. | A web page's Save answers the texts and writes nothing ("N lines ready; the page saves them"); the shell's save routing (`shell/wire.ts` `routeSavedScenes`, G3-7 batch 3, landed) sends `scene_saved` only to a Stage whose `hello` lists the capability, and otherwise downloads each scene as a `.ogt` file named by its source (one file per scene, the browser's download) so the creator can put it back by hand. |
 
+## Native accessibility in Origin Desktop (B8, 2026-11-05)
+
+**Ask 24 — open.** Origin Desktop owns the OS AccessKit adapter for its
+Preview window. The engine owns no window and must not attach an adapter
+to another process's handle. The engine supplies the tree and consumes
+actions through the shared-frame socket (docs/design.md §2.6).
+
+After each shared-frame `Hello` on a new connection, Desktop sends
+`{"AccessibilitySubscribe":{"version":1}}`. Every message is a `u32`
+little-endian byte length followed by JSON. Version 1 pins AccessKit
+0.25.2's serde representation. Desktop deserializes the `update` field of
+`{"AccessibilityUpdate":{"version":1,"generation":0,"seq":42,"update":...}}`
+as `accesskit::TreeUpdate` and applies every update in socket order.
+The first update is a full tree; later updates contain changed nodes and
+focus. Dropping an incremental update loses tree state, even when Desktop
+skips the image for that sequence. Reconnection starts a new tree.
+
+Bounds are in the shared frame's physical pixels. Desktop supplies the
+Preview's placement transform and clips the embedded tree to the Preview.
+Desktop forwards its adapter's `ActionRequest` unchanged in the `request`
+field of `AccessibilityAction`, with `version: 1`. For example, in Rust:
+
+```rust
+let request = accesskit::ActionRequest {
+    action: accesskit::Action::Click,
+    target_tree: accesskit::TreeId::ROOT,
+    target_node: accesskit::NodeId(7), // id from the received tree
+    data: None,
+};
+let message = serde_json::json!({
+    "AccessibilityAction": { "version": 1, "request": request }
+});
+let body = serde_json::to_vec(&message)?;
+socket.write_all(&(body.len() as u32).to_le_bytes())?;
+socket.write_all(&body)?;
+```
+
+The engine supports the actions advertised on each node: focus, click,
+set value, increment, decrement, scroll into view, and directional page
+scroll. It applies them on the UI tick, not on the socket thread. Until
+this ask lands, native frames remain visual-only to the OS. The web DOM
+mirror is unchanged.
+
 ## The inspector's prefab Apply and Revert on a web page (G3-7, 2026-11-02)
 
 | # | Ask | Why | Until then |

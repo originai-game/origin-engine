@@ -153,6 +153,7 @@ pub(crate) fn role_of(kind: &str, n: &Node) -> &'static str {
         // A container keys and pads reach (a shop card) is a button unless
         // its widget says otherwise.
         _ if n.nav => "button",
+        _ if n.scrolls() => "group",
         _ => "",
     }
 }

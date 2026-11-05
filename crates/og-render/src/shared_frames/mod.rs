@@ -120,6 +120,21 @@ pub enum Msg {
     /// Engine: the next thing on the socket is a `Hello` starting the next
     /// generation; the previous generation's slots are no longer drawn into.
     Rehello,
+    /// Host opts into the accessibility extension (version 1, AccessKit 0.25.2).
+    /// No extension messages are sent to legacy consumers.
+    AccessibilitySubscribe { version: u32 },
+    /// Engine: incremental AccessKit TreeUpdate for this shared frame.
+    AccessibilityUpdate {
+        version: u32,
+        generation: u32,
+        seq: u64,
+        update: serde_json::Value,
+    },
+    /// Host: AccessKit ActionRequest in the negotiated schema.
+    AccessibilityAction {
+        version: u32,
+        request: serde_json::Value,
+    },
 }
 
 /// One message on `stream`.
@@ -202,6 +217,10 @@ pub enum Presented {
 
 /// Engine → link thread.
 enum Request {
+    Message {
+        connection: u64,
+        msg: Msg,
+    },
     /// Make generation `generation` of connection `connection` at this size.
     Export {
         connection: u64,
@@ -243,6 +262,7 @@ struct Generation {
 /// The connected host.
 struct Host {
     connection: u64,
+    accessibility: bool,
     writer: Arc<Mutex<UnixStream>>,
     /// The generation drawn into, once its Hello has gone.
     current: Option<Generation>,
@@ -260,6 +280,7 @@ pub struct FrameLink {
     host: Option<Host>,
     resize: Option<(u32, u32)>,
     seq: u64,
+    actions: Vec<serde_json::Value>,
 }
 
 impl FrameLink {
@@ -284,6 +305,7 @@ impl FrameLink {
             host: None,
             resize: None,
             seq: 0,
+            actions: Vec::new(),
         }
     }
 
@@ -302,6 +324,35 @@ impl FrameLink {
     pub fn take_resize(&mut self) -> Option<(u32, u32)> {
         self.drain();
         self.resize.take()
+    }
+
+    /// The negotiated socket session; a new id requires a full tree.
+    pub fn accessibility_session(&self) -> Option<u64> {
+        self.host
+            .as_ref()
+            .filter(|h| h.accessibility)
+            .map(|h| h.connection)
+    }
+
+    /// Actions received by the last `present` or `take_resize`. Do not poll
+    /// here: the caller's presented frame and session must remain paired.
+    pub fn take_accessibility_actions(&mut self) -> Vec<serde_json::Value> {
+        std::mem::take(&mut self.actions)
+    }
+
+    /// Queue without blocking the engine thread on the window's socket.
+    pub fn accessibility_update(&self, generation: u32, seq: u64, update: serde_json::Value) {
+        if let Some(connection) = self.accessibility_session() {
+            let _ = self.requests.send(Request::Message {
+                connection,
+                msg: Msg::AccessibilityUpdate {
+                    version: 1,
+                    generation,
+                    seq,
+                    update,
+                },
+            });
+        }
     }
 
     /// Shows the frame `renderer` drew last offscreen in the host's window:
@@ -383,8 +434,10 @@ impl FrameLink {
         while let Ok(event) = self.events.try_recv() {
             match event {
                 Event::Connected { connection, writer } => {
+                    self.actions.clear();
                     if let Some(old) = self.host.replace(Host {
                         connection,
+                        accessibility: false,
                         writer,
                         current: None,
                         pending: None,
@@ -433,7 +486,22 @@ impl FrameLink {
                                 height.clamp(MIN_SIDE, MAX_SIZE.1),
                             ));
                         }
-                        Msg::Ready { .. } | Msg::Rehello => {}
+                        Msg::AccessibilitySubscribe { version: 1 } => {
+                            host.accessibility = true;
+                        }
+                        Msg::AccessibilityAction {
+                            version: 1,
+                            request,
+                        } if host.accessibility => {
+                            if self.actions.len() < 256 {
+                                self.actions.push(request);
+                            }
+                        }
+                        Msg::Ready { .. }
+                        | Msg::Rehello
+                        | Msg::AccessibilitySubscribe { .. }
+                        | Msg::AccessibilityAction { .. }
+                        | Msg::AccessibilityUpdate { .. } => {}
                     }
                 }
                 Event::Closed { connection } => {
@@ -443,6 +511,7 @@ impl FrameLink {
                         .is_some_and(|h| h.connection == connection)
                     {
                         self.host = None;
+                        self.actions.clear();
                     }
                 }
             }
@@ -520,12 +589,28 @@ fn link_thread(
                     return;
                 }
             };
+            if let Request::Message { connection: c, msg } = &request {
+                if *c == connection {
+                    let sent = writer
+                        .lock()
+                        .map_err(|_| ())
+                        .and_then(|mut w| send(&mut *w, msg).map_err(|_| ()));
+                    if sent.is_err() {
+                        shutdown(&writer);
+                        break;
+                    }
+                }
+                continue;
+            }
             let Request::Export {
                 connection: c,
                 generation,
                 width,
                 height,
-            } = request;
+            } = request
+            else {
+                unreachable!()
+            };
             if c != connection {
                 continue;
             }

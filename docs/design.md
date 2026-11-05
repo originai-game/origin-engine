@@ -1622,6 +1622,33 @@ copy's completion, the window's release after its own later frame); GPU
 signals (`MTLSharedEvent`, exported semaphores, shared fences) replace it
 later.
 
+The socket also carries an opt-in accessibility extension. Messages retain
+the `u32` little-endian byte length followed by serde JSON. After `Hello`,
+the window sends `{"AccessibilitySubscribe":{"version":1}}`. Version 1
+pins the serde schemas of AccessKit 0.25.2 (`TreeUpdate`, `ActionRequest`):
+
+- Engine → window: `{"AccessibilityUpdate":{"version":1,"generation":0,"seq":42,"update":<TreeUpdate>}}`.
+- Window → engine: `{"AccessibilityAction":{"version":1,"request":<ActionRequest>}}`.
+
+No subscription means no accessibility traffic. Unsupported versions are
+ignored. A connection starts with a full tree, then only changed nodes
+and focus. Node ids follow UI paths and are never assigned to another path
+within that connection. Removed children disappear from their parent's
+child list. Reconnection resets the tree and requires a new subscription.
+Bounds use the shared frame's physical pixels, before the window's own
+placement transform. `generation` and `seq` identify that frame; updates
+and `Ready` may arrive in either order. Apply every incremental update in
+socket order, even if the window skips the associated image.
+
+The engine accepts supported focus, click, set-value, increment, decrement,
+scroll-into-view, and directional page-scroll actions. It queues actions
+between frames and applies them in the next UI tick, checking the current
+focus scope, disabled state, and target existence. Numeric controls retain
+their bounds and step; text edits retain their length limit and undo history.
+The engine owns no OS window. Origin Desktop owns the AccessKit platform
+adapter and maps the frame's coordinates into its window (platform ask 24).
+The web shell's DOM mirror is unchanged.
+
 ### 2.7 Animation, physics, navigation, audio, UI **(D)**
 
 - **Animation**: glTF skins and clips, a blend tree asset (`.ogt`), state

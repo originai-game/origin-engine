@@ -452,6 +452,10 @@ impl Ui {
         } else {
             (desc.min, desc.max)
         };
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            r.changed |= self.accessibility_number(key, value, lo.min(hi), lo.max(hi), desc.step);
+        }
         if r.focused && self.nav.adjust != 0 {
             // Left and right step by `step`, or a twentieth of the range.
             let unit = if desc.step > 0.0 {

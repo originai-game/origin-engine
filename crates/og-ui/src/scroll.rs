@@ -303,11 +303,12 @@ impl Ui {
     /// `None` for a path that was no scroll container.
     pub fn scroll_state(&self, path: &str) -> Option<ScrollState> {
         let key = crate::id::key_of_path(path);
-        let n = self
-            .kept
-            .prev
-            .iter()
-            .find(|n| n.key == key && n.scrolls())?;
+        let laid_out = if self.building {
+            &self.kept.prev
+        } else {
+            &self.nodes
+        };
+        let n = laid_out.iter().find(|n| n.key == key && n.scrolls())?;
         let view_width = (n.w - n.el.padding.horizontal()).max(0.0);
         let view_height = (n.h - n.el.padding.vertical()).max(0.0);
         let at = self.offset(key);

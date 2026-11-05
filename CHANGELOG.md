@@ -15,6 +15,12 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Native accessibility has a shared-frame transport.** An opt-in,
+  versioned socket extension carries incremental AccessKit trees with
+  stable ids and frame-pixel bounds. Returned actions reach controls on
+  the UI tick. Origin Desktop still needs the window's OS adapter
+  (platform ask 24); the engine never takes a window handle. No IDL change.
+
 - **A flat look's mesh textures keep their patches again.** The flat
   abstraction of a 3D look's colour textures (two Kuwahara passes, then
   the asset's own palette) counts every texel alike in the palette's cut

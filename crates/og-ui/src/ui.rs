@@ -390,6 +390,8 @@ pub struct Ui {
     /// The og-ui unit of the frame being built, CSS px (`begin`).
     pub(crate) unit: f32,
     pub(crate) input: InputFrame,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) native_input: crate::native_a11y::Input,
     pub(crate) nodes: Vec<Node>,
     pub(crate) kinds: Vec<(&'static str, bool)>,
     /// Last frame's `kinds`, beside `kept.prev`.

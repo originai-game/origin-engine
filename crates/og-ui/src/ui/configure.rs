@@ -18,6 +18,8 @@ impl Ui {
             viewport: Viewport::default(),
             unit: 1.0,
             input: InputFrame::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            native_input: Default::default(),
             nodes: Vec::new(),
             kinds: Vec::new(),
             prev_kinds: Vec::new(),
@@ -562,6 +564,8 @@ impl Ui {
         let intents = self.intents(&input);
         self.apply_nav(&intents);
         self.apply_a11y(&input.a11y);
+        #[cfg(not(target_arch = "wasm32"))]
+        self.apply_native_accessibility();
         self.apply_pads(&input);
         self.state.pointer = p;
         // Once a world has a typed-text stream, key presses type nothing.

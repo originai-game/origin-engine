@@ -39,6 +39,8 @@ pub mod layers;
 mod layout;
 pub mod markup;
 pub mod motion;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod native_a11y;
 mod nav;
 pub mod paint;
 pub mod paint_entry;

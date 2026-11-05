@@ -489,6 +489,8 @@ struct OffscreenBackend {
     /// one (`ORIGIN_FRAMES_SOCKET`, og-render's `shared_frames`).
     #[cfg(any(target_os = "macos", target_os = "linux", windows))]
     frames: Option<og_render::shared_frames::FrameLink>,
+    #[cfg(any(target_os = "macos", target_os = "linux", windows))]
+    accessibility: (Option<u64>, og_ui::native_a11y::Bridge),
 }
 
 impl OffscreenBackend {
@@ -572,7 +574,42 @@ impl RenderBackend for OffscreenBackend {
         self.draw(scene)?;
         #[cfg(any(target_os = "macos", target_os = "linux", windows))]
         if let Some(frames) = self.frames.as_mut() {
-            frames.present(&self.renderer);
+            let presented = frames.present(&self.renderer);
+            let actions = frames.take_accessibility_actions();
+            let session = frames.accessibility_session();
+            if self.accessibility.0 != session {
+                self.accessibility = (session, Default::default());
+            }
+            if session.is_some()
+                && let Some(shared) = og_runtime::shared_ui(self.engine)
+            {
+                let mut ui = shared.lock();
+                for value in actions {
+                    if let Ok(action) = serde_json::from_value(value)
+                        && let Some(request) = self.accessibility.1.action(action)
+                    {
+                        ui.queue_accessibility(request);
+                    }
+                }
+                if let og_render::shared_frames::Presented::Slot {
+                    generation, seq, ..
+                } = presented
+                {
+                    let frame = ui.frame();
+                    let (w, h) = self.renderer.size();
+                    let scale = [
+                        f64::from(frame.unit * w as f32 / frame.viewport.width.max(1.0)),
+                        f64::from(frame.unit * h as f32 / frame.viewport.height.max(1.0)),
+                    ];
+                    if let Some(update) = self.accessibility.1.update(&ui, scale) {
+                        frames.accessibility_update(
+                            generation,
+                            seq,
+                            serde_json::to_value(update).expect("AccessKit tree"),
+                        );
+                    }
+                }
+            }
         }
         Ok(())
     }
@@ -732,6 +769,8 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
                     capture_error: None,
                     #[cfg(any(target_os = "macos", target_os = "linux", windows))]
                     frames,
+                    #[cfg(any(target_os = "macos", target_os = "linux", windows))]
+                    accessibility: Default::default(),
                 })),
             )?;
             DEVICES.with(|d| d.borrow_mut().insert(engine, device));
