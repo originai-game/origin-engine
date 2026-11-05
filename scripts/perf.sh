@@ -2,7 +2,11 @@
 # The perf suite (docs/ci.md §What runs where; `make perf`): og-tests' frame
 # times (crates/og-tests/perf/<tier>-<adapter>/) and og-runtime's
 # extraction cost (crates/og-runtime/perf/<cpu>/), release profile, each
-# against this machine's committed baseline with a 15 % tolerance.
+# against this machine's committed baseline with a 15 % tolerance. The
+# release test binaries are built first with no GPU slot; then one test runs
+# at a time (cargo test's parallel threads skew each other's frame times)
+# under every GPU slot (og_gpu_acquire_all, scripts/lock.sh), held for this
+# run only.
 #
 #   scripts/perf.sh             compare with this machine's baselines
 #   OG_PERF_RECORD=1 scripts/perf.sh
@@ -35,8 +39,15 @@ if [ "$measure" = 1 ]; then
 fi
 
 t0="$(date +%s)"
-cargo test -p og-tests -p og-runtime --release --no-fail-fast -- --ignored perf --nocapture 2>&1 | tee "$out/perf.log"
+cargo test -p og-tests -p og-runtime --release --no-run 2>&1 | tee "$out/perf.log"
 rc="${PIPESTATUS[0]}"
+if [ "$rc" = 0 ]; then
+  og_gpu_acquire_all "scripts/perf.sh ($PWD)" || exit 1
+  og_say "perf: holding every GPU slot"
+  cargo test -p og-tests -p og-runtime --release --no-fail-fast -- --ignored perf --nocapture --test-threads=1 2>&1 | tee -a "$out/perf.log"
+  rc="${PIPESTATUS[0]}"
+  og_lock_release
+fi
 og_say "perf: cargo test exited $rc after $(( $(date +%s) - t0 )) s"
 
 if [ "$measure" = 1 ]; then
