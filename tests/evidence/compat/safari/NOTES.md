@@ -121,6 +121,17 @@ with crowd-lods and impostor-scatter in culling.rs's per-draw test).
 Grass and the meshlet path draw without vertex buffers, which WebKit does
 not clamp.
 
+## Edge difference in game frames: where the bisect stands (2026-11-06 00:50, handed off)
+
+Everything below is meridian-loop in Safari 27.2 (`run.sh fx --project ... --script ... --shots ...`, one slot each).
+
+- **Not the content, and not Safari's rendering of one frame.** The title shot alone (`--script "3:race" --shots title@72`) passes in Safari 3 runs of 3 (0.075 %, against Chrome's 0.073 %). It also passes with the playtest's whole script and only the title shot, and with `1.3:race:go` or `120:language:de` alone. The full playtest (`--playtest tests/frames.og.ts`) fails the same shot at 1.813 %, twice, reproducibly. Chrome full against Chrome alone: 0.001 %.
+- **The same script with all ten shots in `--script/--shots` mode** fails only jump and slide (0.202 % / 0.114 %, as Chrome does). The same ten shots through `--playtest` fail ghost, pause, results, board and settings-de too, with the numbers of the first full run. `--playtest` and `--script` build the same script and shots (checked with `--print`). What differs is that `--playtest` bundles the playtest first (`bundleGame` → `dist/test-reference/.meridian-loop.playtest.js`), and the shot list's order and timing.
+- **Shape of the difference:** a sub-pixel shift (about 0.5 px) and different softness on every geometry edge; the UI is clean. That reads as a different render scale or TAA jitter or history, not a different shader result.
+- **Leading hypothesis, unverified:** automatic quality (og-render auto_quality.rs, og-runtime display.rs `before_render`/`after_frame`) is on by default (`autoQuality: true`) on a presenting host, and the web harness's `frame` calls feed it intervals. Safari's slower frames (its fx run is 17 s against Chrome's 3 s) can step the render scale down, and TAA then resolves at another scale. A run's history (how long its frames took) would then decide the frame, which fits run-to-run and mode-to-mode differences. probes/diag-auto-quality.patch (not applied) adds `diagScale`/`diagStep` to the frame answer and has reference.ts print each scale change. Apply it, `run.sh build`, then `run.sh example meridian-loop`, and read the `DIAG scale changes` line.
+- **If confirmed, the root fix** is that a harness-driven frame (the probe's `frame` with the clock held, `pipelines.drawnWhole`) must not feed or apply automatic quality, as native `og run` draws at scale 1. That probably means turning auto quality off for probe-driven frames in og-runtime, with a test in crates/og-runtime/tests/display.rs. The four Safari-only looks (bold-comic 1.417 %, illuminated-manuscript 2.038 %, voxel-worlds, sculpted-clay) have the same edge signature and should be rechecked after the fix.
+- Variants under .amp/in/ml/ (base, nowire, aaoff, nobloom: copies of meridian-loop with one look or render change) were made for an antialias and post-pass cut-down. Only base and nowire ran before the title-alone result showed that the frame itself renders right.
+
 ## To resume
 
 Run the Chrome controls first (fx, gfx, e5, ui, wire) and compare each
