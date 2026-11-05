@@ -13,6 +13,22 @@ strings` tables, `og.i18n.t` and the message forms, font chains and
 subsets, kinsoku, right to left, the player's choice, the playtest) and is
 not repeated here.
 
+## 0. Starting from the language choice
+
+The languages are chosen when the game is created (`og new --lang`,
+project.ogt's `create` block): the tables, faces, pseudo-locale and a
+playtest per language are already there (og-i18n §0). What stays yours:
+
+- Read the create notes: an empty table is a translation owed, a script
+  without a shipped face is a font to bring, and a starter that draws
+  literals has words to move into the tables first.
+- Keep the chosen set complete as the game grows (§2), rerun
+  `bun tools/pseudo-locale.ts` with every base-table change, and keep
+  `tests/locale-*.og.ts` passing: they are the per-locale check of §5 in
+  its smallest form.
+- A language added later is the same work by hand: its table, its face
+  and licence, its `load`, its playtest (copy one of the generated ones).
+
 ## 1. One key per string, from the first line
 
 - Player-facing text (HUD, menus, prompts, results, the template words

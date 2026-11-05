@@ -1,0 +1,14 @@
+type strings
+version 1
+---
+# Français: templates/game-2d's assets/strings/en.ogt translated (og-i18n §1).
+# og new --lang copies it into a game, adding the locale's font chain and
+# direction; every key is the base table's, with the same arguments.
+locale "fr"
+string "hud.level" "Les toits"
+string "hud.clear" "Toits terminés !"
+string "hud.lives" "Vies"
+string "hud.pause" "Pause"
+string "hud.jump" "Sauter"
+string "pause.title" "En pause"
+string "pause.resume" "Reprendre"

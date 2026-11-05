@@ -1,0 +1,12 @@
+type strings
+version 1
+---
+# 简体中文: templates/game's assets/strings/en.ogt translated (og-i18n §1).
+# og new --lang copies it into a game, adding the locale's font chain and
+# direction; every key is the base table's, with the same arguments.
+locale "zh-CN"
+string "menu.title" "Origin Engine"
+string "menu.prompt" "按“开始”进入游戏"
+string "menu.spinning" "旋转中  {speed} 弧度/秒"
+string "menu.start" "开始"
+string "menu.started" "已开始"

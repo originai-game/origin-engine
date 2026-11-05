@@ -31,6 +31,10 @@ import { applyCreation } from "./apply-choices.ts";
 
 export { CREATION_CHOICES, creationBlock, creationSchema, inferCreationChoices, parseCreationInput } from "./choices.ts";
 export type { CreationChoices, CreationInput } from "./choices.ts";
+// The languages `--lang` sets up (bin/languages.ts) and the pseudo-locale (bin/pseudo-locale.ts).
+export { canonicalTag, isRtl, localeScript } from "./languages.ts";
+export type { LocaleScript } from "./languages.ts";
+export { PSEUDO_LOCALE, pseudoMessage, pseudoTable } from "./pseudo-locale.ts";
 
 // The art brief (docs/art.md §2.2): a game's look compiled into the request
 // for one asset. bin/brief.ts is a copy of the knowledge package's
@@ -461,8 +465,8 @@ export function create(options: CreateOptions): Created {
   const { look, notes } = writeLook(dir, name, id, choice, written);
   if (selection) {
     writeFileSync(manifest, `${readFileSync(manifest, "utf8")}\n${creationBlock(selection)}`);
-    written.push(...applyCreation(dir, selection, look.file, entryOf(dir)!, options.archetype, profile.value));
-    notes.push("genre/view camera presets, mood rendering, language assets and music generation are subsequent steps; the create block records their requested values");
+    for (const f of applyCreation(dir, selection, look.file, entryOf(dir)!, options.archetype, profile.value, notes)) if (!written.includes(f)) written.push(f);
+    notes.push("genre/view camera presets and mood rendering are subsequent steps; the create block records their requested values");
   }
   return { dir, name, id, files: written, profile, look, notes, ...(selection ? { choices: selection } : {}) };
 }

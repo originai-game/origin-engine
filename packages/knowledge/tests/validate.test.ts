@@ -174,7 +174,7 @@ test("a section reference names a numbered section that exists", () => {
   const other = added((r) => edit(join(r.pkg, "skills/og-audio/SKILL.md"), (s) => `${s}\nSee og-i18n §9, recipe-craft §1 and §9, and localization §Checking.\n`));
   expect(other).toEqual([
     "skills/og-audio/SKILL.md: refers to localization §Checking by name; refer to a skill's sections by their numbers (## N.)",
-    "skills/og-audio/SKILL.md: refers to og-i18n §9, which does not exist there (its sections: 1, 2, 3, 4, 5, 6)",
+    "skills/og-audio/SKILL.md: refers to og-i18n §9, which does not exist there (its sections: 0, 1, 2, 3, 4, 5, 6)",
     "skills/og-audio/SKILL.md: refers to recipe-craft §9, which does not exist there (its sections: 1, 2, 3, 4)",
   ]);
 });

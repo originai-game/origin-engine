@@ -1,0 +1,14 @@
+type strings
+version 1
+---
+# 한국어: templates/game-2d's assets/strings/en.ogt translated (og-i18n §1).
+# og new --lang copies it into a game, adding the locale's font chain and
+# direction; every key is the base table's, with the same arguments.
+locale "ko"
+string "hud.level" "옥상"
+string "hud.clear" "옥상 클리어!"
+string "hud.lives" "목숨"
+string "hud.pause" "일시정지"
+string "hud.jump" "점프"
+string "pause.title" "일시정지됨"
+string "pause.resume" "계속"

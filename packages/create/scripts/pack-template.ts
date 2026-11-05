@@ -76,3 +76,8 @@ console.log(`pack-template: ${brief} -> bin/brief.ts, ${looksDir} -> presets/`);
 const stylesTarget = join(pkg, "styles");
 rmSync(stylesTarget, { recursive: true, force: true });
 cpSync(join(pkg, "../../templates/styles"), stylesTarget, { recursive: true });
+
+// The locale faces and the starters' translations og new --lang installs (bin/languages.ts).
+const localesTarget = join(pkg, "locales");
+rmSync(localesTarget, { recursive: true, force: true });
+cpSync(join(pkg, "../../templates/locales"), localesTarget, { recursive: true, filter: (path) => !path.endsWith(".py") });

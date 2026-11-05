@@ -1,0 +1,12 @@
+type strings
+version 1
+---
+# 日本語: templates/game's assets/strings/en.ogt translated (og-i18n §1).
+# og new --lang copies it into a game, adding the locale's font chain and
+# direction; every key is the base table's, with the same arguments.
+locale "ja"
+string "menu.title" "Origin Engine"
+string "menu.prompt" "「スタート」を押して始めよう"
+string "menu.spinning" "回転中  {speed} rad/s"
+string "menu.start" "スタート"
+string "menu.started" "開始済み"

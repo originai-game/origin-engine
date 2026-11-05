@@ -2,6 +2,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { CreationChoices } from "./choices.ts";
+import { applyLanguages } from "./languages.ts";
 
 /** Packs are also copied into the released create/ directory by pack-template.ts. */
 function styleRoot(): string {
@@ -12,7 +13,7 @@ function styleRoot(): string {
   throw new Error("creation UI styles are missing; reinstall the engine dist");
 }
 
-function source(c: CreationChoices, arena: boolean): string {
+function source(c: CreationChoices, arena: boolean, load: readonly string[] | null): string {
   const local = c.players === "local-multiplayer";
   return `// Generated from project.ogt's create block. Keep gameplay on per-player inputs.
 import { og } from "@origingame/engine";
@@ -28,7 +29,9 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
 export function creationGame(game: GameDesc) {
   return og.game({ ...game, start(world) {
     game.start?.(world);
-    must(og.render.applyQuality(world, "${c.platform.startsWith("phone-") ? "low" : "medium"}"));
+${load ? `    // The chosen languages' tables (og new --lang), then the pseudo-locale.
+    for (const table of ${JSON.stringify(load)}) must(og.i18n.load(world, table));
+` : ""}    must(og.render.applyQuality(world, "${c.platform.startsWith("phone-") ? "low" : "medium"}"));
     for (const seat of ${local ? "[0, 1]" : "[0]"}) {
       const move: InputBinding[] = [];
       const action: InputBinding[] = [];
@@ -100,7 +103,10 @@ ${c.view === "side-2d" ? `      const pad = og.ui.dpad("Move", { size: 112 });
 }
 
 /** Apply supported starter wiring; genre and camera selection belong to the next mapping step. */
-export function applyCreation(dir: string, c: CreationChoices, lookFile: string, entry: string, archetype: string | undefined, profile: string): string[] {
+export function applyCreation(dir: string, c: CreationChoices, lookFile: string, entry: string, archetype: string | undefined, profile: string, notes: string[] = []): string[] {
+  const langs = applyLanguages(dir, c.lang, { entry, starter: archetype ?? (profile === "2d" ? "game-2d" : "game"), archetype: archetype !== undefined });
+  notes.push(...langs.notes);
+  if (langs.load) notes.push(`the ${archetype ?? "starter"} starter draws its words as literals: move them into assets/strings/ (localization §1) before the language tables show anything`);
   const styles = styleRoot();
   const style = join(styles, c.ui);
   if (!existsSync(join(style, "style.ogt"))) throw new Error(`no installable UI style ${c.ui}`);
@@ -122,7 +128,7 @@ export function applyCreation(dir: string, c: CreationChoices, lookFile: string,
   let code = readFileSync(main, "utf8");
   code = `import { creationGame${!archetype ? ", creationControls" : ""} } from "./creation.ts";\n${code}`;
   code = code.replace("export default og.game({", "export default creationGame({");
-  writeFileSync(join(dirname(main), "creation.ts"), source(c, archetype === "arena"));
+  writeFileSync(join(dirname(main), "creation.ts"), source(c, archetype === "arena", langs.load));
   if (archetype === "arena") {
     const gameFile = join(dirname(main), "game.ts");
     let game = readFileSync(gameFile, "utf8");
@@ -196,5 +202,5 @@ export default playtest({
   function files(root: string, prefix: string): string[] {
     return readdirSync(root, { withFileTypes: true }).flatMap(e => e.isDirectory() ? files(join(root, e.name), `${prefix}/${e.name}`) : [`${prefix}/${e.name}`]);
   }
-  return [`${dirname(entry)}/creation.ts`, ...files(target, `assets/styles/${c.ui}`)];
+  return [`${dirname(entry)}/creation.ts`, ...langs.files, ...files(target, `assets/styles/${c.ui}`)];
 }

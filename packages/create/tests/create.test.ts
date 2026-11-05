@@ -5,7 +5,7 @@ import { afterAll, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
-import { artBrief, CREATION_CHOICES, creationBlock, creationSchema, inferCreationChoices, parseCreationInput, resolveCreationChoices, pickStyle, premiseProfile, presetLook, readCatalogue, readLook, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
+import { artBrief, CREATION_CHOICES, localeScript, pseudoMessage, creationBlock, creationSchema, inferCreationChoices, parseCreationInput, resolveCreationChoices, pickStyle, premiseProfile, presetLook, readCatalogue, readLook, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
 import { cpSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { SKIN_ELSEWHERE } from "../../knowledge/scripts/validate.ts";
@@ -487,7 +487,7 @@ test("the published package briefs from its own presets, catalogue and previews"
   const r = Bun.spawnSync(["bun", join(pkg, "scripts", "pack-template.ts")]);
   expect(r.exitCode).toBe(0);
   const installed = join(scratch, "node_modules", "@origingame", "create-game");
-  for (const part of ["bin", "looks", "previews", "presets", "styles", "template", "template-2d", "archetypes", "package.json"]) cpSync(join(pkg, part), join(installed, part), { recursive: true });
+  for (const part of ["bin", "looks", "previews", "presets", "styles", "locales", "template", "template-2d", "archetypes", "package.json"]) cpSync(join(pkg, part), join(installed, part), { recursive: true });
   const r2 = Bun.spawnSync(["bun", join(installed, "bin", "brief.ts"), "sprite", "a bat", "--look", "monochrome-pixel", "--json"], { cwd: scratch });
   expect(new TextDecoder().decode(r2.stderr)).toBe("");
   const brief = JSON.parse(new TextDecoder().decode(r2.stdout)) as { palette: { hex: string }[]; references: { path: string }[] };
@@ -506,4 +506,41 @@ test("the published package briefs from its own presets, catalogue and previews"
   expect(created.exitCode).toBe(0);
   expect(existsSync(join(scratch, "packed-choices/assets/styles/dread/style.ogt"))).toBeTrue();
   expect(readFileSync(join(scratch, "packed-choices/tests/duel.og.ts"), "utf8")).toContain("netHash");
+});
+
+test("--lang writes a table per language with its face, direction and licence, the pseudo-locale and a playtest each", () => {
+  const r = cli(join(scratch, "langs"), "--no-prompt", "--lang", "zh,en,ar,ja,th");
+  expect(r.code).toBe(0);
+  const dir = join(scratch, "langs");
+  const read = (f: string) => readFileSync(join(dir, f), "utf8");
+  // The first chosen language with every key is the base; zh lands on zh-CN, the starter's English is kept.
+  expect(read("assets/strings/zh-CN.ogt")).toMatch(/^base true$/m);
+  expect(read("assets/strings/en.ogt")).not.toMatch(/^base/m);
+  expect(read("assets/strings/en.ogt")).toContain('string "menu.start" "Start"');
+  expect(read("assets/strings/ar.ogt")).toMatch(/^direction rtl$/m);
+  expect(read("assets/strings/ar.ogt")).toContain('fonts "fonts/NotoSansArabic-Regular.ttf"');
+  expect(read("assets/strings/ja.ogt")).toContain('string "menu.start" "スタート"');
+  // A language with no shipped translation gets an empty table, never copied English, and a note.
+  expect(read("assets/strings/th.ogt")).not.toContain("string ");
+  expect(r.out).toContain("Noto Sans Thai");
+  // Faces with their licences; the import cooks the table's own characters.
+  for (const f of ["NotoSansArabic-Regular.ttf", "OFL-NotoSansArabic.txt", "NotoSansJP-Regular-subset.ttf", "OFL-NotoSansJP.txt"]) expect(existsSync(join(dir, "assets/fonts", f))).toBeTrue();
+  expect(read("assets/fonts/LICENSES.md")).toContain("`NotoSansJP-Regular-subset.ttf`");
+  expect(read("assets/fonts/NotoSansJP-Regular-subset.ttf.ogt")).toContain("ス");
+  // Every table loaded, the pseudo-locale last; the smoke test reads the new base's word.
+  expect(read("src/main.ts")).toContain('["zh-CN","en","ar","ja","th","qps-ploc"]');
+  expect(read("tests/smoke.og.ts")).toContain("expect:ui:text:=已开始");
+  expect(read("assets/strings/qps-ploc.ogt")).toContain('string "menu.start" "[开始 开]"');
+  for (const t of ["zh-CN", "en", "ar", "ja", "th"]) expect(existsSync(join(dir, `tests/locale-${t}.og.ts`))).toBeTrue();
+  expect(existsSync(join(dir, "tests/pseudo.og.ts")) && existsSync(join(dir, "tools/pseudo-locale.ts"))).toBeTrue();
+  expect(localeScript("zh-TW")).toBe("hant");
+  expect(localeScript("sr-Latn")).toBe("latin");
+});
+
+test("the pseudo-locale accents words, not message syntax", () => {
+  expect(pseudoMessage("Start")).toBe("[Stárt st]");
+  // Argument names, plural keywords, # and rich-text tags survive; branch text is accented.
+  expect(pseudoMessage("{n, plural, one {# coin} other {# coins}} [b]now[/b]")).toBe("[{n, plural, one {# çöíñ} other {# çöíñs}} [b]ñöw[/b] çöíñçö]");
+  expect(pseudoMessage("{score}")).toBe("{score}");
+  expect(pseudoMessage("'{'literal'}'")).toMatch(/^\['\{'lítérál/);
 });

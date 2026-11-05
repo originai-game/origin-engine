@@ -29,7 +29,8 @@
     "README.md",
     "previews",
     "presets",
-    "styles"
+    "styles",
+    "locales"
   ],
   "scripts": {
     "prepack": "bun scripts/pack-template.ts",

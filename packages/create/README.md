@@ -95,8 +95,21 @@ Other archetypes currently support choice-driven keyboard input only;
 touch/gamepad requests are refused rather than silently ignored. Custom
 template directories retain the legacy `create()` path.
 
-Genre mappings, camera presets, mood rendering, localized assets, and
-music generation are deferred. The fields record intent, not completed
+`--lang` sets up the languages (bin/languages.ts): a string table per
+language under `assets/strings/` (the starter's own, the starters'
+translations in `templates/locales/strings/`, or an empty table the cook
+reports key by key), the face each script needs from
+`templates/locales/fonts/` (Japanese, Korean, Traditional Chinese, Arabic,
+Hebrew, Cyrillic and Greek; Simplified Chinese is the UI style's `cjk`
+companion) with its licence, `direction rtl` for Arabic and Hebrew, the
+pseudo-locale `qps-ploc` and `tools/pseudo-locale.ts` that remakes it, and
+`tests/locale-<tag>.og.ts` per language plus `tests/pseudo.og.ts`. The
+skills' og-i18n §0 says what each file is for. The additive exports are
+`canonicalTag`, `isRtl`, `localeScript`, `LocaleScript`, `PSEUDO_LOCALE`,
+`pseudoMessage` and `pseudoTable`. `templates/locales/make-fonts.py` remakes
+the faces from google/fonts.
+
+Genre mappings, camera presets and mood rendering are deferred. The fields record intent, not completed
 assets. Changing `create` later does not rewrite source automatically:
 update the corresponding generated source, look or publish settings.
 Do not use `--force` to update an authored game; it overwrites template files.

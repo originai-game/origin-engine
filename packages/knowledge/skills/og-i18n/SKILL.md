@@ -24,6 +24,47 @@ ships English and Japanese: its Noto Sans JP subset cut by the ui-kit's
 `tools/subset-font.py` needed no other step, and its locales playtest
 finds no English word of a template left in Japanese on eight screens.
 
+## 0. Start from the choice
+
+A game made with `og new --lang zh,en,ar` (or the platform's language
+choice, project.ogt's `create` block `lang`) starts localized; read what it
+wrote before adding a table by hand:
+
+- `assets/strings/<tag>.ogt` for each language. `zh` lands on `zh-CN`.
+  The starter's own tables are kept; the 3D template and the 2D starter
+  ship translations for zh-CN, zh-TW, ja, ko, ar, he, es, fr, de, it,
+  pt-BR and ru; any other language gets an empty table, so the base text
+  shows and `og cook` warns key by key until you translate it (never copy
+  the English, localization §2). The base table (`base true`) is the
+  first chosen language with every key; an archetype keeps its English.
+- The face each script needs, in `assets/fonts/` with its licence file and
+  its row in `assets/fonts/LICENSES.md`, named first in that table's
+  `fonts` line: Noto Sans JP (JIS level 1), KR (KS X 1001's hangul), TC
+  (Big5 level 1), Arabic, Hebrew, and Noto Sans's Cyrillic and Greek.
+  Their imports cook the table's characters (`chars`) and draw the rest
+  of the face at run time (`runtime true`); after strings change add the
+  new characters to `chars`, and before shipping cut a subset of your
+  tables (§3). Simplified Chinese takes the UI style's `cjk` companion,
+  which every built-in style names. Thai, Devanagari and other scripts:
+  the create note names the Noto face to bring.
+- Arabic, Hebrew, Persian and Urdu tables say `direction rtl` (§4).
+- `assets/strings/qps-ploc.ogt`, the pseudo-locale: the base table's
+  messages accented, 40 % longer and in brackets, with arguments, plural
+  branches and rich-text tags kept. `bun tools/pseudo-locale.ts` remakes
+  it; rerun it after the base table changes. No player negotiates to
+  `qps-ploc`; `og run --locale qps-ploc` or a `locale:qps-ploc` step does.
+- Every table loaded in `start` (the starter's load line, an archetype's
+  `LANGUAGES` list for its settings screen, or `src/creation.ts` for a
+  starter with no tables), the pseudo-locale last.
+- `tests/locale-<tag>.og.ts` per language and `tests/pseudo.og.ts`
+  (helpers in `tests/locales.ts`): each switches locale, dumps the UI and
+  takes a frame. A locale test fails when a word of the base table is
+  left where the table has its own; the pseudo test fails when the
+  pseudo table is stale or a base word reaches the screen untouched (a
+  literal that skipped `og.i18n.t`). Read their frames for cut words and
+  boxes (§6); they read the tables as they are, so they hold as strings
+  grow. Add `dump_ui` steps on your other screens as the game grows.
+
 ## 1. One table per locale
 
 ```text
