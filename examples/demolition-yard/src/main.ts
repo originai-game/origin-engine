@@ -99,6 +99,12 @@ function build(world: World): void {
   cam.fov = 55;
   const settings = must(world.resource(og.RenderSettings));
   settings.sky = true;
+  // Bounce light from the whole yard: a broken piece's undersides and
+  // overhangs face the ground, and without it they take only the sky's
+  // dark lower half and read black.
+  const gi = must(world.resource(og.GlobalIllumination));
+  gi.enabled = true;
+  gi.method = "both";
 }
 
 // A heavy iron ball thrown from `at` at velocity `v`.

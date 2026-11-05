@@ -248,6 +248,14 @@ for (const f of world.events(og.Fractured)) {
   of chips cost no physics. It runs on the GPU and never touches the
   simulation; `og.destruction.capabilities(world).visualDebris` says
   whether this device draws it, and the bodies are the same either way.
+- Light the broken pieces from below. A Voronoi chunk's cut faces
+  interlock, so a stump or a broken pier is left with overhangs whose
+  undersides face the ground; under the sky alone they take only its
+  dark lower half and read black, like a missing face. Turn on
+  og.GlobalIllumination with `method both` (its probes bounce the
+  ground's light, sunlit or not on screen) wherever things break in
+  daylight; the screen-space method alone does not reach under an
+  overhang.
 - og.Destruction budgets the world: `maxChunks` (256) loose chunks at
   once, the oldest islands despawning first; islands smaller than
   `debrisVolume` despawn `debrisLifetime` seconds after breaking loose;
@@ -255,4 +263,5 @@ for (const f of world.events(og.Fractured)) {
   for a set piece.
 
 `examples/demolition-yard` has a wall, a pillar, a crate and a pane, with
-commands that break each one (`boom`, `strike`, `drop`, `throw`).
+commands that break each one (`boom`, `strike`, `drop`, `throw`,
+`kick` for the fence), lit with GlobalIllumination `both`.

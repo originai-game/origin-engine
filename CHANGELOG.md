@@ -162,7 +162,9 @@ is one line here, written at the merge that changes
   spread into the component; concrete's impactThreshold 1500, so a
   column's own falling top leaves its stump standing) and `capabilities`.
   A blast's uneven share and turn per piece fade with its push, so the
-  pier feet it barely reaches keep their footing. A loose run of
+  pier feet it barely reaches keep their footing. The og-destruction
+  skill has breakables lit with og.GlobalIllumination `both`: a stump's
+  overhanging cut faces face the ground and read black without bounce. A loose run of
   no-tension masonry longer than three blocks comes apart into its
   blocks as it breaks loose. Prelude units `m3`, `pascal`, `newtonSecondPerM2`. The
   stress solver is NVIDIA Blast's (BSD-3), each joint judged at both its
