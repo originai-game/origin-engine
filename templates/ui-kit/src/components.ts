@@ -161,7 +161,8 @@ export function navigationScreen(): void {
       s.pill = og.ui.tabBar("Pills", { tabs: [{ label: "Daily" }, { label: "Weekly" }, { label: "Season" }], selected: s.pill, variant: "pill", fill: true, bumpers: false }, () => {}).selected;
     });
     panel("Carousels", "Carousel: drag, flick, arrows, dots", phone() ? grow : px(560), () => {
-      s.slide = og.ui.carousel("Featured", { count: 4, index: s.slide, height: px(120), label: "Featured" }, (k) => {
+      // As tall as its banners (art and title): held to 120 px it cut every banner's title off under its art.
+      s.slide = og.ui.carousel("Featured", { count: 4, index: s.slide, label: "Featured" }, (k) => {
         og.ui.card(og.ui.idi("Banner", k), { media: { icon: ["star", "gift", "trophy", "map"][k] ?? "image", aspect: 3.2 }, title: ["Season 4", "Gift pack", "Tournament", "New map"][k] ?? "", variant: "flat", width: grow }, () => {});
       }).index;
     });

@@ -387,9 +387,18 @@ impl Ui {
             .filter(|&&i| self.nodes[i].props.dense)
             .map(|&i| self.path_of(i))
             .collect();
+        // A carousel's track, dragged sideways, scrolls as one does: the
+        // pages peeking at its edges move into view.
         let sideways: Vec<String> = order
             .iter()
-            .filter(|&&i| self.nodes[i].el.scroll_x)
+            .filter(|&&i| {
+                let n = &self.nodes[i];
+                n.el.scroll_x
+                    || n.props
+                        .drag
+                        .as_ref()
+                        .is_some_and(|d| d.axis == crate::DragAxis::X)
+            })
             .map(|&i| self.path_of(i))
             .collect();
         self.apply_shakes(&order);
