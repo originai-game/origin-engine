@@ -624,8 +624,10 @@ sample's `pipelines` (§Telemetry), so a slow boot in the field names it.
 `pipelines sync` makes each render pipeline with
 `createRenderPipeline` when a pass first draws with it (og-render
 `deferred.rs`), and the renderer warms the rest behind the play gate,
-one pipeline at a time with an empty submit after each, so the browser's
-GPU process compiles it then, not all at the tap's first submit.
+with an empty submit after each warm call, so the browser's GPU process
+compiles it then, not all at the tap's first submit, and at most three
+compiling at once (`WARM_AHEAD`): Firefox answers `onSubmittedWorkDone`
+about 100 ms late even when idle, so one at a time stalled its warm-up.
 `pipelines async` (fork s60, `src/web/pipelines.ts`) asks the browser for
 the frame's pipelines with `createRenderPipelineAsync`: a pass whose
 pipeline still compiles skips its draws, the first frame is drawn again
@@ -703,10 +705,16 @@ meets pipelines still compiling and makes them at once anyway. It stays
 opt-in.
 
 `auto` against `sync` on the Mac, where it picks `sync` (the Apple GPU's
-vendor), measured as above on DATE_AUTO (BUILD_AUTO, every GPU slot held
-per run):
+vendor), measured as above on 2026-11-05 (branch `land-webboot-wire` at
+ee99fcd63, every GPU slot held per run, the console saying
+`[og] pipelines sync: auto: an Apple GPU (apple metal-3), …`):
 
-AUTO_TABLE
+| game | cache | `pipelines sync` | `auto` (the default) |
+|---|---|---|---|
+| hollowbell | warm | 420, 422, 437, 501, 623 | 406, 437, 408, 598, 414 |
+| lantern-vale | warm | 437, 441, 442, 451, 453 | 439, 447, 439, 442, 441 |
+| hollowbell | cold | 1924, 1421, 1125 | 1110, 1128, 1112 |
+| lantern-vale | cold | 1337, 1389, 1167 | 1282, 1151, 1157 |
 
 ## The shell
 

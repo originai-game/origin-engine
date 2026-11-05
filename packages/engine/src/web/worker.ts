@@ -100,22 +100,33 @@ type GpuQueue = { submit(buffers: unknown[]): void; onSubmittedWorkDone(): Promi
 /** The renderer's device queue (set when the wasm asks for its device). */
 let gpuQueue: GpuQueue | null = null;
 /**
- * A warmed pipeline the GPU process has not finished yet. A synchronous createRenderPipeline returns at once in
+ * Warmed pipelines the GPU process has not finished yet. A synchronous createRenderPipeline returns at once in
  * the Worker; Chrome sends it to the GPU process only when something flushes its wire (a submit), and the GPU
  * process compiles it there, in order, on the task that also runs every frame's and readback's commands. Behind
  * the gate nothing submitted, so the whole warm-up reached the GPU process with the tap's first frame and froze
  * it (11 s on a Pixel 10, warm cache; 15 s for a probe capture on a cold Metal cache). So each warm call is
  * flushed (an empty submit) and the next one waits until the queue's work so far, its compile included, is done:
- * the warm-up compiles behind the gate, and a tap or a capture waits for one compile at most.
+ * the warm-up compiles behind the gate, and a tap or a capture waits for at most WARM_AHEAD compiles.
  */
-let warmInFlight = false;
-/** Runs one warm call; until its compile is done in the GPU process, `warmInFlight`. */
+let warmsInFlight = 0;
+/**
+ * The warm calls whose compile may be in flight at once. One was the bound until Firefox: Gecko sends a
+ * pipeline to its GPU process at once (no wire to flush), but answers onSubmittedWorkDone about 100 ms
+ * after an empty submit even on an idle device, with outliers of seconds, so a warm-up paced one a
+ * time made 6 pipelines in 10 s behind the gate and the tap met the rest (its first frame 1.2 s,
+ * studio-win, Firefox 159). Three keep Firefox's warm-up going while a tap or a capture in Chrome
+ * still waits for at most three compiles.
+ */
+const WARM_AHEAD = 3;
+/** Whether the warm-up waits for a compile in flight before its next call. */
+const warmBusy = () => warmsInFlight >= WARM_AHEAD;
+/** Runs one warm call; until its compile is done in the GPU process, it counts in `warmsInFlight`. */
 function warmPaced(warm: () => boolean): boolean {
   const more = warm();
   if (more && gpuQueue) {
-    warmInFlight = true;
+    warmsInFlight++;
     const done = () => {
-      warmInFlight = false;
+      warmsInFlight--;
     };
     gpuQueue.submit([]);
     gpuQueue.onSubmittedWorkDone().then(done, done);
@@ -1184,7 +1195,7 @@ export function startWorker(game: GameToken): void {
         if (typeof answered.tick === "number") lastTick = answered.tick;
         // Fork s70: a covered frame sets no pass, so the pipelines a pass makes when it first sets one
         // (og-render warm) are made here, one a frame, at most WARM_COMPILING compiling (s75).
-        if (covered && coveredWarmLeft && !warmInFlight && glueRef?.og_web_warm && pipelines.compiling() < WARM_COMPILING) {
+        if (covered && coveredWarmLeft && !warmBusy() && glueRef?.og_web_warm && pipelines.compiling() < WARM_COMPILING) {
           // Before the first frame: synchronous under prewarm (only warmBehindGate's are `warming`).
           const warm = glueRef.og_web_warm;
           coveredWarmLeft = warmPaced(() => warm(engine!.id));
@@ -1260,7 +1271,7 @@ export function startWorker(game: GameToken): void {
       if (playing) return reportPipelines(made);
       // Fork s60: with the pipelines asynchronous a warm call returns at once; at most WARM_COMPILING
       // (s75) compile at a time, so the ones a frame needs are not queued behind every pass's.
-      if (pipelines.compiling() >= WARM_COMPILING || warmInFlight) {
+      if (pipelines.compiling() >= WARM_COMPILING || warmBusy()) {
         setTimeout(step, 50);
         return;
       }
