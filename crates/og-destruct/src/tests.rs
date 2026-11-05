@@ -68,7 +68,7 @@ fn settle(a: &FractureAsset, inst: &mut Instance, m: &Material) -> u32 {
             break;
         }
         let islands = inst.islands(a);
-        broke += inst.stress(a, &islands, G, 1.0, m, 0);
+        broke += inst.stress(a, &islands, &[], G, 1.0, m, 0);
     }
     broke
 }
@@ -173,4 +173,47 @@ fn cube_root_is_exact_enough() {
         let r = cube_root(x);
         assert!((r * r * r - x).abs() <= x * 1e-5, "{x}: {r}");
     }
+}
+
+#[test]
+fn a_loose_beam_resting_on_its_ends_breaks_in_its_span_and_a_falling_one_holds() {
+    // Seven 1 m cubes broken loose (no anchor), weak as mortar.
+    let beam = row(7, Vec3::X, &[]);
+    let m = material(3_000.0);
+    let ends: Vec<Support> = [0u32, 6]
+        .iter()
+        .map(|&c| Support {
+            chunk: c,
+            point: beam.chunks[c as usize].centroid - Vec3::Y * 0.5,
+            area: 1.0,
+        })
+        .collect();
+    let run = |supports: &[Support]| {
+        let mut inst = Instance::new(&beam);
+        let mut broke = 0;
+        inst.dirty = true;
+        for _ in 0..64 {
+            if !inst.dirty {
+                break;
+            }
+            let islands = inst.islands(&beam);
+            broke += inst.stress(&beam, &islands, supports, G, 1.0, &m, 0);
+        }
+        (broke, inst)
+    };
+    // Falling (nothing under it): no load, nothing breaks.
+    let (broke, inst) = run(&[]);
+    assert_eq!(broke, 0);
+    assert_eq!(inst.islands(&beam).len(), 1);
+    // On its two ends: it bends over its span and breaks there; the ends
+    // stay on what holds them (a support never breaks).
+    let (broke, inst) = run(&ends);
+    assert!(broke > 0);
+    let islands = inst.islands(&beam);
+    assert!(islands.len() > 1, "{islands:?}");
+    assert!(
+        !islands
+            .iter()
+            .any(|i| i.chunks.contains(&0) && i.chunks.contains(&6))
+    );
 }

@@ -165,6 +165,18 @@ impl Damage {
     }
 }
 
+/// Where something holds up a chunk of an island no anchor holds: a loose
+/// island resting on a pier, a pile or the ground, for
+/// [`Instance::stress`]. In the model's space, as the chunk's own points.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Support {
+    pub chunk: u32,
+    /// Where it bears on the chunk.
+    pub point: Vec3,
+    /// The area it bears on (m², before the destructible's scale).
+    pub area: f32,
+}
+
 /// One connected group of support chunks.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Island {
@@ -313,15 +325,19 @@ impl Instance {
         out
     }
 
-    /// Runs the stress solver over the anchored islands under `gravity`
-    /// (local space, m/s²) and damages the bonds and anchors it finds past
-    /// their elastic limits. `islands` is [`Instance::islands`]. Answers
-    /// how many bonds and anchors broke; clears `dirty` when nothing took
-    /// damage (the graph is at rest).
+    /// Runs the stress solver over the islands that are held up (anchored,
+    /// or with a chunk among `supports`) under `gravity` (local space,
+    /// m/s²) and damages the bonds and anchors it finds past their elastic
+    /// limits (bonds only: anchors and supports carry what they are given;
+    /// damage breaks anchors). `islands` is [`Instance::islands`] or some
+    /// of them. Answers how many bonds broke; clears `dirty` when nothing
+    /// took damage (the graph is at rest).
+    #[allow(clippy::too_many_arguments)]
     pub fn stress(
         &mut self,
         a: &FractureAsset,
         islands: &[Island],
+        supports: &[Support],
         gravity: Vec3,
         scale: f32,
         m: &Material,
@@ -329,9 +345,11 @@ impl Instance {
     ) -> u32 {
         let s2 = scale * scale;
         let mut node_of = vec![NONE; a.support as usize];
-        // Every chunk of an anchored island, then the world under each anchor.
+        // Every chunk of a held island, then the world under each anchor
+        // and support.
         let mut nodes = Vec::new();
-        for isl in islands.iter().filter(|i| i.anchored) {
+        let held = |i: &&Island| i.anchored || supports.iter().any(|s| i.chunks.contains(&s.chunk));
+        for isl in islands.iter().filter(held) {
             for &c in &isl.chunks {
                 let ch = &a.chunks[c as usize];
                 let mass = ch.volume * s2 * scale * m.density;
@@ -385,6 +403,27 @@ impl Instance {
             let normal = (c.centroid - c.anchor_centroid).normalize_or_zero();
             which.push((1, i as u32, normal, c.anchor_area * self.anchors[i] * s2));
         }
+        // What a loose island rests on: the world as an anchor that never
+        // breaks (kind 2).
+        for sp in supports {
+            let n = node_of[sp.chunk as usize];
+            if n == NONE {
+                continue;
+            }
+            let c = &a.chunks[sp.chunk as usize];
+            let world = nodes.len() as u32;
+            nodes.push(SolverNode {
+                com: (sp.point * 2.0 - c.centroid) * scale,
+                mass: 0.0,
+                inertia: 0.0,
+            });
+            bonds.push(SolverBond {
+                nodes: [world, n],
+                centroid: sp.point * scale,
+            });
+            let normal = (c.centroid - sp.point).normalize_or_zero();
+            which.push((2, sp.chunk, normal, sp.area * s2));
+        }
         let sp = StressProcessor::prepare(&nodes, &bonds);
         let v: Vec<AngLin6> = nodes
             .iter()
@@ -411,11 +450,15 @@ impl Instance {
             if mult <= 0.0 {
                 continue;
             }
-            damaged = true;
+            // Only bonds between chunks give way under load: an anchor is
+            // the world the prop is built into (a foundation, the walls a
+            // wall is tied into), as strong as it is, and a support is
+            // what a loose island rests on. Damage breaks anchors.
             let h = match kind {
                 0 => &mut self.bonds[*idx as usize],
-                _ => &mut self.anchors[*idx as usize],
+                _ => continue,
             };
+            damaged = true;
             // Blast: the bond loses health × multiplier; at or past the
             // fatal limit (multiplier ≥ 1) it breaks.
             *h = if mult >= 1.0 {
