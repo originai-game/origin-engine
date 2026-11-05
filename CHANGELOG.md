@@ -390,7 +390,7 @@ is one line here, written at the merge that changes
   longer merges into ink with a checker of paper holes, and they fade to
   flat ink on surfaces turned away from the camera, so a floor's cast
   shadow stays one colour. Behaviour change: shade and highlight
-  halftones, the pixel and doodle looks and bold-comic, move.
+  halftones, the pixel looks and bold-comic, move.
 - **Scatter model space.** `load.GltfInfo.parts` exposes each primitive's
   geometry, material and primitive-to-model matrix; `geometries` remains
   mesh-local. TerrainScatter applies the named impostor model's placements
