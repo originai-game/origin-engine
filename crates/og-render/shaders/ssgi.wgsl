@@ -140,7 +140,10 @@ fn fs_gi_blur(in: VsOut) -> @location(0) vec4<f32> {
       weight += w;
     }
   }
-  return sum / weight;
+  // GTAO's visibility (r) overshoots 1 before it is averaged (fxpost.wgsl
+  // gtao_bent); after, it is clamped.
+  let mean = sum / weight;
+  return vec4<f32>(min(mean.r, 1.0), mean.gba);
 }
 
 // fs_ao_upsample over the GI's four channels.

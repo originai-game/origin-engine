@@ -76,7 +76,8 @@ impl Renderer {
                     [a.radius, a.intensity, divisor, 0.0]
                 })
             },
-            // x: radius per metre of depth (0: fixed), y: 1 for the screen method.
+            // x: radius per metre of depth (0: fixed), y: 1 for the screen
+            // method, z: the scale GTAO's raw term is stored over.
             ao2: ao.map_or([0.0; 4], |a| {
                 [
                     a.radius_scale,
@@ -85,7 +86,13 @@ impl Renderer {
                     } else {
                         0.0
                     },
-                    0.0,
+                    // GTAO's raw term is stored over this (XeGTAO's
+                    // XE_GTAO_OCCLUSION_TERM_SCALE, fxpost.wgsl fs_gtao).
+                    if matches!(a.method, AoMethod::Ssao | AoMethod::Screen) {
+                        1.0
+                    } else {
+                        1.5
+                    },
                     0.0,
                 ]
             }),

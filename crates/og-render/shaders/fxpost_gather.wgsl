@@ -55,5 +55,6 @@ fn fs_ao_blur_gather(in: VsOut) -> @location(0) vec4<f32> {
   acc = ao_blur_tap(acc, d01.y, a01.y, d0, scale);
   acc = ao_blur_tap(acc, d11.x, a11.x, d0, scale);
   acc = ao_blur_tap(acc, d11.y, a11.y, d0, scale);
-  return vec4<f32>(acc.x / max(acc.y, 1e-5), 0.0, 0.0, 1.0);
+  // GTAO's raw term is stored over fxp.ao2.z (fxpost.wgsl fs_gtao).
+  return vec4<f32>(min(acc.x / max(acc.y, 1e-5) * max(fxp.ao2.z, 1.0), 1.0), 0.0, 0.0, 1.0);
 }

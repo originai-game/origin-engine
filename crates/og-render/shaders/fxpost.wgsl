@@ -12,7 +12,7 @@ struct FxPost {
   screen: vec4<f32>,          // full-resolution w, h, 1/w, 1/h
   cam: vec4<f32>,             // x: far, y: 1 orthographic, z: near, w: the AO debug views (1: fract(depth), DebugView::AoDepth; 2: AO unblurred, DebugView::AoRaw)
   ao: vec4<f32>,              // x: radius (world), y: intensity, z: the AO targets' divisor (1, or 2 at half resolution)
-  ao2: vec4<f32>,             // x: radius per metre of depth (0: fixed), y: 1 screen method
+  ao2: vec4<f32>,             // x: radius per metre of depth (0: fixed), y: 1 screen method, z: the scale GTAO's raw term is stored over (fs_gtao)
   outline_color: vec4<f32>,   // the scene's outline (linear rgb, coverage)
   outline: vec4<f32>,         // x: scene width (0: none), y: depth threshold, z: normal threshold
   dof: vec4<f32>,             // x: focus distance, y: focus range, z: max blur (full-res px), w: falloff
@@ -140,7 +140,13 @@ fn ao_uv(px: vec2<i32>, uv: vec2<f32>) -> vec2<f32> {
 fn fs_gtao(in: VsOut) -> @location(0) vec4<f32> {
   let px = ao_pixel(in.pos.xy);
   if (is_sky(depth_at(px))) { return vec4<f32>(1.0); }
-  return vec4<f32>(gtao_term(in), 0.0, 0.0, 1.0);
+  // Stored over XeGTAO's XE_GTAO_OCCLUSION_TERM_SCALE (fxp.ao2.z): a
+  // pixel's few slices overshoot 1 on open ground as often as they fall
+  // short, and only the blur's mean of them is 1. Clamped here, before
+  // the blur, only the shortfalls survived: a false occlusion on flat
+  // ground, grain under per-pixel noise and lobes under the interleaved
+  // pattern. fs_ao_blur scales it back after averaging.
+  return vec4<f32>(gtao_term(in) / max(fxp.ao2.z, 1.0), 0.0, 0.0, 1.0);
 }
 
 // GTAO with the probe GI (fx.ao.w 2): r the visibility, gba the world
@@ -198,8 +204,17 @@ fn gtao_bent(in: VsOut) -> vec4<f32> {
   for (var s = 0u; s < slices; s++) {
     let jitter = fract(noise * 4.0 + f32(s) * 0.37);
     let phi = (f32(s) + noise) * FX_PI / f32(slices);
-    let omega = vec2<f32>(cos(phi), -sin(phi));
-    let dir = vec3<f32>(cos(phi), sin(phi), 0.0);
+    // The slice's direction in the frame where the view runs along +z,
+    // turned to the view ray v, so the slices are even about v. XeGTAO's
+    // (cos, sin, 0) are even about the screen's axis instead, and off the
+    // screen's centre their sum over a flat floor came to 0.95 to 1.03 of
+    // its true visibility: a fan of false occlusion up the far ground and
+    // an arch below the frame's centre. On the screen the taps march along
+    // the direction the slice's line through p projects to (d(xy / -z)).
+    let slice = vec2<f32>(cos(phi), sin(phi));
+    let dir = gtao_rotate(vec3<f32>(0.0, 0.0, 1.0), v, vec3<f32>(slice, 0.0));
+    let step = select(-p.z * dir.xy + p.xy * dir.z, dir.xy, fxp.cam.y > 0.5);
+    let omega = normalize(vec2<f32>(step.x, -step.y));
     let ortho = dir - dot(dir, v) * v;
     let axis = normalize(cross(ortho, v));
     let proj_n = n - axis * dot(n, axis);
@@ -213,7 +228,9 @@ fn gtao_bent(in: VsOut) -> vec4<f32> {
     var h1 = low1;
     for (var k = 1u; k <= steps; k++) {
       let t = (f32(k) - 0.5 + jitter) / f32(steps);
-      let offset = omega * (t * t * radius_px) * fxp.screen.zw;
+      // At least 1.3 pixels out (XeGTAO's pixelTooCloseThreshold), so no
+      // tap reads the pixel itself.
+      let offset = round(omega * (t * t * radius_px + 1.3)) * fxp.screen.zw;
       let uv0 = uv + offset;
       let uv1 = uv - offset;
       let s0 = view_pos(uv0, depth_tap(uv0, dsize, dsize_f)) - p;
@@ -238,10 +255,11 @@ fn gtao_bent(in: VsOut) -> vec4<f32> {
       + 16.0 * sin(ang_n) - 3.0 * (sin(a0 + ang_n) + sin(a1 + ang_n))) / 12.0;
     let t1 = (-cos(3.0 * a0 - ang_n) - cos(3.0 * a1 - ang_n) + 8.0 * cos(ang_n)
       - 3.0 * (cos(a0 + ang_n) + cos(a1 + ang_n))) / 12.0;
-    let local = vec3<f32>(dir.x * t0, dir.y * t0, t1);
+    let local = vec3<f32>(slice * t0, t1);
     bent += gtao_rotate(vec3<f32>(0.0, 0.0, 1.0), v, local) * proj_len;
   }
-  vis = clamp(vis / f32(slices), 0.0, 1.0);
+  // Not clamped to 1 (fs_gtao): the denoise averages the overshoot out.
+  vis = max(vis / f32(slices), 0.0);
   let bl = length(bent);
   return vec4<f32>(pow(vis, max(fxp.ao.y, 0.0)), select(n, bent / bl, bl > 1e-5));
 }
@@ -347,7 +365,10 @@ fn ao_blur_sky(d0: f32) -> bool {
 fn fs_ao_blur(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
   // The screen method is not blurred (the original's post AO is used as it comes); nor are the AO debug views' (DebugView::AoDepth, AoRaw).
-  if (fxp.cam.w > 0.5 || fxp.ao2.y > 0.5) { return textureLoad(tex_b, px, 0); }
+  if (fxp.cam.w > 0.5 && fxp.cam.w < 1.5) { return textureLoad(tex_b, px, 0); }
+  // GTAO's raw term is stored over fxp.ao2.z (fs_gtao); 1 for the others.
+  let term = max(fxp.ao2.z, 1.0);
+  if (fxp.cam.w > 1.5 || fxp.ao2.y > 0.5) { return vec4<f32>(min(textureLoad(tex_b, px, 0).r * term, 1.0), 0.0, 0.0, 1.0); }
   let k = ao_divisor();
   let d0 = depth_at(px * k);
   if (ao_blur_sky(d0)) { return vec4<f32>(1.0, 0.0, 0.0, 1.0); }
@@ -363,7 +384,7 @@ fn fs_ao_blur(in: VsOut) -> @location(0) vec4<f32> {
       weight += w;
     }
   }
-  return vec4<f32>(sum / max(weight, 1e-5), 0.0, 0.0, 1.0);
+  return vec4<f32>(min(sum / max(weight, 1e-5) * term, 1.0), 0.0, 0.0, 1.0);
 }
 
 // Half-resolution AO (tex_b, blurred) brought to full resolution: the 2x2
