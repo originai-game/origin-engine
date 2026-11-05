@@ -138,7 +138,7 @@ export const SHIPPED: Record<string, Array<[string, string, string, string, stri
     ["Stats", "Stat#5", "row", "", "", 454, 463, 372, 27],
     ["Stat#5", "Key", "label", "text", "Rank", 454, 467, 31, 20],
     ["Stat#5", "Value", "label", "text", "#1", 806, 467, 20, 20],
-    ["Panel", "Actions", "row", "", "", 454, 502, 372, 72],
+    ["Panel", "Actions", "column", "", "", 454, 502, 372, 72],
     ["Actions", "again", "button", "button", "Again", 454, 502, 182, 32],
     ["Actions", "replay", "button", "button", "Watch replay", 644, 502, 182, 32],
     ["Actions", "board", "button", "button", "Leaderboard", 454, 542, 182, 32],
