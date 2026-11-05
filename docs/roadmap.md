@@ -206,7 +206,7 @@ run on Claude Fable 5.1 (AGENTS.md).
 |---|---|---|
 | Wasm build, size, determinism, the browser tiers; destruction's replay hash on wasm and Chrome; the browser checks of video, uncooked load and the platform ABI | the wave's end | [T-01a1a993-ffa2](https://ampcode.com/threads/T-01a1a993-ffa2-70d9-9645-0ad77ddbd60a) |
 | Safari's full tiers | macrunner, branch `safari` | [T-01a1a993-f7d5](https://ampcode.com/threads/T-01a1a993-f7d5-7486-914f-ff0c299edeca) |
-| Windows: the derivative audit, Vulkan water references, webgpu style sheets, G1-7; the Firefox sync first-tap delay (first rAF about 1.5 s after the tap) | studio-win | [T-01a1ab9d](https://ampcode.com/threads/T-01a1ab9d-3662-750e-b906-7429d51e0ebd) |
+| Windows: the derivative audit landed at d54163388 (every shader derivative fine, Vulkan 517/526 with all nine failures already on 226f11fbf); open: Vulkan water references, DX12 garment (RMSE 0.0337) and impostor (0.0101) misses, toon rim shades, post-adjust (0.0101), G1-7. Safari and web boot are paused until the features land (the owner, 2026-11-05) | studio-win | [T-01a1ab9d](https://ampcode.com/threads/T-01a1ab9d-3662-750e-b906-7429d51e0ebd) |
 | Phones: G1-4's automatic quality and device loss; iOS's pipeline mode (Apple stays sync until measured). The frame cap is verified on the Pixel 10 (fps30 gives 30.1 fps with GPU headroom; GPU-bound, Android runs the panel at the rate the page sustains); Android gfx tier 212/219 | §3 | Android [T-01a1a869](https://ampcode.com/threads/T-01a1a869-a893-7314-9a61-22d51cee1b8c) |
 | The wasm budget's meaning (row 44) | the owner | — |
 
