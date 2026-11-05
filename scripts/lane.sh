@@ -30,6 +30,7 @@ idle() {
   g="$(git -C "$d" rev-parse --absolute-git-dir)"
   [ ! -e "$g/BISECT_LOG" ] && [ ! -d "$g/rebase-merge" ] && [ ! -d "$g/rebase-apply" ] && [ ! -e "$g/MERGE_HEAD" ] || return 1
   [ -z "$(git -C "$d" status --porcelain)" ] || return 1
+  [ ! -d "$g/lane-claim" ] || return 1
   [ -e "$g/lane-idle" ] || git -C "$d" reflog -1 --format=%gs HEAD | grep -q ' to main$'
 }
 case "${1:-}" in
@@ -58,6 +59,11 @@ case "${1:-}" in
       if [ "$cur" = HEAD ]; then
         # Detached is not idle: a stream may be bisecting or on a detached checkout.
         idle "$dir" || { echo "lane.sh: $dir is detached at $(git -C "$dir" rev-parse --short HEAD) but not idle (bisect, rebase, uncommitted work, or never freed); take another lane" >&2; exit 1; }
+        # Claim atomically (mkdir), so two sessions taking the same idle lane at
+        # once cannot both switch it: the second one is refused here.
+        claim="$(git -C "$dir" rev-parse --absolute-git-dir)/lane-claim"
+        mkdir "$claim" 2>/dev/null || { echo "lane.sh: $dir is being taken by another session; take another lane" >&2; exit 1; }
+        echo "$$ $stream $(date +%s)" > "$claim/owner"
         git -C "$dir" switch -q -c "$stream" main
         rm -f "$(mark "$dir")"
       fi
@@ -76,6 +82,7 @@ case "${1:-}" in
       fi
     fi
     git -C "$dir" switch -q --detach main
+    rm -rf "$(git -C "$dir" rev-parse --absolute-git-dir)/lane-claim"
     [ "$cur" = HEAD ] || git -C "$main" branch -q -d "$cur"
     touch "$(mark "$dir")"
     echo "$dir idle at main" ;;

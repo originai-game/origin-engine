@@ -130,7 +130,9 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   that must build beside another takes a lane, `scripts/lane.sh take
   lane-N <stream>`: a persistent worktree `/Volumes/app/origin-engine-lane-N`
   (made once by `scripts/worktree.sh`, its `target/` kept warm across
-  streams) switched to a new branch `<stream>` from main. After the merge,
+  streams) switched to a new branch `<stream>` from main. Only `take`
+  switches a lane (it claims it atomically; never a bare `git switch` or
+  `git reset` in a lane you did not take). After the merge,
   `scripts/lane.sh free lane-N` puts it back on main for the next stream.
   Only a lane's first build is cold, and sccache (`.cargo/config.toml`)
   serves that one the main checkout's dependencies. Never `git worktree
