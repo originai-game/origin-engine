@@ -136,7 +136,12 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   serves that one the main checkout's dependencies. Never `git worktree
   add` a fresh one per round, never remove a lane to free disk, and never
   delete a worktree's `target/` (nor the main one's): a stale crate is
-  cleaned with `cargo clean -p <crate>`, never wholesale. `scripts/lane.sh
+  cleaned with `cargo clean -p <crate>`, never wholesale. Disk is kept by
+  `scripts/clean-targets.sh` (the owner, 2026-11-05, after /Volumes/app
+  filled), installed on macrunner to run daily at 05:00 (`--install`): in
+  every worktree nothing is building in, it removes `target/*/incremental`
+  and runs `cargo sweep --time 1`; run it by hand when space runs low,
+  never delete a target/ instead. `scripts/lane.sh
   --list` shows every lane and the branch it carries. One more lane,
   `origin-engine-measure`, carries no stream: the wave-end measurements
   (`--all`, web-reference) run there pinned at a
