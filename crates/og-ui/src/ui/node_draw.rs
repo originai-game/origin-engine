@@ -587,6 +587,17 @@ impl Ui {
                         clip,
                     });
                 }
+                Shape::Vector {
+                    frame,
+                    vector,
+                    color,
+                } => cmds.push(DrawCmd::Vector {
+                    vector: *vector,
+                    rect: frame.resolve(&n.rect),
+                    transform: [1.0, 0.0, 0.0, 1.0],
+                    tint: color.fade(alpha).linear(),
+                    clip,
+                }),
                 Shape::Image {
                     frame,
                     texture,

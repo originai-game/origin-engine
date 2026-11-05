@@ -24774,6 +24774,12 @@ export interface UiRect {
  */
 export interface IconAtlasDesc {
   /**
+   * Named cooked vector assets, resolved before this atlas's font or texture. Use the development-fallback-icons kit for temporary icons; replace them with game-specific art before publishing.
+   *
+   * @default []
+   */
+  readonly vectors?: readonly UiVectorIcon[];
+  /**
    * An icon set from og.load.font (an `.ogt` of `type icons` naming SVGs, such as the UI kit's iconoir set): its icons are distance-field glyphs, crisp at any size and tinted by their ink, named by the set; texture, columns, rows and names are then not used.
    *
    * @default null
@@ -24805,6 +24811,26 @@ export interface IconAtlasDesc {
    * @default []
    */
   readonly names?: readonly string[];
+}
+
+/**
+ * One named vector icon, drawn through the same vector cook as a VectorFill.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface UiVectorIcon {
+  /**
+   * The name og.ui.icon and [icon=name] look up.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * The asset path of an .ogt of type vector; loaded when configuring the UI.
+   *
+   * @default ""
+   */
+  readonly path?: string;
 }
 
 /**

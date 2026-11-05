@@ -1,0 +1,8 @@
+{
+  "format": 1,
+  "kind": "kit",
+  "name": "development-fallback-icons",
+  "version": "1.0.0",
+  "description": "100 development-only vector icons grouped by settings, navigation, currencies, stats, items, skills, social, media, system and world. Replace with game-specific art before publishing.",
+  "skill": "using-development-icons/SKILL.md"
+}

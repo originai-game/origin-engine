@@ -1,0 +1,608 @@
+{
+  "format": 1,
+  "developmentFallback": true,
+  "license": "MIT",
+  "upstream": "iconoir@7.12.1",
+  "icons": [
+    {
+      "name": "settings",
+      "source": "settings",
+      "group": "settings",
+      "path": "ui-kits/development-fallback-icons/vectors/settings/settings.ogt"
+    },
+    {
+      "name": "language",
+      "source": "language",
+      "group": "settings",
+      "path": "ui-kits/development-fallback-icons/vectors/settings/language.ogt"
+    },
+    {
+      "name": "gamepad",
+      "source": "gamepad",
+      "group": "settings",
+      "path": "ui-kits/development-fallback-icons/vectors/settings/gamepad.ogt"
+    },
+    {
+      "name": "sound-high",
+      "source": "sound-high",
+      "group": "settings",
+      "path": "ui-kits/development-fallback-icons/vectors/settings/sound-high.ogt"
+    },
+    {
+      "name": "sound-off",
+      "source": "sound-off",
+      "group": "settings",
+      "path": "ui-kits/development-fallback-icons/vectors/settings/sound-off.ogt"
+    },
+    {
+      "name": "eye",
+      "source": "eye",
+      "group": "settings",
+      "path": "ui-kits/development-fallback-icons/vectors/settings/eye.ogt"
+    },
+    {
+      "name": "eye-closed",
+      "source": "eye-closed",
+      "group": "settings",
+      "path": "ui-kits/development-fallback-icons/vectors/settings/eye-closed.ogt"
+    },
+    {
+      "name": "accessibility",
+      "source": "accessibility",
+      "group": "settings",
+      "path": "ui-kits/development-fallback-icons/vectors/settings/accessibility.ogt"
+    },
+    {
+      "name": "text-size",
+      "source": "text-size",
+      "group": "settings",
+      "path": "ui-kits/development-fallback-icons/vectors/settings/text-size.ogt"
+    },
+    {
+      "name": "palette",
+      "source": "palette",
+      "group": "settings",
+      "path": "ui-kits/development-fallback-icons/vectors/settings/palette.ogt"
+    },
+    {
+      "name": "back",
+      "source": "nav-arrow-left",
+      "group": "navigation",
+      "path": "ui-kits/development-fallback-icons/vectors/navigation/back.ogt"
+    },
+    {
+      "name": "forward",
+      "source": "nav-arrow-right",
+      "group": "navigation",
+      "path": "ui-kits/development-fallback-icons/vectors/navigation/forward.ogt"
+    },
+    {
+      "name": "up",
+      "source": "nav-arrow-up",
+      "group": "navigation",
+      "path": "ui-kits/development-fallback-icons/vectors/navigation/up.ogt"
+    },
+    {
+      "name": "down",
+      "source": "nav-arrow-down",
+      "group": "navigation",
+      "path": "ui-kits/development-fallback-icons/vectors/navigation/down.ogt"
+    },
+    {
+      "name": "home",
+      "source": "home",
+      "group": "navigation",
+      "path": "ui-kits/development-fallback-icons/vectors/navigation/home.ogt"
+    },
+    {
+      "name": "menu",
+      "source": "menu",
+      "group": "navigation",
+      "path": "ui-kits/development-fallback-icons/vectors/navigation/menu.ogt"
+    },
+    {
+      "name": "view-grid",
+      "source": "view-grid",
+      "group": "navigation",
+      "path": "ui-kits/development-fallback-icons/vectors/navigation/view-grid.ogt"
+    },
+    {
+      "name": "search",
+      "source": "search",
+      "group": "navigation",
+      "path": "ui-kits/development-fallback-icons/vectors/navigation/search.ogt"
+    },
+    {
+      "name": "refresh",
+      "source": "refresh",
+      "group": "navigation",
+      "path": "ui-kits/development-fallback-icons/vectors/navigation/refresh.ogt"
+    },
+    {
+      "name": "undo",
+      "source": "undo",
+      "group": "navigation",
+      "path": "ui-kits/development-fallback-icons/vectors/navigation/undo.ogt"
+    },
+    {
+      "name": "coin",
+      "source": "coins",
+      "group": "currencies",
+      "path": "ui-kits/development-fallback-icons/vectors/currencies/coin.ogt"
+    },
+    {
+      "name": "gem",
+      "source": "hexagon",
+      "group": "currencies",
+      "path": "ui-kits/development-fallback-icons/vectors/currencies/gem.ogt"
+    },
+    {
+      "name": "dollar",
+      "source": "dollar",
+      "group": "currencies",
+      "path": "ui-kits/development-fallback-icons/vectors/currencies/dollar.ogt"
+    },
+    {
+      "name": "euro",
+      "source": "euro",
+      "group": "currencies",
+      "path": "ui-kits/development-fallback-icons/vectors/currencies/euro.ogt"
+    },
+    {
+      "name": "yen",
+      "source": "yen",
+      "group": "currencies",
+      "path": "ui-kits/development-fallback-icons/vectors/currencies/yen.ogt"
+    },
+    {
+      "name": "pound",
+      "source": "pound",
+      "group": "currencies",
+      "path": "ui-kits/development-fallback-icons/vectors/currencies/pound.ogt"
+    },
+    {
+      "name": "wallet",
+      "source": "wallet",
+      "group": "currencies",
+      "path": "ui-kits/development-fallback-icons/vectors/currencies/wallet.ogt"
+    },
+    {
+      "name": "cart",
+      "source": "cart",
+      "group": "currencies",
+      "path": "ui-kits/development-fallback-icons/vectors/currencies/cart.ogt"
+    },
+    {
+      "name": "shopping-bag",
+      "source": "shopping-bag",
+      "group": "currencies",
+      "path": "ui-kits/development-fallback-icons/vectors/currencies/shopping-bag.ogt"
+    },
+    {
+      "name": "percentage",
+      "source": "percentage",
+      "group": "currencies",
+      "path": "ui-kits/development-fallback-icons/vectors/currencies/percentage.ogt"
+    },
+    {
+      "name": "heart",
+      "source": "heart",
+      "group": "stats",
+      "path": "ui-kits/development-fallback-icons/vectors/stats/heart.ogt"
+    },
+    {
+      "name": "shield",
+      "source": "shield",
+      "group": "stats",
+      "path": "ui-kits/development-fallback-icons/vectors/stats/shield.ogt"
+    },
+    {
+      "name": "flash",
+      "source": "flash",
+      "group": "stats",
+      "path": "ui-kits/development-fallback-icons/vectors/stats/flash.ogt"
+    },
+    {
+      "name": "trophy",
+      "source": "trophy",
+      "group": "stats",
+      "path": "ui-kits/development-fallback-icons/vectors/stats/trophy.ogt"
+    },
+    {
+      "name": "medal",
+      "source": "medal",
+      "group": "stats",
+      "path": "ui-kits/development-fallback-icons/vectors/stats/medal.ogt"
+    },
+    {
+      "name": "crown",
+      "source": "crown",
+      "group": "stats",
+      "path": "ui-kits/development-fallback-icons/vectors/stats/crown.ogt"
+    },
+    {
+      "name": "timer",
+      "source": "timer",
+      "group": "stats",
+      "path": "ui-kits/development-fallback-icons/vectors/stats/timer.ogt"
+    },
+    {
+      "name": "hourglass",
+      "source": "hourglass",
+      "group": "stats",
+      "path": "ui-kits/development-fallback-icons/vectors/stats/hourglass.ogt"
+    },
+    {
+      "name": "stats-up-square",
+      "source": "stats-up-square",
+      "group": "stats",
+      "path": "ui-kits/development-fallback-icons/vectors/stats/stats-up-square.ogt"
+    },
+    {
+      "name": "stats-down-square",
+      "source": "stats-down-square",
+      "group": "stats",
+      "path": "ui-kits/development-fallback-icons/vectors/stats/stats-down-square.ogt"
+    },
+    {
+      "name": "bag",
+      "source": "bag",
+      "group": "items",
+      "path": "ui-kits/development-fallback-icons/vectors/items/bag.ogt"
+    },
+    {
+      "name": "key",
+      "source": "key",
+      "group": "items",
+      "path": "ui-kits/development-fallback-icons/vectors/items/key.ogt"
+    },
+    {
+      "name": "gift",
+      "source": "gift",
+      "group": "items",
+      "path": "ui-kits/development-fallback-icons/vectors/items/gift.ogt"
+    },
+    {
+      "name": "potion",
+      "source": "potion",
+      "group": "items",
+      "path": "ui-kits/development-fallback-icons/vectors/items/potion.ogt"
+    },
+    {
+      "name": "flask",
+      "source": "flask",
+      "group": "items",
+      "path": "ui-kits/development-fallback-icons/vectors/items/flask.ogt"
+    },
+    {
+      "name": "cube",
+      "source": "cube",
+      "group": "items",
+      "path": "ui-kits/development-fallback-icons/vectors/items/cube.ogt"
+    },
+    {
+      "name": "hammer",
+      "source": "hammer",
+      "group": "items",
+      "path": "ui-kits/development-fallback-icons/vectors/items/hammer.ogt"
+    },
+    {
+      "name": "apple",
+      "source": "apple",
+      "group": "items",
+      "path": "ui-kits/development-fallback-icons/vectors/items/apple.ogt"
+    },
+    {
+      "name": "leaf",
+      "source": "leaf",
+      "group": "items",
+      "path": "ui-kits/development-fallback-icons/vectors/items/leaf.ogt"
+    },
+    {
+      "name": "package",
+      "source": "package",
+      "group": "items",
+      "path": "ui-kits/development-fallback-icons/vectors/items/package.ogt"
+    },
+    {
+      "name": "magic-wand",
+      "source": "magic-wand",
+      "group": "skills",
+      "path": "ui-kits/development-fallback-icons/vectors/skills/magic-wand.ogt"
+    },
+    {
+      "name": "sparks",
+      "source": "sparks",
+      "group": "skills",
+      "path": "ui-kits/development-fallback-icons/vectors/skills/sparks.ogt"
+    },
+    {
+      "name": "fire",
+      "source": "fire-flame",
+      "group": "skills",
+      "path": "ui-kits/development-fallback-icons/vectors/skills/fire.ogt"
+    },
+    {
+      "name": "snow-flake",
+      "source": "snow-flake",
+      "group": "skills",
+      "path": "ui-kits/development-fallback-icons/vectors/skills/snow-flake.ogt"
+    },
+    {
+      "name": "droplet",
+      "source": "droplet",
+      "group": "skills",
+      "path": "ui-kits/development-fallback-icons/vectors/skills/droplet.ogt"
+    },
+    {
+      "name": "sun",
+      "source": "sun-light",
+      "group": "skills",
+      "path": "ui-kits/development-fallback-icons/vectors/skills/sun.ogt"
+    },
+    {
+      "name": "moon",
+      "source": "half-moon",
+      "group": "skills",
+      "path": "ui-kits/development-fallback-icons/vectors/skills/moon.ogt"
+    },
+    {
+      "name": "magnet-energy",
+      "source": "magnet-energy",
+      "group": "skills",
+      "path": "ui-kits/development-fallback-icons/vectors/skills/magnet-energy.ogt"
+    },
+    {
+      "name": "target",
+      "source": "archery-match",
+      "group": "skills",
+      "path": "ui-kits/development-fallback-icons/vectors/skills/target.ogt"
+    },
+    {
+      "name": "archery",
+      "source": "archery",
+      "group": "skills",
+      "path": "ui-kits/development-fallback-icons/vectors/skills/archery.ogt"
+    },
+    {
+      "name": "user",
+      "source": "user",
+      "group": "social",
+      "path": "ui-kits/development-fallback-icons/vectors/social/user.ogt"
+    },
+    {
+      "name": "group",
+      "source": "group",
+      "group": "social",
+      "path": "ui-kits/development-fallback-icons/vectors/social/group.ogt"
+    },
+    {
+      "name": "chat-bubble",
+      "source": "chat-bubble",
+      "group": "social",
+      "path": "ui-kits/development-fallback-icons/vectors/social/chat-bubble.ogt"
+    },
+    {
+      "name": "share",
+      "source": "share-android",
+      "group": "social",
+      "path": "ui-kits/development-fallback-icons/vectors/social/share.ogt"
+    },
+    {
+      "name": "bell",
+      "source": "bell",
+      "group": "social",
+      "path": "ui-kits/development-fallback-icons/vectors/social/bell.ogt"
+    },
+    {
+      "name": "leaderboard-star",
+      "source": "leaderboard-star",
+      "group": "social",
+      "path": "ui-kits/development-fallback-icons/vectors/social/leaderboard-star.ogt"
+    },
+    {
+      "name": "healthcare",
+      "source": "healthcare",
+      "group": "social",
+      "path": "ui-kits/development-fallback-icons/vectors/social/healthcare.ogt"
+    },
+    {
+      "name": "peace-hand",
+      "source": "peace-hand",
+      "group": "social",
+      "path": "ui-kits/development-fallback-icons/vectors/social/peace-hand.ogt"
+    },
+    {
+      "name": "megaphone",
+      "source": "megaphone",
+      "group": "social",
+      "path": "ui-kits/development-fallback-icons/vectors/social/megaphone.ogt"
+    },
+    {
+      "name": "community",
+      "source": "community",
+      "group": "social",
+      "path": "ui-kits/development-fallback-icons/vectors/social/community.ogt"
+    },
+    {
+      "name": "play",
+      "source": "play",
+      "group": "media",
+      "path": "ui-kits/development-fallback-icons/vectors/media/play.ogt"
+    },
+    {
+      "name": "pause",
+      "source": "pause",
+      "group": "media",
+      "path": "ui-kits/development-fallback-icons/vectors/media/pause.ogt"
+    },
+    {
+      "name": "music",
+      "source": "music-double-note",
+      "group": "media",
+      "path": "ui-kits/development-fallback-icons/vectors/media/music.ogt"
+    },
+    {
+      "name": "microphone",
+      "source": "microphone",
+      "group": "media",
+      "path": "ui-kits/development-fallback-icons/vectors/media/microphone.ogt"
+    },
+    {
+      "name": "camera",
+      "source": "camera",
+      "group": "media",
+      "path": "ui-kits/development-fallback-icons/vectors/media/camera.ogt"
+    },
+    {
+      "name": "video-camera",
+      "source": "video-camera",
+      "group": "media",
+      "path": "ui-kits/development-fallback-icons/vectors/media/video-camera.ogt"
+    },
+    {
+      "name": "skip-next",
+      "source": "skip-next",
+      "group": "media",
+      "path": "ui-kits/development-fallback-icons/vectors/media/skip-next.ogt"
+    },
+    {
+      "name": "skip-prev",
+      "source": "skip-prev",
+      "group": "media",
+      "path": "ui-kits/development-fallback-icons/vectors/media/skip-prev.ogt"
+    },
+    {
+      "name": "fast-arrow-right",
+      "source": "fast-arrow-right",
+      "group": "media",
+      "path": "ui-kits/development-fallback-icons/vectors/media/fast-arrow-right.ogt"
+    },
+    {
+      "name": "fast-arrow-left",
+      "source": "fast-arrow-left",
+      "group": "media",
+      "path": "ui-kits/development-fallback-icons/vectors/media/fast-arrow-left.ogt"
+    },
+    {
+      "name": "check",
+      "source": "check",
+      "group": "system",
+      "path": "ui-kits/development-fallback-icons/vectors/system/check.ogt"
+    },
+    {
+      "name": "close",
+      "source": "xmark",
+      "group": "system",
+      "path": "ui-kits/development-fallback-icons/vectors/system/close.ogt"
+    },
+    {
+      "name": "plus",
+      "source": "plus",
+      "group": "system",
+      "path": "ui-kits/development-fallback-icons/vectors/system/plus.ogt"
+    },
+    {
+      "name": "minus",
+      "source": "minus",
+      "group": "system",
+      "path": "ui-kits/development-fallback-icons/vectors/system/minus.ogt"
+    },
+    {
+      "name": "info",
+      "source": "info-circle",
+      "group": "system",
+      "path": "ui-kits/development-fallback-icons/vectors/system/info.ogt"
+    },
+    {
+      "name": "warning",
+      "source": "warning-triangle",
+      "group": "system",
+      "path": "ui-kits/development-fallback-icons/vectors/system/warning.ogt"
+    },
+    {
+      "name": "help",
+      "source": "help-circle",
+      "group": "system",
+      "path": "ui-kits/development-fallback-icons/vectors/system/help.ogt"
+    },
+    {
+      "name": "lock",
+      "source": "lock",
+      "group": "system",
+      "path": "ui-kits/development-fallback-icons/vectors/system/lock.ogt"
+    },
+    {
+      "name": "floppy-disk",
+      "source": "floppy-disk",
+      "group": "system",
+      "path": "ui-kits/development-fallback-icons/vectors/system/floppy-disk.ogt"
+    },
+    {
+      "name": "trash",
+      "source": "trash",
+      "group": "system",
+      "path": "ui-kits/development-fallback-icons/vectors/system/trash.ogt"
+    },
+    {
+      "name": "map",
+      "source": "map",
+      "group": "world",
+      "path": "ui-kits/development-fallback-icons/vectors/world/map.ogt"
+    },
+    {
+      "name": "map-pin",
+      "source": "map-pin",
+      "group": "world",
+      "path": "ui-kits/development-fallback-icons/vectors/world/map-pin.ogt"
+    },
+    {
+      "name": "compass",
+      "source": "compass",
+      "group": "world",
+      "path": "ui-kits/development-fallback-icons/vectors/world/compass.ogt"
+    },
+    {
+      "name": "globe",
+      "source": "globe",
+      "group": "world",
+      "path": "ui-kits/development-fallback-icons/vectors/world/globe.ogt"
+    },
+    {
+      "name": "clock",
+      "source": "clock",
+      "group": "world",
+      "path": "ui-kits/development-fallback-icons/vectors/world/clock.ogt"
+    },
+    {
+      "name": "rocket",
+      "source": "rocket",
+      "group": "world",
+      "path": "ui-kits/development-fallback-icons/vectors/world/rocket.ogt"
+    },
+    {
+      "name": "flag",
+      "source": "triangle-flag",
+      "group": "world",
+      "path": "ui-kits/development-fallback-icons/vectors/world/flag.ogt"
+    },
+    {
+      "name": "puzzle",
+      "source": "puzzle",
+      "group": "world",
+      "path": "ui-kits/development-fallback-icons/vectors/world/puzzle.ogt"
+    },
+    {
+      "name": "dice-five",
+      "source": "dice-five",
+      "group": "world",
+      "path": "ui-kits/development-fallback-icons/vectors/world/dice-five.ogt"
+    },
+    {
+      "name": "planet",
+      "source": "planet",
+      "group": "world",
+      "path": "ui-kits/development-fallback-icons/vectors/world/planet.ogt"
+    }
+  ]
+}

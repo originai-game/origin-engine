@@ -3,6 +3,11 @@ use super::*;
 /// Extra drawing of a widget, in its own frame, after its background.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Shape {
+    Vector {
+        frame: Frame,
+        vector: og_render::UiVectorHandle,
+        color: Srgba,
+    },
     /// A rounded rectangle (`radius` ≥ half the short side: a capsule or disc).
     Rect {
         frame: Frame,

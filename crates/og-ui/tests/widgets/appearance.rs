@@ -557,6 +557,44 @@ fn a_fallback_set_draws_the_icons_a_pack_lacks() {
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
 }
 
+#[test]
+fn vector_fallbacks_draw_in_widgets_and_rich_text_without_replacing_primary_art() {
+    let mut ui = ui_with_font(test_font_metrics());
+    let coin = og_render::UiVectorHandle(7);
+    let bell = og_render::UiVectorHandle(11);
+    let hidden = og_render::UiVectorHandle(13);
+    ui.set_icons(IconAtlas {
+        vectors: [("coin".into(), coin)].into(),
+        fallback: Some(Box::new(IconAtlas {
+            vectors: [("coin".into(), hidden), ("bell".into(), bell)].into(),
+            ..IconAtlas::default()
+        })),
+        ..IconAtlas::default()
+    });
+    assert!(ui.has_icon("bell") && ui.has_icon("coin") && !ui.has_icon("unknown"));
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+        ui.icon("Coin", "coin", IconDesc::default());
+        ui.icon("Bell", "bell", IconDesc::default());
+        ui.rich_text("Line", "[icon=bell]", RichTextDesc::default());
+        ui.end();
+    }
+    let drawn: Vec<_> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|it| match &it.cmd {
+            DrawCmd::Vector { vector, rect, .. } => {
+                assert!(rect.width > 0.0 && rect.height > 0.0);
+                Some(*vector)
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(drawn, [coin, bell, bell]);
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+}
+
 /// Kestrel-stair FINDINGS #15: a grid lays out exactly `columns` cells a
 /// row, whatever its width: a fit grid that many cells of the asked width,
 /// a growing one with the cells sharing its width (wider than asked, or

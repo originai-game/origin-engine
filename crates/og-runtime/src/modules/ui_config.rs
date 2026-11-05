@@ -231,7 +231,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                 }
                 None => None,
             };
-            Ok(Some(match set {
+            let mut atlas = match set {
                 Some((font, names)) => IconAtlas {
                     font: Some(font),
                     names,
@@ -251,7 +251,22 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                         .unwrap_or_default(),
                     ..IconAtlas::default()
                 },
-            }))
+            };
+            for icon in icons["vectors"].as_array().into_iter().flatten() {
+                let name = icon["name"]
+                    .as_str()
+                    .filter(|s| !s.is_empty())
+                    .ok_or_else(|| format!("{field}.vectors: an icon needs a name"))?;
+                let path = icon["path"]
+                    .as_str()
+                    .filter(|s| !s.is_empty())
+                    .ok_or_else(|| format!("{field}.vectors: {name} needs a vector asset path"))?;
+                let vector = super::ui_draw::load_vector(&eng, path)?.1;
+                if atlas.vectors.insert(name.into(), vector).is_some() {
+                    return Err(format!("{field}.vectors: duplicate icon {name}"));
+                }
+            }
+            Ok(Some(atlas))
         };
         let mut atlas = match atlas_of("icons")? {
             Some(atlas) => atlas,

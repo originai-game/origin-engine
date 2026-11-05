@@ -1,0 +1,22 @@
+type project
+version 1
+---
+name "Development fallback vectors"
+id "development-fallback-icons-sheet"
+engine "0.7.7"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
+ui {
+  screen "settings" "group:settings"
+  screen "navigation" "group:navigation"
+  screen "currencies" "group:currencies"
+  screen "stats" "group:stats"
+  screen "items" "group:items"
+  screen "skills" "group:skills"
+  screen "social" "group:social"
+  screen "media" "group:media"
+  screen "system" "group:system"
+  screen "world" "group:world"
+}

@@ -11379,6 +11379,7 @@
         "NavIntent",
         "UiRect",
         "IconAtlasDesc",
+        "UiVectorIcon",
         "UiInlineImage",
         "AnchorDesc",
         "TransitionDesc",
@@ -48693,6 +48694,14 @@
       "description": "The icon atlas: a texture of equal cells in a grid, named in reading order, or an icon set cooked like a font (font).",
       "type": "object",
       "properties": {
+        "vectors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UiVectorIcon"
+          },
+          "description": "Named cooked vector assets, resolved before this atlas's font or texture. Use the development-fallback-icons kit for temporary icons; replace them with game-specific art before publishing.",
+          "default": []
+        },
         "font": {
           "anyOf": [
             {
@@ -48740,6 +48749,25 @@
           },
           "description": "Each cell's name, in reading order: og.ui.icon draws a cell by its name.",
           "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "UiVectorIcon": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One named vector icon, drawn through the same vector cook as a VectorFill.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name og.ui.icon and [icon=name] look up.",
+          "default": ""
+        },
+        "path": {
+          "type": "string",
+          "description": "The asset path of an .ogt of type vector; loaded when configuring the UI.",
+          "default": ""
         }
       },
       "additionalProperties": false

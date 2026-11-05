@@ -877,6 +877,7 @@ module ui {
   struct IconAtlasDesc {
     doc "The icon atlas: a texture of equal cells in a grid, named in reading order, or an icon set cooked like a font (font)."
     desc true
+    field vectors List.UiVectorIcon "Named cooked vector assets, resolved before this atlas's font or texture. Use the development-fallback-icons kit for temporary icons; replace them with game-specific art before publishing."
     field font Option.Font "An icon set from og.load.font (an `.ogt` of `type icons` naming SVGs, such as the UI kit's iconoir set): its icons are distance-field glyphs, crisp at any size and tinted by their ink, named by the set; texture, columns, rows and names are then not used."
     field texture Option.Texture "The atlas texture, from og.load.texture."
     field columns u32 "Cells across." {
@@ -888,6 +889,13 @@ module ui {
       min 1
     }
     field names List.String "Each cell's name, in reading order: og.ui.icon draws a cell by its name."
+  }
+
+  struct UiVectorIcon {
+    doc "One named vector icon, drawn through the same vector cook as a VectorFill."
+    desc true
+    field name String "The name og.ui.icon and [icon=name] look up."
+    field path String "The asset path of an .ogt of type vector; loaded when configuring the UI."
   }
 
   struct UiInlineImage {

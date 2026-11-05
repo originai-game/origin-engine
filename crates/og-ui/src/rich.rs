@@ -832,6 +832,14 @@ impl Ui {
             if let Some(Atom::Icon(cell)) = &s.atom {
                 let side = s.step.size * n.scale;
                 match *cell {
+                    crate::ui::IconCell::Vector(vector) => cmds.push(DrawCmd::Vector {
+                        vector,
+                        rect: Rect::new(r.x + side * 0.05, baseline - side * 0.85, side, side)
+                            .snapped(dpr),
+                        transform: [1.0, 0.0, 0.0, 1.0],
+                        tint: color.fade(alpha).linear(),
+                        clip,
+                    }),
                     crate::ui::IconCell::Glyph(font, ch) => {
                         // An icon set's glyph: its em square where a cell would be.
                         let (x, top) = (r.x + side * 0.05, baseline - side * 0.85);

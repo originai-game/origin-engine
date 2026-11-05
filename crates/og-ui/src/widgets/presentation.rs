@@ -550,6 +550,11 @@ impl Ui {
 
     pub(super) fn icon_shape(&self, name: &str, frame: Frame, color: Srgba) -> Option<Shape> {
         Some(match self.icons.find(name)? {
+            IconCell::Vector(vector) => Shape::Vector {
+                frame,
+                vector,
+                color,
+            },
             IconCell::Glyph(font, ch) => Shape::Glyph {
                 frame,
                 font,

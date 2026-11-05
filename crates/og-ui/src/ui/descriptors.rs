@@ -602,6 +602,7 @@ impl Metrics for Fonts {
 /// glyphs drawn crisp at any size and tinted by their ink.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct IconAtlas {
+    pub vectors: std::collections::BTreeMap<String, og_render::UiVectorHandle>,
     pub texture: Option<TextureHandle>,
     pub columns: u32,
     pub rows: u32,
@@ -618,6 +619,8 @@ pub struct IconAtlas {
 /// Where an icon of the atlas is drawn from ([`IconAtlas::find`]).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum IconCell {
+    /// A cooked vector, tinted by the icon's ink.
+    Vector(og_render::UiVectorHandle),
     /// An icon set's distance-field glyph.
     Glyph(og_render::FontHandle, char),
     /// A cell of a texture grid, `[u0, v0, u1, v1]`.
@@ -652,7 +655,9 @@ impl IconAtlas {
 
     /// Whether it draws anything (a texture, or an icon set's font).
     pub fn is_drawn(&self) -> bool {
-        self.texture.is_some() || self.font.as_ref().is_some_and(|f| f.handle.is_some())
+        !self.vectors.is_empty()
+            || self.texture.is_some()
+            || self.font.as_ref().is_some_and(|f| f.handle.is_some())
     }
 
     /// An icon set's glyph for icon `index`: its font and character.
@@ -664,6 +669,9 @@ impl IconAtlas {
     /// The icon named `name`: from this atlas where it draws one, else
     /// from its fallback's.
     pub fn find(&self, name: &str) -> Option<IconCell> {
+        if let Some(vector) = self.vectors.get(name) {
+            return Some(IconCell::Vector(*vector));
+        }
         let own = self.index_of(name).and_then(|k| match self.glyph(k) {
             Some((font, ch)) => Some(IconCell::Glyph(font, ch)),
             None => self.texture.map(|t| IconCell::Image(t, self.uv(k))),
