@@ -1,18 +1,19 @@
-// The style-pack gallery: every screen of the kit in one style, composed into
-// one reference sheet per style and surface, in FRAME_SCREENS order without
-// the gallery: on a desktop crates/og-ui/references/<tier>/kit-style-<name>.png
-// (7 cells a row, each the 1280×720 frame box-filtered to 640×360), on a phone
-// in portrait kit-style-<name>-phone.png (10 cells a row, each the 390×844@3
-// frame box-filtered to its 390×844 CSS pixels). Each screen is compared with
-// its cell of the sheet under og-tests' rule (frames.ts).
-// `OG_UI_CAPTURE=1 og test .` records the sheets instead.
+// The style packs' approved states (docs/ui.md §15.4): a pack is judged on
+// its own pages (`og ui sheet`), never as every screen of the kit in every
+// pack, so the kit keeps only the states the art director approved one by
+// one, each drawn over the pack's plain ground (lib.ts) and composed into
+// crates/og-ui/references/<tier>/kit-style-<name>[-phone]-states.png. Each
+// state is compared with its cell of the sheet under og-tests' rule
+// (frames.ts); `OG_UI_CAPTURE=1 og test .` records the sheets instead. The
+// sheet helpers (shrink, cell, sheetCheck) serve showcases.ts too.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { deflateSync } from "node:zlib";
-import { playtest, type PlaytestChecks, type PlaytestDesc, type PlaytestRun } from "@origingame/engine/playtest";
+import type { PlaytestChecks, PlaytestDesc, PlaytestRun } from "@origingame/engine/playtest";
 import { decodePng, difference, outDir, referencesDir, type Image } from "./frames.ts";
-import { framesScript, STYLE_SETTLE } from "./script.ts";
+import { STYLE_SETTLE } from "./script.ts";
+import { playtest } from "./lib.ts";
 
 /** How a surface's frames become a sheet: the frame size, the box filter, the columns. */
 export interface Surface {
@@ -176,7 +177,7 @@ export function withSettleDumps(commands: string): string {
 }
 
 /**
- * States of a pack the art director approved one by one, beyond its screens:
+ * States of a pack the art director approved one by one:
  * each a gear frame after its commands, on the desktop, composed into
  * kit-style-<name>-states.png (a phone's, PHONE_STYLE_STATES, into
  * kit-style-<name>-phone-states.png). Fantasy's and scifi's selected bag cells
@@ -235,30 +236,24 @@ function statesScript(t0: number, states: readonly StyleState[]): { commands: st
   return { commands: steps.join(";"), files, end: t };
 }
 
-/** The playtest of one style pack on a surface (desktop by default). */
+/** The playtest of one style pack's approved states on a surface (desktop by default). */
 export function stylePlaytest(style: string, on: "desktop" | "phone" = "desktop"): PlaytestDesc {
   const surface = SURFACES[on];
-  const script = framesScript(0.5, STYLE_SETTLE);
-  const files = script.files.filter((f) => f !== "gallery.png");
-  const name = `kit-style-${style}${surface.suffix}.png`;
   const states = (on === "desktop" ? STYLE_STATES : PHONE_STYLE_STATES)[style] ?? [];
-  // The states start once the toasts the screens queued are gone: each stays its 3200 ms (og-ui's ToastDesc
-  // default) and leaves on the pack's motion (under a second in every pack); the screens' frames end sooner.
-  const toasted = Math.max(0, ...[...script.commands.matchAll(/(?:^|;)([\d.]+):toast:/g)].map((m) => Number(m[1]) + 3.2 + 1.0));
-  const extra = statesScript(Math.max(script.end, toasted), states);
-  const commands = states.length > 0 ? `${script.commands.replace(/;[\d.]+:quit$/, "")};${extra.commands};${extra.end.toFixed(2)}:quit` : script.commands;
+  if (states.length === 0) throw new Error(`the ${style} pack has no approved ${on} states (STYLE_STATES, PHONE_STYLE_STATES)`);
+  const name = `kit-style-${style}${surface.suffix}-states.png`;
+  const script = statesScript(0.5, states);
   return playtest({
-    name: `every screen in the ${style} style pack${on === "phone" ? " on a phone" : ""} matches its cell of ${name}`,
+    name: `the ${style} style pack's approved states${on === "phone" ? " on a phone" : ""} match their cells of ${name}`,
     size: surface.size,
-    commands: `${surface.viewport}0.2:style:${style};${withSettleDumps(commands)}`,
+    commands: `${surface.viewport}0.2:style:${style};${withSettleDumps(script.commands)};${script.end.toFixed(2)}:quit`,
     check(run, t) {
       t.equal(run.warnings.join("; "), "", "the script ran without warnings");
       t.ok(run.quit, "the script reached quit");
-      for (const f of [...files, ...extra.files]) {
+      for (const f of script.files) {
         const screen = f.replace(/\.png$/, "");
         t.equal(unsettled(run, screen), "", `${style} ${screen} is captured with every entrance and exit settled`);
       }
-      sheetCheck(run, t, files, name, surface, style);
       // Each state shows its selection and no other, read from the dump at its frame's tick.
       for (const st of states) {
         if (st.selected === undefined) continue;
@@ -268,7 +263,7 @@ export function stylePlaytest(style: string, on: "desktop" | "phone" = "desktop"
           .map((e) => e.path!.split("/").pop()!);
         t.equal(shown.join(","), st.selected, `${style} ${st.name} has ${st.selected || "nothing"} selected in the bag`);
       }
-      if (extra.files.length > 0) sheetCheck(run, t, extra.files, `kit-style-${style}${surface.suffix}-states.png`, surface, `${style}${surface.suffix} states`);
+      sheetCheck(run, t, script.files, name, surface, `${style}${surface.suffix} states`);
     },
   });
 }

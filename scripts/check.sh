@@ -740,12 +740,12 @@ step_bun_test() {
   OG_GATE=1 OG_BUN_TEST_TIMEOUT="$BUN_GATE_TIMEOUT" bun_test_packages packages/*/
 }
 
-# Every built-in style pack's reference sheets, desktop and phone
+# The style packs' approved states, desktop and phone
 # (templates/ui-kit/tests/style-*.og.ts against
-# crates/og-ui/references/<tier>/kit-style-*.png, else metal's): the native
-# og-ui tests draw no style pack's screens, so without this step a style
-# changed without its sheets re-recorded was first caught by a wave end's
-# web-reference (2026-11-01, neon after bc65bed4). Without a renderer the
+# crates/og-ui/references/<tier>/kit-style-*-states.png, else metal's): the
+# states the art director approved one by one, over a plain ground. A pack
+# is judged on its own pages (og ui sheet), never as every kit screen in
+# every pack (docs/ui.md §15.4, 2026-11-05). Without a renderer the
 # playtests report their frames unchecked. Path-aware (rule_ui_styles).
 step_ui_styles() {
   if skip_unchanged ui-styles "ui-styles" "$(rule_ui_styles)"; then return $SKIP; fi
