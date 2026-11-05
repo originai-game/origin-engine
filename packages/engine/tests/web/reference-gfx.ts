@@ -267,8 +267,8 @@ try {
       const o = shot.opened;
       Object.assign(row, { tier: o.tier, adapter: o.adapter, antialias: o.antialias, frames: o.frames });
       result["adapter"] ??= o.adapter;
-      // A phone draws on the browsers' webgpu backend; webgpu-android names only its references.
-      if (o.tier !== (android ? "webgpu" : tier)) throw new Error(`rendered on ${o.tier}, not ${tier}`);
+      // The renderer's tier is webgpu in every browser; a phone's or Safari's is only a reference tier.
+      if (o.tier !== "webgpu") throw new Error(`rendered on ${o.tier}, not webgpu`);
       row["renderMs"] = +shot.renderMs!.toFixed(1);
       const img: Image = { width: o.width, height: o.height, rgba: Uint8Array.from(atob(shot.rgba!), (c) => c.charCodeAt(0)) };
       const png = encodePng(img);

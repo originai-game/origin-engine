@@ -2,10 +2,11 @@
 # One Safari compatibility run on macrunner, in one GPU slot (scripts/lock.sh
 # og_gpu_acquire), with its JSON kept under tests/evidence/compat/safari/runs/.
 #
-#   sh tests/evidence/compat/safari/run.sh build
+#   sh tests/evidence/compat/safari/run.sh build [gfx]
 #   sh tests/evidence/compat/safari/run.sh <run> [--chrome] [runner args...]
 #
-# build  the engine's web host and og (packages/engine scripts/build.sh), no GPU
+# build  og, og-tests-web's module and the web host (scripts/build.sh), no GPU;
+#        `build gfx` skips the web host
 # fx     fx-showcase stations          tests/web/reference.ts
 # looks  fx-showcase looks             tests/web/reference.ts --looks
 # e5     fx-showcase E5                tests/web/reference-e5.ts
@@ -16,9 +17,9 @@
 # Without --chrome the run is Safari's (--safari, the webgpu-safari tier);
 # with it, the same run in Chrome for Testing, the control a Safari frame is
 # read beside. Compatibility work yields to development (the owner): before
-# it queues for a slot it waits while every slot is taken exclusively
-# (gpu-all.lock) or other single waiters are queued in gpu-wait/, so it
-# never goes ahead of them; then it takes one slot for the one run.
+# it queues for a slot it waits for every single waiter already queued in
+# gpu-wait/, so it never goes ahead of them; then it takes one slot for the
+# one run.
 set -eu
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/../../../.." && pwd)"
@@ -27,8 +28,16 @@ run="${1:?run: build fx looks e5 gfx ui wire}"
 shift
 
 if [ "$run" = build ]; then
+  # Built before a slot is taken, so no slot waits on cargo: og (dev, for
+  # cooks: $OG_BIN below), og-tests-web's module where reference-gfx.ts
+  # builds it, and unless `build gfx`, the web host (scripts/build.sh).
+  cd "$repo"
+  cargo build -p og-cli --bin og
+  cargo build --profile wasm --target wasm32-unknown-unknown --target-dir "${CARGO_TARGET_DIR:-$repo/target}/wasm-gfx" -p og-tests-web --lib
+  [ "${1:-}" = gfx ] && exit 0
   cd "$engine" && exec sh scripts/build.sh
 fi
+export OG_BIN="${OG_BIN:-${CARGO_TARGET_DIR:-$repo/target}/debug/og}"
 
 browser=safari
 flag=--safari
@@ -48,19 +57,15 @@ case "$run" in
 esac
 
 root="${OG_GPU_ROOT:-$HOME/.cache/og-gate}"
-waiting() {
-  [ -d "$root/gpu-all.lock" ] && return 0
-  for w in "$root"/gpu-wait/*; do
-    [ -e "$w" ] || continue
-    [ "${w##*/}" = "$$" ] && continue
-    kill -0 "${w##*/}" 2>/dev/null && return 0
-  done
-  return 1
-}
+# The single waiters already queued go first: each is waited for until it
+# leaves the queue (takes its slot) or ends; later ones queue behind us.
 said=""
-while waiting; do
-  [ -n "$said" ] || { echo "run.sh: development is queued for the GPU; safari $run waits" >&2; said=1; }
-  sleep 30
+for w in "$root"/gpu-wait/*; do
+  [ -e "$w" ] || continue
+  while [ -e "$w" ] && kill -0 "${w##*/}" 2>/dev/null; do
+    [ -n "$said" ] || { echo "run.sh: development is queued for the GPU; safari $run waits" >&2; said=1; }
+    sleep 10
+  done
 done
 # shellcheck source=scripts/lock.sh
 . "$repo/scripts/lock.sh"
