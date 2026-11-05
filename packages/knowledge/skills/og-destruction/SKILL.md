@@ -99,7 +99,7 @@ Pick the style by what it is made of; each breaks as that material does:
 
 ```ts
 const wall = must(world.instantiate(must(og.load.gltf(world, "props/wall.ogt")), { position: { x: -3, y: 0, z: 0 } }));
-must(world.insert(wall, og.Destructible, { toughness: 800, strength: 3000, density: 1900, dust, sparks, debris: chips }));
+must(world.insert(wall, og.Destructible, { toughness: 800, strength: 3000, density: 1900, impactThreshold: 400, dust, sparks, debris: chips }));
 ```
 
 A standing prop (no og.RigidBody, or a static one) is its chunks from the
@@ -113,7 +113,7 @@ break, then as its chunks.
 |---|---|---|---|---|
 | glass | 25 to 60 | 0 (no stress) | 2500 | 2 |
 | wood | 120 to 400 | 0 to 3000 | 600 | 30 to 50 |
-| brick | 600 to 1000 | 2000 to 5000 | 1900 | 30 |
+| brick | 600 to 1000 | 2000 to 5000 | 1900 | 300 to 500 |
 | concrete | 1500 to 2500 | 15000 to 30000 | 2400 | 60 |
 
 - `toughness`: how much a square metre of bond takes. A blow's `amount`
@@ -126,12 +126,19 @@ break, then as its chunks.
 - `friction` (default 0.7): shear a bond gains from the compression
   across it. Joints pressed by what stands on them hold and unloaded
   ones slip, so a brick wall shot at its foot drops what hung over the
-  hole in steps along its courses and keeps its loaded piers. 0 makes
+  hole in steps along its courses and keeps its loaded piers. A loose
+  island at rest is solved on what it rests on too: a run of blocks lying
+  across two piers bends and breaks over the gap, and one wedged at rest
+  with nothing under it (blocks jammed between the piers into a flat
+  arch) crumbles into its pieces 30 ticks after it broke free, so a
+  wall shot at its foot leaves two piers, a ragged top and a pile. 0 makes
   every joint as weak as the next (a Voronoi prop of no grain).
 - `impactThreshold`: the collision impulse (og.CollisionStarted.impulse)
   that does nothing; what is above it is the hit's damage, spread over
   `impactRadius`. A bullet body, a thrown rock and a falling crate all
-  break things this way, with no game code.
+  break things this way, with no game code. Raise it with the weight of
+  the pieces: a falling block of brickwork lands at hundreds of N·s, and
+  below that every block that drops knocks apart what it lands on.
 - `anchored false`: every island falls (a structure knocked off its
   base).
 

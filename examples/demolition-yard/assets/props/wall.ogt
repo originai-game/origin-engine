@@ -23,7 +23,7 @@ part "wall" {
 fracture {
   style brick
   brick 0.25 0.1
-  chunks 40
+  chunks 80
   seed 11
   children 32          # a block's bricks (brick style: up to 32)
   anchor bottom ends

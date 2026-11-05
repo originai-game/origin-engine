@@ -49,7 +49,7 @@ function build(world: World): void {
   // Brick: tough bonds, weak mortar (strength) held by friction where it is
   // pressed (the default friction): a hole at its foot drops what hung over
   // it and leaves the loaded piers standing; fine pieces are GPU debris.
-  prop(world, "props/wall.ogt", "wall", WALL, { toughness: 800, strength: 3000, density: 1900, dust, sparks, debris: chips });
+  prop(world, "props/wall.ogt", "wall", WALL, { toughness: 800, strength: 3000, density: 1900, impactThreshold: 400, dust, sparks, debris: chips });
   prop(world, "props/pillar.ogt", "pillar", PILLAR, { toughness: 2000, strength: 20000, density: 2400, dust, sparks, debris: grit });
   // Wood: a dynamic crate, broken by its own landing.
   const crate = prop(world, "props/crate.ogt", "crate", CRATE, { toughness: 120, density: 600, impactThreshold: 40, impactRadius: 0.9, anchored: false, dust });
@@ -81,7 +81,7 @@ export default og.game({
   start: build,
   commands: {
     boom: (world) => {
-      must(og.destruction.explode(world, { point: { x: WALL.x, y: 0.3, z: 0.4 }, radius: 1.1, innerRadius: 0.45, damage: 6000, impulse: 300 }));
+      must(og.destruction.explode(world, { point: { x: WALL.x, y: 0.3, z: 0.15 }, radius: 1.4, innerRadius: 0.8, damage: 6000, impulse: 300 }));
     },
     strike: (world) => {
       must(og.destruction.damage(world, find(world, "pillar"), { point: { x: PILLAR.x, y: 1.4, z: PILLAR.z + 0.25 }, radius: 0.5, innerRadius: 0.25, amount: 8000 }));

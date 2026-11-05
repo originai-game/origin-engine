@@ -711,12 +711,12 @@ fn brick(
             // Wider than tall in metres, as masonry cracks step along courses.
             let aspect = 1.4 + rng.next_f64() * 1.2;
             let w_m = (area * half * bh * aspect).sqrt();
-            // At most four bricks long and six courses high: a block that
-            // reaches across a blow is shattered by it with everything it
-            // held, so no block spans much of the wall.
-            let h = ((w_m / aspect / bh).round() as usize).clamp(1, (rows - r).min(6));
+            // At most two bricks long and four courses high: a block is
+            // rigid, so one longer than a hole a blow opens would lie
+            // across it on the piers, where brickwork falls through.
+            let h = ((w_m / aspect / bh).round() as usize).clamp(1, (rows - r).min(4));
             let w = ((area / h as f64).round() as usize)
-                .clamp(1, 8)
+                .clamp(1, 4)
                 .min(cols - c);
             // As far as the row is free.
             let mut fw = 0;
