@@ -36,9 +36,9 @@ function build(world: World): void {
   const material = (kind: number) => must(og.destruction.material(world, kind));
   const brick = { ...material(MATERIAL_BRICK), breakFx: fx("brick-dust"), hitFx: fx("brick-chips"), debris: fx("chips") };
   const concrete = { ...material(MATERIAL_CONCRETE), breakFx: fx("stone-dust"), hitFx: fx("stone-grit"), debris: fx("grit") };
-  const wood = { ...material(MATERIAL_WOOD), breakFx: fx("wood-dust"), hitFx: fx("splinters") };
+  const wood = { ...material(MATERIAL_WOOD), breakFx: fx("wood-dust"), hitFx: fx("splinters"), debris: fx("splinters") };
   const shards = fx("glass-shards");
-  const glass = { ...material(MATERIAL_GLASS), breakFx: shards, hitFx: shards };
+  const glass = { ...material(MATERIAL_GLASS), breakFx: shards, hitFx: shards, debris: shards };
 
   // The yard: a concrete slab the chunks land on.
   const box = must(og.render.boxGeometry(world, {}));

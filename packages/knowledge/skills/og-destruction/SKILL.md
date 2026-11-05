@@ -232,22 +232,31 @@ for (const f of world.events(og.Fractured)) {
 
   | material | breakFx | hitFx |
   |---|---|---|
-  | brick | a warm clay puff (alpha, lit) | clay chips (`render mesh tetrahedron`, `lit true`, `collision`) |
+  | brick | a warm clay puff (alpha, lit) | clay chips (`render mesh tetrahedron`, `blend alpha`, `lit true`, `collision`) |
   | concrete | a grey puff | grey grit chips |
   | wood | a little pale sawdust | splinters (small brown tumbling meshes) |
   | glass | small shards nearly clear and smooth (lit meshes, `blend alpha` at an alpha about 0.2, `roughness 0.04`, `collision`): each glints only where it faces the sun or the sky, never as white salt | the same shards |
   | metal | none | a few sparks (additive, `align velocity`, `collision`), not a shower |
 
   Sparks (orange, additive, bright) read as metal, a grinder or a
-  weld: on stone, wood or glass they look wrong. `examples/demolition-yard`
+  weld: on stone, wood or glass they look wrong. Every solid mesh
+  particle (chips, grit, splinters, shards) needs `blend alpha`: an
+  emitter blends additive unless told, and a lit grey chip added onto
+  the ground glows white, as paper confetti. `examples/demolition-yard`
   has an emitter for each row but metal under `assets/fx/`.
 - `debris`: fine pieces as visuals only. Where a chunk shatters, its
   pieces smaller than og.Destruction.debrisVolume never become bodies:
   they fly on the GPU instead, each with its own shape and cut faces,
-  from where and how fast it broke off (the blast's push included). They
+  from where and how fast it broke off (the blast's push included), and
+  each throws four to six rubble chips of its own: thick lumps of
+  uneven size drawn with the prop's cut-face material (one in four with
+  its outer face's), so brick throws clay, concrete grey aggregate,
+  wood its grain and glass clear glass, with nothing to tint. They
   tumble and land on the colliders that are boxes, spheres and terrains.
-  The emitter (`render mesh tetrahedron`, `lit true`, `collision`)
-  bursts its chips there too. Hundreds of pieces cost no physics, and
+  The emitter (`render mesh tetrahedron`, `blend alpha`, `lit true`,
+  `collision`) bursts a spray of finer grains there too: keep it small
+  (a centimetre or two) and in the material's colour, since the chips
+  already carry the rubble. Hundreds of pieces cost no physics, and
   they never touch the simulation. `og.destruction.capabilities(world)`
   says whether this device draws them (`visualDebris`) and how many it
   holds (`maxVisualDebris`), and `og.destruction.info(world, e).debris`

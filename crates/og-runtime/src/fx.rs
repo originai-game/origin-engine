@@ -169,6 +169,9 @@ pub(crate) struct FxState {
     pub by_path: BTreeMap<String, usize>,
     /// Built-in mesh particles' shapes (`render mesh box`), made once.
     pub particle_meshes: BTreeMap<&'static str, MeshHandle>,
+    /// The debris layer's rubble chips (og_render::chip) and their hulls'
+    /// points, made at the first fine piece drawn.
+    pub chip_meshes: Vec<(MeshHandle, Vec<glam::Vec3>)>,
     /// Emitters being loaded, outermost first: a sub-emitter naming one of
     /// them is a cycle.
     pub loading: Vec<String>,

@@ -95,6 +95,161 @@ impl DebrisPiece {
     }
 }
 
+/// How many [`chip`] shapes there are.
+pub const CHIP_VARIANTS: u32 = 4;
+
+/// A rubble chip about 1 across, centred on its centre of mass, as the
+/// debris layer throws them off a fine piece: one of [`CHIP_VARIANTS`]
+/// convex lumps (two octahedra of uneven axes, a wedge, a slab),
+/// flat-shaded so each facet catches the light on its own. Its vertices are
+/// its hull's points ([`DebrisPiece::points`]); its uvs a planar map a
+/// twelfth of a unit across, so a cut-face material's texture shows as a
+/// grain's worth of its colour rather than squeezed whole onto a chip.
+pub fn chip(variant: u32) -> crate::scene::MeshData {
+    use crate::scene::{MeshData, Vertex};
+    // A fixed jitter in -1..1 per (variant, k): the shapes are data.
+    let j = |k: u32| {
+        let mut x = variant.wrapping_mul(0x9e37_79b9) ^ k.wrapping_mul(0x85eb_ca6b);
+        x ^= x >> 16;
+        x = x.wrapping_mul(0x7feb_352d);
+        x ^= x >> 15;
+        x = x.wrapping_mul(0x846c_a68b);
+        x ^= x >> 16;
+        (x as f32 / u32::MAX as f32) * 2.0 - 1.0
+    };
+    let v = |x: f32, y: f32, z: f32| Vec3::new(x, y, z);
+    let (points, faces): (Vec<Vec3>, Vec<[usize; 3]>) = match variant % CHIP_VARIANTS {
+        // Octahedra with each pole at its own distance: convex whatever
+        // the distances, and lumpy where they differ.
+        0 | 1 => {
+            // Each pole half a unit or less out, the flatter axis at
+            // least half the longest.
+            let r = |k: u32| 0.5 * (0.7 + 0.3 * (0.5 + 0.5 * j(k)));
+            let flat = if variant.is_multiple_of(CHIP_VARIANTS) {
+                0.72
+            } else {
+                0.9
+            };
+            (
+                vec![
+                    v(r(0), 0.0, 0.0),
+                    v(-r(1), 0.0, 0.0),
+                    v(0.0, r(2) * flat, 0.0),
+                    v(0.0, -r(3) * flat, 0.0),
+                    v(0.0, 0.0, r(4) * 0.85),
+                    v(0.0, 0.0, -r(5) * 0.85),
+                ],
+                vec![
+                    [0, 2, 4],
+                    [2, 1, 4],
+                    [1, 3, 4],
+                    [3, 0, 4],
+                    [2, 0, 5],
+                    [1, 2, 5],
+                    [3, 1, 5],
+                    [0, 3, 5],
+                ],
+            )
+        }
+        // A wedge: a triangle extruded, its two ends parallel.
+        2 => {
+            let t = [
+                v(0.55, 0.0, 0.0),
+                v(-0.4, 0.0, 0.5 + 0.1 * j(0)),
+                v(-0.35, 0.0, -0.5),
+            ];
+            let h = 0.32 + 0.06 * j(1);
+            let mut p: Vec<Vec3> = t.iter().map(|q| *q + Vec3::Y * h).collect();
+            p.extend(t.iter().map(|q| *q - Vec3::Y * h));
+            (
+                p,
+                vec![
+                    [0, 1, 2],
+                    [3, 5, 4],
+                    [0, 3, 4],
+                    [0, 4, 1],
+                    [1, 4, 5],
+                    [1, 5, 2],
+                    [2, 5, 3],
+                    [2, 3, 0],
+                ],
+            )
+        }
+        // A slab of uneven sides.
+        _ => {
+            let (x, y, z) = (0.5, 0.36 + 0.04 * j(0), 0.42);
+            let p = vec![
+                v(-x, -y, -z),
+                v(x, -y, -z),
+                v(x, y, -z),
+                v(-x, y, -z),
+                v(-x, -y, z),
+                v(x, -y, z),
+                v(x, y, z),
+                v(-x, y, z),
+            ];
+            (
+                p,
+                vec![
+                    [0, 2, 1],
+                    [0, 3, 2],
+                    [4, 5, 6],
+                    [4, 6, 7],
+                    [0, 1, 5],
+                    [0, 5, 4],
+                    [3, 7, 6],
+                    [3, 6, 2],
+                    [0, 4, 7],
+                    [0, 7, 3],
+                    [1, 2, 6],
+                    [1, 6, 5],
+                ],
+            )
+        }
+    };
+    let centre = points.iter().copied().sum::<Vec3>() / points.len() as f32;
+    let mut vertices = Vec::with_capacity(faces.len() * 3);
+    let mut indices = Vec::with_capacity(faces.len() * 3);
+    let shift = Vec3::new(j(7), j(8), j(9)) * 0.4;
+    for f in faces {
+        let (a, mut b, mut c) = (
+            points[f[0]] - centre,
+            points[f[1]] - centre,
+            points[f[2]] - centre,
+        );
+        let mut n = (b - a).cross(c - a).normalize_or(Vec3::Y);
+        // Counter-clockwise seen from outside.
+        if n.dot(a + b + c) < 0.0 {
+            n = -n;
+            std::mem::swap(&mut b, &mut c);
+        }
+        // The face's plane, mapped along its dominant axis.
+        let axis = n.abs();
+        let uv = |q: Vec3| {
+            let q = (q + shift) / 12.0;
+            if axis.x >= axis.y && axis.x >= axis.z {
+                [q.z, q.y]
+            } else if axis.y >= axis.z {
+                [q.x, q.z]
+            } else {
+                [q.x, q.y]
+            }
+        };
+        let base = vertices.len() as u32;
+        for q in [a, b, c] {
+            vertices.push(Vertex {
+                position: q.to_array(),
+                normal: n.to_array(),
+                uv: uv(q),
+                color: [1.0; 4],
+                tangent: [0.0; 4],
+            });
+        }
+        indices.extend_from_slice(&[base, base + 1, base + 2]);
+    }
+    MeshData { vertices, indices }
+}
+
 /// Whether some piece of `scene` may still be moving.
 pub(crate) fn moving(scene: &RenderScene) -> bool {
     scene
@@ -639,6 +794,41 @@ mod tests {
         // give or take the tilt of a corner), slid to a stop.
         assert!(at[1].y > 0.03 && at[1].y < 0.1, "{:?}", at[1]);
         assert!(at[1].x > 0.3 && at[1].x < 2.5, "{:?}", at[1]);
+    }
+
+    /// Every chip is a closed lump facing out, about 1 across and at least
+    /// about half as thick as it is wide: rubble, not a card.
+    #[test]
+    fn chips_are_closed_outward_lumps_not_cards() {
+        for v in 0..CHIP_VARIANTS {
+            let m = chip(v);
+            let p: Vec<Vec3> = m.vertices.iter().map(|x| Vec3::from(x.position)).collect();
+            let key = |q: Vec3| q.to_array().map(|x| (x + 0.0).to_bits());
+            let mut edges = HashMap::new();
+            for t in m.indices.chunks(3) {
+                let [a, b, c] = [t[0], t[1], t[2]].map(|i| p[i as usize]);
+                let n = (b - a).cross(c - a);
+                assert!(n.dot(a + b + c) > 0.0, "chip {v}: a face turned in");
+                for (x, y) in [(a, b), (b, c), (c, a)] {
+                    *edges.entry((key(x), key(y))).or_insert(0) += 1;
+                }
+            }
+            for (&(x, y), &n) in &edges {
+                assert_eq!(edges.get(&(y, x)), Some(&n), "chip {v}: open");
+            }
+            let (lo, hi) = p
+                .iter()
+                .fold((Vec3::MAX, Vec3::MIN), |(l, h), q| (l.min(*q), h.max(*q)));
+            let size = hi - lo;
+            assert!(
+                size.max_element() > 0.6 && size.max_element() < 1.2,
+                "chip {v}: {size}"
+            );
+            assert!(
+                size.min_element() / size.max_element() > 0.45,
+                "chip {v}: {size}"
+            );
+        }
     }
 
     #[test]

@@ -21,6 +21,7 @@ rotation 0 360
 angularVelocity -600 600
 gravity 0 -9.8 0
 drag 0.2
+blend alpha
 render mesh tetrahedron
 lit true
 collision 0.2 0.8

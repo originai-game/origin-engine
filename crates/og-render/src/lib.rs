@@ -325,7 +325,9 @@ pub use capture::{
 pub use clouds::Clouds;
 pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS};
 pub use custom::{FULL_SHADER_ENTRIES, example as example_full_shader};
-pub use debris::{DEBRIS_POINTS, DEBRIS_SETTLE_TICKS, DebrisPiece, MAX_DEBRIS};
+pub use debris::{
+    CHIP_VARIANTS, DEBRIS_POINTS, DEBRIS_SETTLE_TICKS, DebrisPiece, MAX_DEBRIS, chip,
+};
 pub use effects::*;
 #[cfg(feature = "bake")]
 pub use environment::bake;

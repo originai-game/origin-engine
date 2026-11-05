@@ -404,7 +404,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 // Keyed by the piece, so its previous transform is its own.
                 keys.push((d.id, k as u32));
             }
-            rs.scene.debris.push(og_render::DebrisPiece {
+            let piece = og_render::DebrisPiece {
                 id: d.id,
                 tick: d.tick,
                 position,
@@ -417,7 +417,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 restitution: 0.15,
                 reach: DEBRIS_REACH,
                 instances: drawn_by,
-            });
+            };
+            // Its node's materials in the cook's order: the cut faces' last.
+            let materials: Vec<_> = parts
+                .iter()
+                .enumerate()
+                .filter(|(k, _)| nodes.get(*k) == Some(&(d.node as usize)))
+                .map(|(_, p)| p.1)
+                .collect();
+            throw_chips(rs, &piece, &materials, &look, &mut keys);
+            rs.scene.debris.push(piece);
         }
     }
     for (e, asset, mut parts, mut look, bias, sway) in model_parts {
@@ -860,6 +869,122 @@ fn rebase(scene: &mut og_render::RenderScene, origin: Vec3, forward: Option<Vec3
 /// How far (m) a fine piece may fly from where it broke off before it is
 /// no longer drawn (og_render::DebrisPiece::reach): its culling sphere.
 const DEBRIS_REACH: f32 = 12.0;
+
+/// The rubble chips a fine piece throws as it breaks off: four to six
+/// lumps (og_render::chip) of its own cut faces' material, one in four of
+/// its outer face's, each a third to two thirds of the piece across with
+/// most of them small, at least half as thick as wide, flung from its
+/// volume and tumbling. Visual only and the same each frame: every
+/// number is the piece's id hashed, so a restored world or a renderer
+/// made late throws the same chips, and the debris layer catches them up
+/// from the tick the piece broke off as it does the piece.
+fn throw_chips(
+    rs: &mut RenderState,
+    piece: &og_render::DebrisPiece,
+    materials: &[og_render::MaterialHandle],
+    look: &super::fx::ModelLook,
+    keys: &mut Vec<(u64, u32)>,
+) {
+    let (Some(&inner), Some(&outer)) = (materials.last(), materials.first()) else {
+        return;
+    };
+    if rs.fx.chip_meshes.is_empty() {
+        rs.fx.chip_meshes = (0..og_render::CHIP_VARIANTS)
+            .map(|v| {
+                let m = og_render::chip(v);
+                // Its hull's points: the mesh's corners, each once.
+                let mut points: Vec<Vec3> = Vec::new();
+                for p in m.vertices.iter().map(|x| Vec3::from(x.position)) {
+                    if !points.contains(&p) {
+                        points.push(p);
+                    }
+                }
+                (rs.scene.add_mesh(m), points)
+            })
+            .collect();
+    }
+    let radius = piece
+        .points
+        .iter()
+        .map(|p| (*p * piece.scale).length())
+        .fold(0.0, f32::max);
+    // splitmix64 over the piece's id: a stream of 0..1 numbers.
+    let mut state = piece.id;
+    let mut next = || {
+        state = state.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        let mut z = state;
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        ((z ^ (z >> 31)) >> 40) as f32 / (1u64 << 24) as f32
+    };
+    let unit = |next: &mut dyn FnMut() -> f32| {
+        let z = next() * 2.0 - 1.0;
+        let a = next() * std::f32::consts::TAU;
+        let r = (1.0 - z * z).max(0.0).sqrt();
+        Vec3::new(r * og_core::math::cos(a), z, r * og_core::math::sin(a))
+    };
+    let count = 4 + (next() * 3.0) as u32;
+    for k in 0..count {
+        if rs.scene.debris.len() + 1 >= og_render::MAX_DEBRIS {
+            return;
+        }
+        let variant = (next() * og_render::CHIP_VARIANTS as f32) as u32 % og_render::CHIP_VARIANTS;
+        let (mesh, points) = rs.fx.chip_meshes[variant as usize].clone();
+        let material = if materials.len() > 1 && next() < 0.25 {
+            outer
+        } else {
+            inner
+        };
+        // Most chips small, a few near the piece's size.
+        let u = next();
+        let size = radius * (0.3 + 0.5 * u * u);
+        let scale = Vec3::new(
+            size,
+            size * (0.65 + 0.35 * next()),
+            size * (0.5 + 0.35 * next()),
+        );
+        let offset = unit(&mut next) * radius * 0.5 * next().sqrt();
+        let axis = unit(&mut next);
+        let rotation = og_core::math::quat_from_axis_angle(axis, next() * std::f32::consts::TAU)
+            * piece.rotation;
+        let fling = unit(&mut next) * (0.5 + 1.3 * next());
+        let spin = unit(&mut next) * (4.0 + 10.0 * next());
+        let id = piece.id ^ (u64::from(k) + 1).wrapping_mul(0xd6e8_feb8_6659_fd93);
+        let position = piece.position + offset;
+        let body = Mat4::from_scale_rotation_translation(scale, rotation, position);
+        if rs.scene.meshlet_drawable(mesh, material) {
+            let at = rs.scene.instances.len();
+            rs.scene.instance_levels.resize(at + 1, u8::MAX);
+            rs.scene.instance_levels[at] = 0;
+        }
+        let index = rs.scene.instances.len() as u32;
+        rs.scene.instances.push(og_render::Instance {
+            mesh,
+            material,
+            transform: body,
+            material_layer: None,
+            fx: look.fx,
+            cast_shadows: look.cast,
+            receive_shadows: look.receive,
+            sway: 0.0,
+        });
+        keys.push((id, 0));
+        rs.scene.debris.push(og_render::DebrisPiece {
+            id,
+            tick: piece.tick,
+            position,
+            rotation,
+            scale,
+            velocity: piece.velocity + piece.angular_velocity.cross(offset) + fling,
+            angular_velocity: piece.angular_velocity + spin,
+            points,
+            friction: 0.7,
+            restitution: 0.2,
+            reach: piece.reach,
+            instances: vec![(index, Mat4::IDENTITY)],
+        });
+    }
+}
 
 /// The colliders CPU-simulated particles bounce off
 /// (`RenderScene::particle_colliders`): every og.Collider that is a box, a

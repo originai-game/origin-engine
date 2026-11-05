@@ -15,6 +15,20 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Destruction: fine debris throws rubble chips in its own material.**
+  Each fine piece the debris layer flies (og.Destructible.debris) now
+  throws four to six chips of its own as GPU rigid bodies: thick convex
+  lumps (at least about half as thick as wide), most of them small and
+  a few near the piece's size, drawn with the prop's cut-face material
+  (one in four with its outer face's). Brick throws clay, concrete grey
+  aggregate, wood its grain and glass clear glass, with no tint to
+  author. They are visual only, seeded by the piece, and caught up like
+  the pieces. Doc change on `og.Destructible.debris`. The example
+  yard's mesh emitters now say `blend alpha`: emitters blend additive
+  by default, so a lit grey tetrahedron added onto the ground glowed
+  white, as paper confetti. Its wood and glass props now have debris
+  too.
+
 - **Whole-turn primitives are closed solids; fractured cylinders break
   into lumps.** `cylinderGeometry`, `coneGeometry`, `capsuleGeometry`,
   `torusGeometry`, `ringGeometry`, `circleGeometry`, `tubeGeometry` and

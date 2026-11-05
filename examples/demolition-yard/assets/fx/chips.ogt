@@ -1,27 +1,30 @@
 type particles
 version 1
 ---
-# Fine debris, visuals only (og.Destructible.debris): tumbling chips on the
-# GPU that bounce off the depth buffer and never touch the simulation.
+# Fine debris, visuals only (og.Destructible.debris): a spray of fine clay
+# grains as the fine pieces break off (the pieces and their chips are the
+# debris layer's, drawn with the brick's cut faces). Solid grains blend
+# alpha: added, a lit grain glows white.
 maxParticles 512
 shape sphere 0.15
 spread 180
 rate 0
-burst 0 60
+burst 0 30
 duration 0.3
 looping false
 lifetime 2.5 4
 speed 1.2 3.5
-size 0.03 0.08
+size 0.008 0.022
 colorOverLife {
-  key 0 0.24 0.17 0.13 1
-  key 0.85 0.24 0.17 0.13 1
-  key 1 0.24 0.17 0.13 0
+  key 0 0.5 0.29 0.21 1
+  key 0.85 0.5 0.29 0.21 1
+  key 1 0.5 0.29 0.21 0
 }
 rotation 0 360
 angularVelocity -400 400
 gravity 0 -9.8 0
 drag 0.1
+blend alpha
 render mesh tetrahedron
 lit true
 collision 0.25 0.7
