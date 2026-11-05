@@ -83,6 +83,7 @@ stack Menu {
       color "#FFF1DC"
       at phone {
         step xl4
+        fitMin lg
       }
       at phoneLandscape {
         visible false

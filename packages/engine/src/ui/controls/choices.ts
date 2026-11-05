@@ -416,7 +416,7 @@ export function cycler(id: string, options: readonly string[], index: number, de
     disabled,
     direction: "row",
     width: desc.width ?? grow(),
-    height: px(h),
+    height: { kind: "fit", min: h },
     padding: xy(t.sm, 0),
     gap: t.sm,
     fill: role("well"),
@@ -426,7 +426,8 @@ export function cycler(id: string, options: readonly string[], index: number, de
     adjustable: true,
     semantics: { role: "spinbutton", name: desc.label || id, value: cur >= 0 ? options[cur] ?? "" : "", valueMin: 0, valueMax: Math.max(0, n - 1), valueNow: cur },
   }, () => {
-    if (desc.label) text("Label", desc.label, { step: "body", color: disabled ? "inkFaint" : "ink", nowrap: true, ellipsis: true, width: grow() });
+    // The label wraps (the row grows) rather than cutting: "Graphics quality" in pixel's wide face.
+    if (desc.label) text("Label", desc.label, { step: "body", color: disabled ? "inkFaint" : "ink", width: grow() });
     else kit.spacer("Lead", grow());
     const arrow = (aid: string, way: "back" | "forward", can: boolean): boolean => {
       const a = control(aid, {
@@ -451,7 +452,12 @@ export function cycler(id: string, options: readonly string[], index: number, de
     const canBack = wrap ? n > 1 : cur > 0;
     const canFwd = wrap ? n > 1 : cur < n - 1;
     if (arrow("Prev", "back", canBack)) moved = -1;
-    kit.open("Middle", { direction: "column", width: desc.valueWidth ? px(desc.valueWidth) : fitLongest(options), align: "center", cross: "center", gap: 3 });
+    // As wide as the longest option is estimated, and as the widest drawn so far: a face wider than the estimate
+    // (pixel's) or a value longer than its option (the pseudo-locale's) widens it once, never cutting the value.
+    const middle = `${kit.openPath()}/Middle`;
+    const drawn = Math.max(kit.memory(`${id}~vw`, 0), Math.ceil(kit.bounds(middle)?.width ?? 0));
+    if (drawn > 0) kit.remember(`${id}~vw`, drawn);
+    kit.open("Middle", { direction: "column", width: desc.valueWidth ? px(desc.valueWidth) : { kind: "fit", min: Math.max(fitLongest(options), drawn) }, align: "center", cross: "center", gap: 3 });
     kit.open("Clip", { direction: "row", width: grow(), align: "center" });
     // Keyed by the option, so a new one enters (and the old one is gone).
     text(kit.idi("Value", Math.max(0, cur)), cur >= 0 ? options[cur] ?? "" : "—", { step: "body", color: disabled ? "inkFaint" : "ink", nowrap: true, ellipsis: true, align: "center", width: grow() });
@@ -482,12 +488,12 @@ export function cycler(id: string, options: readonly string[], index: number, de
   return { selected: next, changed: next !== cur, focused };
 }
 
-/** A width that holds the longest option at the body step (so the arrows never move). */
-function fitLongest(options: readonly string[]): Api.Size {
+/** A width that holds the longest option at the body step (so the arrows never move), as estimated from its letters. */
+function fitLongest(options: readonly string[]): number {
   const size = frame().theme.typeRamp.body?.size ?? 16;
   // An em for a CJK character, a little over half one for others.
   const ems = (o: string): number => [...o].reduce((w, ch) => w + ((ch.codePointAt(0) ?? 0) >= 0x2e80 ? 1 : 0.6), 0);
   const longest = options.reduce((m, o) => Math.max(m, ems(o)), 1);
-  return px(Math.ceil(longest * size) + 8);
+  return Math.ceil(longest * size) + 8;
 }
 

@@ -806,12 +806,22 @@ function compactChrome(label: string, screen: string): boolean {
   if (chromeAnchor(screen) && ((og.ui.frameTheme().textScale ?? 1) >= 1.5 || vp.breakpoint !== "desktop")) return true;
   if (vp.breakpoint !== "phonePortrait" && vp.breakpoint !== "phoneLandscape") return false;
   const t = og.ui.frameTheme();
+  // A document's Kit slot stands in the room its page left at its own size (main-menu's 64 px above its logo), which
+  // the text scale does not grow: at 150 % the words' plate stood over the logo, so the chrome there is icons too.
+  if ((t.textScale ?? 1) >= 1.5 && og.ui.bounds("Kit")) return true;
   const look = `${screen}|${label}|${t.textScale ?? 1}|${Math.round(vp.width)}|${t.typeRamp["button"]?.size ?? 0}`;
   if (chromeLook.look !== look) chromeLook = { look, compact: false };
   else if (!chromeLook.compact) {
     const row = og.ui.bounds("Back");
     // Both its ends at an anchor's margin (the row is laid inside the margins, which are no wider than xl).
     if (row && Math.max(row.x, vp.width - row.x - row.width) <= og.ui.frameTheme().space.xl) chromeLook.compact = true;
+    // On a document page the chrome is a row in the document's Kit slot (showcases.ts): a row that fills a slot
+    // reaching both margins had its words squeezed (pause's "Next" in pixel on a phone, drawn "[Tütöríál…" under the
+    // pseudo-locale). A slot that fits its row (loading's) fills by construction and squeezes nothing.
+    const slot = row ? null : og.ui.bounds("Kit");
+    const inDoc = row ? null : og.ui.bounds("Kit/Chrome");
+    const wide = !!slot && Math.max(slot.x, vp.width - slot.x - slot.width) <= og.ui.frameTheme().space.xl;
+    if (slot && inDoc && wide && inDoc.width >= slot.width - 0.5) chromeLook.compact = true;
   }
   return chromeLook.compact;
 }
