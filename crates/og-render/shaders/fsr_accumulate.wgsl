@@ -101,38 +101,56 @@ fn clamp_coord(p: vec2<i32>, offset: vec2<i32>, size: vec2<i32>) -> vec2<i32> {
   return clamp(p + offset, vec2<i32>(1), size - 2);
 }
 
-fn lanczos2_4(c0: vec4<f32>, c1: vec4<f32>, c2: vec4<f32>, c3: vec4<f32>, t: f32) -> vec4<f32> {
-  let w0 = lanczos2(-1.0 - t);
-  let w1 = lanczos2(-0.0 - t);
-  let w2 = lanczos2(1.0 - t);
-  let w3 = lanczos2(2.0 - t);
-  return (w0 * c0 + w1 * c1 + w2 * c2 + w3 * c3) / (w0 + w1 + w2 + w3);
+// The four Lanczos-2 weights of a 4-tap row at fraction `t` (taps at
+// k - t for k = -1..2): lanczos2(x) = sin(pi x) sin(pi x / 2) / (pi^2 x^2 / 2),
+// and over the four taps sin(pi (k - t)) is +-sin(pi t) and
+// sin(pi (k - t) / 2) is +-cos(pi t / 2) or +-sin(pi t / 2), so three
+// transcendentals make the row (lanczos2 eight times took sixteen sines).
+fn lanczos2_weights(t: f32) -> vec4<f32> {
+  let s = sin(PI * t);
+  let a = sin(0.5 * PI * t);
+  let c = cos(0.5 * PI * t);
+  let x = vec4<f32>(-1.0 - t, -t, 1.0 - t, 2.0 - t);
+  let w = vec4<f32>(-s * c, s * a, s * c, -s * a) / (0.5 * PI * PI * x * x);
+  return select(w, vec4<f32>(1.0), abs(x) < vec4<f32>(EPSILON));
+}
+
+struct HistoryRow {
+  weighted: vec4<f32>,
+  // The middle two texels' extents (the deringing box's part of the row).
+  lo: vec4<f32>,
+  hi: vec4<f32>,
+};
+
+// One of the 4x4's rows, `dy` from `ip`: its four texels weighted by `wx`
+// (written out per row: naga's guarded loops are not unrolled on Metal).
+fn history_row(ip: vec2<i32>, dy: i32, size: vec2<i32>, wx: vec4<f32>) -> HistoryRow {
+  let c0 = load_history(clamp_coord(ip, vec2<i32>(-1, dy), size));
+  let c1 = load_history(clamp_coord(ip, vec2<i32>(0, dy), size));
+  let c2 = load_history(clamp_coord(ip, vec2<i32>(1, dy), size));
+  let c3 = load_history(clamp_coord(ip, vec2<i32>(2, dy), size));
+  return HistoryRow(wx.x * c0 + wx.y * c1 + wx.z * c2 + wx.w * c3, min(c1, c2), max(c1, c2));
 }
 
 // HistorySample: DeclareCustomTextureSample with the reference Lanczos2
-// over FetchHistorySamples' 4x4, deringed to the middle 2x2.
+// over FetchHistorySamples' 4x4, deringed to the middle 2x2. The kernel is
+// separable and each row's weights are the same, so they are made once
+// per axis (8 kernel evaluations, not AMD's 20 of the same values).
 fn history_sample(uv: vec2<f32>, size: vec2<i32>) -> vec4<f32> {
   var px = uv * vec2<f32>(size) - 0.5;
   let f = fract(px);
   px = clamp(px, vec2<f32>(0.0), vec2<f32>(size - 1));
   let ip = vec2<i32>(floor(px));
-  var rows: array<vec4<f32>, 4>;
-  var c11: vec4<f32>;
-  var c21: vec4<f32>;
-  var c12: vec4<f32>;
-  var c22: vec4<f32>;
-  for (var y = 0; y < 4; y++) {
-    let c0 = load_history(clamp_coord(ip, vec2<i32>(-1, y - 1), size));
-    let c1 = load_history(clamp_coord(ip, vec2<i32>(0, y - 1), size));
-    let c2 = load_history(clamp_coord(ip, vec2<i32>(1, y - 1), size));
-    let c3 = load_history(clamp_coord(ip, vec2<i32>(2, y - 1), size));
-    if (y == 1) { c11 = c1; c21 = c2; }
-    if (y == 2) { c12 = c1; c22 = c2; }
-    rows[y] = lanczos2_4(c0, c1, c2, c3, f.x);
-  }
-  let c = lanczos2_4(rows[0], rows[1], rows[2], rows[3], f.y);
-  let lo = min(min(c11, c21), min(c12, c22));
-  let hi = max(max(c11, c21), max(c12, c22));
+  let wx = lanczos2_weights(f.x);
+  let wy = lanczos2_weights(f.y);
+  let r0 = history_row(ip, -1, size, wx);
+  let r1 = history_row(ip, 0, size, wx);
+  let r2 = history_row(ip, 1, size, wx);
+  let r3 = history_row(ip, 2, size, wx);
+  var c = wy.x * r0.weighted + wy.y * r1.weighted + wy.z * r2.weighted + wy.w * r3.weighted;
+  let lo = min(r1.lo, r2.lo);
+  let hi = max(r1.hi, r2.hi);
+  c /= dot(wx, vec4<f32>(1.0)) * dot(wy, vec4<f32>(1.0));
   return clamp(c, lo, hi);
 }
 
@@ -191,55 +209,84 @@ fn compute_base_accumulation_weight(p: Params, d: ptr<function, Data>) {
   (*d).history_weight = base;
 }
 
+// The prepared current colour (exposed, YCoCg) under a workgroup's 8x8
+// output pixels: their 3x3 footprints, src_input - 1 to src_input + 1, span
+// at most 10 render texels a side when the render is no larger than the
+// output (the pass's condition), one more for rounding. Neighbouring
+// output pixels share most of their nine taps, so each texel is loaded and
+// prepared once per group rather than nine times per pixel.
+const TILE: i32 = 11;
+var<workgroup> tile: array<vec3<f32>, 121>;
+var<private> tile_origin: vec2<i32>;
+
+// What every one of the 3x3 taps of the upsample shares.
+struct Taps {
+  src_input: vec2<i32>,
+  offset_tl: vec2<i32>,
+  flip_col: bool,
+  flip_row: bool,
+  base_offset: vec2<f32>,
+  initial: bool,
+  kernel_bias: f32,
+};
+
+// One tap of ComputeUpsampledColorAndWeight: its sample (tonemapped for an
+// initial one), its Lanczos weight and its place in the rectification box.
+// The nine calls have constant (col, row): naga writes every WGSL loop as
+// a guarded `while (true)` the Metal compiler does not unroll, so a 3x3
+// loop over a private array of samples kept the array in stack memory.
+fn upsample_tap(t: Taps, d: ptr<function, Data>, col: i32, row: i32) {
+  let cr = vec2<i32>(select(col, 3 - col, t.flip_col), select(row, 3 - row, t.flip_row));
+  let src = t.src_input + t.offset_tl + cr;
+  let k = src - tile_origin;
+  var s = tile[k.y * TILE + k.x];
+  if (t.initial) {
+    s = rgb_to_ycocg(tonemap(ycocg_to_rgb(s)));
+  }
+  let sample_offset = t.base_offset + vec2<f32>(t.offset_tl) + vec2<f32>(cr);
+  let on_screen = f32(is_on_screen(src, render_size()));
+  if (!t.initial) {
+    // GetUpsampleLanczosWeight, LANCZOS_TYPE_APPROXIMATE.
+    let biased = sample_offset * t.kernel_bias;
+    let w = on_screen * lanczos2_approx_sq(dot(biased, biased));
+    (*d).upsampled_color += s * w;
+    (*d).upsampled_weight += w;
+  }
+  let box_weight = exp(-2.3 * dot(sample_offset, sample_offset)) * on_screen;
+  box_add((row == 0) & (col == 0), d, s, box_weight);
+}
+
 fn compute_upsampled_color_and_weight(p: Params, d: ptr<function, Data>) {
   let dst = vec2<f32>(p.hr_pos) + 0.5;
   let src_output = dst * downscale_factor();
   let src_input = vec2<i32>(floor(src_output));
   let src_unjittered = vec2<f32>(src_input) + 0.5 - jitter();
-  let base_offset = src_unjittered - src_output;
   let flip_col = src_unjittered.x > src_output.x;
   let flip_row = src_unjittered.y > src_output.y;
-  let offset_tl = vec2<i32>(select(-1, -2, flip_col), select(-1, -2, flip_row));
-  let initial = p.accumulation == 0.0;
-
-  var samples: array<vec3<f32>, 9>;
-  for (var row = 0; row < 3; row++) {
-    for (var col = 0; col < 3; col++) {
-      let cr = vec2<i32>(select(col, 3 - col, flip_col), select(row, 3 - row, flip_row));
-      let q = clamp_load(src_input + offset_tl + cr, vec2<i32>(0), render_size());
-      var s = prepared_color(q);
-      if (initial) {
-        s = rgb_to_ycocg(tonemap(ycocg_to_rgb(s)));
-      }
-      samples[row * 3 + col] = s;
-    }
-  }
 
   // ComputeMaxKernelWeight.
   let kernel_bias_max = min(1.99, 1.0 + (1.0 / downscale_factor().x - 1.0));
   let kernel_bias_min = max(1.0, (1.0 + kernel_bias_max) * 0.3);
   let kernel_bias_weight = min(1.0 - p.disocclusion * 0.5, min(1.0 - p.shading_change, saturate((*d).history_weight * 5.0)));
-  let kernel_bias = mix(kernel_bias_min, kernel_bias_max, kernel_bias_weight);
 
-  for (var row = 0; row < 3; row++) {
-    for (var col = 0; col < 3; col++) {
-      let cr = vec2<i32>(select(col, 3 - col, flip_col), select(row, 3 - row, flip_row));
-      let offset = vec2<f32>(offset_tl) + vec2<f32>(cr);
-      let sample_offset = base_offset + offset;
-      let src = src_input + offset_tl + cr;
-      let on_screen = f32(is_on_screen(src, render_size()));
-      let s = samples[row * 3 + col];
-      if (!initial) {
-        // GetUpsampleLanczosWeight, LANCZOS_TYPE_APPROXIMATE.
-        let biased = sample_offset * kernel_bias;
-        let w = on_screen * lanczos2_approx_sq(dot(biased, biased));
-        (*d).upsampled_color += s * w;
-        (*d).upsampled_weight += w;
-      }
-      let box_weight = exp(-2.3 * dot(sample_offset, sample_offset)) * on_screen;
-      box_add((row == 0) & (col == 0), d, s, box_weight);
-    }
-  }
+  let t = Taps(
+    src_input,
+    vec2<i32>(select(-1, -2, flip_col), select(-1, -2, flip_row)),
+    flip_col,
+    flip_row,
+    src_unjittered - src_output,
+    p.accumulation == 0.0,
+    mix(kernel_bias_min, kernel_bias_max, kernel_bias_weight),
+  );
+  upsample_tap(t, d, 0, 0);
+  upsample_tap(t, d, 1, 0);
+  upsample_tap(t, d, 2, 0);
+  upsample_tap(t, d, 0, 1);
+  upsample_tap(t, d, 1, 1);
+  upsample_tap(t, d, 2, 1);
+  upsample_tap(t, d, 0, 2);
+  upsample_tap(t, d, 1, 2);
+  upsample_tap(t, d, 2, 2);
   box_variance(d);
 
   (*d).upsampled_weight *= f32((*d).upsampled_weight > EPSILON);
@@ -249,7 +296,7 @@ fn compute_upsampled_color_and_weight(p: Params, d: ptr<function, Data>) {
     // Deringing.
     (*d).upsampled_color = clamp((*d).upsampled_color, (*d).clipping_box.aabb_min, (*d).clipping_box.aabb_max);
   }
-  if (initial) {
+  if (p.accumulation == 0.0) {
     (*d).upsampled_color = rgb_to_ycocg(inverse_tonemap(ycocg_to_rgb((*d).clipping_box.center)));
     (*d).upsampled_weight = 1.0;
     (*d).history_weight = 0.0;
@@ -286,7 +333,18 @@ fn accumulate(d: ptr<function, Data>) -> f32 {
 }
 
 @compute @workgroup_size(8, 8, 1)
-fn cs(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs(@builtin(global_invocation_id) id: vec3<u32>, @builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_index) li: u32) {
+  // The group's 3x3 footprints, prepared once into the tile.
+  let first = vec2<i32>(wg.xy) * 8;
+  tile_origin = vec2<i32>(floor((vec2<f32>(first) + 0.5) * downscale_factor())) - 1;
+  let i0 = i32(li);
+  let i1 = i32(li) + 64;
+  tile[i0] = prepared_color(clamp_load(tile_origin, vec2<i32>(i0 % TILE, i0 / TILE), render_size()));
+  if (i1 < TILE * TILE) {
+    tile[i1] = prepared_color(clamp_load(tile_origin, vec2<i32>(i1 % TILE, i1 / TILE), render_size()));
+  }
+  workgroupBarrier();
+
   let hr = vec2<i32>(id.xy);
   if (!is_on_screen(hr, upscale_size())) { return; }
   let p = init_params(hr);

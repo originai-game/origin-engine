@@ -48,5 +48,18 @@ Halton sequence are `ffxFsr3UpscalerGetJitterPhaseCount` and
   motion and clamped to the current samples' range, as `taa.wgsl` does.
 - **Frame time** comes from the tick count, never the wall clock, so the
   upscaler stays deterministic.
+- **Loops written out, shared taps in workgroup memory.** naga emits
+  every WGSL loop as a guarded `while (true)` that Metal does not unroll,
+  so a private array indexed in a loop (a 3x3 of samples, a 4x4 of
+  history) went to stack memory. Every fixed-trip loop is instead a run of
+  calls with constant offsets, with the same arithmetic in the same order
+  except where noted here. The history's Lanczos-2 is separable, with one
+  set of four weights per axis made from three sines, where AMD
+  evaluates the kernel per tap. The accumulation prepares the current
+  colour under a workgroup's 8x8 output pixels once, into an 11x11 tile
+  that the nine taps of each pixel read. The shading change pyramid runs
+  one thread per level-0 texel (16x16 a group). The output matches the
+  looped form to within float reordering: at most 0.006 levels of 255
+  on average per channel, with a few pixels up to 29.
 - Frame generation, the debug view and the auto-generated reactive and T&C
   masks are not ported.

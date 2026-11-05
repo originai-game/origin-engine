@@ -55,21 +55,47 @@ fn store_reconstructed_depth(p: vec2<i32>, depth: f32) {
   atomicMax(&reconstructed_depth[i], ~bitcast<u32>(depth));
 }
 
+fn scatter_depth(b: BilinearSamplingData, k: i32, offset: vec2<i32>, depth: f32) {
+  if (b.weights[k] > RECONSTRUCTED_DEPTH_BILINEAR_WEIGHT_THRESHOLD) {
+    let store = b.base + offset;
+    if (is_on_screen(store, render_size())) {
+      store_reconstructed_depth(store, depth);
+    }
+  }
+}
+
 fn reconstruct_prev_depth(p: vec2<i32>, depth: f32, mv_in: vec2<f32>) {
   let nearest_m = min(view_depth(depth), FP16_MAX);
   let threshold = reconstructed_depth_mv_px_threshold(nearest_m);
   // Discard small motion.
   let mv = mv_in * f32(get_4k_velocity(mv_in) > threshold);
   let uv = (vec2<f32>(p) + 0.5) / vec2<f32>(render_size());
-  let reprojected = uv + mv;
-  let b = get_bilinear_sampling_data(reprojected, render_size());
-  var offsets = BILINEAR_OFFSETS;
-  for (var i = 0; i < 4; i++) {
-    if (b.weights[i] > RECONSTRUCTED_DEPTH_BILINEAR_WEIGHT_THRESHOLD) {
-      let store = b.base + offsets[i];
-      if (is_on_screen(store, render_size())) {
-        store_reconstructed_depth(store, depth);
-      }
+  let b = get_bilinear_sampling_data(uv + mv, render_size());
+  // The four bilinear taps written out (naga's guarded loops are not
+  // unrolled on Metal).
+  scatter_depth(b, 0, vec2<i32>(0, 0), depth);
+  scatter_depth(b, 1, vec2<i32>(1, 0), depth);
+  scatter_depth(b, 2, vec2<i32>(0, 1), depth);
+  scatter_depth(b, 3, vec2<i32>(1, 1), depth);
+}
+
+struct Extents {
+  nearest: f32,
+  farthest: f32,
+  nearest_coord: vec2<i32>,
+};
+
+// One neighbour of FindDepthExtents' walk: the nearest (smallest: the
+// engine's depth is not reversed) of the samples on screen, and the
+// farthest of those nearer than the centre as the walk finds them.
+fn extents_tap(e: ptr<function, Extents>, p: vec2<i32>, offset: vec2<i32>) {
+  let q = p + offset;
+  if (is_on_screen(q, render_size())) {
+    let d = load_input_depth(q);
+    if (d < (*e).nearest) {
+      (*e).farthest = max((*e).farthest, d);
+      (*e).nearest_coord = q;
+      (*e).nearest = d;
     }
   }
 }
@@ -79,26 +105,20 @@ fn cs(@builtin(global_invocation_id) id: vec3<u32>) {
   let p = vec2<i32>(id.xy);
   if (!is_on_screen(p, render_size())) { return; }
 
-  // FindDepthExtents: the nearest (smallest: the engine's depth is not
-  // reversed) of the 3x3 samples on screen, and the farthest of those
-  // nearer than the centre as the walk finds them.
-  var offsets = array<vec2<i32>, 9>(
-    vec2<i32>(0, 0), vec2<i32>(1, 0), vec2<i32>(0, 1), vec2<i32>(0, -1), vec2<i32>(-1, 0),
-    vec2<i32>(-1, 1), vec2<i32>(1, 1), vec2<i32>(-1, -1), vec2<i32>(1, -1));
-  var nearest = load_input_depth(p);
-  var farthest = nearest;
-  var nearest_coord = p;
-  for (var i = 1; i < 9; i++) {
-    let q = p + offsets[i];
-    if (is_on_screen(q, render_size())) {
-      let d = load_input_depth(q);
-      if (d < nearest) {
-        farthest = max(farthest, d);
-        nearest_coord = q;
-        nearest = d;
-      }
-    }
-  }
+  // FindDepthExtents, in AMD's order of the 3x3.
+  let centre = load_input_depth(p);
+  var e = Extents(centre, centre, p);
+  extents_tap(&e, p, vec2<i32>(1, 0));
+  extents_tap(&e, p, vec2<i32>(0, 1));
+  extents_tap(&e, p, vec2<i32>(0, -1));
+  extents_tap(&e, p, vec2<i32>(-1, 0));
+  extents_tap(&e, p, vec2<i32>(-1, 1));
+  extents_tap(&e, p, vec2<i32>(1, 1));
+  extents_tap(&e, p, vec2<i32>(-1, -1));
+  extents_tap(&e, p, vec2<i32>(1, -1));
+  let nearest = e.nearest;
+  let farthest = e.farthest;
+  let nearest_coord = e.nearest_coord;
 
   let mv = load_input_motion_vector(nearest_coord);
   reconstruct_prev_depth(p, nearest, mv);

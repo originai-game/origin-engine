@@ -49,38 +49,49 @@ fn load_reactive_mask(p: vec2<i32>) -> f32 {
   return min(1.0 - reveal, fsr.misc.y) * reactiveness_scale();
 }
 
+struct Disocclusion {
+  sum: f32,
+  weight_sum: f32,
+  potential: bool,
+};
+
+// One bilinear tap of ComputeDisocclusions; a tap after one whose previous
+// depth lay behind does nothing, as AMD's loop stops.
+fn disocclusion_tap(o: ptr<function, Disocclusion>, b: BilinearSamplingData, k: i32, offset: vec2<i32>, current_depth_view: f32) {
+  if (!(*o).potential) { return; }
+  let q = clamp_load(b.base, offset, render_size());
+  if (is_on_screen(q, render_size())) {
+    let w = b.weights[k];
+    if (w > RECONSTRUCTED_DEPTH_BILINEAR_WEIGHT_THRESHOLD) {
+      let prev_nearest_view = view_depth(load_reconstructed_prev_depth(q));
+      let depth_difference = current_depth_view - prev_nearest_view;
+      (*o).potential = depth_difference > FP32_MIN;
+      if ((*o).potential) {
+        let half_viewport_width = length(vec2<f32>(render_size()) * 0.5);
+        let depth_threshold = max(current_depth_view, prev_nearest_view);
+        let ksep = 1.37e-05;
+        let required_separation = ksep * half_viewport_width * depth_threshold;
+        (*o).sum += saturate(required_separation / depth_difference) * w;
+        (*o).weight_sum += w;
+      }
+    }
+  }
+}
+
+// ComputeDisocclusions, its four taps written out (naga's guarded loops
+// are not unrolled on Metal).
 fn compute_disocclusions(uv: vec2<f32>, mv_in: vec2<f32>, current_depth_view: f32) -> f32 {
   let nearest_m = min(current_depth_view, FP16_MAX);
   let threshold = reconstructed_depth_mv_px_threshold(nearest_m);
   let mv = mv_in * f32(get_4k_velocity(mv_in) > threshold);
-  let reprojected = uv + mv;
-  let b = get_bilinear_sampling_data(reprojected, render_size());
-  var offsets = BILINEAR_OFFSETS;
-  var disocclusion = 0.0;
-  var weight_sum = 0.0;
-  var potential = true;
-  for (var i = 0; i < 4; i++) {
-    if (!potential) { break; }
-    let q = clamp_load(b.base, offsets[i], render_size());
-    if (is_on_screen(q, render_size())) {
-      let w = b.weights[i];
-      if (w > RECONSTRUCTED_DEPTH_BILINEAR_WEIGHT_THRESHOLD) {
-        let prev_nearest_view = view_depth(load_reconstructed_prev_depth(q));
-        let depth_difference = current_depth_view - prev_nearest_view;
-        potential = potential & (depth_difference > FP32_MIN);
-        if (potential) {
-          let half_viewport_width = length(vec2<f32>(render_size()) * 0.5);
-          let depth_threshold = max(current_depth_view, prev_nearest_view);
-          let ksep = 1.37e-05;
-          let required_separation = ksep * half_viewport_width * depth_threshold;
-          disocclusion += saturate(required_separation / depth_difference) * w;
-          weight_sum += w;
-        }
-      }
-    }
-  }
-  if (potential & (weight_sum > 0.0)) {
-    return saturate(1.0 - disocclusion / weight_sum);
+  let b = get_bilinear_sampling_data(uv + mv, render_size());
+  var o = Disocclusion(0.0, 0.0, true);
+  disocclusion_tap(&o, b, 0, vec2<i32>(0, 0), current_depth_view);
+  disocclusion_tap(&o, b, 1, vec2<i32>(1, 0), current_depth_view);
+  disocclusion_tap(&o, b, 2, vec2<i32>(0, 1), current_depth_view);
+  disocclusion_tap(&o, b, 3, vec2<i32>(1, 1), current_depth_view);
+  if (o.potential & (o.weight_sum > 0.0)) {
+    return saturate(1.0 - o.sum / o.weight_sum);
   }
   return 0.0;
 }
@@ -101,57 +112,72 @@ fn compute_motion_divergence(uv: vec2<f32>, mv: vec2<f32>, current_depth: f32) -
   return (1.0 - saturate(reprojected_velocity / velocity)) * distance_factor * velocity_factor_;
 }
 
-fn dilate_reactive_masks(p: vec2<i32>) -> f32 {
-  var m = 0.0;
-  for (var y = -1; y <= 1; y++) {
-    for (var x = -1; x <= 1; x++) {
-      m = max(m, load_reactive_mask(clamp_load(p, vec2<i32>(x, y), render_size())));
-    }
-  }
-  return m;
+fn reactive_at(p: vec2<i32>, x: i32, y: i32) -> f32 {
+  return load_reactive_mask(clamp_load(p, vec2<i32>(x, y), render_size()));
 }
 
-fn compute_thin_feature_confidence(p: vec2<i32>) -> f32 {
-  // 1 2 3 / 4 0 5 / 6 7 8
-  var offsets = array<vec2<i32>, 9>(
-    vec2<i32>(0, 0), vec2<i32>(-1, -1), vec2<i32>(0, -1), vec2<i32>(1, -1), vec2<i32>(-1, 0),
-    vec2<i32>(1, 0), vec2<i32>(-1, 1), vec2<i32>(0, 1), vec2<i32>(1, 1));
-  var samples: array<f32, 9>;
-  var luma_min = FP32_MAX;
-  var luma_max = FP32_MIN;
-  for (var i = 0; i < 9; i++) {
-    let q = clamp_load(p, offsets[i], render_size());
-    samples[i] = textureLoad(current_luma_tex, q, 0).r * exposure();
-    luma_min = min(luma_min, samples[i]);
-    luma_max = max(luma_max, samples[i]);
+fn dilate_reactive_masks(p: vec2<i32>) -> f32 {
+  return max(max(max(reactive_at(p, -1, -1), reactive_at(p, 0, -1)), max(reactive_at(p, 1, -1), reactive_at(p, -1, 0))),
+    max(max(reactive_at(p, 0, 0), reactive_at(p, 1, 0)), max(max(reactive_at(p, -1, 1), reactive_at(p, 0, 1)), reactive_at(p, 1, 1))));
+}
+
+struct Ridge {
+  pattern: u32,
+  dissimilar_min: f32,
+  dissimilar_max: f32,
+};
+
+// One neighbour (bit `bit`) of ComputeThinFeatureConfidence's pattern:
+// similar to the nucleus, or one of the dissimilar luma's extents.
+fn ridge_tap(r: ptr<function, Ridge>, v: f32, nucleus: f32, range: f32, bit: u32) {
+  if (abs(v - nucleus) / range < 0.9) {
+    (*r).pattern |= 1u << bit;
+  } else {
+    (*r).dissimilar_min = min((*r).dissimilar_min, v);
+    (*r).dissimilar_max = max((*r).dissimilar_max, v);
   }
+}
+
+fn luma_at(p: vec2<i32>, x: i32, y: i32) -> f32 {
+  return textureLoad(current_luma_tex, clamp_load(p, vec2<i32>(x, y), render_size()), 0).r * exposure();
+}
+
+// ComputeThinFeatureConfidence over the 3x3 (1 2 3 / 4 0 5 / 6 7 8),
+// written out: naga's guarded loops are not unrolled on Metal, and its
+// nine samples sat in stack memory.
+fn compute_thin_feature_confidence(p: vec2<i32>) -> f32 {
+  let s0 = luma_at(p, 0, 0);
+  let s1 = luma_at(p, -1, -1);
+  let s2 = luma_at(p, 0, -1);
+  let s3 = luma_at(p, 1, -1);
+  let s4 = luma_at(p, -1, 0);
+  let s5 = luma_at(p, 1, 0);
+  let s6 = luma_at(p, -1, 1);
+  let s7 = luma_at(p, 0, 1);
+  let s8 = luma_at(p, 1, 1);
+  let luma_min = min(min(min(s0, s1), min(s2, s3)), min(min(s4, s5), min(min(s6, s7), s8)));
+  let luma_max = max(max(max(s0, s1), max(s2, s3)), max(max(s4, s5), max(max(s6, s7), s8)));
   // AMD divides by the range unguarded: with every sample equal it is
   // 0 / 0, no sample is similar, and the nucleus is no ridge, so 0.
   let range = luma_max - luma_min;
   if (range <= 0.0) { return 0.0; }
-  let threshold = 0.9;
-  var dissimilar_min = FP32_MAX;
-  var dissimilar_max = 0.0;
-  var pattern = 1u;
-  for (var i = 1; i < 9; i++) {
-    let difference = abs(samples[i] - samples[0]) / range;
-    if (difference < threshold) {
-      pattern |= 1u << u32(i);
-    } else {
-      dissimilar_min = min(dissimilar_min, samples[i]);
-      dissimilar_max = max(dissimilar_max, samples[i]);
-    }
-  }
-  let ridge = (samples[0] > dissimilar_max) | (samples[0] < dissimilar_min);
-  if (!ridge) { return 0.0; }
-  var rejection = array<u32, 4>(
-    (1u << 1u) | (1u << 2u) | (1u << 4u) | 1u,
-    (1u << 2u) | (1u << 3u) | (1u << 5u) | 1u,
-    (1u << 4u) | (1u << 6u) | (1u << 7u) | 1u,
-    (1u << 5u) | (1u << 7u) | (1u << 8u) | 1u);
-  for (var i = 0; i < 4; i++) {
-    if ((pattern & rejection[i]) == rejection[i]) { return 0.0; }
-  }
+  var r = Ridge(1u, FP32_MAX, 0.0);
+  ridge_tap(&r, s1, s0, range, 1u);
+  ridge_tap(&r, s2, s0, range, 2u);
+  ridge_tap(&r, s3, s0, range, 3u);
+  ridge_tap(&r, s4, s0, range, 4u);
+  ridge_tap(&r, s5, s0, range, 5u);
+  ridge_tap(&r, s6, s0, range, 6u);
+  ridge_tap(&r, s7, s0, range, 7u);
+  ridge_tap(&r, s8, s0, range, 8u);
+  if (!((s0 > r.dissimilar_max) | (s0 < r.dissimilar_min))) { return 0.0; }
+  // The four corner patterns that are not thin features.
+  let ul = (1u << 1u) | (1u << 2u) | (1u << 4u) | 1u;
+  let ur = (1u << 2u) | (1u << 3u) | (1u << 5u) | 1u;
+  let ll = (1u << 4u) | (1u << 6u) | (1u << 7u) | 1u;
+  let lr = (1u << 5u) | (1u << 7u) | (1u << 8u) | 1u;
+  let m = r.pattern;
+  if (((m & ul) == ul) | ((m & ur) == ur) | ((m & ll) == ll) | ((m & lr) == lr)) { return 0.0; }
   return 1.0 - luma_min / luma_max;
 }
 

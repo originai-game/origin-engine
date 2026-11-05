@@ -16,6 +16,16 @@
 
 fn exposure() -> f32 { return exposure_of(frame_info); }
 
+// One earlier frame of ComputeLumaInstabilityFactor's three (written out:
+// naga's guarded loops are not unrolled on Metal): its similarity counts
+// where the luma moved the same way from it as from the last frame.
+fn similar_frame(max_similarity: f32, current: f32, diff0: f32, earlier: f32) -> f32 {
+  if (sign(diff0) == sign(current - earlier)) {
+    return max(max_similarity, min_divided_by_max(current, earlier));
+  }
+  return max_similarity;
+}
+
 @compute @workgroup_size(8, 8, 1)
 fn cs(@builtin(global_invocation_id) id: vec3<u32>) {
   let p = vec2<i32>(id.xy);
@@ -48,13 +58,9 @@ fn cs(@builtin(global_invocation_id) id: vec3<u32>) {
       let similarity0 = min_divided_by_max_or(current, history[0], 1.0);
       var max_similarity = similarity0;
       if (similarity0 < 1.0) {
-        for (var i = 1; i <= 3; i++) {
-          let diff1 = current - history[i];
-          let similarity1 = min_divided_by_max(current, history[i]);
-          if (sign(diff0) == sign(diff1)) {
-            max_similarity = max(max_similarity, similarity1);
-          }
-        }
+        max_similarity = similar_frame(max_similarity, current, diff0, history.y);
+        max_similarity = similar_frame(max_similarity, current, diff0, history.z);
+        max_similarity = similar_frame(max_similarity, current, diff0, history.w);
         unstable = f32(max_similarity > similarity0);
       }
       history = vec4<f32>(current, history.x, history.y, history.z) / exposure();
