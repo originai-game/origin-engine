@@ -25,9 +25,12 @@
 //!    (a mirror follows its reflected point's parallax, a rough surface its
 //!    own motion; a disoccluded history is dropped) and its temporal
 //!    resolve (the history clipped to the neighbourhood's box, its
-//!    variance accumulated over eight frames as SVGF's so a rough lobe's
-//!    sparse tail keeps its spread, accumulated up to 32 samples on rough
-//!    surfaces and 8 on mirrors).
+//!    variance averaged over four frames as SVGF's so a rough lobe's
+//!    sparse tail keeps its spread, and a still history's box centred on
+//!    the neighbourhood's mean over the last four frames, NRD's fast
+//!    history; accumulated up to 32 samples on rough surfaces, 64 when
+//!    still, and 8 on mirrors). The lit shaders read a copy of the
+//!    frame's history.
 //!
 //! The result is the reflected radiance premultiplied by the share of the
 //! lobe the screen resolved. Every lit shader that writes the prepass's
@@ -186,11 +189,17 @@ struct Targets {
     filtered: wgpu::TextureView,
     /// Ping-ponged by the frame's parity.
     history: [wgpu::TextureView; 2],
+    history_textures: [wgpu::Texture; 2],
     meta: [wgpu::TextureView; 2],
     /// The neighbourhood's variance, accumulated over frames.
     spread: [wgpu::TextureView; 2],
-    /// What the lit shaders read.
+    /// The neighbourhood's mean over the last four frames (the anti-lag's).
+    fast: [wgpu::TextureView; 2],
+    /// What the lit shaders read: the frame's history, copied.
     lit: wgpu::TextureView,
+    lit_texture: wgpu::Texture,
+    /// The denoiser's guide: normal, depth and roughness in one texel.
+    guide: wgpu::TextureView,
 }
 
 fn texture(
@@ -211,7 +220,10 @@ fn texture(
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format,
-        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::STORAGE_BINDING,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING
+            | wgpu::TextureUsages::STORAGE_BINDING
+            | wgpu::TextureUsages::COPY_SRC
+            | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     })
 }
@@ -238,6 +250,8 @@ impl Targets {
         let view = |label: &str, size, format| {
             texture(device, label, size, format, 1).create_view(&Default::default())
         };
+        let history_textures = [0, 1].map(|_| texture(device, "ssr history", size, FORMAT, 1));
+        let lit_texture = texture(device, "ssr", size, FORMAT, 1);
         Targets {
             size,
             divisor,
@@ -248,10 +262,14 @@ impl Targets {
             ray_hit: view("ssr ray hits", ray_size, FORMAT),
             resolved: view("ssr resolved", size, FORMAT),
             filtered: view("ssr filtered", size, FORMAT),
-            history: [0, 1].map(|_| view("ssr history", size, FORMAT)),
+            history: [0, 1].map(|i| history_textures[i].create_view(&Default::default())),
+            history_textures,
             meta: [0, 1].map(|_| view("ssr history meta", size, FORMAT)),
             spread: [0, 1].map(|_| view("ssr history spread", size, FORMAT)),
-            lit: view("ssr", size, FORMAT),
+            fast: [0, 1].map(|_| view("ssr history fast", size, FORMAT)),
+            lit: lit_texture.create_view(&Default::default()),
+            lit_texture,
+            guide: view("ssr guide", size, FORMAT),
         }
     }
 }
@@ -454,6 +472,7 @@ impl SsrRenderer {
                 (3, tex(prev_lit)),
                 (4, tex(&t.ray_radiance)),
                 (5, tex(&t.ray_hit)),
+                (22, tex(&t.guide)),
             ],
         );
         let resolve = group(
@@ -462,9 +481,17 @@ impl SsrRenderer {
                 (6, tex(&t.ray_radiance)),
                 (7, tex(&t.ray_hit)),
                 (8, tex(&t.resolved)),
+                (23, tex(&t.guide)),
             ],
         );
-        let prefilter = group(PREFILTER, &[(9, tex(&t.resolved)), (15, tex(&t.filtered))]);
+        let prefilter = group(
+            PREFILTER,
+            &[
+                (9, tex(&t.resolved)),
+                (15, tex(&t.filtered)),
+                (23, tex(&t.guide)),
+            ],
+        );
         let temporal = group(
             TEMPORAL,
             &[
@@ -477,7 +504,8 @@ impl SsrRenderer {
                 (13, tex(&t.meta[slot])),
                 (17, tex(&t.spread[1 - slot])),
                 (18, tex(&t.spread[slot])),
-                (14, tex(&t.lit)),
+                (14, tex(&t.fast[slot])),
+                (24, tex(&t.fast[1 - slot])),
             ],
         );
         let groups = |(w, h): (u32, u32)| (w.div_ceil(8), h.div_ceil(8));
@@ -492,15 +520,6 @@ impl SsrRenderer {
             let (x, y) = groups(size);
             pass.dispatch_workgroups(x, y, 1);
         };
-        let skip = std::env::var("SSR_SKIP").unwrap_or_default(); // DBG-PERF
-        let mut dispatch = |pipeline: usize, group: &wgpu::BindGroup, size: (u32, u32)| {
-            if skip.split(',').any(|k| {
-                k == ["hizb", "hizr", "trace", "resolve", "prefilter", "temporal"][pipeline]
-            }) {
-                return;
-            }
-            dispatch(pipeline, group, size)
-        };
         // A group of 8x8 writes 8x8 texels of its first level.
         let (w, h) = pyramid_size(t.size.0, t.size.1);
         dispatch(HIZ_BASE, &base, (w, h));
@@ -509,6 +528,13 @@ impl SsrRenderer {
         dispatch(RESOLVE, &resolve, t.size);
         dispatch(PREFILTER, &prefilter, t.size);
         dispatch(TEMPORAL, &temporal, t.size);
+        drop(pass);
+        // The lit shaders read a view that is the same every frame.
+        encoder.copy_texture_to_texture(
+            t.history_textures[slot].as_image_copy(),
+            t.lit_texture.as_image_copy(),
+            t.history_textures[slot].size(),
+        );
     }
 }
 
@@ -577,13 +603,22 @@ impl Pipelines {
                     texture(3, true),
                     storage(4, FORMAT),
                     storage(5, FORMAT),
+                    storage(22, FORMAT),
                 ],
             ),
             layout(
                 "ssr resolve",
-                &[texture(6, false), texture(7, false), storage(8, FORMAT)],
+                &[
+                    texture(6, false),
+                    texture(7, false),
+                    storage(8, FORMAT),
+                    texture(23, false),
+                ],
             ),
-            layout("ssr prefilter", &[texture(9, false), storage(15, FORMAT)]),
+            layout(
+                "ssr prefilter",
+                &[texture(9, true), storage(15, FORMAT), texture(23, false)],
+            ),
             layout(
                 "ssr temporal",
                 &[
@@ -597,6 +632,7 @@ impl Pipelines {
                     storage(14, FORMAT),
                     texture(17, false),
                     storage(18, FORMAT),
+                    texture(24, false),
                 ],
             ),
         ];

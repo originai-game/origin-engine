@@ -65,7 +65,10 @@ struct Ssr {
 @group(1) @binding(11) var history_meta: texture_2d<f32>;
 @group(1) @binding(12) var history_out: texture_storage_2d<rgba16float, write>;
 @group(1) @binding(13) var meta_out: texture_storage_2d<rgba16float, write>;
-@group(1) @binding(14) var lit_out: texture_storage_2d<rgba16float, write>;
+// The fast history (NRD's anti-lag): the neighbourhood's mean over the
+// last four frames, this frame's out and last frame's.
+@group(1) @binding(14) var fast_out: texture_storage_2d<rgba16float, write>;
+@group(1) @binding(24) var history_fast: texture_2d<f32>;
 @group(1) @binding(15) var filtered_out: texture_storage_2d<rgba16float, write>;
 // The temporal pass's raw resolve, before the prefilter: its neighbourhood
 // moments (the prefiltered signal's are correlated across pixels).
@@ -74,6 +77,12 @@ struct Ssr {
 // moments): last frame's, and this frame's out.
 @group(1) @binding(17) var history_spread: texture_2d<f32>;
 @group(1) @binding(18) var spread_out: texture_storage_2d<rgba16float, write>;
+// The denoiser's guide, one texel a pixel: xy the world normal (oct), z
+// the view depth, w the roughness. The trace writes it from the prepass's
+// two targets, each ray texel for the pixels it spans, so a neighbour's
+// edge-stopping inputs are one load, not two.
+@group(1) @binding(22) var guide_out: texture_storage_2d<rgba16float, write>;
+@group(1) @binding(23) var guide: texture_2d<f32>;
 
 const SSR_PI: f32 = 3.14159265359;
 const SSR_BIG: f32 = 3.0e38;
@@ -131,6 +140,10 @@ fn ssr_oct_encode(n: vec3<f32>) -> vec2<f32> {
 
 fn ssr_world_normal(px: vec2<i32>) -> vec3<f32> {
   return ssr_oct_decode(textureLoad(ssr_gbuffer, ssr_clamp_px(px), 0).xy);
+}
+
+fn ssr_guide(px: vec2<i32>) -> vec4<f32> {
+  return textureLoad(guide, ssr_clamp_px(px), 0);
 }
 
 fn ssr_view_normal(px: vec2<i32>) -> vec3<f32> {
@@ -377,10 +390,22 @@ fn ssr_ray_origin(rt: vec2<i32>) -> vec2<i32> {
   return ssr_clamp_px(rt * 2 + vec2<i32>(ssr.ray.zw));
 }
 
+// One ray a ray texel, and the guide of the pixels it spans.
 @compute @workgroup_size(8, 8)
 fn trace(@builtin(global_invocation_id) gid: vec3<u32>) {
   let rt = vec2<i32>(gid.xy);
   if (any(rt >= vec2<i32>(ssr.ray.xy))) { return; }
+  let divisor = i32(ssr.flags.z);
+  for (var y = 0; y < divisor; y++) {
+    for (var x = 0; x < divisor; x++) {
+      let q = rt * divisor + vec2<i32>(x, y);
+      if (all(q < ssr_size())) {
+        let dr = textureLoad(ssr_depth, q, 0).rg;
+        let oct = textureLoad(ssr_gbuffer, q, 0).xy;
+        textureStore(guide_out, q, vec4<f32>(oct, dr.r, ssr_decode_roughness(dr.g)));
+      }
+    }
+  }
   let px = ssr_ray_origin(rt);
   let d = ssr_view_depth(px);
   let roughness = ssr_roughness(px);
@@ -518,11 +543,11 @@ fn resolve(@builtin(global_invocation_id) gid: vec3<u32>) {
     // A neighbour's ray started on another surface only if its pixel
     // differs in depth or facing.
     let opx = ssr_ray_origin(rt);
-    let od = ssr_view_depth(opx);
+    let og = ssr_guide(opx);
     // (Normals compared in the world: the dot is the same in view space.)
-    let facing = max(dot(ssr_world_normal(opx), world_n), 1e-6);
-    var bilateral = exp(16.0 * log(facing) - abs(od - d) / max(d, 1e-3) * 32.0);
-    if (k == 0 && divisor == 1) { bilateral = 1.0; }
+    let facing = max(dot(ssr_oct_decode(og.xy), world_n), 1e-6);
+    var bilateral = exp(16.0 * log(facing) - abs(og.z - d) / max(d, 1e-3) * 32.0);
+    if (all(opx == px)) { bilateral = 1.0; }
     let l = normalize(hit.xyz - p);
     let n_dot_l = dot(n, l);
     if (n_dot_l <= 0.0) { continue; }
@@ -567,23 +592,23 @@ fn prefilter(@builtin(global_invocation_id) gid: vec3<u32>) {
   let px = vec2<i32>(gid.xy);
   if (any(px >= ssr_size())) { return; }
   let center = textureLoad(resolved, px, 0);
-  let d = ssr_view_depth(px);
-  let roughness = ssr_roughness(px);
+  let own = ssr_guide(px);
+  let d = own.z;
+  let roughness = own.w;
   // A mirror keeps its own ray: a blur would soften what it reflects.
-  if (ssr_is_sky(d) || roughness > ssr.trace.w || roughness < SSR_MIRROR) {
+  if (ssr_is_sky(ssr_view_depth(px)) || roughness > ssr.trace.w || roughness < SSR_MIRROR) {
     textureStore(filtered_out, px, center);
     return;
   }
-  let n = ssr_world_normal(px);
-  // The local mean the radiance weight compares against (3x3), so a lone
-  // bright sample is pulled down as FidelityFX's average radiance does.
-  var mean = vec4<f32>(0.0);
-  for (var y = -1; y <= 1; y++) {
-    for (var x = -1; x <= 1; x++) {
-      mean += textureLoad(resolved, ssr_clamp_px(px + vec2<i32>(x, y)), 0);
-    }
-  }
-  mean /= 9.0;
+  let n = ssr_oct_decode(own.xy);
+  // The local mean the radiance weight compares against, so a lone bright
+  // sample is pulled down as FidelityFX's average radiance does: a 3x3
+  // tent in four bilinear reads at the pixel's corners.
+  let corner = vec2<f32>(px) * ssr.screen.zw;
+  let mean = 0.25 * (textureSampleLevel(resolved, ssr_linear, corner, 0.0)
+    + textureSampleLevel(resolved, ssr_linear, corner + vec2<f32>(ssr.screen.z, 0.0), 0.0)
+    + textureSampleLevel(resolved, ssr_linear, corner + vec2<f32>(0.0, ssr.screen.w), 0.0)
+    + textureSampleLevel(resolved, ssr_linear, corner + ssr.screen.zw, 0.0));
   // The footprint grows with the lobe: a pixel at roughness 0.6 reaches
   // twice FidelityFX's 3 texels.
   let scale = mix(0.75, 2.0, smoothstep(SSR_MIRROR, 0.6, roughness));
@@ -596,16 +621,16 @@ fn prefilter(@builtin(global_invocation_id) gid: vec3<u32>) {
   for (var i = 0; i < 15; i++) {
     let q = ssr_clamp_px(px + vec2<i32>(round(rot * taps[i] * scale)));
     let s = textureLoad(resolved, q, 0);
-    let qdr = textureLoad(ssr_depth, q, 0).rg;
+    let g = ssr_guide(q);
     // The edge-stopping weights' logarithms, summed under one exp: the
     // normal's power, the depth's and the radiance's falloffs (the last
     // floored at 1e-2 as FidelityFX's), and a neighbour of another
     // roughness, which lies on another lobe.
-    let facing = max(dot(n, ssr_world_normal(q)), 1e-6);
+    let facing = max(dot(n, ssr_oct_decode(g.xy)), 1e-6);
     let w = exp(SSR_NORMAL_SIGMA * log(facing)
-      - abs(d - qdr.x) / max(d, 1e-3) * SSR_DEPTH_SIGMA * 8.0
+      - abs(d - g.z) / max(d, 1e-3) * SSR_DEPTH_SIGMA * 8.0
       - min(SSR_RADIANCE_BIAS * length(s.rgb - mean.rgb), 4.6052)
-      - abs(ssr_decode_roughness(qdr.y) - roughness) * 16.0);
+      - abs(g.w - roughness) * 16.0);
     sum += s * w;
     weight += w;
   }
@@ -651,7 +676,7 @@ fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
   if (ssr_is_sky(d) || roughness > ssr.trace.w) {
     textureStore(history_out, px, vec4<f32>(0.0));
     textureStore(meta_out, px, vec4<f32>(0.0, d, ssr_oct_encode(world_n)));
-    textureStore(lit_out, px, vec4<f32>(0.0));
+    textureStore(fast_out, px, vec4<f32>(0.0));
     textureStore(spread_out, px, vec4<f32>(0.0));
     return;
   }
@@ -675,6 +700,7 @@ fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
   m1 /= mw;
   let variance = max(m2 / mw - m1 * m1, vec4<f32>(0.0));
   var spread = variance;
+  var fast = m1;
   var out = center;
   var samples = 1.0;
   if (ssr.flags.y > 0.5) {
@@ -703,26 +729,40 @@ fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
       let m = ssr_meta(history_uv);
       let kept = ssr_disocclusion(world_n, ssr_oct_decode(m.zw), d, m.y);
       if (kept > SSR_DISOCCLUSION_THRESHOLD && m.x > 0.0) {
-        let most = max(8.0, 32.0 * (1.0 - exp(-roughness * 100.0)));
+        // How still the history is on screen: 1 for a still camera over a
+        // still surface.
+        let still = 1.0 - smoothstep(0.05, 0.5, length((history_uv - uv) * ssr.screen.xy));
+        // A still history accumulates up to 64 frames on rough surfaces.
+        let most = max(8.0, mix(32.0, 64.0, still) * (1.0 - exp(-roughness * 100.0)));
         samples = min(most, m.x * kept + 1.0);
         let old = textureSampleLevel(history, ssr_linear, history_uv, 0.0);
+        let history_px = clamp(vec2<i32>(history_uv * ssr.screen.xy), vec2<i32>(0), ssr_size() - 1);
+        // The fast history: the neighbourhood's mean over the last four
+        // frames (NRD's fast history, Zhdan 2021), far steadier than one
+        // frame's mean, which on a rough lobe's heavy tail swings with
+        // whether the window's rays met the bright thing it reflects.
+        fast = mix(textureLoad(history_fast, history_px, 0), m1, 0.25);
         // The box's spread: the neighbourhood's variance averaged over the
-        // last eight frames along the same reprojection (SVGF, Schied et
-        // al. 2017). A rough lobe's tail is heavy-tailed: most frames' 9x9
-        // window holds no ray that met the bright thing it reflects, and
-        // their own deviation, near zero, clipped the converged history
-        // down to the dark mean in blotches. A real change of lighting
-        // still moves the mean at once and the spread within the eight.
-        let old_spread = textureLoad(history_spread, clamp(vec2<i32>(history_uv * ssr.screen.xy), vec2<i32>(0), ssr_size() - 1), 0);
-        spread = mix(old_spread, variance, 1.0 / min(samples, 8.0));
+        // last four frames along the same reprojection (SVGF, Schied et
+        // al. 2017), so a frame whose window met none of the lobe's bright
+        // tail does not collapse it.
+        let old_spread = textureLoad(history_spread, history_px, 0);
+        spread = mix(old_spread, variance, 1.0 / min(samples, 4.0));
         let sigma = sqrt(spread);
         // Clip the history to the neighbourhood: FidelityFX's 1.4
         // deviations, wider for rough surfaces whose single frame is
         // noisier. The moments are the raw resolve's: the prefiltered
         // signal's neighbours share taps, so its spread understates a
-        // frame's noise.
+        // frame's noise. A still history's box is centred on the fast
+        // mean: centred on one frame's, it clipped a converged reflection
+        // towards that frame's noise every frame, and the grain never
+        // left; with the spread averaged over eight frames instead, the
+        // box stayed wide after a reflected object moved away, and its
+        // reflection trailed for 30 frames. The fast mean follows a real
+        // change within four.
         let k = 1.4 * (1.0 + roughness);
-        let clipped = ssr_clip(m1 - sigma * k, m1 + sigma * k, old);
+        let c = mix(m1, fast, still);
+        let clipped = ssr_clip(c - sigma * k, c + sigma * k, old);
         // And this frame's outliers to one of this frame's deviations
         // (FidelityFX's "clip outliers"), so a lone bright hit in a lobe's
         // tail is not kept as a firefly: the accumulated spread is wide
@@ -732,7 +772,7 @@ fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
         // Blended with each side weighted by 1 / (1 + luma) (Karis 2014,
         // "High Quality Temporal Supersampling"): a bright sample that
         // got through enters at a fraction of its weight instead of
-        // lingering for the next 32 frames as a firefly.
+        // lingering for the next 64 frames as a firefly.
         let a = 1.0 / samples;
         let wh = (1.0 - a) / (1.0 + ssr_luma(clipped.rgb));
         let wf = a / (1.0 + ssr_luma(fresh.rgb));
@@ -743,6 +783,6 @@ fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
   out = max(out, vec4<f32>(0.0));
   textureStore(history_out, px, out);
   textureStore(meta_out, px, vec4<f32>(samples, d, ssr_oct_encode(world_n)));
-  textureStore(lit_out, px, out);
+  textureStore(fast_out, px, fast);
   textureStore(spread_out, px, spread);
 }

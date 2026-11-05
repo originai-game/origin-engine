@@ -1144,6 +1144,84 @@ fn ssr_blurs_with_roughness() {
     );
 }
 
+/// The RMS of luma minus its 5x5 box mean over `x` by `y`: the grain a
+/// smooth gradient does not have.
+fn grain(img: &RgbaImage, x: std::ops::Range<u32>, y: std::ops::Range<u32>) -> f64 {
+    let luma = |px: u32, py: u32| {
+        let i = ((py * img.width + px) * 4) as usize;
+        let p = &img.pixels[i..i + 3];
+        0.2126 * f64::from(p[0]) + 0.7152 * f64::from(p[1]) + 0.0722 * f64::from(p[2])
+    };
+    let (mut sum, mut n) = (0.0, 0.0);
+    for py in y {
+        for px in x.clone() {
+            let mut box_mean = 0.0;
+            for dy in -2i32..=2 {
+                for dx in -2i32..=2 {
+                    let qx = (px as i32 + dx).clamp(0, img.width as i32 - 1) as u32;
+                    let qy = (py as i32 + dy).clamp(0, img.height as i32 - 1) as u32;
+                    box_mean += luma(qx, qy) / 25.0;
+                }
+            }
+            sum += (luma(px, py) - box_mean).powi(2);
+            n += 1.0;
+        }
+    }
+    (sum / n).sqrt()
+}
+
+/// A still rough reflection resolves clean: over 64 frames of a still
+/// camera the grain along the edges of the lit slab's reflection in a
+/// floor of roughness 0.4 falls to half what it is after 16. A history
+/// clipped every frame to one frame's noisy neighbourhood keeps its grain
+/// however long the camera holds still.
+#[test]
+fn ssr_still_rough_reflection_converges() {
+    let desc = scenes::base_desc();
+    let scene = og_tests::depth_render_scenes::ssr_metal_scene(0.4, 0.6);
+    // The streak's two soft edges, below the slab's foot.
+    let edges =
+        |img: &RgbaImage| 0.5 * (grain(img, 650..720, 560..715) + grain(img, 900..980, 560..715));
+    let early = edges(&frame(&desc, &scene, 16).0);
+    let late = edges(&frame(&desc, &scene, 64).0);
+    println!(
+        "grain along the rough streak's edges: {early:.2} after 16 frames, {late:.2} after 64"
+    );
+    assert!(
+        late < early * 0.65,
+        "a still rough reflection kept its grain: {late:.2} after 64 frames, {early:.2} after 16"
+    );
+}
+
+/// A reflection follows what it reflects: the lit slab slides 2 m to the
+/// left over 40 frames above a still floor of roughness 0.2, and where
+/// its reflection was the floor turns dark again within a few frames. A
+/// history kept by a variance that remembers the slab trails it across
+/// the floor.
+#[test]
+fn ssr_reflection_does_not_trail_a_moving_object() {
+    let desc = scenes::base_desc();
+    let mut scene = og_tests::depth_render_scenes::ssr_metal_scene(0.2, 0.6);
+    let mut r = Renderer::new_blocking(&desc).expect("renderer");
+    for f in 0..40 {
+        scene.instances[2].transform =
+            Mat4::from_translation(Vec3::new(1.4 - 0.05 * f as f32, 1.0, -0.8));
+        r.render(&scene, &RenderTarget::Offscreen).expect("render");
+    }
+    let img = r.read_offscreen().expect("capture");
+    // Right of the slab's reflection, about x 560..700 after the slide.
+    let [red, green, blue] = region_mean(&img, 760..880, 480..600);
+    let trail = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+    let [red, green, blue] = region_mean(&img, 580..700, 480..600);
+    let reflection = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+    println!("moving slab: its reflection {reflection:.1}, the floor it left {trail:.1}");
+    assert!(
+        reflection > 150.0,
+        "the slab's reflection is gone: {reflection:.1}"
+    );
+    assert!(trail < 35.0, "the reflection trails the slab: {trail:.1}");
+}
+
 /// `maxRoughness` bounds what is traced: a floor rougher than it reflects
 /// only the probes and the environment (black here), so the slab's
 /// reflection is gone; below it, the reflection is there.

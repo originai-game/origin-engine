@@ -1037,9 +1037,12 @@ S6).
   denoiser's reprojection (a mirror follows its reflected point's
   parallax, a rough surface its own motion, a disoccluded history is
   dropped) and temporal resolve (history clipped to the neighbourhood's
-  box, whose variance is accumulated over eight frames as SVGF's so a
-  rough lobe's sparse tail keeps its spread; up to 32 samples on rough
-  surfaces). A hit reads the previous frame's
+  box, whose variance is averaged over four frames as SVGF's so a rough
+  lobe's sparse tail keeps its spread, and which a still history centres
+  on the neighbourhood's mean over the last four frames, NRD's fast
+  history, so a still rough reflection converges clean and one whose
+  object moved away clears in a few frames; up to 32 samples on rough
+  surfaces, 64 when still). A hit reads the previous frame's
   lit image (TAA's history, or the main pass's copy that screen-space GI
   reads too), so a frame after a cut has none. The prepass's depth
   target is RG32F, and its second channel carries the gloss and
