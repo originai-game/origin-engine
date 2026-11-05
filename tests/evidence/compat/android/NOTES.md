@@ -73,6 +73,18 @@ copied read-only), then the fix on b1046f066. Frames under `frames/`.
 |---|---|---|---|
 | fx-showcase stations (reference.ts --android --time 120) | 1 of 5 | `2d` passes (0.12 % outliers, RMSE 0.0094 against metal). `post`, `lens`, `fx`, `stylised` are white across the whole frame, HUD included (96-99.5 % outliers). The engine log: Dawn's `CreateGraphicsPipelines failed with VK_ERROR_UNKNOWN` for the RenderPipeline "meshlet resolve", then every `frame` command buffer invalid. | engine bug, fixed (below) |
 | fx-showcase frame time, before the fix | median 5.53 ms, p95 8.33 ms, 6.17 ms with the GPU's work | Not meaningful while every frame's commands are invalid; retaken after the fix. | - |
+| The fallback on the web: wasm panic | boot panics at wgpu `backend/webgpu.rs:85` "Unexpected error" | wgpu 30's WebGPU backend decodes only GPUValidationError and GPUOutOfMemoryError from popErrorScope (gfx-rs/wgpu#9914, fixed upstream by #9919, unreleased); the resolve's `internal` scope pops PowerVR's GPUInternalError. Fixed in the Worker, wgpu used as published (985cf7e71, `src/web/gpu-errors.ts`; `tests/web-gpu-errors.test.ts` fails without it). A first fix vendoring wgpu (131dba771) broke AGENTS.md and is reverted (454a07f99). | engine bug, fixed; phone check on 985cf7e71's build pending |
+| fx-showcase stations after the fallback (131dba771's build, the same Worker-side effect) | 1 of 5; no white frames | `post` ok (0.014 %, RMSE 0.0042). `lens` 0.27 % / 0.0124, `fx` 0.16 % / 0.0118, `2d` 0.21 % / 0.0138, `stylised` 0.70 % / 0.0184: the frames match metal's by eye (stylised's outlines and toon bands differ a little). `capabilities.visibilityBuffer` false, `visibilityBufferRefused` the driver's VK_ERROR_UNKNOWN. | open: compare with desktop Chrome on the same build before calling any of it legitimate |
+| og-ui kit tiers (reference-ui.ts), first run | 1 of 233 | Every kit frame laid out touch-sized: the phone's tab reports `(pointer: coarse)`, the shell sends `coarsePointer`, og-ui and the kits size for fingers. The runners' references are a desktop's input, and CDP's `setEmulatedMedia` does not change pointer or hover on a touch device. | harness issue, fixed (45b7583b7: phone tabs answer as a mouse unless opened with `touch`) |
+| og-ui kit tiers, rerun | 11 of 233 (median 4.1 % outliers) | The panels now match metal's; what differs is what main changed after the metal kit references were recorded (2d3d42ee1, 11-03): 60a38f3ae dresses touch controls as discs, and style-fantasy and style-scifi have 33 shots where their metal atlases hold 27 ("4480x1440, not 4480x1800"). | stale metal references on main (not Android): re-record on macrunner, then rerun |
+| Boot (fx-showcase test-reference export) | first frame 3.6-3.9 s | wasm 1.07-1.17 s, bundle 1.35-1.46 s, transcode 0.41-0.52 s, present 0.12-0.17 s; 66 pipelines warmed behind the gate in 0.7 s. | - |
+| A stall after the tap | 5-13 s without frames | Twice, with the player's default display settings: the tick stopped (239 → 239 for 5 s; 1 → 14 over 15 s) then resumed. Not yet traced; the resolve's refusal itself takes 646 ms in the repro, a compile 2.3 s. | open |
+| G1 frame cap | inconclusive | fps60 and fps30 both measured 26 fps at a 24 Hz display interval: the windows fell in the stall above. Rerun. | open |
+| G2 render scale 0.5 | works | scene 412x858 in an 823x1715 canvas; 48.7 fps, work 7.6 ms. | ok |
+| G3 battery saver | works | capped at 30 (30.1 fps, interval 33.2 ms), scale 0.75. | ok |
+| G4 auto quality (default settings) | works | from scale 1 at 30 fps it stepped 0.9 → 0.5 and one preset step in 8 s and held 52 fps at 60 Hz (frame 23-24 ms of work and GPU). At render scale 2 for 95 s: 48-49 fps. | ok |
+| Thermals (95 s at render scale 2, auto on) | status 0 throughout | skin 31.9 → 36.4 °C, SoC 36.2 → 43.8 °C, battery 30.1 → 36.0 °C; no throttling seen. | - |
+| Memory (fx-showcase) | | wasm linear 77 MiB (heap live 63 MiB, peak 67 MiB); the engine's GPU count 146 MiB (render targets 131 MiB); Chrome's PSS 338 MiB, Graphics 70 MiB, EGL mtrack 51 MiB. | - |
 
 ### The meshlet resolve on PowerVR
 
@@ -101,3 +113,5 @@ buffer off for that device, its clusters drawn on the hardware meshlet path
 as with `RenderScene::visibility_buffer` off. Its unit test
 (`a_resolve_pipeline_the_device_refuses_turns_the_visibility_buffer_off`)
 panics on the old code (wgpu's uncaptured validation error) and passes now.
+
+Not run yet on the phone: reference-gfx (the Safari cluster first: terrain, water, grass, impostor-scatter, spheres-20k, with and without `--cpu-culling`; crowd-lods and the crowd-2k sweep), e5, wire.ts and the templates' playtests. reference-gfx needs a wasm build window, shared with the rebuild for 985cf7e71.
