@@ -37,6 +37,25 @@ is one line here, written at the merge that changes
   on the CPU, which now also bounces sprite-mode particles off the
   colliders. og-render: `ParticleCollision::against`, `CollisionTarget`.
   IDL doc changes only.
+- **Physics: a hull's and a compound's mass properties are the same bits
+  on every host.** A convex hull's, a triangle mesh's and a compound
+  body's inertia is diagonalised by parry through glamx's eigensolver,
+  whose closed form called the host's `acos` and `cos`, so a world of
+  such bodies, destruction's loose islands above all, stepped apart on
+  native and on wasm from the first tick after a fracture (the wave's end
+  of 2026-11-05: the yard's wall split into 112 islands on native and 17
+  on wasm). glamx is now carried under `third_party/glamx` (the root
+  `[patch.crates-io]`, as basis-universal-sys is) with that solver
+  replaced by a cyclic Jacobi iteration in f64 made of `+ - * / sqrt`
+  only, so both hosts give one hash; the principal frame of a hull comes
+  out as another valid rotation of the same tensor, so a world with
+  hulls or compounds hashes differently from before (its motion is the
+  same to rounding; `tests/sleep.rs`'s pen took a new seed). A primitive
+  shape and every 2D shape never reach the solver and keep their bits.
+  The call was inside a dependency, out of clippy's reach, so the guard
+  is the determinism tool: it steps 60 compounds of hulls on every build
+  (`tools/wasm-determinism`), and `packages/engine`'s destruction test
+  compares the yard's hash across hosts.
 
 - **TerrainLayerDesc.cellVariation.** Each cell of a layer's pattern (a
   sett, a flag, a tile) takes its own tone: the layer's normal map's alpha

@@ -282,9 +282,13 @@ fn asleep(w: &World) -> usize {
 fn a_pen_sleeps_deterministically_and_restores_mid_sleep() {
     // 80 bodies dropped into a pen, damped so that rolling capsules and
     // spheres come to rest (undamped, one rolls for ever and keeps the
-    // pile it touches awake, as it should).
+    // pile it touches awake, as it should). The seed is one whose pile
+    // settles: with others, one body rolls on past tick 900, and a change
+    // to any body's bits (seed 5 stopped settling when the hulls' inertia
+    // frame moved with glamx's host-independent eigensolver,
+    // third_party/glamx) means picking the seed again.
     let pen = || {
-        let (mut w, p) = support::pile::pen(80, 5);
+        let (mut w, p) = support::pile::pen(80, 3);
         support::enable_lazy(&mut w);
         *w.resource_mut::<Physics>().unwrap() = Physics {
             sleep_ticks: 30,
@@ -303,7 +307,7 @@ fn a_pen_sleeps_deterministically_and_restores_mid_sleep() {
         (w, p)
     };
     let (mut a, _pa) = pen();
-    // The pile falls asleep whole at tick 412: at 400 its bodies are
+    // The pile falls asleep whole at tick 434: at 400 its bodies are
     // counting their calm ticks, which a restore must carry.
     let first = pen_run(&mut a, 0, 400);
     let counting = a.snapshot();

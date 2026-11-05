@@ -296,3 +296,4 @@ codegen-units = 16
 # §Determinism).
 [patch.crates-io]
 basis-universal-sys = { path = "third_party/basis-universal-sys" }
+glamx = { path = "third_party/glamx" }

@@ -1,0 +1,175 @@
+# glamx 0.3.1 (crates.io) with its symmetric 3x3 eigensolver (src/eigen3.rs)
+# replaced by a cyclic Jacobi iteration in f64 made of `+ - * / sqrt` only.
+# Upstream's closed form calls the host's `acos` and `cos`, whose results
+# differ by an ulp between libm implementations, and parry's MassProperties
+# (`with_inertia_matrix`, which every sum of two mass properties ends in)
+# then gave a compound body a principal inertia frame that differed between
+# the native and the wasm host, so destruction's island split diverged
+# (`tests/support/destruction-hash.ts`). Everything else is the published
+# crate (Cargo.toml.orig, its changelog and lockfile dropped). The root
+# Cargo.toml's and tools/wasm-determinism's [patch.crates-io] put it in
+# place of the crates.io one; drop it when a glamx release decomposes
+# without transcendental functions.
+[package]
+edition = "2021"
+name = "glamx"
+version = "0.3.1"
+authors = ["Sébastien Crozet <developer@crozet.re>"]
+build = false
+autolib = false
+autobins = false
+autoexamples = false
+autotests = false
+autobenches = false
+description = "Extensions for glam: Pose2, Pose3, Rot2, and matrix utilities."
+homepage = "https://dimforge.com"
+documentation = "https://docs.rs/glamx"
+readme = "README.md"
+keywords = [
+    "math",
+    "geometry",
+    "rotation",
+    "pose",
+    "glam",
+]
+categories = [
+    "mathematics",
+    "game-development",
+    "no-std",
+]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/dimforge/glamx"
+
+[features]
+all-types = [
+    "float-types",
+    "integer-types",
+    "size-types",
+    "glam/all-types",
+]
+approx = [
+    "dep:approx",
+    "glam/approx",
+]
+bytemuck = [
+    "dep:bytemuck",
+    "glam/bytemuck",
+]
+cuda = ["glam/cuda"]
+debug-glam-assert = ["glam/debug-glam-assert"]
+default = [
+    "std",
+    "all-types",
+]
+encase = ["glam/encase"]
+f64 = ["glam/f64"]
+fast-math = ["glam/fast-math"]
+float-types = [
+    "f64",
+    "glam/float-types",
+]
+glam-assert = ["glam/glam-assert"]
+glamx-serde = []
+i16 = ["glam/i16"]
+i32 = ["glam/i32"]
+i64 = ["glam/i64"]
+i8 = ["glam/i8"]
+integer-types = [
+    "i8",
+    "u8",
+    "i16",
+    "u16",
+    "i32",
+    "u32",
+    "i64",
+    "u64",
+    "glam/integer-types",
+]
+isize = ["glam/isize"]
+libm = [
+    "glam/libm",
+    "simba/libm_force",
+    "num-traits/libm",
+]
+mint = ["glam/mint"]
+nalgebra = ["dep:nalgebra"]
+nostd-libm = [
+    "simba/libm",
+    "glam/nostd-libm",
+]
+rand = ["glam/rand"]
+rkyv = [
+    "dep:rkyv",
+    "glam/rkyv",
+]
+scalar-math = ["glam/scalar-math"]
+serde = [
+    "dep:serde",
+    "glam/serde",
+    "glamx-serde",
+]
+size-types = [
+    "isize",
+    "usize",
+    "glam/size-types",
+]
+std = [
+    "glam/std",
+    "simba/std",
+    "approx?/std",
+]
+u16 = ["glam/u16"]
+u32 = ["glam/u32"]
+u64 = ["glam/u64"]
+u8 = ["glam/u8"]
+usize = ["glam/usize"]
+
+[lib]
+name = "glamx"
+path = "src/lib.rs"
+
+[dependencies.approx]
+version = "0.5"
+optional = true
+default-features = false
+
+[dependencies.bytemuck]
+version = "1"
+features = ["derive"]
+optional = true
+
+[dependencies.glam]
+version = "0.33.7"
+default-features = false
+
+[dependencies.nalgebra]
+version = "0.35"
+features = ["convert-glam033"]
+optional = true
+default-features = false
+
+[dependencies.num-traits]
+version = "0.2"
+features = ["libm"]
+default-features = false
+
+[dependencies.rkyv]
+version = "0.8"
+optional = true
+default-features = false
+
+[dependencies.serde]
+version = "1.0"
+features = ["derive"]
+optional = true
+
+[dependencies.simba]
+version = "0.10"
+default-features = false
+
+[dev-dependencies.approx]
+version = "0.5"
+
+[dev-dependencies.glam]
+version = "0.33"
+features = ["approx"]
