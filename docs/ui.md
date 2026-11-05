@@ -932,8 +932,18 @@ the gate is loosened. The bar:
 - Each genre showcase is read beside screenshots of two shipped games of
   its genre, and a screen that reads as a prototype beside them is held.
 - Every changed screen is read at desktop 1920×1080, tablet, phone
-  portrait 390×844 and phone landscape, in every built-in style, and under
+  portrait 390×844 and phone landscape, in the kit's own style, and under
   the pseudo-locale, a CJK locale, a right-to-left locale and 150 % text (200 % deferred, §15.2).
+- **What the review judges (the owner, 2026-11-05).** The kit and the
+  style packs are a polished baseline an agent builds from, not a promise
+  that every screen fits every style: a game restyles and reworks its own
+  UI. So a screen is judged in the kit's own style and a pack on its own
+  pages (`og ui sheet`, §17.3), never the cross product of every screen in
+  every pack. A UI frame is reviewed by the art director over a plain,
+  solid-colour ground, never over a 3D scene or key art the review would
+  have to invent: a scene behind a HUD is judged by that scene's own
+  tests, and no gate scores a label's legibility or contrast against what
+  is behind it. `onScene` and `sceneInk` stay as API for games.
 - `og ui check` reports nothing. A declared overlap is not a way to merge
   a known defect: the kit's Gallery overlap is fixed, not carried.
 - Every interactive part is captured idle, hovered, pressed, focused and
@@ -1479,7 +1489,7 @@ resource bar any resources, and a standings tower any field.
   collection, rhythm, racing and sports, fighting and party, narrative and
   VN, survival, horror, open world), each a playable set of its screens,
   HUD and world UI, driven by fixtures;
-- every seed style worn by every showcase, desktop and phone;
+- every seed style on its own pages (§17.3), over its plain ground;
 - tests per showcase: reference frames on metal, filmstrips of its key
   motions, scripted interactions (pad, touch, keys), and a clean `og ui
   check`.
