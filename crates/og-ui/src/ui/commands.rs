@@ -41,7 +41,10 @@ impl Ui {
                 }
                 self.nodes[j].fx = Some(crate::motion::fx(
                     st.kind,
-                    crate::motion::ease_out(p),
+                    self.theme
+                        .tokens
+                        .ease(crate::tokens::EaseName::WidgetEnter)
+                        .at(p),
                     distance,
                     reduced,
                 ));

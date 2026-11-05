@@ -278,6 +278,56 @@ impl Build<'_> {
 }
 
 impl Ui {
+    /// Apply a part's presentation with the same values documents use.
+    pub(crate) fn apply_part_appearances(&mut self) {
+        if !self
+            .dress
+            .dressings()
+            .iter()
+            .any(|d| !d.draw.appearance.is_empty())
+        {
+            return;
+        }
+        for i in 0..self.nodes.len() {
+            let Some(part) = self.nodes[i]
+                .el
+                .part
+                .or_else(|| self.nodes[i].el.frame.map(crate::StylePart::part_ref))
+            else {
+                continue;
+            };
+            let appearance = self.dress.resolve(&part).draw.appearance;
+            if appearance.is_empty() {
+                continue;
+            }
+            let r = Resolved {
+                vals: appearance
+                    .iter()
+                    .filter_map(|(index, value)| lit(self, value).map(|v| (*index, v)))
+                    .collect(),
+            };
+            let mut ramp = self.theme.type_ramp;
+            let step = r
+                .str("step")
+                .and_then(|name| crate::style_file::ramp_step(&mut ramp, name).copied());
+            let n = &mut self.nodes[i];
+            if let Some(opacity) = r.num("opacity") {
+                n.props.opacity = opacity.clamp(0.0, 1.0);
+            }
+            if let Some(V::Transition(t)) = r.get("motion") {
+                n.props.motion = Some(*t);
+            }
+            if let crate::layout::Content::Text(text) = &mut n.content {
+                if let Some(color) = r.color("color") {
+                    text.color = color;
+                }
+                if let Some(step) = step {
+                    text.step = step;
+                }
+            }
+        }
+    }
+
     /// Resolves a node's props: its lines, its matching `at` blocks, then
     /// the probe's edits of `path`.
     fn resolve(&self, b: &Build<'_>, n: &DocNode, path: &str, built: &mut Built) -> Resolved {

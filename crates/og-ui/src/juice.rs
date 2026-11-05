@@ -6,7 +6,7 @@
 use crate::draw::DrawCmd;
 use crate::id::{Id, child_key};
 use crate::layout::{Content, FontRole, Frame, NONE, Rect, Shape, Size, TextAlign};
-use crate::motion::{Fx, ease_out};
+use crate::motion::Fx;
 use crate::style::{Srgba, TypeStep};
 use crate::ui::{Anim, Ui};
 use og_render::TextureHandle;
@@ -320,7 +320,7 @@ impl Ui {
             1.4 * size
         };
         let count = if desc.count == 0 { 8 } else { desc.count };
-        let e = ease_out(k);
+        let e = t.tokens.ease(crate::tokens::EaseName::WidgetEnter).at(k);
         let fade = 1.0 - k * k;
         for r in 0..count {
             let a = (r as f32 + 0.5 * (r % 2) as f32) * std::f32::consts::TAU / count as f32;

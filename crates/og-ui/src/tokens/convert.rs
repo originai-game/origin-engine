@@ -231,6 +231,8 @@ impl StyleTokens {
                 Ease::Bezier(crate::theme::EASE_OUT),
                 Ease::Bezier(crate::theme::EASE_EXIT),
                 Ease::Bezier([0.34, 1.4, 0.64, 1.0]),
+                Ease::Bezier(crate::theme::EASE_OUT),
+                Ease::Bezier(crate::theme::EASE_EXIT),
             ],
             durations: d,
             stagger_ms: art.motion.stagger_ms,

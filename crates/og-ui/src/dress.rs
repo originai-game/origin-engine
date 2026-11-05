@@ -49,7 +49,7 @@ use og_core::ogt::Entry;
 use std::fmt;
 
 /// The dressing keys of the UI pass's types ([`DressDraw`]).
-pub const DRAW_KEYS: [&str; 12] = [
+pub const DRAW_KEYS: [&str; 13] = [
     "fill",
     "stroke",
     "effect",
@@ -62,7 +62,11 @@ pub const DRAW_KEYS: [&str; 12] = [
     "segments",
     "ink",
     "step",
+    "appearance",
 ];
+
+/// Element properties a dressing can set, using the document reflection schema.
+pub const APPEARANCE_PROPS: &[&str] = &["opacity", "motion", "color", "step"];
 
 /// `Component.part[flag][key=value]…`.
 #[derive(Clone, Debug, Eq)]
@@ -295,6 +299,8 @@ pub struct DressDraw {
     /// `step <TypeStepName>`, on a text part: the text's type step, scaled
     /// with the player's text size as every step is.
     pub step: Option<&'static str>,
+    /// Literal element properties, indexed by the document reflection schema.
+    pub appearance: Vec<(usize, crate::doc::Lit)>,
 }
 
 /// The parts the `ink` and `step` dress keys apply to: the text a widget
@@ -438,6 +444,27 @@ impl DressDraw {
             "mask" => self.mask = Some(Mask::from_entry(e, atlas)?),
             "segments" => self.segments = Some(crate::paint_entry::segments_from_entry(e, atlas)?),
             "ink" => self.ink = Some(crate::paint_entry::color_from_entry(e, atlas)?),
+            "appearance" => {
+                let p = crate::style_file::P { e };
+                if !e.values.is_empty() {
+                    return Err(p.err("takes a { } block of element properties"));
+                }
+                for entry in &p.block()?.entries {
+                    let q = crate::style_file::P { e: entry };
+                    if !APPEARANCE_PROPS.contains(&entry.key.as_str()) {
+                        return Err(q.err(&format!("takes {}", APPEARANCE_PROPS.join(", "))));
+                    }
+                    let (index, spec) = crate::doc::schema::prop(&entry.key)
+                        .expect("reflected appearance property");
+                    let value =
+                        crate::doc::parse_value(spec.ty, &entry.values).map_err(|e| q.err(&e))?;
+                    let crate::doc::PropValue::Lit(value) = value else {
+                        return Err(q.err("takes a literal, not a binding or template"));
+                    };
+                    self.appearance.retain(|(i, _)| *i != index);
+                    self.appearance.push((index, value));
+                }
+            }
             "step" => {
                 let name = match e.values.as_slice() {
                     [og_core::ogt::Value::Word(w)] => w.as_str(),
@@ -758,6 +785,10 @@ impl DressSet {
                 b.ink = a.ink.clone();
             }
             b.step = a.step.or(b.step);
+            for (index, value) in &a.appearance {
+                b.appearance.retain(|(i, _)| i != index);
+                b.appearance.push((*index, value.clone()));
+            }
             for (e, s) in &a.sounds {
                 b.sounds.retain(|(k, _)| k != e);
                 b.sounds.push((*e, s.clone()));

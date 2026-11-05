@@ -581,7 +581,11 @@ impl MotionParse {
     }
 
     /// The tokens, every one set, every spring within the overshoot.
-    pub fn finish(self, p: &P, extra: &[(&str, SpringToken)]) -> Result<MotionTokens, String> {
+    pub fn finish(mut self, p: &P, extra: &[(&str, SpringToken)]) -> Result<MotionTokens, String> {
+        self.eases[EaseName::WidgetEnter.index()]
+            .get_or_insert(Ease::Bezier(crate::theme::EASE_OUT));
+        self.eases[EaseName::WidgetExit.index()]
+            .get_or_insert(Ease::Bezier(crate::theme::EASE_EXIT));
         let mut missing: Vec<String> = Vec::new();
         for s in SpringName::ALL {
             if self.springs[s.index()].is_none() {

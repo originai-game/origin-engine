@@ -765,6 +765,7 @@ pub fn to_json() -> serde_json::Value {
         "kinds": KINDS.iter().map(|k| json!({ "name": k.name, "container": k.container, "doc": k.doc })).collect::<Vec<_>>(),
         "props": PROPS.iter().map(|p| {
             let mut v = json!({ "name": p.name, "type": p.ty.name(), "doc": p.doc, "twoWay": p.two_way });
+            v["dressing"] = json!(crate::dress::APPEARANCE_PROPS.contains(&p.name));
             if let Ty::Word(w) = p.ty {
                 v["values"] = json!(w);
             }

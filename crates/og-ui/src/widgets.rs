@@ -10,8 +10,9 @@ use crate::layout::{
     Align, Anchor, Content, Cross, Direction, Element, Float, FontRole, Frame, Insets, NONE, Shape,
     Size, TextAlign, Widget,
 };
-use crate::motion::{TransitionKind, ease_exit, ease_out, fx};
+use crate::motion::{TransitionKind, fx};
 use crate::style::{READABLE, Srgba};
+use crate::tokens::EaseName;
 use crate::ui::{Anim, Response, Toast, Ui, mix_srgba};
 use og_core::hash::StableHasher;
 use og_render::TextureHandle;

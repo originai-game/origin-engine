@@ -271,6 +271,10 @@ names! {
         Enter "enter",
         Exit "exit",
         Emphasis "emphasis",
+        /// Built-in widget arrivals, meter trails and cascades.
+        WidgetEnter "widgetEnter",
+        /// Built-in widget departures.
+        WidgetExit "widgetExit",
     }
 }
 
@@ -534,6 +538,16 @@ pub enum Ease {
     Bezier([f32; 4]),
     /// Held on whole steps (pixel styles).
     Steps(u8),
+}
+
+impl Ease {
+    pub fn at(self, progress: f32) -> f32 {
+        let progress = progress.clamp(0.0, 1.0);
+        match self {
+            Self::Bezier(points) => crate::motion::cubic_bezier(points, progress),
+            Self::Steps(count) => (progress * f32::from(count)).floor() / f32::from(count),
+        }
+    }
 }
 
 /// The motion personality.

@@ -55,11 +55,17 @@ impl Ui {
             let el = (now - a.t) as f32;
             if a.b < a.a {
                 // Dropped: the fill at the target, the trail from a towards b.
-                let k = ease_out(((el - hold) / dur).clamp(0.0, 1.0));
+                let k = t
+                    .tokens
+                    .ease(EaseName::WidgetEnter)
+                    .at(((el - hold) / dur).clamp(0.0, 1.0));
                 (a.b, a.a + (a.b - a.a) * k)
             } else {
                 // Rose: the fill grows from a to b, a ghost at b.
-                let k = ease_out((el / dur).clamp(0.0, 1.0));
+                let k = t
+                    .tokens
+                    .ease(EaseName::WidgetEnter)
+                    .at((el / dur).clamp(0.0, 1.0));
                 (a.a + (a.b - a.a) * k, a.b)
             }
         };

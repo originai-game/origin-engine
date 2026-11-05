@@ -736,6 +736,15 @@ meaning; a game brings every other colour in its own style.
   class: squircle, notch, bevel, round, square).
 - **Motion**: the springs, eases, durations and stagger of §7.7.
 
+The optional `motion` lines `ease widgetEnter <curve>` and
+`ease widgetExit <curve>` control built-in widget arrivals and departures:
+layer transitions, toasts, meter trails, staggered children and bursts.
+They accept four Bézier control points, `linear`, or `steps <1–60>`.
+When omitted, they retain the previous widget curves (enter:
+`0.23 1 0.32 1`; exit: `0.4 0 1 1`). They are separate from the existing
+`enter` and `exit` tokens because built-in widgets previously ignored
+those tokens; adopting them implicitly would move existing styles' frames.
+
 ### 12.3 Part dressings
 
 A component names its parts (`ShopCard.frame`, `Meter.fill`,
@@ -747,6 +756,24 @@ does not dress is drawn from the tokens by the component's default, so a
 new component looks right in every style without new art. The twelve
 `StylePart` classes of version 1 become dressings of the matching parts;
 `og style upgrade` converts a version 1 style.
+
+An element-backed part also accepts an `appearance` block. It uses the
+document property's reflected type and literal grammar (§10); properties
+marked `dressing` in `documentSchema` are accepted. `opacity` applies to
+the whole element, including its label and children; `motion` controls
+changes to its animatable properties. `color` and `step` apply when the
+part is a text element. Shape-only subparts still use paints and `ink`.
+These overrides apply after the widget and responsive variants are built,
+before layout and motion. Unset properties retain the widget's defaults;
+more-specific selectors override only the properties they set.
+
+```ogt
+dress "ActionButton.face[disabled]" {
+  appearance {
+    opacity 0.3
+  }
+}
+```
 
 A game shipped with a version 1 style keeps the screens it shipped with:
 an engine update may draw them better (antialiasing, contrast, a cleaner

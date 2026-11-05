@@ -35,6 +35,7 @@ impl Ui {
         // Breakpoint and orientation variants (docs/ui.md §6.2), before
         // anything is laid out.
         self.apply_variants();
+        self.apply_part_appearances();
         // Hidden slots (a closed dialog, a finished transition) take no room.
         for i in 0..self.nodes.len() {
             if self.nodes[i].hidden {

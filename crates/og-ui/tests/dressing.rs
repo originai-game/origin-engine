@@ -59,6 +59,89 @@ fn near(a: [f32; 4], b: Srgba) -> bool {
 }
 
 #[test]
+fn a_disabled_touch_controls_opacity_is_authored_by_its_state_dressing() {
+    let mut ui = dressed(concat!(
+        "dress \"ActionButton.face\" {\n appearance {\n opacity 0.8\n }\n}\n",
+        "dress \"ActionButton.face[disabled]\" {\n appearance {\n opacity 0.2\n }\n}\n",
+    ));
+    for disabled in [false, true, false] {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.action_button(
+            "Fire",
+            "Fire",
+            &ActionButtonDesc {
+                disabled,
+                primary: true,
+                ..ActionButtonDesc::default()
+            },
+        );
+        ui.end();
+        let element = ui.frame().element("Fire").unwrap();
+        let rect = Rect::new(element.x, element.y, element.width, element.height);
+        let fills = fills_in(&ui, rect);
+        assert!(!fills.is_empty(), "the action face is drawn");
+        let expected = if disabled { 0.2 } else { 0.8 };
+        assert!(
+            fills.iter().all(|c| (c[3] - expected).abs() < 0.001),
+            "{fills:?}"
+        );
+    }
+}
+
+#[test]
+fn widget_entrances_use_the_styles_curve_instead_of_a_fixed_curve() {
+    for (curve, expected) in [("linear", 1.0 / 3.0), ("steps 4", 0.25)] {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../templates/styles/storybook/style.ogt"
+        );
+        let source = std::fs::read_to_string(path).unwrap();
+        let source = source.replacen(
+            "motion {",
+            &format!("motion {{\n ease widgetEnter {curve}"),
+            1,
+        );
+        let style = parse_style(&source).unwrap();
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_theme(style.theme(None, [0; 6]));
+        for tick in 0..=20 {
+            ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+            ui.transition(
+                "Panel",
+                tick > 0,
+                TransitionDesc {
+                    kind: TransitionKind::Fade,
+                    duration_ms: 1000.0,
+                    ..TransitionDesc::default()
+                },
+                |ui| {
+                    ui.button(
+                        "Go",
+                        "Go",
+                        ButtonDesc {
+                            variant: ButtonVariant::Primary,
+                            ..ButtonDesc::default()
+                        },
+                    );
+                },
+            );
+            ui.end();
+        }
+        let alpha = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|i| i.cmd.filled())
+            .map(|(_, c)| c[3])
+            .fold(0.0_f32, f32::max);
+        assert!(
+            (alpha - expected).abs() < 0.001,
+            "{curve}: {alpha} instead of {expected}"
+        );
+    }
+}
+
+#[test]
 fn the_most_specific_dressing_wins_whatever_order_the_style_writes_them() {
     let ui = dressed(concat!(
         "dress \"Button.base[primary][pressed]\" {\n  fill \"#00ff00\"\n}\n",
