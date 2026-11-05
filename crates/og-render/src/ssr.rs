@@ -38,7 +38,7 @@
 //! `ssr_reflected`: a read-only storage texture, so it takes none of their
 //! sixteen texture slots; `Frame.ssr` on for the main camera) and blends it
 //! over the radiance the reflection probes, the probe GI's specular and
-//! the environment give (`gi_reflected`), before the split-sum's
+//! the environment give (`gi_reflected_from`), before the split-sum's
 //! Fresnel: diffuse light is untouched, and where a ray leaves the screen,
 //! hits the sky or is too rough to trace, the probes and the sky show.
 //! The prepass carries the roughness and metalness (lindepth's second

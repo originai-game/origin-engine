@@ -399,12 +399,16 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
   // The baked lightmap or light volumes where there are (lightmap.rs), at
   // the environment's intensity; the hemisphere light adds at its own.
-  let irradiance = ambient_irradiance(ambient_light(select(n, ambient_normal(in.clip.xy, n), EFFECTS), in.world_pos), in.world_pos, n);
+  // The probe GI's one gather here (gi_sample.wgsl), for the diffuse
+  // light along the ambient normal and the reflections' occlusion.
+  let ambient_n = select(n, ambient_normal(in.clip.xy, n), EFFECTS);
+  let gi = gi_sample_at(in.world_pos, ambient_n);
+  let irradiance = ambient_irradiance(ambient_light_from(ambient_n, in.world_pos, gi), in.world_pos, n);
   var diffuse_ibl = (irradiance * frame.params.x + hemi_irradiance(n)) * s.albedo;
   let r = reflect(-v, n);
   let mip = s.roughness * frame.params.y;
   // Relit by the realtime light volumes where there are (lightmap.rs).
-  var prefiltered = gi_reflected(volume_reflected(reflected_light(r, in.world_pos, mip), in.world_pos, r, s.roughness), r, in.world_pos) * frame.params.x;
+  var prefiltered = gi_reflected_from(volume_reflected(reflected_light(r, in.world_pos, mip), in.world_pos, r, s.roughness), r, in.world_pos, gi) * frame.params.x;
   // Screen-space reflections over it (ssr.rs), in the opaque main pass.
   // (Not a blended surface's: it lies over the one they were traced for.)
   if (!oit_pass && (u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world_pos, in.clip.xy); }

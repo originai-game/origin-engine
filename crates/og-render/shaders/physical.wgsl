@@ -498,7 +498,11 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let f_ibl = f_schlick_roughness(n_dot_v, f0_ibl, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
   // The environment's irradiance at its intensity, plus the hemisphere light at its own (pbr_fs.wgsl).
-  let irradiance = ambient_irradiance(ambient_light(select(n, ambient_normal(in.clip.xy, n), EFFECTS), in.world_pos), in.world_pos, n) * frame.params.x + hemi_irradiance(n);
+  // The probe GI's one gather here (gi_sample.wgsl), for the diffuse
+  // light along the ambient normal and the reflections' occlusion.
+  let ambient_n = select(n, ambient_normal(in.clip.xy, n), EFFECTS);
+  let gi = gi_sample_at(in.world_pos, ambient_n);
+  let irradiance = ambient_irradiance(ambient_light_from(ambient_n, in.world_pos, gi), in.world_pos, n) * frame.params.x + hemi_irradiance(n);
   var bent = n;
   if (physical.anisotropy.x > 0.0) {
     let across = normalize(cross(cross(k.aniso_b, v), k.aniso_b));
@@ -507,7 +511,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   }
   let r = reflect(-v, bent);
   // Relit by the realtime light volumes where there are (lightmap.rs).
-  var prefiltered = gi_reflected(volume_reflected(reflected_light(r, in.world_pos, s.roughness * frame.params.y), in.world_pos, r, s.roughness), r, in.world_pos) * frame.params.x;
+  var prefiltered = gi_reflected_from(volume_reflected(reflected_light(r, in.world_pos, s.roughness * frame.params.y), in.world_pos, r, s.roughness), r, in.world_pos, gi) * frame.params.x;
   // Screen-space reflections over it (ssr.rs; frame.wgsl ssr_reflected),
   // not a blended surface's: it lies over the one they were traced for.
   if (!oit_pass && (u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world_pos, in.clip.xy); }

@@ -214,9 +214,9 @@ fn gi_shade(p: vec3<f32>, n: vec3<f32>, d: vec3<f32>, record: u32, seed: u32) ->
   // The bounces before: the probes' light where the hit is, slightly less
   // than all of it so the feedback converges (Wicked's 0.95); past the
   // probes, the environment's.
-  let bounce = gi_probe_light(p, n, -d, true);
+  let bounce = gi_gather(p, n, -d, true);
   let env = textureSampleLevel(irradiance_map, ibl_sampler, n, 0.0).rgb * frame.params.x;
-  let indirect = mix(env, bounce.rgb * 0.95, bounce.w) + hemi_irradiance(n);
+  let indirect = mix(env, gi_eval(bounce, n) * 0.95, bounce.w) + hemi_irradiance(n);
   let reflected = albedo * (direct / GI_PI + indirect) * gp.trace.z;
   return reflected + emissive;
 }

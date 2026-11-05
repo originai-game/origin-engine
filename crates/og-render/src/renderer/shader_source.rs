@@ -8,6 +8,7 @@ use crate::oit::{ARENA_WGSL, OIT_WGSL};
 pub(crate) const FRAME_WGSL: &str = concat!(
     wgsl!("frame.wgsl"),
     wgsl!("gi_common.wgsl"),
+    wgsl!("gi_sample.wgsl"),
     wgsl!("gi_probes.wgsl")
 );
 /// The lit shader's vertex stages, lights and decals; the standard

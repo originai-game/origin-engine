@@ -153,13 +153,18 @@ fn probe_direction(r: vec3<f32>, p: vec3<f32>) -> vec3<f32> {
 // The environment's diffuse light along `n` at `p`: the irradiance cube,
 // or with a probe the roughest prefiltered level of the environment and of
 // the probe, blended by `probe_weight`; where the probe GI reaches
-// (gi_probes.rs), its light over that.
-fn ambient_light(n: vec3<f32>, p: vec3<f32>) -> vec3<f32> {
-  if (frame.probe_min.w < 0.5) { return gi_ambient(textureSample(irradiance_map, ibl_sampler, n).rgb, n, p); }
+// (gi_probes.rs), its light over that, from its gather `s` there.
+fn ambient_light_from(n: vec3<f32>, p: vec3<f32>, s: GiSample) -> vec3<f32> {
+  if (frame.probe_min.w < 0.5) { return gi_ambient_from(textureSample(irradiance_map, ibl_sampler, n).rgb, s, n); }
   let top = frame.params.y;
   let env = textureSampleLevel(irradiance_map, ibl_sampler, n, top).rgb;
   let probe = textureSampleLevel(prefiltered_map, ibl_sampler, n, top).rgb * frame.probe_max.w;
-  return gi_ambient(mix(env, probe, probe_weight(p)), n, p);
+  return gi_ambient_from(mix(env, probe, probe_weight(p)), s, n);
+}
+
+// ambient_light_from with the probe GI's own gather at `p`.
+fn ambient_light(n: vec3<f32>, p: vec3<f32>) -> vec3<f32> {
+  return ambient_light_from(n, p, gi_sample_at(p, n));
 }
 
 // `ambient_light` without screen derivatives (level 0 of the irradiance
