@@ -807,6 +807,13 @@ change the control's hit box. A widget's outer size and each decoration's
 size are independent: enlarging a joystick's base does not implicitly
 enlarge its fixed-size knob.
 
+The directly drawn `Slider.track`, `Slider.fill`, `Slider.knob`,
+`Toggle.track`, `Toggle.knob`, and progress bar's `Meter.track` and
+`Meter.fill` use these geometry overrides too. On segmented tracks, the
+override sizes each segment after distribution; `segments` still owns
+their count and spacing. Input value mapping and the control's hit box
+do not change when its decoration changes.
+
 Further decorative parts are `Minimap.marker[player]`,
 `Minimap.marker[tone=…]`, `Minimap.markerOutline[player]`,
 `Skeleton.sheen`, `Spinner.dot[age=0…7]` (zero is the leading dot),

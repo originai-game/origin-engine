@@ -377,6 +377,39 @@ fn embedded_marks_sectors_and_labels_read_their_dressings() {
 }
 
 #[test]
+fn slider_and_toggle_knob_geometry_is_style_data() {
+    let mut ui = dressed(concat!(
+        "dress \"Slider.knob\" {\n fill \"#ff00ff\"\n appearance {\n width 9\n height 31\n }\n}\n",
+        "dress \"Toggle.knob\" {\n fill \"#ff00ff\"\n appearance {\n width 9\n height 31\n }\n}\n",
+    ));
+    ui.begin(InputFrame::default(), Viewport::new(400.0, 200.0));
+    ui.slider(
+        "Volume",
+        &mut 0.25,
+        SliderDesc {
+            width: Some(Size::Fixed(120.0)),
+            ..SliderDesc::default()
+        },
+    );
+    ui.toggle("Music", &mut true, "Music");
+    ui.end();
+    let knobs: Vec<_> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|item| item.cmd.filled())
+        .filter(|(_, color)| near(*color, Srgba::rgb(255, 0, 255)))
+        .collect();
+    assert_eq!(knobs.len(), 2);
+    assert!(
+        knobs
+            .iter()
+            .all(|(rect, _)| rect.width == 9.0 && rect.height == 31.0)
+    );
+    assert_eq!(ui.frame().element("Volume").unwrap().width, 120.0);
+}
+
+#[test]
 fn icon_geometry_and_tint_apply_to_atlases_and_glyphs() {
     for glyph in [false, true] {
         let mut ui = dressed(
@@ -1471,7 +1504,7 @@ fn a_segmented_track_fills_whole_segments_along_its_ramp() {
     // Wrong: the fill cut mid-segment at the value, every filled segment in
     // one colour, or the segments not reaching the track's end.
     let mut ui = dressed(
-        "dress \"Slider.track\" {\n  segments 5 4 ramp \"#ff0000\" \"#0000ff\"\n}\ndress \"Slider.fill\" {\n  stroke none\n  effect none\n}\n",
+        "dress \"Slider.track\" {\n  segments 5 4 ramp \"#ff0000\" \"#0000ff\"\n appearance {\n height 9\n }\n}\ndress \"Slider.fill\" {\n  stroke none\n  effect none\n appearance {\n height 6\n }\n}\n",
     );
     let mut v = 0.45;
     for _ in 0..2 {
@@ -1505,6 +1538,8 @@ fn a_segmented_track_fills_whole_segments_along_its_ramp() {
     xs.sort_by(f32::total_cmp);
     xs.dedup();
     assert_eq!(xs.len(), 5, "segments at {xs:?}");
+    assert!(fills.iter().any(|(r, _)| r.height == 9.0));
+    assert!(fills.iter().any(|(r, _)| r.height == 6.0));
     let last = fills.iter().map(|(r, _)| r.right()).fold(0.0, f32::max);
     assert!(
         (last - (e.x + e.width)).abs() <= 1.0,

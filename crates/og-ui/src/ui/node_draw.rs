@@ -204,6 +204,8 @@ impl Ui {
         }
         use crate::dress::PartRef;
         use crate::tokens::ElementClass as C;
+        let decoration =
+            |part: &PartRef, r: Rect| self.dress.resolve(part).draw.subpart_rect(r, rect);
         let bar = |rect: Rect, value: f32, part: PartRef| {
             let min = self
                 .dress
@@ -220,11 +222,27 @@ impl Ui {
                 let track = PartRef::new("Meter", "track", C::Bar);
                 let fill = PartRef::new("Meter", "fill", C::Bar).attr("kind", "primary");
                 let fills = (p.control_strong, p.primary);
-                if !self.segment_commands(&track, &fill, rect, value, fills, alpha, clip, cmds) {
-                    self.part_commands(&track, rect, Some(p.control_strong), alpha, clip, cmds);
+                if !self
+                    .segment_commands(&track, &fill, rect, rect, value, fills, alpha, clip, cmds)
+                {
+                    self.part_commands(
+                        &track,
+                        decoration(&track, rect),
+                        Some(p.control_strong),
+                        alpha,
+                        clip,
+                        cmds,
+                    );
                     if value > 0.0 {
                         let r = bar(rect, value, fill);
-                        self.part_commands(&fill, r, Some(p.primary), alpha, clip, cmds);
+                        self.part_commands(
+                            &fill,
+                            decoration(&fill, r),
+                            Some(p.primary),
+                            alpha,
+                            clip,
+                            cmds,
+                        );
                     }
                 }
             }
@@ -237,11 +255,25 @@ impl Ui {
                 let tx = rect.x + v * (rect.width - thumb).max(0.0);
                 let fp = PartRef::new("Slider", "fill", C::Bar);
                 let fills = (p.control_strong, p.primary);
-                if !self.segment_commands(&tp, &fp, track, v, fills, alpha, clip, cmds) {
-                    self.part_commands(&tp, track, Some(p.control_strong), alpha, clip, cmds);
+                if !self.segment_commands(&tp, &fp, track, rect, v, fills, alpha, clip, cmds) {
+                    self.part_commands(
+                        &tp,
+                        decoration(&tp, track),
+                        Some(p.control_strong),
+                        alpha,
+                        clip,
+                        cmds,
+                    );
                     let filled =
                         Rect::new(rect.x, track.y, tx + thumb / 2.0 - rect.x, track_h).snapped(dpr);
-                    self.part_commands(&fp, filled, Some(p.primary), alpha, clip, cmds);
+                    self.part_commands(
+                        &fp,
+                        decoration(&fp, filled),
+                        Some(p.primary),
+                        alpha,
+                        clip,
+                        cmds,
+                    );
                 }
                 let mut knob = Rect::new(tx, cy - thumb / 2.0, thumb, thumb);
                 if active {
@@ -250,7 +282,7 @@ impl Ui {
                 let kp = PartRef::new("Slider", "knob", C::Chip)
                     .flag("round")
                     .flag_if(active, "pressed");
-                let knob = self.piece_rect(&kp, knob);
+                let knob = decoration(&kp, self.piece_rect(&kp, knob));
                 self.part_commands(&kp, knob.snapped(dpr), Some(p.knob), alpha, clip, cmds);
             }
             Widget::Toggle { on, slide } => {
@@ -261,7 +293,7 @@ impl Ui {
                     .flag("round")
                     .flag(if on { "on" } else { "off" });
                 let color = mix_srgba(p.control_strong, p.primary, slide);
-                self.part_commands(&tp, track, Some(color), alpha, clip, cmds);
+                self.part_commands(&tp, decoration(&tp, track), Some(color), alpha, clip, cmds);
                 let inset = t.space.xxs;
                 let k = sh - 2.0 * inset;
                 let kx = track.x + inset + (track.width - 2.0 * inset - k) * slide;
@@ -270,7 +302,7 @@ impl Ui {
                     .flag(if on { "on" } else { "off" });
                 self.part_commands(
                     &kp,
-                    Rect::new(kx, track.y + inset, k, k).snapped(dpr),
+                    decoration(&kp, Rect::new(kx, track.y + inset, k, k)).snapped(dpr),
                     Some(p.knob),
                     alpha,
                     clip,

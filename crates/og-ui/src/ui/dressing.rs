@@ -319,6 +319,7 @@ impl Ui {
         tp: &crate::dress::PartRef,
         fp: &crate::dress::PartRef,
         track: Rect,
+        owner: Rect,
         value: f32,
         fills: (Srgba, Srgba),
         alpha: f32,
@@ -330,12 +331,28 @@ impl Ui {
         };
         let dpr = self.viewport.dpr();
         let on = seg.filled(value);
+        let track_draw = self.dress.resolve(tp).draw;
+        let fill_draw = self.dress.resolve(fp).draw;
         for (k, r) in seg.rects(track).into_iter().enumerate() {
             let r = r.snapped(dpr);
-            self.part_commands(tp, r, Some(fills.0), alpha, clip, cmds);
+            self.part_commands(
+                tp,
+                track_draw.subpart_rect(r, owner),
+                Some(fills.0),
+                alpha,
+                clip,
+                cmds,
+            );
             if (k as u32) < on {
                 let c = seg.color(k as u32, fills.1, &self.theme);
-                self.part_commands(fp, r, Some(c), alpha, clip, cmds);
+                self.part_commands(
+                    fp,
+                    fill_draw.subpart_rect(r, owner),
+                    Some(c),
+                    alpha,
+                    clip,
+                    cmds,
+                );
             }
         }
         true
