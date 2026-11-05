@@ -32,9 +32,14 @@ test.skipIf(STALE_WASM)("a wall, a pillar and a pane break the same way on both 
   const node = run("node");
   const web = run("web");
   expect(node.tick).toBe(240);
-  // Each prop broke: the wall and the pillar keep their anchored stubs, the pane is all shards.
+  // Each prop broke: the wall is down to its anchored stubs; the pillar
+  // lost the struck band and keeps its stump (concrete's impactThreshold
+  // lets its own falling top land on it, 302c3067f), so more than half of
+  // its bonds hold; the pane is all shards.
   expect(node.fractured).toBeGreaterThan(0);
-  for (const p of ["wall", "pillar"]) expect(node.info[p]!.health).toBeLessThan(0.5);
+  expect(node.info.wall!.health).toBeLessThan(0.5);
+  expect(node.info.pillar!.health).toBeLessThan(0.75);
+  expect(node.info.pillar!.health).toBeGreaterThan(0.25);
   expect(node.info.pane!.intact).toBe(0);
   expect(node.hash).not.toBe(node.hashAtLoad);
   expect(web).toEqual({ ...node, host: "web" } as never);
