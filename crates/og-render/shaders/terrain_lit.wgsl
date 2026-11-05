@@ -483,7 +483,7 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, local: vec3<f32>, ground: f32, a
   let prefiltered = ssr_reflected(reflected_light(r, p, s.roughness * frame.params.y) * frame.params.x, p, clip);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let diffuse_ibl = kd_ibl * irradiance * s.albedo * sky;
-  let specular_ibl = prefiltered * (f_ibl * lut.x + lut.y) * sky;
+  let specular_ibl = prefiltered * (s.f0 * lut.x + lut.y) * sky;  // Karis split sum (pbr_fs.wgsl)
   let view = u32(frame.light_color.w);
   if (view == 4u) { return vec4<f32>(diffuse_ibl, 1.0); }
   if (view == 5u) { return vec4<f32>(specular_ibl, 1.0); }

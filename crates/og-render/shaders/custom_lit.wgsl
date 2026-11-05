@@ -105,7 +105,7 @@ fn custom_fragment(in: CustomOut) -> vec4<f32> {
   var prefiltered = reflected_light(reflect(-v, n), in.world, s.roughness * frame.params.y) * frame.params.x;
   if ((u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world, in.clip.xy); }
   let lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness), 0.0).rg;
-  color += (kd_ibl * irradiance * s.albedo * frame.params.x + prefiltered * (f_ibl * lut.x + lut.y)) * material.flags.z;
+  color += (kd_ibl * irradiance * s.albedo * frame.params.x + prefiltered * (s.f0 * lut.x + lut.y)) * material.flags.z;  // Karis split sum (pbr_fs.wgsl)
   color += out.emissive;
   return vec4<f32>(apply_fog(color, in.world), alpha);
 }

@@ -263,7 +263,7 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   var prefiltered = reflected_light(r, surface.world, s.roughness * frame.params.y) * frame.params.x;
   if ((u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, surface.world, in.clip.xy); }
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  color += (kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y)) * material.flags.z;
+  color += (kd_ibl * irradiance * s.albedo + prefiltered * (s.f0 * lut.x + lut.y)) * material.flags.z;  // Karis split sum (pbr_fs.wgsl)
   color += emissive;
   o.color = vec4<f32>(apply_fog(color, surface.world), select(1.0, coverage, a2c));
   return o;

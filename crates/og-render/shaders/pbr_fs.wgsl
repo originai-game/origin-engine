@@ -413,7 +413,9 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // (Not a blended surface's: it lies over the one they were traced for.)
   if (!oit_pass && (u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world_pos, in.clip.xy); }
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  var specular_ibl = prefiltered * (f_ibl * lut.x + lut.y);
+  // Split sum as Karis (and three.js): F0 scales the LUT, whose bias term already holds the Fresnel rise at grazing
+  // angles; f_ibl * lut.x counted it twice (rough leaves seen edge-on reflected 3-4x the sky).
+  var specular_ibl = prefiltered * (s.f0 * lut.x + lut.y);
   if (EFFECTS && material.toon.x > 0.5 && frame.toon.y < 1.0) {
     // Toon ambient (frame.toon.y 0): one flat colour, the light from above
     // and below averaged (MToon's equalised ambient), and the environment's

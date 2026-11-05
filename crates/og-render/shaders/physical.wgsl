@@ -516,7 +516,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   // not a blended surface's: it lies over the one they were traced for.
   if (!oit_pass && (u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world_pos, in.clip.xy); }
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  let env_brdf = f_ibl * lut.x + lut.y;
+  let env_brdf = f0_ibl * lut.x + lut.y;  // Karis split sum (pbr_fs.wgsl)
   let ao_sample = maps.b;
   var ibl_scale = material.flags.z * keep;
   if (material.flags.y >= 0.0) {

@@ -169,7 +169,7 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   if (material.flags.y >= 0.0) {
     ibl_scale *= mix(1.0, textureSample(ao_tex, material_sampler, material_uv(UV_AO, in.uv)).r, material.flags.y);
   }
-  color += (kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y)) * ibl_scale;
+  color += (kd_ibl * irradiance * s.albedo + prefiltered * (s.f0 * lut.x + lut.y)) * ibl_scale;  // Karis split sum (pbr_fs.wgsl)
   color += emissive * ao_all;
   if (frame.light_color.w > 2.5) {
     // Debug (DebugView::lit_code, as pbr_fs.wgsl): 3 albedo, 4 diffuse image-based light, 5 specular image-based
