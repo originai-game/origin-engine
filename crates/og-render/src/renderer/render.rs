@@ -326,7 +326,11 @@ impl Renderer {
         // prepass depth for their occlusion.
         let lens_flare = post_fx.lens_flare.filter(|f| f.intensity > 0.0);
         let flare_sources_on = WORLD_3D && !cam.orthographic && lens_flare.is_some();
-        let fluids_3d = WORLD_3D && scene.fluids_3d.iter().any(|f| !f.particles.is_empty());
+        let fluids_3d = WORLD_3D
+            && scene
+                .fluids_3d
+                .iter()
+                .any(|f| !f.particles.is_empty() || f.visual.is_some());
         let depth_bands = scene.stylise.depth_bands.filter(|b| b.count >= 2);
         // Ink or hatching on depth edges reads the prepass in the lines
         // pass, a canvas, hatching or halftone on surfaces in the paint or
@@ -3732,10 +3736,18 @@ impl Renderer {
         // composite draw samples.
         let fluid_bounds = instances::fold_box(
             None,
-            scene
-                .fluids_3d
-                .iter()
-                .flat_map(|f| f.particles.iter().map(move |&p| (p, f.radius))),
+            scene.fluids_3d.iter().flat_map(|f| {
+                // A visual fluid: its spawn box's corners.
+                let corners = f
+                    .visual
+                    .iter()
+                    .flat_map(|v| [v.centre - v.size * 0.5, v.centre + v.size * 0.5]);
+                f.particles
+                    .iter()
+                    .copied()
+                    .chain(corners)
+                    .map(move |p| (p, f.radius))
+            }),
         )
         .map(|(lo, hi)| ((lo + hi) * 0.5, (hi - lo).length() * 0.5));
         let fluid_frame = match fluid3d::views(&self.graph, scene_depth) {
@@ -3750,9 +3762,25 @@ impl Renderer {
                 },
                 (self.width, self.height),
                 &views,
+                self.visual_fluids.is_some(),
             ),
             _ => None,
         };
+        if let Some(fluids) = self.visual_fluids.as_mut() {
+            let slots = match fluid_frame {
+                Some(_) => self.fluid3d.visual.as_slice(),
+                None => &[],
+            };
+            fluids.prepare(
+                &self.device,
+                &self.queue,
+                slots,
+                &scene.colliders,
+                scene.tick,
+                scene.tick_rate,
+                self.fluid3d.instances(),
+            );
+        }
         // The 3D fluids as each due capture face draws them: the frame's
         // particles through the face camera into the face's own targets,
         // over its depth and through its copy (fluid3d.rs `camera_frame`).
@@ -4011,6 +4039,9 @@ impl Renderer {
                     pipelines.encode(&mut encoder, v, false);
                 }
             }
+        }
+        if let Some(fluids) = &self.visual_fluids {
+            fluids.encode(&mut encoder);
         }
         if let Some(pipelines) = &self.surfaces {
             for mesh in &self.cache.meshes {

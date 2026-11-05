@@ -1140,6 +1140,23 @@ fn fluids3(scene: &Scene, settings: &Physics, dt: f32, sim: &mut Sim) {
     let mut groups: IdMap<u32, Vec<usize>> = IdMap::new();
     for (k, (e, position, fluid)) in scene.fluids3.iter().enumerate() {
         let key = e.to_bits();
+        if fluid.simulation == SIMULATION_VISUAL {
+            // The renderer's (SIMULATION_VISUAL): no particles in the
+            // tick, in no group.
+            let empty = Fluid3D {
+                count: 0,
+                emit_rate: 0.0,
+                ..*fluid
+            };
+            if sim
+                .fluids3
+                .get(&key)
+                .is_none_or(|s| !s.positions.is_empty())
+            {
+                sim.fluids3.insert(key, Fluid3State::new(&empty, *position));
+            }
+            continue;
+        }
         let rebuild = sim
             .fluids3
             .get(&key)

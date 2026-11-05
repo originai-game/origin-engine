@@ -109,7 +109,7 @@ const REGISTERED_BY_MODULES: &[&str] = &[
 /// og.AudioBusFx, version 2: the bus graph and the bus effects;
 /// og-physics's og.RigidBody and og.Physics, version 2: sleep; og.Joint,
 /// version 2: breaking; og.Vehicle, version 2: the drivetrain; og.Cloth,
-/// og.SoftBody and og.Garment, version 2: simulation; the runtime's
+/// og.SoftBody, og.Garment and og.Fluid3D, version 2: simulation; the runtime's
 /// og.VideoPlayer, version 2: an f64 time).
 pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
     use og_core::Reflect;
@@ -126,6 +126,7 @@ pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
         "og.Cloth" => og_physics::Cloth::schema().version,
         "og.SoftBody" => og_physics::SoftBody::schema().version,
         "og.Garment" => og_physics::Garment::schema().version,
+        "og.Fluid3D" => og_physics::Fluid3D::schema().version,
         crate::video::PLAYER => crate::video::PLAYER_VERSION,
         // R11: Light2D's kind, cone, height and layers; Occluder2D's
         // polygon and layers; Lighting2D's shadowAngles.

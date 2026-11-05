@@ -70,6 +70,7 @@ const ADDED_FIELDS: &[(&str, &str)] = &[
     // Later, and as much outside the table: the GPU visual simulation mode.
     ("og.Cloth", "simulation"),
     ("og.Garment", "simulation"),
+    ("og.Fluid3D", "simulation"),
 ];
 
 fn table(snapshot: &og_net::Snapshot) -> BTreeMap<String, Vec<String>> {

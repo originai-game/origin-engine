@@ -4315,6 +4315,11 @@
           "name": "visible",
           "column": "bool",
           "default": true
+        },
+        {
+          "name": "simulation",
+          "column": "u32",
+          "default": 0
         }
       ]
     },

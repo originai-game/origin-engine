@@ -449,3 +449,46 @@ fn the_2d_profile_does_not_simulate_it() {
     run(&mut w, 10);
     assert!(p.fluid3d_particles(e).is_none());
 }
+
+/// SIMULATION_VISUAL: the renderer's fluid has no particles in the tick
+/// (even with an emitter), joins no group, and leaves a gameplay fluid
+/// beside it, in its own group, exactly as it runs alone.
+#[test]
+fn a_visual_fluid_has_no_particles_in_the_tick_and_leaves_its_group_alone() {
+    let build = |with_visual: bool| {
+        let (mut w, p) = world3();
+        let water = w
+            .spawn((
+                at(0.0, 1.0, 0.0),
+                Fluid3D {
+                    count: 300,
+                    group: 1,
+                    ..Fluid3D::default()
+                },
+            ))
+            .unwrap();
+        let visual = with_visual.then(|| {
+            w.spawn((
+                at(0.2, 1.2, 0.0),
+                Fluid3D {
+                    count: 300,
+                    group: 1,
+                    emit_rate: 600.0,
+                    simulation: SIMULATION_VISUAL,
+                    ..Fluid3D::default()
+                },
+            ))
+            .unwrap()
+        });
+        (w, p, water, visual)
+    };
+    let (mut a, pa, water_a, visual) = build(true);
+    let (mut b, pb, water_b, _) = build(false);
+    run(&mut a, 60);
+    run(&mut b, 60);
+    let visual = visual.unwrap();
+    assert_eq!(pa.fluid3d_particles(visual), Some(Vec::new()));
+    assert_eq!(pa.fluid3d_mix(visual), None);
+    assert_eq!(particles(&pa, water_a), particles(&pb, water_b));
+    assert_eq!(pa.fluid3d_mix(water_a), None, "alone in its group");
+}

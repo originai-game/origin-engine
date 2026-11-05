@@ -291,7 +291,9 @@ mod stylise_object;
 mod surface;
 pub use surface::SimulationSurface;
 mod sea_wakes;
+mod visual_fluid;
 mod visual_sim;
+pub use visual_fluid::{VisualFluid, at_rest as visual_fluid_at_rest};
 pub use visual_sim::{VisualBody, VisualGarment};
 mod targets;
 mod terrain;
@@ -683,6 +685,8 @@ pub struct Renderer {
     garments: Option<garment_gpu::Pipelines>,
     /// The GPU solver of visual bodies ([`VisualBody`]), with `surfaces`.
     visual: Option<visual_sim::VisualPipelines>,
+    /// The GPU solver of visual fluids ([`VisualFluid`]), with `visual`.
+    visual_fluids: Option<visual_fluid::VisualFluids>,
     /// The previous frame's unjittered view-projection (motion vectors).
     prev_view_proj: Option<Mat4>,
     /// The last drawn clock, including frames with no simulation tick.

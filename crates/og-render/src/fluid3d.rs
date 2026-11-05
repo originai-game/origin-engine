@@ -59,6 +59,20 @@ pub struct Fluid3d {
     /// How much the surface is smoothed (times the drawn radius; 0: the
     /// spheres).
     pub smoothing: f32,
+    /// Simulated by the renderer (og.Fluid3D's SIMULATION_VISUAL):
+    /// `particles` is then empty and the GPU's are drawn.
+    pub visual: Option<Arc<crate::VisualFluid>>,
+}
+
+/// A visual fluid's place among the frame's instances, and its draw.
+pub(crate) struct VisualSlot {
+    pub fluid: Arc<crate::VisualFluid>,
+    /// Its first instance.
+    pub first: u32,
+    pub radius: f32,
+    pub color: Vec3,
+    /// Optical density per metre of chord (the instances' `color_k.w`).
+    pub density: f32,
 }
 
 impl Default for Fluid3d {
@@ -73,6 +87,7 @@ impl Default for Fluid3d {
             reflectivity: 1.0,
             refraction: 1.0,
             smoothing: 1.0,
+            visual: None,
         }
     }
 }
@@ -225,6 +240,8 @@ pub(crate) struct Fluid3dRenderer {
     instances: wgpu::Buffer,
     capacity: u64,
     scratch: Vec<Instance>,
+    /// This frame's visual fluids (`prepare`), after the CPU particles.
+    pub(crate) visual: Vec<VisualSlot>,
 }
 
 fn uniform_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
@@ -257,7 +274,10 @@ fn instance_buffer(device: &wgpu::Device, count: u64) -> wgpu::Buffer {
     device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("fluid 3d instances"),
         size: count * std::mem::size_of::<Instance>() as u64,
-        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        // Storage too: visual fluids write their particles into it.
+        usage: wgpu::BufferUsages::VERTEX
+            | wgpu::BufferUsages::COPY_DST
+            | wgpu::BufferUsages::STORAGE,
         mapped_at_creation: false,
     })
 }
@@ -466,11 +486,13 @@ impl Fluid3dRenderer {
             instances: instance_buffer(device, 1024),
             capacity: 1024,
             scratch: Vec::new(),
+            visual: Vec::new(),
         }
     }
 
     /// Uploads the frame's particles and uniforms and makes the bind
     /// groups. `None` when there is nothing to draw.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn prepare(
         &mut self,
         device: &wgpu::Device,
@@ -479,8 +501,10 @@ impl Fluid3dRenderer {
         camera: &Fluid3dCamera,
         screen: (u32, u32),
         views: &Fluid3dViews,
+        simulates: bool,
     ) -> Option<Fluid3dFrame> {
         self.scratch.clear();
+        let mut visual = Vec::new();
         for f in fluids {
             let r = f.radius;
             if !(r.is_finite() && r > 0.0) {
@@ -489,8 +513,22 @@ impl Fluid3dRenderer {
             let k = -(1.0 - f.opacity.clamp(0.0, 0.999)).ln();
             let share = f.volume.max(0.0) / (4.0 / 3.0 * std::f32::consts::PI * r * r * r);
             let density = if share.is_finite() { k * share } else { 0.0 };
-            let colors = f.colors.as_ref().filter(|c| c.len() == f.particles.len());
-            for (i, p) in f.particles.iter().enumerate() {
+            // A visual fluid's particles are the GPU's, after these; where
+            // the device does not simulate, its spawn box still.
+            let rest;
+            let particles: &[Vec3] = match &f.visual {
+                Some(v) if simulates => {
+                    visual.push((v.clone(), r, f.color, density));
+                    continue;
+                }
+                Some(v) => {
+                    rest = crate::visual_fluid::at_rest(v);
+                    &rest
+                }
+                None => &f.particles,
+            };
+            let colors = f.colors.as_ref().filter(|c| c.len() == particles.len());
+            for (i, p) in particles.iter().enumerate() {
                 if !p.is_finite() {
                     continue;
                 }
@@ -501,16 +539,32 @@ impl Fluid3dRenderer {
                 });
             }
         }
-        let first = fluids.iter().find(|f| !f.particles.is_empty())?;
-        if self.scratch.is_empty() {
+        let first = fluids
+            .iter()
+            .find(|f| !f.particles.is_empty() || f.visual.is_some())?;
+        let mut count = self.scratch.len() as u64;
+        self.visual.clear();
+        for (fluid, radius, color, density) in visual {
+            let n = crate::visual_fluid::Grid::of(&fluid, 1.0 / 60.0).n;
+            self.visual.push(VisualSlot {
+                fluid,
+                first: count as u32,
+                radius,
+                color,
+                density,
+            });
+            count += u64::from(n);
+        }
+        if count == 0 {
             return None;
         }
-        let count = self.scratch.len() as u64;
         if count > self.capacity {
             self.capacity = count.next_power_of_two();
             self.instances = instance_buffer(device, self.capacity);
         }
-        queue.write_buffer(&self.instances, 0, bytemuck::cast_slice(&self.scratch));
+        if !self.scratch.is_empty() {
+            queue.write_buffer(&self.instances, 0, bytemuck::cast_slice(&self.scratch));
+        }
         let (gpu, blur) = camera_uniforms(first, camera, screen);
         queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&gpu));
         for (buffer, b) in self.blur_uniforms.iter().zip(&blur) {
@@ -524,6 +578,11 @@ impl Fluid3dRenderer {
     /// face: probes.rs), into `views` of `screen` pixels, after
     /// [`Fluid3dRenderer::prepare`] uploaded the particles for `main`:
     /// uniforms of its own over the same instances.
+    /// The instance buffer visual fluids write into.
+    pub(crate) fn instances(&self) -> &wgpu::Buffer {
+        &self.instances
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn camera_frame(
         &self,

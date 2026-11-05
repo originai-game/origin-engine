@@ -1344,9 +1344,9 @@ module physics {
 
   component Fluid3D {
     doc "A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure that gives surface tension, viscosity) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider, the terrain's height field included (pushed out; they push nothing back), and stay inside `bounds` around the entity when it is set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes those that enter it. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as a screen-space surface: the particles' depth smoothed into one surface, refracting what is behind by its thickness and reflecting the sky, lit by the scene's lights. Cost: about 0.9 ms of CPU a tick for 2000 particles at 1 substep, 1.8 ms at 2 (native and wasm alike), growing with the particles; keep a scene's fluids to a few thousand particles. The surface costs about 1.1 ms of GPU (an Apple M4 Pro, the fluid covering a third of a 1280×720 frame) whatever the particle count, growing with the pixels it covers."
-    field count u32 "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it)." {
+    field count u32 "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (SIMULATION_VISUAL) up to 262144." {
       default 2000
-      max 32768
+      max 262144
     }
     field size Vector3 "The spawn box, centred on the entity." {
       default 2 1 2
@@ -1410,7 +1410,7 @@ module physics {
     field maxCount u32 "The most particles alive at once (the emitter stops there)." {
       default 8192
       min 1
-      max 32768
+      max 262144
     }
     field emitRate f32 "Particles the emitter adds per second (0: no emitter)." {
       min 0
@@ -1466,6 +1466,10 @@ module physics {
     }
     field visible bool "Whether the renderer draws it." {
       default true
+    }
+    field simulation u32 "SIMULATION_GAMEPLAY 0 (the tick's double density relaxation, world state) or SIMULATION_VISUAL 1: the renderer simulates it on the GPU with MLS-MPM (Hu et al. 2018) for looks only, never read back. A visual fluid has no particles in the tick (og.physics.fluid3dParticles answers none, buoyancy and groups ignore it, the snapshot carries nothing of it): the renderer spawns `count` in the box and simulates them in its container (`bounds`; three times `size` on an open axis), on a grid of cells about `radius` across (kept between two and eight spawned particles a cell, and larger for a container past two million cells), against the colliders drawn this frame, with the emitter and the sink (a particle that enters the sink comes back at the emitter, or goes without one). `stiffness` and `viscosity` scale the solver's own (at their defaults it is water); `restDensity`, `nearStiffness`, `group`, `density` and `mixing` do not apply, and `substeps` is a least (it takes more where gravity needs them). It runs on tick time: frames that skip ticks step those too, up to eight; a world restored, rolled back or further ahead, or a changed count, seed, size, bounds, radius or maxCount, starts it again from the spawn box. Cost, measured on an Apple M4 Pro: a dam break of 60 000 growing to 110 000 particles in 5 cm cells, three steps a tick, took 4.9 ms of GPU a frame with its surface; it grows with the particles and the steps. Where RenderCapabilities.visualSimulation is false it draws the spawned box, still." {
+      min 0
+      max 1
     }
   }
 

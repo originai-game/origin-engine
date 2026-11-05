@@ -277,6 +277,10 @@ impl Renderer {
                 .map(crate::garment_gpu::Mesh::bytes)
                 .sum::<u64>()
             + self
+                .visual_fluids
+                .as_ref()
+                .map_or(0, crate::visual_fluid::VisualFluids::bytes)
+            + self
                 .cache
                 .skins
                 .iter()

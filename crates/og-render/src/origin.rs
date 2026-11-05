@@ -183,6 +183,12 @@ impl RenderScene {
         }
         for f in &mut self.fluids_3d {
             f.particles = f.particles.iter().map(|p| *p + d).collect();
+            if let Some(v) = &mut f.visual {
+                let v = std::sync::Arc::make_mut(v);
+                v.centre += d;
+                v.emit_at += d;
+                v.sink = v.sink.map(|(lo, hi)| (lo + d, hi + d));
+            }
         }
     }
 }

@@ -41,6 +41,16 @@ is one line here, written at the merge that changes
   (lit embers, magic shards) adds `blend additive`. `og upgrade` lists
   every lit mesh emitter without a `blend` line (changelog.json's
   breaking entry). No IDL change.
+- **Visual 3D fluids on the GPU.** `og.Fluid3D` gains `simulation`:
+  `SIMULATION_VISUAL` (1) has the renderer simulate it with MLS-MPM
+  (ported from matsuoka-601/WebGPU-Ocean, MIT; third_party/webgpu-ocean)
+  against the scene's colliders, up to 262 144 particles, drawn by the
+  same screen-space surface, with nothing read back. The tick holds no
+  particles for it (`fluid3dParticles` answers an empty list, buoyancy and
+  groups ignore it), so gameplay stays on the CPU fluid. `count` and
+  `maxCount` reach 262 144 (the tick still simulates at most 32 768).
+  og.Fluid3D is schema version 2; the default keeps every game as it was.
+
 - **Stylise.hatchingPaper.** The paper hatching lies on: one-ink hatching
   lifts its ground towards it, and under `hatchingKeepColor` the wash lies
   on the paper's colour at its own lightness. Under `hatchingKeepColor` a

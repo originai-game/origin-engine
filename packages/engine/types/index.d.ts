@@ -15008,10 +15008,10 @@ export interface Fluid2D {
  */
 export interface Fluid3D {
   /**
-   * How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it).
+   * How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (SIMULATION_VISUAL) up to 262144.
    *
    * @default 2000
-   * @range ..32768
+   * @range ..262144
    */
   count: number;
   /**
@@ -15109,7 +15109,7 @@ export interface Fluid3D {
    * The most particles alive at once (the emitter stops there).
    *
    * @default 8192
-   * @range 1..32768
+   * @range 1..262144
    */
   maxCount: number;
   /**
@@ -15200,6 +15200,12 @@ export interface Fluid3D {
    * @default true
    */
   visible: boolean;
+  /**
+   * SIMULATION_GAMEPLAY 0 (the tick's double density relaxation, world state) or SIMULATION_VISUAL 1: the renderer simulates it on the GPU with MLS-MPM (Hu et al. 2018) for looks only, never read back. A visual fluid has no particles in the tick (og.physics.fluid3dParticles answers none, buoyancy and groups ignore it, the snapshot carries nothing of it): the renderer spawns `count` in the box and simulates them in its container (`bounds`; three times `size` on an open axis), on a grid of cells about `radius` across (kept between two and eight spawned particles a cell, and larger for a container past two million cells), against the colliders drawn this frame, with the emitter and the sink (a particle that enters the sink comes back at the emitter, or goes without one). `stiffness` and `viscosity` scale the solver's own (at their defaults it is water); `restDensity`, `nearStiffness`, `group`, `density` and `mixing` do not apply, and `substeps` is a least (it takes more where gravity needs them). It runs on tick time: frames that skip ticks step those too, up to eight; a world restored, rolled back or further ahead, or a changed count, seed, size, bounds, radius or maxCount, starts it again from the spawn box. Cost, measured on an Apple M4 Pro: a dam break of 60 000 growing to 110 000 particles in 5 cm cells, three steps a tick, took 4.9 ms of GPU a frame with its surface; it grows with the particles and the steps. Where RenderCapabilities.visualSimulation is false it draws the spawned box, still.
+   *
+   * @range 0..1
+   */
+  simulation: number;
 }
 
 /**
@@ -50341,7 +50347,7 @@ export declare namespace og {
   /**
    * A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure that gives surface tension, viscosity) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider, the terrain's height field included (pushed out; they push nothing back), and stay inside `bounds` around the entity when it is set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes those that enter it. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as a screen-space surface: the particles' depth smoothed into one surface, refracting what is behind by its thickness and reflecting the sky, lit by the scene's lights. Cost: about 0.9 ms of CPU a tick for 2000 particles at 1 substep, 1.8 ms at 2 (native and wasm alike), growing with the particles; keep a scene's fluids to a few thousand particles. The surface costs about 1.1 ms of GPU (an Apple M4 Pro, the fluid covering a third of a 1280×720 frame) whatever the particle count, growing with the pixels it covers.
    */
-  const Fluid3D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly bounds: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly maxCount: FieldSpec<"u32">; readonly emitRate: FieldSpec<"f32">; readonly emitOffset: FieldSpec<"Vector3">; readonly emitVelocity: FieldSpec<"Vector3">; readonly emitRadius: FieldSpec<"f32">; readonly sinkOffset: FieldSpec<"Vector3">; readonly sinkSize: FieldSpec<"Vector3">; readonly color: FieldSpec<"Vector3">; readonly opacity: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly drawScale: FieldSpec<"f32">; readonly smoothing: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, Fluid3D>;
+  const Fluid3D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly bounds: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly maxCount: FieldSpec<"u32">; readonly emitRate: FieldSpec<"f32">; readonly emitOffset: FieldSpec<"Vector3">; readonly emitVelocity: FieldSpec<"Vector3">; readonly emitRadius: FieldSpec<"f32">; readonly sinkOffset: FieldSpec<"Vector3">; readonly sinkSize: FieldSpec<"Vector3">; readonly color: FieldSpec<"Vector3">; readonly opacity: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly drawScale: FieldSpec<"f32">; readonly smoothing: FieldSpec<"f32">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"u32"> }, Fluid3D>;
   /**
    * Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them.
    */

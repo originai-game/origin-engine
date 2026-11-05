@@ -35968,9 +35968,9 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it).",
+          "description": "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (SIMULATION_VISUAL) up to 262144.",
           "default": 2000,
-          "maximum": 32768
+          "maximum": 262144
         },
         "size": {
           "$ref": "#/$defs/Vector3",
@@ -36084,7 +36084,7 @@
           "description": "The most particles alive at once (the emitter stops there).",
           "default": 8192,
           "minimum": 1,
-          "maximum": 32768
+          "maximum": 262144
         },
         "emitRate": {
           "type": "number",
@@ -36191,6 +36191,15 @@
           "type": "boolean",
           "description": "Whether the renderer draws it.",
           "default": true
+        },
+        "simulation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "SIMULATION_GAMEPLAY 0 (the tick's double density relaxation, world state) or SIMULATION_VISUAL 1: the renderer simulates it on the GPU with MLS-MPM (Hu et al. 2018) for looks only, never read back. A visual fluid has no particles in the tick (og.physics.fluid3dParticles answers none, buoyancy and groups ignore it, the snapshot carries nothing of it): the renderer spawns `count` in the box and simulates them in its container (`bounds`; three times `size` on an open axis), on a grid of cells about `radius` across (kept between two and eight spawned particles a cell, and larger for a container past two million cells), against the colliders drawn this frame, with the emitter and the sink (a particle that enters the sink comes back at the emitter, or goes without one). `stiffness` and `viscosity` scale the solver's own (at their defaults it is water); `restDensity`, `nearStiffness`, `group`, `density` and `mixing` do not apply, and `substeps` is a least (it takes more where gravity needs them). It runs on tick time: frames that skip ticks step those too, up to eight; a world restored, rolled back or further ahead, or a changed count, seed, size, bounds, radius or maxCount, starts it again from the spawn box. Cost, measured on an Apple M4 Pro: a dam break of 60 000 growing to 110 000 particles in 5 cm cells, three steps a tick, took 4.9 ms of GPU a frame with its surface; it grows with the particles and the steps. Where RenderCapabilities.visualSimulation is false it draws the spawned box, still.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
         }
       },
       "additionalProperties": false

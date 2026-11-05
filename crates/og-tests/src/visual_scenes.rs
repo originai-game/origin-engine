@@ -616,3 +616,119 @@ pub fn visual_garment_scene(visual: bool) -> RenderScene {
     scene.skinned_instances.push(skirt);
     scene
 }
+
+/// The ticks the fluid runs before its frame.
+pub const FLUID_TICKS: u32 = 150;
+
+/// A dam break in a stone basin (og.Fluid3D's SIMULATION_VISUAL): a block
+/// of 60 000 particles at the basin's left end falls, runs round a brass
+/// ball and up the far wall, while a spout pours more in from the right.
+/// `visual` false draws the block where it spawned (what a device without
+/// compute draws).
+pub fn visual_fluid_scene(visual: bool) -> RenderScene {
+    let mut scene = daylight();
+    scene.camera = Camera {
+        position: Vec3::new(0.6, 2.6, 4.4),
+        target: Vec3::new(0.0, 0.35, 0.0),
+        exposure: Exposure::linear(0.85),
+        ..Default::default()
+    };
+    let stone = scene.add_material(Material {
+        base_color: [0.56, 0.52, 0.47, 1.0],
+        roughness: 0.9,
+        ..Default::default()
+    });
+    let brass = scene.add_material(Material {
+        base_color: [0.78, 0.6, 0.3, 1.0],
+        metallic: 1.0,
+        roughness: 0.35,
+        ..Default::default()
+    });
+    let ground = scene.add_mesh(shapes::plane(30.0, 10.0));
+    scene.add_instance(ground, stone, Mat4::IDENTITY);
+    scene.colliders.push(SceneCollider::Plane {
+        normal: Vec3::Y,
+        offset: 0.0,
+    });
+    // The basin's walls, 3 x 2 m inside, 0.9 m high.
+    let (inside, high, thick) = (Vec3::new(3.0, 0.9, 2.0), 0.9, 0.12);
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    for (at, size) in [
+        (
+            Vec3::new(-(inside.x + thick) * 0.5, high * 0.5, 0.0),
+            Vec3::new(thick, high, inside.z + 2.0 * thick),
+        ),
+        (
+            Vec3::new((inside.x + thick) * 0.5, high * 0.5, 0.0),
+            Vec3::new(thick, high, inside.z + 2.0 * thick),
+        ),
+        (
+            Vec3::new(0.0, high * 0.5, -(inside.z + thick) * 0.5),
+            Vec3::new(inside.x, high, thick),
+        ),
+        (
+            Vec3::new(0.0, high * 0.5, (inside.z + thick) * 0.5),
+            Vec3::new(inside.x, high * 0.35, thick),
+        ),
+    ] {
+        let at = if size.y < high {
+            at - Vec3::Y * (high - size.y) * 0.5
+        } else {
+            at
+        };
+        let transform = Mat4::from_scale_rotation_translation(size, Quat::IDENTITY, at);
+        scene.add_instance(cube, stone, transform);
+        scene.colliders.push(SceneCollider::Box {
+            transform,
+            half_extents: Vec3::splat(0.5),
+        });
+    }
+    let ball = scene.add_mesh(shapes::sphere(32, 20));
+    let (ball_at, ball_r) = (Vec3::new(0.2, 0.3, -0.1), 0.3);
+    scene.add_instance(
+        ball,
+        brass,
+        Mat4::from_scale_rotation_translation(Vec3::splat(ball_r * 2.0), Quat::IDENTITY, ball_at),
+    );
+    scene.colliders.push(SceneCollider::Sphere {
+        center: ball_at,
+        radius: ball_r,
+    });
+    let fluid = og_render::VisualFluid {
+        key: 1,
+        count: 60_000,
+        centre: Vec3::new(-1.0, 0.45, 0.0),
+        size: Vec3::new(1.0, 0.9, 2.0),
+        // The basin, from the block's centre, with room above it.
+        bounds: Vec3::new(5.0, 3.0, 2.0),
+        cell: 0.05,
+        max_count: 110_000,
+        substeps: 2,
+        seed: 7,
+        // A spout: 3000 particles a second at 3.3 m/s is a jet about 9 cm
+        // across, thin enough to read as a pour, thick enough to stay whole.
+        emit_rate: 3000.0,
+        emit_at: Vec3::new(1.05, 1.3, 0.3),
+        emit_radius: 0.04,
+        emit_velocity: Vec3::new(-0.9, -3.2, 0.0),
+        ..og_render::VisualFluid::default()
+    };
+    let volume = 1.0 * 0.9 * 2.0 / 60_000.0;
+    let mut drawn = og_render::Fluid3d {
+        // Clear basin water: deep blue-green where it is thick, the spacing
+        // (3 cm) covered twice over so thin sheets stay whole.
+        color: Vec3::new(0.06, 0.32, 0.42),
+        opacity: 0.75,
+        radius: 0.065,
+        smoothing: 1.3,
+        volume,
+        ..og_render::Fluid3d::default()
+    };
+    if visual {
+        drawn.visual = Some(Arc::new(fluid));
+    } else {
+        drawn.particles = Arc::from(og_render::visual_fluid_at_rest(&fluid));
+    }
+    scene.fluids_3d.push(drawn);
+    scene
+}

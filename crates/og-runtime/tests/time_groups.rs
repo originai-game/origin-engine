@@ -198,6 +198,7 @@ fn a_grouped_world_restores_its_scales_in_a_fresh_session() {
 /// b7cbee657edc5408 after Stylise.hatchingPaper, and
 /// e79a5545da817a9a after Cloth, SoftBody and Garment version 2 (simulation), and
 /// e593a5e2103c3fa4 after MaterialStyle.wireframeColor.
+/// 623aedb758cbc484 after Fluid3D version 2 (simulation).
 #[test]
 fn a_world_without_time_groups_keeps_its_hash() {
     set_hooks(Rc::new(Game));
@@ -210,5 +211,5 @@ fn a_world_without_time_groups_keeps_its_hash() {
         value(og_world_resource(engine, "og.TimeGroups".into())),
         json!({ "scales": [] })
     );
-    assert_eq!(hash(engine), "e593a5e2103c3fa4");
+    assert_eq!(hash(engine), "623aedb758cbc484");
 }

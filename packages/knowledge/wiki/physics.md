@@ -175,7 +175,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 10258</sub>
+<sub>`api.ogt` line 10262</sub>
 
 <a id="fn-raycastAll"></a>
 
@@ -205,7 +205,7 @@ fn raycastAll {
 }
 ```
 
-<sub>`api.ogt` line 10265</sub>
+<sub>`api.ogt` line 10269</sub>
 
 <a id="fn-projectPoint"></a>
 
@@ -235,7 +235,7 @@ fn projectPoint {
 }
 ```
 
-<sub>`api.ogt` line 10272</sub>
+<sub>`api.ogt` line 10276</sub>
 
 <a id="fn-shapeCast"></a>
 
@@ -265,7 +265,7 @@ fn shapeCast {
 }
 ```
 
-<sub>`api.ogt` line 10279</sub>
+<sub>`api.ogt` line 10283</sub>
 
 <a id="fn-overlap"></a>
 
@@ -295,7 +295,7 @@ fn overlap {
 }
 ```
 
-<sub>`api.ogt` line 10286</sub>
+<sub>`api.ogt` line 10290</sub>
 
 <a id="fn-applyForce"></a>
 
@@ -331,7 +331,7 @@ fn applyForce {
 }
 ```
 
-<sub>`api.ogt` line 10293</sub>
+<sub>`api.ogt` line 10297</sub>
 
 <a id="fn-applyImpulse"></a>
 
@@ -367,7 +367,7 @@ fn applyImpulse {
 }
 ```
 
-<sub>`api.ogt` line 10304</sub>
+<sub>`api.ogt` line 10308</sub>
 
 <a id="fn-applyTorque"></a>
 
@@ -399,7 +399,7 @@ fn applyTorque {
 }
 ```
 
-<sub>`api.ogt` line 10315</sub>
+<sub>`api.ogt` line 10319</sub>
 
 <a id="fn-applyTorqueImpulse"></a>
 
@@ -431,7 +431,7 @@ fn applyTorqueImpulse {
 }
 ```
 
-<sub>`api.ogt` line 10323</sub>
+<sub>`api.ogt` line 10327</sub>
 
 <a id="fn-setMesh"></a>
 
@@ -463,7 +463,7 @@ fn setMesh {
 }
 ```
 
-<sub>`api.ogt` line 10331</sub>
+<sub>`api.ogt` line 10335</sub>
 
 <a id="fn-ropePoints"></a>
 
@@ -493,7 +493,7 @@ fn ropePoints {
 }
 ```
 
-<sub>`api.ogt` line 10393</sub>
+<sub>`api.ogt` line 10397</sub>
 
 <a id="fn-garmentPoints"></a>
 
@@ -523,7 +523,7 @@ fn garmentPoints {
 }
 ```
 
-<sub>`api.ogt` line 10400</sub>
+<sub>`api.ogt` line 10404</sub>
 
 <a id="fn-clothPoints"></a>
 
@@ -553,7 +553,7 @@ fn clothPoints {
 }
 ```
 
-<sub>`api.ogt` line 10407</sub>
+<sub>`api.ogt` line 10411</sub>
 
 <a id="fn-softBodyPoints"></a>
 
@@ -583,7 +583,7 @@ fn softBodyPoints {
 }
 ```
 
-<sub>`api.ogt` line 10420</sub>
+<sub>`api.ogt` line 10424</sub>
 
 <a id="fn-fluidParticles"></a>
 
@@ -613,7 +613,7 @@ fn fluidParticles {
 }
 ```
 
-<sub>`api.ogt` line 10427</sub>
+<sub>`api.ogt` line 10431</sub>
 
 <a id="fn-fluid3dParticles"></a>
 
@@ -643,7 +643,7 @@ fn fluid3dParticles {
 }
 ```
 
-<sub>`api.ogt` line 10434</sub>
+<sub>`api.ogt` line 10438</sub>
 
 <a id="fn-waterHeight"></a>
 
@@ -677,7 +677,7 @@ fn waterHeight {
 }
 ```
 
-<sub>`api.ogt` line 10441</sub>
+<sub>`api.ogt` line 10445</sub>
 
 <a id="fn-vehicleWheels"></a>
 
@@ -707,7 +707,7 @@ fn vehicleWheels {
 }
 ```
 
-<sub>`api.ogt` line 10450</sub>
+<sub>`api.ogt` line 10454</sub>
 
 <a id="fn-ragdollRigFromSkeleton"></a>
 
@@ -737,7 +737,7 @@ fn ragdollRigFromSkeleton {
 }
 ```
 
-<sub>`api.ogt` line 10457</sub>
+<sub>`api.ogt` line 10461</sub>
 
 <a id="fn-setRagdollRig"></a>
 
@@ -769,7 +769,7 @@ fn setRagdollRig {
 }
 ```
 
-<sub>`api.ogt` line 10464</sub>
+<sub>`api.ogt` line 10468</sub>
 
 <a id="fn-ragdollPose"></a>
 
@@ -799,7 +799,7 @@ fn ragdollPose {
 }
 ```
 
-<sub>`api.ogt` line 10472</sub>
+<sub>`api.ogt` line 10476</sub>
 
 <a id="fn-stats"></a>
 
@@ -827,7 +827,7 @@ fn stats {
 }
 ```
 
-<sub>`api.ogt` line 10500</sub>
+<sub>`api.ogt` line 10504</sub>
 
 ## Components, resources and events
 
@@ -2769,7 +2769,7 @@ Token `og.Fluid3D`, registered under the schema name `og.Fluid3D`; its value typ
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `count` | `number` | `2000` | ≤ 32768 | — | — | How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). |
+| `count` | `number` | `2000` | ≤ 262144 | — | — | How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (SIMULATION_VISUAL) up to 262144. |
 | `size` | `Vector3` | `{ x: 2, y: 1, z: 2 }` | — | `m` | — | The spawn box, centred on the entity. |
 | `bounds` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `none` | The container around the entity (0 on an axis: open on that axis; colliders and the terrain still hold it). |
 | `radius` | `number` | `0.2` | ≥ 0.02 | `m` | tunable | The interaction radius: particles closer than this push and drag each other. Cost grows with the particles, not the radius. |
@@ -2783,7 +2783,7 @@ Token `og.Fluid3D`, registered under the schema name `og.Fluid3D`; its value typ
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
 | `substeps` | `number` | `2` | 1 … 8 | — | — | Simulation steps per tick (each costs a full pass over the particles). |
 | `seed` | `number` | `0` | — | — | — | The seed of the spawn and emitter jitter. |
-| `maxCount` | `number` | `8192` | 1 … 32768 | — | — | The most particles alive at once (the emitter stops there). |
+| `maxCount` | `number` | `8192` | 1 … 262144 | — | — | The most particles alive at once (the emitter stops there). |
 | `emitRate` | `number` | `0` | 0 … 20000 | — | tunable | Particles the emitter adds per second (0: no emitter). |
 | `emitOffset` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the emitter is, from the entity (world axes). |
 | `emitVelocity` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | tunable | The velocity emitted particles start with. |
@@ -2797,13 +2797,14 @@ Token `og.Fluid3D`, registered under the schema name `og.Fluid3D`; its value typ
 | `drawScale` | `number` | `0.6` | 0.1 … 2 | — | — | The drawn size of each particle (times radius). |
 | `smoothing` | `number` | `1` | 0 … 2 | — | — | How much the surface is smoothed (0: beads, 1: one surface). |
 | `visible` | `boolean` | `true` | — | — | — | Whether the renderer draws it. |
+| `simulation` | `number` | `0` | 0 … 1 | — | — | SIMULATION_GAMEPLAY 0 (the tick's double density relaxation, world state) or SIMULATION_VISUAL 1: the renderer simulates it on the GPU with MLS-MPM (Hu et al. 2018) for looks only, never read back. A visual fluid has no particles in the tick (og.physics.fluid3dParticles answers none, buoyancy and groups ignore it, the snapshot carries nothing of it): the renderer spawns `count` in the box and simulates them in its container (`bounds`; three times `size` on an open axis), on a grid of cells about `radius` across (kept between two and eight spawned particles a cell, and larger for a container past two million cells), against the colliders drawn this frame, with the emitter and the sink (a particle that enters the sink comes back at the emitter, or goes without one). `stiffness` and `viscosity` scale the solver's own (at their defaults it is water); `restDensity`, `nearStiffness`, `group`, `density` and `mixing` do not apply, and `substeps` is a least (it takes more where gravity needs them). It runs on tick time: frames that skip ticks step those too, up to eight; a world restored, rolled back or further ahead, or a changed count, seed, size, bounds, radius or maxCount, starts it again from the spawn box. Cost, measured on an Apple M4 Pro: a dam break of 60 000 growing to 110 000 particles in 5 cm cells, three steps a tick, took 4.9 ms of GPU a frame with its surface; it grows with the particles and the steps. Where RenderCapabilities.visualSimulation is false it draws the spawned box, still. |
 
 ```ogt
 component Fluid3D {
   doc "A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure that gives surface tension, viscosity) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider, the terrain's height field included (pushed out; they push nothing back), and stay inside `bounds` around the entity when it is set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes those that enter it. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as a screen-space surface: the particles' depth smoothed into one surface, refracting what is behind by its thickness and reflecting the sky, lit by the scene's lights. Cost: about 0.9 ms of CPU a tick for 2000 particles at 1 substep, 1.8 ms at 2 (native and wasm alike), growing with the particles; keep a scene's fluids to a few thousand particles. The surface costs about 1.1 ms of GPU (an Apple M4 Pro, the fluid covering a third of a 1280×720 frame) whatever the particle count, growing with the pixels it covers."
-  field count u32 "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it)." {
+  field count u32 "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (SIMULATION_VISUAL) up to 262144." {
     default 2000
-    max 32768
+    max 262144
   }
   field size Vector3 "The spawn box, centred on the entity." {
     default 2 1 2
@@ -2867,7 +2868,7 @@ component Fluid3D {
   field maxCount u32 "The most particles alive at once (the emitter stops there)." {
     default 8192
     min 1
-    max 32768
+    max 262144
   }
   field emitRate f32 "Particles the emitter adds per second (0: no emitter)." {
     min 0
@@ -2923,6 +2924,10 @@ component Fluid3D {
   }
   field visible bool "Whether the renderer draws it." {
     default true
+  }
+  field simulation u32 "SIMULATION_GAMEPLAY 0 (the tick's double density relaxation, world state) or SIMULATION_VISUAL 1: the renderer simulates it on the GPU with MLS-MPM (Hu et al. 2018) for looks only, never read back. A visual fluid has no particles in the tick (og.physics.fluid3dParticles answers none, buoyancy and groups ignore it, the snapshot carries nothing of it): the renderer spawns `count` in the box and simulates them in its container (`bounds`; three times `size` on an open axis), on a grid of cells about `radius` across (kept between two and eight spawned particles a cell, and larger for a container past two million cells), against the colliders drawn this frame, with the emitter and the sink (a particle that enters the sink comes back at the emitter, or goes without one). `stiffness` and `viscosity` scale the solver's own (at their defaults it is water); `restDensity`, `nearStiffness`, `group`, `density` and `mixing` do not apply, and `substeps` is a least (it takes more where gravity needs them). It runs on tick time: frames that skip ticks step those too, up to eight; a world restored, rolled back or further ahead, or a changed count, seed, size, bounds, radius or maxCount, starts it again from the spawn box. Cost, measured on an Apple M4 Pro: a dam break of 60 000 growing to 110 000 particles in 5 cm cells, three steps a tick, took 4.9 ms of GPU a frame with its surface; it grows with the particles and the steps. Where RenderCapabilities.visualSimulation is false it draws the spawned box, still." {
+    min 0
+    max 1
   }
 }
 ```
@@ -2992,7 +2997,7 @@ component WaterSurface {
 }
 ```
 
-<sub>`api.ogt` line 9917</sub>
+<sub>`api.ogt` line 9921</sub>
 
 <a id="record-WaterLine"></a>
 
@@ -3069,7 +3074,7 @@ component WaterLine {
 }
 ```
 
-<sub>`api.ogt` line 9960</sub>
+<sub>`api.ogt` line 9964</sub>
 
 <a id="record-Buoyancy"></a>
 
@@ -3123,7 +3128,7 @@ component Buoyancy {
 }
 ```
 
-<sub>`api.ogt` line 10013</sub>
+<sub>`api.ogt` line 10017</sub>
 
 <a id="record-Splash"></a>
 
@@ -3155,7 +3160,7 @@ event Splash {
 }
 ```
 
-<sub>`api.ogt` line 10047</sub>
+<sub>`api.ogt` line 10051</sub>
 
 <a id="record-Ragdoll"></a>
 
@@ -3223,7 +3228,7 @@ component Ragdoll {
 }
 ```
 
-<sub>`api.ogt` line 10060</sub>
+<sub>`api.ogt` line 10064</sub>
 
 ## Types
 
@@ -3251,7 +3256,7 @@ struct QueryFilter {
 }
 ```
 
-<sub>`api.ogt` line 10105</sub>
+<sub>`api.ogt` line 10109</sub>
 
 <a id="type-RaycastDesc"></a>
 
@@ -3286,7 +3291,7 @@ struct RaycastDesc {
 }
 ```
 
-<sub>`api.ogt` line 10113</sub>
+<sub>`api.ogt` line 10117</sub>
 
 <a id="type-RaycastHit"></a>
 
@@ -3315,7 +3320,7 @@ struct RaycastHit {
 }
 ```
 
-<sub>`api.ogt` line 10129</sub>
+<sub>`api.ogt` line 10133</sub>
 
 <a id="type-RaycastAllDesc"></a>
 
@@ -3355,7 +3360,7 @@ struct RaycastAllDesc {
 }
 ```
 
-<sub>`api.ogt` line 10140</sub>
+<sub>`api.ogt` line 10144</sub>
 
 <a id="type-ProjectPointDesc"></a>
 
@@ -3390,7 +3395,7 @@ struct ProjectPointDesc {
 }
 ```
 
-<sub>`api.ogt` line 10160</sub>
+<sub>`api.ogt` line 10164</sub>
 
 <a id="type-PointProjection"></a>
 
@@ -3423,7 +3428,7 @@ struct PointProjection {
 }
 ```
 
-<sub>`api.ogt` line 10176</sub>
+<sub>`api.ogt` line 10180</sub>
 
 <a id="type-ShapeDesc"></a>
 
@@ -3465,7 +3470,7 @@ struct ShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 10190</sub>
+<sub>`api.ogt` line 10194</sub>
 
 <a id="type-ShapeCastDesc"></a>
 
@@ -3504,7 +3509,7 @@ struct ShapeCastDesc {
 }
 ```
 
-<sub>`api.ogt` line 10212</sub>
+<sub>`api.ogt` line 10216</sub>
 
 <a id="type-ShapeCastHit"></a>
 
@@ -3531,7 +3536,7 @@ struct ShapeCastHit {
 }
 ```
 
-<sub>`api.ogt` line 10230</sub>
+<sub>`api.ogt` line 10234</sub>
 
 <a id="type-OverlapDesc"></a>
 
@@ -3561,7 +3566,7 @@ struct OverlapDesc {
 }
 ```
 
-<sub>`api.ogt` line 10240</sub>
+<sub>`api.ogt` line 10244</sub>
 
 <a id="type-MeshDesc"></a>
 
@@ -3585,7 +3590,7 @@ struct MeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 10251</sub>
+<sub>`api.ogt` line 10255</sub>
 
 <a id="type-WheelPose"></a>
 
@@ -3621,7 +3626,7 @@ struct WheelPose {
 }
 ```
 
-<sub>`api.ogt` line 10339</sub>
+<sub>`api.ogt` line 10343</sub>
 
 <a id="type-RagdollBoneDesc"></a>
 
@@ -3664,7 +3669,7 @@ struct RagdollBoneDesc {
 }
 ```
 
-<sub>`api.ogt` line 10356</sub>
+<sub>`api.ogt` line 10360</sub>
 
 <a id="type-RagdollRigDesc"></a>
 
@@ -3688,7 +3693,7 @@ struct RagdollRigDesc {
 }
 ```
 
-<sub>`api.ogt` line 10378</sub>
+<sub>`api.ogt` line 10382</sub>
 
 <a id="type-BonePose"></a>
 
@@ -3711,7 +3716,7 @@ struct BonePose {
 }
 ```
 
-<sub>`api.ogt` line 10385</sub>
+<sub>`api.ogt` line 10389</sub>
 
 <a id="type-SoftBodyPoints"></a>
 
@@ -3732,7 +3737,7 @@ struct SoftBodyPoints {
 }
 ```
 
-<sub>`api.ogt` line 10414</sub>
+<sub>`api.ogt` line 10418</sub>
 
 <a id="type-PhysicsPhase"></a>
 
@@ -3757,7 +3762,7 @@ struct PhysicsPhase {
 }
 ```
 
-<sub>`api.ogt` line 10479</sub>
+<sub>`api.ogt` line 10483</sub>
 
 <a id="type-PhysicsStats"></a>
 
@@ -3788,7 +3793,7 @@ struct PhysicsStats {
 }
 ```
 
-<sub>`api.ogt` line 10488</sub>
+<sub>`api.ogt` line 10492</sub>
 
 ## Constants
 

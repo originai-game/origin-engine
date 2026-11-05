@@ -809,6 +809,55 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         let Some(particles) = physics.fluid3d_particles(Entity::from_bits(*e)) else {
             continue;
         };
+        let radius = f(v, "radius", 0.2);
+        // SIMULATION_VISUAL: the renderer's particles (the tick has none),
+        // spawned and moved on the GPU from this.
+        if visual(v) {
+            let at = h.world_of(*e).transform_point3(Vec3::ZERO);
+            let size = super::fx::vec3(&v["size"]);
+            let count = u(v, "count", 2000);
+            let fluid = og_render::VisualFluid {
+                key: *e,
+                count,
+                centre: at,
+                size,
+                bounds: super::fx::vec3(&v["bounds"]),
+                cell: radius,
+                max_count: u(v, "maxCount", 8192),
+                // The solver's own are water at the component's defaults.
+                stiffness: f(v, "stiffness", 0.02) / 0.02,
+                viscosity: f(v, "viscosity", 0.4) / 0.4,
+                gravity: physics.gravity().unwrap_or(Vec3::new(0.0, -9.81, 0.0))
+                    * f(v, "gravityScale", 1.0),
+                substeps: u(v, "substeps", 2),
+                seed: u(v, "seed", 0),
+                emit_rate: f(v, "emitRate", 0.0),
+                emit_at: at + super::fx::vec3(&v["emitOffset"]),
+                emit_radius: f(v, "emitRadius", 0.1),
+                emit_velocity: super::fx::vec3(&v["emitVelocity"]),
+                sink: {
+                    let half = super::fx::vec3(&v["sinkSize"]) * 0.5;
+                    let c = at + super::fx::vec3(&v["sinkOffset"]);
+                    half.cmpgt(Vec3::ZERO).all().then_some((c - half, c + half))
+                },
+            };
+            // Each particle stands for the spawn box's volume over the
+            // count, and is drawn at least as wide as that spacing.
+            let volume = (size.x * size.y * size.z).max(1e-6) / count.max(1) as f32;
+            scene.fluids_3d.push(og_render::Fluid3d {
+                particles: Arc::from(Vec::new()),
+                colors: None,
+                color: fluid_color(v),
+                opacity: f(v, "opacity", 0.6),
+                radius: (radius * f(v, "drawScale", 0.6)).max(0.9 * volume.cbrt()),
+                volume,
+                reflectivity: f(v, "reflectivity", 1.0),
+                refraction: f(v, "refraction", 1.0),
+                smoothing: f(v, "smoothing", 1.0),
+                visual: Some(Arc::new(fluid)),
+            });
+            continue;
+        }
         let colors = mixes
             .get(e)
             .filter(|(_, mix)| mix.len() == particles.len())
@@ -821,7 +870,6 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                     })
                     .collect::<Arc<[Vec3]>>()
             });
-        let radius = f(v, "radius", 0.2);
         scene.fluids_3d.push(og_render::Fluid3d {
             particles: Arc::from(particles),
             colors,
@@ -834,6 +882,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             reflectivity: f(v, "reflectivity", 1.0),
             refraction: f(v, "refraction", 1.0),
             smoothing: f(v, "smoothing", 1.0),
+            visual: None,
         });
     }
     // Ropes: a strip through their points in 3D, a sprite per segment in 2D.

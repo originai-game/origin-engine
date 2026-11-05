@@ -1270,11 +1270,12 @@ impl Default for Fluid2D {
 /// surface, refracting what is behind by its thickness and reflecting the
 /// sky, lit by the scene's lights.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Fluid3D")]
+#[reflect(name = "og.Fluid3D", version = 2)]
 pub struct Fluid3D {
     /// How many particles to spawn in the box (when the component appears
-    /// or count or seed changes; 0: none, the emitter fills it).
-    #[reflect(max = 32768, default = 2000)]
+    /// or count or seed changes; 0: none, the emitter fills it). The tick
+    /// simulates at most 32768; a visual fluid up to 262144.
+    #[reflect(max = 262144, default = 2000)]
     pub count: u32,
     /// The spawn box, centred on the entity.
     #[reflect(unit = "m", default = [2, 1, 2])]
@@ -1321,7 +1322,7 @@ pub struct Fluid3D {
     /// The seed of the spawn and emitter jitter.
     pub seed: u32,
     /// The most particles alive at once (the emitter stops there).
-    #[reflect(name = "maxCount", min = 1, max = 32768, default = 8192)]
+    #[reflect(name = "maxCount", min = 1, max = 262144, default = 8192)]
     pub max_count: u32,
     /// Particles the emitter adds per second (0: no emitter).
     #[reflect(name = "emitRate", min = 0, max = 20000, tunable)]
@@ -1362,6 +1363,9 @@ pub struct Fluid3D {
     /// Whether the renderer draws it.
     #[reflect(default = 1)]
     pub visible: bool,
+    /// SIMULATION_GAMEPLAY 0 (in the tick) or SIMULATION_VISUAL 1 (on the GPU, for looks only).
+    #[reflect(min = 0, max = 1)]
+    pub simulation: u32,
 }
 
 impl Default for Fluid3D {
@@ -1395,6 +1399,7 @@ impl Default for Fluid3D {
             draw_scale: 0.6,
             smoothing: 1.0,
             visible: true,
+            simulation: SIMULATION_GAMEPLAY,
         }
     }
 }

@@ -287,8 +287,9 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// then PostEffects.ssrMaxDistance's default of 100, then PostEffects.ssrSteps'
 /// default of 64, then to 8ff3942bdc5bdfce, Stylise.hatchingPaper, then
 /// Cloth, SoftBody and Garment version 2 (simulation), then to
-/// 11b306c51fde2306, MaterialStyle.wireframeColor).
-const BY_HAND_HASH: &str = "11b306c51fde2306";
+/// 11b306c51fde2306, MaterialStyle.wireframeColor, then to
+/// 892f0ccf9ecd891a, Fluid3D version 2 (simulation)).
+const BY_HAND_HASH: &str = "892f0ccf9ecd891a";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {

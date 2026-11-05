@@ -84,7 +84,7 @@ const VERSIONS: &[(&str, u32, u64)] = &[
     ("og.ContactHook", 1, 0x5f7ff8a7ff78c1bb),
     ("og.Flipbook", 1, 0xbbede7fc327207f1),
     ("og.FlipbookEvent", 1, 0x7d1245df738a14b1),
-    ("og.Fluid3D", 1, 0xf7ae93e48ea458df),
+    ("og.Fluid3D", 2, 0xcefc36ad140a92e6),
     ("og.FootLock", 1, 0x335fb3e07795add3),
     ("og.Gamepad", 2, 0xc97a34bf75360270),
     ("og.IkChain", 1, 0xbbe02154306d4e60),
