@@ -48306,7 +48306,7 @@ export interface Destructible {
    */
   density: number;
   /**
-   * A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit, and the push the pieces it breaks loose take along the striker's path (shared by falloff, none faster than the striker closed), so a ball through a pane carries its shards on.
+   * A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit, and, on a prop that stood still, the push the pieces it breaks loose take along the striker's path (shared by falloff, none faster than the striker closed), so a ball through a pane carries its shards on; a moving prop's pieces keep the velocity its hit left it.
    *
    * @default 30
    * @range 0..
@@ -48521,6 +48521,13 @@ export interface DamageDesc {
    * @unit newtonSecond (newton-seconds: an impulse, the momentum that changes a kilogram's velocity by one metre per second)
    */
   readonly amount?: number;
+  /**
+   * The momentum the blow carries, along its direction (a hammer, a wrecking ball, a shot): the pieces it breaks loose share it by its falloff and fly on, as a hit's do. Zero, the default, crushes without pushing, and what it breaks out of a standing prop can stay standing on what holds it.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit newtonSecond (newton-seconds: an impulse, the momentum that changes a kilogram's velocity by one metre per second)
+   */
+  readonly impulse?: Vector3;
 }
 
 /**

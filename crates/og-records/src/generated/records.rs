@@ -32261,7 +32261,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "newtonSecond",
                 worldspace: "",
                 label: "",
-                doc: doc!("A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit, and the push the pieces it breaks loose take along the striker's path (shared by falloff, none faster than the striker closed), so a ball through a pane carries its shards on."),
+                doc: doc!("A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit, and, on a prop that stood still, the push the pieces it breaks loose take along the striker's path (shared by falloff, none faster than the striker closed), so a ball through a pane carries its shards on; a moving prop's pieces keep the velocity its hit left it."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

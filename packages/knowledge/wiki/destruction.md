@@ -78,7 +78,7 @@ fn damage {
 }
 ```
 
-<sub>`api.ogt` line 28780</sub>
+<sub>`api.ogt` line 28783</sub>
 
 <a id="fn-explode"></a>
 
@@ -108,7 +108,7 @@ fn explode {
 }
 ```
 
-<sub>`api.ogt` line 28788</sub>
+<sub>`api.ogt` line 28791</sub>
 
 <a id="fn-fracture"></a>
 
@@ -138,7 +138,7 @@ fn fracture {
 }
 ```
 
-<sub>`api.ogt` line 28795</sub>
+<sub>`api.ogt` line 28798</sub>
 
 <a id="fn-info"></a>
 
@@ -168,7 +168,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 28802</sub>
+<sub>`api.ogt` line 28805</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -196,7 +196,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 28809</sub>
+<sub>`api.ogt` line 28812</sub>
 
 ## Components, resources and events
 
@@ -216,7 +216,7 @@ Token `og.Destructible`, registered under the schema name `og.Destructible`; its
 | `strength` | `number` | `30000` | ≥ 0 | `pascal` | tunable | The stress its bonds hold in tension and shear before they weaken (compression holds thirty times as much, shear more for the compression across it (friction), and a bond breaks outright at twice the stress): low, an overhang falls and a wall shot out at its foot comes down; high, it holds whatever is left. 0 turns the stress solver off. |
 | `friction` | `number` | `0.7` | 0 … 4 | — | tunable | How much more shear a bond holds for the compression across it, per pascal (Mohr–Coulomb, the tangent of the friction angle): a joint pressed by what stands on it holds where an unloaded one slips, so a wall shot out at its foot keeps its loaded piers and drops what hung over the hole, cracking in steps along its courses. 0 is shear at strength alone. |
 | `density` | `number` | `1000` | ≥ 1 | `kgPerM3` | tunable | The chunks' density: their mass as bodies and their weight in the stress solver. |
-| `impactThreshold` | `number` | `30` | ≥ 0 | `newtonSecond` | tunable | A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit, and the push the pieces it breaks loose take along the striker's path (shared by falloff, none faster than the striker closed), so a ball through a pane carries its shards on. |
+| `impactThreshold` | `number` | `30` | ≥ 0 | `newtonSecond` | tunable | A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit, and, on a prop that stood still, the push the pieces it breaks loose take along the striker's path (shared by falloff, none faster than the striker closed), so a ball through a pane carries its shards on; a moving prop's pieces keep the velocity its hit left it. |
 | `impactRadius` | `number` | `0.4` | ≥ 0.01 | `m` | tunable | How far a hit's damage reaches round its point (all of it within a third of this, falling to nothing at it). |
 | `anchored` | `boolean` | `true` | — | — | — | Whether its anchors (the chunks on its floor) hold it to the world; false, every island falls. |
 | `breakFx` | `ParticleEmitter` | `0` | — | — | — | A one-shot emitter (og.load.emitter, `looping false`) burst where each island breaks loose, at its broken faces: the material's own, a lit dust puff for stone and brick, splinters and a little dust for wood, shards and glints for glass. 0 none. |
@@ -254,7 +254,7 @@ component Destructible {
     unit kgPerM3
     tunable true
   }
-  field impactThreshold f32 "A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit, and the push the pieces it breaks loose take along the striker's path (shared by falloff, none faster than the striker closed), so a ball through a pane carries its shards on." {
+  field impactThreshold f32 "A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit, and, on a prop that stood still, the push the pieces it breaks loose take along the striker's path (shared by falloff, none faster than the striker closed), so a ball through a pane carries its shards on; a moving prop's pieces keep the velocity its hit left it." {
     default 30
     min 0
     unit newtonSecond
@@ -434,6 +434,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `radius` | `number` | `0.4` | ≥ 0 | `m` | — | How far it reaches; it falls linearly to nothing here from innerRadius. |
 | `innerRadius` | `number` | `0.1` | ≥ 0 | `m` | — | Within this the bonds take the whole amount. |
 | `amount` | `number` | `500` | ≥ 0 | `newtonSecond` | — | The damage, as an impulse through a bond (Destructible.toughness says how much a square metre takes). |
+| `impulse` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `newtonSecond` | — | The momentum the blow carries, along its direction (a hammer, a wrecking ball, a shot): the pieces it breaks loose share it by its falloff and fly on, as a hit's do. Zero, the default, crushes without pushing, and what it breaks out of a standing prop can stay standing on what holds it. |
 
 ```ogt
 struct DamageDesc {
@@ -455,6 +456,9 @@ struct DamageDesc {
   field amount f32 "The damage, as an impulse through a bond (Destructible.toughness says how much a square metre takes)." {
     default 500
     min 0
+    unit newtonSecond
+  }
+  field impulse Vector3 "The momentum the blow carries, along its direction (a hammer, a wrecking ball, a shot): the pieces it breaks loose share it by its falloff and fly on, as a hit's do. Zero, the default, crushes without pushing, and what it breaks out of a standing prop can stay standing on what holds it." {
     unit newtonSecond
   }
 }
@@ -508,7 +512,7 @@ struct ExplosionDesc {
 }
 ```
 
-<sub>`api.ogt` line 28733</sub>
+<sub>`api.ogt` line 28736</sub>
 
 <a id="type-DestructibleInfo"></a>
 
@@ -542,7 +546,7 @@ struct DestructibleInfo {
 }
 ```
 
-<sub>`api.ogt` line 28761</sub>
+<sub>`api.ogt` line 28764</sub>
 
 <a id="type-DestructionCapabilities"></a>
 
@@ -561,7 +565,7 @@ struct DestructionCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 28775</sub>
+<sub>`api.ogt` line 28778</sub>
 
 ## Constants
 

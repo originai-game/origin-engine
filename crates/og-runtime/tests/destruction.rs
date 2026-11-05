@@ -366,7 +366,7 @@ fn a_prop_dropped_on_the_ground_breaks_where_it_lands() {
         w,
         c,
         "og.Destructible".into(),
-        Some(json!({ "toughness": 300, "anchored": false, "impactThreshold": 40 }).to_string()),
+        Some(json!({ "toughness": 300, "anchored": false, "impactThreshold": 40, "impactRadius": 1.5 }).to_string()),
     ));
     value(og_world_insert(
         w,
@@ -389,6 +389,28 @@ fn a_prop_dropped_on_the_ground_breaks_where_it_lands() {
     let d = destructible(w, c);
     assert_eq!(d["fractured"], true, "a 4 m fall breaks it: {d}");
     assert!(impact, "broken by its impact");
+    // Its pieces keep what the landing left them, and are not thrown back
+    // up by it: no piece rises far above where they came down.
+    let mut top: f64 = 0.0;
+    for _ in 0..60 {
+        frames(w, 1);
+        let near = value(og_runtime::og_physics_overlap(
+            w,
+            Some(
+                json!({ "shape": { "shape": 0, "size": { "x": 12, "y": 20, "z": 12 } }, "position": { "x": 10, "y": 10, "z": 0 } })
+                    .to_string(),
+            ),
+        ));
+        for e in near.as_array().unwrap().iter().map(|e| e.as_f64().unwrap()) {
+            if og_world_has(w, e, "og.Chunk".into()) && !og_world_has(w, e, "og.Parent".into()) {
+                let y = value(og_world_get(w, e, "og.Transform".into()))["position"]["y"]
+                    .as_f64()
+                    .unwrap();
+                top = top.max(y);
+            }
+        }
+    }
+    assert!(top < 2.4, "a piece flew up to {top} m after the landing");
 }
 
 #[test]

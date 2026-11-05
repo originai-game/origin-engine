@@ -115,6 +115,9 @@ enum Op {
         radius: f32,
         inner: f32,
         amount: f32,
+        /// The blow's momentum (N·s); absent in worlds saved before it.
+        #[serde(default)]
+        impulse: [f32; 3],
     },
     Explode {
         point: [f32; 3],
@@ -746,10 +749,11 @@ fn run(
         // least its closing speed times the pair's reduced mass.
         let (ea, eb) = (bits(&v, "a"), bits(&v, "b"));
         let closing = v3(&v["relativeVelocity"]).dot(v3(&v["normal"])).max(0.0);
-        let reduced = match (
+        let (reduced_a, reduced_b) = (
             mass_of(ctx, l, &st.props, &assets, &settings, ea),
             mass_of(ctx, l, &st.props, &assets, &settings, eb),
-        ) {
+        );
+        let reduced = match (reduced_a, reduced_b) {
             (Mass::Finite(a), Mass::Finite(b)) => a * b / (a + b),
             (Mass::Finite(m), Mass::Infinite) | (Mass::Infinite, Mass::Finite(m)) => m,
             _ => 0.0,
@@ -769,9 +773,19 @@ fn run(
             if amount > 0.0 && point.is_finite() {
                 // The striker's motion through the prop: a's velocity
                 // relative to b, turned round when the prop is a.
-                let rel = v3(&v["relativeVelocity"]) * if side == "b" { 1.0 } else { -1.0 };
-                let along = v3(&v["normal"]) * if side == "b" { 1.0 } else { -1.0 };
-                strikes.push((k, point, rel.normalize_or(along), s.radius, amount, closing));
+                // Only a prop that stood still gives the pieces it loses
+                // the hit's push: a moving one's answer to the hit is
+                // already in its velocity, which its pieces inherit.
+                let me = if side == "a" {
+                    (ea, reduced_a)
+                } else {
+                    (eb, reduced_b)
+                };
+                if matches!(me.1, Mass::Infinite) {
+                    let rel = v3(&v["relativeVelocity"]) * if side == "b" { 1.0 } else { -1.0 };
+                    let along = v3(&v["normal"]) * if side == "b" { 1.0 } else { -1.0 };
+                    strikes.push((k, point, rel.normalize_or(along), s.radius, amount, closing));
+                }
                 hits.entry(k).or_default().damage.push((
                     Damage {
                         point,
@@ -796,11 +810,17 @@ fn run(
                 radius,
                 inner,
                 amount,
+                impulse,
             } => {
                 if let Some(s) = settings.get(&entity)
                     && st.props.contains_key(&entity)
                 {
                     let point = Vec3::from(point);
+                    let push = Vec3::from(impulse);
+                    if push != Vec3::ZERO {
+                        let dir = push.normalize();
+                        strikes.push((entity, point, dir, radius, push.length(), f32::INFINITY));
+                    }
                     hits.entry(entity).or_default().damage.push((
                         Damage {
                             point,
@@ -1235,9 +1255,10 @@ fn run(
             }
         }
     }
-    // A hit's push on the pieces it broke loose: the impulse past the
-    // threshold, shared by falloff over them (momentum the striker gave
-    // up breaking through), none driven faster than the striker closed.
+    // A hit's or a blow's push on the pieces it broke loose: the impulse
+    // past the threshold (momentum the striker gave up breaking through),
+    // or the blow's, shared by falloff over them, none driven faster than
+    // the striker closed.
     for &(k, point, dir, radius, amount, speed) in &strikes {
         let (Some(p), Some(s)) = (st.props.get(&k), settings.get(&k)) else {
             continue;
@@ -1257,9 +1278,11 @@ fn run(
                 .map(|(b, (m, at))| (b, m, falloff.at(at)))
                 .filter(|&(_, m, w)| m > 0.0 && w > 0.0)
                 .collect();
-        let total: f32 = freed.iter().map(|f| f.2).sum();
-        for (b, m, w) in freed {
-            let dv = (amount * w / total / m).min(speed);
+        // One velocity for the whole freed mass, scaled by falloff: the
+        // momentum is conserved and the lightest piece is not flung.
+        let weighed: f32 = freed.iter().map(|&(_, m, w)| m * w).sum();
+        for (b, _, w) in freed {
+            let dv = (amount * w / weighed).min(speed);
             if let Some(v) = made.get_mut(&b) {
                 v.0 += dir * dv;
             }
@@ -1742,6 +1765,7 @@ pub fn og_destruction_damage(world: u32, entity: f64, desc: Option<String>) -> S
             radius: radius(&d, "radius", 0.4)?.max(1e-3),
             inner: radius(&d, "innerRadius", 0.1)?,
             amount: radius(&d, "amount", 500.0)?,
+            impulse: point(&d["impulse"], "desc.impulse")?,
         };
         lock(&shared(world)).ops.push(op);
         Ok(())
