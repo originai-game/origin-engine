@@ -204,9 +204,12 @@ struct Targets {
     spread: [wgpu::TextureView; 2],
     /// The neighbourhood's mean over the last four frames (the anti-lag's).
     fast: [wgpu::TextureView; 2],
-    /// What the lit shaders read: the frame's history, copied.
+    /// What the lit shaders read: the frame's history (full resolution)
+    /// or its upsample (half), copied.
     lit: wgpu::TextureView,
     lit_texture: wgpu::Texture,
+    /// At half resolution, what the upsample writes before the copy.
+    upsampled: Option<(wgpu::TextureView, wgpu::Texture)>,
     /// The denoiser's guide: normal, depth and roughness in one texel.
     guide: wgpu::TextureView,
 }
@@ -280,6 +283,10 @@ impl Targets {
             fast: [0, 1].map(|_| view("ssr history fast", ray_size, FORMAT)),
             lit: lit_texture.create_view(&Default::default()),
             lit_texture,
+            upsampled: (divisor > 1).then(|| {
+                let t = texture(device, "ssr upsampled", size, FORMAT, 1);
+                (t.create_view(&Default::default()), t)
+            }),
             guide: view("ssr guide", ray_size, FORMAT),
         }
     }
@@ -541,7 +548,7 @@ impl SsrRenderer {
             &[
                 (10, tex(&t.history[slot])),
                 (23, tex(&t.guide)),
-                (25, tex(&t.lit)),
+                (25, tex(t.upsampled.as_ref().map_or(&t.lit, |u| &u.0))),
             ],
         );
         let groups = |(w, h): (u32, u32)| (w.div_ceil(8), h.div_ceil(8));
@@ -567,18 +574,25 @@ impl SsrRenderer {
             dispatch(PREFILTER_WIDE, &prefilter_wide, t.ray_size);
         }
         dispatch(TEMPORAL, &temporal, t.ray_size);
-        if t.divisor > 1 {
+        if t.upsampled.is_some() {
             dispatch(UPSAMPLE, &upsample, t.size);
-            drop(pass);
-        } else {
-            drop(pass);
-            // The lit shaders read a view that is the same every frame.
-            encoder.copy_texture_to_texture(
-                t.history_textures[slot].as_image_copy(),
-                t.lit_texture.as_image_copy(),
-                t.history_textures[slot].size(),
-            );
         }
+        drop(pass);
+        // The lit shaders read a view that is the same every frame, and
+        // only ever written by a copy: they read it as a read-only storage
+        // texture, and a compute pass writing it as a write-only one left
+        // D3D12 with no barrier either way (both are its UNORDERED_ACCESS
+        // state, and wgpu-hal's dx12 backend adds a UAV barrier only after
+        // read-write storage), so the main pass raced the upsample.
+        let source = t
+            .upsampled
+            .as_ref()
+            .map_or(&t.history_textures[slot], |u| &u.1);
+        encoder.copy_texture_to_texture(
+            source.as_image_copy(),
+            t.lit_texture.as_image_copy(),
+            source.size(),
+        );
     }
 }
 
