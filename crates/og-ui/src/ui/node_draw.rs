@@ -705,6 +705,39 @@ impl Ui {
                         clip,
                     });
                 }
+                Shape::Arc {
+                    part,
+                    frame,
+                    start,
+                    sweep,
+                    thickness,
+                    color,
+                } => {
+                    use crate::paint::{Cap, ElementDraw, Paint, Placed, ShapeKind};
+                    let dress = self.dress.resolve(part).draw;
+                    let rect = dress.subpart_rect(frame.resolve(&n.rect), n.rect);
+                    let color = dress.subpart_color(*color, t);
+                    let alpha = alpha * dress.subpart_opacity();
+                    let draw = ElementDraw {
+                        shape: ShapeKind::Arc {
+                            start: *start,
+                            sweep: *sweep,
+                            thickness: *thickness,
+                            cap: Cap::Round,
+                        },
+                        fills: vec![Paint::Solid(color.into())],
+                        ..ElementDraw::default()
+                    };
+                    cmds.extend(draw.enter(
+                        &self.theme,
+                        &Placed {
+                            rect,
+                            radius: 0.0,
+                            clip,
+                            alpha,
+                        },
+                    ));
+                }
                 Shape::Image {
                     part,
                     frame,

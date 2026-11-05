@@ -31,6 +31,18 @@ pub(crate) enum Shape {
         angle: f32,
         color: Srgba,
     },
+    /// A ring's arc on the circle the frame holds: `sweep` radians from
+    /// `start` (clockwise from +x on screen), `thickness` CSS px inwards,
+    /// round ends. Dressed by `part` as a decorative subpart (its colour,
+    /// opacity and box).
+    Arc {
+        part: crate::dress::PartRef,
+        frame: Frame,
+        start: f32,
+        sweep: f32,
+        thickness: f32,
+        color: Srgba,
+    },
     /// A texture region.
     Image {
         part: crate::dress::PartRef,
