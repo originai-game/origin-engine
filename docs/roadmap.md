@@ -181,13 +181,13 @@ run on Claude Fable 5.1 (AGENTS.md).
 | Item | State | Thread |
 |---|---|---|
 | Visual simulation: garment, MPM fluid, GPU particles | cloth and soft body's GPU visual mode done, rebasing onto destruction's shared collider module; the other three not started | [T-01a1a6f6](https://ampcode.com/threads/T-01a1a6f6-09cf-74ab-8b0b-9cad0149f65a) |
-| GPU scatter placement | `og.TerrainScatter.gpuPlacement` (off by default) on branch `gpu-visual-scatter` 4e5359918, with the art runner: compute placement per chunk with HZD-style layered footprints, pixel-identical to the CPU; render CPU 60.3 → 14.3 ms a frame on a moving camera, GPU placement 0.21 ms. Open: chunks whose level-0 tiles are not resident fall back to the CPU; release-build numbers at the wave's end | [T-01a1aaa2-f809](https://ampcode.com/threads/T-01a1aaa2-f809-707d-a8ee-0d482177372a) |
+| GPU scatter placement | on main at 5d083d036: `og.TerrainScatter.gpuPlacement` (off by default), compute placement per chunk with HZD-style layered footprints, pixel-identical to the CPU; render CPU 60.3 → 14.3 ms a frame on a moving camera, GPU placement 0.21 ms. Open: chunks whose level-0 tiles are not resident fall back to the CPU; release-build numbers at the wave's end | [T-01a1aaa2-f809](https://ampcode.com/threads/T-01a1aaa2-f809-707d-a8ee-0d482177372a) |
 | UI 1B M2; PR #8 s65 (span exact size) and s66 (`blend srgb`) | in progress; s67 not taken (conflicts with `FieldDesc.bare`, needs an API decision) | [T-01a1a7e2](https://ampcode.com/threads/T-01a1a7e2-6d0c-7749-a1dd-5164fae10d1e) |
 | HDR output accepted on a real HDR display | landed opt-in; acceptance in §3 | — |
 | W7, a deterministic CPU FFT band for buoyancy | deferred | — |
 | wgpu 31 | upstream unpublished (`docs/release.md` F5) | — |
 
-**Implemented, below target** (SSSR met its 2 ms target on 2026-11-05, b4d1c9506: half-resolution denoiser and a joint bilateral upsample, rough metal 3.85 → 1.60 ms, wet street 3.62 → 1.52 ms, mirror 2.57 → 0.97 ms; `ssrResolution` defaults to `half`)
+**Implemented, below target** (PowerVR's 1:1 linear-sample error was fixed with `sample_exact` for post passes at 2a5ac7165, Metal 481/481 unmoved, with a webgpu-android smaa reference. SSSR met its 2 ms target on 2026-11-05, b4d1c9506: half-resolution denoiser and a joint bilateral upsample, rough metal 3.85 → 1.60 ms, wet street 3.62 → 1.52 ms, mirror 2.57 → 0.97 ms; `ssrResolution` defaults to `half`)
 
 | Item | Now | Target or problem | Thread |
 |---|---|---|---|
@@ -199,7 +199,6 @@ run on Claude Fable 5.1 (AGENTS.md).
 | Watercolour look | reads as oil: the Kuwahara picks dark low-variance sectors; Bousseau rims made it muddier | a watercolour primitive (Bousseau, MNPR) | Fable: [T-01a1aaad-12fe](https://ampcode.com/threads/T-01a1aaad-12fe-75c0-b190-6d9c79b16005) |
 | neon-vector | the wireframe line doubles the outline on silhouettes | the outline owns silhouette edges | [T-01a1aaa2-fedd](https://ampcode.com/threads/T-01a1aaa2-fedd-7001-99f9-052f974ca1ab) |
 | Destruction looks | pillar shells and stump lean fixed at 784328ee0 (whole-turn primitives now close their seam, so cuts no longer leak); GPU chips and grit read as flat white confetti | thickness, a size spread and the material's tint; then the area closes | [T-01a1a830](https://ampcode.com/threads/T-01a1a830-c145-7314-bf21-5deb23366ee8) |
-| PowerVR linear sampling | 1/255 from the neighbour texel at 1:1 (og-ui/glass; smaa likely) | 1:1 passes read with textureLoad | Android [T-01a1a869](https://ampcode.com/threads/T-01a1a869-a893-7314-9a61-22d51cee1b8c) |
 | World polish | setts, specks, teeth, spray, weather mottle and rivulets, funnel grit ring, ripple glare, doodle paper warmth | one head to the art runner | [T-01a1a94b](https://ampcode.com/threads/T-01a1a94b-d95c-76b2-9cec-46d2ba332c0c) |
 | og.motion | the jump's pitch is clamped, not fixed at the source; the wave goal idles at 12 s | — | [T-cd152924](https://ampcode.com/threads/T-cd152924-03dd-42d3-a4dc-b5ef6716af67) |
 | Distant impostors | no shadow of their own, a view from below draws the horizon frame, cards don't sway (R6's limits) | not yet taken up | — |
