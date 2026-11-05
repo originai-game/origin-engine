@@ -84,7 +84,32 @@ pub(crate) struct State {
     /// the renderer's debris layer moves and draws them from here; they
     /// are never bodies.
     debris: Vec<Debris>,
+    /// Joints broken with a debris emitter set: the grit each sheds
+    /// (clay and mortar chips, the renderer's debris layer's) flies from
+    /// here.
+    crumbs: Vec<Crumb>,
 }
+
+/// A broken joint's grit as it fell out: the renderer throws its chips
+/// from here.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+struct Crumb {
+    /// Its og.Destructible's entity bits and its bond.
+    prop: u64,
+    bond: u32,
+    /// The tick it broke.
+    tick: u64,
+    /// The joint's centre and its normal in the world then.
+    point: [f32; 3],
+    normal: [f32; 3],
+    /// What the blow or the blast gave the pieces beside it.
+    velocity: [f32; 3],
+}
+
+/// The most joints a prop sheds grit from in one tick (spread over all
+/// that broke), and the most at once.
+const CRUMBS_A_TICK: usize = 48;
+const MAX_CRUMBS: usize = 384;
 
 /// A fine piece as it broke off: the renderer simulates it from here.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -951,6 +976,9 @@ fn run(
     let mut fresh_bodies: Vec<u64> = Vec::new();
     // Fine pieces broken off this tick, and their mass.
     let mut fresh_debris: Vec<(Debris, f32)> = Vec::new();
+    // Joints broken this tick that shed grit, and the mass of the piece
+    // beside each (which the blast's push is shared by).
+    let mut fresh_crumbs: Vec<(Crumb, f32)> = Vec::new();
     let mut stress_budget = match res["stressBudget"].as_u64().unwrap_or(200_000) {
         0 => u64::MAX,
         n => n,
@@ -1130,6 +1158,26 @@ fn run(
             .map(|i| before[i] > 0.0 && p.inst.bonds[i] <= 0.0)
             .collect();
         let broke = |i: usize| broken_now[i];
+        if s.debris != 0 {
+            let fresh: Vec<usize> = (0..before.len()).filter(|&i| broke(i)).collect();
+            let step = fresh.len().div_ceil(CRUMBS_A_TICK).max(1);
+            for &i in fresh.iter().step_by(step) {
+                let b = &a.bonds[i];
+                let rot = pose[b.a as usize].map_or(frame.1, |ps| ps.1);
+                let v = a.chunks[b.a as usize].volume * scale * scale * scale;
+                fresh_crumbs.push((
+                    Crumb {
+                        prop: k,
+                        bond: i as u32,
+                        tick,
+                        point: place_fn(b.a, b.centroid).to_array(),
+                        normal: (rot * b.normal).to_array(),
+                        velocity: [0.0; 3],
+                    },
+                    v * s.mat.density,
+                ));
+            }
+        }
         let changed = (0..before.len()).any(broke)
             || (0..anchors_before.len())
                 .any(|i| anchors_before[i] > 0.0 && p.inst.anchors[i] <= 0.0)
@@ -1432,6 +1480,15 @@ fn run(
                 d.angular = (Vec3::from(d.angular) + dw).to_array();
             }
         }
+        // Grit goes with the piece beside its joint.
+        for (c, m) in &mut fresh_crumbs {
+            let density = settings.get(&c.prop).map_or(1000.0, |s| s.mat.density);
+            let at = Vec3::from(c.point);
+            if let Some((dv, _)) = blast_push(&falloff, impulse, at, *m, density, u64::from(c.bond))
+            {
+                c.velocity = (Vec3::from(c.velocity) + dv).to_array();
+            }
+        }
     }
     // A hit's or a blow's push on the pieces it broke loose: the impulse
     // past the threshold (momentum the striker gave up breaking through),
@@ -1479,8 +1536,16 @@ fn run(
                 d.velocity = (Vec3::from(d.velocity) + dir * dv).to_array();
             }
         }
+        for (c, _) in fresh_crumbs.iter_mut().filter(|(c, _)| c.prop == k) {
+            let w = falloff.at(Vec3::from(c.point));
+            if w > 0.0 && weighed > 0.0 {
+                let dv = (amount * w / weighed).min(speed);
+                c.velocity = (Vec3::from(c.velocity) + dir * dv).to_array();
+            }
+        }
     }
     st.debris.extend(fresh_debris.into_iter().map(|(d, _)| d));
+    st.crumbs.extend(fresh_crumbs.into_iter().map(|(c, _)| c));
     for b in fresh_bodies {
         let (lin, ang) = made[&b];
         let vb = l.velocity.1.enc(
@@ -1560,6 +1625,11 @@ fn run(
     });
     let over = st.debris.len().saturating_sub(og_render::MAX_DEBRIS);
     st.debris.drain(..over);
+    st.crumbs.retain(|c| {
+        props.contains_key(&c.prop) && !(lifetime > 0.0 && tick >= c.tick.saturating_add(life))
+    });
+    let over = st.crumbs.len().saturating_sub(MAX_CRUMBS);
+    st.crumbs.drain(..over);
 
     // What the game reads: each destructible's written fields.
     for (&k, p) in &st.props {
@@ -1820,7 +1890,7 @@ fn place(
 
 struct Block(Arc<Mutex<State>>);
 
-const MAGIC: &[u8; 8] = b"DESTRUC1";
+const MAGIC: &[u8; 8] = b"DESTRUC2";
 
 impl StateBlock for Block {
     fn save(&self, out: &mut Vec<u8>) {
@@ -1855,6 +1925,9 @@ impl StateBlock for Block {
         for d in &mut st.debris {
             m(&mut d.pose);
         }
+        for c in &mut st.crumbs {
+            m(&mut c.point);
+        }
         for op in &mut st.ops {
             match op {
                 Op::Damage { point, .. } | Op::Explode { point, .. } => m(point),
@@ -1876,6 +1949,26 @@ pub(crate) struct Drawn {
     pub chunks: Vec<(u64, u32, Vec3, u32)>,
     /// Its fine pieces, the renderer's to move (og_render::DebrisPiece).
     pub debris: Vec<DrawnDebris>,
+    /// The grit its broken joints shed, and the glTF material of its
+    /// mortar (og_destruct::NO_MATERIAL for none).
+    pub crumbs: Vec<DrawnCrumb>,
+    pub mortar: u32,
+}
+
+/// A broken joint's grit as extraction hands it to the renderer: an id
+/// stable while it lives, the glTF node of the piece on its first side
+/// (whose cut faces the clay chips are drawn with), the tick it broke, the
+/// joint's centre and normal then, half its face's extent (m: a joint's
+/// centre lies inside the prop, its crack at the face's edges), and what
+/// the blow gave it.
+pub(crate) struct DrawnCrumb {
+    pub id: u64,
+    pub node: u32,
+    pub tick: u64,
+    pub point: Vec3,
+    pub normal: Vec3,
+    pub half: f32,
+    pub velocity: Vec3,
 }
 
 /// A fine piece as extraction hands it to the renderer: an id stable while
@@ -1976,6 +2069,24 @@ pub(crate) fn drawn(engine: u32) -> Vec<Drawn> {
                     .map(|(c, &e)| (e, a.chunks[c].node, a.chunks[c].centroid, group(c)))
                     .collect(),
                 debris,
+                crumbs: st
+                    .crumbs
+                    .iter()
+                    .filter(|c| c.prop == k)
+                    .filter_map(|c| {
+                        let b = a.bonds.get(c.bond as usize)?;
+                        Some(DrawnCrumb {
+                            id: scramble(k.rotate_left(29) ^ (u64::from(c.bond) << 2 | 2)),
+                            node: a.chunks.get(b.a as usize)?.node,
+                            tick: c.tick,
+                            point: Vec3::from(c.point),
+                            normal: Vec3::from(c.normal),
+                            half: 0.5 * b.area.max(0.0).sqrt() * pose_of_frame(&p.frame).2.x.abs(),
+                            velocity: Vec3::from(c.velocity),
+                        })
+                    })
+                    .collect(),
+                mortar: a.mortar,
             })
         })
         .collect()
@@ -2098,7 +2209,7 @@ pub fn og_destruction_info(world: u32, entity: f64) -> String {
                 e.to_bits()
             )
         })?;
-        let (inst, debris) = {
+        let (inst, debris, crumbs) = {
             let sh = shared(world);
             let st = lock(&sh);
             let inst = st
@@ -2108,7 +2219,11 @@ pub fn og_destruction_info(world: u32, entity: f64) -> String {
                 .map(|p| p.inst.clone())
                 .unwrap_or_else(|| Instance::new(&a));
             let k = e.to_bits();
-            (inst, st.debris.iter().filter(|d| d.prop == k).count())
+            (
+                inst,
+                st.debris.iter().filter(|d| d.prop == k).count(),
+                st.crumbs.iter().filter(|c| c.prop == k).count(),
+            )
         };
         let total: f32 = a.bonds.iter().map(|b| b.area).sum();
         let left: f32 = a
@@ -2127,6 +2242,7 @@ pub fn og_destruction_info(world: u32, entity: f64) -> String {
             "anchored": (0..support).filter(|&c| inst.anchors[c] > 0.0 && !inst.shattered[c]).count(),
             "health": if total > 0.0 { left / total } else { 1.0 },
             "debris": debris,
+            "crumbs": crumbs,
         }))
     })();
     match r {

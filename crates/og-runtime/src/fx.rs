@@ -169,6 +169,10 @@ pub(crate) struct FxState {
     pub by_path: BTreeMap<String, usize>,
     /// Built-in mesh particles' shapes (`render mesh box`), made once.
     pub particle_meshes: BTreeMap<&'static str, MeshHandle>,
+    /// Each loaded model's materials by glTF material index, those no
+    /// part draws with included (`ModelParts::materials`: a fracture's
+    /// mortar), by the model's asset handle.
+    pub model_materials: BTreeMap<u64, Vec<og_render::MaterialHandle>>,
     /// The debris layer's rubble chips (og_render::chip) and their hulls'
     /// points, made at the first fine piece drawn.
     pub chip_meshes: Vec<(MeshHandle, Vec<glam::Vec3>)>,

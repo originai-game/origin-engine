@@ -1057,6 +1057,7 @@ pub(crate) fn release(eng: &Engine, index: Option<usize>) -> Result<(), String> 
             let parts = rs.models.insert(key, Vec::new()).unwrap_or_default();
             rs.model_lods.remove(&key);
             rs.fx.models.remove(&key);
+            rs.fx.model_materials.remove(&key);
             let mut meshes: Vec<og_render::MeshHandle> = parts.iter().map(|p| p.0).collect();
             meshes.sort_by_key(|m| m.index());
             meshes.dedup();

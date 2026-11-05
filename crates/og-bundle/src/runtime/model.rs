@@ -287,6 +287,9 @@ pub struct ModelParts {
     /// The model's textures in the scene, by [`CookedModel::textures`]
     /// index.
     pub textures: Vec<TextureHandle>,
+    /// Its materials in the scene by glTF material index, those no part
+    /// draws with included (a fracture's mortar).
+    pub materials: Vec<MaterialHandle>,
 }
 
 impl ModelParts {
@@ -1122,6 +1125,7 @@ impl CookedModel {
                 shown,
                 variants,
                 textures: handles,
+                materials,
             },
             meshes,
         )

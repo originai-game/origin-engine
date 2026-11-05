@@ -25,7 +25,9 @@ pub const NONE: u32 = u32::MAX;
 pub const SHATTER: f32 = 3.0;
 
 /// The format version of [`FractureAsset::to_bytes`].
-pub const ASSET_VERSION: u32 = 1;
+pub const ASSET_VERSION: u32 = 2;
+/// [`FractureAsset::mortar`] when there is none.
+pub const NO_MATERIAL: u32 = u32::MAX;
 
 /// One chunk of a prefractured asset, in the model's space.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -71,6 +73,10 @@ pub struct FractureAsset {
     pub max: Vec3,
     /// The glTF material of the cut faces.
     pub interior: u32,
+    /// The glTF material of the mortar between bricks (`fracture.mortar`),
+    /// which no face draws: what crumbles from a broken joint is drawn
+    /// with it. [`NO_MATERIAL`] for none.
+    pub mortar: u32,
 }
 
 impl FractureAsset {

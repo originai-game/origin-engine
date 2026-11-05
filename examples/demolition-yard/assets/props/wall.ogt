@@ -35,4 +35,8 @@ fracture {
     map "../textures/brick_cut.png"
     normalMap "../textures/brick_cut_n.png"
   }
+  mortar {             # the grit a broken joint sheds beside the clay
+    color 0.66 0.63 0.57
+    roughness 1
+  }
 }

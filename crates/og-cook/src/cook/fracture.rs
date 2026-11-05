@@ -28,6 +28,9 @@
 //!     color 0.5 0.45 0.4 #   maps included); default: the main material, darker
 //!     roughness 0.95     #   and rough
 //!   }
+//!   mortar {             # the mortar's material (material lines), drawn by no
+//!     color 0.62 0.6 0.55 #   face: the grit a broken joint sheds is drawn with
+//!   }                    #   it beside the cut faces' (og.Destructible.debris)
 //! }
 //! ```
 //!
@@ -106,6 +109,7 @@ pub(super) struct Settings {
     anchor: Anchor,
     interior_scale: f64,
     interior: Option<Block>,
+    mortar: Option<Block>,
 }
 
 fn num(b: &Block, k: &str, default: f64) -> Result<f64, String> {
@@ -133,7 +137,7 @@ fn count(b: &Block, k: &str, default: u32, min: u32, max: u32) -> Result<u32, St
 
 impl Settings {
     pub(super) fn parse(b: &Block) -> Result<Settings, String> {
-        const KEYS: [&str; 12] = [
+        const KEYS: [&str; 13] = [
             "style",
             "chunks",
             "seed",
@@ -146,6 +150,7 @@ impl Settings {
             "anchor",
             "interiorScale",
             "interior",
+            "mortar",
         ];
         for e in &b.entries {
             if !KEYS.contains(&e.key.as_str()) {
@@ -254,14 +259,17 @@ impl Settings {
         if interior_scale <= 0.0 {
             return Err("fracture.interiorScale is above 0".into());
         }
-        let interior = match b.get("interior") {
-            None => None,
-            Some(e) => Some(
-                e.block
-                    .clone()
-                    .ok_or_else(|| format!("line {}: fracture.interior is a block", e.line))?,
-            ),
+        let block = |k: &str| -> Result<Option<Block>, String> {
+            b.get(k)
+                .map(|e| {
+                    e.block
+                        .clone()
+                        .ok_or_else(|| format!("line {}: fracture.{k} is a block", e.line))
+                })
+                .transpose()
         };
+        let interior = block("interior")?;
+        let mortar = block("mortar")?;
         Ok(Settings {
             chunks: count(b, "chunks", 16, 2, 256)?,
             seed: count(b, "seed", 1, 0, u32::MAX)?,
@@ -275,6 +283,7 @@ impl Settings {
             anchor,
             interior_scale,
             interior,
+            mortar,
         })
     }
 
@@ -1019,6 +1028,16 @@ pub(super) fn fracture_glb(glb: &[u8], dir: &Path, s: &Settings) -> Result<Fract
     let interior = interior_material(s, &json, main, &mut maps)?;
     materials_json.push(interior);
     index.insert(INTERIOR, materials_json.len() - 1);
+    // The mortar's: no face is drawn with it; what crumbles out of a
+    // broken joint is (og.Destructible.debris).
+    let mortar = match &s.mortar {
+        Some(b) => {
+            let first = json["textures"].as_array().map_or(0, Vec::len);
+            materials_json.push(super::model_text::material("mortar", b, &mut maps, first)?);
+            (materials_json.len() - 1) as u32
+        }
+        None => og_destruct::NO_MATERIAL,
+    };
     let mut bin = Bin::default();
     // The images, carried over into the new binary.
     if let Some(images) = json["images"].as_array_mut() {
@@ -1151,6 +1170,7 @@ pub(super) fn fracture_glb(glb: &[u8], dir: &Path, s: &Settings) -> Result<Fract
         min: lo.as_vec3(),
         max: hi.as_vec3(),
         interior: index[&INTERIOR] as u32,
+        mortar,
     };
     asset.check()?;
     let roots: Vec<usize> = (0..nodes.len()).collect();

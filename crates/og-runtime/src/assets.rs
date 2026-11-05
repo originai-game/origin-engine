@@ -781,6 +781,7 @@ pub(crate) fn insert_model(
             part_variants: parts.variants,
         },
     );
+    rs.fx.model_materials.insert(handle(index), parts.materials);
     if registered {
         assets.by_path.insert(format!("gltf:{id}"), index);
     }

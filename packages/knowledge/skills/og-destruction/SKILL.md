@@ -59,6 +59,9 @@ fracture {
     roughness 1
     map "../textures/brick_cut.png"
   }
+  mortar {             # the mortar's material (same keys): no face draws it; the
+    color 0.66 0.63 0.57 # grit a broken joint sheds does (og.Destructible.debris)
+  }
 }
 ```
 
@@ -252,7 +255,11 @@ for (const f of world.events(og.Fractured)) {
   each throws four to six rubble chips of its own: thick lumps of
   uneven size drawn with the prop's cut-face material (one in four with
   its outer face's), so brick throws clay, concrete grey aggregate,
-  wood its grain and glass clear glass, with nothing to tint. They
+  wood its grain and glass clear glass, with nothing to tint. Every
+  joint that breaks sheds three or four small chips too, of the cut
+  faces and of the `mortar` material when the fracture names one: the
+  crumble of a brick wall, up to 48 joints a tick
+  (`og.destruction.info(world, e).crumbs` counts them). They
   tumble and land on the colliders that are boxes, spheres and terrains.
   The emitter (`render mesh tetrahedron`, `blend alpha`, `lit true`,
   `collision`) bursts a spray of finer grains there too: keep it small

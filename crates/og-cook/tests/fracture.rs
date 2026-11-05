@@ -131,6 +131,35 @@ fn a_wall_cooks_into_chunks_that_tile_it_with_bonds_anchors_and_hidden_children(
     assert_eq!(shown.len(), 1);
     assert_eq!(shown[0].name, "intact");
     assert_eq!(model.materials[a.interior as usize].name, "interior");
+    // No mortar block, no mortar.
+    assert_eq!(a.mortar, og_destruct::NO_MATERIAL);
+}
+
+/// A `mortar` block is the model's material that no face draws: what
+/// crumbles from a broken joint is drawn with it.
+#[test]
+fn a_mortar_block_is_a_material_no_face_draws() {
+    let text = WALL.replace(
+        "seed 7",
+        "seed 7\n  mortar {\n    color 0.66 0.63 0.57\n  }",
+    );
+    assert_ne!(text, WALL);
+    let root = cook("og-cook-fracture-mortar", &text, 0);
+    let a = asset(&root);
+    let model = Bundle::open(&root.join("cooked"))
+        .unwrap()
+        .load_model("props/wall.ogt")
+        .unwrap();
+    let m = &model.materials[a.mortar as usize];
+    assert_eq!(m.name, "mortar");
+    assert!((m.base_color[0] - 0.66).abs() < 1e-3, "{:?}", m.base_color);
+    assert!(
+        model
+            .primitives
+            .iter()
+            .all(|p| p.material != a.mortar as usize),
+        "no face is drawn with the mortar"
+    );
 }
 
 #[test]

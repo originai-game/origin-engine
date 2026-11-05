@@ -305,6 +305,8 @@ fn the_chunk_budget_despawns_the_oldest_loose_chunks() {
     assert_eq!(d["fractured"], true);
     let loose = d["loose"].as_u64().unwrap();
     assert!(loose <= 3, "at most maxChunks loose chunks remain: {d}");
+    // No debris emitter: its broken joints shed no grit.
+    assert_eq!(value(og_destruction_info(w, wall))["crumbs"], 0);
 }
 
 #[test]
@@ -347,6 +349,14 @@ fn pieces_given_to_debris_are_never_bodies() {
         .as_u64()
         .unwrap();
     assert_eq!(pieces, 4 * shattered.len() as u64);
+    // Every joint the shot broke sheds grit (clay and mortar chips), up to
+    // 48 a tick spread over them: world state too.
+    let broken = destructible(w, wall)["broken"].as_u64().unwrap();
+    let crumbs = value(og_destruction_info(w, wall))["crumbs"]
+        .as_u64()
+        .unwrap();
+    assert!(broken > 0, "the shot broke joints");
+    assert_eq!(crumbs, broken.min(48), "{broken} joints broken");
     let saved = value(og_world_snapshot(w, None))
         .as_str()
         .unwrap()
@@ -356,9 +366,14 @@ fn pieces_given_to_debris_are_never_bodies() {
     value(og_world_restore(w, saved, None));
     assert_eq!(hash(w), before);
     assert_eq!(value(og_destruction_info(w, wall))["debris"], pieces);
+    assert_eq!(value(og_destruction_info(w, wall))["crumbs"], crumbs);
     // Gone after debrisLifetime.
     frames(w, 61);
     assert_eq!(value(og_destruction_info(w, wall))["debris"], 0);
+    // The joints that broke later, as the wall settled, last their own
+    // second: once it stands still, none.
+    frames(w, 180);
+    assert_eq!(value(og_destruction_info(w, wall))["crumbs"], 0);
     // No renderer here: the bursts are not drawn, the world is the same.
     let caps: Value = serde_json::from_str(&og_destruction_capabilities(w)).unwrap();
     assert_eq!(caps["visualDebris"], false);

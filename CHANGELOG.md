@@ -15,6 +15,21 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Destruction: broken joints shed clay and mortar grit.** Every bond
+  that breaks in a prop with og.Destructible.debris sheds three or four
+  small chips through the GPU debris layer: one centimetre to five and
+  a half across, knocked out of the joint along its normal and moving with the
+  blow or blast that broke it, drawn with the prop's cut-face material
+  and, for one of them, with a new `fracture.mortar` material, which no
+  face draws. At most 48 joints a tick (spread over all that broke) and
+  384 at once shed grit; they last og.Destruction.debrisLifetime. The
+  crumbs are world state (a restored world throws the same grit), so
+  a fracture's world hash changes, and saves of the og.destruction
+  state from before are refused (`DESTRUC2`); the cooked fracture asset
+  is version 2, and the cook now recooks one of an older version.
+  New IDL member: `DestructibleInfo.crumbs`; doc
+  change on `og.Destructible.debris`. The yard's wall has a mortar.
+
 - **Breaking: lit mesh particles blend alpha by default.** An emitter
   drawn as lit meshes (`render mesh` with `lit true`) and no `blend`
   line now blends alpha, where it blended additive: a chip, shard or
