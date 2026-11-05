@@ -153,8 +153,25 @@ pub(crate) fn set_physics(engine: u32, physics: &og_physics::PhysicsSystem) {
 
 /// How often (in ticks) a loose island at rest is solved on what holds it.
 const REST_EVERY: u64 = 6;
-/// The most blocks of no-tension masonry that fly loose as one piece.
-const RUN: usize = 3;
+/// The most blocks of no-tension masonry that fly loose as one piece: one
+/// (mortar holds nothing pulled apart, so what breaks loose is its blocks,
+/// each a cluster of bricks, never a run of them bonded into a beam).
+const RUN: usize = 1;
+/// A blast's turn on a piece: this much of its push's speed over its size
+/// (rad/s per m/s per m), enough to open its joints as it goes, not to
+/// spin it into what stands.
+const SPIN: f32 = 0.1;
+/// The fastest turn (rad/s) a blast gives a piece.
+const TURN_MAX: f32 = 12.0;
+
+/// A fixed scramble of a body's bits (splitmix64's finaliser, public
+/// domain): its own share of a blast, the same on every run and host.
+fn scramble(mut x: u64) -> u64 {
+    x = (x ^ (x >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    x = (x ^ (x >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    x ^ (x >> 31)
+}
+
 /// Below this speed (m/s) a loose island is at rest.
 const REST_SPEED: f32 = 0.5;
 
@@ -1034,8 +1051,9 @@ fn run(
         // No-tension masonry in the air holds no bending: a loose run of
         // mortared blocks longer than RUN comes apart at its joints the
         // tick it breaks loose, into its blocks (each its own cluster of
-        // bricks), so the top of a blown wall goes up as a spray of short
-        // runs, not a sheet that bends away whole.
+        // bricks), so the top of a blown wall goes up as a spray of
+        // blocks, not a sheet that bends away whole or a beam of courses
+        // lying across the hole.
         if s.mat.limits.shear_elastic.is_finite()
             && s.mat.limits.tension_elastic <= 0.1 * s.mat.limits.shear_elastic
             && (0..before.len()).any(|i| before[i] > 0.0 && p.inst.bonds[i] <= 0.0)
@@ -1303,15 +1321,29 @@ fn run(
                 if j <= 0.0 {
                     continue;
                 }
+                // A blast's front is not a smooth field: each piece takes
+                // its own share of the push (0.7 to 1.3 of it) and a small
+                // turn from the uneven pressure on its face, so the blocks
+                // of a wall go their own ways rather than in step. Fixed
+                // per body.
+                let r = scramble(b);
+                let u = |s: u32| ((r >> s) & 0x3ff) as f32 / 1023.0;
+                let axis = Vec3::new(u(0) - 0.5, u(10) - 0.5, u(20) - 0.5).normalize_or(Vec3::X);
                 let dir = (at - point).normalize_or(Vec3::Y);
-                let dv = dir * (j / m);
+                let dv = dir * (j / m) * (0.7 + 0.6 * u(40));
+                let size = og_core::math::pow(m / density, 1.0 / 3.0).max(0.02);
+                let dw = axis * (SPIN * dv.length() / size).min(TURN_MAX);
                 match made.get_mut(&b) {
-                    Some(v) => v.0 += dv,
+                    Some(v) => {
+                        v.0 += dv;
+                        v.1 += dw;
+                    }
                     None => {
                         let e = Entity::from_bits(b);
                         if let Ok(vb) = ctx.get_bytes(e, l.velocity.0) {
                             let mut v = l.velocity.1.decode(&vb);
                             v["linear"] = jv(v3(&v["linear"]) + dv);
+                            v["angular"] = jv(v3(&v["angular"]) + dw);
                             let out = l.velocity.1.enc(Some(&vb), Some(&v))?;
                             ctx.set_bytes(e, l.velocity.0, &out)?;
                         }

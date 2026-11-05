@@ -584,11 +584,13 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
                 ((x.abs() - 2.5).max(0.0), (x.abs() - 2.5).max(0.0).hypot(z))
             })
             .collect();
+        // A lone brick may fly (a blast's front is uneven); a spray of them
+        // metres out is a push that does not taper.
         let past = landed.iter().map(|p| p.0).fold(0.0, f64::max);
-        let away = landed.iter().map(|p| p.1).fold(0.0, f64::max);
+        let far = landed.iter().filter(|p| p.1 > 4.0).count();
         assert!(
-            past < 1.5 && away < 4.5,
-            "radius {radius}: a piece lands {past} m past the wall's ends, one {away} m from the wall"
+            past < 1.5 && far <= 2,
+            "radius {radius}: a piece lands {past} m past the wall's ends, {far} land over 4 m from the wall"
         );
         // What still stands: the chunks within 10 cm of where they were
         // before the blast (a block freed whole and resting where it stood
@@ -621,9 +623,19 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
             pier(-1.0),
             pier(1.0)
         );
+        // A span is a block high over the hole with air under it; one on
+        // top of the heap the wall's middle fell into rests on the pieces
+        // under it.
         let over: Vec<_> = chunks
             .iter()
             .filter(|(x, y)| x.abs() < 0.25 && *y > 1.5)
+            .filter(|&&(x, y)| {
+                chunks
+                    .iter()
+                    .filter(|&&(u, v)| (u - x).abs() < 0.3 && v < y - 0.05)
+                    .count()
+                    < 3
+            })
             .collect();
         assert!(
             over.is_empty(),
