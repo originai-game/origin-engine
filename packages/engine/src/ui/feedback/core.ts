@@ -481,7 +481,9 @@ export function icon(id: string, name: string, size: number, tint: Paint, label 
     fills: [solid({ ...tint, alpha: (tint.alpha ?? 1) * 0.22 })],
     strokes: [stroke(Math.max(1.5, size / 14), tint)],
   }, () => {
-    if (name) text("Mark", [...name][0] ?? "", { uppercase: true, step: tsFit(size >= 30 ? 16 : 13, size * 0.6), color: tint, nowrap: true, font: "display" });
+    // The initial of an identifier (an icon's name), not a word of the UI's language: cased the same in every locale
+    // (never a Turkish İ for info), and the probe reads the letter drawn.
+    if (name) text("Mark", ([...name][0] ?? "").toUpperCase(), { step: tsFit(size >= 30 ? 16 : 13, size * 0.6), color: tint, nowrap: true, font: "display" });
   }, label ? { a11y: a11y("image", label) } : undefined);
 }
 

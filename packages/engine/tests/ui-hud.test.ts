@@ -477,6 +477,23 @@ test("shooter.killfeed, resourceBar and scoreboard: newest first within max and 
   expect(below(els, "FeedHud/Feed").length).toBe(0);
 });
 
+// The headshot's icon (target) is not in the atlas: its fallback mark is the name's initial, an identifier's letter,
+// so the probe reads the letter drawn (T), as it reads every locale's (a locale-cased source letter read t in ja).
+test("a missing icon's fallback mark reads its drawn initial in any locale", () => {
+  let set = false;
+  const e = kitEngine("HudMarkTr", (w) => {
+    if (!set) {
+      og.i18n.setLocale(w, "tr");
+      set = true;
+    }
+    shooter.killfeed("Feed", { entries: [{ key: "k", killer: "Ana", victim: "Bo", weaponText: "R-301", headshot: true, at: 0, killerTeam: 0, victimTeam: 1 }], max: 4, durationMs: 60_000 });
+  });
+  e.advance(3);
+  const mark = at(dump(e), "FeedHud/Feed/k/Headshot/Mark");
+  expect([mark?.text, mark?.name]).toEqual(["T", "T"]);
+  e.destroy();
+});
+
 test("strategy.resourceBar in the flow folds to the box it is laid in, not to the screen", () => {
   // Wrong: the fold measured against the screen alone, so a bar in a column narrower than its one line runs past it.
   const items = [
