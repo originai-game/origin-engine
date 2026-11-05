@@ -15,6 +15,13 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **A lake's sun glitter is the sea's.** The lake's power-220 Blinn-Phong
+  highlight (some 5° wide, twenty suns) lit whole ripple faces and clipped
+  them into flat white fields near the sun's mirror angle; it is now
+  web-ocean's Gaussian of the facets' slopes, widened only by the slopes a
+  pixel leaves out (LEAN) and their change across it, and bounded by the
+  sun's disc: a glitter path of sparkles.
+
 - **Destruction: fine debris throws rubble chips in its own material.**
   Each fine piece the debris layer flies (og.Destructible.debris) now
   throws four to six chips of its own as GPU rigid bodies: thick convex

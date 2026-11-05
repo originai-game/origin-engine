@@ -1296,10 +1296,28 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     color += glitter;
   } else if (!water2) {
     // (Water2 has no highlight of its own: the sun shows only in what it reflects.)
-    // The sun's highlight (none in shadow).
+    // The sun's glitter, the sea's (web-ocean's Gaussian of the facets' slopes) about the lake's own ripples: the
+    // slopes a pixel leaves out (LEAN) and the slopes' change across it (specular anti-aliasing) widen it, and the
+    // sun's disc bounds how narrow it gets. A Blinn-Phong lobe of power 220 is some 5° wide, twenty suns, so every
+    // ripple face near the sun's mirror angle lit whole and clipped into a flat white field instead of a glitter path
+    // of sparkles.
     let h = normalize(l + v);
-    let spec = pow(max(dot(n, h), 0.0), lean_power(220.0, detail.cov)) * lean_energy(220.0, detail.cov) * 4.0;
-    color += frame.light_color.rgb * spec * fresnel * 4.0 * sun;
+    let hs = -h.xz / max(h.y, 1e-3);
+    let ms = n.xz / max(n.y, 1e-3);
+    let dsx = dpdx(ms);
+    let dsy = dpdy(ms);
+    let aa = vec3<f32>(dsx.x * dsx.x + dsy.x * dsy.x, dsx.y * dsx.y + dsy.y * dsy.y, dsx.x * dsx.y + dsy.x * dsy.y) * 0.5;
+    let cov = detail.cov + aa * min(1.0, 0.03 / max(max(aa.x, aa.y), 1e-8)) + vec3<f32>(SUN_DISC, SUN_DISC, 0.0);
+    let dsl = hs + ms;
+    let det = max(cov.x * cov.y - cov.z * cov.z, 1e-10);
+    let e = (dsl.x * dsl.x * cov.y + dsl.y * dsl.y * cov.x - 2.0 * dsl.x * dsl.y * cov.z) / det;
+    let pdf = exp(-0.5 * e) / (6.2831853 * sqrt(det));
+    let hy2 = h.y * h.y;
+    let dm = pdf / max(hy2 * hy2, 1e-6);
+    let g = 1.0 / (1.0 + smith_lambda(v, cov) + smith_lambda(l, cov));
+    let fh = f0 + (1.0 - f0) * pow(1.0 - clamp(dot(v, h), 0.0, 1.0), 5.0);
+    let spec = fh * dm * g / (4.0 * max(v.y, 0.02)) * step(0.0, l.y);
+    color += sun_e * spec * water.look.x;
   }
 
   // Foam: a band where the water meets geometry, broken up by noise, and on steep crests.
