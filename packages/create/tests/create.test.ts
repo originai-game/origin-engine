@@ -530,6 +530,18 @@ test("--lang writes a table per language with its face, direction and licence, t
   // Every table loaded, the pseudo-locale last; the smoke test reads the new base's word.
   expect(read("src/main.ts")).toContain('["zh-CN","en","ar","ja","th","qps-ploc"]');
   expect(read("tests/smoke.og.ts")).toContain("expect:ui:text:=已开始");
+  // The frame playtests keep the words and the locale their references were recorded in.
+  for (const f of ["inspector", "inspector-gizmo", "intro"]) expect(read(`tests/${f}.og.ts`)).toMatch(/^\s*setup: "locale:en",$/m);
+  expect(read("tests/smoke.og.ts")).not.toContain("locale:en");
+  // English unchosen: its table stays for the frames (not the base, last), and the note says why.
+  const ar = cli(join(scratch, "langs-ar"), "--no-prompt", "--lang", "ar");
+  expect(ar.code).toBe(0);
+  const arRead = (f: string) => readFileSync(join(scratch, "langs-ar", f), "utf8");
+  expect(arRead("assets/strings/ar.ogt")).toMatch(/^base true$/m);
+  expect(arRead("assets/strings/en.ogt")).not.toMatch(/^base/m);
+  expect(arRead("src/main.ts")).toContain('["ar","en","qps-ploc"]');
+  expect(arRead("tests/intro.og.ts")).toContain('setup: "locale:en"');
+  expect(ar.out).toContain("en stays as a table");
   expect(read("assets/strings/qps-ploc.ogt")).toContain('string "menu.start" "[开始 开]"');
   for (const t of ["zh-CN", "en", "ar", "ja", "th"]) expect(existsSync(join(dir, `tests/locale-${t}.og.ts`))).toBeTrue();
   expect(existsSync(join(dir, "tests/pseudo.og.ts")) && existsSync(join(dir, "tools/pseudo-locale.ts"))).toBeTrue();

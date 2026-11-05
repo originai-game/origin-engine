@@ -170,6 +170,14 @@ export function applyLanguages(dir: string, langs: readonly string[], ctx: { ent
     plan.unshift(base);
   }
   base ??= plan[0]!;
+  // The starter's reference frames were recorded in its own locale: its frame playtests pin it
+  // (pinFrames, below), so its table stays even when it was not chosen (not the base, last).
+  const framed = frameTests(dir);
+  const refTag = ownBase ? canonicalTag(ownBase.table.locale) : null;
+  if (framed.length > 0 && ownBase && refTag && !plan.some((p) => p.tag === refTag)) {
+    plan.push({ tag: refTag, strings: ownBase.table.strings, from: "starter", file: ownBase.file });
+    notes.push(`${refTag} stays as a table: ${framed.join(", ")} compare frames recorded in it and pin it (setup locale:${refTag}); record those references again in another locale and set their setup, then drop it`);
+  }
   const loader = loaderOf(dir, ctx.entry);
   const listed = loader.kind === "list";
 
@@ -271,20 +279,54 @@ ${face.charset.length ? `  charset ${face.charset.join(" ")}\n` : ""}  chars ${o
   } else load = tags.map((t) => `strings/${t}.ogt`);
 
   // A playtest per language and one for the pseudo-locale.
-  if (ownBase && ownBase.table.locale !== base.tag && !ctx.archetype) retarget(dir, ownBase.table, written.find((w) => w.tag === base!.tag)!.text);
+  if (ownBase && ownBase.table.locale !== base.tag && !ctx.archetype) retarget(dir, ownBase.table, written.find((w) => w.tag === base!.tag)!.text, framed);
+  if (refTag) pinFrames(dir, framed, refTag);
   files.push(...playtests(dir, written.map((w) => w.tag), base.tag));
   return { files, notes, load };
 }
 
-/** The starter's playtests expect the old base's words: they now expect the new base's. */
-function retarget(dir: string, from: StringTableText, to: StringTableText): void {
+/**
+ * The playtests that compare frames with references/ (they import the starter's
+ * tests/frames.ts): their references show the starter's own locale.
+ */
+function frameTests(dir: string): string[] {
+  const tests = join(dir, "tests");
+  if (!existsSync(tests)) return [];
+  return readdirSync(tests)
+    .filter((f) => f.endsWith(".og.ts") && /from "\.\/frames\.ts"/.test(readFileSync(join(tests, f), "utf8")))
+    .sort()
+    .map((f) => `tests/${f}`);
+}
+
+/**
+ * Each frame playtest boots in the locale its references were recorded in
+ * (`setup: "locale:<tag>"`, before the first tick), whatever the base table
+ * and the run's locale: the per-language playtests cover the others.
+ */
+function pinFrames(dir: string, framed: readonly string[], tag: string): void {
+  const step = `locale:${tag}`;
+  for (const f of framed) {
+    const path = join(dir, f);
+    const code = readFileSync(path, "utf8");
+    if (code.includes(step)) continue;
+    const setup = /^(\s*)setup: "([^"]*)",$/m;
+    const next = setup.test(code)
+      ? code.replace(setup, (_, sp: string, s: string) => `${sp}setup: "${step};${s}",`)
+      : code.replace(/^(\s*)(name: .*,)$/m, (_, sp: string, n: string) => `${sp}${n}\n${sp}// Its references were recorded in ${tag}: it boots there whatever the base table (og new --lang).\n${sp}setup: "${step}",`);
+    if (next === code) throw new Error(`${f}: no \`name:\` line to pin its locale after`);
+    writeFileSync(path, next);
+  }
+}
+
+/** The starter's playtests expect the old base's words: they now expect the new base's, but for the frame playtests, which stay in the references' locale. */
+function retarget(dir: string, from: StringTableText, to: StringTableText, framed: readonly string[]): void {
   const tests = join(dir, "tests");
   if (!existsSync(tests)) return;
   const pairs = from.strings.flatMap(([k, m]) => {
     const now = to.strings.find(([key]) => key === k)?.[1];
     return now !== undefined && now !== m && !/[{}]/.test(m) ? [[m, now] as const] : [];
   });
-  for (const f of readdirSync(tests).filter((f) => f.endsWith(".og.ts"))) {
+  for (const f of readdirSync(tests).filter((f) => f.endsWith(".og.ts") && !framed.includes(`tests/${f}`))) {
     const path = join(tests, f);
     let code = readFileSync(path, "utf8");
     for (const [m, now] of pairs) {
