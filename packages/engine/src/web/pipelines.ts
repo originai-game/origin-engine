@@ -72,6 +72,12 @@ let enabled = false;
 let span = 0;
 /** `drawnWhole` calls open. */
 let whole = 0;
+/** Prewarm (`enable(true, true)`): only the pipelines asked for inside `warming` are asynchronous. */
+let prewarmOnly = false;
+/** `warming` calls open. */
+let warmingDepth = 0;
+/** Frame spans opened inside `warming`: under prewarm, the only ones asked to be asynchronous. */
+let warmSpans = 0;
 let pending = 0;
 let skipped = 0;
 const queue: Slot[] = [];
@@ -104,23 +110,42 @@ export function stats(): PipelineStats {
  * went to the browser some way that bypassed these wrappers.
  */
 export function bypassed(s: PipelineStats, warmed: number): string | null {
-  if (!enabled || s.spans === 0 || warmed === 0 || s.async > 0) return null;
+  if (!enabled || (prewarmOnly ? warmSpans : s.spans) === 0 || warmed === 0 || s.async > 0) return null;
   return `${warmed} pipelines were made inside the renderer's frame spans, but none through createRenderPipelineAsync: wgpu reached the browser's createRenderPipeline without src/web/pipelines.ts, so frames compile synchronously`;
 }
 
-/** Asynchronous pipelines and late modules on or off (the Worker: on the web, once the wasm is in). */
-export function enable(on: boolean): void {
+/**
+ * Asynchronous pipelines and late modules on or off (the Worker: on the web, once the wasm is in, as the
+ * build's `publish { pipelines }` says). With `prewarm`, only the renderer's warm-up behind the gate
+ * (`warming`) asks for createRenderPipelineAsync: every frame makes what it draws at once and skips nothing.
+ */
+export function enable(on: boolean, prewarm = false): void {
   enabled = on;
+  prewarmOnly = on && prewarm;
+  warmSpans = 0;
+}
+
+/** Runs `f`, the renderer's warm-up of a pipeline no frame drew yet (og_web_warm): asynchronous under prewarm too. */
+export function warming<T>(f: () => T): T {
+  warmingDepth++;
+  try {
+    return f();
+  } finally {
+    warmingDepth--;
+  }
 }
 
 /** The renderer begins (true) or ends (false) making its frame pipelines (og_web_frame_pipelines). */
 export function frameSpan(on: boolean): void {
-  if (on && span === 0) counts.spans++;
+  if (on && span === 0) {
+    counts.spans++;
+    if (warmingDepth > 0) warmSpans++;
+  }
   span = Math.max(0, span + (on ? 1 : -1));
 }
 
 /** Whether a render pipeline made now is asked for asynchronously, and a pass may skip a stand-in's draws. */
-const framing = () => enabled && span > 0 && whole === 0;
+const framing = () => enabled && span > 0 && whole === 0 && (!prewarmOnly || warmingDepth > 0);
 
 /**
  * Runs `f` with every pipeline it meets made at once and every draw drawn, spans or not: a

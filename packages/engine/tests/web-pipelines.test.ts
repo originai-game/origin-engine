@@ -10,7 +10,8 @@
 //   its draws skipped and counted until a made pipeline is set
 // - a pass whose output later frames keep (encoded outside a span: a static
 //   shadow map, a probe capture, a bake) skips a draw → it makes the
-//   pipeline at once instead, as a harness's frame (drawnWhole) does
+//   pipeline at once instead, as a harness's frame (drawnWhole) does, and as
+//   every frame does under prewarm (only `warming` asks asynchronously)
 // - a stand-in handed to the browser → the made pipeline in setPipeline and
 //   in a bundle
 // - a refused pipeline skipped for ever → made synchronously at its use
@@ -191,6 +192,39 @@ test("a harness's frame is drawn whole: its pipelines made at once and no draw s
   expect(p.compiling()).toBe(0);
 });
 
+test("prewarm: a frame makes its pipelines at once, only the warm-up asks for them asynchronously", async () => {
+  calls.length = 0;
+  p.enable(true, true);
+  // A frame's own pipeline, in a span: made now, nothing compiling, nothing skipped.
+  p.frameSpan(true);
+  const framed = device.createRenderPipeline(desc({ module: "m" }, "framed")) as { pipeline: string };
+  p.frameSpan(false);
+  expect(framed.pipeline).toBe("sync");
+  expect(p.compiling()).toBe(0);
+  // The warm-up behind the gate: asked for asynchronously.
+  const warmed = p.warming(() => {
+    p.frameSpan(true);
+    const w = device.createRenderPipeline(desc({ module: "m" }, "warmed"));
+    p.frameSpan(false);
+    return w;
+  });
+  expect(p.compiling()).toBe(1);
+  // A frame that meets it before it is made makes it at once: its draws are never skipped.
+  const pass = new FakePass();
+  p.frameSpan(true);
+  pass.setPipeline(warmed);
+  pass.draw(3);
+  p.frameSpan(false);
+  expect(pass.draws).toBe(1);
+  expect((pass.pipeline as { pipeline: string }).pipeline).toBe("sync");
+  expect(p.takeSkipped()).toBe(0);
+  await tasks(0);
+  await tasks(0);
+  expect(made("createRenderPipelineAsync").length).toBe(0);
+  expect(p.compiling()).toBe(0);
+  p.enable(true);
+});
+
 test("a stand-in a bundle or a bind group layout needs is made at once, and kept", async () => {
   calls.length = 0;
   p.enable(true);
@@ -287,4 +321,16 @@ test("frame pipelines that reached the browser without the wrappers are named, n
   expect(p.bypassed(lost, 4)).toBe(null);
   p.enable(true);
   expect(p.bypassed(p.stats(), 4)).toBe(null);
+  // Under prewarm a frame's spans are synchronous by design: only a warm-up that asked for nothing is named.
+  p.enable(true, true);
+  p.frameSpan(true);
+  p.frameSpan(false);
+  expect(p.bypassed(lost, 4)).toBe(null);
+  p.warming(() => {
+    p.frameSpan(true);
+    browserCreate.call(device, desc({ module: "m" }, "warm bypass"));
+    p.frameSpan(false);
+  });
+  expect(p.bypassed(lost, 4)).toMatch(/none through createRenderPipelineAsync/);
+  p.enable(true);
 });

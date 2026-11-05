@@ -122,7 +122,7 @@ export interface PublishSettings {
    * Chrome/Metal with a cold shader cache it made the first frame of a small
    * game 2.5-5x later (the table in §Pipelines).
    */
-  readonly pipelines: "sync" | "async";
+  readonly pipelines: "sync" | "async" | "prewarm";
 }
 
 export interface ProjectSettings {
@@ -870,7 +870,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     fullscreen: p.fullscreen,
     gate: p.gate,
     madeWith: p.madeWith,
-    ...(p.pipelines === "async" ? { pipelines: "async" } : {}),
+    ...(p.pipelines !== "sync" ? { pipelines: p.pipelines } : {}),
     serviceWorker: publish,
     expect: { wasm: wasmBytes, cooked: cookedBytes, lanes: lanes ? statSync(join(out, served("origin-engine-lanes_bg.wasm"))).size : 0 },
     files: names,

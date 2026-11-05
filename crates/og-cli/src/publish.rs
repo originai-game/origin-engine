@@ -19,7 +19,7 @@
 //!   short_name "Runner"     # the installed app's name
 //!   color_textures etc1s    # etc1s | uastc: over `cook { color_textures }` for this export's cook
 //!   telemetry on            # on | off: field telemetry (crash details, frame times, load stages)
-//!   pipelines sync          # sync | async: the web frame pipelines with createRenderPipelineAsync
+//!   pipelines sync          # sync | async | prewarm: which web pipelines use createRenderPipelineAsync
 //! }
 //! ```
 //!
@@ -87,7 +87,7 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
             "fullscreen" => json!(word(e, &file, &["off", "gesture"])?),
             "gate" => json!(word(e, &file, &["tap", "none"])?),
             "telemetry" => json!(word(e, &file, &["on", "off"])?),
-            "pipelines" => json!(word(e, &file, &["sync", "async"])?),
+            "pipelines" => json!(word(e, &file, &["sync", "async", "prewarm"])?),
             "made_with" => json!(word(e, &file, &["true", "false"])? == "true"),
             "dpr_cap" => {
                 let n = e
@@ -349,7 +349,7 @@ mod tests {
         );
         let bad = settings_of("badpipelines", "  pipelines lazy\n").unwrap_err();
         assert!(
-            bad.contains("publish.pipelines is `lazy`; use one of sync, async"),
+            bad.contains("publish.pipelines is `lazy`; use one of sync, async, prewarm"),
             "{bad}"
         );
     }
