@@ -44,8 +44,15 @@ struct Ssr {
 @group(0) @binding(2) var ssr_gbuffer: texture_2d<f32>;  // xy oct normal, zw velocity (uv per frame)
 @group(0) @binding(3) var ssr_linear: sampler;
 
-@group(1) @binding(0) var hiz_out: texture_storage_2d<r32float, write>;
+// The pyramid's four levels a dispatch writes (hiz_down), and the level it
+// reads (the second dispatch's).
+@group(1) @binding(0) var hiz_out0: texture_storage_2d<r32float, write>;
+@group(1) @binding(19) var hiz_out1: texture_storage_2d<r32float, write>;
+@group(1) @binding(20) var hiz_out2: texture_storage_2d<r32float, write>;
+@group(1) @binding(21) var hiz_out3: texture_storage_2d<r32float, write>;
 @group(1) @binding(1) var hiz_in: texture_2d<f32>;
+// Levels 1 to 8 of the pyramid as mips 0 to 7; level 0 is the prepass's
+// view depth itself.
 @group(1) @binding(2) var hiz: texture_2d<f32>;
 @group(1) @binding(3) var prev_lit: texture_2d<f32>;
 @group(1) @binding(4) var ray_radiance_out: texture_storage_2d<rgba16float, write>;
@@ -99,7 +106,10 @@ fn ssr_is_sky(d: f32) -> bool {
 // The prepass's roughness (pbr_prepass.wgsl `reflectivity_bits`: the gloss
 // in the low byte, the metalness above it, a painterly byte above both).
 fn ssr_roughness(px: vec2<i32>) -> f32 {
-  let packed = textureLoad(ssr_depth, ssr_clamp_px(px), 0).g;
+  return ssr_decode_roughness(textureLoad(ssr_depth, ssr_clamp_px(px), 0).g);
+}
+
+fn ssr_decode_roughness(packed: f32) -> f32 {
   let g = packed - floor(packed / 65536.0) * 65536.0;
   let metal = floor(g / 256.0);
   return 1.0 - (g - metal * 256.0) / 255.0;
@@ -237,40 +247,77 @@ fn ssr_vndf(wi: vec3<f32>, alpha: f32, u: vec2<f32>) -> vec3<f32> {
 
 // ---- 1. The nearest-depth pyramid.
 
-@compute @workgroup_size(8, 8)
-fn hiz_base(@builtin(global_invocation_id) gid: vec3<u32>) {
-  let dims = textureDimensions(hiz_out);
-  if (gid.x >= dims.x || gid.y >= dims.y) { return; }
-  textureStore(hiz_out, gid.xy, vec4<f32>(ssr_view_depth(vec2<i32>(gid.xy)), 0.0, 0.0, 1.0));
+// After FidelityFX SPD (MIT): a workgroup reduces a 16x16 block of the
+// level below to its next four levels in workgroup memory, so the whole
+// pyramid is two dispatches, not one barrier-bound dispatch a level. The
+// pyramid spans the screen padded to 256 texels, where every level halves
+// exactly; past the screen it holds no surface.
+var<workgroup> hiz_lds: array<f32, 64>;
+
+fn hiz_down(first: f32, lid: vec2<u32>, wg: vec2<u32>) {
+  // first: this invocation's texel of the first level written.
+  textureStore(hiz_out0, wg * 8u + lid, vec4<f32>(first, 0.0, 0.0, 1.0));
+  hiz_lds[lid.y * 8u + lid.x] = first;
+  workgroupBarrier();
+  var n = 4u;
+  for (var k = 1u; k < 4u; k++) {
+    var v = SSR_BIG;
+    let on = all(lid < vec2<u32>(n));
+    if (on) {
+      let c = lid * 2u;
+      v = min(min(hiz_lds[c.y * 8u + c.x], hiz_lds[c.y * 8u + c.x + 1u]),
+              min(hiz_lds[(c.y + 1u) * 8u + c.x], hiz_lds[(c.y + 1u) * 8u + c.x + 1u]));
+    }
+    workgroupBarrier();
+    if (on) {
+      hiz_lds[lid.y * 8u + lid.x] = v;
+      let at = wg * n + lid;
+      let o = vec4<f32>(v, 0.0, 0.0, 1.0);
+      if (k == 1u) { textureStore(hiz_out1, at, o); }
+      if (k == 2u) { textureStore(hiz_out2, at, o); }
+      if (k == 3u) { textureStore(hiz_out3, at, o); }
+    }
+    workgroupBarrier();
+    n = n / 2u;
+  }
 }
 
+// Levels 1 to 4 from the prepass's view depth.
 @compute @workgroup_size(8, 8)
-fn hiz_reduce(@builtin(global_invocation_id) gid: vec3<u32>) {
-  let dims = textureDimensions(hiz_out);
-  if (gid.x >= dims.x || gid.y >= dims.y) { return; }
-  let below = textureDimensions(hiz_in, 0);
-  let x0 = gid.x * 2u;
-  let y0 = gid.y * 2u;
-  // An odd size below folds its last row or column into the last texel, so
-  // every texel bounds everything under it.
-  let x1 = select(x0 + 1u, below.x - 1u, gid.x == dims.x - 1u);
-  let y1 = select(y0 + 1u, below.y - 1u, gid.y == dims.y - 1u);
-  var depth = SSR_BIG;
-  for (var y = y0; y <= y1; y++) {
-    for (var x = x0; x <= x1; x++) {
-      depth = min(depth, textureLoad(hiz_in, vec2<u32>(x, y), 0).r);
+fn hiz_base(@builtin(local_invocation_id) lid: vec3<u32>, @builtin(workgroup_id) wg: vec3<u32>) {
+  let p = vec2<i32>((wg.xy * 8u + lid.xy) * 2u);
+  var v = SSR_BIG;
+  for (var y = 0; y < 2; y++) {
+    for (var x = 0; x < 2; x++) {
+      let q = p + vec2<i32>(x, y);
+      if (all(q < ssr_size())) { v = min(v, textureLoad(ssr_depth, q, 0).r); }
     }
   }
-  textureStore(hiz_out, gid.xy, vec4<f32>(depth, 0.0, 0.0, 1.0));
+  hiz_down(v, lid.xy, wg.xy);
+}
+
+// Levels 5 to 8 from level 4.
+@compute @workgroup_size(8, 8)
+fn hiz_reduce(@builtin(local_invocation_id) lid: vec3<u32>, @builtin(workgroup_id) wg: vec3<u32>) {
+  let p = (wg.xy * 8u + lid.xy) * 2u;
+  let v = min(min(textureLoad(hiz_in, p, 0).r, textureLoad(hiz_in, p + vec2<u32>(1u, 0u), 0).r),
+              min(textureLoad(hiz_in, p + vec2<u32>(0u, 1u), 0).r, textureLoad(hiz_in, p + vec2<u32>(1u, 1u), 0).r));
+  hiz_down(v, lid.xy, wg.xy);
 }
 
 // ---- 2. The trace.
 
 // The surface the pyramid holds at `pos` (screen space) on `level`, as q.
 fn ssr_hiz_q(pos: vec2<f32>, res: vec2<f32>, level: i32) -> f32 {
-  let dims = vec2<i32>(textureDimensions(hiz, level));
-  let cell = clamp(vec2<i32>(floor(pos * res)), vec2<i32>(0), dims - 1);
-  return -1.0 / max(textureLoad(hiz, cell, level).r, 1e-6);
+  var depth: f32;
+  if (level == 0) {
+    depth = ssr_view_depth(vec2<i32>(floor(pos * res)));
+  } else {
+    let dims = vec2<i32>(textureDimensions(hiz, level - 1));
+    let cell = clamp(vec2<i32>(floor(pos * res)), vec2<i32>(0), dims - 1);
+    depth = textureLoad(hiz, cell, level - 1).r;
+  }
+  return -1.0 / max(depth, 1e-6);
 }
 
 // FidelityFX SSSR's hierarchical march (ffx_sssr.h, MIT) from `origin`
@@ -443,7 +490,8 @@ fn resolve(@builtin(global_invocation_id) gid: vec3<u32>) {
   }
   let uv = (vec2<f32>(px) + 0.5) * ssr.screen.zw;
   let p = ssr_view_pos(uv, d);
-  let n = ssr_view_normal(px);
+  let world_n = ssr_world_normal(px);
+  let n = normalize((ssr.view * vec4<f32>(world_n, 0.0)).xyz);
   let v = -normalize(p);
   let n_dot_v = max(dot(n, v), 1e-4);
   let alpha = ssr_alpha(roughness);
@@ -471,7 +519,9 @@ fn resolve(@builtin(global_invocation_id) gid: vec3<u32>) {
     // differs in depth or facing.
     let opx = ssr_ray_origin(rt);
     let od = ssr_view_depth(opx);
-    var bilateral = exp(-abs(od - d) / max(d, 1e-3) * 32.0) * pow(max(dot(ssr_view_normal(opx), n), 0.0), 16.0);
+    // (Normals compared in the world: the dot is the same in view space.)
+    let facing = max(dot(ssr_world_normal(opx), world_n), 1e-6);
+    var bilateral = exp(16.0 * log(facing) - abs(od - d) / max(d, 1e-3) * 32.0);
     if (k == 0 && divisor == 1) { bilateral = 1.0; }
     let l = normalize(hit.xyz - p);
     let n_dot_l = dot(n, l);
@@ -546,12 +596,16 @@ fn prefilter(@builtin(global_invocation_id) gid: vec3<u32>) {
   for (var i = 0; i < 15; i++) {
     let q = ssr_clamp_px(px + vec2<i32>(round(rot * taps[i] * scale)));
     let s = textureLoad(resolved, q, 0);
-    let qd = ssr_view_depth(q);
-    var w = pow(max(dot(n, ssr_world_normal(q)), 0.0), SSR_NORMAL_SIGMA);
-    w *= exp(-abs(d - qd) / max(d, 1e-3) * SSR_DEPTH_SIGMA * 8.0);
-    w *= max(exp(-SSR_RADIANCE_BIAS * length(s.rgb - mean.rgb)), 1e-2);
-    // A neighbour of another roughness lies on another lobe.
-    w *= exp(-abs(ssr_roughness(q) - roughness) * 16.0);
+    let qdr = textureLoad(ssr_depth, q, 0).rg;
+    // The edge-stopping weights' logarithms, summed under one exp: the
+    // normal's power, the depth's and the radiance's falloffs (the last
+    // floored at 1e-2 as FidelityFX's), and a neighbour of another
+    // roughness, which lies on another lobe.
+    let facing = max(dot(n, ssr_world_normal(q)), 1e-6);
+    let w = exp(SSR_NORMAL_SIGMA * log(facing)
+      - abs(d - qdr.x) / max(d, 1e-3) * SSR_DEPTH_SIGMA * 8.0
+      - min(SSR_RADIANCE_BIAS * length(s.rgb - mean.rgb), 4.6052)
+      - abs(ssr_decode_roughness(qdr.y) - roughness) * 16.0);
     sum += s * w;
     weight += w;
   }

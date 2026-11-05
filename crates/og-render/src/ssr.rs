@@ -143,10 +143,19 @@ fn block_offset(frame: u64) -> [f32; 2] {
     [[0.0, 0.0], [1.0, 1.0], [1.0, 0.0], [0.0, 1.0]][(frame % 4) as usize]
 }
 
-/// The levels of the nearest-depth pyramid of a `width` x `height` depth:
-/// down to one texel on the longer side.
-fn pyramid_levels(width: u32, height: u32) -> u32 {
-    32 - width.max(height).max(1).leading_zeros()
+/// The nearest-depth pyramid's levels above the prepass's view depth
+/// (level 0): two dispatches of four (`ssr.wgsl` `hiz_down`), the coarsest
+/// a cell of 256 pixels.
+const PYRAMID_LEVELS: u32 = 8;
+
+/// The pyramid's level 1 for a `width` x `height` screen: half the screen
+/// padded to 256 pixels, so that every level halves exactly.
+fn pyramid_size(width: u32, height: u32) -> (u32, u32) {
+    let pad = 1 << PYRAMID_LEVELS;
+    (
+        width.div_ceil(pad) * pad / 2,
+        height.div_ceil(pad) * pad / 2,
+    )
 }
 
 struct Pipelines {
@@ -210,15 +219,14 @@ fn texture(
 impl Targets {
     fn new(device: &wgpu::Device, size: (u32, u32), divisor: u32) -> Targets {
         let ray_size = (size.0.div_ceil(divisor), size.1.div_ceil(divisor));
-        let levels = pyramid_levels(size.0, size.1);
         let hiz = texture(
             device,
             "ssr depth pyramid",
-            size,
+            pyramid_size(size.0, size.1),
             wgpu::TextureFormat::R32Float,
-            levels,
+            PYRAMID_LEVELS,
         );
-        let hiz_levels = (0..levels)
+        let hiz_levels = (0..PYRAMID_LEVELS)
             .map(|level| {
                 hiz.create_view(&wgpu::TextureViewDescriptor {
                     base_mip_level: level,
@@ -386,7 +394,8 @@ impl SsrRenderer {
                 prev_lit as u32 as f32,
                 previous.is_some() as u32 as f32,
                 t.divisor as f32,
-                t.hiz_levels.len() as f32,
+                // The march's levels: the view depth and the pyramid's.
+                (PYRAMID_LEVELS + 1) as f32,
             ],
             ray: {
                 let [x, y] = block_offset(frame);
@@ -428,15 +437,16 @@ impl SsrRenderer {
         let group = |pass: usize, resources: &[(u32, wgpu::BindingResource)]| {
             crate::volumetric::bind_at(device, "ssr pass", &p.layouts[pass], resources)
         };
-        let base = group(HIZ_BASE, &[(0, tex(&t.hiz_levels[0]))]);
-        let reduce: Vec<_> = (1..t.hiz_levels.len())
-            .map(|l| {
-                group(
-                    HIZ_REDUCE,
-                    &[(0, tex(&t.hiz_levels[l])), (1, tex(&t.hiz_levels[l - 1]))],
-                )
-            })
-            .collect();
+        // The four levels a pyramid dispatch writes from `first` (ssr.wgsl
+        // hiz_out0 to hiz_out3).
+        let outs = |first: usize| -> [(u32, wgpu::BindingResource); 4] {
+            let at = [0u32, 19, 20, 21];
+            std::array::from_fn(|k| (at[k], tex(&t.hiz_levels[first + k])))
+        };
+        let base = group(HIZ_BASE, &outs(0));
+        let mut reduce_entries = outs(4).to_vec();
+        reduce_entries.push((1, tex(&t.hiz_levels[3])));
+        let reduce = group(HIZ_REDUCE, &reduce_entries);
         let trace = group(
             TRACE,
             &[
@@ -482,15 +492,19 @@ impl SsrRenderer {
             let (x, y) = groups(size);
             pass.dispatch_workgroups(x, y, 1);
         };
-        dispatch(HIZ_BASE, &base, t.size);
-        for (l, g) in reduce.iter().enumerate() {
-            let level = l as u32 + 1;
-            dispatch(
-                HIZ_REDUCE,
-                g,
-                ((t.size.0 >> level).max(1), (t.size.1 >> level).max(1)),
-            );
-        }
+        let skip = std::env::var("SSR_SKIP").unwrap_or_default(); // DBG-PERF
+        let mut dispatch = |pipeline: usize, group: &wgpu::BindGroup, size: (u32, u32)| {
+            if skip.split(',').any(|k| {
+                k == ["hizb", "hizr", "trace", "resolve", "prefilter", "temporal"][pipeline]
+            }) {
+                return;
+            }
+            dispatch(pipeline, group, size)
+        };
+        // A group of 8x8 writes 8x8 texels of its first level.
+        let (w, h) = pyramid_size(t.size.0, t.size.1);
+        dispatch(HIZ_BASE, &base, (w, h));
+        dispatch(HIZ_REDUCE, &reduce, (w >> 4, h >> 4));
         dispatch(TRACE, &trace, t.ray_size);
         dispatch(RESOLVE, &resolve, t.size);
         dispatch(PREFILTER, &prefilter, t.size);
@@ -537,8 +551,25 @@ impl Pipelines {
         );
         let r32 = wgpu::TextureFormat::R32Float;
         let layouts = [
-            layout("ssr hiz base", &[storage(0, r32)]),
-            layout("ssr hiz reduce", &[storage(0, r32), texture(1, false)]),
+            layout(
+                "ssr hiz base",
+                &[
+                    storage(0, r32),
+                    storage(19, r32),
+                    storage(20, r32),
+                    storage(21, r32),
+                ],
+            ),
+            layout(
+                "ssr hiz reduce",
+                &[
+                    storage(0, r32),
+                    storage(19, r32),
+                    storage(20, r32),
+                    storage(21, r32),
+                    texture(1, false),
+                ],
+            ),
             layout(
                 "ssr trace",
                 &[
@@ -648,12 +679,19 @@ mod tests {
         assert_eq!(roughness(0.0), 1.0);
     }
 
+    /// The pyramid covers the screen and halves exactly at every level, so
+    /// a coarse texel bounds every pixel under it with no row left out.
     #[test]
-    fn pyramid_reaches_one_texel() {
-        assert_eq!(pyramid_levels(1, 1), 1);
-        assert_eq!(pyramid_levels(1920, 1080), 11);
-        assert_eq!(1920 >> (pyramid_levels(1920, 1080) - 1), 1);
-        assert_eq!(pyramid_levels(1024, 1024), 11);
+    fn pyramid_halves_exactly_over_the_screen() {
+        for (w, h) in [(1, 1), (1920, 1080), (1280, 720), (2560, 1440), (257, 3)] {
+            let (pw, ph) = pyramid_size(w, h);
+            assert!(pw * 2 >= w && ph * 2 >= h, "{w}x{h}");
+            for k in 0..PYRAMID_LEVELS {
+                assert_eq!((pw >> k) << k, pw, "{w}x{h} level {}", k + 1);
+                assert_eq!((ph >> k) << k, ph, "{w}x{h} level {}", k + 1);
+            }
+        }
+        assert_eq!(pyramid_size(1920, 1080), (1024, 640));
     }
 
     /// A half-resolution ray visits every pixel of its block in four frames.
