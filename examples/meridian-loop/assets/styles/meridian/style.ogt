@@ -79,6 +79,8 @@ colors {
   series8 "#ff3d6e"
 }
 typography {
+  # Added by og upgrade: what displayXl2 drew before typography (docs/ui.md §17.4).
+  hero 56 60 -0.025 700 display
   display 50 54 0.02 700 display {
     phonePortrait 40 43
     phoneLandscape 45 49
@@ -159,18 +161,19 @@ shape {
   hud round 10
   avatar round pill
 }
-ramp {
-  body 15 20
-  meta 13 18
-  caption 13 18
-  lg 19 24
-  xl 22 28
-  xl2 26 30
-  xl3 30 34
-  displaySm 32 36
-  displayMd 40 44
-  displayLg 50 54
-}
+# Legacy ramp archived by og upgrade; edit typography (docs/ui.md §17.4).
+# ramp {
+#   body 15 20
+#   meta 13 18
+#   caption 13 18
+#   lg 19 24
+#   xl 22 28
+#   xl2 26 30
+#   xl3 30 34
+#   displaySm 32 36
+#   displayMd 40 44
+#   displayLg 50 54
+# }
 fonts {
   body "Rajdhani-Bold.ttf"
   display "ChakraPetch-BoldItalic.ttf"
