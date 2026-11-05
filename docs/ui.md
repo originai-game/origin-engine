@@ -870,6 +870,13 @@ sector, not a rectangular fill. These parts are:
   Controls without a part use `Element.focus`. Geometry, shape, strokes,
   and opacity change only the ring, never its control's hit box or focus.
   An unset stroke keeps the legacy ring; `stroke none` removes it.
+- `Skeleton.frame` controls the stack's spacing and bounds;
+  `Skeleton.line[last]` controls its shortened last line, and
+  `Skeleton.line` controls every line. `Spinner.base` controls its bounds.
+  `Skeleton.sheen` and the unqualified `Spinner.dot` use their
+  `appearance.motion` duration as the cycle period and a tween's curve
+  as the phase curve. `instant` stops at phase zero. Unset motion keeps
+  the skeleton's 1600 ms and the spinner's twice-`slow` periods.
 
 A game shipped with a version 1 style keeps the screens it shipped with:
 an engine update may draw them better (antialiasing, contrast, a cleaner

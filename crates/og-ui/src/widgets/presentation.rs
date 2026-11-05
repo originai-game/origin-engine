@@ -238,6 +238,8 @@ impl Ui {
     pub fn skeleton(&mut self, id: impl Into<Id>, desc: SkeletonDesc) {
         let t = self.theme;
         let lines = desc.lines.max(1);
+        let frame = crate::dress::PartRef::of("Skeleton", "frame", None);
+        let sheen = crate::dress::PartRef::of("Skeleton", "sheen", None);
         let h = if desc.height > 0.0 {
             desc.height
         } else {
@@ -249,13 +251,14 @@ impl Ui {
                 direction: Direction::Column,
                 width: desc.width.unwrap_or(Size::grow()),
                 gap: t.space.sm,
+                part: (self.dress.resolve(&frame).matched > 0).then_some(frame),
                 ..Element::default()
             },
         );
-        let period = self.ticks_for(1600.0) as u64;
-        let phase = (self.state.tick % period) as f32 / period as f32;
+        let phase = self.part_cycle(&sheen, 1600.0);
         for k in 0..lines {
             let last = lines > 1 && k == lines - 1;
+            let part = crate::dress::PartRef::of("Skeleton", "line", None).flag_if(last, "last");
             let i = self.leaf(
                 "skeleton",
                 Id::default(),
@@ -268,6 +271,7 @@ impl Ui {
                     height: Size::Fixed(h),
                     background: Some(t.palette.control),
                     radius: t.radius.control,
+                    part: (self.dress.resolve(&part).matched > 0).then_some(part),
                     ..Element::default()
                 },
             );
@@ -277,7 +281,7 @@ impl Ui {
                 let (a, b) = (x.max(0.0), (x + band).min(1.0));
                 if b > a {
                     self.nodes[i].shapes.push(Shape::DressedRect {
-                        part: crate::dress::PartRef::of("Skeleton", "sheen", None),
+                        part: sheen,
                         frame: Frame::left(a, b),
                         radius: 0.0,
                         color: t.palette.sheen.fade(0.35),
@@ -291,6 +295,8 @@ impl Ui {
     /// A loading spinner: eight dots around a circle, the bright one turning.
     pub fn spinner(&mut self, id: impl Into<Id>, size: f32) {
         let t = self.theme;
+        let base = crate::dress::PartRef::of("Spinner", "base", None);
+        let dot_part = crate::dress::PartRef::of("Spinner", "dot", None);
         let s = if size > 0.0 {
             size
         } else {
@@ -302,13 +308,13 @@ impl Ui {
             Element {
                 width: Size::Fixed(s),
                 height: Size::Fixed(s),
+                part: (self.dress.resolve(&base).matched > 0).then_some(base),
                 ..Element::default()
             },
         );
         self.nodes[i].a11y.busy = true;
         self.nodes[i].a11y.name = Some("Loading".into());
-        let period = self.ticks_for(t.durations_ms.slow * 2.0) as u64;
-        let head = ((self.state.tick % period) * 8 / period) as i32;
+        let head = (self.part_cycle(&dot_part, t.durations_ms.slow * 2.0) * 8.0) as i32;
         let dot = s / 5.0;
         for k in 0..8 {
             let ang = k as f32 * PI / 4.0 - FRAC_PI_2;
@@ -318,7 +324,7 @@ impl Ui {
             );
             let age = (head - k).rem_euclid(8) as f32;
             self.nodes[i].shapes.push(Shape::DressedRect {
-                part: crate::dress::PartRef::of("Spinner", "dot", None).attr(
+                part: dot_part.attr(
                     "age",
                     ["0", "1", "2", "3", "4", "5", "6", "7"][age as usize],
                 ),

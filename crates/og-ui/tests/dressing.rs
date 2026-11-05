@@ -1879,6 +1879,67 @@ fn a_selected_parts_rim_draws_over_its_items_art() {
 }
 
 #[test]
+fn loading_indicators_take_geometry_and_period_from_the_style() {
+    let mut ui = dressed(concat!(
+        "dress \"Skeleton.frame\" {\n appearance {\n width 100\n gap 9\n }\n}\n",
+        "dress \"Skeleton.line\" {\n appearance {\n height 6\n }\n}\n",
+        "dress \"Skeleton.line[last]\" {\n appearance {\n width 37\n }\n}\n",
+        "dress \"Skeleton.sheen\" {\n fill \"#ff00ff\"\n appearance {\n motion tween 200 linear\n }\n}\n",
+        "dress \"Spinner.dot\" {\n appearance {\n motion tween 200 linear\n }\n}\n",
+        "dress \"Spinner.dot[age=0]\" {\n fill \"#00ffff\"\n}\n",
+    ));
+    for _ in 0..4 {
+        ui.begin(InputFrame::default(), Viewport::new(200.0, 100.0));
+        ui.column("Content", Element::column(), |ui| {
+            ui.skeleton(
+                "Loading",
+                SkeletonDesc {
+                    lines: 2,
+                    ..Default::default()
+                },
+            );
+            ui.spinner("Spinner", 40.0);
+        });
+        ui.end();
+    }
+    assert_eq!(ui.tick(), 4);
+    let frame = ui.frame();
+    let loading = frame.element("Loading").unwrap();
+    assert_eq!(loading.width, 100.0);
+    assert_eq!(loading.height, 21.0);
+    let spinner = frame.element("Spinner").unwrap();
+    let dot = frame
+        .items
+        .iter()
+        .filter_map(|i| i.cmd.filled())
+        .find(|(_, c)| *c == Srgba::rgb(0, 255, 255).linear())
+        .unwrap()
+        .0;
+    assert_eq!(
+        dot.center().0,
+        spinner.x + 36.0,
+        "200 ms cycle reaches the right-hand dot"
+    );
+    assert_eq!(dot.center().1, spinner.y + 20.0);
+    let sheen: Vec<_> = frame
+        .items
+        .iter()
+        .filter_map(|i| i.cmd.filled())
+        .filter(|(_, c)| *c == Srgba::rgb(255, 0, 255).linear())
+        .map(|(r, _)| r)
+        .collect();
+    assert_eq!(sheen.len(), 2);
+    assert!(
+        sheen.iter().any(|r| (r.width - 30.0).abs() < 1.0),
+        "{sheen:?}"
+    );
+    assert!(
+        sheen.iter().any(|r| (r.width - 11.1).abs() < 1.0),
+        "{sheen:?}"
+    );
+}
+
+#[test]
 fn a_dressed_focus_ring_keeps_navigation_and_changes_only_its_drawing() {
     let mut ui = dressed(
         "dress \"Button.focus[player=0]\" {\n stroke 7 \"#ff00ff\" outside\n appearance {\n width 140\n height 55\n x 9\n }\n}\n",

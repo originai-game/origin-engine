@@ -276,6 +276,26 @@ impl Ui {
         fill
     }
 
+    /// The phase of a decorative cycle; its authored motion sets period
+    /// and tween curve without changing the simulation clock.
+    pub(crate) fn part_cycle(&self, part: &crate::dress::PartRef, default_ms: f32) -> f32 {
+        let dressing = self.dress.resolve(part);
+        let transition = match dressing.draw.appearance_value("motion") {
+            Some(crate::doc::Lit::Transition(t)) => Some(t.resolve(&self.theme.motion)),
+            _ => None,
+        };
+        let ms = transition.map_or(default_ms, |t| t.duration_ms(&self.theme.motion));
+        if ms <= 0.0 {
+            return 0.0;
+        }
+        let period = u64::from(self.ticks_for(ms));
+        let phase = (self.state.tick % period) as f32 / period as f32;
+        match transition {
+            Some(crate::motion::Transition::Tween { ease, .. }) => ease.at(phase),
+            _ => phase,
+        }
+    }
+
     /// Part `part` drawn in `rect` (a widget's piece: a meter's fill, a
     /// toggle's knob): its atlas art when its dressing has a slice and the
     /// style an atlas, else through the UI pass ([`Ui::part_draw`]).
