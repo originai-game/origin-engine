@@ -122,6 +122,16 @@ try {
       return trees;
     })()`);
   const commands = (script: string) => t.eval(`__og_shell__.call("probe", "commands", ${JSON.stringify(script)})`);
+  /**
+   * The page's media emulated as `features`, then two of its animation frames: a browser reports a
+   * media query's change (the shell's watch, PAGE_PREFERENCES) at its next rendering update, as it
+   * does when the reader changes the preference, and Edge only then (it was ~80 ms late, after 30
+   * of `frames`' calls, which render no page frame).
+   */
+  const emulate = async (features: Array<{ name: string; value: string }>) => {
+    await t.send("Emulation.setEmulatedMedia", { features });
+    await t.eval("new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))");
+  };
   const elements = async () => (await t.eval<{ elements: Element[] }>(`__og_shell__.probe("dump", { what: "ui" })`)).elements;
   const element = async (path: string) => {
     const els = await elements();
@@ -225,10 +235,10 @@ try {
     return shot.png;
   };
   const standard = await shoot("contrast-standard");
-  await t.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-contrast", value: "more" }] });
+  await emulate([{ name: "prefers-contrast", value: "more" }]);
   await frames(6);
   const more = await shoot("contrast-more");
-  await t.send("Emulation.setEmulatedMedia", { features: [] });
+  await emulate([]);
   await frames(6);
   const back = await shoot("contrast-back");
   check(more !== standard, "prefers-contrast: more changed the frame (the high-contrast theme)");
@@ -236,7 +246,7 @@ try {
 
   // Reduced motion: the pause dialog fades in at its full size.
   const pauseWidth = async (reduce: boolean) => {
-    await t.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: reduce ? "reduce" : "no-preference" }] });
+    await emulate([{ name: "prefers-reduced-motion", value: reduce ? "reduce" : "no-preference" }]);
     await commands("0.02:show:none");
     await frames(30);
     await commands("0.02:show:pause");
