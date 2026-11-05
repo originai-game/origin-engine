@@ -115,3 +115,29 @@ as with `RenderScene::visibility_buffer` off. Its unit test
 panics on the old code (wgpu's uncaptured validation error) and passes now.
 
 Not run yet on the phone: reference-gfx (the Safari cluster first: terrain, water, grass, impostor-scatter, spheres-20k, with and without `--cpu-culling`; crowd-lods and the crowd-2k sweep), e5, wire.ts and the templates' playtests. reference-gfx needs a wasm build window, shared with the rebuild for 985cf7e71.
+
+### The warm-up behind the gate on PowerVR (for the web-boot thread, T-01a1a707)
+
+fx-showcase dev export from a25fc9ebf + the resolve fallback + the Worker's
+GPUInternalError fix + 4f2d99959 (each warm call flushed and awaited one at
+a time), warm Chrome cache, Pixel 10. "Screen" is a CDP screenshot
+requested at first-frame + 1 s: it returns only once the page makes a
+compositor frame.
+
+| | sync | prewarm | async |
+|---|---|---|---|
+| og:first-frame from navigation | 3.7-4.4 s | 3.8-4.3 s | 17.8-17.9 s |
+| screenshot at ff+1 s | 22.7 s (next frame at ff+23.7 s) | 22.7 s (ff+23.7 s) | 96 ms; 96-152 ms through ff+42 s |
+| tap at 20 s: tick frozen / longest frame gap | 0 / 58 ms | 0 / 124 ms | 0 / 66 ms |
+| tap at 1 s: tick moves after / frozen / gap | 0.29 s / 0.52 s / 0.85 s | 0.29 s / 0.03 s / 0.15 s | - / 0 / 67 ms |
+| whole warm-up (tap at 40 s) | 128 pipelines, 35.9 s in Dawn, last ends ff+38.5 s | 128, 19.8 s in Dawn, ends ff+25.9 s | 128, 7.5 s on Dawn's main thread, ends ff+4.8 s |
+| boot.pipelines 20 s after ff | sync 41 | sync 41, spans 25 | async 91, sync 16, fallback 2, spans 142 |
+| longest HandleDawnCommands | 8.5-9.8 s at ff+0.6 (the first frame's pbr x2, pbr meshlet, meshlet resolve, sprites, ...), then 3.9-4.0 s | 8.7-11.1 s at ff+0.5, then 4.2-5.6 s | 5.2 s, 11.8 s before ff |
+| pipelines compiled after a tap at 20 s | 1 (fs_gtao_bent, 0.05 s; the warm-up stopped at 74 of 109 render) | 0 | 0 |
+
+The per-call flush works as meant (no freeze at a tap 20 s in, the tick
+runs at a tap 1 s in), but on PowerVR Chrome compiles the sync pipelines,
+and prewarm's here too, on the GPU process's main thread, so the page makes
+no frame for 22.7 s after its first-frame mark, the gate included. Async
+waits longer for its first frame and then never blocks: a live screen at
+about 18 s from navigation against about 27.5 s for sync and prewarm.
