@@ -581,7 +581,7 @@ publish {
   short_name "Runner"     # the installed app's name
   color_textures etc1s    # etc1s | uastc: this export's colour textures (default: cook's)
   telemetry on            # on | off: field telemetry (§Telemetry)
-  pipelines sync          # sync | async: how the frame pipelines compile (§Pipelines)
+  pipelines sync          # sync | async | prewarm: how the frame pipelines compile (§Pipelines)
 }
 ```
 
@@ -637,6 +637,33 @@ The cost is Dawn's asynchronous compile itself, not the queueing. The
 same 58 pipelines hollowbell warms behind the gate took 312 ms cold
 synchronously and 1445-1605 ms cold asynchronously; warm, both took
 300 ms.
+
+`pipelines prewarm` splits the two: the frames make their pipelines with
+`createRenderPipeline` as `sync` does, so the first frame never waits on
+an asynchronous compile, and only the renderer's warm-up behind the gate,
+after the first frame (`warmBehindGate`, `pipelines.warming`), asks for
+the rest with `createRenderPipelineAsync`, at most six compiling at once.
+A frame that meets a pipeline still compiling makes it at once and skips
+no draw. The warm-up under the page's loading screen, before the first
+frame, stays synchronous. Measured the same way on 2026-11-05 (branch
+`land-webboot-wire`, every GPU slot held per run), against the same
+build with `sync`:
+
+| game | cache | `sync` (main ac5540402) | `sync` (this build) | `prewarm` |
+|---|---|---|---|---|
+| hollowbell | warm | 553, 670, 755, 823, 898 | 454, 411, 399, 435, 404, 402 | 639, 432, 503, 617, 533, 402 |
+| lantern-vale | warm | 712, 777, 696, 589, 529 | 430, 639 | 423, 421, 570, 455, 517, 592, 690, 609 |
+| hollowbell | cold | 1810, 1513, 1674 | 1356, 1394, 1688 | 1211, 1211, 1192 |
+| lantern-vale | cold | 1627, 1488, 1391 | 1585, 1155 | 1562, 1911, 1237 |
+
+`prewarm` beats main warm on both games and cold on hollowbell, but not
+cold on lantern-vale (median 1562 ms against 1488), and against the same
+build's `sync` it gains only hollowbell's cold boot. Its cost is the
+warm-up behind the gate: cold, Dawn's asynchronous compile took the
+remaining pipelines 5.0 s (hollowbell's 58) and 11.7-14.9 s
+(lantern-vale's), against 0.3 s synchronously, so a tap in that window
+meets pipelines still compiling and makes them at once anyway. It stays
+opt-in; `sync` is the default.
 
 ## The shell
 

@@ -107,8 +107,11 @@ interface Start {
   autoplay?: boolean;
   /** Fork s61: the page draws its own loading screen and hears the game's stages (worker globals ogBootStage, ogBootIdle). */
   stages?: boolean;
-  /** Fork s60: the frame pipelines with createRenderPipelineAsync (project.ogt `publish { pipelines async }`); absent: synchronously. */
-  asyncPipelines?: boolean;
+  /**
+   * Fork s60: project.ogt `publish { pipelines }`: `async`, the frame pipelines with createRenderPipelineAsync;
+   * `prewarm`, only the warm-up behind the gate's; absent: synchronously.
+   */
+  pipelines?: "async" | "prewarm";
   /** The URL base whose `cooked/` bundle the engine opens (`.` next to the page). */
   root?: string;
   /** The Basis transcoder's script and module. */
@@ -1143,6 +1146,7 @@ export function startWorker(game: GameToken): void {
         // Fork s70: a covered frame sets no pass, so the pipelines a pass makes when it first sets one
         // (og-render warm) are made here, one a frame, at most WARM_COMPILING compiling (s75).
         if (covered && coveredWarmLeft && glueRef?.og_web_warm && pipelines.compiling() < WARM_COMPILING) {
+          // Before the first frame: synchronous under prewarm (only warmBehindGate's are `warming`).
           coveredWarmLeft = glueRef.og_web_warm(engine.id);
           if (coveredWarmLeft) coveredWarm++;
           else reportPipelines(coveredWarm);
@@ -1220,7 +1224,7 @@ export function startWorker(game: GameToken): void {
       }
       let more: boolean;
       try {
-        more = warm(engine.id);
+        more = pipelines.warming(() => warm(engine!.id));
       } catch (e) {
         crash(e instanceof Error ? e.message : String(e));
         return;
@@ -1442,8 +1446,8 @@ export function startWorker(game: GameToken): void {
         // Fork s60: the frame pipelines compile off the browser's GPU-process main task (pipelines.ts),
         // when the build asks for it: on Chrome/Metal a cold shader cache compiles them asynchronously
         // several times slower than synchronously (docs/web-export.md §Pipelines).
-        if (data.asyncPipelines && glue.og_web_frame_pipelines) {
-          pipelines.enable(true);
+        if (data.pipelines && glue.og_web_frame_pipelines) {
+          pipelines.enable(true, data.pipelines === "prewarm");
           glue.og_web_frame_pipelines(pipelines.frameSpan);
         }
         // Fork s70: frames prepare without drawing while the page's loading screen covers the canvas.
