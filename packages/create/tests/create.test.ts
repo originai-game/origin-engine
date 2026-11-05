@@ -57,6 +57,34 @@ test("choice flags write a canonical create block and reject bad choices before 
 
 const engine = join(pkg, "../engine");
 const og = join(engine, "native", `og.${process.platform}-${process.arch}${process.platform === "win32" ? ".exe" : ""}`);
+test.skipIf(!existsSync(og))("local touch arena keeps the whole field clear of HUD and controls at both aspects", () => {
+  expect(cli("arena-fit", "--players", "local-multiplayer", "--platform", "phone-portrait", "--look", "16bit-pixel").code).toBe(0);
+  const dir = join(scratch, "arena-fit");
+  const sizes: [number, number][] = [[390, 844], [844, 390]];
+  for (const [width, height] of sizes) {
+    const out = join(dir, `out-${width}`);
+    const r = Bun.spawnSync([og, "run", dir, "--commands", "0.3:get:og.Camera:camera.json;0.3:dump_ui:ui.json;0.4:quit", "--size", `${width}x${height}`, "--out", out], { env: { ...process.env, OG_ENGINE_PACKAGE: engine, OG_RENDERER: "none" } });
+    expect(r.exitCode).toBe(0);
+    const camera = JSON.parse(readFileSync(join(out, "camera.json"), "utf8")).value;
+    const pixels = height / camera.height;
+    // Arena bounds are 0..16 by 0..9, including both players' full movement range.
+    const left = width / 2 - camera.position[0] * pixels;
+    const right = left + 16 * pixels;
+    const top = height / 2 - (9 - camera.position[1]) * pixels;
+    const bottom = top + 9 * pixels;
+    expect(left).toBeGreaterThanOrEqual(15);
+    expect(right).toBeLessThanOrEqual(width - 15);
+    expect(top).toBeGreaterThan(0);
+    expect(bottom).toBeLessThan(height);
+    const ui = JSON.parse(readFileSync(join(out, "ui.json"), "utf8"));
+    for (const path of ["Status/Line", "Score/P1", "Score/P2", "CreationTouch0/Move", "CreationTouch1/Move", "CreationTouch0/Action", "CreationTouch1/Action"]) {
+      const rect = ui.elements.find((e: { path: string }) => e.path === path);
+      expect(rect).toBeDefined();
+      expect(rect.x + rect.width <= left || rect.x >= right || rect.y + rect.height <= top || rect.y >= bottom).toBeTrue();
+    }
+  }
+}, 30000);
+
 test.skipIf(!existsSync(og))("local creation routes asymmetric input to independent players on the native host", () => {
   for (const [input, commands] of [
     ["keyboard-mouse", "0.1:key_down:KeyD;0.1:key_down:ArrowUp;0.5:key_up:KeyD;0.5:key_up:ArrowUp"],

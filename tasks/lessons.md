@@ -101,3 +101,12 @@ discs. Judge the source, direction and tail as well as visibility: a spume
 sheet must start on a crest, extend downwind and thin towards its tail.
 Lifting an advected billboard above the water by its radius breaks that
 attachment. Keep the near droplets separate from crest-attached sheets.
+
+## 2026-11-05 — Check gameplay visibility, not just portrait HUD layout
+
+The creation-choice portrait arena passed a UI-only reading while both
+players were outside the camera and the sticks covered the field. Fit the
+whole playable bounds into the live viewport after reserving HUD and input
+space. Check every player and field edge in the actual frame at both
+aspects, and assert projected field/UI separation in a native regression
+test; unclipped controls alone do not prove a playable layout.

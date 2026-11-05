@@ -52,7 +52,23 @@ ${arena ? `    const lock = must(world.resource(og.Lockstep));
 ` : ""}  } });
 }
 
-// Call once for each locally controlled seat each tick. Anchors inherit the
+${arena ? `export function creationArenaCamera(world: World, width: number, height: number) {
+  const vp = og.ui.viewport(world);
+  if (vp.width <= 0 || vp.height <= 0) return;
+  const portrait = vp.height > vp.width;
+  const touch = creation.input === "touch";
+  const side = touch && !portrait ? ${local ? 160 : 240} : 16;
+  const left = vp.safeArea.left + side;
+  const right = vp.width - vp.safeArea.right - side;
+  const top = vp.safeArea.top + 136;
+  const bottom = vp.height - vp.safeArea.bottom - (touch && portrait ? 240 : 24);
+  const scale = Math.max(width / Math.max(1, right - left), height / Math.max(1, bottom - top));
+  const camera = must(world.resource(og.Camera));
+  camera.height = scale * vp.height;
+  camera.position = { x: width / 2 + (vp.width - left - right) * scale / 2, y: height / 2 + (top + bottom - vp.height) * scale / 2, z: 50 };
+}
+
+` : ""}// Call once for each locally controlled seat each tick. Anchors inherit the
 // host's live safe area; never bake a particular phone's notch into the game.
 export function creationControls(world: World, seat = 0) {
   const vector = og.input.actionVector(world, "move" + seat);
@@ -110,7 +126,9 @@ export function applyCreation(dir: string, c: CreationChoices, lookFile: string,
   if (archetype === "arena") {
     const gameFile = join(dirname(main), "game.ts");
     let game = readFileSync(gameFile, "utf8");
-    game = `import { creationControls } from "./creation.ts";\n${game}`;
+    game = `import { creationControls, creationArenaCamera } from "./creation.ts";\n${game}`;
+    game = game.replace('"Hud", { reads: [Duel, og.Lockstep] }', '"Hud", { reads: [Duel, og.Lockstep], writes: [og.Camera] }');
+    game = game.replace('  const net = og.net.status(world);', '  creationArenaCamera(world, WIDTH, HEIGHT);\n  const net = og.net.status(world);');
     const from = game.indexOf('export const Submit = defineSystem("Submit"');
     const to = game.indexOf("/** Each fighter", from);
     if (from < 0 || to < 0) throw new Error("arena Submit contract changed");
@@ -132,8 +150,8 @@ export function applyCreation(dir: string, c: CreationChoices, lookFile: string,
     game = game.slice(0, from) + submit + game.slice(to);
     if (local) {
       game = game.replace('"Local: Red"', '"Local: Red and Blue"');
-      game = game.replace('og.ui.anchor("Status", { anchor: "bottom", padding: { left: 16, top: 12,', 'og.ui.anchor("Status", { anchor: "top", padding: { left: 16, top: 72,');
     }
+    game = game.replace('og.ui.anchor("Status", { anchor: "bottom", padding: { left: 16, top: 12,', 'og.ui.anchor("Status", { anchor: "top", padding: { left: 16, top: 72,');
     writeFileSync(gameFile, game);
     if (c.players !== "online-lockstep") {
       writeFileSync(join(dir, "tests/duel.og.ts"), `import { playtest } from "@origingame/engine/playtest";
