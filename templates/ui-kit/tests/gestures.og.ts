@@ -7,8 +7,7 @@
 // Ways it could fail: the first finger's press clicks the row, the list
 // stays put, the pinch zooms about the map's corner, or the zoom is not
 // in the UI's state.
-import { playtest } from "@origingame/engine/playtest";
-import { demo, ui } from "./lib.ts";
+import { demo, playtest, ui } from "./lib.ts";
 
 // At 1280×720 the quest list is at (866, 317) 200×200 and the map at
 // (540, 317) 314×177 (the panel centred in the room the kit's chrome

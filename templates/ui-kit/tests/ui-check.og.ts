@@ -5,8 +5,8 @@
 // undeclared overlaps (the platformer's timer under its coins, the Gallery
 // button over the puzzle's score); the HUDs built from components replace
 // them, and their check comes back clean.
-import { playtest } from "@origingame/engine/playtest";
 import { checkUi } from "@origingame/engine/ui-check";
+import { playtest } from "./lib.ts";
 
 /** Every showcase's play screen (src/showcases.ts). */
 const HUDS = ["actionHud", "shooterHud", "manageHud", "raceHud", "sportsHud", "mobaHud", "rpgHud", "mmoHud", "rogueHud", "tdHud", "rhythmHud", "fightHud", "survivalHud", "horrorHud", "openHud"] as const;

@@ -6,10 +6,9 @@
 // and the RTS console (its orders, Build, Barracks targeting, a group); then each right to left, in Japanese and at 150 %
 // text, each frame compared with
 // crates/og-ui/references/<tier>/kit-genres2-<file>.
-import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
 import { genres2Script } from "./patterns.ts";
-import { ui } from "./lib.ts";
+import { playtest, ui } from "./lib.ts";
 
 const script = genres2Script(false);
 

@@ -6,8 +6,7 @@
 // from the zh-CN table and the tree's values where Apply left them
 // (examples/WEB-FINDINGS.md #10: the kit saved its settings and never read
 // them, so a reload came back in English).
-import { playtest } from "@origingame/engine/playtest";
-import { demo, tap, ui } from "./lib.ts";
+import { demo, playtest, tap, ui } from "./lib.ts";
 
 type Call = { method: string; args: Record<string, unknown>; tick: number };
 

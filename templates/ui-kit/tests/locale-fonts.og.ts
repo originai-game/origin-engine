@@ -12,7 +12,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { playtest } from "@origingame/engine/playtest";
+import { playtest } from "./lib.ts";
 
 // The bundled playtest runs from the kit's og-out/test/<name>/.
 const KIT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");

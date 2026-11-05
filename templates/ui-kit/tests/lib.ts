@@ -1,6 +1,19 @@
 // Command-script helpers and readers for the kit's playtests.
-import type { PlaytestRun } from "@origingame/engine/playtest";
+import { playtest as enginePlaytest, type PlaytestDesc, type PlaytestRun } from "@origingame/engine/playtest";
 import { SCREENS, type Screen } from "../src/main.ts";
+
+/**
+ * The kit's playtest: every run draws its UI over the pack's plain ground
+ * (`demo:ground:pack`), never over the key art, painted scenes or 3D
+ * circuit the demo shows behind its menus and HUDs. A UI frame is judged
+ * over a plain, solid-colour ground, and a scene by its own tests
+ * (docs/ui.md §15.4); the scenes' textures also differ by GPU format
+ * (BC7 against ASTC), which kept per-backend copies of HUD frames.
+ */
+export function playtest(desc: PlaytestDesc): PlaytestDesc {
+  const ground = "demo:ground:pack";
+  return enginePlaytest({ ...desc, setup: desc.setup ? `${ground};${desc.setup}` : ground });
+}
 
 /** Touch an element by id or path: move there, press, release. */
 export const tap = (t: number, target: string): string =>

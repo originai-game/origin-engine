@@ -1,8 +1,7 @@
 // Two fingers at once (og.Pointers): the primary touch holds the stick to
 // the right while a second touch taps Hit; the stick keeps its deflection
 // through the tap and Hit answers once.
-import { playtest } from "@origingame/engine/playtest";
-import { demo } from "./lib.ts";
+import { demo, playtest } from "./lib.ts";
 
 export default playtest({
   name: "a stick held by one touch and a button tapped by another work together",

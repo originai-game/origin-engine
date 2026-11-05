@@ -2,10 +2,9 @@
 // at 3×, a 47 px notch and a 34 px home indicator), driven by touch only,
 // then right to left, in Japanese and at 150 % text: each frame compared
 // with crates/og-ui/references/<tier>/kit-genres-phone-<file>.
-import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
 import { genresScript } from "./patterns.ts";
-import { ui } from "./lib.ts";
+import { playtest, ui } from "./lib.ts";
 
 const script = genresScript(true);
 

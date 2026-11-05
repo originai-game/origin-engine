@@ -104,7 +104,7 @@ const TICK_RATE = 60;
 /**
  * --playtest <file>: the script and shots are the playtest's own (as
  * reference-ui.ts takes the kit's), so a retimed playtest moves its browser
- * frames with it: its commands without screenshots, `quit` and `dump_*`,
+ * frames with it: its setup at tick 0, its commands without screenshots, `quit` and `dump_*`,
  * and each `<t>:screenshot:<file>` a shot at tick round(60 t).
  */
 const fromPlaytest = opt("--playtest")
@@ -118,7 +118,8 @@ const fromPlaytest = opt("--playtest")
       // One fresh process on the game's own seed: what the page runs.
       for (const k of ["then", "room", "seed"] as const) if (desc[k] !== undefined) throw new Error(`${opt("--playtest")} sets ${k}: the reference page runs one process of the game's own seed`);
       if (opt("--script") || opt("--shots")) throw new Error("--playtest takes its script and shots from the playtest: pass neither --script nor --shots");
-      const script: string[] = [];
+      // Its setup (what a host does before the first tick) first, at tick 0.
+      const script: string[] = (desc.setup ?? "").split(";").filter(Boolean).map((s) => `0:${s}`);
       const shots: string[] = [];
       for (const step of desc.commands.split(";")) {
         const [at, action, ...rest] = step.split(":");

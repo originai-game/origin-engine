@@ -2,8 +2,7 @@
 // four times focuses the gallery's fourth row (the management showcase), A
 // opens it on its HUD, B closes it again; in the
 // widget screen the d-pad reaches the select and A opens its menu.
-import { playtest } from "@origingame/engine/playtest";
-import { SCREEN, demo, ui } from "./lib.ts";
+import { demo, playtest, SCREEN, ui } from "./lib.ts";
 
 export default playtest({
   name: "gamepad navigation moves through the gallery, opens a screen and backs out",

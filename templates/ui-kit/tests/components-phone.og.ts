@@ -2,10 +2,9 @@
 // at 3×, a 47 px notch and a 34 px home indicator), driven by touch only,
 // then again at 150 % text (text150-*): each frame compared with
 // crates/og-ui/references/<tier>/kit-components-phone-<file>.
-import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
 import { componentsScript } from "./components.ts";
-import { ui } from "./lib.ts";
+import { playtest, ui } from "./lib.ts";
 
 const script = componentsScript(true);
 

@@ -2,9 +2,8 @@
 // in scifi, at 150 % text (the tower dropped, the map shrunk), the
 // countdown, and the arcade look in cartoon. Each frame is compared with
 // crates/og-ui/references/<tier>/kit-racing-phone-<file>.
-import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
-import { ui } from "./lib.ts";
+import { playtest, ui } from "./lib.ts";
 
 const SHOTS: ReadonlyArray<[string, string[]]> = [
   ["idle.png", ["viewport:phone", "style:scifi", "show:raceHud"]],

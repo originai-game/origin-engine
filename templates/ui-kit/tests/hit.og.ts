@@ -4,8 +4,7 @@
 // plays a thud on the sfx bus. Ways it could fail: the health drops with
 // nothing seen or heard (og polish's hit feedback 0), or the thud plays on
 // the ui bus (a click, not a hit).
-import { playtest } from "@origingame/engine/playtest";
-import { demo, tap } from "./lib.ts";
+import { demo, playtest, tap } from "./lib.ts";
 
 interface Pulse {
   hitStop: number;

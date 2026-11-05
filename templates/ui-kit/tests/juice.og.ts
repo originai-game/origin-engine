@@ -4,8 +4,7 @@
 // sounds on a dialog's open (the store's purchase confirm), a hover and a
 // press each start a voice on the ui bus. The frames it writes are the E3
 // transition transcript.
-import { playtest } from "@origingame/engine/playtest";
-import { ui } from "./lib.ts";
+import { playtest, ui } from "./lib.ts";
 
 const has = (els: { id: string }[], id: string): boolean => els.some((e) => e.id === id);
 

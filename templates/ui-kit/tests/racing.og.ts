@@ -1,13 +1,13 @@
-// The racing showcase's HUD (src/race.ts) over its engine-rendered circuit
-// (src/raceScene.ts), in the art director's brief's states: idle in scifi,
+// The racing showcase's HUD (src/race.ts) over the pack's plain ground (the
+// kit's playtest, lib.ts: the circuit, src/raceScene.ts, is no part of a UI
+// frame, docs/ui.md §15.4), in the art director's brief's states: idle in scifi,
 // the countdown at "2", a checkpoint's split, the wrong way, the final lap
 // and the finish; idle in broadcast (golden hour) and pixel (the digital
 // readout); the arcade look in cartoon and kawaii (racing-phone.og.ts: on
 // a phone). Each frame is compared with
 // crates/og-ui/references/<tier>/kit-racing-<file>.
-import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
-import { ui } from "./lib.ts";
+import { playtest, ui } from "./lib.ts";
 
 /** [file, the commands before it] in order; each is taken 1.6 s after its commands, once the moment has played in. */
 const SHOTS: ReadonlyArray<[string, string[]]> = [
@@ -36,7 +36,7 @@ steps.push(`${t.toFixed(2)}:quit`);
 const FILES = SHOTS.map(([f]) => f);
 
 export default playtest({
-  name: "the racing HUD over its circuit in its moments, packs and surfaces matches its reference frames",
+  name: "the racing HUD in its moments, packs and surfaces matches its reference frames",
   size: "1280x720",
   commands: steps.join(";"),
   check(run, t) {

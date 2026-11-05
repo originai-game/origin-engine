@@ -10,10 +10,9 @@
 // editor); then each right to left, in Japanese and
 // at 150 % text, each frame compared with
 // crates/og-ui/references/<tier>/kit-genres3-phone-<file>.
-import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
 import { genres3Script } from "./patterns.ts";
-import { ui } from "./lib.ts";
+import { playtest, ui } from "./lib.ts";
 
 const script = genres3Script(true);
 

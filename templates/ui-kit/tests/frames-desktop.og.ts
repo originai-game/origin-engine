@@ -1,8 +1,8 @@
 // Every screen of the kit at desktop size (1280×720 CSS px at 1×), compared
 // with crates/og-ui/references/<tier>/kit-desktop-<screen>.png.
-import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
 import { framesScript } from "./script.ts";
+import { playtest } from "./lib.ts";
 
 const script = framesScript(0.5);
 

@@ -2,8 +2,7 @@
 // notch, a 34 px home indicator): the corners sit inside the safe area,
 // every touch control is at least 44 CSS px, and Attack answers a touch
 // (the combo counts the hit).
-import { playtest } from "@origingame/engine/playtest";
-import { tap, ui } from "./lib.ts";
+import { playtest, tap, ui } from "./lib.ts";
 
 /** The HUD's combo climbs by one every 120 ticks on its own (src/huds.ts actionHud). */
 const COMBO_TICKS = 120;
