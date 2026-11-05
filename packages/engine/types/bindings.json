@@ -11648,6 +11648,12 @@
           "name": "stressIterations",
           "column": "u32",
           "default": 0
+        },
+        {
+          "name": "stressBudget",
+          "column": "u32",
+          "default": 200000,
+          "tunable": true
         }
       ]
     }

@@ -247,8 +247,24 @@ fn a_wall_stands_until_shot_then_its_middle_comes_down() {
 
 #[test]
 fn a_collapse_replays_and_restores_bit_for_bit() {
+    // At the default stress budget, and at one so small that every solve
+    // after a tick's first waits for a later tick: what waits replays and
+    // restores the same.
+    for budget in [None, Some(1)] {
+        replays_and_restores(budget);
+    }
+}
+
+fn replays_and_restores(budget: Option<u32>) {
     let run = |restore_at: Option<u32>| {
         let (w, wall) = start();
+        if let Some(b) = budget {
+            value(og_engine_write_resource(
+                w,
+                "og.Destruction".into(),
+                json!({ "stressBudget": b }).to_string(),
+            ));
+        }
         frames(w, 5);
         shoot_foot(w, wall);
         frames(w, 12);

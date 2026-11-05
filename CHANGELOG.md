@@ -60,7 +60,8 @@ is one line here, written at the merge that changes
   debris; a hit drives the pieces it breaks loose along its path; written fractured, broken, loose), `og.Chunk`, the event
   `og.Fractured`, the resource `og.Destruction` (maxChunks, debrisVolume,
   debrisLifetime, fxLifetime, stressIterations: 0 solves until it
-  converges), `DamageDesc`,
+  converges, stressBudget: a tick's solver work in bond-iterations, past
+  which a solve waits for the next tick), `DamageDesc`,
   `ExplosionDesc`, `DestructibleInfo`, `DestructionCapabilities`,
   `CAUSE_*`, and `og.destruction.damage`, `explode`, `fracture`, `info`,
   `capabilities`. Prelude units `m3`, `pascal`, `newtonSecondPerM2`. The

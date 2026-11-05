@@ -869,6 +869,10 @@ fn run(
     // the explosions' push).
     let mut made: BTreeMap<u64, (Vec3, Vec3)> = BTreeMap::new();
     let mut fresh_bodies: Vec<u64> = Vec::new();
+    let mut stress_budget = match res["stressBudget"].as_u64().unwrap_or(200_000) {
+        0 => u64::MAX,
+        n => n,
+    };
     let keys: Vec<u64> = st.props.keys().copied().collect();
     for k in keys {
         let p = st.props.get_mut(&k).expect("listed");
@@ -931,6 +935,7 @@ fn run(
                 scale,
                 &s.mat,
                 res["stressIterations"].as_u64().unwrap_or(0) as u32,
+                &mut stress_budget,
             );
             if n > 0 && cause.is_none() {
                 cause = Some(CAUSE_STRESS);
@@ -985,6 +990,7 @@ fn run(
                     scale,
                     &s.mat,
                     res["stressIterations"].as_u64().unwrap_or(0) as u32,
+                    &mut stress_budget,
                 );
                 if n > 0 && cause.is_none() {
                     cause = Some(CAUSE_STRESS);

@@ -48482,6 +48482,14 @@ export interface Destruction {
    * @range 0..1000
    */
   stressIterations: number;
+  /**
+   * The stress solver's work in one tick, across every destructible, in bond-iterations (one solver iteration over one bond). A solve that would start past it waits for the next tick, so a tick's worst case is this plus one solve (six iterations a bond) whatever comes down at once; the order is the destructibles' entity order, so a replay waits the same way. The 200-chunk brick wall's largest solve takes about 41000. 0 sets no limit.
+   *
+   * @default 200000
+   * @range 0..
+   * @tunable
+   */
+  stressBudget: number;
 }
 
 /**
@@ -54443,7 +54451,7 @@ export declare namespace og {
    */
   const Fractured: EventType<Fractured>;
   /** The world's destruction budgets. */
-  const Destruction: ResourceType<{ readonly maxChunks: FieldSpec<"u32">; readonly debrisVolume: FieldSpec<"f32">; readonly debrisLifetime: FieldSpec<"f32">; readonly fxLifetime: FieldSpec<"f32">; readonly stressIterations: FieldSpec<"u32"> }, Destruction>;
+  const Destruction: ResourceType<{ readonly maxChunks: FieldSpec<"u32">; readonly debrisVolume: FieldSpec<"f32">; readonly debrisLifetime: FieldSpec<"f32">; readonly fxLifetime: FieldSpec<"f32">; readonly stressIterations: FieldSpec<"u32">; readonly stressBudget: FieldSpec<"u32"> }, Destruction>;
   /**
    * Props that break: walls, crates, pillars, glass. A model cooked with a `fracture { }` block (at the top of a `type model`, or in a glTF's import settings) is cut by the cook into Voronoi chunks bonded where they touch, and the chunks resting on its floor are anchored to the world. Give the entity that draws it (its og.Model) an og.Destructible: hits, og.destruction.damage and og.destruction.explode wear the bonds down, a broken bond splits the prop into islands, an island anchored to the world stays put and every other island falls as one rigid body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight, so a wall shot out at its foot comes down.
    * **Deterministic.** Damage, bonds, islands and the stress solver are fixed f32 arithmetic in the tick (og.destruction runs after the game's systems and before og.physics), the chunks are world entities and the bonds' health is in a state block: snapshots, restores, replays and the world hash cover the whole fracture, on both hosts.

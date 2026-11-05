@@ -80304,6 +80304,15 @@
           "default": 0,
           "minimum": 0,
           "maximum": 1000
+        },
+        "stressBudget": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The stress solver's work in one tick, across every destructible, in bond-iterations (one solver iteration over one bond). A solve that would start past it waits for the next tick, so a tick's worst case is this plus one solve (six iterations a bond) whatever comes down at once; the order is the destructibles' entity order, so a replay waits the same way. The 200-chunk brick wall's largest solve takes about 41000. 0 sets no limit.",
+          "default": 200000,
+          "minimum": 0,
+          "x-og-tunable": true
         }
       },
       "additionalProperties": false

@@ -332,6 +332,12 @@ impl Instance {
     /// damage breaks anchors). `islands` is [`Instance::islands`] or some
     /// of them. Answers how many bonds broke; clears `dirty` when nothing
     /// took damage (the graph is at rest).
+    ///
+    /// `budget` is the tick's solver work left, in bond-iterations (one
+    /// iteration over one bond): a solve takes what it used, and none
+    /// starts once it is spent, leaving `dirty` for the next tick. A tick's
+    /// stress work is so at most its budget plus one solve's cap (six
+    /// iterations a bond), whatever breaks.
     #[allow(clippy::too_many_arguments)]
     pub fn stress(
         &mut self,
@@ -342,7 +348,11 @@ impl Instance {
         scale: f32,
         m: &Material,
         iterations: u32,
+        budget: &mut u64,
     ) -> u32 {
+        if *budget == 0 {
+            return 0;
+        }
         let s2 = scale * scale;
         let mut node_of = vec![NONE; a.support as usize];
         // Every chunk of a held island, then the world under each anchor
@@ -433,7 +443,8 @@ impl Instance {
             })
             .collect();
         let mut j = vec![AngLin6::default(); bonds.len()];
-        sp.solve(&mut j, &v, iterations, 1e-3, false);
+        let taken = sp.solve(&mut j, &v, iterations, 1e-3, false);
+        *budget = budget.saturating_sub(u64::from(taken.unsigned_abs()) * bonds.len() as u64);
         let mut broke = 0;
         let mut damaged = false;
         for (k, (kind, idx, normal, area)) in which.iter().enumerate() {

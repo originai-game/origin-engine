@@ -68,7 +68,7 @@ fn settle(a: &FractureAsset, inst: &mut Instance, m: &Material) -> u32 {
             break;
         }
         let islands = inst.islands(a);
-        broke += inst.stress(a, &islands, &[], G, 1.0, m, 0);
+        broke += inst.stress(a, &islands, &[], G, 1.0, m, 0, &mut { u64::MAX });
     }
     broke
 }
@@ -197,7 +197,7 @@ fn a_loose_beam_resting_on_its_ends_breaks_in_its_span_and_a_falling_one_holds()
                 break;
             }
             let islands = inst.islands(&beam);
-            broke += inst.stress(&beam, &islands, supports, G, 1.0, &m, 0);
+            broke += inst.stress(&beam, &islands, supports, G, 1.0, &m, 0, &mut { u64::MAX });
         }
         (broke, inst)
     };
@@ -216,4 +216,42 @@ fn a_loose_beam_resting_on_its_ends_breaks_in_its_span_and_a_falling_one_holds()
             .iter()
             .any(|i| i.chunks.contains(&0) && i.chunks.contains(&6))
     );
+}
+
+#[test]
+fn a_spent_stress_budget_defers_the_next_solve_to_the_next_tick() {
+    // Two cantilevers too weak to hold themselves, made dirty in the same
+    // tick, with a budget one solve spends: the first breaks this tick,
+    // the second waits, still dirty, and breaks the same way the next.
+    let a = row(6, Vec3::X, &[0]);
+    let m = material(1.0);
+    let (mut first, mut second) = (Instance::new(&a), Instance::new(&a));
+    let mut alone = Instance::new(&a);
+    let expect = settle(&a, &mut alone, &m);
+    assert!(expect > 0, "the cantilever breaks");
+    first.dirty = true;
+    second.dirty = true;
+    let mut budget = 1;
+    let islands = first.islands(&a);
+    let broke = first.stress(&a, &islands, &[], G, 1.0, &m, 0, &mut budget);
+    assert!(
+        broke > 0 && budget == 0,
+        "the first solves, spending the tick"
+    );
+    let islands = second.islands(&a);
+    assert_eq!(
+        second.stress(&a, &islands, &[], G, 1.0, &m, 0, &mut budget),
+        0
+    );
+    assert!(second.dirty, "the second waits");
+    assert!(second.bonds.iter().all(|&b| b > 0.0), "untouched");
+    let mut broke = 0;
+    for _ in 0..64 {
+        if !second.dirty {
+            break;
+        }
+        let islands = second.islands(&a);
+        broke += second.stress(&a, &islands, &[], G, 1.0, &m, 0, &mut 1);
+    }
+    assert_eq!((broke, &second.bonds), (expect, &alone.bonds));
 }
