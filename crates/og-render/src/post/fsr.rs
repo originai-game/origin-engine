@@ -14,7 +14,7 @@ use super::*;
 use glam::{Mat4, Vec2};
 
 /// The passes in dispatch order, with their entry points and modules.
-const SHADERS: [(&str, &str); 7] = [
+const SHADERS: [(&str, &str); 6] = [
     ("fsr prepare inputs", wgsl!("fsr_prepare_inputs.wgsl")),
     ("fsr luma pyramid", wgsl!("fsr_luma_pyramid.wgsl")),
     (
@@ -26,7 +26,6 @@ const SHADERS: [(&str, &str); 7] = [
         "fsr prepare reactivity",
         wgsl!("fsr_prepare_reactivity.wgsl"),
     ),
-    ("fsr luma instability", wgsl!("fsr_luma_instability.wgsl")),
     ("fsr accumulate", wgsl!("fsr_accumulate.wgsl")),
 ];
 const RCAS: (&str, &str) = ("fsr rcas", wgsl!("fsr_rcas.wgsl"));
@@ -165,15 +164,7 @@ const PREPARE_REACTIVITY: &[B] = &[
     B::Storage(F::Rgba8Unorm),
     B::Storage(F::Rgba8Unorm),
     B::Rw,
-];
-const LUMA_INSTABILITY: &[B] = &[
-    B::Uniform,
-    B::Tex(false),
     B::Tex(true),
-    B::Tex(false),
-    B::Tex(true),
-    B::Ro,
-    B::Sampler,
     B::Storage(F::Rgba16Float),
     B::Storage(F::R32Float),
 ];
@@ -437,7 +428,7 @@ pub(crate) struct FsrFrame<'a> {
 
 /// The frame's bind groups and dispatch sizes.
 struct Recorded {
-    groups: [wgpu::BindGroup; 8],
+    groups: [wgpu::BindGroup; 7],
     rcas: Option<wgpu::BindGroup>,
     render: (u32, u32),
     upscale: (u32, u32),
@@ -453,7 +444,7 @@ pub(crate) struct FsrPasses {
     device: wgpu::Device,
     uniform: wgpu::Buffer,
     sampler: wgpu::Sampler,
-    passes: [Pass; 8],
+    passes: [Pass; 7],
     rcas: Pass,
     state: Option<State>,
     /// Frames since the state was made: its ping-pong parity.
@@ -468,7 +459,7 @@ pub(crate) struct FsrPasses {
 
 impl FsrPasses {
     pub fn new(device: &wgpu::Device) -> FsrPasses {
-        let [prepare, luma, scp, sc, reactivity, instability, accumulate] = SHADERS;
+        let [prepare, luma, scp, sc, reactivity, accumulate] = SHADERS;
         FsrPasses {
             device: device.clone(),
             uniform: device.create_buffer(&wgpu::BufferDescriptor {
@@ -491,7 +482,6 @@ impl FsrPasses {
                 pass(device, scp, SHADING_CHANGE_PYRAMID, "cs"),
                 pass(device, sc, SHADING_CHANGE, "cs"),
                 pass(device, reactivity, PREPARE_REACTIVITY, "cs"),
-                pass(device, instability, LUMA_INSTABILITY, "cs"),
                 pass(device, accumulate, ACCUMULATE, "cs"),
             ],
             rcas: pass(device, RCAS, RCAS_BINDINGS, "cs"),
@@ -602,7 +592,7 @@ impl FsrPasses {
                 entries: &entries,
             })
         };
-        let [p0, p1, p2, p3, p4, p5, p6, p7] = &self.passes;
+        let [p0, p1, p2, p3, p4, p5, p6] = &self.passes;
         let luma_pyramid = || {
             vec![
                 t(&s.luma[cur]),
@@ -660,23 +650,13 @@ impl FsrPasses {
                     t(&s.dilated_reactive),
                     t(&s.accumulation[cur]),
                     buf(&s.new_locks),
-                ],
-            ),
-            group(
-                p6,
-                vec![
-                    t(&s.dilated_motion),
-                    t(&s.dilated_reactive),
-                    t(&s.luma[cur]),
                     t(&s.luma_history[prev]),
-                    buf(&s.frame_info),
-                    sampler.clone(),
                     t(&s.luma_history[cur]),
                     t(&s.luma_instability),
                 ],
             ),
             group(
-                p7,
+                p6,
                 vec![
                     t(&s.dilated_reactive),
                     t(&s.dilated_motion),
@@ -724,7 +704,6 @@ impl FsrPasses {
             (1, 1),
             (rw.div_ceil(32), rh.div_ceil(32)),
             (half.0.div_ceil(8), half.1.div_ceil(8)),
-            (rw.div_ceil(8), rh.div_ceil(8)),
             (rw.div_ceil(8), rh.div_ceil(8)),
             (uw.div_ceil(8), uh.div_ceil(8)),
         ];

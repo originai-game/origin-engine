@@ -16,11 +16,11 @@ of the presets (Wave B, 2026-11-05).
   then `taaSharpen`'s pass.
 - **FSR 3.1** (`fsr_*.wgsl`, `post/fsr.rs`): AMD FidelityFX Super
   Resolution 3.1.6's upscaler, ported to WGSL (MIT,
-  `third_party/fidelityfx/`, whose README lists every deviation): eight
-  compute passes for dilated depth and motion with depth-reconstructed
-  disocclusion, a luma pyramid and auto exposure, shading-change
-  detection, reactivity and thin-feature locks, luma instability, and
-  the accumulation (Lanczos-2 upsample and history, variance-box
+  `third_party/fidelityfx/`, whose README lists every deviation): seven
+  compute dispatches for dilated depth and motion with depth-reconstructed
+  disocclusion, a luma pyramid and auto exposure (two), shading-change
+  detection (two), reactivity with thin-feature locks and luma
+  instability, and the accumulation (Lanczos-2 upsample and history, variance-box
   rectification in a reversibly tonemapped YCoCg), then RCAS
   (`taaSharpen`'s strength). Transparent surfaces feed its reactive mask
   through the order-independent transparency's coverage.
@@ -128,6 +128,9 @@ so the passes' 3x3 and 4x4 sample arrays sat in stack memory. Written out
 straight (`third_party/fidelityfx/README.md`), the shading change pyramid
 went from 1.10 ms to 0.17, reactivity from 0.81 to 0.23 and the
 accumulation from 2.30 to about 1.0, where it is still the largest pass.
+Folding the luma instability into the reactivity pass then took their
+0.40 ms to 0.30, with the same metrics (`fsr::compare`, thin pan and
+grass pan within 0.005 of mean error).
 
 ## The choice
 
@@ -150,9 +153,19 @@ on grass and particles. So:
   (a cap takes the cheaper upscaler), the history starting again at
   that step.
 
-Open: FSR's cost. It is now about 1 ms to 2 ms over TAAU (from 1.4 ms to
-5.7 ms), but its resolve is still about twice TAAU's. The accumulation is
-the pass left to bring down (its 16 history loads and the per-tap
-exposure), and Apple's numbers need a quiet machine to settle within
-0.5 ms. Once FSR costs near TAAU, it becomes the default. The browser
+Open: FSR's cost. It is about 1 ms to 2 ms over TAAU (from 1.4 ms to
+5.7 ms); at 1080p from 0.77 its passes before RCAS take about 1.7 ms
+against about 1.2 ms for TAAU's resolve and sharpen together, and the
+accumulation alone (about 0.94 ms) costs about what TAAU's resolve does.
+Measured with the two variants alternating frame by frame in one
+process, the accumulation does not get cheaper with fewer fetches (its
+history read in eight filtered fetches instead of sixteen loads) or
+with less arithmetic (the upsample's weights made per axis), and folding
+the luma pyramid's reduction into the input preparation made both
+slower (0.26 ms to 0.32). Knocking parts out puts about 0.2 ms in the
+history's Lanczos and 0.24 ms in the eight outer upsample taps; the rest
+is the pass's fixed work. Closing the last 0.5 ms with AMD's algorithm
+kept whole is not in sight; what remains is a lighter accumulation (a
+Catmull-Rom history, fewer taps), which is a quality decision.
+Once FSR costs near TAAU, it becomes the default. The browser
 tiers run the same shaders and are measured at the wave's end.

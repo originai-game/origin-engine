@@ -61,5 +61,10 @@ Halton sequence are `ffxFsr3UpscalerGetJitterPhaseCount` and
   one thread per level-0 texel (16x16 a group). The output matches the
   looped form to within float reordering: at most 0.006 levels of 255
   on average per channel, with a few pixels up to 29.
+- **Luma instability in the reactivity pass.** AMD's luma instability
+  is a pass of its own that reads the dilated reactive masks back
+  bilinearly at the jittered place; here the reactivity pass keeps the
+  luma history and its instability from the pixel's own masks as it
+  writes them, a sub-pixel apart, saving the pass and its reads.
 - Frame generation, the debug view and the auto-generated reactive and T&C
   masks are not ported.
