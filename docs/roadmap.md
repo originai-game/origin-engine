@@ -210,7 +210,7 @@ run on Claude Fable 5.1 (AGENTS.md).
 | Wasm build, size, determinism, the browser tiers; destruction's replay hash on wasm and Chrome; the browser checks of video, uncooked load and the platform ABI | the wave's end | [T-01a1a993-ffa2](https://ampcode.com/threads/T-01a1a993-ffa2-70d9-9645-0ad77ddbd60a) |
 | Safari's full tiers | macrunner, branch `safari` | [T-01a1a993-f7d5](https://ampcode.com/threads/T-01a1a993-f7d5-7486-914f-ff0c299edeca) |
 | Windows: terrain first frame and `pipelines auto` wire reruns, per-backend ui-kit references (BC7 against Metal's ASTC) | studio-win | [T-01a1a7ab](https://ampcode.com/threads/T-01a1a7ab-8f7c-76a1-ad03-2730fb3a22ec) |
-| Phones: G1-4's power mode, automatic quality and device loss; iOS's pipeline mode (Apple stays sync until measured) | §3 | — |
+| Phones: G1-4's automatic quality and device loss; iOS's pipeline mode (Apple stays sync until measured). The frame cap is verified on the Pixel 10 (fps30 gives 30.1 fps with GPU headroom; GPU-bound, Android runs the panel at the rate the page sustains); Android gfx tier 212/219 | §3 | Android [T-01a1a869](https://ampcode.com/threads/T-01a1a869-a893-7314-9a61-22d51cee1b8c) |
 | The wasm budget's meaning (row 44) | the owner | — |
 
 Deferred by the owner: UI text scale at 200 %, accessibility, the genre
