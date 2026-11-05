@@ -1239,13 +1239,16 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let hit = ssr(in.world, r);
     reflected = mix(reflected, hit.rgb, hit.a);
   }
-  if (sea) {
+  if (!three_water) {
     // A ray reflected downwards meets the next wave, which shows its body and, dimly, the sky in turn (it never
     // reaches the sky, nor the ground under the horizon the blurred environment holds there). The facets spread the
-    // reflection over about two of their slopes' deviations, so it turns down gradually.
+    // reflection over about two of their slopes' deviations, so it turns down gradually. On a lake too: a ripple's
+    // face tilted from the eye (the rim of a floating body's funnel) reflected down into the bed, the bank and the
+    // body itself, through the screen's trace and the environment's ground, as a ring of brown grit.
     let up_r = vec3<f32>(r.x, abs(r.y), r.z);
     let up = overcast(reflected_light(up_r, in.world, mip) * sky_mirror, up_r);
-    let w = 2.0 * sig_v + 0.05;
+    let spread = select(sqrt(max(detail.cov.x + detail.cov.y, 0.0)), sig_v, sea);
+    let w = 2.0 * spread + 0.05;
     reflected = mix(deep + up * 0.25, reflected, smoothstep(-w, w, r.y));
   }
   let mirrored = reflected;
@@ -1332,7 +1335,10 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let amount = clamp(ripple_foam, 0.0, 1.0);
   let lumpy = smoothstep(1.0 - amount, 1.12 - amount, lumps) * (0.5 + 0.5 * amount);
   let foam = clamp(band + crest * noise + lumpy, 0.0, 1.0);
-  let lit = max(dot(in.normal, l), 0.0) * frame.light_color.rgb * sun + vec3<f32>(frame.params.x * 0.6);
+  // Foam is a cloud of bubbles, lit through its depth from any side as the river's white water (wrapped): under
+  // Lambert's cosine the flecks on a funnel's or a crest's face turned from the sun went ambient grey over the water and
+  // read as grit.
+  let lit = clamp((dot(in.normal, l) + 0.6) / 1.6, 0.0, 1.0) * frame.light_color.rgb * sun + vec3<f32>(frame.params.x * 0.6);
   color = mix(color, water.foam.rgb * lit, foam * step(0.001, water.foam.w));
   if (water.waterline.w > 0.5) {
     // W5: a river. Below a fall its pool churns white (the flow map's b: 1 at the fall's foot, fading over some one and
