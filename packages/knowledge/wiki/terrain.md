@@ -81,7 +81,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 27124</sub>
+<sub>`api.ogt` line 27125</sub>
 
 <a id="fn-sample"></a>
 
@@ -111,7 +111,7 @@ fn sample {
 }
 ```
 
-<sub>`api.ogt` line 27131</sub>
+<sub>`api.ogt` line 27132</sub>
 
 <a id="fn-bounds"></a>
 
@@ -153,7 +153,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 27138</sub>
+<sub>`api.ogt` line 27139</sub>
 
 <a id="fn-edit"></a>
 
@@ -185,7 +185,7 @@ fn edit {
 }
 ```
 
-<sub>`api.ogt` line 27154</sub>
+<sub>`api.ogt` line 27155</sub>
 
 <a id="fn-stamp"></a>
 
@@ -215,7 +215,7 @@ fn stamp {
 }
 ```
 
-<sub>`api.ogt` line 27162</sub>
+<sub>`api.ogt` line 27163</sub>
 
 <a id="fn-unstamp"></a>
 
@@ -247,7 +247,7 @@ fn unstamp {
 }
 ```
 
-<sub>`api.ogt` line 27169</sub>
+<sub>`api.ogt` line 27170</sub>
 
 <a id="fn-layer"></a>
 
@@ -279,7 +279,7 @@ fn layer {
 }
 ```
 
-<sub>`api.ogt` line 27177</sub>
+<sub>`api.ogt` line 27178</sub>
 
 <a id="fn-setLayer"></a>
 
@@ -313,7 +313,7 @@ fn setLayer {
 }
 ```
 
-<sub>`api.ogt` line 27185</sub>
+<sub>`api.ogt` line 27186</sub>
 
 ## Components, resources and events
 
@@ -446,6 +446,7 @@ Token `og.TerrainScatter`, registered under the schema name `og.TerrainScatter`;
 | `priority` | `number` | `0` | — | — | — | Scatters of a higher priority over the same og.Terrain are placed first, their footprints cleared in the ones after; equal priorities are placed in entity order. |
 | `avoidWater` | `number` | `0` | 0 … 100 | `m` | tunable | Grows no copy whose ground stands less than this above an og.Water surface over it (an endless sea everywhere), nor under it: reeds stop short of the shore. 0: anywhere. |
 | `densityMap` | `Texture` | `0` | — | — | — | Thins the copies where its red channel is below 1, over the terrain's extent (its top row along the terrain's -z edge, as the control map; loaded linear), each copy kept while its own value is below the map's: a path cleared through the flowers. Drawn only, where the renderer culls copies on the GPU (RenderCapabilities.compute): placement and footprints do not read it. 0: none. |
+| `gpuPlacement` | `boolean` | `false` | — | — | — | Place the copies on the GPU, a visual mode for dense or far fields: each chunk of the grid is placed by a compute pass when it comes into range, by the same rules (the layer's weight, holes, noiseThreshold, avoidWater and the footprints of the scatters placed before it) from the terrain's finest tiles, with nothing per copy on the CPU. The copies match the CPU's placement but for the last bits of the arithmetic; where the renderer has no compute (RenderCapabilities.compute), or a footprint chain is too long or too wide, the CPU places them. |
 
 ```ogt
 component TerrainScatter {
@@ -538,6 +539,7 @@ component TerrainScatter {
     tunable true
   }
   field densityMap Texture "Thins the copies where its red channel is below 1, over the terrain's extent (its top row along the terrain's -z edge, as the control map; loaded linear), each copy kept while its own value is below the map's: a path cleared through the flowers. Drawn only, where the renderer culls copies on the GPU (RenderCapabilities.compute): placement and footprints do not read it. 0: none."
+  field gpuPlacement bool "Place the copies on the GPU, a visual mode for dense or far fields: each chunk of the grid is placed by a compute pass when it comes into range, by the same rules (the layer's weight, holes, noiseThreshold, avoidWater and the footprints of the scatters placed before it) from the terrain's finest tiles, with nothing per copy on the CPU. The copies match the CPU's placement but for the last bits of the arithmetic; where the renderer has no compute (RenderCapabilities.compute), or a footprint chain is too long or too wide, the CPU places them."
 }
 ```
 
@@ -746,7 +748,7 @@ component Grass {
 }
 ```
 
-<sub>`api.ogt` line 26684</sub>
+<sub>`api.ogt` line 26685</sub>
 
 <a id="record-GrassType"></a>
 
@@ -804,7 +806,7 @@ component GrassType {
 }
 ```
 
-<sub>`api.ogt` line 26843</sub>
+<sub>`api.ogt` line 26844</sub>
 
 <a id="record-GrassPusher"></a>
 
@@ -847,7 +849,7 @@ component GrassPusher {
 }
 ```
 
-<sub>`api.ogt` line 26880</sub>
+<sub>`api.ogt` line 26881</sub>
 
 ## Types
 
@@ -968,7 +970,7 @@ struct TerrainInfo {
 }
 ```
 
-<sub>`api.ogt` line 26905</sub>
+<sub>`api.ogt` line 26906</sub>
 
 <a id="type-TerrainSampleDesc"></a>
 
@@ -1008,7 +1010,7 @@ struct TerrainSampleDesc {
 }
 ```
 
-<sub>`api.ogt` line 26929</sub>
+<sub>`api.ogt` line 26930</sub>
 
 <a id="type-TerrainSample"></a>
 
@@ -1039,7 +1041,7 @@ struct TerrainSample {
 }
 ```
 
-<sub>`api.ogt` line 26948</sub>
+<sub>`api.ogt` line 26949</sub>
 
 <a id="type-TerrainBounds"></a>
 
@@ -1064,7 +1066,7 @@ struct TerrainBounds {
 }
 ```
 
-<sub>`api.ogt` line 26961</sub>
+<sub>`api.ogt` line 26962</sub>
 
 <a id="type-TerrainBrush"></a>
 
@@ -1122,7 +1124,7 @@ struct TerrainBrush {
 }
 ```
 
-<sub>`api.ogt` line 26971</sub>
+<sub>`api.ogt` line 26972</sub>
 
 <a id="type-TerrainEdit"></a>
 
@@ -1151,7 +1153,7 @@ struct TerrainEdit {
 }
 ```
 
-<sub>`api.ogt` line 27005</sub>
+<sub>`api.ogt` line 27006</sub>
 
 <a id="type-TerrainStampDesc"></a>
 
@@ -1203,7 +1205,7 @@ struct TerrainStampDesc {
 }
 ```
 
-<sub>`api.ogt` line 27017</sub>
+<sub>`api.ogt` line 27018</sub>
 
 <a id="type-TerrainLayerDesc"></a>
 
@@ -1314,7 +1316,7 @@ struct TerrainLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 27044</sub>
+<sub>`api.ogt` line 27045</sub>
 
 ## Column kinds
 

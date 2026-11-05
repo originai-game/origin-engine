@@ -7119,6 +7119,11 @@
           "name": "densityMap",
           "column": "Texture",
           "default": 0
+        },
+        {
+          "name": "gpuPlacement",
+          "column": "bool",
+          "default": false
         }
       ]
     },

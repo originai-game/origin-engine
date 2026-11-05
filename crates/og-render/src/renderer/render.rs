@@ -1465,6 +1465,7 @@ impl Renderer {
                     &Self::crowd_card_inputs(&crowd_frame, &cpu_cards.0),
                     &cpu_cards.1,
                 ),
+                (&self.terrain, &terrain_draws),
             )
         };
         // Grass: this frame's fields planned over the drawn terrains (grass.rs).
@@ -4023,9 +4024,10 @@ impl Renderer {
         // The grass's blades, generated before every pass that draws them.
         self.grass
             .encode(&mut encoder, &grass_frame, &terrain_draws);
-        // The scattered copies the main camera sees, culled on the GPU
-        // against its view and the depth pyramid the culling drew.
-        {
+        // The scattered copies placed on the GPU this frame, then those the
+        // main camera sees, culled on the GPU against its view and the
+        // depth pyramid the culling drew.
+        let scatter_queries = {
             let textures = &self.cache.textures;
             self.scatter.encode(
                 &self.device,
@@ -4043,8 +4045,9 @@ impl Renderer {
                         .and_then(|gc| gc.pyramid()),
                 },
                 &|h| textures.get(h.index()).map(|t| &t.view),
-            );
-        }
+                &terrain_draws,
+            )
+        };
         let palette_group = self.palette.bind_group.as_ref();
         // The main pass draws physical materials with their pipelines, the
         // planar reflection with the standard ones.
@@ -4640,6 +4643,7 @@ impl Renderer {
         let mut pass_queries: Vec<(String, std::ops::Range<u32>)> = crowd_cull_queries
             .map(|q| ("cull: crowds".to_string(), q))
             .into_iter()
+            .chain(scatter_queries.into_iter().map(|(n, q)| (n.to_string(), q)))
             .collect();
         for &pass in self.graph.order() {
             let t0 = clock.map(|c| c());

@@ -1402,6 +1402,20 @@ impl TerrainRenderer {
         }
     }
 
+    /// Level-0 tiles `tiles` of terrain data `data` as the GPU holds them
+    /// this frame (each one's data, as its address: another when it is
+    /// replaced), or `None` while one is not resident.
+    pub(crate) fn level0_slots(&self, data: usize, tiles: &[u32]) -> Option<Vec<usize>> {
+        let d = self.datas.get(data)?.as_ref()?;
+        tiles
+            .iter()
+            .map(|t| {
+                let st = d.slots[*d.by_tile.get(t)?].as_ref()?;
+                Some(Arc::as_ptr(&st.data) as usize)
+            })
+            .collect()
+    }
+
     /// A terrain data's size along x and z and its height range, once uploaded.
     pub(crate) fn extent_of(&self, data: usize) -> Option<(Vec2, (f32, f32))> {
         let d = self.datas.get(data)?.as_ref()?;

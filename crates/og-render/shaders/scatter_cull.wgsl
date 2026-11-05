@@ -28,7 +28,7 @@ struct CullView {
 struct CullItem {
   to_terrain: mat4x4<f32>,  // the terrain's space from the frame's (its density map's uv)
   item: vec4<u32>,          // x: the chunk's first place in the list, y: its copies, z: its draws' row, w: 1 with a density map
-  mesh: vec4<u32>,          // x: the mesh's index count
+  mesh: vec4<u32>,          // x: the mesh's index count, y: 1 when placed on the GPU (scatter_place.wgsl: its count follows its copies)
   shape: vec4<f32>,         // x: the mesh's radius about its origin, y: how far a copy moves at most (m), z: the scatter's distance (m)
   extent: vec4<f32>,        // xy: the terrain's size (its space)
 };
@@ -131,7 +131,11 @@ var<workgroup> lane_counts: array<u32, CULL_LANES>;
 
 @compute @workgroup_size(256)
 fn cull(@builtin(local_invocation_index) lane: u32) {
-  let n = item.item.y;
+  var n = item.item.y;
+  if (item.mesh.y == 1u) {
+    // scatter_place.wgsl PLACE_TAIL: its indexed draw's instances.
+    n = min(bitcast<u32>(copies[4096u].y), n);
+  }
   var kept = array<bool, CULL_PER_LANE>(false, false, false, false);
   var mine = 0u;
   for (var j = 0u; j < CULL_PER_LANE; j++) {

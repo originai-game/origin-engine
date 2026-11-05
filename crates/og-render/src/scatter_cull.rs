@@ -10,7 +10,8 @@
 //! faces and reflections keep the chunks' whole lists. Nothing is read
 //! back: the counts live on the GPU (van Muijden, *GPU-Based Procedural
 //! Placement in Horizon Zero Dawn*, GDC 2017: placement on the CPU here,
-//! culling on the GPU with Hi-Z).
+//! or on the GPU for a scatter that asks (`scatter_place.rs`, whose chunks
+//! carry their count after their copies), culling on the GPU with Hi-Z).
 
 use glam::{Mat4, Vec3, Vec4};
 
@@ -57,6 +58,9 @@ pub(crate) struct CullItem {
     /// Its copies, the mesh's index count and radius about its origin,
     /// how far a copy moves at most and the scatter's distance (m).
     pub copies: u32,
+    /// Placed on the GPU (`scatter_place.rs`): its count follows its
+    /// copies in its buffer, and `copies` is ignored.
+    pub placed: bool,
     pub index_count: u32,
     pub radius: f32,
     pub moves: f32,
@@ -323,7 +327,10 @@ impl ScatterCull {
                 Self::draws_usage(),
             );
         }
-        let total: u64 = items.iter().map(|i| u64::from(i.copies)).sum();
+        let copies = |i: &CullItem| {
+            if i.placed { MAX_CHUNK_COPIES } else { i.copies }
+        };
+        let total: u64 = items.iter().map(|i| u64::from(copies(i))).sum();
         if self.list_cap < total.max(1) {
             self.list_cap = total.max(1).next_power_of_two();
             self.list = make(
@@ -340,11 +347,11 @@ impl ScatterCull {
                 to_terrain: i.to_terrain.to_cols_array_2d(),
                 item: [
                     first,
-                    i.copies.min(MAX_CHUNK_COPIES),
+                    copies(i).min(MAX_CHUNK_COPIES),
                     k as u32,
                     u32::from(i.density_map.is_some()),
                 ],
-                mesh: [i.index_count, 0, 0, 0],
+                mesh: [i.index_count, u32::from(i.placed), 0, 0],
                 shape: [i.radius, i.moves, i.distance, 0.0],
                 extent: [i.extent.x, i.extent.y, 0.0, 0.0],
             };
@@ -355,7 +362,7 @@ impl ScatterCull {
                 first,
             });
             self.frame.push(i.density_map);
-            first += i.copies;
+            first += copies(i);
         }
         queue.write_buffer(&self.items, 0, &rows);
         out

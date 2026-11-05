@@ -266,6 +266,7 @@ mod ribbons;
 mod ribbons_gpu;
 mod scatter;
 mod scatter_cull;
+mod scatter_place;
 mod scene;
 mod scene_colliders;
 mod shaders;

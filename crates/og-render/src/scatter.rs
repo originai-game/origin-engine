@@ -97,6 +97,13 @@ pub struct TerrainScatter {
     /// `scatter_cull.rs`; no effect without compute); not part of the
     /// placement.
     pub density_map: Option<crate::TextureHandle>,
+    /// Placed on the GPU (`scatter_place.rs`), a visual mode: the same
+    /// rules from the level-0 tiles the GPU holds, nothing on the CPU but
+    /// planning each chunk once, its copies matching the CPU's
+    /// ([`Terrain::scatter_among`], still the answer for gameplay) but for
+    /// the last bits of the arithmetic. Where compute does not run (or a
+    /// chunk's footprint chain is too long or wide), the CPU places it.
+    pub gpu: bool,
 }
 
 /// What places a scatter's copies besides its own rules
@@ -172,6 +179,7 @@ impl Default for TerrainScatter {
             priority: 0,
             avoid_water: 0.0,
             density_map: None,
+            gpu: false,
         }
     }
 }
@@ -302,7 +310,7 @@ impl TerrainScatter {
     }
 
     /// The grid's cell size in the terrain's space.
-    fn cell(&self) -> f32 {
+    pub(crate) fn cell(&self) -> f32 {
         1.0 / self.density.clamp(1e-4, 400.0).sqrt()
     }
 
@@ -385,6 +393,11 @@ fn hash(mut x: u32) -> u32 {
 
 fn unit(x: u32) -> f32 {
     (x >> 8) as f32 / 16_777_216.0
+}
+
+/// The hash a scatter's `seed` places its cells and clusters by.
+pub(crate) fn seed_hash(seed: u32) -> u32 {
+    hash(seed ^ 0x9e37_79b9)
 }
 
 /// What placing reads at a point of the terrain's space: its height,
@@ -648,7 +661,7 @@ impl Terrain {
         let half = size * 0.5;
         let cells_x = (size.x / cell).ceil() as u32;
         let key = z.wrapping_mul(cells_x).wrapping_add(x);
-        let seed = hash(s.seed ^ 0x9e37_79b9);
+        let seed = seed_hash(s.seed);
         let h0 = hash(key ^ seed);
         let (h1, h2, h3, h4) = (hash(h0), hash(h0 ^ 1), hash(h0 ^ 2), hash(h0 ^ 3));
         let p = Vec2::new(x as f32 + unit(h1), z as f32 + unit(h2)) * cell - half;
@@ -844,17 +857,32 @@ struct ChunkKey {
     layers: Vec<u32>,
     mesh: usize,
     chunk: (u32, u32),
+    /// Placed on the GPU (`scatter_place.rs`).
+    gpu: bool,
 }
 
 struct Chunk {
     buffer: Option<wgpu::Buffer>,
     /// Its copies as the GPU cull reads them (`scatter_cull.rs`).
     cull_group: Option<wgpu::BindGroup>,
+    /// Its copies on the CPU: 0 for a chunk placed on the GPU, whose count
+    /// and draws follow its copies in its buffer (`Placed`).
     count: u32,
+    placed: Option<Placed>,
     center: Vec3,
     radius: f32,
     used: u64,
 }
+
+/// A chunk placed on the GPU: its buffer as its job writes it, and the
+/// index count its draw was last given.
+struct Placed {
+    group: wgpu::BindGroup,
+    index_count: u32,
+}
+
+/// Chunks a frame places on the GPU for a streamed terrain.
+const GPU_CHUNKS_PER_FRAME: usize = 128;
 
 /// One scatter's chunks to draw this frame.
 pub(crate) struct ScatterBatch {
@@ -1012,6 +1040,10 @@ pub(crate) struct ScatterRenderer {
     /// The GPU cull (with compute) and this frame's culled chunks, in order.
     cull: Option<crate::scatter_cull::ScatterCull>,
     culled_chunks: Vec<ChunkKey>,
+    /// The GPU placement (with compute) and this frame's placed chunks, in
+    /// the order of their jobs.
+    place: Option<crate::scatter_place::ScatterPlace>,
+    placed_chunks: Vec<ChunkKey>,
 }
 
 impl ScatterRenderer {
@@ -1182,6 +1214,10 @@ impl ScatterRenderer {
                 .compute
                 .then(|| crate::scatter_cull::ScatterCull::new(device, queue)),
             culled_chunks: Vec::new(),
+            place: p
+                .compute
+                .then(|| crate::scatter_place::ScatterPlace::new(device)),
+            placed_chunks: Vec::new(),
         }
     }
 
@@ -1619,9 +1655,24 @@ impl ScatterRenderer {
         shader_of: impl Fn(usize) -> Option<usize>,
         hooks_of: impl Fn(usize) -> String,
         (card_inputs, cpu_cards): (&[CardInput], &[crate::skin::SkinnedInstanceGpu]),
+        (terrain, terrain_draws): (
+            &crate::terrain::TerrainRenderer,
+            &[crate::terrain::TerrainDraw],
+        ),
     ) -> ScatterBatches {
         self.frame += 1;
         self.built = 0;
+        // A frame that recorded jobs and failed before encoding them: their
+        // chunks are placed again.
+        if let Some(place) = &mut self.place {
+            if place.pending() {
+                for k in &self.placed_chunks {
+                    self.chunks.remove(k);
+                }
+            }
+            place.begin();
+        }
+        self.placed_chunks.clear();
         let noise = crossfade_noise_offset(frame_index);
         let mut batches = Vec::new();
         let wind = scene.wind.filter(|w| w.strength > 0.0);
@@ -1712,6 +1763,7 @@ impl ScatterRenderer {
         }
         let (sources, revisions) = scene.terrain_sources();
         let mut budget = CHUNKS_PER_FRAME;
+        let mut gpu_budget = GPU_CHUNKS_PER_FRAME;
         // Each scatter's terrain draw and parameters: what places before it.
         let placing: Vec<(usize, TerrainScatter)> = scene
             .scatters
@@ -1814,6 +1866,34 @@ impl ScatterRenderer {
                 TerrainSource::Stream { tiles, .. } => Some(tiles),
                 TerrainSource::Data(..) => None,
             };
+            // Placed on the GPU (`TerrainScatter::gpu`) where compute runs
+            // and the terrain is drawn: its terrain draw, the waters from
+            // the frame and the scatters placed before it, then its own.
+            let gpu = self
+                .place
+                .as_ref()
+                .filter(|_| s.gpu)
+                .and_then(|_| terrain_draws.iter().position(|td| td.terrain == d.terrain))
+                .and_then(|k| {
+                    let arrayed = terrain_draws[k].arrayed;
+                    Some((k, arrayed, terrain.group_layout(arrayed)?))
+                });
+            let frame_waters: Vec<(Mat4, Vec2)> = match gpu {
+                Some(_) => scene
+                    .water
+                    .iter()
+                    .map(|w| {
+                        let half = if w.endless {
+                            Vec2::INFINITY
+                        } else {
+                            w.size * 0.5
+                        };
+                        (w.transform.inverse(), half)
+                    })
+                    .collect(),
+                None => Vec::new(),
+            };
+            let chain: Vec<&TerrainScatter> = ctx.before.iter().chain([&s]).collect();
             let mut keys = Vec::new();
             // Nearest chunks first, so a budgeted frame builds those.
             let mut order: Vec<(u32, u32)> = (z0..z1)
@@ -1832,9 +1912,34 @@ impl ScatterRenderer {
                 if (eye.clamp(a, b) - eye).length() > reach {
                     continue;
                 }
-                let under: Vec<usize> = match tiles {
-                    None => Vec::new(),
-                    Some(tiles) => level0_under(&layout, a, b)
+                // The GPU's job for it (`None`: the CPU places it), which
+                // reads the level-0 tiles the GPU holds under its chain.
+                let plan = gpu.and_then(|_| {
+                    let (x, z) = (cx * CHUNK_CELLS, cz * CHUNK_CELLS);
+                    crate::scatter_place::plan(&crate::scatter_place::PlaceInput {
+                        model: t.transform,
+                        size: layout.size,
+                        layers: chain.clone(),
+                        cells: (
+                            x,
+                            z,
+                            CHUNK_CELLS.min(cells.x as u32 - x),
+                            CHUNK_CELLS.min(cells.y as u32 - z),
+                        ),
+                        waters: &frame_waters,
+                        index_count,
+                    })
+                });
+                let under: Vec<usize> = match (&plan, tiles) {
+                    (Some(p), _) => {
+                        let tiles = level0_under(&layout, p.reads.0, p.reads.1);
+                        match terrain.level0_slots(di, &tiles) {
+                            Some(slots) => slots,
+                            None => continue,
+                        }
+                    }
+                    (None, None) => Vec::new(),
+                    (None, Some(tiles)) => level0_under(&layout, a, b)
                         .into_iter()
                         .map(|i| tiles.get(&i).map_or(0, |t| Arc::as_ptr(t) as usize))
                         .collect(),
@@ -1851,9 +1956,56 @@ impl ScatterRenderer {
                     layers: layers.clone(),
                     mesh: d.mesh.index(),
                     chunk: (cx, cz),
+                    gpu: plan.is_some(),
                 };
                 if let Some(c) = self.chunks.get_mut(&key) {
                     c.used = self.frame;
+                    // A placed chunk's draw takes the mesh's index count.
+                    if let (Some(p), Some(b)) = (&mut c.placed, &c.buffer)
+                        && p.index_count != index_count
+                    {
+                        p.index_count = index_count;
+                        queue.write_buffer(
+                            b,
+                            crate::scatter_place::TAIL,
+                            bytemuck::bytes_of(&index_count),
+                        );
+                    }
+                    keys.push(key);
+                    continue;
+                }
+                if let (Some(plan), Some((k, arrayed, terrain_layout))) = (plan, gpu) {
+                    if streamed && !settle && gpu_budget == 0 {
+                        continue;
+                    }
+                    gpu_budget -= 1;
+                    self.built += 1;
+                    let place = self.place.as_mut().expect("planned with it");
+                    let buffer = crate::scatter_place::ScatterPlace::chunk_buffer(device);
+                    let group = place.chunk_group(device, &buffer);
+                    place.push(device, terrain_layout, (k, arrayed), plan);
+                    // Its bounds: its rectangle over the data's height range.
+                    let (h0, h1) = source.range();
+                    let (center, radius) = crate::terrain::world_sphere(
+                        t.transform,
+                        Vec3::new(a.x, h0, a.y),
+                        Vec3::new(b.x.min(half.x), h1, b.y.min(half.y)),
+                    );
+                    let grow = mesh_r * s.scale[1].max(s.scale[0]);
+                    let cull_group = self.cull.as_ref().map(|c| c.chunk_group(device, &buffer));
+                    self.placed_chunks.push(key.clone());
+                    self.chunks.insert(
+                        key.clone(),
+                        Chunk {
+                            buffer: Some(buffer),
+                            cull_group,
+                            count: 0,
+                            placed: Some(Placed { group, index_count }),
+                            center,
+                            radius: radius + grow,
+                            used: self.frame,
+                        },
+                    );
                     keys.push(key);
                     continue;
                 }
@@ -1928,6 +2080,7 @@ impl ScatterRenderer {
                         buffer,
                         cull_group,
                         count: transforms.len() as u32,
+                        placed: None,
                         center,
                         radius,
                         used: self.frame,
@@ -1996,6 +2149,7 @@ impl ScatterRenderer {
                         to_terrain: t.transform.inverse(),
                         extent: layout.size,
                         copies: c.count,
+                        placed: c.placed.is_some(),
                         index_count,
                         radius: mesh_r,
                         moves: sway,
@@ -2020,6 +2174,9 @@ impl ScatterRenderer {
             });
         }
         self.chunks.retain(|_, c| self.frame - c.used < KEEP_FRAMES);
+        if let Some(place) = &mut self.place {
+            place.upload(device, queue);
+        }
         // Where each culled chunk draws from, in the order planned.
         if let Some(cull) = &mut self.cull {
             let places = cull.prepare(device, queue, &cull_items);
@@ -2095,24 +2252,51 @@ impl ScatterRenderer {
         out
     }
 
-    /// Culls this frame's chunks for the main camera on the GPU (before
-    /// its prepass and lit pass; nothing without compute).
+    /// Places the chunks this frame built on the GPU, then culls this
+    /// frame's chunks for the main camera on the GPU (before every pass
+    /// that draws them; nothing without compute). Answers the queries each
+    /// part's pass wrote (`timing.rs`), when timed.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn encode<'t>(
-        &self,
+        &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         encoder: &mut crate::Encoder,
         view: &crate::scatter_cull::CullView,
         textures: &dyn Fn(crate::TextureHandle) -> Option<&'t wgpu::TextureView>,
-    ) {
-        let Some(cull) = &self.cull else { return };
+        terrain_draws: &[crate::terrain::TerrainDraw],
+    ) -> Vec<(&'static str, std::ops::Range<u32>)> {
+        let mut queries = Vec::new();
+        let mut timed = |name, q0: u32, encoder: &crate::Encoder| {
+            if encoder.timed() && encoder.used() > q0 {
+                queries.push((name, q0..encoder.used()));
+            }
+        };
+        if let Some(place) = &mut self.place
+            && place.pending()
+        {
+            let q0 = encoder.used();
+            let groups: Vec<&wgpu::BindGroup> = self
+                .placed_chunks
+                .iter()
+                .filter_map(|k| Some(&self.chunks.get(k)?.placed.as_ref()?.group))
+                .collect();
+            place.encode(device, encoder, terrain_draws, &groups);
+            timed("scatter: place", q0, encoder);
+        }
+        let Some(cull) = &self.cull else {
+            return queries;
+        };
         let groups: Vec<&wgpu::BindGroup> = self
             .culled_chunks
             .iter()
             .filter_map(|k| self.chunks.get(k)?.cull_group.as_ref())
             .collect();
         debug_assert_eq!(groups.len(), self.culled_chunks.len());
+        let q0 = encoder.used();
         cull.encode(device, queue, encoder, view, &groups, textures);
+        timed("cull: scatter", q0, encoder);
+        queries
     }
 
     /// Draws `batches` into a pass (groups 0 and, for the lit passes, the
@@ -2192,7 +2376,13 @@ impl ScatterRenderer {
                     }
                     None => {
                         pass.set_vertex_buffer(1, buffer.slice(..));
-                        pass.draw_indexed(0..count, 0, 0..c.count);
+                        match c.placed {
+                            // Its job wrote its count into its draw.
+                            Some(_) => {
+                                pass.draw_indexed_indirect(buffer, crate::scatter_place::TAIL)
+                            }
+                            None => pass.draw_indexed(0..count, 0, 0..c.count),
+                        }
                     }
                 }
                 draws += 1;
@@ -2231,7 +2421,10 @@ impl ScatterRenderer {
                     }
                     None => {
                         pass.set_vertex_buffer(0, buffer.slice(..));
-                        pass.draw(0..6, 0..c.count);
+                        match c.placed {
+                            Some(_) => pass.draw_indirect(buffer, crate::scatter_place::TAIL + 20),
+                            None => pass.draw(0..6, 0..c.count),
+                        }
                     }
                 }
                 draws += 1;

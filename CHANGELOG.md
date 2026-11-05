@@ -29,6 +29,17 @@ is one line here, written at the merge that changes
   were under 0.35). Vertex positions move by under 1e-7; a cooked
   fracture of a cylinder changes and is recooked.
 
+- **Scatter placement on the GPU.** New `og.TerrainScatter.gpuPlacement`
+  (off by default): the scatter's chunks are placed by a compute pass
+  when they come into range, by the same rules (layer weight, holes,
+  `noiseThreshold`, `avoidWater` and the footprints of the scatters
+  placed before it) from the terrain's finest tiles, with nothing per
+  copy on the CPU. On the lake-shore test scene (three chained scatters,
+  6 copies per m², about 3.5 new chunks a frame) a frame's CPU time
+  drops from 60.3 ms to 14.3 ms (dev build) for 0.21 ms of GPU; the
+  frame matches the CPU placement's pixel for pixel. Without compute,
+  the CPU places them as before.
+
 - **Global illumination: screen rays across the screen, `both` counted
   once, cheaper probe sampling.** `og.GlobalIllumination.maxDistance`
   defaults to 16 m (it was 4): a screen ray stops where it leaves the

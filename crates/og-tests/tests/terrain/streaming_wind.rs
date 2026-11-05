@@ -982,3 +982,144 @@ fn a_scatter_density_map_thins_its_copies() {
         "the white half keeps {r} of {r0}"
     );
 }
+
+/// The lake's west shore, from 400 m straight above (orthographic, 120 m
+/// tall): hills of grass and rock and the sand track, three scatters of
+/// emissive cubes over it in a chain of footprints (rocks on the slopes,
+/// clustered bushes clear of them and of the water, flowers clear of
+/// both), each placed on the GPU when `gpu` is set.
+fn shore_scatters(gpu: bool) -> RenderScene {
+    let mut scene = ts::island_view("near");
+    scene.water.push(Water {
+        transform: Mat4::from_translation(Vec3::new(ts::LAKE.x, ts::LAKE_LEVEL, ts::LAKE.y)),
+        size: Vec2::splat(360.0),
+        segments: 1,
+        ..Default::default()
+    });
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    let mut glow = |c: [f32; 3]| {
+        scene.add_material(Material {
+            base_color: [0.0, 0.0, 0.0, 1.0],
+            emissive: c,
+            ..Default::default()
+        })
+    };
+    let (red, yellow, blue) = (
+        glow([8.0, 0.2, 0.2]),
+        glow([8.0, 8.0, 0.2]),
+        glow([0.4, 0.6, 8.0]),
+    );
+    let rocks = TerrainScatter {
+        density: 0.05,
+        distance: 150.0,
+        fade: 0.0,
+        scale: [2.0, 4.0],
+        footprint: 3.0,
+        priority: 2,
+        gpu,
+        ..ts::stone_scatter()
+    };
+    let bushes = TerrainScatter {
+        layer: 0,
+        density: 0.15,
+        scale: [1.0, 1.6],
+        align: 0.0,
+        seed: 21,
+        noise_scale: 20.0,
+        noise_threshold: 0.45,
+        avoid_water: 0.5,
+        footprint: 1.5,
+        priority: 1,
+        ..rocks
+    };
+    let flowers = TerrainScatter {
+        density: 1.0,
+        scale: [0.4, 0.6],
+        align: 0.5,
+        seed: 33,
+        noise_threshold: 0.0,
+        avoid_water: 0.3,
+        footprint: 0.0,
+        priority: 0,
+        ..bushes
+    };
+    for (scatter, material) in [(flowers, blue), (bushes, yellow), (rocks, red)] {
+        scene.scatters.push(og_render::ScatterDraw {
+            terrain: 0,
+            mesh: cube,
+            material,
+            scatter,
+            cast_shadows: false,
+            impostor: None,
+            impostor_distance: 0.0,
+        });
+    }
+    scene.wind = None;
+    scene.fog = None;
+    scene.light.cast_shadows = false;
+    let at = Vec3::new(ts::LAKE.x - 110.0, 0.0, ts::LAKE.y - 10.0);
+    scene.camera = Camera {
+        position: at + Vec3::new(0.0, 400.0, 0.001),
+        target: at,
+        near: 1.0,
+        far: 1000.0,
+        projection: Projection::Orthographic { height: 120.0 },
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    scene
+}
+
+/// A TerrainScatter placed on the GPU draws what the CPU places: over
+/// relief, a control map, slope rules, clusters, water and a chain of
+/// three footprints, the frame matches the CPU path's but for a few edge
+/// pixels, and its chunks are placed by the GPU. Before `gpu` existed
+/// every chunk was placed on the CPU.
+#[test]
+fn gpu_placement_draws_the_cpu_placement() {
+    let frames = |scene: &RenderScene| {
+        let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+        let first = r.render(scene, &RenderTarget::Offscreen).expect("render");
+        for _ in 0..2 {
+            r.render(scene, &RenderTarget::Offscreen).expect("render");
+        }
+        (r.read_offscreen().expect("capture"), first)
+    };
+    let (cpu, cpu_stats) = frames(&shore_scatters(false));
+    let (gpu, gpu_stats) = frames(&shore_scatters(true));
+    let mut bare = shore_scatters(false);
+    bare.scatters.clear();
+    let (none, _) = frames(&bare);
+    keep("scatter-gpu-cpu", &cpu);
+    keep("scatter-gpu", &gpu);
+    let differ = |a: &RgbaImage, b: &RgbaImage| {
+        a.pixels
+            .chunks(4)
+            .zip(b.pixels.chunks(4))
+            .filter(|(p, q)| p.iter().zip(*q).any(|(x, y)| x.abs_diff(*y) > 24))
+            .count()
+    };
+    let total = (cpu.width * cpu.height) as usize;
+    let copies = differ(&cpu, &none);
+    let apart = differ(&cpu, &gpu);
+    println!(
+        "{copies} pixels of copies, {apart} differ; built {} chunks on the CPU, {} on the GPU, copies drawn {} (CPU) and {} (GPU's CPU-placed)",
+        cpu_stats.scatter_built,
+        gpu_stats.scatter_built,
+        cpu_stats.scatter_copies,
+        gpu_stats.scatter_copies
+    );
+    assert!(
+        copies > total / 50,
+        "the scatters cover {copies} of {total} pixels"
+    );
+    assert!(gpu_stats.scatter_built > 0, "no chunk placed");
+    assert_eq!(
+        gpu_stats.scatter_copies, 0,
+        "every chunk placed on the GPU (its copies are counted there)"
+    );
+    assert!(
+        apart * 500 < copies,
+        "{apart} pixels differ from the CPU placement's ({copies} of copies)"
+    );
+}

@@ -1826,7 +1826,16 @@ unchanged.
   normal map or effects. `Terrain::scatter(data, TerrainScatter, camera)`
   answers the same copies within `distance` on the CPU (tests, tools):
   nearest rows first, at most 65,536. `FrameStats::scatter_draws`,
-  `scatter_copies`, `scatter_built`.
+  `scatter_copies`, `scatter_built`. With `TerrainScatter::gpu` (a visual
+  mode; og.TerrainScatter `gpuPlacement`) a chunk is placed by a compute
+  job instead (`src/scatter_place.rs`, `shaders/scatter_place.wgsl`): the
+  same rules read from the level-0 tiles the GPU holds, its copies, count
+  and indirect draws written into its buffer with nothing read back
+  (`scatter_copies` counts only the CPU's), 128 a frame for a streamed
+  terrain. The footprint chain is evaluated in dependency order: each
+  earlier scatter into one bit per cell over the region a later one
+  reaches, read by the next. `Terrain::scatter_among` stays the answer
+  for gameplay.
 - **Impostors** (R6, `src/impostor.rs`, `shaders/impostor*.wgsl`). An
   `Impostor { material, grid, center, radius }` is a model baked by the
   cook (`model { impostor true }`) from `grid × grid` directions over the
