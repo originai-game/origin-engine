@@ -35,8 +35,25 @@ if (which === "node") {
   root = "game";
   const manifest = readFileSync(join(project, "cooked", ".cook.ogt"), "utf8");
   glue["og_web_put_file"]!(`${root}/cooked/.cook.ogt`, new TextEncoder().encode(manifest));
-  const listed = JSON.parse(glue["og_web_bundle_files"]!(manifest) as string) as Array<{ file: string }>;
-  for (const o of listed) glue["og_web_put_file"]!(`${root}/cooked/${o.file}`, new Uint8Array(readFileSync(join(project, "cooked", o.file))));
+  const listed = JSON.parse(glue["og_web_bundle_files"]!(manifest) as string) as Array<{ file: string; id: string; type: string }>;
+  const textures: Array<{ id: string; bytes: Uint8Array }> = [];
+  for (const o of listed) {
+    const bytes = new Uint8Array(readFileSync(join(project, "cooked", o.file)));
+    glue["og_web_put_file"]!(`${root}/cooked/${o.file}`, bytes);
+    if (o.type === "og.Texture") textures.push({ id: o.id, bytes });
+  }
+  // And its transcode (worker.ts transcodeBundle): the wasm reads no Basis
+  // texture itself. With no renderer every texture is RGBA8, level 0.
+  const { loadBasisTranscoder, transcodeKtx2 } = await import("../../src/web/basis.ts");
+  const basis = await loadBasisTranscoder();
+  let parsed = manifest;
+  for (const t of textures) {
+    const ktx2 = glue["og_web_texture_ktx2"]!(parsed, t.id, t.bytes) as Uint8Array;
+    parsed = "";
+    if (ktx2.length === 0) continue;
+    const out = transcodeKtx2(basis, ktx2, "rgba8");
+    glue["og_web_put_texture"]!(t.id, out.width, out.height, out.levels[0], out.srgb);
+  }
 }
 
 const must = <T>(r: { ok: true; value: T } | { ok: false; reason: string }): T => {
