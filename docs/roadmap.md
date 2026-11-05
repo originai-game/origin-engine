@@ -192,7 +192,7 @@ run on Claude Fable 5.1 (AGENTS.md).
 | Item | Now | Target or problem | Thread |
 |---|---|---|---|
 | Local shadow maps, 8 moving cube lights | 5.2–6.1 ms (2.1 before the midpoint maps) | about 2.2 ms; a ball-rim stipple; then pcss-moments | Fable: [T-01a1aaad-0c24](https://ampcode.com/threads/T-01a1aaad-0c24-7058-a7c7-c9d72b11cba3) |
-| FSR 3.1 | costlier than TAAU | TAAU's cost, then the default upscaler | [T-01a1a835-8371](https://ampcode.com/threads/T-01a1a835-8371-7519-a4b0-6d33cc38f6a4) |
+| FSR 3.1 | `upscalers` da0a57836 (loops unrolled for Metal, accumulate's taps shared through a workgroup tile): extra over TAAU at 1080p +0.23–1.87 ms (main +1.41–3.22), at 1440p +0.82–1.25 ms (main +3.26–5.67); the resolve pass is still about twice TAAU's | TAAU's cost, then the default upscaler; next accumulate's 16 history loads | [T-01a1a835-8371](https://ampcode.com/threads/T-01a1a835-8371-7519-a4b0-6d33cc38f6a4) |
 | GI probes | main pass 3.70 ms (1.48 without GI); `both` frame 12.70 ms | screen GI reaches 0.65 of the path-traced reference (ceiling 0.72–0.80, the rest off screen); probes 0.81 at 32 frames | area 1 closed; next optimisation when the product needs it |
 | First frame | terrain 7–12 s on DX12 after the corner cache; the Pixel's first frame 14–17 s | the shader compile budget; measured at the wave's end and in §3 | web boot [T-01a1a707](https://ampcode.com/threads/T-01a1a707-5055-70bb-ae28-ae6fad4e0388) |
 | Crowds at 50k | 24.35 ms a frame (cull 0.30 ms) | prepass 10–13 ms and main pass 10 ms dominate | — |
