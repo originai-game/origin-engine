@@ -309,13 +309,25 @@ fn every_derivative_is_fine_or_coarse_by_name() {
         let functions = module.functions.iter().map(|(_, f)| f);
         for f in functions.chain(module.entry_points.iter().map(|e| &e.function)) {
             for (_, e) in f.expressions.iter() {
-                if let naga::Expression::Derivative { axis, ctrl: naga::DerivativeControl::None, .. } = e {
-                    plain.push(format!("{}: {} {axis:?}", s.label, f.name.as_deref().unwrap_or("?")));
+                if let naga::Expression::Derivative {
+                    axis,
+                    ctrl: naga::DerivativeControl::None,
+                    ..
+                } = e
+                {
+                    plain.push(format!(
+                        "{}: {} {axis:?}",
+                        s.label,
+                        f.name.as_deref().unwrap_or("?")
+                    ));
                 }
             }
         }
     }
     plain.sort();
     plain.dedup();
-    assert!(plain.is_empty(), "plain derivatives (coarse on D3D12; write dpdxFine, dpdyFine or fwidthFine): {plain:#?}");
+    assert!(
+        plain.is_empty(),
+        "plain derivatives (coarse on D3D12; write dpdxFine, dpdyFine or fwidthFine): {plain:#?}"
+    );
 }
