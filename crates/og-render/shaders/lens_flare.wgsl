@@ -245,7 +245,8 @@ fn flare_sources_at(uv: vec2<f32>, threshold: f32) -> vec3<f32> {
 // the way from the source to the centre's mirror, inside the glare of any
 // source near the centre) reads as a doubled lamp, not a reflection: it
 // is left out within `mask.w` of the glare's edge, fading in over as much
-// again.
+// again. So is a ghost on another source's glare (flare-lights' spot
+// mirrored onto the near lamp's), which reads the same way.
 fn flare_source_ghosts(q: vec2<f32>) -> vec3<f32> {
   let n = min(u32(flare.meter.y), FLARE_LIGHTS);
   if (n == 0u) { return vec3<f32>(0.0); }
@@ -261,7 +262,12 @@ fn flare_source_ghosts(q: vec2<f32>) -> vec3<f32> {
       let center = 1.0 - (p - 0.5 * s * k) / m;
       let mag = clamp(1.0 / abs(m), 1.0, FLARE_GHOST_MAGNIFICATION);
       let ra = ra0 * mag;
-      let clear = smoothstep(1.0, 2.0, flare_distance(center, p) / (ra + flare.mask.w));
+      var clear = 1.0;
+      for (var j = 0u; j < n; j++) {
+        let glare = textureLoad(flare_visibility, vec2<i32>(i32(j), 0), 0).r > 0.0;
+        let away = smoothstep(1.0, 2.0, flare_distance(center, flare.lights[j].xy) / (ra + flare.mask.w));
+        clear *= select(1.0, away, glare || j == i);
+      }
       if (clear <= 0.0) { continue; }
       let t = flare_distance(q, center) / ra;
       if (t >= 1.0) { continue; }
