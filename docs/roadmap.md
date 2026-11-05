@@ -181,7 +181,7 @@ run on Claude Fable 5.1 (AGENTS.md).
 | Item | State | Thread |
 |---|---|---|
 | Visual simulation: garment, MPM fluid, GPU particles | cloth and soft body's GPU visual mode done, rebasing onto destruction's shared collider module; the other three not started | [T-01a1a6f6](https://ampcode.com/threads/T-01a1a6f6-09cf-74ab-8b0b-9cad0149f65a) |
-| GPU scatter placement | grass already places on the GPU; scatter still builds chunks on the CPU (16 a frame). `copy_at`/`copy_ruled` to a compute pass feeding scatter_cull, as a visual mode; the CPU answer stays for gameplay; the recursive footprint rule is the hard part | [T-01a1aaa2-f809](https://ampcode.com/threads/T-01a1aaa2-f809-707d-a8ee-0d482177372a) |
+| GPU scatter placement | `og.TerrainScatter.gpuPlacement` (off by default) on branch `gpu-visual-scatter` 4e5359918, with the art runner: compute placement per chunk with HZD-style layered footprints, pixel-identical to the CPU; render CPU 60.3 → 14.3 ms a frame on a moving camera, GPU placement 0.21 ms. Open: chunks whose level-0 tiles are not resident fall back to the CPU; release-build numbers at the wave's end | [T-01a1aaa2-f809](https://ampcode.com/threads/T-01a1aaa2-f809-707d-a8ee-0d482177372a) |
 | UI 1B M2; PR #8 s65 (span exact size) and s66 (`blend srgb`) | in progress; s67 not taken (conflicts with `FieldDesc.bare`, needs an API decision) | [T-01a1a7e2](https://ampcode.com/threads/T-01a1a7e2-6d0c-7749-a1dd-5164fae10d1e) |
 | HDR output accepted on a real HDR display | landed opt-in; acceptance in §3 | — |
 | W7, a deterministic CPU FFT band for buoyancy | deferred | — |
