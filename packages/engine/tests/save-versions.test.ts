@@ -23,6 +23,7 @@ declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: n
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import game, { Run, Wallet, start } from "./fixtures/saves/game.ts";
+import { asSaved } from "./support/saved-defaults.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const tmp = mkdtempSync(join(tmpdir(), "og-save-versions-"));
@@ -129,10 +130,12 @@ test("a save from engine 0.7.7 restores on this build without migrate, as this b
 
   // This build running the same game to the same tick holds the same
   // records: game components and resources, og.Transform, the bodies,
-  // og.Rng's streams, og.Time.
+  // og.Rng's streams, og.Time; the engine defaults that moved since 0.7.7
+  // at the values the save keeps (support/saved-defaults.ts).
   const fresh = createEngine(game as unknown as GameToken);
   if (!fresh.ok) throw new Error(fresh.reason);
   fresh.value.advance(fixture.tick);
+  asSaved(fresh.value);
   expect(records(old)).toEqual(records(fresh.value));
 
   // And it goes on deterministically: a second restore of the same save

@@ -170,7 +170,7 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         from: 1,
         to: 2,
         note: "R11: gained shadowAngles; at its defaults (a game that never lit in 2D) it is dropped, as the record is lazy now",
-        run: Some(|e| lazy_2d(e, "og.Lighting2D")),
+        run: Some(|e| became_lazy(e, "og.Lighting2D")),
     },
     Migration {
         target: Target::Record,
@@ -178,7 +178,7 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         from: 1,
         to: 2,
         note: "R11: gained kind, innerAngle, outerAngle, height and layers; dropped from a save without lights, as the record is lazy now",
-        run: Some(|e| lazy_2d(e, "og.Light2D")),
+        run: Some(|e| became_lazy(e, "og.Light2D")),
     },
     Migration {
         target: Target::Record,
@@ -186,15 +186,25 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         from: 1,
         to: 2,
         note: "R11: gained points and layers; dropped from a save without occluders, as the record is lazy now",
-        run: Some(|e| lazy_2d(e, "og.Occluder2D")),
+        run: Some(|e| became_lazy(e, "og.Occluder2D")),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Wind",
+        from: 1,
+        to: 2,
+        note: "0.7.7 and earlier, registered in every world: gained turbulence and gustSize (G2, the simulated field); at its defaults (a game that never set a wind) it is dropped, as the record is lazy now",
+        run: Some(|e| became_lazy(e, "og.Wind")),
     },
 ];
 
-/// R11's 2D lighting records, version 1 -> 2: dropped where they hold
-/// nothing a game set (no component, or the resource at its version 1
-/// defaults), so the save restores as a world that never had them; else
-/// each saved field kept by name and the new ones at their defaults.
-fn lazy_2d(edit: &mut SnapshotEdit, name: &str) -> Result<(), String> {
+/// A record that became lazy with its version 1 -> 2 (R11's 2D lighting,
+/// G2's og.Wind): dropped where it holds nothing a game set (no component,
+/// or the resource at its defaults), so the save restores as a world that
+/// never had it; else each saved field kept by name and the new ones at
+/// their defaults. Keyed on the version, so a save this build writes keeps
+/// a record its game named, whatever it holds.
+fn became_lazy(edit: &mut SnapshotEdit, name: &str) -> Result<(), String> {
     let err = |e: og_core::Error| e.reason().to_string();
     let Some(old) = edit.schema(name).cloned() else {
         return Ok(());

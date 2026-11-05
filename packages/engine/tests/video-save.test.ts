@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { SAVE_AT, Ticks, plain, player } from "./support/video-save-game.ts";
+import { asSaved } from "./support/saved-defaults.ts";
 
 const fixture = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "fixtures", "video-v1", "save.json"), "utf8")) as {
   build: string;
@@ -62,6 +63,8 @@ test("a save without a player restores as a world that never had the type", () =
   restored.advance(1);
   expect(restored.world.restore(fixture.plain.save)).toEqual({ ok: true, value: null });
   expect(restored.world.tick).toBe(fixture.tick);
+  // The SSR defaults moved since the fixture was written; the save keeps its own.
+  asSaved(here);
   expect(restored.hash()).toBe(here.hash());
   // The old build registered og.VideoPlayer in every world, so its hash of
   // the same world was another (the one move of a world without video).

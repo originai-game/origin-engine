@@ -107,6 +107,12 @@ is one line here, written at the merge that changes
   are now generated from the IDL (`src/generated/exports.ts`, drift-checked
   by `og api check`), so a new one is exported with its declaration.
 
+- **An old save's og.Wind restores as lazy.** og.Wind is at version 2
+  (turbulence and gustSize); a version 1 save, written when every world
+  held the resource, drops it at its defaults, so a world that never set a
+  wind restores as one without it (the hash this build gives that game);
+  a set wind keeps every saved field.
+
 - **Stylise.hatchingPaper.** The paper hatching lies on: one-ink hatching
   lifts its ground towards it, and under `hatchingKeepColor` the wash lies
   on the paper's colour at its own lightness. Under `hatchingKeepColor` a

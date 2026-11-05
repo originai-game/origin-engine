@@ -110,7 +110,8 @@ const REGISTERED_BY_MODULES: &[&str] = &[
 /// og-physics's og.RigidBody and og.Physics, version 2: sleep; og.Joint,
 /// version 2: breaking; og.Vehicle, version 2: the drivetrain; og.Cloth,
 /// og.SoftBody, og.Garment and og.Fluid3D, version 2: simulation; the runtime's
-/// og.VideoPlayer, version 2: an f64 time).
+/// og.VideoPlayer, version 2: an f64 time; og.Wind, version 2: the
+/// simulated field's turbulence and gust size).
 pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
     use og_core::Reflect;
     schema.version = match schema.name.as_str() {
@@ -131,6 +132,8 @@ pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
         // R11: Light2D's kind, cone, height and layers; Occluder2D's
         // polygon and layers; Lighting2D's shadowAngles.
         "og.Light2D" | "og.Occluder2D" | "og.Lighting2D" => 2,
+        // G2: turbulence and gustSize, the simulated field's.
+        "og.Wind" => 2,
         _ => return schema,
     };
     schema
