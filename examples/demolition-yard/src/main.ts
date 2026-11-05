@@ -102,8 +102,8 @@ function build(world: World): void {
 }
 
 // A heavy iron ball thrown from `at` at velocity `v`.
-function ball(world: World, at: { x: number; y: number; z: number }, v: { x: number; y: number; z: number }): void {
-  const e = must(world.spawn({ name: "ball", position: at }));
+function ball(world: World, name: string, at: { x: number; y: number; z: number }, v: { x: number; y: number; z: number }): void {
+  const e = must(world.spawn({ name, position: at }));
   must(world.insert(e, og.RigidBody, { kind: BODY_DYNAMIC, mass: 6, ccd: 1 }));
   must(world.insert(e, og.Collider, { shape: SHAPE_SPHERE, radius: 0.15 }));
   must(world.insert(e, og.Velocity, { linear: v }));
@@ -124,7 +124,7 @@ export default og.game({
   start: build,
   commands: {
     boom: (world) => {
-      must(og.destruction.explode(world, { point: { x: WALL.x, y: 0.3, z: 0.15 }, radius: 1.8, innerRadius: 1.0, damage: 6000, impulse: 2500 }));
+      must(og.destruction.explode(world, { point: { x: WALL.x, y: 0.3, z: 0.15 }, radius: 1.5, innerRadius: 0.8, damage: 6000, impulse: 2500 }));
     },
     strike: (world) => {
       must(og.destruction.damage(world, find(world, "pillar"), { point: { x: PILLAR.x, y: 1.4, z: PILLAR.z + 0.25 }, radius: 0.5, innerRadius: 0.25, amount: 8000, impulse: { x: 0, y: 0, z: -600 } }));
@@ -132,8 +132,8 @@ export default og.game({
     drop: (world) => {
       must(world.set(find(world, "crate"), og.RigidBody, { gravityScale: 1 }));
     },
-    throw: (world) => ball(world, { x: PANE.x, y: 1.2, z: 3 }, { x: 0, y: 1, z: -14 }),
+    throw: (world) => ball(world, "pane-ball", { x: PANE.x, y: 1.2, z: 3 }, { x: 0, y: 1, z: -14 }),
     // A ball through the fence, from behind the yard's far side.
-    kick: (world) => ball(world, { x: FENCE.x + 0.3, y: 0.7, z: FENCE.z - 3 }, { x: 0, y: 0.8, z: 13 }),
+    kick: (world) => ball(world, "fence-ball", { x: FENCE.x + 0.3, y: 0.7, z: FENCE.z - 3 }, { x: 0, y: 0.8, z: 13 }),
   },
 });

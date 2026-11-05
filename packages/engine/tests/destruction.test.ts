@@ -39,3 +39,21 @@ test.skipIf(STALE_WASM)("a wall, a pillar and a pane break the same way on both 
   expect(node.hash).not.toBe(node.hashAtLoad);
   expect(web).toEqual({ ...node, host: "web" } as never);
 }, 180_000);
+
+// The yard as og run plays it (its own game, commands and beats, the native
+// host): its charge leaves two piers of standing brickwork, one a third of
+// the wall's 2.4 m, nothing spanning the hole, and the struck pillar a
+// stump that its own falling top does not crush. Each held in the frames
+// the art review reads, and each broken by a change that passed the
+// wall-alone test (a charge reaching the piers' feet, M7's 0.55 and 0.75 m).
+test("the demolition yard leaves two piers, a clear hole and a pillar stump", () => {
+  cookProject(project, repo);
+  const r = Bun.spawnSync(["bun", "tests/support/yard-piers.ts", "--project", project], { cwd: pkg });
+  const out = new TextDecoder().decode(r.stdout);
+  if (r.exitCode !== 0) throw new Error(`${new TextDecoder().decode(r.stderr)}${out}`);
+  const y = JSON.parse(out.trim().split("\n").pop()!) as { left: number; right: number; spans: number; stump: number };
+  expect(Math.min(y.left, y.right)).toBeGreaterThan(0.5);
+  expect(Math.max(y.left, y.right)).toBeGreaterThan(0.8);
+  expect(y.spans).toBe(0);
+  expect(y.stump).toBeGreaterThan(0.6);
+}, 180_000);
