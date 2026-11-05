@@ -1,0 +1,37 @@
+type model
+version 1
+---
+# A board fence panel, 2 × 1 m and 4 cm thick, of horizontal boards nailed
+# to the posts at its ends (src/main.ts): struck, it splinters along its
+# boards, the pieces by the posts staying nailed on.
+material "wood" {
+  color 0.86 0.8 0.72
+  roughness 0.8
+  map "../textures/planks.png"
+  normalMap "../textures/planks_n.png"
+}
+part "panel" {
+  material "wood"
+  position 0 0.5 0
+  boxGeometry {
+    width 2
+    height 1
+    depth 0.04
+  }
+}
+fracture {
+  style wood
+  grain x
+  chunks 20
+  seed 4
+  children 0
+  pattern slab
+  anchor ends
+  interiorScale 1.5
+  interior {
+    color 1 1 1
+    roughness 0.9
+    map "../textures/wood_cut.png"
+    normalMap "../textures/wood_cut_n.png"
+  }
+}

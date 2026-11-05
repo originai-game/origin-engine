@@ -105,7 +105,11 @@ Pick the style by what it is made of; each breaks as that material does:
 
 ```ts
 const wall = must(world.instantiate(must(og.load.gltf(world, "props/wall.ogt")), { position: { x: -3, y: 0, z: 0 } }));
-must(world.insert(wall, og.Destructible, { toughness: 800, strength: 3000, tension: 0.1, density: 1900, impactThreshold: 400, breakFx: brickDust, hitFx: brickChips, debris: chips }));
+// Tune by what it is made of: og.destruction.material gives the
+// og.Destructible fields of brick, concrete, wood, glass or dry stone
+// (MATERIAL_*), measured on the demolition-yard props; spread it, add the
+// material's fx, and override a field only for a reason the prop has.
+must(world.insert(wall, og.Destructible, { ...must(og.destruction.material(world, MATERIAL_BRICK)), breakFx: brickDust, hitFx: brickChips, debris: chips }));
 ```
 
 A standing prop (no og.RigidBody, or a static one) is its chunks from the
@@ -174,7 +178,7 @@ break, then as its chunks.
 
 ```ts
 og.destruction.damage(world, wall, { point, radius: 0.6, innerRadius: 0.2, amount: 3000, impulse: { x: 0, y: 0, z: -300 } });   // a shot, a hammer: impulse is its momentum, which what it breaks loose carries on
-og.destruction.explode(world, { point, radius: 3, innerRadius: 0.5, damage: 6000, impulse: 400 }); // every prop in reach, and a push on loose chunks
+og.destruction.explode(world, { point, radius: 3, innerRadius: 0.5, damage: 6000, impulse: 2500 }); // every prop in reach, and a push on loose pieces per m² of the face they show it
 og.destruction.fracture(world, wall);   // every bond at once: the anchored chunks stay, the rest fall
 ```
 
