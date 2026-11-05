@@ -136,6 +136,77 @@ fn upgrade_migrates_style_typography_without_discarding_legacy_values() {
     std::fs::remove_dir_all(dir).unwrap();
 }
 
+/// The lit-mesh blend break lists the emitters whose look it changes (lit
+/// meshes with no blend line), at their render line, and no other: not an
+/// unlit mesh, not one that says its blend, not a lit billboard.
+#[test]
+fn upgrade_lists_lit_mesh_emitters_without_a_blend_line() {
+    let dir = scratch_root();
+    let fx = dir.join("assets/fx");
+    let package = dir.join("engine");
+    std::fs::create_dir_all(&fx).unwrap();
+    std::fs::create_dir_all(&package).unwrap();
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/main.ts"), "export default 0;\n").unwrap();
+    let manifest =
+        "type project\nversion 1\n---\nname \"blend\"\nengine \"0.7.7\"\nentry \"src/main.ts\"\n";
+    std::fs::write(dir.join("project.ogt"), manifest).unwrap();
+    let log: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(repo().join("packages/engine/changelog.json")).unwrap(),
+    )
+    .unwrap();
+    let entry = log["unreleased"]["breaking"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|b| b["codemod"]["kind"] == "particles-lit-mesh-blend")
+        .unwrap()
+        .clone();
+    std::fs::write(package.join("package.json"), r#"{"version":"0.8.0"}"#).unwrap();
+    std::fs::write(
+        package.join("changelog.json"),
+        serde_json::to_vec(&serde_json::json!({
+            "versions": [{"version":"0.8.0", "simulation":"unchanged", "breaking":[entry]}]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let head = "type particles\nversion 1\n---\n";
+    for (name, body) in [
+        (
+            "chips",
+            "rate 0\nrender mesh tetrahedron\nlit true  # shaded\n",
+        ),
+        ("unlit", "render mesh box\n"),
+        ("said", "lit true\nrender mesh box\nblend additive\n"),
+        ("glow", "lit true\n"),
+    ] {
+        std::fs::write(fx.join(format!("{name}.ogt")), format!("{head}{body}")).unwrap();
+    }
+    let out = og()
+        .arg("upgrade")
+        .arg(&dir)
+        .arg("--json")
+        .arg("--dry-run")
+        .env("OG_ENGINE_PACKAGE", &package)
+        .output()
+        .unwrap();
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    let listed: Vec<(String, u64)> = v["manual"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| {
+            (
+                m["file"].as_str().unwrap().to_string(),
+                m["line"].as_u64().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(listed, [("assets/fx/chips.ogt".to_string(), 5)], "{v}");
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
 #[test]
 fn version_names_og_and_the_engine() {
     let out = og().arg("--version").output().unwrap();

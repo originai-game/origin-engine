@@ -15,6 +15,17 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Breaking: lit mesh particles blend alpha by default.** An emitter
+  drawn as lit meshes (`render mesh` with `lit true`) and no `blend`
+  line now blends alpha, where it blended additive: a chip, shard or
+  splinter covers what is behind it instead of being added onto it,
+  where a lit grey chip glowed white over the ground, as paper confetti.
+  Unlit meshes, billboards and sprites still blend additive by default,
+  and a `blend` line always wins. Frames of such emitters change. Fix:
+  nothing for solid debris; an emitter meant to glow as lit meshes
+  (lit embers, magic shards) adds `blend additive`. `og upgrade` lists
+  every lit mesh emitter without a `blend` line (changelog.json's
+  breaking entry). No IDL change.
 - **Stylise.hatchingPaper.** The paper hatching lies on: one-ink hatching
   lifts its ground towards it, and under `hatchingKeepColor` the wash lies
   on the paper's colour at its own lightness. Under `hatchingKeepColor` a
@@ -57,8 +68,8 @@ is one line here, written at the merge that changes
   aggregate, wood its grain and glass clear glass, with no tint to
   author. They are visual only, seeded by the piece, and caught up like
   the pieces. Doc change on `og.Destructible.debris`. The example
-  yard's mesh emitters now say `blend alpha`: emitters blend additive
-  by default, so a lit grey tetrahedron added onto the ground glowed
+  yard's mesh emitters now say `blend alpha`: emitters then blended
+  additive by default (the break above), so a lit grey tetrahedron added onto the ground glowed
   white, as paper confetti. Its wood and glass props now have debris
   too.
 

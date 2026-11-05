@@ -239,10 +239,11 @@ for (const f of world.events(og.Fractured)) {
   | metal | none | a few sparks (additive, `align velocity`, `collision`), not a shower |
 
   Sparks (orange, additive, bright) read as metal, a grinder or a
-  weld: on stone, wood or glass they look wrong. Every solid mesh
-  particle (chips, grit, splinters, shards) needs `blend alpha`: an
-  emitter blends additive unless told, and a lit grey chip added onto
-  the ground glows white, as paper confetti. `examples/demolition-yard`
+  weld: on stone, wood or glass they look wrong. Solid mesh particles
+  (chips, grit, splinters, shards) are `lit true` meshes, which blend
+  alpha unless told otherwise; never give them `blend additive`, under
+  which a lit grey chip added onto the ground glows white, as paper
+  confetti. `examples/demolition-yard`
   has an emitter for each row but metal under `assets/fx/`.
 - `debris`: fine pieces as visuals only. Where a chunk shatters, its
   pieces smaller than og.Destruction.debrisVolume never become bodies:

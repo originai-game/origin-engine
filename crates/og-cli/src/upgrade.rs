@@ -186,6 +186,21 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
                 // Still report the typography block for visual review: alias
                 // merging cannot preserve two conflicting sets of sizes.
             }
+            if b["codemod"]["kind"] == "particles-lit-mesh-blend" {
+                // Reported, not rewritten: the new default is the fix, and
+                // an emitter that meant to glow says `blend additive`.
+                for (file, text, _) in &texts {
+                    if file.extension().is_some_and(|e| e == "ogt")
+                        && let Some((line, code)) = lit_mesh_without_blend(text)
+                    {
+                        manual.push(json!({
+                            "version": version, "member": member, "change": b["change"], "fix": b["fix"],
+                            "file": rel(file), "line": line, "text": code,
+                        }));
+                    }
+                }
+                continue;
+            }
             if b["codemod"]["kind"] == "ui-kits" {
                 let moved = kits::kits(&b["codemod"]);
                 for (file, text, touched) in &mut texts {
@@ -376,6 +391,33 @@ fn hero_line(body: &og_core::ogt::Block) -> Option<String> {
     Some(format!(
         "  # Added by og upgrade: what displayXl2 drew before typography (docs/ui.md §17.4).\n  hero {size} {line} {tracking} {weight} {face}\n"
     ))
+}
+
+/// A particle emitter (`.ogt` of `type particles`) drawn as lit meshes
+/// with no `blend` line, which blended additive until lit meshes took
+/// alpha as their default. Its `render mesh` line (1-based) and its text.
+fn lit_mesh_without_blend(text: &str) -> Option<(usize, &str)> {
+    let (head, _) = text.split_once("\n---")?;
+    if !head.lines().any(|l| l.trim() == "type particles") {
+        return None;
+    }
+    let body_at = head.lines().count() + 1;
+    let word = |l: &str| l.split('#').next().unwrap_or("").trim().to_string();
+    let mut mesh = None;
+    let mut lit = false;
+    for (n, l) in text.lines().enumerate().skip(body_at) {
+        let w = word(l);
+        if w.starts_with("blend") {
+            return None;
+        }
+        if w.starts_with("render mesh") {
+            mesh = Some((n + 1, l.trim()));
+        }
+        if w == "lit true" {
+            lit = true;
+        }
+    }
+    mesh.filter(|_| lit)
 }
 
 /// The game's own text: `src/`, `assets/` and `tests/` (TypeScript, JavaScript and

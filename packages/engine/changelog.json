@@ -5,6 +5,17 @@
     "simulation": "changed",
     "breaking": [
       {
+        "member": "particle emitters: lit mesh blend default",
+        "change": "An emitter drawn as lit meshes (render mesh with lit true) and no blend line now blends alpha, not additive: a solid chip, shard or splinter covers what is behind it instead of being added onto it, where a lit grey chip glowed white. Unlit meshes, billboards and sprites still blend additive by default, and a blend line always wins.",
+        "fix": "Nothing for chips, shards and splinters: they now draw solid. An emitter that meant lit meshes to glow (lit embers, magic shards) adds a blend additive line.",
+        "find": [
+          "render mesh"
+        ],
+        "codemod": {
+          "kind": "particles-lit-mesh-blend"
+        }
+      },
+      {
         "member": "og.ui.rewardChoice element paths",
         "change": "The cards scroll between the header and the actions, so their elements moved from <id>/Options/<key> to <id>/Cards/Options/<key>.",
         "fix": "Update probe paths, playtests and og.ui.bounds or openSlot lookups that name <id>/Options/ to <id>/Cards/Options/.",

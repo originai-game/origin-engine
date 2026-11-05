@@ -34,7 +34,9 @@
 //! noise 0 0.5 0.3                   # <strength> [<frequency> <scroll>]
 //! texture "textures/spark.png"      # an asset id (og.load.texture's); omitted: a soft dot
 //! sheet 4 4 16 life 1               # <columns> <rows> [<frames> [off | life <cycles> | fps <n> | random]]
-//! blend additive                    # additive | alpha
+//! blend additive                    # additive | alpha; omitted: alpha for a lit
+//!                                   #   mesh (a solid chip, added, glows white),
+//!                                   #   additive for everything else
 //! space world                       # world | local
 //! align camera                      # camera | velocity <stretch>
 //! softDistance 0
@@ -246,6 +248,7 @@ pub fn parse_emitter_linked(
     let mut em = ParticleEmitter::default();
     let mut bursts = Vec::new();
     let mut subs = 0;
+    let mut blend = None;
     for e in &doc.body.entries {
         let line = e.line;
         match e.key.as_str() {
@@ -406,11 +409,11 @@ pub fn parse_emitter_linked(
                 em.sheet.mode = sheet_mode(line, "sheet", rest)?;
             }
             "blend" => {
-                em.blend = match word(e, 0)? {
+                blend = Some(match word(e, 0)? {
                     "additive" => ParticleBlend::Additive,
                     "alpha" => ParticleBlend::Alpha,
                     other => return Err(format!("line {line}: blend `{other}` (additive, alpha)")),
-                }
+                });
             }
             "space" => {
                 em.space = match word(e, 0)? {
@@ -604,6 +607,13 @@ pub fn parse_emitter_linked(
         }
     }
     em.bursts = bursts;
+    // Unsaid, a lit mesh is a solid thing (a chip, a shard, a splinter)
+    // and blends alpha: added onto what is behind it, a lit grey chip
+    // glows white. Light (sparks, glows, unlit or billboard) adds.
+    em.blend = blend.unwrap_or(match em.render {
+        ParticleRender::Mesh { .. } if em.lit => ParticleBlend::Alpha,
+        _ => ParticleBlend::Additive,
+    });
     em.validate()?;
     Ok(em)
 }

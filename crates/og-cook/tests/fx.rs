@@ -308,6 +308,24 @@ fn mesh_lit_distorting_emitters_with_events_and_sub_emitters() {
         }
     );
     assert!(em.lit);
+    // Unsaid, a lit mesh blends alpha (a solid chip, added, glows white);
+    // light adds: an unlit mesh, a lit billboard, and a blend line said
+    // before `lit` still wins.
+    assert_eq!(em.blend, ParticleBlend::Alpha);
+    let blend = |body: &str| {
+        let text = format!("type particles\nversion 1\n---\n{body}");
+        parse_emitter(&text, &mut |_| Ok(None)).unwrap().blend
+    };
+    assert_eq!(blend("render mesh box\n"), ParticleBlend::Additive);
+    assert_eq!(blend("lit true\n"), ParticleBlend::Additive);
+    assert_eq!(
+        blend("blend additive\nrender mesh box\nlit true\n"),
+        ParticleBlend::Additive
+    );
+    assert_eq!(
+        blend("lit true\nrender mesh sphere\n"),
+        ParticleBlend::Alpha
+    );
     assert_eq!(
         em.events,
         [ParticleEventKind::Death, ParticleEventKind::Collision]

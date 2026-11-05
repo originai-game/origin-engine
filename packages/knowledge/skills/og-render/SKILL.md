@@ -184,7 +184,7 @@ drag 0                    # velocity scales by 1 / (1 + drag × dt)
 noise 0 0.5 0.3           # <strength> [<frequency> <scroll>]: a moving turbulence
 texture "fx/spark.png"    # an asset id; left out: a soft round dot
 sheet 4 4 16 life 1       # <columns> <rows> [<frames> [off | life <cycles> | fps <n> | random]]
-blend additive            # additive (fire, sparks, magic) | alpha (smoke, dust)
+blend additive            # additive (fire, sparks, magic) | alpha (smoke, dust); left out: alpha for lit meshes (solid chips), additive otherwise
 space world               # world: born at the emitter, then free | local: carried with it
 align camera              # camera | velocity <stretch>: stretched along its motion (sparks, rain)
 softDistance 0            # fade where the quad nears the scene behind it (0: off)
