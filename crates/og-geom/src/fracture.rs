@@ -399,7 +399,7 @@ pub fn cut(
             CsgOp::Intersect,
         )
         .map_err(|e| format!("cell {i}: {e}"))?;
-        for part in split(&cut) {
+        for part in parts(&cut, size * 1e-6) {
             let mut piece = Piece {
                 cell: i as u32,
                 ..Piece::default()
@@ -439,6 +439,86 @@ pub fn cut(
     }
     let bonds = bonds(&pieces);
     Ok(Fracture { pieces, bonds })
+}
+
+/// A cut cell's solid parts: its triangles grouped by shared positions
+/// ([`split`]), each open group (triangles the CSG left unwelded to the
+/// rest, a few bits off: no solid of their own, and a hull with no volume
+/// would make a body physics cannot weigh) folded into the closed part
+/// with the vertex nearest its own.
+fn parts(m: &Mesh, tol: f64) -> Vec<Vec<usize>> {
+    let at = |v: u32| DVec3::from(m.positions[v as usize].map(f64::from));
+    let key = |p: DVec3| (p / tol).round().as_i64vec3().to_array();
+    let points = |g: &[usize]| -> Vec<DVec3> {
+        g.iter()
+            .flat_map(|&t| (0..3).map(move |k| t * 3 + k))
+            .map(|i| at(m.indices[i]))
+            .collect()
+    };
+    let closed = |g: &[usize]| {
+        let mut edges: BTreeMap<([i64; 3], [i64; 3]), i32> = BTreeMap::new();
+        for &t in g {
+            let tri = &m.indices[t * 3..t * 3 + 3];
+            for k in 0..3 {
+                let (a, b) = (key(at(tri[k])), key(at(tri[(k + 1) % 3])));
+                if a != b {
+                    *edges.entry((a.min(b), a.max(b))).or_default() += 1;
+                }
+            }
+        }
+        !edges.is_empty() && edges.values().all(|&n| n >= 2)
+    };
+    let (mut solid, open): (Vec<Vec<usize>>, Vec<Vec<usize>>) = split(m)
+        .into_iter()
+        .partition(|g| closed(g) && spans(&points(g), tol));
+    if solid.is_empty() {
+        // Nothing closed: keep the cell whole if its triangles span a
+        // solid, and drop it if they lie in a plane (a sliver of CSG
+        // noise, with no volume to weigh).
+        let all = open.concat();
+        return if spans(&points(&all), tol) {
+            vec![all]
+        } else {
+            Vec::new()
+        };
+    }
+    for g in open {
+        let p = at(m.indices[g[0] * 3]);
+        let near = |s: &Vec<usize>| {
+            points(s)
+                .into_iter()
+                .map(|q| q.distance_squared(p))
+                .fold(f64::INFINITY, f64::min)
+        };
+        let best = (0..solid.len())
+            .min_by(|&a, &b| near(&solid[a]).total_cmp(&near(&solid[b])))
+            .expect("one solid part");
+        solid[best].extend(g);
+    }
+    solid
+}
+
+/// Whether points `pts` span a solid: four of them lie off one plane by
+/// more than `tol`.
+fn spans(pts: &[DVec3], tol: f64) -> bool {
+    let Some(&a) = pts.first() else { return false };
+    let Some(&b) = pts
+        .iter()
+        .max_by(|p, q| p.distance_squared(a).total_cmp(&q.distance_squared(a)))
+    else {
+        return false;
+    };
+    let ab = b - a;
+    let off = |p: &DVec3| (*p - a).cross(ab).length_squared();
+    let Some(&c) = pts.iter().max_by(|p, q| off(p).total_cmp(&off(q))) else {
+        return false;
+    };
+    let n = ab.cross(c - a);
+    if n.length() <= tol * ab.length() {
+        return false;
+    }
+    let n = n.normalize();
+    pts.iter().any(|p| n.dot(*p - a).abs() > tol)
 }
 
 /// A mesh's triangles grouped into parts joined by shared positions.

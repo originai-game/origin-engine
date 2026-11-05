@@ -428,3 +428,80 @@ fracture {
     png("cut.png", [90, 90, 90]);
     assert_ne!(cook(), first, "the interior's map is part of the model");
 }
+
+#[test]
+fn every_chunk_hull_holds_a_volume() {
+    let root = cook(
+        "og-cook-scratch-pillar",
+        r#"type model
+version 1
+---
+# A concrete pillar, 0.5 m across and 3 m tall: a blow at its middle takes
+# it away in chunky lumps that show their gravel, and what stood on it
+# comes down.
+material "concrete" {
+  color 1 1 1
+  roughness 0.85
+}
+part "shaft" {
+  material "concrete"
+  position 0 1.5 0
+  cylinderGeometry {
+    radiusTop 0.25
+    radiusBottom 0.25
+    height 3
+    radialSegments 20
+    uvRepeat 1.6 3
+  }
+}
+fracture {
+  style concrete
+  chunks 48
+  seed 5
+  children 5
+  interiorScale 2.5
+  interior {
+    color 1 1 1
+    roughness 0.95
+  }
+}
+"#,
+        0,
+    );
+    let a = asset(&root);
+    // A CSG sliver (triangles in one plane, unwelded to the rest of their
+    // cell) once cooked into a chunk of its own: a hull with no volume, a
+    // body of no mass, which physics then disabled mid-flight.
+    for (i, c) in a.chunks.iter().enumerate() {
+        let h: Vec<glam::DVec3> = c.hull.iter().map(|v| v.as_dvec3()).collect();
+        let lo = h
+            .iter()
+            .fold(glam::DVec3::splat(f64::MAX), |m, v| m.min(*v));
+        let hi = h
+            .iter()
+            .fold(glam::DVec3::splat(f64::MIN), |m, v| m.max(*v));
+        // A greedy tetrahedron: the far point, the point farthest off that
+        // line, the point farthest off that plane.
+        let far = |f: &dyn Fn(glam::DVec3) -> f64| {
+            h.iter().copied().max_by(|p, q| f(*p).total_cmp(&f(*q)))
+        };
+        let best = match h.first() {
+            Some(&x) => {
+                let y = far(&|p| p.distance_squared(x)).unwrap();
+                let z = far(&|p| (p - x).cross(y - x).length_squared()).unwrap();
+                let n = (y - x).cross(z - x);
+                let w = far(&|p| n.dot(p - x).abs()).unwrap();
+                n.dot(w - x).abs() / 6.0
+            }
+            None => 0.0,
+        };
+        assert!(
+            h.len() >= 4 && best > 1e-3 * f64::from(c.volume),
+            "chunk {i} (parent {}): a hull of {} points spanning {best:e} m³ (box {:?}) for {:e} m³",
+            c.parent,
+            h.len(),
+            hi - lo,
+            c.volume
+        );
+    }
+}

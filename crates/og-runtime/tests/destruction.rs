@@ -644,3 +644,80 @@ fn a_ball_through_a_pane_carries_its_shards_on() {
         "most shards land beyond the pane, along the ball's flight: {zs:?}"
     );
 }
+
+#[test]
+fn a_struck_pillar_falls_to_its_stump() {
+    let src =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/demolition-yard");
+    let root = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("scratch-pillar");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).unwrap();
+    std::process::Command::new("cp")
+        .arg("-R")
+        .arg(src.join("assets"))
+        .arg(&root)
+        .status()
+        .unwrap();
+    let pp = root.join("assets/props/pillar.ogt");
+    let t = std::fs::read_to_string(&pp)
+        .unwrap()
+        .replace("  chunks 44\n", "  chunks 48\n");
+    std::fs::write(&pp, t).unwrap();
+    let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    set_hooks(Rc::new(Disk));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let options = json!({ "root": root.to_str().unwrap() }).to_string();
+    let w = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    let g = value(og_runtime::og_world_spawn(
+        w,
+        Some(json!({ "position": { "x": 0, "y": -0.25, "z": 0 } }).to_string()),
+    ))
+    .as_f64()
+    .unwrap();
+    value(og_world_insert(
+        w,
+        g,
+        "og.RigidBody".into(),
+        Some(json!({ "kind": 1 }).to_string()),
+    ));
+    value(og_world_insert(
+        w,
+        g,
+        "og.Collider".into(),
+        Some(json!({ "shape": 0, "size": { "x": 20, "y": 0.5, "z": 20 } }).to_string()),
+    ));
+    let asset = value(og_load_gltf(w, "props/pillar.ogt".into(), None))
+        .as_f64()
+        .unwrap();
+    let p = value(og_world_instantiate(w, asset, None))
+        .as_f64()
+        .unwrap();
+    value(og_world_insert(w, p, "og.Destructible".into(), Some(json!({ "toughness": 2000, "strength": 20000, "density": 2400, "impactThreshold": 150 }).to_string())));
+    frames(w, 10);
+    value(og_destruction_damage(w, p, Some(json!({ "point": { "x": 0, "y": 1.4, "z": 0.25 }, "radius": 0.5, "innerRadius": 0.25, "amount": 8000 }).to_string())));
+    frames(w, 200);
+    let near = value(og_runtime::og_physics_overlap(w, Some(json!({ "shape": { "shape": 0, "size": { "x": 8, "y": 8, "z": 8 } }, "position": { "x": 0, "y": 4, "z": 0 } }).to_string())));
+    // At 48 cells the pillar once cooked a sliver chunk of no mass, which
+    // physics disabled mid-flight: the pieces over the blow froze where
+    // they were thrown and stood as a column in the air.
+    let mut high = Vec::new();
+    for e in near.as_array().unwrap().iter().map(|e| e.as_f64().unwrap()) {
+        if !og_world_has(w, e, "og.Chunk".into()) {
+            continue;
+        }
+        let t = value(og_world_get(w, e, "og.Transform".into()));
+        let y = t["position"]["y"].as_f64().unwrap();
+        if y > 1.4 {
+            high.push((
+                value(og_world_get(w, e, "og.Chunk".into()))["chunk"].clone(),
+                y,
+            ));
+        }
+    }
+    assert!(
+        high.is_empty(),
+        "chunks still standing over the blow: {high:?}"
+    );
+}
