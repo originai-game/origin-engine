@@ -836,6 +836,13 @@ sector, not a rectangular fill. These parts are:
   `Dialogue.initial`, and `ArtSlot.label`. Meter label clipping still
   follows the current value; changing its type or colour does not move
   that boundary.
+- `Icon.image`, `ArtSlot.icon`, `Cooldown.icon[ready]`,
+  `ActionButton.icon[disabled][pressed]`, `Dialogue.portraitIcon`, and
+  `Minimap.image` accept geometry, tint (`color` or `ink`), and opacity.
+  Atlas images use the requested rectangle; distance-field icons keep
+  their square em box centred in it. The icon's layout box is unchanged.
+  `Dpad.indicator[pressed][direction=Up|Down|Left|Right]` and `Burst.spark`
+  accept the rectangle decoration properties.
 
 A game shipped with a version 1 style keeps the screens it shipped with:
 an engine update may draw them better (antialiasing, contrast, a cleaner

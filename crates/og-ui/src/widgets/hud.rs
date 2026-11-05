@@ -312,7 +312,12 @@ impl Ui {
         let ink = if rem <= 0.0 { p.ink } else { p.ink_muted };
         if !desc.icon.is_empty() {
             let s = core * 0.55;
-            shapes.extend(self.icon_shape(&desc.icon, Frame::centered(0.0, 0.0, s, s), ink));
+            shapes.extend(self.icon_shape(
+                crate::dress::PartRef::of("Cooldown", "icon", None).flag_if(rem <= 0.0, "ready"),
+                &desc.icon,
+                Frame::centered(0.0, 0.0, s, s),
+                ink,
+            ));
         } else if !desc.label.is_empty() {
             shapes.push(Shape::Text {
                 part: crate::dress::PartRef::of("Cooldown", "label", None)
@@ -443,6 +448,7 @@ impl Ui {
         let mut shapes = Vec::new();
         if let Some(tex) = desc.texture {
             shapes.push(Shape::Image {
+                part: crate::dress::PartRef::of("Minimap", "image", None),
                 frame: Frame {
                     x: 4.0,
                     y: 4.0,

@@ -47,15 +47,6 @@ fn tok(name: &str, alpha: f32) -> crate::paint::ColorRef {
     }
 }
 
-/// A disc of `d` across centred `(x, y)` from the element's centre.
-fn disc(x: f32, y: f32, d: f32, color: Srgba) -> Shape {
-    Shape::Rect {
-        frame: Frame::centered(x, y, d, d),
-        radius: d,
-        color,
-    }
-}
-
 impl Ui {
     /// A dialogue box: a portrait slot, the speaker in primary ink, and the
     /// line typed out by the tick at `chars_per_second`. A press (or
@@ -142,6 +133,7 @@ impl Ui {
                 None
             } else {
                 ui.icon_shape(
+                    crate::dress::PartRef::of("Dialogue", "portraitIcon", None),
                     &desc.portrait_icon,
                     Frame::centered(0.0, 0.0, portrait * 0.7, portrait * 0.7),
                     p.ink,
@@ -485,8 +477,14 @@ impl Ui {
             let n = &mut self.nodes[i];
             if held {
                 // The held direction lights under its chevron.
-                n.shapes
-                    .push(disc(0.0, 0.0, arm * 0.78, p.primary.fade(0.85)));
+                n.shapes.push(Shape::DressedRect {
+                    part: crate::dress::PartRef::of("Dpad", "indicator", None)
+                        .flag("pressed")
+                        .attr("direction", name),
+                    frame: Frame::centered(0.0, 0.0, arm * 0.78, arm * 0.78),
+                    radius: arm * 0.78,
+                    color: p.primary.fade(0.85),
+                });
             }
             n.probe_text = (*name).to_owned();
             // A chevron pointing `angle`: two strokes meeting at its tip.
@@ -531,10 +529,7 @@ impl Ui {
         let size = if desc.size > 0.0 { desc.size } else { 64.0 }.max(self.min_target());
         // An icon the atlas has draws in place of the label; else the label.
         let s = size * 0.45;
-        let has_icon = !desc.icon.is_empty()
-            && self
-                .icon_shape(&desc.icon, Frame::centered(0.0, 0.0, s, s), t.palette.ink)
-                .is_some();
+        let has_icon = !desc.icon.is_empty() && self.has_icon(&desc.icon);
         let charge = desc.charge.map(|c| {
             if c.is_finite() {
                 c.clamp(0.0, 1.0)
@@ -608,7 +603,14 @@ impl Ui {
             )
         };
         let icon = if has_icon {
-            self.icon_shape(&desc.icon, Frame::centered(0.0, 0.0, s, s), ink)
+            self.icon_shape(
+                crate::dress::PartRef::of("ActionButton", "icon", None)
+                    .flag_if(desc.disabled, "disabled")
+                    .flag_if(r.pressed, "pressed"),
+                &desc.icon,
+                Frame::centered(0.0, 0.0, s, s),
+                ink,
+            )
         } else {
             None
         };

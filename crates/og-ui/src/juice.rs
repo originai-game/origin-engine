@@ -336,7 +336,8 @@ impl Ui {
             });
             let spark = (size * 0.12 * (1.0 - k)).max(1.5);
             let d2 = dist * 1.15;
-            self.nodes[i].shapes.push(Shape::Rect {
+            self.nodes[i].shapes.push(Shape::DressedRect {
+                part: crate::dress::PartRef::of("Burst", "spark", None),
                 frame: Frame::centered(c * d2 + s * 3.0, s * d2 - c * 3.0, spark, spark),
                 radius: spark,
                 color: color.fade(fade * 0.8),

@@ -377,6 +377,55 @@ fn embedded_marks_sectors_and_labels_read_their_dressings() {
 }
 
 #[test]
+fn icon_geometry_and_tint_apply_to_atlases_and_glyphs() {
+    for glyph in [false, true] {
+        let mut ui = dressed(
+            "dress \"Icon.image\" {\n appearance {\n width 18\n height 26\n x 3\n y -2\n color \"#00ffff\"\n opacity 0.3\n }\n}\n",
+        );
+        let mut scene = og_render::RenderScene::new();
+        let texture = scene.add_texture(og_render::TextureData {
+            width: 2,
+            height: 2,
+            rgba: vec![255; 16],
+            color_space: og_render::ColorSpace::Srgb,
+            mips: og_render::Mips::None,
+        });
+        ui.set_icons(IconAtlas {
+            names: vec!["star".into()],
+            texture: Some(texture),
+            font: glyph.then(|| add_test_font(&mut scene)),
+            ..IconAtlas::default()
+        });
+        ui.begin(InputFrame::default(), Viewport::new(100.0, 100.0));
+        ui.icon(
+            "Star",
+            "star",
+            IconDesc {
+                size: 40.0,
+                ..IconDesc::default()
+            },
+        );
+        ui.end();
+        let (rect, color) = ui
+            .frame()
+            .items
+            .iter()
+            .find_map(|item| match &item.cmd {
+                DrawCmd::Image { rect, color, .. } if !glyph => Some((*rect, *color)),
+                DrawCmd::Text { bounds, color, .. } if glyph => Some((*bounds, *color)),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(rect.center(), (23.0, 18.0));
+        assert_eq!(rect.width, 18.0);
+        assert_eq!(rect.height, if glyph { 18.0 } else { 26.0 });
+        assert!(near(color, Srgba::rgb(0, 255, 255)));
+        assert_eq!(color[3], 0.3);
+        assert_eq!(ui.frame().element("Star").unwrap().width, 40.0);
+    }
+}
+
+#[test]
 fn the_most_specific_dressing_wins_whatever_order_the_style_writes_them() {
     let ui = dressed(concat!(
         "dress \"Button.base[primary][pressed]\" {\n  fill \"#00ff00\"\n}\n",

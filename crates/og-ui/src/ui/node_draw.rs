@@ -627,17 +627,24 @@ impl Ui {
                     });
                 }
                 Shape::Image {
+                    part,
                     frame,
                     texture,
                     uv,
                     color,
-                } => cmds.push(DrawCmd::Image {
-                    rect: frame.resolve(&n.rect),
-                    texture: Some(*texture),
-                    uv: *uv,
-                    color: color.fade(alpha).linear(),
-                    clip,
-                }),
+                } => {
+                    let draw = self.dress.resolve(part).draw;
+                    cmds.push(DrawCmd::Image {
+                        rect: draw.subpart_rect(frame.resolve(&n.rect), n.rect),
+                        texture: Some(*texture),
+                        uv: *uv,
+                        color: draw
+                            .subpart_color(*color, t)
+                            .fade(alpha * draw.subpart_opacity())
+                            .linear(),
+                        clip,
+                    });
+                }
                 Shape::Text {
                     part,
                     frame,
@@ -704,12 +711,16 @@ impl Ui {
                     }
                 }
                 Shape::Glyph {
+                    part,
                     frame,
                     font,
                     ch,
                     color,
                 } => {
-                    let r = frame.resolve(&n.rect);
+                    let draw = self.dress.resolve(part).draw;
+                    let r = draw.subpart_rect(frame.resolve(&n.rect), n.rect);
+                    let color = draw.subpart_color(*color, t);
+                    let alpha = alpha * draw.subpart_opacity();
                     let size = r.width.min(r.height);
                     if size <= 0.0 {
                         continue;

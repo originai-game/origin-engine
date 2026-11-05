@@ -33,6 +33,7 @@ pub(crate) enum Shape {
     },
     /// A texture region.
     Image {
+        part: crate::dress::PartRef,
         frame: Frame,
         texture: TextureHandle,
         uv: [f32; 4],
@@ -53,6 +54,7 @@ pub(crate) enum Shape {
     /// An icon of an icon set (an MTSDF font, `IconAtlas::font`): the
     /// glyph's em square fitted to the frame's shorter side, centred.
     Glyph {
+        part: crate::dress::PartRef,
         frame: Frame,
         font: og_render::FontHandle,
         ch: char,

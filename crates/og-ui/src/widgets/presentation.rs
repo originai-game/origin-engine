@@ -350,7 +350,7 @@ impl Ui {
                 )
             }))
         {
-            match self.icon_shape(name, Frame::FULL, tint) {
+            match self.icon_shape(crate::dress::PartRef::of("Icon", "image", None), name, Frame::FULL, tint) {
                 Some(shape) => self.nodes[i].shapes.push(shape),
                 None => self.warnings.push(format!(
                     "icon '{name}' is in neither the icon atlas nor UiDesc.fallbackIcons; add it to one of them"
@@ -513,7 +513,12 @@ impl Ui {
                 ..Frame::default()
             };
             let ink = t.palette.ink_faint;
-            match self.icon_shape(ph.icon, frame, ink) {
+            match self.icon_shape(
+                crate::dress::PartRef::of("ArtSlot", "icon", None),
+                ph.icon,
+                frame,
+                ink,
+            ) {
                 Some(shape) => self.nodes[i].shapes.push(shape),
                 // No icon set: a disc, the shape of a subject.
                 None => self.nodes[i].shapes.push(Shape::DressedRect {
@@ -555,15 +560,23 @@ impl Ui {
         self.icons.find(name).is_some()
     }
 
-    pub(super) fn icon_shape(&self, name: &str, frame: Frame, color: Srgba) -> Option<Shape> {
+    pub(super) fn icon_shape(
+        &self,
+        part: crate::dress::PartRef,
+        name: &str,
+        frame: Frame,
+        color: Srgba,
+    ) -> Option<Shape> {
         Some(match self.icons.find(name)? {
             IconCell::Glyph(font, ch) => Shape::Glyph {
+                part,
                 frame,
                 font,
                 ch,
                 color,
             },
             IconCell::Image(texture, uv) => Shape::Image {
+                part,
                 frame,
                 texture,
                 uv,
