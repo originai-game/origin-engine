@@ -276,7 +276,8 @@ impl Ui {
                 let x = -band + phase * (1.0 + band);
                 let (a, b) = (x.max(0.0), (x + band).min(1.0));
                 if b > a {
-                    self.nodes[i].shapes.push(Shape::Rect {
+                    self.nodes[i].shapes.push(Shape::DressedRect {
+                        part: crate::dress::PartRef::of("Skeleton", "sheen", None),
                         frame: Frame::left(a, b),
                         radius: 0.0,
                         color: t.palette.sheen.fade(0.35),
@@ -316,7 +317,11 @@ impl Ui {
                 (s / 2.0 - dot / 2.0) * sin(ang),
             );
             let age = (head - k).rem_euclid(8) as f32;
-            self.nodes[i].shapes.push(Shape::Rect {
+            self.nodes[i].shapes.push(Shape::DressedRect {
+                part: crate::dress::PartRef::of("Spinner", "dot", None).attr(
+                    "age",
+                    ["0", "1", "2", "3", "4", "5", "6", "7"][age as usize],
+                ),
                 frame: Frame::centered(dx, dy, dot, dot),
                 radius: dot,
                 color: t.palette.ink.fade(1.0 - age / 9.0),
@@ -511,7 +516,8 @@ impl Ui {
             match self.icon_shape(ph.icon, frame, ink) {
                 Some(shape) => self.nodes[i].shapes.push(shape),
                 // No icon set: a disc, the shape of a subject.
-                None => self.nodes[i].shapes.push(Shape::Rect {
+                None => self.nodes[i].shapes.push(Shape::DressedRect {
+                    part: crate::dress::PartRef::of("ArtSlot", "placeholder", None),
                     frame,
                     radius: 9999.0,
                     color: ink.fade(0.5),

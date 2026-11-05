@@ -410,7 +410,8 @@ impl Ui {
             );
             if selected {
                 let w = t.space.xxs;
-                self.nodes[i].shapes.push(Shape::Rect {
+                self.nodes[i].shapes.push(Shape::DressedRect {
+                    part: crate::dress::PartRef::of("Slot", "indicator", None).flag("selected"),
                     frame: Frame {
                         fw: 1.0,
                         h: w,

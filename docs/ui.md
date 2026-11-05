@@ -767,6 +767,8 @@ part is a text element. Shape-only subparts still use paints and `ink`.
 including the measured size of a fit container. Four padding values are
 left, top, right, bottom, as in documents. A single value applies to all
 sides. These properties do not change hit slop or input routing.
+`width` and `height` set an element's layout size with the document size
+grammar. `x` and `y` translate the element and its children.
 These overrides apply after the widget and responsive variants are built,
 before layout and motion. Unset properties retain the widget's defaults;
 more-specific selectors override only the properties they set.
@@ -795,6 +797,24 @@ parts. An undressed decoration keeps its original drawing. Dressing only
 its fill retains its radius and adds no implicit outline or shadow.
 Input ownership, dead-zone rescaling, and meter interpolation remain
 engine logic, independent of these decorations.
+
+Decorative parts also accept `appearance { width … height … x … y …
+opacity … }`. Dimensions resize the decoration about its centre, then
+the offsets move it in CSS pixels. `percent` and `grow` use the owning
+widget's box; `fit` keeps the decoration's default size within its bounds.
+Opacity multiplies the widget's opacity. None of these decoration edits
+change the control's hit box. A widget's outer size and each decoration's
+size are independent: enlarging a joystick's base does not implicitly
+enlarge its fixed-size knob.
+
+Further decorative parts are `Minimap.marker[player]`,
+`Minimap.marker[tone=…]`, `Minimap.markerOutline[player]`,
+`Skeleton.sheen`, `Spinner.dot[age=0…7]` (zero is the leading dot),
+`ArtSlot.placeholder` (the disc used without an icon set),
+`Toast.indicator[tone=…]`, `Spotlight.edge`, and
+`Slot.indicator[selected]` (the version 1 selection underline).
+`Stepper.mark[axis=horizontal|vertical]` has hover, pressed, and disabled
+states; `Radio.mark` has on, hover, pressed, and focused states.
 
 A game shipped with a version 1 style keeps the screens it shipped with:
 an engine update may draw them better (antialiasing, contrast, a cleaner

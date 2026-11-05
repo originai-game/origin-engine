@@ -66,7 +66,9 @@ pub const DRAW_KEYS: [&str; 13] = [
 ];
 
 /// Element properties a dressing can set, using the document reflection schema.
-pub const APPEARANCE_PROPS: &[&str] = &["opacity", "motion", "color", "step", "padding", "gap"];
+pub const APPEARANCE_PROPS: &[&str] = &[
+    "opacity", "motion", "color", "step", "padding", "gap", "width", "height", "x", "y",
+];
 
 /// `Component.part[flag][key=value]…`.
 #[derive(Clone, Debug, Eq)]
@@ -361,6 +363,41 @@ pub struct DrawSeen {
 }
 
 impl DressDraw {
+    pub(crate) fn appearance_value(&self, name: &str) -> Option<&crate::doc::Lit> {
+        self.appearance
+            .iter()
+            .find(|(i, _)| crate::doc::schema::PROPS[*i].name == name)
+            .map(|(_, value)| value)
+    }
+
+    /// Resize a decorative subpart about its centre, then offset it.
+    /// Percent and grow use the owning widget's box, not the previous size.
+    pub(crate) fn subpart_rect(&self, rect: crate::Rect, parent: crate::Rect) -> crate::Rect {
+        use crate::Size;
+        use crate::doc::Lit;
+        let extent = |name, current: f32, available: f32| match self.appearance_value(name) {
+            Some(Lit::Size(size)) => match *size {
+                Size::Fixed(n) => n.max(0.0),
+                Size::Percent(p) => (available * p).max(0.0),
+                Size::Fit { min, max } => current.clamp(min, max),
+                Size::Grow { min, max } => available.clamp(min, max),
+            },
+            _ => current,
+        };
+        let offset = |name| match self.appearance_value(name) {
+            Some(Lit::Num(n)) => *n,
+            _ => 0.0,
+        };
+        let width = extent("width", rect.width, parent.width);
+        let height = extent("height", rect.height, parent.height);
+        crate::Rect::new(
+            rect.x + (rect.width - width) / 2.0 + offset("x"),
+            rect.y + (rect.height - height) / 2.0 + offset("y"),
+            width,
+            height,
+        )
+    }
+
     /// Reads one [`DRAW_KEYS`] line of a block into its field.
     pub fn apply(
         &mut self,

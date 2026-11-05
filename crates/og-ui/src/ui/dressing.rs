@@ -374,6 +374,10 @@ impl Ui {
             .frame
             .shape
             .map_or(radius, |s| crate::dress::corner_of(s).1);
+        let alpha = match r.draw.appearance_value("opacity") {
+            Some(crate::doc::Lit::Num(opacity)) => alpha * opacity.clamp(0.0, 1.0),
+            _ => alpha,
+        };
         if let (Some(slice), Some(_)) = (r.frame.slice, t.art.atlas) {
             if let Some(bg) = fill {
                 let tint = r.draw.ornament_tint.as_ref().map(|c| c.resolve(t));

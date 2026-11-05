@@ -483,13 +483,19 @@ impl Ui {
             n.probe_text = if sign < 0 { "−".into() } else { "+".into() };
             n.a11y.name = Some(if sign < 0 { "Decrease" } else { "Increase" }.into());
             let len = t.space.md;
-            n.shapes.push(Shape::Rect {
+            let mark = crate::dress::PartRef::of("Stepper", "mark", None)
+                .flag_if(at_end, "disabled")
+                .flag_if(r.hovered, "hover")
+                .flag_if(r.pressed, "pressed");
+            n.shapes.push(Shape::DressedRect {
+                part: mark.attr("axis", "horizontal"),
                 frame: Frame::centered(0.0, 0.0, len, 2.0),
                 radius: 1.0,
                 color: ink,
             });
             if sign > 0 {
-                n.shapes.push(Shape::Rect {
+                n.shapes.push(Shape::DressedRect {
+                    part: mark.attr("axis", "vertical"),
                     frame: Frame::centered(0.0, 0.0, 2.0, len),
                     radius: 1.0,
                     color: ink,
@@ -691,7 +697,12 @@ impl Ui {
             let ink = p.on_primary.fade(fill_t.clamp(0.0, 1.0));
             if round {
                 let dot = box_ * 0.4 * fill_t.clamp(0.0, 1.2);
-                n.shapes.push(Shape::Rect {
+                n.shapes.push(Shape::DressedRect {
+                    part: crate::dress::PartRef::of("Radio", "mark", None)
+                        .flag_if(on, "on")
+                        .flag_if(r.hovered, "hover")
+                        .flag_if(r.pressed, "pressed")
+                        .flag_if(r.focused, "focused"),
                     frame: Frame {
                         fy: 0.5,
                         x: (box_ - dot) / 2.0,

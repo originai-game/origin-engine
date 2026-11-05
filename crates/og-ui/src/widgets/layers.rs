@@ -485,7 +485,9 @@ impl Ui {
             if tone != Tone::Neutral {
                 let dot = t.space.sm;
                 let c = self.tone_dot(tone);
-                self.nodes[i].shapes.push(Shape::Rect {
+                self.nodes[i].shapes.push(Shape::DressedRect {
+                    part: crate::dress::PartRef::of("Toast", "indicator", None)
+                        .attr("tone", tone.name()),
                     frame: Frame {
                         fy: 0.5,
                         x: t.space.lg,
@@ -639,7 +641,8 @@ impl Ui {
                     },
                 ];
                 for frame in edges {
-                    self.nodes[hole].shapes.push(Shape::Rect {
+                    self.nodes[hole].shapes.push(Shape::DressedRect {
+                        part: crate::dress::PartRef::of("Spotlight", "edge", None),
                         frame,
                         radius: 0.0,
                         color: p.focus,

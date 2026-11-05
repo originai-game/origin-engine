@@ -453,12 +453,15 @@ impl Ui {
             );
             if m.player {
                 let d = t.space.md;
-                shapes.push(Shape::Rect {
+                shapes.push(Shape::DressedRect {
+                    part: crate::dress::PartRef::of("Minimap", "markerOutline", None)
+                        .flag("player"),
                     frame: Frame::centered(x, y, d + 4.0, d + 4.0),
                     radius: d,
                     color: p.backdrop,
                 });
-                shapes.push(Shape::Rect {
+                shapes.push(Shape::DressedRect {
+                    part: crate::dress::PartRef::of("Minimap", "marker", None).flag("player"),
                     frame: Frame::centered(x, y, d, d),
                     radius: d,
                     color: p.primary,
@@ -470,7 +473,9 @@ impl Ui {
                 } else {
                     self.tone_dot(m.tone)
                 };
-                shapes.push(Shape::Rect {
+                shapes.push(Shape::DressedRect {
+                    part: crate::dress::PartRef::of("Minimap", "marker", None)
+                        .attr("tone", m.tone.name()),
                     frame: Frame::centered(x, y, d, d),
                     radius: d,
                     color: c,

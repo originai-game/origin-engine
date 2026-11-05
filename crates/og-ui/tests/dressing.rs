@@ -253,6 +253,79 @@ fn a_joystick_knob_can_be_recoloured_without_changing_its_radius() {
 }
 
 #[test]
+fn a_decorations_size_and_offset_do_not_resize_its_controls_hit_box() {
+    for (width, expected_width) in [("40", 40.0), ("percent 0.2", 30.0)] {
+        let mut ui = dressed(&format!(
+            "dress \"Joystick.knob\" {{\n fill \"#ff00ff\"\n appearance {{\n width {width}\n height 24\n x 9\n y -6\n opacity 0.5\n }}\n}}\n"
+        ));
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.joystick(
+            "Move",
+            JoystickDesc {
+                size: 150.0,
+                ..JoystickDesc::default()
+            },
+        );
+        ui.end();
+        let knob = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|item| item.cmd.filled())
+            .find(|(_, color)| near(*color, Srgba::rgb(255, 0, 255)))
+            .expect("the styled knob is drawn");
+        assert_eq!((knob.0.width, knob.0.height), (expected_width, 24.0));
+        assert_eq!(knob.0.center(), (84.0, 69.0));
+        assert_eq!(knob.1[3], 0.5);
+        let control = ui.frame().element("Move").unwrap();
+        assert_eq!((control.width, control.height), (150.0, 150.0));
+        ui.begin(
+            InputFrame {
+                pointer: og_core::glam::Vec2::new(140.0, 75.0),
+                pointer_inside: true,
+                pressed: true,
+                down: true,
+                ..InputFrame::default()
+            },
+            Viewport::new(800.0, 600.0),
+        );
+        let response = ui.joystick(
+            "Move",
+            JoystickDesc {
+                size: 150.0,
+                ..JoystickDesc::default()
+            },
+        );
+        ui.end();
+        assert!(
+            response.active,
+            "the base still takes a press outside the restyled knob"
+        );
+    }
+}
+
+#[test]
+fn a_parts_layout_size_and_translation_are_style_data() {
+    let mut ui = dressed(
+        "dress \"Card.frame\" {\n appearance {\n width 120\n height 55\n x 9\n y 7\n }\n}\n",
+    );
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    ui.open_panel(
+        "Panel",
+        PanelDesc {
+            width: Size::Fixed(80.0),
+            height: Size::Fixed(40.0),
+            ..PanelDesc::default()
+        },
+    );
+    ui.close();
+    ui.end();
+    let panel = ui.frame().element("Panel").unwrap();
+    assert_eq!((panel.width, panel.height), (120.0, 55.0));
+    assert_eq!((panel.x, panel.y), (9.0, 7.0));
+}
+
+#[test]
 fn the_most_specific_dressing_wins_whatever_order_the_style_writes_them() {
     let ui = dressed(concat!(
         "dress \"Button.base[primary][pressed]\" {\n  fill \"#00ff00\"\n}\n",

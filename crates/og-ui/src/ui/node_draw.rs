@@ -537,7 +537,11 @@ impl Ui {
         for shape in &n.shapes {
             match shape {
                 Shape::Part { frame, part, fill } => {
-                    let r = frame.resolve(&n.rect);
+                    let r = self
+                        .dress
+                        .resolve(part)
+                        .draw
+                        .subpart_rect(frame.resolve(&n.rect), n.rect);
                     if !r.is_empty() {
                         self.part_commands(part, r.snapped(dpr), *fill, alpha, clip, cmds);
                     }
@@ -548,7 +552,11 @@ impl Ui {
                     radius,
                     color,
                 } if self.dress.resolve(part).matched > 0 => {
-                    let r = frame.resolve(&n.rect);
+                    let r = self
+                        .dress
+                        .resolve(part)
+                        .draw
+                        .subpart_rect(frame.resolve(&n.rect), n.rect);
                     if !r.is_empty() {
                         self.part_commands_at(
                             part,
