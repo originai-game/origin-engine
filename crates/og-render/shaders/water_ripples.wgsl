@@ -12,7 +12,7 @@ struct Params {
   wave: vec4<f32>,
   // x: the tick's first cut, y: its cuts, z: 1 / the tick's dt, w: the surface's splash
   force: vec4<f32>,
-  // x: the foam kept per substep, y: the foam a rising crest makes, z: the highest crest (m; troughs half as deep),
+  // x: the foam kept per substep, y: the foam a breaking crest makes a second, z: the highest crest (m; troughs half as deep),
   // w: the fraction of the square over which the ripples fade out at its edge
   foam: vec4<f32>,
 };
@@ -61,6 +61,15 @@ fn load(i: vec2<i32>) -> vec4<f32> {
   return textureLoad(state_in, clamp(i, vec2<i32>(0), vec2<i32>(n - 1)), 0);
 }
 
+// How much of the cell at `p` the bodies of this substep's tick fill.
+fn held(p: vec2<f32>) -> f32 {
+  var solid = 0.0;
+  for (var k = 0u; k < u32(params.force.y); k++) {
+    solid = max(solid, cover(p, cuts[u32(params.force.x) + k].cur, 0.0));
+  }
+  return solid;
+}
+
 @compute @workgroup_size(8, 8)
 fn advance(@builtin(global_invocation_id) id: vec3<u32>) {
   let n = u32(params.size.x);
@@ -104,10 +113,23 @@ fn advance(@builtin(global_invocation_id) id: vec3<u32>) {
   v *= mix(0.9, 1.0, edge) * free;
   let cap = params.foam.z;
   let h = clamp(here.x + v * params.wave.z, -0.5 * cap, cap) * mix(0.95, 1.0, edge) * free;
-  // Foam: made on the crests as they rise, spread to the neighbours, thinning out; never on the body or right
-  // against it (clear water around it).
+  // Foam: made where a crest breaks, spread to the neighbours, thinning out; never on the body or right against it
+  // (clear water around it). A crest breaks past its limiting steepness (Stokes's crest of 120°, its faces some 0.58;
+  // whitecaps start from some 0.4: Longuet-Higgins's kinematic limit, a crest's downward acceleration g/2, is that
+  // steepness in deep water, where a wave's acceleration is g times its slope). Steepness, not this grid's c² ∇²h:
+  // its waves all run at one speed, so a short one's acceleration grows with its wavenumber squared, and the finest
+  // ripples of a splash read as breaking long after it. A body's cells are held at rest, so across them the slope is
+  // taken as a wall's (the water beside mirrored), not a step down to the rest level. (A crest made foam whenever it
+  // stood high and rising: the ring of water a floating body holds up, bobbing with it, foamed over without end and
+  // drew the body's funnel as an opaque white disc.)
   let spread = (l.z + r.z + u.z + d.z) * 0.25;
-  let made = max(h - 0.15 * cap, 0.0) / cap * max(v, 0.0) * params.foam.y * params.wave.z;
+  let hl = mix(l.x, here.x, held(p - vec2<f32>(cell, 0.0)));
+  let hr = mix(r.x, here.x, held(p + vec2<f32>(cell, 0.0)));
+  let hu = mix(u.x, here.x, held(p - vec2<f32>(0.0, cell)));
+  let hd = mix(d.x, here.x, held(p + vec2<f32>(0.0, cell)));
+  let steep = length(vec2<f32>(hr - hl, hd - hu)) / (2.0 * cell);
+  let crest = step(0.0, here.x) * step(hl + hr + hu + hd, 4.0 * here.x);
+  let made = smoothstep(0.4, 0.6, steep) * crest * (1.0 - solid) * params.foam.y * params.wave.z;
   let foam = clamp((mix(here.z, spread, 0.2) + made) * params.foam.x, 0.0, 1.0) * (1.0 - near) * edge;
   textureStore(state_out, i, vec4<f32>(h, v, foam, 0.0));
 }

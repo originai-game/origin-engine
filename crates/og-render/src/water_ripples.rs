@@ -143,6 +143,9 @@ const OUT_FORMAT: wgpu::TextureFormat = crate::water::HEIGHT_FORMAT;
 const CREST: f32 = 0.18;
 /// How long their foam takes to thin to half (s).
 const FOAM_HALF_LIFE: f32 = 0.3;
+/// The foam a breaking crest makes a second (it covers one in a tenth of a
+/// second).
+const BREAK_FOAM: f32 = 10.0;
 /// The fraction of the square over which they fade out at its edge.
 const EDGE_FADE: f32 = 0.12;
 
@@ -312,7 +315,12 @@ impl Ripples {
             size: [side, self.coarse as f32, self.size, cell],
             wave: [c * c * dts / (cell * cell), keep, dts, substeps as f32],
             force: [0.0, 0.0, 1.0 / dt, wakes.splash],
-            foam: [0.5f32.powf(dts / FOAM_HALF_LIFE), 40.0, CREST, EDGE_FADE],
+            foam: [
+                0.5f32.powf(dts / FOAM_HALF_LIFE),
+                BREAK_FOAM,
+                CREST,
+                EDGE_FADE,
+            ],
         };
         for (before, now) in &ticks.steps {
             let first = cuts.len();
