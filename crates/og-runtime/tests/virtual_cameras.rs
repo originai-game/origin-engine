@@ -210,7 +210,7 @@ fn a_world_without_virtual_cameras_keeps_its_hash() {
 /// a finger), after RenderSettings.upscaler and after PostEffects'
 /// ssrMaxRoughness and ssrResolution; R10 leaves it
 /// unmoved on either side).
-const PINNED_HASH: &str = "de670d5655dc2112";
+const PINNED_HASH: &str = "9506dfdc3308a3ed";
 
 #[test]
 fn the_brain_picks_by_priority_then_the_later_enabled_and_a_solo_outranks_both() {

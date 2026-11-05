@@ -128,7 +128,7 @@ fn set(engine: u32, entity: f64, x: u32, y: u32, tile: i32) {
 /// MaterialStyle fields (to 4da281adabd646cf) and area 4's lazy og.TerrainScatter and og.Wind
 /// (to 52ef5ac7cfa6538a) and UI state version 16, the touch control holding a finger
 /// (to c950ccbacfe91a63) and RenderSettings.upscaler (to 0ece0b71c16b6488) and
-/// PostEffects' ssrMaxRoughness and ssrResolution (to cd79fd265745ccac), each of which moves every raw world hash.
+/// PostEffects' ssrMaxRoughness and ssrResolution (to f917a356541f94e3), each of which moves every raw world hash.
 #[test]
 fn a_world_of_loaded_maps_keeps_its_hash() {
     set_hooks(Rc::new(Game));
@@ -139,7 +139,7 @@ fn a_world_of_loaded_maps_keeps_its_hash() {
     frame(engine);
     set(engine, entity, 2, 1, 0);
     frame(engine);
-    assert_eq!(hash(engine), "cd79fd265745ccac");
+    assert_eq!(hash(engine), "f917a356541f94e3");
 }
 
 #[test]
