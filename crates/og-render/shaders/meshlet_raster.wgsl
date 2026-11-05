@@ -385,6 +385,9 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
   let tw = (model * vec4<f32>(tangent.xyz, 0.0)).xyz;
   let t = select(vec3<f32>(0.0, 0.0, 1.0), normalize(tw), dot(tw, tw) > 1e-20);
   var look = instances[e.x * 4u + 3u];
+  // Its outline group (pbr.wgsl `look_outline`), read before the level
+  // view below writes over the flash word.
+  let group = u32(max(floor(look.y * 0.5), 0.0));
   if (raster.size.w != 0u) {
     look.y = 0.8;
     look.z = raster_level_color(c.z);
@@ -400,7 +403,7 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
       pack2x16snorm(raster_oct(t)),
       bitcast<u32>(select(0.0, tangent.w, dot(tw, tw) > 1e-20)),
       f.x & 0x0fffffffu,
-      raster_object(model),
+      select(raster_object(model), group, group > 0u),
     ),
     bitcast<vec4<u32>>(look),
     vec4<u32>(bitcast<vec3<u32>>((prev * vec4<f32>(before, 1.0)).xyz), bitcast<u32>(position.x)),

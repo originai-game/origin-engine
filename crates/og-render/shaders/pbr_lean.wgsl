@@ -99,11 +99,11 @@ struct LeanPrepassOut {
 };
 
 @vertex
-fn vs_prepass_lean(@location(0) position: vec3<f32>, @location(1) normal: vec3<f32>, i: InstanceIn, prev: PrevIn) -> LeanPrepassOut {
-  return prepass_lean(position, normal, i, prev);
+fn vs_prepass_lean(@location(0) position: vec3<f32>, @location(1) normal: vec3<f32>, i: InstanceIn, prev: PrevIn, k: InstanceFxIn) -> LeanPrepassOut {
+  return prepass_lean(position, normal, i, prev, k);
 }
 
-fn prepass_lean(position: vec3<f32>, normal: vec3<f32>, i: InstanceIn, prev: PrevIn) -> LeanPrepassOut {
+fn prepass_lean(position: vec3<f32>, normal: vec3<f32>, i: InstanceIn, prev: PrevIn, k: InstanceFxIn) -> LeanPrepassOut {
   let p = lit_place(instance_matrix(i.m0, i.m1, i.m2, i.m3), position, normal, vec2<f32>(0.0), vec4<f32>(1.0));
   var o: LeanPrepassOut;
   o.clip = p.clip;
@@ -111,13 +111,13 @@ fn prepass_lean(position: vec3<f32>, normal: vec3<f32>, i: InstanceIn, prev: Pre
   o.normal = p.normal;
   o.cur_clip = fx.view_proj_unjittered * vec4<f32>(p.world, 1.0);
   o.prev_clip = mul_point(fx.prev_view_proj, instance_matrix(prev.p0, prev.p1, prev.p2, prev.p3) * vec4<f32>(position, 1.0));
-  o.object = object_id(i.m0, i.m1, i.m2, i.m3);
+  o.object = outline_object(i.m0, i.m1, i.m2, i.m3, k.look);
   return o;
 }
 
 @vertex
-fn vs_prepass_lean_compact(@location(0) position: vec4<f32>, @location(1) normal: vec2<f32>, i: InstanceIn, prev: PrevIn) -> LeanPrepassOut {
-  return prepass_lean(position.xyz, oct_decode(normal), i, prev);
+fn vs_prepass_lean_compact(@location(0) position: vec4<f32>, @location(1) normal: vec2<f32>, i: InstanceIn, prev: PrevIn, k: InstanceFxIn) -> LeanPrepassOut {
+  return prepass_lean(position.xyz, oct_decode(normal), i, prev, k);
 }
 
 @fragment

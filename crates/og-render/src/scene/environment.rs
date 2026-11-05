@@ -59,6 +59,12 @@ pub struct InstanceFx {
     /// A linear colour, 0 to 1, multiplied with the material's base colour
     /// (white: none).
     pub tint: Vec3,
+    /// Which object the outline pass takes it for: 0, its own (told
+    /// from its transform); otherwise every instance with the same group
+    /// is one object, lined round together and never along the seams
+    /// between them (a fractured prop's chunks still bonded into one
+    /// island). Folded to 255 ids, as transforms are.
+    pub outline: u32,
 }
 
 impl InstanceFx {
@@ -67,6 +73,7 @@ impl InstanceFx {
         flash: 0.0,
         flash_color: Vec3::ONE,
         tint: Vec3::ONE,
+        outline: 0,
     };
 }
 

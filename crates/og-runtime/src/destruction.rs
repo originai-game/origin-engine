@@ -1728,11 +1728,13 @@ impl StateBlock for Block {
 // ── drawing ──────────────────────────────────────────────────────────────────
 
 /// A fractured prop as extraction draws it: its og.Model's entity, and
-/// each chunk's entity with the glTF node that draws it and its centre in
-/// the model.
+/// each chunk's entity with the glTF node that draws it, its centre in
+/// the model and its outline group (og_render::InstanceFx::outline): the
+/// chunks still bonded into one island share one, so an inked look lines
+/// the island round and its cracks only once they open.
 pub(crate) struct Drawn {
     pub entity: u64,
-    pub chunks: Vec<(u64, u32, Vec3)>,
+    pub chunks: Vec<(u64, u32, Vec3, u32)>,
 }
 
 /// Engine `engine`'s fractured props.
@@ -1749,6 +1751,25 @@ pub(crate) fn drawn(engine: u32) -> Vec<Drawn> {
         .filter(|(_, p)| p.fractured)
         .filter_map(|(&k, p)| {
             let a = assets.get(&p.asset)?;
+            // Each support chunk's island (by its first chunk); a child
+            // chunk, loose on its own, its own group.
+            let mut island = vec![u32::MAX; a.chunks.len()];
+            for isl in p.inst.islands(a) {
+                isl.chunks
+                    .iter()
+                    .for_each(|&c| island[c as usize] = isl.chunks[0]);
+            }
+            let group = |c: usize| {
+                let of = if island[c] == u32::MAX {
+                    c as u32
+                } else {
+                    island[c]
+                };
+                // Never 0 (no group): mixed with the prop, so two props'
+                // islands are two objects.
+                let h = (k ^ (k >> 32)) as u32 ^ of.wrapping_mul(0x9e37_79b9);
+                (h ^ (h >> 15)).wrapping_mul(0x2c1b_3c6d).max(1)
+            };
             Some(Drawn {
                 entity: k,
                 chunks: p
@@ -1756,7 +1777,7 @@ pub(crate) fn drawn(engine: u32) -> Vec<Drawn> {
                     .iter()
                     .enumerate()
                     .filter(|(_, e)| **e != 0)
-                    .map(|(c, &e)| (e, a.chunks[c].node, a.chunks[c].centroid))
+                    .map(|(c, &e)| (e, a.chunks[c].node, a.chunks[c].centroid, group(c)))
                     .collect(),
             })
         })

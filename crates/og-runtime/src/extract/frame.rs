@@ -269,6 +269,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                             flash: num(&flash, 0.0),
                             flash_color: rgb(&flash_color),
                             tint: rgb(&tint),
+                            outline: 0,
                         },
                         cast: on(&cast, true),
                         receive: on(&receive, true),
@@ -348,7 +349,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             .get(&asset)
             .map(|i| i.part_nodes.clone())
             .unwrap_or_default();
-        for &(chunk, node, centre) in &fractured[&e].chunks {
+        for &(chunk, node, centre, outline) in &fractured[&e].chunks {
             let w = h.world_of(chunk) * Mat4::from_translation(-centre);
             for (k, &(mesh, material, local)) in parts.iter().enumerate() {
                 if nodes.get(k) != Some(&(node as usize)) {
@@ -364,7 +365,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                     material,
                     transform: w * local,
                     material_layer: None,
-                    fx: look.fx,
+                    fx: og_render::InstanceFx { outline, ..look.fx },
                     cast_shadows: look.cast,
                     receive_shadows: look.receive,
                     sway: 0.0,

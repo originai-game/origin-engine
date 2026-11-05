@@ -47,8 +47,16 @@ pub(crate) fn fx_bits(fx: &crate::InstanceFx) -> [f32; 3] {
     } else {
         0.0
     };
+    // The outline group rides in the flash word's even part, 2 a group
+    // (pbr.wgsl `look_flash_amount`, `look_outline`): an exact integer plus
+    // the flash's fraction, so an instance without a group carries what it
+    // did before groups existed.
+    let group = match fx.outline {
+        0 => 0.0,
+        g => (1 + g % 255) as f32,
+    };
     [
-        flash,
+        flash + 2.0 * group,
         color,
         pack(Vec3::ONE - fx.tint.clamp(Vec3::ZERO, Vec3::ONE)),
     ]

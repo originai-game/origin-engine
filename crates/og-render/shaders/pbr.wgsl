@@ -149,8 +149,28 @@ fn look_tint(c: vec4<f32>, look: vec4<f32>) -> vec4<f32> {
 
 // The lit colour mixed towards the instance's flash colour by its flash.
 fn look_flash(c: vec3<f32>, look: vec4<f32>) -> vec3<f32> {
-  if (look.y <= 0.0) { return c; }
-  return mix(c, look_rgb(look.z), look.y);
+  let flash = look_flash_amount(look);
+  if (flash <= 0.0) { return c; }
+  return mix(c, look_rgb(look.z), flash);
+}
+
+// The instance's flash, 0 to 1: look.y less its outline group's even part
+// (instances.rs `fx_bits`).
+fn look_flash_amount(look: vec4<f32>) -> f32 {
+  return look.y - 2.0 * floor(look.y * 0.5);
+}
+
+// The instance's outline group, 1 to 255, or 0 for none (its id then comes
+// from its transform: `object_id`).
+fn look_outline(look: vec4<f32>) -> u32 {
+  return u32(max(floor(look.y * 0.5), 0.0));
+}
+
+// An instance's id in the outline target: its group's, else its transform's.
+fn outline_object(m0: vec3<f32>, m1: vec3<f32>, m2: vec3<f32>, m3: vec3<f32>, look: vec4<f32>) -> u32 {
+  let group = look_outline(look);
+  if (group > 0u) { return group; }
+  return object_id(m0, m1, m2, m3);
 }
 
 // Whether the instance is darkened by the shadow maps (look.x >= 0;
@@ -354,14 +374,18 @@ fn prepass_vertex_from(model: mat4x4<f32>, prev: mat4x4<f32>, v: VertexIn, befor
 }
 
 @vertex
-fn vs_prepass(v: VertexIn, i: InstanceIn, prev: PrevIn) -> PrepassOut {
-  return prepass_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), instance_matrix(prev.p0, prev.p1, prev.p2, prev.p3), v);
+fn vs_prepass(v: VertexIn, i: InstanceIn, prev: PrevIn, k: InstanceFxIn) -> PrepassOut {
+  var p = prepass_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), instance_matrix(prev.p0, prev.p1, prev.p2, prev.p3), v);
+  p.object = outline_object(i.m0, i.m1, i.m2, i.m3, k.look);
+  return p;
 }
 
 // Only simulated surfaces use this layout: never foliage or meshlets.
 @vertex
-fn vs_prepass_surface(v: VertexIn, i: InstanceIn, prev: PrevIn, @location(9) before: vec3<f32>) -> PrepassOut {
-  return prepass_vertex_from(instance_matrix(i.m0,i.m1,i.m2,i.m3), instance_matrix(prev.p0,prev.p1,prev.p2,prev.p3), v, before);
+fn vs_prepass_surface(v: VertexIn, i: InstanceIn, prev: PrevIn, k: InstanceFxIn, @location(9) before: vec3<f32>) -> PrepassOut {
+  var p = prepass_vertex_from(instance_matrix(i.m0,i.m1,i.m2,i.m3), instance_matrix(prev.p0,prev.p1,prev.p2,prev.p3), v, before);
+  p.object = outline_object(i.m0, i.m1, i.m2, i.m3, k.look);
+  return p;
 }
 
 @vertex

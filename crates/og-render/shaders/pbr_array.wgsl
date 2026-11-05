@@ -47,6 +47,7 @@ fn fs(in: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) 
 fn vs_prepass(v: VertexIn, i: InstanceIn, prev: PrevIn, a: InstanceFxIn) -> PrepassOut {
   var o = prepass_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), instance_matrix(prev.p0, prev.p1, prev.p2, prev.p3), v);
   o.layer = array_instance_layer(a);
+  o.object = outline_object(i.m0, i.m1, i.m2, i.m3, a.look);
   return o;
 }
 
@@ -54,6 +55,7 @@ fn vs_prepass(v: VertexIn, i: InstanceIn, prev: PrevIn, a: InstanceFxIn) -> Prep
 fn vs_prepass_surface_array(v: VertexIn, i: InstanceIn, prev: PrevIn, a: InstanceFxIn, @location(9) before: vec3<f32>) -> PrepassOut {
   var o = prepass_vertex_from(instance_matrix(i.m0,i.m1,i.m2,i.m3), instance_matrix(prev.p0,prev.p1,prev.p2,prev.p3), v, before);
   o.layer = array_instance_layer(a);
+  o.object = outline_object(i.m0, i.m1, i.m2, i.m3, a.look);
   return o;
 }
 

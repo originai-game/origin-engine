@@ -1219,7 +1219,7 @@ pub(crate) fn array_lit_source(standard: &str) -> String {
         ),
         (
             "@vertex",
-            "vs_prepass(v: VertexIn, i: InstanceIn, prev: PrevIn) -> PrepassOut {",
+            "vs_prepass(v: VertexIn, i: InstanceIn, prev: PrevIn, k: InstanceFxIn) -> PrepassOut {",
         ),
         (
             "@fragment",
