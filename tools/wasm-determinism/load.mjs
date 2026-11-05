@@ -16,7 +16,8 @@
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-const [file, glueFile] = process.argv.slice(2);
+const textOnly = process.argv.includes("--text-only");
+const [file, glueFile] = process.argv.slice(2).filter((arg) => arg !== "--text-only");
 if (!file) {
   console.error("usage: node load.mjs <wasm_determinism.wasm> [<wasm-bindgen glue.js>]");
   process.exit(2);
@@ -31,7 +32,8 @@ if (glueFile) {
 }
 // i64 results arrive as BigInt; printed unsigned, as Rust prints u64.
 const u64 = (v) => BigInt.asUintN(64, v).toString();
-for (const name of ["math_digest", "bouncing_boxes_hash", "physics3d_hash", "physics2d_hash", "anim_hash"]) {
+for (const name of ["math_digest", "bouncing_boxes_hash", "physics3d_hash", "physics2d_hash", "anim_hash", "text_layout_hash"]) {
+  if (textOnly && name !== "text_layout_hash") continue;
   const f = exports[name];
   if (typeof f === "function") console.log(`${name} ${u64(f())}`);
 }

@@ -222,8 +222,126 @@ pub fn anim_hash() -> u64 {
     h.finish()
 }
 
+/// Actual paragraph positions, fallback glyphs and rich inline boxes, with
+/// the same cooked OpenType bytes on both hosts. No renderer or system fonts.
+pub fn text_layout_hash() -> u64 {
+    use og_ui::*;
+    use std::sync::Arc;
+    let mut scene = og_render::RenderScene::new();
+    let handle = scene.add_font(og_render::MsdfFont {
+        atlas: og_render::TextureHandle::from_slot(1).unwrap(),
+        distance_range: 4.0,
+        line_height: 1.2,
+        glyphs: Vec::new(),
+        kerning: Vec::new(),
+    });
+    let face = |bytes: &[u8]| {
+        let file = shape::FontFile::new(Arc::new(bytes.to_vec())).unwrap();
+        UiFont {
+            handle: Some(handle),
+            metrics: FontMetrics::from_msdf(&og_render::MsdfFont {
+                atlas: og_render::TextureHandle::from_slot(1).unwrap(),
+                distance_range: 4.0,
+                line_height: 1.2,
+                glyphs: Vec::new(),
+                kerning: Vec::new(),
+            })
+            .with_file(Some(file)),
+        }
+    };
+    let latin = face(include_bytes!(
+        "../../../templates/ui-kit/assets/fonts/Inter-Display.ttf"
+    ));
+    let arabic = face(include_bytes!(
+        "../../../templates/ui-kit/assets/fonts/NotoSansArabic-subset.ttf"
+    ));
+    let indic = face(include_bytes!(
+        "../../../templates/ui-kit/assets/fonts/NotoSansDevanagari-subset.ttf"
+    ));
+    let mut ui = Ui::new(UiDesc {
+        fonts: Fonts {
+            body: latin.clone(),
+            display: Some(latin.clone()),
+            mono: Some(latin),
+            fallbacks: vec![arabic, indic],
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+    ui.define_action(ActionDesc {
+        name: "jump".into(),
+        keys: vec!["Space".into()],
+        ..Default::default()
+    });
+    let mut h = StableHasher::new();
+    for width in [53.25, 91.75, 231.5] {
+        ui.begin(InputFrame::default(), Viewport::new(640.0, 480.0));
+        ui.label(
+            "Plain",
+            "office cafe\u{301}\tA\u{a0}B a/b-c\u{200b}def ab\u{ad}cdef",
+            LabelDesc {
+                width: Size::Fixed(width),
+                ..Default::default()
+            },
+        );
+        ui.label(
+            "Fallback",
+            "مرحبا 42 नमस्ते",
+            LabelDesc {
+                width: Size::Fixed(width),
+                ..Default::default()
+            },
+        );
+        ui.rich_text(
+            "Rich",
+            "office [color=#ff0000]affine[/color] [action=jump] end",
+            RichTextDesc {
+                width: Size::Fixed(width),
+                ..Default::default()
+            },
+        );
+        ui.end();
+        for item in &ui.frame().items {
+            if let DrawCmd::Text {
+                text,
+                x,
+                baseline,
+                size,
+                bounds,
+                placements,
+                ..
+            } = &item.cmd
+            {
+                h.write_str(text);
+                for v in [
+                    *x,
+                    *baseline,
+                    *size,
+                    bounds.x,
+                    bounds.y,
+                    bounds.width,
+                    bounds.height,
+                ] {
+                    h.write_u32(v.to_bits());
+                }
+                for g in placements {
+                    for v in [g.advance, g.x, g.y] {
+                        h.write_u32(v.to_bits());
+                    }
+                }
+            }
+        }
+    }
+    h.finish()
+}
+
 #[cfg(target_arch = "wasm32")]
 mod wasm {
+    #[unsafe(no_mangle)]
+    pub extern "C" fn text_layout_hash() -> u64 {
+        super::text_layout_hash()
+    }
+
     #[unsafe(no_mangle)]
     pub extern "C" fn math_digest() -> u64 {
         super::math_digest()

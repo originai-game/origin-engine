@@ -25,6 +25,8 @@ og-ecs = { path = "../../crates/og-ecs" }
 og-physics = { path = "../../crates/og-physics", default-features = false }
 og-anim = { path = "../../crates/og-anim" }
 og-lanes = { path = "../../crates/og-lanes" }
+og-ui = { path = "../../crates/og-ui" }
+og-render = { path = "../../crates/og-render" }
 
 [features]
 default = ["physics2d", "physics3d"]

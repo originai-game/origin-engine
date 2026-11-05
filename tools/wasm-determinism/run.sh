@@ -48,7 +48,7 @@ results=""
 
 # The numbers every build prints (src/lib.rs); a one-profile build leaves
 # out the other profile's physics hash.
-KEYS="math_digest bouncing_boxes_hash physics3d_hash physics2d_hash anim_hash"
+KEYS="math_digest bouncing_boxes_hash physics3d_hash physics2d_hash anim_hash text_layout_hash"
 # record NAME OUTPUT [SKIP_KEY]: keeps one build's numbers, "-" for SKIP_KEY
 # (the physics hash of the profile the build does not have).
 record() {
@@ -123,6 +123,7 @@ hash="$(printf '%s' "$first" | cut -d '|' -f 3)"
 physics3d="$(printf '%s' "$first" | cut -d '|' -f 4)"
 physics2d="$(printf '%s' "$first" | cut -d '|' -f 5)"
 anim="$(printf '%s' "$first" | cut -d '|' -f 6)"
+text_layout="$(printf '%s' "$first" | cut -d '|' -f 7)"
 
 if [ -n "$report" ]; then
   # shellcheck disable=SC2016 # literal backticks
@@ -142,11 +143,11 @@ if [ -n "$report" ]; then
     printf 'feature; the lanes builds (one per physics profile, as the 3D and 2D\n'
     printf 'lanes modules are built) have it and run on one lane under node, each\n'
     printf "with its own profile's physics hash only (- for the other).\n\n"
-    printf '| build | math digest | bouncing boxes world_hash | physics 3D world hashes | physics 2D world hash | anim world hash and retarget |\n|---|---|---|---|---|---|\n'
-    printf '%s' "$results" | awk -F '|' '{ printf "| %s | %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5, $6 }'
+    printf '| build | math digest | bouncing boxes world_hash | physics 3D world hashes | physics 2D world hash | anim world hash and retarget | text layout |\n|---|---|---|---|---|---|---|\n'
+    printf '%s' "$results" | awk -F '|' '{ printf "| %s | %s | %s | %s | %s | %s | %s |\n", $1, $2, $3, $4, $5, $6, $7 }'
     printf '\n'
     if [ "$distinct" = 1 ]; then
-      printf 'All builds agree: math digest %s, world_hash %s, physics 3D %s, physics 2D %s, anim %s.\n' "$digest" "$hash" "$physics3d" "$physics2d" "$anim"
+      printf 'All builds agree: math digest %s, world_hash %s, physics 3D %s, physics 2D %s, anim %s, text layout %s.\n' "$digest" "$hash" "$physics3d" "$physics2d" "$anim" "$text_layout"
     else
       printf 'The builds DISAGREE.\n'
     fi
@@ -161,4 +162,4 @@ if [ "$distinct" != 1 ]; then
   og_err "FAIL: the builds disagree (see above)"
   exit 1
 fi
-og_say "ok: every build agrees (math_digest $digest, bouncing_boxes_hash $hash, physics3d_hash $physics3d, physics2d_hash $physics2d, anim_hash $anim)"
+og_say "ok: every build agrees (math_digest $digest, bouncing_boxes_hash $hash, physics3d_hash $physics3d, physics2d_hash $physics2d, anim_hash $anim, text_layout_hash $text_layout)"

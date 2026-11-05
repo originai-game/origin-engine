@@ -2,6 +2,10 @@
 //! then what lanes did (`run.sh` runs it with `OG_LANES=off` and on).
 
 fn main() {
+    println!("text_layout_hash {}", wasm_determinism::text_layout_hash());
+    if std::env::args().any(|arg| arg == "--text-only") {
+        return;
+    }
     println!("math_digest {}", wasm_determinism::math_digest());
     println!(
         "bouncing_boxes_hash {}",
