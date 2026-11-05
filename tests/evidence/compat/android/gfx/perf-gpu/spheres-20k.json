@@ -1,0 +1,37 @@
+{
+  "scene": "spheres-20k",
+  "tier": "webgpu-android",
+  "browser": "Chrome on Pixel 10 (58051FDCR007QL) (cdp.ts)",
+  "adapter": "",
+  "culling": "auto",
+  "last_frame": {
+    "gpu_culling": true,
+    "draws": 6,
+    "instances": 20001,
+    "culled": 972,
+    "occluded": 0,
+    "triangles": 7306754,
+    "shadow_casters": 0,
+    "counts_lag": 57
+  },
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 30,
+  "runs_ms": [
+    67.73,
+    67.737,
+    67.79,
+    67.8,
+    67.837,
+    67.93,
+    68.063
+  ],
+  "frame_ms": 67.73,
+  "submit_median_ms": 3.3,
+  "load": [
+    0,
+    0,
+    0
+  ],
+  "note": "each run ends in one capture (its readback waits for the GPU to finish the run's frames)"
+}

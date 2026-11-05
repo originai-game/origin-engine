@@ -1,0 +1,37 @@
+{
+  "scene": "crowd-2k",
+  "tier": "webgpu-android",
+  "browser": "Chrome on Pixel 10 (58051FDCR007QL) (cdp.ts)",
+  "adapter": "",
+  "culling": "auto",
+  "last_frame": {
+    "gpu_culling": true,
+    "draws": 24,
+    "instances": 5,
+    "culled": 352,
+    "occluded": 716,
+    "triangles": 465746,
+    "shadow_casters": 2883,
+    "counts_lag": 57
+  },
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 30,
+  "runs_ms": [
+    40.43,
+    40.473,
+    40.51,
+    40.62,
+    40.673,
+    40.757,
+    40.863
+  ],
+  "frame_ms": 40.43,
+  "submit_median_ms": 1.6,
+  "load": [
+    0,
+    0,
+    0
+  ],
+  "note": "each run ends in one capture (its readback waits for the GPU to finish the run's frames)"
+}

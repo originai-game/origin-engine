@@ -1,0 +1,170 @@
+{
+  "tier": "webgpu-android",
+  "buildMs": 1734,
+  "scenes": {
+    "terrain-steep": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 4885.7,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00266,
+        "ok": true
+      },
+      "against": "crates\\og-tests\\references\\metal\\terrain-steep.png",
+      "outliers": 0,
+      "rmse": 0.00266,
+      "ok": true,
+      "ms": 5477
+    },
+    "terrain-far": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 11235.8,
+      "metal": {
+        "outliers": 0.05,
+        "rmse": 0.00933,
+        "ok": true
+      },
+      "against": "crates\\og-tests\\references\\metal\\terrain-far.png",
+      "outliers": 0.05,
+      "rmse": 0.00933,
+      "ok": true,
+      "ms": 12230
+    },
+    "water-shadows": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 11266.7,
+      "metal": {
+        "outliers": 0.097,
+        "rmse": 0.00879,
+        "ok": true
+      },
+      "against": "crates\\og-tests\\references\\metal\\water-shadows.png",
+      "outliers": 0.097,
+      "rmse": 0.00879,
+      "ok": true,
+      "ms": 12460
+    },
+    "grass-near": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 11453.2,
+      "metal": {
+        "outliers": 0.057,
+        "rmse": 0.0056,
+        "ok": true
+      },
+      "against": "crates\\og-tests\\references\\metal\\grass-near.png",
+      "outliers": 0.057,
+      "rmse": 0.0056,
+      "ok": true,
+      "ms": 12293
+    },
+    "impostor-scatter": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 6442.9,
+      "metal": {
+        "outliers": 0.045,
+        "rmse": 0.00644,
+        "ok": true
+      },
+      "against": "crates\\og-tests\\references\\metal\\impostor-scatter.png",
+      "outliers": 0.045,
+      "rmse": 0.00644,
+      "ok": true,
+      "ms": 7768
+    },
+    "sprites-shadow-terrain": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 3468.5,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00295,
+        "ok": true
+      },
+      "against": "crates\\og-tests\\references\\metal\\sprites-shadow-terrain.png",
+      "outliers": 0,
+      "rmse": 0.00295,
+      "ok": true,
+      "ms": 4216
+    },
+    "spheres-20k": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 4615.9,
+      "metal": {
+        "outliers": 0.095,
+        "rmse": 0.00587,
+        "ok": true
+      },
+      "against": "crates\\og-tests\\references\\metal\\spheres-20k.png",
+      "outliers": 0.095,
+      "rmse": 0.00587,
+      "ok": true,
+      "ms": 5292
+    },
+    "crowd-lods": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Taa",
+      "frames": 12,
+      "renderMs": 4058.4,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00136,
+        "ok": true
+      },
+      "against": "crates\\og-tests\\references\\metal\\crowd-lods.png",
+      "outliers": 0,
+      "rmse": 0.00136,
+      "ok": true,
+      "ms": 4857
+    },
+    "crowd-culling": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 3,
+      "renderMs": 8793.1,
+      "metal": {
+        "outliers": 0.01,
+        "rmse": 0.00284,
+        "ok": true
+      },
+      "against": "crates\\og-tests\\references\\metal\\crowd-culling.png",
+      "outliers": 0.01,
+      "rmse": 0.00284,
+      "ok": true,
+      "ms": 9768
+    },
+    "crowd-2k": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Taa",
+      "frames": 8,
+      "renderMs": 6140.4,
+      "ms": 6904
+    }
+  },
+  "adapter": "",
+  "ms": 82395,
+  "log": []
+}
