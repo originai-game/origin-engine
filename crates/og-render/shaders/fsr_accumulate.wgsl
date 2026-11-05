@@ -10,7 +10,7 @@
 // engine's tone-mapped fraction, post.wgsl `tonemapped`) is the current
 // frame's, blended with the previous output's along the motion as the
 // colour is and clamped to the current samples' range, as taa.wgsl does.
-// Prepended by fsr_common.wgsl.
+// Prepended by fullscreen.wgsl and fsr_common.wgsl.
 
 @group(0) @binding(1) var dilated_reactive_tex: texture_2d<f32>;
 @group(0) @binding(2) var dilated_motion_tex: texture_2d<f32>;
@@ -373,7 +373,7 @@ fn cs(@builtin(global_invocation_id) id: vec3<u32>, @builtin(workgroup_id) wg: v
   let a3 = textureLoad(color_tex, c2, 0).a;
   var a = a_cur;
   if (p.is_existing_sample & !p.is_new_sample) {
-    let a_hist = clamp(textureSampleLevel(previous_output_tex, linear_clamp, p.reprojected_hr_uv, 0.0).a,
+    let a_hist = clamp(sample_exact(previous_output_tex, linear_clamp, p.reprojected_hr_uv).a,
       min(min(a0, a1), min(a2, a3)), max(max(a0, a1), max(a2, a3)));
     a = mix(a_hist, a_cur, alpha);
   }

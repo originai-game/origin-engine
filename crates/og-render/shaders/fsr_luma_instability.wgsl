@@ -3,7 +3,7 @@
 // luma over the last four frames, and where a well-accumulated pixel's
 // luma returns to an earlier frame's (flickering rather than changing) it
 // is unstable: the accumulation then trusts its history over the clamp.
-// Prepended by fsr_common.wgsl.
+// Prepended by fullscreen.wgsl and fsr_common.wgsl.
 
 @group(0) @binding(1) var dilated_motion_tex: texture_2d<f32>;
 @group(0) @binding(2) var dilated_reactive_tex: texture_2d<f32>;

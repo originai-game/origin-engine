@@ -8,7 +8,7 @@
 // independent transparency's: one minus its revealage (oit.rs), at most
 // `fsr.misc.y` (AMD's guidance: reactive values near 1 are for what has no
 // history at all); none without OIT. There is no transparency and
-// composition mask. Prepended by fsr_common.wgsl.
+// composition mask. Prepended by fullscreen.wgsl and fsr_common.wgsl.
 
 @group(0) @binding(1) var dilated_motion_tex: texture_2d<f32>;
 @group(0) @binding(2) var dilated_depth_tex: texture_2d<f32>;
@@ -187,7 +187,7 @@ fn update_accumulation(p: vec2<i32>, uv: vec2<f32>, mv: vec2<f32>, disocclusion:
   // After a reset nothing has accumulated (AMD clears the texture).
   if (is_uv_inside(reprojected) & (frame_index() > 0.0)) {
     let hw = clamp_uv(reprojected, previous_render_size(), max_render_size());
-    accumulation = saturate(textureSampleLevel(accumulation_tex, linear_clamp, hw, 0.0).r);
+    accumulation = saturate(sample_exact(accumulation_tex, linear_clamp, hw).r);
   }
   accumulation = mix(accumulation, 0.0, shading_change);
   accumulation = mix(accumulation, min(min_disocclusion_accumulation(), accumulation), disocclusion);

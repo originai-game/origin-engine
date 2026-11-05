@@ -3,7 +3,7 @@
 // contrast-adaptive sharpening of the accumulated output, in exposed light,
 // limited so no pixel leaves the range its ring of four allows. It writes
 // its own target; the history keeps the unsharpened image. The alpha is
-// passed through. Prepended by fsr_common.wgsl.
+// passed through. Prepended by fullscreen.wgsl and fsr_common.wgsl.
 
 @group(0) @binding(1) var rcas_input: texture_2d<f32>;
 @group(0) @binding(2) var<storage, read> frame_info: vec4<f32>;

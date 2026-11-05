@@ -9,7 +9,7 @@
 // The previous depth is scattered with atomicMax on the depth's inverted
 // bits (u32 storage atomics are core WebGPU; float atomics are not), so 0
 // is "nothing reached here", which reads as the far plane (AMD clears it
-// to 1.0). Prepended by fsr_common.wgsl.
+// to 1.0). Prepended by fullscreen.wgsl and fsr_common.wgsl.
 
 @group(0) @binding(1) var color_tex: texture_2d<f32>;
 @group(0) @binding(2) var depth_tex: texture_2d<f32>;

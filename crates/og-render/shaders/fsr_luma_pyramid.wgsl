@@ -8,7 +8,7 @@
 // info as SpdStore's 1x1 level does: the log luma smoothed over time and
 // the exposure derived from it. The averages are over the render's pixels
 // exactly, where SPD's mip chain weighs a non-power-of-two edge's clamped
-// texels twice. Prepended by fsr_common.wgsl.
+// texels twice. Prepended by fullscreen.wgsl and fsr_common.wgsl.
 
 @group(0) @binding(1) var current_luma_tex: texture_2d<f32>;
 @group(0) @binding(2) var farthest_depth_tex: texture_2d<f32>;

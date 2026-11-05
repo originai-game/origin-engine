@@ -32,12 +32,18 @@ const SHADERS: [(&str, &str); 7] = [
 const RCAS: (&str, &str) = ("fsr rcas", wgsl!("fsr_rcas.wgsl"));
 const COMMON: &str = wgsl!("fsr_common.wgsl");
 
+/// A pass's module: fullscreen.wgsl (for `sample_exact`), fsr_common.wgsl
+/// and its body.
+fn source(body: &str) -> String {
+    format!("{}{COMMON}{body}", crate::post::FULLSCREEN_WGSL)
+}
+
 /// The modules as the renderer compiles them (shaders.rs validates them).
 pub(crate) fn sources() -> Vec<(&'static str, String)> {
     SHADERS
         .iter()
         .chain([&RCAS])
-        .map(|(label, body)| (*label, format!("{COMMON}{body}")))
+        .map(|(label, body)| (*label, source(body)))
         .collect()
 }
 
@@ -207,7 +213,7 @@ fn pass(
         pipeline: Deferred::new(move || {
             let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some(label),
-                source: wgpu::ShaderSource::Wgsl(format!("{COMMON}{body}").into()),
+                source: wgpu::ShaderSource::Wgsl(source(body).into()),
             });
             let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some(label),

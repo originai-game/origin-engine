@@ -6,7 +6,7 @@
 // down (SPD's mips 0 to 2, the ones the shading change pass reads; the
 // deeper mips SPD also writes are read by nothing). The three levels lie
 // within one workgroup's tile, so no device-wide step is needed. The
-// levels hold (difference, sign) in rg. Prepended by fsr_common.wgsl.
+// levels hold (difference, sign) in rg. Prepended by fullscreen.wgsl and fsr_common.wgsl.
 
 @group(0) @binding(1) var dilated_motion_tex: texture_2d<f32>;
 @group(0) @binding(2) var current_luma_tex: texture_2d<f32>;
