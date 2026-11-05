@@ -1546,7 +1546,7 @@ pub(crate) fn draw_levels(
     let mut calls = 0;
     let mut triangles = 0;
     for d in draws {
-        if which == TerrainPass::Shadow && !d.cast_shadows {
+        if matches!(which, TerrainPass::Shadow(_)) && !d.cast_shadows {
             continue;
         }
         pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
@@ -1555,7 +1555,7 @@ pub(crate) fn draw_levels(
         pass.set_pipeline(match which {
             TerrainPass::Lit => d.passes.lit.get(),
             TerrainPass::Prepass => d.passes.prepass.get(),
-            TerrainPass::Shadow => d.passes.shadow.get(),
+            TerrainPass::Shadow(t) => d.passes.shadow.get().get(t),
         });
         pass.set_bind_group(2, &d.corners, &[]);
         for l in &d.levels {
@@ -1582,7 +1582,7 @@ pub(crate) fn draw_levels(
         };
         let mut bound = false;
         for st in &d.stamps {
-            if (which == TerrainPass::Shadow && !st.cast_shadows)
+            if (matches!(which, TerrainPass::Shadow(_)) && !st.cast_shadows)
                 || !frustum.intersects_sphere(st.center, st.radius)
             {
                 continue;
@@ -1591,7 +1591,7 @@ pub(crate) fn draw_levels(
                 pass.set_pipeline(match which {
                     TerrainPass::Lit => d.passes.stamp_lit.get(),
                     TerrainPass::Prepass => d.passes.stamp_prepass.get(),
-                    TerrainPass::Shadow => d.passes.stamp_shadow.get(),
+                    TerrainPass::Shadow(t) => d.passes.stamp_shadow.get().get(t),
                 });
                 pass.set_bind_group(1, &d.group, &[0]);
                 bound = true;

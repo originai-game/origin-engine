@@ -574,7 +574,7 @@ pub(crate) fn shadow_pipeline(
     (side, skinned, dissolve): ShadowKey,
     hooked: bool,
     compact: bool,
-) -> wgpu::RenderPipeline {
+) -> ShadowSet {
     let lean = !skinned && !dissolve && !hooked;
     let compact = lean && compact;
     let plain = [
@@ -595,59 +595,48 @@ pub(crate) fn shadow_pipeline(
         (false, true) => &layouts[1],
         (false, false) => &layouts[0],
     };
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("shadow"),
-        layout: Some(layout),
-        vertex: wgpu::VertexState {
-            module,
-            entry_point: Some(match (skinned, hooked) {
-                (true, true) => "vs_skinned_hooked",
-                (true, false) => "vs_skinned",
-                (false, true) => "vs_hooked",
-                (false, false) if compact => "vs_lean_compact",
-                (false, false) if lean => "vs_lean",
-                (false, false) => "vs",
-            }),
-            compilation_options: Default::default(),
-            buffers: if skinned { &skin } else { &plain },
-        },
-        // Front-sided casters draw back faces only: the stored depth is the
-        // far side of a closed caster, so its lit side never compares
-        // against itself. Back-sided ones draw front faces; double-sided
-        // ones (open surfaces) both.
-        primitive: wgpu::PrimitiveState {
-            cull_mode: match side {
-                Side::Front => Some(wgpu::Face::Front),
-                Side::Back => Some(wgpu::Face::Back),
-                Side::Double => None,
+    ShadowSet::new(|target| {
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("shadow"),
+            layout: Some(layout),
+            vertex: wgpu::VertexState {
+                module,
+                entry_point: Some(match (skinned, hooked) {
+                    (true, true) => "vs_skinned_hooked",
+                    (true, false) => "vs_skinned",
+                    (false, true) => "vs_hooked",
+                    (false, false) if compact => "vs_lean_compact",
+                    (false, false) if lean => "vs_lean",
+                    (false, false) => "vs",
+                }),
+                compilation_options: Default::default(),
+                buffers: if skinned { &skin } else { &plain },
             },
-            ..Default::default()
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
-            depth_write_enabled: Some(true),
-            depth_compare: Some(wgpu::CompareFunction::Less),
-            stencil: Default::default(),
-            bias: Default::default(),
-        }),
-        multisample: Default::default(),
-        fragment: Some(wgpu::FragmentState {
-            module,
-            entry_point: Some(match (hooked, dissolve) {
-                (true, _) => "fs_hooked",
-                (false, true) => "fs_dissolve",
-                (false, false) if lean => "fs_lean",
-                (false, false) => "fs",
+            // A cascade keeps the far sides, a local layer both
+            // (shadow_target.rs).
+            primitive: wgpu::PrimitiveState {
+                cull_mode: target.cull(side),
+                ..Default::default()
+            },
+            depth_stencil: Some(target.depth()),
+            multisample: Default::default(),
+            fragment: Some(wgpu::FragmentState {
+                module,
+                entry_point: Some(match (hooked, dissolve) {
+                    (true, _) => "fs_hooked",
+                    (false, true) => "fs_dissolve",
+                    (false, false) if lean => "fs_lean",
+                    (false, false) => "fs",
+                }),
+                compilation_options: wgpu::PipelineCompilationOptions {
+                    constants: ShadowTarget::constants(side),
+                    ..Default::default()
+                },
+                targets: &[Some(target.color())],
             }),
-            compilation_options: Default::default(),
-            targets: &[Some(wgpu::ColorTargetState {
-                format: wgpu::TextureFormat::R32Float,
-                blend: None,
-                write_mask: wgpu::ColorWrites::RED,
-            })],
-        }),
-        multiview_mask: None,
-        cache: crate::pipeline_cache::of(device).as_ref(),
+            multiview_mask: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
+        })
     })
 }
 
@@ -661,48 +650,39 @@ pub(crate) fn meshlet_shadow_pipeline(
     module: &wgpu::ShaderModule,
     side: Side,
     full: bool,
-) -> wgpu::RenderPipeline {
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("shadow meshlet"),
-        layout: Some(layout),
-        vertex: wgpu::VertexState {
-            module,
-            entry_point: Some(if full {
-                "vs_meshlet"
-            } else {
-                "vs_meshlet_lean"
-            }),
-            compilation_options: Default::default(),
-            buffers: &[],
-        },
-        // As `shadow_pipeline`'s casters.
-        primitive: wgpu::PrimitiveState {
-            cull_mode: match side {
-                Side::Front => Some(wgpu::Face::Front),
-                Side::Back => Some(wgpu::Face::Back),
-                Side::Double => None,
+) -> ShadowSet {
+    ShadowSet::new(|target| {
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("shadow meshlet"),
+            layout: Some(layout),
+            vertex: wgpu::VertexState {
+                module,
+                entry_point: Some(if full {
+                    "vs_meshlet"
+                } else {
+                    "vs_meshlet_lean"
+                }),
+                compilation_options: Default::default(),
+                buffers: &[],
             },
-            ..Default::default()
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
-            depth_write_enabled: Some(true),
-            depth_compare: Some(wgpu::CompareFunction::Less),
-            stencil: Default::default(),
-            bias: Default::default(),
-        }),
-        multisample: Default::default(),
-        fragment: Some(wgpu::FragmentState {
-            module,
-            entry_point: Some(if full { "fs_dissolve" } else { "fs_lean" }),
-            compilation_options: Default::default(),
-            targets: &[Some(wgpu::ColorTargetState {
-                format: wgpu::TextureFormat::R32Float,
-                blend: None,
-                write_mask: wgpu::ColorWrites::RED,
-            })],
-        }),
-        multiview_mask: None,
-        cache: crate::pipeline_cache::of(device).as_ref(),
+            // As `shadow_pipeline`'s casters.
+            primitive: wgpu::PrimitiveState {
+                cull_mode: target.cull(side),
+                ..Default::default()
+            },
+            depth_stencil: Some(target.depth()),
+            multisample: Default::default(),
+            fragment: Some(wgpu::FragmentState {
+                module,
+                entry_point: Some(if full { "fs_dissolve" } else { "fs_lean" }),
+                compilation_options: wgpu::PipelineCompilationOptions {
+                    constants: ShadowTarget::constants(side),
+                    ..Default::default()
+                },
+                targets: &[Some(target.color())],
+            }),
+            multiview_mask: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
+        })
     })
 }

@@ -136,6 +136,7 @@ impl Renderer {
                 "cascades",
                 cascade,
                 self.cascade_map.layers.len() as u32,
+                wgpu::TextureFormat::R32Float,
             );
             self.shelter_key = None;
             self.shadow_cache.forget_layers();
@@ -144,6 +145,7 @@ impl Renderer {
                 "local shadows",
                 local,
                 self.local_map.layers.len() as u32,
+                LOCAL_SHADOW_FORMAT,
             );
             // The frame groups bind them: ensure_environment makes them again.
             self.environment = None;

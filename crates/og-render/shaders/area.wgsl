@@ -207,7 +207,7 @@ fn rect_shadow(light: LocalLight, p: vec3<f32>, n: vec3<f32>) -> f32 {
   for (var i = 0u; i < 16u; i++) {
     let q = clamp(uv + rect_shadow_tap(i, 16u, turn) * search, vec2<f32>(0.0), vec2<f32>(1.0));
     let at = clamp(vec2<i32>(q * vec2<f32>(size_i)), vec2<i32>(0), size_i - 1);
-    let d = textureLoad(local_shadow_map, at, i32(layer), 0).r;
+    let d = local_depth(at, layer);
     if (d < ref_depth) {
       blockers += d;
       count += 1.0;
@@ -219,7 +219,7 @@ fn rect_shadow(light: LocalLight, p: vec3<f32>, n: vec3<f32>) -> f32 {
   var lit = 0.0;
   for (var i = 0u; i < 24u; i++) {
     let q = clamp(uv + rect_shadow_tap(i, 24u, turn) * penumbra, vec2<f32>(0.0), vec2<f32>(1.0));
-    lit += pcf(local_shadow_map, q, layer, ref_depth, vec2<f32>(0.0));
+    lit += pcf_local(q, layer, ref_depth);
   }
   return lit / 24.0;
 }

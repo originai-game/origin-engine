@@ -58,7 +58,7 @@ struct ImpostorShadowFrag {
 // plane's through the model's centre: otherwise every point the lit card
 // shows behind that plane (a palm's drooping fronds) shadows itself.
 @fragment
-fn fs_impostor_shadow(in: ImpostorShadowOut) -> ImpostorShadowFrag {
+fn fs_impostor_shadow(in: ImpostorShadowOut, @builtin(front_facing) front: bool) -> ImpostorShadowFrag {
   imp_set_level(in.uv01.xy);
   let dx = dpdxFine(in.world);
   let dy = dpdyFine(in.world);
@@ -79,7 +79,7 @@ fn fs_impostor_shadow(in: ImpostorShadowOut) -> ImpostorShadowFrag {
     o.depth = clamp(c.z / c.w, 0.0, 1.0);
   }
   if (shadow_pass.light.w > 0.0) {
-    o.value = vec4<f32>(local_distance(surface, in.clip, dx, dy), 0.0, 0.0, 1.0);
+    o.value = local_value(surface, in.clip, dx, dy, front);
   } else {
     o.value = vec4<f32>(o.depth, 0.0, 0.0, 1.0);
   }

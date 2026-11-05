@@ -6,6 +6,8 @@ pub(super) struct DrawListInputs<'a, 'p, F0> {
     pub(super) pass: &'a mut wgpu::RenderPass<'p>,
     pub(super) list: &'a DrawList,
     pub(super) lit: bool,
+    /// What a shadow pass (`lit` false) draws into.
+    pub(super) shadow: ShadowTarget,
     pub(super) current: &'a mut Option<LitDrawKey>,
     pub(super) physical_fx: Option<(&'a wgpu::BindGroup, &'a wgpu::BindGroup)>,
     pub(super) probes: Option<probe_select::ProbeGroups<'a>>,
@@ -25,6 +27,7 @@ impl Renderer {
             pass,
             list,
             lit,
+            shadow,
             current,
             physical_fx,
             probes,
@@ -133,15 +136,18 @@ impl Renderer {
                     batch.array,
                 );
                 if shadow_key != Some(key) {
-                    pass.set_pipeline(match batch.shader {
-                        Some(sh) => &self.cache.hook_shadow_pipelines[&(sh, batch.side, false)],
-                        None if batch.array => {
-                            &self.array_maps.as_ref().expect("an array batch").shadow
-                                [&(batch.side, batch.dissolve)]
+                    pass.set_pipeline(
+                        match batch.shader {
+                            Some(sh) => &self.cache.hook_shadow_pipelines[&(sh, batch.side, false)],
+                            None if batch.array => {
+                                &self.array_maps.as_ref().expect("an array batch").shadow
+                                    [&(batch.side, batch.dissolve)]
+                            }
+                            None if batch.compact => &self.compact_shadow_pipelines[&batch.side],
+                            None => &self.shadow_pipelines[&key.0],
                         }
-                        None if batch.compact => &self.compact_shadow_pipelines[&batch.side],
-                        None => &self.shadow_pipelines[&key.0],
-                    });
+                        .get(shadow),
+                    );
                     shadow_key = Some(key);
                 }
                 if batch.dissolve || batch.shader.is_some() {

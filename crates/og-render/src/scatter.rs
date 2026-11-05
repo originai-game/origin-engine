@@ -1015,6 +1015,8 @@ pub(crate) struct ScatterRenderer {
     lit_wgsl: Box<dyn Fn(&str) -> String + Send + Sync>,
     samples: u32,
     pipelines: HashMap<(Option<usize>, Side, u8), wgpu::RenderPipeline>,
+    /// The shadow kinds' pipelines, one per target (shadow_target.rs).
+    shadow_pipelines: HashMap<(Option<usize>, Side, u8), crate::ShadowSet>,
     uniform_layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
     /// The blue-noise tile ([`crate::blue_noise`]) the mesh-to-impostor
@@ -1191,6 +1193,7 @@ impl ScatterRenderer {
             lit_wgsl: p.lit_wgsl,
             samples: p.samples,
             pipelines: HashMap::new(),
+            shadow_pipelines: HashMap::new(),
             uniform_layout,
             uniform,
             blue_noise,
@@ -1282,12 +1285,28 @@ impl ScatterRenderer {
         let kind = pass as u8 + if impostor { IMPOSTOR_KIND } else { 0 };
         // The shadow pass reads no material shader (copies cast as cut by the material's alpha).
         let shader = shader.filter(|_| pass != ScatterPass::Shadow);
-        if self.pipelines.contains_key(&(shader, side, kind)) {
+        let key = if impostor {
+            (None, Side::Double, kind)
+        } else {
+            (shader, side, kind)
+        };
+        if self.pipelines.contains_key(&key) || self.shadow_pipelines.contains_key(&key) {
             return;
         }
-        if kind >= IMPOSTOR_KIND {
-            let p = self.impostor_pipeline(device, pass);
-            self.pipelines.insert((None, Side::Double, kind), p);
+        if pass == ScatterPass::Shadow {
+            let set = crate::ShadowSet::new(|t| {
+                if impostor {
+                    self.impostor_pipeline(device, pass, t)
+                } else {
+                    self.mesh_shadow_pipeline(device, side, t)
+                }
+            });
+            self.shadow_pipelines.insert(key, set);
+            return;
+        }
+        if impostor {
+            let p = self.impostor_pipeline(device, pass, crate::ShadowTarget::Cascade);
+            self.pipelines.insert(key, p);
             return;
         }
         let lit_module = match shader {
@@ -1360,53 +1379,69 @@ impl ScatterRenderer {
                     cache: crate::pipeline_cache::of(device).as_ref(),
                 })
             }
-            ScatterPass::Shadow => device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("scatter shadow"),
-                layout: Some(&self.shadow_layout),
-                vertex: wgpu::VertexState {
-                    module: &self.shadow_module,
-                    entry_point: Some("vs_shadow"),
-                    compilation_options: Default::default(),
-                    buffers: &buffers,
-                },
-                // As shadow.wgsl's casters: front-sided ones draw back faces.
-                primitive: wgpu::PrimitiveState {
-                    cull_mode: match side {
-                        Side::Front => Some(wgpu::Face::Front),
-                        Side::Back => Some(wgpu::Face::Back),
-                        Side::Double => None,
-                    },
+            ScatterPass::Shadow => unreachable!("made by mesh_shadow_pipeline"),
+        };
+        self.pipelines.insert(key, p);
+    }
+
+    /// A scattered mesh's shadow pipeline into `target`: as shadow.wgsl's
+    /// casters (shadow_target.rs).
+    fn mesh_shadow_pipeline(
+        &self,
+        device: &wgpu::Device,
+        side: Side,
+        target: crate::ShadowTarget,
+    ) -> wgpu::RenderPipeline {
+        let buffers = [Some(crate::VERTEX_LAYOUT), Some(crate::INSTANCE_LAYOUT)];
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("scatter shadow"),
+            layout: Some(&self.shadow_layout),
+            vertex: wgpu::VertexState {
+                module: &self.shadow_module,
+                entry_point: Some("vs_shadow"),
+                compilation_options: Default::default(),
+                buffers: &buffers,
+            },
+            primitive: wgpu::PrimitiveState {
+                cull_mode: target.cull(side),
+                ..Default::default()
+            },
+            depth_stencil: Some(target.depth()),
+            multisample: Default::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &self.shadow_module,
+                entry_point: Some("fs_shadow"),
+                compilation_options: wgpu::PipelineCompilationOptions {
+                    constants: crate::ShadowTarget::constants(side),
                     ..Default::default()
                 },
-                depth_stencil: depth(true),
-                multisample: Default::default(),
-                fragment: Some(wgpu::FragmentState {
-                    module: &self.shadow_module,
-                    entry_point: Some("fs_shadow"),
-                    compilation_options: Default::default(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: wgpu::TextureFormat::R32Float,
-                        blend: None,
-                        write_mask: wgpu::ColorWrites::RED,
-                    })],
-                }),
-                multiview_mask: None,
-                cache: crate::pipeline_cache::of(device).as_ref(),
+                targets: &[Some(target.color())],
             }),
-        };
-        self.pipelines.insert((shader, side, kind), p);
+            multiview_mask: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
+        })
     }
 
     /// An impostor pipeline (`impostor.wgsl`): the card has no vertex
     /// buffer but the instances' (slot 0), and both faces drawn.
-    fn impostor_pipeline(&self, device: &wgpu::Device, pass: ScatterPass) -> wgpu::RenderPipeline {
+    fn impostor_pipeline(
+        &self,
+        device: &wgpu::Device,
+        pass: ScatterPass,
+        // The shadow pass's (shadow_target.rs); the others ignore it.
+        shadow: crate::ShadowTarget,
+    ) -> wgpu::RenderPipeline {
         let buffers = [Some(crate::INSTANCE_LAYOUT)];
-        let depth = Some(wgpu::DepthStencilState {
-            format: crate::DEPTH_FORMAT,
-            depth_write_enabled: Some(true),
-            depth_compare: Some(wgpu::CompareFunction::Less),
-            stencil: Default::default(),
-            bias: Default::default(),
+        let depth = Some(if pass == ScatterPass::Shadow {
+            shadow.depth()
+        } else {
+            wgpu::DepthStencilState {
+                format: crate::DEPTH_FORMAT,
+                depth_write_enabled: Some(true),
+                depth_compare: Some(wgpu::CompareFunction::Less),
+                stencil: Default::default(),
+                bias: Default::default(),
+            }
         });
         let target = |format| {
             Some(wgpu::ColorTargetState {
@@ -1451,11 +1486,7 @@ impl ScatterRenderer {
                 &self.shadow_module,
                 "vs_impostor_shadow",
                 "fs_impostor_shadow",
-                vec![Some(wgpu::ColorTargetState {
-                    format: wgpu::TextureFormat::R32Float,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::RED,
-                })],
+                vec![Some(shadow.color())],
             ),
         };
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -1473,7 +1504,15 @@ impl ScatterRenderer {
             fragment: Some(wgpu::FragmentState {
                 module,
                 entry_point: Some(fs),
-                compilation_options: Default::default(),
+                // Both faces cast (shadow_target.rs).
+                compilation_options: wgpu::PipelineCompilationOptions {
+                    constants: if pass == ScatterPass::Shadow {
+                        crate::ShadowTarget::constants(Side::Double)
+                    } else {
+                        &[]
+                    },
+                    ..Default::default()
+                },
                 targets: &targets,
             }),
             multiview_mask: None,
@@ -1483,14 +1522,24 @@ impl ScatterRenderer {
 
     /// A crowd card pipeline (`crowd_card.wgsl`): instance records of
     /// [`CARD_LAYOUT`] (slot 0), indexed by the card quad, both faces.
-    fn card_pipeline(&self, device: &wgpu::Device, pass: ScatterPass) -> wgpu::RenderPipeline {
+    fn card_pipeline(
+        &self,
+        device: &wgpu::Device,
+        pass: ScatterPass,
+        // The shadow pass's (shadow_target.rs); the others ignore it.
+        shadow: crate::ShadowTarget,
+    ) -> wgpu::RenderPipeline {
         let buffers = [Some(CARD_LAYOUT)];
-        let depth = Some(wgpu::DepthStencilState {
-            format: crate::DEPTH_FORMAT,
-            depth_write_enabled: Some(true),
-            depth_compare: Some(wgpu::CompareFunction::Less),
-            stencil: Default::default(),
-            bias: Default::default(),
+        let depth = Some(if pass == ScatterPass::Shadow {
+            shadow.depth()
+        } else {
+            wgpu::DepthStencilState {
+                format: crate::DEPTH_FORMAT,
+                depth_write_enabled: Some(true),
+                depth_compare: Some(wgpu::CompareFunction::Less),
+                stencil: Default::default(),
+                bias: Default::default(),
+            }
         });
         let target = |format| {
             Some(wgpu::ColorTargetState {
@@ -1535,11 +1584,7 @@ impl ScatterRenderer {
                 &self.shadow_module,
                 "vs_crowd_card_shadow",
                 "fs_crowd_card_shadow",
-                vec![Some(wgpu::ColorTargetState {
-                    format: wgpu::TextureFormat::R32Float,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::RED,
-                })],
+                vec![Some(shadow.color())],
             ),
         };
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -1557,7 +1602,15 @@ impl ScatterRenderer {
             fragment: Some(wgpu::FragmentState {
                 module,
                 entry_point: Some(fs),
-                compilation_options: Default::default(),
+                // Both faces cast (shadow_target.rs).
+                compilation_options: wgpu::PipelineCompilationOptions {
+                    constants: if pass == ScatterPass::Shadow {
+                        crate::ShadowTarget::constants(Side::Double)
+                    } else {
+                        &[]
+                    },
+                    ..Default::default()
+                },
                 targets: &targets,
             }),
             multiview_mask: None,
@@ -2256,12 +2309,17 @@ impl ScatterRenderer {
                 }
             })
             .collect();
-        for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
+        for pass in [ScatterPass::Lit, ScatterPass::Prepass] {
             let kind = pass as u8 + CARD_KIND;
             if !self.pipelines.contains_key(&(None, Side::Double, kind)) {
-                let p = self.card_pipeline(device, pass);
+                let p = self.card_pipeline(device, pass, crate::ShadowTarget::Cascade);
                 self.pipelines.insert((None, Side::Double, kind), p);
             }
+        }
+        let key = (None, Side::Double, ScatterPass::Shadow as u8 + CARD_KIND);
+        if !self.shadow_pipelines.contains_key(&key) {
+            let set = crate::ShadowSet::new(|t| self.card_pipeline(device, ScatterPass::Shadow, t));
+            self.shadow_pipelines.insert(key, set);
         }
         out
     }
@@ -2331,7 +2389,13 @@ impl ScatterRenderer {
         fx_group: Option<&wgpu::BindGroup>,
         camera: bool,
         cards: CardSource<'_>,
+        // What a shadow pass draws into (shadow_target.rs).
+        target: crate::ShadowTarget,
     ) -> (u32, u32) {
+        let pipeline = |key: &(Option<usize>, Side, u8)| match kind {
+            ScatterPass::Shadow => self.shadow_pipelines.get(key).map(|s| s.get(target)),
+            _ => self.pipelines.get(key),
+        };
         // The main camera's prepass and lit pass draw the GPU cull's copies.
         let list = self
             .cull
@@ -2347,9 +2411,7 @@ impl ScatterRenderer {
                 pass.set_bind_group(3, fx, &[]);
             }
         };
-        let impostor_pipeline =
-            self.pipelines
-                .get(&(None, Side::Double, kind as u8 + IMPOSTOR_KIND));
+        let impostor_pipeline = pipeline(&(None, Side::Double, kind as u8 + IMPOSTOR_KIND));
         for b in &all.scatters {
             if kind == ScatterPass::Shadow && !b.cast_shadows {
                 continue;
@@ -2358,7 +2420,7 @@ impl ScatterRenderer {
             let (Some(group), Some((vertices, indices, count)), Some(p)) = (
                 material_group(b.material),
                 mesh(b.mesh),
-                self.pipelines.get(&(shader, b.side, kind as u8)),
+                pipeline(&(shader, b.side, kind as u8)),
             ) else {
                 continue;
             };
@@ -2472,9 +2534,7 @@ impl ScatterRenderer {
         }
         // The crowds' cards: the cull's row of them, or the CPU path's
         // records drawn whole (the depth test keeps what the cull would).
-        let card_pipeline = self
-            .pipelines
-            .get(&(None, Side::Double, kind as u8 + CARD_KIND));
+        let card_pipeline = pipeline(&(None, Side::Double, kind as u8 + CARD_KIND));
         if let Some(cp) = card_pipeline {
             for b in &all.cards {
                 if kind == ScatterPass::Shadow && !b.input.cast_shadows {

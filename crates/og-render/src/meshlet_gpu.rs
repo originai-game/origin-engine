@@ -501,7 +501,7 @@ pub(crate) struct MeshletGpu {
     lit_module: Option<(bool, wgpu::ShaderModule)>,
     /// The shadow casters' pipelines by (side, the whole vertex for an
     /// alpha-tested or dissolving material), and their module.
-    shadow: HashMap<(Side, bool), wgpu::RenderPipeline>,
+    shadow: HashMap<(Side, bool), crate::ShadowSet>,
     shadow_module: Option<wgpu::ShaderModule>,
     pools: Option<Pools>,
     params: wgpu::Buffer,
@@ -1617,6 +1617,7 @@ impl MeshletGpu {
     pub fn draw_shadow<'m>(
         &self,
         pass: &mut wgpu::RenderPass<'_>,
+        target: crate::ShadowTarget,
         batches: &[Batch],
         view: u32,
         material: impl Fn(&Batch) -> &'m wgpu::BindGroup,
@@ -1630,7 +1631,7 @@ impl MeshletGpu {
             ) else {
                 continue;
             };
-            pass.set_pipeline(pipeline);
+            pass.set_pipeline(pipeline.get(target));
             pass.set_bind_group(1, material(b), &[]);
             pass.set_bind_group(3, group, &[d.first_item * 8]);
             pass.draw_indirect(&self.draws, d.row as u64 * 16);

@@ -14,7 +14,6 @@ mod render;
 mod resources;
 mod settings;
 mod shader_source;
-mod shadow_mid;
 mod uploads;
 pub(crate) use buffers::*;
 pub use config::*;
@@ -23,4 +22,3 @@ pub use presentation::{GpuMemory, MAX_RENDER_SCALE, MIN_RENDER_SCALE, Successor}
 pub(crate) use presentation::{LostFlag, texture_bytes, view_bytes};
 pub(crate) use resources::*;
 pub(crate) use shader_source::*;
-pub(crate) use shadow_mid::{LocalMid, mirrored};

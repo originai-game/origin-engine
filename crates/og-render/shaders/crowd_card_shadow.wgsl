@@ -39,7 +39,7 @@ struct CardShadowFrag {
 };
 
 @fragment
-fn fs_crowd_card_shadow(in: CardShadowOut) -> CardShadowFrag {
+fn fs_crowd_card_shadow(in: CardShadowOut, @builtin(front_facing) front: bool) -> CardShadowFrag {
   card_set_level(in.local);
   let dx = dpdxFine(in.world);
   let dy = dpdyFine(in.world);
@@ -56,7 +56,7 @@ fn fs_crowd_card_shadow(in: CardShadowOut) -> CardShadowFrag {
     o.depth = clamp(c.z / c.w, 0.0, 1.0);
   }
   if (shadow_pass.light.w > 0.0) {
-    o.value = vec4<f32>(local_distance(surface, in.clip, dx, dy), 0.0, 0.0, 1.0);
+    o.value = local_value(surface, in.clip, dx, dy, front);
   } else {
     o.value = vec4<f32>(o.depth, 0.0, 0.0, 1.0);
   }

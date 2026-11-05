@@ -1512,10 +1512,10 @@ pub(crate) struct TerrainPipelines<'a> {
 pub(crate) struct TerrainPasses {
     pub lit: Rc<crate::deferred::Sampled<wgpu::RenderPipeline>>,
     pub prepass: Rc<Deferred<wgpu::RenderPipeline>>,
-    pub shadow: Rc<Deferred<wgpu::RenderPipeline>>,
+    pub shadow: Rc<Deferred<crate::ShadowSet>>,
     pub stamp_lit: Rc<crate::deferred::Sampled<wgpu::RenderPipeline>>,
     pub stamp_prepass: Rc<Deferred<wgpu::RenderPipeline>>,
-    pub stamp_shadow: Rc<Deferred<wgpu::RenderPipeline>>,
+    pub stamp_shadow: Rc<Deferred<crate::ShadowSet>>,
     /// The corner cache's writer (`terrain_corners.wgsl`).
     pub corners: Rc<Deferred<wgpu::ComputePipeline>>,
 }
@@ -1525,7 +1525,8 @@ pub(crate) struct TerrainPasses {
 pub(crate) enum TerrainPass {
     Lit,
     Prepass,
-    Shadow,
+    /// Into a shadow layer of this kind (shadow_target.rs).
+    Shadow(crate::ShadowTarget),
 }
 
 /// The pipeline layouts and modules [`terrain_passes`] builds from.
@@ -1682,32 +1683,43 @@ fn terrain_passes(
                   fs: &'static str,
                   buffers: &'static [Option<wgpu::VertexBufferLayout<'static>>]| {
         let (device, layout, module) = (device.clone(), layout.clone(), shadow_module.clone());
+        // Both faces cast into a local layer's two channels too
+        // (shadow_target.rs).
+        let fragment_constants: &'static [(&'static str, f64)] = if holes {
+            &[("TERRAIN_HOLES", 1.0), ("SHADOW_SIDE", 2.0)]
+        } else {
+            &[("TERRAIN_HOLES", 0.0), ("SHADOW_SIDE", 2.0)]
+        };
         Deferred::new(move || {
             let module = module.module();
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some(label),
-                layout: Some(&layout),
-                vertex: wgpu::VertexState {
-                    module,
-                    entry_point: Some(vs),
-                    compilation_options: options(),
-                    buffers,
-                },
-                primitive: Default::default(),
-                depth_stencil: depth(true),
-                multisample: Default::default(),
-                fragment: Some(wgpu::FragmentState {
-                    module,
-                    entry_point: Some(fs),
-                    compilation_options: options(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: wgpu::TextureFormat::R32Float,
-                        blend: None,
-                        write_mask: wgpu::ColorWrites::RED,
-                    })],
-                }),
-                multiview_mask: None,
-                cache: crate::pipeline_cache::of(&device).as_ref(),
+            crate::ShadowSet::new(|target| {
+                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some(label),
+                    layout: Some(&layout),
+                    vertex: wgpu::VertexState {
+                        module,
+                        entry_point: Some(vs),
+                        compilation_options: options(),
+                        buffers,
+                    },
+                    primitive: wgpu::PrimitiveState {
+                        cull_mode: target.cull(crate::Side::Double),
+                        ..Default::default()
+                    },
+                    depth_stencil: Some(target.depth()),
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module,
+                        entry_point: Some(fs),
+                        compilation_options: wgpu::PipelineCompilationOptions {
+                            constants: fragment_constants,
+                            ..Default::default()
+                        },
+                        targets: &[Some(target.color())],
+                    }),
+                    multiview_mask: None,
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                })
             })
         })
     };

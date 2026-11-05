@@ -246,12 +246,9 @@ pub(crate) fn ribbon_source() -> String {
 /// The shadow pass slot of the weather occlusion map (weather.rs
 /// `shelter_view`), after the cascades' and the local faces'.
 pub(crate) const SHELTER_SLOT: usize = CASCADES + LOCAL_SHADOW_LAYERS;
-/// The shadow pass slot of local layer 0's mirrored raster (shadow_mid.rs),
-/// after the weather occlusion map's; layer `l`'s is `NEAR_SLOT + l`.
-pub(crate) const NEAR_SLOT: usize = SHELTER_SLOT + 1;
 /// Uniform slots of the shadow passes (dynamic offsets): the cascades, the
-/// local faces, the weather occlusion map, then the local faces mirrored.
-pub(crate) const SHADOW_SLOTS: usize = NEAR_SLOT + LOCAL_SHADOW_LAYERS;
+/// local faces, then the weather occlusion map.
+pub(crate) const SHADOW_SLOTS: usize = SHELTER_SLOT + 1;
 pub(crate) const SHADOW_SLOT_STRIDE: u64 = 256;
 
 #[cfg(test)]

@@ -27,7 +27,7 @@ fn vs_shadow(v: ScatterVertex, i: ScatterInstance) -> ScatterShadowOut {
 }
 
 @fragment
-fn fs_shadow(in: ScatterShadowOut) -> @location(0) vec4<f32> {
+fn fs_shadow(in: ScatterShadowOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let dx = dpdxFine(in.world);
   let dy = dpdyFine(in.world);
   let base_uv = material_uv(UV_MAP, in.uv);
@@ -36,7 +36,7 @@ fn fs_shadow(in: ScatterShadowOut) -> @location(0) vec4<f32> {
     discard;
   }
   if (shadow_pass.light.w > 0.0) {
-    return vec4<f32>(local_distance(in.world, in.clip, dx, dy), 0.0, 0.0, 1.0);
+    return local_value(in.world, in.clip, dx, dy, front);
   }
   return vec4<f32>(in.clip.z, 0.0, 0.0, 1.0);
 }

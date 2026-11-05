@@ -30,13 +30,13 @@ fn vs_skinned_hooked(@builtin(vertex_index) vi: u32, v: CustomVertexIn, i: Custo
 }
 
 @fragment
-fn fs_hooked(in: CustomOut) -> @location(0) vec4<f32> {
+fn fs_hooked(in: CustomOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let dx = dpdxFine(in.world);
   let dy = dpdyFine(in.world);
   let cut = custom_cut(custom_surface(in, vec3<f32>(0.0)));
   if (cut) { discard; }
   if (shadow_pass.light.w > 0.0) {
-    return vec4<f32>(local_distance(in.world, in.clip, dx, dy), 0.0, 0.0, 1.0);
+    return local_value(in.world, in.clip, dx, dy, front);
   }
   return vec4<f32>(in.clip.z, 0.0, 0.0, 1.0);
 }
