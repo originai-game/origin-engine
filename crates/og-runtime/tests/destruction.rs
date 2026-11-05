@@ -59,7 +59,7 @@ part "wall" {
 fracture {
   style brick
   brick 0.25 0.1
-  chunks 40
+  chunks 80
   seed 11
   children 32
   anchor bottom ends
@@ -369,79 +369,126 @@ fn a_prop_dropped_on_the_ground_breaks_where_it_lands() {
 }
 
 #[test]
-fn a_wall_tied_in_at_its_ends_shot_at_its_foot_leaves_two_piers() {
-    let (w, wall) = start_with(
-        "props/brick.ogt",
-        json!({ "toughness": 800, "strength": 3000, "density": 1900 }),
-    );
-    // A floor for what falls.
-    let g = value(og_runtime::og_world_spawn(
-        w,
-        Some(json!({ "position": { "x": 0, "y": -0.25, "z": 0 } }).to_string()),
-    ))
-    .as_f64()
-    .unwrap();
-    value(og_world_insert(
-        w,
-        g,
-        "og.RigidBody".into(),
-        Some(json!({ "kind": 1 }).to_string()),
-    ));
-    value(og_world_insert(
-        w,
-        g,
-        "og.Collider".into(),
-        Some(json!({ "shape": 0, "size": { "x": 20, "y": 0.5, "z": 20 } }).to_string()),
-    ));
-    frames(w, 10);
-    value(og_destruction_damage(
-        w,
-        wall,
-        Some(
-            json!({ "point": { "x": 0, "y": 0.2, "z": 0.15 }, "radius": 1.0, "innerRadius": 0.5, "amount": 6000 })
-                .to_string(),
-        ),
-    ));
-    frames(w, 240);
-    // What still stands: support chunks held to the world, never bodies.
-    let near = value(og_runtime::og_physics_overlap(
-        w,
-        Some(
-            json!({ "shape": { "shape": 0, "size": { "x": 8, "y": 6, "z": 3 } }, "position": { "x": 0, "y": 2.5, "z": 0 } })
-                .to_string(),
-        ),
-    ));
-    let standing: Vec<Value> = near
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|e| e.as_f64().unwrap())
-        .filter(|&e| {
-            og_world_has(w, e, "og.Chunk".into())
-                && !og_world_has(w, e, "og.RigidBody".into())
-                && !og_world_has(w, e, "og.Parent".into())
-        })
-        .map(|e| value(og_world_get(w, e, "og.Transform".into()))["position"].clone())
-        .collect();
-    let x = |p: &Value| p["x"].as_f64().unwrap();
-    let y = |p: &Value| p["y"].as_f64().unwrap();
-    let pier = |side: f64| -> f64 {
-        standing
+fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_over_the_hole() {
+    // Blast radii either side of the example's: loose blocks jammed between
+    // the piers would hold a flat arch over the hole at some of them.
+    for radius in [1.3, 1.4, 1.5] {
+        let (w, wall) = start_with(
+            "props/brick.ogt",
+            json!({ "toughness": 800, "strength": 3000, "density": 1900 }),
+        );
+        let chips = value(og_load_emitter(w, "fx/chips.ogt".into()))
+            .as_f64()
+            .unwrap();
+        value(og_world_insert(
+            w,
+            wall,
+            "og.Destructible".into(),
+            Some(json!({ "toughness": 800, "strength": 3000, "density": 1900, "debris": chips, "impactThreshold": 400 }).to_string()),
+        ));
+        // A floor for what falls.
+        let g = value(og_runtime::og_world_spawn(
+            w,
+            Some(json!({ "position": { "x": 0, "y": -0.25, "z": 0 } }).to_string()),
+        ))
+        .as_f64()
+        .unwrap();
+        value(og_world_insert(
+            w,
+            g,
+            "og.RigidBody".into(),
+            Some(json!({ "kind": 1 }).to_string()),
+        ));
+        value(og_world_insert(
+            w,
+            g,
+            "og.Collider".into(),
+            Some(json!({ "shape": 0, "size": { "x": 20, "y": 0.5, "z": 20 } }).to_string()),
+        ));
+        frames(w, 10);
+        // demolition-yard's charge: at the face of its foot, in the middle.
+        // Masonry's impactThreshold (heavy blocks land at hundreds of N·s, so
+        // a lower one lets every falling block knock the piers apart).
+        value(og_runtime::og_destruction_explode(
+            w,
+            Some(
+                json!({ "point": { "x": 0, "y": 0.3, "z": 0.15 }, "radius": radius, "innerRadius": 0.8, "damage": 6000, "impulse": 300 })
+                    .to_string(),
+            ),
+        ));
+        frames(w, 300);
+        // Every chunk where it ended, static or loose (a compound child's
+        // place through its body's).
+        let near = value(og_runtime::og_physics_overlap(
+            w,
+            Some(
+                json!({ "shape": { "shape": 0, "size": { "x": 12, "y": 6, "z": 12 } }, "position": { "x": 0, "y": 2.5, "z": 0 } })
+                    .to_string(),
+            ),
+        ));
+        let at = |e: f64| -> (f64, f64) {
+            let t = value(og_world_get(w, e, "og.Transform".into()));
+            let (x, y) = (
+                t["position"]["x"].as_f64().unwrap(),
+                t["position"]["y"].as_f64().unwrap(),
+            );
+            if !og_world_has(w, e, "og.Parent".into()) {
+                return (x, y);
+            }
+            let b = value(og_world_get(w, e, "og.Parent".into()))["entity"]
+                .as_f64()
+                .unwrap();
+            let bt = value(og_world_get(w, b, "og.Transform".into()));
+            let q = &bt["quaternion"];
+            let q = glam::Quat::from_xyzw(
+                q["x"].as_f64().unwrap() as f32,
+                q["y"].as_f64().unwrap() as f32,
+                q["z"].as_f64().unwrap() as f32,
+                q["w"].as_f64().unwrap() as f32,
+            );
+            let p = q * glam::Vec3::new(
+                x as f32,
+                y as f32,
+                t["position"]["z"].as_f64().unwrap() as f32,
+            );
+            (
+                bt["position"]["x"].as_f64().unwrap() + p.x as f64,
+                bt["position"]["y"].as_f64().unwrap() + p.y as f64,
+            )
+        };
+        let chunks: Vec<(f64, f64)> = near
+            .as_array()
+            .unwrap()
             .iter()
-            .filter(|p| x(p) * side > 0.9)
-            .map(y)
-            .fold(0.0, f64::max)
-    };
-    assert!(
-        pier(-1.0) > 0.8 && pier(1.0) > 0.8,
-        "a pier stands at each end, a chunk of it centred above 0.8 m: {} {} of {standing:?}",
-        pier(-1.0),
-        pier(1.0)
-    );
-    assert!(
-        !standing.iter().any(|p| x(p).abs() < 0.35 && y(p) < 0.6),
-        "the shot opened the middle of its foot: {standing:?}"
-    );
-    let info = value(og_destruction_info(w, wall));
-    assert!(info["islands"].as_u64().unwrap() > 1, "{info}");
+            .map(|e| e.as_f64().unwrap())
+            .filter(|&e| og_world_has(w, e, "og.Chunk".into()))
+            .map(at)
+            .collect();
+        let pier = |side: f64| -> f64 {
+            chunks
+                .iter()
+                .filter(|(x, _)| x * side > 0.9 && x * side < 2.1)
+                .map(|&(_, y)| y)
+                .fold(0.0, f64::max)
+        };
+        assert!(
+            pier(-1.0) > 0.8 && pier(1.0) > 0.8,
+            "radius {radius}: a pier stands at each end, a chunk of it centred above 0.8 m: {} {} of {chunks:?}",
+            pier(-1.0),
+            pier(1.0)
+        );
+        let over: Vec<_> = chunks
+            .iter()
+            .filter(|(x, y)| x.abs() < 0.4 && *y > 1.5)
+            .collect();
+        assert!(
+            over.is_empty(),
+            "radius {radius}: nothing is left over the hole above its rubble (no lintel or wedged blocks span the piers): {over:?}"
+        );
+        let info = value(og_destruction_info(w, wall));
+        assert!(
+            info["islands"].as_u64().unwrap() > 1,
+            "radius {radius}: {info}"
+        );
+    }
 }

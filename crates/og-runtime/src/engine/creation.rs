@@ -547,6 +547,7 @@ pub(crate) fn assemble(
         profile,
     )?;
     super::e6::mount_back(&mut world, engine_id, profile, &physics)?;
+    crate::destruction::set_physics(engine_id, &physics);
     let mounted = super::modules::mount_back(
         &mut world,
         engine_id,

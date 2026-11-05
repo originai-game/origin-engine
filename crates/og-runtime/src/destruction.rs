@@ -29,7 +29,7 @@ use super::engine::{Engine, engine};
 use super::{ok, ok_void, parse, refuse};
 use glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind};
-use og_destruct::{Damage, FractureAsset, Instance, Material, stress::StressLimits};
+use og_destruct::{Damage, FractureAsset, Instance, Material, Support, stress::StressLimits};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -135,6 +135,97 @@ thread_local! {
 
 /// The fracture assets of an engine's loaded models, by asset handle.
 type Assets = BTreeMap<u64, Arc<FractureAsset>>;
+
+thread_local! {
+    /// Each engine's physics, for the scene queries the system makes
+    /// (what a loose island rests on).
+    static PHYSICS: RefCell<BTreeMap<u32, og_physics::PhysicsSystem>> =
+        const { RefCell::new(BTreeMap::new()) };
+}
+
+/// The physics an engine's destruction queries (made with its world).
+pub(crate) fn set_physics(engine: u32, physics: &og_physics::PhysicsSystem) {
+    PHYSICS.with(|m| m.borrow_mut().insert(engine, physics.clone()));
+}
+
+/// How often (in ticks) a loose island at rest is solved on what holds it.
+const REST_EVERY: u64 = 6;
+/// Below this speed (m/s) a loose island is at rest.
+const REST_SPEED: f32 = 0.5;
+
+/// Ticks a loose island stays where it broke free before, at rest with
+/// nothing under it, it counts as wedged (one just let go is at rest
+/// too, for the tick before it falls).
+const WEDGED_AFTER: u64 = 30;
+
+/// Wedged loose island `chunks` gives way: its bonds break, and each chunk
+/// with pieces shatters into them (`shatter` gathers those).
+fn crumble(a: &FractureAsset, inst: &mut Instance, chunks: &[u32], shatter: &mut Vec<u32>) {
+    for (k, b) in a.bonds.iter().enumerate() {
+        if chunks.contains(&b.a) && chunks.contains(&b.b) {
+            inst.bonds[k] = 0.0;
+        }
+    }
+    for &c in chunks {
+        let i = c as usize;
+        if a.chunks[i].children.1 > 0 && !inst.shattered[i] {
+            inst.shattered[i] = true;
+            shatter.push(c);
+        }
+    }
+    inst.dirty = true;
+}
+
+/// The supports of loose island `chunks` (its body `body`, at rest): for
+/// each chunk, what a ray down from its centre meets within its depth
+/// below it and 5 cm more, other than the island itself.
+fn supports_of(
+    q: &og_physics::PhysicsQuery,
+    a: &FractureAsset,
+    pose: &[Option<Pose>],
+    chunks: &[u32],
+    body: u64,
+    gravity: Vec3,
+) -> Vec<Support> {
+    let down = gravity.normalize_or_zero();
+    if down == Vec3::ZERO {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    for &c in chunks {
+        let Some(cp) = pose[c as usize] else {
+            continue;
+        };
+        let ch = &a.chunks[c as usize];
+        let depth = ch
+            .hull
+            .iter()
+            .map(|h| (cp.1 * (cp.2 * *h)).dot(down))
+            .fold(0.0, f32::max);
+        let hits = q
+            .raycast_all(&og_physics::RaycastAllDesc {
+                ray: og_physics::RaycastDesc {
+                    origin: cp.0,
+                    direction: down,
+                    max_distance: depth + 0.05,
+                    filter: og_physics::QueryFilter::default(),
+                },
+                max_hits: 16,
+            })
+            .unwrap_or_default();
+        let Some(hit) = hits.iter().find(|h| h.body.to_bits() != body) else {
+            continue;
+        };
+        let s = cp.2.max_element().max(1e-6);
+        let r = og_destruct::cube_root(ch.volume);
+        out.push(Support {
+            chunk: c,
+            point: ch.centroid + cp.1.inverse() * (hit.point - cp.0) / s,
+            area: r * r,
+        });
+    }
+    out
+}
 
 fn shared(engine: u32) -> Arc<Mutex<State>> {
     SHARED.with(|s| s.borrow_mut().entry(engine).or_default().clone())
@@ -303,7 +394,7 @@ pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
             }],
             ..Default::default()
         },
-        move |ctx| run(ctx, &state, &assets, &ls),
+        move |ctx| run(ctx, engine_id, &state, &assets, &ls),
     )?;
     if world.systems().contains(&"og.physics") {
         world.move_system_before(SYSTEM, "og.physics")?;
@@ -437,6 +528,7 @@ fn relative(root: &Pose, child: &Pose) -> Pose {
 
 fn run(
     ctx: &mut SystemContext<'_>,
+    engine: u32,
     state: &Mutex<State>,
     assets: &Mutex<Assets>,
     l: &Ls,
@@ -762,6 +854,7 @@ fn run(
             let n = p.inst.stress(
                 &a,
                 &islands,
+                &[],
                 down,
                 scale,
                 &s.mat,
@@ -772,6 +865,60 @@ fn run(
             }
         } else {
             p.inst.dirty = false;
+        }
+        // A loose island at rest is solved on what it rests on: what spans
+        // a hole between two piers bends, and breaks over it, where a
+        // rigid compound would lie across them as a lintel. One at rest
+        // with nothing under it is wedged by its sides (blocks jammed
+        // between piers into a flat arch, which loose masonry never holds:
+        // its corners crush): it crumbles, into its pieces.
+        if tick.is_multiple_of(REST_EVERY)
+            && let Some(q) = PHYSICS
+                .with(|m| m.borrow().get(&engine).cloned())
+                .and_then(|ph| ph.tick_query().ok())
+        {
+            let held = p.inst.dirty;
+            for isl in islands_of(&p.inst).into_iter().filter(|i| !i.anchored) {
+                let body = p.body[isl.chunks[0] as usize];
+                if body == 0 || isl.chunks.iter().any(|&c| p.body[c as usize] != body) {
+                    continue;
+                }
+                let speed = ctx
+                    .get_bytes(Entity::from_bits(body), l.velocity.0)
+                    .map(|vb| v3(&l.velocity.1.decode(&vb)["linear"]).length())
+                    .unwrap_or(0.0);
+                if speed > REST_SPEED {
+                    continue;
+                }
+                let supports = supports_of(&q, &a, pose, &isl.chunks, body, gravity);
+                if supports.is_empty() {
+                    let freed = isl.chunks.iter().map(|&c| p.loose[c as usize]).min();
+                    if freed.is_some_and(|t| tick.saturating_sub(t) >= WEDGED_AFTER) {
+                        crumble(&a, &mut p.inst, &isl.chunks, &mut shatter);
+                        cause.get_or_insert(CAUSE_STRESS);
+                    }
+                    continue;
+                }
+                if isl.chunks.len() < 2 {
+                    continue;
+                }
+                let Some(root) = pose[isl.chunks[0] as usize] else {
+                    continue;
+                };
+                let n = p.inst.stress(
+                    &a,
+                    std::slice::from_ref(&isl),
+                    &supports,
+                    root.1.inverse() * gravity,
+                    scale,
+                    &s.mat,
+                    res["stressIterations"].as_u64().unwrap_or(48) as u32,
+                );
+                if n > 0 && cause.is_none() {
+                    cause = Some(CAUSE_STRESS);
+                }
+            }
+            p.inst.dirty |= held;
         }
         let broken_now: Vec<bool> = (0..before.len())
             .map(|i| before[i] > 0.0 && p.inst.bonds[i] <= 0.0)
