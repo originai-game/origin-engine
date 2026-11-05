@@ -27585,8 +27585,8 @@
         },
         "ssrMaxDistance": {
           "type": "number",
-          "description": "How far a reflected ray marches, in world units.",
-          "default": 20,
+          "description": "How far a reflected ray marches, in world units; the last fifth fades into the probes'. The hierarchical march's cost is set by ssrSteps, not by the distance, so a long reach is cheap: the default lets a wet street mirror lights 40 m down it.",
+          "default": 100,
           "minimum": 0,
           "x-og-unit": "m",
           "x-og-tunable": true

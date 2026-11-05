@@ -378,10 +378,11 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
 /// area 4's lazy og.TerrainScatter and og.Wind on top of area 7, and
 /// (-> a9da4b5b41c7bd8a) UI state version 16 (the touch control holding a finger),
 /// and (-> b74be038a53667d9) RenderSettings.upscaler (FSR 3.1), and
-/// (-> 1b70764bb809745a) PostEffects' ssrMaxRoughness and ssrResolution.
+/// (-> 1b70764bb809745a) PostEffects' ssrMaxRoughness and ssrResolution, and
+/// (-> 53748ce5a262de7f) PostEffects.ssrMaxDistance's default of 100.
 const WELL_FIRST: f64 = (1u64 << 32 | 4) as f64;
 const WELL_AFTER_RELOAD: f64 = (2u64 << 32 | 4) as f64;
-const END_HASH: &str = "1b70764bb809745a";
+const END_HASH: &str = "53748ce5a262de7f";
 
 #[test]
 fn a_session_without_anchors_refuses_the_camera() {

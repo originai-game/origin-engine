@@ -2415,7 +2415,7 @@ Token `og.PostEffects`, registered under the schema name `og.PostEffects`; its v
 | `shakeFrequency` | `number` | `12` | ≥ 0 | `hz` | — | How fast the shake moves. |
 | `shakeSeed` | `number` | `0` | — | — | — | The shake's noise seed. |
 | `ssr` | `boolean` | `false` | — | — | — | Screen-space reflections, stochastic and denoised (after AMD FidelityFX SSSR and Frostbite's SSR): each pixel up to ssrMaxRoughness casts one ray drawn from its GGX lobe, marched through a hierarchical depth pyramid of the depth-normal prepass; neighbours' rays are reused and the result accumulated over frames, so mirrors stay sharp and rough metal blurs as its lobe does. A hit reflects the previous frame's lit image (a frame after a cut has none yet). Lit surfaces blend it over the reflection probes', the probe GI's and the environment's reflection by how much of the lobe the screen resolved: where a ray leaves the screen, hits the sky or misses, those show. Opaque surfaces of a perspective 3D camera only; it turns on the depth-normal prepass. |
-| `ssrMaxDistance` | `number` | `20` | ≥ 0 | `m` | tunable | How far a reflected ray marches, in world units. |
+| `ssrMaxDistance` | `number` | `100` | ≥ 0 | `m` | tunable | How far a reflected ray marches, in world units; the last fifth fades into the probes'. The hierarchical march's cost is set by ssrSteps, not by the distance, so a long reach is cheap: the default lets a wet street mirror lights 40 m down it. |
 | `ssrThickness` | `number` | `0.3` | ≥ 0 | `m` | tunable | How far behind the depth buffer a surface is taken to extend: a ray passing behind a surface by less than this hits it. |
 | `ssrSteps` | `number` | `32` | 4 … 128 | — | — | The hierarchical march's iterations along each ray: each crosses a cell of the depth pyramid's current level, so 32 reaches across the screen. |
 | `ssrFade` | `number` | `0.15` | 0 … 1 | `ratio` | — | The fraction of the screen's edge over which a reflection fades into the probes' (the last fifth of ssrMaxDistance fades too). |
@@ -2708,8 +2708,8 @@ resource PostEffects {
   }
   field shakeSeed u32 "The shake's noise seed."
   field ssr bool "Screen-space reflections, stochastic and denoised (after AMD FidelityFX SSSR and Frostbite's SSR): each pixel up to ssrMaxRoughness casts one ray drawn from its GGX lobe, marched through a hierarchical depth pyramid of the depth-normal prepass; neighbours' rays are reused and the result accumulated over frames, so mirrors stay sharp and rough metal blurs as its lobe does. A hit reflects the previous frame's lit image (a frame after a cut has none yet). Lit surfaces blend it over the reflection probes', the probe GI's and the environment's reflection by how much of the lobe the screen resolved: where a ray leaves the screen, hits the sky or misses, those show. Opaque surfaces of a perspective 3D camera only; it turns on the depth-normal prepass."
-  field ssrMaxDistance f32 "How far a reflected ray marches, in world units." {
-    default 20
+  field ssrMaxDistance f32 "How far a reflected ray marches, in world units; the last fifth fades into the probes'. The hierarchical march's cost is set by ssrSteps, not by the distance, so a long reach is cheap: the default lets a wet street mirror lights 40 m down it." {
+    default 100
     min 0
     unit m
     tunable true

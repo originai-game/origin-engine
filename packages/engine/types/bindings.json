@@ -9674,7 +9674,7 @@
         {
           "name": "ssrMaxDistance",
           "column": "f32",
-          "default": 20,
+          "default": 100,
           "tunable": true
         },
         {

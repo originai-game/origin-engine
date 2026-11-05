@@ -7676,9 +7676,9 @@ export interface PostEffects {
    */
   ssr: boolean;
   /**
-   * How far a reflected ray marches, in world units.
+   * How far a reflected ray marches, in world units; the last fifth fades into the probes'. The hierarchical march's cost is set by ssrSteps, not by the distance, so a long reach is cheap: the default lets a wet street mirror lights 40 m down it.
    *
-   * @default 20
+   * @default 100
    * @range 0..
    * @unit m (metres)
    * @tunable

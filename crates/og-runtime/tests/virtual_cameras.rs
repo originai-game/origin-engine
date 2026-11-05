@@ -208,9 +208,10 @@ fn a_world_without_virtual_cameras_keeps_its_hash() {
 /// and MaterialStyle fields, and after area 4 made og.TerrainScatter and
 /// og.Wind lazy, and after UI state version 16 (the touch control holding
 /// a finger), after RenderSettings.upscaler and after PostEffects'
-/// ssrMaxRoughness and ssrResolution; R10 leaves it
+/// ssrMaxRoughness and ssrResolution and after its ssrMaxDistance's default
+/// of 100; R10 leaves it
 /// unmoved on either side).
-const PINNED_HASH: &str = "9506dfdc3308a3ed";
+const PINNED_HASH: &str = "2862f68213bfa03e";
 
 #[test]
 fn the_brain_picks_by_priority_then_the_later_enabled_and_a_solo_outranks_both() {

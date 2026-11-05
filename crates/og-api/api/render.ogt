@@ -1184,8 +1184,8 @@ module render {
     }
     field shakeSeed u32 "The shake's noise seed."
     field ssr bool "Screen-space reflections, stochastic and denoised (after AMD FidelityFX SSSR and Frostbite's SSR): each pixel up to ssrMaxRoughness casts one ray drawn from its GGX lobe, marched through a hierarchical depth pyramid of the depth-normal prepass; neighbours' rays are reused and the result accumulated over frames, so mirrors stay sharp and rough metal blurs as its lobe does. A hit reflects the previous frame's lit image (a frame after a cut has none yet). Lit surfaces blend it over the reflection probes', the probe GI's and the environment's reflection by how much of the lobe the screen resolved: where a ray leaves the screen, hits the sky or misses, those show. Opaque surfaces of a perspective 3D camera only; it turns on the depth-normal prepass."
-    field ssrMaxDistance f32 "How far a reflected ray marches, in world units." {
-      default 20
+    field ssrMaxDistance f32 "How far a reflected ray marches, in world units; the last fifth fades into the probes'. The hierarchical march's cost is set by ssrSteps, not by the distance, so a long reach is cheap: the default lets a wet street mirror lights 40 m down it." {
+      default 100
       min 0
       unit m
       tunable true

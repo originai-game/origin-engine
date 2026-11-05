@@ -60,7 +60,8 @@ const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 /// Screen-space reflections ([`crate::PostEffects::ssr`]).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ScreenSpaceReflections {
-    /// How far a reflected ray travels, in world units.
+    /// How far a reflected ray travels, in world units. The hierarchical
+    /// march's cost is bounded by `steps`, not by the distance.
     pub max_distance: f32,
     /// How far behind a surface a ray may pass and still hit it (world units).
     pub thickness: f32,
@@ -80,7 +81,7 @@ pub struct ScreenSpaceReflections {
 impl Default for ScreenSpaceReflections {
     fn default() -> Self {
         ScreenSpaceReflections {
-            max_distance: 20.0,
+            max_distance: 100.0,
             thickness: 0.3,
             steps: 32,
             fade: 0.15,

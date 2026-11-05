@@ -7448,7 +7448,7 @@ pub const RECORDS: &[RecordDecl] = &[
             FieldDecl {
                 name: "ssrMaxDistance",
                 column: "f32",
-                default: "20",
+                default: "100",
                 readonly: false,
                 tunable: true,
                 min: Some(0.0),
@@ -7457,7 +7457,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "m",
                 worldspace: "",
                 label: "",
-                doc: doc!("How far a reflected ray marches, in world units."),
+                doc: doc!("How far a reflected ray marches, in world units; the last fifth fades into the probes'. The hierarchical march's cost is set by ssrSteps, not by the distance, so a long reach is cheap: the default lets a wet street mirror lights 40 m down it."),
                 variants: &[],
                 capacity: 0,
                 list: 0,
