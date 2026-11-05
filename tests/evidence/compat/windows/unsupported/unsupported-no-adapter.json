@@ -7,7 +7,7 @@
  "card": {
   "hidden": false,
   "title": "No graphics adapter for WebGPU",
-  "text": "This browser has WebGPU but found no graphics adapter it may use: turn on hardware acceleration in the browser's settings, or update the graphics driver, then open the game again. (the browser found no WebGPU adapter)",
+  "text": "This browser has WebGPU but found no graphics adapter it may use: turn on hardware acceleration in the browser's settings, or update the graphics driver, then open the game again. (navigator.gpu.requestAdapter() returned null)",
   "reload": false,
   "ink": "rgb(20, 22, 27)",
   "canvas": false
@@ -28,7 +28,7 @@
    "renderer": "none",
    "reason": "the browser found no WebGPU adapter",
    "engine": "0.7.7",
-   "build": "6663fed5c7acd7d5",
+   "build": "7404541804252cae",
    "browser": {
     "name": "chrome",
     "major": 156,
@@ -48,7 +48,7 @@
    "protocol": 2,
    "kind": "fail",
    "code": "engine_start",
-   "message": "This browser has WebGPU but found no graphics adapter it may use: turn on hardware acceleration in the browser's settings, or update the graphics driver, then open the game again. (the browser found no WebGPU adapter)",
+   "message": "This browser has WebGPU but found no graphics adapter it may use: turn on hardware acceleration in the browser's settings, or update the graphics driver, then open the game again. (navigator.gpu.requestAdapter() returned null)",
    "retryable": false
   }
  ],

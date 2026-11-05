@@ -540,7 +540,9 @@ export async function play(): Promise<PlayHandle> {
     // A browser with WebGPU but no adapter has it turned off (hardware acceleration, a blocked driver).
     const missing = noWebGpu.includes("navigator.gpu is missing");
     const detail = missing ? T.noWebGpuDetail : T.noWebGpuAdapter;
-    await fail(missing ? T.noWebGpu : T.noWebGpuAdapterTitle, `${detail} (${noWebGpu})`, false, false);
+    // The parenthetical is the technical reason; the no-adapter detail already says it in words.
+    const technical = noWebGpu === "the browser found no WebGPU adapter" ? "navigator.gpu.requestAdapter() returned null" : noWebGpu;
+    await fail(missing ? T.noWebGpu : T.noWebGpuAdapterTitle, `${detail} (${technical})`, false, false);
     // play.ts catches it: the card is the page's answer.
     throw new Error(`this browser does not support WebGPU: ${noWebGpu}`);
   }

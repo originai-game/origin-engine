@@ -60,9 +60,9 @@ const cases = [
   // A browser without WebGPU: Chrome without its WebGPU switches, and the page's Navigator without
   // `gpu` before its first script (Chrome 156 keeps navigator.gpu under --disable-features=WebGPU
   // and --disable-blink-features=WebGPU alike).
-  { name: "no-navigator-gpu", webgpu: false, flags: [], strip: true, reason: "navigator.gpu is missing", title: "This browser does not support WebGPU", advice: "Open it in a current Chrome or Edge" },
+  { name: "no-navigator-gpu", webgpu: false, flags: [], strip: true, reason: "navigator.gpu is missing", shown: "(navigator.gpu is missing)", title: "This browser does not support WebGPU", advice: "Open it in a current Chrome or Edge" },
   // No GPU and no software fallback: navigator.gpu is there, requestAdapter answers null.
-  { name: "no-adapter", webgpu: true, flags: ["--disable-gpu", "--disable-software-rasterizer"], strip: false, reason: "the browser found no WebGPU adapter", title: "No graphics adapter for WebGPU", advice: "turn on hardware acceleration" },
+  { name: "no-adapter", webgpu: true, flags: ["--disable-gpu", "--disable-software-rasterizer"], strip: false, reason: "the browser found no WebGPU adapter", shown: "(navigator.gpu.requestAdapter() returned null)", title: "No graphics adapter for WebGPU", advice: "turn on hardware acceleration" },
 ] as const;
 const STRIP_GPU = "delete Navigator.prototype.gpu; if (typeof WorkerNavigator !== 'undefined') delete WorkerNavigator.prototype.gpu;";
 
@@ -88,7 +88,7 @@ try {
           canvas: !!g.contentWindow.__runtime_probe__ };
       })()`);
       check(!card.hidden && card.title === c.title, `${c.name}: the card is on screen with its title`, card);
-      check(card.text.includes(c.advice) && card.text.includes(c.reason), `${c.name}: the card says why and what to do`, card.text);
+      check(card.text.includes(c.advice) && card.text.includes(c.shown) && !card.text.includes("(the browser found no WebGPU adapter)"), `${c.name}: the card says why and what to do, the reason once`, card.text);
       check(!card.reload, `${c.name}: no Reload button (a reload cannot help)`, card);
       check(card.ink !== "rgba(0, 0, 0, 0)" && card.ink !== "", `${c.name}: the card is drawn in the brand's ink, not over a bare canvas`, card.ink);
       check(!card.canvas, `${c.name}: the engine never started (no probe)`, card);
@@ -99,7 +99,7 @@ try {
       check(sample?.browser?.name === "chrome" && typeof sample.browser.major === "number" && sample.browser.os === (process.platform === "win32" ? "windows" : process.platform === "darwin" ? "macos" : "linux"), `${c.name}: the sample names the browser and its OS`, sample?.browser);
       check(!!sample?.device && sample.device["class"] === "desktop", `${c.name}: the sample names the device`, sample?.device);
       const fail = got.find((m) => m.kind === "fail");
-      check(fail?.code === "engine_start" && fail.retryable === false && !!fail.message?.includes(c.reason), `${c.name}: then fail, engine_start, not retryable, with the reason`, fail);
+      check(fail?.code === "engine_start" && fail.retryable === false && !!fail.message?.includes(c.shown), `${c.name}: then fail, engine_start, not retryable, with the reason`, fail);
       const kinds = got.map((m) => m.kind);
       check(kinds.includes("sample") && kinds.indexOf("sample") < kinds.indexOf("fail") && !kinds.includes("ready") && !kinds.includes("crash"), `${c.name}: sample before fail, never ready or crash`, kinds);
       if (evidence) {
