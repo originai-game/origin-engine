@@ -477,6 +477,18 @@ pub fn local_contact_scene(point: bool, shadows: bool) -> RenderScene {
     scene
 }
 
+/// [`local_contact_scene`]'s room and light with nothing standing on the
+/// floor but a second floor under it: the same plane facing down, in the
+/// floor's own plane, both single-sided (closed, as window-room.glb's
+/// floor of two coplanar quads facing apart). The floor must stay lit.
+pub fn twin_floor_scene(point: bool, shadows: bool) -> RenderScene {
+    let mut scene = contact_room(point, shadows);
+    let under = scene.add_mesh(shapes::plane(12.0, 1.0));
+    let grey = scene.instances[0].material;
+    scene.add_instance(under, grey, Mat4::from_rotation_x(std::f32::consts::PI));
+    scene
+}
+
 /// [`contact_silhouettes_scene`]'s ball (centre, radius), resting on the
 /// floor.
 pub const SILHOUETTE_BALL: (Vec3, f32) = (Vec3::new(1.1, 0.4, -0.6), 0.4);

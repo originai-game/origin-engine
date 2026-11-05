@@ -533,6 +533,9 @@ pub struct Renderer {
     post: post::PostPasses,
     cascade_map: ShadowMap,
     local_map: ShadowMap,
+    /// The local layers' near-side rasters and their midpoint pass
+    /// (shadow_mid.rs).
+    local_mid: LocalMid,
     /// The cascades' side at [`RenderQuality::shadow_map_scale`] 1 (the
     /// [`RenderDesc`]'s, clamped); [`RenderInfo::shadow_map_size`] is the
     /// side drawn now.

@@ -794,8 +794,10 @@ fn base_strip(img: &RgbaImage, from: f32, to: f32) -> Vec<(u32, u32)> {
 /// of the light 1 mm out). A closed receiver now compares past its depth
 /// (lighting.wgsl shadow_closed): under 1 % in a CPU model, and 2 % for a
 /// paraboloid, which compares half a texel past to cover its straight-
-/// edged triangles' misdrawn texels (lighting.wgsl local_bias; Metal at a
-/// quarter texel: mean 0.039, 0.286 at most).
+/// edged triangles' misdrawn texels (Metal at a quarter texel: mean
+/// 0.039, 0.286 at most). Local layers now hold their casters' midpoint
+/// (shadow_mid.rs): the box's bottom face and top face meet halfway, well
+/// above the floor, and every receiver compares as an open one.
 ///
 /// Measured as the share of the light's direct light that reaches the
 /// strip, in linear light (no tonemap, sRGB decoded) with the ambient
@@ -878,6 +880,57 @@ fn local_shadows_touch_their_casters() {
         assert!(
             ratio < 0.1,
             "the floor beside the box is lit through the bias: {ratio:.3} of its direct light"
+        );
+    }
+}
+
+/// A floor of two coplanar single-sided quads facing apart (window-room.glb
+/// in fx-showcase's volumetric station) is lit by a local light: its
+/// down-facing quad is a caster at the floor's own depth, and a layer of
+/// far sides compared under the closed rule (past its depth, lighting.wgsl
+/// shadow_closed) shadowed the floor with itself, halving the station's
+/// spot pool. With midpoints (shadow_mid.rs) the two quads resolve to
+/// their shared plane, which the floor compares before. Measured as in
+/// [`local_shadows_touch_their_casters`]: the share of the direct light
+/// that reaches the floor in the lower half of the frame.
+#[test]
+fn a_twin_floor_is_lit_by_local_lights() {
+    let desc = scenes::base_desc();
+    for (point, storage) in [
+        (false, PointShadows::Cube),
+        (true, PointShadows::Cube),
+        (true, PointShadows::Paraboloid),
+    ] {
+        let desc = RenderDesc {
+            point_shadows: storage,
+            ..desc
+        };
+        let scene = |shadows: bool, on: bool| {
+            let mut s = shadow_scenes::twin_floor_scene(point, shadows);
+            s.post.tonemap = Tonemap::None;
+            if !on {
+                s.lights[0].intensity = 0.0;
+            }
+            s
+        };
+        let (shadowed, _) = frame(&desc, &scene(true, true), 1);
+        let (lit, _) = frame(&desc, &scene(false, true), 1);
+        let (dark, _) = frame(&desc, &scene(false, false), 1);
+        let (mut reached, mut full) = (0.0f32, 0.0f32);
+        for y in (shadowed.height * 3 / 4..shadowed.height).step_by(2) {
+            for x in (0..shadowed.width).step_by(2) {
+                let (x, y) = (x as f32 + 0.5, y as f32 + 0.5);
+                let d = linear_at(&dark, x, y);
+                reached += linear_at(&shadowed, x, y) - d;
+                full += linear_at(&lit, x, y) - d;
+            }
+        }
+        let share = reached / full.max(1e-4);
+        println!("point {point} {storage:?}: the twin floor takes {share:.3} of its direct light");
+        assert!(full > 1.0, "the light reaches the floor: {full:.3}");
+        assert!(
+            share > 0.97,
+            "the twin floor shadows itself: {share:.3} of its direct light"
         );
     }
 }

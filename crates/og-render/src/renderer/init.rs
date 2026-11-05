@@ -478,6 +478,7 @@ impl Renderer {
         );
         // Twelve layers to begin with; a frame that needs more grows it
         // (`grow_local_shadows`).
+        let local_mid = LocalMid::new(&device);
         let local_map = ShadowMap::new(
             &device,
             "local shadows",
@@ -1019,6 +1020,7 @@ impl Renderer {
             post,
             cascade_map,
             local_map,
+            local_mid,
             full_shadow_size: shadow_size,
             local_shadow_size: LOCAL_SHADOW_SIZE,
             material_sampler,

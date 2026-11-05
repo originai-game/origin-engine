@@ -930,8 +930,8 @@ pub(crate) struct MaterialUniform {
     /// x: normal map (0 none, 1 RGB, 2 two-channel), y: ao intensity (< 0: no
     /// map), z: environment intensity, w: mode bits (1 flat, 2 unlit, 4
     /// blended, 8 unstyled: no shadow tint or outline distance, 16 alpha to
-    /// coverage, 32 single-sided: a closed surface, whose shadows compare
-    /// past its own depth, lighting.wgsl `shadow_closed`).
+    /// coverage, 32 single-sided: a closed surface, whose sun shadows
+    /// compare past its own depth, lighting.wgsl `shadow_closed`).
     pub flags: [f32; 4],
     /// x: toon (0 off, 1 gradient map, 2 built-in bands), y: rim intensity,
     /// z: rim power, w: flash amount.
@@ -1598,7 +1598,7 @@ mod style_tests {
     }
 
     /// Mode bit 32: a single-sided material, front or back, is a closed
-    /// surface whose shadows compare past its depth (lighting.wgsl
+    /// surface whose sun shadows compare past its depth (lighting.wgsl
     /// `shadow_closed`); a double-sided one is in the shadow map itself.
     #[test]
     fn single_sided_materials_are_closed_for_shadows() {

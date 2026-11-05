@@ -1822,13 +1822,19 @@ impl Renderer {
                     scene.origin,
                     self.local_shadow_size,
                 );
-                let plan = self.shadow_cache.plan(
+                let mut plan = self.shadow_cache.plan(
                     CASCADES + layer,
                     key,
                     f,
                     overlay_in(CASCADES + layer, f),
                     shadow_split.any_static,
                 );
+                // A local layer holds its midpoint once resolved
+                // (shadow_mid.rs), never its static casters alone: what the
+                // cache would copy from it is drawn again.
+                if plan.save && !plan.draw_static {
+                    plan.draw_static = true;
+                }
                 local_plans[layer] = plan;
                 let list = if !plan.draw_static && !plan.overlay {
                     Default::default()
@@ -1870,19 +1876,25 @@ impl Renderer {
             }
         }
         self.cull_inside = cull_inside;
+        if !local_shadows.is_empty() {
+            self.local_mid
+                .ensure(&self.device, &self.local_map, cookie_base as usize);
+        }
         // The cache textures this frame's plans copy through, made at their
         // layer's side on first need.
         let local_side = self.local_shadow_size;
+        // Each local layer's mirrored raster (shadow_mid.rs) follows its
+        // layer's plan through a cache texture of its own.
         let copied = cascade_plans
             .iter()
             .enumerate()
             .map(|(i, p)| (i, p, shadow_size))
-            .chain(
-                local_plans
-                    .iter()
-                    .enumerate()
-                    .map(|(l, p)| (CASCADES + l, p, local_side)),
-            )
+            .chain(local_plans.iter().enumerate().flat_map(|(l, p)| {
+                [
+                    (CASCADES + l, p, local_side),
+                    (NEAR_SLOT + l, p, local_side),
+                ]
+            }))
             .filter(|(_, p, _)| p.save || p.restore);
         for (slot, _, side) in copied {
             if self.shadow_cache_maps.len() <= slot {
@@ -2380,6 +2392,12 @@ impl Renderer {
                     paraboloid: local_paraboloid(ls.paraboloid, face, self.local_shadow_size),
                     foliage_wind: uniform.foliage_wind[0],
                 };
+                // The mirrored raster: x negated in the projection, a
+                // paraboloid's through its side's sign (shadow_mirror).
+                let mut near = shadow_slots[CASCADES + layer];
+                near.view_proj = mirrored(near.view_proj);
+                near.paraboloid[2] = -(self.local_shadow_size as f32);
+                shadow_slots[NEAR_SLOT + layer] = near;
             }
         }
         // The weather occlusion map: its view and its layer, the array's
@@ -4602,27 +4620,39 @@ impl Renderer {
                         false,
                     )
                 }
-                FramePass::LocalFace(layer) => shadow_pass(
-                    &mut encoder,
-                    &self.local_map.layers[layer as usize],
-                    &self.local_map.depth,
-                    (
-                        &self.local_map.texture,
-                        layer,
-                        &self.local_map.depth_texture,
-                    ),
-                    CASCADES + layer as usize,
-                    local_lists[layer as usize]
+                FramePass::LocalFace(layer) => {
+                    // Both rasters of the face, then its midpoint
+                    // (shadow_mid.rs) where either drew or was restored.
+                    let l = layer as usize;
+                    let lists = local_lists[l].as_ref().expect("a list per shadowed face");
+                    let frustum = local_frustums[l]
                         .as_ref()
-                        .expect("a list per shadowed face"),
-                    local_plans[layer as usize],
-                    local_frustums[layer as usize]
-                        .as_ref()
-                        .expect("a frustum per shadowed face"),
-                    local_views[layer as usize],
-                    &mut stats,
-                    true,
-                ),
+                        .expect("a frustum per shadowed face");
+                    let near = self.local_mid.near();
+                    // One face is one shadow pass (and one cached layer)
+                    // in the stats; both rasters' draws count.
+                    let counted = (stats.shadow_passes, stats.shadow_cached);
+                    for (map, slot) in [(&self.local_map, CASCADES + l), (near, NEAR_SLOT + l)] {
+                        (stats.shadow_passes, stats.shadow_cached) = counted;
+                        shadow_pass(
+                            &mut encoder,
+                            &map.layers[l],
+                            &map.depth,
+                            (&map.texture, layer, &map.depth_texture),
+                            slot,
+                            lists,
+                            local_plans[l],
+                            frustum,
+                            local_views[l],
+                            &mut stats,
+                            true,
+                        );
+                    }
+                    let plan = local_plans[l];
+                    if plan.draw_static || plan.restore || plan.overlay {
+                        self.local_mid.resolve(&mut encoder, l);
+                    }
+                }
                 FramePass::Prepass => self.encode_prepass(PrepassPassInputs {
                     water_draws: &water_draws,
                     encoder: &mut encoder,

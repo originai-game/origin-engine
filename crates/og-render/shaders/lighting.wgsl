@@ -148,7 +148,11 @@ fn cascade_tint(c: u32) -> vec3<f32> {
 // local_shadows_touch_their_casters' scene under a spot: the floor 1 mm
 // past the face 53 % lit under the tent with the plane, 24 % without;
 // under 1 % this way with local_wide, the floor before its lit face 98 %
-// lit 2 mm from it; a paraboloid's 2 % and 67 %, [`local_bias`]).
+// lit 2 mm from it). The cascades alone read it: a local layer holds its
+// casters' midpoint (shadow_mid.rs), where no receiver is in the map
+// itself, closed or not. A closed floor of two coplanar quads facing apart
+// (window-room.glb's) is a caster at its own depth and shadows itself
+// under this rule; moving the cascades to midpoints too is a follow-up.
 var<private> shadow_closed: bool = false;
 
 // A turn in [0, 2π) for PCSS's spiral at `texel` (a position in shadow
@@ -348,19 +352,14 @@ fn perspective_uv_ref(light: LocalLight, layer: u32, q: vec3<f32>, k: f32) -> ve
 }
 
 // The factor on a receiver's distance it is compared at: a tenth of a
-// texel towards the light (`cone.w`), or, for a closed receiver
-// ([`shadow_closed`]), `past` texels past it: a quarter for a spot's or a
-// cube face's map, half for a paraboloid's. A paraboloid draws a caster's
-// triangles with straight edges where its projection curves them, so
-// along an edge the texels of one face are drawn as its neighbour's: at a
-// box's base its bottom face, in the floor's own plane, took texels whose
-// rays leave the box through its side, and the floor beside the base
-// compared level with them, lit (Metal: 0.29 of the light 1 cm from the
-// base; a CPU model rasterising the box's quads, 0.32, and 0.017 half a
-// texel past). The cost is a darker floor 2 mm before the box's lit face
-// (0.67 of its light, 0.80 before), inside the contact the AO darkens.
-fn local_bias(light: LocalLight, past: f32) -> f32 {
-  return select(1.0 - light.cone.w, 1.0 + 10.0 * past * light.cone.w, shadow_closed);
+// texel towards the light (`cone.w`). Every receiver is open here: a local
+// layer holds its casters' midpoint (shadow_mid.rs), inside a closed caster
+// and at a zero-thickness one's plane, so a surface lies before the depth
+// it is compared with and the receivers behind a caster past it. The flat,
+// past-its-depth rule of a closed receiver (`shadow_closed`) is the
+// cascades' alone.
+fn local_bias(light: LocalLight) -> f32 {
+  return 1.0 - light.cone.w;
 }
 
 // Local shadows store distance / range; the fragment compares its own,
@@ -431,8 +430,7 @@ fn local_filter(uv: vec2<f32>, layer: u32, ref_depth: f32, slope: vec2<f32>, wid
 // normal offset with the light's angle to the surface (a quarter of it
 // facing the light), so a box standing on a floor casts its shadow from
 // its base, not from a little way out. An open receiver is filtered over
-// its plane ([`receiver_slope`]; a closed one is flat, as
-// [`shadow_closed`] says). `wide` filters with [`local_filter`]'s wide
+// its plane ([`receiver_slope`]). `wide` filters with [`local_filter`]'s wide
 // kernels; the volumetric march takes the 2x2 PCF, as it averages many
 // samples anyway.
 fn local_shadow_lookup(light: LocalLight, p: vec3<f32>, n: vec3<f32>, wide: bool) -> f32 {
@@ -447,8 +445,8 @@ fn local_shadow_lookup(light: LocalLight, p: vec3<f32>, n: vec3<f32>, wide: bool
   var layer = u32(slot);
   let size = vec2<f32>(textureDimensions(local_shadow_map));
   let paraboloid = light.color_kind.w < 0.5 && frame.shadow.y > 0.5;
-  let k = local_bias(light, select(0.25, 0.5, paraboloid));
-  let plane = wide && !shadow_closed;
+  let k = local_bias(light);
+  let plane = wide;
   // The receiver plane, about a texel along each tangent (a 90-degree
   // face's texel at this distance; the plane is what matters, not the step).
   let t = plane_tangents(n);

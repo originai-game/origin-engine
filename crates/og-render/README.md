@@ -374,6 +374,22 @@ mirror x now (`shadow_pass.wgsl` `shadow_project` and `local_distance`,
 `lighting.wgsl` `local_shadow`) and store the far side as the cube
 faces do; `point-shadows-paraboloid` moved by RMSE 0.0021 (contact
 shadows at the spheres' and pillars' feet) and was re-recorded.
+Far sides alone shadowed a floor of two coplanar single-sided quads
+facing apart (fx-showcase's window-room.glb) with itself: its down quad
+is a caster at the floor's depth, and the closed-receiver rule then
+compared the floor past it (the volumetric station's spot pool lost half
+its light). A local layer now holds the midpoint of its casters' near
+and far sides (Woo 1992, `shadow_mid.rs`): each face is drawn a second
+time mirrored in x, whose flipped winding makes the same pipelines keep
+the near sides, and a compute pass writes the midpoint into the layer.
+It lies inside a closed caster and at a zero-thickness one's plane, so
+every receiver compares as an open one (`a_twin_floor_is_lit_by_local_lights`),
+and a box's base stays shadowed (the 8x8 filter's blocker search now
+sees the box's middle, which also straightened the stepped far edge of
+`shadows-local-contact`, re-recorded). A texel with no far side (a
+single-sided plane, a wall) casts nothing, as before. The cascades keep
+far sides and the closed rule; the same midpoint for them is a
+follow-up.
 [`Instance::cast_shadows`] keeps an instance out of every shadow pass
 (the sun's cascades and the local lights' views) while it still
 receives: its instances are runs of their own (`instances.rs`), and the
