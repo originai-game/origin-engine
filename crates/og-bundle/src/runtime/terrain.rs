@@ -354,6 +354,7 @@ impl Bundle {
                     height_contrast: l.height_contrast,
                     macro_variation: l.macro_variation,
                     displacement: l.displacement,
+                    cell_variation: l.cell_variation,
                 },
             });
         }

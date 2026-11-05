@@ -412,6 +412,11 @@ pub struct TerrainLayer {
     /// [`Terrain::displacement_distance`] of the camera (0: flat).
     /// Only drawn: collision and og.terrain.sample keep the field.
     pub displacement: f32,
+    /// How much each cell of the layer's pattern takes its own tone, 0
+    /// to 1: its normal map's alpha names the cell (opaque: none), and
+    /// each cell's brightness (up to ±25 %) and warmth (±20 %) move by it
+    /// (`cell_tone`, terrain_layers.wgsl).
+    pub cell_variation: f32,
 }
 
 /// Two texture arrays a terrain's layers take their maps from
@@ -453,6 +458,7 @@ impl Default for TerrainLayer {
             project_slope: 0.0,
             macro_variation: 0.0,
             displacement: 0.0,
+            cell_variation: 0.0,
         }
     }
 }
@@ -750,7 +756,8 @@ struct LayerGpu {
     /// The hex-tiling lattice at the scene's origin per plane ([`hex_lattice`]).
     hex: [[f32; 4]; 3],
     hex_base: [[i32; 4]; 2],
-    /// xyz: the uv at the scene's origin at a quarter of the frequency.
+    /// xyz: the uv at the scene's origin at a quarter of the frequency,
+    /// w: the cell variation.
     coarse: [f32; 4],
 }
 
@@ -1814,7 +1821,11 @@ fn layer_look(l: &TerrainLayer, origin: Vec3) -> LayerGpu {
         ],
         hex,
         hex_base,
-        coarse: uv_offset(origin, l.tile * 4.0),
+        coarse: {
+            let mut c = uv_offset(origin, l.tile * 4.0);
+            c[3] = l.cell_variation.clamp(0.0, 1.0);
+            c
+        },
         ..LayerGpu::default()
     }
 }
@@ -1904,9 +1915,9 @@ fn layer_dimensions(i: u32) -> vec2<f32> {
   return vec2<f32>(textureDimensions(albedo_array));
 }
 
-fn layer_normal_map(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec3<f32> {
+fn layer_normal_map(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
   let t = textureSampleGrad(normal_array, layer_sampler, uv, i32(terrain.layers[i].altitude.w), dx, dy);
-  return t.xyz * 2.0 - 1.0;
+  return vec4<f32>(t.xyz * 2.0 - 1.0, t.w);
 }
 
 ",

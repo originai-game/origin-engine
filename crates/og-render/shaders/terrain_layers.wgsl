@@ -24,7 +24,9 @@ fn layer_dimensions(i: u32) -> vec2<f32> {
   }
 }
 
-fn layer_normal_map(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec3<f32> {
+// xyz: the tangent-space normal, w: the map's alpha (its cell's id,
+// `cell_tone`).
+fn layer_normal_map(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
   var t: vec4<f32>;
   switch i {
     case 0u: { t = textureSampleGrad(normal0, layer_sampler, uv, dx, dy); }
@@ -32,7 +34,7 @@ fn layer_normal_map(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec3
     case 2u: { t = textureSampleGrad(normal2, layer_sampler, uv, dx, dy); }
     default: { t = textureSampleGrad(normal3, layer_sampler, uv, dx, dy); }
   }
-  return t.xyz * 2.0 - 1.0;
+  return vec4<f32>(t.xyz * 2.0 - 1.0, t.w);
 }
 
 // The weight of a rule over [lo, hi] faded over `fade` on both sides.
@@ -173,6 +175,7 @@ struct PlaneTaps {
   dx: array<vec2<f32>, 3>,
   dy: array<vec2<f32>, 3>,
   turn: array<vec2<f32>, 3>,  // each tap's turn: cos, sin
+  seed: vec3<f32>,            // each tap's own number in [0, 1) (0 without hex-tiling)
   w: vec3<f32>,               // the barycentric weights (hex), or (1, 0, 0)
   n: u32,
   coarse_uv: vec2<f32>,
@@ -185,6 +188,7 @@ struct HexTap {
   dx: vec2<f32>,
   dy: vec2<f32>,
   turn: vec2<f32>,
+  seed: f32,
 };
 
 // One hexagon's tap: `v` its vertex relative to the origin's cell,
@@ -201,6 +205,7 @@ fn hex_tap(v: vec2<f32>, base: vec2<i32>, u: vec2<f32>, mf: vec2<f32>, c: vec2<f
   o.dx = turn2(gx, back);
   o.dy = turn2(gy, back);
   o.turn = turn;
+  o.seed = h.y;
   return o;
 }
 
@@ -219,6 +224,7 @@ fn plane_taps(l: TerrainLayerGpu, plane: u32, p: vec3<f32>, dpx: vec3<f32>, dpy:
     t.dx[0] = gx;
     t.dy[0] = gy;
     t.turn[0] = vec2<f32>(1.0, 0.0);
+    t.seed = vec3<f32>(0.0);
     t.w = vec3<f32>(1.0, 0.0, 0.0);
     return t;
   }
@@ -245,6 +251,7 @@ fn plane_taps(l: TerrainLayerGpu, plane: u32, p: vec3<f32>, dpx: vec3<f32>, dpy:
   t.dx = array<vec2<f32>, 3>(a.dx, b.dx, c.dx);
   t.dy = array<vec2<f32>, 3>(a.dy, b.dy, c.dy);
   t.turn = array<vec2<f32>, 3>(a.turn, b.turn, c.turn);
+  t.seed = vec3<f32>(a.seed, b.seed, c.seed);
   return t;
 }
 
@@ -302,17 +309,49 @@ fn layer_height(i: u32, p: vec3<f32>, n: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f3
   return a;
 }
 
+// A cell's tone (`TerrainLayer::cell_variation` `s`): its id `c` (the
+// normal map's alpha) turned into a brightness and a warmth, each a
+// whole number of periods over 0 to 1, so a map without ids (opaque, 1)
+// or a cell given 0 keeps its colour, and a texel filtered between two
+// cells takes a tone between theirs (an id hashed into a tone flickered
+// along every joint the filter blended). Per-cell variation, as
+// stochastic tile shaders give each tile of a sampled layout its own
+// tone (Substance's tile sampler and Unreal's per-instance random, keyed
+// by the tile's id texture): a field of setts, flags or tiles laid in
+// one texture reads as stones of different quarries.
+fn cell_tone(c: f32, s: f32) -> vec3<f32> {
+  let a = 6.2831853 * c;
+  let bright = 1.0 + s * 0.25 * sin(3.0 * a);
+  let warm = s * 0.2 * sin(5.0 * a);
+  return bright * vec3<f32>(1.0 + warm, 1.0 + 0.3 * warm, 1.0 - warm);
+}
+
+struct TapsNormal {
+  normal: vec3<f32>,  // tangent space
+  tone: vec3<f32>,    // the taps' cells' tones (`cell_tone`), blended
+};
+
 // A plane's tangent-space normal: its taps' slopes turned back with their
-// hexagons and blended by `w`.
-fn taps_normal(i: u32, t: PlaneTaps, w: vec3<f32>) -> vec3<f32> {
-  if (t.n == 1u) { return layer_normal_map(i, t.uv[0], t.dx[0], t.dy[0]); }
+// hexagons and blended by `w`, and its cells' tones, each hexagon's id
+// moved by its own number (so the copies of one cell differ).
+fn taps_normal(i: u32, t: PlaneTaps, w: vec3<f32>) -> TapsNormal {
+  let s = clamp(terrain.layers[i].coarse.w, 0.0, 1.0);
+  var o: TapsNormal;
+  if (t.n == 1u) {
+    let m = layer_normal_map(i, t.uv[0], t.dx[0], t.dy[0]);
+    o.normal = m.xyz;
+    o.tone = cell_tone(m.w, s);
+    return o;
+  }
   let m0 = layer_normal_map(i, t.uv[0], t.dx[0], t.dy[0]);
   let m1 = layer_normal_map(i, t.uv[1], t.dx[1], t.dy[1]);
   let m2 = layer_normal_map(i, t.uv[2], t.dx[2], t.dy[2]);
   let d = turn2(m0.xy, t.turn[0]) / max(m0.z, 0.05) * w.x
     + turn2(m1.xy, t.turn[1]) / max(m1.z, 0.05) * w.y
     + turn2(m2.xy, t.turn[2]) / max(m2.z, 0.05) * w.z;
-  return normalize(vec3<f32>(d, 1.0));
+  o.normal = normalize(vec3<f32>(d, 1.0));
+  o.tone = cell_tone(m0.w + t.seed.x, s) * w.x + cell_tone(m1.w + t.seed.y, s) * w.y + cell_tone(m2.w + t.seed.z, s) * w.z;
+  return o;
 }
 
 // A plane's tangent-space normal `m` as a world normal about `n`: the

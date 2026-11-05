@@ -1065,6 +1065,7 @@ fn layer_json(l: &TerrainLayer) -> Value {
         "heightContrast": l.height_contrast,
         "macroVariation": l.macro_variation,
         "displacement": l.displacement,
+        "cellVariation": l.cell_variation,
     })
 }
 
@@ -1112,6 +1113,7 @@ pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<Str
             height_contrast: f(&v, "heightContrast", 0.0).clamp(0.0, 1.0),
             macro_variation: f(&v, "macroVariation", 0.0).clamp(0.0, 1.0),
             displacement: f(&v, "displacement", 0.0).clamp(0.0, 4.0),
+            cell_variation: f(&v, "cellVariation", 0.0).clamp(0.0, 1.0),
         };
         Ok(())
     })() {

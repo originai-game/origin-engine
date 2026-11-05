@@ -48,6 +48,7 @@
 //!   heightContrast 0.5            # the height blend's rim at its edges, sharper (0 to 1)
 //!   macroVariation 0.5            # brightness and hue drift, and a coarser repeat far off (0 to 1)
 //!   displacement 0.08             # metres the drawn ground moves by the albedo's alpha near the camera (0 to 4)
+//!   cellVariation 0.6             # each cell (its normal map's alpha) its own tone (0 to 1)
 //! }
 //! ```
 //!
@@ -390,7 +391,7 @@ const KEYS: [&str; 14] = [
     "layers",
     "layerNormals",
 ];
-const LAYER_KEYS: [&str; 18] = [
+const LAYER_KEYS: [&str; 19] = [
     "albedo",
     "normal",
     "albedoLayer",
@@ -409,6 +410,7 @@ const LAYER_KEYS: [&str; 18] = [
     "heightContrast",
     "macroVariation",
     "displacement",
+    "cellVariation",
 ];
 
 pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, String> {
@@ -561,6 +563,7 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
             height_contrast: unit(b, "heightContrast", 1.0)?,
             macro_variation: unit(b, "macroVariation", 1.0)?,
             displacement: unit(b, "displacement", 4.0)?,
+            cell_variation: unit(b, "cellVariation", 1.0)?,
         };
         layers.push((string_of(b, "albedo"), string_of(b, "normal"), layer));
     }
@@ -892,6 +895,7 @@ pub(super) fn cook_terrain(
                 height_contrast: l.height_contrast,
                 macro_variation: l.macro_variation,
                 displacement: l.displacement,
+                cell_variation: l.cell_variation,
             }
         })
         .collect();

@@ -89,6 +89,7 @@ layer {
   heightContrast 0.5
   macroVariation 0.25
   displacement 0.125
+  cellVariation 0.5
 }
 "#;
 
@@ -278,9 +279,10 @@ fn a_terrain_cooks_into_tiles_and_loads_back() {
             r.anti_tiling,
             r.height_contrast,
             r.macro_variation,
-            r.displacement
+            r.displacement,
+            r.cell_variation
         ),
-        (50.0, 0.75, 0.5, 0.25, 0.125)
+        (50.0, 0.75, 0.5, 0.25, 0.125, 0.5)
     );
     assert_eq!(
         (g.project_slope, g.anti_tiling, g.displacement),

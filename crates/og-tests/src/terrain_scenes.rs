@@ -1242,7 +1242,8 @@ pub fn displaced_scene(displacement: f32) -> RenderScene {
         ]
     }));
     // The same relief as the height in alpha, for `displacement` metres of
-    // it, differenced over a texel.
+    // it, differenced over a texel; its alpha the stone's id (the joint's
+    // the stone it runs beside), for the layer's `cell_variation`.
     let normal = scene.add_texture(texture(COBBLE_TEXELS, ColorSpace::Linear, |u, v| {
         let e = 1.0 / COBBLE_TEXELS as f32;
         let per_metre = displacement.max(DISPLACED_RELIEF) / (2.0 * e * COBBLE_TILE);
@@ -1253,7 +1254,7 @@ pub fn displaced_scene(displacement: f32) -> RenderScene {
             ((n.x * 0.5 + 0.5) * 255.0) as u8,
             ((n.y * 0.5 + 0.5) * 255.0) as u8,
             ((n.z * 0.5 + 0.5) * 255.0) as u8,
-            255,
+            (cobble_at(u, v).id * 255.0) as u8,
         ]
     }));
     scene.terrains.push(Terrain {
@@ -1264,6 +1265,7 @@ pub fn displaced_scene(displacement: f32) -> RenderScene {
             roughness: 0.85,
             tile: COBBLE_TILE,
             displacement,
+            cell_variation: 1.0,
             ..Default::default()
         }],
         ..Terrain::new(handle)

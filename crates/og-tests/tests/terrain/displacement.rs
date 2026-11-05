@@ -96,3 +96,59 @@ fn displaced_levels_leave_no_cracks() {
         assert_eq!(holes, 0, "step {step}: background through the ground");
     }
 }
+
+/// Each sett its own stone: the layer's `cellVariation` gives each cell its
+/// normal map names (its alpha) its own brightness and warmth, so across
+/// the near setts' tops (the brighter half of 12-pixel blocks of the lower
+/// third of terrain-displaced) the blocks' warmth ((r - b) over their sum)
+/// and their brightness (relative to its mean) spread far more than the
+/// texture's own tones alone spread them (the scene with `cell_variation`
+/// 0: the code before drew that, every stone the same blue-grey).
+#[test]
+fn each_sett_takes_its_own_tone() {
+    let spread = |cells: f32| {
+        let mut scene = ts::displaced_scene(ts::DISPLACED_RELIEF);
+        scene.terrains[0].layers[0].cell_variation = cells;
+        let (img, _) = render(&scene);
+        let b = 12;
+        let mut blocks: Vec<[f32; 3]> = Vec::new();
+        for by in (img.height * 2 / 3..img.height - b).step_by(b as usize) {
+            for bx in (0..img.width - b).step_by(b as usize) {
+                let mut c = [0.0f32; 3];
+                for y in by..by + b {
+                    for x in bx..bx + b {
+                        let p = px(&img, x, y);
+                        c = [c[0] + p[0], c[1] + p[1], c[2] + p[2]];
+                    }
+                }
+                blocks.push(c.map(|v| v / (b * b) as f32));
+            }
+        }
+        blocks.sort_by(|a, b| luma(*a).total_cmp(&luma(*b)));
+        let tops = &blocks[blocks.len() / 2..];
+        let n = tops.len() as f32;
+        let std = |f: &dyn Fn(&[f32; 3]) -> f32| {
+            let m = tops.iter().map(f).sum::<f32>() / n;
+            (
+                (tops.iter().map(|c| (f(c) - m).powi(2)).sum::<f32>() / n).sqrt(),
+                m,
+            )
+        };
+        let (warm, _) = std(&|c| (c[0] - c[2]) / (c[0] + c[1] + c[2]).max(1.0));
+        let (bright, m) = std(&|c| luma(*c));
+        (warm, bright / m.max(1.0))
+    };
+    let (warm0, bright0) = spread(0.0);
+    let (warm1, bright1) = spread(1.0);
+    println!(
+        "setts: warmth spreads {warm0} without cell variation, {warm1} with; brightness {bright0} and {bright1}"
+    );
+    assert!(
+        warm1 > 1.8 * warm0,
+        "the setts share one warmth ({warm1} against {warm0})"
+    );
+    assert!(
+        bright1 > 1.3 * bright0,
+        "the setts share one brightness ({bright1} against {bright0})"
+    );
+}

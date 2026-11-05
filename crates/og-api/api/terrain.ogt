@@ -583,6 +583,11 @@ module terrain {
       max 4
       unit m
     }
+    field cellVariation f32 "How much each cell of the layer's pattern (a sett, a flag, a tile) takes its own tone: its normal map's alpha names the cell (any value per cell, 0 to 1; opaque for none), and each cell's brightness and warmth move by up to 25 % and 20 % at 1, so a field of stones laid in one texture reads as stones of different quarries. 0: none." {
+      min 0
+      max 1
+      unit ratio
+    }
     field normalStrength f32 "How strongly its normal map bends the surface." {
       default 1
       min 0

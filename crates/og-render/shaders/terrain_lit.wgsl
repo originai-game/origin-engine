@@ -127,8 +127,63 @@ fn sample_layer_albedo(i: u32, p: vec3<f32>, n: vec3<f32>, dpx: vec3<f32>, dpy: 
   return a;
 }
 
-// Its albedo, height and detailed normal.
-fn sample_layer(i: u32, p: vec3<f32>, n: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f32>) -> LayerSample {
+// Where a layer's albedo is read for a fragment `lift` metres above the
+// field (the drawn displacement) on a face whose drawn normal is `face`
+// (`n` the ground's): on the sides the layer's relief raises (a sett's
+// wall), as far in from the arris as the fragment lies below it, so a
+// wall shows its own stone's face unfolded down from its arris, at its
+// own scale. The drawn wall is a ramp over the clipmap's finest spacing,
+// and from above, its foot read the texture further out than its top did
+// by as much as it is lower over its slope (`face.y / lean` a metre per
+// metre of drop): the read moves in by that and a metre more, whatever
+// the ramp's slope, from an arris a fifth of the layer's displacement
+// over the field (a sett's crown: on a lower stone the read starts a
+// little further in, still on that stone). Read from above where it
+// stands, a wall took the one row of texels along its edge stretched
+// down it into streaks; a side projection (biplanar) read whatever the
+// layout had at that place, the joints' mortar in squares across the
+// stones' walls.
+struct UnfoldedAt {
+  p: vec3<f32>,
+  dpx: vec3<f32>,
+  dpy: vec3<f32>,
+  // How much of the albedo is read there (0: from above where it stands,
+  // as before; between, the two reads blended: the read's place blended
+  // instead stood still on some slope between, and streaked there).
+  wall: f32,
+};
+
+fn unfolded_at(l: TerrainLayerGpu, p: vec3<f32>, n: vec3<f32>, face: vec3<f32>, lift: f32, dpx: vec3<f32>, dpy: vec3<f32>) -> UnfoldedAt {
+  var o = UnfoldedAt(p, dpx, dpy, 0.0);
+  if (l.offset.w <= 0.0) { return o; }
+  // The face's lean from the ground, along the ground (out of the stone).
+  let lean = face - n * dot(face, n);
+  let out = vec3<f32>(lean.x, 0.0, lean.z);
+  let len = length(out);
+  // A side from some 20° off the ground's normal, whole from 37°: a
+  // stone's top leans a few degrees, its arris and wall more.
+  let wall = smoothstep(0.35, 0.6, length(lean));
+  if (wall <= 0.0 || len < 1e-4) { return o; }
+  let dir = out / len;
+  let k = max(dot(face, n), 0.0) / len + 1.0;
+  let depth = max(0.2 * l.offset.w - lift, 0.0);
+  // (The depth changes down the wall as the height does: its footprint,
+  // so the read's filter follows the unfolded face.)
+  o.p = p - dir * depth * k;
+  o.dpx = dpx + dir * dpx.y * k;
+  o.dpy = dpy + dir * dpy.y * k;
+  o.wall = wall;
+  return o;
+}
+
+// Its albedo, height and detailed normal at a fragment `lift` metres
+// above the field on a face whose drawn normal is `face` (`n`, the
+// ground's, where the ground is not displaced): the normal map read about
+// the ground's normal where the fragment stands (its relief is the
+// ground's, the walls included), the albedo where `unfolded_at` puts it,
+// tinted by its cell's tone (`cell_tone`, read from above where it
+// stands: a stone's walls take its top's tone).
+fn sample_layer(i: u32, p: vec3<f32>, n: vec3<f32>, face: vec3<f32>, lift: f32, dpx: vec3<f32>, dpy: vec3<f32>) -> LayerSample {
   let l = terrain.layers[i];
   let has_albedo = (u32(l.mapping.w) & 1u) != 0u;
   let has_normal = (u32(l.mapping.w) & 2u) != 0u;
@@ -137,23 +192,41 @@ fn sample_layer(i: u32, p: vec3<f32>, n: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f3
   s.normal = n;
   if (!has_albedo && !has_normal) { return s; }
   let proj = layer_projection(l, n);
+  let at = unfolded_at(l, p, n, face, lift, dpx, dpy);
   let coarse = layer_coarse(l, p);
   var albedo = vec4<f32>(0.0);
   var normal = vec3<f32>(0.0);
+  var tone = vec3<f32>(0.0);
+  var tone_w = 0.0;
   for (var k = 0u; k < proj.count; k++) {
     let plane = proj.planes[k];
     let t = plane_taps(l, plane, p, dpx, dpy);
     var w = hex_weights(t);
     if (has_albedo) {
-      let a = taps_albedo(i, t, coarse);
-      albedo += a.albedo * proj.w[k];
-      w = a.w;
+      var a = vec4<f32>(0.0);
+      if (at.wall < 1.0) {
+        let here = taps_albedo(i, t, coarse);
+        a = here.albedo * (1.0 - at.wall);
+        w = here.w;
+      }
+      if (at.wall > 0.0) {
+        a += taps_albedo(i, plane_taps(l, plane, at.p, at.dpx, at.dpy), coarse).albedo * at.wall;
+      }
+      albedo += a * proj.w[k];
     }
     if (has_normal) {
-      normal += plane_normal(proj.whiteout[k], plane, taps_normal(i, t, w), n, l.mapping.z) * proj.w[k];
+      let m = taps_normal(i, t, w);
+      normal += plane_normal(proj.whiteout[k], plane, m.normal, n, l.mapping.z) * proj.w[k];
+      if (plane == 0u) {
+        tone += m.tone * proj.w[k];
+        tone_w += proj.w[k];
+      }
     }
   }
-  if (has_albedo) { s.albedo = albedo; }
+  if (has_albedo) {
+    s.albedo = albedo;
+    if (tone_w > 0.0) { s.albedo = vec4<f32>(albedo.rgb * tone / tone_w, albedo.a); }
+  }
   if (has_normal) { s.normal = normalize(normal); }
   return s;
 }
@@ -210,8 +283,9 @@ fn blended_roughness(pick: LayerPick, w: vec4<f32>) -> f32 {
 }
 
 // The layers at world point `p` whose geometric normal is `n_geo` (the
-// terrain's, or a stamp's) under control channels `control`.
-fn terrain_look(p: vec3<f32>, n_geo: vec3<f32>, control: array<vec4<f32>, 4>, dpx: vec3<f32>, dpy: vec3<f32>) -> TerrainLook {
+// terrain's, or a stamp's) under control channels `control`, its drawn
+// face's normal `face` and its lift over the field (`sample_layer`).
+fn terrain_look(p: vec3<f32>, n_geo: vec3<f32>, face: vec3<f32>, lift: f32, control: array<vec4<f32>, 4>, dpx: vec3<f32>, dpy: vec3<f32>) -> TerrainLook {
   let count = u32(terrain.origin.w);
   let pick = pick_layers(p, n_geo, control);
   // The picked layers' colours and normals (a layer of weight 0 skips its maps).
@@ -219,7 +293,7 @@ fn terrain_look(p: vec3<f32>, n_geo: vec3<f32>, control: array<vec4<f32>, 4>, dp
   var heights_of = vec4<f32>(1.0);
   for (var k = 0u; k < 4u; k++) {
     if (k < pick.n && (pick.w[k] > 0.0 || k == 0u)) {
-      samples[k] = sample_layer(pick.ids[k], p, n_geo, dpx, dpy);
+      samples[k] = sample_layer(pick.ids[k], p, n_geo, face, lift, dpx, dpy);
       heights_of[k] = samples[k].albedo.a;
     }
   }
@@ -377,7 +451,19 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
     return vec4<f32>(terrain_debug(in, point), 1.0);
   }
   let n_geo = point.normal;
-  let look = terrain_look(p, n_geo, point.control, dpx, dpy);
+  // The drawn triangle's own plane near the eye where the ground is
+  // displaced (`n_shadow` below; its layers' albedo, `sample_layer`).
+  var n_face = n_geo;
+  var lift = 0.0;
+  if (terrain.displace.x > 0.0) {
+    lift = (in.local.y - terrain_height_at(0u, (in.local.xz - terrain_min()) / terrain_cell())) * terrain.displace.y;
+    var facet = normalize(cross(dpx, dpy));
+    facet = select(facet, -facet, dot(facet, n_geo) < 0.0);
+    let reach = terrain.displace.x * length(terrain.model[0].xyz);
+    let near = 1.0 - smoothstep(0.6 * reach, reach, distance(p, frame.view_pos.xyz));
+    n_face = normalize(mix(n_geo, facet, near));
+  }
+  let look = terrain_look(p, n_geo, n_face, lift, point.control, dpx, dpy);
   let albedo = grass_far(look.albedo, p, in.local, n_geo, point.control);
   let roughness = toksvig_roughness(look.roughness, point.variance);
   // A displaced ground's shading takes the relief no normal map draws.
@@ -390,15 +476,7 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   // and an interpolated normal is neither (its faces turned to a low sun
   // shadowed themselves in squares of shadow texels).
   let n_shade = terrain_tilt(point, look.normal, in.relief.zw);
-  var n_shadow = n_geo;
-  if (terrain.displace.x > 0.0) {
-    var facet = normalize(cross(dpx, dpy));
-    facet = select(facet, -facet, dot(facet, n_geo) < 0.0);
-    let reach = terrain.displace.x * length(terrain.model[0].xyz);
-    let near = 1.0 - smoothstep(0.6 * reach, reach, distance(p, frame.view_pos.xyz));
-    n_shadow = normalize(mix(n_geo, facet, near));
-  }
-  return terrain_shade(in.clip.xy, p, in.local, 1.0, albedo, n_shade, roughness, n_geo, n_shadow, look.height);
+  return terrain_shade(in.clip.xy, p, in.local, 1.0, albedo, n_shade, roughness, n_geo, n_face, look.height);
 }
 
 // The terrain's shading of a fragment at world `p` (the ground or one of
@@ -621,7 +699,7 @@ fn fs_stamp(in: StampOut) -> @location(0) vec4<f32> {
   let dpx = dpdxFine(p);
   let dpy = dpdyFine(p);
   let g = stamp_ground(p, normalize(in.normal));
-  let look = terrain_look(p, g.normal, g.control, dpx, dpy);
+  let look = terrain_look(p, g.normal, g.normal, 0.0, g.control, dpx, dpy);
   let albedo = mix(look.albedo, grass_far(look.albedo, p, g.local, g.normal, g.control), g.ground);
   return terrain_shade(in.clip.xy, p, g.reads, g.ground, albedo, look.normal, look.roughness, g.normal, normalize(in.normal), look.height);
 }

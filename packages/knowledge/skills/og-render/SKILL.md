@@ -712,8 +712,10 @@ layer {
 }
 layer {
   albedo "textures/pebbles.png"  # its alpha is the pebbles' height
+  normal "textures/pebbles-n.png"  # its alpha names each pebble (any value per pebble)
   tile 2
   displacement 0.08        # metres the drawn ground rises and falls by that height, near the camera
+  cellVariation 0.8        # each pebble its own brightness and warmth
 }
 layer {
   albedo "textures/snow.png"
@@ -730,7 +732,12 @@ texture square instead of in vertical streaks; `triplanar true` samples
 three projections everywhere instead). `antiTiling` (0 to 1) breaks a
 layer's repeat by hex-tiling, `macroVariation` (0 to 1) keeps a large field
 of one layer from reading as one texture, and `heightContrast` (0 to 1)
-sharpens the `heightBlend` rim at that layer's edges. `displacement`
+sharpens the `heightBlend` rim at that layer's edges. `cellVariation`
+(0 to 1) gives each cell of a laid pattern (setts, flags, tiles, pebbles)
+its own tone: write a value per cell into the normal map's alpha (the
+same value over the whole cell, its joints included), and each cell's
+brightness and warmth move by it, so one texture reads as many stones;
+an opaque normal map changes nothing. `displacement`
 (metres, 0 to 4) moves the drawn ground up and down by the layer's
 height (its albedo's alpha, about its middle) within og.Terrain's
 `displacementDistance` of the camera (40 m by default) where the ground

@@ -28,6 +28,16 @@ is one line here, written at the merge that changes
   colliders. og-render: `ParticleCollision::against`, `CollisionTarget`.
   IDL doc changes only.
 
+- **TerrainLayerDesc.cellVariation.** Each cell of a layer's pattern (a
+  sett, a flag, a tile) takes its own tone: the layer's normal map's alpha
+  names the cell, and each cell's brightness moves by up to 25 % and its
+  warmth by up to 20 % at 1. Opaque normal maps and 0, the default, change
+  nothing. The terrain blob's layer row is v5, so terrains re-cook.
+  Displaced layers' sides (a sett's wall) take their stone's own face,
+  unfolded down from its arris, where they streaked into the one row of
+  texels along the edge. The setts of terrain-displaced and
+  weather-cobbles-wet vary from stone to stone.
+
 - **Destruction: broken joints shed clay and mortar grit.** Every bond
   that breaks in a prop with og.Destructible.debris sheds three or four
   small chips through the GPU debris layer: one centimetre to five and

@@ -33,7 +33,7 @@ struct TerrainLayerGpu {
   // the origin moves.
   hex: array<vec4<f32>, 3>,
   hex_base: array<vec4<i32>, 2>,  // the origin cell's ids: xz.xy, zy.xy | xy.xy, -, -
-  coarse: vec4<f32>,    // xyz: the uv at the frame's origin at a quarter of the frequency, whole repeats dropped
+  coarse: vec4<f32>,    // xyz: the uv at the frame's origin at a quarter of the frequency, whole repeats dropped, w: cell variation
 };
 
 struct TerrainUniform {

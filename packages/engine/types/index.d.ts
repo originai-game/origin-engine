@@ -46468,6 +46468,14 @@ export interface TerrainLayerDesc {
    */
   readonly displacement?: number;
   /**
+   * How much each cell of the layer's pattern (a sett, a flag, a tile) takes its own tone: its normal map's alpha names the cell (any value per cell, 0 to 1; opaque for none), and each cell's brightness and warmth move by up to 25 % and 20 % at 1, so a field of stones laid in one texture reads as stones of different quarries. 0: none.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly cellVariation?: number;
+  /**
    * How strongly its normal map bends the surface.
    *
    * @default 1
