@@ -1,0 +1,26 @@
+{
+  "tier": "webgpu",
+  "buildMs": 1883,
+  "scenes": {
+    "spheres-20k": {
+      "tier": "webgpu",
+      "adapter": "",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 212.8,
+      "metal": {
+        "outliers": 0.093,
+        "rmse": 0.006,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/spheres-20k.png",
+      "outliers": 0.093,
+      "rmse": 0.006,
+      "ok": true,
+      "ms": 963
+    }
+  },
+  "adapter": "",
+  "ms": 1488,
+  "log": []
+}

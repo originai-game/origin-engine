@@ -20,7 +20,7 @@
 // served beside the module and handed to it before any scene opens; that
 // needs the og a build put in packages/engine/native/ (or $OG_BIN).
 //
-//   bun tests/web/reference-gfx.ts [--record] [--scene a,b] [--time <frames>] [--cpu-culling] [--perf-out <dir>] [--out <dir>] [--chrome <path> | --firefox [<path>] | --safari]
+//   bun tests/web/reference-gfx.ts [--record] [--scene a,b] [--time <frames>] [--cpu-culling] [--cull-dump] [--perf-out <dir>] [--out <dir>] [--chrome <path> | --firefox [<path>] | --safari]
 //
 // First, every WGSL module the renderer compiles (og_gfx_shader_sources)
 // goes through the browser's own compiler; one it refuses fails the run.
@@ -38,7 +38,11 @@
 // crowd-2k to crowd-50k, og-render's GPU-driven crowd path) are timed only
 // when --scene names them, as is any scene --scene names (with --time),
 // the shadows-aa cost scenes (COSTS) among them. --cpu-culling culls on the CPU on WebGPU too
-// (og-render's Culling::Cpu); --perf-out writes the
+// (og-render's Culling::Cpu); --cull-dump writes <scene>.cull.json beside
+// each frame: the GPU cull's buffers after it (args and scan whole, the
+// others hashed per 4 KiB; og-tests-web og_gfx_cull_buffer, dev builds
+// only), for comparing one frame's cull between two browsers
+// (tests/evidence/compat/safari/probes/cull-compare.ts); --perf-out writes the
 // timing JSON to <dir>/<tier>[-cpu-culling]/ instead (evidence runs).
 // Writes <out>/<tier>/<scene>.png, <scene>.diff.png on a mismatch and
 // reference-gfx-<tier>.json (default dist/test-gfx/out). Exits 1 when a
@@ -104,6 +108,7 @@ const COSTS = [
   "shadows-soft-off", "aa-off", "taa-motion",
 ];
 const cpuCulling = args.includes("--cpu-culling");
+const cullDump = args.includes("--cull-dump");
 const perfOut = opt("--perf-out");
 
 function run(cmd: string[]): string {
@@ -253,7 +258,7 @@ try {
     const seen = log.length;
     try {
       // Open, draw the scene's frames, read the last one back (base64 RGBA).
-      const shot = await bounded(tab.eval<{ opened: Opened; rgba?: string; renderMs?: number }>(`(async () => {
+      const shot = await bounded(tab.eval<{ opened: Opened; rgba?: string; renderMs?: number; cull?: unknown }>(`(async () => {
         const gfx = globalThis.__gfx;
         const opened = JSON.parse(await gfx.og_gfx_open(${JSON.stringify(scene)}));
         const t = performance.now();
@@ -262,8 +267,32 @@ try {
         const renderMs = performance.now() - t;
         let bin = "";
         for (let i = 0; i < px.length; i += 0x8000) bin += String.fromCharCode.apply(null, px.subarray(i, i + 0x8000));
-        return { opened, rgba: btoa(bin), renderMs };
+        // --cull-dump: the GPU cull's buffers after the frame, args and scan
+        // whole, the rest as an FNV-1a hash per 4 KiB (a dev-only readback).
+        let cull = null;
+        if (${cullDump}) {
+          const layout = JSON.parse(gfx.og_gfx_cull_layout());
+          if (layout) {
+            cull = { ...layout, words: {}, hashes: {} };
+            for (const { name } of layout.buffers) {
+              const b = await gfx.og_gfx_cull_buffer(name);
+              const w = new Uint32Array(b.buffer, b.byteOffset, b.byteLength >> 2);
+              if (name === "args" || name === "scan") cull.words[name] = Array.from(w);
+              else {
+                const h = [];
+                for (let i = 0; i < w.length; i += 1024) {
+                  let x = 0x811c9dc5;
+                  for (let j = i; j < Math.min(i + 1024, w.length); j++) x = Math.imul(x ^ w[j], 16777619) >>> 0;
+                  h.push(x);
+                }
+                cull.hashes[name] = h;
+              }
+            }
+          }
+        }
+        return { opened, rgba: btoa(bin), renderMs, cull };
       })()`), scene);
+      if (cullDump) writeFileSync(join(dir, `${scene}.cull.json`), JSON.stringify(shot.cull) + "\n");
       const o = shot.opened;
       Object.assign(row, { tier: o.tier, adapter: o.adapter, antialias: o.antialias, frames: o.frames });
       result["adapter"] ??= o.adapter;

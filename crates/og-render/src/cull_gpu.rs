@@ -626,10 +626,38 @@ impl GpuCulling {
     }
 
     fn instance_usage() -> wgpu::BufferUsages {
-        wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST
+        wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::VERTEX
+            | wgpu::BufferUsages::COPY_DST
+            | Self::debug_usage()
     }
     fn storage_usage() -> wgpu::BufferUsages {
-        wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST
+        wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | Self::debug_usage()
+    }
+    /// Read back by [`Self::debug_buffers`] in a dev build; a publish build
+    /// never copies them out.
+    fn debug_usage() -> wgpu::BufferUsages {
+        if cfg!(feature = "publish") {
+            wgpu::BufferUsages::empty()
+        } else {
+            wgpu::BufferUsages::COPY_SRC
+        }
+    }
+
+    /// Dev builds only: the cull's buffers by name, for a debug readback
+    /// that compares one frame's culling between backends or browsers
+    /// (og-tests-web's `og_gfx_cull_buffer`).
+    #[cfg(not(feature = "publish"))]
+    pub fn debug_buffers(&self) -> [(&'static str, &wgpu::Buffer); 7] {
+        [
+            ("passes", &self.passes),
+            ("batches", &self.batches),
+            ("scan", &self.scan),
+            ("args", &self.args),
+            ("instances", &self.instances),
+            ("previous", &self.previous),
+            ("skinned", &self.skinned),
+        ]
     }
     fn args_usage() -> wgpu::BufferUsages {
         wgpu::BufferUsages::STORAGE

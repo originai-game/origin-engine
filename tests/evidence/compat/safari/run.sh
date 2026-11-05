@@ -88,6 +88,6 @@ case "$run" in
   *) bun "$@" $flag --out "$out" || status=$? ;;
 esac
 if [ "$run" = ui ]; then cp "$engine"/dist/test-reference/ui/reference-ui-*.json "$keep"/ 2>/dev/null || true
-else find "$out" -maxdepth 2 -name '*.json' -exec cp {} "$keep"/ \;; fi
+else find "$out" -maxdepth 2 -name '*.json' ! -name '*.cull.json' -exec cp {} "$keep"/ \;; fi
 echo "run.sh: safari compat $run ($browser) exited $status in $(( $(date +%s) - started )) s; frames in $out, JSON in $keep" >&2
 exit "$status"

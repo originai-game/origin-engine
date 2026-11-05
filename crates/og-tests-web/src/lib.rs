@@ -281,6 +281,82 @@ mod web {
         Err(err("capture: the copy did not land in 10000 polls"))
     }
 
+    /// The open scene's GPU culling counts and buffer names after its last
+    /// frame, as JSON (`{"instances", "batches", "buffers": [{name, bytes}]}`),
+    /// or `null` when the scene culled on the CPU. A debug readback: the
+    /// runner compares one frame's cull between two browsers.
+    #[wasm_bindgen]
+    pub fn og_gfx_cull_layout() -> Result<String, JsValue> {
+        OPEN.with(|o| {
+            let o = o.borrow();
+            let open = o.as_ref().ok_or_else(|| err("no scene open"))?;
+            Ok(match open.renderer.debug_cull_counts() {
+                None => "null".to_string(),
+                Some((n, b)) => {
+                    let buffers = open.renderer.debug_cull_buffers();
+                    let list: Vec<String> = buffers
+                        .iter()
+                        .map(|(name, buf)| {
+                            format!("{{\"name\":{name:?},\"bytes\":{}}}", buf.size())
+                        })
+                        .collect();
+                    format!(
+                        "{{\"instances\":{n},\"batches\":{b},\"buffers\":[{}]}}",
+                        list.join(",")
+                    )
+                }
+            })
+        })
+    }
+
+    /// The bytes of the open scene's GPU culling buffer `name`
+    /// ([`og_gfx_cull_layout`]) as the last frame left them.
+    #[wasm_bindgen]
+    pub async fn og_gfx_cull_buffer(name: String) -> Result<Vec<u8>, JsValue> {
+        let state = std::rc::Rc::new(Cell::new(None::<bool>));
+        let staging = OPEN.with(|o| {
+            let o = o.borrow();
+            let open = o.as_ref().ok_or_else(|| err("no scene open"))?;
+            let r = &open.renderer;
+            let buffers = r.debug_cull_buffers();
+            let (_, src) = buffers
+                .iter()
+                .find(|(n, _)| *n == name)
+                .ok_or_else(|| err(format!("no cull buffer {name}")))?;
+            let staging = r
+                .device()
+                .create_buffer(&og_render::wgpu::BufferDescriptor {
+                    label: Some("cull readback"),
+                    size: src.size(),
+                    usage: og_render::wgpu::BufferUsages::MAP_READ
+                        | og_render::wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                });
+            let mut encoder = r.device().create_command_encoder(&Default::default());
+            encoder.copy_buffer_to_buffer(src, 0, &staging, 0, src.size());
+            r.queue().submit(Some(encoder.finish()));
+            let done = state.clone();
+            staging
+                .slice(..)
+                .map_async(og_render::wgpu::MapMode::Read, move |res| {
+                    done.set(Some(res.is_ok()))
+                });
+            Ok::<_, JsValue>(staging)
+        })?;
+        for _ in 0..10_000 {
+            match state.get() {
+                Some(true) => {
+                    let bytes = staging.slice(..).get_mapped_range().map_err(err)?.to_vec();
+                    staging.unmap();
+                    return Ok(bytes);
+                }
+                Some(false) => return Err(err("the cull readback did not map")),
+                None => tick().await?,
+            }
+        }
+        Err(err("the cull readback did not land in 10000 polls"))
+    }
+
     /// One macrotask (setTimeout 0), so the browser can finish GPU work.
     async fn tick() -> Result<(), JsValue> {
         let set_timeout: js_sys::Function =

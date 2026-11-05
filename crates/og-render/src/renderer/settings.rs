@@ -31,6 +31,30 @@ impl Renderer {
         &self.queue
     }
 
+    /// Dev builds only: the instances and batches the last frame culled on
+    /// the GPU (None until one did), and GPU culling's buffers by name
+    /// ([`Self::debug_cull_buffers`]): a debug readback that finds the
+    /// first stage of the cull that differs between two backends or
+    /// browsers (og-tests-web's `og_gfx_cull_buffer`).
+    #[cfg(not(feature = "publish"))]
+    pub fn debug_cull_counts(&self) -> Option<(u32, u32)> {
+        self.gpu_cull
+            .as_ref()
+            .filter(|c| c.n > 0)
+            .map(|c| (c.n, c.b))
+    }
+
+    /// Dev builds only: GPU culling's buffers by name (empty before a frame
+    /// culled on the GPU).
+    #[cfg(not(feature = "publish"))]
+    pub fn debug_cull_buffers(&self) -> Vec<(&'static str, &wgpu::Buffer)> {
+        self.gpu_cull
+            .as_ref()
+            .filter(|c| c.n > 0)
+            .map(|c| c.debug_buffers().to_vec())
+            .unwrap_or_default()
+    }
+
     /// The render graph the last frame was recorded from: its passes in
     /// execution order and its transient textures.
     pub fn frame_graph(&self) -> Option<&GraphPlan> {
