@@ -361,6 +361,7 @@ impl Ui {
                             Some(e) if e.focused && !e.placeholder => {
                                 let x = x - e.scroll;
                                 self.edit_marks(
+                                    i,
                                     &EditMarks {
                                         m,
                                         text: &line.text,
@@ -527,6 +528,7 @@ impl Ui {
                         };
                         let ly = top;
                         self.edit_marks(
+                            i,
                             &EditMarks {
                                 m,
                                 text,

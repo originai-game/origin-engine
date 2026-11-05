@@ -593,12 +593,6 @@ pub(crate) struct Edited {
     pub left: bool,
 }
 
-/// The ticks the caret stays shown, then hidden, while blinking: 530 ms,
-/// the platforms' usual half period.
-pub(crate) fn blink_half(ticks_per_second: u32) -> u64 {
-    ((ticks_per_second.max(1) as f32 * 0.53).round() as u64).max(1)
-}
-
 impl Ui {
     /// Edits `value` as the focused text control `key`: pointer, typed and
     /// composed text, editing keys, undo and redo. The caret, selection
@@ -1260,13 +1254,22 @@ impl Ui {
     }
 
     /// Whether the caret shows this tick: always under reduced motion, else
-    /// for [`blink_half`] ticks after the last edit or move, then hidden as
-    /// long, by the tick.
+    /// the dressed half period (530 ms by default), shown after an edit or
+    /// move and then hidden as long, by the tick.
     pub(crate) fn caret_shown(&self) -> bool {
         if self.theme.reduced_motion {
             return true;
         }
-        let half = blink_half(self.ticks_per_second);
+        let part = crate::dress::PartRef::of("TextEdit", "caret", None);
+        let dressing = self.dress.resolve(&part);
+        let ms = match dressing.draw.appearance_value("motion") {
+            Some(crate::doc::Lit::Transition(t)) => t.duration_ms(&self.theme.motion),
+            _ => 530.0,
+        };
+        if ms == 0.0 {
+            return true;
+        }
+        let half = ((self.ticks_per_second.max(1) as f32 * (ms / 1000.0)).round() as u64).max(1);
         (self.state.tick.saturating_sub(self.state.edit_tick) / half).is_multiple_of(2)
     }
 }

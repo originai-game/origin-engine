@@ -377,6 +377,48 @@ fn the_caret_blinks_by_the_tick() {
 }
 
 #[test]
+fn text_edit_marks_and_blink_are_dressed_without_changing_the_value() {
+    let mut rig = Rig::new("abcd");
+    let style = parse_style(&format!(
+        "{}\ndress \"TextEdit.caret\" {{\n fill \"#ff00ff\"\n appearance {{\n width 5\n height 19\n motion tween 100 linear\n }}\n}}\ndress \"TextEdit.selection\" {{\n fill \"#00ffff\"\n appearance {{\n height 13\n }}\n}}\ndress \"TextEdit.composition\" {{\n fill \"#ffff00\"\n appearance {{\n height 4\n }}\n}}\n",
+        include_str!("../../../templates/styles/storybook/style.ogt")
+    ))
+    .expect("dressed edit marks");
+    rig.ui.set_theme(style.theme(None, [0; 6]));
+    rig.ui.set_dressings(style.dressings);
+    rig.focus_field();
+    let marked = |rig: &Rig, color: Srgba, height: f32| {
+        rig.ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|i| i.cmd.filled())
+            .any(|(r, c)| c == color.linear() && (r.height - height).abs() < 0.01)
+    };
+    assert!(marked(&rig, Srgba::rgb(255, 0, 255), 19.0));
+    rig.keys(&[UiKey::Left], true, false);
+    assert_eq!(rig.target().selection, "d");
+    assert!(marked(&rig, Srgba::rgb(0, 255, 255), 13.0));
+    rig.compose("xy");
+    assert!(marked(&rig, Srgba::rgb(255, 255, 0), 4.0));
+    assert_eq!(rig.value, "abc");
+    rig.compose("");
+    rig.keys(&[UiKey::Left], false, false);
+    let mut seen = Vec::new();
+    for _ in 0..20 {
+        rig.step(InputFrame::default());
+        seen.push(marked(&rig, Srgba::rgb(255, 0, 255), 19.0));
+    }
+    let off = seen.iter().position(|shown| !shown).expect("caret hides");
+    let on = seen[off..]
+        .iter()
+        .position(|shown| *shown)
+        .expect("caret returns");
+    assert_eq!(on, 6, "100 ms at 60 Hz, not the legacy 32 ticks");
+    assert_eq!(rig.value, "abc");
+}
+
+#[test]
 fn a_typed_text_stream_takes_over_from_the_keys() {
     let mut rig = Rig::new("");
     rig.focus_field();

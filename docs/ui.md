@@ -855,6 +855,15 @@ sector, not a rectangular fill. These parts are:
   `HudEditor.handle[selected]`. Their geometry, fill, radius, and effects
   are decorations only: drag constraints, scale steps, and the saved
   placement still operate on the customized element's box.
+- `TextEdit.selection`, `TextEdit.composition`, and `TextEdit.caret`
+  dress both single-line fields and text areas. Their geometry and paints
+  do not change character selection, caret placement, or IME composition.
+  The caret's `appearance.motion` duration sets its blink half period,
+  rounded to ticks. It remains a binary blink, independent of the curve.
+  An unset duration keeps 530 ms; `instant` keeps it visible, as reduced
+  motion does. For example, `motion tween 100 linear` blinks for six ticks
+  shown and six hidden at 60 Hz. An edit or caret move restarts the shown
+  phase.
 
 A game shipped with a version 1 style keeps the screens it shipped with:
 an engine update may draw them better (antialiasing, contrast, a cleaner

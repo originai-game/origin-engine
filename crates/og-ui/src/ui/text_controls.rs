@@ -348,13 +348,38 @@ impl Ui {
 }
 
 impl Ui {
-    pub(crate) fn edit_marks(&self, mk: &EditMarks<'_>, cmds: &mut Vec<DrawCmd>) {
+    pub(crate) fn edit_marks(&self, i: usize, mk: &EditMarks<'_>, cmds: &mut Vec<DrawCmd>) {
         let p = &self.theme.palette;
         let dpr = self.viewport.dpr();
         let boxes = crate::edit::boxes(mk.m, mk.text, self.direction, mk.size, mk.tracking);
         let n = mk.text.chars().count();
+        let mark = |name, rect: Rect, color: Srgba, cmds: &mut Vec<DrawCmd>| {
+            let part = crate::dress::PartRef::of("TextEdit", name, None);
+            let dressing = self.dress.resolve(&part);
+            if dressing.matched == 0 {
+                cmds.push(DrawCmd::Quad {
+                    rect: rect.snapped(dpr),
+                    radius: 0.0,
+                    color: color.fade(mk.alpha).linear(),
+                    clip: mk.clip,
+                });
+            } else {
+                self.part_commands_at(
+                    &part,
+                    dressing
+                        .draw
+                        .subpart_rect(rect, self.nodes[i].rect)
+                        .snapped(dpr),
+                    Some(dressing.draw.subpart_color(color, &self.theme)),
+                    0.0,
+                    mk.alpha,
+                    mk.clip,
+                    cmds,
+                );
+            }
+        };
         let span =
-            |range: (usize, usize), cmds: &mut Vec<DrawCmd>, y: f32, h: f32, color: Srgba| {
+            |name, range: (usize, usize), cmds: &mut Vec<DrawCmd>, y: f32, h: f32, color: Srgba| {
                 let (a, b) = (range.0.max(mk.first), range.1.min(mk.first + n));
                 if a >= b {
                     return;
@@ -371,34 +396,24 @@ impl Ui {
                     }
                 }
                 for (x0, x1) in runs {
-                    cmds.push(DrawCmd::Quad {
-                        rect: Rect::new(mk.x + x0, y, x1 - x0, h).snapped(dpr),
-                        radius: 0.0,
-                        color: color.fade(mk.alpha).linear(),
-                        clip: mk.clip,
-                    });
+                    mark(name, Rect::new(mk.x + x0, y, x1 - x0, h), color, cmds);
                 }
             };
         let e = mk.edit;
         let ch = mk.size + self.theme.space.xxs * 2.0;
         let cy = mk.top + (mk.line_h - ch) / 2.0;
         if mk.under {
-            span(e.selection, cmds, cy, ch, p.control_strong);
+            span("selection", e.selection, cmds, cy, ch, p.control_strong);
             return;
         }
         if let Some(c) = e.composition {
             let th = (mk.size * 0.07).max(1.0 / dpr);
-            span(c, cmds, cy + ch - th, th, p.ink);
+            span("composition", c, cmds, cy + ch - th, th, p.ink);
         }
         if e.caret_on && mk.caret_here && e.caret >= mk.first && e.caret <= mk.first + n {
             let cx = mk.x + crate::edit::caret_x_at(&boxes, e.caret - mk.first, e.upstream);
             let caret_w = 1.0f32.max(1.0 / dpr);
-            cmds.push(DrawCmd::Quad {
-                rect: Rect::new(cx, cy, caret_w, ch).snapped(dpr),
-                radius: 0.0,
-                color: p.primary.fade(mk.alpha).linear(),
-                clip: mk.clip,
-            });
+            mark("caret", Rect::new(cx, cy, caret_w, ch), p.primary, cmds);
         }
     }
 
@@ -466,6 +481,7 @@ impl Ui {
             let marks = |under: bool, cmds: &mut Vec<DrawCmd>| {
                 if edit.focused && !text.is_empty() || (edit.focused && !under) {
                     self.edit_marks(
+                        i,
                         &EditMarks {
                             m,
                             text: if text.is_empty() { "" } else { &line },
