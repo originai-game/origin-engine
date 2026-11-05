@@ -24,7 +24,7 @@ module tilemap {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 12400</sub>
+<sub>`api.ogt` line 12408</sub>
 
 ## Contents
 
@@ -82,7 +82,7 @@ fn setTile {
 }
 ```
 
-<sub>`api.ogt` line 12584</sub>
+<sub>`api.ogt` line 12592</sub>
 
 <a id="fn-fill"></a>
 
@@ -112,7 +112,7 @@ fn fill {
 }
 ```
 
-<sub>`api.ogt` line 12602</sub>
+<sub>`api.ogt` line 12610</sub>
 
 <a id="fn-create"></a>
 
@@ -142,7 +142,7 @@ fn create {
 }
 ```
 
-<sub>`api.ogt` line 12609</sub>
+<sub>`api.ogt` line 12617</sub>
 
 <a id="fn-resize"></a>
 
@@ -172,7 +172,7 @@ fn resize {
 }
 ```
 
-<sub>`api.ogt` line 12616</sub>
+<sub>`api.ogt` line 12624</sub>
 
 <a id="fn-neighbours"></a>
 
@@ -206,7 +206,7 @@ fn neighbours {
 }
 ```
 
-<sub>`api.ogt` line 12623</sub>
+<sub>`api.ogt` line 12631</sub>
 
 <a id="fn-getTile"></a>
 
@@ -242,7 +242,7 @@ fn getTile {
 }
 ```
 
-<sub>`api.ogt` line 12632</sub>
+<sub>`api.ogt` line 12640</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -274,7 +274,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 12642</sub>
+<sub>`api.ogt` line 12650</sub>
 
 <a id="fn-cellCenter"></a>
 
@@ -308,7 +308,7 @@ fn cellCenter {
 }
 ```
 
-<sub>`api.ogt` line 12650</sub>
+<sub>`api.ogt` line 12658</sub>
 
 ## Components, resources and events
 
@@ -367,7 +367,7 @@ component Tilemap {
 }
 ```
 
-<sub>`api.ogt` line 12418</sub>
+<sub>`api.ogt` line 12426</sub>
 
 ## Types
 
@@ -383,7 +383,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TilemapAsset "A loaded map: its layers, tilesets and objects."
 ```
 
-<sub>`api.ogt` line 12409</sub>
+<sub>`api.ogt` line 12417</sub>
 
 <a id="type-TileOrientation"></a>
 
@@ -412,7 +412,7 @@ enum TileOrientation {
 }
 ```
 
-<sub>`api.ogt` line 12450</sub>
+<sub>`api.ogt` line 12458</sub>
 
 <a id="type-TileLayerInfo"></a>
 
@@ -451,7 +451,7 @@ struct TileLayerInfo {
 }
 ```
 
-<sub>`api.ogt` line 12459</sub>
+<sub>`api.ogt` line 12467</sub>
 
 <a id="type-TileObject"></a>
 
@@ -486,7 +486,7 @@ struct TileObject {
 }
 ```
 
-<sub>`api.ogt` line 12474</sub>
+<sub>`api.ogt` line 12482</sub>
 
 <a id="type-TilemapInfo"></a>
 
@@ -523,7 +523,7 @@ struct TilemapInfo {
 }
 ```
 
-<sub>`api.ogt` line 12490</sub>
+<sub>`api.ogt` line 12498</sub>
 
 <a id="type-TileLayerDesc"></a>
 
@@ -563,7 +563,7 @@ struct TileLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 12506</sub>
+<sub>`api.ogt` line 12514</sub>
 
 <a id="type-TilemapDesc"></a>
 
@@ -613,7 +613,7 @@ struct TilemapDesc {
 }
 ```
 
-<sub>`api.ogt` line 12522</sub>
+<sub>`api.ogt` line 12530</sub>
 
 <a id="type-ResizeDesc"></a>
 
@@ -649,7 +649,7 @@ struct ResizeDesc {
 }
 ```
 
-<sub>`api.ogt` line 12549</sub>
+<sub>`api.ogt` line 12557</sub>
 
 <a id="type-SetTileDesc"></a>
 
@@ -681,7 +681,7 @@ struct SetTileDesc {
 }
 ```
 
-<sub>`api.ogt` line 12565</sub>
+<sub>`api.ogt` line 12573</sub>
 
 <a id="type-TileCell"></a>
 
@@ -704,7 +704,7 @@ struct TileCell {
 }
 ```
 
-<sub>`api.ogt` line 12577</sub>
+<sub>`api.ogt` line 12585</sub>
 
 <a id="type-FillDesc"></a>
 
@@ -736,7 +736,7 @@ struct FillDesc {
 }
 ```
 
-<sub>`api.ogt` line 12591</sub>
+<sub>`api.ogt` line 12599</sub>
 
 ## Column kinds
 
@@ -755,4 +755,4 @@ column TilemapAsset {
 }
 ```
 
-<sub>`api.ogt` line 12411</sub>
+<sub>`api.ogt` line 12419</sub>

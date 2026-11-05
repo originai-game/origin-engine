@@ -291,6 +291,8 @@ fn puddles() -> RenderScene {
         puddle_size: 3.0,
         ..SurfaceWeather::default()
     });
+    // The still puddles mirror the rocks and the sky.
+    scene.post.ssr = Some(ScreenSpaceReflections::default());
     scene.camera = Camera {
         position: Vec3::new(0.0, 1.7, 3.0),
         target: Vec3::new(0.5, 0.0, -12.0),

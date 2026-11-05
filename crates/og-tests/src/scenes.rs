@@ -1244,11 +1244,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         // Wave B: weather on surfaces (a rain-wet street, puddles drying,
         // snow built up, a dusty desert) and velvet and cotton.
-        "weather-street-wet"
-        | "weather-puddles"
-        | "weather-snow-buildup"
-        | "weather-dust-desert"
-        | "materials-cloth" => |g, name| {
+        // The wet street and the puddles mirror through SSR, whose hits
+        // read the frame before: they draw its 16.
+        "weather-street-wet" | "weather-puddles" => |g, name| {
+            g.scene = crate::weather_scenes::weather_scene(name);
+            g.frames = crate::depth_render_scenes::SSR_FRAMES;
+            Ok(())
+        },
+        "weather-snow-buildup" | "weather-dust-desert" | "materials-cloth" => |g, name| {
             g.scene = crate::weather_scenes::weather_scene(name);
             Ok(())
         },

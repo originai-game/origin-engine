@@ -16,7 +16,7 @@ module path {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 27489</sub>
+<sub>`api.ogt` line 27497</sub>
 
 ## Contents
 
@@ -66,7 +66,7 @@ fn create {
 }
 ```
 
-<sub>`api.ogt` line 27578</sub>
+<sub>`api.ogt` line 27586</sub>
 
 <a id="fn-find"></a>
 
@@ -96,7 +96,7 @@ fn find {
 }
 ```
 
-<sub>`api.ogt` line 27585</sub>
+<sub>`api.ogt` line 27593</sub>
 
 <a id="fn-sample"></a>
 
@@ -128,7 +128,7 @@ fn sample {
 }
 ```
 
-<sub>`api.ogt` line 27592</sub>
+<sub>`api.ogt` line 27600</sub>
 
 <a id="fn-length"></a>
 
@@ -158,7 +158,7 @@ fn length {
 }
 ```
 
-<sub>`api.ogt` line 27600</sub>
+<sub>`api.ogt` line 27608</sub>
 
 <a id="fn-nearest"></a>
 
@@ -190,7 +190,7 @@ fn nearest {
 }
 ```
 
-<sub>`api.ogt` line 27607</sub>
+<sub>`api.ogt` line 27615</sub>
 
 ## Components, resources and events
 
@@ -241,7 +241,7 @@ component PathFollower {
 }
 ```
 
-<sub>`api.ogt` line 27552</sub>
+<sub>`api.ogt` line 27560</sub>
 
 ## Types
 
@@ -257,7 +257,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Path "A path: its points, kind and arc-length table."
 ```
 
-<sub>`api.ogt` line 27494</sub>
+<sub>`api.ogt` line 27502</sub>
 
 <a id="type-PathKind"></a>
 
@@ -282,7 +282,7 @@ enum PathKind {
 }
 ```
 
-<sub>`api.ogt` line 27503</sub>
+<sub>`api.ogt` line 27511</sub>
 
 <a id="type-CurveDesc"></a>
 
@@ -314,7 +314,7 @@ struct CurveDesc {
 }
 ```
 
-<sub>`api.ogt` line 27517</sub>
+<sub>`api.ogt` line 27525</sub>
 
 <a id="type-PathSample"></a>
 
@@ -339,7 +339,7 @@ struct PathSample {
 }
 ```
 
-<sub>`api.ogt` line 27530</sub>
+<sub>`api.ogt` line 27538</sub>
 
 <a id="type-PathNearest"></a>
 
@@ -368,7 +368,7 @@ struct PathNearest {
 }
 ```
 
-<sub>`api.ogt` line 27539</sub>
+<sub>`api.ogt` line 27547</sub>
 
 ## Column kinds
 
@@ -388,7 +388,7 @@ column Path {
 }
 ```
 
-<sub>`api.ogt` line 27496</sub>
+<sub>`api.ogt` line 27504</sub>
 
 ```ogt
 column PathKind {
@@ -399,4 +399,4 @@ column PathKind {
 }
 ```
 
-<sub>`api.ogt` line 27510</sub>
+<sub>`api.ogt` line 27518</sub>
