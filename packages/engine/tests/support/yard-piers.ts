@@ -8,7 +8,7 @@ import { copyFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { og } from "@origingame/engine";
-import type { World } from "@origingame/engine";
+import type { Entity, World } from "@origingame/engine";
 import { createEngine, type GameToken } from "../../src/runtime.ts";
 
 const argv = process.argv.slice(2);
@@ -40,7 +40,7 @@ const rotate = (q: Q, v: V): V => {
 /** Every chunk of `prop` by its index, at its place in the world. */
 function chunks(world: World, prop: number): Map<number, V> {
   const out = new Map<number, V>();
-  const near = must(og.physics.overlap(world, { shape: { shape: 0, size: { x: 30, y: 10, z: 20 } }, position: { x: 1, y: 4, z: 0 } } as never)) as number[];
+  const near: readonly Entity[] = must(og.physics.overlap(world, { shape: { shape: 0, size: { x: 30, y: 10, z: 20 } }, position: { x: 1, y: 4, z: 0 } } as never));
   for (const e of near) {
     const c = world.get(e as never, og.Chunk as never) as { ok: boolean; value?: { destructible: number; chunk: number } };
     if (!c.ok || c.value!.destructible !== prop) continue;
