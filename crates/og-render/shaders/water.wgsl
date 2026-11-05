@@ -1558,6 +1558,7 @@ struct SprayOut {
   // The sprite's corner (-1 to 1) and its opacity.
   @location(1) corner: vec2<f32>,
   @location(2) alpha: f32,
+  @location(3) @interpolate(flat) sheet: u32,
 };
 
 @vertex
@@ -1567,6 +1568,7 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   o.world = vec3<f32>(0.0);
   o.corner = vec2<f32>(0.0);
   o.alpha = 0.0;
+  o.sheet = ii / SPRAY_SLOTS;
   let wind = water.sea_wind.z;
   let gust = smoothstep(10.0, 20.0, wind) * water.spray.x;
   if (gust <= 0.0 || water.ocean.x < 0.5) { return o; }
@@ -1576,12 +1578,13 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   // The slots come in plumes: a crest throws its spray as a stream, not one puff, so the members of a plume share
   // its lives and its point and leave it one after another over the first 60 % of a life, each with its own throw
   // and size (a lone sprite read as a dot hanging over the sea; a stream reads as spindrift off a crest).
-  let plume = select(4u, 8u, pop == 1u);
+  // A spume slot already spans the whole trail: stacking members at its head makes an opaque strip.
+  let plume = select(4u, 1u, pop == 1u);
   let member = slot % plume;
   let seed = spray_hash((slot / plume) * 2u + pop + 0x51ed270bu);
-  // This plume's lives: each `life` seconds long, then a pause, phased by the plume.
+  // Droplet plumes pause between bursts; a sheet streams while its crest keeps breaking.
   let life = mix(0.9, 2.4, spray_rand(seed));
-  let period = life * (1.6 + spray_rand(seed + 1u));
+  let period = life * select(1.6 + spray_rand(seed + 1u), 1.0, pop == 1u);
   let clock = water.spray.y + spray_rand(seed + 2u) * period;
   let n = floor(clock / period);
   // (The last member leaves at 0.6 of a life and lives one: within the period, at least 1.6 lives.)
@@ -1630,8 +1633,8 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
     found = spray_rand(ht + 2u) < keep;
   }
   if (!found) { return o; }
-  // Where the drawn surface carries it.
-  let d = ocean_displace(rest, ts);
+  // Resolve the same fine crest used by the breaking test, not the coarse foam texel.
+  let d = ocean_displace(rest, water.foam_levels[0].w / 256.0);
   let start = vec3<f32>(rest.x, water.model[3].y, rest.y) + d;
   // Torn off with the crest's speed downwind (a breaking crest of the wind sea runs at some 0.4 to 0.7 of the wind)
   // and a small lift: the stronger the wind, the flatter its shear lays the spray (at 12 m/s a droplet rises some
@@ -1667,11 +1670,9 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   // The sea under it (its rest point taken as where it flies: the sea's sideways sway is a metre or two).
   let sea_y = water.model[3].y + ocean_displace(p.xz, ts).y;
   if (pop == 1u) {
-    // The spume is torn foam: a sheet the wind carries along the sea, skimming its surface (its drops settle, the
-    // sheet does not), at least two fifths of its size over the water under it. (Settling at its drops' 1.5 m/s and
-    // faded below the crest it left, it sank behind the next wave within half a second and a gale's spume never
-    // showed: the spray seen at a storm's distance was its near droplets alone.)
-    p.y = max(p.y, sea_y + 0.4 * size);
+    // The tail skims the sea; the ribbon's head stays on the breaking crest below.
+    // Lifting a whole billboard by its radius left grey discs hanging over the sea.
+    p.y = max(start.y + 0.2, sea_y + 0.1);
   } else {
     // A droplet falls back into the sea: faded as it nears the water under it.
     alpha *= smoothstep(sea_y - 0.2, sea_y + 0.3, p.y);
@@ -1707,11 +1708,16 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   if (dot(along_v, along_v) < 1e-6) { along_v = cross(vec3<f32>(0.0, 1.0, 0.0), to_eye) + vec3<f32>(1e-5, 0.0, 0.0); }
   let right = normalize(along_v);
   let upv = cross(to_eye, right);
-  // Longer the faster it flies across the view, the same area: a droplet's streak twice to four times as long as wide
-  // (up to eight, a far streak thinned into a needle a pixel wide and read as rain), a spume sheet three to six times
-  // (a round sheet read as a puff of smoke hanging over the sea, not spindrift).
-  let stretch = sqrt(select(clamp(length(along_v) * 0.16, 2.0, 4.0), clamp(length(along_v) * 0.3, 3.0, 6.0), pop == 1u));
-  let world = p + (right * c.x * stretch + upv * c.y / stretch) * size * 0.5;
+  // Droplets stretch two to four times along their flight, preserving area.
+  let stretch = sqrt(clamp(length(along_v) * 0.16, 2.0, 4.0));
+  var world = p + (right * c.x * stretch + upv * c.y / stretch) * size * 0.5;
+  if (pop == 1u) {
+    let u = 0.5 * (c.x + 1.0);
+    let head = start + vec3<f32>(0.0, 0.05, 0.0);
+    let flight = p - head;
+    let across_sheet = normalize(cross(to_eye, flight) + vec3<f32>(1e-5, 0.0, 0.0));
+    world = mix(head, p, u) + across_sheet * c.y * size * 0.3 * (1.0 - 0.6 * u);
+  }
   o.clip = frame.view_proj * vec4<f32>(world, 1.0);
   o.world = world;
   o.corner = c;
@@ -1722,8 +1728,16 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
 @fragment
 fn fs_spray(in: SprayOut) -> @location(0) vec4<f32> {
   let r2 = dot(in.corner, in.corner);
-  if (r2 >= 1.0) { discard; }
-  let a = in.alpha * exp(-2.0 * r2) * (1.0 - r2);
+  var a: f32;
+  if (in.sheet == 1u) {
+    let u = 0.5 * (in.corner.x + 1.0);
+    let across = in.corner.y * in.corner.y;
+    let strands = 0.4 + 0.6 * foam_noise(vec2<f32>(u * 6.0 - water.spray.y * 2.0, in.corner.y * 10.0));
+    a = in.alpha * exp(-3.0 * across) * (1.0 - across) * smoothstep(0.0, 0.12, u) * pow(1.0 - u, 1.5) * strands;
+  } else {
+    if (r2 >= 1.0) { discard; }
+    a = in.alpha * exp(-2.0 * r2) * (1.0 - r2);
+  }
   // Droplets scatter forward (a Henyey–Greenstein lobe of g 0.75, mixed with an even share for the many bounces in a
   // dense cloud of them), lit by the sun through the shadows and by the sky above.
   let l = normalize(frame.light_dir.xyz);

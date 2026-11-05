@@ -93,3 +93,11 @@ looked safe; nine seconds earlier another stream had taken it, and its
 Always claim with `scripts/lane.sh take lane-N <stream>` (for a branch
 that already exists, take first and then switch inside the claimed lane),
 never with a bare `git switch` in a lane.
+
+## 2026-11-05 — Spray coverage does not prove spindrift
+
+A coverage threshold passed while storm spray still read as floating grey
+discs. Judge the source, direction and tail as well as visibility: a spume
+sheet must start on a crest, extend downwind and thin towards its tail.
+Lifting an advected billboard above the water by its radius breaks that
+attachment. Keep the near droplets separate from crest-attached sheets.
