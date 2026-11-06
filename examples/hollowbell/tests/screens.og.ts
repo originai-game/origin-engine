@@ -1,8 +1,10 @@
 // The title, the mole's talk, his wares and the Chinese settings laid out
 // by the game's own screen documents (U8 moved them off the fixed
 // templates) as the game shipped them: every element's parent, id, kind,
-// role and text as shipped.ts has them, each within a pixel of its place. An engine update
-// may draw a screen better; it never adds, drops or moves what is on it.
+// role and text as shipped.ts has them, in that order, and og ui check
+// finds no undeclared overlap, nothing past the screen and no text cut on
+// each (tests/screens.ts). An engine update may lay a screen out better; it
+// never adds, drops or reorders what is on it, nor breaks those rules.
 import { playtest } from "@origingame/engine/playtest";
 import { press, script, tap } from "./lib.ts";
 import { checkScreens } from "./screens.ts";
@@ -14,19 +16,19 @@ export default playtest({
   size: "1280x720",
   commands: script(
     "0.2:name:Wren",
-    "1.0:dump_ui:title.json",
+    "1.0:dump_ui:title.uicheck.json",
     "1.1:play",
     "3.3:warp:mole",
     press("ArrowUp", 4.0),
-    "4.6:dump_ui:talk.json",
+    "4.6:dump_ui:talk.uicheck.json",
     ...ENTERS.map((t) => press("Enter", t)),
     "6.4:give:glimmers:12",
-    "6.8:dump_ui:shop.json",
+    "6.8:dump_ui:shop.uicheck.json",
     press("Escape", 6.9),
     press("Escape", 7.2),
     "7.8:language:zh-CN",
     tap("settings", 7.9),
-    "8.6:dump_ui:settings-zh.json",
+    "8.6:dump_ui:settings-zh.uicheck.json",
     "8.7:quit",
   ),
   check(run, t) {
