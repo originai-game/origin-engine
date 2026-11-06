@@ -1,0 +1,183 @@
+type tilemap
+version 1
+---
+# The courtyard (tools/make-courtyard.py), seen from above: 34 x 24 cells
+# of 16 px, one world unit each, over the courtyard tileset. The walls
+# layer collides (og.Tilemap.colliderLayers 1): roofs, the brick face, the
+# gate, hedges, flowerbeds, crates and lamp posts. The canal's water is
+# ground the courier can walk into: the `canal` object is where that costs
+# a life, and a dash carries the courier over it.
+size 34 24
+tile 16 16
+unit 1
+tileset "tiles/courtyard.ogt"
+layer ground {
+  z 0
+  legend "." 0
+  legend "," 1
+  legend "s" 2
+  legend "v" 3
+  legend "*" 4
+  legend "R" 7
+  legend "~" 12
+  legend "n" 14
+  legend "u" 15
+  row "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+  row "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+  row "RR..............................RR"
+  row "RR..............................RR"
+  row "RRssssssssssssssssssssssssssssssRR"
+  row "RR...,.......,.........,....,...RR"
+  row "RR..,...........,.........,.....RR"
+  row "RRnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnRR"
+  row "RR~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~RR"
+  row "RRuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuRR"
+  row "RR.......,..............,.......RR"
+  row "RR.vvvv*..........,.......vvvv*.RR"
+  row "RR.v*vvv..................vvv*v.RR"
+  row "RR.vvv*v..,...............v*vvv.RR"
+  row "RR..............................RR"
+  row "RR..............................RR"
+  row "RR.......,..........,...........RR"
+  row "RR..,..................,........RR"
+  row "RR..........vv*vvv*vvv....,.....RR"
+  row "RR...,......v*vvvvvv*v..........RR"
+  row "RR..........vvvv*vvvvv..........RR"
+  row "RR...........,..........,.......RR"
+  row "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+  row "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+}
+layer walls {
+  z 0
+  collision true
+  legend "R" 7
+  legend "e" 8
+  legend "w" 9
+  legend "L" 10
+  legend "D" 11
+  legend "G" 16
+  legend "H" 17
+  legend "g" 18
+  legend "h" 19
+  legend "Y" 5
+  legend "y" 6
+  legend "b" 20
+  legend "c" 21
+  legend "p" 22
+  row "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+  row "RReeeeeeeeeeeeeeeeeeeeeeeeeeeeeeRR"
+  row "RRwLwwDwwLwwwwwwGHwwwwLwwDwwwLwwRR"
+  row "RRwwwwwwwwwwwwwwghwwwwwwwwwwwwwwRR"
+  row "RR..............................RR"
+  row "RR..............................RR"
+  row "RR..............................RR"
+  row "RR........p...........p.........RR"
+  row "RR..............................RR"
+  row "RR..............................RR"
+  row "RR..............................RR"
+  row "RR........p...........p.........RR"
+  row "RR..............................RR"
+  row "RR..............................RR"
+  row "RR...YYYYYYY..........YYYYYYY...RR"
+  row "RR...yyyyyyy..........yyyyyyy...RR"
+  row "RR..............................RR"
+  row "RR..cc....................bbb...RR"
+  row "RR..c...........................RR"
+  row "RR..............................RR"
+  row "RR.........................c....RR"
+  row "RR..............................RR"
+  row "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+  row "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+}
+layer lamps {
+  z 0
+  legend "t" 23
+  row ".................................."
+  row ".................................."
+  row ".................................."
+  row ".................................."
+  row ".................................."
+  row ".................................."
+  row "..........t...........t..........."
+  row ".................................."
+  row ".................................."
+  row ".................................."
+  row "..........t...........t..........."
+  row ".................................."
+  row ".................................."
+  row ".................................."
+  row ".................................."
+  row ".................................."
+  row ".................................."
+  row ".................................."
+  row ".................................."
+  row ".................................."
+  row ".................................."
+  row ".................................."
+  row ".................................."
+  row ".................................."
+}
+object spawn {
+  kind "spawn"
+  at 17.0 21.5
+}
+object coin-0 {
+  kind "coin"
+  at 6.5 12.5
+}
+object coin-1 {
+  kind "coin"
+  at 27.5 12.5
+}
+object coin-2 {
+  kind "coin"
+  at 17.0 14.5
+}
+object coin-3 {
+  kind "coin"
+  at 8.5 18.5
+}
+object coin-4 {
+  kind "coin"
+  at 25.5 18.5
+}
+object coin-5 {
+  kind "coin"
+  at 17.0 11.0
+}
+object coin-6 {
+  kind "coin"
+  at 5.5 5.5
+}
+object coin-7 {
+  kind "coin"
+  at 28.5 5.5
+}
+object canal {
+  kind "hazard"
+  rect 2 8 30 1
+}
+object goal {
+  kind "goal"
+  rect 16 4 2 1
+}
+object keeper {
+  kind "keeper"
+  at 12.5 4.95
+}
+object lamp-0 {
+  kind "lamp"
+  at 10.5 6.4
+}
+object lamp-1 {
+  kind "lamp"
+  at 22.5 6.4
+}
+object lamp-2 {
+  kind "lamp"
+  at 10.5 10.4
+}
+object lamp-3 {
+  kind "lamp"
+  at 22.5 10.4
+}

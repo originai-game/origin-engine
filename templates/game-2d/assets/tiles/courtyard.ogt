@@ -1,0 +1,23 @@
+type tileset
+version 1
+---
+# The courtyard (tools/make-courtyard.py), seen from above: 0-2 paving
+# (plain, mossy, in the north wall's shade), 3-4 grass, 5-6 a hedge's top
+# and front, 7-8 the buildings' teal roofs and an eave, 9-11 brick walls
+# (bare, a lit window, a dark one), 12-13 the canal's water, 14-15 its
+# banks, 16-19 the gate (2 x 2), 20 a flowerbed, 21 a crate, 22-23 a lamp
+# post. What stands collides as whole cells on a layer marked
+# `collision true`; the water does not: the courier walks into it.
+texture "tiles/courtyard.png"
+grid 16 16 4 6
+spacing 2
+filter nearest
+solid 5 6 7 8 9 10 11 16 17 18 19 20 21 22
+tile 12 {
+  frames 12 13
+  durations 0.6 0.6
+}
+tile 10 {
+  frames 10 11 10
+  durations 3.1 0.3 1.4
+}

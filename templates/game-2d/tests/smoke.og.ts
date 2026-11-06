@@ -4,6 +4,7 @@
 // holds time, Escape again resumes, and a fall into the pit costs a life
 // and puts the courier back at the spawn.
 import { playtest } from "@origingame/engine/playtest";
+import * as courtyard from "./courtyard.ts";
 import { creation } from "../src/creation.ts";
 
 const platform: string = creation.platform;
@@ -28,7 +29,7 @@ interface UiDump {
   elements: Array<{ id: string; text: string; width: number; height: number }>;
 }
 
-export default playtest({
+const rooftops = playtest({
   // A phone game's frame is the phone's (portrait or landscape), with its touch controls.
   ...(platform === "phone-portrait" ? { size: "390x844" } : platform === "phone-landscape" ? { size: "844x390" } : {}),
   name: "The courier runs over two coins, jumps up through a one-way ledge onto it, pauses and resumes, and the pit costs a life",
@@ -64,3 +65,7 @@ export default playtest({
     t.ok(Math.abs(fell.heroX - 2.5) < 0.5 && fell.heroY < 2.5, `the courier is back at the spawn (${fell.heroX.toFixed(2)}, ${fell.heroY.toFixed(2)})`);
   },
 });
+
+// The top-down-2d view plays the courtyard (tests/courtyard.ts) in place of the rooftops.
+const view: string = creation.view;
+export default view === "top-down-2d" ? playtest(courtyard.smoke) : rooftops;

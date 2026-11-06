@@ -8,6 +8,8 @@
 // in a tick than the gait's own swing does, setting off and stopping
 // included; the idle clip comes back only once both feet are down.
 import { playtest } from "@origingame/engine/playtest";
+import * as courtyard from "./courtyard.ts";
+import { creation } from "../src/creation.ts";
 
 interface Got<T> {
   value: T;
@@ -45,7 +47,7 @@ const perTick = Array.from({ length: LAST - FIRST + 1 }, (_, i) => {
   return `${at(1)}:dump_entity:keeper:k${k}.json;${at(2)}:dump_entity:keeper-leg-f:f${k}.json;${at(3)}:dump_entity:keeper-leg-b:b${k}.json`;
 }).join(";");
 
-export default playtest({
+const rooftops = playtest({
   name: "The lamp keeper breathes on its ramp with both feet planted, walks up the slope stepping on the plank, and stands planted again",
   commands: [
     "1.0:screenshot:keeper.png;1.01:dump_entity:keeper:keeper.json;1.02:dump_entity:keeper-leg-f:front.json;1.03:dump_entity:keeper-leg-b:back.json",
@@ -180,3 +182,7 @@ export default playtest({
     t.ok(end.steps === 5 && end.inhales === 3, `the walk clip's events counted 5 steps, then a third breath (${end.steps}, ${end.inhales})`);
   },
 });
+
+// The top-down-2d view plays the courtyard (tests/courtyard.ts) in place of the rooftops.
+const view: string = creation.view;
+export default view === "top-down-2d" ? playtest(courtyard.keeper) : rooftops;

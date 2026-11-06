@@ -1,0 +1,55 @@
+type flipbook
+version 1
+---
+# The second seat's courier from above (tools/make-courtyard.py: the runner's P2_SWAP palette): 32 x 40 frames standing
+# on their feet (the pivot: the entity's position is the feet). Each action
+# faces down, up and to the side (the side frames face right; flipX faces
+# left). Clips are numbered in file order, the facing's offset added to the
+# action's first clip: idle 0-2, walk 3-5, dash 6-8 (src/courtyard.ts's CLIP
+# checks them).
+texture "courier-top-p2.png"
+pivot 0.5 0
+grid 32 40 8 4
+spacing 2
+clip idle-down {
+  frames 0 1
+  fps 2
+}
+clip idle-up {
+  frames 2 3
+  fps 2
+}
+clip idle-side {
+  frames 4 5
+  fps 2
+}
+clip walk-down {
+  frames 6 7 8 9
+  fps 8
+  event 0 "step"
+  event 2 "step"
+}
+clip walk-up {
+  frames 10 11 12 13
+  fps 8
+  event 0 "step"
+  event 2 "step"
+}
+clip walk-side {
+  frames 14 15 16 17 18 19 20 21
+  fps 12
+  event 2 "step"
+  event 6 "step"
+}
+clip dash-down {
+  frames 22
+  fps 1
+}
+clip dash-up {
+  frames 23
+  fps 1
+}
+clip dash-side {
+  frames 24
+  fps 1
+}

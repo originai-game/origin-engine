@@ -28,21 +28,21 @@
 // it arrives, turns back and breathes again (the Walk and Plant systems).
 // No foot ever moves faster than the gait's own swing.
 //
+// Made with the top-down-2d view (src/creation.ts), the same game is
+// played from above in a courtyard instead: src/courtyard.ts, over the
+// state, HUD, pause, voices and framing both share (src/run.ts).
+//
 // The frame's look is data: GameDesc.look names a file under assets/looks/
 // that extends a preset of the style catalogue, applied before start runs.
 
 import { og, defineComponent, defineResource, defineSystem, bool, f32, math, u32, SHAPE_BOX } from "@origingame/engine";
-import type { FlipbookInfo, Result, Rig2DInfo, TileObject, World } from "@origingame/engine";
-import { held, LOCAL, ONLINE, PAUSE, pressedNow, press, SEATS, Seats, setBot, setupSeats } from "./seats.ts";
+import type { FlipbookInfo, GameDesc, Rig2DInfo, TileObject, World } from "@origingame/engine";
+import { courtyard } from "./courtyard.ts";
+import { Coin, Frame, Game, Hud, LEVEL, LIVES, must, Sound, TOP_DOWN, VIEW_H, viewport, VIEWPORT_HELP, Voice, Voices } from "./run.ts";
+import { held, pressedNow, SEATS, Seats, setBot, setupSeats } from "./seats.ts";
 
 /** The courier's clips, in the sheet's file order (og-game §8): `start` checks them. */
 const CLIP = { idle: 0, run: 1, jump: 2, fall: 3 } as const;
-/** The camera's height in world units: 14 cells of 16 px, the 16bit-pixel look's 224-pixel frame. */
-const VIEW_H = 14;
-/** World units kept clear above and below the two couriers when the camera frames both. */
-const MARGIN = 2;
-/** And beside them: a sprite's half width and a little, so a portrait screen spends its narrow width on the couriers. */
-const MARGIN_X = 1.4;
 /** The ledges' collider layer (the map's `colliderLayers 2`), one-way for the courier. */
 const LEDGES = 2;
 /** The couriers' collider layer. */
@@ -51,7 +51,6 @@ const COURIERS = 8;
 const BOX = { w: 0.9, h: 1.9 } as const;
 /** Below this the courier fell into the pit. */
 const FALL_Y = -3;
-const LIVES = 3;
 /** sqrt(x² + y²) the same on every JavaScript engine (Math.hypot is not: og check's lockstep lint). */
 const hypot = (x: number, y: number): number => Math.sqrt(x * x + y * y);
 /** The keeper's ramp: a plank from (x0, y0) on the roof rising at `slope` (tan 12°) to x1. */
@@ -92,9 +91,6 @@ export const Hero = defineComponent("Hero", { spawnX: f32(0, { unit: "m" }), spa
 /** What the camera follows: the couriers' middle (one courier: the courier). */
 export const View = defineComponent("View", {});
 
-/** A coin of the map's `coin` objects; taken once. */
-export const Coin = defineComponent("Coin", { taken: bool() });
-
 /**
  * One of the keeper's feet: its IK target stands on the ramp `dx` ahead of
  * the keeper (behind when negative), `lag` of a gait cycle after the front
@@ -105,35 +101,6 @@ export const Plant = defineComponent("Plant", {
   lag: f32(0, { min: 0, max: 1 }),
   x: f32(0, { unit: "m" }),
   y: f32(0, { unit: "m" }),
-});
-
-/** A voice: the sound bit (Sound) it plays when Game.sfx asks for it. */
-export const Voice = defineComponent("Voice", { bit: u32() });
-
-const Sound = { Jump: 1, Coin: 2 } as const;
-
-/** The run: what the HUD shows and the systems share. */
-export const Game = defineResource("Game", {
-  coins: u32(),
-  total: u32(),
-  lives: u32(LIVES),
-  won: bool(),
-  /** The last life was lost: Pickups starts the level again. */
-  restart: bool(),
-  goalX: f32(0, { unit: "m" }),
-  /** Seat 0's courier, and seat 1's when it plays. */
-  heroX: f32(0, { unit: "m" }),
-  heroY: f32(0, { unit: "m" }),
-  hero2X: f32(0, { unit: "m" }),
-  hero2Y: f32(0, { unit: "m" }),
-  /** Sounds asked for this tick (Sound bits), played by Voices. */
-  sfx: u32(),
-  /** The pause menu is open (a seat's PAUSE toggles it): the couriers and time hold. */
-  paused: bool(),
-  /** The keeper's breaths: og.Skeleton2DEvent "inhale" (the idle clip's event at 0). */
-  inhales: u32(),
-  /** The keeper's footfalls: og.Skeleton2DEvent "step" (the walk clip's, one per foot). */
-  steps: u32(),
 });
 
 /** Where the keeper walks (`keeper:<x>`), how far it has walked since it set off (its gait's phase), its turn and stop, and its clips. */
@@ -153,11 +120,6 @@ export const KeeperWalk = defineResource("KeeperWalk", {
   idle: u32(),
   walk: u32(),
 });
-
-function must<T>(r: Result<T>): T {
-  if (!r.ok) throw new Error(r.reason);
-  return r.value;
-}
 
 /**
  * Each seat's og.PlayerInput to its courier's controller, on the press's
@@ -196,9 +158,11 @@ export const Control = defineSystem(
         if (playing && pressedNow(buttons, hero.before[i]!, "jump") && (pc.grounded[i] === 1 || pc.coyote[i]! > 0)) g.sfx |= Sound.Jump;
         hero.before[i] = buttons;
         if (p[i * 3 + 1]! < FALL_Y) {
-          g.lives -= 1;
-          // The last life: Pickups puts every coin back.
-          if (g.lives === 0) g.restart = true;
+          // The last life: Pickups puts every coin back (a second courier falling on that tick costs nothing more).
+          if (!g.restart) {
+            g.lives -= 1;
+            if (g.lives === 0) g.restart = true;
+          }
           p[i * 3] = hero.spawnX[i]!;
           p[i * 3 + 1] = hero.spawnY[i]!;
           pc.velocity[i * 3] = pc.velocity[i * 3 + 1] = 0;
@@ -219,55 +183,6 @@ export const Control = defineSystem(
     if (view !== null && n > 0) must(world.set(view, og.Transform, { position: { x: sx / n, y: sy / n, z: 0 } }));
   },
 );
-
-/**
- * Two couriers: Frame drives og.Camera (presentation only, never the
- * world) so both stay in view with a margin, framed into the play rect:
- * the part of the screen between the HUD's top corners and the touch
- * controls (last frame's layout), so on a portrait phone the level fills
- * the room between the two rather than a strip across the middle. It zooms
- * no closer than one courier's view and eases as they part and close up.
- */
-export const Frame = defineSystem("Frame", { reads: [Game], writes: [og.Camera], after: ["Control"] }, (_q, time, world) => {
-  if (SEATS < 2) return;
-  const g = must(world.resource(Game));
-  const camera = must(world.resource(og.Camera));
-  const vp = og.ui.viewport(world);
-  const w = vp.width > 0 ? vp.width : 16;
-  const h = vp.height > 0 ? vp.height : 9;
-  const rect = playRect(w, h);
-  // World units per UI unit: the couriers' bounds fit in the rect, never closer than VIEW_H across the screen.
-  const x0 = Math.min(g.heroX, g.hero2X) - MARGIN_X, x1 = Math.max(g.heroX, g.hero2X) + MARGIN_X;
-  const y0 = Math.min(g.heroY, g.hero2Y) - MARGIN, y1 = Math.max(g.heroY, g.hero2Y) + BOX.h + MARGIN;
-  const s = Math.max(VIEW_H / h, (x1 - x0) / rect.width, (y1 - y0) / rect.height);
-  // The bounds' middle sits at the rect's middle (screen y runs down, world y up), kept so the rect shows the level, not past its edges.
-  const inside = (c: number, half: number, size: number) => (2 * half >= size ? size / 2 : Math.min(Math.max(c, half), size - half));
-  const mx = inside((x0 + x1) / 2, (rect.width * s) / 2, LEVEL.width);
-  const my = inside((y0 + y1) / 2, (rect.height * s) / 2, LEVEL.height);
-  const cx = mx - (rect.x + rect.width / 2 - w / 2) * s;
-  const cy = my + (rect.y + rect.height / 2 - h / 2) * s;
-  const k = Math.min(1, time.dt * 6);
-  camera.height += (s * h - camera.height) * k;
-  camera.position = { x: camera.position.x + (cx - camera.position.x) * k, y: camera.position.y + (cy - camera.position.y) * k, z: camera.position.z };
-});
-
-/** The level's size in world units (its bottom-left corner at the origin), set by start. */
-const LEVEL = { width: 0, height: 0 };
-
-/** The screen's play rect, in og-ui units: below the HUD's top corners and above the touch controls, as last laid out. */
-function playRect(w: number, h: number): { x: number; y: number; width: number; height: number } {
-  let top = 0, bottom = h;
-  for (const id of ["Status", "Purse"]) {
-    const b = og.ui.bounds(id);
-    if (b !== null && b.y < h / 2) top = Math.max(top, b.y + b.height);
-  }
-  for (const id of ["TouchMove0", "TouchMove1", "TouchActions0"]) {
-    const b = og.ui.bounds(id);
-    if (b !== null && b.y > h / 2) bottom = Math.min(bottom, b.y);
-  }
-  // A sliver (a tiny window, a layout not run yet) frames the whole screen.
-  return bottom - top < h / 3 ? { x: 0, y: 0, width: w, height: h } : { x: 0, y: top, width: w, height: bottom - top };
-}
 
 /** A coin the courier's box touches is taken; reaching the goal clears the level; the last life lost puts every coin back. */
 export const Pickups = defineSystem("Pickups", { writes: [Game, Coin, og.Sprite], reads: [og.Transform], after: ["Control"] }, (q, _time, world) => {
@@ -450,75 +365,6 @@ function toward(x: number, y: number, tx: number, ty: number, reach: number): [n
   return [x + ((tx - x) * reach) / d, y + ((ty - y) * reach) / d];
 }
 
-/** Plays each sound asked for once: a voice still playing is stopped this tick and played again the next. */
-export const Voices = defineSystem("Voices", { reads: [Voice], writes: [Game, og.AudioSource], after: ["Pickups"] }, (q, _time, world) => {
-  const g = must(world.resource(Game));
-  if (g.sfx === 0) return;
-  let left = g.sfx;
-  for (const a of q.archetypes()) {
-    const voice = a.column(Voice);
-    const source = a.column(og.AudioSource);
-    for (let i = 0; i < a.count; i++) {
-      const bit = voice.bit[i]!;
-      if ((g.sfx & bit) === 0) continue;
-      if (source.playing[i]) source.playing[i] = 0;
-      else {
-        source.playing[i] = 1;
-        left &= ~bit;
-      }
-    }
-  }
-  g.sfx = left;
-});
-
-/** A group of the HUD on the style's HUD chip (the city behind can be any colour). */
-function chip(id: string, build: () => void): void {
-  og.ui.row(id, { gap: 6, cross: "center", padding: { left: 12, top: 4, right: 12, bottom: 4 }, frame: "hud", background: { token: "hud" } }, build);
-}
-
-/**
- * The HUD (og.ui's HUD components, docs/ui.md §11): the lives as pips and
- * the level's name top left, the coins, the score and Pause top right (the
- * touch controls are the seats', src/seats.ts). Pause (the button, Escape
- * or a pad's Start) shows the game's pause screen (assets/ui/pause.ogt)
- * while Game.paused holds time, until Resume or Back.
- */
-export const Hud = defineSystem("Hud", { reads: [Game] }, (_q, _time, world) => {
-  const g = must(world.resource(Game));
-  const t = (key: string) => og.i18n.t(world, key);
-  // The keys move the courier, not the focus.
-  og.ui.setNavigation(false);
-  og.ui.anchor("Status", { anchor: "topLeft", direction: "column", gap: 8 }, () => {
-    og.ui.statBar("Lives", { value: g.lives, max: LIVES, kind: "health", style: "pips", width: { kind: "fixed", px: 96 }, name: t("hud.lives") });
-    chip("LevelBox", () => og.ui.label("Level", t(g.won ? "hud.clear" : "hud.level"), { step: "meta", color: { token: "inkMuted" }, nowrap: true }));
-  });
-  og.ui.anchor("Purse", { anchor: "topRight", gap: 8, cross: "center" }, () => {
-    chip("Coins", () => {
-      if (og.ui.hasIcon("coin")) og.ui.icon("Coin", "coin", { size: 20, tint: { token: "gold" } });
-      og.ui.counter("Count", g.coins, { font: "mono" });
-    });
-    chip("Score", () => og.ui.counter("Points", g.coins * 100, { font: "mono" }));
-    // Pause acts through the seat's input (src/seats.ts), so a room pauses on one tick.
-    if (og.ui.actionButton("Pause", t("hud.pause"), { icon: "pause", size: 44 }).clicked) press("pause");
-  });
-  // The pause screen follows Game.paused; its Resume and Back press pause again.
-  if (g.paused && !pauseShown) {
-    must(og.ui.push(world, "pause"));
-    pauseShown = true;
-  } else if (!g.paused && pauseShown) {
-    og.ui.pop(world);
-    pauseShown = false;
-  }
-  if (pauseShown) {
-    for (const e of og.ui.screen("pause").events) {
-      if ((e.kind === "emit" || e.kind === "back") && e.name === "resume") press("pause");
-    }
-  }
-});
-
-/** Whether this device shows the pause screen (UI state, not the world's). */
-let pauseShown = false;
-
 /**
  * The lamp keeper: a plank ramp, the rig on it facing the spawn, a foot
  * target per leg, and its lantern's light; og.Lighting2D lights layers 1
@@ -567,9 +413,8 @@ function at(o: TileObject, height: number): { x: number; y: number } {
   return { x: o.position.x, y: height + o.position.y };
 }
 
-export default og.game({
-  // The art direction as data (assets/looks/origin-game-2d.ogt; og-taste §12).
-  look: "looks/origin-game-2d.ogt",
+/** The rooftops, side-on (side-2d). */
+const rooftops: GameDesc = {
   tick: 60,
   seed: 1,
   resources: [Game, KeeperWalk],
@@ -648,6 +493,7 @@ export default og.game({
     if (font.ok) og.ui.configure(world, { font: font.value });
   },
   commands: {
+    viewport,
     /** `bot:<n>`: this device's seats play a scripted run (0 hands them back to the player). */
     bot: (_world, args) => setBot(Number(args[0])),
     /** `warp:<x>:<y>`: put the courier's feet there. */
@@ -666,6 +512,7 @@ export default og.game({
     },
   },
   commandHelp: {
+    viewport: VIEWPORT_HELP,
     bot: { usage: "<n>", doc: "This device's seats take scripted input by the tick (1, 2, ...); 0 gives them back." },
     warp: { usage: "<x>:<y>", doc: "Put the courier's feet at a world point." },
     keeper: { usage: "<x>", doc: "Send the lamp keeper walking along its ramp to x." },
@@ -675,4 +522,11 @@ export default og.game({
     if (!g.ok) return {};
     return { coins: g.value.coins, total: g.value.total, lives: g.value.lives, won: g.value.won, inhales: g.value.inhales, steps: g.value.steps, x: g.value.heroX, y: g.value.heroY, seats: SEATS, ...(SEATS > 1 ? { x2: g.value.hero2X, y2: g.value.hero2Y } : {}) };
   },
+};
+
+export default og.game({
+  // The art direction as data (assets/looks/origin-game-2d.ogt; og-taste §12).
+  look: "looks/origin-game-2d.ogt",
+  // src/creation.ts's view: the courtyard from above (src/courtyard.ts), or the rooftops side-on.
+  ...(TOP_DOWN ? courtyard : rooftops),
 });

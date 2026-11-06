@@ -107,12 +107,28 @@ export const STARTERS = {
     systems: ["net", "rng", "render", "audio", "camera"],
     controls: { move: "stick", aim: "none", buttons: [{ name: "dash", label: "Dash", keys: k(["Space", "ShiftLeft"], ["Enter", "ShiftRight"]), pad: ["pad.a"] }] },
   },
-  // The 2D profile's template (templates/game-2d, the platform's 2D overlay): the courier's rooftops side-on.
+  // The 2D profile's template (templates/game-2d, the platform's 2D overlay): the courier's rooftops side-on, its courtyard from above.
   platformer: {
-    dir: "game-2d", profile: "2d", views: ["side-2d"], players: BOTH_PLAYERS, seats: 2, kit: null,
+    dir: "game-2d", profile: "2d", views: ["side-2d", "top-down-2d"], players: BOTH_PLAYERS, seats: 2, kit: null,
     systems: ["net", "tilemap", "physics", "camera", "tween", "render", "audio", "i18n", "platform", "ui"],
     controls: { move: "dpad", aim: "none", buttons: [
       { name: "jump", label: "Jump", keys: k(["Space", "KeyW"], ["Enter", "ArrowUp"]), pad: ["pad.a"] },
+    ] },
+    viewControls: {
+      "top-down-2d": { move: "stick", aim: "none", buttons: [
+        { name: "dash", label: "Dash", keys: k(["Space", "ShiftLeft"], ["Enter", "ShiftRight"]), pad: ["pad.a"] },
+      ] },
+    },
+  },
+  // The 3D profile's template (templates/game, the platform's 3D overlay): the trickster walked through the yard from any 3D view.
+  game: {
+    dir: "game", profile: "3d", views: ["third-person-3d", "first-person-3d", "isometric-2.5d"], players: BOTH_PLAYERS, seats: 2, kit: null,
+    systems: ["net", "physics", "nav", "ai", "camera", "timeline", "render", "audio", "i18n", "ui"],
+    controls: { move: "stick", aim: "look", buttons: [
+      { name: "jump", label: "Jump", keys: k(["Space"], ["Enter"]), pad: ["pad.a"] },
+      { name: "run", label: "Run", keys: k(["ShiftLeft"], ["ShiftRight"]), pad: ["pad.leftStick", "pad.rightTrigger"] },
+      // The title's Start and the summary's Play again (their buttons press it): no touch button of its own.
+      { name: "start", label: "Start", keys: k(["KeyS", "Enter"], ["Enter"]), pad: ["pad.a"], surface: true },
     ] },
   },
   runner: {
@@ -245,11 +261,12 @@ export const STARTERS = {
   },
   "open-world": {
     profile: "3d", views: ["third-person-3d", "first-person-3d", "isometric-2.5d"], players: BOTH_PLAYERS, seats: 2, kit: "rpg",
-    systems: ["net", "physics", "terrain", "atmosphere", "camera", "render", "audio", "tween", "platform", "i18n", "ui"],
+    systems: ["net", "physics", "terrain", "atmosphere", "anim", "story", "camera", "render", "audio", "tween", "platform", "i18n", "ui"],
     controls: { move: "stick", aim: "look", buttons: [
       { name: "jump", label: "Jump", keys: k(["Space"], ["Enter"]), pad: ["pad.a"] },
       { name: "run", label: "Run", keys: k(["ShiftLeft"], ["ShiftRight"]), pad: ["pad.leftStick", "pad.rightTrigger"] },
       { name: "gather", label: "Gather", keys: k(["KeyE"], ["Slash"]), pad: ["pad.x"] },
+      { name: "menu", label: "Menu", keys: k([], []), pad: [], surface: true },
     ] },
   },
 } as const satisfies Record<string, Starter>;
