@@ -57,6 +57,19 @@ a known board through commands (og-build §1, §3). `og polish .`
 - **Swapping.** Tap a tile, then a neighbour; or press a tile and drag at
   least 0.45 of a cell towards a neighbour. Tapping the selected tile again
   deselects it; tapping a tile that is not a neighbour selects it instead.
+  With keys or a pad (WASD or the arrows, the stick or d-pad) a direction
+  moves the frame, pick (Space/Enter, pad A) selects, and a direction then
+  swaps the selection that way. Every swap is a function of `og.PlayerInput`
+  (the cursor in `aimX`/`aimY`, the `pick` bit, the move axis), read through
+  `src/seats.ts`, so a replay and a room play it the same.
+- **Versus (two seats: local-multiplayer or online-lockstep).** A board per
+  seat side by side (`board` for seat 0, `board-1` for seat 1), both dealt
+  the same grid and played to seat 0's `Tuning`. Seat 0 plays with the
+  pointer, WASD+Space or pad 1; seat 1 with the arrows+Enter or pad 2 (on a
+  shared phone, its own d-pad and Pick button bottom right). The first board
+  to settle at the target wins; otherwise, once both are out of moves, the
+  higher score wins (equal: a draw). The camera frames both boards; in a
+  room on a narrow screen it frames this peer's own.
 - **Lines.** After a swap, every horizontal or vertical run of three or more
   of one colour is marked. No line: the tiles swap back and no move is
   spent. Lines: one move is spent and the marked tiles fold away over
@@ -89,10 +102,11 @@ unused, except on the gems) and:
 
 | Component | On | What it holds |
 |---|---|---|
-| `Piece` | every row | `kind`, a tile's `col`/`row` (0,0 is the bottom left), `colour` (−1 empty), `marked` |
-| `Match` | every row; **the board's is the authority** | `phase` (title, idle, swap, swapBack, clear, fall, won, lost), `phaseTicks`, `score`, `best`, `movesLeft`, `chain`, `maxChain`, `cleared`, `lastCleared`, `rounds`, `shuffles`, `selected`, `swapA`/`swapB`, the drag (`dragFrom`, `pressX/Y`), the view (`viewHeight`, `viewCentreY`), the pointer mapping Pick works out each tick (`pxPerM`, `screenX0/Y0`), `wait` (the tag of the tween group the phase waits for) and `font` (for the floating scores) |
+| `Piece` | every row | `kind`, `seat` (whose board), a tile's `col`/`row` (0,0 is the bottom left), `colour` (−1 empty), `marked` |
+| `Match` | every row; **the board's is the authority** | `phase` (title, idle, swap, swapBack, clear, fall, won, lost), `phaseTicks`, `score`, `best`, `movesLeft`, `chain`, `maxChain`, `cleared`, `lastCleared`, `rounds`, `shuffles`, `selected`, `swapA`/`swapB`, the drag (`dragFrom`, `pressX/Y`), the seat's cursor (`hover`, `pointing`, `aimX/Y`, `before`, `stepDir`, `stepTicks`), the pointer mapping Pick works out each tick (`pxPerM`, `screenX0/Y0`), `wait` (the tag of the tween group the phase waits for) and `font` (for the floating scores) |
 | `Tuning` | every row; **the board's is the authority** | the tunables below |
-| `Hud` | the board only | the font handle and the view's top |
+| `Hud` | the board rows only | the font handle (the HUD sits under the top of og.Camera's view) |
+| `og.PlayerInput` | every row; the board's `player` is its seat | the seat's input for the tick |
 
 One more entity, `cells`, carries only the `og.Tilemap` of the checker
 (layer −10), placed by its top-left corner at the board's; no system sees
@@ -111,11 +125,13 @@ touches the world, so systems, commands and playtests share them.
 
 | System | Reads | Writes | Job |
 |---|---|---|---|
-| `Flow` | `og.Input`, `Tuning` | `og.Rng`, `Match`, `Piece`, `og.Transform` | the title and end cards; a tap deals a round, the gems popping in on staggered tweens |
-| `Pick` | `og.Input`, `Piece` | `Match` | pointer → cell; tap-tap and drag start a swap; a `swap` command's request |
-| `Resolve` | `Tuning`, `og.TweenCompleted` | `og.Rng`, `Match`, `Piece`, `og.Transform` | starts the swap (or the refused yoyo), clear and fall tween groups and waits for each; marks, scores, collapses and refills; floating scores, flash, punch, shake and hit stop; cascade, win, lose, reshuffle |
+| `Seats` | `og.Input`, `og.Pointers`, `og.Gamepad`, `og.Lockstep`, `og.Camera` | (og.net.submit) | src/seats.ts: each seat's devices to its `og.PlayerInput` |
+| `Flow` | `og.PlayerInput`, `Tuning` | `og.Rng`, `Match`, `Piece`, `og.Transform` | the title and end cards; a tap deals a round, the gems popping in on staggered tweens |
+| `Pick` | `og.PlayerInput`, `Piece`, `og.Camera`, `og.Lockstep` | `Match` | per seat: cursor → cell, tap-tap and drag, or direction steps and pick, start a swap; a `swap` command's request |
+| `Resolve` | `Tuning`, `og.TweenCompleted` | `og.Rng`, `Match`, `Piece`, `og.Transform` | starts the swap (or the refused yoyo), clear and fall tween groups and waits for each; marks, scores, collapses and refills; floating scores, flash, punch, shake and hit stop; cascade, reshuffle; the referee: win, lose, or in versus who won |
 | `Animate` | `Match`, `Piece`, `Tuning` | `og.Sprite`, `og.Flipbook`, `og.Transform` | each gem's clip (idle or burst), visibility and fade-in at the top edge, the selected gem's pulse, the frame's cell; gems hidden on the title and dimmed under the end cards |
-| `Hud` | `Match`, `Hud`, `Tuning` | — | score, moves, target, best; cascade callout; title, win and lose cards |
+| `Hud` | `Match`, `Hud`, `Tuning`, `Piece`, `og.Camera` | — | per board: score, moves, target, best; cascade callout; title, win, lose, draw and waiting cards |
+| `Frame` | `og.Lockstep` | `og.Camera` | versus only: frames both boards (or this peer's own on a narrow screen in a room) |
 
 ## Tunables (`Tuning`, on the board)
 
@@ -153,7 +169,8 @@ Written in `assets/scenes/main.ogt` (the board's `Tuning` block), live with
 | Action | Does |
 |---|---|
 | `deal:<rows>` | lays out the board: 7 lines of 7 colour digits joined by `/`, the top row first; needs an idle board |
-| `swap:<col>,<row>:<col>,<row>` | swaps two neighbouring cells on the next tick, as two taps would |
+| `swap:<col>,<row>:<col>,<row>[:<seat>]` | swaps two neighbouring cells of a seat's board (seat 0's by default) on the next tick, as two taps would |
+| `bot:<n>` | this device's seats take scripted input by the tick (src/seats.ts); 0 gives them back |
 | `viewport:<desktop\|2x>` | reports the play surface as 640×360 CSS px at 2× (a high-DPR screen; the render target stays 1280×720), or the host's again |
 
 `facts` reports `phase`, `score`, `movesLeft`, `cleared`, `maxChain`,
@@ -170,6 +187,7 @@ Written in `assets/scenes/main.ogt` (the board's `Tuning` block), live with
 | `tests/drag.og.ts` | a drag shorter than half a cell does nothing; past it, the swap happens and clears |
 | `tests/endings.og.ts` | target 30: the first line wins; one move and an unreachable target: that move loses; a tap after the card deals the next round with the tuned moves; best kept |
 | `tests/frames.og.ts` | at 1280×720 the dealt board, the swap's line mid-clear (burst, squash, `+30`) and the cascade mid-clear (gold crit `+60`, shake) match `references/<tier>/` (og-tests' tolerance, `tests/frames.ts`); away from the board the frame is the brand ink |
+| `tests/seats.og.ts` | keys (WASD, Space), the pad (stick, A) and a tap each reach `og.PlayerInput` and swap; in a local versus scaffold seat 1's arrows and Enter play its own board while seat 0's stays |
 | `tests/replay.og.ts` | `runs: 2`: a refused swap and a cascading swap, stopped mid-fall, end on the same world hash in two fresh processes |
 
 Each one fails when its behaviour is broken (checked by charging refused

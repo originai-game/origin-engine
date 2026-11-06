@@ -3,7 +3,7 @@
 // second line (a cascade worth double). A swap that makes nothing goes back
 // and costs nothing.
 import { playtest } from "@origingame/engine/playtest";
-import { SIZE } from "../src/layout.ts";
+import { BOARDS, SIZE } from "../src/layout.ts";
 import { CASCADE_BOARD, PHASE, checkMapping, matchOf, tap, tapCell } from "./lib.ts";
 
 export default playtest({
@@ -56,12 +56,12 @@ export default playtest({
     t.ok(settled.score >= 3 * 10 + 3 * 10 * 2, `three tiles at 10, then three at 10 x 2 (score ${settled.score})`);
 
     const world = run.json<{ systems: Array<{ name: string; matched: number | null }> }>("world.json");
-    // The backdrop, the board, the 49 gems and the selection frame; the checker tilemap is no row.
-    const rows = SIZE * SIZE + 3;
+    // The backdrop, and per seat's board the board, the 49 gems and the selection frame; the checker tilemap is no row.
+    const rows = BOARDS * (SIZE * SIZE + 2) + 1;
     for (const s of ["Flow", "Pick", "Resolve", "Animate"]) {
       const sys = world.systems.find((x) => x.name === s);
       t.equal(sys?.matched, rows, `${s} sees every row`);
     }
-    t.equal(world.systems.find((x) => x.name === "Hud")?.matched, 1, "Hud sees the board row only");
+    t.equal(world.systems.find((x) => x.name === "Hud")?.matched, BOARDS, "Hud sees the board rows only");
   },
 });

@@ -1,15 +1,19 @@
 // Every piece of game state lives in these reflected components: dumps, the
 // probe, Tune and the command channel's `set` read and write them by name.
 //
-// Why every row carries Match and Tuning: a system sees exactly one query
+// Why every row carries Match, Tuning and og.PlayerInput: a system sees exactly one query
 // (the AND of the components it declares), and inside a system the engine
 // reaches no other entity (a game resource it declares, yes). So the systems that
 // swap, clear and refill tiles must see the round's state on the same rows
-// as the tiles. Every row is spawned with the same six components
-// (og.Transform, og.Sprite, og.Flipbook, Piece, Match, Tuning) and the row whose
-// Piece.kind is Kind.Board, the entity named "board", is the authority: the
-// other rows' Match and Tuning keep their defaults and nothing reads them.
-// Tune and `set:board.Tuning.<field>=<value>` write that row.
+// as the tiles, and the seat's input (og.PlayerInput, its `player` the row's
+// seat) on the board rows. Every row is spawned with the same seven
+// components (og.Transform, og.Sprite, og.Flipbook, Piece, Match, Tuning,
+// og.PlayerInput) and the row whose Piece.kind is Kind.Board is the authority
+// for its seat's board: the entity named "board" for seat 0, "board-1" for
+// seat 1 in versus. The other rows' Match and Tuning keep their defaults and
+// nothing reads them. Tuning is read from "board" alone, so both boards of a
+// versus game play to the same target and move budget: Tune and
+// `set:board.Tuning.<field>=<value>` write that row.
 
 import { bool, defineComponent, defineResource, f32, f64, i32, u32 } from "@origingame/engine";
 
@@ -25,6 +29,7 @@ export const PHASE_NAMES = ["title", "idle", "swap", "swapBack", "clear", "fall"
 /** One row: a tile (its cell and colour), or the board, a cell, the cursor or the backdrop. */
 export const Piece = defineComponent("Piece", {
   kind: u32(0, { doc: "Kind.* of src/components.ts." }),
+  seat: u32(0, { doc: "The seat whose board the row belongs to: 0 alone, 0 or 1 in versus." }),
   col: i32(0, { min: 0, max: SIZE - 1, doc: "The tile's column, 0 at the left." }),
   row: i32(0, { min: 0, max: SIZE - 1, doc: "The tile's row, 0 at the bottom." }),
   colour: i32(-1, { min: -1, max: 5, doc: "The tile's colour index (art.ts GEMS); -1 is an empty cell." }),
@@ -51,14 +56,19 @@ export const Match = defineComponent("Match", {
   swapA: i32(-1),
   swapB: i32(-1),
   dragFrom: i32(-1, { doc: "The cell a held press started on (drag swaps)." }),
-  pressX: f32(0, { unit: "m" }),
+  pressX: f32(0, { unit: "m", doc: "Where the cursor (og.PlayerInput aimX, aimY) was when the drag's press went down." }),
   pressY: f32(0, { unit: "m" }),
-  viewHeight: f32(12, { unit: "m", doc: "The camera's visible height, set in start." }),
-  viewCentreY: f32(0.5, { unit: "m", doc: "The camera's centre height, set in start." }),
-  pxPerM: f32(60, { doc: "CSS pixels of the play surface per metre, worked out by Pick every tick from og.ui.viewport." }),
+  hover: i32(24, { doc: "The cell keys and pads move over: pick selects it, a direction then swaps the selection that way." }),
+  pointing: bool(true, { doc: "The seat last moved its cursor by pointer (pick acts on the cell under it) rather than by direction steps (pick acts on hover)." }),
+  aimX: f32(0, { unit: "m", doc: "The seat's cursor last tick, to tell a pointer that moved." }),
+  aimY: f32(0, { unit: "m" }),
+  before: u32(0, { doc: "The seat's og.PlayerInput.buttons last tick, for press edges." }),
+  stepDir: u32(0, { doc: "The direction held last tick: 0 none, 1 right, 2 left, 3 up, 4 down." }),
+  stepTicks: u32(0, { unit: "ticks", doc: "How long that direction has been held (it repeats)." }),
+  pxPerM: f32(60, { doc: "CSS pixels of the play surface per metre, worked out by Pick every tick from og.ui.viewport and og.Camera (not while a room runs: its peers' windows differ)." }),
   screenX0: f32(640, { doc: "Surface x of the world origin (Pick)." }),
   screenY0: f32(390, { doc: "Surface y of the world origin (Pick)." }),
-  wait: u32(0, { doc: "The Tag.* of the tween group the phase waits for; 0 once its og.TweenCompleted arrived." }),
+  wait: u32(0, { doc: "The Tag.* (+ 8 × seat) of the tween group the phase waits for; 0 once its og.TweenCompleted arrived." }),
   font: f64(0, { doc: "The Font handle, for the floating scores Resolve spawns." }),
 });
 
@@ -73,11 +83,9 @@ export const Tuning = defineComponent("Tuning", {
   fallSpeed: f32(14, { min: 2, max: 60, step: 1, unit: "cells/s", tunable: true, label: "Fall speed" }),
 });
 
-/** The HUD's font and where the board sits. On the board row only. */
+/** The HUD's font. On the board rows only; the HUD sits under the top of each peer's own view (og.Camera). */
 export const Hud = defineComponent("Hud", {
   font: f64(0, { doc: "The Font handle." }),
-  top: f32(6, { unit: "m", doc: "The top of the view." }),
-  halfWidth: f32(8, { unit: "m" }),
 });
 
 /** Sound requests: bits of Sounds.sfx that the Voices system plays once each. */

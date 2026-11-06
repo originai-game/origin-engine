@@ -1,7 +1,10 @@
 // The two endings, through Tune writes: with the target at 30 the first line
 // wins the round; with one move and a target out of reach, that move loses
-// it. Each end card waits for a press, which deals the next round.
+// it. Each end card waits for a press, which deals the next round. In versus
+// (two seats) seat 1's board is out of moves with a higher score in round
+// two, so seat 0's last move ends the round, lost.
 import { playtest } from "@origingame/engine/playtest";
+import { BOARDS } from "../src/layout.ts";
 import { CASCADE_BOARD, PHASE, matchOf, tap } from "./lib.ts";
 
 export default playtest({
@@ -18,6 +21,7 @@ export default playtest({
     tap(3.2),
     "3.3:dump_entity:board:second.json",
     `3.5:deal:${CASCADE_BOARD}`,
+    ...(BOARDS > 1 ? ["3.6:set:board-1.Match.movesLeft=0", "3.6:set:board-1.Match.score=5000"] : []),
     "3.7:swap:2,0:2,1",
     "5.7:dump_entity:board:lost.json",
     "5.7:screenshot:lost.png",
