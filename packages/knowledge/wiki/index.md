@@ -176,7 +176,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2301 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2303 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1839,6 +1839,8 @@ Field units the docs and Tune use.
 | [`Position`](ui.md#type-Position) | enum | ui | — |
 | [`Post`](render.md#type-Post) | handle | render | — |
 | [`Post()`](render.md#column-Post) | column kind | render | — |
+| [`PosterizeMode`](render.md#type-PosterizeMode) | enum | render | — |
+| [`PosterizeMode()`](render.md#column-PosterizeMode) | column kind | render | — |
 | [`PostError`](render.md#type-PostError) | struct | render | — |
 | [`PowerPreference`](render.md#type-PowerPreference) | enum | render | — |
 | [`Presence`](ui.md#type-Presence) | struct | ui | — |

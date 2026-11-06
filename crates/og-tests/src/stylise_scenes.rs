@@ -87,6 +87,7 @@ pub fn pixel_scene() -> Result<RenderScene, String> {
     });
     scene.stylise.quantize = Some(Quantize {
         posterize: 6,
+        mode: Default::default(),
         palette: None,
         dither: DitherPattern::Bayer4,
         dither_strength: 1.0,
@@ -106,6 +107,7 @@ pub fn palette_scene() -> Result<RenderScene, String> {
     });
     scene.stylise.quantize = Some(Quantize {
         posterize: 0,
+        mode: Default::default(),
         palette: Some(palette),
         dither: DitherPattern::BlueNoise,
         dither_strength: 1.0,

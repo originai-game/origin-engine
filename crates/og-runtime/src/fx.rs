@@ -726,6 +726,10 @@ fn stylise(
         if posterize > 0 || palette.is_some() || dither != og_render::DitherPattern::None {
             out.quantize = Some(og_render::Quantize {
                 posterize,
+                mode: match variant(&s["posterizeMode"], &["channel", "tone"]) {
+                    1 => og_render::PosterizeMode::Tone,
+                    _ => og_render::PosterizeMode::Channel,
+                },
                 palette,
                 dither,
                 dither_strength: f(&s, "ditherStrength", 1.0),

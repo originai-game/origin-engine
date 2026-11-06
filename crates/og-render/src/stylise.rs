@@ -185,6 +185,9 @@ pub enum DitherPattern {
 pub struct Quantize {
     /// Tones per channel (2 to 64); 0 leaves the channels continuous.
     pub posterize: u32,
+    /// How the tones step a colour: each channel apart, or its value and
+    /// tint apart.
+    pub mode: PosterizeMode,
     /// The palette every pixel is moved to the nearest colour of.
     pub palette: Option<PaletteHandle>,
     pub dither: DitherPattern,
@@ -242,6 +245,20 @@ impl StyliseSpace {
             StyliseSpace::Object => 2.0,
         }
     }
+}
+
+/// How [`Quantize::posterize`] steps a colour.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum PosterizeMode {
+    /// Each display channel rounded to its own step: a colour off the grey
+    /// axis can change hue as light moves it across one channel's step
+    /// before the others.
+    #[default]
+    Channel,
+    /// The value (the largest display channel) and the tint (the channels
+    /// over it) stepped apart: light scales the value alone, so a colour
+    /// keeps its hue through exposure, grading and moods.
+    Tone,
 }
 
 /// How the halftone inks the frame.
@@ -917,6 +934,7 @@ mod tests {
         assert_eq!(off.chain_bits(), 0);
         let q = Quantize {
             posterize: 6,
+            mode: PosterizeMode::Channel,
             palette: None,
             dither: DitherPattern::Bayer4,
             dither_strength: 1.0,
@@ -1007,6 +1025,7 @@ mod tests {
     fn a_surface_dither_asks_for_the_prepass() {
         let q = Quantize {
             posterize: 2,
+            mode: PosterizeMode::Channel,
             palette: None,
             dither: DitherPattern::Bayer8,
             dither_strength: 1.0,

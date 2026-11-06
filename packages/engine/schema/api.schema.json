@@ -4398,6 +4398,8 @@
         "OutlinePlace",
         "StyliseSpace",
         "StyliseSpace",
+        "PosterizeMode",
+        "PosterizeMode",
         "HalftoneMode",
         "HalftoneMode",
         "HalftoneRegion",
@@ -28021,6 +28023,20 @@
         "object": "On the surfaces as surface, but in each mesh instance's own space (three planes of the instance blended by its normal, in metres along its axes): a moving, turning or skinned object carries its strokes, dots and grain instead of sliding through them, and keeps them however it is scaled. Terrain, scattered copies and the vertices a material shader moves keep the world pattern, the sky the screen pattern. The frame runs the prepass and an object pass that draws the opaque instances again."
       }
     },
+    "PosterizeMode": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "How Stylise.posterize steps a colour.",
+      "type": "string",
+      "enum": [
+        "channel",
+        "tone"
+      ],
+      "x-og-variants": {
+        "channel": "Each display channel rounded to its own step, the classic posterize: a colour off the grey axis can change hue as light moves it across one channel's step before the others.",
+        "tone": "The colour's value (its largest channel) and its tint (the channels over that value) stepped apart, each to posterize's steps: a change of light, exposure or mood moves a colour's value and never its hue, so a near-grey stays grey and a gradient of one hue stays that hue."
+      }
+    },
     "HalftoneMode": {
       "x-og-kind": "enum",
       "x-og-module": "render",
@@ -28088,6 +28104,11 @@
           "default": 0,
           "minimum": 0,
           "maximum": 64
+        },
+        "posterizeMode": {
+          "$ref": "#/$defs/PosterizeMode",
+          "description": "How posterize steps a colour: each channel apart (channel), or its value and its tint apart so light never changes its hue (tone).",
+          "default": "channel"
         },
         "palette": {
           "$ref": "#/$defs/Palette",

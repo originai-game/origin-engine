@@ -40,6 +40,7 @@ fn desc() -> RenderDesc {
 fn quantize(posterize: u32) -> Quantize {
     Quantize {
         posterize,
+        mode: Default::default(),
         palette: None,
         dither: DitherPattern::Bayer4,
         dither_strength: 1.0,

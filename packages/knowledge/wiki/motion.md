@@ -20,7 +20,7 @@ module motion {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 28350</sub>
+<sub>`api.ogt` line 28364</sub>
 
 ## Contents
 
@@ -84,7 +84,7 @@ fn pose {
 }
 ```
 
-<sub>`api.ogt` line 28563</sub>
+<sub>`api.ogt` line 28577</sub>
 
 <a id="fn-place"></a>
 
@@ -116,7 +116,7 @@ fn place {
 }
 ```
 
-<sub>`api.ogt` line 28571</sub>
+<sub>`api.ogt` line 28585</sub>
 
 <a id="fn-face"></a>
 
@@ -148,7 +148,7 @@ fn face {
 }
 ```
 
-<sub>`api.ogt` line 28579</sub>
+<sub>`api.ogt` line 28593</sub>
 
 <a id="fn-walkTo"></a>
 
@@ -180,7 +180,7 @@ fn walkTo {
 }
 ```
 
-<sub>`api.ogt` line 28587</sub>
+<sub>`api.ogt` line 28601</sub>
 
 <a id="fn-clear"></a>
 
@@ -210,7 +210,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 28595</sub>
+<sub>`api.ogt` line 28609</sub>
 
 <a id="fn-lookAt"></a>
 
@@ -242,7 +242,7 @@ fn lookAt {
 }
 ```
 
-<sub>`api.ogt` line 28602</sub>
+<sub>`api.ogt` line 28616</sub>
 
 <a id="fn-react"></a>
 
@@ -274,7 +274,7 @@ fn react {
 }
 ```
 
-<sub>`api.ogt` line 28610</sub>
+<sub>`api.ogt` line 28624</sub>
 
 <a id="fn-status"></a>
 
@@ -304,7 +304,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 28618</sub>
+<sub>`api.ogt` line 28632</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -332,7 +332,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 28625</sub>
+<sub>`api.ogt` line 28639</sub>
 
 <a id="fn-presentation"></a>
 
@@ -362,7 +362,7 @@ fn presentation {
 }
 ```
 
-<sub>`api.ogt` line 28631</sub>
+<sub>`api.ogt` line 28645</sub>
 
 <a id="fn-poses"></a>
 
@@ -385,7 +385,7 @@ fn poses {
 }
 ```
 
-<sub>`api.ogt` line 28638</sub>
+<sub>`api.ogt` line 28652</sub>
 
 ## Components, resources and events
 
@@ -426,7 +426,7 @@ component MotionAgent {
 }
 ```
 
-<sub>`api.ogt` line 28379</sub>
+<sub>`api.ogt` line 28393</sub>
 
 ## Types
 
@@ -457,7 +457,7 @@ enum MotionGoalKind {
 }
 ```
 
-<sub>`api.ogt` line 28357</sub>
+<sub>`api.ogt` line 28371</sub>
 
 <a id="type-MotionBackend"></a>
 
@@ -480,7 +480,7 @@ enum MotionBackend {
 }
 ```
 
-<sub>`api.ogt` line 28373</sub>
+<sub>`api.ogt` line 28387</sub>
 
 <a id="type-PoseGoalDesc"></a>
 
@@ -508,7 +508,7 @@ struct PoseGoalDesc {
 }
 ```
 
-<sub>`api.ogt` line 28399</sub>
+<sub>`api.ogt` line 28413</sub>
 
 <a id="type-PlaceGoalDesc"></a>
 
@@ -544,7 +544,7 @@ struct PlaceGoalDesc {
 }
 ```
 
-<sub>`api.ogt` line 28410</sub>
+<sub>`api.ogt` line 28424</sub>
 
 <a id="type-FaceGoalDesc"></a>
 
@@ -574,7 +574,7 @@ struct FaceGoalDesc {
 }
 ```
 
-<sub>`api.ogt` line 28427</sub>
+<sub>`api.ogt` line 28441</sub>
 
 <a id="type-WalkGoalDesc"></a>
 
@@ -616,7 +616,7 @@ struct WalkGoalDesc {
 }
 ```
 
-<sub>`api.ogt` line 28440</sub>
+<sub>`api.ogt` line 28454</sub>
 
 <a id="type-LookAtDesc"></a>
 
@@ -672,7 +672,7 @@ struct LookAtDesc {
 }
 ```
 
-<sub>`api.ogt` line 28462</sub>
+<sub>`api.ogt` line 28476</sub>
 
 <a id="type-ReactionDesc"></a>
 
@@ -720,7 +720,7 @@ struct ReactionDesc {
 }
 ```
 
-<sub>`api.ogt` line 28497</sub>
+<sub>`api.ogt` line 28511</sub>
 
 <a id="type-MotionStatus"></a>
 
@@ -761,7 +761,7 @@ struct MotionStatus {
 }
 ```
 
-<sub>`api.ogt` line 28521</sub>
+<sub>`api.ogt` line 28535</sub>
 
 <a id="type-MotionPresentationState"></a>
 
@@ -788,7 +788,7 @@ enum MotionPresentationState {
 }
 ```
 
-<sub>`api.ogt` line 28540</sub>
+<sub>`api.ogt` line 28554</sub>
 
 <a id="type-MotionPresentationStatus"></a>
 
@@ -809,7 +809,7 @@ struct MotionPresentationStatus {
 }
 ```
 
-<sub>`api.ogt` line 28548</sub>
+<sub>`api.ogt` line 28562</sub>
 
 <a id="type-MotionCapabilities"></a>
 
@@ -834,7 +834,7 @@ struct MotionCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 28554</sub>
+<sub>`api.ogt` line 28568</sub>
 
 ## Column kinds
 
@@ -853,4 +853,4 @@ column MotionGoalKind {
 }
 ```
 
-<sub>`api.ogt` line 28366</sub>
+<sub>`api.ogt` line 28380</sub>

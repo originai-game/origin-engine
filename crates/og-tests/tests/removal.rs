@@ -205,6 +205,7 @@ fn environment_maps_texture_arrays_and_palettes_leave_the_frame_and_its_bytes() 
     scene.environment_map = Some(EnvironmentMap::new(env));
     scene.stylise.quantize = Some(Quantize {
         posterize: 0,
+        mode: Default::default(),
         palette: Some(palette),
         dither: DitherPattern::None,
         dither_strength: 0.0,

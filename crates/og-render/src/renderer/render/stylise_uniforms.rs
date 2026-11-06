@@ -194,7 +194,12 @@ impl Renderer {
                         prepass as u32 as f32,
                     ]
                 }),
-                dither_space: [q.map_or(0.0, |q| q.space.code()), 0.0, 0.0, 0.0],
+                dither_space: [
+                    q.map_or(0.0, |q| q.space.code()),
+                    q.map_or(0.0, |q| f32::from(q.mode == stylise::PosterizeMode::Tone)),
+                    0.0,
+                    0.0,
+                ],
                 wash: pt.map_or([0.0; 4], |p| {
                     let w = p.watercolor;
                     [

@@ -13,6 +13,12 @@
 //!   art is told by its colour before the tone curve, so a tone-mapped
 //!   look keeps it too, except in a 1-bit look, whose dither is its only
 //!   shading. Old code posterised the art into a checker.
+//! - Posterize in tone mode keeps a colour's hue as light moves it: a
+//!   grey-green field scaled from 0.5 to 1.25 of its light steps its value
+//!   but every frame shows the same tint, and a grey stays grey. Each
+//!   channel rounded apart (the channel mode) turns the same field grey at
+//!   one light and green at another, as minimal-geometric's ground did
+//!   through its moods.
 //! - Shade-only halftone prints Ben-Day dots that never touch: the ground
 //!   between them is one connected field. Old code reproduced the
 //!   shade's full tone, so its dots merged into ink round a grid of
@@ -34,8 +40,9 @@
 use glam::Vec3;
 use og_render::{
     Antialias, Background, Camera, DirectionalLight, DitherPattern, Exposure, Halftone,
-    HalftoneMode, HalftoneRegion, Hatching, Palette, Projection, Quantize, RenderDesc, RenderScene,
-    RenderTarget, Renderer, StandardMaterial, StyliseSpace, Tonemap, shapes,
+    HalftoneMode, HalftoneRegion, Hatching, Palette, PosterizeMode, Projection, Quantize,
+    RenderDesc, RenderScene, RenderTarget, Renderer, StandardMaterial, StyliseSpace, Tonemap,
+    shapes,
 };
 use og_tests::scenes;
 
@@ -118,6 +125,7 @@ fn quantized(rgb: [u8; 3], scene_palette: &Palette) -> RenderScene {
     let palette = scene.add_palette(scene_palette.clone());
     scene.stylise.quantize = Some(Quantize {
         posterize: 4,
+        mode: Default::default(),
         palette: Some(palette),
         dither: DitherPattern::Bayer2,
         dither_strength: 1.0,
@@ -161,6 +169,7 @@ fn posterized(rgb: [u8; 3]) -> RenderScene {
     let mut scene = field(rgb);
     scene.stylise.quantize = Some(Quantize {
         posterize: 4,
+        mode: Default::default(),
         palette: None,
         dither: DitherPattern::Bayer2,
         dither_strength: 1.0,
@@ -238,6 +247,70 @@ fn conformed_art_keeps_its_colour_while_the_rest_still_quantises() {
         stepped.len() >= 2,
         "a lit tone of the art quantises: {stepped:?}"
     );
+}
+
+#[test]
+fn tone_posterize_keeps_a_colours_hue_as_its_light_moves() {
+    let mut renderer = Renderer::new_blocking(&desc()).expect("renderer");
+    // The field under light k: its linear colour scaled, as exposure or a
+    // dimmer sun scales it, posterized to six tones without a dither.
+    let lit = |rgb: [u8; 3], k: f32, mode: PosterizeMode| {
+        let mut scene = field(rgb);
+        scene.environment.background = Background::Color(Vec3::from(rgb.map(srgb_to_linear)) * k);
+        scene.stylise.quantize = Some(Quantize {
+            posterize: 6,
+            mode,
+            palette: None,
+            dither: DitherPattern::None,
+            dither_strength: 1.0,
+            dither_scale: 1,
+            space: StyliseSpace::Screen,
+        });
+        scene
+    };
+    // The tint of a frame's one colour: its channels over the largest.
+    let tint = |renderer: &mut Renderer, scene: &RenderScene| {
+        let c = colours(&frame(renderer, scene));
+        assert_eq!(c.len(), 1, "a flat field stays one colour: {c:?}");
+        let v = f32::from(*c[0].iter().max().expect("three channels")).max(1.0);
+        (c[0], c[0].map(|x| f32::from(x) / v))
+    };
+    const GREY_GREEN: [u8; 3] = [140, 165, 140];
+    let lights = [0.5, 0.7, 0.85, 1.0, 1.25];
+    let toned: Vec<_> = lights
+        .iter()
+        .map(|&k| tint(&mut renderer, &lit(GREY_GREEN, k, PosterizeMode::Tone)))
+        .collect();
+    println!("tone: {toned:?}");
+    for (c, t) in &toned {
+        assert!(
+            t.iter().zip(toned[0].1).all(|(a, b)| (a - b).abs() < 0.02),
+            "every light shows the first one's tint {:?}: {c:?} is {t:?}",
+            toned[0].1
+        );
+    }
+    assert!(
+        toned.windows(2).any(|w| w[0].0 != w[1].0),
+        "the value still steps with the light: {toned:?}"
+    );
+    // The same field rounded per channel changes hue across the same
+    // lights: the defect the tone mode exists for.
+    let channel: Vec<_> = lights
+        .iter()
+        .map(|&k| tint(&mut renderer, &lit(GREY_GREEN, k, PosterizeMode::Channel)).1)
+        .collect();
+    println!("channel: {channel:?}");
+    assert!(
+        channel
+            .iter()
+            .any(|t| t.iter().zip(channel[0]).any(|(a, b)| (a - b).abs() > 0.1)),
+        "per channel, the field's tint moves with the light: {channel:?}"
+    );
+    // A grey stays grey at every light.
+    for k in lights {
+        let (c, _) = tint(&mut renderer, &lit([128, 128, 128], k, PosterizeMode::Tone));
+        assert!(c[0] == c[1] && c[1] == c[2], "a grey at light {k} is {c:?}");
+    }
 }
 
 /// The 4-connected components of the pixels where `inside` holds, and how
@@ -357,6 +430,7 @@ fn wall(pan: f32, space: StyliseSpace) -> RenderScene {
     };
     scene.stylise.quantize = Some(Quantize {
         posterize: 2,
+        mode: Default::default(),
         palette: None,
         dither: DitherPattern::Bayer4,
         dither_strength: 1.0,

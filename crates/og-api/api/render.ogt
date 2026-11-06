@@ -1439,6 +1439,19 @@ module render {
     value StyliseSpace
   }
 
+  enum PosterizeMode {
+    doc "How Stylise.posterize steps a colour."
+    variant channel "Each display channel rounded to its own step, the classic posterize: a colour off the grey axis can change hue as light moves it across one channel's step before the others."
+    variant tone "The colour's value (its largest channel) and its tint (the channels over that value) stepped apart, each to posterize's steps: a change of light, exposure or mood moves a colour's value and never its hue, so a near-grey stays grey and a gradient of one hue stays that hue."
+  }
+
+  column PosterizeMode {
+    doc "A PosterizeMode field: the variant's index."
+    array Uint32Array
+    stride 1
+    value PosterizeMode
+  }
+
   enum HalftoneMode {
     doc "How Stylise.halftone inks the frame."
     variant ink "One ink (halftoneColor) on paper: dots larger where the image is darker."
@@ -1484,6 +1497,7 @@ module render {
       min 0
       max 64
     }
+    field posterizeMode PosterizeMode "How posterize steps a colour: each channel apart (channel), or its value and its tint apart so light never changes its hue (tone)."
     field palette Palette "Quantise every pixel to the nearest colour of this palette (og.load.palette), measured in a perceptual space after posterize; 0 is none."
     field dither DitherPattern "How the steps of posterize and palette are mixed: none rounds every pixel, an ordered or blue-noise pattern alternates the two nearest steps in proportion."
     field ditherStrength f32 "The dither's amplitude in steps: 1 spreads exactly one step, less keeps flatter bands." {

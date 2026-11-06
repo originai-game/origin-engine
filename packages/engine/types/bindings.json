@@ -231,6 +231,12 @@
       "value": "StyliseSpace"
     },
     {
+      "name": "PosterizeMode",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "PosterizeMode"
+    },
+    {
       "name": "HalftoneMode",
       "array": "Uint32Array",
       "stride": 1,
@@ -9928,6 +9934,11 @@
           "name": "posterize",
           "column": "u32",
           "default": 0
+        },
+        {
+          "name": "posterizeMode",
+          "column": "PosterizeMode",
+          "default": "channel"
         },
         {
           "name": "palette",

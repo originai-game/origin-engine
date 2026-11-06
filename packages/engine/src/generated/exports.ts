@@ -52,6 +52,7 @@ export const DitherPattern = ((value = "none" as Api.DitherPattern, options) => 
 export const MaterialSurface = ((value = "none" as Api.MaterialSurface, options) => spec("MaterialSurface", value, options)) as typeof Api.MaterialSurface;
 export const OutlinePlace = ((value = "inside" as Api.OutlinePlace, options) => spec("OutlinePlace", value, options)) as typeof Api.OutlinePlace;
 export const StyliseSpace = ((value = "screen" as Api.StyliseSpace, options) => spec("StyliseSpace", value, options)) as typeof Api.StyliseSpace;
+export const PosterizeMode = ((value = "channel" as Api.PosterizeMode, options) => spec("PosterizeMode", value, options)) as typeof Api.PosterizeMode;
 export const HalftoneMode = ((value = "ink" as Api.HalftoneMode, options) => spec("HalftoneMode", value, options)) as typeof Api.HalftoneMode;
 export const HalftoneRegion = ((value = "all" as Api.HalftoneRegion, options) => spec("HalftoneRegion", value, options)) as typeof Api.HalftoneRegion;
 export const Light2DKind = ((value = "point" as Api.Light2DKind, options) => spec("Light2DKind", value, options)) as typeof Api.Light2DKind;

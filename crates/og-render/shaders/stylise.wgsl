@@ -50,7 +50,7 @@ struct Stylise {
   canvas_origin: vec4<f32>,   // the canvas uv at the surface origin: x along x, y along y, z along z as u, w along z as v
   lens: vec4<f32>,            // x: lens distortion (above 0 barrel), y: the scale keeping a barrel's farthest corner on the image, zw: the centre (uv)
   paint2: vec4<f32>,          // x: paintDetail (how far detail keeps its shape), y: paintCharacterDetail, z: 1 with the prepass bound for the paint (object ids, detail), w: 1 with the prepass bound at all (the wash's boundaries)
-  dither_space: vec4<f32>,    // x: where the dither's cells lie (0 screen, 1 world, 2 object space, StyliseSpace::code)
+  dither_space: vec4<f32>,    // x: where the dither's cells lie (0 screen, 1 world, 2 object space, StyliseSpace::code), y: posterize mode (0 each channel, 1 value and tint apart)
   wash: vec4<f32>,            // the watercolour wash: x edge darkening, y granulation, z turbulence, w dry brush
   wash_paper: vec4<f32>,      // xyz: the wash's paper colour (linear), w: wobble (logical pixels)
   print: vec4<f32>,           // x: halftone mode (0 one ink, 1 cmyk), y: misregistration (logical pixels), z: halftone region (0 every tone, 1 shade, 2 highlight), w: 1 hatching keeps the colour under its strokes
@@ -1435,7 +1435,25 @@ fn quantize(in: VsOut) -> vec3<f32> {
     // Steps in display space, the dither spread across one step.
     let n = st.quantize.x - 1.0;
     let e = srgb_encode(clamp(c, vec3<f32>(0.0), vec3<f32>(1.0)));
-    c = srgb_decode(clamp(floor(e * n + 0.5 + d) / n, vec3<f32>(0.0), vec3<f32>(1.0)));
+    if (st.dither_space.y > 0.5) {
+      // Tone (Stylise.posterizeMode): the value (the largest channel) and
+      // the tint (the linear channels over it) stepped apart, each on a
+      // display-space grid, the dither on the value alone. Light scales
+      // the linear channels together, so it moves the value and leaves the
+      // tint exactly where it was, and with it the hue; a grey's tint is
+      // white and stays white. The tint's grid is twice as fine as the
+      // value's: on the value's own, every pastel near white (a pale sky)
+      // rounded to grey.
+      let lin = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
+      let m = max(max(lin.r, lin.g), lin.b);
+      let tint = srgb_encode(select(vec3<f32>(1.0), lin / m, m > 1e-6));
+      let v = max(max(e.r, e.g), e.b);
+      let vq = clamp(floor(v * n + 0.5 + d) / n, 0.0, 1.0);
+      let tn = 2.0 * n;
+      c = srgb_decode(vec3<f32>(vq)) * srgb_decode(floor(tint * tn + 0.5) / tn);
+    } else {
+      c = srgb_decode(clamp(floor(e * n + 0.5 + d) / n, vec3<f32>(0.0), vec3<f32>(1.0)));
+    }
   }
   if (count > 0) {
     // The nearest palette colour of the dithered colour (the dither moves
