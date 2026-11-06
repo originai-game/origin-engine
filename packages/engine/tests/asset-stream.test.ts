@@ -441,6 +441,8 @@ test("og build --publish ships each group as its pack beside the first group, an
   const settings = { ...settingsOf(root), publish: { ...DEFAULT_PUBLISH, gate: "none" as const } };
   const b = await webBuild(root, join(root, "main.ts"), dist, true, settings);
   if (!b.ok) throw new Error(b.reason);
+  expect(existsSync(join(root, "cooked", ".assets.ogt"))).toBeTrue();
+  expect(existsSync(join(dist, "cooked", ".assets.ogt"))).toBeFalse();
   const sha = (f: string) => {
     const h = new Bun.CryptoHasher("sha256");
     h.update(new Uint8Array(readFileSync(join(dist, f))));

@@ -11,6 +11,7 @@
 //! sources are deleted. The same inputs give byte-identical `cooked/`.
 
 pub mod anim;
+pub mod assets;
 pub mod audio;
 mod autorig;
 pub mod bc6h;
@@ -52,6 +53,7 @@ pub mod texture_array;
 mod texture_cache;
 pub mod tilemap;
 mod timeline;
+pub mod ts_refs;
 pub mod ui_screens;
 pub mod vector;
 pub mod video;
@@ -842,6 +844,7 @@ pub fn cook_project_with_texture_cache(
     // model multiplied the cooked bytes, the load's transcoding and the
     // GPU's memory (og-runtime's add_gltf shares them by these ids).
     let mut planned_textures = std::collections::HashSet::new();
+    let mut parsed_refs: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     for (si, s) in sources.iter().enumerate() {
         if s.error.is_some() {
             continue;
@@ -929,6 +932,10 @@ pub fn cook_project_with_texture_cache(
                     } else {
                         format!("{}#tex{i}", s.rel)
                     };
+                    parsed_refs
+                        .entry(s.rel.clone())
+                        .or_default()
+                        .insert(id.clone());
                     if shared && !planned_textures.insert(id.clone()) {
                         ids.push(id);
                         continue;
@@ -1226,6 +1233,12 @@ pub fn cook_project_with_texture_cache(
                 let text = String::from_utf8_lossy(&s.bytes);
                 let refs: Vec<String> = crate::fx::emitter_references(&text)
                     .into_iter()
+                    .inspect(|r| {
+                        parsed_refs
+                            .entry(s.rel.clone())
+                            .or_default()
+                            .insert(r.clone());
+                    })
                     .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
                     .collect();
                 let st = stamp(&[b"emitter", &hash, refs.join("\n").as_bytes()]);
@@ -1276,6 +1289,12 @@ pub fn cook_project_with_texture_cache(
                     })
                     .unwrap_or_default()
                     .into_iter()
+                    .inspect(|r| {
+                        parsed_refs
+                            .entry(s.rel.clone())
+                            .or_default()
+                            .insert(r.clone());
+                    })
                     .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
                     .collect();
                 let atlas = og_ui::parse_style(&text)
@@ -1320,16 +1339,15 @@ pub fn cook_project_with_texture_cache(
                 outs.push((s.rel.clone(), format::Document::NAME, st, Work::Document(s)));
             }
             Kind::Tileset => {
-                let st = stamp(&[
-                    b"tileset",
-                    &hash,
-                    tilemap::references_of_tileset(&s.bytes, &|id| known.contains(id)).as_bytes(),
-                ]);
+                let deps = tilemap::references_of_tileset(&s.bytes, &|id| known.contains(id));
+                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
+                let st = stamp(&[b"tileset", &hash, deps.as_bytes()]);
                 outs.push((s.rel.clone(), format::Tileset::NAME, st, Work::Tileset(s)));
             }
             Kind::Tilemap => match tilemap::MapSettings::parse(settings_block(s, "tilemap")) {
                 Ok(m) => {
                     let refs = tilemap::references(&s.rel, &s.bytes, &m, &|id| known.contains(id));
+                    assets::record_dependencies(&mut parsed_refs, &s.rel, &refs.join("\n"));
                     let st = stamp(&[
                         b"tilemap",
                         &hash,
@@ -1347,6 +1365,7 @@ pub fn cook_project_with_texture_cache(
             },
             Kind::Rig2d => {
                 let deps = rig2d::dependency_hashes(s);
+                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
                 let st = stamp(&[b"rig2d", &hash, deps.as_bytes()]);
                 outs.push((s.rel.clone(), format::Rig2D::NAME, st, Work::Rig2d(s)));
                 // Rigged from layered art: its parts packed into a texture beside it.
@@ -1364,6 +1383,7 @@ pub fn cook_project_with_texture_cache(
             }
             Kind::Flipbook => {
                 let deps = flipbook::dependency_hashes(s);
+                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
                 let motion = options
                     .mesh
                     .conform
@@ -1448,18 +1468,21 @@ pub fn cook_project_with_texture_cache(
             }
             Kind::Terrain => {
                 let deps = terrain::terrain_dependencies(s, &|id| known.contains(id));
+                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
                 let st = stamp(&[b"terrain 2", &hash, deps.as_bytes()]);
                 outs.push((s.rel.clone(), format::Terrain::NAME, st, Work::Terrain(s)));
             }
             Kind::Lightmap => {
                 // The stamp covers its pages file.
                 let deps = lightmap::dependencies(s);
+                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
                 let st = stamp(&[b"lightmap 1", &hash, deps.as_bytes()]);
                 outs.push((s.rel.clone(), format::Lightmap::NAME, st, Work::Lightmap(s)));
             }
             Kind::Timeline => {
                 // The stamp covers every caption file it imports.
                 let deps = timeline::dependencies(s);
+                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
                 let st = stamp(&[b"timeline 1", &hash, deps.as_bytes()]);
                 outs.push((s.rel.clone(), format::Timeline::NAME, st, Work::Timeline(s)));
             }
@@ -1469,6 +1492,7 @@ pub fn cook_project_with_texture_cache(
                 match texture_array::parse(&s.rel, &text, &|p| root.join(p).is_file()) {
                     Ok(decl) => {
                         let deps = texture_array::dependencies(&root, &decl);
+                        assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
                         let base = [
                             b"texture-array 1".as_slice(),
                             tex_desc.as_bytes(),
@@ -1585,6 +1609,7 @@ pub fn cook_project_with_texture_cache(
             }
             Kind::Environment => {
                 let deps = environment::environment_dependencies(s);
+                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
                 let st = stamp(&[b"environment 1", &hash, deps.as_bytes()]);
                 outs.push((
                     s.rel.clone(),
@@ -1595,6 +1620,7 @@ pub fn cook_project_with_texture_cache(
             }
             Kind::Look => {
                 let deps = look::look_dependencies(s, &assets_dir, &|id| known.contains(id));
+                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
                 let st = stamp(&[b"look 1", &hash, deps.as_bytes()]);
                 outs.push((s.rel.clone(), format::Look::NAME, st, Work::Look(s)));
             }
@@ -1604,6 +1630,7 @@ pub fn cook_project_with_texture_cache(
             }
             Kind::NavMesh => {
                 let deps = e6::navmesh_dependencies(s);
+                assets::record_dependencies(&mut parsed_refs, &s.rel, &deps);
                 // Re-bake cached terrain surfaces with adaptive diagonals.
                 let st = stamp(&[b"navmesh 2", &hash, deps.as_bytes()]);
                 outs.push((s.rel.clone(), format::NavMesh::NAME, st, Work::NavMesh(s)));
@@ -1640,6 +1667,10 @@ pub fn cook_project_with_texture_cache(
                         t.map_or(0, |t| hash_bytes(t.as_bytes()))
                     ));
                 }
+                parsed_refs
+                    .entry(s.rel.clone())
+                    .or_default()
+                    .extend(refs.iter().chain(reached.iter()).cloned());
                 let refs: Vec<String> = refs
                     .into_iter()
                     .map(|r| format!("{r}={}", known.contains(&r)))
@@ -1992,6 +2023,7 @@ pub fn cook_project_with_texture_cache(
         std::fs::write(&manifest_path, &text)
             .map_err(|e| CookError(format!("{}: {e}", manifest_path.display())))?;
     }
+    assets::build(root, &manifest, &sources, &parsed_refs)?.write(&cooked_dir)?;
     // Each asset's cook time: this run's (its outputs' summed) when it
     // cooked, else the one recorded; written only when one changed.
     let old_times = CookTimes::read(&cooked_dir);

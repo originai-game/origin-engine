@@ -1,6 +1,82 @@
 use super::*;
 
 #[test]
+fn asset_queries_filter_references_and_apply_the_callers_duplicate_threshold() {
+    use og_cook::cook::assets::{Asset, Index};
+    let dir = scratch_root();
+    std::fs::create_dir_all(dir.join("cooked")).unwrap();
+    let mut index = Index::default();
+    for (id, file, fingerprint) in [
+        ("a.png", "a.ogb", 0),
+        ("b.png", "a.ogb", 0),
+        ("c.png", "c.ogb", 3),
+    ] {
+        index.assets.push(Asset {
+            id: id.into(),
+            source: id.into(),
+            kind: "texture".into(),
+            file: file.into(),
+            group: Some("later".into()),
+            bytes: 100,
+            hash: file.into(),
+            perceptual: Some(fingerprint),
+            refs: if id == "a.png" {
+                ["b.png".into()].into()
+            } else {
+                Default::default()
+            },
+        });
+    }
+    index.roots.insert("a.png".into());
+    index
+        .users
+        .insert("src/main.ts".into(), ["a.png".into()].into());
+    index.write(&dir.join("cooked")).unwrap();
+    let run = |args: &[&str]| {
+        let out = og()
+            .arg("assets")
+            .args(args)
+            .arg("--json")
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "{}", text(&out));
+        serde_json::from_slice::<serde_json::Value>(&out.stdout).unwrap()
+    };
+    let exact = run(&["--dupes"]);
+    assert_eq!(exact["duplicates"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        run(&["--dupes", "--near", "1"])["duplicates"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    assert_eq!(
+        run(&["--dupes", "--near", "2"])["duplicates"]
+            .as_array()
+            .unwrap()
+            .len(),
+        3
+    );
+    let unused = run(&["--unused", "--kind", "texture", "--group", "later"]);
+    assert_eq!(unused["assets"].as_array().unwrap().len(), 1);
+    assert_eq!(unused["assets"][0]["id"], "c.png");
+    let refs = run(&["--refs", "--by", "A.PNG"]);
+    assert_eq!(refs["assets"][0]["refs"], serde_json::json!(["b.png"]));
+    assert_eq!(refs["assets"][0]["by"], serde_json::json!(["src/main.ts"]));
+    assert_eq!(
+        og().args(["assets", "--near", "2"])
+            .current_dir(&dir)
+            .status()
+            .unwrap()
+            .code(),
+        Some(2)
+    );
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
 fn upgrade_migrates_style_typography_without_discarding_legacy_values() {
     let dir = scratch_root();
     let assets = dir.join("assets");

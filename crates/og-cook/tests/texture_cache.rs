@@ -48,6 +48,113 @@ fn hit(r: &Report) -> bool {
 }
 
 #[test]
+fn asset_index_tracks_shared_model_textures_and_typescript_without_changing_blobs() {
+    use og_cook::cook::assets::Index;
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("asset-index");
+    let _ = std::fs::remove_dir_all(&root);
+    project(&root, 30, true, false);
+    std::fs::copy(
+        root.join("assets/model.gltf"),
+        root.join("assets/used.gltf"),
+    )
+    .unwrap();
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::create_dir_all(root.join("assets/dynamic")).unwrap();
+    std::fs::copy(
+        root.join("assets/texture.png"),
+        root.join("assets/dynamic/tile.png"),
+    )
+    .unwrap();
+    image::RgbaImage::from_fn(9, 8, |x, _| {
+        let v = (255 - x * 28) as u8;
+        image::Rgba([v, v, v, 255])
+    })
+    .save(root.join("assets/descending.png"))
+    .unwrap();
+    std::fs::write(
+        root.join("assets/coin.ogt"),
+        og_cook::cook::sfx::preset_ogt("coin", Default::default()),
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("src/game.ts"),
+        r#"
+// og.load.gltf(w, "model.gltf");
+const re = /og.load.gltf(w, "model.gltf")/;
+og.load.defaultBundle(w);
+og.load.status(w, handle);
+og.load.gltf(w, "used.\u0067ltf");
+og.load.texture(w, `dynamic/${name}.png`);
+const fields = { sound: 'coin.ogt' };
+"#,
+    )
+    .unwrap();
+    let options = CookOptions::default();
+    cook(&root, None, &options);
+    let index = Index::read(&root).unwrap();
+    let reachable = index.reachable();
+    assert!(reachable.contains("used.gltf"));
+    assert!(
+        !reachable.contains("model.gltf"),
+        "a shared texture must not retain its first model"
+    );
+    assert!(reachable.contains("dynamic/tile.png"));
+    assert_eq!(
+        index
+            .assets
+            .iter()
+            .find(|a| a.id == "descending.png")
+            .unwrap()
+            .perceptual,
+        Some(u64::MAX)
+    );
+    assert!(
+        index
+            .assets
+            .iter()
+            .filter(|a| a.kind == "texture")
+            .all(|a| a.perceptual.is_some())
+    );
+    assert!(
+        index
+            .assets
+            .iter()
+            .find(|a| a.id == "coin.ogt")
+            .unwrap()
+            .perceptual
+            .is_some()
+    );
+    let shared = index
+        .assets
+        .iter()
+        .find(|a| a.id.starts_with("_gltf/"))
+        .unwrap();
+    assert!(reachable.contains(&shared.id));
+    assert!(index.referenced_by(&shared.id).contains("used.gltf"));
+    assert_eq!(index.computed.len(), 1);
+    assert_eq!(index.computed[0].prefix, "dynamic/");
+    let sidecar = std::fs::read(root.join("cooked/.assets.ogt")).unwrap();
+    let manifest = std::fs::read(root.join("cooked/.cook.ogt")).unwrap();
+    let (report, _) = cook(&root, None, &options);
+    assert!(report.cooked_outputs().is_empty());
+    assert_eq!(
+        std::fs::read(root.join("cooked/.assets.ogt")).unwrap(),
+        sidecar
+    );
+    std::fs::write(root.join("src/game.ts"), "og.load.gltf(w, name);").unwrap();
+    let (report, _) = cook(&root, None, &options);
+    assert!(report.cooked_outputs().is_empty());
+    assert_eq!(
+        std::fs::read(root.join("cooked/.cook.ogt")).unwrap(),
+        manifest
+    );
+    let index = Index::read(&root).unwrap();
+    assert_eq!(index.reachable().len(), index.assets.len());
+    assert_eq!(index.computed[0].prefix, "");
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn identical_outputs_share_a_file_and_survive_canonical_changes() {
     use og_cook::runtime::Bundle;
     let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("shared-cooked-files");

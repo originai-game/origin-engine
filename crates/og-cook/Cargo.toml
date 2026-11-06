@@ -14,7 +14,7 @@ kit-tests = []
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["og-render/bake", "dep:og-ai", "dep:og-story", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:write-fonts", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-destruct", "dep:og-video", "dep:ufbx"]
+cook = ["og-render/bake", "dep:og-ai", "dep:og-story", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:write-fonts", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-destruct", "dep:og-video", "dep:ufbx"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
@@ -80,7 +80,13 @@ symphonia = { version = "0.6.1", default-features = false, features = ["mp3", "o
 # Ogg Opus sources (`.opus`, and an `.ogg` holding Opus): read with the
 # Opus codec og-bundle's `opus` encodes with.
 opus-pure = { workspace = true, optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
+oxc_allocator = { version = "=0.157.0", optional = true }
+oxc_ast = { version = "=0.157.0", optional = true }
+oxc_ast_visit = { version = "=0.157.0", optional = true }
+oxc_parser = { version = "=0.157.0", optional = true }
+oxc_span = { version = "=0.157.0", optional = true }
 nalgebra = { version = "0.34.1", optional = true }
 # The cook compiles material shaders for every back end (WGSL in; SPIR-V
 # and MSL out), as wgpu would at load.
