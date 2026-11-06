@@ -10,6 +10,8 @@ Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureL
 
 Sources are PNG, JPEG or KTX2 files under assets/ (`texture { kind color|normal|linear|pixel }` in `<file>.ogt`). A KTX2's `KTXorientation` and `KTXswizzle` are honoured: one that is not `rd` and `rgba` is decoded, flipped to rows top to bottom and swizzled, and cooked again; one that is (Basis ETC1S or UASTC, or RGBA8, of a colour or linear kind) is taken as it is.
 
+Also known as: image, picture, Texture2D, three.js TextureLoader, load a PNG, sprite image
+
 ```ts
 og.load.texture(world: World, path: string): Result<Texture>
 ```
@@ -27,10 +29,11 @@ Binding symbol `og_load_texture` · publish builds: kept
 fn texture {
   doc "Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load."
   doc "Sources are PNG, JPEG or KTX2 files under assets/ (`texture { kind color|normal|linear|pixel }` in `<file>.ogt`). A KTX2's `KTXorientation` and `KTXswizzle` are honoured: one that is not `rd` and `rgba` is decoded, flipped to rows top to bottom and swizzled, and cooked again; one that is (Basis ETC1S or UASTC, or RGBA8, of a colour or linear kind) is taken as it is."
+  aliases "image, picture, Texture2D, three.js TextureLoader, load a PNG, sprite image"
   param world World "The world whose renderer owns the texture."
   param path String "The texture's asset id, such as `textures/stone.png`."
   returns Result.Texture
 }
 ```
 
-<sub>`api.ogt` line 8185</sub>
+<sub>`api.ogt` line 8211</sub>

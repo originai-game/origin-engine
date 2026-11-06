@@ -33,4 +33,4 @@ enum Rarity {
 }
 ```
 
-<sub>`api.ogt` line 20981</sub>
+<sub>`api.ogt` line 21057</sub>

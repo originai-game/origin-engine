@@ -245,6 +245,7 @@ module motion {
 
   fn pose {
     doc "Queue a library pose where the character stands, after its other goals."
+    aliases "emote, gesture, wave, idle pose, play a pose"
     param world World "The world."
     param entity Entity "An entity with an og.MotionAgent."
     param desc PoseGoalDesc "The pose and how long it is current."
@@ -269,6 +270,7 @@ module motion {
 
   fn walkTo {
     doc "Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive. The mover travels in a straight line up to speed, brakes at deceleration, and turns at turnSpeed. With a CharacterController it writes the controller's move input before physics; collision and ground height remain the controller's. The goal ends on actual arrival and completion of arrivalHeading, when supplied."
+    aliases "walk to, move to, go to, locomotion goal, natural movement, Unreal MoveTo"
     param world World "The world."
     param entity Entity "An entity with an og.MotionAgent."
     param desc WalkGoalDesc "Where, how fast, and the pose on arrival."

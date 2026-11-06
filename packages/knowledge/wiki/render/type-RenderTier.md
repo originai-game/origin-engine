@@ -29,4 +29,4 @@ enum RenderTier {
 }
 ```
 
-<sub>`api.ogt` line 3804</sub>
+<sub>`api.ogt` line 3822</sub>

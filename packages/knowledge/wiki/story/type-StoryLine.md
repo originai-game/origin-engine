@@ -35,4 +35,4 @@ struct StoryLine {
 }
 ```
 
-<sub>`api.ogt` line 14542</sub>
+<sub>`api.ogt` line 14596</sub>

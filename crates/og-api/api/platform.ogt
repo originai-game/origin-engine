@@ -117,6 +117,7 @@ module platform {
 
   fn storeGet {
     doc "Read one key of the player's store for this game."
+    aliases "cloud load, read save data, key value read"
     param world World "The world."
     param key String "The key."
     returns Result.u32 "Refused for a malformed key. The answer's data is `{ key, value, revision }` (value null and revision 0 for a key never written)."
@@ -124,6 +125,7 @@ module platform {
 
   fn storeSet {
     doc "Write one key of the player's store for this game; with a revision, only if nobody wrote it since (another device, another tab)."
+    aliases "cloud save, save data, persist key value, Steam Cloud write"
     param world World "The world."
     param desc StoreSetDesc "The key, the value and the revision it must be at."
     returns Result.u32 "Refused for a malformed key or a value over 64 KiB. The answer's data is `{ key, revision }` (the new revision); `conflict` when the key moved past desc.revision."
@@ -144,6 +146,7 @@ module platform {
 
   fn leaderboardTop {
     doc "The best entries of a board, and the player's own."
+    aliases "high scores, leaderboard, ranking, top players"
     param world World "The world."
     param desc LeaderboardQueryDesc "The board and how many."
     returns u32 "The answer's data is `{ board, order, entries: [{ rank, name, score, me }], me }`."
@@ -188,6 +191,7 @@ module platform {
 
   fn saveSettings {
     doc "Save the game's settings under `og.settings` (the last save wins), with the same local fallback as loadSettings."
+    aliases "preferences, PlayerPrefs, settings persistence, options, config file"
     param world World "The world."
     param value Json "The settings: an object, at most 64 KiB encoded."
     returns Result.u32 "Refused for a value that is not an object or is too large."
@@ -360,6 +364,7 @@ module platform {
 
   fn showAd {
     doc "Show an ad. While it shows, the host pauses the game through its lifecycle (no ticks, no audio: on the web the Player's pause and resume) and the answer arrives after it resumed, at a tick's start. Grant a reward only on `completed`."
+    aliases "rewarded ad, rewarded video, interstitial, advertisement, commercial, monetisation"
     param world World "The world."
     param desc AdDesc "The kind and placement."
     returns Result.u32 "Refused for a malformed placement. The answer's data is `{ kind, placement, outcome }`: outcome `completed` or `skipped` for a rewarded ad, `shown` for an interstitial. Errors: `no_fill` (no ad now; retryable), `rate_limited` (the platform's frequency cap), `unavailable`."
@@ -367,6 +372,7 @@ module platform {
 
   fn achievementUnlock {
     doc "Unlock an achievement. The achievements and their titles are the platform's, by id."
+    aliases "unlock trophy, grant achievement, Steam SetAchievement"
     param world World "The world."
     param id String "The achievement's id."
     returns Result.u32 "Refused for a malformed id. The answer's data is `{ id, percent: 100, unlocked: true, new }`, new false when it was unlocked before."
@@ -451,6 +457,7 @@ module platform {
 
   fn now {
     doc "The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values. Use it to know how long the game was closed (a save's time against a launch's), never to time play (that is og.Time)."
+    aliases "real time, wall clock, date, server time, calendar day, daily reward clock"
     param world World "The world."
     returns f64 "UTC milliseconds; 0 until a host has told the time (`none`)."
   }
@@ -551,6 +558,7 @@ module platform {
 
   fn roomJoin {
     doc "Join a room by its id. The answer is og.RoomJoined (with ok false and `not_found` or `full` when it cannot); then og.RoomPeerJoined and og.RoomPeerLeft as others come and go."
+    aliases "join lobby, join match, join session"
     param world World "The world."
     param room String "The room's id: 1 to 64 of letters, digits, `.`, `_` and `-`."
     returns Result.Void "Refused with no room host, while in or joining a room, or for a malformed id."

@@ -17,7 +17,7 @@ module time {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 1599</sub>
+<sub>`api.ogt` line 1605</sub>
 
 ## Contents
 

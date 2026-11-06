@@ -8,6 +8,8 @@ Module [`camera`](../camera.md) · [index](../index.md)
 
 The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation.
 
+Also known as: main camera, view, PerspectiveCamera, Camera3D
+
 Token `og.Camera`, registered under the schema name `og.Camera`; its value type is `Camera`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -44,6 +46,7 @@ Token `og.Camera`, registered under the schema name `og.Camera`; its value type 
 ```ogt
 resource Camera {
   doc "The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation."
+  aliases "main camera, view, PerspectiveCamera, Camera3D"
   field position Vector3 "Where the camera is." {
     worldspace world
     unit m
@@ -166,6 +169,7 @@ resource Camera {
   }
   fn worldToScreen {
     doc "Where a world point lands on the play surface."
+    aliases "world to screen, project to screen, screen position, Unity WorldToScreenPoint, Godot unproject_position, three.js Vector3.project"
     param point Vector3 "A world point."
     returns Option.Vector2 "CSS pixels, or null behind the camera."
   }
@@ -181,7 +185,7 @@ resource Camera {
 }
 ```
 
-<sub>`api.ogt` line 3220</sub>
+<sub>`api.ogt` line 3234</sub>
 
 <a id="member-Camera-lookAt"></a>
 
@@ -208,13 +212,15 @@ fn lookAt {
 }
 ```
 
-<sub>`api.ogt` line 3338</sub>
+<sub>`api.ogt` line 3353</sub>
 
 <a id="member-Camera-worldToScreen"></a>
 
 #### `Camera.worldToScreen`
 
 Where a world point lands on the play surface.
+
+Also known as: world to screen, project to screen, screen position, Unity WorldToScreenPoint, Godot unproject_position, three.js Vector3.project
 
 ```ts
 Camera.worldToScreen(point: Vector3): Vector2 | null
@@ -231,12 +237,13 @@ Binding symbol `og_camera_world_to_screen` · publish builds: kept
 ```ogt
 fn worldToScreen {
   doc "Where a world point lands on the play surface."
+  aliases "world to screen, project to screen, screen position, Unity WorldToScreenPoint, Godot unproject_position, three.js Vector3.project"
   param point Vector3 "A world point."
   returns Option.Vector2 "CSS pixels, or null behind the camera."
 }
 ```
 
-<sub>`api.ogt` line 3342</sub>
+<sub>`api.ogt` line 3357</sub>
 
 <a id="member-Camera-screenToRay"></a>
 
@@ -266,4 +273,4 @@ fn screenToRay {
 }
 ```
 
-<sub>`api.ogt` line 3347</sub>
+<sub>`api.ogt` line 3363</sub>

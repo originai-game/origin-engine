@@ -8,6 +8,8 @@ Module [`story`](../story.md) · [index](../index.md)
 
 What a conversation shows now, resolved in the active locale.
 
+Also known as: dialogue line, conversation, dialog box, Yarn Spinner, Ink, line and choices
+
 ```ts
 og.story.view(world: World, conversation: number): DialogueView | null
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_story_view` · publish builds: kept
 ```ogt
 fn view {
   doc "What a conversation shows now, resolved in the active locale."
+  aliases "dialogue line, conversation, dialog box, Yarn Spinner, Ink, line and choices"
   param world World "The world."
   param conversation u32 "The conversation."
   returns Option.DialogueView "Null for a conversation that does not exist (never started, or stopped)."
 }
 ```
 
-<sub>`api.ogt` line 14668</sub>
+<sub>`api.ogt` line 14722</sub>

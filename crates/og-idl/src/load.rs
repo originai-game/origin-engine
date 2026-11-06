@@ -139,6 +139,7 @@ impl Loader {
         let mut f = Function {
             name,
             doc: self.inline(node, 1),
+            aliases: Vec::new(),
             generics: Vec::new(),
             params: Vec::new(),
             returns: TypeRef::named("Void"),
@@ -150,6 +151,7 @@ impl Loader {
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => f.doc.extend(self.doc_line(child)),
+                "aliases" => f.aliases.extend(self.doc_line(child)),
                 "generic" => {
                     let (Some(n), Some(bound)) = (
                         child.values.first().and_then(Value::as_word),
@@ -240,6 +242,7 @@ impl Loader {
         let mut s = Struct {
             name,
             doc: self.inline(node, 1),
+            aliases: Vec::new(),
             desc: false,
             fields: Vec::new(),
             line: node.line,
@@ -247,6 +250,7 @@ impl Loader {
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => s.doc.extend(self.doc_line(child)),
+                "aliases" => s.aliases.extend(self.doc_line(child)),
                 "desc" => s.desc = self.bool_value(child).unwrap_or(false),
                 "field" => {
                     if let Some(f) = self.field(child) {
@@ -329,12 +333,14 @@ impl Loader {
         let mut e = Enum {
             name,
             doc: self.inline(node, 1),
+            aliases: Vec::new(),
             variants: Vec::new(),
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => e.doc.extend(self.doc_line(child)),
+                "aliases" => e.aliases.extend(self.doc_line(child)),
                 "variant" => {
                     if let Some(name) = self.name(child, "variant") {
                         let doc = self.doc(child, 1);
@@ -362,6 +368,7 @@ impl Loader {
         let mut u = Union {
             name,
             doc: self.inline(node, 1),
+            aliases: Vec::new(),
             tag: String::new(),
             cases: Vec::new(),
             line: node.line,
@@ -369,6 +376,7 @@ impl Loader {
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => u.doc.extend(self.doc_line(child)),
+                "aliases" => u.aliases.extend(self.doc_line(child)),
                 "tag" => {
                     u.tag = child
                         .values
@@ -414,6 +422,7 @@ impl Loader {
         let mut i = Interface {
             name,
             doc: self.inline(node, 1),
+            aliases: Vec::new(),
             extends: None,
             publish: None,
             members: Vec::new(),
@@ -422,6 +431,7 @@ impl Loader {
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => i.doc.extend(self.doc_line(child)),
+                "aliases" => i.aliases.extend(self.doc_line(child)),
                 "extends" => i.extends = child.values.first().and_then(Value::as_word).map(str::to_string),
                 "publish" => i.publish = self.bool_value(child),
                 "prop" => {
@@ -547,6 +557,7 @@ impl Loader {
             kind,
             name,
             doc: self.inline(node, 1),
+            aliases: Vec::new(),
             fields: Vec::new(),
             methods: Vec::new(),
             line: node.line,
@@ -554,6 +565,7 @@ impl Loader {
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => r.doc.extend(self.doc_line(child)),
+                "aliases" => r.aliases.extend(self.doc_line(child)),
                 "field" => {
                     if let Some(f) = self.field(child) {
                         r.fields.push(f);

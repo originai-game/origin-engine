@@ -14,7 +14,7 @@ interface World {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1088</sub>
+<sub>`api.ogt` line 1089</sub>
 
 <a id="member-World-tick"></a>
 
@@ -32,13 +32,15 @@ Binding symbol `og_world_get_tick` · publish builds: kept
 prop tick u32 "Fixed steps taken since the world was created."
 ```
 
-<sub>`api.ogt` line 1091</sub>
+<sub>`api.ogt` line 1092</sub>
 
 <a id="member-World-spawn"></a>
 
 #### `World.spawn`
 
 Spawn an entity.
+
+Also known as: instantiate, create entity, spawn object, Unity Instantiate, Godot add_child
 
 ```ts
 World.spawn(desc?: SpawnDesc): Result<Entity>
@@ -55,18 +57,21 @@ Binding symbol `og_world_spawn` · publish builds: kept
 ```ogt
 fn spawn {
   doc "Spawn an entity."
+  aliases "instantiate, create entity, spawn object, Unity Instantiate, Godot add_child"
   param desc SpawnDesc "Name, parent and initial transform."
   returns Result.Entity "The new entity, or why it was refused (a duplicate name, a dead parent)."
 }
 ```
 
-<sub>`api.ogt` line 1093</sub>
+<sub>`api.ogt` line 1094</sub>
 
 <a id="member-World-despawn"></a>
 
 #### `World.despawn`
 
 Despawn an entity and its descendants.
+
+Also known as: destroy entity, delete object, Unity Destroy, Godot queue_free
 
 ```ts
 World.despawn(entity: Entity): Result<void>
@@ -83,12 +88,13 @@ Binding symbol `og_world_despawn` · publish builds: kept
 ```ogt
 fn despawn {
   doc "Despawn an entity and its descendants."
+  aliases "destroy entity, delete object, Unity Destroy, Godot queue_free"
   param entity Entity "The entity."
   returns Result.Void "Refused for a dead entity."
 }
 ```
 
-<sub>`api.ogt` line 1099</sub>
+<sub>`api.ogt` line 1101</sub>
 
 <a id="member-World-alive"></a>
 
@@ -116,7 +122,7 @@ fn alive {
 }
 ```
 
-<sub>`api.ogt` line 1105</sub>
+<sub>`api.ogt` line 1108</sub>
 
 <a id="member-World-has"></a>
 
@@ -147,7 +153,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 1111</sub>
+<sub>`api.ogt` line 1114</sub>
 
 <a id="member-World-insert"></a>
 
@@ -182,7 +188,7 @@ fn insert {
 }
 ```
 
-<sub>`api.ogt` line 1119</sub>
+<sub>`api.ogt` line 1122</sub>
 
 <a id="member-World-remove"></a>
 
@@ -213,7 +219,7 @@ fn remove {
 }
 ```
 
-<sub>`api.ogt` line 1130</sub>
+<sub>`api.ogt` line 1133</sub>
 
 <a id="member-World-get"></a>
 
@@ -244,7 +250,7 @@ fn get {
 }
 ```
 
-<sub>`api.ogt` line 1138</sub>
+<sub>`api.ogt` line 1141</sub>
 
 <a id="member-World-set"></a>
 
@@ -277,7 +283,7 @@ fn set {
 }
 ```
 
-<sub>`api.ogt` line 1146</sub>
+<sub>`api.ogt` line 1149</sub>
 
 <a id="member-World-resource"></a>
 
@@ -306,7 +312,7 @@ fn resource {
 }
 ```
 
-<sub>`api.ogt` line 1155</sub>
+<sub>`api.ogt` line 1158</sub>
 
 <a id="member-World-children"></a>
 
@@ -334,7 +340,7 @@ fn children {
 }
 ```
 
-<sub>`api.ogt` line 1162</sub>
+<sub>`api.ogt` line 1165</sub>
 
 <a id="member-World-removed"></a>
 
@@ -363,7 +369,7 @@ fn removed {
 }
 ```
 
-<sub>`api.ogt` line 1168</sub>
+<sub>`api.ogt` line 1171</sub>
 
 <a id="member-World-spatial"></a>
 
@@ -393,7 +399,7 @@ fn spatial {
 }
 ```
 
-<sub>`api.ogt` line 1175</sub>
+<sub>`api.ogt` line 1178</sub>
 
 <a id="member-World-state"></a>
 
@@ -421,7 +427,7 @@ fn state {
 }
 ```
 
-<sub>`api.ogt` line 1183</sub>
+<sub>`api.ogt` line 1186</sub>
 
 <a id="member-World-setState"></a>
 
@@ -451,7 +457,7 @@ fn setState {
 }
 ```
 
-<sub>`api.ogt` line 1189</sub>
+<sub>`api.ogt` line 1192</sub>
 
 <a id="member-World-find"></a>
 
@@ -479,7 +485,7 @@ fn find {
 }
 ```
 
-<sub>`api.ogt` line 1196</sub>
+<sub>`api.ogt` line 1199</sub>
 
 <a id="member-World-prefabOf"></a>
 
@@ -507,7 +513,7 @@ fn prefabOf {
 }
 ```
 
-<sub>`api.ogt` line 1202</sub>
+<sub>`api.ogt` line 1205</sub>
 
 <a id="member-World-nameOf"></a>
 
@@ -535,7 +541,7 @@ fn nameOf {
 }
 ```
 
-<sub>`api.ogt` line 1208</sub>
+<sub>`api.ogt` line 1211</sub>
 
 <a id="member-World-query"></a>
 
@@ -563,7 +569,7 @@ fn query {
 }
 ```
 
-<sub>`api.ogt` line 1214</sub>
+<sub>`api.ogt` line 1217</sub>
 
 <a id="member-World-events"></a>
 
@@ -592,7 +598,7 @@ fn events {
 }
 ```
 
-<sub>`api.ogt` line 1220</sub>
+<sub>`api.ogt` line 1223</sub>
 
 <a id="member-World-emit"></a>
 
@@ -623,7 +629,7 @@ fn emit {
 }
 ```
 
-<sub>`api.ogt` line 1227</sub>
+<sub>`api.ogt` line 1230</sub>
 
 <a id="member-World-instantiate"></a>
 
@@ -656,13 +662,15 @@ fn instantiate {
 }
 ```
 
-<sub>`api.ogt` line 1235</sub>
+<sub>`api.ogt` line 1238</sub>
 
 <a id="member-World-snapshot"></a>
 
 #### `World.snapshot`
 
 The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, and the game's save version (GameDesc.saveVersion), deflated and base64-encoded after `og-save:2:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: "slot1", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (a 2D platformer of 189 entities on a 96 x 48 tile map saves to about 25 KiB; a 3D world of 93 entities with skinned characters, cloths and minds to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type; 5,000 entities, half of them physics bodies, to about 436 KiB, written in about 95 ms and restored in about 60 ms natively). With SnapshotDesc's `with` or `resources`, only the tagged entities and the chosen resources (a selection). Inside a system it is the world in the middle of that tick, as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not, and it names the system, so a world restored from it completes that tick: its next step runs the systems after this one and the engine's (physics included) with the tick's own events, then ends the tick, and the world goes on tick for tick as the one that saved did (a replay from it matches; make the snapshot the system's last write of the tick, since what it does after the call is not in the save). Between ticks (GameDesc.start, a command, a UI callback) it is the world between two ticks. Physics carries its mesh, convex-hull and height-field colliders by their geometry's handle and scale, not their triangles (og.physics.setMesh). Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring.
+
+Also known as: save game, savegame, checkpoint, serialise the world, persist state, quick save
 
 ```ts
 World.snapshot(desc?: SnapshotDesc): Result<string>
@@ -679,6 +687,7 @@ Binding symbol `og_world_snapshot` · publish builds: kept
 ```ogt
 fn snapshot {
   doc "The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, and the game's save version (GameDesc.saveVersion), deflated and base64-encoded after `og-save:2:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: \"slot1\", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (a 2D platformer of 189 entities on a 96 x 48 tile map saves to about 25 KiB; a 3D world of 93 entities with skinned characters, cloths and minds to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type; 5,000 entities, half of them physics bodies, to about 436 KiB, written in about 95 ms and restored in about 60 ms natively). With SnapshotDesc's `with` or `resources`, only the tagged entities and the chosen resources (a selection). Inside a system it is the world in the middle of that tick, as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not, and it names the system, so a world restored from it completes that tick: its next step runs the systems after this one and the engine's (physics included) with the tick's own events, then ends the tick, and the world goes on tick for tick as the one that saved did (a replay from it matches; make the snapshot the system's last write of the tick, since what it does after the call is not in the save). Between ticks (GameDesc.start, a command, a UI callback) it is the world between two ticks. Physics carries its mesh, convex-hull and height-field colliders by their geometry's handle and scale, not their triangles (og.physics.setMesh). Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring."
+  aliases "save game, savegame, checkpoint, serialise the world, persist state, quick save"
   param desc SnapshotDesc "The whole world, or a selection: tagged entities and chosen resources." {
     optional true
   }
@@ -686,7 +695,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 1243</sub>
+<sub>`api.ogt` line 1246</sub>
 
 <a id="member-World-openSave"></a>
 
@@ -714,7 +723,7 @@ fn openSave {
 }
 ```
 
-<sub>`api.ogt` line 1251</sub>
+<sub>`api.ogt` line 1255</sub>
 
 <a id="member-World-restore"></a>
 
@@ -744,4 +753,4 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 1257</sub>
+<sub>`api.ogt` line 1261</sub>

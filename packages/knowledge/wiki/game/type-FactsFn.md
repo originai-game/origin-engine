@@ -26,4 +26,4 @@ callback FactsFn {
 }
 ```
 
-<sub>`api.ogt` line 1416</sub>
+<sub>`api.ogt` line 1421</sub>

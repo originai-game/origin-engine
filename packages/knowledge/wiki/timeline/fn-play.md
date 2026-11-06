@@ -8,6 +8,8 @@ Module [`timeline`](../timeline.md) · [index](../index.md)
 
 Play the entity's og.Timeline from its time (0 after a stop or an end); systems may call it, it takes effect at this tick's og.timeline.
 
+Also known as: play cutscene, start sequence, cinematic, Unity PlayableDirector.Play, Unreal Sequencer play, Godot AnimationPlayer.play
+
 ```ts
 og.timeline.play(world: World, entity: Entity): Result<void>
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_timeline_play` · publish builds: kept
 ```ogt
 fn play {
   doc "Play the entity's og.Timeline from its time (0 after a stop or an end); systems may call it, it takes effect at this tick's og.timeline."
+  aliases "play cutscene, start sequence, cinematic, Unity PlayableDirector.Play, Unreal Sequencer play, Godot AnimationPlayer.play"
   param world World "The world."
   param entity Entity "The entity with the og.Timeline."
   returns Result.Void "Refused for an entity without og.Timeline, or one whose asset is not loaded."
 }
 ```
 
-<sub>`api.ogt` line 26096</sub>
+<sub>`api.ogt` line 26181</sub>

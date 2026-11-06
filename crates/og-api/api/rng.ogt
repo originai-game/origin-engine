@@ -79,6 +79,7 @@ module rng {
     }
     fn permutation {
       doc "0 to n - 1 in a drawn order (Fisher-Yates, n - 1 draws). A shuffled copy of an array is `rng.permutation(a.length).map((i) => a[i])`."
+      aliases "shuffle, random order, Fisher-Yates, shuffle a deck"
       param n u32 "How many indices."
       returns List.u32
     }

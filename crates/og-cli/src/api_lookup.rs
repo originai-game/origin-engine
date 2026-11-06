@@ -430,27 +430,42 @@ mod tests {
         );
     }
 
-    /// The evaluation set (`tests/fixtures/api-find-queries.tsv`): queries
-    /// written by purpose, partial name or with a typo, each with the entry
-    /// (or ` | ` alternatives) it should find. The floors are the measured
-    /// recall less a query or two, so a ranking change that loses queries fails.
-    #[test]
-    fn find_recalls_the_evaluation_set() {
-        let ix = index(&dir()).unwrap();
-        let set = include_str!("../tests/fixtures/api-find-queries.tsv");
+    /// recall@1 and recall@5 of `find` over a `query\texpected` set
+    /// (` | ` separates equally right answers).
+    fn recall(ix: &SearchIndex, set: &str) -> (usize, usize, usize) {
         let (mut n, mut at1, mut at5) = (0, 0, 0);
         for line in set.lines().skip(1).filter(|l| !l.trim().is_empty()) {
             let (query, expected) = line.split_once('\t').unwrap();
             let want: Vec<&str> = expected.split(" | ").map(str::trim).collect();
-            let got = names(&find(&ix, query, None));
+            let got = names(&find(ix, query, None));
             n += 1;
             at1 += usize::from(got.first().is_some_and(|g| want.contains(g)));
             at5 += usize::from(got.iter().take(5).any(|g| want.contains(g)));
         }
+        (n, at1, at5)
+    }
+
+    /// The evaluation set (`tests/fixtures/api-find-queries.tsv`): queries
+    /// written by purpose, partial name or with a typo, each with the entry
+    /// it should find; its misses were fixed at the source (IDL `aliases`,
+    /// thin docs). The held-out set (`api-find-heldout.tsv`) was written
+    /// before any alias and is never tuned against: it measures whether a
+    /// change generalises. The floors are the measured recall less a query
+    /// or two, so a ranking change that loses queries fails.
+    #[test]
+    fn find_recalls_the_evaluation_sets() {
+        let ix = index(&dir()).unwrap();
+        let (n, at1, at5) = recall(&ix, include_str!("../tests/fixtures/api-find-queries.tsv"));
         assert!(n >= 160, "{n}");
         assert!(
-            at1 >= 51 && at5 >= 97,
+            at1 >= 60 && at5 >= 129,
             "recall@1 {at1}/{n}, recall@5 {at5}/{n}"
+        );
+        let (n, at1, at5) = recall(&ix, include_str!("../tests/fixtures/api-find-heldout.tsv"));
+        assert!(n >= 40, "{n}");
+        assert!(
+            at1 >= 8 && at5 >= 19,
+            "held out: recall@1 {at1}/{n}, recall@5 {at5}/{n}"
         );
     }
 

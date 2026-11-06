@@ -126,6 +126,7 @@ module anim {
 
   component AnimationPlayer {
     doc "Plays one clip on a skeleton. Alone it poses the skeleton from its rest pose; with an og.AnimationGraph it plays over the graph's result with `weight`. Changing `clip` cross-fades from the previous one over `fade`; a clip change starts the new clip at 0 (or at `time` if the game wrote it in the same tick)."
+    aliases "play animation, Animator, AnimationPlayer, clip playback"
     field clip ClipAsset "The clip asset; 0 plays nothing."
     field time f32 "The playback position; written every tick, set it to seek (no markers fire across a seek)." {
       min 0
@@ -213,6 +214,7 @@ module anim {
 
   component Blendshapes {
     doc "Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets, up to 64 targets (w0...w7, then `influences`). With `source` clips the playing clips' weight channels write them; with `component` game code does. Under TAA a morphing mesh has motion vectors from its previous weights, so a talking face does not ghost."
+    aliases "morph targets, shape keys, facial expression, blend shapes, three.js morphTargetInfluences"
     field source BlendshapeSource "Who decides the weights: component (game code writes w0...w7) or clips (the animation writes them)."
     field mesh u32 "The glTF mesh index whose targets the weights drive (0 is the first mesh)." {
       min 0
@@ -262,6 +264,7 @@ module anim {
 
   component IkChain {
     doc "An inverse-kinematics constraint on a skeleton, applied after its clips and graph: the chain of `bones` bones ending at joint `tip` turns so the tip reaches `target`. Put it on its own entity (a skeleton can have many chains); chains apply in query order."
+    aliases "inverse kinematics, IK, reach, two-bone IK, FABRIK, CCD, hand IK, Unity Two Bone IK constraint"
     field skeleton Entity "The entity with the og.Skeleton this chain bends."
     field tip u32 "The end joint (an index into the skin's joints): the foot or the hand." {
       min 0
@@ -308,6 +311,7 @@ module anim {
 
   component LookAt {
     doc "An aim constraint on a skeleton, applied after its clips, graph and IK chains: `joint` turns so its `axis` points at `target` and its `upAxis` leans towards `up` (three.js Object3D.lookAt: +Z at the target, +Y up). The direction is held within maxYaw and maxPitch of the animated forward; with `bones` above 1 the joint's parents share the turn. Put it on its own entity (a head, the eyes, a turret's barrel); constraints apply in query order, and og.JointLimit clamps the joints it turns."
+    aliases "head look, aim constraint, head tracking, Unity LookAt constraint, Multi-Aim constraint, Unreal Look At node"
     field skeleton Entity "The entity with the og.Skeleton this constraint turns."
     field joint u32 "The joint that aims (an index into the skin's joints): the head, an eye." {
       min 0

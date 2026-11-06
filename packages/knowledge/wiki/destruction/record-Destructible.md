@@ -10,6 +10,8 @@ Makes the entity's og.Model, a model cooked with a `fracture` block, break into 
 
 Scale it uniformly: a chunk's collider and mass follow og.Transform.scale's mean.
 
+Also known as: breakable, destructable, destructible prop, fracture, Unreal Geometry Collection
+
 Token `og.Destructible`, registered under the schema name `og.Destructible`; its value type is `Destructible`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -33,6 +35,7 @@ Token `og.Destructible`, registered under the schema name `og.Destructible`; its
 component Destructible {
   doc "Makes the entity's og.Model, a model cooked with a `fracture` block, break into its chunks. A prop that stands (no og.RigidBody, or a static one) is its chunks from the first tick: each a static og.Collider (the hull of its piece) on an entity with og.Chunk, and the entity's own og.Collider and og.RigidBody are removed, so hits land on the chunks. A prop that moves (a dynamic or kinematic og.RigidBody) collides as itself until its first break, when its chunks take its place, moving as it moved, and it loses its og.Collider, og.RigidBody and og.Velocity. Until the first break the model is drawn whole; from it the model is hidden and each chunk draws its piece of it (with og.Model's tint, variant and shadows). Anchored islands stay static, the rest fall."
   doc "Scale it uniformly: a chunk's collider and mass follow og.Transform.scale's mean."
+  aliases "breakable, destructable, destructible prop, fracture, Unreal Geometry Collection"
   field toughness f32 "How much damage a square metre of bond takes before it breaks: an impulse of that many newton-seconds through 1 m² (a hit spreads over impactRadius). Glass about 50, wood 300, brick 800, concrete 2000." {
     default 800
     min 0
@@ -93,4 +96,4 @@ component Destructible {
 }
 ```
 
-<sub>`api.ogt` line 26980</sub>
+<sub>`api.ogt` line 27072</sub>

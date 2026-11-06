@@ -264,6 +264,9 @@ pub fn omittable(params: &[Param], ix: &crate::Index<'_>) -> Vec<bool> {
 pub struct Function {
     pub name: String,
     pub doc: Vec<String>,
+    /// Other words for it (`aliases "vibration, haptics"`): synonyms and
+    /// other engines' names, read by `og api find` only.
+    pub aliases: Vec<String>,
     pub generics: Vec<Generic>,
     pub params: Vec<Param>,
     pub returns: TypeRef,
@@ -327,6 +330,9 @@ pub struct Field {
 pub struct Struct {
     pub name: String,
     pub doc: Vec<String>,
+    /// Other words for it (`aliases "vibration, haptics"`): synonyms and
+    /// other engines' names, read by `og api find` only.
+    pub aliases: Vec<String>,
     /// A desc struct: every field may be omitted and takes its default.
     pub desc: bool,
     pub fields: Vec<Field>,
@@ -344,6 +350,9 @@ pub struct Variant {
 pub struct Enum {
     pub name: String,
     pub doc: Vec<String>,
+    /// Other words for it (`aliases "vibration, haptics"`): synonyms and
+    /// other engines' names, read by `og api find` only.
+    pub aliases: Vec<String>,
     pub variants: Vec<Variant>,
     pub line: usize,
 }
@@ -360,6 +369,9 @@ pub struct Case {
 pub struct Union {
     pub name: String,
     pub doc: Vec<String>,
+    /// Other words for it (`aliases "vibration, haptics"`): synonyms and
+    /// other engines' names, read by `og api find` only.
+    pub aliases: Vec<String>,
     pub tag: String,
     pub cases: Vec<Case>,
     pub line: usize,
@@ -408,6 +420,9 @@ impl Member {
 pub struct Interface {
     pub name: String,
     pub doc: Vec<String>,
+    /// Other words for it (`aliases "vibration, haptics"`): synonyms and
+    /// other engines' names, read by `og api find` only.
+    pub aliases: Vec<String>,
     pub extends: Option<String>,
     pub publish: Option<bool>,
     pub members: Vec<Member>,
@@ -463,6 +478,9 @@ pub struct Record {
     pub kind: RecordKind,
     pub name: String,
     pub doc: Vec<String>,
+    /// Other words for it (`aliases "vibration, haptics"`): synonyms and
+    /// other engines' names, read by `og api find` only.
+    pub aliases: Vec<String>,
     pub fields: Vec<Field>,
     /// Resources only: methods on the resource value.
     pub methods: Vec<Function>,

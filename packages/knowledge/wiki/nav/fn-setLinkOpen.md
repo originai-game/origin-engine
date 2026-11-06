@@ -8,6 +8,8 @@ Module [`nav`](../nav.md) · [index](../index.md)
 
 Open or close an off-mesh link (a door): a closed one is never planned across, and agents on the mesh re-plan. World state.
 
+Also known as: door, gate, open or close a passage, off-mesh link, Unity NavMeshLink, Godot NavigationLink
+
 ```ts
 og.nav.setLinkOpen(world: World, mesh: Navigation, id: number, open: boolean): Result<void>
 ```
@@ -26,6 +28,7 @@ Binding symbol `og_nav_set_link_open` · publish builds: kept
 ```ogt
 fn setLinkOpen {
   doc "Open or close an off-mesh link (a door): a closed one is never planned across, and agents on the mesh re-plan. World state."
+  aliases "door, gate, open or close a passage, off-mesh link, Unity NavMeshLink, Godot NavigationLink"
   param world World "The world."
   param mesh Navigation "The navmesh."
   param id u32 "The link's id."
@@ -34,4 +37,4 @@ fn setLinkOpen {
 }
 ```
 
-<sub>`api.ogt` line 14095</sub>
+<sub>`api.ogt` line 14147</sub>

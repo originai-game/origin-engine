@@ -37,6 +37,7 @@ module timeline {
 
   event TimelineMarker {
     doc "Playback passed a marker key (a seek over one does not send it)."
+    aliases "cutscene event, cue, Unity Timeline signal, Unreal Sequencer event track, AnimationPlayer method track"
     field entity Entity "The og.Timeline's entity."
     field asset TimelineAsset "The timeline."
     field name String "The marker's name (at most 63 bytes)."
@@ -79,6 +80,7 @@ module timeline {
 
   fn play {
     doc "Play the entity's og.Timeline from its time (0 after a stop or an end); systems may call it, it takes effect at this tick's og.timeline."
+    aliases "play cutscene, start sequence, cinematic, Unity PlayableDirector.Play, Unreal Sequencer play, Godot AnimationPlayer.play"
     param world World "The world."
     param entity Entity "The entity with the og.Timeline."
     returns Result.Void "Refused for an entity without og.Timeline, or one whose asset is not loaded."
@@ -101,6 +103,7 @@ module timeline {
 
   fn stop {
     doc "Stop at 0: the camera is handed back, its sounds and music stop, its caption and cover go."
+    aliases "stop cutscene, end sequence, skip cutscene"
     param world World "The world."
     param entity Entity "The entity with the og.Timeline."
     returns Result.Void "Refused for an entity without og.Timeline."

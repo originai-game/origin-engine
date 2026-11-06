@@ -14,7 +14,7 @@ module render {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 3776</sub>
+<sub>`api.ogt` line 3794</sub>
 
 ## Contents
 
@@ -286,7 +286,7 @@ column Geometry {
 }
 ```
 
-<sub>`api.ogt` line 3783</sub>
+<sub>`api.ogt` line 3801</sub>
 
 ```ogt
 column Material {
@@ -297,7 +297,7 @@ column Material {
 }
 ```
 
-<sub>`api.ogt` line 3790</sub>
+<sub>`api.ogt` line 3808</sub>
 
 ```ogt
 column Upscaler {
@@ -308,7 +308,7 @@ column Upscaler {
 }
 ```
 
-<sub>`api.ogt` line 3843</sub>
+<sub>`api.ogt` line 3861</sub>
 
 ```ogt
 column ToneMapping {
@@ -319,7 +319,7 @@ column ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 4303</sub>
+<sub>`api.ogt` line 4323</sub>
 
 ```ogt
 column AoResolutionSetting {
@@ -330,7 +330,7 @@ column AoResolutionSetting {
 }
 ```
 
-<sub>`api.ogt` line 4324</sub>
+<sub>`api.ogt` line 4344</sub>
 
 ```ogt
 column QualityPreset {
@@ -341,7 +341,7 @@ column QualityPreset {
 }
 ```
 
-<sub>`api.ogt` line 4339</sub>
+<sub>`api.ogt` line 4359</sub>
 
 ```ogt
 column Texture {
@@ -352,7 +352,7 @@ column Texture {
 }
 ```
 
-<sub>`api.ogt` line 4495</sub>
+<sub>`api.ogt` line 4515</sub>
 
 ```ogt
 column Lut {
@@ -363,7 +363,7 @@ column Lut {
 }
 ```
 
-<sub>`api.ogt` line 4502</sub>
+<sub>`api.ogt` line 4522</sub>
 
 ```ogt
 column EnvironmentMap {
@@ -374,7 +374,7 @@ column EnvironmentMap {
 }
 ```
 
-<sub>`api.ogt` line 4509</sub>
+<sub>`api.ogt` line 4529</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -385,7 +385,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>`api.ogt` line 4576</sub>
+<sub>`api.ogt` line 4596</sub>
 
 ```ogt
 column AoMethod {
@@ -396,7 +396,7 @@ column AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 4591</sub>
+<sub>`api.ogt` line 4611</sub>
 
 ```ogt
 column AoResolution {
@@ -407,7 +407,7 @@ column AoResolution {
 }
 ```
 
-<sub>`api.ogt` line 4604</sub>
+<sub>`api.ogt` line 4624</sub>
 
 ```ogt
 column DofQuality {
@@ -418,7 +418,7 @@ column DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 4617</sub>
+<sub>`api.ogt` line 4637</sub>
 
 ```ogt
 column ScreenBlur {
@@ -429,7 +429,7 @@ column ScreenBlur {
 }
 ```
 
-<sub>`api.ogt` line 4632</sub>
+<sub>`api.ogt` line 4652</sub>
 
 ```ogt
 column SpriteBlend {
@@ -440,7 +440,7 @@ column SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 4645</sub>
+<sub>`api.ogt` line 4665</sub>
 
 ```ogt
 column SpriteFacing {
@@ -451,7 +451,7 @@ column SpriteFacing {
 }
 ```
 
-<sub>`api.ogt` line 4659</sub>
+<sub>`api.ogt` line 4679</sub>
 
 ```ogt
 column StripBlend {
@@ -462,7 +462,7 @@ column StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 4672</sub>
+<sub>`api.ogt` line 4692</sub>
 
 ```ogt
 column GiMethod {
@@ -473,7 +473,7 @@ column GiMethod {
 }
 ```
 
-<sub>`api.ogt` line 5072</sub>
+<sub>`api.ogt` line 5092</sub>
 
 ```ogt
 column Palette {
@@ -484,7 +484,7 @@ column Palette {
 }
 ```
 
-<sub>`api.ogt` line 5142</sub>
+<sub>`api.ogt` line 5162</sub>
 
 ```ogt
 column Look {
@@ -495,7 +495,7 @@ column Look {
 }
 ```
 
-<sub>`api.ogt` line 5149</sub>
+<sub>`api.ogt` line 5169</sub>
 
 ```ogt
 column DitherPattern {
@@ -506,7 +506,7 @@ column DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 5166</sub>
+<sub>`api.ogt` line 5186</sub>
 
 ```ogt
 column MaterialSurface {
@@ -517,7 +517,7 @@ column MaterialSurface {
 }
 ```
 
-<sub>`api.ogt` line 5181</sub>
+<sub>`api.ogt` line 5201</sub>
 
 ```ogt
 column OutlinePlace {
@@ -528,7 +528,7 @@ column OutlinePlace {
 }
 ```
 
-<sub>`api.ogt` line 5195</sub>
+<sub>`api.ogt` line 5215</sub>
 
 ```ogt
 column StyliseSpace {
@@ -539,7 +539,7 @@ column StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 5209</sub>
+<sub>`api.ogt` line 5229</sub>
 
 ```ogt
 column PosterizeMode {
@@ -550,7 +550,7 @@ column PosterizeMode {
 }
 ```
 
-<sub>`api.ogt` line 5222</sub>
+<sub>`api.ogt` line 5242</sub>
 
 ```ogt
 column HalftoneMode {
@@ -561,7 +561,7 @@ column HalftoneMode {
 }
 ```
 
-<sub>`api.ogt` line 5235</sub>
+<sub>`api.ogt` line 5255</sub>
 
 ```ogt
 column HalftoneRegion {
@@ -572,7 +572,7 @@ column HalftoneRegion {
 }
 ```
 
-<sub>`api.ogt` line 5249</sub>
+<sub>`api.ogt` line 5269</sub>
 
 ```ogt
 column Light2DKind {
@@ -583,7 +583,7 @@ column Light2DKind {
 }
 ```
 
-<sub>`api.ogt` line 5629</sub>
+<sub>`api.ogt` line 5649</sub>
 
 ```ogt
 column ReflectionProbeMode {
@@ -594,7 +594,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 6383</sub>
+<sub>`api.ogt` line 6406</sub>
 
 ```ogt
 column Shader {
@@ -605,7 +605,7 @@ column Shader {
 }
 ```
 
-<sub>`api.ogt` line 6439</sub>
+<sub>`api.ogt` line 6463</sub>
 
 ```ogt
 column LineMode {
@@ -616,7 +616,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 7231</sub>
+<sub>`api.ogt` line 7256</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -627,7 +627,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 7441</sub>
+<sub>`api.ogt` line 7466</sub>
 
 ```ogt
 column RenderTarget {
@@ -638,7 +638,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 7450</sub>
+<sub>`api.ogt` line 7475</sub>
 
 ```ogt
 column Post {
@@ -649,7 +649,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 7586</sub>
+<sub>`api.ogt` line 7611</sub>
 
 ## Constants
 
@@ -665,28 +665,28 @@ column Post {
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>`api.ogt` line 5753</sub>
+<sub>`api.ogt` line 5773</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 6336</sub>
+<sub>`api.ogt` line 6359</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 6337</sub>
+<sub>`api.ogt` line 6360</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
 ```
 
-<sub>`api.ogt` line 6338</sub>
+<sub>`api.ogt` line 6361</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>`api.ogt` line 6375</sub>
+<sub>`api.ogt` line 6398</sub>

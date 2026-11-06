@@ -8,6 +8,8 @@ Module [`platform`](../platform.md) · [index](../index.md)
 
 Read one key of the player's store for this game.
 
+Also known as: cloud load, read save data, key value read
+
 ```ts
 og.platform.storeGet(world: World, key: string): Result<number>
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_platform_store_get` · publish builds: kept
 ```ogt
 fn storeGet {
   doc "Read one key of the player's store for this game."
+  aliases "cloud load, read save data, key value read"
   param world World "The world."
   param key String "The key."
   returns Result.u32 "Refused for a malformed key. The answer's data is `{ key, value, revision }` (value null and revision 0 for a key never written)."
 }
 ```
 
-<sub>`api.ogt` line 14946</sub>
+<sub>`api.ogt` line 15003</sub>

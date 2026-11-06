@@ -8,6 +8,8 @@ Module [`motion`](../motion.md) · [index](../index.md)
 
 Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive. The mover travels in a straight line up to speed, brakes at deceleration, and turns at turnSpeed. With a CharacterController it writes the controller's move input before physics; collision and ground height remain the controller's. The goal ends on actual arrival and completion of arrivalHeading, when supplied.
 
+Also known as: walk to, move to, go to, locomotion goal, natural movement, Unreal MoveTo
+
 ```ts
 og.motion.walkTo(world: World, entity: Entity, desc?: WalkGoalDesc): Result<void>
 ```
@@ -25,6 +27,7 @@ Binding symbol `og_motion_walk_to` · publish builds: kept
 ```ogt
 fn walkTo {
   doc "Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive. The mover travels in a straight line up to speed, brakes at deceleration, and turns at turnSpeed. With a CharacterController it writes the controller's move input before physics; collision and ground height remain the controller's. The goal ends on actual arrival and completion of arrivalHeading, when supplied."
+  aliases "walk to, move to, go to, locomotion goal, natural movement, Unreal MoveTo"
   param world World "The world."
   param entity Entity "An entity with an og.MotionAgent."
   param desc WalkGoalDesc "Where, how fast, and the pose on arrival."
@@ -32,4 +35,4 @@ fn walkTo {
 }
 ```
 
-<sub>`api.ogt` line 26898</sub>
+<sub>`api.ogt` line 26989</sub>

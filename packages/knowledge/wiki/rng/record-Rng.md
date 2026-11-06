@@ -52,6 +52,7 @@ resource Rng {
   }
   fn permutation {
     doc "0 to n - 1 in a drawn order (Fisher-Yates, n - 1 draws). A shuffled copy of an array is `rng.permutation(a.length).map((i) => a[i])`."
+    aliases "shuffle, random order, Fisher-Yates, shuffle a deck"
     param n u32 "How many indices."
     returns List.u32
   }
@@ -63,7 +64,7 @@ resource Rng {
 }
 ```
 
-<sub>`api.ogt` line 1730</sub>
+<sub>`api.ogt` line 1738</sub>
 
 <a id="member-Rng-next"></a>
 
@@ -86,7 +87,7 @@ fn next {
 }
 ```
 
-<sub>`api.ogt` line 1738</sub>
+<sub>`api.ogt` line 1746</sub>
 
 <a id="member-Rng-range"></a>
 
@@ -116,7 +117,7 @@ fn range {
 }
 ```
 
-<sub>`api.ogt` line 1742</sub>
+<sub>`api.ogt` line 1750</sub>
 
 <a id="member-Rng-integer"></a>
 
@@ -146,7 +147,7 @@ fn integer {
 }
 ```
 
-<sub>`api.ogt` line 1748</sub>
+<sub>`api.ogt` line 1756</sub>
 
 <a id="member-Rng-chance"></a>
 
@@ -174,7 +175,7 @@ fn chance {
 }
 ```
 
-<sub>`api.ogt` line 1754</sub>
+<sub>`api.ogt` line 1762</sub>
 
 <a id="member-Rng-weighted"></a>
 
@@ -202,13 +203,15 @@ fn weighted {
 }
 ```
 
-<sub>`api.ogt` line 1759</sub>
+<sub>`api.ogt` line 1767</sub>
 
 <a id="member-Rng-permutation"></a>
 
 #### `Rng.permutation`
 
 0 to n - 1 in a drawn order (Fisher-Yates, n - 1 draws). A shuffled copy of an array is `rng.permutation(a.length).map((i) => a[i])`.
+
+Also known as: shuffle, random order, Fisher-Yates, shuffle a deck
 
 ```ts
 Rng.permutation(n: number): readonly number[]
@@ -225,12 +228,13 @@ Binding symbol `og_rng_permutation` · publish builds: kept
 ```ogt
 fn permutation {
   doc "0 to n - 1 in a drawn order (Fisher-Yates, n - 1 draws). A shuffled copy of an array is `rng.permutation(a.length).map((i) => a[i])`."
+  aliases "shuffle, random order, Fisher-Yates, shuffle a deck"
   param n u32 "How many indices."
   returns List.u32
 }
 ```
 
-<sub>`api.ogt` line 1764</sub>
+<sub>`api.ogt` line 1772</sub>
 
 <a id="member-Rng-fork"></a>
 
@@ -258,4 +262,4 @@ fn fork {
 }
 ```
 
-<sub>`api.ogt` line 1769</sub>
+<sub>`api.ogt` line 1778</sub>

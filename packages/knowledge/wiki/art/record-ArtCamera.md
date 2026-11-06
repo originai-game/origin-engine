@@ -49,4 +49,4 @@ resource ArtCamera {
 }
 ```
 
-<sub>`api.ogt` line 26602</sub>
+<sub>`api.ogt` line 26692</sub>

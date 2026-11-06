@@ -25,4 +25,4 @@ enum SpriteFacing {
 }
 ```
 
-<sub>`api.ogt` line 4652</sub>
+<sub>`api.ogt` line 4672</sub>

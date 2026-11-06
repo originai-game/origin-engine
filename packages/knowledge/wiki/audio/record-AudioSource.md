@@ -10,6 +10,8 @@ A sound an entity plays. Level-triggered: while `playing` is true it plays (inse
 
 A one-shot of F frames at rate R and pitch p started in tick S ends in tick S + ceil(F * tickRate / (R * p)) - 1. A despawned entity's voice is silenced without an event.
 
+Also known as: sound emitter, AudioSource, AudioStreamPlayer, play a sound
+
 Token `og.AudioSource`, registered under the schema name `og.AudioSource`; its value type is `AudioSource`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -46,6 +48,7 @@ Token `og.AudioSource`, registered under the schema name `og.AudioSource`; its v
 component AudioSource {
   doc "A sound an entity plays. Level-triggered: while `playing` is true it plays (inserting a source plays it), setting it false stops it, and a one-shot that reaches its end sets it back to false and sends og.SoundEnded."
   doc "A one-shot of F frames at rate R and pitch p started in tick S ends in tick S + ceil(F * tickRate / (R * p)) - 1. A despawned entity's voice is silenced without an event."
+  aliases "sound emitter, AudioSource, AudioStreamPlayer, play a sound"
   field sound Sound "The sound, from og.load.sound; 0 plays nothing. A handle not yet loaded waits and starts on the first tick it is there."
   field bus AudioBus "The bus it plays on." {
     default sfx
@@ -163,4 +166,4 @@ component AudioSource {
 }
 ```
 
-<sub>`api.ogt` line 12816</sub>
+<sub>`api.ogt` line 12862</sub>

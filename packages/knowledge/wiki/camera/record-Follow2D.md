@@ -8,6 +8,8 @@ Module [`camera`](../camera.md) · [index](../index.md)
 
 Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime (smoothTimeY for y when set) and, with clamp, stays inside the bounds; lookAhead leads it in the direction the entity moves. The camera keeps its z, rotation and projection. Driven by og.systems.cameras; og.CameraZone entities then keep the view inside the zone the entity is in.
 
+Also known as: follow camera, 2D camera, side-scroller camera, Cinemachine follow, Godot Camera2D
+
 Token `og.Follow2D`, registered under the schema name `og.Follow2D`; its value type is `Follow2D`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -28,6 +30,7 @@ Token `og.Follow2D`, registered under the schema name `og.Follow2D`; its value t
 ```ogt
 component Follow2D {
   doc "Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime (smoothTimeY for y when set) and, with clamp, stays inside the bounds; lookAhead leads it in the direction the entity moves. The camera keeps its z, rotation and projection. Driven by og.systems.cameras; og.CameraZone entities then keep the view inside the zone the entity is in."
+  aliases "follow camera, 2D camera, side-scroller camera, Cinemachine follow, Godot Camera2D"
   field offset Vector2 "Where the camera centre sits relative to the entity." {
     unit m
   }
@@ -82,4 +85,4 @@ component Follow2D {
 }
 ```
 
-<sub>`api.ogt` line 3453</sub>
+<sub>`api.ogt` line 3469</sub>

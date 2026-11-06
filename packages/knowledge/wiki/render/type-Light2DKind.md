@@ -25,4 +25,4 @@ enum Light2DKind {
 }
 ```
 
-<sub>`api.ogt` line 5622</sub>
+<sub>`api.ogt` line 5642</sub>

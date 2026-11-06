@@ -8,6 +8,8 @@ Module [`art`](../art.md) · [index](../index.md)
 
 The style's colours: the palette the assets' texels sit on, how many a single asset may use, how many shades a hue ramps through, which colours are kept for signals, and how two colours mix where a tone falls between them. The frame's own quantise is Stylise.palette; this is what the assets are made of, 2D and 3D alike. Every field is no constraint at its zero value.
 
+Also known as: colour palette, color palette, limited palette, palette lock, colour scheme, swatches
+
 Token `og.ArtPalette`, registered under the schema name `og.ArtPalette`; its value type is `ArtPalette`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -22,6 +24,7 @@ Token `og.ArtPalette`, registered under the schema name `og.ArtPalette`; its val
 ```ogt
 resource ArtPalette {
   doc "The style's colours: the palette the assets' texels sit on, how many a single asset may use, how many shades a hue ramps through, which colours are kept for signals, and how two colours mix where a tone falls between them. The frame's own quantise is Stylise.palette; this is what the assets are made of, 2D and 3D alike. Every field is no constraint at its zero value."
+  aliases "colour palette, color palette, limited palette, palette lock, colour scheme, swatches"
   field colors Palette "The palette (og.load.palette of a `.hex` or GIMP `.gpl` file; a look names one under assets/ or a built-in `@palettes/<name>`); 0 is none, any colour."
   field strict bool "Every opaque texel is exactly a colour of colors (indexed colour, as hand-placed pixel art); false lets texels between them (shading, filtering) and holds only the hues to the palette."
   field maxColors u32 "The most distinct colours one asset (a sprite sheet, a texture, a model's colours) may use; 0 is no limit." {
@@ -37,4 +40,4 @@ resource ArtPalette {
 }
 ```
 
-<sub>`api.ogt` line 26490</sub>
+<sub>`api.ogt` line 26579</sub>

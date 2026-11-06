@@ -8,6 +8,8 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 Every collider overlapping a shape, sorted by entity id; the same view of the colliders as raycast.
 
+Also known as: overlap sphere, area query, shapes in range, Unity Physics.OverlapSphere, Godot intersect_shape
+
 ```ts
 og.physics.overlap(world: World, desc?: OverlapDesc): Result<readonly Entity[]>
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_physics_overlap` · publish builds: kept
 ```ogt
 fn overlap {
   doc "Every collider overlapping a shape, sorted by entity id; the same view of the colliders as raycast."
+  aliases "overlap sphere, area query, shapes in range, Unity Physics.OverlapSphere, Godot intersect_shape"
   param world World "The world."
   param desc OverlapDesc "The shape, its placement and the filter."
   returns Result.List.Entity
 }
 ```
 
-<sub>`api.ogt` line 10322</sub>
+<sub>`api.ogt` line 10356</sub>

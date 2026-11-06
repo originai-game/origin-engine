@@ -10,6 +10,8 @@ A light shining in every direction from the entity's position, as three.js Point
 
 Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (16) caps how many get shadows and RenderSettings.shadowedLights (8 by default) chooses it, the brightest at the camera first.
 
+Also known as: omni light, point light, lamp, bulb, Godot OmniLight3D
+
 Token `og.PointLight`, registered under the schema name `og.PointLight`; its value type is `PointLight`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -24,6 +26,7 @@ Token `og.PointLight`, registered under the schema name `og.PointLight`; its val
 component PointLight {
   doc "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance."
   doc "Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (16) caps how many get shadows and RenderSettings.shadowedLights (8 by default) chooses it, the brightest at the camera first."
+  aliases "omni light, point light, lamp, bulb, Godot OmniLight3D"
   field color Color "The light's linear colour." {
     default 1 1 1
   }
@@ -43,4 +46,4 @@ component PointLight {
 }
 ```
 
-<sub>`api.ogt` line 4242</sub>
+<sub>`api.ogt` line 4261</sub>

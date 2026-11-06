@@ -8,6 +8,8 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 An inverse-kinematics constraint on a skeleton, applied after its clips and graph: the chain of `bones` bones ending at joint `tip` turns so the tip reaches `target`. Put it on its own entity (a skeleton can have many chains); chains apply in query order.
 
+Also known as: inverse kinematics, IK, reach, two-bone IK, FABRIK, CCD, hand IK, Unity Two Bone IK constraint
+
 Token `og.IkChain`, registered under the schema name `og.IkChain`; its value type is `IkChain`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -28,6 +30,7 @@ Token `og.IkChain`, registered under the schema name `og.IkChain`; its value typ
 ```ogt
 component IkChain {
   doc "An inverse-kinematics constraint on a skeleton, applied after its clips and graph: the chain of `bones` bones ending at joint `tip` turns so the tip reaches `target`. Put it on its own entity (a skeleton can have many chains); chains apply in query order."
+  aliases "inverse kinematics, IK, reach, two-bone IK, FABRIK, CCD, hand IK, Unity Two Bone IK constraint"
   field skeleton Entity "The entity with the og.Skeleton this chain bends."
   field tip u32 "The end joint (an index into the skin's joints): the foot or the hand." {
     min 0
@@ -73,4 +76,4 @@ component IkChain {
 }
 ```
 
-<sub>`api.ogt` line 11692</sub>
+<sub>`api.ogt` line 11731</sub>

@@ -8,6 +8,8 @@ Module [`time`](../time.md) · [index](../index.md)
 
 Set the global time scale (slow motion): physics, og.anim, flipbooks and tweens advance by dt * scale from the system after the call; systems may call it.
 
+Also known as: slow motion, bullet time, time scale, Unity Time.timeScale, Godot Engine.time_scale, pause
+
 ```ts
 og.time.setScale(world: World, scale: number): Result<void>
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_time_set_scale` · publish builds: kept
 ```ogt
 fn setScale {
   doc "Set the global time scale (slow motion): physics, og.anim, flipbooks and tweens advance by dt * scale from the system after the call; systems may call it."
+  aliases "slow motion, bullet time, time scale, Unity Time.timeScale, Godot Engine.time_scale, pause"
   param world World "The world."
   param scale f32 "0 to 10: 1 is normal speed."
   returns Result.Void "Refused outside 0..10."
 }
 ```
 
-<sub>`api.ogt` line 1653</sub>
+<sub>`api.ogt` line 1659</sub>

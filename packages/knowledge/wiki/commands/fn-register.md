@@ -8,6 +8,8 @@ Module [`commands`](../commands.md) · [index](../index.md)
 
 Register an action into the command channel. GameDesc.commands does this for a game's own actions.
 
+Also known as: console command, cheat, debug command, dev console, cvar
+
 ```ts
 og.commands.register(name: string, handler: CommandHandler, desc?: CommandDesc): Result<void>
 ```
@@ -25,6 +27,7 @@ Binding symbol `og_commands_register` · publish builds: dropped
 ```ogt
 fn register {
   doc "Register an action into the command channel. GameDesc.commands does this for a game's own actions."
+  aliases "console command, cheat, debug command, dev console, cvar"
   param name String "The action name, snake_case, such as `spawn_wave`."
   param handler CommandHandler "What it does."
   param desc CommandDesc "Its usage line and doc."
@@ -32,4 +35,4 @@ fn register {
 }
 ```
 
-<sub>`api.ogt` line 23916</sub>
+<sub>`api.ogt` line 23994</sub>

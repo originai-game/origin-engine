@@ -26,7 +26,7 @@ module net {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 26128</sub>
+<sub>`api.ogt` line 26215</sub>
 
 ## Contents
 
@@ -71,4 +71,4 @@ column NetMode {
 }
 ```
 
-<sub>`api.ogt` line 26141</sub>
+<sub>`api.ogt` line 26228</sub>

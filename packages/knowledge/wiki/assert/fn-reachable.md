@@ -8,6 +8,8 @@ Module [`assert`](../assert.md) · [index](../index.md)
 
 This line runs at least once in the run; one that never ran is listed as uncovered.
 
+Also known as: coverage, reached, milestone, progress check, Antithesis reachable
+
 ```ts
 og.assert.reachable(name: string, details?: unknown | null): void
 ```
@@ -24,6 +26,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 ```ogt
 fn reachable {
   doc "This line runs at least once in the run; one that never ran is listed as uncovered."
+  aliases "coverage, reached, milestone, progress check, Antithesis reachable"
   host false
   param name String "What reaching it means: `door opened`."
   param details Option.Json "Values worth seeing the first time." {
@@ -32,4 +35,4 @@ fn reachable {
 }
 ```
 
-<sub>`api.ogt` line 25856</sub>
+<sub>`api.ogt` line 25939</sub>

@@ -8,6 +8,8 @@ Module [`input`](../input.md) · [index](../index.md)
 
 Whether an action went down this tick.
 
+Also known as: button down this frame, GetButtonDown, is_action_just_pressed
+
 ```ts
 og.input.actionPressed(world: World, name: string): boolean
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_input_action_pressed` · publish builds: kept
 ```ogt
 fn actionPressed {
   doc "Whether an action went down this tick."
+  aliases "button down this frame, GetButtonDown, is_action_just_pressed"
   param world World "The world."
   param name String "The action."
   returns bool
 }
 ```
 
-<sub>`api.ogt` line 2317</sub>
+<sub>`api.ogt` line 2328</sub>

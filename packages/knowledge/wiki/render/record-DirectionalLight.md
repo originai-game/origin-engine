@@ -10,6 +10,8 @@ The sun, as three.js DirectionalLight: parallel light along the entity's local -
 
 Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
 
+Also known as: sun, directional light, Godot DirectionalLight3D
+
 Token `og.DirectionalLight`, registered under the schema name `og.DirectionalLight`; its value type is `DirectionalLight`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -30,6 +32,7 @@ Token `og.DirectionalLight`, registered under the schema name `og.DirectionalLig
 component DirectionalLight {
   doc "The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with RenderSettings.shadowCascades shadow cascades (3 by default)."
   doc "Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene."
+  aliases "sun, directional light, Godot DirectionalLight3D"
   field color Color "The light's linear colour." {
     default 1 1 1
   }
@@ -83,4 +86,4 @@ component DirectionalLight {
 }
 ```
 
-<sub>`api.ogt` line 4187</sub>
+<sub>`api.ogt` line 4205</sub>

@@ -14,7 +14,7 @@ module transform {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 1479</sub>
+<sub>`api.ogt` line 1484</sub>
 
 ## Contents
 
@@ -49,4 +49,4 @@ column WorldOriginPlane {
 }
 ```
 
-<sub>`api.ogt` line 1513</sub>
+<sub>`api.ogt` line 1518</sub>

@@ -8,6 +8,8 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it.
 
+Also known as: UI scale, text scale, font size, accessibility, high contrast, reduced motion, UI settings
+
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -36,6 +38,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 ```ogt
 struct UiDesc {
   doc "How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it."
+  aliases "UI scale, text scale, font size, accessibility, high contrast, reduced motion, UI settings"
   desc true
   field scheme Scheme "The palette."
   field density DensityMode "The control sizes."
@@ -73,4 +76,4 @@ struct UiDesc {
 }
 ```
 
-<sub>`api.ogt` line 16027</sub>
+<sub>`api.ogt` line 16095</sub>

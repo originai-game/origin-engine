@@ -412,6 +412,7 @@ module render {
   component DirectionalLight {
     doc "The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with RenderSettings.shadowCascades shadow cascades (3 by default)."
     doc "Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene."
+    aliases "sun, directional light, Godot DirectionalLight3D"
     field color Color "The light's linear colour." {
       default 1 1 1
     }
@@ -467,6 +468,7 @@ module render {
   component PointLight {
     doc "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance."
     doc "Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (16) caps how many get shadows and RenderSettings.shadowedLights (8 by default) chooses it, the brightest at the camera first."
+    aliases "omni light, point light, lamp, bulb, Godot OmniLight3D"
     field color Color "The light's linear colour." {
       default 1 1 1
     }
@@ -2268,6 +2270,7 @@ module render {
 
   fn sprite {
     doc "Draw a sprite this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the sprite should show."
+    aliases "draw a 2D image, immediate sprite, blit"
     param world World "The world whose renderer draws it."
     param desc SpriteDesc "The texture, placement, region and colour."
     returns Result.Void "Refused for a dead texture."
@@ -2276,6 +2279,7 @@ module render {
   component Sprite {
     doc "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z, in the xy plane or turned to the camera by `facing`; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame."
     doc "Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer."
+    aliases "2D image, SpriteRenderer, Sprite2D"
     field texture Texture "The texture (og.load.texture); 0 draws a solid quad of the colour."
     field array TextureArray "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`; 0 uses `texture`. Every sprite of one array is one draw whichever layer each shows. While the array's streaming group is not resident the sprite draws nothing."
     field arrayLayer u32 "With `array`: the layer drawn (past the last layer, the last). uvMin and uvMax are the region within the layer; a nine-slice measures the layer."
@@ -2539,6 +2543,7 @@ module render {
 
   fn boxGeometry {
     doc "Make a box geometry for og.Mesh. Physics can use it as a convex or triangle-mesh Collider.mesh too."
+    aliases "cube mesh, box mesh, three.js BoxGeometry"
     param world World "The world whose renderer owns the geometry."
     param desc BoxGeometryDesc "Its extents and texture repeat."
     returns Result.Geometry
@@ -2646,6 +2651,7 @@ module render {
 
   fn standardMaterial {
     doc "Create a standard material."
+    aliases "PBR material, MeshStandardMaterial, Unity Standard shader, Godot StandardMaterial3D"
     param world World "The world whose renderer owns the material."
     param desc StandardMaterialDesc "The parameters; omitted ones take three.js defaults."
     returns Result.Material
@@ -2844,6 +2850,7 @@ module render {
 
   fn text {
     doc "Draw text this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the text should show. Multi-page fonts are drawn page by page with one layout."
+    aliases "draw text, world text, label"
     param world World "The world whose renderer draws it."
     param desc TextDesc "The font, text, placement and colour."
     returns Result.Void "Refused for a dead font."

@@ -23,4 +23,4 @@ struct DestructionCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 27208</sub>
+<sub>`api.ogt` line 27301</sub>

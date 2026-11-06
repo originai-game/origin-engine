@@ -8,6 +8,8 @@ Module [`transform`](../transform.md) · [index](../index.md)
 
 The rotation that points -Z from an eye towards a target, as three.js Object3D.lookAt for cameras.
 
+Also known as: face, aim at, rotate towards, Unity Transform.LookAt, Godot look_at, three.js lookAt
+
 ```ts
 og.transform.lookAt(eye: Vector3, target: Vector3, up?: Vector3): Quaternion
 ```
@@ -25,6 +27,7 @@ Binding symbol `og_transform_look_at` · publish builds: kept
 ```ogt
 fn lookAt {
   doc "The rotation that points -Z from an eye towards a target, as three.js Object3D.lookAt for cameras."
+  aliases "face, aim at, rotate towards, Unity Transform.LookAt, Godot look_at, three.js lookAt"
   param eye Vector3 "Where the viewer is."
   param target Vector3 "What it looks at."
   param up Vector3 "The up direction; the zero vector means +Y." {
@@ -34,4 +37,4 @@ fn lookAt {
 }
 ```
 
-<sub>`api.ogt` line 1579</sub>
+<sub>`api.ogt` line 1584</sub>

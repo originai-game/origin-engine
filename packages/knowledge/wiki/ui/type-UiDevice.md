@@ -31,4 +31,4 @@ enum UiDevice {
 }
 ```
 
-<sub>`api.ogt` line 23637</sub>
+<sub>`api.ogt` line 23715</sub>

@@ -8,6 +8,8 @@ Module [`story`](../story.md) · [index](../index.md)
 
 Start a loaded quest at its first stage.
 
+Also known as: begin quest, accept quest, quest start
+
 ```ts
 og.story.startQuest(world: World, id: string): Result<boolean>
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_story_start_quest` · publish builds: kept
 ```ogt
 fn startQuest {
   doc "Start a loaded quest at its first stage."
+  aliases "begin quest, accept quest, quest start"
   param world World "The world."
   param id String "The quest's id."
   returns Result.bool "False when it had started before. Refused for a quest not loaded."
 }
 ```
 
-<sub>`api.ogt` line 14750</sub>
+<sub>`api.ogt` line 14806</sub>

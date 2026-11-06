@@ -8,6 +8,8 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's world position (its og.Transform after its parents': its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).
 
+Also known as: flag, banner, curtain, sail, Unity Cloth, Unreal Chaos Cloth
+
 Token `og.Cloth`, registered under the schema name `og.Cloth`; its value type is `Cloth`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -32,6 +34,7 @@ Token `og.Cloth`, registered under the schema name `og.Cloth`; its value type is
 ```ogt
 component Cloth {
   doc "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's world position (its og.Transform after its parents': its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour)."
+  aliases "flag, banner, curtain, sail, Unity Cloth, Unreal Chaos Cloth"
   field columns u32 "Points across." {
     default 12
     min 2
@@ -111,4 +114,4 @@ component Cloth {
 }
 ```
 
-<sub>`api.ogt` line 9468</sub>
+<sub>`api.ogt` line 9499</sub>

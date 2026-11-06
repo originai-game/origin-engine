@@ -6,7 +6,9 @@ Module [`system`](../system.md) · [index](../index.md)
 
 ### `defineSystem`
 
-Declare a system.
+Declare a system: the game's code that runs every tick (movement, AI, scoring), with the components it reads and writes and its order among the other systems. List it in GameDesc.systems.
+
+Also known as: update loop, Update, _process, per-tick logic, ECS system, game loop
 
 ```ts
 defineSystem(name: string, desc: SystemDesc, run: SystemRun): System
@@ -24,7 +26,8 @@ Binding symbol `og_system_define_system` · publish builds: kept
 
 ```ogt
 fn defineSystem {
-  doc "Declare a system."
+  doc "Declare a system: the game's code that runs every tick (movement, AI, scoring), with the components it reads and writes and its order among the other systems. List it in GameDesc.systems."
+  aliases "update loop, Update, _process, per-tick logic, ECS system, game loop"
   param name String "The system's unique name, PascalCase."
   param desc SystemDesc "Reads, writes and order."
   param run SystemRun "The body."
@@ -32,4 +35,4 @@ fn defineSystem {
 }
 ```
 
-<sub>`api.ogt` line 1401</sub>
+<sub>`api.ogt` line 1405</sub>

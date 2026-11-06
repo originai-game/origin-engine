@@ -8,6 +8,8 @@ Module [`procgen`](../procgen.md) · [index](../index.md)
 
 Poisson-disk points in [0, width) × [0, height), in the order they were placed.
 
+Also known as: blue noise, scatter points, even distribution, object placement, minimum distance sampling
+
 ```ts
 og.procgen.poissonDisk(desc?: PoissonDesc): Result<readonly Vector2[]>
 ```
@@ -23,9 +25,10 @@ Binding symbol `og_procgen_poisson_disk` · publish builds: kept
 ```ogt
 fn poissonDisk {
   doc "Poisson-disk points in [0, width) × [0, height), in the order they were placed."
+  aliases "blue noise, scatter points, even distribution, object placement, minimum distance sampling"
   param desc PoissonDesc "The area, the radius and the seed."
   returns Result.List.Vector2 "Refused for a size or radius that is not finite and above 0, or a radius so small the area needs more than 16,777,216 grid cells."
 }
 ```
 
-<sub>`api.ogt` line 1882</sub>
+<sub>`api.ogt` line 1891</sub>

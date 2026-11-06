@@ -69,4 +69,4 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 5710</sub>
+<sub>`api.ogt` line 5730</sub>

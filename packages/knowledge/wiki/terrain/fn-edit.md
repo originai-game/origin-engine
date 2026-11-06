@@ -8,6 +8,8 @@ Module [`terrain`](../terrain.md) · [index](../index.md)
 
 Change a terrain under a round brush: raise, lower, flatten or smooth its heights (the renderer, physics and og.terrain.sample see the change from the next frame and tick), or paint a layer into its control map (making one when it has none).
 
+Also known as: deform terrain, sculpt, dig, crater, heightmap edit, Unity TerrainData.SetHeights
+
 ```ts
 og.terrain.edit(world: World, data: TerrainData, brush?: TerrainBrush): Result<TerrainEdit>
 ```
@@ -25,6 +27,7 @@ Binding symbol `og_terrain_edit` · publish builds: kept
 ```ogt
 fn edit {
   doc "Change a terrain under a round brush: raise, lower, flatten or smooth its heights (the renderer, physics and og.terrain.sample see the change from the next frame and tick), or paint a layer into its control map (making one when it has none)."
+  aliases "deform terrain, sculpt, dig, crater, heightmap edit, Unity TerrainData.SetHeights"
   param world World "The world."
   param data TerrainData "The terrain."
   param brush TerrainBrush "What to do and where."
@@ -32,4 +35,4 @@ fn edit {
 }
 ```
 
-<sub>`api.ogt` line 25326</sub>
+<sub>`api.ogt` line 25405</sub>

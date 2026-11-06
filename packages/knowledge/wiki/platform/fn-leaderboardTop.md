@@ -8,6 +8,8 @@ Module [`platform`](../platform.md) · [index](../index.md)
 
 The best entries of a board, and the player's own.
 
+Also known as: high scores, leaderboard, ranking, top players
+
 ```ts
 og.platform.leaderboardTop(world: World, desc?: LeaderboardQueryDesc): number
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_platform_leaderboard_top` · publish builds: kept
 ```ogt
 fn leaderboardTop {
   doc "The best entries of a board, and the player's own."
+  aliases "high scores, leaderboard, ranking, top players"
   param world World "The world."
   param desc LeaderboardQueryDesc "The board and how many."
   returns u32 "The answer's data is `{ board, order, entries: [{ rank, name, score, me }], me }`."
 }
 ```
 
-<sub>`api.ogt` line 14973</sub>
+<sub>`api.ogt` line 15032</sub>

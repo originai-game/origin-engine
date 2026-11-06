@@ -4,6 +4,7 @@ module camera {
 
   resource Camera {
     doc "The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation."
+    aliases "main camera, view, PerspectiveCamera, Camera3D"
     field position Vector3 "Where the camera is." {
       worldspace world
       unit m
@@ -126,6 +127,7 @@ module camera {
     }
     fn worldToScreen {
       doc "Where a world point lands on the play surface."
+      aliases "world to screen, project to screen, screen position, Unity WorldToScreenPoint, Godot unproject_position, three.js Vector3.project"
       param point Vector3 "A world point."
       returns Option.Vector2 "CSS pixels, or null behind the camera."
     }
@@ -237,6 +239,7 @@ module camera {
 
   component Follow2D {
     doc "Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime (smoothTimeY for y when set) and, with clamp, stays inside the bounds; lookAhead leads it in the direction the entity moves. The camera keeps its z, rotation and projection. Driven by og.systems.cameras; og.CameraZone entities then keep the view inside the zone the entity is in."
+    aliases "follow camera, 2D camera, side-scroller camera, Cinemachine follow, Godot Camera2D"
     field offset Vector2 "Where the camera centre sits relative to the entity." {
       unit m
     }
@@ -535,6 +538,7 @@ module camera {
 
   fn shake {
     doc "Add screen shake: trauma, clamped to 1, which og.Camera decays by traumaDecay. The shake grows with trauma squared, so 0.1-0.2 is a light hit, 0.25-0.4 a medium one, 0.5-0.8 an explosion or a boss slam; 1 is almost never right (nauseating). Visual only. Systems may call it; it takes effect at the engine's og.camera system this tick."
+    aliases "screen shake, camera shake, trauma, Cinemachine impulse"
     param world World "The world."
     param trauma f32 "Trauma to add, 0 to 1."
     returns Result.Void

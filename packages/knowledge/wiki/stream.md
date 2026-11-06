@@ -30,7 +30,7 @@ module stream {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 25368</sub>
+<sub>`api.ogt` line 25448</sub>
 
 ## Contents
 
@@ -69,28 +69,28 @@ module stream {
 const STREAM_UNLOADED u32 0 "`StreamEvent.state`: the group is unloaded (StreamState unloaded)."
 ```
 
-<sub>`api.ogt` line 25435</sub>
+<sub>`api.ogt` line 25515</sub>
 
 ```ogt
 const STREAM_QUEUED u32 1 "`StreamEvent.state`: the group waits for room in the budget (StreamState queued)."
 ```
 
-<sub>`api.ogt` line 25436</sub>
+<sub>`api.ogt` line 25516</sub>
 
 ```ogt
 const STREAM_LOADING u32 2 "`StreamEvent.state`: the group's pack is being read (StreamState loading)."
 ```
 
-<sub>`api.ogt` line 25437</sub>
+<sub>`api.ogt` line 25517</sub>
 
 ```ogt
 const STREAM_RESIDENT u32 3 "`StreamEvent.state`: the group's assets are in place (StreamState resident)."
 ```
 
-<sub>`api.ogt` line 25438</sub>
+<sub>`api.ogt` line 25518</sub>
 
 ```ogt
 const STREAM_FAILED u32 4 "`StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why)."
 ```
 
-<sub>`api.ogt` line 25439</sub>
+<sub>`api.ogt` line 25519</sub>

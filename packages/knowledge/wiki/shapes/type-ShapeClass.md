@@ -14,7 +14,7 @@ interface ShapeClass {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7868</sub>
+<sub>`api.ogt` line 7894</sub>
 
 <a id="member-ShapeClass-new"></a>
 
@@ -45,4 +45,4 @@ fn new {
 }
 ```
 
-<sub>`api.ogt` line 7870</sub>
+<sub>`api.ogt` line 7896</sub>

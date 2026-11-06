@@ -8,6 +8,8 @@ Module [`ai`](../ai.md) · [index](../index.md)
 
 What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness, except its own: a sound of its entity or of an entity under it (og.Parent), or a noise whose NoiseDesc.source is one of them.
 
+Also known as: line of sight, vision cone, sight, hearing, detection, Unreal AIPerception, stealth awareness
+
 Token `og.Perception`, registered under the schema name `og.Perception`; its value type is `Perception`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -32,6 +34,7 @@ Token `og.Perception`, registered under the schema name `og.Perception`; its val
 ```ogt
 component Perception {
   doc "What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness, except its own: a sound of its entity or of an entity under it (og.Parent), or a noise whose NoiseDesc.source is one of them."
+  aliases "line of sight, vision cone, sight, hearing, detection, Unreal AIPerception, stealth awareness"
   field sight f32 "How far it sees." {
     default 8
     min 0
@@ -103,4 +106,4 @@ component Perception {
 }
 ```
 
-<sub>`api.ogt` line 14177</sub>
+<sub>`api.ogt` line 14230</sub>

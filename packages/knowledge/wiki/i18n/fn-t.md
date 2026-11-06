@@ -8,6 +8,8 @@ Module [`i18n`](../i18n.md) · [index](../index.md)
 
 A key's message in the active locale, formatted with its arguments; a key no table has answers the key itself and logs one warning.
 
+Also known as: translate, localised string, localized text, gettext, Godot tr, Unity LocalizedString, translation key
+
 ```ts
 og.i18n.t(world: World, key: string, args?: unknown): string
 ```
@@ -25,6 +27,7 @@ Binding symbol `og_i18n_t` · publish builds: kept
 ```ogt
 fn t {
   doc "A key's message in the active locale, formatted with its arguments; a key no table has answers the key itself and logs one warning."
+  aliases "translate, localised string, localized text, gettext, Godot tr, Unity LocalizedString, translation key"
   param world World "The world."
   param key String "The key, such as `menu.start`."
   param args Json "The arguments: an object of strings and numbers, `{ count: 3, name: \"Kai\" }`." {
@@ -34,4 +37,4 @@ fn t {
 }
 ```
 
-<sub>`api.ogt` line 15496</sub>
+<sub>`api.ogt` line 15562</sub>

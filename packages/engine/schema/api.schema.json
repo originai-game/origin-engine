@@ -2858,7 +2858,7 @@
         },
         {
           "name": "defineSystem",
-          "doc": "Declare a system.",
+          "doc": "Declare a system: the game's code that runs every tick (movement, AI, scoring), with the components it reads and writes and its order among the other systems. List it in GameDesc.systems.",
           "params": [
             {
               "name": "name",
@@ -33569,7 +33569,7 @@
     "SensorEntered": {
       "x-og-kind": "event",
       "x-og-module": "physics",
-      "description": "A collider started overlapping a sensor.",
+      "description": "A collider started overlapping a sensor: something walked into a trigger area (a pressure plate, a pickup, a zone that starts a cutscene). A sensor is an og.Collider with `sensor` set; it reports overlaps and pushes nothing.",
       "type": "object",
       "properties": {
         "sensor": {

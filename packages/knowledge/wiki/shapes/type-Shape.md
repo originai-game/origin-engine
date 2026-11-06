@@ -8,16 +8,17 @@ Module [`shapes`](../shapes.md) · [index](../index.md)
 
 An outline with holes, as three.js Shape.
 
+Also known as: three.js Shape, 2D path, polygon with holes, outline, Godot Path2D, vector shape
+
 Extends [`Path2`](../shapes/type-Path2.md#type-Path2): every member of it is a member here.
 
 ```ogt
 interface Shape {
   doc "An outline with holes, as three.js Shape."
-  extends Path2
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7840</sub>
+<sub>`api.ogt` line 7865</sub>
 
 <a id="member-Shape-holes"></a>
 
@@ -35,7 +36,7 @@ prop holes PathList "The holes: `shape.holes.push(hole)`." {
 }
 ```
 
-<sub>`api.ogt` line 7843</sub>
+<sub>`api.ogt` line 7869</sub>
 
 <a id="member-Shape-extractPoints"></a>
 
@@ -66,4 +67,4 @@ fn extractPoints {
 }
 ```
 
-<sub>`api.ogt` line 7846</sub>
+<sub>`api.ogt` line 7872</sub>

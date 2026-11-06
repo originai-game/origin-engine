@@ -34,4 +34,4 @@ fn lootLabel {
 }
 ```
 
-<sub>`api.ogt` line 22520</sub>
+<sub>`api.ogt` line 22598</sub>

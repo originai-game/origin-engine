@@ -27,6 +27,7 @@ module nav {
 
   component NavAgent {
     doc "An entity that moves itself towards `target` while `seeking`, by a path over `nav` (a grid, navmesh or flow field; 0 goes straight). og.nav re-plans when the target moved more than repathDistance, every repathTicks, or when the grid or navmesh changed, at most 32 plans a tick across agents."
+    aliases "NavMeshAgent, NavigationAgent, pathfinding agent, move to target, AI movement, obstacle avoidance"
     field nav Navigation "The grid, navmesh or flow field it plans on (og.nav.grid, og.nav.load, og.nav.flowField); 0 moves straight at the target."
     field target Vector3 "Where it goes while seeking." {
       worldspace world
@@ -210,6 +211,7 @@ module nav {
 
   component NavFilter {
     doc "Which navmesh areas an agent crosses and what a metre in each costs: beside an og.NavAgent, its plans weigh every polygon's length by its area's cost and never enter an excluded area. Areas are marked at cook time (`area` in a navmesh asset) or at run time (og.nav.setArea); 0 is ground. Without one every area costs 1."
+    aliases "area cost, terrain cost, Unity NavMesh area mask, NavMeshQueryFilter, Recast dtQueryFilter, Godot navigation layers"
     field areaCosts List.f32.64 "Per area id, the cost of a metre in it (past the list's length 1, and at least 0.01): `{ areaCosts: [1, 1, 1, 8] }` makes area 3 (water) eight times dearer, so a path wades only when going round is longer than that."
     field excluded List.u32.64 "Area ids the agent never enters (0 to 63): `{ excluded: [4] }` keeps it out of area 4 (lava)."
   }
@@ -531,6 +533,7 @@ module nav {
 
   fn findPath {
     doc "A path between two points on a grid or a navmesh, now: corners, length and whether it reaches the end."
+    aliases "pathfinding, A*, route, shortest path, Unity NavMesh.CalculatePath, Godot get_simple_path"
     param world World "The world."
     param desc PathDesc "The grid or navmesh and the two points."
     returns Result.NavPath "Refused for an unknown grid or navmesh, or when no path starts (an end off the grid or mesh)."
@@ -538,6 +541,7 @@ module nav {
 
   fn flowField {
     doc "A flow field towards targets over a grid: one Dijkstra pass gives every cell a direction, so any number of agents (NavAgent.nav = the field) steer by a lookup. It rebuilds when the grid changes."
+    aliases "crowd pathfinding, swarm, many units, RTS movement, vector field, flow map"
     param world World "The world."
     param desc FlowDesc "The grid and the targets."
     returns Result.Navigation "Refused for an unknown grid."
@@ -622,6 +626,7 @@ module nav {
 
   fn setLinkOpen {
     doc "Open or close an off-mesh link (a door): a closed one is never planned across, and agents on the mesh re-plan. World state."
+    aliases "door, gate, open or close a passage, off-mesh link, Unity NavMeshLink, Godot NavigationLink"
     param world World "The world."
     param mesh Navigation "The navmesh."
     param id u32 "The link's id."

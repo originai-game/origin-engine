@@ -279,6 +279,7 @@ module story {
 
   fn view {
     doc "What a conversation shows now, resolved in the active locale."
+    aliases "dialogue line, conversation, dialog box, Yarn Spinner, Ink, line and choices"
     param world World "The world."
     param conversation u32 "The conversation."
     returns Option.DialogueView "Null for a conversation that does not exist (never started, or stopped)."
@@ -328,6 +329,7 @@ module story {
 
   fn ambient {
     doc "Let an entity bark a topic on its own, every `every` ticks (and up to `jitter` more), as og.story.bark would; `every` 0 stops it. In saves; a despawned entity stops."
+    aliases "idle barks, ambient dialogue, chatter, random lines, background banter"
     param world World "The world."
     param desc AmbientDesc "Who, which topic and how often."
     returns Result.Void "Refused for a topic no loaded dialogue has."
@@ -361,6 +363,7 @@ module story {
 
   fn startQuest {
     doc "Start a loaded quest at its first stage."
+    aliases "begin quest, accept quest, quest start"
     param world World "The world."
     param id String "The quest's id."
     returns Result.bool "False when it had started before. Refused for a quest not loaded."

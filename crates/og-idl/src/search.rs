@@ -224,10 +224,12 @@ pub fn tokens(s: &str) -> Vec<String> {
 // ── the index ───────────────────────────────────────────────────────────────
 
 /// The fields an entry is scored on, in the index's column order.
-pub const FIELDS: [&str; 4] = ["name", "summary", "members", "body"];
+pub const FIELDS: [&str; NF] = ["name", "summary", "members", "body", "aliases"];
+/// How many fields an entry is scored on.
+const NF: usize = 5;
 /// Each field's weight and length normalisation (BM25F's w and b).
-const WEIGHT: [f64; 4] = [3.0, 1.5, 1.5, 1.0];
-const B: [f64; 4] = [0.3, 0.5, 0.5, 0.75];
+const WEIGHT: [f64; NF] = [3.0, 1.5, 1.5, 1.0, 2.0];
+const B: [f64; NF] = [0.3, 0.5, 0.5, 0.75, 0.3];
 const K1: f64 = 1.2;
 /// The weight of an index word a query word reaches only by a typo.
 const FUZZY: f64 = 0.8;
@@ -235,7 +237,8 @@ const FUZZY: f64 = 0.8;
 const PHRASE: f64 = 2.0;
 
 /// An entry's text split into the scored fields.
-fn fields(e: &Entry) -> [Vec<String>; 4] {
+fn fields(e: &Entry) -> [Vec<String>; NF] {
+    let mut aliases = String::new();
     let mut members = String::new();
     let mut body = String::new();
     // The IDL source quote and the binding line carry no words a reader asks
@@ -251,6 +254,10 @@ fn fields(e: &Entry) -> [Vec<String>; 4] {
             continue;
         }
         if line.starts_with("```") || line.starts_with("Binding symbol ") {
+            continue;
+        }
+        if let Some(rest) = line.strip_prefix(crate::r#gen::wiki::ALSO_KNOWN_AS) {
+            aliases.push_str(rest);
             continue;
         }
         // A table row's first cell is a field, parameter, variant or member name.
@@ -274,6 +281,7 @@ fn fields(e: &Entry) -> [Vec<String>; 4] {
         tokens(&e.summary),
         tokens(&members),
         tokens(&body),
+        tokens(&aliases),
     ]
 }
 
@@ -284,7 +292,7 @@ pub struct Doc {
     pub kind: String,
     pub page: String,
     pub summary: String,
-    pub len: [u32; 4],
+    pub len: [u32; NF],
     /// The entry's embedding (crate::embed), int8 with its scale.
     pub vec: Vec<i8>,
     pub vscale: f32,
@@ -355,7 +363,7 @@ const EMBED_TOP: usize = 100;
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct SearchIndex {
     pub docs: Vec<Doc>,
-    pub terms: BTreeMap<String, Vec<(u32, [u16; 4])>>,
+    pub terms: BTreeMap<String, Vec<(u32, [u16; NF])>>,
 }
 
 impl SearchIndex {
@@ -365,7 +373,7 @@ impl SearchIndex {
             let f = fields(e);
             let (vec, vscale) =
                 crate::embed::quantize(&crate::embed::model().embed(&embed_text(e)));
-            let mut counts: BTreeMap<&str, [u16; 4]> = BTreeMap::new();
+            let mut counts: BTreeMap<&str, [u16; NF]> = BTreeMap::new();
             for (k, words) in f.iter().enumerate() {
                 for w in words {
                     let c = counts.entry(w.as_str()).or_default();
@@ -383,7 +391,7 @@ impl SearchIndex {
                 kind: e.kind.clone(),
                 page: e.page.clone(),
                 summary: e.summary.clone(),
-                len: [0, 1, 2, 3].map(|k| f[k].len() as u32),
+                len: std::array::from_fn(|k| f[k].len() as u32),
                 vec,
                 vscale,
             });
@@ -395,7 +403,7 @@ impl SearchIndex {
     /// line per word (`term<TAB>word<TAB>doc:n,n,n,n …`).
     pub fn to_text(&self) -> String {
         let mut out = String::from(
-            "# og api find index 2: BM25F over name, summary, members, body; embeddings (scale:base64 int8)\n",
+            "# og api find index 3: BM25F over name, summary, members, body, aliases; embeddings (scale:base64 int8)\n",
         );
         for d in &self.docs {
             out.push_str(&format!(
@@ -426,7 +434,7 @@ impl SearchIndex {
     pub fn from_text(text: &str) -> Option<SearchIndex> {
         let mut ix = SearchIndex::default();
         let mut lines = text.lines();
-        if !lines.next()?.starts_with("# og api find index 2") {
+        if !lines.next()?.starts_with("# og api find index 3") {
             return None;
         }
         for line in lines {
@@ -436,8 +444,8 @@ impl SearchIndex {
                     let name = cols.next()?.to_string();
                     let kind = cols.next()?.to_string();
                     let page = cols.next()?.to_string();
-                    let mut len = [0u32; 4];
-                    for (k, n) in cols.next()?.split(',').enumerate().take(4) {
+                    let mut len = [0u32; NF];
+                    for (k, n) in cols.next()?.split(',').enumerate().take(NF) {
                         len[k] = n.parse().ok()?;
                     }
                     let (scale, b64) = cols.next()?.split_once(':')?;
@@ -467,8 +475,8 @@ impl SearchIndex {
                         .filter(|p| !p.is_empty())
                     {
                         let (d, c) = p.split_once(':')?;
-                        let mut counts = [0u16; 4];
-                        for (k, n) in c.split(',').enumerate().take(4) {
+                        let mut counts = [0u16; NF];
+                        for (k, n) in c.split(',').enumerate().take(NF) {
                             counts[k] = n.parse().ok()?;
                         }
                         posts.push((d.parse().ok()?, counts));
@@ -490,14 +498,19 @@ impl SearchIndex {
         if n == 0.0 {
             return Vec::new();
         }
-        let mut avg = [0f64; 4];
+        // A field's average length over the entries that have it: aliases
+        // and member names are absent from most entries, and averaging their
+        // zeros in would make every present one look long.
+        let mut avg = [0f64; NF];
+        let mut have = [0f64; NF];
         for d in &self.docs {
-            for k in 0..4 {
+            for k in 0..NF {
                 avg[k] += f64::from(d.len[k]);
+                have[k] += f64::from(u8::from(d.len[k] > 0));
             }
         }
-        for a in &mut avg {
-            *a = (*a / n).max(1.0);
+        for k in 0..NF {
+            avg[k] = (avg[k] / have[k].max(1.0)).max(1.0);
         }
         let mut words: Vec<(String, f64)> = Vec::new();
         for q in tokens(query) {
@@ -529,7 +542,7 @@ impl SearchIndex {
             for (d, c) in posts {
                 let doc = &self.docs[*d as usize];
                 let mut tf = 0.0;
-                for k in 0..4 {
+                for k in 0..NF {
                     if c[k] > 0 {
                         let norm = 1.0 - B[k] + B[k] * f64::from(doc.len[k]) / avg[k];
                         tf += WEIGHT[k] * f64::from(c[k]) / norm;

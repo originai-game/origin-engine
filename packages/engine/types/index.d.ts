@@ -2101,7 +2101,7 @@ export interface System {
 }
 
 /**
- * Declare a system.
+ * Declare a system: the game's code that runs every tick (movement, AI, scoring), with the components it reads and writes and its order among the other systems. List it in GameDesc.systems.
  *
  * @param name The system's unique name, PascalCase.
  * @param desc Reads, writes and order.
@@ -13221,7 +13221,7 @@ export interface CollisionEnded {
 }
 
 /**
- * A collider started overlapping a sensor.
+ * A collider started overlapping a sensor: something walked into a trigger area (a pressure plate, a pickup, a zone that starts a cutscene). A sensor is an og.Collider with `sensor` set; it reports overlaps and pushes nothing.
  *
  * The payload of the `SensorEntered` event (token `og.SensorEntered`).
  */
@@ -45748,7 +45748,9 @@ export declare namespace og {
   const CollisionStarted: EventType<CollisionStarted>;
   /** Two solid colliders stopped touching, or one of them went away. */
   const CollisionEnded: EventType<CollisionEnded>;
-  /** A collider started overlapping a sensor. */
+  /**
+   * A collider started overlapping a sensor: something walked into a trigger area (a pressure plate, a pickup, a zone that starts a cutscene). A sensor is an og.Collider with `sensor` set; it reports overlaps and pushes nothing.
+   */
   const SensorEntered: EventType<SensorEntered>;
   /** A collider stopped overlapping a sensor, or one of them went away. */
   const SensorExited: EventType<SensorExited>;

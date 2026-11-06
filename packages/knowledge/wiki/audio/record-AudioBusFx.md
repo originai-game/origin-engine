@@ -10,6 +10,8 @@ A bus's insert effects: a high- and low-pass (12 dB/octave), a compressor, side-
 
 Changes reach the mixer through the command stream, so they are deterministic and in the world hash; the PCM is the mixer's.
 
+Also known as: ducking, side-chain, compressor, low-pass, mixer effects, Unity AudioMixer, Godot AudioEffect
+
 Token `og.AudioBusFx`, registered under the schema name `og.AudioBusFx`; its value type is `AudioBusFx`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -47,6 +49,7 @@ Token `og.AudioBusFx`, registered under the schema name `og.AudioBusFx`; its val
 component AudioBusFx {
   doc "A bus's insert effects: a high- and low-pass (12 dB/octave), a compressor, side-chain ducking by another bus, and a send to the shared reverb, whose return joins master. One entity per bus (the first in query order counts); without one a bus passes straight through."
   doc "Changes reach the mixer through the command stream, so they are deterministic and in the world hash; the PCM is the mixer's."
+  aliases "ducking, side-chain, compressor, low-pass, mixer effects, Unity AudioMixer, Godot AudioEffect"
   field bus AudioBus "The bus these effects are on." {
     default music
   }
@@ -212,4 +215,4 @@ component AudioBusFx {
 }
 ```
 
-<sub>`api.ogt` line 13027</sub>
+<sub>`api.ogt` line 13074</sub>

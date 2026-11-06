@@ -8,6 +8,8 @@ Module [`timeline`](../timeline.md) · [index](../index.md)
 
 Stop at 0: the camera is handed back, its sounds and music stop, its caption and cover go.
 
+Also known as: stop cutscene, end sequence, skip cutscene
+
 ```ts
 og.timeline.stop(world: World, entity: Entity): Result<void>
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_timeline_stop` · publish builds: kept
 ```ogt
 fn stop {
   doc "Stop at 0: the camera is handed back, its sounds and music stop, its caption and cover go."
+  aliases "stop cutscene, end sequence, skip cutscene"
   param world World "The world."
   param entity Entity "The entity with the og.Timeline."
   returns Result.Void "Refused for an entity without og.Timeline."
 }
 ```
 
-<sub>`api.ogt` line 26118</sub>
+<sub>`api.ogt` line 26204</sub>

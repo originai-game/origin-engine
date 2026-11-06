@@ -142,6 +142,7 @@ module shapes {
 
   interface Shape {
     doc "An outline with holes, as three.js Shape."
+    aliases "three.js Shape, 2D path, polygon with holes, outline, Godot Path2D, vector shape"
     extends Path2
     prop holes PathList "The holes: `shape.holes.push(hole)`." {
       host false

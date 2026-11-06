@@ -23,4 +23,4 @@ enum AoResolution {
 }
 ```
 
-<sub>`api.ogt` line 4598</sub>
+<sub>`api.ogt` line 4618</sub>

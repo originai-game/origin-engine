@@ -10,6 +10,8 @@ A progress bar: a rounded track, a fill that moves to its value on the style's u
 
 Parts: ProgressBar.track[<style>], ProgressBar.buffer, ProgressBar.fill[<tone>][done], ProgressBar.step[filled], ProgressBar.label, ProgressBar.value. States: group progress (working, done) and group mode (determinate, indeterminate). Accessibility: progressbar named by the label, 0 to 100 (busy when indeterminate). Probe ids: <id>, <id>/Track, <id>/Fill, <id>/Label, <id>/Value.
 
+Also known as: loading bar, progress, Unity Slider fill, Godot ProgressBar
+
 ```ts
 og.ui.progressBar(id: string, desc?: ProgressBarDesc): void
 ```
@@ -27,6 +29,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 fn progressBar {
   doc "A progress bar: a rounded track, a fill that moves to its value on the style's ui spring (never jumping back on a retarget), a buffer ahead of it, a sweeping sheen while it works, segments for steps, a sweeping band when indeterminate, and a caption and value over it. Reaching 1 flashes the fill once and plays success."
   doc "Parts: ProgressBar.track[<style>], ProgressBar.buffer, ProgressBar.fill[<tone>][done], ProgressBar.step[filled], ProgressBar.label, ProgressBar.value. States: group progress (working, done) and group mode (determinate, indeterminate). Accessibility: progressbar named by the label, 0 to 100 (busy when indeterminate). Probe ids: <id>, <id>/Track, <id>/Fill, <id>/Label, <id>/Value."
+  aliases "loading bar, progress, Unity Slider fill, Godot ProgressBar"
   host false
   param id String "Its id."
   param desc ProgressBarDesc "Its value and look."
@@ -34,4 +37,4 @@ fn progressBar {
 }
 ```
 
-<sub>`api.ogt` line 21200</sub>
+<sub>`api.ogt` line 21277</sub>

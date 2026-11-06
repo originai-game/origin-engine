@@ -8,6 +8,8 @@ Module [`input`](../input.md) · [index](../index.md)
 
 Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it.
 
+Also known as: input action, InputAction, Godot InputMap action, key binding
+
 ```ts
 og.input.defineAction(world: World, desc?: ActionDesc): Result<void>
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_input_define_action` · publish builds: kept
 ```ogt
 fn defineAction {
   doc "Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it."
+  aliases "input action, InputAction, Godot InputMap action, key binding"
   param world World "The world."
   param desc ActionDesc "The action."
   returns Result.Void "Refused, naming the fix, for a binding whose control names none or that does not fit the kind (a stick on a button, a key alone on a two-axis action)."
 }
 ```
 
-<sub>`api.ogt` line 2290</sub>
+<sub>`api.ogt` line 2300</sub>

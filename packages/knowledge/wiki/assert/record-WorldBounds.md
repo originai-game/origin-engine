@@ -8,6 +8,8 @@ Module [`assert`](../assert.md) · [index](../index.md)
 
 Where the world's entities may be: naming it turns on the default invariant that every entity's place (its og.MatrixWorld translation, else a root's og.Transform.position) lies inside min..max on every tick. A world that never names it has no bounds and keeps its hash.
 
+Also known as: kill zone, kill plane, Unreal KillZ, out of bounds, fell out of the world, level limits
+
 Token `og.WorldBounds`, registered under the schema name `og.WorldBounds`; its value type is `WorldBounds`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -19,6 +21,7 @@ Token `og.WorldBounds`, registered under the schema name `og.WorldBounds`; its v
 ```ogt
 resource WorldBounds {
   doc "Where the world's entities may be: naming it turns on the default invariant that every entity's place (its og.MatrixWorld translation, else a root's og.Transform.position) lies inside min..max on every tick. A world that never names it has no bounds and keeps its hash."
+  aliases "kill zone, kill plane, Unreal KillZ, out of bounds, fell out of the world, level limits"
   field min Vector3 "The lowest corner." {
     default -1000 -1000 -1000
     worldspace world
@@ -33,4 +36,4 @@ resource WorldBounds {
 }
 ```
 
-<sub>`api.ogt` line 25821</sub>
+<sub>`api.ogt` line 25902</sub>

@@ -8,6 +8,8 @@ Module [`motion`](../motion.md) · [index](../index.md)
 
 Queue a library pose where the character stands, after its other goals.
 
+Also known as: emote, gesture, wave, idle pose, play a pose
+
 ```ts
 og.motion.pose(world: World, entity: Entity, desc?: PoseGoalDesc): Result<void>
 ```
@@ -25,6 +27,7 @@ Binding symbol `og_motion_pose` · publish builds: kept
 ```ogt
 fn pose {
   doc "Queue a library pose where the character stands, after its other goals."
+  aliases "emote, gesture, wave, idle pose, play a pose"
   param world World "The world."
   param entity Entity "An entity with an og.MotionAgent."
   param desc PoseGoalDesc "The pose and how long it is current."
@@ -32,4 +35,4 @@ fn pose {
 }
 ```
 
-<sub>`api.ogt` line 26874</sub>
+<sub>`api.ogt` line 26964</sub>

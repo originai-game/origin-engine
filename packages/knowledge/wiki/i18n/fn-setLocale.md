@@ -8,6 +8,8 @@ Module [`i18n`](../i18n.md) · [index](../index.md)
 
 Ask for a locale (a player's choice in settings); the active one is the best table for it.
 
+Also known as: language, change language, locale, localisation, localization, Godot TranslationServer.set_locale
+
 ```ts
 og.i18n.setLocale(world: World, locale: string): LocaleInfo
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_i18n_set_locale` · publish builds: kept
 ```ogt
 fn setLocale {
   doc "Ask for a locale (a player's choice in settings); the active one is the best table for it."
+  aliases "language, change language, locale, localisation, localization, Godot TranslationServer.set_locale"
   param world World "The world."
   param locale String "A BCP 47 tag: `ja`, `zh-CN`, `ar-EG`."
   returns LocaleInfo
 }
 ```
 
-<sub>`api.ogt` line 15483</sub>
+<sub>`api.ogt` line 15548</sub>

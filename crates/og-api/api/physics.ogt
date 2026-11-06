@@ -28,6 +28,7 @@ module physics {
   component RigidBody {
     doc "A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one."
     doc "Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport)."
+    aliases "physics body, Rigidbody, RigidBody3D, dynamic body, kinematic body"
     field kind u32 "BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by its Velocity each tick, or by game code through its Transform)." {
       min 0
       max 2
@@ -77,6 +78,7 @@ module physics {
   component Collider {
     doc "The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale."
     doc "Compound colliders: a Collider without a RigidBody on a child entity whose og.Parent chain reaches a RigidBody is part of that body (the nearest such ancestor), placed at its transform relative to the body (the transforms between them composed, the body's scale applied): a table of a top and four legs, a ship of a hull and a mast, are one body. Its mass adds to the body's from its density, or the body's RigidBody.mass is shared among its colliders by theirs; its friction, restitution, layers and sensor flag are its own. Children join in entity order, whatever the query order. Changing a child (its collider, or its transform relative to the body) rebuilds the body, which loses its contacts' warm starts. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children; a collider whose chain reaches no body stays static at its world transform."
+    aliases "trigger, sensor, hitbox, collision shape, Unity Collider isTrigger, Godot CollisionShape"
     field shape u32 "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (its outline in 2D), 6 the height field `mesh` (3D: a terrain), 7 a diamond and 8 a hexagon in `size` (both)." {
       min 0
       max 8
@@ -217,7 +219,8 @@ module physics {
   }
 
   event SensorEntered {
-    doc "A collider started overlapping a sensor."
+    doc "A collider started overlapping a sensor: something walked into a trigger area (a pressure plate, a pickup, a zone that starts a cutscene). A sensor is an og.Collider with `sensor` set; it reports overlaps and pushes nothing."
+    aliases "trigger enter, OnTriggerEnter, Godot Area2D body_entered, Unreal OnComponentBeginOverlap, trigger volume, zone entered"
     field sensor Entity "The entity whose collider is the sensor."
     field other Entity "The entity that entered it."
   }
@@ -375,6 +378,7 @@ module physics {
 
   component CharacterController {
     doc "A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface, standing that far over the ground; a step is climbed when the ground beyond it is at most `stepHeight` over the ground it stands on. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes the dynamic bodies it walks into (`pushBodies`) with at most `pushStrength`, so a light one is shoved and a heavy one holds."
+    aliases "player controller, kinematic character, Unity CharacterController, Godot CharacterBody3D"
     field move Vector3 "The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0). Set it every tick." {
       unit mps
     }
@@ -989,6 +993,7 @@ module physics {
 
   component Cloth {
     doc "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's world position (its og.Transform after its parents': its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour)."
+    aliases "flag, banner, curtain, sail, Unity Cloth, Unreal Chaos Cloth"
     field columns u32 "Points across." {
       default 12
       min 2
@@ -1617,6 +1622,7 @@ module physics {
 
   component Ragdoll {
     doc "A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities."
+    aliases "physical animation, death fall, limp body, Unreal physics asset, Unity ragdoll wizard"
     field weight f32 "0 animated, 1 ragdoll. Set it to 1 on a hit; back to 0 to recover." {
       min 0
       max 1
@@ -1815,6 +1821,7 @@ module physics {
 
   fn raycast {
     doc "The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them."
+    aliases "ray, line trace, hit test, mouse picking, Unity Physics.Raycast, Godot intersect_ray, Unreal LineTraceSingle"
     param world World "The world."
     param desc RaycastDesc "The ray and the filter."
     returns Result.Option.RaycastHit "The hit, or null when nothing is hit; refused for a zero direction."
@@ -1843,6 +1850,7 @@ module physics {
 
   fn overlap {
     doc "Every collider overlapping a shape, sorted by entity id; the same view of the colliders as raycast."
+    aliases "overlap sphere, area query, shapes in range, Unity Physics.OverlapSphere, Godot intersect_shape"
     param world World "The world."
     param desc OverlapDesc "The shape, its placement and the filter."
     returns Result.List.Entity
@@ -1850,6 +1858,7 @@ module physics {
 
   fn applyForce {
     doc "Push a dynamic body with a force (N, world axes) over the next physics step, at a world point or its centre of mass: call it every tick for a steady force (thrust, wind, a car's downforce or an anti-roll assist). Applied by the og.physics step after the systems, in the order given, then gone; a hit stop drops it. Kinematic and static bodies ignore it. Pushes not yet applied are world state (in snapshots and the hash)."
+    aliases "force, thrust, push over time, Unity AddForce, Godot apply_force"
     param world World "The world."
     param entity Entity "The body's entity (an og.RigidBody)."
     param force Vector3 "The force in newtons (2D uses x and y)."
@@ -1861,6 +1870,7 @@ module physics {
 
   fn applyImpulse {
     doc "Give a dynamic body an impulse (N·s, world axes) at a world point or its centre of mass: a sudden change of momentum (a kick, a hit, a jump: its velocity changes by impulse / mass), applied by the next physics step (after a hit stop ends). As applyForce otherwise."
+    aliases "knockback, push, hit force, Unity AddForce ForceMode.Impulse, Godot apply_impulse, Unreal AddImpulse"
     param world World "The world."
     param entity Entity "The body's entity (an og.RigidBody)."
     param impulse Vector3 "The impulse in newton-seconds (2D uses x and y)."

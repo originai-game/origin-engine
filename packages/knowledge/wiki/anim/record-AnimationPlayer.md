@@ -8,6 +8,8 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 Plays one clip on a skeleton. Alone it poses the skeleton from its rest pose; with an og.AnimationGraph it plays over the graph's result with `weight`. Changing `clip` cross-fades from the previous one over `fade`; a clip change starts the new clip at 0 (or at `time` if the game wrote it in the same tick).
 
+Also known as: play animation, Animator, AnimationPlayer, clip playback
+
 Token `og.AnimationPlayer`, registered under the schema name `og.AnimationPlayer`; its value type is `AnimationPlayer`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -24,6 +26,7 @@ Token `og.AnimationPlayer`, registered under the schema name `og.AnimationPlayer
 ```ogt
 component AnimationPlayer {
   doc "Plays one clip on a skeleton. Alone it poses the skeleton from its rest pose; with an og.AnimationGraph it plays over the graph's result with `weight`. Changing `clip` cross-fades from the previous one over `fade`; a clip change starts the new clip at 0 (or at `time` if the game wrote it in the same tick)."
+  aliases "play animation, Animator, AnimationPlayer, clip playback"
   field clip ClipAsset "The clip asset; 0 plays nothing."
   field time f32 "The playback position; written every tick, set it to seek (no markers fire across a seek)." {
     min 0
@@ -62,4 +65,4 @@ component AnimationPlayer {
 }
 ```
 
-<sub>`api.ogt` line 11556</sub>
+<sub>`api.ogt` line 11593</sub>

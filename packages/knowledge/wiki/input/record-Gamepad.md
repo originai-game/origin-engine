@@ -261,7 +261,7 @@ resource Gamepad {
 }
 ```
 
-<sub>`api.ogt` line 2948</sub>
+<sub>`api.ogt` line 2962</sub>
 
 <a id="member-Gamepad-connected"></a>
 
@@ -291,7 +291,7 @@ fn connected {
 }
 ```
 
-<sub>`api.ogt` line 3101</sub>
+<sub>`api.ogt` line 3115</sub>
 
 <a id="member-Gamepad-down"></a>
 
@@ -323,7 +323,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 3108</sub>
+<sub>`api.ogt` line 3122</sub>
 
 <a id="member-Gamepad-pressed"></a>
 
@@ -355,7 +355,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 3116</sub>
+<sub>`api.ogt` line 3130</sub>
 
 <a id="member-Gamepad-released"></a>
 
@@ -387,7 +387,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 3124</sub>
+<sub>`api.ogt` line 3138</sub>
 
 <a id="member-Gamepad-axis"></a>
 
@@ -419,4 +419,4 @@ fn axis {
 }
 ```
 
-<sub>`api.ogt` line 3132</sub>
+<sub>`api.ogt` line 3146</sub>

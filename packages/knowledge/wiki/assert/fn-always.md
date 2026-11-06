@@ -8,6 +8,8 @@ Module [`assert`](../assert.md) · [index](../index.md)
 
 The condition holds on every call: a false one is a violation, reported with its tick, its name, its place and `details`.
 
+Also known as: invariant, assertion, must always hold, Antithesis always
+
 ```ts
 og.assert.always(condition: boolean, name: string, details?: unknown | null): void
 ```
@@ -25,6 +27,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 ```ogt
 fn always {
   doc "The condition holds on every call: a false one is a violation, reported with its tick, its name, its place and `details`."
+  aliases "invariant, assertion, must always hold, Antithesis always"
   host false
   param condition bool "What must hold."
   param name String "What it means, in a few words: `hp never negative`."
@@ -34,4 +37,4 @@ fn always {
 }
 ```
 
-<sub>`api.ogt` line 25836</sub>
+<sub>`api.ogt` line 25918</sub>

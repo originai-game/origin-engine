@@ -46,4 +46,4 @@ struct StatusEffect {
 }
 ```
 
-<sub>`api.ogt` line 21773</sub>
+<sub>`api.ogt` line 21851</sub>

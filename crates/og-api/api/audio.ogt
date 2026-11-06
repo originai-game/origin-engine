@@ -55,6 +55,7 @@ module audio {
   component AudioSource {
     doc "A sound an entity plays. Level-triggered: while `playing` is true it plays (inserting a source plays it), setting it false stops it, and a one-shot that reaches its end sets it back to false and sends og.SoundEnded."
     doc "A one-shot of F frames at rate R and pitch p started in tick S ends in tick S + ceil(F * tickRate / (R * p)) - 1. A despawned entity's voice is silenced without an event."
+    aliases "sound emitter, AudioSource, AudioStreamPlayer, play a sound"
     field sound Sound "The sound, from og.load.sound; 0 plays nothing. A handle not yet loaded waits and starts on the first tick it is there."
     field bus AudioBus "The bus it plays on." {
       default sfx
@@ -266,6 +267,7 @@ module audio {
   component AudioBusFx {
     doc "A bus's insert effects: a high- and low-pass (12 dB/octave), a compressor, side-chain ducking by another bus, and a send to the shared reverb, whose return joins master. One entity per bus (the first in query order counts); without one a bus passes straight through."
     doc "Changes reach the mixer through the command stream, so they are deterministic and in the world hash; the PCM is the mixer's."
+    aliases "ducking, side-chain, compressor, low-pass, mixer effects, Unity AudioMixer, Godot AudioEffect"
     field bus AudioBus "The bus these effects are on." {
       default music
     }

@@ -8,6 +8,8 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 Push a dynamic body with a force (N, world axes) over the next physics step, at a world point or its centre of mass: call it every tick for a steady force (thrust, wind, a car's downforce or an anti-roll assist). Applied by the og.physics step after the systems, in the order given, then gone; a hit stop drops it. Kinematic and static bodies ignore it. Pushes not yet applied are world state (in snapshots and the hash).
 
+Also known as: force, thrust, push over time, Unity AddForce, Godot apply_force
+
 ```ts
 og.physics.applyForce(world: World, entity: Entity, force: Vector3, point?: Vector3): Result<void>
 ```
@@ -26,6 +28,7 @@ Binding symbol `og_physics_apply_force` · publish builds: kept
 ```ogt
 fn applyForce {
   doc "Push a dynamic body with a force (N, world axes) over the next physics step, at a world point or its centre of mass: call it every tick for a steady force (thrust, wind, a car's downforce or an anti-roll assist). Applied by the og.physics step after the systems, in the order given, then gone; a hit stop drops it. Kinematic and static bodies ignore it. Pushes not yet applied are world state (in snapshots and the hash)."
+  aliases "force, thrust, push over time, Unity AddForce, Godot apply_force"
   param world World "The world."
   param entity Entity "The body's entity (an og.RigidBody)."
   param force Vector3 "The force in newtons (2D uses x and y)."
@@ -36,4 +39,4 @@ fn applyForce {
 }
 ```
 
-<sub>`api.ogt` line 10329</sub>
+<sub>`api.ogt` line 10364</sub>

@@ -23,4 +23,4 @@ struct ActionHintsResult {
 }
 ```
 
-<sub>`api.ogt` line 18070</sub>
+<sub>`api.ogt` line 18145</sub>

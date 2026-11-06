@@ -52,4 +52,4 @@ struct JumpGoalDesc {
 }
 ```
 
-<sub>`api.ogt` line 26741</sub>
+<sub>`api.ogt` line 26831</sub>

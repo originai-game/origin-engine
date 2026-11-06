@@ -14,7 +14,7 @@ interface Path2Class {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7856</sub>
+<sub>`api.ogt` line 7882</sub>
 
 <a id="member-Path2Class-new"></a>
 
@@ -45,4 +45,4 @@ fn new {
 }
 ```
 
-<sub>`api.ogt` line 7858</sub>
+<sub>`api.ogt` line 7884</sub>

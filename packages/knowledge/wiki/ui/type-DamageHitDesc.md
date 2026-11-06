@@ -32,4 +32,4 @@ struct DamageHitDesc {
 }
 ```
 
-<sub>`api.ogt` line 22194</sub>
+<sub>`api.ogt` line 22272</sub>

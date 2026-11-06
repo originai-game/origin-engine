@@ -17,7 +17,7 @@ module art {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 26386</sub>
+<sub>`api.ogt` line 26475</sub>
 
 ## Contents
 
@@ -68,7 +68,7 @@ column ArtRotation {
 }
 ```
 
-<sub>`api.ogt` line 26398</sub>
+<sub>`api.ogt` line 26487</sub>
 
 ```ogt
 column ArtFilter {
@@ -79,7 +79,7 @@ column ArtFilter {
 }
 ```
 
-<sub>`api.ogt` line 26412</sub>
+<sub>`api.ogt` line 26501</sub>
 
 ```ogt
 column ArtMips {
@@ -90,7 +90,7 @@ column ArtMips {
 }
 ```
 
-<sub>`api.ogt` line 26426</sub>
+<sub>`api.ogt` line 26515</sub>
 
 ```ogt
 column ArtNormals {
@@ -101,7 +101,7 @@ column ArtNormals {
 }
 ```
 
-<sub>`api.ogt` line 26441</sub>
+<sub>`api.ogt` line 26530</sub>
 
 ```ogt
 column ArtLinePlace {
@@ -112,7 +112,7 @@ column ArtLinePlace {
 }
 ```
 
-<sub>`api.ogt` line 26455</sub>
+<sub>`api.ogt` line 26544</sub>
 
 ```ogt
 column ArtBrush {
@@ -123,7 +123,7 @@ column ArtBrush {
 }
 ```
 
-<sub>`api.ogt` line 26469</sub>
+<sub>`api.ogt` line 26558</sub>
 
 ```ogt
 column ArtProjection {
@@ -134,4 +134,4 @@ column ArtProjection {
 }
 ```
 
-<sub>`api.ogt` line 26483</sub>
+<sub>`api.ogt` line 26572</sub>

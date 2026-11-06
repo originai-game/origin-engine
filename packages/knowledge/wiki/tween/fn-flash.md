@@ -8,6 +8,8 @@ Module [`tween`](../tween.md) · [index](../index.md)
 
 Flash the entity's og.Sprite, its og.Mesh, or its og.Model (a glTF instance: this instance only, the others sharing its materials stay as they are). Cancels its earlier flash.
 
+Also known as: hit flash, damage flash, blink, white flash, flicker
+
 ```ts
 og.tween.flash(world: World, desc?: FlashDesc): Result<Tween>
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_tween_flash` · publish builds: kept
 ```ogt
 fn flash {
   doc "Flash the entity's og.Sprite, its og.Mesh, or its og.Model (a glTF instance: this instance only, the others sharing its materials stay as they are). Cancels its earlier flash."
+  aliases "hit flash, damage flash, blink, white flash, flicker"
   param world World "The world."
   param desc FlashDesc "The entity and the flash."
   returns Result.Tween "Refused for an entity with none of og.Sprite, og.Mesh and og.Model."
 }
 ```
 
-<sub>`api.ogt` line 12491</sub>
+<sub>`api.ogt` line 12534</sub>

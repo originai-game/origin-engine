@@ -8,6 +8,8 @@ Module [`destruction`](../destruction.md) · [index](../index.md)
 
 An explosion: damage to every destructible in reach (as og.destruction.damage), then a push outwards to their loose chunks. Applied by og.destruction this tick, as damage. Push other bodies with og.physics.applyImpulse.
 
+Also known as: blast, explosion, shatter, demolish, blow apart
+
 ```ts
 og.destruction.explode(world: World, desc?: ExplosionDesc): Result<void>
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_destruction_explode` · publish builds: kept
 ```ogt
 fn explode {
   doc "An explosion: damage to every destructible in reach (as og.destruction.damage), then a push outwards to their loose chunks. Applied by og.destruction this tick, as damage. Push other bodies with og.physics.applyImpulse."
+  aliases "blast, explosion, shatter, demolish, blow apart"
   param world World "The world."
   param desc ExplosionDesc "Its centre, reach, damage and push."
   returns Result.Void "Refused for a point that is not finite."
 }
 ```
 
-<sub>`api.ogt` line 27223</sub>
+<sub>`api.ogt` line 27316</sub>

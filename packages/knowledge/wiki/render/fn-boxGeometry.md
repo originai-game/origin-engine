@@ -8,6 +8,8 @@ Module [`render`](../render.md) · [index](../index.md)
 
 Make a box geometry for og.Mesh. Physics can use it as a convex or triangle-mesh Collider.mesh too.
 
+Also known as: cube mesh, box mesh, three.js BoxGeometry
+
 ```ts
 og.render.boxGeometry(world: World, desc?: BoxGeometryDesc): Result<Geometry>
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_render_box_geometry` · publish builds: kept
 ```ogt
 fn boxGeometry {
   doc "Make a box geometry for og.Mesh. Physics can use it as a convex or triangle-mesh Collider.mesh too."
+  aliases "cube mesh, box mesh, three.js BoxGeometry"
   param world World "The world whose renderer owns the geometry."
   param desc BoxGeometryDesc "Its extents and texture repeat."
   returns Result.Geometry
 }
 ```
 
-<sub>`api.ogt` line 6315</sub>
+<sub>`api.ogt` line 6337</sub>

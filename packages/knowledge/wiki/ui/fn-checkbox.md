@@ -8,6 +8,8 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 A checkbox with a label; a press flips it.
 
+Also known as: toggle, tick box, Unity Toggle, Godot CheckBox
+
 ```ts
 og.ui.checkbox(id: string, on: boolean, label: string): ToggleResult
 ```
@@ -25,6 +27,7 @@ Binding symbol `og_ui_checkbox` · publish builds: kept
 ```ogt
 fn checkbox {
   doc "A checkbox with a label; a press flips it."
+  aliases "toggle, tick box, Unity Toggle, Godot CheckBox"
   param id String "Its id."
   param on bool "The state from game state."
   param label String "The label."
@@ -32,4 +35,4 @@ fn checkbox {
 }
 ```
 
-<sub>`api.ogt` line 17094</sub>
+<sub>`api.ogt` line 17166</sub>

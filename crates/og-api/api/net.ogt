@@ -20,6 +20,7 @@ module net {
 
   resource Lockstep {
     doc "Lockstep's settings and this peer's place. The game sets enabled, players, inputDelay and hashEvery (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared."
+    aliases "deterministic lockstep, input sync, RTS networking, peer to peer simulation"
     field enabled bool "Whether the world takes its ticks in lockstep when in a room."
     field players u32 "The seats: the peers lockstep waits for before it starts, and whose inputs each tick waits for." {
       default 2
@@ -83,6 +84,7 @@ module net {
 
   event Desync {
     doc "This peer's world and another's differ: sent once, at the start of the tick after the hashes showed it. The probe's `desync` dump (`dump_desync`) names the component and field that differ, once the other peer's snapshot of that tick arrived."
+    aliases "desync, out of sync, divergence, hash mismatch, simulation drift"
     field tick u32 "The first divergent tick: the world after it differs (og.Time.tick of the snapshots compared)."
     field peer u32 "The first peer whose world differs from this one."
     field peers u32 "How many peers' worlds differ from this one."

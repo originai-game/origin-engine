@@ -23,4 +23,4 @@ enum Upscaler {
 }
 ```
 
-<sub>`api.ogt` line 3837</sub>
+<sub>`api.ogt` line 3855</sub>

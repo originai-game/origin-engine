@@ -55,4 +55,4 @@ struct PlacementGhostDesc {
 }
 ```
 
-<sub>`api.ogt` line 22451</sub>
+<sub>`api.ogt` line 22529</sub>

@@ -10,6 +10,8 @@ A body the physics step simulates. It needs an og.Transform and usually has an o
 
 Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport).
 
+Also known as: physics body, Rigidbody, RigidBody3D, dynamic body, kinematic body
+
 Token `og.RigidBody`, registered under the schema name `og.RigidBody`; its value type is `RigidBody`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -29,6 +31,7 @@ Token `og.RigidBody`, registered under the schema name `og.RigidBody`; its value
 component RigidBody {
   doc "A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one."
   doc "Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport)."
+  aliases "physics body, Rigidbody, RigidBody3D, dynamic body, kinematic body"
   field kind u32 "BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by its Velocity each tick, or by game code through its Transform)." {
     min 0
     max 2
@@ -76,4 +79,4 @@ component RigidBody {
 }
 ```
 
-<sub>`api.ogt` line 8506</sub>
+<sub>`api.ogt` line 8533</sub>

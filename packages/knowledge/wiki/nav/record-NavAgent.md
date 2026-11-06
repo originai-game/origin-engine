@@ -8,6 +8,8 @@ Module [`nav`](../nav.md) · [index](../index.md)
 
 An entity that moves itself towards `target` while `seeking`, by a path over `nav` (a grid, navmesh or flow field; 0 goes straight). og.nav re-plans when the target moved more than repathDistance, every repathTicks, or when the grid or navmesh changed, at most 32 plans a tick across agents.
 
+Also known as: NavMeshAgent, NavigationAgent, pathfinding agent, move to target, AI movement, obstacle avoidance
+
 Token `og.NavAgent`, registered under the schema name `og.NavAgent`; its value type is `NavAgent`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -35,6 +37,7 @@ Token `og.NavAgent`, registered under the schema name `og.NavAgent`; its value t
 ```ogt
 component NavAgent {
   doc "An entity that moves itself towards `target` while `seeking`, by a path over `nav` (a grid, navmesh or flow field; 0 goes straight). og.nav re-plans when the target moved more than repathDistance, every repathTicks, or when the grid or navmesh changed, at most 32 plans a tick across agents."
+  aliases "NavMeshAgent, NavigationAgent, pathfinding agent, move to target, AI movement, obstacle avoidance"
   field nav Navigation "The grid, navmesh or flow field it plans on (og.nav.grid, og.nav.load, og.nav.flowField); 0 moves straight at the target."
   field target Vector3 "Where it goes while seeking." {
     worldspace world
@@ -122,4 +125,4 @@ component NavAgent {
 }
 ```
 
-<sub>`api.ogt` line 13500</sub>
+<sub>`api.ogt` line 13548</sub>

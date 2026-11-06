@@ -75,4 +75,4 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 5636</sub>
+<sub>`api.ogt` line 5656</sub>

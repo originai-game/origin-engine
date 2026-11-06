@@ -30,4 +30,4 @@ fn completeQuest {
 }
 ```
 
-<sub>`api.ogt` line 14776</sub>
+<sub>`api.ogt` line 14833</sub>

@@ -25,4 +25,4 @@ enum GraphicsQuality {
 }
 ```
 
-<sub>`api.ogt` line 4310</sub>
+<sub>`api.ogt` line 4330</sub>

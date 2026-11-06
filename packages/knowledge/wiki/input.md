@@ -26,7 +26,7 @@ module input {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 2005</sub>
+<sub>`api.ogt` line 2015</sub>
 
 ## Contents
 
@@ -128,10 +128,10 @@ module input {
 const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
 ```
 
-<sub>`api.ogt` line 2012</sub>
+<sub>`api.ogt` line 2022</sub>
 
 ```ogt
 const MAX_GAMEPADS u32 8 "The most gamepads og.Gamepad reads: pads 0 to 7."
 ```
 
-<sub>`api.ogt` line 2013</sub>
+<sub>`api.ogt` line 2023</sub>

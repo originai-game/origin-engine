@@ -30,4 +30,4 @@ struct HeroButtonDesc {
 }
 ```
 
-<sub>`api.ogt` line 19867</sub>
+<sub>`api.ogt` line 19943</sub>

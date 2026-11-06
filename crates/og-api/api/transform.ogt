@@ -100,6 +100,7 @@ module transform {
 
   fn lookAt {
     doc "The rotation that points -Z from an eye towards a target, as three.js Object3D.lookAt for cameras."
+    aliases "face, aim at, rotate towards, Unity Transform.LookAt, Godot look_at, three.js lookAt"
     param eye Vector3 "Where the viewer is."
     param target Vector3 "What it looks at."
     param up Vector3 "The up direction; the zero vector means +Y." {

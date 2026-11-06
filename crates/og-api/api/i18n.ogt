@@ -49,6 +49,7 @@ module i18n {
 
   fn setLocale {
     doc "Ask for a locale (a player's choice in settings); the active one is the best table for it."
+    aliases "language, change language, locale, localisation, localization, Godot TranslationServer.set_locale"
     param world World "The world."
     param locale String "A BCP 47 tag: `ja`, `zh-CN`, `ar-EG`."
     returns LocaleInfo
@@ -62,6 +63,7 @@ module i18n {
 
   fn t {
     doc "A key's message in the active locale, formatted with its arguments; a key no table has answers the key itself and logs one warning."
+    aliases "translate, localised string, localized text, gettext, Godot tr, Unity LocalizedString, translation key"
     param world World "The world."
     param key String "The key, such as `menu.start`."
     param args Json "The arguments: an object of strings and numbers, `{ count: 3, name: \"Kai\" }`." {
@@ -104,6 +106,7 @@ module i18n {
 
   fn formatTime {
     doc "A time of day in the active locale: `3:05 PM` (en), `15:05` (de)."
+    aliases "time of day format, 12 hour clock, 24 hour clock"
     param world World "The world (its active locale)."
     param seconds f64 "Seconds since 1970-01-01 00:00 UTC; fractions are dropped."
     param format TimeFormat "The style and offset (short, UTC)." {

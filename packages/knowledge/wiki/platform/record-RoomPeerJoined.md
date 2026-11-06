@@ -23,4 +23,4 @@ event RoomPeerJoined {
 }
 ```
 
-<sub>`api.ogt` line 15352</sub>
+<sub>`api.ogt` line 15416</sub>

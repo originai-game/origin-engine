@@ -25,4 +25,4 @@ enum AoResolutionSetting {
 }
 ```
 
-<sub>`api.ogt` line 4317</sub>
+<sub>`api.ogt` line 4337</sub>

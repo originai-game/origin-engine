@@ -14,7 +14,7 @@ interface Path2 {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7717</sub>
+<sub>`api.ogt` line 7742</sub>
 
 <a id="member-Path2-moveTo"></a>
 
@@ -45,7 +45,7 @@ fn moveTo {
 }
 ```
 
-<sub>`api.ogt` line 7719</sub>
+<sub>`api.ogt` line 7744</sub>
 
 <a id="member-Path2-lineTo"></a>
 
@@ -76,7 +76,7 @@ fn lineTo {
 }
 ```
 
-<sub>`api.ogt` line 7726</sub>
+<sub>`api.ogt` line 7751</sub>
 
 <a id="member-Path2-quadraticCurveTo"></a>
 
@@ -111,7 +111,7 @@ fn quadraticCurveTo {
 }
 ```
 
-<sub>`api.ogt` line 7733</sub>
+<sub>`api.ogt` line 7758</sub>
 
 <a id="member-Path2-bezierCurveTo"></a>
 
@@ -150,7 +150,7 @@ fn bezierCurveTo {
 }
 ```
 
-<sub>`api.ogt` line 7742</sub>
+<sub>`api.ogt` line 7767</sub>
 
 <a id="member-Path2-splineThru"></a>
 
@@ -179,7 +179,7 @@ fn splineThru {
 }
 ```
 
-<sub>`api.ogt` line 7753</sub>
+<sub>`api.ogt` line 7778</sub>
 
 <a id="member-Path2-arc"></a>
 
@@ -220,7 +220,7 @@ fn arc {
 }
 ```
 
-<sub>`api.ogt` line 7759</sub>
+<sub>`api.ogt` line 7784</sub>
 
 <a id="member-Path2-absarc"></a>
 
@@ -261,7 +261,7 @@ fn absarc {
 }
 ```
 
-<sub>`api.ogt` line 7772</sub>
+<sub>`api.ogt` line 7797</sub>
 
 <a id="member-Path2-ellipse"></a>
 
@@ -308,7 +308,7 @@ fn ellipse {
 }
 ```
 
-<sub>`api.ogt` line 7785</sub>
+<sub>`api.ogt` line 7810</sub>
 
 <a id="member-Path2-absellipse"></a>
 
@@ -355,7 +355,7 @@ fn absellipse {
 }
 ```
 
-<sub>`api.ogt` line 7802</sub>
+<sub>`api.ogt` line 7827</sub>
 
 <a id="member-Path2-setFromPoints"></a>
 
@@ -384,7 +384,7 @@ fn setFromPoints {
 }
 ```
 
-<sub>`api.ogt` line 7819</sub>
+<sub>`api.ogt` line 7844</sub>
 
 <a id="member-Path2-closePath"></a>
 
@@ -408,7 +408,7 @@ fn closePath {
 }
 ```
 
-<sub>`api.ogt` line 7825</sub>
+<sub>`api.ogt` line 7850</sub>
 
 <a id="member-Path2-getPoints"></a>
 
@@ -439,4 +439,4 @@ fn getPoints {
 }
 ```
 
-<sub>`api.ogt` line 7830</sub>
+<sub>`api.ogt` line 7855</sub>

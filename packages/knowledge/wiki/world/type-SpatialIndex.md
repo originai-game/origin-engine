@@ -40,6 +40,8 @@ prop count u32 "The entities it holds."
 
 Every entity at most `radius` from `center`, nearest first.
 
+Also known as: radius query, nearby entities, within distance, range query, Unity Physics.OverlapSphere, neighbours
+
 ```ts
 SpatialIndex.within(center: Vector3, radius: number): readonly Neighbour[]
 ```
@@ -56,6 +58,7 @@ Binding symbol `og_spatial_index_within` · publish builds: kept
 ```ogt
 fn within {
   doc "Every entity at most `radius` from `center`, nearest first."
+  aliases "radius query, nearby entities, within distance, range query, Unity Physics.OverlapSphere, neighbours"
   param center Vector3 "The centre."
   param radius f32 "The radius in metres; a negative one finds nothing."
   returns List.Neighbour
@@ -92,4 +95,4 @@ fn nearest {
 }
 ```
 
-<sub>`api.ogt` line 1080</sub>
+<sub>`api.ogt` line 1081</sub>

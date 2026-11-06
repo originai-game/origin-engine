@@ -27,4 +27,4 @@ enum PlatformNoticeKind {
 }
 ```
 
-<sub>`api.ogt` line 15046</sub>
+<sub>`api.ogt` line 15107</sub>

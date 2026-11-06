@@ -1,0 +1,41 @@
+query	expected
+show a little arrow from the gun to where it points while debugging	og.debug.arrow
+a number counting down on screen until the round ends	og.ui.hudTimer
+let the player choose one option from a list that drops open	og.ui.dropdown
+a volume bar the player drags left and right	og.ui.slider
+switch between inventory, map and settings pages along the top	og.ui.tabs
+confetti when the player wins	og.ui.celebration
+a red health bar over the HUD	og.ui.meter
+a small map in the corner showing where enemies are	og.ui.minimapView
+type the player's name into a box	og.ui.inputField
+the player's highscore and the scores just above and below theirs	og.platform.leaderboardAround
+unlock a trophy once the player has collected 50 coins	og.platform.achievementProgress
+open the share sheet so the player can post their result	og.platform.share
+what the player has already bought	og.platform.entitlements
+leave the multiplayer lobby	og.platform.roomLeave
+send an analytics event when a level is finished	og.platform.telemetry
+start a private match room that friends can join	og.platform.roomCreate
+make a hole through a wall shape by subtracting one mesh from another	og.render.csgGeometry
+spin a profile around an axis to make a vase	og.render.latheGeometry
+draw a donut shaped mesh	og.render.torusGeometry
+a pipe that follows a curved path	og.render.tubeGeometry
+combine many static meshes into one draw call	og.render.mergeGeometries
+change a material's colour at runtime	og.render.updateMaterial
+render the scene into a texture for a security camera screen	og.render.renderTarget
+"+50 gold" text floating up from a coin pickup	og.render.floatingText
+hurt a breakable wall where the bullet hits	og.destruction.damage
+how much of the building is still standing	og.destruction.info
+show a date like Nov 2 in the player's local format	og.i18n.formatDate
+show a race time like 1:02:03	og.i18n.formatDuration
+spin a wheel by applying rotational force each frame	og.physics.applyTorque
+sweep a sphere forward to see what it would hit first	og.physics.shapeCast
+how deep the water is under the boat right now	og.physics.waterHeight
+mark a quest as done and give the reward	og.story.completeQuest
+the previous lines of the conversation the player can scroll back through	og.story.history
+pause the cutscene halfway	og.timeline.pause
+stop every running animation on an enemy before it dies	og.tween.cancelEntity
+smooth random hills values for a terrain generator	og.procgen.noise
+check the jump works at least once in some test run	og.assert.sometimes
+crouch while holding the button versus toggle on press	og.input.setToggle
+mouse look feels too fast so the player turns it down	og.input.setSensitivity
+the button icon to show for jump on the controller the player is using	og.input.glyph

@@ -196,6 +196,18 @@ fn code(s: &str) -> String {
 
 /// Each doc line is a paragraph, except that consecutive lines starting
 /// with `|` are the rows of one table.
+/// The words an entry is also searched by (its IDL `aliases`), one line.
+fn also_known_as(out: &mut String, aliases: &[String]) {
+    if !aliases.is_empty() {
+        out.push_str(ALSO_KNOWN_AS);
+        out.push_str(&aliases.join(", "));
+        out.push_str("\n\n");
+    }
+}
+
+/// The prefix of an item page's aliases line, which `og api find` indexes as its own field.
+pub const ALSO_KNOWN_AS: &str = "Also known as: ";
+
 fn paragraphs(out: &mut String, doc: &[String]) {
     for (i, d) in doc.iter().enumerate() {
         out.push_str(d);
@@ -398,6 +410,7 @@ fn callable(
 ) {
     let _ = writeln!(out, "<a id=\"{anchor}\"></a>\n\n{level} `{path}`\n");
     paragraphs(out, &f.doc);
+    also_known_as(out, &f.aliases);
     let _ = writeln!(out, "```ts\n{path}{}\n```\n", ts::signature(ix, f));
     params_table(out, ix, &f.params, &f.generics);
     let ret = ts::type_text(ix, &f.returns, &f.generics);
@@ -427,6 +440,7 @@ fn interface(out: &mut String, ix: &Index<'_>, m: &Module, i: &Interface, binds:
         i.name
     );
     paragraphs(out, &i.doc);
+    also_known_as(out, &i.aliases);
     if let Some(base) = &i.extends {
         let _ = writeln!(
             out,
@@ -490,6 +504,7 @@ fn record(out: &mut String, ix: &Index<'_>, m: &Module, r: &Record, binds: &[Bin
         r.kind.as_str()
     );
     paragraphs(out, &r.doc);
+    also_known_as(out, &r.aliases);
     let _ = writeln!(
         out,
         "Token `og.{}`, registered under the schema name `{}`; its value type is `{}`.\n",
@@ -524,6 +539,7 @@ fn type_item(out: &mut String, ix: &Index<'_>, item: &Item) {
                 s.name
             );
             paragraphs(out, &s.doc);
+            also_known_as(out, &s.aliases);
             if s.desc {
                 out.push_str(
                     "A desc: every field may be omitted and takes its default; `{}` is valid.\n\n",
@@ -540,6 +556,7 @@ fn type_item(out: &mut String, ix: &Index<'_>, item: &Item) {
                 e.name
             );
             paragraphs(out, &e.doc);
+            also_known_as(out, &e.aliases);
             let _ = writeln!(
                 out,
                 "A string: one of the variants below. The zero value is `\"{}\"`.\n",
@@ -560,6 +577,7 @@ fn type_item(out: &mut String, ix: &Index<'_>, item: &Item) {
                 u.name
             );
             paragraphs(out, &u.doc);
+            also_known_as(out, &u.aliases);
             let _ = writeln!(out, "Tagged by `{}`.\n", u.tag);
             out.push_str("| Case | Payload | Doc |\n|---|---|---|\n");
             for c in &u.cases {

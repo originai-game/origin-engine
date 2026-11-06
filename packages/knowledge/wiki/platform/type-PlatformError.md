@@ -25,4 +25,4 @@ struct PlatformError {
 }
 ```
 
-<sub>`api.ogt` line 14915</sub>
+<sub>`api.ogt` line 14972</sub>

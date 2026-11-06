@@ -285,6 +285,7 @@ module input {
 
   fn defineAction {
     doc "Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it."
+    aliases "input action, InputAction, Godot InputMap action, key binding"
     param world World "The world."
     param desc ActionDesc "The action."
     returns Result.Void "Refused, naming the fix, for a binding whose control names none or that does not fit the kind (a stick on a button, a key alone on a two-axis action)."
@@ -312,6 +313,7 @@ module input {
 
   fn actionPressed {
     doc "Whether an action went down this tick."
+    aliases "button down this frame, GetButtonDown, is_action_just_pressed"
     param world World "The world."
     param name String "The action."
     returns bool
@@ -360,6 +362,7 @@ module input {
 
   fn rebind {
     doc "Rebind one slot of an action (or one part of a composite) for the player. With policy refuse (the default) a binding that shares a control with another action of its context changes nothing and answers the conflicts; swap, replace and allow resolve them. The player's bindings stay until reset and are what og.input.saveBindings writes."
+    aliases "remap, key remapping, rebinding, control settings, Unity PerformInteractiveRebinding, Godot InputMap.action_add_event"
     param world World "The world."
     param desc RebindDesc "The action, slot, part, binding and policy."
     returns Result.RebindAnswer "Refused for an unknown or locked action, a slot past one after the last, a part the kind has not, or a binding that does not fit."
@@ -522,6 +525,7 @@ module input {
 
   fn rumble {
     doc "Rumble a pad (or every connected pad): the web shell plays it on the pad's vibration actuator. Output only: it never feeds back into the simulation, and a native run records it in the frame answer's `rumble`."
+    aliases "vibration, vibrate, haptics, force feedback, gamepad motors, Unity Gamepad.SetMotorSpeeds, Godot Input.start_joy_vibration"
     param world World "The world."
     param desc RumbleDesc "The pad, the motors and how long."
     returns Result.Void "Refused for a pad outside -1 to 7 or a value that is not finite."

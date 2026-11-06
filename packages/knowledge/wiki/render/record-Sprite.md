@@ -10,6 +10,8 @@ A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotati
 
 Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.
 
+Also known as: 2D image, SpriteRenderer, Sprite2D
+
 Token `og.Sprite`, registered under the schema name `og.Sprite`; its value type is `Sprite`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -54,6 +56,7 @@ Token `og.Sprite`, registered under the schema name `og.Sprite`; its value type 
 component Sprite {
   doc "A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z, in the xy plane or turned to the camera by `facing`; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame."
   doc "Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer."
+  aliases "2D image, SpriteRenderer, Sprite2D"
   field texture Texture "The texture (og.load.texture); 0 draws a solid quad of the colour."
   field array TextureArray "Draw from a layer of this texture array (og.load.textureArray) instead of `texture`; 0 uses `texture`. Every sprite of one array is one draw whichever layer each shows. While the array's streaming group is not resident the sprite draws nothing."
   field arrayLayer u32 "With `array`: the layer drawn (past the last layer, the last). uvMin and uvMax are the region within the layer; a nine-slice measures the layer."
@@ -154,4 +157,4 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 6051</sub>
+<sub>`api.ogt` line 6072</sub>

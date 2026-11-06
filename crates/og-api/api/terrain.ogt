@@ -656,6 +656,7 @@ module terrain {
 
   fn edit {
     doc "Change a terrain under a round brush: raise, lower, flatten or smooth its heights (the renderer, physics and og.terrain.sample see the change from the next frame and tick), or paint a layer into its control map (making one when it has none)."
+    aliases "deform terrain, sculpt, dig, crater, heightmap edit, Unity TerrainData.SetHeights"
     param world World "The world."
     param data TerrainData "The terrain."
     param brush TerrainBrush "What to do and where."

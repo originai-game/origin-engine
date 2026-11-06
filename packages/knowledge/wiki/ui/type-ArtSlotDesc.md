@@ -50,4 +50,4 @@ struct ArtSlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 18935</sub>
+<sub>`api.ogt` line 19011</sub>

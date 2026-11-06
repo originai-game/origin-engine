@@ -6,7 +6,9 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `og.SensorEntered` (event)
 
-A collider started overlapping a sensor.
+A collider started overlapping a sensor: something walked into a trigger area (a pressure plate, a pickup, a zone that starts a cutscene). A sensor is an og.Collider with `sensor` set; it reports overlaps and pushes nothing.
+
+Also known as: trigger enter, OnTriggerEnter, Godot Area2D body_entered, Unreal OnComponentBeginOverlap, trigger volume, zone entered
 
 Token `og.SensorEntered`, registered under the schema name `og.SensorEntered`; its value type is `SensorEntered`.
 
@@ -17,10 +19,11 @@ Token `og.SensorEntered`, registered under the schema name `og.SensorEntered`; i
 
 ```ogt
 event SensorEntered {
-  doc "A collider started overlapping a sensor."
+  doc "A collider started overlapping a sensor: something walked into a trigger area (a pressure plate, a pickup, a zone that starts a cutscene). A sensor is an og.Collider with `sensor` set; it reports overlaps and pushes nothing."
+  aliases "trigger enter, OnTriggerEnter, Godot Area2D body_entered, Unreal OnComponentBeginOverlap, trigger volume, zone entered"
   field sensor Entity "The entity whose collider is the sensor."
   field other Entity "The entity that entered it."
 }
 ```
 
-<sub>`api.ogt` line 8697</sub>
+<sub>`api.ogt` line 8726</sub>

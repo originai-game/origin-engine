@@ -14,7 +14,7 @@ interface RngStream {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1689</sub>
+<sub>`api.ogt` line 1697</sub>
 
 <a id="member-RngStream-seed"></a>
 
@@ -32,7 +32,7 @@ Binding symbol `og_rng_stream_get_seed` · publish builds: kept
 prop seed u32 "The stream's derived seed."
 ```
 
-<sub>`api.ogt` line 1691</sub>
+<sub>`api.ogt` line 1699</sub>
 
 <a id="member-RngStream-next"></a>
 
@@ -55,7 +55,7 @@ fn next {
 }
 ```
 
-<sub>`api.ogt` line 1692</sub>
+<sub>`api.ogt` line 1700</sub>
 
 <a id="member-RngStream-range"></a>
 
@@ -85,7 +85,7 @@ fn range {
 }
 ```
 
-<sub>`api.ogt` line 1696</sub>
+<sub>`api.ogt` line 1704</sub>
 
 <a id="member-RngStream-integer"></a>
 
@@ -115,7 +115,7 @@ fn integer {
 }
 ```
 
-<sub>`api.ogt` line 1702</sub>
+<sub>`api.ogt` line 1710</sub>
 
 <a id="member-RngStream-chance"></a>
 
@@ -143,7 +143,7 @@ fn chance {
 }
 ```
 
-<sub>`api.ogt` line 1708</sub>
+<sub>`api.ogt` line 1716</sub>
 
 <a id="member-RngStream-weighted"></a>
 
@@ -171,7 +171,7 @@ fn weighted {
 }
 ```
 
-<sub>`api.ogt` line 1713</sub>
+<sub>`api.ogt` line 1721</sub>
 
 <a id="member-RngStream-permutation"></a>
 
@@ -199,7 +199,7 @@ fn permutation {
 }
 ```
 
-<sub>`api.ogt` line 1718</sub>
+<sub>`api.ogt` line 1726</sub>
 
 <a id="member-RngStream-fork"></a>
 
@@ -227,4 +227,4 @@ fn fork {
 }
 ```
 
-<sub>`api.ogt` line 1723</sub>
+<sub>`api.ogt` line 1731</sub>

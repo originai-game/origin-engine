@@ -21,4 +21,4 @@ struct AbilityBarResult {
 }
 ```
 
-<sub>`api.ogt` line 21758</sub>
+<sub>`api.ogt` line 21836</sub>

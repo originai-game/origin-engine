@@ -8,6 +8,8 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 A button with a label; `clicked` is a press and a release inside it. The probe reads its label.
 
+Also known as: click, press, Unity Button, Godot Button, HTML button
+
 ```ts
 og.ui.button(id: string, text: string, desc?: ButtonDesc): Response
 ```
@@ -25,6 +27,7 @@ Binding symbol `og_ui_button` · publish builds: kept
 ```ogt
 fn button {
   doc "A button with a label; `clicked` is a press and a release inside it. The probe reads its label."
+  aliases "click, press, Unity Button, Godot Button, HTML button"
   param id String "Its id."
   param text String "The label."
   param desc ButtonDesc "Variant, size, disabled and width."
@@ -32,4 +35,4 @@ fn button {
 }
 ```
 
-<sub>`api.ogt` line 16269</sub>
+<sub>`api.ogt` line 16339</sub>

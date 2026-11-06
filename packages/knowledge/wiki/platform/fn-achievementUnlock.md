@@ -8,6 +8,8 @@ Module [`platform`](../platform.md) · [index](../index.md)
 
 Unlock an achievement. The achievements and their titles are the platform's, by id.
 
+Also known as: unlock trophy, grant achievement, Steam SetAchievement
+
 ```ts
 og.platform.achievementUnlock(world: World, id: string): Result<number>
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_platform_achievement_unlock` · publish builds: kept
 ```ogt
 fn achievementUnlock {
   doc "Unlock an achievement. The achievements and their titles are the platform's, by id."
+  aliases "unlock trophy, grant achievement, Steam SetAchievement"
   param world World "The world."
   param id String "The achievement's id."
   returns Result.u32 "Refused for a malformed id. The answer's data is `{ id, percent: 100, unlocked: true, new }`, new false when it was unlocked before."
 }
 ```
 
-<sub>`api.ogt` line 15196</sub>
+<sub>`api.ogt` line 15258</sub>

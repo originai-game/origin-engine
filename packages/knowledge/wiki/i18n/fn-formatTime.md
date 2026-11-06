@@ -8,6 +8,8 @@ Module [`i18n`](../i18n.md) · [index](../index.md)
 
 A time of day in the active locale: `3:05 PM` (en), `15:05` (de).
 
+Also known as: time of day format, 12 hour clock, 24 hour clock
+
 ```ts
 og.i18n.formatTime(world: World, seconds: number, format?: TimeFormat): string
 ```
@@ -25,6 +27,7 @@ Binding symbol `og_i18n_format_time` · publish builds: kept
 ```ogt
 fn formatTime {
   doc "A time of day in the active locale: `3:05 PM` (en), `15:05` (de)."
+  aliases "time of day format, 12 hour clock, 24 hour clock"
   param world World "The world (its active locale)."
   param seconds f64 "Seconds since 1970-01-01 00:00 UTC; fractions are dropped."
   param format TimeFormat "The style and offset (short, UTC)." {
@@ -34,4 +37,4 @@ fn formatTime {
 }
 ```
 
-<sub>`api.ogt` line 15538</sub>
+<sub>`api.ogt` line 15605</sub>

@@ -25,4 +25,4 @@ enum PointShadows {
 }
 ```
 
-<sub>`api.ogt` line 3824</sub>
+<sub>`api.ogt` line 3842</sub>

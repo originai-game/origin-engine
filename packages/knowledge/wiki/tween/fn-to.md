@@ -8,6 +8,8 @@ Module [`tween`](../tween.md) · [index](../index.md)
 
 Start a tween. Systems may call it; it first moves in this tick's og.tween run.
 
+Also known as: animate a value, DOTween, Godot Tween, LeanTween, GSAP, lerp over time, ease
+
 ```ts
 og.tween.to(world: World, desc?: TweenDesc): Result<Tween>
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_tween_to` · publish builds: kept
 ```ogt
 fn to {
   doc "Start a tween. Systems may call it; it first moves in this tick's og.tween run."
+  aliases "animate a value, DOTween, Godot Tween, LeanTween, GSAP, lerp over time, ease"
   param world World "The world."
   param desc TweenDesc "The field, the values and the timing."
   returns Result.Tween "Refused for a dead entity, a component it lacks, a field that is not numeric, or values of the wrong length."
 }
 ```
 
-<sub>`api.ogt` line 12436</sub>
+<sub>`api.ogt` line 12477</sub>

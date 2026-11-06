@@ -106,6 +106,10 @@ declarations.
 Most declarations accept a trailing quoted doc on their own line
 (`field x f32 "The x component."`) and `doc "..."` lines in their block;
 several `doc` lines are paragraphs, joined by newlines.
+A function, record, struct, enum, union or interface may also carry one
+`aliases "..."` line: synonyms and other engines' names for it (Unity,
+Godot, Unreal, three.js). The wiki prints it as "Also known as:" and
+`og api find` scores it as a field of its own; no other output reads it.
 
 | Declaration | Form | Means |
 |---|---|---|

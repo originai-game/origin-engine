@@ -469,6 +469,7 @@ module ui {
 
   struct UiDesc {
     doc "How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it."
+    aliases "UI scale, text scale, font size, accessibility, high contrast, reduced motion, UI settings"
     desc true
     field scheme Scheme "The palette."
     field density DensityMode "The control sizes."
@@ -668,6 +669,7 @@ module ui {
 
   fn scroll {
     doc "A vertical scroll container built by `build`: openScroll(id, desc), build(), close()."
+    aliases "scroll view, ScrollRect, Godot ScrollContainer, scrollable list"
     host false
     param id String "Its id."
     param desc ScrollDesc "Its size and spacing."
@@ -711,6 +713,7 @@ module ui {
 
   fn button {
     doc "A button with a label; `clicked` is a press and a release inside it. The probe reads its label."
+    aliases "click, press, Unity Button, Godot Button, HTML button"
     param id String "Its id."
     param text String "The label."
     param desc ButtonDesc "Variant, size, disabled and width."
@@ -1392,6 +1395,7 @@ module ui {
 
   fn modal {
     doc "A dialog built by `build` while visible: scrim, centred panel, focus kept inside, Back and the backdrop dismiss it unless locked. Set your open flag false on `dismissed`."
+    aliases "modal dialog, popup window, overlay window, Unity modal"
     host false
     param id String "Its id."
     param open bool "Whether it should be open."
@@ -1536,6 +1540,7 @@ module ui {
 
   fn checkbox {
     doc "A checkbox with a label; a press flips it."
+    aliases "toggle, tick box, Unity Toggle, Godot CheckBox"
     param id String "Its id."
     param on bool "The state from game state."
     param label String "The label."
@@ -1637,6 +1642,7 @@ module ui {
 
   fn dialogue {
     doc "A dialogue box: a portrait slot, the speaker in primary ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown."
+    aliases "dialogue box, speech box, visual novel text box, subtitles box"
     param id String "Its id."
     param desc DialogueDesc "Speaker, text, portrait and speed."
     returns DialogueResult
@@ -1666,6 +1672,7 @@ module ui {
 
   fn toast {
     doc "Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it."
+    aliases "snackbar, transient notification, popup message, auto-dismissing message"
     param world World "The world whose UI shows it."
     param text String "The message: a few words."
     param desc ToastDesc "Tone and time."

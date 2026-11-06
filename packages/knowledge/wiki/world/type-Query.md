@@ -14,7 +14,7 @@ interface Query {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1265</sub>
+<sub>`api.ogt` line 1269</sub>
 
 <a id="member-Query-archetypes"></a>
 
@@ -37,7 +37,7 @@ fn archetypes {
 }
 ```
 
-<sub>`api.ogt` line 1267</sub>
+<sub>`api.ogt` line 1271</sub>
 
 <a id="member-Query-count"></a>
 
@@ -60,4 +60,4 @@ fn count {
 }
 ```
 
-<sub>`api.ogt` line 1271</sub>
+<sub>`api.ogt` line 1275</sub>

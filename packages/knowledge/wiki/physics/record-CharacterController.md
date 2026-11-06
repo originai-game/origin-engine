@@ -8,6 +8,8 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface, standing that far over the ground; a step is climbed when the ground beyond it is at most `stepHeight` over the ground it stands on. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes the dynamic bodies it walks into (`pushBodies`) with at most `pushStrength`, so a light one is shoved and a heavy one holds.
 
+Also known as: player controller, kinematic character, Unity CharacterController, Godot CharacterBody3D
+
 Token `og.CharacterController`, registered under the schema name `og.CharacterController`; its value type is `CharacterController`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -35,6 +37,7 @@ Token `og.CharacterController`, registered under the schema name `og.CharacterCo
 ```ogt
 component CharacterController {
   doc "A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface, standing that far over the ground; a step is climbed when the ground beyond it is at most `stepHeight` over the ground it stands on. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes the dynamic bodies it walks into (`pushBodies`) with at most `pushStrength`, so a light one is shoved and a heavy one holds."
+  aliases "player controller, kinematic character, Unity CharacterController, Godot CharacterBody3D"
   field move Vector3 "The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0). Set it every tick." {
     unit mps
   }
@@ -121,4 +124,4 @@ component CharacterController {
 }
 ```
 
-<sub>`api.ogt` line 8854</sub>
+<sub>`api.ogt` line 8884</sub>

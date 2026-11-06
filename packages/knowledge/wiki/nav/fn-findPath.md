@@ -8,6 +8,8 @@ Module [`nav`](../nav.md) · [index](../index.md)
 
 A path between two points on a grid or a navmesh, now: corners, length and whether it reaches the end.
 
+Also known as: pathfinding, A*, route, shortest path, Unity NavMesh.CalculatePath, Godot get_simple_path
+
 ```ts
 og.nav.findPath(world: World, desc?: PathDesc): Result<NavPath>
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_nav_find_path` · publish builds: kept
 ```ogt
 fn findPath {
   doc "A path between two points on a grid or a navmesh, now: corners, length and whether it reaches the end."
+  aliases "pathfinding, A*, route, shortest path, Unity NavMesh.CalculatePath, Godot get_simple_path"
   param world World "The world."
   param desc PathDesc "The grid or navmesh and the two points."
   returns Result.NavPath "Refused for an unknown grid or navmesh, or when no path starts (an end off the grid or mesh)."
 }
 ```
 
-<sub>`api.ogt` line 14004</sub>
+<sub>`api.ogt` line 14054</sub>

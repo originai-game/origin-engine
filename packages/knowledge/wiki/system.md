@@ -24,7 +24,7 @@ module system {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 1306</sub>
+<sub>`api.ogt` line 1310</sub>
 
 ## Contents
 
@@ -41,4 +41,4 @@ module system {
 | [`defineHook`](system/fn-defineHook.md) | function | `<C extends AnyComponent>(name: string, component: C, desc: HookDesc, run: HookRun): Hook` | Declare a hook on a component; list it in GameDesc.hooks. |
 | [`SystemRun`](system/type-SystemRun.md) | callback |  | A system's body. It is called once per tick; loop over `q.archetypes()`, then over rows. |
 | [`System`](system/type-System.md) | interface |  | A registered system. |
-| [`defineSystem`](system/fn-defineSystem.md) | function | `(name: string, desc: SystemDesc, run: SystemRun): System` | Declare a system. |
+| [`defineSystem`](system/fn-defineSystem.md) | function | `(name: string, desc: SystemDesc, run: SystemRun): System` | Declare a system: the game's code that runs every tick (movement, AI, scoring), with the components it reads and writes and its order among the other systems. |

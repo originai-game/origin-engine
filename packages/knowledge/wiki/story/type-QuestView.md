@@ -47,4 +47,4 @@ struct QuestView {
 }
 ```
 
-<sub>`api.ogt` line 14628</sub>
+<sub>`api.ogt` line 14682</sub>

@@ -25,4 +25,4 @@ struct DpadResult {
 }
 ```
 
-<sub>`api.ogt` line 16787</sub>
+<sub>`api.ogt` line 16858</sub>

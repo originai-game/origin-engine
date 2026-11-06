@@ -8,6 +8,8 @@ Module [`tween`](../tween.md) · [index](../index.md)
 
 Stop a tween where it is (no event).
 
+Also known as: stop tween, kill tween
+
 ```ts
 og.tween.cancel(world: World, tween: Tween): boolean
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_tween_cancel` · publish builds: kept
 ```ogt
 fn cancel {
   doc "Stop a tween where it is (no event)."
+  aliases "stop tween, kill tween"
   param world World "The world."
   param tween Tween "The handle."
   returns bool "False when it was not running."
 }
 ```
 
-<sub>`api.ogt` line 12463</sub>
+<sub>`api.ogt` line 12505</sub>

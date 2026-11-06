@@ -20,7 +20,7 @@ module timeline {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 26017</sub>
+<sub>`api.ogt` line 26101</sub>
 
 ## Contents
 
@@ -57,4 +57,4 @@ column TimelineAsset {
 }
 ```
 
-<sub>`api.ogt` line 26024</sub>
+<sub>`api.ogt` line 26108</sub>

@@ -27,4 +27,4 @@ enum StatBarStyle {
 }
 ```
 
-<sub>`api.ogt` line 21554</sub>
+<sub>`api.ogt` line 21632</sub>

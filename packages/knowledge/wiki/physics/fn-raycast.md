@@ -8,6 +8,8 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them.
 
+Also known as: ray, line trace, hit test, mouse picking, Unity Physics.Raycast, Godot intersect_ray, Unreal LineTraceSingle
+
 ```ts
 og.physics.raycast(world: World, desc?: RaycastDesc): Result<RaycastHit | null>
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_physics_raycast` · publish builds: kept
 ```ogt
 fn raycast {
   doc "The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them."
+  aliases "ray, line trace, hit test, mouse picking, Unity Physics.Raycast, Godot intersect_ray, Unreal LineTraceSingle"
   param world World "The world."
   param desc RaycastDesc "The ray and the filter."
   returns Result.Option.RaycastHit "The hit, or null when nothing is hit; refused for a zero direction."
 }
 ```
 
-<sub>`api.ogt` line 10294</sub>
+<sub>`api.ogt` line 10327</sub>

@@ -31,4 +31,4 @@ enum DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 5156</sub>
+<sub>`api.ogt` line 5176</sub>

@@ -23,7 +23,7 @@ module audio {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 12762</sub>
+<sub>`api.ogt` line 12808</sub>
 
 ## Contents
 
@@ -79,7 +79,7 @@ column AudioBus {
 }
 ```
 
-<sub>`api.ogt` line 12783</sub>
+<sub>`api.ogt` line 12829</sub>
 
 ```ogt
 column AudioResampler {
@@ -90,7 +90,7 @@ column AudioResampler {
 }
 ```
 
-<sub>`api.ogt` line 12802</sub>
+<sub>`api.ogt` line 12848</sub>
 
 ```ogt
 column PanningModel {
@@ -101,7 +101,7 @@ column PanningModel {
 }
 ```
 
-<sub>`api.ogt` line 12809</sub>
+<sub>`api.ogt` line 12855</sub>
 
 ```ogt
 column AudioEventOrder {
@@ -112,7 +112,7 @@ column AudioEventOrder {
 }
 ```
 
-<sub>`api.ogt` line 13242</sub>
+<sub>`api.ogt` line 13290</sub>
 
 ## Constants
 
@@ -129,34 +129,34 @@ column AudioEventOrder {
 const SOUND_FINISHED u32 0 "SoundEnded.reason: a one-shot played to its end."
 ```
 
-<sub>`api.ogt` line 12768</sub>
+<sub>`api.ogt` line 12814</sub>
 
 ```ogt
 const SOUND_STOPPED u32 1 "SoundEnded.reason: `playing` was set to false."
 ```
 
-<sub>`api.ogt` line 12769</sub>
+<sub>`api.ogt` line 12815</sub>
 
 ```ogt
 const SOUND_REMOVED u32 2 "SoundEnded.reason: the AudioSource was removed from a living entity."
 ```
 
-<sub>`api.ogt` line 12770</sub>
+<sub>`api.ogt` line 12816</sub>
 
 ```ogt
 const SOUND_REPLACED u32 3 "SoundEnded.reason: `sound` changed while it played."
 ```
 
-<sub>`api.ogt` line 12771</sub>
+<sub>`api.ogt` line 12817</sub>
 
 ```ogt
 const SOUND_CULLED u32 4 "SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age)."
 ```
 
-<sub>`api.ogt` line 12772</sub>
+<sub>`api.ogt` line 12818</sub>
 
 ```ogt
 const SOUND_RETRIGGERED u32 5 "SoundEnded.reason: AudioSource.retrigger started the sound again from the top; a new voice plays it."
 ```
 
-<sub>`api.ogt` line 12773</sub>
+<sub>`api.ogt` line 12819</sub>

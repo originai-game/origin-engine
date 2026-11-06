@@ -8,6 +8,8 @@ Module [`video`](../video.md) · [index](../index.md)
 
 Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds; a stream's once decoded), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch, loop and loop region (the picture's length) each tick so the sound plays in step, however long or often it loops: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Each player has a texture of its own (written to `texture`): the first player of a video takes VideoInfo.texture, each further one a texture the og.video system makes for it over the same decoded frames (one frame of GPU memory each), so two players at different times show different frames. Show a player's `texture`, not VideoInfo.texture, once a video has more than one player.
 
+Also known as: movie, video, cinematic, FMV, intro video, Unity VideoPlayer, Godot VideoStreamPlayer
+
 Token `og.VideoPlayer`, registered under the schema name `og.VideoPlayer`; its value type is `VideoPlayer`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -24,6 +26,7 @@ Token `og.VideoPlayer`, registered under the schema name `og.VideoPlayer`; its v
 ```ogt
 component VideoPlayer {
   doc "Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds; a stream's once decoded), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch, loop and loop region (the picture's length) each tick so the sound plays in step, however long or often it loops: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Each player has a texture of its own (written to `texture`): the first player of a video takes VideoInfo.texture, each further one a texture the og.video system makes for it over the same decoded frames (one frame of GPU memory each), so two players at different times show different frames. Show a player's `texture`, not VideoInfo.texture, once a video has more than one player."
+  aliases "movie, video, cinematic, FMV, intro video, Unity VideoPlayer, Godot VideoStreamPlayer"
   field video Video "The video (og.load.video's `video`); 0 plays nothing."
   field playing bool "Whether time advances." {
     default true
@@ -51,4 +54,4 @@ component VideoPlayer {
 }
 ```
 
-<sub>`api.ogt` line 25574</sub>
+<sub>`api.ogt` line 25654</sub>

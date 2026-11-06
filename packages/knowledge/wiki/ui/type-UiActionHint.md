@@ -27,4 +27,4 @@ struct UiActionHint {
 }
 ```
 
-<sub>`api.ogt` line 23654</sub>
+<sub>`api.ogt` line 23732</sub>

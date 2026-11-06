@@ -8,6 +8,8 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it.
 
+Also known as: snackbar, transient notification, popup message, auto-dismissing message
+
 ```ts
 og.ui.toast(world: World, text: string, desc?: ToastDesc): number
 ```
@@ -25,6 +27,7 @@ Binding symbol `og_ui_toast` · publish builds: kept
 ```ogt
 fn toast {
   doc "Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it."
+  aliases "snackbar, transient notification, popup message, auto-dismissing message"
   param world World "The world whose UI shows it."
   param text String "The message: a few words."
   param desc ToastDesc "Tone and time."
@@ -32,4 +35,4 @@ fn toast {
 }
 ```
 
-<sub>`api.ogt` line 17224</sub>
+<sub>`api.ogt` line 17298</sub>

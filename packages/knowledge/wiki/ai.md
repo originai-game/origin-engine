@@ -20,7 +20,7 @@ module ai {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 14132</sub>
+<sub>`api.ogt` line 14185</sub>
 
 ## Contents
 
@@ -67,7 +67,7 @@ column Behaviour {
 }
 ```
 
-<sub>`api.ogt` line 14139</sub>
+<sub>`api.ogt` line 14192</sub>
 
 ## Constants
 
@@ -82,22 +82,22 @@ column Behaviour {
 const AI_RUNNING u32 1 "AiAgent.status: the tree or state is still running."
 ```
 
-<sub>`api.ogt` line 14146</sub>
+<sub>`api.ogt` line 14199</sub>
 
 ```ogt
 const AI_SUCCESS u32 2 "AiAgent.status: the tree succeeded on the last think."
 ```
 
-<sub>`api.ogt` line 14147</sub>
+<sub>`api.ogt` line 14200</sub>
 
 ```ogt
 const AI_FAILURE u32 3 "AiAgent.status: the tree failed on the last think."
 ```
 
-<sub>`api.ogt` line 14148</sub>
+<sub>`api.ogt` line 14201</sub>
 
 ```ogt
 const AI_INTERRUPTED u32 4 "AiActionStopped.result: the action stopped before the game finished it (another branch won, the state changed, the agent restarted)."
 ```
 
-<sub>`api.ogt` line 14149</sub>
+<sub>`api.ogt` line 14202</sub>

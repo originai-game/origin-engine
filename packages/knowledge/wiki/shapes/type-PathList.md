@@ -14,7 +14,7 @@ interface PathList {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7704</sub>
+<sub>`api.ogt` line 7729</sub>
 
 <a id="member-PathList-length"></a>
 
@@ -32,7 +32,7 @@ prop length u32 "How many holes." {
 }
 ```
 
-<sub>`api.ogt` line 7706</sub>
+<sub>`api.ogt` line 7731</sub>
 
 <a id="member-PathList-push"></a>
 
@@ -61,4 +61,4 @@ fn push {
 }
 ```
 
-<sub>`api.ogt` line 7709</sub>
+<sub>`api.ogt` line 7734</sub>

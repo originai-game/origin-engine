@@ -8,6 +8,8 @@ Module [`tilemap`](../tilemap.md) · [index](../index.md)
 
 The cell under a world point (its xy), for a map at its entity's position.
 
+Also known as: world to cell, tile at position, pick a tile, Unity Tilemap.WorldToCell, Godot local_to_map
+
 ```ts
 og.tilemap.cellAt(world: World, entity: Entity, point: Vector3): TileCell
 ```
@@ -25,6 +27,7 @@ Binding symbol `og_tilemap_cell_at` · publish builds: kept
 ```ogt
 fn cellAt {
   doc "The cell under a world point (its xy), for a map at its entity's position."
+  aliases "world to cell, tile at position, pick a tile, Unity Tilemap.WorldToCell, Godot local_to_map"
   param world World "The world."
   param entity Entity "The entity with the og.Tilemap."
   param point Vector3 "A world point."
@@ -32,4 +35,4 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 12742</sub>
+<sub>`api.ogt` line 12787</sub>

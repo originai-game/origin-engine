@@ -8,6 +8,8 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 A dialog built by `build` while visible: scrim, centred panel, focus kept inside, Back and the backdrop dismiss it unless locked. Set your open flag false on `dismissed`.
 
+Also known as: modal dialog, popup window, overlay window, Unity modal
+
 ```ts
 og.ui.modal(id: string, open: boolean, desc: ModalDesc, build: UiBuild): ModalResult
 ```
@@ -26,6 +28,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 ```ogt
 fn modal {
   doc "A dialog built by `build` while visible: scrim, centred panel, focus kept inside, Back and the backdrop dismiss it unless locked. Set your open flag false on `dismissed`."
+  aliases "modal dialog, popup window, overlay window, Unity modal"
   host false
   param id String "Its id."
   param open bool "Whether it should be open."
@@ -35,4 +38,4 @@ fn modal {
 }
 ```
 
-<sub>`api.ogt` line 16950</sub>
+<sub>`api.ogt` line 17021</sub>

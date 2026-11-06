@@ -183,6 +183,7 @@ module tilemap {
 
   fn setTile {
     doc "Change a cell. It applies at once to getTile, and to drawing and colliders at the og.tilemap system (this tick when called before it). Deterministic: equal edits in equal order give equal maps."
+    aliases "set cell, erase a tile, place a tile, edit the map, Unity Tilemap.SetTile, Godot set_cell"
     param world World "The world."
     param desc SetTileDesc "The map, the layer, the cell and the tile."
     returns Result.Void "Refused for an entity whose map is not adopted yet, an unknown layer, a cell outside the map or a tile the tileset lacks."
@@ -241,6 +242,7 @@ module tilemap {
 
   fn cellAt {
     doc "The cell under a world point (its xy), for a map at its entity's position."
+    aliases "world to cell, tile at position, pick a tile, Unity Tilemap.WorldToCell, Godot local_to_map"
     param world World "The world."
     param entity Entity "The entity with the og.Tilemap."
     param point Vector3 "A world point."

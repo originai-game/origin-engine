@@ -115,6 +115,7 @@ module assert {
 
   resource WorldBounds {
     doc "Where the world's entities may be: naming it turns on the default invariant that every entity's place (its og.MatrixWorld translation, else a root's og.Transform.position) lies inside min..max on every tick. A world that never names it has no bounds and keeps its hash."
+    aliases "kill zone, kill plane, Unreal KillZ, out of bounds, fell out of the world, level limits"
     field min Vector3 "The lowest corner." {
       default -1000 -1000 -1000
       worldspace world
@@ -130,6 +131,7 @@ module assert {
 
   fn always {
     doc "The condition holds on every call: a false one is a violation, reported with its tick, its name, its place and `details`."
+    aliases "invariant, assertion, must always hold, Antithesis always"
     host false
     param condition bool "What must hold."
     param name String "What it means, in a few words: `hp never negative`."
@@ -150,6 +152,7 @@ module assert {
 
   fn reachable {
     doc "This line runs at least once in the run; one that never ran is listed as uncovered."
+    aliases "coverage, reached, milestone, progress check, Antithesis reachable"
     host false
     param name String "What reaching it means: `door opened`."
     param details Option.Json "Values worth seeing the first time." {

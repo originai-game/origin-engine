@@ -8,6 +8,8 @@ Module [`render`](../render.md) · [index](../index.md)
 
 Draw a sprite this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the sprite should show.
 
+Also known as: draw a 2D image, immediate sprite, blit
+
 ```ts
 og.render.sprite(world: World, desc?: SpriteDesc): Result<void>
 ```
@@ -24,10 +26,11 @@ Binding symbol `og_render_sprite` · publish builds: kept
 ```ogt
 fn sprite {
   doc "Draw a sprite this frame. Systems and commands may call it; the list is cleared at every tick, so submit it every tick the sprite should show."
+  aliases "draw a 2D image, immediate sprite, blit"
   param world World "The world whose renderer draws it."
   param desc SpriteDesc "The texture, placement, region and colour."
   returns Result.Void "Refused for a dead texture."
 }
 ```
 
-<sub>`api.ogt` line 6044</sub>
+<sub>`api.ogt` line 6064</sub>

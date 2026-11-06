@@ -23,4 +23,4 @@ event RoomPeerLeft {
 }
 ```
 
-<sub>`api.ogt` line 15358</sub>
+<sub>`api.ogt` line 15422</sub>

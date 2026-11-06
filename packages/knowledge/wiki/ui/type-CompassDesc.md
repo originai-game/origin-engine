@@ -46,4 +46,4 @@ struct CompassDesc {
 }
 ```
 
-<sub>`api.ogt` line 21945</sub>
+<sub>`api.ogt` line 22023</sub>

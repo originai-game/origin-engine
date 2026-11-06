@@ -62,4 +62,4 @@ struct TelegraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 22374</sub>
+<sub>`api.ogt` line 22452</sub>

@@ -23,4 +23,4 @@ struct DialogueResult {
 }
 ```
 
-<sub>`api.ogt` line 16746</sub>
+<sub>`api.ogt` line 16817</sub>

@@ -23,6 +23,11 @@ is one line here, written at the merge that changes
   `defaultRoots`, `installed`, `mount`, `summary`, `artBrief`, `readLook`
   and `presetLook` keep their signatures. An agent reads the engine through
   `og`: `og api find`/`show` over the API and the engine's guides.
+- **IDL `aliases`.** One line of synonyms and other engines' names on a
+  declaration, printed in the wiki as "Also known as:" and scored by
+  `og api find` as its own field. 94 entries carry them. Recall on the
+  160-query set goes from 100 to 132 at @5; a 40-query held-out set
+  (`api-find-heldout.tsv`) stays at 21 at @5.
 - **`og api find` adds static embeddings**: potion-base-8M (model2vec,
   MIT) at 128 dimensions in int8, fused with BM25F by reciprocal rank. Each
   entry's vector ships in `wiki/search.tsv`; the token table

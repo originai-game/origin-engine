@@ -8,6 +8,8 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 An aim constraint on a skeleton, applied after its clips, graph and IK chains: `joint` turns so its `axis` points at `target` and its `upAxis` leans towards `up` (three.js Object3D.lookAt: +Z at the target, +Y up). The direction is held within maxYaw and maxPitch of the animated forward; with `bones` above 1 the joint's parents share the turn. Put it on its own entity (a head, the eyes, a turret's barrel); constraints apply in query order, and og.JointLimit clamps the joints it turns.
 
+Also known as: head look, aim constraint, head tracking, Unity LookAt constraint, Multi-Aim constraint, Unreal Look At node
+
 Token `og.LookAt`, registered under the schema name `og.LookAt`; its value type is `LookAt`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -28,6 +30,7 @@ Token `og.LookAt`, registered under the schema name `og.LookAt`; its value type 
 ```ogt
 component LookAt {
   doc "An aim constraint on a skeleton, applied after its clips, graph and IK chains: `joint` turns so its `axis` points at `target` and its `upAxis` leans towards `up` (three.js Object3D.lookAt: +Z at the target, +Y up). The direction is held within maxYaw and maxPitch of the animated forward; with `bones` above 1 the joint's parents share the turn. Put it on its own entity (a head, the eyes, a turret's barrel); constraints apply in query order, and og.JointLimit clamps the joints it turns."
+  aliases "head look, aim constraint, head tracking, Unity LookAt constraint, Multi-Aim constraint, Unreal Look At node"
   field skeleton Entity "The entity with the og.Skeleton this constraint turns."
   field joint u32 "The joint that aims (an index into the skin's joints): the head, an eye." {
     min 0
@@ -77,4 +80,4 @@ component LookAt {
 }
 ```
 
-<sub>`api.ogt` line 11738</sub>
+<sub>`api.ogt` line 11778</sub>

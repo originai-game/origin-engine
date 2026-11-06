@@ -23,4 +23,4 @@ struct LootLabelResult {
 }
 ```
 
-<sub>`api.ogt` line 22513</sub>
+<sub>`api.ogt` line 22591</sub>

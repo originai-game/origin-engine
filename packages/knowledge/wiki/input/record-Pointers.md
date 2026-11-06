@@ -132,7 +132,7 @@ resource Pointers {
 }
 ```
 
-<sub>`api.ogt` line 2839</sub>
+<sub>`api.ogt` line 2853</sub>
 
 <a id="member-Pointers-down"></a>
 
@@ -160,7 +160,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 2908</sub>
+<sub>`api.ogt` line 2922</sub>
 
 <a id="member-Pointers-pressed"></a>
 
@@ -188,7 +188,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 2913</sub>
+<sub>`api.ogt` line 2927</sub>
 
 <a id="member-Pointers-released"></a>
 
@@ -216,7 +216,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 2918</sub>
+<sub>`api.ogt` line 2932</sub>
 
 <a id="member-Pointers-position"></a>
 
@@ -244,7 +244,7 @@ fn position {
 }
 ```
 
-<sub>`api.ogt` line 2923</sub>
+<sub>`api.ogt` line 2937</sub>
 
 <a id="member-Pointers-start"></a>
 
@@ -272,7 +272,7 @@ fn start {
 }
 ```
 
-<sub>`api.ogt` line 2928</sub>
+<sub>`api.ogt` line 2942</sub>
 
 <a id="member-Pointers-count"></a>
 
@@ -295,4 +295,4 @@ fn count {
 }
 ```
 
-<sub>`api.ogt` line 2933</sub>
+<sub>`api.ogt` line 2947</sub>

@@ -45,4 +45,4 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 5598</sub>
+<sub>`api.ogt` line 5618</sub>

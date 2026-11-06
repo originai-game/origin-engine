@@ -8,6 +8,8 @@ Module [`timeline`](../timeline.md) · [index](../index.md)
 
 Playback passed a marker key (a seek over one does not send it).
 
+Also known as: cutscene event, cue, Unity Timeline signal, Unreal Sequencer event track, AnimationPlayer method track
+
 Token `og.TimelineMarker`, registered under the schema name `og.TimelineMarker`; its value type is `TimelineMarker`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -20,6 +22,7 @@ Token `og.TimelineMarker`, registered under the schema name `og.TimelineMarker`;
 ```ogt
 event TimelineMarker {
   doc "Playback passed a marker key (a seek over one does not send it)."
+  aliases "cutscene event, cue, Unity Timeline signal, Unreal Sequencer event track, AnimationPlayer method track"
   field entity Entity "The og.Timeline's entity."
   field asset TimelineAsset "The timeline."
   field name String "The marker's name (at most 63 bytes)."
@@ -29,4 +32,4 @@ event TimelineMarker {
 }
 ```
 
-<sub>`api.ogt` line 26054</sub>
+<sub>`api.ogt` line 26138</sub>
