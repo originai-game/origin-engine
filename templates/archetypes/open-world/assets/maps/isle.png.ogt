@@ -1,0 +1,6 @@
+type import
+version 1
+---
+# The minimap's picture of the isle: a HUD image, so a look conforms it as
+# a UI image (its size kept), not as a mesh texture.
+conform ui

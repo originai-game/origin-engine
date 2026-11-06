@@ -1,0 +1,14 @@
+type project
+version 1
+---
+name "Saltwind Isle"
+id "open-world"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1
+publish {
+  probe player
+  out "dist"
+}

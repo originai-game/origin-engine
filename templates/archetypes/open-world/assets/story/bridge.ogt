@@ -1,0 +1,18 @@
+type quest
+version 1
+---
+# The way to the north isle (src/work.ts counts it): wood from the trees,
+# stone from the boulders, then the bridge built at the strait's landing.
+id bridge
+title "quest.bridge"
+summary "quest.bridge.summary"
+category side
+stage build {
+  objective wood "quest.bridge.wood" {
+    target 6
+  }
+  objective stone "quest.bridge.stone" {
+    target 4
+  }
+  objective span "quest.bridge.span"
+}

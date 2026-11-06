@@ -1,0 +1,112 @@
+type screen
+version 1
+---
+# Saltwind Isle's title (ejected from the library's main-menu, docs/ui.md
+# §11.1): the game's name and tagline on a card over the camp on the south beach
+# (the style's panel frame in its hud fill), Set out and Settings, and the
+# controls under them in the card, as the title shipped: the keys', or on
+# a touch screen the touch controls' (on a phone the card stands at the
+# bottom). Its words are the game's string keys (assets/strings/*.ogt).
+#
+# Viewmodel: touch. Events to code (src/ui.ts): play, settings.
+name "main-menu"
+layer menu
+under none
+back none
+props {
+  touch bool "A touch screen: the footer names the touch controls."
+}
+actions {
+  confirm "Select"
+}
+fixture default "{\"touch\": false}"
+stack Title {
+  width grow
+  height grow
+  column Screen {
+    width grow
+    height grow
+    padding 32
+    align center
+    cross center
+    at phone {
+      padding 16
+      align end
+    }
+    column Card {
+      width 380
+      padding 24
+      gap 24
+      cross center
+      background token hud
+      frame panel
+      radius 4
+      at phone {
+        width grow
+        padding 16
+      }
+      column Heading {
+        width grow
+        gap 4
+        cross center
+        label Name {
+          key "title.name"
+          text "Saltwind Isle"
+          step displayLg
+          font display
+          textAlign center
+          heading true
+          width grow
+          at phone {
+            step displayMd
+          }
+        }
+        label Tagline {
+          key "title.tagline"
+          text "Claim the five landmarks before the third nightfall"
+          color token inkMuted
+          textAlign center
+          width grow
+        }
+      }
+      column Menu {
+        width grow
+        gap 8
+        focusGroup wrap
+        button Play {
+          key "title.play"
+          text "Set out"
+          variant primary
+          size large
+          width grow
+          on click emit play
+        }
+        button Settings {
+          key "title.settings"
+          text "Settings"
+          size large
+          width grow
+          on click emit settings
+        }
+      }
+      label Footer {
+        key "title.footer"
+        text "WASD to move · the mouse looks · Shift runs · Space jumps · hold E to gather"
+        step meta
+        color token inkFaint
+        visible bind "!touch"
+        textAlign center
+        width grow
+      }
+      label TouchFooter {
+        key "title.footer.touch"
+        text "The stick moves · drag to look · hold Gather by a tree or a rock"
+        step meta
+        color token inkFaint
+        visible bind touch
+        textAlign center
+        width grow
+      }
+    }
+  }
+}

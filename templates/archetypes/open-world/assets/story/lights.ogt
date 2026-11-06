@@ -1,0 +1,14 @@
+type quest
+version 1
+---
+# The run's goal (src/work.ts counts it): claim the isle's five landmarks
+# before the third nightfall. Two stand on the north isle, across the strait.
+id lights
+title "quest.lights"
+summary "quest.lights.summary"
+category main
+stage claim {
+  objective sites "quest.lights.sites" {
+    target 5
+  }
+}

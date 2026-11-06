@@ -1,0 +1,50 @@
+type terrain
+version 1
+---
+# Saltwind Isle (tools/make-assets.py makes the maps): 256 m square, one
+# sample a metre, the main island and the north isle across a deep strait,
+# the sea (og.Water at y 0) round both. The phone budget: one 257 x 257
+# field, four layers, no displacement and no og.Grass (README §Budget).
+heightmap "isle.png"
+height -10 30
+size 256 256
+control "isle-control.png"
+heightBlend 0.15
+# Meadow grass above the beach (control R).
+layer {
+  albedo "textures/terrain-grass.png"
+  tile 5
+  antiTiling 1
+  macroVariation 0.6
+  slope 0 32
+  slopeFade 6
+  altitude 1.7 1000
+  altitudeFade 0.7
+}
+# The paths from the camp to every site and the bridge (control G).
+layer {
+  albedo "textures/terrain-path.png"
+  tile 3
+  slope 0 45
+  altitude 0.8 1000
+  altitudeFade 0.5
+}
+# Rock on every slope steeper than 32 degrees: from above below 45 degrees,
+# by the two projections facing it past them (control B).
+layer {
+  albedo "textures/terrain-rock.png"
+  tile 9
+  projectSlope 45
+  antiTiling 0.5
+  slope 32 90
+  slopeFade 6
+}
+# Sand on the beaches and the sea bed (control A).
+layer {
+  albedo "textures/terrain-sand.png"
+  tile 4
+  antiTiling 1
+  slope 0 38
+  altitude -100 1.9
+  altitudeFade 0.7
+}

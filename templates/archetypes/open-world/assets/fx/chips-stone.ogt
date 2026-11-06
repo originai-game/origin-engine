@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# A stroke of the pick: stone chips thrown from the work, falling
+# back and bouncing (src/work.ts restarts it with startTick at each stroke).
+maxParticles 64
+shape sphere 0.3
+spread 60
+rate 0
+burst 0 24
+duration 1.2
+looping false
+lifetime 0.5 1.0
+speed 2 4.5
+size 0.06 0.12
+colorOverLife {
+  key 0 0.72 0.74 0.78 1
+  key 1 0.42 0.44 0.48 0
+}
+gravity 0 -12 0
+drag 0.3
+texture "textures/spark.png"
+blend alpha
+align velocity 0.06
+collision 0.45 0.25

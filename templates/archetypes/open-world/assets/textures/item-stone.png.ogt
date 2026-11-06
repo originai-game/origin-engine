@@ -1,0 +1,5 @@
+type import
+version 1
+---
+# A HUD icon (the bag's): a look conforms it as a UI image, its size kept.
+conform ui
