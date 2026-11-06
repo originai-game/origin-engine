@@ -1,19 +1,15 @@
-//! KTX2 sources with their orientation and swizzle honoured, texture
-//! arrays cooked and uploaded as one 2D-array texture, and the `toktx`
-//! encoder (when it is on PATH).
+//! KTX2 sources with their orientation and swizzle honoured, and streamed
+//! textures cooked as a mip tail and a whole chain.
 //!
 //! Ways it could fail, and what catches it:
 //! - a `ru` KTX2 cooked as stored (upside down), a swizzle ignored, or an
 //!   identity KTX2 re-encoded instead of taken as it is →
 //!   `ktx2_sources_are_flipped_and_swizzled_to_rd_rgba_or_taken_as_they_are`
-//! - an array's layers out of order, of different sizes accepted, padded
-//!   wrongly, or not one `D2Array` texture →
-//!   `a_texture_array_cooks_its_layers_and_uploads_them_as_one_array`
-//! - the toktx fallback writing another orientation, a broken texture, or
-//!   not running at all → `toktx_cooks_the_template_textures` (skipped with
-//!   its reason when `toktx` is not on PATH)
+//! - a streamed texture's tail and chain from two encodes, a texture inside
+//!   the tail split, or stream accepted where it cannot apply →
+//!   `a_streamed_texture_cooks_its_mip_tail_and_its_whole_chain`
 //!
-//! Evidence: `$OG_EVIDENCE_DIR/P4/cook/textures.json`.
+//! Evidence: `$OG_EVIDENCE_DIR/cook/textures-*.json`.
 
 use og_cook::cook::{CookOptions, cook_project};
 use og_cook::ktx2;
@@ -28,14 +24,14 @@ fn evidence(name: &str, text: String) {
     let base = std::env::var_os("OG_EVIDENCE_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("evidence"));
-    let dir = base.join("P4/cook");
+    let dir = base.join("cook");
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join(name), text).unwrap();
 }
 
 fn project(name: &str) -> PathBuf {
     let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
-        .join("og-cook-textures-p4")
+        .join("og-cook-textures")
         .join(name);
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(root.join("assets/tex")).unwrap();

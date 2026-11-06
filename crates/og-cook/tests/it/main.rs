@@ -92,8 +92,8 @@ mod template;
 mod terrain;
 #[path = "../texture_cache.rs"]
 mod texture_cache;
-#[path = "../textures_p4.rs"]
-mod textures_p4;
+#[path = "../textures.rs"]
+mod textures;
 #[path = "../tilemap.rs"]
 mod tilemap;
 #[path = "../timeline.rs"]
