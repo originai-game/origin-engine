@@ -205,6 +205,9 @@ export const STARTERS = {
       { name: "jump", label: "Jump", keys: k(["Space"], ["Enter"]), pad: ["pad.a"] },
       { name: "run", label: "Run", keys: k(["ShiftLeft"], ["ShiftRight"]), pad: ["pad.leftStick", "pad.rightTrigger"] },
       { name: "kindle", label: "Kindle", keys: k(["KeyF"], ["Slash"]), pad: ["pad.x"] },
+      { name: "turnLeft", label: "Turn left", keys: k(["KeyQ"], ["Comma"]), pad: [] },
+      { name: "turnRight", label: "Turn right", keys: k(["KeyE"], ["Period"]), pad: [] },
+      { name: "menu", label: "Menu", keys: k([], []), pad: [], surface: true },
     ] },
   },
   shooter: {

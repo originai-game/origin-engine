@@ -93,6 +93,32 @@ og build . --publish         # dist/: the play page as it ships (behind "tap to 
 - **The tap gate**: `og build . --publish` ships behind the default
   `gate: "tap"`, so audio starts on the player's first tap.
 
+## Seats: alone, two on one device, two over a room
+
+Every strider is a seat (`src/seats.ts`, the same file in every starter;
+`src/creation.ts` holds the creation choices and the controls): the game
+reads `og.PlayerInput` alone, so the vale plays
+
+- **alone**: seat 0 from the keys (both sets), any pad, the mouse while the
+  pointer is locked, and on a touch screen the game's own HUD (the
+  joystick, Jump and Kindle, a drag on the right half turning the view);
+- **local-multiplayer**: a second strider (tinted blue) on the arrows,
+  Right Shift, Enter, `/` and `,` `.` (or pad 2) beside seat 0 on WASD,
+  Left Shift, Space, F and Q E (or pad 1); the screen splits in halves (an
+  `og.CameraView` per seat), each half with its own kindling prompt;
+- **online-lockstep**: two peers over a room, each camera behind its own
+  strider (`og.Lockstep.localPlayer`), every peer running the whole vale.
+
+It is co-op: the beacons are shared (two at one plinth kindle it twice as
+fast), the hearts are shared, night or no hearts ends the run for both,
+and each sentinel hunts the nearest strider it sees and grabs the nearest
+it reaches. Each strider's view (its heading and pitch) is its own state,
+turned by its seat's look. Menus act through the seats too: Set out and
+Again press Jump, Leave the vale and Menu press Menu, Pause and Resume
+press Pause, so a room acts on one tick on every peer. `bot:<n>` drives
+this device's seats from a script (the room test); `warp_seat:<seat>:...`
+moves any seat's strider.
+
 ## Rules
 
 - **Moving.** Walk 3 m/s, run 6 m/s, wade at 0.45 of either. The view
@@ -136,11 +162,11 @@ the same hash.
 
 | Type | Kind | What it holds |
 |---|---|---|
-| `Game` | resource | the phase and ending, the record and its requests, hearts, lit beacons, the run's time and hour, kindling, wading, the counts (jumps, splashes, grabs, alarms), the knock-back, the view's yaw, the HUD's stick and buttons, sound requests, the terrain and navmesh handles |
+| `Game` | resource | the phase and ending, the record and its requests, the shared hearts, lit beacons, the run's time and hour, seat 0's kindling and wading (for the facts), the counts (jumps, splashes, grabs, alarms), sound requests, the striders', terrain and navmesh handles |
 | `Tuning` | resource | the knobs below |
 | `Prefs` | resource | the volumes, the language, reduced motion |
-| `Hero` | the hero's capsule | steps, air time |
-| `Beacon` | the four plinths | index, lit, when it caught, the bowl's rim |
+| `Hero` | each strider's capsule | its seat, body, reach and splash, last tick's buttons, its view's yaw and pitch, facing, the beacon in reach, kindling, wading, the knock-back and spare time, steps, air time |
+| `Beacon` | the four plinths | index, lit, when it caught, the bowl's rim, its kindling so far |
 | `Sentinel` | the three sentinels | index, grabs, alarms, speed, alert |
 | `Sfx` | one row per sound | its `Sound.*` bit, its plays |
 
@@ -148,12 +174,13 @@ the same hash.
 
 | System | Job |
 |---|---|
+| `Seats` | each seat this device plays: its keys, pad, mouse-look and touch HUD to `og.PlayerInput` |
 | `og.systems.cameras` | the camera's punch and shake |
-| `Ui` | the screens, starting and ending runs, the clock and the hour, pausing, the buses, the platform's answers |
-| `Hero` | the controls, the character controller, the graph's parameters, the reach (IK), steps, splashes and jumps |
-| `View` | the title's orbit, the follow camera kept above the ground and the water |
+| `Ui` | the screens, the seats' choices (start, pause, leave), ending runs, the clock and the hour, the buses, the platform's answers |
+| `Hero` | each strider from its input: the character controller, the graph's parameters, the reach (IK), steps, splashes and jumps, its view's turn |
+| `View` | the title's orbit; og.Camera behind this device's strider, and with two seats here each half's view, kept above the ground and the water |
 | `Sentinels` | their sight and pace from `Tuning`, the graph's speed, the feet on the terrain, the eye's light |
-| `Beacons` | which beacon is in reach, kindling, catching, the lights' swell and flicker |
+| `Beacons` | which beacon each strider can reach, kindling (summed over the striders at it), catching, the lights' swell and flicker |
 | `Voices` | plays each requested sound once |
 
 og.nav, og.ai (the sentinels' decisions, whose commands `alarm` and `grab`

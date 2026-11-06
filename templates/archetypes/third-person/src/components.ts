@@ -3,7 +3,7 @@
 // them by name.
 //
 // The run (Game), the knobs (Tuning) and the player's settings (Prefs) are
-// resources. The actors are rows spawned in `start`: the hero (Hero), the
+// resources. The actors are rows spawned in `start`: a strider per seat (Hero), the
 // four beacons (Beacon), the three sentinels (Sentinel) and one voice per
 // sound (Sfx).
 
@@ -55,33 +55,21 @@ export const Game = defineResource("Game", {
   litMask: u32(0, { doc: "Bit i: beacon i burns." }),
   time: f32(0, { unit: "s", doc: "Seconds played this run (paused time excluded)." }),
   hour: f32(0, { doc: "The time of day (og.atmosphere.timeOfDay): night falls at Tuning.nightHour." }),
-  near: i32(-1, { doc: "The beacon within reach (-1 none)." }),
-  kindle: f32(0, { unit: "s", doc: "How long the near beacon has been kindled." }),
-  kindling: bool(false, { doc: "The hero is kindling (holding F, X or Kindle by a beacon)." }),
-  wading: bool(false, { doc: "The hero's feet are in the lake." }),
+  near: i32(-1, { doc: "The beacon within seat 0's reach (-1 none): Hero.near of the first strider, for the facts." }),
+  kindle: f32(0, { unit: "s", doc: "How long that beacon has been kindled (its Beacon.kindle)." }),
+  kindling: bool(false, { doc: "Seat 0's strider is kindling (holding F, X or Kindle by a beacon)." }),
+  wading: bool(false, { doc: "Seat 0's strider's feet are in the lake." }),
   grounded: bool(false),
-  speed: f32(0, { unit: "m/s", doc: "The hero's speed across the ground." }),
-  jumps: u32(0),
+  speed: f32(0, { unit: "m/s", doc: "Seat 0's strider's speed across the ground." }),
+  jumps: u32(0, { doc: "Jumps of every strider this run." }),
   splashes: u32(0),
   grabs: u32(0, { doc: "Sentinel grabs that cost a heart." }),
   alarms: u32(0, { doc: "Times a sentinel called the alarm." }),
-  invulnerable: f32(0, { unit: "s", doc: "Seconds before the hero can be grabbed again." }),
-  knock: f32(0, { unit: "s", doc: "Seconds the hero is thrown back (no control)." }),
-  knockX: f32(0),
-  knockZ: f32(0),
-  yaw: f32(0, { unit: "rad", doc: "The view's heading: 0 looks north (-z)." }),
-  facing: f32(0, { unit: "rad", doc: "The hero's heading." }),
-  padJump: bool(false, { doc: "The HUD's Jump was pressed this tick." }),
-  padKindle: bool(false, { doc: "The HUD's Kindle is held." }),
-  stickX: f32(0, { doc: "The HUD joystick (written by Ui)." }),
-  stickY: f32(0),
-  lookId: i32(-1, { doc: "The finger turning the view on a touch screen (an og.Pointers id; -1 none)." }),
-  lookX: f32(0, { unit: "cssPx", doc: "Where that finger was last tick." }),
-  lookTurn: f32(0, { unit: "rad", doc: "How far the finger turned the view this tick (written by Ui, applied by View)." }),
   overTicks: u32(0, { unit: "ticks", doc: "Ticks since the run ended; the summary comes after a beat." }),
   start: bool(false, { doc: "Every system resets its part of the vale this tick (a new run or the title)." }),
   sfx: u32(0),
-  hero: f64(0, { doc: "The hero's entity." }),
+  hero: f64(0, { doc: "Seat 0's strider's entity." }),
+  hero1: f64(0, { doc: "Seat 1's strider's entity (0 alone)." }),
   terrain: f64(0, { doc: "The vale's og.terrain data." }),
   nav: f64(0, { doc: "The sentinels' navmesh." }),
   viewW: f32(0, { unit: "cssPx" }),
@@ -116,8 +104,30 @@ export const Prefs = defineResource("Prefs", {
   saves: u32(0),
 });
 
-/** The hero, on the capsule (its body, the strider, is a child). */
+/**
+ * A strider, on the capsule (its body is a child): one per seat, moved by
+ * its og.PlayerInput alone. Its view (yaw, pitch) is world state too, turned
+ * by its own input, so it replays and plays the same over a room.
+ */
 export const Hero = defineComponent("Hero", {
+  seat: u32(0, { doc: "The seat it plays for (its og.PlayerInput.player)." }),
+  body: f64(0, { doc: "Its skinned body's entity." }),
+  reach: f64(0, { doc: "Its arm's og.IkChain entity." }),
+  splash: f64(0, { doc: "Its splash's og.ParticleSystem entity." }),
+  before: u32(0, { doc: "Its og.PlayerInput.buttons last tick (press edges)." }),
+  yaw: f32(0, { unit: "rad", doc: "Its view's heading: 0 looks north (-z)." }),
+  pitch: f32(0, { unit: "rad", doc: "Its view's pitch beyond the resting one (positive looks further down)." }),
+  lookIdle: u32(60, { unit: "ticks", doc: "Ticks since its input last turned the view (the view swings behind it once idle)." }),
+  facing: f32(0, { unit: "rad", doc: "Its body's heading." }),
+  near: i32(-1, { doc: "The dark beacon within its reach (-1 none)." }),
+  kindling: bool(false, { doc: "It holds Kindle by a beacon." }),
+  wading: bool(false, { doc: "Its feet are in the lake." }),
+  grounded: bool(false),
+  speed: f32(0, { unit: "m/s", doc: "Its speed across the ground." }),
+  invulnerable: f32(0, { unit: "s", doc: "Seconds before it can be grabbed again." }),
+  knock: f32(0, { unit: "s", doc: "Seconds it is thrown back (no control)." }),
+  knockX: f32(0),
+  knockZ: f32(0),
   steps: u32(0, { doc: "Footsteps: one per stride of ground covered." }),
   airTime: f32(0, { unit: "s", doc: "Seconds since the capsule last stood on the ground." }),
   stepClock: f32(0, { unit: "m", doc: "Ground covered since the last footstep." }),
@@ -129,6 +139,7 @@ export const Beacon = defineComponent("Beacon", {
   lit: bool(false),
   litAt: f32(0, { unit: "s", doc: "Game.time when it caught." }),
   top: f32(0, { unit: "m", doc: "The bowl's rim, world y." }),
+  kindle: f32(0, { unit: "s", doc: "How long it has been kindled: every strider at its plinth holding Kindle adds its time (two kindle it twice as fast); it cools at twice the rate while none does, and is lost once no strider is within reach." }),
 });
 
 /** A sentinel: a stone stout on the navmesh, thinking with assets/ai/sentinel-<name>.ogt. */

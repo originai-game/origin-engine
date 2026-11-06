@@ -56,6 +56,17 @@ export function usesTouch(): boolean {
   return input === "touch" || og.ui.frameViewport().coarsePointer;
 }
 
+/** Whether the mouse turns the view now (aim `look`): see setLookLive. */
+let lookLive = true;
+/**
+ * Whether the mouse turns the view now (aim `look`): true by default, a
+ * game sets it false on its title, menus and pause, so the pointer is the
+ * player's there and Seats asks for no pointer lock.
+ */
+export function setLookLive(on: boolean): void {
+  lookLive = on;
+}
+
 /** A control's bit in og.PlayerInput.buttons. */
 export function bit(name: string): number {
   if (name === "pause") return PAUSE;
@@ -258,7 +269,7 @@ export const Seats = defineSystem(
     const fingers = usesTouch();
     if (controls.aim === "look" && !fingers) {
       const lock = world.resource(og.PointerLock);
-      if (lock.ok) lock.value.wanted = true;
+      if (lock.ok && lock.value.wanted !== lookLive) lock.value.wanted = lookLive;
     }
     for (const seat of localSeats(world)) {
       const local = LOCAL ? seat : 0;

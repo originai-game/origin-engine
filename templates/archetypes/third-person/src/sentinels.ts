@@ -1,17 +1,19 @@
 // The sentinels: three stone stouts walking their rounds of the lake path
 // on the vale's navmesh (og.NavAgent), each thinking with its behaviour
 // (og.ai, assets/ai/sentinel-<name>.ogt) and watching with og.Perception
-// (sight, a cone, the terrain and the plinths hide the hero). Seen, a
-// sentinel raises `alarm` and chases; within reach it raises `grab`: the
-// hero loses a heart and is thrown back. The navmesh stops at the shore, so
+// (sight, a cone, the terrain and the plinths hide the hero; of two
+// striders it hunts the nearest it sees). Seen, a sentinel raises `alarm`
+// and chases; within reach it raises `grab`: the nearest strider it reaches
+// loses a heart (the hearts are shared) and is thrown back. The navmesh stops at the shore, so
 // the lake is a refuge. Their walk is the library's clips retargeted onto
 // the stout (src/anim.ts), its speed the graph's parameter.
 
-import { og, defineSystem } from "@origingame/engine";
+import { og, defineSystem, math } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
 import { sentinelRig } from "./anim.ts";
-import { Ending, Game, Phase, Sentinel, Sound, Tuning } from "./components.ts";
-import { entity, FEET } from "./hero.ts";
+import { Ending, Game, Hero, Phase, Sentinel, Sound, Tuning } from "./components.ts";
+import { entity, FEET, heroOf, hypot } from "./hero.ts";
+import { SEATS } from "./seats.ts";
 import { ground, must } from "./world.ts";
 
 /** The sentinels, by behaviour (assets/ai/sentinel-<name>.ogt). */
@@ -84,14 +86,14 @@ export const Sentinels = defineSystem(
     const g = must(world.resource(Game));
     const t = must(world.resource(Tuning));
     if (g.start) reset(world, g);
-    const pulse = 0.75 + 0.25 * Math.sin(time.elapsed * 9);
+    const pulse = 0.75 + 0.25 * math.sin(time.elapsed * 9);
     SENTINELS.forEach((_, i) => {
       const s = entity(world, `sentinel-${i}`);
       const nav = must(world.get(s, og.NavAgent));
       const ai = must(world.get(s, og.AiAgent));
       const me = must(world.get(s, Sentinel));
       const p = must(world.get(s, og.Transform)).position;
-      const speed = Math.hypot(nav.velocity.x, nav.velocity.z);
+      const speed = hypot(nav.velocity.x, nav.velocity.z);
       const alert = g.phase === Phase.Play && ALERT_STATES.includes(ai.state);
       if (alert !== me.alert || Math.abs(speed - me.speed) > 1e-3) must(world.set(s, Sentinel, { speed, alert }));
       must(world.set(s, og.Perception, { sight: t.sight }));
@@ -129,28 +131,38 @@ export function alarm(world: World, args: readonly string[]): void {
 }
 
 /**
- * `grab <sentinel>`: it reached the hero (its behaviour raises it within
- * reach). The hero loses a heart and is thrown back, the world holds for a
- * beat, the screen flashes red and shakes; then the hero is spared a moment.
+ * `grab <sentinel>`: it reached a strider (its behaviour raises it within
+ * reach): the nearest within reach that is not spared (seat order breaks a
+ * tie). It loses a heart of the shared hearts and is thrown back, the world
+ * holds for a beat, the screen flashes red and shakes; then that strider is
+ * spared a moment.
  */
 export function grab(world: World, args: readonly string[]): void {
   const { me, at } = sentinel(world, args);
   const g = must(world.resource(Game));
-  if (g.phase !== Phase.Play || g.ending !== Ending.None || g.invulnerable > 0) return;
-  const hero = must(world.get(g.hero as unknown as Entity, og.Transform)).position;
-  if (Math.hypot(hero.x - at.x, hero.z - at.z) > 2.2 || hero.y - FEET > at.y + 1.5) return;
+  if (g.phase !== Phase.Play || g.ending !== Ending.None) return;
+  let caught: Entity | null = null;
+  let best = Infinity;
+  for (let seat = 0; seat < SEATS; seat++) {
+    const hero = heroOf(g, seat);
+    if (must(world.get(hero, Hero)).invulnerable > 0) continue;
+    const p = must(world.get(hero, og.Transform)).position;
+    const d = hypot(p.x - at.x, p.z - at.z);
+    if (d > 2.2 || p.y - FEET > at.y + 1.5 || d >= best) continue;
+    best = d;
+    caught = hero;
+  }
+  if (caught === null) return;
+  const hero = must(world.get(caught, og.Transform)).position;
   const s = must(world.get(me, Sentinel));
   must(world.set(me, Sentinel, { grabs: s.grabs + 1 }));
   const dx = hero.x - at.x;
   const dz = hero.z - at.z;
-  const d = Math.max(0.01, Math.hypot(dx, dz));
+  const d = Math.max(0.01, hypot(dx, dz));
   g.hearts -= 1;
   g.hurts += 1;
   g.grabs += 1;
-  g.knock = KNOCK;
-  g.knockX = dx / d;
-  g.knockZ = dz / d;
-  g.invulnerable = SPARED;
+  must(world.set(caught, Hero, { knock: KNOCK, knockX: dx / d, knockZ: dz / d, invulnerable: SPARED }));
   g.sfx |= Sound.Grab;
   const t = must(world.resource(Tuning));
   if (t.hitStop > 0) must(og.time.hitStop(world, t.hitStop));
