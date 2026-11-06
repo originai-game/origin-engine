@@ -145,14 +145,13 @@ commands:
                       pack a UI style's art drawn by hand (<part>.9.png nine-patches, other PNGs)
                       into atlas.png and the style file's atlas, slice and ornament lines
   style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH]
-      [--no-frames] [--critic] [--json]
+      [--no-frames] [--json]
                       cook, then measure every cooked asset against the art contract of the look
                       project.ogt names (palette hit rate, colours, pixel grid, texel density,
                       faces against the budget, flat normals, the line) and list every opt-out;
                       capture the title, play and results screens (project.ogt's screens block or
-                      the flags) and measure their colours, palette and edges; --critic prints only
-                      the catalogue's three checks and the frames, for a blind critic; exit 0 within
-                      the contract or no look, 3 off it
+                      the flags) and measure their colours, palette and edges; exit 0 within the
+                      game's own contract or with no look, 3 off it
   ui sheet <pack|kit> [project] [--out DIR] [--json]
                       render fixed baseline pages on the pack's own ground at desktop and phone,
                       100% and 150%; frames, UI dumps and sheets for review, never a gate step

@@ -169,6 +169,18 @@ size and renderer tier, and names any scene with no capture script:
 judge every item on every one of them, and each tier against its own
 (§4).
 
+**A blind critic.** When the look builds on a catalogue style, its
+`contract.style.slug` in that JSON names the entry of
+`game/skills/og-taste/looks/catalogue.json`. Hand a critic the entry's
+three `checks` and its `intended` sentence as written, and the frames by
+their `<screen>@<viewport>` labels and paths, with this prompt: "Look at
+the frames below. For each check, answer yes or no, with one sentence on
+what in the frames shows it. What the style means is not a defect."
+Give it nothing that names the style (no name, slug, look id or path
+under `looks/`), so the critic judges the frames and not the intention.
+A no goes back to the build as a hold on `style-check-N` (§6); the style
+is not changed to make a check pass.
+
 ## 6. Verdicts
 
 A review, by the author before asking for one or by an independent
@@ -181,7 +193,8 @@ reviewer, ends in one of two verdicts:
   frame, `x,y,w,h`), a **criterion** (`style-check-N`, the style's check
   as written; `bible:<clause>`, a clause of the art bible; `contract:<term>`,
   a term of the look's contract with its value; `measure:<name>`, a
-  number an engine command printed, against the bar the command states;
+  number an engine command printed, against the bar the art bible or a
+  skill states (the engine prints numbers, never a bar);
   `bar:<item>`, an item of §5 by its id), the **measured value now** and
   the **condition that passes it**, and how to measure it again (the
   `og frame measure` line with its region, or the `og ui check` or `og

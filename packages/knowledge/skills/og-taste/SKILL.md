@@ -709,7 +709,8 @@ frames look like defects and are the style: hard one-pixel steps and
 aliased edges in the pixel styles, dither in the dithered ones, broken
 edges and uneven marks in the painted ones, crushed-looking blacks in
 the ink and silhouette ones. Every critic reads it beside the three
-`checks` (`og style check --critic` prints both), so no critic holds a
+`checks` (visual-acceptance §5 says how to hand both to a blind
+critic), so no critic holds a
 game for being in its own style, and every critic reads the same traits
 the same way (visual-acceptance §5, §6).
 
