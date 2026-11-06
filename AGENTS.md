@@ -53,6 +53,9 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **Size cuts never cost features.** Data only some games need is loaded or
   packed on demand, not removed. Growth from a feature is accepted within the
   size gate.
+- **Frozen is not obsolete.** A frozen kit, style pack or feature is one
+  whose quality is not there yet; it stays in the tree until it is rebuilt.
+  A cleanup deletes only what the owner names obsolete.
 
 ## Non-negotiable contracts
 
