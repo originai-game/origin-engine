@@ -396,6 +396,9 @@ imports only: retain every assertion, known failure and reference byte.
   wasm-bindgen 0.2.129, TypeScript 7.0.2, bun 1.4.4) and where each is
   pinned: `docs/ci.md` §Toolchain, the one place they are stated. A version
   move changes that table and its pin in the same commit.
+  Every target and profile uses LLVM with `-Zthreads=4`; no alternative
+  codegen backend or per-package backend override. Linux uses mold;
+  Windows MSVC uses rust-lld (lld-link), unverified until studio-win runs it.
 
 - Rust: `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`
   (or `scripts/check.sh quick`, which runs the same with nextest).

@@ -18,7 +18,7 @@ node, which CI takes from `actions/setup-node`.
 
 | Tool | Version | Pinned by |
 |---|---|---|
-| Rust (rustc, rustfmt, clippy, rust-src and rustc-codegen-cranelift-preview; wasm32-unknown-unknown, wasm32-wasip1 and x86_64-linux-gnu targets) | nightly-2026-11-05 (1.101.0-nightly), edition 2024, `rust-version` 1.99 | `rust-toolchain.toml`, `Cargo.toml` `[workspace.package]` |
+| Rust (rustc, rustfmt, clippy, rust-src; wasm32-unknown-unknown, wasm32-wasip1, x86_64-unknown-linux-gnu and x86_64-pc-windows-msvc targets) | nightly-2026-11-05 (1.101.0-nightly), edition 2024, `rust-version` 1.99 | `rust-toolchain.toml`, `Cargo.toml` `[workspace.package]` |
 | wgpu / naga | 30.0.1 | `Cargo.toml` `[workspace.dependencies]` |
 | AccessKit (native shared-frame accessibility schema) | 0.25.2 | `crates/og-ui/Cargo.toml` (exact; serde enabled, no OS adapter in the engine) |
 | Parley / parley_engine, HarfRust, Skrifa (UI text) | 0.12.0 / 0.12.0, 0.12.0, 0.44.0 | `crates/og-ui/Cargo.toml` (exact compatible stack; default features off, `libm`, Parley `complex-scripts`, no system font discovery) |
@@ -38,29 +38,21 @@ node, which CI takes from `actions/setup-node`.
 | Chrome for Testing (`make web-reference`, browser tests) | 150 | `CHROME_PATH`; outside the gate |
 | Mesa lavapipe (CPU rendering in orbs) | minimum 25.0.7 | `.agents/setup`; Debian bookworm-backports supplies Mesa and apt resolves its dependencies |
 
-Dev and test default to Cranelift with four frontend threads (`-Zthreads=4`).
-The per-package LLVM overrides in `.cargo/config.toml` cover the Node addon's
-Mach-O section limit, unsupported ARM NEON intrinsics in JPEG and physics,
-and the existing optimized codecs and per-frame paths. **arm64 macOS uses
-LLVM for the whole target:** mixing backends hangs the UI and cook in shared
-SIMD code on this nightly. Build-time executables also use LLVM. Release,
-wasm and wasm-gate use LLVM. A wasm dev check selects LLVM because Cranelift
-does not support that target. Cargo keeps metadata in `.rmeta` instead of
-duplicating it in libraries (`unstable.embed-metadata = false`). The dated
-nightly uses Cargo's new build-directory layout; consumers must use Cargo's
-artifact messages, not guess paths under `target/debug/deps`.
+Every target and profile uses LLVM, including dev, test, build scripts,
+release and wasm (owner's decision, 2026-11-06). There are no backend
+overrides. Four frontend threads (`-Zthreads=4`) are enabled on every
+target. Metadata embedding and the build-directory layout use Cargo's
+defaults until a controlled experiment demonstrates an improvement.
+Consumers use Cargo's artifact messages, not guessed executable paths.
 
 | Native target | Dev/test backend and frontend | Linker | Verification |
 |---|---|---|---|
-| arm64 macOS | LLVM target fallback, `-Zthreads=4` | platform linker | Selected controls passed on macrunner |
-| x86_64 Linux | Cranelift, explicit LLVM package overrides, `-Zthreads=4` | mold | Unverified in this lane |
-| x86_64-pc-windows-msvc (studio-win) | Cranelift, explicit LLVM package overrides, `-Zthreads=4` | rust-lld (lld-link), not link.exe | **Unverified on studio-win** |
+| arm64 macOS | LLVM, `-Zthreads=4` | platform linker | LLVM controls passed on macrunner |
+| x86_64 Linux | LLVM, `-Zthreads=4` | mold | Unverified in this lane |
+| x86_64-pc-windows-msvc (studio-win) | LLVM, `-Zthreads=4` | rust-lld (lld-link), not link.exe | **Unverified on studio-win** |
 
-The dated nightly includes the MSVC target. Windows Cranelift is available
-upstream, but this configuration is not a successful Windows build report.
-If a package fails there, add its LLVM override; if mixed backends fail,
-use a whole-target LLVM override as on arm64 macOS. All shipping profiles
-remain LLVM on every target. Neither mold nor wild supports Windows.
+The dated nightly includes the MSVC target, but this configuration is not
+a successful Windows build report. Neither mold nor wild supports Windows.
 
 wgpu 31 is not on crates.io (2026-10-19, 2026-10-21 and 2026-10-24: `cargo
 search wgpu` and `cargo search naga` list 30.0.1 as the newest), so wgpu

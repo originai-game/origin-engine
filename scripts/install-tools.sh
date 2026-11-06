@@ -42,7 +42,7 @@ tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 
 fetch() { curl -fsSL --retry 3 -o "$2" "$1"; }
 
-# Install the pinned nightly and its Cranelift component before cargo installs.
+# Install the pinned LLVM nightly before cargo installs.
 rustup show active-toolchain
 if [ "$os" = Linux ] && ! command -v mold >/dev/null; then
   if [ "$(id -u)" -eq 0 ]; then apt-get update -qq && apt-get install -y -qq mold

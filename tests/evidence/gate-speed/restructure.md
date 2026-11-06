@@ -5,6 +5,14 @@ style suites remain independent; their frame cuts belong to kit-frames-cut.
 
 ## Nightly and binary consolidation
 
+**Current decision:** LLVM on every target and profile. The owner withdrew
+the alternative backend after the first milestone. Its configuration,
+component and overrides are removed. The dated nightly, four frontend
+threads, Linux mold and Windows rust-lld remain. Metadata embedding and
+layout now use defaults pending controlled experiments. Windows remains
+unverified. The following records the first milestone's experiments, not
+the current backend configuration.
+
 Pinned `nightly-2026-11-05` (rustc 1.101.0-nightly, 2d20b42b8). Dev/test
 default to Cranelift, four frontend threads and separate `.rmeta` metadata.
 Shipping release and wasm remain LLVM. Linux uses mold. Build scripts and

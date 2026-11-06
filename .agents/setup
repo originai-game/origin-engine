@@ -58,8 +58,7 @@ if ! command -v rustup >/dev/null; then
   step curl -fsSL --retry 3 https://sh.rustup.rs -o "$tmp/rustup.sh"
   step sh "$tmp/rustup.sh" -y --profile minimal --default-toolchain none --no-modify-path
 fi
-# rustup installs the dated nightly, including rustc-codegen-cranelift-preview,
-# and the LLVM wasm targets from rust-toolchain.toml.
+# rustup installs the dated nightly and targets from rust-toolchain.toml.
 step rustup show active-toolchain
 
 # Avoid compiling nextest from source during setup. The repository leaves its
