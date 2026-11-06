@@ -33,7 +33,7 @@
 // to the first frame drawn behind the gate), `__runtime_probe__.hello()`
 // (the tier), and after a second of warm-up `__og_timings__` (the Worker's
 // played frames: display interval and engine work) over --seconds. Writes
-// <out>/device.json and <out>/report.md in og polish's shape (scores,
+// <out>/device.json and <out>/report.md (scores,
 // findings with a fix each, then the measures) and prints one line (or one
 // JSON line with --json). A missing prerequisite exits 1 with one line
 // naming the fix; a page that fails (error card, no first frame, the gate
@@ -774,7 +774,7 @@ interface Finding {
   fix: string;
 }
 
-/** 100 at `good`, 0 at `bad`, linear between (og polish's band). */
+/** 100 at `good`, 0 at `bad`, linear between. */
 const band = (x: number, good: number, bad: number) => Math.round(100 * Math.max(0, Math.min(1, (bad - x) / (bad - good))));
 
 /** The design's first-frame budgets (docs/design.md §7): mid-range Android on 4G 2.0 s, iPhone 13 1.5 s; a desktop browser, Android's. */
@@ -795,7 +795,7 @@ function judge(kind: string, m: Measured, served: Served): { scores: { firstFram
       measure: "frame time",
       where: m.tier,
       detail: `p95 display interval ${m.interval.p95} ms (p99 ${m.interval.p99}, max ${m.interval.max}): frames are missed`,
-      fix: "og-build §9: fewer draws and particles, less per-tick TypeScript; og polish names the step and render cost",
+      fix: "og-build §9: fewer draws and particles, less per-tick TypeScript; og run --json names the step and render cost",
     });
   if (m.work.p95 > 16.7)
     findings.push({

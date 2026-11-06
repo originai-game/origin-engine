@@ -10,7 +10,7 @@
 //! DevTools protocol, this Mac's Safari or Safari on an iPhone over
 //! safaridriver, Chrome on Android over adb), passes the play gate with a real tap and times the first
 //! frame and --seconds of played frames; the target's tools (Chrome, adb,
-//! safaridriver) are checked before the build. The report, og polish's shape, is
+//! safaridriver) are checked before the build. The report is
 //! `report.md` and `device.json` in `--out` (default
 //! `<project>/og-out/device`). A missing prerequisite exits 1 with its fix.
 //! SIGINT, SIGTERM and SIGHUP to og are passed on to the bun process, which

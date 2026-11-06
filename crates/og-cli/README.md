@@ -1,7 +1,7 @@
 # og-cli
 
-The `og` tool (design §2.1): `og run`, `og dev`, `og test`, `og polish`,
-`og build`, `og cook`, `og probe`, `og doctor`, `og api`, `og sfx`,
+The `og` tool (design §2.1): `og run`, `og dev`, `og test`, `og build`,
+ `og cook`, `og probe`, `og doctor`, `og api`, `og sfx`,
 `og style`. Each command is a module of `src/`; the TypeScript halves run in
 bun from the engine package (`packages/engine/src/node/`), found through
 `OG_ENGINE_PACKAGE`, the project's `node_modules/@origingame/engine` or the

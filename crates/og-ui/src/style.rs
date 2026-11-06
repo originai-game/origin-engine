@@ -13,7 +13,7 @@ pub const READABLE: f32 = 4.5;
 
 /// The contrast a button's label holds on its fill as drawn: WCAG AAA's
 /// 7:1, the packs' bar (a small MSDF label over shaded art reads about a
-/// third lower in the frame, where og polish holds it to 4.5:1).
+/// third lower in the frame).
 pub const BUTTON_READABLE: f32 = 7.0;
 
 impl Srgba {

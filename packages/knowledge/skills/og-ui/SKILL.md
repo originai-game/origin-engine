@@ -22,8 +22,8 @@ batch. Resume with its prebuilt engine rather than adding a game workaround.
 Games written from this package alone (`examples/lantern-vale`,
 `examples/hollowbell`, `examples/kestrel-stair`) built title, pause,
 dialogue, shop, inventory, level select, leaderboard, settings and
-results screens, a style copied into the game restyled every one, and
-`og polish` measured taste 99. Every word came from their string tables.
+results screens, and a style copied into the game restyled every one.
+Every word came from their string tables.
 
 ## 1. The rule of the kit
 
@@ -415,8 +415,8 @@ the engine's own look is not for games. Without a style a UI draws in the
 **default style**, the design language the engine shares with
 origin-agent (`@origingame/design`: a neutral ladder, amber as the one
 primary, flat glass on menus and dialogs, borderless controls), which is
-for origin-agent and for prototyping only. `og polish` warns when a game
-is in it and `og build --publish` refuses it. A **style** (`og.load.style`, an `.ogt` of `type style`,
+for origin-agent and for prototyping only. `og build --publish` refuses
+a game in it. A **style** (`og.load.style`, an `.ogt` of `type style`,
 `version 2`) is a whole design system: its tokens (palette roles, semantic
 colours, typography by role and breakpoint, space and size scales, radii,
 strokes, elevation, a shape language per element class, motion, sounds and
@@ -754,9 +754,7 @@ applies to Latin text only.
 playtests show how to drive UI from a script: `move_to_text:=shop` then
 `touch_start`/`touch_end`, `key_down:Tab`/`key_up:Tab`, a game command that
 calls `og.ui.navigate`, `dump_ui` for bounds and texts, and frame comparison
-against references. `og polish .` scores the screens' contrast, text size,
-transitions and sounds (og-build §5), and runs `og ui check`'s rules on
-every frame its playtests capture.
+against references (og-build §5).
 
 **The loop: preview, check, adjust.** A UI is not done until it has been
 seen on every surface and in every language, and the checks are clean:
@@ -797,8 +795,7 @@ Each line is `screen`, a name and one commands string (join steps with
 `;`). The cook refuses a malformed block with its line and fix: a line
 that is not `screen`, a screen with no name or no commands, more than one
 commands string, a name declared twice. A bare `og ui check .` is the full
-review (every screen × style × breakpoint × locale) and `og polish` runs
-the same set; a playtest that runs in the gate names its few screens with
+review (every screen × style × breakpoint × locale); a playtest that runs in the gate names its few screens with
 `--screen`.
 Each cell is a fresh engine laid out through og.ui.previewViewport, so a
 game needs no viewport command of its own. Outputs land in

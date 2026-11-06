@@ -9,7 +9,6 @@ through the wall, raises the alarm, chases, searches and goes back.
 ```sh
 og run .     # headless with the probe; og dev . reloads on save
 og test .    # tests/smoke.og.ts, tests/guard.og.ts and tests/intro.og.ts
-og polish .  # the taste and feel scores of those playtests
 og build .   # the play page
 ```
 
@@ -28,11 +27,8 @@ og build .   # the play page
 | A cutscene as data: a camera on a rail, the trickster's clips and walk, narration from an `.srt`, sounds, an event key running `spawn_wave`, fades and markers, played by `timeline:play:intro` | `assets/timelines/intro.ogt`, `narration.srt`, `tests/intro.og.ts` | og-game §9 "Cutscenes" |
 | Playtests that assert on dumps and facts, never on the code | `tests/` | og-build §3, §4 |
 
-`og polish .` (2026-10-19): taste 100, feel 87 (tests/evidence/E7/polish/
-in the engine repository). The feel row below 90 is idle frames: the guard
-playtest stages its scenario without pressing Start, so for half its ticks
-only the guard stands still at a corner of its search, and the smoke
-playtest waits half a second on the title before its press. A game made
-from the template should keep a playtest that plays it.
+The guard playtest stages its scenario without pressing Start, and the
+smoke playtest waits half a second on the title before its press. A game
+made from the template should keep a playtest that plays it.
 
 Asset licences: `LICENSES.md`.

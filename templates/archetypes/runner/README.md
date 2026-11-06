@@ -30,8 +30,7 @@ with floating text, hit stop, shake and kick on a crash (og-feel §3, §4,
 §7), every action heard through one `Voices` system (og-audio §1), the best
 score and a leaderboard through og.platform's requests answered later
 (og-platform-sdk §1–§4), and playtests for jumps, tuning, records and a
-replay to one hash (og-build §1, §3). `og polish .` (2026-10-19): feel 99
-(taste n/a: the HUD is screen-space text, not og.ui).
+replay to one hash (og-build §1, §3).
 
 
 ## Rules
@@ -212,7 +211,7 @@ sounds play through one `og.AudioSource` voice each: Director (a round
 starts, and a quiet tick, og sfx's `click` preset in `assets/audio/hold.ogt`,
 for a press while the game-over card holds), Jump and Collide (a coin, a
 crash) set bits of the `Sounds` resource and Voices plays each once
-(`og polish` found the archetype silent, no input answered by a sound;
+(the archetype was once silent, no input answered by a sound;
 tests/sounds.og.ts holds it, and tests/flow.og.ts the held press's tick).
 
 ## Known limits

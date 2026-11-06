@@ -46,7 +46,7 @@ Normative detail is in `docs/design.md` (and `docs/ui.md` for the UI).
 - **Built for an agent author.** Desc structs whose zero value is a sensible
   default, errors as values, three.js vocabulary, a generated wiki and skills
   shipped in the package, and `og` commands that check what a reviewer checks
-  by eye (`og polish`, `og ui check`, `og style check`).
+  by eye (`og ui check`, `og style check`).
 
 ## Status (2026-11-03)
 
@@ -280,7 +280,6 @@ og probe <method>   one probe call to a running og run or og dev
 og replay           record a run's per-tick world hash, or compare a trace and report the first divergent tick
 og render           render a script or a timeline to frames, a video and a contact sheet
 og compare          a captured frame against a reference image (silhouette IoU, ΔE00)
-og polish           score the playtests against the taste and feel checks, with a fix per finding
 og ui               check, preview or eject screens (per style, breakpoint and locale)
 og style            list, eject, upgrade, pack and check UI styles and the art contract
 og prefab           check, show and extract prefabs

@@ -11,8 +11,7 @@
     "publish-build": "og build . --publish",
     "cook": "og cook .",
     "check": "og check .",
-    "test": "og test .",
-    "polish": "og polish ."
+    "test": "og test ."
   },
   "dependencies": {
     "@origingame/engine": "0.7.7"

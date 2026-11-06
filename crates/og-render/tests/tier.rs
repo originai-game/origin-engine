@@ -1,4 +1,4 @@
-//! The tier an adapter is reported as (the probe's hello, og polish, the
+//! The tier an adapter is reported as (the probe's hello, the
 //! reference-frame directories), from stubbed adapter infos: a software
 //! rasterizer is `vulkan-cpu`, never `vulkan`, so a frame time measured in
 //! an executor's sandbox is never taken for a GPU's.

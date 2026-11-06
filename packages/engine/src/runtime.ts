@@ -1427,8 +1427,8 @@ export interface CreateOptions {
   /** The physics profile, project.ogt's `profile`: `3d` (the default) or `2d`. */
   readonly profile?: "2d" | "3d";
   /**
-   * project.ogt's text (`og run`, `og test`, `og dev`, `og polish` and `og
-   * build` pass it): its `tick`, `seed`, `scenes` and `scene` fill the
+   * project.ogt's text (`og run`, `og test`, `og dev` and `og build` pass
+   * it): its `tick`, `seed`, `scenes` and `scene` fill the
    * GameDesc fields the game leaves unset, and one set in both places to
    * different values refuses the engine.
    */

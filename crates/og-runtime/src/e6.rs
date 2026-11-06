@@ -212,7 +212,7 @@ pub(crate) fn retire(engine: u32) {
 /// The dump actions (`dump_ai:<entity>[:path]`, `dump_nav:<entity>[:path]`),
 /// the probe's `listen`, over the engine's audio link, and its `memory`.
 pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
-    super::polish::register(probe, engine);
+    super::pulse::register(probe, engine);
     super::lanes::register(probe, engine);
     super::net::register(probe, engine);
     super::geometry::register(probe, engine);

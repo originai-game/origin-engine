@@ -46,8 +46,7 @@ hit stop, shake and punch growing with a cascade (og-feel §3–§7), taps and
 drags read on the tick they land (og-feel §1; og-game §7), a sound for every
 press, swap, clear, cascade, win and loss (og-audio §1), the board as data
 with a deterministic deal from og.Rng (og-core §2), and playtests that drive
-a known board through commands (og-build §1, §3). `og polish .`
-(2026-10-19): feel 100 (taste n/a: the HUD is screen-space text).
+a known board through commands (og-build §1, §3).
 
 
 ## Rules
@@ -191,7 +190,7 @@ sounds and the font subset. Then `og cook .`.
 The sounds play through one `og.AudioSource` voice each: Pick (a
 selection) and Resolve (a swap, a refused swap, a clear, a cascade, the win
 and the loss) set bits of the `Sounds` resource and Voices plays each once
-(`og polish` found the archetype silent; tests/sounds.og.ts holds it).
+(the archetype was once silent; tests/sounds.og.ts holds it).
 
 ## Known limits (engine gaps, not design)
 

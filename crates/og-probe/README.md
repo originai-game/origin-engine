@@ -97,7 +97,7 @@ somewhere else.
 
 The runtime registers more (`crates/og-runtime/src/e6.rs`): `dump_ai`,
 `dump_nav`, `dump_platform`, `locale:<tag>` and `dump_pulse` (one tick's
-feel sample for `og polish`: `crates/og-runtime/src/polish.rs`), and
+feel sample for playtests: `crates/og-runtime/src/pulse.rs`), and
 `lanes:<on|off>` with `dump_lanes` (whether the parallel systems run on the
 lanes pool, its threads and why they are serial: `crates/og-runtime/src/lanes.rs`).
 

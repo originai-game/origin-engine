@@ -78,7 +78,7 @@ export const Race = defineResource("Race", {
   wrongWay: u32(0),
   /** Ticks the car has been off the road or upside down. */
   offTicks: u32(0),
-  /** Counters the playtests and og polish read. */
+  /** Counters the playtests read. */
   laps: u32(0),
   resets: u32(0),
   bumps: u32(0),

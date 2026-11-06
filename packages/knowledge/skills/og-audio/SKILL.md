@@ -15,7 +15,7 @@ Two games written from this package alone (`examples/lantern-vale`,
 track, cooked in 4-second chunks, streams from the title screen under the
 effects' duck, Hollowbell's music streams the same way, flipbook frame
 events put Hollowbell's footsteps, strikes and bell on their exact frames,
-and `og polish` heard a sound on every damage moment. In The Kestrel Stair
+and every damage moment was heard. In The Kestrel Stair
 (`examples/kestrel-stair`, a 3D third-person game) spatial sources (the
 braziers, the imps' chitter, the crypt's drip, the bell) were heard from a
 listener on the camera with distance, pan, distance dulling and occlusion
@@ -103,8 +103,8 @@ Four buses: `master`, `music`, `sfx`, `ui`. Set levels with the sources'
 | Even out loud and quiet effects | compressor: `threshold` −18 (dB), `ratio` 3–4, `attack` 0.005 and `release` 0.15 (s), `makeup` 3 (dB) |
 | Never clip | a limiter on master: `threshold` −1, `ratio` 20, `attack` 0.001 |
 
-`og polish` reports clipped samples in the run's mix (og-build §5); a peak
-at 1.0 is a mix bug, not loudness.
+`og run --audio <file.wav>` writes the run's mix; a peak at 1.0 in it is
+a mix bug, not loudness.
 
 ## 5. Music
 
@@ -234,5 +234,6 @@ at 1.0 is a mix bug, not loudness.
   SHA-256: two runs of the same script give the same hash.
 - `dump_entity:<voice>` shows `og.AudioPlayback` while it plays; a counter
   on the voice (`Sfx.plays`) proves a short sound played at all.
-- `og polish` scores inputs answered by a sound, UI presses with a ui-bus
-  sound and hits with a sound (og-build §5).
+- `dump_pulse` just after an input or a hit lists the playing voices with
+  their bus (`[voice, bus, gain]`, bus 2 sfx, 3 ui): assert a press is
+  heard on the ui bus and a hit on sfx (og-build §5).

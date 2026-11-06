@@ -68,7 +68,7 @@ export interface PlatformDump {
 /** The chart's notes in time order: lane and beat. */
 export interface ChartNote { lane: number; beat: number }
 
-/** The project's assets/charts/neon-pulse.ogt: from the bundled playtest's directory up (og test runs it from og-out/test/<name>/, og polish from elsewhere), else from the working directory. */
+/** The project's assets/charts/neon-pulse.ogt: from the bundled playtest's directory up (og test runs it from og-out/test/<name>/), else from the working directory. */
 function chartPath(): string {
   const rel = join("assets", "charts", "neon-pulse.ogt");
   for (let dir = dirname(fileURLToPath(import.meta.url)), n = 0; n < 8; dir = dirname(dir), n++) {

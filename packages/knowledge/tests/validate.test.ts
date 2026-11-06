@@ -165,7 +165,7 @@ test("a section reference names a numbered section that exists", () => {
   );
   expect(p).toEqual([
     "skills/og-audio/SKILL.md: refers to og-build §Tests by name; refer to a skill's sections by their numbers (## N.)",
-    "skills/og-audio/SKILL.md: refers to og-feel §15, which does not exist there (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)",
+    "skills/og-audio/SKILL.md: refers to og-feel §15, which does not exist there (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)",
     "skills/og-audio/SKILL.md: refers to og-taste §15, which does not exist there (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)",
   ]);
   const own = added((r) => edit(join(r.pkg, "skills/og-audio/SKILL.md"), (s) => `${s}\nAs §8 says.\n`));
@@ -388,7 +388,7 @@ test("a guide is held to the skills' rules: its API names, sections, pages and w
       `guides/three-to-og.md: names \`og.render.raycasts\`, ${why}`,
       "guides/three-to-og.md: names reference/raycast.md; the wiki is not mounted beside the skills: name `og api show <module>` for a module, `og api show <exact name>` for one name, or `og api find <words>`",
       "guides/three-to-og.md: refers to its own §42, which it does not have (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)",
-      "guides/three-to-og.md: refers to og-feel §99, which does not exist there (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)",
+      "guides/three-to-og.md: refers to og-feel §99, which does not exist there (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)",
       "guides/notes.md: not in GUIDES (scripts/validate.ts); list it there and name it from og-game, or remove it",
       "skills/og-ui/SKILL.md: names guides/three-to-ui.md, which this package does not ship (its guides: three-to-og)",
     ].sort(),

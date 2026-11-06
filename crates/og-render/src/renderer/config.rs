@@ -470,7 +470,7 @@ impl RenderInfo {
     }
 
     /// The name gfx reference frames are filed under, and the tier the probe
-    /// and `og polish` report ([`tier_name`]).
+    /// reports ([`tier_name`]).
     pub fn backend_tier(&self) -> String {
         tier_name(self.backend, self.device_type, &self.adapter)
     }

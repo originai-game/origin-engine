@@ -70,10 +70,10 @@ mod origin;
 mod particle_events;
 mod physics_ext;
 mod platform;
-mod polish;
 mod prefab;
 mod probe;
 mod procgen;
+mod pulse;
 #[cfg(not(feature = "publish"))]
 mod record;
 mod review;

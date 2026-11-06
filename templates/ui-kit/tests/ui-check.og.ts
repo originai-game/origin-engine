@@ -1,5 +1,5 @@
 // og ui check on the kit's phone HUDs (docs/ui.md §16.5): the checker that
-// `og ui check`, `og polish` and playtests share reads every showcase's
+// `og ui check` and playtests share reads every showcase's
 // play screen laid out on a 390×844 phone (the kit's
 // `viewport:phone`). The fixed templates this test once read shipped two
 // undeclared overlaps (the platformer's timer under its coins, the Gallery

@@ -1781,7 +1781,7 @@ The web shell's DOM mirror is unchanged.
   preset names one) or the game's own `styles/<name>/style.ogt`. Without
   one the UI draws in `prototype`, the engine's placeholder (greys,
   near-square corners, a cyan focus ring), which `dump_ui` reports as an
-  empty `style` and `og polish` flags. Contrast and accessibility bars hold
+  empty `style`. Contrast and accessibility bars hold
   for every style (`pack_contrast.rs`). A nine-slice's middle squeezed
   into a control shorter than its art shows the centre of the art's middle,
   squeezed at most twice, and sprites and the UI's images are sampled

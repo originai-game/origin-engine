@@ -752,9 +752,8 @@ style** (`src/theme.rs`, generated from `packages/design/tokens.json` by
 language's neutral ladder, amber primary and focus, radii 4/6/capsule/12,
 flat glass on floating chrome (`default_dressings`: dialogs, sheets,
 menus, popovers and tooltips thick, HUD capsules and action hints regular)
-and borderless controls. It is for origin-agent and prototypes; `og
-polish` flags a game left in it and `og build --publish` refuses one (`dump_ui`'s
-`style` is empty). Nothing of a style comes from the platform: the
+and borderless controls. It is for origin-agent and prototypes; `og build --publish` refuses a
+game left in it (`dump_ui`'s `style` is empty). Nothing of a style comes from the platform: the
 engine owns these values and the platform's design language styles only
 its own pages and the player shell (`docs/design.md` §9).
 

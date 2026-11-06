@@ -197,7 +197,7 @@ How the holds are ruled:
 - **Contrast is judged at the bar the engine's check states for that
   element, never stricter**: og ui check's 3:1 for live UI text (7:1 in
   high contrast; under 4.5:1 is its warning, a note unless the art bible
-  asks for more), og polish's bars for what it measures. Text over the
+  asks for more). Text over the
   game scene that no check measures is the reviewer's eye: the note says
   so, and quotes the `og frame measure` ratio it read.
 - **The style is the criterion.** Nothing the catalogue's `intended`

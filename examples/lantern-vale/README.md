@@ -23,7 +23,6 @@ bun tools/make-assets.ts        # once after a clone: writes the 23 MB music (no
 og cook .
 og run . --headless --commands "1:screenshot:title.png;1.1:run;2:warp:0;2.2:key_down:KeyE;3.6:key_up:KeyE;4:screenshot:lit.png;4.1:quit"
 og test .                       # the eleven playtests, the reference frames against references/<tier>/
-og polish .                     # taste 99, feel 90 on metal (og-out/polish/report.md)
 OG_FX_CAPTURE=1 og test .       # records this tier's reference frames
 ```
 
@@ -75,8 +74,7 @@ after a string table changes.
 on a machine at a load average of 7 to 16): the 600-tick play run's
 step is 0.71 ms median and 1.78 ms p95 on the release addon (2.13 / 4.98
 dev); paced at 60 Hz the render is 1.18 / 1.60 (2.07 / 2.40 dev), and
-og polish scores frame time 100 on release and 85 on dev (its dev
-playtests' step p95 reaches 9.5 ms). Run unpaced, the render is the
+its dev playtests' step p95 reaches 9.5 ms. Run unpaced, the render is the
 GPU's time for the look: turning its features off one at a time (at a
 load of 15 to 23), bloom is about half of it (6.1 to 3.5 ms median) and
 auto exposure the next (to 5.1); all five of bloom, auto exposure, ink,

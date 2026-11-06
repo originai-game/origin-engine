@@ -27,21 +27,21 @@
 //!
 //! A third test draws every style's primary and secondary buttons through
 //! og-render with the style's own cooked fonts and reads each label, in
-//! every state, from the frame as og polish does: the colours above can be
+//! every state, from the frame as og ui check does: the colours above can be
 //! right while the strokes never take them (the pixel pack's primary
 //! labels, hollowbell FINDINGS #20, fixed).
 //!
 //! Two bars. A label on a surface (a screen, a panel, a dialog) fails
 //! under 3:1 and is printed as a warning under WCAG's 4.5:1, as og ui
-//! check and og polish read the frame since the owner relaxed contrast
+//! check reads the frame since the owner relaxed contrast
 //! (docs/ui.md §15.4, 2026-11-02); text in a dim ink (a placeholder, a
 //! stack's count) is held to the 3:1 floor alone. A button's label
 //! reaches 7:1 (WCAG AAA) here: a 13 to 15 px label drawn by MSDF over a
 //! textured, shaded fill reads about a third lower in the frame, where og
-//! polish takes the ground's median and the ink's farthest percent. Ember
-//! Vale's Set out read 5.3:1 by these commands and 3.36:1 in its polish
+//! ui check takes the ground's median and the ink's farthest percent. Ember
+//! Vale's Set out read 5.3:1 by these commands and 3.36:1 in its game
 //! frame (owed row 48); with every primary and secondary label at 7:1 here
-//! the lowest in its polish frames is 4.65:1
+//! the lowest in its game frames is 4.65:1
 //! (tests/evidence/P4/web-host-tools/fantasy-contrast.md). The bars hold
 //! for every pack (the fantasy family since the web host and tools round,
 //! the other five since the UI shell round's palettes:
@@ -51,7 +51,7 @@
 //! the frame art shades it; a muted or subtle ink that reads on paper
 //! only; a hovered or pressed state darker than its rest; a translucent
 //! piece that reads over one ground only; a placeholder under 4.5:1 (the
-//! fantasy pack's read 4.40:1 here and 2.93:1 in lantern-vale's polish
+//! fantasy pack's read 4.40:1 here and 2.93:1 in lantern-vale's game
 //! frame, FINDINGS #29; pixel 4.22, cartoon 4.13, before their inkFaint
 //! moved), or the focus ring showing through a focused field's frame
 //! (scifi 3.52:1 and neon 3.00:1 on the ring's colour, before og-ui cut
@@ -844,7 +844,7 @@ fn every_style_keeps_its_badges_at_4_5_to_1_on_the_screen_and_in_a_panel() {
         let bg = rgb(p.backdrop);
         // The accent badge is the results screen's "New best" (it read
         // 4.12:1 here in the fantasy pack and 4.03:1 in Lantern Vale's
-        // polish frame before highlight moved).
+        // game frame before highlight moved).
         for (ground_name, panel) in [("screen", None), ("panel", Some(p.panel))] {
             for (tone_name, tone) in [
                 ("neutral", Tone::Neutral),
@@ -923,13 +923,13 @@ fn every_style_keeps_its_badges_at_4_5_to_1_on_the_screen_and_in_a_panel() {
 // strokes may never reach on screen: the pixel pack's DotGothic16 draws
 // one-pixel strokes that fall between device pixels, so no pixel took more
 // than about half the ink, and its gold primary labels (Resume, New game,
-// Buy) read 2.86:1 to 3.04:1 in og polish's frames while the colours above
+// Buy) read 2.86:1 to 3.04:1 in the games' frames while the colours above
 // read 9:1 (hollowbell FINDINGS #20; `textWeight body 0.5` with the font at
 // `px_range 8` fixed it). So every pack's primary and secondary buttons are
 // also drawn headless with the pack's own atlas and fonts as the cook makes
 // them, at 1 device pixel per CSS pixel (the worst case: a phone's 3 gives
-// a stroke three pixels), and measured as og polish measures a frame
-// (packages/engine/src/node/polish.ts `textBoxes`): inside the button (its
+// a stroke three pixels), and measured as og ui check measures a frame
+// (packages/engine/src/node/ui-check.ts `textBoxes`): inside the button (its
 // sides left out: `frame_contrast`), the ground is the median luminance and the ink the 1 % of pixels farthest
 // from it. Every label, in every state, reaches 4.5:1.
 
@@ -1053,19 +1053,19 @@ fn add_cooked(scene: &mut RenderScene, f: &CookedFont) -> UiFont {
     }
 }
 
-/// og polish's luminance of an sRGB byte triple.
+/// og ui check's luminance of an sRGB byte triple.
 fn byte_luminance(p: &[u8]) -> f32 {
     luminance([0, 1, 2].map(|k| lin(f32::from(p[k]) / 255.0)))
 }
 
-/// og polish's reading of the text in `r` (CSS px at dpr 1): the ground's median
+/// og ui check's reading of the text in `r` (CSS px at dpr 1): the ground's median
 /// luminance against the mean of the 1 % of pixels farthest from it, on the
 /// side most of them are. `None`: no ink.
 fn frame_contrast(pixels: &[u8], width: u32, r: &Rect) -> Option<f32> {
-    // og polish insets a wide box's rounded ends; this also leaves out a
+    // og ui check insets a wide box's rounded ends; this also leaves out a
     // button's sides, where its frame's border and a press's squash (the
-    // panel showing inside the layout rect) sit, which polish, reading
-    // still frames, would count as the label's ink.
+    // panel showing inside the layout rect) sit, which og ui check,
+    // reading still frames, would count as the label's ink.
     let ix = if r.width > 3.0 * r.height {
         (r.height / 2.0).min(12.0)
     } else {
