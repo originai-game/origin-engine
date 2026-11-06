@@ -1,12 +1,11 @@
 //! `dump_pulse`: one tick's sample of what a player sees and hears change,
-//! for `og polish` (packages/engine/src/node/polish.ts), which takes one
-//! after every frame of a playtest and measures feel and taste from the
-//! series: the time scale and hit stop, camera trauma, punch and kick,
-//! floating texts, afterimages, running tweens, particle systems, the
-//! playing voices by bus, the named entities' positions, scales and
-//! flipbook frames, the UI's elements
-//! (bounds and a hash of their text) and the last tick's step and render
-//! times. Nothing here changes the world.
+//! for playtests and probe clients that check feedback at a tick (a hit's
+//! hit stop, trauma and thud, a UI sound's voice and bus): the time scale
+//! and hit stop, camera trauma, punch and kick, floating texts,
+//! afterimages, running tweens, particle systems, the playing voices by
+//! bus, the named entities' positions, scales and flipbook frames, the
+//! UI's elements (bounds and a hash of their text) and the last tick's
+//! step and render times. Nothing here changes the world.
 
 use super::codec::{Layout, RecordKind};
 use og_ecs::World;
@@ -152,7 +151,7 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine: u32) {
         "dump_pulse",
         og_probe::CommandDesc {
             usage: "dump_pulse[:path]".into(),
-            doc: "one tick's feel sample for og polish: time scale and hit stop, camera trauma, floating texts, afterimages, tweens, particle systems, voices by bus, named entities' positions, UI bounds, step and render times".into(),
+            doc: "one tick's feel sample: time scale and hit stop, camera trauma, floating texts, afterimages, tweens, particle systems, voices by bus, named entities' positions, UI bounds, step and render times".into(),
         },
         0,
         move |world, _args| pulse(engine, world),

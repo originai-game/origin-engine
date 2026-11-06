@@ -808,7 +808,7 @@ real-thread receipt separately from the 0.4.0 package checks.
 |---|---|---|---|
 | Crates | fmt, clippy, unit and logic tests, gfx references on `metal`, drift of the generated `.d.ts`, wiki and skills | `scripts/check.sh quick` / `functional` | every merge to `main` (the coordinator; `docs/ci.md`) |
 | Packages | `packages/engine` bun tests on the dev addon, typecheck through tsrs, create's and knowledge's tests | `functional` (bun-functional) | every merge |
-| Templates, archetypes, examples | `og test`, `og polish`, their reference frames | `functional` (bun-test) | every merge |
+| Templates, archetypes, examples | `og test`, `og ui check`, their reference frames | `functional` (bun-test) | every merge |
 | Wasm | build, wasm-opt, size (a number to read), determinism across hosts | `check.sh --all` | every wave end |
 | Browser | the WebGPU reference frames, the kit, the a11y mirror, the published page under a script | `check.sh web-reference`, `og run --device chrome`: Chrome on macrunner and on studio-win (WebGPU on D3D12); Edge on studio-win only before a publish (docs/ci.md §Two machines) | every wave end and before every publish, Edge before every publish; by hand for a rendering change |
 | Release | pack, the install test from tarballs on darwin-arm64 and linux-x64 | `wave-end.sh release` / `release.sh verify` | every wave end; before every publish |
@@ -932,7 +932,7 @@ npm create @origingame/game my-game -- --premise "a lamplit clockwork platformer
 cd my-game && bun install          # @origingame/engine@<v>, this platform's og and addon, tsrs
 bunx og doctor                     # the package, the addon, the wasm, tsrs, the renderer
 bunx og dev .                      # watch, rebuild, re-cook, hot reload through the probe
-bunx og test . && bunx og polish . # the playtests; taste and feel scores
+bunx og test . && bunx og ui check . # the playtests; the screens measured
 bunx og build . --publish          # the play page: dist/ with og-build.json naming the version
 ```
 

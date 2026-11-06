@@ -1,5 +1,5 @@
-//! project.ogt's `ui` block (docs/ui.md §16.5): the screens `og ui check`,
-//! `og ui preview` and `og polish` visit when none is named, each a name
+//! project.ogt's `ui` block (docs/ui.md §16.5): the screens `og ui check`
+//! and `og ui preview` visit when none is named, each a name
 //! and the `og run --commands` script that reaches it:
 //!
 //! ```text

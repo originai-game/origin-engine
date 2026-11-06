@@ -1,7 +1,6 @@
 // PNG frames: the probe's captures decoded (8-bit RGB or RGBA,
-// non-interlaced, any filter) and RGBA images encoded (`og polish` writes
-// its report's frames at half size; `encodePngBest` writes the frames kept
-// in git, every reference).
+// non-interlaced, any filter) and RGBA images encoded (`encodePngBest`
+// writes the frames kept in git, every reference).
 
 /** node:zlib, reached when a PNG is coded (bun and node both answer it) rather than imported: `@origingame/engine/playtest` reads this module, and a game type-checks its playtests without node's declarations. */
 function zlib(): Zlib {
@@ -74,22 +73,6 @@ export function decodePng(bytes: Uint8Array): Image {
     prev.set(cur);
   }
   return { width, height, rgba: out };
-}
-
-/** Half the size, each pixel the mean of four. */
-export function half(img: Image): Image {
-  const width = Math.max(1, img.width >> 1);
-  const height = Math.max(1, img.height >> 1);
-  const rgba = new Uint8Array(width * height * 4);
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      for (let k = 0; k < 4; k++) {
-        const at = (sx: number, sy: number) => img.rgba[(Math.min(sy, img.height - 1) * img.width + Math.min(sx, img.width - 1)) * 4 + k]!;
-        rgba[(y * width + x) * 4 + k] = (at(2 * x, 2 * y) + at(2 * x + 1, 2 * y) + at(2 * x, 2 * y + 1) + at(2 * x + 1, 2 * y + 1) + 2) >> 2;
-      }
-    }
-  }
-  return { width, height, rgba };
 }
 
 const CRC = (() => {

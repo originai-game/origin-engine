@@ -16,7 +16,7 @@ and points here for every call.
 
 Two games written from this package alone (`examples/lantern-vale`,
 `examples/hollowbell`) ship English and Simplified Chinese from string
-tables: `og polish` found no locale gaps in either, the results template
+tables: the cook warned of no missing key in either, the results template
 showed its localised Best and New best, a name was typed partly through an
 input method, and a style copied without its CJK `fallback` was refused by
 the cook with the line named. The Kestrel Stair (`examples/kestrel-stair`)
@@ -86,8 +86,7 @@ string "results.time" "タイム {time}"
   the active locale is negotiated again after each load (`ja-JP` takes
   `ja`, `zh-TW` takes `zh-Hant` or `zh-TW`, else the base).
 - A key a table lacks falls back to its `fallback` table, then the base, and
-  `og cook` warns about it. Treat a cook warning as a bug: `og polish`
-  scores missing keys (og-build §5).
+  `og cook` warns about it. Treat a cook warning as a bug.
 
 ## 2. Messages
 

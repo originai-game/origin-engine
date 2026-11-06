@@ -17,13 +17,11 @@ prove it.
 ## What works
 
 In Hollowbell (`examples/hollowbell`, a 2D platformer written from this
-package alone) `og polish` measured every input answered within a tick and every damage moment with hit stop,
-shake, a number and a sound (feel 92; Lantern Vale, a 3D adventure, 90).
+package alone) every input was answered within a tick and every damage moment held by hit stop,
+shake, a number and a sound, as was Lantern Vale's, a 3D adventure.
 An `og.CameraZone` held its boss arena, and flipbook frame events put the
 footsteps and the strikes on their exact frames. The Kestrel Stair
-(`examples/kestrel-stair`, a 3D third-person game) measured the same in
-`og polish` (input latency and hit feedback 100; feel 79, the rest lost to
-frame time): hit stop by weight, a shake, a number and a sound on every
+(`examples/kestrel-stair`, a 3D third-person game) measured the same: hit stop by weight, a shake, a number and a sound on every
 strike landing on its clip's `hit` marker, and the 3D character controller
 at full speed every tick (3.2 m/s walking) over level ground, an 18° ramp,
 a 34° path and stairs, refusing a 63° scree.
@@ -192,10 +190,9 @@ floating text: it is screen text where the og.Camera resource's
 - Lifetime 0.6–1.0 s, rise 0.8–1.5 units, spread 0.2–0.4 so stacked hits do
   not overlap. At most 6–8 on screen: sum rapid hits into one number.
 - Not every impact wants a number. An impact is held by three of four
-  signals (hit stop §3, shake §4, floating text, a sound): `og polish`
-  counts them per damage moment and asks for the missing ones only of a
-  moment with fewer than three, so a party game's bump that holds, shakes
-  and sounds owes no floating text.
+  signals (hit stop §3, shake §4, floating text, a sound): a moment with
+  three owes no fourth, so a party game's bump that holds, shakes and
+  sounds owes no floating text.
 
 ## 8. Camera: look-ahead, dead zones, zones, rails
 
@@ -410,6 +407,10 @@ values with `get:` (og-build §1), which logs the value and writes it as JSON:
 9. **No stray slow motion**: `get:og.Time.scale` at the end of the run is 1.
 10. **Rooms scroll**: `get:og.Camera` on the ticks after the hero crosses a
     doorway shows `zoneScroll` rising from 0 to 1 (topdown's `door.og.ts`).
+11. **A hit is seen and heard at its tick**: `t:dump_pulse:hit.json` just
+    after it writes that tick's hit stop and time scale, camera trauma,
+    floating texts spawned and the playing voices with their bus (og-build
+    §5); `templates/ui-kit/tests/hit.og.ts` checks a hit this way.
 
 `templates/archetypes/topdown`, `runner` and `match3` do all of this, and
 `tower-defense`, `roguelike`, `idle` and `rhythm` too (each README's feel
@@ -418,10 +419,3 @@ For a 3D action game, `templates/archetypes/third-person` is the pattern: a
 CharacterController over a level, clips retargeted at cook and run time
 through blend trees, and navmesh enemies on behaviour machines whose
 grabs land with hit stop and shake.
-
-## 14. Feel, measured: `og polish`
-
-`og polish .` scores this checklist's measurable part (input latency, hit
-feedback, idle frames, sound on input, frame time) next to og-taste's;
-og-build §5 is the one list of its measures, thresholds and fixes. Expose
-`hp`, `hits` or `kills` as facts (og-game §3) or the hit measures stay n/a.

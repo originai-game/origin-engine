@@ -56,8 +56,7 @@ commands its playtests use and what a Maker changes first.
   their title, pause, settings and end cards are og-ui widgets on a
   recoloured style pack from `templates/ui-kit`, with every string in
   `assets/strings/en.ogt` and `zh-CN.ogt`, and a phone layout inside the
-  safe area. Their `og polish` reports are in the engine repository's
-  `tests/evidence/P2/archetypes/`.
+  safe area.
 - **The 3D one.** `third-person/` is the exception to the pixel-art
   sprites: a heightmap terrain with water, the engine's CC0 humanoids on
   og.CharacterController with blend trees and IK, navmesh sentinels on

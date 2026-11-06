@@ -459,8 +459,8 @@ as the rest of the build's do.
   game's origin, and stores it privately beside the release under
   `sourcemaps.build`. A host that serves the directory as is must leave
   `sourcemaps/` out.
-- **Native runs.** `og run`, `og dev`, `og test`, playtests, `og ui` and
-  `og polish` bundle the game with its linked map beside it
+- **Native runs.** `og run`, `og dev`, `og test`, playtests, `og ui`
+  bundle the game with its linked map beside it
   (`.og/game.native.js.map`). Bun reads the map when it formats a stack, so
   every error a native run prints names the `.ts` file, line and column. A
   hot-reloaded bundle's copy carries its own map.
@@ -1195,7 +1195,7 @@ icons) is.
   `__og_timings__` over `--seconds` (default 5): the Worker's display
   interval and engine work per played frame as count, mean, p50, p95, p99
   and max. `report.md` and `device.json` (default `<project>/og-out/device`)
-  have og polish's shape: a first-frame score against the §7 budget (2.0 s,
+  have a first-frame score against the §7 budget (2.0 s,
   1.5 s on the iPhone), a frame-time score (p95 interval, 17 ms: 100,
   33.3 ms: 0), findings with a fix each (over budget, missed frames, work
   over 16.7 ms, no isolation, console errors), the device (user agent,

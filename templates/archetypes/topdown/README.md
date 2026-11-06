@@ -36,8 +36,7 @@ hits felt five ways (hit stop, flash and squash, knockback, shake and kick,
 floating damage and a crit) both ways (og-feel §3–§7), a dash with
 afterimages, sorting by feet (og-feel §10), and a camera that follows with a
 dead zone and scrolls between the rooms by og.CameraZone's scrollTime
-(og-feel §8). `og polish .` (2026-10-19): feel 97 (taste n/a: the HUD is
-screen-space text).
+(og-feel §8).
 
 
 ## Rules

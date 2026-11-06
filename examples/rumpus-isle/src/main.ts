@@ -159,7 +159,7 @@ export default og.game({
       left: Math.round(g.left * 10) / 10,
       players: who.length,
       standing: g.standing,
-      // A player falling into the sea is a hit for og polish (og-build §5): `hits` counts the bumps.
+      // A player falling into the sea is a hit: `hits` counts the bumps.
       hits: g.bumps,
       splashes: g.splashes,
       berries: who.map((k) => seat(g, k).berries),

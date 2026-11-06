@@ -30,7 +30,6 @@ python3 tools/subset-font.py    # after a string table changes: the Chinese font
 og cook .
 og run . --headless --commands "1:screenshot:title.png;1.1:play;1.6:key_down:ArrowRight;2.4:key_up:ArrowRight;3.5:screenshot:well.png;3.6:quit"
 og test .                       # the thirteen playtests, the reference frames against references/<tier>/
-og polish .                     # taste 99, feel 92 on metal (og-out/polish/report.md)
 OG_FX_CAPTURE=1 og test .       # records this tier's reference frames
 ```
 
@@ -81,19 +80,11 @@ the texture arrays, the particles, the sounds and the music.
 | `replay.og.ts` | a session with strikes, a touch, the lift, the gloam's slow motion, a save and the bell, run twice in fresh processes, ends on one world hash |
 | `frames.og.ts` | nine reference frames at 1280 x 720 (`references/metal/`): title, play, a strike, the talk, the shop, pause, the settings in Chinese, the gloam, the results |
 
-`og polish .` on metal (dev profile, a machine busy with other builds;
-at 5cc97a90, before wave 9): taste 99 (contrast 93: the pixel pack's
-primary button labels, FINDINGS #20, since fixed in the pack), feel 92
-(input latency, hit feedback and idle frames 100; sound on input 88;
-frame time 72, step about 7 ms median and 10–12 ms p95, render about
-3.3 ms).
-
 **Frame time** (wave 12, `tests/evidence/P4/perf-games/hollowbell.md`,
 on a machine at a load average of 7 to 16): the 600-tick play run's step
 is 0.53 ms median and 1.09 ms p95 and its render 0.60 / 1.42 on the
 release addon, 2.06 / 3.70 and 1.90 / 2.60 on the dev one (`og run .
---json` prints them, with every system's mean); og polish scores frame
-time 100 on release and 91 on dev. The engine's share (og.i18n.t copying
+--json` prints them, with every system's mean). The engine's share (og.i18n.t copying
 its tables, each sprite decoded to JSON a frame) is gone; what is left
 is the game's: the `Ui` system (the HUD and screens rebuilt each tick,
 0.13 ms release, 0.46 dev) leads, then `Control`. Building only the

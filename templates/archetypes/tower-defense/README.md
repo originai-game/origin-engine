@@ -10,8 +10,7 @@ after ten visitors get through.
 小径守卫：夜里的花园，甲虫、飞蛾和蜗牛从树篱的门进来，走向门口台阶上的灯笼。在草地上种植物把它们劝走：荆棘射击，霜百合减速，树篱只挡路；每种下一株，来客都会绕开它重新找最短的路。五波来客，有十个走到门口，灯就灭了。
 
 This is a complete Origin Engine project: `og run .` plays it headless,
-`og build .` makes the play page, `og test .` runs its playtests and
-`og polish .` scores them. It rebuilds the platform's retired Discover
+`og build .` makes the play page and `og test .` runs its playtests. It rebuilds the platform's retired Discover
 prototype *Bloomguard* (花园守夜人) on the engine: its night garden, its
 three plant roles (one shoots, one supports, one walls) and its lesson that
 a kill's time must scale with the walk's, but as a mazing defence on a
@@ -21,7 +20,6 @@ flow field rather than lanes, and none of its code or art.
 og cook .                    # assets/ into cooked/ (og run and og build cook too)
 og run . --headless --commands "0.3:begin;0.5:plant:thorn:3:4;0.5:plant:hedge:4:4;6:screenshot:wave.png;6.1:quit"
 og test .                    # tests/*.og.ts through og run --headless --commands
-og polish .                  # the playtests scored against og-taste and og-feel
 og build . --publish         # dist/: the play page as it ships
 ```
 
@@ -76,12 +74,6 @@ og build . --publish         # dist/: the play page as it ships
 - **The platform** (og-platform-sdk §1–§4): settings through
   `loadSettings`/`saveSettings`, the best score read on tick 0 and written
   at the revision read, the board and a `round.over` event.
-
-`og polish .` (2026-10-19, og and the native addon built release from
-this checkout, load 16–18): taste 99, feel 100, in
-`tests/evidence/P2/archetypes/tower-defense/` of the engine repository.
-The same playtests at load 25–50 scored feel 80–89, frame time's p95
-following the machine's load (`tests/evidence/P2/archetypes/frame-time.md`).
 
 ## Rules
 

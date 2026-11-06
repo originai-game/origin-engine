@@ -164,7 +164,7 @@ pub fn run(args: &[&str]) -> ExitCode {
 
 /// Runs ui-run.ts's `check` or `preview` into `out` on the cooked project's
 /// native bundle; without a `--screen` in `forward`, over every screen the
-/// project declares (og polish runs the check this way, over the same set).
+/// project declares.
 pub fn spawn(
     mode: &str,
     p: &Project,

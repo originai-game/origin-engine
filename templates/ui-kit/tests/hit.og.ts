@@ -2,7 +2,7 @@
 // touch HUD's Hit takes 15 health and, on the hit's tick, holds a short hit
 // stop, adds camera trauma, floats the number up from the health bar and
 // plays a thud on the sfx bus. Ways it could fail: the health drops with
-// nothing seen or heard (og polish's hit feedback 0), or the thud plays on
+// nothing seen or heard, or the thud plays on
 // the ui bus (a click, not a hit).
 import { demo, playtest, tap } from "./lib.ts";
 

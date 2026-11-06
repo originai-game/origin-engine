@@ -11,8 +11,7 @@ rate while you were away.
 星火球：夜空里一颗发光的球。点它得到火花；用火花购买生成器（余烬、风暴、晶簇、星辰），它们会自己产出火花，并化作光点绕着星火球转；同一种每满十个，产出翻倍。一轮攒够了，星火球可以坍缩成超新星：火花和生成器都会消失，留下星尘，每一点星尘让一切产出提升 10%。关掉游戏再回来：你离开的这段时间，星火球以一半的速度继续产出。
 
 This is a complete Origin Engine project: `og run .` plays it headless,
-`og build .` makes the play page, `og test .` runs its playtests and
-`og polish .` scores them. It rebuilds the platform's retired Discover
+`og build .` makes the play page and `og test .` runs its playtests. It rebuilds the platform's retired Discover
 idle prototype on the engine: its premise (one big tap target, generators,
 prestige, progress while away) and none of its code or art.
 
@@ -20,7 +19,6 @@ prestige, progress while away) and none of its code or art.
 og cook .                    # assets/ into cooked/ (og run and og build cook too)
 og run . --headless --commands "0.3:play;0.5:own:0:12;0.5:own:1:4;1.5:screenshot:orb.png;1.6:quit"
 og test .                    # tests/*.og.ts through og run --headless --commands
-og polish .                  # the playtests scored against og-taste and og-feel
 og build . --publish         # dist/: the play page as it ships
 ```
 
@@ -80,13 +78,6 @@ og build . --publish         # dist/: the play page as it ships
   the game's one big button), a purchase's bell, a milestone's arpeggio,
   the supernova's boom, the UI's sounds from `og sfx` presets, and a slow
   72 BPM loop of pads and bells on the music bus ducked under the effects.
-
-`og polish .` (2026-10-19, og and the native addon built release from
-this checkout, load 28): taste 97, feel 94 (frame time 81: the p95 follows
-the machine's load, `tests/evidence/P2/archetypes/frame-time.md`; the
-median step and render are 2 ms each), in
-`tests/evidence/P2/archetypes/idle/` of the engine repository. Hit feedback
-is n/a: nothing here takes damage.
 
 ## Rules
 

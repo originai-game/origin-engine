@@ -16,7 +16,6 @@ og relay                                              # terminal 1: ws://127.0.0
 og run . --room ws://127.0.0.1:47900/duel --realtime  # terminals 2 and 3
 og run . --headless --setup bot:1 --ticks 600 --json  # alone, scripted
 og test .                                             # tests/duel.og.ts (two processes through a relay), tests/solo.og.ts
-og polish .                                           # og-taste and og-feel measured over both playtests
 ```
 
 ## How it is made deterministic
@@ -55,9 +54,7 @@ component and field (`og run --commands "...:dump_desync:d.json"`).
 on every peer at the same tick; otherwise `og.Desync` reports it.
 
 The look (`assets/looks/arena.ogt`) puts the UI in the catalogue's neon
-style. `og polish` on vulkan-cpu scores taste 100 and feel 66; its one
-finding is frame time, which lavapipe's software rasteriser sets (about
-27 ms to draw four sprites), not the game.
+style.
 
 ## What a Maker changes first
 

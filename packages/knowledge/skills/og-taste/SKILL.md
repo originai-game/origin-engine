@@ -29,15 +29,15 @@ implements it. Music and language choices likewise need their own assets.
 
 ## What works
 
-Both games written from this package alone reached `og polish`'s taste 99
-from a preset tuned in their own look file: Lantern Vale
+Both games written from this package alone took their look from a preset
+tuned in their own look file: Lantern Vale
 (`examples/lantern-vale`) the anime cel preset with ink, a tinted shadow
 side and a painted second look for the results; Hollowbell
 (`examples/hollowbell`) a 16-bit pixel grid with its own 32-colour palette
 through `Stylise.palette` and a Bayer dither, and the 2D glow. Swapping the
 look at a tick (`og.render.applyLook`) for the results worked the first
 time in both. The Kestrel Stair (`examples/kestrel-stair`, 3D
-third-person) reached taste 98 with a look extending `watercolor-wash`
+third-person) took a look extending `watercolor-wash`
 (AgX, bloom, a violet shadow tint, a pale fog, the synthetic sky) under
 `og.DayNight`, and `luminous-layered-painting` applied at a tick for the
 ending and the results.
@@ -80,8 +80,8 @@ The entry also names the palette rules, the asset specs and the UI style
 its preset carries (the look's `ui` line, §12), so a game that extends a
 preset is dressed by it from the first frame. The game's UI follows the
 game's art, never the Origin platform's: without a style it draws in the
-engine's default style (for prototypes only), `og polish` warns when a
-game is in it and `og build --publish` refuses it. The built-in
+engine's default style (for prototypes only), and `og build --publish`
+refuses it. The built-in
 styles (`og style list`) are starting points, not the
 only looks:
 
@@ -364,18 +364,19 @@ Run each item; each is checkable from a scripted run.
 11. **CJK**: switch the language to Chinese in settings and capture: no
     missing-glyph boxes (the style's or the string table's fallback font covers it).
 12. **None of section 9** is visible in any capture.
-13. **`og polish .` scores taste 90 or more** where it applies, and every
-    finding left is one you read in the frames and can name a reason for
-    (og-build §5).
+13. **The frames are read**: every capture above opened and described,
+    and `og ui check .` run over the declared screens with each number it
+    measured read against §2 to §4 in the frames (§11, og-build §5).
 
-## 11. Polish, measured: `og polish`
+## 11. Numbers cannot judge a style
 
-`og polish .` scores the measurable part of §10 (contrast, text size, HUD
-occupancy, screen transitions, UI sounds, locale keys) from the frames, the
-UI trees and the run's audio, with og-feel's measures beside it; og-build §5
-is the one list of its measures, thresholds and fixes. The numbers cannot
-judge a style: read the frames before changing anything, and fix the cause
-in the style or the template, never per call.
+No engine command scores taste. `og ui check` measures what can be
+measured on every declared screen (contrast on the drawn pixels, text
+sizes, overlaps, cut and offscreen text, focus), `og test` checks what the
+playtests assert, and the frames show the rest; you judge them against
+§2 to §10 (og-build §5 has the loop). A measured number is evidence for a
+frame, not a verdict: read the frames before changing anything, and fix
+the cause in the style or the template, never per call.
 
 ## 12. Style catalogue: looks
 

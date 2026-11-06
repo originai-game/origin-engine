@@ -1,5 +1,5 @@
 // PNG frames the probe's capture answers, decoded for pixel assertions (the
-// decoder is src/node/png.ts, shared with og polish).
+// decoder is src/node/png.ts).
 import { decodePng, type Image } from "../../src/node/png.ts";
 
 export { decodePng, type Image };

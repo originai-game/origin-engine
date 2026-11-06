@@ -1,7 +1,7 @@
 // Coin Duel alone (no room): the local keys drive Red. D walks it right
 // through the coin at the centre (Red 1), Space dashes, and the HUD reads
-// both scores. The frame at 2 s is what
-// `og polish` reads for contrast, text size and the HUD's share.
+// both scores. The frame at 2 s is the one to read for contrast, text
+// size and the HUD's share.
 import { playtest } from "@origingame/engine/playtest";
 
 export default playtest({

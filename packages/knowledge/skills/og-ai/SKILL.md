@@ -492,5 +492,5 @@ tree {
   Include the negative: a wall that hides the hero, a target outside the
   cone.
 - Determinism: a playtest with `runs: 2` over a chase must end on one hash.
-- `og polish` reports damage moments without hit feedback and inputs nobody
-  answered (og-build §5); enemies that bite with no hit stop show up there.
+- A bite is felt: `dump_pulse` on the tick after it shows hit stop, trauma
+  and a voice on the sfx bus (og-build §5, og-feel §13).

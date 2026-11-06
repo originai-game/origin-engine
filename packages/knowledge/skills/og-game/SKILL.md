@@ -112,8 +112,9 @@ The order the games found productive:
    `references/<tier>/` inside `t.frame`: two representative frames, not
    one per moment. Without a renderer each is reported "no renderer,
    frame unchecked" and passes while every other check runs.
-8. **Polish** (og-build §5): `og polish` until its findings are gone; each
-   names the section that fixes it (og-taste §10, og-feel §13).
+8. **Review** (og-build §5): read the frames, `og test .` and
+   `og ui check .`'s measurements against og-taste §10 and og-feel §13,
+   and fix the cause of what reads wrong.
 
 Mistakes the games made, or would have, before reading the right page:
 
@@ -152,7 +153,7 @@ Mistakes the games made, or would have, before reading the right page:
 | **og-render** | effects, particles, light and shadows, reflections, atmosphere, water, terrain, shaders, post passes, render targets, run-time geometry, debug draw, footage | render, atmosphere, terrain, debug, video |
 | **og-physics** | bodies, contacts, forces and queries; joints, the character and platformer controllers, vehicles, ropes, cloth, fluids, ragdolls | physics |
 | **og-net** | two or more players in lockstep over a room, and a desync | net |
-| **og-build** | the loop: cook, run with a script, read frames and dumps, hot reload, playtests, `og polish` (og-build §5: the one list of what it scores), shipping, performance, `og render` videos | commands, probe |
+| **og-build** | the loop: cook, run with a script, read frames and dumps, hot reload, playtests, reviewing a build (og-build §5: frames, playtests, og ui check), shipping, performance, `og render` videos | commands, probe |
 | **og-feel** | how much: hit stop, shake, squash, easing, floating text, the camera, frame rates, sorting, parallax, controller tunables | time, tween, camera, systems |
 | **og-ui** | screens and HUDs: templates, widgets, focus, phones, UI styles and motion | ui |
 | **og-taste** | the look: a style from the premise, composition, colour, type, motion, feedback, atmosphere by intent, the done checklist, looks as data and the art contract | art |
@@ -181,7 +182,7 @@ the other points there.
 
 | Path | What it is |
 |---|---|
-| `project.ogt` | The manifest: `name`, `id`, the pinned `engine` version, `entry`, `profile` (`2d` or `3d`), `tick`, `seed`, `scenes`, the first `scene`, the game's `look`, the `screens` `og style check` captures (og-build §8), the `ui { screen "<name>" "<commands>" }` screens `og ui check`, `og ui preview` and `og polish` visit (og-ui §8; the cook refuses an unknown line, a screen without a name or commands, a name twice), `publish` settings |
+| `project.ogt` | The manifest: `name`, `id`, the pinned `engine` version, `entry`, `profile` (`2d` or `3d`), `tick`, `seed`, `scenes`, the first `scene`, the game's `look`, the `screens` `og style check` captures (og-build §8), the `ui { screen "<name>" "<commands>" }` screens `og ui check` and `og ui preview` visit (og-ui §8; the cook refuses an unknown line, a screen without a name or commands, a name twice), `publish` settings |
 | `src/main.ts` | The game entry: its default export is `og.game({...})` |
 | `assets/` | Source assets: glTF, FBX, OBJ and `.vox` models (Draco, meshopt and quantised glTF read; KHR_texture_transform, unlit, punctual lights, GPU instancing and material variants honoured), PNG/JPEG/WebP/TGA/PSD (flattened)/DDS/KTX2 textures, WAV/MP3/Ogg Vorbis/FLAC sounds, TTF/OTF fonts, `.ogt` scenes and looks, and `<file>.ogt` import settings |
 | `cooked/` | `og cook` output (`.ogb` blobs and `.cook.ogt`); never committed, the only thing the runtime reads |

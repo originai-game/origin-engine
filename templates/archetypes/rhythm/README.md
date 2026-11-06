@@ -10,8 +10,7 @@ calibration measures how late this device's sound and picture reach you.
 三道节拍：音符沿三条轨道落向判定线，与《霓虹脉冲》（120 BPM，24 小节）同拍。在音符经过判定线时击打它。每次击打按离音符准确时间的偏差判定（完美、很好、不错），漏掉的音符算失误；击中累积连击和倍率、填满律动槽，失误会让它下降，律动槽空了歌曲就结束。校准会测出这台设备的声音和画面传到你这里的延迟。
 
 This is a complete Origin Engine project: `og run .` plays it headless,
-`og build .` makes the play page, `og test .` runs its playtests and
-`og polish .` scores them. It rebuilds the platform's retired Discover
+`og build .` makes the play page and `og test .` runs its playtests. It rebuilds the platform's retired Discover
 rhythm prototype on the engine: its premise (lanes, a chart, judged hits,
 a combo, a song to clear) and none of its code or music.
 
@@ -19,7 +18,6 @@ a combo, a song to clear) and none of its code or music.
 og cook .                    # assets/ into cooked/ (og run and og build cook too)
 og run . --headless --commands "0.5:play;4:screenshot:highway.png;4.1:quit"
 og test .                    # tests/*.og.ts through og run --headless --commands
-og polish .                  # the playtests scored against og-taste and og-feel
 og build . --publish         # dist/: the play page as it ships
 ```
 
@@ -87,14 +85,6 @@ og build . --publish         # dist/: the play page as it ships
   string is a key of `assets/strings/en.ogt` and `zh-CN.ogt`; settings
   through `loadSettings`/`saveSettings`; the best score read on tick 0 and
   written at the revision read; the board; a `song.over` event.
-
-`og polish .` (2026-10-19, og and the native addon built release from
-this checkout, load 18): taste 99, feel 99, in
-`tests/evidence/P2/archetypes/rhythm/` of the engine repository (feel 74
-at load 27–73, frame time's p95 following the load:
-`tests/evidence/P2/archetypes/frame-time.md`). Hit feedback is n/a: no
-note is damage, and a hit stop would hold the picture while the music
-runs on.
 
 ## Rules
 

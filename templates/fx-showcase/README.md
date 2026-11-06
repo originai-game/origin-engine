@@ -40,7 +40,7 @@ trails and beams, decals, 2D lighting, materials, the HUD layer), §11 (fog,
 sky, day and night, weather, water, terrain), §12 (a dissolve and wind-swayed grass in
 WGSL) and §13 (joints, a character controller, a vehicle, ropes, cloth, a 2D
 fluid, a ragdoll); og-taste §8 for the looks; og-build §3, §4 for the frames
-as evidence. `og polish .` (2026-10-19): taste 100, feel 97.
+as evidence.
 
 
 | Station (`station:<name>`) | What it shows |

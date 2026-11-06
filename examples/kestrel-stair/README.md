@@ -35,7 +35,6 @@ python3 tools/subset-font.py tools/fonts/NotoSansJP-Regular.otf assets/fonts/Not
 og cook .
 og run . --headless --commands "1:screenshot:title.png;1.1:play:0:quick;1.5:key_down:KeyW;3:key_up:KeyW;3.5:screenshot:court.png;3.6:quit"
 og test .                       # the thirteen playtests, the reference frames against references/<tier>/
-og polish .                     # taste 99, feel 97 on metal (og-out/polish/report.md)
 OG_FX_CAPTURE=1 og test .       # records this tier's reference frames
 og check .                      # tsrs over src, tests and tools
 ```
@@ -90,23 +89,12 @@ SHA-256), from which the committed 79 KB subset is cut.
 | `replay.og.ts` | a session of chases, bites, strikes, a slam, a rest, the gate and the bell, run twice in fresh processes, ends on one world hash |
 | `frames.og.ts` | nine reference frames at 1280 x 720 (`references/metal/`): the title, the intro, the court, a strike, the crypt, the bag, the chapters, the records, the results |
 
-`og polish .` on metal (dev profile, a machine shared with other builds,
-on the runtime-ui-2 branch of wave 11): taste 99 (contrast 98: the bag's
-stack count, 3.4 to 4.0:1 in the paper pack's ink, is the one text under
-4.5:1; "You" on the records row reads 9.9:1 now that the ink is measured
-over the glyphs, FINDINGS #20 fixed), feel 97 (input latency, hit
-feedback and idle frames 100; sound on input 93; frame time 93: step
-about 4.8 ms median and 6.0–7.0 ms p95, render about 2.2 ms, frame p95
-8.5–9.7 ms, with the systems writing the Game resource through its live
-handle since FINDINGS #19 was fixed).
-
 **Frame time** (wave 12, `tests/evidence/P4/perf-games/kestrel-stair.md`,
 on a machine at a load average of 7 to 16): the cloth's collision with
 the level's mesh was most of og.physics, which fell from 0.98 to 0.49 ms
 a tick on the release addon; the 600-tick play run's step is 1.28 ms
 median and 2.31 ms p95 (2.98 / 4.00 dev), render 1.50 / 4.40 unpaced and
-0.97 / 1.26 paced at 60 Hz; og polish scores frame time 100 on both
-addons. On a heavily loaded machine (20 to 25) the five cloths wait for
+0.97 / 1.26 paced at 60 Hz. On a heavily loaded machine (20 to 25) the five cloths wait for
 lanes threads the OS does not run (step p95 17.7 ms release): there
 `OG_LANES=off` measures the game's own cost (4.45). What is the game's:
 the `Ui` system (0.25 ms release, 0.50 dev), `Foes` and `Hero`, whose

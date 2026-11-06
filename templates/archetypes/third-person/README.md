@@ -12,8 +12,7 @@ three hearts gone, or night, loses it. Then the summary, and again.
 余烬山谷：暮色正落在湖谷上，四座烽火台在小丘上黑着。点灯人可以走、跑、涉水、跳跃；在烽火台旁按住 F，它会走到台前，把手伸进火盆，片刻之后烽火燃起。三个石头哨兵沿湖边小路巡逻：看见点灯人的哨兵会发出警报并追上来，被抓住就失去一颗心。湖水是避难所（哨兵的导航网格止于岸边），但涉水很慢。入夜前点燃全部烽火即获胜；三颗心都失去或夜幕降临则失败。随后是总结，再来一次。
 
 This is a complete Origin Engine project: `og run .` plays it headless,
-`og build .` makes the play page, `og test .` runs its playtests and
-`og polish .` scores them. It is the engine's mid-size 3D slice: one
+`og build .` makes the play page and `og test .` runs its playtests. It is the engine's mid-size 3D slice: one
 third-person loop that uses the 3D systems together rather than a station
 per feature (templates/fx-showcase has the stations).
 
@@ -21,7 +20,6 @@ per feature (templates/fx-showcase has the stations).
 og cook .                    # assets/ into cooked/ (og run and og build cook too)
 og run . --headless --commands "0.6:run;0.8:warp:0;1:key_down:KeyF;3:screenshot:beacon.png;3.1:quit"
 og test .                    # tests/*.og.ts through og run --headless --commands
-og polish .                  # the playtests scored against og-taste and og-feel
 og build . --publish         # dist/: the play page as it ships (behind "tap to play")
 ```
 

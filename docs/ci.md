@@ -255,8 +255,7 @@ The 2026-10-19 gate-speed round (`tests/evidence/gate-speed/`) took the
 full lane with `--all` from 187–237 s to 84–101 s with every step and test
 kept: the steps run concurrently as their inputs allow (§Running the gate
 locally), and `packages/engine`'s bun test files run in parallel workers
-(`bun test --parallel`: 31 s to 12 s; og polish on the topdown playtests,
-7.5 s, is the longest file). One at a time (`OG_GATE_JOBS=1`) the same
+(`bun test --parallel`: 31 s to 12 s). One at a time (`OG_GATE_JOBS=1`) the same
 gate takes 129 s.
 
 The gate now admits one GPU test step at a time, while independent CPU
@@ -704,8 +703,7 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
   `~ <file>: no renderer, frame unchecked` line per screenshot and the
   count in its summary, and fails with a missing-GPU error if any frame
   is unchecked. Simulation-only playtests can still pass without a GPU;
-  `og polish` reports frame time `n/a (no renderer)`; `og doctor` reports
-  the renderer `none`, not as a problem. Any other value, or none, leaves
+  `og doctor` reports the renderer `none`, not as a problem. Any other value, or none, leaves
   the adapters alone; the web host always has its canvas's. The gfx
   suites (og-tests, og-ui's reference frames, `og-gfx`) need a renderer and
   fail under the switch. `packages/engine/tests/no-renderer.test.ts` and
@@ -805,9 +803,8 @@ equal. They are on WebGPU (2026-10-19,
 `tests/evidence/E7/archetype-hashes-*.md`). They used to differ because the
 native `og run` called `GameDesc.start` before attaching its renderer, so
 `og.render.capabilities` answered 0×0 there and runner and match3 laid
-their view out for 16:9 instead of the surface; `og run` and `og polish`
-now create the engine with `deferStart` and run the start once the
-renderer is attached, as the web Worker always did.
+their view out for 16:9 instead of the surface; `og run` now creates the
+engine with `deferStart` and runs the start once the renderer is attached, as the web Worker always did.
 
 WebGPU is judged against `metal` (2026-10-21, the UI shell branch
 merged with main 376f3cd):

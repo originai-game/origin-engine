@@ -1,11 +1,11 @@
 ---
 name: og-build
-description: The Origin Engine build loop — og cook, og run with a scripted command channel (inputs, captures, dumps, get and set), screenshots and world dumps read as evidence, og dev hot reload, og test playtests, og polish's taste and feel scores (the one list of what it measures and where each finding is fixed), the cook's art conformance (what og cook --report says it changed, conform off, og style check), og build for publishing, og run --device for the first frame and frame times on a real browser or phone, big games: streaming groups and what they may hold, .vox models, compressed animation, chunked music, the lanes and cross-origin isolation, performance (the frame budget and what costs it), and og render's videos and contact sheets of a scripted run. Use whenever a change to a project with a project.ogt must be run, observed, scored or shipped (not a Godot project.godot).
+description: The Origin Engine build loop — og cook, og run with a scripted command channel (inputs, captures, dumps, get and set), screenshots and world dumps read as evidence, og dev hot reload, og test playtests, reviewing a build from its frames, playtests and og ui check's measurements, the cook's art conformance (what og cook --report says it changed, conform off, og style check), og build for publishing, og run --device for the first frame and frame times on a real browser or phone, big games: streaming groups and what they may hold, .vox models, compressed animation, chunked music, the lanes and cross-origin isolation, performance (the frame budget and what costs it), and og render's videos and contact sheets of a scripted run. Use whenever a change to a project with a project.ogt must be run, observed, reviewed or shipped (not a Godot project.godot).
 ---
 
 The `og` tool is the whole loop: it cooks assets, runs the game headless on
 the native host with a command script, serves the probe, reloads on save,
-runs playtests, scores them and builds the publishable bundle. Nothing here
+runs playtests, measures the UI and builds the publishable bundle. Nothing here
 needs a browser or a Rust toolchain. The command channel is
 `og api show commands`, the probe `og api show probe`.
 
@@ -18,15 +18,13 @@ warning, and every refusal named the line and the fix (a copied UI style, as
 styles were then called, without its CJK `fallback` named the line and og-taste §1;
 `PostEffects.vignette is true or false` named the line). Scripted runs gave
 the same frames every time, `store: "keep"` relaunches and two-process
-replays worked the first time they were asked for, and `og polish` scored
-taste 99 for both and feel 90 and 92, naming the section that fixes each
-finding. The third, The Kestrel Stair (`examples/kestrel-stair`, 3D
+replays worked the first time they were asked for. The third, The Kestrel Stair (`examples/kestrel-stair`, 3D
 third-person), cooked 62 assets cold in 8.5 s (110 outputs, 9.9 MB) and
 about 0.1 s after a change, without a warning, its refusals naming the
 line; two processes of a full session (chases, bites, strikes, a rest, the
-gate, the bell) ended on one world hash, and `og polish` found every
-input answered within a tick and every damage moment with hit stop, shake,
-a number and a sound (taste 98, feel 79).
+gate, the bell) ended on one world hash, every input was answered within
+a tick and every damage moment held by hit stop, shake, a number and a
+sound.
 
 ## 1. The loop
 
@@ -79,12 +77,11 @@ a number and a sound (taste 98, feel 79).
    matched count. A system that matched 0 entities is usually a missing
    component on the spawn, not a logic bug.
 
-   Headless means no window, not no rendering: `og run`, `og test` and
-   `og polish` still render every tick when an adapter is available. A
+   Headless means no window, not no rendering: `og run` and `og test`
+   still render every tick when an adapter is available. A
    sandbox without a GPU may have Mesa lavapipe (`vulkan-cpu` in
    `og doctor`), which renders on the CPU and can take minutes per
-   game-second. Use `OG_RENDERER=none og test .` (likewise `og run` and
-   `og polish`) for simulation-only iteration there. Do not treat this as
+   game-second. Use `OG_RENDERER=none og test .` (likewise `og run`) for simulation-only iteration there. Do not treat this as
    visual approval: record and compare frames on the retained reference
    tier, and run visual polish with a renderer.
 
@@ -258,71 +255,45 @@ same store, for a relaunch (og-platform-sdk §4).
 - Report what ran and what did not. A build that compiled is not a game
   that plays.
 
-## 5. Polish, measured: `og polish`
+## 5. Reviewing a build: frames, playtests and `og ui check`
 
-This is the one list of what `og polish` measures; og-taste §10 and
-og-feel §13 are the checklists it scores, and every other skill points
-here. `og polish .` plays every playtest headless, samples every tick
-(`dump_pulse`: time scale and hit stop, camera trauma, punch and kick,
-floating texts, afterimages, tweens, particle systems, voices by bus, the
-named entities' positions and flipbook frames, step and render time), takes
-`dump_ui` beside every `screenshot` and captures the audio. It writes
-`og-out/polish/report.md`: a **taste** and a **feel** score (0 to 100 each,
-the mean of their rows; a row is n/a when no playtest exercises it), the
-frames, and for each finding the skill section that fixes it. It refuses a
-project without playtests: write them first (§3), with a `screenshot` on
-every screen that matters. Before the playtests it runs `og ui check` over
-every screen the project declares (project.ogt's `ui { screen ... }`,
-og-ui §8) into `og-out/polish/ui-check/`: each rule with an error is a
-finding with its element path, measure and prop, and the report's UI check
-section counts every rule's errors and warnings. It is the full review, so
-it takes minutes on a large screen list; `og ui check . --screen <name>`
-reruns one screen while fixing it.
+No engine command scores a game or judges its taste: the engine gives you
+the facts, and you judge them against og-taste, og-feel and og-ui. Three
+sources together are the review.
 
-| Axis | Measure | From | Passes at | Fixed in |
-|---|---|---|---|---|
-| taste | Contrast | each text element's rectangle in a shot: the ground (its median) against its ink, read over the text's own glyphs (the pixels at least half-way to the strongest ink; the farthest twentieth of them, the glyph cores) | 4.5:1 | og-taste §3 |
-| taste | Text size | the tallest run of ink rows in each text element, CSS px | 9 px, a 13 px face's capitals | og-taste §4, §10 |
-| taste | HUD occupancy | the union of leaf elements on gameplay shots, touch controls (joystick, d-pad, action buttons) left out; a shot with a dialog or loading layer, a conversation, a list over a quarter of the surface or three texts in the central third is a screen, not gameplay | at most 15 % of the surface and 5 % of the central third | og-taste §2 |
-| taste | Screen transitions | a change of three or more elements with UI motion or a tween in the 20 ticks around it | every change | og-taste §5 |
-| taste | UI sounds | a press that changed the UI and started a voice on the ui bus within 8 ticks | every press | og-taste §6, og-audio §3 |
-| taste | Locale keys | `og cook`'s warnings | none | og-i18n §1 |
-| feel | Input latency | ticks from the tick an input lands to the first thing seen or heard to change (a named entity accelerating or changing clip, the UI, a sound, a tween, a floating text, shake, hit stop, a particle burst); a press answered on its release counts from the release | 0–1 ticks | og-feel §1 |
-| feel | Hit feedback | each damage moment (a fact named `hp`, `health`, `lives`… falling, or `hits`, `damage`, `kills`… rising): hit stop, shake, floating text and a sound within 8 ticks | three of the four, per moment (a moment with three owes no fourth: a bump that holds, shakes and sounds is not asked for a number) | og-feel §3, §4, §7, og-audio §1 |
-| feel | Idle frames | ticks after the first ten where nothing moves or animates, no UI moves, no sound starts or plays, no tween, text or particle runs | at most 10 % | og-feel §9, og-taste §5 |
-| feel | Sound on input | inputs answered by a sound within 6 ticks | every action | og-audio §1 |
-| feel | Frame time | step + render, p95, on the tier it ran on (`metal` on a Mac, `vulkan` on a GPU); the probe's own screenshots (render, read back, PNG) are not the game's step and are left out. Without a renderer the row says `n/a (no renderer)`, as do contrast, text size and HUD occupancy, which read frames | reported, not scored into feel (8.3 ms is half the frame) | og-build §9 |
+- **Playtests** (`og test .`, §3) assert what the game must do: a press
+  answered on the next tick, a hit held by hit stop, shake, a number and a
+  sound (og-feel §13), a UI press heard on the ui bus. `dump_pulse[:path]`
+  samples one tick of what a player sees and hears change: the time scale
+  and hit stop, camera trauma, punch and kick, floating texts (and how many
+  have spawned), afterimages, tweens, particle systems, the playing voices
+  as `[voice, bus, gain]` (bus 0 master, 1 music, 2 sfx, 3 ui), the named
+  entities' positions, scales and flipbook frames, the UI's element bounds,
+  and the tick's step and render time. Take one just after an input or a
+  hit and assert on it (`templates/ui-kit/tests/hit.og.ts`).
+- **`og ui check .`** lays out every screen project.ogt declares
+  (`ui { screen ... }`, og-ui §8) over breakpoints, locales and text
+  scale and reports what it measured, each with the element path, the value
+  and the prop that sets it, into `og-out/ui-check/` (og-ui §8). It takes
+  minutes on a large screen list; `og ui check . --screen <name>` reruns
+  one screen while fixing it.
+- **The frames**: a `screenshot` on every screen that matters, opened and
+  described (§4). Only the frames show whether a style works.
 
-The report also lists clipped samples in the mix (og-audio §4), and a UI
-style finding (no score) when a shot's `dump_ui` reports `style` empty: the
-UI draws in the engine's default style (for prototypes only; `og build
---publish` refuses it), not a style of the game's own (og-taste §1). Contrast and
-text size read text only: icons and images (their "text" is a picture's
-name), disabled controls and what they hold (WCAG exempts them), the
-slivers a scroll container cuts, what a dialog's or a tutorial's scrim
-dims on purpose and what is mid-transition in the shot (an element whose
-bounds differ on the ticks before and after it: a toast sliding out over
-a dialog, a panel popping in) are left out, and each element is measured
-at the pixels of the surface `dump_ui` reports, so a phone preview
-(390×844 at 3×) is read at its own size. The ink is measured over the
-glyphs, not the rectangle, so a short word in a wide label (a three-letter
-name on a 356 px leaderboard row) reads what its letters show, as a full
-line does, and not its antialiased edges diluted by the empty rest of the
-row. The ink is what the pixels show,
-so it depends on the glyphs' coverage: thin strokes cover few pixels
-whole, and a regular-weight CJK face at body sizes measures lower than
-Latin in the same colours (a 15 px "设置" 3.1:1 where "Settings" reads
-4.6:1 on one button), as it reads lower to the eye. Darken the ink in the
-style's palette, give the CJK face a heavier weight or the label a larger
-step; the measure is not wrong there. Facts are the game's `facts`
-(og-game §3): expose `hp`, `hits` or `kills` there or the hit measures stay
-n/a. A baseline line says how often things change with no input at all;
-when it is high (a runner that always moves), read latency together with
-the frames.
+Contrast is measured on the drawn pixels: the ground (its median) against
+the ink over the text's own glyphs, so a short word in a wide label reads
+what its letters show. Icons and images, disabled controls, what a scroll
+container cuts and what a dialog's scrim dims on purpose are left out. The
+ink is what the pixels show, so it depends on the glyphs' coverage: thin
+strokes cover few pixels whole, and a regular-weight CJK face at body sizes
+measures lower than Latin in the same colours (a 15 px "设置" 3.1:1 where
+"Settings" reads 4.6:1 on one button), as it reads lower to the eye. Darken
+the ink in the style's palette, give the CJK face a heavier weight or the
+label a larger step; the measure is not wrong there.
 
-The numbers cannot judge a style. Read the frames before changing anything,
+A number cannot judge a style. Read the frames before changing anything,
 fix the cause in the style, the template or the system, never per call, and
-run it again after the fix: the report is the evidence.
+run it again after the fix.
 
 ## 6. Shipping
 
@@ -361,7 +332,7 @@ the play gate and writes `og-out/device/report.md`: the first frame against
 its budget (2.0 s, 1.5 s on an iPhone), the frame-time percentiles on the
 tier the device chose, the device itself, and a fix per finding (og-game
 §6 for a slow first frame, og-build §9 for missed frames). Run it on the
-phone you ship for: og polish's native numbers are not a phone's. `og doctor`
+phone you ship for: native frame times are not a phone's. `og doctor`
 names each missing tool (bun, the native addon, the wasm artifact) with its
 fix, and says whether this machine has a renderer (none is not a problem:
 the playtests' frames are then unchecked, §3).
@@ -618,8 +589,7 @@ not a target to cut quality for in this phase (optimisation comes later). `og ru
 run's `frames` (step and render median, p95 and max) and its `systems`
 (each system's mean milliseconds a tick, slowest first: the game's and the
 engine's own, physics, the UI's end of frame, animation and the rest, which the
-probe's `dump_world` also reports as `ms`), `og
-polish` the p95 step and render time of every playtest (§5), and
+probe's `dump_world` also reports as `ms`), and
 `og run --device` the first frame and frame times in a real browser or
 phone (§6). The usual costs:
 draws (share geometry and one material per look), particle systems (cap

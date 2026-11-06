@@ -1,13 +1,11 @@
 // `og ui check` (docs/ui.md §16.5): the rules a UI designer checks by eye,
 // as checks with a path and a fix. One checker, called by `og ui check`
-// (ui-run.ts, over a screen set × breakpoints × locales), by `og polish`
-// (polish.ts, on each playtest frame) and by playtests (`checkUi`, from
+// (ui-run.ts, over a screen set × breakpoints × locales) and by playtests (`checkUi`, from
 // `@origingame/engine/ui-check`, on the frames a `dump_ui:<name>.uicheck.json`
 // step saved). It reads one laid-out frame (`og_node_ui_frame`, the native
 // host's reading of og-ui's UiFrame: elements, undeclared overlaps, drawn
 // text, fills, the accessibility tree, layout counts, viewport and theme)
-// and, where there is one, the rendered frame (contrast on pixels, as
-// polish measures it).
+// and, where there is one, the rendered frame (contrast on pixels).
 //
 // Every finding names the rule, the element path(s), the measured value,
 // the limit, the prop to change and the fix, as JSON and as text (`text`).
@@ -40,7 +38,7 @@ export interface UiElementDump {
   height: number;
 }
 
-/** What `dump_ui` writes: polish reads its elements. */
+/** What `dump_ui` writes. */
 export interface UiDump {
   tick: number;
   /** The surface the CSS-pixel bounds are on (dpr: device pixels per CSS pixel). */
@@ -172,7 +170,7 @@ export const RULES: readonly UiRule[] = [
   { id: "safe-area", title: "elements outside the safe area", status: "checked" },
   { id: "covered", title: "elements under the shell's covered region", status: "checked" },
   { id: "touch-target", title: "touch targets under 44 CSS px on a coarse pointer", status: "checked", note: "an element's hitSlop is not in the frame: a small control with slop enough is still reported; a link inside a rich text's sentence is exempt (WCAG 2.5.8)" },
-  { id: "contrast", title: "contrast of live text: an error under 3:1 (7:1 in high contrast), a warning under 4.5:1, on pixels as og polish measures it; dimmed, disabled, decorative and over-the-scene text is judged by eye", status: "checked" },
+  { id: "contrast", title: "contrast of live text: an error under 3:1 (7:1 in high contrast), a warning under 4.5:1, on the drawn pixels; dimmed, disabled, decorative and over-the-scene text is judged by eye", status: "checked" },
   { id: "text-size", title: "text under the minimum size", status: "checked", note: "18 px at 1080p; a dense HUD's readouts (ElementProps.dense) 12 px at 1080p times the text scale" },
   { id: "focus-reach", title: "an interactive element unreachable by pad from the default focus", status: "checked" },
   { id: "focus-trap", title: "a focus trap: a control the pad cannot leave back to the default focus", status: "partial", note: "the pad graph is walked both ways, but og-ui's direction rule (nearest, wrapping) leaves no geometric trap (none in 600,000 random layouts); the real trap, a scope Back does not close, needs U3's layer stack" },
@@ -411,7 +409,7 @@ const near = (a: number[], b: number[]) => (a[3] ?? 1) >= 0.95 && [0, 1, 2].redu
 export interface CheckOptions {
   /** The rendered frame (device pixels), for contrast; without one contrast is not measured for this frame. */
   image?: Image | null;
-  /** Rules to leave out (polish measures contrast and text size its own way). */
+  /** Rules to leave out. */
   skip?: readonly string[];
 }
 
@@ -635,7 +633,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     });
   }
 
-  // Contrast, on pixels (polish's measure).
+  // Contrast, on the drawn pixels.
   if (opts.image && !skip.has("contrast")) {
     const scale = opts.image.width / v.width;
     const scaled: UiDump = { tick: 0, elements: f.elements.map((e) => ({ ...e, x: e.x * scale, y: e.y * scale, width: e.width * scale, height: e.height * scale })) };
@@ -645,7 +643,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     // eye, not gated (disabled and decorative text textBoxes leaves out).
     const high = cell.highContrast || v.highContrast || f.contrast === "high";
     const bar = high ? 7 : 3;
-    for (const b of textBoxes(opts.image, scaled, new Set(), (n) => laidInk(f, f.elements[n]!))) {
+    for (const b of textBoxes(opts.image, scaled, (n) => laidInk(f, f.elements[n]!))) {
       if (b.contrast >= (high ? 7 : 4.5)) continue;
       const i = b.index;
       if (!gated(f, f.elements[i]!)) continue;
@@ -922,7 +920,7 @@ export function checkUi(run: RunFiles, name: string, opts: { cell?: Partial<UiCe
   return checkFrame(frame, cell, { image, skip: opts.skip ?? [] });
 }
 
-// ── pixels (shared with og polish) ─────────────────────────────────────────
+// ── pixels ─────────────────────────────────────────────────────────────────
 
 /** Relative luminance (WCAG) of an sRGB byte triple. */
 export function luminance(r: number, g: number, b: number): number {
@@ -1054,10 +1052,9 @@ function behindScrim(ui: UiDump): Set<number> {
  * it is measured cut by a scroll too, no ink reads 1:1, and its known ink
  * says which side of the ground the glyphs are on (a vote of the pixels is
  * a coin toss on a textured ground: cartoon's dark "Inventory" read as
- * light, 1.74:1 for 5.6:1). `moving`
- * (indices) are mid-transition and left out too.
+ * light, 1.74:1 for 5.6:1).
  */
-export function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set(), laid: (n: number) => number | null | "hidden" = () => null): TextBox[] {
+export function textBoxes(img: Image, ui: UiDump, laid: (n: number) => number | null | "hidden" = () => null): TextBox[] {
   const out: TextBox[] = [];
   const byId = new Map(ui.elements.map((e) => [e.id, e]));
   const dimmed = behindScrim(ui);
@@ -1066,7 +1063,7 @@ export function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set(
     if (laidAs === "hidden") continue;
     const known = laidAs;
     const drawn = known !== null;
-    if (dimmed.has(n) || moving.has(n) || !/[\p{L}\p{N}]/u.test(e.text) || !readsAsText(e, byId, drawn) || e.width < 6 || e.height < 6) continue;
+    if (dimmed.has(n) || !/[\p{L}\p{N}]/u.test(e.text) || !readsAsText(e, byId, drawn) || e.width < 6 || e.height < 6) continue;
     // A pill's rounded ends show what is behind it: inset a wide element's ends.
     const ix = e.width > 3 * e.height ? Math.min(e.height / 2, 12) : 0, iy = e.height * 0.12;
     const x0 = Math.max(0, Math.floor(e.x + ix)), y0 = Math.max(0, Math.floor(e.y + iy));
@@ -1160,7 +1157,7 @@ const OBSERVE = /^(screenshot|dump_[a-z_]+|expect|quit|help|listen|wait)$/;
  * until `inspect:off`) is the development inspector's frame, not a screen of
  * the game: the check reads the game's UI, which the panel only covers, and
  * each of its cells drew the panel every frame (the template's two inspector
- * playtests were 144 of og polish's 216 cells and most of its time).
+ * playtests were 144 of a 216-cell check and most of its time).
  */
 export function screensFromPlaytest(playtest: string, commands: string): Array<{ name: string; commands: string; at: number }> {
   const steps = commands.split(";").map((x) => x.trim()).filter(Boolean);

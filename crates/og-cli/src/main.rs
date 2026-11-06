@@ -2,11 +2,10 @@
 //!
 //! One binary for the author's loop: `og run` (native host, probe, command
 //! channel; `--device` times the publish build in a real browser), `og probe` (a WebSocket client of the probe), `og dev` (watch,
-//! rebuild, hot reload), `og check` (type-check with tsrs), `og test` (bun tests and playtests), `og polish`
-//! (playtests scored against og-taste and og-feel), `og compare` (a model
-//! review's silhouette IoU, ΔE00 and sheet), `og migrate three` (a three.js
-//! file rewritten towards og, the rest listed), `og build`
-//! (the play page), `og cook`, `og doctor` and `og api` (the IDL outputs).
+//! rebuild, hot reload), `og check` (type-check with tsrs), `og test` (bun tests and playtests),
+//! `og compare` (a model review's silhouette IoU, ΔE00 and sheet), `og
+//! migrate three` (a three.js file rewritten towards og, the rest listed),
+//! `og build` (the play page), `og cook`, `og doctor` and `og api` (the IDL outputs).
 
 mod api;
 mod api_lookup;
@@ -26,7 +25,6 @@ mod frame;
 mod i18n;
 mod lockstep_lint;
 mod migrate;
-mod polish;
 mod prefab;
 mod probe;
 mod project;
@@ -105,12 +103,6 @@ commands:
                       the project's bun tests, then each tests/*.og.ts playtest headless
                       --filter selects suite files by a project-relative path substring;
                       --jobs N runs up to N playtests at once, each one's output whole, in order
-  polish [project] [--out DIR] [--frames N] [--json]
-                      play the playtests headless and score them against og-taste and og-feel
-                      (contrast, text size, HUD, transitions, UI sounds, input latency, hit
-                      feedback, idle frames, frame time, missing locale keys) and og ui check over
-                      every screen the project declares (DIR/ui-check) into DIR/report.md
-                      (default <project>/og-out/polish) with frames and a fix per finding
   build [project] [--publish] [--out DIR] [--json] [--no-check]
                       cook, type-check and export the game to dist/ (or publish.out): the player shell,
                       game.js, the web host, cooked/, og-build.json, _headers; --publish keeps
@@ -298,7 +290,6 @@ fn main() -> ExitCode {
         ["dev", rest @ ..] => dev::run(rest),
         ["check", rest @ ..] => check::run(rest),
         ["test", rest @ ..] => test::run(rest),
-        ["polish", rest @ ..] => polish::run(rest),
         ["build", rest @ ..] => bundle::run(rest),
         ["cook", rest @ ..] => cook::run(rest),
         ["bake", "projection", rest @ ..] => bake_projection::run(rest),

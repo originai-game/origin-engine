@@ -40,8 +40,7 @@ Measured at `c030bfe3` (the survey is in the thread that wrote this).
   multitouch gestures, the accessibility tree and its ARIA mirror on the web.
 - Styles as complete, validated assets, contrast measured over the real
   atlas texels (`tests/packs.rs`, `tests/pack_contrast.rs`), `og style
-  eject|pack`, and `og polish`'s pixel contrast, text size, HUD share,
-  transition and sound measures.
+  eject|pack`.
 
 **Not enough:**
 
@@ -66,7 +65,7 @@ Measured at `c030bfe3` (the survey is in the thread that wrote this).
   rebuild them from raw rows and labels and copy their own spacing scales.
 - The art brief has no UI kinds; generated art reaches the UI as a plain
   texture or a hand-packed nine-patch.
-- `og polish` does not check overlap, overflow, touch size, safe area,
+- Nothing checks overlap, overflow, touch size, safe area,
   focus reachability or localization expansion. The ui-kit's phone sheets
   shipped with the platformer timer under the coin pill and the puzzle
   Gallery button over "Target 1,000".
@@ -84,7 +83,7 @@ Measured at `c030bfe3` (the survey is in the thread that wrote this).
 3. **Every rule is checked.** What a UI designer reviews by eye (overlap,
    overflow, hierarchy, touch size, reachability, contrast, missing
    feedback, expansion) is a check with a path and a fix, run by `og ui
-   check`, `og polish` and `og test`.
+   check` and `og test`.
 4. **Motion is driven by state and is interruptible.** Widgets declare
    states; the engine animates between them on springs that keep their
    velocity when retargeted. Authored timelines are for sequences.
@@ -1386,7 +1385,7 @@ claims a UI is done.
 
 ### 16.5 Check
 
-`og ui check` (also run by `og polish` and available to `og test`) reports,
+`og ui check` (also available to `og test`) reports,
 each with the element paths and the prop to change:
 
 - overlap not declared (§6.2), across breakpoints and locales;
@@ -1395,7 +1394,7 @@ each with the element paths and the prop to change:
 - elements outside the safe area or under the shell's covered region;
 - touch targets under 44 CSS px on a coarse pointer;
 - contrast: an error only for live text under 3:1 on pixels (7:1 in the
-  high-contrast mode), measured as `og polish` does; under 4.5:1 it is a
+  high-contrast mode), measured on the drawn glyphs; under 4.5:1 it is a
   warning for the art director to judge, and dimmed, decorative and
   over-the-scene HUD text is judged by eye, not by the number;
 - text under the minimum size;
@@ -1786,7 +1785,7 @@ files apart.
 | U4 | Styles v2 (tokens, part dressings, motion, sound and haptic sets), `og style upgrade`, art slots, the art brief's UI kinds, the style generator, the seed styles | og-ui `style_file.rs`; knowledge `brief.ts`; og-cli `style.rs`; `templates/styles` | U1 (paints), U2 (states) |
 | U5 | World-space UI: anchored elements, mass elements, world panels, meta UI | og-ui `world.rs`, og-render | U1, U2 |
 | U6 | Component library and screen documents for every row of the appendices | `packages/engine/src/ui/`, og-ui widgets | U3, U4 |
-| U7 | `og ui preview`, `og ui check`, `og polish` integration, the skills | og-cli, `packages/engine/src/node`, knowledge | U3 |
+| U7 | `og ui preview`, `og ui check`, the skills | og-cli, `packages/engine/src/node`, knowledge | U3 |
 | U8 | The kit's genre showcases, seed styles on them, archetypes and examples migrated, references, wave-end | templates, examples | U5, U6, U7 |
 
 Waves: **A** U1 ∥ U2 ∥ (U4's grammar and the brief's kinds); **B** U3 ∥ U5

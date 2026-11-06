@@ -341,7 +341,7 @@ if (commands !== undefined) {
 const rate = engine.rate;
 const tickMs = 1000 / rate;
 // --json's frame times: each frame's tick and render milliseconds (the
-// first five left out, as og polish does), and each system's time over the
+// first five left out: the first frames compile pipelines), and each system's time over the
 // run from the world's dump (World::set_clock).
 type SystemTimes = { name: string; totalMs?: number; runs?: number }[];
 const systemTimes = (): SystemTimes => (engine.probe.dump({ what: "world" }) as { systems?: SystemTimes }).systems ?? [];
@@ -491,7 +491,7 @@ const dump = engine.probe.dump({ what: "world" }) as unknown as { hash: string; 
 const expectations = engine.probe.expectations();
 // The run's assertions (og.assert, the default invariants, `invariant:` steps): a violation fails the run.
 const assertions = engine.probe.assertions() as unknown as { violations: unknown[]; uncovered: unknown[] };
-// og polish's order statistics (src/node/polish.ts), so the two agree.
+// Order statistics (nearest rank).
 const percentile = (xs: number[], q: number): number => {
   if (xs.length === 0) return 0;
   const s = [...xs].sort((a, b) => a - b);

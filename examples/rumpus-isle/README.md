@@ -14,7 +14,6 @@ og cook .
 og run .                   # headless with the probe; og dev . reloads on save
 og test .                  # nine playtests, the frames against references/<tier>
 og check .
-og polish .                # the taste and feel scores of the playtests
 og build . --publish       # the web build
 ```
 
@@ -94,11 +93,5 @@ reference frames were inspected on the owner's Mac and reproduced at
 RMSE 0. The scoreboard capture waits until its iris and counters settle.
 With this branch's CLI, `og test . --filter tests/lobby.og.ts` runs just the
 lobby suite while iterating; run without the filter before delivery.
-
-`og polish .` (2026-10-22, `OG_RENDERER=none`): taste 100, feel 93. The feel row
-below 100 is sound on input (71: a stick held is an input every tick, and
-only a dash and a bump sound); hit feedback is 100, though its fixes table
-still asks for a floating number on every bump, and a party game's bumps
-are not numbers (`FINDINGS.md` #13).
 
 Asset licences: `LICENSES.md`.

@@ -11,8 +11,7 @@ its every third strike is charged. When the lamp goes out the dive is over
 提灯下潜：提灯人一回合一步，向下走两层墓穴。每次下潜都是新的：房间、走廊、敌人和物品都由这次下潜的种子生成。灯只照得到一定距离，也只照得到直线看得见的地方；照过的地方会暗暗记住。老鼠和骷髅会追着灯光而来；苔面守卫在第二层的遗物旁等着，每第三击都是蓄力重击。灯一灭，这次下潜就结束了（没有第二次机会）：先看总结，再从头开始新的下潜。
 
 This is a complete Origin Engine project: `og run .` plays it headless,
-`og build .` makes the play page, `og test .` runs its playtests and
-`og polish .` scores them. It rebuilds the platform's retired Discover
+`og build .` makes the play page and `og test .` runs its playtests. It rebuilds the platform's retired Discover
 roguelike prototype on the engine: its premise (a short dive, one life,
 procedural floors, a run summary) and none of its code or art.
 
@@ -20,7 +19,6 @@ procedural floors, a run summary) and none of its code or art.
 og cook .                    # assets/ into cooked/ (og run and og build cook too)
 og run . --headless --commands "0.3:dive:7;0.5:key_down:ArrowUp;0.53:key_up:ArrowUp;1:screenshot:dive.png;1.1:quit"
 og test .                    # tests/*.og.ts through og run --headless --commands
-og polish .                  # the playtests scored against og-taste and og-feel
 og build . --publish         # dist/: the play page as it ships
 ```
 
@@ -85,14 +83,6 @@ og build . --publish         # dist/: the play page as it ships
   (another device dived meanwhile) is read again and merged (the stored
   counts plus what this device added) and written at the new revision; a
   `dive.over` event.
-
-`og polish .` (2026-10-19, og and the native addon built release from
-this checkout): taste 99, feel 100, in
-`tests/evidence/P2/archetypes/roguelike/` of the engine repository. With
-the dev-profile og the gate builds, on a machine at load 30 to 50, the
-same playtests' frame time p95 was 20 to 90 ms (median step 2 ms) and
-feel 77–80: the p95 follows the machine's load, not the game
-(`tests/evidence/P2/archetypes/frame-time.md`).
 
 ## Rules
 

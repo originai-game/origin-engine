@@ -56,7 +56,7 @@ playtest per language are already there (og-i18n §0). What stays yours:
 - Translate it yourself when you can do it well. When you cannot, leave the
   key out of that table, so the cook warns and the base text shows, and say
   which keys are untranslated; never copy the English into the other table
-  silently, which hides the gap from the cook and from `og polish`.
+  silently, which hides the gap from the cook.
 - A new locale is a new table with every key, its font chain, and its
   frames checked (§5).
 - Treat a cook warning about keys as a bug, never as noise.
