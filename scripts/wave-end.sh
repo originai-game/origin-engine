@@ -39,19 +39,15 @@ run() {
   return "${PIPESTATUS[0]}"
 }
 
-stage_gate() { run scripts/check.sh --all; }
+stage_gate() { run scripts/check.sh full --all; }
 stage_perf() { run scripts/perf.sh; }
 stage_web() { run scripts/check.sh web-reference; }
-
-# The art director's capture: one frame per catalogue style on the project
-# its family's profile draws (the former test sample written under
-# $OUT/art/ to read; no committed reference is compared.
 
 stage_conformance() { run scripts/tsrs-diff.sh; }
 stage_release() { run scripts/release.sh pack && run scripts/release.sh verify; }
 
 if [ "$dry" != 1 ]; then
-  og_lock_acquire "${OG_GATE_MACHINE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/og-gate}" "scripts/wave-end.sh ($PWD)" || exit 1
+  og_admission_acquire exclusive "scripts/wave-end.sh ($PWD)" || exit 1
   og_lock_acquire "$OG_TARGET_DIR" "scripts/wave-end.sh" || exit 1
 fi
 

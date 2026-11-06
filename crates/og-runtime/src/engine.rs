@@ -702,6 +702,8 @@ pub(crate) fn register_module_actions(probe: &mut og_probe::Probe, engine_id: u3
     super::probe::register_render_dump(probe, engine_id);
     super::probes::register_bake_dump(probe, engine_id);
     #[cfg(not(feature = "publish"))]
+    super::determinism::register(probe);
+    #[cfg(not(feature = "publish"))]
     super::inspector::register(probe, engine_id);
 }
 

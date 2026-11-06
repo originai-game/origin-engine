@@ -39,6 +39,8 @@ mod baked;
 mod codec;
 mod describe;
 mod destruction;
+#[cfg(not(feature = "publish"))]
+mod determinism;
 mod display;
 mod e6;
 mod engine;

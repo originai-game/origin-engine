@@ -7,21 +7,95 @@
 #
 #   og_lock_acquire TARGET_DIR WHAT   waits for the lock, then holds it until exit
 #
-# A process may hold more than one (the gate holds the machine lock, then the
-# target's): og_lock_dirs lists them and og_lock_release frees every one it
+# A process may hold more than one: og_lock_dirs lists them and
+# og_lock_release frees every one it
 # owns.
 #
 # The lock is the directory TARGET_DIR/og-gate.lock (mkdir is atomic on every
-# filesystem) holding the owner's "pid what". A holder that no longer runs
-# (`kill -0` fails, or the pid now belongs to something that is not a
-# check.sh or build.sh, as after CI restores a cached target/) is stale and
+# filesystem) holding the owner's "pid what" and process-birth identity.
+# A holder whose process died or whose PID was reused is stale and
 # is taken over. The owner exports
 # OG_LOCK_OWNER, so a build.sh the gate runs does not wait on its own gate.
 
 og_gpu_root="${OG_GPU_ROOT:-$HOME/.cache/og-gate}"
 og_gpu_impl() {
   cat <<'OG_GPU_IMPL'
-og_gpu_lock_version=3
+og_gpu_lock_version=5
+
+# Process birth, not command text, identifies an owner after PID reuse.
+# Keep the human-readable owner file compatible with older lanes.
+og_process_identity() {
+  kill -0 "$1" 2>/dev/null || return 1
+  case "$(ps -p "$1" -o stat= 2>/dev/null)" in *Z*) return 1 ;; esac
+  og_birth="$(LC_ALL=C ps -p "$1" -o lstart= 2>/dev/null | tr -d '[:space:]')"
+  [ -n "$og_birth" ] || return 1
+  printf '%s:%s\n' "$1" "$og_birth"
+}
+
+og_owner_write() {
+  og_process_identity "$$" > "$1/identity" || return 1
+  printf '%s %s\n' "$$" "$2" > "$1/owner"
+}
+
+og_owner_alive() {
+  [ -f "$1/owner" ] || return 1
+  og_owner_pid="$(cut -d' ' -f1 "$1/owner" 2>/dev/null)"
+  og_owner_current="$(og_process_identity "$og_owner_pid")" || return 1
+  # Existing holders from before this version have no birth record. Do
+  # not steal their live locks merely because their command is unfamiliar.
+  [ ! -f "$1/identity" ] || [ "$(cat "$1/identity")" = "$og_owner_current" ]
+}
+
+og_owner_inherited() {
+  og_owner_alive "$1" || return 1
+  if [ -f "$1/identity" ]; then
+    case " ${OG_LOCK_IDENTITIES:-} " in *" $(cat "$1/identity") "*) return 0 ;; esac
+  fi
+  [ "$(cut -d' ' -f1 "$1/owner" 2>/dev/null)" = "${OG_LOCK_OWNER:-}" ]
+}
+
+# Ordinary gates register briefly, then run concurrently. Measurements hold
+# admission closed while existing gates drain. Call from a process, not a
+# shell subshell: POSIX $$ identifies the enclosing shell in a subshell.
+og_admission_acquire() {
+  case "$1" in shared|exclusive) ;; *) return 2 ;; esac
+  og_admission_root="$og_gpu_root/admission"
+  if [ -n "${OG_ADMISSION_OWNER:-}" ]; then
+    if og_owner_alive "$og_admission_root/active/$OG_ADMISSION_OWNER"; then
+      [ "$1" = shared ] || { echo 'cannot promote an active gate to an exclusive measurement' >&2; return 1; }
+      return 0
+    fi
+    if [ "$(cut -d' ' -f1 "$og_admission_root/og-gate.lock/owner" 2>/dev/null)" = "$OG_ADMISSION_OWNER" ] && og_owner_alive "$og_admission_root/og-gate.lock"; then
+      return 0
+    fi
+  fi
+  og_lock_acquire "$og_admission_root" "$2" || return 1
+  mkdir -p "$og_admission_root/active" || return 1
+  if [ "$1" = shared ]; then
+    mkdir "$og_admission_root/active/$$" || return 1
+    og_owner_write "$og_admission_root/active/$$" "$2" || return 1
+    og_lock_dirs="$og_lock_dirs $og_admission_root/active/$$"
+    rm -rf "$og_admission_root/og-gate.lock"
+  else
+    while :; do
+      og_admission_readers=0
+      for og_admission_active in "$og_admission_root/active/"*; do
+        [ -d "$og_admission_active" ] || continue
+        og_admission_pid="${og_admission_active##*/}"
+        if og_owner_alive "$og_admission_active"; then
+          og_admission_readers=$((og_admission_readers + 1))
+        else
+          rm -rf "$og_admission_active"
+        fi
+      done
+      [ "$og_admission_readers" -gt 0 ] || break
+      printf 'measurement admission: draining %s active gate(s)\n' "$og_admission_readers" >&2
+      sleep 1
+    done
+  fi
+  OG_ADMISSION_OWNER=$$
+  export OG_ADMISSION_OWNER
+}
 
 # Ticket registration holds the same mkdir lock only long enough to advance
 # the counter and publish a ticket. Waiting for the resource never holds it.
@@ -34,6 +108,7 @@ og_queue_join() {
   printf '%s\n' "$og_queue_number" > "$1/next.$$"
   mv -f "$1/next.$$" "$1/next"
   og_queue_ticket="$1/$(printf '%012d' "$og_queue_number").ticket"
+  og_process_identity "$$" > "$og_queue_ticket.identity" || return 1
   printf '%s %s\n' "$$" "$2" > "$og_queue_ticket.$$"
   mv -f "$og_queue_ticket.$$" "$og_queue_ticket"
   og_queue_files="${og_queue_files:-}${og_queue_files:+ }$og_queue_ticket"
@@ -47,8 +122,9 @@ og_queue_turn() {
     [ -f "$og_queue_file" ] || continue
     og_queue_pid="$(cut -d' ' -f1 "$og_queue_file" 2>/dev/null || true)"
     [ -n "$og_queue_pid" ] || continue
-    if ! kill -0 "$og_queue_pid" 2>/dev/null; then
-      rm -f "$og_queue_file"
+    og_queue_current="$(og_process_identity "$og_queue_pid" || true)"
+    if [ -z "$og_queue_current" ] || { [ -f "$og_queue_file.identity" ] && [ "$(cat "$og_queue_file.identity")" != "$og_queue_current" ]; }; then
+      rm -f "$og_queue_file" "$og_queue_file.identity"
       continue
     fi
     og_queue_position=$((og_queue_position + 1))
@@ -61,11 +137,11 @@ og_queue_turn() {
   [ "$og_queue_position" -eq 1 ]
 }
 
-og_queue_leave() { rm -f "$og_queue_ticket"; }
+og_queue_leave() { rm -f "$og_queue_ticket" "$og_queue_ticket.identity"; }
 
 og_lock_acquire() {
   og_lock_holder="$(cat "$1/og-gate.lock/owner" 2>/dev/null || true)"
-  if [ -n "${OG_LOCK_OWNER:-}" ] && [ "${og_lock_holder%% *}" = "$OG_LOCK_OWNER" ]; then
+  if og_owner_inherited "$1/og-gate.lock"; then
     return 0
   fi
   if [ "${og_queue_internal:-0}" != 1 ]; then og_queue_join "$1/og-wait" "$2" || return 1; fi
@@ -76,10 +152,11 @@ og_lock_acquire() {
   while :; do
     if [ "${og_queue_internal:-0}" != 1 ] && ! og_queue_turn; then sleep 1; continue; fi
     if mkdir "$og_lock_dir" 2>/dev/null; then
-      printf '%s %s\n' "$$" "$2" > "$og_lock_dir/owner"
+      og_owner_write "$og_lock_dir" "$2" || return 1
       og_lock_dirs="${og_lock_dirs:-}${og_lock_dirs:+ }$og_lock_dir"
       OG_LOCK_OWNER=$$
-      export OG_LOCK_OWNER
+      OG_LOCK_IDENTITIES="${OG_LOCK_IDENTITIES:-} $(cat "$og_lock_dir/identity")"
+      export OG_LOCK_OWNER OG_LOCK_IDENTITIES
       trap 'og_lock_release' EXIT
       trap 'exit 130' INT
       trap 'exit 143' TERM
@@ -97,11 +174,11 @@ og_lock_acquire() {
       continue
     fi
     og_lock_empty=0
-    if [ -n "${OG_LOCK_OWNER:-}" ] && [ "$og_lock_pid" = "$OG_LOCK_OWNER" ]; then
+    if og_owner_inherited "$og_lock_dir"; then
       return 0   # held by the gate that runs us
     fi
-    if ! og_lock_alive "$og_lock_pid"; then
-      printf '%s\n' "gate lock: pid $og_lock_pid (${og_lock_holder#* }) no longer runs a gate; taking over $og_lock_dir" >&2
+    if ! og_owner_alive "$og_lock_dir"; then
+      printf '%s\n' "gate lock: owner $og_lock_pid (${og_lock_holder#* }) is gone; taking over $og_lock_dir" >&2
       og_lock_steal
       continue
     fi
@@ -111,16 +188,6 @@ og_lock_acquire() {
     fi
     sleep 2
   done
-}
-
-og_lock_alive() {
-  kill -0 "$1" 2>/dev/null || return 1
-  [ "${og_queue_internal:-0}" != 1 ] || return 0
-  command -v ps >/dev/null 2>&1 || return 0
-  case "$(ps -p "$1" -o command= 2>/dev/null)" in
-    *check.sh*|*build.sh*|*pack.sh*|*wave-end.sh*|*land.sh*) return 0 ;;
-    *) return 1 ;;
-  esac
 }
 
 # Renaming first means two waiters that both saw the stale owner remove it
@@ -133,7 +200,7 @@ og_lock_steal() {
 
 og_lock_release() {
   for og_queue_file in ${og_queue_files:-}; do
-    [ "$(cut -d' ' -f1 "$og_queue_file" 2>/dev/null)" != "$$" ] || rm -f "$og_queue_file"
+    [ "$(cut -d' ' -f1 "$og_queue_file" 2>/dev/null)" != "$$" ] || rm -f "$og_queue_file" "$og_queue_file.identity"
   done
   og_queue_files=""
   for og_lock_held in ${og_lock_dirs:-}; do
@@ -167,7 +234,7 @@ og_lock_release() {
 # Bump og_gpu_lock_version with any change in this implementation.
 og_gpu_dead() {
   og_gpu_pid="$(cut -d' ' -f1 "$1/owner" 2>/dev/null || true)"
-  if [ -n "$og_gpu_pid" ]; then ! kill -0 "$og_gpu_pid" 2>/dev/null; return; fi
+  if [ -n "$og_gpu_pid" ]; then ! og_owner_alive "$1"; return; fi
   # A process can die between mkdir and publishing its owner.
   if [ "$(uname)" = Darwin ]; then
     og_gpu_created="$(stat -f %m "$1" 2>/dev/null)" || return 1
@@ -180,7 +247,7 @@ og_gpu_dead() {
 og_gpu_try() { # og_gpu_try N WHAT: take slot N now or fail
   og_gpu_slot="$og_gpu_root/gpu-slot-$1.lock"
   if mkdir "$og_gpu_slot" 2>/dev/null; then
-    printf '%s %s\n' "$$" "$2" > "$og_gpu_slot/owner"
+    og_owner_write "$og_gpu_slot" "$2" || return 1
     og_lock_dirs="${og_lock_dirs:-}${og_lock_dirs:+ }$og_gpu_slot"
     trap 'og_lock_release' EXIT
     trap 'exit 130' INT
@@ -194,6 +261,8 @@ og_gpu_try() { # og_gpu_try N WHAT: take slot N now or fail
 }
 
 og_gpu_acquire() {
+  if [ -n "${OG_GPU_OWNER:-}" ] && og_owner_inherited "$og_gpu_root/gpu-all.lock"; then return 0; fi
+  if [ -n "${OG_GPU_SLOT:-}" ] && og_owner_inherited "$og_gpu_root/gpu-slot-$OG_GPU_SLOT.lock"; then return 0; fi
   og_queue_join "$og_gpu_root/gpu-wait-fifo" "$1" || return 1
   og_gpu_said=""
   while :; do
@@ -203,6 +272,9 @@ og_gpu_acquire() {
       og_gpu_n=1
       while [ "$og_gpu_n" -le "${OG_GPU_SLOTS:-3}" ]; do
         if og_gpu_try "$og_gpu_n" "$1"; then
+          OG_GPU_SLOT="$og_gpu_n"
+          OG_LOCK_IDENTITIES="${OG_LOCK_IDENTITIES:-} $(cat "$og_gpu_slot/identity")"
+          export OG_GPU_SLOT OG_LOCK_IDENTITIES
           og_queue_leave
           return 0
         fi
@@ -220,13 +292,17 @@ og_gpu_acquire() {
 }
 
 og_gpu_acquire_all() {
+  if [ -n "${OG_GPU_OWNER:-}" ] && og_owner_inherited "$og_gpu_root/gpu-all.lock"; then return 0; fi
   og_queue_join "$og_gpu_root/gpu-wait-fifo" "$1" || return 1
   until og_queue_turn; do sleep 1; done
   while ! mkdir "$og_gpu_root/gpu-all.lock" 2>/dev/null; do
     if og_gpu_dead "$og_gpu_root/gpu-all.lock"; then rm -rf "$og_gpu_root/gpu-all.lock"; fi
     sleep 2
   done
-  printf '%s %s\n' "$$" "$1" > "$og_gpu_root/gpu-all.lock/owner"
+  og_owner_write "$og_gpu_root/gpu-all.lock" "$1" || return 1
+  OG_GPU_OWNER=$$
+  OG_LOCK_IDENTITIES="${OG_LOCK_IDENTITIES:-} $(cat "$og_gpu_root/gpu-all.lock/identity")"
+  export OG_GPU_OWNER OG_LOCK_IDENTITIES
   og_lock_dirs="${og_lock_dirs:-}${og_lock_dirs:+ }$og_gpu_root/gpu-all.lock"
   og_gpu_n=1
   while [ "$og_gpu_n" -le "${OG_GPU_SLOTS:-3}" ]; do

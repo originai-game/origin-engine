@@ -25,6 +25,8 @@ case "$2" in
   gate) og_lock_acquire "$ROOT/gate" "$1" ;;
   one) og_gpu_acquire "$1" ;;
   all) og_gpu_acquire_all "$1" ;;
+  shared) og_admission_acquire shared "$1" ;;
+  exclusive) og_admission_acquire exclusive "$1" ;;
 esac
 echo "$1" >> "$ROOT/order"
 touch "$ROOT/$1.acquired"
@@ -116,6 +118,39 @@ while [ ! -f "$ROOT/$1.release" ]; do sleep 0.05; done
         job = self.start('live', 'all')
         self.acquired('live')
         self.release('live', job)
+
+    def test_measurement_drains_readers_and_blocks_new_admission(self):
+        first = self.start('first', 'shared')
+        self.acquired('first')
+        second = self.start('second', 'shared')
+        self.acquired('second')
+        exclusive = self.start('measurement', 'exclusive')
+        barrier = self.root / 'gpu' / 'admission' / 'og-gate.lock' / 'owner'
+        self.wait(lambda: barrier.exists() and barrier.read_text().startswith(f'{exclusive.pid} '))
+        later = self.start('later', 'shared')
+        self.queued(later)
+        self.assertFalse((self.root / 'measurement.acquired').exists())
+        self.release('first', first)
+        self.assertFalse((self.root / 'measurement.acquired').exists())
+        self.release('second', second)
+        self.acquired('measurement')
+        self.assertFalse((self.root / 'later.acquired').exists())
+        self.release('measurement', exclusive)
+        self.acquired('later')
+        self.release('later', later)
+
+    def test_dead_reader_and_measurement_do_not_block_admission(self):
+        reader = self.start('reader', 'shared')
+        self.acquired('reader')
+        reader.kill()
+        reader.wait()
+        exclusive = self.start('measurement', 'exclusive')
+        self.acquired('measurement')
+        exclusive.kill()
+        exclusive.wait()
+        later = self.start('later', 'shared')
+        self.acquired('later')
+        self.release('later', later)
 
     def test_dead_holder_and_waiter_release_their_turns(self):
         for kind in ('gate', 'all'):

@@ -293,6 +293,7 @@ pub(crate) const MODULE_ACTIONS: &[&str] = &[
     "cover",
     "debug",
     "dump_ai",
+    "dump_determinism",
     "dump_desync",
     "dump_inspector",
     "dump_lanes",

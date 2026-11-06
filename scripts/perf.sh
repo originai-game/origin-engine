@@ -38,6 +38,8 @@ if [ "$measure" = 1 ]; then
   export OG_PERF_RECORD=1
 fi
 
+og_admission_acquire exclusive "scripts/perf.sh ($PWD)" || exit 1
+og_lock_acquire "$OG_TARGET_DIR" "scripts/perf.sh ($PWD)" || exit 1
 t0="$(date +%s)"
 cargo test -p og-tests -p og-runtime -p og-audio --release --no-run 2>&1 | tee "$out/perf.log"
 rc="${PIPESTATUS[0]}"

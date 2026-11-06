@@ -4,6 +4,7 @@
 # target/debug/incremental alone had grown to 265 GB).
 #
 #   scripts/clean-targets.sh             clean every worktree of this repository now
+#   scripts/clean-targets.sh --idle-only clean only lanes marked free by lane.sh
 #   scripts/clean-targets.sh --install   run it daily at 05:00 (launchd on macOS)
 #
 # For each worktree with a target/ that nothing is building in (no cargo,
@@ -15,6 +16,12 @@
 set -eu -o pipefail
 main="$(git -C "$(dirname "$0")/.." worktree list --porcelain | awk '/^worktree / { print substr($0, 10); exit }')"
 days="${OG_SWEEP_DAYS:-1}"
+case "${1:-}" in
+  ''|--idle-only|--install) ;;
+  *) echo "clean-targets: unknown option '$1'" >&2; exit 2 ;;
+esac
+idle_only=0
+[ "${1:-}" != --idle-only ] || idle_only=1
 
 if [ "${1:-}" = --install ]; then
   [ "$(uname)" = Darwin ] || { echo "clean-targets: --install is for macOS (launchd)" >&2; exit 1; }
@@ -44,6 +51,9 @@ procs="$(ps -axo command= 2>/dev/null || true)"
 git -C "$main" worktree list --porcelain | awk '/^worktree / { print substr($0, 10) }' | while read -r d; do
   t="$d/target"
   [ -d "$t" ] || continue
+  if [ "$idle_only" = 1 ] && { [ ! -f "$(git -C "$d" rev-parse --absolute-git-dir)/lane-idle" ] || [ "$(git -C "$d" rev-parse --abbrev-ref HEAD)" != HEAD ]; }; then
+    echo "  skip $d (not an idle lane)"; continue
+  fi
   if [ -d "$t/og-gate.lock" ] || printf '%s\n' "$procs" | grep -E 'cargo|rustc|check\.sh|build\.sh|nextest' | grep -qF "$d/"; then
     echo "  skip $d (building)"; continue
   fi

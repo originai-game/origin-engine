@@ -59,3 +59,14 @@ retries = 0
 # Per-binary and per-test execution time, separate from Cargo build time.
 [profile.default.junit]
 path = "junit.xml"
+
+# CPU and rendering executions share built binaries, not report paths.
+[profile.cpu]
+test-threads = 2
+[profile.cpu.junit]
+path = "junit.xml"
+
+[profile.gpu]
+test-threads = 2
+[profile.gpu.junit]
+path = "junit.xml"

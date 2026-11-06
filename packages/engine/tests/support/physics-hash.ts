@@ -53,8 +53,9 @@ if (which === "node") {
   lanesReport = glue.og_web_lanes;
 } else {
   const { loadWebHost } = await import("../../src/web/host.ts");
-  const glue = await import(join(pkg, "dist", "web", "origin-engine.js"));
-  await loadWebHost(glue, readFileSync(join(pkg, "dist", "web", "origin-engine_bg.wasm")));
+  const directory = which === "publish" ? (profile === "2d" ? "web-publish-2d" : "web-publish") : "web";
+  const glue = await import(join(pkg, "dist", directory, "origin-engine.js"));
+  await loadWebHost(glue, readFileSync(join(pkg, "dist", directory, "origin-engine_bg.wasm")));
 }
 
 const Tally = defineResource("PhTally", { entered: u32(), started: u32() });
@@ -127,7 +128,7 @@ if (restore) {
   console.log(JSON.stringify({ host: which, profile, restored: { tick: engine.world.tick, hash: engine.hash() } }));
   process.exit(0);
 }
-const publish = which === "lanes";
+const publish = which === "lanes" || which === "publish";
 const hashAtLoad = publish ? "" : engine.hash();
 const t0 = performance.now();
 const advanced = engine.advance(ticks);

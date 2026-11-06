@@ -6,8 +6,7 @@
 #
 #   scripts/test-gate-guards.sh
 #
-# Each case runs scripts/check.sh STEP against a scratch target directory
-# (CARGO_TARGET_DIR, with its own machine lock), so it builds nothing,
+# Each case runs the gate command against scratch outputs, so it builds nothing,
 # touches no real target/ and waits on no running gate. A few seconds.
 set -u -o pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -22,6 +21,17 @@ echo "unexpected cargo invocation: $*" >&2
 exit 97
 EOF
 chmod +x "$scratch/bin/cargo"
+
+# The scheduler now always adds prerequisites. Exercise the consuming command
+# directly to simulate interrupted output without rebuilding that output first.
+run_step() (
+  . "$root/scripts/lib.sh"
+  . "$root/scripts/gate/commands.sh"
+  FORCE_ALL=0 SKIP=3 RAN=" " OG_GATE_TREE="" OG_GATE_THREADS=2
+  [ "${1:-}" != --all ] || { FORCE_ALL=1; shift; }
+  skip_unchanged() { return 1; }
+  "step_$(printf '%s' "$1" | tr '-' '_')"
+)
 
 # layout NAME: a scratch target whose og-wasm is complete, then broken by NAME.
 layout() {
@@ -45,11 +55,8 @@ layout() {
 # and it ran no package's tests.
 expect_fail() {
   local t out rc
-  local args=("$2")
-  [ "${4:-}" != --only ] || args=(--only "$2")
   t="$(layout "$1")"
-  out="$(cd "$root" && PATH="$scratch/bin:$PATH" CARGO_TARGET_DIR="$t" OG_GATE_MACHINE_DIR="$t/machine" OG_GATE_JOBS=1 \
-    scripts/check.sh "${args[@]}" 2>&1)"; rc=$?
+  out="$(cd "$root" && PATH="$scratch/bin:$PATH" CARGO_TARGET_DIR="$t" run_step "$2" 2>&1)"; rc=$?
   if [ "$rc" -eq 0 ]; then
     echo "FAIL $2 with $1: passed"; failures=$((failures + 1)); return
   fi
@@ -63,7 +70,7 @@ expect_fail() {
   echo "ok   $2 with $1: fails naming $3"
 }
 
-for step in bun-functional bun-test size-gate; do
+for step in bun-test size-gate; do
   expect_fail none "$step" "og-wasm/opt-all.txt (absent)"
   expect_fail no-opt-all "$step" "og-wasm/opt-all.txt (absent)"
   expect_fail empty-opt-all "$step" "og-wasm/opt-all.txt (empty)"
@@ -71,23 +78,8 @@ for step in bun-functional bun-test size-gate; do
   expect_fail module-gone "$step" "opt/og_host_web.wasm (named in"
 done
 
-expect_fail none bun-functional "og-wasm/opt-all.txt (absent)" --only
-expect_fail module-gone bun-functional "opt/og_host_web.wasm (named in" --only
-
-t="$(layout none)"
-out="$(cd "$root" && PATH="$scratch/bin:$PATH" CARGO_TARGET_DIR="$t" OG_GATE_MACHINE_DIR="$t/machine" OG_GATE_JOBS=2 \
-  scripts/check.sh --only bun-functional wasm-opt 2>&1)"; rc=$?
-if [ "$rc" -eq 0 ] || ! printf '%s' "$out" | grep -qF 'unexpected cargo invocation: build' \
-  || printf '%s' "$out" | grep -qF 'bun-functional started'; then
-  echo "FAIL explicitly selected wasm: bun-functional must wait for the refreshed module"
-  printf '%s\n' "$out" | tail -10
-  failures=$((failures + 1))
-else
-  echo "ok   explicitly selected wasm: bun-functional waits for the refreshed module"
-fi
-
 # Use real wasm-opt output: development may bypass it only when the size
-# list selects publish variants. --all and the no-publish fallback must not.
+# list selects publish variants. The no-publish fallback must not.
 if command -v wasm-as >/dev/null && command -v wasm-opt >/dev/null; then
   t="$scratch/optimisation"; w="$t/og-wasm"
   mkdir -p "$w/raw"
@@ -107,11 +99,11 @@ if command -v wasm-as >/dev/null && command -v wasm-opt >/dev/null; then
     # and dev -> fallback must never reuse the wrong optimisation mode.
     rm -f "$t/og-gate/green/wasm-opt"
     if ! (cd "$root" && PATH="$scratch/bin:$PATH" CARGO_TARGET_DIR="$t" OG_GATE_MACHINE_DIR="$t/machine" \
-      scripts/check.sh "${args[@]}") > "$scratch/$mode.log" 2>&1; then
+      run_step "${args[@]}") > "$scratch/$mode.log" 2>&1; then
       cat "$scratch/$mode.log"; exit 1
     fi
     expected="$scratch/expected.wasm"
-    case "$mode" in dev|dev-again) expected="$w/raw/og_host_web.wasm" ;; esac
+    case "$mode" in dev|full|dev-again) expected="$w/raw/og_host_web.wasm" ;; esac
     cmp "$expected" "$w/opt/og_host_web.wasm" || exit 1
     while IFS= read -r module; do
       cmp "$scratch/expected.wasm" "$module" || exit 1

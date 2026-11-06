@@ -5,8 +5,8 @@ check:      ; scripts/check.sh
 quick:      ; scripts/check.sh quick
 fmt:        ; scripts/check.sh fmt
 clippy:     ; scripts/check.sh clippy
-test:       ; scripts/check.sh test
-test-quick: ; scripts/check.sh test-quick
+test:       ; scripts/check.sh full
+test-quick: ; scripts/check.sh quick
 wasm:       ; scripts/check.sh wasm-build wasm-opt size-gate
 size: wasm
 drift:      ; scripts/check.sh drift

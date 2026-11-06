@@ -16,6 +16,24 @@ declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: n
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 
+test("development digests agree across hosts and native lanes actually execute in parallel", () => {
+  const run = (host: string, lanes: string) => {
+    const result = Bun.spawnSync(["env", `OG_LANES=${lanes}`, "bun", "tests/support/determinism.ts", host], { cwd: pkg });
+    if (result.exitCode !== 0) throw new Error(new TextDecoder().decode(result.stderr));
+    const value = JSON.parse(new TextDecoder().decode(result.stdout).trim().split("\n").pop()!);
+    expect(Object.keys(value.digests).sort()).toEqual(["anim", "boxes", "math", "physics2d", "physics3d", "text"]);
+    for (const digest of Object.values(value.digests)) expect(digest).toMatch(/^[0-9a-f]{16}$/);
+    return value;
+  };
+  const serial = run("node", "off");
+  const parallel = run("node", "4");
+  const web = run("web", "off");
+  expect(parallel.digests).toEqual(serial.digests);
+  expect(web.digests).toEqual(serial.digests);
+  expect(serial.parallelCalls).toBe(0);
+  expect(parallel.parallelCalls).toBeGreaterThan(0);
+}, 180_000);
+
 function hello(host: string, ...extra: string[]): { tick: number; hash: string; hashAtLoad: string; entities: number } {
   const r = Bun.spawnSync(["bun", "tests/support/hello-hash.ts", "--host", host, ...extra], { cwd: pkg });
   const out = new TextDecoder().decode(r.stdout);
@@ -122,6 +140,8 @@ for (const profile of ["3d", "2d"] as const) {
     const dir = mkdtempSync(join(tmpdir(), "og-lanes-profile-"));
     for (const [bodies, threads] of [["64", null], ["1024", "4"]] as const) {
       const node = physics("node", "--profile", profile, "--bodies", bodies, "--snapshot");
+      const publish = physics("publish", "--profile", profile, "--bodies", bodies, "--snapshot");
+      expect(publish.snapshot).toBe(node.snapshot);
       const lanes = physics("lanes", "--profile", profile, "--bodies", bodies, "--snapshot", ...(threads ? ["--threads", threads] : []));
       const label = `${bodies} bodies, ${threads ?? 1} lane(s)`;
       expect([label, lanes.tick]).toEqual([label, 600]);

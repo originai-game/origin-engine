@@ -103,16 +103,21 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   `scripts/lane.sh take lane-N <stream>` and frees it after landing
   (`scripts/lane.sh free lane-N`, `--list` to see them). Never switch or reset
   a lane you did not take, never `git worktree add` a fresh one.
-- **One gate at a time.** `scripts/check.sh` holds the machine-wide gate lock;
-  GPU work takes a slot with `og_gpu_acquire` from `scripts/lock.sh` (all
-  slots for perf, wave-end and the full gate, one acquisition per run).
+- **Concurrent gates, bounded work.** `scripts/check.sh` takes shared admission
+  and a checkout-local output lock. CPU steps take no machine work lock;
+  each gate defaults to two steps with two Cargo/nextest jobs each. Rendering
+  steps take FIFO GPU slots through `scripts/lock.sh`. Measurements take
+  exclusive admission, drain active gates, then acquire GPU slots separately.
+  Never hold all GPU slots while waiting for a child gate to acquire one.
   Source `scripts/lock.sh`; never a private copy.
 - **Lanes of the gate** (`docs/ci.md` §Lanes): `quick` (fmt, clippy, logic
   tests, drift, package tests) is the loop and what a landing runs;
-  `functional` (every test with GPU references) runs after a batch of
-  landings; `kits` covers the UI packs; the full lane (`--all`, then
-  `web-reference`) runs once per wave via `scripts/wave-end.sh`. Steps are
-  path-aware; never touch files or delete `target/og-gate/` to dodge a skip.
+  `full` adds all Rust and Bun tests, retained UI-pack suites, fixtures,
+  wasm builds, shipping-size checks and browser functional tests. Wave-end
+  runs `full --all`, perf, browser references, conformance and release
+  pack/verify. Selection uses dependency inputs; an unclassified change
+  runs checks rather than skipping them. Never touch files or delete
+  `target/og-gate/` to force a run; use `--all`.
 - **Profiles.** `dev` for everything native in the gate, `release` for what
   ships natively, `wasm` for every wasm build. Compiling one crate in two
   profiles in one step is a defect.
