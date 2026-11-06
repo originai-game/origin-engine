@@ -358,3 +358,36 @@ the discrepancy. Whichever option is selected must later be tested for the
 apex height, ledge-up/down landings, ceiling/collision truncation, retained
 walkTo, contact-started recovery and snapshot/seek behavior. No test of those
 unimplemented semantics is claimed here.
+
+## Resolution: the simulation owns the elevation (2026-11-06)
+
+`docs/design.md` §2.7 "Jumps" settles the ownership above with a fourth
+option: the drawn hips are the Transform's height plus the pose's local
+height, the generated hips height minus how far the lowest foot is above its
+ground clearance (`og_motion::flight::local_height`), and the clip is
+retimed onto the simulation's takeoff and landing (`flight::retime`). The
+evidence for not trusting the model's arc: with the student's own tokens
+the generated hips sit +73.58 cm (running/train s25) and +69.77 cm
+(hopping/train s17) off the source, +78.79/+74.36 cm with the source root,
+while the source-encoded tokens stay within 11.07 cm (og-motion-train
+`data/trajectory-pilot6/GEOMETRY.md`). The drift is the student's token
+choice, not the data or the encoding.
+
+The fixture's plan now draws on that flight (`Plan.elevation`, the source's
+lowest foot above its clearance standing in for the controller's arc; run
+with `--generated-height` for the results above). Rerun on the same inputs:
+every case passes continuity, lean at most 4.972°, and hopping/train has
+contact 0.0000 cm with no conflict on both rigs (was 3.40/3.96 cm). The
+hopping/train contacts were infeasible because the generated clip never
+lands: its feet are still 0.36 m up at the last sample, where the source's
+are at 0.09 m. Retimed onto the planned flight, its touchdown meets the
+plan's landing. Cases 04/05 are no longer a conflict; their skinned review
+is part of the motion.jump art review.
+
+The example's `world_replay` differed from the uninterrupted run at tick 61
+only, the first tick after its restore, also with no og.motion component and
+no controller: that tick delivers og.WorldRestored (`restored_event.rs`),
+which the original run never saw. From tick 62 every hash matches, and the
+replay check now starts there (`mismatch_ticks` still lists 61). The
+`motion_goals` tests restore a jump mid-flight and match the uninterrupted
+run's hash after it lands.

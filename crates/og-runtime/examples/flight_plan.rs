@@ -34,6 +34,11 @@ struct Plan {
     contacts: Vec<Contact>,
     #[serde(default)]
     root: Vec<Root>,
+    /// The simulation's elevation at each sample (the controller's height
+    /// above its takeoff ground; docs/design.md §2.7 "Jumps"). The fixture
+    /// stands in the source's: its lowest foot above that foot's clearance.
+    #[serde(default)]
+    elevation: Vec<f32>,
 }
 
 #[derive(Deserialize)]
@@ -168,6 +173,82 @@ fn aligned(
         );
     }
     output
+}
+
+/// The generated clip on the plan's flight (docs/design.md §2.7, "Jumps"):
+/// retimed so its own takeoff and touchdown (`flight`) fall on the plan's,
+/// its hips at the plan's elevation plus the pose's local height
+/// (`og_motion::flight`). The plan's flight phase is its time fraction,
+/// which is the controller's ballistic phase (v0 − v)/(2 v0) exactly.
+fn on_flight(
+    skeleton: &SkeletonAsset,
+    map: &HumanoidMap,
+    base: &[Vec<Trs>],
+    plan: &Plan,
+    flight: og_motion::flight::ClipFlight,
+) -> Vec<Vec<Trs>> {
+    use og_motion::flight::{JumpTime, local_height, retime};
+    let hips = map.node("hips").unwrap() as usize;
+    let feet = [
+        map.node("leftFoot").unwrap() as usize,
+        map.node("rightFoot").unwrap() as usize,
+    ];
+    let lowest = |p: &[Trs]| {
+        let w = skeleton.model_space(p);
+        w[feet[0]].translation.y.min(w[feet[1]].translation.y)
+    };
+    let clearance = base.iter().map(|p| lowest(p)).fold(f32::MAX, f32::min);
+    let parent = skeleton.nodes[hips].parent;
+    (0..base.len())
+        .map(|t| {
+            let time = if t < plan.takeoff {
+                JumpTime::Prepare {
+                    elapsed: t as f32,
+                    prepare: plan.takeoff as f32,
+                }
+            } else if t < plan.landing {
+                JumpTime::Air {
+                    phase: (t - plan.takeoff) as f32 / (plan.landing - plan.takeoff) as f32,
+                }
+            } else {
+                JumpTime::Landed {
+                    since: (t - plan.landing) as f32,
+                }
+            };
+            let s = retime(flight, 0, base.len(), 1.0, time);
+            let (i, u) = (s as usize, s.fract());
+            let j = (i + 1).min(base.len() - 1);
+            let mut pose: Vec<Trs> = base[i]
+                .iter()
+                .zip(&base[j])
+                .map(|(a, b)| a.lerp(b, u))
+                .collect();
+            let world = skeleton.model_space(&pose);
+            let y = plan.elevation[t]
+                + local_height(world[hips].translation.y, lowest(&pose), clearance);
+            let at = Vec3::new(world[hips].translation.x, y, world[hips].translation.z);
+            let parent = if parent == NONE {
+                Trs::IDENTITY
+            } else {
+                world[parent as usize]
+            };
+            pose[hips].translation = parent.inverse().transform_point(at);
+            pose
+        })
+        .collect()
+}
+
+/// A clip's own flight by the plan's screen (no foot below 0.15 m of
+/// `scale`), from the first sample of the plan's lead-in.
+fn screened_flight(positions: &[[[f32; 3]; 30]], scale: f32) -> og_motion::flight::ClipFlight {
+    let contacts: Vec<[f32; 4]> = positions
+        .iter()
+        .map(|p| {
+            let down = |j: usize| if p[j][1] < 0.15 * scale { 1.0 } else { 0.0 };
+            [down(24), down(24), down(28), down(28)]
+        })
+        .collect();
+    og_motion::flight::clip_flight(&contacts, 1, 1).expect("a recorded jump leaves the ground")
 }
 
 /// Model-quality diagnostics only. The full source hips Y is retained here,
@@ -1188,6 +1269,7 @@ fn evaluate(
     plan: &Plan,
     rig: &str,
     review: bool,
+    flight: Option<og_motion::flight::ClipFlight>,
 ) -> serde_json::Value {
     // Keep the original raw-root baseline and its continuity bound. Neither
     // re-rooting nor the solve may relax that recorded acceptance bound.
@@ -1206,7 +1288,13 @@ fn evaluate(
             }
         })
         .collect();
-    let placed = aligned(skeleton, map, base, plan);
+    // The simulation owns the elevation: the generated clip is drawn in
+    // place on the plan's flight before the horizontal root alignment.
+    let flown = match flight {
+        Some(f) => on_flight(skeleton, map, base, plan, f),
+        None => base.to_vec(),
+    };
+    let placed = aligned(skeleton, map, &flown, plan);
     let aligned_base = measure(skeleton, map, &placed, plan, 1.0);
     let (corrected, conflicts) = correct(skeleton, map, &placed, plan, &raw_step);
     // Random access/seek and sparse draws: the clip is a pure function of
@@ -1395,7 +1483,10 @@ fn hash_replay() -> serde_json::Value {
         if hash(drawn) != *expected {
             mismatch_ticks.push(tick + 1);
         }
-        if hash(drawn) != *expected && replay_mismatch.is_none() {
+        // The first tick after a restore delivers og.WorldRestored
+        // (`restored_event.rs`), which the original run never saw: that
+        // tick differs by design, and the replay must match from the next.
+        if hash(drawn) != *expected && tick > 60 && replay_mismatch.is_none() {
             replay_mismatch = Some(json!({"tick":tick+1,"expected":expected,"actual":hash(drawn)}));
         }
     }
@@ -1407,7 +1498,9 @@ fn hash_replay() -> serde_json::Value {
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();
-    let review = args.get(5).is_some_and(|arg| arg == "--review");
+    let review = args[5..].iter().any(|arg| arg == "--review");
+    // The superseded contract, for comparison: generated pelvis Y kept.
+    let generated_height = args[5..].iter().any(|arg| arg == "--generated-height");
     let input: Input = serde_json::from_slice(&std::fs::read(&args[1]).unwrap()).unwrap();
     let bundle = og_motion::Bundle::from_safetensors(&std::fs::read(&args[2]).unwrap()).unwrap();
     let soma = og_motion::soma::Skeleton::from_bundle(&bundle).unwrap();
@@ -1438,6 +1531,18 @@ fn main() {
             })
             .collect();
         let model_drift = drift(&generated, &source);
+        let lowest = |p: &[[f32; 3]; 30]| p[24][1].min(p[28][1]);
+        let clearance = recording
+            .reference
+            .iter()
+            .map(lowest)
+            .fold(f32::MAX, f32::min);
+        recording.plan.elevation = recording
+            .reference
+            .iter()
+            .map(|p| (lowest(p) - clearance).max(0.0))
+            .collect();
+        let flight = (!generated_height).then(|| screened_flight(&recording.positions, 1.0));
         recording.plan.root = source
             .iter()
             .map(|r| Root {
@@ -1456,7 +1561,16 @@ fn main() {
                 })
             })
             .collect();
-        let mut result = evaluate(&skeleton, &map, &base, &recording.plan, "soma", review);
+        let mut result = evaluate(
+            &skeleton,
+            &map,
+            &base,
+            &recording.plan,
+            "soma",
+            review,
+            flight,
+        );
+        result["generated_flight"] = json!(flight.map(|f| [Some(f.takeoff), f.touchdown]));
         result["model_root_drift_soma"] = model_drift.clone();
         results.push(result);
         let clip = og_motion::soma::clip("recorded", &skeleton, &base);
@@ -1493,6 +1607,9 @@ fn main() {
             let p = to_hips + (Vec3::from_array(root.position) - from_hips) * output.scale;
             root.position = [p.x, 0.0, p.z];
         }
+        for e in &mut plan.elevation {
+            *e *= output.scale;
+        }
         for contact in &mut plan.contacts {
             let bone = if contact.foot == 24 {
                 "leftFoot"
@@ -1514,6 +1631,7 @@ fn main() {
             &plan,
             "meshy-traveller",
             review,
+            flight,
         );
         result["model_root_drift_soma"] = model_drift;
         results.push(result);
@@ -1521,11 +1639,14 @@ fn main() {
     println!(
         "{}",
         json!({"plan_sha256": input.plan_sha256, "results": results,
-        "root_provenance":"Ground-projected source hips [x,0,z] and source yaw stand in for controller root; generated pelvis Y unchanged. Horizontal/yaw correction only.",
+        "root_provenance": if generated_height {
+            "Ground-projected source hips [x,0,z] and source yaw stand in for controller root; generated pelvis Y unchanged. Horizontal/yaw correction only."
+        } else {
+            "Ground-projected source hips [x,0,z] and source yaw stand in for controller root; the source's lowest foot above its clearance stands in for controller elevation; the generated clip is retimed onto the plan's flight and drawn in place (og_motion::flight)."
+        },
         "original_library_training_jump_windows":0,
         "world_replay": hash_replay(),
         "limitations": ["Prototype palette not integrated", "Gesture priority and leg limits pending",
-            "Controller-owned vertical arc treatment remains open before motion.jump IDL",
             "Whole-clip solve: a streaming boundary must hold the clip's samples"]})
     );
 }
@@ -1700,6 +1821,7 @@ mod tests {
             up: [0.0, 1.0, 0.0],
             contacts: Vec::new(),
             root: Vec::new(),
+            elevation: Vec::new(),
         };
         (base, plan)
     }
@@ -1737,13 +1859,13 @@ mod tests {
             end: 20,
             anchor: anchor.to_array(),
         });
-        let mut result = evaluate(&skeleton, &map, &base, &plan, "synthetic", true);
+        let mut result = evaluate(&skeleton, &map, &base, &plan, "synthetic", true, None);
         let review = result.as_object_mut().unwrap().remove("review").unwrap();
         assert_eq!(review["corrected"].as_array().unwrap().len(), base.len());
         assert_eq!(review["raw"][14][8], json!(anchor.to_array()));
         assert_eq!(
             result,
-            evaluate(&skeleton, &map, &base, &plan, "synthetic", false)
+            evaluate(&skeleton, &map, &base, &plan, "synthetic", false, None)
         );
         let bound = result["landing_step_bound_m"].as_f64().unwrap();
         assert!((bound - 0.0288).abs() < 0.0005, "{bound}");
@@ -1780,7 +1902,7 @@ mod tests {
             end: 15,
             anchor: anchor.to_array(),
         });
-        let result = evaluate(&skeleton, &map, &base, &plan, "synthetic", false);
+        let result = evaluate(&skeleton, &map, &base, &plan, "synthetic", false, None);
         let expected = (1.0_f64 + 0.63 * 0.63).sqrt() - 0.84;
         let report = result["conflict_report"].as_array().unwrap();
         let reach: Vec<_> = report
