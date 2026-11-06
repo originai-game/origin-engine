@@ -262,6 +262,7 @@ export const STARTERS = {
       { name: "throttle", label: "Throttle", keys: k(["KeyW"], ["ArrowUp"]), pad: ["pad.rightTrigger", "pad.a"] },
       { name: "brake", label: "Brake", keys: k(["KeyS"], ["ArrowDown"]), pad: ["pad.leftTrigger", "pad.b"] },
       { name: "boost", label: "Boost", keys: k(["Space"], ["Enter"]), pad: ["pad.x"] },
+      { name: "menu", label: "Menu", keys: k([], []), pad: [], surface: true },
     ] },
   },
   "open-world": {

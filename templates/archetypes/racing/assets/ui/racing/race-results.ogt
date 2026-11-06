@@ -1,0 +1,305 @@
+type screen
+version 1
+---
+# Redline Ring's results (the racing kit's race-results, ejected with
+# `og ui eject racing/race-results` and edited): the place over the field,
+# the best lap and the points, the classification with each driver's time,
+# gap and points (a rival still on the circuit reads "Running", a seat
+# that ran out of time "DNF"), Race again and Title. Its words are the
+# game's string keys (assets/strings/*.ogt).
+#
+# Viewmodel: title, place, field, bestLap, points, rows ({ place, name,
+# time, gap, points, player }), rewards ({ name, amount }). Events to code
+# (src/ui.ts): restart (Race again, and the confirm action), continue
+# (Title). Slots: Podium.
+name "race-results"
+layer menu
+under hide
+back none
+focus "Panel/Footer/Restart"
+props {
+  title string "The result's line (Victory, Race complete)."
+  place number "The player's finishing place."
+  field number "How many drivers finished."
+  fieldText string "The place over the field, in the player's language (Place 1 of 6)."
+  bestLap string "The player's best lap, as the game formats it (1:32.418)."
+  points number "The points the player scored."
+  rows list "The classification: { place, name, time, gap, points, player }."
+  rewards list "The rewards: { name, amount }."
+}
+parts frame place row
+actions {
+  confirm "Race again"
+}
+timeline land {
+  track "Panel/Page/Head/Place" scale {
+    key 0 1.8
+    key 260 0.94 out
+    key 420 1 out
+  }
+  event 0 "" sound reward
+}
+fixture default "{\"title\": \"Victory\", \"place\": 1, \"field\": 8, \"fieldText\": \"Place 1 of 8\", \"bestLap\": \"1:32.418\", \"points\": 25, \"rows\": [{\"place\": 1, \"name\": \"You\", \"time\": \"14:02.311\", \"gap\": \"\", \"points\": 25, \"player\": true}, {\"place\": 2, \"name\": \"M. Okafor\", \"time\": \"14:03.515\", \"gap\": \"+1.204\", \"points\": 18, \"player\": false}, {\"place\": 3, \"name\": \"L. Varga\", \"time\": \"14:05.002\", \"gap\": \"+2.691\", \"points\": 15, \"player\": false}, {\"place\": 4, \"name\": \"S. Ishikawa\", \"time\": \"14:09.870\", \"gap\": \"+7.559\", \"points\": 12, \"player\": false}, {\"place\": 5, \"name\": \"R. Delacroix\", \"time\": \"14:12.144\", \"gap\": \"+9.833\", \"points\": 10, \"player\": false}, {\"place\": 6, \"name\": \"A. Lindqvist\", \"time\": \"14:20.660\", \"gap\": \"+18.349\", \"points\": 8, \"player\": false}, {\"place\": 7, \"name\": \"J. Moreno\", \"time\": \"14:31.007\", \"gap\": \"+28.696\", \"points\": 6, \"player\": false}, {\"place\": 8, \"name\": \"K. Brandt\", \"time\": \"DNF\", \"gap\": \"\", \"points\": 0, \"player\": false}], \"rewards\": [{\"name\": \"Credits\", \"amount\": 12500}, {\"name\": \"Driver XP\", \"amount\": 840}]}"
+column Results {
+  width grow
+  height grow
+  background token backdrop
+  padding 32
+  align center
+  cross center
+  at phone {
+    padding 12
+  }
+  column Panel {
+    width grow 0 920
+    height grow 0 860
+    padding 24
+    gap 16
+    background token panel
+    frame panel
+    part frame
+    on appear play land
+    at phone {
+      padding 16
+      gap 12
+    }
+    scroll Page {
+      width grow
+      height grow
+      gap 16
+      at phone {
+        gap 12
+      }
+      row Head {
+        width grow
+        gap 20
+        cross center
+        label Place {
+          text "P{place}"
+          step displayLg
+          font display
+          color token gold
+          part place
+          at phone {
+            step xl5
+          }
+        }
+        column Text {
+          width grow
+          gap 4
+          label Title {
+            text bind title
+            step xl3
+            heading true
+            at phone {
+              step xl2
+            }
+          }
+          label Field {
+            text bind fieldText
+            color token inkMuted
+          }
+        }
+      }
+      row Summary {
+        width grow
+        gap 24
+        wrap true
+        column BestLap {
+          gap 2
+          label Name {
+            key "screen.raceResults.bestLap"
+            text "Best lap"
+            step caption
+            color token inkMuted
+          }
+          label Value {
+            text bind bestLap
+            step lg
+            font mono
+          }
+        }
+        column Points {
+          gap 2
+          label Name {
+            key "screen.raceResults.points"
+            text "Points"
+            step caption
+            color token inkMuted
+          }
+          label Value {
+            text "+{points, grouped}"
+            step lg
+          }
+        }
+      }
+      slot Podium {
+        width grow
+      }
+      column Classification {
+        width grow
+        gap 4
+        row Head {
+          width grow
+          gap 12
+          padding 8 4
+          label Place {
+            key "screen.raceResults.pos"
+            text "Pos"
+            step caption
+            color token inkMuted
+            nowrap true
+            width 40
+            at phone {
+              width 44
+            }
+          }
+          label Driver {
+            key "screen.raceResults.driver"
+            text "Driver"
+            step caption
+            color token inkMuted
+            width grow
+          }
+          label Time {
+            key "screen.raceResults.time"
+            text "Time"
+            step caption
+            color token inkMuted
+            width 110
+            textAlign end
+            at phone {
+              visible false
+            }
+          }
+          label Gap {
+            key "screen.raceResults.gap"
+            text "Gap"
+            step caption
+            color token inkMuted
+            width 110
+            textAlign end
+            at phone {
+              visible false
+            }
+          }
+          label Points {
+            key "screen.raceResults.pts"
+            text "Pts"
+            step caption
+            color token inkMuted
+            width 48
+            textAlign end
+            at phone {
+              visible false
+            }
+          }
+        }
+        for row in rows {
+          row Row {
+            width grow
+            gap 12
+            padding 8 10
+            cross center
+            radius 6
+            part row
+            state player bind row.player {
+              other {
+                background token panelRaised
+              }
+              you {
+                background token primarySoft
+              }
+            }
+            label Place {
+              text bind row.place
+              font display
+              width 40
+              at phone {
+                width 44
+              }
+            }
+            column Who {
+              width grow
+              gap 2
+              label Driver {
+                text bind row.name
+                width grow
+                maxLines 1
+                ellipsis true
+              }
+              label TimeUnder {
+                text bind row.time
+                font mono
+                color token inkMuted
+                visible false
+                at phone {
+                  visible true
+                }
+              }
+            }
+            label Time {
+              text bind row.time
+              font mono
+              nowrap true
+              width 110
+              textAlign end
+              at phone {
+                visible false
+              }
+            }
+            label Gap {
+              text bind row.gap
+              font mono
+              nowrap true
+              color token inkMuted
+              width 110
+              textAlign end
+              at phone {
+                visible false
+              }
+            }
+            label Points {
+              text bind row.points
+              width 48
+              textAlign end
+              at phone {
+                visible false
+              }
+            }
+          }
+        }
+      }
+      row Rewards {
+        width grow
+        gap 12
+        wrap true
+        for reward in rewards {
+          badge Reward {
+            text "+{reward.amount, grouped} {reward.name}"
+            tone accent
+          }
+        }
+      }
+    }
+    row Footer {
+      width grow
+      gap 12
+      align end
+      wrap true
+      button Continue {
+        key "results.title"
+        text "Title"
+        variant secondary
+        on click emit continue
+      }
+      button Restart {
+        key "results.again"
+        text "Race again"
+        variant primary
+        on click emit restart
+        on action confirm emit restart
+      }
+    }
+  }
+}
