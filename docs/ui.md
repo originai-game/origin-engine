@@ -701,6 +701,63 @@ table) and cooks every document. `og ui eject <screen> [project]
 it; `og ui eject <kit>/<screen>` ejects a kit's (§17.1); `og ui eject
 --list` prints each with its row.
 
+### 11.2 Rive components
+
+A `.riv` file under `assets/` is converted at cook time into og-ui component
+blobs, one per artboard; the Rive runtime is not embedded. The pinned
+format is major version 7 (the documented format,
+https://rive.app/docs/runtimes/advanced-topic/format). A file of any other
+major version is a cook error that asks for a re-export. Luau scripts, and
+any feature the import does not convert, are cook errors that name the
+feature and the object it is on. The cook never drops a feature silently.
+
+**Settings.** The usual import-settings sidecar, `<file>.riv.ogt`:
+
+```text
+type import
+version 1
+---
+artboards Chest Lid        # which to cook (default: every artboard)
+artboard Chest {
+  state-machine Open       # the default machine (default: the first)
+  role button              # a11y role and name, per artboard
+  name "@chest.open"       # a string key or literal
+  fit contain              # contain cover fill none scale-down fit-width fit-height
+  align center             # where the fit places it
+}
+```
+
+**Identity.** An artboard's id is its asset path, `#`, and its name:
+`ui/chest.riv#Chest`. A document uses it as a component by that id. A
+style fills a frame with it:
+`Part::name.variant:state { -og-frame: rive("ui/chest.riv#Chest") }`.
+The id is the only way to spell it.
+
+**What the component exposes**, which documents and TS bind like any
+component's (its `.d.ts` is generated from them):
+
+| Rive | og-ui |
+|---|---|
+| View-model properties: number, string, boolean, colour, enum, nested view model | Props: `f32`, `string`, `bool`, `Color`, a union of the enum's values, a nested props object. Lists and image or artboard properties are cook errors until phase 3. |
+| View-model trigger | A callable trigger, `fire(<name>)` |
+| State-machine inputs: number, boolean | Props `f32`, `bool`, named `<machine>.<input>` unless a view-model property binds them |
+| State-machine trigger input | A callable trigger, `fire(<machine>.<input>)` |
+| Rive events, general and open-url | og-ui named events, with the event's custom properties as the payload; an open-url event carries its URL as data, and the engine opens nothing |
+| Artboard width and height | Intrinsic size, 1 Rive unit = 1 CSS px, placed by `fit` and `align` |
+
+**At run time.** An imported artboard runs on the UI tick with a fixed step:
+its animations, state machine and bindings advance with the world and are
+saved and restored with og-ui's state. It never reads the wall clock.
+Each Rive shape, text run, image and nested artboard is an og-ui element
+(id `<artboard>/<object name>`, its source the `.riv` path and the Rive
+object id). These elements show in `dump_ui`, `describe` and `pick` like any
+other element and draw with the UI pass's shapes and paths (§5.1).
+
+Phases: (1) artboards, shapes, gradients, strokes, images, text, keyframes
+of transform, opacity and colour, nested artboards; (2) state machines as
+og-ui state groups, and view models as data binding; (3) path morphing and
+bones.
+
 ## 12. Styles
 
 ### 12.1 What a style is
