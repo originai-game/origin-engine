@@ -13,7 +13,8 @@
 
 import { og } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
-import { Coin, COIN, CoinDrop, Duel, facts, Feedback, Fighter, FIGHTER, HEIGHT, Hud, Move, must, Seats, setBot, Sound, Sparks, Submit, Tuning, Voice, Voices, WIDTH } from "./game.ts";
+import { Coin, COIN, CoinDrop, Duel, facts, Feedback, Fighter, FIGHTER, HEIGHT, Hud, Move, must, SeatChanges, setBot, Sound, Sparks, Submit, Tuning, Voice, Voices, WIDTH } from "./game.ts";
+import { Seats, setupSeats } from "./seats.ts";
 
 /** The brand ink #14161b, linear, behind the floor. */
 const INK = { r: 0.00699, g: 0.00802, b: 0.01096 };
@@ -33,12 +34,8 @@ function rect(world: World, name: string, x: number, y: number, w: number, h: nu
 }
 
 function start(world: World): void {
-  // Lockstep for two: in a room the world waits for both seats' inputs each tick.
-  const lock = must(world.resource(og.Lockstep));
-  lock.enabled = true;
-  lock.players = 2;
-  lock.inputDelay = 2;
-  lock.hashEvery = 10;
+  // Two seats (src/creation.ts): lockstep over a room when online, both on this device when local.
+  setupSeats(world);
 
   const camera = must(world.resource(og.Camera));
   camera.orthographic = true;
@@ -78,7 +75,7 @@ export default og.game({
   seed: 1,
   look: "looks/arena.ogt",
   resources: [Duel, Tuning],
-  systems: [Submit, Seats, Move, CoinDrop, Feedback, Voices, Hud],
+  systems: [Seats, Submit, SeatChanges, Move, CoinDrop, Feedback, Voices, Hud],
   start,
   commands: {
     /** `bot:<n>`: this peer's input comes from scripted bot n (0 hands it back to the keys). */

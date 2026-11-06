@@ -1,13 +1,15 @@
 // Coin Duel's state and systems. Everything that moves the world reads
 // og.PlayerInput, the per-player input lockstep makes the same on every
-// peer; og.Input (this peer's keys) is read by one system only, Submit,
-// which hands it to og.net.submit. That split is the whole of what makes the
+// peer; og.Input (this peer's keys, pads and touch) is read by one system
+// only, src/seats.ts's Seats, which hands each local seat to og.net.submit
+// (Submit below replaces it with a scripted bot for playtests). That split is the whole of what makes the
 // game play over a room (docs/design.md §2.10): a system that read og.Input
 // to move a fighter would move it on this peer alone, and the other peer's
 // og.Desync would name the field.
 
 import { og, defineComponent, defineResource, defineSystem, f32, math, u32 } from "@origingame/engine";
 import type { Result, World } from "@origingame/engine";
+import { LOCAL, usesTouch } from "./seats.ts";
 
 /** The arena's floor, world units: (0, 0) to (WIDTH, HEIGHT). */
 export const WIDTH = 16;
@@ -115,8 +117,8 @@ function botInput(n: number, tick: number, from: { x: number; y: number }, to: {
   return { x: dx / len - (dy / len) * weave, y: dy / len + (dx / len) * weave, buttons: (tick + 23 * n) % 90 < 2 ? DASH : 0 };
 }
 
-/** This peer's keys (or pad, or bot) to og.net.submit: the only reader of og.Input. */
-export const Submit = defineSystem("Submit", { reads: [og.Input, og.Gamepad, og.Lockstep, Duel] }, (_q, time, world) => {
+/** With `bot:<n>`, this peer's seat plays a script instead of src/seats.ts's input (after Seats, so it wins). */
+export const Submit = defineSystem("Submit", { reads: [og.Lockstep, Duel], after: ["Seats"] }, (_q, time, world) => {
   if (bot > 0) {
     const d = must(world.resource(Duel));
     const me = must(world.resource(og.Lockstep)).localPlayer === 1 ? { x: d.x1, y: d.y1 } : { x: d.x0, y: d.y0 };
@@ -137,14 +139,6 @@ export const Submit = defineSystem("Submit", { reads: [og.Input, og.Gamepad, og.
     must(og.net.submit(world, { x: Math.max(-1, Math.min(1, input.x)), y: Math.max(-1, Math.min(1, input.y)), buttons: input.buttons }));
     return;
   }
-  const input = must(world.resource(og.Input));
-  const pad = must(world.resource(og.Gamepad));
-  const sx = pad.axis("leftX", 0);
-  const sy = pad.axis("leftY", 0);
-  const x = Math.max(-1, Math.min(1, input.axis("KeyA", "KeyD") + input.axis("ArrowLeft", "ArrowRight") + (Math.abs(sx) > 0.25 ? sx : 0)));
-  const y = Math.max(-1, Math.min(1, input.axis("KeyS", "KeyW") + input.axis("ArrowDown", "ArrowUp") - (Math.abs(sy) > 0.25 ? sy : 0)));
-  const dash = input.down("Space") || input.down("ShiftLeft") || pad.down("a", 0);
-  must(og.net.submit(world, { x, y, buttons: dash ? DASH : 0 }));
 });
 
 /** Each fighter from its player's og.PlayerInput: walk, dash, stay on the floor, take the coin. */
@@ -306,7 +300,7 @@ export const Voices = defineSystem("Voices", { writes: [Duel, Voice, og.AudioSou
 });
 
 /** Notes the seats changing hands. A dropped seat's og.PlayerInput is empty, so its fighter stands still until its player is back. */
-export const Seats = defineSystem("Seats", { reads: [og.SeatDropped, og.SeatRejoined], writes: [Duel] }, (_q, _time, world) => {
+export const SeatChanges = defineSystem("SeatChanges", { reads: [og.SeatDropped, og.SeatRejoined], writes: [Duel] }, (_q, _time, world) => {
   const duel = must(world.resource(Duel));
   for (const e of world.events(og.SeatDropped)) {
     duel.droppedAt = e.tick;
@@ -318,8 +312,31 @@ export const Seats = defineSystem("Seats", { reads: [og.SeatDropped, og.SeatRejo
   }
 });
 
+/**
+ * The camera keeps the whole floor (both fighters' reach) clear of the HUD
+ * and, on touch, of the controls (src/seats.ts's corners), inside the
+ * host's live safe area at any aspect. Presentation: og.Camera is each
+ * peer's own (never hashed).
+ */
+function fitCamera(world: World): void {
+  const vp = og.ui.viewport(world);
+  if (vp.width <= 0 || vp.height <= 0) return;
+  const portrait = vp.height > vp.width;
+  const touch = usesTouch();
+  const side = touch && !portrait ? (LOCAL ? 160 : 240) : 16;
+  const left = vp.safeArea.left + side;
+  const right = vp.width - vp.safeArea.right - side;
+  const top = vp.safeArea.top + (touch ? 136 : 72);
+  const bottom = vp.height - vp.safeArea.bottom - (touch && portrait ? 240 : touch ? 24 : 56);
+  const scale = Math.max(WIDTH / Math.max(1, right - left), HEIGHT / Math.max(1, bottom - top));
+  const camera = must(world.resource(og.Camera));
+  camera.height = scale * vp.height;
+  camera.position = { x: WIDTH / 2 + ((vp.width - left - right) * scale) / 2, y: HEIGHT / 2 + ((top + bottom - vp.height) * scale) / 2, z: 50 };
+}
+
 /** The HUD: both scores, and who this peer plays or whom it waits for. */
-export const Hud = defineSystem("Hud", { reads: [Duel, og.Lockstep] }, (_q, _time, world) => {
+export const Hud = defineSystem("Hud", { reads: [Duel, og.Lockstep], writes: [og.Camera] }, (_q, _time, world) => {
+  fitCamera(world);
   const duel = must(world.resource(Duel));
   const net = og.net.status(world);
   const lock = must(world.resource(og.Lockstep));
@@ -338,9 +355,11 @@ export const Hud = defineSystem("Hud", { reads: [Duel, og.Lockstep] }, (_q, _tim
           ? `You are ${lock.localPlayer === 0 ? "Red" : "Blue"}`
           : "Watching"
         : net.peer === null
-          ? "Local: Red"
+          ? LOCAL ? "Local: Red and Blue" : "Local: Red"
           : `Waiting for ${Math.max(0, lock.players - net.peers.length)} more`;
-  og.ui.anchor("Status", { anchor: "bottom", padding: { left: 16, top: 12, right: 16, bottom: 16 } }, () => {
+  // Under the scores on touch, where the controls hold the bottom corners.
+  const touch = usesTouch();
+  og.ui.anchor("Status", { anchor: touch ? "top" : "bottom", padding: { left: 16, top: touch ? 72 : 12, right: 16, bottom: 16 } }, () => {
     og.ui.label("Line", line, { color: { token: "inkMuted" }, nowrap: true });
   });
 });

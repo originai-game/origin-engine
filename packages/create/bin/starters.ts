@@ -83,6 +83,8 @@ export interface Starter {
   readonly views: readonly View[];
   /** Player counts it plays; a refused one's reason is in `refuse`. */
   readonly players: readonly Players[];
+  /** The player count its committed src/creation.ts holds (single when unset). */
+  readonly defaultPlayers?: Players;
   readonly refuse?: Partial<Record<Players, string>>;
   /** Seats it plays with local or online (2 for a duel or a pair). */
   readonly seats: number;
@@ -99,7 +101,7 @@ const k = (zero: string[], one: string[]) => [zero, one] as const;
 
 export const STARTERS = {
   arena: {
-    profile: "2d", views: ["top-down-2d"], players: BOTH_PLAYERS, seats: 2, kit: null,
+    profile: "2d", views: ["top-down-2d"], players: BOTH_PLAYERS, defaultPlayers: "online-lockstep", seats: 2, kit: null,
     systems: ["net", "rng", "render", "audio", "camera"],
     controls: { move: "stick", aim: "none", buttons: [{ name: "dash", label: "Dash", keys: k(["Space", "ShiftLeft"], ["Enter", "ShiftRight"]), pad: ["pad.a"] }] },
   },
@@ -359,7 +361,7 @@ export function starterDefaults(starter: StarterName): CreationChoices {
   const genre = (Object.keys(GENRES) as Genre[]).find((g) => Object.values(GENRES[g].starters).includes(starter))!;
   return {
     genre, view: s.views[0]!, look: s.profile === "2d" ? "16bit-pixel" : "faceted-low-poly", mood: "bright", ui: s.profile === "2d" ? "pixel" : "storybook",
-    platform: "desktop", input: "keyboard-mouse", players: "single", lang: ["en"], music: "ambient",
+    platform: "desktop", input: "keyboard-mouse", players: s.defaultPlayers ?? "single", lang: ["en"], music: "ambient",
   };
 }
 

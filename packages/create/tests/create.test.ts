@@ -9,6 +9,7 @@ import { artBrief, audioBrief, authoredArt, CREATION_CHOICES, localeScript, MOOD
 import { cpSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { SKIN_ELSEWHERE } from "../../knowledge/scripts/validate.ts";
+import { creationModule, GENRES, STARTERS, starterDefaults } from "../bin/starters.ts";
 
 declare const Bun: { spawnSync(cmd: string[], o?: { cwd?: string; env?: Record<string, string | undefined> }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
 
@@ -66,6 +67,19 @@ test("choice flags write a canonical create block and reject bad choices before 
   expect([...CREATION_CHOICES.ui].sort()).toEqual(readdirSync(styles).filter(s => existsSync(join(styles, s, "style.ogt"))).sort());
 });
 
+test("every starter on seats carries the one seats.ts and its creation.ts is the mapping at its defaults", () => {
+  const templates = join(pkg, "..", "..", "templates");
+  const master = readFileSync(join(templates, "game-2d/src/seats.ts"), "utf8");
+  for (const [name, s] of Object.entries(STARTERS)) {
+    const dir = join(templates, (s as { dir?: string }).dir ?? `archetypes/${name}`);
+    if (!existsSync(join(dir, "src/seats.ts"))) continue;
+    expect(readFileSync(join(dir, "src/seats.ts"), "utf8")).toBe(master);
+    expect(readFileSync(join(dir, "src/creation.ts"), "utf8")).toBe(creationModule(name as never, starterDefaults(name as never)));
+  }
+  // Every genre starts somewhere, and every starter a genre names exists.
+  for (const g of CREATION_CHOICES.genre) expect(Object.keys(GENRES[g].starters).length).toBeGreaterThan(0);
+});
+
 const engine = join(pkg, "../engine");
 const og = join(engine, "native", `og.${process.platform}-${process.arch}${process.platform === "win32" ? ".exe" : ""}`);
 const run = (dir: string, commands: string, size?: string) => {
@@ -86,6 +100,49 @@ test.skipIf(!existsSync(og))("local seats on one device each move their own cour
   expect(ran[0]).toBeGreaterThan(2 * ran[1]);
 }, 30000);
 
+test.skipIf(!existsSync(og))("local touch arena keeps the whole field clear of HUD and controls at both aspects", () => {
+  expect(cli("arena-fit", "--genre", "arena", "--players", "local-multiplayer", "--platform", "phone-portrait", "--look", "16bit-pixel", "--no-prompt").code).toBe(0);
+  const dir = join(scratch, "arena-fit");
+  for (const [width, height] of [[390, 844], [844, 390]] as const) {
+    const out = join(dir, `out-${width}`);
+    const r = Bun.spawnSync([og, "run", dir, "--commands", "0.3:get:og.Camera:camera.json;0.3:dump_ui:ui.json;0.4:quit", "--size", `${width}x${height}`, "--out", out], { env: { ...process.env, OG_ENGINE_PACKAGE: engine, OG_RENDERER: "none" } });
+    expect(r.exitCode).toBe(0);
+    const camera = JSON.parse(readFileSync(join(out, "camera.json"), "utf8")).value;
+    const pixels = height / camera.height;
+    // The floor is 0..16 by 0..9, both fighters' whole range.
+    const left = width / 2 - camera.position[0] * pixels;
+    const right = left + 16 * pixels;
+    const top = height / 2 - (9 - camera.position[1]) * pixels;
+    const bottom = top + 9 * pixels;
+    expect(left).toBeGreaterThanOrEqual(15);
+    expect(right).toBeLessThanOrEqual(width - 15);
+    expect(top).toBeGreaterThan(0);
+    expect(bottom).toBeLessThan(height);
+    const ui = JSON.parse(readFileSync(join(out, "ui.json"), "utf8"));
+    for (const path of ["Status/Line", "Score/P1", "Score/P2", "TouchMove0/Move", "TouchMove1/Move", "TouchMove0/Actions/dash", "TouchMove1/Actions/dash"]) {
+      const rect = ui.elements.find((e: { path: string }) => e.path === path);
+      expect(rect).toBeDefined();
+      expect(rect.x + rect.width <= left || rect.x >= right || rect.y + rect.height <= top || rect.y >= bottom).toBeTrue();
+    }
+  }
+}, 30000);
+
+test.skipIf(!existsSync(og))("local arena routes asymmetric keys and pads to independent fighters", () => {
+  for (const [input, commands] of [
+    ["keyboard-mouse", "0.1:key_down:KeyD;0.1:key_down:ArrowUp;0.5:key_up:KeyD;0.5:key_up:ArrowUp"],
+    ["gamepad", "0.1:gamepad:-@0:1,0;0.1:gamepad:-@1:0,-1;0.5:gamepad:-@0:0,0;0.5:gamepad:-@1:0,0"],
+  ] as const) {
+    expect(cli(`local-${input}`, "--genre", "arena", "--players", "local-multiplayer", "--look", "16bit-pixel", "--input", input, "--no-prompt").code).toBe(0);
+    const read = run(join(scratch, `local-${input}`), `${commands};0.6:dump_entity:fighter-0:red.json;0.6:dump_entity:fighter-1:blue.json;0.7:quit`);
+    const red = read("red.json").components["og.Transform"].position, blue = read("blue.json").components["og.Transform"].position;
+    // Red walked right only, Blue up only: each from its own seat (a tick of latency, as in a room).
+    expect(red[0]).toBeGreaterThan(4.5);
+    expect(red[1]).toBeCloseTo(4.5, 3);
+    expect(blue[0]).toBeCloseTo(13, 3);
+    expect(blue[1]).toBeGreaterThan(6);
+  }
+}, 30000);
+
 test.skipIf(!existsSync(og))("phone touch controls move and jump together on the native host", () => {
   expect(cli("touch-input", "--view", "side-2d", "--platform", "phone-portrait", "--look", "16bit-pixel", "--no-prompt").code).toBe(0);
   const read = run(join(scratch, "touch-input"), "0.3:touch:1:down:TouchMove0/Move/Right;0.3:touch:2:down:TouchActions0/jump;0.8:get:Game:game.json;0.8:get:og.RenderSettings:quality.json;0.9:quit", "390x844");
@@ -97,6 +154,8 @@ test.skipIf(!existsSync(og))("phone touch controls move and jump together on the
 function walk(root: string, at = root): string[] {
   return readdirSync(at).flatMap((e) => {
     const p = join(at, e);
+    // Build output is never copied, and .og/engine links back into the repository: never descend into it.
+    if (at === root && /^(cooked|dist|og-out|node_modules|\.og)$/.test(e)) return [`${e}/`];
     return statSync(p).isDirectory() ? walk(root, p) : [relative(root, p)];
   });
 }

@@ -51,6 +51,11 @@ export const SEATS: number = creation.seats;
 /** og.PlayerInput.buttons: the pause toggle, past every control's bit. */
 export const PAUSE = 1 << 15;
 
+/** Whether the touch controls show: the player chose touch, or the pointer is a finger. */
+export function usesTouch(): boolean {
+  return input === "touch" || og.ui.frameViewport().coarsePointer;
+}
+
 /** A control's bit in og.PlayerInput.buttons. */
 export function bit(name: string): number {
   if (name === "pause") return PAUSE;
@@ -152,35 +157,46 @@ const CURSOR_SPEED = 8;
 const MOUSE_LOOK = 0.12;
 const STICK_LOOK = 150 / 60;
 
-/** The touch controls of a seat: a stick or d-pad, a look stick, the buttons; what they hold. */
+/**
+ * The touch controls of a seat, and what they hold. Alone: the move bottom
+ * left, the look and buttons bottom right. Local: each seat one column in
+ * its own bottom corner (seat 0 left, seat 1 right), buttons over the move.
+ */
 function touch(seat: number): { x: number; y: number; lx: number; ly: number; buttons: number } {
   const out = { x: 0, y: 0, lx: 0, ly: 0, buttons: 0 };
-  const corner = LOCAL ? (seat === 0 ? "bottomLeft" : "bottomRight") : "bottomLeft";
-  if (controls.move !== "none") {
-    og.ui.anchor(`TouchMove${seat}`, { anchor: corner, direction: "column", gap: 12, cross: "center" }, () => {
-      if (controls.move === "dpad") {
-        const d = og.ui.dpad("Move", { size: LOCAL ? 112 : 132 });
-        out.x = Number(d.right) - Number(d.left);
-        out.y = Number(d.up) - Number(d.down);
-      } else {
-        const s = og.ui.joystick("Move", { size: LOCAL ? 112 : 132 });
-        out.x = s.x;
-        out.y = -s.y;
-      }
-    });
-  }
+  const size = LOCAL ? 112 : 132;
+  const move = () => {
+    if (controls.move === "dpad") {
+      const d = og.ui.dpad("Move", { size });
+      out.x = Number(d.right) - Number(d.left);
+      out.y = Number(d.up) - Number(d.down);
+    } else if (controls.move === "stick") {
+      const s = og.ui.joystick("Move", { size });
+      out.x = s.x;
+      out.y = -s.y;
+    }
+  };
   const pressable = controls.buttons.filter((b) => !b.surface);
-  if (pressable.length === 0 && controls.aim !== "look") return out;
-  og.ui.anchor(`TouchActions${seat}`, { anchor: LOCAL ? (seat === 0 ? "left" : "right") : "bottomRight", direction: LOCAL ? "column" : "row", gap: 12, cross: "end" }, () => {
+  const actions = () => {
     if (controls.aim === "look") {
-      const s = og.ui.joystick("Look", { size: 112 });
+      const s = og.ui.joystick("Look", { size: LOCAL ? 96 : 112 });
       out.lx = s.x * 2.5;
       out.ly = -s.y * 2.5;
     }
     pressable.forEach((b, i) => {
-      if (og.ui.actionButton(b.name, b.label, { size: i === 0 ? 76 : 60, primary: i === 0 }).pressed) out.buttons |= bit(b.name);
+      if (og.ui.actionButton(b.name, b.label, { size: i === 0 ? (LOCAL ? 64 : 76) : LOCAL ? 52 : 60, primary: i === 0 }).pressed) out.buttons |= bit(b.name);
     });
-  });
+  };
+  const some = pressable.length > 0 || controls.aim === "look";
+  if (LOCAL) {
+    og.ui.anchor(`TouchMove${seat}`, { anchor: seat === 0 ? "bottomLeft" : "bottomRight", direction: "column", gap: 12, cross: "center" }, () => {
+      if (some) og.ui.row("Actions", { gap: 8 }, actions);
+      move();
+    });
+    return out;
+  }
+  if (controls.move !== "none") og.ui.anchor(`TouchMove${seat}`, { anchor: "bottomLeft", direction: "column", gap: 12, cross: "center" }, move);
+  if (some) og.ui.anchor(`TouchActions${seat}`, { anchor: "bottomRight", direction: "row", gap: 12, cross: "end" }, actions);
   return out;
 }
 
@@ -194,7 +210,7 @@ export const Seats = defineSystem(
   "Seats",
   { reads: [og.Input, og.Pointers, og.Gamepad, og.Lockstep, og.Camera], writes: [og.PointerLock] },
   (_q, time, world) => {
-    const fingers = input === "touch" || og.ui.frameViewport().coarsePointer;
+    const fingers = usesTouch();
     if (controls.aim === "look" && !fingers) {
       const lock = world.resource(og.PointerLock);
       if (lock.ok) lock.value.wanted = true;
