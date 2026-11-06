@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Management dashboards (docs/ui.md Appendix B: ledgers, budgets, graphs,
 # overlays). Close, the title and the Ledger and Map views at the head;
@@ -39,20 +39,20 @@ actions {
 }
 fixture default "{\"view\": \"ledger\"}"
 column Screen {
-  width grow
-  height grow
-  padding 24
-  gap 12
-  at phone {
-    padding 12
+  width: stretch
+  height: stretch
+  padding: 24px
+  gap: 12px
+  @media phone {
+    padding: 12px
   }
   row Header {
-    width grow
-    padding 8
-    gap 12
-    cross center
-    wrap true
-    frame hud
+    width: stretch
+    padding: 8px
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
+    -og-frame: hud
     button Close {
       key "screen.common.close"
       text "Close"
@@ -62,7 +62,7 @@ column Screen {
     label Title {
       key "screen.management.title"
       text "Finances"
-      step xl
+      font: var(--text-xl)
       heading true
     }
     spacer
@@ -74,10 +74,10 @@ column Screen {
       on click emit view
       state selection bind "view != \"map\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
@@ -89,32 +89,32 @@ column Screen {
       on click emit view
       state selection bind "view == \"map\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
   }
   column LedgerPanel {
-    width grow
-    height grow
-    padding 16
-    background token panel
-    frame panel
+    width: stretch
+    height: stretch
+    padding: 16px
+    background: var(--panel)
+    -og-frame: panel
     visible bind "view != \"map\""
-    at phone {
-      padding 8
+    @media phone {
+      padding: 8px
     }
     slot Ledger {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
     }
   }
   spacer
   slot Overlays {
-    width grow
+    width: stretch
     visible bind "view == \"map\""
   }
 }

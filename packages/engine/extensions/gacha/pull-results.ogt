@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Pull results and pack opening (docs/ui.md Appendix B: gacha banner and
 # pull results; pack opening). Over everything: the charge, each result
@@ -28,34 +28,34 @@ actions {
 }
 fixture default "{\"count\": 10, \"again\": \"10 × 160\", \"canAgain\": true}"
 stack Results {
-  width grow
-  height grow
-  background token backdrop
+  width: stretch
+  height: stretch
+  background: var(--backdrop)
   slot Sequence {
-    width grow
-    height grow
-    position absolute
-    start 0
-    top 0
-    end 0
-    bottom 0
+    width: stretch
+    height: stretch
+    position: absolute
+    inset-inline-start: 0
+    top: 0
+    inset-inline-end: 0
+    bottom: 0
   }
   row Bar {
-    position absolute
-    start 24
-    end 24
-    bottom 24
-    gap 12
-    align end
-    at phone {
-      start 12
-      end 12
-      bottom 12
+    position: absolute
+    inset-inline-start: 24px
+    inset-inline-end: 24px
+    bottom: 24px
+    gap: 12px
+    justify-content: end
+    @media phone {
+      inset-inline-start: 12px
+      inset-inline-end: 12px
+      bottom: 12px
     }
     label Count {
       text "{count, plural, one {# result} other {# results}}"
-      step caption
-      color token inkMuted
+      font: var(--text-caption)
+      color: var(--ink-muted)
     }
     spacer
     button Again {

@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Mailbox (docs/ui.md Appendix B). The letters, unread first, each its
 # sender, subject, expiry and an attachment mark; the selected letter's
@@ -23,18 +23,18 @@ actions {
 }
 fixture default "{\"mails\": [{\"from\": \"The Guild\", \"subject\": \"Your weekly stipend\", \"expires\": 518400, \"unread\": true, \"gift\": true}, {\"from\": \"Support\", \"subject\": \"Sorry for the downtime\", \"expires\": 0, \"unread\": false, \"gift\": true}], \"selected\": 0, \"mail\": {\"from\": \"The Guild\", \"subject\": \"Your weekly stipend\", \"body\": \"For your service this week, adventurer.\", \"collected\": false, \"gifts\": [{\"name\": \"Gold\", \"amount\": 2000, \"texture\": 0}, {\"name\": \"Gems\", \"amount\": 30, \"texture\": 0}]}}"
 column Screen {
-  width grow
-  height grow
-  padding 32
-  gap 12
-  at phone {
-    padding 16
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 12px
+  @media phone {
+    padding: 16px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Back {
       key "screen.common.back"
       text "Back"
@@ -44,10 +44,10 @@ column Screen {
     label Title {
       key "screen.mailbox.title"
       text "Mail"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
     spacer
@@ -56,7 +56,7 @@ column Screen {
       text "Delete read"
       variant quiet
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit deleteRead
@@ -66,53 +66,53 @@ column Screen {
       text "Collect all"
       variant primary
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit collectAll
     }
   }
   grid Body {
-    width grow
-    height grow
-    gap 24
-    columns "2fr" "3fr"
-    rows "1fr"
-    at phonePortrait {
-      columns "1fr"
-      rows "1fr" auto
-      gap 12
+    width: stretch
+    height: stretch
+    gap: 24px
+    grid-template-columns: 2fr 3fr
+    grid-template-rows: 1fr
+    @media phone-portrait {
+      grid-template-columns: 1fr
+      grid-template-rows: 1fr auto
+      gap: 12px
     }
     scroll Mails {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
       column List {
-        width grow
-        gap 4
+        width: stretch
+        gap: 4px
         focusGroup stop
         for m in mails {
           row Mail {
-            width grow
-            padding 10
-            gap 10
-            cross center
-            radius 8
+            width: stretch
+            padding: 10px
+            gap: 10px
+            align-items: center
+            border-radius: 8px
             interactive true
             focusable true
             on click set selected "$index"
             on click emit select
             column Text {
-              width grow
-              gap 2
+              width: stretch
+              gap: 2px
               label From {
                 text bind m.from
-                step caption
-                color token inkMuted
+                font: var(--text-caption)
+                color: var(--ink-muted)
               }
               label Subject {
                 text bind m.subject
-                maxLines 1
-                ellipsis true
+                line-clamp: 1
+                text-overflow: ellipsis
               }
             }
             icon Gift {
@@ -122,93 +122,88 @@ column Screen {
             }
             label Expires {
               text "{m.expires, duration}"
-              step caption
-              color token warn
+              font: var(--text-caption)
+              color: var(--warn)
               visible bind "m.expires > 0"
             }
             state selection bind "$index == selected" {
               off {
-                background token panel
+                background: var(--panel)
               }
               on {
-                background token primarySoft
+                background: var(--primary-soft)
               }
-              transition any any token ui
+              transition: var(--motion-ui)
             }
             state read bind m.unread {
               read {
-                opacity 0.7
+                opacity: 0.7
               }
               unread {
-                opacity 1
+                opacity: 1
               }
             }
-            state interaction {
-              normal {
-                scale 1
-              }
-              hover {
-                scale 1.01
-              }
-              pressed {
-                scale 0.99
-              }
-              focused {
-                scale 1.01
-              }
-              transition any any token ui
+            :hover {
+              scale: 1.01
             }
+            :active {
+              scale: 0.99
+            }
+            :focus-visible {
+              scale: 1.01
+            }
+            -og-state-transition: var(--motion-ui)
           }
         }
       }
     }
     column Letter {
-      width grow
-      padding 16
-      gap 10
-      background token panel
-      frame panel
+      width: stretch
+      padding: 16px
+      gap: 10px
+      background: var(--panel)
+      -og-frame: panel
       visible bind "mails.length > 0"
       label Subject {
         text bind mail.subject
-        step lg
+        font: var(--text-lg)
         heading true
       }
       label From {
         text bind mail.from
-        step caption
-        color token inkMuted
+        font: var(--text-caption)
+        color: var(--ink-muted)
       }
       label Body {
         text bind mail.body
-        step reading
+        font: var(--text-reading)
       }
       row Gifts {
-        width grow
-        gap 8
-        wrap true
+        width: stretch
+        gap: 8px
+        flex-wrap: wrap
         for g in mail.gifts {
           column Gift {
-            padding 8
-            gap 4
-            cross center
-            background token panelRaised
-            frame card
+            padding: 8px
+            gap: 4px
+            align-items: center
+            background: var(--panel-raised)
+            -og-frame: card
             art Art {
               kind itemIcon
-              width 48
-              height 48
+              width: 48px
+              height: 48px
               texture bind g.texture
             }
             label Amount {
               text "{g.name} ×{g.amount, compact}"
-              step caption
+              font: var(--text-caption)
             }
           }
         }
       }
       slot Attachments {
-        width grow
+        width: stretch
       }
       button Collect {
         key "screen.mailbox.collect"

@@ -8,7 +8,7 @@ use og_cook::{CookOptions, cook_project};
 use std::path::PathBuf;
 
 const SCREEN: &str = r#"type screen
-version 1
+version 2
 ---
 name "shop"
 layer menu

@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Photo mode (docs/ui.md Appendix B). The game frozen under it with the
 # HUD hidden, the photo mode's controls over it, and the shots taken this
@@ -41,31 +41,31 @@ actions {
 }
 fixture default "{\"hidden\": false, \"shots\": 3}"
 stack Photo {
-  width grow
-  height grow
+  width: stretch
+  height: stretch
   slot Controls {
-    width grow
-    height grow
-    position absolute
-    start 0
-    top 0
-    end 0
-    bottom 0
+    width: stretch
+    height: stretch
+    position: absolute
+    inset-inline-start: 0
+    top: 0
+    inset-inline-end: 0
+    bottom: 0
   }
   button Gallery {
     text "Gallery ({shots})"
-    position absolute
-    start 24
-    top 24
+    position: absolute
+    inset-inline-start: 24px
+    top: 24px
     visible bind "!hidden && shots > 0"
     on click emit gallery
-    at phone {
-      start 12
-      top 56
+    @media phone {
+      inset-inline-start: 12px
+      top: 56px
     }
-    at phoneLandscape {
-      start 52
-      top 12
+    @media phone-landscape {
+      inset-inline-start: 52px
+      top: 12px
     }
   }
 }

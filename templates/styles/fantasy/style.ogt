@@ -1,7 +1,7 @@
 type style
-version 2
+version 3
 ---
-# The fantasy style pack: dark fantasy, the approved concept A (tests/evidence/ui-art/concepts/A-*.jpg). Its frames, buttons and ornaments are painted (art/, with art/provenance.json) and packed by og style art; its meters, soft shadow and icons come from make-styles.py (CC0); OFL fonts (LICENSES.md).
+# The fantasy style pack: dark fantasy, the approved concept A (concepts/A-*.jpg). Its frames, buttons and ornaments are painted (art/, with art/provenance.json) and packed by og style art; its meters, soft shadow and icons come from make-styles.py (CC0); OFL fonts (LICENSES.md).
 name "fantasy"
 scheme dark
 atlas "atlas.png" 512 557 2 3
@@ -9,75 +9,75 @@ atlas "atlas.png" 512 557 2 3
 recolour "#d4993a" primary
 scale 1
 palette {
-  backdrop "#0d0a08"
-  well "#120e0b"
-  panel "#1b1511"
-  panelHover "#251d17"
-  panelRaised "#211a15"
-  line "#4d3c27"
-  lineStrong "#8c6b3a"
-  ink "#ecdfc4"
-  inkMuted "#c4b596"
-  inkFaint "#a09175"
-  inkInverse "#1a1209"
-  control "#2a2119"
-  controlStrong "#3b2e21"
-  primary "#d4993a"
-  primaryHover "#e0a84a"
-  primaryActive "#b9802a"
-  onPrimary "#1c1106"
-  primarySoft "#d4993a29"
-  highlight "#e6b85e"
-  focus "#f2c86c"
-  knob "#5a4328"
-  hud "#1b1511eb"
-  scrim "#050302cc"
-  shadow "#000000cc"
-  sheen "#ffffff2e"
-  success "#7cc265"
-  warn "#e0a240"
-  danger "#e84040"
-  info "#78a6e0"
-  health "#d55d51"
-  mana "#4a8ae8"
-  xp "#b77ae8"
-  gold "#e6b85e"
+  --backdrop: #0d0a08
+  --well: #120e0b
+  --panel: #1b1511
+  --panel-hover: #251d17
+  --panel-raised: #211a15
+  --line: #4d3c27
+  --line-strong: #8c6b3a
+  --ink: #ecdfc4
+  --ink-muted: #c4b596
+  --ink-faint: #a09175
+  --ink-inverse: #1a1209
+  --control: #2a2119
+  --control-strong: #3b2e21
+  --primary: #d4993a
+  --primary-hover: #e0a84a
+  --primary-active: #b9802a
+  --on-primary: #1c1106
+  --primary-soft: #d4993a29
+  --highlight: #e6b85e
+  --focus: #f2c86c
+  --knob: #5a4328
+  --hud: #1b1511eb
+  --scrim: #050302cc
+  --shadow: #000000cc
+  --sheen: #ffffff2e
+  --success: #7cc265
+  --warn: #e0a240
+  --danger: #e84040
+  --info: #78a6e0
+  --health: #d55d51
+  --mana: #4a8ae8
+  --xp: #b77ae8
+  --gold: #e6b85e
 }
 colors {
-  success icon "check"
-  warn icon "flag"
-  danger icon "skull"
-  info icon "map"
-  common "#a89f8e" pips 1
-  uncommon "#6fbf55" pips 2
-  rare "#5b9be8" pips 3
-  epic "#b77ae8" pips 4
-  legendary "#e8601a" icon "crown"
-  mythic "#e8505f" icon "gem"
-  team1 "#5b9be8"
-  team2 "#e8505f"
-  team3 "#6fbf55"
-  team4 "#e8a33a"
-  team5 "#b77ae8"
-  team6 "#e0803a"
-  team7 "#4cc0b8"
-  team8 "#e070b0"
-  physical "#b0a28a" icon "sword"
-  fire "#ec6a36" icon "fire"
-  ice "#6ab8e0" icon "drop"
-  lightning "#e6c44a" icon "bolt"
-  poison "#8cc04a" icon "potion"
-  holy "#e8cf7a" icon "star"
-  shadow "#a080d8" icon "skull"
-  arcane "#d070e0" pattern stars
-  series1 "#5b9be8"
-  series2 "#e8a33a"
-  series3 "#e8505f"
-  series4 "#6fbf55"
-  series5 "#b77ae8"
-  series6 "#4cc0b8"
-  series7 "#e0803a"
-  series8 "#b0a28a"
+  --success: icon "check"
+  --warn: icon "flag"
+  --danger: icon "skull"
+  --info: icon "map"
+  --common: #a89f8e pips 1
+  --uncommon: #6fbf55 pips 2
+  --rare: #5b9be8 pips 3
+  --epic: #b77ae8 pips 4
+  --legendary: #e8601a icon "crown"
+  --mythic: #e8505f icon "gem"
+  --team1: #5b9be8
+  --team2: #e8505f
+  --team3: #6fbf55
+  --team4: #e8a33a
+  --team5: #b77ae8
+  --team6: #e0803a
+  --team7: #4cc0b8
+  --team8: #e070b0
+  --physical: #b0a28a icon "sword"
+  --fire: #ec6a36 icon "fire"
+  --ice: #6ab8e0 icon "drop"
+  --lightning: #e6c44a icon "bolt"
+  --poison: #8cc04a icon "potion"
+  --holy: #e8cf7a icon "star"
+  --shadow: #a080d8 icon "skull"
+  --arcane: #d070e0 pattern stars
+  --series1: #5b9be8
+  --series2: #e8a33a
+  --series3: #e8505f
+  --series4: #6fbf55
+  --series5: #b77ae8
+  --series6: #4cc0b8
+  --series7: #e0803a
+  --series8: #b0a28a
 }
 typography {
   display 42 48 0.06 700 display {
@@ -95,38 +95,38 @@ typography {
   numeric 19 26 0.02 700 numeric
 }
 space {
-  xxs 2
-  xs 4
-  sm 8
-  md 12
-  lg 16
-  xl 24
-  xxl 32
-  xl3 48
+  --space-xxs: 2px
+  --space-xs: 4px
+  --space-sm: 8px
+  --space-md: 12px
+  --space-lg: 16px
+  --space-xl: 24px
+  --space-xxl: 32px
+  --space-xl3: 48px
 }
 size {
-  xs 16
-  sm 24
-  md 32
-  lg 48
-  xl 64
-  xxl 96
-  touch 44
+  --size-xs: 16px
+  --size-sm: 24px
+  --size-md: 32px
+  --size-lg: 48px
+  --size-xl: 64px
+  --size-xxl: 96px
+  --size-touch: 44px
 }
 radius {
-  xs 2
-  sm 4
-  md 6
-  lg 8
-  xl 12
-  pill 9999
+  --radius-xs: 2px
+  --radius-sm: 4px
+  --radius-md: 6px
+  --radius-lg: 8px
+  --radius-xl: 12px
+  --radius-pill: 9999px
 }
 stroke {
-  hairline 1
-  thin 1.5
-  regular 2
-  thick 3
-  focus 2
+  --stroke-hairline: 1px
+  --stroke-thin: 1.5px
+  --stroke-regular: 2px
+  --stroke-thick: 3px
+  --stroke-focus: 2px
 }
 elevation {
   raised {
@@ -240,215 +240,215 @@ sounds {
   revealLegendary none haptic thud
   revealMythic none haptic thud
 }
-dress "Panel.frame" {
-  slice 1 257 96 96 24 24 24 24 authored
-  tone 0.005 0.004 0.003 0.99
-  shadow 0 10 18 2 "#000000b3"
-  corners
-  crest
-  edges
+Panel::frame {
+  -og-slice: 1 257 96 96 24 24 24 24 authored
+  -og-tone: 0.005 0.004 0.003 0.99
+  box-shadow: 0 10px 18px 2px #000000b3
+  -og-corners: true
+  -og-crest: true
+  -og-edges: true
 }
-dress "Card.frame" {
-  slice 99 257 96 96 20 20 20 20 authored
-  tone 0.011 0.01 0.008 0.99
-  shadow 0 4 8 0 "#00000066"
+Card::frame {
+  -og-slice: 99 257 96 96 20 20 20 20 authored
+  -og-tone: 0.011 0.01 0.008 0.99
+  box-shadow: 0 4px 8px 0 #00000066
 }
-dress "Button.base" {
-  slice 172 4 48 48 10 tint
-  tone 0.789 0.789 0.789 1.00
-  shadow 0 3 4 0 "#00000073"
-  press 0.98 0.96 1
-  hover 0 1.0
+Button::base {
+  -og-slice: 172 4 48 48 10 tint
+  -og-tone: 0.789 0.789 0.789 1.00
+  box-shadow: 0 3px 4px 0 #00000073
+  -og-press: 0.98 0.96 1
+  -og-hover: 0 1.0
 }
-dress "Button.base[hover]" {
-  slice 224 4 48 48 10 tint
-  tone 0.890 0.890 0.890 1.00
+Button::base:hover {
+  -og-slice: 224 4 48 48 10 tint
+  -og-tone: 0.890 0.890 0.890 1.00
 }
-dress "Button.base[pressed]" {
-  slice 276 4 48 48 10 tint
-  tone 0.693 0.693 0.693 1.00
+Button::base:active {
+  -og-slice: 276 4 48 48 10 tint
+  -og-tone: 0.693 0.693 0.693 1.00
 }
-dress "Button.base[disabled]" {
-  slice 328 4 48 48 10 tint
-  tone 0.630 0.630 0.630 1.00
+Button::base:disabled {
+  -og-slice: 328 4 48 48 10 tint
+  -og-tone: 0.630 0.630 0.630 1.00
 }
-dress "Field.frame" {
-  slice 1 493 184 40 12 12 12 12 authored
-  tone 0.005 0.004 0.004 0.99
+Field::frame {
+  -og-slice: 1 493 184 40 12 12 12 12 authored
+  -og-tone: 0.005 0.004 0.004 0.99
 }
-dress "Slot.frame" {
-  stroke 1 lineStrong inside
-  effect innerShadow 0 2 4 0 "#000000a6"
+Slot::frame {
+  -og-stroke: 1px var(--line-strong) inside
+  -og-effect: inner-shadow 0 2 4 0 #000000a6
 }
-dress "Tooltip.frame" {
-  slice 275 257 110 48 12 12 12 12 authored
-  tone 0.007 0.006 0.005 0.99
+Tooltip::frame {
+  -og-slice: 275 257 110 48 12 12 12 12 authored
+  -og-tone: 0.007 0.006 0.005 0.99
 }
-dress "Hud.frame" {
-  slice 187 493 148 40 14 12 14 12 authored
-  tone 0.008 0.006 0.005 0.99
-  shadow 0 3 6 0 "#00000080"
+Hud::frame {
+  -og-slice: 187 493 148 40 14 12 14 12 authored
+  -og-tone: 0.008 0.006 0.005 0.99
+  box-shadow: 0 3px 6px 0 #00000080
 }
-dress "Meter.track" {
-  slice 180 104 32 16 6 tint
-  tone 0.692 0.692 0.692 1.00
+Meter::track {
+  -og-slice: 180 104 32 16 6 tint
+  -og-tone: 0.692 0.692 0.692 1.00
 }
-dress "Meter.fill" {
-  slice 216 104 32 16 6 tint
-  tone 0.788 0.788 0.788 1.00
+Meter::fill {
+  -og-slice: 216 104 32 16 6 tint
+  -og-tone: 0.788 0.788 0.788 1.00
 }
-dress "Button.base[secondary]" {
-  slice 1 355 155 44 12 14 12 14 authored
-  tone 0.01 0.008 0.006 0.99
+Button::base.secondary {
+  -og-slice: 1 355 155 44 12 14 12 14 authored
+  -og-tone: 0.01 0.008 0.006 0.99
 }
-dress "Button.base[secondary][hover]" {
-  slice 158 355 155 44 12 14 12 14 authored
-  tone 0.041 0.038 0.034 0.99
+Button::base.secondary:hover {
+  -og-slice: 158 355 155 44 12 14 12 14 authored
+  -og-tone: 0.041 0.038 0.034 0.99
 }
-dress "Button.base[secondary][pressed]" {
-  slice 315 355 155 44 12 14 12 14 authored
-  tone 0.007 0.006 0.005 0.99
+Button::base.secondary:active {
+  -og-slice: 315 355 155 44 12 14 12 14 authored
+  -og-tone: 0.007 0.006 0.005 0.99
 }
-dress "Button.base[secondary][disabled]" {
-  slice 1 401 155 44 12 14 12 14 authored
-  tone 0.007 0.007 0.006 0.99
+Button::base.secondary:disabled {
+  -og-slice: 1 401 155 44 12 14 12 14 authored
+  -og-tone: 0.007 0.007 0.006 0.99
 }
-dress "Button.base[primary]" {
-  slice 158 401 168 44 12 14 12 14 authored
-  tone 0.752 0.338 0.025 0.99
+Button::base.primary {
+  -og-slice: 158 401 168 44 12 14 12 14 authored
+  -og-tone: 0.752 0.338 0.025 0.99
 }
-dress "Button.base[primary][hover]" {
-  slice 328 401 168 44 12 14 12 14 authored
-  tone 0.783 0.408 0.068 0.99
+Button::base.primary:hover {
+  -og-slice: 328 401 168 44 12 14 12 14 authored
+  -og-tone: 0.783 0.408 0.068 0.99
 }
-dress "Button.base[primary][pressed]" {
-  slice 1 447 168 44 12 14 12 14 authored
-  tone 0.456 0.208 0.017 0.99
+Button::base.primary:active {
+  -og-slice: 1 447 168 44 12 14 12 14 authored
+  -og-tone: 0.456 0.208 0.017 0.99
 }
-dress "Button.base[primary][disabled]" {
-  slice 171 447 168 44 12 14 12 14 authored
-  tone 0.317 0.255 0.169 0.99
+Button::base.primary:disabled {
+  -og-slice: 171 447 168 44 12 14 12 14 authored
+  -og-tone: 0.317 0.255 0.169 0.99
 }
-dress "Slider.knob" {
-  slice 371 493 24 24 1 1 1 1 authored
-  tone 0.231 0.117 0.036 0.99
+Slider::knob {
+  -og-slice: 371 493 24 24 1 1 1 1 authored
+  -og-tone: 0.231 0.117 0.036 0.99
 }
-dress "Toggle.knob[on]" {
-  slice 397 493 24 24 1 1 1 1 authored
-  tone 0.643 0.273 0.031 0.99
+Toggle::knob:checked {
+  -og-slice: 397 493 24 24 1 1 1 1 authored
+  -og-tone: 0.643 0.273 0.031 0.99
 }
-dress "Toggle.knob[off]" {
-  slice 423 493 24 24 1 1 1 1 authored
-  tone 0.168 0.084 0.031 0.99
+Toggle::knob.off {
+  -og-slice: 423 493 24 24 1 1 1 1 authored
+  -og-tone: 0.168 0.084 0.031 0.99
 }
-dress "Tabs.track" {
-  fill none
-  stroke none
-  effect none
+Tabs::track {
+  -og-fill: none
+  -og-stroke: none
+  -og-effect: none
 }
-dress "Tabs.tab[selected]" {
-  fill none
-  stroke none
-  effect none
+Tabs::tab:selected {
+  -og-fill: none
+  -og-stroke: none
+  -og-effect: none
 }
-dress "Tabs.indicator" {
-  fill primary
-  effect outerGlow 6 "#e8a33a59"
+Tabs::indicator {
+  -og-fill: var(--primary)
+  -og-effect: outer-glow 6 #e8a33a59
 }
-dress "Slot.frame[rarity=common]" {
-  stroke 2 "#9c6b3c" inside
+Slot::frame[rarity=common] {
+  -og-stroke: 2px #9c6b3c inside
 }
-dress "Slot.frame[rarity=uncommon]" {
-  stroke 2 "#6fbf55" inside
+Slot::frame[rarity=uncommon] {
+  -og-stroke: 2px #6fbf55 inside
 }
-dress "Slot.frame[rarity=rare]" {
-  stroke 2 "#5b9be8" inside
+Slot::frame[rarity=rare] {
+  -og-stroke: 2px #5b9be8 inside
 }
-dress "Slot.frame[rarity=epic]" {
-  stroke 2 "#b77ae8" inside
-  effect outerGlow 8 "#b77ae866"
+Slot::frame[rarity=epic] {
+  -og-stroke: 2px #b77ae8 inside
+  -og-effect: outer-glow 8 #b77ae866
 }
-dress "Slot.frame[rarity=legendary]" {
-  stroke 2 "#e8601a" inside
-  effect outerGlow 10 "#e8601a80"
-  material shine 0.6
+Slot::frame[rarity=legendary] {
+  -og-stroke: 2px #e8601a inside
+  -og-effect: outer-glow 10 #e8601a80
+  -og-material: shine 0.6
 }
-dress "Slot.frame[rarity=mythic]" {
-  stroke 2 "#e8505f" inside
-  effect outerGlow 12 "#e8505f80"
+Slot::frame[rarity=mythic] {
+  -og-stroke: 2px #e8505f inside
+  -og-effect: outer-glow 12 #e8505f80
 }
-dress "Button.base[secondary][narrow]" {
-  slice 172 4 48 48 10 tint
-  tone 0.789 0.789 0.789 1.00
+Button::base.secondary.narrow {
+  -og-slice: 172 4 48 48 10 tint
+  -og-tone: 0.789 0.789 0.789 1.00
 }
-dress "Button.base[secondary][narrow][hover]" {
-  slice 224 4 48 48 10 tint
-  tone 0.890 0.890 0.890 1.00
+Button::base.secondary.narrow:hover {
+  -og-slice: 224 4 48 48 10 tint
+  -og-tone: 0.890 0.890 0.890 1.00
 }
-dress "Button.base[secondary][narrow][pressed]" {
-  slice 276 4 48 48 10 tint
-  tone 0.693 0.693 0.693 1.00
+Button::base.secondary.narrow:active {
+  -og-slice: 276 4 48 48 10 tint
+  -og-tone: 0.693 0.693 0.693 1.00
 }
-dress "Button.base[secondary][narrow][disabled]" {
-  slice 328 4 48 48 10 tint
-  tone 0.630 0.630 0.630 1.00
+Button::base.secondary.narrow:disabled {
+  -og-slice: 328 4 48 48 10 tint
+  -og-tone: 0.630 0.630 0.630 1.00
 }
-dress "Button.base[primary][narrow]" {
-  slice 172 4 48 48 10 tint
-  tone 0.789 0.789 0.789 1.00
+Button::base.primary.narrow {
+  -og-slice: 172 4 48 48 10 tint
+  -og-tone: 0.789 0.789 0.789 1.00
 }
-dress "Button.base[primary][narrow][hover]" {
-  slice 224 4 48 48 10 tint
-  tone 0.890 0.890 0.890 1.00
+Button::base.primary.narrow:hover {
+  -og-slice: 224 4 48 48 10 tint
+  -og-tone: 0.890 0.890 0.890 1.00
 }
-dress "Button.base[primary][narrow][pressed]" {
-  slice 276 4 48 48 10 tint
-  tone 0.693 0.693 0.693 1.00
+Button::base.primary.narrow:active {
+  -og-slice: 276 4 48 48 10 tint
+  -og-tone: 0.693 0.693 0.693 1.00
 }
-dress "Button.base[primary][narrow][disabled]" {
-  slice 328 4 48 48 10 tint
-  tone 0.630 0.630 0.630 1.00
+Button::base.primary.narrow:disabled {
+  -og-slice: 328 4 48 48 10 tint
+  -og-tone: 0.630 0.630 0.630 1.00
 }
-dress "Chip.base[selected]" {
-  stroke 1.5 primary inside
-  effect outerGlow 8 "#e8a33a59"
+Chip::base:selected {
+  -og-stroke: 1.5px var(--primary) inside
+  -og-effect: outer-glow 8 #e8a33a59
 }
-dress "Slot.frame[selected]" {
-  stroke 2 focus inside
-  effect outerGlow 8 "#e8a33a59"
+Slot::frame:selected {
+  -og-stroke: 2px var(--focus) inside
+  -og-effect: outer-glow 8 #e8a33a59
 }
-dress "Button.base[danger]" {
-  slice none
-  fill "#8a1a1a"
-  stroke 1 "#e84040" inside
+Button::base.danger {
+  -og-slice: none
+  -og-fill: #8a1a1a
+  -og-stroke: 1px #e84040 inside
 }
-dress "Inventory.item" {
-  stroke 1 lineStrong inside
-  effect innerShadow 0 2 4 0 "#000000a6"
+Inventory::item {
+  -og-stroke: 1px var(--line-strong) inside
+  -og-effect: inner-shadow 0 2 4 0 #000000a6
 }
-dress "Inventory.item[rarity=common]" {
-  stroke 2 "#9c6b3c" inside
+Inventory::item[rarity=common] {
+  -og-stroke: 2px #9c6b3c inside
 }
-dress "Inventory.item[rarity=uncommon]" {
-  stroke 2 "#6fbf55" inside
+Inventory::item[rarity=uncommon] {
+  -og-stroke: 2px #6fbf55 inside
 }
-dress "Inventory.item[rarity=rare]" {
-  stroke 2 "#5b9be8" inside
+Inventory::item[rarity=rare] {
+  -og-stroke: 2px #5b9be8 inside
 }
-dress "Inventory.item[rarity=epic]" {
-  stroke 2 "#b77ae8" inside
-  effect outerGlow 8 "#b77ae866"
+Inventory::item[rarity=epic] {
+  -og-stroke: 2px #b77ae8 inside
+  -og-effect: outer-glow 8 #b77ae866
 }
-dress "Inventory.item[rarity=legendary]" {
-  stroke 2 "#e8601a" inside
-  effect outerGlow 10 "#e8601a80"
-  material shine 0.6
+Inventory::item[rarity=legendary] {
+  -og-stroke: 2px #e8601a inside
+  -og-effect: outer-glow 10 #e8601a80
+  -og-material: shine 0.6
 }
-dress "Inventory.item[rarity=mythic]" {
-  stroke 2 "#e8505f" inside
-  effect outerGlow 12 "#e8505f80"
+Inventory::item[rarity=mythic] {
+  -og-stroke: 2px #e8505f inside
+  -og-effect: outer-glow 12 #e8505f80
 }
-dress "Inventory.item[selected]" {
-  stroke 2 focus inside
-  effect outerGlow 8 "#e8a33a59"
+Inventory::item:selected {
+  -og-stroke: 2px var(--focus) inside
+  -og-effect: outer-glow 8 #e8a33a59
 }

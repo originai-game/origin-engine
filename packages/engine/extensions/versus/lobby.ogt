@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Lobby and party (docs/ui.md Appendix B: lobby, party, matchmaking,
 # ready check). The party's lineup, the mode and the one action (Ready,
@@ -26,18 +26,18 @@ actions {
 }
 fixture default "{\"code\": \"K7QX-42\", \"privacy\": \"Friends only\"}"
 column Screen {
-  width grow
-  height grow
-  padding 24
-  gap 12
-  at phone {
-    padding 12
+  width: stretch
+  height: stretch
+  padding: 24px
+  gap: 12px
+  @media phone {
+    padding: 12px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Leave {
       key "screen.lobby.leave"
       text "Leave"
@@ -47,17 +47,17 @@ column Screen {
     label Title {
       key "screen.lobby.title"
       text "Party"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
     spacer
     button Code {
       text "Code {code}"
       size small
-      at phone {
+      @media phone {
         size medium
       }
       visible bind "code != \"\""
@@ -66,7 +66,7 @@ column Screen {
     button Privacy {
       text bind privacy
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit privacy
@@ -75,30 +75,30 @@ column Screen {
       key "screen.lobby.invite"
       text "Invite"
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit invite
     }
   }
   grid Body {
-    width grow
-    height grow
-    gap 16
-    columns "1fr" 300
-    rows "1fr"
-    at phonePortrait {
-      columns "1fr"
-      rows "1fr"
+    width: stretch
+    height: stretch
+    gap: 16px
+    grid-template-columns: 1fr 300px
+    grid-template-rows: 1fr
+    @media phone-portrait {
+      grid-template-columns: 1fr
+      grid-template-rows: 1fr
     }
     slot Lobby {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
     }
     slot Side {
-      width grow
-      height grow
-      at phone {
+      width: stretch
+      height: stretch
+      @media phone {
         visible false
       }
     }

@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Draft and ban with timers (docs/ui.md Appendix B). The two teams' picks
 # and bans, the phase with its timer, the roster to pick from and the one
@@ -26,17 +26,17 @@ actions {
 }
 fixture default "{\"phase\": \"Ban phase 1\", \"turn\": true}"
 column Screen {
-  width grow
-  height grow
-  padding 16
-  gap 8
+  width: stretch
+  height: stretch
+  padding: 16px
+  gap: 8px
   row Header {
-    width grow
-    gap 12
-    cross center
+    width: stretch
+    gap: 12px
+    align-items: center
     label Phase {
       text bind phase
-      step lg
+      font: var(--text-lg)
       heading true
     }
     badge Turn {
@@ -47,16 +47,16 @@ column Screen {
     }
   }
   column Body {
-    width grow
-    height grow
-    gap 8
+    width: stretch
+    height: stretch
+    gap: 8px
     slot Draft {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
     }
     slot Chat {
-      width grow
-      at phonePortrait {
+      width: stretch
+      @media phone-portrait {
         visible false
       }
     }

@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Training mode with frame data (docs/ui.md Appendix B). Over the live
 # fight: the last move's frame data (startup, active, recovery, on block,
@@ -30,101 +30,101 @@ props {
 }
 fixture default "{\"move\": \"Heavy kick\", \"startup\": 11, \"active\": 3, \"recovery\": 19, \"onBlock\": -6, \"onHit\": 2, \"damage\": 1840, \"hits\": 5, \"showInputs\": true, \"showPanel\": false}"
 stack Training {
-  width grow
-  height grow
+  width: stretch
+  height: stretch
   slot Bars {
-    position absolute
-    start 16
-    top 16
-    end 16
+    position: absolute
+    inset-inline-start: 16px
+    top: 16px
+    inset-inline-end: 16px
   }
   column Data {
-    position absolute
-    start 16
-    top 96
-    padding 12
-    gap 4
-    frame hud
-    at phone {
-      top 72
-      start 8
+    position: absolute
+    inset-inline-start: 16px
+    top: 96px
+    padding: 12px
+    gap: 4px
+    -og-frame: hud
+    @media phone {
+      top: 72px
+      inset-inline-start: 8px
     }
-    at phoneLandscape {
-      start 52
+    @media phone-landscape {
+      inset-inline-start: 52px
     }
     label Move {
       text bind move
-      step lg
+      font: var(--text-lg)
       heading true
     }
     row Frames {
-      gap 12
+      gap: 12px
       label Startup {
         text "S {startup}"
-        font mono
+        font-family: var(--font-mono)
       }
       label Active {
         text "A {active}"
-        font mono
+        font-family: var(--font-mono)
       }
       label Recovery {
         text "R {recovery}"
-        font mono
+        font-family: var(--font-mono)
       }
     }
     row Advantage {
-      gap 12
+      gap: 12px
       label Block {
         text "Block {onBlock}"
-        font mono
+        font-family: var(--font-mono)
         state safe bind "onBlock >= -3" {
           unsafe {
-            ink token danger
+            color: var(--danger)
           }
           safe {
-            ink token ink
+            color: var(--ink)
           }
         }
       }
       label Hit {
         text "Hit {onHit}"
-        font mono
+        font-family: var(--font-mono)
       }
     }
     divider
     label Combo {
       text "{hits} hits · {damage, grouped}"
-      color token warn
+      color: var(--warn)
     }
   }
   column InputsColumn {
-    position absolute
-    start 16
-    bottom 16
+    position: absolute
+    inset-inline-start: 16px
+    bottom: 16px
     visible bind showInputs
-    at phonePortrait {
+    @media phone-portrait {
       visible false
     }
     slot Inputs {
     }
   }
   row Tools {
-    position absolute
-    end 16
-    top 96
-    gap 8
-    at phone {
-      top 72
-      end 8
+    position: absolute
+    inset-inline-end: 16px
+    top: 96px
+    gap: 8px
+    @media phone {
+      top: 72px
+      inset-inline-end: 8px
     }
-    at phoneLandscape {
-      end 52
+    @media phone-landscape {
+      inset-inline-end: 52px
     }
     button Reset {
       key "screen.training.reset"
       text "Reset"
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit reset
@@ -133,7 +133,7 @@ stack Training {
       key "screen.training.record"
       text "Record"
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit record
@@ -142,7 +142,7 @@ stack Training {
       key "screen.training.playback"
       text "Play back"
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit playback
@@ -151,7 +151,7 @@ stack Training {
       key "screen.training.dummy"
       text "Dummy"
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click set showPanel "!showPanel"
@@ -159,31 +159,31 @@ stack Training {
     }
   }
   column Panel {
-    position absolute
-    end 16
-    top 148
-    width grow 0 320
-    padding 12
-    gap 8
-    background token panel
-    frame panel
+    position: absolute
+    inset-inline-end: 16px
+    top: 148px
+    width: stretch; max-width: 320px
+    padding: 12px
+    gap: 8px
+    background: var(--panel)
+    -og-frame: panel
     visible bind showPanel
-    enter slideLeft 24 token enter
-    at phone {
-      end 8
-      top 120
+    -og-enter: slide-left 24px var(--motion-enter)
+    @media phone {
+      inset-inline-end: 8px
+      top: 120px
     }
-    at phoneLandscape {
-      end 52
+    @media phone-landscape {
+      inset-inline-end: 52px
     }
     label Title {
       key "screen.training.dummyTitle"
       text "Dummy"
-      step lg
+      font: var(--text-lg)
       heading true
     }
     slot Dummy {
-      width grow
+      width: stretch
     }
   }
 }

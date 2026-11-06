@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Garage, tuning and livery editor (docs/ui.md Appendix B). Back, the
 # car's name, the Garage and Tuning views and Test drive at the head; under
@@ -42,18 +42,18 @@ actions {
 }
 fixture default "{\"name\": \"Kestrel GT\", \"view\": \"garage\"}"
 column Screen {
-  width grow
-  height grow
-  padding 24
-  gap 12
-  at phone {
-    padding 12
+  width: stretch
+  height: stretch
+  padding: 24px
+  gap: 12px
+  @media phone {
+    padding: 12px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Back {
       key "screen.common.back"
       text "Back"
@@ -62,12 +62,12 @@ column Screen {
     }
     label Name {
       text bind name
-      step xl2
+      font: var(--text-xl2)
       heading true
-      maxLines 1
-      ellipsis true
-      at phone {
-        step xl
+      line-clamp: 1
+      text-overflow: ellipsis
+      @media phone {
+        font: var(--text-xl)
       }
     }
     spacer
@@ -79,10 +79,10 @@ column Screen {
       on click emit view
       state selection bind "view == \"garage\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
@@ -94,10 +94,10 @@ column Screen {
       on click emit view
       state selection bind "view == \"tuning\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
@@ -105,26 +105,26 @@ column Screen {
       key "screen.garage.testDrive"
       text "Test drive"
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit testDrive
     }
   }
   column Body {
-    width grow
-    height grow
+    width: stretch
+    height: stretch
     slot Garage {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
       visible bind "view != \"tuning\""
     }
     scroll TuningScroll {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
       visible bind "view == \"tuning\""
       slot Tuning {
-        width grow
+        width: stretch
       }
     }
   }

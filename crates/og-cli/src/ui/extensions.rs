@@ -127,7 +127,8 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
         .filter(|f| f.extension().is_some_and(|e| e == "ogt"))
     {
         let text = std::fs::read_to_string(directory.join(file)).map_err(|e| e.to_string())?;
-        if og_core::ogt::parse(&text).is_ok_and(|d| matches!(d.ty.as_str(), "screen" | "component"))
+        if og_core::ogt::Document::parse_header(&text)
+            .is_ok_and(|d| matches!(d.ty.as_str(), "screen" | "component"))
         {
             documents.push(file.to_string_lossy().replace('\\', "/"));
         }

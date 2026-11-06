@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # World map (docs/ui.md Appendix B: fog, markers, fast travel). The map
 # filling the screen, its legend and the selected place's detail, the
@@ -27,28 +27,28 @@ actions {
 }
 fixture default "{\"region\": \"Greywater Marsh\", \"zoom\": 0.4}"
 stack Map {
-  width grow
-  height grow
+  width: stretch
+  height: stretch
   slot Map {
-    width grow
-    height grow
-    position absolute
-    start 0
-    top 0
-    end 0
-    bottom 0
+    width: stretch
+    height: stretch
+    position: absolute
+    inset-inline-start: 0
+    top: 0
+    inset-inline-end: 0
+    bottom: 0
   }
   row Head {
-    position absolute
-    start 24
-    top 24
-    end 24
-    gap 12
-    cross center
-    at phone {
-      start 12
-      top 12
-      end 12
+    position: absolute
+    inset-inline-start: 24px
+    top: 24px
+    inset-inline-end: 24px
+    gap: 12px
+    align-items: center
+    @media phone {
+      inset-inline-start: 12px
+      top: 12px
+      inset-inline-end: 12px
     }
     button Close {
       key "screen.common.close"
@@ -56,31 +56,31 @@ stack Map {
       on click pop
     }
     panel Region {
-      padding 8
-      frame hud
+      padding: 8px
+      -og-frame: hud
       label Name {
         text bind region
-        step lg
+        font: var(--text-lg)
         heading true
-        maxLines 1
-        ellipsis true
+        line-clamp: 1
+        text-overflow: ellipsis
       }
     }
     spacer
     slot Tracker {
-      at phonePortrait {
+      @media phone-portrait {
         visible false
       }
     }
   }
   column Zoom {
-    position absolute
-    end 24
-    bottom 24
-    gap 8
-    at phone {
-      end 12
-      bottom 12
+    position: absolute
+    inset-inline-end: 24px
+    bottom: 24px
+    gap: 8px
+    @media phone {
+      inset-inline-end: 12px
+      bottom: 12px
     }
     button In {
       key "screen.world-map.zoomIn"

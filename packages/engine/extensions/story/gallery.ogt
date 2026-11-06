@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Gallery (docs/ui.md Appendix B: backlog, gallery, route flowchart). The
 # event CGs, the music and the endings unlocked, by tab: the CGs are the
@@ -43,18 +43,18 @@ actions {
 }
 fixture default "{\"tab\": \"cg\", \"items\": [{\"name\": \"First meeting\", \"unlocked\": true, \"hint\": \"\", \"texture\": 0}, {\"name\": \"The festival\", \"unlocked\": true, \"hint\": \"\", \"texture\": 0}, {\"name\": \"???\", \"unlocked\": false, \"hint\": \"Chapter 4\", \"texture\": 0}], \"selected\": 0, \"found\": 2, \"total\": 24, \"viewing\": false}"
 column Screen {
-  width grow
-  height grow
-  padding 32
-  gap 12
-  at phone {
-    padding 16
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 12px
+  @media phone {
+    padding: 16px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     visible bind "!viewing"
     button Back {
       key "screen.common.back"
@@ -65,23 +65,23 @@ column Screen {
     label Title {
       key "screen.gallery.title"
       text "Gallery"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
     spacer
     label Found {
       text "{found}/{total}"
-      color token inkMuted
+      color: var(--ink-muted)
       visible bind "tab != \"cg\""
     }
   }
   row Tabs {
     visible bind "!viewing"
-    gap 6
-    wrap true
+    gap: 6px
+    flex-wrap: wrap
     button Cg {
       key "screen.gallery.cg"
       text "Scenes"
@@ -89,10 +89,10 @@ column Screen {
       on click set tab "\"cg\""
       state selection bind "tab == \"cg\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
@@ -103,10 +103,10 @@ column Screen {
       on click set tab "\"music\""
       state selection bind "tab == \"music\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
@@ -117,83 +117,78 @@ column Screen {
       on click set tab "\"endings\""
       state selection bind "tab == \"endings\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
   }
   slot Gallery {
-    width grow
-    height grow
+    width: stretch
+    height: stretch
     visible bind "tab == \"cg\""
   }
   scroll Body {
-    width grow
-    height grow
+    width: stretch
+    height: stretch
     visible bind "tab != \"cg\""
     grid Grid {
-      width grow
-      gap 12
-      columns "1fr" "1fr" "1fr" "1fr"
+      width: stretch
+      gap: 12px
+      grid-template-columns: 1fr 1fr 1fr 1fr
       focusGroup wrap
-      at tablet {
-        columns "1fr" "1fr" "1fr"
+      @media tablet {
+        grid-template-columns: 1fr 1fr 1fr
       }
-      at phonePortrait {
-        columns "1fr" "1fr"
-        gap 8
+      @media phone-portrait {
+        grid-template-columns: 1fr 1fr
+        gap: 8px
       }
       for it in items {
         column Item {
-          width grow
-          gap 4
+          width: stretch
+          gap: 4px
           interactive true
           focusable true
           on click set selected "$index"
           on click emit open
           art Thumb {
             kind eventCg
-            width grow
+            width: stretch
             texture bind it.texture
           }
           label Name {
             text bind it.name
-            step caption
-            maxLines 1
-            ellipsis true
+            font: var(--text-caption)
+            line-clamp: 1
+            text-overflow: ellipsis
           }
           label Hint {
             text bind it.hint
-            step caption
-            color token inkMuted
+            font: var(--text-caption)
+            color: var(--ink-muted)
             visible bind "!it.unlocked"
           }
           state lock bind it.unlocked {
             locked {
-              opacity 0.45
+              opacity: 0.45
             }
             open {
-              opacity 1
+              opacity: 1
             }
           }
-          state interaction {
-            normal {
-              scale 1
-            }
-            hover {
-              scale 1.02
-            }
-            pressed {
-              scale 0.98
-            }
-            focused {
-              scale 1.02
-            }
-            transition any any token ui
+          :hover {
+            scale: 1.02
           }
+          :active {
+            scale: 0.98
+          }
+          :focus-visible {
+            scale: 1.02
+          }
+          -og-state-transition: var(--motion-ui)
         }
       }
     }

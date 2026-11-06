@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Mode select (docs/ui.md Appendix B: boot, splash, title, main menu, mode
 # select). The game's modes as large cards with their art, a line each, a
@@ -22,18 +22,18 @@ actions {
 }
 fixture default "{\"modes\": [{\"name\": \"Story\", \"line\": \"The campaign, alone or with a friend.\", \"tag\": \"\", \"locked\": false, \"reason\": \"\", \"texture\": 0}, {\"name\": \"Arena\", \"line\": \"Ranked fights, one life.\", \"tag\": \"Ranked\", \"locked\": false, \"reason\": \"\", \"texture\": 0}, {\"name\": \"Trials\", \"line\": \"Hard challenges for the brave.\", \"tag\": \"New\", \"locked\": true, \"reason\": \"Finish chapter 2\", \"texture\": 0}], \"selected\": 0}"
 column Screen {
-  width grow
-  height grow
-  padding 32
-  gap 20
-  at phone {
-    padding 16
-    gap 12
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 20px
+  @media phone {
+    padding: 16px
+    gap: 12px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
+    width: stretch
+    gap: 12px
+    align-items: center
     button Back {
       key "screen.common.back"
       text "Back"
@@ -43,52 +43,52 @@ column Screen {
     label Title {
       key "screen.mode-select.title"
       text "Choose a mode"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
   }
   scroll Scroll {
-    width grow
-    height grow
+    width: stretch
+    height: stretch
     grid Modes {
-      width grow
-      gap 16
-      columns "1fr" "1fr" "1fr"
+      width: stretch
+      gap: 16px
+      grid-template-columns: 1fr 1fr 1fr
       focusGroup wrap
-      at tablet {
-        columns "1fr" "1fr"
+      @media tablet {
+        grid-template-columns: 1fr 1fr
       }
-      at phonePortrait {
-        columns "1fr"
-        gap 12
+      @media phone-portrait {
+        grid-template-columns: 1fr
+        gap: 12px
       }
       for mode in modes {
         column Mode {
-          width grow
-          padding 12
-          gap 8
-          background token panelRaised
-          frame card
+          width: stretch
+          padding: 12px
+          gap: 8px
+          background: var(--panel-raised)
+          -og-frame: card
           interactive true
           focusable true
           on click set selected "$index"
           on click emit select
           art Art {
             kind levelThumb
-            width grow
-            aspect 1.78
+            width: stretch
+            aspect-ratio: 1.78
             texture bind mode.texture
           }
           row Head {
-            width grow
-            gap 8
-            cross center
+            width: stretch
+            gap: 8px
+            align-items: center
             label Name {
               text bind mode.name
-              step lg
+              font: var(--text-lg)
               heading true
             }
             spacer
@@ -100,58 +100,53 @@ column Screen {
           }
           label Line {
             text bind mode.line
-            color token inkMuted
-            maxLines 2
+            color: var(--ink-muted)
+            line-clamp: 2
           }
           label Reason {
             text bind mode.reason
-            step caption
-            color token warn
+            font: var(--text-caption)
+            color: var(--warn)
             visible bind mode.locked
           }
           state selection bind "$index == selected" {
             off {
-              opacity 0.85
+              opacity: 0.85
             }
             on {
-              opacity 1
+              opacity: 1
             }
-            transition any any token ui
+            transition: var(--motion-ui)
           }
           state lock bind mode.locked {
             open {
-              scale 1
+              scale: 1
             }
             locked {
-              opacity 0.55
+              opacity: 0.55
             }
           }
-          state interaction {
-            normal {
-              y 0
-            }
-            hover {
-              y -4
-            }
-            pressed {
-              y 0
-            }
-            focused {
-              y -4
-            }
-            transition any any token ui
+          :hover {
+            translate: 0 -4px
           }
+          :active {
+            translate: 0 0
+          }
+          :focus-visible {
+            translate: 0 -4px
+          }
+          -og-state-transition: var(--motion-ui)
         }
       }
     }
   }
   slot Detail {
-    width grow
+    width: stretch
   }
   row Footer {
-    width grow
-    gap 12
-    align end
+    width: stretch
+    gap: 12px
+    justify-content: end
     button Play {
       key "screen.mode-select.play"
       text "Play"
@@ -160,8 +155,8 @@ column Screen {
       disabled bind "modes.length == 0"
       on click emit play
       on action confirm emit play
-      at phone {
-        width grow
+      @media phone {
+        width: stretch
       }
     }
   }

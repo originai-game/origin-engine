@@ -769,127 +769,127 @@ const DRESS_HEAD: &str = r#"/// The default style's part dressings (docs/ui.md Â
 
 /// The dressings' text (`{card}`: the tokens' `radius.card`).
 const DRESSINGS: &str = r##"
-dress "Panel.frame" {
-  fill none
-  stroke none
-  effect backdrop glass thick elevation lift
+Panel::frame {
+  -og-fill: none
+  -og-stroke: none
+  -og-effect: backdrop glass thick elevation lift
 }
-dress "Sheet.frame" {
-  fill none
-  stroke none
-  effect backdrop glass thick elevation lift
+Sheet::frame {
+  -og-fill: none
+  -og-stroke: none
+  -og-effect: backdrop glass thick elevation lift
 }
-dress "Radial.frame" {
-  fill none
-  stroke none
-  effect backdrop glass thick elevation lift
+Radial::frame {
+  -og-fill: none
+  -og-stroke: none
+  -og-effect: backdrop glass thick elevation lift
 }
-dress "Menu.frame" {
-  fill none
-  stroke none
-  effect backdrop glass thick elevation float
+Menu::frame {
+  -og-fill: none
+  -og-stroke: none
+  -og-effect: backdrop glass thick elevation float
 }
-dress "Popover.frame" {
-  fill none
-  stroke none
-  effect backdrop glass thick elevation float
+Popover::frame {
+  -og-fill: none
+  -og-stroke: none
+  -og-effect: backdrop glass thick elevation float
 }
-dress "Tooltip.frame" {
-  fill none
-  stroke none
-  effect backdrop glass thick elevation float
+Tooltip::frame {
+  -og-fill: none
+  -og-stroke: none
+  -og-effect: backdrop glass thick elevation float
 }
-dress "Chart.tooltip" {
-  fill none
-  stroke none
-  effect backdrop glass thick elevation float
+Chart::tooltip {
+  -og-fill: none
+  -og-stroke: none
+  -og-effect: backdrop glass thick elevation float
 }
-dress "Hud.frame" {
-  fill none
-  stroke none
-  effect backdrop glass regular elevation float
+Hud::frame {
+  -og-fill: none
+  -og-stroke: none
+  -og-effect: backdrop glass regular elevation float
 }
-dress "Minimap.frame" {
-  fill "#16161899"
-  stroke 0.5 "#ffffff14" inside
-  effect dropShadow 0 6 16 0 "#00000073"
+Minimap::frame {
+  -og-fill: #16161899
+  -og-stroke: 0.5px #ffffff14 inside
+  -og-effect: drop-shadow 0 6 16 0 #00000073
 }
-dress "ScrollArea.frame" {
-  stroke none
-  effect none
+ScrollArea::frame {
+  -og-stroke: none
+  -og-effect: none
 }
-dress "ActionBar.hint" {
-  fill none
-  stroke none
-  effect backdrop glass regular elevation float
+ActionBar::hint {
+  -og-fill: none
+  -og-stroke: none
+  -og-effect: backdrop glass regular elevation float
 }
-dress "Card.frame" {
-  effect none
-  shape round {card}
+Card::frame {
+  -og-effect: none
+  -og-shape: round {card}
 }
-dress "Button.base" {
-  stroke none
-  effect none
+Button::base {
+  -og-stroke: none
+  -og-effect: none
 }
-dress "Button.base[ghost]" {
-  stroke 1 lineStrong inside
+Button::base.ghost {
+  -og-stroke: 1px var(--line-strong) inside
 }
-dress "Field.frame" {
-  stroke none
-  effect none
+Field::frame {
+  -og-stroke: none
+  -og-effect: none
 }
-dress "Field.frame[invalid]" {
-  stroke 1 danger inside
+Field::frame.invalid {
+  -og-stroke: 1px var(--danger) inside
 }
-dress "Chip.base" {
-  stroke none
+Chip::base {
+  -og-stroke: none
 }
-dress "Slot.frame" {
-  stroke none
-  effect none
+Slot::frame {
+  -og-stroke: none
+  -og-effect: none
 }
-dress "Slot.frame[selected]" {
-  stroke 1 "#ffffff8c" inside
-  effect outerGlow 8 "#ffffff1f"
-  effect dropShadow 0 6 14 0 "#00000066"
+Slot::frame:selected {
+  -og-stroke: 1px #ffffff8c inside
+  -og-effect: outer-glow 8 #ffffff1f
+  -og-effect: drop-shadow 0 6 14 0 #00000066
 }
-dress "Meter.track" {
-  effect none
+Meter::track {
+  -og-effect: none
 }
-dress "Meter.fill" {
-  effect none
+Meter::fill {
+  -og-effect: none
 }
-dress "Slider.track" {
-  fill "#707075"
-  effect none
+Slider::track {
+  -og-fill: #707075
+  -og-effect: none
 }
-dress "Toggle.track" {
-  effect none
+Toggle::track {
+  -og-effect: none
 }
-dress "Toggle.row" {
-  stroke none
-  effect none
+Toggle::row {
+  -og-stroke: none
+  -og-effect: none
 }
-dress "Checkbox.row" {
-  stroke none
-  effect none
+Checkbox::row {
+  -og-stroke: none
+  -og-effect: none
 }
-dress "Radio.option" {
-  stroke none
-  effect none
+Radio::option {
+  -og-stroke: none
+  -og-effect: none
 }
-dress "Radio.card" {
-  stroke none
+Radio::card {
+  -og-stroke: none
 }
-dress "Radio.card[selected]" {
-  fill selection
+Radio::card:selected {
+  -og-fill: var(--selection)
 }
-dress "Radio.chosen" {
-  stroke none
+Radio::chosen {
+  -og-stroke: none
 }
-dress "Tabs.tab[selected]" {
-  fill selection
-  effect dropShadow 0 2 4 0 "#00000073"
-  effect innerShadow 0 1 0 0 "#ffffff26"
+Tabs::tab:selected {
+  -og-fill: var(--selection)
+  -og-effect: drop-shadow 0 2 4 0 #00000073
+  -og-effect: inner-shadow 0 1 0 0 #ffffff26
 }
 "##;

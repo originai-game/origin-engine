@@ -480,7 +480,7 @@ fn upgrade(args: &[&str]) -> Result<(), String> {
     let upgraded = og_ui::upgrade_style(&text).map_err(|e| format!("{path}: {e}"))?;
     std::fs::write(out, &upgraded).map_err(|e| format!("{out}: {e}"))?;
     println!(
-        "og style upgrade: {path} -> {out} (version 2: {} dressing(s); its new tokens are derived, so make them the style's own: colors, typography, shape, elevation, motion, sounds)",
+        "og style upgrade: {path} -> {out} (version 3: {} dressing(s); its new tokens are derived, so make them the style's own: colors, typography, shape, elevation, motion, sounds)",
         file.dressings.len()
     );
     Ok(())
@@ -725,7 +725,7 @@ fn style_text(
     let mut slices: Vec<&Piece> = pieces.iter().filter(|p| p.insets.is_some()).collect();
     slices.sort_by_key(|p| SLICES.iter().position(|s| *s == p.name));
     if let Some(old) = old
-        && let Ok(doc) = og_core::ogt::Document::parse(old)
+        && let Ok(doc) = og_ui::read_style_doc(old)
         && doc.version >= 2
     {
         return style_text_v2(doc, atlas_id, pieces, size);
@@ -875,5 +875,5 @@ fn style_text_v2(
             _ => {}
         }
     }
-    doc.to_text().expect("a style file writes back")
+    og_ui::write_style_doc(&doc).expect("a style file writes back")
 }

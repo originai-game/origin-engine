@@ -25,7 +25,7 @@ fn authored_packs_parse_and_keep_their_assets() {
         count += 1;
         let text = std::fs::read_to_string(dir.join("style.ogt")).unwrap();
         let mut file = parse_style(&text).unwrap_or_else(|e| panic!("{}: {e}", dir.display()));
-        assert_eq!(file.version, 2, "{}", dir.display());
+        assert_eq!(file.version, 3, "{}", dir.display());
         let name = dir.file_name().unwrap().to_str().unwrap();
         file.resolve(&format!("{name}/style.ogt"), |id| root.join(id).exists());
         for asset in file.references() {
@@ -281,4 +281,34 @@ fn every_packs_bag_cell_takes_its_slots_selected_and_tier_marks() {
         }
     }
     assert!(packs >= 12, "{packs} packs");
+}
+
+/// What the tools that edit a style write (`og style art`, `og style pack`:
+/// read as entries, written back as version 3) reads as the pack did.
+#[test]
+fn every_pack_writes_back_as_the_same_style() {
+    for entry in std::fs::read_dir(root()).unwrap() {
+        let path = entry.unwrap().path().join("style.ogt");
+        if !path.is_file() {
+            continue;
+        }
+        let text = std::fs::read_to_string(&path).unwrap();
+        let written = write_style_doc(&read_style_doc(&text).unwrap()).unwrap();
+        let (a, b) = (
+            parse_style(&text).unwrap(),
+            parse_style(&written).unwrap_or_else(|e| panic!("{}: {e}\n{written}", path.display())),
+        );
+        let sel = |f: &StyleFile| {
+            f.dressings
+                .iter()
+                .map(|d| (d.selector.clone(), d.frame.clone(), d.draw.clone()))
+                .collect::<Vec<_>>()
+        };
+        assert!(
+            sel(&a) == sel(&b),
+            "{}: the dressings differ",
+            path.display()
+        );
+        assert!(a.theme == b.theme, "{}: the theme differs", path.display());
+    }
 }

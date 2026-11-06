@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Deck builder and collection (docs/ui.md Appendix B). Back, the title,
 # Rename and Clear at the head; under them the deck builder fills the
@@ -37,18 +37,18 @@ actions {
 }
 fixture default "{\"dirty\": true}"
 column Screen {
-  width grow
-  height grow
-  padding 24
-  gap 12
-  at phone {
-    padding 12
+  width: stretch
+  height: stretch
+  padding: 24px
+  gap: 12px
+  @media phone {
+    padding: 12px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Back {
       key "screen.common.back"
       text "Back"
@@ -58,10 +58,10 @@ column Screen {
     label Title {
       key "screen.deck-builder.title"
       text "Deck builder"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
     badge Unsaved {
@@ -76,7 +76,7 @@ column Screen {
       text "Rename"
       variant quiet
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit rename
@@ -86,14 +86,14 @@ column Screen {
       text "Clear"
       variant quiet
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit clear
     }
   }
   slot Builder {
-    width grow
-    height grow
+    width: stretch
+    height: stretch
   }
 }

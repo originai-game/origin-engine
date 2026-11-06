@@ -3,8 +3,94 @@ use super::*;
 impl UiDocument {
     /// Parses and validates a document (`source`: its asset id, for errors
     /// and the write-back). Every error has its line and its fix.
+    ///
+    /// A document is `version 2`, the CSS dialect (docs/ui.md §10.4); a
+    /// version 1 text is refused with the command that migrates it.
     pub fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>> {
+        match header_version(text) {
+            Some(2) => {
+                let doc = super::css::lower(text).map_err(|e| {
+                    e.into_iter()
+                        .map(|e| format!("{source}: {e}"))
+                        .collect::<Vec<_>>()
+                })?;
+                Self::build(source, text, doc)
+            }
+            Some(1) => Err(vec![format!(
+                "{source}: a version 1 document: `og ui migrate {source}` writes it in the CSS dialect (version 2, docs/ui.md §10.4)"
+            )]),
+            _ => {
+                let doc =
+                    Document::parse(text).map_err(|e| vec![format!("{source}: {}", e.reason())])?;
+                Err(vec![format!(
+                    "{source}: version {} of a document is not known (2)",
+                    doc.version
+                )])
+            }
+        }
+    }
+
+    /// Parses a version 1 document (what `og ui migrate` reads).
+    pub fn parse_v1(source: &str, text: &str) -> Result<UiDocument, Vec<String>> {
         let doc = Document::parse(text).map_err(|e| vec![format!("{source}: {}", e.reason())])?;
+        if doc.version != 1 {
+            return Err(vec![format!("{source}: not a version 1 document")]);
+        }
+        Self::build(source, text, doc)
+    }
+
+    /// A version 1 document's text as version 2 ([`super::css::migrate`]),
+    /// checked: the new text reads back as the same document (each line's
+    /// element, prop and value; a value written jointly, such as `y` as
+    /// `translate: 0 -4px`, gains its partner's neutral value).
+    pub fn migrate(source: &str, text: &str) -> Result<String, Vec<String>> {
+        Self::parse_v1(source, text)?;
+        let new_text = super::css::migrate(text).map_err(|e| {
+            e.into_iter()
+                .map(|e| format!("{source}: {e}"))
+                .collect::<Vec<_>>()
+        })?;
+        let new = Self::parse(source, &new_text)?;
+        let mut doc = Document::parse(text).map_err(|e| vec![e.reason().to_string()])?;
+        super::css::partner_neutrals(&mut doc.body);
+        let old = Self::build(source, text, doc)?;
+        if old.same(&new) {
+            Ok(new_text)
+        } else {
+            Err(vec![format!(
+                "{source}: the migrated text reads as another document (a bug in og ui migrate; the text is unchanged)"
+            )])
+        }
+    }
+
+    /// The same document, whatever its lines and text.
+    pub fn same(&self, other: &UiDocument) -> bool {
+        fn plain(d: &UiDocument) -> UiDocument {
+            let mut d = d.clone();
+            d.text.clear();
+            for n in &mut d.nodes {
+                n.line = 0;
+                for p in n
+                    .props
+                    .iter_mut()
+                    .chain(n.at.iter_mut().flat_map(|(_, ps)| ps.iter_mut()))
+                {
+                    p.line = 0;
+                    p.source.clear();
+                }
+                for t in &mut n.triggers {
+                    t.line = 0;
+                }
+                for a in &mut n.args {
+                    a.2 = 0;
+                }
+            }
+            d
+        }
+        plain(self) == plain(other)
+    }
+
+    fn build(source: &str, text: &str, doc: Document) -> Result<UiDocument, Vec<String>> {
         let kind = match doc.ty.as_str() {
             SCREEN_TYPE => DocKind::Screen,
             COMPONENT_TYPE => DocKind::Component,
@@ -14,12 +100,6 @@ impl UiDocument {
                 )]);
             }
         };
-        if doc.version != 1 {
-            return Err(vec![format!(
-                "{source}: version {} of a document is not known (1)",
-                doc.version
-            )]);
-        }
         let mut ctx = Ctx {
             errors: Vec::new(),
             nodes: Vec::new(),
@@ -350,7 +430,39 @@ impl UiDocument {
     pub fn set_prop(&mut self, node: usize, prop: &str, value: &str) -> Result<(), String> {
         let n = self.nodes.get(node).ok_or("no such node")?;
         let (_, spec) = schema::prop(prop).ok_or_else(|| format!("'{prop}' is not a prop"))?;
-        let line = format!("{prop} {}", value_text(spec.ty, value));
+        let line = if header_version(&self.text) == Some(2) && super::css::css_name(prop).is_some()
+        {
+            // A declaration: the line keeps the other props written on it
+            // (`translate: 0 -4px` holds `x` and `y`), with this one's value.
+            let vals = |src: &str| -> Result<Vec<Value>, String> {
+                match og_core::ogt::parse_line(&format!("v {src}"), 0) {
+                    Ok(og_core::ogt::Line::Entry { entry, .. }) => Ok(entry.values),
+                    Ok(_) => Ok(Vec::new()),
+                    Err(e) => Err(format!("{prop}={value}: {}", e.reason())),
+                }
+            };
+            let mut on_line: Vec<(String, Vec<Value>)> = Vec::new();
+            if let Some(p) = n.props.iter().rev().find(|p| p.name() == prop) {
+                for q in n
+                    .props
+                    .iter()
+                    .filter(|q| q.line == p.line && q.name() != prop)
+                {
+                    on_line.push((q.name().to_string(), vals(&q.source)?));
+                }
+            }
+            on_line.insert(0, (prop.to_string(), vals(&value_text(spec.ty, value))?));
+            let own = |k: &str| {
+                n.props
+                    .iter()
+                    .rev()
+                    .find(|p| p.name() == k)
+                    .and_then(|p| vals(&p.source).ok())
+            };
+            super::css::decl_line(&on_line, false, &own)?
+        } else {
+            format!("{prop} {}", value_text(spec.ty, value))
+        };
         let mut lines: Vec<String> = self.text.split('\n').map(str::to_string).collect();
         let indent = |l: &str| l.len() - l.trim_start().len();
         if let Some(p) = n.props.iter().rev().find(|p| p.name() == prop) {
@@ -421,6 +533,18 @@ impl UiDocument {
 
 /// A value as a document line writes it for a prop of type `ty`: a text
 /// prop's bare value is quoted; anything else is taken as written.
+/// The `version` of a text's header.
+fn header_version(text: &str) -> Option<u32> {
+    let head: String = text
+        .split('\n')
+        .take_while(|l| l.trim() != "---")
+        .flat_map(|l| [l, "\n"])
+        .collect();
+    Document::parse(&format!("{head}---\n"))
+        .ok()
+        .map(|d| d.version)
+}
+
 pub(crate) fn value_text(ty: Ty, value: &str) -> String {
     let v = value.trim();
     let quoted = v.starts_with('"') && v.ends_with('"') && v.len() >= 2;

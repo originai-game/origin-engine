@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Death, retry, revive offer, game over (docs/ui.md Appendix B). The
 # defeat's line over the dimmed scene, the run's score and best, a revive
@@ -40,68 +40,68 @@ timeline land {
 }
 fixture default "{\"title\": \"You died\", \"score\": 18420, \"best\": 24100, \"offer\": true, \"price\": \"50 gems\", \"left\": 5, \"checkpoint\": true}"
 column GameOver {
-  width grow
-  height grow
-  padding 32
-  align center
-  cross center
-  at phone {
-    padding 16
+  width: stretch
+  height: stretch
+  padding: 32px
+  justify-content: center
+  align-items: center
+  @media phone {
+    padding: 16px
   }
   column Panel {
-    width grow 0 440
-    gap 16
-    cross center
+    width: stretch; max-width: 440px
+    gap: 16px
+    align-items: center
     on appear play land
     label Title {
       text bind title
-      step xl5
+      font: var(--text-xl5)
       heading true
-      textAlign center
-      color token danger
-      at phone {
-        step xl3
+      text-align: center
+      color: var(--danger)
+      @media phone {
+        font: var(--text-xl3)
       }
     }
     row Score {
-      gap 16
+      gap: 16px
       label Value {
         text bind score grouped
-        step xl
+        font: var(--text-xl)
       }
       label Best {
         text "Best {best, grouped}"
-        color token inkMuted
+        color: var(--ink-muted)
       }
     }
     slot Stats {
-      width grow
+      width: stretch
     }
     column Offer {
-      width grow
-      padding 16
-      gap 8
-      cross center
-      background token panelRaised
-      frame card
+      width: stretch
+      padding: 16px
+      gap: 8px
+      align-items: center
+      background: var(--panel-raised)
+      -og-frame: card
       visible bind offer
       label Line {
         key "screen.game-over.revive"
         text "Continue where you fell?"
-        step lg
+        font: var(--text-lg)
       }
       label Left {
         text bind left countdown
-        step xl2
+        font: var(--text-xl2)
       }
       slot OfferArt {
-        width grow
+        width: stretch
       }
       button Revive {
         text "Revive · {price}"
         variant primary
         size large
-        width grow
+        width: stretch
         on click emit revive
       }
       button Decline {
@@ -112,21 +112,21 @@ column GameOver {
       }
     }
     column Actions {
-      width grow
-      gap 8
+      width: stretch
+      gap: 8px
       visible bind "!offer"
       button Retry {
         key "screen.game-over.retry"
         text "Retry"
         variant primary
         size large
-        width grow
+        width: stretch
         on click emit retry
       }
       button Checkpoint {
         key "screen.game-over.checkpoint"
         text "Last checkpoint"
-        width grow
+        width: stretch
         visible bind checkpoint
         on click emit checkpoint
       }
@@ -134,7 +134,7 @@ column GameOver {
         key "screen.game-over.quit"
         text "Quit to menu"
         variant quiet
-        width grow
+        width: stretch
         on click emit quit
       }
     }

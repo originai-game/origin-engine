@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Character select (docs/ui.md Appendix B: character select and versus).
 # The players' picks standing large, the roster's tiles with each
@@ -27,14 +27,14 @@ actions {
 }
 fixture default "{\"mode\": \"Ranked · Best of 3\", \"timer\": 24, \"locked\": false}"
 column Screen {
-  width grow
-  height grow
-  padding 16
-  gap 8
+  width: stretch
+  height: stretch
+  padding: 16px
+  gap: 8px
   row Header {
-    width grow
-    gap 12
-    cross center
+    width: stretch
+    gap: 12px
+    align-items: center
     button Back {
       key "screen.common.back"
       text "Back"
@@ -43,10 +43,10 @@ column Screen {
     }
     label Mode {
       text bind mode
-      step lg
+      font: var(--text-lg)
       heading true
-      maxLines 1
-      ellipsis true
+      line-clamp: 1
+      text-overflow: ellipsis
     }
     spacer
     badge Locked {
@@ -57,15 +57,15 @@ column Screen {
     }
   }
   column Body {
-    width grow
-    height grow
-    gap 8
+    width: stretch
+    height: stretch
+    gap: 8px
     slot Select {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
     }
     slot Options {
-      width grow
+      width: stretch
     }
   }
 }

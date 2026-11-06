@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Character detail and ascension (docs/ui.md Appendix B: roster, team
 # builder, character detail and ascension). The character's splash, name,
@@ -38,33 +38,33 @@ actions {
 }
 fixture default "{\"name\": \"Aria\", \"title\": \"Flame of the North\", \"element\": \"Fire\", \"stars\": 5, \"level\": 60, \"maxLevel\": 70, \"xp\": 0.35, \"tab\": \"stats\", \"stats\": [{\"name\": \"HP\", \"value\": 12840}, {\"name\": \"Attack\", \"value\": 2210}, {\"name\": \"Defence\", \"value\": 860}, {\"name\": \"Crit\", \"value\": 42}], \"materials\": [{\"name\": \"Ember core\", \"have\": 12, \"need\": 20, \"texture\": 0}, {\"name\": \"Gold\", \"have\": 98000, \"need\": 80000, \"texture\": 0}], \"canAscend\": false, \"splash\": 0}"
 stack Detail {
-  width grow
-  height grow
+  width: stretch
+  height: stretch
   art Splash {
     kind characterSplash
-    width grow 0 760
-    height grow
-    position absolute
-    start 0
-    top 0
-    bottom 0
+    width: stretch; max-width: 760px
+    height: stretch
+    position: absolute
+    inset-inline-start: 0
+    top: 0
+    bottom: 0
     texture bind splash
-    at phonePortrait {
+    @media phone-portrait {
       visible false
     }
   }
   column Screen {
-    width grow
-    height grow
-    padding 24
-    gap 12
-    at phone {
-      padding 12
+    width: stretch
+    height: stretch
+    padding: 24px
+    gap: 12px
+    @media phone {
+      padding: 12px
     }
     row Header {
-      width grow
-      gap 12
-      cross center
+      width: stretch
+      gap: 12px
+      align-items: center
       button Back {
         key "screen.common.back"
         text "Back"
@@ -90,71 +90,71 @@ stack Detail {
       }
     }
     row Body {
-      width grow
-      height grow
-      gap 16
+      width: stretch
+      height: stretch
+      gap: 16px
       spacer
       column Info {
-        width grow 0 520
-        height grow
-        padding 16
-        gap 10
-        background token panel
-        frame panel
-        at phone {
-          width grow
+        width: stretch; max-width: 520px
+        height: stretch
+        padding: 16px
+        gap: 10px
+        background: var(--panel)
+        -og-frame: panel
+        @media phone {
+          width: stretch
         }
         label Element {
           text bind element
-          step caption
-          color token inkMuted
+          font: var(--text-caption)
+          color: var(--ink-muted)
         }
         label Name {
           text bind name
-          step xl3
+          font: var(--text-xl3)
           heading true
-          at phone {
-            step xl2
+          @media phone {
+            font: var(--text-xl2)
           }
         }
         label Title {
           text bind title
-          color token inkMuted
+          color: var(--ink-muted)
         }
         label Stars {
           text "{stars, plural, one {# star} other {# stars}}"
-          color token gold
+          color: var(--gold)
         }
         row Level {
-          width grow
-          gap 8
-          cross center
+          width: stretch
+          gap: 8px
+          align-items: center
           label Value {
             text "Lv {level}/{maxLevel}"
-            step lg
+            font: var(--text-lg)
           }
           progress Xp {
-            width grow
+            width: stretch
             value bind xp
           }
         }
         row Tabs {
-          gap 6
+          gap: 6px
           button Stats {
             key "screen.character-detail.stats"
             text "Stats"
             variant ghost
             size small
-            at phone {
+            @media phone {
               size medium
             }
             on click set tab "\"stats\""
             state selection bind "tab == \"stats\"" {
               off {
-                opacity 0.85
+                opacity: 0.85
               }
               on {
-                opacity 1
+                opacity: 1
               }
             }
           }
@@ -163,16 +163,16 @@ stack Detail {
             text "Skills"
             variant ghost
             size small
-            at phone {
+            @media phone {
               size medium
             }
             on click set tab "\"skills\""
             state selection bind "tab == \"skills\"" {
               off {
-                opacity 0.85
+                opacity: 0.85
               }
               on {
-                opacity 1
+                opacity: 1
               }
             }
           }
@@ -181,34 +181,34 @@ stack Detail {
             text "Gear"
             variant ghost
             size small
-            at phone {
+            @media phone {
               size medium
             }
             on click set tab "\"gear\""
             state selection bind "tab == \"gear\"" {
               off {
-                opacity 0.85
+                opacity: 0.85
               }
               on {
-                opacity 1
+                opacity: 1
               }
             }
           }
         }
         scroll Page {
-          width grow
-          height grow
+          width: stretch
+          height: stretch
           column Stats {
-            width grow
-            gap 6
+            width: stretch
+            gap: 6px
             visible bind "tab == \"stats\""
             for s in stats {
               row Stat {
-                width grow
-                gap 8
+                width: stretch
+                gap: 8px
                 label Name {
                   text bind s.name
-                  color token inkMuted
+                  color: var(--ink-muted)
                 }
                 spacer
                 label Value {
@@ -218,47 +218,47 @@ stack Detail {
             }
           }
           slot Skills {
-            width grow
+            width: stretch
             visible bind "tab == \"skills\""
           }
           slot Gear {
-            width grow
+            width: stretch
             visible bind "tab == \"gear\""
           }
         }
         column Ascend {
-          width grow
-          gap 6
+          width: stretch
+          gap: 6px
           visible bind "level >= maxLevel"
           label Title {
             key "screen.character-detail.ascendTitle"
             text "Ascension"
-            step caption
-            color token inkMuted
+            font: var(--text-caption)
+            color: var(--ink-muted)
           }
           row Materials {
-            width grow
-            gap 8
-            wrap true
+            width: stretch
+            gap: 8px
+            flex-wrap: wrap
             for m in materials {
               row Material {
-                gap 4
-                cross center
+                gap: 4px
+                align-items: center
                 art Icon {
                   kind itemIcon
-                  width 28
-                  height 28
+                  width: 28px
+                  height: 28px
                   texture bind m.texture
                 }
                 label Count {
                   text "{m.have, compact}/{m.need, compact}"
-                  step caption
+                  font: var(--text-caption)
                   state enough bind "m.have >= m.need" {
                     short {
-                      ink token danger
+                      color: var(--danger)
                     }
                     enough {
-                      ink token ink
+                      color: var(--ink)
                     }
                   }
                 }
@@ -267,26 +267,26 @@ stack Detail {
           }
         }
         row Actions {
-          width grow
-          gap 8
+          width: stretch
+          gap: 8px
           button LevelUp {
             key "screen.character-detail.levelUp"
             text "Level up"
             variant primary
-            width grow
+            width: stretch
             disabled bind "level >= maxLevel"
             on click emit levelUp
           }
           button Ascend {
             key "screen.character-detail.ascend"
             text "Ascend"
-            width grow
+            width: stretch
             disabled bind "!canAscend"
             on click emit ascend
           }
         }
         slot Ascension {
-          width grow
+          width: stretch
         }
       }
     }

@@ -28,8 +28,8 @@ first, then from `assets/`) and, optionally, numbers that replace its
 defaults in `param` order, four per parameter vector:
 
 ```text
-dress "Slot.frame[rarity=legendary]" {
-  material "ui-kits/materials/rarity.ogt" 1.0 0.5 0.05 0  12 0 0 0  0.6 0 0 0  1.2
+Slot::frame[rarity=legendary] {
+  -og-material: "ui-kits/materials/rarity.ogt" 1.0 0.5 0.05 0  12 0 0 0  0.6 0 0 0  1.2
 }
 ```
 

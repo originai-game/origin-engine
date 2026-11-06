@@ -1,79 +1,79 @@
 type style
-version 2
+version 3
 ---
 # Upgraded to version 2 by og style upgrade: its version 1 values kept, the new tokens derived from its palette and scheme (docs/ui.md §12).
 name "tiny"
 scheme dark
 palette {
-  backdrop "#101010"
-  well "#161616"
-  panel "#1e1e1e"
-  panelHover "#2a2a2a"
-  panelRaised "#262626"
-  line "#3a3a3a"
-  lineStrong "#606060"
-  ink "#f0f0f0"
-  inkMuted "#b4b4b4"
-  inkFaint "#9c9c9c"
-  inkInverse "#161616"
-  control "#ffffff0f"
-  controlStrong "#ffffff1a"
-  primary "#e8e8e8"
-  primaryHover "#ffffff"
-  primaryActive "#c8c8c8"
-  onPrimary "#161616"
-  primarySoft "#ffffff1f"
-  highlight "#6ad8ec"
-  focus "#5ad1e6"
-  knob "#f0f0f0"
-  hud "#101010d1"
-  scrim "#0000008c"
-  shadow "#000000"
-  sheen "#ffffff3d"
-  success "#4cc38a"
-  warn "#f0a050"
-  danger "#ff8a82"
-  info "#7ab8ff"
-  health "#5ccf6e"
-  mana "#5a9cff"
-  xp "#b07cff"
-  gold "#f2c14e"
+  --backdrop: #101010
+  --well: #161616
+  --panel: #1e1e1e
+  --panel-hover: #2a2a2a
+  --panel-raised: #262626
+  --line: #3a3a3a
+  --line-strong: #606060
+  --ink: #f0f0f0
+  --ink-muted: #b4b4b4
+  --ink-faint: #9c9c9c
+  --ink-inverse: #161616
+  --control: #ffffff0f
+  --control-strong: #ffffff1a
+  --primary: #e8e8e8
+  --primary-hover: #ffffff
+  --primary-active: #c8c8c8
+  --on-primary: #161616
+  --primary-soft: #ffffff1f
+  --highlight: #6ad8ec
+  --focus: #5ad1e6
+  --knob: #f0f0f0
+  --hud: #101010d1
+  --scrim: #0000008c
+  --shadow: #000000
+  --sheen: #ffffff3d
+  --success: #4cc38a
+  --warn: #f0a050
+  --danger: #ff8a82
+  --info: #7ab8ff
+  --health: #5ccf6e
+  --mana: #5a9cff
+  --xp: #b07cff
+  --gold: #f2c14e
 }
 colors {
-  success pattern dots
-  warn pattern stripes
-  danger pattern crosshatch
-  info pattern waves
-  common "#9e9e9e" pips 1
-  uncommon "#3fbf4f" pips 2
-  rare "#2f7fef" pips 3
-  epic "#a335ee" pips 4
-  legendary "#ff8000" pips 5
-  mythic "#e8364f" pips 6
-  team1 "#3d7eff"
-  team2 "#ff4747"
-  team3 "#3fbf5f"
-  team4 "#ffc61a"
-  team5 "#a347ff"
-  team6 "#ff8a1f"
-  team7 "#1fc7c7"
-  team8 "#ff5cb0"
-  physical "#b8b0a0"
-  fire "#ff6a2b"
-  ice "#62cfff"
-  lightning "#ffd83a"
-  poison "#7ed957"
-  holy "#ffe9a0"
-  shadow "#8a5cf6"
-  arcane "#ff4fd8"
-  series1 "#4e79a7"
-  series2 "#f28e2b"
-  series3 "#e15759"
-  series4 "#76b7b2"
-  series5 "#59a14f"
-  series6 "#edc948"
-  series7 "#b07aa1"
-  series8 "#ff9da7"
+  --success: pattern dots
+  --warn: pattern stripes
+  --danger: pattern crosshatch
+  --info: pattern waves
+  --common: #9e9e9e pips 1
+  --uncommon: #3fbf4f pips 2
+  --rare: #2f7fef pips 3
+  --epic: #a335ee pips 4
+  --legendary: #ff8000 pips 5
+  --mythic: #e8364f pips 6
+  --team1: #3d7eff
+  --team2: #ff4747
+  --team3: #3fbf5f
+  --team4: #ffc61a
+  --team5: #a347ff
+  --team6: #ff8a1f
+  --team7: #1fc7c7
+  --team8: #ff5cb0
+  --physical: #b8b0a0
+  --fire: #ff6a2b
+  --ice: #62cfff
+  --lightning: #ffd83a
+  --poison: #7ed957
+  --holy: #ffe9a0
+  --shadow: #8a5cf6
+  --arcane: #ff4fd8
+  --series1: #4e79a7
+  --series2: #f28e2b
+  --series3: #e15759
+  --series4: #76b7b2
+  --series5: #59a14f
+  --series6: #edc948
+  --series7: #b07aa1
+  --series8: #ff9da7
 }
 typography {
   display 40 44 0 700 display {
@@ -91,38 +91,38 @@ typography {
   numeric 18 26 0 600 numeric
 }
 space {
-  xxs 2
-  xs 4
-  sm 8
-  md 12
-  lg 16
-  xl 24
-  xxl 32
-  xl3 48
+  --space-xxs: 2px
+  --space-xs: 4px
+  --space-sm: 8px
+  --space-md: 12px
+  --space-lg: 16px
+  --space-xl: 24px
+  --space-xxl: 32px
+  --space-xl3: 48px
 }
 size {
-  xs 16
-  sm 24
-  md 32
-  lg 48
-  xl 64
-  xxl 96
-  touch 44
+  --size-xs: 16px
+  --size-sm: 24px
+  --size-md: 32px
+  --size-lg: 48px
+  --size-xl: 64px
+  --size-xxl: 96px
+  --size-touch: 44px
 }
 radius {
-  xs 1
-  sm 2
-  md 3
-  lg 5
-  xl 6
-  pill 9999
+  --radius-xs: 1px
+  --radius-sm: 2px
+  --radius-md: 3px
+  --radius-lg: 5px
+  --radius-xl: 6px
+  --radius-pill: 9999px
 }
 stroke {
-  hairline 1
-  thin 1.5
-  regular 2
-  thick 3
-  focus 2
+  --stroke-hairline: 1px
+  --stroke-thin: 1.5px
+  --stroke-regular: 2px
+  --stroke-thick: 3px
+  --stroke-focus: 2px
 }
 elevation {
   raised {

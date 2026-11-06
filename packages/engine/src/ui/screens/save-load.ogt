@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Save and load with thumbnails (docs/ui.md Appendix B). The slots as
 # cards, each its thumbnail, title, place, time played and date, an
@@ -24,18 +24,18 @@ actions {
 }
 fixture default "{\"mode\": \"load\", \"slots\": [{\"title\": \"Chapter 3\", \"place\": \"Old mill\", \"played\": 15120, \"date\": \"Today 18:42\", \"auto\": true, \"empty\": false, \"thumb\": 0}, {\"title\": \"Chapter 2\", \"place\": \"Harbour\", \"played\": 9800, \"date\": \"Yesterday\", \"auto\": false, \"empty\": false, \"thumb\": 0}, {\"title\": \"\", \"place\": \"\", \"played\": 0, \"date\": \"\", \"auto\": false, \"empty\": true, \"thumb\": 0}], \"selected\": 0}"
 column Screen {
-  width grow
-  height grow
-  padding 32
-  gap 16
-  at phone {
-    padding 16
-    gap 12
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 16px
+  @media phone {
+    padding: 16px
+    gap: 12px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
+    width: stretch
+    gap: 12px
+    align-items: center
     button Back {
       key "screen.common.back"
       text "Back"
@@ -45,98 +45,98 @@ column Screen {
     label SaveTitle {
       key "screen.save-load.saveTitle"
       text "Save game"
-      step xl2
+      font: var(--text-xl2)
       heading true
       visible bind "mode == \"save\""
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
     label LoadTitle {
       key "screen.save-load.loadTitle"
       text "Load game"
-      step xl2
+      font: var(--text-xl2)
       heading true
       visible bind "mode != \"save\""
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
   }
   grid Body {
-    width grow
-    height grow
-    gap 24
-    columns "3fr" "2fr"
-    rows "1fr"
-    at phonePortrait {
-      columns "1fr"
-      rows "1fr" auto
-      gap 12
+    width: stretch
+    height: stretch
+    gap: 24px
+    grid-template-columns: 3fr 2fr
+    grid-template-rows: 1fr
+    @media phone-portrait {
+      grid-template-columns: 1fr
+      grid-template-rows: 1fr auto
+      gap: 12px
     }
     scroll Slots {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
       column List {
-        width grow
-        gap 8
+        width: stretch
+        gap: 8px
         focusGroup stop
         for s in slots {
           row Slot {
-            width grow
-            padding 10
-            gap 12
-            cross center
-            background token panelRaised
-            frame card
+            width: stretch
+            padding: 10px
+            gap: 12px
+            align-items: center
+            background: var(--panel-raised)
+            -og-frame: card
             interactive true
             focusable true
             on click set selected "$index"
             on click emit select
             art Thumb {
               kind saveThumb
-              width 160
-              aspect 1.78
+              width: 160px
+              aspect-ratio: 1.78
               texture bind s.thumb
-              at phone {
-                width 96
+              @media phone {
+                width: 96px
               }
             }
             column Text {
-              width grow
-              gap 2
+              width: stretch
+              gap: 2px
               label Empty {
                 key "screen.save-load.empty"
                 text "Empty slot"
-                step lg
+                font: var(--text-lg)
                 visible bind s.empty
               }
               label Name {
                 text bind s.title
                 visible bind "!s.empty"
-                step lg
-                maxLines 1
-                ellipsis true
+                font: var(--text-lg)
+                line-clamp: 1
+                text-overflow: ellipsis
               }
               label Place {
                 text bind s.place
-                color token inkMuted
-                maxLines 1
-                ellipsis true
+                color: var(--ink-muted)
+                line-clamp: 1
+                text-overflow: ellipsis
                 visible bind "!s.empty"
               }
               row Meta {
-                gap 8
+                gap: 8px
                 visible bind "!s.empty"
                 label Played {
                   text "{s.played, duration}"
-                  step caption
-                  color token inkMuted
+                  font: var(--text-caption)
+                  color: var(--ink-muted)
                 }
                 label Date {
                   text bind s.date
-                  step caption
-                  color token inkMuted
+                  font: var(--text-caption)
+                  color: var(--ink-muted)
                 }
               }
             }
@@ -148,46 +148,41 @@ column Screen {
             }
             state selection bind "$index == selected" {
               off {
-                opacity 0.8
+                opacity: 0.8
               }
               on {
-                opacity 1
-                background token primarySoft
+                opacity: 1
+                background: var(--primary-soft)
               }
-              transition any any token ui
+              transition: var(--motion-ui)
             }
-            state interaction {
-              normal {
-                scale 1
-              }
-              hover {
-                scale 1.01
-              }
-              pressed {
-                scale 0.99
-              }
-              focused {
-                scale 1.01
-              }
-              transition any any token ui
+            :hover {
+              scale: 1.01
             }
+            :active {
+              scale: 0.99
+            }
+            :focus-visible {
+              scale: 1.01
+            }
+            -og-state-transition: var(--motion-ui)
           }
         }
       }
     }
     column Side {
-      width grow
-      gap 12
+      width: stretch
+      gap: 12px
       slot Preview {
-        width grow
-        at phone {
+        width: stretch
+        @media phone {
           visible false
         }
       }
       row Actions {
-        width grow
-        gap 8
-        align end
+        width: stretch
+        gap: 8px
+        justify-content: end
         button Delete {
           key "screen.save-load.delete"
           text "Delete"

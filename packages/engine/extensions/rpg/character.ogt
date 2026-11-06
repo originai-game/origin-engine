@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Character, loadout, paperdoll and stats (docs/ui.md Appendix B). The
 # character's name, level and headline stats at the head, Equipment and
@@ -39,19 +39,19 @@ actions {
 }
 fixture default "{\"name\": \"Mara\", \"level\": 24, \"className\": \"Ranger\", \"tab\": \"equipment\", \"stats\": [{\"name\": \"Power\", \"value\": 412}, {\"name\": \"Armour\", \"value\": 268}, {\"name\": \"Speed\", \"value\": 105}]}"
 column Screen {
-  width grow
-  height grow
-  padding 32
-  gap 16
-  at phone {
-    padding 16
-    gap 12
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 16px
+  @media phone {
+    padding: 16px
+    gap: 12px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Back {
       key "screen.common.back"
       text "Back"
@@ -59,44 +59,44 @@ column Screen {
       on click pop
     }
     column Who {
-      gap 2
+      gap: 2px
       label Name {
         text bind name
-        step xl2
+        font: var(--text-xl2)
         heading true
-        at phone {
-          step xl
+        @media phone {
+          font: var(--text-xl)
         }
       }
       label Meta {
         text "Level {level} · {className}"
-        color token inkMuted
+        color: var(--ink-muted)
       }
     }
     spacer
     row Stats {
-      gap 16
-      at phonePortrait {
+      gap: 16px
+      @media phone-portrait {
         visible false
       }
       for s in stats {
         column Stat {
-          cross center
+          align-items: center
           label Value {
             text bind s.value grouped
-            step lg
+            font: var(--text-lg)
           }
           label Name {
             text bind s.name
-            step caption
-            color token inkMuted
+            font: var(--text-caption)
+            color: var(--ink-muted)
           }
         }
       }
     }
   }
   row Tabs {
-    gap 8
+    gap: 8px
     focusGroup wrap
     button Equipment {
       key "screen.character.equipment"
@@ -105,10 +105,10 @@ column Screen {
       on click set tab "\"equipment\""
       state selection bind "tab == \"equipment\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
@@ -119,40 +119,40 @@ column Screen {
       on click set tab "\"loadout\""
       state selection bind "tab == \"loadout\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
   }
   column Body {
-    width grow
-    height grow
+    width: stretch
+    height: stretch
     grid Equipment {
-      width grow
-      height grow
-      gap 24
-      columns "2fr" "1fr"
-      rows "1fr"
+      width: stretch
+      height: stretch
+      gap: 24px
+      grid-template-columns: 2fr 1fr
+      grid-template-rows: 1fr
       visible bind "tab == \"equipment\""
-      at phonePortrait {
-        columns "1fr"
-        rows "1fr" auto
-        gap 12
+      @media phone-portrait {
+        grid-template-columns: 1fr
+        grid-template-rows: 1fr auto
+        gap: 12px
       }
       slot Paperdoll {
-        width grow
-        height grow
+        width: stretch
+        height: stretch
       }
       slot Compare {
-        width grow
+        width: stretch
       }
     }
     slot Loadout {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
       visible bind "tab == \"loadout\""
     }
   }

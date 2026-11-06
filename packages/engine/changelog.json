@@ -5,6 +5,18 @@
     "simulation": "changed",
     "breaking": [
       {
+        "member": "UI documents (type screen, type component)",
+        "change": "Documents are version 2, the CSS dialect (docs/ui.md §10.4): an element's look and layout are CSS declarations (`width: stretch; max-width: 640px`, `padding: 8px 12px`, `background: var(--panel-raised)`, `font: var(--text-caption)`, `transition: -og-spring(300ms, 0.1)`), interaction states are pseudo-classes (`:hover`, `:active`, `:focus-visible`, `:disabled`), breakpoints `@media phone` and the game's extensions `-og-` properties. A version 1 document no longer loads; the subset is strict, so an unknown property or value is an error that names the form to write.",
+        "fix": "Run `og ui migrate assets` (and on any other directory of .ogt documents): it rewrites each version 1 screen and component line for line with its comments, after checking the two read as the same document. Code that writes document text writes the version 2 form.",
+        "find": ["type screen", "type component"]
+      },
+      {
+        "member": "UI styles (type style)",
+        "change": "Styles are version 3, the CSS dialect (docs/ui.md §12.7): a dressing is a selector block (`Button::base.primary:hover { … }`, `Slot::frame[rarity=epic] { … }`), colour and length tokens are custom properties (`palette { --panel-raised: #211a15 }`, `space { --space-xs: 4px }`), and what a dressing sets is declarations (`-og-slice`, `-og-fill`, `-og-stroke`, `-og-effect`, `box-shadow`, `opacity`). og style new, upgrade, pack and art write version 3; versions 1 and 2 still load. The probe's UI pick (`pickUi`) names parts and matched rules in the selector form (`Button::base.primary`).",
+        "fix": "Run `og ui migrate assets/styles` to rewrite a version 2 style as version 3, line for line with its comments, after checking the two parse to the same style. Code that appends dressings to a style's text writes the selector form.",
+        "find": ["dress \""]
+      },
+      {
         "member": "engine skills",
         "change": "The engine ships no skills: the 25 knowledge skills (og-2d, og-ai, og-anim, og-audio, og-build, og-core, og-destruction, og-feel, og-game, og-i18n, og-model, og-net, og-physics, og-platform-sdk, og-render, og-story, og-taste, og-ui, architecture-discipline, component-forge, level-texturing, localization, recipe-craft, ui-craft, visual-acceptance) are deleted, with the skill:<name> packs, the game/skills mounts (the style catalogue beside og-taste and the three-to-og guide beside og-game included) and the IDL modules' `skill` key. The knowledge package mounts only the scaffold overlay.",
         "fix": "Read the engine through og: `og api find <words>` and `og api show <name>` answer the API and the guides (`og api show start`). The platform removes the engine's former skill directories from its knowledge tree and stops pinning their packs.",

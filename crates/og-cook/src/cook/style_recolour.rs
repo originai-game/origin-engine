@@ -109,10 +109,8 @@ pub(super) fn cooked_text(
             continue;
         };
         let t = super::execute::slice_tone(atlas, &sl);
-        out.push_str(&format!(
-            "dress \"{sel}\" {{\n  tone {:.3} {:.3} {:.3} {:.2}\n}}\n",
-            t[0], t[1], t[2], t[3]
-        ));
+        out.push_str(&file.dress_tone_text(sel, t));
+        out.push('\n');
     }
     out
 }

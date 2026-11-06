@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Replay and spectator (docs/ui.md Appendix B). The match playing under
 # it with the playback bar at the foot (play, pause, the speed, the time
@@ -33,32 +33,32 @@ actions {
 }
 fixture default "{\"playing\": true, \"speed\": 1, \"time\": 412, \"length\": 1520, \"at\": 0.27, \"events\": [{\"at\": 0.1, \"kind\": \"kill\"}, {\"at\": 0.25, \"kind\": \"objective\"}], \"camera\": \"Follow Aria\", \"live\": false}"
 stack Replay {
-  width grow
-  height grow
+  width: stretch
+  height: stretch
   slot Overlay {
-    width grow
-    height grow
-    position absolute
-    start 0
-    top 0
-    end 0
-    bottom 0
+    width: stretch
+    height: stretch
+    position: absolute
+    inset-inline-start: 0
+    top: 0
+    inset-inline-end: 0
+    bottom: 0
   }
   column Side {
-    position absolute
-    end 16
-    top 16
-    gap 8
-    at phonePortrait {
+    position: absolute
+    inset-inline-end: 16px
+    top: 16px
+    gap: 8px
+    @media phone-portrait {
       visible false
     }
-    at phoneLandscape {
-      end 52
+    @media phone-landscape {
+      inset-inline-end: 52px
     }
     button Camera {
       text "Camera: {camera}"
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit camera
@@ -67,39 +67,39 @@ stack Replay {
     }
   }
   column Bar {
-    position absolute
-    start 16
-    end 16
-    bottom 16
-    padding 10
-    gap 6
-    frame hud
-    at phonePortrait {
-      start 8
-      end 8
-      bottom 40
+    position: absolute
+    inset-inline-start: 16px
+    inset-inline-end: 16px
+    bottom: 16px
+    padding: 10px
+    gap: 6px
+    -og-frame: hud
+    @media phone-portrait {
+      inset-inline-start: 8px
+      inset-inline-end: 8px
+      bottom: 40px
     }
-    at phoneLandscape {
-      start 52
-      end 52
-      bottom 24
+    @media phone-landscape {
+      inset-inline-start: 52px
+      inset-inline-end: 52px
+      bottom: 24px
     }
     slider Scrubber {
-      width grow
+      width: stretch
       value bind at
       disabled bind live
       on changed emit seek
     }
     row Controls {
-      width grow
-      gap 8
-      cross center
+      width: stretch
+      gap: 8px
+      align-items: center
       button Slower {
         key "screen.replay.slower"
         text "<<"
         square true
         size small
-        at phone {
+        @media phone {
           size medium
         }
         name "Slower"
@@ -109,7 +109,7 @@ stack Replay {
         text bind "playing ? \"||\" : \">\""
         square true
         size small
-        at phone {
+        @media phone {
           size medium
         }
         name "Play or pause"
@@ -121,7 +121,7 @@ stack Replay {
         text ">>"
         square true
         size small
-        at phone {
+        @media phone {
           size medium
         }
         name "Faster"
@@ -129,7 +129,7 @@ stack Replay {
       }
       label Speed {
         text "{speed}×"
-        step caption
+        font: var(--text-caption)
       }
       spacer
       badge Live {
@@ -140,14 +140,14 @@ stack Replay {
       }
       label Time {
         text "{time, clock} / {length, clock}"
-        step caption
-        font mono
+        font: var(--text-caption)
+        font-family: var(--font-mono)
       }
       button Exit {
         key "screen.replay.exit"
         text "Exit"
         size small
-        at phone {
+        @media phone {
           size medium
         }
         variant quiet

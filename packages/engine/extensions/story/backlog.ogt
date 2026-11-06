@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Backlog (docs/ui.md Appendix B: backlog, gallery, route flowchart). The
 # visual novel's lines read so far, over the dimmed scene, opening on the
@@ -22,26 +22,26 @@ actions {
 }
 fixture default "{\"chapter\": \"Chapter 2 · The Letter\"}"
 column Backlog {
-  width grow
-  height grow
-  padding 32
-  align center
-  cross center
-  at phone {
-    padding 12
+  width: stretch
+  height: stretch
+  padding: 32px
+  justify-content: center
+  align-items: center
+  @media phone {
+    padding: 12px
   }
   column Panel {
-    width grow 0 880
-    height grow
-    gap 8
+    width: stretch; max-width: 880px
+    height: stretch
+    gap: 8px
     label Chapter {
       text bind chapter
-      step caption
-      color token inkMuted
+      font: var(--text-caption)
+      color: var(--ink-muted)
     }
     slot Log {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
     }
   }
 }

@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # HUD layout editor (docs/ui.md Appendix B: settings, its HUD layout
 # editor; §8.4 the player-customised HUD). Over the live HUD, which keeps
@@ -31,38 +31,38 @@ actions {
 }
 fixture default "{\"showHint\": true}"
 stack Editor {
-  width grow
-  height grow
+  width: stretch
+  height: stretch
   panel Hint {
-    position absolute
-    top 24
-    centerX true
-    padding 10
-    frame hud
+    position: absolute
+    top: 24px
+    -og-center-x: true
+    padding: 10px
+    -og-frame: hud
     visible bind showHint
-    at phone {
-      top 56
+    @media phone {
+      top: 56px
     }
     label Text {
       key "screen.hud-editor.hint"
       text "Drag an element to move it."
-      textAlign center
-      maxLines 2
+      text-align: center
+      line-clamp: 2
     }
   }
   slot Editor {
-    position absolute
-    bottom 24
-    centerX true
-    at phonePortrait {
-      start 8
-      end 8
-      bottom 40
+    position: absolute
+    bottom: 24px
+    -og-center-x: true
+    @media phone-portrait {
+      inset-inline-start: 8px
+      inset-inline-end: 8px
+      bottom: 40px
     }
-    at phoneLandscape {
-      start 52
-      end 52
-      bottom 24
+    @media phone-landscape {
+      inset-inline-start: 52px
+      inset-inline-end: 52px
+      bottom: 24px
     }
   }
 }

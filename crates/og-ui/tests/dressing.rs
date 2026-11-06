@@ -38,12 +38,12 @@ fn a_tight_field_takes_its_components_text_parts() {
         "/../../templates/styles/storybook/style.ogt"
     ))
     .unwrap();
-    let dress = r##"dress "Poem.text" {
-  ink "#c0392b"
-  step lg
+    let dress = r##"Poem::text {
+  -og-ink: #c0392b
+  -og-step: lg
 }
-dress "Poem.placeholder" {
-  ink "#7f8c8d"
+Poem::placeholder {
+  -og-ink: #7f8c8d
 }
 "##;
     let file = parse_style(&format!("{style}{dress}")).unwrap_or_else(|e| panic!("{e}"));
@@ -141,7 +141,7 @@ dress "Poem.placeholder" {
         line.3
     );
     let e = parse_style(&format!(
-        "{style}dress \"Poem.frame\" {{\n  ink accent\n}}\n"
+        "{style}Poem::frame {{\n  -og-ink: var(--accent)\n}}\n"
     ))
     .unwrap_err();
     assert!(e.contains("text part"), "{e}");
@@ -187,9 +187,9 @@ fn scroll_bars_and_heading_flourishes_have_independent_dressings() {
     for authored in [false, true] {
         let mut ui = dressed(if authored {
             concat!(
-                "dress \"Scroll.bar[axis=horizontal]\" {\n fill \"#ff00ff\"\n appearance {\n height 7\n }\n}\n",
-                "dress \"Scroll.bar[axis=vertical]\" {\n fill \"#00ffff\"\n appearance {\n width 9\n }\n}\n",
-                "dress \"Heading.flourish\" {\n appearance {\n width 12\n height 5\n color \"#ff00ff\"\n opacity 0.4\n }\n}\n",
+                "Scroll::bar[axis=horizontal] {\n -og-fill: #ff00ff\n height: 7px\n}\n",
+                "Scroll::bar[axis=vertical] {\n -og-fill: #00ffff\n width: 9px\n}\n",
+                "Heading::flourish {\n width: 12px\n height: 5px\n color: #ff00ff\n opacity: 0.4\n}\n",
             )
         } else {
             ""
@@ -294,8 +294,8 @@ fn scroll_bars_and_heading_flourishes_have_independent_dressings() {
 #[test]
 fn a_disabled_touch_controls_opacity_is_authored_by_its_state_dressing() {
     let mut ui = dressed(concat!(
-        "dress \"ActionButton.face\" {\n appearance {\n opacity 0.8\n }\n}\n",
-        "dress \"ActionButton.face[disabled]\" {\n appearance {\n opacity 0.2\n }\n}\n",
+        "ActionButton::face {\n opacity: 0.8\n}\n",
+        "ActionButton::face:disabled {\n opacity: 0.2\n}\n",
     ));
     for disabled in [false, true, false] {
         ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));

@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # A race's results (Forza, Gran Turismo, Mario Kart): the finishing place
 # over the field, the player's best lap and points, the classification
@@ -45,229 +45,229 @@ timeline land {
 }
 fixture default "{\"title\": \"Victory\", \"place\": 1, \"field\": 8, \"bestLap\": \"1:32.418\", \"points\": 25, \"rows\": [{\"place\": 1, \"name\": \"You\", \"time\": \"14:02.311\", \"gap\": \"\", \"points\": 25, \"player\": true}, {\"place\": 2, \"name\": \"M. Okafor\", \"time\": \"14:03.515\", \"gap\": \"+1.204\", \"points\": 18, \"player\": false}, {\"place\": 3, \"name\": \"L. Varga\", \"time\": \"14:05.002\", \"gap\": \"+2.691\", \"points\": 15, \"player\": false}, {\"place\": 4, \"name\": \"S. Ishikawa\", \"time\": \"14:09.870\", \"gap\": \"+7.559\", \"points\": 12, \"player\": false}, {\"place\": 5, \"name\": \"R. Delacroix\", \"time\": \"14:12.144\", \"gap\": \"+9.833\", \"points\": 10, \"player\": false}, {\"place\": 6, \"name\": \"A. Lindqvist\", \"time\": \"14:20.660\", \"gap\": \"+18.349\", \"points\": 8, \"player\": false}, {\"place\": 7, \"name\": \"J. Moreno\", \"time\": \"14:31.007\", \"gap\": \"+28.696\", \"points\": 6, \"player\": false}, {\"place\": 8, \"name\": \"K. Brandt\", \"time\": \"DNF\", \"gap\": \"\", \"points\": 0, \"player\": false}], \"rewards\": [{\"name\": \"Credits\", \"amount\": 12500}, {\"name\": \"Driver XP\", \"amount\": 840}]}"
 column Results {
-  width grow
-  height grow
-  background token backdrop
-  padding 32
-  align center
-  cross center
-  at phone {
-    padding 12
+  width: stretch
+  height: stretch
+  background: var(--backdrop)
+  padding: 32px
+  justify-content: center
+  align-items: center
+  @media phone {
+    padding: 12px
   }
   column Panel {
-    width grow 0 920
-    height grow 0 860
-    padding 24
-    gap 16
-    background token panel
-    frame panel
+    width: stretch; max-width: 920px
+    height: stretch; max-height: 860px
+    padding: 24px
+    gap: 16px
+    background: var(--panel)
+    -og-frame: panel
     part frame
     on appear play land
-    at phone {
-      padding 16
-      gap 12
+    @media phone {
+      padding: 16px
+      gap: 12px
     }
     scroll Page {
-      width grow
-      height grow
-      gap 16
-      at phone {
-        gap 12
+      width: stretch
+      height: stretch
+      gap: 16px
+      @media phone {
+        gap: 12px
       }
       row Head {
-        width grow
-        gap 20
-        cross center
+        width: stretch
+        gap: 20px
+        align-items: center
         label Place {
           text "P{place}"
-          step displayLg
-          font display
-          color token gold
+          font: var(--text-display-lg)
+          font-family: var(--font-display)
+          color: var(--gold)
           part place
-          at phone {
-            step xl5
+          @media phone {
+            font: var(--text-xl5)
           }
         }
         column Text {
-          width grow
-          gap 4
+          width: stretch
+          gap: 4px
           label Title {
             text bind title
-            step xl3
+            font: var(--text-xl3)
             heading true
-            at phone {
-              step xl2
+            @media phone {
+              font: var(--text-xl2)
             }
           }
           label Field {
             text "{place, ordinal} of {field}"
-            color token inkMuted
+            color: var(--ink-muted)
           }
         }
       }
       row Summary {
-        width grow
-        gap 24
-        wrap true
+        width: stretch
+        gap: 24px
+        flex-wrap: wrap
         column BestLap {
-          gap 2
+          gap: 2px
           label Name {
             key "screen.raceResults.bestLap"
             text "Best lap"
-            step caption
-            color token inkMuted
+            font: var(--text-caption)
+            color: var(--ink-muted)
           }
           label Value {
             text bind bestLap
-            step lg
-            font mono
+            font: var(--text-lg)
+            font-family: var(--font-mono)
           }
         }
         column Points {
-          gap 2
+          gap: 2px
           label Name {
             key "screen.raceResults.points"
             text "Points"
-            step caption
-            color token inkMuted
+            font: var(--text-caption)
+            color: var(--ink-muted)
           }
           label Value {
             text "+{points, grouped}"
-            step lg
+            font: var(--text-lg)
           }
         }
       }
       slot Podium {
-        width grow
+        width: stretch
       }
       column Classification {
-        width grow
-        gap 4
+        width: stretch
+        gap: 4px
         row Head {
-          width grow
-          gap 12
-          padding 8 4
+          width: stretch
+          gap: 12px
+          padding: 4px 8px
           label Place {
             key "screen.raceResults.pos"
             text "Pos"
-            step caption
-            color token inkMuted
-            nowrap true
-            width 40
-            at phone {
-              width 44
+            font: var(--text-caption)
+            color: var(--ink-muted)
+            white-space: nowrap
+            width: 40px
+            @media phone {
+              width: 44px
             }
           }
           label Driver {
             key "screen.raceResults.driver"
             text "Driver"
-            step caption
-            color token inkMuted
-            width grow
+            font: var(--text-caption)
+            color: var(--ink-muted)
+            width: stretch
           }
           label Time {
             key "screen.raceResults.time"
             text "Time"
-            step caption
-            color token inkMuted
-            width 110
-            textAlign end
-            at phone {
+            font: var(--text-caption)
+            color: var(--ink-muted)
+            width: 110px
+            text-align: end
+            @media phone {
               visible false
             }
           }
           label Gap {
             key "screen.raceResults.gap"
             text "Gap"
-            step caption
-            color token inkMuted
-            width 110
-            textAlign end
-            at phone {
+            font: var(--text-caption)
+            color: var(--ink-muted)
+            width: 110px
+            text-align: end
+            @media phone {
               visible false
             }
           }
           label Points {
             key "screen.raceResults.pts"
             text "Pts"
-            step caption
-            color token inkMuted
-            width 48
-            textAlign end
-            at phone {
+            font: var(--text-caption)
+            color: var(--ink-muted)
+            width: 48px
+            text-align: end
+            @media phone {
               visible false
             }
           }
         }
         for row in rows {
           row Row {
-            width grow
-            gap 12
-            padding 8 10
-            cross center
-            radius 6
+            width: stretch
+            gap: 12px
+            padding: 10px 8px
+            align-items: center
+            border-radius: 6px
             part row
             state player bind row.player {
               other {
-                background token panelRaised
+                background: var(--panel-raised)
               }
               you {
-                background token primarySoft
+                background: var(--primary-soft)
               }
             }
             label Place {
               text bind row.place
-              font display
-              width 40
-              at phone {
-                width 44
+              font-family: var(--font-display)
+              width: 40px
+              @media phone {
+                width: 44px
               }
             }
             column Who {
-              width grow
-              gap 2
+              width: stretch
+              gap: 2px
               label Driver {
                 text bind row.name
-                width grow
-                maxLines 1
-                ellipsis true
+                width: stretch
+                line-clamp: 1
+                text-overflow: ellipsis
               }
               label TimeUnder {
                 text bind row.time
-                font mono
-                color token inkMuted
+                font-family: var(--font-mono)
+                color: var(--ink-muted)
                 visible false
-                at phone {
+                @media phone {
                   visible true
                 }
               }
             }
             label Time {
               text bind row.time
-              font mono
-              nowrap true
-              width 110
-              textAlign end
-              at phone {
+              font-family: var(--font-mono)
+              white-space: nowrap
+              width: 110px
+              text-align: end
+              @media phone {
                 visible false
               }
             }
             label Gap {
               text bind row.gap
-              font mono
-              nowrap true
-              color token inkMuted
-              width 110
-              textAlign end
-              at phone {
+              font-family: var(--font-mono)
+              white-space: nowrap
+              color: var(--ink-muted)
+              width: 110px
+              text-align: end
+              @media phone {
                 visible false
               }
             }
             label Points {
               text bind row.points
-              width 48
-              textAlign end
-              at phone {
+              width: 48px
+              text-align: end
+              @media phone {
                 visible false
               }
             }
@@ -275,9 +275,9 @@ column Results {
         }
       }
       row Rewards {
-        width grow
-        gap 12
-        wrap true
+        width: stretch
+        gap: 12px
+        flex-wrap: wrap
         for reward in rewards {
           badge Reward {
             text "+{reward.amount, grouped} {reward.name}"
@@ -287,10 +287,10 @@ column Results {
       }
     }
     row Footer {
-      width grow
-      gap 12
-      align end
-      wrap true
+      width: stretch
+      gap: 12px
+      justify-content: end
+      flex-wrap: wrap
       button Replay {
         key "screen.raceResults.replay"
         text "Replay"

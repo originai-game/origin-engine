@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Shop and vendor in the world (docs/ui.md Appendix B). The vendor's
 # portrait and greeting, Buy, Sell and Buy back tabs over the goods, the
@@ -33,49 +33,49 @@ actions {
 }
 fixture default "{\"vendor\": \"Hesk the trader\", \"greeting\": \"Fine wares, fair prices. Mostly fair.\", \"portrait\": 0, \"tab\": \"buy\", \"goods\": [{\"name\": \"Healing draught\", \"price\": 40, \"stock\": -1, \"tier\": \"Common\", \"texture\": 0, \"afford\": true}, {\"name\": \"Steel longsword\", \"price\": 820, \"stock\": 1, \"tier\": \"Rare\", \"texture\": 0, \"afford\": true}, {\"name\": \"Wyrmscale mail\", \"price\": 4200, \"stock\": 1, \"tier\": \"Epic\", \"texture\": 0, \"afford\": false}], \"selected\": 0, \"gold\": 1840}"
 column Screen {
-  width grow
-  height grow
-  padding 32
-  gap 12
-  at phone {
-    padding 16
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 12px
+  @media phone {
+    padding: 16px
   }
   row Header {
-    width grow
-    gap 16
-    cross center
+    width: stretch
+    gap: 16px
+    align-items: center
     art Portrait {
       kind bust
-      width 72
-      height 72
+      width: 72px
+      height: 72px
       texture bind portrait
-      at phone {
-        width 48
-        height 48
+      @media phone {
+        width: 48px
+        height: 48px
       }
     }
     column Who {
-      width grow
-      gap 2
+      width: stretch
+      gap: 2px
       label Name {
         text bind vendor
-        step xl
+        font: var(--text-xl)
         heading true
       }
       label Greeting {
         text bind greeting
-        color token inkMuted
-        maxLines 2
+        color: var(--ink-muted)
+        line-clamp: 2
       }
     }
     label Gold {
       text "{gold, grouped}"
-      step lg
-      color token gold
+      font: var(--text-lg)
+      color: var(--gold)
     }
   }
   row Tabs {
-    gap 6
+    gap: 6px
     focusGroup wrap
     button Buy {
       key "screen.vendor.buy"
@@ -84,10 +84,10 @@ column Screen {
       on click set tab "\"buy\""
       state selection bind "tab == \"buy\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
@@ -98,10 +98,10 @@ column Screen {
       on click set tab "\"sell\""
       state selection bind "tab == \"sell\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
@@ -112,120 +112,115 @@ column Screen {
       on click set tab "\"buyBack\""
       state selection bind "tab == \"buyBack\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
   }
   grid Body {
-    width grow
-    height grow
-    gap 24
-    columns "3fr" "2fr"
-    rows "1fr"
-    at phonePortrait {
-      columns "1fr"
-      rows "1fr" auto
-      gap 12
+    width: stretch
+    height: stretch
+    gap: 24px
+    grid-template-columns: 3fr 2fr
+    grid-template-rows: 1fr
+    @media phone-portrait {
+      grid-template-columns: 1fr
+      grid-template-rows: 1fr auto
+      gap: 12px
     }
     scroll Goods {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
       column List {
-        width grow
-        gap 4
+        width: stretch
+        gap: 4px
         focusGroup stop
         slot Bag {
-          width grow
+          width: stretch
         }
         for g in goods {
           row Good {
-            width grow
-            padding 8
-            gap 10
-            cross center
-            radius 8
+            width: stretch
+            padding: 8px
+            gap: 10px
+            align-items: center
+            border-radius: 8px
             interactive true
             focusable true
             on click set selected "$index"
             art Icon {
               kind itemIcon
-              width 44
-              height 44
+              width: 44px
+              height: 44px
               texture bind g.texture
             }
             column Text {
-              width grow
-              gap 2
+              width: stretch
+              gap: 2px
               label Name {
                 text bind g.name
-                maxLines 1
-                ellipsis true
+                line-clamp: 1
+                text-overflow: ellipsis
               }
               label Tier {
                 text bind g.tier
-                step caption
-                color token inkMuted
+                font: var(--text-caption)
+                color: var(--ink-muted)
               }
             }
             label Stock {
               text "×{g.stock}"
-              step caption
-              color token inkMuted
+              font: var(--text-caption)
+              color: var(--ink-muted)
               visible bind "g.stock >= 0"
             }
             label Price {
               text "{g.price, grouped}"
               state afford bind g.afford {
                 short {
-                  ink token danger
+                  color: var(--danger)
                 }
                 afford {
-                  ink token gold
+                  color: var(--gold)
                 }
               }
             }
             state selection bind "$index == selected" {
               off {
-                background token panel
+                background: var(--panel)
               }
               on {
-                background token primarySoft
+                background: var(--primary-soft)
               }
-              transition any any token ui
+              transition: var(--motion-ui)
             }
-            state interaction {
-              normal {
-                scale 1
-              }
-              hover {
-                scale 1.01
-              }
-              pressed {
-                scale 0.99
-              }
-              focused {
-                scale 1.01
-              }
-              transition any any token ui
+            :hover {
+              scale: 1.01
             }
+            :active {
+              scale: 0.99
+            }
+            :focus-visible {
+              scale: 1.01
+            }
+            -og-state-transition: var(--motion-ui)
           }
         }
       }
     }
     column Side {
-      width grow
-      gap 12
+      width: stretch
+      gap: 12px
       slot Compare {
-        width grow
+        width: stretch
       }
       row Actions {
-        width grow
-        gap 8
-        cross center
+        width: stretch
+        gap: 8px
+        align-items: center
         slot Amount {
         }
         spacer

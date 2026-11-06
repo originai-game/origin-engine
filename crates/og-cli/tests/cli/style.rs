@@ -293,12 +293,15 @@ fn style_art_packs_painted_slots_at_three_densities() {
     // The dressing's slice: its region and insets in CSS px, authored.
     let dress = |sel: &str| -> Vec<String> {
         let at = style
-            .find(&format!("dress \"{sel}\" {{"))
+            .find(&format!(
+                "{} {{",
+                og_ui::style_file::css::selector_css(&og_ui::Selector::parse(sel).unwrap())
+            ))
             .unwrap_or_else(|| panic!("no dress {sel} in\n{style}"));
         let block = &style[at..];
         let slice = block
             .lines()
-            .find(|l| l.trim().starts_with("slice"))
+            .find(|l| l.trim().starts_with("-og-slice:"))
             .unwrap();
         slice.split_whitespace().map(String::from).collect()
     };
@@ -331,14 +334,8 @@ fn style_art_packs_painted_slots_at_three_densities() {
         assert!(edge[0] > 180 && edge[2] < 80, "{k}×: edge {edge:?}");
         assert!(mid[2] > 180 && mid[0] < 80, "{k}×: middle {mid:?}");
     }
-    assert!(
-        style.contains("dress \"Button.base[primary][disabled]\""),
-        "{style}"
-    );
-    assert!(
-        !style.contains("dress \"Button.base[secondary]\""),
-        "{style}"
-    );
+    assert!(style.contains("Button::base.primary:disabled {"), "{style}");
+    assert!(!style.contains("Button::base.secondary {"), "{style}");
     // The review sheet; a style with no atlas of its own keeps no base.
     assert!(pack.join("art/sheet.png").is_file());
     assert!(!pack.join("art/base.png").exists());

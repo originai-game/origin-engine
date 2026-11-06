@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Auction house and market (docs/ui.md Appendix B). Browse, Sell and My
 # auctions; the search and filters, the listings as a sortable table
@@ -32,18 +32,18 @@ actions {
 }
 fixture default "{\"tab\": \"browse\", \"query\": \"\", \"gold\": 48210, \"cut\": 0.05, \"selected\": {\"name\": \"Starsteel ingot\", \"price\": 1250, \"bid\": 980, \"seller\": \"Brann\", \"ends\": 7200}}"
 column Screen {
-  width grow
-  height grow
-  padding 24
-  gap 12
-  at phone {
-    padding 12
+  width: stretch
+  height: stretch
+  padding: 24px
+  gap: 12px
+  @media phone {
+    padding: 12px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Close {
       key "screen.common.close"
       text "Close"
@@ -53,24 +53,24 @@ column Screen {
     label Title {
       key "screen.auction-house.title"
       text "Auction house"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
     spacer
     label Gold {
       text bind gold grouped
-      step lg
-      color token gold
+      font: var(--text-lg)
+      color: var(--gold)
     }
   }
   row Tools {
-    width grow
-    gap 8
-    cross center
-    wrap true
+    width: stretch
+    gap: 8px
+    align-items: center
+    flex-wrap: wrap
     button Browse {
       key "screen.auction-house.browse"
       text "Browse"
@@ -78,10 +78,10 @@ column Screen {
       on click set tab "\"browse\""
       state selection bind "tab == \"browse\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
@@ -92,10 +92,10 @@ column Screen {
       on click set tab "\"sell\""
       state selection bind "tab == \"sell\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
@@ -106,91 +106,91 @@ column Screen {
       on click set tab "\"mine\""
       state selection bind "tab == \"mine\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
     spacer
     field Search {
-      width grow 160 320
+      width: stretch; min-width: 160px; max-width: 320px
       input bind query
       placeholder "Search"
       on changed emit search
     }
   }
   grid Body {
-    width grow
-    height grow
-    gap 16
-    columns 240 "1fr" 300
-    rows "1fr"
-    at tablet {
-      columns "1fr" 280
+    width: stretch
+    height: stretch
+    gap: 16px
+    grid-template-columns: 240px 1fr 300px
+    grid-template-rows: 1fr
+    @media tablet {
+      grid-template-columns: 1fr 280px
     }
-    at phonePortrait {
-      columns "1fr"
-      rows "1fr" auto
-      gap 12
+    @media phone-portrait {
+      grid-template-columns: 1fr
+      grid-template-rows: 1fr auto
+      gap: 12px
     }
     slot Filters {
-      width grow
-      height grow
-      at tablet {
+      width: stretch
+      height: stretch
+      @media tablet {
         visible false
       }
-      at phone {
+      @media phone {
         visible false
       }
     }
     slot Listings {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
     }
     column Side {
-      width grow
-      padding 12
-      gap 8
-      background token panel
-      frame panel
+      width: stretch
+      padding: 12px
+      gap: 8px
+      background: var(--panel)
+      -og-frame: panel
       column Browse {
-        width grow
-        gap 8
+        width: stretch
+        gap: 8px
         visible bind "tab != \"sell\""
         label Name {
           text bind selected.name
-          step lg
+          font: var(--text-lg)
           heading true
         }
         label Seller {
           text "{selected.seller} · {selected.ends, duration}"
-          step caption
-          color token inkMuted
+          font: var(--text-caption)
+          color: var(--ink-muted)
         }
         slot History {
-          width grow
+          width: stretch
         }
         row Prices {
-          width grow
-          gap 8
+          width: stretch
+          gap: 8px
           label Bid {
             text "Bid {selected.bid, grouped}"
           }
           spacer
           label Price {
             text "Buyout {selected.price, grouped}"
-            color token gold
+            color: var(--gold)
           }
         }
         row Actions {
-          width grow
-          gap 8
+          width: stretch
+          gap: 8px
           button Bid {
             key "screen.auction-house.bid"
             text "Bid"
-            width grow
+            width: stretch
             visible bind "tab == \"browse\""
             on click emit bid
           }
@@ -198,7 +198,7 @@ column Screen {
             key "screen.auction-house.buy"
             text "Buy out"
             variant primary
-            width grow
+            width: stretch
             visible bind "tab == \"browse\""
             disabled bind "gold < selected.price"
             on click emit buy
@@ -207,29 +207,29 @@ column Screen {
             key "screen.auction-house.cancel"
             text "Cancel auction"
             variant danger
-            width grow
+            width: stretch
             visible bind "tab == \"mine\""
             on click emit cancel
           }
         }
       }
       column SellPage {
-        width grow
-        gap 8
+        width: stretch
+        gap: 8px
         visible bind "tab == \"sell\""
         slot Post {
-          width grow
+          width: stretch
         }
         label Cut {
           text "The house keeps {cut, percent}"
-          step caption
-          color token inkMuted
+          font: var(--text-caption)
+          color: var(--ink-muted)
         }
         button PostIt {
           key "screen.auction-house.post"
           text "Post auction"
           variant primary
-          width grow
+          width: stretch
           on click emit post
         }
       }

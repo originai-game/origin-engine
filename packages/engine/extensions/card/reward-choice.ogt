@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Reward choice (docs/ui.md Appendix B: pick N of M). After a fight or at
 # a level-up: the rewards dealt as cards, picked one (or N), with Reroll,
@@ -27,50 +27,50 @@ actions {
 }
 fixture default "{\"title\": \"Choose a reward\", \"picks\": 1, \"rerolls\": 2, \"banishes\": 1}"
 column Reward {
-  width grow
-  height grow
-  padding 32
-  gap 16
-  align center
-  cross center
-  at phone {
-    padding 12
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 16px
+  justify-content: center
+  align-items: center
+  @media phone {
+    padding: 12px
   }
   column Panel {
-    width grow 0 1080
-    gap 16
-    cross center
-    enter fade
+    width: stretch; max-width: 1080px
+    gap: 16px
+    align-items: center
+    -og-enter: fade
     label Title {
       text bind title
-      step xl3
+      font: var(--text-xl3)
       heading true
-      textAlign center
-      at phone {
-        step xl
+      text-align: center
+      @media phone {
+        font: var(--text-xl)
       }
     }
     label Picks {
       text "{picks, plural, one {Take one} other {Take #}}"
-      color token inkMuted
+      color: var(--ink-muted)
     }
     slot Choice {
-      width grow
+      width: stretch
     }
     slot Context {
-      width grow
+      width: stretch
     }
     row Counts {
-      gap 16
+      gap: 16px
       label Rerolls {
         text "{rerolls, plural, one {# reroll} other {# rerolls}} left"
-        step caption
-        color token inkMuted
+        font: var(--text-caption)
+        color: var(--ink-muted)
       }
       label Banishes {
         text "{banishes, plural, one {# banish} other {# banishes}} left"
-        step caption
-        color token inkMuted
+        font: var(--text-caption)
+        color: var(--ink-muted)
       }
     }
   }

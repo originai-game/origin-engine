@@ -77,7 +77,7 @@ pub(super) fn scan_with(
         if ext(rel) == "ogt"
             && let Ok(text) =
                 read_file(path).and_then(|b| String::from_utf8(b).map_err(std::io::Error::other))
-            && Document::parse(&text).is_ok_and(|d| d.ty == og_ui::style_file::STYLE_TYPE)
+            && Document::parse_header(&text).is_ok_and(|d| d.ty == og_ui::style_file::STYLE_TYPE)
         {
             for (id, bytes) in look::shared_files(&text) {
                 builtins.insert(id.to_string(), bytes);
@@ -123,7 +123,22 @@ pub(super) fn scan_with(
             "ogt" => {
                 let text = String::from_utf8(read(rel, path)?)
                     .map_err(|_| CookError(format!("{}: not UTF-8 text", path.display())))?;
-                match Document::parse(&text) {
+                // Styles and UI documents have lines of their own (CSS
+                // declarations): their header says what they are.
+                let own_lines = Document::parse_header(&text).is_ok_and(|h| {
+                    [
+                        og_ui::style_file::STYLE_TYPE,
+                        og_ui::doc::SCREEN_TYPE,
+                        og_ui::doc::COMPONENT_TYPE,
+                    ]
+                    .contains(&h.ty.as_str())
+                });
+                let doc = if own_lines {
+                    Document::parse_header(&text)
+                } else {
+                    Document::parse(&text)
+                };
+                match doc {
                     Ok(doc) if doc.ty == "import" => {
                         let target = rel.trim_end_matches(".ogt");
                         if names.contains(target) {

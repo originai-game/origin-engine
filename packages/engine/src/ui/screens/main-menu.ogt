@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Main menu (docs/ui.md Appendix B: boot, splash, title, main menu, mode
 # select). The game's key art behind, its logo, and the menu: Continue
@@ -28,169 +28,164 @@ actions {
 }
 fixture default "{\"canContinue\": true, \"saveLine\": \"Chapter 3 · 4h 12m\", \"version\": \"1.0.0\", \"news\": \"Season 2 is live\"}"
 stack Menu {
-  width grow
-  height grow
+  width: stretch
+  height: stretch
   art Art {
     kind keyArt
-    width grow
-    height grow
-    position absolute
-    start 0
-    top 0
-    end 0
-    bottom 0
+    width: stretch
+    height: stretch
+    position: absolute
+    inset-inline-start: 0
+    top: 0
+    inset-inline-end: 0
+    bottom: 0
   }
   slot Background {
-    width grow
-    height grow
-    position absolute
-    start 0
-    top 0
-    end 0
-    bottom 0
+    width: stretch
+    height: stretch
+    position: absolute
+    inset-inline-start: 0
+    top: 0
+    inset-inline-end: 0
+    bottom: 0
   }
   column Menu {
-    width fit 420
-    height grow
-    padding 48
-    gap 12
-    align center
-    at phone {
-      padding 24
-      width grow
+    width: fit-content; min-width: 420px
+    height: stretch
+    padding: 48px
+    gap: 12px
+    justify-content: center
+    @media phone {
+      padding: 24px
+      width: stretch
     }
-    at phoneLandscape {
-      padding 12
-      gap 4
+    @media phone-landscape {
+      padding: 12px
+      gap: 4px
     }
     art Logo {
       kind logo
-      width 320
-      height 120
-      at phone {
-        width 240
-        height 90
+      width: 320px
+      height: 120px
+      @media phone {
+        width: 240px
+        height: 90px
       }
-      at phoneLandscape {
+      @media phone-landscape {
         visible false
       }
     }
     spacer
     button Continue {
-      at phoneLandscape {
+      @media phone-landscape {
         size medium
       }
       key "screen.main-menu.continue"
       text "Continue"
       variant primary
       size large
-      width grow
+      width: stretch
       visible bind canContinue
       on click emit continue
     }
     label SaveLine {
       text bind saveLine
-      step caption
-      color token inkMuted
+      font: var(--text-caption)
+      color: var(--ink-muted)
       visible bind canContinue
     }
     button NewGame {
-      at phoneLandscape {
+      @media phone-landscape {
         size medium
       }
       key "screen.main-menu.newGame"
       text "New game"
       size large
-      width grow
+      width: stretch
       on click emit newGame
     }
     button Modes {
-      at phoneLandscape {
+      @media phone-landscape {
         size medium
       }
       key "screen.main-menu.modes"
       text "Modes"
       size large
-      width grow
+      width: stretch
       on click emit modes
     }
     button Settings {
-      at phoneLandscape {
+      @media phone-landscape {
         size medium
       }
       key "screen.main-menu.settings"
       text "Settings"
       size large
-      width grow
+      width: stretch
       on click emit settings
     }
     button Credits {
       key "screen.main-menu.credits"
       text "Credits"
       variant quiet
-      width grow
+      width: stretch
       on click emit credits
     }
     button Quit {
       key "screen.main-menu.quit"
       text "Quit"
       variant quiet
-      width grow
+      width: stretch
       on click emit quit
     }
     slot Extra {
-      width grow
+      width: stretch
     }
     spacer
   }
   panel News {
-    position absolute
-    end 32
-    bottom 32
-    padding 16
-    gap 4
-    background token panelRaised
-    frame card
+    position: absolute
+    inset-inline-end: 32px
+    bottom: 32px
+    padding: 16px
+    gap: 4px
+    background: var(--panel-raised)
+    -og-frame: card
     interactive true
     focusable true
     visible bind "news != \"\""
     on click emit news
-    at phone {
+    @media phone {
       visible false
     }
     label Eyebrow {
       key "screen.main-menu.newsEyebrow"
       text "News"
-      step caption
-      color token primary
+      font: var(--text-caption)
+      color: var(--primary)
     }
     label Line {
       text bind news
-      step lg
-      maxLines 2
+      font: var(--text-lg)
+      line-clamp: 2
     }
-    state interaction {
-      normal {
-        y 0
-      }
-      hover {
-        y -2
-      }
-      pressed {
-        y 0
-      }
-      focused {
-        y -2
-      }
-      transition any any token ui
+    :hover {
+      translate: 0 -2px
     }
+    :active {
+      translate: 0 0
+    }
+    :focus-visible {
+      translate: 0 -2px
+    }
+    -og-state-transition: var(--motion-ui)
   }
   label Version {
     text bind version
-    step caption
-    color token inkMuted
-    position absolute
-    start 16
-    bottom 12
+    font: var(--text-caption)
+    color: var(--ink-muted)
+    position: absolute
+    inset-inline-start: 16px
+    bottom: 12px
   }
 }

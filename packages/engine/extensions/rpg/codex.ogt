@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Codex, bestiary and encyclopedia (docs/ui.md Appendix B: quest log,
 # journal, codex, bestiary, encyclopedia). Categories, a searchable list
@@ -32,18 +32,18 @@ actions {
 }
 fixture default "{\"categories\": [{\"name\": \"Creatures\", \"found\": 18, \"total\": 40}, {\"name\": \"Places\", \"found\": 9, \"total\": 22}, {\"name\": \"Lore\", \"found\": 31, \"total\": 60}], \"category\": 0, \"query\": \"\", \"entries\": [{\"name\": \"Bog wight\", \"found\": true, \"fresh\": true}, {\"name\": \"Lantern moth\", \"found\": true, \"fresh\": false}, {\"name\": \"???\", \"found\": false, \"fresh\": false}], \"selected\": 0, \"entry\": {\"name\": \"Bog wight\", \"kind\": \"Undead · Marsh\", \"text\": \"Drawn to light, it drowns travellers who carry lanterns after dark. Fire keeps it at bay.\", \"texture\": 0}}"
 column Screen {
-  width grow
-  height grow
-  padding 32
-  gap 12
-  at phone {
-    padding 16
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 12px
+  @media phone {
+    padding: 16px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Close {
       key "screen.common.close"
       text "Close"
@@ -53,80 +53,80 @@ column Screen {
     label Title {
       key "screen.codex.title"
       text "Codex"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
     spacer
     field Search {
-      width grow 160 320
+      width: stretch; min-width: 160px; max-width: 320px
       input bind query
       placeholder "Search"
       on changed emit search
     }
   }
   row Categories {
-    width grow
-    wrap true
-    gap 6
+    width: stretch
+    flex-wrap: wrap
+    gap: 6px
     for c in categories {
       button Category {
         text "{c.name} {c.found}/{c.total}"
         variant ghost
         size small
-        at phone {
+        @media phone {
           size medium
         }
         on click set category "$index"
         on click emit category
         state selection bind "$index == category" {
           off {
-            opacity 0.85
+            opacity: 0.85
           }
           on {
-            opacity 1
+            opacity: 1
           }
         }
       }
     }
   }
   grid Body {
-    width grow
-    height grow
-    gap 24
-    columns 300 "1fr"
-    rows "1fr"
-    at phonePortrait {
-      columns "1fr"
-      rows 200 "1fr"
-      gap 12
+    width: stretch
+    height: stretch
+    gap: 24px
+    grid-template-columns: 300px 1fr
+    grid-template-rows: 1fr
+    @media phone-portrait {
+      grid-template-columns: 1fr
+      grid-template-rows: 200px 1fr
+      gap: 12px
     }
     scroll Entries {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
       column List {
-        width grow
-        gap 2
+        width: stretch
+        gap: 2px
         focusGroup stop
         for e in entries {
           row Entry {
-            width grow
-            height fit 44
-            padding 8
-            gap 8
-            cross center
-            radius 6
+            width: stretch
+            height: fit-content; min-height: 44px
+            padding: 8px
+            gap: 8px
+            align-items: center
+            border-radius: 6px
             interactive true
             focusable true
             on click set selected "$index"
             on click emit select
             label Name {
               text bind e.name
-              width grow
-              maxLines 1
-              ellipsis true
+              width: stretch
+              line-clamp: 1
+              text-overflow: ellipsis
             }
             badge New {
               key "screen.common.new"
@@ -136,83 +136,78 @@ column Screen {
             }
             state selection bind "$index == selected" {
               off {
-                background token panel
+                background: var(--panel)
               }
               on {
-                background token primarySoft
+                background: var(--primary-soft)
               }
-              transition any any token ui
+              transition: var(--motion-ui)
             }
             state find bind e.found {
               hidden {
-                opacity 0.5
+                opacity: 0.5
               }
               found {
-                opacity 1
+                opacity: 1
               }
             }
-            state interaction {
-              normal {
-                scale 1
-              }
-              hover {
-                scale 1.01
-              }
-              pressed {
-                scale 0.99
-              }
-              focused {
-                scale 1.01
-              }
-              transition any any token ui
+            :hover {
+              scale: 1.01
             }
+            :active {
+              scale: 0.99
+            }
+            :focus-visible {
+              scale: 1.01
+            }
+            -og-state-transition: var(--motion-ui)
           }
         }
       }
     }
     scroll Page {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
       column Entry {
-        width grow
-        gap 12
+        width: stretch
+        gap: 12px
         row Head {
-          width grow
-          gap 16
-          wrap true
+          width: stretch
+          gap: 16px
+          flex-wrap: wrap
           art Art {
             kind unitPortrait
-            width 200
-            height 200
+            width: 200px
+            height: 200px
             texture bind entry.texture
-            at phone {
-              width 120
-              height 120
+            @media phone {
+              width: 120px
+              height: 120px
             }
           }
           column Text {
-            width grow 200
-            gap 4
+            width: stretch; min-width: 200px
+            gap: 4px
             label Name {
               text bind entry.name
-              step xl
+              font: var(--text-xl)
               heading true
             }
             label Kind {
               text bind entry.kind
-              color token inkMuted
+              color: var(--ink-muted)
             }
             slot Facts {
-              width grow
+              width: stretch
             }
           }
         }
         label Body {
           text bind entry.text
-          step reading
+          font: var(--text-reading)
         }
         slot Prose {
-          width grow
+          width: stretch
         }
       }
     }

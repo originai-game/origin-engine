@@ -12,6 +12,7 @@
 //! `ui:save` writes back).
 
 pub mod build;
+pub mod css;
 pub mod schema;
 
 use crate::bind::{Expr, Format, Template};

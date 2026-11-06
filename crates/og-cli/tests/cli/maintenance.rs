@@ -195,7 +195,7 @@ fn upgrade_migrates_style_typography_without_discarding_legacy_values() {
         assert!(migrated.contains("# ramp {"));
         assert!(migrated.contains("#   body 19 27 31 0.07 0.02"));
         let file = og_ui::parse_style(&migrated).unwrap();
-        assert_eq!(file.version, 2);
+        assert_eq!(file.version, 3);
         assert_eq!(file.theme.type_ramp.body.size, 19.0);
         assert_eq!(file.theme.type_ramp.body.tracking_em, 0.07);
         assert_eq!(file.theme.type_ramp.body.cjk_tracking_em, 0.02);

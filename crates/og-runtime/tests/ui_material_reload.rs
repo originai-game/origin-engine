@@ -77,7 +77,7 @@ fn write(root: &Path, channel: &str, amount: f32) {
     }
     source += "}\nradius {\n small 1\n control 2\n bar 1\n panel 3\n}\n";
     let source = og_ui::upgrade_style(&source).unwrap()
-        + "dress \"Card.frame\" {\n material \"../effect.ogt\"\n}\n";
+        + "Card::frame {\n -og-material: \"../effect.ogt\"\n}\n";
     std::fs::write(root.join("assets/skins/style.ogt"), source).unwrap();
     std::fs::write(
         root.join("assets/effect.ogt"),

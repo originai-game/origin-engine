@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Dialogue (docs/ui.md Appendix B: choices, checks, timers). Over the
 # scene: the speaker's portrait and the conversation box with its line,
@@ -28,56 +28,56 @@ actions {
 }
 fixture default "{\"cinematic\": true, \"speaking\": true}"
 stack Dialogue {
-  width grow
-  height grow
+  width: stretch
+  height: stretch
   on action details emit log
   column Bars {
-    width grow
-    height grow
-    position absolute
-    start 0
-    top 0
-    end 0
-    bottom 0
+    width: stretch
+    height: stretch
+    position: absolute
+    inset-inline-start: 0
+    top: 0
+    inset-inline-end: 0
+    bottom: 0
     visible bind cinematic
     panel Top {
-      width grow
-      height 64
-      background "#000000"
-      at phone {
-        height 32
+      width: stretch
+      height: 64px
+      background: #000000
+      @media phone {
+        height: 32px
       }
     }
     spacer
     panel Bottom {
-      width grow
-      height 64
-      background "#000000"
-      at phone {
-        height 32
+      width: stretch
+      height: 64px
+      background: #000000
+      @media phone {
+        height: 32px
       }
     }
   }
   row Stage {
-    position absolute
-    start 32
-    end 32
-    bottom 80
-    gap 16
-    cross end
+    position: absolute
+    inset-inline-start: 32px
+    inset-inline-end: 32px
+    bottom: 80px
+    gap: 16px
+    align-items: end
     visible bind speaking
-    at phone {
-      start 12
-      end 12
-      bottom 40
+    @media phone {
+      inset-inline-start: 12px
+      inset-inline-end: 12px
+      bottom: 40px
     }
     slot Portrait {
-      at phonePortrait {
+      @media phone-portrait {
         visible false
       }
     }
     slot Conversation {
-      width grow
+      width: stretch
     }
   }
 }

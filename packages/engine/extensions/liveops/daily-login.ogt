@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Daily login (docs/ui.md Appendix B: daily login, missions, events hub).
 # The month's (or the week's) calendar of rewards, days claimed ticked,
@@ -31,33 +31,33 @@ timeline claim {
 }
 fixture default "{\"days\": [{\"day\": 1, \"name\": \"Gold\", \"amount\": 500, \"texture\": 0, \"claimed\": true}, {\"day\": 2, \"name\": \"Gems\", \"amount\": 20, \"texture\": 0, \"claimed\": true}, {\"day\": 3, \"name\": \"Potion\", \"amount\": 3, \"texture\": 0, \"claimed\": false}, {\"day\": 4, \"name\": \"Gold\", \"amount\": 1000, \"texture\": 0, \"claimed\": false}, {\"day\": 5, \"name\": \"Ticket\", \"amount\": 1, \"texture\": 0, \"claimed\": false}, {\"day\": 6, \"name\": \"Gems\", \"amount\": 50, \"texture\": 0, \"claimed\": false}, {\"day\": 7, \"name\": \"Chest\", \"amount\": 1, \"texture\": 0, \"claimed\": false}], \"today\": 2, \"streak\": 3, \"claimed\": false}"
 column Login {
-  width grow
-  height grow
-  padding 24
-  align center
-  cross center
-  at phone {
-    padding 12
+  width: stretch
+  height: stretch
+  padding: 24px
+  justify-content: center
+  align-items: center
+  @media phone {
+    padding: 12px
   }
   column Panel {
-    width grow 0 760
-    padding 24
-    gap 16
-    background token panel
-    frame panel
-    enter pop
-    at phone {
-      padding 16
-      gap 12
+    width: stretch; max-width: 760px
+    padding: 24px
+    gap: 16px
+    background: var(--panel)
+    -og-frame: panel
+    -og-enter: pop
+    @media phone {
+      padding: 16px
+      gap: 12px
     }
     row Head {
-      width grow
-      gap 12
-      cross center
+      width: stretch
+      gap: 12px
+      align-items: center
       label Title {
         key "screen.daily-login.title"
         text "Daily rewards"
-        step xl
+        font: var(--text-xl)
         heading true
       }
       spacer
@@ -67,58 +67,58 @@ column Login {
       }
     }
     grid Days {
-      width grow
-      gap 8
-      columns "1fr" "1fr" "1fr" "1fr" "1fr" "1fr" "1fr"
-      at phonePortrait {
-        columns "1fr" "1fr" "1fr" "1fr"
+      width: stretch
+      gap: 8px
+      grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr
+      @media phone-portrait {
+        grid-template-columns: 1fr 1fr 1fr 1fr
       }
       for d in days {
         column Day {
-          width grow
-          padding 8
-          gap 4
-          cross center
-          background token panelRaised
-          frame card
+          width: stretch
+          padding: 8px
+          gap: 4px
+          align-items: center
+          background: var(--panel-raised)
+          -og-frame: card
           label Number {
             text "Day {d.day}"
-            step caption
-            color token inkMuted
+            font: var(--text-caption)
+            color: var(--ink-muted)
           }
           art Art {
             kind currency
-            width 40
-            height 40
+            width: 40px
+            height: 40px
             texture bind d.texture
           }
           label Amount {
             text "×{d.amount, compact}"
-            step caption
+            font: var(--text-caption)
           }
           state progress bind "d.claimed ? \"claimed\" : ($index == today ? \"today\" : \"ahead\")" {
             ahead {
-              opacity 0.8
+              opacity: 0.8
             }
             today {
-              opacity 1
-              background token primarySoft
+              opacity: 1
+              background: var(--primary-soft)
             }
             claimed {
-              opacity 0.45
+              opacity: 0.45
             }
-            transition any any token ui
+            transition: var(--motion-ui)
           }
         }
       }
     }
     slot Big {
-      width grow
+      width: stretch
     }
     row Foot {
-      width grow
-      gap 8
-      align end
+      width: stretch
+      gap: 8px
+      justify-content: end
       button Close {
         key "screen.common.close"
         text "Close"

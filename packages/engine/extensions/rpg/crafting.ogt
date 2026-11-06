@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Crafting and recipe book (docs/ui.md Appendix B). The recipes by
 # category with a search, each marked when it can be made; the selected
@@ -30,22 +30,22 @@ actions {
 }
 fixture default "{\"categories\": [{\"name\": \"All\"}, {\"name\": \"Tools\"}, {\"name\": \"Food\"}], \"category\": 0, \"query\": \"\", \"recipes\": [{\"name\": \"Iron pick\", \"can\": true, \"known\": true, \"texture\": 0}, {\"name\": \"Lantern\", \"can\": false, \"known\": true, \"texture\": 0}, {\"name\": \"???\", \"can\": false, \"known\": false, \"texture\": 0}], \"selected\": 0, \"recipe\": {\"name\": \"Iron pick\", \"text\": \"Breaks stone and ore.\", \"station\": \"Anvil\", \"stationHere\": true, \"ingredients\": [{\"name\": \"Iron bar\", \"need\": 3, \"have\": 5, \"texture\": 0}, {\"name\": \"Wood\", \"need\": 2, \"have\": 1, \"texture\": 0}]}, \"amount\": 1}"
 column Screen {
-  width grow
-  height grow
-  padding 32
-  gap 12
-  at phone {
-    padding 16
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 12px
+  @media phone {
+    padding: 16px
   }
-  at phoneLandscape {
-    padding 8
-    gap 6
+  @media phone-landscape {
+    padding: 8px
+    gap: 6px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Back {
       key "screen.common.back"
       text "Back"
@@ -55,85 +55,85 @@ column Screen {
     label Title {
       key "screen.crafting.title"
       text "Crafting"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
     spacer
     field Search {
-      width grow 160 320
+      width: stretch; min-width: 160px; max-width: 320px
       input bind query
       placeholder "Search recipes"
       on changed emit search
     }
   }
   row Categories {
-    width grow
-    gap 6
-    wrap true
+    width: stretch
+    gap: 6px
+    flex-wrap: wrap
     for c in categories {
       button Category {
         text bind c.name
         variant ghost
         size small
-        at phone {
+        @media phone {
           size medium
         }
         on click set category "$index"
         on click emit category
         state selection bind "$index == category" {
           off {
-            opacity 0.85
+            opacity: 0.85
           }
           on {
-            opacity 1
+            opacity: 1
           }
         }
       }
     }
   }
   grid Body {
-    width grow
-    height grow
-    gap 24
-    columns "1fr" "1fr"
-    rows "1fr"
-    at phonePortrait {
-      columns "1fr"
-      rows "1fr" auto
-      gap 12
+    width: stretch
+    height: stretch
+    gap: 24px
+    grid-template-columns: 1fr 1fr
+    grid-template-rows: 1fr
+    @media phone-portrait {
+      grid-template-columns: 1fr
+      grid-template-rows: 1fr auto
+      gap: 12px
     }
     scroll Recipes {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
       column List {
-        width grow
-        gap 4
+        width: stretch
+        gap: 4px
         focusGroup stop
         for r in recipes {
           row Recipe {
-            width grow
-            padding 8
-            gap 10
-            cross center
-            radius 8
+            width: stretch
+            padding: 8px
+            gap: 10px
+            align-items: center
+            border-radius: 8px
             interactive true
             focusable true
             on click set selected "$index"
             on click emit select
             art Icon {
               kind itemIcon
-              width 40
-              height 40
+              width: 40px
+              height: 40px
               texture bind r.texture
             }
             label Name {
               text bind r.name
-              width grow
-              maxLines 1
-              ellipsis true
+              width: stretch
+              line-clamp: 1
+              text-overflow: ellipsis
             }
             badge Can {
               key "screen.crafting.can"
@@ -143,101 +143,96 @@ column Screen {
             }
             state selection bind "$index == selected" {
               off {
-                background token panel
+                background: var(--panel)
               }
               on {
-                background token primarySoft
+                background: var(--primary-soft)
               }
-              transition any any token ui
+              transition: var(--motion-ui)
             }
             state know bind r.known {
               unknown {
-                opacity 0.5
+                opacity: 0.5
               }
               known {
-                opacity 1
+                opacity: 1
               }
             }
-            state interaction {
-              normal {
-                scale 1
-              }
-              hover {
-                scale 1.01
-              }
-              pressed {
-                scale 0.99
-              }
-              focused {
-                scale 1.01
-              }
-              transition any any token ui
+            :hover {
+              scale: 1.01
             }
+            :active {
+              scale: 0.99
+            }
+            :focus-visible {
+              scale: 1.01
+            }
+            -og-state-transition: var(--motion-ui)
           }
         }
       }
     }
     column Detail {
-      width grow
-      padding 16
-      gap 10
-      background token panel
-      frame panel
+      width: stretch
+      padding: 16px
+      gap: 10px
+      background: var(--panel)
+      -og-frame: panel
       row Head {
-        width grow
-        gap 12
-        cross center
+        width: stretch
+        gap: 12px
+        align-items: center
         slot Result {
         }
         column Text {
-          width grow
-          gap 2
+          width: stretch
+          gap: 2px
           label Name {
             text bind recipe.name
-            step lg
+            font: var(--text-lg)
             heading true
           }
           label Line {
             text bind recipe.text
-            color token inkMuted
-            maxLines 2
+            color: var(--ink-muted)
+            line-clamp: 2
           }
         }
       }
       label IngredientsTitle {
         key "screen.crafting.ingredients"
         text "Ingredients"
-        step caption
-        color token inkMuted
+        font: var(--text-caption)
+        color: var(--ink-muted)
       }
       column Ingredients {
-        width grow
-        gap 6
+        width: stretch
+        gap: 6px
         for i in recipe.ingredients {
           row Ingredient {
-            width grow
-            gap 8
-            cross center
+            width: stretch
+            gap: 8px
+            align-items: center
             art Icon {
               kind itemIcon
-              width 32
-              height 32
+              width: 32px
+              height: 32px
               texture bind i.texture
             }
             label Name {
               text bind i.name
-              width grow
-              maxLines 1
-              ellipsis true
+              width: stretch
+              line-clamp: 1
+              text-overflow: ellipsis
             }
             label Count {
               text "{i.have}/{i.need}"
               state enough bind "i.have >= i.need" {
                 short {
-                  ink token danger
+                  color: var(--danger)
                 }
                 enough {
-                  ink token ink
+                  color: var(--ink)
                 }
               }
             }
@@ -245,17 +240,17 @@ column Screen {
         }
       }
       row Station {
-        width grow
-        gap 8
+        width: stretch
+        gap: 8px
         label Label {
           key "screen.crafting.station"
           text "Station"
-          step caption
-          color token inkMuted
+          font: var(--text-caption)
+          color: var(--ink-muted)
         }
         label Name {
           text bind recipe.station
-          step caption
+          font: var(--text-caption)
         }
         badge Missing {
           key "screen.crafting.noStation"
@@ -265,9 +260,9 @@ column Screen {
         }
       }
       row Actions {
-        width grow
-        gap 8
-        cross center
+        width: stretch
+        gap: 8px
+        align-items: center
         slot Amount {
         }
         spacer

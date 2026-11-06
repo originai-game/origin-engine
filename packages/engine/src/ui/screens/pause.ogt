@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Pause and system menu (docs/ui.md Appendix B). Over the dimmed game,
 # which pauses while it is up: Resume, Settings, Controls, Save, Load,
@@ -26,109 +26,109 @@ actions {
 }
 fixture default "{\"objective\": \"Reach the lighthouse\", \"played\": 4520, \"canSave\": true}"
 row Pause {
-  width grow
-  height grow
-  padding 32
-  gap 24
-  align center
-  cross center
-  at phone {
-    padding 16
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 24px
+  justify-content: center
+  align-items: center
+  @media phone {
+    padding: 16px
   }
   column Panel {
-    width grow 0 400
-    padding 24
-    gap 16
-    background token panel
-    frame panel
-    at phoneLandscape {
-      width grow 0 640
-      padding 12
-      gap 8
+    width: stretch; max-width: 400px
+    padding: 24px
+    gap: 16px
+    background: var(--panel)
+    -og-frame: panel
+    @media phone-landscape {
+      width: stretch; max-width: 640px
+      padding: 12px
+      gap: 8px
     }
-    enter slideUp 24 token enter
+    -og-enter: slide-up 24px var(--motion-enter)
     label Title {
       key "screen.pause.title"
       text "Paused"
-      step xl2
+      font: var(--text-xl2)
       heading true
     }
     column Status {
-      width grow
-      gap 4
-      at phoneLandscape {
+      width: stretch
+      gap: 4px
+      @media phone-landscape {
         visible false
       }
       label Objective {
         text bind objective
-        color token inkMuted
-        maxLines 2
+        color: var(--ink-muted)
+        line-clamp: 2
         visible bind "objective != \"\""
       }
       label Played {
         text "{played, duration}"
-        step caption
-        color token inkMuted
+        font: var(--text-caption)
+        color: var(--ink-muted)
       }
     }
     grid Menu {
-      width grow
-      gap 8
-      columns "1fr"
+      width: stretch
+      gap: 8px
+      grid-template-columns: 1fr
       focusGroup wrap
-      at phoneLandscape {
-        columns "1fr" "1fr"
+      @media phone-landscape {
+        grid-template-columns: 1fr 1fr
       }
       button Resume {
         key "screen.pause.resume"
         text "Resume"
         variant primary
-        width grow
+        width: stretch
         on click emit resume
       }
       button Settings {
         key "screen.pause.settings"
         text "Settings"
-        width grow
+        width: stretch
         on click emit settings
       }
       button Controls {
         key "screen.pause.controls"
         text "Controls"
-        width grow
+        width: stretch
         on click emit controls
       }
       button Save {
         key "screen.pause.save"
         text "Save"
-        width grow
+        width: stretch
         disabled bind "!canSave"
         on click emit save
       }
       button Load {
         key "screen.pause.load"
         text "Load"
-        width grow
+        width: stretch
         on click emit load
       }
       button QuitToMenu {
         key "screen.pause.quitToMenu"
         text "Quit to menu"
         variant quiet
-        width grow
+        width: stretch
         on click emit quitToMenu
       }
       button Quit {
         key "screen.pause.quit"
         text "Quit game"
         variant danger
-        width grow
+        width: stretch
         on click emit quit
       }
     }
   }
   slot Side {
-    at phone {
+    @media phone {
       visible false
     }
   }

@@ -66,7 +66,7 @@ og.ui.anchor("Instrument", { anchor: "bottomRight", margin: 16 }, () =>
 3. A new option is a field in the desc in `types.ts`, read in the
    component in `src/`.
 4. The parts a component opens (`sel("Speedometer", "dial")`) are what a
-   style's `dress` block restyles: a look change belongs in the style
+   style's selector blocks restyle (`Speedometer::dial:hover { … }`): a look change belongs in the style
    (screens §3), not in the kit.
 5. Helpers come from `@origingame/engine/ui-parts/hud` and
    `@origingame/engine/ui-parts/screen` only; never import engine files by

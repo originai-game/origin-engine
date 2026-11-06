@@ -243,7 +243,8 @@ pub fn run(args: &[&str]) -> Result<(), String> {
     let style_path = pack.join("style.ogt");
     let style_text = std::fs::read_to_string(&style_path)
         .map_err(|e| format!("{}: {e}", style_path.display()))?;
-    let doc = Document::parse(&style_text).map_err(|e| format!("{}: {e}", style_path.display()))?;
+    let doc =
+        og_ui::read_style_doc(&style_text).map_err(|e| format!("{}: {e}", style_path.display()))?;
     if doc.version < 2 {
         return Err(format!(
             "{} is a version 1 style: og style upgrade it first (painted art dresses parts by selector)",
@@ -1168,7 +1169,7 @@ fn packed_style(mut doc: Document, pieces: &[Piece], slots: &[Slot], size: (u32,
             }
         }
     }
-    doc.to_text().expect("a style file writes back")
+    og_ui::write_style_doc(&doc).expect("a style file writes back")
 }
 
 /// Every piece at 2× on a neutral ground, in rows by slot, for review.

@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Guild, friends and chat (docs/ui.md Appendix B). Friends, Guild and Chat
 # tabs: the friends, online first, with their status, Whisper and Invite;
@@ -42,18 +42,18 @@ actions {
 }
 fixture default "{\"tab\": \"friends\", \"online\": 4, \"requests\": 2, \"guild\": {\"name\": \"Lanterns of Vael\", \"motd\": \"Raid tonight at 20:00. Bring potions.\"}, \"friends\": [{\"name\": \"Ria\", \"status\": \"In a match\", \"online\": true}, {\"name\": \"Brann\", \"status\": \"In the menu\", \"online\": true}, {\"name\": \"Sela\", \"status\": \"Last seen 2 days ago\", \"online\": false}], \"members\": [{\"name\": \"Vael\", \"rank\": \"Leader\", \"online\": true}, {\"name\": \"Ria\", \"rank\": \"Officer\", \"online\": true}, {\"name\": \"Torvin\", \"rank\": \"Member\", \"online\": false}], \"picked\": -1}"
 column Screen {
-  width grow
-  height grow
-  padding 24
-  gap 12
-  at phone {
-    padding 8
+  width: stretch
+  height: stretch
+  padding: 24px
+  gap: 12px
+  @media phone {
+    padding: 8px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Close {
       key "screen.common.close"
       text "Close"
@@ -63,10 +63,10 @@ column Screen {
     label Title {
       key "screen.social.title"
       text "Social"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
     spacer
@@ -74,17 +74,17 @@ column Screen {
       key "screen.social.add"
       text "Add friend"
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit add
     }
   }
   row Tabs {
-    width grow
-    gap 6
-    cross center
-    wrap true
+    width: stretch
+    gap: 6px
+    align-items: center
+    flex-wrap: wrap
     focusGroup wrap
     button Friends {
       text "Friends {online}"
@@ -92,10 +92,10 @@ column Screen {
       on click set tab "\"friends\""
       state selection bind "tab == \"friends\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
@@ -106,10 +106,10 @@ column Screen {
       on click set tab "\"guild\""
       state selection bind "tab == \"guild\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
@@ -120,10 +120,10 @@ column Screen {
       on click set tab "\"chat\""
       state selection bind "tab == \"chat\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
@@ -134,48 +134,48 @@ column Screen {
     }
   }
   scroll FriendsScroll {
-    width grow
-    height grow
+    width: stretch
+    height: stretch
     visible bind "tab == \"friends\""
     column List {
-      width grow
-      gap 4
+      width: stretch
+      gap: 4px
       for f in friends {
         row Friend {
-          width grow
-          padding 8
-          gap 10
-          cross center
-          background token panelRaised
-          frame card
-          wrap true
+          width: stretch
+          padding: 8px
+          gap: 10px
+          align-items: center
+          background: var(--panel-raised)
+          -og-frame: card
+          flex-wrap: wrap
           panel Dot {
-            width 10
-            height 10
-            radius 5
+            width: 10px
+            height: 10px
+            border-radius: 5px
             state presence bind f.online {
               away {
-                background token inkFaint
+                background: var(--ink-faint)
               }
               online {
-                background token success
+                background: var(--success)
               }
             }
           }
           column Text {
-            width grow
-            gap 2
+            width: stretch
+            gap: 2px
             label Name {
               text bind f.name
-              maxLines 1
-              ellipsis true
+              line-clamp: 1
+              text-overflow: ellipsis
             }
             label Status {
               text bind f.status
-              step caption
-              color token inkMuted
-              maxLines 1
-              ellipsis true
+              font: var(--text-caption)
+              color: var(--ink-muted)
+              line-clamp: 1
+              text-overflow: ellipsis
             }
           }
           button Whisper {
@@ -184,7 +184,7 @@ column Screen {
             variant quiet
             size small
             visible bind f.online
-            at phone {
+            @media phone {
               size medium
             }
             on click set picked "$index"
@@ -195,7 +195,7 @@ column Screen {
             text "Invite"
             size small
             visible bind f.online
-            at phone {
+            @media phone {
               size medium
             }
             on click set picked "$index"
@@ -206,56 +206,56 @@ column Screen {
     }
   }
   column Guild {
-    width grow
-    height grow
-    gap 8
+    width: stretch
+    height: stretch
+    gap: 8px
     visible bind "tab == \"guild\""
     column Head {
-      width grow
-      padding 12
-      gap 4
-      background token panelRaised
-      frame card
+      width: stretch
+      padding: 12px
+      gap: 4px
+      background: var(--panel-raised)
+      -og-frame: card
       label Name {
         text bind guild.name
-        step lg
+        font: var(--text-lg)
         heading true
       }
       label Motd {
         text bind guild.motd
-        color token inkMuted
-        maxLines 3
+        color: var(--ink-muted)
+        line-clamp: 3
       }
     }
     scroll MemberScroll {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
       column List {
-        width grow
-        gap 2
+        width: stretch
+        gap: 2px
         for m in members {
           row Member {
-            width grow
-            padding 8
-            gap 10
-            cross center
+            width: stretch
+            padding: 8px
+            gap: 10px
+            align-items: center
             label Name {
               text bind m.name
-              width grow
-              maxLines 1
-              ellipsis true
+              width: stretch
+              line-clamp: 1
+              text-overflow: ellipsis
             }
             label Rank {
               text bind m.rank
-              step caption
-              color token inkMuted
+              font: var(--text-caption)
+              color: var(--ink-muted)
             }
             state presence bind m.online {
               away {
-                opacity 0.55
+                opacity: 0.55
               }
               online {
-                opacity 1
+                opacity: 1
               }
             }
           }
@@ -264,8 +264,8 @@ column Screen {
     }
   }
   slot Chat {
-    width grow
-    height grow
+    width: stretch
+    height: stretch
     visible bind "tab == \"chat\""
   }
 }

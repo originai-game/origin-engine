@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Song and track select with preview (docs/ui.md Appendix B). The songs
 # (or tracks) on a wheel, the selected one's jacket, charts, best score and
@@ -30,15 +30,15 @@ actions {
 }
 fixture default "{\"count\": 128, \"sort\": \"Title\", \"query\": \"\"}"
 column Screen {
-  width grow
-  height grow
-  padding 16
-  gap 8
+  width: stretch
+  height: stretch
+  padding: 16px
+  gap: 8px
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Back {
       key "screen.common.back"
       text "Back"
@@ -47,11 +47,11 @@ column Screen {
     }
     label Count {
       text "{count, plural, one {# song} other {# songs}}"
-      color token inkMuted
+      color: var(--ink-muted)
     }
     spacer
     field Search {
-      width grow 140 280
+      width: stretch; min-width: 140px; max-width: 280px
       input bind query
       placeholder "Search"
       on changed emit search
@@ -59,32 +59,32 @@ column Screen {
     button Sort {
       text "Sort: {sort}"
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit sort
     }
   }
   column Body {
-    width grow
-    height grow
-    gap 8
+    width: stretch
+    height: stretch
+    gap: 8px
     slot Select {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
     }
     row Mods {
-      width grow
-      gap 8
-      cross center
+      width: stretch
+      gap: 8px
+      align-items: center
       slot ModList {
-        width grow
+        width: stretch
       }
       button Open {
         key "screen.song-select.mods"
         text "Modifiers"
         size small
-        at phone {
+        @media phone {
           size medium
         }
         on click emit mods

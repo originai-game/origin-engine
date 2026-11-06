@@ -83,7 +83,7 @@ fn once<T>(p: &P, slot: &mut Option<T>, v: T) -> Result<(), String> {
 /// `sound <event> "<id>"`, with `hoverSpring` and `pressSpring` as damping
 /// ratio and response ms; its tokens are [`StyleTokens::derive`]d.
 pub fn parse_style(text: &str) -> Result<StyleFile, String> {
-    let doc = Document::parse(text).map_err(|e| e.to_string())?;
+    let doc = super::css::read_style_doc(text)?;
     if doc.ty == "skin" {
         return Err(
             "`type skin` is now `type style`: change the first line, replace `base` with `scheme`, and give the palette every role and the radius block small, control, bar and panel".into(),
@@ -97,8 +97,8 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
     }
     let v2 = match doc.version {
         1 => false,
-        2 => true,
-        v => return Err(format!("style version {v} (this engine reads 1 and 2)")),
+        2 | 3 => true,
+        v => return Err(format!("style version {v} (this engine reads 1 to 3)")),
     };
     let body = &doc.body;
     if let Some(e) = body.get("base") {

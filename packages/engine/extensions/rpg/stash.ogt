@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Stash, storage, bank (docs/ui.md Appendix B). The stash's tabs and grid
 # beside the player's bag, items moved between them by drag, quick
@@ -30,18 +30,18 @@ actions {
 }
 fixture default "{\"tabs\": [{\"name\": \"I\", \"locked\": false}, {\"name\": \"II\", \"locked\": false}, {\"name\": \"III\", \"locked\": true}], \"tab\": 0, \"used\": 37, \"slots\": 60, \"gold\": 1840, \"banked\": 25600}"
 column Screen {
-  width grow
-  height grow
-  padding 32
-  gap 12
-  at phone {
-    padding 16
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 12px
+  @media phone {
+    padding: 16px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Close {
       key "screen.common.close"
       text "Close"
@@ -51,20 +51,20 @@ column Screen {
     label Title {
       key "screen.stash.title"
       text "Stash"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
     spacer
     row Bank {
-      gap 8
-      cross center
+      gap: 8px
+      align-items: center
       label Banked {
         text "{banked, grouped}"
-        step lg
-        color token gold
+        font: var(--text-lg)
+        color: var(--gold)
       }
       slot Amount {
       }
@@ -72,7 +72,7 @@ column Screen {
         key "screen.stash.deposit"
         text "Deposit"
         size small
-        at phone {
+        @media phone {
           size medium
         }
         on click emit deposit
@@ -81,7 +81,7 @@ column Screen {
         key "screen.stash.withdraw"
         text "Withdraw"
         size small
-        at phone {
+        @media phone {
           size medium
         }
         on click emit withdraw
@@ -89,42 +89,42 @@ column Screen {
     }
   }
   grid Body {
-    width grow
-    height grow
-    gap 24
-    columns "1fr" "1fr"
-    rows "1fr"
-    at phonePortrait {
-      columns "1fr"
-      rows "1fr" "1fr"
-      gap 12
+    width: stretch
+    height: stretch
+    gap: 24px
+    grid-template-columns: 1fr 1fr
+    grid-template-rows: 1fr
+    @media phone-portrait {
+      grid-template-columns: 1fr
+      grid-template-rows: 1fr 1fr
+      gap: 12px
     }
     column Stash {
-      width grow
-      height grow
-      gap 8
+      width: stretch
+      height: stretch
+      gap: 8px
       row Tabs {
-        width grow
-        gap 6
-        cross center
-        wrap true
+        width: stretch
+        gap: 6px
+        align-items: center
+        flex-wrap: wrap
         for t in tabs {
           button Tab {
-            width fit 44
+            width: fit-content; min-width: 44px
             text bind t.name
             variant ghost
             size small
-            at phone {
+            @media phone {
               size medium
             }
             disabled bind t.locked
             on click set tab "$index"
             state selection bind "$index == tab" {
               off {
-                opacity 0.85
+                opacity: 0.85
               }
               on {
-                opacity 1
+                opacity: 1
               }
             }
           }
@@ -133,7 +133,7 @@ column Screen {
           key "screen.stash.buyTab"
           text "+"
           size small
-          at phone {
+          @media phone {
             size medium
           }
           square true
@@ -143,22 +143,22 @@ column Screen {
         spacer
         label Used {
           text "{used}/{slots}"
-          step caption
-          color token inkMuted
+          font: var(--text-caption)
+          color: var(--ink-muted)
         }
       }
       slot StashGrid {
-        width grow
-        height grow
+        width: stretch
+        height: stretch
       }
       row Actions {
-        width grow
-        gap 8
+        width: stretch
+        gap: 8px
         button Sort {
           key "screen.stash.sort"
           text "Sort"
           size small
-          at phone {
+          @media phone {
             size medium
           }
           on click emit sortStash
@@ -167,7 +167,7 @@ column Screen {
           key "screen.stash.depositAll"
           text "Deposit all"
           size small
-          at phone {
+          @media phone {
             size medium
           }
           on click emit depositAll
@@ -175,28 +175,28 @@ column Screen {
       }
     }
     column Bag {
-      width grow
-      height grow
-      gap 8
+      width: stretch
+      height: stretch
+      gap: 8px
       row Head {
-        width grow
-        gap 8
-        cross center
+        width: stretch
+        gap: 8px
+        align-items: center
         label Title {
           key "screen.stash.bag"
           text "Bag"
-          step lg
+          font: var(--text-lg)
           heading true
         }
         spacer
         label Gold {
           text "{gold, grouped}"
-          color token gold
+          color: var(--gold)
         }
       }
       slot BagGrid {
-        width grow
-        height grow
+        width: stretch
+        height: stretch
       }
     }
   }

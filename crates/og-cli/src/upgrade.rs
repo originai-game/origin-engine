@@ -310,9 +310,9 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
 }
 
 /// Upgrade v1 styles to semantic roles, then archive the superseded ramp.
-/// In v2 keep all other source bytes and the legacy numbers as comments.
+/// In v2 and v3 keep all other source bytes and the legacy numbers as comments.
 fn archive_legacy_ramp(text: &str) -> Option<String> {
-    let doc = og_core::ogt::parse(text).ok()?;
+    let doc = og_ui::read_style_doc(text).ok()?;
     if doc.ty != "style" {
         return None;
     }
@@ -321,7 +321,7 @@ fn archive_legacy_ramp(text: &str) -> Option<String> {
             .ok()
             .and_then(|s| archive_legacy_ramp(&s).or(Some(s)));
     }
-    if doc.version != 2 || doc.body.get("typography").is_none() {
+    if !(2..=3).contains(&doc.version) || doc.body.get("typography").is_none() {
         return None;
     }
     let index = doc.body.entries.iter().position(|e| e.key == "ramp")?;

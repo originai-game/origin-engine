@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Battle pass and season track (docs/ui.md Appendix B). The season's name
 # and time left, the level and its XP, the free and premium tracks, and the
@@ -27,18 +27,18 @@ actions {
 }
 fixture default "{\"season\": \"Season 4 · Tides\", \"ends\": 1814400, \"tab\": \"track\"}"
 column Screen {
-  width grow
-  height grow
-  padding 24
-  gap 12
-  at phone {
-    padding 12
+  width: stretch
+  height: stretch
+  padding: 24px
+  gap: 12px
+  @media phone {
+    padding: 12px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Back {
       key "screen.common.back"
       text "Back"
@@ -46,24 +46,24 @@ column Screen {
       on click pop
     }
     column Season {
-      gap 2
+      gap: 2px
       label Name {
         text bind season
-        step xl2
+        font: var(--text-xl2)
         heading true
-        at phone {
-          step lg
+        @media phone {
+          font: var(--text-lg)
         }
       }
       label Ends {
         text "Ends in {ends, duration}"
-        step caption
-        color token inkMuted
+        font: var(--text-caption)
+        color: var(--ink-muted)
       }
     }
     spacer
     row Tabs {
-      gap 6
+      gap: 6px
       button Track {
         key "screen.battle-pass.track"
         text "Rewards"
@@ -71,10 +71,10 @@ column Screen {
         on click set tab "\"track\""
         state selection bind "tab == \"track\"" {
           off {
-            opacity 0.85
+            opacity: 0.85
           }
           on {
-            opacity 1
+            opacity: 1
           }
         }
       }
@@ -85,29 +85,29 @@ column Screen {
         on click set tab "\"challenges\""
         state selection bind "tab == \"challenges\"" {
           off {
-            opacity 0.85
+            opacity: 0.85
           }
           on {
-            opacity 1
+            opacity: 1
           }
         }
       }
     }
   }
   column Body {
-    width grow
-    height grow
+    width: stretch
+    height: stretch
     slot Pass {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
       visible bind "tab == \"track\""
     }
     scroll ChallengeScroll {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
       visible bind "tab == \"challenges\""
       slot ChallengeList {
-        width grow
+        width: stretch
       }
     }
   }

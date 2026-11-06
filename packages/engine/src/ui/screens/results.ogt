@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Results and post-match (docs/ui.md Appendix B: grades, XP cascades,
 # graphs). Victory or defeat, the grade, the stats, the XP and the level it
@@ -42,119 +42,119 @@ timeline land {
 }
 fixture default "{\"won\": true, \"grade\": \"A\", \"title\": \"Victory\", \"stats\": [{\"name\": \"Score\", \"value\": 48210, \"best\": true}, {\"name\": \"Kills\", \"value\": 14, \"best\": false}, {\"name\": \"Accuracy\", \"value\": 0.62, \"best\": false}], \"level\": 18, \"xp\": 0.45, \"gained\": 1240, \"rewards\": [{\"name\": \"Gold\", \"amount\": 320, \"texture\": 0}, {\"name\": \"Crate\", \"amount\": 1, \"texture\": 0}], \"tab\": \"summary\"}"
 column Results {
-  width grow
-  height grow
-  padding 32
-  align center
-  cross center
-  at phone {
-    padding 12
+  width: stretch
+  height: stretch
+  padding: 32px
+  justify-content: center
+  align-items: center
+  @media phone {
+    padding: 12px
   }
   column Panel {
-    width grow 0 960
-    height grow 0 900
-    padding 24
-    gap 16
-    background token panel
-    frame panel
+    width: stretch; max-width: 960px
+    height: stretch; max-height: 900px
+    padding: 24px
+    gap: 16px
+    background: var(--panel)
+    -og-frame: panel
     on appear play land
-    at phone {
-      padding 16
-      gap 12
+    @media phone {
+      padding: 16px
+      gap: 12px
     }
-    at phoneLandscape {
-      direction row
-      padding 12
-      gap 12
+    @media phone-landscape {
+      flex-direction: row
+      padding: 12px
+      gap: 12px
     }
     scroll Page {
-      width grow
-      height grow
-      gap 16
-      fade 40
-      at phone {
-        gap 12
+      width: stretch
+      height: stretch
+      gap: 16px
+      -og-scroll-fade: 40px
+      @media phone {
+        gap: 12px
       }
-      at phoneLandscape {
-        gap 8
+      @media phone-landscape {
+        gap: 8px
       }
       row Head {
-        width grow
-        gap 16
-        cross center
+        width: stretch
+        gap: 16px
+        align-items: center
         column Text {
-          width grow
-          gap 4
+          width: stretch
+          gap: 4px
           label Title {
             text bind title
-            step xl4
+            font: var(--text-xl4)
             heading true
-            at phone {
-              step xl2
+            @media phone {
+              font: var(--text-xl2)
             }
             state outcome bind won {
               lost {
-                ink token danger
+                color: var(--danger)
               }
               won {
-                ink token gold
+                color: var(--gold)
               }
             }
           }
           label Gained {
             text "+{gained, grouped} XP"
-            color token xp
+            color: var(--xp)
           }
           row Level {
-            width grow
-            gap 12
-            cross center
+            width: stretch
+            gap: 12px
+            align-items: center
             label Value {
               text "Level {level}"
-              step lg
+              font: var(--text-lg)
             }
             progress Xp {
-              width grow
+              width: stretch
               value bind xp
             }
           }
         }
         label Grade {
           text bind grade
-          step displayLg
+          font: var(--text-display-lg)
           heading true
           visible bind "grade != \"\""
-          at phone {
-            step xl4
+          @media phone {
+            font: var(--text-xl4)
           }
         }
       }
       slot Celebration {
-        width grow
+        width: stretch
       }
       tabs Tabs {
         items Summary Graphs Scoreboard
         keys screen.results.summary screen.results.graphs screen.results.board
         values summary graphs board
         current bind tab
-        width grow
+        width: stretch
         fill true
       }
       column Summary {
-        width grow
-        gap 12
+        width: stretch
+        gap: 12px
         visible bind "tab == \"summary\""
         column Stats {
-          width grow
-          gap 6
+          width: stretch
+          gap: 6px
           for s in stats {
             row Stat {
-              width grow
-              gap 8
-              cross center
+              width: stretch
+              gap: 8px
+              align-items: center
               label Name {
                 text bind s.name
-                color token inkMuted
+                color: var(--ink-muted)
               }
               badge Best {
                 key "screen.results.best"
@@ -165,56 +165,56 @@ column Results {
               spacer
               label Value {
                 text bind s.value grouped
-                step lg
+                font: var(--text-lg)
               }
             }
           }
         }
         row Rewards {
-          width grow
-          gap 8
-          wrap true
+          width: stretch
+          gap: 8px
+          flex-wrap: wrap
           for r in rewards {
             column Reward {
-              padding 8
-              gap 4
-              cross center
-              background token panelRaised
-              frame card
+              padding: 8px
+              gap: 4px
+              align-items: center
+              background: var(--panel-raised)
+              -og-frame: card
               art Art {
                 kind itemIcon
-                width 56
-                height 56
+                width: 56px
+                height: 56px
                 texture bind r.texture
               }
               label Amount {
                 text "{r.name} ×{r.amount, compact}"
-                step caption
+                font: var(--text-caption)
               }
             }
           }
         }
       }
       slot Graph {
-        width grow
+        width: stretch
         visible bind "tab == \"graphs\""
       }
       slot Scores {
-        width grow
+        width: stretch
         visible bind "tab == \"board\""
       }
     }
     row Footer {
-      width grow
-      gap 8
-      align end
-      wrap true
-      at phoneLandscape {
-        direction column
-        width fit
-        height grow
-        cross stretch
-        wrap false
+      width: stretch
+      gap: 8px
+      justify-content: end
+      flex-wrap: wrap
+      @media phone-landscape {
+        flex-direction: column
+        width: fit-content
+        height: stretch
+        align-items: stretch
+        flex-wrap: nowrap
       }
       button Replay {
         key "screen.results.replay"

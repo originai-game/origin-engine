@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Settings (docs/ui.md Appendix B: settings with graphics, audio, controls
 # and remapping, accessibility, language, HUD layout editor). Back and the
@@ -41,18 +41,18 @@ actions {
 }
 fixture default "{\"note\": \"\"}"
 column Screen {
-  width grow
-  height grow
-  padding 32
-  gap 16
-  at phone {
-    padding 16
-    gap 12
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 16px
+  @media phone {
+    padding: 16px
+    gap: 12px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
+    width: stretch
+    gap: 12px
+    align-items: center
     button Back {
       key "screen.common.back"
       text "Back"
@@ -60,28 +60,28 @@ column Screen {
       on click emit back
     }
     column Heading {
-      width grow
-      gap 2
+      width: stretch
+      gap: 2px
       label Title {
         key "screen.settings.title"
         text "Settings"
-        step xl2
+        font: var(--text-xl2)
         heading true
-        at phone {
-          step xl
+        @media phone {
+          font: var(--text-xl)
         }
       }
       label Note {
         text bind note
-        step caption
-        color token inkMuted
-        maxLines 2
+        font: var(--text-caption)
+        color: var(--ink-muted)
+        line-clamp: 2
         visible bind "note != \"\""
       }
     }
   }
   slot Tree {
-    width grow
-    height grow
+    width: stretch
+    height: stretch
   }
 }

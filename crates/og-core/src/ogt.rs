@@ -983,8 +983,9 @@ entity "camera" {
     }
 
     /// Every `.ogt` file in the repository (the API IDL, templates, fixtures)
-    /// either round-trips through the canonical writer, or is a fixture that
-    /// declares `# expect: <line>: ...` and is refused at that line.
+    /// but UI documents and styles either round-trips through the canonical
+    /// writer, or is a fixture that declares `# expect: <line>: ...` and is
+    /// refused at that line.
     #[test]
     fn every_ogt_file_in_the_repository_round_trips() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -1014,6 +1015,14 @@ entity "camera" {
                     Err(e) => panic!("{}: {e}", path.display()),
                 }
             };
+            // UI documents and styles keep the header but write their own
+            // lines (CSS declarations, read with `parse_line` by og-ui,
+            // which has their round-trip tests).
+            if Document::parse_header(&text)
+                .is_ok_and(|h| matches!(h.ty.as_str(), "screen" | "component" | "style"))
+            {
+                continue;
+            }
             let expect_line = text
                 .lines()
                 .find_map(|l| l.strip_prefix("# expect: "))

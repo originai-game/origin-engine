@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Leaderboards (docs/ui.md Appendix B: global, friends, leagues). Global,
 # Friends and League tabs, the period, the top players with their rank,
@@ -31,18 +31,18 @@ actions {
 }
 fixture default "{\"tab\": \"global\", \"period\": \"This week\", \"rows\": [{\"rank\": 1, \"name\": \"Nyx\", \"score\": 982140, \"you\": false, \"texture\": 0}, {\"rank\": 2, \"name\": \"Ferro\", \"score\": 951300, \"you\": false, \"texture\": 0}, {\"rank\": 3, \"name\": \"Lumen\", \"score\": 948020, \"you\": false, \"texture\": 0}, {\"rank\": 4, \"name\": \"Quill\", \"score\": 902210, \"you\": false, \"texture\": 0}], \"selected\": -1, \"me\": {\"rank\": 1284, \"name\": \"You\", \"score\": 402110}, \"league\": {\"name\": \"Gold league\", \"promote\": 10, \"demote\": 25, \"ends\": 259200}}"
 column Screen {
-  width grow
-  height grow
-  padding 32
-  gap 12
-  at phone {
-    padding 16
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 12px
+  @media phone {
+    padding: 16px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Back {
       key "screen.common.back"
       text "Back"
@@ -52,24 +52,24 @@ column Screen {
     label Title {
       key "screen.leaderboard.title"
       text "Leaderboard"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
     spacer
     button Period {
       text bind period
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit period
     }
   }
   row Tabs {
-    gap 6
+    gap: 6px
     focusGroup wrap
     button Global {
       key "screen.leaderboard.global"
@@ -78,10 +78,10 @@ column Screen {
       on click set tab "\"global\""
       state selection bind "tab == \"global\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
@@ -92,10 +92,10 @@ column Screen {
       on click set tab "\"friends\""
       state selection bind "tab == \"friends\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
@@ -106,128 +106,123 @@ column Screen {
       on click set tab "\"league\""
       state selection bind "tab == \"league\"" {
         off {
-          opacity 0.85
+          opacity: 0.85
         }
         on {
-          opacity 1
+          opacity: 1
         }
       }
     }
   }
   row LeagueBar {
-    width grow
-    gap 12
-    padding 10
-    cross center
-    wrap true
-    background token panelRaised
-    frame card
+    width: stretch
+    gap: 12px
+    padding: 10px
+    align-items: center
+    flex-wrap: wrap
+    background: var(--panel-raised)
+    -og-frame: card
     visible bind "tab == \"league\""
     label Name {
       text bind league.name
-      step lg
+      font: var(--text-lg)
       heading true
     }
     label Lines {
       text "Top {league.promote} go up · below {league.demote} go down"
-      step caption
-      color token inkMuted
+      font: var(--text-caption)
+      color: var(--ink-muted)
     }
     spacer
     label Ends {
       text "{league.ends, duration}"
-      step caption
+      font: var(--text-caption)
     }
   }
   scroll Body {
-    width grow
-    height grow
+    width: stretch
+    height: stretch
     column List {
-      width grow
-      gap 4
+      width: stretch
+      gap: 4px
       focusGroup stop
       slot Board {
-        width grow
+        width: stretch
       }
       for r in rows {
         row Row {
-          width grow
-          padding 8
-          gap 12
-          cross center
-          radius 8
+          width: stretch
+          padding: 8px
+          gap: 12px
+          align-items: center
+          border-radius: 8px
           interactive true
           focusable true
           on click set selected "$index"
           on click emit row
           label Rank {
             text bind r.rank ordinal
-            width 56
-            step lg
+            width: 56px
+            font: var(--text-lg)
           }
           art Avatar {
             kind emblem
-            width 36
-            height 36
+            width: 36px
+            height: 36px
             texture bind r.texture
           }
           label Name {
             text bind r.name
-            width grow
-            maxLines 1
-            ellipsis true
+            width: stretch
+            line-clamp: 1
+            text-overflow: ellipsis
           }
           label Score {
             text bind r.score grouped
           }
           state mine bind r.you {
             other {
-              background token panel
+              background: var(--panel)
             }
             you {
-              background token primarySoft
+              background: var(--primary-soft)
             }
           }
-          state interaction {
-            normal {
-              scale 1
-            }
-            hover {
-              scale 1.01
-            }
-            pressed {
-              scale 0.99
-            }
-            focused {
-              scale 1.01
-            }
-            transition any any token ui
+          :hover {
+            scale: 1.01
           }
+          :active {
+            scale: 0.99
+          }
+          :focus-visible {
+            scale: 1.01
+          }
+          -og-state-transition: var(--motion-ui)
         }
       }
     }
   }
   row Me {
-    width grow
-    padding 10
-    gap 12
-    cross center
-    background token panelRaised
-    frame card
+    width: stretch
+    padding: 10px
+    gap: 12px
+    align-items: center
+    background: var(--panel-raised)
+    -og-frame: card
     label Rank {
       text bind me.rank ordinal
-      width 56
-      step lg
+      width: 56px
+      font: var(--text-lg)
     }
     label Name {
       text bind me.name
-      width grow
-      maxLines 1
-      ellipsis true
+      width: stretch
+      line-clamp: 1
+      text-overflow: ellipsis
     }
     label Score {
       text bind me.score grouped
-      step lg
+      font: var(--text-lg)
     }
   }
 }

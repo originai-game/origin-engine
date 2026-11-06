@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Scoreboard (docs/ui.md Appendix B). Held over the match (Tab, the
 # pad's View): the score and the time, each team's table of players with
@@ -19,45 +19,45 @@ props {
 }
 fixture default "{\"score\": \"7 - 5\", \"clock\": 412, \"map\": \"Harbour\"}"
 column Scoreboard {
-  width grow
-  height grow
-  padding 48
-  align center
-  cross center
-  at phone {
-    padding 12
+  width: stretch
+  height: stretch
+  padding: 48px
+  justify-content: center
+  align-items: center
+  @media phone {
+    padding: 12px
   }
-  at phoneLandscape {
-    padding 52 8
+  @media phone-landscape {
+    padding: 8px 52px
   }
   column Panel {
-    width grow 0 1100
-    gap 8
+    width: stretch; max-width: 1100px
+    gap: 8px
     row Head {
-      width grow
-      gap 16
-      cross center
+      width: stretch
+      gap: 16px
+      align-items: center
       label Map {
         text bind map
-        color token inkMuted
+        color: var(--ink-muted)
       }
       spacer
       label Score {
         text bind score
-        step xl2
+        font: var(--text-xl2)
         heading true
       }
       spacer
       label Clock {
         text bind clock clock
-        step lg
+        font: var(--text-lg)
       }
     }
     slot Board {
-      width grow
+      width: stretch
     }
     slot Extra {
-      width grow
+      width: stretch
     }
   }
 }

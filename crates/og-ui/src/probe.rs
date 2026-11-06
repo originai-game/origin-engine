@@ -114,11 +114,20 @@ impl Ui {
         // the order they apply (the last wins a property both set).
         for (e, part) in out.iter_mut().zip(&self.frame().parts) {
             let Some(part) = part else { continue };
-            e.detail.insert("part".into(), json!(part.to_string()));
+            // As a style writes them (`Button::base.primary:hover`).
+            let css = |s: &str| {
+                crate::dress::Selector::parse(s)
+                    .map(|s| crate::style_file::css::selector_css(&s))
+                    .unwrap_or_else(|_| s.to_string())
+            };
+            e.detail
+                .insert("part".into(), json!(css(&part.to_string())));
             let rules: Vec<Value> = self
                 .dress
                 .matching(part)
-                .map(|d| json!({ "selector": d.selector.to_string(), "source": d.written_at() }))
+                .map(|d| {
+                    json!({ "selector": crate::style_file::css::selector_css(&d.selector), "source": d.written_at() })
+                })
                 .collect();
             if !rules.is_empty() {
                 e.detail.insert("rules".into(), Value::Array(rules));

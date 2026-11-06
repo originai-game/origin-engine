@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Loading with tips, lore and progress (docs/ui.md Appendix B, §15.5). The
 # destination's key art under a half scrim, never a flat field; one
@@ -29,84 +29,84 @@ actions {
 }
 fixture default "{\"place\": \"The Sunken Archive\", \"tip\": \"Dodging through an attack at the last moment slows time for a breath.\", \"progress\": 0.62, \"ready\": false, \"waits\": true}"
 stack Loading {
-  width grow
-  height grow
+  width: stretch
+  height: stretch
   interactive true
   on click emit "nextTip"
   art Art {
     kind tutorial
     texture bind keyArt
-    fit cover
-    width grow
-    height grow
-    position absolute
-    start 0
-    top 0
-    end 0
-    bottom 0
+    object-fit: cover
+    width: stretch
+    height: stretch
+    position: absolute
+    inset-inline-start: 0
+    top: 0
+    inset-inline-end: 0
+    bottom: 0
   }
   column Scrim {
-    width grow
-    height grow
-    position absolute
-    start 0
-    top 0
-    end 0
-    bottom 0
-    background "#000000"
-    opacity 0.5
+    width: stretch
+    height: stretch
+    position: absolute
+    inset-inline-start: 0
+    top: 0
+    inset-inline-end: 0
+    bottom: 0
+    background: #000000
+    opacity: 0.5
   }
   column Foot {
-    width grow
-    height grow
-    padding 48
-    gap 12
-    at phone {
-      padding 24
+    width: stretch
+    height: stretch
+    padding: 48px
+    gap: 12px
+    @media phone {
+      padding: 24px
     }
     spacer
     column Tip {
-      width grow 0 720
-      padding 16
-      gap 6
-      background token panel
-      frame panel
+      width: stretch; max-width: 720px
+      padding: 16px
+      gap: 6px
+      background: var(--panel)
+      -og-frame: panel
       label Eyebrow {
         key "screen.loading.tip"
         text "Tip"
-        step caption
-        color token primary
+        font: var(--text-caption)
+        color: var(--primary)
       }
       label Text {
         text bind tip
-        step reading
-        maxLines 4
+        font: var(--text-reading)
+        line-clamp: 4
       }
       slot Lore {
-        width grow
+        width: stretch
       }
     }
     label Place {
       text bind place
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step lg
+      @media phone {
+        font: var(--text-lg)
       }
     }
     row Progress {
-      width grow
-      gap 12
-      cross center
+      width: stretch
+      gap: 12px
+      align-items: center
       progress Bar {
-        width grow
-        height 12
+        width: stretch
+        height: 12px
         value bind progress
       }
       label Percent {
         text "{progress, percent}"
-        step caption
-        color token inkMuted
+        font: var(--text-caption)
+        color: var(--ink-muted)
         visible bind "!ready"
       }
       button Continue {

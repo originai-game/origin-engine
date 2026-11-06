@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Calibration (docs/ui.md Appendix B: audio offset, brightness,
 # controller). Three steps: brightness (the logo barely visible against the
@@ -30,33 +30,33 @@ actions {
 }
 fixture default "{\"step\": \"offset\", \"brightness\": 0.5, \"offset\": 24, \"taps\": 6, \"deadZone\": 0.12}"
 column Calibration {
-  width grow
-  height grow
-  padding 32
-  align center
-  cross center
-  at phone {
-    padding 12
+  width: stretch
+  height: stretch
+  padding: 32px
+  justify-content: center
+  align-items: center
+  @media phone {
+    padding: 12px
   }
   column Panel {
-    width grow 0 640
-    padding 24
-    gap 16
-    background token panel
-    frame panel
+    width: stretch; max-width: 640px
+    padding: 24px
+    gap: 16px
+    background: var(--panel)
+    -og-frame: panel
     row Steps {
-      width grow
-      gap 8
+      width: stretch
+      gap: 8px
       badge Brightness {
         key "screen.calibration.brightness"
         text "Brightness"
         tone neutral
         state at bind "step == \"brightness\"" {
           off {
-            opacity 0.5
+            opacity: 0.5
           }
           on {
-            opacity 1
+            opacity: 1
           }
         }
       }
@@ -66,10 +66,10 @@ column Calibration {
         tone neutral
         state at bind "step == \"offset\"" {
           off {
-            opacity 0.5
+            opacity: 0.5
           }
           on {
-            opacity 1
+            opacity: 1
           }
         }
       }
@@ -79,45 +79,45 @@ column Calibration {
         tone neutral
         state at bind "step == \"controller\"" {
           off {
-            opacity 0.5
+            opacity: 0.5
           }
           on {
-            opacity 1
+            opacity: 1
           }
         }
       }
     }
     slot Test {
-      width grow
+      width: stretch
     }
     column BrightnessStep {
-      width grow
-      gap 8
+      width: stretch
+      gap: 8px
       visible bind "step == \"brightness\""
       label Hint {
         key "screen.calibration.brightnessHint"
         text "Move the slider until the mark is barely visible."
-        maxLines 3
+        line-clamp: 3
       }
       slider Value {
-        width grow
+        width: stretch
         value bind brightness
         stepBy 0.01
       }
     }
     column OffsetStep {
-      width grow
-      gap 8
+      width: stretch
+      gap: 8px
       visible bind "step == \"offset\""
       label Hint {
         key "screen.calibration.offsetHint"
         text "Press on every beat. The offset is measured from your presses."
-        maxLines 3
+        line-clamp: 3
       }
       row Measure {
-        width grow
-        gap 12
-        cross center
+        width: stretch
+        gap: 12px
+        align-items: center
         button Start {
           key "screen.calibration.start"
           text "Start the beat"
@@ -132,16 +132,16 @@ column Calibration {
         }
         label Taps {
           text "{taps} taps"
-          step caption
-          color token inkMuted
+          font: var(--text-caption)
+          color: var(--ink-muted)
         }
       }
       row Manual {
-        width grow
-        gap 12
-        cross center
+        width: stretch
+        gap: 12px
+        align-items: center
         slider Value {
-          width grow
+          width: stretch
           min -200
           max 200
           stepBy 1
@@ -149,30 +149,30 @@ column Calibration {
         }
         label Ms {
           text "{offset} ms"
-          width 72
-          textAlign end
+          width: 72px
+          text-align: end
         }
       }
     }
     column ControllerStep {
-      width grow
-      gap 8
+      width: stretch
+      gap: 8px
       visible bind "step == \"controller\""
       label Hint {
         key "screen.calibration.controllerHint"
         text "Let go of the sticks, then press each button once."
-        maxLines 3
+        line-clamp: 3
       }
       row DeadZone {
-        width grow
-        gap 12
-        cross center
+        width: stretch
+        gap: 12px
+        align-items: center
         label Label {
           key "screen.calibration.deadZone"
           text "Dead zone"
         }
         slider Value {
-          width grow
+          width: stretch
           min 0
           max 0.5
           stepBy 0.01
@@ -181,9 +181,9 @@ column Calibration {
       }
     }
     row Foot {
-      width grow
-      gap 8
-      align end
+      width: stretch
+      gap: 8px
+      justify-content: end
       button Back {
         key "screen.common.back"
         text "Back"

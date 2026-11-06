@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Title (docs/ui.md Appendix B: boot, splash, title, main menu, mode
 # select). Key art edge to edge, the logo, and "Press any button" breathing
@@ -30,70 +30,70 @@ timeline breathe {
 }
 fixture default "{\"version\": \"1.0.0\", \"legal\": \"© Studio. All rights reserved.\"}"
 stack Title {
-  width grow
-  height grow
+  width: stretch
+  height: stretch
   interactive true
   on click emit start
   on action confirm emit start
   on appear play breathe
   art Art {
     kind keyArt
-    width grow
-    height grow
-    position absolute
-    start 0
-    top 0
-    end 0
-    bottom 0
+    width: stretch
+    height: stretch
+    position: absolute
+    inset-inline-start: 0
+    top: 0
+    inset-inline-end: 0
+    bottom: 0
   }
   slot Background {
-    width grow
-    height grow
-    position absolute
-    start 0
-    top 0
-    end 0
-    bottom 0
+    width: stretch
+    height: stretch
+    position: absolute
+    inset-inline-start: 0
+    top: 0
+    inset-inline-end: 0
+    bottom: 0
   }
   column Foot {
-    width grow
-    height grow
-    padding 48
-    gap 16
-    cross center
-    at phone {
-      padding 24
+    width: stretch
+    height: stretch
+    padding: 48px
+    gap: 16px
+    align-items: center
+    @media phone {
+      padding: 24px
     }
     spacer
     art Logo {
       kind logo
-      width 420
-      height 160
-      at phone {
-        width 280
-        height 106
+      width: 420px
+      height: 160px
+      @media phone {
+        width: 280px
+        height: 106px
       }
     }
     spacer
     label Prompt {
       key "screen.title.press"
       text "Press any button"
-      step lg
-      textAlign center
+      font: var(--text-lg)
+      text-align: center
     }
     label Legal {
       text bind legal
-      step caption
-      color token inkMuted
-      textAlign center
+      font: var(--text-caption)
+      color: var(--ink-muted)
+      text-align: center
     }
   }
   label Version {
     text bind version
-    step caption
-    color token inkMuted
-    position absolute
-    end 16
-    bottom 12
+    font: var(--text-caption)
+    color: var(--ink-muted)
+    position: absolute
+    inset-inline-end: 16px
+    bottom: 12px
   }
 }

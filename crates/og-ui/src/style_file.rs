@@ -239,13 +239,22 @@ impl StyleFile {
     }
 
     /// The line that sets `part`'s tone (`og cook` appends what it
-    /// measured): `tone <part> …` in version 1, a `dress` block in version 2.
+    /// measured): `tone <part> …` in version 1, a dressing in version 2 and 3.
     pub fn tone_text(&self, part: StylePart, t: [f32; 4]) -> String {
-        let v = format!("{:.3} {:.3} {:.3} {:.2}", t[0], t[1], t[2], t[3]);
         if self.version >= 2 {
-            format!("dress \"{}\" {{\n  tone {v}\n}}", part.selector())
+            return self.dress_tone_text(&part.selector(), t);
+        }
+        let v = format!("{:.3} {:.3} {:.3} {:.2}", t[0], t[1], t[2], t[3]);
+        format!("tone {} {v}", part.name())
+    }
+
+    /// The dressing that sets `sel`'s tone, in this file's version.
+    pub fn dress_tone_text(&self, sel: &Selector, t: [f32; 4]) -> String {
+        let v = format!("{:.3} {:.3} {:.3} {:.2}", t[0], t[1], t[2], t[3]);
+        if self.version >= 3 {
+            format!("{} {{\n  -og-tone: {v}\n}}", css::selector_css(sel))
         } else {
-            format!("tone {} {v}", part.name())
+            format!("dress \"{sel}\" {{\n  tone {v}\n}}")
         }
     }
 
@@ -798,6 +807,11 @@ pub(crate) fn theme_dressings(art: &Art) -> Vec<Dressing> {
 /// lines dressings of [`StylePart::selector`], the sounds one-sound sets;
 /// the new tokens are [`StyleTokens::derive`]d from the palette and scheme.
 pub fn upgrade_style(text: &str) -> Result<String, String> {
+    migrate_style(&upgrade_style_v2(text)?)
+}
+
+/// [`upgrade_style`]'s version 2 text (what `og style new` builds on).
+pub(crate) fn upgrade_style_v2(text: &str) -> Result<String, String> {
     let old = parse_style(text)?;
     if old.version != 1 {
         return Err(format!(
@@ -965,6 +979,8 @@ fn copy_into(out: &mut Vec<Entry>, body: &og_core::ogt::Block, key: &str) {
 }
 
 mod art;
+pub mod css;
 mod parse;
 pub use art::*;
+pub use css::{migrate_style, read_style_doc, write_style_doc};
 pub use parse::{dense_name, parse_style};

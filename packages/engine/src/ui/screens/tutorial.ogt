@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Tutorial and onboarding overlays (docs/ui.md Appendix B). A coach mark
 # over the game: a scrim with the target left clear, a card beside it with
@@ -32,58 +32,58 @@ actions {
 }
 fixture default "{\"title\": \"Dodge\", \"text\": \"Press the dodge button just before an attack lands to slip past it.\", \"step\": 2, \"steps\": 5, \"waits\": false, \"x\": 64, \"y\": 120, \"texture\": 0}"
 stack Tutorial {
-  width grow
-  height grow
+  width: stretch
+  height: stretch
   slot Highlight {
-    width grow
-    height grow
-    position absolute
-    start 0
-    top 0
-    end 0
-    bottom 0
+    width: stretch
+    height: stretch
+    position: absolute
+    inset-inline-start: 0
+    top: 0
+    inset-inline-end: 0
+    bottom: 0
   }
   column Card {
-    position absolute
-    start bind x
-    top bind y
-    width grow 0 360
-    padding 16
-    gap 8
-    frame tooltip
-    enter pop
-    at phonePortrait {
-      start 12
-      end 12
-      top bind y
+    position: absolute
+    inset-inline-start: bind(x)
+    top: bind(y)
+    width: stretch; max-width: 360px
+    padding: 16px
+    gap: 8px
+    -og-frame: tooltip
+    -og-enter: pop
+    @media phone-portrait {
+      inset-inline-start: 12px
+      inset-inline-end: 12px
+      top: bind(y)
     }
     art Art {
       kind tutorial
-      width grow
+      width: stretch
       texture bind texture
       visible bind "texture != 0"
     }
     label Title {
       text bind title
-      step lg
+      font: var(--text-lg)
       heading true
     }
     label Text {
       text bind text
-      step reading
-      maxLines 5
+      font: var(--text-reading)
+      line-clamp: 5
     }
     slot Hint {
-      width grow
+      width: stretch
     }
     row Foot {
-      width grow
-      gap 8
-      cross center
+      width: stretch
+      gap: 8px
+      align-items: center
       label Step {
         text "{step}/{steps}"
-        step caption
-        color token inkMuted
+        font: var(--text-caption)
+        color: var(--ink-muted)
       }
       spacer
       button Skip {
@@ -91,7 +91,7 @@ stack Tutorial {
         text "Skip"
         variant quiet
         size small
-        at phone {
+        @media phone {
           size medium
         }
         on click emit skip
@@ -101,7 +101,7 @@ stack Tutorial {
         text "Next"
         variant primary
         size small
-        at phone {
+        @media phone {
           size medium
         }
         visible bind "!waits"

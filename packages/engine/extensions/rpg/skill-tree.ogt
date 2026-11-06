@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Skill, talent, passive and tech trees (docs/ui.md Appendix B). The tree
 # filling the screen, panned and zoomed; the points to spend at the head;
@@ -31,18 +31,18 @@ actions {
 }
 fixture default "{\"trees\": [{\"name\": \"Combat\"}, {\"name\": \"Survival\"}, {\"name\": \"Arcane\"}], \"tree\": 0, \"points\": 3, \"selected\": {\"name\": \"Keen edge\", \"rank\": 1, \"maxRank\": 3, \"cost\": 1, \"text\": \"Critical hits deal 10% more damage per rank.\", \"state\": \"open\"}, \"refund\": 500}"
 column Screen {
-  width grow
-  height grow
-  padding 32
-  gap 12
-  at phone {
-    padding 16
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 12px
+  @media phone {
+    padding: 16px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Back {
       key "screen.common.back"
       text "Back"
@@ -50,8 +50,8 @@ column Screen {
       on click pop
     }
     row Trees {
-      gap 6
-      wrap true
+      gap: 6px
+      flex-wrap: wrap
       for t in trees {
         button Tree {
           text bind t.name
@@ -60,10 +60,10 @@ column Screen {
           on click emit tree
           state selection bind "$index == tree" {
             off {
-              opacity 0.85
+              opacity: 0.85
             }
             on {
-              opacity 1
+              opacity: 1
             }
           }
         }
@@ -76,47 +76,47 @@ column Screen {
     }
   }
   grid Body {
-    width grow
-    height grow
-    gap 16
-    columns "1fr" 340
-    rows "1fr"
-    at phonePortrait {
-      columns "1fr"
-      rows "1fr" auto
-      gap 12
+    width: stretch
+    height: stretch
+    gap: 16px
+    grid-template-columns: 1fr 340px
+    grid-template-rows: 1fr
+    @media phone-portrait {
+      grid-template-columns: 1fr
+      grid-template-rows: 1fr auto
+      gap: 12px
     }
     slot Graph {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
     }
     column Side {
-      width grow
-      padding 16
-      gap 8
-      background token panel
-      frame panel
+      width: stretch
+      padding: 16px
+      gap: 8px
+      background: var(--panel)
+      -og-frame: panel
       label Name {
         text bind selected.name
-        step lg
+        font: var(--text-lg)
         heading true
       }
       label Rank {
         text "Rank {selected.rank}/{selected.maxRank}"
-        step caption
-        color token inkMuted
+        font: var(--text-caption)
+        color: var(--ink-muted)
       }
       label Text {
         text bind selected.text
-        step reading
-        maxLines 6
+        font: var(--text-reading)
+        line-clamp: 6
       }
       slot Detail {
-        width grow
+        width: stretch
       }
       row Actions {
-        width grow
-        gap 8
+        width: stretch
+        gap: 8px
         button Learn {
           key "screen.skill-tree.learn"
           text "Learn"

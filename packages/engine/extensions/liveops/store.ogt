@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Store (docs/ui.md Appendix B: bundles, rotations). The premium store:
 # the purse with top-up at the head, the rotation's sections with their
@@ -28,18 +28,18 @@ actions {
 }
 fixture default "{\"sections\": [{\"name\": \"Featured\", \"fresh\": true}, {\"name\": \"Daily\", \"fresh\": false}, {\"name\": \"Bundles\", \"fresh\": false}, {\"name\": \"Gems\", \"fresh\": false}], \"section\": 0, \"refresh\": 30240}"
 column Screen {
-  width grow
-  height grow
-  padding 32
-  gap 12
-  at phone {
-    padding 16
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 12px
+  @media phone {
+    padding: 16px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Back {
       key "screen.common.back"
       text "Back"
@@ -49,33 +49,33 @@ column Screen {
     label Title {
       key "screen.store.title"
       text "Store"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
     spacer
     label Refresh {
       text "New items in {refresh, countdown}"
-      step caption
-      color token inkMuted
+      font: var(--text-caption)
+      color: var(--ink-muted)
     }
     button TopUp {
       key "screen.store.topUp"
       text "Get gems"
       variant primary
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit topUp
     }
   }
   row Tabs {
-    width grow
-    wrap true
-    gap 6
+    width: stretch
+    flex-wrap: wrap
+    gap: 6px
     focusGroup wrap
     for s in sections {
       button Tab {
@@ -85,37 +85,37 @@ column Screen {
         on click emit section
         state selection bind "$index == section" {
           off {
-            opacity 0.85
+            opacity: 0.85
           }
           on {
-            opacity 1
+            opacity: 1
           }
         }
       }
     }
   }
   column Body {
-    width grow
-    height grow
-    gap 12
+    width: stretch
+    height: stretch
+    gap: 12px
     slot Store {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
     }
     slot Detail {
-      width grow
+      width: stretch
     }
   }
   row Footer {
-    width grow
-    gap 12
-    align end
+    width: stretch
+    gap: 12px
+    justify-content: end
     button Restore {
       key "screen.store.restore"
       text "Restore purchases"
       variant quiet
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit restore

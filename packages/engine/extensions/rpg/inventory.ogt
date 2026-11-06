@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Inventory (docs/ui.md Appendix B: grid, list, weighted, nested
 # containers). The bag's grid (or list), its weight against the limit, the
@@ -34,18 +34,18 @@ actions {
 }
 fixture default "{\"path\": [{\"name\": \"Backpack\"}], \"weight\": 42.5, \"capacity\": 60, \"filter\": 0, \"filters\": [{\"name\": \"All\"}, {\"name\": \"Weapons\"}, {\"name\": \"Armour\"}, {\"name\": \"Consumables\"}], \"gold\": 1840, \"view\": \"grid\"}"
 column Screen {
-  width grow
-  height grow
-  padding 32
-  gap 12
-  at phone {
-    padding 16
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 12px
+  @media phone {
+    padding: 16px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Close {
       key "screen.common.close"
       text "Close"
@@ -55,21 +55,21 @@ column Screen {
     label Title {
       key "screen.inventory.title"
       text "Inventory"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
     row Path {
-      gap 6
-      cross center
+      gap: 6px
+      align-items: center
       for c in path {
         button Crumb {
           text bind c.name
           variant ghost
           size small
-          at phone {
+          @media phone {
             size medium
           }
           on click emit up
@@ -79,31 +79,31 @@ column Screen {
     spacer
     label Gold {
       text "{gold, grouped}"
-      step lg
-      color token gold
+      font: var(--text-lg)
+      color: var(--gold)
     }
   }
   row Tools {
-    width grow
-    gap 8
-    cross center
-    wrap true
+    width: stretch
+    gap: 8px
+    align-items: center
+    flex-wrap: wrap
     for f in filters {
       button Filter {
         text bind f.name
         variant ghost
         size small
-        at phone {
+        @media phone {
           size medium
         }
         on click set filter "$index"
         on click emit filter
         state selection bind "$index == filter" {
           off {
-            opacity 0.85
+            opacity: 0.85
           }
           on {
-            opacity 1
+            opacity: 1
           }
         }
       }
@@ -113,7 +113,7 @@ column Screen {
       key "screen.inventory.sort"
       text "Sort"
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit sort
@@ -122,44 +122,44 @@ column Screen {
       key "screen.inventory.view"
       text "Grid / list"
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit view
     }
   }
   grid Body {
-    width grow
-    height grow
-    gap 24
-    columns "2fr" "1fr"
-    rows "1fr"
-    at phonePortrait {
-      columns "1fr"
-      rows "1fr" auto
-      gap 12
+    width: stretch
+    height: stretch
+    gap: 24px
+    grid-template-columns: 2fr 1fr
+    grid-template-rows: 1fr
+    @media phone-portrait {
+      grid-template-columns: 1fr
+      grid-template-rows: 1fr auto
+      gap: 12px
     }
     column Main {
-      width grow
-      height grow
-      gap 12
+      width: stretch
+      height: stretch
+      gap: 12px
       slot Equip {
-        width grow
+        width: stretch
       }
       slot Grid {
-        width grow
-        height grow
+        width: stretch
+        height: stretch
       }
     }
     column Side {
-      width grow
-      gap 12
+      width: stretch
+      gap: 12px
       slot Detail {
-        width grow
+        width: stretch
       }
       row Actions {
-        width grow
-        gap 8
+        width: stretch
+        gap: 8px
         button Use {
           key "screen.inventory.use"
           text "Use"
@@ -176,23 +176,23 @@ column Screen {
     }
   }
   row Weight {
-    width grow
-    gap 12
-    cross center
+    width: stretch
+    gap: 12px
+    align-items: center
     visible bind "capacity > 0"
     label Label {
       key "screen.inventory.weight"
       text "Weight"
-      step caption
-      color token inkMuted
+      font: var(--text-caption)
+      color: var(--ink-muted)
     }
     progress Bar {
-      width grow
+      width: stretch
       value bind "weight / capacity"
     }
     label Value {
       text "{weight, fixed, 1} / {capacity, grouped}"
-      step caption
+      font: var(--text-caption)
     }
   }
 }

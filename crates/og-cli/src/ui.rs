@@ -17,6 +17,13 @@
 //! what its spec gets wrong with the fix (exit 3 on one). `--json` prints
 //! them as one array, what the art pipeline reads.
 //!
+//! `og ui migrate <file|dir>... [--check]` (docs/ui.md §10.4, §12.1)
+//! rewrites every version 1 screen and component document under the paths
+//! as version 2 (CSS declarations in place of style props) and every
+//! version 2 style as version 3 (selector blocks, custom properties), line
+//! for line with its comments, after checking the two read the same;
+//! `--check` writes nothing and exits 1 when one still needs it.
+//!
 //! `og ui eject <screen> [project] [--force]` (docs/ui.md §11) copies one
 //! of the library's screen documents (the engine package's
 //! `src/ui/screens/<screen>.ogt`, one or more for every screen type of
@@ -43,7 +50,7 @@ use std::process::{Command, ExitCode};
 pub mod extensions;
 mod sheet;
 
-const USAGE: &str = "usage: og ui add <kit|directory> [project]\n       og ui list [project] [--json]\n       og ui slots [project] [--json]\n       og ui eject <screen|kit/document> [project] [--force]\n       og ui eject --list [project]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
+const USAGE: &str = "usage: og ui add <kit|directory> [project]\n       og ui list [project] [--json]\n       og ui slots [project] [--json]\n       og ui eject <screen|kit/document> [project] [--force]\n       og ui eject --list [project]\n       og ui migrate <file|dir>... [--check]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
 
 /// Options forwarded to ui-run.ts with their value.
 const VALUED: [&str; 10] = [
@@ -74,6 +81,9 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
     if let ["eject", rest @ ..] = args {
         return eject(rest);
+    }
+    if let ["migrate", rest @ ..] = args {
+        return migrate(rest);
     }
     let (mode, rest) = match args {
         [m @ ("check" | "preview"), rest @ ..] => (*m, rest),
@@ -550,6 +560,75 @@ fn eject(args: &[&str]) -> ExitCode {
     }
 }
 
+/// `og ui migrate <file|dir>... [--check]`.
+fn migrate(args: &[&str]) -> ExitCode {
+    let check = args.contains(&"--check");
+    let paths: Vec<&str> = args.iter().copied().filter(|a| *a != "--check").collect();
+    if paths.is_empty() || paths.iter().any(|a| a.starts_with('-')) {
+        eprintln!("og ui migrate: {USAGE}");
+        return ExitCode::from(2);
+    }
+    let mut files = Vec::new();
+    for p in &paths {
+        let p = Path::new(p);
+        if p.is_dir() {
+            collect_ogt(p, &mut files);
+        } else {
+            files.push(p.to_path_buf());
+        }
+    }
+    files.sort();
+    let (mut pending, mut failed) = (0, false);
+    for f in &files {
+        let Ok(text) = std::fs::read_to_string(f) else {
+            eprintln!("og ui migrate: {}: cannot read", f.display());
+            failed = true;
+            continue;
+        };
+        // Version 1 screens and components, version 2 styles (`og style
+        // upgrade` writes a version 1 style as version 3); everything else
+        // is left.
+        let Ok(head) = og_core::ogt::Document::parse_header(&text) else {
+            continue;
+        };
+        let ui = matches!(head.ty.as_str(), "screen" | "component");
+        let style = head.ty == "style";
+        if !(ui && head.version == 1 || style && head.version == 2) {
+            continue;
+        }
+        let source = f.display().to_string();
+        let migrated = if style {
+            og_ui::migrate_style(&text).map_err(|e| vec![format!("{source}: {e}")])
+        } else {
+            og_ui::UiDocument::migrate(&source, &text)
+        };
+        match migrated {
+            Ok(_) if check => {
+                println!("og ui migrate: {source} needs migrating");
+                pending += 1;
+            }
+            Ok(new) => match std::fs::write(f, new) {
+                Ok(()) => println!("og ui migrate: {source}"),
+                Err(e) => {
+                    eprintln!("og ui migrate: {source}: {e}");
+                    failed = true;
+                }
+            },
+            Err(e) => {
+                for e in e {
+                    eprintln!("og ui migrate: {e}");
+                }
+                failed = true;
+            }
+        }
+    }
+    if failed || pending > 0 {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
 fn collect_ogt(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -604,7 +683,7 @@ mod tests {
         )
         .unwrap();
         std::fs::write(source.join("README.md"), "Edit pages/results.ogt").unwrap();
-        let document = "type screen\nversion 1\n---\nname results\ncolumn root {\n  label title {\n    text \"Race results\"\n  }\n}\n";
+        let document = "type screen\nversion 2\n---\nname results\ncolumn root {\n  label title {\n    text \"Race results\"\n  }\n}\n";
         std::fs::write(source.join("pages/results.ogt"), document).unwrap();
         assert_eq!(
             extensions::add(&[source.to_str().unwrap(), dir.to_str().unwrap()], "kit"),

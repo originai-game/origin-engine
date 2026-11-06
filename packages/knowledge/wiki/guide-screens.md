@@ -56,9 +56,10 @@ sounds and haptics for every component. The look's `ui "<slug>"` picks it;
   choices, then fills its art slots through the art brief (art-review §2).
 - Hand-painted frames go through `og style pack <dir>` (nine-patches named
   `<part>.9.png`), which writes the atlas and slice lines.
-- In a pack, `style.ogt` is the data: palette roles set colour,
-  `typography` sets text roles, `dress` selectors paint named parts and
-  states. Edit it directly and run `og cook`; never regenerate a pack.
+- In a pack, `style.ogt` is the data, in the CSS dialect (docs/ui.md
+  §12.7): palette custom properties set colour (`--primary: #d4993a`),
+  `typography` sets text roles, selector blocks paint named parts and
+  states (`Button::base.primary:hover { -og-fill: var(--primary-hover) }`). Edit it directly and run `og cook`; never regenerate a pack.
   `choices.json` only seeds `og style new` and overwrites nothing.
 - Fonts, atlases, import settings and their licences stay with the pack;
   asset paths are relative to the style unless they share `@styles/`

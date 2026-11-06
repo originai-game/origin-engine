@@ -555,6 +555,77 @@ the result back into the file (§16.3). Checks read its static structure:
 every slot, state, action and binding is known without running every path
 of the code.
 
+### 10.4 The CSS dialect (version 2)
+
+A version 2 document writes an element's look and layout as CSS
+declarations and keeps its structure and behaviour as `.ogt` lines
+(`crates/og-ui/src/doc/css.rs`, whose `STYLE` table is the whole mapping):
+
+```ogt
+type screen
+version 2
+---
+name "card"
+column Card {
+  width: stretch; max-width: 640px
+  padding: 8px 12px 16px 4px
+  background: var(--panel-raised)
+  transition: -og-spring(300ms, 0.1)
+  @media phone-portrait and (orientation: portrait) {
+    padding: 2px 6px
+  }
+  label Title {
+    text "Title"
+    font: var(--text-caption)
+    line-clamp: 2
+  }
+  :hover {
+    translate: 0 -4px
+  }
+  -og-state-transition: var(--motion-ui)
+}
+```
+
+- **Properties** use CSS names: `width`, `min-width`, `max-width` (`fit-content`,
+  `stretch`, `<n>px`, `<n>%`), `padding` and `gap` (CSS order), `justify-content`,
+  `align-items`, `flex-direction`, `flex-wrap`, `grid-template-columns|rows|areas`,
+  `grid-auto-flow`, `grid-area`, `grid-column`, `grid-row`, `background`,
+  `color`, `border-radius`, `opacity`, `translate`, `scale`, `rotate`,
+  `transform-origin`, `z-index`, `position` with `top`, `bottom`,
+  `inset-inline-start|end`, `aspect-ratio`, `object-fit`, `text-align`,
+  `text-transform`, `white-space`, `text-overflow`, `line-clamp`, `cursor`,
+  `font` (a type step: `var(--text-<step>)`), `font-family`
+  (`var(--font-<role>)`) and `transition`.
+- **States** are pseudo-classes: `:hover`, `:active` (pressed),
+  `:focus-visible`, `:disabled`. A block holds the values of that state;
+  `-og-state-transition` sets how the group moves between them. Named state
+  groups keep their `state <name> { … }` lines.
+- **Breakpoints** stay named, written as media queries: `@media phone`,
+  `@media tablet, desktop`, `@media phone-portrait and (orientation:
+  landscape)`. A `max-width` query is an error that names them.
+- **Tokens** are custom properties: `var(--panel-raised)` (a palette role),
+  `var(--text-caption)`, `var(--motion-ui)`. `var()` takes no fallback.
+- **Extensions** are `-og-` properties: `-og-frame` (an art slot or nine-slice
+  part), `-og-spring(<ms>ms, <bounce>)`, `-og-enter`, `-og-exit`,
+  `-og-layout-transition`, `-og-anchor`, `-og-hit-slop`, `-og-overlaps`,
+  `-og-tint`, `-og-scroll-fade`, `-og-on-scene`, `-og-reduced-motion` and the
+  rest of the table.
+- **Bindings**: `bind(path)` or `bind("expression")` is a whole
+  declaration's value.
+
+The subset is strict. An unknown property or value, a unitless length
+(`gap: 12`), a version 1 prop line where a declaration belongs (`width
+520`), `:focus`, `float`, `margin`, `font-size` and `!important` are errors
+that name the form to write. There is no cascade beyond the element's own
+declarations: its `@media` blocks and states override them, and the later
+declaration wins.
+
+`og ui migrate <file|dir>... [--check]` writes a version 1 document as
+version 2, line for line with its comments, after checking that both read as
+the same document; a version 1 document no longer loads, and its error
+names the command. Tune and agent edits (`ui:save`, §16.3) write a version
+2 document's props back as declarations.
+
 ## 11. Component library
 
 There are no fixed screen templates with a field per word. The library is:
@@ -630,11 +701,11 @@ table) and cooks every document. `og ui eject <screen> [project]
 it; `og ui eject <kit>/<screen>` ejects a kit's (§17.1); `og ui eject
 --list` prints each with its row.
 
-## 12. Styles v2
+## 12. Styles
 
 ### 12.1 What a style is
 
-A style (`type style` version 2) has tokens, part dressings, a motion
+A style (`type style` version 3, the CSS dialect of §12.7) has tokens, part dressings, a motion
 personality, a sound and haptic set, fonts, icons and art. It is one
 complete, validated asset a look's `ui` line names (`og style eject|pack`
 take it apart and back). The engine's default style is the design language
@@ -714,18 +785,17 @@ Unset properties retain the widget's defaults; more-specific selectors
 override only the properties they set.
 
 ```ogt
-dress "ActionButton.face[disabled]" {
-  appearance {
-    opacity 0.3
-  }
+ActionButton::face:disabled {
+  opacity: 0.3
 }
-dress "Card.frame" {
-  appearance {
-    padding 13 3 7 11
-    gap 17
-  }
+Card::frame {
+  padding: 3px 7px 11px 13px
+  gap: 17px
 }
 ```
+
+In version 3 these are the documents' own declarations (§10.4) in the
+dressing's block; version 2 wrote them in an `appearance { }` block.
 
 Decorative parts accept paints, `ink`, the same fills, shapes, strokes,
 effects and materials as other parts, and `appearance { width … height …
@@ -876,6 +946,65 @@ lines make their accents follow the palette: the cook recolours every
 density of the atlas when the role's colour is no longer the one the art
 was painted in (docs/art.md §2.7, step 4), so a game's copy of a pack
 takes the game's accent.
+
+### 12.7 The CSS dialect of styles (version 3)
+
+A version 3 style writes each dressing as a selector block and each colour
+and length token as a custom property. Its art geometry, fonts, icons,
+typography, elevation, shapes, motion and sounds keep their `.ogt` lines
+(`crates/og-ui/src/style_file/css.rs`, whose `DRESS` table is the whole
+mapping):
+
+```ogt
+type style
+version 3
+---
+name "fantasy"
+palette {
+  --panel-raised: #211a15
+}
+space {
+  --space-xs: 4px
+}
+Button::base.primary:hover {
+  -og-slice: 328 401 168 44 12 14 12 14 authored
+  -og-tone: 0.783 0.408 0.068 0.99
+  box-shadow: 0 3px 4px 0 #00000073
+}
+Slot::frame[rarity=epic] {
+  -og-stroke: 2px #b77ae8 inside
+  -og-effect: outer-glow 8 #b77ae866
+}
+```
+
+- **Selectors**: the part is a pseudo-element (`Button::base`), a variant a
+  class (`.primary`), an attribute stays `[rarity=epic]`, and a state is a
+  pseudo-class: `:hover`, `:active` (pressed), `:focus-visible`, `:disabled`,
+  `:selected`, `:checked` (on), `:expanded`. The specificity rule is
+  §12.3's: more qualifiers apply later, and blocks of one selector merge.
+- **Tokens**: `palette`, `roles` and `colors` hold `--<role>: <colour> [cue]`;
+  `space`, `size`, `radius` and `stroke` hold `--<block>-<name>: <n>px`.
+- **Dressing properties**: `-og-slice`, `-og-tone`, `-og-recolour`,
+  `box-shadow`, `-og-glow`, `-og-glass`, `-og-corners`, `-og-crest`,
+  `-og-edges` and `-og-tile` (`true`), `-og-shape`, `-og-press`,
+  `-og-hover`, `-og-fill`, `-og-stroke`, `-og-effect`, `-og-material`,
+  `-og-ornament`, `-og-ornament-tint`, `mix-blend-mode`, `-og-mask`,
+  `-og-sound`, `-og-segments`, `-og-ink` and `-og-step` (a text part's).
+  Their values are §12.3's grammar written as CSS: roles as `var(--line-strong)`,
+  colours bare (`#ffcc00`), keywords in kebab case (`inner-shadow`), lengths
+  in px or unitless. `-og-fill`, `-og-stroke` and `-og-effect` declarations
+  stack in order, like the layers of a CSS list.
+- **Element properties** a dressing overrides are the documents'
+  declarations (§10.4): `opacity`, `transition`, `color`, `font`,
+  `padding`, `gap`, `width`, `height` and `translate`.
+
+The subset is strict: `background`, `border`, `filter`, `border-radius` or
+any other property it does not have, a `dress "…" { }` block, `.hover` for a
+state, `:focus`, a comma between values or another unit are errors that name
+the form to write. Version 1 and 2 styles still load. `og ui migrate`
+writes a version 2 style as version 3, line for line with its comments,
+after checking that both parse to the same style; `og style upgrade`,
+`og style new`, `og style pack` and `og style art` write version 3.
 
 ## 13. Art slots
 

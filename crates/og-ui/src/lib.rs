@@ -102,8 +102,8 @@ pub use style::{
     Scheme, Space, Spring, Srgba, Theme, TypeRamp, TypeStep,
 };
 pub use style_file::{
-    Art, Slice, SliceFill, StyleFile, StylePart, UiSound, default_dressings, parse_style,
-    upgrade_style,
+    Art, Slice, SliceFill, StyleFile, StylePart, UiSound, default_dressings, migrate_style,
+    parse_style, read_style_doc, upgrade_style, write_style_doc,
 };
 pub use text::{
     FontMetrics, Piece, UiFont, VisualGlyph, bidi_runs, needs_visual, pieces, pieces_with,

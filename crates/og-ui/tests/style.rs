@@ -338,20 +338,20 @@ fn a_dressing_draws_with_the_ui_pass_types() {
     use og_ui::paint::*;
     let base = upgrade_style(&v1_style()).unwrap();
     let extra = concat!(
-        "dress \"Meter.fill[rarity=epic]\" {\n",
-        "  fill primary\n",
-        "  fill conic 90 primary \"#ff000080\" 0.2 danger lineStrong reflect\n",
-        "  stroke 2 linear 180 primary danger inside dash 6 3 offset 1 round\n",
-        "  effect dropShadow 0 4 8 2 \"#000000\"\n",
-        "  effect backdrop 12 saturation 1.4 tint panel glass thick elevation lift edge 1 lineStrong\n",
-        "  material hologram 0.5 2\n",
-        "  blend screen\n",
-        "  mask radial \"#ffffffff\" \"#ffffff00\"\n",
-        "  ornament corner flourish\n",
-        "  sound press \"audio/tick.wav\"\n",
+        "Meter::fill[rarity=epic] {\n",
+        "  -og-fill: var(--primary)\n",
+        "  -og-fill: conic 90 var(--primary) #ff000080 0.2 var(--danger) var(--line-strong) reflect\n",
+        "  -og-stroke: 2px linear 180 var(--primary) var(--danger) inside dash 6 3 offset 1 round\n",
+        "  -og-effect: drop-shadow 0 4 8 2 #000000\n",
+        "  -og-effect: backdrop 12 saturation 1.4 tint var(--panel) glass thick elevation lift edge 1 var(--line-strong)\n",
+        "  -og-material: hologram 0.5 2\n",
+        "  mix-blend-mode: screen\n",
+        "  -og-mask: radial #ffffffff #ffffff00\n",
+        "  -og-ornament: corner flourish\n",
+        "  -og-sound: press \"audio/tick.wav\"\n",
         "}\n",
-        "dress \"Meter.fill[rarity=epic]\" {\n",
-        "  fill image 8 16 32 32 cover focal 0.25 0.75\n",
+        "Meter::fill[rarity=epic] {\n",
+        "  -og-fill: image 8 16 32 32 cover focal 0.25 0.75\n",
         "}\n",
     );
     let file = parse_style(&(base.clone() + extra)).unwrap_or_else(|e| panic!("{e}"));
@@ -415,8 +415,8 @@ fn a_dressing_draws_with_the_ui_pass_types() {
 
     // Unset offsets between set ones: 0, 0.2, then 0.6 and 1 evenly.
     let only_conic = concat!(
-        "dress \"Meter.fill[rarity=epic]\" {\n",
-        "  fill conic 90 primary alpha 0.25 \"#ff000080\" alpha 0.5 0.2 danger lineStrong reflect\n",
+        "Meter::fill[rarity=epic] {\n",
+        "  -og-fill: conic 90 var(--primary) alpha 0.25 #ff000080 alpha 0.5 0.2 var(--danger) var(--line-strong) reflect\n",
         "}\n",
     );
     let file = parse_style(&(base.clone() + only_conic)).unwrap();
@@ -451,16 +451,30 @@ fn a_dressing_draws_with_the_ui_pass_types() {
     // Refused lines report themselves.
     let lines = base.lines().count();
     for (bad, why) in [
-        ("fill linear 90 primary", "2 to 8 gradient stops"),
-        ("fill notAColour", "not a paint"),
-        ("stroke 2 linear 0 primary nope", "not a palette colour"),
-        ("stroke 2 primary sideways", "'sideways'"),
-        ("effect sparkle 2", "not an effect"),
-        ("blend lighten", "not a blend mode"),
-        ("fill linear 90 primary 0.8 danger 0.2", "out of order"),
-        ("fill primary alpha 1.1", "alpha from 0 to 1"),
+        (
+            "-og-fill: linear 90 var(--primary)",
+            "2 to 8 gradient stops",
+        ),
+        ("-og-fill: not-a-colour", "not a paint"),
+        (
+            "-og-stroke: 2px linear 0 var(--primary) nope",
+            "not a palette colour",
+        ),
+        ("-og-stroke: 2px var(--primary) sideways", "'sideways'"),
+        ("-og-effect: sparkle 2", "not an effect"),
+        ("mix-blend-mode: lighten", "not a blend mode"),
+        (
+            "-og-fill: linear 90 var(--primary) 0.8 var(--danger) 0.2",
+            "out of order",
+        ),
+        ("-og-fill: var(--primary) alpha 1.1", "alpha from 0 to 1"),
+        // Outside the dialect: what to write instead.
+        ("background: #ff0000", "-og-fill"),
+        ("slice 1 2 3 4 5", "-og-slice"),
+        ("-og-fill: #ff0000, #00ff00", "spaces, not commas"),
+        ("box-shadow: 0 2em 4px 0 #000000", "'2em'"),
     ] {
-        let text = format!("{base}dress \"Meter.fill\" {{\n  {bad}\n}}\n");
+        let text = format!("{base}Meter::fill {{\n  {bad}\n}}\n");
         let err = parse_style(&text).unwrap_err();
         assert!(err.contains(why), "{bad}: {err}");
         assert!(err.contains(&format!("line {}", lines + 2)), "{bad}: {err}");

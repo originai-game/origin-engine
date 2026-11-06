@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Quest log and journal (docs/ui.md Appendix B: quest log, journal,
 # codex, bestiary, encyclopedia). The quests by category, the selected
@@ -28,17 +28,17 @@ actions {
 }
 fixture default "{\"active\": 7, \"done\": 23}"
 column Screen {
-  width grow
-  height grow
-  padding 32
-  gap 12
-  at phone {
-    padding 16
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 12px
+  @media phone {
+    padding: 16px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
+    width: stretch
+    gap: 12px
+    align-items: center
     button Close {
       key "screen.common.close"
       text "Close"
@@ -48,29 +48,29 @@ column Screen {
     label Title {
       key "screen.quest-log.title"
       text "Journal"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
     spacer
     label Counts {
       text "{active} active · {done} done"
-      step caption
-      color token inkMuted
+      font: var(--text-caption)
+      color: var(--ink-muted)
     }
   }
   column Body {
-    width grow
-    height grow
-    gap 12
+    width: stretch
+    height: stretch
+    gap: 12px
     slot Log {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
     }
     slot Map {
-      width grow
+      width: stretch
     }
   }
 }

@@ -182,7 +182,7 @@ with `og.load.document` and a `Ui` registers it with `define_document`.
 
 ```text
 type screen                       # or: type component
-version 1
+version 2
 ---
 name "shop"                       # what og.ui.screen / push / component name it
 layer menu                        # screens: hud menu modal popover toast tooltip system
@@ -216,7 +216,7 @@ timeline bought {                 # defined as <name>/<timeline>: shop/bought
 }
 fixture rich "{\"gold\": 1250000, \"items\": []}"   # a viewmodel to preview or push with (ui:push:shop:rich)
 panel Shop {                      # the one root element: <kind> [id] { … }
-  width 520                       # <prop> <value>: the table below
+  width: 520px                    # a style prop is a CSS declaration (docs/ui.md §10.4)
   part frame
   label Gold {
     text bind gold compact        # bind <expression> [format [digits]]
@@ -231,14 +231,14 @@ panel Shop {                      # the one root element: <kind> [id] { … }
       }
       state selection bind "$index == selected" {   # a group: its binding picks the state
         off {                     # (a bool: the second state when true; a string: by name)
-          opacity 0.6             # an animatable prop and its value
+          opacity: 0.6            # a state sets animatable props
         }
         on {
-          opacity 1
-          background token primarySoft    # or ink; a palette role or "#rrggbb[aa]"
+          opacity: 1
+          background: var(--primary-soft) # or color; var(--<role>) or #rrggbb[aa]
           enter bought            # a timeline played when the state is entered (exit: left)
         }
-        transition off on spring 260 0.2  # <from|any> <to|any> spring <ms> <bounce> | tween <ms> [ease] | token <name> | instant
+        transition: off on -og-spring(260ms, 0.2) # <from|any> <to|any> -og-spring(<ms>ms, <bounce>) | <ms>ms [ease] | var(--motion-<name>) | none
       }
     }
   }
@@ -256,11 +256,11 @@ panel Shop {                      # the one root element: <kind> [id] { … }
     }
   }
   slot Preview {                  # a place code fills: og.ui.openSlot("shop/Preview")
-    height 120
+    height: 120px
   }
   use PriceTag Tag {              # a component: its props by name (bound ones are two-way)
     price bind item.price
-    width 80                      # an element prop applies to the instance's root
+    width: 80px                   # an element prop applies to the instance's root
   }
   slider Volume {
     value bind volume             # two-way: the slider writes volume back
@@ -270,15 +270,20 @@ panel Shop {                      # the one root element: <kind> [id] { … }
     disabled bind "gold < price"
     on click emit buy             # on <when> <act>
     on click play bought
-    at phone {                    # breakpoint overrides: phonePortrait phoneLandscape
-      width grow                  # phone tablet desktop portrait landscape (later wins)
+    @media phone {                # breakpoint overrides: phone-portrait phone-landscape
+      width: stretch              # phone tablet desktop portrait landscape (later wins)
     }
   }
 }
 ```
 
-Lines are `.ogt` lines (one construct per line, `#` comments, quoted strings
-for anything that is not a word: paths with `/`, expressions with spaces).
+Structure and behaviour are `.ogt` lines (one construct per line, `#`
+comments, quoted strings for anything that is not a word: paths with `/`,
+expressions with spaces); an element's look and layout are CSS declarations,
+its interaction states pseudo-classes (`:hover`, `:active`,
+`:focus-visible`, `:disabled`) and its breakpoints `@media` blocks
+(`src/doc/css.rs`, docs/ui.md §10.4). `og ui migrate` writes a version 1
+document as version 2.
 Element ids are unique among siblings (paths name elements by them); an
 element without one is `<kind>#<n>` among its same-kind siblings.
 

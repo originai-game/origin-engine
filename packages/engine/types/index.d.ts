@@ -45599,7 +45599,7 @@ export declare namespace og {
      */
     function textureArray(world: World, path: string): Result<TextureArrayInfo>;
     /**
-     * Load a cooked UI style (an `.ogt` of `type style`: every palette role, the radii, type ramp, durations, and its art: the atlas and its nine-slice frames, ornaments, fonts, icons, motion and sounds; the grammar is og-ui's `parse_style`) for UiDesc.style. Version 2 (docs/ui.md §12, what `og style upgrade` writes from version 1 and every built-in style is) adds the tokens (rarity, team, damage and chart colours each with its cue, the type scale per breakpoint, the space, size, radius and stroke scales, elevation, the shape language, motion springs and eases, sounds and haptics per UI event) and dresses parts by selector (`dress "Button.base[pressed]" { … }`); the tokens are carried, not yet drawn from. Version 1 still loads. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`.
+     * Load a cooked UI style (an `.ogt` of `type style`: every palette role, the radii, type ramp, durations, and its art: the atlas and its nine-slice frames, ornaments, fonts, icons, motion and sounds; the grammar is og-ui's `parse_style`) for UiDesc.style. Version 3, the CSS dialect (docs/ui.md §12.7, what `og style upgrade`, `og style new` and `og ui migrate` write and every built-in style is), has the tokens (rarity, team, damage and chart colours each with its cue, the type scale per breakpoint, the space, size, radius and stroke scales, elevation, the shape language, motion springs and eases, sounds and haptics per UI event; colours and lengths as custom properties, `--panel-raised: #211a15`) and dresses parts with selector blocks (`Button::base.primary:active { -og-slice: … }`). Versions 1 and 2 still load. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`.
      *
      * @param world The world whose UI uses it.
      * @param path The asset id, such as `styles/pixel/style.ogt` or `@styles/pixel/style.ogt`.
@@ -45607,7 +45607,7 @@ export declare namespace og {
      */
     function style(world: World, path: string): Result<Style>;
     /**
-     * Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents) into the world's UI, where og.ui.screen, og.ui.push and og.ui.component name it by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document.
+     * Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents: version 2, CSS declarations for an element's look and layout, docs/ui.md §10.4; `og ui migrate` writes a version 1 document as version 2) into the world's UI, where og.ui.screen, og.ui.push and og.ui.component name it by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document.
      *
      * @param world The world whose UI uses it.
      * @param path The asset id, such as `ui/shop.ogt`.

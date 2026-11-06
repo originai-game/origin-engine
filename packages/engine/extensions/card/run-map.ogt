@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Run map (docs/ui.md Appendix B: branching nodes). The act's map of
 # nodes and paths (fights, elites, shops, rests, events, the boss), the
@@ -30,54 +30,54 @@ actions {
 }
 fixture default "{\"act\": \"Act I · The Undergrowth\", \"floor\": 6, \"health\": 54, \"maxHealth\": 80, \"gold\": 143, \"hint\": \"Elite: a strong enemy guarding a relic.\"}"
 column Screen {
-  width grow
-  height grow
-  padding 24
-  gap 12
-  at phone {
-    padding 12
+  width: stretch
+  height: stretch
+  padding: 24px
+  gap: 12px
+  @media phone {
+    padding: 12px
   }
   row Header {
-    width grow
-    gap 16
-    cross center
-    wrap true
+    width: stretch
+    gap: 16px
+    align-items: center
+    flex-wrap: wrap
     column Act {
-      gap 2
+      gap: 2px
       label Name {
         text bind act
-        step lg
+        font: var(--text-lg)
         heading true
       }
       label Floor {
         text "Floor {floor}"
-        step caption
-        color token inkMuted
+        font: var(--text-caption)
+        color: var(--ink-muted)
       }
     }
     spacer
     row Stats {
-      gap 16
-      cross center
+      gap: 16px
+      align-items: center
       row Health {
-        gap 6
-        cross center
+        gap: 6px
+        align-items: center
         icon Heart {
           icon heart
           iconSize 20
-          color token health
+          color: var(--health)
         }
         label Value {
           text "{health}/{maxHealth}"
         }
       }
       row Gold {
-        gap 6
-        cross center
+        gap: 6px
+        align-items: center
         icon Coin {
           icon coin
           iconSize 20
-          color token gold
+          color: var(--gold)
         }
         label Value {
           text bind gold grouped
@@ -87,7 +87,7 @@ column Screen {
         key "screen.run-map.deck"
         text "Deck"
         size small
-        at phone {
+        @media phone {
           size medium
         }
         on click emit deck
@@ -96,21 +96,21 @@ column Screen {
     }
   }
   slot Relics {
-    width grow
+    width: stretch
   }
   stack Body {
-    width grow
-    height grow
+    width: stretch
+    height: stretch
     slot Graph {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
     }
     column Side {
-      position absolute
-      end 0
-      top 0
-      gap 8
-      at phonePortrait {
+      position: absolute
+      inset-inline-end: 0
+      top: 0
+      gap: 8px
+      @media phone-portrait {
         visible false
       }
       slot Legend {
@@ -119,8 +119,8 @@ column Screen {
   }
   label Hint {
     text bind hint
-    color token inkMuted
-    maxLines 2
+    color: var(--ink-muted)
+    line-clamp: 2
     visible bind "hint != \"\""
   }
 }

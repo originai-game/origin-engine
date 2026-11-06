@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Prestige and meta-progression hub (docs/ui.md Appendix B). The reset
 # itself and what it gives, the meta currency, the permanent upgrades it
@@ -26,18 +26,18 @@ actions {
 }
 fixture default "{\"currency\": 1.5e12, \"name\": \"Angels\", \"upgrades\": [{\"name\": \"Blessed hands\", \"text\": \"Clicks earn 2× per level.\", \"level\": 3, \"cost\": 2.5e11, \"afford\": true}, {\"name\": \"Choir\", \"text\": \"Generators start at level 10.\", \"level\": 0, \"cost\": 4e12, \"afford\": false}], \"buying\": -1, \"runs\": 12, \"best\": 8.2e15}"
 column Screen {
-  width grow
-  height grow
-  padding 24
-  gap 12
-  at phone {
-    padding 12
+  width: stretch
+  height: stretch
+  padding: 24px
+  gap: 12px
+  @media phone {
+    padding: 12px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Back {
       key "screen.common.back"
       text "Back"
@@ -47,76 +47,76 @@ column Screen {
     label Title {
       key "screen.prestige.title"
       text "Prestige"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
     spacer
     label Currency {
       text "{currency, letters} {name}"
-      step lg
-      color token gold
+      font: var(--text-lg)
+      color: var(--gold)
     }
   }
   grid Body {
-    width grow
-    height grow
-    gap 16
-    columns "1fr" "1fr"
-    rows "1fr"
-    at phonePortrait {
-      columns "1fr"
-      rows auto "1fr"
-      gap 12
+    width: stretch
+    height: stretch
+    gap: 16px
+    grid-template-columns: 1fr 1fr
+    grid-template-rows: 1fr
+    @media phone-portrait {
+      grid-template-columns: 1fr
+      grid-template-rows: auto 1fr
+      gap: 12px
     }
     column Left {
-      width grow
-      gap 12
+      width: stretch
+      gap: 12px
       slot Prestige {
-        width grow
+        width: stretch
       }
       label Runs {
         text "{runs} resets · best {best, letters}"
-        step caption
-        color token inkMuted
+        font: var(--text-caption)
+        color: var(--ink-muted)
       }
       slot Records {
-        width grow
+        width: stretch
       }
     }
     scroll Upgrades {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
       column List {
-        width grow
-        gap 8
+        width: stretch
+        gap: 8px
         for u in upgrades {
           row Upgrade {
-            width grow
-            padding 10
-            gap 12
-            cross center
-            background token panelRaised
-            frame card
+            width: stretch
+            padding: 10px
+            gap: 12px
+            align-items: center
+            background: var(--panel-raised)
+            -og-frame: card
             column Text {
-              width grow
-              gap 2
+              width: stretch
+              gap: 2px
               label Name {
                 text "{u.name} · {u.level}"
-                step lg
+                font: var(--text-lg)
               }
               label Line {
                 text bind u.text
-                color token inkMuted
-                maxLines 2
+                color: var(--ink-muted)
+                line-clamp: 2
               }
             }
             button Buy {
               text bind u.cost letters
               size small
-              at phone {
+              @media phone {
                 size medium
               }
               disabled bind "!u.afford"

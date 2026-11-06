@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Diplomacy and trade (docs/ui.md Appendix B). The other powers with
 # their leader, attitude and treaties; the selected one's page: what they
@@ -32,17 +32,17 @@ actions {
 }
 fixture default "{\"powers\": [{\"name\": \"Aurelian Empire\", \"attitude\": \"Friendly\", \"war\": false, \"texture\": 0}, {\"name\": \"Free Cities\", \"attitude\": \"Wary\", \"war\": false, \"texture\": 0}, {\"name\": \"Ashen Horde\", \"attitude\": \"Hostile\", \"war\": true, \"texture\": 0}], \"selected\": 0, \"power\": {\"name\": \"Aurelian Empire\", \"leader\": \"Empress Livia\", \"reasons\": [{\"text\": \"Trade partners\", \"value\": 12}, {\"text\": \"Border tension\", \"value\": -4}], \"actions\": [{\"name\": \"Propose alliance\", \"enabled\": true}, {\"name\": \"Open borders\", \"enabled\": true}, {\"name\": \"Declare war\", \"enabled\": true}]}, \"acting\": -1, \"mine\": [{\"name\": \"200 gold\"}], \"theirs\": [{\"name\": \"Iron (10 turns)\"}], \"acceptance\": 0.3}"
 column Screen {
-  width grow
-  height grow
-  padding 24
-  gap 12
-  at phone {
-    padding 12
+  width: stretch
+  height: stretch
+  padding: 24px
+  gap: 12px
+  @media phone {
+    padding: 12px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
+    width: stretch
+    gap: 12px
+    align-items: center
     button Close {
       key "screen.common.close"
       text "Close"
@@ -52,59 +52,59 @@ column Screen {
     label Title {
       key "screen.diplomacy.title"
       text "Diplomacy"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
   }
   grid Body {
-    width grow
-    height grow
-    gap 16
-    columns 280 "1fr"
-    rows "1fr"
-    at phonePortrait {
-      columns "1fr"
-      rows 180 "1fr"
-      gap 12
+    width: stretch
+    height: stretch
+    gap: 16px
+    grid-template-columns: 280px 1fr
+    grid-template-rows: 1fr
+    @media phone-portrait {
+      grid-template-columns: 1fr
+      grid-template-rows: 180px 1fr
+      gap: 12px
     }
     scroll Powers {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
       column List {
-        width grow
-        gap 4
+        width: stretch
+        gap: 4px
         focusGroup stop
         for p in powers {
           row Power {
-            width grow
-            padding 8
-            gap 10
-            cross center
-            radius 8
+            width: stretch
+            padding: 8px
+            gap: 10px
+            align-items: center
+            border-radius: 8px
             interactive true
             focusable true
             on click set selected "$index"
             on click emit select
             art Emblem {
               kind emblem
-              width 36
-              height 36
+              width: 36px
+              height: 36px
               texture bind p.texture
             }
             column Text {
-              width grow
+              width: stretch
               label Name {
                 text bind p.name
-                maxLines 1
-                ellipsis true
+                line-clamp: 1
+                text-overflow: ellipsis
               }
               label Attitude {
                 text bind p.attitude
-                step caption
-                color token inkMuted
+                font: var(--text-caption)
+                color: var(--ink-muted)
               }
             }
             badge War {
@@ -115,73 +115,68 @@ column Screen {
             }
             state selection bind "$index == selected" {
               off {
-                background token panel
+                background: var(--panel)
               }
               on {
-                background token primarySoft
+                background: var(--primary-soft)
               }
-              transition any any token ui
+              transition: var(--motion-ui)
             }
-            state interaction {
-              normal {
-                scale 1
-              }
-              hover {
-                scale 1.01
-              }
-              pressed {
-                scale 0.99
-              }
-              focused {
-                scale 1.01
-              }
-              transition any any token ui
+            :hover {
+              scale: 1.01
             }
+            :active {
+              scale: 0.99
+            }
+            :focus-visible {
+              scale: 1.01
+            }
+            -og-state-transition: var(--motion-ui)
           }
         }
       }
     }
     scroll Page {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
       column Power {
-        width grow
-        gap 12
+        width: stretch
+        gap: 12px
         row Head {
-          width grow
-          gap 16
+          width: stretch
+          gap: 16px
           slot Leader {
           }
           column Text {
-            width grow
-            gap 4
+            width: stretch
+            gap: 4px
             label Name {
               text bind power.name
-              step xl
+              font: var(--text-xl)
               heading true
             }
             label Leader {
               text bind power.leader
-              color token inkMuted
+              color: var(--ink-muted)
             }
             for r in power.reasons {
               row Reason {
-                width grow
-                gap 8
+                width: stretch
+                gap: 8px
                 label Text {
                   text bind r.text
-                  width grow
-                  step caption
+                  width: stretch
+                  font: var(--text-caption)
                 }
                 label Value {
                   text bind r.value
-                  step caption
+                  font: var(--text-caption)
                   state sign bind "r.value >= 0" {
                     down {
-                      ink token danger
+                      color: var(--danger)
                     }
                     up {
-                      ink token success
+                      color: var(--success)
                     }
                   }
                 }
@@ -190,14 +185,14 @@ column Screen {
           }
         }
         row Actions {
-          width grow
-          gap 8
-          wrap true
+          width: stretch
+          gap: 8px
+          flex-wrap: wrap
           for a in power.actions {
             button Action {
               text bind a.name
               size small
-              at phone {
+              @media phone {
                 size medium
               }
               disabled bind "!a.enabled"
@@ -209,24 +204,24 @@ column Screen {
         label TradeTitle {
           key "screen.diplomacy.trade"
           text "Trade"
-          step lg
+          font: var(--text-lg)
           heading true
         }
         grid Trade {
-          width grow
-          gap 12
-          columns "1fr" "1fr"
+          width: stretch
+          gap: 12px
+          grid-template-columns: 1fr 1fr
           column Mine {
-            width grow
-            padding 12
-            gap 6
-            background token panelRaised
-            frame card
+            width: stretch
+            padding: 12px
+            gap: 6px
+            background: var(--panel-raised)
+            -og-frame: card
             label Title {
               key "screen.diplomacy.youGive"
               text "You give"
-              step caption
-              color token inkMuted
+              font: var(--text-caption)
+              color: var(--ink-muted)
             }
             for m in mine {
               label Item {
@@ -235,16 +230,16 @@ column Screen {
             }
           }
           column Theirs {
-            width grow
-            padding 12
-            gap 6
-            background token panelRaised
-            frame card
+            width: stretch
+            padding: 12px
+            gap: 6px
+            background: var(--panel-raised)
+            -og-frame: card
             label Title {
               key "screen.diplomacy.theyGive"
               text "They give"
-              step caption
-              color token inkMuted
+              font: var(--text-caption)
+              color: var(--ink-muted)
             }
             for t in theirs {
               label Item {
@@ -254,21 +249,21 @@ column Screen {
           }
         }
         slot Offers {
-          width grow
+          width: stretch
         }
         row Deal {
-          width grow
-          gap 12
-          cross center
-          wrap true
+          width: stretch
+          gap: 12px
+          align-items: center
+          flex-wrap: wrap
           label Acceptance {
             key "screen.diplomacy.acceptance"
             text "Their view"
-            step caption
-            color token inkMuted
+            font: var(--text-caption)
+            color: var(--ink-muted)
           }
           progress Meter {
-            width grow 120
+            width: stretch; min-width: 120px
             value bind "(acceptance + 1) / 2"
           }
           button Clear {

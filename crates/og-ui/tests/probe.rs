@@ -258,7 +258,7 @@ fn restoring_the_world_and_the_ui_state_replays_the_same_frames() {
 /// rule's line taken from another block, the rules in another order.
 #[test]
 fn pick_answers_the_ui_element_with_its_source_line_and_style_rules() {
-    const SHOP: &str = "type screen\nversion 1\n---\nname \"shop\"\nlayer hud\nprops {\n  gold number \"Gold.\"\n}\ncolumn Root {\n  width grow\n  height grow\n  padding 40\n  button Buy {\n    width 240\n    text \"Buy\"\n    variant primary\n  }\n}\n";
+    const SHOP: &str = "type screen\nversion 2\n---\nname \"shop\"\nlayer hud\nprops {\n  gold number \"Gold.\"\n}\ncolumn Root {\n  width: stretch\n  height: stretch\n  padding: 40px\n  button Buy {\n    width: 240px\n    text \"Buy\"\n    variant primary\n  }\n}\n";
     let mut world = World::new(&WorldDesc {
         tick_rate: 60,
         seed: 1,
@@ -304,7 +304,7 @@ fn pick_answers_the_ui_element_with_its_source_line_and_style_rules() {
         .unwrap()
         + 1;
     assert_eq!(p["source"], format!("ui/shop.ogt:{line}"));
-    assert_eq!(p["part"], "Button.base[primary]");
+    assert_eq!(p["part"], "Button::base.primary");
     let line_of = |head: &str| style_text.lines().position(|l| l == head).unwrap() + 1;
     let rules: Vec<(String, String)> = p["rules"]
         .as_array()
@@ -321,12 +321,12 @@ fn pick_answers_the_ui_element_with_its_source_line_and_style_rules() {
         rules,
         [
             (
-                "Button.base".to_string(),
-                format!("{style_id}:{}", line_of("dress \"Button.base\" {"))
+                "Button::base".to_string(),
+                format!("{style_id}:{}", line_of("Button::base {"))
             ),
             (
-                "Button.base[primary]".to_string(),
-                format!("{style_id}:{}", line_of("dress \"Button.base[primary]\" {"))
+                "Button::base.primary".to_string(),
+                format!("{style_id}:{}", line_of("Button::base.primary {"))
             ),
         ]
     );

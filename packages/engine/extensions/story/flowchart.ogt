@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Route flowchart (docs/ui.md Appendix B: backlog, gallery, route
 # flowchart). Back, the title and the endings reached at the head; under
@@ -31,18 +31,18 @@ actions {
 }
 fixture default "{\"endings\": \"2/6\"}"
 column Screen {
-  width grow
-  height grow
-  padding 32
-  gap 12
-  at phone {
-    padding 16
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 12px
+  @media phone {
+    padding: 16px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
-    wrap true
+    width: stretch
+    gap: 12px
+    align-items: center
+    flex-wrap: wrap
     button Back {
       key "screen.common.back"
       text "Back"
@@ -52,21 +52,21 @@ column Screen {
     label Title {
       key "screen.flowchart.title"
       text "Story chart"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
     spacer
     label Endings {
       text "Endings {endings}"
-      step caption
-      color token inkMuted
+      font: var(--text-caption)
+      color: var(--ink-muted)
     }
   }
   slot Chart {
-    width grow
-    height grow
+    width: stretch
+    height: stretch
   }
 }

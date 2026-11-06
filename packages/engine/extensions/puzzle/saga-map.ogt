@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Level and saga map (docs/ui.md Appendix B). The levels along a path
 # that scrolls, the player's pin on the current one, the stars won, lives
@@ -28,61 +28,61 @@ actions {
 }
 fixture default "{\"lives\": 4, \"maxLives\": 5, \"refill\": 1260, \"stars\": 128, \"level\": {\"name\": \"Level 42\", \"stars\": 2, \"best\": 18400, \"goal\": \"Clear 30 jellies in 25 moves\"}, \"showLevel\": true}"
 stack Map {
-  width grow
-  height grow
+  width: stretch
+  height: stretch
   slot Map {
-    width grow
-    height grow
-    position absolute
-    start 0
-    top 0
-    end 0
-    bottom 0
+    width: stretch
+    height: stretch
+    position: absolute
+    inset-inline-start: 0
+    top: 0
+    inset-inline-end: 0
+    bottom: 0
   }
   row Top {
-    position absolute
-    start 16
-    top 16
-    end 16
-    gap 8
-    cross center
+    position: absolute
+    inset-inline-start: 16px
+    top: 16px
+    inset-inline-end: 16px
+    gap: 8px
+    align-items: center
     panel Lives {
-      padding 8
-      frame hud
+      padding: 8px
+      -og-frame: hud
       row Row {
-        gap 6
-        cross center
+        gap: 6px
+        align-items: center
         icon Heart {
           icon heart
           iconSize 20
-          color token danger
+          color: var(--danger)
         }
         label Count {
           text "{lives}/{maxLives}"
-          step lg
+          font: var(--text-lg)
         }
         label Refill {
           text "{refill, countdown}"
-          step caption
-          color token inkMuted
+          font: var(--text-caption)
+          color: var(--ink-muted)
           visible bind "lives < maxLives"
         }
       }
     }
     panel Stars {
-      padding 8
-      frame hud
+      padding: 8px
+      -og-frame: hud
       row Row {
-        gap 6
-        cross center
+        gap: 6px
+        align-items: center
         icon Star {
           icon star
           iconSize 20
-          color token gold
+          color: var(--gold)
         }
         label Count {
           text bind stars grouped
-          step lg
+          font: var(--text-lg)
         }
       }
     }
@@ -91,47 +91,47 @@ stack Map {
       key "screen.saga-map.settings"
       text "Settings"
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit settings
     }
   }
   row Shade {
-    width grow
-    height grow
-    padding 24
-    align center
-    cross center
-    background token scrim
+    width: stretch
+    height: stretch
+    padding: 24px
+    justify-content: center
+    align-items: center
+    background: var(--scrim)
     visible bind showLevel
     interactive true
     on click set showLevel "false"
     column Card {
-      width grow 0 420
-      padding 24
-      gap 12
-      cross center
-      background token panel
-      frame panel
+      width: stretch; max-width: 420px
+      padding: 24px
+      gap: 12px
+      align-items: center
+      background: var(--panel)
+      -og-frame: panel
       interactive true
-      enter pop
+      -og-enter: pop
       label Name {
         text bind level.name
-        step xl2
+        font: var(--text-xl2)
         heading true
       }
       row Stars {
-        gap 6
+        gap: 6px
         icon One {
           icon star
           iconSize 32
           state lit bind "level.stars >= 1" {
             off {
-              ink token inkFaint
+              color: var(--ink-faint)
             }
             on {
-              ink token gold
+              color: var(--gold)
             }
           }
         }
@@ -140,10 +140,10 @@ stack Map {
           iconSize 32
           state lit bind "level.stars >= 2" {
             off {
-              ink token inkFaint
+              color: var(--ink-faint)
             }
             on {
-              ink token gold
+              color: var(--gold)
             }
           }
         }
@@ -152,30 +152,30 @@ stack Map {
           iconSize 32
           state lit bind "level.stars >= 3" {
             off {
-              ink token inkFaint
+              color: var(--ink-faint)
             }
             on {
-              ink token gold
+              color: var(--gold)
             }
           }
         }
       }
       label Goal {
         text bind level.goal
-        textAlign center
-        maxLines 3
+        text-align: center
+        line-clamp: 3
       }
       label Best {
         text "Best {level.best, grouped}"
-        step caption
-        color token inkMuted
+        font: var(--text-caption)
+        color: var(--ink-muted)
       }
       slot Boosters {
-        width grow
+        width: stretch
       }
       row Actions {
-        width grow
-        gap 8
+        width: stretch
+        gap: 8px
         button Close {
           key "screen.common.close"
           text "Close"
@@ -187,7 +187,7 @@ stack Map {
           key "screen.saga-map.play"
           text "Play"
           variant primary
-          width grow
+          width: stretch
           autofocus true
           disabled bind "lives == 0"
           on click emit play

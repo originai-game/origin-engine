@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Missions and events hub (docs/ui.md Appendix B: daily login, missions,
 # events hub). The live events as banners with their time left, and the
@@ -29,17 +29,17 @@ actions {
 }
 fixture default "{\"events\": [{\"name\": \"Harvest festival\", \"ends\": 432000, \"texture\": 0, \"fresh\": true}, {\"name\": \"Double XP weekend\", \"ends\": 86400, \"texture\": 0, \"fresh\": false}], \"event\": 0, \"tab\": \"daily\", \"missions\": [{\"name\": \"Win 3 matches\", \"done\": 3, \"goal\": 3, \"reward\": \"50 gems\", \"claimed\": false}, {\"name\": \"Collect 500 gold\", \"done\": 320, \"goal\": 500, \"reward\": \"1 ticket\", \"claimed\": false}, {\"name\": \"Log in\", \"done\": 1, \"goal\": 1, \"reward\": \"100 gold\", \"claimed\": true}], \"claiming\": -1, \"resets\": 39600}"
 column Screen {
-  width grow
-  height grow
-  padding 32
-  gap 12
-  at phone {
-    padding 16
+  width: stretch
+  height: stretch
+  padding: 32px
+  gap: 12px
+  @media phone {
+    padding: 16px
   }
   row Header {
-    width grow
-    gap 12
-    cross center
+    width: stretch
+    gap: 12px
+    align-items: center
     button Back {
       key "screen.common.back"
       text "Back"
@@ -49,10 +49,10 @@ column Screen {
     label Title {
       key "screen.events-hub.title"
       text "Events"
-      step xl2
+      font: var(--text-xl2)
       heading true
-      at phone {
-        step xl
+      @media phone {
+        font: var(--text-xl)
       }
     }
     spacer
@@ -61,59 +61,59 @@ column Screen {
       text "Claim all"
       variant primary
       size small
-      at phone {
+      @media phone {
         size medium
       }
       on click emit claimAll
     }
   }
   grid Body {
-    width grow
-    height grow
-    gap 24
-    columns "1fr" "1fr"
-    rows "1fr"
-    at phonePortrait {
-      columns "1fr"
-      rows auto "1fr"
-      gap 12
+    width: stretch
+    height: stretch
+    gap: 24px
+    grid-template-columns: 1fr 1fr
+    grid-template-rows: 1fr
+    @media phone-portrait {
+      grid-template-columns: 1fr
+      grid-template-rows: auto 1fr
+      gap: 12px
     }
     scroll Events {
-      width grow
-      height grow
+      width: stretch
+      height: stretch
       column List {
-        width grow
-        gap 12
+        width: stretch
+        gap: 12px
         slot Featured {
-          width grow
+          width: stretch
         }
         for e in events {
           stack Event {
-            width grow
+            width: stretch
             interactive true
             focusable true
             on click set event "$index"
             on click emit event
             art Art {
               kind banner
-              width grow
+              width: stretch
               texture bind e.texture
             }
             row Plate {
-              position absolute
-              start 0
-              end 0
-              bottom 0
-              padding 12
-              gap 8
-              cross center
-              background token scrim
+              position: absolute
+              inset-inline-start: 0
+              inset-inline-end: 0
+              bottom: 0
+              padding: 12px
+              gap: 8px
+              align-items: center
+              background: var(--scrim)
               label Name {
                 text bind e.name
-                step lg
-                width grow
-                maxLines 1
-                ellipsis true
+                font: var(--text-lg)
+                width: stretch
+                line-clamp: 1
+                text-overflow: ellipsis
               }
               badge New {
                 key "screen.common.new"
@@ -123,36 +123,31 @@ column Screen {
               }
               label Ends {
                 text "{e.ends, duration}"
-                step caption
+                font: var(--text-caption)
               }
             }
-            state interaction {
-              normal {
-                scale 1
-              }
-              hover {
-                scale 1.01
-              }
-              pressed {
-                scale 0.99
-              }
-              focused {
-                scale 1.01
-              }
-              transition any any token ui
+            :hover {
+              scale: 1.01
             }
+            :active {
+              scale: 0.99
+            }
+            :focus-visible {
+              scale: 1.01
+            }
+            -og-state-transition: var(--motion-ui)
           }
         }
       }
     }
     column Missions {
-      width grow
-      height grow
-      gap 8
+      width: stretch
+      height: stretch
+      gap: 8px
       row Tabs {
-        width grow
-        gap 6
-        cross center
+        width: stretch
+        gap: 6px
+        align-items: center
         button Daily {
           key "screen.events-hub.daily"
           text "Daily"
@@ -160,10 +155,10 @@ column Screen {
           on click set tab "\"daily\""
           state selection bind "tab == \"daily\"" {
             off {
-              opacity 0.85
+              opacity: 0.85
             }
             on {
-              opacity 1
+              opacity: 1
             }
           }
         }
@@ -174,52 +169,52 @@ column Screen {
           on click set tab "\"weekly\""
           state selection bind "tab == \"weekly\"" {
             off {
-              opacity 0.85
+              opacity: 0.85
             }
             on {
-              opacity 1
+              opacity: 1
             }
           }
         }
         spacer
         label Resets {
           text "{resets, countdown}"
-          step caption
-          color token inkMuted
+          font: var(--text-caption)
+          color: var(--ink-muted)
         }
       }
       slot Points {
-        width grow
+        width: stretch
       }
       scroll MissionScroll {
-        width grow
-        height grow
+        width: stretch
+        height: stretch
         column List {
-          width grow
-          gap 6
+          width: stretch
+          gap: 6px
           for m in missions {
             row Mission {
-              width grow
-              padding 10
-              gap 12
-              cross center
-              background token panelRaised
-              frame card
+              width: stretch
+              padding: 10px
+              gap: 12px
+              align-items: center
+              background: var(--panel-raised)
+              -og-frame: card
               column Text {
-                width grow
-                gap 4
+                width: stretch
+                gap: 4px
                 label Name {
                   text bind m.name
-                  maxLines 2
+                  line-clamp: 2
                 }
                 progress Bar {
-                  width grow
+                  width: stretch
                   value bind "m.done / m.goal"
                 }
                 label Count {
                   text "{m.done, grouped}/{m.goal, grouped} · {m.reward}"
-                  step caption
-                  color token inkMuted
+                  font: var(--text-caption)
+                  color: var(--ink-muted)
                 }
               }
               button Claim {
@@ -227,7 +222,7 @@ column Screen {
                 text "Claim"
                 variant primary
                 size small
-                at phone {
+                @media phone {
                   size medium
                 }
                 visible bind "m.done >= m.goal && !m.claimed"

@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Boot and splash (docs/ui.md Appendix B: boot, splash, title, main menu,
 # mode select). The studio's and partners' marks one after another, then
@@ -27,41 +27,41 @@ actions {
 }
 fixture default "{\"marks\": [{\"name\": \"Studio\", \"texture\": 0}, {\"name\": \"Engine\", \"texture\": 0}], \"mark\": 0, \"progress\": 0.4, \"status\": \"Loading shaders\"}"
 column Splash {
-  width grow
-  height grow
-  padding 48
-  gap 24
-  align center
-  cross center
-  background token backdrop
+  width: stretch
+  height: stretch
+  padding: 48px
+  gap: 24px
+  justify-content: center
+  align-items: center
+  background: var(--backdrop)
   interactive true
   on click emit skip
   on action confirm emit skip
-  at phone {
-    padding 24
+  @media phone {
+    padding: 24px
   }
   spacer
   for m in marks {
     column Mark {
-      gap 12
-      cross center
+      gap: 12px
+      align-items: center
       visible bind "$index == mark"
-      enter fade
-      exit fade
+      -og-enter: fade
+      -og-exit: fade
       art Art {
         kind logo
-        width 360
-        height 160
+        width: 360px
+        height: 160px
         texture bind m.texture
-        at phone {
-          width 260
-          height 116
+        @media phone {
+          width: 260px
+          height: 116px
         }
       }
       label Name {
         text bind m.name
-        step caption
-        color token inkMuted
+        font: var(--text-caption)
+        color: var(--ink-muted)
       }
     }
   }
@@ -69,20 +69,20 @@ column Splash {
   }
   spacer
   column Boot {
-    width grow 0 360
-    gap 8
-    cross center
+    width: stretch; max-width: 360px
+    gap: 8px
+    align-items: center
     visible bind "progress >= 0"
     progress Bar {
-      width grow
+      width: stretch
       value bind progress
     }
     label Status {
       text bind status
-      step caption
-      color token inkMuted
-      maxLines 1
-      ellipsis true
+      font: var(--text-caption)
+      color: var(--ink-muted)
+      line-clamp: 1
+      text-overflow: ellipsis
     }
   }
 }

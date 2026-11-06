@@ -1,5 +1,5 @@
 type screen
-version 1
+version 2
 ---
 # Credits (docs/ui.md Appendix B). The roll: the game's logo, then each
 # section's heading and its names, scrolling up on their own; a press
@@ -24,58 +24,58 @@ actions {
 }
 fixture default "{\"sections\": [{\"title\": \"Directed by\", \"names\": [{\"name\": \"Ada Lin\", \"role\": \"\"}]}, {\"title\": \"Art\", \"names\": [{\"name\": \"Tomas Reyes\", \"role\": \"Lead artist\"}, {\"name\": \"Mira Okafor\", \"role\": \"Environment\"}]}, {\"title\": \"Music\", \"names\": [{\"name\": \"Jun Sato\", \"role\": \"Composer\"}]}], \"offset\": 0}"
 stack Credits {
-  width grow
-  height grow
-  background token backdrop
+  width: stretch
+  height: stretch
+  background: var(--backdrop)
   interactive true
   on click emit faster
   on action confirm emit faster
   column Roll {
-    position absolute
-    start 0
-    end 0
-    top 0
-    padding 48
-    gap 40
-    cross center
-    y bind "-offset"
-    at phone {
-      padding 24
-      gap 28
+    position: absolute
+    inset-inline-start: 0
+    inset-inline-end: 0
+    top: 0
+    padding: 48px
+    gap: 40px
+    align-items: center
+    translate: 0 bind("-offset")
+    @media phone {
+      padding: 24px
+      gap: 28px
     }
     art Logo {
       kind logo
-      width 360
-      height 140
-      at phone {
-        width 240
-        height 94
+      width: 360px
+      height: 140px
+      @media phone {
+        width: 240px
+        height: 94px
       }
     }
     for s in sections {
       column Section {
-        width grow 0 640
-        gap 10
-        cross center
+        width: stretch; max-width: 640px
+        gap: 10px
+        align-items: center
         label Title {
           text bind s.title
-          step caption
-          color token inkMuted
-          textAlign center
+          font: var(--text-caption)
+          color: var(--ink-muted)
+          text-align: center
         }
         for n in s.names {
           column Person {
-            cross center
-            gap 2
+            align-items: center
+            gap: 2px
             label Name {
               text bind n.name
-              step xl
-              textAlign center
+              font: var(--text-xl)
+              text-align: center
             }
             label Role {
               text bind n.role
-              step caption
-              color token inkMuted
+              font: var(--text-caption)
+              color: var(--ink-muted)
               visible bind "n.role != \"\""
             }
           }
@@ -83,19 +83,19 @@ stack Credits {
       }
     }
     slot End {
-      width grow 0 640
+      width: stretch; max-width: 640px
     }
     slot Licences {
-      width grow 0 640
+      width: stretch; max-width: 640px
     }
   }
   button Back {
     key "screen.common.back"
     text "Back"
     variant quiet
-    position absolute
-    start 16
-    top 16
+    position: absolute
+    inset-inline-start: 16px
+    top: 16px
     on click pop
   }
 }

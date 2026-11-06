@@ -1720,7 +1720,7 @@ pub fn generate(c: &StyleChoices) -> Result<Generated, String> {
     let p = palette(c);
     let m = motion_set(c.motion);
     let v1 = v1_text(c, &p, &m);
-    let mut text = crate::style_file::upgrade_style(&v1)?;
+    let mut text = crate::style_file::upgrade_style_v2(&v1)?;
     {
         // The upgrade's dressings (the press and hover) are rewritten
         // with the procedural ones; a new style draws today's screens,
@@ -1780,7 +1780,9 @@ pub fn generate(c: &StyleChoices) -> Result<Generated, String> {
         Some((head, body)) => format!("{head}---\n{header}{body}{}", dressings(c, &p)),
         None => return Err("the upgraded style has no header".into()),
     };
-    crate::style_file::parse_style(&text).map_err(|e| format!("the generated style: {e}"))?;
+    // Built as version 2, written as the CSS dialect (version 3).
+    let text =
+        crate::style_file::migrate_style(&text).map_err(|e| format!("the generated style: {e}"))?;
     let k = &c.sound;
     let sounds = vec![
         (
@@ -2172,7 +2174,7 @@ mod tests {
             );
             let g = generate(c).unwrap_or_else(|e| panic!("{}: {e}", c.name));
             let f = crate::style_file::parse_style(&g.text).unwrap();
-            assert_eq!(f.version, 2, "{}", c.name);
+            assert_eq!(f.version, 3, "{}", c.name);
             assert_eq!(g.sounds.len(), 7);
             assert!(!f.dressings.is_empty(), "{}", c.name);
         }
