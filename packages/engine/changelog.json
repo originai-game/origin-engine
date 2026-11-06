@@ -5,6 +5,12 @@
     "simulation": "changed",
     "breaking": [
       {
+        "member": "gameplay templates",
+        "change": "The arena gameplay template is removed from the source tree. Its room, rollback, quick-play and seat-rejoin coverage uses a minimal lockstep input fixture instead.",
+        "fix": "Start from og create's empty skeleton and author gameplay with the engine API; do not depend on gameplay-template source paths.",
+        "find": []
+      },
+      {
         "member": "og create",
         "change": "Creation writes one empty skeleton and records choices in project.ogt. Its top-level look names assets/looks/<id>.ogt, which configures the preset, mood and UI without patching source. No gameplay, art, controls or translations are generated. --archetype, --profile and create()'s template, archetype and profile options are removed; Created no longer returns look, profile or notes.",
         "fix": "Use --view to record the intended view. Read Created.choices and implement the game using the engine API and skills. Existing authored games are unchanged.",

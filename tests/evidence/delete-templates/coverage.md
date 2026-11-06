@@ -1,10 +1,15 @@
 # Phase 2: the gameplay templates go (plan and coverage, WIP)
 
-Status: **skeleton implemented, quick fixtures passed** (2026-11-06,
+Status: **skeleton landed; arena migration verified** (2026-11-06,
 delete-templates thread T-01a1b0c8-100e-77d8-864a-caab317a24a0).
 Phase 1, examples/, landed at 876766dc0; bilingual choice labels landed at
-495548fdb. The fixture migrations below remain planned: no template test
-path has moved yet. Creation now uses `packages/create/template`.
+495548fdb; the skeleton landed at ddcef5459. Creation now uses
+`packages/create/template`. The arena's room readers now use
+`tests/fixtures/lockstep-room`; its two-seat input playtest passed in
+1,478 ms. The rooms and Worker-hosted room suites passed, including
+rollback, quick play, room-then and stalled-seat recovery. The arena
+gameplay and solo coin-game test are deleted. The other fixture migrations
+below remain planned.
 The generated skeleton with look configuration passed `og check` and its
 native smoke (1,148 ms);
 the full `quick fixtures` gate passed, with subsequent runs skipping
@@ -38,7 +43,7 @@ The owner's brief (relayed by T-38e88112, revised 2026-11-06):
 | templates/game tests (guard, inspector, inspector-gizmo, intro, smoke) and its 7 references re-recorded at b54e9e5a2 | og test in the template; meshlet determinism (T-01a1b08f); og-session's template baseline; invariants' conversions | `tests/fixtures/dropship-scene/`: the dropship scene moved verbatim with guard + inspector + one frame; `tests/fixtures/meshlet-determinism/` if the repro needs its own |
 | templates/game-2d | `bundle-hash.test.ts`; og-tests `rig2d/keeper.ogt`; `tests/replay/golden/goldens.json`; tools/art-samples (2D profile) | `tests/fixtures/sprite-2d/` (keeper rig, the 2D bundle hash, the replay golden) |
 | templates/game + game-2d as create's output | packages/create `create.ts`, `pack-template.ts`, `tests/create.test.ts`; packages/knowledge `scaffold.ts`, `mount.ts`, `scaffold/*.json`, `tests/mount.test.ts`; og-cli `check.rs`, `render.rs`; tsrs-corpus tsconfig | one skeleton in `packages/create/template/` (template-2d goes), written by create.ts |
-| templates/archetypes/arena (online lockstep duel) | `rooms.test.ts`, `web-rooms.test.ts` | `tests/fixtures/lockstep-room/`: two peers, one input each, og.assert that both worlds' hashes agree every tick |
+| templates/archetypes/arena (online lockstep duel) | `rooms.test.ts`, `web-rooms.test.ts` | `tests/fixtures/lockstep-room/`: migrated to two peers with distinct tick-driven inputs; finite/input-reached assertions, resource equality, periodic network hash checks and equal final hashes; room-then, rollback, drop/rejoin and quick-play coverage retained |
 | templates/archetypes/roguelike (DotGothic16) | og-cook `font.rs` pixel-font test (retargeted there in phase 1) | `tests/fixtures/pixel-font/`: the font file and its licence only |
 | templates/archetypes/topdown | og-runtime `sprite_arrays.rs`, `stream_release.rs` | `tests/fixtures/sprite-2d/` |
 | templates/archetypes/* styles (sparkorb, lampdive, lanebeat, pathguard, ember) | check.sh `rule_gpu`; og-tests-cooked style diagnostics; og-taste's contrast note | **dropped** with the games (their styles were game styles); the packs under templates/styles keep the contrast suite |

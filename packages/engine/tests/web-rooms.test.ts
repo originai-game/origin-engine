@@ -1,7 +1,7 @@
 // Two Play pages in one room on the web host (docs/design.md §2.8, §2.10):
 // each page is the real engine Worker and shell (tests/support/room-page.ts,
 // one process each: the Worker owns the global scope) on the native host,
-// playing the arena archetype, and its rooms are the Player's room.* (a
+// running the lockstep input fixture, and its rooms are the Player's room.* (a
 // stand-in speaking og-net's protocol to an `og relay` this test starts).
 // Neither game calls roomJoin: the page's Play link (`?room=<id>`, the
 // shell's setRooms(rooms, link)) puts it in the room.
@@ -46,11 +46,11 @@ test("two Worker-hosted pages joined by a Play link play one duel in lockstep th
   const dir = mkdtempSync(join(tmpdir(), "og-web-rooms-"));
   const relay = Bun.spawn([ogBin(), "relay", "--port", "0"], { cwd: repo, stdout: "pipe", stderr: "pipe" });
   try {
-    const arena = join(repo, "templates/archetypes/arena");
+    const arena = join(repo, "tests/fixtures/lockstep-room");
     const cooked = Bun.spawnSync([ogBin(), "cook", arena], { cwd: repo });
     expect(cooked.exitCode).toBe(0);
     const game = join(dir, "arena.js");
-    expect((await bundleGame(join(repo, "templates/archetypes/arena/src/main.ts"), game, "native")).ok).toBe(true);
+    expect((await bundleGame(join(arena, "src/main.ts"), game, "native")).ok).toBe(true);
     const reader = relay.stdout.getReader();
     let text = "";
     while (!/:(\d+)\//.test(text)) {

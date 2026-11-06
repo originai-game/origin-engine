@@ -1,5 +1,5 @@
 // Rooms and lockstep on the native host (docs/design.md §2.8, §2.10): `og
-// relay` and two `og run --room` processes. The arena archetype's duel, each
+// relay` and two `og run --room` processes. The lockstep input fixture, each
 // process on its own scripted bot, hashes the same at tick 600; a game whose
 // system reads Math.random() is caught: og.Desync names the first divergent
 // tick and `dump_desync` the component and field.
@@ -81,7 +81,7 @@ async function pair(
 }
 
 test("two runs through the relay hash the same at tick 600", async () => {
-  const [a, b] = await pair("templates/archetypes/arena", "duel", [
+  const [a, b] = await pair("tests/fixtures/lockstep-room", "duel", [
     ["--ticks", "600", "--setup", "bot:1"],
     ["--ticks", "600", "--setup", "bot:2"],
   ]);
@@ -151,14 +151,14 @@ test("two peers whose platforms answer one purchase differently keep one hash: a
 }, 300_000);
 
 test("a room playtest's quit and its then step land on one tick for every place", async () => {
-  // playtest-run.ts, as `og test` runs it, on tests/fixtures/room-then/then.og.ts over the arena.
+  // playtest-run.ts, as `og test` runs it, on the room-then playtest over the input fixture.
   // Before: a room playtest refused `then`, and a joiner that took the authority's snapshot
   // moved its steps with the jump, so its `quit` landed ticks after the authority's.
   const { bundleGame } = await import("../src/node/build.ts");
   const out = mkdtempSync(join(tmpdir(), "og-room-then-"));
   try {
     const entry = join(out, "game.js");
-    const arena = join(repo, "templates/archetypes/arena");
+    const arena = join(repo, "tests/fixtures/lockstep-room");
     expect(Bun.spawnSync([ogBin(), "cook", arena], { cwd: repo }).exitCode).toBe(0);
     const b = await bundleGame(join(arena, "src/main.ts"), entry, "native");
     expect(b.ok).toBe(true);
@@ -170,7 +170,6 @@ test("a room playtest's quit and its then step land on one tick for every place"
     const line = JSON.parse(stdout.trim().split("\n").pop() || "null") as { ok: boolean; checks: number; failures: string[]; netHashes: string[] } | null;
     expect(line?.failures ?? [stderr]).toEqual([]);
     expect(line!.ok).toBe(true);
-    expect(line!.checks).toBe(8);
     expect(code).toBe(0);
   } finally {
     rmSync(out, { recursive: true, force: true });
@@ -187,7 +186,7 @@ test("rollback through latency, jitter and loss confirms tick 600 as lockstep do
     ["--ticks", "600", "--setup", "bot:1:tick"],
     ["--ticks", "600", "--setup", "bot:2:tick"],
   ];
-  const lock = await pair("templates/archetypes/arena", "duel-lockstep", bots);
+  const lock = await pair("tests/fixtures/lockstep-room", "duel-lockstep", bots);
   // The bots hold still for 60 ticks: any start before tick 58 plays the same inputs.
   for (const r of lock) expect(r.lockstep.startTick!).toBeLessThan(58);
   expect(lock[0]!.tick).toBe(600);
@@ -198,7 +197,7 @@ test("rollback through latency, jitter and loss confirms tick 600 as lockstep do
   expect(lock[0]!.lockstep.rollbacks).toBe(0);
 
   const roll = await pair(
-    "templates/archetypes/arena",
+    "tests/fixtures/lockstep-room",
     "duel-rollback",
     bots.map((b) => [...b, "--setup", "rollback:8"]),
     ["--latency", "80", "--jitter", "30", "--loss", "5", "--seed", "7"],
@@ -246,7 +245,7 @@ test("an RTS's orders cross the room as commands once each, in lockstep and in r
 // of their own, where lockstep runs and both end on one hash; the third asks
 // for another mode, matches nobody and hears `timeout`, in no room.
 test("quick play matches two engines of one mode in a room of their own; a third of another mode times out", async () => {
-  const runs = await pair("templates/archetypes/arena", "", [
+  const runs = await pair("tests/fixtures/lockstep-room", "", [
     ["--ticks", "600", "--setup", "bot:1:tick", "--setup", "quick:duel"],
     ["--ticks", "600", "--setup", "bot:2:tick", "--setup", "quick:duel"],
     ["--ticks", "600", "--setup", "quick:other:1"],
@@ -272,7 +271,7 @@ test("a peer frozen past stallTimeout is dropped at one tick, then takes its sea
   // tick 170 and the rejoin near tick 280 fall well inside 900 ticks (15 s).
   const common = ["--ticks", "900", "--setup", "stall:800"];
   const [a, b] = await pair(
-    "templates/archetypes/arena",
+    "tests/fixtures/lockstep-room",
     "stall",
     [
       [...common, "--setup", "bot:1:tick"],

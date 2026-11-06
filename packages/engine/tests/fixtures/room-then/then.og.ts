@@ -1,4 +1,4 @@
-// A room playtest with a `then` step, on the arena archetype (rooms.test.ts):
+// A room playtest with a `then` step, on the input fixture (rooms.test.ts):
 // each place ends its script by `quit`, not by room.ticks, and the step
 // relaunches both places into a room of their own. Lockstep keeps every
 // step on the room's shared ticks, so both quits land on one tick.

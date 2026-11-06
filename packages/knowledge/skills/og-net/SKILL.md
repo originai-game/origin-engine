@@ -64,8 +64,8 @@ When the worlds part, `og.Desync { tick, peer }` fires once and
 `og.net.status(world).desync` holds the tick. Then
 `--commands "...:dump_desync:d.json"` names the first divergent tick and
 the entity, component and field that differ, with both values: fix the
-system that writes that field. The archetype `templates/archetypes/arena`
-(Coin Duel) is the worked example.
+system that writes that field. Keep peer-local input submission separate
+from the systems that advance the shared world.
 
 ## 2. A game's own input and commands
 
