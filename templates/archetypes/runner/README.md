@@ -36,8 +36,9 @@ replay to one hash (og-build §1, §3). `og polish .` (2026-10-19): feel 99
 
 ## Rules
 
-- **Title.** The city scrolls slowly; the first press (Space, ArrowUp, W, a
-  click or a touch) starts the run. That press does not also jump.
+- **Title.** The city scrolls slowly; the first press of `jump` (Space, W,
+  Enter, ArrowUp, a click, the pad's A, or a tap anywhere on a touch screen)
+  starts the run. That press does not also jump.
 - **Running.** The courier stays at x = −5 and the world scrolls left at the
   run speed, which starts at `Tuning.speed` and ramps by `Tuning.speedRamp`
   up to `Tuning.speedMax`. Every `Tuning.spawnInterval` seconds (×0.85–1.25
@@ -57,6 +58,21 @@ replay to one hash (og-build §1, §3). `og polish .` (2026-10-19): feel 99
   a fence ends the round; the best score is kept for the session.
 - **Game over.** The card holds for 30 ticks, then a press starts the next
   round at once.
+- **Seats.** The game reads `og.PlayerInput` alone (`src/seats.ts`, the
+  choices in `src/creation.ts`). With two seats (local-multiplayer or
+  online-lockstep) it is a race on one course: seat 1's courier (`runner-1`)
+  stands a metre behind in a cool ink, on the couriers' own collider layer
+  so the two pass through each other, and jumps from its own seat's `jump`
+  (Enter or ArrowUp and pad 2 on one device; in a room, its peer). Its
+  seat's first press on the title or the card joins it (the card says so);
+  a joined seat's press starts the round. Both meet the same crates and
+  fences; a courier that crashes stops, its distance kept, and the roofs
+  carry it off while the other runs; once neither runs, the card names the
+  one who ran farther (or a draw). A round seat 0 starts alone is a solo
+  round, with seat 0's records (outside a running room, where every peer
+  plays the same round). One camera shows both. On touch, alone the whole
+  screen is the Jump; two on one device each get a large Jump button in
+  their own bottom corner.
 
 Everything is deterministic from the project seed (`project.ogt`, or
 `og run --seed`): the patterns come from `og.Rng`, the clock is the fixed
@@ -112,11 +128,13 @@ become a resource or the runner's alone and the systems keep their shape.
 
 | System | Reads | Writes | Job |
 |---|---|---|---|
-| `Director` | `og.Input`, `Tuning` | `Run`, `Actor`, `og.Transform`, `og.Sprite` | phases; the speed ramp, distance and score; a new round (pools retired, the courier stood up); a press during the card's hold answered by the hold tick |
-| `Jump` | `og.Input`, `Tuning`, `og.CharacterEvent` | `Run`, `Actor`, `og.PlatformerController` | the controller's jump held while the press is, its tunables from `Tuning`; its take-off (a stretch and the sound) and landing (a squash) events |
-| `Scroll` | `Run` | `Actor`, `og.Transform` | everything left at speed × parallax; scenery wraps by its span; pooled rows retire past x = −13 |
+| `Seats` | `og.Input`, `og.Pointers`, `og.Gamepad`, `og.Lockstep` | — | each local seat's keys, pad and touch Jump to `og.net.submit` (`src/seats.ts`) |
+| `Riders` | `og.PlayerInput` | `Run` | each courier's seat's buttons this tick and last (`Run.buttons`, `Run.before`) |
+| `Director` | `Tuning` | `Run`, `Actor`, `og.Transform`, `og.Sprite` | phases; a press joins a seat or starts the round; the speed ramp, each running courier's distance and score; a new round (pools retired, the courier stood up); a press during the card's hold answered by the hold tick |
+| `Jump` | `Tuning`, `og.CharacterEvent` | `Run`, `Actor`, `og.PlatformerController` | the controller's jump held while the press is, its tunables from `Tuning`; its take-off (a stretch and the sound) and landing (a squash) events |
+| `Scroll` | `Run` | `Actor`, `og.Transform` | everything left at speed × parallax; scenery wraps by its span; pooled rows retire past x = −13; a crashed courier is carried off while the other runs |
 | `Spawn` | `Tuning` | `og.Rng`, `Run`, `Actor`, `og.Transform`, `og.Sprite` | the next pattern at x = 13 from the dice |
-| `Collide` | `og.Transform`, `Tuning` | `Run`, `Actor` | coins collected ("+10" and the coin's pop), crashes (the crash's feel), the best score |
+| `Collide` | `og.Transform`, `Tuning` | `Run`, `Actor` | coins collected ("+10" and the coin's pop), crashes (the crash's feel), the round's end and its winner, the best score |
 | `Dust` | `og.FlipbookEvent`, `Run` | `Actor`, `og.Transform` | a dust puff at the feet on each `step` event of the run clip |
 | `Animate` | `Run`, `Actor`, `Tuning` | `og.Flipbook`, `og.Afterimage` | the courier's clip from the phase and the body, the run clip's pace from the speed, the afterimage near top speed |
 | `Hud` | `Run`, `Hud`, `Tuning` | — | the score line, the title card and the game-over card (`og.render.text`) |
@@ -181,10 +199,13 @@ through a tap and a hold; `tests/jump.og.ts` holds them against the obstacles.
 | Action | Does |
 |---|---|
 | `place:<crate\|fence\|coin>:<x>[:<y>]` | puts a pooled obstacle or coin in play at x (y defaults to its resting height) |
+| `bot:<n>` | this device's seats take scripted input by the tick (a room's playtest); `bot:0` hands them back |
 | core actions | `key_down:Space`/`key_up:Space` (or `touch_start`/`touch_end`) jump; `set:runner.Tuning.<field>=<v>` tunes; `dump_entity:runner` shows `Run` |
 
 `facts` (the probe's `state()`) reports `phase`, `score`, `coins`,
-`distance`, `speed`, `best` and `rounds`.
+`distance`, `speed`, `best` and `rounds`; with two seats also `seats`,
+`joined2`, `racing`, `distance2`, `out`, `out2` and `winner` (`get:Race`
+reads the same).
 
 ## Playtests (`og test .`)
 
@@ -195,6 +216,7 @@ through a tap and a hold; `tests/jump.og.ts` holds them against the obstacles.
 | `tests/jump.og.ts` | a full jump clears a crate and a fence; a hop clears a crate and crashes into a fence |
 | `tests/tune.og.ts` | `set` writes `Tuning`: the start speed and the jump height follow |
 | `tests/frames.og.ts` | the title, a coin's pickup ("+10", the pop, dust) and the crash inside its hit stop (red flash, shake) match `references/<tier>/frames-*.png` under og-tests' tolerance (`tests/frames.ts`) |
+| `tests/seats.og.ts` | Space, the pad's A and W reach seat 0's `og.PlayerInput` and jump the courier |
 | `tests/replay.og.ts` | the same script of jumps, coins, a crash and a second round, run twice in fresh processes, ends on one world hash |
 
 Each one fails when the behaviour it names is broken (checked by breaking

@@ -60,13 +60,17 @@ export default playtest({
     t.equal(again.best, over.best, "the best score survives the restart");
 
     const world = run.json<{ systems: Array<{ name: string; matched: number | null }> }>("world.json");
-    // 36 actor rows: sky, moon, 3 clouds, 3 city maps, 27 pooled rows and the runner; 33 of them draw an og.Sprite.
-    for (const [s, rows] of [["Director", 33], ["Scroll", 36], ["Spawn", 33], ["Collide", 36], ["Dust", 36]] as const) {
+    // The couriers: one per seat (src/creation.ts), each with its og.PlayerInput (Riders' rows).
+    const couriers = world.systems.find((x) => x.name === "Riders")?.matched ?? 0;
+    t.ok(couriers === 1 || couriers === 2, `one courier per seat (${couriers})`);
+    const more = couriers - 1;
+    // 36 actor rows: sky, moon, 3 clouds, 3 city maps, 27 pooled rows and the runner; 33 of them draw an og.Sprite. A second seat's courier adds one to each.
+    for (const [s, rows] of [["Director", 33 + more], ["Scroll", 36 + more], ["Spawn", 33 + more], ["Collide", 36 + more], ["Dust", 36 + more]] as const) {
       const sys = world.systems.find((x) => x.name === s);
       t.equal(sys?.matched, rows, `${s} sees its ${rows} actor rows`);
     }
-    t.equal(world.systems.find((x) => x.name === "Animate")?.matched, 1, "Animate sees the runner row only");
-    t.equal(world.systems.find((x) => x.name === "Jump")?.matched, 1, "Jump sees the runner row only (the one with og.PlatformerController)");
+    t.equal(world.systems.find((x) => x.name === "Animate")?.matched, couriers, "Animate sees the couriers' rows only");
+    t.equal(world.systems.find((x) => x.name === "Jump")?.matched, couriers, "Jump sees the couriers' rows only (the ones with og.PlatformerController)");
     t.equal(world.systems.find((x) => x.name === "Hud")?.matched, 1, "Hud sees the runner row only");
   },
 });

@@ -2,6 +2,14 @@
 // her own; a tap is a hop over a crate, a hold is a full jump over a fence,
 // coins hang in the arcs. The run speeds up until a crash ends it.
 //
+// Every courier is a seat (src/seats.ts): its og.PlayerInput is all the
+// systems read, so the run plays alone, two on one device or two over a
+// room in lockstep, as src/creation.ts says. Two seats race on one course:
+// seat 1's courier runs a step behind in a cool ink, on the couriers' own
+// collider layer so they pass through each other, over the same crates and
+// fences; a courier that crashes stops, the round goes on while the other
+// runs, and the card names the one who ran farther. One camera shows both.
+//
 // scenes/main.ogt places the runner (with its Tuning); `start` below sets up
 // the orthographic camera, then spawns the world: the sky and the moon, the
 // clouds, the city's three tilemap strips (far, near and the roofs, each
@@ -13,8 +21,10 @@
 import { og, SHAPE_BOX } from "@origingame/engine";
 import type { Entity, FlipbookInfo, TilemapInfo, World } from "@origingame/engine";
 import { COURIER, PROPS, loadArt } from "./art.ts";
-import { Actor, Hud, Kind, Phase, Run, Sfx, Sound, Sounds, Tuning } from "./components.ts";
-import { Animate, Collide, Director, Dust, GROUND_Y, HudText, Jump, Records, REST_Y, RUNNER_SIZE, RUNNER_X, SCENERY_SPAN, Scroll, Spawn, Voices } from "./systems.ts";
+import { Actor, Hud, Kind, Phase, Race, Run, Sfx, Sound, Sounds, Tuning } from "./components.ts";
+import { bit, LOCAL, SEATS, Seats, setBot, setupSeats, useTouchControls } from "./seats.ts";
+import type { TouchInput } from "./seats.ts";
+import { Animate, Collide, Director, Dust, GROUND_Y, homeX, HudText, Jump, Records, REST_Y, RIVAL, Riders, RUNNER_SIZE, RUNNER_X, SCENERY_SPAN, Scroll, Spawn, Voices } from "./systems.ts";
 
 /** Pool sizes: how many of each can be in play at once. */
 const POOLS = { crate: 4, fence: 3, coin: 16, dust: 4 } as const;
@@ -25,6 +35,9 @@ const MIN_VIEW_WIDTH = 14;
 const VIEW_HEIGHT = 10;
 /** The lowest visible y: the roofs fill down to here. */
 const VIEW_BOTTOM = -1.5;
+
+/** The couriers' collider layer, which no courier's mask takes: racing couriers pass through each other. */
+const COURIERS = 8;
 
 /** Sprite layers, back to front (the HUD's text is on 10, floating text on 100). */
 const LAYER = { sky: -40, moon: -38, cloud: -36, far: -30, near: -20, roofs: -10, obstacle: 0, coin: 1, dust: 1, runner: 2 } as const;
@@ -92,7 +105,31 @@ function spawnStrip(world: World, name: string, map: TilemapInfo, top: number, l
   return e.value;
 }
 
+/**
+ * The touch controls: a tap is a hop, a hold a full jump. Alone (and in a
+ * room) the whole screen is the Jump; two on one device each hold a large
+ * Jump button in their own bottom corner (og.ui's action buttons follow
+ * each finger, so both thumbs press at once).
+ */
+function touchJump(seat: number): TouchInput {
+  const out = { x: 0, y: 0, lx: 0, ly: 0, buttons: 0 };
+  if (LOCAL) {
+    og.ui.anchor(`TouchJump${seat}`, { anchor: seat === 0 ? "bottomLeft" : "bottomRight" }, () => {
+      if (og.ui.actionButton("Jump", "Jump", { size: 120, primary: true }).pressed) out.buttons |= bit("jump");
+    });
+    return out;
+  }
+  const full = { kind: "percent", fraction: 1 } as const;
+  og.ui.anchor("TouchJump0", { anchor: "topLeft", margin: 0, width: full, height: full }, () => {
+    og.ui.open("Area", { width: full, height: full, interactive: true });
+    if (og.ui.close().pressed) out.buttons |= bit("jump");
+  });
+  return out;
+}
+
 function start(world: World): void {
+  setupSeats(world);
+  useTouchControls(touchJump);
   const art = loadArt(world);
   const font = og.load.font(world, "fonts/ui.ttf");
   if (!font.ok) throw new Error(font.reason);
@@ -140,13 +177,31 @@ function start(world: World): void {
   must(world.insert(runner, og.Sprite, { texture: art.courier.texture, width: RUNNER_SIZE.x, height: RUNNER_SIZE.y, layer: LAYER.runner }));
   must(world.insert(runner, og.Flipbook, { sheet: art.courier.sheet, clip: COURIER.idle }));
   must(world.insert(runner, og.Afterimage, { count: 4, interval: 3, opacity: 0.4, color: { r: 0.35, g: 0.95, b: 0.85 }, active: false }));
-  must(world.insert(runner, Run));
+  must(world.insert(runner, Run, { joined: true }));
   must(world.insert(runner, Hud, { font: font.value as unknown as number, halfWidth, top, bottom: VIEW_BOTTOM }));
   must(world.set(runner, og.Transform, { position: { x: RUNNER_X, y: 0, z: 0 } }));
   // The body: a box from the feet up that never runs (the world scrolls past
-  // it), on og.PlatformerController's jump; the roof below is one static collider.
-  must(world.insert(runner, og.Collider, { shape: SHAPE_BOX, size: { x: 0.5, y: 1.2, z: 1 }, offset: { x: 0, y: 0.6, z: 0 } }));
-  must(world.insert(runner, og.PlatformerController, { moveX: 0, coyoteTime: 0.08, jumpBuffer: 0.1, maxFallSpeed: 30 }));
+  // it), on og.PlatformerController's jump, moved by its seat's og.PlayerInput;
+  // the roof below is one static collider.
+  const body = (e: Entity, seat: number) => {
+    must(world.insert(e, og.PlayerInput, { player: seat }));
+    must(world.insert(e, og.Collider, { shape: SHAPE_BOX, size: { x: 0.5, y: 1.2, z: 1 }, offset: { x: 0, y: 0.6, z: 0 }, layers: COURIERS, mask: ~COURIERS >>> 0 }));
+    must(world.insert(e, og.PlatformerController, { moveX: 0, coyoteTime: 0.08, jumpBuffer: 0.1, maxFallSpeed: 30 }));
+  };
+  body(runner, 0);
+  // The second seat's courier, a step behind in its own ink, with the runner's hit box (its row's Tuning is unused: the runner row's tunes both).
+  for (let seat = 1; seat < SEATS; seat++) {
+    const rival = world.spawn({ name: `runner-${seat}`, position: { x: homeX(seat), y: GROUND_Y, z: 0 } });
+    if (!rival.ok) throw new Error(rival.reason);
+    const e = rival.value;
+    must(world.insert(e, og.Sprite, { texture: art.courier.texture, width: RUNNER_SIZE.x, height: RUNNER_SIZE.y, layer: LAYER.runner, color: RIVAL }));
+    must(world.insert(e, og.Flipbook, { sheet: art.courier.sheet, clip: COURIER.idle }));
+    must(world.insert(e, og.Afterimage, { count: 4, interval: 3, opacity: 0.4, color: { r: 0.45, g: 0.7, b: 1 }, active: false }));
+    must(world.insert(e, Actor, { kind: Kind.Runner, w: 0.5, h: 1.2, parallax: 0 }));
+    must(world.insert(e, Run, { seat }));
+    must(world.insert(e, Tuning));
+    body(e, seat);
+  }
   const roof = world.spawn({ name: "roof-solid", position: { x: 0, y: GROUND_Y - 0.5, z: 0 } });
   if (!roof.ok) throw new Error(roof.reason);
   must(world.insert(roof.value, og.Collider, { shape: SHAPE_BOX, size: { x: 80, y: 1, z: 1 } }));
@@ -211,15 +266,18 @@ export default og.game({
   tick: 60,
   seed: 1,
   scenes: { main: "scenes/main.ogt" },
-  resources: [Sounds],
-  systems: [Records, Director, Jump, Scroll, Spawn, Collide, Voices, Dust, Animate, HudText],
+  resources: [Sounds, Race],
+  systems: [Seats, Riders, Records, Director, Jump, Scroll, Spawn, Collide, Voices, Dust, Animate, HudText],
   // MSAA, not the tier's TAA: pixel art stays sharp, with no temporal blur.
   render: { antialias: "msaa4" },
   start,
   commands: {
     place: placeCommand,
+    /** `bot:<n>`: this device's seats play a scripted run (0 hands them back to the player). */
+    bot: (_world, args) => setBot(Number(args[0])),
   },
   commandHelp: {
+    bot: { usage: "<n>", doc: "This device's seats take scripted input by the tick (1, 2, ...); 0 gives them back." },
     place: { usage: "<crate|fence|coin>:<x>[:<y>]", doc: "Put a pooled obstacle or coin in play at x (y defaults to its resting height)." },
   },
   facts: (world) => {
@@ -234,8 +292,16 @@ export default og.game({
       speed: Math.round(run.speed * 100) / 100,
       best: run.best,
       rounds: run.rounds,
+      ...(SEATS > 1 ? race(world, run.out) : {}),
     };
   },
 });
+
+/** The race's facts: seat 1's metres, who is out, and the winner once the round is over. */
+function race(world: World, out: boolean | number): Record<string, unknown> {
+  const r = world.resource(Race);
+  if (!r.ok) return {};
+  return { seats: SEATS, joined2: r.value.joined, racing: r.value.racing, distance2: Math.round(r.value.distance * 100) / 100, out: Boolean(out), out2: r.value.out, winner: r.value.winner };
+}
 
 export { Phase };

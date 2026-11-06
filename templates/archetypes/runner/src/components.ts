@@ -56,6 +56,21 @@ export const Run = defineComponent("Run", {
   grounded: bool(true, { doc: "The runner stands on the roof (og.PlatformerController.grounded after the last step)." }),
   startHeld: bool(false, { doc: "The press that started the round is still held: it does not also jump." }),
   kick: bool(false, { doc: "Director or Collide set Actor.vy this tick: Jump hands it to the body." }),
+  seat: u32(0, { doc: "A courier's seat (og.PlayerInput.player): seat 0's row, named runner, holds the round." }),
+  buttons: u32(0, { doc: "The courier's og.PlayerInput.buttons this tick (Riders copies them)." }),
+  before: u32(0, { doc: "Its buttons last tick: a press is a bit in buttons and not here." }),
+  out: bool(false, { doc: "This courier crashed (or sat the round out): it stops, its distance kept, while another still runs." }),
+  joined: bool(false, { doc: "This courier races: seat 0's always, seat 1's once its seat pressed Jump on the title or the card." }),
+  course: f64(0, { unit: "m", doc: "Metres the world scrolled this round (the round's row): the patterns' difficulty." }),
+});
+
+/** The race of two couriers, for the HUD (which sees seat 0's row alone): seat 1's run and who won. */
+export const Race = defineResource("Race", {
+  joined: bool(false, { doc: "Seat 1 pressed Jump to join: it races from the next round on." }),
+  racing: bool(false, { doc: "This round is a race of two couriers (else seat 0 runs alone, and its score is a record)." }),
+  distance: f64(0, { unit: "m", doc: "Seat 1's metres this round." }),
+  out: bool(false, { doc: "Seat 1 crashed." }),
+  winner: u32(0, { doc: "Once the round is over: the seat that ran farther, 2 for a draw." }),
 });
 
 /** Tune's parameters. Authoritative on the runner row. */
