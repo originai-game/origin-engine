@@ -29,8 +29,8 @@ threads linked here; rules are in `AGENTS.md`.
 | og-cook fracture re-cook, og.Decal on terrain | [T-01a1b0c8-3db5](https://ampcode.com/threads/T-01a1b0c8-3db5-7421-9322-4e4629f2ab12) | cook-decal |
 
 Hand-offs from the clean-up round: artifact
-9de31d6e-98f1-479b-8d6f-8e191b620da4. Waiting: presentation checkpoints
-(after delete-templates).
+9de31d6e-98f1-479b-8d6f-8e191b620da4. Waiting: presentation checkpoints, in Claude Code on Opus, once
+delete-templates has landed (the owner).
 
 Landed in the clean-up round: examples/ deleted with the path-aware `fixtures` step and
 the destruction-yard and vehicle-terrain fixtures (to 876766dc0); meshlet
