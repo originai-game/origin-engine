@@ -4,7 +4,7 @@ Morten S. Mikkelsen's hex-tiling demo
 (https://github.com/mmikk/hextile-demo, commit
 `43c3ed7e18e1e4539fa9323f72d5e2a65147ebb3`), the code of "Practical
 Real-Time Hex-Tiling" (Journal of Computer Graphics Techniques 11(2),
-2022), ported to og-render's terrain layers (`crates/og-render/shaders/terrain_lit.wgsl`,
+2022), ported to og-render's terrain layers (`crates/og-render/shaders/terrain_layers.wgsl`,
 `plane_taps`, `taps_albedo`, `taps_normal`):
 
 - the triangle grid in skewed space and its three hexagon vertices with
