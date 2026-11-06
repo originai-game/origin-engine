@@ -1,15 +1,27 @@
 // The template's playtest, run by `og test` through `og run --headless
 // --commands`: a tap on the menu's Start button (found by its UI id, no key
 // fallback) starts the trickster spinning and drops the crate onto the
-// ground. Every check is an `expect:` step evaluated in the run at its tick
-// (docs/design.md §3.4): a failed one fails the run with the tick and what
-// it observed, and a frame one without a renderer is reported unchecked.
-// The frame, the scene described as data, the dumps and the UI tree are
-// written beside them.
+// ground.
+//
+// Properties first: `invariants` hold after every tick of the run (the first
+// tick one fails is the failure, with what it observed), beside the engine's
+// default invariants (no NaN, every field inside its range, no dangling
+// entity, everything inside og.WorldBounds) and the game's og.assert.always
+// calls; `require` names the og.assert.sometimes and reachable sites
+// (src/main.ts) the run must reach. The `expect:` steps pin what happens at
+// one tick. One frame is kept, for what only a frame shows: the sky's colour.
 import { playtest } from "@origingame/engine/playtest";
 
 export default playtest({
-  name: "A tap on Start spins the trickster and drops the crate; the run writes its frame, description, dumps and UI tree",
+  name: "A tap on Start spins the trickster and drops the crate onto the ground",
+  invariants: [
+    // The crate never sinks into the ground nor flies off the yard.
+    "entity:crate:og.Transform.position.y>=0.4",
+    "entity:crate:within:-15,0,-15,15,5,15",
+    // The trickster stays on its spot while it spins.
+    "entity:trickster:og.Transform.position.y>-0.01",
+  ],
+  require: ["the player starts the run", "the trickster spins", "a held body is let fall"],
   commands: [
     "0.5:touch_move_to:Start",
     "0.6:touch_start",
@@ -22,16 +34,9 @@ export default playtest({
     "2.0:expect:state:spin>0",
     "2.0:expect:entity:crate:within:-3,0.4,-1,1,0.6,2",
     "2.0:expect:event:og.CollisionStarted",
-    // The frame (1280x720): the sky at the top, the crate and the trickster where they stand.
+    // The look (1280x720): the sky at the top.
     "2.0:screenshot:smoke.png",
     "2.0:expect:region:560,16,64,24:color:#9da5b1:24",
-    "2.0:expect:entity:crate:within:380,360,280,240",
-    "2.0:expect:entity:trickster:within:640,300,240,280",
-    "2.1:describe:describe.json",
-    "2.1:dump_entity:trickster:trickster.json",
-    "2.15:dump_entity:crate:crate.json",
-    "2.2:dump_world:world.json",
-    "2.3:dump_ui:ui.json",
     "2.5:quit",
   ].join(";"),
 });

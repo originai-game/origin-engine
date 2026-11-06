@@ -70,6 +70,9 @@ export const Menu = defineSystem("Menu", { reads: [Spin, og.Input], writes: [Run
     const start = og.ui.button("Start", og.i18n.t(world, started ? "menu.started" : "menu.start"), { variant: "primary", size: "large", disabled: started });
     if (!started && (start.clicked || input.value.pressed("KeyS") || input.value.pressed("Enter"))) run.value.started = true;
   }));
+  // Properties checked as the game runs (og.assert): a playtest's `require` names the ones it must reach.
+  og.assert.sometimes(run.value.started, "the player starts the run");
+  og.assert.always(started || speed === 0, "the trickster rests until Start", { speed });
 });
 
 /** Once started, every Spin turns at its target speed. */
@@ -78,7 +81,10 @@ export const StartSpin = defineSystem("StartSpin", { reads: [Run], writes: [Spin
   if (!run.ok || !run.value.started) return;
   for (const a of q.archetypes()) {
     const s = a.column(Spin);
-    for (let k = 0; k < a.count; k++) if (s.speed[k] === 0) s.speed[k] = s.target[k]!;
+    for (let k = 0; k < a.count; k++) {
+      if (s.speed[k] === 0) s.speed[k] = s.target[k]!;
+      og.assert.sometimes(s.speed[k] !== 0, "the trickster spins");
+    }
   }
 });
 
@@ -88,7 +94,10 @@ export const Drop = defineSystem("Drop", { reads: [Run], writes: [og.RigidBody],
   if (!run.ok || !run.value.started) return;
   for (const a of q.archetypes()) {
     const g = a.column(og.RigidBody).gravityScale;
-    for (let k = 0; k < a.count; k++) if (g[k] === 0) g[k] = 1;
+    for (let k = 0; k < a.count; k++) if (g[k] === 0) {
+      g[k] = 1;
+      og.assert.reachable("a held body is let fall");
+    }
   }
 });
 
@@ -113,6 +122,7 @@ export const Rotate = defineSystem("Rotate", { reads: [Spin], writes: [og.Transf
       const x = r[i * 4], y = r[i * 4 + 1], z = r[i * 4 + 2], w = r[i * 4 + 3];
       const nx = x * cw - z * sy, ny = y * cw + w * sy, nz = z * cw + x * sy, nw = w * cw - y * sy;
       const n = Math.sqrt(nx * nx + ny * ny + nz * nz + nw * nw);
+      og.assert.always(n > 0.5, "the rotation stays a unit quaternion", { n });
       r[i * 4] = nx / n;
       r[i * 4 + 1] = ny / n;
       r[i * 4 + 2] = nz / n;
@@ -157,6 +167,11 @@ export default og.game({
     // A body that has rested for half a second sleeps until something touches
     // it, and costs nothing meanwhile (og.Physics.sleepTicks, 0 to keep every body awake).
     must(world.resource(og.Physics)).sleepTicks = 30;
+    // Where things may be: the 30 m yard and the sky above it. Every tick of a development
+    // or test build checks each root entity's place inside them (og.assert's default invariants).
+    const bounds = must(world.resource(og.WorldBounds));
+    bounds.min = { x: -20, y: -2, z: -20 };
+    bounds.max = { x: 20, y: 30, z: 20 };
 
     // The ground: a 30 m slab whose top is y = 0, drawn and collided with.
     const ground = world.find("ground");
@@ -219,6 +234,7 @@ export default og.game({
     alarm: (world, args) => {
       const guard = Number(args[0]) as never;
       const a = must(world.get(guard, Alarm));
+      og.assert.reachable("the guard raises the alarm");
       must(world.set(guard, Alarm, { raised: a.raised + 1 }) as never);
     },
     /** `lure:<x>:<z>`: moves the trickster on the ground. */

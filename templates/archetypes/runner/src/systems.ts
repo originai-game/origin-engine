@@ -108,6 +108,8 @@ export const Director = defineSystem(
       run.speed[i] = Math.min(tune.speedMax[i]!, run.speed[i]! + tune.speedRamp[i]! * time.scaledDt);
       run.distance[i] = run.distance[i]! + run.speed[i]! * time.scaledDt;
       run.score[i] = Math.floor(run.distance[i]!) + run.coins[i]! * tune.coinValue[i]!;
+      // Properties checked as the game runs (og.assert); a playtest's `require` names the ones it must reach.
+      og.assert.always(run.speed[i]! > 0 && run.speed[i]! <= tune.speedMax[i]!, "the pace stays between 0 and Tuning.speedMax", { speed: run.speed[i] });
       return;
     }
     // The title scrolls the city slowly; the game-over card holds the world still.
@@ -125,6 +127,7 @@ export const Director = defineSystem(
     run.coins[i] = 0;
     run.score[i] = 0;
     run.rounds[i] = run.rounds[i]! + 1;
+    og.assert.each(phase === Phase.Title ? "from the title" : "after a crash", true, "a round starts from each phase");
     ask(world, Sound.Start);
     run.spawnIn[i] = Math.max(1, tune.spawnInterval[i]! * 1.5);
     run.grounded[i] = 1;
@@ -362,6 +365,7 @@ export const Collide = defineSystem(
         if (k === Kind.Coin) {
           actor.active[i] = 0;
           run.coins[ri] = run.coins[ri]! + 1;
+          og.assert.reachable("the runner takes a coin");
           coinPop(world, a.entity(i), p[i * 3]!, p[i * 3 + 1]!, value);
           ask(world, Sound.Coin);
         } else {
@@ -371,6 +375,7 @@ export const Collide = defineSystem(
     }
     run.score[ri] = Math.floor(run.distance[ri]!) + run.coins[ri]! * value;
     if (crashed) {
+      og.assert.reachable("the runner crashes");
       run.phase[ri] = Phase.Over;
       run.phaseTicks[ri] = 0;
       const score = run.score[ri]!;
