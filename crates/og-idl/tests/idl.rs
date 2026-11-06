@@ -335,6 +335,10 @@ fn the_probe_is_protocol_5_plus_the_wire_members_with_the_publish_trim() {
             "describe",
             "expect",
             "expectations",
+            // og.assert's report (the invariants stream): a wire member, as
+            // expectations is, not in origin-agent's protocol-5 contract, and
+            // dropped by the publish trim below.
+            "assertions",
             "saveScene"
         ]
     );
