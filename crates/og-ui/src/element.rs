@@ -1242,7 +1242,16 @@ impl Ui {
                 .or_else(|| self.part_draws.get(&j))
                 .is_some_and(|d| d.clip == crate::paint::Clip::Shape)
         };
+        // Each node's is worked out once: the pairs below ask for the same
+        // node's again and again (every sibling of a long list against every
+        // other, every element of a placed group against every element), and
+        // each answer walks its ancestors.
+        let shown_at: std::cell::RefCell<Vec<Option<Rect>>> =
+            std::cell::RefCell::new(vec![None; self.nodes.len()]);
         let shown = |i: usize| -> Rect {
+            if let Some(r) = shown_at.borrow()[i] {
+                return r;
+            }
             let mut r = posed(i);
             let mut j = self.nodes[i].parent;
             while j != NONE {
@@ -1252,19 +1261,29 @@ impl Ui {
                 }
                 j = n.parent;
             }
+            shown_at.borrow_mut()[i] = Some(r);
             r
         };
         // Drawn at all: an element its own or an ancestor's opacity takes to
         // nothing (a counter's invisible sizer, holding its widest value's
         // room) covers nothing.
-        let seen_at_all = |mut j: usize| -> bool {
+        let seen_at: std::cell::RefCell<Vec<Option<bool>>> =
+            std::cell::RefCell::new(vec![None; self.nodes.len()]);
+        let seen_at_all = |i: usize| -> bool {
+            if let Some(s) = seen_at.borrow()[i] {
+                return s;
+            }
+            let mut j = i;
+            let mut s = true;
             while j != NONE {
                 if self.nodes[j].props.opacity <= 0.0 {
-                    return false;
+                    s = false;
+                    break;
                 }
                 j = self.nodes[j].parent;
             }
-            true
+            seen_at.borrow_mut()[i] = Some(s);
+            s
         };
         let ancestors = |mut j: usize| {
             let mut set = std::collections::BTreeSet::new();
