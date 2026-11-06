@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+"""Exercise FIFO admission and dead-owner recovery without real gate/GPU work."""
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+import time
+import unittest
+
+LOCK = Path(__file__).resolve().with_name('lock.sh')
+
+
+class Locks(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.jobs = []
+        self.addCleanup(self.stop_jobs)
+        self.script = self.root / 'build.sh'
+        self.script.write_text('''#!/bin/sh
+set -eu
+. "$LOCK"
+case "$2" in
+  gate) og_lock_acquire "$ROOT/gate" "$1" ;;
+  one) og_gpu_acquire "$1" ;;
+  all) og_gpu_acquire_all "$1" ;;
+esac
+echo "$1" >> "$ROOT/order"
+touch "$ROOT/$1.acquired"
+while [ ! -f "$ROOT/$1.release" ]; do sleep 0.05; done
+''')
+
+    def stop_jobs(self):
+        for job in self.jobs:
+            if job.poll() is None:
+                job.kill()
+            job.wait()
+
+    def wait(self, predicate):
+        deadline = time.monotonic() + 20
+        while not predicate():
+            if time.monotonic() > deadline:
+                self.fail('timed out; logs: ' + '\n'.join(p.read_text() for p in self.root.glob('*.log')))
+            time.sleep(0.02)
+
+    def start(self, name, kind, slots=1):
+        with (self.root / f'{name}.log').open('w') as log:
+            job = subprocess.Popen(['sh', str(self.script), name, kind], stdout=log, stderr=log,
+                                   env=dict(os.environ, LOCK=str(LOCK), ROOT=str(self.root),
+                                            OG_GPU_ROOT=str(self.root / 'gpu'), OG_GPU_SLOTS=str(slots),
+                                            OG_LOCK_OWNER=''))
+        self.jobs.append(job)
+        return job
+
+    def queued(self, job):
+        def present():
+            for p in self.root.rglob('*.ticket'):
+                try:
+                    if p.read_text().startswith(f'{job.pid} '):
+                        return True
+                except FileNotFoundError:
+                    pass  # An earlier waiter acquired its lock during the scan.
+            return False
+        self.wait(present)
+
+    def acquired(self, name):
+        self.wait(lambda: (self.root / f'{name}.acquired').exists())
+
+    def release(self, name, job):
+        (self.root / f'{name}.release').touch()
+        self.assertEqual(job.wait(timeout=10), 0)
+
+    def test_three_waiters_arrive_fifo(self):
+        for kind in ('gate', 'one'):
+            with self.subTest(kind=kind):
+                holder = self.start('holder', kind)
+                self.acquired('holder')
+                waiters = []
+                for name in ('first', 'second', 'third'):
+                    job = self.start(name, kind)
+                    self.queued(job)
+                    waiters.append((name, job))
+                self.wait(lambda: 'position 3' in (self.root / 'third.log').read_text())
+                self.release('holder', holder)
+                for name, job in waiters:
+                    self.acquired(name)
+                    self.release(name, job)
+                self.assertEqual((self.root / 'order').read_text().splitlines(), ['holder', 'first', 'second', 'third'])
+                self.assertIn('position 3', (self.root / 'third.log').read_text())
+                for p in self.root.glob('*'):
+                    if p.suffix in ('.acquired', '.release') or p.name == 'order':
+                        p.unlink()
+
+    def test_all_slots_blocks_later_single_waiters(self):
+        holder = self.start('holder', 'one', slots=2)
+        self.acquired('holder')
+        exclusive = self.start('all', 'all', slots=2)
+        self.queued(exclusive)
+        later = self.start('later', 'one', slots=2)
+        self.queued(later)
+        time.sleep(2.2)
+        self.assertFalse((self.root / 'later.acquired').exists(), 'later single bypassed an all-slots waiter')
+        self.release('holder', holder)
+        self.acquired('all')
+        self.assertFalse((self.root / 'later.acquired').exists())
+        self.release('all', exclusive)
+        self.acquired('later')
+        self.release('later', later)
+
+    def test_ownerless_gpu_locks_are_recovered(self):
+        for name in ('gpu-all.lock', 'gpu-slot-1.lock'):
+            path = self.root / 'gpu' / name
+            path.mkdir(parents=True, exist_ok=True)
+            os.utime(path, (1, 1))
+        job = self.start('live', 'all')
+        self.acquired('live')
+        self.release('live', job)
+
+    def test_dead_holder_and_waiter_release_their_turns(self):
+        for kind in ('gate', 'all'):
+            with self.subTest(kind=kind):
+                holder = self.start('holder', kind)
+                self.acquired('holder')
+                dead = self.start('dead', kind)
+                self.queued(dead)
+                live = self.start('live', kind)
+                self.queued(live)
+                dead.kill()
+                dead.wait()
+                holder.kill()
+                holder.wait()
+                self.acquired('live')
+                self.release('live', live)
+                for p in self.root.glob('*'):
+                    if p.suffix in ('.acquired', '.release'):
+                        p.unlink()
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -18,12 +18,63 @@
 # is taken over. The owner exports
 # OG_LOCK_OWNER, so a build.sh the gate runs does not wait on its own gate.
 
+og_gpu_root="${OG_GPU_ROOT:-$HOME/.cache/og-gate}"
+og_gpu_impl() {
+  cat <<'OG_GPU_IMPL'
+og_gpu_lock_version=3
+
+# Ticket registration holds the same mkdir lock only long enough to advance
+# the counter and publish a ticket. Waiting for the resource never holds it.
+og_queue_join() {
+  og_queue_internal=1
+  og_lock_acquire "$1" "queue registration: $2" || return 1
+  og_queue_internal=0
+  og_queue_number="$(cat "$1/next" 2>/dev/null || echo 0)"
+  og_queue_number=$((og_queue_number + 1))
+  printf '%s\n' "$og_queue_number" > "$1/next.$$"
+  mv -f "$1/next.$$" "$1/next"
+  og_queue_ticket="$1/$(printf '%012d' "$og_queue_number").ticket"
+  printf '%s %s\n' "$$" "$2" > "$og_queue_ticket.$$"
+  mv -f "$og_queue_ticket.$$" "$og_queue_ticket"
+  og_queue_files="${og_queue_files:-}${og_queue_files:+ }$og_queue_ticket"
+  rm -rf "$1/og-gate.lock"
+  og_queue_said=""
+}
+
+og_queue_turn() {
+  og_queue_position=0
+  for og_queue_file in "${og_queue_ticket%/*}/"*.ticket; do
+    [ -f "$og_queue_file" ] || continue
+    og_queue_pid="$(cut -d' ' -f1 "$og_queue_file" 2>/dev/null || true)"
+    [ -n "$og_queue_pid" ] || continue
+    if ! kill -0 "$og_queue_pid" 2>/dev/null; then
+      rm -f "$og_queue_file"
+      continue
+    fi
+    og_queue_position=$((og_queue_position + 1))
+    [ "$og_queue_file" != "$og_queue_ticket" ] || break
+  done
+  if [ "$og_queue_said" != "$og_queue_position" ]; then
+    printf 'lock queue: position %s (%s)\n' "$og_queue_position" "$og_queue_ticket" >&2
+    og_queue_said="$og_queue_position"
+  fi
+  [ "$og_queue_position" -eq 1 ]
+}
+
+og_queue_leave() { rm -f "$og_queue_ticket"; }
+
 og_lock_acquire() {
+  og_lock_holder="$(cat "$1/og-gate.lock/owner" 2>/dev/null || true)"
+  if [ -n "${OG_LOCK_OWNER:-}" ] && [ "${og_lock_holder%% *}" = "$OG_LOCK_OWNER" ]; then
+    return 0
+  fi
+  if [ "${og_queue_internal:-0}" != 1 ]; then og_queue_join "$1/og-wait" "$2" || return 1; fi
   og_lock_dir="$1/og-gate.lock"
   og_lock_said=""
   og_lock_empty=0
   mkdir -p "$1" || return 1
   while :; do
+    if [ "${og_queue_internal:-0}" != 1 ] && ! og_queue_turn; then sleep 1; continue; fi
     if mkdir "$og_lock_dir" 2>/dev/null; then
       printf '%s %s\n' "$$" "$2" > "$og_lock_dir/owner"
       og_lock_dirs="${og_lock_dirs:-}${og_lock_dirs:+ }$og_lock_dir"
@@ -32,6 +83,7 @@ og_lock_acquire() {
       trap 'og_lock_release' EXIT
       trap 'exit 130' INT
       trap 'exit 143' TERM
+      if [ "${og_queue_internal:-0}" != 1 ]; then og_queue_leave; fi
       return 0
     fi
     og_lock_holder="$(cat "$og_lock_dir/owner" 2>/dev/null || true)"
@@ -63,6 +115,7 @@ og_lock_acquire() {
 
 og_lock_alive() {
   kill -0 "$1" 2>/dev/null || return 1
+  [ "${og_queue_internal:-0}" != 1 ] || return 0
   command -v ps >/dev/null 2>&1 || return 0
   case "$(ps -p "$1" -o command= 2>/dev/null)" in
     *check.sh*|*build.sh*|*pack.sh*|*wave-end.sh*|*land.sh*) return 0 ;;
@@ -79,6 +132,10 @@ og_lock_steal() {
 }
 
 og_lock_release() {
+  for og_queue_file in ${og_queue_files:-}; do
+    [ "$(cut -d' ' -f1 "$og_queue_file" 2>/dev/null)" != "$$" ] || rm -f "$og_queue_file"
+  done
+  og_queue_files=""
   for og_lock_held in ${og_lock_dirs:-}; do
     og_lock_holder="$(cat "$og_lock_held/owner" 2>/dev/null || true)"
     [ "${og_lock_holder%% *}" = "$$" ] && rm -rf "$og_lock_held"
@@ -100,18 +157,25 @@ og_lock_release() {
 # a slot whose owner pid is gone is stale and taken over. Released by
 # og_lock_release with the other locks.
 
-og_gpu_root="${OG_GPU_ROOT:-$HOME/.cache/og-gate}"
-
 # One implementation for the whole machine (the owner, 2026-11-04): every
 # lane sources its own scripts/lock.sh, so a lane on an old commit (or a
 # wrapper with a private copy) used to queue by old rules beside the new
-# ones. The slot functions below are written to $og_gpu_root/gpu-lock.sh
+# ones. The gate, queue and slot functions are written to $og_gpu_root/gpu-lock.sh
 # whenever this copy's og_gpu_lock_version is newer than the one there, and
 # everyone sources that file, so the newest version on the machine wins for
-# every lane at once. Bump og_gpu_lock_version with any change below.
-og_gpu_impl() {
-  cat <<'OG_GPU_IMPL'
-og_gpu_lock_version=2
+# every newly started caller. Already waiting shells retain their functions.
+# Bump og_gpu_lock_version with any change in this implementation.
+og_gpu_dead() {
+  og_gpu_pid="$(cut -d' ' -f1 "$1/owner" 2>/dev/null || true)"
+  if [ -n "$og_gpu_pid" ]; then ! kill -0 "$og_gpu_pid" 2>/dev/null; return; fi
+  # A process can die between mkdir and publishing its owner.
+  if [ "$(uname)" = Darwin ]; then
+    og_gpu_created="$(stat -f %m "$1" 2>/dev/null)" || return 1
+  else
+    og_gpu_created="$(stat -c %Y "$1" 2>/dev/null)" || return 1
+  fi
+  [ "$(( $(date +%s) - og_gpu_created ))" -ge 10 ]
+}
 
 og_gpu_try() { # og_gpu_try N WHAT: take slot N now or fail
   og_gpu_slot="$og_gpu_root/gpu-slot-$1.lock"
@@ -123,31 +187,28 @@ og_gpu_try() { # og_gpu_try N WHAT: take slot N now or fail
     trap 'exit 143' TERM
     return 0
   fi
-  og_gpu_pid="$(cut -d' ' -f1 "$og_gpu_slot/owner" 2>/dev/null || true)"
-  if [ -n "$og_gpu_pid" ] && ! kill -0 "$og_gpu_pid" 2>/dev/null; then
+  if og_gpu_dead "$og_gpu_slot"; then
     if mv "$og_gpu_slot" "$og_gpu_slot.stale.$$" 2>/dev/null; then rm -rf "$og_gpu_slot.stale.$$"; fi
   fi
   return 1
 }
 
 og_gpu_acquire() {
-  mkdir -p "$og_gpu_root/gpu-wait" || return 1
+  og_queue_join "$og_gpu_root/gpu-wait-fifo" "$1" || return 1
   og_gpu_said=""
-  # A waiting mark, so an og_gpu_acquire_all that starts after us lets us in
-  # first instead of re-taking every slot the moment it frees them.
-  : > "$og_gpu_root/gpu-wait/$$"
   while :; do
+    if ! og_queue_turn; then sleep 1; continue; fi
     # An exclusive holder (og_gpu_acquire_all) blocks new single slots, so it is not starved.
     if [ ! -d "$og_gpu_root/gpu-all.lock" ] || [ "$(cut -d' ' -f1 "$og_gpu_root/gpu-all.lock/owner" 2>/dev/null)" = "$$" ]; then
       og_gpu_n=1
       while [ "$og_gpu_n" -le "${OG_GPU_SLOTS:-3}" ]; do
         if og_gpu_try "$og_gpu_n" "$1"; then
-          rm -f "$og_gpu_root/gpu-wait/$$"
+          og_queue_leave
           return 0
         fi
         og_gpu_n=$((og_gpu_n + 1))
       done
-    elif ! kill -0 "$(cut -d' ' -f1 "$og_gpu_root/gpu-all.lock/owner" 2>/dev/null || echo 0)" 2>/dev/null; then
+    elif og_gpu_dead "$og_gpu_root/gpu-all.lock"; then
       rm -rf "$og_gpu_root/gpu-all.lock"
     fi
     if [ -z "$og_gpu_said" ]; then
@@ -159,19 +220,10 @@ og_gpu_acquire() {
 }
 
 og_gpu_acquire_all() {
-  mkdir -p "$og_gpu_root/gpu-wait" || return 1
-  # Single waiters already queued when we arrive go first (each waits for
-  # a slot only once, so this is bounded); later ones queue behind us.
-  for og_gpu_w in "$og_gpu_root"/gpu-wait/*; do
-    [ -e "$og_gpu_w" ] || continue
-    og_gpu_wpid="${og_gpu_w##*/}"
-    if ! kill -0 "$og_gpu_wpid" 2>/dev/null; then rm -f "$og_gpu_w"; continue; fi
-    while [ -e "$og_gpu_w" ] && kill -0 "$og_gpu_wpid" 2>/dev/null; do sleep 1; done
-    rm -f "$og_gpu_w" 2>/dev/null || true
-  done
+  og_queue_join "$og_gpu_root/gpu-wait-fifo" "$1" || return 1
+  until og_queue_turn; do sleep 1; done
   while ! mkdir "$og_gpu_root/gpu-all.lock" 2>/dev/null; do
-    og_gpu_pid="$(cut -d' ' -f1 "$og_gpu_root/gpu-all.lock/owner" 2>/dev/null || true)"
-    if [ -n "$og_gpu_pid" ] && ! kill -0 "$og_gpu_pid" 2>/dev/null; then rm -rf "$og_gpu_root/gpu-all.lock"; fi
+    if og_gpu_dead "$og_gpu_root/gpu-all.lock"; then rm -rf "$og_gpu_root/gpu-all.lock"; fi
     sleep 2
   done
   printf '%s %s\n' "$$" "$1" > "$og_gpu_root/gpu-all.lock/owner"
@@ -181,6 +233,7 @@ og_gpu_acquire_all() {
     until og_gpu_try "$og_gpu_n" "$1"; do sleep 2; done
     og_gpu_n=$((og_gpu_n + 1))
   done
+  og_queue_leave
 }
 OG_GPU_IMPL
 }

@@ -308,9 +308,15 @@ holds `~/.cache/og-gate/og-gate.lock` (`OG_GATE_MACHINE_DIR` moves it;
 `OG_GATE_MACHINE_LOCK=0` skips it) and then `<target>/og-gate.lock` (a
 release `packages/engine/scripts/build.sh` holds the target's) for its
 whole run (`scripts/lock.sh`: mkdir locks with the holder's pid, taken
-over when that pid no longer runs a gate). A second one prints `another
-gate (pid N: …) is running on <dir>, waiting` and starts when the first
-ends; gates side by side are slower than in a queue.
+over when that pid no longer runs a gate). Waiters receive increasing
+tickets and print their queue position. Only the oldest live ticket can
+acquire the lock. Single-slot and all-slot GPU requests share one FIFO,
+so neither can bypass an earlier request. Dead waiters lose their tickets;
+dead holders release their locks. `python3 scripts/test-locks.py` exercises
+three concurrent waiters, exclusive GPU admission, and dead-owner recovery.
+The machine's versioned lock implementation applies to newly started callers
+even in older lanes. Already waiting shells must be restarted by their owners
+to adopt a new implementation; live holders are never interrupted.
 
 The steps run concurrently, each as soon as the steps whose outputs it
 reads have passed or been skipped (`step_needs` in the script): test and
