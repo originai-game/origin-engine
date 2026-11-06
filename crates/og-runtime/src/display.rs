@@ -213,6 +213,11 @@ pub(crate) struct DisplayState {
     /// The display's interval as the host measured it, ms (0: unknown).
     pub display_ms: f64,
     pub auto: Option<AutoQuality>,
+    /// The host steps this frame for a script or a harness (`og run
+    /// --commands`, the web Worker's probe `frame`), not for the display:
+    /// it draws at the configured quality and is no sample of automatic
+    /// quality, whose controller is kept for the next display frame.
+    pub scripted: bool,
     /// The render scale and preset steps the last frame drew with.
     pub scale: f32,
     pub step: u8,
@@ -292,7 +297,9 @@ pub(crate) fn before_render(rs: &mut RenderState) {
     }
     let phone = phone(rs);
     let d = &mut rs.display;
-    let (scale, step) = if d.settings.auto() {
+    let (scale, step) = if d.scripted {
+        (d.settings.max_scale(), 0)
+    } else if d.settings.auto() {
         let bounds = d.bounds(phone);
         let auto = d.auto.get_or_insert_with(|| AutoQuality::new(bounds));
         if auto.bounds() != bounds {
@@ -331,7 +338,7 @@ pub(crate) fn after_frame(
     cpu_ms: f64,
     gpu_ms: Option<f64>,
 ) {
-    if interval_ms <= 0.0 {
+    if rs.display.scripted || interval_ms <= 0.0 {
         return;
     }
     if let Some(auto) = rs.display.auto.as_mut() {
@@ -347,6 +354,17 @@ pub(crate) fn after_frame(
 /// frame answer's `maxFps`.
 pub(crate) fn max_fps(rs: &RenderState) -> u32 {
     rs.display.settings.max_fps(phone(rs))
+}
+
+/// Brackets the frames a host steps for a script or a harness, not for the
+/// display: a scripted run's frame time is its machine's load, so letting
+/// automatic quality read it made the same script draw at another render
+/// scale from run to run (the web tiers' looks and Meridian, 2026-11-06).
+/// Host-only, beside [`set_display_interval`]; the game API is unchanged.
+pub fn set_scripted_frames(id: u32, on: bool) {
+    if let Ok(eng) = engine(id) {
+        eng.render.borrow_mut().display.scripted = on;
+    }
 }
 
 /// The display's interval as the host measured it (the web Worker's

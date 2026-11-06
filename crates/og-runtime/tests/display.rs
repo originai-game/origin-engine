@@ -251,6 +251,49 @@ fn preset_steps_cap_the_quality_drawn_not_the_settings() {
     );
 }
 
+/// A script's frames (`og run --commands`, the web Worker's probe `frame`)
+/// draw at the configured quality and never train automatic quality, so a
+/// loaded machine draws the same script at the same render scale; the
+/// display's own frames still adapt, and a scripted frame between them
+/// leaves the controller where it was. Broken before
+/// `set_scripted_frames`: the scripted frames stepped scale down to .5.
+#[test]
+fn scripted_frames_neither_train_nor_apply_automatic_quality() {
+    let (e, seen) = engine(true);
+    og_runtime::og_render_apply_quality(e, "high".into());
+    og_render_set_display(
+        e,
+        Some(json!({ "autoPresetSteps": 2, "autoMinScale": 0.5 }).to_string()),
+    );
+    og_runtime::set_display_interval(e, 1000.0 / 60.0);
+    og_runtime::set_scripted_frames(e, true);
+    for _ in 0..2000 {
+        assert_eq!(answer(og_engine_frame(e, 100.0))["ok"], json!(true));
+    }
+    let scripted = answer(og_render_display(e));
+    assert_eq!(scripted["renderScale"], json!(1.0), "{scripted}");
+    assert_eq!(scripted["presetSteps"], json!(0), "{scripted}");
+    assert_eq!(seen.borrow().scales.last(), Some(&1.0));
+
+    // The same frames from the display walk the ladder down.
+    og_runtime::set_scripted_frames(e, false);
+    for _ in 0..2000 {
+        assert_eq!(answer(og_engine_frame(e, 100.0))["ok"], json!(true));
+    }
+    let adapted = answer(og_render_display(e));
+    assert_eq!(adapted["presetSteps"], json!(2), "{adapted}");
+    assert_eq!(adapted["renderScale"], json!(0.5), "{adapted}");
+
+    // One scripted frame draws at scale 1 and leaves the controller's rung.
+    og_runtime::set_scripted_frames(e, true);
+    frames(e, 1);
+    assert_eq!(seen.borrow().scales.last(), Some(&1.0));
+    og_runtime::set_scripted_frames(e, false);
+    frames(e, 1);
+    assert_eq!(answer(og_render_display(e))["presetSteps"], json!(2));
+    assert_eq!(seen.borrow().scales.last(), Some(&0.5));
+}
+
 // ── a device that comes back taking other texture encodings ─────────────
 
 /// Reads the cooked files from disk; textures transcode natively (the

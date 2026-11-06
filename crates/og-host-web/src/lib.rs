@@ -936,6 +936,14 @@ pub fn og_web_display_interval(engine: u32, ms: f64) {
     og_runtime::set_display_interval(engine, ms);
 }
 
+/// Brackets the probe's `frame` (a harness stepping one tick and one
+/// render): a scripted frame draws at the configured quality and is no
+/// sample of automatic quality (og-runtime's `set_scripted_frames`).
+#[wasm_bindgen]
+pub fn og_web_scripted_frame(engine: u32, on: bool) {
+    og_runtime::set_scripted_frames(engine, on);
+}
+
 /// The page went fullscreen or left it (the shell's `fullscreenchange`):
 /// og.render.display's `fullscreen`, which the player's setting follows.
 #[wasm_bindgen]

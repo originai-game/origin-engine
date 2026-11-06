@@ -198,6 +198,9 @@ const deferStart = probing && render;
 const created = createEngine(game, { ...(seed === undefined ? {} : { seed }), ...(root ? { root } : {}), ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}), ...(locale ? { locale } : {}), ...(deferStart ? { deferStart } : {}) });
 if (!created.ok) fail(`${entry}: ${created.reason}`);
 const engine: Engine = created.value;
+// Without --realtime every frame is the script's (elapsed is one tick): its time is the machine's load, not a
+// display's, so automatic quality must not read it, or the same script draws at another render scale per run.
+if (!realtime) extras.og_node_scripted_frames(engine.id, true);
 if (tracePath) {
   extras.og_node_trace(engine.id, true);
   extras.og_node_trace(BEFORE_ENGINE, false);

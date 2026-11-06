@@ -70,6 +70,16 @@ is one line here, written at the merge that changes
   `@palettes/1bit-<mood>`). render: `LookInfo.mood` added. A game whose
   look names no mood draws as before.
 
+- **A script's frames draw at the configured quality.** `og run` without
+  `--realtime` and the web probe's `frame` (the browser reference tiers)
+  step frames for a script, and automatic quality read their time as a
+  display's: on a loaded machine the same script stepped a render-scale
+  rung at a different tick each run, so its TAA history and outlines
+  differed (six web looks at the second wave's end). Those
+  frames now draw at the configured render scale and preset and are no
+  sample of automatic quality; a game's display frames adapt as before.
+  No IDL change.
+
 - **A flat look's mesh textures keep their patches again.** The flat
   abstraction of a 3D look's colour textures (two Kuwahara passes, then
   the asset's own palette) counts every texel alike in the palette's cut

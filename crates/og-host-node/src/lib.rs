@@ -21,6 +21,9 @@
 //!   the `screenshot` command render offscreen at the asked size and read it
 //!   back blocking (`og_render::Renderer::read_offscreen`);
 //!   `og_node_wait_gpu` waits for its GPU work, for benches that time a frame.
+//! - `og_node_scripted_frames` marks an engine's frames as a script's (`og
+//!   run` without `--realtime`): drawn at the configured quality, never
+//!   sampled by automatic quality.
 //! - og-probe is mounted by the runtime (`og_runtime`); this host adds
 //!   its loopback WebSocket (`og_node_probe_listen`, `og_node_probe_serve`,
 //!   og-probe's `ProbeServer` at `127.0.0.1:<port>/probe`), cooked files read
@@ -823,6 +826,14 @@ pub fn og_node_wait_gpu(engine: u32) -> String {
         Ok(()) => r#"{"ok":true,"value":null}"#.to_string(),
         Err(e) => format!(r#"{{"ok":false,"reason":{}}}"#, napi_json_string(&e)),
     }
+}
+
+/// `og run` without `--realtime` steps every frame for its script: those
+/// frames draw at the configured quality and are no sample of automatic
+/// quality (og-runtime's `set_scripted_frames`).
+#[napi(js_name = "og_node_scripted_frames")]
+pub fn og_node_scripted_frames(engine: u32, on: bool) {
+    og_runtime::set_scripted_frames(engine, on);
 }
 
 thread_local! {

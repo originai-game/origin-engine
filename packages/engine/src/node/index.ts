@@ -47,6 +47,8 @@ export interface NativeExtras {
   og_node_attach_offscreen(engine: number, width: number, height: number): string;
   /** Waits for the offscreen renderer's GPU work (frame-time benches). */
   og_node_wait_gpu(engine: number): string;
+  /** `og run` without --realtime: every frame is the script's, drawn at the configured quality and no sample of automatic quality. */
+  og_node_scripted_frames(engine: number, on: boolean): void;
   og_node_probe_listen(engine: number, port: number): string;
   og_node_probe_serve(engine: number): number;
   og_node_probe_close(engine: number): boolean;
