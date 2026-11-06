@@ -240,11 +240,14 @@ fn small_template(root: &Path) {
     std::fs::write(&font, text).unwrap();
 }
 
-/// Thirty cooks of one project, ten each on one, two and eight threads,
-/// the three series at once (so every cook shares the machine with two
-/// others and its pool's schedule moves from run to run): every file each
-/// writes is the first one-thread cook's bytes, the cook times masked
-/// (`differences`).
+/// Cooks of one project on one, two and eight threads, the three series
+/// at once (so every cook shares the machine with two others and its
+/// pool's schedule moves from run to run): every file each writes is the
+/// first one-thread cook's bytes, the cook times masked (`differences`).
+/// One run a thread count in the quick and functional lanes; ten under
+/// `--all` (`OG_GATE_ALL`, a wave's end), whose repeats hunt a race that
+/// one schedule may miss (the owner, 2026-11-06: 31 cooks were the gate's
+/// slowest test).
 #[test]
 fn every_thread_count_cooks_the_same_bytes() {
     let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook/threads");
@@ -270,14 +273,19 @@ fn every_thread_count_cooks_the_same_bytes() {
     // the two shared fonts and the icon sheet it draws with), the manifest
     // and the cook times.
     assert_eq!(reference.len(), 28, "{:?}", reference.keys());
+    let runs = if std::env::var_os("OG_GATE_ALL").is_some() {
+        10
+    } else {
+        1
+    };
     let failures: Vec<String> = std::thread::scope(|s| {
         let series: Vec<_> = [1usize, 2, 8]
             .into_iter()
             .map(|threads| {
-                let (base, reference, cook) = (&base, &reference, &cook);
+                let (base, reference, cook, runs) = (&base, &reference, &cook, runs);
                 s.spawn(move || {
                     let mut out = Vec::new();
-                    for run in 0..10 {
+                    for run in 0..runs {
                         let dir = base.join(format!("t{threads}-{run}"));
                         let got = cook(&dir, threads);
                         for d in differences(reference, &got) {

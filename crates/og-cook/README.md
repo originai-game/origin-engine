@@ -453,8 +453,9 @@ font's own (`crates/og-ui/README.md` §Text). The UI kit's Chinese font does.
 The same sources, options and **cooker build** give byte-identical `cooked/`
 whatever the thread count and the machine's load (`cooking_twice_gives_identical_bytes`
 cooks the template on all cores and on one thread;
-`every_thread_count_cooks_the_same_bytes` cooks a small copy thirty times on
-1, 2 and 8 threads, three cooks at a time). Both compare every file, with
+`every_thread_count_cooks_the_same_bytes` cooks a small copy on 1, 2 and 8
+threads, three cooks at a time: once each in the quick and functional
+lanes, ten times each under `--all`, a wave's end). Both compare every file, with
 `.cook-times.ogt`, the wall-clock record of §Cook times, compared by its
 assets only: the manifest holds no times, so it is compared byte for byte.
 Results land by plan index, the font's glyphs by index, and no hash map's
@@ -516,7 +517,7 @@ cargo run --release -p og-cook --bin og-cook -- templates/game --report report.m
 | Test | Asserts |
 |---|---|
 | `cooking_twice_gives_identical_bytes` | two fresh cooks (all cores, one thread) write identical files (the cook times aside: the same assets, their times masked); a difference names every file that differs, each with its size and first differing byte, and the manifest's differing lines; cooked ≤ 60 % of the sources; writes the report and the two hashes |
-| `every_thread_count_cooks_the_same_bytes` | the template made small (trickster.glb out, the two textures at 128², the font's charset ASCII and its characters: 13 outputs of every kind the template has, both texture encoders, the font's own glyph pool) cooked 30 times, ten each on 1, 2 and 8 threads with the three series running at once, so each cook shares the machine with two others: every file of every cook is the first one-thread cook's bytes, the cook times masked as above (9 s in a dev build on the M4 Pro; a cook whose font stamp moved with the thread count failed it on the first two-thread run, naming the manifest's hash line) |
+| `every_thread_count_cooks_the_same_bytes` | the template made small (trickster.glb out, the two textures at 128², the font's charset ASCII and its characters: 13 outputs of every kind the template has, both texture encoders, the font's own glyph pool) cooked on 1, 2 and 8 threads with the three series running at once (one cook a series in the quick and functional lanes, ten under `--all`, `OG_GATE_ALL`), so each cook shares the machine with two others: every file of every cook is the first one-thread cook's bytes, the cook times masked as above (9 s in a dev build on the M4 Pro; a cook whose font stamp moved with the thread count failed it on the first two-thread run, naming the manifest's hash line) |
 | `a_gltf_edit_recooks_exactly_its_outputs` | an unchanged project cooks nothing and writes nothing, each asset reporting its recorded cook time and the slowest ten in order; renaming a glTF material re-cooks exactly `models/trickster.glb`, changes exactly its blob, the manifest and the cook times, where only its time moved (to this run's) |
 | `a_stale_blob_is_refused_with_both_stamps` | an old blob behind a new manifest is refused with the path and both stamps (`og_core::ErrorKind::Schema` through the API); wrong type and unknown ids are refused |
 | `meshes_keep_their_triangles_and_bounds` | per primitive: LOD 0 triangle count equals the source's, decoded vertex bounds within 1 % of the source accessor's, LODs shrink, normals unit length; per model: decoded default-scene bounds within 1 % of og-render's own glTF loader |
