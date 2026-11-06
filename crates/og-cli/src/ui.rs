@@ -88,7 +88,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     let mut i = 0;
     while i < rest.len() {
         match rest[i] {
-            "--json" | "--high-contrast" => forward.push(rest[i]),
+            "--json" | "--high-contrast" | "--require-checked" => forward.push(rest[i]),
             "--out" if i + 1 < rest.len() => {
                 out = Some(rest[i + 1]);
                 i += 1;

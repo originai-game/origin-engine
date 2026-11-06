@@ -531,7 +531,12 @@ size gate measures. `native/build-profile` records `dev` or `release`;
   `unchecked` and `uncheckedCount`; `og test` runs every check outside
   `t.frame`, prints one `~ <file>: no renderer, frame unchecked` line per
   screenshot and counts unchecked suites separately from passes; exit
-  status is zero unless an executed check failed. `og doctor` reports the
+  status is zero unless an executed check failed. `--require-checked` on
+  `og run`, `og test`, `og check`, `og ui check` (also preview), `og frame
+  measure`, and `og doctor` opts into exit 1 when checks remain unchecked.
+  Their JSON summaries use `uncheckedCount`, including zero when no check
+  was skipped. The `og test` aggregate retains `unchecked` as a deprecated
+  alias; per-playtest `unchecked` remains a list of files. `og doctor` reports the
   renderer `none`, not as a problem. Any other value leaves the adapters
   alone; the web host always has its canvas's. The gfx suites register
   their GPU tests as skipped under the switch.

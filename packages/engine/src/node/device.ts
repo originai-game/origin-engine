@@ -945,7 +945,7 @@ async function main(): Promise<void> {
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "device.json"), JSON.stringify(report, null, 1) + "\n");
     writeFileSync(join(dir, "report.md"), markdown(report));
-    if (flag("--json")) process.stdout.write(JSON.stringify({ project: report.project, target, tier: m.tier, firstFrameMs: m.firstFrameMs, interval: m.interval, findings: findings.length, report: join(dir, "report.md") }) + "\n");
+    if (flag("--json")) process.stdout.write(JSON.stringify({ project: report.project, target, tier: m.tier, firstFrameMs: m.firstFrameMs, interval: m.interval, findings: findings.length, uncheckedCount: 0, report: join(dir, "report.md") }) + "\n");
     else
       process.stdout.write(
         `og run --device ${target}: ${m.tier}, first frame ${m.firstFrameMs} ms, frame p50 ${m.interval.p50} / p95 ${m.interval.p95} / p99 ${m.interval.p99} ms; ${findings.length} finding(s); ${join(dir, "report.md")}\n`,

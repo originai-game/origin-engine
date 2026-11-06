@@ -786,6 +786,7 @@ impl Report {
         serde_json::json!({
             "event": "check",
             "ok": self.ok(),
+            "uncheckedCount": 0,
             "tool": self.tool,
             "version": self.version,
             "config": self.config,
@@ -978,6 +979,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     while i < args.len() {
         match args[i] {
             "--json" => json = true,
+            "--require-checked" => {} // Type checking never skips a GPU check.
             flag @ ("--checkers" | "--tool") => {
                 let Some(v) = args.get(i + 1) else {
                     eprintln!("og check: {flag} needs a value. {USAGE}");

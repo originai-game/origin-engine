@@ -29,7 +29,7 @@
 //   sandboxes set) the run is the same run: the play surface keeps --size, a
 //   `screenshot` writes no PNG and is listed in --json's `unchecked` ("no
 //   renderer, frame unchecked"), the tier is `none`, and the exit status does
-//   not change. An unavailable adapter also takes this path, with a warning
+//   not change unless --require-checked is set. An unavailable adapter also takes this path, with a warning
 //   naming wgpu's error. Other renderer errors still fail the run.
 // - With --trace: the run in the Chrome trace format (src/trace.ts and
 //   crates/og-runtime/src/trace.rs have the threads): each tick with its
@@ -88,6 +88,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess): Prom
     let watchFile: string | undefined;
     let render = true;
     let asJson = false;
+    let requireChecked = false;
     let audioOut = "null";
     let platformStore: string | undefined;
     let platformFake: string | undefined;
@@ -122,6 +123,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess): Prom
       else if (a === "--watch") watchFile = resolve(next());
       else if (a === "--no-render") render = false;
       else if (a === "--json") asJson = true;
+      else if (a === "--require-checked") requireChecked = true;
       else if (a === "--audio") audioOut = next();
       else if (a === "--platform-store") platformStore = resolve(next());
       else if (a === "--platform-fake") platformFake = resolve(next());
@@ -634,7 +636,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess): Prom
       for (const u of assertions.uncovered as Array<{ kind: string; name: string; key?: string }>)
         process.stdout.write(`never fired: ${u.kind} ${u.name}${u.key !== undefined ? ` [${u.key}]` : ""}\n`);
     }
-    return frameFailed || expectations.failed > 0 || assertions.violations.length > 0 ? 1 : 0;
+    return frameFailed || expectations.failed > 0 || assertions.violations.length > 0 || (requireChecked && summary.uncheckedCount > 0) ? 1 : 0;
   } catch (error) {
     if (error instanceof RunExit) return error.code;
     throw error;

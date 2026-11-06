@@ -480,6 +480,10 @@
         "summary": "A jump goal whose arc the simulation owns: after `prepare` it takes off in the tick through an og.CharacterController's jump (jumpSpeed set for `height` under the controller's gravity, so ceilings and ledges are the controller's) or, without one, a fixed ballistic arc back to the takeoff height; the goal ends `recover` seconds after the landing tick, and the jump's state is in snapshots and the hash, with the landing each tick predicts from the controller's arc and the ground along it (og.motion state MOTION4; MOTION3 and MOTION2 saves still load). The motion model only draws it, its generated clip retimed onto that flight (docs/design.md §2.7, Jumps)."
       },
       {
+        "member": "--require-checked, uncheckedCount",
+        "summary": "Check-bearing commands accept --require-checked to exit 1 when GPU checks remain unchecked; the default stays a warning. JSON summaries consistently expose uncheckedCount. og test retains its aggregate unchecked field as a deprecated alias; per-playtest unchecked remains a file list."
+      },
+      {
         "member": "og.assert, og.WorldBounds, RuntimeProbe.assertions, invariant:, PlaytestDesc.invariants/require",
         "summary": "Per-tick properties after Antithesis's assertions: og.assert.always, sometimes, reachable, unreachable and each (one bucket per key), identified by name and the call's place, recorded beside the world and never in it (hashes unchanged); default invariants from reflection checked after every tick outside publish builds (no NaN or infinity, every number inside its field's min..max, no Entity field naming a despawned entity, roots inside og.WorldBounds), incremental from change ticks; the probe's assertions member (take starts a new report) and og run --json's assertions; the invariant: command action; playtests' invariants and require, and a list of every sometimes, reachable and each bucket that never fired."
       },

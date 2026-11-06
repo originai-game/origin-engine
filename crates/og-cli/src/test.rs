@@ -17,7 +17,7 @@
 //! Without a renderer (the platform's engine and probe sandboxes,
 //! `OG_RENDERER=none`) a playtest's screenshots are frames unchecked: each
 //! playtest lists its own, the summary counts them, and they never change
-//! the exit status.
+//! the exit status unless `--require-checked` is requested.
 
 use crate::project::{self, Project};
 use std::path::{Path, PathBuf};
@@ -47,6 +47,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     let mut project = ".";
     let mut json = false;
     let mut check = true;
+    let mut require_checked = false;
     let mut filter = None;
     let mut skip: Vec<&str> = Vec::new();
     let mut jobs = 1;
@@ -55,6 +56,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         match *a {
             "--json" => json = true,
             "--no-check" => check = false,
+            "--require-checked" => require_checked = true,
             "--filter" => {
                 let Some(value) = args.next().filter(|v| !v.is_empty() && !v.starts_with('-'))
                 else {
@@ -248,7 +250,10 @@ pub fn run(args: &[&str]) -> ExitCode {
             if let Ok(bytes) = std::fs::read(results.join(format!("{i}.json")))
                 && let Ok(result) = serde_json::from_slice::<serde_json::Value>(&bytes)
             {
-                let count = result["unchecked"].as_array().map_or(0, Vec::len);
+                let count = result["uncheckedCount"]
+                    .as_u64()
+                    .map(|n| n as usize)
+                    .unwrap_or_else(|| result["unchecked"].as_array().map_or(0, Vec::len));
                 unchecked += count;
                 if count > 0 && matches!(status, Ok(true)) {
                     unchecked_suites += 1;
@@ -263,12 +268,15 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
     let total = usize::from(!unit.is_empty()) + playtests.len() + usize::from(check_failed);
     let passed = total - failed - unchecked_suites;
+    let ok = failed == 0 && (!require_checked || unchecked == 0);
     if json {
         println!(
             "{}",
             serde_json::json!({
-                "event": "test", "ok": failed == 0, "suites": total, "failed": failed,
-                "passed": passed, "uncheckedSuites": unchecked_suites, "unchecked": unchecked,
+                "event": "test", "ok": ok, "suites": total, "failed": failed,
+                "passed": passed, "uncheckedSuites": unchecked_suites, "uncheckedCount": unchecked,
+                // Deprecated aggregate alias; per-playtest `unchecked` remains a file list.
+                "unchecked": unchecked,
                 "renderer": if adapter_errors.is_empty() { serde_json::Value::Null } else { serde_json::json!("none") },
                 "adapterError": adapter_errors.first(),
                 "adapterErrors": adapter_errors,
@@ -284,7 +292,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     println!(
         "og test: {passed} suite(s) passed, {failed} failed, {unchecked_suites} unchecked; {unchecked} GPU frame/expectation checks unchecked"
     );
-    if failed == 0 {
+    if ok {
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE

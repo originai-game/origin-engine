@@ -57,6 +57,10 @@ is one line here, written at the merge that changes
   `create/template/` and the knowledge scaffold carry the same empty
   skeleton; `archetypes/`, `create/archetypes/`, and `create/template-2d/`
   are no longer shipped. The scaffold's binary distribution list is empty.
+- **Unchecked checks have an opt-in failing exit.** `--require-checked`
+  makes check-bearing commands exit 1 when a GPU check was not executed.
+  The default remains a warning. JSON summaries use `uncheckedCount`;
+  `og test` keeps its aggregate `unchecked` as a deprecated alias.
 - **Music clocks can start before world time zero.** `Music.start` no
   longer declares a minimum of zero, so starting partway through a song
   passes reflected field validation and default invariants.

@@ -89,6 +89,10 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
                 r.forward.push(args[i].into());
                 device_forward.push(args[i].to_string());
             }
+            "--require-checked" => {
+                r.forward.push(args[i].into());
+                device_forward.push(args[i].into());
+            }
             "--no-check" => {
                 r.check = false;
                 r.native.push(args[i].into());
@@ -178,10 +182,10 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
             d.forward = device_forward;
         }
         None => {
-            if let Some(f) = device_forward
-                .iter()
-                .find(|f| f.starts_with("--") && !matches!(f.as_str(), "--json" | "--size"))
-            {
+            if let Some(f) = device_forward.iter().find(|f| {
+                f.starts_with("--")
+                    && !matches!(f.as_str(), "--json" | "--size" | "--require-checked")
+            }) {
                 return Err(format!("{f} goes with --device. {USAGE}"));
             }
         }

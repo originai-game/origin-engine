@@ -91,9 +91,27 @@ test("missing GPU reports unchecked frames, while simulation checks still run an
   const out = join(game, "og-out/test/surface");
   expect(existsSync(join(out, "surface.png"))).toBeFalse();
 
+  const strict = run([...command, "--require-checked"], false);
+  expect(strict.code).toBe(1);
+  const strictAggregate = JSON.parse(strict.stdout.split("\n").find((l) => l.startsWith("{") && JSON.parse(l).event === "test")!);
+  expect(strictAggregate).toMatchObject({ ok: false, failed: 0, uncheckedSuites: 1, uncheckedCount: 1, unchecked: 1 });
+  const runCommand = [ogBin(), "run", game, "--headless", "--no-check", "--json", "--commands", "0.1:screenshot:strict.png;0.2:quit"];
+  expect(run(runCommand, false).code).toBe(0);
+  const strictRun = run([...runCommand, "--require-checked"], false);
+  expect(strictRun.code).toBe(1);
+  expect(JSON.parse(strictRun.stdout.trim().split("\n").at(-1)!)).toMatchObject({ uncheckedCount: 1 });
+
+  const uiCommand = [ogBin(), "ui", "check", game, "--screen", "start=", "--breakpoints", "desktop", "--locales", "game", "--scales", "100", "--settle", "0.1", "--json"];
+  const ui = run(uiCommand, false);
+  expect(ui.code).toBe(0);
+  expect(JSON.parse(ui.stdout.trim())).toMatchObject({ uncheckedCount: 1 });
+  const strictUi = run([...uiCommand, "--require-checked"], false);
+  expect(strictUi.code).toBe(1);
+  expect(JSON.parse(strictUi.stdout.trim())).toMatchObject({ uncheckedCount: 1 });
+
   writeFileSync(join(game, "tests/logic.og.ts"), `import { playtest } from "@origingame/engine/playtest";
 export default playtest({ name: "simulation without GPU", commands: "0.2:quit", check(run, t) { t.ok(run.quit, "quit"); } });`);
-  const logic = run([ogBin(), "test", game, "--filter", "logic.og.ts", "--json", "--no-check"], false);
+  const logic = run([ogBin(), "test", game, "--filter", "logic.og.ts", "--json", "--no-check", "--require-checked"], false);
   if (logic.code !== 0) throw new Error(logic.out);
   expect(result(logic.stdout).ok).toBeTrue();
   writeFileSync(join(game, "tests/surface.og.ts"), SURFACE.replace('t.ok(run.quit, "reached quit")', 't.ok(false, "deliberate failure")'));
@@ -113,7 +131,7 @@ gpuTest("a GPU run checks the frames without changing simulation, dumps or hashe
   const blind = result(run(command, false).stdout);
   const out = join(game, "og-out/test/surface");
   const blindUi = readFileSync(join(out, "ui.json"), "utf8");
-  const drawn = run(command, true);
+  const drawn = run([...command, "--require-checked"], true);
   if (drawn.code !== 0) throw new Error(drawn.out);
   const lit = result(drawn.stdout);
   expect(lit.status).toBe("passed");

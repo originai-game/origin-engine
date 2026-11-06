@@ -141,7 +141,11 @@ pub fn run(args: &[&str]) -> ExitCode {
         return crate::doctor_project::run(args);
     }
     let json = args.contains(&"--json");
-    if let Some(a) = args.iter().find(|a| **a != "--json") {
+    let require_checked = args.contains(&"--require-checked");
+    if let Some(a) = args
+        .iter()
+        .find(|a| !matches!(**a, "--json" | "--require-checked"))
+    {
         eprintln!(
             "og doctor: unexpected argument `{a}`; og doctor takes --json (or --project <dir> [--json])."
         );
@@ -263,6 +267,8 @@ pub fn run(args: &[&str]) -> ExitCode {
         ),
     }
     let engine = engine_checks(&mut out, &cwd);
+    let unchecked_count = usize::from(engine.renderer["ok"].as_bool() == Some(false));
+    let ok = out.problems == 0 && (!require_checked || unchecked_count == 0);
     if out.json {
         let report = serde_json::json!({
             "og": crate::VERSION,
@@ -272,7 +278,8 @@ pub fn run(args: &[&str]) -> ExitCode {
             "pin": engine.pin,
             "renderer": engine.renderer,
             "problems": out.problems,
-            "ok": out.problems == 0,
+            "uncheckedCount": unchecked_count,
+            "ok": ok,
         });
         println!("{report}");
     } else if out.problems == 0 {
@@ -283,7 +290,7 @@ pub fn run(args: &[&str]) -> ExitCode {
             out.problems
         );
     }
-    if out.problems == 0 {
+    if ok {
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE

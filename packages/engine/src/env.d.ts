@@ -89,6 +89,7 @@ declare const process: {
   readonly argv: string[];
   readonly version: string;
   readonly pid: number;
+  exitCode?: number;
   exit(code?: number): never;
   cwd(): string;
   on(event: "exit" | "SIGUSR2", listener: () => void): unknown;

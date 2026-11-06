@@ -243,9 +243,12 @@ async function main(): Promise<void> {
     const img = sheet(cells, at.length, 260, `FILM ${screen.name} ${bp}: ${film}`.slice(0, 120));
     const file = join(outDir, "film.png");
     writeFileSync(file, encodePng(img));
-    const index = { film, screen: screen.name, breakpoint: bp, start, frames: at.map((t, i) => ({ t, tick: Math.round((start + t) * rate), shown: r.images.has(`film-${i}`) })), warnings: r.warnings };
+    const uncheckedCount = at.filter((_, i) => !r.images.has(`film-${i}`)).length;
+    const index = { film, screen: screen.name, breakpoint: bp, start, uncheckedCount, frames: at.map((t, i) => ({ t, tick: Math.round((start + t) * rate), shown: r.images.has(`film-${i}`) })), warnings: r.warnings };
     writeFileSync(join(outDir, "film.json"), JSON.stringify(index, null, 1) + "\n");
-    process.stdout.write(argv.includes("--json") ? JSON.stringify({ film: file, index: join(outDir, "film.json") }) + "\n" : `og ui preview: filmstrip ${file}\n`);
+    process.stdout.write(argv.includes("--json") ? JSON.stringify({ film: file, index: join(outDir, "film.json"), uncheckedCount }) + "\n" : `og ui preview: filmstrip ${file}\n`);
+    if (uncheckedCount > 0) process.stderr.write(`og ui preview: ${uncheckedCount} GPU captures unchecked\n`);
+    if (argv.includes("--require-checked") && uncheckedCount > 0) process.exitCode = 1;
     return;
   }
 
@@ -302,6 +305,9 @@ async function main(): Promise<void> {
       }
     }
   }
+  const uncheckedCount = cells.filter((c) => c.frame === null).length;
+  if (uncheckedCount > 0) process.stderr.write(`og ui ${mode}: ${uncheckedCount} GPU captures unchecked\n`);
+  if (argv.includes("--require-checked") && uncheckedCount > 0) process.exitCode = 1;
   if (mode === "sheet") {
     const sheets: string[] = [];
     for (const bp of bps) for (const scale of scales) for (const style of styles.length ? styles : [""]) {
@@ -312,7 +318,7 @@ async function main(): Promise<void> {
       sheets.push(file);
     }
     writeFileSync(join(outDir, "index.json"), JSON.stringify({ sheets, cells, pages: screens, breakpoints: bps, scales }, null, 2) + "\n");
-    process.stdout.write(argv.includes("--json") ? JSON.stringify({ sheets, cells: cells.length, index: join(outDir, "index.json") }) + "\n" : `og ui sheet: ${cells.length} captures; ${join(outDir, "index.json")}\n`);
+    process.stdout.write(argv.includes("--json") ? JSON.stringify({ sheets, cells: cells.length, index: join(outDir, "index.json"), uncheckedCount }) + "\n" : `og ui sheet: ${cells.length} captures; ${join(outDir, "index.json")}\n`);
     return;
   }
   const findings = mergeFindings(all);
@@ -320,7 +326,7 @@ async function main(): Promise<void> {
   const rules = RULES.map((r) => (r.kind === "finding" ? { ...r, findings: findings.filter((f) => f.rule === r.id).length } : { ...r, measures: measures.filter((m) => m.measure === r.id).length }));
   // Every cell's frame, so a reader holds a finding's `at` against the frame it was measured on.
   const frames = cells.map((c) => ({ cell: cellName(c), screen: c.screen, breakpoint: c.breakpoint, viewport: [BREAKPOINTS[c.breakpoint]!.width, BREAKPOINTS[c.breakpoint]!.height], frame: c.frame ? join(outDir, c.frame) : null }));
-  writeFileSync(join(outDir, "check.json"), JSON.stringify({ project: project_, cells: cells.length, findings, measures, rules, frames, cellList: cells.map((c) => ({ index: c.index, cell: cellName(c), dpr: c.dpr, frame: c.frame, uiFrame: c.uiFrame })) }, null, 1) + "\n");
+  writeFileSync(join(outDir, "check.json"), JSON.stringify({ project: project_, cells: cells.length, uncheckedCount, findings, measures, rules, frames, cellList: cells.map((c) => ({ index: c.index, cell: cellName(c), dpr: c.dpr, frame: c.frame, uiFrame: c.uiFrame })) }, null, 1) + "\n");
   writeFileSync(join(outDir, "check.txt"), formatText(findings, `og ui check: ${project_}, ${cells.length} cell(s) (${screens.length} screen(s) × ${Math.max(1, styles.length)} style(s) × ${bps.length} breakpoint(s) × ${locales.length} locale(s) × ${scales.length} scale(s))`, measures));
   if (mode === "preview") {
     // One sheet per screen and style: a row per breakpoint, a column per locale and scale.
@@ -334,13 +340,12 @@ async function main(): Promise<void> {
       sheets.push(file);
     }
     writeFileSync(join(outDir, "index.json"), JSON.stringify({ project: project_, sheets: sheets.map((s) => basename(s)), axes: { screens: screens.map((s) => s.name), styles, breakpoints: bps, locales: locales.map((l) => l || "game"), scales }, cells: cells.map((c) => ({ ...c, locale: c.locale || "game" })) }, null, 1) + "\n");
-    if (argv.includes("--json")) process.stdout.write(JSON.stringify({ sheets, index: join(outDir, "index.json"), cells: cells.length, findings: findings.length }) + "\n");
+    if (argv.includes("--json")) process.stdout.write(JSON.stringify({ sheets, index: join(outDir, "index.json"), cells: cells.length, findings: findings.length, uncheckedCount }) + "\n");
     else process.stdout.write(`og ui preview: ${cells.length} cell(s) in ${((performance.now() - t0) / 1000).toFixed(1)} s; ${sheets.map((s) => basename(s)).join(", ")}; ${join(outDir, "index.json")}\n`);
     return;
   }
-  if (argv.includes("--json")) process.stdout.write(JSON.stringify({ cells: cells.length, findings, measures: measures.length, frames, report: join(outDir, "check.json") }) + "\n");
+  if (argv.includes("--json")) process.stdout.write(JSON.stringify({ cells: cells.length, findings, measures: measures.length, frames, report: join(outDir, "check.json"), uncheckedCount }) + "\n");
   else process.stdout.write(formatText(findings, `og ui check: ${project_}, ${cells.length} cell(s) in ${((performance.now() - t0) / 1000).toFixed(1)} s (${join(outDir, "check.json")})`, measures));
-  process.exit(0);
 }
 
 /**

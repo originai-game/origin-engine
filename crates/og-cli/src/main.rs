@@ -57,9 +57,10 @@ commands:
   run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P]
       [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio <out.wav>]
       [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--room <ws url>]
-      [--json] [--no-check]
+      [--json] [--no-check] [--require-checked]
                       cook, type-check, bundle and run the game on the native host with the probe;
                       outputs of screenshot/dump_* land in --out (default <project>/og-out)
+                      --require-checked exits 1 when GPU checks remain unchecked (default: warning)
   run --device chrome|safari|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR]
       [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>]
       [--json]
@@ -95,11 +96,11 @@ commands:
                       watch src/ and assets/, rebuild and re-cook, hot-reload through the probe,
                       report each reload against the 300 ms budget and type-check each src/ change
                       beside the rebuild (reported, never refusing the reload)
-  check [project|entry|tsconfig.json] [--json] [--checkers N] [--tool tsrs|tsgo]
+  check [project|entry|tsconfig.json] [--json] [--checkers N] [--tool tsrs|tsgo] [--require-checked]
                       type-check the game code with tsrs (tsgo where tsrs has no package);
                       --json prints the diagnostics as one `check` event; og run, og test and
                       og build check before bundling (--no-check skips it), og dev on each save
-  test [project] [--filter <path>] [--jobs N] [--json] [--no-check]
+  test [project] [--filter <path>] [--jobs N] [--json] [--no-check] [--require-checked]
                       the project's bun tests, then each tests/*.og.ts playtest headless
                       --filter selects suite files by a project-relative path substring;
                       --jobs N runs up to N playtests at once, each one's output whole, in order
@@ -158,7 +159,7 @@ commands:
   ui check [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b]
       [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet]
       [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S]
-      [--out DIR] [--json]
+      [--out DIR] [--json] [--require-checked]
                       lay each screen (its commands, or show:<name>; without --screen every screen
                       project.ogt's ui { screen \"<name>\" \"<commands>\" } and screens blocks declare,
                       else the values the game's show usage lists, else the playtests' screenshots)
@@ -179,7 +180,7 @@ commands:
                       assets/ui/<screen>.ogt to edit as the game's own; refuses to overwrite one
                       there without --force; --list prints each with its Appendix B row
   frame measure <png> [--region x,y,w,h] [--against x,y,w,h] [--units px|fraction]
-      [--metric contrast,highpass,mean,ramp] [--rows N] [--json]
+      [--metric contrast,highpass,mean,ramp] [--rows N] [--json] [--require-checked]
                       a reviewer's numbers off a captured frame, the same on every machine: WCAG
                       contrast (the ink, the region's darkest or brightest 5 %, against the median
                       ground of --against or the region), high-pass energy (mean |grey - its σ 2
@@ -188,7 +189,8 @@ commands:
   relay [--port P] [--host <ip>]
                       a local WebSocket relay for rooms: `og run --room ws://127.0.0.1:P/<room>`
                       processes join <room> and play together (og.net's lockstep)
-  doctor [--json]     check bun, the engine package, the native addon, the wasm, a headless
+  doctor [--json] [--require-checked]
+                      check bun, the engine package, the native addon, the wasm, a headless
                       renderer, and (in the engine repository) the build toolchain, naming each fix;
                       --json adds the pin: {pinned, installed, compatible} (same minor, installed >= pinned)
   upgrade [project] [--to <version>] [--dry-run] [--json]

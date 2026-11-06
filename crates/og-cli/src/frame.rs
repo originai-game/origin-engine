@@ -400,6 +400,10 @@ pub fn run(args: &[&str]) -> ExitCode {
                 i += 1;
                 continue;
             }
+            ("--require-checked", _) => {
+                i += 1;
+                continue;
+            }
             ("--region", Some(v)) => reg = Some(v),
             ("--against", Some(v)) => against = Some(v),
             ("--units", Some(v @ ("px" | "fraction"))) => fraction = v == "fraction",
@@ -457,6 +461,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     };
     let mut v = measure(&f, r, a, &metrics, rows);
     v["image"] = json!(image);
+    v["uncheckedCount"] = json!(0);
     if as_json {
         println!("{v}");
     } else {
