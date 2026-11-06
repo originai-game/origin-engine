@@ -27,7 +27,6 @@ threads linked here; rules are in `AGENTS.md`.
 | Art runner (reviews and lands visual heads) | [T-01a1b0c7](https://ampcode.com/threads/T-01a1b0c7-5f8c-7352-a5dc-d024892ea59e) | art-runner |
 | Delete gameplay templates; `og create` writes a skeleton | [T-01a1b0c8-100e](https://ampcode.com/threads/T-01a1b0c8-100e-77d8-864a-caab317a24a0) | delete-templates |
 | og session: resident session RPC and playtests | [T-01a1b0c8-1b44](https://ampcode.com/threads/T-01a1b0c8-1b44-773e-9143-d2b43bf515d7) | og-session |
-| Build-speed experiments (finishing, then hands off to gate-reform) | [T-01a1b0c8-2b90](https://ampcode.com/threads/T-01a1b0c8-2b90-7365-bc5f-40a0a9d253fc) | build-speed |
 | og-cook fracture re-cook, og.Decal on terrain | [T-01a1b0c8-3db5](https://ampcode.com/threads/T-01a1b0c8-3db5-7421-9322-4e4629f2ab12) | cook-decal |
 | og.motion: geometry diagnosis, jump arc ownership, cases 04/05, skinned art review | [T-01a1b0ff](https://ampcode.com/threads/T-01a1b0ff-58c7-70fd-817c-80f5d7e6ecbd) | og-motion |
 | Gate and toolchain reform: landing queue first, then two lanes (quick, full), dependency-derived selection, Cargo overrides re-measured, dead scripts removed | [T-01a1b106](https://ampcode.com/threads/T-01a1b106-008f-775c-b0a3-c4689c659e78) | gate-reform |
