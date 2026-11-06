@@ -19,7 +19,8 @@ import { og, defineSystem } from "@origingame/engine";
 import type { Value, World } from "@origingame/engine";
 import { Game, GENERATORS, Phase, Prefs, Sound, Tuning } from "./components.ts";
 import { big, duration, novaAt, novaGain, offlineGain, owned, price, totalRate } from "./numbers.ts";
-import { counts, lazyTuning, must } from "./systems.ts";
+import { press } from "./seats.ts";
+import { counts, lazyTuning, must, pressed } from "./systems.ts";
 
 export const LANGUAGES = [
   { code: "en", key: "lang.en" },
@@ -186,7 +187,6 @@ function hud(world: World, g: GameV): void {
       og.ui.label("Rate", say(world, "hud.rate", { n: big(world, g.rate) }), { step: "body", color: { token: "inkMuted" }, nowrap: true });
     });
   });
-  let paused = false;
   og.ui.anchor("Corner", { anchor: "topRight", gap: S.sm, cross: "center" }, () => {
     if (g.dust > 0 || g.novas > 0) {
       capsule("Dust", () => {
@@ -194,14 +194,9 @@ function hud(world: World, g: GameV): void {
         og.ui.counter("Amount", g.dust, { font: "mono" });
       });
     }
-    if (og.ui.actionButton("Pause", say(world, "hud.pause"), { icon: "pause", size: 48 }).clicked) paused = true;
+    if (og.ui.actionButton("Pause", say(world, "hud.pause"), { icon: "pause", size: 48 }).clicked) press("pause");
   });
-  if (paused) {
-    g.paused = true;
-    g.saveNow = true;
-  }
-  // The generators along the bottom: a button each (its icon), its name, how many, its price.
-  let buy = -1;
+  // The generators along the bottom: a button each (its icon), its name, how many, its price; a press buys it next tick.
   og.ui.anchor("Shop", { anchor: "bottom", gap: phone ? S.sm : S.xl, cross: "end" }, () => {
     GENERATORS.forEach((name, i) => {
       const n = owned(g, i);
@@ -209,7 +204,7 @@ function hud(world: World, g: GameV): void {
       const can = g.sparks >= cost;
       og.ui.column(og.ui.idi("Gen", i), { cross: "center", gap: S.xxs, width: px(phone ? 82 : 96) }, () => {
         const r = og.ui.actionButton("Buy", say(world, "hud.buy", { name: say(world, `gen.${name}`) }), { icon: ICONS[i]!, size: phone ? 56 : 64, primary: false });
-        if (r.clicked) buy = i;
+        if (r.clicked) press(`buy${i + 1}`);
         // A refused purchase shakes its card with the error sound; a milestone bursts from it (og-ui §6).
         if (g.refusedSlot === i && g.refusedTick === world.tick - 1) og.ui.shake({ sound: true });
         if (g.milestoneSlot === i && g.milestoneTick === world.tick - 1) og.ui.burst({ count: 10 });
@@ -221,12 +216,11 @@ function hud(world: World, g: GameV): void {
       });
     });
   });
-  if (buy >= 0) g.pendingBuy = buy;
   // The supernova: its progress until it gives stardust, then its button.
   const gain = novaGain(t, g.runEarned);
   og.ui.anchor("Nova", { anchor: phone ? "topRight" : "bottomRight", offsetY: phone ? 64 : 0, direction: "column", cross: "center", gap: S.xxs }, () => {
     if (gain >= 1) {
-      if (og.ui.actionButton("Supernova", say(world, "hud.nova"), { icon: "bolt", size: 64, primary: true }).clicked) g.confirmNova = true;
+      if (og.ui.actionButton("Supernova", say(world, "hud.nova"), { icon: "bolt", size: 64, primary: true }).clicked) press("nova");
       og.ui.label("Gain", say(world, "hud.novaGain", { n: gain }), { color: { token: "highlight" }, nowrap: true });
     } else if (g.runEarned > 0) {
       og.ui.label("At", say(world, "hud.novaAt", { n: big(world, novaAt(t)) }), { step: "caption", color: { token: "inkMuted" }, nowrap: true });
@@ -337,7 +331,7 @@ function layer(world: World, name: string, shown: boolean, vm: object = {}): str
 }
 
 /** The screens, the camera, the buses, the platform's answers and the save. */
-export const Ui = defineSystem("Ui", { reads: [Tuning, og.Input, og.Gamepad], writes: [Game, Prefs, og.Camera, og.Audio] }, (_q, time, world) => {
+export const Ui = defineSystem("Ui", { reads: [Tuning], writes: [Game, Prefs, og.Camera, og.Audio] }, (_q, time, world) => {
   const game = world.resource(Game);
   const prefs = world.resource(Prefs);
   if (!game.ok || !prefs.ok) return;
@@ -364,14 +358,13 @@ export const Ui = defineSystem("Ui", { reads: [Tuning, og.Input, og.Gamepad], wr
     must(og.time.setScale(world, hold ? 0 : 1));
     g.held = hold;
   }
-  const input = world.resource(og.Input);
-  const pad = world.resource(og.Gamepad);
-  if (g.phase === Phase.Play && !g.held && input.ok && pad.ok) {
-    if (input.value.pressed("Escape") || input.value.pressed("KeyP") || pad.value.pressed("start")) {
+  // Seat 0's pause (Escape, the pad's Start, the HUD's Pause) or P, and its supernova (N, the pad's Y, the HUD's Supernova).
+  if (g.phase === Phase.Play && !g.held) {
+    if (pressed(g, "pause") || pressed(g, "menu")) {
       g.paused = true;
       g.saveNow = true;
     }
-    if ((input.value.pressed("KeyN") || pad.value.pressed("y")) && novaGain(lazyTuning(world), g.runEarned) >= 1) g.confirmNova = true;
+    if (pressed(g, "nova") && novaGain(lazyTuning(world), g.runEarned) >= 1) g.confirmNova = true;
   }
   const screen = g.phase === Phase.Title ? "title" : g.phase === Phase.Play ? "play" : "nova";
   const shown = og.ui.screenTransition("Screens", screen, { kind: p.reducedMotion ? "fade" : "iris", durationMs: 600 }).shown;

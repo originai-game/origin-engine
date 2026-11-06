@@ -1,5 +1,7 @@
-// Spark Orb's systems, in tick order after the screens (src/ui.ts): Orb
-// (taps: the pointer on the orb, Space, Enter, the pad's A, the HUD), the
+// Spark Orb's systems, in tick order: Hand (seat 0's og.PlayerInput, which
+// src/seats.ts gives from the keys, the mouse, the pad and the HUD's
+// press()), then after the screens (src/ui.ts): Orb (taps: the pointer on
+// the orb, Space, Enter, the pad's A), the
 // Economy (what the generators make, purchases, milestones, the
 // supernova), Motes (one mote circling the orb per generator owned),
 // Bursts (the particle bursts the others ask for) and Voices.
@@ -12,6 +14,7 @@ import { og, defineSystem } from "@origingame/engine";
 import type { Value, World } from "@origingame/engine";
 import { Burst, Game, GENERATORS, Mote, MOTES, Orb, Phase, Prefs, Sfx, Sound, Tuning } from "./components.ts";
 import { big, generatorRate, novaGain, owned, price, setOwned, tapValue, totalRate } from "./numbers.ts";
+import { pressedNow } from "./seats.ts";
 import { say } from "./ui.ts";
 
 type GameV = Value<typeof Game>;
@@ -68,14 +71,30 @@ function burst(world: World, g: GameV, kind: number, x: number, y: number): void
   g.burstTick = world.tick;
 }
 
-/** The world point under a CSS pixel, through the orthographic camera. */
-export function screenToWorld(world: World, px: number, py: number): { x: number; y: number } | null {
-  const cam = world.resource(og.Camera);
-  const vp = og.ui.viewport(world);
-  if (!cam.ok || vp.height <= 0) return null;
-  const scale = vp.height / cam.value.height;
-  const at = cam.value.position;
-  return { x: at.x + (px - vp.width / 2) / scale, y: at.y - (py - vp.height / 2) / scale };
+/**
+ * The seat's input: seat 0's og.PlayerInput into Game.buttons (last tick's
+ * into Game.before) and its cursor into Game.aimX, aimY, read by every
+ * system after it. Spark Orb is played by one seat.
+ */
+export const Hand = defineSystem("Hand", { reads: [og.PlayerInput], writes: [Game] }, (q, _time, world) => {
+  const game = world.resource(Game);
+  if (!game.ok) return;
+  const g = game.value;
+  for (const a of q.archetypes()) {
+    const input = a.column(og.PlayerInput);
+    for (let i = 0; i < a.count; i++) {
+      if (input.player[i] !== 0) continue;
+      g.before = g.buttons;
+      g.buttons = input.buttons[i]!;
+      g.aimX = input.aimX[i]!;
+      g.aimY = input.aimY[i]!;
+    }
+  }
+});
+
+/** Whether seat 0 pressed a control this tick (its bit went down). */
+export function pressed(g: GameV, name: string): boolean {
+  return pressedNow(g.buttons, g.before, name);
 }
 
 /**
@@ -86,16 +105,13 @@ export function screenToWorld(world: World, px: number, py: number): { x: number
  */
 export const OrbTap = defineSystem(
   "Orb",
-  { reads: [og.Input, og.Gamepad, og.Camera, Tuning], writes: [Game, Orb, og.Transform, og.Sprite], after: ["Ui"] },
+  { reads: [Tuning], writes: [Game, Orb, og.Transform, og.Sprite], after: ["Ui"] },
   (q, time, world) => {
     const game = world.resource(Game);
-    const input = world.resource(og.Input);
-    const gamepad = world.resource(og.Gamepad);
-    if (!game.ok || !input.ok || !gamepad.ok) return;
+    if (!game.ok) return;
     const g = game.value;
-    const inp = input.value;
-    const gp = gamepad.value;
-    const playing = g.phase === Phase.Play && !g.held && world.tick > g.playTick;
+    // og.PlayerInput carries the input given the tick before (og.net.submit): the press that began play arrives at playTick + 1.
+    const playing = g.phase === Phase.Play && !g.held && world.tick > g.playTick + 1;
     for (const a of q.archetypes()) {
       const orb = a.column(Orb);
       const p = a.column(og.Transform).position;
@@ -109,14 +125,15 @@ export const OrbTap = defineSystem(
         s[i * 3] = breath;
         s[i * 3 + 1] = breath;
         if (!playing) continue;
-        let tap = g.pendingTap || inp.pressed("Space") || inp.pressed("Enter") || gp.pressed("a");
+        let tap = pressed(g, "tap");
         let at = { x: g.orbX + 0.35, y: g.orbY + 0.9 };
-        if (g.pendingTap) g.pendingTap = false;
-        if (inp.buttonPressed("left")) {
-          const w = screenToWorld(world, inp.pointer.x, inp.pointer.y);
-          if (w !== null && Math.hypot(w.x - g.orbX, w.y - g.orbY) <= ORB_RADIUS) {
+        // A click or a finger: the seat's cursor is where it landed.
+        if (pressed(g, "point")) {
+          const dx = g.aimX - g.orbX;
+          const dy = g.aimY - g.orbY;
+          if (dx * dx + dy * dy <= ORB_RADIUS * ORB_RADIUS) {
             tap = true;
-            at = { x: w.x, y: w.y + 0.3 };
+            at = { x: g.aimX, y: g.aimY + 0.3 };
           }
         }
         if (!tap) continue;
@@ -142,7 +159,8 @@ export const OrbTap = defineSystem(
 
 /**
  * The economy: the generators' sparks each tick (time stops with the
- * pause), purchases (1–4, the pad's X on the selected generator, the HUD),
+ * pause), purchases (buy1–buy4 from 1–4 and the HUD's cards; buy, B or
+ * the pad's X, on the generator prev and next chose),
  * refusals (the card shakes with the error sound), milestones (every
  * Tuning.milestone of a generator doubles it: a burst and a fanfare) and
  * the supernova (sparks and generators back to nothing, stardust for the
@@ -150,15 +168,11 @@ export const OrbTap = defineSystem(
  */
 export const Economy = defineSystem(
   "Economy",
-  { reads: [og.Input, og.Gamepad, Tuning, Prefs], writes: [Game], after: ["Orb"] },
+  { reads: [Tuning, Prefs], writes: [Game], after: ["Orb"] },
   (_q, _time, world) => {
     const game = world.resource(Game);
-    const input = world.resource(og.Input);
-    const gamepad = world.resource(og.Gamepad);
-    if (!game.ok || !input.ok || !gamepad.ok) return;
+    if (!game.ok) return;
     const g = game.value;
-    const inp = input.value;
-    const gp = gamepad.value;
     const t = lazyTuning(world);
     if (g.phase !== Phase.Play) return;
     const rate = totalRate(t, counts(g), g.dust);
@@ -174,18 +188,17 @@ export const Economy = defineSystem(
       g.lifetime += made;
     }
     // Choosing and buying (not with the key that began play).
-    if (world.tick <= g.playTick) return;
-    let buy = g.pendingBuy;
-    if (g.pendingBuy >= 0) g.pendingBuy = -1;
+    if (world.tick <= g.playTick + 1) return;
+    let buy = -1;
     GENERATORS.forEach((_, i) => {
-      if (inp.pressed(`Digit${i + 1}`)) buy = i;
+      if (pressed(g, `buy${i + 1}`)) buy = i;
     });
-    const step = (inp.pressed("ArrowRight") || gp.pressed("right") ? 1 : 0) - (inp.pressed("ArrowLeft") || gp.pressed("left") ? 1 : 0);
+    const step = (pressed(g, "next") ? 1 : 0) - (pressed(g, "prev") ? 1 : 0);
     if (step !== 0) {
       g.selected = (g.selected + step + GENERATORS.length) % GENERATORS.length;
       g.sfx |= Sound.Move;
     }
-    if (gp.pressed("x") || inp.pressed("KeyB")) buy = g.selected;
+    if (pressed(g, "buy")) buy = g.selected;
     if (buy >= 0) purchase(world, g, t, buy);
     if (g.pendingNova) {
       g.pendingNova = false;

@@ -19,7 +19,8 @@
 import { og } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { Burst, Game, GENERATORS, Mote, MOTES, Orb, Phase, Prefs, Sfx, Sound, Tuning } from "./components.ts";
-import { counts, Bursts, BURST, Economy, lazyTuning, Motes, nova, ORB_RADIUS, OrbTap, TIER_COLOURS, Voices } from "./systems.ts";
+import { counts, Bursts, BURST, Economy, Hand, lazyTuning, Motes, nova, ORB_RADIUS, OrbTap, TIER_COLOURS, Voices } from "./systems.ts";
+import { SEATS, Seats, setupSeats } from "./seats.ts";
 import { setOwned } from "./numbers.ts";
 import { LANGUAGES, launch, Ui } from "./ui.ts";
 
@@ -109,6 +110,12 @@ function start(world: World): void {
   must(world.insert(fx, og.AudioBusFx, { bus: "music", duck: true, duckBus: "sfx", duckDepth: 4, duckRelease: 0.6 }));
   const game = must(world.resource(Game));
   game.orbY = 0.35;
+  // The seat: its og.PlayerInput is all the game reads of the keys, the mouse, the pad and the touch screen (src/seats.ts).
+  setupSeats(world);
+  for (let seat = 0; seat < SEATS; seat++) {
+    const e = must(world.spawn({ name: `seat-${seat}` }));
+    must(world.insert(e, og.PlayerInput, { player: seat }));
+  }
 }
 
 function gameOf(world: World) {
@@ -206,7 +213,7 @@ export default og.game({
   tick: 60,
   seed: 1,
   resources: [Game, Tuning, Prefs],
-  systems: [Ui, OrbTap, Economy, Motes, Bursts, Voices],
+  systems: [Seats, Hand, Ui, OrbTap, Economy, Motes, Bursts, Voices],
   render: { antialias: "off" },
   look: "looks/idle.ogt",
   start,

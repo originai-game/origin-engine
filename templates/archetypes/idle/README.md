@@ -143,6 +143,8 @@ pure functions, the stars come from an og.Rng stream forked by name, and
 
 | System | Job |
 |---|---|
+| `Seats` | src/seats.ts: the keys, the mouse, the pad and the HUD's `press()` into seat 0's `og.PlayerInput` (src/creation.ts's controls: `tap`, `buy`, `prev`, `next`, `buy1`–`buy4`, `nova`, `menu`, `point` with the cursor) |
+| `Hand` | seat 0's `og.PlayerInput` into `Game.buttons`, `before`, `aimX`, `aimY`, which every system after reads |
 | `Ui` | the screens, the camera for the surface, the buses, the pause and the supernova's keys, the platform's answers, the save |
 | `Orb` | taps (a press on the orb, Space, Enter, the pad's A), the orb's breath and squash |
 | `Economy` | the generators' sparks, choosing and buying, refusals, milestones, the supernova |
@@ -217,6 +219,7 @@ values from the `Game` resource with `get:Game`.
 | `tests/pad.og.ts` | a gamepad alone plays, taps, chooses, buys, is refused, asks for and declines the supernova, pauses and resumes |
 | `tests/phone.og.ts` | 390 × 844 at 3×: the wallet and Pause below the notch, the generators above the home bar with touch-sized buttons, taps on the orb, a card bought |
 | `tests/frames.og.ts` | the title, the orb with every kind of mote and the supernova's card match `references/<tier>/` (`OG_FX_CAPTURE=1 og test .` records them) |
+| `tests/seats.og.ts` | Space, the pad's X and a finger on the orb each reach seat 0's `og.PlayerInput` (the `tap`, `buy` and `point` bits, the cursor on the orb) and play; a finger beside the orb taps nothing |
 | `tests/replay.og.ts` | a run with taps, purchases and a milestone, run twice, ends on one hash |
 
 Each one fails when the behaviour it names is broken (one was broken on
