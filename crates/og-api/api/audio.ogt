@@ -651,8 +651,7 @@ module audio {
       min 1
       max 16
     }
-    field start f64 "The world time of bar 1's first beat." {
-      min 0
+    field start f64 "The world time of bar 1's first beat. Can be negative when starting partway through a song." {
       unit s
     }
     field bar u32 "The bar the next tick starts in, from 1 (0 before start; written by og.music)." {

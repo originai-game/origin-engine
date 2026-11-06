@@ -15,6 +15,9 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Music clocks can start before world time zero.** `Music.start` no
+  longer declares a minimum of zero, so starting partway through a song
+  passes reflected field validation and default invariants.
 - **Playtests check properties every tick.** `og.assert` (`always`,
   `sometimes`, `reachable`, `unreachable`, `each`) records a game's
   properties beside the world, never in it. Outside publish builds every

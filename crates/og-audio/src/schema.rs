@@ -714,7 +714,8 @@ pub struct Music {
     #[reflect(name = "beatsPerBar", min = 1, max = 16, default = 4)]
     pub beats_per_bar: u32,
     /// The world time of the first bar's first beat, in seconds.
-    #[reflect(min = 0, unit = "s")]
+    /// Can be negative when starting partway through a song.
+    #[reflect(unit = "s")]
     pub start: f64,
     /// The bar the tick is in, from 1 (0 before start; written by og.music).
     pub bar: u32,

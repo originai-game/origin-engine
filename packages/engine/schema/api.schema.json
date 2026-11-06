@@ -41922,9 +41922,8 @@
         },
         "start": {
           "type": "number",
-          "description": "The world time of bar 1's first beat.",
+          "description": "The world time of bar 1's first beat. Can be negative when starting partway through a song.",
           "default": 0,
-          "minimum": 0,
           "x-og-unit": "s"
         },
         "bar": {

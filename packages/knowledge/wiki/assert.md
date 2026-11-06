@@ -22,7 +22,7 @@ module assert {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 25740</sub>
+<sub>`api.ogt` line 25739</sub>
 
 ## Contents
 
@@ -79,7 +79,7 @@ fn always {
 }
 ```
 
-<sub>`api.ogt` line 25871</sub>
+<sub>`api.ogt` line 25870</sub>
 
 <a id="fn-sometimes"></a>
 
@@ -113,7 +113,7 @@ fn sometimes {
 }
 ```
 
-<sub>`api.ogt` line 25881</sub>
+<sub>`api.ogt` line 25880</sub>
 
 <a id="fn-reachable"></a>
 
@@ -145,7 +145,7 @@ fn reachable {
 }
 ```
 
-<sub>`api.ogt` line 25891</sub>
+<sub>`api.ogt` line 25890</sub>
 
 <a id="fn-unreachable"></a>
 
@@ -177,7 +177,7 @@ fn unreachable {
 }
 ```
 
-<sub>`api.ogt` line 25900</sub>
+<sub>`api.ogt` line 25899</sub>
 
 <a id="fn-each"></a>
 
@@ -209,7 +209,7 @@ fn each {
 }
 ```
 
-<sub>`api.ogt` line 25909</sub>
+<sub>`api.ogt` line 25908</sub>
 
 <a id="fn-record"></a>
 
@@ -239,7 +239,7 @@ fn record {
 }
 ```
 
-<sub>`api.ogt` line 25917</sub>
+<sub>`api.ogt` line 25916</sub>
 
 ## Components, resources and events
 
@@ -274,7 +274,7 @@ resource WorldBounds {
 }
 ```
 
-<sub>`api.ogt` line 25856</sub>
+<sub>`api.ogt` line 25855</sub>
 
 ## Types
 
@@ -305,7 +305,7 @@ enum AssertKind {
 }
 ```
 
-<sub>`api.ogt` line 25749</sub>
+<sub>`api.ogt` line 25748</sub>
 
 <a id="type-AssertRecord"></a>
 
@@ -338,7 +338,7 @@ struct AssertRecord {
 }
 ```
 
-<sub>`api.ogt` line 25758</sub>
+<sub>`api.ogt` line 25757</sub>
 
 <a id="type-AssertOrigin"></a>
 
@@ -363,7 +363,7 @@ enum AssertOrigin {
 }
 ```
 
-<sub>`api.ogt` line 25770</sub>
+<sub>`api.ogt` line 25769</sub>
 
 <a id="type-AssertBucket"></a>
 
@@ -386,7 +386,7 @@ struct AssertBucket {
 }
 ```
 
-<sub>`api.ogt` line 25777</sub>
+<sub>`api.ogt` line 25776</sub>
 
 <a id="type-AssertSite"></a>
 
@@ -427,7 +427,7 @@ struct AssertSite {
 }
 ```
 
-<sub>`api.ogt` line 25784</sub>
+<sub>`api.ogt` line 25783</sub>
 
 <a id="type-AssertViolation"></a>
 
@@ -472,7 +472,7 @@ struct AssertViolation {
 }
 ```
 
-<sub>`api.ogt` line 25802</sub>
+<sub>`api.ogt` line 25801</sub>
 
 <a id="type-AssertUncovered"></a>
 
@@ -503,7 +503,7 @@ struct AssertUncovered {
 }
 ```
 
-<sub>`api.ogt` line 25820</sub>
+<sub>`api.ogt` line 25819</sub>
 
 <a id="type-AssertCost"></a>
 
@@ -534,7 +534,7 @@ struct AssertCost {
 }
 ```
 
-<sub>`api.ogt` line 25833</sub>
+<sub>`api.ogt` line 25832</sub>
 
 <a id="type-AssertReport"></a>
 
@@ -565,4 +565,4 @@ struct AssertReport {
 }
 ```
 
-<sub>`api.ogt` line 25845</sub>
+<sub>`api.ogt` line 25844</sub>

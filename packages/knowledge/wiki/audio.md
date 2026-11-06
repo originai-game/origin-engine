@@ -86,7 +86,7 @@ fn createSound {
 }
 ```
 
-<sub>`api.ogt` line 13477</sub>
+<sub>`api.ogt` line 13476</sub>
 
 <a id="fn-outputLatency"></a>
 
@@ -117,7 +117,7 @@ fn outputLatency {
 }
 ```
 
-<sub>`api.ogt` line 13484</sub>
+<sub>`api.ogt` line 13483</sub>
 
 ## Components, resources and events
 
@@ -927,7 +927,7 @@ Token `og.Music`, registered under the schema name `og.Music`; its value type is
 |---|---|---|---|---|---|---|
 | `bpm` | `number` | `120` | 20 … 400 | `bpm` | tunable | Beats per minute. |
 | `beatsPerBar` | `number` | `4` | 1 … 16 | — | — | Beats per bar. |
-| `start` | `number` | `0` | ≥ 0 | `s` | — | The world time of bar 1's first beat. |
+| `start` | `number` | `0` | — | `s` | — | The world time of bar 1's first beat. Can be negative when starting partway through a song. |
 | `bar` | `number` | `0` | — | — | read only | The bar the next tick starts in, from 1 (0 before start; written by og.music). |
 | `beat` | `number` | `0` | — | — | read only | The beat in that bar, from 1 (written by og.music). |
 | `nextBeat` | `number` | `0` | — | `s` | read only | The world time of the next beat from the next tick on (written by og.music). |
@@ -948,8 +948,7 @@ component Music {
     min 1
     max 16
   }
-  field start f64 "The world time of bar 1's first beat." {
-    min 0
+  field start f64 "The world time of bar 1's first beat. Can be negative when starting partway through a song." {
     unit s
   }
   field bar u32 "The bar the next tick starts in, from 1 (0 before start; written by og.music)." {
@@ -996,7 +995,7 @@ event MusicBeat {
 }
 ```
 
-<sub>`api.ogt` line 13454</sub>
+<sub>`api.ogt` line 13453</sub>
 
 <a id="record-SoundStarted"></a>
 
@@ -1021,7 +1020,7 @@ event SoundStarted {
 }
 ```
 
-<sub>`api.ogt` line 13462</sub>
+<sub>`api.ogt` line 13461</sub>
 
 <a id="record-SoundEnded"></a>
 
@@ -1048,7 +1047,7 @@ event SoundEnded {
 }
 ```
 
-<sub>`api.ogt` line 13469</sub>
+<sub>`api.ogt` line 13468</sub>
 
 ## Types
 

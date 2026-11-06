@@ -20570,9 +20570,8 @@ export interface Music {
    */
   beatsPerBar: number;
   /**
-   * The world time of bar 1's first beat.
+   * The world time of bar 1's first beat. Can be negative when starting partway through a song.
    *
-   * @range 0..
    * @unit s (seconds of simulation time)
    */
   start: number;
