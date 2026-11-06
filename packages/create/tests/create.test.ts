@@ -37,6 +37,23 @@ test("creation choices infer a premise, preserve overrides, and serialize every 
   expect(() => resolveCreationChoices("", { look: "missing" })).toThrow("no look preset");
 });
 
+test("creation schema labels preserve every stable choice ID", () => {
+  const schema = creationSchema(readCatalogue().map(s => s.slug));
+  for (const [key, values] of Object.entries(CREATION_CHOICES)) {
+    const field = Object.entries(schema.properties).find(([name]) => name === key)?.[1];
+    expect(field).toMatchObject({ type: "string", enum: [...values] });
+    if (!field || !("x-labels" in field)) throw new Error(`missing labels for ${key}`);
+    expect(Object.keys(field["x-labels"])).toEqual([...values]);
+    for (const copy of Object.values(field["x-labels"])) {
+      expect(copy).toMatchObject({ label: { en: expect.any(String), "zh-CN": expect.any(String) }, description: { en: expect.any(String), "zh-CN": expect.any(String) } });
+    }
+  }
+  expect(schema.properties.look["x-labels"]["16bit-pixel"]).toMatchObject({ label: { "zh-CN": "16 位像素" } });
+  for (const copy of Object.values(schema.properties.look["x-labels"])) {
+    expect(copy).toMatchObject({ label: { "zh-CN": expect.any(String) }, description: { "zh-CN": expect.any(String) } });
+  }
+});
+
 test("choice flags write a canonical create block and reject bad choices before creating", () => {
   const r = cli("choices", "--no-prompt", "--genre", "puzzle-match", "--view", "top-down-2d", "--mood", "soft", "--ui", "pixel", "--platform", "phone-portrait", "--input", "touch", "--players", "single", "--lang", "ja,en", "--music", "chiptune");
   expect(r.code).toBe(0);

@@ -1,4 +1,6 @@
-/** Creation vocabulary, defaults and inference rules. Extend this data for new starters. */
+import { CHOICE_LABELS, localized, LOOK_ZH } from "./choice-labels.ts";
+
+/** Creation vocabulary, defaults and inference rules. */
 export const CREATION_CHOICES = {
   genre: ["action-platformer", "shooter", "rpg", "puzzle-match", "strategy-tower-defense", "racing", "runner", "roguelike-card", "idle", "rhythm", "arena", "open-world"],
   view: ["side-2d", "top-down-2d", "isometric-2.5d", "third-person-3d", "first-person-3d"],
@@ -35,8 +37,14 @@ export function creationSchema(looks: readonly string[]) {
     additionalProperties: false,
     required: [...Object.keys(CREATION_CHOICES), "look", "lang"],
     properties: {
-      ...Object.fromEntries(Object.entries(CREATION_CHOICES).map(([key, values]) => [key, { type: "string", enum: values }])),
-      look: { type: "string", enum: looks },
+      ...Object.fromEntries(Object.entries(CHOICE_LABELS).map(([key, labels]) => [key, {
+        type: "string", enum: Object.keys(labels),
+        "x-labels": Object.fromEntries(Object.entries(labels).map(([value, copy]) => [value, localized(copy)])),
+      }])),
+      look: { type: "string", enum: looks, "x-labels": Object.fromEntries(looks.map(slug => {
+        const copy = LOOK_ZH[slug];
+        return [slug, copy ? { label: { "zh-CN": copy[0] }, description: { "zh-CN": copy[1] } } : {}];
+      })) },
       lang: { type: "array", minItems: 1, uniqueItems: true, items: { type: "string", pattern: "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$" } },
     },
   };
