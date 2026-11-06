@@ -273,3 +273,53 @@ fn cull_clusters(@builtin(workgroup_id) wid: vec3<u32>,
     items[row.a.w + n] = vec2<u32>(instance, ci);
   }
 }
+
+// Diagnostic canonicalisation: compare fresh-device captures with and
+// without arrival-order-dependent primitive IDs.
+fn item_less(a: vec2<u32>, b: vec2<u32>) -> bool {
+  return a.x < b.x || (a.x == b.x && a.y < b.y);
+}
+
+fn exchange(base: u32, stride: u32, a: u32, b: u32) {
+  for (var j = 0u; j < stride; j++) {
+    let t = items[base + a * stride + j];
+    items[base + a * stride + j] = items[base + b * stride + j];
+    items[base + b * stride + j] = t;
+  }
+}
+
+fn sift(base: u32, stride: u32, root: u32, count: u32) {
+  var at = root;
+  loop {
+    var child = at * 2u + 1u;
+    if (child >= count) { break; }
+    if (child + 1u < count && item_less(items[base + child * stride], items[base + (child + 1u) * stride])) {
+      child++;
+    }
+    if (!item_less(items[base + at * stride], items[base + child * stride])) { break; }
+    exchange(base, stride, at, child);
+    at = child;
+  }
+}
+
+@compute @workgroup_size(1)
+fn canonicalise(@builtin(workgroup_id) gid: vec3<u32>) {
+  let row = gid.x;
+  var base: u32;
+  var count: u32;
+  var stride = 1u;
+  if (row == params.sizes.w) {
+    base = params.soft.x;
+    count = min(atomicLoad(&draws[params.soft.z]), params.soft.y);
+    stride = 2u;
+  } else {
+    base = batches[row].a.w;
+    count = atomicLoad(&draws[row * 4u + 1u]);
+  }
+  if (count < 2u) { return; }
+  for (var i = count / 2u; i > 0u; i--) { sift(base, stride, i - 1u, count); }
+  for (var i = count - 1u; i > 0u; i--) {
+    exchange(base, stride, 0u, i);
+    sift(base, stride, 0u, i);
+  }
+}

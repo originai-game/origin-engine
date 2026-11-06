@@ -494,6 +494,7 @@ pub(crate) struct MeshletGpu {
     wind_field: wgpu::TextureView,
     cull_layout: wgpu::BindGroupLayout,
     cull: wgpu::ComputePipeline,
+    canonicalise: wgpu::ComputePipeline,
     pub(crate) draw_layout: wgpu::BindGroupLayout,
     lit: HashMap<(Side, bool), wgpu::RenderPipeline>,
     prepass: HashMap<Side, wgpu::RenderPipeline>,
@@ -698,6 +699,14 @@ impl MeshletGpu {
             compilation_options: Default::default(),
             cache: crate::pipeline_cache::of(device).as_ref(),
         });
+        let canonicalise = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("meshlet canonicalise"),
+            layout: Some(&layout),
+            module: &module,
+            entry_point: Some("canonicalise"),
+            compilation_options: Default::default(),
+            cache: crate::pipeline_cache::of(device).as_ref(),
+        });
         let no_pyramid = device
             .create_texture(&wgpu::TextureDescriptor {
                 label: Some("meshlet: no depth pyramid"),
@@ -749,6 +758,7 @@ impl MeshletGpu {
         MeshletGpu {
             cull_layout,
             cull,
+            canonicalise,
             draw_layout,
             lit: HashMap::new(),
             prepass: HashMap::new(),
@@ -1324,6 +1334,8 @@ impl MeshletGpu {
                 workgroups.div_ceil(WORKGROUPS_PER_ROW),
                 1,
             );
+            pass.set_pipeline(&self.canonicalise);
+            pass.dispatch_workgroups(self.frame.len() as u32 + 1, 1, 1);
         };
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
