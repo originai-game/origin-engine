@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # Wave-end measurements on the current host, with no machine-specific lanes.
 # Usage: scripts/wave-end.sh [--dry-run] [--stages LIST]
-# Stages: gate,perf,web,art,conformance,release (all by default).
+# Stages: gate,determinism,perf,web,art,conformance,release (all by default).
 # Every stage runs even after a failure; nothing is published.
+# shellcheck disable=SC2329 # stage functions are dispatched by name below
 set -u -o pipefail
 # shellcheck source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"
 cd "$OG_ROOT" || exit 1
 
-ALL_STAGES="gate perf web art conformance release"
+ALL_STAGES="gate determinism perf web art conformance release"
 stages="$ALL_STAGES"
 dry=0
 usage() { sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'; }
@@ -39,6 +40,7 @@ run() {
 }
 
 stage_gate() { run scripts/check.sh --all; }
+stage_determinism() { run tools/wasm-determinism/run.sh; }
 stage_perf() { run scripts/perf.sh; }
 stage_web() { run scripts/check.sh web-reference; }
 

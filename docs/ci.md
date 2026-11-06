@@ -105,7 +105,7 @@ its prerequisites are met. No reference lane runs on lavapipe.
 | `scripts/check.sh quick` | fmt clippy test-quick drift bun-quick | the edit loop, and what a landing runs | 120 s |
 | `scripts/check.sh functional` | fmt clippy test drift bun-functional fixtures | after a batch of landings: native tests and GPU frames, no wasm build (og-tests' wasm32 check of og-render is left out; cross-host comparisons skip on a stale wasm) | 240 s |
 | `scripts/check.sh kits` (alias `ui`) | kit-tests ui-styles ui-kit | package-owned UI suites, authored styles, template playtests; no wasm build | 240 s |
-| `scripts/check.sh` (full) | fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism fixtures | a wave's end, with `--all` (`scripts/wave-end.sh`) | 1200 s |
+| `scripts/check.sh` (full) | fmt clippy wasm-build test wasm-opt size-gate drift bun-test fixtures | a wave's end, with `--all` (`scripts/wave-end.sh`) | 1200 s |
 
 Budgets are warm-run targets, not timeouts or permission to skip checks.
 Measure on the same hardware under comparable load; cold installation and
@@ -139,7 +139,6 @@ of whose inputs changed:
 | each GPU package's reference tests (og-render, og-ui, og-tests, og-tests-cooked) in test and test-quick | that package's dependency closure (with dev-dependencies) and what it embeds (`third_party/ltc`; with og-cook, `templates/looks` and `templates/styles`); for og-ui and og-tests-cooked also the templates their tests read | the rest runs; the summary names each cached package. Input caching, never selection by host or GPU availability |
 | wasm-build, wasm-opt, size-gate | `crates/`, `third_party/` | the last outputs in `target/og-wasm` are reused (only when every file they list exists; a step that ran upstream in this invocation always runs the next) |
 | drift | `crates/og-api`, og-idl and the crates it builds on, `crates/og-cli`, and every generated directory (`og_idl::OUTPUT_DIRS`), so a hand edit to a generated file is still caught | |
-| determinism | `tools/wasm-determinism` and the crates it links (read with `cargo tree --locked`, `og_crate_dirs` in `scripts/lib.sh`) | |
 | ui-styles, ui-kit | og-cli's and og-host-node's closure, `packages/engine`, `templates/ui-kit`, `templates/styles` | |
 | fixtures, per fixture (`tests/fixtures/<name>`) | the fixture's directory and the paths in its `inputs` file, og's and og-host-node's crate closure, `packages/engine`, `templates/looks`, `templates/styles` | each fixture whose inputs are unchanged since it last passed is skipped |
 | check-conformance (in no lane) | `packages/engine`, `templates/`, `tests/fixtures/`, `crates/og-cli/src/check.rs`, `scripts/tsrs-diff.sh`, `scripts/tsrs-corpus/`, `scripts/install-tools.sh`, `scripts/lib.sh` | |
@@ -237,7 +236,6 @@ split, and the lowest such crate is its cause.
 | `wasm-opt` | Bindgen followed by `scripts/wasm-opt.sh`, except the development module outside `--all` when publish variants exist. `opt.txt` lists optimized size-gate inputs; `opt-all.txt` lists every processed module. | full |
 | `size-gate` | Brotli-11 bytes of each optimized module in `opt.txt`, checked against `wasm_core_brotli_bytes`. | full |
 | `bun-test` | Package tests and typechecks using the dev addon and gate-produced wasm (`OG_GATE=1`), without a second release build. | full |
-| `determinism` | `tools/wasm-determinism/run.sh`: equal math digests and world hashes across native, scalar wasm, SIMD wasm and both physics profiles' threaded builds. | full |
 | `kit-tests` | Package-local Bun tests and the three opt-in Rust kit targets. | kits, alias ui |
 | `ui-styles` | `og test templates/ui-kit --filter tests/style-`, with `OG_UI_STYLES_JOBS` workers, default 3. Any unchecked frame fails. | kits, alias ui |
 | `ui-kit` | `og test templates/ui-kit --skip tests/style-`, with `OG_UI_KIT_JOBS` workers, default 4. Any unchecked frame fails. | kits, alias ui |
@@ -325,8 +323,7 @@ bun-test after wasm-opt, ui-kit after ui-styles. At most `OG_GATE_JOBS`
 run at once (2 by default: the native chain beside the wasm chain; 0 lifts
 the cap). The gate renices itself by 10. Native cargo builds lock
 `target/debug` and the wasm32 ones `target/wasm` and
-`target/wasm32-unknown-unknown`, so the two chains overlap; determinism
-builds into `target/wasm-determinism`.
+`target/wasm32-unknown-unknown`, so the two chains overlap.
 
 Each run retains its logs under `<target>/evidence/gate/runs/<UTC-time>-<pid>/`.
 `run.txt` records the commit, working tree, selected steps, force-all flag,
@@ -415,6 +412,7 @@ when any did. Logs, the summary and the table go to
 | Stage | What |
 |---|---|
 | `gate` | `scripts/check.sh --all` |
+| `determinism` | `tools/wasm-determinism/run.sh`: math, physics, animation and text digests across native, scalar/SIMD wasm and both lanes profiles |
 | `perf` | `scripts/perf.sh`, ignored cost assertions under the exclusive GPU slot lock |
 | `web` | `scripts/check.sh web-reference` |
 | `art` | each authored look's capture and comparison; no new frame without `--record art[/family]` |
@@ -423,6 +421,11 @@ when any did. Logs, the summary and the table go to
 
 `--stages gate,perf` selects stages in their defined order; `--dry-run`
 prints commands without running them.
+
+The separate determinism workspace runs only in this stage, not in any
+`check.sh` lane. Bun's cross-host tests still compare native and shipped-wasm
+world hashes in the full gate. This is temporary until those tests cover all
+of the standalone digests using the engine builds already present.
 
 ## The lanes wasm
 

@@ -35,7 +35,7 @@
 # printed with its reason. --all, or CI set in the environment, runs
 # everything.
 #
-# Full lane: fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism fixtures.
+# Full lane: fmt clippy wasm-build test wasm-opt size-gate drift bun-test fixtures.
 # test starts after wasm-build: og-tests' wasm test takes its og-render
 # build instead of compiling og-render for wasm32 a second time.
 # Quick lane: fmt clippy test-quick drift bun-quick (no og-tests, no wasm,
@@ -56,7 +56,7 @@ set -u -o pipefail
 . "$(dirname "$0")/lib.sh"
 cd "$OG_ROOT" || exit 1
 
-STEPS_FULL="fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism fixtures"
+STEPS_FULL="fmt clippy wasm-build test wasm-opt size-gate drift bun-test fixtures"
 STEPS_QUICK="fmt clippy test-quick drift bun-quick"
 STEPS_KITS="kit-tests ui-styles ui-kit"
 STEPS_UI="$STEPS_KITS"
@@ -586,21 +586,6 @@ step_check_conformance() {
   scripts/tsrs-diff.sh
 }
 
-# The determinism tool and the workspace crates it links (og-core, og-ecs,
-# og-physics, og-anim, og-lanes and what they build on).
-rule_determinism() {
-  echo "tools/wasm-determinism $(og_crate_dirs --manifest-path tools/wasm-determinism/Cargo.toml -e normal | og_words) $RULE_COMMON"
-}
-step_determinism() {
-  # Cross-target determinism: the same math digest and world hash on the host
-  # and on wasm32 (scalar and simd128), tools/wasm-determinism/run.sh. Four
-  # builds and five runs (about a minute warm), so it runs only when one of
-  # its inputs changed.
-  if skip_unchanged determinism "determinism" "$(rule_determinism)"; then return $SKIP; fi
-  og_need node || return 1
-  "$OG_ROOT/tools/wasm-determinism/run.sh"
-}
-
 # bun-functional and bun-test give each bun test 30 s, not bun's 5 s: four
 # UI tests in a row crossed 5 s only under the gate's load (2026-11-02), and a
 # real hang still fails at 30 s. An explicit OG_BUN_TEST_TIMEOUT (CI's 60000)
@@ -718,6 +703,7 @@ step_fixtures() {
     log="$GATE_LOGS/fixtures-$name.txt"
     t0="$(date +%s)"
     (
+      # shellcheck disable=SC2034 # read by the machine's sourced lock implementation
       og_lock_dirs=""
       og_gpu_acquire "scripts/check.sh fixtures $name ($PWD)" || exit 1
       project="$dir"
