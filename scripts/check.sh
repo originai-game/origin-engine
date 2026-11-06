@@ -134,6 +134,7 @@ rule_web() {
 rule_fixture() {
   local extra=""
   [ ! -f "$1/inputs" ] || extra="$(grep -Ev '^[[:space:]]*(#|$)' "$1/inputs" | og_words)"
+  [ "$1" != packages/create/template ] || extra="$extra packages/create"
   echo "$1 $(og_crate_dirs -p og-cli -p og-host-node -e normal,build | og_words) packages/engine templates/looks templates/styles $extra $RULE_COMMON"
 }
 
@@ -690,9 +691,9 @@ step_ui_styles() {
 # frame unchecked (no renderer) is reported SKIPPED and keeps no green
 # mark, so the next gate with a GPU runs it.
 step_fixtures() {
-  local dir name log rc ran="" unchanged="" unchecked="" bad="" t0 times=""
+  local dir name log rc project ran="" unchanged="" unchecked="" bad="" t0 times=""
   OG_GATE=1 sh packages/engine/scripts/build.sh --native || return 1
-  for dir in tests/fixtures/*/; do
+  for dir in packages/create/template tests/fixtures/*/; do
     dir="${dir%/}"
     [ -f "$dir/project.ogt" ] || continue
     name="${dir##*/}"
@@ -706,7 +707,12 @@ step_fixtures() {
     (
       og_lock_dirs=""
       og_gpu_acquire "scripts/check.sh fixtures $name ($PWD)" || exit 1
-      "$OG_TARGET_DIR/debug/og" test "$dir"; rc=$?
+      project="$dir"
+      if [ "$dir" = packages/create/template ]; then
+        project="$GATE_LOGS/creation-skeleton"
+        bun packages/create/bin/create.ts "$project" --no-prompt --force || exit 1
+      fi
+      "$OG_TARGET_DIR/debug/og" test "$project"; rc=$?
       og_lock_release
       exit "$rc"
     ) 2>&1 | tee "$log"

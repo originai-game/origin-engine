@@ -1,5 +1,5 @@
 // The knowledge package as the platform receives it: `payload()` maps the
-// package (and, in the engine repository, templates/game) onto the
+// package (and, in the engine repository, packages/create/template) onto the
 // platform's production layout (`game/…`, `game-scaffold/…`) through
 // knowledge.json, and the helpers read what the platform's own tooling
 // reads (SKILL.md front matter, pack names and hashes).
@@ -18,7 +18,7 @@ export const PACKAGE_ROOT = join(import.meta.dir, "..");
 export interface Roots {
   /** packages/knowledge (or a copy of it). */
   readonly pkg: string;
-  /** The project template the scaffold overlay carries: templates/game in the repository, scaffold/template/ in the published package. */
+  /** The skeleton: packages/create/template in the repository, scaffold/template/ in the published package. */
   readonly template: string;
   /** packages/engine, whose version the scaffold pins. */
   readonly engine: string;
@@ -35,7 +35,7 @@ function isEnginePackage(dir: string): boolean {
 
 /** The roots in the engine repository (packages/knowledge beside packages/engine), or in the published @origingame/engine, whose knowledge/ this is. */
 export function defaultRoots(pkg = PACKAGE_ROOT): Roots {
-  const repoTemplate = join(pkg, "..", "..", "templates", "game");
+  const repoTemplate = join(pkg, "..", "create", "template");
   const parent = join(pkg, "..");
   return {
     pkg,

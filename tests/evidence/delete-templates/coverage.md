@@ -1,9 +1,15 @@
 # Phase 2: the gameplay templates go (plan and coverage, WIP)
 
-Status: **not started, plan only** (2026-11-06, delete-examples thread
-T-01a1b07f). Phase 1, examples/, landed at 876766dc0. This file lists what
-reads each phase-2 item and where each check moves, so a fresh thread can do
-the work. Nothing below is deleted yet.
+Status: **skeleton implemented, quick fixtures passed** (2026-11-06,
+delete-templates thread T-01a1b0c8-100e-77d8-864a-caab317a24a0).
+Phase 1, examples/, landed at 876766dc0; bilingual choice labels landed at
+495548fdb. The fixture migrations below remain planned: no template test
+path has moved yet. Creation now uses `packages/create/template`.
+The generated skeleton with look configuration passed `og check` and its
+native smoke (1,148 ms);
+the full `quick fixtures` gate passed, with subsequent runs skipping
+unchanged fixtures. No kept reference frame was re-recorded. The release
+archive/install test has not been rebuilt and run in this phase.
 
 The owner's brief (relayed by T-38e88112, revised 2026-11-06):
 
@@ -11,7 +17,9 @@ The owner's brief (relayed by T-38e88112, revised 2026-11-06):
   game, tsconfig, package.json, `tests/` and `assets/`. There is one skeleton
   for 2D and 3D alike.
 - The creation choices go into project.ogt's `create` block as constraints
-  and hints, never into code or assets.
+  and hints, never into gameplay. The coordinator's later correction makes
+  look configuration the exception: create writes a look file and names it
+  in the manifest, without patching source.
 - Delete templates/archetypes, templates/fx-showcase and the ui-kit gallery
   showcase.
 - templates/game and game-2d stop being games. Their content moves into the
@@ -56,7 +64,7 @@ The owner's brief (relayed by T-38e88112, revised 2026-11-06):
 - `@origingame/create`: `og create` writes one project skeleton plus a
   `create` block of constraints; it no longer copies the game, game-2d or
   archetype templates. `--archetype` and the 2D overlay are removed.
-  `applyCreation` writes no code or assets.
+  `applyCreation` is removed. Look configuration is written without source patches.
 - Dist layout: `create/` holds only the skeleton; `archetypes/`,
   `templates/game`, `templates/game-2d`, `templates/fx-showcase` and the
   ui-kit gallery are no longer in a version's archive.
@@ -72,7 +80,21 @@ The owner's brief (relayed by T-38e88112, revised 2026-11-06):
 > view, art style and mood, UI style, platform and input, players, languages,
 > music) are still chosen by the agent and passed to create as today. They
 > are written into project.ogt's `create` block as constraints and hints that
-> the agent and the skills read. They produce no code or assets.
+> the agent and the skills read. Creation also writes
+> `assets/looks/<id>.ogt` with `extends`, `mood`, and `ui`, and top-level
+> `look "looks/<id>.ogt"` in project.ogt. Ask 12 must use this configuration
+> instead of patching `og.game({})` in the entry. No gameplay or art is generated.
+>
+> `profile` remains an optional runtime/build setting. The skeleton omits
+> it; `create.view` is intent and does not replace it. `.gitattributes`
+> retains media's `filter=lfs diff=lfs merge=lfs -text` lines.
+>
+> Languages do not install or activate fonts. `og check` warns about
+> requested CJK and supported RTL languages without matching locale tables
+> and installed font chains. The og-i18n skill requires installing fonts,
+> declaring the chain and loading the table. This is the warning route
+> permitted by the coordinator: copying font files alone cannot activate
+> them, and generated locale-loading source would violate the empty entry.
 >
 > Please make three changes on your side:
 > 1. Stop relying on template content: the dropship scene, game-2d's keeper
@@ -85,3 +107,29 @@ The owner's brief (relayed by T-38e88112, revised 2026-11-06):
 > The choices schema keeps its version number and gains the bilingual labels
 > from the paused platform-scaffold-contract branch (6a62b9cd0). That
 > branch's 2D overlay is dropped. The archive no longer has `archetypes/`.
+
+### Exact skeleton payload change
+
+The signatures of `installed`, `mount`, `summary`, `payload`, `defaultRoots`,
+`Roots { pkg; template; engine }` and `PayloadFile` do not change. The
+repository's `Roots.template` now points at `packages/create/template`.
+The mounted `game-scaffold/origin-engine-ts/` keeps `project.ogt`,
+`src/main.ts`, `tsconfig.json`, `package.json`, `tests/smoke.og.ts`,
+`.gitignore`, `.gitattributes`, `origin-engine.json`, and `distribution.json`.
+`assets/.gitkeep` keeps the empty asset directory. `distribution.json`
+retains schema 1 with `files: []`.
+
+The raw mounted payload no longer supplies `assets/models/dropship.glb`, `walker.glb`,
+textures, audio, fonts, `assets/scenes/main.ogt`, `assets/looks/<id>.ogt`,
+starter UI/scripts, extra playtests, or `LICENSES.md`. The archive retains
+`overlay/`, `files/` (empty), and `create/template/`; it no longer supplies
+`archetypes/`, `create/archetypes/`, or `create/template-2d/`.
+`--profile` and `--archetype` are removed; the agent passes `--view` and the
+other choices, then authors the game. Both the creation and payload/layout
+changes have breaking entries in `packages/engine/changelog.json`.
+The create command writes `assets/looks/<id>.ogt` after copying this raw
+payload; callers that only mount files must invoke create to configure it.
+
+At the coordinator's explicit request these missing paths were relayed to
+origin-agent thread T-01a1b0ca-8527-7155-9ca3-754ac90ba663 before landing.
+The broader platform ask above remains a draft for the coordinator.

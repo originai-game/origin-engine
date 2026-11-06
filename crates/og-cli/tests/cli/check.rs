@@ -18,6 +18,52 @@ fn check_project() -> (PathBuf, PathBuf) {
 const TS2322: &str =
     "src/main.ts(1,7): error TS2322: Type 'string' is not assignable to type 'number'.\n";
 
+#[test]
+fn check_warns_when_requested_languages_lack_installed_font_chains() {
+    let (dir, game) = check_project();
+    std::fs::write(game.join("tsconfig.json"), r#"{"include":["src/**/*.ts"]}"#).unwrap();
+    let manifest = game.join("project.ogt");
+    let source = std::fs::read_to_string(&manifest).unwrap();
+    std::fs::write(
+        &manifest,
+        format!("{source}create {{\n lang \"ja-JP\" \"zh\" \"en\"\n}}\n"),
+    )
+    .unwrap();
+    let check = || {
+        let out = og().args(["check", "--json"]).arg(&game).output().unwrap();
+        assert!(out.status.success(), "{}", text(&out));
+        String::from_utf8_lossy(&out.stdout)
+            .lines()
+            .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap())
+            .find(|event| event["event"] == "locale-fonts")
+    };
+    assert_eq!(
+        check().unwrap()["locales"],
+        serde_json::json!(["ja-JP", "zh"])
+    );
+    std::fs::create_dir_all(game.join("assets/strings")).unwrap();
+    std::fs::write(
+        game.join("assets/strings/ja.ogt"),
+        "type strings\nversion 1\n---\nlocale \"ja\"\nfonts \"fonts/ja.ttf\"\n",
+    )
+    .unwrap();
+    assert_eq!(
+        check().unwrap()["locales"],
+        serde_json::json!(["ja-JP", "zh"])
+    );
+    std::fs::create_dir_all(game.join("assets/fonts")).unwrap();
+    // The lint checks installation, not glyph coverage or runtime loading.
+    std::fs::write(game.join("assets/fonts/ja.ttf"), b"font").unwrap();
+    assert_eq!(check().unwrap()["locales"], serde_json::json!(["zh"]));
+    std::fs::write(
+        &manifest,
+        format!("{source}create {{\n lang \"ja-JP\" \"en\"\n}}\n"),
+    )
+    .unwrap();
+    assert!(check().is_none());
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
 /// `og check` finds tsrs by OG_TSRS, then the engine package's
 /// node_modules/@tsrs/<platform>, then PATH, and reports its diagnostics
 /// as one `check` event; without any it falls back to tsgo through bun x.

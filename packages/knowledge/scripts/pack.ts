@@ -8,7 +8,7 @@ import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { defaultRoots, isText, PACKAGE_ROOT, TEMPLATE_SKIP, walk } from "./lib.ts";
 
-const source = join(PACKAGE_ROOT, "..", "..", "templates", "game");
+const source = join(PACKAGE_ROOT, "..", "create", "template");
 const target = join(PACKAGE_ROOT, "scaffold", "template");
 if (defaultRoots().template !== source) {
   process.stderr.write(`no ${source}: pack inside the engine repository\n`);

@@ -1,170 +1,80 @@
 # @origingame/create-game
 
-Scaffolds an Origin Engine game from a project template of the engine
-repository, the 3D template `templates/game` or the 2D starter
-`templates/game-2d`: `project.ogt`, `src/`, `assets/`, `tests/`,
-`package.json` and `tsconfig.json`, with the game's name and id filled in.
+`og create` (also `og new`) writes one empty project from `template/`:
+`project.ogt`, `src/main.ts`, `tsconfig.json`, `package.json`, `tests/`,
+and `assets/`. The entry exports `og.game({})`. There is no 2D or 3D
+variant, sample scene, gameplay, or installed art.
 
 ```sh
-og new my-game --name "My Game"                              # the og launcher: the latest release's create
-bun packages/create/bin/create.ts my-game --name "My Game"   # in the engine repository
-cd my-game && og cook && og run .
+og create my-game --name "My Game" --view side-2d --look 16bit-pixel --no-prompt
 ```
 
-`create [dir] [--name "Name"] [--id slug] [--profile 2d|3d] [--archetype name] [--premise "one line"] [--look slug] [--force]`: the
-id defaults to the name in lowercase-hyphen form (or the directory's name);
-a directory that is not empty is refused unless `--force` is given.
-`--profile 2d` writes the 2D starter (a courier's platformer: sprites,
-flipbooks, a tilemap with one-way ledges, 2D physics, a HUD and a pause
-menu, one playtest), `--profile 3d` the 3D template; without the flag, a
-premise that says 2D, platformer, side-scroller, metroidvania, pixel art,
-sprites or tiles without saying 3D gets the 2D starter, anything else the
-3D template. The output's `Profile:` line says which and why.
-`--archetype` starts from a complete game of `templates/archetypes/`
-instead of either template: `runner`, `match3`, `topdown`, `tower-defense`,
-`roguelike`, `idle`, `rhythm`, `third-person` or `arena` (the published package carries them under
-`archetypes/`); an archetype has its own profile, so `--profile` beside it
-is refused.
+The agent chooses genre, view, look, mood, UI style, platform, input,
+players, languages, and music. These choices are constraints and hints in
+`project.ogt`'s `create` block. Creation also writes `assets/looks/<id>.ogt`
+with the chosen preset, mood and UI pack, named by the manifest's top-level
+`look`. It generates no gameplay or art, and changes no publish settings.
+The agent builds the game with the engine API and skills after creation.
+`profile` remains an optional runtime/build setting, omitted here;
+`create.view` does not replace it. Requested languages need authored tables
+and installed font chains; `og check` warns when these are missing for CJK
+and supported RTL languages.
 
-Every game gets its look: `assets/looks/<id>.ogt`, an `.ogt` of `type look`
-(og-taste §12 of the knowledge package) that `GameDesc.look` in the entry
-names, applied before `start` runs. It `extends` a preset of the style
-catalogue (`packages/knowledge/looks/catalogue.json`, 37 styles):
+## Options and return value
 
-- `--look <slug>` names it (`anime-cel-3d`, `16bit-pixel`, …; a slug with
-  no preset is refused, listing those that have one);
-- `--premise "<one line>"` picks the style whose premise fits best (a word
-  of the premise in a style's genre counts 3, in its mood 2, in its era,
-  audience, name or descriptor 1; a tie goes to a style the engine draws
-  whole, then to catalogue order), among the styles whose `look.profiles`
-  include the game's profile: a 3D game never gets a flipbook-only style,
-  a 2D one never a style of lit meshes (`--look` names any). On a
-  terminal, with neither flag, create asks for the premise (`--no-prompt`
-  does not);
-- otherwise the template's own look stays: the plain template extends
-  `faceted-low-poly`, the idle archetype carries its UI style and render
-  settings, and the other archetypes get a look that extends nothing (their
-  frames stay as their `references/` recorded them).
+`create [dir] [--name "Name"] [--id slug] [--premise "one line"] [--force]`
+accepts `--genre`, `--view`, `--look`, `--mood`, `--ui`, `--platform`,
+`--input`, `--players`, `--lang en,zh`, and `--music`.
 
-The template's look file is renamed to the game's id, the blocks it sets
-are kept under the chosen preset (they win field by field), and an entry
-that names no look gets `look: "looks/<id>.ogt"` after `export default
-og.game({`. The game's README gains a "The look" section: where the file
-is, what it extends and how to change it. For an archetype, a preset moves
-the frames its `references/` hold; create says so and how to record them
-again.
+On a terminal, missing choices are prompted with inferred defaults.
+`--no-prompt` accepts those defaults. Explicit choices win. `--choices`
+remains accepted but is unnecessary: every invocation writes the block.
+`--archetype` and `--profile` are removed. Use `--view` to record the view.
 
-## Creation choices
+The id defaults to the name in lowercase-hyphen form, or the directory's
+name. A nonempty directory is refused unless `--force` is given. Force
+overwrites skeleton files, so it is not an update command for authored games.
 
-`og new game --choices --premise "a warm phone platformer"` resolves a
-complete selection and writes `project.ogt`'s `create` block. Any new
-choice flag also enables this path. On a terminal, missing fields are
-confirmed with their inferred defaults. `--no-prompt` accepts those defaults.
-Legacy noninteractive invocations and `create()` without `choices` retain
-their previous behavior.
+`create({ dir, name?, id?, premise?, look?, choices?, force?, catalogue? })`
+returns `{ dir, name, id, files, choices }`. The old `template`, `profile`,
+and `archetype` options and `Created.look`, `Created.profile`, and
+`Created.notes` fields are removed.
 
-The flags are `--genre`, `--view`, `--look`, `--mood`, `--ui`, `--platform`,
-`--input`, `--players`, `--lang en,zh`, and `--music`. Their values live in
-`bin/choices.ts`, except look slugs, which retain the existing catalogue.
-There are currently 14 installable UI packs; `cjk` and `shared` are asset
-directories, not UI styles. `ui` defaults to the selected look's UI pack.
+## Choice schema
 
-The additive exports are `CREATION_CHOICES`, `CreationChoices`,
-`CreationInput`, `creationSchema(lookSlugs)`, `parseCreationInput(value)`,
+`CREATION_CHOICES`, `CreationChoices`, `CreationInput`,
+`creationSchema(lookSlugs)`, `parseCreationInput(value)`,
 `inferCreationChoices(premise, input?, defaults?)`,
 `resolveCreationChoices(premise, input?, profile?, catalogue?)`, and
-`creationBlock(choices)`. `creationSchema` returns JSON Schema 2020-12.
-`inferCreationChoices` applies deterministic English/Chinese keyword rules;
-`resolveCreationChoices` also matches and validates the catalogue look.
-Explicit fields win. Languages default to Japanese for kana, Chinese for
-Han text, or English otherwise. Music defaults to `ambient`.
+`creationBlock(choices)` expose the selection contract.
 
-`create({ dir, premise, choices: {...} })` returns the resolved selection
-as `Created.choices`. It installs the chosen UI pack, writes orientation
-and DPR limits under `publish`, and generates `src/creation.ts` with
-quality and controls. Phone quality starts at `low`, other targets at
-`medium`. Touch controls sit inside the host's live safe area. The 2D
-starter uses a d-pad and action button; other views use a joystick and
-action button. Keyboard actions can be rebound through `og.input`.
+`creationSchema` returns JSON Schema 2020-12 with stable enum IDs. Its
+`x-labels` map supplies English and Simplified Chinese labels and
+descriptions for enum choices. Look entries supply Chinese copy; English
+look names and descriptions remain in the catalogue.
 
-Local and online multiplayer use arena, with two seats. Local keyboard
-seats use WASD/Space and arrows/Enter; gamepad seats use indices 0 and 1.
-Online input goes through `og.net.submit`, and `og.Lockstep` enables
-`og check`'s lint. Its room playtest compares both peers' shared hashes.
-Other archetypes currently support choice-driven keyboard input only;
-touch/gamepad requests are refused rather than silently ignored. Custom
-template directories retain the legacy `create()` path.
+The inference helpers suggest choices using English and Chinese keywords.
+They do not implement those choices. Languages default to Japanese for
+kana, Chinese for Han text, or English otherwise. Music defaults to ambient.
 
-`--lang` sets up the languages (bin/languages.ts): a string table per
-language under `assets/strings/` (the starter's own, the starters'
-translations in `templates/locales/strings/`, or an empty table the cook
-reports key by key), the face each script needs from
-`templates/locales/fonts/` (Japanese, Korean, Traditional Chinese, Arabic,
-Hebrew, Cyrillic and Greek; Simplified Chinese is the UI style's `cjk`
-companion) with its licence, `direction rtl` for Arabic and Hebrew, the
-pseudo-locale `qps-ploc` and `tools/pseudo-locale.ts` that remakes it, and
-`tests/locale-<tag>.og.ts` per language plus `tests/pseudo.og.ts`. The
-skills' og-i18n §0 says what each file is for. The additive exports are
-`canonicalTag`, `isRtl`, `localeScript`, `LocaleScript`, `PSEUDO_LOCALE`,
-`pseudoMessage` and `pseudoTable`. `templates/locales/make-fonts.py` remakes
-the faces from google/fonts.
+## Art and audio contracts
 
-Genre mappings, camera presets and mood rendering are deferred; music
-is a request (`audioBrief`), generated by the platform. The fields record intent, not completed
-assets. Changing `create` later does not rewrite source automatically:
-update the corresponding generated source, look or publish settings.
-Do not use `--force` to update an authored game; it overwrites template files.
+The package re-exports the knowledge package's art and audio briefs without
+changing their signatures. `bin/brief.ts` is copied byte-for-byte from
+`packages/knowledge/scripts/brief.ts` during prepack.
 
-## The art brief
+- `presetLook(slug)` reads a preset before a game has art.
+- `readLook(dir)` reads the project's configured look file.
+- `artBrief(look, kind, subject)` describes an asset's art requirements.
+- `audioBrief({ music, mood, genre, premise? })` describes music and effects.
+- `readAudioChoices(dir)` reads the `create` block.
+- `rigParts(template)` describes the auto-rig's layered-art contract.
 
-The package also exports the art brief (`import { artBrief, readLook,
-presetLook } from "@origingame/create-game"`): a game's look compiled into
-the request for one asset of a kind (`sprite`, `tileset`, `portrait`,
-`backdrop`, `prop`, `character`, `texture`, `icon`): the prompt (the
-style's direction, the palette as named colours with hex, the sizes, the
-line, the shape language, what to avoid), the reference images (the
-style's preview, then the game's accepted assets) and the generator's
-parameters (transparent and size for an image, the face budget and texture
-size for a model). `readLook(dir)` reads a scaffold's look (project.ogt's
-`look` line down to its preset); `presetLook(slug)` a preset alone, before
-the game exists. `bin/brief.ts` is a byte-for-byte copy of the knowledge
-package's `scripts/brief.ts`, whose README (§The art brief) documents the
-signature and shapes, a public contract kept stable. The prepack copies it
-with the presets and built-in palettes it reads (`presets/`), and the
-tests fail when the copy differs.
+UI packs, look presets, locale resources, and design tokens remain available
+separately. The cook resolves the look's preset and UI pack; locale fonts
+still need installation and loading as described by the og-i18n skill.
 
-## The audio brief
-
-`audioBrief({ music, mood, genre, premise? })`, from the same
-`bin/brief.ts`, turns the creation choices into the request for every music
-cue and sound effect the game needs, with the og cook presets that stand in
-until the files exist; `readAudioChoices(dir)` reads the create block. The
-knowledge package's README (§The audio brief) documents the shapes, a
-public contract kept stable, and docs/art.md §2.9 the rules.
-
-## The auto-rig's parts
-
-`rigParts(template)` (from the same `bin/brief.ts`) lists the layers a
-character's layered art needs for one of the auto-rig's templates
-(`RIG_TEMPLATES`: `humanoid-side`, `humanoid-front`, `quadruped`,
-`creature`), back to front: each part's layer name, whether the cook
-requires it, its side (`l`, `r` or null), the bone it drives, the parts
-it hangs from and a one-line note on how its joint is found from its
-overlap (or set by a `pivot` line). Another name throws, naming the four.
-The data is og-cook's templates, held equal by og-cook's
-`rig_parts_match_the_templates` test; the contract itself is docs/art.md
-§2.8 in the engine repository.
-
-The published package carries the 3D template under `template/`, the 2D
-starter under `template-2d/`, the style catalogue under `looks/` and the look presets under `presets/`, copied by the `prepack` script
-(`scripts/pack-template.ts`); build output (`cooked/`,
-`dist/`, `node_modules/`) is never copied. The template's `gitattributes`
-(media through Git LFS) is written as the project's `.gitattributes`: under
-its own name it would route the engine repository's plain-blob media through
-LFS too. `bun run test` scaffolds into a
-temporary directory and checks the result.
-
-Authors reach it as `og new <dir> [options]`: the og launcher runs this
-package's `bin/create.ts` from the engine's dist (`create/`, docs/release.md
-§1). It is no longer published to npm; the versions on npm up to 0.7.8-dev.17
-stay there.
+The release archive carries this package in `create/`. It ships one tracked
+`template/` and the catalogues and presets used by the briefs, but no
+`template-2d/` or `archetypes/`. `bun run test` checks source and packed
+creation against the same skeleton contract.

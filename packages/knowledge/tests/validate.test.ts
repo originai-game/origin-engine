@@ -83,15 +83,17 @@ test("a skill that names a tool no Session is offered is refused, outside code b
 
 test("a binary template file that differs from its digest, or is unlisted, is refused", () => {
   const p = added((r) => {
-    const glb = join(r.template, "assets/models/dropship.glb");
-    const bytes = readFileSync(glb);
-    bytes[100] = bytes[100]! ^ 0xff;
-    writeFileSync(glb, bytes);
+    writeFileSync(join(r.template, "assets/changed.bin"), new Uint8Array([0, 1, 2, 3]));
+    edit(join(r.pkg, "scaffold/distribution.json"), text => {
+      const dist = JSON.parse(text);
+      dist.files.push({ path: "assets/changed.bin", bytes: 4, sha256: "0".repeat(64), licence: "test", source: "test" });
+      return JSON.stringify(dist);
+    });
     writeFileSync(join(r.template, "assets/extra.bin"), new Uint8Array([0, 1, 2, 255]));
   });
   expect(p.sort()).toEqual([
+    "game-scaffold/origin-engine-ts/assets/changed.bin: differs from its distribution.json digest; run `bun scripts/scaffold.ts --write` after a deliberate asset change",
     "game-scaffold/origin-engine-ts/assets/extra.bin: a binary file distribution.json does not list; run `bun scripts/scaffold.ts --write`",
-    "game-scaffold/origin-engine-ts/assets/models/dropship.glb: differs from its distribution.json digest; run `bun scripts/scaffold.ts --write` after a deliberate asset change",
   ]);
 });
 

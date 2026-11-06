@@ -19,7 +19,7 @@
 //
 // --check writes nothing and exits 1 when the platform tree differs, naming
 // each added, changed and removed path. --commit mounts the package as
-// committed at <rev> (a `git archive` of packages/knowledge, templates/game
+// committed at <rev> (a `git archive` of packages/knowledge, packages/create/template
 // and packages/engine/package.json) instead of the working tree, so work in
 // progress in this checkout never reaches the platform. --package mounts the
 // knowledge of an installed @origingame/engine (the directory `bun install`
@@ -135,7 +135,7 @@ function pruneEmpty(dir: string): void {
 }
 
 /** What a mount reads from the engine repository. */
-export const SOURCES = ["packages/knowledge", "templates/game", "packages/engine/package.json"] as const;
+export const SOURCES = ["packages/knowledge", "packages/create/template", "packages/engine/package.json"] as const;
 
 const git = (repo: string, ...args: string[]) =>
   execFileSync("git", ["-C", repo, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();

@@ -15,6 +15,7 @@ path = "src/main.rs"
 og-anim = { path = "../og-anim" }
 og-api = { path = "../og-api" }
 og-idl = { path = "../og-idl" }
+og-i18n = { path = "../og-i18n" }
 og-core = { path = "../og-core" }
 og-cook = { path = "../og-cook" }
 og-bake = { path = "../og-bake" }

@@ -24,6 +24,19 @@ is one line here, written at the merge that changes
   seconds after the landing tick. `MotionGoalKind` gains `jump` and
   `MotionStatus` gains `airborne`. The motion model never decides takeoff,
   height or landing; its jump is drawn in place on the simulation's flight.
+- **Breaking: creation writes one empty skeleton.** `og create` records
+  genre, view, look, mood, UI style, platform, input, players, languages,
+  and music in `project.ogt`'s `create` block. It also configures the chosen
+  look, mood and UI in `assets/looks/<id>.ogt`, named by the manifest's
+  top-level `look`; the entry stays empty. It installs no gameplay,
+  art, controls, UI, or translations. `--archetype`, `--profile`, and the
+  `create()` options `template`, `archetype`, and `profile` are removed;
+  use `--view` for the intended view and build the game with the engine API.
+  `Created` returns `choices`, not `look`, `profile`, or `notes`.
+- **Breaking: the release archive has no archetypes or 2D starter.**
+  `create/template/` and the knowledge scaffold carry the same empty
+  skeleton; `archetypes/`, `create/archetypes/`, and `create/template-2d/`
+  are no longer shipped. The scaffold's binary distribution list is empty.
 - **Music clocks can start before world time zero.** `Music.start` no
   longer declares a minimum of zero, so starting partway through a song
   passes reflected field validation and default invariants.

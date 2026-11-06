@@ -17,20 +17,27 @@ these as the maker's decisions, not suggestions to replace during a build.
 
 For a new project, use `og new <dir> --choices --premise "..."` or pass
 the choice flags directly. The terminal confirms missing choices;
-`--no-prompt` accepts inference and defaults. The old noninteractive
-flags still produce the legacy starter when no choice flag is present.
+`--no-prompt` accepts inference and defaults. Every invocation writes the
+same empty skeleton: `project.ogt`, `src/main.ts` with `og.game({})`,
+tsconfig, package.json, `tests/` and `assets/`. There is no 2D or 3D
+variant, archetype, sample scene, or installed art.
 
-The generated `src/creation.ts` applies quality and binding presets.
-Touch controls use safe-area anchors. Local multiplayer has one
-`og.PlayerInput` per seat; online lockstep submits local controls through
-`og.net.submit`. Both currently start from arena. Read og-net before
-changing its input/simulation boundary, then run its two-peer playtest.
+Creation also writes `assets/looks/<id>.ogt` with the chosen preset, mood
+and UI pack, referenced by `project.ogt`'s top-level `look`. The cook
+resolves that configuration without changing the empty entry.
+`profile` remains a runtime setting, omitted by the skeleton;
+`create.view` records intent and does not replace it.
+
+Implement the remaining choices using the API and the relevant skill.
+Author the locale tables and install their font chains, configure
+input and publish settings, and build the gameplay. Touch controls need
+safe-area anchors. Local multiplayer needs one `og.PlayerInput` per seat;
+online lockstep submits local controls through `og.net.submit`. Read og-net
+before writing its input/simulation boundary and add a two-peer playtest.
 Do not enable lockstep on a game whose simulation still reads raw input.
 
-Genre mappings, camera presets, mood rendering, locale assets and music
-generation are separate work. A recorded choice is not proof those assets
-or systems exist. After changing a choice in an existing game's manifest,
-update its generated controls, publish settings or look as appropriate;
+A recorded choice is not proof that its assets or systems exist. Changing
+the `create` block never rewrites code, assets or runtime settings;
 `og new --force` replaces source files and is not an update command.
 
 
@@ -40,18 +47,16 @@ update its generated controls, publish settings or look as appropriate;
 
 The order the games found productive:
 
-1. **`project.ogt`** (§2): name, id, the engine pin, the profile, tick and
-   seed. The scaffold writes it (`og new <dir> --profile 2d`
-   writes the 2D starter, a platformer with sprites, a tilemap and 2D
-   physics, as does a premise that says 2D, platformer, side-scroller,
-   metroidvania or pixel art; `3d`, the default, the 3D template; an
-   archetype brings its own); change it there and nowhere else.
+1. **`project.ogt`** (§2): name, id, the engine pin, tick and seed.
+   The scaffold writes it and the `create` choices. Add runtime settings
+   such as the profile and scenes as the game needs them; `--view side-2d`
+   records a view constraint but does not select a different skeleton.
 2. **`GameDesc`** in `src/main.ts` (§3): the scene, the look, the systems,
    and from the start a command for each state a test must reach (`play`,
    `warp:<where>`) and facts for what it must check.
 3. **Assets by script**: `tools/make-assets.*` writes every texture,
-   tileset, map, flipbook, emitter, sound and look deterministically (every
-   game and archetype does), with import settings beside each source
+   tileset, map, flipbook, emitter, sound and look deterministically,
+   with import settings beside each source
    (§5, og-2d §1, og-render §2). Rerun it after a change; never hand-edit its outputs.
 4. **Cook** (`og cook`, og-build §1): read every refusal, it names the line
    and the fix.

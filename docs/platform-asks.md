@@ -67,6 +67,12 @@ steal; the host ABI is the only route to platform APIs).
 
 ## The style step: a look from the premise
 
+Skeleton contract update to ask 12: pass the confirmed `look`, `mood`, and
+`ui` to `og create`. It writes `assets/looks/<id>.ogt` and the top-level
+`look "looks/<id>.ogt"` in `project.ogt`. The platform no longer writes
+that file or patches `og.game({})`. This replaces the source-patching
+instruction in the historical ask below; the picker and critic stay unchanged.
+
 | # | Ask | Why | Before | State |
 |---|---|---|---|---|
 | 12 | The game wizard gains a **style** step between the premise and the first build. It reads the style catalogue the knowledge package mounts beside og-taste (`game/skills/og-taste/looks/catalogue.json`, `schemaVersion` 1) and matches the premise's genre, mood, era and audience against each entry's `premise.genre`, `premise.mood`, `premise.era` and `premise.audience` (genre first; `@origingame/create-game`'s `pickStyle` weighs them 3, 2, 1, 1 and the `name` and `descriptor` 1, preferring `look.support` `full` on a tie), offering only entries whose `look.presetReady` is true. It shows two or three entries by `name`, `descriptor` and `look.support` (with `look.missing` read out for `partial`, `planned` and `content`: a content style needs authored art the platform must budget for), and lets the maker pick or override. It then writes the choice into the project: `assets/looks/<game>.ogt` (`type look`, `name`, `extends "<slug>"`) and `look: "looks/<game>.ogt"` in the entry's `og.game({...})`, which `npm create @origingame/game -- --look <slug>` (or `--premise "<line>"`) already does; fills `artBibleTemplate` with the entry (`direction`, `palette`, `assets`, `skin`, `artBible.avoid`) and the project's premise, camera and platform, and keeps that art bible with the game as the brief for every later asset request. Its critic stage hands the entry's three `checks` to the blind critic: the critic gets the captured frames (title, play and results, from `og run --headless --commands` screenshots) and the three checks as written, never the code, the style's name or the slug, and answers each check pass or fail per frame with the region it read; a fail goes back to the build agent with the check's text, and the style is not changed to make a check pass. | A game's look is chosen once and then held by data (og-taste §1, §12); choosing it in the wizard puts the decision where the premise is, before any asset is made, and the checks give the critic something a frame can prove instead of "does it look good". The checks are written to be judged on one frame without context (`looks/catalogue.json`: exactly three per style, the knowledge package's validator refuses fewer), so the critic can stay blind to what was intended. | Without it the build agent may or may not pick a style. | Landed in origin-agent (picker, change until the first build, `critique_style` the blind critic). As widened (`docs/art.md` §4): the style is chosen on the home page when a game is created, from cards with each style's preview (catalogue schema 2's `preview`, the webp under `previews/` of the engine's knowledge and `@origingame/create-game`) and its `look.layers`; a game is not created without one. The engine side is catalogue schema 2 (previews, layers, families) and the art contract and conformance of `docs/art.md`. The platform owns the picker, the critic's prompt and where the art bible is kept. |
@@ -212,8 +218,8 @@ create package, not a separate platform vocabulary:
   choices. The language heuristic recognizes kana and Han text, otherwise
   defaults to English; the platform can supply a more accurate locale.
 - Send the confirmed object as `create({ dir, premise, choices })` or the
-  corresponding `og new` flags with `--no-prompt`. A `choices: {}` request
-  opts into this path; old API callers retain their existing behavior.
+  corresponding `og new` flags with `--no-prompt`. All callers get one
+  empty skeleton; there are no archetypes or 2D overlays.
 - Keep the resulting `project.ogt` `create` block as the decisions the
   build agent reads. Do not store an independent editable copy of those
   values that can diverge from the project.
@@ -228,17 +234,22 @@ The complete shape is:
 }
 ```
 
-The engine installs the UI style, sets publish orientation and DPR,
-applies a quality preset, and wires controls in its supported starters.
-Multiplayer currently selects arena. Local play assigns two input seats;
-online play uses `og-net` and includes a two-peer hash test. Incompatible
-explicit archetypes are refused before creating files.
+The engine writes look configuration as ask 12 now specifies. The cook
+resolves the preset, mood and UI pack. The entry remains `og.game({})`.
+The other choices are constraints for the agent, not generated controls,
+translations, cameras, multiplayer or music.
 
-Do not promise genre-specific archetypes, view cameras, mood-adjusted
-looks, translated assets or generated music from this revision. Their fields record the choices for later work. Changes after creation
-need the corresponding authored source/settings update; `--force` is not
-an update API. All exports above are additions. `artBrief`, `readLook`,
-`presetLook` and the knowledge mounting contracts keep their signatures.
+`profile` remains an optional runtime/build setting in project.ogt, omitted
+by the skeleton. `create.view` records intent and does not replace it.
+Languages do not install font chains: `og check` and og-i18n warn about
+missing tables and fonts, and the agent installs and loads them before
+rendering localized text. The lint does not prove glyph coverage.
+
+Changes after creation need the corresponding authored source/settings
+update; `--force` is not an update API. `artBrief`, `readLook`, `presetLook`
+and the knowledge mounting contracts keep their signatures. The mounted
+payload and archive contents change; see the breaking changelog and
+`tests/evidence/delete-templates/coverage.md` for exact removed paths.
 
 ## Music and sound generation from the audio brief
 

@@ -87,7 +87,7 @@ export function inferCreationChoices(premise: string, input: CreationInput = {},
   return { ...base, ...parseCreationInput(defaults), ...suggestions, input: suggestions.input ?? defaults.input ?? (platform.startsWith("phone-") ? "touch" : "keyboard-mouse"), ...validated };
 }
 
-/** The canonical project.ogt block. Runtime settings are generated from this selection. */
+/** The canonical project.ogt block: constraints and hints, not runtime settings. */
 export function creationBlock(choices: CreationChoices): string {
   const checked = inferCreationChoices("", choices);
   return `create {\n${Object.entries(checked).map(([key, value]) => `  ${key} ${Array.isArray(value) ? value.map(v => JSON.stringify(v)).join(" ") : JSON.stringify(value)}`).join("\n")}\n}\n`;

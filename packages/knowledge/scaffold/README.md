@@ -1,27 +1,27 @@
 # The Origin Engine scaffold
 
-What `og new` (the dist's `create/`, `@origingame/create-game`) produces: a copy
-of the engine repository's `templates/game/` with the project's `name` and
-`id` filled in. The platform mounts it as the scaffold overlay
-`game-scaffold/origin-engine-ts/` (`knowledge.json`); it stands alone, never
-on top of the Web scaffold's `shared/`.
+The scaffold is `packages/create/template/`: one empty project for every
+genre and view. The platform mounts its text as
+`game-scaffold/origin-engine-ts/`. It does not layer over the web scaffold.
 
 | Path | Role |
 |---|---|
-| `project.ogt` | The manifest every `og` command reads: `name`, `id`, `engine` (the pinned `@origingame/engine` version), `entry`, `profile` (`"2d"` or `"3d"`), `tick`, `seed`, `scenes` (name to scene path under `assets/`), `scene` (the first one) and `publish` (`probe player`: a publish build keeps only the player-facing probe members; `out` the build directory) |
-| `src/main.ts` | The game entry: components, systems and `export default og.game({...})`, starting from the design's hello world and loading `scenes/main.ogt` |
-| `package.json` | `@origingame/engine` pinned to the same version as `project.ogt`; scripts `dev`, `start`, `build`, `publish-build`, `cook`, `test` calling `og` |
-| `tsconfig.json` | Strict TypeScript over `src/` and `tests/` |
-| `tests/smoke.og.ts` | The first playtest `og test` runs headless through `og run --commands` |
-| `assets/` | Source assets with their import settings and licences: `scenes/main.ogt`, the game's look `looks/<id>.ogt` (extending a catalogue preset; `GameDesc.look` names it, og-taste §12), two glTF models, two textures (one normal map), a sound and a CJK-subset font |
-| `LICENSES.md` | One row per asset: licence and origin |
-| `.gitignore` | `cooked/`, `dist/` and `node_modules/` are build output |
-| `.gitattributes` | Media (models, textures, audio, fonts) through Git LFS; `.ogt` and `.ts` text with LF endings. The template stores it as `gitattributes`, renamed by the scaffolder and the mount, because the engine repository keeps the template's media as plain blobs |
+| `project.ogt` | Name, id, engine pin, entry, tick rate, seed, and publish settings |
+| `src/main.ts` | An empty `export default og.game({})` |
+| `package.json` | Commands that call the installed `og` |
+| `tsconfig.json` | Strict TypeScript over source and tests |
+| `tests/smoke.og.ts` | A start-and-quit playtest |
+| `assets/.gitkeep` | Keeps the empty source-asset directory in the payload |
+| `.gitignore` | Excludes cooked assets, build output, and local installs |
+| `.gitattributes` | Routes future media through Git LFS |
 
-`origin-engine.json` pins the engine package and version, the template and
-the probe protocol (5, wire 1). `distribution.json` names every binary file
-(models, textures, audio, fonts) with its size, SHA-256 and licence, because
-the platform's knowledge payload is UTF-8 text only; the scaffolder copies
-binaries from the published template and checks the digests.
-`bun scripts/scaffold.ts --write` regenerates it after a deliberate asset
-change, and `bun run test` fails while it is stale.
+`og create` fills the name and id and appends the agent's choices in a
+`create` block. Genre, view, look, mood, UI style, platform, input, players,
+languages, and music are constraints and hints. Create also writes
+`assets/looks/<id>.ogt` with the preset, mood and UI, and names it in
+project.ogt. Mounting the raw payload alone does not perform this step.
+No gameplay or art is generated.
+
+`origin-engine.json` pins the engine and probe protocol. `distribution.json`
+keeps its schema and has an empty file list: the skeleton has no binary
+assets. `bun scripts/scaffold.ts --write` regenerates that manifest.

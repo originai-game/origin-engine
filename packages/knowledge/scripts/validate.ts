@@ -64,7 +64,7 @@ export const GUIDE_CITERS = ["crates/og-cli/src/migrate.rs"] as const;
 export const TEMPLATE_FILES = ["project.ogt", "src/main.ts", "package.json", "tsconfig.json", "tests/smoke.og.ts"] as const;
 
 /** The keys project.ogt must set (scaffold/README.md). */
-export const PROJECT_KEYS = ["name", "id", "engine", "entry", "profile", "tick", "seed", "scenes", "scene", "publish"] as const;
+export const PROJECT_KEYS = ["name", "id", "engine", "entry", "tick", "seed", "publish"] as const;
 
 const GENERATED = "<!-- Generated from crates/og-api/api.ogt";
 const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });

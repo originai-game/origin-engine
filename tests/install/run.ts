@@ -28,8 +28,8 @@
 //   4. `og check`, `og test` (frames unchecked without a renderer), `og build
 //      --publish`: og-build.json names the version, the shipped publish wasm is
 //      the dist's byte for byte
-//   5. the runner archetype through steps 2 to 4's test
-//   6. the 2D starter (`--profile 2d`) through the same test
+//   5. a non-default selection through steps 2 to 4's test (legacy runner with --core)
+//   6. a side-2d choice writes the same skeleton, then checks and tests it
 //   7. the knowledge inside the dist's engine/ (knowledge/): its validate.ts,
 //      mount.ts --package into a stand-in origin-agent knowledge/ tree, then --check
 //   8. a project with an MP3 sound (fixtures/tone.mp3): og run cooks it, plays
@@ -148,7 +148,7 @@ function install(step: Step, work: string): string {
   const build = (JSON.parse(readFileSync(join(dist, "origin-engine.json"), "utf8")) as { build: { version: string; target: string; triple: string; og: string } }).build;
   if (build.version !== VERSION || build.target !== PLATFORM || build.triple !== TRIPLE) step.fail(`origin-engine.json's build record: ${JSON.stringify(build)}`);
   if (sha256(join(dist, "bin", windows ? "og.exe" : "og")) !== build.og) step.fail("bin/og is not the build record's og");
-  for (const f of ["overlay/project.ogt", "archetypes/runner/project.ogt", "create/bin/create.ts", "engine/dist/web-publish/origin-engine_bg.wasm", "engine/dist/web-publish-2d/origin-engine_bg.wasm", "engine/dist/web-publish/origin-engine-lanes_bg.wasm", "engine/shell", "engine/types/index.d.ts", "engine/schema/api.schema.json", `engine/native/origin-engine.${PLATFORM}.node`]) {
+  for (const f of ["overlay/project.ogt", "create/template/project.ogt", "create/bin/create.ts", "engine/dist/web-publish/origin-engine_bg.wasm", "engine/dist/web-publish-2d/origin-engine_bg.wasm", "engine/dist/web-publish/origin-engine-lanes_bg.wasm", "engine/shell", "engine/types/index.d.ts", "engine/schema/api.schema.json", `engine/native/origin-engine.${PLATFORM}.node`]) {
     if (!existsSync(join(dist, f))) step.fail(`the dist has no ${f}`);
   }
   const list = run(step, [...ogCmd, "engine", "list"], work);
@@ -191,7 +191,7 @@ function host(): void {
     // 2. The scaffold: og new, from the dist's create/.
     step = new Step("2 og new");
     const demo = scaffold(step, work, "demo", "--name", "Demo");
-    for (const f of ["project.ogt", "src/main.ts", "tests", "assets/looks/demo.ogt", ".gitignore", ".gitattributes"]) {
+    for (const f of ["project.ogt", "src/main.ts", "tests", "assets", ".gitignore", ".gitattributes"]) {
       if (!existsSync(join(demo, f))) step.fail(`the scaffold wrote no ${f}`);
     }
     if (!CORE && readFileSync(join(demo, "package.json"), "utf8").includes("@origingame/engine")) step.fail("the scaffold's package.json depends on @origingame/engine");
@@ -233,12 +233,11 @@ function host(): void {
       const ui = run(step, [...ogCmd, "ui", "check", ".", "--breakpoints", "desktop,phoneLandscape", "--locales", "game", "--scales", "100", "--json"], demo, { allowFail: true });
       if (ui.status !== 0) step.fail(`og ui check exited ${ui.status}\n${ui.stderr.slice(-2000)}`);
       const checked = JSON.parse(ui.stdout.trim().split("\n").at(-1)!) as { cells: number; findings: Array<{ at?: unknown[] }>; measures: number; frames?: Array<{ viewport: number[] }> };
-      if (!(checked.cells > 0) || checked.frames?.length !== checked.cells || !(checked.measures > 0)) step.fail(`og ui check --json: ${ui.stdout.slice(0, 400)}`);
+      if (!(checked.cells > 0) || checked.frames?.length !== checked.cells || checked.measures !== 0) step.fail(`og ui check on the empty skeleton --json: ${ui.stdout.slice(0, 400)}`);
       if (checked.findings.some((f) => !Array.isArray(f.at))) step.fail("og ui check --json: a finding without its places (at)");
       log(`   og ui check: ${checked.cells} cell(s), ${checked.findings.length} finding(s)`);
       // The reviewer's other two: og style check at desktop and phone size (labelled frames with their tier), and a region
       // of one of them measured by og frame measure.
-      // Exit 3 is the template's dropship off faceted-low-poly's face budget (project.ogt says so): still a run.
       const style = run(step, [...ogCmd, "style", "check", ".", "--title", "0.5:screenshot", "--sizes", "desktop,phone", "--json"], demo, { allowFail: true });
       const styled = JSON.parse(style.stdout.trim().split("\n").at(-1)!) as { frames: Array<{ label: string; path: string; size: number[] }>; frameErrors?: string[] };
       if (renderer?.[1] === "none") {
@@ -255,25 +254,24 @@ function host(): void {
         const ratio = (JSON.parse(measured.stdout) as { metrics: { contrast: { ratio: number } } }).metrics.contrast.ratio;
         if (!(ratio >= 1)) step.fail(`og frame measure printed ${measured.stdout.slice(0, 200)}`);
       }
-
-    
     }
 
-    // 5. An archetype.
-    step = new Step("5 the runner archetype");
-    const runner = scaffold(step, work, "demo-runner", "--name", "Demo Runner", "--archetype", "runner");
-    for (const f of [".gitignore", ".gitattributes"]) if (!existsSync(join(runner, f))) step.fail(`the archetype scaffold wrote no ${f}`);
+    // 5. A non-default selection; --core keeps the historical archive check.
+    step = new Step("5 a second creation selection");
+    const runner = scaffold(step, work, "demo-runner", "--name", "Demo Runner", ...(CORE ? ["--archetype", "runner"] : ["--genre", "runner", "--players", "online-lockstep"]));
+    for (const f of [".gitignore", ".gitattributes"]) if (!existsSync(join(runner, f))) step.fail(`the scaffold wrote no ${f}`);
     og(step, runner, "test", ".");
 
     if (!CORE) {
-      // 6. The 2D starter: create/'s template-2d/, written for --profile 2d.
-      step = new Step("6 the 2D starter (--profile 2d)");
-      const flat = scaffold(step, work, "demo-2d", "--name", "Demo 2D", "--profile", "2d");
-      for (const f of ["project.ogt", "src/main.ts", "tests", "assets/looks/demo-2d.ogt", ".gitignore", ".gitattributes"]) {
+      // 6. The view is a constraint, never a different skeleton.
+      step = new Step("6 side-2d uses the same skeleton");
+      const flat = scaffold(step, work, "demo-2d", "--name", "Demo 2D", "--view", "side-2d");
+      for (const f of ["project.ogt", "src/main.ts", "tests", "assets/.gitkeep", ".gitignore", ".gitattributes"]) {
         if (!existsSync(join(flat, f))) step.fail(`the 2D scaffold wrote no ${f}`);
       }
       const manifest2d = readFileSync(join(flat, "project.ogt"), "utf8");
-      if (!/^profile\s+"2d"/m.test(manifest2d)) step.fail("the 2D scaffold's project.ogt has no `profile \"2d\"` line");
+      if (!/^\s+view "side-2d"$/m.test(manifest2d) || /^profile /m.test(manifest2d)) step.fail("the 2D view must appear only in the create block");
+      if (readFileSync(join(flat, "src/main.ts"), "utf8") !== readFileSync(join(demo, "src/main.ts"), "utf8")) step.fail("the view changed the skeleton's code");
       const pinned2d = /^engine\s+"([^"]+)"/m.exec(manifest2d)?.[1];
       if (pinned2d !== VERSION) step.fail(`the 2D scaffold's project.ogt pins engine "${pinned2d}", expected "${VERSION}"`);
       og(step, flat, "check", ".");
@@ -355,6 +353,7 @@ function host(): void {
       };
       const before = packs();
       if (before.has("fantasy")) step.fail(`the demo cooks fantasy before a look names it: ${[...before].join(", ")}`);
+      mkdirSync(join(demo, "assets", "looks"), { recursive: true });
       writeFileSync(join(demo, "assets", "looks", "fantasy-ui.ogt"), "type look\nversion 1\n---\nui \"fantasy\"\n");
       const after = packs();
       const cooked = readFileSync(join(demo, "cooked", ".cook.ogt"), "utf8");

@@ -90,7 +90,7 @@ test("an invalid package mounts nothing", () => {
   // A copy of the engine repository's mounted sources with a broken skill.
   const roots = defaultRoots();
   cpSync(roots.pkg, join(dir, "packages/knowledge"), { recursive: true, filter: (s) => !s.includes("node_modules") });
-  cpSync(roots.template, join(dir, "templates/game"), { recursive: true, filter: (s) => !/\/(cooked|dist|node_modules|og-out)(\/|$)/.test(s) });
+  cpSync(roots.template, join(dir, "packages/create/template"), { recursive: true, filter: (s) => !/\/(cooked|dist|node_modules|og-out)(\/|$)/.test(s) });
   mkdirSync(join(dir, "packages/engine"), { recursive: true });
   cpSync(join(roots.engine, "package.json"), join(dir, "packages/engine/package.json"));
   const skill = join(dir, "packages/knowledge/skills/og-core/SKILL.md");

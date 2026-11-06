@@ -38,7 +38,7 @@ export function distribution(template: string): string {
       bytes: f.bytes.length,
       sha256: sha256(f.bytes),
       licence: lic.get(f.rel) ?? "unrecorded: add it to the template's LICENSES.md",
-      source: `templates/game/${f.rel} of origingame/origin-engine; shipped in @origingame/create-game's template/`,
+      source: `packages/create/template/${f.rel} of origingame/origin-engine; shipped in @origingame/create-game's template/`,
     }));
   return `${JSON.stringify(
     {

@@ -1,5 +1,5 @@
 {
-  "extends": "../../templates/game/tsconfig.json",
+  "extends": "../../packages/create/template/tsconfig.json",
   "compilerOptions": {
     "paths": {
       "@origingame/engine": ["../../packages/engine/types/index.d.ts"],

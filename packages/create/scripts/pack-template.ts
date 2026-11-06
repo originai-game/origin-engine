@@ -1,47 +1,11 @@
-// prepack: copies the engine repository's templates/game into ./template/
-// and templates/game-2d into ./template-2d/, so the published package
-// carries the templates it scaffolds (one per profile). Build output
-// (cooked/, dist/, node_modules/) is left out.
-import { cpSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync } from "node:fs";
+// The skeleton is tracked in template/. Pack only its supporting catalogues.
+import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { SKIPPED } from "../bin/create.ts";
+import { TEMPLATE_SKIP } from "../../knowledge/scripts/lib.ts";
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
-// npm drops .gitignore from a tarball: stored as `gitignore`, create writes it back as `.gitignore` (RENAMED).
-function undot(project: string) {
-  if (existsSync(join(project, ".gitignore"))) renameSync(join(project, ".gitignore"), join(project, "gitignore"));
-}
-for (const [from, to] of [
-  ["game", "template"],
-  ["game-2d", "template-2d"],
-]) {
-  const source = join(pkg, "..", "..", "templates", from!);
-  const target = join(pkg, to!);
-  if (!existsSync(join(source, "project.ogt"))) {
-    console.error(`pack-template: no template at ${source}; run inside the origin-engine repository`);
-    process.exit(1);
-  }
-  rmSync(target, { recursive: true, force: true });
-  cpSync(source, target, {
-    recursive: true,
-    filter: (path) => !(dirname(path) === source && SKIPPED.has(basename(path))),
-  });
-  undot(target);
-  console.log(`pack-template: ${source} -> ${target}`);
-}
-// The archetypes, each a complete project, under ./archetypes/<name>/.
-const archetypes = join(pkg, "..", "..", "templates", "archetypes");
-const archTarget = join(pkg, "archetypes");
-rmSync(archTarget, { recursive: true, force: true });
-if (existsSync(archetypes)) {
-  cpSync(archetypes, archTarget, {
-    recursive: true,
-    filter: (path) => !SKIPPED.has(basename(path)),
-  });
-  for (const a of readdirSync(archTarget)) if (existsSync(join(archTarget, a, "project.ogt"))) undot(join(archTarget, a));
-  console.log(`pack-template: ${archetypes} -> ${archTarget}`);
-}
+const filter = (path: string) => !TEMPLATE_SKIP.has(basename(path)) && !lstatSync(path).isSymbolicLink();
 // The style catalogue the look is chosen from, under ./looks/, and each
 // style's preview under ./previews/: the catalogue's `preview`
 // (previews/<slug>.webp) resolves against the package root here as in the
@@ -56,7 +20,7 @@ if (!existsSync(catalogue)) {
 mkdirSync(looksTarget, { recursive: true });
 cpSync(catalogue, join(looksTarget, "catalogue.json"));
 rmSync(join(pkg, "previews"), { recursive: true, force: true });
-cpSync(join(pkg, "..", "knowledge", "previews"), join(pkg, "previews"), { recursive: true });
+cpSync(join(pkg, "..", "knowledge", "previews"), join(pkg, "previews"), { recursive: true, filter });
 console.log(`pack-template: ${catalogue} -> ${looksTarget}/catalogue.json, previews/`);
 
 // The art brief: bin/brief.ts is the knowledge package's scripts/brief.ts,
@@ -70,15 +34,15 @@ const presetsTarget = join(pkg, "presets");
 rmSync(presetsTarget, { recursive: true, force: true });
 mkdirSync(join(presetsTarget, "assets"), { recursive: true });
 for (const name of readdirSync(looksDir)) if (name.endsWith(".ogt")) cpSync(join(looksDir, name), join(presetsTarget, name));
-cpSync(join(looksDir, "assets", "palettes"), join(presetsTarget, "assets", "palettes"), { recursive: true });
-cpSync(join(looksDir, "moods"), join(presetsTarget, "moods"), { recursive: true });
+cpSync(join(looksDir, "assets", "palettes"), join(presetsTarget, "assets", "palettes"), { recursive: true, filter });
+cpSync(join(looksDir, "moods"), join(presetsTarget, "moods"), { recursive: true, filter });
 console.log(`pack-template: ${brief} -> bin/brief.ts, ${looksDir} -> presets/`);
 
 const stylesTarget = join(pkg, "styles");
 rmSync(stylesTarget, { recursive: true, force: true });
-cpSync(join(pkg, "../../templates/styles"), stylesTarget, { recursive: true });
+cpSync(join(pkg, "../../templates/styles"), stylesTarget, { recursive: true, filter });
 
-// The locale faces and the starters' translations og new --lang installs (bin/languages.ts).
+// Locale resources remain available independently of creation choices.
 const localesTarget = join(pkg, "locales");
 rmSync(localesTarget, { recursive: true, force: true });
-cpSync(join(pkg, "../../templates/locales"), localesTarget, { recursive: true, filter: (path) => !path.endsWith(".py") });
+cpSync(join(pkg, "../../templates/locales"), localesTarget, { recursive: true, filter: (path) => filter(path) && !path.endsWith(".py") });

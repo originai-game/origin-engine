@@ -16,15 +16,14 @@ og-feel's; this is the taste.
 Read the `create` block in `project.ogt` first. Its `look` is the chosen
 catalogue slug; `mood` is the requested tone, and `ui` is an independent
 style choice. An explicit UI choice wins over the look preset's `ui`
-line. Creation installs that pack under `assets/styles/<ui>/` and points
-the game's look at it. Customize the installed style for this game.
+line. Creation writes `assets/looks/<id>.ogt` with `extends`, `mood` and
+`ui`, and names it in `project.ogt`. The cook resolves the built-in pack.
+Customize that look for this game; use `og style add` to edit a local pack.
 
 Keep `view`, `platform` and `input` in the art brief: a phone portrait HUD
 and a desktop first-person HUD need different compositions. Inspect both
-the controls and the safe area in a captured frame. The mood is recorded
-now; it does not yet modify the palette, lighting or `artBrief` output.
-Do not report that a mood has been applied until the game's look actually
-implements it. Music and language choices likewise need their own assets.
+the controls and the safe area in a captured frame. The mood configures the
+look's mood layer. Music and language choices need their own assets.
 
 ## What works
 
@@ -56,10 +55,9 @@ game can hold on every frame. Some premises and where they land:
 | a narrative puzzle, gentle and sad | `watercolor-wash` | translucent washes granulated into the paper, pigment pooled in thin rims where they meet |
 
 `og new <dir> --premise "<one line>"` does this match
-for a new game and writes the result (`--look <slug>` names it instead):
-`assets/looks/<game>.ogt` extending the preset, named by `GameDesc.look`
-and by project.ogt's `look` line, with a README section on changing it.
-For a game that exists, write the same file by hand (§12), add `look
+for a new game and records the slug in the `create` block (`--look <slug>`
+names it instead). Author `assets/looks/<game>.ogt` extending that preset
+(§12), add `look
 "looks/<game>.ogt"` to project.ogt (the cook reads the style's art
 contract from it) and leave `GameDesc.look` out, or name the same file.
 The entry also names the palette rules, the asset specs and the UI style
@@ -428,7 +426,8 @@ package's `knowledge/`) shows the style as a game.
 style draws for: `["2d"]` for flipbooks, hand-placed pixels and paper
 cut-outs, `["3d"]` for lit meshes, toon materials and voxels, both for a
 post treatment that frames either. `create --premise` matches only among the
-styles of the game's profile (`--profile`, else the premise's, else 3D);
+styles compatible with the selected view (2D for `side-2d` and `top-down-2d`,
+3D otherwise);
 `--look` names any style and wins.
 
 **Read `look.views` and `look.mood`.** `views` names the views a style
@@ -437,7 +436,7 @@ suits (`side-2d`, `top-down-2d`, `isometric-2.5d`, `third-person-3d`,
 draw: shortlist among the styles that suit the game's view. `mood` is the
 mood the preset is drawn in, one of `bright`, `dark`, `warm`, `cold`,
 `soft` and `high-contrast`. A game asks another with one line in its look,
-`mood "dark"` (`og new --mood dark` writes it): the cook lays the mood's
+`mood "dark"` (author this from the `create` block's mood): the cook lays the mood's
 grading, light and, for a palette-bound style, its palette over the
 preset, and your own fields still win (§13). The art brief reads it, so
 every asset is requested lit and coloured for the mood; change the mood
@@ -627,7 +626,7 @@ ArtPixels {
 Every field is no constraint at zero, so an override to `0` (or `false`,
 or the empty list) releases a constraint the preset sets. project.ogt's
 `look "looks/<game>.ogt"` names the look the cook reads the contract from;
-`create` writes it. The art brief (§1) writes the contract's numbers into
+author that line after creating the look. The art brief (§1) writes the contract's numbers into
 every asset request (the palette as names and hex, the sizes, the line, the
 face budget), the cook conforms each asset to them and lists what it
 changed (og-build §8), and you check each asset against them in the game,
@@ -840,7 +839,7 @@ ArtMotion {
   field by field, as the frame's. Lists take one line (`spriteSizes 16
   32`), and the cook checks every field as it checks the frame's.
 - `project.ogt`'s `look "looks/<id>.ogt"` names the look whose contract
-  the cook reads (`create` writes it beside `GameDesc.look`); the cook's
+  the cook reads (author it explicitly after creation); the cook's
   report on that look lists the art resources it sets. Without the line
   the cook reads no contract.
 - They are resources, so game code reads the contract too (a system lists

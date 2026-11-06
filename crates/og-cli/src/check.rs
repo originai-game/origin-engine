@@ -44,7 +44,7 @@ pub const TSGO_VERSION: &str = "7.0.2";
 
 /// The template's compiler options: the options of a project without a
 /// tsconfig.json of its own.
-const TEMPLATE_TSCONFIG: &str = include_str!("../../../templates/game/tsconfig.json");
+const TEMPLATE_TSCONFIG: &str = include_str!("../../../packages/create/template/tsconfig.json");
 
 const USAGE: &str =
     "usage: og check [project|entry|tsconfig.json] [--json] [--checkers N] [--tool tsrs|tsgo]";
@@ -722,8 +722,8 @@ impl Target {
                 }
             }
         } else {
-            let template: serde_json::Value =
-                serde_json::from_str(TEMPLATE_TSCONFIG).expect("templates/game/tsconfig.json");
+            let template: serde_json::Value = serde_json::from_str(TEMPLATE_TSCONFIG)
+                .expect("packages/create/template/tsconfig.json");
             let mut options = template["compilerOptions"].clone();
             // The template's paths name `.og/engine` relative to a game's
             // own tsconfig, not to this generated one.
@@ -833,7 +833,83 @@ pub fn gate(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
         eprintln!("{}", report.summary());
     }
     lockstep_lint(p, json, true);
+    locale_fonts_lint(p, json, true);
     Ok(report)
+}
+
+fn locale_fonts_lint(p: &Project, json: bool, to_stderr: bool) {
+    let Some(doc) = std::fs::read_to_string(p.root.join("project.ogt"))
+        .ok()
+        .and_then(|text| og_core::ogt::parse(&text).ok())
+    else {
+        return;
+    };
+    let Some(lang) = doc
+        .body
+        .get("create")
+        .and_then(|e| e.block.as_ref())
+        .and_then(|b| b.get("lang"))
+    else {
+        return;
+    };
+    let mut missing: Vec<_> = lang
+        .values
+        .iter()
+        .filter_map(|v| v.as_str())
+        .filter(|tag| {
+            matches!(
+                og_i18n::locale::language(tag).as_str(),
+                "zh" | "ja" | "ko" | "ar" | "he" | "fa" | "ur"
+            )
+        })
+        .collect();
+    if missing.is_empty() {
+        return;
+    }
+    let assets = p.root.join("assets");
+    let mut available = Vec::new();
+    let mut dirs = vec![assets.clone()];
+    while let Some(dir) = dirs.pop() {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let Ok(ty) = entry.file_type() else { continue };
+            let path = entry.path();
+            if ty.is_dir() {
+                dirs.push(path);
+            } else if ty.is_file()
+                && path.extension().is_some_and(|e| e == "ogt")
+                && let Some(table) = std::fs::read_to_string(path)
+                    .ok()
+                    .and_then(|text| og_i18n::StringTable::parse(&text).ok())
+                    .filter(|t| {
+                        !t.fonts.is_empty() && t.fonts.iter().all(|f| assets.join(f).is_file())
+                    })
+            {
+                available.push(table.locale);
+            }
+        }
+    }
+    missing.retain(|tag| og_i18n::negotiate(&[tag], &available).is_none());
+    if missing.is_empty() {
+        return;
+    }
+    let message = format!(
+        "{}: no matching locale table with an installed font chain. Copy the matching fonts and licences from the engine's locales resources, declare their asset IDs in the string table's fonts line, and load the table with og.i18n (og-i18n skill). Verify rendered glyphs; a create.lang choice does not install or activate fonts.",
+        missing.join(", ")
+    );
+    let text = if json {
+        serde_json::json!({"event": "locale-fonts", "locales": missing, "message": message})
+            .to_string()
+    } else {
+        format!("project.ogt: warning: {message}")
+    };
+    if to_stderr && !json {
+        eprintln!("{text}");
+    } else {
+        println!("{text}");
+    }
 }
 
 /// The lockstep lint (`lockstep_lint`) over a project's sources, beside
@@ -986,6 +1062,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
     if let Some(p) = &project {
         lockstep_lint(p, json, false);
+        locale_fonts_lint(p, json, false);
     }
     if report.ok() {
         ExitCode::SUCCESS

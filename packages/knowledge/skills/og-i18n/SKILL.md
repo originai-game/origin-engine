@@ -17,43 +17,31 @@ and points here for every call.
 ## 0. Start from the choice
 
 A game made with `og new --lang zh,en,ar` (or the platform's language
-choice, project.ogt's `create` block `lang`) starts localized; read what it
-wrote before adding a table by hand:
+choice) records those tags in project.ogt's `create` block. It starts
+empty, not localized. Author the following as part of the game:
 
-- `assets/strings/<tag>.ogt` for each language. `zh` lands on `zh-CN`.
-  The starter's own tables are kept; the 3D template and the 2D starter
-  ship translations for zh-CN, zh-TW, ja, ko, ar, he, es, fr, de, it,
-  pt-BR and ru; any other language gets an empty table, so the base text
-  shows and `og cook` warns key by key until you translate it (never copy
-  the English, localization §2). The base table (`base true`) is the
-  first chosen language with every key; an archetype keeps its English.
-- The face each script needs, in `assets/fonts/` with its licence file and
-  its row in `assets/fonts/LICENSES.md`, named first in that table's
-  `fonts` line: Noto Sans JP (JIS level 1), KR (KS X 1001's hangul), TC
-  (Big5 level 1), Arabic, Hebrew, and Noto Sans's Cyrillic and Greek.
-  Their imports cook the table's characters (`chars`) and draw the rest
-  of the face at run time (`runtime true`); after strings change add the
-  new characters to `chars`, and before shipping cut a subset of your
-  tables (§3). Simplified Chinese takes the UI style's `cjk` companion,
-  which every built-in style names. Thai, Devanagari and other scripts:
-  the create note names the Noto face to bring.
-- Arabic, Hebrew, Persian and Urdu tables say `direction rtl` (§4).
-- `assets/strings/qps-ploc.ogt`, the pseudo-locale: the base table's
-  messages accented, 40 % longer and in brackets, with arguments, plural
-  branches and rich-text tags kept. `bun tools/pseudo-locale.ts` remakes
-  it; rerun it after the base table changes. No player negotiates to
-  `qps-ploc`; `og run --locale qps-ploc` or a `locale:qps-ploc` step does.
-- Every table loaded in `start` (the starter's load line, an archetype's
-  `LANGUAGES` list for its settings screen, or `src/creation.ts` for a
-  starter with no tables), the pseudo-locale last.
-- `tests/locale-<tag>.og.ts` per language and `tests/pseudo.og.ts`
-  (helpers in `tests/locales.ts`): each switches locale, dumps the UI and
-  takes a frame. A locale test fails when a word of the base table is
-  left where the table has its own; the pseudo test fails when the
-  pseudo table is stale or a base word reaches the screen untouched (a
-  literal that skipped `og.i18n.t`). Read their frames for cut words and
-  boxes (§6); they read the tables as they are, so they hold as strings
-  grow. Add `dump_ui` steps on your other screens as the game grows.
+`og check` warns when a requested CJK or supported right-to-left language
+has no matching string table with an installed font chain. Treat that
+warning as unfinished localization. Copying a font alone does not activate
+it: declare the chain in the table, load the table with `og.i18n`, and
+inspect rendered text. The warning checks files, not glyph coverage or
+whether game code loads the table.
+
+- One `assets/strings/<tag>.ogt` per chosen language, with complete
+  translations and one `base true` table (§1). Choose the intended Chinese
+  script explicitly (`zh-CN` or `zh-TW`). Never substitute copied English
+  for a translation (localization §2).
+- The faces each script needs in `assets/fonts/`, with their licences and
+  font imports (§3), named in each table's `fonts` line. Locale resources
+  remain shipped with the engine; creation does not install them.
+- `direction rtl` for Arabic, Hebrew, Persian and Urdu (§4).
+- A pseudo-locale derived from the base table (§6), regenerated when the
+  base changes. No player negotiates to `qps-ploc`; select it explicitly
+  with `og run --locale qps-ploc` or a `locale:qps-ploc` step.
+- Load every table in `start` with `og.i18n.load`.
+- Per-locale playtests that switch locale, dump the UI and capture a frame.
+  Check that translated words appear and untranslated base words do not.
+  Inspect the frames for cut words, missing glyphs and direction errors (§6).
 
 ## 1. One table per locale
 

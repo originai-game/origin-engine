@@ -1,9 +1,6 @@
 import { gpuTest } from "./support/gpu.ts";
-// The project template end to end on the native host: `create` scaffolds it,
-// `og test` cooks its assets (a behaviour and a navmesh among them) and runs
-// its playtests through `og run --headless --commands` (the smoke test and
-// the guard on og.ai and og.nav), and the run leaves the frame and the dumps
-// the smoke test checked. The scaffold stays in target/evidence/template/ for inspection.
+// Creation and the native host use the same empty skeleton. Feature
+// behaviour belongs in tests/fixtures, not in the scaffold.
 import { expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -28,7 +25,7 @@ const run = (cmd: string[]) => {
   return { code: r.exitCode, out: decode(r.stdout) + decode(r.stderr) };
 };
 
-gpuTest("a scaffolded game cooks, passes its playtest and leaves the frame and dumps", () => {
+gpuTest("a scaffolded game cooks and reaches quit without sample gameplay", () => {
   rmSync(evidence, { recursive: true, force: true });
   mkdirSync(evidence, { recursive: true });
   const created = run(["bun", join(repo, "packages", "create", "bin", "create.ts"), game, "--name", "Smoke Game"]);
@@ -37,23 +34,13 @@ gpuTest("a scaffolded game cooks, passes its playtest and leaves the frame and d
 
   const tested = run([ogBin(), "test", game]);
   if (tested.code !== 0) throw new Error(tested.out);
-  expect(tested.out).toMatch(/PASS smoke \(9 checks/);
-  expect(tested.out).toMatch(/PASS guard \(16 checks/);
-  expect(tested.out).toMatch(/PASS intro \(17 checks/);
-  // smoke, guard and intro, and the inspector's two suites (G3-7).
-  expect(tested.out).toContain("5 suite(s) passed");
-
-  const out = join(game, "og-out", "test", "smoke");
-  const png = readFileSync(join(out, "smoke.png"));
-  expect([...png.subarray(1, 4)]).toEqual([0x50, 0x4e, 0x47]);
-  const world = JSON.parse(readFileSync(join(out, "world.json"), "utf8")) as {
-    entities: number;
-    systems: Array<{ name: string; matched: number | null }>;
-  };
-  expect(world.entities).toBeGreaterThan(3);
-  expect(world.systems.find((s) => s.name === "Rotate")?.matched).toBe(1);
-  const ui = JSON.parse(readFileSync(join(out, "ui.json"), "utf8")) as { elements: Array<{ id: string; text: string }> };
-  expect(ui.elements.find((e) => e.id === "Start")?.text).toBe("Started");
+  expect(tested.out).toContain("PASS smoke");
+  expect(readFileSync(join(game, "src/main.ts"), "utf8")).toContain("export default og.game({});");
+  expect(existsSync(join(game, "assets/scenes"))).toBeFalse();
+  const out = join(evidence, "empty-world");
+  const empty = run([ogBin(), "run", game, "--headless", "--no-render", "--out", out, "--commands", "0.1:dump_world:world.json;0.2:quit"]);
+  expect(empty.code, empty.out).toBe(0);
+  expect(JSON.parse(readFileSync(join(out, "world.json"), "utf8")).entities).toBe(0);
 }, 600_000);
 
 // A scaffolded game is type-checked by og (og check, tsrs): `og check` passes
@@ -73,7 +60,7 @@ test("a scaffolded game type-checks clean, and a type error stops og before it b
   const main = join(checked, "src", "main.ts");
   const source = readFileSync(main, "utf8");
   const lines = source.split("\n");
-  const at = lines.findIndex((l) => l.startsWith("export const Velocity"));
+  const at = lines.findIndex((l) => l.startsWith("import "));
   lines.splice(at + 1, 0, 'export const speed: number = "fast";');
   writeFileSync(main, lines.join("\n"));
   const bad = run([ogBin(), "check", checked, "--json"]);

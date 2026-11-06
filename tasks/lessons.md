@@ -142,3 +142,9 @@ load. Before deleting one, inspect create-game's choice overlays and packed
 package tests. Arena's `duel.og.ts` supplies online-lockstep scaffolds and
 must remain even when other replays are cut; run create-package tests after
 template deletions, not only the retained native smokes.
+
+Creation tests and packaging must tolerate a project after it has run.
+Never follow directory symlinks while walking fixtures; exclude `.og/`,
+`cooked/`, `og-out/` and installs from copies and packages. Keep a regression
+with `.og/engine` pointing back into the project. Assert smoke behaviour,
+not the number of checks its implementation happens to make.

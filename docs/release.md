@@ -43,12 +43,11 @@ and it runs unpacked, with no npm and no `bun install`):
   wasmPublish, wasmPublish2d, wasmLanes}` (the sha256 of each binary);
 - `overlay/`: the knowledge's `game-scaffold/origin-engine-ts`;
 - `files/<path>`: the binaries `distribution.json` names, sha256-checked;
-- `archetypes/<name>/`: every archetype, as stored (`gitignore`, `gitattributes`);
 - `bin/og` (`bin/og.exe` on Windows);
 - `engine/`: what `@origingame/engine` carried (src, types, schema,
   shell, `dist/web*`, `knowledge/`, `styles/`, motion weights) with
   `native/origin-engine.<platform>.node`; this is `OG_ENGINE_PACKAGE`;
-- `create/`: the project templates and `bin/create.ts` (`og new` runs it;
+- `create/`: one empty project skeleton and `bin/create.ts` (`og new` runs it;
   `bin/brief.ts` is the art brief the platform calls);
 - `design/`: `tokens.json` and `design-language.md` (from 0.7.8);
 - `node_modules/@tsrs/<platform>/`: the type checker `og check` finds
@@ -127,7 +126,7 @@ each target's archive (§1) from them.
 | `@origingame/engine` | the TypeScript API and runtime (`src/`, `types/*.d.ts`, `schema/api.schema.json`, `bindings.json`), the web hosts (`dist/web`, `dist/web-publish`, `dist/web-publish-2d`, each publish directory with its lanes variant), the player shell, the Basis transcoder, `bin/og.mjs`, and `knowledge/`: `skills/og-*`, `wiki/` (generated from `api/<module>.ogt`), `looks/catalogue.json`, `scaffold/` (`origin-engine.json`, `distribution.json`, the template's text), `knowledge.json`, `scripts/mount.ts` and `validate.ts` (copied from `packages/knowledge` at pack), and `styles/`: the built-in UI styles (`templates/styles/<pack>/`'s `style.ogt`, atlases at 1×, 2× and 3×, icons, fonts, licences; not `art/`), which og's cook reads from disk and copies into a game's bundle only for the style it names; no native code | `packages/engine/scripts/pack.sh` (`OG_RELEASE=1 build.sh --linux-x64` first), in `scripts/release.sh pack` on macrunner |
 | `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64` | `origin-engine.node` (napi addon, `crates/og-host-node`) and `og` (`crates/og-cli`), release profile | both in the Mac's `scripts/release.sh pack`: linux-x64 by cargo zigbuild (glibc 2.31), darwin-arm64 natively |
 | `@origingame/engine-win32-x64` | `origin-engine.node` (MSVC napi addon) and `og.exe`, release profile; the same API, DX12 renderer, tsgo checker fallback | `build.sh --native` then `pack.sh --native` in Git Bash on studio-win (§3) |
-| `@origingame/create-game` | `bin/create.ts`, `template/` (`templates/game`, the 3D template), `template-2d/` (`templates/game-2d`, the 2D starter `--profile 2d` writes), `archetypes/`, `looks/` (the catalogue) | `packages/create` `prepack` |
+| `@origingame/create-game` | `bin/create.ts`, `template/` (one empty skeleton), `looks/` (the catalogue), presets, previews, styles and locales | `packages/create` `prepack` |
 | `@origingame/design` | `tokens.json` and `design-language.md`, the design language the engine's default UI style is generated from and origin-agent pins | `bun pm pack` of `packages/design` in `scripts/release.sh pack` |
 
 `packages/knowledge` is a private source package of this repository. Not
@@ -328,7 +327,8 @@ with bun (linux-x64, the executor's platform), from the archives in
 4. `og check`, `og test`, `og build --publish` (`og-build.json` names the
    version, the publish wasm is the dist's byte for byte), and `og ui
    check`, `og style check --sizes`, `og frame measure`;
-5. `--archetype runner` through `og test`; 6. the 2D starter;
+5. a non-default genre/player selection through `og test`;
+6. `--view side-2d` writes the same skeleton and passes check/test;
 7. the knowledge in the dist's `engine/knowledge/`: `validate.ts`, and
    `mount.ts --package` and `--check` against a stand-in platform tree;
 8. an MP3 sound cooks and plays; 9. a built-in UI style from `engine/styles/`.
@@ -435,7 +435,7 @@ browser cache partitioning, still needs implementation or evidence.
 
 ```sh
 curl -fsSL https://origingame.ai/downloads/engine/install.sh | sh   # the og launcher, once
-og new my-game && cd my-game     # the latest release, or --engine <v>; --archetype runner
+og new my-game && cd my-game     # the latest release, or --engine <v>; choices go in project.ogt
 og doctor                        # the engine, the addon, the wasm, tsrs, the renderer
 og dev .                         # watch, rebuild, re-cook, hot reload through the probe
 og test . && og ui check .       # the playtests; the screens measured

@@ -5,6 +5,18 @@
     "simulation": "changed",
     "breaking": [
       {
+        "member": "og create",
+        "change": "Creation writes one empty skeleton and records choices in project.ogt. Its top-level look names assets/looks/<id>.ogt, which configures the preset, mood and UI without patching source. No gameplay, art, controls or translations are generated. --archetype, --profile and create()'s template, archetype and profile options are removed; Created no longer returns look, profile or notes.",
+        "fix": "Use --view to record the intended view. Read Created.choices and implement the game using the engine API and skills. Existing authored games are unchanged.",
+        "find": []
+      },
+      {
+        "member": "engine distribution scaffold",
+        "change": "archetypes/, create/archetypes/ and create/template-2d/ are no longer shipped. create/template/ and the knowledge overlay carry the same empty skeleton, with an empty binary distribution list.",
+        "fix": "Consume the single skeleton and its create block. Do not depend on starter assets or a starter's first frame.",
+        "find": []
+      },
+      {
         "member": "og.ui genre components and screen documents",
         "change": "Genre patterns and HUDs now belong to explicitly imported kits; their behavior is unchanged.",
         "fix": "Install with og ui add <kit>, then import its namespace and types from the installed index.ts or @origingame/engine/extensions/<kit>/index.ts. og.ui.{cardHand, rewardChoice, deckBuilder} → card.{cardHand, rewardChoice, deckBuilder}; og.ui.{idleGenerator, prestigePanel} → idle.{idleGenerator, prestigePanel}; og.ui.{storeFront, battlePass} → liveops.{storeFront, battlePass}; og.ui.{backlog, barks, cgGallery, routeChart} → story.{backlog, barks, cgGallery, routeChart}; og.ui.{lobby, characterSelect, versus, draft, chat} → versus.{lobby, characterSelect, versus, draft, chat}; og.ui.{worldMap} → rpg.{worldMap}; og.ui.{songSelect, laneKeys, comboCounter, judgement} → rhythm.{songSelect, laneKeys, comboCounter, judgement}; og.ui.{ledger} → strategy.{ledger}; og.ui.{photoMode} → photo.{photoMode}; og.ui.{scorebug, matchStats, goalTimeline, playerPlate, substitution} → sports.{scorebug, matchStats, goalTimeline, playerPlate, substitution}; og.ui.{flightHud} → flight.{flightHud} Screen ejection now uses kit-qualified names: auction-house → rpg/auction-house; character-creation → rpg/character-creation; character → rpg/character; inventory → rpg/inventory; stash → rpg/stash; skill-tree → rpg/skill-tree; crafting → rpg/crafting; vendor → rpg/vendor; world-map → rpg/world-map; quest-log → rpg/quest-log; codex → rpg/codex; dialogue → rpg/dialogue; store → liveops/store; battle-pass → liveops/battle-pass; daily-login → liveops/daily-login; events-hub → liveops/events-hub; mailbox → liveops/mailbox; gacha-banner → gacha/gacha-banner; pull-results → gacha/pull-results; roster → gacha/roster; character-detail → gacha/character-detail; saga-map → puzzle/saga-map; run-map → card/run-map; reward-choice → card/reward-choice; deck-builder → card/deck-builder; backlog → story/backlog; gallery → story/gallery; flowchart → story/flowchart; character-select → versus/character-select; versus → versus/versus; draft → versus/draft; lobby → versus/lobby; matchmaking → versus/matchmaking; social → versus/social; training → versus/training; replay → versus/replay; scoreboard → shooter/scoreboard; song-select → rhythm/song-select; garage → racing/garage; management → strategy/management; diplomacy → strategy/diplomacy; photo-mode → photo/photo-mode; prestige → idle/prestige. Existing copied documents need no recook or viewmodel change.",

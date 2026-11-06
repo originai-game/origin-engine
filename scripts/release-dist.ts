@@ -31,7 +31,6 @@
 //                        (linux-x64, darwin-arm64, win32-x64), `triple` the archive's target
 //   overlay/             the engine knowledge's game-scaffold/origin-engine-ts
 //   files/<path>         the overlay's distribution.json binaries, from create-game's template/, sha256-verified
-//   archetypes/<name>/   every archetype create-game ships, as stored (`gitignore`, `gitattributes`)
 //   bin/og, bin/og.exe   the og tool
 //   engine/              @origingame/engine as packed, with native/origin-engine.<platform>.node
 //   create/              @origingame/create-game as packed (`og new` runs its bin/create.ts; brief.ts)
@@ -66,7 +65,6 @@ export type Target = keyof typeof TARGETS;
 export const VERSION_RE = /^\d+\.\d+\.\d+(-dev\.\d+)?$/;
 export const DOWNLOADS = "https://origingame.ai/downloads/engine";
 const OVERLAY = "game-scaffold/origin-engine-ts";
-const ARCHETYPES = ["runner", "match3", "topdown"];
 const ROOT = resolve(import.meta.dir, "..");
 const REGISTRY = "https://registry.npmjs.org";
 
@@ -194,8 +192,8 @@ export function checkLayout(dir: string, t: Target): void {
     "engine/dist/web-publish/origin-engine-lanes.js",
     `engine/native/origin-engine.${platform}.node`,
     "create/bin/create.ts",
+    "create/template/project.ogt",
     ...(tsrs ? [`node_modules/@tsrs/${tsrs}/${exe === "og.exe" ? "tsrs.exe" : "tsrs"}`] : []),
-    ...ARCHETYPES.map((a) => `archetypes/${a}/project.ogt`),
   ];
   const missing = need.filter((p) => !existsSync(join(dir, p)));
   if (!statSync(join(dir, "engine/dist/web-publish/snippets"), { throwIfNoEntry: false })?.isDirectory()) missing.push("engine/dist/web-publish/snippets/");
@@ -214,7 +212,6 @@ async function assemble(o: { dir: string; work: string; version: string; revisio
   if (existsSync(join(o.common, "design"))) copyTree(join(o.common, "design"), join(root, "design"));
   copyTree(join(o.common, "overlay"), join(root, "overlay"));
   copyTree(join(o.common, "files"), join(root, "files"));
-  copyTree(join(o.common, "archetypes"), join(root, "archetypes"));
 
   const plat = join(o.work, `platform-${platform}`);
   unpackTgz(join(o.dir, `origingame-engine-${platform}-${o.version}.tgz`), plat);
@@ -409,9 +406,6 @@ async function main() {
       copyFileSync(source, join(common, "files", f.path));
     }
     mkdirSync(join(common, "files"), { recursive: true });
-    for (const a of readdirSync(join(common, "create/archetypes"))) {
-      if (existsSync(join(common, "create/archetypes", a, "project.ogt"))) copyTree(join(common, "create/archetypes", a), join(common, "archetypes", a));
-    }
 
     const builds: Partial<Record<Target, Layout>> = {};
     for (const t of targets) {
