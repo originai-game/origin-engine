@@ -27,6 +27,15 @@ Touch controls use safe-area anchors. Local multiplayer has one
 changing its input/simulation boundary, then run its two-peer playtest.
 Do not enable lockstep on a game whose simulation still reads raw input.
 
+The `ui` and `mood` choices give the game its own UI style:
+`assets/styles/<game>/`, a copy of the chosen pack recoloured toward the
+look's accent and the mood, named by the look's `ui` line. It is a
+starting point. Restyle it before the game is done (palette first, then
+frames and buttons, fonts, icons; ui-craft §0), change every screen you
+eject, give every art slot its art and replace any development fallback
+icons: `og ui check` reports what is still the template's, and `og build
+--publish` refuses it (og-ui, Restyle first).
+
 Genre mappings, camera presets, mood rendering, locale assets and music
 generation are separate work. A recorded choice is not proof those assets
 or systems exist. After changing a choice in an existing game's manifest,

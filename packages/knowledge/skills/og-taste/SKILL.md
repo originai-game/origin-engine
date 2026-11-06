@@ -95,8 +95,8 @@ only looks:
 | `cyber` | racing, rhythm, cyberpunk, hacking | 45° cut frames on black, acid yellow with signal red and cyan, bold condensed type, dense data, snappy motion | `neon-vector` |
 
 ```text
-ui "fantasy"                     # in the game's look: a built-in style by slug
-ui "styles/harbour/style.ogt"    # or the game's own
+ui "styles/harbour/style.ogt"    # in the game's look: the game's own, copied from a pack and restyled
+ui "fantasy"                     # a built-in pack by slug: for a prototype; og build --publish refuses it
 ```
 
 Make it the game's own by changing the style file, never by passing colours
@@ -693,7 +693,7 @@ version 1
 ---
 name "Harbour"
 extends "anime-cel-3d"           # a built-in preset (templates/looks/<slug>.ogt) or another look's id
-ui "styles/harbour/style.ogt"     # the game's own UI style, or a built-in by slug (ui "fantasy")
+ui "styles/harbour/style.ogt"     # the game's own UI style (og new copies the preset's pack here; restyle it)
 Stylise {
   ink true
   inkWidth 1.5

@@ -18,7 +18,7 @@
       ],
       "source": "packages/engine/src/ui/hud/abilities.ts",
       "thumbnail": "thumbnails/component/abilityBar.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/abilitySlot",
@@ -36,7 +36,7 @@
       ],
       "source": "packages/engine/src/ui/hud/abilities.ts",
       "thumbnail": "thumbnails/component/abilitySlot.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/accordion",
@@ -54,7 +54,7 @@
       ],
       "source": "packages/engine/src/ui/containers/panels.ts",
       "thumbnail": "thumbnails/component/accordion.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/actionHints",
@@ -72,7 +72,7 @@
       ],
       "source": "packages/engine/src/ui/containers/navigation.ts",
       "thumbnail": "thumbnails/component/actionHints.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/artSlot",
@@ -90,7 +90,7 @@
       ],
       "source": "packages/engine/src/ui/foundations/media.ts",
       "thumbnail": "thumbnails/component/artSlot.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/banner",
@@ -108,7 +108,7 @@
       ],
       "source": "packages/engine/src/ui/feedback/banners.ts",
       "thumbnail": "thumbnails/component/banner.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/breadcrumbs",
@@ -126,7 +126,7 @@
       ],
       "source": "packages/engine/src/ui/containers/navigation.ts",
       "thumbnail": "thumbnails/component/breadcrumbs.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/calendar",
@@ -144,7 +144,7 @@
       ],
       "source": "packages/engine/src/ui/data/calendar.ts",
       "thumbnail": "thumbnails/component/calendar.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/card",
@@ -162,7 +162,7 @@
       ],
       "source": "packages/engine/src/ui/containers/panels.ts",
       "thumbnail": "thumbnails/component/card.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/carousel",
@@ -180,7 +180,7 @@
       ],
       "source": "packages/engine/src/ui/containers/navigation.ts",
       "thumbnail": "thumbnails/component/carousel.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/celebration",
@@ -198,7 +198,7 @@
       ],
       "source": "packages/engine/src/ui/feedback/celebrations.ts",
       "thumbnail": "thumbnails/component/celebration.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/chart",
@@ -216,7 +216,7 @@
       ],
       "source": "packages/engine/src/ui/data/charts.ts",
       "thumbnail": "thumbnails/component/chart.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/checkField",
@@ -234,7 +234,7 @@
       ],
       "source": "packages/engine/src/ui/controls/choices.ts",
       "thumbnail": "thumbnails/component/checkField.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/colorPicker",
@@ -252,7 +252,7 @@
       ],
       "source": "packages/engine/src/ui/controls/pickers.ts",
       "thumbnail": "thumbnails/component/colorPicker.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/comboCounter",
@@ -270,7 +270,7 @@
       ],
       "source": "packages/engine/src/ui/hud/scores.ts",
       "thumbnail": "thumbnails/component/comboCounter.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/compass",
@@ -288,7 +288,7 @@
       ],
       "source": "packages/engine/src/ui/hud/nav.ts",
       "thumbnail": "thumbnails/component/compass.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/confirm",
@@ -306,7 +306,7 @@
       ],
       "source": "packages/engine/src/ui/containers/layers.ts",
       "thumbnail": "thumbnails/component/confirm.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/contextMenu",
@@ -324,7 +324,7 @@
       ],
       "source": "packages/engine/src/ui/containers/layers.ts",
       "thumbnail": "thumbnails/component/contextMenu.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/countBadge",
@@ -342,7 +342,7 @@
       ],
       "source": "packages/engine/src/ui/feedback/badges.ts",
       "thumbnail": "thumbnails/component/countBadge.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/cycler",
@@ -360,7 +360,7 @@
       ],
       "source": "packages/engine/src/ui/controls/choices.ts",
       "thumbnail": "thumbnails/component/cycler.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/damageNumbers",
@@ -378,7 +378,7 @@
       ],
       "source": "packages/engine/src/ui/world/mass.ts",
       "thumbnail": "thumbnails/component/damageNumbers.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/dataGrid",
@@ -396,7 +396,7 @@
       ],
       "source": "packages/engine/src/ui/data/table.ts",
       "thumbnail": "thumbnails/component/dataGrid.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/dataList",
@@ -414,7 +414,7 @@
       ],
       "source": "packages/engine/src/ui/data/table.ts",
       "thumbnail": "thumbnails/component/dataList.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/dialog",
@@ -432,7 +432,7 @@
       ],
       "source": "packages/engine/src/ui/containers/layers.ts",
       "thumbnail": "thumbnails/component/dialog.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/dropdown",
@@ -450,7 +450,7 @@
       ],
       "source": "packages/engine/src/ui/controls/pickers.ts",
       "thumbnail": "thumbnails/component/dropdown.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/effectLayer",
@@ -468,7 +468,7 @@
       ],
       "source": "packages/engine/src/ui/foundations/effects.ts",
       "thumbnail": "thumbnails/component/effectLayer.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/emitter",
@@ -486,7 +486,7 @@
       ],
       "source": "packages/engine/src/ui/foundations/effects.ts",
       "thumbnail": "thumbnails/component/emitter.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/flightHud",
@@ -504,7 +504,7 @@
       ],
       "source": "packages/engine/src/ui/hud/vehicles.ts",
       "thumbnail": "thumbnails/component/flightHud.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/gacha.gachaBanner",
@@ -522,7 +522,7 @@
       ],
       "source": "packages/engine/extensions/gacha/src/gacha.ts",
       "thumbnail": "thumbnails/component/gacha.gachaBanner.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/gacha.pullSequence",
@@ -540,7 +540,7 @@
       ],
       "source": "packages/engine/extensions/gacha/src/gacha.ts",
       "thumbnail": "thumbnails/component/gacha.pullSequence.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/goalTimeline",
@@ -558,7 +558,7 @@
       ],
       "source": "packages/engine/src/ui/hud/sports.ts",
       "thumbnail": "thumbnails/component/goalTimeline.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/holdButton",
@@ -576,7 +576,7 @@
       ],
       "source": "packages/engine/src/ui/controls/buttons.ts",
       "thumbnail": "thumbnails/component/holdButton.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/hudTimer",
@@ -594,7 +594,7 @@
       ],
       "source": "packages/engine/src/ui/hud/timer.ts",
       "thumbnail": "thumbnails/component/hudTimer.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/iconButton",
@@ -612,7 +612,7 @@
       ],
       "source": "packages/engine/src/ui/controls/buttons.ts",
       "thumbnail": "thumbnails/component/iconButton.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/iconMark",
@@ -630,7 +630,7 @@
       ],
       "source": "packages/engine/src/ui/foundations/media.ts",
       "thumbnail": "thumbnails/component/iconMark.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/inputArea",
@@ -648,7 +648,7 @@
       ],
       "source": "packages/engine/src/ui/controls/fields.ts",
       "thumbnail": "thumbnails/component/inputArea.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/inputField",
@@ -666,7 +666,7 @@
       ],
       "source": "packages/engine/src/ui/controls/fields.ts",
       "thumbnail": "thumbnails/component/inputField.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/interactionPrompt",
@@ -684,7 +684,7 @@
       ],
       "source": "packages/engine/src/ui/world/tags.ts",
       "thumbnail": "thumbnails/component/interactionPrompt.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/judgement",
@@ -702,7 +702,7 @@
       ],
       "source": "packages/engine/src/ui/hud/scores.ts",
       "thumbnail": "thumbnails/component/judgement.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/keyBindingRow",
@@ -720,7 +720,7 @@
       ],
       "source": "packages/engine/src/ui/controls/bindings.ts",
       "thumbnail": "thumbnails/component/keyBindingRow.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/keyValueRows",
@@ -738,7 +738,7 @@
       ],
       "source": "packages/engine/src/ui/data/rows.ts",
       "thumbnail": "thumbnails/component/keyValueRows.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/laneKeys",
@@ -756,7 +756,7 @@
       ],
       "source": "packages/engine/src/ui/hud/genres.ts",
       "thumbnail": "thumbnails/component/laneKeys.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/lootLabel",
@@ -774,7 +774,7 @@
       ],
       "source": "packages/engine/src/ui/world/tags.ts",
       "thumbnail": "thumbnails/component/lootLabel.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/matchStats",
@@ -792,7 +792,7 @@
       ],
       "source": "packages/engine/src/ui/hud/sports.ts",
       "thumbnail": "thumbnails/component/matchStats.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/menu",
@@ -810,7 +810,7 @@
       ],
       "source": "packages/engine/src/ui/containers/layers.ts",
       "thumbnail": "thumbnails/component/menu.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/minimapView",
@@ -828,7 +828,7 @@
       ],
       "source": "packages/engine/src/ui/hud/nav.ts",
       "thumbnail": "thumbnails/component/minimapView.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/nameplate",
@@ -846,7 +846,7 @@
       ],
       "source": "packages/engine/src/ui/world/tags.ts",
       "thumbnail": "thumbnails/component/nameplate.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/nodeGraph",
@@ -864,7 +864,7 @@
       ],
       "source": "packages/engine/src/ui/data/tree.ts",
       "thumbnail": "thumbnails/component/nodeGraph.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/notifications",
@@ -882,7 +882,7 @@
       ],
       "source": "packages/engine/src/ui/feedback/notifications.ts",
       "thumbnail": "thumbnails/component/notifications.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/numberCounter",
@@ -900,7 +900,7 @@
       ],
       "source": "packages/engine/src/ui/feedback/counters.ts",
       "thumbnail": "thumbnails/component/numberCounter.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/numberStepper",
@@ -918,7 +918,7 @@
       ],
       "source": "packages/engine/src/ui/controls/ranges.ts",
       "thumbnail": "thumbnails/component/numberStepper.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/objectiveTracker",
@@ -936,7 +936,7 @@
       ],
       "source": "packages/engine/src/ui/hud/nav.ts",
       "thumbnail": "thumbnails/component/objectiveTracker.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/onScreenKeyboard",
@@ -954,7 +954,7 @@
       ],
       "source": "packages/engine/src/ui/controls/keyboard.ts",
       "thumbnail": "thumbnails/component/onScreenKeyboard.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/orbMeter",
@@ -972,7 +972,7 @@
       ],
       "source": "packages/engine/src/ui/hud/meters.ts",
       "thumbnail": "thumbnails/component/orbMeter.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/overheadBars",
@@ -990,7 +990,7 @@
       ],
       "source": "packages/engine/src/ui/world/mass.ts",
       "thumbnail": "thumbnails/component/overheadBars.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/pagination",
@@ -1008,7 +1008,7 @@
       ],
       "source": "packages/engine/src/ui/containers/navigation.ts",
       "thumbnail": "thumbnails/component/pagination.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/pathLine",
@@ -1026,7 +1026,7 @@
       ],
       "source": "packages/engine/src/ui/world/ground.ts",
       "thumbnail": "thumbnails/component/pathLine.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/placementGhost",
@@ -1044,7 +1044,7 @@
       ],
       "source": "packages/engine/src/ui/world/ground.ts",
       "thumbnail": "thumbnails/component/placementGhost.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/playerPlate",
@@ -1062,7 +1062,7 @@
       ],
       "source": "packages/engine/src/ui/hud/sports.ts",
       "thumbnail": "thumbnails/component/playerPlate.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/popover",
@@ -1080,7 +1080,7 @@
       ],
       "source": "packages/engine/src/ui/containers/layers.ts",
       "thumbnail": "thumbnails/component/popover.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/progressBar",
@@ -1098,7 +1098,7 @@
       ],
       "source": "packages/engine/src/ui/feedback/progress.ts",
       "thumbnail": "thumbnails/component/progressBar.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/progressRing",
@@ -1116,7 +1116,7 @@
       ],
       "source": "packages/engine/src/ui/feedback/progress.ts",
       "thumbnail": "thumbnails/component/progressRing.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/prose",
@@ -1134,7 +1134,7 @@
       ],
       "source": "packages/engine/src/ui/foundations/text.ts",
       "thumbnail": "thumbnails/component/prose.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/pushButton",
@@ -1152,7 +1152,7 @@
       ],
       "source": "packages/engine/src/ui/controls/buttons.ts",
       "thumbnail": "thumbnails/component/pushButton.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/puzzle.goalChips",
@@ -1170,7 +1170,7 @@
       ],
       "source": "packages/engine/extensions/puzzle/src/goals.ts",
       "thumbnail": "thumbnails/component/puzzle.goalChips.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/puzzle.sagaMap",
@@ -1188,7 +1188,7 @@
       ],
       "source": "packages/engine/extensions/puzzle/src/saga.ts",
       "thumbnail": "thumbnails/component/puzzle.sagaMap.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/racing.driftScore",
@@ -1206,7 +1206,7 @@
       ],
       "source": "packages/engine/extensions/racing/src/arcade.ts",
       "thumbnail": "thumbnails/component/racing.driftScore.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/racing.garage",
@@ -1224,7 +1224,7 @@
       ],
       "source": "packages/engine/extensions/racing/src/garage.ts",
       "thumbnail": "thumbnails/component/racing.garage.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/racing.itemSlot",
@@ -1242,7 +1242,7 @@
       ],
       "source": "packages/engine/extensions/racing/src/arcade.ts",
       "thumbnail": "thumbnails/component/racing.itemSlot.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/racing.lapTimer",
@@ -1260,7 +1260,7 @@
       ],
       "source": "packages/engine/extensions/racing/src/racing.ts",
       "thumbnail": "thumbnails/component/racing.lapTimer.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/racing.raceBanner",
@@ -1278,7 +1278,7 @@
       ],
       "source": "packages/engine/extensions/racing/src/racing.ts",
       "thumbnail": "thumbnails/component/racing.raceBanner.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/racing.rearView",
@@ -1296,7 +1296,7 @@
       ],
       "source": "packages/engine/extensions/racing/src/racing.ts",
       "thumbnail": "thumbnails/component/racing.rearView.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/racing.speedometer",
@@ -1314,7 +1314,7 @@
       ],
       "source": "packages/engine/extensions/racing/src/speedometer.ts",
       "thumbnail": "thumbnails/component/racing.speedometer.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/racing.standingsTower",
@@ -1332,7 +1332,7 @@
       ],
       "source": "packages/engine/extensions/racing/src/racing.ts",
       "thumbnail": "thumbnails/component/racing.standingsTower.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/radialMenu",
@@ -1350,7 +1350,7 @@
       ],
       "source": "packages/engine/src/ui/containers/navigation.ts",
       "thumbnail": "thumbnails/component/radialMenu.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/radialMeter",
@@ -1368,7 +1368,7 @@
       ],
       "source": "packages/engine/src/ui/hud/meters.ts",
       "thumbnail": "thumbnails/component/radialMeter.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/radioGroup",
@@ -1386,7 +1386,7 @@
       ],
       "source": "packages/engine/src/ui/controls/choices.ts",
       "thumbnail": "thumbnails/component/radioGroup.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/rangeSlider",
@@ -1404,7 +1404,7 @@
       ],
       "source": "packages/engine/src/ui/controls/ranges.ts",
       "thumbnail": "thumbnails/component/rangeSlider.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/ribbon",
@@ -1422,7 +1422,7 @@
       ],
       "source": "packages/engine/src/ui/feedback/banners.ts",
       "thumbnail": "thumbnails/component/ribbon.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/rpg.castBar",
@@ -1440,7 +1440,7 @@
       ],
       "source": "packages/engine/extensions/rpg/src/frames.ts",
       "thumbnail": "thumbnails/component/rpg.castBar.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/rpg.conversation",
@@ -1458,7 +1458,7 @@
       ],
       "source": "packages/engine/extensions/rpg/src/dialogue.ts",
       "thumbnail": "thumbnails/component/rpg.conversation.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/rpg.inventoryGrid",
@@ -1476,7 +1476,7 @@
       ],
       "source": "packages/engine/extensions/rpg/src/inventory.ts",
       "thumbnail": "thumbnails/component/rpg.inventoryGrid.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/rpg.paperdoll",
@@ -1494,7 +1494,7 @@
       ],
       "source": "packages/engine/extensions/rpg/src/inventory.ts",
       "thumbnail": "thumbnails/component/rpg.paperdoll.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/rpg.partyFrames",
@@ -1512,7 +1512,7 @@
       ],
       "source": "packages/engine/extensions/rpg/src/frames.ts",
       "thumbnail": "thumbnails/component/rpg.partyFrames.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/rpg.questLog",
@@ -1530,7 +1530,7 @@
       ],
       "source": "packages/engine/extensions/rpg/src/quests.ts",
       "thumbnail": "thumbnails/component/rpg.questLog.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/rpg.questTracker",
@@ -1548,7 +1548,7 @@
       ],
       "source": "packages/engine/extensions/rpg/src/quests.ts",
       "thumbnail": "thumbnails/component/rpg.questTracker.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/rpg.raidFrames",
@@ -1566,7 +1566,7 @@
       ],
       "source": "packages/engine/extensions/rpg/src/frames.ts",
       "thumbnail": "thumbnails/component/rpg.raidFrames.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/rpg.turnOrder",
@@ -1584,7 +1584,7 @@
       ],
       "source": "packages/engine/extensions/rpg/src/turns.ts",
       "thumbnail": "thumbnails/component/rpg.turnOrder.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/rpg.unitFrame",
@@ -1602,7 +1602,7 @@
       ],
       "source": "packages/engine/extensions/rpg/src/frames.ts",
       "thumbnail": "thumbnails/component/rpg.unitFrame.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/scorebug",
@@ -1620,7 +1620,7 @@
       ],
       "source": "packages/engine/src/ui/hud/scores.ts",
       "thumbnail": "thumbnails/component/scorebug.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/scrollArea",
@@ -1638,7 +1638,7 @@
       ],
       "source": "packages/engine/src/ui/containers/panels.ts",
       "thumbnail": "thumbnails/component/scrollArea.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/searchBox",
@@ -1656,7 +1656,7 @@
       ],
       "source": "packages/engine/src/ui/controls/fields.ts",
       "thumbnail": "thumbnails/component/searchBox.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/segmented",
@@ -1674,7 +1674,7 @@
       ],
       "source": "packages/engine/src/ui/controls/choices.ts",
       "thumbnail": "thumbnails/component/segmented.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/selectionRing",
@@ -1692,7 +1692,7 @@
       ],
       "source": "packages/engine/src/ui/world/ground.ts",
       "thumbnail": "thumbnails/component/selectionRing.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/separator",
@@ -1710,7 +1710,7 @@
       ],
       "source": "packages/engine/src/ui/foundations/text.ts",
       "thumbnail": "thumbnails/component/separator.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/shapeBox",
@@ -1728,7 +1728,7 @@
       ],
       "source": "packages/engine/src/ui/foundations/media.ts",
       "thumbnail": "thumbnails/component/shapeBox.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/sheet",
@@ -1746,7 +1746,7 @@
       ],
       "source": "packages/engine/src/ui/containers/layers.ts",
       "thumbnail": "thumbnails/component/sheet.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/shooter.ammoCounter",
@@ -1764,7 +1764,7 @@
       ],
       "source": "packages/engine/extensions/shooter/src/combat.ts",
       "thumbnail": "thumbnails/component/shooter.ammoCounter.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/shooter.crosshair",
@@ -1782,7 +1782,7 @@
       ],
       "source": "packages/engine/extensions/shooter/src/combat.ts",
       "thumbnail": "thumbnails/component/shooter.crosshair.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/shooter.damageDirection",
@@ -1800,7 +1800,7 @@
       ],
       "source": "packages/engine/extensions/shooter/src/combat.ts",
       "thumbnail": "thumbnails/component/shooter.damageDirection.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/shooter.killfeed",
@@ -1818,7 +1818,7 @@
       ],
       "source": "packages/engine/extensions/shooter/src/combat.ts",
       "thumbnail": "thumbnails/component/shooter.killfeed.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/shooter.loadout",
@@ -1836,7 +1836,7 @@
       ],
       "source": "packages/engine/extensions/shooter/src/loadout.ts",
       "thumbnail": "thumbnails/component/shooter.loadout.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/shooter.lowHealthVignette",
@@ -1854,7 +1854,7 @@
       ],
       "source": "packages/engine/extensions/shooter/src/combat.ts",
       "thumbnail": "thumbnails/component/shooter.lowHealthVignette.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/shooter.scoreboard",
@@ -1872,7 +1872,7 @@
       ],
       "source": "packages/engine/extensions/shooter/src/scoreboard.ts",
       "thumbnail": "thumbnails/component/shooter.scoreboard.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/skeletonGroup",
@@ -1890,7 +1890,7 @@
       ],
       "source": "packages/engine/src/ui/feedback/progress.ts",
       "thumbnail": "thumbnails/component/skeletonGroup.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/space",
@@ -1908,7 +1908,7 @@
       ],
       "source": "packages/engine/src/ui/foundations/text.ts",
       "thumbnail": "thumbnails/component/space.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/speechBubble",
@@ -1926,7 +1926,7 @@
       ],
       "source": "packages/engine/src/ui/world/tags.ts",
       "thumbnail": "thumbnails/component/speechBubble.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/splitView",
@@ -1944,7 +1944,7 @@
       ],
       "source": "packages/engine/src/ui/containers/panels.ts",
       "thumbnail": "thumbnails/component/splitView.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/starRating",
@@ -1962,7 +1962,7 @@
       ],
       "source": "packages/engine/src/ui/feedback/celebrations.ts",
       "thumbnail": "thumbnails/component/starRating.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/statBar",
@@ -1980,7 +1980,7 @@
       ],
       "source": "packages/engine/src/ui/hud/meters.ts",
       "thumbnail": "thumbnails/component/statBar.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/statCompare",
@@ -1998,7 +1998,7 @@
       ],
       "source": "packages/engine/src/ui/data/rows.ts",
       "thumbnail": "thumbnails/component/statCompare.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/statusGrid",
@@ -2016,7 +2016,7 @@
       ],
       "source": "packages/engine/src/ui/hud/abilities.ts",
       "thumbnail": "thumbnails/component/statusGrid.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/strategy.commandCard",
@@ -2034,7 +2034,7 @@
       ],
       "source": "packages/engine/extensions/strategy/src/rts.ts",
       "thumbnail": "thumbnails/component/strategy.commandCard.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/strategy.dragSelect",
@@ -2052,7 +2052,7 @@
       ],
       "source": "packages/engine/extensions/strategy/src/rts.ts",
       "thumbnail": "thumbnails/component/strategy.dragSelect.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/strategy.productionQueue",
@@ -2070,7 +2070,7 @@
       ],
       "source": "packages/engine/extensions/strategy/src/rts.ts",
       "thumbnail": "thumbnails/component/strategy.productionQueue.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/strategy.resourceBar",
@@ -2088,7 +2088,7 @@
       ],
       "source": "packages/engine/extensions/strategy/src/resources.ts",
       "thumbnail": "thumbnails/component/strategy.resourceBar.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/strategy.rtsCommands",
@@ -2106,7 +2106,7 @@
       ],
       "source": "packages/engine/extensions/strategy/src/commands.ts",
       "thumbnail": "thumbnails/component/strategy.rtsCommands.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/strategy.rtsConsole",
@@ -2124,7 +2124,7 @@
       ],
       "source": "packages/engine/extensions/strategy/src/rts.ts",
       "thumbnail": "thumbnails/component/strategy.rtsConsole.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/strategy.selectionPanel",
@@ -2142,7 +2142,7 @@
       ],
       "source": "packages/engine/extensions/strategy/src/rts.ts",
       "thumbnail": "thumbnails/component/strategy.selectionPanel.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/strategy.wavePreview",
@@ -2160,7 +2160,7 @@
       ],
       "source": "packages/engine/extensions/strategy/src/waves.ts",
       "thumbnail": "thumbnails/component/strategy.wavePreview.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/substitution",
@@ -2178,7 +2178,7 @@
       ],
       "source": "packages/engine/src/ui/hud/sports.ts",
       "thumbnail": "thumbnails/component/substitution.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/subtitles",
@@ -2196,7 +2196,7 @@
       ],
       "source": "packages/engine/src/ui/feedback/subtitles.ts",
       "thumbnail": "thumbnails/component/subtitles.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/tabBar",
@@ -2214,7 +2214,7 @@
       ],
       "source": "packages/engine/src/ui/containers/navigation.ts",
       "thumbnail": "thumbnails/component/tabBar.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/table",
@@ -2232,7 +2232,7 @@
       ],
       "source": "packages/engine/src/ui/data/table.ts",
       "thumbnail": "thumbnails/component/table.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/telegraph",
@@ -2250,7 +2250,7 @@
       ],
       "source": "packages/engine/src/ui/world/ground.ts",
       "thumbnail": "thumbnails/component/telegraph.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/text",
@@ -2268,7 +2268,7 @@
       ],
       "source": "packages/engine/src/ui/containers/base.ts",
       "thumbnail": "thumbnails/component/text.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/toggleSwitch",
@@ -2286,7 +2286,7 @@
       ],
       "source": "packages/engine/src/ui/controls/choices.ts",
       "thumbnail": "thumbnails/component/toggleSwitch.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/tooltipCard",
@@ -2304,7 +2304,7 @@
       ],
       "source": "packages/engine/src/ui/feedback/tooltips.ts",
       "thumbnail": "thumbnails/component/tooltipCard.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/tree",
@@ -2322,7 +2322,7 @@
       ],
       "source": "packages/engine/src/ui/data/tree.ts",
       "thumbnail": "thumbnails/component/tree.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/valueSlider",
@@ -2340,7 +2340,7 @@
       ],
       "source": "packages/engine/src/ui/controls/ranges.ts",
       "thumbnail": "thumbnails/component/valueSlider.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/viewFrame",
@@ -2358,7 +2358,7 @@
       ],
       "source": "packages/engine/src/ui/foundations/media.ts",
       "thumbnail": "thumbnails/component/viewFrame.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "component/waypoint",
@@ -2376,7 +2376,7 @@
       ],
       "source": "packages/engine/src/ui/world/tags.ts",
       "thumbnail": "thumbnails/component/waypoint.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "kit/development-fallback-icons",
@@ -2394,7 +2394,7 @@
       ],
       "source": "packages/engine/extensions/development-fallback-icons/extension.json",
       "thumbnail": "thumbnails/kit/development-fallback-icons.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Development only: temporary icons while the game's own are made. og build --publish refuses a game that still has them; draw the game's own icon set first."
     },
     {
       "id": "kit/gacha",
@@ -2412,7 +2412,7 @@
       ],
       "source": "packages/engine/extensions/gacha/extension.json",
       "thumbnail": "thumbnails/kit/gacha.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Keep its code: behaviour, input, localization and layout rules. Restyle what it draws first: the game's own style, its documents (eject and change them) and its art slots (the game's art); og build --publish refuses ejected documents left as shipped."
     },
     {
       "id": "kit/puzzle",
@@ -2430,7 +2430,7 @@
       ],
       "source": "packages/engine/extensions/puzzle/extension.json",
       "thumbnail": "thumbnails/kit/puzzle.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Keep its code: behaviour, input, localization and layout rules. Restyle what it draws first: the game's own style, its documents (eject and change them) and its art slots (the game's art); og build --publish refuses ejected documents left as shipped."
     },
     {
       "id": "kit/racing",
@@ -2448,7 +2448,7 @@
       ],
       "source": "packages/engine/extensions/racing/extension.json",
       "thumbnail": "thumbnails/kit/racing.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Keep its code: behaviour, input, localization and layout rules. Restyle what it draws first: the game's own style, its documents (eject and change them) and its art slots (the game's art); og build --publish refuses ejected documents left as shipped."
     },
     {
       "id": "kit/rpg",
@@ -2466,7 +2466,7 @@
       ],
       "source": "packages/engine/extensions/rpg/extension.json",
       "thumbnail": "thumbnails/kit/rpg.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Keep its code: behaviour, input, localization and layout rules. Restyle what it draws first: the game's own style, its documents (eject and change them) and its art slots (the game's art); og build --publish refuses ejected documents left as shipped."
     },
     {
       "id": "kit/shooter",
@@ -2484,7 +2484,7 @@
       ],
       "source": "packages/engine/extensions/shooter/extension.json",
       "thumbnail": "thumbnails/kit/shooter.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Keep its code: behaviour, input, localization and layout rules. Restyle what it draws first: the game's own style, its documents (eject and change them) and its art slots (the game's art); og build --publish refuses ejected documents left as shipped."
     },
     {
       "id": "kit/strategy",
@@ -2502,7 +2502,7 @@
       ],
       "source": "packages/engine/extensions/strategy/extension.json",
       "thumbnail": "thumbnails/kit/strategy.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Keep its code: behaviour, input, localization and layout rules. Restyle what it draws first: the game's own style, its documents (eject and change them) and its art slots (the game's art); og build --publish refuses ejected documents left as shipped."
     },
     {
       "id": "pattern/backlog",
@@ -2520,7 +2520,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/story.ts",
       "thumbnail": "thumbnails/pattern/backlog.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/barks",
@@ -2538,7 +2538,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/story.ts",
       "thumbnail": "thumbnails/pattern/barks.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/battlePass",
@@ -2556,7 +2556,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/pass.ts",
       "thumbnail": "thumbnails/pattern/battlePass.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/cardHand",
@@ -2574,7 +2574,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/cards.ts",
       "thumbnail": "thumbnails/pattern/cardHand.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/cgGallery",
@@ -2592,7 +2592,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/gallery.ts",
       "thumbnail": "thumbnails/pattern/cgGallery.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/characterSelect",
@@ -2610,7 +2610,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/roster.ts",
       "thumbnail": "thumbnails/pattern/characterSelect.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/chat",
@@ -2628,7 +2628,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/chat.ts",
       "thumbnail": "thumbnails/pattern/chat.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/deckBuilder",
@@ -2646,7 +2646,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/deck.ts",
       "thumbnail": "thumbnails/pattern/deckBuilder.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/draft",
@@ -2664,7 +2664,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/roster.ts",
       "thumbnail": "thumbnails/pattern/draft.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/heroButton",
@@ -2682,7 +2682,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/core.ts",
       "thumbnail": "thumbnails/pattern/heroButton.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/idleGenerator",
@@ -2700,7 +2700,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/idle.ts",
       "thumbnail": "thumbnails/pattern/idleGenerator.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/ledger",
@@ -2718,7 +2718,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/ledger.ts",
       "thumbnail": "thumbnails/pattern/ledger.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/lobby",
@@ -2736,7 +2736,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/roster.ts",
       "thumbnail": "thumbnails/pattern/lobby.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/overlayBar",
@@ -2754,7 +2754,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/ledger.ts",
       "thumbnail": "thumbnails/pattern/overlayBar.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/photoMode",
@@ -2772,7 +2772,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/photo.ts",
       "thumbnail": "thumbnails/pattern/photoMode.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/prestigePanel",
@@ -2790,7 +2790,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/idle.ts",
       "thumbnail": "thumbnails/pattern/prestigePanel.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/rewardChoice",
@@ -2808,7 +2808,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/rewards.ts",
       "thumbnail": "thumbnails/pattern/rewardChoice.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/routeChart",
@@ -2826,7 +2826,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/gallery.ts",
       "thumbnail": "thumbnails/pattern/routeChart.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/settingsTree",
@@ -2844,7 +2844,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/settings.ts",
       "thumbnail": "thumbnails/pattern/settingsTree.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/songSelect",
@@ -2862,7 +2862,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/songs.ts",
       "thumbnail": "thumbnails/pattern/songSelect.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/starBar",
@@ -2880,7 +2880,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/stars.ts",
       "thumbnail": "thumbnails/pattern/starBar.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/storeFront",
@@ -2898,7 +2898,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/store.ts",
       "thumbnail": "thumbnails/pattern/storeFront.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/versus",
@@ -2916,7 +2916,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/roster.ts",
       "thumbnail": "thumbnails/pattern/versus.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "pattern/worldMap",
@@ -2934,7 +2934,7 @@
       ],
       "source": "packages/engine/src/ui/patterns/maps.ts",
       "thumbnail": "thumbnails/pattern/worldMap.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons."
     },
     {
       "id": "screen/auction-house",
@@ -2952,7 +2952,7 @@
       ],
       "source": "packages/engine/src/ui/screens/auction-house.ogt",
       "thumbnail": "thumbnails/screen/auction-house.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/backlog",
@@ -2970,7 +2970,7 @@
       ],
       "source": "packages/engine/src/ui/screens/backlog.ogt",
       "thumbnail": "thumbnails/screen/backlog.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/battle-pass",
@@ -2988,7 +2988,7 @@
       ],
       "source": "packages/engine/src/ui/screens/battle-pass.ogt",
       "thumbnail": "thumbnails/screen/battle-pass.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/calibration",
@@ -3006,7 +3006,7 @@
       ],
       "source": "packages/engine/src/ui/screens/calibration.ogt",
       "thumbnail": "thumbnails/screen/calibration.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/character",
@@ -3024,7 +3024,7 @@
       ],
       "source": "packages/engine/src/ui/screens/character.ogt",
       "thumbnail": "thumbnails/screen/character.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/character-creation",
@@ -3042,7 +3042,7 @@
       ],
       "source": "packages/engine/src/ui/screens/character-creation.ogt",
       "thumbnail": "thumbnails/screen/character-creation.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/character-detail",
@@ -3060,7 +3060,7 @@
       ],
       "source": "packages/engine/src/ui/screens/character-detail.ogt",
       "thumbnail": "thumbnails/screen/character-detail.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/character-select",
@@ -3078,7 +3078,7 @@
       ],
       "source": "packages/engine/src/ui/screens/character-select.ogt",
       "thumbnail": "thumbnails/screen/character-select.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/codex",
@@ -3096,7 +3096,7 @@
       ],
       "source": "packages/engine/src/ui/screens/codex.ogt",
       "thumbnail": "thumbnails/screen/codex.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/crafting",
@@ -3114,7 +3114,7 @@
       ],
       "source": "packages/engine/src/ui/screens/crafting.ogt",
       "thumbnail": "thumbnails/screen/crafting.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/creator-tools",
@@ -3132,7 +3132,7 @@
       ],
       "source": "packages/engine/src/ui/screens/creator-tools.ogt",
       "thumbnail": "thumbnails/screen/creator-tools.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/credits",
@@ -3150,7 +3150,7 @@
       ],
       "source": "packages/engine/src/ui/screens/credits.ogt",
       "thumbnail": "thumbnails/screen/credits.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/daily-login",
@@ -3168,7 +3168,7 @@
       ],
       "source": "packages/engine/src/ui/screens/daily-login.ogt",
       "thumbnail": "thumbnails/screen/daily-login.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/deck-builder",
@@ -3186,7 +3186,7 @@
       ],
       "source": "packages/engine/src/ui/screens/deck-builder.ogt",
       "thumbnail": "thumbnails/screen/deck-builder.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/dialogue",
@@ -3204,7 +3204,7 @@
       ],
       "source": "packages/engine/src/ui/screens/dialogue.ogt",
       "thumbnail": "thumbnails/screen/dialogue.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/diplomacy",
@@ -3222,7 +3222,7 @@
       ],
       "source": "packages/engine/src/ui/screens/diplomacy.ogt",
       "thumbnail": "thumbnails/screen/diplomacy.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/draft",
@@ -3240,7 +3240,7 @@
       ],
       "source": "packages/engine/src/ui/screens/draft.ogt",
       "thumbnail": "thumbnails/screen/draft.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/events-hub",
@@ -3258,7 +3258,7 @@
       ],
       "source": "packages/engine/src/ui/screens/events-hub.ogt",
       "thumbnail": "thumbnails/screen/events-hub.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/flowchart",
@@ -3276,7 +3276,7 @@
       ],
       "source": "packages/engine/src/ui/screens/flowchart.ogt",
       "thumbnail": "thumbnails/screen/flowchart.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/gacha-banner",
@@ -3294,7 +3294,7 @@
       ],
       "source": "packages/engine/src/ui/screens/gacha-banner.ogt",
       "thumbnail": "thumbnails/screen/gacha-banner.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/gallery",
@@ -3312,7 +3312,7 @@
       ],
       "source": "packages/engine/src/ui/screens/gallery.ogt",
       "thumbnail": "thumbnails/screen/gallery.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/game-over",
@@ -3330,7 +3330,7 @@
       ],
       "source": "packages/engine/src/ui/screens/game-over.ogt",
       "thumbnail": "thumbnails/screen/game-over.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/garage",
@@ -3348,7 +3348,7 @@
       ],
       "source": "packages/engine/src/ui/screens/garage.ogt",
       "thumbnail": "thumbnails/screen/garage.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/hud-editor",
@@ -3366,7 +3366,7 @@
       ],
       "source": "packages/engine/src/ui/screens/hud-editor.ogt",
       "thumbnail": "thumbnails/screen/hud-editor.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/inventory",
@@ -3384,7 +3384,7 @@
       ],
       "source": "packages/engine/src/ui/screens/inventory.ogt",
       "thumbnail": "thumbnails/screen/inventory.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/leaderboard",
@@ -3402,7 +3402,7 @@
       ],
       "source": "packages/engine/src/ui/screens/leaderboard.ogt",
       "thumbnail": "thumbnails/screen/leaderboard.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/loading",
@@ -3420,7 +3420,7 @@
       ],
       "source": "packages/engine/src/ui/screens/loading.ogt",
       "thumbnail": "thumbnails/screen/loading.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/lobby",
@@ -3438,7 +3438,7 @@
       ],
       "source": "packages/engine/src/ui/screens/lobby.ogt",
       "thumbnail": "thumbnails/screen/lobby.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/mailbox",
@@ -3456,7 +3456,7 @@
       ],
       "source": "packages/engine/src/ui/screens/mailbox.ogt",
       "thumbnail": "thumbnails/screen/mailbox.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/main-menu",
@@ -3474,7 +3474,7 @@
       ],
       "source": "packages/engine/src/ui/screens/main-menu.ogt",
       "thumbnail": "thumbnails/screen/main-menu.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/management",
@@ -3492,7 +3492,7 @@
       ],
       "source": "packages/engine/src/ui/screens/management.ogt",
       "thumbnail": "thumbnails/screen/management.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/matchmaking",
@@ -3510,7 +3510,7 @@
       ],
       "source": "packages/engine/src/ui/screens/matchmaking.ogt",
       "thumbnail": "thumbnails/screen/matchmaking.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/mode-select",
@@ -3528,7 +3528,7 @@
       ],
       "source": "packages/engine/src/ui/screens/mode-select.ogt",
       "thumbnail": "thumbnails/screen/mode-select.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/pause",
@@ -3546,7 +3546,7 @@
       ],
       "source": "packages/engine/src/ui/screens/pause.ogt",
       "thumbnail": "thumbnails/screen/pause.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/photo-mode",
@@ -3564,7 +3564,7 @@
       ],
       "source": "packages/engine/src/ui/screens/photo-mode.ogt",
       "thumbnail": "thumbnails/screen/photo-mode.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/prestige",
@@ -3582,7 +3582,7 @@
       ],
       "source": "packages/engine/src/ui/screens/prestige.ogt",
       "thumbnail": "thumbnails/screen/prestige.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/pull-results",
@@ -3600,7 +3600,7 @@
       ],
       "source": "packages/engine/src/ui/screens/pull-results.ogt",
       "thumbnail": "thumbnails/screen/pull-results.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/quest-log",
@@ -3618,7 +3618,7 @@
       ],
       "source": "packages/engine/src/ui/screens/quest-log.ogt",
       "thumbnail": "thumbnails/screen/quest-log.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/racing/race-results",
@@ -3637,7 +3637,7 @@
       ],
       "source": "packages/engine/extensions/racing/race-results.ogt",
       "thumbnail": "thumbnails/screen/racing/race-results.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/replay",
@@ -3655,7 +3655,7 @@
       ],
       "source": "packages/engine/src/ui/screens/replay.ogt",
       "thumbnail": "thumbnails/screen/replay.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/results",
@@ -3673,7 +3673,7 @@
       ],
       "source": "packages/engine/src/ui/screens/results.ogt",
       "thumbnail": "thumbnails/screen/results.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/reward-choice",
@@ -3691,7 +3691,7 @@
       ],
       "source": "packages/engine/src/ui/screens/reward-choice.ogt",
       "thumbnail": "thumbnails/screen/reward-choice.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/roster",
@@ -3709,7 +3709,7 @@
       ],
       "source": "packages/engine/src/ui/screens/roster.ogt",
       "thumbnail": "thumbnails/screen/roster.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/run-map",
@@ -3727,7 +3727,7 @@
       ],
       "source": "packages/engine/src/ui/screens/run-map.ogt",
       "thumbnail": "thumbnails/screen/run-map.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/saga-map",
@@ -3745,7 +3745,7 @@
       ],
       "source": "packages/engine/src/ui/screens/saga-map.ogt",
       "thumbnail": "thumbnails/screen/saga-map.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/save-load",
@@ -3763,7 +3763,7 @@
       ],
       "source": "packages/engine/src/ui/screens/save-load.ogt",
       "thumbnail": "thumbnails/screen/save-load.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/scoreboard",
@@ -3781,7 +3781,7 @@
       ],
       "source": "packages/engine/src/ui/screens/scoreboard.ogt",
       "thumbnail": "thumbnails/screen/scoreboard.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/settings",
@@ -3799,7 +3799,7 @@
       ],
       "source": "packages/engine/src/ui/screens/settings.ogt",
       "thumbnail": "thumbnails/screen/settings.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/skill-tree",
@@ -3817,7 +3817,7 @@
       ],
       "source": "packages/engine/src/ui/screens/skill-tree.ogt",
       "thumbnail": "thumbnails/screen/skill-tree.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/social",
@@ -3835,7 +3835,7 @@
       ],
       "source": "packages/engine/src/ui/screens/social.ogt",
       "thumbnail": "thumbnails/screen/social.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/song-select",
@@ -3853,7 +3853,7 @@
       ],
       "source": "packages/engine/src/ui/screens/song-select.ogt",
       "thumbnail": "thumbnails/screen/song-select.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/splash",
@@ -3871,7 +3871,7 @@
       ],
       "source": "packages/engine/src/ui/screens/splash.ogt",
       "thumbnail": "thumbnails/screen/splash.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/stash",
@@ -3889,7 +3889,7 @@
       ],
       "source": "packages/engine/src/ui/screens/stash.ogt",
       "thumbnail": "thumbnails/screen/stash.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/store",
@@ -3907,7 +3907,7 @@
       ],
       "source": "packages/engine/src/ui/screens/store.ogt",
       "thumbnail": "thumbnails/screen/store.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/title",
@@ -3925,7 +3925,7 @@
       ],
       "source": "packages/engine/src/ui/screens/title.ogt",
       "thumbnail": "thumbnails/screen/title.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/training",
@@ -3943,7 +3943,7 @@
       ],
       "source": "packages/engine/src/ui/screens/training.ogt",
       "thumbnail": "thumbnails/screen/training.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/tutorial",
@@ -3961,7 +3961,7 @@
       ],
       "source": "packages/engine/src/ui/screens/tutorial.ogt",
       "thumbnail": "thumbnails/screen/tutorial.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/vendor",
@@ -3979,7 +3979,7 @@
       ],
       "source": "packages/engine/src/ui/screens/vendor.ogt",
       "thumbnail": "thumbnails/screen/vendor.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/versus",
@@ -3997,7 +3997,7 @@
       ],
       "source": "packages/engine/src/ui/screens/versus.ogt",
       "thumbnail": "thumbnails/screen/versus.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "screen/world-map",
@@ -4015,7 +4015,7 @@
       ],
       "source": "packages/engine/src/ui/screens/world-map.ogt",
       "thumbnail": "thumbnails/screen/world-map.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder."
     },
     {
       "id": "style/broadcast",
@@ -4025,15 +4025,15 @@
       "genres": [
         "any"
       ],
-      "example": "ui \"broadcast\" // in the game's look",
+      "example": "ui \"styles/<name>/style.ogt\" // in the game's look: its own copy, restyled",
       "kit": null,
       "pack": "broadcast",
       "install": [
-        "og style add broadcast"
+        "og style eject broadcast <name> (a copy of the game's own to restyle; og new makes one from the game's look)"
       ],
       "source": "templates/styles/broadcast/extension.json",
       "thumbnail": "thumbnails/style/broadcast.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Never shipped as it is: og new copies the look's pack into the game (assets/styles/<game>/), or og style eject copies it. Restyle the copy first: its palette, then its frames and buttons (art/, og style art), fonts, icons and motion; og build --publish refuses a style identical to this pack or still as generated."
     },
     {
       "id": "style/cartoon",
@@ -4043,15 +4043,15 @@
       "genres": [
         "any"
       ],
-      "example": "ui \"cartoon\" // in the game's look",
+      "example": "ui \"styles/<name>/style.ogt\" // in the game's look: its own copy, restyled",
       "kit": null,
       "pack": "cartoon",
       "install": [
-        "og style add cartoon"
+        "og style eject cartoon <name> (a copy of the game's own to restyle; og new makes one from the game's look)"
       ],
       "source": "templates/styles/cartoon/extension.json",
       "thumbnail": "thumbnails/style/cartoon.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Never shipped as it is: og new copies the look's pack into the game (assets/styles/<game>/), or og style eject copies it. Restyle the copy first: its palette, then its frames and buttons (art/, og style art), fonts, icons and motion; og build --publish refuses a style identical to this pack or still as generated."
     },
     {
       "id": "style/craft",
@@ -4061,15 +4061,15 @@
       "genres": [
         "any"
       ],
-      "example": "ui \"craft\" // in the game's look",
+      "example": "ui \"styles/<name>/style.ogt\" // in the game's look: its own copy, restyled",
       "kit": null,
       "pack": "craft",
       "install": [
-        "og style add craft"
+        "og style eject craft <name> (a copy of the game's own to restyle; og new makes one from the game's look)"
       ],
       "source": "templates/styles/craft/extension.json",
       "thumbnail": "thumbnails/style/craft.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Never shipped as it is: og new copies the look's pack into the game (assets/styles/<game>/), or og style eject copies it. Restyle the copy first: its palette, then its frames and buttons (art/, og style art), fonts, icons and motion; og build --publish refuses a style identical to this pack or still as generated."
     },
     {
       "id": "style/cyber",
@@ -4079,15 +4079,15 @@
       "genres": [
         "any"
       ],
-      "example": "ui \"cyber\" // in the game's look",
+      "example": "ui \"styles/<name>/style.ogt\" // in the game's look: its own copy, restyled",
       "kit": null,
       "pack": "cyber",
       "install": [
-        "og style add cyber"
+        "og style eject cyber <name> (a copy of the game's own to restyle; og new makes one from the game's look)"
       ],
       "source": "templates/styles/cyber/extension.json",
       "thumbnail": "thumbnails/style/cyber.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Never shipped as it is: og new copies the look's pack into the game (assets/styles/<game>/), or og style eject copies it. Restyle the copy first: its palette, then its frames and buttons (art/, og style art), fonts, icons and motion; og build --publish refuses a style identical to this pack or still as generated."
     },
     {
       "id": "style/dread",
@@ -4097,15 +4097,15 @@
       "genres": [
         "any"
       ],
-      "example": "ui \"dread\" // in the game's look",
+      "example": "ui \"styles/<name>/style.ogt\" // in the game's look: its own copy, restyled",
       "kit": null,
       "pack": "dread",
       "install": [
-        "og style add dread"
+        "og style eject dread <name> (a copy of the game's own to restyle; og new makes one from the game's look)"
       ],
       "source": "templates/styles/dread/extension.json",
       "thumbnail": "thumbnails/style/dread.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Never shipped as it is: og new copies the look's pack into the game (assets/styles/<game>/), or og style eject copies it. Restyle the copy first: its palette, then its frames and buttons (art/, og style art), fonts, icons and motion; og build --publish refuses a style identical to this pack or still as generated."
     },
     {
       "id": "style/fantasy",
@@ -4115,15 +4115,15 @@
       "genres": [
         "any"
       ],
-      "example": "ui \"fantasy\" // in the game's look",
+      "example": "ui \"styles/<name>/style.ogt\" // in the game's look: its own copy, restyled",
       "kit": null,
       "pack": "fantasy",
       "install": [
-        "og style add fantasy"
+        "og style eject fantasy <name> (a copy of the game's own to restyle; og new makes one from the game's look)"
       ],
       "source": "templates/styles/fantasy/extension.json",
       "thumbnail": "thumbnails/style/fantasy.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Never shipped as it is: og new copies the look's pack into the game (assets/styles/<game>/), or og style eject copies it. Restyle the copy first: its palette, then its frames and buttons (art/, og style art), fonts, icons and motion; og build --publish refuses a style identical to this pack or still as generated."
     },
     {
       "id": "style/foundry",
@@ -4133,15 +4133,15 @@
       "genres": [
         "any"
       ],
-      "example": "ui \"foundry\" // in the game's look",
+      "example": "ui \"styles/<name>/style.ogt\" // in the game's look: its own copy, restyled",
       "kit": null,
       "pack": "foundry",
       "install": [
-        "og style add foundry"
+        "og style eject foundry <name> (a copy of the game's own to restyle; og new makes one from the game's look)"
       ],
       "source": "templates/styles/foundry/extension.json",
       "thumbnail": "thumbnails/style/foundry.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Never shipped as it is: og new copies the look's pack into the game (assets/styles/<game>/), or og style eject copies it. Restyle the copy first: its palette, then its frames and buttons (art/, og style art), fonts, icons and motion; og build --publish refuses a style identical to this pack or still as generated."
     },
     {
       "id": "style/gilded",
@@ -4151,15 +4151,15 @@
       "genres": [
         "any"
       ],
-      "example": "ui \"gilded\" // in the game's look",
+      "example": "ui \"styles/<name>/style.ogt\" // in the game's look: its own copy, restyled",
       "kit": null,
       "pack": "gilded",
       "install": [
-        "og style add gilded"
+        "og style eject gilded <name> (a copy of the game's own to restyle; og new makes one from the game's look)"
       ],
       "source": "templates/styles/gilded/extension.json",
       "thumbnail": "thumbnails/style/gilded.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Never shipped as it is: og new copies the look's pack into the game (assets/styles/<game>/), or og style eject copies it. Restyle the copy first: its palette, then its frames and buttons (art/, og style art), fonts, icons and motion; og build --publish refuses a style identical to this pack or still as generated."
     },
     {
       "id": "style/kawaii",
@@ -4169,15 +4169,15 @@
       "genres": [
         "any"
       ],
-      "example": "ui \"kawaii\" // in the game's look",
+      "example": "ui \"styles/<name>/style.ogt\" // in the game's look: its own copy, restyled",
       "kit": null,
       "pack": "kawaii",
       "install": [
-        "og style add kawaii"
+        "og style eject kawaii <name> (a copy of the game's own to restyle; og new makes one from the game's look)"
       ],
       "source": "templates/styles/kawaii/extension.json",
       "thumbnail": "thumbnails/style/kawaii.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Never shipped as it is: og new copies the look's pack into the game (assets/styles/<game>/), or og style eject copies it. Restyle the copy first: its palette, then its frames and buttons (art/, og style art), fonts, icons and motion; og build --publish refuses a style identical to this pack or still as generated."
     },
     {
       "id": "style/pixel",
@@ -4187,15 +4187,15 @@
       "genres": [
         "any"
       ],
-      "example": "ui \"pixel\" // in the game's look",
+      "example": "ui \"styles/<name>/style.ogt\" // in the game's look: its own copy, restyled",
       "kit": null,
       "pack": "pixel",
       "install": [
-        "og style add pixel"
+        "og style eject pixel <name> (a copy of the game's own to restyle; og new makes one from the game's look)"
       ],
       "source": "templates/styles/pixel/extension.json",
       "thumbnail": "thumbnails/style/pixel.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Never shipped as it is: og new copies the look's pack into the game (assets/styles/<game>/), or og style eject copies it. Restyle the copy first: its palette, then its frames and buttons (art/, og style art), fonts, icons and motion; og build --publish refuses a style identical to this pack or still as generated."
     },
     {
       "id": "style/scifi",
@@ -4205,15 +4205,15 @@
       "genres": [
         "any"
       ],
-      "example": "ui \"scifi\" // in the game's look",
+      "example": "ui \"styles/<name>/style.ogt\" // in the game's look: its own copy, restyled",
       "kit": null,
       "pack": "scifi",
       "install": [
-        "og style add scifi"
+        "og style eject scifi <name> (a copy of the game's own to restyle; og new makes one from the game's look)"
       ],
       "source": "templates/styles/scifi/extension.json",
       "thumbnail": "thumbnails/style/scifi.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Never shipped as it is: og new copies the look's pack into the game (assets/styles/<game>/), or og style eject copies it. Restyle the copy first: its palette, then its frames and buttons (art/, og style art), fonts, icons and motion; og build --publish refuses a style identical to this pack or still as generated."
     },
     {
       "id": "style/storybook",
@@ -4223,15 +4223,15 @@
       "genres": [
         "any"
       ],
-      "example": "ui \"storybook\" // in the game's look",
+      "example": "ui \"styles/<name>/style.ogt\" // in the game's look: its own copy, restyled",
       "kit": null,
       "pack": "storybook",
       "install": [
-        "og style add storybook"
+        "og style eject storybook <name> (a copy of the game's own to restyle; og new makes one from the game's look)"
       ],
       "source": "templates/styles/storybook/extension.json",
       "thumbnail": "thumbnails/style/storybook.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Never shipped as it is: og new copies the look's pack into the game (assets/styles/<game>/), or og style eject copies it. Restyle the copy first: its palette, then its frames and buttons (art/, og style art), fonts, icons and motion; og build --publish refuses a style identical to this pack or still as generated."
     },
     {
       "id": "style/tactical",
@@ -4241,15 +4241,15 @@
       "genres": [
         "any"
       ],
-      "example": "ui \"tactical\" // in the game's look",
+      "example": "ui \"styles/<name>/style.ogt\" // in the game's look: its own copy, restyled",
       "kit": null,
       "pack": "tactical",
       "install": [
-        "og style add tactical"
+        "og style eject tactical <name> (a copy of the game's own to restyle; og new makes one from the game's look)"
       ],
       "source": "templates/styles/tactical/extension.json",
       "thumbnail": "thumbnails/style/tactical.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Never shipped as it is: og new copies the look's pack into the game (assets/styles/<game>/), or og style eject copies it. Restyle the copy first: its palette, then its frames and buttons (art/, og style art), fonts, icons and motion; og build --publish refuses a style identical to this pack or still as generated."
     },
     {
       "id": "style/wasteland",
@@ -4259,15 +4259,15 @@
       "genres": [
         "any"
       ],
-      "example": "ui \"wasteland\" // in the game's look",
+      "example": "ui \"styles/<name>/style.ogt\" // in the game's look: its own copy, restyled",
       "kit": null,
       "pack": "wasteland",
       "install": [
-        "og style add wasteland"
+        "og style eject wasteland <name> (a copy of the game's own to restyle; og new makes one from the game's look)"
       ],
       "source": "templates/styles/wasteland/extension.json",
       "thumbnail": "thumbnails/style/wasteland.png",
-      "guidance": "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing."
+      "guidance": "Never shipped as it is: og new copies the look's pack into the game (assets/styles/<game>/), or og style eject copies it. Restyle the copy first: its palette, then its frames and buttons (art/, og style art), fonts, icons and motion; og build --publish refuses a style identical to this pack or still as generated."
     }
   ]
 }

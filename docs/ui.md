@@ -688,7 +688,10 @@ photo mode …), the document leaves those to it. `og ui eject <screen>
 [project] [--force]` copies one into the game's `assets/ui/<screen>.ogt`
 (refusing to overwrite without `--force`), where `og.load.document` loads
 it and the game edits it as its own; `og ui eject --list` prints each
-with its row.
+with its row. The copy is a starting point: it records what it was after
+its `---` (`# og:ejected from the library's pause screen, fingerprint
+<hex>: …`), and while its content is still the shipped document's (§12.7)
+`og ui check` reports it and `og build --publish` refuses it.
 
 ## 12. Styles v2
 
@@ -704,6 +707,17 @@ built-in, generated or hand-made, and a publish build refuses a game whose
 screens still draw in the default style. The design language binds the
 default style alone; a game's style may restyle, re-dress, re-shape or
 replace anything above the accessibility floor of §15.2.
+
+The built-in packs are not games' styles either (the owner, 2026-11-05):
+they and the kits are a polished starting point, and a game is not
+finished by shipping them as they are (§12.7). `og new` therefore never
+points a game's look at a pack: it copies the pack its look (or its
+creation choices) names into `assets/styles/<game>/`, renames it, turns
+its accent family toward the look's accent (the catalogue's `uiAccent`)
+and its neutrals half way, applies the mood (bright, dark, warm, cold,
+soft, high-contrast), and points the look's `ui` line at the copy; an
+archetype's own style becomes the copy the same way, and code that loaded
+it loads the copy.
 
 The default style carries no hue in its chrome (the owner, 2026-11-02):
 its primary is the high-contrast neutral, a near-white fill with dark ink
@@ -804,6 +818,55 @@ draws from the copy nearest at or above its device pixels per og-ui unit
 (dpr times the resolution-relative unit), and from 3× above that. Phones
 top out at 3, and tablets and desktops at 2. `og style art` (docs/art.md
 §2.7) packs a style's painted slots into all three.
+
+### 12.7 The game's own look (the owner, 2026-11-05)
+
+Reuse of the mechanics is the point of the library: components keep
+their behaviour, layout rules, input, localization and pad navigation.
+The look is the game's. `og ui check` reports, as warnings with the path
+and what to change, and `og build --publish` refuses
+(crates/og-cli/src/own_look.rs):
+
+- `own-style`: a look whose `ui` resolves to a built-in pack (`ui
+  "pixel"`, `@styles/pixel/style.ogt`, or the preset's pack it inherits),
+  code that loads one (`og.load.style(world, "@styles/…")`), a style of
+  the game's identical to a built-in pack, or one still as `og new`
+  generated it;
+- `eject-unchanged`: a screen or component document copied from the
+  library or a kit (§11.1, §17) and left as shipped;
+- `fallback-icons`: the development fallback icons (the
+  `development-fallback-icons` kit installed, an icons.json with
+  `developmentFallback: true`, or a copy of one of its vectors);
+- `art-slot`: an `art` element still drawing the style's placeholder
+  (§13.3, what `og ui slots` lists as `placeholder`).
+
+"Unchanged" is decided by content, never by time or by a flag the game
+sets. A document's fingerprint is FNV-1a 64 of its canonical text (every
+line with trailing white space cut, without blank and `#` comment lines),
+compared with the engine's shipped documents and with the fingerprint
+the copy recorded when it was made. A style's fingerprint is the same
+hash of its canonical `style.ogt` without its `name` line, followed by
+each file it names (relative, or a `styles/…` asset id) with that file's
+hash: a renamed copy of a pack is the pack, and a changed palette entry,
+part, font, icon sheet or painted frame is a restyle. `og new` writes
+the generated style's fingerprint after its `---` (`# og:generated from
+the built-in fantasy pack, fingerprint <hex>: …`); packages/create's
+`styleFingerprint` and og-cli's `style_fingerprint` are one function,
+held equal by a shared test vector.
+
+The generated style recolours only the palette (OKLCH: the accent roles
+take the look's accent hue, the neutrals lean half way to it, then the
+mood moves them; semantic and game roles stay). A painted (`authored`)
+slice keeps the pack's colours, and its dressing's `tone` stays the
+measurement of that art, so painted frames and buttons are the first
+thing to repaint.
+
+What to restyle first, in order: the style's palette (the primary and its
+states, the surfaces, the ink, from the look's art), its frames and
+buttons (the painted parts in `art/`, repacked with `og style art`, or
+its part dressings), its fonts, its icons, then its motion and sounds;
+then each ejected screen's layout, hierarchy, art slots and text, and
+every art slot's art.
 
 ## 13. Art slots
 
@@ -1176,8 +1239,12 @@ each with the element paths and the prop to change:
   without a sound in a styled game;
 - motion: durations outside the style's bounds, missing reduced-motion
   fallbacks, input refused longer than the style's entrance;
-- art: slots still on their placeholder at publish; images whose focal
-  point falls outside the slot's crop;
+- art: slots still on their placeholder (a warning, a refusal at
+  publish); images whose focal point falls outside the slot's crop;
+- the game's own look (§12.7): a built-in pack drawn as it is, a style
+  identical to a pack or still as generated, an ejected document left as
+  shipped, the development fallback icons; warnings while developing,
+  each a refusal of `og build --publish`;
 - performance: element counts, draws and per-tick times over §15.1.
 
 ### 16.6 Knowledge

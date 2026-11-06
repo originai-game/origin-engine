@@ -7,6 +7,13 @@ use std::process::ExitCode;
 
 pub const PATH: &str = "packages/knowledge/ui/catalogue.json";
 const GUIDANCE: &str = "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; change typography, palette, spacing, art and hierarchy for this game's look before publishing.";
+/// What to restyle first, by kind (docs/ui.md §12.1): og ui check reports
+/// what is left of each, and og build --publish refuses it.
+const COMPONENT: &str = "A starting point to restyle, not finished game UI. Keep its behaviour, input and localization; it draws in the game's own style, so restyle that first: the palette, then this part's dressing in the style, then type and icons.";
+const SCREEN: &str = "A starting point to change, not finished game UI. Eject it, then change its layout, hierarchy, art slots and text for this game first; og build --publish refuses an ejected document left as shipped and an art slot still on its placeholder.";
+const STYLE: &str = "Never shipped as it is: og new copies the look's pack into the game (assets/styles/<game>/), or og style eject copies it. Restyle the copy first: its palette, then its frames and buttons (art/, og style art), fonts, icons and motion; og build --publish refuses a style identical to this pack or still as generated.";
+const KIT: &str = "Keep its code: behaviour, input, localization and layout rules. Restyle what it draws first: the game's own style, its documents (eject and change them) and its art slots (the game's art); og build --publish refuses ejected documents left as shipped.";
+const FALLBACK: &str = "Development only: temporary icons while the game's own are made. og build --publish refuses a game that still has them; draw the game's own icon set first.";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Entry {
@@ -86,6 +93,7 @@ fn document(path: &Path, source: String, kit: Option<(&str, &str)>) -> Result<En
         .find_map(|l| l.strip_prefix("name \"").and_then(|s| s.strip_suffix('"')))
         .unwrap_or(&stem);
     let mut e = entry(&name, "screen", purpose(&text), source);
+    e.guidance = SCREEN.into();
     e.example = format!(
         "og.load.document(world, \"ui/{name}.ogt\");\nog.ui.push(world, \"{registered}\", vm);"
     );
@@ -137,6 +145,7 @@ pub fn generate(root: &Path, api: &Api) -> Result<og_idl::Generated, String> {
                 f.doc.join(" "),
                 format!("packages/engine/src/ui/{}", source.display()),
             );
+            e.guidance = COMPONENT.into();
             e.example = format!(
                 "og.ui.{}({});",
                 f.name,
@@ -180,6 +189,12 @@ pub fn generate(root: &Path, api: &Api) -> Result<og_idl::Generated, String> {
                 m.name
             )];
             if m.kind == "kit" {
+                e.guidance = if m.name == "development-fallback-icons" {
+                    FALLBACK
+                } else {
+                    KIT
+                }
+                .into();
                 e.kit = Some(m.name.clone());
                 e.genres = if m.entry.is_some() {
                     vec![m.name.clone()]
@@ -196,7 +211,14 @@ pub fn generate(root: &Path, api: &Api) -> Result<og_idl::Generated, String> {
                 };
             } else {
                 e.pack = Some(m.name.clone());
-                e.example = format!("ui \"{}\" // in the game's look", m.name);
+                e.guidance = STYLE.into();
+                e.install = vec![format!(
+                    "og style eject {} <name> (a copy of the game's own to restyle; og new makes one from the game's look)",
+                    m.name
+                )];
+                e.example =
+                    "ui \"styles/<name>/style.ogt\" // in the game's look: its own copy, restyled"
+                        .into();
             }
             entries.push(e);
             for doc in &extension.documents {
@@ -262,6 +284,7 @@ pub fn generate(root: &Path, api: &Api) -> Result<og_idl::Generated, String> {
                             format!("{base}/{}/src/{}", m.name, file.display()),
                         );
                         e.kit = Some(m.name.clone());
+                        e.guidance = COMPONENT.into();
                         e.genres = vec![m.name.clone()];
                         e.install = vec![format!("og ui add {}", m.name)];
                         e.example = format!(
@@ -362,11 +385,12 @@ pub fn find(args: &[&str]) -> ExitCode {
             println!("{GUIDANCE}\n");
             for e in entries {
                 println!(
-                    "{} [{}]\n  {}\n  {}\n",
+                    "{} [{}]\n  {}\n  {}\n  first: {}\n",
                     e.name,
                     e.kind,
                     e.purpose,
-                    e.install.join("; ")
+                    e.install.join("; "),
+                    e.guidance
                 );
             }
         }
@@ -398,6 +422,23 @@ mod tests {
         assert!(matches(button, "BUTTON disabled"));
         assert!(!matches(button, "button spaceship"));
         assert_eq!(button.example, "og.ui.pushButton(id, label, desc);");
+        // A pack is never named as it is: its entry says to copy and restyle it first.
+        let pack = catalogue
+            .entries
+            .iter()
+            .find(|e| e.id == "style/pixel")
+            .unwrap();
+        assert!(!pack.example.contains("\"pixel\""), "{}", pack.example);
+        assert!(
+            pack.guidance.starts_with("Never shipped as it is"),
+            "{}",
+            pack.guidance
+        );
+        assert!(
+            pack.install[0].starts_with("og style eject pixel "),
+            "{:?}",
+            pack.install
+        );
         assert!(
             catalogue
                 .entries

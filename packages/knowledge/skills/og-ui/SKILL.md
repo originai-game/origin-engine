@@ -25,6 +25,28 @@ MIT-licensed vectors and a `fallbackIcons` descriptor. They are explicitly
 development assets: replace them before publishing, rather than disguising
 their asset paths. See the installed kit's `using-development-icons/SKILL.md`.
 
+### Restyle first: what publishing refuses
+
+A game is not finished by shipping the templates as they are (docs/ui.md
+§12.7). `og ui check` reports each of these as a warning with its path and
+what to change, `og polish` lists them, and `og build --publish` refuses
+the game until none is left:
+
+| Finding | What it means | Change first |
+|---|---|---|
+| `own-style` | the look's `ui` (or code) names a built-in pack; a style of the game's is identical to a pack; or it is still as `og new` generated it | the palette in `assets/styles/<game>/style.ogt`, then its frames and buttons (`art/`, `og style art`), fonts, icons |
+| `eject-unchanged` | an ejected screen or kit document is still the shipped one | its layout, hierarchy, art slots and text |
+| `fallback-icons` | the development fallback icons are in the game | the game's own icon set; drop `fallbackIcons` |
+| `art-slot` | an `art` element still draws the style's placeholder | the slot's art, made with the art brief (`og ui slots --json`) |
+
+`og new` already gave the game its own style: a copy of its look's pack in
+`assets/styles/<game>/`, recoloured toward the look's accent and the
+mood, with a fingerprint line after its `---`. Restyle that copy; do not
+point the look back at a pack. "Unchanged" is measured by content:
+comments, blank lines and the `name` do not count, any real change of a
+colour, part, font, icon or painted frame does. Never edit a fingerprint
+line or move files to dodge a finding: change the look.
+
 ## What works
 
 Games written from this package alone (`examples/lantern-vale`,
@@ -567,8 +589,10 @@ which the art brief's `styleArtBriefs` turns into prompts) and prints the
 (§8), then tune its values.
 
 The usual way in is the game's look (og-taste §12): its `ui` line names
-the style, and every catalogue preset already names one. `ui "pixel"` is a
-built-in style by slug (`og style list`: the atlas packs `pixel`, `cartoon`,
+the style. Every catalogue preset names a pack, and `og new` copies that
+pack into the game as its own (`ui "styles/<game>/style.ogt"`, Restyle
+first): a look that names a pack itself draws in a template, which `og
+build --publish` refuses. `ui "pixel"` is a built-in style by slug (`og style list`: the atlas packs `pixel`, `cartoon`,
 `fantasy`, `scifi`, and the generated seeds `gilded`, `storybook`,
 `tactical`, `cyber`, `kawaii`, `craft`, `dread`, `broadcast`, `wasteland`,
 `foundry`, one per look family;

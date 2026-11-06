@@ -11,6 +11,31 @@ should look (the style, colour, type). Every rule below that can be
 measured is one of `og ui check`'s, so a design is proven, not judged by
 eye (§7).
 
+## 0. The kit is the start, the look is the game's
+
+The library, the kits and the style packs are a polished baseline: reuse
+their mechanics (behaviour, layout rules, input, localization, pad
+navigation) and never their look as it is. Restyle in this order, the
+step that changes the most pixels first:
+
+1. **Palette** of the game's own style (`assets/styles/<game>/style.ogt`,
+   which `og new` copied and recoloured): the primary and its states from
+   the look's key colour, the surfaces from its darks or paper, the ink
+   for contrast; semantic and game roles keep their meaning.
+2. **Frames and buttons**: the painted parts (`art/`, `og style art`) or
+   the part dressings, in the look's material (wood, metal, paper, glass,
+   pixels).
+3. **Type**: a display face with the game's voice, a body face that reads
+   at 18 px.
+4. **Icons**: the game's own set, never the development fallbacks.
+5. **Screens**: each ejected document's layout and hierarchy for this
+   game's genre (§2), then every art slot's art.
+6. **Motion and sound**: the personality of §4, the style's UI sounds.
+
+`og ui check` reports what is still the template's (`own-style`,
+`eject-unchanged`, `fallback-icons`, `art-slot`, og-ui, Restyle first) and
+`og build --publish` refuses it.
+
 ## 1. Hierarchy: what the eye reads first
 
 - **One primary action per layer.** A screen (or a dialog over it) has one
