@@ -3,7 +3,7 @@
 // Moved from the engine's hud/scores.ts (docs/ui.md §17).
 
 import type * as Api from "@origingame/engine";
-import { a11y, anchorOf, box, chip, close, fitLevel, hudRoom, open, edge, formatNumber, frame, hudPlace, icon, keyId, kit, leaf, lit, msToTicks, pop, pulse, px, role, sel, solid, spring, text, token, ts, u, stepSize } from "@origingame/engine/ui-parts/hud";
+import { a11y, anchorOf, box, chip, close, fitLevel, hudRoom, open, edge, formatNumber, frame, hudPlace, icon, keyId, kit, leaf, lit, msToTicks, pop, pulse, px, role, rtl, sel, solid, spring, text, token, ts, u, stepSize } from "@origingame/engine/ui-parts/hud";
 import type { ResourceBarDesc, ResourceItem } from "../types.ts";
 
 export function resourceBar(id: string, desc: ResourceBarDesc = {}): void {
@@ -39,11 +39,17 @@ export function resourceBar(id: string, desc: ResourceBarDesc = {}): void {
           const ink = capped ? lit(role("danger")) : near ? lit(role("warn")) : token("ink");
           // The amount and its cap on one line, folded or not.
           if (cap !== null) open("Count", { direction: "row", gap: 0, cross: "end" });
+          // Amount then cap, left to right in every direction: the row mirrors under right to left, so there the cap is
+          // built first (an Arabic HUD read 800 / 640 for 640 of 800).
+          const capText = (): void => {
+            if (cap !== null) text("Cap", `${fit > 0 ? "/" : " / "}${formatNumber(cap, fmt)}`, { step: ts(15), font: "mono", color: capped || near ? ink : token("inkMuted"), nowrap: true, outline: 1 });
+          };
+          if (rtl()) capText();
           text("Amount", cap !== null ? formatNumber(Math.round(shown), fmt) : formatNumber(Math.abs(amount - shown) < 0.5 ? amount : Math.round(shown), fmt), {
             step: ts(15), font: "mono", color: ink, nowrap: true, outline: 1,
           }, { transform: { scaleX: s, scaleY: s, pivotY: 1 }, ...(capped ? { opacity: 0.6 + 0.4 * pulse(1.5) } : {}) });
           // A cap reads as amount / cap with the cap a step quieter, unless the cap is near or reached (folded, without the spaces).
-          if (cap !== null) text("Cap", `${fit > 0 ? "/" : " / "}${formatNumber(cap, fmt)}`, { step: ts(15), font: "mono", color: capped || near ? ink : token("inkMuted"), nowrap: true, outline: 1 });
+          if (!rtl()) capText();
           if (cap !== null) close();
           const rate = r.rate ?? 0;
           if (desc.rates !== false && rate !== 0) {

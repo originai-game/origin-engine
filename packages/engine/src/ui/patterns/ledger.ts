@@ -139,7 +139,8 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
           }
           kit.column("Words", { width: grow(), gap: u(2) }, () => {
             eyebrow("Label", f.label ?? k);
-            text("Value", value, { step: st(phone ? 20 : 30), font: "mono", nowrap: true, ellipsis: true, width: grow() });
+            // A seven-digit treasury in a half-row tile steps its size down (by its glyphs) before it ends in an ellipsis.
+            text("Value", value, { step: st(phone ? 20 : 30), fitMin: st(phone ? 16 : 24), font: "mono", nowrap: true, ellipsis: true, width: grow() });
             if (d !== 0) delta("Delta", f.format === "percent" ? `${d > 0 ? "+" : "\u2212"}${formatNumber(Math.abs(d), "percent", 1, "")}` : `${d > 0 ? "+" : "\u2212"}${fmt(Math.abs(d))}`, d > 0, good, phone ? 12 : 14);
           });
         });

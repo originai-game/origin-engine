@@ -24,7 +24,7 @@ props {
   title string "The step's title."
   text string "What it is for."
   nextLabel string "Next, or Done on the last step."
-  x number "The card's left, CSS px."
+  x number "The card's start edge, CSS px from the screen's start (the right, right to left)."
   y number "The card's top, CSS px."
 }
 actions {

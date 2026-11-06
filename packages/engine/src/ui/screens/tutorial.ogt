@@ -22,7 +22,7 @@ props {
   step number "The step, from 1."
   steps number "Steps in the lesson."
   waits bool "The step waits for the player to act (Next hidden)."
-  x number "The card's left, CSS px."
+  x number "The card's start edge, CSS px from the screen's start (the right, right to left)."
   y number "The card's top, CSS px."
   texture number "The step's art (0: none)."
 }

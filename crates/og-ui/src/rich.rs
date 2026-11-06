@@ -383,9 +383,10 @@ fn visual_segments(
                 .is_mixed()
     };
     // The line's paragraph direction is its first strong character's (the
-    // UI's with none, and skipping isolates), as a plain text's is: an
-    // English line in a right-to-left UI keeps its full stop at its end.
-    let base = og_i18n::paragraph_direction(
+    // UI's with none, and skipping isolates; left to right for a line with
+    // no letter), as a plain text's is: an English line in a right-to-left
+    // UI keeps its full stop at its end.
+    let base = crate::text::line_direction(
         &line
             .pieces
             .iter()

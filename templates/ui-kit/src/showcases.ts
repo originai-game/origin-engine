@@ -248,8 +248,11 @@ export function showcaseScreen(world: World, screen: string, go: (screen: string
       actionHud(world, true);
       // The step's callout points at the HUD part it teaches: the jump button on a touch screen, else the combo.
       {
+        // The document places the card from the screen's start edge: right to left, the distance from the right to
+        // the part's centre (a left-based x put the card on the far side, squeezed to 146 px with Next off screen).
+        const start = (left: number): number => Math.round(og.ui.frameDirection() === "rtl" ? og.ui.frameViewport().width - left : left);
         const target = og.ui.bounds(sc.tutorialStep % 2 === 0 ? "Player" : "Run");
-        doc("tutorial", { title: L(`sc.tutorial.${sc.tutorialStep}.title`), text: L(`sc.tutorial.${sc.tutorialStep}.text`), step: sc.tutorialStep, steps: 5, waits: false, x: target ? Math.round(target.x + target.width / 2) : 64, y: target ? Math.round(target.y + target.height + 12) : 120, texture: 0 }, (e) => {
+        doc("tutorial", { title: L(`sc.tutorial.${sc.tutorialStep}.title`), text: L(`sc.tutorial.${sc.tutorialStep}.text`), step: sc.tutorialStep, steps: 5, waits: false, x: target ? start(target.x + target.width / 2) : 64, y: target ? Math.round(target.y + target.height + 12) : 120, texture: 0 }, (e) => {
           if (e === "next") {
             if (sc.tutorialStep >= 5) go("actionHud");
             else sc.tutorialStep += 1;
