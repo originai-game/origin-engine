@@ -1,23 +1,29 @@
-// Three-Lane Beat's systems, in tick order after the screens (src/ui.ts):
-// Clock (the song's og.Music clock follows Game.songStart), Play (presses,
+// Three-Lane Beat's systems, in tick order after Seats (src/seats.ts):
+// Controls (each seat's presses from its og.PlayerInput, the menu's and the
+// pause's acted on), the screens (src/ui.ts), Clock (the song's og.Music
+// clock follows Game.songStart), Play (presses,
 // judgements, misses, the notes' scheduling by og.MusicBeat, drawing the
 // highway), Band (the song's stems started on their bar lines by
 // og.MusicBeat, the count-in's clicks), Lanes (the receptors' flash,
-// squash and burst, the lanes' glow on the beat) and Voices.
+// squash and burst, the lanes' glow on the beat), Glows and Voices.
 //
 // Time is the world's: tick / tick rate, the clock og.music and og.audio
 // keep, so a stem started at `songStart + bar × barLength` sounds on its
-// bar line to the sample. A press is judged at the time it happened (its
-// tick's time and its event's `at` within the tick) less the output's
-// latency (og.audio.outputLatency) and the calibrated offset
-// (Prefs.offsetMs) against its note's exact time.
+// bar line to the sample. A press is judged on the tick its bit goes down
+// in og.PlayerInput, at the time it happened (the tick it was read and its
+// event's `at` within it, aimX) less its device's lag (the output's latency
+// and the calibrated offset, aimY: src/device.ts) against its note's exact
+// time, so every peer of a room judges it the same.
 
 import { og, defineSystem } from "@origingame/engine";
 import type { Value, World } from "@origingame/engine";
-import { Game, Judgement, JUDGEMENTS, LANES, Note, Phase, Prefs, Receptor, Sfx, Sound, Stem, Tuning } from "./components.ts";
-import { say } from "./ui.ts";
+import { Game, Glow, Judgement, JUDGEMENTS, LANES, Note, Phase, Prefs, Receptor, Rival, Sfx, Sound, Stem, Tuning } from "./components.ts";
+import { bit, ONLINE, SEATS } from "./seats.ts";
+import { begin, calibrate, pause, resume, say, toTitle } from "./ui.ts";
 
 type GameV = Value<typeof Game>;
+/** A seat's presses and tally: Game's seat fields or Rival. */
+type SeatV = Value<typeof Rival>;
 type TuneV = Value<typeof Tuning>;
 
 /** The song's stems, in the order `start` spawns them. */
@@ -87,116 +93,106 @@ function songNow(world: World, g: GameV): number {
   return g.pausedAt >= 0 ? g.pausedAt : worldTime(world);
 }
 
-/** The world point under a CSS pixel, through the orthographic camera. */
-export function screenToWorld(world: World, px: number, py: number): { x: number; y: number } | null {
-  const cam = world.resource(og.Camera);
-  const vp = og.ui.viewport(world);
-  if (!cam.ok || vp.height <= 0) return null;
-  const scale = vp.height / cam.value.height;
-  const at = cam.value.position;
-  return { x: at.x + (px - vp.width / 2) / scale, y: at.y - (py - vp.height / 2) / scale };
+/** The seats' state: Game carries seat 0's, Rival seat 1's. */
+export function seatPlays(world: World): SeatV[] {
+  const out: SeatV[] = [must2(world.resource(Game))];
+  if (SEATS > 1) out.push(must2(world.resource(Rival)));
+  return out;
 }
 
-/** Each lane's keys and pad buttons. */
-const LANE_KEYS: readonly (readonly string[])[] = [["KeyA", "ArrowLeft", "KeyJ"], ["KeyS", "ArrowDown", "KeyK", "Space"], ["KeyD", "ArrowRight", "KeyL"]];
-const LANE_PADS: readonly (readonly string[])[] = [["left", "x"], ["down", "a"], ["right", "b"]];
-
-/** The lane a finger at a CSS pixel is on, or -1 off the highway. */
-function laneAt(world: World, g: GameV, x: number, y: number): number {
-  const w = screenToWorld(world, x, y);
-  if (w === null || w.y > g.hitY + 3.5) return -1;
-  const lane = Math.round(w.x / g.laneW) + 1;
-  return lane >= 0 && lane < LANES && Math.abs(w.x - (lane - 1) * g.laneW) <= g.laneW * 0.6 ? lane : -1;
+/** Where a seat's highway is centred (seat 0 left, seat 1 right of the middle; the middle alone). */
+export function highwayX(g: GameV, seat: number): number {
+  return SEATS === 1 ? 0 : (seat === 0 ? -1 : 1) * g.spread;
 }
+
+/** The lanes' bits of og.PlayerInput.buttons (src/creation.ts's lane0 to lane2). */
+const LANE_BITS = Array.from({ length: LANES }, (_, lane) => bit(`lane${lane}`));
 
 /**
- * The lanes pressed this tick, as a mask (keys, the pad, fingers on the
- * highway, the HUD's zones), and when within the tick each lane's first
- * press happened (`within[lane]`, in ticks: og.KeyDown's and
- * og.PointerDown's `at`, from the host's event time; 0 for the pad, which
- * the shell polls once a frame, and for the `hit` command).
+ * Each seat's presses from its og.PlayerInput: the controls that went
+ * down this tick, when they happened (aimX) and its device's lag (aimY);
+ * then the menu's and the pause's: a start (Play, Restart, Play again),
+ * back to the title, the calibration, pause and resume, each as of the
+ * tick it was pressed on, for every seat at once.
  */
-function pressedLanes(world: World, g: GameV, inp: Value<typeof og.Input>, gp: Value<typeof og.Gamepad>, ptr: Value<typeof og.Pointers>, within: number[]): number {
-  let mask = 0;
-  within.fill(0);
-  const stamp = (lane: number, at: number) => {
-    within[lane] = mask & (1 << lane) ? Math.min(within[lane]!, at) : at;
-    mask |= 1 << lane;
-  };
-  for (const e of world.events(og.KeyDown)) {
-    if (e.repeat) continue;
-    const lane = LANE_KEYS.findIndex((keys) => keys.includes(e.key));
-    if (lane >= 0 && inp.pressed(e.key)) stamp(lane, e.at);
+export const Controls = defineSystem("Controls", { reads: [og.PlayerInput, Tuning], writes: [Game, Rival] }, (q, _time, world) => {
+  const g = must2(world.resource(Game));
+  const plays = seatPlays(world);
+  let acts = 0;
+  let when = Infinity;
+  for (const a of q.archetypes()) {
+    const inp = a.column(og.PlayerInput);
+    for (let i = 0; i < a.count; i++) {
+      const s = plays[inp.player[i]!];
+      if (s === undefined) continue;
+      const buttons = inp.buttons[i]!;
+      const pressed = buttons & ~s.before;
+      if (s.before !== buttons) s.before = buttons;
+      if (s.pressed !== pressed) s.pressed = pressed;
+      if (s.lagMs !== inp.aimY[i]) s.lagMs = inp.aimY[i]!;
+      if (pressed === 0) continue;
+      s.pressAt = (world.tick + inp.aimX[i]!) / 60;
+      acts |= pressed;
+      when = Math.min(when, Math.floor(world.tick + inp.aimX[i]!) / 60);
+    }
   }
-  for (const e of world.events(og.PointerDown)) {
-    const lane = ptr.pressed(e.id) ? laneAt(world, g, e.x, e.y) : -1;
-    if (lane >= 0) stamp(lane, e.at);
-  }
-  for (let lane = 0; lane < LANES; lane++) {
-    if (mask & (1 << lane)) continue;
-    if (LANE_KEYS[lane]!.some((k) => inp.pressed(k)) || LANE_PADS[lane]!.some((b) => gp.pressed(b as never))) stamp(lane, 0);
-  }
-  for (let id = 0; id < ptr.count(); id++) {
-    if (!ptr.pressed(id)) continue;
-    const at = ptr.position(id);
-    const lane = laneAt(world, g, at.x, at.y);
-    if (lane >= 0 && !(mask & (1 << lane))) stamp(lane, 0);
-  }
-  if (g.padLane >= 0) {
-    if (!(mask & (1 << g.padLane))) stamp(g.padLane, 0);
-    g.padLane = -1;
-  }
-  return mask;
-}
-
-/** Scratch for pressedLanes: each lane's press time within the tick. */
-const within = [0, 0, 0];
+  if (acts === 0) return;
+  // The menu's presses act as of the tick they were made on.
+  const now = when;
+  if (acts & bit("start") && (g.phase !== Phase.Play || g.paused)) begin(world, g, 1, now);
+  else if (acts & bit("title")) toTitle(g);
+  else if (acts & bit("calibrate") && !ONLINE) {
+    if (g.phase === Phase.Calibrate) {
+      g.calTaps = 0;
+      g.calSum = 0;
+    } else if (g.phase === Phase.Title) calibrate(world, g, now);
+  } else if (acts & bit("resume")) resume(world, g, now);
+  else if (acts & bit("pause")) pause(g, now);
+});
 
 /**
  * The play. Each tick: the presses (the count-in's taps and a calibration's
- * are measured, not judged), each pressed lane's nearest unjudged note
- * within the Good window judged by its error, unhit notes past the window
- * missed, the notes og.MusicBeat brings onto the highway, the highway
- * drawn, and the song's end (cleared a beat after its last note, failed
- * when the groove runs out).
+ * are measured, not judged), each pressed lane's nearest unjudged note of
+ * its seat within the Good window judged by its error, unhit notes past the
+ * window missed, the notes og.MusicBeat brings onto the highways, the
+ * highways drawn, and the song's end (cleared a beat after its last note,
+ * failed when the groove runs out: in versus when every seat's has).
  */
 export const Play = defineSystem(
   "Play",
-  { reads: [og.Input, og.Gamepad, og.Pointers, og.KeyDown, og.PointerDown, og.Camera, og.Audio, og.MusicBeat, Tuning, Prefs], writes: [Game, Note], after: ["Clock"] },
+  { reads: [og.Camera, og.MusicBeat, Tuning, Prefs], writes: [Game, Rival, Note], after: ["Clock"] },
   (q, _time, world) => {
     const game = world.resource(Game);
-    const input = world.resource(og.Input);
-    const gamepad = world.resource(og.Gamepad);
-    const pointers = world.resource(og.Pointers);
-    const prefs = world.resource(Prefs);
-    if (!game.ok || !input.ok || !gamepad.ok || !pointers.ok || !prefs.ok) return;
+    if (!game.ok) return;
     const g = game.value;
+    const plays = seatPlays(world);
     const t = lazyTuning(world);
     const now = worldTime(world);
-    // What the player hears is the world's time less the output's latency (0 headless); the
-    // calibrated offset is the rest of the chain (the display, the hand).
-    const latency = og.audio.outputLatency(world);
-    const offset = prefs.value.offsetMs / 1000;
     const live = g.phase === Phase.Play && !g.held && g.pausedAt < 0;
-    const calibrating = g.phase === Phase.Calibrate && !g.settingsOpen;
-    const mask = live || calibrating ? pressedLanes(world, g, input.value, gamepad.value, pointers.value, within) : 0;
-    const tickLength = 1 / 60;
+    const calibrating = g.phase === Phase.Calibrate;
+    // Each seat's lanes pressed this tick, and when each press was heard: its time less its device's lag.
+    let mask = 0;
+    plays.forEach((s, seat) => {
+      if (!live && !calibrating) return;
+      LANE_BITS.forEach((b, lane) => {
+        if (s.pressed & b) mask |= 1 << (seat * LANES + lane);
+      });
+    });
+    const heard = plays.map((s) => s.pressAt - s.lagMs / 1000);
     if (mask !== g.pressMask) g.pressMask = mask;
-    if (mask !== 0) {
-      g.taps += 1;
-      for (let lane = 0; lane < LANES; lane++) if (mask & (1 << lane)) g.sfx |= Sound.Tap0 << lane;
-    }
-    // Calibration: each tap's error from the nearest click (every beat of the clock).
-    if (calibrating && mask !== 0 && g.calTaps < 8 && now > g.songStart) {
-      const len = beatLength(g);
-      let first = 0;
-      while (!(mask & (1 << first))) first++;
-      // The tap when it happened, against the click when it was heard.
-      const b = (now + within[first]! * tickLength - latency - g.songStart) / len;
-      const err = (b - Math.round(b)) * len * 1000;
-      g.calTaps += 1;
-      g.calSum += err;
-    }
+    plays.forEach((s, seat) => {
+      const lanes = (mask >> (seat * LANES)) & 7;
+      if (lanes === 0) return;
+      s.taps += 1;
+      for (let lane = 0; lane < LANES; lane++) if (lanes & (1 << lane)) g.sfx |= Sound.Tap0 << lane;
+      // Calibration: each tap's error from the nearest click (every beat of the clock).
+      if (calibrating && g.calTaps < 8 && now > g.songStart) {
+        const len = beatLength(g);
+        const b = (heard[seat]! - g.songStart) / len;
+        g.calTaps += 1;
+        g.calSum += (b - Math.round(b)) * len * 1000;
+      }
+    });
     // The notes og.MusicBeat brings: every note up to scrollBeats past the beat just sent, and one more
     // (a start or a resume asks for the first ones through Game.scheduleUpTo).
     let upTo = g.scheduleUpTo;
@@ -204,24 +200,24 @@ export const Play = defineSystem(
       for (const e of world.events(og.MusicBeat)) upTo = Math.max(upTo, (e.bar - 1) * 4 + (e.beat - 1) + 1 + t.scrollBeats);
     }
     if (g.scheduleUpTo !== -1) g.scheduleUpTo = -1;
-    const at = songNow(world, g) - offset - latency;
+    // Each seat's song as its device plays it: the world's time less its lag.
+    const at = plays.map((s) => songNow(world, g) - s.lagMs / 1000);
     const len = beatLength(g);
     const window = t.goodMs / 1000;
     let hitMask = 0;
     let judgedNow = 0;
+    if (g.resetNotes) for (const s of plays) s.notes = 0;
     for (const a of q.archetypes()) {
       const n = a.column(Note);
       const count = a.count;
       if (g.resetNotes) {
         n.live.fill(0);
         n.errorMs.fill(0);
-        let playing = 0;
         for (let i = 0; i < count; i++) {
           const skip = n.beat[i]! < g.fromBeat;
           n.judged[i] = skip ? 5 : 0;
-          if (!skip) playing += 1;
+          if (!skip) plays[n.seat[i]!]!.notes += 1;
         }
-        g.notes = playing;
       }
       if (g.phase !== Phase.Play) continue;
       // Scheduling: notes up to `upTo` beats come onto the highway (og.MusicBeat, or a start's first ones).
@@ -229,21 +225,23 @@ export const Play = defineSystem(
         for (let i = 0; i < count; i++) {
           if (!n.live[i] && !n.judged[i] && n.beat[i]! <= upTo) {
             n.live[i] = 1;
-            g.scheduled += 1;
+            if (n.seat[i] === 0) g.scheduled += 1;
           }
         }
       }
-      // Judging each pressed lane: its nearest unjudged note within the Good window.
       if (live) {
-        for (let lane = 0; lane < LANES; lane++) {
-          if (!(mask & (1 << lane))) continue;
-          // The press when it happened within the tick, not the tick's start.
-          const pressed = at + within[lane]! * tickLength;
+        // Judging each pressed lane: its seat's nearest unjudged note within the Good window.
+        for (let k = 0; k < plays.length * LANES; k++) {
+          if (!(mask & (1 << k))) continue;
+          const seat = Math.floor(k / LANES);
+          const lane = k % LANES;
+          const s = plays[seat]!;
+          if (s.failed && plays.length > 1) continue;
           let best = -1;
           let bestErr = Infinity;
           for (let i = 0; i < count; i++) {
-            if (!n.live[i] || n.judged[i] || n.lane[i] !== lane) continue;
-            const err = pressed - (g.songStart + n.beat[i]! * len);
+            if (!n.live[i] || n.judged[i] || n.lane[i] !== lane || n.seat[i] !== seat) continue;
+            const err = heard[seat]! - (g.songStart + n.beat[i]! * len);
             if (Math.abs(err) <= window && Math.abs(err) < Math.abs(bestErr)) {
               best = i;
               bestErr = err;
@@ -255,47 +253,53 @@ export const Play = defineSystem(
           n.judged[best] = j + 1;
           n.live[best] = 0;
           n.errorMs[best] = ms;
-          judge(world, g, t, j, lane, ms);
-          hitMask |= 1 << lane;
+          judge(world, g, plays, seat, t, j, lane, ms);
+          hitMask |= 1 << k;
           judgedNow += 1;
         }
-        // Misses: unjudged notes past the Good window.
+        // Misses: unjudged notes past the Good window (a seat out of a versus misses no more).
         for (let i = 0; i < count; i++) {
           if (!n.live[i] || n.judged[i]) continue;
-          if (at - (g.songStart + n.beat[i]! * len) > window) {
+          const seat = n.seat[i]!;
+          if (at[seat]! - (g.songStart + n.beat[i]! * len) > window) {
             n.judged[i] = Judgement.Miss + 1;
             n.live[i] = 0;
-            judge(world, g, t, Judgement.Miss, n.lane[i]!, 0);
+            if (plays[seat]!.failed && plays.length > 1) continue;
+            judge(world, g, plays, seat, t, Judgement.Miss, n.lane[i]!, 0);
             judgedNow += 1;
           }
         }
       }
-      // The highway: live notes fall to the hit line, missed ones fall on, dimmed, and fade.
+      // The highways: live notes fall to the hit line, missed ones fall on, dimmed, and fade.
       const speed = (g.topY - g.hitY) / (t.scrollBeats * len);
       for (let i = 0; i < count; i++) {
         const missed = n.judged[i] === Judgement.Miss + 1;
         if (!n.live[i] && !missed) continue;
-        const dt = g.songStart + n.beat[i]! * len - at;
+        const seat = n.seat[i]!;
+        const dt = g.songStart + n.beat[i]! * len - at[seat]!;
         const y = g.hitY + dt * speed;
         if (y > g.topY + 0.4 || y < g.hitY - 3) continue;
         const lane = n.lane[i]!;
         const c = LANE_COLOURS[lane]!;
-        must(og.render.sprite(world, { texture: g.noteTexture as unknown as never, position: { x: (lane - 1) * g.laneW, y, z: 0 }, width: g.laneW * 0.86, height: g.laneW * 0.36, color: missed ? { r: 0.45, g: 0.45, b: 0.5 } : c, opacity: missed ? Math.max(0, 0.5 + dt) : 1, layer: 6 }));
+        const out = plays[seat]!.failed && plays.length > 1;
+        must(og.render.sprite(world, { texture: g.noteTexture as unknown as never, position: { x: highwayX(g, seat) + (lane - 1) * g.laneW, y, z: 0 }, width: g.laneW * 0.86, height: g.laneW * 0.36, color: missed || out ? { r: 0.45, g: 0.45, b: 0.5 } : c, opacity: missed ? Math.max(0, 0.5 + dt) : out ? 0.35 : 1, layer: 6 }));
       }
     }
     if (g.resetNotes) g.resetNotes = false;
     if (hitMask !== g.hitMask) g.hitMask = hitMask;
     if (g.phase !== Phase.Play || g.pausedAt >= 0) return;
-    // The count-in: its numbers over the middle lane.
+    // The count-in: its numbers over the middle lane (of each highway).
     if (now < g.countTo) {
       const left = Math.ceil((g.countTo - now) / len - 1e-6);
       if (left !== g.countShown && left >= 1 && left <= 4) {
         g.countShown = left;
-        must(og.render.floatingText(world, { text: `${left}`, position: { x: 0, y: g.hitY + 3.2, z: 0 }, size: 0.9, color: { r: 0.85, g: 0.95, b: 1 }, rise: 0.3, lifetime: len * 0.9 }));
+        for (let seat = 0; seat < plays.length; seat++) {
+          must(og.render.floatingText(world, { text: `${left}`, position: { x: highwayX(g, seat), y: g.hitY + 3.2, z: 0 }, size: 0.9, color: { r: 0.85, g: 0.95, b: 1 }, rise: 0.3, lifetime: len * 0.9 }));
+        }
       }
     }
-    // The end: a beat after the last note is judged, or soon after the groove runs out.
-    if (judgedNow > 0 && g.judged >= g.notes && g.endAt === 0 && !g.failed) {
+    // The end, for every seat together: a beat after the last note is judged (every seat still in has judged its chart).
+    if (judgedNow > 0 && g.endAt === 0 && plays.every((s) => s.failed || s.judged >= s.notes) && !plays.every((s) => s.failed)) {
       g.cleared = true;
       g.endAt = now + 1.5;
       g.sfx |= Sound.Clear;
@@ -304,41 +308,45 @@ export const Play = defineSystem(
   },
 );
 
-function judge(world: World, g: GameV, t: TuneV, j: number, lane: number, ms: number): void {
-  g.judged += 1;
-  g.lastJudgement = j;
-  g.lastLane = lane;
-  const x = (lane - 1) * g.laneW;
+/** A note judged for a seat: its tally, the words over its lane, the feel; a groove run out ends the song (in versus, once every seat's has). */
+function judge(world: World, g: GameV, plays: readonly SeatV[], seat: number, t: TuneV, j: number, lane: number, ms: number): void {
+  const s = plays[seat]!;
+  s.judged += 1;
+  s.lastJudgement = j;
+  s.lastLane = lane;
+  const x = highwayX(g, seat) + (lane - 1) * g.laneW;
   const y = g.hitY + 0.9;
   if (j === Judgement.Miss) {
-    g.miss += 1;
-    if (g.combo >= 10) g.sfx |= Sound.Break;
+    s.miss += 1;
+    if (s.combo >= 10) g.sfx |= Sound.Break;
     else g.sfx |= Sound.Miss;
-    g.combo = 0;
+    s.combo = 0;
     // (f32 steps: what is left under a thousandth is empty.)
-    const left = g.groove - t.grooveLoss;
-    g.groove = left < 1e-3 ? 0 : left;
+    const left = s.groove - t.grooveLoss;
+    s.groove = left < 1e-3 ? 0 : left;
     must(og.render.floatingText(world, { text: say(world, "judge.miss"), position: { x, y, z: 0 }, size: 0.42, color: JUDGE_COLOURS[3]!, rise: 0.6, lifetime: 0.6 }));
     must(og.camera.shake(world, 0.18 * feel(world)));
-    if (g.groove <= 0 && !g.failed) {
-      g.failed = true;
-      g.endAt = worldTime(world) + 1.2;
-      g.sfx |= Sound.Fail;
-      g.stopBand = true;
+    if (s.groove <= 0 && !s.failed) {
+      s.failed = true;
+      if (plays.every((p) => p.failed)) {
+        g.endAt = worldTime(world) + 1.2;
+        g.sfx |= Sound.Fail;
+        g.stopBand = true;
+      }
     }
     return;
   }
-  g.hits += 1;
-  g.combo += 1;
-  g.maxCombo = Math.max(g.maxCombo, g.combo);
-  const multiplier = Math.min(4, 1 + Math.floor(g.combo / t.comboStep));
+  s.hits += 1;
+  s.combo += 1;
+  s.maxCombo = Math.max(s.maxCombo, s.combo);
+  const multiplier = Math.min(4, 1 + Math.floor(s.combo / t.comboStep));
   const points = j === Judgement.Perfect ? t.perfectPoints : j === Judgement.Great ? t.greatPoints : t.goodPoints;
-  g.score += points * multiplier;
-  if (j === Judgement.Perfect) g.perfect += 1;
-  else if (j === Judgement.Great) g.great += 1;
-  else g.good += 1;
-  g.groove = Math.min(1, g.groove + t.grooveGain * (j === Judgement.Perfect ? 1 : j === Judgement.Great ? 0.7 : 0.4));
-  g.lastOffsetMs = ms;
+  s.score += points * multiplier;
+  if (j === Judgement.Perfect) s.perfect += 1;
+  else if (j === Judgement.Great) s.great += 1;
+  else s.good += 1;
+  s.groove = Math.min(1, s.groove + t.grooveGain * (j === Judgement.Perfect ? 1 : j === Judgement.Great ? 0.7 : 0.4));
+  s.lastOffsetMs = ms;
   const word = say(world, `judge.${JUDGEMENTS[j]}`);
   must(og.render.floatingText(world, { text: word, position: { x, y, z: 0 }, size: j === Judgement.Perfect ? 0.46 : 0.4, color: JUDGE_COLOURS[j]!, rise: 0.7, lifetime: 0.55 }));
   if (j !== Judgement.Perfect) {
@@ -346,7 +354,7 @@ function judge(world: World, g: GameV, t: TuneV, j: number, lane: number, ms: nu
   }
   // A combo of every comboStep raises the multiplier: a punch on the beat.
   const k = feel(world);
-  if (g.combo % t.comboStep === 0 && g.combo <= t.comboStep * 3) must(og.camera.punch(world, 0.03 * k));
+  if (s.combo % t.comboStep === 0 && s.combo <= t.comboStep * 3) must(og.camera.punch(world, 0.03 * k));
   must(og.camera.kick(world, { x: 0, y: -1, z: 0 }, 0.04 * k));
 }
 
@@ -441,16 +449,17 @@ export const Lanes = defineSystem("Lanes", { reads: [Game, og.MusicBeat, Prefs],
     const fx = a.column(og.ParticleSystem);
     for (let i = 0; i < a.count; i++) {
       const lane = r.lane[i]!;
+      const bit = 1 << (r.seat[i]! * LANES + lane);
       const me = a.entity(i);
-      p[i * 3] = (lane - 1) * g.laneW;
+      p[i * 3] = highwayX(g, r.seat[i]!) + (lane - 1) * g.laneW;
       p[i * 3 + 1] = g.hitY;
       const shown = g.phase === Phase.Play || g.phase === Phase.Calibrate ? 1 : 0;
       if (sprite.visible[i] !== shown) sprite.visible[i] = shown;
-      if (g.pressMask & (1 << lane)) {
+      if (g.pressMask & bit) {
         r.presses[i] = r.presses[i]! + 1;
         must(og.tween.squash(world, { entity: me, impact: { x: 1.12, y: 0.82 }, duration: 0.12 }));
       }
-      if (g.hitMask & (1 << lane)) {
+      if (g.hitMask & bit) {
         must(og.tween.flash(world, { entity: me, color: LANE_COLOURS[lane]!, duration: 0.12 }));
         fx.visible[i] = 1;
         fx.startTick[i] = world.tick;
@@ -463,8 +472,26 @@ export const Lanes = defineSystem("Lanes", { reads: [Game, og.MusicBeat, Prefs],
   }
 });
 
+/** The lanes' glows follow the layout: each under its lane of its seat's highway. */
+export const Glows = defineSystem("Glows", { reads: [Game, Glow], writes: [og.Transform, og.Sprite], after: ["Lanes"] }, (q, _time, world) => {
+  const game = world.resource(Game);
+  if (!game.ok) return;
+  const g = game.value;
+  const width = (1.4 * g.laneW) / 1.5;
+  for (const a of q.archetypes()) {
+    const glow = a.column(Glow);
+    const p = a.column(og.Transform).position;
+    const sprite = a.column(og.Sprite);
+    for (let i = 0; i < a.count; i++) {
+      const x = highwayX(g, glow.seat[i]!) + (glow.lane[i]! - 1) * g.laneW;
+      if (p[i * 3] !== x) p[i * 3] = x;
+      if (Math.abs(sprite.width[i]! - width) > 1e-6) sprite.width[i] = width;
+    }
+  }
+});
+
 /** Plays each requested sound once: a voice already playing is stopped this tick and restarted the next. */
-export const Voices = defineSystem("Voices", { writes: [Game, Sfx, og.AudioSource], after: ["Lanes"] }, (q, _time, world) => {
+export const Voices = defineSystem("Voices", { writes: [Game, Sfx, og.AudioSource], after: ["Glows"] }, (q, _time, world) => {
   const game = world.resource(Game);
   if (!game.ok) return;
   const g = game.value;

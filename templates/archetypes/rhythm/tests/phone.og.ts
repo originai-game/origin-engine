@@ -1,16 +1,15 @@
 // The phone layout (390×844 at 3×, a notch and a home bar): the title's
 // menu, then the score, the groove and Pause below the notch, the combo
 // above the highway, three 2 m lanes across the width with the hit line
-// above the home bar; a finger on a lane at its note's time hits it.
+// above the home bar; a finger on a lane at its note's time hits it (in
+// versus, on seat 0's highway on the left half).
 import { playtest } from "@origingame/engine/playtest";
-import { BEAT, chart, game, songStart, sorted, tap, type UiElement, ui } from "./lib.ts";
+import { BEAT, chart, game, phoneLaneX, songStart, sorted, tap, type UiElement, ui } from "./lib.ts";
 
 const notes = chart();
 const t0 = songStart(1.0);
-/** CSS px per metre: the camera is 7.2 m across 390 px. */
-const scale = 390 / 7.2;
-const laneX = (lane: number) => 195 + (lane - 1) * 2 * scale;
-const touch = (lane: number, t: number) => `${t.toFixed(4)}:touch_move:${laneX(lane).toFixed(1)},690;${(t + 0.0001).toFixed(4)}:touch_start;${(t + 0.05).toFixed(4)}:touch_end`;
+/** The camera is 7.2 m across 390 px: alone three 2 m lanes, in versus seat 0's on the left half (lib.ts). */
+const touch = (lane: number, t: number) => `${t.toFixed(4)}:touch_move:${phoneLaneX(lane).toFixed(1)},690;${(t + 0.0001).toFixed(4)}:touch_start;${(t + 0.05).toFixed(4)}:touch_end`;
 
 export default playtest({
   name: "the phone layout: a HUD inside the safe area, three lanes across, fingers hit the notes",

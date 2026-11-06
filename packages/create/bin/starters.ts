@@ -189,9 +189,13 @@ export const STARTERS = {
     profile: "2d", views: ["top-down-2d", "side-2d"], players: BOTH_PLAYERS, seats: 2, kit: null,
     systems: ["net", "audio", "tween", "render", "platform", "i18n", "ui"],
     controls: { move: "none", aim: "none", buttons: [
-      { name: "lane0", label: "Left lane", keys: k(["KeyA", "ArrowLeft"], ["KeyJ"]), pad: ["pad.left", "pad.x"] },
-      { name: "lane1", label: "Middle lane", keys: k(["KeyS", "ArrowDown"], ["KeyK"]), pad: ["pad.down", "pad.a"] },
-      { name: "lane2", label: "Right lane", keys: k(["KeyD", "ArrowRight"], ["KeyL"]), pad: ["pad.right", "pad.b"] },
+      { name: "lane0", label: "Left lane", keys: k(["KeyA"], ["KeyJ", "ArrowLeft"]), pad: ["pad.left", "pad.x"] },
+      { name: "lane1", label: "Middle lane", keys: k(["KeyS", "Space"], ["KeyK", "ArrowDown"]), pad: ["pad.down", "pad.a"] },
+      { name: "lane2", label: "Right lane", keys: k(["KeyD"], ["KeyL", "ArrowRight"]), pad: ["pad.right", "pad.b"] },
+      { name: "start", label: "Start", keys: k([], []), pad: [] },
+      { name: "resume", label: "Resume", keys: k([], []), pad: [] },
+      { name: "title", label: "Title", keys: k([], []), pad: [] },
+      { name: "calibrate", label: "Calibrate", keys: k([], []), pad: [] },
     ] },
   },
   "third-person": {

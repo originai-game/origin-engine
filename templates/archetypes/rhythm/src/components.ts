@@ -2,8 +2,9 @@
 // dumps, the probe, Tune and the command channel's `get` and `set` read and
 // write them by name.
 //
-// The play (Game), the knobs (Tuning) and the player's settings with the
-// calibrated offset (Prefs) are resources. The chart is a scene
+// The play with seat 0's tally (Game), seat 1's in versus (Rival), the knobs
+// (Tuning) and the player's settings (Prefs) are resources; the calibrated
+// offset that judges is this device's own (src/device.ts), out of the world. The chart is a scene
 // (assets/charts/*.ogt): its `Song` row and one `Note` row per note. The
 // stems, the lanes' receptors and the voices are rows spawned in `start`.
 
@@ -22,15 +23,15 @@ export const LANES = 3;
 /** Sound requests: bits of Game.sfx that the Voices system plays once each. */
 export const Sound = { Tap0: 1, Tap1: 2, Tap2: 4, Miss: 8, Clear: 16, Fail: 32, Move: 64, Break: 128 } as const;
 
-/** The play: the song's clock, the judgements, the score, the groove, the calibration, the best. */
-export const Game = defineResource("Game", {
-  phase: u32(Phase.Title, { doc: "Phase.* of src/components.ts." }),
-  paused: bool(false),
-  settingsOpen: bool(false),
-  held: bool(false, { doc: "The time scale is held at 0 (paused or in the settings)." }),
-  songStart: f64(0, { unit: "s", doc: "The world time of bar 1's first beat (og.Music.start): every note's time is songStart + beat × 60 / bpm." }),
-  pausedAt: f64(-1, { unit: "s", doc: "The world time the play was paused at (-1 not paused)." }),
-  countTo: f64(0, { unit: "s", doc: "The count-in ends at this world time (after a start or a resume)." }),
+/**
+ * A seat's play: its presses this tick (from its og.PlayerInput) and its
+ * tally. Game carries seat 0's, Rival seat 1's in a two-seat game.
+ */
+const seatPlay = {
+  before: u32(0, { doc: "The seat's og.PlayerInput.buttons last tick (for its presses' edges)." }),
+  pressed: u32(0, { doc: "Its controls that went down this tick (bit per control, src/creation.ts's order)." }),
+  pressAt: f64(0, { unit: "s", doc: "When this tick's presses happened, in world time: the tick they were read plus where within it (og.PlayerInput.aimX)." }),
+  lagMs: f32(0, { unit: "ms", doc: "How late the seat's device hears and shows the song: its output's latency plus its calibrated offset (og.PlayerInput.aimY). Its presses are judged this much earlier." }),
   score: u32(0),
   combo: u32(0),
   maxCombo: u32(0),
@@ -42,27 +43,37 @@ export const Game = defineResource("Game", {
   judged: u32(0, { doc: "Notes judged (hit or missed)." }),
   notes: u32(0, { doc: "Notes in the chart." }),
   taps: u32(0, { doc: "Lane presses." }),
-  groove: f32(0.5, { doc: "The life gauge, 0 to 1: hits fill it, misses drain it; empty fails the song." }),
+  groove: f32(0.5, { doc: "The life gauge, 0 to 1: hits fill it, misses drain it; empty fails the song (in versus, the seat is out)." }),
   failed: bool(false),
-  cleared: bool(false),
   lastJudgement: i32(-1, { doc: "Judgement.* of the last judged note." }),
   lastOffsetMs: f32(0, { unit: "ms", doc: "The last hit's error: negative early, positive late." }),
   lastLane: i32(-1),
+};
+
+/** The play: the song's clock, seat 0's presses and tally, the end, the calibration, the best. */
+export const Game = defineResource("Game", {
+  phase: u32(Phase.Title, { doc: "Phase.* of src/components.ts." }),
+  paused: bool(false),
+  held: bool(false, { doc: "The time scale is held at 0 (paused)." }),
+  songStart: f64(0, { unit: "s", doc: "The world time of bar 1's first beat (og.Music.start): every note's time is songStart + beat × 60 / bpm." }),
+  pausedAt: f64(-1, { unit: "s", doc: "The world time the play was paused at (-1 not paused)." }),
+  countTo: f64(0, { unit: "s", doc: "The count-in ends at this world time (after a start or a resume)." }),
+  ...seatPlay,
+  cleared: bool(false),
   scheduled: u32(0, { doc: "Notes put on the highway so far by og.MusicBeat (the next note to schedule)." }),
   nextBar: u32(0, { doc: "The bar whose stems the Band starts next." }),
   endAt: f64(0, { unit: "s", doc: "The world time the results come up (a beat after the last note, or after the groove ran out)." }),
   calTaps: u32(0, { doc: "Calibration taps so far (of 8)." }),
-  calSum: f64(0, { unit: "ms", doc: "The calibration taps' errors, summed." }),
+  calSum: f64(0, { unit: "ms", doc: "The calibration taps' errors from their clicks, summed, after the device's lag (so the offset to keep is the lag's offset plus their mean)." }),
   best: u32(0),
   bestRequest: u32(0),
   bestRevision: u32(0),
   bestWrite: u32(0),
   newBest: bool(false),
-  padLane: i32(-1, { doc: "A lane a command pressed this tick (-1 none)." }),
   bpm: f32(120, { unit: "bpm", doc: "The chart's tempo (its Song row)." }),
   bars: u32(0, { doc: "The chart's length in bars." }),
-  pressMask: u32(0, { doc: "The lanes pressed this tick (bit per lane)." }),
-  hitMask: u32(0, { doc: "The lanes whose press hit a note this tick." }),
+  pressMask: u32(0, { doc: "The lanes pressed this tick (bit seat × 3 + lane)." }),
+  hitMask: u32(0, { doc: "The lanes whose press hit a note this tick (bit seat × 3 + lane)." }),
   resetNotes: bool(false, { doc: "A new play: the Play system clears every note's judgement this tick." }),
   fromBeat: f32(0, { unit: "beats", doc: "Where this play started (play:<bar> starts later): earlier notes are skipped, not judged." }),
   scheduleUpTo: f32(-1, { unit: "beats", doc: "A start or a resume puts the notes up to this beat on the highway (-1 none); og.MusicBeat does the rest." }),
@@ -74,12 +85,16 @@ export const Game = defineResource("Game", {
   noteTexture: f64(0, { doc: "The note's texture handle." }),
   sfx: u32(0),
   laneW: f32(1.5, { unit: "m", doc: "A lane's width (src/ui.ts sets the layout for the surface)." }),
+  spread: f32(0, { unit: "m", doc: "How far each seat's highway sits from the middle (0 alone; seat 0 left, seat 1 right)." }),
   hitY: f32(-3.2, { unit: "m", doc: "The hit line's height." }),
   topY: f32(4.8, { unit: "m", doc: "Where notes appear." }),
   viewW: f32(0, { unit: "cssPx" }),
   viewH: f32(0, { unit: "cssPx" }),
   language: u32(0),
 });
+
+/** Seat 1's presses and tally in a two-seat game (versus): Game's seat fields. */
+export const Rival = defineResource("Rival", seatPlay);
 
 /** The knobs. Tune reads the tunable fields; `set:Tuning.<field>=<value>` writes them. */
 export const Tuning = defineResource("Tuning", {
@@ -104,7 +119,7 @@ export const Prefs = defineResource("Prefs", {
   effects: f32(0.8, { min: 0, max: 1 }),
   language: u32(0, { doc: "0 English, 1 简体中文 (LANGUAGES in src/ui.ts)." }),
   reducedMotion: bool(false),
-  offsetMs: f32(0, { min: -250, max: 250, unit: "ms", doc: "How late this device's sound and picture reach the player (calibrated): a press is judged this much earlier." }),
+  offsetMs: f32(0, { min: -250, max: 250, unit: "ms", doc: "How late this device's sound and picture reach the player (calibrated): a press is judged this much earlier. The device's own (src/device.ts) is what judges; this is its record for one-device play, and a room's world keeps 0." }),
   loadRequest: u32(0),
   saves: u32(0),
 });
@@ -122,6 +137,7 @@ export const Note = defineComponent("Note", {
   index: u32(0, { doc: "Its place in the chart, in time order." }),
   lane: u32(0, { doc: "0 left, 1 middle, 2 right." }),
   beat: f32(0, { unit: "beats", doc: "From 0 at bar 1's first beat." }),
+  seat: u32(0, { doc: "The seat whose highway it falls on (the chart's rows are seat 0's; a two-seat game copies them for seat 1)." }),
   live: bool(false, { doc: "On the highway (scheduled by og.MusicBeat, not yet judged)." }),
   judged: u32(0, { doc: "0 not yet, else Judgement.* + 1 (5: skipped, before a play that started later)." }),
   errorMs: f32(0, { unit: "ms", doc: "How early (negative) or late it was hit." }),
@@ -136,7 +152,14 @@ export const Stem = defineComponent("Stem", {
 /** A lane's receptor at the hit line: it flashes and squashes on a press. */
 export const Receptor = defineComponent("Receptor", {
   lane: u32(0),
+  seat: u32(0),
   presses: u32(0),
+});
+
+/** A lane's glow down the highway. */
+export const Glow = defineComponent("Glow", {
+  lane: u32(0),
+  seat: u32(0),
 });
 
 /** One voice: plays its sound once when Game.sfx asks for its bit. */

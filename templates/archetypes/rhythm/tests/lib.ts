@@ -8,6 +8,43 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { PlaytestRun } from "@origingame/engine/playtest";
+import { creation } from "../src/creation.ts";
+
+/** The seats this scaffold plays (src/creation.ts): 1 alone, 2 in versus. */
+export const SEATS: number = creation.seats;
+const players: string = creation.players;
+export const LOCAL = players === "local-multiplayer";
+export const ONLINE = players === "online-lockstep";
+
+/** A seat's tally (Game's seat fields, Rival). */
+export interface SeatTally {
+  score: number;
+  combo: number;
+  maxCombo: number;
+  perfect: number;
+  great: number;
+  good: number;
+  miss: number;
+  hits: number;
+  judged: number;
+  failed: boolean;
+}
+
+/** The Rival resource (seat 1's tally) from a `get:Rival:<file>` step. */
+export function rival(run: PlaytestRun, file: string): SeatTally {
+  return run.json<{ value: SeatTally }>(file).value;
+}
+
+/**
+ * A finger's CSS x on a phone (390 px across 7.2 m) over a lane of a seat's
+ * highway: the one highway's 2 m lanes alone; in versus seat 0's (left)
+ * or seat 1's (right) 1.1 m lanes, 1.8 m either side of the middle.
+ */
+export function phoneLaneX(lane: number, seat = 0): number {
+  const scale = 390 / 7.2;
+  if (SEATS === 1) return 195 + (lane - 1) * 2 * scale;
+  return 195 + ((seat === 0 ? -1.8 : 1.8) + (lane - 1) * 1.1) * scale;
+}
 
 export interface Game {
   phase: number;

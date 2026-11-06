@@ -179,6 +179,28 @@ export function useTouchControls(draw: (seat: number) => TouchInput): void {
   ownTouch = draw;
 }
 
+/** A seat's input as Seats submits it. */
+export interface SeatInput {
+  x: number;
+  y: number;
+  aimX: number;
+  aimY: number;
+  buttons: number;
+}
+
+/** A game's own reading of this device for a seat, called before Seats submits its input. */
+let ownInput: ((world: World, seat: number, input: SeatInput) => void) | null = null;
+/**
+ * Read more of this device into a local seat's input (aim `none`: the
+ * game's own aimX and aimY, such as when within the tick a press happened
+ * or this device's latency): called by Seats each tick for each local seat
+ * it drives from the devices (not for a bot), after the controls, the touch
+ * controls and press(); it may change any field.
+ */
+export function useInput(read: (world: World, seat: number, input: SeatInput) => void): void {
+  ownInput = read;
+}
+
 /**
  * The touch controls of a seat, and what they hold. Alone: the move bottom
  * left, the look and buttons bottom right. Local: each seat one column in
@@ -231,7 +253,7 @@ function touch(seat: number): TouchInput {
  */
 export const Seats = defineSystem(
   "Seats",
-  { reads: [og.Input, og.Pointers, og.Gamepad, og.Lockstep, og.Camera], writes: [og.PointerLock] },
+  { reads: [og.Input, og.Pointers, og.Gamepad, og.Lockstep, og.Camera, og.KeyDown, og.PointerDown], writes: [og.PointerLock] },
   (_q, time, world) => {
     const fingers = usesTouch();
     if (controls.aim === "look" && !fingers) {
@@ -294,7 +316,9 @@ export const Seats = defineSystem(
           aimY = c.y;
         }
       }
-      must(og.net.submit(world, { player: seat, x: clamp(x), y: clamp(y), aimX, aimY, buttons }));
+      const out = { x: clamp(x), y: clamp(y), aimX, aimY, buttons };
+      if (ownInput && bot === 0) ownInput(world, local, out);
+      must(og.net.submit(world, { player: seat, ...out }));
     }
   },
 );
