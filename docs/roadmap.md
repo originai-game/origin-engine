@@ -113,6 +113,12 @@ Dropped: tag `archive/create-starters` a79e6bed8, tag `archive/ui-own-look` 363a
   terrain.
 - Nine hover/selected kit frames show no state; the phone's radial aimed
   frame equals unaimed; Tune's live edits are not saved by `ui:save`.
+- The style packs' frame suites (`templates/styles/tests/<pack>/style-*.og.ts`)
+  do not load: `styles.ts` imports the UI gallery's helpers and drives its
+  screens, and the gallery went with the template cleanup (9665c6734). Port
+  them to the neutral sheet or a small state fixture in the 0.8.0 UI work,
+  when the packs are rebuilt and their references move anyway; the packs'
+  other tests (style-packs, kit-documents, style-diagnostics) run.
 
 ## og-ui generic gaps (after the clean-up)
 

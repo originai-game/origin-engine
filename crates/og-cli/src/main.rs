@@ -199,11 +199,13 @@ commands:
                       move project.ogt's engine pin and package.json's dependency to the installed
                       engine (or --to), apply the changelog's codemods for the versions crossed and
                       list what needs a hand edit; exit 0 done, 3 hand edits listed, 1 failed
-  api find <words> [--kind fn|record|type|member|const|value|column] [--limit N]
-                      the API reference entries matching every word (name, module, first
-                      sentence), best first, one line each
+  api find <words> [--kind fn|record|type|member|const|value|column|guide] [--limit N] [--json]
+                      the API reference and guide entries for the words (a name, a purpose, a
+                      typo), ranked by BM25F over name, summary, members and body, one line
+                      each; --json adds each entry's score
   api show <name>     one API entry in full: signature, fields, doc (og.CharacterController,
-                      og.physics.raycast, BODY_STATIC; og. may be left out)
+                      og.physics.raycast, BODY_STATIC; og. may be left out); a module shows its
+                      overview and its members
   api gen [--wiki] [--root <dir>]
                       regenerate the IDL outputs (packages/engine/{types,schema}, the hosts' glue,
                       the knowledge wiki); --wiki writes only the wiki

@@ -370,7 +370,7 @@ fn a_record_list_field_carries_its_element_and_capacity_into_every_output() {
     assert!(field("size").contains("list: 0,"), "{}", field("size"));
     assert!(!host.contains("ColumnDecl { name: \"list\""), "{host}");
 
-    let wiki = out("game.md");
+    let wiki = out("game/record-Chain.md");
     assert!(
         wiki.contains("a list of at most 4 `Post` (`List.Post.4`)"),
         "{wiki}"

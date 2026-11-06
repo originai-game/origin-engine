@@ -83,7 +83,7 @@ test("a hand-written or orphaned wiki page is refused", () => {
   const p = added((r) => writeFileSync(join(r.pkg, "wiki/notes.md"), "# My notes\n"));
   expect(p.sort()).toEqual([
     "wiki/notes.md: not generated from api.ogt (no generated header); wiki pages are never hand-written: run `og api gen --wiki`",
-    "wiki/notes.md: not linked from wiki/index.md (a page for a module the IDL no longer has?); run `og api gen --wiki`",
+    "wiki/notes.md: not linked from any wiki page (a page for a name the IDL no longer has?); run `og api gen --wiki`",
   ]);
 });
 
@@ -139,11 +139,11 @@ test("a section reference names a numbered section that exists", () => {
 test("a wiki page that calls a UI style a skin is refused; the glTF, collision and 2D skeleton skins pass", () => {
   const p = added((r) => {
     edit(guide(r, "screens"), (s) => `${s}\nCopy the pack as the game's skin and keep its\n\`fallback\` beside the skin file.\n\nThe controller keeps \`skin\` off every surface. A glTF's skins hold its joints. A skin armor { swap torso torso-armor } dresses the rig; a slot the skin leaves alone shows the default's.\n`);
-    edit(join(r.pkg, "wiki/physics.md"), (s) => s.replace("The gap kept between it and every surface.", "The gap kept between it and every surface; the HUD wears the skin's panel."));
+    edit(join(r.pkg, "wiki/physics/record-CharacterController.md"), (s) => s.replace("The gap kept between it and every surface.", "The gap kept between it and every surface; the HUD wears the skin's panel."));
   });
   expect(p.sort()).toEqual([
     "wiki/guide-screens.md: calls a UI style a skin (\"Copy the pack as the game's skin and keep its `fallback` beside the skin file.\"); og-ui's word is style (type style, og.load.style, styles/<name>/)",
-    "wiki/physics.md: calls a UI style a skin (\"the HUD wears the skin's panel.\"); og-ui's word is style (type style, og.load.style, styles/<name>/)",
+    "wiki/physics/record-CharacterController.md: calls a UI style a skin (\"the HUD wears the skin's panel.\"); og-ui's word is style (type style, og.load.style, styles/<name>/)",
   ].sort());
 });
 

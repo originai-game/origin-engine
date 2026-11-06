@@ -9,7 +9,7 @@
 //                                      readProductionBundle shape (text only)
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, posix, relative } from "node:path";
 import {
   defaultRoots,
   frontMatter,
@@ -106,22 +106,46 @@ function packageJson(roots: Roots, problems: string[]): void {
   if (!p.scripts?.test) problems.push("package.json: no test script, so scripts/check.sh bun-test would skip the package");
 }
 
+/** Every page of the generated wiki, as its path under wiki/ (`physics.md`, `physics/record-CharacterController.md`). */
+function wikiPages(dir: string, at = ""): string[] {
+  if (!existsSync(join(dir, at))) return [];
+  const out: string[] = [];
+  for (const e of readdirSync(join(dir, at), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const rel = at ? `${at}/${e.name}` : e.name;
+    if (e.isDirectory()) out.push(...wikiPages(dir, rel));
+    else if (e.name.endsWith(".md")) out.push(rel);
+  }
+  return out;
+}
+
+/**
+ * The generated wiki: every page carries the generated header, every link
+ * lands on a page, every page but the index is linked from another (module
+ * pages from the index, item pages from their module's contents), and the
+ * `og api find` index ships beside them.
+ */
 function wiki(roots: Roots, problems: string[]): void {
   const dir = join(roots.pkg, "wiki");
-  const index = join(dir, "index.md");
-  if (!existsSync(index)) {
+  if (!existsSync(join(dir, "index.md"))) {
     problems.push("wiki/index.md: missing; run `og api gen --wiki` in the engine repository");
     return;
   }
-  const pages = readdirSync(dir).filter((n) => n.endsWith(".md")).sort();
+  if (!existsSync(join(dir, "search.tsv"))) problems.push("wiki/search.tsv: missing (the `og api find` index); run `og api gen --wiki`");
+  const pages = wikiPages(dir);
+  const have = new Set(pages);
+  const linked = new Set<string>();
   for (const name of pages) {
     const text = readFileSync(join(dir, name), "utf8");
     if (!text.startsWith(GENERATED)) problems.push(`wiki/${name}: not generated from api.ogt (no generated header); wiki pages are never hand-written: run \`og api gen --wiki\``);
+    const base = posix.dirname(name);
+    for (const m of text.matchAll(/\]\(((?:\.\.\/)*[a-z0-9_\/-]+\.md)[#)]/gi)) {
+      const target = posix.normalize(posix.join(base, m[1]!));
+      if (target === name) continue;
+      linked.add(target);
+      if (!have.has(target)) problems.push(`wiki/${name}: links to ${target}, which does not exist; run \`og api gen --wiki\``);
+    }
   }
-  const indexText = readFileSync(index, "utf8");
-  const linked = new Set([...indexText.matchAll(/\]\(([a-z0-9_-]+\.md)[#)]/gi)].map((m) => m[1]!));
-  for (const name of linked) if (!pages.includes(name)) problems.push(`wiki/index.md: links to ${name}, which does not exist; run \`og api gen --wiki\``);
-  for (const name of pages) if (name !== "index.md" && !linked.has(name)) problems.push(`wiki/${name}: not linked from wiki/index.md (a page for a module the IDL no longer has?); run \`og api gen --wiki\``);
+  for (const name of pages) if (name !== "index.md" && !linked.has(name)) problems.push(`wiki/${name}: not linked from any wiki page (a page for a name the IDL no longer has?); run \`og api gen --wiki\``);
 }
 
 /** Tokens a text names as tools, as the platform's production test reads them. */
@@ -321,7 +345,7 @@ function skinWord(roots: Roots, problems: string[]): void {
   // The wiki og api reads from the package, its guide pages included.
   const texts: [string, string][] = [];
   const wikiDir = join(roots.pkg, "wiki");
-  if (existsSync(wikiDir)) for (const n of readdirSync(wikiDir).filter((x) => x.endsWith(".md")).sort()) texts.push([`wiki/${n}`, readFileSync(join(wikiDir, n), "utf8")]);
+  for (const n of wikiPages(wikiDir)) texts.push([`wiki/${n}`, readFileSync(join(wikiDir, n), "utf8")]);
   for (const [name, text] of texts) {
     for (const paragraph of text.split(/\n\s*\n/)) {
       // Sentences, and a table's cells, of the paragraph's joined lines.

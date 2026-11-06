@@ -1,7 +1,7 @@
 //! The wiki (`packages/knowledge/wiki/`) is a map an agent can trust: every
 //! quoted signature is the IDL's own text at the line it cites, every module
-//! has a page, every declared name is in the index and every index link lands
-//! on an anchor, and every binding symbol the runtime binds is on a page.
+//! has a page whose contents link every item, every link on every page lands
+//! on a page and an anchor, and every binding symbol the runtime binds is on a page.
 //!
 //! The IDL is the repository's `crates/og-api/api/`; `OG_WIKI_TEST_IDL`
 //! names another parts directory to run the same checks against.
@@ -106,10 +106,27 @@ fn every_quote_is_the_idl_text_at_the_line_it_cites() {
     assert!(checked > 100, "only {checked} quotes");
 }
 
+/// A link's target page, resolved against the page that holds it.
+fn resolve(from: &str, target: &str) -> String {
+    let mut parts: Vec<&str> = from.split('/').collect();
+    parts.pop();
+    for seg in target.split('/') {
+        match seg {
+            ".." => {
+                parts.pop();
+            }
+            "." | "" => {}
+            s => parts.push(s),
+        }
+    }
+    parts.join("/")
+}
+
 #[test]
-fn every_module_has_a_page_and_every_index_link_lands() {
+fn every_module_has_a_page_and_every_link_lands() {
     let w = wiki();
-    assert_eq!(w.pages.len(), w.api.modules.len() + w.api.guides.len() + 1);
+    let index = &w.pages["index.md"];
+    assert!(w.pages.contains_key(og_idl::search::INDEX_FILE));
     // Every guide beside the IDL is a page the index links, its sections anchored.
     assert!(!w.api.guides.is_empty());
     for g in &w.api.guides {
@@ -120,8 +137,9 @@ fn every_module_has_a_page_and_every_index_link_lands() {
             "<a id=\"guide-{}-1\"></a>\n### `{} §1` ",
             g.name, g.name
         )));
-        assert!(w.pages["index.md"].contains(&format!("[`{}`](guide-{}.md)", g.name, g.name)));
+        assert!(index.contains(&format!("[`{}`](guide-{}.md)", g.name, g.name)));
     }
+    // Every module has a page the index lists, and its contents link every item.
     for m in &w.api.modules {
         let page = w
             .pages
@@ -129,41 +147,53 @@ fn every_module_has_a_page_and_every_index_link_lands() {
             .unwrap_or_else(|| panic!("no page for module {}", m.name));
         assert!(page.starts_with("<!-- Generated from crates/og-api/api.ogt"));
         assert!(
-            w.pages["index.md"].contains(&format!("[`{}`]({}.md)", m.name, m.name)),
+            index.contains(&format!("[`{}`]({}.md)", m.name, m.name)),
             "the index does not list module {}",
             m.name
         );
-    }
-    let index = &w.pages["index.md"];
-    let mut links = 0;
-    for part in index.split("](").skip(1) {
-        let target = &part[..part.find(')').unwrap()];
-        let (file, anchor) = target.split_once('#').unwrap_or((target, ""));
-        let page = w
-            .pages
-            .get(file)
-            .unwrap_or_else(|| panic!("index links to a missing page {file}"));
-        if !anchor.is_empty() {
-            assert!(
-                page.contains(&format!("<a id=\"{anchor}\"></a>")),
-                "index links to {file}#{anchor}, which has no anchor"
-            );
-        }
-        links += 1;
-    }
-    // Every item and member of the IDL is in the index.
-    let mut names = 0;
-    for m in &w.api.modules {
         for item in &m.items {
             let name = item.name();
             assert!(
-                index.contains(&format!("{name}`]({}.md#", m.name))
-                    || index.contains(&format!("{name}()`]({}.md#", m.name)),
-                "the index lacks {}.{name}",
+                page.contains(&format!("{name}`](")) || page.contains(&format!("{name}()`](")),
+                "{}.md's contents lack {name}",
                 m.name
             );
-            names += 1;
         }
     }
-    assert!(links > names, "{links} links for {names} names");
+    // Every link on every page lands on a page, and on an anchor when it names one.
+    let mut links = 0;
+    for (from, text) in w.pages.iter().filter(|(n, _)| n.ends_with(".md")) {
+        for part in text.split("](").skip(1) {
+            let Some(end) = part.find(')') else { continue };
+            let target = &part[..end];
+            if target.contains("://") || target.contains(' ') {
+                continue;
+            }
+            let (file, anchor) = target.split_once('#').unwrap_or((target, ""));
+            let file = if file.is_empty() {
+                from.clone()
+            } else {
+                resolve(from, file)
+            };
+            let Some(page) = w.pages.get(&file) else {
+                panic!("{from} links to a missing page {file}");
+            };
+            if !anchor.is_empty() {
+                assert!(
+                    page.contains(&format!("<a id=\"{anchor}\"></a>")),
+                    "{from} links to {file}#{anchor}, which has no anchor"
+                );
+            }
+            links += 1;
+        }
+    }
+    assert!(links > 2000, "{links} links");
+    // An item page is small: the reason the wiki is split.
+    let big: Vec<_> = w
+        .pages
+        .iter()
+        .filter(|(n, t)| n.contains('/') && t.len() > 64_000)
+        .map(|(n, t)| (n.clone(), t.len()))
+        .collect();
+    assert!(big.is_empty(), "{big:?}");
 }

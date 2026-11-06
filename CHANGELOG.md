@@ -23,6 +23,15 @@ is one line here, written at the merge that changes
   `defaultRoots`, `installed`, `mount`, `summary`, `artBrief`, `readLook`
   and `presetLook` keep their signatures. An agent reads the engine through
   `og`: `og api find`/`show` over the API and the engine's guides.
+- **`og api find` ranks with BM25F**, from an index `og api gen` ships as
+  `wiki/search.tsv`, over each entry's name, summary, member names and
+  body, with camelCase and dot splitting, light stemming and one- or
+  two-edit typo tolerance. On the 96-query evaluation set
+  (`crates/og-cli/tests/fixtures/api-find-queries.tsv`) recall@1 goes from
+  18 to 30 and recall@5 from 38 to 56. `--json` adds scores; `og api show
+  <module>` lists the module's members. The wiki is split into a module
+  page with a contents table plus one page per function, record, interface
+  and type under `wiki/<module>/` (ui.md 1.1 MB → 116 KB).
 - **The engine's guides are entries of `og api`.** `crates/og-api/guides/`
   holds `start`, `testing`, `determinism`, `looks`, `models`, `screens`,
   `animation`, `art-review` and `three-to-og`, rendered into the wiki as

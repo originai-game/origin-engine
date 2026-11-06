@@ -1,0 +1,28 @@
+<!-- Generated from crates/og-api/api.ogt by `og api gen`. Do not edit: `og api check` fails on any difference; change api.ogt and regenerate. -->
+
+Module [`platform`](../platform.md) · [index](../index.md)
+
+<a id="type-PlatformInfo"></a>
+
+### `PlatformInfo` (struct)
+
+What answers platform calls here.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `host` | `string` | `""` | — | — | — | `player` (a Player frames the game), `local` (the native host's JSON store or the browser's own storage) or `none`. |
+| `capabilities` | `readonly string[]` | `[]` | — | — | — | The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark, purchase.products, purchase.buy, purchase.entitlements, purchase.consume, ad.ready, ad.show, achievement.unlock, achievement.progress, achievement.list, player.get, friends.list, invite.send, invite.list, share (og.platform.supports asks for one). |
+| `pending` | `number` | `0` | — | — | — | Calls not answered yet. |
+| `clock` | `string` | `""` | — | — | — | Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock: the Player gives no time yet, docs/platform-asks.md), `system` (the native host's system clock), `fixed` (`og run --clock` and playtests: a clock that starts where it is told and moves with the ticks) or `none`. |
+
+```ogt
+struct PlatformInfo {
+  doc "What answers platform calls here."
+  field host String "`player` (a Player frames the game), `local` (the native host's JSON store or the browser's own storage) or `none`."
+  field capabilities List.String "The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark, purchase.products, purchase.buy, purchase.entitlements, purchase.consume, ad.ready, ad.show, achievement.unlock, achievement.progress, achievement.list, player.get, friends.list, invite.send, invite.list, share (og.platform.supports asks for one)."
+  field pending u32 "Calls not answered yet."
+  field clock String "Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock: the Player gives no time yet, docs/platform-asks.md), `system` (the native host's system clock), `fixed` (`og run --clock` and playtests: a clock that starts where it is told and moves with the ticks) or `none`."
+}
+```
+
+<sub>`api.ogt` line 14938</sub>

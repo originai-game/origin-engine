@@ -7,243 +7,52 @@
 //! by their name and first sentence; `show` prints one entry without its IDL
 //! source, so an agent reads a few kilobytes instead of a 400 KB page.
 
+//! `og api find <words>` and `og api show <name>`: the API reference one
+//! entry at a time. The wiki pages `og api gen` writes (the knowledge
+//! package's `wiki/`, shipped in @origingame/engine) give every function,
+//! component, type, member, constant, value and guide section an anchor;
+//! an entry is the anchor's block or table row (`og_idl::search::entries`).
+//! `find` ranks entries with the BM25F index `og api gen` ships beside the
+//! pages (`search.tsv`, `og_idl::search`); `show` prints one entry without
+//! its IDL source, so an agent reads a few kilobytes instead of a page.
+
+use og_idl::search::{Doc, Entry, SearchIndex, bare, entries};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Entry {
-    /// The documented name, as the heading or row writes it (`og.CharacterController`, `Camera.lookAt`, `BODY_STATIC`).
-    pub name: String,
-    /// The anchor's kind: fn, record, type, member, const, value or column.
-    pub kind: String,
-    /// The wiki page, without `.md` (the module).
-    pub page: String,
-    /// The first sentence of its doc.
-    pub summary: String,
-    /// The entry's text as the page writes it.
-    pub body: String,
+/// The ranked entries for `query`, best first, with their scores.
+pub fn find<'a>(ix: &'a SearchIndex, query: &str, kind: Option<&str>) -> Vec<(&'a Doc, f64)> {
+    ix.search(query, kind)
+        .into_iter()
+        .map(|(d, score)| (&ix.docs[d], score))
+        .collect()
 }
 
-/// Every anchored entry of one wiki page.
-pub fn entries(page: &str, text: &str) -> Vec<Entry> {
-    let lines: Vec<&str> = text.lines().collect();
-    let mut out = Vec::new();
-    // The page's module overview (`# The `input` module` to its contents):
-    // `og api show input`; a guide's page is its overview whole (`og api show testing`).
-    if let Some(h) = lines.iter().position(|l| {
-        l.starts_with("# The `") && (l.ends_with("` module") || l.contains("` guide: "))
-    }) {
-        let kind = if lines[h].ends_with("` module") {
-            "module"
-        } else {
-            "guide"
-        };
-        let end = lines[h..]
+/// A module's members that have a page of their own, by kind, one line each
+/// of names: what `og api show <module>` lists after the overview.
+fn members(ix: &SearchIndex, module: &str) -> String {
+    let mut out = String::new();
+    for kind in ["fn", "record", "interface", "type"] {
+        let mut names: Vec<&str> = ix
+            .docs
             .iter()
-            .position(|l| l.starts_with("## "))
-            .map_or(lines.len(), |n| h + n);
-        let summary = lines[h + 1..end]
-            .iter()
-            .find(|l| !l.trim().is_empty())
-            .map(|l| first_sentence(l))
-            .unwrap_or_default();
-        out.push(Entry {
-            name: between(lines[h], '`', '`').unwrap_or_default().to_string(),
-            kind: kind.to_string(),
-            page: page.to_string(),
-            summary,
-            body: lines[h..end].join("\n").trim().to_string(),
-        });
+            .filter(|d| d.kind == kind && d.page.split_once('/').is_some_and(|(m, _)| m == module))
+            .map(|d| d.name.as_str())
+            .collect();
+        names.dedup();
+        if !names.is_empty() {
+            out.push_str(&format!("{kind}: {}\n", names.join(", ")));
+        }
     }
-    let mut i = 0;
-    while i < lines.len() {
-        let line = lines[i];
-        if let Some((kind, rest)) = row_anchor(line) {
-            let name = between(rest, '`', '`').unwrap_or_default().to_string();
-            let summary = line
-                .trim_end()
-                .trim_end_matches('|')
-                .rsplit('|')
-                .next()
-                .unwrap_or("")
-                .trim()
-                .to_string();
-            out.push(Entry {
-                name,
-                kind,
-                page: page.to_string(),
-                summary: first_sentence(&summary),
-                body: line.to_string(),
-            });
-            i += 1;
-            continue;
-        }
-        if let Some(kind) = block_anchor(line) {
-            let mut j = i + 1;
-            while j < lines.len()
-                && block_anchor(lines[j]).is_none()
-                && !lines[j].starts_with("## ")
-            {
-                j += 1;
-            }
-            let block = &lines[i + 1..j];
-            let heading = block
-                .iter()
-                .find(|l| l.starts_with('#'))
-                .copied()
-                .unwrap_or("");
-            let name = between(heading, '`', '`').unwrap_or_default().to_string();
-            let summary = block
-                .iter()
-                .skip_while(|l| !l.starts_with('#'))
-                .skip(1)
-                .find(|l| !l.trim().is_empty())
-                .map(|l| first_sentence(l))
-                .unwrap_or_default();
-            out.push(Entry {
-                name,
-                kind,
-                page: page.to_string(),
-                summary,
-                body: block.join("\n").trim().to_string(),
-            });
-            i = j;
-            continue;
-        }
-        i += 1;
+    if !out.is_empty() {
+        out.insert_str(0, "\nMembers (`og api show <name>` for one):\n");
     }
     out
 }
 
-fn block_anchor(line: &str) -> Option<String> {
-    let rest = line.strip_prefix("<a id=\"")?;
-    Some(rest.split('-').next()?.to_string())
-}
-
-fn row_anchor(line: &str) -> Option<(String, &str)> {
-    let rest = line.strip_prefix("| <a id=\"")?;
-    let kind = rest.split('-').next()?.to_string();
-    let after = rest.split_once("</a>")?.1;
-    Some((kind, after))
-}
-
-fn between(s: &str, open: char, close: char) -> Option<&str> {
-    let start = s.find(open)? + open.len_utf8();
-    let end = s[start..].find(close)? + start;
-    Some(&s[start..end])
-}
-
-fn first_sentence(s: &str) -> String {
-    let s = s.trim();
-    let end = s
-        .match_indices(". ")
-        .map(|(i, _)| i + 1)
-        .find(|&i| i >= 20)
-        .unwrap_or(s.len());
-    let mut out = s[..end].to_string();
-    if out.chars().count() > 200 {
-        out = out.chars().take(199).collect::<String>() + "…";
-    }
-    out
-}
-
-/// The words of a name or text, lowercased, camelCase and snake_case split.
-fn words(s: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    let mut cur = String::new();
-    let mut prev_lower = false;
-    for c in s.chars() {
-        if c.is_alphanumeric() {
-            if c.is_uppercase() && prev_lower && !cur.is_empty() {
-                out.push(std::mem::take(&mut cur));
-            }
-            prev_lower = c.is_lowercase() || c.is_ascii_digit();
-            cur.extend(c.to_lowercase());
-        } else {
-            prev_lower = false;
-            if !cur.is_empty() {
-                out.push(std::mem::take(&mut cur));
-            }
-        }
-    }
-    if !cur.is_empty() {
-        out.push(cur);
-    }
-    out
-}
-
-fn bare(name: &str) -> String {
-    name.trim_start_matches("og.").to_lowercase()
-}
-
-/// The entries matching `query`, best first: an exact name, then entries
-/// carrying every word (in the name, then the page or first sentence, then
-/// anywhere in their text: field and parameter docs), then, when none carries
-/// every word, those carrying the most of them.
-pub fn find<'a>(all: &'a [Entry], query: &str, kind: Option<&str>) -> Vec<&'a Entry> {
-    let every = rank(all, query, kind, true);
-    if every.is_empty() {
-        rank(all, query, kind, false)
-    } else {
-        every
-    }
-}
-
-fn rank<'a>(all: &'a [Entry], query: &str, kind: Option<&str>, every: bool) -> Vec<&'a Entry> {
-    let q = query.trim();
-    let qwords = words(q);
-    if qwords.is_empty() {
-        return Vec::new();
-    }
-    let mut scored: Vec<(i64, &Entry)> = all
-        .iter()
-        .filter(|e| kind.is_none_or(|k| e.kind == k))
-        .filter_map(|e| {
-            let name = bare(&e.name);
-            let nwords = words(&e.name);
-            let swords = words(&e.summary);
-            let body = e.body.to_lowercase();
-            let mut score = 0i64;
-            let mut matched = 0;
-            if name == bare(q) || name.rsplit('.').next() == Some(&bare(q)) {
-                score += 1000;
-            }
-            for w in &qwords {
-                let hit = if nwords.iter().any(|n| n == w) {
-                    40
-                } else if nwords.iter().any(|n| n.starts_with(w.as_str()))
-                    || name.contains(w.as_str())
-                {
-                    25
-                } else if e.page == *w {
-                    10
-                } else if swords.iter().any(|s| s == w || s.starts_with(w.as_str())) {
-                    6
-                } else if w.len() > 2 && body.contains(w.as_str()) {
-                    2
-                } else if every {
-                    return None;
-                } else {
-                    0
-                };
-                matched += usize::from(hit > 0);
-                score += hit;
-            }
-            if matched == 0 {
-                return None;
-            }
-            score += 100 * matched as i64;
-            // Components and functions before the members and columns that repeat their names.
-            score += match e.kind.as_str() {
-                "record" | "fn" => 3,
-                "type" | "value" | "const" => 2,
-                _ => 0,
-            };
-            Some((score - nwords.len() as i64, e))
-        })
-        .collect();
-    scored.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.name.cmp(&b.1.name)));
-    scored.into_iter().map(|(_, e)| e).collect()
+/// The module an entry's page belongs to (`physics` for `physics/fn-raycast`).
+fn module_of(page: &str) -> &str {
+    page.split('/').next().unwrap_or(page)
 }
 
 /// The entries named `name` (with or without `og.`, any case); a module's
@@ -320,23 +129,49 @@ fn wiki_dir() -> Option<PathBuf> {
     d.join("index.md").is_file().then_some(d)
 }
 
+/// Every entry of every page under `dir`, its page named by its path
+/// without `.md` (`physics`, `physics/record-CharacterController`).
 pub fn load(dir: &Path) -> std::io::Result<Vec<Entry>> {
-    let mut pages: Vec<PathBuf> = std::fs::read_dir(dir)?
-        .filter_map(Result::ok)
-        .map(|e| e.path())
-        .filter(|p| p.extension().is_some_and(|x| x == "md"))
+    fn walk(dir: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {
+        for e in std::fs::read_dir(dir)? {
+            let p = e?.path();
+            if p.is_dir() {
+                walk(&p, out)?;
+            } else if p.extension().is_some_and(|x| x == "md") {
+                out.push(p);
+            }
+        }
+        Ok(())
+    }
+    let mut files = Vec::new();
+    walk(dir, &mut files)?;
+    // In page-name order, the order `og api gen` built the index in.
+    let mut pages: Vec<(String, PathBuf)> = files
+        .into_iter()
+        .map(|p| {
+            let rel = p.strip_prefix(dir).unwrap_or(&p).with_extension("");
+            (rel.to_string_lossy().replace('\\', "/"), p)
+        })
         .collect();
     pages.sort();
     let mut all = Vec::new();
-    for p in pages {
-        let page = p
-            .file_stem()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .into_owned();
+    for (page, p) in pages {
         all.extend(entries(&page, &std::fs::read_to_string(&p)?));
     }
     Ok(all)
+}
+
+/// The shipped index, or one built from the pages when a wiki has none.
+pub fn index(dir: &Path) -> std::io::Result<SearchIndex> {
+    match std::fs::read_to_string(dir.join(og_idl::search::INDEX_FILE)) {
+        Ok(text) => SearchIndex::from_text(&text).ok_or_else(|| {
+            std::io::Error::other(format!(
+                "{} is not an og api find index; run `og api gen`",
+                og_idl::search::INDEX_FILE
+            ))
+        }),
+        Err(_) => Ok(SearchIndex::build(&load(dir)?)),
+    }
 }
 
 const KINDS: [&str; 9] = [
@@ -352,15 +187,9 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
         );
         return ExitCode::FAILURE;
     };
-    let all = match load(&dir) {
-        Ok(all) => all,
-        Err(e) => {
-            eprintln!("og api {cmd}: cannot read {}: {e}", dir.display());
-            return ExitCode::FAILURE;
-        }
-    };
     let mut kind = None;
     let mut limit = 12usize;
+    let mut json = false;
     let mut rest = Vec::new();
     let mut it = args.iter();
     while let Some(a) = it.next() {
@@ -379,6 +208,7 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
                     return ExitCode::from(2);
                 }
             },
+            "--json" => json = true,
             w => rest.push(w),
         }
     }
@@ -394,15 +224,27 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
         );
         return ExitCode::from(2);
     }
+    let unreadable = |e: std::io::Error| {
+        eprintln!("og api {cmd}: cannot read {}: {e}", dir.display());
+        ExitCode::FAILURE
+    };
+    let ix = match index(&dir) {
+        Ok(ix) => ix,
+        Err(e) => return unreadable(e),
+    };
     if cmd == "show" {
+        let all = match load(&dir) {
+            Ok(all) => all,
+            Err(e) => return unreadable(e),
+        };
         let hits = show(&all, &query);
         if hits.is_empty() {
-            let near = find(&all, &query, kind);
+            let near = find(&ix, &query, kind);
             eprintln!("og api show: no entry named `{query}`.");
             if !near.is_empty() {
                 eprintln!("Close matches:");
-                for e in near.iter().take(8) {
-                    eprintln!("  {}  ({}, {})", e.name, e.kind, e.page);
+                for (d, _) in near.iter().take(8) {
+                    eprintln!("  {}  ({}, {})", d.name, d.kind, module_of(&d.page));
                 }
             }
             return ExitCode::FAILURE;
@@ -412,16 +254,46 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
                 println!("\n---\n");
             }
             print!("{}", render(e));
+            if e.kind == "module" {
+                print!("{}", members(&ix, &e.page));
+            }
         }
         return ExitCode::SUCCESS;
     }
-    let hits = find(&all, &query, kind);
+    let hits = find(&ix, &query, kind);
+    if json {
+        let rows: Vec<serde_json::Value> = hits
+            .iter()
+            .take(limit)
+            .map(|(d, score)| {
+                serde_json::json!({
+                    "name": d.name, "kind": d.kind, "page": format!("{}.md", d.page),
+                    "summary": d.summary, "score": (score * 1000.0).round() / 1000.0,
+                })
+            })
+            .collect();
+        println!(
+            "{}",
+            serde_json::json!({ "query": query, "total": hits.len(), "entries": rows })
+        );
+        return if hits.is_empty() {
+            ExitCode::FAILURE
+        } else {
+            ExitCode::SUCCESS
+        };
+    }
     if hits.is_empty() {
-        println!("og api find: nothing matches every word of `{query}`; try fewer or other words.");
+        println!("og api find: nothing matches `{query}`; try fewer or other words.");
         return ExitCode::FAILURE;
     }
-    for e in hits.iter().take(limit) {
-        println!("{}  ({}, {}) — {}", e.name, e.kind, e.page, e.summary);
+    for (d, _) in hits.iter().take(limit) {
+        println!(
+            "{}  ({}, {}) — {}",
+            d.name,
+            d.kind,
+            module_of(&d.page),
+            d.summary
+        );
     }
     if hits.len() > limit {
         println!(
@@ -437,29 +309,47 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
 mod tests {
     use super::*;
 
-    fn wiki() -> Vec<Entry> {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-        load(&root.join(og_idl::WIKI_DIR)).unwrap()
+    fn dir() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .join(og_idl::WIKI_DIR)
     }
 
-    /// Every anchor the generated wiki carries is one entry with a name: a
-    /// change to the wiki's layout fails here, not silently in a lookup.
+    fn wiki() -> Vec<Entry> {
+        load(&dir()).unwrap()
+    }
+
+    fn names<'a>(hits: &[(&'a Doc, f64)]) -> Vec<&'a str> {
+        hits.iter().map(|(d, _)| d.name.as_str()).collect()
+    }
+
+    /// Every anchor the generated wiki carries, on every page and item page,
+    /// is one entry with a name: a change to the wiki's layout fails here,
+    /// not silently in a lookup.
     #[test]
     fn every_anchor_of_the_generated_wiki_is_an_entry() {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let dir = root.join(og_idl::WIKI_DIR);
-        let anchors: usize = std::fs::read_dir(&dir)
-            .unwrap()
-            .map(|e| std::fs::read_to_string(e.unwrap().path()).unwrap())
-            .map(|t| {
-                t.lines()
-                    .filter(|l| l.starts_with("<a id=\"") || l.starts_with("| <a id=\""))
-                    .count()
-            })
-            .sum();
+        fn anchors(dir: &Path) -> usize {
+            std::fs::read_dir(dir)
+                .unwrap()
+                .map(|e| e.unwrap().path())
+                .map(|p| {
+                    if p.is_dir() {
+                        anchors(&p)
+                    } else if p.extension().is_some_and(|x| x == "md") {
+                        std::fs::read_to_string(&p)
+                            .unwrap()
+                            .lines()
+                            .filter(|l| l.starts_with("<a id=\"") || l.starts_with("| <a id=\""))
+                            .count()
+                    } else {
+                        0
+                    }
+                })
+                .sum()
+        }
         let all = wiki();
         let overviews = all.iter().filter(|e| e.body.starts_with("# The `")).count();
-        assert_eq!(all.len() - overviews, anchors);
+        assert_eq!(all.len() - overviews, anchors(&dir()));
         let unnamed: Vec<_> = all
             .iter()
             .filter(|e| e.name.is_empty() || e.summary.is_empty())
@@ -468,21 +358,45 @@ mod tests {
         assert!(unnamed.is_empty(), "{unnamed:?}");
     }
 
+    /// The shipped index is the one the pages build: `og api gen` wrote it
+    /// from these pages, and reading it back loses nothing.
+    #[test]
+    fn the_shipped_index_matches_the_pages() {
+        let shipped = index(&dir()).unwrap();
+        let built = SearchIndex::build(&wiki());
+        let docs = shipped
+            .docs
+            .iter()
+            .zip(&built.docs)
+            .position(|(a, b)| a != b);
+        assert_eq!(shipped.docs.len(), built.docs.len());
+        assert!(
+            docs.is_none(),
+            "{:?}",
+            docs.map(|i| (&shipped.docs[i], &built.docs[i]))
+        );
+        assert!(
+            shipped.terms == built.terms,
+            "the terms differ; run `og api gen`"
+        );
+    }
+
     #[test]
     fn find_ranks_the_named_entry_first_and_show_prints_one_without_its_idl() {
+        let ix = index(&dir()).unwrap();
         let all = wiki();
-        let hits = find(&all, "character controller", None);
-        assert_eq!(hits[0].name, "og.CharacterController");
         assert_eq!(
-            find(&all, "CharacterController", None)[0].name,
+            names(&find(&ix, "character controller", None))[0],
             "og.CharacterController"
         );
-        // A word only the summary carries still finds it, behind name matches.
-        assert!(
-            find(&all, "raycast", Some("fn"))
-                .iter()
-                .any(|e| e.name == "og.physics.raycast")
+        assert_eq!(
+            names(&find(&ix, "CharacterController", None))[0],
+            "og.CharacterController"
         );
+        assert!(names(&find(&ix, "raycast", Some("fn"))).contains(&"og.physics.raycast"));
+        // Scores fall from first to last.
+        let hits = find(&ix, "ray cast against colliders", None);
+        assert!(hits.windows(2).all(|w| w[0].1 >= w[1].1));
         let one = show(&all, "CharacterController");
         assert_eq!(one.len(), 1);
         let text = render(one[0]);
@@ -498,20 +412,47 @@ mod tests {
         let c = show(&all, "BODY_STATIC");
         assert_eq!((c.len(), c[0].kind.as_str()), (1, "const"));
         assert!(show(&all, "NoSuchThing").is_empty());
-        // Words only a field's doc carries find the record; a word nothing carries leaves the rest ranked.
-        let jump: Vec<&str> = find(&all, "jump speed coyote", Some("record"))
-            .iter()
-            .map(|e| e.name.as_str())
-            .collect();
-        assert!(jump.contains(&"og.CharacterController"), "{jump:?}");
+        // Words only a field's doc carries find the record; a word nothing
+        // carries leaves the rest ranked; a typo still finds it.
+        assert!(
+            names(&find(&ix, "jump speed coyote", Some("record")))
+                .contains(&"og.CharacterController")
+        );
         assert_eq!(
-            find(&all, "character controller zzzqx", None)[0].name,
+            names(&find(&ix, "character controller zzzqx", None))[0],
             "og.CharacterController"
+        );
+        assert!(
+            names(&find(&ix, "charcter controler", None))[..5].contains(&"og.CharacterController")
         );
     }
 
-    /// A module's name shows its overview (the prose a skill used to point at
-    /// on the wiki page); the resource of the same name stays one `og.` away.
+    /// The evaluation set (`tests/fixtures/api-find-queries.tsv`): queries
+    /// written by purpose, partial name or with a typo, each with the entry
+    /// (or ` | ` alternatives) it should find. The floors are the measured
+    /// recall less a query or two, so a ranking change that loses queries fails.
+    #[test]
+    fn find_recalls_the_evaluation_set() {
+        let ix = index(&dir()).unwrap();
+        let set = include_str!("../tests/fixtures/api-find-queries.tsv");
+        let (mut n, mut at1, mut at5) = (0, 0, 0);
+        for line in set.lines().skip(1).filter(|l| !l.trim().is_empty()) {
+            let (query, expected) = line.split_once('\t').unwrap();
+            let want: Vec<&str> = expected.split(" | ").map(str::trim).collect();
+            let got = names(&find(&ix, query, None));
+            n += 1;
+            at1 += usize::from(got.first().is_some_and(|g| want.contains(g)));
+            at5 += usize::from(got.iter().take(5).any(|g| want.contains(g)));
+        }
+        assert!(n >= 90, "{n}");
+        assert!(
+            at1 >= 28 && at5 >= 54,
+            "recall@1 {at1}/{n}, recall@5 {at5}/{n}"
+        );
+    }
+
+    /// A module's name shows its overview; the resource of the same name
+    /// stays one `og.` away.
     #[test]
     fn show_of_a_module_name_is_its_overview_without_idl() {
         let all = wiki();
@@ -531,17 +472,16 @@ mod tests {
             !text.contains("```ogt") && !text.contains("## Contents"),
             "{text}"
         );
+        // Its members follow, each named once.
+        let ix = index(&dir()).unwrap();
+        let listed = members(&ix, "anim");
+        assert!(
+            listed.contains("record: ") && listed.contains("og.anim.clip"),
+            "{listed}"
+        );
+        assert_eq!(listed.matches("og.anim.clip,").count(), 1, "{listed}");
         let resource = show(&all, "og.Input");
         assert!(resource.iter().all(|e| e.kind == "record") && !resource.is_empty());
         assert!(all.iter().filter(|e| e.kind == "module").count() > 20);
-    }
-
-    #[test]
-    fn words_split_camel_case_and_dots() {
-        assert_eq!(
-            words("og.physics.shapeCast"),
-            ["og", "physics", "shape", "cast"]
-        );
-        assert_eq!(words("BODY_STATIC"), ["body", "static"]);
     }
 }

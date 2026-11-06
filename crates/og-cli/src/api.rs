@@ -87,24 +87,31 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
         files.len() - written.len(),
         files.len()
     );
-    let dir = root.join(og_idl::WIKI_DIR);
-    let mut stale: Vec<PathBuf> = std::fs::read_dir(&dir)
-        .map(|entries| {
-            entries
-                .filter_map(Result::ok)
-                .map(|e| e.path())
-                .filter(|p| p.is_file())
-                .filter(|p| {
-                    let rel = format!(
-                        "{}/{}",
-                        og_idl::WIKI_DIR,
-                        p.file_name().unwrap_or_default().to_string_lossy()
-                    );
-                    !files.iter().any(|f| f.path == rel)
-                })
-                .collect()
+    // Pages the IDL no longer generates, at any depth (a deleted module's
+    // page and its items' pages, a removed type's page).
+    fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
+        for e in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                walk(&p, out);
+            } else {
+                out.push(p);
+            }
+        }
+    }
+    let mut found = Vec::new();
+    walk(&root.join(og_idl::WIKI_DIR), &mut found);
+    let mut stale: Vec<PathBuf> = found
+        .into_iter()
+        .filter(|p| {
+            let rel = p
+                .strip_prefix(root)
+                .unwrap_or(p)
+                .to_string_lossy()
+                .replace('\\', "/");
+            !files.iter().any(|f| f.path == rel)
         })
-        .unwrap_or_default();
+        .collect();
     stale.sort();
     for p in stale {
         if let Err(e) = std::fs::remove_file(&p) {

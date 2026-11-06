@@ -1,6 +1,8 @@
-//! The wiki generator (design §3.1): `packages/knowledge/wiki/`, one page per
-//! module plus `index.md`, the map from every module, type and function to
-//! its page. Every declaration is quoted from `api.ogt` exactly as written,
+//! The wiki generator (design §3.1): `packages/knowledge/wiki/`, a short
+//! `index.md` of the modules and guides, one overview page per module (its
+//! contents with signatures and one-line summaries, its values, column kinds
+//! and constants) and one small page per function, record, interface and
+//! type under `<module>/`, so an agent reads kilobytes, not a module. Every declaration is quoted from `api.ogt` exactly as written,
 //! next to its TypeScript form, its docs and, for callables, its binding
 //! symbol, so the wiki cannot drift from the IDL. Nothing here names a
 //! module: pages follow whatever `api.ogt` declares, in its order.
@@ -13,9 +15,11 @@ use std::fmt::Write;
 /// `(file name, contents)` for every page, `index.md` first.
 pub fn pages(ix: &Index<'_>) -> Vec<(String, String)> {
     let binds = bindings(ix);
-    let mut out = vec![("index.md".to_string(), index(ix, &binds))];
+    let mut out = vec![("index.md".to_string(), index(ix))];
     for m in &ix.api.modules {
-        out.push((format!("{}.md", m.name), module_page(ix, m, &binds)));
+        let (page, items) = module_pages(ix, m, &binds);
+        out.push((format!("{}.md", m.name), page));
+        out.extend(items);
     }
     for g in &ix.api.guides {
         out.push((format!("guide-{}.md", g.name), guide_page(g)));
@@ -424,18 +428,10 @@ fn interface(out: &mut String, ix: &Index<'_>, m: &Module, i: &Interface, binds:
     );
     paragraphs(out, &i.doc);
     if let Some(base) = &i.extends {
-        let page = ix
-            .module_of(base)
-            .map_or(String::new(), |bm| format!("{}.md", bm.name));
-        let link = if ix.module_of(base).map(|bm| &bm.name) == Some(&m.name) {
-            String::new()
-        } else {
-            page
-        };
         let _ = writeln!(
             out,
-            "Extends [`{base}`]({link}#{}): every member of it is a member here.\n",
-            anchor_type(base)
+            "Extends [`{base}`]({}): every member of it is a member here.\n",
+            type_link(ix, base)
         );
     }
     quote(
@@ -574,7 +570,7 @@ fn type_item(out: &mut String, ix: &Index<'_>, item: &Item) {
                     c.name,
                     c.payload.as_deref().map_or_else(
                         || "—".to_string(),
-                        |p| format!("[`{p}`](#{})", anchor_type(p))
+                        |p| format!("[`{p}`]({})", type_link(ix, p))
                     ),
                     cell(&c.doc.join(" "))
                 );
@@ -614,7 +610,44 @@ fn type_item(out: &mut String, ix: &Index<'_>, item: &Item) {
     }
 }
 
-fn module_page(ix: &Index<'_>, m: &Module, binds: &[Binding<'_>]) -> String {
+/// The page an item has of its own, `<module>/<anchor>.md`, or `None` for
+/// the values, column kinds and constants its module's page holds.
+fn item_file(m: &Module, item: &Item) -> Option<String> {
+    match item {
+        Item::Value(_) | Item::Column(_) | Item::Const(_) => None,
+        _ => Some(format!("{}/{}.md", m.name, item_label(m, item).2)),
+    }
+}
+
+/// A link from an item page (under `<module>/`) to type `name`'s anchor.
+fn type_link(ix: &Index<'_>, name: &str) -> String {
+    ix.module_of(name).map_or_else(
+        || format!("#{}", anchor_type(name)),
+        |bm| {
+            format!(
+                "../{}/{}.md#{}",
+                bm.name,
+                anchor_type(name),
+                anchor_type(name)
+            )
+        },
+    )
+}
+
+/// An item page's head: the generated header and the way back to its module.
+fn item_head(m: &Module) -> String {
+    format!(
+        "<!-- {GENERATED_BY} -->\n\nModule [`{}`](../{}.md) · [index](../index.md)\n\n",
+        m.name, m.name
+    )
+}
+
+/// A module's overview page and its items' own pages.
+fn module_pages(
+    ix: &Index<'_>,
+    m: &Module,
+    binds: &[Binding<'_>],
+) -> (String, Vec<(String, String)>) {
     let mut out = String::new();
     let _ = writeln!(out, "<!-- {GENERATED_BY} -->\n");
     let _ = writeln!(out, "# The `{}` module\n", m.name);
@@ -629,27 +662,34 @@ fn module_page(ix: &Index<'_>, m: &Module, binds: &[Binding<'_>]) -> String {
         "- **Publish builds**: {} (members may override).",
         publish_text(m.publish)
     );
-    out.push_str("- **Index**: [every module and name](index.md).\n\n");
+    out.push_str("- **Index**: [every module and guide](index.md).\n\n");
     quote(
         &mut out,
         &header(&ix.api.source, m.line),
         m.line,
-        Some("declarations follow, each quoted below"),
+        Some("declarations follow, each on its own page"),
     );
 
-    // Contents, in declaration order.
-    out.push_str("## Contents\n\n| Name | Kind | Summary |\n|---|---|---|\n");
+    // Contents, in declaration order: each item's page, its signature and its first sentence.
+    out.push_str("## Contents\n\n| Name | Kind | Signature | Summary |\n|---|---|---|---|\n");
     for item in &m.items {
         let (label, kind, anchor) = item_label(m, item);
-        let doc = item_doc(item);
+        let link = item_file(m, item).unwrap_or_else(|| format!("#{anchor}"));
+        let sig = match item {
+            Item::Fn(f) => code(&ts::signature(ix, f)),
+            _ => String::new(),
+        };
         let _ = writeln!(
             out,
-            "| [`{label}`](#{anchor}) | {kind} | {} |",
-            cell(first(doc))
+            "| [`{label}`]({link}) | {kind} | {sig} | {} |",
+            cell(&crate::search::first_sentence(first(item_doc(item))))
         );
     }
     out.push('\n');
 
+    // Every function, record, interface and type on a page of its own; a
+    // function's overloads share one (`fn-clip`, `fn-clip-2`).
+    let mut items: Vec<(String, String)> = Vec::new();
     let fns: Vec<&Function> = m
         .items
         .iter()
@@ -658,19 +698,35 @@ fn module_page(ix: &Index<'_>, m: &Module, binds: &[Binding<'_>]) -> String {
             _ => None,
         })
         .collect();
-    if !fns.is_empty() {
-        out.push_str("## Functions\n\n");
-        for (i, f) in fns.iter().enumerate() {
-            let bind = find(binds, &m.name, None, &f.name);
-            let path = bind.map_or_else(|| value_path(m, &f.name), |b| b.path.clone());
-            // An overload's anchor counts its place: `fn-clip`, `fn-clip-2`.
-            let nth = fns[..i].iter().filter(|g| g.name == f.name).count();
-            let anchor = match nth {
-                0 => anchor_fn(&f.name),
-                n => format!("{}-{}", anchor_fn(&f.name), n + 1),
-            };
-            callable(&mut out, ix, f, &path, bind, &anchor, "###");
+    for item in &m.items {
+        let Some(file) = item_file(m, item) else {
+            continue;
+        };
+        if items.iter().any(|(f, _)| *f == file) {
+            continue;
         }
+        let mut page = item_head(m);
+        match item {
+            Item::Fn(f) => {
+                for (i, g) in fns.iter().enumerate().filter(|(_, g)| g.name == f.name) {
+                    let bind = find(binds, &m.name, None, &g.name);
+                    let path = bind.map_or_else(|| value_path(m, &g.name), |b| b.path.clone());
+                    let nth = fns[..i].iter().filter(|h| h.name == g.name).count();
+                    let anchor = match nth {
+                        0 => anchor_fn(&g.name),
+                        n => format!("{}-{}", anchor_fn(&g.name), n + 1),
+                    };
+                    callable(&mut page, ix, g, &path, bind, &anchor, "###");
+                }
+            }
+            Item::Record(r) => record(&mut page, ix, m, r, binds),
+            Item::Interface(x) => interface(&mut page, ix, m, x, binds),
+            _ => type_item(&mut page, ix, item),
+        }
+        while page.ends_with("\n\n") {
+            page.pop();
+        }
+        items.push((file, page));
     }
 
     let values: Vec<&ValueDecl> = m
@@ -698,57 +754,6 @@ fn module_page(ix: &Index<'_>, m: &Module, binds: &[Binding<'_>]) -> String {
                 ts::type_text(ix, &v.ty, &[])
             );
             quote(&mut out, &block(&ix.api.source, v.line), v.line, None);
-        }
-    }
-
-    let records: Vec<&Record> = m
-        .items
-        .iter()
-        .filter_map(|i| match i {
-            Item::Record(r) => Some(r),
-            _ => None,
-        })
-        .collect();
-    if !records.is_empty() {
-        out.push_str("## Components, resources and events\n\n");
-        for r in records {
-            record(&mut out, ix, m, r, binds);
-        }
-    }
-
-    let interfaces: Vec<&Interface> = m
-        .items
-        .iter()
-        .filter_map(|i| match i {
-            Item::Interface(x) => Some(x),
-            _ => None,
-        })
-        .collect();
-    if !interfaces.is_empty() {
-        out.push_str("## Interfaces\n\n");
-        for i in interfaces {
-            interface(&mut out, ix, m, i, binds);
-        }
-    }
-
-    let types: Vec<&Item> = m
-        .items
-        .iter()
-        .filter(|i| {
-            matches!(
-                i,
-                Item::Struct(_)
-                    | Item::Enum(_)
-                    | Item::Union(_)
-                    | Item::Handle(_)
-                    | Item::Callback(_)
-            )
-        })
-        .collect();
-    if !types.is_empty() {
-        out.push_str("## Types\n\n");
-        for t in types {
-            type_item(&mut out, ix, t);
         }
     }
 
@@ -845,7 +850,7 @@ fn module_page(ix: &Index<'_>, m: &Module, binds: &[Binding<'_>]) -> String {
     while out.ends_with("\n\n") {
         out.pop();
     }
-    out
+    (out, items)
 }
 
 fn item_doc(item: &Item) -> &[String] {
@@ -915,14 +920,14 @@ fn value_path(m: &Module, name: &str) -> String {
 
 // ── the index ───────────────────────────────────────────────────────────────
 
-fn index(ix: &Index<'_>, binds: &[Binding<'_>]) -> String {
+fn index(ix: &Index<'_>) -> String {
     let api = ix.api;
     let mut out = String::new();
     let _ = writeln!(out, "<!-- {GENERATED_BY} -->\n");
     let _ = writeln!(out, "# The Origin Engine API\n");
     let _ = writeln!(
         out,
-        "`{}`, API version {}: {} modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.\n",
+        "`{}`, API version {}: {} modules, generated from `crates/og-api/api.ogt`. Each module has an overview page and every function, component and type a page of its own under `<module>/`; every signature is quoted from the IDL. `og api find <words>` ranks every entry; `og api show <name>` prints one.\n",
         api.package,
         api.version,
         api.modules.len()
@@ -977,73 +982,8 @@ fn index(ix: &Index<'_>, binds: &[Binding<'_>]) -> String {
         out.push('\n');
     }
 
-    // Every name: items, interface members and resource methods.
-    let mut rows: Vec<(String, String, String, String)> = Vec::new();
-    for m in &api.modules {
-        for item in &m.items {
-            let (label, kind, anchor) = item_label(m, item);
-            let symbol = match item {
-                Item::Fn(f) => find(binds, &m.name, None, &f.name)
-                    .map(|b| b.symbol.clone())
-                    .unwrap_or_default(),
-                _ => String::new(),
-            };
-            rows.push((label, kind, format!("{}.md#{anchor}", m.name), symbol));
-            let members: Vec<(&str, &str, &str)> = match item {
-                Item::Interface(i) => i
-                    .members
-                    .iter()
-                    .map(|mem| {
-                        (
-                            i.name.as_str(),
-                            mem.name(),
-                            if matches!(mem, Member::Prop(_)) {
-                                "property"
-                            } else {
-                                "method"
-                            },
-                        )
-                    })
-                    .collect(),
-                Item::Record(r) => r
-                    .methods
-                    .iter()
-                    .map(|f| (r.name.as_str(), f.name.as_str(), "method"))
-                    .collect(),
-                _ => Vec::new(),
-            };
-            for (owner, name, kind) in members {
-                let symbol = find(binds, &m.name, Some(owner), name)
-                    .map(|b| b.symbol.clone())
-                    .unwrap_or_default();
-                rows.push((
-                    format!("{owner}.{name}"),
-                    kind.to_string(),
-                    format!("{}.md#{}", m.name, anchor_member(owner, name)),
-                    symbol,
-                ));
-            }
-        }
-    }
-    rows.sort_by(|a, b| {
-        a.0.to_lowercase()
-            .cmp(&b.0.to_lowercase())
-            .then_with(|| a.0.cmp(&b.0))
-            .then_with(|| a.1.cmp(&b.1))
-    });
-    let _ = writeln!(
-        out,
-        "## Every name\n\n{} entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.\n",
-        rows.len()
-    );
-    out.push_str("| Name | Kind | Page | Binding symbol |\n|---|---|---|---|\n");
-    for (label, kind, link, symbol) in rows {
-        let module = link.split('.').next().unwrap_or("");
-        let _ = writeln!(
-            out,
-            "| [`{label}`]({link}) | {kind} | {module} | {} |",
-            code(&symbol)
-        );
+    while out.ends_with("\n\n") {
+        out.pop();
     }
     out
 }

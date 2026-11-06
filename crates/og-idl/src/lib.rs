@@ -18,6 +18,7 @@ mod index;
 mod json;
 mod load;
 pub mod model;
+pub mod search;
 mod validate;
 mod values;
 
@@ -250,12 +251,29 @@ pub fn generate_wiki(api: &Api) -> Vec<Generated> {
 pub const WIKI_DIR: &str = "packages/knowledge/wiki";
 
 fn wiki_pages(ix: &Index<'_>) -> Vec<Generated> {
-    r#gen::wiki::pages(ix)
+    let pages = r#gen::wiki::pages(ix);
+    // `og api find`'s index of every entry on those pages, shipped beside them.
+    // In page-name order, the order `og api find` reads the pages back in.
+    let mut named: Vec<(&str, &str)> = pages
+        .iter()
+        .map(|(name, text)| (name.trim_end_matches(".md"), text.as_str()))
+        .collect();
+    named.sort();
+    let entries: Vec<search::Entry> = named
+        .into_iter()
+        .flat_map(|(page, text)| search::entries(page, text))
+        .collect();
+    let index = Generated {
+        path: format!("{WIKI_DIR}/{}", search::INDEX_FILE),
+        contents: search::SearchIndex::build(&entries).to_text(),
+    };
+    pages
         .into_iter()
         .map(|(name, contents)| Generated {
             path: format!("{WIKI_DIR}/{name}"),
             contents,
         })
+        .chain(std::iter::once(index))
         .collect()
 }
 

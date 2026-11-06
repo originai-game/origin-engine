@@ -1,0 +1,97 @@
+query	expected
+keep the hero glued to the ground and let it walk up slopes	og.CharacterController
+knock a crate back when an explosion goes off next to it	og.physics.applyImpulse
+tell when the player walks into a trigger area	og.SensorEntered
+raycast all hits along a ray	og.physics.raycastAll
+door hinge joint	JOINT_REVOLUTE | og.Joint
+charcter controler	og.CharacterController
+the screen trembles when the player gets hit	og.camera.shake
+pixel position of an enemy's head so I can draw a label over it	Camera.worldToScreen
+follow camera behind the player	og.FollowCamera
+camra zoom punch	og.camera.punch
+let players remap their controls	og.input.rebind
+vibrate the controller when the player takes damage	og.input.rumble
+axis from four keys like WASD	Input.axis2
+controler dead zone	og.input.setDeadzones
+play a sound at a position in the world	og.AudioSource
+footsteps that pick a different sample and pitch on every step	og.AudioEvent
+reverb in a cave	og.ReverbZone
+audio listner for 3d sound	og.AudioListener
+a glowing streak behind a sword swing	og.Trail
+is the player standing in the dark in my side-view stealth game	og.render.light2dAt
+retro look with chunky pixels and a limited palette	og.Stylise
+decal for bullet holes	og.Decal
+box geometry for a cube mesh	og.render.boxGeometry
+partical emitter	og.ParticleSystem | og.load.emitter
+make text bigger for accessibility	UiDesc | og.ui.configure
+ask are you sure you want to quit	og.ui.confirm
+short message popup that goes away on its own	og.ui.toast
+weapon wheel chosen with the right stick	og.ui.radialMenu
+on-screen virtual joystick for mobile	og.ui.joystick
+subtitles and captions	og.ui.subtitles
+tooltp when hovering an item	og.ui.tooltip
+make the hand reach for the door handle	og.IkChain
+hair and tail that jiggle when the character moves	og.SpringBone
+sprite sheet animation	og.Flipbook
+retargt an animation to another rig	og.anim.retarget
+make a humanoid NPC head for a spot with natural human movement	og.motion.walkTo
+humanoid motion model agent	og.MotionAgent
+get a route around the walls to the goal	og.nav.findPath
+hundreds of units heading to one target cheaply	og.nav.flowField
+crowd avoidance so units don't overlap	og.Crowd
+navmesh obstical that moves	og.nav.setObstacle
+can the guard see the player	og.Perception
+enemies come to investigate a gunshot	og.ai.noise
+behaviour tree load	og.ai.load
+every peer runs the same simulation and only inputs are sent	og.Lockstep
+detect that two players' worlds have drifted apart	og.Desync
+keep the player's progress so they can continue tomorrow	World.snapshot | og.platform.saveSlot
+sell coins for real money	og.platform.purchase
+daily reward that needs today's real date	og.platform.now
+leaderboard submit score	og.platform.leaderboardSubmit
+achievment unlok	og.platform.achievementUnlock
+spawn an enemy entity	World.spawn
+every enemy less than 10 metres from the player	SpatialIndex.within
+players' existing progress files say gold but the component now calls it coins	SaveEdit.renameField
+translate the menu text into the player's language	og.i18n.t
+show the shop price as $1,234.50 or 1.234,50 € depending on the player's country	og.i18n.formatCurrency
+enemy blinks white when hit	og.tween.flash
+squash and stretch on landing	og.tween.squash
+tweeen sequnce one after another	og.tween.sequence
+slow motion	og.time.setScale
+hitstop on a heavy hit	og.time.hitStop
+random number seeded	og.Rng
+shuffle a deck of cards	Rng.permutation | RngStream.permutation
+start the intro cutscene	og.timeline.play | og.Timeline
+react when a cutscene reaches a certain moment	og.TimelineMarker
+load a gltf model	og.load.gltf
+use a picture the player uploaded as a texture at run time	og.load.imageData
+laod a textur for a sprite	og.load.texture
+load parts of the open world as the player gets near them	og.StreamCell
+terrain height at a point	og.terrain.sample
+dig a crater in the landscape	og.terrain.edit
+remove the block the player mines from the 2D level grid	og.tilemap.setTile
+tilemap collision	og.Tilemap
+blow a wall apart into chunks	og.destruction.explode
+destructable crate	og.Destructible
+fail the run if health ever goes negative	og.assert.always
+catch objects that fall through the floor forever	og.WorldBounds
+make it rain	og.Weather
+day nigth cycle	og.DayNight
+start a dialogue with the shopkeeper	og.story.start
+count wolves killed toward a quest objective	og.story.progress
+bsp dungeon generator	og.procgen.bsp
+wave funtion colapse	og.procgen.wfc
+debug draw line	og.debug.line
+turn a turret to face the enemy	og.transform.lookAt
+slerp between two rotations	QuaternionMath.slerp
+move a platform back and forth along a track	og.PathFollower
+play an intro movie before the menu	og.VideoPlayer | og.load.video
+add a cheat that teleports the player	og.commands.register
+run my code every tick	defineSystem
+declare a health value stored on each entity	defineComponent
+take a screenshot of the current frame	EngineProbe.capture
+draw a 2D star outline with a hole in it, three.js style	og.Shape
+keep every texture on the same small set of colours	og.ArtPalette
+game entry point default export	og.game
+built-in camera controller systems to list in the game	og.systems.cameras

@@ -1,0 +1,53 @@
+<!-- Generated from crates/og-api/api.ogt by `og api gen`. Do not edit: `og api check` fails on any difference; change api.ogt and regenerate. -->
+
+Module [`render`](../render.md) · [index](../index.md)
+
+<a id="record-RectLight"></a>
+
+### `og.RectLight` (component)
+
+A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. With castShadow it casts a soft shadow in the frame; og bake lightmaps traces its exact soft shadows into the bounce light either way.
+
+Area lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches as far as its brightness carries (where it would light a white surface facing it at one hundredth of one), and fades smoothly to zero there.
+
+Token `og.RectLight`, registered under the schema name `og.RectLight`; its value type is `RectLight`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The light's linear colour. |
+| `intensity` | `number` | `1` | ≥ 0 | — | tunable | The emitted radiance (luminance), as three.js RectAreaLight.intensity. |
+| `width` | `number` | `10` | ≥ 0 | `m` | tunable | Its size along the entity's local x, as RectAreaLight.width. |
+| `height` | `number` | `10` | ≥ 0 | `m` | tunable | Its size along the entity's local y, as RectAreaLight.height. |
+| `twoSided` | `boolean` | `false` | — | — | — | Emit from the back face as well (a hanging panel lit both ways). |
+| `castShadow` | `boolean` | `false` | — | — | — | Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp where a caster touches its receiver and widening with the rectangle's size away from it. The view is from the centre, so a caster close to a large panel is shadowed as from its centre. |
+
+```ogt
+component RectLight {
+  doc "A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. With castShadow it casts a soft shadow in the frame; og bake lightmaps traces its exact soft shadows into the bounce light either way."
+  doc "Area lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches as far as its brightness carries (where it would light a white surface facing it at one hundredth of one), and fades smoothly to zero there."
+  field color Color "The light's linear colour." {
+    default 1 1 1
+  }
+  field intensity f32 "The emitted radiance (luminance), as three.js RectAreaLight.intensity." {
+    default 1
+    min 0
+    tunable true
+  }
+  field width f32 "Its size along the entity's local x, as RectAreaLight.width." {
+    default 10
+    min 0
+    unit m
+    tunable true
+  }
+  field height f32 "Its size along the entity's local y, as RectAreaLight.height." {
+    default 10
+    min 0
+    unit m
+    tunable true
+  }
+  field twoSided bool "Emit from the back face as well (a hanging panel lit both ways)."
+  field castShadow bool "Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp where a caster touches its receiver and widening with the rectangle's size away from it. The view is from the centre, so a caster close to a large panel is shadowed as from its centre."
+}
+```
+
+<sub>`api.ogt` line 7622</sub>
