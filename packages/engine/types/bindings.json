@@ -26445,6 +26445,33 @@
     {
       "id": 615,
       "kind": "fn",
+      "path": "og.motion.jump",
+      "symbol": "og_motion_jump",
+      "module": "motion",
+      "name": "jump",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "JumpGoalDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 616,
+      "kind": "fn",
       "path": "og.motion.clear",
       "symbol": "og_motion_clear",
       "module": "motion",
@@ -26465,7 +26492,7 @@
       "publish": true
     },
     {
-      "id": 616,
+      "id": 617,
       "kind": "fn",
       "path": "og.motion.lookAt",
       "symbol": "og_motion_look_at",
@@ -26492,7 +26519,7 @@
       "publish": true
     },
     {
-      "id": 617,
+      "id": 618,
       "kind": "fn",
       "path": "og.motion.react",
       "symbol": "og_motion_react",
@@ -26519,7 +26546,7 @@
       "publish": true
     },
     {
-      "id": 618,
+      "id": 619,
       "kind": "fn",
       "path": "og.motion.status",
       "symbol": "og_motion_status",
@@ -26541,7 +26568,7 @@
       "publish": true
     },
     {
-      "id": 619,
+      "id": 620,
       "kind": "fn",
       "path": "og.motion.capabilities",
       "symbol": "og_motion_capabilities",
@@ -26558,7 +26585,7 @@
       "publish": true
     },
     {
-      "id": 620,
+      "id": 621,
       "kind": "fn",
       "path": "og.motion.presentation",
       "symbol": "og_motion_presentation",
@@ -26580,7 +26607,7 @@
       "publish": true
     },
     {
-      "id": 621,
+      "id": 622,
       "kind": "fn",
       "path": "og.motion.poses",
       "symbol": "og_motion_poses",
@@ -26591,7 +26618,7 @@
       "publish": true
     },
     {
-      "id": 622,
+      "id": 623,
       "kind": "fn",
       "path": "og.destruction.damage",
       "symbol": "og_destruction_damage",
@@ -26618,7 +26645,7 @@
       "publish": true
     },
     {
-      "id": 623,
+      "id": 624,
       "kind": "fn",
       "path": "og.destruction.explode",
       "symbol": "og_destruction_explode",
@@ -26640,7 +26667,7 @@
       "publish": true
     },
     {
-      "id": 624,
+      "id": 625,
       "kind": "fn",
       "path": "og.destruction.fracture",
       "symbol": "og_destruction_fracture",
@@ -26662,7 +26689,7 @@
       "publish": true
     },
     {
-      "id": 625,
+      "id": 626,
       "kind": "fn",
       "path": "og.destruction.info",
       "symbol": "og_destruction_info",
@@ -26684,7 +26711,7 @@
       "publish": true
     },
     {
-      "id": 626,
+      "id": 627,
       "kind": "fn",
       "path": "og.destruction.material",
       "symbol": "og_destruction_material",
@@ -26706,7 +26733,7 @@
       "publish": true
     },
     {
-      "id": 627,
+      "id": 628,
       "kind": "fn",
       "path": "og.destruction.capabilities",
       "symbol": "og_destruction_capabilities",

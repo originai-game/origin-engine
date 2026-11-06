@@ -3225,6 +3225,11 @@ pub fn og_motion_walk_to(world: u32, entity: f64, desc: Option<String>) -> Strin
 }
 
 #[wasm_bindgen]
+pub fn og_motion_jump(world: u32, entity: f64, desc: Option<String>) -> String {
+    <Host as MotionApi>::og_motion_jump(&Host, world, entity, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_motion_clear(world: u32, entity: f64) -> String {
     <Host as MotionApi>::og_motion_clear(&Host, world, entity)
 }

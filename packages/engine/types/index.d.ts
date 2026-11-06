@@ -43376,7 +43376,7 @@ export interface ArtCamera {
 }
 
 // ── motion ──────────────────────────────────────────────────────
-// Generated motion for humanoids: the engine's motion model (a 17.6M-parameter student distilled from NVIDIA MotionBricks, og-motion) moves a character between the goals the game gives it, on the GPU. Give an entity with an og.Skeleton (a humanoid rig og.anim.humanoid recognises, or one an og.MotionAgent.rig names) an og.MotionAgent, then queue goals: og.motion.pose (a pose of the model's library where the character stands), og.motion.place (a pose at a place, facing a heading), og.motion.face (turn to a heading) and og.motion.walkTo (walk or run to a point). og.motion.poses lists the library: idle, walk, run, jump, crouch, wave, cheer.
+// Generated motion for humanoids: the engine's motion model (a 17.6M-parameter student distilled from NVIDIA MotionBricks, og-motion) moves a character between the goals the game gives it, on the GPU. Give an entity with an og.Skeleton (a humanoid rig og.anim.humanoid recognises, or one an og.MotionAgent.rig names) an og.MotionAgent, then queue goals: og.motion.pose (a pose of the model's library where the character stands), og.motion.place (a pose at a place, facing a heading), og.motion.face (turn to a heading), og.motion.walkTo (walk or run to a point) and og.motion.jump (a jump whose arc the simulation owns). og.motion.poses lists the library: idle, walk, run, jump, crouch, wave, cheer.
 // **Presentation only.** The generated pose is drawn, never simulated (docs/design.md §2.4): it replaces og.anim's joint palette when the frame is drawn, and nothing a tick reads (og.anim's pose, its joint queries, root motion, physics, the world hash) depends on it, so a run is deterministic on every GPU. The model never moves the character: og.Transform is its root, always. With og.MotionAgent.drive the og.motion system moves the Transform to the goals itself with fixed math inside the tick (walkTo at its speed along a straight line, place over its duration, face at turnSpeed), and the generated pose is re-rooted onto the Transform, its planted feet absorbing the difference; without drive the game moves the Transform (its own physics, path or controller) and the character's motion follows it (walking, running or standing by how fast it moves). No model root motion ever reaches the simulation.
 // **Goals are the game's.** A goal is current from the tick it starts until it ends by fixed rules (walkTo when the mover arrives, pose, place and face after their duration), then the next queued one starts; og.motion.status answers the queue and the current goal, never the model's progress, so game code may branch on it. og.motion.presentation reports visual readiness for a host cover; game logic must not branch on it. The probe's `dump_motion` also reports readiness, generated frames, batches and timings.
 // **The model.** Its weights (35 MB in f16) ship inside @origingame/engine; `og cook` writes them as an optional file, cooked/motion/model.ogb, only for a project that uses og.motion (the manifest names it), and the engine reads and uploads it in the background as soon as the bundle is open, before any agent needs it (natively on a thread of its own; on the web a fetch after the boot bundle, never in it). The model runs on the GPU beside the renderer (in the engine Worker on the web): one batch for every agent at once, submitted in slices of about 3 ms of GPU time a frame, so a batch never costs a frame its vsync, and decoded a few characters a frame. Until the weights are resident, or when they fail to load, og.motion.capabilities answers backend none and each agent is drawn as og.anim poses it: its og.AnimationPlayer or og.AnimationGraph is the fallback, so give it an idle or walk clip.
@@ -43388,8 +43388,9 @@ export interface ArtCamera {
  * - `"place"`: A library pose at a place, facing a heading.
  * - `"face"`: Turn to a heading where the character stands.
  * - `"walkTo"`: Walk or run to a point, then take a pose.
+ * - `"jump"`: Jump: prepare, take off, fly the simulation's ballistic arc, land and recover.
  */
-export type MotionGoalKind = "none" | "pose" | "place" | "face" | "walkTo";
+export type MotionGoalKind = "none" | "pose" | "place" | "face" | "walkTo" | "jump";
 
 /**
  * A MotionGoalKind field: the variant's index.
@@ -43566,6 +43567,59 @@ export interface WalkGoalDesc {
 }
 
 /**
+ * A jump (og.motion.jump); needs og.MotionAgent.drive. The simulation owns its whole arc: after `prepare` the og.motion system takes off in the tick, with an og.CharacterController through the controller's jump (it sets the controller's jumpSpeed for `height` under the controller's gravity and holds `jump` on the takeoff tick, so a ceiling cuts the rise and the landing is wherever the controller reaches ground), without one by the fixed ballistic arc of `height` back to the takeoff height. The goal ends `recover` seconds after the landing tick. The generated jump is drawn in place on that flight, never adding the model's own vertical travel (docs/design.md §2.7).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface JumpGoalDesc {
+  /**
+   * The apex over the takeoff height, with gravity og.Physics.gravity (times the controller's gravityScale).
+   *
+   * @default 0.5
+   * @range 0..5
+   * @unit m (metres)
+   */
+  readonly height?: number;
+  /**
+   * How far it travels across the ground while in the air, along `heading`; 0 jumps in place.
+   *
+   * @default 0
+   * @range 0..20
+   * @unit m (metres)
+   */
+  readonly distance?: number;
+  /**
+   * The way it faces and travels: 0 looks down +Z, π/2 down +X; omitted keeps its facing when the jump starts. It turns there at turnSpeed while preparing.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly heading?: number;
+  /**
+   * Seconds of preparation (the crouch) before takeoff.
+   *
+   * @default 0.25
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly prepare?: number;
+  /**
+   * Seconds after the landing tick before the goal ends.
+   *
+   * @default 0.35
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly recover?: number;
+  /**
+   * The pose held after the jump; empty is `idle`.
+   *
+   * @default ""
+   */
+  readonly pose?: string;
+}
+
+/**
  * A timed look over locomotion: spine, neck and head share the turn, never the hips or legs. An omitted target releases the look over blend seconds.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -43673,7 +43727,7 @@ export interface MotionStatus {
   /** The current goal's pose (walkTo's arrival pose), empty for none and face. */
   readonly pose: string;
   /**
-   * Where the current goal goes (pose and face: where the goal started).
+   * Where the current goal goes (pose and face: where the goal started; jump: its start plus its distance along its heading, on flat ground).
    *
    * @unit m (metres)
    */
@@ -43690,6 +43744,8 @@ export interface MotionStatus {
    * @unit s (seconds of simulation time)
    */
   readonly elapsed: number;
+  /** The current goal is a jump between its takeoff and its landing tick. */
+  readonly airborne: boolean;
   /** Goals waiting after the current one. */
   readonly queued: number;
   /** Goals finished since the agent's first. */
@@ -43734,6 +43790,7 @@ export interface MotionCapabilities {
    */
   readonly modelBytes: number;
 }
+
 
 
 
@@ -49765,7 +49822,7 @@ export declare namespace og {
    */
   const MotionAgent: ComponentType<{ readonly rig: FieldSpec<"Rig">; readonly drive: FieldSpec<"bool">; readonly turnSpeed: FieldSpec<"f32">; readonly lookahead: FieldSpec<"f32"> }, MotionAgent>;
   /**
-   * Generated motion for humanoids: the engine's motion model (a 17.6M-parameter student distilled from NVIDIA MotionBricks, og-motion) moves a character between the goals the game gives it, on the GPU. Give an entity with an og.Skeleton (a humanoid rig og.anim.humanoid recognises, or one an og.MotionAgent.rig names) an og.MotionAgent, then queue goals: og.motion.pose (a pose of the model's library where the character stands), og.motion.place (a pose at a place, facing a heading), og.motion.face (turn to a heading) and og.motion.walkTo (walk or run to a point). og.motion.poses lists the library: idle, walk, run, jump, crouch, wave, cheer.
+   * Generated motion for humanoids: the engine's motion model (a 17.6M-parameter student distilled from NVIDIA MotionBricks, og-motion) moves a character between the goals the game gives it, on the GPU. Give an entity with an og.Skeleton (a humanoid rig og.anim.humanoid recognises, or one an og.MotionAgent.rig names) an og.MotionAgent, then queue goals: og.motion.pose (a pose of the model's library where the character stands), og.motion.place (a pose at a place, facing a heading), og.motion.face (turn to a heading), og.motion.walkTo (walk or run to a point) and og.motion.jump (a jump whose arc the simulation owns). og.motion.poses lists the library: idle, walk, run, jump, crouch, wave, cheer.
    * **Presentation only.** The generated pose is drawn, never simulated (docs/design.md §2.4): it replaces og.anim's joint palette when the frame is drawn, and nothing a tick reads (og.anim's pose, its joint queries, root motion, physics, the world hash) depends on it, so a run is deterministic on every GPU. The model never moves the character: og.Transform is its root, always. With og.MotionAgent.drive the og.motion system moves the Transform to the goals itself with fixed math inside the tick (walkTo at its speed along a straight line, place over its duration, face at turnSpeed), and the generated pose is re-rooted onto the Transform, its planted feet absorbing the difference; without drive the game moves the Transform (its own physics, path or controller) and the character's motion follows it (walking, running or standing by how fast it moves). No model root motion ever reaches the simulation.
    * **Goals are the game's.** A goal is current from the tick it starts until it ends by fixed rules (walkTo when the mover arrives, pose, place and face after their duration), then the next queued one starts; og.motion.status answers the queue and the current goal, never the model's progress, so game code may branch on it. og.motion.presentation reports visual readiness for a host cover; game logic must not branch on it. The probe's `dump_motion` also reports readiness, generated frames, batches and timings.
    * **The model.** Its weights (35 MB in f16) ship inside @origingame/engine; `og cook` writes them as an optional file, cooked/motion/model.ogb, only for a project that uses og.motion (the manifest names it), and the engine reads and uploads it in the background as soon as the bundle is open, before any agent needs it (natively on a thread of its own; on the web a fetch after the boot bundle, never in it). The model runs on the GPU beside the renderer (in the engine Worker on the web): one batch for every agent at once, submitted in slices of about 3 ms of GPU time a frame, so a batch never costs a frame its vsync, and decoded a few characters a frame. Until the weights are resident, or when they fail to load, og.motion.capabilities answers backend none and each agent is drawn as og.anim poses it: its og.AnimationPlayer or og.AnimationGraph is the fallback, so give it an idle or walk clip.
@@ -49807,6 +49864,15 @@ export declare namespace og {
      * @returns Refused for an entity without og.MotionAgent or without drive, or a position that is not finite.
      */
     function walkTo(world: World, entity: Entity, desc?: WalkGoalDesc): Result<void>;
+    /**
+     * Queue a jump after the agent's other goals; needs og.MotionAgent.drive. Takeoff, height, flight and landing are the simulation's (the controller's with an og.CharacterController, a fixed ballistic arc without one), deterministic and in snapshots; the motion model only draws it. A jump cleared in the air without a controller holds where it is.
+     *
+     * @param world The world.
+     * @param entity An entity with an og.MotionAgent.
+     * @param desc Height, travel, preparation and recovery.
+     * @returns Refused for an entity without og.MotionAgent or without drive, a pose the library lacks, or a height, distance, heading or time that is out of range or not finite.
+     */
+    function jump(world: World, entity: Entity, desc?: JumpGoalDesc): Result<void>;
     /**
      * Drop the agent's goals, the current one included: the character holds where it is.
      *

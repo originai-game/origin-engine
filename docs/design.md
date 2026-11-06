@@ -1350,10 +1350,47 @@ window: Origin Desktop owns the AccessKit platform adapter (platform ask
   readback (`firstInferenceWallMs`), time polling that batch
   (`firstInferencePollMs`), and readback to the first generated palette
   (`firstPaletteDelayMs`, including decode); compile and upload are null on
-  the web, unfinished phases null. Inference is sliced at 3 ms. A
-  controller-owned jump (`motion.jump`) is not implemented: the controller
-  must own ballistic elevation, so generated pelvis height cannot add a
-  second arc.
+  the web, unfinished phases null. Inference is sliced at 3 ms.
+  - **Jumps: the simulation owns the elevation.** `motion.jump` is a goal
+    like the others. After its `prepare` seconds the og.motion system takes
+    off in the tick: with an og.CharacterController through the
+    controller's own jump (its `jumpSpeed` set for the goal's `height`
+    under the controller's gravity, held on the takeoff tick), so ceilings
+    cut the rise and the landing is wherever the controller reaches ground
+    (a ledge, a pit); without one, by the fixed ballistic arc of `height`
+    back to the start height. The goal ends `recover` seconds after the
+    landing tick. Takeoff, height, flight time and landing are never read
+    from the model, and the jump's state is in snapshots and the hash. The
+    model's own vertical arc is not trusted for this: with the tokens the
+    student chooses, generated hips sit up to 74–79 cm off the source's in
+    flight while the source-encoded tokens stay within 11 cm
+    (og-motion-train `data/trajectory-pilot6/GEOMETRY.md`); its conditions
+    do not determine the arc.
+  - **The generated jump is drawn in place, on the simulation's flight.**
+    The drawn hips are the Transform's height plus the pose's local
+    height: the generated hips' height minus how far its lowest foot is
+    above that foot's ground clearance. It equals the generated height
+    whenever a foot is down, so the crouch before takeoff and the
+    compression after landing stay the model's; in flight the lowest foot
+    rides the Transform, so the feet never pass below what the controller
+    cleared and reach the ground on the landing tick. No generated vertical
+    travel is added to the controller's. The clip is retimed onto the
+    simulation's (distance matching): its frames before its own takeoff
+    (its contact output) spread over `prepare`; in the air the generated
+    flight frame follows the simulation's vertical speed, the phase
+    (v₀ − v)/(2v₀) of its rise and fall, held below touchdown until the
+    landing tick; from the landing tick its touchdown frames play. A drop
+    off a ledge holds the last flight frame, an early landing (a ledge up,
+    a ceiling) moves on to touchdown, and the drawn frame reaches the
+    retimed one at no more than three times the clip's rate.
+  - **The streaming boundary holds the whole jump.** The presenter asks
+    for a jump when its prediction of the mover reaches it (the agent's
+    lookahead, which `prepare` adds to) and keeps its generated frames from its start through
+    its touchdown and recovery, since the retiming needs the clip's own
+    takeoff and touchdown; a flight that outruns the generated frames holds
+    the latest generated flight frame and never invents a landing. A
+    `pose` goal of `jump` is different: a hop drawn by the model alone, the
+    Transform on the ground, never read by gameplay.
 - **Physics**: rapier3d (and rapier2d for 2D projects), fixed-tick stepping
   inside the engine tick, a kinematic character controller. A kinematic
   body with an `og.Velocity` moves by it each tick and its Transform is

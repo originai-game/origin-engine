@@ -12,6 +12,7 @@
 //! | [`contract`] | world poses to the graph inputs ([`encode`]) and motion frames back ([`decode_frame`]) |
 //! | [`glue`] | everything around the two networks, shared by every path |
 //! | [`cpu`] | the student and decoder on the CPU, the reference path (the `reference` feature) |
+//! | [`flight`] | a generated jump drawn on the simulation's flight: its local height and its retiming |
 //! | [`gpu`] | the same on wgpu compute, the shipping path ([`gpu::Gpu`]) |
 //! | [`intent`] | the intent API: [`intent::Goal`]s queued per character, [`intent::Motion`] chaining generations in batches |
 //! | [`library`] | the poses goals name ([`library::POSES`]), carried by the bundle |
@@ -27,6 +28,7 @@
 pub mod bundle;
 pub mod contract;
 pub mod cpu;
+pub mod flight;
 pub mod glue;
 pub mod gpu;
 pub mod intent;

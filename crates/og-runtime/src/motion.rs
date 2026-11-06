@@ -46,6 +46,11 @@ pub(crate) const AGENT: &str = "og.MotionAgent";
 pub(crate) const RUN_SPEED: f32 = 2.5;
 /// A walkTo ends within this distance of its target.
 const ARRIVED: f32 = 1e-3;
+/// The gravity of a world without og.Physics, m/s².
+const GRAVITY: f32 = 9.81;
+/// A controller jump that never leaves the ground (blocked, or not
+/// grounded at takeoff) lands after this long in the air.
+const STUCK: f32 = 0.2;
 
 /// MotionGoalKind's variants, in the IDL's order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -54,9 +59,10 @@ pub(crate) enum Kind {
     Place = 2,
     Face = 3,
     WalkTo = 4,
+    Jump = 5,
 }
 
-const KIND_NAMES: [&str; 5] = ["none", "pose", "place", "face", "walkTo"];
+const KIND_NAMES: [&str; 6] = ["none", "pose", "place", "face", "walkTo", "jump"];
 
 impl Kind {
     fn from_u32(v: u32) -> Option<Kind> {
@@ -65,6 +71,7 @@ impl Kind {
             2 => Kind::Place,
             3 => Kind::Face,
             4 => Kind::WalkTo,
+            5 => Kind::Jump,
             _ => return None,
         })
     }
@@ -82,6 +89,38 @@ pub(crate) struct Goal {
     pub speed: f32,
     pub arrival_heading: Option<f32>,
     pub deceleration: f32,
+    /// A jump's apex over its takeoff, m (`height`), and the seconds before
+    /// takeoff (`prepare`); its `duration` is the recovery after landing,
+    /// `speed` its horizontal travel in m (`distance`) along `heading`.
+    pub height: f32,
+    pub prepare: f32,
+}
+
+/// Where a jump goal is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum JumpStage {
+    Prepare,
+    Air,
+    Landed,
+}
+
+/// A jump goal's state in the simulation.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Jump {
+    pub stage: JumpStage,
+    /// The takeoff speed, m/s: the gravity's for the goal's height.
+    pub v0: f32,
+    /// The gravity it falls by, m/s² (positive).
+    pub gravity: f32,
+    /// The takeoff height (the arc without a controller returns to it).
+    pub base: f32,
+    /// Seconds since takeoff, and since landing.
+    pub air: f32,
+    pub landed: f32,
+    /// The vertical speed, m/s: the fixed arc's, or the controller's.
+    pub velocity: f32,
+    /// A controller has been seen off the ground since takeoff.
+    pub left: bool,
 }
 
 /// The goal being carried out.
@@ -92,6 +131,8 @@ pub(crate) struct Current {
     /// Where the Transform was, and its heading, when the goal started.
     pub start: Vec3,
     pub start_heading: f32,
+    /// A jump goal's state.
+    pub jump: Option<Jump>,
 }
 
 /// One agent's goals.
@@ -165,6 +206,13 @@ fn turn(from: f32, to: f32, step: f32) -> f32 {
 pub(crate) struct Settings {
     pub drive: bool,
     pub controller: bool,
+    /// The gravity a jump falls by (m/s², positive): the controller's
+    /// (og.Physics gravity times its gravityScale), else og.Physics'.
+    pub gravity: f32,
+    /// The controller's grounded as the last physics step left it.
+    pub grounded: bool,
+    /// The controller's vertical speed as the last physics step left it.
+    pub vertical: f32,
     pub turn_speed: f32,
     pub lookahead: f32,
     pub rig: u64,
@@ -175,6 +223,9 @@ impl Settings {
         Settings {
             drive: v["drive"].as_bool().unwrap_or(false),
             controller: false,
+            gravity: GRAVITY,
+            grounded: true,
+            vertical: 0.0,
             turn_speed: v["turnSpeed"].as_f64().unwrap_or(6.0) as f32,
             lookahead: v["lookahead"].as_f64().unwrap_or(0.6) as f32,
             rig: v["rig"].as_f64().map_or(0, |x| x as u64),
@@ -196,14 +247,28 @@ pub(crate) fn advance(
 ) {
     agent.performance.advance(dt);
     if agent.current.is_none() {
-        let Some(goal) = agent.queue.pop_front() else {
+        let Some(mut goal) = agent.queue.pop_front() else {
             return;
         };
+        if goal.kind == Kind::Jump {
+            // A jump travels its way, or the way it faces when it starts.
+            goal.heading = goal.arrival_heading.unwrap_or(*heading);
+        }
         agent.current = Some(Current {
             goal,
             elapsed: 0.0,
             start: *position,
             start_heading: *heading,
+            jump: (goal.kind == Kind::Jump).then(|| Jump {
+                stage: JumpStage::Prepare,
+                v0: (2.0 * s.gravity.max(0.0) * goal.height).sqrt(),
+                gravity: s.gravity.max(0.0),
+                base: position.y,
+                air: 0.0,
+                landed: 0.0,
+                velocity: 0.0,
+                left: false,
+            }),
         });
         agent.serial = agent.serial.wrapping_add(1);
     }
@@ -234,6 +299,64 @@ pub(crate) fn advance(
                 *heading = turn(*heading, g.heading, step);
             }
             cur.elapsed >= g.duration && (!s.drive || *heading == g.heading)
+        }
+        Kind::Jump => {
+            let j = cur.jump.as_mut().expect("a jump goal carries its state");
+            match j.stage {
+                JumpStage::Prepare => {
+                    if s.drive {
+                        *heading = turn(*heading, g.heading, step);
+                    }
+                    // Takeoff on the tick the preparation ends; the arc
+                    // (or the controller's jump) starts with the next.
+                    if cur.elapsed >= g.prepare {
+                        j.stage = JumpStage::Air;
+                        j.base = position.y;
+                        j.velocity = j.v0;
+                    }
+                }
+                JumpStage::Air => {
+                    j.air += dt;
+                    let flight = if j.gravity > 0.0 {
+                        2.0 * j.v0 / j.gravity
+                    } else {
+                        0.0
+                    };
+                    let landed = if s.controller {
+                        j.left |= !s.grounded;
+                        j.velocity = s.vertical;
+                        s.grounded && (j.left || j.air >= STUCK)
+                    } else {
+                        let t = j.air.min(flight);
+                        j.velocity = j.v0 - j.gravity * t;
+                        if s.drive {
+                            position.y = j.base + j.v0 * t - 0.5 * j.gravity * t * t;
+                        }
+                        j.air >= flight
+                    };
+                    if s.drive && flight > 0.0 {
+                        // Across the ground at the flat flight's speed: the
+                        // fixed arc covers exactly the distance, a
+                        // controller keeps going until it lands.
+                        let moved = if s.controller {
+                            dt
+                        } else {
+                            j.air.min(flight) - (j.air - dt).min(flight)
+                        };
+                        let (sx, cz) = sin_cos(g.heading);
+                        *position += Vec3::new(sx, 0.0, cz) * (g.speed / flight * moved);
+                    }
+                    if landed {
+                        if !s.controller && s.drive {
+                            position.y = j.base;
+                        }
+                        j.stage = JumpStage::Landed;
+                        j.velocity = 0.0;
+                    }
+                }
+                JumpStage::Landed => j.landed += dt,
+            }
+            j.stage == JumpStage::Landed && j.landed >= g.duration
         }
         Kind::WalkTo => {
             let to = Vec3::new(g.target.x - position.x, 0.0, g.target.z - position.z);
@@ -303,7 +426,7 @@ pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
     world.add_system(
         SystemDesc {
             name: SYSTEM.into(),
-            reads: vec![AGENT.to_string()],
+            reads: vec![AGENT.to_string(), "og.Physics".to_string()],
             writes: vec![
                 "og.Transform".to_string(),
                 "og.CharacterController".to_string(),
@@ -333,6 +456,9 @@ fn system(
     for a in ctx.query(0)? {
         rows.extend_from_slice(a.entities());
     }
+    let gravity = ctx
+        .resource::<og_physics::Physics>()
+        .map_or(GRAVITY, |p| -p.gravity.y);
     let mut goals = lock(state);
     // Agents whose entity lost og.MotionAgent (or died): forgotten.
     goals
@@ -345,6 +471,13 @@ fn system(
         let mut s = Settings::of(&agent.1.decode(&ctx.get_bytes(e, agent.0)?));
         let cb = ctx.get_bytes(e, controller.0).ok();
         s.controller = cb.is_some();
+        s.gravity = gravity;
+        let c0 = cb.as_ref().map(|b| controller.1.decode(b));
+        if let Some(c) = &c0 {
+            s.gravity = gravity * c["gravityScale"].as_f64().unwrap_or(1.0) as f32;
+            s.grounded = c["grounded"].as_bool().unwrap_or(false);
+            s.vertical = c["velocity"]["y"].as_f64().unwrap_or(0.0) as f32;
+        }
         let tb = ctx.get_bytes(e, transform.0)?;
         let mut t = transform.1.decode(&tb);
         let (mut position, q) = transform_of(&t);
@@ -352,15 +485,27 @@ fn system(
         let (p0, h0) = (position, heading);
         advance(a, &s, &mut position, &mut heading, dt);
         if s.drive
-            && let Some(cb) = cb
+            && let (Some(cb), Some(mut c)) = (cb, c0)
         {
             let velocity = if dt > 0.0 {
                 (position - p0) / dt
             } else {
                 Vec3::ZERO
             };
-            let mut c = controller.1.decode(&cb);
             c["move"] = json!({"x": velocity.x, "y": 0.0, "z": velocity.z});
+            // A jump goal holds the controller's jump on its takeoff tick
+            // only (the controller starts a jump on the rising edge), at the
+            // speed whose discrete arc (velocity, then position, each tick)
+            // peaks at the goal's height.
+            if let Some(cur) = a.current.as_ref().filter(|c| c.goal.kind == Kind::Jump)
+                && let Some(j) = cur.jump
+            {
+                let takeoff = j.stage == JumpStage::Air && j.air == 0.0;
+                c["jump"] = json!(takeoff);
+                if takeoff {
+                    c["jumpSpeed"] = json!(j.v0 + 0.5 * j.gravity * dt);
+                }
+            }
             let bytes = controller.1.encode(Some(&cb), Some(&c)).map_err(invalid)?;
             ctx.set_bytes(e, controller.0, &bytes)?;
             // The controller alone writes translation after collisions,
@@ -400,7 +545,7 @@ pub(crate) fn transform_of(t: &Value) -> (Vec3, Quat) {
 struct Block(Arc<Mutex<Goals>>);
 
 fn save(g: &Goals, out: &mut Vec<u8>) {
-    out.extend_from_slice(b"MOTION2\0");
+    out.extend_from_slice(b"MOTION3\0");
     let u32_ = |out: &mut Vec<u8>, v: u32| out.extend_from_slice(&v.to_le_bytes());
     let f32_ = |out: &mut Vec<u8>, v: f32| out.extend_from_slice(&v.to_le_bytes());
     let goal = |out: &mut Vec<u8>, g: &Goal| {
@@ -414,6 +559,8 @@ fn save(g: &Goals, out: &mut Vec<u8>) {
         u32_(out, g.arrival_heading.is_some() as u32);
         f32_(out, g.arrival_heading.unwrap_or(0.0));
         f32_(out, g.deceleration);
+        f32_(out, g.height);
+        f32_(out, g.prepare);
     };
     u32_(out, g.agents.len() as u32);
     for (e, a) in &g.agents {
@@ -430,6 +577,14 @@ fn save(g: &Goals, out: &mut Vec<u8>) {
             for v in [c.elapsed, c.start.x, c.start.y, c.start.z, c.start_heading] {
                 f32_(out, v);
             }
+            u32_(out, c.jump.is_some() as u32);
+            if let Some(j) = &c.jump {
+                u32_(out, j.stage as u32);
+                for v in [j.v0, j.gravity, j.base, j.air, j.landed, j.velocity] {
+                    f32_(out, v);
+                }
+                u32_(out, j.left as u32);
+            }
         }
         let performance = serde_json::to_vec(&a.performance).expect("finite performance state");
         u32_(out, performance.len() as u32);
@@ -438,7 +593,15 @@ fn save(g: &Goals, out: &mut Vec<u8>) {
 }
 
 fn load(bytes: &[u8]) -> og_core::Result<Goals> {
-    let modern = bytes.starts_with(b"MOTION2\0");
+    // MOTION3 adds jumps to MOTION2's goals; before MOTION2 there was no tag.
+    let version = if bytes.starts_with(b"MOTION3\0") {
+        3
+    } else if bytes.starts_with(b"MOTION2\0") {
+        2
+    } else {
+        1
+    };
+    let modern = version >= 2;
     let mut r = Reader(if modern { &bytes[8..] } else { bytes });
     let mut g = Goals::default();
     for _ in 0..r.u32()? {
@@ -450,16 +613,39 @@ fn load(bytes: &[u8]) -> og_core::Result<Goals> {
             ..Agent::default()
         };
         for _ in 0..r.u32()? {
-            a.queue.push_back(r.goal(modern)?);
+            a.queue.push_back(r.goal(version)?);
         }
         if r.u32()? != 0 {
-            let goal = r.goal(modern)?;
-            a.current = Some(Current {
+            let goal = r.goal(version)?;
+            let mut current = Current {
                 goal,
                 elapsed: r.f32()?,
                 start: Vec3::new(r.f32()?, r.f32()?, r.f32()?),
                 start_heading: r.f32()?,
-            });
+                jump: None,
+            };
+            if version >= 3 && r.u32()? != 0 {
+                let stage = match r.u32()? {
+                    0 => JumpStage::Prepare,
+                    1 => JumpStage::Air,
+                    2 => JumpStage::Landed,
+                    _ => return Err(invalid("an unknown og.motion jump stage")),
+                };
+                current.jump = Some(Jump {
+                    stage,
+                    v0: r.f32()?,
+                    gravity: r.f32()?,
+                    base: r.f32()?,
+                    air: r.f32()?,
+                    landed: r.f32()?,
+                    velocity: r.f32()?,
+                    left: r.u32()? != 0,
+                });
+            }
+            if current.goal.kind == Kind::Jump && current.jump.is_none() {
+                return Err(invalid("an og.motion jump goal without its state"));
+            }
+            a.current = Some(current);
         }
         if modern {
             let n = r.u32()? as usize;
@@ -497,7 +683,7 @@ impl Reader<'_> {
     fn f32(&mut self) -> og_core::Result<f32> {
         self.take::<4>().map(f32::from_le_bytes)
     }
-    fn goal(&mut self, modern: bool) -> og_core::Result<Goal> {
+    fn goal(&mut self, version: u32) -> og_core::Result<Goal> {
         let kind =
             Kind::from_u32(self.u32()?).ok_or_else(|| invalid("an unknown og.motion goal"))?;
         let pose = self.u32()?;
@@ -513,12 +699,18 @@ impl Reader<'_> {
             speed: self.f32()?,
             arrival_heading: None,
             deceleration: 0.0,
+            height: 0.0,
+            prepare: 0.0,
         };
-        if modern {
+        if version >= 2 {
             let has_heading = self.u32()? != 0;
             let heading = self.f32()?;
             goal.arrival_heading = has_heading.then_some(heading);
             goal.deceleration = self.f32()?;
+        }
+        if version >= 3 {
+            goal.height = self.f32()?;
+            goal.prepare = self.f32()?;
         }
         Ok(goal)
     }
@@ -665,6 +857,8 @@ pub fn og_motion_pose(world: u32, entity: f64, desc: Option<String>) -> String {
             speed: 0.0,
             arrival_heading: None,
             deceleration: 0.0,
+            height: 0.0,
+            prepare: 0.0,
         })
     })
 }
@@ -681,6 +875,8 @@ pub fn og_motion_place(world: u32, entity: f64, desc: Option<String>) -> String 
             speed: 0.0,
             arrival_heading: None,
             deceleration: 0.0,
+            height: 0.0,
+            prepare: 0.0,
         })
     })
 }
@@ -697,6 +893,8 @@ pub fn og_motion_face(world: u32, entity: f64, desc: Option<String>) -> String {
             speed: 0.0,
             arrival_heading: None,
             deceleration: 0.0,
+            height: 0.0,
+            prepare: 0.0,
         })
     })
 }
@@ -729,6 +927,41 @@ pub fn og_motion_walk_to(world: u32, entity: f64, desc: Option<String>) -> Strin
             } else {
                 deceleration
             },
+            height: 0.0,
+            prepare: 0.0,
+        })
+    })
+}
+
+pub fn og_motion_jump(world: u32, entity: f64, desc: Option<String>) -> String {
+    queue(world, entity, desc, |d, s| {
+        need_drive(s, "jump")?;
+        let height = number(d, "height", 0.5);
+        let distance = number(d, "distance", 0.0);
+        let prepare = number(d, "prepare", 0.25);
+        let recover = number(d, "recover", 0.35);
+        let heading = d["heading"].as_f64().map(|h| h as f32);
+        if !(height.is_finite() && (0.0..=5.0).contains(&height))
+            || !(distance.is_finite() && (0.0..=20.0).contains(&distance))
+            || !(prepare.is_finite() && prepare >= 0.0)
+            || !(recover.is_finite() && recover >= 0.0)
+            || heading.is_some_and(|h| !h.is_finite())
+        {
+            return Err(
+                "a jump's height (0 to 5 m), distance (0 to 20 m), prepare and recover (seconds, non-negative) and heading must be finite".into(),
+            );
+        }
+        Ok(Goal {
+            kind: Kind::Jump,
+            pose: pose_named(d)?,
+            target: Vec3::ZERO,
+            heading: 0.0,
+            duration: recover,
+            speed: distance,
+            arrival_heading: heading,
+            deceleration: 0.0,
+            height,
+            prepare,
         })
     })
 }
@@ -775,6 +1008,10 @@ pub fn og_motion_status(world: u32, entity: f64) -> String {
                         let d = g.target - c.start;
                         (g.target, atan2(d.x, d.z))
                     }
+                    Kind::Jump => {
+                        let (sx, cz) = sin_cos(g.heading);
+                        (c.start + Vec3::new(sx, 0.0, cz) * g.speed, g.heading)
+                    }
                 };
                 json!({
                     "goal": KIND_NAMES[g.kind as usize],
@@ -787,6 +1024,11 @@ pub fn og_motion_status(world: u32, entity: f64) -> String {
                 })
             }
         };
+        status["airborne"] = json!(
+            a.current
+                .and_then(|c| c.jump)
+                .is_some_and(|j| j.stage == JumpStage::Air)
+        );
         status["looking"] = json!(a.performance.looking());
         status["reacting"] = json!(a.performance.reacting());
         Ok::<_, String>(status)

@@ -35,8 +35,8 @@
 //! reads depends on it.
 
 use super::{
-    AGENT, Goals, Kind, RUN_SPEED, Settings, advance, heading_of, lock, rotation_of, shared,
-    transform_of,
+    AGENT, Goals, JumpStage, Kind, RUN_SPEED, Settings, advance, heading_of, lock, rotation_of,
+    shared, transform_of,
 };
 use crate::RenderBackend;
 use crate::engine::{Engine, hooks};
@@ -49,6 +49,7 @@ use og_motion::contract::{
     BOUNDARY_FRAMES, FRAMES, MAX_TOKENS, MIN_TOKENS, MOTION_FEATURES, POSES_PER_TOKEN,
 };
 use og_motion::contract::{LEFT_LEG, Pose, RIGHT_LEG, heading};
+use og_motion::flight;
 use og_motion::glue::{Statics, StudentOutput, decoder_inputs, finish_character, student_inputs};
 use og_motion::gpu::{Gpu, GpuError};
 use og_motion::intent::{Batch, Frame, Goal, Motion};
@@ -100,6 +101,12 @@ const CROUCH: usize = 4;
 const CHEST: usize = 3;
 /// SOMA's first spine joint (the hips' child toward the head).
 const SPINE: usize = 1;
+/// A jump clip's drawn frame catches up with its retimed one (an early
+/// landing, frames that arrived late) at most this many times the clip's rate.
+const CATCH_UP: f32 = 3.0;
+/// SOMA's ankles, the joints a jump's local height measures to the ground.
+const LEFT_ANKLE: usize = 24;
+const RIGHT_ANKLE: usize = 28;
 /// How far behind the frame clock a drawn frame may fall before frames are
 /// skipped to catch up, s.
 const MAX_LAG: f64 = 0.25;
@@ -145,6 +152,9 @@ struct Ready {
     soma: SkeletonAsset,
     soma_skeleton: Skeleton,
     soma_map: HumanoidMap,
+    /// SOMA's ankle height standing on the ground (the library idle's
+    /// lower ankle), the clearance of a jump's local height.
+    clearance: f32,
     /// The device's rate as the last batch measured it, GFLOP/s.
     rate: f64,
     /// A sliced batch's latency, start to decoded, as the last one not
@@ -216,6 +226,18 @@ struct Shown {
     /// shown: what each frame's tag names.
     issued: VecDeque<Issued>,
     next_id: u32,
+    /// While the simulation's current goal is a jump: the generated frames
+    /// from the jump's start on, drawn retimed onto the simulation's flight.
+    clip: Option<Clip>,
+    /// Frames a finished jump clip had generated past the one drawn,
+    /// played before the model's next.
+    pending: VecDeque<Frame>,
+}
+
+/// A jump's generated frames and the one drawn (fractional).
+struct Clip {
+    frames: Vec<Frame>,
+    drawn: f32,
 }
 
 /// A model goal asked for: its id (the frames' tag), its library pose and
@@ -386,6 +408,9 @@ fn ready(parts: Parts) -> Model {
         startup,
         statics: Arc::new(parts.statics),
         motion: Motion::default(),
+        clearance: parts.library.frames(0).first().map_or(0.0, |p| {
+            p.positions[LEFT_ANKLE][1].min(p.positions[RIGHT_ANKLE][1])
+        }),
         library: parts.library,
         soma: parts.soma,
         soma_skeleton: parts.soma_skeleton,
@@ -526,6 +551,18 @@ fn gait(speed: f32) -> usize {
 /// character there; only a walk is walked or run.
 fn pose_of(agent: &super::Agent, speed: f32) -> usize {
     match agent.current {
+        // A jump asks for the library's jump through the preparation and
+        // the rise, so the model reaches it at the apex, then for the
+        // jump's pose from the fall on.
+        Some(c) if c.goal.kind == Kind::Jump => match c.jump {
+            Some(j)
+                if j.stage == JumpStage::Landed
+                    || (j.stage == JumpStage::Air && j.velocity <= 0.0) =>
+            {
+                c.goal.pose as usize
+            }
+            _ => JUMP,
+        },
         Some(c) if matches!(c.goal.kind, Kind::Place | Kind::Pose) => c.goal.pose as usize,
         _ if speed > 0.3 => gait(speed),
         Some(c) if c.goal.kind == Kind::WalkTo => c.goal.pose as usize,
@@ -739,6 +776,73 @@ fn unlean(v: Vec3, max: f32) -> glam::Quat {
     og_core::math::quat_from_axis_angle(axis.normalize(), lean - max)
 }
 
+/// A jump's shortest flight, as a share of the simulation's: a clip's
+/// shorter runs with no foot down are strides, not the jump.
+const MIN_FLIGHT: f32 = 0.4;
+
+/// While the simulation's current goal is a jump (`docs/design.md` §2.7,
+/// "Jumps"): the generated frames from the jump's start on are held in the
+/// agent's clip, and the frame drawn is the one [`flight::retime`] puts at
+/// the simulation's moment of the jump, reached at most [`CATCH_UP`] times
+/// the clip's rate. Until the clip has jumped it plays at its own rate. When
+/// the goal ends, the frames past the drawn one play on from `pending`.
+fn jump_clip(motion: &mut Motion, s: &mut Shown, agent: Option<&super::Agent>, elapsed: f32) {
+    let Some(c) = agent
+        .and_then(|a| a.current)
+        .filter(|c| c.goal.kind == Kind::Jump)
+    else {
+        if let Some(clip) = s.clip.take() {
+            let k = clip.drawn.floor() as usize;
+            s.prev = clip.frames.get(k).copied().or(s.prev);
+            s.next = clip.frames.get(k + 1).copied();
+            s.phase = clip.drawn - k as f32;
+            let rest: Vec<Frame> = clip.frames.into_iter().skip(k + 2).collect();
+            for f in rest.into_iter().rev() {
+                s.pending.push_front(f);
+            }
+        }
+        return;
+    };
+    if s.clip.is_none() {
+        let Some(prev) = s.prev else { return };
+        s.clip = Some(Clip {
+            frames: std::iter::once(prev).chain(s.next).collect(),
+            drawn: s.phase.min(if s.next.is_some() { 1.0 } else { 0.0 }),
+        });
+    }
+    let clip = s.clip.as_mut().expect("set above");
+    clip.frames.extend(s.pending.drain(..));
+    while let Some(f) = motion.pop(s.character) {
+        clip.frames.push(f);
+    }
+    let natural = clip.drawn + elapsed * RATE;
+    let target = c.jump.and_then(|j| {
+        let flight_frames = 2.0 * j.v0 / j.gravity.max(1e-3) * RATE;
+        let min = ((MIN_FLIGHT * flight_frames) as usize).max(2);
+        let contacts: Vec<[f32; 4]> = clip.frames.iter().map(|f| f.contacts).collect();
+        let fl = flight::clip_flight(&contacts, 0, min)?;
+        let time = match j.stage {
+            JumpStage::Prepare => flight::JumpTime::Prepare {
+                elapsed: c.elapsed,
+                prepare: c.goal.prepare,
+            },
+            JumpStage::Air => flight::JumpTime::Air {
+                phase: flight::air_phase(j.velocity, j.v0),
+            },
+            JumpStage::Landed => flight::JumpTime::Landed { since: j.landed },
+        };
+        Some(flight::retime(fl, 0, clip.frames.len(), RATE, time))
+    });
+    let step = CATCH_UP * RATE * elapsed;
+    let to = target.unwrap_or(natural);
+    let last = clip.frames.len().saturating_sub(1) as f32;
+    clip.drawn = (clip.drawn + (to - clip.drawn).clamp(-step, step)).clamp(0.0, last);
+    let k = clip.drawn.floor() as usize;
+    s.prev = clip.frames.get(k).copied();
+    s.next = clip.frames.get(k + 1).copied();
+    s.phase = clip.drawn - k as f32;
+}
+
 /// `pose`'s local transforms re-rooted: the hips over the origin at their
 /// height, facing +Z. Its lean from upright is bounded by `max`: first, off
 /// the ground, the root's pitch (pelvis to chest), turning the whole body
@@ -822,7 +926,16 @@ fn palette(
         grounded(&next),
     );
     s.lean = Some(l0 + (l1 - l0) * s.phase.clamp(0.0, 1.0));
-    let frames = [a0, a1];
+    let mut frames = [a0, a1];
+    // In a jump the Transform carries the simulation's elevation: the hips
+    // keep only their height over the lowest foot's clearance.
+    if s.clip.is_some() {
+        for (local, f) in frames.iter_mut().zip([&prev, &next]) {
+            let foot = f.pose.positions[LEFT_ANKLE][1].min(f.pose.positions[RIGHT_ANKLE][1]);
+            local[0].translation.y =
+                flight::local_height(local[0].translation.y, foot, r.clearance);
+        }
+    }
     let clip = og_motion::soma::clip("motion", &r.soma, &frames);
     let out = og_anim::retarget(
         &r.soma,
@@ -988,6 +1101,8 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
                 drawn_lean: None,
                 issued: VecDeque::new(),
                 next_id: 0,
+                clip: None,
+                pending: VecDeque::new(),
             }
         });
         if s.skeleton != a.skeleton || s.rig != a.settings.rig {
@@ -1066,8 +1181,8 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
             s.phase = 0.0;
         }
         for _ in 0..3 {
-            while s.next.is_none() || s.phase >= 1.0 {
-                let Some(f) = r.motion.pop(s.character) else {
+            while s.clip.is_none() && (s.next.is_none() || s.phase >= 1.0) {
+                let Some(f) = s.pending.pop_front().or_else(|| r.motion.pop(s.character)) else {
                     break;
                 };
                 if s.prev.is_none() {
@@ -1096,12 +1211,13 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
         // Behind the clock (the first batch's latency, a goal the model
         // took longer over): frames are skipped until the drawn one is
         // within MAX_LAG of the time it was generated for.
-        while let Some(next) = s.next
+        while s.clip.is_none()
+            && let Some(next) = s.next
             && let Some(at) = s
                 .issued(&next)
                 .map(|g| g.start + f64::from(next.index) / f64::from(RATE))
             && now - at > MAX_LAG
-            && let Some(f) = r.motion.pop(s.character)
+            && let Some(f) = s.pending.pop_front().or_else(|| r.motion.pop(s.character))
         {
             s.prev = s.next;
             s.next = Some(f);
@@ -1112,6 +1228,7 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
                 s.issued.pop_front();
             }
         }
+        jump_clip(&mut r.motion, s, goals.agents.get(&a.entity), elapsed);
         s.count_wait();
         if s.next.is_none() || s.phase >= 1.0 {
             s.phase = s.phase.min(1.0);
@@ -1266,6 +1383,8 @@ mod tests {
             drawn_lean: None,
             issued: VecDeque::new(),
             next_id: 0,
+            clip: None,
+            pending: VecDeque::new(),
         }
     }
 
@@ -1297,6 +1416,91 @@ mod tests {
     }
 
     #[test]
+    fn jump_clip_lands_on_the_simulations_landing() {
+        // Five frames standing, ten in the air, five landed.
+        let pose = Pose {
+            positions: [[0.0; 3]; og_motion::contract::JOINTS],
+            rotations: [[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+                og_motion::contract::JOINTS],
+        };
+        let frame = |index: u32| Frame {
+            pose,
+            contacts: if (5..15).contains(&index) {
+                [0.0; 4]
+            } else {
+                [1.0; 4]
+            },
+            tag: 0,
+            index,
+        };
+        let mut motion = Motion::default();
+        let mut s = shown();
+        s.character = motion.add([pose; 4]);
+        s.prev = Some(frame(0));
+        s.next = Some(frame(1));
+        s.pending.extend((2..20).map(frame));
+        let (v0, gravity) = (3.13, 9.81);
+        let goal = super::super::Goal {
+            kind: Kind::Jump,
+            pose: 0,
+            duration: 2.0,
+            target: Vec3::ZERO,
+            heading: 0.0,
+            speed: 0.0,
+            arrival_heading: None,
+            deceleration: 0.0,
+            height: 0.5,
+            prepare: 0.25,
+        };
+        let jump = |stage, velocity, landed| super::super::Jump {
+            stage,
+            v0,
+            gravity,
+            base: 0.0,
+            air: 0.0,
+            landed,
+            velocity,
+            left: true,
+        };
+        let mut agent = super::super::Agent::default();
+        let at = |agent: &mut super::super::Agent, j: Option<super::super::Jump>| {
+            agent.current = j.map(|j| super::super::Current {
+                goal,
+                elapsed: 0.5,
+                start: Vec3::ZERO,
+                start_heading: 0.0,
+                jump: Some(j),
+            });
+        };
+        let drawn = |s: &Shown| s.prev.unwrap().index as f32 + s.phase;
+        // At the apex: halfway through the clip's flight.
+        at(&mut agent, Some(jump(JumpStage::Air, 0.0, 0.0)));
+        jump_clip(&mut motion, &mut s, Some(&agent), 1.0);
+        assert_eq!(drawn(&s), 10.0);
+        // Falling past the takeoff height: held before the clip's
+        // touchdown until the simulation lands.
+        at(&mut agent, Some(jump(JumpStage::Air, -2.0 * v0, 0.0)));
+        jump_clip(&mut motion, &mut s, Some(&agent), 1.0);
+        assert_eq!(drawn(&s), 14.0);
+        // Landed: the touchdown frame, reached at no more than CATCH_UP
+        // times the clip's rate.
+        at(&mut agent, Some(jump(JumpStage::Landed, 0.0, 0.0)));
+        jump_clip(&mut motion, &mut s, Some(&agent), 0.25 / (CATCH_UP * RATE));
+        assert_eq!(drawn(&s), 14.25);
+        jump_clip(&mut motion, &mut s, Some(&agent), 1.0);
+        assert_eq!(drawn(&s), 15.0);
+        // The goal over: the frames after the drawn one play on.
+        at(&mut agent, None);
+        jump_clip(&mut motion, &mut s, Some(&agent), 1.0);
+        assert!(s.clip.is_none());
+        assert_eq!((s.prev.unwrap().index, s.next.unwrap().index), (15, 16));
+        assert_eq!(
+            s.pending.iter().map(|f| f.index).collect::<Vec<_>>(),
+            [17, 18, 19]
+        );
+    }
+
+    #[test]
     fn initial_face_to_idle_keeps_the_first_generated_window() {
         let a = Seen {
             entity: 1,
@@ -1316,6 +1520,8 @@ mod tests {
             speed: 0.0,
             arrival_heading: None,
             deceleration: 0.0,
+            height: 0.0,
+            prepare: 0.0,
         };
         let mut goals = Goals::default();
         let mut agent = super::super::Agent::default();
@@ -1401,6 +1607,8 @@ mod tests {
             speed: 0.0,
             arrival_heading: None,
             deceleration: 0.0,
+            height: 0.0,
+            prepare: 0.0,
         };
         let a = Seen {
             entity: 1,

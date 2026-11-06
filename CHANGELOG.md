@@ -15,6 +15,15 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Jumps the simulation owns.** `og.motion.jump` (`JumpGoalDesc`:
+  `height`, `distance`, `heading`, `prepare`, `recover`, `pose`) queues a
+  jump: after its preparation the og.motion system takes off in the tick,
+  through an og.CharacterController's own jump (its `jumpSpeed` set for the
+  height, held on the takeoff tick) or, without a controller, a fixed
+  ballistic arc back to the takeoff height, and the goal ends `recover`
+  seconds after the landing tick. `MotionGoalKind` gains `jump` and
+  `MotionStatus` gains `airborne`. The motion model never decides takeoff,
+  height or landing; its jump is drawn in place on the simulation's flight.
 - **Music clocks can start before world time zero.** `Music.start` no
   longer declares a minimum of zero, so starting partway through a song
   passes reflected field validation and default invariants.

@@ -33145,5 +33145,5 @@ pub const COLUMNS: &[ColumnDecl] = &[
     ColumnDecl { name: "ArtLinePlace", variants: &["outside", "inside", "both"] },
     ColumnDecl { name: "ArtBrush", variants: &["diamond", "circle", "square"] },
     ColumnDecl { name: "ArtProjection", variants: &["any", "perspective", "orthographic"] },
-    ColumnDecl { name: "MotionGoalKind", variants: &["none", "pose", "place", "face", "walkTo"] },
+    ColumnDecl { name: "MotionGoalKind", variants: &["none", "pose", "place", "face", "walkTo", "jump"] },
 ];

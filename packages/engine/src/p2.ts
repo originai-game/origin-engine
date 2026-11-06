@@ -84,6 +84,7 @@ export const motion = Object.freeze({
   place: (world: W, entity: number, desc?: unknown) => parse(abi().og_motion_place(world.id, entity, json(desc))),
   face: (world: W, entity: number, desc?: unknown) => parse(abi().og_motion_face(world.id, entity, json(desc))),
   walkTo: (world: W, entity: number, desc?: unknown) => parse(abi().og_motion_walk_to(world.id, entity, json(desc))),
+  jump: (world: W, entity: number, desc?: unknown) => parse(abi().og_motion_jump(world.id, entity, json(desc))),
   clear: (world: W, entity: number) => parse(abi().og_motion_clear(world.id, entity)),
   lookAt: (world: W, entity: number, desc?: unknown) => parse(abi().og_motion_look_at(world.id, entity, json(desc))),
   react: (world: W, entity: number, desc?: unknown) => parse(abi().og_motion_react(world.id, entity, json(desc))),

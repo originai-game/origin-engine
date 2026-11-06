@@ -2,7 +2,7 @@
 
 # The `motion` module
 
-Generated motion for humanoids: the engine's motion model (a 17.6M-parameter student distilled from NVIDIA MotionBricks, og-motion) moves a character between the goals the game gives it, on the GPU. Give an entity with an og.Skeleton (a humanoid rig og.anim.humanoid recognises, or one an og.MotionAgent.rig names) an og.MotionAgent, then queue goals: og.motion.pose (a pose of the model's library where the character stands), og.motion.place (a pose at a place, facing a heading), og.motion.face (turn to a heading) and og.motion.walkTo (walk or run to a point). og.motion.poses lists the library: idle, walk, run, jump, crouch, wave, cheer.
+Generated motion for humanoids: the engine's motion model (a 17.6M-parameter student distilled from NVIDIA MotionBricks, og-motion) moves a character between the goals the game gives it, on the GPU. Give an entity with an og.Skeleton (a humanoid rig og.anim.humanoid recognises, or one an og.MotionAgent.rig names) an og.MotionAgent, then queue goals: og.motion.pose (a pose of the model's library where the character stands), og.motion.place (a pose at a place, facing a heading), og.motion.face (turn to a heading), og.motion.walkTo (walk or run to a point) and og.motion.jump (a jump whose arc the simulation owns). og.motion.poses lists the library: idle, walk, run, jump, crouch, wave, cheer.
 
 **Presentation only.** The generated pose is drawn, never simulated (docs/design.md §2.4): it replaces og.anim's joint palette when the frame is drawn, and nothing a tick reads (og.anim's pose, its joint queries, root motion, physics, the world hash) depends on it, so a run is deterministic on every GPU. The model never moves the character: og.Transform is its root, always. With og.MotionAgent.drive the og.motion system moves the Transform to the goals itself with fixed math inside the tick (walkTo at its speed along a straight line, place over its duration, face at turnSpeed), and the generated pose is re-rooted onto the Transform, its planted feet absorbing the difference; without drive the game moves the Transform (its own physics, path or controller) and the character's motion follows it (walking, running or standing by how fast it moves). No model root motion ever reaches the simulation.
 
@@ -34,6 +34,7 @@ module motion {
 | [`PlaceGoalDesc`](#type-PlaceGoalDesc) | desc struct | A pose of the library at a place (og.motion.place): the character's hips over `position`, facing `heading`. |
 | [`FaceGoalDesc`](#type-FaceGoalDesc) | desc struct | Turn to a heading where the character stands (og.motion.face). |
 | [`WalkGoalDesc`](#type-WalkGoalDesc) | desc struct | Walk or run to a point (og.motion.walkTo); needs og.MotionAgent.drive. |
+| [`JumpGoalDesc`](#type-JumpGoalDesc) | desc struct | A jump (og.motion.jump); needs og.MotionAgent.drive. The simulation owns its whole arc: after `prepare` the og.motion system takes off in the tick, with an og.CharacterController through the controller's jump (it sets the controller's jumpSpeed for `height` under the controller's gravity and holds `jump` on the takeoff tick, so a ceiling cuts the rise and the landing is wherever the controller reaches ground), without one by the fixed ballistic arc of `height` back to the takeoff height. The goal ends `recover` seconds after the landing tick. The generated jump is drawn in place on that flight, never adding the model's own vertical travel (docs/design.md §2.7). |
 | [`LookAtDesc`](#type-LookAtDesc) | desc struct | A timed look over locomotion: spine, neck and head share the turn, never the hips or legs. An omitted target releases the look over blend seconds. |
 | [`ReactionDesc`](#type-ReactionDesc) | desc struct | An authored humanoid reaction over locomotion. Entry, a held interval, and exit come from a cooked type motion-action asset. Timing and strength belong to the tick; the generated pose is presentation only. |
 | [`MotionStatus`](#type-MotionStatus) | struct | An agent's goals, as the game set them: the current goal and how many wait. Deterministic: the same on every GPU, the model's progress never shows here. |
@@ -44,6 +45,7 @@ module motion {
 | [`og.motion.place`](#fn-place) | function | Queue a library pose at a place and heading; needs og.MotionAgent.drive (the mover takes the Transform there). |
 | [`og.motion.face`](#fn-face) | function | Queue a turn to a heading where the character stands; needs og.MotionAgent.drive. |
 | [`og.motion.walkTo`](#fn-walkTo) | function | Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive. The mover travels in a straight line up to speed, brakes at deceleration, and turns at turnSpeed. With a CharacterController it writes the controller's move input before physics; collision and ground height remain the controller's. The goal ends on actual arrival and completion of arrivalHeading, when supplied. |
+| [`og.motion.jump`](#fn-jump) | function | Queue a jump after the agent's other goals; needs og.MotionAgent.drive. Takeoff, height, flight and landing are the simulation's (the controller's with an og.CharacterController, a fixed ballistic arc without one), deterministic and in snapshots; the motion model only draws it. A jump cleared in the air without a controller holds where it is. |
 | [`og.motion.clear`](#fn-clear) | function | Drop the agent's goals, the current one included: the character holds where it is. |
 | [`og.motion.lookAt`](#fn-lookAt) | function | Replace the timed look overlay without interrupting locomotion. Empty desc releases it. State is snapshotted and advances only on ticks; the turn is applied after generated motion or the animation fallback, on both hosts. |
 | [`og.motion.react`](#fn-react) | function | Replace the authored reaction overlay without discarding locomotion goals. Empty desc releases it. A motion-action asset names a humanoid clip and rig, hold interval and optional head-local hand contact. The hand is solved after the look so it stays on the hood. |
@@ -84,7 +86,7 @@ fn pose {
 }
 ```
 
-<sub>`api.ogt` line 26880</sub>
+<sub>`api.ogt` line 26913</sub>
 
 <a id="fn-place"></a>
 
@@ -116,7 +118,7 @@ fn place {
 }
 ```
 
-<sub>`api.ogt` line 26888</sub>
+<sub>`api.ogt` line 26921</sub>
 
 <a id="fn-face"></a>
 
@@ -148,7 +150,7 @@ fn face {
 }
 ```
 
-<sub>`api.ogt` line 26896</sub>
+<sub>`api.ogt` line 26929</sub>
 
 <a id="fn-walkTo"></a>
 
@@ -180,7 +182,39 @@ fn walkTo {
 }
 ```
 
-<sub>`api.ogt` line 26904</sub>
+<sub>`api.ogt` line 26937</sub>
+
+<a id="fn-jump"></a>
+
+### `og.motion.jump`
+
+Queue a jump after the agent's other goals; needs og.MotionAgent.drive. Takeoff, height, flight and landing are the simulation's (the controller's with an og.CharacterController, a fixed ballistic arc without one), deterministic and in snapshots; the motion model only draws it. A jump cleared in the air without a controller holds where it is.
+
+```ts
+og.motion.jump(world: World, entity: Entity, desc?: JumpGoalDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `entity` | `Entity` | no | An entity with an og.MotionAgent. |
+| `desc` | `JumpGoalDesc` | yes | Height, travel, preparation and recovery. |
+
+**Returns** `Result<void>`: Refused for an entity without og.MotionAgent or without drive, a pose the library lacks, or a height, distance, heading or time that is out of range or not finite.
+
+Binding symbol `og_motion_jump` · publish builds: kept
+
+```ogt
+fn jump {
+  doc "Queue a jump after the agent's other goals; needs og.MotionAgent.drive. Takeoff, height, flight and landing are the simulation's (the controller's with an og.CharacterController, a fixed ballistic arc without one), deterministic and in snapshots; the motion model only draws it. A jump cleared in the air without a controller holds where it is."
+  param world World "The world."
+  param entity Entity "An entity with an og.MotionAgent."
+  param desc JumpGoalDesc "Height, travel, preparation and recovery."
+  returns Result.Void "Refused for an entity without og.MotionAgent or without drive, a pose the library lacks, or a height, distance, heading or time that is out of range or not finite."
+}
+```
+
+<sub>`api.ogt` line 26945</sub>
 
 <a id="fn-clear"></a>
 
@@ -210,7 +244,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 26912</sub>
+<sub>`api.ogt` line 26953</sub>
 
 <a id="fn-lookAt"></a>
 
@@ -242,7 +276,7 @@ fn lookAt {
 }
 ```
 
-<sub>`api.ogt` line 26919</sub>
+<sub>`api.ogt` line 26960</sub>
 
 <a id="fn-react"></a>
 
@@ -274,7 +308,7 @@ fn react {
 }
 ```
 
-<sub>`api.ogt` line 26927</sub>
+<sub>`api.ogt` line 26968</sub>
 
 <a id="fn-status"></a>
 
@@ -304,7 +338,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 26935</sub>
+<sub>`api.ogt` line 26976</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -332,7 +366,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 26942</sub>
+<sub>`api.ogt` line 26983</sub>
 
 <a id="fn-presentation"></a>
 
@@ -362,7 +396,7 @@ fn presentation {
 }
 ```
 
-<sub>`api.ogt` line 26948</sub>
+<sub>`api.ogt` line 26989</sub>
 
 <a id="fn-poses"></a>
 
@@ -385,7 +419,7 @@ fn poses {
 }
 ```
 
-<sub>`api.ogt` line 26955</sub>
+<sub>`api.ogt` line 26996</sub>
 
 ## Components, resources and events
 
@@ -426,7 +460,7 @@ component MotionAgent {
 }
 ```
 
-<sub>`api.ogt` line 26696</sub>
+<sub>`api.ogt` line 26697</sub>
 
 ## Types
 
@@ -445,6 +479,7 @@ A string: one of the variants below. The zero value is `"none"`.
 | `"place"` | A library pose at a place, facing a heading. |
 | `"face"` | Turn to a heading where the character stands. |
 | `"walkTo"` | Walk or run to a point, then take a pose. |
+| `"jump"` | Jump: prepare, take off, fly the simulation's ballistic arc, land and recover. |
 
 ```ogt
 enum MotionGoalKind {
@@ -454,6 +489,7 @@ enum MotionGoalKind {
   variant place "A library pose at a place, facing a heading."
   variant face "Turn to a heading where the character stands."
   variant walkTo "Walk or run to a point, then take a pose."
+  variant jump "Jump: prepare, take off, fly the simulation's ballistic arc, land and recover."
 }
 ```
 
@@ -480,7 +516,7 @@ enum MotionBackend {
 }
 ```
 
-<sub>`api.ogt` line 26690</sub>
+<sub>`api.ogt` line 26691</sub>
 
 <a id="type-PoseGoalDesc"></a>
 
@@ -508,7 +544,7 @@ struct PoseGoalDesc {
 }
 ```
 
-<sub>`api.ogt` line 26716</sub>
+<sub>`api.ogt` line 26717</sub>
 
 <a id="type-PlaceGoalDesc"></a>
 
@@ -544,7 +580,7 @@ struct PlaceGoalDesc {
 }
 ```
 
-<sub>`api.ogt` line 26727</sub>
+<sub>`api.ogt` line 26728</sub>
 
 <a id="type-FaceGoalDesc"></a>
 
@@ -574,7 +610,7 @@ struct FaceGoalDesc {
 }
 ```
 
-<sub>`api.ogt` line 26744</sub>
+<sub>`api.ogt` line 26745</sub>
 
 <a id="type-WalkGoalDesc"></a>
 
@@ -616,7 +652,59 @@ struct WalkGoalDesc {
 }
 ```
 
-<sub>`api.ogt` line 26757</sub>
+<sub>`api.ogt` line 26758</sub>
+
+<a id="type-JumpGoalDesc"></a>
+
+### `JumpGoalDesc` (desc struct)
+
+A jump (og.motion.jump); needs og.MotionAgent.drive. The simulation owns its whole arc: after `prepare` the og.motion system takes off in the tick, with an og.CharacterController through the controller's jump (it sets the controller's jumpSpeed for `height` under the controller's gravity and holds `jump` on the takeoff tick, so a ceiling cuts the rise and the landing is wherever the controller reaches ground), without one by the fixed ballistic arc of `height` back to the takeoff height. The goal ends `recover` seconds after the landing tick. The generated jump is drawn in place on that flight, never adding the model's own vertical travel (docs/design.md §2.7).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `height` | `number` | `0.5` | 0 … 5 | `m` | — | The apex over the takeoff height, with gravity og.Physics.gravity (times the controller's gravityScale). |
+| `distance` | `number` | `0` | 0 … 20 | `m` | — | How far it travels across the ground while in the air, along `heading`; 0 jumps in place. |
+| `heading` | `number` | `0` | — | `rad` | — | The way it faces and travels: 0 looks down +Z, π/2 down +X; omitted keeps its facing when the jump starts. It turns there at turnSpeed while preparing. |
+| `prepare` | `number` | `0.25` | ≥ 0 | `s` | — | Seconds of preparation (the crouch) before takeoff. |
+| `recover` | `number` | `0.35` | ≥ 0 | `s` | — | Seconds after the landing tick before the goal ends. |
+| `pose` | `string` | `""` | — | — | — | The pose held after the jump; empty is `idle`. |
+
+```ogt
+struct JumpGoalDesc {
+  doc "A jump (og.motion.jump); needs og.MotionAgent.drive. The simulation owns its whole arc: after `prepare` the og.motion system takes off in the tick, with an og.CharacterController through the controller's jump (it sets the controller's jumpSpeed for `height` under the controller's gravity and holds `jump` on the takeoff tick, so a ceiling cuts the rise and the landing is wherever the controller reaches ground), without one by the fixed ballistic arc of `height` back to the takeoff height. The goal ends `recover` seconds after the landing tick. The generated jump is drawn in place on that flight, never adding the model's own vertical travel (docs/design.md §2.7)."
+  desc true
+  field height f32 "The apex over the takeoff height, with gravity og.Physics.gravity (times the controller's gravityScale)." {
+    default 0.5
+    min 0
+    max 5
+    unit m
+  }
+  field distance f32 "How far it travels across the ground while in the air, along `heading`; 0 jumps in place." {
+    default 0
+    min 0
+    max 20
+    unit m
+  }
+  field heading f32 "The way it faces and travels: 0 looks down +Z, π/2 down +X; omitted keeps its facing when the jump starts. It turns there at turnSpeed while preparing." {
+    unit rad
+  }
+  field prepare f32 "Seconds of preparation (the crouch) before takeoff." {
+    default 0.25
+    min 0
+    unit s
+  }
+  field recover f32 "Seconds after the landing tick before the goal ends." {
+    default 0.35
+    min 0
+    unit s
+  }
+  field pose String "The pose held after the jump; empty is `idle`."
+}
+```
+
+<sub>`api.ogt` line 26780</sub>
 
 <a id="type-LookAtDesc"></a>
 
@@ -672,7 +760,7 @@ struct LookAtDesc {
 }
 ```
 
-<sub>`api.ogt` line 26779</sub>
+<sub>`api.ogt` line 26811</sub>
 
 <a id="type-ReactionDesc"></a>
 
@@ -720,7 +808,7 @@ struct ReactionDesc {
 }
 ```
 
-<sub>`api.ogt` line 26814</sub>
+<sub>`api.ogt` line 26846</sub>
 
 <a id="type-MotionStatus"></a>
 
@@ -732,9 +820,10 @@ An agent's goals, as the game set them: the current goal and how many wait. Dete
 |---|---|---|---|---|---|---|
 | `goal` | `MotionGoalKind` | `"none"` | — | — | — | The current goal (none: the queue is empty and the character holds). |
 | `pose` | `string` | `""` | — | — | — | The current goal's pose (walkTo's arrival pose), empty for none and face. |
-| `target` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the current goal goes (pose and face: where the goal started). |
+| `target` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the current goal goes (pose and face: where the goal started; jump: its start plus its distance along its heading, on flat ground). |
 | `heading` | `number` | `0` | — | `rad` | — | The heading the current goal faces (walkTo: towards its target). |
 | `elapsed` | `number` | `0` | — | `s` | — | How long the current goal has been current. |
+| `airborne` | `boolean` | `false` | — | — | — | The current goal is a jump between its takeoff and its landing tick. |
 | `queued` | `number` | `0` | — | — | — | Goals waiting after the current one. |
 | `completed` | `number` | `0` | — | — | — | Goals finished since the agent's first. |
 | `looking` | `boolean` | `false` | — | — | — | A look is active, including its entry or release. |
@@ -745,7 +834,7 @@ struct MotionStatus {
   doc "An agent's goals, as the game set them: the current goal and how many wait. Deterministic: the same on every GPU, the model's progress never shows here."
   field goal MotionGoalKind "The current goal (none: the queue is empty and the character holds)."
   field pose String "The current goal's pose (walkTo's arrival pose), empty for none and face."
-  field target Vector3 "Where the current goal goes (pose and face: where the goal started)." {
+  field target Vector3 "Where the current goal goes (pose and face: where the goal started; jump: its start plus its distance along its heading, on flat ground)." {
     unit m
   }
   field heading f32 "The heading the current goal faces (walkTo: towards its target)." {
@@ -754,6 +843,7 @@ struct MotionStatus {
   field elapsed f32 "How long the current goal has been current." {
     unit s
   }
+  field airborne bool "The current goal is a jump between its takeoff and its landing tick."
   field queued u32 "Goals waiting after the current one."
   field completed u32 "Goals finished since the agent's first."
   field looking bool "A look is active, including its entry or release."
@@ -761,7 +851,7 @@ struct MotionStatus {
 }
 ```
 
-<sub>`api.ogt` line 26838</sub>
+<sub>`api.ogt` line 26870</sub>
 
 <a id="type-MotionPresentationState"></a>
 
@@ -788,7 +878,7 @@ enum MotionPresentationState {
 }
 ```
 
-<sub>`api.ogt` line 26857</sub>
+<sub>`api.ogt` line 26890</sub>
 
 <a id="type-MotionPresentationStatus"></a>
 
@@ -809,7 +899,7 @@ struct MotionPresentationStatus {
 }
 ```
 
-<sub>`api.ogt` line 26865</sub>
+<sub>`api.ogt` line 26898</sub>
 
 <a id="type-MotionCapabilities"></a>
 
@@ -834,7 +924,7 @@ struct MotionCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 26871</sub>
+<sub>`api.ogt` line 26904</sub>
 
 ## Column kinds
 
@@ -853,4 +943,4 @@ column MotionGoalKind {
 }
 ```
 
-<sub>`api.ogt` line 26683</sub>
+<sub>`api.ogt` line 26684</sub>

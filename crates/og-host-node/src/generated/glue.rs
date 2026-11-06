@@ -3861,6 +3861,12 @@ pub fn og_motion_walk_to(env: Env, world: u32, entity: f64, desc: Option<String>
     <Host as MotionApi>::og_motion_walk_to(&Host, world, entity, desc)
 }
 
+#[napi(js_name = "og_motion_jump")]
+pub fn og_motion_jump(env: Env, world: u32, entity: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as MotionApi>::og_motion_jump(&Host, world, entity, desc)
+}
+
 #[napi(js_name = "og_motion_clear")]
 pub fn og_motion_clear(env: Env, world: u32, entity: f64) -> String {
     let _env = crate::EnvScope::enter(&env);

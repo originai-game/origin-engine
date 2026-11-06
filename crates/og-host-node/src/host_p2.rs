@@ -127,6 +127,9 @@ impl MotionApi for NodeHost {
     fn og_motion_walk_to(&self, world: u32, entity: f64, desc: Option<String>) -> String {
         rt::og_motion_walk_to(world, entity, desc)
     }
+    fn og_motion_jump(&self, world: u32, entity: f64, desc: Option<String>) -> String {
+        rt::og_motion_jump(world, entity, desc)
+    }
     fn og_motion_clear(&self, world: u32, entity: f64) -> String {
         rt::og_motion_clear(world, entity)
     }

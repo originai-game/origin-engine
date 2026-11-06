@@ -194,9 +194,9 @@ pub use modules::{
     og_ui_visual_state, og_ui_zoom_view, set_viewport,
 };
 pub use motion::{
-    og_motion_capabilities, og_motion_clear, og_motion_face, og_motion_look_at, og_motion_place,
-    og_motion_pose, og_motion_poses, og_motion_presentation, og_motion_react, og_motion_status,
-    og_motion_walk_to,
+    og_motion_capabilities, og_motion_clear, og_motion_face, og_motion_jump, og_motion_look_at,
+    og_motion_place, og_motion_pose, og_motion_poses, og_motion_presentation, og_motion_react,
+    og_motion_status, og_motion_walk_to,
 };
 pub use nav::{
     og_nav_build, og_nav_carve, og_nav_cell_at, og_nav_find_path, og_nav_finish_link,
