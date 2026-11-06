@@ -44,6 +44,8 @@ export function addonPath(): string {
 /** The addon's own symbols beyond the shared ABI. */
 export interface NativeExtras {
   og_node_views_mode(): string;
+  /** Retain the device and compatible pipelines between sequential fresh runs. */
+  og_node_resident(enabled: boolean): void;
   og_node_attach_offscreen(engine: number, width: number, height: number): string;
   /** Waits for the offscreen renderer's GPU work (frame-time benches). */
   og_node_wait_gpu(engine: number): string;
@@ -89,6 +91,7 @@ export function loadNativeHost(path: string = addonPath()): HostBinding {
   }
   const addon = createRequire(import.meta.url)(path) as HostAbi<Uint32Array, unknown> & NativeExtras;
   extras = addon;
+  process.on("exit", () => addon.og_node_resident?.(false));
   const binding: HostBinding = {
     abi: addon,
     name: "node",

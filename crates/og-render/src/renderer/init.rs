@@ -73,7 +73,45 @@ impl Renderer {
             .await
             .map_err(|e| RenderError::NoAdapter(format!("{:?}: {e}", desc.backend)))?;
         let format = desc.output_format.unwrap_or(DEFAULT_OUTPUT_FORMAT);
-        Self::from_adapter(adapter, None, format, desc).await
+        Self::from_adapter(adapter, None, format, desc, None).await
+    }
+
+    /// A fresh offscreen run. Mutable resources are
+    /// constructed again; only the device and compatible pipelines survive.
+    /// A changed description or lost device takes the ordinary cold path.
+    pub async fn restart(self, desc: &RenderDesc) -> Result<Renderer, RenderError> {
+        if renderer_disabled() {
+            return Err(disabled_error());
+        }
+        if self.lost().is_some() || self.desc != *desc {
+            return Self::new(desc).await;
+        }
+        let mut fresh = Self::from_adapter(
+            self.adapter.clone(),
+            None,
+            self.output_format,
+            &self.desc,
+            Some((self.device.clone(), self.queue.clone(), self.pipeline_disk)),
+        )
+        .await?;
+        if self.samples == fresh.samples {
+            fresh.pbr_pipelines = self.pbr_pipelines;
+            fresh.shadow_pipelines = self.shadow_pipelines;
+            fresh.prepass_pipelines = self.prepass_pipelines;
+            fresh.lean_pipelines = self.lean_pipelines;
+            fresh.lean_prepass_pipelines = self.lean_prepass_pipelines;
+            fresh.compact_shadow_pipelines = self.compact_shadow_pipelines;
+            fresh.sky_pipeline = self.sky_pipeline;
+            fresh.sky_look_pipeline = self.sky_look_pipeline;
+            fresh.sprite_pipeline = self.sprite_pipeline;
+            fresh.sprite_additive_pipeline = self.sprite_additive_pipeline;
+            fresh.sprite_untonemapped_pipeline = self.sprite_untonemapped_pipeline;
+            fresh.sprite_cover_pipeline = self.sprite_cover_pipeline;
+            fresh.sprite_glow_pipeline = self.sprite_glow_pipeline;
+            fresh.msdf_pipeline = self.msdf_pipeline;
+            fresh.ribbon_pipelines = self.ribbon_pipelines;
+        }
+        Ok(fresh)
     }
 
     /// A renderer that presents to `surface` ([`RenderTarget::Surface`]); `instance`
@@ -155,7 +193,7 @@ impl Renderer {
                 .collect(),
             desired_maximum_frame_latency: 2,
         };
-        Self::from_adapter(adapter, Some((surface, config)), format, desc).await
+        Self::from_adapter(adapter, Some((surface, config)), format, desc, None).await
     }
 
     async fn from_adapter(
@@ -163,6 +201,7 @@ impl Renderer {
         surface: Option<(wgpu::Surface<'static>, wgpu::SurfaceConfiguration)>,
         output_format: wgpu::TextureFormat,
         desc: &RenderDesc,
+        shared: Option<(wgpu::Device, wgpu::Queue, Option<pipeline_cache::DiskCache>)>,
     ) -> Result<Renderer, RenderError> {
         let adapter_info = adapter.get_info();
         // What the adapter has, less what the caller treats as absent.
@@ -279,18 +318,24 @@ impl Renderer {
             info.texture_formats.color,
             info.texture_formats.normal
         );
-        let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor {
-                label: Some("og-render"),
-                required_features: features,
-                required_limits: limits,
-                ..Default::default()
-            })
-            .await
-            .map_err(|e| RenderError::NoDevice(e.to_string()))?;
+        let (device, queue, pipeline_disk) = match shared {
+            Some(pair) => pair,
+            None => {
+                let (device, queue) = adapter
+                    .request_device(&wgpu::DeviceDescriptor {
+                        label: Some("og-render"),
+                        required_features: features,
+                        required_limits: limits,
+                        ..Default::default()
+                    })
+                    .await
+                    .map_err(|e| RenderError::NoDevice(e.to_string()))?;
+                let disk = cache_dir
+                    .and_then(|dir| pipeline_cache::DiskCache::open(&device, &adapter_info, dir));
+                (device, queue, disk)
+            }
+        };
         // Before any pipeline is made: every one is made with the cache.
-        let pipeline_disk =
-            cache_dir.and_then(|dir| pipeline_cache::DiskCache::open(&device, &adapter_info, dir));
         info.pipeline_cache = pipeline_disk.is_some();
         // Natively a validation error panics, as wgpu-core's default
         // handler does (LostFlag::watch keeps that until the device is
@@ -1022,6 +1067,7 @@ impl Renderer {
         let lost = LostFlag::watch(&device);
         let ssr = ssr::SsrRenderer::new(&device);
         Ok(Renderer {
+            adapter: adapter.clone(),
             device,
             queue,
             info,

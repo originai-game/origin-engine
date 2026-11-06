@@ -44,6 +44,7 @@ mod host_p2;
 mod render;
 #[cfg(not(feature = "publish"))]
 mod replay;
+mod resident;
 mod room;
 #[cfg(not(feature = "publish"))]
 mod ui_check;
@@ -478,7 +479,7 @@ pub fn og_node_views_mode() -> String {
 
 struct OffscreenBackend {
     engine: u32,
-    renderer: og_render::Renderer,
+    renderer: resident::Lease,
     tier: String,
     /// The last frame's `FrameStats::triangles`.
     triangles: u64,
@@ -528,7 +529,7 @@ impl OffscreenBackend {
             .recreate_blocking()
             .map_err(|e| format!("the GPU device was {why}, and a new one failed: {e}"))?;
         let device = renderer.device().clone();
-        self.renderer = renderer;
+        self.renderer = renderer.into();
         self.losses += 1;
         DEVICES.with(|d| d.borrow_mut().insert(self.engine, device));
         Ok(())
@@ -752,7 +753,7 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
         },
         ..desc
     };
-    let answer = og_render::Renderer::new_blocking(&desc)
+    let answer = resident::Lease::new(&desc)
         .map_err(|e| e.to_string())
         .and_then(|renderer| {
             let tier = renderer.info().backend_tier();

@@ -91,7 +91,8 @@ declare const process: {
   readonly pid: number;
   exit(code?: number): never;
   cwd(): string;
-  on(event: "exit", listener: () => void): unknown;
+  on(event: "exit" | "SIGUSR2", listener: () => void): unknown;
+  off(event: "exit" | "SIGUSR2", listener: () => void): unknown;
   readonly stdout: { write(text: string): boolean };
   readonly stderr: { write(text: string): boolean };
 };

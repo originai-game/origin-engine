@@ -486,6 +486,7 @@ pub(crate) fn buffer_init(
 
 /// The renderer. Create it once per output, call [`Renderer::render`] per frame.
 pub struct Renderer {
+    adapter: wgpu::Adapter,
     device: wgpu::Device,
     queue: wgpu::Queue,
     info: RenderInfo,

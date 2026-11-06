@@ -24,6 +24,43 @@ fn draw(renderer: &mut Renderer, scene: &RenderScene, frames: u32) -> RgbaImage 
     renderer.read_offscreen().expect("capture")
 }
 
+#[test]
+fn a_resident_renderer_restarts_without_previous_run_state() {
+    let g = scenes::build("materials").expect("scene");
+    let mut renderer = Renderer::new_blocking(&g.desc).expect("renderer");
+    let expected = draw(&mut renderer, &g.scene, g.frames);
+    let device = renderer.device().clone();
+    renderer.set_render_scale(0.5);
+    draw(&mut renderer, &g.scene, g.frames + 7);
+
+    let mut again = renderer.restart_blocking(&g.desc).expect("restart");
+    assert_eq!(again.device(), &device);
+    assert_eq!(again.render_scale(), 1.0);
+    let actual = draw(&mut again, &g.scene, g.frames);
+    assert_eq!(
+        (actual.width, actual.height),
+        (expected.width, expected.height)
+    );
+    assert!(
+        actual.pixels == expected.pixels,
+        "resident run leaked render state"
+    );
+
+    let changed = og_render::RenderDesc {
+        width: g.desc.width / 2,
+        ..g.desc
+    };
+    let mut changed_run = again
+        .restart_blocking(&changed)
+        .expect("changed description");
+    let mut cold = Renderer::new_blocking(&changed).expect("cold changed description");
+    assert!(
+        draw(&mut changed_run, &g.scene, g.frames).pixels
+            == draw(&mut cold, &g.scene, g.frames).pixels,
+        "changed description reused incompatible state"
+    );
+}
+
 /// The frame after a loss is the frame before it: a renderer made again
 /// from the same description uploads the whole scene (meshes, textures,
 /// materials, the sky's light) on its first frame, and draws it as the
