@@ -391,6 +391,17 @@ fn css_outside_the_subset_is_an_error_that_names_the_fix() {
     assert!(err("  font-size: 14px").contains("var(--text-"));
     assert!(err("  :focus {\n  }").contains(":focus-visible"));
     assert!(err("  padding: 4px !important").contains("!important"));
+    // A Rive frame takes one `<file>.riv#<Artboard>` id (the importer is not in yet).
+    let rive = err("  -og-frame: rive(\"ui/chest.riv#Chest\")");
+    assert!(rive.contains("once the Rive import lands"), "{rive}");
+    for bad in [
+        "rive(\"ui/chest.riv\", \"Chest\")",
+        "rive(\"ui/chest.riv\")",
+        "rive(chest)",
+    ] {
+        let e = err(&format!("  -og-frame: {bad}"));
+        assert!(e.contains("takes one quoted id"), "{bad}: {e}");
+    }
 }
 
 /// Tune and agent edits write a version 2 document's style props back as

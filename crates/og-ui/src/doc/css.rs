@@ -1226,8 +1226,30 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                     }
                 }
                 Conv::Kebab => match one(&t, name)? {
-                    Tok::Func(f, _) if prop == "frame" && f == "rive" => {
-                        return Err("-og-frame: rive(\"<file>.riv#<artboard>\") fills a frame with a Rive artboard once the Rive import lands; until then a frame is a style part (panel, card, button …)".into());
+                    Tok::Func(f, a) if prop == "frame" && f == "rive" => {
+                        // One argument: the artboard's id, relative to
+                        // assets/ (`ui/chest.riv#Chest`, docs/ui.md §11.2).
+                        let id = match a.as_slice() {
+                            [v] => match v.as_slice() {
+                                [Tok::Str(s)] => Some(s.as_str()),
+                                _ => None,
+                            },
+                            _ => None,
+                        };
+                        let well_formed =
+                            id.and_then(|s| s.split_once('#'))
+                                .is_some_and(|(file, board)| {
+                                    file.ends_with(".riv")
+                                        && !board.is_empty()
+                                        && !board.contains('#')
+                                });
+                        if !well_formed {
+                            return Err("-og-frame: rive(\"<file>.riv#<Artboard>\") takes one quoted id relative to assets/, such as rive(\"ui/chest.riv#Chest\")".into());
+                        }
+                        return Err(format!(
+                            "-og-frame: rive(\"{}\") fills a frame with a Rive artboard once the Rive import lands; until then a frame is a style part (panel, card, button …)",
+                            id.unwrap_or_default()
+                        ));
                     }
                     v => vec![Value::Word(camel(want_ident(&v, "a word")?))],
                 },
