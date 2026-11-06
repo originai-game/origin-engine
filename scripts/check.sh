@@ -28,12 +28,14 @@
 # files), check-conformance (packages/engine, templates/, tests/fixtures/, the
 # comparer, its corpus and the pins), web-reference (og-host-web's and og-tests-web's crates,
 # packages/engine, templates/fx-showcase), ui-styles and ui-kit (og,
-# templates/ui-kit, templates/styles, including their references). A change to scripts/, Cargo.toml,
+# templates/ui-kit, templates/styles, including their references), and
+# each test fixture on its own (its directory, og's closure, packages/engine,
+# the looks and styles: rule_fixture DIR). A change to scripts/, Cargo.toml,
 # Cargo.lock, rust-toolchain.toml, .cargo/ or .config/ reruns all of them. Each skip is
 # printed with its reason. --all, or CI set in the environment, runs
 # everything.
 #
-# Full lane: fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism.
+# Full lane: fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism fixtures.
 # test starts after wasm-build: og-tests' wasm test takes its og-render
 # build instead of compiling og-render for wasm32 a second time.
 # Quick lane: fmt clippy test-quick drift bun-quick (no og-tests, no wasm,
@@ -54,7 +56,7 @@ set -u -o pipefail
 . "$(dirname "$0")/lib.sh"
 cd "$OG_ROOT" || exit 1
 
-STEPS_FULL="fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism"
+STEPS_FULL="fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism fixtures"
 STEPS_QUICK="fmt clippy test-quick drift bun-quick"
 STEPS_KITS="kit-tests ui-styles ui-kit"
 STEPS_UI="$STEPS_KITS"
@@ -62,7 +64,7 @@ STEPS_UI="$STEPS_KITS"
 # reference frames, the generated API, the packages' tests on the native
 # host), without the wasm build, its size, determinism and the browser
 # tiers, which are a wave's end measurements (docs/ci.md §Lanes).
-STEPS_FUNCTIONAL="fmt clippy test drift bun-functional"
+STEPS_FUNCTIONAL="fmt clippy test drift bun-functional fixtures"
 STEPS="$STEPS_FULL test-quick bun-quick bun-functional kit-tests ui-styles ui-kit kit-web web-reference check-conformance"
 FUNCTIONAL=0
 BUN_QUICK_PACKAGES="packages/knowledge packages/create packages/design"   # no native build needed
@@ -122,6 +124,17 @@ rule_ui_styles() {
 # crate depends on the cook (the loaders are og-bundle's).
 rule_web() {
   echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) crates/og-cook packages/engine templates/fx-showcase templates/looks templates/ui-kit templates/styles templates/archetypes/third-person tests/fixtures/vehicle-terrain $RULE_COMMON"
+}
+
+# rule_fixture DIR: one test fixture's inputs (tests/fixtures/README.md): its
+# own directory, what `og test` runs on (og and the addon it loads, their
+# crates' closure, packages/engine, the looks and style packs the cook
+# embeds), and the repository paths listed in DIR/inputs, one per line, for
+# what else it reads.
+rule_fixture() {
+  local extra=""
+  [ ! -f "$1/inputs" ] || extra="$(grep -Ev '^[[:space:]]*(#|$)' "$1/inputs" | og_words)"
+  echo "$1 $(og_crate_dirs -p og-cli -p og-host-node -e normal,build | og_words) packages/engine templates/looks templates/styles $extra $RULE_COMMON"
 }
 
 # skip_unchanged KEY WHAT RULE...: true (and prints why) when KEY may be
@@ -659,6 +672,61 @@ step_ui_styles() {
   kit_playtests ui-styles --filter tests/style- --jobs "${OG_UI_STYLES_JOBS:-3}"
 }
 
+# The test fixtures (tests/fixtures/*/, one per feature, each with its
+# README and a budget of 10 s warm): `og test` in each one whose inputs
+# changed since it last passed (rule_fixture; --all runs every one), each
+# holding one GPU slot (scripts/lock.sh) for its run. A fixture that left a
+# frame unchecked (no renderer) is reported SKIPPED and keeps no green
+# mark, so the next gate with a GPU runs it.
+step_fixtures() {
+  local dir name log rc ran="" unchanged="" unchecked="" bad="" t0 times=""
+  OG_GATE=1 sh packages/engine/scripts/build.sh --native || return 1
+  for dir in tests/fixtures/*/; do
+    dir="${dir%/}"
+    [ -f "$dir/project.ogt" ] || continue
+    name="${dir##*/}"
+    if skip_unchanged "fixture.$name" "fixture $name" "$(rule_fixture "$dir")"; then
+      unchanged="$unchanged $name"
+      continue
+    fi
+    og_green_clear "fixture.$name"
+    log="$GATE_LOGS/fixtures-$name.txt"
+    t0="$(date +%s)"
+    (
+      og_lock_dirs=""
+      og_gpu_acquire "scripts/check.sh fixtures $name ($PWD)" || exit 1
+      "$OG_TARGET_DIR/debug/og" test "$dir"; rc=$?
+      og_lock_release
+      exit "$rc"
+    ) 2>&1 | tee "$log"
+    rc="${PIPESTATUS[0]}"
+    times="$times $name=$(( $(date +%s) - t0 ))s"
+    if [ "$rc" -ne 0 ]; then
+      bad="$bad $name"
+    elif grep -Eq '[1-9][0-9]* GPU frame/expectation checks unchecked' "$log"; then
+      unchecked="$unchecked $name"
+    else
+      ran="$ran $name"
+      og_green_set "fixture.$name"
+    fi
+  done
+  SKIP_NOTE=""
+  og_say "fixtures:${times:- none run}"
+  if [ -n "$bad" ]; then
+    og_err "fixtures: failed:$bad"
+    return 1
+  fi
+  PASS_NOTE="ran${ran:- none}${unchanged:+; unchanged$unchanged}${unchecked:+; unchecked (no renderer)$unchecked}${times:+;$times}"
+  if [ -z "$ran" ]; then
+    if [ -n "$unchecked" ]; then
+      SKIP_NOTE="no renderer:$unchecked left their frames unchecked, so nothing was compared (no green mark)"
+    else
+      SKIP_NOTE="no fixture's inputs changed (${unchanged# }; --all runs them)"
+    fi
+    return $SKIP
+  fi
+}
+
 # kit_playtests STEP ARGS...: preserve og test's separate passed, failed
 # and unchecked counts; an absent adapter is a warning, not a failure.
 kit_playtests() {
@@ -821,6 +889,9 @@ step_needs() {
     # Reuse the last wasm unless this run explicitly refreshes it.
     bun-functional) case " $selected " in *" wasm-opt "*) echo wasm-opt ;; esac ;;
     ui-kit) echo ui-styles ;;
+    # The fixtures run the dev og and addon: after the step that builds
+    # the same dev crates, so the two never compile them side by side.
+    fixtures) case " $selected " in *" test "*) echo test ;; *" test-quick "*) echo test-quick ;; esac ;;
   esac
 }
 
@@ -894,7 +965,7 @@ gate_finish() {
 # workers or og test --jobs). Those limits must not add up across steps.
 step_uses_gpu() {
   case "$1" in
-    test|test-quick|bun-test|bun-functional|kit-tests|ui-styles|ui-kit|kit-web|web-reference) return 0 ;;
+    test|test-quick|bun-test|bun-functional|fixtures|kit-tests|ui-styles|ui-kit|kit-web|web-reference) return 0 ;;
     *) return 1 ;;
   esac
 }

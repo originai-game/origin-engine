@@ -141,10 +141,10 @@ shipped `templates/styles/<pack>` asset root.
 
 | Lane | Steps | When | Warm budget, Apple M4 Pro |
 |---|---|---|---|
-| `scripts/check.sh functional` | fmt clippy test drift bun-functional | After a batch of merges. Native tests and GPU frames; package suites remain in `kits`. Cross-host comparisons require current wasm and run in full when the cached module is stale. | 240 s |
+| `scripts/check.sh functional` | fmt clippy test drift bun-functional fixtures | After a batch of merges. Native tests and GPU frames; package suites remain in `kits`. Cross-host comparisons require current wasm and run in full when the cached module is stale. | 240 s |
 | `scripts/check.sh quick` | fmt clippy test-quick drift bun-quick | Local edit loop. | 120 s |
 | `scripts/check.sh kits` (alias `ui`) | kit-tests ui-styles ui-kit | Package-owned behavior, authored styles and template playtests; no wasm build. | 240 s |
-| `scripts/check.sh` (full) | fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism | Wave-end, with `--all` to measure every step rather than reuse passing inputs. | 1200 s |
+| `scripts/check.sh` (full) | fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism fixtures | Wave-end, with `--all` to measure every step rather than reuse passing inputs. | 1200 s |
 
 Budgets are warm-run targets, not test timeouts or permission to skip checks.
 Measure on the same hardware and comparable load. A test that takes a lane
@@ -176,6 +176,7 @@ changed:
 | each GPU package's reference tests (og-render, og-ui, og-tests, og-tests-cooked) in test and test-quick | that package's dependency closure and embedded assets; cooked fixtures additionally depend on og-cook and the template inputs they read | the rest runs; the summary names each cached package. This is input caching, never selection by host or GPU availability |
 | wasm-build, wasm-opt, size-gate | `crates/` | the last outputs in `target/og-wasm` are reused (only when every file they list exists; a step that ran upstream in this invocation always runs the next) |
 | drift | `crates/og-api` (`api/<module>.ogt`), og-idl and the crates it builds on, `crates/og-cli`, and every generated directory (`og_idl::OUTPUT_DIRS`), so a hand edit to a generated file is still caught | |
+| fixtures, per fixture (`tests/fixtures/<name>`) | the fixture's directory and the paths in its `inputs` file, og's and og-host-node's crate closure, `packages/engine`, `templates/looks`, `templates/styles` | each fixture skips on its own; one whose frames went unchecked (no renderer) is SKIPPED and keeps no green mark. Each run holds one GPU slot. Index and budgets: `tests/fixtures/README.md` (10 s warm each) |
 | check-conformance (in no lane; `scripts/check.sh check-conformance`) | `packages/engine`, `templates/`, `tests/fixtures/`, `crates/og-cli/src/check.rs`, `scripts/tsrs-diff.sh`, `scripts/tsrs-corpus/`, `scripts/install-tools.sh`, `scripts/lib.sh` | |
 | web-reference (`make web-reference`; in no lane) | og-host-web's and og-tests-web's crates for wasm32 (og-tests-web takes og-tests' scenes, assets and references and og-ui's, whose references hold ui-kit's frames), `packages/engine`, `templates/fx-showcase`, `templates/looks`, `templates/ui-kit`, `templates/archetypes/third-person`, `tests/fixtures/vehicle-terrain` | |
 
