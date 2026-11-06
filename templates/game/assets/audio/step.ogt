@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# a hero's footstep: og sfx's footstep preset (pitch varied a little per step).
+preset "footstep"
+seed 0
+pitch 1
+length 1
+volume 0.8

@@ -45,13 +45,14 @@ fn every_asset_type_reports_its_figures_and_its_budgets_flag_it() {
     assert_eq!(s["seconds"], frames as f64 / rate as f64);
     assert_eq!(s["chunks"], 0);
 
-    // strings/en.ogt holds five `string` lines; intro.ogt nine tracks (the
+    // strings/en.ogt holds 28 `string` lines (the menu, the HUD, pause,
+    // settings and the summary); intro.ogt nine tracks (the
     // music sting among them) over `duration 10`; guard.ogt's tree is a
     // patrol under one sequence.
     let st = &asset(&json, "strings/en.ogt")["strings"];
     assert_eq!(
         (st["locale"].as_str(), st["keys"].as_u64()),
-        (Some("en"), Some(5))
+        (Some("en"), Some(28))
     );
     let tl = &asset(&json, "timelines/intro.ogt")["timeline"];
     assert_eq!(

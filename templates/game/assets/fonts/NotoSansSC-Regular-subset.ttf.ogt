@@ -1,12 +1,13 @@
 type import
 version 1
 ---
-# The atlas covers Latin-1, CJK punctuation and the strings the template shows.
+# The atlas covers Latin-1, CJK punctuation and the strings the template shows
+# (assets/strings/zh-CN.ogt's characters appended to the list).
 # `charset all` cooks every glyph of the platform subset (GB2312 + kana): see
 # crates/og-cook/README.md for its size and time.
 font {
   charset latin cjk-punct
-  chars "开始游戏设置退出暂停继续分数最高关卡生命时间胜利失败加载中−…←→"
+  chars "开始游戏设置退出暂停继续分数最高关卡生命时间胜利失败加载中−…←→一上下了住体佳再减功动去发台后块奔完家少已平快态成抓按收效文方果次然玩用的站简能脱船被言语跃跑跳输运逃量键集音齐！，："
   em_px 32
   px_range 4
 }

@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# a hero's jump: og sfx's jump preset.
+preset "jump"
+seed 0
+pitch 1
+length 1
+volume 1

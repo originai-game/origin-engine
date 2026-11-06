@@ -264,12 +264,13 @@ fn every_thread_count_cooks_the_same_bytes() {
         files(&dir.join("cooked"))
     };
     let reference = cook(&base.join("reference"), 1);
-    // Fifteen outputs (timelines/intro.ogt with its .srt among them, and
-    // the intro's music, audio/sting.ogt), the eleven of the built-in
-    // storybook style its look's preset names (its style and seven sounds,
-    // the two shared fonts and the icon sheet it draws with), the manifest
-    // and the cook times.
-    assert_eq!(reference.len(), 28, "{:?}", reference.keys());
+    // Twenty-two outputs (timelines/intro.ogt with its .srt among them,
+    // the intro's music, audio/sting.ogt, the play's six sounds and the
+    // zh-CN table), the thirteen of the built-in storybook style its
+    // look's preset names (its style and seven sounds, the two shared
+    // fonts, the icon sheet it draws with and the two CJK companions the
+    // zh-CN table asks for), the manifest and the cook times.
+    assert_eq!(reference.len(), 37, "{:?}", reference.keys());
     let failures: Vec<String> = std::thread::scope(|s| {
         let series: Vec<_> = [1usize, 2, 8]
             .into_iter()

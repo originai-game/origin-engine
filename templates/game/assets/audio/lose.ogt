@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# the run lost: og sfx's death preset.
+preset "death"
+seed 0
+pitch 1
+length 1
+volume 1

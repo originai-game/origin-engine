@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# a hero landing: og sfx's land preset.
+preset "land"
+seed 0
+pitch 1
+length 1
+volume 1
