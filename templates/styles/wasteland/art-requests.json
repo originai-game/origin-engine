@@ -8,9 +8,9 @@
     "shape": "sharp"
   },
   "concepts": [
-    "tests/evidence/ui-art/concepts/v2/wasteland-settings.jpg",
-    "tests/evidence/ui-art/concepts/v2/wasteland-menu.jpg",
-    "tests/evidence/ui-art/concepts/v2/wasteland-hud.jpg"
+    "concepts/wasteland-settings.jpg",
+    "concepts/wasteland-menu.jpg",
+    "concepts/wasteland-hud.jpg"
   ],
   "densities": [
     1,

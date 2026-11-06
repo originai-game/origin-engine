@@ -4,7 +4,6 @@
   "name": "shooter",
   "version": "1.0.0",
   "description": "Shooter HUDs (crosshair, ammunition, killfeed, damage direction, low-health vignette), the scoreboard and the loadout, built from common components",
-  "skill": "building-shooter-ui/SKILL.md",
   "entry": "index.ts",
   "types": "types.ts"
 }

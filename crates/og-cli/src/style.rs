@@ -201,14 +201,10 @@ fn write_generated(
         "extension.json".into(),
         serde_json::to_string_pretty(&serde_json::json!({
             "format": 1, "kind": "style", "name": c.name, "version": "1.0.0",
-            "description": format!("{} UI style", c.name), "skill": "styling-pack/SKILL.md"
+            "description": format!("{} UI style", c.name)
         }))
         .map_err(|e| e.to_string())?,
     ));
-    files.push(("styling-pack/SKILL.md".into(), format!(
-        "---\nname: styling-pack\ndescription: \"Edits this UI style. Use when installing the pack, changing its parts or making a related style.\"\n---\n\n# Styling with {}\n\nInstall this directory with `og style add <directory>`. In the game's look,\nset `ui \"{}\"`. Edit `style.ogt` directly: palette, typography and dress\nselectors own its appearance. `choices.json` seeds new styles only. Keep\nfonts, art and their licences beside the style. Run `og cook` after edits.\n\nTo change a results screen, `og ui eject results`, edit its document in\n`assets/ui/`, and use `og.load.document` with the game's viewmodel.\nTo create a new pack, `og style new my-style`; change its data and this\nskill, not the engine generator. Review desktop, phone and 150% text.\n",
-        c.name, c.name
-    )));
     files.extend(g.sounds);
     files.push(("LICENSES.md".into(), generated_licences(c)));
     // A painted pack keeps its own requests: they carry its concepts and

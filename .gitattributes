@@ -12,3 +12,4 @@
 *.webp binary
 # Weight bundles and their test fixtures (og-motion): binary.
 *.safetensors binary
+*.jpg binary

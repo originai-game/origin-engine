@@ -11,7 +11,11 @@ pub struct Manifest {
     pub name: String,
     pub version: String,
     pub description: String,
-    pub skill: String,
+    /// Retired: the engine ships no skills (`og api show kits` documents the
+    /// bundled kits). Still read, and checked when present, so a game's older
+    /// pack keeps loading.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skill: Option<String>,
     pub entry: Option<String>,
     pub types: Option<String>,
 }
@@ -102,7 +106,10 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
         ));
     }
     let all = files(directory)?;
-    for file in std::iter::once(m.skill.as_str())
+    for file in m
+        .skill
+        .as_deref()
+        .into_iter()
         .chain(m.entry.as_deref())
         .chain(m.types.as_deref())
         .chain((m.kind == "style").then_some("style.ogt"))
@@ -278,7 +285,9 @@ pub fn list(args: &[&str]) -> ExitCode {
                     if e.installed { "installed" } else { "bundled" },
                     m.description
                 );
-                println!("  skill: {}", e.directory.join(&m.skill).display());
+                if let Some(skill) = &m.skill {
+                    println!("  skill: {}", e.directory.join(skill).display());
+                }
                 for p in [m.entry.as_ref(), m.types.as_ref()].into_iter().flatten() {
                     println!("  {}", e.directory.join(p).display());
                 }
@@ -314,13 +323,14 @@ pub fn eject(name: &str, project: &Path, force: bool) -> Result<PathBuf, String>
     // edits of companions stay; --force replaces only the requested document.
     // A kit's code, manifest, skill and review sheet are not a document's
     // companions: `og ui add` installs those.
-    let skill_dir = Path::new(&extension.manifest.skill).parent();
+    let skill = extension.manifest.skill.as_deref().map(Path::new);
+    let skill_dir = skill.and_then(Path::parent);
     for companion in files(&extension.directory)? {
         let kit_only = companion == Path::new("extension.json")
             || companion.starts_with("sheet")
             || companion.extension().is_some_and(|e| e == "ts")
             || skill_dir.is_some_and(|d| !d.as_os_str().is_empty() && companion.starts_with(d))
-            || companion == Path::new(&extension.manifest.skill);
+            || skill == Some(companion.as_path());
         if kit_only {
             continue;
         }

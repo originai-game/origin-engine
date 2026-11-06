@@ -1227,7 +1227,6 @@ An extension has an `extension.json` at its root:
   "name": "racing",
   "version": "1.0.0",
   "description": "Race HUDs and results, built from common components",
-  "skill": "SKILL.md",
   "entry": "index.ts",
   "types": "index.d.ts"
 }
@@ -1236,8 +1235,10 @@ An extension has an `extension.json` at its root:
 `kind` is `kit` or `style`. Names use lowercase ASCII letters, digits and
 hyphens, starting with a letter. `format` versions this manifest contract;
 `version` versions the extension. All paths are relative to the directory,
-without parent traversal or symlinks. `skill` is required and explains
-discovery, calling, modifying, and creating a component or style. `entry`
+without parent traversal or symlinks. Official packs carry no skill: how
+to use, change and review them is the `kits`, `ui-materials` and `screens`
+guides (`og api show kits`). An optional `skill` path is still
+validated and printed for a game's own pack. `entry`
 and `types` are optional together for a document-only kit. A style has
 `style.ogt` at its root and no executable entry. Documents are discovered
 recursively by their `type screen` or `type component` header, rather than
@@ -1254,7 +1255,7 @@ installation is never silently replaced. No network fetch or code execution
 is part of discovery or installation.
 
 `og ui list [project]` lists installed and bundled extensions, their
-versions, entry/type/skill paths and every document. The installed copy
+versions, entry/type paths and every document. The installed copy
 wins for a kind/name pair. `og ui eject <kit>/<document> [project]` copies
 an extension document to `assets/ui/<kit>/<document>.ogt`, alongside its
 companion documents and assets so relative references survive (§17.5).
@@ -1455,7 +1456,7 @@ its installed kit (`og.load.document(world,
 "ui-kits/racing/race-results.ogt")`) or ejects it alone (`og ui eject
 racing/race-results`, loaded as `ui/racing/race-results.ogt`). Eject
 copies the document's companions, the other documents and assets of the
-kit, never the kit's TypeScript, manifest, skill or review sheet: those
+kit, never the kit's TypeScript, manifest or review sheet: those
 come with `og ui add`. `og ui sheet <kit>` installs the kit into its
 working copy of the sheet, so a page loads the kit's documents from
 `ui-kits/<kit>/` exactly as a game does.

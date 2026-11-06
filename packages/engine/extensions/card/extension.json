@@ -4,7 +4,6 @@
   "name": "card",
   "version": "1.0.0",
   "description": "card UI components and screen documents",
-  "skill": "building-card-ui/SKILL.md",
   "entry": "index.ts",
   "types": "types.ts"
 }

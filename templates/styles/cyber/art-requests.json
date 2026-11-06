@@ -8,9 +8,9 @@
     "shape": "cut"
   },
   "concepts": [
-    "tests/evidence/ui-art/concepts/v2/cyber-settings.jpg",
-    "tests/evidence/ui-art/concepts/v2/cyber-shop.jpg",
-    "tests/evidence/ui-art/concepts/v2/cyber-hud.jpg"
+    "concepts/cyber-settings.jpg",
+    "concepts/cyber-shop.jpg",
+    "concepts/cyber-hud.jpg"
   ],
   "densities": [
     1,

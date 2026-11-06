@@ -3,6 +3,5 @@
   "kind": "kit",
   "name": "materials",
   "version": "1.0.0",
-  "description": "Per-element shader presets on ui-material: foil, holo, burn and rarity glow, each with tunable parameters",
-  "skill": "using-ui-materials/SKILL.md"
+  "description": "Per-element shader presets on ui-material: foil, holo, burn and rarity glow, each with tunable parameters"
 }

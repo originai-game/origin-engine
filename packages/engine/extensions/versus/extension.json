@@ -4,7 +4,6 @@
   "name": "versus",
   "version": "1.0.0",
   "description": "versus UI components and screen documents",
-  "skill": "building-versus-ui/SKILL.md",
   "entry": "index.ts",
   "types": "types.ts"
 }

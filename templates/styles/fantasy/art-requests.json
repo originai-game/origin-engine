@@ -1,8 +1,8 @@
 {
   "concepts": [
-    "tests/evidence/ui-art/concepts/A-shop.jpg",
-    "tests/evidence/ui-art/concepts/A-settings.jpg",
-    "tests/evidence/ui-art/concepts/A-hud.jpg"
+    "concepts/A-shop.jpg",
+    "concepts/A-settings.jpg",
+    "concepts/A-hud.jpg"
   ],
   "densities": [
     1,

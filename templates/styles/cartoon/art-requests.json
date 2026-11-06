@@ -1,8 +1,8 @@
 {
   "concepts": [
-    "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-settings.jpg",
-    "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-menu.jpg",
-    "origin/ui-art:tests/evidence/ui-art/concepts/packs/bubbly-menu.jpg"
+    "concepts/cartoon-settings.jpg",
+    "concepts/cartoon-menu.jpg",
+    "concepts/bubbly-menu.jpg"
   ],
   "densities": [
     1,

@@ -4,7 +4,6 @@
   "name": "photo",
   "version": "1.0.0",
   "description": "photo UI components and screen documents",
-  "skill": "building-photo-ui/SKILL.md",
   "entry": "index.ts",
   "types": "types.ts"
 }

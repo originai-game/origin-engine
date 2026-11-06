@@ -22,8 +22,9 @@ style with its documents.
 ## 2. Genre kits
 
 A kit is a directory with an `extension.json`, TypeScript components
-registered with `registerUiExtension`, screen documents and its own
-SKILL.md, which says how to use it: read that skill before using the kit.
+registered with `registerUiExtension` and screen documents. What each
+bundled kit draws, and how to use, change, review and make one: kits §1
+to kits §5; the shader finishes of the `materials` kit: ui-materials §1.
 
 - `og ui add <kit>` installs an editable copy under `assets/ui-kits/<kit>`;
   the game imports the installed `index.ts`. Edit the copy freely; an
@@ -50,6 +51,16 @@ sounds and haptics for every component. The look's `ui "<slug>"` picks it;
   choices, then fills its art slots through the art brief (art-review §2).
 - Hand-painted frames go through `og style pack <dir>` (nine-patches named
   `<part>.9.png`), which writes the atlas and slice lines.
+- In a pack, `style.ogt` is the data: palette roles set colour,
+  `typography` sets text roles, `dress` selectors paint named parts and
+  states. Edit it directly and run `og cook`; never regenerate a pack.
+  `choices.json` only seeds `og style new` and overwrites nothing.
+- Fonts, atlases, import settings and their licences stay with the pack;
+  asset paths are relative to the style unless they share `@styles/`
+  assets. `og style add ./path` installs a local pack.
+- A results screen is a document, not style: eject it
+  (`og ui eject --list`), edit it under `assets/ui/` and keep game data in
+  its viewmodel.
 
 ## 4. Documents and code
 

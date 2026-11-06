@@ -23,6 +23,11 @@ is one line here, written at the merge that changes
   `defaultRoots`, `installed`, `mount`, `summary`, `artBrief`, `readLook`
   and `presetLook` keep their signatures. An agent reads the engine through
   `og`: `og api find`/`show` over the API and the engine's guides.
+- **Breaking: the UI packs carry no skills.** The kits' `building-*-ui`,
+  the style packs' `styling-*` and `materials/using-ui-materials` folders
+  are deleted; `extension.json` `skill` is optional. Read
+  `og api show kits`, `ui-materials` and `screens` instead. Style-pack
+  concept images now sit in each pack's `concepts/` folder.
 - **IDL `aliases`.** One line of synonyms and other engines' names on a
   declaration, printed in the wiki as "Also known as:" and scored by
   `og api find` as its own field. 94 entries carry them. Recall on the

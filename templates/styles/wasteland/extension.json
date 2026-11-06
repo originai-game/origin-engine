@@ -3,6 +3,5 @@
   "kind": "style",
   "name": "wasteland",
   "version": "1.0.0",
-  "description": "post-apocalyptic survival",
-  "skill": "styling-wasteland/SKILL.md"
+  "description": "post-apocalyptic survival"
 }

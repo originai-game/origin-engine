@@ -4,7 +4,6 @@
   "name": "puzzle",
   "version": "1.0.0",
   "description": "Puzzle and casual level maps and level goals, built from common components",
-  "skill": "building-puzzle-ui/SKILL.md",
   "entry": "index.ts",
   "types": "types.ts"
 }

@@ -11,6 +11,12 @@
         "find": []
       },
       {
+        "member": "UI pack skills",
+        "change": "The bundled kits and style packs carry no SKILL.md: the building-<kit>-ui, styling-<pack> and using-ui-materials folders are deleted and their extension.json files drop `skill`, which is now optional (validated and printed when a game's own pack names one). Their content is the `kits` and `ui-materials` guides and the style-pack part of `screens` §3. The style packs' concept images move into each pack's `concepts/` folder, and art-requests.json, art/report.json and art/provenance.json cite them there.",
+        "fix": "Read `og api show kits`, `og api show ui-materials` and `og api show screens` instead of the kit's or pack's SKILL.md. An installed copy keeps its own files.",
+        "find": []
+      },
+      {
         "member": "gameplay templates",
         "change": "All gameplay templates (game, game-2d and all archetypes), fx-showcase and the ui-kit gallery are removed, with their playtests and frames. Small feature fixtures retain core engine coverage. UI packs, styles, looks and locales remain. Test evidence and template-only capture/replay tools are no longer committed or shipped.",
         "fix": "Start from og create's empty skeleton and author gameplay with the engine API; do not depend on gameplay-template source paths.",

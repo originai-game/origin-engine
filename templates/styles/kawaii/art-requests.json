@@ -8,9 +8,9 @@
     "shape": "pill"
   },
   "concepts": [
-    "tests/evidence/ui-art/concepts/C-settings.jpg",
-    "tests/evidence/ui-art/concepts/C-shop.jpg",
-    "tests/evidence/ui-art/concepts/C-hud.jpg"
+    "concepts/C-settings.jpg",
+    "concepts/C-shop.jpg",
+    "concepts/C-hud.jpg"
   ],
   "densities": [
     1,

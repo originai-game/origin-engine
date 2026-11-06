@@ -4,7 +4,6 @@
   "name": "rpg",
   "version": "1.0.0",
   "description": "RPG inventory and equipment, quests, dialogue, unit, party and raid frames, cast bar and turn order, built from common components",
-  "skill": "building-rpg-ui/SKILL.md",
   "entry": "index.ts",
   "types": "types.ts"
 }

@@ -4,7 +4,6 @@
   "name": "strategy",
   "version": "1.0.0",
   "description": "Strategy and tower-defence selection, command card, production queue, RTS console and orders, resources and wave preview, built from common components",
-  "skill": "building-strategy-ui/SKILL.md",
   "entry": "index.ts",
   "types": "types.ts"
 }

@@ -8,9 +8,9 @@
     "shape": "cut"
   },
   "concepts": [
-    "tests/evidence/ui-art/concepts/v2/foundry-settings.jpg",
-    "tests/evidence/ui-art/concepts/v2/foundry-menu.jpg",
-    "tests/evidence/ui-art/concepts/v2/foundry-build.jpg"
+    "concepts/foundry-settings.jpg",
+    "concepts/foundry-menu.jpg",
+    "concepts/foundry-build.jpg"
   ],
   "densities": [
     1,
