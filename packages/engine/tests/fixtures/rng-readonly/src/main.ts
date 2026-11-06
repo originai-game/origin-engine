@@ -1,5 +1,4 @@
-// The archetypes round's reproduction of og.Rng declared only in `reads`
-// (docs/phase-1.md, "Phase 2, archetypes round"): a fork from a read-only
+// A reproduction of og.Rng declared only in `reads`: a fork from a read-only
 // og.Rng answered NaN, while the same fork from a system that declared it
 // in `writes` answered 0.6868…. Both systems fork "x" on tick 1 and keep the
 // fork's first draw, the seed and the main stream's state before and after,

@@ -1,4 +1,4 @@
-//! Forward+ clustered lighting (phase 2, `docs/phase-1.md` owed row 30).
+//! Forward+ clustered lighting (`docs/design.md` §2.6).
 //!
 //! The view is cut into [`CLUSTER_GRID`] clusters: 16 × 9 screen tiles,
 //! each split into 24 slices of view depth (logarithmic between the

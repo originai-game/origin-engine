@@ -48,21 +48,10 @@ Normative detail is in `docs/design.md` (and `docs/ui.md` for the UI).
   shipped in the package, and `og` commands that check what a reviewer checks
   by eye (`og ui check`, `og style check`).
 
-## Status (2026-11-03)
+## Status
 
-Features first, compatibility last. Released: 0.7.7 on npm (2026-10-31).
-The work on main follows `docs/roadmap.md`: the UI wave's controls,
-containers, feedback/HUD, patterns and screen documents (U6) and waves G1 to
-G3 have landed; the realism wave is mostly on main (R4 to R7 and R9 to R12
-done). In progress: R1 (meshlets, culling and the visibility buffer are on
-main; the stream is open), R2 with R8 (TAAU is on main; more cascades,
-shadowed local lights, contact shadows, lens flare, SMAA, HDR output and the
-environment-map gaps are not), R3 (screen-space GI is on main; probes
-updated at run time are not), U8 (the kit's genre showcases, every seed style
-on them) and the og-ui gaps stream. Metal on macrunner is the only pixel
-reference for now; DX12, the browsers and phones are a compatibility phase
-after the features. Deferred: accessibility, the genre archetypes, and
-performance and size, which are measured at each wave's end.
+What is running, next and open: `docs/roadmap.md`. Metal on macrunner is
+the pixel reference; DX12, the browsers and phones come after the features.
 
 ## Features
 
@@ -185,8 +174,6 @@ What is on main, grouped by area, with the API module (`og.<module>`, from
 - The knowledge package: 24 skills, the generated API wiki, the three-to-og
   guide, the style catalogue (`packages/knowledge`, shipped inside
   `@origingame/engine` as `knowledge/`).
-- The showcase archive of frames and numbers (`showcase/`,
-  `scripts/showcase.ts`).
 
 The remaining API modules: `og.game` (the game entry), `og.system` and
 `og.systems` (systems, and the ones the engine ships in TypeScript),
@@ -256,11 +243,10 @@ packages/
   launcher         og, the launcher: install.sh, install.ps1 and the version a game pins (docs/release.md §1)
 templates/         game (3D), game-2d, archetypes/, looks/, styles/, ui-kit, fx-showcase
 tests/             evidence/, install/ (the install test), replay/ (replay goldens)
-scripts/           check.sh (the gate), lane.sh, worktree.sh, release.sh, wave-end.sh, showcase.ts, ...
+scripts/           check.sh (the gate), lane.sh, worktree.sh, release.sh, wave-end.sh, ...
 tools/             art samples, benches, wasm determinism
 third_party/       vendored sources (basis-universal, xatlas, ltc, cleanedge, pixelorama)
 docs/              design.md (normative), ui.md, roadmap.md, release.md, ci.md, art.md, ...
-showcase/          the showcase archive's index
 ```
 
 ## Commands

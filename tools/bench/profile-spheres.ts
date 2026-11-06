@@ -1,6 +1,6 @@
 // A CPU profile of the engine Worker drawing tools/bench/spheres in headless
 // Chrome, and its frame and probe timings: where the sphere field's frame
-// goes on the web (owed row 50, docs/phase-1.md).
+// goes on the web.
 //
 //   bun tools/bench/profile-spheres.ts [--count 20000] [--frames 120]
 //       [--single] [--names] [--top 40] [--chrome <path>] [--json <file>]

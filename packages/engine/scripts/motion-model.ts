@@ -1,6 +1,6 @@
 // og.motion's weights in the bucket (docs/design.md §2.7): the file
 // motion.json pins lives in the private S3 bucket origin-engine-showcase
-// (OVHcloud, docs/ci.md §Showcase) under motion/<sha256>.safetensors, so
+// (OVHcloud, docs/ci.md §The model bucket) under motion/<sha256>.safetensors, so
 // pack.sh can fetch it on any machine without a copy of og-motion-train.
 //
 //   bun scripts/motion-model.ts fetch <out>    download the pinned file to <out>, checked against its sha
@@ -37,7 +37,7 @@ const { S3Client } = (globalThis as unknown as { Bun: { S3Client: new (options: 
 function client(): S3 {
   const accessKeyId = process.env.OG_SHOWCASE_S3_ACCESS_KEY;
   const secretAccessKey = process.env.OG_SHOWCASE_S3_SECRET_KEY;
-  if (!accessKeyId || !secretAccessKey) fail(`set OG_SHOWCASE_S3_ACCESS_KEY and OG_SHOWCASE_S3_SECRET_KEY to fetch ${pin.key} (docs/ci.md §Showcase), or point OG_MOTION_MODEL at the file`);
+  if (!accessKeyId || !secretAccessKey) fail(`set OG_SHOWCASE_S3_ACCESS_KEY and OG_SHOWCASE_S3_SECRET_KEY to fetch ${pin.key} (docs/ci.md §The model bucket), or point OG_MOTION_MODEL at the file`);
   return new S3Client({
     accessKeyId,
     secretAccessKey,

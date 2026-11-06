@@ -222,7 +222,7 @@ run_tests() {
   else
     # cargo test runs a binary's tests on threads of one process, and two
     # renderers made on two threads trip the Vulkan loader's driver-unload
-    # race (docs/ci.md §CI, phase-1 row 81), so the GPU crates run their
+    # race, so the GPU crates run their
     # tests one at a time, after the rest.
     local gpu_crates=(og-tests og-tests-cooked og-ui og-render)
     local args=(--workspace) gpu_args=()

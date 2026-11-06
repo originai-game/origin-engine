@@ -2281,8 +2281,7 @@ No IDL member changed; the simulation is unchanged (the golden replays).
 Player hello time now reaches `og.platform` on attachment through both
 web transports. Older Players without a stamp retain the host clock.
 
-Round 3, procedural modelling (`docs/phase-1.md`, "Plan 2026-10-24,
-round 3").
+Round 3, procedural modelling.
 
 - `geom-1`: the crate `og-geom` (three.js's generators with three.js's
   names, defaults, vertex orders and counts; a sweep along a path with
@@ -2401,7 +2400,7 @@ round 3").
   game and module actions without a conflicting probe borrow panicking
   in the native addon.
 
-Debt round 2 (`docs/phase-1.md`, "Plan 2026-10-23, debt round 2").
+Debt round 2.
 
 - `records-list`: records take a fixed-capacity list column of one number
   type (`List.X.N` in the IDL, `S[N]` in the schema, the `list` factory in
@@ -2675,7 +2674,7 @@ minor bump, §3), by stream:
   `volumetric` (window shafts under a day-night sun, a rect light, a
   lattice cookie, a lantern's cube cookie); gfx scenes `rect-lights`,
   `light-cookies`, `volumetric-fog` and, natively, `baked-cornell`.
-- Wave 3's end (`scripts/wave-end.sh`, docs/phase-1.md): the lightmap
+- Wave 3's end (`scripts/wave-end.sh`): the lightmap
   reader builds for wasm32; fx-showcase's light-stage entity is
   `render-light` (its name clashed with the fluids station's `light`
   fluid when one world shows every station) and its `none` look also
@@ -2848,4 +2847,4 @@ audio, nav, ai, platform, i18n, ui, systems, commands, probe, terrain,
 stream), the `og` tool (run, dev, test, polish, build, cook, probe, check,
 sfx, skin, doctor, api), the project template and eight archetypes, the
 ten `og-*` skills and the generated wiki. Everything before it is the
-build-out recorded in `docs/phase-1.md`.
+build-out, recorded in git.

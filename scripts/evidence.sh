@@ -3,7 +3,7 @@
 #
 #   scripts/evidence.sh <milestone> <slug> <file> "<how it was produced>"
 #
-#   milestone  M0..M7 or E1..E9 (docs/phase-1.md §2)
+#   milestone  a milestone directory under tests/evidence/ (M0..M7, E1..E9)
 #   slug       lowercase words joined by '-', e.g. spike-frame-native
 #   file       a .png, .json or .md file; its extension is kept
 #   note       the exact command or procedure that produced the file

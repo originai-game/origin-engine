@@ -1,4 +1,4 @@
-//! The engine's per-instance cost (owed row 50, docs/phase-1.md): a field of
+//! The engine's per-instance cost: a field of
 //! og.Mesh entities is extracted into the renderer's scene every frame, and
 //! that must stay a pass over the columns. 20,000 moving spheres once took
 //! 174 ms a frame on the web because extraction decoded every og.Mesh row to

@@ -1,4 +1,4 @@
-//! The named gfx scenes (the M3 reference set, `docs/phase-1.md`). Each one
+//! The named gfx scenes (the reference set). Each one
 //! is a fixed [`RenderDesc`] and [`RenderScene`], how many frames to render
 //! before the capture (with an optional per-frame update), and the
 //! tolerance its reference comparison uses.

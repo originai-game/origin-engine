@@ -1,4 +1,4 @@
-//! The `og` tool. See docs/design.md §2.1 and docs/phase-1.md.
+//! The `og` tool. See docs/design.md §2.1.
 //!
 //! One binary for the author's loop: `og run` (native host, probe, command
 //! channel; `--device` times the publish build in a real browser), `og probe` (a WebSocket client of the probe), `og dev` (watch,

@@ -1,5 +1,5 @@
 //! Origin Engine physics: rapier3d and rapier2d as an engine system over the
-//! ECS (docs/design.md §2.4, §2.7; docs/phase-1.md M6).
+//! ECS (docs/design.md §2.4, §2.7).
 //!
 //! | item | what it is |
 //! |---|---|
