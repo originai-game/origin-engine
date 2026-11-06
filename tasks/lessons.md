@@ -118,3 +118,10 @@ its declared charset. Verify missing-glyph diagnostics and the cooked payload
 budget alongside the UI tests, before handing the text stack to landing.
 Freeze the shaping code throughout a cross-host hash run: editing it between
 native and wasm builds compares revisions, not hosts.
+
+Never kill a process or subshell you did not start. On a shared runner,
+`pgrep -f "check.sh quick"` also matches other lanes' gates and their step
+subshells. Keep the PID of what you launch (`$!`) and stop only that. If
+another thread's gate or process is in your way, tell the coordinator or
+that thread; do not stop it yourself (B9, 2026-11-06: killing lane-8's step
+subshells left its gate holding the machine-wide lock).
