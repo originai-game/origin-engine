@@ -653,7 +653,17 @@ impl Renderer {
             "sprite",
             &[&frame_layout, &sprite_layout, &sprite_fx_layout],
         );
-        let ribbon_pl = pipeline_layout("ribbon", &[&frame_layout, &sprite_layout]);
+        // Effect materials (effect.rs): group 3 of the particle and strip draws.
+        let effects = crate::effect::EffectRenderer::new(&device, &queue);
+        let ribbon_pl = pipeline_layout(
+            "ribbon",
+            &[
+                &frame_layout,
+                &sprite_layout,
+                &effects.empty_layout,
+                &effects.layout,
+            ],
+        );
         let shadow_layouts = [
             pipeline_layout("shadow", &[&shadow_bind_layout]),
             pipeline_layout("shadow dissolve", &[&shadow_bind_layout, &material_layout]),
@@ -877,7 +887,10 @@ impl Renderer {
         )
         .then(|| {
             let points = ribbons_gpu::GpuTrails::draw_layout(&device);
-            let strip_pl = pipeline_layout("strip", &[&frame_layout, &sprite_layout, &points]);
+            let strip_pl = pipeline_layout(
+                "strip",
+                &[&frame_layout, &sprite_layout, &points, &effects.layout],
+            );
             let strip_state = |blend| {
                 deferred_hdr(
                     &device,
@@ -908,6 +921,7 @@ impl Renderer {
         });
         let particles = particles_gpu::ParticleRenderer::new(
             &device,
+            effects,
             &frame_layout,
             &sprite_layout,
             &fluid_shared_source(),

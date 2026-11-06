@@ -392,6 +392,8 @@ pub(crate) struct RenderState {
     pub feel: super::feel::FeelRender,
     /// The atmosphere's and the physics extras' drawing state (`super::atmosphere`).
     pub atmo: super::atmosphere::AtmoState,
+    /// The effect materials loaded (`super::effect`).
+    pub effects: super::effect::EffectState,
     /// The environment maps loaded (`super::environment`).
     pub env: super::environment::EnvState,
     /// The terrains loaded (`super::terrain`).
@@ -466,6 +468,7 @@ impl RenderState {
             inspector: None,
             feel: Default::default(),
             atmo: Default::default(),
+            effects: Default::default(),
             env: Default::default(),
             terrain: Default::default(),
             hierarchy: Hierarchy::default(),

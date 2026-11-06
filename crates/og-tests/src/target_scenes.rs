@@ -531,6 +531,7 @@ pub fn view_fx_scene(fx: ViewFx, on: bool) -> RenderScene {
                     texture: None,
                     uv: og_render::RibbonUv::Stretch,
                     blend: og_render::ParticleBlend::Alpha,
+                    effect: None,
                 });
             }
             ViewFx::Lit2d => {

@@ -921,6 +921,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 texture: None,
                 uv: RibbonUv::Stretch,
                 blend: og_render::ParticleBlend::Alpha,
+                effect: None,
             });
         }
     }
@@ -1227,28 +1228,34 @@ pub fn og_atmosphere_time_of_day(world: u32) -> f64 {
 pub fn og_load_shader(world: u32, path: String) -> String {
     let r = (|| -> Result<Value, String> {
         let eng = engine(world)?;
-        let id = og_bundle::runtime::asset_id(&path).to_string();
-        if let Some(&i) = eng.render.borrow().atmo.shader_paths.get(&id) {
-            return Ok(json!(super::assets::handle(i)));
-        }
-        let shader = {
-            let assets = eng.assets.borrow();
-            let (bytes, bundle) = assets.blob(&id)?;
-            bundle
-                .shader(&id, bytes.bytes())
-                .map_err(|e| e.to_string())?
-        };
-        let mut rs = eng.render.borrow_mut();
-        let h = rs.scene.add_shader(shader);
-        rs.atmo.shaders.push(h);
-        let i = rs.atmo.shaders.len() - 1;
-        rs.atmo.shader_paths.insert(id, i);
-        Ok(json!(super::assets::handle(i)))
+        Ok(json!(super::assets::handle(load_shader(&eng, &path)?)))
     })();
     match r {
         Ok(v) => ok(v),
         Err(e) => refuse(e),
     }
+}
+
+/// A cooked shader's load index, added to the scene once per path (an
+/// effect material's hook loads it too, `super::effect`).
+pub(crate) fn load_shader(eng: &super::engine::Engine, path: &str) -> Result<usize, String> {
+    let id = og_bundle::runtime::asset_id(path).to_string();
+    if let Some(&i) = eng.render.borrow().atmo.shader_paths.get(&id) {
+        return Ok(i);
+    }
+    let shader = {
+        let assets = eng.assets.borrow();
+        let (bytes, bundle) = assets.blob(&id)?;
+        bundle
+            .shader(&id, bytes.bytes())
+            .map_err(|e| e.to_string())?
+    };
+    let mut rs = eng.render.borrow_mut();
+    let h = rs.scene.add_shader(shader);
+    rs.atmo.shaders.push(h);
+    let i = rs.atmo.shaders.len() - 1;
+    rs.atmo.shader_paths.insert(id, i);
+    Ok(i)
 }
 
 pub fn og_render_shader_material(world: u32, shader: f64, desc: Option<String>) -> String {

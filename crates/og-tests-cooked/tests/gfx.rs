@@ -66,6 +66,7 @@ references! {
     meshlets => "meshlet-forest",
     particles => "particles",
     trails => "trails-beams",
+    effect_materials => "effect-materials",
     sprites => "sprites-array",
     text => "text-msdf",
     tilemap => "tilemap-lit",

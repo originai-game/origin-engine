@@ -54,6 +54,7 @@ impl RenderScene {
             skins: Vec::new(),
             morphs: Vec::new(),
             emitters: Vec::new(),
+            effect_materials: Vec::new(),
             luts: Vec::new(),
             lut_revisions: Vec::new(),
             palettes: Vec::new(),
@@ -105,6 +106,7 @@ impl RenderScene {
             points: Vec::new(),
             css_height: 0.0,
             beams: Vec::new(),
+            effect_meshes: Vec::new(),
             decals: Vec::new(),
             decal_atlas: None,
             lighting_2d: None,
@@ -593,6 +595,42 @@ impl RenderScene {
 
     pub fn emitter(&self, handle: EmitterHandle) -> Option<&ParticleEmitter> {
         self.emitters.get(handle.index())
+    }
+
+    /// Adds an effect material (`effect.rs`): the look particles, trails,
+    /// ribbons, beams and effect meshes name.
+    pub fn add_effect_material(
+        &mut self,
+        material: crate::EffectMaterial,
+    ) -> crate::EffectMaterialHandle {
+        self.effect_materials.push(material);
+        crate::EffectMaterialHandle(self.effect_materials.len() as u32 - 1)
+    }
+
+    /// Replaces an effect material. `false` for a handle of another scene.
+    pub fn set_effect_material(
+        &mut self,
+        handle: crate::EffectMaterialHandle,
+        material: crate::EffectMaterial,
+    ) -> bool {
+        match self.effect_materials.get_mut(handle.index()) {
+            Some(m) => {
+                *m = material;
+                true
+            }
+            None => false,
+        }
+    }
+
+    pub fn effect_material(
+        &self,
+        handle: crate::EffectMaterialHandle,
+    ) -> Option<&crate::EffectMaterial> {
+        self.effect_materials.get(handle.index())
+    }
+
+    pub fn effect_materials(&self) -> &[crate::EffectMaterial] {
+        &self.effect_materials
     }
 
     /// Adds a 32³ colour grading table ([`ColorLut`]). A slot freed by

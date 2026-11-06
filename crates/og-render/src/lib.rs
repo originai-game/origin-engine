@@ -87,6 +87,7 @@ mod custom;
 mod debris;
 pub mod debug;
 mod deferred;
+mod effect;
 mod effects;
 mod environment;
 mod fluid3d;
@@ -337,6 +338,10 @@ pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS};
 pub use custom::{FULL_SHADER_ENTRIES, example as example_full_shader};
 pub use debris::{
     CHIP_VARIANTS, DEBRIS_POINTS, DEBRIS_SETTLE_TICKS, DebrisPiece, MAX_DEBRIS, chip,
+};
+pub use effect::{
+    EFFECT_DRIVERS, EFFECT_PARAMS, EffectChannel, EffectMaterial, EffectMaterialHandle, EffectMesh,
+    EffectTexture, EffectUv, EffectValue, Erosion, Flow, Fresnel,
 };
 pub use effects::*;
 #[cfg(feature = "bake")]

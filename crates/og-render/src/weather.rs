@@ -551,6 +551,7 @@ pub fn add_lightning(
                 texture: None,
                 uv: crate::RibbonUv::Stretch,
                 blend: ParticleBlend::Additive,
+                effect: None,
             });
         };
         let main = lightning_bolt(at, top, strike);

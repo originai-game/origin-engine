@@ -242,6 +242,11 @@ const MESH_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout 
             offset: 32,
             shader_location: 7,
         },
+        wgpu::VertexAttribute {
+            format: wgpu::VertexFormat::Float32x2,
+            offset: 24,
+            shader_location: 8,
+        },
     ],
 };
 
@@ -290,6 +295,31 @@ pub(crate) struct FrameSystem {
     max: u32,
     kind: DrawKind,
     mesh: Option<crate::MeshHandle>,
+    /// Its effect material (`effect.rs`) and how its pipeline differs.
+    effect: Option<crate::EffectMaterialHandle>,
+    look: Look,
+}
+
+/// What an effect material changes in a system's pipeline: its hook's
+/// module (by shader index), and for a mesh drawn with one, no depth
+/// written and both faces where it is double sided.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub(crate) struct Look {
+    hook: Option<usize>,
+    effect_mesh: bool,
+    double_sided: bool,
+}
+
+/// The [`Look`] of a system of kind `kind` drawn with `material`.
+fn look_of(kind: DrawKind, material: Option<&crate::EffectMaterial>, hook: Option<usize>) -> Look {
+    match material {
+        Some(m) => Look {
+            hook,
+            effect_mesh: kind == DrawKind::Mesh,
+            double_sided: kind == DrawKind::Mesh && m.double_sided,
+        },
+        None => Look::default(),
+    }
 }
 
 /// A sprite-mode system simulated in compute, as the 2D batch draws it:
@@ -371,9 +401,14 @@ pub(crate) struct ParticleRenderer {
         wgpu::ComputePipeline,
     )>,
     pub draw_layout: wgpu::BindGroupLayout,
-    draw: HashMap<(ParticleBlend, u32, DrawKind), wgpu::RenderPipeline>,
+    draw: HashMap<(ParticleBlend, u32, DrawKind, Look), wgpu::RenderPipeline>,
     pub(crate) draw_module: crate::deferred::Module,
+    /// The draw module with an effect material's hook, by shader index.
+    hook_modules: HashMap<usize, wgpu::ShaderModule>,
+    frame_wgsl: String,
     draw_pl: wgpu::PipelineLayout,
+    /// The effect materials (group 3 of every particle and strip draw).
+    pub(crate) effects: crate::effect::EffectRenderer,
     emitter_buffer: wgpu::Buffer,
     pub view_buffer: wgpu::Buffer,
     /// The scene's colliders as `scene_colliders.rs` packs them, with a
@@ -457,6 +492,7 @@ impl ParticleRenderer {
 
     pub fn new(
         device: &wgpu::Device,
+        effects: crate::effect::EffectRenderer,
         frame_layout: &wgpu::BindGroupLayout,
         sprite_layout: &wgpu::BindGroupLayout,
         frame_wgsl: &str,
@@ -544,10 +580,16 @@ impl ParticleRenderer {
                 depth_entry(3, wgpu::ShaderStages::FRAGMENT),
             ],
         });
-        let draw_module = crate::deferred::module(device, "particles", draw_source(frame_wgsl));
+        let draw_module =
+            crate::deferred::module(device, "particles", draw_source(frame_wgsl, None));
         let draw_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("particles"),
-            bind_group_layouts: &[Some(frame_layout), Some(sprite_layout), Some(&draw_layout)],
+            bind_group_layouts: &[
+                Some(frame_layout),
+                Some(sprite_layout),
+                Some(&draw_layout),
+                Some(&effects.layout),
+            ],
             immediate_size: 0,
         });
         let emitter_buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -571,7 +613,10 @@ impl ParticleRenderer {
             draw_layout,
             draw: HashMap::new(),
             draw_module,
+            hook_modules: HashMap::new(),
+            frame_wgsl: frame_wgsl.to_string(),
             draw_pl,
+            effects,
             emitter_buffer,
             view_buffer,
             colliders: collider_buffer(device, 256),
@@ -848,19 +893,28 @@ impl ParticleRenderer {
             let to_colliders = gpu && e.collides_with_colliders();
             let collide =
                 gpu && e.collision.is_some() && e.space == SimulationSpace::World && !to_colliders;
+            let kind = match sprite {
+                Some(_) => DrawKind::Sprite,
+                None => draw_kind(e),
+            };
+            let (effect, material) = effect_of(scene, e, kind, sys.emitter.index())?;
             // Soft particles fade against the depth behind them, where the
             // frame's quality lets them (RenderQuality::soft_particles).
             let soft = if scene.quality.soft_particles && sprite.is_none() {
-                e.soft_distance.max(0.0)
+                e.soft_distance
+                    .max(material.map_or(0.0, |m| m.soft_depth))
+                    .max(0.0)
             } else {
                 0.0
             };
             out.needs_depth |= soft > 0.0 || collide;
             out.soft |= soft > 0.0;
-            let kind = match sprite {
-                Some(_) => DrawKind::Sprite,
-                None => draw_kind(e),
-            };
+            let look = look_of(
+                kind,
+                material,
+                material.and_then(|m| m.shader).map(|h| h.index()),
+            );
+            let blend = material.and_then(|m| m.blend).unwrap_or(e.blend);
             out.distortion |= kind == DrawKind::Distort;
             let mesh = match e.render {
                 ParticleRender::Mesh { mesh } => Some(mesh),
@@ -953,7 +1007,7 @@ impl ParticleRenderer {
                     reset,
                     shift,
                     gpu: true,
-                    blend: e.blend,
+                    blend,
                     texture: e.texture,
                     depth,
                     layers,
@@ -961,6 +1015,8 @@ impl ParticleRenderer {
                     max: e.max_particles,
                     kind,
                     mesh,
+                    effect,
+                    look,
                 });
                 if let Some((layer, array)) = sprite {
                     out.sprite_systems.push(SpriteSystem {
@@ -1012,7 +1068,7 @@ impl ParticleRenderer {
                     reset: false,
                     shift: None,
                     gpu: false,
-                    blend: e.blend,
+                    blend,
                     texture: e.texture,
                     depth,
                     layers,
@@ -1020,6 +1076,8 @@ impl ParticleRenderer {
                     max: state.cpu.slots.len() as u32,
                     kind,
                     mesh,
+                    effect,
+                    look,
                 });
             }
             // Its sub-emitters' particles, each drawn as its own emitter
@@ -1036,11 +1094,20 @@ impl ParticleRenderer {
                 upload(device, queue, &mut state.children[k], &c.slots);
                 let kind = draw_kind(ce);
                 out.distortion |= kind == DrawKind::Distort;
+                let (effect, material) =
+                    effect_of(scene, ce, kind, e.sub_emitters[k].emitter.index())?;
                 let soft = if scene.quality.soft_particles {
-                    ce.soft_distance.max(0.0)
+                    ce.soft_distance
+                        .max(material.map_or(0.0, |m| m.soft_depth))
+                        .max(0.0)
                 } else {
                     0.0
                 };
+                let look = look_of(
+                    kind,
+                    material,
+                    material.and_then(|m| m.shader).map(|h| h.index()),
+                );
                 out.needs_depth |= soft > 0.0;
                 out.soft |= soft > 0.0;
                 let first_entry = entries.len() as u32;
@@ -1065,7 +1132,7 @@ impl ParticleRenderer {
                     reset: false,
                     shift: None,
                     gpu: false,
-                    blend: ce.blend,
+                    blend: material.and_then(|m| m.blend).unwrap_or(ce.blend),
                     texture: ce.texture,
                     depth,
                     layers,
@@ -1076,9 +1143,21 @@ impl ParticleRenderer {
                         ParticleRender::Mesh { mesh } => Some(mesh),
                         _ => None,
                     },
+                    effect,
+                    look,
                 });
             }
         }
+        self.effect_meshes(
+            device,
+            queue,
+            scene,
+            dt,
+            eye,
+            forward,
+            &mut entries,
+            &mut out,
+        )?;
         let frame = self.frame;
         self.systems.retain(|_, s| s.seen == frame);
         // The unsupported diagnostic is opaque, not emitted light. Adding
@@ -1380,11 +1459,27 @@ impl ParticleRenderer {
     }
 
     /// Makes the draw pipelines the frame needs (by blend and sample count).
-    pub fn ensure_pipelines(&mut self, device: &wgpu::Device, frame: &ParticleFrame, samples: u32) {
+    pub fn ensure_pipelines(
+        &mut self,
+        device: &wgpu::Device,
+        frame: &ParticleFrame,
+        samples: u32,
+        shaders: &[crate::MaterialShader],
+    ) {
         for s in frame.systems.iter().filter(|s| s.kind != DrawKind::Sprite) {
-            let key = (s.blend, samples, s.kind);
+            let key = (s.blend, samples, s.kind, s.look);
             if self.draw.contains_key(&key) {
                 continue;
+            }
+            if let Some(h) = s.look.hook
+                && !self.hook_modules.contains_key(&h)
+            {
+                let source = draw_source(&self.frame_wgsl, shaders.get(h));
+                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("particles (effect hook)"),
+                    source: wgpu::ShaderSource::Wgsl(source.into()),
+                });
+                self.hook_modules.insert(h, module);
             }
             let blend = match s.blend {
                 _ if s.kind == DrawKind::Distort => wgpu::BlendState::ALPHA_BLENDING,
@@ -1403,6 +1498,12 @@ impl ParticleRenderer {
                 ParticleBlend::Alpha => wgpu::BlendState::ALPHA_BLENDING,
             };
             let mesh = s.kind == DrawKind::Mesh;
+            // An effect mesh is blended like a billboard: no depth written.
+            let solid = mesh && !s.look.effect_mesh;
+            let module = match s.look.hook {
+                Some(h) => &self.hook_modules[&h],
+                None => self.draw_module.get(),
+            };
             let buffers = if mesh {
                 vec![Some(PARTICLE_LAYOUT), Some(MESH_LAYOUT)]
             } else {
@@ -1414,7 +1515,7 @@ impl ParticleRenderer {
                     alpha_to_coverage: false,
                     label: "particles",
                     layout: &self.draw_pl,
-                    module: &self.draw_module,
+                    module,
                     vs: if mesh { "vs_mesh" } else { "vs" },
                     fs: match s.kind {
                         DrawKind::Billboard => "fs",
@@ -1423,9 +1524,9 @@ impl ParticleRenderer {
                         DrawKind::Sprite => unreachable!("filtered above"),
                     },
                     buffers: &buffers,
-                    cull: mesh.then_some(wgpu::Face::Back),
+                    cull: (mesh && !s.look.double_sided).then_some(wgpu::Face::Back),
                     // Debris occludes what is behind it, and itself.
-                    depth_write: mesh,
+                    depth_write: solid,
                     depth_compare: wgpu::CompareFunction::LessEqual,
                     blend: Some(blend),
                     samples,
@@ -1470,7 +1571,7 @@ impl ParticleRenderer {
             };
             let Some(pipeline) = (match part {
                 ParticlePart::Oit(p) => Some(p),
-                _ => self.draw.get(&(s.blend, samples, s.kind)),
+                _ => self.draw.get(&(s.blend, samples, s.kind, s.look)),
             }) else {
                 continue;
             };
@@ -1478,6 +1579,8 @@ impl ParticleRenderer {
             pass.set_bind_group(1, texture_group(s.texture), &[]);
             let draw_entry = s.first_entry + s.ticks;
             pass.set_bind_group(2, group, &[(draw_entry as u64 * EMITTER_STRIDE) as u32]);
+            let (effect, offset) = self.effects.bind(s.effect);
+            pass.set_bind_group(3, effect, &[offset]);
             pass.set_vertex_buffer(0, buffer.slice(..));
             match s.mesh.map(&mesh) {
                 Some(Some((vertices, indices, count))) => {
@@ -1548,16 +1651,23 @@ impl ParticlePart<'_> {
     fn draws(self, s: &FrameSystem) -> bool {
         match self {
             ParticlePart::All => true,
-            ParticlePart::Before => s.kind == DrawKind::Mesh,
+            ParticlePart::Before => solid_mesh(s),
             ParticlePart::Oit(_) => in_oit(s),
-            ParticlePart::After => s.kind != DrawKind::Mesh && !in_oit(s),
+            ParticlePart::After => !solid_mesh(s) && !in_oit(s),
         }
     }
 }
 
-/// Whether a system's particles join the order-independent passes.
+/// Debris: meshes that write depth (an effect mesh is blended).
+fn solid_mesh(s: &FrameSystem) -> bool {
+    s.kind == DrawKind::Mesh && !s.look.effect_mesh
+}
+
+/// Whether a system's particles join the order-independent passes: alpha
+/// billboards, except those whose effect material has a hook (the OIT
+/// pipelines are the built-in module's), which draw after the resolve.
 fn in_oit(s: &FrameSystem) -> bool {
-    s.kind == DrawKind::Billboard && s.blend == ParticleBlend::Alpha
+    s.kind == DrawKind::Billboard && s.blend == ParticleBlend::Alpha && s.look.hook.is_none()
 }
 
 impl ParticleFrame {
@@ -1679,6 +1789,138 @@ fn push_sprites(
     }
 }
 
+/// The effect material an emitter's particles of `kind` draw with: only
+/// billboards and meshes take one (distortion and sprite mode keep their
+/// own look). A handle of no material of the scene is refused.
+fn effect_of<'s>(
+    scene: &'s RenderScene,
+    e: &ParticleEmitter,
+    kind: DrawKind,
+    emitter: usize,
+) -> Result<
+    (
+        Option<crate::EffectMaterialHandle>,
+        Option<&'s crate::EffectMaterial>,
+    ),
+    RenderError,
+> {
+    let Some(h) = e.effect else {
+        return Ok((None, None));
+    };
+    let m = scene.effect_material(h).ok_or_else(|| {
+        RenderError::InvalidHandle(format!("emitter {emitter}: effect material {}", h.index()))
+    })?;
+    Ok(match kind {
+        DrawKind::Billboard | DrawKind::Mesh => (Some(h), Some(m)),
+        DrawKind::Distort | DrawKind::Sprite => (None, None),
+    })
+}
+
+/// The key of an effect mesh's state among the systems': its id with the
+/// top bit set, apart from a particle system on the same entity.
+const EFFECT_MESH_KEY: u64 = 1 << 63;
+
+impl ParticleRenderer {
+    /// The scene's effect meshes as one-particle mesh systems: their
+    /// particle uploaded with the mesh's life and random value, their
+    /// entry placing the mesh whole (`emitter.look.z` 2).
+    #[allow(clippy::too_many_arguments)]
+    fn effect_meshes(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        scene: &RenderScene,
+        dt: f32,
+        eye: Vec3,
+        forward: Vec3,
+        entries: &mut Vec<EmitterGpu>,
+        out: &mut ParticleFrame,
+    ) -> Result<(), RenderError> {
+        for (i, m) in scene.effect_meshes.iter().enumerate() {
+            let material = scene.effect_material(m.material).ok_or_else(|| {
+                RenderError::InvalidHandle(format!(
+                    "effect mesh {i}: effect material {}",
+                    m.material.index()
+                ))
+            })?;
+            if scene.mesh(m.mesh).is_none() {
+                return Err(RenderError::InvalidHandle(format!(
+                    "effect mesh {i}: mesh {}",
+                    m.mesh.index()
+                )));
+            }
+            out.meshes.push(m.mesh.index());
+            let seed = hash_seed(m.seed);
+            // Alive whatever its life (a particle at its lifetime is dead).
+            let particle = ParticleState {
+                pos_age: [0.0, 0.0, 0.0, m.life.clamp(0.0, 1.0) * 0.99999],
+                vel_life: [0.0, 0.0, 0.0, 1.0],
+                misc: [1.0, 0.0, 0.0, crate::particles::hash_unit(seed)],
+            };
+            let key = m.id | EFFECT_MESH_KEY;
+            let state = self.systems.entry(key).or_insert_with(|| SystemState {
+                emitter: usize::MAX,
+                max: 1,
+                gpu: None,
+                cpu: CpuParticles::default(),
+                upload: None,
+                seen: 0,
+                shift: Vec3::ZERO,
+                children: Vec::new(),
+            });
+            state.seen = self.frame;
+            upload(
+                device,
+                queue,
+                &mut state.upload,
+                std::slice::from_ref(&particle),
+            );
+            let soft = if scene.quality.soft_particles {
+                material.soft_depth.max(0.0)
+            } else {
+                0.0
+            };
+            out.needs_depth |= soft > 0.0;
+            out.soft |= soft > 0.0;
+            let look = ParticleEmitter {
+                render: ParticleRender::Mesh { mesh: m.mesh },
+                size_over_life: crate::particles::Curve::constant(1.0),
+                color_over_life: crate::particles::ColorCurve::constant([1.0; 4]),
+                color: m.color,
+                gravity: Vec3::ZERO,
+                ..Default::default()
+            };
+            let first_entry = entries.len() as u32;
+            let mut entry = emitter_gpu(&look, m.transform, None, dt, seed, 0, false, false, soft);
+            entry.look[2] = 2.0;
+            entries.push(entry);
+            out.systems.push(FrameSystem {
+                id: key,
+                first_entry,
+                ticks: 0,
+                reset: false,
+                shift: None,
+                gpu: false,
+                blend: material.blend.unwrap_or(m.blend),
+                texture: None,
+                depth: (m.transform.w_axis.truncate() - eye).dot(forward),
+                layers: m.layers,
+                child: None,
+                max: 1,
+                kind: DrawKind::Mesh,
+                mesh: Some(m.mesh),
+                effect: Some(m.material),
+                look: look_of(
+                    DrawKind::Mesh,
+                    Some(material),
+                    material.shader.map(|h| h.index()),
+                ),
+            });
+        }
+        Ok(())
+    }
+}
+
 /// One [`SpriteParamsGpu`] slot (the dynamic offset's alignment).
 const SPRITE_PARAMS_STRIDE: u64 = 256;
 
@@ -1728,10 +1970,12 @@ fn reach(e: &ParticleEmitter, transform: Mat4, tick_rate: f32) -> (Vec3, Vec3) {
 
 /// The particle draw module after the frame group, the light tables and
 /// the lighting (`fluid_shared_source`: lit particles).
-pub(crate) fn draw_source(frame_wgsl: &str) -> String {
+pub(crate) fn draw_source(frame_wgsl: &str, hook: Option<&crate::MaterialShader>) -> String {
     format!(
-        "{frame_wgsl}{}{}{NOISE_WGSL}{COMMON_WGSL}{DRAW_WGSL}",
+        "{frame_wgsl}{}{}{NOISE_WGSL}{COMMON_WGSL}{}{}{DRAW_WGSL}",
         crate::oit::OIT_WGSL,
-        crate::oit::ARENA_WGSL
+        crate::oit::ARENA_WGSL,
+        crate::effect::EFFECT_WGSL,
+        crate::effect::hooks_source(hook),
     )
 }

@@ -286,7 +286,10 @@ impl Renderer {
                     let mut rest = vec![&self.sprite_layout];
                     if strip {
                         rest.push(&self.gpu_trails.as_ref().expect("checked above").draw_layout);
+                    } else {
+                        rest.push(&self.particles.effects.empty_layout);
                     }
+                    rest.push(&self.particles.effects.layout);
                     let name = if strip { "strip (oit)" } else { "ribbon (oit)" };
                     let layout = self.oit.layout(device, name, mode, frame, &rest).clone();
                     oit::pipeline(
@@ -317,7 +320,11 @@ impl Renderer {
                             "particles (oit)",
                             mode,
                             frame,
-                            &[&self.sprite_layout, &self.particles.draw_layout],
+                            &[
+                                &self.sprite_layout,
+                                &self.particles.draw_layout,
+                                &self.particles.effects.layout,
+                            ],
                         )
                         .clone();
                     oit::pipeline(

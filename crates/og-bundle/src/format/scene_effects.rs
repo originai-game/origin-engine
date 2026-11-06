@@ -295,6 +295,14 @@ row!(
 );
 
 row!(
+    /// The root of an effect material blob (an `.ogt` of `type effect`).
+    EffectMeta, "og.EffectMaterial", 1 {
+        /// Bytes of the validated effect text in `text`.
+        text_bytes: u32,
+    }
+);
+
+row!(
     /// The root of a UI style blob (an `.ogt` of `type style`).
     StyleMeta, "og.UiStyle", 1 {
         /// Bytes of the validated style text in `text`.
@@ -435,6 +443,17 @@ impl BlobKind for Vector {
             VectorPaintRow::schema(),
             VectorStopRow::schema(),
         ]
+    }
+}
+
+/// The effect material blob: `text` holds the effect file the cook
+/// validated (`crate::effect`), parsed again at load with the bundle's
+/// textures and shaders.
+pub struct Effect;
+impl BlobKind for Effect {
+    const NAME: &'static str = "og.EffectMaterial";
+    fn schemas() -> Vec<Schema> {
+        vec![EffectMeta::schema()]
     }
 }
 

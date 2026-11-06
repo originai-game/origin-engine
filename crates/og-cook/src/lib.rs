@@ -17,8 +17,8 @@
 #![cfg_attr(windows, feature(windows_by_handle, windows_change_time))]
 
 pub use og_bundle::{
-    anim_codec, format, fx, ktx2, lightmap, look, meshopt_codec, opus, qoa, runtime, scene_text,
-    shader,
+    anim_codec, effect, format, fx, ktx2, lightmap, look, meshopt_codec, opus, qoa, runtime,
+    scene_text, shader,
 };
 
 #[cfg(feature = "cook")]

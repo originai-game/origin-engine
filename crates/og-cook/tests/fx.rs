@@ -225,6 +225,7 @@ fn mesh_lit_distorting_emitters_with_events_and_sub_emitters() {
                 subs.push(id.to_string());
                 Ok(Some(scene.add_emitter(Default::default())))
             },
+            effect: &mut |_| Ok(None),
         },
     )
     .unwrap();
@@ -303,4 +304,53 @@ fn mesh_lit_distorting_emitters_with_events_and_sub_emitters() {
     assert!(errors.contains("at most 4 subEmitter lines"), "{errors}");
     assert!(errors.contains("fx/warp.ogt"), "{errors}");
     assert!(!errors.contains("fx/puff.ogt:"), "{errors}");
+}
+
+/// An effect material (`type effect`) cooks to a blob the runtime parses
+/// back with its texture, and an emitter names it with `effect`; a missing
+/// texture is refused by name.
+#[test]
+fn an_effect_material_cooks_and_an_emitter_names_it() {
+    let png = png();
+    let effect = "type effect\nversion 1\n---\nmain \"textures/noise.png\" red {\n  scroll 0 -0.5\n  polar true\n}\nerosion curve 0 0 1 1\nerosionEdge 0.05 6 2 0.5\nfresnel 2\ncustom 1 random 2 6\n";
+    let emitter = "type particles\nversion 1\n---\neffect \"fx/fire.ogt\"\n";
+    let root = project(
+        "effect",
+        &[
+            ("fx/fire.ogt", effect.as_bytes()),
+            ("fx/flame.ogt", emitter.as_bytes()),
+            ("textures/noise.png", &png),
+        ],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let id = "fx/fire.ogt";
+    let bytes = std::fs::read(root.join("cooked").join(&bundle.output(id).unwrap().file)).unwrap();
+    let text = bundle.effect_text(id, &bytes).unwrap();
+    let mut asked = Vec::new();
+    let m = og_cook::effect::parse_effect(
+        &text,
+        &mut og_cook::effect::EffectLinks {
+            texture: &mut |t| {
+                asked.push(t.to_string());
+                Ok(Some(og_render::TextureHandle::from_bits(2)))
+            },
+            shader: &mut |_| Ok(None),
+        },
+    )
+    .unwrap();
+    assert_eq!(asked, ["textures/noise.png"]);
+    assert!(m.main.uv.polar);
+    assert_eq!(m.main.texture, Some(og_render::TextureHandle::from_bits(2)));
+    assert_eq!(m.custom[0][0], og_render::EffectValue::Random([2.0, 6.0]));
+
+    let missing = project("effect-missing", &[("fx/fire.ogt", effect.as_bytes())]);
+    let report = cook_project(&missing, &CookOptions::default()).unwrap();
+    assert!(!report.ok());
+    assert!(
+        format!("{:?}", report.errors()).contains("textures/noise.png"),
+        "{:?}",
+        report.errors()
+    );
 }

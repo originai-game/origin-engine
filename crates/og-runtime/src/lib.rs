@@ -43,6 +43,7 @@ mod destruction;
 mod determinism;
 mod display;
 mod e6;
+mod effect;
 mod engine;
 mod environment;
 mod extract;

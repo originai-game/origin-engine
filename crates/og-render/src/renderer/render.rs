@@ -268,6 +268,17 @@ impl Renderer {
         for &m in &particle_frame.meshes {
             self.ensure_full(scene, m);
         }
+        // The effect materials particles and strips draw with (effect.rs).
+        {
+            let textures = &self.cache.textures;
+            self.particles.effects.prepare(
+                &self.device,
+                &self.queue,
+                scene.effect_materials(),
+                scene.shaders(),
+                |t| textures.get(t.index()).map(|g| &g.view),
+            )?;
+        }
         // The quality's resolution, where it sets one, over the scene's.
         let ao = post_fx
             .ao
@@ -408,8 +419,12 @@ impl Renderer {
             }
         }
         frame_pipelines(|| {
-            self.particles
-                .ensure_pipelines(&self.device, &particle_frame, self.samples)
+            self.particles.ensure_pipelines(
+                &self.device,
+                &particle_frame,
+                self.samples,
+                scene.shaders(),
+            )
         });
         let fonts = &self.cache.fonts;
         let arrays = &self.cache.texture_arrays;

@@ -20,6 +20,7 @@ use og_render::{
 };
 
 mod crowds;
+mod effect_materials;
 mod models;
 mod particles;
 mod post;
@@ -27,6 +28,7 @@ mod showcase;
 mod sprites;
 
 pub use crowds::*;
+pub use effect_materials::*;
 pub use models::*;
 pub use particles::*;
 pub use post::*;

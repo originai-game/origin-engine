@@ -78,6 +78,8 @@ pub struct RenderScene {
     /// Per mesh: its blendshape targets.
     morphs: Vec<Option<MorphTargets>>,
     emitters: Vec<ParticleEmitter>,
+    /// Effect materials (`effect.rs`), by handle.
+    effect_materials: Vec<crate::EffectMaterial>,
     luts: Vec<ColorLut>,
     /// Per LUT slot, bumped when it is filled again or emptied.
     lut_revisions: Vec<u64>,
@@ -173,6 +175,8 @@ pub struct RenderScene {
     pub trails: Vec<Trail>,
     pub ribbons: Vec<Ribbon>,
     pub beams: Vec<Beam>,
+    /// Meshes drawn with an effect material this frame (`effect.rs`).
+    pub effect_meshes: Vec<crate::EffectMesh>,
     /// Line sets drawn this frame (`lines.rs`): in the scene or over the
     /// finished frame (debug draw, screen lines).
     pub lines: Vec<crate::Lines>,

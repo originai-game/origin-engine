@@ -22,6 +22,7 @@
 //! the `.basis` → KTX2 wrapping og-cook's encoder uses.
 
 pub mod anim_codec;
+pub mod effect;
 pub mod format;
 pub mod fx;
 pub mod ktx2;

@@ -2707,6 +2707,7 @@ pub(crate) fn water_2d_strips(waters: &[Water2d], frame: &mut crate::ribbons::Ri
             points: false,
             first,
             count: frame.vertices.len() as u32 - first,
+            effect: None,
         });
     }
 }

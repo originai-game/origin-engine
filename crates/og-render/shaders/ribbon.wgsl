@@ -8,6 +8,10 @@
 // view's camera draws the same points facing its own eye. `vs` draws
 // vertices built on the CPU: the 2D water's columns, and every strip where
 // the device has no compute (ribbons.rs `Trails::emit`).
+//
+// A 3D run with an effect material (effect.rs; group 3, effect.wgsl and
+// the hook contract prepended) shades through `effect_shade`: its life
+// runs along the strip, its driven values are evaluated per vertex.
 
 @group(1) @binding(0) var ribbon_tex: texture_2d<f32>;
 @group(1) @binding(1) var ribbon_sampler: sampler;
@@ -15,7 +19,7 @@
 struct RibbonIn {
   @location(0) position_v: vec4<f32>,
   @location(1) color: vec4<f32>,
-  @location(2) extra: vec4<f32>,  // x: u, y: 1 when textured
+  @location(2) extra: vec4<f32>,  // x: u, y: 1 when textured, z: life along the strip, w: random bits (24)
 };
 
 struct RibbonOut {
@@ -26,7 +30,24 @@ struct RibbonOut {
   @location(3) world: vec3<f32>,
   // oit.wgsl `oit_key`: the strip's segment (its provoking vertex's).
   @location(4) @interpolate(flat) oit_key: vec2<u32>,
+  // The effect material's driven values (effect.wgsl EffectDriven) and
+  // the strip's own coordinates: life along it, 0 to 1 across.
+  @location(5) fx_a: vec4<f32>,
+  @location(6) fx_b: vec4<f32>,
+  @location(7) fx_c1: vec4<f32>,
+  @location(8) fx_c2: vec4<f32>,
+  @location(9) shape_uv: vec2<f32>,
 };
+
+fn strip_effect(o: ptr<function, RibbonOut>, life: f32, seed: u32, v: f32) {
+  (*o).shape_uv = vec2<f32>(life, v);
+  if (!effect_on()) { return; }
+  let d = effect_driven(life, seed);
+  (*o).fx_a = d.a;
+  (*o).fx_b = d.b;
+  (*o).fx_c1 = d.c1;
+  (*o).fx_c2 = d.c2;
+}
 
 @vertex
 fn vs(r: RibbonIn) -> RibbonOut {
@@ -37,6 +58,7 @@ fn vs(r: RibbonIn) -> RibbonOut {
   o.textured = r.extra.y;
   o.world = r.position_v.xyz;
   o.oit_key = oit_key4(r.position_v, r.color.rgb);
+  strip_effect(&o, r.extra.z, u32(r.extra.w), r.position_v.w);
   return o;
 }
 
@@ -46,8 +68,8 @@ struct StripPoint {
   color: vec4<f32>,
   u: f32,
   flags: u32,          // 1: has a point before, 2: after, 4: textured
-  pad0: u32,
-  pad1: u32,
+  life: f32,           // along the strip, 0 to 1
+  seed: u32,
 };
 
 @group(2) @binding(0) var<storage, read> strip_points: array<StripPoint>;
@@ -97,6 +119,7 @@ fn vs_strip(@builtin(vertex_index) vi: u32) -> RibbonOut {
   o.color = p.color;
   o.textured = select(0.0, 1.0, (p.flags & 4u) != 0u);
   o.world = world;
+  strip_effect(&o, p.life, p.seed, o.uv.y);
   return o;
 }
 
@@ -132,12 +155,32 @@ fn fs_oit_mark(in: RibbonOut) {
 
 fn ribbon_fragment(in: RibbonOut) -> vec4<f32> {
   let tex = textureSample(ribbon_tex, ribbon_sampler, in.uv);
+  let e = 1.0 - abs(in.uv.y * 2.0 - 1.0);
+  let soft = e * e * (3.0 - 2.0 * e);
   var c = in.color;
-  if (in.textured > 0.5) {
+  if (effect_on()) {
+    var f: EffectFragment;
+    f.uv = in.uv;
+    f.shape_uv = in.shape_uv;
+    f.color = in.color;
+    f.shape = soft;
+    f.textured = in.textured;
+    f.world = in.world;
+    // A strip faces the eye: across it the normal turns as a tube's, so
+    // a fresnel fade softens or lights its edges.
+    let across = in.uv.y * 2.0 - 1.0;
+    f.normal = -frame.view_forward.xyz * sqrt(max(1.0 - across * across, 0.0)) + frame.view_right.xyz * across;
+    var d: EffectDriven;
+    d.a = in.fx_a;
+    d.b = in.fx_b;
+    d.c1 = in.fx_c1;
+    d.c2 = in.fx_c2;
+    f.driven = d;
+    c = effect_shade(f, ribbon_tex);
+  } else if (in.textured > 0.5) {
     c *= tex;
   } else {
-    let e = 1.0 - abs(in.uv.y * 2.0 - 1.0);
-    c.a *= e * e * (3.0 - 2.0 * e);
+    c.a *= soft;
   }
   c.a *= fog_keep(in.world);
   if (c.a <= 0.0) { discard; }

@@ -45,6 +45,7 @@ pub const SCENES: &[&str] = &[
     "particles-lit",
     "fx-2d",
     "trails-beams",
+    "effect-materials",
     "decals",
     "decals-many",
     "post-grade",
@@ -755,6 +756,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = fx::fx_2d_scene()?;
             g.frames = 60;
             g.update = Some(fx::tick_update);
+            Ok(())
+        },
+        // Effect materials (effect.rs) on billboards, effect meshes, a
+        // trail, a beam and hooked puffs.
+        "effect-materials" => |g, _| {
+            g.scene = fx::effect_materials_scene();
+            g.frames = 60;
+            g.update = Some(fx::effect_materials_update);
             Ok(())
         },
         "trails-beams" => |g, _| {

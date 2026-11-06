@@ -756,6 +756,7 @@ pub fn og_render_ribbon(world: u32, desc: Option<String>) -> String {
             } else {
                 og_render::ParticleBlend::Additive
             },
+            effect: None,
         });
         Ok(())
     })())

@@ -1051,6 +1051,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             } else {
                 ParticleBlend::Alpha
             },
+            effect: None,
         };
         let key = style_key(&style);
         let handle = match fx.trail_styles.get(&key) {
@@ -1091,6 +1092,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             } else {
                 ParticleBlend::Alpha
             },
+            effect: None,
         });
     }
 }
@@ -1984,6 +1986,7 @@ fn parse_linked(
                 let i = load_emitter(eng, e)?;
                 Ok(eng.render.borrow().fx.emitters.get(i).copied())
             },
+            effect: &mut |id| super::effect::load_effect(eng, id).map(Some),
         },
     )?;
     Ok((emitter, array))

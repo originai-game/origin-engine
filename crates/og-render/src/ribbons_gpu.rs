@@ -24,7 +24,7 @@ use crate::deferred::{Deferred, Sampled};
 use crate::particles::{MAX_CURVE_KEYS, ParticleBlend};
 use crate::ribbons::{
     Beam, MAX_TRAIL_POINTS, Ribbon, RibbonFrame, RibbonRun, StripPoint, Trail, TrailStyle,
-    fixed_strips, life_ticks, strip_points, trail_layer,
+    fixed_strips, life_ticks, strip_points, strip_seed, trail_layer,
 };
 use crate::scene::TextureHandle;
 use glam::Vec3;
@@ -47,7 +47,8 @@ struct JobGpu {
     style: u32,
     out_first: u32,
     out_count: u32,
-    pad: u32,
+    /// The trail's random bits (an effect material's random values).
+    seed: u32,
 }
 
 /// `struct Style` in trails.wgsl.
@@ -347,8 +348,15 @@ impl GpuTrails {
             Trail(usize),
             Points(crate::ribbons::Strip),
         }
-        let mut entries: Vec<(Option<i32>, Option<TextureHandle>, ParticleBlend, Body)> =
-            Vec::new();
+        // Layer, texture, blend and effect: the draw's key, then its body.
+        type Entry = (
+            Option<i32>,
+            Option<TextureHandle>,
+            ParticleBlend,
+            Option<crate::EffectMaterialHandle>,
+            Body,
+        );
+        let mut entries: Vec<Entry> = Vec::new();
         let mut jobs: Vec<JobGpu> = Vec::new();
         for t in trails {
             let style = styles
@@ -388,6 +396,7 @@ impl GpuTrails {
                 trail_layer(trail_layers, t.id),
                 style.texture,
                 style.blend,
+                style.effect,
                 Body::Trail(jobs.len()),
             ));
             jobs.push(JobGpu {
@@ -400,7 +409,7 @@ impl GpuTrails {
                 style: t.style.index() as u32,
                 out_first: 0,
                 out_count: cap + 1,
-                pad: 0,
+                seed: strip_seed(t.id),
             });
         }
         let frame = self.frame;
@@ -413,14 +422,14 @@ impl GpuTrails {
             keep
         });
         for s in fixed_strips(ribbons, beams, tick, tick_rate) {
-            entries.push((s.layer, s.texture, s.blend, Body::Points(s)));
+            entries.push((s.layer, s.texture, s.blend, s.effect, Body::Points(s)));
         }
         // Grouped by (texture, blend) for one draw each, layered strips
         // after the 3D ones by layer (as `Trails::build` sorts them).
-        og_core::sort::sort_by_key(&mut entries, |e| (e.0, e.1, e.2 as u8));
+        og_core::sort::sort_by_key(&mut entries, |e| (e.0, e.1, e.2 as u8, e.3));
         let mut out = RibbonFrame::default();
         let mut points: Vec<StripPoint> = Vec::new();
-        for (layer, texture, blend, body) in &entries {
+        for (layer, texture, blend, effect, body) in &entries {
             let first = points.len() as u32;
             match body {
                 Body::Trail(j) => {
@@ -434,7 +443,12 @@ impl GpuTrails {
             out.strips += 1;
             out.segments += count - 1;
             match out.runs.last_mut() {
-                Some(r) if r.texture == *texture && r.blend == *blend && r.layer == *layer => {
+                Some(r)
+                    if r.texture == *texture
+                        && r.blend == *blend
+                        && r.layer == *layer
+                        && r.effect == *effect =>
+                {
                     r.count += count
                 }
                 _ => out.runs.push(RibbonRun {
@@ -444,6 +458,7 @@ impl GpuTrails {
                     points: true,
                     first,
                     count,
+                    effect: *effect,
                 }),
             }
         }

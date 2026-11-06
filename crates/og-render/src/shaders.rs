@@ -188,7 +188,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     add("cookie", crate::area::cookie_source());
     add(
         "particles",
-        crate::particles_gpu::draw_source(&crate::fluid_shared_source()),
+        crate::particles_gpu::draw_source(&crate::fluid_shared_source(), None),
     );
     for (label, wgsl) in crate::post::post_sources() {
         add(label, wgsl);

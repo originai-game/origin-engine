@@ -41,6 +41,9 @@ pub struct TrailStyle {
     pub texture: Option<TextureHandle>,
     pub uv: RibbonUv,
     pub blend: ParticleBlend,
+    /// An effect material drawing the strip ([`crate::EffectMaterial`]):
+    /// its life runs from the head (0) to the tail (1).
+    pub effect: Option<crate::EffectMaterialHandle>,
 }
 
 impl Default for TrailStyle {
@@ -53,6 +56,7 @@ impl Default for TrailStyle {
             texture: None,
             uv: RibbonUv::Stretch,
             blend: ParticleBlend::Additive,
+            effect: None,
         }
     }
 }
@@ -94,6 +98,9 @@ pub struct Ribbon {
     pub texture: Option<TextureHandle>,
     pub uv: RibbonUv,
     pub blend: ParticleBlend,
+    /// An effect material drawing it: its life runs from the first point
+    /// (0) to the last (1).
+    pub effect: Option<crate::EffectMaterialHandle>,
 }
 
 /// A strip between two points whose texture scrolls along it.
@@ -115,6 +122,9 @@ pub struct Beam {
     pub jitter: f32,
     pub seed: u64,
     pub blend: ParticleBlend,
+    /// An effect material drawing it: its life runs from `start` (0) to
+    /// `end` (1), its random value from `seed`.
+    pub effect: Option<crate::EffectMaterialHandle>,
 }
 
 impl Default for Beam {
@@ -131,6 +141,7 @@ impl Default for Beam {
             jitter: 0.0,
             seed: 0,
             blend: ParticleBlend::Additive,
+            effect: None,
         }
     }
 }
@@ -141,7 +152,8 @@ impl Default for Beam {
 pub(crate) struct RibbonVertex {
     position_v: [f32; 4],
     color: [f32; 4],
-    /// x: u, y: 1 when textured.
+    /// x: u, y: 1 when textured, z: the life along the strip, w: its
+    /// random bits (24, exact in a float).
     extra: [f32; 4],
 }
 
@@ -183,6 +195,8 @@ pub(crate) struct RibbonRun {
     pub points: bool,
     pub first: u32,
     pub count: u32,
+    /// The effect material the run draws with (`effect.rs`).
+    pub effect: Option<crate::EffectMaterialHandle>,
 }
 
 /// The points a trail remembers at most: a lifetime past this many ticks
@@ -219,7 +233,11 @@ pub(crate) struct StripPoint {
     pub u: f32,
     /// [`POINT_PREV`], [`POINT_NEXT`], [`POINT_TEXTURED`]; 0: no segment.
     pub flags: u32,
-    pub pad: [u32; 2],
+    /// Its life along the strip for an effect material: 0 at the first
+    /// point (a trail's head), 1 at the last.
+    pub life: f32,
+    /// The strip's random bits (an effect material's random values).
+    pub seed: u32,
 }
 
 /// `s` as strip points: u along its length (or its tiles) from the first
@@ -251,7 +269,8 @@ pub(crate) fn strip_points(s: &Strip, out: &mut Vec<StripPoint>) {
             color: p.color,
             u,
             flags,
-            pad: [0; 2],
+            life: l / total,
+            seed: s.seed,
         });
     }
 }
@@ -290,6 +309,9 @@ pub(crate) struct Strip {
     pub points: Vec<RibbonPoint>,
     /// Added to u (beam scroll).
     pub u_offset: f32,
+    pub effect: Option<crate::EffectMaterialHandle>,
+    /// Its random bits for an effect material (24 bits: they ride a float).
+    pub seed: u32,
 }
 
 impl Trails {
@@ -401,6 +423,8 @@ impl Trails {
                 uv: style.uv,
                 points,
                 u_offset: 0.0,
+                effect: style.effect,
+                seed: strip_seed(t.id),
             });
         }
         let frame = self.frame;
@@ -408,7 +432,9 @@ impl Trails {
         strips.extend(fixed_strips(ribbons, beams, tick, tick_rate));
         // Group by (texture, blend) for one draw each.
         // (Layered strips after the 3D ones, by layer: each is its own run.)
-        og_core::sort::sort_by_key(&mut strips, |s| (s.layer, s.texture, s.blend as u8));
+        og_core::sort::sort_by_key(&mut strips, |s| {
+            (s.layer, s.texture, s.blend as u8, s.effect)
+        });
         self.strips = strips;
         Ok(self.emit(eye, forward, orthographic))
     }
@@ -428,7 +454,12 @@ impl Trails {
             out.strips += 1;
             out.segments += count / 6;
             match out.runs.last_mut() {
-                Some(r) if r.texture == s.texture && r.blend == s.blend && r.layer == s.layer => {
+                Some(r)
+                    if r.texture == s.texture
+                        && r.blend == s.blend
+                        && r.layer == s.layer
+                        && r.effect == s.effect =>
+                {
                     r.count += count
                 }
                 _ => out.runs.push(RibbonRun {
@@ -438,6 +469,7 @@ impl Trails {
                     points: false,
                     first,
                     count,
+                    effect: s.effect,
                 }),
             }
         }
@@ -462,6 +494,8 @@ pub(crate) fn fixed_strips(
             uv: r.uv,
             points: r.points.clone(),
             u_offset: 0.0,
+            effect: r.effect,
+            seed: 0,
         });
     }
     let time = tick as f32 / tick_rate;
@@ -500,9 +534,17 @@ pub(crate) fn fixed_strips(
             },
             points,
             u_offset: -time * b.scroll,
+            effect: b.effect,
+            seed: hash_seed(b.seed) & 0x00ff_ffff,
         });
     }
     strips
+}
+
+/// A trail's random bits from its id (24 bits: they ride a float in the
+/// CPU path's vertices).
+pub(crate) fn strip_seed(id: u64) -> u32 {
+    hash_seed(id) & 0x00ff_ffff
 }
 
 fn cumulative(points: &[Vec3]) -> Vec<f32> {
@@ -545,24 +587,26 @@ fn emit_strip(
         } + s.u_offset;
         (p - side, p + side, u)
     };
-    let vertex = |p: Vec3, v: f32, u: f32, c: [f32; 4]| RibbonVertex {
+    let seed = s.seed as f32;
+    let vertex = |p: Vec3, v: f32, u: f32, c: [f32; 4], life: f32| RibbonVertex {
         position_v: p.extend(v).to_array(),
         color: c,
-        extra: Vec4::new(u, textured, 0.0, 0.0).to_array(),
+        extra: Vec4::new(u, textured, life, seed).to_array(),
     };
     let mut previous = edge(0);
     for i in 1..n {
         let current = edge(i);
         let (c0, c1) = (s.points[i - 1].color, s.points[i].color);
+        let (l0, l1) = (lengths[i - 1] / total, lengths[i] / total);
         let (a0, b0, u0) = previous;
         let (a1, b1, u1) = current;
         out.extend_from_slice(&[
-            vertex(a0, 0.0, u0, c0),
-            vertex(b0, 1.0, u0, c0),
-            vertex(b1, 1.0, u1, c1),
-            vertex(a0, 0.0, u0, c0),
-            vertex(b1, 1.0, u1, c1),
-            vertex(a1, 0.0, u1, c1),
+            vertex(a0, 0.0, u0, c0, l0),
+            vertex(b0, 1.0, u0, c0, l0),
+            vertex(b1, 1.0, u1, c1, l1),
+            vertex(a0, 0.0, u0, c0, l0),
+            vertex(b1, 1.0, u1, c1, l1),
+            vertex(a1, 0.0, u1, c1, l1),
         ]);
         previous = current;
     }

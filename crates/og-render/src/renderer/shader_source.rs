@@ -240,7 +240,11 @@ pub(crate) fn sprite_source() -> String {
 
 /// The strips' module (alpha strips join the order-independent passes).
 pub(crate) fn ribbon_source() -> String {
-    format!("{FRAME_WGSL}{OIT_WGSL}{ARENA_WGSL}{RIBBON_WGSL}")
+    format!(
+        "{FRAME_WGSL}{OIT_WGSL}{ARENA_WGSL}{}{}{RIBBON_WGSL}",
+        crate::effect::EFFECT_WGSL,
+        crate::effect::hooks_source(None)
+    )
 }
 
 /// The shadow pass slot of the weather occlusion map (weather.rs

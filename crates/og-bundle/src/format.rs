@@ -26,6 +26,7 @@
 //! | scene (`og.Scene`) | [`SceneMeta`] | `entities` [`EntityRow`], `refs` [`RefRow`], `components` [`ComponentRow`], `strings`, per component `c.<Type>` rows and `s.<Type>` its schema JSON; when an entity was placed from a prefab, `prefabs` [`PrefabRow`] and `prefab_refs` [`RefRow`]; when one places a sub-scene, `subscenes` [`SubsceneRow`] and `subscene_refs` [`RefRow`]. A prefab (an `.ogt` of `type prefab`) cooks to one too, flattened |
 //! | colour LUT (`og.Lut`, a `.cube`) | [`LutMeta`] | `rgba` (size³ RGBA8, red fastest) |
 //! | particle emitter (`og.ParticleEmitter`, an `.ogt` of `type particles`) | [`EmitterMeta`] | `text` (the validated emitter file) |
+//! | effect material (`og.EffectMaterial`, an `.ogt` of `type effect`) | [`EffectMeta`] | `text` (the validated effect file) |
 //! | UI style (`og.UiStyle`, an `.ogt` of `type style`) | [`StyleMeta`] | `text` (the validated style file) |
 //! | UI document (`og.UiDocument`, an `.ogt` of `type screen` or `type component`) | [`DocumentMeta`] | `text` (the validated document) |
 //! | material shader (`og.MaterialShader`, an `.ogt` of `type shader`) | [`ShaderMeta`] | `text` (the canonical shader file, code inlined) |
@@ -119,6 +120,7 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
         UiMaterial,
         Vector,
         Emitter,
+        Effect,
         Tileset,
         Tilemap,
         Flipbook,

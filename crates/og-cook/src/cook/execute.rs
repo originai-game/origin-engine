@@ -297,6 +297,10 @@ pub(super) fn run(
                         check(id);
                         Ok(None)
                     },
+                    effect: &mut |id| {
+                        check(id);
+                        Ok(None)
+                    },
                 },
             )
             .map_err(CookError)?;
@@ -596,6 +600,7 @@ pub(super) fn run(
         Work::Terrain(s) => terrain::cook_terrain(s, &|id| known.contains(id), p.stamp),
         Work::Fracture(s) => Ok(fracture::cook(s, p.stamp)),
         Work::Timeline(s) => timeline::cook_timeline(s, &|id| known.contains(id), p.stamp),
+        Work::Effect(s) => effect::cook_effect(s, &|id| known.contains(id), p.stamp),
         Work::Lightmap(s) => lightmap::cook_lightmap(s, p.stamp),
         Work::Environment(s) => environment::cook_environment(s, p.stamp),
         Work::Look(s) => look::cook_look(s, &assets_root(s), &|id| known.contains(id), p.stamp),

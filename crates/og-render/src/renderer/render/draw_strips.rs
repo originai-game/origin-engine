@@ -52,6 +52,7 @@ impl Renderer {
                 run.points,
                 run.first,
                 run.count,
+                run.effect,
             );
             draws += 1;
         }
@@ -72,7 +73,11 @@ impl Renderer {
         points: bool,
         first: u32,
         count: u32,
+        // The effect material it draws with (effect.rs).
+        effect: Option<crate::EffectMaterialHandle>,
     ) {
+        let (group, offset) = self.particles.effects.bind(effect);
+        pass.set_bind_group(3, group, &[offset]);
         let alpha = usize::from(blend != ParticleBlend::Additive as u8);
         let gpu = self.gpu_trails.as_ref().filter(|_| points);
         pass.set_pipeline(match (pipeline, gpu) {
@@ -97,6 +102,7 @@ impl Renderer {
                 pass.draw(first * 6..(first + count) * 6, 0..1);
             }
             None => {
+                pass.set_bind_group(2, &self.particles.effects.empty_group, &[]);
                 let stride = std::mem::size_of::<ribbons::RibbonVertex>() as u64;
                 let start = first as u64 * stride;
                 pass.set_vertex_buffer(

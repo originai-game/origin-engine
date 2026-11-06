@@ -19,7 +19,7 @@ struct Job {
   style: u32,
   out_first: u32,
   out_count: u32,
-  pad: u32,
+  seed: u32,           // the trail's random bits (an effect material's)
 };
 
 struct Style {
@@ -43,8 +43,8 @@ struct StripPoint {
   color: vec4<f32>,
   u: f32,
   flags: u32,          // 1: has a point before, 2: after, 4: textured
-  pad0: u32,
-  pad1: u32,
+  life: f32,           // 0 at the head, 1 at the tail (an effect material's life)
+  seed: u32,
 };
 
 @group(0) @binding(0) var<storage, read> jobs: array<Job>;
@@ -108,7 +108,7 @@ fn write_point(job: Job, s: Style, o: u32, p: vec3<f32>, along: f32, total: f32,
   if (s.tile > 0.0) {
     u = along / s.tile;
   }
-  points[job.out_first + o] = StripPoint(p, width_at(s, f), color_at(s, f), u, flags, 0u, 0u);
+  points[job.out_first + o] = StripPoint(p, width_at(s, f), color_at(s, f), u, flags, f, job.seed);
 }
 
 @compute @workgroup_size(64)
@@ -195,6 +195,6 @@ fn advance(@builtin(global_invocation_id) id: vec3<u32>) {
   }
   // The rest of the trail's range draws nothing.
   for (; o < job.out_count; o++) {
-    points[job.out_first + o] = StripPoint(vec3<f32>(0.0), 0.0, vec4<f32>(0.0), 0.0, 0u, 0u, 0u);
+    points[job.out_first + o] = StripPoint(vec3<f32>(0.0), 0.0, vec4<f32>(0.0), 0.0, 0u, 0.0, 0u);
   }
 }

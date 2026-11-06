@@ -10,6 +10,13 @@
 // vertices beside the particle as instance data); `fs_distort` draws a
 // billboard as the opaque scene behind it, shifted (heat haze), from the
 // main pass's scene copy.
+//
+// An emitter with an effect material (effect.rs; group 3, effect.wgsl and
+// the hook contract prepended) shades through `effect_shade` instead of
+// its fixed look; its driven values are evaluated per vertex. A mesh
+// particle whose emitter.look.z is 2 is an effect mesh (effect.rs
+// EffectMesh): placed whole by the entry's transform, its life the
+// particle's.
 
 @group(1) @binding(0) var sprite_tex: texture_2d<f32>;
 @group(1) @binding(1) var sprite_sampler: sampler;
@@ -41,7 +48,34 @@ struct ParticleOut {
   @location(6) facing: vec2<f32>,
   // oit.wgsl `oit_key`: the particle and which of its triangles.
   @location(7) @interpolate(flat) oit_key: vec2<u32>,
+  // The effect material's driven values (effect.wgsl EffectDriven) and
+  // the surface's own 0 to 1 coordinates.
+  @location(8) @interpolate(flat) fx_a: vec4<f32>,
+  @location(9) @interpolate(flat) fx_b: vec4<f32>,
+  @location(10) @interpolate(flat) fx_c1: vec4<f32>,
+  @location(11) @interpolate(flat) fx_c2: vec4<f32>,
+  @location(12) shape_uv: vec2<f32>,
 };
+
+// A particle's effect inputs: its driven values at life `t`, from its
+// random value (misc.w) as bits.
+fn particle_effect(o: ptr<function, ParticleOut>, t: f32, random: f32) {
+  if (!effect_on()) { return; }
+  let d = effect_driven(t, u32(random * 16777216.0) ^ (emitter.info.y * 2246822519u));
+  (*o).fx_a = d.a;
+  (*o).fx_b = d.b;
+  (*o).fx_c1 = d.c1;
+  (*o).fx_c2 = d.c2;
+}
+
+fn particle_driven(in: ParticleOut) -> EffectDriven {
+  var d: EffectDriven;
+  d.a = in.fx_a;
+  d.b = in.fx_b;
+  d.c1 = in.fx_c1;
+  d.c2 = in.fx_c2;
+  return d;
+}
 
 @vertex
 fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
@@ -97,6 +131,8 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
   let row = floor(f / columns);
   o.uv = vec2<f32>((col + c.x + 0.5) / columns, (row + 0.5 - c.y) / rows);
   o.local = c;
+  o.shape_uv = vec2<f32>(c.x + 0.5, 0.5 - c.y);
+  particle_effect(&o, t, p.misc.w);
   o.color = color_curve(emitter, t) * emitter.color;
   o.depth = dot(world - view.cam_pos.xyz, view.cam_forward.xyz);
   o.world = world;
@@ -175,6 +211,7 @@ struct MeshIn {
   @location(5) position: vec3<f32>,
   @location(6) normal: vec3<f32>,
   @location(7) color: vec4<f32>,
+  @location(8) uv: vec2<f32>,
 };
 
 // Rotates `v` by `angle` about the unit `axis` (Rodrigues).
@@ -203,7 +240,12 @@ fn vs_mesh(p: ParticleIn, m: MeshIn) -> ParticleOut {
   var pos = m.position * size;
   var nrm = m.normal;
   let speed = length(vel);
-  if (emitter.render.x > 0.5 && speed > 1e-4) {
+  if (emitter.look.z > 1.5) {
+    // An effect mesh: the entry's transform places it whole.
+    center = (emitter.transform * vec4<f32>(m.position, 1.0)).xyz;
+    pos = vec3<f32>(0.0);
+    nrm = (emitter.transform * vec4<f32>(m.normal, 0.0)).xyz;
+  } else if (emitter.render.x > 0.5 && speed > 1e-4) {
     // +y along the velocity, stretched by the speed.
     let y = vel / speed;
     var x = cross(y, vec3<f32>(0.0, 0.0, 1.0));
@@ -223,8 +265,10 @@ fn vs_mesh(p: ParticleIn, m: MeshIn) -> ParticleOut {
   }
   let world = center + pos;
   o.clip = frame.view_proj * vec4<f32>(world, 1.0);
-  o.uv = vec2<f32>(0.5);
+  o.uv = m.uv;
   o.local = vec2<f32>(0.0);
+  o.shape_uv = m.uv;
+  particle_effect(&o, t, p.misc.w);
   o.color = color_curve(emitter, t) * emitter.color * m.color;
   o.depth = dot(world - view.cam_pos.xyz, view.cam_forward.xyz);
   o.world = world;
@@ -232,8 +276,41 @@ fn vs_mesh(p: ParticleIn, m: MeshIn) -> ParticleOut {
   return o;
 }
 
+// The scene's view depth behind a fragment minus its own, through the
+// soft distance (1 where the emitter has none).
+fn particle_soft(in: ParticleOut) -> f32 {
+  if (emitter.render.z <= 0.0) { return 1.0; }
+  // Clamped: a pass without a depth of its own binds a 1x1 far plane.
+  let at = min(vec2<i32>(in.clip.xy), vec2<i32>(textureDimensions(scene_depth)) - vec2<i32>(1));
+  let scene = textureLoad(scene_depth, at, 0).r;
+  return clamp((scene - in.depth) / emitter.render.z, 0.0, 1.0);
+}
+
+// The effect material's colour for a particle fragment (`shape` its
+// untextured falloff).
+fn particle_effect_color(in: ParticleOut, shape: f32, normal: vec3<f32>) -> vec4<f32> {
+  var f: EffectFragment;
+  f.uv = in.uv;
+  f.shape_uv = in.shape_uv;
+  f.color = in.color;
+  f.shape = shape;
+  f.textured = emitter.sheet2.y;
+  f.world = in.world;
+  f.normal = normal;
+  f.driven = particle_driven(in);
+  return effect_shade(f, sprite_tex);
+}
+
 @fragment
 fn fs_mesh(in: ParticleOut) -> @location(0) vec4<f32> {
+  if (effect_on()) {
+    var c = particle_effect_color(in, 1.0, in.normal);
+    c.a *= particle_soft(in);
+    c = vec4<f32>(apply_fog(c.rgb, in.world), c.a);
+    if (c.a <= 0.0) { discard; }
+    if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
+    return c;
+  }
   var c = in.color;
   if (emitter.look.x > 0.5 && emitter.look.w < 1.0) {
     c = particle_gloss(in.clip.xy, in.world, normalize(in.normal), c, emitter.look.w);
@@ -314,23 +391,22 @@ fn fs_oit_mark(in: ParticleOut) {
 
 fn particle_fragment(in: ParticleOut) -> vec4<f32> {
   let tex = textureSample(sprite_tex, sprite_sampler, in.uv);
+  // No texture: a soft round dot.
+  let dot_d = clamp(1.0 - length(in.local) * 2.0, 0.0, 1.0);
   var c = in.color;
-  if (emitter.sheet2.y > 0.5) {
+  if (effect_on()) {
+    // A billboard faces the eye: its normal turns out towards its rim,
+    // so a fresnel fade reads it as a soft ball.
+    c = particle_effect_color(in, dot_d * dot_d, ball_normal(in.facing));
+  } else if (emitter.sheet2.y > 0.5) {
     c *= tex;
   } else {
-    // No texture: a soft round dot.
-    let d = clamp(1.0 - length(in.local) * 2.0, 0.0, 1.0);
-    c.a *= d * d;
+    c.a *= dot_d * dot_d;
   }
   if (emitter.look.x > 0.5) {
     c = vec4<f32>(c.rgb * particle_light(in.clip.xy, in.world, ball_normal(in.facing)), c.a);
   }
-  if (emitter.render.z > 0.0) {
-    // Clamped: a pass without a depth of its own binds a 1x1 far plane.
-    let at = min(vec2<i32>(in.clip.xy), vec2<i32>(textureDimensions(scene_depth)) - vec2<i32>(1));
-    let scene = textureLoad(scene_depth, at, 0).r;
-    c.a *= clamp((scene - in.depth) / emitter.render.z, 0.0, 1.0);
-  }
+  c.a *= particle_soft(in);
   c.a *= fog_keep(in.world);
   if (c.a <= 0.0) { discard; }
   if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }

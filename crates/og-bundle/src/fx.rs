@@ -59,6 +59,8 @@
 //!                                   #   instead of `texture`, a layer per particle:
 //!                                   #   [<layers>] [off | life <cycles> | fps <n> | random]
 //! round false                       # sprite mode: the soft dot's round edge over the texture or layer
+//! effect "fx/fire.ogt"              # an effect material (`type effect`, og_bundle::effect) the
+//!                                   #   billboards or meshes draw with, over the texture and curves
 //! ```
 //!
 //! `array` names a texture array's asset id and picks each particle's layer
@@ -104,6 +106,8 @@ pub struct EmitterLinks<'a> {
     pub array: &'a mut dyn FnMut(&str) -> Result<Option<TextureArrayHandle>, String>,
     pub mesh: &'a mut dyn FnMut(ParticleMesh<'_>) -> Result<Option<MeshHandle>, String>,
     pub emitter: &'a mut dyn FnMut(&str) -> Result<Option<EmitterHandle>, String>,
+    /// An `effect` line's effect material (`type effect`).
+    pub effect: &'a mut dyn FnMut(&str) -> Result<Option<og_render::EffectMaterialHandle>, String>,
 }
 
 /// The `.ogt` type of an emitter file.
@@ -187,6 +191,7 @@ pub fn emitter_references(text: &str) -> Vec<String> {
                     "texture" | "array" => e.values.first(),
                     "render" => e.values.get(1),
                     "subEmitter" => e.values.get(1),
+                    "effect" => e.values.first(),
                     _ => None,
                 })
                 .filter_map(|v| v.as_str().map(str::to_string))
@@ -220,6 +225,7 @@ pub fn parse_emitter_with(
             array,
             mesh: &mut |_| Ok(None),
             emitter: &mut |_| Ok(None),
+            effect: &mut |_| Ok(None),
         },
     )
 }
@@ -234,6 +240,7 @@ pub fn parse_emitter_linked(
         array,
         mesh,
         emitter,
+        effect,
     } = links;
     let doc = Document::parse(text).map_err(|e| e.to_string())?;
     if doc.ty != EMITTER_TYPE {
@@ -624,6 +631,14 @@ pub fn parse_emitter_linked(
                     .first()
                     .and_then(Value::as_bool)
                     .ok_or_else(|| format!("line {line}: round true | false"))?
+            }
+            "effect" => {
+                let id = e
+                    .values
+                    .first()
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| format!("line {line}: effect \"<effect asset id>\""))?;
+                em.effect = effect(id).map_err(|r| format!("line {line}: effect {id}: {r}"))?;
             }
             other => return Err(format!("line {line}: unknown emitter setting `{other}`")),
         }

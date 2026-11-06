@@ -23,6 +23,7 @@ pub mod conform;
 pub use conform::{ConformAction, ConformEntry};
 pub mod cube_source;
 mod e6;
+mod effect;
 mod environment;
 mod fbx;
 mod flipbook;
@@ -113,6 +114,7 @@ enum Kind {
     Prefab,
     Lut,
     Emitter,
+    Effect,
     Style,
     Document,
     Tileset,
@@ -152,6 +154,7 @@ impl Kind {
             Kind::Prefab => "prefab",
             Kind::Lut => "lut",
             Kind::Emitter => "emitter",
+            Kind::Effect => "effect",
             Kind::Style => "style",
             Kind::Document => "document",
             Kind::Tileset => "tileset",
@@ -280,6 +283,7 @@ enum Work<'a> {
     SoundChunk(&'a Source, u32, u32),
     Lut(&'a Source),
     Emitter(&'a Source),
+    Effect(&'a Source),
     Style(&'a Source),
     Document(&'a Source),
     Tileset(&'a Source),
@@ -1262,6 +1266,15 @@ pub fn cook_project_with_texture_cache(
                     .collect();
                 let st = stamp(&[b"emitter", &hash, refs.join("\n").as_bytes()]);
                 outs.push((s.rel.clone(), format::Emitter::NAME, st, Work::Emitter(s)));
+            }
+            Kind::Effect => {
+                let text = String::from_utf8_lossy(&s.bytes);
+                let refs: Vec<String> = og_bundle::effect::effect_references(&text)
+                    .into_iter()
+                    .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
+                    .collect();
+                let st = stamp(&[b"effect", &hash, refs.join("\n").as_bytes()]);
+                outs.push((s.rel.clone(), format::Effect::NAME, st, Work::Effect(s)));
             }
             Kind::Shader => {
                 // The stamp covers the WGSL file the shader names.

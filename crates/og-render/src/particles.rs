@@ -483,6 +483,12 @@ pub struct ParticleEmitter {
     /// system in its tick ([`CpuParticles::advance`]) and the renderer
     /// draws that simulation as it stands ([`crate::RenderScene::hosted_particles`]).
     pub events: Vec<ParticleEventKind>,
+    /// An effect material ([`crate::EffectMaterial`]) the particles are
+    /// drawn with, over their texture and curves: billboards, velocity
+    /// stretched and mesh particles (not distortion or sprite mode). A
+    /// mesh particle with one is drawn as an effect mesh: blended, no
+    /// depth written, both faces when the material is double sided.
+    pub effect: Option<crate::EffectMaterialHandle>,
 }
 
 impl Default for ParticleEmitter {
@@ -525,6 +531,7 @@ impl Default for ParticleEmitter {
             distortion: 0.0,
             sub_emitters: Vec::new(),
             events: Vec::new(),
+            effect: None,
         }
     }
 }

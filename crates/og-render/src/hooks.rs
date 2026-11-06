@@ -221,6 +221,16 @@ const HOOK_STRUCT: &str = "struct Hook {
 // The fragment's facing (+1 front, -1 back), set by the fragment entry points
 // that know it; 1 elsewhere (vertex stages, shadow passes).
 var<private> hook_front: f32 = 1.0;
+// An effect material's inputs (effect.rs), set before its hook runs: the
+// surface's life (0 to 1) and random value (0 to 1), and its custom data.
+// 0 in a lit material and a sprite.
+var<private> hook_effect: vec2<f32>;
+var<private> hook_custom1: vec4<f32>;
+var<private> hook_custom2: vec4<f32>;
+fn effect_life() -> f32 { return hook_effect.x; }
+fn effect_random() -> f32 { return hook_effect.y; }
+fn effect_custom1() -> vec4<f32> { return hook_custom1; }
+fn effect_custom2() -> vec4<f32> { return hook_custom2; }
 ";
 
 const DEFAULT_HOOKS: [&str; 4] = [
@@ -247,6 +257,21 @@ pub(crate) fn hooks_section(params: &[ShaderParam], code: &str) -> String {
 /// `material` uniform with `custom` and `previous_custom` takes (the
 /// sprite module, `sprite_hooks.rs`).
 pub(crate) fn hook_functions(params: &[ShaderParam], code: &str) -> String {
+    hook_functions_from(params, code, "material.custom", "material.previous_custom")
+}
+
+/// The one hook contract every kind of draw takes (lit materials, sprites,
+/// effect materials): the `Hook` and `Params` structs, the effect inputs,
+/// `shader_params()` and `previous_shader_params()` reading `Params` from
+/// the arrays `current` and `previous`, the snippet and the built-in hooks
+/// it leaves out. An effect draw reads both from its entry's parameters
+/// (`effect.rs`).
+pub(crate) fn hook_functions_from(
+    params: &[ShaderParam],
+    code: &str,
+    current: &str,
+    previous: &str,
+) -> String {
     let mut s = String::from("// Material shader hooks (hooks.rs).\n");
     s.push_str(HOOK_STRUCT);
     s.push_str("struct Params {\n");
@@ -258,13 +283,13 @@ pub(crate) fn hook_functions(params: &[ShaderParam], code: &str) -> String {
     }
     s.push_str("};\n");
     for (function, field) in [
-        ("shader_params", "custom"),
-        ("previous_shader_params", "previous_custom"),
+        ("shader_params", current),
+        ("previous_shader_params", previous),
     ] {
         s.push_str(&format!("fn {function}() -> Params {{\n  var p: Params;\n"));
         for (i, p) in params.iter().enumerate() {
             s.push_str(&format!(
-                "  p.{} = material.{field}[{i}]{};\n",
+                "  p.{} = {field}[{i}]{};\n",
                 p.name,
                 p.kind.swizzle()
             ));

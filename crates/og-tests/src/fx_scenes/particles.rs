@@ -604,6 +604,7 @@ pub fn trails_scene() -> RenderScene {
         texture: None,
         uv: RibbonUv::Stretch,
         blend: ParticleBlend::Additive,
+        effect: None,
     });
     // Pylons, a laser and a lightning arc.
     let pylon = scene.add_mesh(shapes::cuboid(Vec3::new(0.3, 2.4, 0.3)));
