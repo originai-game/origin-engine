@@ -225,8 +225,10 @@ export function useInput(read: (world: World, seat: number, input: SeatInput) =>
  * The touch controls of a seat, and what they hold. Alone: the move bottom
  * left, the look and buttons bottom right. Local: each seat one column in
  * its own bottom corner (seat 0 left, seat 1 right), buttons over the move.
+ * A button's word is the game's `hud.<name>` string when its tables have
+ * one (og-i18n §1), else the control's label.
  */
-function touch(seat: number): TouchInput {
+function touch(world: World, seat: number): TouchInput {
   if (ownTouch) return ownTouch(seat);
   const out = { x: 0, y: 0, lx: 0, ly: 0, buttons: 0 };
   const size = LOCAL ? 112 : 132;
@@ -249,7 +251,7 @@ function touch(seat: number): TouchInput {
       out.ly = -s.y * 2.5;
     }
     pressable.forEach((b, i) => {
-      if (og.ui.actionButton(b.name, b.label, { size: i === 0 ? (LOCAL ? 64 : 76) : LOCAL ? 52 : 60, primary: i === 0 }).pressed) out.buttons |= bit(b.name);
+      if (og.ui.actionButton(b.name, og.i18n.has(world, `hud.${b.name}`) ? og.i18n.t(world, `hud.${b.name}`) : b.label, { size: i === 0 ? (LOCAL ? 64 : 76) : LOCAL ? 52 : 60, primary: i === 0 }).pressed) out.buttons |= bit(b.name);
     });
   };
   const some = pressable.length > 0 || controls.aim === "look";
@@ -313,7 +315,7 @@ export const Seats = defineSystem(
         });
         if (og.input.actionPressed(world, name("pause", local))) buttons |= PAUSE;
         if (fingers) {
-          const t = touch(local);
+          const t = touch(world, local);
           x = clamp(x + t.x);
           y = clamp(y + t.y);
           aimX += t.lx;

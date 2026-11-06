@@ -104,12 +104,17 @@ function localesRoot(): string {
 }
 
 /** How a starter loads its tables: one line in start, a LANGUAGES list, or nothing (creation.ts loads them). */
-type Loader = { kind: "line"; file: string } | { kind: "list"; ui: string; main: string } | { kind: "none" };
+type Loader = { kind: "line"; files: string[] } | { kind: "list"; ui: string; main: string } | { kind: "none" };
 
 function loaderOf(dir: string, entry: string): Loader {
   const main = join(dir, entry);
   const code = readFileSync(main, "utf8");
-  if (/^\s*must\(og\.i18n\.load\(world, "strings\/en\.ogt"\)\);$/m.test(code)) return { kind: "line", file: main };
+  // Every module beside the entry that loads the base table (a starter with two modes, as game-2d's courtyard, has a start each).
+  const line = /^\s*must\(og\.i18n\.load\(world, "strings\/en\.ogt"\)\);$/m;
+  if (line.test(code)) {
+    const others = readdirSync(dirname(main)).filter((f) => f.endsWith(".ts")).map((f) => join(dirname(main), f)).filter((f) => f !== main && line.test(readFileSync(f, "utf8"))).sort();
+    return { kind: "line", files: [main, ...others] };
+  }
   // The LANGUAGES list lives in the module that draws the settings: ui.ts, or another beside the entry (hud.ts).
   const list = /^export const LANGUAGES = \[[\s\S]*?\] as const;$/m;
   const src = dirname(main);
@@ -183,6 +188,17 @@ export function applyLanguages(dir: string, langs: readonly string[], ctx: { ent
   if (framed.length > 0 && ownBase && refTag && !plan.some((p) => p.tag === refTag)) {
     plan.push({ tag: refTag, strings: ownBase.table.strings, from: "starter", file: ownBase.file });
     notes.push(`${refTag} stays as a table: ${framed.join(", ")} compare frames recorded in it and pin it (setup locale:${refTag}); record those references again in another locale and set their setup, then drop it`);
+  }
+  // A starter's own table its playtests name (a pause test that switches the settings to 简体中文) stays too, last.
+  const testsDir = join(dir, "tests");
+  const testFiles = existsSync(testsDir) ? readdirSync(testsDir).filter((f) => f.endsWith(".ts")).sort() : [];
+  for (const t of own) {
+    const tag = canonicalTag(t.table.locale);
+    if (plan.some((p) => p.tag === tag)) continue;
+    const named = testFiles.filter((f) => new RegExp(`(?<![A-Za-z0-9-])${tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![A-Za-z0-9-])`).test(readFileSync(join(testsDir, f), "utf8")));
+    if (named.length === 0) continue;
+    plan.push({ tag, strings: t.table.strings, from: "starter", file: t.file });
+    notes.push(`${tag} stays as a table: ${named.map((f) => `tests/${f}`).join(", ")} switch to it; change those playtests to a chosen language, then drop it`);
   }
 
   // Faces: one per script, with its licence and its row in LICENSES.md.
@@ -272,9 +288,9 @@ ${face.charset.length ? `  charset ${face.charset.join(" ")}\n` : ""}  chars ${o
   // The starter loads every table (the pseudo-locale last, never in a list players pick from).
   const tags = [...plan.map((p) => p.tag), PSEUDO_LOCALE];
   let load: string[] | null = null;
-  if (loader.kind === "line") {
-    const code = readFileSync(loader.file, "utf8");
-    writeFileSync(loader.file, code.replace(/^(\s*)must\(og\.i18n\.load\(world, "strings\/en\.ogt"\)\);$/m, (_, sp: string) => `${sp}// The chosen languages' tables (project.ogt's create block), then the pseudo-locale.\n${sp}for (const tag of ${JSON.stringify(tags)}) must(og.i18n.load(world, \`strings/\${tag}.ogt\`));`));
+  if (loader.kind === "line") for (const file of loader.files) {
+    const code = readFileSync(file, "utf8");
+    writeFileSync(file, code.replace(/^(\s*)must\(og\.i18n\.load\(world, "strings\/en\.ogt"\)\);$/m, (_, sp: string) => `${sp}// The chosen languages' tables (project.ogt's create block), then the pseudo-locale.\n${sp}for (const tag of ${JSON.stringify(tags)}) must(og.i18n.load(world, \`strings/\${tag}.ogt\`));`));
   } else if (loader.kind === "list") {
     const ui = readFileSync(loader.ui, "utf8");
     writeFileSync(loader.ui, ui.replace(/^export const LANGUAGES = \[[\s\S]*?\] as const;$/m, `export const LANGUAGES = [\n${lists.map((l) => `  { code: ${JSON.stringify(l.code)}, key: ${JSON.stringify(l.key)} },`).join("\n")}\n] as const;`));

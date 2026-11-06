@@ -178,6 +178,8 @@ test.skipIf(!existsSync(og))("local arena routes asymmetric keys and pads to ind
     ["gamepad", "0.1:gamepad:-@0:1,0;0.1:gamepad:-@1:0,-1;0.5:gamepad:-@0:0,0;0.5:gamepad:-@1:0,0"],
   ] as const) {
     made(`local-${input}`, "--genre", "arena", "--players", "local-multiplayer", "--look", "16bit-pixel", "--input", input, "--no-prompt");
+    // Arena's two-process duel needs a room, which local play never starts: it is not copied.
+    expect(existsSync(join(scratch, `local-${input}`, "tests/duel.og.ts"))).toBeFalse();
     const read = run(join(scratch, `local-${input}`), `${commands};0.6:dump_entity:fighter-0:red.json;0.6:dump_entity:fighter-1:blue.json;0.7:quit`);
     const red = read("red.json").components["og.Transform"].position, blue = read("blue.json").components["og.Transform"].position;
     // Red walked right only, Blue up only: each from its own seat (a tick of latency, as in a room).

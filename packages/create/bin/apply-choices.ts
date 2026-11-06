@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { CreationChoices } from "./choices.ts";
@@ -108,9 +108,20 @@ export function applyCreation(dir: string, c: CreationChoices, lookFile: string,
   const creation = join(dir, dirname(entry), "creation.ts");
   if (!existsSync(join(dir, dirname(entry), "seats.ts"))) throw new Error(`the ${starter} starter has no src/seats.ts: it cannot take creation choices`);
   writeFileSync(creation, creationModule(starter, c, langs.load ?? []));
+  const tests = join(dir, "tests");
+  const rooms = existsSync(tests) ? readdirSync(tests).filter((f) => f.endsWith(".og.ts") && /^\s*room:\s*\{/m.test(readFileSync(join(tests, f), "utf8"))) : [];
   if (c.players === "online-lockstep") {
-    writeFileSync(join(dir, "tests/room.og.ts"), ROOM_TEST);
-    written.push("tests/room.og.ts");
+    // A starter that plays online already has its room playtest (arena's duel).
+    if (rooms.length === 0) {
+      writeFileSync(join(tests, "room.og.ts"), ROOM_TEST);
+      written.push("tests/room.og.ts");
+    }
+  } else {
+    // A room playtest needs lockstep, which only online play starts: a starter committed online (arena) loses it.
+    for (const f of rooms) {
+      rmSync(join(tests, f));
+      notes.push(`tests/${f} is a two-process room playtest, removed: ${c.players} starts no room (choose online-lockstep to keep it)`);
+    }
   }
 
   const seats = c.players === "local-multiplayer"
