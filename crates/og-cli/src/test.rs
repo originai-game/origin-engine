@@ -50,6 +50,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     let mut require_checked = false;
     let mut filter = None;
     let mut skip: Vec<&str> = Vec::new();
+    let mut affected = None;
     let mut jobs = 1;
     let mut args = args.iter();
     while let Some(a) = args.next() {
@@ -57,6 +58,14 @@ pub fn run(args: &[&str]) -> ExitCode {
             "--json" => json = true,
             "--no-check" => check = false,
             "--require-checked" => require_checked = true,
+            "--affected" => {
+                let Some(base) = args.next().filter(|v| !v.is_empty() && !v.starts_with('-'))
+                else {
+                    eprintln!("og test: --affected needs a Git revision (for example HEAD)");
+                    return ExitCode::from(2);
+                };
+                affected = Some(*base);
+            }
             "--filter" => {
                 let Some(value) = args.next().filter(|v| !v.is_empty() && !v.starts_with('-'))
                 else {
@@ -144,6 +153,42 @@ pub fn run(args: &[&str]) -> ExitCode {
             p.root.display()
         );
         return ExitCode::FAILURE;
+    }
+    let mut skipped = 0;
+    if let Some(base) = affected {
+        #[derive(serde::Deserialize)]
+        struct Selection {
+            selected: std::collections::BTreeSet<PathBuf>,
+            reason: String,
+        }
+        let selection = project::bun(&package, "src/node/affected.ts")
+            .arg(&p.root)
+            .arg(&p.entry)
+            .arg(base)
+            .args(unit.iter().chain(&playtests))
+            .output();
+        let selection = match selection {
+            Ok(output) if output.status.success() => {
+                serde_json::from_slice::<Selection>(&output.stdout).map_err(|e| e.to_string())
+            }
+            Ok(output) => Err(String::from_utf8_lossy(&output.stderr).into_owned()),
+            Err(error) => Err(error.to_string()),
+        };
+        let selection = match selection {
+            Ok(selection) => selection,
+            Err(error) => {
+                eprintln!("og test: affected selection failed: {error}");
+                return ExitCode::FAILURE;
+            }
+        };
+        let total = unit.len() + playtests.len();
+        unit.retain(|file| selection.selected.contains(file));
+        playtests.retain(|file| selection.selected.contains(file));
+        skipped = total - unit.len() - playtests.len();
+        eprintln!(
+            "og test: {skipped} unaffected suite(s) skipped: {}",
+            selection.reason
+        );
     }
     let mut failed = 0;
     let mut unchecked = 0;
@@ -283,6 +328,7 @@ pub fn run(args: &[&str]) -> ExitCode {
             serde_json::json!({
                 "event": "test", "ok": ok, "suites": total, "failed": failed,
                 "passed": passed, "uncheckedSuites": unchecked_suites, "uncheckedCount": unchecked,
+                "skipped": skipped,
                 // Deprecated aggregate alias; per-playtest `unchecked` remains a file list.
                 "unchecked": unchecked,
                 "renderer": if adapter_errors.is_empty() { serde_json::Value::Null } else { serde_json::json!("none") },
@@ -298,7 +344,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         );
     }
     println!(
-        "og test: {passed} suite(s) passed, {failed} failed, {unchecked_suites} unchecked; {unchecked} GPU frame/expectation checks unchecked"
+        "og test: {passed} suite(s) passed, {failed} failed, {unchecked_suites} unchecked, {skipped} skipped; {unchecked} GPU frame/expectation checks unchecked"
     );
     if ok {
         ExitCode::SUCCESS

@@ -2164,6 +2164,14 @@ is reported as unavailable, never fabricated or counted as a passed check.
 These diagnostic saves are not presentation checkpoints and are not used
 to fork or resume runs.
 
+`og test --affected <git-revision>` selects suites from changed source
+dependencies, including staged, unstaged and untracked files. Playtests
+also depend on the game's entry and its imports. Resolver configuration,
+assets and unclassified changed paths select every suite; unresolved
+imports or runtime file access keep the affected suite selected. The
+project type check still runs. Unselected suites count as `skipped`, not
+passed or unchecked. An invalid revision fails rather than selecting none.
+
 ## 6. Failure modes
 
 | Violation | Behaviour |

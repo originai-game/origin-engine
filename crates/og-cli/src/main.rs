@@ -105,6 +105,7 @@ commands:
   test [project] [--filter <path>] [--jobs N] [--json] [--no-check] [--require-checked]
                       the project's bun tests, then each tests/*.og.ts playtest headless
                       --filter selects suite files by a project-relative path substring;
+                      --affected <git-revision> selects changed dependencies (unknown inputs run all);
                       --jobs N runs up to N playtests at once, each one's output whole, in order
   build [project] [--publish] [--out DIR] [--json] [--no-check]
                       cook, type-check and export the game to dist/ (or publish.out): the player shell,
