@@ -14,7 +14,9 @@ const state = { burn: 0.45, materials: {} as Record<string, UiMaterial> };
 /** Each preset's parameters on the sheet, in its `param` order (16 numbers: four vec4s). */
 function params(name: string): number[] {
   switch (name) {
-    case "burn": return [state.burn, 0, 0, 0, 0.06, 0, 0, 0, 40, 0, 0, 0, 2.4, 0.9, 0.2, 0];
+    case "burn": return [state.burn, 0, 0, 0, 6, 0, 0, 0, 40, 0, 0, 0, 1.0, 0.36, 0.05, 0];
+    // The band held still across the art, so every capture shows it.
+    case "foil": return [0.7, 0, 0, 0, 1.5, 0, 0, 0, 0, -0.12, 0, 0, 0.85, 0.92, 1.0, 0];
     default: return [];
   }
 }

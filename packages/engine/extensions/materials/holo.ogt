@@ -1,15 +1,16 @@
 type ui-material
 version 1
 ---
-# Holo: a rainbow that sweeps across the art in diagonal bands and drifts
-# with the clock, laid over the art's lightness (the holographic and
-# polychrome editions of deck-builders and gacha cards).
+# Holo: fine iridescent stripes, many to a card, whose hue walks with the
+# position across it and drifts with the clock, laid on at low strength so
+# the art keeps its colour (the holographic and polychrome editions of
+# deck-builders and gacha cards).
 source "holo.wgsl"
-# How much of the rainbow shows, 0–1.
-param amount float 0.5
-# One cycle of the rainbow, CSS px.
-param scale float 160
-# Its drift, cycles a second.
+# How much of the iridescence shows, 0–1 (0.2–0.45 reads as holo, above as paint).
+param amount float 0.35
+# One stripe's period, CSS px (4–12).
+param scale float 6
+# The hue's drift, cycles a second.
 param speed float 0.08
 # Its saturation, 0–1.
-param saturation float 0.8
+param saturation float 0.9

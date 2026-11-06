@@ -1,15 +1,17 @@
 type ui-material
 version 1
 ---
-# Burn: the element burns away from its noise, a charred rim and a hot
-# glowing edge running ahead of the hole (a card destroyed, a scroll
-# consumed). Animate `progress` 0 to 1 over the exit.
+# Burn: the element burns away from its noise. The rim grades from charred
+# brown through orange ember to white-hot at the hole's edge, and a glow
+# bleeds into the hole, all clipped to the element's own shape (a card
+# destroyed, a scroll consumed). Animate `progress` 0 to 1 over the exit.
 source "burn.wgsl"
 # How much has burnt, 0–1 (0: whole, 1: gone).
 param progress float 0
-# The width of the burning edge, in noise units (0.02–0.2).
-param edge float 0.06
+# The burning rim's width, CSS px (3–8 reads at card size).
+param edge float 6
 # The noise's cell, CSS px.
 param scale float 40
-# The flame at the edge, linear RGB (above 1 blooms where the pass does).
-param glow color 2.4 0.9 0.2
+# The ember's colour, linear RGB (the white-hot edge is mixed from it;
+# above 1 blooms where the pass does).
+param glow color 1.0 0.36 0.05

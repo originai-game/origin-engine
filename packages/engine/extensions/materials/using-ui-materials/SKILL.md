@@ -11,9 +11,9 @@ Install the presets into the game with `og ui add materials`; they land in
 
 | Preset | What it does | Parameters (in order) |
 | --- | --- | --- |
-| `foil.ogt` | thin crossing bands of metallic sheen that slide with the clock, bright where the art is bright | `amount` 0–1, `scale` CSS px between bands, `speed` cycles/s, `tint` linear RGB |
-| `holo.ogt` | a rainbow in diagonal bands, warped by noise, over the art's lightness | `amount` 0–1, `scale` CSS px a cycle, `speed` cycles/s, `saturation` 0–1 |
-| `burn.ogt` | the element burns away from noise: a charred rim behind a hot edge | `progress` 0–1, `edge` 0.02–0.2, `scale` CSS px a noise cell, `glow` linear RGB (above 1 blooms) |
+| `foil.ogt` | one broad soft sheen band that sweeps across with the clock or the tilt, over a fine metal grain with a few glints, mostly on the art | `amount` 0–1, `grain` CSS px (1–3), `sweep` vec2 (x: sweeps/s, y: offset −1–1 the game drives from the pointer or tilt), `tint` linear RGB |
+| `holo.ogt` | fine iridescent stripes, many to a card, their hue walking across it and with the clock, at low strength so the art keeps its colour | `amount` 0–1 (0.2–0.45), `scale` CSS px a stripe (4–12), `speed` cycles/s, `saturation` 0–1 |
+| `burn.ogt` | the element burns away from noise, clipped to its own shape: charred brown, orange ember and a white-hot edge across the rim, a glow into the hole | `progress` 0–1, `edge` CSS px of rim (3–8), `scale` CSS px a noise cell, `glow` the ember's linear RGB |
 | `rarity.ogt` | a tier-coloured glow in from the element's edge, a bright rim, a breath | `color` linear RGB, `size` CSS px, `pulse` breaths/s, `strength` 0–2 |
 
 The built-in `dissolve`, `shine` and `hologram` materials (docs/ui.md
@@ -47,6 +47,11 @@ og.ui.column("Card", desc, () => {
 Animate a parameter by passing a new value each tick (a burn's `progress`
 from 0 to 1 over its exit, eased with the style's exit curve), or from a
 timeline (`og.ui.defineTimeline`).
+
+A foil reads as metal when its band follows the player: set `sweep` to
+`0 <offset>` and drive the offset from −1 to 1 with the pointer's position
+over the card (or the device's tilt), so the sheen slides as the card is
+handled. Keep the clock sweep (`sweep.x` above 0) for cards nobody touches.
 
 ## Tuning
 
