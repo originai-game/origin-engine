@@ -301,3 +301,67 @@ writing prompts of its own:
 Until then the engine's side stands alone: `og new` records the choices,
 `audioBrief` lists the requests, and the presets synthesised by og cook
 give every game its sounds. Nothing is generated.
+
+## The engine measures, the agent judges (remove-polish, 2026-11-06)
+
+**Ask 27, open.** From the first engine version after 0.7.7, engine
+commands report facts and measurements and never a taste verdict (the
+owner, 2026-11-06). origin-agent stops calling or describing what is
+gone, and keeps the judgement in its own design (its skills, prompts and
+evals):
+
+- **`og polish` is removed**, with `@origingame/engine/node/polish`, its
+  `og-out/polish/` report and its scores. Nothing replaces it inside the
+  engine: review a build with `og test` (the playtests), `og ui check`
+  and the frames (`og run --headless --commands`, `og frame measure`),
+  judged by the skills (og-build §5, og-taste, og-feel,
+  visual-acceptance).
+- **`og ui check` exits 0 when it ran** and 1 when it could not; exit 3
+  (an error finding) is gone. Its findings (overlap, text-cut,
+  text-truncated, offscreen, safe-area, covered, pseudo-overflow,
+  focus-reach, focus-trap, a11y-name, a11y-locale, feedback, art-slot)
+  carry `rule`, `paths`, `measured`, `prop`, `fix`, `cells`, `value`,
+  `unit` and `at`, and no `severity`, `limit` or `bar`. Contrast, text
+  size, touch target, text scale, primary actions per layer and the
+  element count are `measures` (`measure`, `paths`, `value`, `unit`,
+  `detail`, `prop`, `cell`, `rect`) held to no bar; contrast is no longer
+  a finding. The usual thresholds (4.5:1 and 3:1, 7:1 in high contrast;
+  44 px touch targets; 12 px text, 18 px at 1080p) are og-taste §3, §4
+  and og-ui §8's guidance for the agent to apply.
+- **`og build --publish` no longer refuses a game in the default UI
+  style**: a game may ship the default style, a built-in pack or its own.
+- **`og style check --critic` is removed**, and the JSON's
+  `contract.style` is `{ slug }` (no `checks`, no `intended`). The
+  measurements against the game's own art contract and exit 3 off that
+  contract stay. origin-agent's `critique_style` already reads the
+  checks from the catalogue itself, so it is not affected.
+- **`og run --device` has no scores**: device.json and `--json` lose
+  `scores`; the measures and findings stay.
+
+Callers on origin-agent `main` (73a84f7, read 2026-11-06). No server or
+runner code invokes `og polish`, `--critic`, branches on `og ui check`'s
+or `og style check`'s exit 3, or relies on the publish refusal; what
+names them is documentation, a skill and an offline eval:
+
+- `docs/product/game.md:336` (the command table's `og polish .` row),
+  §Polish at `:463`–`:477`, the skill table's og-taste and og-feel rows at
+  `:601`–`:602` ("`og polish`'s taste measures", "feel measures") and
+  `:611` (the pin "with `og polish` in" its command list).
+- `docs/product/product-design.md:686` ("The engine's `og polish` scores
+  a build against the taste and feel checklists").
+- `server/prompts/create.md:43` (og-build "for the cook, run, observe,
+  test, polish and ship loop").
+- `knowledge/game/skills/art-director/SKILL.md:52`–`:55` (`og ui check`
+  "measures contrast, text size, touch targets ... each against the
+  engine's bar") and `:82`–`:84` ("a finding `og ui check` marks as a
+  warning"): the bar is now the art bible's or og-taste's, and there are
+  no warnings, only findings and measures.
+- `server/scripts/eval/art-director.ts:60`–`:65` reads
+  `f.severity` and `f.bar` of each `og ui check` finding, and
+  `server/evals/art/cases.json` (its `ui` documents, ten `severity` or
+  `bar` fields, and case `:983`'s "just over the engine's 3:1"): render
+  contrast from `measures` (`measure: "contrast"`, `value`) instead.
+
+Until then an origin-agent pinned to 0.7.7 sees no change; one that pins
+the next version and still runs `og polish` gets an unknown-command error,
+and one that waits for `og ui check`'s exit 3 never sees it.

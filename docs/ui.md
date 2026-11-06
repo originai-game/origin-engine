@@ -1138,8 +1138,8 @@ the gate is loosened. The bar:
   the pseudo-locale, a CJK locale, a right-to-left locale and 150 % text (200 % deferred, §15.2).
 - **What the review judges (the owner, 2026-11-05).** The kit and the
   style packs are a polished baseline an agent builds from, not a promise
-  that every screen fits every style: a game restyles and reworks its own
-  UI. So a screen is judged in the kit's own style and a pack on its own
+  that every screen fits every style: a game may restyle and rework its
+  own UI. So a screen is judged in the kit's own style and a pack on its own
   pages (`og ui sheet`, §17.3), never the cross product of every screen in
   every pack. A UI frame is reviewed by the art director over a plain,
   solid-colour ground, never over a 3D scene or key art the review would

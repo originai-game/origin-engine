@@ -408,6 +408,52 @@
         "change": "A glTF texture outside a streaming group and an art contract is cooked once per image and use, whichever models name it, under _gltf/<image hash>-<kind>[-stream]#tex instead of <model>#tex<n>, and models loaded at run time share it (and identical meshes). A <model>#tex<n> id of such a texture no longer exists after the next cook: og.load.texture of it fails. Each model keeps its own materials (og.render.updateMaterial and setMaterialShader on one never change another).",
         "fix": "Where game code or a scene names a glTF's texture by <model>#tex<n> (og.load.texture, og.ui.image, a sprite), load the image itself instead: place the image file under assets/ and name its own path (it cooks once beside the model's copy). og upgrade lists every line naming #tex.",
         "find": ["#tex"]
+      },
+      {
+        "member": "og polish, @origingame/engine/node/polish",
+        "change": "og polish is removed (the owner, 2026-11-06): its scores were hand-set thresholds averaged with equal weights, checked presence rather than quality and were never validated against players. Its report (og-out/polish/), its scores and its exit codes are gone; og.probe's dump_pulse stays, read by playtests.",
+        "fix": "Review a build with og test (the playtests), og ui check (measured UI facts) and the frames themselves (og run --headless --commands, og frame measure), judged by the skills (og-build §5, og-taste, og-feel, visual-acceptance). Drop a `polish` script from package.json.",
+        "find": [
+          "og polish",
+          "\"polish\":",
+          "node/polish"
+        ]
+      },
+      {
+        "member": "og ui check exit status, severities and bars; @origingame/engine/ui-check UiFinding, checkUi, checkScale",
+        "change": "og ui check reports facts and measures, never verdicts: it exits 0 when it ran and 1 when it could not (exit 3 on an error finding is gone). Findings (overlap, text-cut, text-truncated, offscreen, safe-area, covered, pseudo-overflow, focus-reach, focus-trap, a11y-name, a11y-locale, feedback, art-slot) keep their paths, props, values and boxes but lose severity, limit and bar. Contrast, text size, touch target, text scale, primary actions and the element count are measures (check.json's measures: value, unit, path, cell, box) held to no bar; checkScale became measureScale, and measureFrame, measureExtremes and measureUi are new; CheckOptions keeps only skip.",
+        "fix": "Read check.json's findings and measures and apply the thresholds the game wants (og-taste §3, §4 and og-ui §8 give the usual ones: 4.5:1 text, 3:1 large text, 44 px touch targets); stop branching on exit 3 or on a finding's severity; replace checkScale with measureScale and drop skip: [\"contrast\"] (contrast is no longer a finding).",
+        "find": [
+          "checkScale",
+          "severity",
+          "minTextSize",
+          "denseTextSize",
+          "skip: [\"contrast\"]"
+        ]
+      },
+      {
+        "member": "og build --publish (the default UI style)",
+        "change": "og build --publish no longer refuses a game whose UI is still in the engine's default style: a game may ship the default style, a built-in pack or its own (the owner, 2026-11-06, reversing 2026-11-02's rule). Nothing in the engine, its gates or its tests requires a restyle.",
+        "fix": "Nothing to edit; a build that was refused for its style now publishes. Restyling stays the agent's design decision (og-ui, og-taste)."
+      },
+      {
+        "member": "og style check --critic, its JSON contract.style.checks and contract.style.intended",
+        "change": "og style check loses --critic and its JSON no longer carries the catalogue's three checks and intended traits (contract.style is { slug }): handing a style's checks to a blind critic is the agent's step (visual-acceptance §5). The measurements against the game's own art contract, the coverage line and exit 3 off that contract stay.",
+        "fix": "Read the entry's checks and intended from game/skills/og-taste/looks/catalogue.json by contract.style.slug and give them to the critic as visual-acceptance §5 says.",
+        "find": [
+          "--critic",
+          "style.checks",
+          "style.intended"
+        ]
+      },
+      {
+        "member": "og run --device (device.json and report.md scores)",
+        "change": "og run --device drops its 0 to 100 first-frame and frame-time scores (device.json's scores, report.md's Scores table, --json's scores): the measures, the budget it was run against and the findings with a fix each stay.",
+        "fix": "Read firstFrameMs, interval and work (p50, p95, p99) from device.json and judge them against the budget the game holds itself to.",
+        "find": [
+          "scores.firstFrame",
+          "scores.frameTime"
+        ]
       }
     ],
     "added": [
