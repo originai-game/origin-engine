@@ -7,6 +7,8 @@ version 1
 locale "he"
 string "hud.level" "הגגות"
 string "hud.clear" "הגגות הושלמו!"
+string "hud.yard" "החצר"
+string "hud.yardClear" "החצר הושלמה!"
 string "hud.lives" "חיים"
 string "hud.pause" "השהיה"
 string "hud.jump" "קפיצה"

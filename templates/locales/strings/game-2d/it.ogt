@@ -7,6 +7,8 @@ version 1
 locale "it"
 string "hud.level" "I tetti"
 string "hud.clear" "Tetti superati!"
+string "hud.yard" "Il cortile"
+string "hud.yardClear" "Cortile superato!"
 string "hud.lives" "Vite"
 string "hud.pause" "Pausa"
 string "hud.jump" "Salta"

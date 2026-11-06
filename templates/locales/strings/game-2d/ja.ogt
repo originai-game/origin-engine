@@ -7,6 +7,8 @@ version 1
 locale "ja"
 string "hud.level" "屋上"
 string "hud.clear" "屋上クリア！"
+string "hud.yard" "中庭"
+string "hud.yardClear" "中庭クリア！"
 string "hud.lives" "ライフ"
 string "hud.pause" "ポーズ"
 string "hud.jump" "ジャンプ"

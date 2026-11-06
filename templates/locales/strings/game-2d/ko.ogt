@@ -7,6 +7,8 @@ version 1
 locale "ko"
 string "hud.level" "옥상"
 string "hud.clear" "옥상 클리어!"
+string "hud.yard" "안뜰"
+string "hud.yardClear" "안뜰 클리어!"
 string "hud.lives" "목숨"
 string "hud.pause" "일시정지"
 string "hud.jump" "점프"

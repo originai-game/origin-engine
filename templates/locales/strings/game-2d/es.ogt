@@ -7,6 +7,8 @@ version 1
 locale "es"
 string "hud.level" "Los tejados"
 string "hud.clear" "¡Tejados superados!"
+string "hud.yard" "El patio"
+string "hud.yardClear" "¡Patio superado!"
 string "hud.lives" "Vidas"
 string "hud.pause" "Pausa"
 string "hud.jump" "Saltar"

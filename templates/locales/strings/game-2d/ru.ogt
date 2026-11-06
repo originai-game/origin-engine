@@ -7,6 +7,8 @@ version 1
 locale "ru"
 string "hud.level" "Крыши"
 string "hud.clear" "Крыши пройдены!"
+string "hud.yard" "Двор"
+string "hud.yardClear" "Двор пройден!"
 string "hud.lives" "Жизни"
 string "hud.pause" "Пауза"
 string "hud.jump" "Прыжок"

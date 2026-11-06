@@ -7,6 +7,8 @@ version 1
 locale "de"
 string "hud.level" "Die Dächer"
 string "hud.clear" "Dächer geschafft!"
+string "hud.yard" "Der Innenhof"
+string "hud.yardClear" "Innenhof geschafft!"
 string "hud.lives" "Leben"
 string "hud.pause" "Pause"
 string "hud.jump" "Springen"

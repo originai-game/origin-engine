@@ -7,6 +7,8 @@ version 1
 locale "ar"
 string "hud.level" "الأسطح"
 string "hud.clear" "اجتزت الأسطح!"
+string "hud.yard" "الفناء"
+string "hud.yardClear" "اجتزت الفناء!"
 string "hud.lives" "الأرواح"
 string "hud.pause" "إيقاف مؤقت"
 string "hud.jump" "اقفز"

@@ -7,6 +7,8 @@ version 1
 locale "fr"
 string "hud.level" "Les toits"
 string "hud.clear" "Toits terminés !"
+string "hud.yard" "La cour"
+string "hud.yardClear" "Cour terminée !"
 string "hud.lives" "Vies"
 string "hud.pause" "Pause"
 string "hud.jump" "Sauter"

@@ -7,6 +7,8 @@ version 1
 locale "zh-TW"
 string "hud.level" "屋頂"
 string "hud.clear" "屋頂過關！"
+string "hud.yard" "庭院"
+string "hud.yardClear" "庭院過關！"
 string "hud.lives" "生命"
 string "hud.pause" "暫停"
 string "hud.jump" "跳躍"
