@@ -728,7 +728,7 @@ impl FontMetrics {
         tracking: f32,
         features: Features,
     ) -> Vec<VisualGlyph> {
-        let base = og_i18n::paragraph_direction(line, default);
+        let base = line_direction(line, default);
         self.visual_at_with(line, base, tracking, features)
     }
 
@@ -790,6 +790,17 @@ impl FontMetrics {
     }
 }
 
+/// A line's paragraph direction under a UI laid out in `ui`: its first
+/// strong character's (UAX #9 P2, isolates skipped), else the UI's, except
+/// that a line with no letter of its own (an amount, a change, a count)
+/// keeps left to right. At a right-to-left level such a line's leading
+/// and trailing neutrals took the far side (−$98,100 drew as $98,100−,
+/// +4% as 4%+, ×2 as 2×). Its alignment still follows the UI's direction.
+pub(crate) fn line_direction(line: &str, ui: Direction) -> Direction {
+    let lettered = line.chars().any(char::is_alphabetic);
+    og_i18n::paragraph_direction(line, if lettered { ui } else { Direction::Ltr })
+}
+
 /// A line as a text command draws it: as written (og-render kerns it), or
 /// for a line with right-to-left or shaped characters its visual glyphs and
 /// their placements.
@@ -807,7 +818,7 @@ pub(crate) fn drawn_line(
         1.0,
         tracking,
         features,
-        og_i18n::paragraph_direction(line, default),
+        line_direction(line, default),
         None,
     ) {
         return FontMetrics::drawn(&paragraph::visual(m, line, &layout));

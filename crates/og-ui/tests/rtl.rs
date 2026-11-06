@@ -137,6 +137,28 @@ fn paragraphs_order_their_runs_by_the_bidi_algorithm() {
         .map(|g| g.ch)
         .collect::<String>();
     assert_eq!(h, "40 ךותמ 12 בלש");
+    // Under a right-to-left UI a line with no letter (an amount, a change, a
+    // count) keeps its order: at the UI's level its sign took the far side
+    // ($98,100− for −$98,100); a line with a letter still takes the UI's.
+    let ui_rtl = |s: &str| {
+        hebrew
+            .visual(s, Direction::Rtl, 0.0)
+            .iter()
+            .map(|g| g.ch)
+            .collect::<String>()
+    };
+    assert_eq!(ui_rtl("−$98,100"), "−$98,100");
+    assert_eq!(ui_rtl("+4.3%"), "+4.3%");
+    assert_eq!(ui_rtl("12 שלב"), "בלש 12");
+    // The same through the shaping font (parley lays the line out).
+    let shaped = |s: &str| {
+        m.visual(s, Direction::Rtl, 0.0)
+            .iter()
+            .map(|g| g.ch)
+            .collect::<String>()
+    };
+    assert_eq!(shaped("−$98,100"), "−$98,100");
+    assert_eq!(shaped("+4.3%"), "+4.3%");
     // Game text isolated (FSI … PDI) inside a right-to-left string keeps its
     // full stop; without the isolate the stop goes to the paragraph's end
     // (the left). The isolate sets no paragraph direction (UAX #9 P2), and

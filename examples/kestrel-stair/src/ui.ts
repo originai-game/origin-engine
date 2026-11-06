@@ -482,7 +482,9 @@ function tutorial(world: World, g: GameV): { finished: boolean } {
     title: step.title,
     text: step.text,
     nextLabel: say(world, last ? "tut.done" : "tut.next"),
-    x,
+    // The document places the card from the screen's start edge (`start bind x`): right to left, the distance from
+    // the right edge to the card's, not its left (which put the card on the far side of the part it points at).
+    x: og.ui.frameDirection() === "rtl" ? vp.width - x - width : x,
     y,
   });
   if (asked.includes("skip")) return { finished: true };
