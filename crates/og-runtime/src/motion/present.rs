@@ -80,8 +80,8 @@ const DECODE_BUDGET_MS: f64 = 3.0;
 /// The model's frame rate.
 const RATE: f32 = 30.0;
 /// The most an agent's body leans from upright in the frames of a jump
-/// goal, rad (30°): the pelvis to the chest (the root's pitch) and the
-/// hips to the head (the spine's), each.
+/// goal and of a jump clip, rad (30°): the pelvis to the chest (the root's
+/// pitch) and the hips to the head (the spine's), each.
 const JUMP_LEAN: f32 = 0.524;
 /// The same for a crouch goal (45°): the knees and hips bend, the torso
 /// inclines, the body does not pitch down flat.
@@ -950,7 +950,17 @@ fn palette(
         l + LEAN_RATE * elapsed.max(1.0 / 120.0)
     });
     let grounded = |f: &Frame| f.contacts.iter().any(|c| *c > og_motion::soma::CONTACT);
-    let bound = |f: &Frame| lean_bound(s.issued(f).map(|g| g.pose)).min(rate);
+    // Every frame of a jump clip is the jump's, the fall and landing the
+    // model generated toward the pose after it included.
+    let jumping = s.clip.is_some();
+    let bound = |f: &Frame| {
+        let pose = if jumping {
+            Some(JUMP)
+        } else {
+            s.issued(f).map(|g| g.pose)
+        };
+        lean_bound(pose).min(rate)
+    };
     let (a0, l0) = rerooted(
         &r.soma_skeleton,
         &r.soma,
