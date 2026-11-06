@@ -3,10 +3,11 @@
 // right to left, in Japanese, Korean and Chinese, and at 150 % text: each
 // frame compared with crates/og-ui/references/<tier>/kit-story-phone-<file>.
 import { checkFrames } from "./frames.ts";
+import { selectReferenceFrames } from "./reference-frames.ts";
 import { storyScript } from "./patterns.ts";
 import { playtest, ui } from "./lib.ts";
 
-const script = storyScript(true);
+const script = selectReferenceFrames(storyScript(true), "kit-story-phone-");
 
 export default playtest({
   name: "the story pattern previews in their states on a phone",

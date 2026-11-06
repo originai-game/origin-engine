@@ -3,10 +3,11 @@
 // right to left and at 150 % text: each frame compared with
 // crates/og-ui/references/<tier>/kit-patterns-phone-<file>.
 import { checkFrames } from "./frames.ts";
+import { selectReferenceFrames } from "./reference-frames.ts";
 import { patternsScript } from "./patterns.ts";
 import { playtest, ui } from "./lib.ts";
 
-const script = patternsScript(true);
+const script = selectReferenceFrames(patternsScript(true), "kit-patterns-phone-");
 
 export default playtest({
   name: "the genre pattern previews in their states on a phone",

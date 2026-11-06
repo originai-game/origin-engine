@@ -7,6 +7,7 @@
 // a phone). Each frame is compared with
 // crates/og-ui/references/<tier>/kit-racing-<file>.
 import { checkFrames } from "./frames.ts";
+import { selectReferenceFrames } from "./reference-frames.ts";
 import { playtest, ui } from "./lib.ts";
 
 /** [file, the commands before it] in order; each is taken 1.6 s after its commands, once the moment has played in. */
@@ -33,12 +34,13 @@ for (const [file, cmds] of SHOTS) {
   t += 0.1;
 }
 steps.push(`${t.toFixed(2)}:quit`);
-const FILES = SHOTS.map(([f]) => f);
+const script = selectReferenceFrames({ commands: steps.join(";") }, "kit-racing-");
+const FILES = script.files;
 
 export default playtest({
   name: "the racing HUD in its moments, packs and surfaces matches its reference frames",
   size: "1280x720",
-  commands: steps.join(";"),
+  commands: script.commands,
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     t.ok(run.quit, "the script reached quit");

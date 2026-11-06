@@ -10,10 +10,11 @@
 // at 150 % text, each frame compared with
 // crates/og-ui/references/<tier>/kit-genres3-<file>.
 import { checkFrames } from "./frames.ts";
+import { selectReferenceFrames } from "./reference-frames.ts";
 import { genres3Script } from "./patterns.ts";
 import { playtest, ui } from "./lib.ts";
 
-const script = genres3Script(false);
+const script = selectReferenceFrames(genres3Script(false), "kit-genres3-");
 
 export default playtest({
   name: "the last previews in their states at desktop size",

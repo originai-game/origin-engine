@@ -1,6 +1,6 @@
 // The browser tiers of og-ui's kit frames: templates/ui-kit's reference
 // playtests (tests/<playtest>.og.ts: frames-desktop, frames-phone, players,
-// locales and the style packs' approved states) each as the same fresh run in headless
+// and the style packs' approved states) each as the same fresh run in headless
 // Chrome through reference.ts, on WebGPU, compared
 // with the template's and style packs' references/<tier>/ (each frame on its own falling back
 // to metal's) under og-tests' rule: a channel off by more than 32/255 is an
@@ -51,7 +51,6 @@ const PREFIX: Record<string, string> = {
   "frames-desktop": "kit-desktop-",
   "frames-phone": "kit-phone-",
   players: "kit-desktop-",
-  locales: "kit-locale-",
 };
 /** A style pack's states sheet per surface (styles.ts SURFACES): the box filter and the cells a row. */
 const SHEETS: Record<string, { factor: number; cols: number }> = {
@@ -76,7 +75,7 @@ for (const name of only) {
   const bundled = join(out, ".playtest.js");
   const b = await bundleGame(join(kit, "tests", `${name}.og.ts`), bundled, "native");
   if (!b.ok) throw new Error(`${name}.og.ts does not bundle: ${b.reason}`);
-  const { default: desc, referenceFiles }: { default: PlaytestDesc; referenceFiles?: readonly string[] } = await import(pathToFileURL(bundled).href);
+  const { default: desc }: { default: PlaytestDesc } = await import(pathToFileURL(bundled).href);
   const size = desc.size ?? "1280x720";
   const pack = /^style-([a-z]+)(-phone)?$/.exec(name);
   // What a host does before the first tick (the kit's plain ground) comes first, at tick 0.
@@ -85,7 +84,6 @@ for (const name of only) {
   for (const step of desc.commands.split(";")) {
     const [at, action, ...rest] = step.split(":");
     if (action === "screenshot") {
-      if (referenceFiles && !referenceFiles.includes(rest[0]!)) continue;
       const file = rest[0]!.replace(/\.png$/, "");
       shots.push(`${pack ? `kit-style-${pack[1]}${pack[2] ?? ""}-` : PREFIX[name]}${file}@${Math.round(Number(at) * 60)}`);
     } else if (action !== "quit" && !action!.startsWith("dump_")) script.push(step);

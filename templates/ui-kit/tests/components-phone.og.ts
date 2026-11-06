@@ -3,10 +3,11 @@
 // then again at 150 % text (text150-*): each frame compared with
 // crates/og-ui/references/<tier>/kit-components-phone-<file>.
 import { checkFrames } from "./frames.ts";
+import { selectReferenceFrames } from "./reference-frames.ts";
 import { componentsScript } from "./components.ts";
 import { playtest, ui } from "./lib.ts";
 
-const script = componentsScript(true);
+const script = selectReferenceFrames(componentsScript(true), "kit-components-phone-");
 
 export default playtest({
   name: "the component previews in their states on a phone",

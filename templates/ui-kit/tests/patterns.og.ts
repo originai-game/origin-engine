@@ -5,10 +5,11 @@
 // right to left and at 150 % text, each frame compared with
 // crates/og-ui/references/<tier>/kit-patterns-<file>.
 import { checkFrames } from "./frames.ts";
+import { selectReferenceFrames } from "./reference-frames.ts";
 import { patternsScript } from "./patterns.ts";
 import { playtest, ui } from "./lib.ts";
 
-const script = patternsScript(false);
+const script = selectReferenceFrames(patternsScript(false), "kit-patterns-");
 
 export default playtest({
   name: "the genre pattern previews in their states at desktop size",

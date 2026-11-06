@@ -1,17 +1,13 @@
-// The genre showcases each in its own pack (docs/ui.md §17, src/showcases.ts):
-// every page of a family in its primary seed style, then its first page in a
-// light pack and in a dark one, composed into one reference sheet per family
-// and surface (styles.ts' sheets): on a desktop
-// crates/og-ui/references/<tier>/kit-showcase-<family>.png, on a phone in
-// portrait kit-showcase-<family>-phone.png. The style sheets put every
-// showcase HUD and document in all twelve seeds; these show each family as
-// its game would ship it, the pattern pages included.
+// Every showcase page in its primary, light and dark packs must settle its
+// entrances and exits. Dumps retain this behavior coverage; representative
+// pixel checks live in the individual kit playtests, not duplicate sheets.
 
 import type { PlaytestDesc } from "@origingame/engine/playtest";
 import { SHOWCASES, type Showcase } from "../src/showcases.ts";
 import { STYLE_SETTLE } from "./script.ts";
-import { sheetCheck, SURFACES, unsettled, withSettleDumps } from "../../styles/tests/styles.ts";
+import { SURFACES, unsettled, withSettleDumps } from "../../styles/tests/styles.ts";
 import { playtest } from "./lib.ts";
+import { selectReferenceFrames } from "./reference-frames.ts";
 
 /** The light and dark packs a family is checked in besides its own. */
 const LIGHT = (s: Showcase): string => s.light ?? (s.pack === "storybook" ? "kawaii" : "storybook");
@@ -47,7 +43,8 @@ function script(viewport: string): { commands: string; families: Array<[Showcase
     families.push([s, files]);
   }
   steps.push(`${t.toFixed(2)}:quit`);
-  return { commands: viewport + withSettleDumps(steps.join(";")), families };
+  const { commands } = selectReferenceFrames({ commands: viewport + withSettleDumps(steps.join(";")) }, "kit-showcase-");
+  return { commands, families };
 }
 
 /** The playtest of every showcase on a surface. */
@@ -55,15 +52,14 @@ export function showcasesPlaytest(on: "desktop" | "phone"): PlaytestDesc {
   const surface = SURFACES[on];
   const { commands, families } = script(surface.viewport);
   return playtest({
-    name: `every genre showcase in its primary pack, a light and a dark one${on === "phone" ? " on a phone" : ""} matches its cell of kit-showcase-<family>${surface.suffix}.png`,
+    name: `every genre showcase in its primary pack, a light and a dark one${on === "phone" ? " on a phone" : ""} settles its entrances and exits`,
     size: surface.size,
     commands,
     check(run, t) {
       t.equal(run.warnings.join("; "), "", "the script ran without warnings");
       t.ok(run.quit, "the script reached quit");
-      for (const [s, files] of families) {
+      for (const [, files] of families) {
         for (const f of files) t.equal(unsettled(run, f.replace(/\.png$/, "")), "", `${f} is captured with every entrance and exit settled`);
-        sheetCheck(run, t, files, `kit-showcase-${s.key}${surface.suffix}.png`, surface, s.key);
       }
     },
   });

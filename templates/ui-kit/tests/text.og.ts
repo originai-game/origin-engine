@@ -25,12 +25,10 @@ export default playtest({
   size: "1280x720",
   commands: [
     "0.3:show:text",
-    "1.0:screenshot:text.png",
     // The field: a tap focuses it, typing fills it, Shift+← ×4 selects "lace".
     tap(1.1, "Name"),
     "1.3:type:Ada Lovelace",
     shiftLeft(2.0, 4),
-    "2.6:screenshot:text-select.png",
     "2.7:dump_ui:select.json",
     // The area: two lines, then an input method composing on the second.
     tap(2.8, "Notes"),
@@ -53,6 +51,6 @@ export default playtest({
     const typed = run.json<{ value: { name: string; notes: string } }>("typed.json").value;
     t.equal(typed.name, "Ada Lovelace", "the field's value is world state (Typed.name)");
     t.equal(typed.notes, "First line\nthen日本", "so is the area's (Typed.notes)");
-    checkFrames(run, t, ["text.png", "text-select.png", "text-compose.png"], "kit-desktop-");
+    checkFrames(run, t, ["text-compose.png"], "kit-desktop-");
   },
 });

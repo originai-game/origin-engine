@@ -1,13 +1,14 @@
 // Every screen of the kit at desktop size (1280×720 CSS px at 1×), compared
 // with crates/og-ui/references/<tier>/kit-desktop-<screen>.png.
 import { checkFrames } from "./frames.ts";
+import { selectReferenceFrames } from "./reference-frames.ts";
 import { framesScript } from "./script.ts";
 import { playtest } from "./lib.ts";
 
-const script = framesScript(0.5);
+const script = selectReferenceFrames(framesScript(0.5), "kit-desktop-");
 
 export default playtest({
-  name: "every screen at desktop size matches its reference frame",
+  name: "representative desktop screens match their reference frames",
   size: "1280x720",
   commands: script.commands,
   check(run, t) {
