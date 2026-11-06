@@ -1,7 +1,0 @@
-type import
-version 1
----
-# Painted ability art: a colour texture.
-texture {
-  kind color
-}

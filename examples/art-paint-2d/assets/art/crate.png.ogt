@@ -1,4 +1,0 @@
-type import
-version 1
----
-# Written by tools/art-samples/prepare.ts: the look names no pixel grid, so the image keeps its size.

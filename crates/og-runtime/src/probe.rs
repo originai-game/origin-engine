@@ -443,6 +443,18 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
     // build serves no save_scene).
     #[cfg(not(feature = "publish"))]
     probe.set_scene_writer(Box::new(super::scene_save::RuntimeWriter { engine: id }));
+    // expect:frame: its reference, a path in the project, read through the
+    // host (from disk natively; a web host has only the files it fetched).
+    #[cfg(not(feature = "publish"))]
+    {
+        let root = eng.assets.borrow().root.clone();
+        probe.set_reader(move |path| {
+            match hooks()?.read_asset(&super::assets::join(&root, path)) {
+                super::assets::Fetch::Ready(bytes) => Some(bytes),
+                _ => None,
+            }
+        });
+    }
     // The inspector takes the input over its panel (development builds).
     #[cfg(not(feature = "publish"))]
     probe.set_input_filter(Box::new(move |world, event| {

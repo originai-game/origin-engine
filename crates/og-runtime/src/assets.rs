@@ -184,7 +184,7 @@ pub(crate) fn index_of(handle: f64) -> Option<usize> {
         .then_some((bits & 0xffff_ffff) as usize)
 }
 
-fn join(root: &str, path: &str) -> String {
+pub(crate) fn join(root: &str, path: &str) -> String {
     if root.is_empty() || path.starts_with('/') || path.contains("://") {
         path.to_string()
     } else {

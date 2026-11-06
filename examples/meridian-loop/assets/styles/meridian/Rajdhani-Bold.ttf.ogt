@@ -1,9 +1,0 @@
-type import
-version 1
----
-# Latin-1 and the typographic punctuation the kit shows; 32 px per em in the atlas.
-font {
-  charset latin punct
-  em_px 32
-  px_range 4
-}

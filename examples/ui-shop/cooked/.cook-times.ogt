@@ -1,6 +1,0 @@
-type cook-times
-version 1
----
-asset "fonts/ui.ttf" 194.739
-asset "ui/hud.ogt" 0.487
-asset "ui/shop.ogt" 0.862

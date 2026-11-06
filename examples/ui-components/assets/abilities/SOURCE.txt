@@ -1,6 +1,0 @@
-Ability art for the ui-components example: eight painted 256x256 JPEG ability
-icons (Fireball, Blink, Frost Nova, Meteor, Shield Wall, Pyroblast, Hex,
-Rune of Power), cut from one sheet generated on 2026-11-02 with the
-OriginGame platform's image tool (origin MCP generate_image, model
-gpt-image-2.5-sunburst) for this repository. Original work for the
-project; no third-party art.
