@@ -131,8 +131,8 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   styles and documents, ui-material WGSL and assets only. Iterate with
   `og dev` and Tune, without compiling Rust. Record missing engine
   capabilities in one list for an engine thread to implement in a batch.
-  Data/TS-only UI landings use `scripts/check.sh ui` (quick plus the
-  path-aware style and kit playtests), then art review. Engine changes
+  Data/TS-only UI landings use `scripts/check.sh kits` (`ui` is an alias; kit behavior, documents,
+  style packs and template playtests, separate from engine lanes), then art review. Engine changes
   still follow the existing functional and wave-end gates.
 - **One target directory per checkout.** Everyone, agents included, builds
   into the checkout's `target/` and lets cargo's lock serialise; nobody sets
@@ -331,8 +331,7 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
 - **When to run the gate.** Function first, measurement later. After a
   batch of merges on main, the one session that merges runs, on
   macrunner, the functional lane (`scripts/check.sh functional`: fmt, clippy, every
-  test with the GPU reference frames, drift, every style pack's reference
-  sheets (`ui-styles`), the packages' tests on the
+  test with the core GPU reference frames, drift, the packages' core tests on the
   native host) and that is what a merge must pass. Landing is kept short
   (the owner, 2026-11-02): a merge builds native only and never rebuilds
   the wasm (with a stale web module the cross-host tests skip, and the
@@ -375,6 +374,16 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   and the wasm the wasm-build and wasm-opt steps already produced; only
   `OG_RELEASE=1` (what `pack.sh` and every shipping build set) compiles
   release and the wasm itself.
+
+## UI package test ownership
+
+The engine is the generic base. Genre kits under `packages/engine/extensions`,
+`templates/ui-kit` and style packs own their suites and reference images.
+Run them with `scripts/check.sh kits` (`ui` is an alias), not through engine
+quick or functional. `kit-web` runs their browser references separately.
+Core retains layout, text, input, focus, layers, motion, drawing, documents,
+style grammar and generic-component tests. Moving a suite changes paths and
+imports only: retain every assertion, known failure and reference byte.
 
 ## Validation
 
