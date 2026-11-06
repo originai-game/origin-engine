@@ -5,6 +5,8 @@ version 2
 name "cartoon"
 scheme light
 atlas "atlas.png" 512 518 2 3
+# The painted art follows the palette: a copy with another primary recolours it at cook (docs/art.md §2.7).
+recolour "#f2862f" primary
 scale 1
 palette {
   backdrop "#f9dca4"

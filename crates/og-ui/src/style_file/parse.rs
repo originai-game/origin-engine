@@ -138,6 +138,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
         sounds: Default::default(),
         feedback_sounds: Default::default(),
         dressings: Vec::new(),
+        recolour: Vec::new(),
     };
     let mut size = (0.0f32, 0.0f32);
     if let Some(e) = body.get("atlas") {
@@ -255,6 +256,10 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
         match key {
             "scheme" | "atlas" | "scale" | "icons" | "roles" => {}
             "name" => file.name = p.string(0)?.to_string(),
+            "recolour" => {
+                needs_atlas()?;
+                file.recolour.push(recolour_at(&p, &theme.palette)?);
+            }
             // The templates' screens the style was made for: 1 keeps a
             // shipped game's (a version 1 style is 1 whatever it says).
             "screens" => match p.num(0)? {
@@ -657,6 +662,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                             selector: sel,
                             frame: DressFrame::default(),
                             draw: Default::default(),
+                            recolour: None,
                         });
                         dressings.len() - 1
                     }
@@ -711,6 +717,17 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                         }
                         "press" => d.frame.press = Some(press_at(&q)?),
                         "hover" => d.frame.hover = Some(hover_at(&q)?),
+                        "recolour"
+                            if c.values.len() == 1 && q.word(0).is_ok_and(|w| w == "none") =>
+                        {
+                            d.recolour = Some(Vec::new());
+                        }
+                        "recolour" => {
+                            needs_atlas()?;
+                            d.recolour
+                                .get_or_insert_with(Vec::new)
+                                .push(recolour_at(&q, &theme.palette)?);
+                        }
                         k if DRAW_KEYS.contains(&k) => {
                             if matches!(k, "ink" | "step")
                                 && !crate::dress::TEXT_PARTS.contains(&d.selector.part.as_str())
@@ -724,7 +741,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                         }
                         _ => {
                             return Err(q.err(&format!(
-                                "is not a dressing setting: slice, tone, shadow, glow, glass, corners, crest, edges, tile, shape, press, hover, or (for the UI pass) {}",
+                                "is not a dressing setting: slice, tone, recolour, shadow, glow, glass, corners, crest, edges, tile, shape, press, hover, or (for the UI pass) {}",
                                 DRAW_KEYS.join(", ")
                             )));
                         }
@@ -936,6 +953,25 @@ fn parse_roles(p: &P) -> Result<crate::style::Roles, String> {
         return Err(p.err("declares no role: leave the block out"));
     }
     Ok(roles)
+}
+
+/// `recolour "<from>" <role>`: a painted accent and the palette role it
+/// follows (docs/art.md §2.7).
+fn recolour_at(p: &P, palette: &Palette) -> Result<Recolour, String> {
+    if p.e.values.len() != 2 {
+        return Err(p.err(
+            "takes the colour the art was painted in and the palette role it follows: recolour \"#f5e60c\" primary",
+        ));
+    }
+    let from = p.color(0)?;
+    let role = p.word(1)?;
+    if palette.get(role).is_none() {
+        return Err(p.err(&format!("'{role}' is not a palette role")));
+    }
+    Ok(Recolour {
+        from,
+        role: role.to_string(),
+    })
 }
 
 /// The file name of an atlas's copy at `density`: `atlas.png` at 2 is

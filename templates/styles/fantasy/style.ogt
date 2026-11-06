@@ -5,6 +5,8 @@ version 2
 name "fantasy"
 scheme dark
 atlas "atlas.png" 512 557 2 3
+# The painted art follows the palette: a copy with another primary recolours it at cook (docs/art.md §2.7).
+recolour "#d4993a" primary
 scale 1
 palette {
   backdrop "#0d0a08"

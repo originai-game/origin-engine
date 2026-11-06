@@ -77,6 +77,32 @@ pub struct StyleFile {
     /// The part dressings (`crate::dress`), in file order; a version 1
     /// style's are its twelve parts' ([`StylePart::selector`]).
     pub dressings: Vec<Dressing>,
+    /// `recolour "<from>" <role>` lines: the painted art follows the
+    /// palette (docs/art.md §2.7). Every authored slice and ornament the
+    /// style cuts takes these unless its dressing sets its own.
+    pub recolour: Vec<Recolour>,
+}
+
+/// One accent of painted art and the palette role it follows: the art was
+/// painted with `from`, and the cook moves the pixels of its hue to the
+/// role's colour (docs/art.md §2.7), keeping each pixel's lightness and
+/// chroma relative to `from`. Where the role is `from`, nothing moves.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Recolour {
+    pub from: Srgba,
+    /// A palette role (`primary`, `focus`, `gold` …).
+    pub role: String,
+}
+
+/// An atlas region (`[u0, v0, u1, v1]`) the cook recolours, with each
+/// accent's colour as painted and as the palette now has it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct RecolourRegion {
+    pub uv: [f32; 4],
+    pub map: Vec<(Srgba, Srgba)>,
+    /// The dressing whose slice it is (`None`: an ornament), whose `tone`
+    /// the cook measures again after recolouring.
+    pub dressing: Option<Selector>,
 }
 
 impl StyleFile {
@@ -105,6 +131,53 @@ impl StyleFile {
                 && !out.contains(path)
             {
                 out.push(path.clone());
+            }
+        }
+        out
+    }
+
+    /// The authored atlas regions whose painted accents follow the palette
+    /// (`recolour`): each authored dressing slice with its dressing's
+    /// lines (or the style's), each authored ornament with the style's,
+    /// leaving out every accent the palette still has as painted. Empty:
+    /// the atlas draws as it is.
+    pub fn recolour_regions(&self) -> Vec<RecolourRegion> {
+        let resolve = |lines: &[Recolour]| -> Vec<(Srgba, Srgba)> {
+            lines
+                .iter()
+                .filter_map(|r| {
+                    let to = self.theme.palette.get(&r.role)?;
+                    (tokens::hex(to) != tokens::hex(r.from)).then_some((r.from, to))
+                })
+                .collect()
+        };
+        let mut out: Vec<RecolourRegion> = Vec::new();
+        for d in &self.dressings {
+            let Some(s) = d.frame.slice.filter(|s| !s.tint) else {
+                continue;
+            };
+            let map = resolve(d.recolour.as_deref().unwrap_or(&self.recolour));
+            if !map.is_empty() {
+                out.push(RecolourRegion {
+                    uv: s.uv,
+                    map,
+                    dressing: Some(d.selector.clone()),
+                });
+            }
+        }
+        let map = resolve(&self.recolour);
+        if !map.is_empty() {
+            let a = &self.theme.art;
+            for o in [a.corner, a.divider, a.flourish, a.crest, a.edge]
+                .into_iter()
+                .flatten()
+                .filter(|o| o.ink == Ink::Authored)
+            {
+                out.push(RecolourRegion {
+                    uv: o.uv,
+                    map: map.clone(),
+                    dressing: None,
+                });
             }
         }
         out
@@ -661,6 +734,7 @@ pub(crate) fn v1_dressings(art: &Art) -> Vec<Dressing> {
                 selector: part.selector(),
                 frame: f,
                 draw: Default::default(),
+                recolour: None,
             });
         }
     }

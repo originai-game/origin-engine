@@ -956,6 +956,12 @@ draws from the copy nearest at or above its device pixels per og-ui unit
 top out at 3, and tablets and desktops at 2. `og style art` (docs/art.md
 §2.7) packs a style's painted slots into all three.
 
+Painted slices draw as authored, but a style's `recolour "<from>" <role>`
+lines make their accents follow the palette: the cook recolours every
+density of the atlas when the role's colour is no longer the one the art
+was painted in (docs/art.md §2.7, step 4), so a game's copy of a pack
+takes the game's accent.
+
 ## 13. Art slots
 
 ### 13.1 The slot

@@ -406,6 +406,31 @@ generates art.
 A rerun with nothing changed writes the same bytes, so a pack's art is
 reviewed as a diff.
 
+4. **Recolour.** Painted art keeps the colours it was painted in, so a
+   game's copy of a pack (`og new`'s own style, `og style eject`) whose
+   palette moves to the game's accent would still draw the pack's accent
+   in every `authored` slice (cyber's yellow primary button under a blue
+   palette). A style says which painted accents follow which palette role
+   with `recolour "<colour as painted>" <role>` lines after its `atlas`
+   line (every painted pack has `recolour "<its primary>" primary`); a
+   dressing may set its own lines, or `recolour none`, over the style's.
+   The cook then writes the atlas again beside the style, at every density
+   the `atlas` line names (`<style>#atlas.png`, `<style>#atlas@2x.png` …),
+   with each authored slice and ornament recoloured, points the cooked
+   style at it and measures each recoloured frame's `tone` again, so a
+   label still picks ink that reads on it. The recolour is the team-colour
+   mask of strategy games (Warcraft III, StarCraft) and Photoshop's
+   Replace Color, keyed on the art itself instead of a painted mask: a
+   pixel within 30° of the accent's Oklab hue and with at least 45 % of
+   its chroma is fully the accent (fading out to 50° and 20 %); it turns
+   by the hue between the painted accent and the role's colour, scales
+   its chroma and shifts its lightness by theirs, so a darker edge stays
+   darker and the art's greys, blacks and other hues stay byte for byte.
+   A palette that still has every accent as painted cooks nothing extra.
+   For a change the hue shift cannot carry (gold leaf to steel, a brush
+   stroke's texture), paint the slot again through the art brief: change
+   the pack's `art-requests.json` palette and rerun steps 1–3.
+
 ### 2.8 The auto-rig's input layers
 
 A character drawn in layers is rigged by the cook, with no editor step: a

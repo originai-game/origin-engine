@@ -557,6 +557,9 @@ pub struct Dressing {
     /// Its paints, strokes, effects, material, ornaments, blend, mask and
     /// sounds (see the module docs).
     pub draw: DressDraw,
+    /// `recolour "<from>" <role>` lines (or `recolour none`) for its
+    /// authored slice, over the style's (`StyleFile::recolour`).
+    pub recolour: Option<Vec<crate::style_file::Recolour>>,
 }
 
 // ───────────────────────────────────────────── parts and their resolution

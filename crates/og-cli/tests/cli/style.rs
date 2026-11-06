@@ -845,3 +845,84 @@ fn frame_measure_reads_contrast_in_a_fractional_region_against_its_ground() {
     assert_eq!(bad.status.code(), Some(2), "{}", text(&bad));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A game's copy of a painted pack follows its own primary: cyber copied
+/// with a blue primary cooks a recoloured atlas at each density beside the
+/// style, the cooked style draws from it, and the primary button's face
+/// (painted acid yellow) is blue there while the near-black panel body
+/// keeps its colour; the copy left at cyber's yellow cooks no second atlas.
+///
+/// Ways it could fail: the cooked style still naming the painted atlas, a
+/// density left yellow, the dark body tinted with the accent, or a copy
+/// that changed nothing paying for a recoloured atlas.
+#[test]
+fn a_painted_pack_follows_the_games_primary_at_cook() {
+    let cook = |primary: Option<&str>| {
+        let dir = look_project("styles/mine/style.ogt", false);
+        let pack = dir.join("assets/styles/mine");
+        copy_dir(&repo().join("templates/styles/cyber"), &pack);
+        if let Some(p) = primary {
+            let style = std::fs::read_to_string(pack.join("style.ogt")).unwrap();
+            let style = style.replacen("  primary \"#f5e60c\"", &format!("  primary \"{p}\""), 1);
+            std::fs::write(pack.join("style.ogt"), style).unwrap();
+        }
+        let out = og().arg("cook").arg(&dir).output().unwrap();
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+        (
+            dir.clone(),
+            og_cook::runtime::Bundle::open(&dir.join("cooked")).unwrap(),
+        )
+    };
+    let (dir, bundle) = cook(Some("#3d7eff"));
+    for d in ["", "@2x", "@3x"] {
+        assert!(
+            bundle
+                .output(&format!("styles/mine/style.ogt#atlas{d}.png"))
+                .is_ok(),
+            "no recoloured atlas{d}"
+        );
+    }
+    let id = "styles/mine/style.ogt";
+    let style = bundle
+        .style_text(id, bundle.read(id).unwrap().as_slice())
+        .unwrap();
+    assert!(
+        style.contains("atlas \"style.ogt#atlas.png\" 512 262 2 3"),
+        "{style}"
+    );
+    let t = bundle
+        .load_texture("styles/mine/style.ogt#atlas.png")
+        .unwrap()
+        .to_texture_data()
+        .unwrap();
+    let px = |x: u32, y: u32| {
+        let i = ((y * t.width + x) * 4) as usize;
+        [t.rgba[i], t.rgba[i + 1], t.rgba[i + 2]]
+    };
+    // Button.base[primary]: slice 146 145 157 44; Panel.frame: 1 1 96 96.
+    let face = px(146 + 78, 145 + 22);
+    assert!(
+        face[2] > 200 && face[0] < 120 && face[1] < 170,
+        "face {face:?}"
+    );
+    let body = px(1 + 48, 1 + 48);
+    assert!(body.iter().all(|&c| c < 40), "body {body:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let (dir, bundle) = cook(None);
+    assert!(bundle.output("styles/mine/style.ogt#atlas.png").is_err());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn copy_dir(from: &Path, to: &Path) {
+    std::fs::create_dir_all(to).unwrap();
+    for e in std::fs::read_dir(from).unwrap() {
+        let e = e.unwrap();
+        let p = e.path();
+        if p.is_dir() {
+            copy_dir(&p, &to.join(e.file_name()));
+        } else {
+            std::fs::copy(&p, to.join(e.file_name())).unwrap();
+        }
+    }
+}

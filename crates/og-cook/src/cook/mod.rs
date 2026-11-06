@@ -43,6 +43,7 @@ mod shader_check;
 pub mod stats;
 mod stream;
 pub mod strings_extract;
+mod style_recolour;
 mod terrain;
 mod terrain_generate;
 mod texture;
@@ -282,6 +283,9 @@ enum Work<'a> {
     FlipbookLayer(&'a Source, Box<og_anim::FlipbookSheet>, usize),
     Rig2d(&'a Source),
     Rig2dAtlas(&'a Source),
+    /// A style's atlas at a density (1, 2 or 3) with its painted accents
+    /// recoloured to the palette (`recolour`), of a texture kind.
+    StyleAtlas(&'a Source, u32, u32),
     Shader(&'a Source),
     Post(&'a Source),
     UiMaterial(&'a Source),
@@ -1251,6 +1255,31 @@ pub fn cook_project_with_texture_cache(
                     .unwrap_or_default();
                 let st = stamp(&[b"style", &hash, refs.join("\n").as_bytes(), &atlas]);
                 outs.push((s.rel.clone(), format::Style::NAME, st, Work::Style(s)));
+                // Its painted art recoloured to the palette, at each density
+                // the atlas has (docs/art.md §2.7).
+                for (density, id) in style_recolour::atlases(s, &known) {
+                    let source = sources.iter().find(|x| x.rel == id);
+                    let kind = source.map_or(Ok(format::kind::COLOR), texture_kind);
+                    match kind {
+                        Ok(k) => {
+                            let bytes = source.map(|x| x.hash).unwrap_or_default().to_le_bytes();
+                            let st = stamp(&[
+                                b"style atlas",
+                                tex_desc.as_bytes(),
+                                &hash,
+                                &bytes,
+                                &k.to_le_bytes(),
+                            ]);
+                            outs.push((
+                                style_recolour::atlas_id(&s.rel, density),
+                                format::Texture::NAME,
+                                st,
+                                Work::StyleAtlas(s, density, k),
+                            ));
+                        }
+                        Err(e) => early_errors.push((s.rel.clone(), "style", e)),
+                    }
+                }
             }
             Kind::Document => {
                 let st = stamp(&[b"document", &hash]);

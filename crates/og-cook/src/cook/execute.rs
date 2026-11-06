@@ -450,6 +450,19 @@ pub(super) fn run(
             // Each tinted frame's centre as the atlas draws it, for a style
             // that did not measure it (og-ui picks button label ink by it).
             let tones = style_tones(&file, &assets_root(s));
+            // Its painted art recoloured to the palette: the cooked style
+            // draws the recoloured atlas the cook writes beside it.
+            let recoloured = (!super::style_recolour::atlases(s, known).is_empty())
+                .then_some(file.atlas.as_deref())
+                .flatten()
+                .and_then(|id| style_atlas(crate::runtime::asset_id(id), &assets_root(s)))
+                .and_then(|b| image::load_from_memory(&b).ok())
+                .map(|i| {
+                    let img =
+                        super::style_recolour::recolour(&i.to_rgba8(), &file.recolour_regions(), 1);
+                    super::style_recolour::cooked_text(text, &s.rel, &file, &img)
+                });
+            let text = recoloured.as_deref().unwrap_or(text);
             let text = if tones.is_empty() {
                 text.to_string()
             } else {
@@ -502,6 +515,34 @@ pub(super) fn run(
             p.stamp,
         ),
         Work::Rig2d(s) => rig2d::cook(s, p.stamp),
+        Work::StyleAtlas(s, density, k) => {
+            let file = super::style_recolour::parsed(s, known)
+                .ok_or_else(|| CookError("the style does not parse".into()))?;
+            let id = match density {
+                1 => file.atlas.clone(),
+                d => file.atlas_dense[*d as usize - 2].clone(),
+            }
+            .ok_or_else(|| CookError(format!("the style names no atlas at {density}×")))?;
+            let bytes = style_atlas(crate::runtime::asset_id(&id), &assets_root(s))
+                .ok_or_else(|| CookError(format!("{id}: not found")))?;
+            let img = image::load_from_memory(&bytes)
+                .map_err(|e| CookError(format!("{id}: {e}")))?
+                .to_rgba8();
+            let regions = file.recolour_regions();
+            let img = super::style_recolour::recolour(&img, &regions, *density);
+            let note = format!(
+                "{}x{} {id} recoloured to the palette ({} regions)",
+                img.width(),
+                img.height(),
+                regions.len()
+            );
+            let img = super::texture::Image {
+                width: img.width(),
+                height: img.height(),
+                rgba: img.into_raw(),
+            };
+            texture::cook(&img, *k, &options.texture, p.stamp).map(|b| (b, vec![note]))
+        }
         Work::Rig2dAtlas(s) => {
             rig2d::cook_atlas(s, &options.texture, p.stamp).map(|b| (b, Vec::new()))
         }
