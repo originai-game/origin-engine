@@ -11,6 +11,7 @@
 //! sources are deleted. The same inputs give byte-identical `cooked/`.
 
 pub mod anim;
+pub mod animated;
 pub mod assets;
 pub mod audio;
 mod autorig;
@@ -447,6 +448,8 @@ pub fn cook_project_with_texture_cache(
         mut early_errors,
     } = scan(&assets_dir)?;
     let mut consumed: BTreeSet<String> = BTreeSet::new();
+    // Flipbooks of animated sources become ordinary sheets (`animated.rs`).
+    animated::expand(&mut sources, &mut consumed);
     // The `type model` texts, built again under the art contract's face
     // budget once the look is read (below).
     let mut model_texts: BTreeMap<String, String> = BTreeMap::new();

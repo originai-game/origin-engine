@@ -30,8 +30,13 @@ pub(super) fn assets_root(s: &Source) -> PathBuf {
 /// exists (`hero.png`, `../art/hero.png`), else an asset id
 /// (`sprites/hero.png`).
 pub(super) fn resolve(s: &Source, path: &str) -> String {
+    resolve_in(&assets_root(s), &s.rel, path)
+}
+
+/// [`resolve`] for asset `rel` under the assets directory `root`.
+pub(super) fn resolve_in(root: &std::path::Path, rel: &str, path: &str) -> String {
     let id = crate::runtime::asset_id(path);
-    let mut parts: Vec<&str> = s.rel.split('/').collect();
+    let mut parts: Vec<&str> = rel.split('/').collect();
     parts.pop();
     for seg in id.split('/') {
         match seg {
@@ -43,7 +48,7 @@ pub(super) fn resolve(s: &Source, path: &str) -> String {
         }
     }
     let relative = parts.join("/");
-    if id.starts_with("./") || id.starts_with("../") || assets_root(s).join(&relative).is_file() {
+    if id.starts_with("./") || id.starts_with("../") || root.join(&relative).is_file() {
         relative
     } else {
         id.to_string()

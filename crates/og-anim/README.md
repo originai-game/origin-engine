@@ -700,6 +700,48 @@ turned to the bottom left) and tags into clips (`reverse` reversed,
 sheet declares win over a tag of the same name, and stores the canonical
 text (`FlipbookSheet::to_text`, which parses back equal).
 
+A sheet may take its frames from animated images instead of a texture:
+`source` lines (an animated GIF, an animated WebP or an APNG, the last two
+with real alpha; a still image is one frame), each a clip of its own, with
+no `texture`, `atlas`, `grid` or `frame` lines:
+
+```text
+source "hero_idle.gif"    # a clip named after the file: `hero_idle`
+source "hero_run.webp" {  # optional settings of this source's clip
+  clip "run"              # its name
+  mode loop               # loop (default) | pingPong | once
+  fps 12                  # instead of the file's frame delays
+  event 3 "step"          # og.FlipbookEvent on the clip's frame 3
+  align feet              # this source's alignment (default: the sheet's)
+}
+key auto 0.1              # off (default) | auto | "#rrggbb", and a tolerance 0 to 0.5
+align feet                # none (default) | feet | bbox | centroid
+padding 1                 # transparent texels around the common crop (default 1)
+scale 0.25                # resampled first (a box filter over premultiplied alpha below 1)
+dedupe true               # identical frames share one cell (default)
+pivot 0.5 0               # instead of the anchor the alignment found
+clip turn {               # clips of the sheet's own, over the frames the sources made
+  frames run_0 run_1 idle_0
+  fps 8
+}
+```
+
+The cook (`og-cook`'s `cook/animated.rs`) decodes and composites every
+frame, keeps the file's delays as the clip's durations (a GIF delay of
+10 ms or less is shown as 100 ms, as browsers do), keys the background
+(`auto`: the first frame's border colour, when one colour covers half
+the border; only the texels the border reaches through near colours, the
+ring beside them unmixed from the background), aligns each frame's
+anchor (`feet`: the drawn bounds' bottom at the centroid's x; `none`
+keeps the frames' own motion, each source placed by its first frame's
+feet) to the first frame's in whole texels, crops every frame of every
+source to one size (the union of the drawn bounds plus `padding`) with
+the pivot at the anchor, shares identical frames, and packs the cells
+into a texture of its own, `<sheet id>#sheet` (pixel art under `filter
+nearest`). The stored sheet is the canonical text, frames named
+`<clip>_<n>`; the source files are part of the sheet, not assets of
+their own. `og sprite inspect` measures a source or a built sheet.
+
 `array true` asks the cook to cut every frame out of the texture into
 the layers of a texture array (`<sheet id>#array`, a `type texture-array`
 output with its layers `<sheet id>#array#layer<n>`, sampled nearest under

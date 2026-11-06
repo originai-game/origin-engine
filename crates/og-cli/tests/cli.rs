@@ -74,6 +74,7 @@ mod cli {
     mod i18n;
     mod maintenance;
     mod project;
+    mod sprite;
     mod style;
     mod ui;
 }

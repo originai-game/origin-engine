@@ -38,6 +38,7 @@ mod run;
 mod serve_relay;
 mod session;
 mod sfx;
+mod sprite;
 mod style;
 mod style_art;
 mod style_check;
@@ -141,6 +142,13 @@ commands:
                       the procedural sound presets (coin, jump, hit, click, ...): list them,
                       write one as an asset `og cook` synthesises (or render it to a WAV),
                       or write the whole library
+  sprite inspect <file.gif|.webp|.png|sheet.ogt> [--key auto|off|#rrggbb] [--tolerance T]
+      [--out <frames.png>] [--json]
+                      measure an animated sprite source or a flipbook sheet built from them:
+                      frames, delays, each frame's drawn bounds and centroid and their drift,
+                      the loop seam against the frame-to-frame steps, the alpha edge fringe
+                      (numbers only; a flat border is keyed before measuring unless --key off);
+                      --out writes the measured frames side by side (a sheet: its packed texture)
   style list          the built-in UI styles' slugs, each with its signature
   style eject <slug> [<name>] [--project <dir>] [--force]
                       write the built-in style <slug> (style.ogt, atlas, icons, fonts and their
@@ -311,6 +319,7 @@ fn main() -> ExitCode {
         ["api", rest @ ..] => api::run(rest),
         ["prefab", rest @ ..] => prefab::run(rest),
         ["sfx", rest @ ..] => sfx::run(rest),
+        ["sprite", rest @ ..] => sprite::run(rest),
         ["i18n", rest @ ..] => i18n::run(rest),
         ["style", rest @ ..] => style::run(rest),
         ["ui", rest @ ..] => ui::run(rest),

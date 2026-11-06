@@ -15,6 +15,16 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Flipbooks from animated images.** A `type flipbook` sheet names
+  animated GIF, WebP or APNG files with `source "hero_run.gif" { ... }`,
+  a clip per file, instead of a texture. The cook keeps the delays as clip
+  durations, keys a flat background (`key auto`), aligns the frames
+  (`align feet|bbox|centroid|none`), resamples (`scale`), crops them to one
+  size with the pivot at the anchor, shares identical frames and packs
+  them into `<sheet>#sheet`: the canonical sheet an Aseprite atlas makes.
+  `og sprite inspect` measures a source or a built sheet: delays, drawn
+  bounds and centroid drift, duplicates, the loop seam and the edge
+  fringe, numbers only.
 - **Breaking: the engine ships no skills.** The 25 skill packs under
   `packages/knowledge/skills/` (`og-core`, `og-game`, `og-build`, `og-ui`,
   `og-taste` and the rest) and `packages/knowledge/guides/` are deleted,

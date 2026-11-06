@@ -282,3 +282,174 @@ fn an_array_sheet_cooks_its_frames_into_a_texture_array() {
     let errors = report.errors().join("\n");
     assert!(errors.contains("frames are one size"), "{errors}");
 }
+
+/// A 24x20 canvas over `bg`: a 4x6 body of `body` with a 2x2 head on top,
+/// its top left at (x, y).
+fn figure(x: u32, y: u32, body: [u8; 3], bg: [u8; 4]) -> image::RgbaImage {
+    image::RgbaImage::from_fn(24, 20, |px, py| {
+        let in_body = (x..x + 4).contains(&px) && (y + 2..y + 8).contains(&py);
+        let in_head = (x + 1..x + 3).contains(&px) && (y..y + 2).contains(&py);
+        if in_body {
+            image::Rgba([body[0], body[1], body[2], 255])
+        } else if in_head {
+            image::Rgba([0, 0, 200, 255])
+        } else {
+            image::Rgba(bg)
+        }
+    })
+}
+
+fn gif(frames: &[(image::RgbaImage, u32)]) -> Vec<u8> {
+    let mut out = Vec::new();
+    {
+        let mut enc = image::codecs::gif::GifEncoder::new(&mut out);
+        enc.set_repeat(image::codecs::gif::Repeat::Infinite)
+            .unwrap();
+        enc.encode_frames(frames.iter().map(|(img, ms)| {
+            image::Frame::from_parts(img.clone(), 0, 0, image::Delay::from_numer_denom_ms(*ms, 1))
+        }))
+        .unwrap();
+    }
+    out
+}
+
+fn apng(frames: &[(image::RgbaImage, u16)]) -> Vec<u8> {
+    let mut out = Vec::new();
+    {
+        let mut enc = png::Encoder::new(&mut out, 24, 20);
+        enc.set_color(png::ColorType::Rgba);
+        enc.set_depth(png::BitDepth::Eight);
+        enc.set_animated(frames.len() as u32, 0).unwrap();
+        let mut w = enc.write_header().unwrap();
+        for (img, ms) in frames {
+            w.set_frame_delay(*ms, 1000).unwrap();
+            w.write_image_data(img.as_raw()).unwrap();
+        }
+        w.finish().unwrap();
+    }
+    out
+}
+
+const ANIMATED: &str = r#"type flipbook
+version 1
+---
+source "walk.gif" {
+  event 2 "step"
+}
+source "idle.png" {
+  clip "idle"
+  mode pingPong
+}
+key auto
+align feet
+"#;
+
+/// Animated sources: a GIF on white (keyed out) whose figure drifts and
+/// whose delays include one of 10 ms (shown as 100 ms, as browsers do),
+/// and an APNG with real alpha. Ways this could fail: the frames keep the
+/// drift (a cell's figure moves within it); the crop differs per frame;
+/// the background stays (no alpha); identical frames take two cells; the
+/// delays are lost; the GIF or the APNG are cooked as assets of their own;
+/// an edited GIF leaves a stale sheet.
+#[test]
+fn animated_sources_cook_into_a_packed_sheet() {
+    let white = [255, 255, 255, 255];
+    let walk = [
+        (figure(4, 8, [200, 0, 0], white), 100),
+        (figure(5, 7, [190, 0, 0], white), 200),
+        (figure(7, 9, [180, 0, 0], white), 10),
+        (figure(5, 7, [190, 0, 0], white), 100),
+    ];
+    let clear = [0, 0, 0, 0];
+    let idle = [
+        (figure(10, 10, [0, 160, 0], clear), 250),
+        (figure(10, 10, [0, 140, 0], clear), 250),
+    ];
+    let root = project(
+        "animated",
+        &[
+            ("sprites/walk.gif", gif(&walk)),
+            ("sprites/idle.png", apng(&idle)),
+            ("sprites/hero.ogt", ANIMATED.as_bytes().to_vec()),
+        ],
+    );
+    let bundle = cooked(&root);
+    let sheet = bundle.load_flipbook("sprites/hero.ogt").unwrap();
+    assert_eq!(sheet.texture, "sprites/hero.ogt#sheet");
+    let walk_clip = &sheet.clips[sheet.clip("walk").unwrap() as usize];
+    assert_eq!(walk_clip.durations, vec![0.1, 0.2, 0.1, 0.1]);
+    assert_eq!(walk_clip.events, vec![(2, "step".to_string())]);
+    let idle_clip = &sheet.clips[sheet.clip("idle").unwrap() as usize];
+    assert_eq!(idle_clip.mode, FlipMode::PingPong);
+    assert_eq!(idle_clip.durations, vec![0.25, 0.25]);
+    assert_eq!(sheet.frames.len(), 6);
+    // One size: the 4x8 figure and a texel of padding all round.
+    for f in &sheet.frames {
+        assert_eq!([f.rect[2], f.rect[3]], [6, 10], "frame {}", f.name);
+        assert_eq!(f.pivot, [0.5, 0.1], "the feet, a texel above the bottom");
+    }
+    assert_eq!(
+        sheet.frames[1].rect, sheet.frames[3].rect,
+        "identical frames share a cell"
+    );
+    let cells: std::collections::BTreeSet<[u32; 2]> = sheet
+        .frames
+        .iter()
+        .map(|f| [f.rect[0], f.rect[1]])
+        .collect();
+    assert_eq!(cells.len(), 5);
+    // Every cell holds its figure at one place: body at (1..5, 3..9).
+    let tex = bundle.load_texture("sprites/hero.ogt#sheet").unwrap();
+    assert!(tex.is_pixel_art());
+    let data = tex.to_texture_data().unwrap();
+    assert_eq!([data.width, data.height], sheet.size);
+    let at = |f: &og_anim::SheetFrame, x: u32, y: u32| {
+        let i = (((f.rect[1] + y) * data.width + f.rect[0] + x) * 4) as usize;
+        [
+            data.rgba[i],
+            data.rgba[i + 1],
+            data.rgba[i + 2],
+            data.rgba[i + 3],
+        ]
+    };
+    let bodies = [200, 190, 180, 190];
+    for (f, red) in sheet.frames.iter().zip(bodies) {
+        assert_eq!(at(f, 0, 0)[3], 0, "{}: the background is keyed", f.name);
+        assert_eq!(
+            at(f, 1, 3),
+            [red, 0, 0, 255],
+            "{}: the body's corner",
+            f.name
+        );
+        assert_eq!(at(f, 4, 8), [red, 0, 0, 255], "{}", f.name);
+        assert_eq!(at(f, 2, 1), [0, 0, 200, 255], "{}: the head", f.name);
+        assert_eq!(at(f, 5, 9)[3], 0, "{}: padding", f.name);
+    }
+    assert_eq!(
+        at(&sheet.frames[4], 1, 3),
+        [0, 160, 0, 255],
+        "the APNG's alpha"
+    );
+    // The sources are part of the sheet, not assets of their own.
+    assert!(bundle.load_texture("sprites/idle.png").is_err());
+
+    // Editing the GIF recooks the sheet.
+    let mut slower = walk.clone();
+    slower[1].1 = 300;
+    std::fs::write(root.join("assets/sprites/walk.gif"), gif(&slower)).unwrap();
+    let sheet = cooked(&root).load_flipbook("sprites/hero.ogt").unwrap();
+    assert_eq!(sheet.clips[0].durations[1], 0.3);
+
+    // A texture and animated sources do not mix.
+    std::fs::write(
+        root.join("assets/sprites/hero.ogt"),
+        format!("{ANIMATED}texture \"walk.png\"\n"),
+    )
+    .unwrap();
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(
+        report.errors().join("\n").contains("do not mix"),
+        "{:?}",
+        report.errors()
+    );
+}

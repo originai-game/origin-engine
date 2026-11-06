@@ -958,6 +958,14 @@
       {
         "member": "og.TerrainScatter.gpuPlacement",
         "summary": "Places the scatter's chunks with a compute pass when they come into range, by the same rules as the CPU (layer weight, holes, noiseThreshold, avoidWater, the footprints of the scatters placed before it) from the terrain's finest tiles, with nothing per copy on the CPU: on a moving camera over three chained scatters, 60.3 ms of CPU a frame drops to 14.3 ms for 0.21 ms of GPU. On by default; gpuPlacement: false places every chunk on the CPU. Where the renderer has no compute, or a footprint chain is too long or too wide, the CPU places them. The copies match the CPU's placement but for the last bits of the arithmetic: every scatter scene's reference frame (terrain-grass, terrain-grass-wind, terrain-hidden, terrain-scatter-unshadowed, impostor-scatter, probe-outdoor) holds within its tolerance, so a game draws as before. Visual only; the simulation is unchanged."
+      },
+      {
+        "member": "flipbook source",
+        "summary": "A `type flipbook` sheet takes animated GIF, WebP and APNG files (`source \"hero_run.gif\" { clip \"run\" mode loop fps 12 event 3 \"step\" align feet }`, a clip per file) instead of a texture: the cook decodes and composites the frames, keeps their delays as clip durations (10 ms or less shown as 100 ms, as browsers do), keys a flat background (`key auto|\"#rrggbb\" [tolerance]`, only what the border reaches, the edge ring unmixed), aligns the frames (`align feet|bbox|centroid|none`) in whole texels, resamples (`scale`), crops every frame to one size with the pivot at the anchor (`padding`), shares identical frames (`dedupe`) and packs them into the texture `<sheet>#sheet`, writing the same canonical sheet an Aseprite atlas makes."
+      },
+      {
+        "member": "og sprite inspect",
+        "summary": "`og sprite inspect <file.gif|.webp|.png|sheet.ogt> [--key auto|off|#rrggbb] [--tolerance T] [--out frames.png] [--json]` measures an animated sprite source, or a sheet built from them: frame count and delays, each frame's drawn bounds, centroid and coverage with their drift from the first frame, duplicate frames, the loop seam (last to first) beside the mean and largest frame-to-frame step, alpha levels and the edge fringe (edge and partial texels, the colour step to the interior and the distance to the background). Numbers only, no thresholds."
       }
     ],
     "fixed": [

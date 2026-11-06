@@ -12,7 +12,7 @@ skeletons, flipbooks), `og api show motion` (og.motion),
 |---|---|
 | A humanoid walking, running, standing, gesturing between goals | og.motion, with a clip fallback |
 | Authored character actions (attack, hit, death) | clips on og.AnimationPlayer or og.AnimationGraph |
-| A 2D character | a flipbook sheet, or a 2D skeleton for smooth limbs |
+| A 2D character | a flipbook sheet (from an atlas, or from generated GIF, WebP or APNG `source` files), or a 2D skeleton for smooth limbs |
 | A value over time (a door, a UI panel, a pickup bob) | a tween |
 | A scripted sequence (cutscene, intro) | a timeline |
 

@@ -59,9 +59,10 @@ basis-universal = { version = "0.3.1", optional = true }
 ruzstd = { version = "0.9.1", optional = true }
 gltf = { workspace = true, optional = true }
 # EXR heightmaps for terrains (`exr`), WebP and TGA texture sources
-# (`webp`, `tga`; a glTF's `EXT_texture_webp` images), beside the
+# (`webp`, `tga`; a glTF's `EXT_texture_webp` images), animated GIF, WebP
+# and APNG flipbook sources (`gif`, `webp`, png's APNG), beside the
 # workspace's PNG and JPEG. The cook only: the wasm never decodes these.
-image = { workspace = true, optional = true, features = ["exr", "hdr", "webp", "tga"] }
+image = { workspace = true, optional = true, features = ["exr", "hdr", "webp", "tga", "gif"] }
 # DDS texture sources (BC1 to BC7 and the uncompressed formats, pure Rust).
 image_dds = { version = "0.7.2", default-features = false, features = ["ddsfile", "image"], optional = true }
 # glTF `KHR_draco_mesh_compression`: a pure-Rust Draco decoder, byte
@@ -98,6 +99,8 @@ ufbx = { version = "0.11.5", optional = true }
 
 [dev-dependencies]
 pollster = { workspace = true }
+# APNG test sources (the version image decodes with).
+png = "0.18.1"
 og-tests = { path = "../og-tests" }
 og-ecs = { path = "../og-ecs" }
 og-audio = { path = "../og-audio" }
