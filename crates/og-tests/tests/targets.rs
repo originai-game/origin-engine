@@ -335,3 +335,49 @@ fn a_views_glow_spreads_as_the_frames_bloom() {
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+/// Split-screen under a glass surface (a menu over the game): the frame is
+/// drawn into the glass source, so the viewport views must be too, or the
+/// glass copy over the output leaves only the main camera's image. Away
+/// from the glass panel, each half reads as it does without it.
+#[test]
+fn split_screen_views_stay_under_a_glass_menu() {
+    use og_render::{
+        Overlay, UiElevation, UiGlassFallback, UiGlassStyle, UiGlassWeight, UiPaint, UiShape,
+    };
+    let plain = frame(&og_tests::target_scenes::split_scene());
+    let mut scene = og_tests::target_scenes::split_scene();
+    let mut o = Overlay::new(plain.width as f32, plain.height as f32, 0.0);
+    let (mode, tint) = UiGlassStyle {
+        weight: UiGlassWeight::Regular,
+        elevation: UiElevation::default(),
+        dark: true,
+        fallback: UiGlassFallback::None,
+    }
+    .backdrop();
+    // A panel in the middle of the top edge, over both halves.
+    let w = plain.width as f32;
+    o.ui.shapes.push(UiShape {
+        mode,
+        paint: UiPaint::Solid(tint),
+        ..UiShape::rect([w * 0.4, 8.0, w * 0.2, 60.0], 12.0, [1.0; 4])
+    });
+    scene.overlay = Some(o);
+    let glassed = frame(&scene);
+    // Rows in the lower half: far from the panel and its shadow.
+    let (mut diff, mut n) = (0.0f64, 0u32);
+    for y in (plain.height / 2..plain.height).step_by(4) {
+        for x in (0..plain.width).step_by(4) {
+            let i = ((y * plain.width + x) * 4) as usize;
+            for c in 0..3 {
+                diff += (f64::from(plain.pixels[i + c]) - f64::from(glassed.pixels[i + c])).abs();
+            }
+            n += 3;
+        }
+    }
+    let mean = diff / f64::from(n);
+    assert!(
+        mean < 2.0,
+        "the halves under a glass menu differ from the halves without it by {mean:.1} per channel"
+    );
+}

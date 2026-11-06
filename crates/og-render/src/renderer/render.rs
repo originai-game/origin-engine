@@ -5175,12 +5175,18 @@ impl Renderer {
         let tail = FrameSpan::open();
         let views_at = timings.begin(&encoder, &stats);
         // Viewport views (split-screen, views.rs) over the finished frame,
-        // under the lines and the overlay.
+        // under the lines and the overlay: in the glass source when the
+        // frame went there (glass on), through the view the overlay blends
+        // in, since the glass is then copied over the output.
+        let views_dest = match (&self.glass_targets, glass_on, overlay_view) {
+            (Some(g), true, None) => &g.source_view,
+            (Some(g), true, Some(o)) => g.source_linear_view.as_ref().unwrap_or(o),
+            (_, _, o) => o.unwrap_or(output),
+        };
         for p in view_plans
             .iter()
             .filter(|p| matches!(p.dest, views::Dest::Viewport(_)))
         {
-            let dest = overlay_view.unwrap_or(output);
             self.views.resolve(
                 &self.device,
                 &self.queue,
@@ -5188,7 +5194,7 @@ impl Renderer {
                 p,
                 post_fx.tonemap,
                 self.hdr.as_ref().map_or([0.0; 4], |h| h.curve),
-                dest,
+                views_dest,
                 viewport_format,
                 false,
             );

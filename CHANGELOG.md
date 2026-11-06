@@ -91,6 +91,12 @@ is one line here, written at the merge that changes
   frames now draw at the configured render scale and preset and are no
   sample of automatic quality; a game's display frames adapt as before.
   No IDL change.
+- **Split-screen views stay under a glass menu.** With a frosted-glass UI
+  surface up (a title card, a pause screen), the frame draws into the
+  glass source and is copied over the output, but the viewport views
+  (og.CameraView without a target) still drew into the output, so the
+  copy covered them and each half showed only the main camera's image.
+  They now draw into the glass source when glass is on.
 - **Rooms no longer desync on the players' volumes.** og.Audio (each
   device's own volumes, never hashed by lockstep) reached the hashed
   og.AudioStream: its bus gains were commands of the stream hash and its
