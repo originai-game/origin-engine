@@ -11,7 +11,9 @@ threads linked here; rules are in `AGENTS.md`.
    `og explore` (Go-Explore/Antithesis-style search from snapshots, on the
    invariants and og session's snapshot tree), then og-ui's generic
    capability gaps.
-3. **UI work**, then **0.8.0** (it ships only once the UI work is done).
+3. **UI work, done carefully**, and the below-target items (§Below target)
+   are fixed for **0.8.0**; 0.8.0 ships only once both are done (the owner).
+   `og mcp` waits until after 0.8.0's UI work, not this round (the owner).
 4. **Compatibility and real devices last:** Windows (DX12, Chrome, Edge,
    Firefox), Safari, phones (Pixel 10, PowerVR, Adreno, Mali), HDR on a real
    display, the WebGL 2 fallback study. WebGPU only until then.
