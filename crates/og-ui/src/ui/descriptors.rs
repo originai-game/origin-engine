@@ -683,6 +683,10 @@ pub struct UiFrame {
     pub viewport: Viewport,
     /// Every visible element in draw order with its (clipped) bounds and text.
     pub elements: Vec<UiElement>,
+    /// The style part each of `elements` is drawn as (`Button.base[primary]`,
+    /// its variant and state flags as of this frame), index for index;
+    /// `None` for one no style dresses (a layout container, a link).
+    pub parts: Vec<Option<crate::dress::PartRef>>,
     /// Draw commands with their painter levels.
     pub items: Vec<DrawItem>,
     /// Problems in this frame's tree (duplicate ids, unclosed elements), each naming the fix.

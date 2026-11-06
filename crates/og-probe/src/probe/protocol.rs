@@ -322,17 +322,56 @@ impl Probe {
         self.input.accepted()
     }
 
-    /// `pick`: what is under a point; `None` without a renderer that picks.
+    /// `pick_ui`: the UI element under a point (CSS px of the play
+    /// surface): the topmost one that shows something or takes input, with
+    /// its rectangle, the document line that built it and the style rules
+    /// that dress it ([`crate::hooks::pick_ui`]); `None` when there is none
+    /// or no UI.
+    pub fn pick_ui(&self, world: &World, x: f32, y: f32) -> Option<Value> {
+        let elements = self.ui.as_ref()?.elements(world);
+        let e = crate::hooks::pick_ui(&elements, x, y)?;
+        let d = &e.detail;
+        let field = |k: &str| d.get(k).cloned().unwrap_or(Value::Null);
+        let rules = d.get("rules").cloned().unwrap_or_else(|| json!([]));
+        Some(json!({
+            "id": e.id,
+            "path": e.path,
+            "kind": e.kind,
+            "text": e.text,
+            "rect": { "x": e.x, "y": e.y, "width": e.width, "height": e.height },
+            "layer": field("layer"),
+            "source": field("source"),
+            "part": field("part"),
+            "rule": rules.as_array().and_then(|r| r.last()).cloned().unwrap_or(Value::Null),
+            "rules": rules,
+        }))
+    }
+
+    /// `pick`: the scene entity under a point, with the scene line that
+    /// declares it as its `source` and, outside a publish build, the UI
+    /// element over the point as `ui` ([`Probe::pick_ui`]); `None` without
+    /// a renderer that picks, or nothing there.
     pub fn pick(&mut self, world: &World, x: f32, y: f32) -> Option<Value> {
         let hit = match self.capture.as_mut().and_then(|c| c.pick(world, x, y)) {
             Some(hit) => hit,
             None => self.scene_view.as_mut()?.pick(world, x, y)?,
         };
-        Some(json!({
+        let source = hit.source.or_else(|| {
+            self.scene_writer
+                .as_ref()
+                .and_then(|w| w.source(world, hit.entity))
+        });
+        let mut out = json!({
             "entity": self.names.id_of(world, hit.entity),
             "world": hit.world,
-            "source": hit.source,
-        }))
+            "source": source,
+        });
+        if !cfg!(feature = "publish")
+            && let Some(ui) = self.pick_ui(world, x, y)
+        {
+            out["ui"] = ui;
+        }
+        Some(out)
     }
 
     /// `entity`: the entity's tunable fields as `Component.field` keys.

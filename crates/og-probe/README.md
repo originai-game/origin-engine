@@ -123,7 +123,8 @@ unknown method, or a fault.
 | `pause` / `resume` | — | `true` | — |
 | `input` | `event` (`InjectedInput`) | `true` | `false` for an event of no known shape or one the input layer refuses (an unknown key code) |
 | `accepted` | — | events the input layer accepted | — |
-| `pick` | `x`, `y` | `{entity, world, source}` | `null` when nothing is under the point, or no renderer picks yet |
+| `pick` | `x`, `y` | `{entity, world, source, ui?}`: `source` the scene line that declares the entity (`scenes/main.ogt:12`), `ui` (not in a publish build) the UI element over the point as `pick_ui` answers | `null` when nothing is under the point, or no renderer picks yet |
+| `pick_ui` (wire) | `x`, `y` | `{id, path, kind, text, rect, layer, source, part, rule, rules}`: the topmost UI element under the point that shows something or takes input, `source` its document line, `part` the style part it is drawn as, `rules` the style rules that dress it with their file and line in the order they apply, `rule` the last | `null` when none (a layout container that draws nothing lets the point through) |
 | `entity` | `id` | tunable fields as `{"Component.field": value}` | `null` for an unknown or dead entity |
 | `bounds` | `id` | `{"Component.field": {path, label?, min?, max?}}` from the schema | `null` for an unknown entity |
 | `patch` | `id`, `parameter`, `value` | `true`, applied before the next tick | `false` for an unknown entity, component or field, a field without `tunable`, a component the entity lacks, a value of another kind, non-finite, non-integral for an integer, or outside `[min, max]` |

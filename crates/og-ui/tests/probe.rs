@@ -248,3 +248,91 @@ fn restoring_the_world_and_the_ui_state_replays_the_same_frames() {
             .is_err()
     );
 }
+
+/// `pick_ui` answers the UI element under the point with the document line
+/// that built it and the style rules that dress it, the most specific last.
+/// A layout container that draws nothing lets the point through, so a HUD's
+/// full-screen root never hides the scene.
+/// Wrong implementations this catches: the first (bottom) element under
+/// the point instead of the topmost, the root answering every point, the
+/// rule's line taken from another block, the rules in another order.
+#[test]
+fn pick_answers_the_ui_element_with_its_source_line_and_style_rules() {
+    const SHOP: &str = "type screen\nversion 1\n---\nname \"shop\"\nlayer hud\nprops {\n  gold number \"Gold.\"\n}\ncolumn Root {\n  width grow\n  height grow\n  padding 40\n  button Buy {\n    width 240\n    text \"Buy\"\n    variant primary\n  }\n}\n";
+    let mut world = World::new(&WorldDesc {
+        tick_rate: 60,
+        seed: 1,
+    })
+    .expect("world");
+    let mut probe = Probe::new(&mut world).expect("probe");
+    let mut ui = ui_with_font(test_font_metrics());
+    let style_id = "styles/fantasy/style.ogt";
+    let style_text = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../templates/styles/fantasy/style.ogt"),
+    )
+    .expect("the fantasy pack");
+    let mut style = parse_style(&style_text).expect("the pack parses");
+    style.resolve(style_id, |_| true);
+    ui.set_dressings(style.dressings.clone());
+    ui.define_document(UiDocument::parse("ui/shop.ogt", SHOP).expect("shop"));
+    ui.push_screen("shop", serde_json::json!({ "gold": 3 }))
+        .expect("push");
+    let ui = SharedUi::new(ui);
+    let (desc, run) = ui.system("ui", viewport, |_, _| Ok(()));
+    world.add_system(desc, run).expect("ui system");
+    probe.set_ui(ui.probe());
+    probe.frame(&mut world, 2).expect("ticks");
+
+    let buy = ui
+        .lock()
+        .probe_elements()
+        .into_iter()
+        .find(|e| e.path == "shop/Root/Buy")
+        .expect("the button");
+    let (x, y) = buy.center();
+    let p = probe.pick_ui(&world, x, y).expect("a pick");
+    assert_eq!(p["id"], "Buy");
+    assert_eq!(p["path"], "shop/Root/Buy");
+    assert_eq!(p["kind"], "button");
+    assert_eq!(p["text"], "Buy");
+    assert_eq!(p["rect"]["width"], serde_json::json!(buy.width));
+    // The button's line in the document, counted from the text itself.
+    let line = SHOP
+        .lines()
+        .position(|l| l.trim() == "button Buy {")
+        .unwrap()
+        + 1;
+    assert_eq!(p["source"], format!("ui/shop.ogt:{line}"));
+    assert_eq!(p["part"], "Button.base[primary]");
+    let line_of = |head: &str| style_text.lines().position(|l| l == head).unwrap() + 1;
+    let rules: Vec<(String, String)> = p["rules"]
+        .as_array()
+        .expect("rules")
+        .iter()
+        .map(|r| {
+            (
+                r["selector"].as_str().unwrap().to_string(),
+                r["source"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        rules,
+        [
+            (
+                "Button.base".to_string(),
+                format!("{style_id}:{}", line_of("dress \"Button.base\" {"))
+            ),
+            (
+                "Button.base[primary]".to_string(),
+                format!("{style_id}:{}", line_of("dress \"Button.base[primary]\" {"))
+            ),
+        ]
+    );
+    assert_eq!(p["rule"], p["rules"][1]);
+    // The root's padding: a layout container that draws nothing.
+    // (The screen's own layer element draws nothing either.)
+    let pad = probe.pick_ui(&world, 10.0, 10.0);
+    assert!(pad.is_none(), "{pad:?}");
+}

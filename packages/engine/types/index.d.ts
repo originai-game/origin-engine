@@ -39555,7 +39555,7 @@ export declare const PLAYTEST_MAX_TICKS: 3600;
 /** The most operations one probe program may carry. */
 export declare const PROBE_PROGRAM_MAX_OPERATIONS: 256;
 
-/** What a screen point resolved to. */
+/** What a screen point resolved to in the scene. */
 export interface PickResult {
   /** The probe id of the entity under the point. */
   readonly entity: string;
@@ -39563,8 +39563,52 @@ export interface PickResult {
    * Where the pick landed in world space: two components in the 2D profile, three in 3D; nothing pads a plane with an unmeasured zero.
    */
   readonly world: [number, number] | [number, number, number];
-  /** Where a person would change it, as `player.ts::jump`. */
+  /**
+   * Where a person would change it: the scene line that declares the entity (`scenes/main.ogt:12`), or a code site as `player.ts::jump`.
+   */
   readonly source: string | null;
+  /**
+   * The UI element over the point, as pickUi answers: what the player sees there instead of the entity.
+   */
+  readonly ui?: UiPickElement;
+}
+
+/** A style rule that dresses a picked element's part. */
+export interface UiPickRule {
+  /** Its selector, as the style writes it (`Button.base[primary]`). */
+  readonly selector: string;
+  /**
+   * Its file and line (`styles/fantasy/style.ogt:210`); empty for the engine's default style.
+   */
+  readonly source: string;
+}
+
+/**
+ * The UI element under a point (docs/ui.md §16.1): the topmost one that shows something or takes input; a layout container that draws nothing lets the point through.
+ */
+export interface UiPickElement {
+  /** Its id. */
+  readonly id: string;
+  /** Its full path, as dump_ui and touch_move_to name it. */
+  readonly path: string;
+  /** What made it: label, button, panel, icon, a kit's own kind. */
+  readonly kind: string;
+  /** The text it shows; empty for none. */
+  readonly text: string;
+  /** Where it shows. */
+  readonly rect: UiRect;
+  /** The screen whose layer it is in; null for code-built UI outside one. */
+  readonly layer: string | null;
+  /** The document line that built it (`ui/shop.ogt:42`); null for code-built UI. */
+  readonly source: string | null;
+  /**
+   * The style part it is drawn as, with its variant and state flags (`Button.base[primary][hover]`); null for one no style dresses.
+   */
+  readonly part: string | null;
+  /** The most specific rule that dresses it: the last of rules. */
+  readonly rule: UiPickRule | null;
+  /** Every style rule that dresses its part, in the order they apply. */
+  readonly rules: readonly UiPickRule[];
 }
 
 /** One published tunable parameter and the range it means something over. */
@@ -40517,7 +40561,7 @@ export interface RuntimeProbe {
   /** Page events (keyboard, pointer, wheel) the input layer accepted since load. */
   accepted(): number;
   /**
-   * What is under a point of the play surface.
+   * The scene entity under a point of the play surface, and the UI element over it (pickUi's answer) outside a publish build.
    *
    * @param x Horizontal position in CSS pixels.
    * @param y Vertical position in CSS pixels.
@@ -40649,6 +40693,14 @@ export interface EngineProbe extends RuntimeProbe {
    * @returns Null without a scene to write back (the reason is in the log).
    */
   saveScene(write?: boolean, spawned?: boolean): SavedScene | null;
+  /**
+   * The UI element under a point of the play surface: what pick names in the UI, with the document line that built it and the style rules that dress it. A tool asks it first, then pick for the scene.
+   *
+   * @param x Horizontal position in CSS pixels.
+   * @param y Vertical position in CSS pixels.
+   * @returns Null when no UI element that shows something or takes input is under the point.
+   */
+  pickUi(x: number, y: number): UiPickElement | null;
 }
 
 // ── terrain ─────────────────────────────────────────────────────

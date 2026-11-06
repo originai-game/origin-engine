@@ -18,7 +18,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 24648</sub>
+<sub>`api.ogt` line 24671</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -42,7 +42,7 @@ fn hello {
 }
 ```
 
-<sub>`api.ogt` line 24653</sub>
+<sub>`api.ogt` line 24676</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -83,7 +83,7 @@ fn capture {
 }
 ```
 
-<sub>`api.ogt` line 24658</sub>
+<sub>`api.ogt` line 24681</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -113,7 +113,7 @@ fn sweep {
 }
 ```
 
-<sub>`api.ogt` line 24671</sub>
+<sub>`api.ogt` line 24694</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -136,7 +136,7 @@ fn reload {
 }
 ```
 
-<sub>`api.ogt` line 24678</sub>
+<sub>`api.ogt` line 24701</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -159,7 +159,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 24682</sub>
+<sub>`api.ogt` line 24705</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -187,7 +187,7 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 24686</sub>
+<sub>`api.ogt` line 24709</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -217,7 +217,7 @@ fn dump {
 }
 ```
 
-<sub>`api.ogt` line 24691</sub>
+<sub>`api.ogt` line 24714</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -245,7 +245,7 @@ fn commands {
 }
 ```
 
-<sub>`api.ogt` line 24698</sub>
+<sub>`api.ogt` line 24721</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -275,7 +275,7 @@ fn listen {
 }
 ```
 
-<sub>`api.ogt` line 24703</sub>
+<sub>`api.ogt` line 24726</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -298,7 +298,7 @@ fn memory {
 }
 ```
 
-<sub>`api.ogt` line 24710</sub>
+<sub>`api.ogt` line 24733</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -321,7 +321,7 @@ fn describe {
 }
 ```
 
-<sub>`api.ogt` line 24714</sub>
+<sub>`api.ogt` line 24737</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -349,7 +349,7 @@ fn expect {
 }
 ```
 
-<sub>`api.ogt` line 24718</sub>
+<sub>`api.ogt` line 24741</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -372,7 +372,7 @@ fn expectations {
 }
 ```
 
-<sub>`api.ogt` line 24723</sub>
+<sub>`api.ogt` line 24746</sub>
 
 <a id="member-EngineProbe-assertions"></a>
 
@@ -402,7 +402,7 @@ fn assertions {
 }
 ```
 
-<sub>`api.ogt` line 24727</sub>
+<sub>`api.ogt` line 24750</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
@@ -436,4 +436,34 @@ fn saveScene {
 }
 ```
 
-<sub>`api.ogt` line 24734</sub>
+<sub>`api.ogt` line 24757</sub>
+
+<a id="member-EngineProbe-pickUi"></a>
+
+#### `EngineProbe.pickUi`
+
+The UI element under a point of the play surface: what pick names in the UI, with the document line that built it and the style rules that dress it. A tool asks it first, then pick for the scene.
+
+```ts
+EngineProbe.pickUi(x: number, y: number): UiPickElement | null
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `x` | `number` | no | Horizontal position in CSS pixels. |
+| `y` | `number` | no | Vertical position in CSS pixels. |
+
+**Returns** `UiPickElement | null`: Null when no UI element that shows something or takes input is under the point.
+
+Binding symbol `og_engine_probe_pick_ui` · publish builds: dropped
+
+```ogt
+fn pickUi {
+  doc "The UI element under a point of the play surface: what pick names in the UI, with the document line that built it and the style rules that dress it. A tool asks it first, then pick for the scene."
+  param x f32 "Horizontal position in CSS pixels."
+  param y f32 "Vertical position in CSS pixels."
+  returns Option.UiPickElement "Null when no UI element that shows something or takes input is under the point."
+}
+```
+
+<sub>`api.ogt` line 24767</sub>

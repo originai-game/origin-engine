@@ -361,3 +361,22 @@ skill (its instructions, create mode and own skills point at `og help` and
 - `scripts/knowledge/production-bundle.test.mjs:50`–`:54` keeps passing (it
   already excludes `game/skills/og-*` other than the platform's
   `og-platform`).
+
+## Picking the UI
+
+**Ask 30, open.** origin-agent's point-and-comment asks the engine's
+`pickUi(x, y)` (wire member `pick_ui`, an engine member beside protocol 5,
+listed in `hello.members`) first, and `pick(x, y)` second. `pickUi` answers
+the topmost UI element under the point that shows something or takes input:
+`{ id, path, kind, text, rect: { x, y, width, height }, layer, source, part,
+rule, rules }`, `source` the document line that built it
+(`ui/shop.ogt:42`), `part` the style part it is drawn as
+(`Button.base[primary][hover]`), `rules` the style rules that dress it, each
+`{ selector, source }` with its file and line, in the order they apply, and
+`rule` the most specific. A layout container that draws nothing answers
+`null`, so a HUD's full-screen root never hides the scene. `pick` keeps
+protocol 5's `PickResult`; its `source` now names the scene line that
+declares the entity (`scenes/main.ogt:12`), and outside a publish build it
+carries the same UI element as an extra `ui` field. The platform highlights
+the element's `rect` and opens its `source`, then the rule's. Nothing in
+protocol 5 changes.

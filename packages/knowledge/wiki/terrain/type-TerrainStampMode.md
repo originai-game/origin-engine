@@ -23,4 +23,4 @@ enum TerrainStampMode {
 }
 ```
 
-<sub>`api.ogt` line 24774</sub>
+<sub>`api.ogt` line 24803</sub>

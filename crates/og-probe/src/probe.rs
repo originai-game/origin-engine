@@ -82,6 +82,7 @@ pub const MEMBERS: &[&str] = &[
     "expectations",
     "save_scene",
     "assertions",
+    "pick_ui",
 ];
 
 /// The player-facing members a `publish` build keeps.

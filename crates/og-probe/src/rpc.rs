@@ -239,6 +239,11 @@ impl Probe {
                 (Some(x), Some(y)) => or_null(self.pick(world, x, y)),
                 _ => return Err(RpcError::invalid("x and y must be finite numbers")),
             },
+            #[cfg(not(feature = "publish"))]
+            "pick_ui" => match (coordinate(p, "x"), coordinate(p, "y")) {
+                (Some(x), Some(y)) => or_null(self.pick_ui(world, x, y)),
+                _ => return Err(RpcError::invalid("x and y must be finite numbers")),
+            },
             "entity" => or_null(self.entity(world, string(p, "id")?)),
             #[cfg(not(feature = "publish"))]
             "bounds" => or_null(self.bounds(world, string(p, "id")?)),

@@ -1763,6 +1763,7 @@ function makeProbe(id: number) {
     expectations: () => parse(a().og_engine_probe_expectations(id)),
     assertions: (take?: boolean) => parse(a().og_engine_probe_assertions(id, take)),
     saveScene: (write?: boolean, spawned?: boolean) => parse(a().og_engine_probe_save_scene(id, write, spawned)),
+    pickUi: (x: number, y: number) => parse(a().og_engine_probe_pick_ui(id, x, y)),
   });
 }
 

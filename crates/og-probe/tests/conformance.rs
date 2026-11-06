@@ -97,7 +97,7 @@ fn every_member_answers_as_protocol_5_says() {
     assert_eq!(hello["tier"], json!("vulkan"));
     assert!(["dev", "release"].contains(&hello["build"].as_str().unwrap()));
     assert_eq!(hello["members"], json!(MEMBERS));
-    assert_eq!(MEMBERS.len(), 27, "13 protocol-5 members + 14 wire members");
+    assert_eq!(MEMBERS.len(), 28, "13 protocol-5 members + 15 wire members");
     // assertions: an empty report, a fresh one after take.
     let report = t.ok("assertions", json!({"take": true}));
     assert_eq!(report["violations"], json!([]));
@@ -193,14 +193,24 @@ fn every_member_answers_as_protocol_5_says() {
     // accepted: what the input layer took, refusals not counted.
     assert_eq!(t.ok("accepted", json!({})), json!(4));
 
-    // pick: a hit, nothing (null), malformed coordinates.
+    // pick: a hit, nothing (null), malformed coordinates. A hit carries
+    // the UI element over the point, as pick_ui answers it.
+    let menu = json!({"id": "Menu", "path": "", "kind": "", "text": "", "layer": null,
+        "rect": {"x": 0.0, "y": 0.0, "width": 100.0, "height": 40.0},
+        "source": null, "part": null, "rule": null, "rules": []});
     assert_eq!(
         t.ok("pick", json!({"x": 5, "y": 3})),
-        json!({"entity": "player", "world": [5.0, 3.0, 0.0], "source": "player.ts::move"})
+        json!({"entity": "player", "world": [5.0, 3.0, 0.0], "source": "player.ts::move", "ui": menu.clone()})
     );
     assert_eq!(t.ok("pick", json!({"x": 50, "y": 3})), Value::Null);
     t.err("pick", json!({"x": "a", "y": 3}), INVALID_PARAMS);
     t.err("pick", json!({"x": 1}), INVALID_PARAMS);
+
+    // pick_ui: the UI element over a point (the scene is not asked), null
+    // off every element, malformed coordinates refused.
+    assert_eq!(t.ok("pick_ui", json!({"x": 5, "y": 3})), menu);
+    assert_eq!(t.ok("pick_ui", json!({"x": 500, "y": 300})), Value::Null);
+    t.err("pick_ui", json!({"x": 1}), INVALID_PARAMS);
 
     // entity: tunable fields as Component.field; null for an unknown entity.
     assert_eq!(

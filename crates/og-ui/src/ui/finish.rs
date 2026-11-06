@@ -508,6 +508,7 @@ impl Ui {
         self.collect_input_specs(&order, &mut group_of, &mut gesture_of);
         let mut hits = Vec::new();
         let mut elements = Vec::new();
+        let mut parts = Vec::new();
         // The accessibility tree: each element's key (for its focus states)
         // and the nodes with a role, with the paths their children name.
         let mut element_keys: Vec<u64> = Vec::new();
@@ -702,6 +703,7 @@ impl Ui {
                 self.nodes[n.parent].id.clone()
             };
             element_keys.push(n.key);
+            parts.push(n.el.part.or_else(|| n.el.frame.map(StylePart::part_ref)));
             elements.push(UiElement {
                 id: n.id.clone(),
                 parent,
@@ -780,6 +782,7 @@ impl Ui {
                         },
                     ));
                     element_keys.push(child_key(n.key, &l));
+                    parts.push(None);
                     elements.push(UiElement {
                         path: format!("{}/{l}", self.probe_path(i)),
                         id: l,
@@ -991,6 +994,7 @@ impl Ui {
         self.frame = UiFrame {
             viewport: vp,
             elements,
+            parts,
             items: crate::draw::zoom_items(assign_levels(cmds), self.unit),
             warnings: std::mem::take(&mut self.warnings),
             missing_glyphs,

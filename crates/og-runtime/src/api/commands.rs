@@ -145,6 +145,10 @@ pub fn og_runtime_probe_pick(probe: u32, x: f64, y: f64) -> String {
     member(probe, "pick", json!({ "x": x, "y": y })).to_string()
 }
 
+pub fn og_engine_probe_pick_ui(probe: u32, x: f64, y: f64) -> String {
+    member(probe, "pick_ui", json!({ "x": x, "y": y })).to_string()
+}
+
 pub fn og_runtime_probe_entity(probe: u32, id: String) -> String {
     member(probe, "entity", json!({ "id": id })).to_string()
 }

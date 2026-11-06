@@ -17073,6 +17073,8 @@
       "publish": true,
       "types": [
         "PickResult",
+        "UiPickRule",
+        "UiPickElement",
         "ProbeTunable",
         "ProbeEntityRef",
         "ProbeTimings",
@@ -17242,7 +17244,7 @@
             },
             {
               "name": "pick",
-              "doc": "What is under a point of the play surface.",
+              "doc": "The scene entity under a point of the play surface, and the UI element over it (pickUi's answer) outside a publish build.",
               "params": [
                 {
                   "name": "x",
@@ -17535,6 +17537,27 @@
               ],
               "returns": "Option<SavedScene>",
               "returnsDoc": "Null without a scene to write back (the reason is in the log).",
+              "publish": false
+            },
+            {
+              "name": "pickUi",
+              "doc": "The UI element under a point of the play surface: what pick names in the UI, with the document line that built it and the style rules that dress it. A tool asks it first, then pick for the scene.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "Horizontal position in CSS pixels."
+                },
+                {
+                  "name": "y",
+                  "type": "f32",
+                  "optional": false,
+                  "doc": "Vertical position in CSS pixels."
+                }
+              ],
+              "returns": "Option<UiPickElement>",
+              "returnsDoc": "Null when no UI element that shows something or takes input is under the point.",
               "publish": false
             }
           ]
@@ -67936,7 +67959,7 @@
     "PickResult": {
       "x-og-kind": "struct",
       "x-og-module": "probe",
-      "description": "What a screen point resolved to.",
+      "description": "What a screen point resolved to in the scene.",
       "type": "object",
       "properties": {
         "entity": {
@@ -67973,13 +67996,130 @@
               "type": "null"
             }
           ],
-          "description": "Where a person would change it, as `player.ts::jump`."
+          "description": "Where a person would change it: the scene line that declares the entity (`scenes/main.ogt:12`), or a code site as `player.ts::jump`."
+        },
+        "ui": {
+          "$ref": "#/$defs/UiPickElement",
+          "description": "The UI element over the point, as pickUi answers: what the player sees there instead of the entity."
         }
       },
       "required": [
         "entity",
         "world",
         "source"
+      ],
+      "additionalProperties": false
+    },
+    "UiPickRule": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "A style rule that dresses a picked element's part.",
+      "type": "object",
+      "properties": {
+        "selector": {
+          "type": "string",
+          "description": "Its selector, as the style writes it (`Button.base[primary]`)."
+        },
+        "source": {
+          "type": "string",
+          "description": "Its file and line (`styles/fantasy/style.ogt:210`); empty for the engine's default style."
+        }
+      },
+      "required": [
+        "selector",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "UiPickElement": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The UI element under a point (docs/ui.md §16.1): the topmost one that shows something or takes input; a layout container that draws nothing lets the point through.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Its id."
+        },
+        "path": {
+          "type": "string",
+          "description": "Its full path, as dump_ui and touch_move_to name it."
+        },
+        "kind": {
+          "type": "string",
+          "description": "What made it: label, button, panel, icon, a kit's own kind."
+        },
+        "text": {
+          "type": "string",
+          "description": "The text it shows; empty for none."
+        },
+        "rect": {
+          "$ref": "#/$defs/UiRect",
+          "description": "Where it shows."
+        },
+        "layer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The screen whose layer it is in; null for code-built UI outside one."
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The document line that built it (`ui/shop.ogt:42`); null for code-built UI."
+        },
+        "part": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The style part it is drawn as, with its variant and state flags (`Button.base[primary][hover]`); null for one no style dresses."
+        },
+        "rule": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UiPickRule"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The most specific rule that dresses it: the last of rules."
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UiPickRule"
+          },
+          "description": "Every style rule that dresses its part, in the order they apply."
+        }
+      },
+      "required": [
+        "id",
+        "path",
+        "kind",
+        "text",
+        "rect",
+        "layer",
+        "source",
+        "part",
+        "rule",
+        "rules"
       ],
       "additionalProperties": false
     },

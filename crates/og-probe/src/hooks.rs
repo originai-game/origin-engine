@@ -216,6 +216,14 @@ pub trait SceneWriter {
         spawned: bool,
     ) -> Result<SavedScene, String>;
 
+    /// Where an entity is declared: `scenes/main.ogt:12`, the line of its
+    /// `entity` in the scene it was assembled from. `None` for one the game
+    /// spawned at run time, or a host that does not know.
+    fn source(&self, world: &World, entity: Entity) -> Option<String> {
+        let _ = (world, entity);
+        None
+    }
+
     /// `apply_prefab` and `revert_prefab` (`docs/design.md` §2.5): the
     /// overrides of an entity placed from a prefab moved into the prefab's
     /// text (`edit.apply`) or dropped with the live values set back to the
@@ -409,6 +417,27 @@ pub fn find_by_id<'a>(elements: &'a [UiElement], path: &str) -> Option<&'a UiEle
                 .map_or("", |p| p.parent.as_str());
         }
         true
+    })
+}
+
+/// The UI element `pick` answers for a point of the play surface (CSS px):
+/// the topmost (last drawn) one under it that shows something or takes
+/// input: a text, a role, a state, an opaque fill or a style part. A layout
+/// container that draws nothing (a HUD's full-screen root) lets the point
+/// through to what is under it, and to the scene.
+pub fn pick_ui(elements: &[UiElement], x: f32, y: f32) -> Option<&UiElement> {
+    const LAYOUT: [&str; 6] = ["layer", "root", "row", "column", "scroll", "stack"];
+    elements.iter().rev().find(|e| {
+        x >= e.x
+            && x < e.x + e.width
+            && y >= e.y
+            && y < e.y + e.height
+            && (!LAYOUT.contains(&e.kind.as_str())
+                || !e.text.is_empty()
+                || !e.role.is_empty()
+                || !e.states.is_empty()
+                || e.opaque
+                || e.detail.contains_key("part"))
     })
 }
 

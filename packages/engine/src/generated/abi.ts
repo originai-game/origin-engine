@@ -1181,6 +1181,8 @@ export interface HostAbi<A, V> {
   og_engine_probe_assertions(engine_probe: number, take: boolean | undefined): string;
   /** `EngineProbe.saveScene` */
   og_engine_probe_save_scene(engine_probe: number, write: boolean | undefined, spawned: boolean | undefined): string;
+  /** `EngineProbe.pickUi` */
+  og_engine_probe_pick_ui(engine_probe: number, x: number, y: number): string;
   /** `og.terrain.load` */
   og_terrain_load(world: number, path: string): string;
   /** `og.terrain.sample` */
@@ -1877,6 +1879,7 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_probe_expectations",
   "og_engine_probe_assertions",
   "og_engine_probe_save_scene",
+  "og_engine_probe_pick_ui",
   "og_terrain_load",
   "og_terrain_sample",
   "og_terrain_bounds",

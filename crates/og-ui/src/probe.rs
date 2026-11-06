@@ -110,6 +110,20 @@ impl Ui {
                 e.height *= u;
             }
         }
+        // The part each is drawn as and the style rules that dress it, in
+        // the order they apply (the last wins a property both set).
+        for (e, part) in out.iter_mut().zip(&self.frame().parts) {
+            let Some(part) = part else { continue };
+            e.detail.insert("part".into(), json!(part.to_string()));
+            let rules: Vec<Value> = self
+                .dress
+                .matching(part)
+                .map(|d| json!({ "selector": d.selector.to_string(), "source": d.written_at() }))
+                .collect();
+            if !rules.is_empty() {
+                e.detail.insert("rules".into(), Value::Array(rules));
+            }
+        }
         if self.docs.built.is_empty()
             && self.frame().motion.is_empty()
             && self.docs.layers.layers.is_empty()

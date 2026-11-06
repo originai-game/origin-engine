@@ -2967,6 +2967,12 @@ pub fn og_engine_probe_save_scene(engine_probe: u32, write: Option<bool>, spawne
     <Host as ProbeApi>::og_engine_probe_save_scene(&Host, engine_probe, write, spawned)
 }
 
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_engine_probe_pick_ui(engine_probe: u32, x: f64, y: f64) -> String {
+    <Host as ProbeApi>::og_engine_probe_pick_ui(&Host, engine_probe, x, y)
+}
+
 #[wasm_bindgen]
 pub fn og_terrain_load(world: u32, path: String) -> String {
     <Host as TerrainApi>::og_terrain_load(&Host, world, path)

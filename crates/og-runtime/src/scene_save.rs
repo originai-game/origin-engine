@@ -369,6 +369,35 @@ impl SceneWriter for RuntimeWriter {
         Ok(out)
     }
 
+    fn source(&self, world: &World, entity: Entity) -> Option<String> {
+        let eng = super::engine::engine(self.engine).ok()?;
+        let id = eng
+            .state
+            .borrow()
+            .scene_instances
+            .iter()
+            .find(|i| i.entities.contains(&entity.to_bits()))?
+            .id
+            .clone();
+        // The line of its `entity "<name>"` in the scene's text, when the
+        // project's sources are here to read it.
+        let root = eng.assets.borrow().root.clone();
+        let line = world.name(entity).and_then(|name| {
+            let quoted = name.replace('\\', "\\\\").replace('"', "\\\"");
+            let head = format!("entity \"{quoted}\"");
+            let text =
+                std::fs::read_to_string(std::path::Path::new(&root).join("assets").join(&id))
+                    .ok()?;
+            text.lines()
+                .position(|l| l.trim_start().starts_with(&format!("{head} ")))
+                .map(|i| i + 1)
+        });
+        Some(match line {
+            Some(n) => format!("{id}:{n}"),
+            None => id,
+        })
+    }
+
     fn prefab(&mut self, world: &mut World, edit: &PrefabEdit) -> Result<SavedScene, String> {
         let eng = super::engine::engine(self.engine)?;
         prefab_edit(&eng, world, edit)

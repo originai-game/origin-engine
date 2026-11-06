@@ -669,11 +669,14 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                             frame: DressFrame::default(),
                             draw: Default::default(),
                             recolour: None,
+                            source: String::new(),
+                            lines: Vec::new(),
                         });
                         dressings.len() - 1
                     }
                 };
                 let d = &mut dressings[i];
+                d.lines.push(e.line);
                 let atlas = crate::paint_entry::AtlasContext {
                     size: file.atlas.as_ref().map(|_| size),
                     scale,

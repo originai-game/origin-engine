@@ -12,10 +12,33 @@ module probe {
   const PROBE_PROGRAM_MAX_OPERATIONS u32 256 "The most operations one probe program may carry."
 
   struct PickResult {
-    doc "What a screen point resolved to."
+    doc "What a screen point resolved to in the scene."
     field entity String "The probe id of the entity under the point."
     field world OneOf.Array.f32.2.Array.f32.3 "Where the pick landed in world space: two components in the 2D profile, three in 3D; nothing pads a plane with an unmeasured zero."
-    field source Option.String "Where a person would change it, as `player.ts::jump`."
+    field source Option.String "Where a person would change it: the scene line that declares the entity (`scenes/main.ogt:12`), or a code site as `player.ts::jump`."
+    field ui UiPickElement "The UI element over the point, as pickUi answers: what the player sees there instead of the entity." {
+      optional true
+    }
+  }
+
+  struct UiPickRule {
+    doc "A style rule that dresses a picked element's part."
+    field selector String "Its selector, as the style writes it (`Button.base[primary]`)."
+    field source String "Its file and line (`styles/fantasy/style.ogt:210`); empty for the engine's default style."
+  }
+
+  struct UiPickElement {
+    doc "The UI element under a point (docs/ui.md §16.1): the topmost one that shows something or takes input; a layout container that draws nothing lets the point through."
+    field id String "Its id."
+    field path String "Its full path, as dump_ui and touch_move_to name it."
+    field kind String "What made it: label, button, panel, icon, a kit's own kind."
+    field text String "The text it shows; empty for none."
+    field rect UiRect "Where it shows."
+    field layer Option.String "The screen whose layer it is in; null for code-built UI outside one."
+    field source Option.String "The document line that built it (`ui/shop.ogt:42`); null for code-built UI."
+    field part Option.String "The style part it is drawn as, with its variant and state flags (`Button.base[primary][hover]`); null for one no style dresses."
+    field rule Option.UiPickRule "The most specific rule that dresses it: the last of rules."
+    field rules List.UiPickRule "Every style rule that dresses its part, in the order they apply."
   }
 
   struct ProbeTunable {
@@ -590,7 +613,7 @@ module probe {
       returns u32
     }
     fn pick {
-      doc "What is under a point of the play surface."
+      doc "The scene entity under a point of the play surface, and the UI element over it (pickUi's answer) outside a publish build."
       publish true
       param x f32 "Horizontal position in CSS pixels."
       param y f32 "Vertical position in CSS pixels."
@@ -716,6 +739,12 @@ module probe {
         default false
       }
       returns Option.SavedScene "Null without a scene to write back (the reason is in the log)."
+    }
+    fn pickUi {
+      doc "The UI element under a point of the play surface: what pick names in the UI, with the document line that built it and the style rules that dress it. A tool asks it first, then pick for the scene."
+      param x f32 "Horizontal position in CSS pixels."
+      param y f32 "Vertical position in CSS pixels."
+      returns Option.UiPickElement "Null when no UI element that shows something or takes input is under the point."
     }
   }
 }

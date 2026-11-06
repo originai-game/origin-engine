@@ -15,7 +15,7 @@ interface RuntimeProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 24576</sub>
+<sub>`api.ogt` line 24599</sub>
 
 <a id="member-RuntimeProbe-version"></a>
 
@@ -35,7 +35,7 @@ prop version u32 "PROBE_VERSION." {
 }
 ```
 
-<sub>`api.ogt` line 24580</sub>
+<sub>`api.ogt` line 24603</sub>
 
 <a id="member-RuntimeProbe-tick"></a>
 
@@ -59,7 +59,7 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 24583</sub>
+<sub>`api.ogt` line 24606</sub>
 
 <a id="member-RuntimeProbe-state"></a>
 
@@ -83,7 +83,7 @@ fn state {
 }
 ```
 
-<sub>`api.ogt` line 24588</sub>
+<sub>`api.ogt` line 24611</sub>
 
 <a id="member-RuntimeProbe-advance"></a>
 
@@ -111,7 +111,7 @@ fn advance {
 }
 ```
 
-<sub>`api.ogt` line 24593</sub>
+<sub>`api.ogt` line 24616</sub>
 
 <a id="member-RuntimeProbe-pause"></a>
 
@@ -134,7 +134,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 24598</sub>
+<sub>`api.ogt` line 24621</sub>
 
 <a id="member-RuntimeProbe-resume"></a>
 
@@ -157,7 +157,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 24602</sub>
+<sub>`api.ogt` line 24625</sub>
 
 <a id="member-RuntimeProbe-input"></a>
 
@@ -186,7 +186,7 @@ fn input {
 }
 ```
 
-<sub>`api.ogt` line 24606</sub>
+<sub>`api.ogt` line 24629</sub>
 
 <a id="member-RuntimeProbe-accepted"></a>
 
@@ -209,13 +209,13 @@ fn accepted {
 }
 ```
 
-<sub>`api.ogt` line 24612</sub>
+<sub>`api.ogt` line 24635</sub>
 
 <a id="member-RuntimeProbe-pick"></a>
 
 #### `RuntimeProbe.pick`
 
-What is under a point of the play surface.
+The scene entity under a point of the play surface, and the UI element over it (pickUi's answer) outside a publish build.
 
 ```ts
 RuntimeProbe.pick(x: number, y: number): PickResult | null
@@ -232,7 +232,7 @@ Binding symbol `og_runtime_probe_pick` · publish builds: kept
 
 ```ogt
 fn pick {
-  doc "What is under a point of the play surface."
+  doc "The scene entity under a point of the play surface, and the UI element over it (pickUi's answer) outside a publish build."
   publish true
   param x f32 "Horizontal position in CSS pixels."
   param y f32 "Vertical position in CSS pixels."
@@ -240,7 +240,7 @@ fn pick {
 }
 ```
 
-<sub>`api.ogt` line 24616</sub>
+<sub>`api.ogt` line 24639</sub>
 
 <a id="member-RuntimeProbe-entity"></a>
 
@@ -269,7 +269,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 24623</sub>
+<sub>`api.ogt` line 24646</sub>
 
 <a id="member-RuntimeProbe-bounds"></a>
 
@@ -297,7 +297,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 24629</sub>
+<sub>`api.ogt` line 24652</sub>
 
 <a id="member-RuntimeProbe-patch"></a>
 
@@ -329,7 +329,7 @@ fn patch {
 }
 ```
 
-<sub>`api.ogt` line 24634</sub>
+<sub>`api.ogt` line 24657</sub>
 
 <a id="member-RuntimeProbe-run"></a>
 
@@ -357,4 +357,4 @@ fn run {
 }
 ```
 
-<sub>`api.ogt` line 24641</sub>
+<sub>`api.ogt` line 24664</sub>

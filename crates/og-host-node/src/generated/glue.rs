@@ -3555,6 +3555,13 @@ pub fn og_engine_probe_save_scene(env: Env, engine_probe: u32, write: Option<boo
     <Host as ProbeApi>::og_engine_probe_save_scene(&Host, engine_probe, write, spawned)
 }
 
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_engine_probe_pick_ui")]
+pub fn og_engine_probe_pick_ui(env: Env, engine_probe: u32, x: f64, y: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProbeApi>::og_engine_probe_pick_ui(&Host, engine_probe, x, y)
+}
+
 #[napi(js_name = "og_terrain_load")]
 pub fn og_terrain_load(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);

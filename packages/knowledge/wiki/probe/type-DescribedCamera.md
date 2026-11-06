@@ -41,4 +41,4 @@ struct DescribedCamera {
 }
 ```
 
-<sub>`api.ogt` line 24487</sub>
+<sub>`api.ogt` line 24510</sub>

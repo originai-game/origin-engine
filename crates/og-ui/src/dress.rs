@@ -560,6 +560,26 @@ pub struct Dressing {
     /// `recolour "<from>" <role>` lines (or `recolour none`) for its
     /// authored slice, over the style's (`StyleFile::recolour`).
     pub recolour: Option<Vec<crate::style_file::Recolour>>,
+    /// The asset id of the style it was read from (`StyleFile::source`;
+    /// empty: a style made in memory, the default style's).
+    pub source: String,
+    /// The lines of its blocks in that file (two blocks of one selector
+    /// merge), for `pick` and `dump_ui` (docs/ui.md §16.1).
+    pub lines: Vec<usize>,
+}
+
+impl Dressing {
+    /// Where it is written: `styles/fantasy/style.ogt:210` (every block's
+    /// line, comma separated), or its selector's text alone when it was
+    /// not read from a file.
+    pub fn written_at(&self) -> String {
+        let lines: Vec<String> = self.lines.iter().map(usize::to_string).collect();
+        match (self.source.is_empty(), lines.is_empty()) {
+            (false, false) => format!("{}:{}", self.source, lines.join(",")),
+            (false, true) => self.source.clone(),
+            _ => String::new(),
+        }
+    }
 }
 
 // ───────────────────────────────────────────── parts and their resolution
@@ -786,6 +806,14 @@ impl DressSet {
                 && d.selector.part == part.part
                 && d.selector.attrs.iter().any(|(k, _)| k == key)
         })
+    }
+
+    /// The dressings that match `part`, in the order they apply: the last
+    /// wins a property they both set.
+    pub fn matching<'a>(&'a self, part: &'a PartRef) -> impl Iterator<Item = &'a Dressing> + 'a {
+        self.list
+            .iter()
+            .filter(move |d| part.matched_by(&d.selector))
     }
 
     pub fn resolve(&self, part: &PartRef) -> Resolved {

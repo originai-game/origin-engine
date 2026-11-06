@@ -1122,9 +1122,18 @@ frame that would work as a screenshot of the game.
 ### 16.1 Read
 
 `dump_ui` gives per element: the resolved props (box, transform, paints by
-token), the style part and dressing, the state of each group, bindings and
-their values, animations in flight with their progress, slot specs, the
-layer it belongs to, and whether it was rebuilt this tick. `dump_ui:layers`
+token), the style part it is drawn as (`part`, with its variant and state
+flags) and the style rules that dress it (`rules`: each selector with its
+file and line, in the order they apply), the state of each group, bindings
+and their values, animations in flight with their progress, slot specs,
+the layer it belongs to, the document line that built it (`source`), and
+whether it was rebuilt this tick. The probe's `pickUi(x, y)` (wire member
+`pick_ui`) answers the topmost element under the point that shows
+something or takes input, with its id, kind, text, rectangle, `source`,
+`part` and `rules`; a point on a layout container that draws nothing has
+none. A tool asks it first, then `pick` for the scene, whose `source` names
+the scene line that declares the entity and whose `ui` carries the same
+element. `dump_ui:layers`
 lists the layer stack with input modes and focus. `dump_ui:motion:<path>`
 (a transition or timeline sampled over ticks) is not implemented.
 

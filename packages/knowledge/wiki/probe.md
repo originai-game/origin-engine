@@ -35,7 +35,9 @@ module probe {
 | [`REPLAY_SEED_PARAM`](#const-REPLAY_SEED_PARAM) | constant |  | The page query parameter that starts a deterministic replay from a uint32 seed. |
 | [`PLAYTEST_MAX_TICKS`](#const-PLAYTEST_MAX_TICKS) | constant |  | The longest playtest one request may advance, in fixed steps. |
 | [`PROBE_PROGRAM_MAX_OPERATIONS`](#const-PROBE_PROGRAM_MAX_OPERATIONS) | constant |  | The most operations one probe program may carry. |
-| [`PickResult`](probe/type-PickResult.md) | struct |  | What a screen point resolved to. |
+| [`PickResult`](probe/type-PickResult.md) | struct |  | What a screen point resolved to in the scene. |
+| [`UiPickRule`](probe/type-UiPickRule.md) | struct |  | A style rule that dresses a picked element's part. |
+| [`UiPickElement`](probe/type-UiPickElement.md) | struct |  | The UI element under a point (docs/ui.md §16.1): the topmost one that shows something or takes input; a layout container that draws nothing lets the point through. |
 | [`ProbeTunable`](probe/type-ProbeTunable.md) | struct |  | One published tunable parameter and the range it means something over. |
 | [`ProbeEntityRef`](probe/type-ProbeEntityRef.md) | struct |  | One entity the probe publishes in state(). |
 | [`ProbeTimings`](probe/type-ProbeTimings.md) | struct |  | The fixed timings head of state(). |

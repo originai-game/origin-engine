@@ -257,6 +257,9 @@ impl StyleFile {
     /// `assets/`, when no asset `exists` there. The cook and the runtime
     /// resolve the same way, so what the cook checked is what loads.
     pub fn resolve(&mut self, style_id: &str, exists: impl Fn(&str) -> bool) {
+        for d in &mut self.dressings {
+            d.source = style_id.to_string();
+        }
         let at = |r: &mut String| *r = resolve_reference(style_id, r, &exists);
         if let Some(a) = self.atlas.as_mut() {
             at(a);
@@ -735,6 +738,8 @@ pub(crate) fn v1_dressings(art: &Art) -> Vec<Dressing> {
                 frame: f,
                 draw: Default::default(),
                 recolour: None,
+                source: String::new(),
+                lines: Vec::new(),
             });
         }
     }
