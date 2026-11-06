@@ -41,7 +41,7 @@ export function crosshair(id: string, desc: CrosshairDesc = {}): void {
   const base = desc.color ? paintRgba(desc.color, WHITE) : WHITE;
   const ink = desc.onTarget ? role("danger") : base;
   const size = Math.ceil((target + len) * 2 + 24 + (hitLive ? 40 : 0));
-  kit.anchor(`${id}Hud`, { anchor: desc.anchor ?? "center", margin: 0 }, () => {
+  const draw = () => {
     box(id, { width: px(size), height: px(size), part: sel("Crosshair", "frame", style) }, undefined, () => {
       const gap = reduced() ? target : springTo("gap", target, 140);
       const c = size / 2;
@@ -89,7 +89,9 @@ export function crosshair(id: string, desc: CrosshairDesc = {}): void {
         }, absolute({ start: 0, top: 0 }, { opacity: fade }));
       }
     }, groups({ aim: desc.onTarget ? "onTarget" : "idle", hit: hitLive ? kind : "none" }, { aim: ["idle", "onTarget"], hit: ["none", "hit", "headshot", "kill"] }));
-  });
+  };
+  if (desc.anchor === null) draw();
+  else kit.anchor(`${id}Hud`, { anchor: desc.anchor ?? "center", margin: 0 }, draw);
 }
 
 export function ammoCounter(id: string, desc: AmmoDesc = {}): void {

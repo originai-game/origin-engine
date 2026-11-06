@@ -166,11 +166,12 @@ export interface CrosshairDesc {
    */
   readonly onTarget?: boolean;
   /**
-   * Where it sits; the default is the centre.
+   * Where it sits; the default is the centre. null builds it in place
+   * (inside a split-screen half's own group, centred by its parent).
    *
    * @default "center"
    */
-  readonly anchor?: Anchor;
+  readonly anchor?: Anchor | null;
 }
 
 /**
