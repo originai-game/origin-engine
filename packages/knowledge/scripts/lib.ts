@@ -54,11 +54,18 @@ export interface Mount {
 export interface Manifest {
   readonly schemaVersion: 1;
   readonly overlay: string;
+  readonly overlays?: Readonly<Record<"2d" | "3d", string>>;
   readonly mounts: readonly Mount[];
 }
 
 export function readManifest(pkg: string): Manifest {
   return JSON.parse(readFileSync(join(pkg, "knowledge.json"), "utf8")) as Manifest;
+}
+
+/** The second profile's template, without changing the public Roots shape. */
+export function template2d(roots: Roots): string {
+  const repo = join(roots.pkg, "../../templates/game-2d");
+  return existsSync(join(repo, "project.ogt")) ? repo : join(roots.pkg, "scaffold/template-2d");
 }
 
 /** One file of the payload: its production path, where it came from, its bytes. */
@@ -123,12 +130,13 @@ export function payload(roots: Roots): PayloadFile[] {
   const manifest = readManifest(roots.pkg);
   const files: PayloadFile[] = [];
   for (const m of manifest.mounts) {
-    const base = m.from === "@template/" ? roots.template : join(roots.pkg, m.from);
-    const skip = m.from === "@template/" ? TEMPLATE_SKIP : new Set<string>();
+    const template = m.from === "@template/" || m.from === "@template-2d/";
+    const base = m.from === "@template/" ? roots.template : m.from === "@template-2d/" ? template2d(roots) : join(roots.pkg, m.from);
+    const skip = template ? TEMPLATE_SKIP : new Set<string>();
     const sources = m.from.endsWith("/") ? walk(base, skip) : [base];
     for (const source of sources) {
       const found = m.from.endsWith("/") ? relative(base, source).split("\\").join("/") : "";
-      const rel = m.from === "@template/" ? (TEMPLATE_RENAMED.get(found) ?? found) : found;
+      const rel = template ? (TEMPLATE_RENAMED.get(found) ?? found) : found;
       const path = m.to.endsWith("/") ? m.to + rel : m.to;
       const symlink = existsSync(source) ? lstatSync(source).isSymbolicLink() : false;
       files.push({ path, source, bytes: existsSync(source) && !symlink ? new Uint8Array(readFileSync(source)) : new Uint8Array(), symlink });

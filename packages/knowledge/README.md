@@ -10,7 +10,8 @@ agent-repo split):
 | API wiki, one page per IDL module plus `index.md` | `wiki/` (generated: `og api gen --wiki`; `og api check` fails on drift) | not mounted: `og api find`, `og api show <name>` and `og api show <module>` read it from the engine package's `knowledge/wiki` |
 | Skills, numbered `## N.` sections cross-referenced as `og-feel §4`: `og-game` (the entry point and the map of the others: the project, ECS, scenes, assets, loading and streaming, input, saving, checking a run), `og-2d` (sprites, flipbooks, texture arrays, tilesets and maps), `og-anim` (skeletal clips, blend trees, IK and procedural layers, retargeting, 2D skeletons, cutscenes), `og-render` (effects and particles, light, shadows and antialiasing, baked lighting, reflections, atmosphere, water and terrain, shaders and post passes, render targets, run-time geometry, debug draw, footage), `og-physics` (bodies, queries, joints, controllers, vehicles, ropes, cloth, fluids, ragdolls), `og-destruction` (prefractured props, damage, the stress solver, debris and budgets), `og-net` (lockstep over a room), `og-core` (engine rules), `og-build` (the `og` loop, the evidence discipline, `og polish`: §5 is the one list of what it measures, performance, `og render` videos), `og-feel` (game feel: time scale, hit stop, tweens, camera, juice amounts, controller tunables by genre), `og-ui` (screens, HUDs, styles, motion, text entry, accessibility, gestures), `og-taste` (art direction: a look chosen from the premise out of the style catalogue `looks/catalogue.json`, atmosphere by intent, the done checklist, the look's mechanism and the art contract), `og-ai` (navigation and enemy minds as data), `og-audio` (events, presets, the mix, music), `og-i18n` (string tables, fonts, line breaking, right to left), `og-model` (a 3D model built as code from a reference image: the intake's detail inventory, eight gated passes, the og-geom generators' recipes, budgets, the `type model` asset, and the review's `view` and `turntable` frames and `og compare` sheet), `og-platform-sdk` (`og.platform`: saves, settings, leaderboards, telemetry, and how to ask for what is missing; the platform's own `og-platform` covers the Player). Seven craft skills beside them teach no module and point to the og-* skills for the API: `architecture-discipline` (the project's layers, splitting, the whole game in a working order, loud failure, tuning in data), `component-forge` (a unit built as code from a measured reference), `level-texturing` (a gray level painted from views with `og bake projection`; its driver is `scripts/texture-level.ts` beside it), `localization` (the discipline around og-i18n), `recipe-craft` (the retrieval ladder for example code, vendoring, distilling), `ui-craft` (UI hierarchy, each genre family's layout grammar, motion personality, the preview and check loop) and `visual-acceptance` (judging frames against references, baselines and the play camera). Each IDL module's `skill` names the one that teaches it; the wiki's index groups modules by it, and `bun run test` checks that skill names the module's overview (`og api show <module>`), no other does, no skill points into the unmounted wiki (`reference/<page>.md`), and every section reference resolves | `skills/<name>/SKILL.md` | `game/skills/<name>/` |
 | Guides: hand-written pages an agent reads beside a skill, held to the same rules as the skills (every `og.*` name and `Type.field` in the API, section references resolved, each named by og-game, listed in `GUIDES`): `three-to-og` maps three.js's classes and idioms to the engine's and names the gaps; `og migrate three` cites its sections | `guides/<name>.md` | `game/skills/og-game/guides/` |
-| Scaffold: the project template, its engine pin and binary digests | `scaffold/` and the engine repository's `templates/game` | `game-scaffold/origin-engine-ts/` |
+| 3D scaffold: the project template, its engine pin and binary digests | `scaffold/` and `templates/game` | `game-scaffold/origin-engine-ts/` |
+| 2D scaffold: the project template, its engine pin and binary digests | `scaffold/2d/` and `templates/game-2d` | `game-scaffold/origin-engine-ts-2d/` |
 
 `bun run test` validates the package against the platform's rules
 (`rules/platform.json`, transcribed from the platform by
@@ -27,7 +28,7 @@ prints the text payload in the platform's `readProductionBundle` shape
 
 `bun scripts/mount.ts <origin-agent checkout> [--check] [--commit <rev> | --package <dir>]`
 writes the payload into the checkout's `knowledge/` (text files only; it
-owns `game/skills/<each of its skills>/` and `game-scaffold/origin-engine-ts/` there and
+owns `game/skills/<each of its skills>/` and both scaffold overlays there and
 removes what the package no longer has); `--check` exits 1 on any
 difference, `--commit` mounts a commit instead of the working tree and
 `--package` the knowledge of an installed engine. origin-agent itself runs
@@ -40,6 +41,28 @@ platform that reads the knowledge straight from the installed package
 (`payload(installed(dir).roots)`: every file at its production path, with
 its source and bytes) instead of mounting a copy. What the platform side
 looked like at M7: the repository's `docs/m7-platform-notes.md`.
+
+## Scaffold profiles
+
+There is one overlay per profile, not per view. `side-2d` and
+`top-down-2d` select `origin-engine-ts-2d` with profile `2d`.
+`isometric-2.5d`, `third-person-3d`, and `first-person-3d` select
+`origin-engine-ts` with profile `3d`. Per-view camera and controls come
+from the `create` block applied on top of the profile overlay.
+
+`knowledge.json` retains `overlay: "origin-engine-ts"` for existing
+consumers and adds `overlays`, a profile-to-overlay map. `@template/`
+and `@template-2d/` resolve to `templates/game` and `templates/game-2d`
+in this repository. Prepack copies their text into `scaffold/template/`
+and `scaffold/template-2d/`. The public `Roots` shape is unchanged.
+
+Each overlay carries `origin-engine.json` and `distribution.json`.
+`bun packages/knowledge/scripts/scaffold.ts --write` generates both
+binary inventories with SHA-256 digests; `--check` refuses drift.
+The binaries ship in `create/template/` and `create/template-2d/`.
+The signed archive also exposes `overlay/` with `files/` for 3D and
+`overlay-2d/` with `files-2d/` for 2D. Existing 3D paths and bytes stay
+unchanged when the second overlay is added.
 
 ## The art brief
 

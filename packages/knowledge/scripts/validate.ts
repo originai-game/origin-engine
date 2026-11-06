@@ -20,6 +20,7 @@ import {
   payload,
   readManifest,
   sha256,
+  template2d,
   TEMPLATE_SKIP,
   walk,
   type PayloadFile,
@@ -86,7 +87,7 @@ export function validate(roots: Roots = defaultRoots()): string[] {
       problems.push(`${f.path}: outside the platform's production roots (${rules.payload.roots.join(", ")}); fix its mount in knowledge.json`);
     }
     if (f.symlink) problems.push(`${f.path}: a symbolic link (${f.source}); the platform bundle takes regular files only`);
-    const binaryAllowed = f.path.startsWith(`game-scaffold/${manifest.overlay}/`);
+    const binaryAllowed = [manifest.overlay, ...Object.values(manifest.overlays ?? {})].some(overlay => f.path.startsWith(`game-scaffold/${overlay}/`));
     if (!binaryAllowed && !isText(f.bytes)) {
       problems.push(`${f.path}: not UTF-8 text; the platform payload is text only (packages/game-knowledge/scripts/production-bundle.mjs)`);
     }
@@ -101,6 +102,7 @@ export function validate(roots: Roots = defaultRoots()): string[] {
   grammar(roots, files, problems);
   problems.push(...ogtShape(skillTexts(files)));
   scaffold(roots, rules, manifest.overlay, files, byPath, problems);
+  if (manifest.overlays?.["2d"]) scaffold({ ...roots, template: template2d(roots) }, rules, manifest.overlays["2d"], files, byPath, problems);
   return problems;
 }
 
@@ -269,7 +271,9 @@ function scaffold(roots: Roots, rules: Rules, overlay: string, files: readonly P
   if (project && isText(project.bytes)) {
     const { type, entries } = ogtTopLevel(decoder.decode(project.bytes));
     if (type !== "project") problems.push(`${prefix}project.ogt: type ${type}, expected project`);
-    for (const k of PROJECT_KEYS) if (!entries.has(k)) problems.push(`${prefix}project.ogt: no \`${k}\``);
+    // The 2D starter creates its world in TypeScript, without a scene asset.
+    const keys = entries.get("profile") === "2d" ? PROJECT_KEYS.filter(k => k !== "scene" && k !== "scenes") : PROJECT_KEYS;
+    for (const k of keys) if (!entries.has(k)) problems.push(`${prefix}project.ogt: no \`${k}\``);
     if (entries.has("engine") && entries.get("engine") !== engineVersion) problems.push(`${prefix}project.ogt: engine "${entries.get("engine")}", packages/engine is ${engineVersion}`);
     const entry = entries.get("entry");
     if (entry && !byPath.has(prefix + entry)) problems.push(`${prefix}project.ogt: entry ${entry} does not exist in the template`);
@@ -294,7 +298,7 @@ function scaffold(roots: Roots, rules: Rules, overlay: string, files: readonly P
     else if (e.sha256 !== sha256(b.bytes) || e.bytes !== b.bytes.length) problems.push(`${b.path}: differs from its distribution.json digest; run \`bun scripts/scaffold.ts --write\` after a deliberate asset change`);
   }
   // The published package's scaffold/template carries text only (scripts/pack.ts): the binaries it lists are @origingame/create-game's.
-  const published = roots.template === join(roots.pkg, "scaffold", "template");
+  const published = ["template", "template-2d"].some(name => roots.template === join(roots.pkg, "scaffold", name));
   if (!published) for (const rel of listed.keys()) if (!binaries.some((b) => b.path === prefix + rel)) problems.push(`${prefix}${rules.scaffold.distributionFile}: lists ${rel}, which the template does not have`);
 }
 

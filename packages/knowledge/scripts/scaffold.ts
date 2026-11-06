@@ -9,7 +9,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { defaultRoots, isText, sha256, TEMPLATE_SKIP, walk } from "./lib.ts";
+import { defaultRoots, isText, sha256, template2d, TEMPLATE_SKIP, walk } from "./lib.ts";
 
 /** Licence per template file, from the template's LICENSES.md table. */
 function licences(template: string): Map<string, string> {
@@ -28,7 +28,7 @@ function licences(template: string): Map<string, string> {
   return out;
 }
 
-export function distribution(template: string): string {
+export function distribution(template: string, profile: "3d" | "2d" = "3d"): string {
   const lic = licences(template);
   const files = walk(template, TEMPLATE_SKIP)
     .map((full) => ({ full, rel: relative(template, full).split("\\").join("/"), bytes: new Uint8Array(readFileSync(full)) }))
@@ -38,7 +38,7 @@ export function distribution(template: string): string {
       bytes: f.bytes.length,
       sha256: sha256(f.bytes),
       licence: lic.get(f.rel) ?? "unrecorded: add it to the template's LICENSES.md",
-      source: `templates/game/${f.rel} of origingame/origin-engine; shipped in @origingame/create-game's template/`,
+      source: `templates/${profile === "2d" ? "game-2d" : "game"}/${f.rel} of origingame/origin-engine; shipped in @origingame/create-game's ${profile === "2d" ? "template-2d" : "template"}/`,
     }));
   return `${JSON.stringify(
     {
@@ -53,20 +53,24 @@ export function distribution(template: string): string {
 
 if (import.meta.main) {
   const roots = defaultRoots();
-  const path = join(roots.pkg, "scaffold/distribution.json");
-  const want = distribution(roots.template);
-  if (process.argv.includes("--write")) {
-    writeFileSync(path, want);
-    process.stdout.write(`wrote scaffold/distribution.json from ${relative(process.cwd(), roots.template) || "."}\n`);
-  } else {
-    let have = "";
-    try {
-      have = readFileSync(path, "utf8");
-    } catch {}
-    if (have !== want) {
-      process.stderr.write("scaffold/distribution.json differs from the template's binaries; run bun scripts/scaffold.ts --write\n");
-      process.exit(1);
+  for (const profile of ["3d", "2d"] as const) {
+    const name = profile === "3d" ? "scaffold/distribution.json" : "scaffold/2d/distribution.json";
+    const template = profile === "3d" ? roots.template : template2d(roots);
+    const path = join(roots.pkg, name);
+    const want = distribution(template, profile);
+    if (process.argv.includes("--write")) {
+      writeFileSync(path, want);
+      process.stdout.write(`wrote ${name} from ${relative(process.cwd(), template) || "."}\n`);
+    } else {
+      let have = "";
+      try {
+        have = readFileSync(path, "utf8");
+      } catch {}
+      if (have !== want) {
+        process.stderr.write(`${name} differs from the template's binaries; run bun scripts/scaffold.ts --write\n`);
+        process.exit(1);
+      }
+      process.stdout.write(`${name} matches the template.\n`);
     }
-    process.stdout.write("scaffold/distribution.json matches the template.\n");
   }
 }

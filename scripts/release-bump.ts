@@ -62,6 +62,7 @@ function sites(): Site[] {
   }
   s.push({ path: "packages/engine/package.json", re: /("@origingame\/engine-(?:darwin-arm64|linux-x64|win32-x64)":\s*")([^"]+)(")/g });
   s.push({ path: "packages/knowledge/scaffold/origin-engine.json", re: /("version":\s*")([^"]+)(")/g });
+  s.push({ path: "packages/knowledge/scaffold/2d/origin-engine.json", re: /("version":\s*")([^"]+)(")/g });
   // Projects: project.ogt's engine line and package.json's dependency.
   const projectDirs = ["templates", "examples", "tools/bench", "crates/og-tests/reference-scene", "packages/engine/tests/fixtures"];
   for (const d of projectDirs) {

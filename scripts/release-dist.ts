@@ -153,14 +153,14 @@ interface Layout {
 }
 
 /** Writes the scaffold overlay of an unpacked engine package (its knowledge, through its own lib.ts) into `to`. */
-async function writeOverlay(engine: string, to: string) {
+async function writeOverlay(engine: string, to: string, overlay = OVERLAY) {
   const lib = join(engine, "knowledge/scripts/lib.ts");
   if (!existsSync(lib)) die(`${engine} carries no knowledge/scripts/lib.ts`);
   const { defaultRoots, payload } = (await import(lib)) as {
     defaultRoots(pkg: string): unknown;
     payload(roots: unknown): { path: string; bytes: Uint8Array; symlink: boolean }[];
   };
-  const prefix = `${OVERLAY}/`;
+  const prefix = `${overlay}/`;
   let n = 0;
   for (const f of payload(defaultRoots(join(engine, "knowledge")))) {
     if (f.symlink || !f.path.startsWith(prefix)) continue;
@@ -214,6 +214,10 @@ async function assemble(o: { dir: string; work: string; version: string; revisio
   if (existsSync(join(o.common, "design"))) copyTree(join(o.common, "design"), join(root, "design"));
   copyTree(join(o.common, "overlay"), join(root, "overlay"));
   copyTree(join(o.common, "files"), join(root, "files"));
+  if (existsSync(join(o.common, "overlay-2d"))) {
+    copyTree(join(o.common, "overlay-2d"), join(root, "overlay-2d"));
+    copyTree(join(o.common, "files-2d"), join(root, "files-2d"));
+  }
   copyTree(join(o.common, "archetypes"), join(root, "archetypes"));
 
   const plat = join(o.work, `platform-${platform}`);
@@ -409,6 +413,19 @@ async function main() {
       copyFileSync(source, join(common, "files", f.path));
     }
     mkdirSync(join(common, "files"), { recursive: true });
+    // Old versions remain backfillable; new versions carry both profile overlays.
+    const knowledge = JSON.parse(readFileSync(join(common, "engine/knowledge/knowledge.json"), "utf8"));
+    if (knowledge.overlays?.["2d"]) {
+      await writeOverlay(join(common, "engine"), join(common, "overlay-2d"), `game-scaffold/${knowledge.overlays["2d"]}`);
+      const dist2d = JSON.parse(readFileSync(join(common, "overlay-2d/distribution.json"), "utf8")) as { files: { path: string; sha256: string }[] };
+      mkdirSync(join(common, "files-2d"), { recursive: true });
+      for (const f of dist2d.files) {
+        const source = join(common, "create/template-2d", f.path);
+        if (!existsSync(source) || sha256(source) !== f.sha256) die(`template-2d/${f.path} does not match distribution.json`);
+        mkdirSync(dirname(join(common, "files-2d", f.path)), { recursive: true });
+        copyFileSync(source, join(common, "files-2d", f.path));
+      }
+    }
     for (const a of readdirSync(join(common, "create/archetypes"))) {
       if (existsSync(join(common, "create/archetypes", a, "project.ogt"))) copyTree(join(common, "create/archetypes", a), join(common, "archetypes", a));
     }

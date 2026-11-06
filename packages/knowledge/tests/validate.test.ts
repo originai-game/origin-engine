@@ -7,7 +7,7 @@ import { afterAll, expect, test } from "bun:test";
 import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { defaultRoots, payload, packs, type Roots } from "../scripts/lib.ts";
+import { defaultRoots, payload, packs, template2d, type Roots } from "../scripts/lib.ts";
 import { bundle, validate } from "../scripts/validate.ts";
 
 /** packages/engine's version: what the scaffold pins. */
@@ -26,6 +26,7 @@ function copy(): Roots {
   const roots = { pkg: join(dir, "knowledge"), template: join(dir, "template"), engine: join(dir, "engine") };
   cpSync(real.pkg, roots.pkg, { recursive: true, filter: (s) => !s.includes("node_modules") });
   cpSync(real.template, roots.template, { recursive: true, filter: (s) => !/\/(cooked|dist|node_modules)(\/|$)/.test(s) });
+  cpSync(template2d(real), join(roots.pkg, "scaffold/template-2d"), { recursive: true, filter: (s) => !/\/(cooked|dist|node_modules)(\/|$)/.test(s) });
   cpSync(join(real.engine, "package.json"), join(roots.engine, "package.json"));
   cpSync(join(real.engine, "schema/api.schema.json"), join(roots.engine, "schema/api.schema.json"));
   return roots;
@@ -46,6 +47,7 @@ test("the committed package is valid against the platform rules", () => {
   const names = Object.keys(packs(payload(real)));
   expect(names).toEqual([
     "scaffold:origin-engine-ts",
+    "scaffold:origin-engine-ts-2d",
     "skill:architecture-discipline",
     "skill:component-forge",
     "skill:level-texturing",
@@ -122,6 +124,8 @@ test("an overlay named like an existing platform overlay is refused", () => {
 test("an engine version the pin and project.ogt do not name is refused", () => {
   const p = added((r) => edit(join(r.engine, "package.json"), (s) => s.replace(/"version": "[^"]+"/, '"version": "9.9.9"')));
   expect(p.sort()).toEqual([
+    `game-scaffold/origin-engine-ts-2d/origin-engine.json: pins engine ${ENGINE_VERSION}, packages/engine is 9.9.9`,
+    `game-scaffold/origin-engine-ts-2d/project.ogt: engine "${ENGINE_VERSION}", packages/engine is 9.9.9`,
     `game-scaffold/origin-engine-ts/origin-engine.json: pins engine ${ENGINE_VERSION}, packages/engine is 9.9.9`,
     `game-scaffold/origin-engine-ts/project.ogt: engine "${ENGINE_VERSION}", packages/engine is 9.9.9`,
   ]);

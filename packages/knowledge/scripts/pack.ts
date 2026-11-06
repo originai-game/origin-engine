@@ -8,23 +8,25 @@ import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { defaultRoots, isText, PACKAGE_ROOT, TEMPLATE_SKIP, walk } from "./lib.ts";
 
-const source = join(PACKAGE_ROOT, "..", "..", "templates", "game");
-const target = join(PACKAGE_ROOT, "scaffold", "template");
-if (defaultRoots().template !== source) {
-  process.stderr.write(`no ${source}: pack inside the engine repository\n`);
-  process.exit(1);
+for (const [from, to] of [["game", "template"], ["game-2d", "template-2d"]] as const) {
+  const source = join(PACKAGE_ROOT, "..", "..", "templates", from);
+  const target = join(PACKAGE_ROOT, "scaffold", to);
+  if (defaultRoots().template !== join(PACKAGE_ROOT, "../../templates/game")) {
+    process.stderr.write(`no ${source}: pack inside the engine repository\n`);
+    process.exit(1);
+  }
+  rmSync(target, { recursive: true, force: true });
+  let n = 0;
+  for (const full of walk(source, TEMPLATE_SKIP)) {
+    if (!isText(new Uint8Array(readFileSync(full)))) continue;
+    // npm drops .gitignore from a tarball; TEMPLATE_RENAMED maps it back at mount.
+    const dest = join(target, relative(source, full) === ".gitignore" ? "gitignore" : relative(source, full));
+    mkdirSync(dirname(dest), { recursive: true });
+    cpSync(full, dest);
+    n++;
+  }
+  process.stdout.write(`copied ${n} template text files into scaffold/${to}/\n`);
 }
-rmSync(target, { recursive: true, force: true });
-let n = 0;
-for (const full of walk(source, TEMPLATE_SKIP)) {
-  if (!isText(new Uint8Array(readFileSync(full)))) continue;
-  // npm drops .gitignore from a tarball; TEMPLATE_RENAMED maps it back at mount.
-  const to = join(target, relative(source, full) === ".gitignore" ? "gitignore" : relative(source, full));
-  mkdirSync(dirname(to), { recursive: true });
-  cpSync(full, to);
-  n++;
-}
-process.stdout.write(`copied ${n} template text files into scaffold/template/\n`);
 
 // The look presets and the built-in palettes, under presets/: what
 // scripts/brief.ts reads a look's chain and palette from outside the engine

@@ -1,7 +1,8 @@
 {
   "schemaVersion": 1,
-  "about": "Where each part of @origingame/engine-knowledge lands in the platform's production tree (packages/game-knowledge/production): skills as game/skills/<name>/, the style catalogue (looks/) beside og-taste as its looks/ and the look presets (presets/) as its looks/presets/, the hand-written guides (guides/: three-to-og) as the og-game skill's guides/, and the project template as one scaffold overlay. The generated API wiki (wiki/) is not mounted: `og api` reads it from the engine package's knowledge/wiki. `@template/` is templates/game in the engine repository and scaffold/template/ (text files, copied at prepack) in the published package.",
+  "about": "Where each part of @origingame/engine-knowledge lands in the platform's production tree: skills as game/skills/<name>/, looks/ and presets/ beside og-taste, guides/ beside og-game. One scaffold overlay per profile, not per view: origin-engine-ts is 3d; origin-engine-ts-2d is 2d. side-2d and top-down-2d select 2d; isometric-2.5d, third-person-3d and first-person-3d select 3d. Apply the create block's per-view camera and controls on top of that overlay through create-game's applyCreationChoices. The generated API wiki is not mounted: og api reads engine/knowledge/wiki. @template/ and @template-2d/ are templates/game and templates/game-2d in the repository, scaffold/template/ and scaffold/template-2d/ (text files copied at prepack) in the published package.",
   "overlay": "origin-engine-ts",
+  "overlays": { "3d": "origin-engine-ts", "2d": "origin-engine-ts-2d" },
   "mounts": [
     { "from": "skills/", "to": "game/skills/" },
     { "from": "looks/", "to": "game/skills/og-taste/looks/" },
@@ -9,6 +10,9 @@
     { "from": "guides/", "to": "game/skills/og-game/guides/" },
     { "from": "@template/", "to": "game-scaffold/origin-engine-ts/" },
     { "from": "scaffold/origin-engine.json", "to": "game-scaffold/origin-engine-ts/origin-engine.json" },
-    { "from": "scaffold/distribution.json", "to": "game-scaffold/origin-engine-ts/distribution.json" }
+    { "from": "scaffold/distribution.json", "to": "game-scaffold/origin-engine-ts/distribution.json" },
+    { "from": "@template-2d/", "to": "game-scaffold/origin-engine-ts-2d/" },
+    { "from": "scaffold/2d/origin-engine.json", "to": "game-scaffold/origin-engine-ts-2d/origin-engine.json" },
+    { "from": "scaffold/2d/distribution.json", "to": "game-scaffold/origin-engine-ts-2d/distribution.json" }
   ]
 }

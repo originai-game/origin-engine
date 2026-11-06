@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "about": "Binary files of the Origin Engine project template that a scaffolded Game needs but that are not knowledge text. The scaffolder copies them from the published template (@origingame/create-game) and verifies each digest.",
+  "files": [
+    {
+      "path": "assets/audio/coin.wav",
+      "bytes": 12392,
+      "sha256": "de00dc680ad7eb903bdf2c627dee526d336295ab836546ec34e9ac2252f110c4",
+      "licence": "CC0 1.0 (LICENSES.md)",
+      "source": "templates/game-2d/assets/audio/coin.wav of origingame/origin-engine; shipped in @origingame/create-game's template-2d/"
+    },
+    {
+      "path": "assets/audio/jump.wav",
+      "bytes": 7982,
+      "sha256": "d748a91e2f0e08d0df149a8d885d22960d77f0312bb06505faddf492ecff33de",
+      "licence": "CC0 1.0 (LICENSES.md)",
+      "source": "templates/game-2d/assets/audio/jump.wav of origingame/origin-engine; shipped in @origingame/create-game's template-2d/"
+    },
+    {
+      "path": "assets/fonts/ui.ttf",
+      "bytes": 27296,
+      "sha256": "1cba19e1ebe3ea2b040f7d2c089b8bfd74a7d21ec45add428b46ec194187c176",
+      "licence": "SIL Open Font License 1.1 (`assets/fonts/OFL.txt`) (LICENSES.md)",
+      "source": "templates/game-2d/assets/fonts/ui.ttf of origingame/origin-engine; shipped in @origingame/create-game's template-2d/"
+    },
+    {
+      "path": "assets/rigs/keeper.png",
+      "bytes": 910,
+      "sha256": "c87333b1b1f6055960aee80bfece9ca013249c7769cba034918b72e9a81703f4",
+      "licence": "CC0 1.0 (LICENSES.md)",
+      "source": "templates/game-2d/assets/rigs/keeper.png of origingame/origin-engine; shipped in @origingame/create-game's template-2d/"
+    },
+    {
+      "path": "assets/sprites/coin.png",
+      "bytes": 269,
+      "sha256": "5e498baa370e927981c1acfd1f44de06ce84212cdb2cd84f83c205b65f4dd9c5",
+      "licence": "CC0 1.0 (LICENSES.md)",
+      "source": "templates/game-2d/assets/sprites/coin.png of origingame/origin-engine; shipped in @origingame/create-game's template-2d/"
+    },
+    {
+      "path": "assets/sprites/courier.png",
+      "bytes": 2259,
+      "sha256": "19c6a1ade2901363e0ec3ec0ac6286289a226d4f039ae7df7b34f8d25a59ac68",
+      "licence": "CC0 1.0 (LICENSES.md)",
+      "source": "templates/game-2d/assets/sprites/courier.png of origingame/origin-engine; shipped in @origingame/create-game's template-2d/"
+    },
+    {
+      "path": "assets/tiles/city.png",
+      "bytes": 564,
+      "sha256": "840b5369fece43141b157548ebb6b0144a8dbbccd6aaf52cda1971e097b04113",
+      "licence": "CC0 1.0 (LICENSES.md)",
+      "source": "templates/game-2d/assets/tiles/city.png of origingame/origin-engine; shipped in @origingame/create-game's template-2d/"
+    }
+  ]
+}

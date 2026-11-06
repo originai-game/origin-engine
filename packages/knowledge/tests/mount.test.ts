@@ -8,7 +8,7 @@ import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { defaultRoots, isText, payload } from "../scripts/lib.ts";
+import { defaultRoots, isText, payload, template2d, TEMPLATE_RENAMED, TEMPLATE_SKIP, walk } from "../scripts/lib.ts";
 import { installed } from "../scripts/mount.ts";
 
 const temps: string[] = [];
@@ -120,6 +120,7 @@ test("an installed engine's knowledge is read in place: installed(dir).roots thr
   writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "@origingame/engine", version }));
   cpSync(roots.pkg, join(dir, "knowledge"), { recursive: true, filter: (s) => !s.includes("node_modules") });
   cpSync(roots.template, join(dir, "knowledge/scaffold/template"), { recursive: true, filter: (s) => !/\/(cooked|dist|node_modules|og-out)(\/|$)/.test(s) });
+  cpSync(template2d(roots), join(dir, "knowledge/scaffold/template-2d"), { recursive: true, filter: (s) => !/\/(cooked|dist|node_modules|og-out)(\/|$)/.test(s) });
   const found = installed(dir);
   expect(found.roots).toEqual({ pkg: join(dir, "knowledge"), template: join(dir, "knowledge/scaffold/template"), engine: dir });
   expect(found.revision).toBe(`@origingame/engine@${version} (knowledge)`);
@@ -135,5 +136,26 @@ test("an installed engine's knowledge is read in place: installed(dir).roots thr
   // The same text as the repository's payload, path for path.
   const here = new Map(text.map((f) => [f.path, Buffer.from(f.bytes).toString("utf8")]));
   const there = new Map(files.filter((f) => isText(f.bytes)).map((f) => [f.path, Buffer.from(f.bytes).toString("utf8")]));
-  expect([...there.keys()]).toEqual([...here.keys()]);
+  expect(there).toEqual(here);
+});
+
+test("both overlays preserve every template byte and filename, and carry their own pins and binary digests", () => {
+  const roots = defaultRoots();
+  for (const [name, source, profile] of [["origin-engine-ts", roots.template, "3d"], ["origin-engine-ts-2d", template2d(roots), "2d"]] as const) {
+    const prefix = `game-scaffold/${name}/`;
+    const files = new Map(real.filter(f => f.path.startsWith(prefix)).map(f => [f.path.slice(prefix.length), f.bytes]));
+    for (const full of walk(source, TEMPLATE_SKIP)) {
+      const rel = full.slice(source.length + 1);
+      expect(Buffer.from(files.get(TEMPLATE_RENAMED.get(rel) ?? rel)!)).toEqual(readFileSync(full));
+    }
+    expect(Buffer.from(files.get("project.ogt")!).toString()).toContain(`profile "${profile}"`);
+    const pin = JSON.parse(Buffer.from(files.get("origin-engine.json")!).toString());
+    expect(pin.substrate).toBe(name);
+    const dist = JSON.parse(Buffer.from(files.get("distribution.json")!).toString());
+    expect(dist.files.length).toBeGreaterThan(0);
+    for (const entry of dist.files) {
+      expect(Buffer.from(files.get(entry.path)!).length).toBe(entry.bytes);
+      expect(new Bun.CryptoHasher("sha256").update(files.get(entry.path)!).digest("hex")).toBe(entry.sha256);
+    }
+  }
 });

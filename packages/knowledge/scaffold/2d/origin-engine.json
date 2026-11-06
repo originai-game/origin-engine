@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "distribution": "origin-engine",
+  "substrate": "origin-engine-ts-2d",
+  "engine": {
+    "package": "@origingame/engine",
+    "version": "0.7.7",
+    "repository": "origingame/origin-engine"
+  },
+  "template": {
+    "source": "templates/game-2d",
+    "create": "@origingame/create-game",
+    "version": "0.7.7"
+  },
+  "probe": {
+    "protocol": 5,
+    "wire": 1
+  }
+}

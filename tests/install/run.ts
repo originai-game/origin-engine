@@ -150,6 +150,18 @@ function install(step: Step, work: string): string {
   for (const f of ["overlay/project.ogt", "archetypes/runner/project.ogt", "create/bin/create.ts", "engine/dist/web-publish/origin-engine_bg.wasm", "engine/dist/web-publish-2d/origin-engine_bg.wasm", "engine/dist/web-publish/origin-engine-lanes_bg.wasm", "engine/shell", "engine/types/index.d.ts", "engine/schema/api.schema.json", `engine/native/origin-engine.${PLATFORM}.node`]) {
     if (!existsSync(join(dist, f))) step.fail(`the dist has no ${f}`);
   }
+  const knowledge = JSON.parse(readFileSync(join(dist, "engine/knowledge/knowledge.json"), "utf8"));
+  if (knowledge.overlays?.["2d"]) {
+    for (const f of ["overlay-2d/project.ogt", "overlay-2d/origin-engine.json", "create/template-2d/project.ogt"]) {
+      if (!existsSync(join(dist, f))) step.fail(`the 2D dist has no ${f}`);
+    }
+    const inventory = JSON.parse(readFileSync(join(dist, "overlay-2d/distribution.json"), "utf8")) as { files: { path: string; sha256: string }[] };
+    for (const file of inventory.files) {
+      for (const root of ["files-2d", "create/template-2d"]) {
+        if (sha256(join(dist, root, file.path)) !== file.sha256) step.fail(`${root}/${file.path} differs from the 2D scaffold digest`);
+      }
+    }
+  }
   const list = run(step, [...ogCmd, "engine", "list"], work);
   if (!list.stdout.includes(VERSION!)) step.fail(`og engine list:\n${list.stdout}`);
   return dist;
