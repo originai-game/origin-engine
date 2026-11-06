@@ -107,9 +107,10 @@ const TICK_RATE = 60;
  * frames with it: its setup at tick 0, its commands without screenshots, `quit` and `dump_*`,
  * and each `<t>:screenshot:<file>` a shot at tick round(60 t).
  */
-const fromPlaytest = opt("--playtest")
+const playtestFile = opt("--playtest") ?? (!looks && !opt("--script") && !opt("--shots") ? "tests/frames.og.ts" : undefined);
+const fromPlaytest = playtestFile
   ? await (async () => {
-      const file = resolve(project, opt("--playtest")!);
+      const file = resolve(project, playtestFile);
       const bundled = join(pkg, "dist", "test-reference", `.${basename(project)}.playtest.js`);
       mkdirSync(dirname(bundled), { recursive: true });
       const b = await bundleGame(file, bundled, "native");

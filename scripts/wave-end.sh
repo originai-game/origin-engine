@@ -1,90 +1,22 @@
 #!/usr/bin/env bash
-# The wave's end, serially, by the one session that runs gates (docs/ci.md
-# §When to run what): the whole gate and the browser tiers. The vulkan-cpu
-# tier on lavapipe (the CPU-only sandbox requirement) was set aside on
-# 2026-10-22 (docs/phase-1.md, "The CPU sandbox requirement set aside"):
-# its stages stay here for when it returns and run only when --stages
-# names them. The conformance stage holds og check's tsrs to tsgo.
-#
-#   scripts/wave-end.sh [--dry-run] [--stages LIST] [--templates LIST] [--record NAMES]
-#
-# Stages, in order (--stages takes a comma list of them; default
-# gate,perf,web,art,conformance,release):
-#   gate       scripts/check.sh --all
-#   perf       scripts/perf.sh: og-tests' frame times and og-runtime's costs
-#              against this machine's baselines, one test at a time under
-#              every GPU slot (check.sh --all runs no perf test)
-#   web        scripts/check.sh web-reference
-#   art        every look's frame redrawn: tools/art-samples/capture.ts for
-#              each examples/art-<family> into target/evidence/wave-end/art/,
-#              then compared with its references/metal/ (frames-vs-metal.ts,
-#              a measurement); --record art or art/<family> captures into
-#              the references instead (docs/art.md §2.6)
-#   conformance scripts/tsrs-diff.sh: tsrs misses no diagnostic tsgo reports
-#              on the engine, the templates, the examples and the corpus
-#   release    scripts/release.sh pack, then verify: the five packages as
-#              release tarballs in dist/release/<version>/ and the install
-#              test from them on this machine and in the linux-x64 container
-#              (docs/release.md §3); what passes here is what publish ships
-#   cross      cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31:
-#              og-tests-cooked's og-gfx, og-ui's test binary and og-host-node,
-#              the addon copied to packages/engine/native/origin-engine.linux-x64.node
-#   prepare    each template cooked (`og cook`, the gate's dev og) and bundled
-#              for the native host (<template>/.og/game.native.js), on this machine
-#   gfx        og-gfx --all --capture target/lava-gfx in the lavapipe image
-#   ui         og-ui's GPU tests (gfx, kit_gfx, materials_gfx, text_gfx) in the
-#              image, against crates/og-ui/references/vulkan-cpu (else metal)
-#   playtests  each template's playtests through playtest-run.ts in the image
-#   table      every vulkan-cpu frame's outliers and RMSE against metal
-#              (scripts/frames-vs-metal.ts), in target/evidence/wave-end/
-#
-# --templates  the projects whose playtests run (directory names under
-#              templates/, templates/archetypes/ or examples/; default every
-#              one with references/metal/ (a project whose lavapipe frames
-#              all match metal has no vulkan-cpu/ directory and still runs),
-#              and ui-kit, whose frames are og-ui's)
-# --record     what to record on vulkan-cpu instead of compare, a comma list:
-#              <template> (every playtest of it), <template>/<playtest>,
-#              gfx (every og-tests scene), gfx/<scene>, or og-ui (its GPU
-#              tests' frames). A playtest named runs with OG_FX_CAPTURE=1 and
-#              OG_UI_CAPTURE=1; art (every family's look frames) or
-#              art/<family>, on this machine's tier; a gfx scene's capture is copied into
-#              crates/og-tests/references/vulkan-cpu/; og-ui runs its tests
-#              with OG_UI_CAPTURE=1.
-#              Nothing is recorded without it.
-# --dry-run    print every command and run none.
-#
-# The image is og-lavapipe-bun:local (amd64, Mesa lavapipe and bun; runs
-# under emulation on Apple silicon, so no --platform flag). The checkout is
-# mounted at its own path: the bundles hold absolute paths. Every stage runs
-# even when one before it failed (a wave's end is a measurement); the exit
-# status is non-zero when any failed. Holds the machine's and the target's
-# gate locks for the whole run (scripts/lock.sh), so no other gate starts
-# between its stages. Logs: target/evidence/wave-end/.
-# shellcheck disable=SC2329 # the stage_* functions are called by name, "stage_$s"
+# Wave-end measurements on the current host, with no machine-specific lanes.
+# Usage: scripts/wave-end.sh [--dry-run] [--stages LIST] [--record art[/FAMILY]]
+# Stages: gate,perf,web,art,conformance,release (all by default).
+# Every stage runs even after a failure; nothing is published.
 set -u -o pipefail
 # shellcheck source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"
 cd "$OG_ROOT" || exit 1
 
-IMAGE="${OG_LAVAPIPE_IMAGE:-og-lavapipe-bun:local}"
-TRIPLE=x86_64-unknown-linux-gnu
-ALL_STAGES="gate perf web art conformance release cross prepare gfx ui playtests table"
-# og-ui's GPU test modules, all in its one test binary (tests/main.rs).
-UI_TESTS="gfx kit_gfx materials_gfx text_gfx"
-stages="gate perf web art conformance release"
-templates="ui-kit"
-for d in templates/*/references/metal templates/archetypes/*/references/metal examples/*/references/metal; do
-  [ -d "$d" ] && templates="$templates $(basename "$(dirname "$(dirname "$d")")")"
-done
+ALL_STAGES="gate perf web art conformance release"
+stages="$ALL_STAGES"
 record=""
 dry=0
-usage() { sed -n '2,55p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'; }
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --dry-run) dry=1 ;;
     --stages) stages="$(printf '%s' "${2:?--stages LIST}" | tr ',' ' ')"; shift ;;
-    --templates) templates="$(printf '%s' "${2:?--templates LIST}" | tr ',' ' ')"; shift ;;
     --record) record="$(printf '%s' "${2:?--record NAMES}" | tr ',' ' ')"; shift ;;
     -h|--help) usage; exit 0 ;;
     *) og_err "wave-end: unknown argument '$1'"; usage >&2; exit 2 ;;
@@ -94,28 +26,16 @@ done
 for s in $stages; do
   case " $ALL_STAGES " in *" $s "*) ;; *) og_err "wave-end: unknown stage '$s' (stages: $ALL_STAGES)"; exit 2 ;; esac
 done
-
-# template_dir NAME: the project directory of a template name.
-template_dir() {
-  if [ -f "templates/$1/project.ogt" ]; then echo "templates/$1"
-  elif [ -f "templates/archetypes/$1/project.ogt" ]; then echo "templates/archetypes/$1"
-  elif [ -f "examples/$1/project.ogt" ]; then echo "examples/$1"
-  else return 1; fi
-}
-for t in $templates; do
-  template_dir "$t" >/dev/null || { og_err "wave-end: no project '$t' (templates/<name>, templates/archetypes/<name> or examples/<name> with a project.ogt)"; exit 2; }
+for r in $record; do
+  case "$r" in art|art/*) ;; *) og_err "wave-end: --record takes art or art/<family>"; exit 2 ;; esac
 done
 
 OUT="$OG_EVIDENCE_DIR/wave-end"
-LAVA="$OG_TARGET_DIR/lava-gfx"
-RELEASE="$OG_TARGET_DIR/$TRIPLE/release"
 mkdir -p "$OUT"
 LOG="$OUT/wave-end.log"
 [ "$dry" = 1 ] || : > "$LOG"
 say() { og_say "$*"; [ "$dry" = 1 ] || printf '%s\n' "$*" >> "$LOG"; }
 
-# run CMD...: prints the command (quoted as a shell would read it), runs it
-# unless --dry-run, its output into the log as well.
 run() {
   say "+ $(printf '%q ' "$@")"
   [ "$dry" = 1 ] && return 0
@@ -123,41 +43,25 @@ run() {
   return "${PIPESTATUS[0]}"
 }
 
-# The lavapipe container: the checkout at its own path, in its own directory.
-docker_run() {
-  run docker run --rm -v "$OG_ROOT:$OG_ROOT" -w "$OG_ROOT" "$@"
-}
-
-# recorded KIND NAME: true when --record names it (KIND gfx: a scene; else
-# a template's playtest, NAME template/playtest).
 recorded() {
   local r
   for r in $record; do
-    if [ "$1" = gfx ] || [ "$1" = art ]; then
-      case "$r" in "$1"|"$1/$2") return 0 ;; esac
-    else
-      case "$r" in "${2%%/*}"|"$2") return 0 ;; esac
-    fi
+    case "$r" in art|"art/$1") return 0 ;; esac
   done
   return 1
 }
 
 stage_gate() { run scripts/check.sh --all; }
-
 stage_perf() { run scripts/perf.sh; }
-
 stage_web() { run scripts/check.sh web-reference; }
 
-# The art samples (examples/art-<family>, docs/art.md §2.6): no gate lane
-# draws them, so the wave's end redraws every look on this machine's tier
-# with the gate's og and compares each with its committed frame.
 stage_art() {
   local dir family out rc=0 args=() og="$OG_TARGET_DIR/debug/og"
   if [ "$dry" != 1 ] && [ ! -x "$og" ]; then og_err "no $og: the gate stage builds it (or cargo build -p og-cli)"; return 1; fi
   for dir in examples/art-*/; do
     dir="${dir%/}"
     family="${dir#examples/art-}"
-    if recorded art "$family"; then out="$dir/references/metal"
+    if recorded "$family"; then out="$dir/references/metal"
     else out="$OUT/art/$family"; [ "$dry" = 1 ] || rm -rf "$out"; fi
     run bun tools/art-samples/capture.ts --only "$family" --og "$og" --out "$out" || rc=1
     args+=(--set "art-$family" "$out" "$dir/references/metal")
@@ -167,129 +71,8 @@ stage_art() {
 }
 
 stage_conformance() { run scripts/tsrs-diff.sh; }
-
 stage_release() { run scripts/release.sh pack && run scripts/release.sh verify; }
 
-stage_cross() {
-  run cargo zigbuild --release --target "$TRIPLE.2.31" -p og-tests-cooked --bin og-gfx || return 1
-  # og-ui's test binary, which holds its GPU tests; cargo's JSON names the executable.
-  local ui=(cargo zigbuild --release --target "$TRIPLE.2.31" -p og-ui --test tests --message-format=json-render-diagnostics)
-  say "+ $(printf '%q ' "${ui[@]}")> $OUT/og-ui-tests.json"
-  if [ "$dry" != 1 ]; then
-    "${ui[@]}" > "$OUT/og-ui-tests.json" || return 1
-    grep '"reason":"compiler-artifact"' "$OUT/og-ui-tests.json" | grep -o '"executable":"[^"]*"' | cut -d'"' -f4 > "$OUT/og-ui-tests.txt"
-  fi
-  run cargo zigbuild --release --target "$TRIPLE.2.31" -p og-host-node || return 1
-  run cp "$RELEASE/libog_host_node.so" packages/engine/native/origin-engine.linux-x64.node
-}
-
-# The image runs bun on the bundles this machine makes: og's own prepare
-# (`og run`/`og test`): cook when the project has assets, then bundle.
-stage_prepare() {
-  local t dir entry og="$OG_TARGET_DIR/debug/og" rc=0
-  if [ "$dry" != 1 ] && [ ! -x "$og" ]; then og_err "no $og: the gate stage builds it (or cargo build -p og-cli)"; return 1; fi
-  for t in $templates; do
-    dir="$(template_dir "$t")"
-    entry="$(awk '$1 == "entry" { gsub(/"/, "", $2); print $2; exit }' "$dir/project.ogt")"
-    # A project that generates its assets (the examples: tools/make-assets.ts
-    # writes what is gitignored, e.g. a music track) makes them first.
-    if [ -f "$dir/tools/make-assets.ts" ]; then (cd "$dir" && run bun tools/make-assets.ts) || rc=1; fi
-    if [ -d "$dir/assets" ]; then run "$og" cook "$dir" || rc=1; fi
-    run bun packages/engine/src/node/build.ts --entry "$dir/${entry:-src/main.ts}" \
-      --out "$OG_ROOT/$dir/.og/game.native.js" --target native || rc=1
-  done
-  return "$rc"
-}
-
-stage_gfx() {
-  local f scene rc
-  [ "$dry" = 1 ] || rm -rf "$LAVA"
-  docker_run -e "OG_TEST_ASSETS=$OG_ROOT/crates/og-tests/assets" \
-    --entrypoint "$RELEASE/og-gfx" "$IMAGE" --all --capture "$LAVA"; rc=$?
-  [ "$rc" -eq 0 ] || return "$rc"
-  # --record gfx[/<scene>]: the capture becomes the committed reference.
-  for f in "$LAVA"/vulkan-cpu/*.png; do
-    [ -f "$f" ] || continue
-    scene="$(basename "$f" .png)"
-    if recorded gfx "$scene"; then run cp "$f" "crates/og-tests/references/vulkan-cpu/$scene.png" || return 1; fi
-  done
-  case " $record " in *" gfx"*) [ "$dry" != 1 ] || say "(--record: each captured scene named is copied to crates/og-tests/references/vulkan-cpu/)" ;; esac
-  return 0
-}
-
-# og-ui's GPU tests on lavapipe, every binary in one container; with
-# --record og-ui, OG_UI_CAPTURE=1 records each frame on vulkan-cpu.
-stage_ui() {
-  local b m filters="" script="$OUT/og-ui.sh" capture=""
-  for m in $UI_TESTS; do filters="$filters $m::"; done
-  case " $record " in *" og-ui "*) capture="OG_UI_CAPTURE=1 " ;; esac
-  {
-    echo "#!/bin/sh"
-    echo "# Written by scripts/wave-end.sh; runs in $IMAGE."
-    echo "rc=0"
-    if [ "$dry" = 1 ]; then
-      echo "# one line per executable the cross stage lists in $OUT/og-ui-tests.txt, as:"
-      echo "${capture}<og-ui test executable>$filters --test-threads=2 || rc=1"
-    else
-      [ -s "$OUT/og-ui-tests.txt" ] || { og_err "no og-ui test binaries in $OUT/og-ui-tests.txt: run the cross stage"; return 1; }
-      while IFS= read -r b; do
-        [ -x "$b" ] || { og_err "$b is not there: run the cross stage"; return 1; }
-        printf 'echo "== %s"\n%s%s%s --test-threads=2 || rc=1\n' "$(basename "$b")" "$capture" "$b" "$filters"
-      done < "$OUT/og-ui-tests.txt"
-    fi
-    # shellcheck disable=SC2016 # expands in the generated script
-    echo 'exit "$rc"'
-  } > "$script" || return 1
-  [ "$dry" != 1 ] || sed 's/^/  | /' "$script"
-  docker_run --entrypoint sh "$IMAGE" "$script"
-}
-
-# One container for every playtest: a POSIX sh script the image runs, one
-# `PASS name`/`FAIL name` line per playtest in its output.
-stage_playtests() {
-  local t dir p name script="$OUT/playtests.sh" n=0
-  {
-    echo "#!/bin/sh"
-    echo "# Written by scripts/wave-end.sh; runs in $IMAGE."
-    echo "fail=0"
-    for t in $templates; do
-      dir="$(template_dir "$t")"
-      for p in $(find "$dir/tests" -name '*.og.ts' -not -path '*/og-out/*' | sort); do
-        name="$t/$(basename "$p" .og.ts)"
-        n=$((n + 1))
-        if recorded playtest "$name"; then
-          printf 'echo "== %s (recording)"\n' "$name"
-          printf 'if OG_FX_CAPTURE=1 OG_UI_CAPTURE=1 '
-        else
-          printf 'echo "== %s"\n' "$name"
-          printf 'if '
-        fi
-        printf 'bun packages/engine/src/node/playtest-run.ts --file %s --entry %s --root %s; then echo "PASS %s"; else echo "FAIL %s"; fail=1; fi\n' \
-          "$OG_ROOT/$p" "$OG_ROOT/$dir/.og/game.native.js" "$OG_ROOT/$dir" "$name" "$name"
-      done
-    done
-    # shellcheck disable=SC2016 # expands in the generated script
-    echo 'exit "$fail"'
-  } > "$script"
-  say "playtests: $n in $(printf '%s' "$templates" | og_words) ($script)"
-  [ "$dry" != 1 ] || sed 's/^/  | /' "$script"
-  docker_run --entrypoint sh "$IMAGE" "$script"
-}
-
-stage_table() {
-  local t dir args=()
-  args+=(--set og-tests-captured "$LAVA/vulkan-cpu" crates/og-tests/references/metal crates/og-tests/references/vulkan-cpu)
-  args+=(--set og-ui crates/og-ui/references/vulkan-cpu crates/og-ui/references/metal)
-  for dir in templates/*/references templates/archetypes/*/references examples/*/references; do
-    [ -d "$dir/vulkan-cpu" ] || continue
-    t="$(basename "$(dirname "$dir")")"
-    args+=(--set "$t" "$dir/vulkan-cpu" "$dir/metal")
-  done
-  run bun scripts/frames-vs-metal.ts --out "$OUT/vulkan-cpu-vs-metal.tsv" "${args[@]}"
-}
-
-# The machine's and the target's gate locks for the whole run; the
-# check.sh runs below find them held by their parent and go on.
 if [ "$dry" != 1 ]; then
   og_lock_acquire "${OG_GATE_MACHINE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/og-gate}" "scripts/wave-end.sh ($PWD)" || exit 1
   og_lock_acquire "$OG_TARGET_DIR" "scripts/wave-end.sh" || exit 1

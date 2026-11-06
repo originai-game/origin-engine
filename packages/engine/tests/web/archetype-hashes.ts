@@ -1,5 +1,5 @@
 // The three archetypes' world hashes on the native host and in Chrome: each
-// archetype's replay playtest script (without its dumps and quit) runs in
+// archetype's smoke playtest script (without its dumps and quit) runs in
 // headless Chrome through tests/web/template.ts, advancing past the script's
 // last step, and in `og run --headless` at the same play surface (the
 // page's canvas size, which the archetypes read at start through
@@ -33,7 +33,7 @@ for (const archetype of ["runner", "match3", "topdown"]) {
   const project = join(repo, "templates", "archetypes", archetype);
   // The playtest module, bundled as og test does so `@origingame/engine/playtest` resolves.
   const bundled = join(repo, "target", "tmp", `archetype-hashes-${archetype}.js`);
-  const b = await bundleGame(join(project, "tests", "replay.og.ts"), bundled, "native");
+  const b = await bundleGame(join(project, "tests", "frames.og.ts"), bundled, "native");
   if (!b.ok) throw new Error(b.reason);
   const replay = (await import(bundled)) as { default: { commands: string } };
   const steps = replay.default.commands.split(";").filter((s) => !/^[\d.]+:(quit|dump_entity|dump_world|screenshot)\b/.test(s));

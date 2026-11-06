@@ -137,3 +137,84 @@ recompressed and then passed the normal comparison. No tolerance changed.
 This is the sole intentional retained-PNG change; do not describe all
 retained frames as unchanged. Raw validation is in
 `target/evidence/test-restructure/{print-reference,reduced-nextest-final}.log`.
+
+## Template and lane cuts
+
+Removed 150 replay playtests and 121 template/example reference PNGs.
+Each affected project retains one smoke; 14 frame-bearing projects retain
+two reference comparisons each. Arena retains its solo smoke. Game,
+game-2d and runner belong to the invariants stream; ui-kit and styles
+belong to the kits stream and were not changed here. The six examples'
+orphaned screen-schema helpers and snapshots were deleted with their
+screen suites. Pixel-position pins in match3 and fx-showcase were removed.
+Meridian uses its existing input-only published script (10.1 simulated
+seconds), replacing the 121-second full replay.
+
+Measured against 5387f79db, before rebasing these cuts beyond 92fe84b92,
+repository-wide playtests fall from 241 to 91. Together with the separately
+landed kit cut, total references fall from 1364 to 195 (54 engine, 141 package/example). All retained
+template/example PNG bytes and tolerances are unchanged.
+
+Native frame-smoke validation on the same engine: seven suites pass; seven
+retain pre-existing reference failures. The original scripts were replayed
+against the same game bundles and original reference bytes as controls.
+They fail on the same retained comparisons, and their final simulation
+hashes equal the reduced scripts' hashes. This is not a green template
+suite and not a measured speed-up. Timings below are single runs under
+variable shared load; they measure the playtest subprocess, not the lane.
+
+| Smoke | Seconds | Result |
+|---|---:|---|
+| arena (simulation-only) | 0.484 | Pass |
+| brasswick | 25.243 | Pass |
+| fx-showcase | 3.944 | Pass |
+| hollowbell | 17.178 | Existing title/combat mismatch |
+| idle | 1.275 | Existing title/orbit mismatch |
+| kestrel-stair | 22.389 | Pass |
+| lantern-vale | 28.223 | Existing title/lantern mismatch |
+| match3 | 0.660 | Pass |
+| meridian-loop | 14.251 | Pass |
+| rhythm | 4.428 | Existing title mismatch |
+| roguelike | 1.695 | Existing title/dive mismatch |
+| rumpus-isle | 23.699 | Existing title/bump mismatch |
+| third-person | 5.470 | Pass |
+| topdown | 0.778 | Pass |
+| tower-defense | 3.866 | Existing title/wave mismatch |
+
+Kestrel's strike initially failed after removing earlier captures
+(RMSE 0.01108); its original script passed. Keeping its two earlier
+captures as unreferenced render-history warm-ups restores the comparison
+at the existing tolerance. Only title and strike remain stored references.
+Rumpus bump's measured outliers vary slightly (0.363–0.365%) between the
+original and reduced capture schedules; both fail the existing RMSE bound.
+No template reference was re-recorded or tolerance widened.
+
+Raw controls and candidate results are in
+`target/evidence/test-restructure/smokes/*{-baseline,}.log`. The examples'
+documented `tools/make-assets.ts` generators supplied their ignored music
+files before validation; no generated tracked asset changed. Engine
+typecheck and gate missing-wasm guard cases pass. Browser command plans
+were checked with `--print`, but browser pixels, functional/full and perf
+were not rerun: this checkout has no current optimized wasm manifest.
+
+The Windows-only test lane and wasm import/export routing are removed,
+as are the retired lavapipe routing stages. The same named lane selects
+the same tests on every machine; GPU slot locks still queue rendering.
+Independent kits/ui and kit-web routes remain. Budgets are targets in
+docs/ci.md, not measured guarantees or skip permissions.
+
+Remaining build-speed experiments are deferred to a later head at the
+owner's request. Completed probes do not change compiler settings:
+`embed-metadata=no` was slower (median 14.295 s versus 14.039 s across
+five forced og-cook compiles each); `build-dir-new-layout` is already
+enabled by Cargo 1.101 (the flag is a stabilized no-op). Spotlight was
+already disabled on /Volumes/app. No dependency or workspace-hack change
+is included in this deletion head. Windows remains unverified.
+
+The template/lane head rebased cleanly onto 8be30462a, including the landed
+engine cut f86cbac8d and invariants 443357b6b. Engine typecheck and shell
+syntax checks pass after rebase. The combined inventory now has 1610
+textual Rust tests, 79728 integration lines, 91 playtests and 194 reference
+PNGs (54 engine, 140 package/example); the four added tests and runner's
+one removed frame belong to the invariants stream. Smoke runtime evidence
+above predates that rebase; it is not a claim to have rebuilt invariants.

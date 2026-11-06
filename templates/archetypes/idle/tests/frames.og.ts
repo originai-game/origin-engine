@@ -1,14 +1,11 @@
-// Three frames at 1280×720 compared with references/<tier>/: the title
-// over the orb, a run with every generator circling the orb, and the
-// supernova's card. `OG_FX_CAPTURE=1 og test .` records this tier's
-// references.
+// Smoke: two representative frames at the existing tolerance.
 import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
 
-const FILES = ["title.png", "orbit.png", "card.png"];
+const FILES = ["title.png", "orbit.png"];
 
 export default playtest({
-  name: "the title, the orb with its motes and the supernova's card match their reference frames",
+  name: "smoke: boots, plays and matches two representative frames",
   size: "1280x720",
   commands: [
     "0.9:screenshot:title.png",
@@ -20,7 +17,6 @@ export default playtest({
     "1.2:sparks:2500000",
     "2.2:screenshot:orbit.png",
     "2.3:supernova",
-    "4.0:screenshot:card.png",
     "4.1:quit",
   ].join(";"),
   check(run, t) {

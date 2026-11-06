@@ -252,7 +252,12 @@ try {
   const all = [...(await tab.eval<string[]>("__gfx.og_gfx_scenes()")), ...(await tab.eval<string[]>("__gfx.og_gfx_ui_scenes()"))];
   const only = opt("--scene")?.split(",");
   const timed = Number(opt("--time") ?? 0);
-  const scenes = only ?? (timed > 0 ? [...all, ...PERF.filter((p) => !all.includes(p))] : all);
+  const retained = all.filter((scene) => {
+    const { root, name } = referencesOf(scene);
+    return existsSync(join(root, "metal", `${name}.png`));
+  });
+  const scenes = only ?? (timed > 0 ? [...retained, ...PERF.filter((p) => !retained.includes(p))] : retained);
+  if (scenes.length === 0) throw new Error("no retained GPU reference scenes");
   for (const s of scenes) if (!all.includes(s) && !PERF.includes(s) && !CITY.includes(s) && !CROWDS.includes(s) && !COSTS.includes(s)) throw new Error(`no scene ${s} (og-tests knows ${all.join(", ")})`);
   // --bisect "a;b;...": each cut-down (og-tests-web og_gfx_bisect) of each
   // scene drawn with GPU culling and with CPU culling in the same browser,
@@ -375,8 +380,8 @@ try {
         const m = compare(img, decodePng(new Uint8Array(readFileSync(metal))), o.tolerance.channel);
         row["metal"] = { outliers: +(m.outliers * 100).toFixed(3), rmse: +m.rmse.toFixed(5), ok: m.outliers <= o.tolerance.outliers && m.rmse <= o.tolerance.rmse };
       }
-      if (!all.includes(scene)) {
-        console.log(`--   ${scene} (${tier}): timed only (not in scenes::SCENES, no reference)`);
+      if (!all.includes(scene) || (timed > 0 && !retained.includes(scene))) {
+        console.log(`--   ${scene} (${tier}): timed only (no retained reference)`);
       } else if (record) {
         mkdirSync(join(where.root, tier), { recursive: true });
         const to = join(where.root, tier, `${where.name}.png`);

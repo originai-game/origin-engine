@@ -58,7 +58,7 @@
 // ArrowRight held), examples/brasswick (title.png and start.png, frames.og.ts's
 // presses through the level select into the first level, ArrowRight held,
 // Escape, Español in the settings, a reload in Spanish),
-// examples/meridian-loop (tests/published.og.ts's four pub-*.png frames,
+// examples/meridian-loop (tests/frames.og.ts's two pub-*.png frames,
 // Time trial, the countdown, W up the straight, Escape; then Deutsch in the
 // settings and a reload in German) and templates/ui-kit (the gallery against
 // kit-desktop-gallery.png, Settings pressed, Escape back). A plan may name a
@@ -233,9 +233,9 @@ const PLANS: Record<string, Plan> = {
   },
   "meridian-loop": {
     title: "start",
-    // tests/published.og.ts's four frames (pub-title, pub-countdown, pub-straight, pub-pause) are its own
-    // steps, run with these: the race's state beside each, then the settings from pause and a reload.
-    playtest: "tests/published.og.ts",
+    // The smoke's title and straight frames use real input on both hosts.
+    // State checks still cover countdown, pause, settings and a reload.
+    playtest: "tests/frames.og.ts",
     script: [
       "1.2:state:title.json",
       "3.0:state:countdown.json",

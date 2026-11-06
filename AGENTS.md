@@ -166,23 +166,20 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   (`scripts/lock.sh`, `docs/ci.md`). Never bypass it to run gates beside each
   other: they are slower together than in a queue. The gate runs two steps
   at once by default (`OG_GATE_JOBS`) and reniced by 10.
-- **Parallel agents write code; one place runs the gate.** When several
-  agents work at once (worktrees), none of them runs `scripts/check.sh`, a
-  test lane, `og test`, web-reference or a reference capture: the machine
-  measured a load average past 100 with three worktree gates and a lavapipe
-  container beside each other, and every one of them then fails on
-  timeouts. An agent's loop is `cargo check -p <crate>` and the unit tests
-  of the crate it edits, run one at a time; it commits on its branch and
-  reports. Nothing broader: no sweep of other projects' reference frames
-  through `og run --commands`, no "every frame unmoved" check across
-  templates and games, no browser runs to confirm a native change, no
-  wasm or release build to measure (the owner's instruction, 2026-10-22:
-  development is what agents are for; the coordinator's functional lane
-  after the merge is the check of every reference frame, and the wave's
-  end measures). A frame an agent re-records is one its change must
-  move; a test an agent adds is the one that fails on the old code. The coordinator (the one session that merges into main) is the
-  only runner of the gate, the review and the reference captures, once per
-  merge, serially. The same applies to a human beside running agents.
+- **The same lane runs the same tests on every machine.** No machine-specific
+  routing, archives, partitions or silent GPU skips. A GPU test without an
+  adapter fails and names the missing GPU. Use the existing gate and GPU
+  slot locks to queue work; never stop another stream's processes.
+- **Tests have a cost budget.** A regression defaults to an inline unit
+  test. Integration tests cover cross-crate contracts, CLI behavior or GPU
+  frames, in one binary per crate (`autotests = false`, `tests/it/main.rs`).
+  Package-owned kit targets remain opt-in. Keep one or two representative
+  frames per rendering feature, not every variant. Deletion by category is
+  allowed, provided each crate and feature area retains representative
+  coverage. Streams do not add tests or frames by default. When a lane
+  exceeds its budget in `docs/ci.md`, a new test replaces existing work
+  instead of increasing the total. Wall-clock assertions belong only in
+  wave-end perf, not correctness lanes.
 - **Sub-threads: eight at a time, in waves, Claude Code on Opus 5.5 medium.**
   When the coordinator delegates streams to separate Amp threads
   (`create_thread`), at most eight author streams run at once (macrunner
@@ -267,24 +264,14 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   legitimate differences, commits its evidence under
   `tests/evidence/compat/` and sends heads to the art runner; Metal stays
   the reference platform. The web stays WebGPU only, with no WebGL2
-  tier, and nothing runs on lavapipe. **Authors never touch a GPU**: no
-  Mac satellite, no Modal, no cloud GPU. An author checks its work on its
-  orb with `cargo check -p`, the edited crates' unit tests, typecheck and
-  the logic tests, names in its report the frames its change should
-  move, and pushes. macrunner draws and records the moved frames when it
-  lands the branch (reading only the ones that fail tolerance) and sends
-  the moved frames of visual work to the art director, whose notes fold
-  into the author's next round. Only macrunner runs `scripts/check.sh`,
-  wasm builds and references. **Superseded (the owner, 2026-11-04, to
-  speed up):** author threads run on macrunner in their own lanes with
+  tier. Author threads run in their own lanes with
   the Metal GPU, run their own tests, scoped GPU suites and frames, record
   their own references on their branch, and push the branch. One art
   runner on macrunner reviews every stream's frames as the art director
   (looks only, against commercial games) and, when it approves, rebases
   and pushes to main without rerunning what the author ran (one quick
   only when the rebase conflicted). Only breakage blocks on its own.
-  Authors without a GPU (orbs) name the sheets and the art runner renders
-  them. GPU work takes a GPU slot (`og_gpu_acquire` in `scripts/lock.sh`,
+  GPU work takes a GPU slot (`og_gpu_acquire` in `scripts/lock.sh`,
   three at once on macrunner by default, `OG_GPU_SLOTS`); frame-time and
   perf measurements, wave-end and the full gate take every slot
   (`og_gpu_acquire_all`), one acquisition per scene or run, never one
@@ -411,7 +398,8 @@ imports only: retain every assertion, known failure and reference byte.
 - Every change that alters rendering, animation, physics or the tick carries a
   scripted `og run --commands` run whose frame was read and described in the
   change.
-- Every stream adds the frames it read and the numbers it measured to the
-  showcase archive (`bun scripts/showcase.ts add`, `docs/ci.md` §Showcase);
-  nothing under a `rejected/` directory, and withdrawn work is marked with
-  `showcase.ts exclude`.
+- Record frames actually reviewed and measurements actually made in the
+  showcase archive (`bun scripts/showcase.ts add`, `docs/ci.md` §Showcase).
+  Streams need not generate new frames or tests just to populate the archive.
+  Nothing under a `rejected/` directory is included; withdrawn work is marked
+  with `showcase.ts exclude`.

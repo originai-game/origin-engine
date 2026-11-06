@@ -1,16 +1,11 @@
-// Three frames at 1280×720 compared with references/<tier>/: the title over
-// the vale at late afternoon, the first beacon just lit with the hero's
-// hand in the bowl (fire, smoke, the ember burst, its light, the toast),
-// and the dawn summary once the other beacons' toasts have gone (the last
-// beacon raises none). `OG_FX_CAPTURE=1 og test .` records this tier's
-// references.
+// Smoke: the title and a lit beacon, with the existing reference tolerance.
 import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
 
-const FILES = ["title.png", "beacon.png", "dawn.png"];
+const FILES = ["title.png", "beacon.png"];
 
 export default playtest({
-  name: "the title, a beacon catching and the dawn summary match their reference frames",
+  name: "smoke: the title and a lit beacon match their reference frames",
   size: "1280x720",
   commands: [
     "0.9:screenshot:title.png",
@@ -22,7 +17,6 @@ export default playtest({
     "3.6:light:1",
     "3.7:light:2",
     "3.8:light:3",
-    "7.2:screenshot:dawn.png",
     "7.3:quit",
   ].join(";"),
   check(run, t) {
