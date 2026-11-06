@@ -1195,10 +1195,10 @@ icons) is.
   `__og_timings__` over `--seconds` (default 5): the Worker's display
   interval and engine work per played frame as count, mean, p50, p95, p99
   and max. `report.md` and `device.json` (default `<project>/og-out/device`)
-  have a first-frame score against the §7 budget (2.0 s,
-  1.5 s on the iPhone), a frame-time score (p95 interval, 17 ms: 100,
-  33.3 ms: 0), findings with a fix each (over budget, missed frames, work
-  over 16.7 ms, no isolation, console errors), the device (user agent,
+  have the measures, no score (the 0 to 100 bands were removed
+  2026-11-06: the engine measures, the agent judges), findings with a fix
+  each (a first frame over the §7 budget of 2.0 s, 1.5 s on the iPhone,
+  missed frames, work over 16.7 ms, no isolation, console errors), the device (user agent,
   platform, tier, WebGPU adapter, DPR, viewport, canvas,
   cores, memory, isolation) and the headers served. A missing Chrome, adb
   or safaridriver is told in one line before the build; the phone paths'

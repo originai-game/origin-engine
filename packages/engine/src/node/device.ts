@@ -33,8 +33,8 @@
 // to the first frame drawn behind the gate), `__runtime_probe__.hello()`
 // (the tier), and after a second of warm-up `__og_timings__` (the Worker's
 // played frames: display interval and engine work) over --seconds. Writes
-// <out>/device.json and <out>/report.md (scores,
-// findings with a fix each, then the measures) and prints one line (or one
+// <out>/device.json and <out>/report.md (findings
+// with a fix each, then the measures; no score) and prints one line (or one
 // JSON line with --json). A missing prerequisite exits 1 with one line
 // naming the fix; a page that fails (error card, no first frame, the gate
 // not passing) exits 1 with what it saw. SIGINT, SIGTERM and SIGHUP undo what the
@@ -774,13 +774,10 @@ interface Finding {
   fix: string;
 }
 
-/** 100 at `good`, 0 at `bad`, linear between. */
-const band = (x: number, good: number, bad: number) => Math.round(100 * Math.max(0, Math.min(1, (bad - x) / (bad - good))));
-
 /** The design's first-frame budgets (docs/design.md §7): mid-range Android on 4G 2.0 s, iPhone 13 1.5 s; a desktop browser, Android's. */
 const BUDGET_MS: Record<string, number> = { chrome: 2000, safari: 2000, android: 2000, iphone: 1500 };
 
-function judge(kind: string, m: Measured, served: Served): { scores: { firstFrame: number; frameTime: number }; findings: Finding[] } {
+function findingsOf(kind: string, m: Measured, served: Served): Finding[] {
   const budget = BUDGET_MS[kind]!;
   const findings: Finding[] = [];
   if (m.firstFrameMs > budget)
@@ -813,7 +810,7 @@ function judge(kind: string, m: Measured, served: Served): { scores: { firstFram
     });
   if (m.errors.length)
     findings.push({ measure: "console", where: "page", detail: `${m.errors.length} console error(s); first: ${m.errors[0]}`, fix: "read device.json's errors and fix the first" });
-  return { scores: { firstFrame: band(m.firstFrameMs, budget / 2, budget * 2), frameTime: band(m.interval.p95, 17, 33.3) }, findings };
+  return findings;
 }
 
 function markdown(r: Report): string {
@@ -822,10 +819,6 @@ function markdown(r: Report): string {
   const L: string[] = [];
   L.push(`# og run --device: ${r.project}`, "");
   L.push(`${r.date}, ${r.driver}, ${m.tier}. The publish build served at ${r.url}${r.lan.length ? ` (LAN ${r.lan.map((a) => `${r.scheme}://${a}:${r.port}/`).join(", ")})` : ""}, opened cold, the gate tapped, then ${m.seconds} s of play timed in the Worker.`, "");
-  L.push("## Scores", "");
-  L.push("| | Score | Measure |", "|---|---|---|");
-  L.push(`| First frame | ${r.scores.firstFrame} | ms from navigation to the first frame (${r.budgetMs / 2} ms: 100, ${r.budgetMs * 2} ms: 0; budget ${r.budgetMs} ms) |`);
-  L.push(`| Frame time | ${r.scores.frameTime} | p95 display interval of the played frames (17 ms: 100, 33.3 ms: 0) |`, "");
   L.push("## Fixes", "");
   if (r.findings.length === 0) L.push("No finding crossed a threshold.", "");
   else {
@@ -862,7 +855,6 @@ interface Report {
   port: number;
   lan: string[];
   budgetMs: number;
-  scores: { firstFrame: number; frameTime: number };
   findings: Finding[];
   fps: number;
   ticksPerSecond: number;
@@ -932,7 +924,7 @@ async function main(): Promise<void> {
     const opened = driver;
     onExit(() => opened.close());
     const m = await measure(driver, url, seconds);
-    const { scores, findings } = judge(kind, m, served);
+    const findings = findingsOf(kind, m, served);
     const report: Report = {
       project: basename(resolve(project!)),
       date: new Date().toISOString().slice(0, 10),
@@ -943,7 +935,6 @@ async function main(): Promise<void> {
       port: served.port,
       lan,
       budgetMs: BUDGET_MS[kind]!,
-      scores,
       findings,
       fps: Math.round((m.frames / m.seconds) * 10) / 10,
       ticksPerSecond: Math.round((m.ticks / m.seconds) * 10) / 10,
@@ -954,7 +945,7 @@ async function main(): Promise<void> {
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "device.json"), JSON.stringify(report, null, 1) + "\n");
     writeFileSync(join(dir, "report.md"), markdown(report));
-    if (flag("--json")) process.stdout.write(JSON.stringify({ project: report.project, target, tier: m.tier, firstFrameMs: m.firstFrameMs, interval: m.interval, scores, findings: findings.length, report: join(dir, "report.md") }) + "\n");
+    if (flag("--json")) process.stdout.write(JSON.stringify({ project: report.project, target, tier: m.tier, firstFrameMs: m.firstFrameMs, interval: m.interval, findings: findings.length, report: join(dir, "report.md") }) + "\n");
     else
       process.stdout.write(
         `og run --device ${target}: ${m.tier}, first frame ${m.firstFrameMs} ms, frame p50 ${m.interval.p50} / p95 ${m.interval.p95} / p99 ${m.interval.p99} ms; ${findings.length} finding(s); ${join(dir, "report.md")}\n`,
