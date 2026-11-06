@@ -107,10 +107,6 @@ pub fn run(args: &[&str]) -> ExitCode {
             }
         }
     }
-    if publish && let Err(e) = crate::publish::refuse_default_style(&p.root) {
-        eprintln!("og build --publish: {e}");
-        return ExitCode::FAILURE;
-    }
     if check && let Err(e) = crate::check::require(&p, &package, json) {
         eprintln!("og build: {e}");
         return ExitCode::FAILURE;

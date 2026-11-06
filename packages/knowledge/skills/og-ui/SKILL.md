@@ -5,8 +5,7 @@ description: Game screens and HUDs on Origin Engine with og.ui — which screen 
 
 `og.ui` is the engine's immediate-mode UI: a system describes the tree every
 tick, the engine lays it out, draws it in the game's UI style (a look's
-`ui` line; the engine's default style without one, which is for
-prototypes only) and answers the probe (`dump_ui`, `touch_move_to`, `move_to_text`). The API
+`ui` line; the engine's default style without one) and answers the probe (`dump_ui`, `touch_move_to`, `move_to_text`). The API
 reference is `og api show ui`; this skill is how to use it well.
 
 ## Polish on the prebuilt engine
@@ -410,13 +409,13 @@ fingers with `touch_start` for the first and `touch:1:down:<x,y>` /
 
 ## 6. Styles: the look of the game's UI, motion, transitions, sounds
 
-The game's UI follows the game's art, never the Origin platform's look:
-the engine's own look is not for games. Without a style a UI draws in the
-**default style**, the design language the engine shares with
-origin-agent (`@origingame/design`: a neutral ladder, amber as the one
-primary, flat glass on menus and dialogs, borderless controls), which is
-for origin-agent and for prototyping only. `og build --publish` refuses
-a game in it. A **style** (`og.load.style`, an `.ogt` of `type style`,
+The game's UI follows the game's art, never the Origin platform's look.
+Without a style a UI draws in the **default style**, the design language
+the engine shares with origin-agent (`@origingame/design`: a neutral
+ladder, amber as the one primary, flat glass on menus and dialogs,
+borderless controls). A game may ship it or a built-in as it is; a style
+of its own usually makes the UI read as part of the game's art, so it is
+worth it when the game has a look to carry. A **style** (`og.load.style`, an `.ogt` of `type style`,
 `version 2`) is a whole design system: its tokens (palette roles, semantic
 colours, typography by role and breakpoint, space and size scales, radii,
 strokes, elevation, a shape language per element class, motion, sounds and

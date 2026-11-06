@@ -8,9 +8,9 @@ and its values, [`tokens.json`](tokens.json). It was seeded from origingame's
 
 - **The engine** generates og-ui's default style from `tokens.json`
   (`crates/og-ui/scripts/gen-theme.sh` writes `crates/og-ui/src/theme.rs`;
-  og-ui's `tests/theme.rs` fails on drift). The default style is for
-  origin-agent's surfaces and for prototypes: every game ships its own style,
-  and `og build --publish` refuses one still in the default.
+  og-ui's `tests/theme.rs` fails on drift). The default style is
+  origin-agent's look; a game may ship it, a built-in pack or a style of
+  its own.
 - **origin-agent** pins this package by version, as it pins the engine.
 
 ```ts

@@ -11,10 +11,9 @@ already differs.
 
 **Where it binds.** The language binds the engine's **default style** alone
 (`crates/og-ui/src/theme.rs`, generated from `tokens.json`; docs/ui.md
-§12.1) and origin-agent. The default style is for origin-agent's surfaces
-and for prototyping: every game ships its own style (built-in, generated or
-hand-made, a look's `ui` line), and `og build --publish` refuses a game
-still drawn in the default. A game's style may restyle, re-dress, re-shape
+§12.1) and origin-agent. A game may draw in the default style, a built-in
+pack or a style of its own (generated or hand-made, a look's `ui` line);
+the engine requires none of them. A game's style may restyle, re-dress, re-shape
 or replace anything here above the accessibility floor of docs/ui.md §15.2.
 
 **Carriers.** og-ui reads the generated constants (palette, space, radii,

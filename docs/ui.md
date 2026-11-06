@@ -740,11 +740,12 @@ A style (`type style` version 2) has tokens, part dressings, a motion
 personality, a sound and haptic set, fonts, icons and art. It stays one
 complete asset a look's `ui` line names. The engine's default style (the
 design language the engine shares with origin-agent, `packages/design`,
-which replaces `prototype`) is for origin-agent's own surfaces and for
-prototyping only (the owner, 2026-11-02): every game ships its own style,
-built-in, generated or hand-made, and a publish build refuses a game whose
-screens still draw in the default style. The design language binds the
-default style alone; a game's style may restyle, re-dress, re-shape or
+which replaces `prototype`) is origin-agent's look and the one a game draws
+in until it picks another. A game may ship it, a built-in pack, or a style
+of its own, generated or hand-made: restyling is a design choice for the
+game, never a requirement of the engine, its checks or a publish build (the
+owner, 2026-11-06, reversing 2026-11-02's rule). The design language binds
+the default style alone; a game's style may restyle, re-dress, re-shape or
 replace anything above the accessibility floor of §15.2.
 
 The default style carries no hue in its chrome (the owner, 2026-11-02):

@@ -50,7 +50,7 @@ export type Screen = (typeof SCREENS)[number];
 /** The engine's built-in UI styles (templates/styles, in the bundle as
  * `@styles/<name>/` because assets/looks/kit-<name>.ogt names each): the
  * atlas packs, then the seed styles og style new generated;
- * "default" is the engine's default style (the design language's, for prototypes). */
+ * "default" is the engine's default style (the design language's). */
 export const STYLES = styleNames();
 const STYLE_PATHS = stylePaths();
 const WIPES = ["none", "fade", "wipe", "iris", "dissolve", "slide"] as const;
