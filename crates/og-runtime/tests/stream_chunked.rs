@@ -16,11 +16,21 @@
 //! anyway); the head is not put in place (the playhead never asks for a
 //! chunk, the sound stays silent); a released group keeps asking for
 //! chunks.
+//!
+//! Outside a group, the same WAV cooked in chunks and cooked whole, each
+//! played looping for 10 s (so the loop wraps) through a capture sink,
+//! mixes the same samples, through a long advance mixed at once too (the
+//! chunks it reaches are read by the bank's loader), and the chunked cook ships its chunks as files
+//! of their own (was packages/engine's sound-chunks test, 35 s of `og run
+//! --audio` twice). Ways this could fail: a chunk is read late or not at
+//! all (silence where the whole file sounds; no loader for a sound outside
+//! a group, og-runtime's assets.rs), the wrap restarts at the
+//! wrong chunk, the chunks are packed with the head.
 
 use og_runtime::{
-    Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_game_game, og_host_begin_bundle,
-    og_load_sound, og_stream_release, og_stream_request, og_stream_status, og_world_insert,
-    og_world_spawn, set_hooks,
+    Dispatch, Fetch, Hooks, og_engine_create, og_engine_destroy, og_engine_frame, og_game_game,
+    og_host_begin_bundle, og_load_sound, og_stream_release, og_stream_request, og_stream_status,
+    og_world_insert, og_world_spawn, set_hooks,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -65,6 +75,128 @@ stream "music" {
   asset "audio/theme.wav"
 }
 "#;
+
+/// `assets/audio/theme.wav` (8 s) with `settings` as its import settings,
+/// cooked; no scene, so no group.
+fn plain_project(name: &str, settings: Option<&[u8]>) -> PathBuf {
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("og-runtime-chunked-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    let audio = root.join("assets/audio");
+    std::fs::create_dir_all(&audio).unwrap();
+    std::fs::write(audio.join("theme.wav"), wav(8.0)).unwrap();
+    if let Some(settings) = settings {
+        std::fs::write(audio.join("theme.wav.ogt"), settings).unwrap();
+    }
+    let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    root
+}
+
+/// Reads every asset from disk at once.
+struct Disk;
+
+impl Hooks for Disk {
+    fn dispatch(&self, _call: &Dispatch) -> Result<String, String> {
+        Ok(String::new())
+    }
+    fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+        match std::fs::read(path) {
+            Ok(bytes) => Fetch::Ready(bytes),
+            Err(e) => Fetch::Failed(format!("{path}: {e}")),
+        }
+    }
+}
+
+/// 10 s of `root`'s theme looping from 0, captured at 48 kHz stereo.
+fn played(root: &Path) -> Vec<f32> {
+    set_hooks(Rc::new(Disk));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let options = json!({ "root": root.to_str().unwrap() }).to_string();
+    let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    let link = og_audio::link(engine).expect("the engine's audio link");
+    let mut sink = og_audio::HeadlessSink::new(
+        &link,
+        og_audio::HeadlessMode::Capture {
+            sample_rate: 48_000,
+        },
+    );
+    sink.pump();
+    let sound = value(og_load_sound(engine, "audio/theme.wav".into()));
+    let e = value(og_world_spawn(engine, Some("{}".into())))
+        .as_f64()
+        .unwrap();
+    let source = json!({ "sound": sound, "loop": true }).to_string();
+    value(og_world_insert(
+        engine,
+        e,
+        "og.AudioSource".into(),
+        Some(source),
+    ));
+    // 3 s mixed a frame at a time, then 4 s of frames mixed at once (a
+    // long advance: the chunks it reaches were never put in the bank ahead
+    // of it, so the mixer reads them through the loader), then 3 s more.
+    for frame in 0..600 {
+        value(og_engine_frame(engine, 1000.0 / 60.0));
+        if !(180..420).contains(&frame) {
+            sink.pump();
+        }
+    }
+    let pcm = sink.take_pcm();
+    drop(sink);
+    og_engine_destroy(engine);
+    pcm
+}
+
+#[test]
+fn a_chunked_sound_outside_a_group_mixes_the_whole_files_samples_across_its_loop() {
+    let whole = plain_project("whole", None);
+    let chunked = plain_project(
+        "split",
+        Some(b"type import\nversion 1\n---\nsound {\n  stream true\n  chunk 1\n}\n"),
+    );
+    let files = |root: &Path| -> Vec<String> {
+        let mut f: Vec<String> = std::fs::read_dir(root.join("cooked/audio"))
+            .unwrap()
+            .map(|f| f.unwrap().file_name().to_string_lossy().into_owned())
+            .filter(|f| f.starts_with("theme.wav"))
+            .collect();
+        f.sort();
+        f
+    };
+    assert_eq!(files(&whole), ["theme.wav.ogb"]);
+    let chunks = files(&chunked)
+        .iter()
+        .filter(|f| f.contains(".chunk"))
+        .count();
+    assert_eq!(chunks, 7, "8 s in 1 s chunks: the head and 7 files");
+
+    let a = played(&whole);
+    let b = played(&chunked);
+    // 10 s at 48 kHz stereo, give or take the first frame's tick.
+    assert!(a.len() >= 9 * 48_000 * 2, "{} samples", a.len());
+    // Heard on both sides of the wrap at 8 s, so equal is not two silences.
+    let loud = |from: f32, to: f32| {
+        let r = (from * 96_000.0) as usize..(to * 96_000.0) as usize;
+        a[r].iter().any(|v| v.abs() > 0.05)
+    };
+    assert!(
+        loud(0.5, 1.0) && loud(5.0, 5.5) && loud(8.5, 9.0),
+        "the theme is heard"
+    );
+    assert_eq!(a.len(), b.len());
+    let first = a
+        .iter()
+        .zip(&b)
+        .position(|(x, y)| x.to_bits() != y.to_bits());
+    assert_eq!(
+        first,
+        None,
+        "the chunked mix differs from the whole file's at sample {first:?} ({:.3} s)",
+        first.map_or(0.0, |i| i as f64 / 96_000.0)
+    );
+}
 
 fn project() -> &'static Path {
     static ROOT: OnceLock<PathBuf> = OnceLock::new();
