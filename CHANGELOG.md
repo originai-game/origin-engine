@@ -31,7 +31,15 @@ is one line here, written at the merge that changes
   ballistic arc back to the takeoff height, and the goal ends `recover`
   seconds after the landing tick. `MotionGoalKind` gains `jump` and
   `MotionStatus` gains `airborne`. The motion model never decides takeoff,
-  height or landing; its jump is drawn in place on the simulation's flight.
+  height or landing; its jump is drawn in place on the simulation's flight,
+  retimed to the landing each tick predicts from the arc and the ground
+  along it (a ledge up lands early, a drop late).
+- **Fixed: a falling og.CharacterController lands where it meets the
+  ground.** Ground snapping now holds only a controller that stood on the
+  ground at the start of its move (slopes and steps down), as rapier's own
+  controller does; a fall onto ground within `snapDistance` was pulled down
+  that far in one tick, a drop of up to 0.2 m at every landing. Replays
+  with a controller falling onto the ground step differently.
 - **Breaking: creation writes one empty skeleton.** `og create` records
   genre, view, look, mood, UI style, platform, input, players, languages,
   and music in `project.ogt`'s `create` block. It also configures the chosen

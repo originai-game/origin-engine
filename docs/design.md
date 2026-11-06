@@ -1376,21 +1376,39 @@ window: Origin Desktop owns the AccessKit platform adapter (platform ask
     cleared and reach the ground on the landing tick. No generated vertical
     travel is added to the controller's. The clip is retimed onto the
     simulation's (distance matching): its frames before its own takeoff
-    (its contact output) spread over `prepare`; in the air the generated
-    flight frame follows the simulation's vertical speed, the phase
-    (v₀ − v)/(2v₀) of its rise and fall, held below touchdown until the
-    landing tick; from the landing tick its touchdown frames play. A drop
-    off a ledge holds the last flight frame, an early landing (a ledge up,
-    a ceiling) moves on to touchdown, and the drawn frame reaches the
-    retimed one at no more than three times the clip's rate.
+    (its contact output: the first run of no contact at least 0.4 of the
+    simulation's flight long, not a stride's) spread over `prepare`; in
+    the air its flight frames follow the share of the flight the tick
+    predicts is done, air time over air time plus time to landing, held
+    below touchdown until the landing tick; from the landing tick its
+    touchdown frames play. Each tick predicts a controller jump's landing
+    by stepping its ballistic arc and tracing the ground under each step
+    (the colliders the tick recorded), from where its feet stood at
+    takeoff: a ledge up lands early and a drop late with no snap at the
+    end, and a ceiling, which cuts the rise, moves the prediction with
+    it. Without a controller the landing is the fixed arc's. The drawn
+    frame reaches the retimed one at no more than three times the clip's
+    rate.
   - **The streaming boundary holds the whole jump.** The presenter asks
     for a jump when its prediction of the mover reaches it (the agent's
-    lookahead, which `prepare` adds to) and keeps its generated frames from its start through
-    its touchdown and recovery, since the retiming needs the clip's own
-    takeoff and touchdown; a flight that outruns the generated frames holds
-    the latest generated flight frame and never invents a landing. A
-    `pose` goal of `jump` is different: a hop drawn by the model alone, the
-    Transform on the ground, never read by gameplay.
+    lookahead, which `prepare` adds to) and keeps its generated frames
+    from its start through its touchdown and recovery, since the retiming
+    needs the clip's own takeoff and touchdown; the frames it holds count
+    as generated ahead, so no further goal is asked for while they last.
+    When the jump starts with frames already generated past it toward
+    another goal (a walk the model took longer over) and no jump asked
+    for, the clip keeps one frame past the drawn one (a latency's worth on
+    the web) and the model starts again from those, so the jump is
+    generated from the jump's start. A flight that outruns the generated
+    frames holds the latest generated flight frame and never invents a
+    landing. A `pose` goal of `jump` is different: a hop drawn by the
+    model alone, the Transform on the ground, never read by gameplay.
+  - **Feet are planted on a hinge knee.** The planter's two-bone solve
+    bends each knee in the plane its generated knee last bent in (a
+    straight generated leg names none) and eases a planted ankle near
+    straight-leg reach with soft IK (Nicholas 2009) over the last 2% of
+    the leg, so a knee neither turns sideways or backwards nor snaps
+    straight in one frame.
 - **Physics**: rapier3d (and rapier2d for 2D projects), fixed-tick stepping
   inside the engine tick, a kinematic character controller. A kinematic
   body with an `og.Velocity` moves by it each tick and its Transform is

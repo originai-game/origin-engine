@@ -133,6 +133,18 @@ impl Motion {
         ch.revision = ch.revision.wrapping_add(1);
     }
 
+    /// Drops the character's queued frames and goals and cancels their
+    /// in-flight generation: its next generation starts from `recent`, its
+    /// four most recent frames (oldest first), say the last ones it keeps
+    /// of its queue. For a plan the queued frames no longer follow (a jump
+    /// that starts before they end).
+    pub fn restart(&mut self, character: usize, recent: [Pose; 4]) {
+        let ch = &mut self.characters[character];
+        ch.frames.clear();
+        ch.context = recent;
+        self.clear_goals(character);
+    }
+
     /// Goals the character has not started.
     pub fn goals(&self, character: usize) -> usize {
         self.characters[character].goals.len()

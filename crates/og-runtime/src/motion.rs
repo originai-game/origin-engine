@@ -121,6 +121,14 @@ pub(crate) struct Jump {
     pub velocity: f32,
     /// A controller has been seen off the ground since takeoff.
     pub left: bool,
+    /// How far the Transform stood above the ground under it at takeoff
+    /// (a controller's), m: what its feet keep below it in the air.
+    pub rest: Option<f32>,
+    /// Seconds until it lands, as the tick predicts it: the fixed arc's
+    /// remaining flight, or a controller's ballistic arc traced to the
+    /// ground under it ([`landing_in`]). `None` when there is no ground to
+    /// trace (no physics, nothing below).
+    pub eta: Option<f32>,
 }
 
 /// The goal being carried out.
@@ -268,6 +276,8 @@ pub(crate) fn advance(
                 landed: 0.0,
                 velocity: 0.0,
                 left: false,
+                rest: None,
+                eta: None,
             }),
         });
         agent.serial = agent.serial.wrapping_add(1);
@@ -329,6 +339,7 @@ pub(crate) fn advance(
                     } else {
                         let t = j.air.min(flight);
                         j.velocity = j.v0 - j.gravity * t;
+                        j.eta = Some(flight - t);
                         if s.drive {
                             position.y = j.base + j.v0 * t - 0.5 * j.gravity * t * t;
                         }
@@ -352,6 +363,7 @@ pub(crate) fn advance(
                         }
                         j.stage = JumpStage::Landed;
                         j.velocity = 0.0;
+                        j.eta = Some(0.0);
                     }
                 }
                 JumpStage::Landed => j.landed += dt,
@@ -403,6 +415,66 @@ pub(crate) fn advance(
 
 // ── the system ───────────────────────────────────────────────────────────────
 
+/// The step at which [`landing_in`] samples an arc, and how far ahead, s.
+const LANDING_STEP: f32 = 1.0 / 30.0;
+const LANDING_HORIZON: f32 = 3.0;
+
+/// The height of the ground under `at` (the first collider straight down
+/// that is not `e`'s), m.
+fn ground(q: &og_physics::PhysicsQuery, e: Entity, at: Vec3) -> Option<f32> {
+    q.raycast(&og_physics::RaycastDesc {
+        origin: at,
+        direction: Vec3::NEG_Y,
+        max_distance: 0.0,
+        filter: og_physics::QueryFilter {
+            mask: 0,
+            include_sensors: false,
+            exclude: Some(e),
+        },
+    })
+    .ok()
+    .flatten()
+    .map(|h| at.y - h.distance)
+}
+
+/// Seconds until an agent in the air at `at`, its feet `rest` below it,
+/// rising at `v` under gravity `g` and crossing the ground at `across`,
+/// lands: its ballistic arc stepped every [`LANDING_STEP`] with the ground
+/// traced under each step, to the first where the feet meet it (between
+/// steps, linearly). It is the landing a trajectory predicts (distance
+/// matching's), not the start height: a ledge up lands early, a drop late.
+/// `None` when nothing is below within [`LANDING_HORIZON`].
+fn landing_in(
+    q: &og_physics::PhysicsQuery,
+    e: Entity,
+    at: Vec3,
+    rest: f32,
+    v: f32,
+    g: f32,
+    across: Vec3,
+) -> Option<f32> {
+    let feet = |t: f32| at.y - rest + v * t - 0.5 * g * t * t;
+    let mut t = 0.0;
+    while t < LANDING_HORIZON {
+        let next = t + LANDING_STEP;
+        let p = at + across * next;
+        let y = feet(next);
+        if let Some(floor) = ground(q, e, Vec3::new(p.x, y + rest, p.z))
+            && y <= floor
+        {
+            let before = feet(t);
+            let k = if before > y {
+                ((before - floor) / (before - y)).clamp(0.0, 1.0)
+            } else {
+                1.0
+            };
+            return Some(t + k * LANDING_STEP);
+        }
+        t = next;
+    }
+    None
+}
+
 /// Registers og.MotionAgent's module on a world that names it (`super::lazy`):
 /// the `og.motion` system, after every system scheduled so far, and its
 /// state block.
@@ -438,7 +510,7 @@ pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
             }],
             ..Default::default()
         },
-        move |ctx| system(ctx, &state, &agent, &transform, &controller),
+        move |ctx| system(ctx, engine_id, &state, &agent, &transform, &controller),
     )?;
     world.move_system_before(SYSTEM, "og.physics")?;
     world.add_state_block(SYSTEM, Box::new(Block(sh)))
@@ -446,6 +518,7 @@ pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
 
 fn system(
     ctx: &mut SystemContext<'_>,
+    engine_id: u32,
     state: &Mutex<Goals>,
     agent: &(SchemaId, Layout),
     transform: &(SchemaId, Layout),
@@ -459,6 +532,12 @@ fn system(
     let gravity = ctx
         .resource::<og_physics::Physics>()
         .map_or(GRAVITY, |p| -p.gravity.y);
+    // The colliders as this tick's start recorded them, for the ground a
+    // controller jump lands on (the same view og.nav and og.ai cast in).
+    let physics = engine(engine_id)
+        .ok()
+        .and_then(|eng| eng.state.borrow().physics.clone());
+    let query = physics.as_ref().and_then(|p| p.tick_query().ok());
     let mut goals = lock(state);
     // Agents whose entity lost og.MotionAgent (or died): forgotten.
     goals
@@ -484,6 +563,27 @@ fn system(
         let mut heading = heading_of(q);
         let (p0, h0) = (position, heading);
         advance(a, &s, &mut position, &mut heading, dt);
+        if s.controller
+            && let Some(cur) = a.current.as_mut().filter(|c| c.goal.kind == Kind::Jump)
+            && let Some(j) = cur.jump.as_mut()
+            && j.stage == JumpStage::Air
+        {
+            // On the takeoff tick the controller still stands where it
+            // will leave the ground from.
+            if j.rest.is_none() {
+                j.rest = query
+                    .as_ref()
+                    .and_then(|q| ground(q, e, p0))
+                    .map(|g| p0.y - g);
+            }
+            let flight = 2.0 * j.v0 / j.gravity.max(1e-6);
+            let (sx, cz) = sin_cos(cur.goal.heading);
+            let across = Vec3::new(sx, 0.0, cz) * (cur.goal.speed / flight);
+            j.eta = query
+                .as_ref()
+                .zip(j.rest)
+                .and_then(|(q, rest)| landing_in(q, e, p0, rest, j.velocity, j.gravity, across));
+        }
         if s.drive
             && let (Some(cb), Some(mut c)) = (cb, c0)
         {
@@ -545,7 +645,7 @@ pub(crate) fn transform_of(t: &Value) -> (Vec3, Quat) {
 struct Block(Arc<Mutex<Goals>>);
 
 fn save(g: &Goals, out: &mut Vec<u8>) {
-    out.extend_from_slice(b"MOTION3\0");
+    out.extend_from_slice(b"MOTION4\0");
     let u32_ = |out: &mut Vec<u8>, v: u32| out.extend_from_slice(&v.to_le_bytes());
     let f32_ = |out: &mut Vec<u8>, v: f32| out.extend_from_slice(&v.to_le_bytes());
     let goal = |out: &mut Vec<u8>, g: &Goal| {
@@ -584,6 +684,10 @@ fn save(g: &Goals, out: &mut Vec<u8>) {
                     f32_(out, v);
                 }
                 u32_(out, j.left as u32);
+                for v in [j.rest, j.eta] {
+                    u32_(out, v.is_some() as u32);
+                    f32_(out, v.unwrap_or(0.0));
+                }
             }
         }
         let performance = serde_json::to_vec(&a.performance).expect("finite performance state");
@@ -593,8 +697,12 @@ fn save(g: &Goals, out: &mut Vec<u8>) {
 }
 
 fn load(bytes: &[u8]) -> og_core::Result<Goals> {
-    // MOTION3 adds jumps to MOTION2's goals; before MOTION2 there was no tag.
-    let version = if bytes.starts_with(b"MOTION3\0") {
+    // MOTION4 adds a jump's ground and landing prediction to MOTION3's
+    // jumps; MOTION3 added jumps to MOTION2's goals; before MOTION2 there
+    // was no tag.
+    let version = if bytes.starts_with(b"MOTION4\0") {
+        4
+    } else if bytes.starts_with(b"MOTION3\0") {
         3
     } else if bytes.starts_with(b"MOTION2\0") {
         2
@@ -640,7 +748,18 @@ fn load(bytes: &[u8]) -> og_core::Result<Goals> {
                     landed: r.f32()?,
                     velocity: r.f32()?,
                     left: r.u32()? != 0,
+                    rest: None,
+                    eta: None,
                 });
+                if version >= 4
+                    && let Some(j) = current.jump.as_mut()
+                {
+                    for v in [&mut j.rest, &mut j.eta] {
+                        let some = r.u32()? != 0;
+                        let x = r.f32()?;
+                        *v = some.then_some(x);
+                    }
+                }
             }
             if current.goal.kind == Kind::Jump && current.jump.is_none() {
                 return Err(invalid("an og.motion jump goal without its state"));
@@ -1093,6 +1212,13 @@ pub(crate) fn dump(engine_id: u32) -> Value {
                 "queued": a.queue.len(),
                 "completed": a.completed,
                 "hold": POSES[a.hold as usize],
+                // A jump's state: its stage, seconds in the air and the
+                // predicted seconds to its landing.
+                "jump": a.current.and_then(|c| c.jump).map(|j| json!({
+                    "stage": (["prepare", "air", "landed"])[j.stage as usize],
+                    "air": j.air,
+                    "landingIn": j.eta,
+                })),
             })
         })
         .collect();

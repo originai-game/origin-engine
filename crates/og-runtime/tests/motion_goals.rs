@@ -412,3 +412,66 @@ fn a_controller_jump_is_the_controllers_and_lands_on_a_ledge() {
     assert!(x > 1.0 && x < 1.6, "on the ledge at x {x}");
     assert_eq!(controller(w, e)["grounded"], json!(true));
 }
+
+/// og.motion's side of `dump_motion` after one more frame: the first agent's.
+fn dumped(w: u32) -> Value {
+    let scheduled: Value = serde_json::from_str(&og_runtime::og_engine_probe_commands(
+        w,
+        "0:dump_motion".into(),
+    ))
+    .unwrap();
+    assert_eq!(scheduled["scheduled"], 1);
+    frames(w, 1);
+    let outputs: Value = serde_json::from_str(&og_runtime::og_engine_take_outputs(w)).unwrap();
+    let dump = outputs
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|o| o["action"] == "dump_motion")
+        .unwrap();
+    let dump: Value = serde_json::from_str(dump["data"].as_str().unwrap()).unwrap();
+    dump["agents"][0].clone()
+}
+
+// A controller jump predicts its landing in the tick, from its arc and the
+// ground under it, so its presentation reaches touchdown on the landing
+// tick. Ways this could fail: predicting the return to the takeoff height
+// (onto a ledge it lands about 0.15 s earlier), tracing the ground under
+// where it is rather than where it will be (it sees the ledge only once over
+// it), or measuring the feet from the Transform rather than from where they
+// stood at takeoff.
+#[test]
+fn a_controller_jump_predicts_its_landing_on_the_ground_it_reaches() {
+    for ledge in [None, Some(0.3)] {
+        let (w, e) = controller_world(ledge);
+        jump(
+            w,
+            e,
+            json!({ "height": 0.8, "distance": 1.6, "heading": std::f64::consts::FRAC_PI_2, "prepare": 0.1, "recover": 0.2 }),
+        );
+        let mut predicted = Vec::new();
+        let mut landed = None;
+        for tick in 0..90 {
+            let j = &dumped(w)["jump"];
+            match j["stage"].as_str() {
+                Some("air") => predicted.push((tick, j["landingIn"].as_f64().unwrap())),
+                Some("landed") if landed.is_none() => landed = Some(tick),
+                _ => {}
+            }
+        }
+        let landed = landed.expect("the jump landed") as f64;
+        assert!(
+            predicted.len() > 20,
+            "{ledge:?}: {} ticks in the air",
+            predicted.len()
+        );
+        for (tick, eta) in predicted {
+            let actual = (landed - tick as f64) / 60.0;
+            assert!(
+                (eta - actual).abs() <= 2.5 / 60.0,
+                "{ledge:?}: at tick {tick} predicted {eta:.3} s, landed in {actual:.3} s"
+            );
+        }
+        let _ = e;
+    }
+}
