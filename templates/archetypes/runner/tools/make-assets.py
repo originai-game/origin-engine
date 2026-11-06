@@ -202,6 +202,18 @@ FRAMES = (
     + [courier(((0.08, 0.0), (-0.08, 0.0)), ((0.15, -0.1), (-0.15, 0.1)), bob=b) for b in (0, -1)]  # 14-15 idle
 )
 
+# The second seat's courier: the same frames with the garments swapped to a
+# cool palette (a deep blue jacket, an ice scarf), the outline, skin, helmet,
+# shoes and bag kept, so the two read apart at a glance.
+P2_SWAP = {JACKET: "#3552c8", DARK: "#1f2c78", SLEEVE: "#7d9dff", SCARF: "#bdefff"}
+
+
+def swapped(p, swap):
+    q = Pix(p.w, p.h)
+    q.px = [swap.get(c, c) for c in p.px]
+    return q
+
+
 COURIER_OGT = """type flipbook
 version 1
 ---
@@ -542,11 +554,13 @@ def main():
         write(rel + ".ogt", PIXEL_IMPORT)
 
     png("sprites/courier.png", sheet(FRAMES, FW, FH, 8))
+    png("sprites/courier-p2.png", swapped(sheet(FRAMES, FW, FH, 8), P2_SWAP))
     png("sprites/props.png", props_sheet())
     png("sprites/coin.png", sheet([coin(k) for k in range(6)], 16, 16, 6))
     png("sprites/sky.png", sky())
     png("tiles/city.png", city_sheet())
     write("sprites/courier.ogt", COURIER_OGT)
+    write("sprites/courier-p2.ogt", COURIER_OGT.replace('texture "courier.png"', 'texture "courier-p2.png"').replace("# The courier (tools/make-assets.py)", "# The second seat's courier (tools/make-assets.py: P2_SWAP's palette)"))
     write("sprites/props.ogt", PROPS_OGT)
     write("sprites/coin.ogt", COIN_OGT)
     write("tiles/city.ogt", CITY_OGT)

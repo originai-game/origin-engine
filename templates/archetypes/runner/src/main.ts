@@ -5,7 +5,7 @@
 // Every courier is a seat (src/seats.ts): its og.PlayerInput is all the
 // systems read, so the run plays alone, two on one device or two over a
 // room in lockstep, as src/creation.ts says. Two seats race on one course:
-// seat 1's courier runs a step behind in a cool ink, on the couriers' own
+// seat 1's courier runs a step behind in a cool palette, on the couriers' own
 // collider layer so they pass through each other, over the same crates and
 // fences; a courier that crashes stops, the round goes on while the other
 // runs, and the card names the one who ran farther. One camera shows both.
@@ -24,7 +24,7 @@ import { COURIER, PROPS, loadArt } from "./art.ts";
 import { Actor, Hud, Kind, Phase, Race, Run, Sfx, Sound, Sounds, Tuning } from "./components.ts";
 import { bit, LOCAL, SEATS, Seats, setBot, setupSeats, useTouchControls } from "./seats.ts";
 import type { TouchInput } from "./seats.ts";
-import { Animate, Collide, Director, Dust, GROUND_Y, homeX, HudText, Jump, Records, REST_Y, RIVAL, Riders, RUNNER_SIZE, RUNNER_X, SCENERY_SPAN, Scroll, Spawn, Voices } from "./systems.ts";
+import { Animate, Collide, Director, Dust, GROUND_Y, homeX, HudText, Jump, Records, REST_Y, Riders, RUNNER_SIZE, RUNNER_X, SCENERY_SPAN, Scroll, Spawn, Voices } from "./systems.ts";
 
 /** Pool sizes: how many of each can be in play at once. */
 const POOLS = { crate: 4, fence: 3, coin: 16, dust: 4 } as const;
@@ -189,13 +189,16 @@ function start(world: World): void {
     must(world.insert(e, og.PlatformerController, { moveX: 0, coyoteTime: 0.08, jumpBuffer: 0.1, maxFallSpeed: 30 }));
   };
   body(runner, 0);
-  // The second seat's courier, a step behind in its own ink, with the runner's hit box (its row's Tuning is unused: the runner row's tunes both).
+  // The second seat's courier, a step behind in its own palette (sprites/courier-p2.ogt: the same frames, the garments swapped), with the runner's hit box (its row's Tuning is unused: the runner row's tunes both).
+  const loaded = SEATS > 1 ? og.load.flipbook(world, "sprites/courier-p2.ogt") : null;
+  if (loaded && !loaded.ok) throw new Error(loaded.reason);
+  const second = loaded?.ok ? loaded.value : art.courier;
   for (let seat = 1; seat < SEATS; seat++) {
     const rival = world.spawn({ name: `runner-${seat}`, position: { x: homeX(seat), y: GROUND_Y, z: 0 } });
     if (!rival.ok) throw new Error(rival.reason);
     const e = rival.value;
-    must(world.insert(e, og.Sprite, { texture: art.courier.texture, width: RUNNER_SIZE.x, height: RUNNER_SIZE.y, layer: LAYER.runner, color: RIVAL }));
-    must(world.insert(e, og.Flipbook, { sheet: art.courier.sheet, clip: COURIER.idle }));
+    must(world.insert(e, og.Sprite, { texture: second.texture, width: RUNNER_SIZE.x, height: RUNNER_SIZE.y, layer: LAYER.runner }));
+    must(world.insert(e, og.Flipbook, { sheet: second.sheet, clip: COURIER.idle }));
     must(world.insert(e, og.Afterimage, { count: 4, interval: 3, opacity: 0.4, color: { r: 0.45, g: 0.7, b: 1 }, active: false }));
     must(world.insert(e, Actor, { kind: Kind.Runner, w: 0.5, h: 1.2, parallax: 0 }));
     must(world.insert(e, Run, { seat }));
