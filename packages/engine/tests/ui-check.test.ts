@@ -90,6 +90,21 @@ test("text drawn wider than its own box (sized to English) is a finding", () => 
   expect(rules(f, { ...cell, locale: "pseudo" })).toContain("text-cut");
 });
 
+test("a line is its own box's though it matches no text as written (uppercased, or shaped as glyph ids) and touches a smaller one", () => {
+  const ink = { size: 14, clip: [0, 0, 390, 844] as Rect4, color: [1, 1, 1, 1] as [number, number, number, number] };
+  // Arabic drawn as the face's glyph ids, its descenders 4 px into the turn under it.
+  const title = el("Title", "", "label", "heading", [100, 100, 66, 34], { text: "القتال" });
+  const turn = el("Turn", "", "label", "text", [134, 134, 32, 22], { text: "دورك" });
+  const shaped = "\u{F0004}\u{F0065}\u{F000C}ا";
+  expect(rules(frame({ elements: [title, turn], texts: [{ ...ink, text: shaped, bounds: [100, 100, 66, 38] }] }))).not.toContain("text-cut");
+  // A step's uppercase draws "EASY" for the label's "Easy", over the value beside it.
+  const level = el("Level", "", "label", "text", [10, 200, 40, 20], { text: "Easy" });
+  const value = el("Value", "", "label", "text", [40, 200, 17, 20], { text: "3" });
+  expect(rules(frame({ elements: [level, value], texts: [{ ...ink, text: "EASY", bounds: [10, 200, 34, 20] }] }))).not.toContain("text-cut");
+  // Wider than its own box, it is still cut.
+  expect(rules(frame({ elements: [title, turn], texts: [{ ...ink, text: shaped, bounds: [100, 100, 120, 38] }] }))).toContain("text-cut");
+});
+
 test("text truncated with an ellipsis asks for a tooltip", () => {
   const f = frame({ elements: [el("Name", "", "label", "text", [10, 100, 60, 20], { text: "Excalibur of the North" })], texts: [{ text: "Excalib…", size: 14, bounds: [10, 100, 60, 20], clip: [0, 0, 390, 844], color: [1, 1, 1, 1] }] });
   const got = checkFrame(f, cell).find((x) => x.rule === "text-truncated");

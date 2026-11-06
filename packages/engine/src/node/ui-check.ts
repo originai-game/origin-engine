@@ -269,14 +269,19 @@ const stem = (t: string) => t.trim().replace(/(…|\.\.\.)$/, "");
  */
 function owner(f: UiFrameSnapshot, line: { text: string; bounds: Rect4 }): number {
   const [x, y, w, h] = line.bounds;
-  const want = stem(line.text);
+  const want = stem(line.text).toLocaleUpperCase();
   let best = -1, bestScore = Infinity;
   for (const [i, e] of f.elements.entries()) {
     if (e.x > x + w + 0.5 || e.y > y + h + 0.5 || e.x + e.width < x - 0.5 || e.y + e.height < y - 0.5) continue;
-    const same = !!e.text && (e.text === line.text || (want !== "" && e.text.includes(want)));
-    // A matching text first, then any text, then the smallest box: a line drawn inside a picture (a minimap's north
-    // letter) still has the element a scroll edge cuts.
-    const score = (same ? 0 : e.text ? 1e12 : 2e12) + e.width * e.height;
+    // The element keeps its source text: a step's uppercase draws "EASY" for "Easy".
+    const text = (e.text ?? "").toLocaleUpperCase();
+    const same = !!e.text && (text === line.text.toLocaleUpperCase() || (want !== "" && text.includes(want)));
+    // How much of the line the box covers: a shaped line (Arabic, drawn as glyph ids) matches no element's text, and
+    // the smallest box it touched was a neighbour's (a card's turn under its title, a player's number by his label).
+    const cover = (Math.max(0, Math.min(x + w, e.x + e.width) - Math.max(x, e.x)) * Math.max(0, Math.min(y + h, e.y + e.height) - Math.max(y, e.y))) / Math.max(1e-6, w * h);
+    // A matching text first, then any text, by how much of the line each covers, then the smallest box: a line drawn
+    // inside a picture (a minimap's north letter) still has the element a scroll edge cuts.
+    const score = (same ? 0 : e.text ? 1e12 : 2e12) + (1 - Math.min(1, cover)) * 1e9 + e.width * e.height;
     if (score < bestScore) {
       best = i;
       bestScore = score;
