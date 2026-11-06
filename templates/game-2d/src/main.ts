@@ -39,6 +39,8 @@ import { held, LOCAL, ONLINE, PAUSE, pressedNow, press, SEATS, Seats, setBot, se
 const CLIP = { idle: 0, run: 1, jump: 2, fall: 3 } as const;
 /** The camera's height in world units: 14 cells of 16 px, the 16bit-pixel look's 224-pixel frame. */
 const VIEW_H = 14;
+/** World units kept clear around the two couriers when the camera widens to hold both. */
+const MARGIN = 2;
 /** The ledges' collider layer (the map's `colliderLayers 2`), one-way for the courier. */
 const LEDGES = 2;
 /** The couriers' collider layer. */
@@ -48,8 +50,6 @@ const BOX = { w: 0.9, h: 1.9 } as const;
 /** Below this the courier fell into the pit. */
 const FALL_Y = -3;
 const LIVES = 3;
-/** The second seat's courier: a cool tint over the same sheet (linear). */
-const SECOND_INK = { r: 0.55, g: 0.8, b: 1 };
 /** sqrt(x² + y²) the same on every JavaScript engine (Math.hypot is not: og check's lockstep lint). */
 const hypot = (x: number, y: number): number => Math.sqrt(x * x + y * y);
 /** The keeper's ramp: a plank from (x0, y0) on the roof rising at `slope` (tan 12°) to x1. */
@@ -217,6 +217,21 @@ export const Control = defineSystem(
     if (view !== null && n > 0) must(world.set(view, og.Transform, { position: { x: sx / n, y: sy / n, z: 0 } }));
   },
 );
+
+/**
+ * Two couriers: og.Camera widens (its height, presentation only) so both
+ * stay in view with a margin at any aspect, a portrait phone's too, and
+ * eases back to the level's 14 cells as they close up.
+ */
+export const Frame = defineSystem("Frame", { reads: [Game], writes: [og.Camera], after: ["Control"] }, (_q, time, world) => {
+  if (SEATS < 2) return;
+  const g = must(world.resource(Game));
+  const camera = must(world.resource(og.Camera));
+  const vp = og.ui.viewport(world);
+  const aspect = vp.width > 0 && vp.height > 0 ? vp.width / vp.height : 16 / 9;
+  const need = Math.max(VIEW_H, (Math.abs(g.heroX - g.hero2X) + 2 * MARGIN) / aspect, Math.abs(g.heroY - g.hero2Y) + BOX.h + 2 * MARGIN);
+  camera.height += (need - camera.height) * Math.min(1, time.dt * 6);
+});
 
 /** A coin the courier's box touches is taken; reaching the goal clears the level; the last life lost puts every coin back. */
 export const Pickups = defineSystem("Pickups", { writes: [Game, Coin, og.Sprite], reads: [og.Transform], after: ["Control"] }, (q, _time, world) => {
@@ -522,11 +537,13 @@ export default og.game({
   tick: 60,
   seed: 1,
   resources: [Game, KeeperWalk],
-  systems: [Seats, Control, Pickups, Animate, Walk, Plant2D, Hud, Voices],
+  systems: [Seats, Control, Frame, Pickups, Animate, Walk, Plant2D, Hud, Voices],
   start(world) {
     setupSeats(world);
     const map = must(og.load.tilemap(world, "maps/level.ogt"));
     const courier = must(og.load.flipbook(world, "sprites/courier.ogt"));
+    // The second seat's courier wears the same frames in a cool palette (sprites/courier-p2.ogt).
+    const courier2 = SEATS > 1 ? must(og.load.flipbook(world, "sprites/courier-p2.ogt")) : courier;
     checkClips(courier);
     const coin = must(og.load.flipbook(world, "sprites/coin.ogt"));
     spawnKeeper(world, must(og.load.rig2d(world, "rigs/keeper.ogt")));
@@ -549,14 +566,15 @@ export default og.game({
     for (const o of map.objects) {
       const p = at(o, height);
       if (o.kind === "spawn") {
-        // One courier per seat: seat 1 a step behind, in the second player's ink.
+        // One courier per seat: seat 1 a step behind, in the second player's palette.
         for (let seat = 0; seat < SEATS; seat++) {
           const x = p.x - seat * 1.2;
           const hero = must(world.spawn({ name: seat === 0 ? "hero" : `hero-${seat}`, position: { x, y: p.y, z: 0 } }));
           must(world.insert(hero, Hero, { spawnX: x, spawnY: p.y }));
           must(world.insert(hero, og.PlayerInput, { player: seat }));
-          must(world.insert(hero, og.Sprite, { texture: courier.texture, width: 2, height: 2.5, anchor: { x: 0.5, y: 0 }, layer: 2, ...(seat > 0 ? { color: SECOND_INK } : {}) }));
-          must(world.insert(hero, og.Flipbook, { sheet: courier.sheet, clip: CLIP.idle }));
+          const sheet = seat > 0 ? courier2 : courier;
+          must(world.insert(hero, og.Sprite, { texture: sheet.texture, width: 2, height: 2.5, anchor: { x: 0.5, y: 0 }, layer: 2 }));
+          must(world.insert(hero, og.Flipbook, { sheet: sheet.sheet, clip: CLIP.idle }));
           // On their own layer, which no courier's mask takes: co-op couriers pass through each other.
           must(world.insert(hero, og.Collider, { shape: SHAPE_BOX, size: { x: BOX.w, y: BOX.h, z: 1 }, offset: { x: 0, y: BOX.h / 2, z: 0 }, layers: COURIERS, mask: ~COURIERS >>> 0 }));
           // og-feel §12's platformer tunables; the ledges' layer is one-way.

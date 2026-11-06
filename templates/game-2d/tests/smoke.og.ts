@@ -4,6 +4,9 @@
 // holds time, Escape again resumes, and a fall into the pit costs a life
 // and puts the courier back at the spawn.
 import { playtest } from "@origingame/engine/playtest";
+import { creation } from "../src/creation.ts";
+
+const platform: string = creation.platform;
 
 interface Got<T> {
   value: T;
@@ -26,9 +29,12 @@ interface UiDump {
 }
 
 export default playtest({
+  // A phone game's frame is the phone's (portrait or landscape), with its touch controls.
+  ...(platform === "phone-portrait" ? { size: "390x844" } : platform === "phone-landscape" ? { size: "844x390" } : {}),
   name: "The courier runs over two coins, jumps up through a one-way ledge onto it, pauses and resumes, and the pit costs a life",
   commands:
-    "0.5:key_down:ArrowRight;2.0:key_up:ArrowRight;" +
+    // Seat 0's keys (D, Space): alone every key plays it, beside a second seat the arrows are seat 1's.
+    "0.5:key_down:KeyD;2.0:key_up:KeyD;" +
     "2.3:key_down:Space;2.9:key_up:Space;" +
     "3.5:screenshot:ledge.png;3.55:dump_entity:hero:hero.json;3.6:get:Game:ledge.json;3.65:dump_ui:ui.json;" +
     "3.7:key_down:Escape;3.75:key_up:Escape;4.2:get:Game:paused.json;" +
