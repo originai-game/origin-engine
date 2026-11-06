@@ -87,6 +87,14 @@ is the repository's checker too (`packages/engine`'s `typecheck`); tsgo is
 the conformance comparison (`check-conformance`, docs/ci.md) and the
 fallback.
 
+Checks reuse compiler-owned incremental state under `.og/check`, locked
+per configuration until the checker exits. The child inherits the lock so
+killing its CLI cannot race another writer. The compiler, not a source
+import approximation, invalidates declarations, missing imports and extended
+configuration. Changing the checker identity discards its previous state.
+`OG_SESSION=0`, temporary bare-entry configurations, read-only projects and
+cancellable `og dev` checks use the stateless path.
+
 ### 2.2 Threads
 
 - **Main thread**: the shell only. Collects input into a SharedArrayBuffer

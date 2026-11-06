@@ -19,6 +19,75 @@ const TS2322: &str =
     "src/main.ts(1,7): error TS2322: Type 'string' is not assignable to type 'number'.\n";
 
 #[test]
+fn warm_checks_match_cold_after_dependency_and_resolution_changes() {
+    let (dir, game) = check_project();
+    std::fs::write(
+        dir.join("base.json"),
+        r#"{"compilerOptions":{"strict":true}}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        game.join("tsconfig.json"),
+        r#"{"extends":"../base.json","include":["src/*.ts"]}"#,
+    )
+    .unwrap();
+    let declaration = dir.join("types.d.ts");
+    std::fs::write(&declaration, "export type Value = number;").unwrap();
+    std::fs::write(
+        game.join("src/main.ts"),
+        "import type {Value} from '../../types'; const value: Value = 1;",
+    )
+    .unwrap();
+    let check = |warm: bool| {
+        let output = og()
+            .args(["check", "--json"])
+            .arg(&game)
+            .env("OG_SESSION", if warm { "1" } else { "0" })
+            .output()
+            .unwrap();
+        let mut report: serde_json::Value = serde_json::from_slice(&output.stdout)
+            .unwrap_or_else(|e| panic!("{e}: {}", text(&output)));
+        report.as_object_mut().unwrap().remove("ms");
+        (output.status.success(), report)
+    };
+    let parity = |ok: bool| {
+        let warm = check(true);
+        assert_eq!(warm, check(false));
+        assert_eq!(warm.0, ok, "{}", warm.1);
+    };
+    parity(true);
+    parity(true);
+    std::fs::write(&declaration, "export type Value = string;").unwrap();
+    parity(false);
+    parity(false);
+    std::fs::write(&declaration, "export type Value = number;").unwrap();
+    parity(true);
+    std::fs::write(
+        game.join("src/main.ts"),
+        "import {value} from './missing'; export {value};",
+    )
+    .unwrap();
+    parity(false);
+    std::fs::write(game.join("src/missing.ts"), "export const value = 4;").unwrap();
+    parity(true);
+    std::fs::remove_file(game.join("src/missing.ts")).unwrap();
+    parity(false);
+    std::fs::write(
+        game.join("src/main.ts"),
+        "export const identity = (value) => value;",
+    )
+    .unwrap();
+    parity(false);
+    std::fs::write(
+        dir.join("base.json"),
+        r#"{"compilerOptions":{"strict":false}}"#,
+    )
+    .unwrap();
+    parity(true);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
 fn check_warns_when_requested_languages_lack_installed_font_chains() {
     let (dir, game) = check_project();
     std::fs::write(game.join("tsconfig.json"), r#"{"include":["src/**/*.ts"]}"#).unwrap();
@@ -139,7 +208,8 @@ fn check_finds_tsrs_by_its_chain_and_reports_diagnostics_as_values() {
         .unwrap();
     assert!(
         args.contains("-p")
-            && args.contains("--noEmit --incremental false --pretty false --checkers"),
+            && args.contains("--noEmit --incremental true --pretty false --checkers")
+            && args.contains("--tsBuildInfoFile"),
         "{args}"
     );
 

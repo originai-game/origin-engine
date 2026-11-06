@@ -21,10 +21,12 @@
 //! engine checkout, run with `OG_ENGINE_PACKAGE`) gets the same file
 //! extending its own with `paths` to the engine package `og` resolved.
 //!
-//! The run is `-p <config> --noEmit --incremental false --pretty false
-//! --checkers N` in the project directory: stateless (no `.tsbuildinfo`),
-//! with N `min(4, cores)` unless `--checkers` or `OG_CHECKERS` say
-//! otherwise. Exit status 0 is clean; 1 to 4 is a finished check whose
+//! The run is `-p <config> --noEmit --pretty false --checkers N` in the
+//! project directory, with compiler-owned incremental state under `.og/check`
+//! when available. A per-config file lock serializes its readers/writers;
+//! `OG_SESSION=0` and the cancellable dev checks stay stateless.
+//! N is `min(4, cores)` unless `--checkers` or `OG_CHECKERS` say otherwise.
+//! Exit status 0 is clean; 1 to 4 is a finished check whose
 //! diagnostics are on stdout; anything else, a signal, or a non-zero
 //! status with nothing parsed, is the checker failing, never "no errors".
 //!
@@ -537,14 +539,23 @@ impl Checker {
 
     /// The check of `target` with `checkers` threads, to spawn (stdout
     /// piped; stderr passed through, tsgo's read for its panic first).
-    pub fn command_for(&self, target: &Target, checkers: usize) -> Command {
+    pub fn command_for(
+        &self,
+        target: &Target,
+        checkers: usize,
+        build_info: Option<&Path>,
+    ) -> Command {
         let mut c = self.command();
         c.arg("-p")
             .arg(typescript_path(&target.config))
             .args([
                 "--noEmit",
                 "--incremental",
-                "false",
+                if build_info.is_some() {
+                    "true"
+                } else {
+                    "false"
+                },
                 "--pretty",
                 "false",
                 "--checkers",
@@ -557,6 +568,9 @@ impl Checker {
                 Tool::Tsrs => Stdio::inherit(),
                 Tool::Tsgo => Stdio::piped(),
             });
+        if let Some(path) = build_info {
+            c.arg("--tsBuildInfoFile").arg(path);
+        }
         c
     }
 
@@ -604,11 +618,60 @@ impl Checker {
     /// Checks `target` with `checkers` threads.
     pub fn check(&self, target: &Target, checkers: usize) -> Result<Report, String> {
         let t0 = Instant::now();
-        let out = self
-            .command_for(target, checkers)
-            .output()
-            .map_err(|e| self.spawn_error(e))?;
+        let incremental = self.incremental(target);
+        let mut command = self.command_for(
+            target,
+            checkers,
+            incremental.as_ref().map(|(_, path)| path.as_path()),
+        );
+        if let Some((lock, _)) = &incremental {
+            // A killed CLI cannot unlock state while its checker still writes.
+            command.stdin(Stdio::from(lock.try_clone().map_err(|e| e.to_string())?));
+        }
+        let out = command.output().map_err(|e| self.spawn_error(e))?;
         self.report(target, out, t0.elapsed().as_secs_f64() * 1000.0)
+    }
+
+    /// The compiler owns dependency discovery and invalidation, including
+    /// missing imports, extended configs and declarations outside the project.
+    /// A cache is optional: read-only and bare temporary targets still check.
+    fn incremental(&self, target: &Target) -> Option<(std::fs::File, PathBuf)> {
+        use std::hash::{Hash, Hasher};
+        if std::env::var("OG_SESSION").as_deref() == Ok("0")
+            || !target.config.starts_with(&target.root)
+        {
+            return None;
+        }
+        let mut hash = std::hash::DefaultHasher::new();
+        target.config.hash(&mut hash);
+        let directory = target
+            .root
+            .join(".og/check")
+            .join(format!("{:016x}", hash.finish()));
+        std::fs::create_dir_all(&directory).ok()?;
+        let lock = std::fs::OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .read(true)
+            .write(true)
+            .open(directory.join("state.lock"))
+            .ok()?;
+        lock.lock().ok()?;
+        let binary = self.path.as_ref().and_then(|path| {
+            let path = path.canonicalize().ok()?;
+            let metadata = std::fs::metadata(&path).ok()?;
+            Some((path, metadata.len(), metadata.modified().ok()?))
+        });
+        let identity = format!("{} {} {binary:?}", self.name(), self.version);
+        let info = directory.join("state.tsbuildinfo");
+        let identity_path = directory.join("identity");
+        if std::fs::read_to_string(&identity_path).ok().as_deref() != Some(&identity) {
+            if info.exists() {
+                std::fs::remove_file(&info).ok()?;
+            }
+            std::fs::write(identity_path, identity).ok()?;
+        }
+        Some((lock, info))
     }
 }
 

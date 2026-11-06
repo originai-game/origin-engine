@@ -124,7 +124,7 @@ impl Checks {
         let (latest, running, tx) = (self.latest.clone(), self.running.clone(), self.tx.clone());
         std::thread::spawn(move || {
             let t0 = Instant::now();
-            let child = match checker.command_for(&target, checkers).spawn() {
+            let child = match checker.command_for(&target, checkers, None).spawn() {
                 Ok(c) => c,
                 Err(e) => {
                     let _ = tx.send((n, Err(checker.spawn_error(e))));
