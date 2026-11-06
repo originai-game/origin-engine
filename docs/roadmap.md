@@ -95,6 +95,12 @@ Dropped: `create-starters` a79e6bed8, `ui-own-look` 363ab979b.
 
 ## og-ui generic gaps (after the clean-up)
 
+Font packs (0.8.0 UI work, the owner): fonts become packs like the UI packs
+(one per script, with a manifest); installed into a game, og.i18n wires the
+font chain, so the `create` block's languages install the matching pack
+with no generated code.
+
+
 Ranked: per-frame cost follows the node count, not the change (the tree is
 rebuilt and compared every tick; find_overlaps, the accessibility tree and
 the probe list run in every build); no perf tests for `docs/ui.md` §15.1's
