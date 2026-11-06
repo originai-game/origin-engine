@@ -271,7 +271,24 @@ pub fn og_ui_frame_viewport() -> String {
         (ui.viewport(), ui.hud_max_aspect())
     })
     .unwrap_or((Viewport::default(), og_ui::HUD_MAX_ASPECT));
-    viewport_json(&v, hud).to_string()
+    // The UI kit asks many times a tick (each component that adapts to the
+    // surface) and the viewport rarely changes: the last answer is kept with
+    // what it was made from, as og_ui_frame_theme's is. Built each call, it
+    // was a fifth of a kit frame in the dev build.
+    type Made = (Viewport, f32, String);
+    thread_local!(static MADE: std::cell::RefCell<Option<Made>> = const { std::cell::RefCell::new(None) });
+    MADE.with(|last| {
+        let mut last = last.borrow_mut();
+        if let Some((lv, lh, text)) = last.as_ref()
+            && *lv == v
+            && lh.to_bits() == hud.to_bits()
+        {
+            return text.clone();
+        }
+        let text = viewport_json(&v, hud).to_string();
+        *last = Some((v, hud, text.clone()));
+        text
+    })
 }
 
 pub fn og_ui_frame_cursor() -> String {
