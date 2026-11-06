@@ -312,6 +312,13 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   its licence kept under `third_party/` or in the file header, rather
   than hand-rolling a simplistic version. The introduction site
   (engine.origingame.ai) deploys only once the features it shows are done.
+- **Size cuts never cost features (the owner, 2026-11-06).** A cut to
+  the wasm, a package or an asset is made only when nothing a game or a
+  player sees changes: no dropped feature, script, language or look. Data
+  only some games need (line-break dictionaries, fonts, presets) is
+  loaded or packed on demand for the games that use it, never removed.
+  Within the size gate, growth from a feature is accepted (the owner,
+  2026-11-06: the text stack's +2.08 MB Brotli).
 - **Landing on the author's word (the owner, 2026-11-02).** To speed
   development, a branch whose author reports it drawn, read and tested
   is merged on that report, with no second review by the coordinator.
