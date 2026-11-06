@@ -23,4 +23,4 @@ enum PlatformOrder {
 }
 ```
 
-<sub>`api.ogt` line 14916</sub>
+<sub>Module `platform` line 9</sub>

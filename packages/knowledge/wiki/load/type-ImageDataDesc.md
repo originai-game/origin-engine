@@ -24,4 +24,4 @@ struct ImageDataDesc {
 }
 ```
 
-<sub>`api.ogt` line 8390</sub>
+<sub>Module `load` line 478</sub>

@@ -37,4 +37,4 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 5705</sub>
+<sub>Module `render` line 1912</sub>

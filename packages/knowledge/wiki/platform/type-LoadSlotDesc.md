@@ -24,4 +24,4 @@ struct LoadSlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 14987</sub>
+<sub>Module `platform` line 80</sub>

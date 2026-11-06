@@ -30,4 +30,4 @@ fn advance {
 }
 ```
 
-<sub>`api.ogt` line 14765</sub>
+<sub>Module `story` line 301</sub>

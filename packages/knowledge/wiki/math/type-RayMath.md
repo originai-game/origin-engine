@@ -14,7 +14,7 @@ interface RayMath {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 568</sub>
+<sub>Module `math` line 527</sub>
 
 <a id="member-RayMath-at"></a>
 
@@ -45,7 +45,7 @@ fn at {
 }
 ```
 
-<sub>`api.ogt` line 570</sub>
+<sub>Module `math` line 529</sub>
 
 <a id="member-RayMath-distanceToPoint"></a>
 
@@ -76,7 +76,7 @@ fn distanceToPoint {
 }
 ```
 
-<sub>`api.ogt` line 577</sub>
+<sub>Module `math` line 536</sub>
 
 <a id="member-RayMath-intersectBox"></a>
 
@@ -107,7 +107,7 @@ fn intersectBox {
 }
 ```
 
-<sub>`api.ogt` line 584</sub>
+<sub>Module `math` line 543</sub>
 
 <a id="member-RayMath-intersectSphere"></a>
 
@@ -138,7 +138,7 @@ fn intersectSphere {
 }
 ```
 
-<sub>`api.ogt` line 591</sub>
+<sub>Module `math` line 550</sub>
 
 <a id="member-RayMath-intersectPlane"></a>
 
@@ -169,7 +169,7 @@ fn intersectPlane {
 }
 ```
 
-<sub>`api.ogt` line 598</sub>
+<sub>Module `math` line 557</sub>
 
 <a id="member-RayMath-intersectTriangle"></a>
 
@@ -208,4 +208,4 @@ fn intersectTriangle {
 }
 ```
 
-<sub>`api.ogt` line 605</sub>
+<sub>Module `math` line 564</sub>

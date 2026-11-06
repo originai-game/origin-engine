@@ -14,7 +14,7 @@ interface Matrix4Math {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 305</sub>
+<sub>Module `math` line 264</sub>
 
 <a id="member-Matrix4Math-multiply"></a>
 
@@ -45,7 +45,7 @@ fn multiply {
 }
 ```
 
-<sub>`api.ogt` line 307</sub>
+<sub>Module `math` line 266</sub>
 
 <a id="member-Matrix4Math-invert"></a>
 
@@ -74,7 +74,7 @@ fn invert {
 }
 ```
 
-<sub>`api.ogt` line 314</sub>
+<sub>Module `math` line 273</sub>
 
 <a id="member-Matrix4Math-transformPoint"></a>
 
@@ -105,7 +105,7 @@ fn transformPoint {
 }
 ```
 
-<sub>`api.ogt` line 320</sub>
+<sub>Module `math` line 279</sub>
 
 <a id="member-Matrix4Math-transformDirection"></a>
 
@@ -136,7 +136,7 @@ fn transformDirection {
 }
 ```
 
-<sub>`api.ogt` line 327</sub>
+<sub>Module `math` line 286</sub>
 
 <a id="member-Matrix4Math-compose"></a>
 
@@ -169,4 +169,4 @@ fn compose {
 }
 ```
 
-<sub>`api.ogt` line 334</sub>
+<sub>Module `math` line 293</sub>

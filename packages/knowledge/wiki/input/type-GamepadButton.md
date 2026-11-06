@@ -53,4 +53,4 @@ enum GamepadButton {
 }
 ```
 
-<sub>`api.ogt` line 2549</sub>
+<sub>Module `input` line 535</sub>

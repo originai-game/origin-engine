@@ -32,4 +32,4 @@ fn quickPlay {
 }
 ```
 
-<sub>`api.ogt` line 15474</sub>
+<sub>Module `platform` line 567</sub>

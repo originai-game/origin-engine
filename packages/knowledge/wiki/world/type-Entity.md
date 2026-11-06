@@ -19,4 +19,4 @@ handle Entity {
 }
 ```
 
-<sub>`api.ogt` line 861</sub>
+<sub>Module `world` line 5</sub>

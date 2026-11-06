@@ -32,4 +32,4 @@ fn applyTorqueImpulse {
 }
 ```
 
-<sub>`api.ogt` line 10404</sub>
+<sub>Module `physics` line 1891</sub>

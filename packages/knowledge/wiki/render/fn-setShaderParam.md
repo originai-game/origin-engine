@@ -34,4 +34,4 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 6487</sub>
+<sub>Module `render` line 2694</sub>

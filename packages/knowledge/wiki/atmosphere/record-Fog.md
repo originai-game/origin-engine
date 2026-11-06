@@ -113,4 +113,4 @@ resource Fog {
 }
 ```
 
-<sub>`api.ogt` line 10600</sub>
+<sub>Module `atmosphere` line 11</sub>

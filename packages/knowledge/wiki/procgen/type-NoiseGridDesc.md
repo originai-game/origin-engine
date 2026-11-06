@@ -45,4 +45,4 @@ struct NoiseGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 1824</sub>
+<sub>Module `procgen` line 37</sub>

@@ -60,9 +60,10 @@ og api check   # CI: exit 1 and the differing files on drift
 `<module>.ogt` contains one whole module. Edit that module's file (for
 example `api/ui.ogt`); append a new module's filename to `parts.txt`.
 The loader concatenates the parts verbatim: keep their final newlines.
-No part gains a header; only the prelude has `type api`. Model lines and
-the wiki's `api.ogt` citations count through the concatenation,
-while errors name the part file and its own 1-based line. Missing parts
+No part gains a header; only the prelude has `type api`. Model lines count
+through the concatenation. Wiki citations count from the named module's
+declaration (line 1), so another module's growth leaves them unchanged;
+errors name the part file and its own 1-based line. Missing parts
 are read errors.
 
 The concatenation is ordinary `.ogt` text read by `og_core::ogt`, the engine's one
@@ -332,4 +333,3 @@ view tables. Both hosts depend on it; `og-cli` does not.
   trauma shake, punch, kick and og.CameraZone clamping to the frame only.
   Presets (`og.tween.squash`, `flash`) hold their impact for the tick they
   start in. Tested through TypeScript in `packages/engine/tests/feel.test.ts`.
-

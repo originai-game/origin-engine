@@ -29,4 +29,4 @@ event RoomJoined {
 }
 ```
 
-<sub>`api.ogt` line 15429</sub>
+<sub>Module `platform` line 522</sub>

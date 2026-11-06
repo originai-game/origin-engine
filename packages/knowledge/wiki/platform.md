@@ -29,7 +29,7 @@ module platform {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 14908</sub>
+<sub>Module `platform` line 1</sub>
 
 ## Contents
 

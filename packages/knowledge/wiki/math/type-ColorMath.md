@@ -14,7 +14,7 @@ interface ColorMath {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 619</sub>
+<sub>Module `math` line 578</sub>
 
 <a id="member-ColorMath-fromHex"></a>
 
@@ -43,7 +43,7 @@ fn fromHex {
 }
 ```
 
-<sub>`api.ogt` line 621</sub>
+<sub>Module `math` line 580</sub>
 
 <a id="member-ColorMath-toHex"></a>
 
@@ -72,7 +72,7 @@ fn toHex {
 }
 ```
 
-<sub>`api.ogt` line 627</sub>
+<sub>Module `math` line 586</sub>
 
 <a id="member-ColorMath-lerp"></a>
 
@@ -105,7 +105,7 @@ fn lerp {
 }
 ```
 
-<sub>`api.ogt` line 633</sub>
+<sub>Module `math` line 592</sub>
 
 <a id="member-ColorMath-fromHsl"></a>
 
@@ -138,4 +138,4 @@ fn fromHsl {
 }
 ```
 
-<sub>`api.ogt` line 641</sub>
+<sub>Module `math` line 600</sub>

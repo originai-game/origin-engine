@@ -24,7 +24,7 @@ module system {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 1310</sub>
+<sub>Module `system` line 1</sub>
 
 ## Contents
 

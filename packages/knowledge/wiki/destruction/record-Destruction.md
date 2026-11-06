@@ -58,4 +58,4 @@ resource Destruction {
 }
 ```
 
-<sub>`api.ogt` line 27224</sub>
+<sub>Module `destruction` line 120</sub>

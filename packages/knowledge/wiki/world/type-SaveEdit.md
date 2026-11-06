@@ -14,7 +14,7 @@ interface SaveEdit {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 960</sub>
+<sub>Module `world` line 104</sub>
 
 <a id="member-SaveEdit-version"></a>
 
@@ -32,7 +32,7 @@ Binding symbol `og_save_edit_get_version` · publish builds: kept
 prop version u32 "The game's save version the save was written at (1 for a save of a game that never declared one)."
 ```
 
-<sub>`api.ogt` line 962</sub>
+<sub>Module `world` line 106</sub>
 
 <a id="member-SaveEdit-types"></a>
 
@@ -55,7 +55,7 @@ fn types {
 }
 ```
 
-<sub>`api.ogt` line 963</sub>
+<sub>Module `world` line 107</sub>
 
 <a id="member-SaveEdit-has"></a>
 
@@ -84,7 +84,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 967</sub>
+<sub>Module `world` line 111</sub>
 
 <a id="member-SaveEdit-records"></a>
 
@@ -112,7 +112,7 @@ fn records {
 }
 ```
 
-<sub>`api.ogt` line 973</sub>
+<sub>Module `world` line 117</sub>
 
 <a id="member-SaveEdit-setRecords"></a>
 
@@ -142,7 +142,7 @@ fn setRecords {
 }
 ```
 
-<sub>`api.ogt` line 978</sub>
+<sub>Module `world` line 122</sub>
 
 <a id="member-SaveEdit-transform"></a>
 
@@ -175,7 +175,7 @@ fn transform {
 }
 ```
 
-<sub>`api.ogt` line 984</sub>
+<sub>Module `world` line 128</sub>
 
 <a id="member-SaveEdit-split"></a>
 
@@ -206,7 +206,7 @@ fn split {
 }
 ```
 
-<sub>`api.ogt` line 992</sub>
+<sub>Module `world` line 136</sub>
 
 <a id="member-SaveEdit-renameType"></a>
 
@@ -236,7 +236,7 @@ fn renameType {
 }
 ```
 
-<sub>`api.ogt` line 999</sub>
+<sub>Module `world` line 143</sub>
 
 <a id="member-SaveEdit-renameField"></a>
 
@@ -268,7 +268,7 @@ fn renameField {
 }
 ```
 
-<sub>`api.ogt` line 1005</sub>
+<sub>Module `world` line 149</sub>
 
 <a id="member-SaveEdit-dropType"></a>
 
@@ -296,7 +296,7 @@ fn dropType {
 }
 ```
 
-<sub>`api.ogt` line 1012</sub>
+<sub>Module `world` line 156</sub>
 
 <a id="member-SaveEdit-spawn"></a>
 
@@ -324,7 +324,7 @@ fn spawn {
 }
 ```
 
-<sub>`api.ogt` line 1017</sub>
+<sub>Module `world` line 161</sub>
 
 <a id="member-SaveEdit-text"></a>
 
@@ -347,7 +347,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 1022</sub>
+<sub>Module `world` line 166</sub>
 
 <a id="member-SaveEdit-close"></a>
 
@@ -370,4 +370,4 @@ fn close {
 }
 ```
 
-<sub>`api.ogt` line 1026</sub>
+<sub>Module `world` line 170</sub>

@@ -63,4 +63,4 @@ enum Ease {
 }
 ```
 
-<sub>`api.ogt` line 12382</sub>
+<sub>Module `tween` line 15</sub>

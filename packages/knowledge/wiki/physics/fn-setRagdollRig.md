@@ -32,4 +32,4 @@ fn setRagdollRig {
 }
 ```
 
-<sub>`api.ogt` line 10545</sub>
+<sub>Module `physics` line 2032</sub>

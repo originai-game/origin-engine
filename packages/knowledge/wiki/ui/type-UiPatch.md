@@ -46,4 +46,4 @@ struct UiPatch {
 }
 ```
 
-<sub>`api.ogt` line 20419</sub>
+<sub>Module `ui` line 4772</sub>

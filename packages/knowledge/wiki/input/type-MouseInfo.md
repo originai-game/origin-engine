@@ -23,4 +23,4 @@ struct MouseInfo {
 }
 ```
 
-<sub>`api.ogt` line 2248</sub>
+<sub>Module `input` line 234</sub>

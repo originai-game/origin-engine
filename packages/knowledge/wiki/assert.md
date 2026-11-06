@@ -27,7 +27,7 @@ module assert {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 25838</sub>
+<sub>Module `assert` line 1</sub>
 
 ## Contents
 

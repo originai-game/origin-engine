@@ -127,4 +127,4 @@ component AudioEvent {
 }
 ```
 
-<sub>`api.ogt` line 13319</sub>
+<sub>Module `audio` line 490</sub>

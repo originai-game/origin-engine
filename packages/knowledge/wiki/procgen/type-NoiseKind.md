@@ -23,4 +23,4 @@ enum NoiseKind {
 }
 ```
 
-<sub>`api.ogt` line 1792</sub>
+<sub>Module `procgen` line 5</sub>

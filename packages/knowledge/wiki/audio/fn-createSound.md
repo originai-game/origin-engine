@@ -30,4 +30,4 @@ fn createSound {
 }
 ```
 
-<sub>`api.ogt` line 13526</sub>
+<sub>Module `audio` line 697</sub>

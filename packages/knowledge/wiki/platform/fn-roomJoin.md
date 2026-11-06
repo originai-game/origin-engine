@@ -33,4 +33,4 @@ fn roomJoin {
 }
 ```
 
-<sub>`api.ogt` line 15466</sub>
+<sub>Module `platform` line 559</sub>

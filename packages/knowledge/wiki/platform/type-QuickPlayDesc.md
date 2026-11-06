@@ -37,4 +37,4 @@ struct QuickPlayDesc {
 }
 ```
 
-<sub>`api.ogt` line 15385</sub>
+<sub>Module `platform` line 478</sub>

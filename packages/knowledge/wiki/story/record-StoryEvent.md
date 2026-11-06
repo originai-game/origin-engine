@@ -25,4 +25,4 @@ event StoryEvent {
 }
 ```
 
-<sub>`api.ogt` line 14518</sub>
+<sub>Module `story` line 54</sub>

@@ -23,4 +23,4 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 8499</sub>
+<sub>Module `load` line 587</sub>

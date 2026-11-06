@@ -23,4 +23,4 @@ event PlatformNotice {
 }
 ```
 
-<sub>`api.ogt` line 15137</sub>
+<sub>Module `platform` line 230</sub>

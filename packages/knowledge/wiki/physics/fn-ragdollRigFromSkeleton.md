@@ -30,4 +30,4 @@ fn ragdollRigFromSkeleton {
 }
 ```
 
-<sub>`api.ogt` line 10538</sub>
+<sub>Module `physics` line 2025</sub>

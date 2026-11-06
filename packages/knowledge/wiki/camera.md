@@ -17,7 +17,7 @@ module camera {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 3230</sub>
+<sub>Module `camera` line 1</sub>
 
 ## Contents
 

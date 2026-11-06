@@ -69,4 +69,4 @@ struct GameDesc {
 }
 ```
 
-<sub>`api.ogt` line 1432</sub>
+<sub>Module `game` line 16</sub>

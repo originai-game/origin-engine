@@ -33,4 +33,4 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 6064</sub>
+<sub>Module `render` line 2271</sub>

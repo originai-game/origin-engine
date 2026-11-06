@@ -75,4 +75,4 @@ component CameraRail {
 }
 ```
 
-<sub>`api.ogt` line 3543</sub>
+<sub>Module `camera` line 314</sub>

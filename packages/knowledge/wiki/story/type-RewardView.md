@@ -25,4 +25,4 @@ struct RewardView {
 }
 ```
 
-<sub>`api.ogt` line 14684</sub>
+<sub>Module `story` line 220</sub>

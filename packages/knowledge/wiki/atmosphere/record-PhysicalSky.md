@@ -57,4 +57,4 @@ resource PhysicalSky {
 }
 ```
 
-<sub>`api.ogt` line 10814</sub>
+<sub>Module `atmosphere` line 225</sub>

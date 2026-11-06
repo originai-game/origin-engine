@@ -37,4 +37,4 @@ component WindMotor {
 }
 ```
 
-<sub>`api.ogt` line 11199</sub>
+<sub>Module `atmosphere` line 610</sub>

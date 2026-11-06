@@ -17,7 +17,7 @@ module procgen {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 1788</sub>
+<sub>Module `procgen` line 1</sub>
 
 ## Contents
 

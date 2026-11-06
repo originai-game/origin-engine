@@ -32,4 +32,4 @@ fn choose {
 }
 ```
 
-<sub>`api.ogt` line 14772</sub>
+<sub>Module `story` line 308</sub>

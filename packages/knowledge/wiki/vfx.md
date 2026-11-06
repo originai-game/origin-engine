@@ -17,7 +17,7 @@ module vfx {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 27402</sub>
+<sub>Module `vfx` line 1</sub>
 
 ## Contents
 
@@ -49,4 +49,4 @@ column VfxAsset {
 }
 ```
 
-<sub>`api.ogt` line 27408</sub>
+<sub>Module `vfx` line 7</sub>

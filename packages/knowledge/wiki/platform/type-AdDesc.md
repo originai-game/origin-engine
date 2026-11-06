@@ -26,4 +26,4 @@ struct AdDesc {
 }
 ```
 
-<sub>`api.ogt` line 15176</sub>
+<sub>Module `platform` line 269</sub>

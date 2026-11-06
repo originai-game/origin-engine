@@ -215,4 +215,4 @@ component AudioBusFx {
 }
 ```
 
-<sub>`api.ogt` line 13096</sub>
+<sub>Module `audio` line 267</sub>

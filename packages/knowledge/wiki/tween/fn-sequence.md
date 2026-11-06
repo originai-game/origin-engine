@@ -34,4 +34,4 @@ fn sequence {
 }
 ```
 
-<sub>`api.ogt` line 12507</sub>
+<sub>Module `tween` line 140</sub>

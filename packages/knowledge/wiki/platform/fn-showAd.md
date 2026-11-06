@@ -33,4 +33,4 @@ fn showAd {
 }
 ```
 
-<sub>`api.ogt` line 15272</sub>
+<sub>Module `platform` line 365</sub>

@@ -33,4 +33,4 @@ struct VfxInfo {
 }
 ```
 
-<sub>`api.ogt` line 27467</sub>
+<sub>Module `vfx` line 66</sub>

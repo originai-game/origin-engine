@@ -31,4 +31,4 @@ fn outputLatency {
 }
 ```
 
-<sub>`api.ogt` line 13533</sub>
+<sub>Module `audio` line 704</sub>

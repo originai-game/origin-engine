@@ -31,4 +31,4 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 7985</sub>
+<sub>Module `load` line 73</sub>

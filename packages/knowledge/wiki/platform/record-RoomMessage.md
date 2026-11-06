@@ -25,4 +25,4 @@ event RoomMessage {
 }
 ```
 
-<sub>`api.ogt` line 15450</sub>
+<sub>Module `platform` line 543</sub>

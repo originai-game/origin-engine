@@ -35,4 +35,4 @@ fn setGroupScale {
 }
 ```
 
-<sub>`api.ogt` line 1674</sub>
+<sub>Module `time` line 70</sub>

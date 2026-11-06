@@ -24,4 +24,4 @@ struct MouseDesc {
 }
 ```
 
-<sub>`api.ogt` line 2240</sub>
+<sub>Module `input` line 226</sub>

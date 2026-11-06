@@ -19,4 +19,4 @@ struct Frustum {
 }
 ```
 
-<sub>`api.ogt` line 111</sub>
+<sub>Module `math` line 70</sub>

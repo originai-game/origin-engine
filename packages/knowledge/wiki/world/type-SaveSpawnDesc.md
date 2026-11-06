@@ -24,4 +24,4 @@ struct SaveSpawnDesc {
 }
 ```
 
-<sub>`api.ogt` line 927</sub>
+<sub>Module `world` line 71</sub>

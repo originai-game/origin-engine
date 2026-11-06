@@ -27,4 +27,4 @@ event MusicBeat {
 }
 ```
 
-<sub>`api.ogt` line 13503</sub>
+<sub>Module `audio` line 674</sub>

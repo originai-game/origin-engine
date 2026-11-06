@@ -21,7 +21,7 @@ module shapes {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 7724</sub>
+<sub>Module `shapes` line 1</sub>
 
 ## Contents
 
@@ -53,7 +53,7 @@ const Path2: Path2Class
 value Path2 Path2Class "three.js's Path (named Path2 beside og.path's 3D paths): `new og.Path2().moveTo(0, 0).lineTo(1, 0)`."
 ```
 
-<sub>`api.ogt` line 7907</sub>
+<sub>Module `shapes` line 184</sub>
 
 <a id="value-Shape"></a>
 
@@ -69,4 +69,4 @@ const Shape: ShapeClass
 value Shape ShapeClass "three.js's Shape: `const s = new og.Shape(); s.moveTo(0, 0).lineTo(1, 0).lineTo(0, 1); s.holes.push(hole)`."
 ```
 
-<sub>`api.ogt` line 7908</sub>
+<sub>Module `shapes` line 185</sub>

@@ -37,4 +37,4 @@ component CameraZone {
 }
 ```
 
-<sub>`api.ogt` line 3525</sub>
+<sub>Module `camera` line 296</sub>

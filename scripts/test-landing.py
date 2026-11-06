@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise the real landing command and locks; replace only the costly gate."""
+"""Exercise real Git rebases, landing and locks with cheap gate/generator fixtures."""
 import os
 from pathlib import Path
 import shutil
@@ -29,6 +29,24 @@ class Landing(unittest.TestCase):
         (self.a / 'scripts').mkdir()
         for name in ('land.sh', 'lock.sh'):
             shutil.copyfile(ROOT / name, self.a / 'scripts' / name)
+        shutil.copyfile(ROOT / 'rebase-generated.py', self.a / 'scripts/landing_impl.py')
+        (self.a / 'scripts/rebase-generated.py').write_text('''
+import landing_impl as impl
+from pathlib import Path
+import sys
+def regenerate():
+    if Path("fail-generation").exists():
+        raise RuntimeError("generation failed")
+    if Path("inputs").exists():
+        value = "".join(p.read_text() for p in sorted(Path("inputs").iterdir()))
+        for name in ("packages/engine/types/index.d.ts", "packages/knowledge/wiki/search.tsv"):
+            p = Path(name)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(value)
+        impl.git("add", "-A", "--", "packages")
+impl.regenerate = regenerate
+impl.rebase(sys.argv[1])
+''')
         gate = self.a / 'scripts/check.sh'
         gate.write_text('''#!/usr/bin/env bash
 set -eu
@@ -113,6 +131,66 @@ while [ ! -f "$CONTROL/$name.go" ]; do sleep 0.05; done
         (self.root / 'a.fail').touch()
         self.finish(self.start(self.a), ok=False)
         self.assertEqual(self.run_git(self.remote, 'log', '-1', '--format=%s'), 'seed')
+
+    def generated_conflict(self, race=False, source_conflict=False, fail=False, later_generated=True):
+        path = 'packages/engine/types/index.d.ts'
+        for repo, value in ((self.a, 'upstream'), (self.b, 'branch')):
+            (repo / 'inputs').mkdir()
+            (repo / 'inputs' / value).write_text(value + '\n')
+            for name in (path, 'packages/knowledge/wiki/search.tsv'):
+                p = repo / name
+                p.parent.mkdir(parents=True)
+                p.write_text(value)
+            if source_conflict:
+                (repo / 'shared').write_text(value)
+            self.commit(repo, value)
+        # A later commit rewrites the generated text again. Final regeneration
+        # must include both upstream and every replayed source change.
+        (self.b / 'inputs/later').write_text('later\n')
+        if later_generated:
+            (self.b / path).write_text('later')
+        if fail:
+            (self.b / 'fail-generation').touch()
+        self.commit(self.b, 'later')
+        if race:
+            job = self.start(self.b)
+            self.ready('b')
+        self.run_git(self.a, 'push', 'origin', 'main')
+        (self.root / 'b.go').touch()
+        output = self.finish(job if race else self.start(self.b), ok=not (source_conflict or fail))
+        if source_conflict or fail:
+            self.assertEqual(self.run_git(self.remote, 'log', '-1', '--format=%s'), 'upstream')
+            self.assertTrue(self.run_git(self.b, 'diff', '--name-only', '--diff-filter=U'))
+        else:
+            self.assertIn('regenerating generated-only conflicts', output)
+            for name in (path, 'packages/knowledge/wiki/search.tsv'):
+                self.assertEqual(self.run_git(self.remote, 'show', 'main:' + name), 'branch\nlater\nupstream')
+            self.assertEqual(self.run_git(self.b, 'status', '--porcelain'), '')
+
+    def test_generated_conflict(self):
+        self.generated_conflict()
+
+    def test_generated_conflict_after_gate(self):
+        self.generated_conflict(race=True)
+
+    def test_clean_later_commit_is_regenerated(self):
+        self.generated_conflict(later_generated=False)
+
+    def test_mixed_conflict_stops(self):
+        self.generated_conflict(source_conflict=True)
+
+    def test_generation_failure_stops(self):
+        self.generated_conflict(fail=True)
+
+    def test_handwritten_declarations_stop(self):
+        for repo, value in ((self.a, 'upstream'), (self.b, 'branch')):
+            (repo / 'manual.d.ts').write_text(value)
+            self.commit(repo, value)
+        self.run_git(self.a, 'push', 'origin', 'main')
+        output = self.finish(self.start(self.b), ok=False)
+        self.assertNotIn('regenerating generated-only conflicts', output)
+        self.assertEqual(self.run_git(self.remote, 'log', '-1', '--format=%s'), 'upstream')
+        self.assertEqual(self.run_git(self.b, 'diff', '--name-only', '--diff-filter=U'), 'manual.d.ts')
 
 
 if __name__ == '__main__':

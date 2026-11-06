@@ -25,4 +25,4 @@ enum ActionKind {
 }
 ```
 
-<sub>`api.ogt` line 2036</sub>
+<sub>Module `input` line 22</sub>

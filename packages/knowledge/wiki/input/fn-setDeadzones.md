@@ -30,4 +30,4 @@ fn setDeadzones {
 }
 ```
 
-<sub>`api.ogt` line 2492</sub>
+<sub>Module `input` line 478</sub>

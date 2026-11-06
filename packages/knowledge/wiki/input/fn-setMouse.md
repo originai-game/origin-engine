@@ -30,4 +30,4 @@ fn setMouse {
 }
 ```
 
-<sub>`api.ogt` line 2527</sub>
+<sub>Module `input` line 513</sub>

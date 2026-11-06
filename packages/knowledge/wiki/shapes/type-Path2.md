@@ -14,7 +14,7 @@ interface Path2 {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7743</sub>
+<sub>Module `shapes` line 20</sub>
 
 <a id="member-Path2-moveTo"></a>
 
@@ -45,7 +45,7 @@ fn moveTo {
 }
 ```
 
-<sub>`api.ogt` line 7745</sub>
+<sub>Module `shapes` line 22</sub>
 
 <a id="member-Path2-lineTo"></a>
 
@@ -76,7 +76,7 @@ fn lineTo {
 }
 ```
 
-<sub>`api.ogt` line 7752</sub>
+<sub>Module `shapes` line 29</sub>
 
 <a id="member-Path2-quadraticCurveTo"></a>
 
@@ -111,7 +111,7 @@ fn quadraticCurveTo {
 }
 ```
 
-<sub>`api.ogt` line 7759</sub>
+<sub>Module `shapes` line 36</sub>
 
 <a id="member-Path2-bezierCurveTo"></a>
 
@@ -150,7 +150,7 @@ fn bezierCurveTo {
 }
 ```
 
-<sub>`api.ogt` line 7768</sub>
+<sub>Module `shapes` line 45</sub>
 
 <a id="member-Path2-splineThru"></a>
 
@@ -179,7 +179,7 @@ fn splineThru {
 }
 ```
 
-<sub>`api.ogt` line 7779</sub>
+<sub>Module `shapes` line 56</sub>
 
 <a id="member-Path2-arc"></a>
 
@@ -220,7 +220,7 @@ fn arc {
 }
 ```
 
-<sub>`api.ogt` line 7785</sub>
+<sub>Module `shapes` line 62</sub>
 
 <a id="member-Path2-absarc"></a>
 
@@ -261,7 +261,7 @@ fn absarc {
 }
 ```
 
-<sub>`api.ogt` line 7798</sub>
+<sub>Module `shapes` line 75</sub>
 
 <a id="member-Path2-ellipse"></a>
 
@@ -308,7 +308,7 @@ fn ellipse {
 }
 ```
 
-<sub>`api.ogt` line 7811</sub>
+<sub>Module `shapes` line 88</sub>
 
 <a id="member-Path2-absellipse"></a>
 
@@ -355,7 +355,7 @@ fn absellipse {
 }
 ```
 
-<sub>`api.ogt` line 7828</sub>
+<sub>Module `shapes` line 105</sub>
 
 <a id="member-Path2-setFromPoints"></a>
 
@@ -384,7 +384,7 @@ fn setFromPoints {
 }
 ```
 
-<sub>`api.ogt` line 7845</sub>
+<sub>Module `shapes` line 122</sub>
 
 <a id="member-Path2-closePath"></a>
 
@@ -408,7 +408,7 @@ fn closePath {
 }
 ```
 
-<sub>`api.ogt` line 7851</sub>
+<sub>Module `shapes` line 128</sub>
 
 <a id="member-Path2-getPoints"></a>
 
@@ -439,4 +439,4 @@ fn getPoints {
 }
 ```
 
-<sub>`api.ogt` line 7856</sub>
+<sub>Module `shapes` line 133</sub>

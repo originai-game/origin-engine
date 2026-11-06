@@ -27,4 +27,4 @@ struct Quaternion {
 }
 ```
 
-<sub>`api.ogt` line 59</sub>
+<sub>Module `math` line 18</sub>

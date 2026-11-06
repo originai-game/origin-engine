@@ -33,4 +33,4 @@ fn startQuest {
 }
 ```
 
-<sub>`api.ogt` line 14828</sub>
+<sub>Module `story` line 364</sub>

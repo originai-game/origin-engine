@@ -28,4 +28,4 @@ fn setKeyboardLayout {
 }
 ```
 
-<sub>`api.ogt` line 2516</sub>
+<sub>Module `input` line 502</sub>

@@ -91,4 +91,4 @@ resource Aurora {
 }
 ```
 
-<sub>`api.ogt` line 10919</sub>
+<sub>Module `atmosphere` line 330</sub>

@@ -17,7 +17,7 @@ module rng {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 1693</sub>
+<sub>Module `rng` line 1</sub>
 
 ## Contents
 

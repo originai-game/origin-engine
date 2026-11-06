@@ -29,4 +29,4 @@ event VfxEvent {
 }
 ```
 
-<sub>`api.ogt` line 27438</sub>
+<sub>Module `vfx` line 37</sub>

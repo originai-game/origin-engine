@@ -19,4 +19,4 @@ struct PointerLockReport {
 }
 ```
 
-<sub>`api.ogt` line 2654</sub>
+<sub>Module `input` line 640</sub>

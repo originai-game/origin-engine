@@ -14,7 +14,7 @@ interface PlaneMath {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 477</sub>
+<sub>Module `math` line 436</sub>
 
 <a id="member-PlaneMath-fromNormalAndCoplanarPoint"></a>
 
@@ -45,7 +45,7 @@ fn fromNormalAndCoplanarPoint {
 }
 ```
 
-<sub>`api.ogt` line 479</sub>
+<sub>Module `math` line 438</sub>
 
 <a id="member-PlaneMath-fromCoplanarPoints"></a>
 
@@ -78,7 +78,7 @@ fn fromCoplanarPoints {
 }
 ```
 
-<sub>`api.ogt` line 486</sub>
+<sub>Module `math` line 445</sub>
 
 <a id="member-PlaneMath-normalize"></a>
 
@@ -107,7 +107,7 @@ fn normalize {
 }
 ```
 
-<sub>`api.ogt` line 494</sub>
+<sub>Module `math` line 453</sub>
 
 <a id="member-PlaneMath-distanceToPoint"></a>
 
@@ -138,7 +138,7 @@ fn distanceToPoint {
 }
 ```
 
-<sub>`api.ogt` line 500</sub>
+<sub>Module `math` line 459</sub>
 
 <a id="member-PlaneMath-projectPoint"></a>
 
@@ -169,7 +169,7 @@ fn projectPoint {
 }
 ```
 
-<sub>`api.ogt` line 507</sub>
+<sub>Module `math` line 466</sub>
 
 <a id="member-PlaneMath-intersectsBox"></a>
 
@@ -200,7 +200,7 @@ fn intersectsBox {
 }
 ```
 
-<sub>`api.ogt` line 514</sub>
+<sub>Module `math` line 473</sub>
 
 <a id="member-PlaneMath-intersectsSphere"></a>
 
@@ -231,4 +231,4 @@ fn intersectsSphere {
 }
 ```
 
-<sub>`api.ogt` line 521</sub>
+<sub>Module `math` line 480</sub>

@@ -159,4 +159,4 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 6072</sub>
+<sub>Module `render` line 2279</sub>

@@ -27,4 +27,4 @@ event WorldRestored {
 }
 ```
 
-<sub>`api.ogt` line 1032</sub>
+<sub>Module `world` line 176</sub>

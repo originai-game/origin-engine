@@ -20,7 +20,7 @@ module anim {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 11475</sub>
+<sub>Module `anim` line 1</sub>
 
 ## Contents
 
@@ -119,7 +119,7 @@ column SkeletonAsset {
 }
 ```
 
-<sub>`api.ogt` line 11484</sub>
+<sub>Module `anim` line 10</sub>
 
 ```ogt
 column ClipAsset {
@@ -130,7 +130,7 @@ column ClipAsset {
 }
 ```
 
-<sub>`api.ogt` line 11491</sub>
+<sub>Module `anim` line 17</sub>
 
 ```ogt
 column GraphAsset {
@@ -141,7 +141,7 @@ column GraphAsset {
 }
 ```
 
-<sub>`api.ogt` line 11498</sub>
+<sub>Module `anim` line 24</sub>
 
 ```ogt
 column RootMotion {
@@ -152,7 +152,7 @@ column RootMotion {
 }
 ```
 
-<sub>`api.ogt` line 11512</sub>
+<sub>Module `anim` line 38</sub>
 
 ```ogt
 column BlendshapeSource {
@@ -163,7 +163,7 @@ column BlendshapeSource {
 }
 ```
 
-<sub>`api.ogt` line 11525</sub>
+<sub>Module `anim` line 51</sub>
 
 ```ogt
 column IkSolver {
@@ -174,7 +174,7 @@ column IkSolver {
 }
 ```
 
-<sub>`api.ogt` line 11538</sub>
+<sub>Module `anim` line 64</sub>
 
 ```ogt
 column IkSpace {
@@ -185,7 +185,7 @@ column IkSpace {
 }
 ```
 
-<sub>`api.ogt` line 11551</sub>
+<sub>Module `anim` line 77</sub>
 
 ```ogt
 column SpringSpace {
@@ -196,7 +196,7 @@ column SpringSpace {
 }
 ```
 
-<sub>`api.ogt` line 11909</sub>
+<sub>Module `anim` line 435</sub>
 
 ```ogt
 column SpringColliderShape {
@@ -207,7 +207,7 @@ column SpringColliderShape {
 }
 ```
 
-<sub>`api.ogt` line 11982</sub>
+<sub>Module `anim` line 508</sub>
 
 ```ogt
 column Rig {
@@ -218,7 +218,7 @@ column Rig {
 }
 ```
 
-<sub>`api.ogt` line 12060</sub>
+<sub>Module `anim` line 586</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -229,7 +229,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>`api.ogt` line 12129</sub>
+<sub>Module `anim` line 655</sub>
 
 ```ogt
 column Rig2D {
@@ -240,4 +240,4 @@ column Rig2D {
 }
 ```
 
-<sub>`api.ogt` line 12231</sub>
+<sub>Module `anim` line 757</sub>

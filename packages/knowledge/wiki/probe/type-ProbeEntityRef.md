@@ -23,4 +23,4 @@ struct ProbeEntityRef {
 }
 ```
 
-<sub>`api.ogt` line 24107</sub>
+<sub>Module `probe` line 61</sub>

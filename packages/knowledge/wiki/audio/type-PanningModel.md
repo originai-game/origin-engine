@@ -23,4 +23,4 @@ enum PanningModel {
 }
 ```
 
-<sub>`api.ogt` line 12858</sub>
+<sub>Module `audio` line 29</sub>

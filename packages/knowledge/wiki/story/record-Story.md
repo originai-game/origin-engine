@@ -31,4 +31,4 @@ resource Story {
 }
 ```
 
-<sub>`api.ogt` line 14471</sub>
+<sub>Module `story` line 7</sub>

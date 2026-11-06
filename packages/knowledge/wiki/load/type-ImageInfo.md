@@ -23,4 +23,4 @@ struct ImageInfo {
 }
 ```
 
-<sub>`api.ogt` line 8418</sub>
+<sub>Module `load` line 506</sub>

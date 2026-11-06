@@ -27,4 +27,4 @@ struct RoomMessageData {
 }
 ```
 
-<sub>`api.ogt` line 15420</sub>
+<sub>Module `platform` line 513</sub>

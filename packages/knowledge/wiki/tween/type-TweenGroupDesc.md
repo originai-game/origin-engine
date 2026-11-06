@@ -28,4 +28,4 @@ struct TweenGroupDesc {
 }
 ```
 
-<sub>`api.ogt` line 12442</sub>
+<sub>Module `tween` line 75</sub>

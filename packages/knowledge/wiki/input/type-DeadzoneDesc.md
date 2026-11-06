@@ -38,4 +38,4 @@ struct DeadzoneDesc {
 }
 ```
 
-<sub>`api.ogt` line 2255</sub>
+<sub>Module `input` line 241</sub>

@@ -27,4 +27,4 @@ event PeerStalled {
 }
 ```
 
-<sub>`api.ogt` line 26373</sub>
+<sub>Module `net` line 108</sub>

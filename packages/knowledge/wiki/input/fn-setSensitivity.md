@@ -30,4 +30,4 @@ fn setSensitivity {
 }
 ```
 
-<sub>`api.ogt` line 2499</sub>
+<sub>Module `input` line 485</sub>

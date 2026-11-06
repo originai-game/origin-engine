@@ -38,4 +38,4 @@ component FollowCamera {
 }
 ```
 
-<sub>`api.ogt` line 3450</sub>
+<sub>Module `camera` line 221</sub>

@@ -18,7 +18,7 @@ module debug {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 25737</sub>
+<sub>Module `debug` line 1</sub>
 
 ## Contents
 

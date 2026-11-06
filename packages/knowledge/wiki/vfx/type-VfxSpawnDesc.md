@@ -41,4 +41,4 @@ struct VfxSpawnDesc {
 }
 ```
 
-<sub>`api.ogt` line 27448</sub>
+<sub>Module `vfx` line 47</sub>

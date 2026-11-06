@@ -43,4 +43,4 @@ struct RagdollBoneDesc {
 }
 ```
 
-<sub>`api.ogt` line 10437</sub>
+<sub>Module `physics` line 1924</sub>

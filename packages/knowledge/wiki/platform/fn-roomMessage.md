@@ -30,4 +30,4 @@ fn roomMessage {
 }
 ```
 
-<sub>`api.ogt` line 15511</sub>
+<sub>Module `platform` line 604</sub>

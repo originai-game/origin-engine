@@ -25,4 +25,4 @@ enum WindMotorKind {
 }
 ```
 
-<sub>`api.ogt` line 11185</sub>
+<sub>Module `atmosphere` line 596</sub>

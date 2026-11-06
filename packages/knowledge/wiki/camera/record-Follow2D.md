@@ -85,4 +85,4 @@ component Follow2D {
 }
 ```
 
-<sub>`api.ogt` line 3469</sub>
+<sub>Module `camera` line 240</sub>

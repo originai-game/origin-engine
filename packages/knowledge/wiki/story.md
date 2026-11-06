@@ -23,7 +23,7 @@ module story {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 14465</sub>
+<sub>Module `story` line 1</sub>
 
 ## Contents
 

@@ -33,4 +33,4 @@ fn ambient {
 }
 ```
 
-<sub>`api.ogt` line 14794</sub>
+<sub>Module `story` line 330</sub>

@@ -21,4 +21,4 @@ struct Vector2 {
 }
 ```
 
-<sub>`api.ogt` line 46</sub>
+<sub>Module `math` line 5</sub>

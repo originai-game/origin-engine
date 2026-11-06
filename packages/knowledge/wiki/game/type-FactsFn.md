@@ -26,4 +26,4 @@ callback FactsFn {
 }
 ```
 
-<sub>`api.ogt` line 1421</sub>
+<sub>Module `game` line 5</sub>

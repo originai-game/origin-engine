@@ -27,4 +27,4 @@ enum ArtRotation {
 }
 ```
 
-<sub>`api.ogt` line 26530</sub>
+<sub>Module `art` line 5</sub>

@@ -21,4 +21,4 @@ struct Box3 {
 }
 ```
 
-<sub>`api.ogt` line 89</sub>
+<sub>Module `math` line 48</sub>

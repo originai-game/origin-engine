@@ -38,4 +38,4 @@ struct DialogDesc {
 }
 ```
 
-<sub>`api.ogt` line 17852</sub>
+<sub>Module `ui` line 2205</sub>

@@ -72,4 +72,4 @@ struct MinimapViewDesc {
 }
 ```
 
-<sub>`api.ogt` line 21974</sub>
+<sub>Module `ui` line 6327</sub>

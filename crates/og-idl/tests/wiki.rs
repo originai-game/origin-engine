@@ -43,7 +43,7 @@ fn wiki() -> Wiki {
 }
 
 /// Every ```ogt quote on a page with the line its `<sub>` cites.
-fn quotes(page: &str) -> Vec<(Vec<String>, usize)> {
+fn quotes(page: &str, api: &og_idl::Api) -> Vec<(Vec<String>, usize)> {
     let mut out = Vec::new();
     let mut lines = page.lines().peekable();
     while let Some(l) = lines.next() {
@@ -60,10 +60,14 @@ fn quotes(page: &str) -> Vec<(Vec<String>, usize)> {
         let cite = lines
             .by_ref()
             .find(|l| !l.trim().is_empty())
-            .and_then(|l| l.strip_prefix("<sub>`api.ogt` line "))
+            .and_then(|l| l.strip_prefix("<sub>Module `"))
             .and_then(|l| l.strip_suffix("</sub>"))
-            .and_then(|n| n.parse().ok())
-            .unwrap_or_else(|| panic!("a quote without its api.ogt line: {body:?}"));
+            .and_then(|l| l.split_once("` line "))
+            .and_then(|(name, n)| {
+                let module = api.modules.iter().find(|m| m.name == name)?;
+                Some(module.line + n.parse::<usize>().ok()? - 1)
+            })
+            .unwrap_or_else(|| panic!("a quote without its module-local line: {body:?}"));
         out.push((body, cite));
     }
     out
@@ -74,7 +78,7 @@ fn every_quote_is_the_idl_text_at_the_line_it_cites() {
     let w = wiki();
     let mut checked = 0;
     for (name, page) in &w.pages {
-        for (body, line) in quotes(page) {
+        for (body, line) in quotes(page, &w.api) {
             let marker = body
                 .last()
                 .is_some_and(|l| l.trim_start().starts_with("# ") && l.contains("follow"));
@@ -104,6 +108,42 @@ fn every_quote_is_the_idl_text_at_the_line_it_cites() {
         }
     }
     assert!(checked > 100, "only {checked} quotes");
+}
+
+#[test]
+fn adding_lines_to_one_module_leaves_other_pages_and_search_unchanged() {
+    let source = include_str!("fixtures/valid.ogt");
+    let before = og_idl::parse(source).unwrap();
+    let after = og_idl::parse(&source.replace("module reflect {", "module reflect {\n\n")).unwrap();
+    let before = og_idl::generate_wiki(&before);
+    let after = og_idl::generate_wiki(&after);
+    for file in &before {
+        if file.path == "packages/knowledge/wiki/reflect.md" || file.path.contains("/reflect/") {
+            continue;
+        }
+        assert_eq!(file, after.iter().find(|f| f.path == file.path).unwrap());
+    }
+}
+
+#[test]
+fn search_rows_are_local_and_both_index_versions_read() {
+    use og_idl::search::{Entry, SearchIndex};
+    let entry = |name: &str| Entry {
+        name: name.into(),
+        kind: "fn".into(),
+        page: name.into(),
+        summary: format!("{name} moves particles."),
+        body: "Particles move rapidly.".into(),
+    };
+    let old = SearchIndex::build(&[entry("zebra")]);
+    let new = SearchIndex::build(&[entry("aardvark"), entry("zebra")]);
+    let text = new.to_text();
+    assert_eq!(SearchIndex::from_text(&text).unwrap(), new);
+    assert!(text.ends_with(old.to_text().split_once('\n').unwrap().1));
+    let legacy = "# og api find index 3: legacy\ndoc\tzebra\tfn\tzebra\t1,0,0,0,0\t1:AA==\tZebra\nterm\tzebra\t0:1,0,0,0,0\n";
+    let parsed = SearchIndex::from_text(legacy).unwrap();
+    assert_eq!(parsed.bm25("zebra", None)[0].0, 0);
+    assert_eq!(SearchIndex::from_text(&parsed.to_text()).unwrap(), parsed);
 }
 
 /// A link's target page, resolved against the page that holds it.

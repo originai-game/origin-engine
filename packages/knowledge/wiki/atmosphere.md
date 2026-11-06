@@ -17,7 +17,7 @@ module atmosphere {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 10590</sub>
+<sub>Module `atmosphere` line 1</sub>
 
 ## Contents
 
@@ -62,7 +62,7 @@ column WindMotorKind {
 }
 ```
 
-<sub>`api.ogt` line 11192</sub>
+<sub>Module `atmosphere` line 603</sub>
 
 ## Constants
 
@@ -78,28 +78,28 @@ column WindMotorKind {
 const WEATHER_NONE u32 0 "Weather.kind: clear."
 ```
 
-<sub>`api.ogt` line 10594</sub>
+<sub>Module `atmosphere` line 5</sub>
 
 ```ogt
 const WEATHER_RAIN u32 1 "Weather.kind: rain streaks falling with the wind, the light dimmed and a grey distance fog."
 ```
 
-<sub>`api.ogt` line 10595</sub>
+<sub>Module `atmosphere` line 6</sub>
 
 ```ogt
 const WEATHER_SNOW u32 2 "Weather.kind: flakes drifting down on gusts, a pale fog."
 ```
 
-<sub>`api.ogt` line 10596</sub>
+<sub>Module `atmosphere` line 7</sub>
 
 ```ogt
 const WEATHER_DUST u32 3 "Weather.kind: dust blowing along the wind near the ground, a warm thick fog."
 ```
 
-<sub>`api.ogt` line 10597</sub>
+<sub>Module `atmosphere` line 8</sub>
 
 ```ogt
 const WEATHER_MIST u32 4 "Weather.kind: no particles, a dense low height fog."
 ```
 
-<sub>`api.ogt` line 10598</sub>
+<sub>Module `atmosphere` line 9</sub>

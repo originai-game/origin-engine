@@ -21,4 +21,4 @@ resource TimeGroups {
 }
 ```
 
-<sub>`api.ogt` line 1654</sub>
+<sub>Module `time` line 50</sub>

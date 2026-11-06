@@ -23,4 +23,4 @@ enum StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 4686</sub>
+<sub>Module `render` line 893</sub>

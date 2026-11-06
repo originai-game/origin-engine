@@ -110,4 +110,4 @@ component OrbitCamera {
 }
 ```
 
-<sub>`api.ogt` line 3374</sub>
+<sub>Module `camera` line 145</sub>

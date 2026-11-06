@@ -27,4 +27,4 @@ struct ClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 12024</sub>
+<sub>Module `anim` line 550</sub>

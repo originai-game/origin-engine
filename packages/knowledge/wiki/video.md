@@ -17,7 +17,7 @@ module video {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 25656</sub>
+<sub>Module `video` line 1</sub>
 
 ## Contents
 
@@ -47,4 +47,4 @@ column Video {
 }
 ```
 
-<sub>`api.ogt` line 25662</sub>
+<sub>Module `video` line 7</sub>

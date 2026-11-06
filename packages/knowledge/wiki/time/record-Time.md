@@ -61,4 +61,4 @@ resource Time {
 }
 ```
 
-<sub>`api.ogt` line 1609</sub>
+<sub>Module `time` line 5</sub>

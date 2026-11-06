@@ -28,4 +28,4 @@ struct LeaderboardSubmitDesc {
 }
 ```
 
-<sub>`api.ogt` line 14937</sub>
+<sub>Module `platform` line 30</sub>

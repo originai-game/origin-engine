@@ -21,4 +21,4 @@ event DialogueEnded {
 }
 ```
 
-<sub>`api.ogt` line 14490</sub>
+<sub>Module `story` line 26</sub>

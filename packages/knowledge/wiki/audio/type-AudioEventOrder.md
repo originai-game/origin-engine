@@ -25,4 +25,4 @@ enum AudioEventOrder {
 }
 ```
 
-<sub>`api.ogt` line 13305</sub>
+<sub>Module `audio` line 476</sub>

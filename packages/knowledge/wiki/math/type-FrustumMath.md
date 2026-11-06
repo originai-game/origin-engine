@@ -14,7 +14,7 @@ interface FrustumMath {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 530</sub>
+<sub>Module `math` line 489</sub>
 
 <a id="member-FrustumMath-fromProjectionMatrix"></a>
 
@@ -43,7 +43,7 @@ fn fromProjectionMatrix {
 }
 ```
 
-<sub>`api.ogt` line 532</sub>
+<sub>Module `math` line 491</sub>
 
 <a id="member-FrustumMath-fromCamera"></a>
 
@@ -74,7 +74,7 @@ fn fromCamera {
 }
 ```
 
-<sub>`api.ogt` line 538</sub>
+<sub>Module `math` line 497</sub>
 
 <a id="member-FrustumMath-containsPoint"></a>
 
@@ -105,7 +105,7 @@ fn containsPoint {
 }
 ```
 
-<sub>`api.ogt` line 545</sub>
+<sub>Module `math` line 504</sub>
 
 <a id="member-FrustumMath-intersectsBox"></a>
 
@@ -136,7 +136,7 @@ fn intersectsBox {
 }
 ```
 
-<sub>`api.ogt` line 552</sub>
+<sub>Module `math` line 511</sub>
 
 <a id="member-FrustumMath-intersectsSphere"></a>
 
@@ -167,4 +167,4 @@ fn intersectsSphere {
 }
 ```
 
-<sub>`api.ogt` line 559</sub>
+<sub>Module `math` line 518</sub>

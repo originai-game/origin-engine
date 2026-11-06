@@ -28,4 +28,4 @@ fn timeOfDay {
 }
 ```
 
-<sub>`api.ogt` line 11466</sub>
+<sub>Module `atmosphere` line 877</sub>

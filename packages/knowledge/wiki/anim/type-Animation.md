@@ -27,4 +27,4 @@ struct Animation {
 }
 ```
 
-<sub>`api.ogt` line 12034</sub>
+<sub>Module `anim` line 560</sub>

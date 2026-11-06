@@ -35,4 +35,4 @@ struct SoundDesc {
 }
 ```
 
-<sub>`api.ogt` line 13407</sub>
+<sub>Module `audio` line 578</sub>

@@ -31,4 +31,4 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 8015</sub>
+<sub>Module `load` line 103</sub>

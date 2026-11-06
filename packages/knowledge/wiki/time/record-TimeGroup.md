@@ -23,4 +23,4 @@ component TimeGroup {
 }
 ```
 
-<sub>`api.ogt` line 1647</sub>
+<sub>Module `time` line 43</sub>

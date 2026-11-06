@@ -40,4 +40,4 @@ event Fractured {
 }
 ```
 
-<sub>`api.ogt` line 27206</sub>
+<sub>Module `destruction` line 102</sub>

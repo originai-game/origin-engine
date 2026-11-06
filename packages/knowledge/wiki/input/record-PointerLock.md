@@ -28,4 +28,4 @@ resource PointerLock {
 }
 ```
 
-<sub>`api.ogt` line 2953</sub>
+<sub>Module `input` line 939</sub>

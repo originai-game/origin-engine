@@ -25,4 +25,4 @@ enum ImageKind {
 }
 ```
 
-<sub>`api.ogt` line 8377</sub>
+<sub>Module `load` line 465</sub>

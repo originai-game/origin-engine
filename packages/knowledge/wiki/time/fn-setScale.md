@@ -33,4 +33,4 @@ fn setScale {
 }
 ```
 
-<sub>`api.ogt` line 1659</sub>
+<sub>Module `time` line 55</sub>

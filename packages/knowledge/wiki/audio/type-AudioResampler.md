@@ -23,4 +23,4 @@ enum AudioResampler {
 }
 ```
 
-<sub>`api.ogt` line 12864</sub>
+<sub>Module `audio` line 35</sub>

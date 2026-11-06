@@ -46,4 +46,4 @@ struct DamageDesc {
 }
 ```
 
-<sub>`api.ogt` line 27261</sub>
+<sub>Module `destruction` line 157</sub>

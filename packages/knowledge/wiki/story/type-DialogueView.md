@@ -49,4 +49,4 @@ struct DialogueView {
 }
 ```
 
-<sub>`api.ogt` line 14592</sub>
+<sub>Module `story` line 128</sub>

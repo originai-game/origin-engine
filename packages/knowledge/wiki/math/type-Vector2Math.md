@@ -14,7 +14,7 @@ interface Vector2Math {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 190</sub>
+<sub>Module `math` line 149</sub>
 
 <a id="member-Vector2Math-add"></a>
 
@@ -45,7 +45,7 @@ fn add {
 }
 ```
 
-<sub>`api.ogt` line 192</sub>
+<sub>Module `math` line 151</sub>
 
 <a id="member-Vector2Math-sub"></a>
 
@@ -76,7 +76,7 @@ fn sub {
 }
 ```
 
-<sub>`api.ogt` line 199</sub>
+<sub>Module `math` line 158</sub>
 
 <a id="member-Vector2Math-scale"></a>
 
@@ -107,7 +107,7 @@ fn scale {
 }
 ```
 
-<sub>`api.ogt` line 206</sub>
+<sub>Module `math` line 165</sub>
 
 <a id="member-Vector2Math-dot"></a>
 
@@ -138,7 +138,7 @@ fn dot {
 }
 ```
 
-<sub>`api.ogt` line 213</sub>
+<sub>Module `math` line 172</sub>
 
 <a id="member-Vector2Math-cross"></a>
 
@@ -169,7 +169,7 @@ fn cross {
 }
 ```
 
-<sub>`api.ogt` line 220</sub>
+<sub>Module `math` line 179</sub>
 
 <a id="member-Vector2Math-length"></a>
 
@@ -198,7 +198,7 @@ fn length {
 }
 ```
 
-<sub>`api.ogt` line 227</sub>
+<sub>Module `math` line 186</sub>
 
 <a id="member-Vector2Math-normalize"></a>
 
@@ -227,7 +227,7 @@ fn normalize {
 }
 ```
 
-<sub>`api.ogt` line 233</sub>
+<sub>Module `math` line 192</sub>
 
 <a id="member-Vector2Math-lerp"></a>
 
@@ -260,7 +260,7 @@ fn lerp {
 }
 ```
 
-<sub>`api.ogt` line 239</sub>
+<sub>Module `math` line 198</sub>
 
 <a id="member-Vector2Math-distance"></a>
 
@@ -291,7 +291,7 @@ fn distance {
 }
 ```
 
-<sub>`api.ogt` line 247</sub>
+<sub>Module `math` line 206</sub>
 
 <a id="member-Vector2Math-rotateAround"></a>
 
@@ -324,4 +324,4 @@ fn rotateAround {
 }
 ```
 
-<sub>`api.ogt` line 254</sub>
+<sub>Module `math` line 213</sub>

@@ -35,4 +35,4 @@ struct PlatformResult {
 }
 ```
 
-<sub>`api.ogt` line 15002</sub>
+<sub>Module `platform` line 95</sub>

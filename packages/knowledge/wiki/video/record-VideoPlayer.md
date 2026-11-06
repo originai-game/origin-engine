@@ -54,4 +54,4 @@ component VideoPlayer {
 }
 ```
 
-<sub>`api.ogt` line 25705</sub>
+<sub>Module `video` line 50</sub>

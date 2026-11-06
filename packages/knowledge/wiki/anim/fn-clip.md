@@ -31,7 +31,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 12205</sub>
+<sub>Module `anim` line 731</sub>
 
 <a id="fn-clip-2"></a>
 
@@ -62,7 +62,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 12213</sub>
+<sub>Module `anim` line 739</sub>
 
 <a id="fn-clip-3"></a>
 
@@ -93,4 +93,4 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 12221</sub>
+<sub>Module `anim` line 747</sub>

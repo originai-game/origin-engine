@@ -21,4 +21,4 @@ struct Matrix4 {
 }
 ```
 
-<sub>`api.ogt` line 69</sub>
+<sub>Module `math` line 28</sub>

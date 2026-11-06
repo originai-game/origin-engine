@@ -14,7 +14,7 @@ interface Box3Math {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 344</sub>
+<sub>Module `math` line 303</sub>
 
 <a id="member-Box3Math-empty"></a>
 
@@ -38,7 +38,7 @@ fn empty {
 }
 ```
 
-<sub>`api.ogt` line 346</sub>
+<sub>Module `math` line 305</sub>
 
 <a id="member-Box3Math-fromPoints"></a>
 
@@ -67,7 +67,7 @@ fn fromPoints {
 }
 ```
 
-<sub>`api.ogt` line 351</sub>
+<sub>Module `math` line 310</sub>
 
 <a id="member-Box3Math-isEmpty"></a>
 
@@ -96,7 +96,7 @@ fn isEmpty {
 }
 ```
 
-<sub>`api.ogt` line 357</sub>
+<sub>Module `math` line 316</sub>
 
 <a id="member-Box3Math-containsPoint"></a>
 
@@ -127,7 +127,7 @@ fn containsPoint {
 }
 ```
 
-<sub>`api.ogt` line 363</sub>
+<sub>Module `math` line 322</sub>
 
 <a id="member-Box3Math-containsBox"></a>
 
@@ -158,7 +158,7 @@ fn containsBox {
 }
 ```
 
-<sub>`api.ogt` line 370</sub>
+<sub>Module `math` line 329</sub>
 
 <a id="member-Box3Math-intersectsBox"></a>
 
@@ -189,7 +189,7 @@ fn intersectsBox {
 }
 ```
 
-<sub>`api.ogt` line 377</sub>
+<sub>Module `math` line 336</sub>
 
 <a id="member-Box3Math-intersectsSphere"></a>
 
@@ -220,7 +220,7 @@ fn intersectsSphere {
 }
 ```
 
-<sub>`api.ogt` line 384</sub>
+<sub>Module `math` line 343</sub>
 
 <a id="member-Box3Math-expandByPoint"></a>
 
@@ -251,7 +251,7 @@ fn expandByPoint {
 }
 ```
 
-<sub>`api.ogt` line 391</sub>
+<sub>Module `math` line 350</sub>
 
 <a id="member-Box3Math-union"></a>
 
@@ -282,7 +282,7 @@ fn union {
 }
 ```
 
-<sub>`api.ogt` line 398</sub>
+<sub>Module `math` line 357</sub>
 
 <a id="member-Box3Math-getCenter"></a>
 
@@ -311,7 +311,7 @@ fn getCenter {
 }
 ```
 
-<sub>`api.ogt` line 405</sub>
+<sub>Module `math` line 364</sub>
 
 <a id="member-Box3Math-getSize"></a>
 
@@ -340,7 +340,7 @@ fn getSize {
 }
 ```
 
-<sub>`api.ogt` line 411</sub>
+<sub>Module `math` line 370</sub>
 
 <a id="member-Box3Math-applyMatrix4"></a>
 
@@ -371,4 +371,4 @@ fn applyMatrix4 {
 }
 ```
 
-<sub>`api.ogt` line 417</sub>
+<sub>Module `math` line 376</sub>

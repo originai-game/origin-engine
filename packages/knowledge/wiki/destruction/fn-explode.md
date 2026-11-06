@@ -33,4 +33,4 @@ fn explode {
 }
 ```
 
-<sub>`api.ogt` line 27367</sub>
+<sub>Module `destruction` line 263</sub>

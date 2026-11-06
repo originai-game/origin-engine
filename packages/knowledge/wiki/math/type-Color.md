@@ -23,4 +23,4 @@ struct Color {
 }
 ```
 
-<sub>`api.ogt` line 76</sub>
+<sub>Module `math` line 35</sub>

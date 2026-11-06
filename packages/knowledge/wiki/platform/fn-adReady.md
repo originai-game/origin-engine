@@ -30,4 +30,4 @@ fn adReady {
 }
 ```
 
-<sub>`api.ogt` line 15265</sub>
+<sub>Module `platform` line 358</sub>

@@ -96,4 +96,4 @@ component Destructible {
 }
 ```
 
-<sub>`api.ogt` line 27123</sub>
+<sub>Module `destruction` line 19</sub>

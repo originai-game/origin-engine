@@ -64,7 +64,7 @@ resource Rng {
 }
 ```
 
-<sub>`api.ogt` line 1738</sub>
+<sub>Module `rng` line 46</sub>
 
 <a id="member-Rng-next"></a>
 
@@ -87,7 +87,7 @@ fn next {
 }
 ```
 
-<sub>`api.ogt` line 1746</sub>
+<sub>Module `rng` line 54</sub>
 
 <a id="member-Rng-range"></a>
 
@@ -117,7 +117,7 @@ fn range {
 }
 ```
 
-<sub>`api.ogt` line 1750</sub>
+<sub>Module `rng` line 58</sub>
 
 <a id="member-Rng-integer"></a>
 
@@ -147,7 +147,7 @@ fn integer {
 }
 ```
 
-<sub>`api.ogt` line 1756</sub>
+<sub>Module `rng` line 64</sub>
 
 <a id="member-Rng-chance"></a>
 
@@ -175,7 +175,7 @@ fn chance {
 }
 ```
 
-<sub>`api.ogt` line 1762</sub>
+<sub>Module `rng` line 70</sub>
 
 <a id="member-Rng-weighted"></a>
 
@@ -203,7 +203,7 @@ fn weighted {
 }
 ```
 
-<sub>`api.ogt` line 1767</sub>
+<sub>Module `rng` line 75</sub>
 
 <a id="member-Rng-permutation"></a>
 
@@ -234,7 +234,7 @@ fn permutation {
 }
 ```
 
-<sub>`api.ogt` line 1772</sub>
+<sub>Module `rng` line 80</sub>
 
 <a id="member-Rng-fork"></a>
 
@@ -262,4 +262,4 @@ fn fork {
 }
 ```
 
-<sub>`api.ogt` line 1778</sub>
+<sub>Module `rng` line 86</sub>

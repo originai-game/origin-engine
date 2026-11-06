@@ -30,4 +30,4 @@ fn fromAxisAngle {
 }
 ```
 
-<sub>`api.ogt` line 1595</sub>
+<sub>Module `transform` line 112</sub>

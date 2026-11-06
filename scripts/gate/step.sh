@@ -39,7 +39,7 @@ esac
 case "$1" in
   doc-tests) cargo test --workspace --doc; rc=$? ;;
   bun-quick)
-    python3 scripts/test-locks.py && scripts/test-gate-guards.sh &&
+    python3 scripts/test-locks.py && python3 scripts/test-landing.py && scripts/test-gate-guards.sh &&
       bun test scripts/gate/imports.test.ts && bun scripts/gate/bun.ts quick
     rc=$? ;;
   browser)

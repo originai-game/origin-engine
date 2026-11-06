@@ -42,4 +42,4 @@ struct GamepadInput {
 }
 ```
 
-<sub>`api.ogt` line 2659</sub>
+<sub>Module `input` line 645</sub>

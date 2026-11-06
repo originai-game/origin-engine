@@ -38,4 +38,4 @@ struct DestructibleInfo {
 }
 ```
 
-<sub>`api.ogt` line 27315</sub>
+<sub>Module `destruction` line 211</sub>

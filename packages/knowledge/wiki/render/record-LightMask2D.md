@@ -23,4 +23,4 @@ component LightMask2D {
 }
 ```
 
-<sub>`api.ogt` line 5723</sub>
+<sub>Module `render` line 1930</sub>

@@ -27,4 +27,4 @@ enum AudioBus {
 }
 ```
 
-<sub>`api.ogt` line 12843</sub>
+<sub>Module `audio` line 14</sub>

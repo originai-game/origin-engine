@@ -41,4 +41,4 @@ struct DestructibleMaterial {
 }
 ```
 
-<sub>`api.ogt` line 27331</sub>
+<sub>Module `destruction` line 227</sub>

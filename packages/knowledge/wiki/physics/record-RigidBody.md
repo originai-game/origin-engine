@@ -79,4 +79,4 @@ component RigidBody {
 }
 ```
 
-<sub>`api.ogt` line 8541</sub>
+<sub>Module `physics` line 28</sub>

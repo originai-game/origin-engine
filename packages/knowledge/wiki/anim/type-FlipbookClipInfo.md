@@ -31,4 +31,4 @@ struct FlipbookClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 12182</sub>
+<sub>Module `anim` line 708</sub>

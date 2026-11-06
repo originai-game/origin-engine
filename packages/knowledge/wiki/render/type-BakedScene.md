@@ -33,4 +33,4 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 7704</sub>
+<sub>Module `render` line 3911</sub>

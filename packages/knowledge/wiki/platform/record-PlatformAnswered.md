@@ -23,4 +23,4 @@ event PlatformAnswered {
 }
 ```
 
-<sub>`api.ogt` line 14922</sub>
+<sub>Module `platform` line 15</sub>

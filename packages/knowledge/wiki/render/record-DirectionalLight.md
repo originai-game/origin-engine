@@ -86,4 +86,4 @@ component DirectionalLight {
 }
 ```
 
-<sub>`api.ogt` line 4205</sub>
+<sub>Module `render` line 412</sub>

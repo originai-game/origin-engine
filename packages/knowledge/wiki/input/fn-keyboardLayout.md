@@ -23,4 +23,4 @@ fn keyboardLayout {
 }
 ```
 
-<sub>`api.ogt` line 2522</sub>
+<sub>Module `input` line 508</sub>

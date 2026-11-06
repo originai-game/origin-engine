@@ -21,4 +21,4 @@ resource PlatformGrants {
 }
 ```
 
-<sub>`api.ogt` line 15143</sub>
+<sub>Module `platform` line 236</sub>

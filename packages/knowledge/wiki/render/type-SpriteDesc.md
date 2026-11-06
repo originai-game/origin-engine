@@ -113,4 +113,4 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 5994</sub>
+<sub>Module `render` line 2201</sub>

@@ -27,4 +27,4 @@ event SoundEnded {
 }
 ```
 
-<sub>`api.ogt` line 13518</sub>
+<sub>Module `audio` line 689</sub>

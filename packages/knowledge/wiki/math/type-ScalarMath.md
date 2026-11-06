@@ -17,7 +17,7 @@ interface ScalarMath {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 651</sub>
+<sub>Module `math` line 610</sub>
 
 <a id="member-ScalarMath-sin"></a>
 
@@ -46,7 +46,7 @@ fn sin {
 }
 ```
 
-<sub>`api.ogt` line 654</sub>
+<sub>Module `math` line 613</sub>
 
 <a id="member-ScalarMath-cos"></a>
 
@@ -75,7 +75,7 @@ fn cos {
 }
 ```
 
-<sub>`api.ogt` line 660</sub>
+<sub>Module `math` line 619</sub>
 
 <a id="member-ScalarMath-tan"></a>
 
@@ -104,7 +104,7 @@ fn tan {
 }
 ```
 
-<sub>`api.ogt` line 666</sub>
+<sub>Module `math` line 625</sub>
 
 <a id="member-ScalarMath-asin"></a>
 
@@ -133,7 +133,7 @@ fn asin {
 }
 ```
 
-<sub>`api.ogt` line 672</sub>
+<sub>Module `math` line 631</sub>
 
 <a id="member-ScalarMath-acos"></a>
 
@@ -162,7 +162,7 @@ fn acos {
 }
 ```
 
-<sub>`api.ogt` line 678</sub>
+<sub>Module `math` line 637</sub>
 
 <a id="member-ScalarMath-atan"></a>
 
@@ -191,7 +191,7 @@ fn atan {
 }
 ```
 
-<sub>`api.ogt` line 684</sub>
+<sub>Module `math` line 643</sub>
 
 <a id="member-ScalarMath-atan2"></a>
 
@@ -222,7 +222,7 @@ fn atan2 {
 }
 ```
 
-<sub>`api.ogt` line 690</sub>
+<sub>Module `math` line 649</sub>
 
 <a id="member-ScalarMath-exp"></a>
 
@@ -251,7 +251,7 @@ fn exp {
 }
 ```
 
-<sub>`api.ogt` line 697</sub>
+<sub>Module `math` line 656</sub>
 
 <a id="member-ScalarMath-log"></a>
 
@@ -280,7 +280,7 @@ fn log {
 }
 ```
 
-<sub>`api.ogt` line 703</sub>
+<sub>Module `math` line 662</sub>
 
 <a id="member-ScalarMath-pow"></a>
 
@@ -311,4 +311,4 @@ fn pow {
 }
 ```
 
-<sub>`api.ogt` line 709</sub>
+<sub>Module `math` line 668</sub>

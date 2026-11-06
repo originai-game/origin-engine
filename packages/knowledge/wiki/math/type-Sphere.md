@@ -23,4 +23,4 @@ struct Sphere {
 }
 ```
 
-<sub>`api.ogt` line 95</sub>
+<sub>Module `math` line 54</sub>

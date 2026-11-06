@@ -120,4 +120,4 @@ resource CameraBrain {
 }
 ```
 
-<sub>`api.ogt` line 3679</sub>
+<sub>Module `camera` line 450</sub>

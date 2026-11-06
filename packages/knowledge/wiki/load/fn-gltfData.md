@@ -40,4 +40,4 @@ fn gltfData {
 }
 ```
 
-<sub>`api.ogt` line 8444</sub>
+<sub>Module `load` line 532</sub>

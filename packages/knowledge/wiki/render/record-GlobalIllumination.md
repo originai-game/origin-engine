@@ -86,4 +86,4 @@ resource GlobalIllumination {
 }
 ```
 
-<sub>`api.ogt` line 5099</sub>
+<sub>Module `render` line 1306</sub>

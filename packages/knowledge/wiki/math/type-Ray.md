@@ -21,4 +21,4 @@ struct Ray {
 }
 ```
 
-<sub>`api.ogt` line 83</sub>
+<sub>Module `math` line 42</sub>

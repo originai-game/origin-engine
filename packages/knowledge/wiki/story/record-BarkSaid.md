@@ -27,4 +27,4 @@ event BarkSaid {
 }
 ```
 
-<sub>`api.ogt` line 14510</sub>
+<sub>Module `story` line 46</sub>

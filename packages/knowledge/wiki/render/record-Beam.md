@@ -67,4 +67,4 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 5860</sub>
+<sub>Module `render` line 2067</sub>

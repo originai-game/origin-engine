@@ -25,4 +25,4 @@ enum FlipMode {
 }
 ```
 
-<sub>`api.ogt` line 12136</sub>
+<sub>Module `anim` line 662</sub>

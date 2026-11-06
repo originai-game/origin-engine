@@ -50,4 +50,4 @@ component RectLight {
 }
 ```
 
-<sub>`api.ogt` line 7648</sub>
+<sub>Module `render` line 3855</sub>

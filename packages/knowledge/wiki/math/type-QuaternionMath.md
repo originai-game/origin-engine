@@ -14,7 +14,7 @@ interface QuaternionMath {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 264</sub>
+<sub>Module `math` line 223</sub>
 
 <a id="member-QuaternionMath-multiply"></a>
 
@@ -45,7 +45,7 @@ fn multiply {
 }
 ```
 
-<sub>`api.ogt` line 266</sub>
+<sub>Module `math` line 225</sub>
 
 <a id="member-QuaternionMath-slerp"></a>
 
@@ -78,7 +78,7 @@ fn slerp {
 }
 ```
 
-<sub>`api.ogt` line 273</sub>
+<sub>Module `math` line 232</sub>
 
 <a id="member-QuaternionMath-fromEuler"></a>
 
@@ -111,7 +111,7 @@ fn fromEuler {
 }
 ```
 
-<sub>`api.ogt` line 281</sub>
+<sub>Module `math` line 240</sub>
 
 <a id="member-QuaternionMath-invert"></a>
 
@@ -140,7 +140,7 @@ fn invert {
 }
 ```
 
-<sub>`api.ogt` line 290</sub>
+<sub>Module `math` line 249</sub>
 
 <a id="member-QuaternionMath-rotate"></a>
 
@@ -171,4 +171,4 @@ fn rotate {
 }
 ```
 
-<sub>`api.ogt` line 296</sub>
+<sub>Module `math` line 255</sub>

@@ -26,4 +26,4 @@ struct BarkDesc {
 }
 ```
 
-<sub>`api.ogt` line 14631</sub>
+<sub>Module `story` line 167</sub>

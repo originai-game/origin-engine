@@ -17,7 +17,7 @@ module world {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 857</sub>
+<sub>Module `world` line 1</sub>
 
 ## Contents
 
@@ -64,4 +64,4 @@ column Entity {
 }
 ```
 
-<sub>`api.ogt` line 866</sub>
+<sub>Module `world` line 10</sub>

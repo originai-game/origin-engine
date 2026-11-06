@@ -30,4 +30,4 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 8257</sub>
+<sub>Module `load` line 345</sub>

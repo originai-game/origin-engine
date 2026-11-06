@@ -28,4 +28,4 @@ fn roomLeave {
 }
 ```
 
-<sub>`api.ogt` line 15483</sub>
+<sub>Module `platform` line 576</sub>

@@ -28,4 +28,4 @@ struct StartDesc {
 }
 ```
 
-<sub>`api.ogt` line 14534</sub>
+<sub>Module `story` line 70</sub>

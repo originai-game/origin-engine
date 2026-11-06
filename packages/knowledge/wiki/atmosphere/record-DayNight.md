@@ -82,4 +82,4 @@ resource DayNight {
 }
 ```
 
-<sub>`api.ogt` line 10757</sub>
+<sub>Module `atmosphere` line 168</sub>

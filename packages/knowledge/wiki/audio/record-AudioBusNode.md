@@ -40,4 +40,4 @@ component AudioBusNode {
 }
 ```
 
-<sub>`api.ogt` line 13264</sub>
+<sub>Module `audio` line 435</sub>

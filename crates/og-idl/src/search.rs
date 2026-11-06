@@ -253,7 +253,10 @@ fn fields(e: &Entry) -> [Vec<String>; NF] {
             idl = !line.starts_with("```");
             continue;
         }
-        if line.starts_with("```") || line.starts_with("Binding symbol ") {
+        if line.starts_with("```")
+            || line.starts_with("Binding symbol ")
+            || line.starts_with("<sub>")
+        {
             continue;
         }
         if let Some(rest) = line.strip_prefix(crate::r#gen::wiki::ALSO_KNOWN_AS) {
@@ -399,13 +402,22 @@ impl SearchIndex {
         ix
     }
 
-    /// The index as text: a header, one `doc` line per entry and one `term`
-    /// line per word (`term<TAB>word<TAB>doc:n,n,n,n …`).
+    /// Each document followed by its sorted word counts. No persisted ordinal
+    /// refers to another row: inserting a document leaves other rows unchanged.
     pub fn to_text(&self) -> String {
         let mut out = String::from(
-            "# og api find index 3: BM25F over name, summary, members, body, aliases; embeddings (scale:base64 int8)\n",
+            "# og api find index 4: BM25F over name, summary, members, body, aliases; embeddings (scale:base64 int8)\n",
         );
-        for d in &self.docs {
+        let mut words = vec![Vec::new(); self.docs.len()];
+        for (word, posts) in &self.terms {
+            for (doc, counts) in posts {
+                words[*doc as usize].push(format!(
+                    "{word}:{}",
+                    counts.map(|n| n.to_string()).join(",")
+                ));
+            }
+        }
+        for (d, words) in self.docs.iter().zip(words) {
             out.push_str(&format!(
                 "doc\t{}\t{}\t{}\t{}\t{}:{}\t{}\n",
                 d.name,
@@ -416,16 +428,8 @@ impl SearchIndex {
                 crate::embed::base64(&d.vec.iter().map(|&x| x as u8).collect::<Vec<u8>>()),
                 d.summary.replace(['\t', '\n'], " ")
             ));
-        }
-        for (w, posts) in &self.terms {
-            out.push_str("term\t");
-            out.push_str(w);
-            out.push('\t');
-            let p: Vec<String> = posts
-                .iter()
-                .map(|(d, c)| format!("{d}:{}", c.map(|n| n.to_string()).join(",")))
-                .collect();
-            out.push_str(&p.join(" "));
+            out.push_str("words\t");
+            out.push_str(&words.join(" "));
             out.push('\n');
         }
         out
@@ -434,9 +438,11 @@ impl SearchIndex {
     pub fn from_text(text: &str) -> Option<SearchIndex> {
         let mut ix = SearchIndex::default();
         let mut lines = text.lines();
-        if !lines.next()?.starts_with("# og api find index 3") {
-            return None;
-        }
+        let version = match lines.next()?.split(':').next()? {
+            "# og api find index 3" => 3,
+            "# og api find index 4" => 4,
+            _ => return None,
+        };
         for line in lines {
             let mut cols = line.split('\t');
             match cols.next()? {
@@ -465,7 +471,22 @@ impl SearchIndex {
                         vscale,
                     });
                 }
-                "term" => {
+                "words" if version == 4 => {
+                    let doc = u32::try_from(ix.docs.len().checked_sub(1)?).ok()?;
+                    for post in cols.next()?.split_whitespace() {
+                        let (word, counts) = post.split_once(':')?;
+                        let counts: Vec<u16> = counts
+                            .split(',')
+                            .map(str::parse)
+                            .collect::<Result<_, _>>()
+                            .ok()?;
+                        ix.terms
+                            .entry(word.to_string())
+                            .or_default()
+                            .push((doc, counts.try_into().ok()?));
+                    }
+                }
+                "term" if version == 3 => {
                     let w = cols.next()?.to_string();
                     let mut posts = Vec::new();
                     for p in cols

@@ -33,4 +33,4 @@ fn setLocale {
 }
 ```
 
-<sub>`api.ogt` line 15570</sub>
+<sub>Module `i18n` line 50</sub>

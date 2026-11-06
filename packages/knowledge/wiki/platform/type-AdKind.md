@@ -23,4 +23,4 @@ enum AdKind {
 }
 ```
 
-<sub>`api.ogt` line 15123</sub>
+<sub>Module `platform` line 216</sub>

@@ -25,4 +25,4 @@ event TweenCompleted {
 }
 ```
 
-<sub>`api.ogt` line 12452</sub>
+<sub>Module `tween` line 85</sub>

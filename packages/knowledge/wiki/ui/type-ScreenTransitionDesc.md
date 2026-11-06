@@ -33,4 +33,4 @@ struct ScreenTransitionDesc {
 }
 ```
 
-<sub>`api.ogt` line 17663</sub>
+<sub>Module `ui` line 2016</sub>

@@ -23,4 +23,4 @@ enum NetMode {
 }
 ```
 
-<sub>`api.ogt` line 26273</sub>
+<sub>Module `net` line 8</sub>

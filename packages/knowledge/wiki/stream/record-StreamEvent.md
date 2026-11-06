@@ -23,4 +23,4 @@ event StreamEvent {
 }
 ```
 
-<sub>`api.ogt` line 25572</sub>
+<sub>Module `stream` line 74</sub>

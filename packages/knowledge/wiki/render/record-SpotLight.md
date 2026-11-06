@@ -54,4 +54,4 @@ component SpotLight {
 }
 ```
 
-<sub>`api.ogt` line 4283</sub>
+<sub>Module `render` line 490</sub>

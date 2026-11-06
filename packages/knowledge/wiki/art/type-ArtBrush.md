@@ -25,4 +25,4 @@ enum ArtBrush {
 }
 ```
 
-<sub>`api.ogt` line 26602</sub>
+<sub>Module `art` line 77</sub>

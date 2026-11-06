@@ -18,7 +18,7 @@ interface Shape {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7866</sub>
+<sub>Module `shapes` line 143</sub>
 
 <a id="member-Shape-holes"></a>
 
@@ -36,7 +36,7 @@ prop holes PathList "The holes: `shape.holes.push(hole)`." {
 }
 ```
 
-<sub>`api.ogt` line 7870</sub>
+<sub>Module `shapes` line 147</sub>
 
 <a id="member-Shape-extractPoints"></a>
 
@@ -67,4 +67,4 @@ fn extractPoints {
 }
 ```
 
-<sub>`api.ogt` line 7873</sub>
+<sub>Module `shapes` line 150</sub>

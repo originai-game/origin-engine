@@ -40,4 +40,4 @@ resource ArtPalette {
 }
 ```
 
-<sub>`api.ogt` line 26630</sub>
+<sub>Module `art` line 105</sub>

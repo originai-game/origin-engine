@@ -161,7 +161,7 @@ resource Input {
 }
 ```
 
-<sub>`api.ogt` line 2732</sub>
+<sub>Module `input` line 718</sub>
 
 <a id="member-Input-down"></a>
 
@@ -189,7 +189,7 @@ fn down {
 }
 ```
 
-<sub>`api.ogt` line 2807</sub>
+<sub>Module `input` line 793</sub>
 
 <a id="member-Input-pressed"></a>
 
@@ -217,7 +217,7 @@ fn pressed {
 }
 ```
 
-<sub>`api.ogt` line 2812</sub>
+<sub>Module `input` line 798</sub>
 
 <a id="member-Input-released"></a>
 
@@ -245,7 +245,7 @@ fn released {
 }
 ```
 
-<sub>`api.ogt` line 2817</sub>
+<sub>Module `input` line 803</sub>
 
 <a id="member-Input-axis"></a>
 
@@ -275,7 +275,7 @@ fn axis {
 }
 ```
 
-<sub>`api.ogt` line 2822</sub>
+<sub>Module `input` line 808</sub>
 
 <a id="member-Input-axis2"></a>
 
@@ -309,7 +309,7 @@ fn axis2 {
 }
 ```
 
-<sub>`api.ogt` line 2828</sub>
+<sub>Module `input` line 814</sub>
 
 <a id="member-Input-buttonDown"></a>
 
@@ -337,7 +337,7 @@ fn buttonDown {
 }
 ```
 
-<sub>`api.ogt` line 2836</sub>
+<sub>Module `input` line 822</sub>
 
 <a id="member-Input-buttonPressed"></a>
 
@@ -365,7 +365,7 @@ fn buttonPressed {
 }
 ```
 
-<sub>`api.ogt` line 2841</sub>
+<sub>Module `input` line 827</sub>
 
 <a id="member-Input-buttonReleased"></a>
 
@@ -393,4 +393,4 @@ fn buttonReleased {
 }
 ```
 
-<sub>`api.ogt` line 2846</sub>
+<sub>Module `input` line 832</sub>

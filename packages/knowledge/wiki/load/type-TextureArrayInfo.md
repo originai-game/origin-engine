@@ -31,4 +31,4 @@ struct TextureArrayInfo {
 }
 ```
 
-<sub>`api.ogt` line 8028</sub>
+<sub>Module `load` line 116</sub>

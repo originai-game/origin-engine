@@ -30,4 +30,4 @@ fn hitStop {
 }
 ```
 
-<sub>`api.ogt` line 1667</sub>
+<sub>Module `time` line 63</sub>

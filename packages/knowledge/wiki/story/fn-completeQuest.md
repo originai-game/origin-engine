@@ -30,4 +30,4 @@ fn completeQuest {
 }
 ```
 
-<sub>`api.ogt` line 14855</sub>
+<sub>Module `story` line 391</sub>

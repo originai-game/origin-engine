@@ -32,4 +32,4 @@ fn damage {
 }
 ```
 
-<sub>`api.ogt` line 27359</sub>
+<sub>Module `destruction` line 255</sub>

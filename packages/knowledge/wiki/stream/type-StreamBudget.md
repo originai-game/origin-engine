@@ -35,4 +35,4 @@ struct StreamBudget {
 }
 ```
 
-<sub>`api.ogt` line 25602</sub>
+<sub>Module `stream` line 104</sub>

@@ -17,7 +17,7 @@ interface Vector3Math {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 116</sub>
+<sub>Module `math` line 75</sub>
 
 <a id="member-Vector3Math-add"></a>
 
@@ -48,7 +48,7 @@ fn add {
 }
 ```
 
-<sub>`api.ogt` line 119</sub>
+<sub>Module `math` line 78</sub>
 
 <a id="member-Vector3Math-sub"></a>
 
@@ -79,7 +79,7 @@ fn sub {
 }
 ```
 
-<sub>`api.ogt` line 126</sub>
+<sub>Module `math` line 85</sub>
 
 <a id="member-Vector3Math-scale"></a>
 
@@ -110,7 +110,7 @@ fn scale {
 }
 ```
 
-<sub>`api.ogt` line 133</sub>
+<sub>Module `math` line 92</sub>
 
 <a id="member-Vector3Math-dot"></a>
 
@@ -141,7 +141,7 @@ fn dot {
 }
 ```
 
-<sub>`api.ogt` line 140</sub>
+<sub>Module `math` line 99</sub>
 
 <a id="member-Vector3Math-cross"></a>
 
@@ -172,7 +172,7 @@ fn cross {
 }
 ```
 
-<sub>`api.ogt` line 147</sub>
+<sub>Module `math` line 106</sub>
 
 <a id="member-Vector3Math-length"></a>
 
@@ -201,7 +201,7 @@ fn length {
 }
 ```
 
-<sub>`api.ogt` line 154</sub>
+<sub>Module `math` line 113</sub>
 
 <a id="member-Vector3Math-normalize"></a>
 
@@ -230,7 +230,7 @@ fn normalize {
 }
 ```
 
-<sub>`api.ogt` line 160</sub>
+<sub>Module `math` line 119</sub>
 
 <a id="member-Vector3Math-lerp"></a>
 
@@ -263,7 +263,7 @@ fn lerp {
 }
 ```
 
-<sub>`api.ogt` line 166</sub>
+<sub>Module `math` line 125</sub>
 
 <a id="member-Vector3Math-distance"></a>
 
@@ -294,7 +294,7 @@ fn distance {
 }
 ```
 
-<sub>`api.ogt` line 174</sub>
+<sub>Module `math` line 133</sub>
 
 <a id="member-Vector3Math-applyQuaternion"></a>
 
@@ -325,4 +325,4 @@ fn applyQuaternion {
 }
 ```
 
-<sub>`api.ogt` line 181</sub>
+<sub>Module `math` line 140</sub>

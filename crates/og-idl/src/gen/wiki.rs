@@ -156,7 +156,7 @@ fn header(src: &[String], line: usize) -> Vec<&str> {
 }
 
 /// A fenced quote of IDL lines, dedented to their common indent.
-fn quote(out: &mut String, lines: &[&str], line: usize, more: Option<&str>) {
+fn quote(out: &mut String, ix: &Index<'_>, lines: &[&str], line: usize, more: Option<&str>) {
     if lines.is_empty() {
         return;
     }
@@ -175,7 +175,15 @@ fn quote(out: &mut String, lines: &[&str], line: usize, more: Option<&str>) {
         let _ = writeln!(out, "  # {m}");
     }
     out.push_str("```\n");
-    let _ = writeln!(out, "\n<sub>`api.ogt` line {line}</sub>\n");
+    let module = ix
+        .api
+        .modules
+        .iter()
+        .rev()
+        .find(|m| m.line <= line)
+        .unwrap();
+    let local = line - module.line + 1;
+    let _ = writeln!(out, "\n<sub>Module `{}` line {local}</sub>\n", module.name);
 }
 
 // ── text helpers ────────────────────────────────────────────────────────────
@@ -429,7 +437,7 @@ fn callable(
     } else if !f.host {
         out.push_str("Implemented by the TypeScript runtime over the members of this module: no binding symbol.\n\n");
     }
-    quote(out, &block(&ix.api.source, f.line), f.line, None);
+    quote(out, ix, &block(&ix.api.source, f.line), f.line, None);
 }
 
 fn interface(out: &mut String, ix: &Index<'_>, m: &Module, i: &Interface, binds: &[Binding<'_>]) {
@@ -450,6 +458,7 @@ fn interface(out: &mut String, ix: &Index<'_>, m: &Module, i: &Interface, binds:
     }
     quote(
         out,
+        ix,
         &header(&ix.api.source, i.line),
         i.line,
         Some("members follow, each quoted below"),
@@ -489,7 +498,7 @@ fn interface(out: &mut String, ix: &Index<'_>, m: &Module, i: &Interface, binds:
                         publish_text(b.publish)
                     );
                 }
-                quote(out, &block(&ix.api.source, p.line), p.line, None);
+                quote(out, ix, &block(&ix.api.source, p.line), p.line, None);
             }
         }
     }
@@ -513,7 +522,7 @@ fn record(out: &mut String, ix: &Index<'_>, m: &Module, r: &Record, binds: &[Bin
         r.name
     );
     fields_table(out, ix, &r.fields);
-    quote(out, &block(&ix.api.source, r.line), r.line, None);
+    quote(out, ix, &block(&ix.api.source, r.line), r.line, None);
     for f in &r.methods {
         callable(
             out,
@@ -546,7 +555,7 @@ fn type_item(out: &mut String, ix: &Index<'_>, item: &Item) {
                 );
             }
             fields_table(out, ix, &s.fields);
-            quote(out, &block(src, s.line), s.line, None);
+            quote(out, ix, &block(src, s.line), s.line, None);
         }
         Item::Enum(e) => {
             let _ = writeln!(
@@ -567,7 +576,7 @@ fn type_item(out: &mut String, ix: &Index<'_>, item: &Item) {
                 let _ = writeln!(out, "| `\"{}\"` | {} |", v.name, cell(&v.doc.join(" ")));
             }
             out.push('\n');
-            quote(out, &block(src, e.line), e.line, None);
+            quote(out, ix, &block(src, e.line), e.line, None);
         }
         Item::Union(u) => {
             let _ = writeln!(
@@ -594,7 +603,7 @@ fn type_item(out: &mut String, ix: &Index<'_>, item: &Item) {
                 );
             }
             out.push('\n');
-            quote(out, &block(src, u.line), u.line, None);
+            quote(out, ix, &block(src, u.line), u.line, None);
         }
         Item::Handle(h) => {
             let _ = writeln!(
@@ -605,7 +614,7 @@ fn type_item(out: &mut String, ix: &Index<'_>, item: &Item) {
             );
             paragraphs(out, &h.doc);
             out.push_str("A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.\n\n");
-            quote(out, &block(src, h.line), h.line, None);
+            quote(out, ix, &block(src, h.line), h.line, None);
         }
         Item::Callback(c) => {
             let _ = writeln!(
@@ -622,7 +631,7 @@ fn type_item(out: &mut String, ix: &Index<'_>, item: &Item) {
                 ts::callback_signature(ix, c)
             );
             params_table(out, ix, &c.params, &[]);
-            quote(out, &block(src, c.line), c.line, None);
+            quote(out, ix, &block(src, c.line), c.line, None);
         }
         _ => {}
     }
@@ -683,6 +692,7 @@ fn module_pages(
     out.push_str("- **Index**: [every module and guide](index.md).\n\n");
     quote(
         &mut out,
+        ix,
         &header(&ix.api.source, m.line),
         m.line,
         Some("declarations follow, each on its own page"),
@@ -771,7 +781,7 @@ fn module_pages(
                 v.name,
                 ts::type_text(ix, &v.ty, &[])
             );
-            quote(&mut out, &block(&ix.api.source, v.line), v.line, None);
+            quote(&mut out, ix, &block(&ix.api.source, v.line), v.line, None);
         }
     }
 
@@ -835,7 +845,7 @@ fn module_pages(
         }
         out.push('\n');
         for c in columns {
-            quote(&mut out, &block(&ix.api.source, c.line), c.line, None);
+            quote(&mut out, ix, &block(&ix.api.source, c.line), c.line, None);
         }
     }
 
@@ -862,7 +872,7 @@ fn module_pages(
         }
         out.push('\n');
         for c in consts {
-            quote(&mut out, &block(&ix.api.source, c.line), c.line, None);
+            quote(&mut out, ix, &block(&ix.api.source, c.line), c.line, None);
         }
     }
     while out.ends_with("\n\n") {

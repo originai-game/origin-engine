@@ -14,7 +14,7 @@ interface World {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1089</sub>
+<sub>Module `world` line 233</sub>
 
 <a id="member-World-tick"></a>
 
@@ -32,7 +32,7 @@ Binding symbol `og_world_get_tick` · publish builds: kept
 prop tick u32 "Fixed steps taken since the world was created."
 ```
 
-<sub>`api.ogt` line 1092</sub>
+<sub>Module `world` line 236</sub>
 
 <a id="member-World-spawn"></a>
 
@@ -63,7 +63,7 @@ fn spawn {
 }
 ```
 
-<sub>`api.ogt` line 1094</sub>
+<sub>Module `world` line 238</sub>
 
 <a id="member-World-despawn"></a>
 
@@ -94,7 +94,7 @@ fn despawn {
 }
 ```
 
-<sub>`api.ogt` line 1101</sub>
+<sub>Module `world` line 245</sub>
 
 <a id="member-World-alive"></a>
 
@@ -122,7 +122,7 @@ fn alive {
 }
 ```
 
-<sub>`api.ogt` line 1108</sub>
+<sub>Module `world` line 252</sub>
 
 <a id="member-World-has"></a>
 
@@ -153,7 +153,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 1114</sub>
+<sub>Module `world` line 258</sub>
 
 <a id="member-World-insert"></a>
 
@@ -188,7 +188,7 @@ fn insert {
 }
 ```
 
-<sub>`api.ogt` line 1122</sub>
+<sub>Module `world` line 266</sub>
 
 <a id="member-World-remove"></a>
 
@@ -219,7 +219,7 @@ fn remove {
 }
 ```
 
-<sub>`api.ogt` line 1133</sub>
+<sub>Module `world` line 277</sub>
 
 <a id="member-World-get"></a>
 
@@ -250,7 +250,7 @@ fn get {
 }
 ```
 
-<sub>`api.ogt` line 1141</sub>
+<sub>Module `world` line 285</sub>
 
 <a id="member-World-set"></a>
 
@@ -283,7 +283,7 @@ fn set {
 }
 ```
 
-<sub>`api.ogt` line 1149</sub>
+<sub>Module `world` line 293</sub>
 
 <a id="member-World-resource"></a>
 
@@ -312,7 +312,7 @@ fn resource {
 }
 ```
 
-<sub>`api.ogt` line 1158</sub>
+<sub>Module `world` line 302</sub>
 
 <a id="member-World-children"></a>
 
@@ -340,7 +340,7 @@ fn children {
 }
 ```
 
-<sub>`api.ogt` line 1165</sub>
+<sub>Module `world` line 309</sub>
 
 <a id="member-World-removed"></a>
 
@@ -369,7 +369,7 @@ fn removed {
 }
 ```
 
-<sub>`api.ogt` line 1171</sub>
+<sub>Module `world` line 315</sub>
 
 <a id="member-World-spatial"></a>
 
@@ -399,7 +399,7 @@ fn spatial {
 }
 ```
 
-<sub>`api.ogt` line 1178</sub>
+<sub>Module `world` line 322</sub>
 
 <a id="member-World-state"></a>
 
@@ -427,7 +427,7 @@ fn state {
 }
 ```
 
-<sub>`api.ogt` line 1186</sub>
+<sub>Module `world` line 330</sub>
 
 <a id="member-World-setState"></a>
 
@@ -457,7 +457,7 @@ fn setState {
 }
 ```
 
-<sub>`api.ogt` line 1192</sub>
+<sub>Module `world` line 336</sub>
 
 <a id="member-World-find"></a>
 
@@ -485,7 +485,7 @@ fn find {
 }
 ```
 
-<sub>`api.ogt` line 1199</sub>
+<sub>Module `world` line 343</sub>
 
 <a id="member-World-prefabOf"></a>
 
@@ -513,7 +513,7 @@ fn prefabOf {
 }
 ```
 
-<sub>`api.ogt` line 1205</sub>
+<sub>Module `world` line 349</sub>
 
 <a id="member-World-nameOf"></a>
 
@@ -541,7 +541,7 @@ fn nameOf {
 }
 ```
 
-<sub>`api.ogt` line 1211</sub>
+<sub>Module `world` line 355</sub>
 
 <a id="member-World-query"></a>
 
@@ -569,7 +569,7 @@ fn query {
 }
 ```
 
-<sub>`api.ogt` line 1217</sub>
+<sub>Module `world` line 361</sub>
 
 <a id="member-World-events"></a>
 
@@ -598,7 +598,7 @@ fn events {
 }
 ```
 
-<sub>`api.ogt` line 1223</sub>
+<sub>Module `world` line 367</sub>
 
 <a id="member-World-emit"></a>
 
@@ -629,7 +629,7 @@ fn emit {
 }
 ```
 
-<sub>`api.ogt` line 1230</sub>
+<sub>Module `world` line 374</sub>
 
 <a id="member-World-instantiate"></a>
 
@@ -662,7 +662,7 @@ fn instantiate {
 }
 ```
 
-<sub>`api.ogt` line 1238</sub>
+<sub>Module `world` line 382</sub>
 
 <a id="member-World-snapshot"></a>
 
@@ -695,7 +695,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 1246</sub>
+<sub>Module `world` line 390</sub>
 
 <a id="member-World-openSave"></a>
 
@@ -723,7 +723,7 @@ fn openSave {
 }
 ```
 
-<sub>`api.ogt` line 1255</sub>
+<sub>Module `world` line 399</sub>
 
 <a id="member-World-restore"></a>
 
@@ -753,4 +753,4 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 1261</sub>
+<sub>Module `world` line 405</sub>

@@ -24,7 +24,7 @@ module reflect {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 733</sub>
+<sub>Module `reflect` line 1</sub>
 
 ## Contents
 
@@ -74,7 +74,7 @@ column f32 {
 }
 ```
 
-<sub>`api.ogt` line 753</sub>
+<sub>Module `reflect` line 21</sub>
 
 ```ogt
 column f64 {
@@ -85,7 +85,7 @@ column f64 {
 }
 ```
 
-<sub>`api.ogt` line 760</sub>
+<sub>Module `reflect` line 28</sub>
 
 ```ogt
 column u32 {
@@ -96,7 +96,7 @@ column u32 {
 }
 ```
 
-<sub>`api.ogt` line 767</sub>
+<sub>Module `reflect` line 35</sub>
 
 ```ogt
 column i32 {
@@ -107,7 +107,7 @@ column i32 {
 }
 ```
 
-<sub>`api.ogt` line 774</sub>
+<sub>Module `reflect` line 42</sub>
 
 ```ogt
 column bool {
@@ -118,7 +118,7 @@ column bool {
 }
 ```
 
-<sub>`api.ogt` line 781</sub>
+<sub>Module `reflect` line 49</sub>
 
 ```ogt
 column Vector2 {
@@ -129,7 +129,7 @@ column Vector2 {
 }
 ```
 
-<sub>`api.ogt` line 788</sub>
+<sub>Module `reflect` line 56</sub>
 
 ```ogt
 column Vector3 {
@@ -140,7 +140,7 @@ column Vector3 {
 }
 ```
 
-<sub>`api.ogt` line 795</sub>
+<sub>Module `reflect` line 63</sub>
 
 ```ogt
 column Quaternion {
@@ -151,7 +151,7 @@ column Quaternion {
 }
 ```
 
-<sub>`api.ogt` line 802</sub>
+<sub>Module `reflect` line 70</sub>
 
 ```ogt
 column Matrix4 {
@@ -162,7 +162,7 @@ column Matrix4 {
 }
 ```
 
-<sub>`api.ogt` line 809</sub>
+<sub>Module `reflect` line 77</sub>
 
 ```ogt
 column Color {
@@ -173,7 +173,7 @@ column Color {
 }
 ```
 
-<sub>`api.ogt` line 816</sub>
+<sub>Module `reflect` line 84</sub>
 
 ```ogt
 column str {
@@ -185,7 +185,7 @@ column str {
 }
 ```
 
-<sub>`api.ogt` line 823</sub>
+<sub>Module `reflect` line 91</sub>
 
 ```ogt
 column list {
@@ -195,4 +195,4 @@ column list {
 }
 ```
 
-<sub>`api.ogt` line 831</sub>
+<sub>Module `reflect` line 99</sub>

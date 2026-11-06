@@ -25,4 +25,4 @@ event SeatRejoined {
 }
 ```
 
-<sub>`api.ogt` line 26366</sub>
+<sub>Module `net` line 101</sub>

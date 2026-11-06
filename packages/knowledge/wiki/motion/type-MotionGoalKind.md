@@ -31,4 +31,4 @@ enum MotionGoalKind {
 }
 ```
 
-<sub>`api.ogt` line 26776</sub>
+<sub>Module `motion` line 7</sub>

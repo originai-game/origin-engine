@@ -25,4 +25,4 @@ enum AssertOrigin {
 }
 ```
 
-<sub>`api.ogt` line 25867</sub>
+<sub>Module `assert` line 30</sub>

@@ -40,11 +40,13 @@ sys.exit(0 if not shared and ours.isdisjoint(theirs) else 1)
 PY
 }
 
+# Parse the whole landing loop before rebasing: replay may replace this file.
+land() {
 clean
 git symbolic-ref -q HEAD >/dev/null || { echo 'land: use a branch' >&2; exit 1; }
 git fetch origin main
 base="$(git rev-parse FETCH_HEAD)"
-git rebase "$base"
+python3 scripts/rebase-generated.py "$base"
 while :; do
   head="$(git rev-parse HEAD)"
   if [ "$head" = "$base" ]; then echo "land: already on origin/main ($head)"; exit 0; fi
@@ -62,7 +64,7 @@ while :; do
       }
       reuse=0
       disjoint "$base" "$head" "$main" && reuse=1
-      git rebase "$main"
+      python3 scripts/rebase-generated.py "$main"
       clean
       base="$main"
       head="$(git rev-parse HEAD)"
@@ -89,3 +91,5 @@ while :; do
     og_lock_release
   done
 done
+}
+land

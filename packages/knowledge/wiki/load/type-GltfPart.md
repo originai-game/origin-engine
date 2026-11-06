@@ -23,4 +23,4 @@ struct GltfPart {
 }
 ```
 
-<sub>`api.ogt` line 7978</sub>
+<sub>Module `load` line 66</sub>

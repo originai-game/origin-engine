@@ -20,7 +20,7 @@ module ui {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 15648</sub>
+<sub>Module `ui` line 1</sub>
 
 ## Contents
 
@@ -751,7 +751,7 @@ column VectorArt {
 }
 ```
 
-<sub>`api.ogt` line 22671</sub>
+<sub>Module `ui` line 7024</sub>
 
 ```ogt
 column UiMaterial {
@@ -762,4 +762,4 @@ column UiMaterial {
 }
 ```
 
-<sub>`api.ogt` line 22678</sub>
+<sub>Module `ui` line 7031</sub>

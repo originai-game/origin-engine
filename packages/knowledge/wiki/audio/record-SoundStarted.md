@@ -25,4 +25,4 @@ event SoundStarted {
 }
 ```
 
-<sub>`api.ogt` line 13511</sub>
+<sub>Module `audio` line 682</sub>

@@ -31,4 +31,4 @@ enum InputDevice {
 }
 ```
 
-<sub>`api.ogt` line 2026</sub>
+<sub>Module `input` line 12</sub>

@@ -46,4 +46,4 @@ component PointLight {
 }
 ```
 
-<sub>`api.ogt` line 4261</sub>
+<sub>Module `render` line 468</sub>

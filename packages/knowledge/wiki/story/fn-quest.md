@@ -30,4 +30,4 @@ fn quest {
 }
 ```
 
-<sub>`api.ogt` line 14869</sub>
+<sub>Module `story` line 405</sub>

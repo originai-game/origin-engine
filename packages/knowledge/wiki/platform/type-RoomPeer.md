@@ -23,4 +23,4 @@ struct RoomPeer {
 }
 ```
 
-<sub>`api.ogt` line 15403</sub>
+<sub>Module `platform` line 496</sub>

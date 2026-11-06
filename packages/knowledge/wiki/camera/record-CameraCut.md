@@ -27,4 +27,4 @@ event CameraCut {
 }
 ```
 
-<sub>`api.ogt` line 3759</sub>
+<sub>Module `camera` line 530</sub>

@@ -47,4 +47,4 @@ struct QuestView {
 }
 ```
 
-<sub>`api.ogt` line 14704</sub>
+<sub>Module `story` line 240</sub>

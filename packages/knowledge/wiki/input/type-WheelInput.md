@@ -33,4 +33,4 @@ struct WheelInput {
 }
 ```
 
-<sub>`api.ogt` line 2682</sub>
+<sub>Module `input` line 668</sub>

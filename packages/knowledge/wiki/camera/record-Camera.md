@@ -185,7 +185,7 @@ resource Camera {
 }
 ```
 
-<sub>`api.ogt` line 3234</sub>
+<sub>Module `camera` line 5</sub>
 
 <a id="member-Camera-lookAt"></a>
 
@@ -212,7 +212,7 @@ fn lookAt {
 }
 ```
 
-<sub>`api.ogt` line 3353</sub>
+<sub>Module `camera` line 124</sub>
 
 <a id="member-Camera-worldToScreen"></a>
 
@@ -243,7 +243,7 @@ fn worldToScreen {
 }
 ```
 
-<sub>`api.ogt` line 3357</sub>
+<sub>Module `camera` line 128</sub>
 
 <a id="member-Camera-screenToRay"></a>
 
@@ -273,4 +273,4 @@ fn screenToRay {
 }
 ```
 
-<sub>`api.ogt` line 3363</sub>
+<sub>Module `camera` line 134</sub>

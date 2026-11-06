@@ -80,4 +80,4 @@ component LookAt {
 }
 ```
 
-<sub>`api.ogt` line 11787</sub>
+<sub>Module `anim` line 313</sub>

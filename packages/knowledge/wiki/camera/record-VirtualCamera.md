@@ -126,4 +126,4 @@ component VirtualCamera {
 }
 ```
 
-<sub>`api.ogt` line 3592</sub>
+<sub>Module `camera` line 363</sub>

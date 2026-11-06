@@ -166,4 +166,4 @@ component AudioSource {
 }
 ```
 
-<sub>`api.ogt` line 12884</sub>
+<sub>Module `audio` line 55</sub>

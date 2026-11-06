@@ -23,4 +23,4 @@ event QuestUpdated {
 }
 ```
 
-<sub>`api.ogt` line 14504</sub>
+<sub>Module `story` line 40</sub>

@@ -20,7 +20,7 @@ module terrain {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 24800</sub>
+<sub>Module `terrain` line 1</sub>
 
 ## Contents
 
@@ -70,4 +70,4 @@ column TerrainData {
 }
 ```
 
-<sub>`api.ogt` line 24807</sub>
+<sub>Module `terrain` line 8</sub>

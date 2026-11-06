@@ -30,4 +30,4 @@ struct LeaderboardQueryDesc {
 }
 ```
 
-<sub>`api.ogt` line 14947</sub>
+<sub>Module `platform` line 40</sub>

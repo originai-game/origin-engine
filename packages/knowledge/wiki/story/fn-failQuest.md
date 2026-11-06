@@ -30,4 +30,4 @@ fn failQuest {
 }
 ```
 
-<sub>`api.ogt` line 14862</sub>
+<sub>Module `story` line 398</sub>

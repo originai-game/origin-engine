@@ -30,4 +30,4 @@ fn imageInfo {
 }
 ```
 
-<sub>`api.ogt` line 8479</sub>
+<sub>Module `load` line 567</sub>

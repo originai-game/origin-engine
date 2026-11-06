@@ -31,4 +31,4 @@ enum GamepadAxis {
 }
 ```
 
-<sub>`api.ogt` line 2570</sub>
+<sub>Module `input` line 556</sub>

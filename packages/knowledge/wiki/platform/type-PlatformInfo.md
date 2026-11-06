@@ -25,4 +25,4 @@ struct PlatformInfo {
 }
 ```
 
-<sub>`api.ogt` line 15017</sub>
+<sub>Module `platform` line 110</sub>

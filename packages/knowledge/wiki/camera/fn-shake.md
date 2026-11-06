@@ -33,4 +33,4 @@ fn shake {
 }
 ```
 
-<sub>`api.ogt` line 3768</sub>
+<sub>Module `camera` line 539</sub>

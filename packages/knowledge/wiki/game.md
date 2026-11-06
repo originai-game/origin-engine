@@ -15,7 +15,7 @@ module game {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 1417</sub>
+<sub>Module `game` line 1</sub>
 
 ## Contents
 

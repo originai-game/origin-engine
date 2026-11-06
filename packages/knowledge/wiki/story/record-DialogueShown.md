@@ -23,4 +23,4 @@ event DialogueShown {
 }
 ```
 
-<sub>`api.ogt` line 14484</sub>
+<sub>Module `story` line 20</sub>

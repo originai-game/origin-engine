@@ -14,7 +14,7 @@ interface SphereMath {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 426</sub>
+<sub>Module `math` line 385</sub>
 
 <a id="member-SphereMath-fromPoints"></a>
 
@@ -43,7 +43,7 @@ fn fromPoints {
 }
 ```
 
-<sub>`api.ogt` line 428</sub>
+<sub>Module `math` line 387</sub>
 
 <a id="member-SphereMath-containsPoint"></a>
 
@@ -74,7 +74,7 @@ fn containsPoint {
 }
 ```
 
-<sub>`api.ogt` line 434</sub>
+<sub>Module `math` line 393</sub>
 
 <a id="member-SphereMath-distanceToPoint"></a>
 
@@ -105,7 +105,7 @@ fn distanceToPoint {
 }
 ```
 
-<sub>`api.ogt` line 441</sub>
+<sub>Module `math` line 400</sub>
 
 <a id="member-SphereMath-intersectsSphere"></a>
 
@@ -136,7 +136,7 @@ fn intersectsSphere {
 }
 ```
 
-<sub>`api.ogt` line 448</sub>
+<sub>Module `math` line 407</sub>
 
 <a id="member-SphereMath-intersectsBox"></a>
 
@@ -167,7 +167,7 @@ fn intersectsBox {
 }
 ```
 
-<sub>`api.ogt` line 455</sub>
+<sub>Module `math` line 414</sub>
 
 <a id="member-SphereMath-getBoundingBox"></a>
 
@@ -196,7 +196,7 @@ fn getBoundingBox {
 }
 ```
 
-<sub>`api.ogt` line 462</sub>
+<sub>Module `math` line 421</sub>
 
 <a id="member-SphereMath-applyMatrix4"></a>
 
@@ -227,4 +227,4 @@ fn applyMatrix4 {
 }
 ```
 
-<sub>`api.ogt` line 468</sub>
+<sub>Module `math` line 427</sub>

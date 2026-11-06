@@ -23,4 +23,4 @@ event RoomPeerLeft {
 }
 ```
 
-<sub>`api.ogt` line 15444</sub>
+<sub>Module `platform` line 537</sub>

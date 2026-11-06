@@ -23,4 +23,4 @@ enum SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 4659</sub>
+<sub>Module `render` line 866</sub>

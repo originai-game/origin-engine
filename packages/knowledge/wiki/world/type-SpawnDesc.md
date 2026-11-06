@@ -36,4 +36,4 @@ struct SpawnDesc {
 }
 ```
 
-<sub>`api.ogt` line 873</sub>
+<sub>Module `world` line 17</sub>

@@ -47,4 +47,4 @@ struct VideoInfo {
 }
 ```
 
-<sub>`api.ogt` line 25669</sub>
+<sub>Module `video` line 14</sub>

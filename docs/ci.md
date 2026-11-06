@@ -19,7 +19,14 @@ touches common build inputs or generated/drift-checked files. Otherwise it
 rebases, releases the landing lock, and runs quick again; existing per-step
 input records skip unaffected work. No gate runs under the landing lock.
 Push rejection caused by another main advance retries the same comparison;
-other push failures stop. A rebase conflict stops for the author to resolve.
+other push failures stop. Conflicts confined to the IDL's generated directories
+(`og_idl::OUTPUT_DIRS`, including declarations and wiki) or the generated UI
+theme are regenerated from the rebased sources. Any other conflict stops the
+rebase untouched for the author. Regeneration builds the IDL generator without
+the hosts, so conflicted generated Rust cannot block it. Each conflict stop is
+handled separately, and the completed rebase is regenerated again: later commits
+can merge cleanly yet leave stale derived text. That final refresh is amended
+into the branch tip before quick runs. Generation failure stops landing.
 No force push is used. Rerunning after success is a no-op.
 
 `python3 scripts/test-landing.py` exercises concurrent landings against a

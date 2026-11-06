@@ -26,4 +26,4 @@ struct SaveSlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 14979</sub>
+<sub>Module `platform` line 72</sub>

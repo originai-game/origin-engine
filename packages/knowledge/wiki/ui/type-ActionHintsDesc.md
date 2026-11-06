@@ -32,4 +32,4 @@ struct ActionHintsDesc {
 }
 ```
 
-<sub>`api.ogt` line 18154</sub>
+<sub>Module `ui` line 2507</sub>

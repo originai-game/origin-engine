@@ -14,7 +14,7 @@ interface ArchetypeView {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1281</sub>
+<sub>Module `world` line 425</sub>
 
 <a id="member-ArchetypeView-count"></a>
 
@@ -32,7 +32,7 @@ Binding symbol `og_archetype_view_get_count` · publish builds: kept
 prop count u32 "The number of entities in the archetype."
 ```
 
-<sub>`api.ogt` line 1283</sub>
+<sub>Module `world` line 427</sub>
 
 <a id="member-ArchetypeView-tick"></a>
 
@@ -50,7 +50,7 @@ Binding symbol `og_archetype_view_get_tick` · publish builds: kept
 prop tick u32 "The tick this view belongs to."
 ```
 
-<sub>`api.ogt` line 1284</sub>
+<sub>Module `world` line 428</sub>
 
 <a id="member-ArchetypeView-entities"></a>
 
@@ -68,7 +68,7 @@ Binding symbol `og_archetype_view_get_entities` · publish builds: kept
 prop entities Uint32Array "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1. These are not handles: for a handle use entity(i) (world.despawn, get, set, insert and remove refuse a bare index, naming the call)."
 ```
 
-<sub>`api.ogt` line 1285</sub>
+<sub>Module `world` line 429</sub>
 
 <a id="member-ArchetypeView-rows"></a>
 
@@ -86,7 +86,7 @@ Binding symbol `og_archetype_view_get_rows` · publish builds: kept
 prop rows Uint32Array "The rows the query's change filters pass (SystemDesc.changed, added, removed; QueryDesc's), in row order; every row, 0 to count - 1, for a query without them. Columns still hold every row: loop over rows and index the columns with them."
 ```
 
-<sub>`api.ogt` line 1286</sub>
+<sub>Module `world` line 430</sub>
 
 <a id="member-ArchetypeView-entity"></a>
 
@@ -114,7 +114,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 1287</sub>
+<sub>Module `world` line 431</sub>
 
 <a id="member-ArchetypeView-has"></a>
 
@@ -143,7 +143,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 1292</sub>
+<sub>Module `world` line 436</sub>
 
 <a id="member-ArchetypeView-column"></a>
 
@@ -175,4 +175,4 @@ fn column {
 }
 ```
 
-<sub>`api.ogt` line 1298</sub>
+<sub>Module `world` line 442</sub>

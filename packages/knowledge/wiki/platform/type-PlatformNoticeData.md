@@ -29,4 +29,4 @@ struct PlatformNoticeData {
 }
 ```
 
-<sub>`api.ogt` line 15148</sub>
+<sub>Module `platform` line 241</sub>

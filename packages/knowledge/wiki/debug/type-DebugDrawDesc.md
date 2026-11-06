@@ -35,4 +35,4 @@ struct DebugDrawDesc {
 }
 ```
 
-<sub>`api.ogt` line 25742</sub>
+<sub>Module `debug` line 6</sub>
