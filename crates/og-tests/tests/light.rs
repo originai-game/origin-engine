@@ -151,11 +151,6 @@ fn two_baked_scenes_draw_their_own_pages() {
     }
 }
 
-#[test]
-fn baked_batches_matches_its_reference() {
-    check("baked-batches");
-}
-
 /// Every kind of lit batch draws its lightmap (debt render-light #2): the
 /// box drawn with a physical ceiling, a compact back wall, an array-map tall
 /// block and a material-shader short block matches the all-standard
@@ -165,11 +160,33 @@ fn baked_batches_matches_its_reference() {
 /// black; the blocks the probes' coarser light, the tall block's side
 /// with a third less red from the wall. On lavapipe (Mesa 22.3) every
 /// physical pipeline crashes the driver's draw thread, main's physical
-/// tests too, so this one is read on Metal.
+/// tests too, so this one is read on Metal. Then the whole frame: within
+/// `baked-batches`' reference tolerance of the standard box's, which
+/// `baked_cornell_matches_its_reference` holds to its reference (the two
+/// frames were the same pixels, so `baked-batches` has no reference of its
+/// own any more).
 #[test]
 fn every_batch_kind_draws_its_lightmap() {
     let standard = gfx::render("baked-cornell").expect("render").image;
     let batches = gfx::render("baked-batches").expect("render").image;
+    let tolerance = og_tests::scenes::build("baked-batches")
+        .expect("scene")
+        .tolerance;
+    let whole = og_tests::compare::compare(
+        &batches.pixels,
+        &standard.pixels,
+        standard.width,
+        standard.height,
+        &tolerance,
+    )
+    .expect("same size");
+    println!(
+        "whole frame against the standard batch's: rmse {:.5}, outliers {}",
+        whole.rmse, whole.outliers
+    );
+    whole
+        .check(&tolerance)
+        .unwrap_or_else(|e| panic!("baked-batches against baked-cornell's frame: {e}"));
     for (part, [x0, y0, x1, y1]) in [
         ("the physical ceiling", [480, 16, 800, 40]),
         ("the compact back wall", [660, 150, 840, 280]),
