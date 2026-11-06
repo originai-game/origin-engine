@@ -53,6 +53,10 @@ pub fn shader_sources() -> Vec<ShaderSource> {
         "meshlet cull",
         crate::meshlet_gpu::MESHLET_CULL_WGSL.to_string(),
     );
+    add(
+        "meshlet compact",
+        crate::meshlet_gpu::compact::WGSL.to_string(),
+    );
     add("shadow", crate::shadow_source(&hooks));
     // The vegetation's simulated wind field (G2).
     add("wind field", crate::wind_field::source());

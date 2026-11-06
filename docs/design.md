@@ -744,7 +744,13 @@ only depth drawn at this frame's camera, so occlusion never removes a
 visible pixel, whatever last frame left. A frame without GPU culling's
 pyramid (the first, or no occluding material) draws what the frustum and
 cone keep in one phase and records it. The
-visible clusters are appended as work items (instance, cluster), and
+visible cluster slots are compacted into work items (instance, cluster)
+in row, instance, then cluster order (`meshlet_compact.wgsl`). A blocked
+prefix scan counts visible and software-eligible slots. The first
+65,536 eligible slots enter the software list; overflow stays on the
+hardware list in the same stable order. Both lists are rebuilt after
+each cull phase, so neither draw order nor equal-depth software triangle
+IDs depend on workgroup scheduling. Then
 each batch is drawn once, by `draw_indirect`, 64 × 3 vertices per
 visible cluster, by vertex pulling (`meshlet.wgsl`: no index or vertex
 buffer is bound; a cluster's unused triangles collapse), in the prepass

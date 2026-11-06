@@ -8,8 +8,9 @@
 //! pass (`meshlet_cull.wgsl`) runs a workgroup per instance a batch could
 //! have kept: it picks the instance's level, tests the level's clusters
 //! against the frustum, their normal cones and GPU culling's depth pyramid
-//! (when that frame has one), and appends the visible ones as work items
-//! to the batch's draw. The prepass and the lit pass then draw each batch
+//! (when that frame has one), and marks the visible cluster slots.
+//! `compact` builds both work lists in row/instance/cluster order with a
+//! blocked prefix scan. The prepass and the lit pass then draw each batch
 //! once, 64 × 3 vertices per visible cluster, by vertex pulling
 //! (`meshlet.wgsl`): no index or vertex buffer is bound.
 //!
@@ -484,6 +485,7 @@ pub(crate) fn pool_foliage(rows: &mut [[u32; 4]], region: u32) {
     }
 }
 
+pub(crate) mod compact;
 mod vis;
 
 pub(crate) struct MeshletGpu {
@@ -494,6 +496,7 @@ pub(crate) struct MeshletGpu {
     wind_field: wgpu::TextureView,
     cull_layout: wgpu::BindGroupLayout,
     cull: wgpu::ComputePipeline,
+    compact: compact::Compact,
     pub(crate) draw_layout: wgpu::BindGroupLayout,
     lit: HashMap<(Side, bool), wgpu::RenderPipeline>,
     prepass: HashMap<Side, wgpu::RenderPipeline>,
@@ -536,8 +539,6 @@ pub(crate) struct MeshletGpu {
     /// The bytes of `items` a draw group binds from a batch's first work
     /// item (its dynamic offset): the frame's largest batch's items.
     window: u64,
-    /// The bytes of `items` this frame's dispatch writes.
-    items_bytes: u64,
     /// This frame's clustered batches (empty: the path is off this frame).
     pub(crate) frame: Vec<MeshletDraw>,
     max_binding: u64,
@@ -749,6 +750,7 @@ impl MeshletGpu {
         MeshletGpu {
             cull_layout,
             cull,
+            compact: compact::Compact::new(device),
             draw_layout,
             lit: HashMap::new(),
             prepass: HashMap::new(),
@@ -779,7 +781,6 @@ impl MeshletGpu {
             cull_group: None,
             mesh_groups: HashMap::new(),
             window: 0,
-            items_bytes: 0,
             frame: Vec::new(),
             max_binding,
             vis_buffer: vis::VisBuffer::new(device, wind_field.clone()),
@@ -1120,6 +1121,9 @@ impl MeshletGpu {
         if rows.is_empty() || items as u64 * 8 > self.max_binding {
             return None;
         }
+        let slots = rows
+            .last()
+            .map_or(0, |r| r.first_item + r.instances * r.most);
         grow(
             device,
             &mut self.batches,
@@ -1132,7 +1136,6 @@ impl MeshletGpu {
         // batch's whole window.
         let (window, items_buffer) = item_window(&rows, items);
         self.window = window;
-        self.items_bytes = items as u64 * 8;
         grow(
             device,
             &mut self.items,
@@ -1147,6 +1150,13 @@ impl MeshletGpu {
             // And the soft list's count.
             (rows.len() * 16 + 16) as u64,
             Self::draws_usage(),
+        );
+        let (soft_first, soft_cap) = list.unwrap_or((0, 0));
+        self.compact.prepare(
+            device,
+            queue,
+            [slots, soft_first, soft_cap, rows.len() as u32],
+            [&self.batches, &pools.meshes, &self.items, &self.draws],
         );
         // The visibility halves: a new size starts every slot hidden (the
         // late phase then finds what the early one missed).
@@ -1249,12 +1259,12 @@ impl MeshletGpu {
                 queue.write_buffer(&pools.meshes, at as u64, bytemuck::bytes_of(&margin));
             }
         }
-        let items_bytes = self.items_bytes;
+        let selected_bytes = u64::from(slots) * 8;
         let bound = vec![
             gc.instances.clone(),
             self.views.clone(),
             self.batches.clone(),
-            self.items.clone(),
+            self.compact.selected.clone(),
             self.draws.clone(),
             pools.meshes.clone(),
             self.vis.clone(),
@@ -1263,7 +1273,7 @@ impl MeshletGpu {
         if self
             .cull_group
             .as_ref()
-            .is_none_or(|(b, v, n, _)| *b != bound || *v != view || *n != items_bytes)
+            .is_none_or(|(b, v, n, _)| *b != bound || *v != view || *n != selected_bytes)
         {
             let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("meshlet cull"),
@@ -1282,15 +1292,13 @@ impl MeshletGpu {
                     entry(3, &self.batches),
                     entry(4, &pools.meshes),
                     entry(5, &pools.clusters),
-                    // The dispatch's items, never past the binding limit
-                    // (the buffer may be larger: windows, power-of-two
-                    // growth).
+                    // Stable candidate slots, not append destinations.
                     wgpu::BindGroupEntry {
                         binding: 6,
                         resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                            buffer: &self.items,
+                            buffer: &self.compact.selected,
                             offset: 0,
-                            size: wgpu::BufferSize::new(items_bytes),
+                            size: wgpu::BufferSize::new(selected_bytes),
                         }),
                     },
                     entry(7, &self.draws),
@@ -1303,13 +1311,14 @@ impl MeshletGpu {
                     entry(9, &self.vis),
                 ],
             });
-            self.cull_group = Some((bound, view, items_bytes, group));
+            self.cull_group = Some((bound, view, selected_bytes, group));
         }
         self.frame = draws;
         self.ensure_groups(device, batches, (&gc.instances, previous), vertices);
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("meshlet cull"),
         });
+        encoder.clear_buffer(&self.compact.selected, 0, Some(u64::from(slots) * 8));
         if std::mem::take(&mut self.vis_clear) {
             encoder.clear_buffer(&self.vis, 0, None);
         } else {
@@ -1324,6 +1333,7 @@ impl MeshletGpu {
                 workgroups.div_ceil(WORKGROUPS_PER_ROW),
                 1,
             );
+            self.compact.encode(pass, slots);
         };
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {

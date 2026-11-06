@@ -4,6 +4,8 @@ use og_render::wgpu as gpu_wgpu;
 #[path = "../../../../tests/gpu.rs"]
 mod gpu_tests;
 
+#[path = "../meshlet.rs"]
+mod meshlet;
 #[path = "../png.rs"]
 mod png;
 #[path = "../profile2d.rs"]

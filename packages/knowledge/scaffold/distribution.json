@@ -46,8 +46,8 @@
     },
     {
       "path": "references/metal/inspector-edited.png",
-      "bytes": 130579,
-      "sha256": "32270a709db59e50fa7c56be1aa8ddca1d4fd4f3c6f2058eb7b7a5116ef3304a",
+      "bytes": 130487,
+      "sha256": "7d8afd106bf8b9d8aa11d26eb5df5de59a12014041dabbfbca47cb3e5dd58268",
       "licence": "unrecorded: add it to the template's LICENSES.md",
       "source": "templates/game/references/metal/inspector-edited.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
     },
@@ -60,43 +60,43 @@
     },
     {
       "path": "references/metal/inspector-gizmo-rotate.png",
-      "bytes": 145877,
-      "sha256": "a4fc55a89497b8c76deac0a3ed2abb3d636dee1bbf53128ae5b20ba61a6822e3",
+      "bytes": 145754,
+      "sha256": "2394305138b743fb5d515f1377f336900e1e56d3ddd56a4a07bf54ce2c6c86c1",
       "licence": "unrecorded: add it to the template's LICENSES.md",
       "source": "templates/game/references/metal/inspector-gizmo-rotate.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
     },
     {
       "path": "references/metal/inspector-gizmo-scale.png",
-      "bytes": 127846,
-      "sha256": "d2e2559d39c11d158f66c4becb25d735ba09aed7a3411e7b389b1c71ce4d415e",
+      "bytes": 127667,
+      "sha256": "ccc5af878c68cc9aefffca7345ad7b03cb73fb72a9a06dea41e54aec57e93e21",
       "licence": "unrecorded: add it to the template's LICENSES.md",
       "source": "templates/game/references/metal/inspector-gizmo-scale.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
     },
     {
       "path": "references/metal/inspector-gizmo-translate.png",
-      "bytes": 129601,
-      "sha256": "1ae3567619143d31149893b5734c1dc706f612f11af9031963ae4d695040f231",
+      "bytes": 129420,
+      "sha256": "e06846d0d821d1f123757d1b6fd8408245d4918525aec89feeca66d570ea8116",
       "licence": "unrecorded: add it to the template's LICENSES.md",
       "source": "templates/game/references/metal/inspector-gizmo-translate.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
     },
     {
       "path": "references/metal/inspector-resources.png",
-      "bytes": 133706,
-      "sha256": "af410599d5f0fdd0a59b9bec4a8c1b6bbb09e4b1dffacf67e362c6f6729176eb",
+      "bytes": 133585,
+      "sha256": "b056f1ea20b1550ddd48e8a0e99d1502c58635bf6804f2968835a5b2adc8b15e",
       "licence": "unrecorded: add it to the template's LICENSES.md",
       "source": "templates/game/references/metal/inspector-resources.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
     },
     {
       "path": "references/metal/intro-4.png",
-      "bytes": 121687,
-      "sha256": "e95c0a40e75207a8b54dc27d84de56cf29f619184df0c37d3267f461b090531b",
+      "bytes": 121684,
+      "sha256": "04a6ce5ce0c4ebc4a8ad898a12a5965ce1ded53a241b64af6f1a07a12f5e07bd",
       "licence": "unrecorded: add it to the template's LICENSES.md",
       "source": "templates/game/references/metal/intro-4.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
     },
     {
       "path": "references/metal/intro-8.png",
-      "bytes": 134732,
-      "sha256": "08fc5f94045344b469f4757650f54c4afdc11725e0d32958fe989ceefe852cd2",
+      "bytes": 134696,
+      "sha256": "bc1097db38b79a72cc81ace19e845f4f6d48003cbadea126ed798f6f634026a6",
       "licence": "unrecorded: add it to the template's LICENSES.md",
       "source": "templates/game/references/metal/intro-8.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
     }

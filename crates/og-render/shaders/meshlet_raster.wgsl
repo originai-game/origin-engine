@@ -1,11 +1,12 @@
 // The visibility buffer (meshlet.rs states each step on the CPU,
 // meshlet_gpu.rs drives it; three.js#35191's software rasteriser). The
-// camera's small clusters, which meshlet_cull.wgsl appended to the soft
+// camera's small clusters, which meshlet_compact.wgsl put in the soft
 // list, are rasterised here, one workgroup a cluster and one thread a
 // triangle: `raster_depth` takes each covered pixel's nearest depth
 // (an atomic max of meshlet.rs `vis_depth`), `raster_id` writes the
 // triangle's id where its depth is the pixel's (`vis_id`, an atomic max:
-// equal depths keep one), then `setup`, one thread a pixel, rebuilds the
+// equal depths keep the highest stable list/triangle id), then `setup`,
+// one thread a pixel, rebuilds the
 // seen triangle's attributes there and appends them to `attrs` (its slot
 // in the pixel's word at the front), for the resolve (meshlet.wgsl `fs_meshlet_resolve`) to
 // shade. After instance.wgsl.
@@ -224,7 +225,8 @@ fn raster_id(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_ind
   let k = soft_cluster(wg);
   if (k >= min(raster.soft.z, raster.soft.y)) { return; }
   let t = triangle(k, li);
-  // meshlet.rs `vis_id`.
+  // meshlet.rs `vis_id`. Compaction orders k by row/instance/cluster,
+  // never by the cull workgroups' arrival order.
   if (t.ok) { cover(t, ((k << 6u) | li) + 1u); }
 }
 

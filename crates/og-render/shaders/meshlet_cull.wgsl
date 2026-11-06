@@ -7,8 +7,8 @@
 // screen-space error (lod.rs `select` without hysteresis) unless its
 // caller picked it (RenderScene::instance_levels), then its 64
 // threads test the level's clusters (frustum, normal cone, the pyramid)
-// and append the visible ones as work items (instance, cluster) to the
-// batch's draw, whose instance count is the batch's visible clusters.
+// and mark visible cluster slots. meshlet_compact.wgsl compacts those
+// slots in row/instance/cluster order, including soft-list overflow.
 // A row is one batch in one view: view 0 is the camera, the others the
 // planar reflections, views and reflection probe faces (their own eye,
 // planes and level) and the shadow passes (a cascade's or a local light's
@@ -75,7 +75,9 @@ struct BatchRow {
 // Per cluster 3 x vec4: (first index, triangles, level, its foliage region
 // plus one: meshlet_sway.wgsl), sphere, cone.
 @group(0) @binding(5) var<storage, read> clusters: array<vec4<u32>>;
-@group(0) @binding(6) var<storage, read_write> items: array<vec2<u32>>;
+// At each stable cluster slot: (cluster + 1, eligible for software raster).
+// Cleared once per frame, retained between the early and late phases.
+@group(0) @binding(6) var<storage, read_write> selected: array<vec2<u32>>;
 // Per batch a draw: (vertices, instances, first vertex, first instance).
 @group(0) @binding(7) var<storage, read_write> draws: array<atomic<u32>>;
 @group(0) @binding(8) var pyramid: texture_2d<f32>;
@@ -253,23 +255,15 @@ fn cull_clusters(@builtin(workgroup_id) wid: vec3<u32>,
     // Drawn by the camera, here or in the visibility buffer: counted once.
     if (view == 0u) { atomicAdd(&draws[params.soft.w], clusters[ci * 3u].y); }
     // meshlet.rs `soft`: a small cluster past the near plane goes to the
-    // visibility buffer (while the list has room).
+    // visibility buffer. Compaction assigns its capacity by stable rank.
+    var soft = 0u;
     if ((row.b.y & 2u) != 0u && perspective) {
       let depth = (params.view_proj * vec4<f32>(wc, 1.0)).w;
       let d = depth - wr;
       if (d > params.lod.w && 2.0 * wr * seen.w <= SOFT_PIXELS * d) {
-        let k = atomicAdd(&draws[params.soft.z], 1u);
-        if (k < params.soft.y) {
-          items[params.soft.x + k * 2u] = vec2<u32>(instance, ci);
-          // meshlet_raster.wgsl's entry: the row and its side, the
-          // mesh's first vertex.
-          let side = (row.b.y >> 2u) & 3u;
-          items[params.soft.x + k * 2u + 1u] = vec2<u32>(lo | (side << 28u), meshes[mesh + 1u].y);
-          continue;
-        }
+        soft = 1u;
       }
     }
-    let n = atomicAdd(&draws[lo * 4u + 1u], 1u);
-    items[row.a.w + n] = vec2<u32>(instance, ci);
+    selected[slot] = vec2<u32>(ci + 1u, soft);
   }
 }
