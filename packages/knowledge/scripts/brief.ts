@@ -1593,7 +1593,7 @@ interface MoodSpec {
   readonly pitch: number;
 }
 
-const MOODS: Readonly<Record<string, MoodSpec>> = {
+const AUDIO_MOODS: Readonly<Record<string, MoodSpec>> = {
   bright: { words: "bright, hopeful and playful", mode: "major", tempo: 0.7, pitch: 1.08 },
   dark: { words: "dark, tense and uneasy", mode: "minor", tempo: 0.35, pitch: 0.85 },
   warm: { words: "warm, cosy and friendly", mode: "major", tempo: 0.45, pitch: 0.97 },
@@ -1720,11 +1720,11 @@ function known<T extends string>(what: string, value: string, keys: readonly T[]
  */
 export function audioBrief(input: AudioBriefInput): AudioBrief {
   const music = known("music", input.music, MUSIC_STYLES);
-  const mood = known("mood", input.mood, Object.keys(MOODS));
+  const mood = known("mood", input.mood, Object.keys(AUDIO_MOODS));
   const genre = known("genre", input.genre, Object.keys(GENRES));
   const premise = (input.premise ?? "").trim();
   const s = STYLES[music];
-  const m = MOODS[mood]!;
+  const m = AUDIO_MOODS[mood]!;
   const g = GENRES[genre]!;
   const about = premise ? `for a ${genre.replace(/-/g, " ")} game: ${premise}` : `for a ${genre.replace(/-/g, " ")} game`;
   const direction = [
