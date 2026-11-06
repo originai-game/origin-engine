@@ -1245,9 +1245,8 @@ small widgets written in TypeScript over those calls and the toast service
 document (`og ui eject <screen>`, `packages/engine/src/ui/screens/`) and fills
 its slots with components and patterns (docs/ui.md §11). `templates/ui-kit`
 shows the components, the patterns and the genre showcases, and is the
-reference source of `references/<tier>/kit-*.png`;
-`packages/knowledge/skills/og-ui` teaches a Maker which to pick and how to
-theme it.
+reference source of `references/<tier>/kit-*.png`; the `screens` guide
+(`og api show screens`) tells an agent which to pick and how to check it.
 
 **The component library** (`packages/engine/src/ui/containers` and
 `ui/data`, merged into `og.ui`, docs/ui.md §11): `host false` components

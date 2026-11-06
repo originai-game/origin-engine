@@ -1,5 +1,4 @@
 module camera {
-  skill og-feel
   doc "The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names."
   doc "Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras."
 

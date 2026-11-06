@@ -1,4 +1,4 @@
-//! Full custom shaders (the S8 depth stream, `docs/depth.md` §8): a
+//! Full custom shaders (the S8 depth stream, `docs/design.md` §10.8): a
 //! [`MaterialShader`] of [`ShaderMode::Full`] replaces the lit shader's
 //! vertex and fragment stages with its own `vertex` and `fragment` entries
 //! over a fixed binding contract (`shaders/custom_common.wgsl`):

@@ -5,6 +5,12 @@
     "simulation": "changed",
     "breaking": [
       {
+        "member": "engine skills",
+        "change": "The engine ships no skills: the 25 knowledge skills (og-2d, og-ai, og-anim, og-audio, og-build, og-core, og-destruction, og-feel, og-game, og-i18n, og-model, og-net, og-physics, og-platform-sdk, og-render, og-story, og-taste, og-ui, architecture-discipline, component-forge, level-texturing, localization, recipe-craft, ui-craft, visual-acceptance) are deleted, with the skill:<name> packs, the game/skills mounts (the style catalogue beside og-taste and the three-to-og guide beside og-game included) and the IDL modules' `skill` key. The knowledge package mounts only the scaffold overlay.",
+        "fix": "Read the engine through og: `og api find <words>` and `og api show <name>` answer the API and the guides (`og api show start`). The platform removes the engine's former skill directories from its knowledge tree and stops pinning their packs.",
+        "find": []
+      },
+      {
         "member": "gameplay templates",
         "change": "All gameplay templates (game, game-2d and all archetypes), fx-showcase and the ui-kit gallery are removed, with their playtests and frames. Small feature fixtures retain core engine coverage. UI packs, styles, looks and locales remain. Test evidence and template-only capture/replay tools are no longer committed or shipped.",
         "fix": "Start from og create's empty skeleton and author gameplay with the engine API; do not depend on gameplay-template source paths.",
@@ -475,6 +481,10 @@
       }
     ],
     "added": [
+      {
+        "member": "og api guides",
+        "summary": "Guides beside the IDL (crates/og-api/guides: start, testing, determinism, looks, models, art-review, screens, animation, three-to-og) are generated into the wiki as guide-<name>.md: `og api show <guide>` prints one, `og api find` returns their numbered sections (`testing §2`) beside the API entries, and `--kind guide` selects them. They hold the workflow, thresholds and pitfalls no signature states."
+      },
       {
         "member": "og.motion.jump, JumpGoalDesc, MotionGoalKind.jump, MotionStatus.airborne",
         "summary": "A jump goal whose arc the simulation owns: after `prepare` it takes off in the tick through an og.CharacterController's jump (jumpSpeed set for `height` under the controller's gravity, so ceilings and ledges are the controller's) or, without one, a fixed ballistic arc back to the takeoff height; the goal ends `recover` seconds after the landing tick, and the jump's state is in snapshots and the hash, with the landing each tick predicts from the controller's arc and the ground along it (og.motion state MOTION4; MOTION3 and MOTION2 saves still load). The motion model only draws it, its generated clip retimed onto that flight (docs/design.md §2.7, Jumps)."

@@ -6,15 +6,15 @@ Systems the engine ships as TypeScript: game-level code, listed explicitly in Ga
 
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-feel`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module systems {
+  doc "Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 23851</sub>
+<sub>`api.ogt` line 23825</sub>
 
 ## Contents
 
@@ -40,4 +40,4 @@ const cameras: readonly System[]
 value cameras List.System "The camera controllers, in this order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera) and og.follow2D (og.Follow2D). Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`."
 ```
 
-<sub>`api.ogt` line 23855</sub>
+<sub>`api.ogt` line 23828</sub>

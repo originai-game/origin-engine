@@ -1,12 +1,11 @@
 type api
 version 1
 ---
-# expect: 67: reads as a place: mark how og.WorldOrigin's shift moves it
+# expect: 65: reads as a place: mark how og.WorldOrigin's shift moves it
 package "@origingame/fixture"
 doc "A fixture: the smallest valid API plus one mistake below."
 
 module reflect {
-  skill og-core
   doc "Reflection."
   place top
   struct FieldOptions {
@@ -52,7 +51,6 @@ module reflect {
 }
 
 module game {
-  skill og-core
   doc "The game: records with text fields (`str.N`) and list fields (`List.X.N`), which tests/idl.rs follows into every generated output."
   component Label {
     doc "A label."

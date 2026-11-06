@@ -8,15 +8,17 @@ Development only: not in publish builds, where every member does nothing and ans
 
 - **TypeScript**: functions are the namespace `og.debug`; components, resources and events are tokens on `og`.
 - **Publish builds**: dropped (members may override).
-- **Skill**: `og-render`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module debug {
+  doc "Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI) so they read in every capture and never hide behind geometry; and the debug views (physics, navigation, bounds, levels of detail, and the lit image's terms: shadow cascades, ambient occlusion, albedo, image-based and direct light) the command channel's `debug:` actions switch."
+  doc "Development only: not in publish builds, where every member does nothing and answers its default, so a game may leave its debug draws in. Debug draw is rendering: it never feeds back into the simulation, and its draws are not world state (a snapshot or a replay does not carry them)."
+  publish false
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 25637</sub>
+<sub>`api.ogt` line 25605</sub>
 
 ## Contents
 
@@ -68,7 +70,7 @@ fn line {
 }
 ```
 
-<sub>`api.ogt` line 25659</sub>
+<sub>`api.ogt` line 25626</sub>
 
 <a id="fn-box"></a>
 
@@ -101,7 +103,7 @@ fn box {
 }
 ```
 
-<sub>`api.ogt` line 25667</sub>
+<sub>`api.ogt` line 25634</sub>
 
 <a id="fn-sphere"></a>
 
@@ -134,7 +136,7 @@ fn sphere {
 }
 ```
 
-<sub>`api.ogt` line 25675</sub>
+<sub>`api.ogt` line 25642</sub>
 
 <a id="fn-arrow"></a>
 
@@ -167,7 +169,7 @@ fn arrow {
 }
 ```
 
-<sub>`api.ogt` line 25683</sub>
+<sub>`api.ogt` line 25650</sub>
 
 <a id="fn-axes"></a>
 
@@ -200,7 +202,7 @@ fn axes {
 }
 ```
 
-<sub>`api.ogt` line 25691</sub>
+<sub>`api.ogt` line 25658</sub>
 
 <a id="fn-text"></a>
 
@@ -233,7 +235,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 25699</sub>
+<sub>`api.ogt` line 25666</sub>
 
 <a id="fn-clear"></a>
 
@@ -260,7 +262,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 25707</sub>
+<sub>`api.ogt` line 25674</sub>
 
 <a id="fn-setView"></a>
 
@@ -289,7 +291,7 @@ fn setView {
 }
 ```
 
-<sub>`api.ogt` line 25712</sub>
+<sub>`api.ogt` line 25679</sub>
 
 <a id="fn-view"></a>
 
@@ -317,7 +319,7 @@ fn view {
 }
 ```
 
-<sub>`api.ogt` line 25718</sub>
+<sub>`api.ogt` line 25685</sub>
 
 <a id="fn-setEnabled"></a>
 
@@ -346,7 +348,7 @@ fn setEnabled {
 }
 ```
 
-<sub>`api.ogt` line 25724</sub>
+<sub>`api.ogt` line 25691</sub>
 
 <a id="fn-enabled"></a>
 
@@ -374,7 +376,7 @@ fn enabled {
 }
 ```
 
-<sub>`api.ogt` line 25730</sub>
+<sub>`api.ogt` line 25697</sub>
 
 ## Types
 
@@ -411,4 +413,4 @@ struct DebugDrawDesc {
 }
 ```
 
-<sub>`api.ogt` line 25643</sub>
+<sub>`api.ogt` line 25610</sub>

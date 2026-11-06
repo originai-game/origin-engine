@@ -1,4 +1,4 @@
-//! og.timeline on the runtime (docs/design.md §2.7, docs/depth.md §2):
+//! og.timeline on the runtime (docs/design.md §2.7, docs/design.md §10.2):
 //! seeking is exact, and playback raises its events and hands back what it
 //! took.
 //!

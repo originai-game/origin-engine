@@ -1,4 +1,4 @@
-//! The depth wave's light (docs/depth.md §7): the reference frames of rect
+//! The depth wave's light (docs/design.md §10.7): the reference frames of rect
 //! lights shaded with LTC (`rect-lights`), spot and point light cookies
 //! (`light-cookies`), volumetric fog lit by the sun through a slotted wall
 //! and by a spot (`volumetric-fog`), and natively a Cornell box baked by

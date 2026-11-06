@@ -12,15 +12,19 @@ A handle (an og.load answer, a texture, a sound, a geometry, a material, an enti
 
 - **TypeScript**: functions are named exports of the package: `import { … } from "@origingame/engine"`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-core`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module reflect {
+  doc "Reflection: components and resources are declared once with their field layout and metadata, and registered by name."
+  doc "The inspector, Tune, the probe, scene text and the wiki read this one schema. Each column factory below makes one field."
+  doc "A field holds one value, or a list of at most a fixed number of one number type or handle: `list(u32(), 8)`, `list(Asset(), 4)` (the list factory below). A list is read as a frozen copy (`push` throws) and written whole (`chain.passes = [...chain.passes, h]`); one over its capacity is refused, never truncated. A few vectors are numbered fields (`p0` to `p7`, as og.CameraRail does); a list of things with fields of their own is an entity each, with its own component, looped over by a query (a ring of skid marks, the laps of a race); a long record (a lap's taped inputs) is text in `str` fields of at most 4,096 bytes each, chunked over entities. Keep none of it in module variables: they are not world state, so a snapshot, a replay and a hot reload lose them."
+  doc "A handle (an og.load answer, a texture, a sound, a geometry, a material, an entity) is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Sound()`, `Font()`, `Style()`, `Geometry()`, `Material()`, `Entity()`: every handle type of the API has its factory, named as the type), never cast to another kind, in a component or a resource. A `u32` field refuses one (handles pass 2^32: `4294967298 is not a u32`); an `f64` holds the number but loses its type."
+  place top
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 734</sub>
+<sub>`api.ogt` line 733</sub>
 
 ## Contents
 
@@ -76,7 +80,7 @@ fn defineComponent {
 }
 ```
 
-<sub>`api.ogt` line 839</sub>
+<sub>`api.ogt` line 837</sub>
 
 <a id="fn-defineResource"></a>
 
@@ -107,7 +111,7 @@ fn defineResource {
 }
 ```
 
-<sub>`api.ogt` line 848</sub>
+<sub>`api.ogt` line 846</sub>
 
 ## Types
 
@@ -145,7 +149,7 @@ struct FieldOptions {
 }
 ```
 
-<sub>`api.ogt` line 742</sub>
+<sub>`api.ogt` line 740</sub>
 
 ## Column kinds
 
@@ -175,7 +179,7 @@ column f32 {
 }
 ```
 
-<sub>`api.ogt` line 755</sub>
+<sub>`api.ogt` line 753</sub>
 
 ```ogt
 column f64 {
@@ -186,7 +190,7 @@ column f64 {
 }
 ```
 
-<sub>`api.ogt` line 762</sub>
+<sub>`api.ogt` line 760</sub>
 
 ```ogt
 column u32 {
@@ -197,7 +201,7 @@ column u32 {
 }
 ```
 
-<sub>`api.ogt` line 769</sub>
+<sub>`api.ogt` line 767</sub>
 
 ```ogt
 column i32 {
@@ -208,7 +212,7 @@ column i32 {
 }
 ```
 
-<sub>`api.ogt` line 776</sub>
+<sub>`api.ogt` line 774</sub>
 
 ```ogt
 column bool {
@@ -219,7 +223,7 @@ column bool {
 }
 ```
 
-<sub>`api.ogt` line 783</sub>
+<sub>`api.ogt` line 781</sub>
 
 ```ogt
 column Vector2 {
@@ -230,7 +234,7 @@ column Vector2 {
 }
 ```
 
-<sub>`api.ogt` line 790</sub>
+<sub>`api.ogt` line 788</sub>
 
 ```ogt
 column Vector3 {
@@ -241,7 +245,7 @@ column Vector3 {
 }
 ```
 
-<sub>`api.ogt` line 797</sub>
+<sub>`api.ogt` line 795</sub>
 
 ```ogt
 column Quaternion {
@@ -252,7 +256,7 @@ column Quaternion {
 }
 ```
 
-<sub>`api.ogt` line 804</sub>
+<sub>`api.ogt` line 802</sub>
 
 ```ogt
 column Matrix4 {
@@ -263,7 +267,7 @@ column Matrix4 {
 }
 ```
 
-<sub>`api.ogt` line 811</sub>
+<sub>`api.ogt` line 809</sub>
 
 ```ogt
 column Color {
@@ -274,7 +278,7 @@ column Color {
 }
 ```
 
-<sub>`api.ogt` line 818</sub>
+<sub>`api.ogt` line 816</sub>
 
 ```ogt
 column str {
@@ -286,7 +290,7 @@ column str {
 }
 ```
 
-<sub>`api.ogt` line 825</sub>
+<sub>`api.ogt` line 823</sub>
 
 ```ogt
 column list {
@@ -296,4 +300,4 @@ column list {
 }
 ```
 
-<sub>`api.ogt` line 833</sub>
+<sub>`api.ogt` line 831</sub>

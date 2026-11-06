@@ -168,7 +168,7 @@ choice!(Finish {
 pub struct StyleChoices {
     /// The style's slug.
     pub name: String,
-    /// The look family it is for (og-taste §12: `ornate fantasy`).
+    /// The look family it is for (`ornate fantasy`).
     pub look: String,
     /// One line of what the game is.
     pub premise: String,

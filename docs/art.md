@@ -20,7 +20,7 @@ A style is one contract, held at four places:
             compiled into each    to the contract,     treatment, sprite   the assets' and
             generator request     deterministically,   outlines, palette   the frame's
             (images, models,      sources untouched    swaps, pixel-art    numbers
-            og-model recipes)                          rotation, camera
+            model recipes)                             rotation, camera
 ```
 
 1 and 2 make the assets carry the style. 3 keeps what really is a
@@ -47,8 +47,8 @@ the field lists; in outline:
 | `ArtMotion` | `stepFps` (animation on 2s/3s: 12, 8), `maxFrames` per clip, `squash` (0..1 default squash/stretch for og.tween presets) | conform flipbooks and clips, runtime `AnimationPlayer.stepFps` default, check |
 | `ArtCamera` | `projection` (perspective, orthographic), `fixedAngle`, `pitch`/`yaw` (isometric presets), `fovMin`/`fovMax`, `pixelPerfect` | runtime camera defaults (`og.camera` presets), check |
 
-Each of the 37 presets (`templates/looks/<slug>.ogt`) sets these values,
-and `og-taste` §12 documents them. A game's look `extends` a preset and
+Each of the 37 presets (`templates/looks/<slug>.ogt`) sets these values
+(the `looks` guide, `og api show looks`, says how a game uses them). A game's look `extends` a preset and
 overrides field by field.
 
 **The project names its look.** The cook needs the contract before game
@@ -170,17 +170,9 @@ optional `ui`.
   whose prompt asks for lettering; `cosmeticPreview` is rendered from a
   viewport (docs/ui.md §5.5), and its brief describes the framing only.
 
-The skills that use it: `producing-game-assets` (platform knowledge,
-mounted from origin-agent; its engine side is the "consumer on Origin
-Engine" section, owned here through og-build: og-build §8, request, import,
-cook and read the report, opt out, check), `og-model` (§5: one recipe per
-shape language, faceted, voxel, clay bevel, paper fold, wireframe for neon
-vector, with the og-geom generators; §6: the look's budget over the table)
-and `og-taste` (§1: the look is the contract and every asset request goes
-through the brief, with the command; §12: the cook conforms, the art bible
-keeps the brief of each kind). The craft skills `visual-acceptance`,
-`level-texturing`, `component-forge` and `recipe-craft` judge and make
-assets against the brief and the cook's report.
+Its callers are the platform's asset production (`producing-game-assets`,
+mounted from origin-agent) and the game agent, which sends every asset
+request through it (the `art-review` guide).
 
 ### 2.3 Conform: the cook makes every asset meet the contract
 
@@ -261,19 +253,19 @@ palette hit rate, edge statistics, the camera it was captured with
 (`og.Camera` through the probe) against `ArtCamera` (projection, pitch and
 yaw with `fixedAngle`, the field of view's range). The catalogue's checks
 and the style's `intended` traits go to a critic as the agent's step
-(visual-acceptance §5): the engine measures, the agent judges. JSON with
+(the `art-review` guide): the engine measures, the agent judges. JSON with
 `--json`, carrying the look's flattened art blocks and the scenes no
 capture script reaches. A reviewer measures a region of any of those
-frames with `og frame measure` (visual-acceptance §5, §6).
+frames with `og frame measure`.
 `og build --publish` prints its summary as warnings; it never refuses a
-build (numbers cannot judge a style, og-taste §11).
+build (numbers cannot judge a style).
 
 ### 2.6 The catalogue: honest layers, previews, sample scenes
 
 `looks/catalogue.json` (`schemaVersion` 3):
 
 - `preview`: `previews/<slug>.webp` beside the catalogue, 960×540, one
-  picture of the style as a game (`packages/knowledge/looks/previews/`),
+  picture of the style as a game (`packages/knowledge/previews/`),
   checked present by the validator.
 - `look.layers`: which layers the style needs, among `frame` (the look's
   render resources), `conform` (the cook's asset conformance), `runtime`
@@ -578,7 +570,7 @@ additive contract, kept stable like it (a change is a break with a
   tempo range at the mood's place in it, offset by the cue), `mode`,
   `beatsPerBar` 4, `bars`, `seconds`, `loop` (seamless at the bar line;
   jingles and stingers play once), `stems` (the style's layers for the
-  play loops, sample-aligned so og-audio §5 can bring them in and out),
+  play loops, sample-aligned so the music system can bring them in and out),
   `intensity`, `file` (`music/<id>.ogg`) and `format` (Ogg Vorbis, 48 kHz
   stereo, −16 LUFS, true peak −1 dBFS). A rhythm song's prompt asks for a
   strict tempo and a count-in, since the game judges presses on
@@ -681,7 +673,6 @@ it (origin-agent `web/`, `server/`, `packages/game`; ask 12 of
   request goes through `artBrief`, `og style check` before calling a
   screen done.
 - **The critic.** The evaluation stage hands the entry's three checks and
-  the captured frames to the blind critic (ask 12 as written).
-- **Previews** come from the mounted knowledge
-  (`knowledge/game/skills/og-taste/looks/previews/`), served as static
+  the captured frames to the blind critic (ask 12, landed; in git history).
+- **Previews** come from the engine package (`knowledge/previews/`), served as static
   files by the web build; no image is copied by hand.

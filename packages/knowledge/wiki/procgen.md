@@ -8,15 +8,16 @@ Weighted picks and shuffles are og.Rng's and RngStream's own (`weighted`, `permu
 
 - **TypeScript**: functions are the namespace `og.procgen`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-core`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module procgen {
+  doc "Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed`; give it the seed of a fork of og.Rng, `world.resource(og.Rng)`'s value `.fork(\"dungeon\").seed` (a fork needs og.Rng among a system's reads only), so the same world and label give the same output and the main stream does not move. A generator draws only from a stream on that seed, in a fixed order, with arithmetic that is bit-identical on every host: the same seed gives the same map natively and on the web, in a replay and after a restore."
+  doc "Weighted picks and shuffles are og.Rng's and RngStream's own (`weighted`, `permutation`; a shuffle is a permutation applied to an array). og.tilemap.fill writes a generated grid into a tilemap layer."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1787</sub>
+<sub>`api.ogt` line 1779</sub>
 
 ## Contents
 
@@ -73,7 +74,7 @@ fn noise {
 }
 ```
 
-<sub>`api.ogt` line 1847</sub>
+<sub>`api.ogt` line 1838</sub>
 
 <a id="fn-noiseGrid"></a>
 
@@ -101,7 +102,7 @@ fn noiseGrid {
 }
 ```
 
-<sub>`api.ogt` line 1856</sub>
+<sub>`api.ogt` line 1847</sub>
 
 <a id="fn-poissonDisk"></a>
 
@@ -129,7 +130,7 @@ fn poissonDisk {
 }
 ```
 
-<sub>`api.ogt` line 1891</sub>
+<sub>`api.ogt` line 1882</sub>
 
 <a id="fn-bsp"></a>
 
@@ -157,7 +158,7 @@ fn bsp {
 }
 ```
 
-<sub>`api.ogt` line 1947</sub>
+<sub>`api.ogt` line 1938</sub>
 
 <a id="fn-wfc"></a>
 
@@ -185,7 +186,7 @@ fn wfc {
 }
 ```
 
-<sub>`api.ogt` line 2005</sub>
+<sub>`api.ogt` line 1996</sub>
 
 ## Types
 
@@ -210,7 +211,7 @@ enum NoiseKind {
 }
 ```
 
-<sub>`api.ogt` line 1792</sub>
+<sub>`api.ogt` line 1783</sub>
 
 <a id="type-FbmDesc"></a>
 
@@ -258,7 +259,7 @@ struct FbmDesc {
 }
 ```
 
-<sub>`api.ogt` line 1798</sub>
+<sub>`api.ogt` line 1789</sub>
 
 <a id="type-NoiseGridDesc"></a>
 
@@ -303,7 +304,7 @@ struct NoiseGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 1824</sub>
+<sub>`api.ogt` line 1815</sub>
 
 <a id="type-PoissonDesc"></a>
 
@@ -353,7 +354,7 @@ struct PoissonDesc {
 }
 ```
 
-<sub>`api.ogt` line 1862</sub>
+<sub>`api.ogt` line 1853</sub>
 
 <a id="type-CellRect"></a>
 
@@ -378,7 +379,7 @@ struct CellRect {
 }
 ```
 
-<sub>`api.ogt` line 1897</sub>
+<sub>`api.ogt` line 1888</sub>
 
 <a id="type-BspDesc"></a>
 
@@ -436,7 +437,7 @@ struct BspDesc {
 }
 ```
 
-<sub>`api.ogt` line 1905</sub>
+<sub>`api.ogt` line 1896</sub>
 
 <a id="type-BspResult"></a>
 
@@ -459,7 +460,7 @@ struct BspResult {
 }
 ```
 
-<sub>`api.ogt` line 1940</sub>
+<sub>`api.ogt` line 1931</sub>
 
 <a id="type-WfcTile"></a>
 
@@ -491,7 +492,7 @@ struct WfcTile {
 }
 ```
 
-<sub>`api.ogt` line 1953</sub>
+<sub>`api.ogt` line 1944</sub>
 
 <a id="type-WfcCell"></a>
 
@@ -516,7 +517,7 @@ struct WfcCell {
 }
 ```
 
-<sub>`api.ogt` line 1966</sub>
+<sub>`api.ogt` line 1957</sub>
 
 <a id="type-WfcDesc"></a>
 
@@ -562,7 +563,7 @@ struct WfcDesc {
 }
 ```
 
-<sub>`api.ogt` line 1974</sub>
+<sub>`api.ogt` line 1965</sub>
 
 <a id="type-WfcResult"></a>
 
@@ -585,4 +586,4 @@ struct WfcResult {
 }
 ```
 
-<sub>`api.ogt` line 1998</sub>
+<sub>`api.ogt` line 1989</sub>

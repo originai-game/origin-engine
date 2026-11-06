@@ -106,7 +106,7 @@ fn fsr_resolves_the_half_scale_scene_to_the_output() {
     );
 }
 
-// The comparison behind docs/upscalers.md: `OG_FSR_OUT=<dir> cargo test
+// The comparison behind docs/design.md §11: `OG_FSR_OUT=<dir> cargo test
 // -p og-tests --test tests fsr::compare -- --ignored --nocapture` under
 // `og_gpu_acquire`, and `fsr::cost` under `og_gpu_acquire_all`.
 
@@ -237,7 +237,7 @@ fn crop(image: &RgbaImage, (x0, y0, w, h): (u32, u32, u32, u32), zoom: u32) -> R
 }
 
 #[test]
-#[ignore = "evidence for docs/upscalers.md: run by hand on the GPU"]
+#[ignore = "evidence for docs/design.md §11: run by hand on the GPU"]
 fn compare() {
     let dir = std::env::var("OG_FSR_OUT").unwrap_or_else(|_| "target/fsr-compare".into());
     let dir = std::path::Path::new(&dir);
@@ -286,7 +286,7 @@ fn compare() {
 /// `taa-sharpen` passes) and the frame's, the median of 64 frames after
 /// 16 to settle, for each upscaler.
 #[test]
-#[ignore = "evidence for docs/upscalers.md: run by hand on the GPU, alone"]
+#[ignore = "evidence for docs/design.md §11: run by hand on the GPU, alone"]
 fn cost() {
     fn clock() -> f64 {
         static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();

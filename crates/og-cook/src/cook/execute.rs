@@ -443,7 +443,7 @@ pub(super) fn run(
             if !missing.is_empty() {
                 let dir = s.rel.rsplit_once('/').map_or("", |(d, _)| d);
                 return Err(CookError(format!(
-                    "the style names asset(s) neither beside it in {dir}/ nor under assets/: {} (an id is read relative to the style file first, then from assets/; a `fallback` font is the project's own: point it at a CJK font the game has, or remove the line, og-taste §1)",
+                    "the style names asset(s) neither beside it in {dir}/ nor under assets/: {} (an id is read relative to the style file first, then from assets/; a `fallback` font is the project's own: point it at a CJK font the game has, or remove the line)",
                     missing.join(", ")
                 )));
             }

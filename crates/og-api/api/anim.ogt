@@ -1,5 +1,4 @@
 module anim {
-  skill og-anim
   doc "Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics."
   doc "Game code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none."
   doc "Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names; a rig with other names or proportions plays it retargeted (og.anim.retarget at run time, or a model's `animation { library }` import setting at cook time). Assets are not world state: a hot reload registers them again."
@@ -565,7 +564,7 @@ module anim {
   struct GraphDesc {
     doc "A blend-tree graph to register."
     desc true
-    field text String "The graph's `.ogt` text (`type animgraph`, `version 1`; og-anim §5 has every line)."
+    field text String "The graph's `.ogt` text (`type animgraph`, `version 1`)."
     field clips List.ClipInfo "The clips a `clip <motion> \"<name>\"` line may name, by ClipInfo.name: usually og.load.animation's `clips`."
   }
 

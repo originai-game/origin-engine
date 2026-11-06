@@ -1,4 +1,4 @@
-//! Custom post passes (the S8 depth stream, `docs/depth.md` §8): a game's
+//! Custom post passes (the S8 depth stream, `docs/design.md` §10.8): a game's
 //! WGSL fragment run over the frame's lit image, in the order of
 //! [`crate::RenderScene::custom_post`], after the built-in effects (depth of
 //! field, motion blur) and before exposure, bloom and the tone curve (its

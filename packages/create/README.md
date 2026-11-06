@@ -72,7 +72,7 @@ changing their signatures. `bin/brief.ts` is copied byte-for-byte from
 
 UI packs, look presets, locale resources, and design tokens remain available
 separately. The cook resolves the look's preset and UI pack; locale fonts
-still need installation and loading as described by the og-i18n skill.
+still need installation and loading as the `screens` guide describes (`og api show screens`).
 
 The release archive carries this package in `create/`. It ships one tracked
 `template/` and the catalogues and presets used by the briefs, but no

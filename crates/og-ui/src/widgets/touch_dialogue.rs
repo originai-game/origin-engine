@@ -73,7 +73,7 @@ impl Ui {
         self.stack.push(i);
         let key = self.nodes[i].key;
         // A dialogue that appears takes the focus (the topmost owns it: the
-        // og-ui skill §4, README §Focus navigation), so Enter, Space and the
+        // README §Focus navigation), so Enter, Space and the
         // pad's A reach it at once; under an open dialog it waits.
         if self.state.scope == 0 && !self.state.hits.iter().any(|h| h.key == key) {
             self.request_focus = key;

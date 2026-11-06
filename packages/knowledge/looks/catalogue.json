@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "about": "Origin Engine's style catalogue: 37 art styles in the engine's own words, each with what a critic checks on a rendered frame and what it must not hold as a defect (`intended`: the traits that look like defects but are the style, such as hard pixel steps, dither or broken edges; it never names the style, so a blind critic reads it too), the premises it fits, the look preset it maps to (an .ogt of type look; `extends \"<slug>\"` in a game's own look builds on it), the built-in UI style its look's `ui` line names, palette and asset specs, and an art-bible direction the agent expands per project. `preview` is a picture of the style as a game, 960x540 (previews/<slug>.webp against the root of the package that carries the catalogue: @origingame/engine/knowledge and @origingame/create-game; not in the platform mount, whose payload is text). `look.layers` names what the style needs: frame (the look's render resources), conform (the cook makes the assets meet the look's art contract), runtime (sprite outline, palette swap, pixel-art rotation, camera presets), authored (art no conformance makes); `look.support` follows from them: full when every layer but authored is implemented, content when authored art is needed, partial otherwise, with `missing` naming what, and a content style's `look.authored` the art it needs, each a kind of the art brief and what it must be (artBrief asks for exactly that, docs/art.md). `category` groups the styles in plain terms (`categories` names each group); `look.views` lists the views it suits (side-2d, top-down-2d, isometric-2.5d, third-person-3d, first-person-3d: the creation choice's words), only those its profiles draw; `look.mood` is the mood its preset is drawn in, one of bright, dark, warm, cold, soft and high-contrast, any of which a game's look may ask for instead (docs/art.md §2.10). og-taste §12 explains how to use it. The descriptions are original; no game or studio is the reference for a style.",
+  "about": "Origin Engine's style catalogue: 37 art styles in the engine's own words, each with what a critic checks on a rendered frame and what it must not hold as a defect (`intended`: the traits that look like defects but are the style, such as hard pixel steps, dither or broken edges; it never names the style, so a blind critic reads it too), the premises it fits, the look preset it maps to (an .ogt of type look; `extends \"<slug>\"` in a game's own look builds on it), the built-in UI style its look's `ui` line names, palette and asset specs, and an art-bible direction the agent expands per project. `preview` is a picture of the style as a game, 960x540 (previews/<slug>.webp against the root of the package that carries the catalogue: @origingame/engine/knowledge and @origingame/create-game; not in the platform mount, whose payload is text). `look.layers` names what the style needs: frame (the look's render resources), conform (the cook makes the assets meet the look's art contract), runtime (sprite outline, palette swap, pixel-art rotation, camera presets), authored (art no conformance makes); `look.support` follows from them: full when every layer but authored is implemented, content when authored art is needed, partial otherwise, with `missing` naming what, and a content style's `look.authored` the art it needs, each a kind of the art brief and what it must be (artBrief asks for exactly that, docs/art.md). `category` groups the styles in plain terms (`categories` names each group); `look.views` lists the views it suits (side-2d, top-down-2d, isometric-2.5d, third-person-3d, first-person-3d: the creation choice's words), only those its profiles draw; `look.mood` is the mood its preset is drawn in, one of bright, dark, warm, cold, soft and high-contrast, any of which a game's look may ask for instead (docs/art.md §2.10). The `art-review` guide (`og api show art-review`) explains how to use it. The descriptions are original; no game or studio is the reference for a style.",
   "categories": {
     "pixel": "Pixel art",
     "retro-3d": "Retro 3D",
@@ -19,7 +19,7 @@
     "storybook",
     "cyber"
   ],
-  "artBibleTemplate": "Art bible for {title}. Premise: {premise}. Camera: {camera}; platform and display size: {platform}. Style: {name} ({descriptor}) Direction: {direction} Palette: {palette}. Asset specs: {assets}. UI: the {ui} style the preset names (a `ui` line in the game's look picks another, or the game's own styles/<name>/style.ogt), re-coloured to this palette (og-taste §1). Avoid: {avoid}. Proof: the game's look is assets/looks/{game}.ogt, extending \"{slug}\"; capture the title, play and results screens with og run and check each against: {checks}. Every later asset is made inside this bible; a request for one asset never redesigns the style.",
+  "artBibleTemplate": "Art bible for {title}. Premise: {premise}. Camera: {camera}; platform and display size: {platform}. Style: {name} ({descriptor}) Direction: {direction} Palette: {palette}. Asset specs: {assets}. UI: the {ui} style the preset names (a `ui` line in the game's look picks another, or the game's own styles/<name>/style.ogt), re-coloured to this palette. Avoid: {avoid}. Proof: the game's look is assets/looks/{game}.ogt, extending \"{slug}\"; capture the title, play and results screens with og run and check each against: {checks}. Every later asset is made inside this bible; a request for one asset never redesigns the style.",
   "styles": [
     {
       "slug": "expressionist-painting",
@@ -1929,16 +1929,16 @@
           "MaterialStyle.surface"
         ],
         "missing": [
-          "the art is content: models built as card sheets with og-model's paper fold recipe (templates/looks/paper-craft/models: folded cones, cut card hills stood in layers, a card plateau); the engine draws the card grain (MaterialStyle.surface paper) on whatever it is given"
+          "the art is content: models built as card sheets with the paper fold recipe (templates/looks/paper-craft/models: folded cones, cut card hills stood in layers, a card plateau); the engine draws the card grain (MaterialStyle.surface paper) on whatever it is given"
         ],
         "authored": [
           {
             "kind": "character",
-            "what": "built as folded card: flat sheets with crisp folds, scored edges and visible thickness, no curved surfaces (og-model's paper fold recipe)"
+            "what": "built as folded card: flat sheets with crisp folds, scored edges and visible thickness, no curved surfaces (the paper fold recipe)"
           },
           {
             "kind": "prop",
-            "what": "built as card sheets folded and stood in layers, crisp creases and flat faces (og-model's paper fold recipe)"
+            "what": "built as card sheets folded and stood in layers, crisp creases and flat faces (the paper fold recipe)"
           }
         ]
       },

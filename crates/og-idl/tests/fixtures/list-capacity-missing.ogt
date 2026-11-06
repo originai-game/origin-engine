@@ -1,12 +1,11 @@
 type api
 version 1
 ---
-# expect: 47: a list field declares its element and capacity: `List.f32.8`
+# expect: 45: a list field declares its element and capacity: `List.f32.8`
 package "@origingame/fixture"
 doc "A fixture: the smallest valid API plus one mistake below."
 
 module reflect {
-  skill og-core
   doc "Reflection."
   place top
   struct FieldOptions {
@@ -40,7 +39,6 @@ module reflect {
 }
 
 module game {
-  skill og-core
   doc "The game."
   resource Unbounded {
     doc "No capacity."

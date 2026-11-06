@@ -14,15 +14,20 @@ Not in publish builds: every member does nothing there, so a game may leave its 
 
 - **TypeScript**: functions are the namespace `og.assert`; components, resources and events are tokens on `og`.
 - **Publish builds**: dropped (members may override).
-- **Skill**: `og-build`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module assert {
+  doc "Assertions: properties of the game checked as it runs, after the Antithesis SDK's. `og.assert.always(world.get(hero, Health).hp >= 0, \"hp never negative\", { hp })` holds on every call, `og.assert.sometimes(boss.phase === 2, \"boss reaches phase 2\")` must hold at least once in a run, `og.assert.reachable(\"door opened\")` must run at least once, `og.assert.unreachable(\"fell through the floor\")` must never run, and `og.assert.each(level, cleared, \"each level cleared\")` keeps one bucket per distinct key, each of which must hold once."
+  doc "Each is identified by its name and the place it is called from (`src/player.ts:42`, which the build records for every `og.assert.<kind>(...)` call, so a site that never runs is still listed). A call that passes costs a lookup in the runtime, without a call into the engine; nothing an assertion does reaches the world, so a run with them hashes and replays as one without."
+  doc "Violations and coverage go through the probe (`assertions`) into `og run --json`'s `assertions` and `og test`'s results: the tick, the name and place, and the values (`details`). At the end of a run, every `sometimes`, `reachable` and `each` bucket that never fired is listed as uncovered: a sometimes that never fires is a test that never got there. A playtest's `require` names the ones that must fire."
+  doc "Beside them, every tick of a development or test build checks the default invariants from reflection: no NaN or infinity in a reflected float, a number inside its field's min..max where it declares one, no Entity field naming a despawned entity, and, where the world declares og.WorldBounds, every entity's place inside them. They read the components that changed (where the world tracks their changes) or every row, never write, and name the entity, component, field and value of their first failure."
+  doc "Not in publish builds: every member does nothing there, so a game may leave its assertions in."
+  publish false
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 25739</sub>
+<sub>`api.ogt` line 25706</sub>
 
 ## Contents
 
@@ -79,7 +84,7 @@ fn always {
 }
 ```
 
-<sub>`api.ogt` line 25870</sub>
+<sub>`api.ogt` line 25836</sub>
 
 <a id="fn-sometimes"></a>
 
@@ -113,7 +118,7 @@ fn sometimes {
 }
 ```
 
-<sub>`api.ogt` line 25880</sub>
+<sub>`api.ogt` line 25846</sub>
 
 <a id="fn-reachable"></a>
 
@@ -145,7 +150,7 @@ fn reachable {
 }
 ```
 
-<sub>`api.ogt` line 25890</sub>
+<sub>`api.ogt` line 25856</sub>
 
 <a id="fn-unreachable"></a>
 
@@ -177,7 +182,7 @@ fn unreachable {
 }
 ```
 
-<sub>`api.ogt` line 25899</sub>
+<sub>`api.ogt` line 25865</sub>
 
 <a id="fn-each"></a>
 
@@ -209,7 +214,7 @@ fn each {
 }
 ```
 
-<sub>`api.ogt` line 25908</sub>
+<sub>`api.ogt` line 25874</sub>
 
 <a id="fn-record"></a>
 
@@ -239,7 +244,7 @@ fn record {
 }
 ```
 
-<sub>`api.ogt` line 25916</sub>
+<sub>`api.ogt` line 25882</sub>
 
 ## Components, resources and events
 
@@ -274,7 +279,7 @@ resource WorldBounds {
 }
 ```
 
-<sub>`api.ogt` line 25855</sub>
+<sub>`api.ogt` line 25821</sub>
 
 ## Types
 
@@ -305,7 +310,7 @@ enum AssertKind {
 }
 ```
 
-<sub>`api.ogt` line 25748</sub>
+<sub>`api.ogt` line 25714</sub>
 
 <a id="type-AssertRecord"></a>
 
@@ -338,7 +343,7 @@ struct AssertRecord {
 }
 ```
 
-<sub>`api.ogt` line 25757</sub>
+<sub>`api.ogt` line 25723</sub>
 
 <a id="type-AssertOrigin"></a>
 
@@ -363,7 +368,7 @@ enum AssertOrigin {
 }
 ```
 
-<sub>`api.ogt` line 25769</sub>
+<sub>`api.ogt` line 25735</sub>
 
 <a id="type-AssertBucket"></a>
 
@@ -386,7 +391,7 @@ struct AssertBucket {
 }
 ```
 
-<sub>`api.ogt` line 25776</sub>
+<sub>`api.ogt` line 25742</sub>
 
 <a id="type-AssertSite"></a>
 
@@ -427,7 +432,7 @@ struct AssertSite {
 }
 ```
 
-<sub>`api.ogt` line 25783</sub>
+<sub>`api.ogt` line 25749</sub>
 
 <a id="type-AssertViolation"></a>
 
@@ -472,7 +477,7 @@ struct AssertViolation {
 }
 ```
 
-<sub>`api.ogt` line 25801</sub>
+<sub>`api.ogt` line 25767</sub>
 
 <a id="type-AssertUncovered"></a>
 
@@ -503,7 +508,7 @@ struct AssertUncovered {
 }
 ```
 
-<sub>`api.ogt` line 25819</sub>
+<sub>`api.ogt` line 25785</sub>
 
 <a id="type-AssertCost"></a>
 
@@ -534,7 +539,7 @@ struct AssertCost {
 }
 ```
 
-<sub>`api.ogt` line 25832</sub>
+<sub>`api.ogt` line 25798</sub>
 
 <a id="type-AssertReport"></a>
 
@@ -565,4 +570,4 @@ struct AssertReport {
 }
 ```
 
-<sub>`api.ogt` line 25844</sub>
+<sub>`api.ogt` line 25810</sub>

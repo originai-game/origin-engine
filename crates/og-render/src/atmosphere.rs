@@ -588,7 +588,7 @@ mod tests {
         look.light_intensity * look.light_direction.y.max(0.0) / look.ambient
     }
 
-    /// og-taste §8's warm dusk: at the default tilt (25°) the sun is 10 to
+    /// A warm dusk: at the default tilt (25°) the sun is 10 to
     /// 20° up between 16.5 and 17.25 h, warm from about 17 h, and its light
     /// on level ground still at least half the sky's, so shadows read. By
     /// 17.5 h it is under 7° and its light a third of the sky's (the

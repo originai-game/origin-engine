@@ -28,11 +28,16 @@ pub struct Entry {
 pub fn entries(page: &str, text: &str) -> Vec<Entry> {
     let lines: Vec<&str> = text.lines().collect();
     let mut out = Vec::new();
-    // The page's module overview (`# The `input` module` to its contents): `og api show input`.
-    if let Some(h) = lines
-        .iter()
-        .position(|l| l.starts_with("# The `") && l.ends_with("` module"))
-    {
+    // The page's module overview (`# The `input` module` to its contents):
+    // `og api show input`; a guide's page is its overview whole (`og api show testing`).
+    if let Some(h) = lines.iter().position(|l| {
+        l.starts_with("# The `") && (l.ends_with("` module") || l.contains("` guide: "))
+    }) {
+        let kind = if lines[h].ends_with("` module") {
+            "module"
+        } else {
+            "guide"
+        };
         let end = lines[h..]
             .iter()
             .position(|l| l.starts_with("## "))
@@ -44,7 +49,7 @@ pub fn entries(page: &str, text: &str) -> Vec<Entry> {
             .unwrap_or_default();
         out.push(Entry {
             name: between(lines[h], '`', '`').unwrap_or_default().to_string(),
-            kind: "module".to_string(),
+            kind: kind.to_string(),
             page: page.to_string(),
             summary,
             body: lines[h..end].join("\n").trim().to_string(),
@@ -334,8 +339,8 @@ pub fn load(dir: &Path) -> std::io::Result<Vec<Entry>> {
     Ok(all)
 }
 
-const KINDS: [&str; 8] = [
-    "module", "fn", "record", "type", "member", "const", "value", "column",
+const KINDS: [&str; 9] = [
+    "module", "fn", "record", "type", "member", "const", "value", "column", "guide",
 ];
 
 /// `og api find <words> [--kind K] [--limit N]` or `og api show <name>`.
@@ -453,8 +458,8 @@ mod tests {
             })
             .sum();
         let all = wiki();
-        let modules = all.iter().filter(|e| e.kind == "module").count();
-        assert_eq!(all.len() - modules, anchors);
+        let overviews = all.iter().filter(|e| e.body.starts_with("# The `")).count();
+        assert_eq!(all.len() - overviews, anchors);
         let unnamed: Vec<_> = all
             .iter()
             .filter(|e| e.name.is_empty() || e.summary.is_empty())

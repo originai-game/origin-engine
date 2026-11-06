@@ -1,4 +1,4 @@
-//! The depth wave's render-lod scenes (docs/depth.md §6): mesh levels of
+//! The depth wave's render-lod scenes (docs/design.md §10.6): mesh levels of
 //! detail picked by projected error (`lod-levels`, cooked: in
 //! og-tests-cooked's depth_render_scenes), a closed room whose
 //! chrome sphere reflects a reflection probe (`probe-interior`), and

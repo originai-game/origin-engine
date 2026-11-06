@@ -14,15 +14,19 @@ Every tick each peer hashes its world without its own session (og.Input, og.Poin
 
 - **TypeScript**: functions are the namespace `og.net`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-net`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module net {
+  doc "Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep (`enabled`, `players`); join a room (og.platform.roomJoin, or `og run --room ws://127.0.0.1:P/<room>` with `og relay` natively). Until the room holds `players` peers the world runs freely on each (a lobby, the local input driving the local player); then the authority (the lowest peer number) starts: every other peer takes its world's snapshot, the seats go to the peers in number order, and from then on tick t runs only when every seated player's input for t is in. Once the room is full, the other peers' worlds hold for that snapshot (for at most stallTimeout, 5 s when it is 0), so a slow authority's start does not find them far into a lobby it replaces. A peer that joins a running room takes a free seat (or watches) from a snapshot a running peer hands it."
+  doc "Inputs are og.PlayerInput: one entity per player carries it with `player` set to its seat; the engine writes every other field at the start of each tick from that seat's input for the tick. A system reads the inputs from og.PlayerInput, never from og.Input, and gives this peer's own with og.net.submit (from a system that reads og.Input: what the local player holds now, sent for the tick inputDelay ticks on). Without a room, or with lockstep off, og.net.submit drives the local player's og.PlayerInput the next tick, so the same game plays alone."
+  doc "Rollback (og.Lockstep.mode `rollback`, maxPrediction) keeps the same seats, inputs and hashes but does not wait for a late input: the tick runs on a prediction (the player's last input) and, when the real one differs, the world is rewound to the engine's own snapshot of that tick and runs forward again in the same frame, sounds played once and the view snapped. The peers agree on the confirmed world (og.net.finalHash); og.net.resimulating tells a game's own presentation that a tick runs again. Inputs cross the room unreliably and are repeated until acknowledged, so a lost message costs time, not the room."
+  doc "A peer that goes silent (a frozen tab, a lost connection the room has not noticed yet) is reported as og.PeerStalled after a second, and dropped after og.Lockstep.stallTimeout: the authority (the lowest running peer that is not itself silent) agrees with every other running peer how far the seat's inputs reach, and every peer empties the seat from the tick after its last input, so og.SeatDropped arrives at one tick everywhere and the room plays on; a peer that leaves the room is dropped the same way at once. A dropped seat's input is empty (og.PlayerInput's zero value), so a held move or fire stops; a game that wants a bot there reads og.SeatDropped and drives that seat itself. With og.Lockstep.rejoin a dropped player that comes back (the same peer, or a newcomer of the same name) takes its seat again from the authority's world, og.SeatRejoined at one tick on every peer. Wall time decides only when a peer is reported and dropped, never what the confirmed world is."
+  doc "Every tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio, og.Camera, og.Lockstep, the gameplay actions of og.input, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input or og.input's actions)."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 26164</sub>
+<sub>`api.ogt` line 26128</sub>
 
 ## Contents
 
@@ -80,7 +84,7 @@ fn submit {
 }
 ```
 
-<sub>`api.ogt` line 26355</sub>
+<sub>`api.ogt` line 26318</sub>
 
 <a id="fn-shape"></a>
 
@@ -110,7 +114,7 @@ fn shape {
 }
 ```
 
-<sub>`api.ogt` line 26362</sub>
+<sub>`api.ogt` line 26325</sub>
 
 <a id="fn-submitInput"></a>
 
@@ -143,7 +147,7 @@ fn submitInput {
 }
 ```
 
-<sub>`api.ogt` line 26369</sub>
+<sub>`api.ogt` line 26332</sub>
 
 <a id="fn-command"></a>
 
@@ -176,7 +180,7 @@ fn command {
 }
 ```
 
-<sub>`api.ogt` line 26378</sub>
+<sub>`api.ogt` line 26341</sub>
 
 <a id="fn-commands"></a>
 
@@ -207,7 +211,7 @@ fn commands {
 }
 ```
 
-<sub>`api.ogt` line 26387</sub>
+<sub>`api.ogt` line 26350</sub>
 
 <a id="fn-status"></a>
 
@@ -235,7 +239,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 26395</sub>
+<sub>`api.ogt` line 26358</sub>
 
 <a id="fn-resimulating"></a>
 
@@ -263,7 +267,7 @@ fn resimulating {
 }
 ```
 
-<sub>`api.ogt` line 26401</sub>
+<sub>`api.ogt` line 26364</sub>
 
 <a id="fn-finalHash"></a>
 
@@ -293,7 +297,7 @@ fn finalHash {
 }
 ```
 
-<sub>`api.ogt` line 26407</sub>
+<sub>`api.ogt` line 26370</sub>
 
 <a id="fn-hash"></a>
 
@@ -321,7 +325,7 @@ fn hash {
 }
 ```
 
-<sub>`api.ogt` line 26414</sub>
+<sub>`api.ogt` line 26377</sub>
 
 ## Components, resources and events
 
@@ -392,7 +396,7 @@ resource Lockstep {
 }
 ```
 
-<sub>`api.ogt` line 26185</sub>
+<sub>`api.ogt` line 26148</sub>
 
 <a id="record-PlayerInput"></a>
 
@@ -433,7 +437,7 @@ component PlayerInput {
 }
 ```
 
-<sub>`api.ogt` line 26229</sub>
+<sub>`api.ogt` line 26192</sub>
 
 <a id="record-Desync"></a>
 
@@ -458,7 +462,7 @@ event Desync {
 }
 ```
 
-<sub>`api.ogt` line 26248</sub>
+<sub>`api.ogt` line 26211</sub>
 
 <a id="record-SeatDropped"></a>
 
@@ -485,7 +489,7 @@ event SeatDropped {
 }
 ```
 
-<sub>`api.ogt` line 26255</sub>
+<sub>`api.ogt` line 26218</sub>
 
 <a id="record-SeatRejoined"></a>
 
@@ -510,7 +514,7 @@ event SeatRejoined {
 }
 ```
 
-<sub>`api.ogt` line 26263</sub>
+<sub>`api.ogt` line 26226</sub>
 
 <a id="record-PeerStalled"></a>
 
@@ -537,7 +541,7 @@ event PeerStalled {
 }
 ```
 
-<sub>`api.ogt` line 26270</sub>
+<sub>`api.ogt` line 26233</sub>
 
 ## Types
 
@@ -562,7 +566,7 @@ enum NetMode {
 }
 ```
 
-<sub>`api.ogt` line 26172</sub>
+<sub>`api.ogt` line 26135</sub>
 
 <a id="type-InputDesc"></a>
 
@@ -592,7 +596,7 @@ struct InputDesc {
 }
 ```
 
-<sub>`api.ogt` line 26279</sub>
+<sub>`api.ogt` line 26242</sub>
 
 <a id="type-NetShapeDesc"></a>
 
@@ -622,7 +626,7 @@ struct NetShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 26289</sub>
+<sub>`api.ogt` line 26252</sub>
 
 <a id="type-LockstepSeat"></a>
 
@@ -653,7 +657,7 @@ struct LockstepSeat {
 }
 ```
 
-<sub>`api.ogt` line 26301</sub>
+<sub>`api.ogt` line 26264</sub>
 
 <a id="type-LockstepStatus"></a>
 
@@ -728,7 +732,7 @@ struct LockstepStatus {
 }
 ```
 
-<sub>`api.ogt` line 26314</sub>
+<sub>`api.ogt` line 26277</sub>
 
 ## Column kinds
 
@@ -747,4 +751,4 @@ column NetMode {
 }
 ```
 
-<sub>`api.ogt` line 26178</sub>
+<sub>`api.ogt` line 26141</sub>

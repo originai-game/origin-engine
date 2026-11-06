@@ -44,8 +44,8 @@ Normative detail is in `docs/design.md` (and `docs/ui.md` for the UI).
 - **Text in, blobs out.** Scenes and assets are line-based `.ogt` text, cooked
   into `.ogb` blobs with a type hash, a schema version and a cook stamp.
 - **Built for an agent author.** Desc structs whose zero value is a sensible
-  default, errors as values, three.js vocabulary, a generated wiki and skills
-  shipped in the package, and `og` commands that check what a reviewer checks
+  default, errors as values, three.js vocabulary, a generated wiki and guides
+  behind `og api find`/`show`, and `og` commands that check what a reviewer checks
   by eye (`og ui check`, `og style check`).
 
 ## Status
@@ -171,8 +171,8 @@ What is on main, grouped by area, with the API module (`og.<module>`, from
   (`og.commands`), the inspector and transform gizmos in development builds.
 - Data-parallel lanes inside a system, on rayon natively and Workers on the
   web, with the same results (og-lanes).
-- The knowledge package: 24 skills, the generated API wiki, the three-to-og
-  guide, the style catalogue (`packages/knowledge`, shipped inside
+- The knowledge package: the generated API wiki with the engine's guides,
+  the style catalogue (`packages/knowledge`, shipped inside
   `@origingame/engine` as `knowledge/`).
 
 The remaining API modules: `og.game` (the game entry), `og.system` and
@@ -193,7 +193,7 @@ game's `project.ogt` pins, downloading it once into
 signed with the engine's key (`docs/release.md` §1). A version is one
 archive per platform (darwin-arm64, linux-x64, win32-x64) carrying the API,
 the runtime, both web hosts, the shell, `og` and the native addon, the
-templates and archetypes, and the agents' knowledge. It needs bun; no npm,
+project skeleton, and the agents' knowledge. It needs bun; no npm,
 no Rust, no checkout. linux-arm64 has no prebuilt `og` yet. Inside this
 repository, a project runs against the checkout with
 `OG_ENGINE_PACKAGE=packages/engine`.
@@ -239,12 +239,11 @@ packages/
   engine           @origingame/engine: TypeScript API and runtime, web hosts, shell, the UI kit (src/ui); a dist's engine/
   create           @origingame/create-game: the templates `og new` writes; a dist's create/
   design           @origingame/design: the design language and tokens shared with origin-agent; a dist's design/
-  knowledge        skills, guides, the generated wiki, looks, scaffold (shipped inside the engine package)
+  knowledge        the generated wiki (API and guides), looks, scaffold (shipped inside the engine package)
   launcher         og, the launcher: install.sh, install.ps1 and the version a game pins (docs/release.md §1)
-templates/         game (3D), game-2d, archetypes/, looks/, styles/, ui-kit, fx-showcase
+templates/         looks/, styles/, locales/, tools/
 tests/             evidence/, install/ (the install test), replay/ (replay goldens)
 scripts/           check.sh (the gate), lane.sh, worktree.sh, release.sh, wave-end.sh, ...
-tools/             art samples, benches, wasm determinism
 third_party/       vendored sources (basis-universal, xatlas, ltc, cleanedge, pixelorama)
 docs/              design.md (normative), ui.md, roadmap.md, release.md, ci.md, art.md, ...
 ```

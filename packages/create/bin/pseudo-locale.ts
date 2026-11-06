@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// The pseudo-locale of a game's string tables (og-i18n §6, docs/ui.md §15.3):
+// The pseudo-locale of a game's string tables (docs/ui.md §15.3):
 // `assets/strings/qps-ploc.ogt`, every message of the base table with its
 // Latin letters accented, 40 % longer and in brackets, so a run in it shows
 // which words overflow their box and which never came from a table (they
@@ -155,7 +155,7 @@ export function pseudoTable(base: string): string {
     "type strings",
     "version 1",
     "---",
-    `# The pseudo-locale (og-i18n §6): ${t.locale || "the base"} table's messages accented, 40 %`,
+    `# The pseudo-locale: ${t.locale || "the base"} table's messages accented, 40 %`,
     "# longer and in brackets. Generated: run `bun tools/pseudo-locale.ts` after",
     "# the base table changes, never edit it by hand.",
     `locale ${ogtString(PSEUDO_LOCALE)}`,

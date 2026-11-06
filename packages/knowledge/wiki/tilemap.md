@@ -16,15 +16,20 @@ Run-time maps: og.tilemap.create makes a map from a desc and og.tilemap.resize c
 
 - **TypeScript**: functions are the namespace `og.tilemap`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-2d`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module tilemap {
+  doc "Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component."
+  doc "Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them."
+  doc "With og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it)."
+  doc "Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position."
+  doc "Orientations: a map is orthogonal, isometric (diamonds on a turned grid), staggered (diamonds in rows) or hexagonal (pointy- or flat-top), from its `orientation` line or its Tiled map. cellAt, cellCenter and neighbours follow it; an isometric or staggered tile's image stands up from its cell's bottom (taller tiles overlap the ones behind, drawn back to front); solid tiles off the orthogonal grid collide as one collider per connected solid region, its outline (a hollow polyline in 2D, a prism in 3D; a layer's cellColliders makes it one diamond or hexagon per cell). Building them is one-time per map edit or resize; in 3D a non-orthogonal map's prisms build in about 75 ms per 400,000 triangles (a 256 × 256 hex map, half solid at random, release), so keep large 3D hex and iso collision layers in large solid regions, or edit them rarely. Stepping costs per region, not per cell. Terrain layers need a square grid (orthogonal or isometric)."
+  doc "Run-time maps: og.tilemap.create makes a map from a desc and og.tilemap.resize changes a map's size, both in game code. A map made or resized is world state: the og.tilemap state block saves it whole (its tilesets by asset id), so a save restores it in a session that never made it."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 12519</sub>
+<sub>`api.ogt` line 12501</sub>
 
 ## Contents
 
@@ -82,7 +87,7 @@ fn setTile {
 }
 ```
 
-<sub>`api.ogt` line 12703</sub>
+<sub>`api.ogt` line 12684</sub>
 
 <a id="fn-fill"></a>
 
@@ -112,7 +117,7 @@ fn fill {
 }
 ```
 
-<sub>`api.ogt` line 12721</sub>
+<sub>`api.ogt` line 12702</sub>
 
 <a id="fn-create"></a>
 
@@ -142,7 +147,7 @@ fn create {
 }
 ```
 
-<sub>`api.ogt` line 12728</sub>
+<sub>`api.ogt` line 12709</sub>
 
 <a id="fn-resize"></a>
 
@@ -172,7 +177,7 @@ fn resize {
 }
 ```
 
-<sub>`api.ogt` line 12735</sub>
+<sub>`api.ogt` line 12716</sub>
 
 <a id="fn-neighbours"></a>
 
@@ -206,7 +211,7 @@ fn neighbours {
 }
 ```
 
-<sub>`api.ogt` line 12742</sub>
+<sub>`api.ogt` line 12723</sub>
 
 <a id="fn-getTile"></a>
 
@@ -242,7 +247,7 @@ fn getTile {
 }
 ```
 
-<sub>`api.ogt` line 12751</sub>
+<sub>`api.ogt` line 12732</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -274,7 +279,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 12761</sub>
+<sub>`api.ogt` line 12742</sub>
 
 <a id="fn-cellCenter"></a>
 
@@ -308,7 +313,7 @@ fn cellCenter {
 }
 ```
 
-<sub>`api.ogt` line 12769</sub>
+<sub>`api.ogt` line 12750</sub>
 
 ## Components, resources and events
 
@@ -367,7 +372,7 @@ component Tilemap {
 }
 ```
 
-<sub>`api.ogt` line 12537</sub>
+<sub>`api.ogt` line 12518</sub>
 
 ## Types
 
@@ -383,7 +388,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TilemapAsset "A loaded map: its layers, tilesets and objects."
 ```
 
-<sub>`api.ogt` line 12528</sub>
+<sub>`api.ogt` line 12509</sub>
 
 <a id="type-TileOrientation"></a>
 
@@ -412,7 +417,7 @@ enum TileOrientation {
 }
 ```
 
-<sub>`api.ogt` line 12569</sub>
+<sub>`api.ogt` line 12550</sub>
 
 <a id="type-TileLayerInfo"></a>
 
@@ -451,7 +456,7 @@ struct TileLayerInfo {
 }
 ```
 
-<sub>`api.ogt` line 12578</sub>
+<sub>`api.ogt` line 12559</sub>
 
 <a id="type-TileObject"></a>
 
@@ -486,7 +491,7 @@ struct TileObject {
 }
 ```
 
-<sub>`api.ogt` line 12593</sub>
+<sub>`api.ogt` line 12574</sub>
 
 <a id="type-TilemapInfo"></a>
 
@@ -523,7 +528,7 @@ struct TilemapInfo {
 }
 ```
 
-<sub>`api.ogt` line 12609</sub>
+<sub>`api.ogt` line 12590</sub>
 
 <a id="type-TileLayerDesc"></a>
 
@@ -563,7 +568,7 @@ struct TileLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 12625</sub>
+<sub>`api.ogt` line 12606</sub>
 
 <a id="type-TilemapDesc"></a>
 
@@ -613,7 +618,7 @@ struct TilemapDesc {
 }
 ```
 
-<sub>`api.ogt` line 12641</sub>
+<sub>`api.ogt` line 12622</sub>
 
 <a id="type-ResizeDesc"></a>
 
@@ -649,7 +654,7 @@ struct ResizeDesc {
 }
 ```
 
-<sub>`api.ogt` line 12668</sub>
+<sub>`api.ogt` line 12649</sub>
 
 <a id="type-SetTileDesc"></a>
 
@@ -681,7 +686,7 @@ struct SetTileDesc {
 }
 ```
 
-<sub>`api.ogt` line 12684</sub>
+<sub>`api.ogt` line 12665</sub>
 
 <a id="type-TileCell"></a>
 
@@ -704,7 +709,7 @@ struct TileCell {
 }
 ```
 
-<sub>`api.ogt` line 12696</sub>
+<sub>`api.ogt` line 12677</sub>
 
 <a id="type-FillDesc"></a>
 
@@ -736,7 +741,7 @@ struct FillDesc {
 }
 ```
 
-<sub>`api.ogt` line 12710</sub>
+<sub>`api.ogt` line 12691</sub>
 
 ## Column kinds
 
@@ -755,4 +760,4 @@ column TilemapAsset {
 }
 ```
 
-<sub>`api.ogt` line 12530</sub>
+<sub>`api.ogt` line 12511</sub>

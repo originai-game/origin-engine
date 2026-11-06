@@ -2,7 +2,7 @@
 
 The design of og-ui as the engine's game UI infrastructure. It is normative
 for `crates/og-ui`, the UI pass of `crates/og-render`, the UI members of the
-API (`module ui` in `crates/og-api/api/ui.ogt`), the style format, the UI kinds
+API (`module ui` in `crates/og-api/api/ui*.ogt`), the style format, the UI kinds
 of the art brief and the UI checks of `og`. `docs/design.md` §2.7 points
 here.
 
@@ -182,8 +182,8 @@ for the engine's blending, and measure a dim on bright art.
   `packages/engine/extensions/materials`) ships foil, holo, burn and rarity
   glow as `type ui-material` assets with tunable parameters; a style
   dresses a part with one (`material "ui-kits/materials/foil.ogt" 0.7`) or
-  an element's layer composites through it. Its skill
-  (`using-ui-materials`) lists each preset's parameters.
+  an element's layer composites through it. Each preset's parameters are
+  in its `.ogt`.
 
 ### 5.5 Particles, video and 3D in the UI
 
@@ -1185,8 +1185,8 @@ it:
 - art: slots still on their placeholder. Images whose focal point falls
   outside the slot's crop are not checked.
 
-Its **measures**, numbers held to no bar (the knowledge skills og-taste
-§3, §4, og-ui §8 and ui-craft say what a game usually wants):
+Its **measures**, numbers held to no bar (the `screens` guide, `og api
+show screens`, says what a game usually wants):
 
 - each live text's contrast on the drawn glyphs (dimmed, decorative and
   over-the-scene text is not measured);
@@ -1195,13 +1195,6 @@ Its **measures**, numbers held to no bar (the knowledge skills og-taste
 - each control's shorter side on a coarse pointer;
 - the buttons filled with the primary, per layer;
 - the element count and draw commands per frame.
-
-### 16.6 Knowledge
-
-The `og-ui` skill covers documents, components, states, motion, slots and
-the checks. The `ui-craft` skill holds the design craft: hierarchy, layout
-grammar per genre, motion personality, the conventions of each genre from
-Appendix A. `og-taste`'s UI parts point to it.
 
 ## 17. Extensions
 

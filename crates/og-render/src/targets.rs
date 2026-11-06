@@ -1,4 +1,4 @@
-//! Render targets (the S8 depth stream, `docs/depth.md` §8): a texture a
+//! Render targets (the S8 depth stream, `docs/design.md` §10.8): a texture a
 //! [`crate::View`] draws into, sampled like any other by a material map, a
 //! sprite or an overlay image (three.js `WebGLRenderTarget` and its
 //! `texture`).

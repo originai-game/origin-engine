@@ -1,15 +1,15 @@
 // Materialises the mounts knowledge.json declares into the platform's
 // knowledge tree, `knowledge/` of an origin-agent checkout (before the
 // agent-repo split, OriginGame's packages/game-knowledge/production):
-// skills as game/skills/<name>/ (the guides as og-game's guides/), the
-// project template plus origin-engine.json and distribution.json as the
-// scaffold overlay game-scaffold/<overlay>/.
+// the project template plus origin-engine.json and distribution.json as
+// the scaffold overlay game-scaffold/<overlay>/. The engine ships no skills:
+// what an agent reads is `og api find` and `og api show` (the wiki and its
+// guides, in the engine package).
 //
 //   bun scripts/mount.ts <origin-agent checkout> [--check] [--commit <rev> | --package <dir>]
 //
 // The package owns, in the platform tree, exactly the directories it mounts:
-// game/skills/<each of its skills>/ and game-scaffold/<overlay>/. Within
-// them the result is byte-for-byte the package's text payload: files are
+// game-scaffold/<overlay>/. Within it the result is byte-for-byte the package's text payload: files are
 // written only when their bytes differ, files the package no longer has are
 // removed, and nothing outside them is touched, so a second run changes
 // nothing. Binary template files (models, textures, audio, fonts) are never
@@ -58,14 +58,13 @@ export interface MountResult {
   readonly changes: readonly Change[];
 }
 
-/** The production-relative directories the payload occupies: game/skills/<name>/ and game-scaffold/<overlay>/. */
+/** The production-relative directories the payload occupies: game-scaffold/<overlay>/. */
 export function ownedRoots(paths: readonly string[]): string[] {
   const owned = new Set<string>();
   for (const p of paths) {
     const parts = p.split("/");
-    if (parts[0] === "game" && parts[1] === "skills" && parts.length > 3) owned.add(`game/skills/${parts[2]}/`);
-    else if (parts[0] === "game-scaffold" && parts.length > 2) owned.add(`game-scaffold/${parts[1]}/`);
-    else throw new Error(`${p}: a mount outside game/skills/<name>/ and game-scaffold/<overlay>/; fix knowledge.json`);
+    if (parts[0] === "game-scaffold" && parts.length > 2) owned.add(`game-scaffold/${parts[1]}/`);
+    else throw new Error(`${p}: a mount outside game-scaffold/<overlay>/; fix knowledge.json`);
   }
   return [...owned].sort();
 }
@@ -76,7 +75,7 @@ function executable(path: string): boolean {
 
 /** Compares (and with `write`, materialises) the package's payload in `production`. */
 export function mount(roots: Roots, production: string, write: boolean): MountResult {
-  for (const top of ["game/skills", "game-scaffold"]) {
+  for (const top of ["game-scaffold"]) {
     if (!existsSync(join(production, top)) || !statSync(join(production, top)).isDirectory()) {
       throw new Error(`${production}: no ${top}/; pass the root of an origin-agent checkout (its ${PRODUCTION}/ holds game/ and game-scaffold/)`);
     }

@@ -1,4 +1,4 @@
-// tools/bench/views.ts through the real API: the same integrate over 10,000
+// The typed-view benchmark through the real API: the same integrate over 10,000
 // entities, (a) as the spike's raw loop over typed arrays in one buffer, and
 // (b) as the design's hello-world Move system (examples/hello.ts, unchanged)
 // running in the engine: one engine tick per sample, so dispatch, the query,
@@ -19,7 +19,7 @@ const N = Number(opt("--entities", "10000"));
 const TICKS = Number(opt("--ticks", "2000"));
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-// (a) the raw loop, as tools/bench/views.ts measures it.
+// (a) the raw loop over typed arrays in one buffer.
 const mem = new WebAssembly.Memory({ initial: 256 });
 const pos = new Float32Array(mem.buffer, 0, N * 3);
 const vel = new Float32Array(mem.buffer, N * 12 + 16, N * 3);

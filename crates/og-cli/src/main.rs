@@ -87,7 +87,7 @@ commands:
       [--json]
                       a model review's numbers: silhouette IoU and ΔE00 per mask region (or over the
                       overlap) of a captured frame against a reference image, and one sheet PNG of
-                      the reference beside the render beside their silhouettes (og-model skill)
+                      the reference beside the render beside their silhouettes (the art-review guide)
   migrate three <file.ts> [--out <file.ts> | --write] [--json]
                       rewrite a three.js file towards og where the mapping is mechanical (geometries,
                       materials, meshes, lights, the scene graph, transforms, the camera, texture
@@ -187,7 +187,7 @@ commands:
                       contrast (the ink, the region's darkest or brightest 5 %, against the median
                       ground of --against or the region), high-pass energy (mean |grey - its σ 2
                       blur|, with its ratio to --against), mean colour, and the grey per band of
-                      --rows rows with the largest step (visual-acceptance §5, §6)
+                      --rows rows with the largest step (the art-review guide)
   relay [--port P] [--host <ip>]
                       a local WebSocket relay for rooms: `og run --room ws://127.0.0.1:P/<room>`
                       processes join <room> and play together (og.net's lockstep)

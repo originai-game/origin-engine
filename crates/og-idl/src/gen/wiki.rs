@@ -17,6 +17,62 @@ pub fn pages(ix: &Index<'_>) -> Vec<(String, String)> {
     for m in &ix.api.modules {
         out.push((format!("{}.md", m.name), module_page(ix, m, &binds)));
     }
+    for g in &ix.api.guides {
+        out.push((format!("guide-{}.md", g.name), guide_page(g)));
+    }
+    out
+}
+
+// ── guides ──────────────────────────────────────────────────────────────────
+
+/// A guide's summary: the first paragraph after its `# ` title.
+fn guide_summary(text: &str) -> String {
+    text.lines()
+        .skip_while(|l| !l.starts_with("# "))
+        .skip(1)
+        .skip_while(|l| l.trim().is_empty())
+        .take_while(|l| !l.trim().is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// A guide as a wiki page: its title as `# The \`name\` guide`, then each
+/// `## N. Title` section under an anchor, headed `### \`name §N\` Title`, so
+/// `og api` reads the guide as one entry and each section as another.
+fn guide_page(g: &Guide) -> String {
+    let mut out = String::new();
+    let _ = writeln!(out, "<!-- {GENERATED_BY} -->\n");
+    let mut lines = g.text.lines().peekable();
+    let title = lines
+        .by_ref()
+        .find_map(|l| l.strip_prefix("# "))
+        .unwrap_or(&g.name)
+        .to_string();
+    let _ = writeln!(out, "# The `{}` guide: {title}", g.name);
+    let mut fence = false;
+    for line in lines {
+        if line.starts_with("```") {
+            fence = !fence;
+        }
+        let section = (!fence)
+            .then(|| line.strip_prefix("## "))
+            .flatten()
+            .and_then(|h| h.split_once(". "))
+            .filter(|(n, _)| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()));
+        match section {
+            Some((n, heading)) => {
+                let _ = writeln!(
+                    out,
+                    "<a id=\"guide-{}-{n}\"></a>\n### `{} §{n}` {heading}",
+                    g.name, g.name
+                );
+            }
+            None => {
+                out.push_str(line);
+                out.push('\n');
+            }
+        }
+    }
     out
 }
 
@@ -573,11 +629,6 @@ fn module_page(ix: &Index<'_>, m: &Module, binds: &[Binding<'_>]) -> String {
         "- **Publish builds**: {} (members may override).",
         publish_text(m.publish)
     );
-    let _ = writeln!(
-        out,
-        "- **Skill**: `{}`, which teaches the module (how much of it to use, and how to prove it).",
-        m.skill
-    );
     out.push_str("- **Index**: [every module and name](index.md).\n\n");
     quote(
         &mut out,
@@ -878,37 +929,39 @@ fn index(ix: &Index<'_>, binds: &[Binding<'_>]) -> String {
     );
     paragraphs(&mut out, &api.doc);
 
-    // Grouped as the skills teach them (each module's `skill`), the skills
-    // in the order their first module is declared.
     out.push_str(
-        "## Modules\n\nGrouped by the skill that teaches them: the skill says how much of each to use and how to prove it, the module's page is every signature.\n\n",
+        "## Modules\n\n| Module | TypeScript | Publish builds | Summary |\n|---|---|---|---|\n",
     );
-    let mut skills: Vec<&str> = Vec::new();
     for m in &api.modules {
-        if !skills.contains(&m.skill.as_str()) {
-            skills.push(&m.skill);
-        }
-    }
-    for skill in skills {
+        let ts_form = match m.place {
+            _ if !has_fns(m) => "types and tokens".to_string(),
+            Place::Top => "named exports".to_string(),
+            Place::Root => "`og.*`".to_string(),
+            Place::Namespace => format!("`og.{}.*`", m.name),
+        };
         let _ = writeln!(
             out,
-            "### `{skill}`\n\n| Module | TypeScript | Publish builds | Summary |\n|---|---|---|---|"
+            "| [`{}`]({}.md) | {} | {} | {} |",
+            m.name,
+            m.name,
+            ts_form,
+            publish_text(m.publish),
+            cell(first(&m.doc))
         );
-        for m in api.modules.iter().filter(|m| m.skill == skill) {
-            let ts_form = match m.place {
-                _ if !has_fns(m) => "types and tokens".to_string(),
-                Place::Top => "named exports".to_string(),
-                Place::Root => "`og.*`".to_string(),
-                Place::Namespace => format!("`og.{}.*`", m.name),
-            };
+    }
+    out.push('\n');
+
+    if !api.guides.is_empty() {
+        out.push_str(
+            "## Guides\n\nWorkflow, thresholds and pitfalls no signature states, written by hand beside the IDL (`crates/og-api/guides/`). `og api show <guide>` prints one; `og api find` returns their sections.\n\n| Guide | Summary |\n|---|---|\n",
+        );
+        for g in &api.guides {
             let _ = writeln!(
                 out,
-                "| [`{}`]({}.md) | {} | {} | {} |",
-                m.name,
-                m.name,
-                ts_form,
-                publish_text(m.publish),
-                cell(first(&m.doc))
+                "| [`{}`](guide-{}.md) | {} |",
+                g.name,
+                g.name,
+                cell(&guide_summary(&g.text))
             );
         }
         out.push('\n');

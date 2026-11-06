@@ -11,37 +11,10 @@
     "source": "packages/game-knowledge/scripts/production-bundle.mjs (readProductionBundle)"
   },
   "packs": {
-    "skill": "game/skills/<name>/ -> pack skill:<name>",
     "scaffold": "game-scaffold/<overlay>/ -> pack scaffold:<overlay>",
     "instructions": "game/instructions.md -> pack instructions",
     "other": "any other game/ path -> pack game",
     "source": "agent-server/src/core/knowledge.ts (packsFromFiles)"
-  },
-  "skills": {
-    "file": "SKILL.md",
-    "frontmatter": {
-      "required": [
-        "name",
-        "description"
-      ],
-      "nameIsDirectory": true
-    },
-    "namePattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-    "existing": [
-      "canvas2d-substrate",
-      "coordinating-game-production",
-      "gameplay-research",
-      "og-platform",
-      "origin-engine-substrate",
-      "parameter-sweeps",
-      "performance-budget",
-      "playtest-instruments",
-      "producing-game-assets",
-      "store-compliance",
-      "threejs-substrate",
-      "vgpu-effects"
-    ],
-    "source": "packages/game-knowledge/production/game/skills/*/SKILL.md (every skill's front matter: name equals its directory); agent-server/src/core/knowledge.ts (frontMatterDescription: the runner reads description)"
   },
   "tools": {
     "snake": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)+$",

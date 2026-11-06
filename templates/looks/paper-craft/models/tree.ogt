@@ -1,8 +1,8 @@
 type model
 version 1
 ---
-# paper-craft's version: the stepped tree folded from card (og-model §5,
-# paper fold): each tier a six-sided folded cone, the trunk a five-sided
+# paper-craft's version: the stepped tree folded from card
+# (paper fold): each tier a six-sided folded cone, the trunk a five-sided
 # rolled tube, every fold a crisp edge.
 material "bark" {
   color 0.42 0.27 0.15

@@ -6,8 +6,8 @@ with fontTools, keeping every layout feature (Arabic joining, Hebrew marks,
 CJK `locl`, `palt`, `vert`) and dropping hinting. The CJK subsets hold a
 national standard's common set, not one game's strings, so a game's tables
 can grow without a new subset; a game cuts its own smaller one before it
-ships (og-i18n §3, `subset-font.py`). They hold no Latin: a label mixing
-scripts takes its Latin from the style's face, run by run (og-ui §7).
+ships (`subset-font.py`). They hold no Latin: a label mixing
+scripts takes its Latin from the style's face, run by run.
 
     python3 templates/locales/make-fonts.py [--cache DIR]
 

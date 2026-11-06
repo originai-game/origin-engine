@@ -8,15 +8,16 @@ Time groups slow or freeze some entities and not others (a bullet-time enemy bes
 
 - **TypeScript**: functions are the namespace `og.time`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-feel`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module time {
+  doc "Simulation time. Game code never reads the wall clock; it reads Time."
+  doc "Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. og.anim, flipbooks, 2D skeletons, the entity's scaled tweens and its og.nav agent then advance by scaledDt times its group's scale, and its og.ParticleSystem's particles spawn, age and move at the group's scale (the renderer's particles do not follow the global scale or hit stop, so only the group's applies). Physics stays on the global scale (one solver steps every body together; slow a body's motion with its velocity, or move it kinematically), and timelines and the UI keep their own pace. A world that never names og.TimeGroup or og.TimeGroups keeps its saves and hash."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1605</sub>
+<sub>`api.ogt` line 1599</sub>
 
 ## Contents
 
@@ -60,7 +61,7 @@ fn setScale {
 }
 ```
 
-<sub>`api.ogt` line 1660</sub>
+<sub>`api.ogt` line 1653</sub>
 
 <a id="fn-hitStop"></a>
 
@@ -90,7 +91,7 @@ fn hitStop {
 }
 ```
 
-<sub>`api.ogt` line 1667</sub>
+<sub>`api.ogt` line 1660</sub>
 
 <a id="fn-setGroupScale"></a>
 
@@ -122,7 +123,7 @@ fn setGroupScale {
 }
 ```
 
-<sub>`api.ogt` line 1674</sub>
+<sub>`api.ogt` line 1667</sub>
 
 <a id="fn-groupDt"></a>
 
@@ -152,7 +153,7 @@ fn groupDt {
 }
 ```
 
-<sub>`api.ogt` line 1682</sub>
+<sub>`api.ogt` line 1675</sub>
 
 ## Components, resources and events
 
@@ -215,7 +216,7 @@ resource Time {
 }
 ```
 
-<sub>`api.ogt` line 1610</sub>
+<sub>`api.ogt` line 1603</sub>
 
 <a id="record-TimeGroup"></a>
 
@@ -238,7 +239,7 @@ component TimeGroup {
 }
 ```
 
-<sub>`api.ogt` line 1648</sub>
+<sub>`api.ogt` line 1641</sub>
 
 <a id="record-TimeGroups"></a>
 
@@ -259,4 +260,4 @@ resource TimeGroups {
 }
 ```
 
-<sub>`api.ogt` line 1655</sub>
+<sub>`api.ogt` line 1648</sub>

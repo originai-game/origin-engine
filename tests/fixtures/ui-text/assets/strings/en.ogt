@@ -24,7 +24,7 @@ string "confirm.title" "Delete this save?"
 string "confirm.message" "Your progress in slot [b]{slot}[/b] will be lost. [color=danger]This cannot be undone.[/color]"
 string "confirm.delete" "Delete"
 string "confirm.cancel" "Cancel"
-# og.ui's templates' own words (SettingsDesc, ShopDesc, InventoryDesc, LeaderboardDesc, TutorialDesc, CutsceneDesc: og-i18n §2).
+# og.ui's templates' own words (SettingsDesc, ShopDesc, InventoryDesc, LeaderboardDesc, TutorialDesc, CutsceneDesc).
 string "settings.title" "Settings"
 string "settings.audio" "Audio"
 string "settings.graphics" "Graphics"
@@ -60,7 +60,7 @@ string "tutorial.next" "Next"
 string "tutorial.done" "Done"
 string "tutorial.step" "{step} of {count}"
 string "cutscene.skip" "Skip"
-# The HUDs' words (PlatformerHudDesc, ShooterHudDesc, PuzzleHudDesc, IdleHudDesc, RacingHudDesc: og-i18n §2) and their screens' names.
+# The HUDs' words (PlatformerHudDesc, ShooterHudDesc, PuzzleHudDesc, IdleHudDesc, RacingHudDesc) and their screens' names.
 string "hud.pause" "Pause"
 string "hud.jump" "Jump"
 string "hud.fire" "Fire"

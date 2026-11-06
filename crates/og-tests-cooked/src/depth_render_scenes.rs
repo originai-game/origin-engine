@@ -1,4 +1,4 @@
-//! The depth wave's render-lod scene that cooks (docs/depth.md §6): mesh
+//! The depth wave's render-lod scene that cooks (docs/design.md §10.6): mesh
 //! levels of detail picked by projected error (`lod-levels`); og-tests'
 //! depth_render_scenes has the probe and SSR scenes beside it.
 //!

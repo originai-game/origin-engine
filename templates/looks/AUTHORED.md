@@ -9,8 +9,7 @@ slug:
 - `<slug>/art/`: the 2D sample beats drawn in the style (hero, tree,
   crate, lantern, ground, backdrop), for the paint-2d and pixel-side
   styles.
-- `<slug>/models/`: the 3D beats built in the style (`type model` text,
-  og-model §5), for neon-vector, paper-craft and low-resolution-3d.
+- `<slug>/models/`: the 3D beats built in the style (`type model` text,), for neon-vector, paper-craft and low-resolution-3d.
 - `cinematic-realism/realistic-set/`: the realistic asset set that
   cinematic-realism and muted-cinematic-3d share (packed glbs, their
   README with each model's source and licence).

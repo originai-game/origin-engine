@@ -9,20 +9,8 @@ the store. Each ask names the shape the engine would use, so the bridge's
 mapping shrinks to a rename when it lands. Asks are numbered once and never
 renumbered; platform asks are collected at release.
 
-Asks 1–8 have landed in Player protocol 2 (additive within protocol 2,
-origingame `docs/player-protocol.md` §Versions); the shell asks for each
-where the Player's hello lists it (`docs/web-export.md` §Platform services).
-
-| # | Ask | Why | Before (the shell's stand-in) | Landed |
-|---|---|---|---|---|
-| 1 | `save.get` answers `{ data, revision }` | A conditional `save.set { data, revision }` needs the revision the data was read at; protocol 2's `save.get` returns the data alone, so a write after another device's write cannot be refused (`conflict`) by the Player. | The shell keeps a revision per key inside the save and checks it itself: two tabs of one browser are caught, two devices racing between a read and a write are not. | `save.read` answers `{ data, revision }`; `save.set { data, revision }` refuses a stale write with `conflict` and `error.revision` (`save.get` still answers the data alone). The shell reads and writes the save at its revision where the Player has no keyed store. |
-| 2 | A keyed store: `store.get { key }`, `store.set { key, value, revision? }`, `store.list` (per-key revision, 64 KiB per value) | Games save several independent things (settings, progress, unlocks); one blob makes every write a read-modify-write of everything and every conflict global. | The store is the save's `store` object; each `store.set` is a `save.get` plus a `save.set` of the whole save. | `store.get`, `store.set { key, value, revision? }` (revision 0: only a key never written; none: the last write wins), `store.list`; 64 KiB a value, 64 keys and 1 MiB per player and game, 30 writes a minute. The shell maps `storeSet`'s revision, `create` and last-write-wins onto it. |
-| 3 | `leaderboard.around { board, n }` → `{ board, sort, entries: [{ rank, name, score }], me }` | "Around me" is the board most players see (they are rarely in the top 10). | The shell asks `leaderboard.top { n: 100 }` and cuts around `me`; a player below 100th gets the top entries. | `leaderboard.around { board, n }` → `{ board, sort, entries: [{ rank, name, score, me }], me }`. |
-| 4 | `leaderboard.submit` answers the board's `best` for the player | A game shows "new best" from the answer instead of keeping its own copy. | The engine answers `best: null` under a Player (the local platform fills it). | `leaderboard.submit` answers `{ ok, rank, board, best }`. |
-| 5 | `point.award { reason, amount }` → `{ granted, balance }` (Origin Point) | `og.platform.point`: the game asks, the platform decides what it grants (rate limits, caps, fraud rules stay on the platform). | `unavailable` under a Player; the local platform keeps a local balance. | `point.award { reason, amount }` → `{ granted, balance }`; every answer is `{ granted: 0, balance: null }` until a release carries an approved point policy (origingame `docs/public-api.md` §15, an owner decision for Billing and Risk). |
-| 6 | `ai.mark { kind, label, model? }` → `{ marked }` | `og.platform.aiMark`: disclosure of AI-generated content the game shows, for the platform's labelling and compliance records. | `unavailable` under a Player; the local platform records the marks. | `ai.mark { kind, label, model? }` → `{ marked: true }`, recorded on the release the Player framed. |
-| 7 | `hello.capabilities` lists the new methods, and a verification run answers `store.*` against a throwaway store | A game reads capabilities instead of trying calls; a verification run should exercise the save path. | The shell derives its capabilities from `save.get`/`save.set`/`leaderboard.*`. | `hello.capabilities` lists what the Player answers; a verification run answers `save.*` and `store.*` from a throwaway store. |
-| 8 | Telemetry names: accept `game.custom.<name>` with `.` and `_` in `<name>` (64 characters) and up to 16 scalar attributes | `og.platform.telemetry` validates exactly this before it posts the `event`. | Posted as `event` `game.custom.<name>`; the server's validation is the platform's. | `game.custom.<name>`: 1–64 of letters, digits, `.` and `_`, at most 16 scalar attributes. |
+Only open asks are listed; landed ones (1–8, 12, 14, 15) are in git
+history. Numbers are never reused.
 
 ## The Player's clock
 
@@ -46,7 +34,7 @@ and the Player owns the session, as protocol 2 already requires.
 
 | # | Ask | Why | Before | State |
 |---|---|---|---|---|
-| 9 | Player protocol 2 over same-origin HTTP for a top-level engine page: `POST /__player/v2/<game>/<release>/{hello,call,report}` on the game's own origin, the hand-off code redeemed from the hello's body, the framed Player's answers and errors, the session reports filed as the Player filed them; and Play (the game host's `/`, `/g/:slug`) opening a release whose entry says `<meta name="og-player" content="frame page">` as its own top-level document (307 to the release entry), the Stage page likewise for a Stage build (the creator overlay injected into the engine's document) | design §4: the shell is the play page and the brand surface; a frame costs the viewport, gestures, audio unlocking and the PWA on phones | every engine page is framed by the Player page or the Stage page | Open in production. The contract is origingame `docs/player-protocol.md` §The top-level engine page; the shell speaks it (`shell/transport.ts`, `docs/web-export.md` §The top-level page). The platform also needs the game-host ingress to admit `POST` with `Authorization` (never `Cookie`) on `/__player/v2/` (those hosts take only GET and HEAD and strip both), a production topology change the platform owns (`deploy/ovh/ingress-boundaries.conf`); production stays framed until that location is applied on the game hosts and the E2B templates are rebuilt, in that order. |
+| 28 | (formerly the second 9) Player protocol 2 over same-origin HTTP for a top-level engine page: `POST /__player/v2/<game>/<release>/{hello,call,report}` on the game's own origin, the hand-off code redeemed from the hello's body, the framed Player's answers and errors, the session reports filed as the Player filed them; and Play (the game host's `/`, `/g/:slug`) opening a release whose entry says `<meta name="og-player" content="frame page">` as its own top-level document (307 to the release entry), the Stage page likewise for a Stage build (the creator overlay injected into the engine's document) | design §4: the shell is the play page and the brand surface; a frame costs the viewport, gestures, audio unlocking and the PWA on phones | every engine page is framed by the Player page or the Stage page | Open in production. The contract is origingame `docs/player-protocol.md` §The top-level engine page; the shell speaks it (`shell/transport.ts`, `docs/web-export.md` §The top-level page). The platform also needs the game-host ingress to admit `POST` with `Authorization` (never `Cookie`) on `/__player/v2/` (those hosts take only GET and HEAD and strip both), a production topology change the platform owns (`deploy/ovh/ingress-boundaries.conf`); production stays framed until that location is applied on the game hosts and the E2B templates are rebuilt, in that order. |
 
 Nothing in this ask carries a credential to game code beyond what a game
 on its own origin can already read: the game-scoped player credential the
@@ -65,18 +53,6 @@ steal; the host ABI is the only route to platform APIs).
 |---|---|---|---|---|
 | 11 | Keep serving a release that ships `origingame.runtime.json` `{"version":1,"crossOriginIsolated":true}` (every `og build --publish` whose `isolation` is not `off`, the default `preferred` included) with COOP `same-origin` and COEP `require-corp` on its entry document and every file under it, CORP `cross-origin` on each file, and `allow="… cross-origin-isolated"` on the Player's iframe while a release is framed; at the top level (ask 9) the entry document's own COOP/COEP is what isolates it, so the 307 to the release entry must land on a response carrying them. Send no `worker-src` or `script-src` that excludes `blob:` on the play origin: wasm-bindgen-rayon starts the lanes pool's Workers from a `blob:` URL. | The lanes variant (`origin-engine-lanes_bg.wasm`, docs/web-export.md §Lanes) needs SharedArrayBuffer, so it boots only when the page is `crossOriginIsolated`; otherwise the shell plays the single-threaded module, correct but without lanes. Lanes split crowds of 128 animated characters or more, CPU culls of 2,048 objects or more and the physics step itself: rapier's parallel build runs on the lanes wasm's Worker pool through a relay from 500 bodies on two to four lanes (1,000 on five or six, 1,500 from seven), with ropes, cloths and fluids split too (crates/og-lanes/README.md); without isolation all of it runs on the engine Worker's one thread, with the same results. | Nothing to change, as read from this repository's side (platform `server/src/play/serve.ts` sends `isolationHeaders` for a declared release and a CSP of `frame-ancestors` only, `server/src/play/player.ts` adds `cross-origin-isolated` to the frame's `allow`). | Open: not verified against production. Publish one lanes build and check `__runtime_probe__.lanes.on` on Play, framed and at the top level, on desktop Chrome and a phone; a page downloads one module, a release carries both. |
 
-## The style step: a look from the premise
-
-Skeleton contract update to ask 12: pass the confirmed `look`, `mood`, and
-`ui` to `og create`. It writes `assets/looks/<id>.ogt` and the top-level
-`look "looks/<id>.ogt"` in `project.ogt`. The platform no longer writes
-that file or patches `og.game({})`. This replaces the source-patching
-instruction in the historical ask below; the picker and critic stay unchanged.
-
-| # | Ask | Why | Before | State |
-|---|---|---|---|---|
-| 12 | The game wizard gains a **style** step between the premise and the first build. It reads the style catalogue the knowledge package mounts beside og-taste (`game/skills/og-taste/looks/catalogue.json`, `schemaVersion` 1) and matches the premise's genre, mood, era and audience against each entry's `premise.genre`, `premise.mood`, `premise.era` and `premise.audience` (genre first; `@origingame/create-game`'s `pickStyle` weighs them 3, 2, 1, 1 and the `name` and `descriptor` 1, preferring `look.support` `full` on a tie), offering only entries whose `look.presetReady` is true. It shows two or three entries by `name`, `descriptor` and `look.support` (with `look.missing` read out for `partial`, `planned` and `content`: a content style needs authored art the platform must budget for), and lets the maker pick or override. It then writes the choice into the project: `assets/looks/<game>.ogt` (`type look`, `name`, `extends "<slug>"`) and `look: "looks/<game>.ogt"` in the entry's `og.game({...})`, which `npm create @origingame/game -- --look <slug>` (or `--premise "<line>"`) already does; fills `artBibleTemplate` with the entry (`direction`, `palette`, `assets`, `skin`, `artBible.avoid`) and the project's premise, camera and platform, and keeps that art bible with the game as the brief for every later asset request. Its critic stage hands the entry's three `checks` to the blind critic: the critic gets the captured frames (title, play and results, from `og run --headless --commands` screenshots) and the three checks as written, never the code, the style's name or the slug, and answers each check pass or fail per frame with the region it read; a fail goes back to the build agent with the check's text, and the style is not changed to make a check pass. | A game's look is chosen once and then held by data (og-taste §1, §12); choosing it in the wizard puts the decision where the premise is, before any asset is made, and the checks give the critic something a frame can prove instead of "does it look good". The checks are written to be judged on one frame without context (`looks/catalogue.json`: exactly three per style, the knowledge package's validator refuses fewer), so the critic can stay blind to what was intended. | Without it the build agent may or may not pick a style. | Landed in origin-agent (picker, change until the first build, `critique_style` the blind critic). As widened (`docs/art.md` §4): the style is chosen on the home page when a game is created, from cards with each style's preview (catalogue schema 2's `preview`, the webp under `previews/` of the engine's knowledge and `@origingame/create-game`) and its `look.layers`; a game is not created without one. The engine side is catalogue schema 2 (previews, layers, families) and the art contract and conformance of `docs/art.md`. The platform owns the picker, the critic's prompt and where the art bible is kept. |
-
 ## The type checker in the sandbox
 
 | # | Ask | Why | Before | State |
@@ -87,18 +63,6 @@ Not an ask, for the platform's own use: `@tsrs/wasm` (the same checker as
 a wasm module) returns diagnostics as JSON (`diagnostics: "json"`), the
 piece an in-browser check (the Player page, an online editor) would use.
 The engine does not consume it.
-
-## The engine as released versions
-
-| # | Ask | Why | Before | State |
-|---|---|---|---|---|
-| 14 | The platform installs the engine at a pinned version and nowhere else: origin-agent's `server/scripts/e2b/origin-engine.json` names the version; the runner, the development sandbox and the E2B images install that version's signed archive from `https://origingame.ai/downloads/engine/<version>/` (`docs/release.md` §1) and mount the knowledge of that version from its dist; the export-and-build of a git revision, the Rust toolchain on the platform's side and the `ORIGIN_ENGINE_READ_TOKEN` secret go. The order for every version: the engine's gate and install test, release, the platform's local stack at the version, then the image, once (`docs/release.md` §1 and §4). | Develop and test locally against released versions, E2B last; what a thread runs is what an author installs; a pin move is a version bump. | The platform exported a pinned revision of the private repository with a read token and built it with cargo. | Done for the pin and the install without cargo or token; the install channel moves from npm to the archives with `docs/release.md` §1. |
-
-## The development sandbox on InstaBox
-
-| # | Ask | Why | Before | State |
-|---|---|---|---|---|
-| 15 | The sandbox of the development stage is an InstaBox machine (dashboard.instabox.sh), not E2B (`docs/release.md` §1, §4 stage D). The platform gains an `instabox` provider beside `e2b` in `agent-server/src/sandbox/` (the SDK `@insforge/instabox-sdk`, the API `api.instabox.sh`, `INSTABOX_API_KEY` as a server secret that never reaches a machine): create from a snapshot or a template, run (a foreground command is capped at ten minutes and not streamed, so the runner's long commands go `background: true` with their log followed), files (10 MiB per read or write), pause and resume, delete, the HTTPS URL per port; `sandbox.provider.<class>` in the runtime configuration names `instabox` for the development stage's classes and `e2b` for production's, so the engine never tells the two apart. A snapshot per class and version, made from the `agent-browser` template (the one the free plan creates from; node 22, git) by a script under `agent-server/scripts/instabox/`: bun 1.4.2, `bun install` of `@origingame/engine` and `@origingame/create-game` at `origin-engine.json`'s version with `optionalDependencies` (ask 13), ffmpeg for the `probe` class, no renderer, no engine checkout, no Rust, no credential of any kind left in the image; rebuilt only when the pin moves, checked once by a checker that is `check-templates.ts` for InstaBox (`og doctor` prints the same lines as in the container and the E2B image, `og test` of a scaffolded game passes with its frames unchecked). The runner reconnects to a machine after its auto-pause (thirty idle minutes on every plan) instead of failing the thread. | The development stage (the build-out, the acceptance runs, every pin move before launch) runs on InstaBox; E2B stays production's provider and the last consumer of a version. A full VM with a persistent `/data` and snapshots as images is what a development thread wants; a billed E2B round for every try is what ask 14 removed. | The platform's one provider was E2B (`agent-server/src/sandbox/e2b.ts`). | Done on the platform: the serial `instabox` provider with recovery from a provider-side pause, the development routes with serial admission, the versioned snapshots and their checker, the runner's reconnect after resume. The development deployment and the runtime-config publication (`agent-server/scripts/instabox/dev.env`) remain the owner's. The engine's part is done: the install test inside an InstaBox machine (`tests/install/instabox.ts`, `release.sh verify --instabox`). The account is on the free plan (one machine at a time, from `agent-browser` or a snapshot), so the provider is written for one machine used serially. |
 
 ## Rooms
 
@@ -234,7 +198,10 @@ The complete shape is:
 }
 ```
 
-The engine writes look configuration as ask 12 now specifies. The cook
+Pass the confirmed `look`, `mood` and `ui` to `og create`: it writes
+`assets/looks/<id>.ogt` and the top-level `look "looks/<id>.ogt"` in
+`project.ogt`, so the platform no longer writes that file or patches
+`og.game({})` (this replaces ask 12's source patching). The cook
 resolves the preset, mood and UI pack. The entry remains `og.game({})`.
 The other choices are constraints for the agent, not generated controls,
 translations, cameras, multiplayer or music.
@@ -260,7 +227,7 @@ and `summary` keep their public signatures. See the breaking changelog.
 
 **Ask 26, open.** origin-agent's music and sound generation takes its
 requests from the engine's `audioBrief`, as its image and model generation
-takes them from `artBrief` (ask 12, `docs/art.md` §2.2), instead of
+takes them from `artBrief` (`docs/art.md` §2.2), instead of
 writing prompts of its own:
 
 - **Where the request comes from.** For a game, call
@@ -310,8 +277,8 @@ evals):
   `og-out/polish/` report and its scores. Nothing replaces it inside the
   engine: review a build with `og test` (the playtests), `og ui check`
   and the frames (`og run --headless --commands`, `og frame measure`),
-  judged by the skills (og-build §5, og-taste, og-feel,
-  visual-acceptance).
+  judged by the agent (the engine's guides, `og api show testing`, and
+  origin-agent's own skills).
 - **`og ui check` exits 0 when it ran** and 1 when it could not; exit 3
   (an error finding) is gone. Its findings (overlap, text-cut,
   text-truncated, offscreen, safe-area, covered, pseudo-overflow,
@@ -322,8 +289,8 @@ evals):
   element count are `measures` (`measure`, `paths`, `value`, `unit`,
   `detail`, `prop`, `cell`, `rect`) held to no bar; contrast is no longer
   a finding. The usual thresholds (4.5:1 and 3:1, 7:1 in high contrast;
-  44 px touch targets; 12 px text, 18 px at 1080p) are og-taste §3, §4
-  and og-ui §8's guidance for the agent to apply.
+  44 px touch targets; 12 px text, 18 px at 1080p) are the `screens`
+  guide's §5 (`og api show screens`), for the agent to apply.
 - **`og build --publish` no longer refuses a game in the default UI
   style**: a game may ship the default style, a built-in pack or its own.
 - **`og style check --critic` is removed**, and the JSON's
@@ -350,7 +317,7 @@ names them is documentation, a skill and an offline eval:
 - `knowledge/game/skills/art-director/SKILL.md:52`–`:55` (`og ui check`
   "measures contrast, text size, touch targets ... each against the
   engine's bar") and `:82`–`:84` ("a finding `og ui check` marks as a
-  warning"): the bar is now the art bible's or og-taste's, and there are
+  warning"): the bar is now the art bible's or the `screens` guide's, and there are
   no warnings, only findings and measures.
 - `server/scripts/eval/art-director.ts:60`–`:65` reads
   `f.severity` and `f.bar` of each `og ui check` finding, and
@@ -361,3 +328,36 @@ names them is documentation, a skill and an offline eval:
 Until then an origin-agent pinned to 0.7.7 sees no change; one that pins
 the next version and still runs `og polish` gets an unknown-command error,
 and one that waits for `og ui check`'s exit 3 never sees it.
+
+## The engine ships no skills
+
+**Ask 29, open.** From the first engine version after 0.7.7 the engine
+mounts no `game/skills/` and no `guides/`: the 25 engine skills (`og-2d`,
+`og-ai`, `og-anim`, `og-audio`, `og-build`, `og-core`, `og-destruction`,
+`og-feel`, `og-game`, `og-i18n`, `og-model`, `og-net`, `og-physics`,
+`og-platform-sdk`, `og-render`, `og-story`, `og-taste`, `og-ui`,
+`architecture-discipline`, `component-forge`, `level-texturing`,
+`localization`, `recipe-craft`, `ui-craft`, `visual-acceptance`) are
+deleted, and so are their `skill:<name>` pack pins. What a game agent reads
+of the engine is the `og` tool: `og api find <words>` (ranked entries with
+scores) and `og api show <name>` over one index of the API and the
+engine's guides (`og api show start`, `testing`, `determinism`, `looks`,
+`screens`, `animation`, `art-review`, `three-to-og`). The payload keeps
+`game-scaffold/origin-engine-ts/`, and the package keeps
+`knowledge/looks/catalogue.json` and `previews/`; `payload`,
+`defaultRoots`, `installed`, `mount`, `summary`, `artBrief`, `readLook`
+and `presetLook` keep their signatures.
+
+origin-agent `main` c4d64ef already sends no game agent to an engine
+skill (its instructions, create mode and own skills point at `og help` and
+`og api find`/`show`). What still reads the engine's old layout:
+
+- `server/src/core/engine.ts:3017`–`:3019`: the fallback that resolves
+  `guides/` through the `skill:og-game` pack
+  (`game/skills/og-game/guides/`). The guides are `og api` entries now;
+  drop the lookup.
+- `server/src/core/skill-pages.ts`: comments on og-game's and og-model's
+  sizes (comments only).
+- `scripts/knowledge/production-bundle.test.mjs:50`–`:54` keeps passing (it
+  already excludes `game/skills/og-*` other than the platform's
+  `og-platform`).

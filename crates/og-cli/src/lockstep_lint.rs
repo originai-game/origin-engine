@@ -1,6 +1,6 @@
 //! The lockstep lint `og check` runs over a game that sets og.Lockstep: the
 //! JavaScript calls whose results differ between peers (docs/design.md
-//! §2.10, the og-net skill's §3). Math.sin, Math.pow and the rest are
+//! §2.10, the `determinism` guide's §3). Math.sin, Math.pow and the rest are
 //! implementation-approximated, so V8, JavaScriptCore and SpiderMonkey
 //! round them differently and a peer in another browser parts from the
 //! room; Math.random and the clock differ on every peer. Each is a warning

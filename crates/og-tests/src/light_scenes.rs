@@ -1,4 +1,4 @@
-//! The depth wave's light scenes (docs/depth.md §7): area lights shaded
+//! The depth wave's light scenes (docs/design.md §10.7): area lights shaded
 //! with linearly transformed cosines (`rect-lights`), spot and point light
 //! cookies (`light-cookies`), fog lit as a medium by the sun through the
 //! slots of a wall and by a spot (`volumetric-fog`: a froxel grid, or the

@@ -9,7 +9,7 @@ version 1
 # the arm and trails the cape; its "step" events mark each foot's contact,
 # and src/main.ts's Plant moves the feet's IK targets in step with it (a
 # 0.8 s cycle of a 0.4 m stride: the keeper walks 0.5 m/s). Written by hand
-# (og-game §8, the rig2d grammar).
+# (the rig2d grammar).
 texture "keeper.png"
 size 64 64
 filter nearest

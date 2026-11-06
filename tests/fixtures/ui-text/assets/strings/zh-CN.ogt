@@ -24,7 +24,7 @@ string "confirm.title" "删除这个存档？"
 string "confirm.message" "存档槽 [b]{slot}[/b] 中的进度将会丢失。[color=danger]此操作无法撤销。[/color]"
 string "confirm.delete" "删除"
 string "confirm.cancel" "取消"
-# og.ui's templates' own words (SettingsDesc, ShopDesc, InventoryDesc, LeaderboardDesc, TutorialDesc, CutsceneDesc: og-i18n §2).
+# og.ui's templates' own words (SettingsDesc, ShopDesc, InventoryDesc, LeaderboardDesc, TutorialDesc, CutsceneDesc).
 string "settings.title" "设置"
 string "settings.audio" "音频"
 string "settings.graphics" "画面"
@@ -60,7 +60,7 @@ string "tutorial.next" "下一步"
 string "tutorial.done" "完成"
 string "tutorial.step" "第 {step} 步，共 {count} 步"
 string "cutscene.skip" "跳过"
-# The HUDs' words (PlatformerHudDesc, ShooterHudDesc, PuzzleHudDesc, IdleHudDesc, RacingHudDesc: og-i18n §2) and their screens' names.
+# The HUDs' words (PlatformerHudDesc, ShooterHudDesc, PuzzleHudDesc, IdleHudDesc, RacingHudDesc) and their screens' names.
 string "hud.pause" "暂停"
 string "hud.jump" "跳跃"
 string "hud.fire" "开火"

@@ -6,15 +6,16 @@ The game entry: what the bundle's default export declares.
 
 - **TypeScript**: functions are members of the root object `og` (`og.<fn>`); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module game {
+  doc "The game entry: what the bundle's default export declares."
+  place root
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1416</sub>
+<sub>`api.ogt` line 1412</sub>
 
 ## Contents
 
@@ -54,7 +55,7 @@ fn game {
 }
 ```
 
-<sub>`api.ogt` line 1475</sub>
+<sub>`api.ogt` line 1470</sub>
 
 ## Interfaces
 
@@ -70,7 +71,7 @@ interface Game {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1469</sub>
+<sub>`api.ogt` line 1464</sub>
 
 <a id="member-Game-tick"></a>
 
@@ -88,7 +89,7 @@ Binding symbol `og_game_get_tick` · publish builds: kept
 prop tick u32 "GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do)."
 ```
 
-<sub>`api.ogt` line 1471</sub>
+<sub>`api.ogt` line 1466</sub>
 
 <a id="member-Game-systems"></a>
 
@@ -106,7 +107,7 @@ Binding symbol `og_game_get_systems` · publish builds: kept
 prop systems List.System "The systems in declaration order."
 ```
 
-<sub>`api.ogt` line 1472</sub>
+<sub>`api.ogt` line 1467</sub>
 
 ## Types
 
@@ -134,7 +135,7 @@ callback FactsFn {
 }
 ```
 
-<sub>`api.ogt` line 1421</sub>
+<sub>`api.ogt` line 1416</sub>
 
 <a id="type-StartFn"></a>
 
@@ -159,7 +160,7 @@ callback StartFn {
 }
 ```
 
-<sub>`api.ogt` line 1427</sub>
+<sub>`api.ogt` line 1422</sub>
 
 <a id="type-GameDesc"></a>
 
@@ -228,4 +229,4 @@ struct GameDesc {
 }
 ```
 
-<sub>`api.ogt` line 1432</sub>
+<sub>`api.ogt` line 1427</sub>

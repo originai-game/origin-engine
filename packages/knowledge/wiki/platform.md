@@ -16,15 +16,20 @@ Rooms (roomCreate, roomJoin, roomSend, ...) put this engine with other players' 
 
 - **TypeScript**: functions are the namespace `og.platform`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-platform-sdk`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module platform {
+  doc "Platform services as host capabilities (docs/design.md §2.8): cloud store, leaderboards, telemetry, Origin Point and AI marks. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them. On the web the shell forwards each call to the Player through origin-checked postMessage (Player protocol 2, docs/web-export.md); natively the host answers from a local JSON store (`og run --platform-store`, default `<project>/.og/platform.json`)."
+  doc "Calls are asynchronous: each returns a request number at once, and the answer arrives at the start of a later tick, when og.platform sends PlatformAnswered; read it with og.platform.result. Answers are host input, like key presses: the probe's `dump_platform` lists every call, its arguments, its answer and the ticks."
+  doc "Errors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed, cancelled (the player backed out of a purchase, an ad or a share sheet) and no_fill (no ad to show now); retryable is true for offline, timeout, unavailable, rate_limited and no_fill."
+  doc "Purchases, ads, achievements, the player, friends, invites and share (products, purchase, showAd, achievementUnlock, player, friends, inviteSend, share, ...) are the platform's: accounts and money never enter the engine. Each call is a method name and its arguments, the host attaches the player's game-scoped credential, and every id it hands back (the player, a friend, a purchase, an invite) is opaque and scoped to this game. A host that lacks one answers it `unavailable`: ask og.platform.supports first. Natively and in playtests a deterministic fake answers them (`og run --platform-fake`, PlaytestDesc.platform); a published page never fakes them. Entitlements are always the host's answer, never the engine's log or a save: ask og.platform.entitlements when the game starts, and grant a consumable once per purchase with og.platform.grant."
+  doc "Unasked host input (a pending purchase settled, a refund, an entitlement changed on another device, an invite arrived) is a notice: og.PlatformNotice at the start of a tick, read with og.platform.notice, logged with the answers. In a running lockstep or rollback session (og.Lockstep) a platform answer or notice is this peer's alone: a system that reads og.PlatformAnswered or og.PlatformNotice, or calls og.platform.result or og.platform.notice, while it writes shared state (anything but the session's own records: input, audio, camera, og.Lockstep) hears nothing and reads null, and the engine logs it once; carry what every peer must see in og.PlayerInput (og.net.submit)."
+  doc "Rooms (roomCreate, roomJoin, roomSend, ...) put this engine with other players' engines: the host carries them (natively `og relay` with `og run --room`, on the web the platform's rooms through the shell, docs/platform-asks.md) and its answers and the other peers' messages arrive as events at the start of a tick (og.RoomJoined, og.RoomPeerJoined, og.RoomPeerLeft, og.RoomMessage), host input like key presses. Deterministic play over a room is og.net's lockstep."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 14852</sub>
+<sub>`api.ogt` line 14829</sub>
 
 ## Contents
 
@@ -53,7 +58,7 @@ module platform {
 | [`og.platform.aiMark`](#fn-aiMark) | function | Disclose AI-generated content the game shows. |
 | [`og.platform.loadSettings`](#fn-loadSettings) | function | Ask for the game's saved settings (volume, controls, language): store.get of the key `og.settings`. Where the Player has no store, or is offline, the shell answers from the browser's own storage; natively, from the local store. |
 | [`og.platform.saveSettings`](#fn-saveSettings) | function | Save the game's settings under `og.settings` (the last save wins), with the same local fallback as loadSettings. |
-| [`og.platform.saveSlot`](#fn-saveSlot) | function | Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (93 entities with skinned characters, cloths and minds: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game (its two banks and the manifest: 1 MiB, the platform's budget for a player and game), and a world that would take more saves a selection of what it keeps (world.snapshot's SnapshotDesc). og-game §8. |
+| [`og.platform.saveSlot`](#fn-saveSlot) | function | Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (93 entities with skinned characters, cloths and minds: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game (its two banks and the manifest: 1 MiB, the platform's budget for a player and game), and a world that would take more saves a selection of what it keeps (world.snapshot's SnapshotDesc). |
 | [`og.platform.loadSlot`](#fn-loadSlot) | function | Read a slot saveSlot wrote: its manifest, then its parts, joined and checked against the manifest's length and checksum. One request for all of it. |
 | [`AdKind`](#type-AdKind) | enum | Which kind of ad. |
 | [`PlatformNoticeKind`](#type-PlatformNoticeKind) | enum | What a notice is about. |
@@ -136,7 +141,7 @@ fn storeGet {
 }
 ```
 
-<sub>`api.ogt` line 14970</sub>
+<sub>`api.ogt` line 14946</sub>
 
 <a id="fn-storeSet"></a>
 
@@ -166,7 +171,7 @@ fn storeSet {
 }
 ```
 
-<sub>`api.ogt` line 14977</sub>
+<sub>`api.ogt` line 14953</sub>
 
 <a id="fn-storeList"></a>
 
@@ -194,7 +199,7 @@ fn storeList {
 }
 ```
 
-<sub>`api.ogt` line 14984</sub>
+<sub>`api.ogt` line 14960</sub>
 
 <a id="fn-leaderboardSubmit"></a>
 
@@ -224,7 +229,7 @@ fn leaderboardSubmit {
 }
 ```
 
-<sub>`api.ogt` line 14990</sub>
+<sub>`api.ogt` line 14966</sub>
 
 <a id="fn-leaderboardTop"></a>
 
@@ -254,7 +259,7 @@ fn leaderboardTop {
 }
 ```
 
-<sub>`api.ogt` line 14997</sub>
+<sub>`api.ogt` line 14973</sub>
 
 <a id="fn-leaderboardAround"></a>
 
@@ -284,7 +289,7 @@ fn leaderboardAround {
 }
 ```
 
-<sub>`api.ogt` line 15004</sub>
+<sub>`api.ogt` line 14980</sub>
 
 <a id="fn-telemetry"></a>
 
@@ -318,7 +323,7 @@ fn telemetry {
 }
 ```
 
-<sub>`api.ogt` line 15011</sub>
+<sub>`api.ogt` line 14987</sub>
 
 <a id="fn-point"></a>
 
@@ -348,7 +353,7 @@ fn point {
 }
 ```
 
-<sub>`api.ogt` line 15021</sub>
+<sub>`api.ogt` line 14997</sub>
 
 <a id="fn-aiMark"></a>
 
@@ -378,7 +383,7 @@ fn aiMark {
 }
 ```
 
-<sub>`api.ogt` line 15028</sub>
+<sub>`api.ogt` line 15004</sub>
 
 <a id="fn-loadSettings"></a>
 
@@ -406,7 +411,7 @@ fn loadSettings {
 }
 ```
 
-<sub>`api.ogt` line 15035</sub>
+<sub>`api.ogt` line 15011</sub>
 
 <a id="fn-saveSettings"></a>
 
@@ -436,13 +441,13 @@ fn saveSettings {
 }
 ```
 
-<sub>`api.ogt` line 15041</sub>
+<sub>`api.ogt` line 15017</sub>
 
 <a id="fn-saveSlot"></a>
 
 ### `og.platform.saveSlot`
 
-Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (93 entities with skinned characters, cloths and minds: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game (its two banks and the manifest: 1 MiB, the platform's budget for a player and game), and a world that would take more saves a selection of what it keeps (world.snapshot's SnapshotDesc). og-game §8.
+Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (93 entities with skinned characters, cloths and minds: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game (its two banks and the manifest: 1 MiB, the platform's budget for a player and game), and a world that would take more saves a selection of what it keeps (world.snapshot's SnapshotDesc).
 
 ```ts
 og.platform.saveSlot(world: World, desc?: SaveSlotDesc): Result<number>
@@ -459,14 +464,14 @@ Binding symbol `og_platform_save_slot` · publish builds: kept
 
 ```ogt
 fn saveSlot {
-  doc "Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (93 entities with skinned characters, cloths and minds: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game (its two banks and the manifest: 1 MiB, the platform's budget for a player and game), and a world that would take more saves a selection of what it keeps (world.snapshot's SnapshotDesc). og-game §8."
+  doc "Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (93 entities with skinned characters, cloths and minds: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game (its two banks and the manifest: 1 MiB, the platform's budget for a player and game), and a world that would take more saves a selection of what it keeps (world.snapshot's SnapshotDesc)."
   param world World "The world."
   param desc SaveSlotDesc "The slot, the text and what a title shows of it."
   returns Result.u32 "Refused for a malformed slot name, a text over 512 KiB or a meta over 4 KiB. The answer arrives when the manifest is written: data `{ slot, parts, bytes, revision }`; an error is the first refused part's, or the manifest's (`conflict`: another save of the slot landed meanwhile; the slot holds that one)."
 }
 ```
 
-<sub>`api.ogt` line 15048</sub>
+<sub>`api.ogt` line 15024</sub>
 
 <a id="fn-loadSlot"></a>
 
@@ -496,7 +501,7 @@ fn loadSlot {
 }
 ```
 
-<sub>`api.ogt` line 15055</sub>
+<sub>`api.ogt` line 15031</sub>
 
 <a id="fn-products"></a>
 
@@ -528,7 +533,7 @@ fn products {
 }
 ```
 
-<sub>`api.ogt` line 15163</sub>
+<sub>`api.ogt` line 15139</sub>
 
 <a id="fn-purchase"></a>
 
@@ -558,7 +563,7 @@ fn purchase {
 }
 ```
 
-<sub>`api.ogt` line 15172</sub>
+<sub>`api.ogt` line 15148</sub>
 
 <a id="fn-entitlements"></a>
 
@@ -586,7 +591,7 @@ fn entitlements {
 }
 ```
 
-<sub>`api.ogt` line 15179</sub>
+<sub>`api.ogt` line 15155</sub>
 
 <a id="fn-consume"></a>
 
@@ -616,7 +621,7 @@ fn consume {
 }
 ```
 
-<sub>`api.ogt` line 15185</sub>
+<sub>`api.ogt` line 15161</sub>
 
 <a id="fn-grant"></a>
 
@@ -646,7 +651,7 @@ fn grant {
 }
 ```
 
-<sub>`api.ogt` line 15192</sub>
+<sub>`api.ogt` line 15168</sub>
 
 <a id="fn-granted"></a>
 
@@ -676,7 +681,7 @@ fn granted {
 }
 ```
 
-<sub>`api.ogt` line 15199</sub>
+<sub>`api.ogt` line 15175</sub>
 
 <a id="fn-adReady"></a>
 
@@ -706,7 +711,7 @@ fn adReady {
 }
 ```
 
-<sub>`api.ogt` line 15206</sub>
+<sub>`api.ogt` line 15182</sub>
 
 <a id="fn-showAd"></a>
 
@@ -736,7 +741,7 @@ fn showAd {
 }
 ```
 
-<sub>`api.ogt` line 15213</sub>
+<sub>`api.ogt` line 15189</sub>
 
 <a id="fn-achievementUnlock"></a>
 
@@ -766,7 +771,7 @@ fn achievementUnlock {
 }
 ```
 
-<sub>`api.ogt` line 15220</sub>
+<sub>`api.ogt` line 15196</sub>
 
 <a id="fn-achievementProgress"></a>
 
@@ -796,7 +801,7 @@ fn achievementProgress {
 }
 ```
 
-<sub>`api.ogt` line 15227</sub>
+<sub>`api.ogt` line 15203</sub>
 
 <a id="fn-achievements"></a>
 
@@ -824,7 +829,7 @@ fn achievements {
 }
 ```
 
-<sub>`api.ogt` line 15234</sub>
+<sub>`api.ogt` line 15210</sub>
 
 <a id="fn-player"></a>
 
@@ -852,7 +857,7 @@ fn player {
 }
 ```
 
-<sub>`api.ogt` line 15240</sub>
+<sub>`api.ogt` line 15216</sub>
 
 <a id="fn-friends"></a>
 
@@ -884,7 +889,7 @@ fn friends {
 }
 ```
 
-<sub>`api.ogt` line 15246</sub>
+<sub>`api.ogt` line 15222</sub>
 
 <a id="fn-inviteSend"></a>
 
@@ -916,7 +921,7 @@ fn inviteSend {
 }
 ```
 
-<sub>`api.ogt` line 15255</sub>
+<sub>`api.ogt` line 15231</sub>
 
 <a id="fn-invites"></a>
 
@@ -944,7 +949,7 @@ fn invites {
 }
 ```
 
-<sub>`api.ogt` line 15264</sub>
+<sub>`api.ogt` line 15240</sub>
 
 <a id="fn-share"></a>
 
@@ -974,7 +979,7 @@ fn share {
 }
 ```
 
-<sub>`api.ogt` line 15270</sub>
+<sub>`api.ogt` line 15246</sub>
 
 <a id="fn-supports"></a>
 
@@ -1004,7 +1009,7 @@ fn supports {
 }
 ```
 
-<sub>`api.ogt` line 15277</sub>
+<sub>`api.ogt` line 15253</sub>
 
 <a id="fn-notice"></a>
 
@@ -1034,7 +1039,7 @@ fn notice {
 }
 ```
 
-<sub>`api.ogt` line 15284</sub>
+<sub>`api.ogt` line 15260</sub>
 
 <a id="fn-result"></a>
 
@@ -1064,7 +1069,7 @@ fn result {
 }
 ```
 
-<sub>`api.ogt` line 15291</sub>
+<sub>`api.ogt` line 15267</sub>
 
 <a id="fn-info"></a>
 
@@ -1092,7 +1097,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 15298</sub>
+<sub>`api.ogt` line 15274</sub>
 
 <a id="fn-now"></a>
 
@@ -1120,7 +1125,7 @@ fn now {
 }
 ```
 
-<sub>`api.ogt` line 15304</sub>
+<sub>`api.ogt` line 15280</sub>
 
 <a id="fn-roomCreate"></a>
 
@@ -1152,7 +1157,7 @@ fn roomCreate {
 }
 ```
 
-<sub>`api.ogt` line 15395</sub>
+<sub>`api.ogt` line 15371</sub>
 
 <a id="fn-roomJoin"></a>
 
@@ -1182,7 +1187,7 @@ fn roomJoin {
 }
 ```
 
-<sub>`api.ogt` line 15404</sub>
+<sub>`api.ogt` line 15380</sub>
 
 <a id="fn-quickPlay"></a>
 
@@ -1214,7 +1219,7 @@ fn quickPlay {
 }
 ```
 
-<sub>`api.ogt` line 15411</sub>
+<sub>`api.ogt` line 15387</sub>
 
 <a id="fn-roomLeave"></a>
 
@@ -1242,7 +1247,7 @@ fn roomLeave {
 }
 ```
 
-<sub>`api.ogt` line 15420</sub>
+<sub>`api.ogt` line 15396</sub>
 
 <a id="fn-roomSend"></a>
 
@@ -1276,7 +1281,7 @@ fn roomSend {
 }
 ```
 
-<sub>`api.ogt` line 15426</sub>
+<sub>`api.ogt` line 15402</sub>
 
 <a id="fn-roomPeers"></a>
 
@@ -1304,7 +1309,7 @@ fn roomPeers {
 }
 ```
 
-<sub>`api.ogt` line 15436</sub>
+<sub>`api.ogt` line 15412</sub>
 
 <a id="fn-roomInfo"></a>
 
@@ -1332,7 +1337,7 @@ fn roomInfo {
 }
 ```
 
-<sub>`api.ogt` line 15442</sub>
+<sub>`api.ogt` line 15418</sub>
 
 <a id="fn-roomMessage"></a>
 
@@ -1362,7 +1367,7 @@ fn roomMessage {
 }
 ```
 
-<sub>`api.ogt` line 15448</sub>
+<sub>`api.ogt` line 15424</sub>
 
 ## Components, resources and events
 
@@ -1387,7 +1392,7 @@ event PlatformAnswered {
 }
 ```
 
-<sub>`api.ogt` line 14867</sub>
+<sub>`api.ogt` line 14843</sub>
 
 <a id="record-PlatformNotice"></a>
 
@@ -1410,7 +1415,7 @@ event PlatformNotice {
 }
 ```
 
-<sub>`api.ogt` line 15078</sub>
+<sub>`api.ogt` line 15054</sub>
 
 <a id="record-PlatformGrants"></a>
 
@@ -1431,7 +1436,7 @@ resource PlatformGrants {
 }
 ```
 
-<sub>`api.ogt` line 15084</sub>
+<sub>`api.ogt` line 15060</sub>
 
 <a id="record-RoomJoined"></a>
 
@@ -1460,7 +1465,7 @@ event RoomJoined {
 }
 ```
 
-<sub>`api.ogt` line 15367</sub>
+<sub>`api.ogt` line 15343</sub>
 
 <a id="record-RoomPeerJoined"></a>
 
@@ -1483,7 +1488,7 @@ event RoomPeerJoined {
 }
 ```
 
-<sub>`api.ogt` line 15376</sub>
+<sub>`api.ogt` line 15352</sub>
 
 <a id="record-RoomPeerLeft"></a>
 
@@ -1506,7 +1511,7 @@ event RoomPeerLeft {
 }
 ```
 
-<sub>`api.ogt` line 15382</sub>
+<sub>`api.ogt` line 15358</sub>
 
 <a id="record-RoomMessage"></a>
 
@@ -1531,7 +1536,7 @@ event RoomMessage {
 }
 ```
 
-<sub>`api.ogt` line 15388</sub>
+<sub>`api.ogt` line 15364</sub>
 
 ## Types
 
@@ -1556,7 +1561,7 @@ enum PlatformOrder {
 }
 ```
 
-<sub>`api.ogt` line 14861</sub>
+<sub>`api.ogt` line 14837</sub>
 
 <a id="type-StoreSetDesc"></a>
 
@@ -1584,7 +1589,7 @@ struct StoreSetDesc {
 }
 ```
 
-<sub>`api.ogt` line 14873</sub>
+<sub>`api.ogt` line 14849</sub>
 
 <a id="type-LeaderboardSubmitDesc"></a>
 
@@ -1612,7 +1617,7 @@ struct LeaderboardSubmitDesc {
 }
 ```
 
-<sub>`api.ogt` line 14882</sub>
+<sub>`api.ogt` line 14858</sub>
 
 <a id="type-LeaderboardQueryDesc"></a>
 
@@ -1642,7 +1647,7 @@ struct LeaderboardQueryDesc {
 }
 ```
 
-<sub>`api.ogt` line 14892</sub>
+<sub>`api.ogt` line 14868</sub>
 
 <a id="type-PointDesc"></a>
 
@@ -1670,7 +1675,7 @@ struct PointDesc {
 }
 ```
 
-<sub>`api.ogt` line 14905</sub>
+<sub>`api.ogt` line 14881</sub>
 
 <a id="type-AiMarkDesc"></a>
 
@@ -1696,7 +1701,7 @@ struct AiMarkDesc {
 }
 ```
 
-<sub>`api.ogt` line 14916</sub>
+<sub>`api.ogt` line 14892</sub>
 
 <a id="type-SaveSlotDesc"></a>
 
@@ -1722,7 +1727,7 @@ struct SaveSlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 14924</sub>
+<sub>`api.ogt` line 14900</sub>
 
 <a id="type-LoadSlotDesc"></a>
 
@@ -1746,7 +1751,7 @@ struct LoadSlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 14932</sub>
+<sub>`api.ogt` line 14908</sub>
 
 <a id="type-PlatformError"></a>
 
@@ -1771,7 +1776,7 @@ struct PlatformError {
 }
 ```
 
-<sub>`api.ogt` line 14939</sub>
+<sub>`api.ogt` line 14915</sub>
 
 <a id="type-PlatformResult"></a>
 
@@ -1806,7 +1811,7 @@ struct PlatformResult {
 }
 ```
 
-<sub>`api.ogt` line 14947</sub>
+<sub>`api.ogt` line 14923</sub>
 
 <a id="type-PlatformInfo"></a>
 
@@ -1831,7 +1836,7 @@ struct PlatformInfo {
 }
 ```
 
-<sub>`api.ogt` line 14962</sub>
+<sub>`api.ogt` line 14938</sub>
 
 <a id="type-AdKind"></a>
 
@@ -1854,7 +1859,7 @@ enum AdKind {
 }
 ```
 
-<sub>`api.ogt` line 15064</sub>
+<sub>`api.ogt` line 15040</sub>
 
 <a id="type-PlatformNoticeKind"></a>
 
@@ -1881,7 +1886,7 @@ enum PlatformNoticeKind {
 }
 ```
 
-<sub>`api.ogt` line 15070</sub>
+<sub>`api.ogt` line 15046</sub>
 
 <a id="type-PlatformNoticeData"></a>
 
@@ -1910,7 +1915,7 @@ struct PlatformNoticeData {
 }
 ```
 
-<sub>`api.ogt` line 15089</sub>
+<sub>`api.ogt` line 15065</sub>
 
 <a id="type-ProductsDesc"></a>
 
@@ -1932,7 +1937,7 @@ struct ProductsDesc {
 }
 ```
 
-<sub>`api.ogt` line 15100</sub>
+<sub>`api.ogt` line 15076</sub>
 
 <a id="type-PurchaseDesc"></a>
 
@@ -1960,7 +1965,7 @@ struct PurchaseDesc {
 }
 ```
 
-<sub>`api.ogt` line 15106</sub>
+<sub>`api.ogt` line 15082</sub>
 
 <a id="type-AdDesc"></a>
 
@@ -1986,7 +1991,7 @@ struct AdDesc {
 }
 ```
 
-<sub>`api.ogt` line 15117</sub>
+<sub>`api.ogt` line 15093</sub>
 
 <a id="type-AchievementProgressDesc"></a>
 
@@ -2013,7 +2018,7 @@ struct AchievementProgressDesc {
 }
 ```
 
-<sub>`api.ogt` line 15126</sub>
+<sub>`api.ogt` line 15102</sub>
 
 <a id="type-FriendsDesc"></a>
 
@@ -2039,7 +2044,7 @@ struct FriendsDesc {
 }
 ```
 
-<sub>`api.ogt` line 15136</sub>
+<sub>`api.ogt` line 15112</sub>
 
 <a id="type-InviteDesc"></a>
 
@@ -2065,7 +2070,7 @@ struct InviteDesc {
 }
 ```
 
-<sub>`api.ogt` line 15146</sub>
+<sub>`api.ogt` line 15122</sub>
 
 <a id="type-ShareDesc"></a>
 
@@ -2093,7 +2098,7 @@ struct ShareDesc {
 }
 ```
 
-<sub>`api.ogt` line 15154</sub>
+<sub>`api.ogt` line 15130</sub>
 
 <a id="type-RoomDesc"></a>
 
@@ -2121,7 +2126,7 @@ struct RoomDesc {
 }
 ```
 
-<sub>`api.ogt` line 15312</sub>
+<sub>`api.ogt` line 15288</sub>
 
 <a id="type-QuickPlayDesc"></a>
 
@@ -2158,7 +2163,7 @@ struct QuickPlayDesc {
 }
 ```
 
-<sub>`api.ogt` line 15323</sub>
+<sub>`api.ogt` line 15299</sub>
 
 <a id="type-RoomPeer"></a>
 
@@ -2181,7 +2186,7 @@ struct RoomPeer {
 }
 ```
 
-<sub>`api.ogt` line 15341</sub>
+<sub>`api.ogt` line 15317</sub>
 
 <a id="type-RoomInfo"></a>
 
@@ -2210,7 +2215,7 @@ struct RoomInfo {
 }
 ```
 
-<sub>`api.ogt` line 15348</sub>
+<sub>`api.ogt` line 15324</sub>
 
 <a id="type-RoomMessageData"></a>
 
@@ -2237,4 +2242,4 @@ struct RoomMessageData {
 }
 ```
 
-<sub>`api.ogt` line 15358</sub>
+<sub>`api.ogt` line 15334</sub>

@@ -180,7 +180,7 @@ export interface BriefPalette {
   readonly colours: readonly PaletteColour[];
 }
 
-/** The fields of a style catalogue entry the brief reads (packages/knowledge/looks/catalogue.json, og-taste §12). */
+/** The fields of a style catalogue entry the brief reads (packages/knowledge/looks/catalogue.json). */
 export interface BriefStyle {
   readonly slug: string;
   readonly name: string;
@@ -1058,7 +1058,7 @@ export function readLook(projectDir: string, options: ReadLookOptions = {}): Bri
   if (!existsSync(manifest)) throw new Error(`${dir}: no project.ogt`);
   const project = readFileSync(manifest, "utf8");
   const look = /^look[ \t]+"([^"]+)"/m.exec(project)?.[1];
-  if (!look) throw new Error(`${manifest}: no \`look "looks/<id>.ogt"\` line; name the game's look there (og-taste §12), as create writes it`);
+  if (!look) throw new Error(`${manifest}: no \`look "looks/<id>.ogt"\` line; name the game's look there, as create writes it`);
   const profile = /^profile[ \t]+"(2d|3d)"/m.exec(project)?.[1] as "2d" | "3d" | undefined;
   const assets = join(dir, "assets");
   const id = assetId(look);
@@ -1185,7 +1185,7 @@ function main(argv: string[]): number {
 export interface StyleArtRequests {
   /** The style's slug. */
   readonly style: string;
-  /** The look family it was generated for (og-taste §12: `ornate fantasy`). */
+  /** The look family it was generated for (`ornate fantasy`). */
   readonly look: string;
   readonly premise: string;
   readonly choices: {
@@ -1454,7 +1454,7 @@ export function rigParts(template: string): RigPart[] {
 // style, mood and genre (project.ogt's create block, or the platform's
 // creation form) and its premise, the request for each music cue and each
 // sound effect the game needs, plus the procedural presets `og cook`
-// synthesises instead (`type sfx`, og-audio §2), so a game is never silent
+// synthesises instead (`type sfx`), so a game is never silent
 // while its generated audio is pending. Pure and deterministic; a public
 // contract beside artBrief (README §The audio brief).
 
@@ -1480,7 +1480,7 @@ export interface AudioBriefInput {
   readonly premise?: string;
 }
 
-/** The file a generator returns, as og cook reads it (og-audio §5). */
+/** The file a generator returns, as og cook reads it. */
 export interface AudioFormat {
   /** `ogg` (Vorbis) for music, `wav` for effects; og cook decodes either to QOA. */
   readonly container: "ogg" | "wav";
@@ -1509,7 +1509,7 @@ export interface MusicCueBrief {
   readonly seconds: number;
   /** Loops seamlessly (AudioSource.loop); a stinger and the endings do not. */
   readonly loop: boolean;
-  /** Layers to deliver as separate, sample-aligned files (og-audio §5's stems); empty: one mix. */
+  /** Layers to deliver as separate, sample-aligned files (stems); empty: one mix. */
   readonly stems: readonly string[];
   /** 0 calm to 1 the most intense of the game's cues. */
   readonly intensity: number;
@@ -1525,9 +1525,9 @@ export interface SfxBrief {
   readonly event: string;
   readonly prompt: string;
   readonly seconds: number;
-  /** og.audio's bus (og-audio §4). */
+  /** og.audio's bus. */
   readonly bus: "sfx" | "ui";
-  /** Takes to deliver, so repeats do not machine-gun (og-audio §1); 1 for UI sounds. */
+  /** Takes to deliver, so repeats do not machine-gun; 1 for UI sounds. */
   readonly variants: number;
   /** The preset (`presets[].id`) the game plays until this file exists; null: none fits. */
   readonly preset: string | null;

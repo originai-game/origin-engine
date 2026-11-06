@@ -1,4 +1,4 @@
-//! The depth wave's geometry (docs/depth.md §1): the reference frames of
+//! The depth wave's geometry (docs/design.md §10.1): the reference frames of
 //! the three.js primitives and a buffer-geometry height field
 //! (`geometry-procedural`), lines (`lines`), point clouds (`points`),
 //! wireframe materials (`wireframe`) and debug draw over the finished

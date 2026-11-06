@@ -30,17 +30,17 @@ status `docs/roadmap.md`. Platform contracts implemented here:
     symlink }`, `Roots { pkg; template; engine }`.
   - `packages/knowledge/scripts/brief.ts`: `artBrief`, `readLook`,
     `presetLook` (re-exported by `@origingame/create-game`; `docs/art.md` §2.2).
-  - Skill names: games pin `skill:<name>` packs by hash, so a skill is never
-    renamed.
-- Engine-level game knowledge (skills that use only `og` and the engine API)
-  lives in `packages/knowledge/skills/`, mounted at `game/skills/<name>/`, and
-  names no platform tool or service.
+- The engine ships no skills. What a game author needs beyond a signature
+  (workflow, thresholds, pitfalls) is a guide in `crates/og-api/guides/`,
+  generated into the wiki and read through `og api find` and `og api show`,
+  or `og` command help. A guide never restates the API and names no
+  platform tool or service.
 
 ## Principles
 
 - **The engine supplies facts and tools; the agent decides.** No engine
   command scores, grades or refuses on taste. Checks report measurements and
-  findings; thresholds belong in skills.
+  findings; thresholds belong in the guides.
 - **No gameplay templates.** `og create` writes one project skeleton; the
   creation choices go into project.ogt's `create` block as constraints and
   hints. Polished templates and showcase content come after the feature work.
@@ -126,6 +126,46 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - A test is kept only when it fails on a plausible regression; a re-recorded
   frame is one the change must move, and is named in the report.
 - There is no GitHub CI; the gate is `scripts/check.sh` on macrunner.
+
+## Pitfalls
+
+- Claim a lane only with `scripts/lane.sh take`; for an existing branch,
+  take first and switch inside the claimed lane. `--list` can be seconds
+  stale.
+- Never kill a process you did not start: `pgrep -f "check.sh quick"`
+  matches other lanes' gates. Keep `$!` and stop only that; tell the owner
+  of anything else in your way. A killed script's `og test` keeps running;
+  check `ps` for `target/debug/og` before re-recording into the same files.
+- Never edit a shell script while a running shell is reading it.
+- GPU slots: take every slot for one measured run, not a whole series, and
+  call `og_gpu_acquire_all` only when the GPU is idle (it holds `gpu-all`
+  while it waits). Restore anything moved aside under the lock (Chrome's
+  Metal shader cache) before the slots free. Per-process GPU limits add up
+  across test runners: fix contention in the scheduler, not a timeout.
+- Land ready heads in stacks: regenerate once, run `quick` once, run the
+  targeted Metal checks together, return only a failing head.
+- `local main` can be ahead of `origin/main`: compare full object ids and
+  pin a measurement worktree to the requested commit.
+- The look presets are `include_str!` into og-cook: rebuild `og` (and the
+  addon) before capturing after a preset edit. Regenerate a game's copied
+  assets from committed sources before recording its references.
+- A capture records its effective state (AA, frame history, selection)
+  beside the image; equal ticks do not prove equal temporal history. A
+  checker's element attribution is a claim to check against the pixels.
+- Before calling an unknown option a defect, read the public parser and its
+  internal callers (`og run --device` passes `--preflight` itself).
+- Text shaping must not enable runtime rasterization or widen a font's
+  charset; check missing-glyph diagnostics and the cooked payload budget.
+  Freeze the code under test for a cross-host hash run.
+- Style packs are shipped asset roots: their tests and references live in
+  `templates/styles/{tests,references}/<pack>`. After moving fixtures, run
+  the cook-report budget and threaded-cook output tests.
+- A toolchain move runs workspace Clippy with all targets, `--keep-going`
+  and `-D warnings`.
+- Walkers and packagers never follow directory symlinks and skip `.og/`,
+  `cooked/`, `og-out/` and installs; a project must package after it ran.
+- The platform development key is full-featured: when a flow fails with
+  it, fix the credential contract, not the flow.
 
 ## Streams and landing
 

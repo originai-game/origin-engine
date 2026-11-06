@@ -12,15 +12,18 @@ Props that break: walls, crates, pillars, glass. A model cooked with a `fracture
 
 - **TypeScript**: functions are the namespace `og.destruction`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-destruction`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module destruction {
+  doc "Props that break: walls, crates, pillars, glass. A model cooked with a `fracture { }` block (at the top of a `type model`, or in a glTF's import settings) is cut by the cook into Voronoi chunks bonded where they touch, and the chunks resting on its floor are anchored to the world. Give the entity that draws it (its og.Model) an og.Destructible: hits, og.destruction.damage and og.destruction.explode wear the bonds down, a broken bond splits the prop into islands, an island anchored to the world stays put and every other island falls as one rigid body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight, so a wall shot out at its foot comes down."
+  doc "**Deterministic.** Damage, bonds, islands and the stress solver are fixed f32 arithmetic in the tick (og.destruction runs after the game's systems and before og.physics), the chunks are world entities and the bonds' health is in a state block: snapshots, restores, replays and the world hash cover the whole fracture, on both hosts."
+  doc "**What a game sees.** og.Fractured, the tick after, for every island that breaks loose (play a sound by its volume, shake the camera); each loose chunk is an entity with og.Chunk (its body is a dynamic og.RigidBody: query it, push it, despawn it). Its look: the og.Destructible's `breakFx` emitter bursts where each island breaks loose and `hitFx` at each damaging hit, each the material's own (dust for stone, splinters for wood, shards and glints for glass, a few sparks only for metal). Budgets (og.Destruction): a loose island (a body and the chunks it carries) smaller than `debrisVolume` despawns after `debrisLifetime`, and past `maxChunks` loose chunks the oldest islands go first."
+  doc "3D profile only. The chunks of a dynamic prop (a crate with an og.RigidBody) fly with its velocity; a prop without a body, or with a static one, stands on its anchors."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 27001</sub>
+<sub>`api.ogt` line 26962</sub>
 
 ## Contents
 
@@ -85,7 +88,7 @@ fn damage {
 }
 ```
 
-<sub>`api.ogt` line 27255</sub>
+<sub>`api.ogt` line 27215</sub>
 
 <a id="fn-explode"></a>
 
@@ -115,7 +118,7 @@ fn explode {
 }
 ```
 
-<sub>`api.ogt` line 27263</sub>
+<sub>`api.ogt` line 27223</sub>
 
 <a id="fn-fracture"></a>
 
@@ -145,7 +148,7 @@ fn fracture {
 }
 ```
 
-<sub>`api.ogt` line 27270</sub>
+<sub>`api.ogt` line 27230</sub>
 
 <a id="fn-info"></a>
 
@@ -175,7 +178,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 27277</sub>
+<sub>`api.ogt` line 27237</sub>
 
 <a id="fn-material"></a>
 
@@ -205,7 +208,7 @@ fn material {
 }
 ```
 
-<sub>`api.ogt` line 27284</sub>
+<sub>`api.ogt` line 27244</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -233,7 +236,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 27291</sub>
+<sub>`api.ogt` line 27251</sub>
 
 ## Components, resources and events
 
@@ -328,7 +331,7 @@ component Destructible {
 }
 ```
 
-<sub>`api.ogt` line 27020</sub>
+<sub>`api.ogt` line 26980</sub>
 
 <a id="record-Chunk"></a>
 
@@ -368,7 +371,7 @@ component Chunk {
 }
 ```
 
-<sub>`api.ogt` line 27082</sub>
+<sub>`api.ogt` line 27042</sub>
 
 <a id="record-Fractured"></a>
 
@@ -408,7 +411,7 @@ event Fractured {
 }
 ```
 
-<sub>`api.ogt` line 27102</sub>
+<sub>`api.ogt` line 27062</sub>
 
 <a id="record-Destruction"></a>
 
@@ -466,7 +469,7 @@ resource Destruction {
 }
 ```
 
-<sub>`api.ogt` line 27120</sub>
+<sub>`api.ogt` line 27080</sub>
 
 ## Types
 
@@ -514,7 +517,7 @@ struct DamageDesc {
 }
 ```
 
-<sub>`api.ogt` line 27157</sub>
+<sub>`api.ogt` line 27117</sub>
 
 <a id="type-ExplosionDesc"></a>
 
@@ -562,7 +565,7 @@ struct ExplosionDesc {
 }
 ```
 
-<sub>`api.ogt` line 27183</sub>
+<sub>`api.ogt` line 27143</sub>
 
 <a id="type-DestructibleInfo"></a>
 
@@ -600,7 +603,7 @@ struct DestructibleInfo {
 }
 ```
 
-<sub>`api.ogt` line 27211</sub>
+<sub>`api.ogt` line 27171</sub>
 
 <a id="type-DestructibleMaterial"></a>
 
@@ -641,7 +644,7 @@ struct DestructibleMaterial {
 }
 ```
 
-<sub>`api.ogt` line 27227</sub>
+<sub>`api.ogt` line 27187</sub>
 
 <a id="type-DestructionCapabilities"></a>
 
@@ -664,7 +667,7 @@ struct DestructionCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 27248</sub>
+<sub>`api.ogt` line 27208</sub>
 
 ## Constants
 
@@ -686,64 +689,64 @@ struct DestructionCapabilities {
 const CAUSE_IMPACT u32 0 "Fractured.cause: a collision's impulse (og.CollisionStarted) past the prop's impactThreshold."
 ```
 
-<sub>`api.ogt` line 27008</sub>
+<sub>`api.ogt` line 26968</sub>
 
 ```ogt
 const CAUSE_DAMAGE u32 1 "Fractured.cause: og.destruction.damage."
 ```
 
-<sub>`api.ogt` line 27009</sub>
+<sub>`api.ogt` line 26969</sub>
 
 ```ogt
 const CAUSE_EXPLOSION u32 2 "Fractured.cause: og.destruction.explode."
 ```
 
-<sub>`api.ogt` line 27010</sub>
+<sub>`api.ogt` line 26970</sub>
 
 ```ogt
 const CAUSE_STRESS u32 3 "Fractured.cause: the stress solver: a part that could no longer hold its own weight."
 ```
 
-<sub>`api.ogt` line 27011</sub>
+<sub>`api.ogt` line 26971</sub>
 
 ```ogt
 const CAUSE_SHATTER u32 4 "Fractured.cause: a chunk with children (the fracture block's `children`) took three times the damage that breaks a bond of its cross-section, and broke into them: they fly free, each its own body, leaving a hole."
 ```
 
-<sub>`api.ogt` line 27012</sub>
+<sub>`api.ogt` line 26972</sub>
 
 ```ogt
 const MATERIAL_BRICK u32 0 "og.destruction.material: brickwork in mortar (no-tension masonry: stands by its weight, steps back over its piers)."
 ```
 
-<sub>`api.ogt` line 27013</sub>
+<sub>`api.ogt` line 26973</sub>
 
 ```ogt
 const MATERIAL_CONCRETE u32 1 "og.destruction.material: plain concrete (strong, breaks in chunky lumps, holds what is left)."
 ```
 
-<sub>`api.ogt` line 27014</sub>
+<sub>`api.ogt` line 26974</sub>
 
 ```ogt
 const MATERIAL_WOOD u32 2 "og.destruction.material: timber boards (light and weak across the grain: splinters where it lands or is struck)."
 ```
 
-<sub>`api.ogt` line 27015</sub>
+<sub>`api.ogt` line 26975</sub>
 
 ```ogt
 const MATERIAL_GLASS u32 3 "og.destruction.material: a glass pane (shatters at a touch, no stress solver)."
 ```
 
-<sub>`api.ogt` line 27016</sub>
+<sub>`api.ogt` line 26976</sub>
 
 ```ogt
 const MATERIAL_STONE u32 4 "og.destruction.material: dry-laid stone (masonry with no mortar: no tension, heavier and tougher than brick)."
 ```
 
-<sub>`api.ogt` line 27017</sub>
+<sub>`api.ogt` line 26977</sub>
 
 ```ogt
 const CAUSE_FRACTURE u32 5 "Fractured.cause: og.destruction.fracture."
 ```
 
-<sub>`api.ogt` line 27018</sub>
+<sub>`api.ogt` line 26978</sub>

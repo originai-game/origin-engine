@@ -1,4 +1,4 @@
-//! Secondary cameras (the S8 depth stream, `docs/depth.md` §8): a
+//! Secondary cameras (the S8 depth stream, `docs/design.md` §10.8): a
 //! [`View`] draws the scene from its own camera into a render target
 //! (`targets.rs`) or into a rect of the frame (split-screen), with a
 //! three.js layer mask, an order, a clear colour and a rate; a mirror is a

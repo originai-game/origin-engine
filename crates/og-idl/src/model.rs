@@ -16,6 +16,19 @@ pub struct Api {
     /// declaration exactly as written (the wiki). Empty when the model was
     /// not read from text.
     pub source: Vec<String>,
+    /// The hand-written guides beside the IDL (`crates/og-api/guides/<name>.md`),
+    /// by name: each becomes a wiki page whose numbered sections are entries
+    /// of `og api find` and `og api show`.
+    pub guides: Vec<Guide>,
+}
+
+/// One guide: workflow, thresholds and pitfalls that no signature states.
+#[derive(Debug, Clone)]
+pub struct Guide {
+    /// The file's stem (`testing`), what `og api show` takes.
+    pub name: String,
+    /// The Markdown as written: a `# Title`, a summary paragraph and `## N. ` sections.
+    pub text: String,
 }
 
 #[derive(Debug, Clone)]
@@ -53,10 +66,6 @@ pub struct Module {
     pub place: Place,
     /// `false` drops the whole module from `publish` builds.
     pub publish: bool,
-    /// The knowledge skill that teaches the module (`skill og-feel`: the
-    /// engine repository's packages/knowledge/skills/og-feel); the wiki's
-    /// index groups the modules by it and each page names it.
-    pub skill: String,
     pub items: Vec<Item>,
     pub line: usize,
 }

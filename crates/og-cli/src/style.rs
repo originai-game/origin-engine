@@ -453,7 +453,7 @@ fn eject(args: &[&str]) -> Result<(), String> {
         println!("  {rel_dir}/{f}");
     }
     println!(
-        "name it in the game's look: ui \"styles/{name}/style.ogt\"\nthen change its palette roles, radius, ramp and fonts in {rel_dir}/style.ogt (og-ui §6); its cjk fonts stay the built-in @styles/cjk/ ones"
+        "name it in the game's look: ui \"styles/{name}/style.ogt\"\nthen change its palette roles, radius, ramp and fonts in {rel_dir}/style.ogt; its cjk fonts stay the built-in @styles/cjk/ ones"
     );
     Ok(())
 }

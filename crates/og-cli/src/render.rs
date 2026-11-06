@@ -277,7 +277,7 @@ fn timeline_duration(root: &Path, name: &str) -> Result<f64, String> {
             .ok_or_else(|| format!("{}: no `duration <seconds>` line", p.display()));
     }
     Err(format!(
-        "no timeline `{name}` under {}/assets (an .ogt of `type timeline`; timelines are stream S2's, docs/depth.md §2)",
+        "no timeline `{name}` under {}/assets (an .ogt of `type timeline`; timelines are stream S2's, docs/design.md §10.2)",
         root.display()
     ))
 }

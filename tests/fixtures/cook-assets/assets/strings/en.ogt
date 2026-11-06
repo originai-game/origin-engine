@@ -1,7 +1,7 @@
 type strings
 version 1
 ---
-# The template's strings (og.i18n, og-i18n §1): every word the menu shows
+# The template's strings (og.i18n): every word the menu shows
 # is a key here, never a literal in a system. This is the base table, in
 # the game's source language; a locale is its own file beside it
 # (`zh-CN.ogt`, with the same keys and its `fonts` line), loaded in `start`.

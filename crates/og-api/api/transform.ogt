@@ -1,5 +1,4 @@
 module transform {
-  skill og-game
   doc "Transforms in the three.js vocabulary: position, quaternion and scale, composed into matrixWorld down the parent chain."
 
   component Transform {

@@ -1,6 +1,6 @@
 //! `og migrate three <file.ts> [--out <file.ts> | --write] [--json]`: a
 //! three.js file rewritten towards Origin Engine with the mappings of the
-//! knowledge package's `three-to-og` guide (`packages/knowledge/guides/`).
+//! `three-to-og` guide (`crates/og-api/guides/`, `og api show three-to-og`).
 //!
 //! What is mechanical is rewritten: the three.js imports to one import of
 //! `og` from `@origingame/engine` (and a `must` helper), the geometry
@@ -446,7 +446,7 @@ fn manual_class(name: &str) -> Option<(&'static str, u8)> {
             S_LOAD,
         ),
         "AudioLoader" | "Audio" | "PositionalAudio" | "AudioListener" => (
-            "og.load.sound and og.AudioSource (the og-audio skill)",
+            "og.load.sound and og.AudioSource (`og api show audio`)",
             S_LOAD,
         ),
         "FontLoader" => (

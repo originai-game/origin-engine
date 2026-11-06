@@ -22,7 +22,7 @@ mod validate;
 mod values;
 
 pub use index::Index;
-pub use model::Api;
+pub use model::{Api, Guide};
 
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -142,7 +142,7 @@ pub fn read(path: &Path) -> Result<Api, ReadError> {
         offset += source.bytes().filter(|&b| b == b'\n').count();
         text.push_str(&source);
     }
-    parse(&text).map_err(|diags| {
+    let mut api = parse(&text).map_err(|diags| {
         let diags = diags
             .into_iter()
             .map(|mut d| {
@@ -152,7 +152,38 @@ pub fn read(path: &Path) -> Result<Api, ReadError> {
             })
             .collect();
         ReadError::Invalid(path.to_path_buf(), diags)
-    })
+    })?;
+    api.guides = guides(&path.join("..").join("guides"))?;
+    Ok(api)
+}
+
+/// The guides beside the IDL (`crates/og-api/guides/*.md`), sorted by name;
+/// none when the directory is absent.
+fn guides(dir: &Path) -> Result<Vec<Guide>, ReadError> {
+    let Ok(read) = std::fs::read_dir(dir) else {
+        return Ok(Vec::new());
+    };
+    let mut out = Vec::new();
+    for entry in read {
+        let path = entry
+            .map_err(|e| ReadError::Io(dir.to_path_buf(), e))?
+            .path();
+        let Some(name) = path
+            .extension()
+            .is_some_and(|x| x == "md")
+            .then(|| path.file_stem())
+            .flatten()
+        else {
+            continue;
+        };
+        let text = std::fs::read_to_string(&path).map_err(|e| ReadError::Io(path.clone(), e))?;
+        out.push(Guide {
+            name: name.to_string_lossy().into_owned(),
+            text,
+        });
+    }
+    out.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(out)
 }
 
 /// One generated file: its path relative to the repository root and its bytes.

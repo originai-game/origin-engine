@@ -423,7 +423,7 @@ scale only scales what the scene asks for. The default is medium's row.
 | `ssr_step_scale` | 0.5 | 1 | 2 | free (a uniform) |
 | `volumetric_step_scale` | 0.5 | 1 | 2 | remakes the froxel volumes (the raymarch's steps are a uniform) |
 | `msaa_samples` | 1 | 4 | 4 | remakes the multisampled targets; `RenderInfo::msaa_samples` caps it |
-| `upscaler` | `Taau` | `Taau` | `Fsr3` | `docs/upscalers.md` |
+| `upscaler` | `Taau` | `Taau` | `Fsr3` | `docs/design.md` §11 |
 
 `ao_resolution` replaces `AmbientOcclusion::resolution` where it is
 `Some`; `None` draws the scene's. `ssr_step_scale` multiplies

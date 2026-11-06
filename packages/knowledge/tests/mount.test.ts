@@ -1,6 +1,6 @@
 // The mount writes the package into the platform's knowledge tree and owns
 // only what it mounts. Each test runs the CLI against a stand-in origin-agent
-// checkout (a knowledge/ tree with someone else's skill and overlay) and
+// checkout (a knowledge/ tree with the platform's own skill and overlay) and
 // asserts on the files it leaves and the exit status --check returns.
 
 import { afterAll, expect, test } from "bun:test";
@@ -38,7 +38,7 @@ function mount(checkout: string, ...args: string[]) {
 const real = payload(defaultRoots());
 const text = real.filter((f) => isText(f.bytes));
 
-test("a mount writes the text payload byte for byte, no binaries, and leaves other skills and overlays alone", () => {
+test("a mount writes the text payload byte for byte, no binaries, and leaves the platform's skills and other overlays alone", () => {
   const p = platform();
   const r = mount(p);
   expect(r.code).toBe(0);
@@ -70,36 +70,36 @@ test("--check names an edited, a missing and a stray file and writes nothing; a 
   const p = platform();
   mount(p);
   const prod = join(p, PROD);
-  writeFileSync(join(prod, "game/skills/og-core/SKILL.md"), "edited by hand\n");
-  rmSync(join(prod, "game-scaffold/origin-engine-ts/project.ogt"));
-  writeFileSync(join(prod, "game/skills/og-game/guides/retired.md"), "a guide the package no longer has\n");
+  const overlay = "game-scaffold/origin-engine-ts";
+  writeFileSync(join(prod, overlay, "package.json"), "edited by hand\n");
+  rmSync(join(prod, overlay, "project.ogt"));
+  writeFileSync(join(prod, overlay, "retired.md"), "a file the package no longer has\n");
   const check = mount(p, "--check");
   expect(check.code).toBe(1);
-  expect(check.out).toContain("changed game/skills/og-core/SKILL.md");
-  expect(check.out).toContain("added   game-scaffold/origin-engine-ts/project.ogt");
-  expect(check.out).toContain("removed game/skills/og-game/guides/retired.md");
-  expect(readFileSync(join(prod, "game/skills/og-core/SKILL.md"), "utf8")).toBe("edited by hand\n");
+  expect(check.out).toContain(`changed ${overlay}/package.json`);
+  expect(check.out).toContain(`added   ${overlay}/project.ogt`);
+  expect(check.out).toContain(`removed ${overlay}/retired.md`);
+  expect(readFileSync(join(prod, overlay, "package.json"), "utf8")).toBe("edited by hand\n");
   expect(mount(p).code).toBe(0);
   expect(mount(p, "--check").code).toBe(0);
-  expect(existsSync(join(prod, "game/skills/og-game/guides/retired.md"))).toBeFalse();
+  expect(existsSync(join(prod, overlay, "retired.md"))).toBeFalse();
 });
 
 test("an invalid package mounts nothing", () => {
   const dir = mkdtempSync(join(tmpdir(), "og-mount-invalid-"));
   temps.push(dir);
-  // A copy of the engine repository's mounted sources with a broken skill.
+  // A copy of the engine repository's mounted sources with a broken skeleton.
   const roots = defaultRoots();
   cpSync(roots.pkg, join(dir, "packages/knowledge"), { recursive: true, filter: (s) => !s.includes("node_modules") });
   cpSync(roots.template, join(dir, "packages/create/template"), { recursive: true, filter: (s) => !/\/(cooked|dist|node_modules|og-out)(\/|$)/.test(s) });
   mkdirSync(join(dir, "packages/engine"), { recursive: true });
   cpSync(join(roots.engine, "package.json"), join(dir, "packages/engine/package.json"));
-  const skill = join(dir, "packages/knowledge/skills/og-core/SKILL.md");
-  writeFileSync(skill, readFileSync(skill, "utf8").replace("name: og-core", "name: core"));
+  const project = join(dir, "packages/create/template/project.ogt");
+  writeFileSync(project, readFileSync(project, "utf8").replace(/^seed .*$/m, ""));
   const p = platform();
   const r = spawnSync("bun", [join(dir, "packages/knowledge/scripts/mount.ts"), p], { encoding: "utf8" });
   expect(r.status).toBe(1);
   expect(r.stderr).toContain("nothing mounted");
-  expect(existsSync(join(p, PROD, "game/skills/og-core"))).toBeFalse();
   expect(existsSync(join(p, PROD, "game-scaffold/origin-engine-ts"))).toBeFalse();
 });
 
@@ -126,12 +126,12 @@ test("an installed engine's knowledge is read in place: installed(dir).roots thr
   const files = payload(found.roots);
   for (const f of files) expect(Object.keys(f).sort()).toEqual(["bytes", "path", "source", "symlink"]);
   expect(files.map((f) => f.path)).toEqual([...files.map((f) => f.path)].sort());
-  // Every skill at game/skills/<name>/, with the files beside its SKILL.md.
-  const script = files.find((f) => f.path === "game/skills/level-texturing/scripts/texture-level.ts")!;
-  expect(script.source).toBe(join(dir, "knowledge/skills/level-texturing/scripts/texture-level.ts"));
-  expect(Buffer.from(script.bytes).equals(readFileSync(join(roots.pkg, "skills/level-texturing/scripts/texture-level.ts")))).toBeTrue();
-  const skills = new Set(files.map((f) => /^game\/skills\/([^/]+)\/SKILL\.md$/.exec(f.path)?.[1]).filter(Boolean));
-  for (const s of ["architecture-discipline", "component-forge", "level-texturing", "localization", "recipe-craft", "visual-acceptance", "og-game"]) expect(skills.has(s)).toBeTrue();
+  // The overlay's files, each from the package.
+  const pin = files.find((f) => f.path === "game-scaffold/origin-engine-ts/origin-engine.json")!;
+  expect(pin.source).toBe(join(dir, "knowledge/scaffold/origin-engine.json"));
+  expect(Buffer.from(pin.bytes).equals(readFileSync(join(roots.pkg, "scaffold/origin-engine.json")))).toBeTrue();
+  // No skills: the engine's knowledge reaches an agent through og api.
+  expect(files.some((f) => f.path.startsWith("game/skills/"))).toBeFalse();
   // The same text as the repository's payload, path for path.
   const here = new Map(text.map((f) => [f.path, Buffer.from(f.bytes).toString("utf8")]));
   const there = new Map(files.filter((f) => isText(f.bytes)).map((f) => [f.path, Buffer.from(f.bytes).toString("utf8")]));

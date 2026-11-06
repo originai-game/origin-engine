@@ -1,12 +1,11 @@
 type api
 version 1
 ---
-# expect: 36: `str<8>` is a text column: only a component or resource field takes it
+# expect: 34: `str<8>` is a text column: only a component or resource field takes it
 package "@origingame/fixture"
 doc "A fixture: the smallest valid API plus one mistake below."
 
 module reflect {
-  skill og-core
   doc "Reflection."
   place top
   struct FieldOptions {
@@ -29,7 +28,6 @@ module reflect {
 }
 
 module game {
-  skill og-core
   doc "The game."
   struct LabelDesc {
     doc "A label."

@@ -348,8 +348,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = sphere_field(20_000);
             Ok(())
         },
-        // The same field with every sphere bobbing each frame (the bench's
-        // sphere field, tools/bench/spheres): the renderer's per-instance
+        // The same field with every sphere bobbing each frame: the
+        // renderer's per-instance
         // cost when every transform changes. Perf only (no reference).
         "spheres-20k-moving" => |g, _| {
             g.scene = sphere_field(20_000);
@@ -1014,7 +1014,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::physical_scenes::physical_scene();
             Ok(())
         },
-        // The depth wave's geometry (docs/depth.md §1, geometry_scenes.rs):
+        // The depth wave's geometry (docs/design.md §10.1, geometry_scenes.rs):
         // the three.js primitives, a tube and a buffer-geometry height
         // field; lines of every kind; point clouds; wireframe materials;
         // debug draw over a bloomed frame.
@@ -1044,7 +1044,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::geometry_scenes::shapes_scene();
             Ok(())
         },
-        // Render targets and secondary cameras (docs/depth.md §8): a
+        // Render targets and secondary cameras (docs/design.md §10.8): a
         // monitor showing a second camera's view (with an object on a layer
         // only it sees), a mirror reflecting the room, split-screen.
         "views-monitor" => |g, _| {
@@ -1086,7 +1086,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene.custom_post.push(crt);
             Ok(())
         },
-        // The depth wave's light (docs/depth.md §7, light_scenes.rs): rect
+        // The depth wave's light (docs/design.md §10.7, light_scenes.rs): rect
         // lights (LTC), light cookies, volumetric fog, and natively a
         // Cornell box baked by og-bake with a light volume.
         "rect-lights" => |g, _| {

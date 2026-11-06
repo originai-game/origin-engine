@@ -1,6 +1,6 @@
 //! The tick after a world.restore delivers og.WorldRestored (brasswick
 //! FINDINGS #8): everything in the world rolls back with a save, request
-//! numbers and session settings included, and og-game §17 asks a game to
+//! numbers and session settings included, and a game is expected to
 //! reset those after a restore; before, nothing marked the tick after one.
 //!
 //! A game of one system (Watch) records the og.WorldRestored events it

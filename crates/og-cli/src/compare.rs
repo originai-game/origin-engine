@@ -1,6 +1,6 @@
 //! `og compare <reference.png> <render.png> [--mask <mask.png>] [--align]
 //! [--key <ΔE00>] [--sheet <out.png>] [--json]`: the deterministic half of a
-//! model review (the og-model skill). It reads a reference image and a frame
+//! model review (the `art-review` guide). It reads a reference image and a frame
 //! the probe captured (`screenshot`, `view`, `turntable`), and prints:
 //!
 //! - **silhouette IoU**: the object's pixels in both over the pixels in

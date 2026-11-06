@@ -10,15 +10,18 @@ Outputs are relative to the output directory: an absolute path, a `..` component
 
 - **TypeScript**: functions are the namespace `og.commands`; components, resources and events are tokens on `og`.
 - **Publish builds**: dropped (members may override).
-- **Skill**: `og-build`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module commands {
+  doc "The command channel: actions scheduled on simulation time, from `og run --commands \"t:action[:args];...\"` or the probe's commands()."
+  doc "Core actions ship with the engine; a module or a game registers more. Unknown actions warn and continue. Not in publish builds."
+  doc "Outputs are relative to the output directory: an absolute path, a `..` component or a name starting with `.` (kept for the harness, such as a playtest's kept store) is refused. A file an earlier step of the script wrote is never overwritten: the later step's is written as `<stem>-2.<ext>` with a warning naming both steps."
+  publish false
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 23860</sub>
+<sub>`api.ogt` line 23833</sub>
 
 ## Contents
 
@@ -67,7 +70,7 @@ fn register {
 }
 ```
 
-<sub>`api.ogt` line 23944</sub>
+<sub>`api.ogt` line 23916</sub>
 
 <a id="fn-parse"></a>
 
@@ -95,7 +98,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 23952</sub>
+<sub>`api.ogt` line 23924</sub>
 
 <a id="fn-help"></a>
 
@@ -123,7 +126,7 @@ fn help {
 }
 ```
 
-<sub>`api.ogt` line 23958</sub>
+<sub>`api.ogt` line 23930</sub>
 
 <a id="fn-schedule"></a>
 
@@ -153,7 +156,7 @@ fn schedule {
 }
 ```
 
-<sub>`api.ogt` line 23964</sub>
+<sub>`api.ogt` line 23936</sub>
 
 ## Types
 
@@ -246,7 +249,7 @@ enum CoreAction {
 }
 ```
 
-<sub>`api.ogt` line 23867</sub>
+<sub>`api.ogt` line 23839</sub>
 
 <a id="type-CommandHandler"></a>
 
@@ -273,7 +276,7 @@ callback CommandHandler {
 }
 ```
 
-<sub>`api.ogt` line 23907</sub>
+<sub>`api.ogt` line 23879</sub>
 
 <a id="type-CommandDesc"></a>
 
@@ -297,7 +300,7 @@ struct CommandDesc {
 }
 ```
 
-<sub>`api.ogt` line 23913</sub>
+<sub>`api.ogt` line 23885</sub>
 
 <a id="type-CommandStep"></a>
 
@@ -322,7 +325,7 @@ struct CommandStep {
 }
 ```
 
-<sub>`api.ogt` line 23920</sub>
+<sub>`api.ogt` line 23892</sub>
 
 <a id="type-CommandInfo"></a>
 
@@ -347,7 +350,7 @@ struct CommandInfo {
 }
 ```
 
-<sub>`api.ogt` line 23929</sub>
+<sub>`api.ogt` line 23901</sub>
 
 <a id="type-CommandsReport"></a>
 
@@ -370,4 +373,4 @@ struct CommandsReport {
 }
 ```
 
-<sub>`api.ogt` line 23937</sub>
+<sub>`api.ogt` line 23909</sub>

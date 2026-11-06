@@ -1,5 +1,4 @@
 module math {
-  skill og-core
   doc "Plain math values in the three.js vocabulary. They are data: the engine owns the operations, so results are identical on every host."
   place top
 

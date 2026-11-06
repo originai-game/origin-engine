@@ -1,4 +1,4 @@
-//! Mesh levels of detail through the cook (docs/depth.md §6): every model
+//! Mesh levels of detail through the cook (docs/design.md §10.6): every model
 //! mesh is simplified with meshoptimizer into the levels its import
 //! settings name (`model { lods 1 0.5 0.25 }` by default), and a glTF's own
 //! `MSFT_lod` levels are kept instead of simplified ones.

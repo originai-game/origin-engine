@@ -6,15 +6,15 @@ Transforms in the three.js vocabulary: position, quaternion and scale, composed 
 
 - **TypeScript**: functions are the namespace `og.transform`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module transform {
+  doc "Transforms in the three.js vocabulary: position, quaternion and scale, composed into matrixWorld down the parent chain."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1484</sub>
+<sub>`api.ogt` line 1479</sub>
 
 ## Contents
 
@@ -64,7 +64,7 @@ fn compose {
 }
 ```
 
-<sub>`api.ogt` line 1571</sub>
+<sub>`api.ogt` line 1565</sub>
 
 <a id="fn-decompose"></a>
 
@@ -92,7 +92,7 @@ fn decompose {
 }
 ```
 
-<sub>`api.ogt` line 1579</sub>
+<sub>`api.ogt` line 1573</sub>
 
 <a id="fn-lookAt"></a>
 
@@ -126,7 +126,7 @@ fn lookAt {
 }
 ```
 
-<sub>`api.ogt` line 1585</sub>
+<sub>`api.ogt` line 1579</sub>
 
 <a id="fn-fromAxisAngle"></a>
 
@@ -156,7 +156,7 @@ fn fromAxisAngle {
 }
 ```
 
-<sub>`api.ogt` line 1595</sub>
+<sub>`api.ogt` line 1589</sub>
 
 ## Components, resources and events
 
@@ -188,7 +188,7 @@ component Transform {
 }
 ```
 
-<sub>`api.ogt` line 1488</sub>
+<sub>`api.ogt` line 1482</sub>
 
 <a id="record-Parent"></a>
 
@@ -209,7 +209,7 @@ component Parent {
 }
 ```
 
-<sub>`api.ogt` line 1500</sub>
+<sub>`api.ogt` line 1494</sub>
 
 <a id="record-MatrixWorld"></a>
 
@@ -232,7 +232,7 @@ component MatrixWorld {
 }
 ```
 
-<sub>`api.ogt` line 1505</sub>
+<sub>`api.ogt` line 1499</sub>
 
 <a id="record-WorldOrigin"></a>
 
@@ -285,7 +285,7 @@ resource WorldOrigin {
 }
 ```
 
-<sub>`api.ogt` line 1526</sub>
+<sub>`api.ogt` line 1520</sub>
 
 <a id="record-OriginShifted"></a>
 
@@ -321,7 +321,7 @@ event OriginShifted {
 }
 ```
 
-<sub>`api.ogt` line 1554</sub>
+<sub>`api.ogt` line 1548</sub>
 
 ## Types
 
@@ -348,7 +348,7 @@ enum WorldOriginPlane {
 }
 ```
 
-<sub>`api.ogt` line 1512</sub>
+<sub>`api.ogt` line 1506</sub>
 
 ## Column kinds
 
@@ -367,4 +367,4 @@ column WorldOriginPlane {
 }
 ```
 
-<sub>`api.ogt` line 1519</sub>
+<sub>`api.ogt` line 1513</sub>

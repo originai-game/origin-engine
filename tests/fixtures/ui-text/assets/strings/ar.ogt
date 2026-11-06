@@ -24,7 +24,7 @@ string "confirm.title" "حذف هذا الحفظ؟"
 string "confirm.message" "سيضيع تقدمك في الخانة [b]{slot}[/b]. [color=danger]لا يمكن التراجع عن ذلك.[/color]"
 string "confirm.delete" "حذف"
 string "confirm.cancel" "إلغاء"
-# og.ui's templates' own words (SettingsDesc, ShopDesc, InventoryDesc, LeaderboardDesc, TutorialDesc, CutsceneDesc: og-i18n §2).
+# og.ui's templates' own words (SettingsDesc, ShopDesc, InventoryDesc, LeaderboardDesc, TutorialDesc, CutsceneDesc).
 string "settings.title" "الإعدادات"
 string "settings.audio" "الصوت"
 string "settings.graphics" "الرسومات"
@@ -60,7 +60,7 @@ string "tutorial.next" "التالي"
 string "tutorial.done" "تم"
 string "tutorial.step" "{step} من {count}"
 string "cutscene.skip" "تخطي"
-# The HUDs' words (PlatformerHudDesc, ShooterHudDesc, PuzzleHudDesc, IdleHudDesc, RacingHudDesc: og-i18n §2) and their screens' names.
+# The HUDs' words (PlatformerHudDesc, ShooterHudDesc, PuzzleHudDesc, IdleHudDesc, RacingHudDesc) and their screens' names.
 string "hud.pause" "إيقاف مؤقت"
 string "hud.jump" "قفز"
 string "hud.fire" "إطلاق"

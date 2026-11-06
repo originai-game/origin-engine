@@ -661,7 +661,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     paths: ["(style)"],
     measured: `the style ${f.style} has no ${ev} sound`,
     prop: `the style's \`sounds ${ev}\` (or og.ui.configure({ sounds: { ${ev} } }))`,
-    fix: "og-taste §6 (feedback) and og-audio §3: give the style its hover and press sounds",
+    fix: "give the style its hover and press sounds",
   });
   const stated = new Set(f.motion.filter((m) => m.states.length > 0).map((m) => m.path));
   for (const [i, e] of f.elements.entries()) {
@@ -683,8 +683,8 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
  * Every number one frame shows, for the cell it was taken in, held to no
  * bar: each live text's contrast on the drawn pixels (with `image`), each
  * text's size, each control's shorter side on a coarse pointer, the primary
- * buttons per layer and the element count. og-taste §3 and §4, og-ui §5
- * and ui-craft say what a game usually wants of them.
+ * buttons per layer and the element count. The `screens` guide says what a
+ * game usually wants of them.
  */
 export function measureFrame(frame: UiFrameSnapshot, cell: UiCell, opts: MeasureOptions = {}): UiMeasure[] {
   const f: UiFrameSnapshot = { ...frame, texts: drawnTexts(frame) };
@@ -794,7 +794,7 @@ export function checkLocales(base: UiFrameSnapshot, other: UiFrameSnapshot, cell
       paths: [n.path],
       measured: `"${n.name.slice(0, 40)}" is the same in ${cell.locale} as in the game's own locale`,
       prop: `${n.path}: its text through og.i18n.t (a key in every string table)`,
-      fix: "og-i18n §2: every word the player reads comes from the string table",
+      fix: "every word the player reads comes from the string table",
       cells: [cellName(cell)],
     });
   }

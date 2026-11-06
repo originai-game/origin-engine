@@ -109,7 +109,19 @@ fn every_quote_is_the_idl_text_at_the_line_it_cites() {
 #[test]
 fn every_module_has_a_page_and_every_index_link_lands() {
     let w = wiki();
-    assert_eq!(w.pages.len(), w.api.modules.len() + 1);
+    assert_eq!(w.pages.len(), w.api.modules.len() + w.api.guides.len() + 1);
+    // Every guide beside the IDL is a page the index links, its sections anchored.
+    assert!(!w.api.guides.is_empty());
+    for g in &w.api.guides {
+        let page = &w.pages[&format!("guide-{}.md", g.name)];
+        assert!(page.starts_with("<!-- Generated from crates/og-api/api.ogt"));
+        assert!(page.contains(&format!("# The `{}` guide: ", g.name)));
+        assert!(page.contains(&format!(
+            "<a id=\"guide-{}-1\"></a>\n### `{} §1` ",
+            g.name, g.name
+        )));
+        assert!(w.pages["index.md"].contains(&format!("[`{}`](guide-{}.md)", g.name, g.name)));
+    }
     for m in &w.api.modules {
         let page = w
             .pages

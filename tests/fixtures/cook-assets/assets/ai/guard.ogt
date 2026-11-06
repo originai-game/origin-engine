@@ -1,7 +1,7 @@
 type behaviour
 version 1
 ---
-# The guard's state machine (og.ai; every node is in the og-ai skill). It
+# The guard's state machine (og.ai; `og api show ai`). It
 # patrols its post until it sees the trickster in its view cone, raises the
 # alarm (the game's `alarm` command) and chases; when it loses sight it
 # searches where it last saw it for 3 seconds, then goes back to its post.

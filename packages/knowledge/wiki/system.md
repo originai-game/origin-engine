@@ -12,15 +12,19 @@ Resources and events it reaches through the world must be declared too: in a dev
 
 - **TypeScript**: functions are named exports of the package: `import { … } from "@origingame/engine"`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-core`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module system {
+  doc "Systems: functions the engine calls once per tick with their matched archetypes."
+  doc "A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name."
+  doc "Its query is every component of its reads and writes together: an entity matches only when it has all of them (and none of `without`). A component declared to read one entity with world.get (the player's car) therefore narrows the loop to entities that have it too, often to none, silently. world.query is refused inside a system, by design (a system reaches only what it declared, so its access is known before it runs): loop over each archetype in a system of its own, declaring only that archetype's components, and carry what crosses between systems in a resource."
+  doc "Resources and events it reaches through the world must be declared too: in a dev or release build (og run, og test) an undeclared read or write throws with the system's name and the record and fails the tick; a publish build refuses it and logs it once per system in the engine log, and the game keeps running. og.Rng among the reads may fork (a fork reads the seed only and leaves the stream as it is); a draw moves the stream, so it needs og.Rng among the writes."
+  place top
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1309</sub>
+<sub>`api.ogt` line 1306</sub>
 
 ## Contents
 
@@ -74,7 +78,7 @@ fn defineHook {
 }
 ```
 
-<sub>`api.ogt` line 1381</sub>
+<sub>`api.ogt` line 1377</sub>
 
 <a id="fn-defineSystem"></a>
 
@@ -106,7 +110,7 @@ fn defineSystem {
 }
 ```
 
-<sub>`api.ogt` line 1405</sub>
+<sub>`api.ogt` line 1401</sub>
 
 ## Interfaces
 
@@ -122,7 +126,7 @@ interface Hook {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1376</sub>
+<sub>`api.ogt` line 1372</sub>
 
 <a id="member-Hook-name"></a>
 
@@ -140,7 +144,7 @@ Binding symbol `og_hook_get_name` · publish builds: kept
 prop name String "The hook's unique name."
 ```
 
-<sub>`api.ogt` line 1378</sub>
+<sub>`api.ogt` line 1374</sub>
 
 <a id="type-System"></a>
 
@@ -154,7 +158,7 @@ interface System {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1398</sub>
+<sub>`api.ogt` line 1394</sub>
 
 <a id="member-System-name"></a>
 
@@ -172,7 +176,7 @@ Binding symbol `og_system_get_name` · publish builds: kept
 prop name String "The system's unique name."
 ```
 
-<sub>`api.ogt` line 1400</sub>
+<sub>`api.ogt` line 1396</sub>
 
 <a id="member-System-reads"></a>
 
@@ -190,7 +194,7 @@ Binding symbol `og_system_get_reads` · publish builds: kept
 prop reads List.AnyReflected "What it reads."
 ```
 
-<sub>`api.ogt` line 1401</sub>
+<sub>`api.ogt` line 1397</sub>
 
 <a id="member-System-writes"></a>
 
@@ -208,7 +212,7 @@ Binding symbol `og_system_get_writes` · publish builds: kept
 prop writes List.AnyReflected "What it writes."
 ```
 
-<sub>`api.ogt` line 1402</sub>
+<sub>`api.ogt` line 1398</sub>
 
 ## Types
 
@@ -235,7 +239,7 @@ enum StateWhen {
 }
 ```
 
-<sub>`api.ogt` line 1317</sub>
+<sub>`api.ogt` line 1313</sub>
 
 <a id="type-StateDesc"></a>
 
@@ -260,7 +264,7 @@ struct StateDesc {
 }
 ```
 
-<sub>`api.ogt` line 1324</sub>
+<sub>`api.ogt` line 1320</sub>
 
 <a id="type-RunCondition"></a>
 
@@ -286,7 +290,7 @@ callback RunCondition {
 }
 ```
 
-<sub>`api.ogt` line 1333</sub>
+<sub>`api.ogt` line 1329</sub>
 
 <a id="type-SystemDesc"></a>
 
@@ -330,7 +334,7 @@ struct SystemDesc {
 }
 ```
 
-<sub>`api.ogt` line 1339</sub>
+<sub>`api.ogt` line 1335</sub>
 
 <a id="type-HookEvent"></a>
 
@@ -353,7 +357,7 @@ enum HookEvent {
 }
 ```
 
-<sub>`api.ogt` line 1356</sub>
+<sub>`api.ogt` line 1352</sub>
 
 <a id="type-HookDesc"></a>
 
@@ -379,7 +383,7 @@ struct HookDesc {
 }
 ```
 
-<sub>`api.ogt` line 1362</sub>
+<sub>`api.ogt` line 1358</sub>
 
 <a id="type-HookRun"></a>
 
@@ -406,7 +410,7 @@ callback HookRun {
 }
 ```
 
-<sub>`api.ogt` line 1370</sub>
+<sub>`api.ogt` line 1366</sub>
 
 <a id="type-SystemRun"></a>
 
@@ -435,4 +439,4 @@ callback SystemRun {
 }
 ```
 
-<sub>`api.ogt` line 1391</sub>
+<sub>`api.ogt` line 1387</sub>

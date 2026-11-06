@@ -85,7 +85,7 @@ pub struct RenderQuality {
     pub msaa_samples: u32,
     /// The temporal resolve under TAA ([`crate::Upscaler`]): the engine's
     /// TAAU (the default, medium and low) or FSR 3.1 (high), sharper and
-    /// steadier in motion at more GPU time (docs/upscalers.md).
+    /// steadier in motion at more GPU time (docs/design.md §11).
     pub upscaler: crate::Upscaler,
 }
 

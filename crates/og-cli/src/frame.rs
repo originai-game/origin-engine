@@ -1,7 +1,7 @@
 //! `og frame measure <png> [--region x,y,w,h] [--against x,y,w,h] [--units px|fraction]
 //! [--metric contrast,highpass,mean,ramp] [--rows N] [--json]`: the numbers a
 //! reviewer reads off a captured frame, computed the same way on every
-//! machine (visual-acceptance §5, §6), so a hold that quotes one can be
+//! machine (the `art-review` guide), so a hold that quotes one can be
 //! checked by measuring the same region again.
 //!
 //! The region (default the whole frame) is in pixels of the PNG, or with

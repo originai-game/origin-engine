@@ -897,7 +897,7 @@ fn locale_fonts_lint(p: &Project, json: bool, to_stderr: bool) {
         return;
     }
     let message = format!(
-        "{}: no matching locale table with an installed font chain. Copy the matching fonts and licences from the engine's locales resources, declare their asset IDs in the string table's fonts line, and load the table with og.i18n (og-i18n skill). Verify rendered glyphs; a create.lang choice does not install or activate fonts.",
+        "{}: no matching locale table with an installed font chain. Copy the matching fonts and licences from the engine's locales resources, declare their asset IDs in the string table's fonts line, and load the table with og.i18n (`og api show screens`, §6). Verify rendered glyphs; a create.lang choice does not install or activate fonts.",
         missing.join(", ")
     );
     let text = if json {
@@ -941,7 +941,7 @@ fn lockstep_lint(p: &Project, json: bool, to_stderr: bool) {
             })
             .collect();
         t.push(format!(
-            "og check: {} lockstep warning(s): a peer that runs these parts from the room (the og-net skill, §3); `// lockstep-ok` on a line that only draws",
+            "og check: {} lockstep warning(s): a peer that runs these parts from the room (`og api show determinism`, §3); `// lockstep-ok` on a line that only draws",
             found.len()
         ));
         t.join("\n")

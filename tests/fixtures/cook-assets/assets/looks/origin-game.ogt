@@ -1,7 +1,7 @@
 type look
 version 1
 ---
-# The game's look (og-taste §12): the frame's art direction as data, named
+# The game's look (the `looks` guide): the frame's art direction as data, named
 # by GameDesc.look in src/main.ts and applied before start runs. It starts
 # from the catalogue's faceted-low-poly preset (flat facets on every lit
 # material, a soft vignette, AgX tone mapping); a block written below wins

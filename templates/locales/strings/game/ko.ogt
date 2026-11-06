@@ -1,7 +1,7 @@
 type strings
 version 1
 ---
-# 한국어: templates/game's assets/strings/en.ogt translated (og-i18n §1).
+# 한국어: templates/game's assets/strings/en.ogt translated (og.i18n).
 # og new --lang copies it into a game, adding the locale's font chain and
 # direction; every key is the base table's, with the same arguments.
 locale "ko"

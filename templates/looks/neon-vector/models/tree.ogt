@@ -3,7 +3,7 @@ version 1
 ---
 # neon-vector's version (tools/art-samples/neon.py): black faces, glowing hues.
 # The stepped tree: a trunk under three tiers, each smaller than the one
-# below (og-model §5), about 3.4 m tall, its foot on y = 0.
+# below, about 3.4 m tall, its foot on y = 0.
 material "bark" {
   color 0.02 0.02 0.04
   roughness 1

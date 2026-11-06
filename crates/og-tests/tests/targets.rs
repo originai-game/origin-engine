@@ -1,4 +1,4 @@
-//! The depth wave's render targets (docs/depth.md §8): the reference
+//! The depth wave's render targets (docs/design.md §10.8): the reference
 //! frames of a security monitor fed by a second camera (`views-monitor`),
 //! a mirror (`views-mirror`) and split-screen (`views-split`), and from
 //! frames: an object on a layer only the monitor's camera sees shows on

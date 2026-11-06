@@ -24,7 +24,7 @@ string "confirm.title" "このセーブを削除しますか？"
 string "confirm.message" "スロット[b]{slot}[/b]の進行状況は失われます。[color=danger]元に戻すことはできません。[/color]"
 string "confirm.delete" "削除"
 string "confirm.cancel" "キャンセル"
-# og.ui's templates' own words (SettingsDesc, ShopDesc, InventoryDesc, LeaderboardDesc, TutorialDesc, CutsceneDesc: og-i18n §2).
+# og.ui's templates' own words (SettingsDesc, ShopDesc, InventoryDesc, LeaderboardDesc, TutorialDesc, CutsceneDesc).
 string "settings.title" "設定"
 string "settings.audio" "オーディオ"
 string "settings.graphics" "グラフィック"
@@ -60,7 +60,7 @@ string "tutorial.next" "次へ"
 string "tutorial.done" "完了"
 string "tutorial.step" "{step} / {count}"
 string "cutscene.skip" "スキップ"
-# The HUDs' words (PlatformerHudDesc, ShooterHudDesc, PuzzleHudDesc, IdleHudDesc, RacingHudDesc: og-i18n §2) and their screens' names.
+# The HUDs' words (PlatformerHudDesc, ShooterHudDesc, PuzzleHudDesc, IdleHudDesc, RacingHudDesc) and their screens' names.
 string "hud.pause" "ポーズ"
 string "hud.jump" "ジャンプ"
 string "hud.fire" "発射"

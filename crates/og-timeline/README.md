@@ -1,7 +1,7 @@
 # og-timeline
 
 Paths and the sequencer as data (`docs/design.md` §2.7, "Timeline and
-paths"; `docs/depth.md` §2). No ECS: og-runtime applies it to a world
+paths"; `docs/design.md` §10.2). No ECS: og-runtime applies it to a world
 (`og.path`, `og.timeline`), og-cook cooks `type timeline` files into blobs.
 
 | Item | What it is |

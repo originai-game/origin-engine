@@ -1,7 +1,7 @@
 // One host's side of tests/resource-writes.test.ts: a game whose system
 // writes 200 resource fields a tick (every kind a resource field has: f32,
 // f64, u32, i32, bool, Vector3, Color, a handle, an enum and str), reading
-// them back and making engine calls between the writes, as og-core §4 shows
+// them back and making engine calls between the writes, as the world module documents
 // a game keeping its run in one resource. `--path json` writes each field
 // through the engine's JSON path instead (one call per field, how a handle
 // wrote before the byte layout): both paths must give one world. Prints the

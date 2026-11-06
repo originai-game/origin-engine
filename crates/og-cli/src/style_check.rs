@@ -62,7 +62,7 @@
 //! A project with no look in project.ogt or GameDesc has no contract: it says so
 //! and exits 0. Otherwise the exit status is 0 when every asset meets the
 //! contract, 3 when one does not (the check says what), 1 when the cook or
-//! a capture failed. Numbers cannot judge a style (og-taste §11): `og
+//! a capture failed. Numbers cannot judge a style (the `art-review` guide): `og
 //! build --publish` prints the summary as warnings and never refuses a
 //! build, and `og doctor --project` has one line of it.
 

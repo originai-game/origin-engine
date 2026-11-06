@@ -338,15 +338,15 @@ fn a_tiled_custom_property_the_importer_does_not_read_is_a_warning_naming_it() {
         "a warning fails nothing: {:?}",
         report.errors()
     );
-    let known = "it reads autotile, collision, colliderLayers, colliderMask, cellColliders, lit, z, repeatx, repeaty; og-game §8";
+    let known = "it reads autotile, collision, colliderLayers, colliderMask, cellColliders, lit, z, repeatx, repeaty";
     assert_eq!(
         report.warnings,
         vec![
-            "assets/maps/level.tmj: embedded tileset 'water', tile 1: the custom property 'slippery' is not read (it reads solid; og-game §8)".to_string(),
+            "assets/maps/level.tmj: embedded tileset 'water', tile 1: the custom property 'slippery' is not read (it reads solid)".to_string(),
             format!("assets/maps/level.tmj: layer 'ground': the custom property 'repeat' is not read ({known})"),
-            "assets/maps/level.tmj: layer 'walls': the custom property 'collision' is a string, not read (it is a bool; og-game §8)".to_string(),
-            "assets/maps/level.tmj: object layer 'things': the custom property 'spawnRate' is not read (an object layer's own custom properties are not imported; set them on its objects; og-game §8)".to_string(),
-            "assets/maps/level.tmj: object 'spawn' in layer 'things': the custom property 'stats' is a class, not read (an object's properties are read as text: string, int, float, bool, color, file or object; og-game §8)".to_string(),
+            "assets/maps/level.tmj: layer 'walls': the custom property 'collision' is a string, not read (it is a bool)".to_string(),
+            "assets/maps/level.tmj: object layer 'things': the custom property 'spawnRate' is not read (an object layer's own custom properties are not imported; set them on its objects)".to_string(),
+            "assets/maps/level.tmj: object 'spawn' in layer 'things': the custom property 'stats' is a class, not read (an object's properties are read as text: string, int, float, bool, color, file or object)".to_string(),
         ]
     );
     // The same sentences sit on the map's own report.

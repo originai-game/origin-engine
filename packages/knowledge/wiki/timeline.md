@@ -10,15 +10,17 @@ An og.Timeline component plays one on its entity, run by the engine's og.timelin
 
 - **TypeScript**: functions are the namespace `og.timeline`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-anim`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module timeline {
+  doc "Timelines: cutscenes and sequences as data, Unity's Timeline and Godot's AnimationPlayer as an `.ogt` the agent reads and diffs. A `type timeline` file has a `duration` in seconds, `path \"<name>\" { ... }` blocks (as og.path's) and `track <kind> [\"<entity>\"] { key <seconds> { ... } }` blocks; `og cook` cooks it (importing caption files) and og.load.timeline loads it. Tracks: `camera` (position and target keys, or `rail \"<path>\"` with `at` 0..1 along it, or `follow \"<entity>\"` with offsets; fov; eased), `transform \"<entity>\"` (position, rotation in degrees or quaternion, scale; eased), `animation \"<entity>\"` (clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model), `audio` (sound, volume, pitch, bus), `music` (sound, volume, fadeIn, fadeOut, end, loop, bus), `caption` (text from `key` to `end` with a UI type step `style` and an `anchor`; `captions \"narration.srt\" [offset]` imports a SubRip file or word timestamps `.json`), `event` (`do \"<command-channel action>\"`: teleport, set, a game's registered command; `retroactive true` runs it when a seek passes it), `transition` (kind cut, fade, wipe, dissolve, iris or slide; mode through, in or out; duration, color, from, over og.ui's screen cover) `marker` (`name`, sending og.TimelineMarker when played past), `property [\"<entity>\"]` (`field \"og.PointLight.distance\"`, keys of `value`: any reflected field of a component on the entity, or of a resource without one), `light \"<entity>\"` (its og.DirectionalLight, og.PointLight, og.SpotLight, og.RectLight or og.Light2D: color, intensity, distance, angle, ...), `visibility \"<entity>\"` (`visible true|false` of whatever it draws, stepped), `post` (og.PostEffects' fields), `blendshape \"<entity>\"` (og.Blendshapes w0 to w7; its source becomes component), `material \"<entity>\"` (its og.Mesh's material, or its og.Model's material `index N`: StandardMaterialDesc fields by name, other names the material shader's parameters) and `timeline` (`play \"<timeline>\"`, speed, loop: from its key until the next, another timeline plays nested at (time − key) × speed, its markers sent as `<file>/<marker>`, at most four deep) and `shot` (`camera \"<entity>\"`, a virtual camera's name, or `none`; `blend` seconds and `ease`: from its key until the next, that og.VirtualCamera is og.CameraBrain.solo, blended to over the key's blend by its ease or by the camera's own; `none` and the timeline's end hand back the solo it found). Camera keys also take `roll` (degrees about the view direction), `focus` (a distance) or `focusOn \"<entity>\"` and `focusRange`, which set og.PostEffects' depth of field while the track owns the camera. The cook checks every field against the engine's records (a field the record lacks, one a timeline cannot drive, a value of the wrong shape) and refuses nesting in a cycle or deeper than four; a track kind this engine does not read is refused naming it and the engine's version."
+  doc "Between two keys that set a value the later key's `ease` (og.tween's Ease names, linear when it gives none) mixes them; before the first and after the last the value is held. Every value is evaluated at the timeline's time, never accumulated over ticks, and that time is kept exactly (in steps of a thousandth of a tick), so seeking to a time and playing to it give the same world: a seek is how a video render starts at any frame."
+  doc "An og.Timeline component plays one on its entity, run by the engine's og.timeline system after the game's systems (and tweens) and before og.anim and physics, so what it sets is what animation, physics and the frame see that tick. While one with a camera track plays (or is paused) it owns og.Camera, and hands back the camera it found when it stops or ends. Its event keys' actions run at the start of the next tick, as og.ai's commands do. Loading a timeline (og.load.timeline, outside a system) grants og.timeline the records its tracks write; values they wrote stay when it stops, while the camera, its depth of field and the materials go back. A material track is presentation, not world state: it is applied every frame from the timeline's time, so a restored save draws the right material on its next frame. The command channel plays them too: `timeline:play:<name>` (`timelines/<name>.ogt`, or an asset id), `timeline:seek:<seconds>[:<name>]`, `timeline:pause[:<name>]`, `timeline:resume[:<name>]`, `timeline:stop[:<name>]`."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 26052</sub>
+<sub>`api.ogt` line 26017</sub>
 
 ## Contents
 
@@ -68,7 +70,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 26125</sub>
+<sub>`api.ogt` line 26089</sub>
 
 <a id="fn-play"></a>
 
@@ -98,7 +100,7 @@ fn play {
 }
 ```
 
-<sub>`api.ogt` line 26132</sub>
+<sub>`api.ogt` line 26096</sub>
 
 <a id="fn-pause"></a>
 
@@ -128,7 +130,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 26139</sub>
+<sub>`api.ogt` line 26103</sub>
 
 <a id="fn-seek"></a>
 
@@ -160,7 +162,7 @@ fn seek {
 }
 ```
 
-<sub>`api.ogt` line 26146</sub>
+<sub>`api.ogt` line 26110</sub>
 
 <a id="fn-stop"></a>
 
@@ -190,7 +192,7 @@ fn stop {
 }
 ```
 
-<sub>`api.ogt` line 26154</sub>
+<sub>`api.ogt` line 26118</sub>
 
 ## Components, resources and events
 
@@ -229,7 +231,7 @@ component Timeline {
 }
 ```
 
-<sub>`api.ogt` line 26067</sub>
+<sub>`api.ogt` line 26031</sub>
 
 <a id="record-TimelineStarted"></a>
 
@@ -252,7 +254,7 @@ event TimelineStarted {
 }
 ```
 
-<sub>`api.ogt` line 26084</sub>
+<sub>`api.ogt` line 26048</sub>
 
 <a id="record-TimelineMarker"></a>
 
@@ -281,7 +283,7 @@ event TimelineMarker {
 }
 ```
 
-<sub>`api.ogt` line 26090</sub>
+<sub>`api.ogt` line 26054</sub>
 
 <a id="record-TimelineEnded"></a>
 
@@ -304,7 +306,7 @@ event TimelineEnded {
 }
 ```
 
-<sub>`api.ogt` line 26100</sub>
+<sub>`api.ogt` line 26064</sub>
 
 ## Types
 
@@ -320,7 +322,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TimelineAsset "A loaded timeline: its tracks, paths, sounds and clips."
 ```
 
-<sub>`api.ogt` line 26058</sub>
+<sub>`api.ogt` line 26022</sub>
 
 <a id="type-TimelineTrackInfo"></a>
 
@@ -343,7 +345,7 @@ struct TimelineTrackInfo {
 }
 ```
 
-<sub>`api.ogt` line 26106</sub>
+<sub>`api.ogt` line 26070</sub>
 
 <a id="type-TimelineInfo"></a>
 
@@ -374,7 +376,7 @@ struct TimelineInfo {
 }
 ```
 
-<sub>`api.ogt` line 26113</sub>
+<sub>`api.ogt` line 26077</sub>
 
 ## Column kinds
 
@@ -393,4 +395,4 @@ column TimelineAsset {
 }
 ```
 
-<sub>`api.ogt` line 26060</sub>
+<sub>`api.ogt` line 26024</sub>

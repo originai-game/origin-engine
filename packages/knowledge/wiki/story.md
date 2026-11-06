@@ -2,7 +2,7 @@
 
 # The `story` module
 
-Dialogue and quests as data: dialogues in `.ogt` files of `type dialogue` (speakers, nodes of lines, choices with conditions, reasons and checks, variables, weighted picks, timers) and quests in `type quest` files (stages of objectives, rewards, conditions), validated by og cook, which names each mistake's line and the fix. Text is never inline: every line, choice, reason, name and title is an og.i18n key, and og.story resolves it in the active locale when it is read, so a locale switch re-translates the line on screen. og-story §1 has every line of both formats.
+Dialogue and quests as data: dialogues in `.ogt` files of `type dialogue` (speakers, nodes of lines, choices with conditions, reasons and checks, variables, weighted picks, timers) and quests in `type quest` files (stages of objectives, rewards, conditions), validated by og cook, which names each mistake's line and the fix. Text is never inline: every line, choice, reason, name and title is an og.i18n key, and og.story resolves it in the active locale when it is read, so a locale switch re-translates the line on screen.
 
 og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view in your UI each frame (the line in full, its speaker, its choices; the dialogue box paces its own reveal), and call og.story.advance or og.story.choose. Quests start from a dialogue (`quest start rescue`) or og.story.startQuest, count with og.story.progress and advance their stages themselves; og.story.quests lists them for a quest log.
 
@@ -12,15 +12,18 @@ Everything is world state: the story's variables, the nodes seen, the lines read
 
 - **TypeScript**: functions are the namespace `og.story`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-story`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module story {
+  doc "Dialogue and quests as data: dialogues in `.ogt` files of `type dialogue` (speakers, nodes of lines, choices with conditions, reasons and checks, variables, weighted picks, timers) and quests in `type quest` files (stages of objectives, rewards, conditions), validated by og cook, which names each mistake's line and the fix. Text is never inline: every line, choice, reason, name and title is an og.i18n key, and og.story resolves it in the active locale when it is read, so a locale switch re-translates the line on screen."
+  doc "og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view in your UI each frame (the line in full, its speaker, its choices; the dialogue box paces its own reveal), and call og.story.advance or og.story.choose. Quests start from a dialogue (`quest start rescue`) or og.story.startQuest, count with og.story.progress and advance their stages themselves; og.story.quests lists them for a quest log."
+  doc "Barks are ambient lines an entity says on its own (a dialogue's `bark` blocks: a topic, lines, a `when` that may read the world, priority, weight, cooldowns per entity and shared, once): og.story.bark asks for one, og.story.ambient every so often, og.story.barks lists those being said. A line's `voice` is played by og.story through og.audio, and DialogueView.voiceLeft says when it ends. A quest objective with `on <Event>` counts each such event the game or the engine sends, filtered by `where` (which reads `event.<field>`), with no game code. `dump_story` writes the whole story: variables, conversations, quests, barks, cooldowns and voices."
+  doc "Everything is world state: the story's variables, the nodes seen, the lines read, conversations and quests are in saves, snapshots and the world hash, saved by their ids (dialogue, node, line, quest, stage, objective), so a save survives any edit that keeps those ids. Renaming a node, stage or objective a save stands on is the one breaking edit: og.story warns, naming the id, and falls back (a conversation to its dialogue's start, a quest to its first stage) instead of landing elsewhere. Deterministic: `pick` and active checks draw from the story's own stream (og.Rng's fork \"story\"), timers count ticks, and arithmetic is plain f64. A world that never loads a dialogue or quest keeps its saves and hash: og.Story and the story's events join it at the first og.story.load."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 14411</sub>
+<sub>`api.ogt` line 14389</sub>
 
 ## Contents
 
@@ -107,7 +110,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 14670</sub>
+<sub>`api.ogt` line 14647</sub>
 
 <a id="fn-parse"></a>
 
@@ -137,7 +140,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 14677</sub>
+<sub>`api.ogt` line 14654</sub>
 
 <a id="fn-start"></a>
 
@@ -167,7 +170,7 @@ fn start {
 }
 ```
 
-<sub>`api.ogt` line 14684</sub>
+<sub>`api.ogt` line 14661</sub>
 
 <a id="fn-view"></a>
 
@@ -197,7 +200,7 @@ fn view {
 }
 ```
 
-<sub>`api.ogt` line 14691</sub>
+<sub>`api.ogt` line 14668</sub>
 
 <a id="fn-history"></a>
 
@@ -227,7 +230,7 @@ fn history {
 }
 ```
 
-<sub>`api.ogt` line 14698</sub>
+<sub>`api.ogt` line 14675</sub>
 
 <a id="fn-conversations"></a>
 
@@ -255,7 +258,7 @@ fn conversations {
 }
 ```
 
-<sub>`api.ogt` line 14705</sub>
+<sub>`api.ogt` line 14682</sub>
 
 <a id="fn-advance"></a>
 
@@ -285,7 +288,7 @@ fn advance {
 }
 ```
 
-<sub>`api.ogt` line 14711</sub>
+<sub>`api.ogt` line 14688</sub>
 
 <a id="fn-choose"></a>
 
@@ -317,7 +320,7 @@ fn choose {
 }
 ```
 
-<sub>`api.ogt` line 14718</sub>
+<sub>`api.ogt` line 14695</sub>
 
 <a id="fn-stop"></a>
 
@@ -347,7 +350,7 @@ fn stop {
 }
 ```
 
-<sub>`api.ogt` line 14726</sub>
+<sub>`api.ogt` line 14703</sub>
 
 <a id="fn-bark"></a>
 
@@ -377,7 +380,7 @@ fn bark {
 }
 ```
 
-<sub>`api.ogt` line 14733</sub>
+<sub>`api.ogt` line 14710</sub>
 
 <a id="fn-ambient"></a>
 
@@ -407,7 +410,7 @@ fn ambient {
 }
 ```
 
-<sub>`api.ogt` line 14740</sub>
+<sub>`api.ogt` line 14717</sub>
 
 <a id="fn-barks"></a>
 
@@ -435,7 +438,7 @@ fn barks {
 }
 ```
 
-<sub>`api.ogt` line 14747</sub>
+<sub>`api.ogt` line 14724</sub>
 
 <a id="fn-get"></a>
 
@@ -465,7 +468,7 @@ fn get {
 }
 ```
 
-<sub>`api.ogt` line 14753</sub>
+<sub>`api.ogt` line 14730</sub>
 
 <a id="fn-set"></a>
 
@@ -497,7 +500,7 @@ fn set {
 }
 ```
 
-<sub>`api.ogt` line 14760</sub>
+<sub>`api.ogt` line 14737</sub>
 
 <a id="fn-reset"></a>
 
@@ -524,7 +527,7 @@ fn reset {
 }
 ```
 
-<sub>`api.ogt` line 14768</sub>
+<sub>`api.ogt` line 14745</sub>
 
 <a id="fn-startQuest"></a>
 
@@ -554,7 +557,7 @@ fn startQuest {
 }
 ```
 
-<sub>`api.ogt` line 14773</sub>
+<sub>`api.ogt` line 14750</sub>
 
 <a id="fn-progress"></a>
 
@@ -590,7 +593,7 @@ fn progress {
 }
 ```
 
-<sub>`api.ogt` line 14780</sub>
+<sub>`api.ogt` line 14757</sub>
 
 <a id="fn-setStage"></a>
 
@@ -622,7 +625,7 @@ fn setStage {
 }
 ```
 
-<sub>`api.ogt` line 14791</sub>
+<sub>`api.ogt` line 14768</sub>
 
 <a id="fn-completeQuest"></a>
 
@@ -652,7 +655,7 @@ fn completeQuest {
 }
 ```
 
-<sub>`api.ogt` line 14799</sub>
+<sub>`api.ogt` line 14776</sub>
 
 <a id="fn-failQuest"></a>
 
@@ -682,7 +685,7 @@ fn failQuest {
 }
 ```
 
-<sub>`api.ogt` line 14806</sub>
+<sub>`api.ogt` line 14783</sub>
 
 <a id="fn-quest"></a>
 
@@ -712,7 +715,7 @@ fn quest {
 }
 ```
 
-<sub>`api.ogt` line 14813</sub>
+<sub>`api.ogt` line 14790</sub>
 
 <a id="fn-quests"></a>
 
@@ -740,7 +743,7 @@ fn quests {
 }
 ```
 
-<sub>`api.ogt` line 14820</sub>
+<sub>`api.ogt` line 14797</sub>
 
 <a id="fn-track"></a>
 
@@ -772,7 +775,7 @@ fn track {
 }
 ```
 
-<sub>`api.ogt` line 14826</sub>
+<sub>`api.ogt` line 14803</sub>
 
 <a id="fn-markSeen"></a>
 
@@ -802,7 +805,7 @@ fn markSeen {
 }
 ```
 
-<sub>`api.ogt` line 14834</sub>
+<sub>`api.ogt` line 14811</sub>
 
 <a id="fn-mark"></a>
 
@@ -834,7 +837,7 @@ fn mark {
 }
 ```
 
-<sub>`api.ogt` line 14841</sub>
+<sub>`api.ogt` line 14818</sub>
 
 ## Components, resources and events
 
@@ -867,7 +870,7 @@ resource Story {
 }
 ```
 
-<sub>`api.ogt` line 14418</sub>
+<sub>`api.ogt` line 14395</sub>
 
 <a id="record-DialogueShown"></a>
 
@@ -890,7 +893,7 @@ event DialogueShown {
 }
 ```
 
-<sub>`api.ogt` line 14431</sub>
+<sub>`api.ogt` line 14408</sub>
 
 <a id="record-DialogueEnded"></a>
 
@@ -911,7 +914,7 @@ event DialogueEnded {
 }
 ```
 
-<sub>`api.ogt` line 14437</sub>
+<sub>`api.ogt` line 14414</sub>
 
 <a id="record-DialogueCheck"></a>
 
@@ -940,7 +943,7 @@ event DialogueCheck {
 }
 ```
 
-<sub>`api.ogt` line 14442</sub>
+<sub>`api.ogt` line 14419</sub>
 
 <a id="record-QuestUpdated"></a>
 
@@ -963,7 +966,7 @@ event QuestUpdated {
 }
 ```
 
-<sub>`api.ogt` line 14451</sub>
+<sub>`api.ogt` line 14428</sub>
 
 <a id="record-BarkSaid"></a>
 
@@ -990,7 +993,7 @@ event BarkSaid {
 }
 ```
 
-<sub>`api.ogt` line 14457</sub>
+<sub>`api.ogt` line 14434</sub>
 
 <a id="record-StoryEvent"></a>
 
@@ -1015,7 +1018,7 @@ event StoryEvent {
 }
 ```
 
-<sub>`api.ogt` line 14465</sub>
+<sub>`api.ogt` line 14442</sub>
 
 ## Types
 
@@ -1044,7 +1047,7 @@ struct StoryAsset {
 }
 ```
 
-<sub>`api.ogt` line 14472</sub>
+<sub>`api.ogt` line 14449</sub>
 
 <a id="type-StartDesc"></a>
 
@@ -1072,7 +1075,7 @@ struct StartDesc {
 }
 ```
 
-<sub>`api.ogt` line 14481</sub>
+<sub>`api.ogt` line 14458</sub>
 
 <a id="type-SpeakerView"></a>
 
@@ -1101,7 +1104,7 @@ struct SpeakerView {
 }
 ```
 
-<sub>`api.ogt` line 14490</sub>
+<sub>`api.ogt` line 14467</sub>
 
 <a id="type-CheckView"></a>
 
@@ -1126,7 +1129,7 @@ struct CheckView {
 }
 ```
 
-<sub>`api.ogt` line 14500</sub>
+<sub>`api.ogt` line 14477</sub>
 
 <a id="type-ChoiceView"></a>
 
@@ -1167,7 +1170,7 @@ struct ChoiceView {
 }
 ```
 
-<sub>`api.ogt` line 14508</sub>
+<sub>`api.ogt` line 14485</sub>
 
 <a id="type-TimerView"></a>
 
@@ -1190,7 +1193,7 @@ struct TimerView {
 }
 ```
 
-<sub>`api.ogt` line 14524</sub>
+<sub>`api.ogt` line 14501</sub>
 
 <a id="type-RollView"></a>
 
@@ -1215,7 +1218,7 @@ struct RollView {
 }
 ```
 
-<sub>`api.ogt` line 14531</sub>
+<sub>`api.ogt` line 14508</sub>
 
 <a id="type-DialogueView"></a>
 
@@ -1264,7 +1267,7 @@ struct DialogueView {
 }
 ```
 
-<sub>`api.ogt` line 14539</sub>
+<sub>`api.ogt` line 14516</sub>
 
 <a id="type-ChosenView"></a>
 
@@ -1285,7 +1288,7 @@ struct ChosenView {
 }
 ```
 
-<sub>`api.ogt` line 14559</sub>
+<sub>`api.ogt` line 14536</sub>
 
 <a id="type-StoryLine"></a>
 
@@ -1320,7 +1323,7 @@ struct StoryLine {
 }
 ```
 
-<sub>`api.ogt` line 14565</sub>
+<sub>`api.ogt` line 14542</sub>
 
 <a id="type-BarkDesc"></a>
 
@@ -1346,7 +1349,7 @@ struct BarkDesc {
 }
 ```
 
-<sub>`api.ogt` line 14578</sub>
+<sub>`api.ogt` line 14555</sub>
 
 <a id="type-AmbientDesc"></a>
 
@@ -1378,7 +1381,7 @@ struct AmbientDesc {
 }
 ```
 
-<sub>`api.ogt` line 14586</sub>
+<sub>`api.ogt` line 14563</sub>
 
 <a id="type-BarkView"></a>
 
@@ -1419,7 +1422,7 @@ struct BarkView {
 }
 ```
 
-<sub>`api.ogt` line 14598</sub>
+<sub>`api.ogt` line 14575</sub>
 
 <a id="type-MarkerDesc"></a>
 
@@ -1445,7 +1448,7 @@ struct MarkerDesc {
 }
 ```
 
-<sub>`api.ogt` line 14614</sub>
+<sub>`api.ogt` line 14591</sub>
 
 <a id="type-MarkerView"></a>
 
@@ -1468,7 +1471,7 @@ struct MarkerView {
 }
 ```
 
-<sub>`api.ogt` line 14623</sub>
+<sub>`api.ogt` line 14600</sub>
 
 <a id="type-RewardView"></a>
 
@@ -1493,7 +1496,7 @@ struct RewardView {
 }
 ```
 
-<sub>`api.ogt` line 14631</sub>
+<sub>`api.ogt` line 14608</sub>
 
 <a id="type-ObjectiveView"></a>
 
@@ -1526,7 +1529,7 @@ struct ObjectiveView {
 }
 ```
 
-<sub>`api.ogt` line 14639</sub>
+<sub>`api.ogt` line 14616</sub>
 
 <a id="type-QuestView"></a>
 
@@ -1573,4 +1576,4 @@ struct QuestView {
 }
 ```
 
-<sub>`api.ogt` line 14651</sub>
+<sub>`api.ogt` line 14628</sub>

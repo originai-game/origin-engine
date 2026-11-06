@@ -10,15 +10,17 @@ The game's bundle (`cooked`) is opened before the first tick and GameDesc.scene 
 
 - **TypeScript**: functions are the namespace `og.load`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-game`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module load {
+  doc "Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/."
+  doc "Paths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp."
+  doc "The game's bundle (`cooked`) is opened before the first tick and GameDesc.scene is spawned then. Loads from an open bundle complete at once on both hosts (the web host fetches the bundle's files before the engine starts); only og.load.bundle of another bundle can be pending, and it completes at a tick boundary."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7899</sub>
+<sub>`api.ogt` line 7886</sub>
 
 ## Contents
 
@@ -55,9 +57,9 @@ module load {
 | [`og.load.sound`](#fn-sound) | function | Load a cooked sound for the audio module. Sounds are `.wav`, `.mp3`, `.ogg` (Vorbis) and `.flac` files under assets/ (and procedural `.ogt` presets): og cook decodes each to 16-bit PCM and encodes it to QOA, so every format plays, streams and loops the same. The asset id keeps the source's extension (`audio/theme.mp3`). |
 | [`og.load.lut`](#fn-lut) | function | A colour lookup table for PostEffects.lut, from a cooked `.cube` file (Adobe/Resolve 3D LUT; other sizes are resampled to 32). Loaded once per path. One in a streaming group's pack loads once its group is resident (refused before, naming the group); while the group is unloaded PostEffects.lut grades nothing with it, and it comes back under the same handle. |
 | [`og.load.environment`](#fn-environment) | function | A prefiltered environment map for Environment.map, from a cooked `.ogt` of `type environment`: `source` an equirectangular Radiance `.hdr` or OpenEXR `.exr` (the centre column faces +X, as three.js maps it) or a KTX2 cube map (six square faces +X -X +Y -Y +Z -Z with rows from the top; RGBA16F, RGB9E5, BC6H and the other HDR formats, decoded at cook time), or `faces` with six `.hdr`/`.exr` images in that order; `size` level 0's face size (a power of two, 16 to 2048, default 128), `intensity`, `rotation` (degrees about +Y) and `samples`. The cook prefilters it into a cube of five GGX levels (roughness 0 to 1) in RGB9E5 and the diffuse irradiance as nine harmonics, so loading only uploads it; `prefiltered true` takes a KTX2 cube's own mip chain as those levels instead (one already GGX-prefiltered by cmgen, IBLBaker or the glTF IBL sampler: level k of L at roughness k / (L - 1)), at the file's own size, without filtering it again. On the web it is fetched with the bundle like any blob; one in a streaming group's pack loads when its group is resident, and the sky lights the scene until then. Loaded once per path. |
-| [`og.load.emitter`](#fn-emitter) | function | A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (og-render §2 gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision (`collision <bounce> <friction> [depth \| colliders]`: off the drawn depth, or off the scene's colliders on the GPU), billboard, mesh (`render mesh box \| sphere \| tetrahedron \| "<model id>"`: each particle a small lit shape that tumbles with its rotation) or 2D sprite rendering, `lit true` (billboards and meshes shaded by the sun, the sky and local lights), `distortion <0..1>` (billboards that bend the scene behind them: heat haze, shock rings), `subEmitter <birth \| death \| collision> "<emitter id>" <count> [<inherit velocity>]` (up to 4: another emitter's particles born where this one's are born, die or bounce; one level deep) and `events <birth \| death \| collision>...` (og.ParticleEvent: its systems simulate in the tick). A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off \| life <cycles> \| fps <n> \| random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures, array, mesh model and sub-emitters it names are loaded with it (a sub-emitter that fires its parent is refused); while the array's streaming group is not resident its systems draw nothing. Loaded once per path. |
-| [`og.load.shader`](#fn-shader) | function | A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots; og-render §10), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path. |
-| [`og.load.post`](#fn-post) | function | A custom post pass for PostEffects.custom, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float\|vec2\|vec3\|vec4\|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (og-render §10 has the contract). The cook compiles it for every back end. Loaded once per path. |
+| [`og.load.emitter`](#fn-emitter) | function | A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles`: shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision (`collision <bounce> <friction> [depth \| colliders]`: off the drawn depth, or off the scene's colliders on the GPU), billboard, mesh (`render mesh box \| sphere \| tetrahedron \| "<model id>"`: each particle a small lit shape that tumbles with its rotation) or 2D sprite rendering, `lit true` (billboards and meshes shaded by the sun, the sky and local lights), `distortion <0..1>` (billboards that bend the scene behind them: heat haze, shock rings), `subEmitter <birth \| death \| collision> "<emitter id>" <count> [<inherit velocity>]` (up to 4: another emitter's particles born where this one's are born, die or bounce; one level deep) and `events <birth \| death \| collision>...` (og.ParticleEvent: its systems simulate in the tick). A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off \| life <cycles> \| fps <n> \| random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures, array, mesh model and sub-emitters it names are loaded with it (a sub-emitter that fires its parent is refused); while the array's streaming group is not resident its systems draw nothing. Loaded once per path. |
+| [`og.load.shader`](#fn-shader) | function | A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path. |
+| [`og.load.post`](#fn-post) | function | A custom post pass for PostEffects.custom, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float\|vec2\|vec3\|vec4\|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour. The cook compiles it for every back end. Loaded once per path. |
 | [`og.load.vector`](#fn-vector) | function | A cooked vector for og.ui's VectorFill, from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges the UI pass antialiases at any size; anything outside the subset is refused by name. Loaded once per path. |
 | [`og.load.uiMaterial`](#fn-uiMaterial) | function | A custom UI material for og.ui's LayerDesc, from a cooked `.ogt` of `type ui-material`: `code` or `source` (a `.wgsl`) defining `fn material(m: MaterialInput, p: Params) -> vec4<f32>`, which returns the composite's straight-alpha linear colour at m.uv (0 to 1 over the layer; m.pixel, m.size in CSS px, m.time the UI clock), reading the layer with layer(uv) and layer_texel(), and `param <name> float\|vec2\|vec3\|vec4\|color <default...>` lines (at most four). The cook compiles it for every back end. Loaded once per path. |
 | [`og.load.texture`](#fn-texture) | function | Load a cooked texture for og.render.sprite and og.ui.image, as three.js TextureLoader.load. |
@@ -128,7 +130,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 8072</sub>
+<sub>`api.ogt` line 8058</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -158,7 +160,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 8079</sub>
+<sub>`api.ogt` line 8065</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -186,7 +188,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 8086</sub>
+<sub>`api.ogt` line 8072</sub>
 
 <a id="fn-gltf"></a>
 
@@ -221,7 +223,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 8092</sub>
+<sub>`api.ogt` line 8078</sub>
 
 <a id="fn-scene"></a>
 
@@ -251,7 +253,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 8101</sub>
+<sub>`api.ogt` line 8087</sub>
 
 <a id="fn-prefab"></a>
 
@@ -281,7 +283,7 @@ fn prefab {
 }
 ```
 
-<sub>`api.ogt` line 8108</sub>
+<sub>`api.ogt` line 8094</sub>
 
 <a id="fn-font"></a>
 
@@ -311,7 +313,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 8128</sub>
+<sub>`api.ogt` line 8114</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -341,7 +343,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 8135</sub>
+<sub>`api.ogt` line 8121</sub>
 
 <a id="fn-sound"></a>
 
@@ -374,7 +376,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 8142</sub>
+<sub>`api.ogt` line 8128</sub>
 
 <a id="fn-lut"></a>
 
@@ -404,7 +406,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 8150</sub>
+<sub>`api.ogt` line 8136</sub>
 
 <a id="fn-environment"></a>
 
@@ -434,13 +436,13 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 8157</sub>
+<sub>`api.ogt` line 8143</sub>
 
 <a id="fn-emitter"></a>
 
 ### `og.load.emitter`
 
-A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (og-render §2 gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision (`collision <bounce> <friction> [depth | colliders]`: off the drawn depth, or off the scene's colliders on the GPU), billboard, mesh (`render mesh box | sphere | tetrahedron | "<model id>"`: each particle a small lit shape that tumbles with its rotation) or 2D sprite rendering, `lit true` (billboards and meshes shaded by the sun, the sky and local lights), `distortion <0..1>` (billboards that bend the scene behind them: heat haze, shock rings), `subEmitter <birth | death | collision> "<emitter id>" <count> [<inherit velocity>]` (up to 4: another emitter's particles born where this one's are born, die or bounce; one level deep) and `events <birth | death | collision>...` (og.ParticleEvent: its systems simulate in the tick). A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures, array, mesh model and sub-emitters it names are loaded with it (a sub-emitter that fires its parent is refused); while the array's streaming group is not resident its systems draw nothing. Loaded once per path.
+A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles`: shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision (`collision <bounce> <friction> [depth | colliders]`: off the drawn depth, or off the scene's colliders on the GPU), billboard, mesh (`render mesh box | sphere | tetrahedron | "<model id>"`: each particle a small lit shape that tumbles with its rotation) or 2D sprite rendering, `lit true` (billboards and meshes shaded by the sun, the sky and local lights), `distortion <0..1>` (billboards that bend the scene behind them: heat haze, shock rings), `subEmitter <birth | death | collision> "<emitter id>" <count> [<inherit velocity>]` (up to 4: another emitter's particles born where this one's are born, die or bounce; one level deep) and `events <birth | death | collision>...` (og.ParticleEvent: its systems simulate in the tick). A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures, array, mesh model and sub-emitters it names are loaded with it (a sub-emitter that fires its parent is refused); while the array's streaming group is not resident its systems draw nothing. Loaded once per path.
 
 ```ts
 og.load.emitter(world: World, path: string): Result<ParticleEmitter>
@@ -457,20 +459,20 @@ Binding symbol `og_load_emitter` · publish builds: kept
 
 ```ogt
 fn emitter {
-  doc "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (og-render §2 gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision (`collision <bounce> <friction> [depth | colliders]`: off the drawn depth, or off the scene's colliders on the GPU), billboard, mesh (`render mesh box | sphere | tetrahedron | \"<model id>\"`: each particle a small lit shape that tumbles with its rotation) or 2D sprite rendering, `lit true` (billboards and meshes shaded by the sun, the sky and local lights), `distortion <0..1>` (billboards that bend the scene behind them: heat haze, shock rings), `subEmitter <birth | death | collision> \"<emitter id>\" <count> [<inherit velocity>]` (up to 4: another emitter's particles born where this one's are born, die or bounce; one level deep) and `events <birth | death | collision>...` (og.ParticleEvent: its systems simulate in the tick). A sprite-mode emitter may draw from a texture array instead (`array \"<id>\" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures, array, mesh model and sub-emitters it names are loaded with it (a sub-emitter that fires its parent is refused); while the array's streaming group is not resident its systems draw nothing. Loaded once per path."
+  doc "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles`: shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision (`collision <bounce> <friction> [depth | colliders]`: off the drawn depth, or off the scene's colliders on the GPU), billboard, mesh (`render mesh box | sphere | tetrahedron | \"<model id>\"`: each particle a small lit shape that tumbles with its rotation) or 2D sprite rendering, `lit true` (billboards and meshes shaded by the sun, the sky and local lights), `distortion <0..1>` (billboards that bend the scene behind them: heat haze, shock rings), `subEmitter <birth | death | collision> \"<emitter id>\" <count> [<inherit velocity>]` (up to 4: another emitter's particles born where this one's are born, die or bounce; one level deep) and `events <birth | death | collision>...` (og.ParticleEvent: its systems simulate in the tick). A sprite-mode emitter may draw from a texture array instead (`array \"<id>\" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures, array, mesh model and sub-emitters it names are loaded with it (a sub-emitter that fires its parent is refused); while the array's streaming group is not resident its systems draw nothing. Loaded once per path."
   param world World "The world whose renderer owns it."
   param path String "The asset id, such as `fx/sparks.ogt`."
   returns Result.ParticleEmitter "Refused for a path not in the bundle, or a texture, texture array, model or sub-emitter it cannot load."
 }
 ```
 
-<sub>`api.ogt` line 8164</sub>
+<sub>`api.ogt` line 8150</sub>
 
 <a id="fn-shader"></a>
 
 ### `og.load.shader`
 
-A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots; og-render §10), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path.
+A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path.
 
 ```ts
 og.load.shader(world: World, path: string): Result<Shader>
@@ -487,20 +489,20 @@ Binding symbol `og_load_shader` · publish builds: kept
 
 ```ogt
 fn shader {
-  doc "A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots; og-render §10), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path."
+  doc "A material shader for og.render.shaderMaterial, from a cooked `.ogt` of `type shader` (its WGSL compiled by the cook for every back end). `mode hooks` (the default) defines hooks of the lit shader; `mode full lit` or `mode full unlit` defines `fn vertex(v: VertexInput, model: mat4x4<f32>, p: Params) -> VertexOutput` and `fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput` over the binding contract (camera(), the model with its skin, Params, tex0 to tex7 for the material's eight texture slots), lit by the frame's lights or drawn as returned, the prepass and every shadow pass drawn through the same entries. Loaded once per path."
   param world World "The world whose renderer owns it."
   param path String "The asset id, such as `shaders/dissolve.ogt`."
   returns Result.Shader "Refused for a path not in the bundle or not a shader."
 }
 ```
 
-<sub>`api.ogt` line 8171</sub>
+<sub>`api.ogt` line 8157</sub>
 
 <a id="fn-post"></a>
 
 ### `og.load.post`
 
-A custom post pass for PostEffects.custom, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (og-render §10 has the contract). The cook compiles it for every back end. Loaded once per path.
+A custom post pass for PostEffects.custom, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour. The cook compiles it for every back end. Loaded once per path.
 
 ```ts
 og.load.post(world: World, path: string): Result<Post>
@@ -517,14 +519,14 @@ Binding symbol `og_load_post` · publish builds: kept
 
 ```ogt
 fn post {
-  doc "A custom post pass for PostEffects.custom, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour (og-render §10 has the contract). The cook compiles it for every back end. Loaded once per path."
+  doc "A custom post pass for PostEffects.custom, from a cooked `.ogt` of `type post`: `code` or `source` (a `.wgsl` beside it) defining `fn post(f: PostInput, p: Params) -> vec4<f32>` and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most eight). The function reads previous(uv), scene_color(uv), depth(uv), normal(uv) and f.uv, f.pixel, f.size, f.time, and returns linear HDR colour. The cook compiles it for every back end. Loaded once per path."
   param world World "The world whose renderer owns it."
   param path String "The asset id, such as `post/crt.ogt`."
   returns Result.Post "Refused for a path not in the bundle or not a post pass."
 }
 ```
 
-<sub>`api.ogt` line 8178</sub>
+<sub>`api.ogt` line 8164</sub>
 
 <a id="fn-vector"></a>
 
@@ -554,7 +556,7 @@ fn vector {
 }
 ```
 
-<sub>`api.ogt` line 8185</sub>
+<sub>`api.ogt` line 8171</sub>
 
 <a id="fn-uiMaterial"></a>
 
@@ -584,7 +586,7 @@ fn uiMaterial {
 }
 ```
 
-<sub>`api.ogt` line 8192</sub>
+<sub>`api.ogt` line 8178</sub>
 
 <a id="fn-texture"></a>
 
@@ -617,7 +619,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 8199</sub>
+<sub>`api.ogt` line 8185</sub>
 
 <a id="fn-textureArray"></a>
 
@@ -650,7 +652,7 @@ fn textureArray {
 }
 ```
 
-<sub>`api.ogt` line 8207</sub>
+<sub>`api.ogt` line 8193</sub>
 
 <a id="fn-style"></a>
 
@@ -680,7 +682,7 @@ fn style {
 }
 ```
 
-<sub>`api.ogt` line 8215</sub>
+<sub>`api.ogt` line 8201</sub>
 
 <a id="fn-document"></a>
 
@@ -710,7 +712,7 @@ fn document {
 }
 ```
 
-<sub>`api.ogt` line 8222</sub>
+<sub>`api.ogt` line 8208</sub>
 
 <a id="fn-look"></a>
 
@@ -740,7 +742,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 8229</sub>
+<sub>`api.ogt` line 8215</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -770,7 +772,7 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 8236</sub>
+<sub>`api.ogt` line 8222</sub>
 
 <a id="fn-palette"></a>
 
@@ -800,7 +802,7 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 8243</sub>
+<sub>`api.ogt` line 8229</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -830,7 +832,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 8250</sub>
+<sub>`api.ogt` line 8236</sub>
 
 <a id="fn-status"></a>
 
@@ -860,7 +862,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 8257</sub>
+<sub>`api.ogt` line 8243</sub>
 
 <a id="fn-error"></a>
 
@@ -890,7 +892,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 8264</sub>
+<sub>`api.ogt` line 8250</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -920,7 +922,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 8271</sub>
+<sub>`api.ogt` line 8257</sub>
 
 <a id="fn-animation"></a>
 
@@ -953,7 +955,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 8278</sub>
+<sub>`api.ogt` line 8264</sub>
 
 <a id="fn-rig"></a>
 
@@ -983,7 +985,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 8286</sub>
+<sub>`api.ogt` line 8272</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -1013,7 +1015,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 8293</sub>
+<sub>`api.ogt` line 8279</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -1043,7 +1045,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 8300</sub>
+<sub>`api.ogt` line 8286</sub>
 
 <a id="fn-video"></a>
 
@@ -1073,7 +1075,7 @@ fn video {
 }
 ```
 
-<sub>`api.ogt` line 8307</sub>
+<sub>`api.ogt` line 8293</sub>
 
 <a id="fn-videoInfo"></a>
 
@@ -1103,7 +1105,7 @@ fn videoInfo {
 }
 ```
 
-<sub>`api.ogt` line 8314</sub>
+<sub>`api.ogt` line 8300</sub>
 
 <a id="fn-timeline"></a>
 
@@ -1133,7 +1135,7 @@ fn timeline {
 }
 ```
 
-<sub>`api.ogt` line 8321</sub>
+<sub>`api.ogt` line 8307</sub>
 
 <a id="fn-rig2d"></a>
 
@@ -1163,7 +1165,7 @@ fn rig2d {
 }
 ```
 
-<sub>`api.ogt` line 8328</sub>
+<sub>`api.ogt` line 8314</sub>
 
 <a id="fn-imageData"></a>
 
@@ -1200,7 +1202,7 @@ fn imageData {
 }
 ```
 
-<sub>`api.ogt` line 8413</sub>
+<sub>`api.ogt` line 8399</sub>
 
 <a id="fn-gltfData"></a>
 
@@ -1240,7 +1242,7 @@ fn gltfData {
 }
 ```
 
-<sub>`api.ogt` line 8423</sub>
+<sub>`api.ogt` line 8409</sub>
 
 <a id="fn-environmentData"></a>
 
@@ -1277,7 +1279,7 @@ fn environmentData {
 }
 ```
 
-<sub>`api.ogt` line 8434</sub>
+<sub>`api.ogt` line 8420</sub>
 
 <a id="fn-environmentInfo"></a>
 
@@ -1307,7 +1309,7 @@ fn environmentInfo {
 }
 ```
 
-<sub>`api.ogt` line 8444</sub>
+<sub>`api.ogt` line 8430</sub>
 
 <a id="fn-release"></a>
 
@@ -1337,7 +1339,7 @@ fn release {
 }
 ```
 
-<sub>`api.ogt` line 8451</sub>
+<sub>`api.ogt` line 8437</sub>
 
 <a id="fn-imageInfo"></a>
 
@@ -1367,7 +1369,7 @@ fn imageInfo {
 }
 ```
 
-<sub>`api.ogt` line 8458</sub>
+<sub>`api.ogt` line 8444</sub>
 
 <a id="fn-completions"></a>
 
@@ -1395,7 +1397,7 @@ fn completions {
 }
 ```
 
-<sub>`api.ogt` line 8465</sub>
+<sub>`api.ogt` line 8451</sub>
 
 <a id="fn-replayCompletions"></a>
 
@@ -1425,7 +1427,7 @@ fn replayCompletions {
 }
 ```
 
-<sub>`api.ogt` line 8471</sub>
+<sub>`api.ogt` line 8457</sub>
 
 ## Components, resources and events
 
@@ -1502,7 +1504,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 8026</sub>
+<sub>`api.ogt` line 8012</sub>
 
 <a id="record-PrefabLink"></a>
 
@@ -1533,7 +1535,7 @@ component PrefabLink {
 }
 ```
 
-<sub>`api.ogt` line 8115</sub>
+<sub>`api.ogt` line 8101</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -1556,7 +1558,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 8478</sub>
+<sub>`api.ogt` line 8464</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -1581,7 +1583,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 8484</sub>
+<sub>`api.ogt` line 8470</sub>
 
 ## Types
 
@@ -1597,7 +1599,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 7905</sub>
+<sub>`api.ogt` line 7891</sub>
 
 <a id="type-Font"></a>
 
@@ -1611,7 +1613,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 7906</sub>
+<sub>`api.ogt` line 7892</sub>
 
 <a id="type-Sound"></a>
 
@@ -1625,7 +1627,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 7907</sub>
+<sub>`api.ogt` line 7893</sub>
 
 <a id="type-Style"></a>
 
@@ -1639,7 +1641,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Style "A cooked UI style: its values, atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 7908</sub>
+<sub>`api.ogt` line 7894</sub>
 
 <a id="type-TextureArray"></a>
 
@@ -1653,7 +1655,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TextureArray "A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray)."
 ```
 
-<sub>`api.ogt` line 7909</sub>
+<sub>`api.ogt` line 7895</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -1678,7 +1680,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 7946</sub>
+<sub>`api.ogt` line 7932</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -1708,7 +1710,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 7953</sub>
+<sub>`api.ogt` line 7939</sub>
 
 <a id="type-GltfPart"></a>
 
@@ -1731,7 +1733,7 @@ struct GltfPart {
 }
 ```
 
-<sub>`api.ogt` line 7965</sub>
+<sub>`api.ogt` line 7951</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -1762,7 +1764,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 7972</sub>
+<sub>`api.ogt` line 7958</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -1785,7 +1787,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 7983</sub>
+<sub>`api.ogt` line 7969</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -1818,7 +1820,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 7990</sub>
+<sub>`api.ogt` line 7976</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -1849,7 +1851,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 8002</sub>
+<sub>`api.ogt` line 7988</sub>
 
 <a id="type-TextureArrayInfo"></a>
 
@@ -1880,7 +1882,7 @@ struct TextureArrayInfo {
 }
 ```
 
-<sub>`api.ogt` line 8015</sub>
+<sub>`api.ogt` line 8001</sub>
 
 <a id="type-LoadBudget"></a>
 
@@ -1920,7 +1922,7 @@ struct LoadBudget {
 }
 ```
 
-<sub>`api.ogt` line 8335</sub>
+<sub>`api.ogt` line 8321</sub>
 
 <a id="type-ImageKind"></a>
 
@@ -1945,7 +1947,7 @@ enum ImageKind {
 }
 ```
 
-<sub>`api.ogt` line 8356</sub>
+<sub>`api.ogt` line 8342</sub>
 
 <a id="type-GltfDataDesc"></a>
 
@@ -1967,7 +1969,7 @@ struct GltfDataDesc {
 }
 ```
 
-<sub>`api.ogt` line 8363</sub>
+<sub>`api.ogt` line 8349</sub>
 
 <a id="type-ImageDataDesc"></a>
 
@@ -1991,7 +1993,7 @@ struct ImageDataDesc {
 }
 ```
 
-<sub>`api.ogt` line 8369</sub>
+<sub>`api.ogt` line 8355</sub>
 
 <a id="type-EnvironmentDataDesc"></a>
 
@@ -2022,7 +2024,7 @@ struct EnvironmentDataDesc {
 }
 ```
 
-<sub>`api.ogt` line 8376</sub>
+<sub>`api.ogt` line 8362</sub>
 
 <a id="type-EnvironmentInfo"></a>
 
@@ -2047,7 +2049,7 @@ struct EnvironmentInfo {
 }
 ```
 
-<sub>`api.ogt` line 8389</sub>
+<sub>`api.ogt` line 8375</sub>
 
 <a id="type-ImageInfo"></a>
 
@@ -2070,7 +2072,7 @@ struct ImageInfo {
 }
 ```
 
-<sub>`api.ogt` line 8397</sub>
+<sub>`api.ogt` line 8383</sub>
 
 <a id="type-LoadCompletion"></a>
 
@@ -2095,7 +2097,7 @@ struct LoadCompletion {
 }
 ```
 
-<sub>`api.ogt` line 8404</sub>
+<sub>`api.ogt` line 8390</sub>
 
 ## Column kinds
 
@@ -2118,7 +2120,7 @@ column TextureArray {
 }
 ```
 
-<sub>`api.ogt` line 7911</sub>
+<sub>`api.ogt` line 7897</sub>
 
 ```ogt
 column Asset {
@@ -2129,7 +2131,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 7918</sub>
+<sub>`api.ogt` line 7904</sub>
 
 ```ogt
 column Sound {
@@ -2140,7 +2142,7 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 7925</sub>
+<sub>`api.ogt` line 7911</sub>
 
 ```ogt
 column Font {
@@ -2151,7 +2153,7 @@ column Font {
 }
 ```
 
-<sub>`api.ogt` line 7932</sub>
+<sub>`api.ogt` line 7918</sub>
 
 ```ogt
 column Style {
@@ -2162,4 +2164,4 @@ column Style {
 }
 ```
 
-<sub>`api.ogt` line 7939</sub>
+<sub>`api.ogt` line 7925</sub>

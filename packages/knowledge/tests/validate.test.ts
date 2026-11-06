@@ -4,7 +4,7 @@
 // each asserts the problem it adds over the copy's own baseline.
 
 import { afterAll, expect, test } from "bun:test";
-import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defaultRoots, payload, packs, type Roots } from "../scripts/lib.ts";
@@ -43,40 +43,22 @@ const edit = (path: string, f: (s: string) => string) => writeFileSync(path, f(r
 
 test("the committed package is valid against the platform rules", () => {
   expect(validate(real)).toEqual([]);
-  const names = Object.keys(packs(payload(real)));
-  expect(names).toEqual([
-    "scaffold:origin-engine-ts",
-    "skill:architecture-discipline",
-    "skill:component-forge",
-    "skill:level-texturing",
-    "skill:localization",
-    "skill:og-2d", "skill:og-ai", "skill:og-anim", "skill:og-audio", "skill:og-build", "skill:og-core", "skill:og-destruction", "skill:og-feel", "skill:og-game", "skill:og-i18n", "skill:og-model", "skill:og-net",
-    "skill:og-physics", "skill:og-platform-sdk", "skill:og-render", "skill:og-story", "skill:og-taste", "skill:og-ui",
-    "skill:recipe-craft",
-    "skill:ui-craft",
-    "skill:visual-acceptance",
-  ]);
+  // The skeleton is the platform's only pack from the engine: no skills.
+  expect(Object.keys(packs(payload(real)))).toEqual(["scaffold:origin-engine-ts"]);
 });
 
 test("the bundle is the platform's production layout, text only", () => {
   const b = bundle(real);
   expect(b.schemaVersion).toBe(1);
-  for (const s of ["og-core", "og-build", "og-game"]) expect(b.files[`game/skills/${s}/SKILL.md`]).toStartWith(`---\nname: ${s}\n`);
-  // The wiki is og api's, read from the package: no skill carries a copy.
-  expect(Object.keys(b.files).filter((p) => p.includes("/reference/"))).toEqual([]);
+  expect(Object.keys(b.files).every((p) => p.startsWith("game-scaffold/origin-engine-ts/"))).toBeTrue();
   expect(b.files["game-scaffold/origin-engine-ts/project.ogt"]).toContain("type project");
   expect(Object.keys(b.files).some((p) => p.endsWith(".glb") || p.endsWith(".png") || p.endsWith(".ttf"))).toBeFalse();
 });
 
-test("a skill whose front matter name is not its directory is refused", () => {
-  const p = added((r) => edit(join(r.pkg, "skills/og-core/SKILL.md"), (s) => s.replace("name: og-core", "name: core")));
-  expect(p).toEqual([`game/skills/og-core/SKILL.md: front matter name is "core", its directory is "og-core"; they must be equal`]);
-});
+const guide = (r: Roots, name: string) => join(r.pkg, `wiki/guide-${name}.md`);
 
-test("a skill that names a tool no Session is offered is refused, outside code blocks only", () => {
-  const p = added((r) =>
-    edit(join(r.pkg, "skills/og-build/SKILL.md"), (s) => `${s}\nThen call \`engine_teleport\`.\n\n\`\`\`sh\n# not a tool: \`engine_warp\`\n\`\`\`\n`),
-  );
+test("a guide that names a tool no Session is offered is refused, outside code blocks only", () => {
+  const p = added((r) => edit(guide(r, "testing"), (s) => `${s}\nThen call \`engine_teleport\`.\n\n\`\`\`sh\n# not a tool: \`engine_warp\`\n\`\`\`\n`));
   expect(p).toHaveLength(1);
   expect(p[0]).toContain("names `engine_teleport`, which is no tool a Session can be offered");
 });
@@ -129,78 +111,49 @@ test("an engine version the pin and project.ogt do not name is refused", () => {
   ]);
 });
 
-test("non-UTF-8 and symbolic-link skill files are refused", () => {
-  const p = added((r) => {
-    writeFileSync(join(r.pkg, "skills/og-game/notes.md"), new Uint8Array([0x66, 0xff, 0xfe, 0x0a]));
-    symlinkSync(join(r.pkg, "skills/og-core/SKILL.md"), join(r.pkg, "skills/og-game/link.md"));
-  });
-  expect(p).toHaveLength(2);
-  expect(p.find((x) => x.startsWith("game/skills/og-game/link.md:"))).toContain("a symbolic link");
-  expect(p).toContain("game/skills/og-game/notes.md: not UTF-8 text; the platform payload is text only (packages/game-knowledge/scripts/production-bundle.mjs)");
-});
-
-test("a skill that points into the unmounted wiki, or at a module the wiki lacks, is refused", () => {
-  const p = added((r) => edit(join(r.pkg, "skills/og-taste/SKILL.md"), (s) => `${s}\nThe fog's fields are in \`reference/atmosphere.md\` and \`og api show weather\`; \`og api show og.Fog\` is fine.\n`));
+test("a guide that points at a page no reader opens, or at a module the wiki lacks, is refused", () => {
+  const p = added((r) => edit(guide(r, "looks"), (s) => `${s}\nThe fog's fields are in \`reference/atmosphere.md\` and \`og api show weather\`; \`og api show og.Fog\` is fine.\n`));
   expect(p).toEqual([
-    "game/skills/og-taste/SKILL.md: names reference/atmosphere.md; the wiki is not mounted beside the skills: name `og api show <module>` for a module, `og api show <exact name>` for one name, or `og api find <words>`",
-    "game/skills/og-taste/SKILL.md: names `og api show weather`, and the generated wiki has no module weather (wiki/index.md lists them; write a type or function as its full name, og.<name>)",
+    "wiki/guide-looks.md: names reference/atmosphere.md, which no reader opens: name `og api show <module>` for a module, `og api show <exact name>` for one name, or `og api find <words>`",
+    "wiki/guide-looks.md: names `og api show weather`, and the generated wiki has no module weather (wiki/index.md lists them; write a type or function as its full name, og.<name>)",
   ]);
-});
-
-test("each module is taught by the one skill the wiki's index groups it under", () => {
-  // og-taste names og-ui's overview, og-core stops naming one of its own.
-  const p = added((r) => {
-    edit(join(r.pkg, "skills/og-taste/SKILL.md"), (s) => `${s}\nThe calls are in \`og api show ui\`.\n`);
-    edit(join(r.pkg, "skills/og-core/SKILL.md"), (s) => s.replace("`og api show rng` (seeded streams)", "the Rng resource (seeded streams)"));
-  });
-  expect(p).toEqual([
-    "skills/og-core/SKILL.md: teaches the rng module (wiki/index.md) but never names `og api show rng`",
-    "skills/og-taste/SKILL.md: names `og api show ui`, which og-ui teaches; point to og-ui instead, so each module is taught in one place",
-  ]);
-  const grouped = added((r) => edit(join(r.pkg, "wiki/index.md"), (s) => s.replace("### `og-ai`", "### `og-enemies`")));
-  expect(grouped).toContain("wiki/index.md: groups modules under og-enemies, which is no skill this package ships; fix the modules' `skill` in crates/og-api/api/<module>.ogt");
 });
 
 test("a section reference names a numbered section that exists", () => {
+  const sectionsOf = (name: string) => [...readFileSync(guide(real, name), "utf8").matchAll(/^### `[a-z0-9-]+ §(\d+)` /gm)].map((m) => m[1]).join(", ");
   const p = added((r) =>
-    edit(join(r.pkg, "skills/og-audio/SKILL.md"), (s) => `${s}\nSee og-feel §15, og-taste §4, §15 and §9, og-build §Tests.\n\n\`\`\`text\nog-feel §99 in a code block is not a reference\n\`\`\`\n`),
+    edit(guide(r, "screens"), (s) => `${s}\nSee determinism §15, art-review §4, §15 and §9, testing §Tests.\n\n\`\`\`text\ndeterminism §99 in a code block is not a reference\n\`\`\`\n`),
   );
-  expect(p).toEqual([
-    "skills/og-audio/SKILL.md: refers to og-build §Tests by name; refer to a skill's sections by their numbers (## N.)",
-    "skills/og-audio/SKILL.md: refers to og-feel §15, which does not exist there (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)",
-    "skills/og-audio/SKILL.md: refers to og-taste §15, which does not exist there (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)",
-  ]);
-  const own = added((r) => edit(join(r.pkg, "skills/og-audio/SKILL.md"), (s) => `${s}\nAs §8 says.\n`));
-  expect(own).toEqual(["skills/og-audio/SKILL.md: refers to its own §8, which it does not have (its sections: 1, 2, 3, 4, 5, 6, 7)"]);
-  // A skill whose name has a digit, or none of og-, is the owner of its §, not the text that names it.
-  const other = added((r) => edit(join(r.pkg, "skills/og-audio/SKILL.md"), (s) => `${s}\nSee og-i18n §9, recipe-craft §1 and §9, and localization §Checking.\n`));
-  expect(other).toEqual([
-    "skills/og-audio/SKILL.md: refers to localization §Checking by name; refer to a skill's sections by their numbers (## N.)",
-    "skills/og-audio/SKILL.md: refers to og-i18n §9, which does not exist there (its sections: 0, 1, 2, 3, 4, 5, 6)",
-    "skills/og-audio/SKILL.md: refers to recipe-craft §9, which does not exist there (its sections: 1, 2, 3, 4)",
-  ]);
+  expect(p.sort()).toEqual([
+    "wiki/guide-screens.md: refers to art-review §15, which does not exist there (its sections: " + sectionsOf("art-review") + ")",
+    "wiki/guide-screens.md: refers to art-review §9, which does not exist there (its sections: " + sectionsOf("art-review") + ")",
+    "wiki/guide-screens.md: refers to determinism §15, which does not exist there (its sections: " + sectionsOf("determinism") + ")",
+    "wiki/guide-screens.md: refers to testing §Tests by name; refer to a guide's sections by their numbers (## N.)",
+  ].sort());
+  const own = added((r) => edit(guide(r, "screens"), (s) => `${s}\nAs §42 says.\n`));
+  expect(own).toEqual(["wiki/guide-screens.md: refers to its own §42, which it does not have (its sections: " + sectionsOf("screens") + ")"]);
+  const other = added((r) => edit(guide(r, "screens"), (s) => `${s}\nSee og-zzz §1 and art-review §2.\n`));
+  expect(other).toEqual(["wiki/guide-screens.md: refers to og-zzz §1, and there is no guide og-zzz"]);
 });
 
-test("a skill or wiki page that calls a UI style a skin is refused; the glTF, collision and 2D skeleton skins pass", () => {
+test("a wiki page that calls a UI style a skin is refused; the glTF, collision and 2D skeleton skins pass", () => {
   const p = added((r) => {
-    edit(join(r.pkg, "skills/og-ui/SKILL.md"), (s) => `${s}\nCopy the pack as the game's skin and keep its\n\`fallback\` beside the skin file.\n\nThe controller keeps \`skin\` off every surface. A glTF's skins hold its joints. A skin armor { swap torso torso-armor } dresses the rig; a slot the skin leaves alone shows the default's.\n`);
+    edit(guide(r, "screens"), (s) => `${s}\nCopy the pack as the game's skin and keep its\n\`fallback\` beside the skin file.\n\nThe controller keeps \`skin\` off every surface. A glTF's skins hold its joints. A skin armor { swap torso torso-armor } dresses the rig; a slot the skin leaves alone shows the default's.\n`);
     edit(join(r.pkg, "wiki/physics.md"), (s) => s.replace("The gap kept between it and every surface.", "The gap kept between it and every surface; the HUD wears the skin's panel."));
   });
   expect(p.sort()).toEqual([
+    "wiki/guide-screens.md: calls a UI style a skin (\"Copy the pack as the game's skin and keep its `fallback` beside the skin file.\"); og-ui's word is style (type style, og.load.style, styles/<name>/)",
     "wiki/physics.md: calls a UI style a skin (\"the HUD wears the skin's panel.\"); og-ui's word is style (type style, og.load.style, styles/<name>/)",
-    "skills/og-ui/SKILL.md: calls a UI style a skin (\"Copy the pack as the game's skin and keep its `fallback` beside the skin file.\"); og-ui's word is style (type style, og.load.style, styles/<name>/)",
   ].sort());
 });
 
-test("the style catalogue covers 37 styles, each complete and listed in og-taste", () => {
+test("the style catalogue covers 37 styles, each complete", () => {
   const cat = JSON.parse(readFileSync(join(real.pkg, "looks/catalogue.json"), "utf8")) as { styles: { slug: string; checks: string[]; look: { support: string; missing: string[] } }[] };
   expect(cat.styles).toHaveLength(37);
   for (const s of cat.styles) {
     expect(s.checks).toHaveLength(3);
     if (s.look.support !== "full") expect(s.look.missing.length).toBeGreaterThan(0);
   }
-  const b = bundle(real);
-  expect(b.files["game/skills/og-taste/looks/catalogue.json"]).toBe(readFileSync(join(real.pkg, "looks/catalogue.json"), "utf8"));
 });
 
 test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
@@ -227,8 +180,6 @@ test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
   );
   const cat = JSON.parse(readFileSync(join(real.pkg, "looks/catalogue.json"), "utf8")) as { styles: { slug: string; look: { support: string } }[] };
   const [a, b, c, d] = cat.styles.map((s) => s.slug);
-  const taste = readFileSync(join(real.pkg, "skills/og-taste/SKILL.md"), "utf8");
-  const row = (slug: string) => new RegExp(`^\\| \`${slug}\` \\| (.*) \\|$`, "m").exec(taste)![1]!.split(" | ").map((x) => x.replaceAll("`", "")).join(", ");
   expect(p.sort()).toEqual(
     [
       `looks/catalogue.json: ${a}: needs exactly three checks a critic can judge on a frame`,
@@ -249,115 +200,34 @@ test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
       `looks/catalogue.json: ${d}: a second style with this slug`,
       "looks/catalogue.json: a-new-look: preview is previews/" + cat.styles[4]!.slug + ".webp, expected previews/a-new-look.webp",
       "looks/catalogue.json: a-new-look: look.preset is templates/looks/" + cat.styles[4]!.slug + ".ogt, expected templates/looks/a-new-look.ogt",
-      "skills/og-taste/SKILL.md: the style catalogue (§12) does not list `a-new-look`",
-      `skills/og-taste/SKILL.md: §12's row for \`${b}\` reads ${row(b!)}; the catalogue says ${row(b!).replace(`, ${cat.styles[1]!.look.support}, `, ", planned, ")}`,
     ].sort(),
   );
 });
 
-test("every og.* name and Type.field a skill writes exists in the generated API", () => {
+test("every og.* name and Type.field a guide writes exists in the generated API", () => {
   const p = added((r) =>
     edit(
-      join(r.pkg, "skills/og-game/SKILL.md"),
+      guide(r, "start"),
       (s) =>
         `${s}\nCall \`og.render.applyLooks(world, look)\`, set \`og.Sprite.shadowy\`, read \`og.Wobble\` and \`SpriteDesc.dropShadows\`; \`og.load.look\`, \`og.Stylise.paintCanvas\`, \`GameDesc.look\` and \`away.og.ts\` are fine.\n\n\`\`\`ts\nog.ui.textAreaz(world, {});\n\`\`\`\n`,
     ),
   );
   const why = "which the generated API (api.ogt) does not have; check the name with og api find or in packages/engine/types/index.d.ts";
   expect(p.sort()).toEqual(
-    ["og.render.applyLooks", "og.Sprite.shadowy", "og.Wobble", "SpriteDesc.dropShadows", "og.ui.textAreaz"].map((n) => `skills/og-game/SKILL.md: names \`${n}\`, ${why}`).sort(),
+    ["og.render.applyLooks", "og.Sprite.shadowy", "og.Wobble", "SpriteDesc.dropShadows", "og.ui.textAreaz"].map((n) => `wiki/guide-start.md: names \`${n}\`, ${why}`).sort(),
   );
 });
 
 test("a field written as `key: value` or in a token's object literal is one the API has", () => {
   const p = added((r) =>
     edit(
-      join(r.pkg, "skills/og-audio/SKILL.md"),
+      guide(r, "screens"),
       (s) =>
         `${s}\nLoop it with \`looping: true\`; \`loop: true\` and \`runs: 2\` are fine.\n\n\`\`\`ts\nworld.insert(e, og.AudioSource, { sound, loop: true, volumn: 0.5 });\n\`\`\`\n`,
     ),
   );
   const why = "which the generated API (api.ogt) does not have; check the name with og api find or in packages/engine/types/index.d.ts";
-  expect(p.sort()).toEqual(["looping", "og.AudioSource.volumn"].map((n) => `skills/og-audio/SKILL.md: names \`${n}\`, ${why}`).sort());
-});
-
-test("og-taste §12's table is held to the catalogue, row by row", () => {
-  const p = added((r) =>
-    edit(join(r.pkg, "skills/og-taste/SKILL.md"), (s) =>
-      s.replace("| `voxel-worlds` | Low-poly, toy and handmade 3D | Voxel worlds | full | `pixel` |", "| `voxel-worlds` | Low-poly, toy and handmade 3D | Voxel worlds | content | `cartoon` |").replace(/^\| `neon-vector` \|.*\n/m, "Also `neon-vector`.\n"),
-    ),
-  );
-  expect(p.sort()).toEqual([
-    "skills/og-taste/SKILL.md: §12's row for `voxel-worlds` reads Low-poly, toy and handmade 3D, Voxel worlds, content, cartoon; the catalogue says Low-poly, toy and handmade 3D, Voxel worlds, full, pixel",
-    "skills/og-taste/SKILL.md: §12's table has no row for `neon-vector` (| slug | group | style | support | ui |)",
-  ]);
-});
-
-/**
- * Phase 4's APIs, each with the skill that teaches it: every name must
- * appear in that skill (and, by the validator, exist in the generated API).
- */
-const TAUGHT: Record<string, string[]> = {
-  "og-game": ["StreamBudget", "StreamStatus", "og.stream.release", ".vox"],
-  "og-render": [
-    "og.Environment", "og.load.environment", "type environment", "toneMapping", "agx", "autoExposure", "adaptSpeedUp", "adaptSpeedDown",
-    "shadowSoftness", "cascadeBlend", "pointShadows", "taaHistory", "taaSharpen", "fxaa",
-    "clearcoat", "sheen", "transmission", "iridescence", "anisotropy",
-  ],
-  "og-2d": ["og.Sprite.dropShadow", "SpriteDesc.dropShadow", "og.load.textureArray", "SpriteDesc.arrayLayer", "og.Sprite.arrayLayer", "FlipbookInfo.array", "array true"],
-  "og-anim": ["stepFps", "compress true"],
-  "og-physics": ["og.physics.raycast", "og.physics.shapeCast", "og.physics.overlap", "lanes"],
-  "og-taste": [
-    "og.load.look", "og.load.lookInfo", "og.load.palette", "og.render.applyLook", "og.Stylise", "og.MaterialStyle", "@canvas/paper", "@palettes/handheld4", "RenderCapabilities.stylise",
-    "extends", "GameDesc.look", "--premise", "--look", "og.render.look", "looks/catalogue.json", "hatchingSpace object", "hatchingDepth"],
-  "og-ui": ["og.ui.textArea", "og.ui.textField", "compose:", "commit:", "ellipsis", "maxLines", "fallbackFonts", "og.ui.a11y", "og.A11yAction", "og.ui.zoomView", "og.Pointers", "og.ui.hasIcon", "kerning"],
-  "og-i18n": ["runtime true", "fallbackFonts", "shaped", "Kerning"],
-  "og-build": ["cooked/stream/", "environment maps", "texture arrays", "palettes", "looks and LUTs", ".vox", "compress true", "stream true", "isolation", "OG_LANES", "dump_lanes", "compose:"],
-  "og-audio": ["stream true", "chunk 4", "chunks", "og.load.soundInfo"],
-  "og-feel": ["stepFps"],
-  "og-core": ["lanes"],
-};
-
-test("every phase 4 API is taught by its skill", () => {
-  const b = bundle(real);
-  const missing: string[] = [];
-  for (const [skill, names] of Object.entries(TAUGHT)) {
-    const text = b.files[`game/skills/${skill}/SKILL.md`]!;
-    for (const n of names) if (!text.includes(n)) missing.push(`${skill}: ${n}`);
-  }
-  expect(missing).toEqual([]);
-});
-
-/** The model review's commands, tool and generators: og-model teaches each (its §8 holds the generators' fields). */
-const MODEL_REVIEW = [
-  "view:<entity>:front", "view:<entity>:back", "view:<entity>:side", "view:<entity>:top", "view:<entity>:orbit:<degrees>", "view:off", "turntable:<entity>:<n>",
-  "og compare", "--mask", "--align", "--key", "--sheet", "silhouette IoU", "ΔE00",
-  "og.render.shapeGeometry", "og.render.extrudeGeometry", "og.render.latheGeometry", "og.render.sweepGeometry", "og.render.csgGeometry", "og.render.mergeGeometries", "og.render.icosahedronGeometry", "og.Shape", "og.Path2",
-  "Blockout", "Structure", "Form", "Material", "Surface detail", "Lighting", "Interaction", "Optimisation",
-];
-
-test("og-model teaches the model review: the views, og compare, the generators and the eight passes", () => {
-  const text = bundle(real).files["game/skills/og-model/SKILL.md"]!;
-  expect(MODEL_REVIEW.filter((n) => !text.includes(n))).toEqual([]);
-  // A generator name it writes must exist: a typo is refused like any skill's.
-  const p = added((r) => edit(join(r.pkg, "skills/og-model/SKILL.md"), (s) => s.replace("og.render.sweepGeometry`", "og.render.sweptGeometry`")));
-  expect(p).toEqual(["skills/og-model/SKILL.md: names `og.render.sweptGeometry`, which the generated API (api.ogt) does not have; check the name with og api find or in packages/engine/types/index.d.ts"]);
-});
-
-/** The two doc rows of threejs-migrate: og-build points to the model review, og-model to the asset route. */
-const ROUTES: Record<string, string[]> = {
-  "og-build": ["og compare <reference.png> <render.png>", "turntable:<entity>:<n>", "og-model §3", "og-model §4"],
-  "og-model": ["type model", "## 9. Models written as text", "og.load.gltf(world, \"models/lantern.ogt\")", "og cook --report", "`pivot`"],
-};
-
-test("og-build points to og compare and og-model names the type model route", () => {
-  const b = bundle(real);
-  const missing: string[] = [];
-  for (const [skill, names] of Object.entries(ROUTES)) {
-    const text = b.files[`game/skills/${skill}/SKILL.md`]!;
-    for (const n of names) if (!text.includes(n)) missing.push(`${skill}: ${n}`);
-  }
-  expect(missing).toEqual([]);
+  expect(p.sort()).toEqual(["looping", "og.AudioSource.volumn"].map((n) => `wiki/guide-screens.md: names \`${n}\`, ${why}`).sort());
 });
 
 /** What the three-to-og guide maps (the threejs-migrate row): every name must appear in it. */
@@ -373,32 +243,8 @@ const THREE_TO_OG = [
 ];
 
 test("the three-to-og guide maps three.js's classes and idioms and names the gaps", () => {
-  const text = bundle(real).files["game/skills/og-game/guides/three-to-og.md"];
-  expect(text).toBeDefined();
-  expect(THREE_TO_OG.filter((n) => !text!.includes(n))).toEqual([]);
-});
-
-test("a guide is held to the skills' rules: its API names, sections, pages and who names it", () => {
-  const why = "which the generated API (api.ogt) does not have; check the name with og api find or in packages/engine/types/index.d.ts";
-  const p = added((r) => {
-    edit(join(r.pkg, "guides/three-to-og.md"), (s) => `${s}\nPick with \`og.render.raycasts(world, ray)\`; see §42, og-feel §99 and \`reference/raycast.md\`.\n`);
-    edit(join(r.pkg, "skills/og-ui/SKILL.md"), (s) => `${s}\nThree.js's CSS2DRenderer is in \`guides/three-to-ui.md\`.\n`);
-    writeFileSync(join(r.pkg, "guides/notes.md"), "# Notes\n");
-  });
-  expect(p.sort()).toEqual(
-    [
-      `guides/three-to-og.md: names \`og.render.raycasts\`, ${why}`,
-      "guides/three-to-og.md: names reference/raycast.md; the wiki is not mounted beside the skills: name `og api show <module>` for a module, `og api show <exact name>` for one name, or `og api find <words>`",
-      "guides/three-to-og.md: refers to its own §42, which it does not have (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)",
-      "guides/three-to-og.md: refers to og-feel §99, which does not exist there (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)",
-      "guides/notes.md: not in GUIDES (scripts/validate.ts); list it there and name it from og-game, or remove it",
-      "skills/og-ui/SKILL.md: names guides/three-to-ui.md, which this package does not ship (its guides: three-to-og)",
-    ].sort(),
-  );
-  const unnamed = added((r) => edit(join(r.pkg, "skills/og-game/SKILL.md"), (s) => s.replaceAll("guides/three-to-og.md", "the guide")));
-  expect(unnamed).toEqual(["skills/og-game/SKILL.md: never names guides/three-to-og.md, so no agent finds the guide; name it where its subject is taught"]);
-  const unmounted = added((r) => edit(join(r.pkg, "knowledge.json"), (s) => s.replace('"to": "game/skills/og-game/guides/"', '"to": "game/skills/og-game/notes/"')));
-  expect(unmounted).toContain("guides/three-to-og.md: missing, or not mounted at game/skills/og-game/guides/ (knowledge.json mounts guides/ there)");
+  const text = readFileSync(guide(real, "three-to-og"), "utf8");
+  expect(THREE_TO_OG.filter((n) => !text.includes(n))).toEqual([]);
 });
 
 /** A copy laid out as the repository is (packages/knowledge, packages/engine, crates/), so the guide's citers are read. */
@@ -419,7 +265,7 @@ test("every section og migrate three cites is one the guide has", () => {
   const before = new Set(validate(roots));
   edit(join(roots.pkg, "../../crates/og-cli/src/migrate.rs"), (s) => `${s}\n// see three-to-og §12\n`);
   const p = validate(roots).filter((x) => !before.has(x));
-  expect(p).toEqual(["crates/og-cli/src/migrate.rs: cites three-to-og §12, which guides/three-to-og.md does not have (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)"]);
+  expect(p).toEqual(["crates/og-cli/src/migrate.rs: cites three-to-og §12, which wiki/guide-three-to-og.md does not have (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)"]);
   // And the real source cites some, so the check reads something.
   expect(readFileSync(join(real.pkg, "../../crates/og-cli/src/migrate.rs"), "utf8")).toMatch(/three-to-og §\d+/);
 });

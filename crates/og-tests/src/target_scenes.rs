@@ -1,4 +1,4 @@
-//! The depth wave's render targets (docs/depth.md §8): a security monitor
+//! The depth wave's render targets (docs/design.md §10.8): a security monitor
 //! showing the room from a second camera (`views-monitor`), a mirror that
 //! reflects the room and the figure in front of it (`views-mirror`),
 //! split-screen with two viewport views over a frame (`views-split`), and

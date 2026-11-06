@@ -860,7 +860,7 @@ fn walk_tiled(
 }
 
 /// The custom properties a Tiled tile layer reads, each with the JSON
-/// type its value must have (og-game §8's Tiled table).
+/// type its value must have (the Tiled importer below).
 const TILED_LAYER_PROPS: &[(&str, &str)] = &[
     ("autotile", "string"),
     ("collision", "bool"),
@@ -942,7 +942,7 @@ fn unread_layers(out: &mut Vec<String>, layers: &[Value]) {
                     for (p, ty, value) in tiled_custom(o) {
                         if value_text(value).is_none() {
                             out.push(format!(
-                                "object '{}' in layer '{name}': the custom property '{p}' is a {}, not read (an object's properties are read as text: string, int, float, bool, color, file or object; og-game §8)",
+                                "object '{}' in layer '{name}': the custom property '{p}' is a {}, not read (an object's properties are read as text: string, int, float, bool, color, file or object)",
                                 st(o, "name"),
                                 if ty.is_empty() { "class" } else { ty }
                             ));
@@ -986,14 +986,14 @@ fn unread(out: &mut Vec<String>, v: &Value, what: &str, known: &[(&str, &str)], 
         let kind = json_kind(value);
         match known.iter().find(|(n, _)| *n == name) {
             Some((_, want)) if kind != *want => out.push(format!(
-                "{what}: the custom property '{name}' is a {kind}, not read (it is a {want}; og-game §8)"
+                "{what}: the custom property '{name}' is a {kind}, not read (it is a {want})"
             )),
             Some(_) => {}
             None if known.is_empty() => out.push(format!(
-                "{what}: the custom property '{name}' is not read ({reads}; og-game §8)"
+                "{what}: the custom property '{name}' is not read ({reads})"
             )),
             None => out.push(format!(
-                "{what}: the custom property '{name}' is not read (it reads {}; og-game §8)",
+                "{what}: the custom property '{name}' is not read (it reads {})",
                 known.iter().map(|(n, _)| *n).collect::<Vec<_>>().join(", ")
             )),
         }

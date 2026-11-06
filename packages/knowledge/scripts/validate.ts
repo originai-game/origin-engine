@@ -1,7 +1,7 @@
 // Validates @origingame/engine-knowledge against the OriginGame platform's
 // knowledge rules (rules/platform.json, transcribed from the platform with
 // scripts/sync-rules.ts; each rule names its platform source), and the
-// package's own contract: a generated wiki, the skills in SKILLS, and a scaffold
+// package's own contract: a generated wiki with its guides, and a scaffold
 // overlay whose pin and distribution list match the project template.
 //
 //   bun scripts/validate.ts            problems, then the packs and hashes
@@ -29,7 +29,6 @@ import { ART_KINDS } from "./brief.ts";
 
 export interface Rules {
   payload: { roots: string[] };
-  skills: { file: string; namePattern: string; existing: string[] };
   tools: { snake: string; notTools: string[]; retired: string[]; known: string[] };
   scaffold: {
     pinFile: string;
@@ -44,18 +43,14 @@ export function readRules(pkg: string): Rules {
   return JSON.parse(readFileSync(join(pkg, "rules/platform.json"), "utf8")) as Rules;
 }
 
-/** The skills this package ships. */
-export const SKILLS = ["og-2d", "og-ai", "og-anim", "og-audio", "og-build", "og-core", "og-destruction", "og-feel", "og-game", "og-i18n", "og-model", "og-net", "og-physics", "og-platform-sdk", "og-render", "og-story", "og-taste", "og-ui", "architecture-discipline", "component-forge", "level-texturing", "localization", "recipe-craft", "ui-craft", "visual-acceptance"] as const;
-
 /**
- * The guides this package ships: hand-written pages in guides/, mounted
- * beside og-game's SKILL.md (knowledge.json), each named by og-game and
- * held to the skills' rules (API names, section references, tools).
+ * The guides the wiki carries (generated from crates/og-api/guides/ by `og api
+ * gen` as wiki/guide-<name>.md): workflow and thresholds read through `og api
+ * find` and `og api show`, held to the API (every `og.*` name and
+ * `Type.field` exists), to their own section references and to the `.ogt`
+ * line shape.
  */
-export const GUIDES = ["three-to-og"] as const;
-
-/** Where knowledge.json mounts guides/ in the production tree. */
-export const GUIDE_MOUNT = "game/skills/og-game/guides/";
+export const GUIDE_PREFIX = "guide-";
 
 /** The og-cli source that cites the guides by section, in the engine repository. */
 export const GUIDE_CITERS = ["crates/og-cli/src/migrate.rs"] as const;
@@ -92,14 +87,11 @@ export function validate(roots: Roots = defaultRoots()): string[] {
     }
   }
 
-  skills(roots, rules, files, problems);
-  guideFiles(roots, rules, files, problems);
-  coherence(roots, files, problems);
-  skinWord(roots, files, problems);
-  apiNames(roots, files, problems);
-  looks(roots, files, problems);
-  grammar(roots, files, problems);
-  problems.push(...ogtShape(skillTexts(files)));
+  guides(roots, rules, problems);
+  skinWord(roots, problems);
+  apiNames(roots, problems);
+  looks(roots, problems);
+  problems.push(...ogtShape(guideTexts(roots)));
   scaffold(roots, rules, manifest.overlay, files, byPath, problems);
   return problems;
 }
@@ -108,7 +100,7 @@ function packageJson(roots: Roots, problems: string[]): void {
   const p = JSON.parse(readFileSync(join(roots.pkg, "package.json"), "utf8")) as { name?: string; version?: string; files?: string[]; scripts?: Record<string, string> };
   if (p.name !== "@origingame/engine-knowledge") problems.push(`package.json: name is ${p.name}; the package is @origingame/engine-knowledge (design §9)`);
   if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(p.version ?? "")) problems.push(`package.json: version ${p.version} is not semver`);
-  for (const f of ["wiki", "skills", "guides", "looks", "scaffold", "rules", "knowledge.json"]) {
+  for (const f of ["wiki", "looks", "scaffold", "rules", "knowledge.json"]) {
     if (!p.files?.some((x) => x === f || x === `${f}/`)) problems.push(`package.json: files does not publish ${f}`);
   }
   if (!p.scripts?.test) problems.push("package.json: no test script, so scripts/check.sh bun-test would skip the package");
@@ -132,7 +124,7 @@ function wiki(roots: Roots, problems: string[]): void {
   for (const name of pages) if (name !== "index.md" && !linked.has(name)) problems.push(`wiki/${name}: not linked from wiki/index.md (a page for a module the IDL no longer has?); run \`og api gen --wiki\``);
 }
 
-/** Tokens a skill names as tools, as the platform's production test reads them. */
+/** Tokens a text names as tools, as the platform's production test reads them. */
 function namedTools(text: string, rules: Rules): string[] {
   const snake = new RegExp(rules.tools.snake);
   const known = new Set(rules.tools.known);
@@ -161,15 +153,15 @@ export function shownModules(text: string): Set<string> {
 }
 
 /**
- * What a skill or guide says of the API it points to: the wiki is not
- * mounted beside the skills, so a `reference/<page>.md` pointer reaches
+ * What a guide says of the API it points to: a `reference/<page>.md`
+ * pointer reaches no page `og api` serves
  * nothing (`og api show` and `og api find` answer instead), and every
  * `og api show <module>` names a module the wiki has a page for.
  */
 function apiPointers(at: string, text: string, modules: ReadonlySet<string>): string[] {
   const problems: string[] = [];
   for (const page of new Set([...text.matchAll(/\breference\/([a-z0-9-]+\.md)\b/g)].map((m) => m[1]!))) {
-    problems.push(`${at}: names reference/${page}; the wiki is not mounted beside the skills: name \`og api show <module>\` for a module, \`og api show <exact name>\` for one name, or \`og api find <words>\``);
+    problems.push(`${at}: names reference/${page}, which no reader opens: name \`og api show <module>\` for a module, \`og api show <exact name>\` for one name, or \`og api find <words>\``);
   }
   for (const m of shownModules(text)) {
     if (!modules.has(m)) problems.push(`${at}: names \`og api show ${m}\`, and the generated wiki has no module ${m} (wiki/index.md lists them; write a type or function as its full name, og.<name>)`);
@@ -177,66 +169,49 @@ function apiPointers(at: string, text: string, modules: ReadonlySet<string>): st
   return problems;
 }
 
-function skills(roots: Roots, rules: Rules, files: readonly PayloadFile[], problems: string[]): void {
-  const pattern = new RegExp(rules.skills.namePattern);
-  const modules = wikiModules(roots);
-  const found = new Set<string>();
-  for (const f of files) {
-    const m = /^game\/skills\/([^/]+)\/(.+)$/.exec(f.path);
-    if (!m || m[2] !== rules.skills.file) continue;
-    const dir = m[1]!;
-    found.add(dir);
-    if (!isText(f.bytes)) continue;
-    const text = decoder.decode(f.bytes);
-    const fm = frontMatter(text);
-    if (!fm) {
-      problems.push(`${f.path}: no YAML front matter between --- lines; a skill starts with name and description`);
-      continue;
-    }
-    if (fm.name !== dir) problems.push(`${f.path}: front matter name is "${fm.name ?? ""}", its directory is "${dir}"; they must be equal`);
-    if (!pattern.test(dir)) problems.push(`${f.path}: skill name "${dir}" is not lowercase-hyphen`);
-    if (!fm.description) problems.push(`${f.path}: no description; the runner lists skills by it`);
-    if (rules.skills.existing.includes(dir)) problems.push(`${f.path}: the platform already has a skill named ${dir}; installing this one would replace it`);
-    for (const t of namedTools(text, rules)) problems.push(`${f.path}: names \`${t}\`, which is no tool a Session can be offered; rename it or put it in a code block if it is not a tool`);
-    problems.push(...apiPointers(f.path, text, modules));
+/** The guide pages of the wiki, by guide name (wiki/guide-<name>.md). */
+export function guideTexts(roots: Roots): Map<string, string> {
+  const dir = join(roots.pkg, "wiki");
+  const out = new Map<string, string>();
+  if (!existsSync(dir)) return out;
+  for (const n of readdirSync(dir).sort()) {
+    if (n.startsWith(GUIDE_PREFIX) && n.endsWith(".md")) out.set(n.slice(GUIDE_PREFIX.length, -3), readFileSync(join(dir, n), "utf8"));
   }
-  for (const s of SKILLS) if (!found.has(s)) problems.push(`skills/${s}/SKILL.md: missing`);
+  return out;
+}
+
+/** A guide page's numbered sections, as `og api gen` heads them (`### \`testing §2\` Title`). */
+function guideSections(text: string): Set<string> {
+  return new Set([...text.matchAll(/^### `[a-z0-9-]+ §(\d+)` /gm)].map((m) => m[1]!));
 }
 
 /**
- * The guides as files: guides/ holds exactly GUIDES, each reaches the
- * payload at GUIDE_MOUNT, names no tool a Session lacks, no wiki page and
- * no module the IDL does not generate, and every `three-to-og §N` the og-cli source
- * cites (GUIDE_CITERS: `og migrate three` points to its sections) is a
- * numbered section of the guide.
+ * The guides as one set: each names no tool a Session lacks, no unmounted
+ * wiki page and no module the IDL does not generate; every section
+ * reference (`testing §2`, `§2` for its own) names a section that exists;
+ * every `three-to-og §N` the og-cli source cites (GUIDE_CITERS) is one.
  */
-function guideFiles(roots: Roots, rules: Rules, files: readonly PayloadFile[], problems: string[]): void {
-  const dir = join(roots.pkg, "guides");
-  const present = existsSync(dir) ? readdirSync(dir).filter((n) => n.endsWith(".md")).map((n) => n.slice(0, -3)) : [];
-  for (const g of present) if (!(GUIDES as readonly string[]).includes(g)) problems.push(`guides/${g}.md: not in GUIDES (scripts/validate.ts); list it there and name it from og-game, or remove it`);
+function guides(roots: Roots, rules: Rules, problems: string[]): void {
+  const texts = guideTexts(roots);
   const modules = wikiModules(roots);
+  const sections = new Map([...texts].map(([g, t]) => [g, guideSections(t)]));
+  for (const [g, text] of texts) {
+    const at = `wiki/${GUIDE_PREFIX}${g}.md`;
+    for (const t of namedTools(text, rules)) problems.push(`${at}: names \`${t}\`, which is no tool a Session can be offered; rename it or put it in a code block if it is not a tool (crates/og-api/guides/${g}.md)`);
+    problems.push(...apiPointers(at, text, modules));
+    problems.push(...sectionRefs(at, g, text, sections));
+  }
   const repo = join(roots.pkg, "..", "..");
-  for (const g of GUIDES) {
-    const f = files.find((x) => x.path === `${GUIDE_MOUNT}${g}.md`);
-    if (!f) {
-      problems.push(`guides/${g}.md: missing, or not mounted at ${GUIDE_MOUNT} (knowledge.json mounts guides/ there)`);
+  if (!existsSync(join(repo, "crates"))) return; // the published package: the sources are not beside it
+  for (const citer of GUIDE_CITERS) {
+    const path = join(repo, citer);
+    if (!existsSync(path)) {
+      problems.push(`${citer}: missing; GUIDE_CITERS in scripts/validate.ts names it`);
       continue;
     }
-    if (!isText(f.bytes)) continue;
-    const text = decoder.decode(f.bytes);
-    for (const t of namedTools(text, rules)) problems.push(`guides/${g}.md: names \`${t}\`, which is no tool a Session can be offered; rename it or put it in a code block if it is not a tool`);
-    problems.push(...apiPointers(`guides/${g}.md`, text, modules));
-    const have = new Set([...text.matchAll(/^## (\d+)\. /gm)].map((m) => m[1]!));
-    for (const citer of GUIDE_CITERS) {
-      const path = join(repo, citer);
-      if (!existsSync(join(repo, "crates"))) break; // the published package: the sources are not beside it
-      if (!existsSync(path)) {
-        problems.push(`${citer}: missing; GUIDE_CITERS in scripts/validate.ts names it`);
-        continue;
-      }
-      for (const m of readFileSync(path, "utf8").matchAll(new RegExp(`${g} §(\\d+)`, "g"))) {
-        if (!have.has(m[1]!)) problems.push(`${citer}: cites ${g} §${m[1]}, which guides/${g}.md does not have (its sections: ${[...have].join(", ")})`);
-      }
+    for (const m of readFileSync(path, "utf8").matchAll(/\b([a-z0-9]+(?:-[a-z0-9]+)+) §(\d+)/g)) {
+      const have = sections.get(m[1]!);
+      if (have && !have.has(m[2]!)) problems.push(`${citer}: cites ${m[1]} §${m[2]}, which wiki/${GUIDE_PREFIX}${m[1]}.md does not have (its sections: ${[...have].join(", ")})`);
     }
   }
 }
@@ -298,89 +273,19 @@ function scaffold(roots: Roots, rules: Rules, overlay: string, files: readonly P
   if (!published) for (const rel of listed.keys()) if (!binaries.some((b) => b.path === prefix + rel)) problems.push(`${prefix}${rules.scaffold.distributionFile}: lists ${rel}, which the template does not have`);
 }
 
-/** The bundle the platform's production reader would build: text files only. */
 /**
- * The skills as one set: the wiki index's grouping (a `### \`og-x\`` heading
- * over its modules' rows, from each module's `skill` in api/<module>.ogt) names
- * shipped skills; the skill a module is grouped under names its overview
- * (`og api show <module>`) and no other skill does (they point to that
- * skill); and every section reference (`og-feel §4`, or `§4` for the skill's
- * own) names a numbered `## N.` section that exists.
- */
-function coherence(roots: Roots, files: readonly PayloadFile[], problems: string[]): void {
-  const textOf = (path: string) => {
-    const f = files.find((x) => x.path === path);
-    return f && isText(f.bytes) ? decoder.decode(f.bytes) : undefined;
-  };
-  // The wiki is the package's own (og api reads it), not mounted beside the skills.
-  const indexPath = join(roots.pkg, "wiki", "index.md");
-  if (!existsSync(indexPath)) return;
-  const index = readFileSync(indexPath, "utf8");
-  const home = new Map<string, string>();
-  let group: string | undefined;
-  for (const line of index.slice(0, index.indexOf("\n## Units")).split("\n")) {
-    const heading = /^### `([^`]+)`$/.exec(line);
-    if (heading) {
-      group = heading[1]!;
-      if (!(SKILLS as readonly string[]).includes(group)) problems.push(`wiki/index.md: groups modules under ${group}, which is no skill this package ships; fix the modules' \`skill\` in crates/og-api/api/<module>.ogt`);
-      continue;
-    }
-    const row = /^\| \[`([a-z0-9]+)`\]\(([a-z0-9]+)\.md\)/.exec(line);
-    if (row && group) home.set(row[1]!, group);
-  }
-  const texts = new Map<string, string>();
-  for (const s of SKILLS) {
-    const t = textOf(`game/skills/${s}/SKILL.md`);
-    if (t !== undefined) texts.set(s, t);
-  }
-  // The guides (guides/<name>.md, mounted beside og-game's SKILL.md) are
-  // held to the same section references; their owner names each.
-  const guides = new Map<string, string>();
-  for (const g of GUIDES) {
-    const t = textOf(`${GUIDE_MOUNT}${g}.md`);
-    if (t !== undefined) guides.set(g, t);
-  }
-  const numbered = (t: string) => new Set([...t.matchAll(/^## (\d+)\. /gm)].map((m) => m[1]!));
-  const sections = new Map([...texts, ...guides].map(([s, t]) => [s, numbered(t)]));
-  for (const [module, skill] of home) {
-    const t = texts.get(skill);
-    if (t !== undefined && !shownModules(t).has(module)) problems.push(`skills/${skill}/SKILL.md: teaches the ${module} module (wiki/index.md) but never names \`og api show ${module}\``);
-  }
-  for (const [skill, t] of texts) {
-    for (const m of shownModules(t)) {
-      const owner = home.get(m);
-      if (owner && owner !== skill) problems.push(`skills/${skill}/SKILL.md: names \`og api show ${m}\`, which ${owner} teaches; point to ${owner} instead, so each module is taught in one place`);
-    }
-  }
-  for (const [name, t] of [...texts, ...guides]) {
-    const at = guides.has(name) ? `guides/${name}.md` : `skills/${name}/SKILL.md`;
-    problems.push(...sectionRefs(at, name, t, sections));
-  }
-  // What the guides say of a page, and who names them.
-  const names = (t: string) => new Set([...t.matchAll(/\bguides\/([a-z0-9-]+)\.md\b/g)].map((m) => m[1]!));
-  for (const [name, t] of [...texts, ...guides]) {
-    const at = guides.has(name) ? `guides/${name}.md` : `skills/${name}/SKILL.md`;
-    for (const g of names(t)) if (!(GUIDES as readonly string[]).includes(g)) problems.push(`${at}: names guides/${g}.md, which this package does not ship (its guides: ${GUIDES.join(", ")})`);
-  }
-  for (const g of guides.keys()) {
-    if (!texts.get("og-game")?.includes(`guides/${g}.md`)) problems.push(`skills/og-game/SKILL.md: never names guides/${g}.md, so no agent finds the guide; name it where its subject is taught`);
-  }
-}
-
-/**
- * Every section reference of one text (`og-feel §4`, or `§4` for its own,
- * `three-to-og §2` for a guide's, `recipe-craft §2` for any other skill
- * or guide `sections` holds) names a numbered `## N.` section that
- * exists: `at` names the text in the messages, `own` the text itself.
+ * Every section reference of one text (`testing §2`, or `§2` for its own:
+ * any guide `sections` holds, or an `og-*` name) names a numbered section
+ * that exists: `at` names the text in the messages, `own` the text itself.
  */
 export function sectionRefs(at: string, own: string, text: string, sections: ReadonlyMap<string, ReadonlySet<string>>): string[] {
   const problems: string[] = [];
   const prose = text.replace(/^```[\s\S]*?^```/gm, "");
   const owner = new RegExp(`(og(?:-[a-z0-9]+)+${[...sections.keys()].map((n) => `|${n}`).join("")}) §([A-Za-z][\\w ]*)`, "g");
-  for (const m of prose.matchAll(owner)) problems.push(`${at}: refers to ${m[1]} §${m[2]!.split(" ")[0]} by name; refer to a skill's sections by their numbers (## N.)`);
+  for (const m of prose.matchAll(owner)) problems.push(`${at}: refers to ${m[1]} §${m[2]!.split(" ")[0]} by name; refer to a guide's sections by their numbers (## N.)`);
   for (const m of prose.matchAll(/§(\d+)/g)) {
-    // The text this § belongs to: walk back over a list of §s ("og-feel
-    // §9–§11", "og-taste §4, §10") to the word before it.
+    // The text this § belongs to: walk back over a list of §s ("og-core
+    // §9–§11", "art-review §4, §5") to the word before it.
     const before = prose.slice(0, m.index).split(/\s+/);
     let i = before.length - 1;
     while (i >= 0 && (before[i] === "" || /^\(?§\d+(\.\d+)?[–,;)]*$/.test(before[i]!) || before[i] === "and" || before[i] === "or")) i--;
@@ -390,7 +295,7 @@ export function sectionRefs(at: string, own: string, text: string, sections: Rea
     else if (/\.md\b|\//.test(word) || /^design/.test(word)) target = undefined;
     if (target === undefined) continue;
     const have = sections.get(target);
-    if (!have) problems.push(`${at}: refers to ${target} §${m[1]}, and there is no skill ${target}`);
+    if (!have) problems.push(`${at}: refers to ${target} §${m[1]}, and there is no guide ${target}`);
     else if (!have.has(m[1]!)) problems.push(`${at}: refers to ${target === own ? "its own" : target} §${m[1]}, which ${target === own ? "it does not have" : "does not exist there"} (its sections: ${[...have].join(", ") || "none numbered"})`);
   }
   return problems;
@@ -407,18 +312,14 @@ export function sectionRefs(at: string, own: string, text: string, sections: Rea
 export const SKIN_ELSEWHERE = /gltf|joint|skelet|morph|\brig\b|bone|mesh|model|clips?\b|anim|`skins?`|slot|attach|armature|\bswap\b|setup pose|surface|\bgap\b|collid|\btones?\b|peach|crowd|tiles/i;
 
 /**
- * A skill or wiki page never calls a UI style a "skin": og-ui's word is
+ * A wiki page never calls a UI style a "skin": og-ui's word is
  * style (`type style`, `og.load.style`, `UiDesc.style`, `styles/<name>/`).
  * Each sentence holding `skin` or `skins` must name one of the word's
  * other meanings (SKIN_ELSEWHERE).
  */
-function skinWord(roots: Roots, files: readonly PayloadFile[], problems: string[]): void {
-  // The skills and guides as mounted, and the wiki og api reads from the package.
+function skinWord(roots: Roots, problems: string[]): void {
+  // The wiki og api reads from the package, its guide pages included.
   const texts: [string, string][] = [];
-  for (const f of files) {
-    if (!f.path.startsWith("game/skills/") || !f.path.endsWith(".md") || !isText(f.bytes)) continue;
-    texts.push([relative(roots.pkg, f.source).split("\\").join("/"), decoder.decode(f.bytes)]);
-  }
   const wikiDir = join(roots.pkg, "wiki");
   if (existsSync(wikiDir)) for (const n of readdirSync(wikiDir).filter((x) => x.endsWith(".md")).sort()) texts.push([`wiki/${n}`, readFileSync(join(wikiDir, n), "utf8")]);
   for (const [name, text] of texts) {
@@ -445,22 +346,12 @@ export interface ApiNames {
   anyField: Set<string>;
 }
 
-/** `og.` names a skill may write that are not API: each with why. */
-export const NOT_API: Record<string, string> = {
-  "og.settings": "the platform store key settings are saved under (og-platform-sdk §2)",
-  "og.AudioPlayback": "an engine-owned component dump_entity shows while a voice plays; game code never names it",
-  "og.AudioStream": "an engine-owned component dump_entity shows on a streamed voice; game code never names it",
-  "og.physics.queries": "the engine system dump_world lists that records the colliders a system's queries see",
-  "og.events": "the key of a glTF animation's extras the cook reads a clip's markers from (og-anim §3), a name in the glTF file",
-  "og.TimeScale": "the engine-owned resource that keeps og.Time's scale and hit stop; dumps list it and the probe's get and set reach it, game code reads og.Time",
-};
+/** `og.` names a guide may write that are not API: each with why. */
+export const NOT_API: Record<string, string> = {};
 
-/** `` `key: value` `` spans a skill may write whose key is no field of the generated API: each with why. */
+/** `` `key: value` `` spans a guide may write whose key is no field of the generated API: each with why. */
 export const NOT_FIELDS: Record<string, string> = {
   runs: "PlaytestDesc.runs (packages/engine/src/playtest.ts)",
-  then: "PlaytestDesc.then (packages/engine/src/playtest.ts)",
-  store: "PlaytestRun.store (packages/engine/src/playtest.ts)",
-  setup: "PlaytestDesc.setup (packages/engine/src/playtest.ts)",
 };
 
 export function readApiNames(engine: string): ApiNames | undefined {
@@ -489,7 +380,7 @@ export function readApiNames(engine: string): ApiNames | undefined {
 }
 
 /**
- * Every API name a skill writes resolves in the generated API: `og.<x>` is a
+ * Every API name a guide writes resolves in the generated API: `og.<x>` is a
  * root function, a component, resource or event token or a module
  * namespace; `og.<module>.<y>` one of the module's functions or values;
  * `og.<Token>.<field>` and `<Type>.<field>` (for a struct, desc, component,
@@ -497,15 +388,11 @@ export function readApiNames(engine: string): ApiNames | undefined {
  * read too: an example is API as much as prose is. A file name such as
  * `away.og.ts` is not a name.
  */
-function apiNames(roots: Roots, files: readonly PayloadFile[], problems: string[]): void {
+function apiNames(roots: Roots, problems: string[]): void {
   const api = readApiNames(roots.engine);
   if (!api) return;
-  for (const f of files) {
-    const m = /^game\/skills\/([^/]+)\/SKILL\.md$/.exec(f.path);
-    const guide = f.path.startsWith(GUIDE_MOUNT) && f.path.endsWith(".md") ? f.path.slice(GUIDE_MOUNT.length) : undefined;
-    if ((!m && !guide) || !isText(f.bytes)) continue;
-    const at = guide ? `guides/${guide}` : `skills/${m![1]}/SKILL.md`;
-    const text = decoder.decode(f.bytes);
+  for (const [g, text] of guideTexts(roots)) {
+    const at = `wiki/${GUIDE_PREFIX}${g}.md`;
     const bad = new Set<string>();
     for (const x of text.matchAll(/(?<![\w./@-])og\.([A-Za-z_]\w*)(?:\.([A-Za-z_]\w*))?/g)) {
       const [whole, head, member] = [x[0], x[1]!, x[2]];
@@ -540,7 +427,7 @@ function apiNames(roots: Roots, files: readonly PayloadFile[], problems: string[
   }
 }
 
-/** A style catalogue entry (looks/catalogue.json; og-taste §12). */
+/** A style catalogue entry (looks/catalogue.json of the engine package). */
 interface Style {
   slug: string;
   preview: string;
@@ -585,19 +472,19 @@ const PREMISE = ["genre", "mood", "era", "audience"];
 const ASSET_SPECS = ["logicalResolution", "spriteScale", "faceBudget", "outlinePx", "textureDensity"];
 
 /**
- * The style catalogue (looks/catalogue.json, mounted beside og-taste): each
+ * The style catalogue (looks/catalogue.json of the engine package): each
  * style complete (three checks, the premise, palette, asset specs, an art
  * bible direction), its preset path `templates/looks/<slug>.ogt` (a
  * `type look` file when presetReady), its support honest (`missing` names
  * the primitives a style that is not `full` lacks, and is empty for one
  * that is), the profiles it draws for (`look.profiles`, 2d and/or 3d), every `Resource.field` it names a member of the generated API,
- * og-taste naming every slug, and no text phrased as an imitation.
+ * and no text phrased as an imitation.
  */
-function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]): void {
+function looks(roots: Roots, problems: string[]): void {
   const path = join(roots.pkg, "looks", "catalogue.json");
   const at = "looks/catalogue.json";
   if (!existsSync(path)) {
-    problems.push(`${at}: missing; og-taste §12 reads the style catalogue from it`);
+    problems.push(`${at}: missing; the art brief (scripts/brief.ts) and create read the style catalogue from it`);
     return;
   }
   let cat: { schemaVersion?: number; categories?: Record<string, string>; ui?: string[]; artBibleTemplate?: string; styles?: Style[] };
@@ -620,8 +507,6 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
   const schemaPath = join(roots.engine, "schema", "api.schema.json");
   const defs = existsSync(schemaPath) ? ((JSON.parse(readFileSync(schemaPath, "utf8")) as { $defs?: Record<string, { properties?: Record<string, unknown> }> }).$defs ?? {}) : undefined;
   const repo = join(roots.pkg, "..", "..");
-  const taste = files.find((f) => f.path === "game/skills/og-taste/SKILL.md");
-  const tasteText = taste && isText(taste.bytes) ? decoder.decode(taste.bytes) : "";
   const seen = new Set<string>();
   const text = (s: unknown) => typeof s === "string" && s.trim().length > 0;
   for (const [i, s] of (cat.styles ?? []).entries()) {
@@ -635,8 +520,8 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
     if (!categories.includes(s.category)) problems.push(`${id}: category ${s.category} is none of ${categories.join(", ")}`);
     if (!packs.includes(s.ui)) problems.push(`${id}: ui ${s.ui} is none of the built-in styles (${packs.join(", ")})`);
     if (!Array.isArray(s.checks) || s.checks.length !== 3 || !s.checks.every(text)) problems.push(`${id}: needs exactly three checks a critic can judge on a frame`);
-    // What a critic must not hold against the style: said once, the same for every critic (og-taste §12), and blind
-    // like the checks (a blind critic reads it beside them, visual-acceptance §5), so it never names the style.
+    // What a critic must not hold against the style: said once, the same for every critic, and blind
+    // like the checks (a blind critic reads it beside them), so it never names the style.
     if (!text(s.intended) || !/ (is|are) the style\b/.test(s.intended)) problems.push(`${id}: needs intended, one sentence naming the traits that look like defects but are the style ("… are the style, not …")`);
     else if ([s.name, s.slug].some((n) => text(n) && s.intended.toLowerCase().includes(n.toLowerCase()))) problems.push(`${id}: intended names the style; a blind critic reads it`);
     for (const k of PREMISE) if (!text(s.premise?.[k])) problems.push(`${id}: premise has no ${k}`);
@@ -692,15 +577,6 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
         if (mood !== look.mood) problems.push(`${id}: ${look.preset} has ${mood ? `mood "${mood}"` : "no mood line"}; the catalogue says mood "${look.mood}"`);
       }
     }
-    if (tasteText && !tasteText.includes(`\`${s.slug}\``)) problems.push(`skills/og-taste/SKILL.md: the style catalogue (§12) does not list \`${s.slug}\``);
-    else if (tasteText) {
-      // §12's row for the style says what the catalogue says: group, name, support, ui style.
-      const row = new RegExp(`^\\| \`${s.slug.replace(/[-]/g, "\\-")}\` \\| ([^|]+) \\| ([^|]+) \\| ([^|]+) \\| \`([^\`]+)\` \\|$`, "m").exec(tasteText);
-      const want = [cat.categories?.[s.category] ?? s.category, s.name, look.support, s.ui];
-      const have = row?.slice(1, 5).map((x) => x.trim());
-      if (!have) problems.push(`skills/og-taste/SKILL.md: §12's table has no row for \`${s.slug}\` (| slug | group | style | support | ui |)`);
-      else if (have.join("|") !== want.join("|")) problems.push(`skills/og-taste/SKILL.md: §12's row for \`${s.slug}\` reads ${have.join(", ")}; the catalogue says ${want.join(", ")}`);
-    }
     const all = JSON.stringify(s);
     if (/in the style of|™|®/i.test(all)) problems.push(`${id}: phrased as an imitation (\"in the style of\", a trademark sign); describe the look in its own terms`);
   }
@@ -708,234 +584,7 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
 }
 
 /**
- * A text format the skills write out line by line, held to the parser that
- * reads it: every `.ogt` block of that `type` in a skill (a ```text code
- * block) and the parser's source.
- */
-export interface Grammar {
-  /** The block's `type` line. */
-  readonly type: string;
-  /** For `type import`: the nested block (`tilemap { ... }`) whose lines are this grammar. */
-  readonly block?: string;
-  /** The parser, relative to the engine repository. */
-  readonly source: string;
-  /** The part of the source that parses it: from the first match to the second. */
-  readonly region?: readonly [RegExp, RegExp];
-  /** Keys a block may write that the parser accepts without naming them: each with why. */
-  readonly unnamed?: Readonly<Record<string, string>>;
-  /** Keys whose next words are names the author chooses (a state, a route, a motion), not grammar: how many. */
-  readonly names?: Readonly<Record<string, number>>;
-  /** The keys the parser reads, from its region; default: its match arms' first keys (`"grid" =>`). */
-  readonly reads?: (region: string) => string[];
-  /** The skill that writes the grammar out, for the messages. */
-  readonly home: string;
-}
-
-const quotedIn = (s: string) => [...s.matchAll(/"([A-Za-z_]\w*)"/g)].map((m) => m[1]!);
-
-/**
- * Every key a parser reads by name: each alternative of a match arm
- * (`"enter" | "exit" =>`, `Some("all") =>`), a block lookup (`.get("agent")`,
- * `.get_all("box")`, `f32_of(agent, "radius"`, `opt_f32(b, "reach"`), a key
- * compared (`.key != "child"`), a `matches!` list, an option list
- * (`check_options(e, &["speed"])`) and the list of keys og.ai writes itself.
- */
-export function readKeys(region: string): string[] {
-  const id = '"([A-Za-z_]\\w*)"';
-  const one = [
-    new RegExp(`${id}(?=(?:\\s*\\|\\s*"[A-Za-z_]\\w*")*\\s*=>)`, "g"),
-    new RegExp(`Some\\(${id}\\)\\s*=>`, "g"),
-    new RegExp(`\\.get(?:_all)?\\(${id}\\)`, "g"),
-    new RegExp(`(?:_of|opt_f32)\\([^,()]*(?:\\([^()]*\\))?,\\s*${id}`, "g"),
-    new RegExp(`\\.key\\s*[!=]=\\s*${id}`, "g"),
-  ];
-  const lists = [/matches!\(\s*[^,]+,\s*((?:"\w+"\s*\|?\s*)+)\)/g, /check_options\(\w+,\s*&\[([^\]]*)\]/g, /BUILTIN_KEYS: &\[&str\] = &\[([^\]]*)\]/g];
-  return [...one.flatMap((re) => [...region.matchAll(re)].map((m) => m[1]!)), ...lists.flatMap((re) => [...region.matchAll(re)].flatMap((m) => quotedIn(m[1]!)))];
-}
-
-/**
- * The grammars the skills write out (og-2d §2 flipbooks, §3 tilesets, §4
- * maps; og-anim §4 a model's animation settings, §5 the animation graph;
- * og-render §2 emitters; og-ai §1 the navmesh, §3 behaviours) and the
- * parsers they come from.
- */
-export const GRAMMARS: readonly Grammar[] = [
-  { type: "flipbook", source: "crates/og-anim/src/flipbook.rs", region: [/impl FlipMode/, /pub fn to_text/], names: { frame: 1, clip: 1 }, home: "og-2d" },
-  { type: "tileset", source: "crates/og-tilemap/src/tileset.rs", home: "og-2d" },
-  { type: "tilemap", source: "crates/og-tilemap/src/map.rs", region: [/pub fn parse\(text/, /^pub fn world_to_cell/m], home: "og-2d" },
-  { type: "particles", source: "crates/og-bundle/src/fx.rs", unnamed: { key: "colorOverLife's lines: the parser reads their five numbers whatever the key" }, home: "og-render" },
-  { type: "import", block: "tilemap", source: "crates/og-cook/src/cook/tilemap.rs", region: [/pub fn parse\(block/, /pub fn describe/], home: "og-2d" },
-  { type: "import", block: "animation", source: "crates/og-cook/src/cook/anim.rs", region: [/pub fn parse\(block/, /^fn asset_path/m], home: "og-anim" },
-  {
-    type: "animgraph",
-    source: "crates/og-anim/src/graph.rs",
-    region: [/pub fn from_document/, /\/\/\/ The slot of a parameter/],
-    reads: readKeys,
-    names: { param: 1, clip: 1, blend1d: 2, blend2d: 3, child: 1, state: 2, entry: 1, transition: 2, when: 1, weight: 1, sync: 1 },
-    home: "og-anim",
-  },
-  { type: "navmesh", source: "crates/og-cook/src/cook/e6.rs", region: [/pub\(super\) fn cook_navmesh/, /og_nav::bake::bake\(/], reads: readKeys, home: "og-ai" },
-  {
-    type: "behaviour",
-    source: "crates/og-ai/src/asset.rs",
-    reads: readKeys,
-    home: "og-ai",
-    // A label, a route, a state, a key, an operand or a speed's field are the author's; a command's and an action's arguments too.
-    names: { selector: 1, sequence: 1, steps: 1, parallel: 1, utility: 1, option: 1, score: 1, route: 1, patrol: 1, state: 1, initial: 1, to: 1, key: 1, set: 1, check: 1, move_to: 1, chase: 1, flee: 1, speed: 1, command: Infinity, action: Infinity },
-  },
-];
-
-/** The Tiled fields a skill's `<!-- grammar: tiled -->` table names, and the importer that reads them. */
-export const TILED = {
-  source: "crates/og-cook/src/cook/tilemap.rs",
-  region: [/pub fn import_tiled/, /^fn tiled_data/m] as const,
-  /** Fields the importer reads that are structure, not settings: each with why. */
-  structural: { layers: "a group layer's children, flattened", objects: "an object layer's objects" } as Record<string, string>,
-};
-
-/** Keys after which the next word is a name the author chooses, not grammar. */
-const NAMING = new Set(["terrain", "layer", "object", "kind", "prop"]);
-
-interface Line {
-  readonly words: string[];
-  readonly depth: number;
-  readonly text: string;
-}
-
-/** An `.ogt` block's lines as tokens: strings dropped, comments cut, numbers kept as written. */
-function ogtLines(block: string): Line[] {
-  const out: Line[] = [];
-  let depth = 0;
-  for (const raw of block.split("\n")) {
-    const words: string[] = [];
-    const re = /"(?:[^"\\]|\\.)*"|\S+/g;
-    let opens = false;
-    for (const m of raw.matchAll(re)) {
-      const t = m[0];
-      if (t.startsWith("#")) break;
-      if (t === "{") opens = true;
-      else if (t === "}") depth--;
-      else words.push(t.startsWith('"') ? '""' : t);
-    }
-    out.push({ words, depth, text: raw });
-    if (opens) depth++;
-  }
-  return out;
-}
-
-/** The ```text blocks of a markdown file. */
-function textBlocks(md: string): string[] {
-  return [...md.matchAll(/^```text\n([\s\S]*?)^```/gm)].map((m) => m[1]!);
-}
-
-/**
- * Every problem between the grammars the skills write and their parsers:
- * a bare word a block writes (a key, or a word value such as `blob47`)
- * that the parser never names in quotes, and a key the parser matches
- * (`"grid" =>`) that no block of its type writes, in code or comment. So a
- * key renamed, added or dropped on either side fails here.
- */
-export function grammarDrift(skills: ReadonlyMap<string, string>, read: (path: string) => string | undefined): string[] {
-  const problems: string[] = [];
-  for (const g of GRAMMARS) {
-    let source = read(g.source);
-    if (source === undefined) continue;
-    if (g.region) {
-      const a = g.region[0].exec(source)?.index ?? -1;
-      const b = a < 0 ? -1 : source.slice(a).search(g.region[1]);
-      if (a < 0 || b < 0) {
-        problems.push(`${g.source}: the ${g.type} parser's region (${g.region[0]} to ${g.region[1]}) is not found; update GRAMMARS in scripts/validate.ts`);
-        continue;
-      }
-      source = source.slice(a, a + b);
-    }
-    const home = g.home;
-    const quoted = new Set(quotedIn(source));
-    const arms = new Set(g.reads ? g.reads(source) : [...source.matchAll(/"([A-Za-z_]\w*)"\s*(?:\|[^=]*)?=>/g)].map((m) => m[1]!));
-    const written: string[] = [];
-    let blocks = 0;
-    for (const [skill, text] of skills) {
-      for (const block of textBlocks(text)) {
-        const lines = ogtLines(block);
-        if (lines[0]?.words.join(" ") !== `type ${g.type}`) continue;
-        let body = lines.slice(lines.findIndex((l) => l.words[0] === "---") + 1);
-        if (g.block) {
-          const start = body.findIndex((l) => l.depth === 0 && l.words[0] === g.block && l.text.includes("{"));
-          if (start < 0) continue;
-          const end = body.findIndex((l, i) => i > start && l.depth === 0);
-          body = body.slice(start + 1, end < 0 ? undefined : end);
-        }
-        blocks++;
-        written.push(body.map((l) => l.text).join("\n"));
-        for (const l of body) {
-          l.words.forEach((w, i) => {
-            if (!/^[A-Za-z_]\w*$/.test(w) || w === "true" || w === "false") return;
-            if (i > 0 && NAMING.has(l.words[i - 1]!)) return;
-            if (i > 0 && i <= (g.names?.[l.words[0]!] ?? 0)) return;
-            if (i === 0 && g.unnamed && w in g.unnamed) return;
-            if (!quoted.has(w)) problems.push(`skills/${skill}/SKILL.md: a \`type ${g.type}\` block${g.block ? `'s ${g.block} block` : ""} writes \`${w}\` (${l.text.trim()}), which ${g.source} does not read; fix the grammar to the parser's`);
-          });
-        }
-      }
-    }
-    if (blocks === 0) {
-      problems.push(`skills: no skill writes a \`type ${g.type}\` block${g.block ? ` with ${/^[aeiou]/.test(g.block) ? "an" : "a"} ${g.block} block` : ""}; ${home}'s grammar of it is gone`);
-      continue;
-    }
-    const all = written.join("\n");
-    for (const k of arms) {
-      if (!new RegExp(`(?<![\\w-])${k}(?![\\w-])`).test(all)) problems.push(`${g.source}: reads \`${k}\`, which no \`type ${g.type}\`${g.block ? ` ${g.block}` : ""} block in the skills writes or names; add it to ${home}'s grammar`);
-    }
-  }
-
-  // Tiled: the table after `<!-- grammar: tiled -->`.
-  const importer = read(TILED.source);
-  if (importer !== undefined) {
-    const a = TILED.region[0].exec(importer)?.index ?? -1;
-    const b = a < 0 ? -1 : importer.slice(a).search(TILED.region[1]);
-    const region = a < 0 || b < 0 ? undefined : importer.slice(a, a + b);
-    if (!region) problems.push(`${TILED.source}: the Tiled importer's region is not found; update TILED in scripts/validate.ts`);
-    const named = new Set<string>();
-    let tables = 0;
-    for (const [skill, text] of skills) {
-      for (const m of text.matchAll(/<!-- grammar: tiled -->\n((?:\|.*\n?)+)/g)) {
-        tables++;
-        for (const row of m[1]!.split("\n").slice(2)) {
-          const first = row.split("|")[1] ?? "";
-          for (const n of first.matchAll(/`([^`]+)`/g)) {
-            named.add(n[1]!);
-            if (region && !region.includes(`"${n[1]}"`)) problems.push(`skills/${skill}/SKILL.md: the Tiled table names \`${n[1]}\`, which ${TILED.source}'s Tiled importer does not read`);
-          }
-        }
-      }
-    }
-    if (tables === 0) problems.push("skills: no skill has the Tiled table (`<!-- grammar: tiled -->`); og-2d §4's list of what the cook reads of a Tiled map is gone");
-    else if (region) {
-      const read = [
-        ...region.matchAll(/\bprops\s*\.get\("(\w+)"\)/g),
-        ...region.matchAll(/\bf\(l, "(\w+)"/g),
-        ...region.matchAll(/\bl\s*\.get\("(\w+)"\)/g),
-      ].map((m) => m[1]!);
-      for (const k of new Set(read)) {
-        if (!named.has(k) && !(k in TILED.structural)) problems.push(`${TILED.source}: the Tiled importer reads \`${k}\`, which og-2d's Tiled table does not name; add a row`);
-      }
-    }
-  }
-  return problems;
-}
-
-/** Each skill's SKILL.md text, by skill name. */
-function skillTexts(files: readonly PayloadFile[]): Map<string, string> {
-  const skills = new Map<string, string>();
-  for (const f of files) {
-    const m = /^game\/skills\/([^/]+)\/SKILL\.md$/.exec(f.path);
-    if (m && isText(f.bytes)) skills.set(m[1]!, decoder.decode(f.bytes));
-  }
-  return skills;
-}
-
-/**
- * Every `.ogt` example a skill writes in a code block (```text or a bare
+ * Every `.ogt` example a guide writes in a code block (```text or a bare
  * fence, as a whole file or a fragment) holds to og-core's parser
  * (crates/og-core/src/ogt.rs `parse`) line by line, so an author who copies
  * it cooks: a `{` ends its key's line, a `}` stands alone on its own, the
@@ -943,9 +592,9 @@ function skillTexts(files: readonly PayloadFile[]): Map<string, string> {
  * next. A block with no brace and no `type` line is not checked (shell,
  * prose). Strings and `#` comments are read as the parser reads them.
  */
-export function ogtShape(skills: ReadonlyMap<string, string>): string[] {
+export function ogtShape(guides: ReadonlyMap<string, string>): string[] {
   const problems: string[] = [];
-  for (const [skill, md] of skills) {
+  for (const [guide, md] of guides) {
     for (const m of md.matchAll(/^( *)```([\w-]*)\n([\s\S]*?)^ *```/gm)) {
       if (m[2] !== "text" && m[2] !== "") continue;
       const indent = m[1]!.length;
@@ -961,7 +610,7 @@ export function ogtShape(skills: ReadonlyMap<string, string>): string[] {
       const typed = words.find((w) => w.length > 0)?.[0] === "type";
       if (!typed && !words.some((w) => w.includes("{") || w.includes("}"))) continue;
       const first = md.slice(0, m.index).split("\n").length + 1;
-      const at = (i: number) => `skills/${skill}/SKILL.md:${first + i}`;
+      const at = (i: number) => `wiki/${GUIDE_PREFIX}${guide}.md:${first + i}`;
       if (typed) {
         const head = words.map((w, i) => [w, i] as const).filter(([w]) => w.length > 0).slice(0, 3);
         if (head[1]?.[0][0] !== "version" || head[2]?.[0].join(" ") !== "---") problems.push(`${at(head[0]![1])}: an .ogt example opens with \`type\` but not \`version <n>\` and \`---\` after it; the parser refuses a file without its header`);
@@ -984,12 +633,6 @@ export function ogtShape(skills: ReadonlyMap<string, string>): string[] {
   return problems;
 }
 
-function grammar(roots: Roots, files: readonly PayloadFile[], problems: string[]): void {
-  const repo = join(roots.pkg, "..", "..");
-  if (!existsSync(join(repo, "crates"))) return; // the published package: the parsers are not beside it
-  const skills = skillTexts(files);
-  problems.push(...grammarDrift(skills, (p) => (existsSync(join(repo, p)) ? readFileSync(join(repo, p), "utf8") : undefined)));
-}
 
 export function bundle(roots: Roots = defaultRoots()): { schemaVersion: 1; files: Record<string, string> } {
   const files: Record<string, string> = {};

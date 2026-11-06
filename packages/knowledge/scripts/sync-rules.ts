@@ -38,10 +38,8 @@ for (const file of readdirSync(guides).sort()) {
 }
 const known = [...new Set([...offered, ...documented])].sort();
 // What this package mounts there itself (scripts/mount.ts) is not a platform
-// skill or overlay it could collide with.
+// overlay it could collide with.
 const own = JSON.parse(readFileSync(join(here, "knowledge.json"), "utf8")) as { overlay: string };
-const ownSkills = new Set(readdirSync(join(here, "skills")));
-const skills = readdirSync(join(knowledge, "production/game/skills")).filter((s) => !ownSkills.has(s)).sort();
 const overlays = readdirSync(join(knowledge, "production/game-scaffold")).filter((o) => o !== own.overlay).sort();
 const godotPin = JSON.parse(readFileSync(join(knowledge, "production/game-scaffold/origin-engine/origin-engine.json"), "utf8"));
 
@@ -55,18 +53,10 @@ const rules = {
     source: "packages/game-knowledge/scripts/production-bundle.mjs (readProductionBundle)",
   },
   packs: {
-    skill: "game/skills/<name>/ -> pack skill:<name>",
     scaffold: "game-scaffold/<overlay>/ -> pack scaffold:<overlay>",
     instructions: "game/instructions.md -> pack instructions",
     other: "any other game/ path -> pack game",
     source: "agent-server/src/core/knowledge.ts (packsFromFiles)",
-  },
-  skills: {
-    file: "SKILL.md",
-    frontmatter: { required: ["name", "description"], nameIsDirectory: true },
-    namePattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-    existing: skills,
-    source: "packages/game-knowledge/production/game/skills/*/SKILL.md (every skill's front matter: name equals its directory); agent-server/src/core/knowledge.ts (frontMatterDescription: the runner reads description)",
   },
   tools: {
     snake: SNAKE.source,
@@ -94,5 +84,5 @@ if (args.includes("--check")) {
   process.stdout.write("rules/platform.json matches the platform.\n");
 } else {
   writeFileSync(out, text);
-  process.stdout.write(`wrote rules/platform.json: ${known.length} known tools, ${skills.length} platform skills, overlays ${overlays.join(", ")}\n`);
+  process.stdout.write(`wrote rules/platform.json: ${known.length} known tools, overlays ${overlays.join(", ")}\n`);
 }

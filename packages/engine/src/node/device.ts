@@ -785,21 +785,21 @@ function findingsOf(kind: string, m: Measured, served: Served): Finding[] {
       measure: "first frame",
       where: "boot",
       detail: `${m.firstFrameMs} ms from navigation to the first frame, over the ${budget} ms budget`,
-      fix: "og-game §6: keep the first group small (stream the rest), load in `start`, and check the size table of og build --publish",
+      fix: "keep the first group small (stream the rest), load in `start`, and check the size table of og build --publish",
     });
   if (m.interval.p95 > 20)
     findings.push({
       measure: "frame time",
       where: m.tier,
       detail: `p95 display interval ${m.interval.p95} ms (p99 ${m.interval.p99}, max ${m.interval.max}): frames are missed`,
-      fix: "og-build §9: fewer draws and particles, less per-tick TypeScript; og run --json names the step and render cost",
+      fix: "fewer draws and particles, less per-tick TypeScript; og run --json names the step and render cost",
     });
   if (m.work.p95 > 16.7)
     findings.push({
       measure: "engine work",
       where: m.tier,
       detail: `p95 engine work per frame ${m.work.p95} ms, over a 60 Hz frame`,
-      fix: "og-build §9: the tick or the render submission is too heavy for this device",
+      fix: "the tick or the render submission is too heavy for this device",
     });
   if (!m.device.crossOriginIsolated)
     findings.push({

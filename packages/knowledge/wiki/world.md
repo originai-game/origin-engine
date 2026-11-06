@@ -8,15 +8,16 @@ Structural changes (spawn, despawn, insert, remove) invalidate typed views; the 
 
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-core`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module world {
+  doc "The world: an archetype ECS. Entities are generational handles; components are columns in engine memory."
+  doc "Structural changes (spawn, despawn, insert, remove) invalidate typed views; the API refuses a stale view."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 859</sub>
+<sub>`api.ogt` line 857</sub>
 
 ## Contents
 
@@ -37,7 +38,7 @@ module world {
 | [`MigrateFn`](#type-MigrateFn) | callback | One step of a game's save migration: changes the save from SaveMigration.from to the next version. |
 | [`SaveMigration`](#type-SaveMigration) | struct | A game's save migration step (GameDesc.migrations): run on a save of version `from` on its way to GameDesc.saveVersion, after the engine's own migrations. |
 | [`SaveEdit`](#type-SaveEdit) | interface | A save opened for editing (world.openSave), as a migration sees it: the engine's own migrations already applied, every type with its saved fields. Each edit changes the save, not the world; world.restore takes the result. An edit refused changes nothing. Entity ids are the saved world's. |
-| [`og.WorldRestored`](#record-WorldRestored) | event | A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §8), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did. |
+| [`og.WorldRestored`](#record-WorldRestored) | event | A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not, so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did. |
 | [`QueryDesc`](#type-QueryDesc) | desc struct | Which entities a query matches. The change filters (changed, added, removed) narrow an archetype's rows to those that pass every filter (ArchetypeView.rows) and read what happened since the last tick began; a component is tracked once a system filters on it (SystemDesc.changed, added, removed), and filtering on one no system tracks is refused. |
 | [`SpatialDesc`](#type-SpatialDesc) | desc struct | Which entities world.spatial places: every live entity with an og.Transform (and every component of `with`, none of `without`), at its og.Transform.position (relative to its parent, for a child). |
 | [`Neighbour`](#type-Neighbour) | struct | One entity a spatial query found. |
@@ -52,7 +53,7 @@ module world {
 
 ### `og.WorldRestored` (event)
 
-A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §8), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did.
+A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not, so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did.
 
 Token `og.WorldRestored`, registered under the schema name `og.WorldRestored`; its value type is `WorldRestored`.
 
@@ -63,7 +64,7 @@ Token `og.WorldRestored`, registered under the schema name `og.WorldRestored`; i
 
 ```ogt
 event WorldRestored {
-  doc "A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §8), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did."
+  doc "A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not, so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did."
   field from u32 "The tick the world was at when the restore applied." {
     unit ticks
   }
@@ -73,7 +74,7 @@ event WorldRestored {
 }
 ```
 
-<sub>`api.ogt` line 1035</sub>
+<sub>`api.ogt` line 1032</sub>
 
 ## Interfaces
 
@@ -89,7 +90,7 @@ interface SaveEdit {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 963</sub>
+<sub>`api.ogt` line 960</sub>
 
 <a id="member-SaveEdit-version"></a>
 
@@ -107,7 +108,7 @@ Binding symbol `og_save_edit_get_version` · publish builds: kept
 prop version u32 "The game's save version the save was written at (1 for a save of a game that never declared one)."
 ```
 
-<sub>`api.ogt` line 965</sub>
+<sub>`api.ogt` line 962</sub>
 
 <a id="member-SaveEdit-types"></a>
 
@@ -130,7 +131,7 @@ fn types {
 }
 ```
 
-<sub>`api.ogt` line 966</sub>
+<sub>`api.ogt` line 963</sub>
 
 <a id="member-SaveEdit-has"></a>
 
@@ -159,7 +160,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 970</sub>
+<sub>`api.ogt` line 967</sub>
 
 <a id="member-SaveEdit-records"></a>
 
@@ -187,7 +188,7 @@ fn records {
 }
 ```
 
-<sub>`api.ogt` line 976</sub>
+<sub>`api.ogt` line 973</sub>
 
 <a id="member-SaveEdit-setRecords"></a>
 
@@ -217,7 +218,7 @@ fn setRecords {
 }
 ```
 
-<sub>`api.ogt` line 981</sub>
+<sub>`api.ogt` line 978</sub>
 
 <a id="member-SaveEdit-transform"></a>
 
@@ -250,7 +251,7 @@ fn transform {
 }
 ```
 
-<sub>`api.ogt` line 987</sub>
+<sub>`api.ogt` line 984</sub>
 
 <a id="member-SaveEdit-split"></a>
 
@@ -281,7 +282,7 @@ fn split {
 }
 ```
 
-<sub>`api.ogt` line 995</sub>
+<sub>`api.ogt` line 992</sub>
 
 <a id="member-SaveEdit-renameType"></a>
 
@@ -311,7 +312,7 @@ fn renameType {
 }
 ```
 
-<sub>`api.ogt` line 1002</sub>
+<sub>`api.ogt` line 999</sub>
 
 <a id="member-SaveEdit-renameField"></a>
 
@@ -343,7 +344,7 @@ fn renameField {
 }
 ```
 
-<sub>`api.ogt` line 1008</sub>
+<sub>`api.ogt` line 1005</sub>
 
 <a id="member-SaveEdit-dropType"></a>
 
@@ -371,7 +372,7 @@ fn dropType {
 }
 ```
 
-<sub>`api.ogt` line 1015</sub>
+<sub>`api.ogt` line 1012</sub>
 
 <a id="member-SaveEdit-spawn"></a>
 
@@ -399,7 +400,7 @@ fn spawn {
 }
 ```
 
-<sub>`api.ogt` line 1020</sub>
+<sub>`api.ogt` line 1017</sub>
 
 <a id="member-SaveEdit-text"></a>
 
@@ -422,7 +423,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 1025</sub>
+<sub>`api.ogt` line 1022</sub>
 
 <a id="member-SaveEdit-close"></a>
 
@@ -445,7 +446,7 @@ fn close {
 }
 ```
 
-<sub>`api.ogt` line 1029</sub>
+<sub>`api.ogt` line 1026</sub>
 
 <a id="type-SpatialIndex"></a>
 
@@ -459,7 +460,7 @@ interface SpatialIndex {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1074</sub>
+<sub>`api.ogt` line 1071</sub>
 
 <a id="member-SpatialIndex-count"></a>
 
@@ -477,7 +478,7 @@ Binding symbol `og_spatial_index_get_count` · publish builds: kept
 prop count u32 "The entities it holds."
 ```
 
-<sub>`api.ogt` line 1076</sub>
+<sub>`api.ogt` line 1073</sub>
 
 <a id="member-SpatialIndex-within"></a>
 
@@ -507,7 +508,7 @@ fn within {
 }
 ```
 
-<sub>`api.ogt` line 1077</sub>
+<sub>`api.ogt` line 1074</sub>
 
 <a id="member-SpatialIndex-nearest"></a>
 
@@ -537,7 +538,7 @@ fn nearest {
 }
 ```
 
-<sub>`api.ogt` line 1083</sub>
+<sub>`api.ogt` line 1080</sub>
 
 <a id="type-World"></a>
 
@@ -551,7 +552,7 @@ interface World {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1091</sub>
+<sub>`api.ogt` line 1088</sub>
 
 <a id="member-World-tick"></a>
 
@@ -569,7 +570,7 @@ Binding symbol `og_world_get_tick` · publish builds: kept
 prop tick u32 "Fixed steps taken since the world was created."
 ```
 
-<sub>`api.ogt` line 1094</sub>
+<sub>`api.ogt` line 1091</sub>
 
 <a id="member-World-spawn"></a>
 
@@ -597,7 +598,7 @@ fn spawn {
 }
 ```
 
-<sub>`api.ogt` line 1096</sub>
+<sub>`api.ogt` line 1093</sub>
 
 <a id="member-World-despawn"></a>
 
@@ -625,7 +626,7 @@ fn despawn {
 }
 ```
 
-<sub>`api.ogt` line 1102</sub>
+<sub>`api.ogt` line 1099</sub>
 
 <a id="member-World-alive"></a>
 
@@ -653,7 +654,7 @@ fn alive {
 }
 ```
 
-<sub>`api.ogt` line 1108</sub>
+<sub>`api.ogt` line 1105</sub>
 
 <a id="member-World-has"></a>
 
@@ -684,7 +685,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 1114</sub>
+<sub>`api.ogt` line 1111</sub>
 
 <a id="member-World-insert"></a>
 
@@ -719,7 +720,7 @@ fn insert {
 }
 ```
 
-<sub>`api.ogt` line 1122</sub>
+<sub>`api.ogt` line 1119</sub>
 
 <a id="member-World-remove"></a>
 
@@ -750,7 +751,7 @@ fn remove {
 }
 ```
 
-<sub>`api.ogt` line 1133</sub>
+<sub>`api.ogt` line 1130</sub>
 
 <a id="member-World-get"></a>
 
@@ -781,7 +782,7 @@ fn get {
 }
 ```
 
-<sub>`api.ogt` line 1141</sub>
+<sub>`api.ogt` line 1138</sub>
 
 <a id="member-World-set"></a>
 
@@ -814,13 +815,13 @@ fn set {
 }
 ```
 
-<sub>`api.ogt` line 1149</sub>
+<sub>`api.ogt` line 1146</sub>
 
 <a id="member-World-resource"></a>
 
 #### `World.resource`
 
-A resource's live value: the same handle in a world every time, its fields typed reads and writes of the resource's packed record (no JSON, whatever its size). The record is fetched again only by the first read after another engine call or a system boundary, and writes reach the engine in one call before the next engine call and when the system or command returns, so two handles agree and a read after an engine call sees the engine's value (og-core §4). Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log.
+A resource's live value: the same handle in a world every time, its fields typed reads and writes of the resource's packed record (no JSON, whatever its size). The record is fetched again only by the first read after another engine call or a system boundary, and writes reach the engine in one call before the next engine call and when the system or command returns, so two handles agree and a read after an engine call sees the engine's value. Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log.
 
 ```ts
 World.resource<R extends AnyResource>(resource: R): Result<Value<R>>
@@ -836,14 +837,14 @@ Binding symbol `og_world_resource` · publish builds: kept
 
 ```ogt
 fn resource {
-  doc "A resource's live value: the same handle in a world every time, its fields typed reads and writes of the resource's packed record (no JSON, whatever its size). The record is fetched again only by the first read after another engine call or a system boundary, and writes reach the engine in one call before the next engine call and when the system or command returns, so two handles agree and a read after an engine call sees the engine's value (og-core §4). Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log."
+  doc "A resource's live value: the same handle in a world every time, its fields typed reads and writes of the resource's packed record (no JSON, whatever its size). The record is fetched again only by the first read after another engine call or a system boundary, and writes reach the engine in one call before the next engine call and when the system or command returns, so two handles agree and a read after an engine call sees the engine's value. Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log."
   generic R AnyResource
   param resource R "The resource token."
   returns Result.Value.R "Refused for an unregistered resource (or, in a publish build, one the running system did not declare)."
 }
 ```
 
-<sub>`api.ogt` line 1158</sub>
+<sub>`api.ogt` line 1155</sub>
 
 <a id="member-World-children"></a>
 
@@ -871,7 +872,7 @@ fn children {
 }
 ```
 
-<sub>`api.ogt` line 1165</sub>
+<sub>`api.ogt` line 1162</sub>
 
 <a id="member-World-removed"></a>
 
@@ -900,7 +901,7 @@ fn removed {
 }
 ```
 
-<sub>`api.ogt` line 1171</sub>
+<sub>`api.ogt` line 1168</sub>
 
 <a id="member-World-spatial"></a>
 
@@ -930,7 +931,7 @@ fn spatial {
 }
 ```
 
-<sub>`api.ogt` line 1178</sub>
+<sub>`api.ogt` line 1175</sub>
 
 <a id="member-World-state"></a>
 
@@ -958,7 +959,7 @@ fn state {
 }
 ```
 
-<sub>`api.ogt` line 1186</sub>
+<sub>`api.ogt` line 1183</sub>
 
 <a id="member-World-setState"></a>
 
@@ -988,7 +989,7 @@ fn setState {
 }
 ```
 
-<sub>`api.ogt` line 1192</sub>
+<sub>`api.ogt` line 1189</sub>
 
 <a id="member-World-find"></a>
 
@@ -1016,7 +1017,7 @@ fn find {
 }
 ```
 
-<sub>`api.ogt` line 1199</sub>
+<sub>`api.ogt` line 1196</sub>
 
 <a id="member-World-prefabOf"></a>
 
@@ -1044,7 +1045,7 @@ fn prefabOf {
 }
 ```
 
-<sub>`api.ogt` line 1205</sub>
+<sub>`api.ogt` line 1202</sub>
 
 <a id="member-World-nameOf"></a>
 
@@ -1072,7 +1073,7 @@ fn nameOf {
 }
 ```
 
-<sub>`api.ogt` line 1211</sub>
+<sub>`api.ogt` line 1208</sub>
 
 <a id="member-World-query"></a>
 
@@ -1100,7 +1101,7 @@ fn query {
 }
 ```
 
-<sub>`api.ogt` line 1217</sub>
+<sub>`api.ogt` line 1214</sub>
 
 <a id="member-World-events"></a>
 
@@ -1129,7 +1130,7 @@ fn events {
 }
 ```
 
-<sub>`api.ogt` line 1223</sub>
+<sub>`api.ogt` line 1220</sub>
 
 <a id="member-World-emit"></a>
 
@@ -1160,7 +1161,7 @@ fn emit {
 }
 ```
 
-<sub>`api.ogt` line 1230</sub>
+<sub>`api.ogt` line 1227</sub>
 
 <a id="member-World-instantiate"></a>
 
@@ -1193,7 +1194,7 @@ fn instantiate {
 }
 ```
 
-<sub>`api.ogt` line 1238</sub>
+<sub>`api.ogt` line 1235</sub>
 
 <a id="member-World-snapshot"></a>
 
@@ -1223,7 +1224,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 1246</sub>
+<sub>`api.ogt` line 1243</sub>
 
 <a id="member-World-openSave"></a>
 
@@ -1251,7 +1252,7 @@ fn openSave {
 }
 ```
 
-<sub>`api.ogt` line 1254</sub>
+<sub>`api.ogt` line 1251</sub>
 
 <a id="member-World-restore"></a>
 
@@ -1281,7 +1282,7 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 1260</sub>
+<sub>`api.ogt` line 1257</sub>
 
 <a id="type-Query"></a>
 
@@ -1295,7 +1296,7 @@ interface Query {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1268</sub>
+<sub>`api.ogt` line 1265</sub>
 
 <a id="member-Query-archetypes"></a>
 
@@ -1318,7 +1319,7 @@ fn archetypes {
 }
 ```
 
-<sub>`api.ogt` line 1270</sub>
+<sub>`api.ogt` line 1267</sub>
 
 <a id="member-Query-count"></a>
 
@@ -1341,7 +1342,7 @@ fn count {
 }
 ```
 
-<sub>`api.ogt` line 1274</sub>
+<sub>`api.ogt` line 1271</sub>
 
 <a id="type-ArchetypeView"></a>
 
@@ -1355,7 +1356,7 @@ interface ArchetypeView {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1280</sub>
+<sub>`api.ogt` line 1277</sub>
 
 <a id="member-ArchetypeView-count"></a>
 
@@ -1373,7 +1374,7 @@ Binding symbol `og_archetype_view_get_count` · publish builds: kept
 prop count u32 "The number of entities in the archetype."
 ```
 
-<sub>`api.ogt` line 1282</sub>
+<sub>`api.ogt` line 1279</sub>
 
 <a id="member-ArchetypeView-tick"></a>
 
@@ -1391,7 +1392,7 @@ Binding symbol `og_archetype_view_get_tick` · publish builds: kept
 prop tick u32 "The tick this view belongs to."
 ```
 
-<sub>`api.ogt` line 1283</sub>
+<sub>`api.ogt` line 1280</sub>
 
 <a id="member-ArchetypeView-entities"></a>
 
@@ -1409,7 +1410,7 @@ Binding symbol `og_archetype_view_get_entities` · publish builds: kept
 prop entities Uint32Array "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1. These are not handles: for a handle use entity(i) (world.despawn, get, set, insert and remove refuse a bare index, naming the call)."
 ```
 
-<sub>`api.ogt` line 1284</sub>
+<sub>`api.ogt` line 1281</sub>
 
 <a id="member-ArchetypeView-rows"></a>
 
@@ -1427,7 +1428,7 @@ Binding symbol `og_archetype_view_get_rows` · publish builds: kept
 prop rows Uint32Array "The rows the query's change filters pass (SystemDesc.changed, added, removed; QueryDesc's), in row order; every row, 0 to count - 1, for a query without them. Columns still hold every row: loop over rows and index the columns with them."
 ```
 
-<sub>`api.ogt` line 1285</sub>
+<sub>`api.ogt` line 1282</sub>
 
 <a id="member-ArchetypeView-entity"></a>
 
@@ -1455,7 +1456,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 1286</sub>
+<sub>`api.ogt` line 1283</sub>
 
 <a id="member-ArchetypeView-has"></a>
 
@@ -1484,7 +1485,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 1291</sub>
+<sub>`api.ogt` line 1288</sub>
 
 <a id="member-ArchetypeView-column"></a>
 
@@ -1516,7 +1517,7 @@ fn column {
 }
 ```
 
-<sub>`api.ogt` line 1297</sub>
+<sub>`api.ogt` line 1294</sub>
 
 ## Types
 
@@ -1537,7 +1538,7 @@ handle Entity {
 }
 ```
 
-<sub>`api.ogt` line 864</sub>
+<sub>`api.ogt` line 861</sub>
 
 <a id="type-SpawnDesc"></a>
 
@@ -1573,7 +1574,7 @@ struct SpawnDesc {
 }
 ```
 
-<sub>`api.ogt` line 876</sub>
+<sub>`api.ogt` line 873</sub>
 
 <a id="type-RestoreDesc"></a>
 
@@ -1595,7 +1596,7 @@ struct RestoreDesc {
 }
 ```
 
-<sub>`api.ogt` line 891</sub>
+<sub>`api.ogt` line 888</sub>
 
 <a id="type-SnapshotDesc"></a>
 
@@ -1619,7 +1620,7 @@ struct SnapshotDesc {
 }
 ```
 
-<sub>`api.ogt` line 897</sub>
+<sub>`api.ogt` line 894</sub>
 
 <a id="type-SaveType"></a>
 
@@ -1642,7 +1643,7 @@ struct SaveType {
 }
 ```
 
-<sub>`api.ogt` line 904</sub>
+<sub>`api.ogt` line 901</sub>
 
 <a id="type-SaveRecord"></a>
 
@@ -1663,7 +1664,7 @@ struct SaveRecord {
 }
 ```
 
-<sub>`api.ogt` line 911</sub>
+<sub>`api.ogt` line 908</sub>
 
 <a id="type-SetRecordsDesc"></a>
 
@@ -1687,7 +1688,7 @@ struct SetRecordsDesc {
 }
 ```
 
-<sub>`api.ogt` line 917</sub>
+<sub>`api.ogt` line 914</sub>
 
 <a id="type-TransformDesc"></a>
 
@@ -1709,7 +1710,7 @@ struct TransformDesc {
 }
 ```
 
-<sub>`api.ogt` line 924</sub>
+<sub>`api.ogt` line 921</sub>
 
 <a id="type-SaveSpawnDesc"></a>
 
@@ -1733,7 +1734,7 @@ struct SaveSpawnDesc {
 }
 ```
 
-<sub>`api.ogt` line 930</sub>
+<sub>`api.ogt` line 927</sub>
 
 <a id="type-RecordFn"></a>
 
@@ -1761,7 +1762,7 @@ callback RecordFn {
 }
 ```
 
-<sub>`api.ogt` line 937</sub>
+<sub>`api.ogt` line 934</sub>
 
 <a id="type-SplitFn"></a>
 
@@ -1789,7 +1790,7 @@ callback SplitFn {
 }
 ```
 
-<sub>`api.ogt` line 944</sub>
+<sub>`api.ogt` line 941</sub>
 
 <a id="type-MigrateFn"></a>
 
@@ -1815,7 +1816,7 @@ callback MigrateFn {
 }
 ```
 
-<sub>`api.ogt` line 951</sub>
+<sub>`api.ogt` line 948</sub>
 
 <a id="type-SaveMigration"></a>
 
@@ -1836,7 +1837,7 @@ struct SaveMigration {
 }
 ```
 
-<sub>`api.ogt` line 957</sub>
+<sub>`api.ogt` line 954</sub>
 
 <a id="type-QueryDesc"></a>
 
@@ -1866,7 +1867,7 @@ struct QueryDesc {
 }
 ```
 
-<sub>`api.ogt` line 1045</sub>
+<sub>`api.ogt` line 1042</sub>
 
 <a id="type-SpatialDesc"></a>
 
@@ -1895,7 +1896,7 @@ struct SpatialDesc {
 }
 ```
 
-<sub>`api.ogt` line 1055</sub>
+<sub>`api.ogt` line 1052</sub>
 
 <a id="type-Neighbour"></a>
 
@@ -1918,7 +1919,7 @@ struct Neighbour {
 }
 ```
 
-<sub>`api.ogt` line 1066</sub>
+<sub>`api.ogt` line 1063</sub>
 
 ## Column kinds
 
@@ -1937,4 +1938,4 @@ column Entity {
 }
 ```
 
-<sub>`api.ogt` line 869</sub>
+<sub>`api.ogt` line 866</sub>

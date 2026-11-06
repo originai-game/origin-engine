@@ -85,7 +85,7 @@ impl Ui {
     /// stays deep). The neutral badge's ground is its own flat `control`, so
     /// its `inkMuted` moves wherever it does not read on it, and where even
     /// white or black would not, the fill moves away from the ink instead
-    /// (scifi's mid-blue fill darkens under its pale ink). og-taste §3.
+    /// (scifi's mid-blue fill darkens under its pale ink).
     pub fn badge(&mut self, id: impl Into<Id>, text: &str, tone: Tone) {
         let t = self.theme;
         let p = t.palette;

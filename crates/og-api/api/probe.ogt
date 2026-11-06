@@ -1,5 +1,4 @@
 module probe {
-  skill og-build
   doc "The probe: RuntimeProbe protocol 5 (origin/packages/contracts/src/probe.ts) served natively, plus the engine's wire members."
   doc "In a page it is published on globalThis.__runtime_probe__; on native, `og` serves it as JSON-RPC 2.0 over a loopback WebSocket at /probe."
   doc "A refusal is false or null exactly as protocol 5; a JSON-RPC error is only for a malformed call or an unknown method."

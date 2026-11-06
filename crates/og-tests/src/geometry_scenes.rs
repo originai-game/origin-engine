@@ -1,4 +1,4 @@
-//! The depth wave's geometry scenes (docs/depth.md §1): the three.js
+//! The depth wave's geometry scenes (docs/design.md §10.1): the three.js
 //! primitives and a procedural buffer geometry (`geometry-procedural`),
 //! lines (`lines`), point clouds (`points`), wireframe materials
 //! (`wireframe`) and debug draw over the finished frame (`debug-overlay`).

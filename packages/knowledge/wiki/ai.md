@@ -2,7 +2,7 @@
 
 # The `ai` module
 
-Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (og-ai §3 has every line), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
+Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour`, perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
 
 An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick.
 
@@ -10,15 +10,17 @@ Conditions read blackboard keys (declared, set by actions or og.ai.set, or built
 
 - **TypeScript**: functions are the namespace `og.ai`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-ai`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module ai {
+  doc "Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour`, perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent."
+  doc "An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick."
+  doc "Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`), and compare them with a literal or with another key or field read each time (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource. og.ai.restart starts a behaviour afresh. Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 14153</sub>
+<sub>`api.ogt` line 14132</sub>
 
 ## Contents
 
@@ -78,7 +80,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 14345</sub>
+<sub>`api.ogt` line 14323</sub>
 
 <a id="fn-parse"></a>
 
@@ -108,7 +110,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 14352</sub>
+<sub>`api.ogt` line 14330</sub>
 
 <a id="fn-get"></a>
 
@@ -140,7 +142,7 @@ fn get {
 }
 ```
 
-<sub>`api.ogt` line 14359</sub>
+<sub>`api.ogt` line 14337</sub>
 
 <a id="fn-set"></a>
 
@@ -174,7 +176,7 @@ fn set {
 }
 ```
 
-<sub>`api.ogt` line 14367</sub>
+<sub>`api.ogt` line 14345</sub>
 
 <a id="fn-restart"></a>
 
@@ -204,7 +206,7 @@ fn restart {
 }
 ```
 
-<sub>`api.ogt` line 14376</sub>
+<sub>`api.ogt` line 14354</sub>
 
 <a id="fn-finish"></a>
 
@@ -240,7 +242,7 @@ fn finish {
 }
 ```
 
-<sub>`api.ogt` line 14383</sub>
+<sub>`api.ogt` line 14361</sub>
 
 <a id="fn-noise"></a>
 
@@ -270,7 +272,7 @@ fn noise {
 }
 ```
 
-<sub>`api.ogt` line 14394</sub>
+<sub>`api.ogt` line 14372</sub>
 
 <a id="fn-describe"></a>
 
@@ -300,7 +302,7 @@ fn describe {
 }
 ```
 
-<sub>`api.ogt` line 14401</sub>
+<sub>`api.ogt` line 14379</sub>
 
 ## Components, resources and events
 
@@ -350,7 +352,7 @@ component AiAgent {
 }
 ```
 
-<sub>`api.ogt` line 14173</sub>
+<sub>`api.ogt` line 14151</sub>
 
 <a id="record-Perception"></a>
 
@@ -453,7 +455,7 @@ component Perception {
 }
 ```
 
-<sub>`api.ogt` line 14199</sub>
+<sub>`api.ogt` line 14177</sub>
 
 <a id="record-Perceivable"></a>
 
@@ -482,7 +484,7 @@ component Perceivable {
 }
 ```
 
-<sub>`api.ogt` line 14271</sub>
+<sub>`api.ogt` line 14249</sub>
 
 <a id="record-AiChanged"></a>
 
@@ -509,7 +511,7 @@ event AiChanged {
 }
 ```
 
-<sub>`api.ogt` line 14283</sub>
+<sub>`api.ogt` line 14261</sub>
 
 <a id="record-AiActionStarted"></a>
 
@@ -536,7 +538,7 @@ event AiActionStarted {
 }
 ```
 
-<sub>`api.ogt` line 14291</sub>
+<sub>`api.ogt` line 14269</sub>
 
 <a id="record-AiActionStopped"></a>
 
@@ -563,7 +565,7 @@ event AiActionStopped {
 }
 ```
 
-<sub>`api.ogt` line 14299</sub>
+<sub>`api.ogt` line 14277</sub>
 
 ## Types
 
@@ -579,7 +581,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Behaviour "A loaded behaviour tree or state machine."
 ```
 
-<sub>`api.ogt` line 14159</sub>
+<sub>`api.ogt` line 14137</sub>
 
 <a id="type-BehaviourInfo"></a>
 
@@ -610,7 +612,7 @@ struct BehaviourInfo {
 }
 ```
 
-<sub>`api.ogt` line 14307</sub>
+<sub>`api.ogt` line 14285</sub>
 
 <a id="type-NoiseDesc"></a>
 
@@ -642,7 +644,7 @@ struct NoiseDesc {
 }
 ```
 
-<sub>`api.ogt` line 14318</sub>
+<sub>`api.ogt` line 14296</sub>
 
 <a id="type-AiDescription"></a>
 
@@ -677,7 +679,7 @@ struct AiDescription {
 }
 ```
 
-<sub>`api.ogt` line 14332</sub>
+<sub>`api.ogt` line 14310</sub>
 
 ## Column kinds
 
@@ -696,7 +698,7 @@ column Behaviour {
 }
 ```
 
-<sub>`api.ogt` line 14161</sub>
+<sub>`api.ogt` line 14139</sub>
 
 ## Constants
 
@@ -711,22 +713,22 @@ column Behaviour {
 const AI_RUNNING u32 1 "AiAgent.status: the tree or state is still running."
 ```
 
-<sub>`api.ogt` line 14168</sub>
+<sub>`api.ogt` line 14146</sub>
 
 ```ogt
 const AI_SUCCESS u32 2 "AiAgent.status: the tree succeeded on the last think."
 ```
 
-<sub>`api.ogt` line 14169</sub>
+<sub>`api.ogt` line 14147</sub>
 
 ```ogt
 const AI_FAILURE u32 3 "AiAgent.status: the tree failed on the last think."
 ```
 
-<sub>`api.ogt` line 14170</sub>
+<sub>`api.ogt` line 14148</sub>
 
 ```ogt
 const AI_INTERRUPTED u32 4 "AiActionStopped.result: the action stopped before the game finished it (another branch won, the state changed, the agent restarted)."
 ```
 
-<sub>`api.ogt` line 14171</sub>
+<sub>`api.ogt` line 14149</sub>

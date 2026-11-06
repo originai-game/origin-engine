@@ -27,7 +27,7 @@ try {
   for (const type of ["keydown", "keyup"]) dispatchEvent(new KeyboardEvent(type, { code: "KeyW" }));
   await new Promise((r) => setTimeout(r, 50));
   const after = (await shell.call("probe", "accepted")) as number;
-  // tools/bench/views.ts's raw loop on this page, then the same work as the
+  // The raw typed-array loop (packages/engine/bench/views.ts's (a)) on this page, then the same work as the
   // hello world's Move system through the engine, 2000 ticks.
   const N = 10000;
   const mem = new WebAssembly.Memory({ initial: 256 });

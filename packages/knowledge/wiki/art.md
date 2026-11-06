@@ -8,15 +8,16 @@ Every field is no constraint at its zero value (0, false, the first variant, an 
 
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-taste`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module art {
+  doc "A game's art contract: what every asset of its style holds, as seven resources a look sets beside the render ones (docs/art.md §2.1): the palette its texels sit on (ArtPalette), one pixel size for 2D art (ArtPixels), one texel density for 3D surfaces (ArtTexels), the shape language of its models (ArtShape), its line (ArtLine), the step of its motion (ArtMotion) and its camera (ArtCamera). A style is the assets, not a filter on the frame: the look's render resources treat the frame, these say what the assets themselves must be."
+  doc "Every field is no constraint at its zero value (0, false, the first variant, an empty list), so a look without these blocks, and every game made before them, cooks and draws exactly as before. The built-in presets (templates/looks/<slug>.ogt) carry each catalogue style's values and a game's look overrides them field by field. They are resources, so game code reads the contract too (a sprite snapping to ArtPixels.unit, a spawner picking colours from ArtPalette); project.ogt's `look` names the look whose contract the cook reads. Writing them changes neither the frame nor the simulation: the cook's conformance of assets, the runtime defaults from them and og style check are docs/art.md §2.3 to §2.5."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 26423</sub>
+<sub>`api.ogt` line 26386</sub>
 
 ## Contents
 
@@ -81,7 +82,7 @@ resource ArtPalette {
 }
 ```
 
-<sub>`api.ogt` line 26528</sub>
+<sub>`api.ogt` line 26490</sub>
 
 <a id="record-ArtPixels"></a>
 
@@ -121,7 +122,7 @@ resource ArtPixels {
 }
 ```
 
-<sub>`api.ogt` line 26544</sub>
+<sub>`api.ogt` line 26506</sub>
 
 <a id="record-ArtTexels"></a>
 
@@ -154,7 +155,7 @@ resource ArtTexels {
 }
 ```
 
-<sub>`api.ogt` line 26563</sub>
+<sub>`api.ogt` line 26525</sub>
 
 <a id="record-ArtShape"></a>
 
@@ -205,7 +206,7 @@ resource ArtShape {
 }
 ```
 
-<sub>`api.ogt` line 26577</sub>
+<sub>`api.ogt` line 26539</sub>
 
 <a id="record-ArtLine"></a>
 
@@ -242,7 +243,7 @@ resource ArtLine {
 }
 ```
 
-<sub>`api.ogt` line 26606</sub>
+<sub>`api.ogt` line 26568</sub>
 
 <a id="record-ArtMotion"></a>
 
@@ -277,7 +278,7 @@ resource ArtMotion {
 }
 ```
 
-<sub>`api.ogt` line 26623</sub>
+<sub>`api.ogt` line 26585</sub>
 
 <a id="record-ArtCamera"></a>
 
@@ -326,7 +327,7 @@ resource ArtCamera {
 }
 ```
 
-<sub>`api.ogt` line 26640</sub>
+<sub>`api.ogt` line 26602</sub>
 
 ## Types
 
@@ -355,7 +356,7 @@ enum ArtRotation {
 }
 ```
 
-<sub>`api.ogt` line 26428</sub>
+<sub>`api.ogt` line 26390</sub>
 
 <a id="type-ArtFilter"></a>
 
@@ -380,7 +381,7 @@ enum ArtFilter {
 }
 ```
 
-<sub>`api.ogt` line 26443</sub>
+<sub>`api.ogt` line 26405</sub>
 
 <a id="type-ArtMips"></a>
 
@@ -405,7 +406,7 @@ enum ArtMips {
 }
 ```
 
-<sub>`api.ogt` line 26457</sub>
+<sub>`api.ogt` line 26419</sub>
 
 <a id="type-ArtNormals"></a>
 
@@ -432,7 +433,7 @@ enum ArtNormals {
 }
 ```
 
-<sub>`api.ogt` line 26471</sub>
+<sub>`api.ogt` line 26433</sub>
 
 <a id="type-ArtLinePlace"></a>
 
@@ -457,7 +458,7 @@ enum ArtLinePlace {
 }
 ```
 
-<sub>`api.ogt` line 26486</sub>
+<sub>`api.ogt` line 26448</sub>
 
 <a id="type-ArtBrush"></a>
 
@@ -482,7 +483,7 @@ enum ArtBrush {
 }
 ```
 
-<sub>`api.ogt` line 26500</sub>
+<sub>`api.ogt` line 26462</sub>
 
 <a id="type-ArtProjection"></a>
 
@@ -507,7 +508,7 @@ enum ArtProjection {
 }
 ```
 
-<sub>`api.ogt` line 26514</sub>
+<sub>`api.ogt` line 26476</sub>
 
 ## Column kinds
 
@@ -532,7 +533,7 @@ column ArtRotation {
 }
 ```
 
-<sub>`api.ogt` line 26436</sub>
+<sub>`api.ogt` line 26398</sub>
 
 ```ogt
 column ArtFilter {
@@ -543,7 +544,7 @@ column ArtFilter {
 }
 ```
 
-<sub>`api.ogt` line 26450</sub>
+<sub>`api.ogt` line 26412</sub>
 
 ```ogt
 column ArtMips {
@@ -554,7 +555,7 @@ column ArtMips {
 }
 ```
 
-<sub>`api.ogt` line 26464</sub>
+<sub>`api.ogt` line 26426</sub>
 
 ```ogt
 column ArtNormals {
@@ -565,7 +566,7 @@ column ArtNormals {
 }
 ```
 
-<sub>`api.ogt` line 26479</sub>
+<sub>`api.ogt` line 26441</sub>
 
 ```ogt
 column ArtLinePlace {
@@ -576,7 +577,7 @@ column ArtLinePlace {
 }
 ```
 
-<sub>`api.ogt` line 26493</sub>
+<sub>`api.ogt` line 26455</sub>
 
 ```ogt
 column ArtBrush {
@@ -587,7 +588,7 @@ column ArtBrush {
 }
 ```
 
-<sub>`api.ogt` line 26507</sub>
+<sub>`api.ogt` line 26469</sub>
 
 ```ogt
 column ArtProjection {
@@ -598,4 +599,4 @@ column ArtProjection {
 }
 ```
 
-<sub>`api.ogt` line 26521</sub>
+<sub>`api.ogt` line 26483</sub>

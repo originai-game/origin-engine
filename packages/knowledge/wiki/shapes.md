@@ -6,19 +6,22 @@ Two-dimensional outlines in three.js's words: og.Shape and og.Path2 are three.js
 
 They are TypeScript values, not world state: make them in start or a command and let the geometry made from them be what the world keeps. Points come from basic arithmetic (no Math.sin), so they are the same on every host.
 
-A prop of these parts belongs in an asset: an `.ogt` of `type model` names each part's geometry by its og.render call (`extrudeGeometry { shape { absarc 0 0 1 0 6.283185307179586 false } depth 0.2 }`), its shapes as og.Shape's calls one a line with `hole { }` blocks, places parts as mergeGeometries does (`position`, `quaternion`, `scale`, `mirror`, or several `at { }` blocks: one mesh drawn instanced), gives each a `material` and hangs it from a named `pivot` (a node). og cook builds it into the model blob a glTF cooks to (levels of detail, raycast BVH, nodes), refuses it past project.ogt's triangle and vertex budgets, and og dev re-cooks it on an edit; og.load.gltf and a scene's `model` line take it as any model. og-model §9 has a whole example.
+A prop of these parts belongs in an asset: an `.ogt` of `type model` names each part's geometry by its og.render call (`extrudeGeometry { shape { absarc 0 0 1 0 6.283185307179586 false } depth 0.2 }`), its shapes as og.Shape's calls one a line with `hole { }` blocks, places parts as mergeGeometries does (`position`, `quaternion`, `scale`, `mirror`, or several `at { }` blocks: one mesh drawn instanced), gives each a `material` and hangs it from a named `pivot` (a node). og cook builds it into the model blob a glTF cooks to (levels of detail, raycast BVH, nodes), refuses it past project.ogt's triangle and vertex budgets, and og dev re-cooks it on an edit; og.load.gltf and a scene's `model` line take it as any model.
 
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-model`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module shapes {
+  doc "Two-dimensional outlines in three.js's words: og.Shape and og.Path2 are three.js's Shape and Path, built by the same calls (moveTo, lineTo, quadraticCurveTo, bezierCurveTo, splineThru, arc, absarc, ellipse, absellipse, closePath) and flattened to points by getPoints, so a three.js outline is a paste. og.render.shapeGeometry, extrudeGeometry and sweepGeometry take them; only their points cross to the engine."
+  doc "They are TypeScript values, not world state: make them in start or a command and let the geometry made from them be what the world keeps. Points come from basic arithmetic (no Math.sin), so they are the same on every host."
+  doc "A prop of these parts belongs in an asset: an `.ogt` of `type model` names each part's geometry by its og.render call (`extrudeGeometry { shape { absarc 0 0 1 0 6.283185307179586 false } depth 0.2 }`), its shapes as og.Shape's calls one a line with `hole { }` blocks, places parts as mergeGeometries does (`position`, `quaternion`, `scale`, `mirror`, or several `at { }` blocks: one mesh drawn instanced), gives each a `material` and hangs it from a named `pivot` (a node). og cook builds it into the model blob a glTF cooks to (levels of detail, raycast BVH, nodes), refuses it past project.ogt's triangle and vertex budgets, and og dev re-cooks it on an edit; og.load.gltf and a scene's `model` line take it as any model."
+  place root
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7710</sub>
+<sub>`api.ogt` line 7698</sub>
 
 ## Contents
 
@@ -50,7 +53,7 @@ const Path2: Path2Class
 value Path2 Path2Class "three.js's Path (named Path2 beside og.path's 3D paths): `new og.Path2().moveTo(0, 0).lineTo(1, 0)`."
 ```
 
-<sub>`api.ogt` line 7893</sub>
+<sub>`api.ogt` line 7880</sub>
 
 <a id="value-Shape"></a>
 
@@ -66,7 +69,7 @@ const Shape: ShapeClass
 value Shape ShapeClass "three.js's Shape: `const s = new og.Shape(); s.moveTo(0, 0).lineTo(1, 0).lineTo(0, 1); s.holes.push(hole)`."
 ```
 
-<sub>`api.ogt` line 7894</sub>
+<sub>`api.ogt` line 7881</sub>
 
 ## Interfaces
 
@@ -82,7 +85,7 @@ interface PathList {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7717</sub>
+<sub>`api.ogt` line 7704</sub>
 
 <a id="member-PathList-length"></a>
 
@@ -100,7 +103,7 @@ prop length u32 "How many holes." {
 }
 ```
 
-<sub>`api.ogt` line 7719</sub>
+<sub>`api.ogt` line 7706</sub>
 
 <a id="member-PathList-push"></a>
 
@@ -129,7 +132,7 @@ fn push {
 }
 ```
 
-<sub>`api.ogt` line 7722</sub>
+<sub>`api.ogt` line 7709</sub>
 
 <a id="type-Path2"></a>
 
@@ -143,7 +146,7 @@ interface Path2 {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7730</sub>
+<sub>`api.ogt` line 7717</sub>
 
 <a id="member-Path2-moveTo"></a>
 
@@ -174,7 +177,7 @@ fn moveTo {
 }
 ```
 
-<sub>`api.ogt` line 7732</sub>
+<sub>`api.ogt` line 7719</sub>
 
 <a id="member-Path2-lineTo"></a>
 
@@ -205,7 +208,7 @@ fn lineTo {
 }
 ```
 
-<sub>`api.ogt` line 7739</sub>
+<sub>`api.ogt` line 7726</sub>
 
 <a id="member-Path2-quadraticCurveTo"></a>
 
@@ -240,7 +243,7 @@ fn quadraticCurveTo {
 }
 ```
 
-<sub>`api.ogt` line 7746</sub>
+<sub>`api.ogt` line 7733</sub>
 
 <a id="member-Path2-bezierCurveTo"></a>
 
@@ -279,7 +282,7 @@ fn bezierCurveTo {
 }
 ```
 
-<sub>`api.ogt` line 7755</sub>
+<sub>`api.ogt` line 7742</sub>
 
 <a id="member-Path2-splineThru"></a>
 
@@ -308,7 +311,7 @@ fn splineThru {
 }
 ```
 
-<sub>`api.ogt` line 7766</sub>
+<sub>`api.ogt` line 7753</sub>
 
 <a id="member-Path2-arc"></a>
 
@@ -349,7 +352,7 @@ fn arc {
 }
 ```
 
-<sub>`api.ogt` line 7772</sub>
+<sub>`api.ogt` line 7759</sub>
 
 <a id="member-Path2-absarc"></a>
 
@@ -390,7 +393,7 @@ fn absarc {
 }
 ```
 
-<sub>`api.ogt` line 7785</sub>
+<sub>`api.ogt` line 7772</sub>
 
 <a id="member-Path2-ellipse"></a>
 
@@ -437,7 +440,7 @@ fn ellipse {
 }
 ```
 
-<sub>`api.ogt` line 7798</sub>
+<sub>`api.ogt` line 7785</sub>
 
 <a id="member-Path2-absellipse"></a>
 
@@ -484,7 +487,7 @@ fn absellipse {
 }
 ```
 
-<sub>`api.ogt` line 7815</sub>
+<sub>`api.ogt` line 7802</sub>
 
 <a id="member-Path2-setFromPoints"></a>
 
@@ -513,7 +516,7 @@ fn setFromPoints {
 }
 ```
 
-<sub>`api.ogt` line 7832</sub>
+<sub>`api.ogt` line 7819</sub>
 
 <a id="member-Path2-closePath"></a>
 
@@ -537,7 +540,7 @@ fn closePath {
 }
 ```
 
-<sub>`api.ogt` line 7838</sub>
+<sub>`api.ogt` line 7825</sub>
 
 <a id="member-Path2-getPoints"></a>
 
@@ -568,7 +571,7 @@ fn getPoints {
 }
 ```
 
-<sub>`api.ogt` line 7843</sub>
+<sub>`api.ogt` line 7830</sub>
 
 <a id="type-Shape"></a>
 
@@ -585,7 +588,7 @@ interface Shape {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7853</sub>
+<sub>`api.ogt` line 7840</sub>
 
 <a id="member-Shape-holes"></a>
 
@@ -603,7 +606,7 @@ prop holes PathList "The holes: `shape.holes.push(hole)`." {
 }
 ```
 
-<sub>`api.ogt` line 7856</sub>
+<sub>`api.ogt` line 7843</sub>
 
 <a id="member-Shape-extractPoints"></a>
 
@@ -634,7 +637,7 @@ fn extractPoints {
 }
 ```
 
-<sub>`api.ogt` line 7859</sub>
+<sub>`api.ogt` line 7846</sub>
 
 <a id="type-Path2Class"></a>
 
@@ -648,7 +651,7 @@ interface Path2Class {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7869</sub>
+<sub>`api.ogt` line 7856</sub>
 
 <a id="member-Path2Class-new"></a>
 
@@ -679,7 +682,7 @@ fn new {
 }
 ```
 
-<sub>`api.ogt` line 7871</sub>
+<sub>`api.ogt` line 7858</sub>
 
 <a id="type-ShapeClass"></a>
 
@@ -693,7 +696,7 @@ interface ShapeClass {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7881</sub>
+<sub>`api.ogt` line 7868</sub>
 
 <a id="member-ShapeClass-new"></a>
 
@@ -724,4 +727,4 @@ fn new {
 }
 ```
 
-<sub>`api.ogt` line 7883</sub>
+<sub>`api.ogt` line 7870</sub>

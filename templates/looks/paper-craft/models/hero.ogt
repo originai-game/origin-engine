@@ -1,7 +1,7 @@
 type model
 version 1
 ---
-# paper-craft's version: every part folded from card (og-model §5, paper
+# paper-craft's version: every part folded from card (paper
 # fold), its turned parts five or six sides round, the head a folded
 # dodecahedron. The lantern keeper: a hooded traveller carrying a lit
 # lamp, about 1.8 m, facing +Z, its feet on y = 0. Moderate counts: the look's

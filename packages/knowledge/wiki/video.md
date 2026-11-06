@@ -8,15 +8,16 @@ Playback is simulation, decoding is presentation: the og.video system (after the
 
 - **TypeScript**: functions are the namespace `og.video`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-render`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module video {
+  doc "Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default, for short loops: at most 256 frames) is cooked into a texture array of its frames; a stream (`stream true`: any length) is cooked to AV1 and decoded as it plays, natively by rav1d on a thread of its own, on the web by WebCodecs, or by rav1d in a Worker of its own where the browser has no AV1 decoder (og.video.capabilities says which). Either way the frame shown is a Texture (VideoInfo.texture, also VideoPlayer.texture) any material map, og.Sprite or UI image draws, and the sound plays on the entity's og.AudioSource in step with it."
+  doc "Playback is simulation, decoding is presentation: the og.video system (after the game's systems, before og.audio) advances VideoPlayer.time by the tick's dt times `speed` (not the time scale, so the picture stays with its sound; a paused game, whose ticks do not run, pauses both), so the frame a player is at on a tick is the same on both hosts, in every run and after a snapshot is restored. With a 30 Hz tick a player started at 0 is at the source's frame 3 s in at tick 90. A stream's texture shows that frame once it is decoded: an executor (og run, og render, og test) waits for it, so every capture shows exactly its tick's frame; a game on the web keeps the last frame decoded until it is, and nothing the decoder has or has not finished reaches the world."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 25556</sub>
+<sub>`api.ogt` line 25525</sub>
 
 ## Contents
 
@@ -57,7 +58,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 25600</sub>
+<sub>`api.ogt` line 25568</sub>
 
 ## Components, resources and events
 
@@ -110,7 +111,7 @@ component VideoPlayer {
 }
 ```
 
-<sub>`api.ogt` line 25606</sub>
+<sub>`api.ogt` line 25574</sub>
 
 ## Types
 
@@ -126,7 +127,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Video "Cooked footage: its frames as a texture array, its sound (og.load.video)."
 ```
 
-<sub>`api.ogt` line 25561</sub>
+<sub>`api.ogt` line 25529</sub>
 
 <a id="type-VideoInfo"></a>
 
@@ -173,7 +174,7 @@ struct VideoInfo {
 }
 ```
 
-<sub>`api.ogt` line 25570</sub>
+<sub>`api.ogt` line 25538</sub>
 
 <a id="type-VideoCapabilities"></a>
 
@@ -200,7 +201,7 @@ struct VideoCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 25591</sub>
+<sub>`api.ogt` line 25559</sub>
 
 ## Column kinds
 
@@ -219,4 +220,4 @@ column Video {
 }
 ```
 
-<sub>`api.ogt` line 25563</sub>
+<sub>`api.ogt` line 25531</sub>

@@ -1,5 +1,4 @@
 module game {
-  skill og-game
   doc "The game entry: what the bundle's default export declares."
   place root
 

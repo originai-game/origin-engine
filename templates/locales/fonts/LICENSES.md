@@ -7,7 +7,7 @@ face is a Noto face from google/fonts at Regular (wght 400, wdth 100),
 made by `../make-fonts.py` with fontTools: every layout feature kept, no
 hinting. The CJK subsets hold a national standard's common set and no
 Latin (a label's Latin comes from the style's face, run by run); a game
-cuts its own subset of its tables before it ships (og-i18n §3).
+cuts its own subset of its tables before it ships.
 
 | File | Languages | Characters | Licence | Origin |
 |---|---|---|---|---|

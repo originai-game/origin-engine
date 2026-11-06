@@ -45,7 +45,7 @@ export function defaultRoots(pkg = PACKAGE_ROOT): Roots {
 }
 
 export interface Mount {
-  /** A package path (`skills/`, `wiki/`), or `@template/` for the project template. */
+  /** A package path (`scaffold/origin-engine.json`), or `@template/` for the project template. */
   readonly from: string;
   /** Its place in the platform's production tree. */
   readonly to: string;
@@ -145,7 +145,6 @@ export function sha256(bytes: Uint8Array | string): string {
 export function packName(path: string): string {
   const parts = path.split("/");
   if (path === "game/instructions.md") return "instructions";
-  if (parts[0] === "game" && parts[1] === "skills" && parts[2]) return `skill:${parts[2]}`;
   if (parts[0] === "game-scaffold" && parts[1]) return `scaffold:${parts[1]}`;
   return "game";
 }

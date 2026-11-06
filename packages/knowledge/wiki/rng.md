@@ -8,15 +8,16 @@ Inside a system: forking needs og.Rng among the reads (a fork is derived from th
 
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Skill**: `og-core`, which teaches the module (how much of it to use, and how to prove it).
 - **Index**: [every module and name](index.md).
 
 ```ogt
 module rng {
+  doc "Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts."
+  doc "Inside a system: forking needs og.Rng among the reads (a fork is derived from the seed and the label, and leaves the main stream where it is); drawing from og.Rng itself (next, range, integer, chance, weighted, permutation) moves its state, so it needs og.Rng among the writes. A stream a fork returned is the system's own to draw from."
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1692</sub>
+<sub>`api.ogt` line 1685</sub>
 
 ## Contents
 
@@ -88,7 +89,7 @@ resource Rng {
 }
 ```
 
-<sub>`api.ogt` line 1738</sub>
+<sub>`api.ogt` line 1730</sub>
 
 <a id="member-Rng-next"></a>
 
@@ -111,7 +112,7 @@ fn next {
 }
 ```
 
-<sub>`api.ogt` line 1746</sub>
+<sub>`api.ogt` line 1738</sub>
 
 <a id="member-Rng-range"></a>
 
@@ -141,7 +142,7 @@ fn range {
 }
 ```
 
-<sub>`api.ogt` line 1750</sub>
+<sub>`api.ogt` line 1742</sub>
 
 <a id="member-Rng-integer"></a>
 
@@ -171,7 +172,7 @@ fn integer {
 }
 ```
 
-<sub>`api.ogt` line 1756</sub>
+<sub>`api.ogt` line 1748</sub>
 
 <a id="member-Rng-chance"></a>
 
@@ -199,7 +200,7 @@ fn chance {
 }
 ```
 
-<sub>`api.ogt` line 1762</sub>
+<sub>`api.ogt` line 1754</sub>
 
 <a id="member-Rng-weighted"></a>
 
@@ -227,7 +228,7 @@ fn weighted {
 }
 ```
 
-<sub>`api.ogt` line 1767</sub>
+<sub>`api.ogt` line 1759</sub>
 
 <a id="member-Rng-permutation"></a>
 
@@ -255,7 +256,7 @@ fn permutation {
 }
 ```
 
-<sub>`api.ogt` line 1772</sub>
+<sub>`api.ogt` line 1764</sub>
 
 <a id="member-Rng-fork"></a>
 
@@ -283,7 +284,7 @@ fn fork {
 }
 ```
 
-<sub>`api.ogt` line 1777</sub>
+<sub>`api.ogt` line 1769</sub>
 
 ## Interfaces
 
@@ -299,7 +300,7 @@ interface RngStream {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1697</sub>
+<sub>`api.ogt` line 1689</sub>
 
 <a id="member-RngStream-seed"></a>
 
@@ -317,7 +318,7 @@ Binding symbol `og_rng_stream_get_seed` · publish builds: kept
 prop seed u32 "The stream's derived seed."
 ```
 
-<sub>`api.ogt` line 1699</sub>
+<sub>`api.ogt` line 1691</sub>
 
 <a id="member-RngStream-next"></a>
 
@@ -340,7 +341,7 @@ fn next {
 }
 ```
 
-<sub>`api.ogt` line 1700</sub>
+<sub>`api.ogt` line 1692</sub>
 
 <a id="member-RngStream-range"></a>
 
@@ -370,7 +371,7 @@ fn range {
 }
 ```
 
-<sub>`api.ogt` line 1704</sub>
+<sub>`api.ogt` line 1696</sub>
 
 <a id="member-RngStream-integer"></a>
 
@@ -400,7 +401,7 @@ fn integer {
 }
 ```
 
-<sub>`api.ogt` line 1710</sub>
+<sub>`api.ogt` line 1702</sub>
 
 <a id="member-RngStream-chance"></a>
 
@@ -428,7 +429,7 @@ fn chance {
 }
 ```
 
-<sub>`api.ogt` line 1716</sub>
+<sub>`api.ogt` line 1708</sub>
 
 <a id="member-RngStream-weighted"></a>
 
@@ -456,7 +457,7 @@ fn weighted {
 }
 ```
 
-<sub>`api.ogt` line 1721</sub>
+<sub>`api.ogt` line 1713</sub>
 
 <a id="member-RngStream-permutation"></a>
 
@@ -484,7 +485,7 @@ fn permutation {
 }
 ```
 
-<sub>`api.ogt` line 1726</sub>
+<sub>`api.ogt` line 1718</sub>
 
 <a id="member-RngStream-fork"></a>
 
@@ -512,4 +513,4 @@ fn fork {
 }
 ```
 
-<sub>`api.ogt` line 1731</sub>
+<sub>`api.ogt` line 1723</sub>
