@@ -1,6 +1,6 @@
 //! The wgpu compute path against the CPU path, on the fixture of
-//! `reference.rs` (needs a GPU adapter: the runners' Metal and DX12; an orb
-//! runs no GPU test). Tokens and counts must be equal; the motion agrees
+//! `reference.rs` (a missing GPU adapter fails on every host).
+//! Tokens and counts must be equal; the motion agrees
 //! within float reordering.
 
 use og_motion::contract::{FRAMES, MOTION_FEATURES};

@@ -8,8 +8,7 @@
 //! lights the fluid; the basin's wall hides the fluid behind it.
 
 use og_render::{RenderScene, RenderTarget, Renderer, RgbaImage};
-use og_tests::{gfx, p2_scenes, scenes};
-use std::path::PathBuf;
+use og_tests::{p2_scenes, scenes};
 
 fn frame(edit: impl FnOnce(&mut RenderScene)) -> RgbaImage {
     let mut scene = p2_scenes::fluid_3d_scene();
@@ -64,28 +63,6 @@ fn diff(a: &RgbaImage, b: &RgbaImage, r: Rect) -> f32 {
         / (area(r) * 3.0)
 }
 
-/// The mean absolute Laplacian of luma over a rectangle: how bumpy it is
-/// from pixel to pixel.
-fn roughness(img: &RgbaImage, (x0, y0, x1, y1): Rect) -> f32 {
-    let l = |x: u32, y: u32| luma(pixels(img, (x, y, x + 1, y + 1)).next().unwrap());
-    let mut sum = 0.0;
-    for y in y0 + 1..y1 - 1 {
-        for x in x0 + 1..x1 - 1 {
-            sum += (4.0 * l(x, y) - l(x - 1, y) - l(x + 1, y) - l(x, y - 1) - l(x, y + 1)).abs();
-        }
-    }
-    sum / ((x1 - x0 - 2) * (y1 - y0 - 2)) as f32
-}
-
-#[test]
-fn fluid_3d_matches_its_reference() {
-    let out = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-gfx");
-    match gfx::check("fluid-3d", &out) {
-        Ok(report) => println!("{report}"),
-        Err(e) => panic!("{e}"),
-    }
-}
-
 #[test]
 fn the_pool_tints_shows_through_and_refracts_what_lies_behind_it() {
     let wet = frame(|_| {});
@@ -130,37 +107,4 @@ fn the_drop_is_drawn_in_its_particles_colours() {
         top[1] > bottom[1] + 30.0,
         "orange above red: {top:?} over {bottom:?}"
     );
-}
-
-#[test]
-fn smoothing_melts_the_spheres_into_one_surface() {
-    let smooth = roughness(&frame(|_| {}), POOL);
-    let beads = roughness(&frame(|s| s.fluids_3d[0].smoothing = 0.0), POOL);
-    assert!(
-        beads > smooth * 2.0,
-        "unsmoothed spheres are bumpy: {beads} vs {smooth}"
-    );
-}
-
-#[test]
-fn a_local_light_lights_the_fluid() {
-    let lit = frame(|_| {});
-    let unlit = frame(|s| s.lights.clear());
-    let change = diff(&lit, &unlit, DROP);
-    assert!(
-        change > 3.0,
-        "the orange point light reaches the drop: {change}"
-    );
-}
-
-#[test]
-fn the_basin_wall_hides_the_fluid_behind_it() {
-    let wet = frame(|_| {});
-    let dry = frame(|s| s.fluids_3d.clear());
-    // The pool reaches down to the front wall's top edge (row 470) ...
-    let above = diff(&wet, &dry, (300, 440, 1000, 468));
-    assert!(above > 10.0, "the pool is drawn above the wall: {above}");
-    // ... and the wall's top and face, in front of it, are untouched.
-    let wall = diff(&wet, &dry, (300, 474, 1000, 540));
-    assert!(wall < 0.5, "the wall hides the pool: {wall}");
 }

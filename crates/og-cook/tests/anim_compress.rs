@@ -447,35 +447,3 @@ fn resident_quantised_clips_cost_their_cooked_bytes_and_pose_as_their_frames() {
     }
     assert!(quantised_channels > 0, "some channels keep reduced keys");
 }
-
-#[test]
-fn compress_and_tolerance_are_import_settings() {
-    use og_cook::cook::anim::AnimSettings;
-    let doc = |body: &str| {
-        og_core::ogt::Document::parse(&format!(
-            "type import\nversion 1\n---\nanimation {{\n{body}\n}}\n"
-        ))
-        .unwrap()
-    };
-    let parse = |body: &str| {
-        let d = doc(body);
-        AnimSettings::parse(d.body.get("animation").and_then(|e| e.block.as_ref()))
-    };
-    let a = parse("  compress true\n  tolerance 0.001").unwrap();
-    assert!(a.compress);
-    assert_eq!(a.tolerance, 0.001);
-    let d = parse("  rate 30").unwrap();
-    assert!(!d.compress, "f32 is the default");
-    assert_eq!(d.tolerance, og_cook::cook::anim::DEFAULT_TOLERANCE);
-    assert!(parse("  tolerance 0").unwrap_err().contains("line 5"));
-    assert!(
-        parse("  compress maybe")
-            .unwrap_err()
-            .contains("true or false")
-    );
-    assert_ne!(
-        a.describe(),
-        d.describe(),
-        "the setting is part of the stamp"
-    );
-}

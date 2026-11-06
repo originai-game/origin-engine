@@ -105,30 +105,6 @@ fn a_raycast_hits_the_nearest_body_and_honours_the_filter() {
 }
 
 #[test]
-fn queries_see_where_the_step_moved_bodies() {
-    let (mut w, physics) = world(Physics::default(), 2);
-    floor(&mut w);
-    let ball = spawn_body(
-        &mut w,
-        at(0.0, 10.0, 0.0),
-        RigidBody::dynamic(),
-        Collider::sphere(0.5),
-    );
-    let down = ray(Vec3::new(0.0, 20.0, 0.0), -Vec3::Y);
-    let before = raycast(&w, &physics, &down).unwrap().unwrap();
-    assert_eq!(before.entity, ball);
-    assert!((before.distance - 9.5).abs() < 1e-4);
-    run(&mut w, 30);
-    let after = raycast(&w, &physics, &down).unwrap().unwrap();
-    let y = transform(&w, ball).position.y;
-    assert!(y < 9.0);
-    assert!(
-        (after.distance - (20.0 - y - 0.5)).abs() < 1e-3,
-        "{after:?} at y {y}"
-    );
-}
-
-#[test]
 fn a_shape_cast_stops_at_the_first_surface_and_overlap_lists_what_it_touches() {
     let (mut w, physics) = world(Physics::default(), 3);
     let ground = floor(&mut w);

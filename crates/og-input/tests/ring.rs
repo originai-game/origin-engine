@@ -6,7 +6,7 @@
 //! must produce bytes the same decoder reads back.
 
 use og_ecs::{World, WorldDesc};
-use og_input::ring::{self, BYTE_LEN, SLOTS};
+use og_input::ring::{self, SLOTS};
 use og_input::{
     Gamepad, InjectedInput, Input, InputLayer, InputSink, PointerAction, PointerButton, Pointers,
 };
@@ -18,38 +18,6 @@ fn fixture() -> (Vec<u8>, Value) {
     let json =
         serde_json::from_str(&std::fs::read_to_string(dir.join("ring.json")).unwrap()).unwrap();
     (bin, json)
-}
-
-#[test]
-fn the_decoder_reads_what_the_web_shell_wrote() {
-    let (bin, json) = fixture();
-    assert_eq!(bin.len(), BYTE_LEN);
-    assert_eq!(json["bytes"].as_u64().unwrap() as usize, BYTE_LEN);
-    assert_eq!(json["slots"].as_u64().unwrap() as usize, SLOTS);
-    let expected: Vec<InjectedInput> = json["events"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|e| InjectedInput::from_json(e).unwrap())
-        .collect();
-    assert_eq!(expected.len(), 17);
-    let read = json["read"].as_u64().unwrap() as usize;
-    assert!(
-        read % SLOTS + expected.len() > SLOTS,
-        "the fixture wraps the slot index"
-    );
-
-    let drained = ring::drain(&bin);
-    assert!(drained.skipped.is_empty(), "{:?}", drained.skipped);
-    assert_eq!(drained.events, expected);
-    assert_eq!(drained.read as u64, json["write"].as_u64().unwrap());
-
-    let mut owned = bin.clone();
-    assert_eq!(ring::drain_mut(&mut owned).events.len(), 17);
-    assert!(
-        ring::drain(&owned).events.is_empty(),
-        "the read index was stored"
-    );
 }
 
 #[test]

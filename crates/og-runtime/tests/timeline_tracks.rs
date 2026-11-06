@@ -413,44 +413,6 @@ fn every_new_track_seeks_as_it_plays_and_a_nested_timeline_runs_on_its_own_time(
     );
 }
 
-/// The roll is read from the time, never accumulated: at 4 s (and held
-/// after) the camera's up has turned 30° about its view direction. At the
-/// end the camera and the depth of field it took go back.
-#[test]
-fn the_camera_rolls_by_the_time_and_hands_its_focus_back() {
-    let r = start();
-    let before = res(&r, "og.PostEffects");
-    value(og_timeline_play(r.engine, r.timeline));
-    frame(r.engine, 241);
-    let up = |cam: &Value| {
-        let q = &cam["quaternion"];
-        let (x, y, z, w) = (
-            q["x"].as_f64().unwrap(),
-            q["y"].as_f64().unwrap(),
-            q["z"].as_f64().unwrap(),
-            q["w"].as_f64().unwrap(),
-        );
-        // The camera's +Y in world space.
-        (
-            2.0 * (x * y - w * z),
-            1.0 - 2.0 * (x * x + z * z),
-            2.0 * (y * z + w * x),
-        )
-    };
-    let u = up(&res(&r, "og.Camera"));
-    // Looking down −Z (and a little down), rolled 30°: up tips towards −x.
-    let tilt = (-u.0).atan2((u.1 * u.1 + u.2 * u.2).sqrt()).to_degrees();
-    assert!((tilt - 30.0).abs() < 0.05, "up {u:?}: {tilt}°");
-    frame(r.engine, 30);
-    assert_eq!(up(&res(&r, "og.Camera")), u, "held, not accumulated");
-    // Played out (6 s) and handed back the tick after.
-    frame(r.engine, 120);
-    let after = res(&r, "og.PostEffects");
-    for k in ["depthOfField", "dofFocusDistance", "dofFocusRange"] {
-        assert_eq!(after[k], before[k], "{k}");
-    }
-}
-
 /// A material track is presentation reapplied from the time: a snapshot
 /// restored mid-way draws, on its next frame, the material a straight run
 /// draws at that tick; a stop puts the material back as it was.

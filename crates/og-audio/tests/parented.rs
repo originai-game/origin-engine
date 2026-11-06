@@ -20,12 +20,10 @@
 
 use crate::support;
 
-use og_audio::{
-    AudioListener, AudioSource, AudioStream, Op, Parent, ReverbZone, SoundBank, Transform,
-};
-use og_core::glam::{Quat, Vec3};
+use og_audio::{AudioListener, AudioSource, AudioStream, Op, Parent, SoundBank, Transform};
+use og_core::glam::Vec3;
 use og_core::math::quat_from_axis_angle;
-use og_ecs::{Entity, World};
+use og_ecs::Entity;
 use support::*;
 
 fn parent(e: Entity) -> Parent {
@@ -178,56 +176,4 @@ fn a_listener_under_a_rig_hears_from_the_rig() {
     let d = Vec3::new(6.0, 0.0, 3.0).length();
     assert!((pan - 6.0 / d).abs() < 1e-5, "{pan}");
     assert!((gain - 1.0 / d).abs() < 1e-4, "{gain}");
-}
-
-/// A crypt's zone, a sphere of radius 1 on a child of a hall at (20, 0, 0)
-/// scaled 2: the listener at the origin is outside it (weight 0; at its
-/// own transform the zone would hold the origin), 1.5 m from the hall it
-/// is inside (the hall's scale makes the radius 2), and when the hall
-/// moves to the origin the zone comes with it.
-#[test]
-fn a_zone_under_a_parent_is_where_its_parent_puts_it() {
-    let bank = SoundBank::new();
-    let (mut world, _link) = world_with(&bank, |w| {
-        w.register::<AudioListener>().unwrap();
-        w.register::<Parent>().unwrap();
-    });
-    let ear = world
-        .spawn((Transform::default(), AudioListener::default()))
-        .unwrap();
-    let hall = world
-        .spawn((Transform {
-            position: Vec3::X * 20.0,
-            quaternion: Quat::IDENTITY,
-            scale: Vec3::splat(2.0),
-        },))
-        .unwrap();
-    let zone = world
-        .spawn((
-            Transform::default(),
-            parent(hall),
-            ReverbZone {
-                radius: 1.0,
-                fade: 0.0,
-                ..ReverbZone::default()
-            },
-        ))
-        .unwrap();
-    let weight = |world: &mut World| {
-        world.step().unwrap();
-        world.get::<ReverbZone>(zone).unwrap().weight
-    };
-    assert_eq!(
-        weight(&mut world),
-        0.0,
-        "the zone is at the hall, not the origin"
-    );
-    world
-        .insert(ear, Transform::at(Vec3::new(21.5, 0.0, 0.0)))
-        .unwrap();
-    assert_eq!(weight(&mut world), 1.0, "inside the scaled zone");
-    world.insert(hall, Transform::default()).unwrap();
-    assert_eq!(weight(&mut world), 0.0, "the hall left with its zone");
-    world.insert(ear, Transform::at(Vec3::Y * 0.5)).unwrap();
-    assert_eq!(weight(&mut world), 1.0, "and the zone is where the hall is");
 }

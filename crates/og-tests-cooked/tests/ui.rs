@@ -3,20 +3,6 @@
 
 use og_tests_cooked::gfx::{self, Rendered};
 use og_tests_cooked::scenes::{self, GfxScene};
-use std::path::PathBuf;
-
-fn out_dir() -> PathBuf {
-    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("gfx");
-    std::fs::create_dir_all(&dir).expect("out dir");
-    dir
-}
-
-fn check(scene: &str) {
-    match gfx::check(scene, &out_dir()) {
-        Ok(report) => println!("{report}"),
-        Err(e) => panic!("{e}"),
-    }
-}
 
 fn render(scene: &str) -> Rendered {
     let mut built: GfxScene = scenes::build(scene).expect("scene");
@@ -29,11 +15,6 @@ fn px(r: &Rendered, x: u32, y: u32) -> [f32; 3] {
     let i = ((y * r.image.width + x) * 4) as usize;
     let p = &r.image.pixels;
     [f32::from(p[i]), f32::from(p[i + 1]), f32::from(p[i + 2])]
-}
-
-#[test]
-fn ui_vector_matches_its_reference() {
-    check("ui-vector");
 }
 
 /// The cooked emblem's even-odd ring keeps its hole.

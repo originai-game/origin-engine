@@ -53,10 +53,11 @@ fn diff(a: &RgbaImage, b: &RgbaImage) -> f64 {
 fn taau_resolves_the_half_scale_scene_to_the_output() {
     let scene = scenes::thin_geometry();
     let mut full = Renderer::new_blocking(&desc(Antialias::Taa)).expect("renderer");
-    if full.info().antialias != Antialias::Taa {
-        println!("skipped: TAA is not available on this adapter");
-        return;
-    }
+    assert_eq!(
+        full.info().antialias,
+        Antialias::Taa,
+        "GPU lacks TAA support"
+    );
     let reference = draw(&mut full, &scene, 32);
 
     let mut taau = Renderer::new_blocking(&desc(Antialias::Taa)).expect("renderer");
@@ -95,10 +96,11 @@ fn a_moving_object_takes_its_history_along_its_motion_vectors() {
             * Mat4::from_scale(Vec3::splat(2.0))
     };
     let mut with = Renderer::new_blocking(&desc(Antialias::Taa)).expect("renderer");
-    if with.info().antialias != Antialias::Taa {
-        println!("skipped: TAA is not available on this adapter");
-        return;
-    }
+    assert_eq!(
+        with.info().antialias,
+        Antialias::Taa,
+        "GPU lacks TAA support"
+    );
     let mut without = Renderer::new_blocking(&desc(Antialias::Taa)).expect("renderer");
     let frames = 12;
     let (mut a, mut b) = (None, None);

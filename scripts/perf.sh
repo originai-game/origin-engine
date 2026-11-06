@@ -39,12 +39,12 @@ if [ "$measure" = 1 ]; then
 fi
 
 t0="$(date +%s)"
-cargo test -p og-tests -p og-runtime --release --no-run 2>&1 | tee "$out/perf.log"
+cargo test -p og-tests -p og-runtime -p og-audio --release --no-run 2>&1 | tee "$out/perf.log"
 rc="${PIPESTATUS[0]}"
 if [ "$rc" = 0 ]; then
   og_gpu_acquire_all "scripts/perf.sh ($PWD)" || exit 1
   og_say "perf: holding every GPU slot"
-  cargo test -p og-tests -p og-runtime --release --no-fail-fast -- --ignored perf --nocapture --test-threads=1 2>&1 | tee -a "$out/perf.log"
+  cargo test -p og-tests -p og-runtime -p og-audio --release --no-fail-fast -- --ignored perf --nocapture --test-threads=1 2>&1 | tee -a "$out/perf.log"
   rc="${PIPESTATUS[0]}"
   og_lock_release
 fi

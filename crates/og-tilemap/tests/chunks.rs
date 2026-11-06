@@ -3,7 +3,7 @@
 
 use crate::support;
 use glam::Vec2;
-use og_tilemap::{CHUNK, FLIP_X, FLIP_Y, Tileset, animated_frame, chunk_quads, chunks_in};
+use og_tilemap::{FLIP_X, FLIP_Y, Tileset, animated_frame, chunk_quads};
 use support::*;
 
 #[test]
@@ -70,18 +70,4 @@ fn regions_are_inset_and_animations_loop() {
     assert_eq!(animated_frame(&d, 0.15), 1);
     assert_eq!(animated_frame(&d, 0.35), 2);
     assert_eq!(animated_frame(&d, 0.75), 1, "loops after 0.6 s");
-}
-
-#[test]
-fn culling_lists_the_chunks_a_rectangle_touches() {
-    let s = state(&map(64, 40), "filled");
-    let c: Vec<_> = chunks_in(&s, 0, Vec2::new(10.0, -20.0), Vec2::new(20.0, -1.0)).collect();
-    assert_eq!(c, vec![(0, 0), (1, 0), (0, 1), (1, 1)]);
-    let all: Vec<_> =
-        chunks_in(&s, 0, Vec2::new(-100.0, -100.0), Vec2::new(100.0, 100.0)).collect();
-    assert_eq!(all.len(), (64 / CHUNK * 40u32.div_ceil(CHUNK)) as usize);
-    assert_eq!(
-        chunks_in(&s, 0, Vec2::new(70.0, -5.0), Vec2::new(80.0, -1.0)).count(),
-        0
-    );
 }

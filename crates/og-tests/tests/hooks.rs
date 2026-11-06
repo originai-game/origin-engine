@@ -10,12 +10,7 @@ use og_render::{
     SkinnedInstance, StandardMaterial, shapes,
 };
 use og_tests::compare::{Tolerance, compare};
-use og_tests::{fx_scenes, gfx, p2_scenes, scenes};
-use std::path::PathBuf;
-
-fn out_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-gfx")
-}
+use og_tests::{fx_scenes, p2_scenes, scenes};
 
 fn frame(scene: &RenderScene) -> RgbaImage {
     let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
@@ -127,31 +122,4 @@ fn an_offset_skinned_mesh_draws_shadows_and_occludes_where_it_moved() {
     let (off, rmse) = diff(&shader, &transform);
     println!("{off} pixels more than 8 apart, RMSE {rmse:.5}");
     assert!(off < 40 && rmse < 0.002, "{off} pixels, RMSE {rmse:.5}");
-}
-
-/// A skinned mesh draws with its material shader's colour: the banded
-/// cylinders of `skinned-hooks` are not the plain ones of `skinning`.
-#[test]
-fn skinned_hooks_match_their_reference() {
-    match gfx::check("skinned-hooks", &out_dir()) {
-        Ok(r) => println!("{r}"),
-        Err(e) => panic!("{e}"),
-    }
-    let hooked = frame(&p2_scenes::skinned_hooks_scene());
-    let plain = frame(&fx_scenes::skinning_scene());
-    // Gold bands: pixels far more yellow than the plain pink flesh.
-    let gold = |img: &RgbaImage| {
-        img.pixels
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .filter(|p| p[0] > 150 && p[1] > 140 && p[2] < 110)
-            .count()
-    };
-    let (g, p) = (gold(&hooked), gold(&plain));
-    println!("gold pixels: hooked {g}, plain {p}");
-    assert!(
-        g > p + 500,
-        "the skinned cylinders were not banded ({g} against {p})"
-    );
 }

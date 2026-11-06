@@ -79,3 +79,61 @@ The full, untrimmed nextest suite passed: **2787 passed, 26 ignored**,
 a single shared-runner validation, not a controlled speed-up comparison.
 Existing GPU comparisons passed without recording any references. The
 pending category cuts were set aside throughout this validation.
+
+## Engine category cuts
+
+The retained integration modules cover each existing feature file with a
+small representative set rather than every variant. Determinism, snapshot
+restore and byte-contract checks remain. Variant-heavy GPU/layout cases,
+one-off regressions and repeated constructor/validation cases were removed
+by category. Audio mix and runtime extraction cost assertions are ignored
+`perf_*` tests, selected only by the wave-end perf runner.
+
+The engine keeps 54 reference PNGs: 37 renderer feature representatives,
+12 UI frames and five existing DX12/Vulkan references for retained scenes.
+Those five preserve documented backend differences at unchanged tolerance;
+they are not additional feature scenarios. The cooked reference matrix
+names the renderer features explicitly. Package-owned kit/style PNGs are
+outside this selection.
+GPU capability failures and unchecked playtest frames now fail rather
+than pass, and the CPU-Vulkan tolerated-divergence exception is removed.
+
+`scripts/test-inventory.py --base 5387f79db` reports:
+
+| Engine measure | Before | After |
+|---|---:|---:|
+| Textual Rust `#[test]` attributes | 2820 | 1606 |
+| Rust integration-source lines | 136651 | 79588 |
+| Engine reference PNGs | 260 | 54 |
+| Engine reference bytes | 89081222 | 14863841 |
+
+The source reduction is 41.8%. The inventory's package-frame reduction
+belongs to the separately landed kit stream, not this cut. Playtest cuts
+are not included yet. Every crate that previously had Rust tests retains
+tests; macro-generated tests are counted by nextest, not the textual count.
+
+Validation on the pinned nightly: **1608 passed, 28 ignored**, 80.679 s
+nextest execution and 85.05 s including incremental build. The GPU-slot
+queue preceded the timed command. This single shared-runner run is not a
+controlled comparison with the 332.373 s pre-cut run above.
+
+Quick passed in 54.70 s with unchanged-input GPU and drift caching:
+1015 passed, 7 ignored. The preceding uncached quick run passed Rust, fmt,
+clippy and drift but failed three create-package checks because the copied
+native `og` still rejected the newer `mood` grammar. Refreshing native
+artifacts from this checkout fixed all three (28 create checks passed).
+Neither that failed run nor the cached quick time measures a full-lane
+speed-up. Gate missing-wasm guards also passed every case.
+
+### One retained reference was stale
+
+`crates/og-tests/references/metal/stylise-print.png` was recorded on Metal
+at `fc9a08bb6` from source `845bd197f`, not on Chrome. It predates the
+intentional hatch wash/fade change `7ee65c714`. The newly retained feature
+comparison exposed the same historical difference noted at wave-end:
+5.7386% outliers, RMSE 0.05095. Inspection found the same scene and geometry
+with lighter hatch strokes. It was re-recorded on Metal, losslessly
+recompressed and then passed the normal comparison. No tolerance changed.
+This is the sole intentional retained-PNG change; do not describe all
+retained frames as unchanged. Raw validation is in
+`target/evidence/test-restructure/{print-reference,reduced-nextest-final}.log`.

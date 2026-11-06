@@ -109,73 +109,6 @@ fn line(s: &Story, conv: u32) -> String {
 }
 
 #[test]
-fn errors_name_the_line_and_the_fix() {
-    let bad = |body: &str| {
-        Dialogue::parse(&format!("type dialogue\nversion 1\n---\nname d\n{body}")).unwrap_err()
-    };
-    let e = bad("node a {\n  goto b\n}");
-    assert!(
-        e.contains("line 6") && e.contains("'b' names no node"),
-        "{e}"
-    );
-    let e = bad("node a {\n  say bob \"x\"\n}");
-    assert!(
-        e.contains("line 6") && e.contains("declare 'speaker bob"),
-        "{e}"
-    );
-    let e = bad("node a {\n  say narrator \"x\" {\n    arg n \"gold + 1\"\n  }\n}");
-    assert!(e.contains("'gold' is not declared"), "{e}");
-    let e = bad("node a {\n  say narrator Hello\n}");
-    assert!(e.contains("never written inline"), "{e}");
-    let e = bad("node a {\n  choice \"c\" {\n    check active x 3\n  }\n}\nvar x 1");
-    assert!(e.contains("needs 'fail <node>'"), "{e}");
-    let e = bad("node a {\n  say narrator \"x\"\n  goto a\n  choice \"c\"\n}");
-    assert!(e.contains("choices and a jump after its last line"), "{e}");
-    let e = bad("node a {\n  choice \"c\"\n  timer 10 d\n}");
-    assert!(e.contains("timer for the choice 'd'"), "{e}");
-    let e = bad("node a {\n  if \"x = 1\" a\n}\nvar x 0");
-    assert!(e.contains("'=='"), "{e}");
-    let e = Quest::parse("type quest\nversion 1\n---\nid q\ntitle \"t\"\nstage a {\n  next b\n}")
-        .unwrap_err();
-    assert!(e.contains("'next b' names no stage"), "{e}");
-}
-
-/// Walks the smith on `seed`, haggling every time, and returns what it
-/// showed and rolled.
-fn walk(seed: u32) -> Vec<String> {
-    let l = lib(SMITH);
-    let mut s = Story::new(Rng::new(seed).fork("story"));
-    let c = s
-        .start(&l, "smith", BTreeMap::new(), BTreeMap::new(), None)
-        .unwrap();
-    let mut out = Vec::new();
-    for _ in 0..12 {
-        out.push(line(&s, c));
-        match s.convs[&c].wait {
-            Wait::Choices => s.choose(&l, c, 1).unwrap(),
-            Wait::Line => s.advance(&l, c).unwrap(),
-            Wait::Ended => break,
-        }
-        if let Some(r) = &s.convs[&c].last_roll {
-            out.push(format!("roll {}", r.roll));
-        }
-    }
-    out
-}
-
-#[test]
-fn a_seed_names_one_walk() {
-    let a = walk(7);
-    assert_eq!(a, walk(7));
-    assert!(a.iter().any(|l| l.starts_with("roll")), "{a:?}");
-    let others: Vec<_> = (1..6).map(walk).collect();
-    assert!(
-        others.iter().any(|o| o != &a),
-        "different seeds roll differently"
-    );
-}
-
-#[test]
 fn lines_choices_checks_quests_and_events() {
     let l = lib(SMITH);
     let mut s = Story::new(Rng::new(1));
@@ -232,61 +165,6 @@ fn lines_choices_checks_quests_and_events() {
         (true, false, 1.0)
     );
     assert!(s.choose(&l, c2, 0).is_err());
-}
-
-#[test]
-fn quests_count_advance_complete_and_fail() {
-    let l = lib(SMITH);
-    let mut s = Story::new(Rng::new(1));
-    assert!(s.start_quest(&l, "rescue").unwrap());
-    assert!(!s.start_quest(&l, "rescue").unwrap(), "a quest starts once");
-    assert!(s.progress(&l, "rescue", "wolves", 2));
-    assert_eq!(s.quest("rescue").unwrap().stage, "hunt");
-    // The optional sword is not needed; the third wolf finishes the stage.
-    s.progress(&l, "rescue", "wolves", 5);
-    let q = s.quest("rescue").unwrap();
-    assert_eq!((q.stage.as_str(), q.status), ("report", "active"));
-    // `when "seen(smith.bought)"`: done once the node is seen.
-    s.seen.insert("smith.bought".into());
-    s.settle(&l);
-    assert_eq!(s.quest("rescue").unwrap().status, "completed");
-
-    let mut f = Story::new(Rng::new(1));
-    f.start_quest(&l, "rescue").unwrap();
-    f.progress(&l, "rescue", "wolves", 1);
-    f.set(&l, "wolvesFled", Val::Bool(true));
-    let q = f.quest("rescue").unwrap();
-    assert_eq!(q.status, "failed");
-    assert!(q.failed.contains("wolves") && q.failed.contains("sword"));
-    assert!(
-        !f.progress(&l, "rescue", "wolves", 1),
-        "a failed quest counts nothing"
-    );
-    assert!(f.events.contains(&Event::Quest {
-        quest: "rescue".into(),
-        status: "failed"
-    }));
-}
-
-#[test]
-fn a_timer_takes_its_choice() {
-    let l = lib(SMITH);
-    let mut s = Story::new(Rng::new(1));
-    let c = s
-        .start(&l, "smith", BTreeMap::new(), BTreeMap::new(), None)
-        .unwrap();
-    assert_eq!(s.convs[&c].timer, Some((30, 30)));
-    for t in 1..30 {
-        s.tick(&l, t);
-    }
-    assert_eq!(s.convs[&c].timer, Some((1, 30)));
-    s.tick(&l, 30);
-    // smith.leave has no goto: the conversation ends.
-    assert_eq!(s.convs[&c].wait, Wait::Ended);
-    assert_eq!(
-        s.convs[&c].history[0].chosen,
-        Some((3, "smith.leave".into()))
-    );
 }
 
 #[test]

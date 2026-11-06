@@ -40,40 +40,6 @@ fn differs(a: &RgbaImage, b: &RgbaImage, (x0, y0, x1, y1): (u32, u32, u32, u32))
     sum / ((x1 - x0) * (y1 - y0) * 3) as f32
 }
 
-#[test]
-fn the_courtyard_matches_its_reference() {
-    match gfx::check("visual-bodies", &out_dir()) {
-        Ok(report) => println!("{report}"),
-        Err(e) => panic!("{e}"),
-    }
-}
-
-#[test]
-fn the_garment_matches_its_reference() {
-    match gfx::check("visual-garment", &out_dir()) {
-        Ok(report) => println!("{report}"),
-        Err(e) => panic!("{e}"),
-    }
-}
-
-/// A grinder's sparks, compute particles meeting the scene's colliders:
-/// they ricochet off a steel block, a ball and the floor.
-#[test]
-fn the_sparks_match_their_reference() {
-    match gfx::check("visual-particles", &out_dir()) {
-        Ok(report) => println!("{report}"),
-        Err(e) => panic!("{e}"),
-    }
-}
-
-#[test]
-fn the_fluid_matches_its_reference() {
-    match gfx::check("visual-fluid", &out_dir()) {
-        Ok(report) => println!("{report}"),
-        Err(e) => panic!("{e}"),
-    }
-}
-
 /// A visual fluid is simulated on the GPU from its spawn box: after its
 /// ticks the block has fallen from the basin's left end and the water has
 /// reached the far side, where the still block (what a device without

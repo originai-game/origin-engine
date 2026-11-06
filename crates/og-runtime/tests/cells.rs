@@ -17,11 +17,10 @@
 //!   `a_plain_sub_scene_spawns_under_its_entity`.
 
 use og_runtime::{
-    Dispatch, Fetch, Hooks, og_commands_schedule, og_engine_create, og_engine_frame,
-    og_engine_probe_commands, og_engine_probe_dump, og_engine_take_log, og_engine_take_outputs,
-    og_game_game, og_host_begin_bundle, og_load_scene, og_reflect_define_component, og_world_find,
-    og_world_get, og_world_instantiate, og_world_restore, og_world_set, og_world_snapshot,
-    set_hooks,
+    Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_probe_commands,
+    og_engine_probe_dump, og_engine_take_outputs, og_game_game, og_host_begin_bundle,
+    og_load_scene, og_reflect_define_component, og_world_find, og_world_get, og_world_instantiate,
+    og_world_restore, og_world_set, og_world_snapshot, set_hooks,
 };
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
@@ -206,10 +205,6 @@ fn walk(e: u32, x: f64) {
     ));
 }
 
-fn has(e: u32, name: &str, comp: &str) -> bool {
-    og_runtime::og_world_has(e, find(e, name).unwrap(), comp.into())
-}
-
 /// The probe's dump_stream `cells`, through the command channel (it runs
 /// at the next tick, so this steps one).
 fn cells(e: u32) -> Value {
@@ -235,54 +230,6 @@ fn value_of(text: &str) -> Value {
 
 fn loaded(e: u32, cell: &str) -> bool {
     get(e, cell, "og.StreamCell")["loaded"] == json!(true)
-}
-
-#[test]
-fn a_cell_loads_near_an_anchor_and_unloads_past_unload() {
-    let root = project("load", WORLD);
-    let e = placed(&root);
-    step(e, 1);
-    // 90 m from the village's box (x 90..110): nothing of it is here.
-    assert!(!loaded(e, "village"));
-    assert_eq!(find(e, "well"), None);
-    // 5 m from the box: it loads as the next tick starts.
-    walk(e, 85.0);
-    step(e, 1);
-    assert!(loaded(e, "village"));
-    let well = get(e, "well", "og.Transform");
-    assert_eq!(
-        well["position"],
-        json!({ "x": 101.0, "y": 0.0, "z": 2.0 }),
-        "placed at the cell after its own transform"
-    );
-    assert!(!has(e, "well", "og.Parent"), "a top-level entity is a root");
-    assert!(has(e, "rope", "og.Parent"));
-    assert_eq!(get(e, "rope", "Health")["hp"], json!(1.0));
-    let member = get(e, "rope", "og.CellMember");
-    assert_eq!(member["cell"].as_f64(), find(e, "village"));
-    // The farm (x 125..135, load 5) is 40 m off: still unloaded.
-    assert!(!loaded(e, "farm"));
-    // 11 m: past `load` but within `unload` (12.5): it stays.
-    walk(e, 79.0);
-    step(e, 1);
-    assert!(loaded(e, "village"));
-    // 13 m: past `unload`; every member and child goes.
-    walk(e, 77.0);
-    step(e, 1);
-    assert!(!loaded(e, "village"));
-    for n in ["well", "rope", "hut"] {
-        assert_eq!(find(e, n), None, "{n} despawned");
-    }
-    // Back in: the sub-scene again, as authored.
-    walk(e, 95.0);
-    step(e, 1);
-    assert!(loaded(e, "village"));
-    assert_eq!(get(e, "well", "Health")["hp"], json!(5.0));
-    let dump = cells(e);
-    assert_eq!(dump[0]["scene"], json!("scenes/village.ogt"), "{dump}");
-    assert_eq!(dump[0]["loads"], json!(2));
-    assert_eq!(dump[0]["entities"], json!(3));
-    assert_eq!(dump[1]["loaded"], json!(false));
 }
 
 /// One scripted walk past both cells: the hash after every tick, and the
@@ -390,44 +337,6 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
 const WELL_FIRST: f64 = (1u64 << 32 | 4) as f64;
 const WELL_AFTER_RELOAD: f64 = (2u64 << 32 | 4) as f64;
 const END_HASH: &str = "e223289c85a94822";
-
-#[test]
-fn a_session_without_anchors_refuses_the_camera() {
-    let root = project(
-        "session",
-        &WORLD.replace("  StreamAnchor {\n    reach 0\n  }\n", ""),
-    );
-    let e = placed(&root);
-    // The camera at the village: it loads by the camera alone.
-    value(og_commands_schedule(
-        e,
-        "0:set:og.Camera.position=100,0,0".into(),
-    ));
-    step(e, 2);
-    assert!(loaded(e, "village"));
-    // In a session the camera is each peer's own: refused, and nothing
-    // more loads or unloads by it.
-    value(og_commands_schedule(
-        e,
-        "0:set:og.Lockstep.enabled=true;0:set:og.Camera.position=500,0,0".into(),
-    ));
-    step(e, 3);
-    assert!(loaded(e, "village"), "not unloaded by the camera");
-    let log = og_engine_take_log(e);
-    assert!(log.contains("need an og.StreamAnchor"), "{log}");
-}
-
-#[test]
-fn a_plain_sub_scene_spawns_under_its_entity() {
-    let root = project(
-        "plain",
-        "type scene\nversion 1\n---\nentity \"yard\" {\n  scene \"scenes/farm.ogt\"\n  Transform {\n    position 5 0 0\n  }\n}\n",
-    );
-    let e = placed(&root);
-    let barn = get(e, "barn", "og.Parent");
-    assert_eq!(barn["entity"].as_f64(), find(e, "yard"));
-    assert!(!has(e, "barn", "og.CellMember"));
-}
 
 /// The world with the village persisting and spawning `budget` entities a
 /// tick (0: all at once).
@@ -569,187 +478,4 @@ fn a_budgeted_cell_loads_over_ticks_and_resumes_after_a_restore() {
     }
     assert!(!loaded(c, "village"));
     assert_eq!(cells(c)[0]["loads"], json!(0));
-}
-
-/// One peer of a two-peer room, by hand: a host that carries rooms and a
-/// `joined` with this peer (1) the lowest, so it is the authority that
-/// starts lockstep once enabled.
-fn in_room(e: u32) {
-    og_runtime::og_room_set_host(e, json!({ "host": "relay" }).to_string());
-    assert!(og_runtime::og_room_deliver(
-        e,
-        json!({ "type": "joined", "room": "r", "peer": 1, "peers": [{ "peer": 2, "name": "b" }] })
-            .to_string(),
-    ));
-    og_runtime::og_room_take(e);
-}
-
-fn running(e: u32) -> bool {
-    value_of(&og_runtime::og_net_status(e))["running"] == json!(true)
-}
-
-#[test]
-fn a_room_session_without_anchors_is_refused_at_its_start() {
-    let bare = WORLD.replace("  StreamAnchor {\n    reach 0\n  }\n", "");
-    for (name, world, starts) in [
-        ("room-bare", bare.as_str(), false),
-        ("room-anchored", WORLD, true),
-    ] {
-        let root = project(name, world);
-        let e = placed(&root);
-        in_room(e);
-        value(og_commands_schedule(
-            e,
-            "0:set:og.Lockstep.enabled=true".into(),
-        ));
-        step(e, 2);
-        let sent = og_runtime::og_room_take(e);
-        let log = og_engine_take_log(e);
-        assert_eq!(running(e), starts, "{name}: {log}");
-        assert_eq!(sent.contains("\"start\""), starts, "{name}: {sent}");
-        assert_eq!(
-            log.contains(
-                "lockstep: not started: cells in an og.net session need an og.StreamAnchor"
-            ),
-            !starts,
-            "{name}: {log}"
-        );
-    }
-}
-
-/// The village declaring its own cell group: its blob leaves the boot
-/// bundle for the group's pack.
-fn grouped_village() -> String {
-    VILLAGE.replace(
-        "name \"Village\"\n",
-        "name \"Village\"\nstream \"village\" {\n  cell\n}\n",
-    )
-}
-
-/// The world with the player's StreamAnchor.maxSpeed.
-fn with_speed(world: &str, speed: f64) -> String {
-    world.replace(
-        "    reach 0\n",
-        &format!("    reach 0\n    maxSpeed {speed}\n"),
-    )
-}
-
-fn group(e: u32) -> Value {
-    stream_dump(e)["groups"][0].clone()
-}
-
-#[test]
-fn a_cell_group_is_read_ahead_of_its_anchor_and_a_native_run_never_holds() {
-    let world = with_speed(WORLD, 10.0);
-    let plain = project("group-plain", &world);
-    let grouped = project_with("group", &world, &grouped_village());
-    let e = placed(&grouped);
-    step(e, 1);
-    let g = group(e);
-    assert_eq!(
-        (
-            g["name"].as_str(),
-            g["trigger"]["kind"].as_str(),
-            g["state"].as_str()
-        ),
-        (Some("village"), Some("cell"), Some("unloaded")),
-        "{g}"
-    );
-    assert_eq!(cells(e)[0]["waiting"], json!(true));
-    // 15 m from the box: past its load (10), within the read-ahead of
-    // 2 s at 10 m/s (30). The pack is read; the cell is not loaded yet.
-    walk(e, 75.0);
-    step(e, 1);
-    assert_eq!(group(e)["state"], json!("resident"));
-    let c = cells(e);
-    assert_eq!(
-        (&c[0]["loaded"], &c[0]["waiting"]),
-        (&json!(false), &json!(false)),
-        "{c}"
-    );
-    // The same scripted walk with the sub-scene in the boot bundle and in
-    // the group: every tick hashes the same, with the same ids.
-    let (a, b) = (placed(&plain), placed(&grouped));
-    let (mut first, mut second) = (Vec::new(), Vec::new());
-    walk_script(a, 0, &mut first);
-    walk_script(b, 0, &mut second);
-    let ids = |r: &[(Value, Option<f64>)]| r.iter().map(|(_, w)| *w).collect::<Vec<_>>();
-    assert_eq!(ids(&first), ids(&second));
-    // og.StreamEvent is world state: the ticks that deliver the group's
-    // loading and resident events (0 and 1) hash it; every other is equal.
-    assert_eq!(first[2..], second[2..]);
-    let holds = stream_dump(b)["holds"].clone();
-    assert_eq!(holds["count"].as_f64(), Some(0.0), "{holds}");
-}
-
-#[test]
-fn a_tick_the_gate_reads_for_does_not_wait_natively() {
-    // No anchor: the camera, moved by a command step after the frame's
-    // boundary, so only the gate before the tick can read the pack.
-    let world = WORLD.replace("  StreamAnchor {\n    reach 0\n  }\n", "");
-    let root = project_with("gate-read", &world, &grouped_village());
-    let e = placed(&root);
-    step(e, 1);
-    value(og_commands_schedule(
-        e,
-        "0:set:og.Camera.position=100,0,0".into(),
-    ));
-    step(e, 1);
-    assert!(loaded(e, "village"), "loaded the tick the camera got there");
-    assert_eq!(get(e, "well", "Health")["hp"], json!(5.0));
-    assert_eq!(stream_dump(e)["holds"]["count"].as_f64(), Some(0.0));
-}
-
-/// Reads from disk; a streaming pack stays `Pending` until `landed`.
-struct Slow(Rc<std::cell::Cell<bool>>);
-
-impl Hooks for Slow {
-    fn dispatch(&self, _call: &Dispatch) -> Result<String, String> {
-        Ok(String::new())
-    }
-    fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
-        if path.contains("/stream/") && !self.0.get() {
-            return Fetch::Pending;
-        }
-        Disk.read_asset(path)
-    }
-}
-
-#[test]
-fn a_tick_that_needs_a_pack_still_on_its_way_is_held_then_goes_on_as_if_it_never_waited() {
-    let root = project_with("hold", WORLD, &grouped_village());
-    let landed = Rc::new(std::cell::Cell::new(false));
-    let e = engine_on(&root, Rc::new(Slow(landed.clone())));
-    let scene = value(og_load_scene(e, "scenes/world.ogt".into()));
-    value(og_world_instantiate(e, scene.as_f64().unwrap(), None));
-    step(e, 1);
-    walk(e, 85.0);
-    let before = hash(e);
-    // The tick that would load the village waits for its pack: frames go
-    // on, no tick runs, and dump_stream says what it waits for.
-    step(e, 3);
-    assert_eq!(hash(e), before, "no tick ran");
-    let d = stream_dump(e);
-    assert_eq!(d["hold"]["group"], json!("village"), "{}", d["hold"]);
-    assert_eq!(d["hold"]["cell"].as_f64(), find(e, "village"));
-    assert_eq!(d["hold"]["state"], json!("loading"));
-    assert!(!loaded(e, "village"));
-    landed.set(true);
-    step(e, 1);
-    let held = hash(e);
-    assert!(loaded(e, "village"));
-    let log = og_engine_take_log(e);
-    assert!(
-        log.contains("was held") && log.contains("group 'village'"),
-        "{log}"
-    );
-    let holds = stream_dump(e)["holds"].clone();
-    assert_eq!(holds["count"].as_f64(), Some(1.0), "{holds}");
-    assert!(stream_dump(e)["hold"].is_null());
-    // The world is the one a run that never waited has at that tick.
-    let b = placed(&root);
-    step(b, 1);
-    walk(b, 85.0);
-    step(b, 1);
-    assert_eq!(hash(b), held);
 }

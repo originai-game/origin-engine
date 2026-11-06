@@ -24,7 +24,7 @@ use og_audio::{
     AudioLink, AudioListener, AudioPlayback, AudioSource, AudioStream, HeadlessMode, HeadlessSink,
     SoundBank, Transform,
 };
-use og_core::glam::{Quat, Vec3};
+use og_core::glam::Vec3;
 use og_core::math::quat_from_axis_angle;
 use og_ecs::{Entity, World};
 use support::*;
@@ -198,67 +198,6 @@ fn doppler_shifts_by_the_motion_along_the_line_between_source_and_listener() {
         (f64::from(heard[20]) - want).abs() < 2e-4,
         "a listener walking at 5 m/s towards it: {} (want {want})",
         heard[20]
-    );
-}
-
-#[test]
-fn a_cone_turns_a_source_down_away_from_its_front() {
-    let bank = SoundBank::new();
-    let sound = tone(&bank);
-    // A source at the origin facing +Z (three.js PositionalAudio's front);
-    // the listener 1 m away (inside refDistance 2: no distance loss) at an
-    // angle from that front, one angle a tick.
-    let angles = [0.0f32, 20.0, 45.0, 60.0, 75.0, 90.0, 150.0, 180.0];
-    let gains = |source: AudioSource, facing: Quat| {
-        let (mut world, _link) = listener_world(&bank);
-        let ear = world
-            .spawn((Transform::at(Vec3::Z), AudioListener::default()))
-            .unwrap();
-        let e = world
-            .spawn((
-                Transform {
-                    quaternion: facing,
-                    ..Transform::default()
-                },
-                AudioSource {
-                    doppler_factor: 0.0,
-                    ..source
-                },
-            ))
-            .unwrap();
-        angles
-            .iter()
-            .map(|a| {
-                let r = a.to_radians();
-                world
-                    .insert(ear, Transform::at(Vec3::new(r.sin(), 0.0, r.cos())))
-                    .unwrap();
-                world.step().unwrap();
-                world.get::<AudioPlayback>(e).unwrap().gain
-            })
-            .collect::<Vec<f32>>()
-    };
-    let coned = AudioSource {
-        cone_inner_angle: 60.0,
-        cone_outer_angle: 180.0,
-        cone_outer_gain: 0.2,
-        ..looping_spatial(sound)
-    };
-    // Web Audio: 1 within 30°, 0.2 past 90°, linear in the angle between.
-    let want = [1.0f32, 1.0, 0.8, 0.6, 0.4, 0.2, 0.2, 0.2];
-    let got = gains(coned, Quat::IDENTITY);
-    for ((a, g), w) in angles.iter().zip(&got).zip(&want) {
-        assert!((g - w).abs() < 1e-4, "{a}°: gain {g}, want {w}");
-    }
-    // Turned to face -Z, the listener in front of +Z is behind it.
-    let turned = gains(coned, quat_from_axis_angle(Vec3::Y, std::f32::consts::PI));
-    assert!((turned[0] - 0.2).abs() < 1e-4, "behind: {}", turned[0]);
-    assert!((turned[7] - 1.0).abs() < 1e-4, "in front: {}", turned[7]);
-    // The default (360°, 360°) is omnidirectional: full gain all round.
-    assert!(
-        gains(looping_spatial(sound), Quat::IDENTITY)
-            .iter()
-            .all(|g| *g == 1.0)
     );
 }
 

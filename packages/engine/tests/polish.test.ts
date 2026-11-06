@@ -350,6 +350,7 @@ export default og.game({
     // The UI laid out at that ratio (its CSS size unchanged), and the frame, where a renderer drew one, at it.
     const f = JSON.parse(readFileSync(join(out, c.uiFrame), "utf8")) as { viewport: { width: number; dpr: number }; elements: Array<{ id: string; x: number; y: number; width: number; height: number }> };
     expect(f.viewport.dpr).toBe(c.dpr);
+    if (!c.frame) throw new Error("missing GPU adapter: UI pixel-ratio check requires a rendered frame");
     if (c.frame) {
       // Drawn at the ratio: the frame is that many pixels wide, and the label's ink lies in its CSS box times it (a UI
       // drawn at 1 in the frame's top left quarter puts the centred label's ink a quarter of the way in, not there).

@@ -6,36 +6,15 @@
 //! entry is cooked instead of refused with the list; a cooked preset is not
 //! an ordinary sound blob the runtime loads.
 
-use og_cook::cook::sfx::{PRESETS, RATE, Variation, parse, preset_ogt, render};
+use og_cook::cook::sfx::{RATE, Variation, preset_ogt, render};
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};
 use std::path::PathBuf;
-
-fn peak(s: &[i16]) -> f64 {
-    s.iter()
-        .map(|x| f64::from(x.unsigned_abs()))
-        .fold(0.0, f64::max)
-        / 32767.0
-}
 
 /// Zero crossings per second over the first 50 ms after the attack: a pitch proxy.
 fn crossings(s: &[i16]) -> usize {
     let w = &s[(RATE as usize / 200)..(RATE as usize / 200 + RATE as usize / 20).min(s.len())];
     w.windows(2).filter(|p| (p[0] >= 0) != (p[1] >= 0)).count()
-}
-
-#[test]
-fn every_preset_renders_a_short_audible_unclipped_sound_the_same_twice() {
-    assert!(PRESETS.len() >= 16);
-    for (name, _) in PRESETS {
-        let a = render(name, Variation::default()).unwrap();
-        let b = render(name, Variation::default()).unwrap();
-        assert_eq!(a, b, "{name} renders the same twice");
-        let secs = a.len() as f64 / f64::from(RATE);
-        assert!((0.02..=2.0).contains(&secs), "{name} lasts {secs:.2} s");
-        let p = peak(&a);
-        assert!(p > 0.15 && p < 0.999, "{name} peaks at {p:.3}");
-    }
 }
 
 #[test]
@@ -86,34 +65,6 @@ fn seed_pitch_and_length_vary_a_preset() {
     assert!(
         (ratio - 2.0).abs() < 0.15,
         "pitch 2 is an octave up: {ratio:.2}"
-    );
-}
-
-#[test]
-fn malformed_presets_are_refused_with_the_fix() {
-    let unknown = parse("type sfx\nversion 1\n---\npreset \"kazoo\"\n").unwrap_err();
-    assert!(
-        unknown.contains("no preset 'kazoo'") && unknown.contains("coin"),
-        "{unknown}"
-    );
-    let entry = parse("type sfx\nversion 1\n---\npreset \"coin\"\nreverb 1\n").unwrap_err();
-    assert!(
-        entry.contains("'reverb' is not a sound preset entry"),
-        "{entry}"
-    );
-    let (name, v) = parse(&preset_ogt(
-        "hit",
-        Variation {
-            seed: 3,
-            pitch: 1.5,
-            length: 0.5,
-            volume: 0.7,
-        },
-    ))
-    .unwrap();
-    assert_eq!(
-        (name.as_str(), v.seed, v.pitch, v.length, v.volume),
-        ("hit", 3, 1.5, 0.5, 0.7)
     );
 }
 

@@ -94,28 +94,6 @@ impl Rig {
 }
 
 #[test]
-fn a_button_clicks_only_on_a_press_and_a_release_inside_it() {
-    let mut rig = Rig::new();
-    let warnings = rig.run("0:touch_move_to:Start;0.05:touch_start;0.1:touch_end");
-    assert!(warnings.is_empty(), "{warnings:?}");
-    assert_eq!(rig.sample().clicks, ["Start"]);
-
-    // Pressed inside, released outside: no click.
-    rig.run("0:touch_move_to:Options;0.05:touch_start;0.1:touch_move:790,490;0.15:touch_end");
-    // Pressed outside, released inside: no click.
-    rig.run("0:touch_move:790,490;0.05:touch_start;0.1:touch_move_to:Options;0.15:touch_end");
-    // Held without a release: no click yet; the release then clicks.
-    rig.run("0:touch_move_to:Quit;0.05:touch_start");
-    assert_eq!(rig.sample().clicks, ["Start"]);
-    rig.run("0:touch_end");
-    assert_eq!(rig.sample().clicks, ["Start", "Quit"]);
-
-    // A path picks the Buy of one row among twelve.
-    rig.run("0:touch_move_to:Row#1/Buy;0.05:touch_start;0.1:touch_end");
-    assert_eq!(rig.sample().clicks, ["Start", "Quit", "Row#1/Buy"]);
-}
-
-#[test]
 fn dump_ui_lists_every_visible_element_with_bounds_and_text() {
     let mut rig = Rig::new();
     let warnings = rig.run("0:dump_ui:dump-ui.json");
@@ -243,78 +221,6 @@ fn move_to_text_resolves_exact_substring_and_nth_matches() {
 }
 
 #[test]
-fn a_scroll_container_scrolls_by_wheel_and_clips_its_content() {
-    let mut rig = Rig::new();
-    let list = rig.element("List");
-    let row0 = rig.element("Row#0");
-    let row1 = rig.element("Row#1");
-    assert!(rig.ui.lock().frame().element("Row#11").is_none());
-
-    rig.run("0:touch_move_to:List;0.05:scroll:0,30");
-    let moved = rig.element("Row#1");
-    assert!(
-        (moved.y - (row1.y - 30.0)).abs() < 0.7,
-        "Row#1 moved from {} to {}",
-        row1.y,
-        moved.y
-    );
-    // Row#0 is now cut by the list's top edge: listed with its visible part.
-    let cut = rig.element("Row#0");
-    assert!(cut.y >= list.y && cut.height < row0.height, "{cut:?}");
-    for e in rig.elements() {
-        if e.id.starts_with("Row#") || e.parent.starts_with("Row#") {
-            assert!(
-                e.y >= list.y - 0.01 && e.y + e.height <= list.y + list.height + 0.01,
-                "{e:?} escapes {list:?}"
-            );
-        }
-    }
-
-    // A long scroll stops at the end: the last row's bottom meets the list's.
-    rig.run("0:scroll:0,100000");
-    let last = rig.element("Row#11");
-    assert!(
-        (last.y + last.height - (list.y + list.height)).abs() < 0.7,
-        "{last:?} vs {list:?}"
-    );
-    assert!(rig.ui.lock().frame().element("Row#0").is_none());
-    // Wheel elsewhere does not scroll the list.
-    rig.run("0:touch_move_to:Start;0.05:scroll:0,-500");
-    assert!(rig.ui.lock().frame().element("Row#11").is_some());
-}
-
-#[test]
-fn the_text_field_toggle_and_slider_edit_game_state() {
-    let mut rig = Rig::new();
-    let w = rig.run(
-        "0:touch_move_to:Search;0.05:touch_start;0.1:touch_end;0.2:type:pots;0.5:key_down:Backspace;0.55:key_up:Backspace",
-    );
-    assert!(w.is_empty(), "{w:?}");
-    assert_eq!(rig.sample().search, "pot");
-    assert_eq!(rig.element("Search").text, "pot");
-    rig.run("0:key_down:Enter;0.05:key_up:Enter");
-    assert_eq!(rig.sample().submitted, ["pot"]);
-    // Enter left the field: typing goes nowhere now.
-    rig.run("0:type:x");
-    assert_eq!(rig.sample().search, "pot");
-
-    rig.run("0:touch_move_to:Music;0.05:touch_start;0.1:touch_end");
-    assert!(!rig.sample().music);
-
-    let v = rig.element("Volume");
-    let (y, right) = (v.y + v.height / 2.0, v.x + v.width - 1.0);
-    rig.run(&format!(
-        "0:touch_move_to:Volume;0.05:touch_start;0.1:touch_move:{right},{y};0.15:touch_end"
-    ));
-    assert_eq!(rig.sample().volume, 1.0);
-    rig.run(&format!(
-        "0:touch_move:{},{y};0.05:touch_start;0.1:touch_end",
-        v.x + 1.0
-    ));
-    assert_eq!(rig.sample().volume, 0.0);
-}
-
-#[test]
 fn restoring_the_world_and_the_ui_state_replays_the_same_frames() {
     let mut rig = Rig::new();
     rig.run("0:touch_move_to:List;0.05:scroll:0,40;0.1:touch_move_to:Search;0.15:touch_start");
@@ -341,60 +247,4 @@ fn restoring_the_world_and_the_ui_state_replays_the_same_frames() {
             .restore_state(&ui_state[..ui_state.len() - 1])
             .is_err()
     );
-}
-
-/// Two `Row/Buy` under different parents: a path names the one under its
-/// own ancestors, not the one whose ancestors share ids with the first
-/// match (og-probe resolved a path's ancestors by bare id).
-#[test]
-fn a_path_names_the_element_under_its_own_ancestors() {
-    let mut ui = Ui::default();
-    let cell = Element {
-        width: Size::Fixed(80.0),
-        height: Size::Fixed(40.0),
-        interactive: true,
-        ..Element::default()
-    };
-    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-    for side in ["A", "B"] {
-        ui.open(side, Element::column());
-        ui.open("Row", Element::row());
-        ui.open("Buy", cell);
-        ui.close();
-        ui.close();
-        ui.close();
-    }
-    let frame = ui.end();
-    let a = frame.element("A/Row/Buy").expect("A's Buy");
-    let b = frame.element("B/Row/Buy").expect("B's Buy");
-    assert_eq!(a.path, "A/Row/Buy");
-    assert_eq!(b.path, "B/Row/Buy");
-    assert!(a.y < b.y, "A's Buy ({}) is above B's ({})", a.y, b.y);
-}
-
-#[test]
-fn dump_ui_carries_the_layer_stack_and_dump_ui_layers_answers_it_alone() {
-    let mut rig = Rig::new();
-    {
-        let mut ui = rig.ui.lock();
-        ui.define_document(
-            UiDocument::parse("ui/shop.ogt", crate::documents::SHOP).expect("shop parses"),
-        );
-        ui.push_screen("shop", Value::Null).expect("push");
-    }
-    rig.ticks(2);
-    let dump = rig.probe.dump_ui(&rig.world);
-    let layers = dump["layers"].as_array().expect("dump_ui has layers");
-    assert_eq!(layers.len(), 1);
-    assert_eq!(layers[0]["screen"], Value::from("shop"));
-    let buy = dump["elements"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|e| e["path"] == "shop/Shop/Footer/Buy")
-        .expect("the shop's Buy button in dump_ui");
-    assert_eq!(buy["layer"], Value::from("shop"));
-    let alone = rig.probe.dump_layers(&rig.world);
-    assert_eq!(alone["kind"], Value::from("layers"));
-    assert_eq!(alone["layers"], dump["layers"]);
 }

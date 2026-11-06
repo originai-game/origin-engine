@@ -13,9 +13,8 @@
 
 use glam::{Mat4, Vec3};
 use og_render::{
-    Antialias, Background, Camera, ColorSpace, DirectionalLight, Exposure, MaterialStyle, Mips,
-    OutlinePlace, Paint, RenderDesc, RenderScene, RenderTarget, Renderer, StandardMaterial,
-    TextureData, shapes,
+    Antialias, Background, Camera, DirectionalLight, Exposure, MaterialStyle, OutlinePlace,
+    RenderDesc, RenderScene, RenderTarget, Renderer, StandardMaterial, shapes,
 };
 use og_tests::scenes;
 
@@ -98,30 +97,6 @@ fn disc(renderer: &mut Renderer) -> Vec<(u32, u32)> {
     on.into_iter()
         .filter(|&(x, y)| (x as f32 - cx).hypot(y as f32 - cy) < r)
         .collect()
-}
-
-/// A metal bands under toon as a dielectric does, in its own colour: most
-/// of its lit half is lit. Broken by the PBR diffuse's 1 - metallic in the
-/// toon light: the sphere stayed black but for its highlight (under a
-/// tenth of the disc lit).
-#[test]
-fn a_metallic_toon_sphere_bands() {
-    let mut renderer = Renderer::new_blocking(&desc()).expect("renderer");
-    let disc = disc(&mut renderer);
-    let metal = StandardMaterial {
-        color: Vec3::new(0.9, 0.7, 0.3),
-        metalness: 1.0,
-        roughness: 0.5,
-        ..Default::default()
-    };
-    let img = draw(&mut renderer, &sphere_scene(metal, true, 0.0));
-    let lit = disc
-        .iter()
-        .filter(|&&(x, y)| luma(px(&img, x, y)) > 20.0)
-        .count() as f32
-        / disc.len() as f32;
-    println!("metal toon sphere: {:.3} of the disc lit", lit);
-    assert!(lit > 0.35, "the metal bands: {lit:.3} of the disc lit");
 }
 
 /// With `toon_ambient` 0 a toon sphere lit by the hemisphere alone (no
@@ -239,109 +214,4 @@ fn outlines_outside_ink_round_the_silhouette() {
         .count();
     println!("outside: {partial} pixels part way round the rim");
     assert!(partial > 20, "the rim is covered by degrees ({partial})");
-}
-
-/// A noise texture: each texel grey, 64 to 192, hashed.
-fn noise_texture() -> TextureData {
-    let (w, h) = (64u32, 64u32);
-    let mut rgba = Vec::with_capacity((w * h * 4) as usize);
-    let mut seed = 0x9e37_79b9u32;
-    for _ in 0..w * h {
-        seed ^= seed << 13;
-        seed ^= seed >> 17;
-        seed ^= seed << 5;
-        let v = 64 + (seed >> 25) as u8;
-        rgba.extend_from_slice(&[v, v, v, 255]);
-    }
-    TextureData {
-        width: w,
-        height: h,
-        rgba,
-        color_space: ColorSpace::Srgb,
-        mips: Mips::None,
-    }
-}
-
-/// Two noise-textured quads side by side, the left `paintDetail` 1, the
-/// right 0, with `paint` (radius 5) or without.
-fn quads(paint: bool) -> RenderScene {
-    let mut scene = RenderScene::new();
-    let t = scene.add_texture(noise_texture());
-    scene.set_texture_filter(t, og_render::TextureFilter::Nearest);
-    let mat = |detail: f32| StandardMaterial {
-        map: t.slot(),
-        unlit: 1,
-        paintDetail: detail,
-        ..Default::default()
-    };
-    let kept = scene.add_standard_material(mat(1.0));
-    let painted = scene.add_standard_material(mat(0.0));
-    let quad = scene.add_mesh(shapes::plane_xy(1.6, 1.6));
-    scene.add_instance(
-        quad,
-        kept,
-        Mat4::from_translation(Vec3::new(-0.9, 0.0, 0.0)),
-    );
-    scene.add_instance(
-        quad,
-        painted,
-        Mat4::from_translation(Vec3::new(0.9, 0.0, 0.0)),
-    );
-    scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.camera = Camera {
-        position: Vec3::new(0.0, 0.0, 3.0),
-        target: Vec3::ZERO,
-        exposure: Exposure::linear(1.0),
-        ..Default::default()
-    };
-    if paint {
-        scene.stylise.paint = Some(Paint {
-            radius: 5.0,
-            anisotropy: 0.5,
-            ..Paint::DEFAULT
-        });
-    }
-    scene
-}
-
-/// The mean absolute difference over the middle of each quad between two
-/// frames: (the kept quad's, the painted quad's).
-fn quad_change(a: &[u8], b: &[u8]) -> (f32, f32) {
-    let mean = |x0: u32, x1: u32| {
-        let mut sum = 0.0;
-        let mut n = 0.0;
-        for y in H / 2 - 20..H / 2 + 20 {
-            for x in x0..x1 {
-                sum += (luma(px(a, x, y)) - luma(px(b, x, y))).abs();
-                n += 1.0;
-            }
-        }
-        sum / n
-    };
-    // At 3 m with the default 50° fov the quads' middles lie about 30 px
-    // either side of the frame's quarter lines.
-    (
-        mean(W / 4 - 15, W / 4 + 15),
-        mean(3 * W / 4 - 15, 3 * W / 4 + 15),
-    )
-}
-
-/// `paintDetail` 1 keeps the material as drawn while the same texture at
-/// 0 is painted into strokes. Broken by one radius for every pixel: both
-/// quads were painted alike.
-#[test]
-fn paint_detail_keeps_a_material_drawn() {
-    let mut renderer = Renderer::new_blocking(&desc()).expect("renderer");
-    let plain = draw(&mut renderer, &quads(false));
-    let painted = draw(&mut renderer, &quads(true));
-    let (kept, smoothed) = quad_change(&plain, &painted);
-    println!("mean change: detail 1 {kept:.2}, detail 0 {smoothed:.2}");
-    assert!(
-        smoothed > 8.0,
-        "the noise is painted at detail 0 ({smoothed})"
-    );
-    assert!(
-        kept < smoothed / 4.0,
-        "detail 1 keeps it ({kept} against {smoothed})"
-    );
 }

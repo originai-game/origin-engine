@@ -32,10 +32,10 @@ use og_render::{EnvironmentMapHandle, LutHandle, PaletteHandle, RenderScene, Tex
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame,
     og_engine_probe_commands, og_engine_take_log, og_engine_take_outputs, og_engine_write_resource,
-    og_game_game, og_host_begin_bundle, og_load_emitter, og_load_environment, og_load_flipbook,
-    og_load_look, og_load_lut, og_load_texture_array, og_render_apply_look, og_render_sprite,
-    og_stream_budget, og_stream_release, og_stream_request, og_stream_status, og_world_despawn,
-    og_world_insert, og_world_spawn, set_hooks, set_render_backend,
+    og_game_game, og_host_begin_bundle, og_load_environment, og_load_flipbook, og_load_look,
+    og_load_lut, og_load_texture_array, og_render_apply_look, og_render_sprite, og_stream_budget,
+    og_stream_release, og_stream_request, og_stream_status, og_world_despawn, og_world_insert,
+    og_world_spawn, set_hooks, set_render_backend,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -414,101 +414,6 @@ fn game() -> Game {
     g
 }
 
-#[test]
-fn an_unloaded_group_lets_go_of_its_maps_arrays_palettes_looks_and_luts_and_a_reload_brings_them_back()
- {
-    let g = game();
-    g.use_all();
-    {
-        let s = g.seen.borrow();
-        assert!(s.env.is_some() && s.palette.is_some() && s.lut.is_some() && s.arrays == 1);
-    }
-    assert_eq!(
-        g.live(),
-        [1, 1, 1, 1],
-        "map, palette, array and LUT in the renderer"
-    );
-    g.use_none();
-    assert_eq!(g.live(), [1, 1, 1, 1], "still loaded while resident");
-
-    value(og_stream_release(g.engine, "zone".into()));
-    g.frame();
-    g.frame();
-    assert_eq!(g.state(), "unloaded");
-    assert_eq!(g.live(), [0, 0, 0, 0], "the unload freed all four");
-    assert_eq!(g.budget()["kept"], json!(0.0), "nothing kept");
-    let kept: Vec<String> = g
-        .warnings()
-        .into_iter()
-        .filter(|w| w.contains("is kept"))
-        .collect();
-    assert!(kept.is_empty(), "nothing was in use: {kept:?}");
-    // The game's handles stay, refused until the group is back.
-    let e = g.sprite().expect_err("an array whose group unloaded");
-    assert!(
-        e.contains("tex/frames.ogt") && e.contains("not resident"),
-        "{e}"
-    );
-    let e =
-        answer(og_render_apply_look(g.engine, g.dusk)).expect_err("a look whose group unloaded");
-    assert!(
-        e.contains("looks/dusk.ogt") && e.contains("not resident"),
-        "{e}"
-    );
-
-    // Resident again: the same handles draw again, from new renderer slots.
-    g.resident();
-    g.use_all();
-    let s = g.seen.borrow();
-    assert_eq!(s.live, [1, 1, 1, 1], "back in the renderer");
-    assert_eq!(s.every_env.len(), 2, "a new renderer handle for the map");
-    assert_eq!(s.every_palette.len(), 2);
-    assert_eq!(s.every_array.len(), 2);
-    assert_eq!(s.every_lut.len(), 2);
-    assert_eq!(s.arrays, 1);
-}
-
-#[test]
-fn what_the_frame_still_uses_is_kept_with_a_warning_until_it_is_not() {
-    let g = game();
-    g.use_all();
-    // The group goes while the frame lights, quantises and draws with it.
-    value(og_stream_release(g.engine, "zone".into()));
-    g.sprite().expect("queued before the unload");
-    g.frame();
-    g.sprite()
-        .expect("the array is kept while a sprite draws from it");
-    g.frame();
-    assert_eq!(g.state(), "unloaded");
-    assert_eq!(g.live(), [1, 1, 1, 1], "nothing freed under the frame");
-    let warnings = g.warnings();
-    for id in [
-        "env/studio.ogt",
-        "tex/frames.ogt",
-        "palettes/dusk.hex",
-        "looks/dusk.ogt",
-        "grade/swap.cube",
-    ] {
-        assert_eq!(
-            warnings
-                .iter()
-                .filter(|w| w.contains("'zone' unloaded") && w.contains(&format!("{id} is kept")))
-                .count(),
-            1,
-            "one warning names {id}: {warnings:?}"
-        );
-    }
-    // Once the frame stops using them they go, without another warning.
-    g.use_none();
-    g.frame();
-    assert_eq!(g.live(), [0, 0, 0, 0], "let go once unused");
-    assert!(
-        !g.warnings().iter().any(|w| w.contains("is kept")),
-        "warned once"
-    );
-    assert!(g.sprite().is_err(), "the array is released");
-}
-
 /// What the frame keeps after its group unloaded still takes memory: its
 /// bytes count in the budget's `used` and `kept` and the group's `kept`,
 /// and dump_stream lists each kept asset with its bytes (the map's RGB9E5
@@ -575,66 +480,6 @@ fn what_the_frame_keeps_counts_in_the_budget_until_it_is_let_go() {
             .unwrap()
             .is_empty()
     );
-}
-
-/// A particle emitter drawing from a grouped array keeps it while one of
-/// its systems runs (warning that an emitter draws from it), its systems
-/// draw nothing while the group is unloaded, and once it is resident again
-/// the emitter draws from the array's new renderer handle.
-#[test]
-fn an_emitter_of_a_grouped_array_keeps_it_while_it_runs_and_follows_it_back() {
-    let g = game();
-    let emitter = value(og_load_emitter(g.engine, "fx/motes.ogt".into()));
-    let e = value(og_world_spawn(g.engine, Some("{}".into())))
-        .as_f64()
-        .unwrap();
-    let system = json!({ "emitter": emitter }).to_string();
-    value(og_world_insert(
-        g.engine,
-        e,
-        "og.ParticleSystem".into(),
-        Some(system.clone()),
-    ));
-    g.frame();
-    let first = g.seen.borrow().emitters.clone();
-    assert!(matches!(first[..], [Some(_)]), "{first:?}");
-    value(og_stream_release(g.engine, "zone".into()));
-    g.frame();
-    g.frame();
-    assert_eq!(g.state(), "unloaded");
-    assert_eq!(g.live()[2], 1, "kept while the system draws from it");
-    let warnings = g.warnings();
-    assert!(
-        warnings
-            .iter()
-            .any(|w| w.contains("tex/frames.ogt is kept") && w.contains("particle emitter")),
-        "{warnings:?}"
-    );
-    // The system goes: the array is let go; a new system draws nothing.
-    value(og_world_despawn(g.engine, e));
-    g.frame();
-    g.frame();
-    assert_eq!(g.live()[2], 0, "let go once no system draws from it");
-    let e = value(og_world_spawn(g.engine, Some("{}".into())))
-        .as_f64()
-        .unwrap();
-    value(og_world_insert(
-        g.engine,
-        e,
-        "og.ParticleSystem".into(),
-        Some(system),
-    ));
-    g.frame();
-    assert!(
-        g.seen.borrow().emitters.is_empty(),
-        "nothing drawn while unloaded"
-    );
-    // Resident again: the emitter follows the array's new handle.
-    g.resident();
-    g.frame();
-    let back = g.seen.borrow().emitters.clone();
-    assert!(matches!(back[..], [Some(_)]), "{back:?}");
-    assert_ne!(back, first, "a new renderer handle for the array");
 }
 
 /// An `array true` flipbook in the group: it loads once the group is

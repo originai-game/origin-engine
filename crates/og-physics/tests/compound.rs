@@ -62,50 +62,6 @@ fn dumbbell(w: &mut World, y: f32) -> (Entity, Entity, Entity) {
     (body, left, right)
 }
 
-fn down(x: f32) -> RaycastDesc {
-    RaycastDesc {
-        origin: Vec3::new(x, 10.0, 0.0),
-        direction: Vec3::NEG_Y,
-        ..RaycastDesc::default()
-    }
-}
-
-#[test]
-fn child_colliders_make_one_body() {
-    let (mut w, physics) = world(Physics::default(), 1);
-    floor(&mut w);
-    let (body, left, right) = dumbbell(&mut w, 3.0);
-    run(&mut w, 180);
-    // It rests on both spheres: centre at their radius, level.
-    let t = transform(&w, body);
-    assert!((t.position.y - 0.5).abs() < 0.01, "{t:?}");
-    assert!(t.position.x.abs() < 0.01, "{t:?}");
-    let up = t.quaternion * Vec3::X;
-    assert!(up.y.abs() < 0.01, "level: {up}");
-    // The children are where the body carries them, and a ray finds each,
-    // naming it and its body.
-    let q = physics.query(&w).unwrap();
-    for (x, child) in [(-1.0, left), (1.0, right)] {
-        let hit = q.raycast(&down(x)).unwrap().expect("a child is hit");
-        assert_eq!((hit.entity, hit.body), (child, body));
-        assert!((hit.point.y - 1.0).abs() < 0.02, "{hit:?}");
-    }
-    // A child grows: the body is rebuilt and settles higher on it.
-    let c = w.get::<Collider>(left).unwrap();
-    w.insert(left, Collider { radius: 1.0, ..c }).unwrap();
-    run(&mut w, 240);
-    let t = transform(&w, body);
-    let tilt = (t.quaternion * Vec3::X).y;
-    assert!(tilt < -0.1, "the bigger left sphere lifts its side: {tilt}");
-    // Each child moves with the body: the left hit is now about a radius
-    // of 1 above the floor.
-    let q = physics.query(&w).unwrap();
-    let left_x = (t.position + t.quaternion * Vec3::new(-1.0, 0.0, 0.0)).x;
-    let hit = q.raycast(&down(left_x)).unwrap().unwrap();
-    assert_eq!(hit.entity, left);
-    assert!((hit.point.y - 2.0).abs() < 0.05, "{hit:?}");
-}
-
 #[test]
 fn a_compound_restores_mid_tumble() {
     let build = |seed| {

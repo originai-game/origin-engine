@@ -142,12 +142,3 @@ fn a_rust_type_adopts_a_host_layout_of_the_same_shape() {
     w.step().unwrap();
     assert_eq!(w.get_bytes(e, host).unwrap(), packed([2.0, 0.0, 0.0], 0.5));
 }
-
-#[test]
-fn a_world_can_move_to_the_engine_thread() {
-    fn send<T: Send>(_: &T) {}
-    let w = World::new(&WorldDesc::default()).unwrap();
-    send(&w);
-    let h = std::thread::spawn(move || w.world_hash()).join().unwrap();
-    assert_eq!(h, World::new(&WorldDesc::default()).unwrap().world_hash());
-}

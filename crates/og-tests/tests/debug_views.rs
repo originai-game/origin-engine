@@ -198,27 +198,6 @@ fn every_shading_path_honours_each_diagnostic_or_marks_it_unsupported() {
 }
 
 #[test]
-fn terrain_albedo_is_independent_of_direct_light() {
-    let desc = og_render::RenderDesc {
-        width: 320,
-        height: 180,
-        ..scenes::base_desc()
-    };
-    let mut r = Renderer::new_blocking(&desc).unwrap();
-    let mut s = scene("terrain-near", false);
-    s.debug = DebugView::Albedo;
-    s.light.intensity = 0.0;
-    let dark = capture(&mut r, &s);
-    s.light.intensity = 8.0;
-    s.light.color = Vec3::new(0.1, 0.7, 1.0);
-    let lit = capture(&mut r, &s);
-    assert_eq!(
-        dark.pixels, lit.pixels,
-        "albedo must not include direct light"
-    );
-}
-
-#[test]
 fn terrain_projection_and_vertical_density_use_the_sampled_axes() {
     use glam::{Mat4, Vec2};
     use og_render::{

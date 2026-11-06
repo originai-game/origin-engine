@@ -3,12 +3,8 @@
 // `then` steps in more), then its checks over the files the runs wrote. A
 // playtest that made no check fails.
 //
-// Without a renderer (tier `none`: the platform's engine and probe
-// sandboxes, OG_RENDERER=none) every check runs as before except those
-// inside `t.frame`, and each screenshot the runs took is reported
-// "no renderer, frame unchecked": one line per frame and a count, never a
-// failure. `--result <file>` also writes the result line there (og test
-// sums the unchecked frames from it).
+// Simulation-only playtests can run without a renderer. A requested frame
+// requires a GPU: an unchecked frame fails the playtest and names it.
 //
 //   bun src/node/playtest-run.ts --file <tests/x.og.ts> --entry <game bundle> [--root <project>] [--out <dir>] [--json] [--result <file>]
 
@@ -57,12 +53,11 @@ const notes: string[] = [];
 let result: Record<string, unknown> = {};
 
 function finish(): never {
-  // A playtest whose every check reads a frame has nothing to check without a renderer: it passes, and says so.
-  const ok = failures.length === 0 && (checks > 0 || unchecked.length > 0);
+  if (unchecked.length > 0) failures.push(`missing GPU renderer: ${unchecked.length} requested frame check(s) could not run (${unchecked.join(", ")})`);
   if (checks === 0 && failures.length === 0) {
-    if (unchecked.length > 0) notes.push("every check of this playtest reads a frame: nothing was checked without a renderer");
-    else failures.push("the playtest made no check: call t.ok, t.equal or t.near at least once");
+    failures.push("the playtest made no check: call t.ok, t.equal or t.near at least once");
   }
+  const ok = failures.length === 0;
   const line = { playtest: name, file, ok, checks, frameChecks, unchecked, failures, notes, out, ms: +(performance.now() - t0).toFixed(0), ...result };
   if (resultFile) {
     mkdirSync(dirname(resolve(resultFile)), { recursive: true });

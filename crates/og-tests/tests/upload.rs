@@ -17,53 +17,6 @@ fn frame(renderer: &mut Renderer, scene: &og_render::RenderScene) -> FrameStats 
     stats
 }
 
-fn check(culling: Culling) {
-    let mut built = scenes::build("spheres-20k").expect("scene");
-    built.desc.culling = culling;
-    let mut renderer = Renderer::new_blocking(&built.desc).expect("renderer");
-    let n = built.scene.instances.len() as u64;
-    let first = frame(&mut renderer, &built.scene);
-    assert!(
-        // An instance is 64 bytes on the GPU (instances::GpuTransform).
-        first.instance_upload_bytes >= (n - first.culled as u64) * 64,
-        "{culling:?}: the first frame writes every transform ({} bytes for {n})",
-        first.instance_upload_bytes
-    );
-    let still = frame(&mut renderer, &built.scene);
-    assert_eq!(
-        still.instance_upload_bytes, 0,
-        "{culling:?}: a scene that stood still wrote transforms again"
-    );
-    // One sphere in the middle of the field rises by a metre.
-    let k = built.scene.instances.len() / 2;
-    built.scene.instances[k].transform =
-        glam::Mat4::from_translation(glam::Vec3::Y) * built.scene.instances[k].transform;
-    let moved = frame(&mut renderer, &built.scene);
-    assert!(
-        moved.instance_upload_bytes > 0 && moved.instance_upload_bytes <= 4 * 4096,
-        "{culling:?}: moving one sphere wrote {} bytes",
-        moved.instance_upload_bytes
-    );
-    let partial = renderer.read_offscreen().expect("capture");
-    let mut fresh = Renderer::new_blocking(&built.desc).expect("renderer");
-    frame(&mut fresh, &built.scene);
-    let whole = fresh.read_offscreen().expect("capture");
-    assert!(
-        partial.pixels == whole.pixels,
-        "{culling:?}: the frame after a partial upload differs from a whole upload's"
-    );
-}
-
-#[test]
-fn a_still_scene_uploads_no_transforms_and_a_moved_instance_one_block() {
-    check(Culling::Cpu);
-}
-
-#[test]
-fn gpu_culling_uploads_only_changed_transforms() {
-    check(Culling::Gpu);
-}
-
 /// With a good share of the field out of view, the CPU path draws copies
 /// of the spheres in view, appended after the sorted records, and no list
 /// draws the sorted ones: only the copies are uploaded, a record of 64

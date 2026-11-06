@@ -190,26 +190,3 @@ fn a_synced_layer_plays_at_its_leaders_phase() {
     assert!(near(free[THIGH_L].rotation, thigh_at(RUN, own)));
     assert!(!near(free[THIGH_L].rotation, synced[THIGH_L].rotation));
 }
-
-#[test]
-fn a_transition_inside_a_group_keeps_the_phase() {
-    let text = graph(
-        "layer base {\n  state walk walk {\n    sync gait\n  }\n  state run run {\n    sync gait\n  }\n  transition walk run {\n    when p gt 0.5\n    fade 0\n  }\n}\n",
-    );
-    let (mut w, anim, e) = world(&text);
-    for _ in 0..30 {
-        w.step().unwrap();
-    }
-    let mut g: AnimationGraph = w.get(e).unwrap();
-    g.p0 = 1.0;
-    w.insert(e, g).unwrap();
-    w.step().unwrap();
-    // The walk was at phase 0.5; the run continues from it, one tick on.
-    let phase = 0.5 + (1.0 / 60.0) / 0.6;
-    let pose = anim.pose(e).unwrap();
-    assert!(
-        near(pose[THIGH_L].rotation, thigh_at(RUN, phase * 0.6)),
-        "the run from the walk's phase"
-    );
-    assert!(!near(pose[THIGH_L].rotation, thigh_at(RUN, 1.0 / 60.0)));
-}

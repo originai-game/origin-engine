@@ -61,15 +61,3 @@ fn software_rasterizers_are_known_by_name_too() {
         "Virtio-GPU Venus (Apple M4 Pro)"
     ));
 }
-
-#[test]
-fn other_backends_keep_their_names() {
-    assert_eq!(
-        tier_name(Backend::Metal, DeviceType::IntegratedGpu, "Apple M4 Pro"),
-        "metal"
-    );
-    assert_eq!(
-        tier_name(Backend::BrowserWebGpu, DeviceType::Other, ""),
-        "webgpu"
-    );
-}

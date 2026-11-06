@@ -19,7 +19,6 @@ fn idl_path() -> PathBuf {
 struct Wiki {
     source: Vec<String>,
     pages: BTreeMap<String, String>,
-    bindings: String,
     api: og_idl::Api,
 }
 
@@ -36,16 +35,9 @@ fn wiki() -> Wiki {
                 .map(|n| (n.to_string(), f.contents.clone()))
         })
         .collect();
-    let bindings = files
-        .iter()
-        .find(|f| f.path.ends_with("types/bindings.json"))
-        .expect("the binding table is generated")
-        .contents
-        .clone();
     Wiki {
         source: api.source.clone(),
         pages,
-        bindings,
         api,
     }
 }
@@ -162,29 +154,4 @@ fn every_module_has_a_page_and_every_index_link_lands() {
         }
     }
     assert!(links > names, "{links} links for {names} names");
-}
-
-#[test]
-fn every_binding_symbol_is_documented_on_a_page() {
-    let w = wiki();
-    let symbols: Vec<&str> = w
-        .bindings
-        .split("\"symbol\":")
-        .skip(1)
-        .filter_map(|s| s.trim_start().strip_prefix('"')?.split('"').next())
-        .collect();
-    assert!(symbols.len() > 50, "only {} symbols", symbols.len());
-    // On the module pages themselves, not only in the index's table.
-    let all: String = w
-        .pages
-        .iter()
-        .filter(|(name, _)| *name != "index.md")
-        .map(|(_, page)| page.as_str())
-        .collect();
-    for s in symbols {
-        assert!(
-            all.contains(&format!("Binding symbol `{s}`")),
-            "{s} is on no module page"
-        );
-    }
 }

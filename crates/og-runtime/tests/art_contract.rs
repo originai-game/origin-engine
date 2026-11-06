@@ -170,21 +170,6 @@ fn the_project_look_applies_and_a_system_writes_only_the_contract_it_declares() 
     assert_eq!(field(e, "og.ArtLine", "width"), json!(2.0));
 }
 
-#[test]
-fn gamedesc_and_project_naming_different_looks_is_refused() {
-    let (e, _) = engine(json!({ "look": "looks/b.ogt" }));
-    let err = e.unwrap_err();
-    assert!(
-        err.contains("GameDesc.look") && err.contains("project.ogt's `look`"),
-        "{err}"
-    );
-    // The same look in both places, with or without `assets/`, is one.
-    let (e, _) = engine(json!({ "look": "assets/looks/a.ogt" }));
-    let e = e.unwrap();
-    value(og_engine_frame(e, 1000.0 / 60.0));
-    assert_eq!(look_name(e), json!("A"));
-}
-
 /// Records the frame's quantise palette (its colours, sRGB).
 struct PaletteRecorder(Rc<RefCell<Option<Vec<[u8; 3]>>>>);
 

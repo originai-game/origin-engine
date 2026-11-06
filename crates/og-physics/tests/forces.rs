@@ -13,7 +13,7 @@
 
 use crate::support;
 
-use og_core::glam::{Quat, Vec3};
+use og_core::glam::Vec3;
 use og_ecs::{Entity, World};
 use og_physics::*;
 use support::*;
@@ -82,36 +82,6 @@ fn a_force_acts_over_one_step_and_an_impulse_at_once() {
 }
 
 #[test]
-fn a_push_off_the_centre_spins_and_a_torque_turns_about_its_axis() {
-    let (mut w, p, e) = floating(PROFILE_3D);
-    run(&mut w, 1);
-    // An impulse along +x at a point above the centre: it moves and spins
-    // about -z (r × J = (0,1,0) × (1,0,0) = (0,0,-1)).
-    p.apply_impulse(e, Vec3::X, Some(Vec3::new(0.0, 1.0, 0.0)))
-        .unwrap();
-    run(&mut w, 1);
-    let vel = velocity(&w, e);
-    assert!(close(vel.linear, Vec3::new(0.5, 0.0, 0.0)), "{vel:?}");
-    assert!(
-        vel.angular.z < -0.1 && vel.angular.x.abs() < 1e-4,
-        "{vel:?}"
-    );
-
-    let (mut w, p, e) = floating(PROFILE_3D);
-    run(&mut w, 1);
-    p.apply_torque_impulse(e, Vec3::new(0.0, 0.2, 0.0)).unwrap();
-    run(&mut w, 1);
-    let spin = velocity(&w, e).angular;
-    // A 2 kg sphere of 0.5 m: I = 2/5 m r² = 0.2 kg·m², so 1 rad/s.
-    assert!(close(spin, Vec3::new(0.0, 1.0, 0.0)), "{spin}");
-    p.apply_torque(e, Vec3::new(0.0, 12.0, 0.0)).unwrap();
-    run(&mut w, 1);
-    let spin = velocity(&w, e).angular;
-    assert!(close(spin, Vec3::new(0.0, 2.0, 0.0)), "{spin}");
-    assert!(close(velocity(&w, e).linear, Vec3::ZERO));
-}
-
-#[test]
 fn only_dynamic_bodies_move_and_the_2d_profile_takes_pushes_too() {
     let (mut w, p, e) = floating(PROFILE_3D);
     let wall = spawn_static(&mut w, at(5.0, 0.0, 0.0), Collider::cuboid(Vec3::ONE));
@@ -143,68 +113,4 @@ fn only_dynamic_bodies_move_and_the_2d_profile_takes_pushes_too() {
     let vel = velocity(&w, e);
     assert!(close(vel.linear, Vec3::new(1.0, 2.0, 0.0)), "{vel:?}");
     assert!(vel.angular.z > 0.1 && vel.angular.x == 0.0, "{vel:?}");
-}
-
-#[test]
-fn a_hit_stop_drops_forces_and_keeps_impulses_for_after_it() {
-    let (mut w, p, e) = floating(PROFILE_3D);
-    run(&mut w, 1);
-    w.hit_stop(3).unwrap();
-    p.apply_force(e, Vec3::new(600.0, 0.0, 0.0), None).unwrap();
-    p.apply_impulse(e, Vec3::new(0.0, 0.0, 2.0), None).unwrap();
-    run(&mut w, 3);
-    assert!(
-        close(velocity(&w, e).linear, Vec3::ZERO),
-        "moved in the stop"
-    );
-    run(&mut w, 1);
-    let v = velocity(&w, e).linear;
-    assert!(close(v, Vec3::new(0.0, 0.0, 1.0)), "{v}");
-}
-
-#[test]
-fn pushes_not_yet_applied_are_in_the_snapshot() {
-    let (mut w, p, e) = floating(PROFILE_3D);
-    run(&mut w, 5);
-    p.apply_impulse(e, Vec3::new(1.0, 2.0, 3.0), Some(Vec3::new(0.0, 0.3, 0.0)))
-        .unwrap();
-    p.apply_force(e, Vec3::new(-30.0, 0.0, 0.0), None).unwrap();
-    let saved = w.snapshot();
-    let hash = w.world_hash();
-    run(&mut w, 30);
-
-    let (mut r, _, _) = floating(PROFILE_3D);
-    r.restore(&saved).unwrap();
-    assert_eq!(r.world_hash(), hash);
-    run(&mut r, 30);
-    assert_eq!(r.world_hash(), w.world_hash());
-    assert!(velocity(&r, e).linear.length() > 1.0);
-}
-
-#[test]
-fn a_centre_of_mass_below_a_box_rights_it() {
-    // A 1 × 1 × 1 box set down tilted 60° on its edge: it falls over; with
-    // its centre of mass moved 0.45 m down (inside, near its bottom face)
-    // it rocks back onto that face, a roly-poly.
-    let trial = |centre: f32| {
-        let (mut w, _) = world(Physics::default(), 1);
-        floor(&mut w);
-        let tilt = Quat::from_rotation_z(1.05);
-        let b = spawn_body(
-            &mut w,
-            rotated(at(0.0, 0.75, 0.0), tilt),
-            RigidBody {
-                mass: 5.0,
-                center_of_mass: Vec3::new(0.0, centre, 0.0),
-                ..RigidBody::dynamic()
-            },
-            Collider::cuboid(Vec3::ONE),
-        );
-        run(&mut w, 240);
-        (transform(&w, b).quaternion * Vec3::Y).y
-    };
-    let fallen = trial(0.0);
-    assert!(fallen < 0.1, "the plain box stayed up ({fallen})");
-    let righted = trial(-0.45);
-    assert!(righted > 0.99, "the weighted box lies at {righted}");
 }

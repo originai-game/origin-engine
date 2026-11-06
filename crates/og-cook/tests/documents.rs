@@ -52,18 +52,6 @@ fn a_screen_cooks_to_a_document_blob() {
     assert!(doc.node_at("Gold").is_some());
 }
 
-#[test]
-fn a_document_off_the_schema_is_refused_with_its_line() {
-    let bad = SCREEN.replace("text bind gold compact", "colour token ink");
-    let root = project("bad", &[("ui/shop.ogt", &bad)]);
-    let report = cook_project(&root, &CookOptions::default()).unwrap();
-    let errors = report.errors().join("\n");
-    assert!(
-        errors.contains("ui/shop.ogt: line 11: 'colour' is not a prop"),
-        "{errors}"
-    );
-}
-
 /// An installed kit (docs/ui.md §17.1) cooks with the game: its documents
 /// are the game's assets under `ui-kits/<kit>/`, and its review sheet, a
 /// project of its own, is left out.

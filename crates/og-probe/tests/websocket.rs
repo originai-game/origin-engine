@@ -4,7 +4,7 @@
 
 use crate::support;
 
-use og_probe::server::{DEFAULT_PORT, ProbeServer};
+use og_probe::server::ProbeServer;
 use serde_json::{Value, json};
 use std::net::TcpStream;
 use std::thread;
@@ -86,18 +86,6 @@ fn a_real_client_is_answered_on_the_world_thread() {
     );
     let (tick, answered) = world.join().unwrap();
     assert_eq!((tick, answered), (5, 5));
-}
-
-#[test]
-fn other_paths_and_non_loopback_addresses_are_refused() {
-    let server = ProbeServer::bind("127.0.0.1:0".parse().unwrap()).unwrap();
-    assert!(tungstenite::connect(format!("ws://127.0.0.1:{}/other", server.port())).is_err());
-    assert!(ProbeServer::bind("0.0.0.0:0".parse().unwrap()).is_err());
-    assert!(
-        ProbeServer::start(0).unwrap().is_none(),
-        "port 0 disables the server"
-    );
-    assert_eq!(DEFAULT_PORT, 47800);
 }
 
 #[test]

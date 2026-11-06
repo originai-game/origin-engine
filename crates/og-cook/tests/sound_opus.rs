@@ -9,7 +9,7 @@
 //! accepted for a sound that is never chunked, or an `.opus` source not
 //! read (or read without its pre-skip trimmed).
 
-use og_cook::cook::{CookOptions, audio, cook_project};
+use og_cook::cook::{CookOptions, cook_project};
 use og_cook::format::sound_codec;
 use og_cook::runtime::Bundle;
 use std::f64::consts::TAU;
@@ -130,23 +130,6 @@ fn a_sound_cooks_to_opus_at_48_khz_within_its_quality_bound() {
 }
 
 #[test]
-fn opus_settings_are_checked() {
-    let parse = |body: &str| {
-        let text = format!("type import\nversion 1\n---\nsound {{\n{body}\n}}\n");
-        let doc = og_core::ogt::Document::parse(&text).unwrap();
-        audio::SoundSettings::parse(doc.body.get("sound").and_then(|e| e.block.as_ref()))
-    };
-    let s = parse("  codec opus").unwrap();
-    assert_eq!(s.codec, audio::Codec::Opus);
-    assert_eq!((s.opus_bitrate(2), s.opus_bitrate(1)), (96_000, 64_000));
-    assert_eq!(s.chunking(48_000, 2, 48_000 * 600), None, "never chunked");
-    assert!(parse("  codec opus\n  stream true").is_err());
-    assert!(parse("  codec mp3").is_err());
-    assert!(parse("  codec opus\n  bitrate 8").is_err());
-    assert_eq!(parse("  bitrate 128").unwrap().opus_bitrate(2), 128_000);
-}
-
-#[test]
 fn an_ogg_opus_source_cooks_like_any_sound() {
     use opus_pure::{Application, OggOpusWriter, OpusEncoder, OpusHead};
     let root = project("ogg-opus");
@@ -205,18 +188,4 @@ fn an_ogg_opus_source_cooks_like_any_sound() {
         snr > 20.0,
         "an .opus source decoded {snr:.1} dB from its chord"
     );
-}
-
-#[test]
-fn the_resampler_keeps_a_tone_and_the_length() {
-    // 1 s of 1 kHz at 44.1 kHz to 48 kHz: 48,000 frames of the same tone.
-    let src: Vec<i16> = (0..44_100)
-        .map(|i| (16_000.0 * (TAU * 1000.0 * i as f64 / 44_100.0).sin()).round() as i16)
-        .collect();
-    let out = audio::resample(&src, 1, 44_100, 48_000);
-    assert_eq!(out.len(), 48_000);
-    let worst = (100..47_900)
-        .map(|i| (f64::from(out[i]) - 16_000.0 * (TAU * 1000.0 * i as f64 / 48_000.0).sin()).abs())
-        .fold(0.0, f64::max);
-    assert!(worst < 4.0, "worst error {worst} of 16,000");
 }

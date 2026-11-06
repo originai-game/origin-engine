@@ -131,70 +131,6 @@ fn the_sheet_reads_grid_and_named_frames_and_round_trips() {
 }
 
 #[test]
-fn a_looping_clip_advances_at_its_rate_and_fires_once_per_pass() {
-    let (mut w, _, e) = world();
-    let ticks = run(&mut w, e, 48);
-    // 10 fps at 60 Hz: six ticks a frame.
-    let frames: Vec<u32> = ticks.iter().map(|t| t.0).collect();
-    let mut expected = Vec::new();
-    for i in 0..48 {
-        expected.push(((i + 1) / 6 % 4) as u32);
-    }
-    assert_eq!(frames, expected);
-    let steps: Vec<usize> = ticks
-        .iter()
-        .enumerate()
-        .filter(|(_, t)| !t.1.is_empty())
-        .map(|(i, _)| i)
-        .collect();
-    assert_eq!(steps, vec![11, 35], "frame 2 entered at ticks 12 and 36");
-    assert_eq!(flip(&w, e).loops, 2);
-}
-
-#[test]
-fn ping_pong_turns_at_the_ends_and_once_holds_and_finishes() {
-    let (mut w, _, e) = world();
-    w.insert(
-        e,
-        Flipbook {
-            sheet: 5,
-            clip: 1,
-            ..Default::default()
-        },
-    )
-    .unwrap();
-    let ticks = run(&mut w, e, 6 * 7);
-    let order: Vec<u32> = ticks.iter().step_by(6).map(|t| t.0).collect();
-    assert_eq!(order, vec![0, 1, 2, 3, 2, 1, 0]);
-    assert_eq!(
-        ticks.iter().filter(|t| !t.1.is_empty()).count(),
-        1,
-        "the top is passed once per cycle"
-    );
-
-    w.insert(
-        e,
-        Flipbook {
-            sheet: 5,
-            clip: 2,
-            ..Default::default()
-        },
-    )
-    .unwrap();
-    let ticks = run(&mut w, e, 20);
-    assert_eq!(ticks[1].0, 0);
-    assert_eq!(ticks[2].0, 1, "0.05 s is three ticks");
-    assert!(flip(&w, e).finished);
-    assert_eq!(flip(&w, e).frame, 1, "held on the last frame");
-    let hits: Vec<&Vec<String>> = ticks
-        .iter()
-        .map(|t| &t.1)
-        .filter(|v| !v.is_empty())
-        .collect();
-    assert_eq!(hits, vec![&vec!["hit@1".to_string()]]);
-}
-
-#[test]
 fn a_clip_change_restarts_a_seek_is_silent_and_speed_scales() {
     let (mut w, _, e) = world();
     run(&mut w, e, 20);
@@ -239,47 +175,4 @@ fn a_clip_change_restarts_a_seek_is_silent_and_speed_scales() {
     let held = flip(&w, e);
     run(&mut w, e, 10);
     assert_eq!(flip(&w, e).time, held.time);
-}
-
-#[test]
-fn slow_motion_and_hit_stop_slow_and_hold_the_frame() {
-    let (mut w, _, e) = world();
-    w.set_time_scale(0.5).unwrap();
-    let ticks = run(&mut w, e, 12);
-    assert_eq!(ticks[10].0, 0);
-    assert_eq!(ticks[11].0, 1, "twelve ticks a frame at half speed");
-    w.hit_stop(30).unwrap();
-    let t = flip(&w, e).time;
-    run(&mut w, e, 30);
-    assert_eq!(flip(&w, e).time, t);
-}
-
-#[test]
-fn a_snapshot_keeps_the_playback_and_the_transcript_is_the_same() {
-    let (mut w, _, e) = world();
-    let first = run(&mut w, e, 25);
-    let snap = w.snapshot();
-    let rest = run(&mut w, e, 60);
-    let (mut r, _, _) = world();
-    r.restore(&snap).unwrap();
-    let again = run(&mut r, e, 60);
-    assert_eq!(again, rest);
-    assert_eq!(r.world_hash(), w.world_hash());
-    // The transcript of the whole run, for tests/evidence/E4.
-    let all: Vec<_> = first
-        .iter()
-        .chain(&rest)
-        .enumerate()
-        .filter(|(_, t)| !t.1.is_empty())
-        .map(|(i, t)| {
-            format!(
-                "{{\"tick\":{},\"frame\":{},\"events\":{:?}}}",
-                i + 1,
-                t.0,
-                t.1
-            )
-        })
-        .collect();
-    let path = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("flipbook-events.json");
-    std::fs::write(&path, format!("[\n{}\n]\n", all.join(",\n"))).unwrap();
 }

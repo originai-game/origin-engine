@@ -2,14 +2,6 @@
 //! clustered tree's level picked and its clusters culled on the GPU.
 
 use super::*;
-use og_tests::compare::{Tolerance, compare};
-
-/// `meshlet-forest` (reference `meshlet-forest.png`): 132 trees tinted by
-/// the level the GPU picked, green near, then yellow, then orange.
-#[test]
-fn meshlet_forest_matches_its_reference() {
-    check("meshlet-forest");
-}
 
 /// The forest's frame holds all three tints, the coarser levels nearer
 /// the horizon: the canopies stand above the eye, so a nearer one stands
@@ -53,164 +45,6 @@ fn meshlet_forest_tints_coarser_levels_farther() {
         g < yl && g < o,
         "rows: green {g:.0}, yellow {yl:.0}, orange {o:.0}"
     );
-}
-
-/// `meshlet-occlusion` (reference `meshlet-occlusion.png`): the forest
-/// behind a wall over the left two thirds, culled against the pyramid on
-/// its third frame; the visible third whole.
-#[test]
-fn meshlet_occlusion_matches_its_reference() {
-    check("meshlet-occlusion");
-}
-
-/// Two-phase occlusion never removes a visible pixel: the third frame
-/// through the meshlet path matches the regular path's. A cluster neither
-/// phase draws (a slot read from the wrong half, a late phase that skips
-/// what the early one did not draw) shows as a hole in the forest.
-#[test]
-fn meshlet_occlusion_matches_the_regular_path() {
-    let render = |meshlets: bool| {
-        let mut g = og_tests_cooked::scenes::build("meshlet-occlusion").expect("built");
-        g.scene = og_tests_cooked::meshlet_scenes::occlusion_scene(meshlets).expect("the forest");
-        og_tests::gfx::render_built(&mut g).expect("render")
-    };
-    let (on, off) = (render(true), render(false));
-    let c = compare(
-        &on.image.pixels,
-        &off.image.pixels,
-        on.image.width,
-        on.image.height,
-        &Tolerance::default(),
-    )
-    .expect("same size");
-    c.check(&Tolerance::default())
-        .unwrap_or_else(|e| panic!("meshlet occlusion against the regular path: {e}"));
-}
-
-/// `meshlet-near` (reference `meshlet-near.png`): one tree 6 m away.
-#[test]
-fn meshlet_near_matches_its_reference() {
-    check("meshlet-near");
-}
-
-/// The tree 6 m away draws its level 0 through the meshlet path as the
-/// regular path draws it: pulled vertices, transforms and clusters that
-/// came apart (a wrong attribute, a cluster's range off by one, a culled
-/// cluster that faces the eye) fail the comparison.
-#[test]
-fn meshlet_near_matches_the_regular_path() {
-    let render = |meshlets: bool| {
-        let mut g = og_tests_cooked::scenes::build("meshlet-near").expect("built");
-        g.scene = og_tests_cooked::meshlet_scenes::near_scene(meshlets).expect("the tree");
-        og_tests::gfx::render_built(&mut g).expect("render")
-    };
-    let (on, off) = (render(true), render(false));
-    let c = compare(
-        &on.image.pixels,
-        &off.image.pixels,
-        on.image.width,
-        on.image.height,
-        &Tolerance::default(),
-    )
-    .expect("same size");
-    c.check(&Tolerance::default())
-        .unwrap_or_else(|e| panic!("meshlet path against the regular path: {e}"));
-}
-
-/// `meshlet-shadows` (reference `meshlet-shadows.png`): five trees' long
-/// sun shadows and the spot's, cast through the meshlet path.
-#[test]
-fn meshlet_shadows_match_their_reference() {
-    check("meshlet-shadows");
-}
-
-/// The clustered casters' shadows (every cascade and the spot's face) as
-/// the regular path casts them: a shadow view that culled a cluster it
-/// should keep shows as a hole in a shadow, a caster drawn twice or with
-/// the wrong pipeline as acne or a missing shadow.
-#[test]
-fn meshlet_shadows_match_the_regular_path() {
-    let render = |meshlets: bool| {
-        let mut g = og_tests_cooked::scenes::build("meshlet-shadows").expect("built");
-        g.scene = og_tests_cooked::meshlet_scenes::shadow_scene(meshlets).expect("the trees");
-        og_tests::gfx::render_built(&mut g).expect("render")
-    };
-    let (on, off) = (render(true), render(false));
-    let c = compare(
-        &on.image.pixels,
-        &off.image.pixels,
-        on.image.width,
-        on.image.height,
-        &Tolerance::default(),
-    )
-    .expect("same size");
-    c.check(&Tolerance::default())
-        .unwrap_or_else(|e| panic!("meshlet shadows against the regular path: {e}"));
-}
-
-/// `meshlet-views` (reference `meshlet-views.png`): the forest, a view
-/// from above on the right half and a chrome ball in a reflection probe,
-/// each tinted by the level its own view picked.
-#[test]
-fn meshlet_views_match_their_reference() {
-    check("meshlet-views");
-}
-
-/// The view from above and the probe's faces draw their clusters as the
-/// regular path draws the same instances (every level 0, bias 0): a view
-/// row with the camera's planes or eye, or a pass that drew a batch twice
-/// or not at all, fails the comparison.
-#[test]
-fn meshlet_views_match_the_regular_path() {
-    let render = |meshlets: bool| {
-        let mut g = og_tests_cooked::scenes::build("meshlet-views").expect("built");
-        g.scene = og_tests_cooked::meshlet_scenes::views_scene(meshlets, 0.0).expect("the forest");
-        og_tests::gfx::render_built(&mut g).expect("render")
-    };
-    let (on, off) = (render(true), render(false));
-    let c = compare(
-        &on.image.pixels,
-        &off.image.pixels,
-        on.image.width,
-        on.image.height,
-        &Tolerance::default(),
-    )
-    .expect("same size");
-    c.check(&Tolerance::default())
-        .unwrap_or_else(|e| panic!("meshlet views against the regular path: {e}"));
-}
-
-/// `meshlet-far` (reference `meshlet-far.png`): the forest from above and
-/// behind, its small clusters through the visibility buffer.
-#[test]
-fn meshlet_far_matches_its_reference() {
-    check("meshlet-far");
-}
-
-/// The visibility buffer draws what the hardware draws: the compute
-/// rasteriser's coverage (a fill rule that covers a shared edge twice or
-/// never shows as specks or cracks), its depth (a word that loses to the
-/// wrong triangle, a seam with the hardware's clusters) and the resolve's
-/// rebuilt attributes (a wrong barycentric, normal or uv) all fail the
-/// comparison with every cluster drawn by the hardware.
-#[test]
-fn meshlet_visibility_buffer_matches_the_hardware() {
-    let render = |vbuffer: bool| {
-        let mut g = og_tests_cooked::scenes::build("meshlet-far").expect("built");
-        g.scene = og_tests_cooked::meshlet_scenes::far_scene(vbuffer).expect("the forest");
-        og_tests::gfx::render_built(&mut g).expect("render")
-    };
-    let (on, off) = (render(true), render(false));
-    let c = compare(
-        &on.image.pixels,
-        &off.image.pixels,
-        on.image.width,
-        on.image.height,
-        &Tolerance::default(),
-    )
-    .expect("same size");
-    c.check(&Tolerance::default())
-        .unwrap_or_else(|e| panic!("visibility buffer against the hardware: {e}"));
 }
 
 /// TAA follows a moving instance along its own motion vectors on every
@@ -261,10 +95,11 @@ fn a_moving_instance_takes_its_history_along_on_every_culling_path() {
             glam::Mat4::from_translation(glam::Vec3::new(-1.5 + 0.25 * f as f32, 0.0, 0.0))
         };
         let mut with = Renderer::new_blocking(&desc(culling)).expect("renderer");
-        if with.info().antialias != Antialias::Taa {
-            println!("skipped: TAA is not available on this adapter");
-            return;
-        }
+        assert_eq!(
+            with.info().antialias,
+            Antialias::Taa,
+            "GPU lacks TAA support"
+        );
         let mut without = Renderer::new_blocking(&desc(culling)).expect("renderer");
         let (mut a, mut b) = (None, None);
         for f in 0..12 {
@@ -295,69 +130,4 @@ fn a_moving_instance_takes_its_history_along_on_every_culling_path() {
             "{name}: motion vectors {d_with}, camera only {d_without}"
         );
     }
-}
-
-/// `meshlet-sway` (reference `meshlet-sway.png`): the near tree's crown
-/// leaning right in the wind, its shadow with it, its trunk's foot still.
-#[test]
-fn meshlet_sway_matches_its_reference() {
-    check("meshlet-sway");
-}
-
-/// The mean absolute channel difference of two frames (0..255).
-fn mean_difference(a: &og_render::RgbaImage, b: &og_render::RgbaImage) -> f64 {
-    let sum: u64 = a
-        .pixels
-        .iter()
-        .zip(&b.pixels)
-        .map(|(x, y)| x.abs_diff(*y) as u64)
-        .sum();
-    sum as f64 / a.pixels.len() as f64
-}
-
-/// Foliage sways by each instance's sway alone: at 0 the tree in the wind
-/// is the tree with no foliage, pixel for pixel (a pull that moved a still
-/// instance, or a cull whose widened spheres dropped a cluster, fails);
-/// at 1 it moves visibly (a pull that ignored the foliage region, or read
-/// another mesh's, leaves it still or tears it).
-#[test]
-fn meshlet_foliage_sways_by_the_instance_sway() {
-    let render = |sway: f32, foliage: bool| {
-        let mut g = og_tests_cooked::scenes::build("meshlet-sway").expect("built");
-        g.scene = og_tests_cooked::meshlet_scenes::sway_scene(sway, foliage).expect("the tree");
-        og_tests::gfx::render_built(&mut g).expect("render").image
-    };
-    let plain = render(0.0, false);
-    let still = render(0.0, true);
-    let swaying = render(1.0, true);
-    assert_eq!(
-        mean_difference(&still, &plain),
-        0.0,
-        "sway 0 moved the tree"
-    );
-    let moved = mean_difference(&swaying, &plain);
-    assert!(moved > 0.5, "sway 1 moved the tree by {moved:.3} only");
-}
-
-/// The visibility buffer sways what the hardware sways: the far forest
-/// swaying, its small clusters rasterised in compute, against every
-/// cluster drawn by the hardware.
-#[test]
-fn meshlet_swaying_visibility_buffer_matches_the_hardware() {
-    let render = |vbuffer: bool| {
-        let mut g = og_tests_cooked::scenes::build("meshlet-far").expect("built");
-        g.scene = og_tests_cooked::meshlet_scenes::sway_far_scene(vbuffer).expect("the forest");
-        og_tests::gfx::render_built(&mut g).expect("render")
-    };
-    let (on, off) = (render(true), render(false));
-    let c = compare(
-        &on.image.pixels,
-        &off.image.pixels,
-        on.image.width,
-        on.image.height,
-        &Tolerance::default(),
-    )
-    .expect("same size");
-    c.check(&Tolerance::default())
-        .unwrap_or_else(|e| panic!("swaying visibility buffer against the hardware: {e}"));
 }

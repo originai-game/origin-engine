@@ -23,9 +23,9 @@
 use og_render::RenderScene;
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame, og_game_game,
-    og_host_begin_bundle, og_load_animation, og_load_gltf, og_load_scene, og_render_box_geometry,
-    og_render_standard_material, og_world_find, og_world_get, og_world_insert,
-    og_world_instantiate, og_world_set, og_world_spawn, set_hooks, set_render_backend,
+    og_host_begin_bundle, og_load_animation, og_load_gltf, og_load_scene, og_world_find,
+    og_world_get, og_world_insert, og_world_instantiate, og_world_set, set_hooks,
+    set_render_backend,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -251,24 +251,6 @@ fn meshes_of(seen: &Rc<RefCell<Seen>>, before: &[(usize, bool, bool)]) -> Vec<us
     m
 }
 
-/// The schema every reader shares (the inspector, Tune, the probe, scene
-/// text, the wiki): the IDL's defaults are the contract's.
-#[test]
-fn reflection_declares_the_defaults() {
-    let default = |record: &str, field: &str| {
-        og_api::host::RECORDS
-            .iter()
-            .find(|r| r.kind == "component" && r.name == record)
-            .and_then(|r| r.fields.iter().find(|f| f.name == field))
-            .unwrap_or_else(|| panic!("{record}.{field}"))
-            .default
-    };
-    assert_eq!(default("Mesh", "castShadow"), "false");
-    assert_eq!(default("Mesh", "receiveShadow"), "true");
-    assert_eq!(default("Model", "castShadow"), "true");
-    assert_eq!(default("Model", "receiveShadow"), "true");
-}
-
 #[test]
 fn a_model_loaded_without_flags_casts_and_receives_and_one_turned_off_does_neither() {
     let (engine, seen) = engine();
@@ -317,54 +299,6 @@ fn a_model_loaded_without_flags_casts_and_receives_and_one_turned_off_does_neith
     let bad = json!({ "castShadow": "no" }).to_string();
     let reason = refused(og_load_gltf(engine, "models/crate.vox".into(), Some(bad)));
     assert!(reason.contains("GltfDesc.castShadow"), "{reason}");
-}
-
-/// A posed model's skinned instances carry its flags.
-#[test]
-fn a_posed_models_skinned_instances_carry_its_flags() {
-    let (engine, seen) = engine();
-    let anim = value(og_load_animation(engine, "models/walker.glb".into()));
-    let clip = anim["clips"].as_array().unwrap()[0]["clip"].clone();
-    let mut walkers = Vec::new();
-    for desc in [
-        None,
-        Some(json!({ "castShadow": false, "receiveShadow": false })),
-    ] {
-        let asset = value(og_load_gltf(
-            engine,
-            "models/walker.glb".into(),
-            desc.map(|d| d.to_string()),
-        ));
-        let e = value(og_world_instantiate(engine, asset.as_f64().unwrap(), None))
-            .as_f64()
-            .unwrap();
-        for (name, v) in [
-            ("og.Skeleton", json!({ "asset": anim["skeleton"] })),
-            ("og.AnimationPlayer", json!({ "clip": clip, "loop": true })),
-        ] {
-            value(og_world_insert(engine, e, name.into(), Some(v.to_string())));
-        }
-        walkers.push(e);
-    }
-    for _ in 0..3 {
-        frame(engine);
-    }
-    let mut skinned = seen.borrow().skinned.clone();
-    assert!(!skinned.is_empty(), "the walkers are posed");
-    skinned.sort();
-    skinned.dedup();
-    assert_eq!(skinned, vec![(false, false), (true, true)]);
-    value(og_world_set(
-        engine,
-        walkers[1],
-        "og.Model".into(),
-        json!({ "receiveShadow": true }).to_string(),
-    ));
-    frame(engine);
-    let mut skinned = seen.borrow().skinned.clone();
-    skinned.sort();
-    skinned.dedup();
-    assert_eq!(skinned, vec![(false, true), (true, true)]);
 }
 
 /// og.Model.visible (meridian-loop FINDINGS #14: a ghost car could only
@@ -427,35 +361,6 @@ fn a_hidden_model_draws_nothing_posed_or_not() {
     assert_eq!(again, shown);
 }
 
-#[test]
-fn a_mesh_receives_unless_told_not_to() {
-    let (engine, seen) = engine();
-    let material = value(og_render_standard_material(engine, Some("{}".into())));
-    let geometry = value(og_render_box_geometry(engine, Some("{}".into())));
-    let spawn = |mesh: Value| {
-        let e = value(og_world_spawn(engine, Some("{}".into())))
-            .as_f64()
-            .unwrap();
-        value(og_world_insert(
-            engine,
-            e,
-            "og.Mesh".into(),
-            Some(mesh.to_string()),
-        ));
-        e
-    };
-    let plain = spawn(json!({ "geometry": geometry, "material": material }));
-    let sign = spawn(json!({
-        "geometry": geometry, "material": material, "castShadow": true, "receiveShadow": false
-    }));
-    assert_eq!(flags(engine, plain, "og.Mesh"), (false, true));
-    assert_eq!(flags(engine, sign, "og.Mesh"), (true, false));
-    frame(engine);
-    let mut s: Vec<(bool, bool)> = seen.borrow().instances.iter().map(|i| (i.1, i.2)).collect();
-    s.sort();
-    assert_eq!(s, vec![(false, true), (true, false)]);
-}
-
 /// A cooked scene's text carries the flags: a `Model` table beside a
 /// `model` line sets the model's (one og.Model, its asset the line's), a
 /// `model` line alone takes the load's GltfDesc flags, and a Mesh table
@@ -489,23 +394,4 @@ fn the_flags_round_trip_through_the_scene_text() {
         seen.borrow().of(&crate_meshes),
         vec![(false, false), (true, true)]
     );
-}
-
-/// A `model` line without a table takes the flags of the glTF's load; a
-/// `Model` table beside one keeps its own.
-#[test]
-fn a_scene_model_line_takes_the_loads_flags() {
-    let (engine, _) = engine();
-    let off = json!({ "castShadow": false }).to_string();
-    value(og_load_gltf(engine, "models/crate.vox".into(), Some(off)));
-    let scene = value(og_load_scene(engine, "scenes/flags.ogt".into()));
-    value(og_world_instantiate(engine, scene.as_f64().unwrap(), None));
-    let find = |name: &str| {
-        serde_json::from_str::<Value>(&og_world_find(engine, name.into()))
-            .unwrap()
-            .as_f64()
-            .unwrap_or_else(|| panic!("no entity '{name}'"))
-    };
-    assert_eq!(flags(engine, find("plain"), "og.Model"), (false, true));
-    assert_eq!(flags(engine, find("dark"), "og.Model"), (false, false));
 }

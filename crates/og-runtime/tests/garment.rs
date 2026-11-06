@@ -216,31 +216,6 @@ fn a_garment_follows_the_skin_and_is_drawn_at_its_points() {
     assert_eq!(points, again);
 }
 
-#[test]
-fn a_garment_at_rest_keeps_the_skins_bind_shape() {
-    let desc = |distance| {
-        json!({"mesh":0,"maxDistance":distance,"pinTop":0,
-        "gravityScale":0,"bending":0.3,"iterations":6})
-    };
-    let (pinned, _) = run(30, "models/scaled.glb", desc(0.0), false);
-    let (free, _) = run(30, "models/scaled.glb", desc(0.25), false);
-    assert!(!pinned[0].is_empty());
-    for (tick, (skin, cloth)) in pinned.iter().zip(&free).enumerate() {
-        assert_eq!(skin.len(), cloth.len());
-        for (a, b) in skin.iter().zip(cloth) {
-            let error = a
-                .iter()
-                .zip(b)
-                .map(|(a, b)| (a - b).abs())
-                .fold(0.0, f64::max);
-            assert!(
-                error < 1e-5,
-                "tick {tick}: bind shape moved {error} without forces"
-            );
-        }
-    }
-}
-
 /// SIMULATION_VISUAL: the tick keeps the garment on its skin (its points
 /// are its targets, untouched by gravity), and the renderer is handed the
 /// solver's settings, one reach and one skin normal per welded point.

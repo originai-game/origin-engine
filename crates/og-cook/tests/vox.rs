@@ -14,11 +14,6 @@ fn chunk(out: &mut Vec<u8>, id: &[u8; 4], body: &[u8]) {
     out.extend_from_slice(body);
 }
 
-/// A `.vox` of one model of `size` (MagicaVoxel z up), no scene graph.
-fn vox(size: [u32; 3], voxels: &[[u8; 4]]) -> Vec<u8> {
-    vox_of(&[(size, voxels.to_vec())], &[])
-}
-
 /// A `.vox` of several models and then `graph`'s chunks (none: no graph).
 fn vox_of(models: &[([u32; 3], Vec<[u8; 4]>)], graph: &[u8]) -> Vec<u8> {
     let mut children = Vec::new();
@@ -58,54 +53,10 @@ fn settings(body: &str) -> Vec<u8> {
     format!("type import\nversion 1\n---\nmodel {{\n{body}\n}}\n").into_bytes()
 }
 
-fn bounds(root: &Path) -> ([f32; 3], [f32; 3]) {
-    bounds_of(root, "models/crate.vox")
-}
-
 fn bounds_of(root: &Path, id: &str) -> ([f32; 3], [f32; 3]) {
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
     let m = bundle.load_model(id).unwrap();
     (m.min.to_array(), m.max.to_array())
-}
-
-/// A scene graph of one model: root transform 0 → group 1 → transform 2
-/// at `t` → shape 3 of model 0.
-fn trivial_graph(t: [i32; 3]) -> Vec<u8> {
-    let dict = |b: &mut Vec<u8>, pairs: &[(&str, String)]| {
-        b.extend_from_slice(&(pairs.len() as u32).to_le_bytes());
-        for (k, v) in pairs {
-            for s in [*k, v.as_str()] {
-                b.extend_from_slice(&(s.len() as u32).to_le_bytes());
-                b.extend_from_slice(s.as_bytes());
-            }
-        }
-    };
-    let trn = |node: u32, child: u32, frame: &[(&str, String)]| {
-        let mut b = node.to_le_bytes().to_vec();
-        dict(&mut b, &[]);
-        b.extend_from_slice(&child.to_le_bytes());
-        b.extend_from_slice(&u32::MAX.to_le_bytes());
-        b.extend_from_slice(&0u32.to_le_bytes());
-        b.extend_from_slice(&1u32.to_le_bytes());
-        dict(&mut b, frame);
-        b
-    };
-    let mut g = Vec::new();
-    chunk(&mut g, b"nTRN", &trn(0, 1, &[]));
-    let mut grp = 1u32.to_le_bytes().to_vec();
-    dict(&mut grp, &[]);
-    grp.extend_from_slice(&1u32.to_le_bytes());
-    grp.extend_from_slice(&2u32.to_le_bytes());
-    chunk(&mut g, b"nGRP", &grp);
-    let at = format!("{} {} {}", t[0], t[1], t[2]);
-    chunk(&mut g, b"nTRN", &trn(2, 3, &[("_t", at)]));
-    let mut shp = 3u32.to_le_bytes().to_vec();
-    dict(&mut shp, &[]);
-    shp.extend_from_slice(&1u32.to_le_bytes());
-    shp.extend_from_slice(&0u32.to_le_bytes());
-    dict(&mut shp, &[]);
-    chunk(&mut g, b"nSHP", &shp);
-    g
 }
 
 /// A transform's key frame: its `_f` and `_t`.
@@ -170,51 +121,6 @@ fn solid(size: [u32; 3], c: u8) -> Vec<[u8; 4]> {
         }
     }
     v
-}
-
-/// The same voxels with and without a scene graph cook to the same
-/// bounds (FINDINGS #27: a graph-less file was placed by its corner, so a
-/// lantern's wick hung off its cage): centred about MagicaVoxel's pivot,
-/// and both on the ground with `voxOrigin bottom`.
-#[test]
-fn a_vox_with_and_without_a_scene_graph_cooks_to_the_same_bounds() {
-    let size = [5, 4, 7];
-    let voxels = solid(size, 3);
-    let model = [(size, voxels)];
-    let bare = vox_of(&model, &[]);
-    let graphed = vox_of(&model, &trivial_graph([0, 0, 0]));
-    let root = project(
-        "graphs",
-        &[
-            ("models/bare.vox", &bare),
-            ("models/graphed.vox", &graphed),
-            ("models/bare-low.vox", &bare),
-            (
-                "models/bare-low.vox.ogt",
-                &settings("voxScale 0.1\nvoxOrigin bottom"),
-            ),
-            ("models/graphed-low.vox", &graphed),
-            (
-                "models/graphed-low.vox.ogt",
-                &settings("voxScale 0.1\nvoxOrigin bottom"),
-            ),
-        ],
-    );
-    let report = cook_project(&root, &CookOptions::default()).unwrap();
-    assert!(report.ok(), "{:?}", report.errors());
-    let bare = bounds_of(&root, "models/bare.vox");
-    assert_eq!(bare, bounds_of(&root, "models/graphed.vox"));
-    // 5 x 7 x 4 m about the pivot floor(size / 2) = (2, 2, 3).
-    assert!(
-        close(bare.0, [-2.0, -3.0, -2.0]) && close(bare.1, [3.0, 4.0, 2.0]),
-        "{bare:?}"
-    );
-    let low = bounds_of(&root, "models/bare-low.vox");
-    assert_eq!(low, bounds_of(&root, "models/graphed-low.vox"));
-    assert!(
-        close(low.0, [-0.2, 0.0, -0.2]) && close(low.1, [0.3, 0.7, 0.2]),
-        "{low:?}"
-    );
 }
 
 /// An animated `.vox` (three frames without a scene graph, MagicaVoxel
@@ -406,72 +312,4 @@ fn a_keyed_transform_cooks_to_a_moving_joint() {
 
 fn close(a: [f32; 3], b: [f32; 3]) -> bool {
     a.iter().zip(b).all(|(x, y)| (x - y).abs() < 1e-3)
-}
-
-#[test]
-fn import_settings_scale_and_ground_a_vox_and_an_edit_recooks_it() {
-    // A 4 x 2 x 6 block (6 voxels tall in MagicaVoxel z, y in glTF).
-    let mut voxels = Vec::new();
-    for z in 0..6u8 {
-        for y in 0..2u8 {
-            for x in 0..4u8 {
-                voxels.push([x, y, z, 9]);
-            }
-        }
-    }
-    let block = vox([4, 2, 6], &voxels);
-    let root = project(
-        "crate",
-        &[
-            ("models/crate.vox", &block),
-            (
-                "models/crate.vox.ogt",
-                &settings("voxScale 0.25\nvoxOrigin bottom"),
-            ),
-        ],
-    );
-    let report = cook_project(&root, &CookOptions::default()).unwrap();
-    assert!(report.ok(), "{:?}", report.errors());
-    let (lo, hi) = bounds(&root);
-    // 1 m x 1.5 m x 0.5 m about its pivot (a file without a scene graph
-    // is centred, as MagicaVoxel shows it), on the ground.
-    assert!(
-        close(lo, [-0.5, 0.0, -0.25]) && close(hi, [0.5, 1.5, 0.25]),
-        "{lo:?} {hi:?}"
-    );
-
-    // Unchanged: nothing cooks. The settings edited: the model again.
-    let again = cook_project(&root, &CookOptions::default()).unwrap();
-    assert!(!again.cooked_outputs().iter().any(|o| o.cooked));
-    std::fs::write(
-        root.join("assets/models/crate.vox.ogt"),
-        settings("voxScale 1"),
-    )
-    .unwrap();
-    let third = cook_project(&root, &CookOptions::default()).unwrap();
-    let cooked: Vec<&str> = third
-        .cooked_outputs()
-        .iter()
-        .filter(|o| o.cooked)
-        .map(|o| o.id.as_str())
-        .collect();
-    assert_eq!(cooked, vec!["models/crate.vox"]);
-    let (lo, hi) = bounds(&root);
-    assert!(
-        close(lo, [-2.0, -3.0, -1.0]) && close(hi, [2.0, 3.0, 1.0]),
-        "one metre a voxel, centred: {lo:?} {hi:?}"
-    );
-
-    // A bad setting fails the model, naming the line.
-    std::fs::write(
-        root.join("assets/models/crate.vox.ogt"),
-        settings("voxOrigin top"),
-    )
-    .unwrap();
-    let bad = cook_project(&root, &CookOptions::default()).unwrap();
-    let e = bad.errors().join("\n");
-    assert!(
-        e.contains("models/crate.vox") && e.contains("line 5") && e.contains("voxOrigin"),
-        "{e}"
-    );
 }

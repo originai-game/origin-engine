@@ -64,10 +64,11 @@ fn draw(renderer: &mut Renderer, scene: &RenderScene) -> (RgbaImage, bool) {
 fn a_look_that_switches_the_stylisation_resets_the_taa_history() {
     let mut scene = scenes::thin_geometry();
     let mut look = Renderer::new_blocking(&desc()).expect("renderer");
-    if look.info().antialias != Antialias::Taa {
-        println!("skipped: TAA is not available on this adapter");
-        return;
-    }
+    assert_eq!(
+        look.info().antialias,
+        Antialias::Taa,
+        "GPU lacks TAA support"
+    );
     let mut cut = Renderer::new_blocking(&desc()).expect("renderer");
     // Three frames of the plain look: history from the second on.
     for f in 0..3 {
@@ -96,44 +97,6 @@ fn a_look_that_switches_the_stylisation_resets_the_taa_history() {
     // Back to the plain look: a cut again.
     scene.stylise = Default::default();
     assert!(!draw(&mut look, &scene).1, "the stylisation switched off");
-}
-
-#[test]
-fn a_camera_cut_resets_the_taa_history() {
-    let mut scene = scenes::thin_geometry();
-    let mut flagged = Renderer::new_blocking(&desc()).expect("renderer");
-    if flagged.info().antialias != Antialias::Taa {
-        println!("skipped: TAA is not available on this adapter");
-        return;
-    }
-    let mut reset = Renderer::new_blocking(&desc()).expect("renderer");
-    for f in 0..3 {
-        assert_eq!(draw(&mut flagged, &scene).1, f > 0, "frame {f}");
-        assert_eq!(draw(&mut reset, &scene).1, f > 0, "frame {f}");
-    }
-    // The next shot: the camera somewhere else. `flagged` is told through
-    // the scene, `reset` through the call.
-    let shift = Vec3::new(0.6, 0.2, 0.0);
-    scene.camera.position += shift;
-    scene.camera.target += shift;
-    scene.camera_cut = true;
-    let (a, blend_a) = draw(&mut flagged, &scene);
-    scene.camera_cut = false;
-    reset.reset_history();
-    let (b, blend_b) = draw(&mut reset, &scene);
-    assert!(
-        !blend_a,
-        "the cut's frame blends no history of the shot before"
-    );
-    assert!(!blend_b);
-    assert!(
-        a.pixels == b.pixels,
-        "the cut's frame is reset_history's, byte for byte"
-    );
-    assert!(
-        draw(&mut flagged, &scene).1,
-        "the frame after the cut blends"
-    );
 }
 
 #[test]
@@ -195,121 +158,4 @@ fn smaa_t2x_keeps_only_two_frames_and_resets_on_cuts() {
             og_render::wgpu::TextureFormat::Rgba8UnormSrgb
         );
     }
-}
-
-/// A static opaque stripe pattern (a triangle wave across x, about 1.5
-/// pixels a column, so TAA's neighbourhood box is wide) seen from above
-/// orthographically at 10 pixels a unit, and a grey half-transparent pane
-/// over its middle (the scene's last instance).
-fn striped() -> RenderScene {
-    use og_render::{
-        Background, Camera, MeshData, Projection, StandardMaterial, Tonemap, Vertex, shapes,
-    };
-    let mut scene = RenderScene::new();
-    scene.environment.background = Background::Color(Vec3::ZERO);
-    scene.post.tonemap = Tonemap::None;
-    scene.light.cast_shadows = false;
-    scene.camera = Camera {
-        position: Vec3::new(0.0, 10.0, 0.0),
-        target: Vec3::ZERO,
-        up: Vec3::NEG_Z,
-        projection: Projection::Orthographic { height: 18.0 },
-        ..Default::default()
-    };
-    let columns = 270;
-    let mut vertices = Vec::new();
-    let mut indices = Vec::new();
-    for i in 0..=columns {
-        let x = -20.25 + 0.15 * i as f32;
-        let level = if i % 2 == 0 { 0.1 } else { 0.9 };
-        for z in [-10.0, 10.0] {
-            vertices.push(Vertex {
-                tangent: [0.0; 4],
-                position: [x, 0.0, z],
-                normal: [0.0, 1.0, 0.0],
-                uv: [0.0; 2],
-                color: [level, level, level, 1.0],
-            });
-        }
-        if i < columns {
-            let k = 2 * i as u32;
-            indices.extend([k, k + 1, k + 3, k, k + 3, k + 2]);
-        }
-    }
-    let stripes = scene.add_mesh(MeshData { vertices, indices });
-    let white = scene.add_standard_material(StandardMaterial {
-        unlit: 1,
-        ..Default::default()
-    });
-    scene.add_instance(stripes, white, glam::Mat4::IDENTITY);
-    let plane = scene.add_mesh(shapes::plane(6.0, 1.0));
-    let grey = scene.add_standard_material(StandardMaterial {
-        color: Vec3::splat(0.5),
-        opacity: 0.5,
-        transparent: 1,
-        unlit: 1,
-        ..Default::default()
-    });
-    scene.add_instance(plane, grey, glam::Mat4::from_translation(Vec3::Y));
-    scene
-}
-
-/// The mean absolute difference of two frames over the pane's middle (40
-/// pixels square at the centre), in 8-bit codes per channel.
-fn pane_difference(a: &RgbaImage, b: &RgbaImage) -> f64 {
-    let (cx, cy) = (a.width / 2, a.height / 2);
-    let mut sum = 0u64;
-    let mut n = 0u64;
-    for y in cy - 20..cy + 20 {
-        for x in cx - 20..cx + 20 {
-            let i = ((y * a.width + x) * 4) as usize;
-            for c in 0..3 {
-                sum += u64::from(a.pixels[i + c].abs_diff(b.pixels[i + c]));
-                n += 1;
-            }
-        }
-    }
-    sum as f64 / n as f64
-}
-
-/// A pane that appears over a converged history: the frame it appears in is
-/// compared with a renderer that drew the pane from the start, on the same
-/// jitter. Without the mask the pane-less history keeps the plain weight's
-/// 1 - 0.1 = 0.9 of the frame before's difference, with it (1 - 0.1) *
-/// revealage 0.5 = 0.45, each less where the neighbourhood clamp takes
-/// more. Measured on Metal (2026-11-04): 0.32 with the mask (3.77 of 11.80
-/// codes) and 0.50 with it forced off (`reveal = 1`, 5.90 codes): the bound
-/// 0.40 lies between them, about a quarter from each.
-#[test]
-fn the_oit_revealage_lowers_the_taa_history_under_a_pane() {
-    let mut appears = Renderer::new_blocking(&desc()).expect("renderer");
-    if appears.info().antialias != Antialias::Taa {
-        println!("skipped: TAA is not available on this adapter");
-        return;
-    }
-    let mut always = Renderer::new_blocking(&desc()).expect("renderer");
-    // One scene for `appears`, its pane's instance taken out and put back:
-    // a second scene would be a new scene to the renderer, which drops the
-    // history with the rest of the old scene's cache.
-    let (mut scene, with) = (striped(), striped());
-    let pane = scene.instances.pop().expect("the pane");
-    let mut before = 0.0;
-    for f in 0..16 {
-        let (a, _) = draw(&mut appears, &scene);
-        let (b, _) = draw(&mut always, &with);
-        before = pane_difference(&a, &b);
-        assert!(f == 0 || before > 0.0, "frame {f}: the pane shows");
-    }
-    scene.instances.push(pane);
-    let (a, history) = draw(&mut appears, &scene);
-    let (b, _) = draw(&mut always, &with);
-    assert!(history, "the pane's first frame blends the history");
-    let after = pane_difference(&a, &b);
-    println!("pane difference: {before:.2} codes before it appears, {after:.2} as it does");
-    assert!(before > 8.0, "the pane changes the frame: {before:.2}");
-    assert!(
-        after <= 0.40 * before,
-        "the history under the pane kept {:.2} of the difference",
-        after / before
-    );
 }

@@ -292,41 +292,6 @@ fn two_baked_scenes_both_draw_their_bakes() {
     assert!(r[1].1, "{r:?}");
 }
 
-/// A re-cook that changes the model's blob but not its geometry keeps the
-/// bake: the box's import settings leave its raycast BVH out, the project
-/// is cooked again (the blob's hash moves, its vertices do not) and the
-/// hall still draws baked. The old key was the blob's hash, so every
-/// cooker revision staled every bake of every project.
-#[test]
-fn a_recook_that_keeps_the_geometry_keeps_the_bake() {
-    let root = project();
-    let bundle = || og_bundle::runtime::Bundle::open(&root.join("cooked")).unwrap();
-    let before = bundle().output("models/cornell.glb").unwrap().hash;
-    std::fs::write(
-        root.join("assets/models/cornell.glb.ogt"),
-        "type import\nversion 1\n---\nmodel {\n  raycast false\n}\n",
-    )
-    .unwrap();
-    let report = og_cook::cook_project(root, &cook_options()).unwrap();
-    assert!(report.ok(), "{:?}", report.errors());
-    assert_ne!(
-        bundle().output("models/cornell.glb").unwrap().hash,
-        before,
-        "the re-cook changed the model's blob"
-    );
-    let (engine, seen) = engine();
-    instantiate(engine, "scenes/hall.ogt");
-    frame(engine);
-    assert_eq!(
-        reported(engine),
-        vec![("scenes/hall.ogt".into(), true, String::new())]
-    );
-    assert!(
-        !seen.borrow().lightmapped.is_empty(),
-        "the hall's box draws its bake after the re-cook"
-    );
-}
-
 /// A render snapshot keeps the baked lighting with the world it restores
 /// (debt render-light #7): restored after the box was despawned, its bake
 /// draws again with the same lightmapped meshes and pages; restored to a

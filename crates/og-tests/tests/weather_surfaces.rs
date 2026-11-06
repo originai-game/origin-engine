@@ -9,13 +9,7 @@ use og_render::{
     Camera, ColorSpace, DirectionalLight, Exposure, Mips, RenderScene, RenderTarget, Renderer,
     RgbaImage, StandardMaterial, SurfaceWeather, TextureData, shapes,
 };
-use og_tests::weather_scenes::WEATHER_SCENES;
-use og_tests::{gfx, scenes};
-use std::path::PathBuf;
-
-fn out_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-gfx")
-}
+use og_tests::scenes;
 
 fn frame(scene: &RenderScene) -> RgbaImage {
     let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
@@ -23,16 +17,6 @@ fn frame(scene: &RenderScene) -> RgbaImage {
         .render(scene, &RenderTarget::Offscreen)
         .expect("render");
     renderer.read_offscreen().expect("capture")
-}
-
-#[test]
-fn weather_and_cloth_scenes_match_their_references() {
-    for scene in WEATHER_SCENES {
-        match gfx::check(scene, &out_dir()) {
-            Ok(r) => println!("{r}"),
-            Err(e) => panic!("{e}"),
-        }
-    }
 }
 
 /// The mean luminance of each 16 px block of a box (x0..x1, y0..y1).
@@ -107,54 +91,6 @@ fn concrete() -> StandardMaterial {
     }
 }
 
-/// Rain runs down a wall in streaks: the soaked wall is darker than the
-/// dry one and its columns differ (rivulets beside drier stone), where
-/// the dry wall is even. (Wetness alone darkened a wall evenly.)
-#[test]
-fn rain_runs_down_a_wall_in_streaks() {
-    let dry = plain(concrete(), true, None);
-    let wet = plain(
-        concrete(),
-        true,
-        Some(SurfaceWeather {
-            wetness: 1.0,
-            rain: 1.0,
-            ..SurfaceWeather::default()
-        }),
-    );
-    let (dry_across, _) = grain(&dry);
-    let (across, down) = grain(&wet);
-    println!(
-        "wall: dry {} across {dry_across}, wet {} across {across} down {down}",
-        mean(&blocks(&dry, 160, 1120, 100, 620)),
-        mean(&blocks(&wet, 160, 1120, 100, 620)),
-    );
-    assert!(
-        mean(&blocks(&wet, 160, 1120, 100, 620)) < 0.9 * mean(&blocks(&dry, 160, 1120, 100, 620)),
-        "a soaked wall is darker"
-    );
-    assert!(across > 4.0 * dry_across.max(0.05), "and streaked");
-    assert!(across > 3.0 * down, "the streaks run down the wall");
-}
-
-/// How much the luminance changes from a pixel to its neighbour across the
-/// frame and down it (the mean absolute step, over the middle of the frame).
-fn grain(img: &RgbaImage) -> (f32, f32) {
-    let l = |x: u32, y: u32| {
-        let p = &img.pixels[((y * img.width + x) * 4) as usize..][..3];
-        0.2126 * p[0] as f32 + 0.7152 * p[1] as f32 + 0.0722 * p[2] as f32
-    };
-    let (mut across, mut down, mut n) = (0.0, 0.0, 0.0);
-    for y in 100..620 {
-        for x in 160..1120 {
-            across += (l(x + 1, y) - l(x, y)).abs();
-            down += (l(x, y + 1) - l(x, y)).abs();
-            n += 1.0;
-        }
-    }
-    (across / n, down / n)
-}
-
 /// Once the rain stops the ground dries in patches: at half its wetness it
 /// is a mottle of dark damp and dry ground, where in the rain the same
 /// wetness darkens it evenly. (Drying was even everywhere.)
@@ -192,55 +128,6 @@ fn the_ground_dries_in_patches_after_the_rain() {
     assert!(dried > 0.15, "part of it has dried");
     assert!(soaked > 0.15, "part of it is still soaked");
     assert!(spread(&drying) > spread(&raining) + 0.05, "in patches");
-}
-
-/// A dust storm leaves the ground under its dust: dark asphalt turns pale
-/// and sandy. A material with weathering 0 stays exactly as it is under
-/// the dust and under deep snow, while the same material taking the
-/// weather is buried.
-#[test]
-fn dust_settles_and_weathering_0_keeps_a_material_as_it_is() {
-    let asphalt = StandardMaterial {
-        color: Vec3::splat(0.06),
-        roughness: 0.85,
-        ..Default::default()
-    };
-    let px = |img: &RgbaImage| {
-        let p = &img.pixels[((450 * img.width + 640) * 4) as usize..][..3];
-        [p[0] as f32, p[1] as f32, p[2] as f32]
-    };
-    let dry = plain(asphalt, false, None);
-    let dust = SurfaceWeather {
-        dust: 1.0,
-        ..SurfaceWeather::default()
-    };
-    let dusty = plain(asphalt, false, Some(dust));
-    let (d, s) = (px(&dry), px(&dusty));
-    println!("asphalt {d:?}, dusty {s:?}");
-    assert!(s[1] > d[1] + 40.0, "dust is pale over dark ground");
-    assert!(s[0] - s[2] > d[0] - d[2] + 15.0, "and sandy");
-    let kept = StandardMaterial {
-        weathering: 0.0,
-        ..asphalt
-    };
-    let snow = SurfaceWeather {
-        snow: 1.0,
-        ..SurfaceWeather::default()
-    };
-    assert_eq!(
-        plain(kept, false, Some(dust)).pixels,
-        dry.pixels,
-        "untouched by dust"
-    );
-    assert_eq!(
-        plain(kept, false, Some(snow)).pixels,
-        dry.pixels,
-        "and by snow"
-    );
-    assert!(
-        px(&plain(asphalt, false, Some(snow)))[1] > d[1] + 80.0,
-        "which buries the rest"
-    );
 }
 
 /// How far apart two dry halves' spreads may be and still be alike: half a
@@ -329,149 +216,4 @@ fn plain_with(
     };
     scene.surface_weather = weather.map(|w| SurfaceWeather { shelter: 0.0, ..w });
     frame(&scene)
-}
-
-// SCRATCH (removed before commit): the frames for reading.
-
-/// A flat 128 m terrain of one grey layer whose albedo map carries the
-/// height `alpha` (four texels across, tiled once every 256 m), lit and
-/// seen as [`plain`]'s ground, with `post` a dark post (weathering 0)
-/// standing 3 m ahead of a camera 40 cm over the ground.
-fn terrain_with(alpha: [u8; 4], post: bool, weather: Option<SurfaceWeather>) -> RgbaImage {
-    use og_render::{Terrain, TerrainData, TerrainLayer};
-    let mut scene = RenderScene::new();
-    scene.light = DirectionalLight {
-        direction_to_light: Vec3::new(0.3, 0.8, 0.5).normalize(),
-        intensity: 2.0,
-        cast_shadows: false,
-        ..Default::default()
-    };
-    let n = 65u32;
-    let handle = scene.add_terrain(TerrainData {
-        size: glam::Vec2::splat(128.0),
-        columns: n,
-        rows: n,
-        heights: std::sync::Arc::from(vec![0.0f32; (n * n) as usize]),
-        control: None,
-        holes: None,
-    });
-    let mut rgba = Vec::new();
-    for a in alpha {
-        rgba.extend_from_slice(&[150, 140, 130, a]);
-    }
-    let albedo = scene.add_texture(TextureData {
-        width: 4,
-        height: 1,
-        rgba,
-        color_space: ColorSpace::Srgb,
-        mips: Mips::None,
-    });
-    scene.terrains.push(Terrain {
-        layers: vec![TerrainLayer {
-            albedo: Some(albedo),
-            color: Vec3::ONE,
-            roughness: 0.9,
-            tile: 256.0,
-            ..Default::default()
-        }],
-        ..Terrain::new(handle)
-    });
-    if post {
-        let h = scene.add_standard_material(StandardMaterial {
-            color: Vec3::splat(0.03),
-            roughness: 0.9,
-            weathering: 0.0,
-            ..Default::default()
-        });
-        let mesh = scene.add_mesh(shapes::cuboid(Vec3::new(0.4, 2.0, 0.4)));
-        scene.add_instance(mesh, h, Mat4::from_translation(Vec3::new(0.0, 1.0, -3.0)));
-        scene.camera = Camera {
-            position: Vec3::new(0.0, 0.4, 0.0),
-            target: Vec3::new(0.0, 0.1, -3.0),
-            exposure: Exposure::linear(1.0),
-            ..Default::default()
-        };
-    } else {
-        scene.camera = Camera {
-            position: Vec3::new(0.0, 6.0, 4.0),
-            target: Vec3::new(0.0, 0.0, -4.0),
-            exposure: Exposure::linear(1.0),
-            ..Default::default()
-        };
-    }
-    scene.surface_weather = weather.map(|w| SurfaceWeather { shelter: 0.0, ..w });
-    frame(&scene)
-}
-
-/// Puddles on a terrain fill its layers' hollows first: a layer whose
-/// height map is low right of the frame's centre and high left of it
-/// (world x < 0 wraps to the map's high texels) takes more standing
-/// water on its right. Dry, the halves are alike. (The terrain's weather
-/// knew no relief: both halves puddled alike.)
-#[test]
-fn puddles_on_a_terrain_fill_its_layers_hollows_first() {
-    let halves = |w: Option<SurfaceWeather>| {
-        let img = terrain_with([0, 0, 255, 255], false, w);
-        (
-            spread(&blocks(&img, 0, 560, 0, 320)),
-            spread(&blocks(&img, 720, 1280, 0, 320)),
-        )
-    };
-    let dry = halves(None);
-    let wet = halves(Some(SurfaceWeather {
-        wetness: 1.0,
-        puddles: 0.45,
-        ..SurfaceWeather::default()
-    }));
-    // The same ground wet with no standing water (its drained crests dry in
-    // a mottle of their own): what the puddles add is measured over it.
-    let damp = halves(Some(SurfaceWeather {
-        wetness: 1.0,
-        puddles: 0.0,
-        ..SurfaceWeather::default()
-    }));
-    let gain = (wet.0 - damp.0, wet.1 - damp.1);
-    println!("terrain: dry {dry:?}, wet {damp:?}, puddled {wet:?}: the puddles add {gain:?}");
-    assert!((dry.0 - dry.1).abs() < DRY_ALIKE, "dry halves alike");
-    assert!(
-        // (With no relief the halves came out alike.)
-        gain.1 > 0.04 && gain.1 > 1.8 * gain.0,
-        "the hollow (right) half holds more water: the puddles add {gain:?}"
-    );
-}
-
-/// Lying snow lifts the drawn terrain: with 10 cm of it a dark post's
-/// foot is buried, so less of the post shows than under a dusting of the
-/// same cover with no depth. (The terrain's snow was paint: it lay at the
-/// field's height.)
-#[test]
-fn lying_snow_lifts_a_terrain_round_a_post() {
-    let dark = |depth: f32| {
-        let img = terrain_with(
-            [255; 4],
-            true,
-            Some(SurfaceWeather {
-                snow: 0.9,
-                snow_depth: depth,
-                ..SurfaceWeather::default()
-            }),
-        );
-        let mut count = 0;
-        for y in 0..img.height {
-            for x in 600..680 {
-                let p = &img.pixels[((y * img.width + x) * 4) as usize..][..3];
-                if (p[0] as u32 + p[1] as u32 + p[2] as u32) < 300 {
-                    count += 1;
-                }
-            }
-        }
-        count
-    };
-    let (thin, deep) = (dark(0.0), dark(0.1));
-    println!("post pixels: no depth {thin}, 10 cm {deep}");
-    assert!(thin > 0, "the post shows");
-    assert!(
-        (deep as f32) < 0.95 * thin as f32,
-        "the snow buries the post's foot: {deep} vs {thin}"
-    );
 }

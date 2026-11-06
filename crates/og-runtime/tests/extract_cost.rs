@@ -224,7 +224,8 @@ fn extract_calls() -> u64 {
 }
 
 #[test]
-fn extraction_is_linear_and_never_decodes_meshes_on_the_lanes() {
+#[ignore = "wave-end perf lane"]
+fn perf_extraction_is_linear_and_never_decodes_meshes_on_the_lanes() {
     let (small, small_seen) = field(2_000);
     let (large, large_seen) = field(20_000);
     let before = extract_calls();

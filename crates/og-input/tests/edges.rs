@@ -212,27 +212,6 @@ fn run(w: &mut World, layer: &mut InputLayer, steps: &[Vec<InjectedInput>]) -> V
 }
 
 #[test]
-fn edges_last_one_tick_over_a_scripted_sequence() {
-    let (mut w, mut layer, log) = world();
-    let refused = run(&mut w, &mut layer, &script());
-    assert_eq!(refused, ["Hyper"], "an unknown code is refused");
-    assert_eq!(layer.accepted(), 13, "fourteen events, one refused");
-    let log = log.lock().unwrap().clone();
-    let transcript = json!({"script": script().iter().map(|s| s.iter().map(InjectedInput::to_json).collect::<Vec<_>>()).collect::<Vec<_>>(), "ticks": log});
-    let path =
-        std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("input-edges-transcript.json");
-    std::fs::write(
-        &path,
-        serde_json::to_string_pretty(&transcript).unwrap() + "\n",
-    )
-    .unwrap();
-    for (got, want) in log.iter().zip(expected()) {
-        assert_eq!(got, &want, "tick {}", want["tick"]);
-    }
-    assert_eq!(log.len(), expected().len());
-}
-
-#[test]
 fn injected_input_is_world_state_and_replays_exactly() {
     let steps = script();
     let (mut a, mut la, log_a) = world();

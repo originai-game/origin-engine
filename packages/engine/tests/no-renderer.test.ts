@@ -1,25 +1,4 @@
-// A game without a renderer (OG_RENDERER=none: the platform's engine and
-// probe sandboxes carry none, docs/design.md §5) on the native host: the
-// scaffolded game template, with one more playtest at a 640x480 surface,
-// runs `og test` with the switch on and off.
-//
-// Without a renderer: og test exits 0, each screenshot is one
-// "no renderer, frame unchecked" line and the summary counts them, no PNG
-// is written, every check outside t.frame runs (with a renderer, the same
-// count plus the frame checks) and the UI lays out on the playtest's own
-// surface. Both ways land on the same world hashes and the same dumps:
-// rendering never feeds back into simulation. `og run --json` says the
-// tier is `none` and lists the unchecked frame; `og polish` says "no
-// renderer" in its frame-time rows.
-//
-// Ways this could fail (each did before the change): a run with the
-// switch off whose adapter request failed went on as tier none and passed;
-// a screenshot without
-// a renderer warned, so "the script ran without warnings" failed; the
-// smoke playtest's run.png threw and failed it; og test exited 1; the UI
-// laid out on 1280x720 whatever the playtest's size; og polish scored a
-// frame time from the step alone. The scaffold stays in
-// target/evidence/no-renderer/ for inspection.
+// Simulation does not need a GPU; a test that requests pixels does.
 import { expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -28,10 +7,7 @@ import { ogBin } from "./support/og-bin.ts";
 import { attachRenderer } from "../src/node/index.ts";
 
 declare const Bun: {
-  spawnSync(
-    cmd: string[],
-    o: { cwd: string; env?: Record<string, string | undefined> },
-  ): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
+  spawnSync(cmd: string[], options: { cwd: string; env: Record<string, string | undefined> }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
 };
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -40,10 +16,10 @@ const evidence = join(repo, "target", "evidence", "no-renderer");
 const game = join(evidence, "game");
 
 const run = (cmd: string[], renderer: boolean) => {
-  const env: Record<string, string | undefined> = { ...process.env, OG_ENGINE_PACKAGE: pkg, OG_RENDERER: renderer ? undefined : "none" };
+  const env = { ...process.env, OG_ENGINE_PACKAGE: pkg, OG_RENDERER: renderer ? undefined : "none" };
   const r = Bun.spawnSync(cmd, { cwd: repo, env });
-  const decode = (b: Uint8Array) => new TextDecoder().decode(b);
-  return { code: r.exitCode, stdout: decode(r.stdout), out: decode(r.stdout) + decode(r.stderr) };
+  const stdout = new TextDecoder().decode(r.stdout);
+  return { code: r.exitCode, stdout, out: stdout + new TextDecoder().decode(r.stderr) };
 };
 
 interface Result {
@@ -53,164 +29,82 @@ interface Result {
   frameChecks: number;
   unchecked: string[];
   failures: string[];
-  notes: string[];
   tier: string;
   hash: string;
   hashes: string[];
-  warnings: string[];
 }
 
-const results = (stdout: string): Map<string, Result> =>
-  new Map(
-    stdout
-      .split("\n")
-      .filter((l) => l.startsWith('{"playtest"'))
-      .map((l) => JSON.parse(l) as Result)
-      .map((r) => [r.playtest, r]),
-  );
+const result = (stdout: string): Result => JSON.parse(stdout.split("\n").find((l) => l.startsWith('{"playtest"'))!);
 
-// The playtest the template lacks: a non-default surface, its UI dumped
-// (checked without a renderer too) and its frame read (only with one).
 const SURFACE = `import { playtest } from "@origingame/engine/playtest";
-
 export default playtest({
-  name: "the UI lays out on the playtest's 640x480 surface, renderer or not",
+  name: "a surface check needs a GPU without changing simulation",
   size: "640x480",
   runs: 2,
   commands: "0.3:dump_ui:ui.json;0.4:screenshot:surface.png;0.5:dump_world:world.json;0.6:quit",
   check(run, t) {
-    t.equal(run.warnings.join("; "), "", "the script ran without warnings");
-    t.ok(run.quit, "the script reached quit");
-    t.equal(run.hashes[0], run.hashes[1], "two runs land on the same hash");
-    const ui = run.json<{ surface: { width: number; height: number } }>("ui.json");
-    t.equal([ui.surface.width, ui.surface.height], [640, 480], "the UI's surface is the playtest's size");
+    t.equal(run.warnings.join("; "), "", "no warnings");
+    t.ok(run.quit, "reached quit");
+    t.equal(run.hashes[0], run.hashes[1], "repeatable world");
+    const ui = run.json("ui.json");
+    t.equal([ui.surface.width, ui.surface.height], [640, 480], "requested surface");
     t.frame("surface.png", () => {
       const png = run.png("surface.png");
-      t.equal([png.width, png.height], [640, 480], "the frame is 640x480");
+      t.equal([png.width, png.height], [640, 480], "rendered surface");
     });
   },
 });
 `;
 
-/** A dump with the systems' wall-clock timings left out. */
-const dump = (dir: string, file: string): unknown => {
-  const v = JSON.parse(readFileSync(join(dir, file), "utf8")) as { systems?: Array<Record<string, unknown>>; render?: unknown };
-  for (const s of v.systems ?? []) {
-    delete s["totalMs"];
-    delete s["ms"];
-  }
-  // An entity's `render` block (the level of detail drawn) is what the
-  // renderer did, not the game: without one there is nothing to report.
-  delete v.render;
-  return v;
-};
-
-test("og test without a renderer passes, counts its unchecked frames and runs the same game", () => {
+test("missing GPU fails frame checks while simulation-only checks still pass", () => {
   rmSync(evidence, { recursive: true, force: true });
   mkdirSync(evidence, { recursive: true });
-  const created = run(["bun", join(repo, "packages", "create", "bin", "create.ts"), game, "--name", "No Renderer"], true);
+  const created = run(["bun", join(repo, "packages/create/bin/create.ts"), game, "--name", "No Renderer"], true);
   if (created.code !== 0) throw new Error(created.out);
-  writeFileSync(join(game, "tests", "surface.og.ts"), SURFACE);
+  writeFileSync(join(game, "tests/surface.og.ts"), SURFACE);
+  const command = [ogBin(), "test", game, "--filter", "surface.og.ts", "--json", "--no-check"];
+  const none = run(command, false);
+  expect(none.code).not.toBe(0);
+  const blind = result(none.stdout);
+  expect(blind.ok).toBeFalse();
+  expect(blind.tier).toBe("none");
+  expect(blind.checks).toBe(4);
+  expect(blind.frameChecks).toBe(0);
+  expect(blind.unchecked).toEqual(["surface.png"]);
+  expect(blind.failures.join("; ")).toContain("missing GPU renderer");
+  const out = join(game, "og-out/test/surface");
+  expect(existsSync(join(out, "surface.png"))).toBeFalse();
+  const blindUi = readFileSync(join(out, "ui.json"), "utf8");
 
-  // Without a renderer, as a person reads it: a line per frame and the count.
-  const text = run([ogBin(), "test", game], false);
-  if (text.code !== 0) throw new Error(text.out);
-  expect(text.stdout).toMatch(/PASS smoke \(\d+ checks, 2 frames unchecked/);
-  // The region expectation reads the frame too: unchecked, like the screenshot.
-  expect(text.stdout).toContain("  ~ og run: expect:region:560,16,64,24:color:#9da5b1:24: no renderer, frame unchecked\n");
-  expect(text.stdout).toContain("  ~ smoke.png: no renderer, frame unchecked\n");
-  expect(text.stdout).toContain("  ~ surface.png: no renderer, frame unchecked\n");
-  // smoke (the region expectation and its screenshot), guard, intro (two frames), the inspector's
-  // two suites (three frames each, G3-7) and the surface suite written above.
-  expect(text.stdout).toMatch(/PASS intro \(\d+ checks, 2 frames unchecked/);
-  expect(text.stdout).toContain("og test: 6 suite(s) passed; 11 frame(s) unchecked: no renderer here");
-  expect(existsSync(join(game, "og-out", "test", "smoke", "smoke.png"))).toBeFalse();
+  const drawn = run(command, true);
+  if (drawn.code !== 0) throw new Error(drawn.out);
+  const lit = result(drawn.stdout);
+  expect(lit.ok).toBeTrue();
+  expect(lit.tier).not.toBe("none");
+  expect(lit.hash).toBe(blind.hash);
+  expect(lit.hashes).toEqual(blind.hashes);
+  expect(lit.checks - lit.frameChecks).toBe(blind.checks);
+  expect(lit.frameChecks).toBe(1);
+  expect(lit.unchecked).toEqual([]);
+  expect(existsSync(join(out, "surface.png"))).toBeTrue();
+  expect(readFileSync(join(out, "ui.json"), "utf8")).toBe(blindUi);
 
-  // And as JSON, with the dumps kept for the comparison below.
-  const none = run([ogBin(), "test", game, "--json"], false);
-  if (none.code !== 0) throw new Error(none.out);
-  const blind = results(none.stdout);
-  expect([...blind.keys()].sort()).toEqual(["guard", "inspector", "inspector-gizmo", "intro", "smoke", "surface"]);
-  for (const r of blind.values()) {
-    expect(r.tier).toBe("none");
-    expect(r.failures).toEqual([]);
-    expect(r.warnings).toEqual([]);
-    expect(r.frameChecks).toBe(0);
-    expect(r.notes).toEqual([]);
-  }
-  expect(blind.get("smoke")!.unchecked).toEqual(["og run: expect:region:560,16,64,24:color:#9da5b1:24", "smoke.png"]);
-  expect(blind.get("surface")!.unchecked).toEqual(["surface.png"]);
-  expect(blind.get("guard")!.unchecked).toEqual([]);
-  expect(blind.get("intro")!.unchecked).toEqual(["intro-4.png", "intro-8.png"]);
-  const smokeOut = join(game, "og-out", "test", "smoke");
-  const surfaceOut = join(game, "og-out", "test", "surface");
-  const blindDumps = {
-    smoke: ["world.json", "ui.json", "trickster.json", "crate.json"].map((f) => dump(smokeOut, f)),
-    surface: ["world.json", "ui.json"].map((f) => dump(surfaceOut, f)),
-  };
+  writeFileSync(join(game, "tests/logic.og.ts"), `import { playtest } from "@origingame/engine/playtest";
+export default playtest({ name: "simulation without GPU", commands: "0.2:quit", check(run, t) { t.ok(run.quit, "quit"); } });`);
+  const logic = run([ogBin(), "test", game, "--filter", "logic.og.ts", "--json", "--no-check"], false);
+  if (logic.code !== 0) throw new Error(logic.out);
+  expect(result(logic.stdout).ok).toBeTrue();
+}, 120_000);
 
-  // With a renderer: the same hashes and dumps, and the same checks plus
-  // the frame checks. The engine draws on a GPU only (docs/design.md
-  // §2.6), so a machine whose adapter request fails fails here, never
-  // passing as tier none.
-  const lit = results(run([ogBin(), "test", game, "--json"], true).stdout);
-  expect([...lit.keys()].sort()).toEqual(["guard", "inspector", "inspector-gizmo", "intro", "smoke", "surface"]);
-  for (const [name, r] of lit) {
-    const b = blind.get(name)!;
-    expect(r.failures).toEqual([]);
-    expect({ name, tier: r.tier === "none" ? "none" : "a GPU" }).toEqual({ name, tier: "a GPU" });
-    expect({ name, hash: r.hash, hashes: r.hashes }).toEqual({ name, hash: b.hash, hashes: b.hashes });
-    expect({ name, checks: r.checks - r.frameChecks }).toEqual({ name, checks: b.checks });
-    expect({ name, unchecked: r.unchecked }).toEqual({ name, unchecked: [] });
-  }
-  expect(lit.get("smoke")!.frameChecks).toBe(1);
-  expect(lit.get("surface")!.frameChecks).toBe(1);
-  expect(existsSync(join(smokeOut, "smoke.png"))).toBeTrue();
-  expect(["world.json", "ui.json", "trickster.json", "crate.json"].map((f) => dump(smokeOut, f))).toEqual(blindDumps.smoke);
-  expect(["world.json", "ui.json"].map((f) => dump(surfaceOut, f))).toEqual(blindDumps.surface);
-
-  // og run --json: the tier and the frame it did not take.
-  const out = join(evidence, "run");
-  const r = run([ogBin(), "run", "--headless", game, "--out", out, "--commands", "0.2:screenshot:a.png;0.3:dump_world:w.json;0.4:quit", "--json"], false);
-  if (r.code !== 0) throw new Error(r.out);
-  const summary = JSON.parse(r.stdout.trim().split("\n").pop()!) as { tier: string; unchecked: string[]; warnings: string[]; outputs: string[] };
-  expect(summary.tier).toBe("none");
-  expect(summary.unchecked).toEqual(["a.png"]);
-  expect(summary.warnings).toEqual([]);
-  expect(summary.outputs).toEqual([join(out, "w.json")]);
-  expect(r.out).toMatch(/INFO tick \d+: 0\.2s screenshot: no renderer, frame unchecked \(a\.png\)/);
-
-  // og polish: frame time is not measured without a renderer, and says so.
-  const polished = join(evidence, "polish");
-  const p = run([ogBin(), "polish", game, "--out", polished], false);
-  if (p.code !== 0) throw new Error(p.out);
-  const report = readFileSync(join(polished, "report.md"), "utf8");
-  expect(report).toContain("| Frame time | n/a (no renderer) |");
-  expect(report).toMatch(/\| Frame \(no renderer\) \| step [\d.]+ ms median, [\d.]+ p95; no renderer: render and frame time not measured; 1 frame\(s\) unchecked \|/);
-  const polish = JSON.parse(readFileSync(join(polished, "polish.json"), "utf8")) as { scores: Record<string, number | null>; findings: Array<{ measure: string }> };
-  expect(polish.scores["frameTime"]).toBeNull();
-  expect(polish.findings.filter((f) => f.measure === "frame time")).toEqual([]);
-}, 600_000);
-
-// A run that asked for a renderer and whose adapter request failed fails,
-// naming the adapter's error: it never goes on as tier none, where a
-// screenshot is "unchecked" and a playtest passes having drawn nothing
-// (before, og run printed "INFO no renderer" and went on). Only
-// OG_RENDERER=none runs without one. The refusal is the addon's answer when
-// wgpu finds no adapter, given here so any machine takes the path.
-test("a refused adapter fails the run that asked for a renderer; only OG_RENDERER=none runs without one", () => {
-  const refused = () => JSON.stringify({ ok: false, reason: "no GPU adapter: Auto: no suitable adapter found; set OG_RENDERER=none to run without a renderer" });
-  const granted = () => JSON.stringify({ ok: true, value: "metal" });
+test("a refused adapter fails unless a renderer was explicitly disabled", () => {
+  const reason = "no GPU adapter: Auto: no suitable adapter found";
+  const refused = () => JSON.stringify({ ok: false, reason });
   const saved = process.env.OG_RENDERER;
   try {
     delete process.env.OG_RENDERER;
-    const failed = attachRenderer(1, 64, 64, refused);
-    expect(failed).toEqual({ ok: false, reason: "no GPU adapter: Auto: no suitable adapter found; set OG_RENDERER=none to run without a renderer" });
-    process.env.OG_RENDERER = "vulkan";
-    expect(attachRenderer(1, 64, 64, refused).ok).toBeFalse();
+    expect(attachRenderer(1, 64, 64, refused)).toEqual({ ok: false, reason });
     process.env.OG_RENDERER = "none";
     expect(attachRenderer(1, 64, 64, refused)).toEqual({ ok: true, value: "none" });
-    expect(attachRenderer(1, 64, 64, granted)).toEqual({ ok: true, value: "metal" });
   } finally {
     if (saved === undefined) delete process.env.OG_RENDERER;
     else process.env.OG_RENDERER = saved;

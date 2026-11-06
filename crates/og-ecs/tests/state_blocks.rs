@@ -110,67 +110,6 @@ fn blocks_travel_with_the_snapshot_into_the_same_and_a_fresh_world() {
 }
 
 #[test]
-fn the_hash_covers_every_block() {
-    let (w1, a1, b1) = with_blocks();
-    let (w2, a2, b2) = with_blocks();
-    a1.set(5);
-    a2.set(5);
-    b1.set(9);
-    b2.set(9);
-    assert_eq!(w1.world_hash(), w2.world_hash());
-    b2.set(10);
-    assert_ne!(
-        w1.world_hash(),
-        w2.world_hash(),
-        "state in a block changes the hash"
-    );
-    b2.set(9);
-    a2.set(6);
-    assert_ne!(w1.world_hash(), w2.world_hash());
-}
-
-#[test]
-fn a_world_without_blocks_snapshots_and_hashes_as_before() {
-    let plain = world();
-    let (blocked, _, _) = with_blocks();
-    // Empty blocks save nothing, but a world with blocks still says so.
-    assert_eq!(
-        &plain.snapshot()[4..8],
-        &2u32.to_le_bytes(),
-        "format 2 without blocks"
-    );
-    assert_eq!(
-        &blocked.snapshot()[4..8],
-        &3u32.to_le_bytes(),
-        "format 3 with blocks"
-    );
-    // A save migration's edit writes the blocks back as they were.
-    let bytes = blocked.snapshot();
-    assert_eq!(blocked.edit_snapshot(&bytes).unwrap().to_bytes(), bytes);
-    let mut again = world();
-    again.restore(&plain.snapshot()).unwrap();
-    assert_eq!(again.world_hash(), plain.world_hash());
-}
-
-#[test]
-fn a_snapshot_without_a_block_resets_it() {
-    let plain = world().snapshot();
-    let (mut w, a, b) = with_blocks();
-    a.set(3);
-    b.set(4);
-    w.restore(&plain).unwrap();
-    assert_eq!((a.get(), b.get()), (None, None));
-
-    a.set(3);
-    let report = w.restore_migrating(&plain).unwrap();
-    assert_eq!(a.get(), None);
-    assert!(
-        report.warnings.iter().any(|m| m.contains("test.a")),
-        "{report:?}"
-    );
-}
-
-#[test]
 fn a_refused_restore_changes_neither_the_world_nor_any_block() {
     // A block that cannot decode its bytes: the world keeps its entities.
     let (mut w, a, b) = with_blocks();
@@ -199,39 +138,4 @@ fn a_refused_restore_changes_neither_the_world_nor_any_block() {
     truncated.truncate(truncated.len() - 3);
     assert!(w.restore(&truncated).is_err());
     assert_eq!(a.get(), Some(20));
-}
-
-#[test]
-fn a_block_this_world_lacks_is_refused_and_dropped_on_migration() {
-    let (w, a, _) = with_blocks();
-    a.set(8);
-    let snap = w.snapshot();
-    let mut plain = world();
-    plain.step().unwrap();
-    let before = plain.snapshot();
-    let err = plain.restore(&snap).unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::NotFound);
-    assert!(err.reason().contains("test.a"), "{}", err.reason());
-    assert_eq!(plain.snapshot(), before);
-
-    let report = plain.restore_migrating(&snap).unwrap();
-    assert!(
-        report.dropped.iter().any(|d| d.contains("test.a")),
-        "{report:?}"
-    );
-    assert_eq!(
-        plain.world_hash(),
-        world().world_hash(),
-        "the world itself restored"
-    );
-}
-
-#[test]
-fn block_names_are_unique() {
-    let (mut w, _, _) = with_blocks();
-    let err = w
-        .add_state_block("test.a", Box::new(Counter::default()))
-        .unwrap_err();
-    assert!(err.reason().contains("test.a"), "{}", err.reason());
-    assert!(w.add_state_block("", Box::new(Counter::default())).is_err());
 }

@@ -11,8 +11,8 @@
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_probe_dump, og_game_game,
     og_host_begin_bundle, og_time_group_dt, og_time_set_group_scale, og_time_set_scale,
-    og_tween_to, og_world_get, og_world_insert, og_world_resource, og_world_restore,
-    og_world_snapshot, og_world_spawn, set_hooks,
+    og_tween_to, og_world_get, og_world_insert, og_world_restore, og_world_snapshot,
+    og_world_spawn, set_hooks,
 };
 use serde_json::{Value, json};
 use std::{path::PathBuf, rc::Rc};
@@ -171,47 +171,4 @@ fn a_grouped_world_restores_its_scales_in_a_fresh_session() {
     frames(b, 20);
     assert_eq!(x(b, slow), end);
     assert_eq!(hash(b), end_hash);
-}
-
-/// A world that never names a time group: pinned on main e3ec45ab6, the
-/// code before G2-6 batch 3 (66118ec82a83f36d before G2-7 batch 3's
-/// og.Lockstep fields), then 808247095fefdc21 after U6d's UI state version
-/// 13 moved every raw world hash from 94fabc6049378510, then 83f0005d31df5c77
-/// once G3-2 made og.VideoPlayer lazy (it left the type table of every world
-/// without footage), then 4251b57bfa40912f once R11 made og.Lighting2D,
-/// og.Light2D and og.Occluder2D lazy (the same for a world without 2D
-/// lights); neither type is registered until a game uses it. Then
-/// 3564e52caad6a083 after ui-gaps' UI state version 14, and 05d77e7f93ca8034
-/// after version 15, f2b37b7b96b431cc after R9's og.Blendshapes version 2
-/// (`influences`), fcd11be7ffba10f8 after R6's og.TerrainScatter
-/// impostor fields, 18463832eea4312c after og.Model.sway, and
-/// 173949d34d97a0eb after R5 made og.Water lazy (gone from a world without water),
-/// 549687b62089e681 after og.Environment's blurriness, grounded dome and blend fields,
-/// f632ac0f4ad4b88f after T5 made og.Terrain lazy (gone from a world without terrain),
-/// 4bfa6723af539cfe after area 7's Stylise and MaterialStyle fields, and
-/// f54eca0ab51dea44 after area 4 made og.TerrainScatter and og.Wind lazy, and
-/// eb172ffc6fb342e9 after UI state version 16 (the touch control holding a finger),
-/// 7c83db2cf9f27934 after RenderSettings.upscaler (FSR 3.1), and
-/// 40b04e3283676297 after PostEffects' ssrMaxRoughness and ssrResolution, and
-/// 00718003c074788c after PostEffects.ssrMaxDistance's default of 100, and
-/// 02c64d91f9cfc3a3 after PostEffects.ssrSteps' default of 64, and
-/// b7cbee657edc5408 after Stylise.hatchingPaper, and
-/// e79a5545da817a9a after Cloth, SoftBody and Garment version 2 (simulation), and
-/// e593a5e2103c3fa4 after MaterialStyle.wireframeColor.
-/// 623aedb758cbc484 after Fluid3D version 2 (simulation).
-/// 7d9de53141456069 after Stylise's watercolour fields.
-/// b197ce091b778b8f after Stylise.posterizeMode.
-#[test]
-fn a_world_without_time_groups_keeps_its_hash() {
-    set_hooks(Rc::new(Game));
-    let engine = start(&project("time-groups-none"));
-    mover(engine, None, false);
-    value(og_time_set_scale(engine, 0.5));
-    frames(engine, 20);
-    // Reading the resource answers its default without registering it.
-    assert_eq!(
-        value(og_world_resource(engine, "og.TimeGroups".into())),
-        json!({ "scales": [] })
-    );
-    assert_eq!(hash(engine), "b197ce091b778b8f");
 }

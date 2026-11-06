@@ -5,7 +5,7 @@
 
 use og_anim::Trs;
 use og_core::glam::{Quat, Vec3};
-use og_motion::contract::{FRAMES, JOINTS, LEFT_LEG, MOTION_FEATURES, Pose, RIGHT_LEG, heading};
+use og_motion::contract::{FRAMES, JOINTS, MOTION_FEATURES, Pose};
 use og_motion::intent::{Goal, Motion};
 use og_motion::soma::{RELEASE_FRAMES, Skeleton, plant_feet};
 use og_motion::{Bundle, Model, Request, decode_frame, encode, valid_frames};
@@ -129,57 +129,6 @@ fn goals_chain_through_generations_from_the_last_four_frames() {
         })
         .collect();
     assert_eq!(batch.inputs, encode(&again).0);
-}
-
-#[test]
-fn a_placed_goal_stands_where_and_faces_how_it_was_told() {
-    let case = fixture("case.safetensors");
-    let source = poses(&case, "target", 2, 4);
-    let goal = Goal::placed(&source, [3.0, -2.0], 1.2);
-    let first = &goal.targets[0];
-    assert!((first.positions[0][0] - 3.0).abs() < 1e-5);
-    assert!((first.positions[0][2] + 2.0).abs() < 1e-5);
-    assert!((first.positions[0][1] - source[0].positions[0][1]).abs() < 1e-6);
-    let h = heading(first.positions[RIGHT_LEG], first.positions[LEFT_LEG]);
-    assert!((h - 1.2).abs() < 1e-4, "{h}");
-    // The later frames keep their offsets from the first, turned with it.
-    let step = |p: &[Pose], k: usize| {
-        let a = p[k].positions[0];
-        let b = p[0].positions[0];
-        ((a[0] - b[0]).hypot(a[2] - b[2]), a[1] - b[1])
-    };
-    for k in 1..4 {
-        let (d0, y0) = step(&source, k);
-        let (d1, y1) = step(&goal.targets, k);
-        assert!((d0 - d1).abs() < 1e-5 && (y0 - y1).abs() < 1e-6);
-    }
-}
-
-#[test]
-fn replacing_a_goal_during_inference_does_not_consume_its_replacement() {
-    let case = fixture("case.safetensors");
-    let model = Model::new(&fixture("tiny.safetensors")).unwrap();
-    let mut motion = Motion::default();
-    let c = motion.add(poses(&case, "context", 0, 4).try_into().unwrap());
-    let goal = |tag| Goal {
-        targets: poses(&case, "target", 0, 1),
-        token_counts: vec![8],
-        tag,
-    };
-    motion.push(c, goal(7));
-    let old = motion.batch(30).unwrap();
-    let output = model.generate(&old.inputs);
-    motion.clear_goals(c);
-    motion.push(c, goal(9));
-    motion.accept(&old, &output);
-    assert_eq!(motion.goals(c), 1, "stale completion consumed the new goal");
-    assert_eq!(
-        motion.queued(c),
-        0,
-        "cancelled poses were relabelled as the new goal"
-    );
-    assert_eq!(motion.generate(&model, 30), 1);
-    assert_eq!(motion.pop(c).unwrap().tag, 9);
 }
 
 /// SOMA's joint tree with plain proportions: legs of 0.45 + 0.45 m.

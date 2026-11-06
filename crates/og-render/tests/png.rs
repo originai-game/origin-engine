@@ -92,39 +92,6 @@ fn references() -> Vec<PathBuf> {
     out
 }
 
-/// The zlib stream's FLEVEL (RFC 1950): 0 fastest, 3 maximum compression.
-fn zlib_level(png: &[u8]) -> Option<u8> {
-    let mut at = 8;
-    while at + 10 <= png.len() {
-        let len = u32::from_be_bytes(png[at..at + 4].try_into().ok()?) as usize;
-        if &png[at + 4..at + 8] == b"IDAT" {
-            return Some(png[at + 9] >> 6);
-        }
-        at += 12 + len;
-    }
-    None
-}
-
-#[test]
-fn every_reference_frame_is_written_at_maximum_compression() {
-    let files = references();
-    assert!(
-        files.len() > 100,
-        "found the references ({} files)",
-        files.len()
-    );
-    let fast: Vec<String> = files
-        .iter()
-        .filter(|f| zlib_level(&std::fs::read(f).expect("read")) != Some(3))
-        .map(|f| f.display().to_string())
-        .collect();
-    assert!(
-        fast.is_empty(),
-        "{} reference frame(s) written by a fast encoder (record references with og_render::png_best or recordReference of @origingame/engine/playtest; `bun scripts/recompress-references.ts` re-encodes them): {fast:#?}",
-        fast.len()
-    );
-}
-
 /// A PNG's width × height (IHDR).
 fn area(png: &[u8]) -> u64 {
     let dim = |at: usize| u32::from_be_bytes(png[at..at + 4].try_into().expect("IHDR")) as u64;

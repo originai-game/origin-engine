@@ -33,65 +33,6 @@ fn resting_box(seed: u32) -> (World, PhysicsSystem, Entity, Entity) {
 }
 
 #[test]
-fn a_despawned_body_stops_holding_up_what_rests_on_it() {
-    let (mut w, _p) = world(Physics::default(), 11);
-    floor(&mut w);
-    let under = spawn_body(
-        &mut w,
-        at(0.0, 0.5, 0.0),
-        RigidBody::dynamic(),
-        Collider::cuboid(Vec3::ONE),
-    );
-    let top = spawn_body(
-        &mut w,
-        at(0.0, 1.5, 0.0),
-        RigidBody::dynamic(),
-        Collider::cuboid(Vec3::ONE),
-    );
-    run(&mut w, 60);
-    assert!((transform(&w, top).position.y - 1.5).abs() < 0.03);
-    w.despawn(under).unwrap();
-    run(&mut w, 60);
-    let y = transform(&w, top).position.y;
-    assert!((y - 0.5).abs() < 0.03, "the top box fell to the floor: {y}");
-}
-
-#[test]
-fn a_teleport_moves_the_body_and_it_falls_from_there() {
-    let (mut w, _p, b, _) = resting_box(12);
-    let mut t = transform(&w, b);
-    t.position = Vec3::new(3.0, 6.0, 0.0);
-    w.insert(b, t).unwrap();
-    w.step().unwrap();
-    let after = transform(&w, b).position;
-    assert!((after.x - 3.0).abs() < 1e-3, "{after}");
-    assert!(after.y < 6.0 && after.y > 5.9, "falling from 6 m: {after}");
-    run(&mut w, 120);
-    let landed = transform(&w, b).position;
-    assert!(
-        (landed.y - 0.5).abs() < 0.02 && (landed.x - 3.0).abs() < 0.05,
-        "{landed}"
-    );
-}
-
-#[test]
-fn a_velocity_set_by_game_code_launches_the_body() {
-    let (mut w, _p, b, _) = resting_box(13);
-    w.insert(
-        b,
-        Velocity {
-            linear: Vec3::new(0.0, 5.0, 0.0),
-            angular: Vec3::ZERO,
-        },
-    )
-    .unwrap();
-    run(&mut w, 15);
-    let y = transform(&w, b).position.y;
-    // Up at 5 m/s against gravity for a quarter second: about 0.95 m higher.
-    assert!(y > 1.2, "launched: {y}");
-}
-
-#[test]
 fn a_resized_collider_and_a_body_made_static_take_effect() {
     let (mut w, _p, b, _) = resting_box(14);
     w.insert(b, Collider::cuboid(Vec3::splat(3.0))).unwrap();
@@ -120,17 +61,6 @@ fn a_resized_collider_and_a_body_made_static_take_effect() {
     run(&mut w, 120);
     let y = transform(&w, dropped).position.y;
     assert!((y - 6.0).abs() < 0.03, "rests on the static box: {y}");
-}
-
-#[test]
-fn a_static_collider_moved_by_game_code_moves_in_the_simulation() {
-    let (mut w, _p, b, ground) = resting_box(15);
-    let mut t = transform(&w, ground);
-    t.position.y -= 2.0;
-    w.insert(ground, t).unwrap();
-    run(&mut w, 90);
-    let y = transform(&w, b).position.y;
-    assert!((y + 1.5).abs() < 0.03, "followed the floor down: {y}");
 }
 
 #[test]

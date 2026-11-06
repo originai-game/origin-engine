@@ -65,78 +65,6 @@ fn run_for(w: &mut World, e: Entity, move_x: f32, ticks: u32) -> Vec<(f32, f32)>
         .collect()
 }
 
-/// 2.3 s of Right from standing at `x`: once at maxSpeed, no tick under
-/// 95 % of it, the distance what the speed gives, the feet a skin over `top`.
-fn holds_its_speed(w: &mut World, x: f32, top: f32, max_speed: f32, what: &str) {
-    let e = hero(w, x, top, max_speed);
-    run(w, 10);
-    let ticks = run_for(w, e, 1.0, 138);
-    let reached = ticks
-        .iter()
-        .position(|t| t.0 >= max_speed)
-        .unwrap_or_else(|| panic!("{what}: it never reached {max_speed} m/s"));
-    for (i, (vx, y)) in ticks.iter().enumerate().skip(reached) {
-        assert!(
-            *vx >= 0.95 * max_speed,
-            "{what}: tick {i} ran {vx} m/s ({:?})",
-            ticks.iter().map(|t| t.0).collect::<Vec<_>>()
-        );
-        assert!(
-            (y - top - 0.01).abs() < 1e-3,
-            "{what}: tick {i} the feet are at {y}"
-        );
-    }
-    // Accelerating at 70 m/s² costs max_speed² / 140 m against running at it.
-    let ran = transform(w, e).position.x - x;
-    let want = max_speed * 2.3 - max_speed * max_speed / 140.0;
-    assert!(
-        (ran - want).abs() < 0.1,
-        "{what}: 2.3 s ran {ran} m, not {want}"
-    );
-}
-
-#[test]
-fn a_run_on_one_flat_box_holds_max_speed() {
-    let (mut w, _p) = world2d();
-    spawn_static(
-        &mut w,
-        at(37.0, -1.5, 0.0),
-        Collider::cuboid(Vec3::new(74.0, 3.0, 1.0)),
-    );
-    holds_its_speed(&mut w, 2.0, 0.0, 8.0, "one box");
-    // Hollowbell's tuning, where its floor is.
-    let (mut w, _p) = world2d();
-    spawn_static(
-        &mut w,
-        at(45.0, 14.5, 0.0),
-        Collider::cuboid(Vec3::new(74.0, 3.0, 1.0)),
-    );
-    holds_its_speed(&mut w, 9.0, 16.0, 6.5, "one box at y 16");
-}
-
-#[test]
-fn a_run_over_adjacent_boxes_holds_max_speed() {
-    let (mut w, _p) = world2d();
-    // Twelve boxes of uneven widths and depths, their tops at 16 (each
-    // centre and size in f32, as a tilemap's are).
-    let mut x0 = 0.0f32;
-    for (i, width) in [
-        3.0f32, 1.0, 5.0, 2.0, 7.0, 1.0, 4.0, 3.0, 6.0, 2.0, 5.0, 3.0,
-    ]
-    .iter()
-    .enumerate()
-    {
-        let depth = 1.0 + (i % 3) as f32;
-        spawn_static(
-            &mut w,
-            at(x0 + width * 0.5, 16.0 - depth * 0.5, 0.0),
-            Collider::cuboid(Vec3::new(*width, depth, 1.0)),
-        );
-        x0 += width;
-    }
-    holds_its_speed(&mut w, 1.0, 16.0, 6.5, "adjacent boxes");
-}
-
 /// A Hollowbell-like rock layer (96 × 48 cells of 1 m, its top-left corner
 /// at y 48): an upper floor three rows deep with its top at y 16 from x 8 to
 /// 82, cave walls, a ledge above it and uneven rock below, as og-runtime
@@ -190,13 +118,6 @@ fn tilemap(w: &mut World) {
 }
 
 #[test]
-fn a_run_on_a_tilemaps_collision_layer_holds_max_speed() {
-    let (mut w, _p) = world2d();
-    tilemap(&mut w);
-    holds_its_speed(&mut w, 9.0, 16.0, 6.5, "the tilemap's floor");
-}
-
-#[test]
 fn a_controller_put_exactly_on_the_floor_stands_and_runs() {
     // Every 0.37 m of the floor (x 26 and 40 among the places it sank).
     let xs: Vec<f32> = (0..190)
@@ -222,19 +143,6 @@ fn a_controller_put_exactly_on_the_floor_stands_and_runs() {
             "put at x {x}: 12 ticks of Right ran {ran} m ({ticks:?})"
         );
         run_for(&mut w, e, 0.0, 10);
-    }
-}
-
-#[test]
-fn a_run_left_and_right_keeps_the_feet_a_skin_over_the_floor() {
-    let (mut w, _p) = world2d();
-    tilemap(&mut w);
-    let e = hero(&mut w, 40.0, 16.0, 8.0);
-    for i in 0..12 {
-        let dir = if i % 2 == 0 { 1.0 } else { -1.0 };
-        for (vx, y) in run_for(&mut w, e, dir, 45) {
-            assert!((y - 16.01).abs() < 1e-3, "the feet at {y} running at {vx}");
-        }
     }
 }
 

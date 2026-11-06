@@ -77,10 +77,6 @@ impl<S> Rig<S> {
         self.step(press(p), build);
         self.step(release(p), build);
     }
-
-    fn key(&mut self, k: UiKey, build: &mut dyn FnMut(&mut Ui, &mut S)) {
-        self.step(keys(&[k]), build);
-    }
 }
 
 fn ids(ui: &Ui) -> Vec<String> {
@@ -102,13 +98,6 @@ fn release(p: Vec2) -> InputFrame {
         pointer: p,
         pointer_inside: true,
         released: true,
-        ..InputFrame::default()
-    }
-}
-
-fn keys(k: &[UiKey]) -> InputFrame {
-    InputFrame {
-        keys: k.to_vec(),
         ..InputFrame::default()
     }
 }

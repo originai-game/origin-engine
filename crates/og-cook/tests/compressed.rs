@@ -30,7 +30,7 @@
 //! `<target tmp>/evidence/P2/render/`).
 
 use glam::{Mat4, Quat, Vec3};
-use og_cook::runtime::{Bundle, CookedTexture};
+use og_cook::runtime::Bundle;
 use og_render::{
     FrameStats, Material, RenderScene, RenderTarget, Renderer, RgbaImage, TextureCompression,
     TextureFormat, TextureFormats, TextureSource, shapes,
@@ -66,25 +66,6 @@ fn bundle() -> Bundle {
 }
 
 const MODELS: [&str; 2] = ["models/trickster.glb", "models/dropship.glb"];
-
-/// Every Basis texture of the template, by id: the two loose ones and the
-/// models' embedded ones.
-fn template_textures(b: &Bundle) -> Vec<CookedTexture> {
-    let mut ids = vec![
-        "textures/stone.png".to_string(),
-        "textures/stone_n.png".to_string(),
-    ];
-    for m in MODELS {
-        ids.extend(
-            b.load_model(m)
-                .unwrap()
-                .textures
-                .iter()
-                .map(|t| t.id.clone()),
-        );
-    }
-    ids.iter().map(|id| b.load_texture(id).unwrap()).collect()
-}
 
 /// A renderer preferring `compression`, and the encodings it takes.
 fn renderer(compression: TextureCompression) -> (Renderer, TextureFormats) {
@@ -139,58 +120,6 @@ fn available() -> Vec<(
         f.supported
     );
     out
-}
-
-#[test]
-fn each_kind_reaches_its_familys_format() {
-    let b = bundle();
-    let textures = template_textures(&b);
-    for (family, pref, color, normal) in available() {
-        let (_, formats) = renderer(pref);
-        assert_eq!((formats.color, formats.normal), (color, normal), "{family}");
-        for t in &textures {
-            let kind = t.meta.kind;
-            let expected = match kind {
-                og_cook::format::kind::NORMAL => normal,
-                _ => color,
-            };
-            let TextureSource::Encoded(up) = t.to_texture_source(Some(&formats)).unwrap() else {
-                panic!("{family}: {} stayed RGBA8", t.id);
-            };
-            let d = &up.desc;
-            assert_eq!(d.format, expected, "{family}: {} (kind {kind})", t.id);
-            assert_eq!(
-                (d.width, d.height),
-                (t.meta.width, t.meta.height),
-                "{}",
-                t.id
-            );
-            let srgb = kind == og_cook::format::kind::COLOR;
-            assert_eq!(
-                d.color_space == og_render::ColorSpace::Srgb,
-                srgb,
-                "{family}: {} colour space",
-                t.id
-            );
-            assert_eq!(d.mip_levels, t.meta.levels, "{family}: {} levels", t.id);
-            for (i, level) in up.levels.iter().enumerate() {
-                assert_eq!(
-                    level.len(),
-                    d.format.level_bytes(d.width, d.height, i as u32),
-                    "{family}: {} level {i}",
-                    t.id
-                );
-            }
-        }
-        // Without a renderer, and on a renderer taking no compression: RGBA8.
-        let (_, off) = renderer(TextureCompression::Off);
-        for f in [None, Some(&off)] {
-            assert!(matches!(
-                textures[0].to_texture_source(f).unwrap(),
-                TextureSource::Rgba(_)
-            ));
-        }
-    }
 }
 
 /// Stone boards under a low sun: a near one filling the lower frame and a

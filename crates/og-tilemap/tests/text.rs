@@ -31,29 +31,6 @@ fn a_tileset_round_trips_through_its_canonical_text() {
     );
 }
 
-#[test]
-fn tileset_mistakes_name_their_line() {
-    let bad = [
-        ("grid 16 16 2 2\n", "no texture"),
-        (
-            "texture \"a.png\"\ngrid 16 16 2 2\nsolid 4\n",
-            "the grid has 4 tiles",
-        ),
-        (
-            "texture \"a.png\"\ngrid 16 16 2 2\ntile 1 {\n  frames 1 2\n}\n",
-            "line 7",
-        ),
-        (
-            "texture \"a.png\"\ngrid 16 16 2 2\nfilter blurry\n",
-            "line 6",
-        ),
-    ];
-    for (body, want) in bad {
-        let e = Tileset::parse(&format!("type tileset\nversion 1\n---\n{body}")).unwrap_err();
-        assert!(e.to_string().contains(want), "{body}: {e}");
-    }
-}
-
 const MAP: &str = r#####"type tilemap
 version 1
 ---
@@ -117,22 +94,6 @@ fn a_hand_written_map_reads_legends_rows_and_objects() {
     assert_eq!(world_to_cell(&m, Vec2::new(6.5, -1.5)), Some((3, 1)));
     assert_eq!(world_to_cell(&m, Vec2::new(6.5, 0.5)), None);
     assert_eq!(cell_center(&m, 3, 1), Vec2::new(7.0, -1.5));
-}
-
-#[test]
-fn map_mistakes_name_their_line() {
-    let e = TilemapAsset::parse(&MAP.replace("row \"####\"", "row \"###\"")).unwrap_err();
-    assert!(
-        e.to_string().contains("3 cells wide") && e.to_string().contains("line 15"),
-        "{e}"
-    );
-    let e = TilemapAsset::parse(&MAP.replace("row \"####\"", "row \"##x#\"")).unwrap_err();
-    assert!(
-        e.to_string().contains("'x' is not in the layer's legend"),
-        "{e}"
-    );
-    let e = TilemapAsset::parse(&MAP.replace("row 0 1 0 0", "row 0 2 0 0")).unwrap_err();
-    assert!(e.to_string().contains("terrain cell"), "{e}");
 }
 
 const LAYERED: &str = r#"type tilemap

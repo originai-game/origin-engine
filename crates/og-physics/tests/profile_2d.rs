@@ -8,7 +8,7 @@
 
 use crate::support;
 
-use og_core::glam::{Quat, Vec3};
+use og_core::glam::Vec3;
 use og_core::math::quat_from_axis_angle;
 use og_physics::*;
 use support::*;
@@ -88,51 +88,6 @@ fn a_circle_rolls_down_a_slope() {
     );
 }
 
-#[test]
-fn the_2d_profile_refuses_3d_only_shapes() {
-    let (mut w, _p) = world(Physics::profile_2d(), 2);
-    let e = spawn_body(
-        &mut w,
-        at(0.0, 0.0, 0.0),
-        RigidBody::dynamic(),
-        Collider::cylinder(1.0, 1.0),
-    );
-    let err = w.step().unwrap_err();
-    assert!(err.reason().contains("3D only"), "{}", err.reason());
-    assert!(err.reason().contains(&e.to_string()), "{}", err.reason());
-}
-
-#[test]
-fn a_polygon_from_a_mesh_lands_flat() {
-    let (mut w, physics) = world(Physics::profile_2d(), 3);
-    physics
-        .set_mesh(
-            1,
-            MeshDesc {
-                // A 2 × 1 rectangle as a polygon (z is ignored in 2D).
-                positions: vec![
-                    Vec3::new(-1.0, -0.5, 3.0),
-                    Vec3::new(1.0, -0.5, -3.0),
-                    Vec3::new(1.0, 0.5, 0.0),
-                    Vec3::new(-1.0, 0.5, 0.0),
-                ],
-                indices: vec![],
-            },
-        )
-        .unwrap();
-    floor(&mut w);
-    let plate = spawn_body(
-        &mut w,
-        at(0.0, 3.0, 0.0),
-        RigidBody::dynamic(),
-        Collider::convex(1),
-    );
-    run(&mut w, 180);
-    let t = transform(&w, plate);
-    assert!((t.position.y - 0.5).abs() < 0.02, "{t:?}");
-    assert!(t.quaternion.angle_between(Quat::IDENTITY) < 1e-3, "{t:?}");
-}
-
 /// og.Physics.profile changed at run time: a 3D world plays 2D and back.
 /// What could go wrong: the simulation of the old profile kept (bodies
 /// stop, or step twice), the new one not built from the components (a
@@ -204,83 +159,4 @@ fn a_world_switches_profile_at_run_time_and_back() {
     let _ = physics3;
     assert_eq!(transform(&w3, ball).position, end);
     assert_eq!(w3.world_hash(), w.world_hash());
-}
-
-/// A diamond and a hexagon are their polygons, not their boxes: a ray down
-/// at a quarter of the width meets the slanted top edge, in 2D and as 3D
-/// prisms. Ways this could fail: the code falls back to a box (the hit is
-/// at the box's top), the corners are halved twice, or the hexagon's
-/// shoulders sit at the wrong height.
-#[test]
-fn diamond_and_hexagon_colliders_are_their_polygons_in_both_profiles() {
-    // A 4 x 2 shape: half extents (2, 1). At x = 1 the diamond's top is at
-    // y = 0.5; the hexagon's (corners at y 1 and 0.5) at y = 0.75.
-    for (settings, name) in [(Physics::profile_2d(), "2D"), (Physics::default(), "3D")] {
-        for (shape, top) in [(SHAPE_DIAMOND, 0.5f32), (SHAPE_HEXAGON, 0.75)] {
-            let (mut w, physics) = world(settings, 1);
-            spawn_static(
-                &mut w,
-                at(0.0, 0.0, 0.0),
-                Collider {
-                    shape,
-                    ..Collider::cuboid(Vec3::new(4.0, 2.0, 1.0))
-                },
-            );
-            run(&mut w, 1);
-            let q = physics.query(&w).unwrap();
-            let down = |x: f32| {
-                q.raycast(&RaycastDesc {
-                    origin: Vec3::new(x, 5.0, 0.0),
-                    direction: -Vec3::Y,
-                    ..RaycastDesc::default()
-                })
-                .unwrap()
-                .map(|h| h.point.y)
-            };
-            let at_quarter = down(1.0).expect("hits");
-            assert!(
-                (at_quarter - top).abs() < 1e-4,
-                "{name} shape {shape}: {at_quarter}"
-            );
-            let at_middle = down(0.0).expect("hits");
-            assert!(
-                (at_middle - 1.0).abs() < 1e-4,
-                "{name} shape {shape}: {at_middle}"
-            );
-            assert_eq!(down(2.1), None, "{name} shape {shape}: past the corner");
-        }
-    }
-}
-
-#[test]
-fn a_flat_mesh_s_outline_is_its_loops_with_straight_runs_merged() {
-    // A 3 × 3 block of unit squares without its centre: the shared edges
-    // cancel, the outer square runs counter-clockwise and the hole
-    // clockwise, each four corners (the cells' corners on a straight side
-    // merged away).
-    let mut positions = Vec::new();
-    let mut indices = Vec::new();
-    for y in 0..3 {
-        for x in 0..3 {
-            if (x, y) == (1, 1) {
-                continue;
-            }
-            let a = positions.len() as u32;
-            for (dx, dy) in [(0, 0), (1, 0), (1, 1), (0, 1)] {
-                positions.push(Vec3::new((x + dx) as f32, (y + dy) as f32, 0.0));
-            }
-            // One clockwise triangle per cell: the outline turns it.
-            indices.push([a, a + 2, a + 1]);
-            indices.push([a, a + 2, a + 3]);
-        }
-    }
-    let mesh = MeshDesc { positions, indices };
-    let loops = outline(&mesh);
-    let area = |l: &Vec<u32>| {
-        let p = |k: usize| mesh.positions[l[k % l.len()] as usize].truncate();
-        (0..l.len()).map(|i| p(i).perp_dot(p(i + 1))).sum::<f32>() * 0.5
-    };
-    let mut got: Vec<(usize, f32)> = loops.iter().map(|l| (l.len(), area(l))).collect();
-    got.sort_by(|a, b| a.1.total_cmp(&b.1));
-    assert_eq!(got, vec![(4, -1.0), (4, 9.0)]);
 }

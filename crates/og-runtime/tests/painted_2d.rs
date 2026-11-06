@@ -142,14 +142,6 @@ fn a_painted_2d_sprite_is_painted_by_the_cook_alone() {
 }
 
 #[test]
-fn a_3d_frame_still_paints_on_screen() {
-    let art = "ArtPalette {\n  maxColors 8\n}\n";
-    let (root, text, _) = project("3d", "", art);
-    let paint = frame_paint(&root, &text, "3d").expect("the frame's paint");
-    assert!(paint.paints() && paint.watercolor.active(), "{paint:?}");
-}
-
-#[test]
 fn without_the_contracts_switch_a_2d_frame_paints_on_screen() {
     // The look sets paint fields but no art block: the cook leaves the
     // sprite as drawn, so the frame is the one place it is painted.

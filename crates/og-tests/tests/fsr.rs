@@ -49,10 +49,11 @@ fn mean(image: &RgbaImage) -> f64 {
 fn fsr_resolves_the_half_scale_scene_to_the_output() {
     let mut scene = scenes::thin_geometry();
     let mut full = Renderer::new_blocking(&desc(Antialias::Taa)).expect("renderer");
-    if full.info().antialias != Antialias::Taa {
-        println!("skipped: TAA is not available on this adapter");
-        return;
-    }
+    assert_eq!(
+        full.info().antialias,
+        Antialias::Taa,
+        "GPU lacks TAA support"
+    );
     let reference = draw(&mut full, &scene, 32);
 
     let mut taau = Renderer::new_blocking(&desc(Antialias::Taa)).expect("renderer");
@@ -101,36 +102,6 @@ fn fsr_resolves_the_half_scale_scene_to_the_output() {
     assert!(
         diff(&by_fsr, &by_taau) > 0.05,
         "FSR's frame is TAAU's: the choice was ignored"
-    );
-}
-
-/// Dynamic resolution (G1-4) moves the render scale under FSR without a
-/// reset: its state is the output's size, so the frame after a step from
-/// 0.5 to 0.67 is nearer the converged frame before it than a fresh start
-/// at 0.67 is (which draws one frame's samples, unaccumulated).
-#[test]
-fn a_render_scale_step_keeps_fsrs_history() {
-    let mut scene = scenes::thin_geometry();
-    scene.quality.upscaler = Upscaler::Fsr3;
-    let mut moving = Renderer::new_blocking(&desc(Antialias::Taa)).expect("renderer");
-    if moving.info().antialias != Antialias::Taa {
-        println!("skipped: TAA is not available on this adapter");
-        return;
-    }
-    moving.set_render_scale(0.5);
-    let before = draw(&mut moving, &scene, 64);
-    moving.set_render_scale(0.67);
-    let after = draw(&mut moving, &scene, 1);
-    let mut fresh = Renderer::new_blocking(&desc(Antialias::Taa)).expect("renderer");
-    fresh.set_render_scale(0.67);
-    let restarted = draw(&mut fresh, &scene, 1);
-    let (kept, reset) = (diff(&after, &before), diff(&restarted, &before));
-    println!(
-        "difference from the converged frame: after the step {kept:.2}, a fresh start {reset:.2}"
-    );
-    assert!(
-        kept < reset * 0.5,
-        "the step reset FSR: {kept} against {reset}"
     );
 }
 
@@ -338,8 +309,7 @@ fn cost() {
         d.taa_sharpen = 0.5;
         let mut renderer = Renderer::new_blocking(&d).expect("renderer");
         if let Some(why) = renderer.gpu_timing_absent() {
-            println!("skipped: no GPU timing ({why})");
-            return;
+            panic!("GPU lacks timing support: {why}");
         }
         renderer.set_clock(Some(clock));
         renderer.set_render_scale(scale);

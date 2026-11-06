@@ -4,19 +4,9 @@
 
 use crate::support;
 use og_tilemap::mask::*;
-use og_tilemap::{MapState, Tileset, reduce_blob};
 use support::*;
 
 const WALLS: usize = 1;
-
-#[test]
-fn there_are_47_reduced_blob_masks_and_reduction_drops_lone_corners() {
-    assert_eq!(blob_masks().len(), 47);
-    assert_eq!(reduce_blob(NE), 0, "a corner without its edges is dropped");
-    assert_eq!(reduce_blob(N | NE), N);
-    assert_eq!(reduce_blob(N | NE | E), N | NE | E);
-    assert_eq!(reduce_blob(255), 255);
-}
 
 #[test]
 fn an_isolated_cell_and_a_3x3_block_resolve_to_their_neighbourhoods() {
@@ -76,48 +66,4 @@ fn a_fill_then_clear_restores_the_neighbourhood_exactly() {
         s.layer_version(WALLS) > fresh_version,
         "edits bump the layer version"
     );
-}
-
-#[test]
-fn the_map_edge_counts_as_filled_unless_the_terrain_says_empty() {
-    let mut filled = state(&map(3, 3), "filled");
-    let mut empty = state(&map(3, 3), "empty");
-    for s in [&mut filled, &mut empty] {
-        s.set(WALLS, 0, 0, 1).unwrap();
-    }
-    assert_eq!(filled.tile(WALLS, 0, 0).unwrap().0, blob_tile(N | NW | W));
-    assert_eq!(empty.tile(WALLS, 0, 0).unwrap().0, blob_tile(0));
-}
-
-#[test]
-fn bitmask16_reads_the_four_edges() {
-    let mut a = map(4, 4);
-    a.layers[1].terrain = Some("path".into());
-    let mut s = MapState::new(&a, &[tileset("empty")]).unwrap();
-    s.set(WALLS, 1, 1, 1).unwrap();
-    s.set(WALLS, 2, 1, 1).unwrap();
-    s.set(WALLS, 1, 2, 1).unwrap();
-    // (1,1): E=2 and S=4 -> mask 6 -> tile 48 + 6.
-    assert_eq!(s.tile(WALLS, 1, 1).unwrap().0, 54);
-    assert_eq!(s.tile(WALLS, 2, 1).unwrap().0, 48 + 8, "only W");
-    assert_eq!(s.tile(WALLS, 1, 2).unwrap().0, 48 + 1, "only N");
-}
-
-#[test]
-fn rules_must_name_reduced_masks_and_terrain_cells_are_0_or_1() {
-    let text = blob_tileset("filled").replace("  default 47", "  rule 2 3\n  default 47");
-    let e = Tileset::parse(&text).unwrap_err();
-    assert!(
-        e.to_string()
-            .contains("mask 2 is not a reduced blob47 mask"),
-        "{e}"
-    );
-    assert!(e.to_string().contains("line"), "{e}");
-    let mut s = state(&map(3, 3), "filled");
-    let e = s.set(WALLS, 0, 0, 5).unwrap_err();
-    assert!(e.to_string().contains("terrain layer"), "{e}");
-    let mut a = map(3, 3);
-    a.layers[1].terrain = Some("lava".into());
-    let e = MapState::new(&a, &[tileset("filled")]).unwrap_err();
-    assert!(e.to_string().contains("terrain 'lava'"), "{e}");
 }

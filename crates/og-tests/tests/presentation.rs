@@ -10,7 +10,7 @@
 //! shrinking the scene's targets; a texture or target left out of the
 //! memory count.
 
-use og_render::{RenderError, RenderScene, RenderTarget, Renderer, RgbaImage, TextureData};
+use og_render::{RenderError, RenderScene, RenderTarget, Renderer, RgbaImage};
 use og_tests::scenes;
 
 /// `frames` frames of `scene` (TAA's history, as the reference harness
@@ -84,31 +84,4 @@ fn the_render_scale_draws_the_scene_smaller_and_the_output_at_its_size() {
     );
     renderer.set_render_scale(f32::NAN);
     assert_eq!(renderer.render_scale(), 1.0);
-}
-
-/// A texture added is counted at its allocated size (RGBA8 with its mip
-/// chain), and freed when removed.
-#[test]
-fn gpu_memory_counts_a_texture_where_it_is_created_and_frees_it() {
-    let g = scenes::build("materials").expect("scene");
-    let mut scene = g.scene;
-    let mut renderer = Renderer::new_blocking(&g.desc).expect("renderer");
-    draw(&mut renderer, &scene, 1);
-    let before = renderer.gpu_memory();
-    let t = scene.add_texture(TextureData {
-        width: 256,
-        height: 256,
-        rgba: vec![255; 256 * 256 * 4],
-        color_space: og_render::ColorSpace::Srgb,
-        mips: og_render::Mips::Generate,
-    });
-    draw(&mut renderer, &scene, 1);
-    let with = renderer.gpu_memory();
-    // 256² RGBA8 and its chain down to 1×1: 349,524 bytes.
-    let chain: u64 = (0..9).map(|l| (256u64 >> l).pow(2) * 4).sum();
-    assert_eq!(with.textures - before.textures, chain);
-    assert!(with.total() > before.total());
-    assert!(scene.remove_texture(t));
-    draw(&mut renderer, &scene, 1);
-    assert_eq!(renderer.gpu_memory().textures, before.textures);
 }

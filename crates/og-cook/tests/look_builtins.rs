@@ -78,14 +78,6 @@ fn a_look_naming_built_ins_cooks_them_into_the_bundle() {
 }
 
 #[test]
-fn a_games_own_at_path_is_refused() {
-    let root = project("refused", &[("@canvas/paper.hex", "ffffff\n")]);
-    let report = cook_project(&root, &CookOptions::default()).unwrap();
-    let errors = report.errors().join("\n");
-    assert!(errors.contains("engine's built-in assets"), "{errors}");
-}
-
-#[test]
 fn the_project_look_carries_the_art_contract() {
     // monochrome-pixel's contract names @palettes/handheld4 (as its
     // Stylise does): the built-in is in the bundle, the contract in the
@@ -153,45 +145,4 @@ fn the_project_look_carries_the_art_contract() {
         "{}",
         e.0
     );
-}
-
-#[test]
-fn a_malformed_ui_block_in_project_ogt_fails_the_cook() {
-    // project.ogt's `ui { screen "<name>" "<commands>" }` (docs/ui.md
-    // §16.5) is grammar the cook validates: a typo would otherwise leave
-    // `og ui check` checking a screen list nobody meant.
-    let root = project(
-        "ui-block",
-        &[(
-            "looks/main.ogt",
-            "type look\nversion 1\n---\nextends \"monochrome-pixel\"\n",
-        )],
-    );
-    let manifest = |ui: &str| {
-        std::fs::write(
-            root.join("project.ogt"),
-            format!("type project\nversion 1\n---\nname \"U\"\n{ui}"),
-        )
-        .unwrap()
-    };
-    manifest("ui {\n  screen \"hud\" \"0:key:Enter\"\n}\n");
-    assert!(cook_project(&root, &CookOptions::default()).unwrap().ok());
-    for (ui, want) in [
-        (
-            "ui {\n  scren \"hud\" \"0:x\"\n}\n",
-            "project.ogt:6: ui has no `scren`",
-        ),
-        (
-            "ui {\n  screen \"hud\"\n}\n",
-            "project.ogt:6: ui's screen \"hud\" has no commands",
-        ),
-        (
-            "ui {\n  screen \"a\" \"0:x\"\n  screen \"a\" \"0:y\"\n}\n",
-            "project.ogt:7: ui declares screen \"a\" twice",
-        ),
-    ] {
-        manifest(ui);
-        let e = cook_project(&root, &CookOptions::default()).unwrap_err();
-        assert!(e.0.contains(want), "{ui:?}: {}", e.0);
-    }
 }

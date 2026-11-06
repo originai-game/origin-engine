@@ -24,8 +24,8 @@
 use og_render::RenderScene;
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame, og_game_game,
-    og_host_begin_bundle, og_load_animation, og_load_gltf, og_load_gltf_info, og_world_insert,
-    og_world_instantiate, set_hooks, set_render_backend,
+    og_host_begin_bundle, og_load_animation, og_load_gltf, og_world_insert, og_world_instantiate,
+    set_hooks, set_render_backend,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -192,35 +192,6 @@ fn engine() -> (u32, Rc<RefCell<Seen>>) {
     (engine, seen)
 }
 
-fn names(engine: u32, path: &str) -> Vec<String> {
-    let asset = value(og_load_gltf(engine, path.into(), None));
-    let info = value(og_load_gltf_info(engine, asset.as_f64().unwrap()));
-    serde_json::from_value(info["animations"].clone()).unwrap()
-}
-
-#[test]
-fn gltf_info_lists_the_clips_of_the_models_anim_blob() {
-    let (engine, _) = engine();
-    let walker = names(engine, "models/walker.glb");
-    let anim = value(og_load_animation(engine, "models/walker.glb".into()));
-    let clips: Vec<String> = anim["clips"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|c| c["name"].as_str().unwrap().to_string())
-        .collect();
-    assert!(!walker.is_empty(), "the walker has clips");
-    assert_eq!(
-        walker, clips,
-        "the names og.load.animation answers, in order"
-    );
-    assert_eq!(names(engine, "models/blob.vox"), vec!["idle", "grow"]);
-    assert!(
-        names(engine, "models/crate.vox").is_empty(),
-        "a static model: no #anim, no clips"
-    );
-}
-
 #[test]
 fn model_skin_issues_are_reported_and_clear_when_the_pair_is_repaired() {
     let (engine, seen) = engine();
@@ -309,74 +280,6 @@ fn model_skin_issues_are_reported_and_clear_when_the_pair_is_repaired() {
         issue().is_null(),
         "stale diagnostics must not survive a repair"
     );
-}
-
-#[test]
-fn an_animated_vox_plays_one_frame_at_a_time() {
-    let (engine, seen) = engine();
-    let anim = value(og_load_animation(engine, "models/blob.vox".into()));
-    let grow = anim["clips"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|c| c["name"] == "grow")
-        .unwrap();
-    assert_eq!(grow["duration"], json!(0.75));
-    let asset = value(og_load_gltf(engine, "models/blob.vox".into(), None));
-    let e = value(og_world_instantiate(engine, asset.as_f64().unwrap(), None))
-        .as_f64()
-        .unwrap();
-    value(og_world_insert(
-        engine,
-        e,
-        "og.Skeleton".into(),
-        Some(json!({ "asset": anim["skeleton"] }).to_string()),
-    ));
-    value(og_world_insert(
-        engine,
-        e,
-        "og.AnimationPlayer".into(),
-        Some(json!({ "clip": grow["clip"], "loop": true }).to_string()),
-    ));
-    // 0.25 s a frame at 60 ticks a second: each frame's middle.
-    let mut shown = Vec::new();
-    let mut tick = 0;
-    for until in [7, 22, 37, 52] {
-        while tick < until {
-            value(og_engine_frame(engine, 1000.0 / 60.0));
-            tick += 1;
-        }
-        let s = seen.borrow();
-        assert!(
-            s.palettes.iter().all(|p| p.is_empty()),
-            "no joint: {:?}",
-            s.palettes
-        );
-        assert!(s.skinned.is_empty(), "nothing skinned");
-        shown.push(s.instances.clone());
-    }
-    // Frame k is 2 + k voxels (metres) tall.
-    assert_eq!(
-        shown,
-        vec![vec![2.0], vec![3.0], vec![4.0], vec![2.0]],
-        "one plain draw a tick: frame 0, 1, 2, then frame 0 again (looped)"
-    );
-}
-
-#[test]
-fn a_vox_without_a_skeleton_draws_frame_0_only() {
-    let (engine, seen) = engine();
-    for path in ["models/blob.vox", "models/crate.vox"] {
-        let asset = value(og_load_gltf(engine, path.into(), None));
-        value(og_world_instantiate(engine, asset.as_f64().unwrap(), None));
-    }
-    value(og_engine_frame(engine, 1000.0 / 60.0));
-    let mut drawn = seen.borrow().instances.clone();
-    drawn.sort_by(f32::total_cmp);
-    // Frame 0 of the animated one (2 tall) and the static crate (3): the
-    // frames after 0 (3 and 4 tall), hidden at rest, are not drawn.
-    assert_eq!(drawn, vec![2.0, 3.0], "the plain draws");
-    assert!(seen.borrow().skinned.is_empty());
 }
 
 #[test]

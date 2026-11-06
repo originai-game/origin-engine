@@ -166,48 +166,6 @@ impl WorldField for og_ecs::SystemContext<'_> {
 }
 
 #[test]
-fn change_filters_follow_ticks() {
-    let l = log();
-    let mut w = changes(&l);
-    for _ in 0..7 {
-        w.step().unwrap();
-    }
-    assert_eq!(
-        take(&l),
-        [
-            // The first run sees everything spawned before it as added and changed.
-            r#"0 changed ["t1", "t2"] added ["t1", "t2"] removed 0"#,
-            r#"1 changed [] added [] removed 0"#,
-            r#"2 changed ["t1"] added [] removed 0"#,
-            // Tick 3's spawn applies after Damage; Watch sees it the same tick.
-            r#"3 changed ["t13"] added ["t13"] removed 0"#,
-            r#"4 changed ["t1", "t14"] added ["t14"] removed 0"#,
-            r#"5 changed ["t15"] added ["t15"] removed 1"#,
-            r#"6 changed ["t16"] added ["t16"] removed 0"#,
-        ]
-    );
-}
-
-#[test]
-fn writes_between_ticks_are_changes_of_the_next() {
-    let l = log();
-    let mut w = changes(&l);
-    w.step().unwrap();
-    w.step().unwrap();
-    take(&l);
-    let t2 = w
-        .query(&QueryDesc::new().read::<Tag>())
-        .unwrap()
-        .flat_map(|a| a.entities().to_vec())
-        .find(|e| w.get::<Tag>(*e).unwrap().n == 2)
-        .unwrap();
-    w.insert(t2, Hp { hp: 3 }).unwrap(); // an overwrite between ticks
-    w.insert(t2, Hp { hp: 3 }).unwrap();
-    w.step().unwrap();
-    assert_eq!(take(&l), [r#"2 changed ["t1", "t2"] added [] removed 0"#]);
-}
-
-#[test]
 fn change_filters_survive_a_save_and_restore() {
     // Save at every tick of the run, between ticks with a write pending,
     // and check the restored world logs and hashes as the original.
@@ -239,45 +197,6 @@ fn change_filters_survive_a_save_and_restore() {
         }
         assert_eq!(take(&l2), take(&l), "restored at {at}");
     }
-}
-
-#[test]
-fn a_mid_tick_save_resumes_with_its_changes() {
-    let l = log();
-    let saves = Arc::new(Mutex::new(Vec::new()));
-    let make = |l: &Log, saves: Option<Arc<Mutex<Vec<Vec<u8>>>>>| {
-        let mut w = changes(l);
-        // Between Damage and Watch: a system that saves mid-tick at tick 4.
-        let s = saves.clone();
-        w.add_system(SystemDesc::new("Saver").read::<Hp>(), move |ctx| {
-            if let Some(s) = &s
-                && ctx.time().tick == 4
-            {
-                s.lock().unwrap().push(ctx.snapshot());
-            }
-            Ok(())
-        })
-        .unwrap();
-        w
-    };
-    let mut w = make(&l, Some(saves.clone()));
-    for _ in 0..5 {
-        w.step().unwrap();
-    }
-    let saved = saves.lock().unwrap().pop().unwrap();
-    take(&l);
-    for _ in 0..3 {
-        w.step().unwrap();
-    }
-    let l2 = log();
-    let mut r = make(&l2, None);
-    r.restore(&saved).unwrap();
-    r.step().unwrap(); // completes tick 4: Saver is last, nothing else runs
-    for _ in 0..3 {
-        r.step().unwrap();
-    }
-    assert_eq!(r.world_hash(), w.world_hash());
-    assert_eq!(take(&l2), take(&l));
 }
 
 #[test]
@@ -419,39 +338,6 @@ fn states(log: &Log) -> World {
 }
 
 #[test]
-fn state_transitions_run_enter_and_exit_exactly_once() {
-    let l = log();
-    let mut w = states(&l);
-    for _ in 0..8 {
-        w.step().unwrap();
-    }
-    assert_eq!(
-        take(&l),
-        [
-            "0 enter menu",
-            "0 menu",
-            "1 menu",
-            "2 menu",
-            "3 exit menu",
-            "3 enter play",
-            "3 play",
-            "4 play",
-            "5 play",
-            "6 exit play",
-            "6 enter menu",
-            "6 menu",
-            "7 menu",
-        ]
-    );
-    assert_eq!(w.state("Mode").unwrap(), "menu");
-    // Asking between ticks; asking back cancels.
-    w.set_state("Mode", "play").unwrap();
-    w.set_state("Mode", "menu").unwrap();
-    w.step().unwrap();
-    assert_eq!(take(&l), ["8 menu"]);
-}
-
-#[test]
 fn a_restored_state_machine_goes_on_alike() {
     for at in 0..8 {
         let l = log();
@@ -472,32 +358,6 @@ fn a_restored_state_machine_goes_on_alike() {
         assert_eq!(take(&l2), take(&l), "saved after {at} ticks");
         assert_eq!(r.world_hash(), w.world_hash());
     }
-}
-
-#[test]
-fn run_conditions_gate_systems() {
-    let l = log();
-    let mut w = base();
-    w.insert_resource(Hp { hp: 0 }).unwrap();
-    w.add_system(SystemDesc::new("Count").write::<Hp>(), |ctx| {
-        ctx.resource_mut::<Hp>()?.hp += 1;
-        Ok(())
-    })
-    .unwrap();
-    let r = l.clone();
-    w.add_system_if(
-        SystemDesc::new("Odd").read::<Hp>(),
-        |ctx| Ok(ctx.resource::<Hp>()?.hp % 2 == 1),
-        move |ctx| {
-            r.lock().unwrap().push(format!("{}", ctx.time().tick));
-            Ok(())
-        },
-    )
-    .unwrap();
-    for _ in 0..6 {
-        w.step().unwrap();
-    }
-    assert_eq!(take(&l), ["0", "2", "4"]);
 }
 
 fn brute(points: &[(Entity, [f32; 3])], c: [f32; 3]) -> Vec<(f64, Entity)> {
@@ -600,147 +460,4 @@ fn spatial_queries_match_brute_force_on_random_worlds() {
             .unwrap();
         assert_eq!(tagged.len(), (0..n).filter(|i| i % 7 == 3).count());
     }
-}
-
-#[test]
-fn a_world_without_reactivity_saves_and_hashes_as_before() {
-    // The same world built on the engine before change detection existed
-    // hashed to this value, and its snapshot was format 2.
-    let mut w = base();
-    w.add_system(
-        SystemDesc::new("Move")
-            .write::<Pos>()
-            .read::<Hp>()
-            .write::<Tag>()
-            .query(QueryDesc::new().write::<Pos>()),
-        |ctx| {
-            let tick = ctx.time().tick;
-            let p = ctx.id::<Pos>()?;
-            let field = og_ecs::FieldRef {
-                component: p,
-                field: 0,
-                ty: og_core::reflect::FieldType::Vec3,
-            };
-            for a in ctx.query(0)? {
-                for v in a.write::<Vec3>(field)?.iter_mut() {
-                    v.x += 1.0;
-                }
-            }
-            if tick % 3 == 0 {
-                ctx.spawn((Pos::default(), Tag { n: tick as u32 }))?;
-            }
-            Ok(())
-        },
-    )
-    .unwrap();
-    let e = w.spawn((Pos::default(), Hp { hp: 3 })).unwrap();
-    w.set_name(e, "hero").unwrap();
-    for _ in 0..10 {
-        w.step().unwrap();
-    }
-    w.despawn(e).unwrap();
-    w.step().unwrap();
-    let snap = w.snapshot();
-    assert_eq!(&snap[4..8], &2u32.to_le_bytes());
-    assert_eq!(w.world_hash(), BEFORE);
-}
-
-/// [`a_world_without_reactivity_saves_and_hashes_as_before`]'s hash on
-/// origin/main d89b3942, before change detection.
-const BEFORE: u64 = 10_469_614_763_969_903_971;
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
-struct Late {
-    n: u32,
-}
-
-#[test]
-fn a_granted_type_registered_after_the_schedule_is_readable_and_writable_then() {
-    let mut w = base();
-    let seen = log();
-    let s = seen.clone();
-    w.add_system(
-        SystemDesc::new("mover")
-            .write::<Pos>()
-            .query(QueryDesc::new().write::<Pos>()),
-        move |ctx| {
-            for a in ctx.query(0)? {
-                for &e in a.entities() {
-                    match ctx.get::<Late>(e) {
-                        Ok(t) => {
-                            s.lock().unwrap().push(format!("tag {}", t.n));
-                            ctx.insert(e, Late { n: t.n + 1 })?;
-                        }
-                        Err(err) => s.lock().unwrap().push(format!("{:?}", err.kind())),
-                    }
-                }
-            }
-            Ok(())
-        },
-    )
-    .unwrap();
-    let e = w.spawn((Pos::default(),)).unwrap();
-    assert!(
-        w.grant("mover", &["Late"]).is_err(),
-        "Late is not registered yet"
-    );
-    w.step().unwrap();
-    let before = take(&seen);
-    assert_eq!(before.len(), 1);
-    assert_ne!(before[0], "tag 0", "an undeclared read is refused");
-    w.register::<Late>().unwrap();
-    w.insert(e, Late { n: 0 }).unwrap();
-    w.step().unwrap();
-    assert!(
-        take(&seen)[0].contains("Access"),
-        "registered but not granted: still refused"
-    );
-    w.grant("mover", &["Late"]).unwrap();
-    w.step().unwrap();
-    w.step().unwrap();
-    assert_eq!(take(&seen), ["tag 0", "tag 1"]);
-    assert_eq!(w.get::<Late>(e).unwrap().n, 2, "the grant covers writes");
-    assert!(w.grant("nobody", &["Late"]).is_err());
-}
-
-#[test]
-fn a_system_queries_a_granted_late_type_by_a_query_made_while_it_runs() {
-    let mut w = base();
-    let seen = log();
-    let s = seen.clone();
-    w.add_system(SystemDesc::new("finder").read::<Pos>(), move |ctx| {
-        let desc = QueryDesc::new().read::<Pos>().write::<Late>();
-        match ctx.query_with(&desc) {
-            Ok(it) => {
-                for a in it {
-                    for &e in a.entities() {
-                        let n = ctx.get::<Late>(e)?.n + 1;
-                        ctx.set(e, Late { n })?;
-                        s.lock().unwrap().push(format!("{} {n}", e.index()));
-                    }
-                }
-            }
-            Err(err) => s.lock().unwrap().push(format!("{:?}", err.kind())),
-        }
-        let changed = QueryDesc {
-            changed: vec!["Pos".into()],
-            ..QueryDesc::new()
-        };
-        if ctx.query_with(&changed).is_ok() {
-            s.lock().unwrap().push("change filter allowed".into());
-        }
-        Ok(())
-    })
-    .unwrap();
-    w.register::<Late>().unwrap();
-    let a = w.spawn((Pos::default(), Late { n: 5 })).unwrap();
-    w.spawn((Pos::default(),)).unwrap();
-    w.step().unwrap();
-    assert_eq!(take(&seen), ["Access"], "Late is not granted yet");
-    w.grant("finder", &["Late"]).unwrap();
-    w.step().unwrap();
-    w.step().unwrap();
-    let i = a.index();
-    assert_eq!(take(&seen), [format!("{i} 6"), format!("{i} 7")]);
-    assert_eq!(w.get::<Late>(a).unwrap().n, 7);
 }

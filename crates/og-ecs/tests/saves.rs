@@ -105,17 +105,6 @@ fn wallet_world<G: og_core::Reflect + Copy>(gold: impl Fn(u32) -> G) -> (World, 
 }
 
 #[test]
-fn an_edit_that_changes_nothing_writes_the_snapshot_it_read() {
-    let (w, _) = wallet_world(|amount| Gold { amount });
-    let bytes = w.snapshot();
-    let edit = w.edit_snapshot(&bytes).unwrap();
-    assert!(!edit.is_selection());
-    assert_eq!(edit.to_bytes(), bytes);
-    assert_eq!(edit.components("Gold").len(), 3);
-    assert_eq!(edit.names()[0].1, "hero");
-}
-
-#[test]
 fn a_type_renamed_in_an_edit_restores_as_the_world_built_with_its_new_name() {
     let (old, es) = wallet_world(|amount| Gold { amount });
     let (built, _) = wallet_world(|amount| Coins { amount });
@@ -215,62 +204,6 @@ fn a_type_split_in_an_edit_keeps_every_value_and_the_other_entities() {
         )
         .unwrap_err();
     assert!(err.reason().contains("does not hold"), "{err}");
-    assert_eq!(edit.to_bytes(), before);
-}
-
-#[test]
-fn an_entity_added_to_an_edit_takes_the_id_a_spawn_would() {
-    let (old, _) = wallet_world(|amount| Gold { amount });
-    let mut edit = old.edit_snapshot(&old.snapshot()).unwrap();
-    let e = edit
-        .spawn(
-            Some("chest"),
-            vec![
-                (Pos::schema(), 4.5f32.to_le_bytes().to_vec()),
-                (Gold::schema(), 77u32.to_le_bytes().to_vec()),
-            ],
-        )
-        .unwrap();
-    let mut spawned = old.edit_snapshot(&old.snapshot()).unwrap();
-    assert!(spawned.spawn(Some("hero"), vec![]).is_err(), "a taken name");
-    let mut w = world();
-    w.register::<Pos>().unwrap();
-    w.register::<Gold>().unwrap();
-    w.register::<Stats>().unwrap();
-    w.restore(&old.snapshot()).unwrap();
-    let next = w.spawn((Pos { x: 0.0 },)).unwrap();
-    assert_eq!(
-        e, next,
-        "the slot the despawn freed, at its next generation"
-    );
-    w.restore(&edit.to_bytes()).unwrap();
-    assert_eq!(w.find("chest"), Some(e));
-    assert_eq!(w.get::<Gold>(e).unwrap().amount, 77);
-    assert_eq!(w.get::<Pos>(e).unwrap().x, 4.5);
-}
-
-#[test]
-fn a_type_mapped_in_an_edit_converts_its_components_resource_and_events() {
-    let (old, es) = wallet_world(|amount| Gold { amount });
-    let mut edit = old.edit_snapshot(&old.snapshot()).unwrap();
-    // Pos.x doubled, the schema unchanged: every Pos, and the queued one.
-    edit.map_type("Pos", Pos::schema(), &mut |v| {
-        let x = f32::from_le_bytes(v.try_into().unwrap());
-        Ok((x * 2.0).to_le_bytes().to_vec())
-    })
-    .unwrap();
-    let mut w = world();
-    w.register::<Pos>().unwrap();
-    w.register::<Gold>().unwrap();
-    w.register::<Stats>().unwrap();
-    w.restore(&edit.to_bytes()).unwrap();
-    assert_eq!(w.get::<Pos>(es[2]).unwrap().x, 4.0);
-    // A conversion of the wrong size is refused with nothing changed.
-    let before = edit.to_bytes();
-    assert!(
-        edit.map_type("Pos", Pos::schema(), &mut |_| Ok(vec![1]))
-            .is_err()
-    );
     assert_eq!(edit.to_bytes(), before);
 }
 

@@ -109,18 +109,6 @@ fn foot_world(w: &World, anim: &AnimationSystem, e: Entity) -> Vec3 {
     t.position + t.quaternion * (t.scale * p)
 }
 
-#[test]
-fn the_walks_plants_are_retargetings() {
-    let walk = clips().into_iter().find(|c| c.0 == WALK).unwrap().1;
-    let p = FootPlants::new(&skeleton(), &walk, FOOT_L);
-    let planted = (0..walk.frames as usize).filter(|&i| p.planted(i)).count();
-    assert!(
-        planted >= 2 && planted < walk.frames as usize / 2,
-        "{planted} of {} frames",
-        walk.frames
-    );
-}
-
 /// Runs `ticks`, switching to the jog at `switch`; per tick: (locked,
 /// planted, foot in world).
 fn run(

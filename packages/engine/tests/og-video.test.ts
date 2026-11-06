@@ -85,7 +85,7 @@ test.skipIf(!hasFfmpeg)("a cooked video plays on a sprite: tick 90 shows the sou
     expect(after["og.AudioSource"]!.playing).toBe(true);
     expect(after["og.AudioSource"]!.startOffset as number).toBeCloseTo(31 / 30, 3);
 
-    if (run.tier === "none") return; // no renderer: the frame is unchecked
+    if (run.tier === "none") throw new Error("missing GPU adapter: video frame comparison requires a renderer");
     const frame = rgb(["-i", join(out, "video-90.png")], "");
     const source = join(fixture, "assets/clips/count.mp4");
     const errors = [89, 90, 91].map((n) => rmse(frame, rgb(["-i", source], `select=eq(n\\,${n}),`)));
@@ -116,7 +116,7 @@ test.skipIf(!hasFfmpeg)("two players of one video at different times show differ
     expect(a.texture).toBeGreaterThan(0);
     expect(b.texture).toBeGreaterThan(0);
     expect(b.texture).not.toBe(a.texture);
-    if (run.tier === "none") return;
+    if (run.tier === "none") throw new Error("missing GPU adapter: video frame comparison requires a renderer");
     // Each sprite fills a quarter of the view: the left and right halves of
     // its middle band.
     const shot = join(out, "pair.png");
@@ -144,7 +144,7 @@ test.skipIf(!hasFfmpeg)("a video frame shows as an og.Mesh material map and on a
     const run = JSON.parse(text(r.stdout).trim().split("\n").pop()!) as { tier: string; warnings: string[] };
     expect(run.warnings).toEqual([]);
     expect((JSON.parse(readFileSync(join(out, "a.json"), "utf8")) as Dump).components["og.VideoPlayer"]!.frame).toBe(90);
-    if (run.tier === "none") return;
+    if (run.tier === "none") throw new Error("missing GPU adapter: video frame comparison requires a renderer");
     // The plane fills the left half of the middle band, the UI image the right half.
     const shot = join(out, "surfaces.png");
     const half = (x: string) => rgb(["-i", shot], `crop=iw/2:ih/2:${x}:ih/4,`);
@@ -200,7 +200,7 @@ test.skipIf(!hasFfmpeg)("a streamed video shows its tick's frame, after a seek a
     expect(dump("seek.json")["og.VideoPlayer"]!.frame).toBe(31);
     const looped = dump("loop.json")["og.VideoPlayer"]!.frame as number;
     expect(looped).toBeLessThan(10);
-    if (run.tier === "none") return;
+    if (run.tier === "none") throw new Error("missing GPU adapter: video frame comparison requires a renderer");
     const source = join(fixture, "assets/clips/count.mp4");
     const src = (n: number) => rgb(["-i", source], `select=eq(n\\,${n}),`);
     for (const [shot, n] of [["s90.png", 90], ["seek.png", 31], ["loop.png", looped]] as const) {
@@ -271,7 +271,7 @@ test.skipIf(!hasFfmpeg)("a streamed video's sound stays with its picture through
     const [a, b] = [dump("a.json")["og.VideoPlayer"]!, dump("b.json")["og.VideoPlayer"]!];
     expect(((b.frame as number) - (a.frame as number) + 120) % 120).toBe(15);
     expect(b.texture).not.toBe(a.texture);
-    if (run.tier === "none") return;
+    if (run.tier === "none") throw new Error("missing GPU adapter: video frame comparison requires a renderer");
     const shot = join(out, "pair.png");
     const half = (x: string) => rgb(["-i", shot], `crop=iw/2:ih/2:${x}:ih/4,`);
     const src = (n: number) => rgb(["-i", join(fixture, "assets/clips/count.mp4")], `select=eq(n\\,${n % 120}),`);

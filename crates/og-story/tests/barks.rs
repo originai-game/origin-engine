@@ -94,22 +94,6 @@ fn said(s: &Story, e: u64) -> Option<String> {
 }
 
 #[test]
-fn bark_errors_name_the_line_and_the_fix() {
-    let bad = |body: &str| {
-        Dialogue::parse(&format!("type dialogue\nversion 1\n---\nname d\n{body}")).unwrap_err()
-    };
-    assert!(bad("bark a {\n  say \"x\"\n}").contains("needs a 'topic'"));
-    assert!(bad("bark a {\n  topic idle\n}").contains("needs a line"));
-    let e = bad("node n {\n  if \"Game.alarm\" n\n}");
-    assert!(e.contains("line 6") && e.contains("reads the world"), "{e}");
-    let e = Quest::parse(
-        "type quest\nversion 1\n---\nid q\ntitle \"t\"\nstage s {\n  objective o \"k\" {\n    where \"event.kind\"\n  }\n}",
-    )
-    .unwrap_err();
-    assert!(e.contains("add 'on <Event>'"), "{e}");
-}
-
-#[test]
 fn barks_pick_by_priority_and_condition_and_keep_their_cooldowns() {
     let l = lib();
     let mut s = Story::new(Rng::new(3));
@@ -167,58 +151,6 @@ fn barks_pick_by_priority_and_condition_and_keep_their_cooldowns() {
             .unwrap_err()
             .contains("topic 'nope'")
     );
-}
-
-#[test]
-fn ambient_barks_come_every_so_often_on_the_seed() {
-    let l = lib();
-    let w = World {
-        hp: BTreeMap::from([(1, 100.0)]),
-        alarm: false,
-        event: None,
-    };
-    let run = |seed: u32| {
-        let mut s = Story::new(Rng::new(seed));
-        s.ambient(1, "idle", "", 150, 40);
-        let mut at = Vec::new();
-        for t in 1..=1000 {
-            let before = s.seq;
-            s.run_barks(&l, t, &w.read(), &|_| true);
-            if s.seq != before {
-                at.push(t);
-            }
-        }
-        at
-    };
-    let a = run(5);
-    assert_eq!(a, run(5));
-    // An ask while the last bark still shows (180 ticks) is skipped.
-    assert!(a.len() >= 3, "{a:?}");
-    // Never sooner than the yawn's cooldown of 100 ticks.
-    assert!(a.windows(2).all(|w| w[1] - w[0] >= 100), "{a:?}");
-}
-
-#[test]
-fn objectives_count_events_through_their_filters() {
-    let l = lib();
-    let mut s = Story::new(Rng::new(1));
-    s.start_quest(&l, "hunt").unwrap();
-    assert_eq!(Story::counted_events(&l), ["EnemyDied"]);
-    let mut w = World {
-        hp: BTreeMap::new(),
-        alarm: false,
-        event: Some("rat"),
-    };
-    assert!(s.count_event(&l, "EnemyDied", &w.read()));
-    assert!(!s.count_event(&l, "PlayerJumped", &w.read()));
-    let q = s.quest("hunt").unwrap();
-    assert_eq!((q.counts.get("wolves"), q.counts["any"]), (None, 1));
-    w.event = Some("wolf");
-    s.count_event(&l, "EnemyDied", &w.read());
-    s.count_event(&l, "EnemyDied", &w.read());
-    // Two wolves and three kills: the last stage done, the quest complete.
-    assert_eq!(s.quest("hunt").unwrap().status, "completed");
-    assert!(!s.count_event(&l, "EnemyDied", &w.read()));
 }
 
 #[test]

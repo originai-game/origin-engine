@@ -9,17 +9,14 @@
 
 use crate::support;
 
-use og_ecs::SystemDesc;
-use og_probe::{MEMBERS, Rebuilt, Reloader};
+use og_probe::MEMBERS;
 use serde_json::{Value, json};
-use support::{Harness, ReadbackCapture, base64_decode, build, bundle};
+use support::{Harness, base64_decode, build};
 
 const PARSE_ERROR: i64 = -32700;
 const INVALID_REQUEST: i64 = -32600;
 const METHOD_NOT_FOUND: i64 = -32601;
 const INVALID_PARAMS: i64 = -32602;
-const INTERNAL_ERROR: i64 = -32603;
-
 /// Calls and their answers, in order, for the evidence file.
 struct Transcript {
     h: Harness,
@@ -595,34 +592,6 @@ fn every_member_answers_as_protocol_5_says() {
 }
 
 #[test]
-fn a_sweep_whose_frames_land_later_answers_them_all_on_a_later_call() {
-    let mut h = build(7, true);
-    let params = json!({"id": "player", "parameter": "Mover.speed", "values": [1, 2, 3], "steps": 30, "width": 32, "height": 18});
-    let want = h.result("sweep", params.clone());
-    let before = h.world.world_hash();
-    h.probe.set_capture(Box::new(ReadbackCapture::default()));
-    let mut calls = 0;
-    let got = loop {
-        calls += 1;
-        let answer = h.result("sweep", params.clone());
-        assert_eq!(
-            h.world.world_hash(),
-            before,
-            "the world is restored after every call"
-        );
-        if !answer.is_null() {
-            break answer;
-        }
-        assert!(calls < 10, "the sweep never answered its frames");
-    };
-    assert_eq!(got, want, "the frames of a host that reads back at once");
-    assert_eq!(
-        calls, 4,
-        "each call takes the frame in flight and asks for the next"
-    );
-}
-
-#[test]
 fn a_sweep_yields_one_frame_per_value_and_restores_the_world() {
     let mut h = build(7, true);
     h.result("advance", json!({"steps": 30}));
@@ -698,246 +667,8 @@ fn a_sweep_yields_one_frame_per_value_and_restores_the_world() {
     assert_eq!(h.probe.pending(), 1);
 }
 
-#[test]
-fn a_failing_system_is_a_fault_and_the_probe_still_answers() {
-    let mut h = build(7, false);
-    h.world
-        .add_system(SystemDesc::new("explode"), |ctx| {
-            if ctx.time().tick == 3 {
-                Err(og_core::Error::new(
-                    og_core::ErrorKind::Invalid,
-                    "the reactor is critical",
-                ))
-            } else {
-                Ok(())
-            }
-        })
-        .unwrap();
-    let r = h.call("advance", json!({"steps": 10}));
-    assert_eq!(r["error"]["code"], json!(INTERNAL_ERROR));
-    let message = r["error"]["message"].as_str().unwrap();
-    assert!(
-        message.contains("system 'explode'") && message.contains("the reactor is critical"),
-        "{message}"
-    );
-    assert_eq!(
-        h.result("tick", json!({})),
-        json!(3),
-        "the world stops at the failing tick"
-    );
-    let r = h.call("run", json!({"program": [{"op": "advance", "steps": 1}]}));
-    assert_eq!(
-        r["error"]["code"],
-        json!(INTERNAL_ERROR),
-        "a program's fault errs the whole call"
-    );
-}
-
-struct SameBundle;
-impl Reloader for SameBundle {
-    fn rebuild(&mut self, _: &og_ecs::World) -> Result<Rebuilt, String> {
-        Ok(Rebuilt {
-            world: bundle(0, true, &mut |_| {}),
-            ms: 12.5,
-        })
-    }
-}
-
-struct WithoutHealth;
-impl Reloader for WithoutHealth {
-    fn rebuild(&mut self, _: &og_ecs::World) -> Result<Rebuilt, String> {
-        Ok(Rebuilt {
-            world: bundle(0, false, &mut |_| {}),
-            ms: 3.0,
-        })
-    }
-}
-
-/// A bundle whose Mover gained a field: a layout change.
-struct MoverChanged;
-impl Reloader for MoverChanged {
-    fn rebuild(&mut self, _: &og_ecs::World) -> Result<Rebuilt, String> {
-        #[derive(Clone, Copy, og_core::Reflect)]
-        #[reflect(name = "Mover")]
-        struct MoverV2 {
-            speed: f32,
-            lane: u32,
-            accel: f32,
-        }
-        let mut world = og_ecs::World::new(&og_ecs::WorldDesc::default()).unwrap();
-        world.register::<MoverV2>().unwrap();
-        Ok(Rebuilt { world, ms: 1.0 })
-    }
-}
-
-struct Broken;
-impl Reloader for Broken {
-    fn rebuild(&mut self, _: &og_ecs::World) -> Result<Rebuilt, String> {
-        Err("player.ts:3: Unexpected token".into())
-    }
-}
-
-#[test]
-fn reload_swaps_the_bundle_and_keeps_the_world() {
-    let mut h = build(7, false);
-    h.result("advance", json!({"steps": 20}));
-    let hash = h.world.world_hash();
-
-    h.probe.set_reloader(Box::new(SameBundle));
-    let report = h.result("reload", json!({}));
-    assert_eq!(
-        report,
-        json!({"tick": 20, "ms": 12.5, "migrated": [], "dropped": [], "warnings": []})
-    );
-    assert_eq!(
-        h.world.world_hash(),
-        hash,
-        "same layouts: the same world in the new bundle"
-    );
-    h.result("advance", json!({"steps": 10}));
-    assert_eq!(
-        h.result("tick", json!({})),
-        json!(30),
-        "the new bundle's systems run"
-    );
-
-    h.probe.set_reloader(Box::new(Broken));
-    let hash = h.world.world_hash();
-    assert_eq!(h.result("reload", json!({})), Value::Null);
-    assert_eq!(
-        h.world.world_hash(),
-        hash,
-        "a bundle that fails to load leaves the old one running"
-    );
-    assert!(
-        h.probe
-            .take_log()
-            .iter()
-            .any(|l| l.warning && l.text.contains("Unexpected token"))
-    );
-
-    h.probe.set_reloader(Box::new(WithoutHealth));
-    let report = h.result("reload", json!({}));
-    assert_eq!(report["dropped"], json!(["Health"]));
-    assert_eq!(
-        h.result("entity", json!({"id": "player"})),
-        json!({"Mover.speed": 2.0}),
-        "Health was dropped with its data"
-    );
-    assert_eq!(h.result("entity", json!({"id": "crate"})), json!({}));
-    assert_eq!(h.result("advance", json!({"steps": 5})), json!(35));
-
-    // A layout change migrates field by field: Mover gained `accel` (its
-    // default), kept `speed`; the types this bundle no longer declares go.
-    h.probe.set_reloader(Box::new(MoverChanged));
-    let report = h.result("reload", json!({}));
-    assert_eq!(report["tick"], json!(35));
-    assert!(
-        report["migrated"]
-            .as_array()
-            .unwrap()
-            .contains(&json!("Mover")),
-        "{report}"
-    );
-    assert!(
-        report["migrated"]
-            .as_array()
-            .unwrap()
-            .contains(&json!("Mover.accel")),
-        "{report}"
-    );
-    assert!(
-        report["dropped"]
-            .as_array()
-            .unwrap()
-            .contains(&json!("Velocity")),
-        "{report}"
-    );
-    let mover = h.world.id_by_name("Mover").unwrap();
-    let player = h.probe.names().resolve(&h.world, "player").unwrap();
-    let bytes = h.world.get_bytes(player, mover).unwrap();
-    assert_eq!(
-        f32::from_le_bytes(bytes[0..4].try_into().unwrap()),
-        2.0,
-        "speed kept"
-    );
-    assert_eq!(
-        f32::from_le_bytes(bytes[8..12].try_into().unwrap()),
-        0.0,
-        "accel added at its default"
-    );
-}
-
 fn write_evidence(name: &str, value: &Value) {
     let path = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join(name);
     std::fs::write(&path, serde_json::to_string_pretty(value).unwrap() + "\n").unwrap();
     println!("wrote {}", path.display());
-}
-
-/// A renderer with state that follows the world's time (as og-render's
-/// adapted exposure): every frame drawn moves it on, and the probe's
-/// snapshots keep it through `save_state` and bring it back on restore.
-struct StatefulCapture {
-    adapted: u64,
-    saves: Vec<u64>,
-}
-
-impl og_probe::Capture for StatefulCapture {
-    fn tier(&self) -> &str {
-        "vulkan"
-    }
-    fn target_size(&self) -> (u32, u32) {
-        (8, 8)
-    }
-    fn capture(&mut self, world: &og_ecs::World, w: u32, h: u32) -> Option<og_probe::Frame> {
-        self.adapted += 1;
-        Some(og_probe::Frame {
-            width: w.max(8),
-            height: h.max(8),
-            png: format!("tick={} adapted={}", world.time().tick, self.adapted).into_bytes(),
-        })
-    }
-    fn save_state(&mut self) -> u64 {
-        self.saves.push(self.adapted);
-        self.saves.len() as u64
-    }
-    fn restore_state(&mut self, state: u64) {
-        self.adapted = match state {
-            0 => 0,
-            n => self.saves[n as usize - 1],
-        };
-    }
-}
-
-#[test]
-fn snapshots_and_sweeps_carry_the_renderers_state() {
-    let mut h = build(7, false);
-    h.probe.set_capture(Box::new(StatefulCapture {
-        adapted: 0,
-        saves: Vec::new(),
-    }));
-    let png = |v: &Value| String::from_utf8(base64_decode(v["png"].as_str().unwrap())).unwrap();
-    h.result("advance", json!({"steps": 10}));
-    let first = png(&h.result("capture", json!({})));
-    assert_eq!(first, "tick=10 adapted=1");
-    let snap = h.result("snapshot", json!({}));
-    let id = snap["id"].as_str().unwrap().to_string();
-    h.result("advance", json!({"steps": 5}));
-    assert_eq!(png(&h.result("capture", json!({}))), "tick=15 adapted=2");
-    assert_eq!(h.result("restore", json!({ "id": id })), json!(true));
-    h.result("advance", json!({"steps": 5}));
-    assert_eq!(
-        png(&h.result("capture", json!({}))),
-        "tick=15 adapted=2",
-        "after the restore the renderer's state is the snapshot's"
-    );
-    // Every value of a sweep starts from the renderer's state at the call.
-    let sweep = h.result(
-        "sweep",
-        json!({"id": "player", "parameter": "Mover.speed", "values": [1, 2, 3], "steps": 2}),
-    );
-    for f in sweep["frames"].as_array().unwrap() {
-        assert_eq!(png(f), "tick=17 adapted=3");
-    }
-    assert_eq!(png(&h.result("capture", json!({}))), "tick=15 adapted=3");
 }

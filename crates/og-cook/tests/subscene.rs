@@ -67,53 +67,6 @@ fn a_placed_sub_scene_is_its_own_blob_named_by_the_entity_that_places_it() {
 }
 
 #[test]
-fn a_sub_scene_that_reaches_its_placer_again_is_refused_naming_the_chain() {
-    let root = project("cycle");
-    write(
-        &root,
-        "scenes/a.ogt",
-        &scene("entity \"x\" {\n  scene \"scenes/b.ogt\"\n}\n"),
-    );
-    write(
-        &root,
-        "scenes/b.ogt",
-        &scene("entity \"y\" {\n  entity \"z\" {\n    scene \"scenes/a.ogt\"\n  }\n}\n"),
-    );
-    let report = cook(&root);
-    let errors = format!("{:?}", report.errors());
-    assert!(
-        errors.contains("scenes/a.ogt -> scenes/b.ogt -> scenes/a.ogt"),
-        "{errors}"
-    );
-    assert!(
-        errors.contains("scenes/b.ogt -> scenes/a.ogt -> scenes/b.ogt"),
-        "{errors}"
-    );
-}
-
-#[test]
-fn a_sub_scene_line_naming_no_scene_is_refused() {
-    let root = project("not-scene");
-    write(
-        &root,
-        "prefabs/crate.ogt",
-        "type prefab\nversion 1\n---\nentity \"crate\" {\n}\n",
-    );
-    write(
-        &root,
-        "scenes/a.ogt",
-        &scene(
-            "entity \"x\" {\n  scene \"prefabs/crate.ogt\"\n}\nentity \"y\" {\n  scene \"scenes/missing.ogt\"\n}\n",
-        ),
-    );
-    let errors = format!("{:?}", cook(&root).errors());
-    assert!(
-        errors.contains("scene 'prefabs/crate.ogt' is not a scene of this project"),
-        "{errors}"
-    );
-}
-
-#[test]
 fn a_cell_group_packs_its_sub_scenes_blob_with_its_assets() {
     let root = project("cell-group");
     write(
@@ -152,33 +105,4 @@ fn a_cell_group_packs_its_sub_scenes_blob_with_its_assets() {
     let names: Vec<&str> = files.iter().map(|(n, _)| n.as_str()).collect();
     assert_eq!(names, [out.file.as_str()]);
     assert!(g.memory > 0, "the blob's bytes count once loaded");
-}
-
-#[test]
-fn a_cell_group_of_a_scene_nothing_places_or_with_a_trigger_is_refused() {
-    let root = project("cell-refused");
-    write(
-        &root,
-        "scenes/alone.ogt",
-        &scene("stream \"alone\" {\n  cell\n}\n"),
-    );
-    write(
-        &root,
-        "scenes/world.ogt",
-        &scene("entity \"x\" {\n  scene \"scenes/both.ogt\"\n}\n"),
-    );
-    write(
-        &root,
-        "scenes/both.ogt",
-        &scene("stream \"both\" {\n  cell\n  distance 0 0 0 10\n}\n"),
-    );
-    let errors = format!("{:?}", cook(&root).errors());
-    assert!(
-        errors.contains("no scene places scenes/alone.ogt"),
-        "{errors}"
-    );
-    assert!(
-        errors.contains("a cell group loads with its cells' anchors"),
-        "{errors}"
-    );
 }

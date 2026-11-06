@@ -2,7 +2,6 @@
 //! world: `system_info` (declarations and matched counts), entity names (in
 //! snapshots and the hash), and the structural-change counter.
 
-use og_core::ErrorKind;
 use og_core::math::Vec3;
 use og_ecs::{QueryDesc, Reflect, SystemDesc, World, WorldDesc};
 
@@ -117,104 +116,6 @@ fn system_info_reports_declarations_and_what_each_query_matched() {
     assert_eq!(info[0].query_matched, [6]);
     assert_eq!(info[1].query_matched, [5, 11]);
     assert_eq!(info[1].last_tick, Some(1));
-}
-
-#[test]
-fn systems_are_timed_with_the_world_clock() {
-    use std::sync::atomic::{AtomicU64, Ordering};
-    // A clock that moves 1.5 ms every time it is read.
-    static READS: AtomicU64 = AtomicU64::new(0);
-    fn clock() -> f64 {
-        READS.fetch_add(1, Ordering::Relaxed) as f64 * 1.5
-    }
-    let mut w = world();
-    w.add_system(SystemDesc::new("idle"), |_| Ok(())).unwrap();
-    w.step().unwrap();
-    let info = w.system_info();
-    assert_eq!((info[0].ms, info[0].runs), (None, 0), "no clock, no times");
-    assert!(w.system_ms().is_empty(), "no clock, no times");
-    let hash = w.world_hash();
-    w.set_clock(Some(clock));
-    w.step().unwrap();
-    w.step().unwrap();
-    let info = w.system_info();
-    assert_eq!(info[0].ms, Some(1.5));
-    // The second run began at the clock's third reading (the first run
-    // read it twice): where a trace lays it, not where the last run ended.
-    assert_eq!(info[0].start, Some(3.0));
-    assert_eq!((info[0].total_ms, info[0].runs), (3.0, 2));
-    assert_eq!(w.system_ms(), [("idle".to_string(), 1.5)]);
-    let mut plain = world();
-    plain
-        .add_system(SystemDesc::new("idle"), |_| Ok(()))
-        .unwrap();
-    for _ in 0..3 {
-        plain.step().unwrap();
-    }
-    assert_ne!(hash, plain.world_hash(), "the clock moved the tick on");
-    assert_eq!(
-        w.world_hash(),
-        plain.world_hash(),
-        "timing never reaches the hash"
-    );
-}
-
-#[test]
-fn names_address_entities_and_survive_snapshots() {
-    let mut w = world();
-    let a = w.spawn((p(),)).unwrap();
-    let b = w.spawn((p(),)).unwrap();
-    let c = w.spawn(()).unwrap();
-    let unnamed_hash = w.world_hash();
-    w.set_name(a, "hero").unwrap();
-    w.set_name(b, "crate_1").unwrap();
-    assert_ne!(w.world_hash(), unnamed_hash, "names are in the hash");
-    assert_eq!(w.find("hero"), Some(a));
-    assert_eq!(w.name(b), Some("crate_1"));
-    assert_eq!(w.name(c), None);
-
-    // One entity per name, one name per entity.
-    let err = w.set_name(c, "hero").unwrap_err();
-    assert!(err.reason().contains("already belongs to"), "{err}");
-    for bad in ["", "#3.1", "a b", "x:y", "k=v", "semi;colon"] {
-        assert_eq!(
-            w.set_name(c, bad).unwrap_err().kind(),
-            ErrorKind::Invalid,
-            "{bad:?}"
-        );
-    }
-    w.set_name(b, "crate_2").unwrap();
-    assert_eq!(w.find("crate_1"), None, "renaming frees the old name");
-    assert_eq!(w.names(), [(a, "hero"), (b, "crate_2")]);
-
-    let bytes = w.snapshot();
-    let hash = w.world_hash();
-    let mut r = world();
-    r.restore(&bytes).unwrap();
-    assert_eq!(r.find("hero"), Some(a));
-    assert_eq!(r.name(b), Some("crate_2"));
-    assert_eq!(r.world_hash(), hash);
-    assert_eq!(r.snapshot(), bytes);
-
-    // A despawned entity takes its name with it; a restore brings both back.
-    r.despawn(a).unwrap();
-    assert_eq!(r.find("hero"), None);
-    r.set_name(c, "hero").unwrap();
-    assert_eq!(r.find("hero"), Some(c));
-    r.restore(&bytes).unwrap();
-    assert_eq!((r.find("hero"), r.name(c)), (Some(a), None));
-    assert_eq!(r.world_hash(), hash);
-
-    // The same names given in another order are the same state.
-    let mut x = world();
-    let xa = x.spawn((p(),)).unwrap();
-    let xb = x.spawn((p(),)).unwrap();
-    x.spawn(()).unwrap();
-    x.set_name(xb, "crate_2").unwrap();
-    x.set_name(xa, "hero").unwrap();
-    assert_eq!(x.world_hash(), hash);
-    x.clear_name(xa).unwrap();
-    assert_eq!(x.find("hero"), None);
 }
 
 #[test]

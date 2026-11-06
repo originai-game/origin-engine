@@ -17,58 +17,6 @@ fn on_magenta(mut scene: RenderScene) -> RenderScene {
     scene
 }
 
-/// The skyline's row in each of the frame's middle columns (the first
-/// row from the top that is not the background), and its spread about
-/// the straight line that fits it best (pixels, RMS).
-fn skyline_roughness(img: &RgbaImage) -> f32 {
-    let (x0, x1) = (img.width / 8, img.width * 7 / 8);
-    let rows: Vec<(f32, f32)> = (x0..x1)
-        .map(|x| {
-            let y = (0..img.height)
-                .find(|&y| !magenta(px(img, x, y)))
-                .unwrap_or(img.height);
-            (x as f32, y as f32)
-        })
-        .collect();
-    let n = rows.len() as f32;
-    let (mx, my) = rows
-        .iter()
-        .fold((0.0, 0.0), |a, p| (a.0 + p.0 / n, a.1 + p.1 / n));
-    let (mut sxy, mut sxx) = (0.0, 0.0);
-    for (x, y) in &rows {
-        sxy += (x - mx) * (y - my);
-        sxx += (x - mx) * (x - mx);
-    }
-    let slope = sxy / sxx;
-    let sq: f32 = rows
-        .iter()
-        .map(|(x, y)| (y - (my + slope * (x - mx))).powi(2))
-        .sum();
-    (sq / n).sqrt()
-}
-
-/// The crest 4 m out is the skyline. Undisplaced it is a straight line
-/// (the ground is the same all along x); with 10 cm of setts it steps
-/// up and down from sett to sett. Their tops are flat, so it runs level
-/// along each and breaks only at the joints: about a pixel RMS about its
-/// line at that distance (rounded cobbles strayed twice that), where the
-/// flat crest strays none.
-#[test]
-fn displacement_roughens_the_skyline() {
-    let report = check("terrain-displaced");
-    assert!(report.stats.terrain_draws > 0);
-    let (flat, _) = render(&on_magenta(ts::displaced_scene(0.0)));
-    let (cobbled, _) = render(&on_magenta(ts::displaced_scene(ts::DISPLACED_RELIEF)));
-    keep("displaced-skyline-flat", &flat);
-    keep("displaced-skyline-cobbled", &cobbled);
-    let (before, after) = (skyline_roughness(&flat), skyline_roughness(&cobbled));
-    assert!(before < 0.5, "the flat crest's skyline strays {before} px");
-    assert!(
-        after > 0.5,
-        "the cobbled crest's skyline strays only {after} px"
-    );
-}
-
 /// Looking down at the cobbles on the crest from 2 m up, the levels finer
 /// than the samples that carry the displacement meet without a crack
 /// wherever the camera stands (across their snapping steps): no

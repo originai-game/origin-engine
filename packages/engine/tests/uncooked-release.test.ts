@@ -44,7 +44,7 @@ test("og.load.release gives back what an uncooked image and model took on the GP
     const heap = (m: Memory) => m.heap!.live;
     expect(heap(loaded) - heap(base)).toBeGreaterThan(8_000_000);
     expect(heap(loaded) - heap(released)).toBeGreaterThan(0.95 * (heap(loaded) - heap(base)));
-    if (run.tier === "none") return; // no renderer: no GPU figures
+    if (run.tier === "none") throw new Error("missing GPU adapter: release checks require GPU allocation counters");
     const gpu = (m: Memory, k: "textures" | "meshes") => m.gpu![k];
     // The texture with its mips (at least its 4 MiB of level 0), and the grid's 66,049 vertices.
     expect(gpu(loaded, "textures") - gpu(base, "textures")).toBeGreaterThan(4 * 1024 * 1024);

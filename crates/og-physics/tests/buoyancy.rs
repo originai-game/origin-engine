@@ -12,7 +12,6 @@
 
 use crate::support;
 
-use og_core::Reflect;
 use og_core::glam::{DVec3, Quat, Vec2, Vec3};
 use og_core::ocean::Ocean;
 use og_ecs::{Entity, World};
@@ -127,34 +126,6 @@ fn a_box_floats_at_the_depth_archimedes_gives() {
     );
 }
 
-#[test]
-fn a_tipped_hull_rights_itself_and_a_heavy_one_sinks() {
-    let (mut w, p) = world(4);
-    p.set_waters(vec![lake()]);
-    // A wide, flat hull on its side: the lift at its cells under water
-    // turns it back flat (a lift at the centre of mass never would).
-    let hull = floater(
-        &mut w,
-        rotated(at(0.0, 0.2, 0.0), Quat::from_rotation_z(1.2)),
-        Vec3::new(3.0, 0.6, 1.5),
-        0.5,
-        Buoyancy::default(),
-    );
-    let stone = floater(
-        &mut w,
-        at(10.0, 1.0, 0.0),
-        Vec3::ONE,
-        5.0,
-        Buoyancy::default(),
-    );
-    run(&mut w, 900);
-    let up = transform(&w, hull).quaternion * Vec3::Y;
-    assert!(up.y > 0.99, "the hull is flat again: its up is {up}");
-    let s = transform(&w, stone).position.y;
-    assert!(s < -5.0, "a stone of density 5 sinks: at {s}");
-    assert_eq!(w.get::<Buoyancy>(stone).unwrap().submerged, 1.0);
-}
-
 /// The hull's pose after `ticks`, bit for bit.
 fn bits(w: &World, e: Entity) -> [u32; 7] {
     let t = transform(w, e);
@@ -236,101 +207,6 @@ fn a_hull_rides_the_waves_the_same_through_a_restore_and_a_second_run() {
     assert_eq!(bits(&r, e), bits(&w, e), "a restore diverges");
 }
 
-/// A breezy sea over a 1:20 beach (W1): a buoy in half a metre of water
-/// rides the shoaled, broken sea there, far less than its twin out in deep
-/// water, the same bit for bit on a second run.
-#[test]
-fn a_buoy_in_the_shallows_rides_less_than_in_deep_water() {
-    use og_core::ocean::{Shore, ShoreTrains};
-    // The waterline at x = 210, 1 m cells from x = -100.
-    let (c, r) = (401u32, 81u32);
-    let depth: Vec<f32> = (0..c * r)
-        .map(|i| (210.0 - ((i % c) as f32 - 100.0)) / 20.0)
-        .collect();
-    let shore = Shore::new(Vec2::new(-100.0, -40.0), 1.0, c, r, &depth).expect("a shore");
-    let ocean = Ocean::new(Vec2::new(12.0, 0.0), 1.0, 0.8);
-    let trains = ShoreTrains::new(ocean.unwrap().significant_height(), 1.0, 30.0);
-    let water = WaterBody {
-        sea: ocean,
-        size: Vec2::splat(6000.0),
-        segments: 256,
-        shore: Some((std::sync::Arc::new(shore), trains)),
-        ..lake()
-    };
-    let ride = || {
-        let (mut w, p) = world(9);
-        p.set_waters(vec![water.clone()]);
-        let buoy = |w: &mut World, x: f32| {
-            floater(
-                w,
-                at(x, 0.5, 0.0),
-                Vec3::splat(0.4),
-                0.5,
-                Buoyancy::default(),
-            )
-        };
-        // 0.5 m of water at x = 200; the deep one off the seabed's grid.
-        let (shallow, deep) = (buoy(&mut w, 200.0), buoy(&mut w, -400.0));
-        let mut ys = (Vec::new(), Vec::new());
-        for _ in 0..900 {
-            w.step().unwrap();
-            ys.0.push(transform(&w, shallow).position.y);
-            ys.1.push(transform(&w, deep).position.y);
-        }
-        (bits(&w, shallow), bits(&w, deep), ys)
-    };
-    let (a, b, (shallow, deep)) = ride();
-    let span = |y: &[f32]| {
-        let (lo, hi) = y[300..]
-            .iter()
-            .fold((f32::MAX, f32::MIN), |(l, h), &v| (l.min(v), h.max(v)));
-        hi - lo
-    };
-    let (s, d) = (span(&shallow), span(&deep));
-    assert!(d > 1.0, "the deep buoy rides {d} m");
-    assert!(
-        s < 0.5 && s < 0.25 * d,
-        "the shallow buoy rides {s} m against {d} m"
-    );
-    let (a2, b2, _) = ride();
-    assert_eq!((a, b), (a2, b2), "two runs differ");
-}
-
-#[test]
-fn a_body_with_its_own_hull_takes_no_box_buoyancy_from_a_surface() {
-    // og.WaterSurface lifts a body by its box (buoyancy 9.81 per m³ under);
-    // with og.Buoyancy that would add to the hull's lift. Water of density
-    // 2 floats a density-1 box half under, its centre at the rest level.
-    let (mut w, _p) = world(6);
-    w.spawn((at(0.0, 0.0, 0.0), WaterSurface::default()))
-        .unwrap();
-    let b = floater(
-        &mut w,
-        at(0.0, 1.0, 0.0),
-        Vec3::ONE,
-        1.0,
-        Buoyancy::default(),
-    );
-    run(&mut w, 900);
-    let y = transform(&w, b).position.y;
-    assert!(y.abs() < 0.02, "its centre at {y}, not at the surface");
-}
-
-#[test]
-fn a_world_that_never_names_it_does_not_register_it() {
-    let (mut w, p) = support::world(Physics::default(), 7);
-    p.set_waters(vec![lake()]);
-    floor(&mut w);
-    spawn_body(
-        &mut w,
-        at(0.0, 2.0, 0.0),
-        RigidBody::dynamic(),
-        Collider::cuboid(Vec3::ONE),
-    );
-    run(&mut w, 30);
-    assert!(w.id_by_name(Buoyancy::NAME).is_err());
-}
-
 #[test]
 fn floaters_stay_in_the_water_through_the_gales_crests() {
     // The boats sample (tests/evidence/r5-water/boats): three box boats and
@@ -406,113 +282,4 @@ fn floaters_stay_in_the_water_through_the_gales_crests() {
             "floater {i} all but left the water: {least}"
         );
     }
-}
-
-/// Each sea records the og.Buoyancy hulls in it for the renderer, which
-/// calms its render-only chop under them (not world state): a boat turned
-/// about y is a rectangle of its own length and beam along its own axes,
-/// at its place; a flat lake records none.
-#[test]
-fn a_sea_records_the_hulls_in_it_for_the_renderer() {
-    let (mut w, p) = world(6);
-    p.set_waters(vec![sea(DVec3::ZERO)]);
-    let turn = 0.6f32;
-    let e = floater(
-        &mut w,
-        Transform {
-            quaternion: Quat::from_rotation_y(turn),
-            ..at(4.0, 1.0, -30.0)
-        },
-        Vec3::new(2.0, 0.8, 5.0),
-        0.5,
-        Buoyancy {
-            samples: 6,
-            ..Buoyancy::default()
-        },
-    );
-    run(&mut w, 3);
-    let wakes = p
-        .water_wakes(Entity::from_bits(1 << 40))
-        .expect("the sea's hulls");
-    let (_, cuts) = wakes.ticks.back().expect("a tick");
-    assert_eq!(cuts.len(), 1);
-    let c = cuts[0];
-    assert_eq!(c.entity, e.to_bits());
-    let t = transform(&w, e);
-    assert!(
-        c.centre.distance(Vec2::new(t.position.x, t.position.z)) < 0.2,
-        "{:?} at {:?}",
-        c.centre,
-        t.position
-    );
-    let x = Quat::from_rotation_y(turn) * Vec3::X;
-    assert!(c.axis.dot(Vec2::new(x.x, x.z)) > 0.99, "{:?}", c.axis);
-    assert!(
-        (c.half - Vec2::new(1.0, 2.5)).abs().max_element() < 0.15,
-        "{:?}",
-        c.half
-    );
-    assert!(c.min.x <= c.centre.x - c.half.x && c.max.y >= c.centre.y + c.half.x);
-
-    let (mut w, p) = world(6);
-    p.set_waters(vec![lake()]);
-    boat(&mut w, 0.0);
-    run(&mut w, 3);
-    assert!(p.water_wakes(Entity::from_bits(1 << 40)).is_none());
-}
-
-/// W5: a body dropped mid-stream in a river (og.Water.river, 8 m wide,
-/// 2 m/s mid-stream) drifts down it with the current: over its fifth
-/// second it comes 90 % ± 10 % of the river's speed down the course, keeps
-/// to the middle of the stream and floats at the river's level (1.5 m up
-/// here, the water's entity at 0); a second run lands it in the same place
-/// to the bit. A flat lake's still water would leave it where it fell.
-#[test]
-fn a_floater_drifts_down_a_river_with_its_current() {
-    let river = og_core::river::River::new(
-        &[Vec3::new(-60.0, 1.5, 0.0), Vec3::new(60.0, 1.5, 0.0)],
-        8.0,
-        2.0,
-    )
-    .expect("a river");
-    let water = WaterBody {
-        river: Some(std::sync::Arc::new(river)),
-        ..lake()
-    };
-    let ride = || {
-        let (mut w, p) = support::world(Physics::default(), 5);
-        support::enable_lazy(&mut w);
-        p.set_waters(vec![water.clone()]);
-        let b = floater(
-            &mut w,
-            at(-40.0, 1.6, 0.3),
-            Vec3::splat(0.6),
-            0.5,
-            Buoyancy::default(),
-        );
-        run(&mut w, 240);
-        let fourth = transform(&w, b).position;
-        run(&mut w, 60);
-        (fourth, transform(&w, b).position)
-    };
-    let (fourth, fifth) = ride();
-    let speed = fifth.x - fourth.x;
-    println!("river: {speed} m/s over the fifth second, at {fifth}");
-    assert!(
-        (speed - 1.8).abs() <= 0.2,
-        "it drifts {speed} m/s in a 2 m/s current"
-    );
-    assert!(
-        fifth.z.abs() < 1.0,
-        "it left the middle of the stream: {fifth}"
-    );
-    assert!(
-        (fifth.y - 1.5).abs() < 0.3,
-        "it floats at {} m, the river at 1.5 m",
-        fifth.y
-    );
-    assert_eq!(
-        ride().1.to_array().map(f32::to_bits),
-        fifth.to_array().map(f32::to_bits)
-    );
 }

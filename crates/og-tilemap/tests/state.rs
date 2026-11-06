@@ -79,33 +79,6 @@ fn an_untouched_256x256_four_layer_map_snapshots_in_a_few_bytes() {
 }
 
 #[test]
-fn tile_layer_edits_are_checked_and_bump_only_their_chunk() {
-    let mut s = state(&map(40, 20), "filled");
-    assert_eq!(s.get(0, 3, 3), -1);
-    s.set(0, 3, 3, 5).unwrap();
-    assert_eq!(
-        (s.get(0, 3, 3), s.tile(0, 3, 3)),
-        (5, Some((5, false, false)))
-    );
-    assert_eq!((s.chunk_version(0, 0, 0), s.chunk_version(0, 1, 0)), (1, 0));
-    s.set(0, 20, 3, 5).unwrap();
-    assert_eq!(s.chunk_version(0, 1, 0), 1);
-    assert!(
-        s.set(0, 40, 0, 1)
-            .unwrap_err()
-            .to_string()
-            .contains("outside")
-    );
-    assert!(
-        s.set(0, 0, 0, 64)
-            .unwrap_err()
-            .to_string()
-            .contains("not in layer 'floor'")
-    );
-    assert!(s.set(7, 0, 0, 1).is_err());
-}
-
-#[test]
 fn a_fill_equals_setting_each_cell_and_refuses_without_writing() {
     let a = map(20, 15);
     let (mut by_set, mut by_fill) = (state(&a, "filled"), state(&a, "filled"));

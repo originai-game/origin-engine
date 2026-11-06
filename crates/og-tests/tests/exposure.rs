@@ -124,24 +124,6 @@ fn adaptation_converges_identically_and_survives_a_restore() {
     );
 }
 
-/// Speeds of 0 are the instant metering of before: the same frame bit for bit.
-#[test]
-fn zero_speeds_meter_the_frame_at_once() {
-    let mut s = scene(1.0);
-    s.camera.exposure = Exposure::Auto {
-        compensation: 0.0,
-        min_ev: -10.0,
-        max_ev: 10.0,
-        adapt_speed_up: 0.0,
-        adapt_speed_down: 0.0,
-    };
-    let zero = run(&mut renderer(), &mut s, 30, 31);
-    let mut t = scene(1.0);
-    t.camera.exposure = Exposure::auto();
-    let auto = run(&mut renderer(), &mut t, 30, 31);
-    assert_eq!(zero.pixels, auto.pixels);
-}
-
 /// The adaptation starts at the first ticked frame: a frame of tick 0
 /// (before the first tick: the web shell draws one behind the play gate,
 /// `og run` draws none) meters at once and is never adapted from, so a

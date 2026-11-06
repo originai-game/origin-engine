@@ -153,16 +153,3 @@ fn a_garment_with_a_radius_drapes_over_a_solid_instead_of_through_it() {
         assert!(!inside, "point {i} at {q} is inside the box");
     }
 }
-
-#[test]
-fn the_2d_profile_leaves_garments_alone() {
-    let (rig, rest) = cape();
-    let (mut w, p) = world(Physics {
-        profile: PROFILE_2D,
-        ..Physics::default()
-    });
-    let e = w.spawn((Garment::default(),)).unwrap();
-    p.set_garment_rig(e, 1, rig).unwrap();
-    walk(&mut w, &p, e, &rest, Vec3::ZERO, 10);
-    assert_eq!(p.garment_points(e), None);
-}

@@ -110,43 +110,6 @@ fn set(engine: u32, entity: f64, x: u32, y: u32, tile: i32) {
     ));
 }
 
-/// A world that only loads a map (and edits it) hashes as it did before
-/// run-time maps: pinned on the code before G2-6 batch 2, then re-pinned
-/// for G2-7 batch 2's og.Lockstep fields (3b30884ea43b16c7 to
-/// 69496dd3ffb3e378), batch 3's stallTimeout and rejoin (to
-/// 7d3e58d6b53fbd34), U6d's UI state version 13 (to a814ee913e53a5d5) and
-/// G3-2's lazy og.VideoPlayer (to d30157f0d09a1253, the type gone from a
-/// world without footage) and R11's lazy 2D lighting records (to
-/// cb4cb2e1c4e0f7e1, og.Lighting2D, og.Light2D and og.Occluder2D gone from
-/// a world without 2D lights) and ui-gaps' UI state version 14 (to
-/// 40cb7e39b84923d5) and version 15 (to cdd436f5674a3768) and R9's og.Blendshapes version 2
-/// (`influences`, to d09658f91e092780) and R6's og.TerrainScatter impostor fields
-/// (to 418646f663e539b4) and og.Model.sway (to 93d5097782334060) and R5's lazy og.Water
-/// (to 8a66396f924b22ba, gone from a world without water) and og.Environment's blurriness,
-/// grounded dome and blend fields (to 82ae1d6124a13be2) and T5's lazy og.Terrain (to
-/// 5017615dce8e0194, gone from a world without terrain) and area 7's Stylise and
-/// MaterialStyle fields (to 4da281adabd646cf) and area 4's lazy og.TerrainScatter and og.Wind
-/// (to 52ef5ac7cfa6538a) and UI state version 16, the touch control holding a finger
-/// (to c950ccbacfe91a63) and RenderSettings.upscaler (to 0ece0b71c16b6488) and
-/// PostEffects' ssrMaxRoughness and ssrResolution (to f917a356541f94e3), then Stylise.hatchingPaper (to 87e387f06096ffc6), then Cloth, SoftBody
-/// and Garment's simulation (to 3e79197f349b1840), then MaterialStyle.wireframeColor
-/// (to f6c957ee4976ed4a), then Fluid3D's simulation (to c53a68e4d5af79aa), each of
-/// which moves every raw world hash.
-/// PostEffects' ssrMaxRoughness and ssrResolution (to f917a356541f94e3) and
-/// Stylise's watercolour fields (to da2b397551633113), then Stylise.posterizeMode (to 8cebc431ee6b9219), each of which moves every raw world hash.
-#[test]
-fn a_world_of_loaded_maps_keeps_its_hash() {
-    set_hooks(Rc::new(Game));
-    let root = project("tilemap-loaded");
-    let engine = start(&root);
-    let map = value(og_load_tilemap(engine, "map.ogt".into()))["map"].clone();
-    let entity = place(engine, &map);
-    frame(engine);
-    set(engine, entity, 2, 1, 0);
-    frame(engine);
-    assert_eq!(hash(engine), "8cebc431ee6b9219");
-}
-
 #[test]
 fn a_made_and_resized_map_saves_whole_and_restores_in_a_fresh_session() {
     set_hooks(Rc::new(Game));

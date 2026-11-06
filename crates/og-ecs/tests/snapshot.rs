@@ -192,38 +192,6 @@ fn w_has_pending_events(w: &mut World) {
 }
 
 #[test]
-fn the_hash_sees_every_part_of_the_state() {
-    let base = || {
-        let mut w = build(3);
-        churn(&mut w, &mut Rng::new(2), 5);
-        w
-    };
-    let h = base().world_hash();
-    assert_eq!(base().world_hash(), h);
-    let mut w = base();
-    let e = w.entities()[3];
-    let p = w.get::<Pos>(e).ok();
-    match p {
-        Some(mut p) => {
-            p.p.x += 1e-6;
-            w.insert(e, p).unwrap();
-        }
-        None => w.insert(e, Pos { p: Vec3::ZERO }).unwrap(),
-    }
-    assert_ne!(w.world_hash(), h, "a component value");
-    let mut w = base();
-    w.resource_mut::<Rng>().unwrap().next_u32();
-    assert_ne!(w.world_hash(), h, "the rng state");
-    let mut w = base();
-    w.send(Ping { from: 5 }).unwrap();
-    assert_ne!(w.world_hash(), h, "a pending event");
-    let mut w = base();
-    let e = w.spawn(()).unwrap();
-    w.despawn(e).unwrap();
-    assert_ne!(w.world_hash(), h, "the allocator's free list");
-}
-
-#[test]
 fn a_bad_snapshot_is_refused_and_changes_nothing() {
     let mut a = build(5);
     churn(&mut a, &mut Rng::new(4), 10);

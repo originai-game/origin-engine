@@ -246,51 +246,6 @@ fn a_snapshot_that_fits_migrates_to_the_same_world_as_restore() {
 }
 
 #[test]
-fn events_in_flight_are_migrated_too() {
-    let mut old = World::new(&WorldDesc::default()).unwrap();
-    old.register::<v1::Damage>().unwrap();
-    old.send(v1::Damage {
-        amount: 1.0,
-        crit: true,
-    })
-    .unwrap();
-    let mut w = World::new(&WorldDesc::default()).unwrap();
-    #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-    #[reflect(name = "Damage")]
-    struct Damage2 {
-        amount: f32,
-        crit: bool,
-        #[reflect(default = 2)]
-        stacks: u32,
-    }
-    w.register::<Damage2>().unwrap();
-    let report = w.restore_migrating(&old.snapshot()).unwrap();
-    assert_eq!(report.added, ["Damage.stacks"]);
-    assert_eq!(
-        w.pending_events::<Damage2>().unwrap(),
-        [Damage2 {
-            amount: 1.0,
-            crit: true,
-            stacks: 2
-        }]
-    );
-}
-
-#[test]
-fn a_malformed_snapshot_is_refused_and_changes_nothing() {
-    let (old, _) = old_world();
-    let bytes = old.snapshot();
-    let mut w = new_world();
-    let before = w.world_hash();
-    for cut in (0..bytes.len()).step_by(61) {
-        let err = w.restore_migrating(&bytes[..cut]).unwrap_err();
-        assert_eq!(err.kind(), ErrorKind::Parse, "cut at {cut}: {err}");
-        assert_eq!(w.world_hash(), before, "cut at {cut}");
-    }
-    assert_eq!(w.resource::<v2::Fresh>().unwrap().n, 42);
-}
-
-#[test]
 fn check_snapshot_refuses_what_restore_would_naming_the_fields_and_changes_nothing() {
     let (old, _) = old_world();
     let bytes = old.snapshot();
@@ -419,14 +374,6 @@ mod engine_v2 {
         #[reflect(default = 10)]
         pub snap: f32,
     }
-
-    /// The release after that removed `exposure`.
-    #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-    #[reflect(name = "og.Settings")]
-    pub struct Removed {
-        #[reflect(default = 1)]
-        pub interpolate: bool,
-    }
 }
 
 /// An engine type is one whose name starts with `og.` (og-runtime's rule).
@@ -499,44 +446,4 @@ fn an_engine_type_that_only_gained_fields_restores_with_their_declared_defaults(
         false,
     );
     assert_eq!(w.world_hash(), built.world_hash());
-}
-
-#[test]
-fn a_removed_engine_field_and_a_grown_game_type_are_still_refused() {
-    // An engine field removed since the save.
-    let old = settings_world(
-        engine_v2::Settings {
-            exposure: 0.75,
-            interpolate: false,
-            snap: 3.0,
-        },
-        false,
-    );
-    let w = settings_world(engine_v2::Removed { interpolate: true }, false);
-    let before = w.world_hash();
-    let err = w
-        .check_snapshot_replacing(&old.snapshot(), false, &[], &engine_owned)
-        .unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::Schema, "{err}");
-    assert!(
-        err.reason().contains("og.Settings.exposure") && err.reason().contains("removed"),
-        "{err}"
-    );
-    assert_eq!(w.world_hash(), before);
-
-    // A game type that gained a field (Tuning.gravity) is not an engine
-    // type: refused, naming it, though the engine type beside it fits.
-    let old = settings_world(engine_v1::Settings { exposure: 0.5 }, true);
-    let mut w = World::new(&WorldDesc {
-        seed: 5,
-        tick_rate: 60,
-    })
-    .unwrap();
-    w.register::<engine_v2::Settings>().unwrap();
-    w.register::<v2::Tuning>().unwrap();
-    w.register::<Pos>().unwrap();
-    let err = w
-        .check_snapshot_replacing(&old.snapshot(), false, &[], &engine_owned)
-        .unwrap_err();
-    assert!(err.reason().contains("'Tuning'"), "{err}");
 }

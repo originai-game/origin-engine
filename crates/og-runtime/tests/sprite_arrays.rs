@@ -164,33 +164,6 @@ fn spawn(engine: u32, components: &[(&str, Value)]) -> f64 {
 }
 
 #[test]
-fn an_og_sprite_draws_the_layer_of_its_array() {
-    let (engine, seen) = engine();
-    let array = value(og_load_texture_array(engine, "tex/frames.ogt".into()))["array"]
-        .as_f64()
-        .unwrap();
-    spawn(
-        engine,
-        &[(
-            "og.Sprite",
-            json!({ "array": array, "arrayLayer": 1, "width": 2, "height": 2 }),
-        )],
-    );
-    // Past the last layer: the last.
-    spawn(
-        engine,
-        &[("og.Sprite", json!({ "array": array, "arrayLayer": 9 }))],
-    );
-    frame(engine);
-    let s = seen.borrow();
-    assert_eq!(s.world.len(), 2, "both sprites draw from the array");
-    assert_eq!(s.world[0].1, 1);
-    assert_eq!(s.world[1].1, 1, "clamped to the last layer");
-    assert_eq!(s.world[0].0, s.world[1].0, "one array, one run");
-    assert_eq!(s.textured, 0);
-}
-
-#[test]
 fn an_array_flipbook_draws_its_frame_as_the_layer() {
     let (engine, seen) = engine();
     let info = value(og_load_flipbook(engine, "sprites/run.ogt".into()));

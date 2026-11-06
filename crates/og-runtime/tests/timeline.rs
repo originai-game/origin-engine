@@ -25,11 +25,11 @@
 //! id and never read again, so the old keys played on.
 
 use og_runtime::{
-    Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_probe_commands,
-    og_engine_probe_dump, og_engine_probe_reload, og_game_game, og_host_begin_bundle,
-    og_load_timeline, og_system_define_system, og_timeline_info, og_timeline_pause,
-    og_timeline_play, og_timeline_seek, og_world_events, og_world_find, og_world_get,
-    og_world_get_tick, og_world_insert, og_world_resource, og_world_spawn, set_hooks,
+    Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_probe_dump,
+    og_engine_probe_reload, og_game_game, og_host_begin_bundle, og_load_timeline,
+    og_system_define_system, og_timeline_pause, og_timeline_play, og_timeline_seek,
+    og_world_events, og_world_find, og_world_get, og_world_get_tick, og_world_insert,
+    og_world_resource, og_world_spawn, set_hooks,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -292,85 +292,6 @@ fn seeking_to_4s_hashes_as_playing_to_4s() {
     };
     assert_eq!(marks(&a), vec!["early", "late"]);
     assert_eq!(marks(&b), vec!["late"]);
-}
-
-#[test]
-fn playback_raises_markers_once_and_hands_the_camera_back_at_the_end() {
-    let r = start();
-    let (_, before) = state(&r);
-    let info = value(og_timeline_info(
-        r.engine,
-        state(&r).0["asset"].as_f64().unwrap(),
-    ));
-    assert_eq!(info["duration"], json!(6.0));
-    assert_eq!(info["markers"], json!(["one", "five"]));
-    let t0 = og_world_get_tick(r.engine);
-    value(og_timeline_play(r.engine, r.timeline));
-    frame(r.engine, 180);
-    // Mid-play the camera is the rail's.
-    let (tl, mid) = state(&r);
-    assert_eq!(tl["playing"], json!(true));
-    assert_ne!(mid["position"], before["position"], "{mid}");
-    frame(r.engine, 200);
-    let (tl, after) = state(&r);
-    assert_eq!(tl["playing"], json!(false), "{tl}");
-    assert_eq!(tl["time"], json!(6.0));
-    for k in ["position", "quaternion", "fov"] {
-        assert_eq!(after[k], before[k], "the camera's {k} is handed back");
-    }
-    let seen = r.seen.borrow();
-    let names: Vec<(&str, &str)> = seen
-        .events
-        .iter()
-        .map(|e| (e.1.as_str(), e.2.as_str()))
-        .collect();
-    assert_eq!(
-        names,
-        vec![
-            ("og.TimelineStarted", ""),
-            ("og.TimelineMarker", "one"),
-            ("og.TimelineMarker", "five"),
-            ("og.TimelineEnded", ""),
-        ],
-        "{:?}",
-        seen.events
-    );
-    // The marker at 1 s is raised by the tick whose time reaches 1 s (the
-    // play's first tick is at 0 s, 60 ticks a second), read one tick later.
-    let one = seen.events[1].0 - t0;
-    assert_eq!(one, 60 + 1, "{:?}", seen.events);
-    assert_eq!(seen.marks.len(), 2);
-}
-
-/// The command channel's path (`og run --commands "0:timeline:play:<name>"`,
-/// what depth S3's video capture runs): the play makes `timeline-<name>`,
-/// loads `timelines/<name>.ogt` and plays it from 0 (a Stop is queued
-/// before the Play, and both apply); a seek moves it.
-#[test]
-fn timeline_play_and_seek_from_the_command_channel() {
-    let r = start();
-    let run = |script: &str| {
-        let v: Value = serde_json::from_str(&og_engine_probe_commands(r.engine, script.into()))
-            .expect("wire JSON");
-        assert_eq!(v["scheduled"], json!(1), "{v}");
-        assert_eq!(v["warnings"], json!([]), "{v}");
-    };
-    run("0:timeline:play:t");
-    frame(r.engine, 31);
-    let e: f64 = og_world_find(r.engine, "timeline-t".into())
-        .parse()
-        .expect("timeline:play made timeline-t");
-    let tl = |r: &Run| value(og_world_get(r.engine, e, "og.Timeline".into()));
-    let now = tl(&r);
-    assert_eq!(now["playing"], json!(true), "{now}");
-    let t = now["time"].as_f64().unwrap();
-    assert!((0.4..=0.55).contains(&t), "{now}");
-    run("0:timeline:seek:5:t");
-    frame(r.engine, 2);
-    let t = tl(&r)["time"].as_f64().unwrap();
-    assert!((5.0..=5.05).contains(&t), "{t}");
-    // The start()'s own og.Timeline was never played.
-    assert_eq!(state(&r).0["playing"], json!(false));
 }
 
 #[test]

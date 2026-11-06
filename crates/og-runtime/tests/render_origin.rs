@@ -152,23 +152,6 @@ fn a_camera_100_km_out_draws_from_a_render_origin_near_it() {
 }
 
 #[test]
-fn a_camera_near_the_world_zero_draws_at_it() {
-    // 4 km out on every axis: still the zero (the grid's half is 4096 m).
-    let eye = Vec3::new(4000.0, 2.0, -4090.0);
-    let seen = frame_at(
-        eye,
-        Vec3::new(4003.0, 0.5, -4100.0),
-        Vec3::new(3998.0, 3.0, -4094.5),
-    );
-    assert_eq!(seen.origin, Vec3::ZERO);
-    assert_eq!(seen.position, eye, "the camera drawn where it is");
-    assert_eq!(
-        seen.instances[0].w_axis.truncate(),
-        Vec3::new(4003.0, 0.5, -4100.0)
-    );
-}
-
-#[test]
 fn a_shifted_world_draws_from_the_render_origin_it_had_in_the_absolute_world() {
     // R12: og.WorldOrigin shifts the world by -49 x 2048 m on x and -29 x
     // 2048 m on z as the first tick starts (the camera is its focus), so

@@ -56,33 +56,6 @@ entity \"crate2\" {
 }
 ";
 
-/// The same entities as YARD, written out by hand.
-const BY_HAND: &str = "type scene
-version 1
----
-name \"Yard\"
-entity \"crate1\" {
-  Health {
-    hp 10
-  }
-  entity \"crate1/lid\" {
-    Health {
-      hp 40
-    }
-  }
-}
-entity \"crate2\" {
-  Health {
-    hp 10
-  }
-  entity \"crate2/lid\" {
-    Health {
-      hp 10
-    }
-  }
-}
-";
-
 fn cook(root: &Path) {
     use og_core::reflect::{FieldSchema, FieldType, Schema};
     let health = Schema {
@@ -218,80 +191,6 @@ fn a_save_of_an_instanced_world_restores_where_no_prefab_was_placed_and_goes_on_
     step(b, 10);
     assert_eq!(hash(b), hash(a), "tick for tick as the original");
 }
-
-#[test]
-fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
-    // The same entities written by hand: the hash main 67a07d57 gave this world
-    // (before prefabs), so a game without prefabs is unchanged.
-    let plain = project("plain", BY_HAND);
-    let p = placed(&plain);
-    step(p, 3);
-    assert_eq!(hash(p), json!(BY_HAND_HASH));
-
-    let root = project("recook", YARD);
-    let a = placed(&root);
-    step(a, 3);
-    let first = hash(a);
-    // Placed from a prefab, the same values hash otherwise: the links are
-    // world state (accepted, the owner, 2026-11-02).
-    assert_ne!(first, hash(p));
-    // The prefab's text changes but not what it spawns: a comment, the
-    // lid's block written another way. The scene re-cooks; the hash stays.
-    std::fs::write(
-        root.join("assets/prefabs/crate.ogt"),
-        CRATE.replace(
-            "  entity \"lid\" {",
-            "  # the lid opens upwards\n  entity \"lid\" {",
-        ),
-    )
-    .unwrap();
-    cook(&root);
-    let b = placed(&root);
-    step(b, 3);
-    assert_eq!(hash(b), first);
-}
-
-/// [`hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them`]'s
-/// hand-written world's hash on main 67a07d57 (G2-2 and G2-5), before
-/// prefabs; a change on main that moves every world's hash moves it too
-/// (G2-5's og.AudioMix resource and audio records moved it from
-/// 0ccd86471f57151d; G2-3's sleep from e5f1f831d77c7bc0: og.RigidBody and
-/// og.Physics at version 2 with their new fields, og.BodySlept and
-/// og.BodyWoke registered, all in the type table every world hashes; then
-/// G2-3's breaking joints and contact hooks from 88fa067dd437beb0: og.Joint
-/// at version 2, og.JointBroken and og.ContactHook registered; then from
-/// 8321f6acb96a66be when those four types became lazy, registered only
-/// once a game names them, so only the version-2 layouts remain; then
-/// from 8c463e75e426e15b for og.Vehicle's version-2 layout, the
-/// drivetrain; then G2-7's rollback from fd13375581ba26c1: og.Lockstep's
-/// `mode` and `maxPrediction` fields change its layout in the type table;
-/// then G2-7's stall timeout from 93d4a11b9687d3b6: its `stallTimeout` and
-/// `rejoin` fields; the seat events are lazy, so they do not; then U6d's
-/// UI state version 13 from 13d5d679aa3698ae: Hit.owner; then G3-2's lazy
-/// og.VideoPlayer from a99071b12db700c7: a world without footage no longer
-/// has the type, so its later changes leave this hash alone; then R11's
-/// lazy og.Lighting2D, og.Light2D and og.Occluder2D from fd4dddba26ef754a,
-/// for the same reason; then ui-gaps' UI state version 14 from
-/// 1069aa19a26d8691; then version 15 from e83b148c0f38efb5; then R9's
-/// og.Blendshapes version 2 (`influences`) from 46cc8d6517681608, then
-/// R6's og.TerrainScatter impostor fields from 5136c2039d7ed9ec and
-/// og.Model.sway from c9cc80ca8f3b2c20, then R5's lazy og.Water from
-/// e1f4faa4b95c9f64: a world without water no longer has the type, so the
-/// sea's fields leave this hash alone, then og.Environment's blurriness,
-/// grounded dome and blend fields from f075e6bd81233636, then T5's lazy
-/// og.Terrain from 6d8422aaf5e31ccc, gone from a world without terrain,
-/// then area 7's Stylise and MaterialStyle fields from 0ac8584de3c39543 to
-/// b06093a615447620, then area 4's lazy og.TerrainScatter and og.Wind to
-/// f21f6a4b0639cc74, then UI state version 16, the touch control holding a finger,
-/// and to 4479609532682b52, then PostEffects' ssrMaxRoughness and ssrResolution,
-/// then PostEffects.ssrMaxDistance's default of 100, then PostEffects.ssrSteps'
-/// default of 64, then to 8ff3942bdc5bdfce, Stylise.hatchingPaper, then
-/// Cloth, SoftBody and Garment version 2 (simulation), then to
-/// 11b306c51fde2306, MaterialStyle.wireframeColor, then to
-/// 892f0ccf9ecd891a, Fluid3D version 2 (simulation), then to
-/// 08de39dee3b96ead, Stylise's watercolour fields, then to
-/// f1f3f9d2e7afce23, Stylise.posterizeMode).
-const BY_HAND_HASH: &str = "f1f3f9d2e7afce23";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {

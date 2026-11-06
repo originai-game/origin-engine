@@ -37,7 +37,7 @@ test("a HUD panel over an entity counts in its occlusion: templates/game at tick
   if (r.exitCode !== 0) throw new Error(new TextDecoder().decode(r.stderr) + stdout);
   const run = JSON.parse(stdout.trim().split("\n").pop()!) as { tier: string };
   // The surface takes --size only with a renderer; without one the frame is 1280×720 and clear of the panel.
-  if (run.tier === "none") return;
+  if (run.tier === "none") throw new Error("missing GPU adapter: describe-ui requires a rendered surface");
   const d = JSON.parse(readFileSync(join(out, "d.json"), "utf8")) as Described;
   const menu = d.ui.find((u) => u.id === "Menu")!;
   expect(menu.opaque).toBe(true);

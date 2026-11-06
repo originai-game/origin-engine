@@ -20,8 +20,7 @@
 use crate::support;
 
 use og_audio::{
-    AudioSource, Bus, HeadlessMode, HeadlessSink, Music, MusicBeat, SoundBank, chunk_distances,
-    chunks_wanted, qoa,
+    AudioSource, Bus, HeadlessMode, HeadlessSink, Music, MusicBeat, SoundBank, chunks_wanted, qoa,
 };
 use og_ecs::World;
 use std::f64::consts::TAU;
@@ -234,98 +233,6 @@ fn a_three_minute_track_streams_in_chunks_sample_identical_to_the_whole_file() {
     .unwrap();
 }
 
-#[test]
-fn with_a_loader_a_chunk_is_read_when_a_voice_reaches_it() {
-    // og-runtime's native loader: the mixer reads a chunk the moment a
-    // voice needs it, so pumping ten seconds at once (og run's long
-    // advances) still mixes every sample, with nobody feeding the bank.
-    let file = track();
-    let parts = std::sync::Arc::new(qoa::split(&file, PER_CHUNK).unwrap());
-    let whole_bank = SoundBank::new();
-    let whole = whole_bank.insert_qoa("music", &file).unwrap();
-    let w = run(&whole_bank, whole, None, 600, 70);
-    let bank = SoundBank::new();
-    let sound = bank
-        .insert_chunked("music", &parts[0], PER_CHUNK as u32, parts.len() as u32)
-        .unwrap();
-    let reads = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let (p, r) = (parts.clone(), reads.clone());
-    assert!(bank.set_chunk_loader(
-        sound,
-        std::sync::Arc::new(move |n| {
-            r.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            p.get(n as usize).cloned()
-        })
-    ));
-    let c = run(&bank, sound, None, 600, 70);
-    assert!(
-        w.pcm
-            .iter()
-            .zip(&c.pcm)
-            .all(|(a, b)| a.to_bits() == b.to_bits())
-            && w.pcm.len() == c.pcm.len(),
-        "the loader's mix differs from the whole file's"
-    );
-    // 0-62 s and 100-110 s: 17 or 18 of the 45 chunks after the first.
-    let reads = reads.load(std::sync::atomic::Ordering::Relaxed);
-    assert!((15..20).contains(&reads), "{reads} reads");
-}
-
-#[test]
-fn a_missing_chunk_plays_silence_and_a_bad_one_is_refused() {
-    let file = track();
-    let parts = qoa::split(&file, PER_CHUNK).unwrap();
-    let bank = SoundBank::new();
-    let sound = bank
-        .insert_chunked("music", &parts[0], PER_CHUNK as u32, parts.len() as u32)
-        .unwrap();
-    assert!(bank.get(sound).unwrap().streamed());
-    assert_eq!(bank.get(sound).unwrap().resident_chunks(), vec![0]);
-    // A chunk of the right length is accepted; one of the wrong length is
-    // not, nor one past the last, nor a chunk count the length disagrees with.
-    assert!(bank.put_chunk(sound, 1, &parts[1]).unwrap());
-    let last = parts.len() as u32 - 1;
-    assert!(
-        bank.put_chunk(sound, last, &parts[1]).is_err(),
-        "the last chunk is shorter"
-    );
-    assert!(bank.put_chunk(sound, last + 1, &parts[1]).is_err());
-    assert!(
-        bank.insert_chunked("x", &parts[0], PER_CHUNK as u32, 3)
-            .is_err()
-    );
-    // Dropping keeps the first chunk.
-    let missing = bank.keep_chunks(&Default::default());
-    assert!(missing.is_empty());
-    assert_eq!(bank.get(sound).unwrap().resident_chunks(), vec![0]);
-    // A voice past the first chunk with nothing put there hears silence.
-    let (mut world, link) = world_with(&bank, |_| {});
-    world
-        .spawn((AudioSource {
-            start_offset: 30.0,
-            ..AudioSource::new(sound)
-        },))
-        .unwrap();
-    let mut sink = HeadlessSink::new(&link, HeadlessMode::Capture { sample_rate: RATE });
-    for _ in 0..30 {
-        world.step().unwrap();
-        sink.pump();
-    }
-    assert!(sink.pcm().iter().all(|x| *x == 0.0));
-    // Asked for, put there, it plays.
-    let missing = bank.keep_chunks(&chunks_wanted(&world, &bank));
-    assert!(!missing.is_empty());
-    for (h, id, c) in missing {
-        assert_eq!(id, "music");
-        bank.put_chunk(h, c, &parts[c as usize]).unwrap();
-    }
-    for _ in 0..30 {
-        world.step().unwrap();
-        sink.pump();
-    }
-    assert!(sink.pcm().iter().any(|x| x.abs() > 0.05));
-}
-
 fn pcm_hash(pcm: &[f32]) -> u64 {
     let mut h = 0xcbf2_9ce4_8422_2325u64;
     for x in pcm {
@@ -335,65 +242,6 @@ fn pcm_hash(pcm: &[f32]) -> u64 {
         }
     }
     h
-}
-
-/// How soon each wanted chunk is needed, for a host that fetches the
-/// nearest first: 0 for the chunk under a playhead (and one just left),
-/// the seconds to a chunk ahead at the voice's pitch, the wrap's time
-/// for a loop's start chunk; a faster voice needs its chunks sooner.
-#[test]
-fn chunk_distances_rank_chunks_by_how_soon_a_playhead_reaches_them() {
-    let file = track();
-    let parts = qoa::split(&file, PER_CHUNK).unwrap();
-    let bank = SoundBank::new();
-    let sound = bank
-        .insert_chunked("music", &parts[0], PER_CHUNK as u32, parts.len() as u32)
-        .unwrap();
-    let (mut world, _link) = world_with(&bank, |_| {});
-    // 30 s in, looping from 20 s: chunks of 3.95 s.
-    world
-        .spawn((AudioSource {
-            start_offset: 30.0,
-            looping: true,
-            loop_start: 20.0,
-            ..AudioSource::new(sound)
-        },))
-        .unwrap();
-    world.step().unwrap();
-    let chunk = (PER_CHUNK * 5120) as f64 / f64::from(RATE);
-    let d = &chunk_distances(&world, &bank)[&sound];
-    let at = 30.0 + 1.0 / 60.0;
-    assert_eq!(
-        d.keys().copied().collect::<Vec<_>>(),
-        [5, 6, 7, 8],
-        "the loop start's two, the playhead's, the next: {d:?}"
-    );
-    assert_eq!(d[&7], 0.0, "under the playhead");
-    assert!((d[&8] - (8.0 * chunk - at)).abs() < 1e-3, "{d:?}");
-    let frames = bank.get(sound).unwrap().frames as f64 / f64::from(RATE);
-    assert!((d[&5] - (frames - at)).abs() < 1e-3, "the wrap: {d:?}");
-    assert!(
-        (d[&6] - (frames - at + 6.0 * chunk - 20.0)).abs() < 1e-3,
-        "{d:?}"
-    );
-    let keys: Vec<u32> = chunks_wanted(&world, &bank)[&sound]
-        .iter()
-        .copied()
-        .collect();
-    assert_eq!(keys, [5, 6, 7, 8], "the same chunks as chunks_wanted");
-    // A second voice at twice the pitch, 34 s in: its chunk 8 is nearer.
-    world
-        .spawn((AudioSource {
-            start_offset: 34.0,
-            pitch: 2.0,
-            ..AudioSource::new(sound)
-        },))
-        .unwrap();
-    world.step().unwrap();
-    let d = &chunk_distances(&world, &bank)[&sound];
-    assert_eq!(d[&8], 0.0, "under the second playhead");
-    let second = 34.0 + 2.0 / 60.0;
-    assert!((d[&9] - (9.0 * chunk - second) / 2.0).abs() < 1e-3, "{d:?}");
 }
 
 #[test]

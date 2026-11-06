@@ -4,12 +4,7 @@
 
 use glam::Vec3;
 use og_render::{RenderScene, RenderTarget, Renderer, RgbaImage};
-use og_tests::{gfx, p2_scenes, scenes};
-use std::path::PathBuf;
-
-fn out_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-gfx")
-}
+use og_tests::{p2_scenes, scenes};
 
 fn frame(scene: &RenderScene) -> RgbaImage {
     let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
@@ -70,14 +65,6 @@ fn mean(img: &RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32) -> f32 {
     sum / ((x1 - x0) * (y1 - y0)) as f32
 }
 
-#[test]
-fn atmosphere_moon_matches_its_reference() {
-    match gfx::check("atmosphere-moon", &out_dir()) {
-        Ok(r) => println!("{r}"),
-        Err(e) => panic!("{e}"),
-    }
-}
-
 /// The phase lights the disc: full is bright across, new is the night sky
 /// with no star showing through, the first quarter lights the right half
 /// and the last quarter the left.
@@ -133,26 +120,6 @@ fn the_phase_lights_the_disc() {
     let (ll, lr) = halves(&moon(0.75, 2.4));
     println!("last quarter: left {ll:.0} right {lr:.0}");
     assert!(ll > lr + 80.0, "the last quarter lights the left half");
-}
-
-/// The disc's area follows its size squared.
-#[test]
-fn the_size_sets_the_disc() {
-    // Bright pixels within twice the big disc's radius (the stars are few and far apart).
-    let lit = |img: &RgbaImage| {
-        let (cx, cy, r) = disc(img, 2.4);
-        let r = 2 * r;
-        (cy - r..cy + r)
-            .flat_map(|y| (cx - r..cx + r).map(move |x| (x, y)))
-            .filter(|&(x, y)| luma(img, x, y) > 160.0)
-            .count() as f32
-    };
-    let big = lit(&moon(0.5, 2.4));
-    let small = lit(&moon(0.5, 1.2));
-    println!("lit pixels: {big} at 2.4 degrees, {small} at 1.2");
-    assert!(small > 50.0);
-    let ratio = big / small;
-    assert!((3.2..4.8).contains(&ratio), "area ratio {ratio:.2}");
 }
 
 /// Below the horizon the moon draws nothing: the frame is the moonless one.

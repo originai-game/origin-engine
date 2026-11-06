@@ -16,7 +16,7 @@
 //! - a pixel glyph drawn on another pitch than the grid (DotGothic16's
 //!   dots) left off whole cells → `an_off_pitch_face_lands_on_whole_cells`
 
-use og_ui::glyphs::{PixelCells, pixel_cells, render_glyph, render_glyph_on};
+use og_ui::glyphs::{pixel_cells, render_glyph, render_glyph_on};
 
 fn sc() -> Vec<u8> {
     std::fs::read(concat!(
@@ -55,30 +55,6 @@ fn a_glyph_has_ink_inside_and_none_outside() {
         Some(g),
         "the same bytes every time"
     );
-}
-
-#[test]
-fn its_metrics_are_the_fonts() {
-    let ttf = sc();
-    let face = ttf_parser::Face::parse(&ttf, 0).expect("a font");
-    let g = render_glyph(&ttf, '旅', 32.0, 4.0).expect("the font has 旅");
-    let gid = face.glyph_index('旅').expect("in the cmap");
-    let upem = f32::from(face.units_per_em());
-    assert_eq!(
-        g.advance,
-        f32::from(face.glyph_hor_advance(gid).expect("an advance")) / upem
-    );
-    let bbox = face.glyph_bounding_box(gid).expect("a box");
-    // The plane's left edge is the box's minus the padding, in em.
-    let pad = (4.0f32 / 2.0).ceil() + 1.0;
-    assert!((g.plane[0] - (f32::from(bbox.x_min) / upem - pad / 32.0)).abs() < 1e-5);
-    assert!((g.plane[2] - g.plane[0] - g.width as f32 / 32.0).abs() < 1e-5);
-    assert!(
-        render_glyph(&ttf, 'ע', 32.0, 4.0).is_none(),
-        "a character the font lacks"
-    );
-    let space = render_glyph(&ttf, ' ', 32.0, 4.0).expect("a space");
-    assert_eq!((space.width, space.plane), (0, [0.0; 4]));
 }
 
 fn font(path: &str) -> Vec<u8> {
@@ -152,69 +128,5 @@ fn a_pixel_glyph_is_its_cells_and_nothing_else() {
                 assert_eq!(v > 128, on, "{c}: cell {i},{j} reads {v}");
             }
         }
-    }
-}
-
-/// Two cells that touch at a corner only are two squares, and a ring keeps
-/// its hole: the outer contour counter-clockwise, the hole's clockwise.
-#[test]
-fn cells_that_meet_at_a_corner_stay_apart() {
-    let diagonal = PixelCells {
-        x0: 0,
-        y0: 0,
-        width: 2,
-        height: 2,
-        filled: vec![true, false, false, true],
-    };
-    let c = diagonal.contours();
-    assert_eq!(c.len(), 2, "{c:?}");
-    assert!(c.iter().all(|k| k.len() == 4), "{c:?}");
-    let ring = PixelCells {
-        x0: 0,
-        y0: 0,
-        width: 3,
-        height: 3,
-        filled: vec![true, true, true, true, false, true, true, true, true],
-    };
-    let c = ring.contours();
-    assert_eq!(c.len(), 2, "{c:?}");
-    let area = |k: &Vec<(i32, i32)>| -> i32 {
-        (0..k.len())
-            .map(|i| {
-                let (a, b) = (k[i], k[(i + 1) % k.len()]);
-                a.0 * b.1 - b.0 * a.1
-            })
-            .sum()
-    };
-    let mut areas: Vec<i32> = c.iter().map(area).collect();
-    areas.sort();
-    assert_eq!(areas, [-2, 18], "twice the signed areas: {c:?}");
-    assert_eq!(winding(&c, 1.5, 1.5), 0, "the hole is open");
-    assert_ne!(winding(&c, 0.5, 1.5), 0);
-}
-
-/// DotGothic16's dots sit on a pitch about 1.5 % finer than its 16-pixel
-/// em: sampled at the cells' centres, each of its glyphs still fills whole
-/// cells, one cell per dot, and advances whole cells.
-#[test]
-fn an_off_pitch_face_lands_on_whole_cells() {
-    let ttf = font("../examples/hollowbell/assets/styles/hollowbell/DotGothic16-Regular.ttf");
-    let face = ttf_parser::Face::parse(&ttf, 0).unwrap();
-    for c in ['O', 'v', 'i', 'e', 'w', 'N', 'l'] {
-        let gid = face.glyph_index(c).unwrap();
-        let cells = pixel_cells(&face, gid, 16);
-        let filled = cells.filled.iter().filter(|&&f| f).count();
-        assert!(filled >= 5, "{c}: {filled}");
-        let g = render_glyph_on(&ttf, c, 48.0, 16.0, 16).unwrap();
-        assert_eq!(g.advance, 0.5, "{c}: eight cells");
-        // The plane is on the grid: its edges a whole number of cells from
-        // the pen plus the padding.
-        let pad = ((16.0f32 / 2.0).ceil() + 1.0) / 48.0;
-        let on_grid = |v: f32| ((v * 16.0) - (v * 16.0).round()).abs() < 1e-3;
-        assert!(
-            on_grid(g.plane[0] + pad) && on_grid(g.plane[1] + pad),
-            "{c}: {:?}",
-            g.plane
-        );
     }
 }

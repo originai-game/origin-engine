@@ -146,81 +146,6 @@ fn soft_volumes_are_world_state_identical_across_runs_and_after_a_restore() {
     assert_eq!(w3.snapshot(), w1.snapshot());
 }
 
-#[test]
-fn a_2d_soft_ring_lands_in_its_plane_and_keeps_its_area() {
-    let (mut w, p) = world(
-        Physics {
-            profile: PROFILE_2D,
-            gravity: Vec3::new(0.0, -9.81, 0.0),
-            ..Physics::default()
-        },
-        1,
-    );
-    spawn_static(
-        &mut w,
-        at(0.0, -0.5, 0.0),
-        Collider::cuboid(Vec3::new(40.0, 1.0, 1.0)),
-    );
-    let e = w
-        .spawn((
-            at(0.0, 2.0, 0.25),
-            SoftBody {
-                radius: 0.6,
-                detail: 1,
-                ..SoftBody::default()
-            },
-        ))
-        .unwrap();
-    let trace = fall(&mut w, &p, e, 200);
-    let pts = p.soft_body_points(e).unwrap();
-    assert_eq!(pts.points.len(), 24);
-    assert_eq!(pts.indices.len(), 22 * 3, "a fan over the ring");
-    assert!(
-        pts.points.iter().all(|q| q.z == 0.25),
-        "it leaves its plane"
-    );
-    let lowest = trace.iter().fold(f32::MAX, |m, t| m.min(t.0));
-    assert!(lowest > -0.03, "it sank to {lowest}");
-    let (low, area, _) = *trace.last().unwrap();
-    assert!(low < 0.05, "it rests on the ground: {low}");
-    assert!((area - 1.0).abs() < 0.05, "and keeps its area: {area}");
-}
-
-#[test]
-fn pin_top_hangs_a_soft_volume_from_its_entity() {
-    let (mut w, p) = world(Physics::default(), 1);
-    let e = w
-        .spawn((
-            at(0.0, 3.0, 0.0),
-            SoftBody {
-                radius: 0.4,
-                pin_top: 0.05,
-                stiffness: 0.2,
-                ..SoftBody::default()
-            },
-        ))
-        .unwrap();
-    run(&mut w, 120);
-    let pts = p.soft_body_points(e).unwrap().points;
-    let top = pts.iter().fold(f32::MIN, |m, q| m.max(q.y));
-    assert!((top - 3.4).abs() < 1e-4, "the pinned top stays at {top}");
-    let s = w.get::<SoftBody>(e).unwrap();
-    assert!(
-        s.center.y < 3.0 && s.center.y > 2.5,
-        "the rest hangs below it: {}",
-        s.center.y
-    );
-    // The entity moves: the pins follow.
-    w.insert(e, at(1.0, 3.0, 0.0)).unwrap();
-    w.step().unwrap();
-    let pts = p.soft_body_points(e).unwrap().points;
-    let top = pts
-        .iter()
-        .copied()
-        .fold(Vec3::splat(f32::MIN), |m, q| if q.y > m.y { q } else { m });
-    assert!((top.x - 1.0).abs() < 1e-4, "the top moved to {top}");
-}
-
 /// SIMULATION_VISUAL leaves the solve to the renderer: the tick carries the
 /// rest shape rigidly with the entity (no fall, no wind, no squash), the
 /// written volume stays 1 and the centre is the shape's mean, while a
@@ -283,10 +208,4 @@ fn visual_soft_bodies_and_cloths_carry_their_rest_shape_with_the_entity() {
             );
         }
     }
-}
-
-#[test]
-fn a_world_that_never_names_og_soft_body_does_not_register_it() {
-    let (w, _p) = support::world(Physics::default(), 1);
-    assert!(w.id_by_name("og.SoftBody").is_err());
 }

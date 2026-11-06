@@ -27,3 +27,52 @@ fn check(scene: &str) -> gfx::GfxReport {
         Err(e) => panic!("{e}"),
     }
 }
+
+macro_rules! references {
+    ($($name:ident => $scene:literal),+ $(,)?) => {
+        $(#[test]
+        fn $name() {
+            check($scene);
+        })+
+    };
+}
+
+references! {
+    gltf => "gltf-reference",
+    physical_materials => "materials-physical",
+    skinning => "skinning",
+    crowds => "crowd-lods",
+    geometry => "geometry-shapes",
+    lights => "lights-256",
+    shadows => "shadows-soft",
+    ambient_occlusion => "ao-gtao",
+    global_illumination => "gi-room",
+    reflections => "ssr-wet-floor",
+    bloom => "bloom-unreal",
+    depth_of_field => "dof-high",
+    temporal_upscale => "taau-moving",
+    tonemap => "post-agx",
+    print => "stylise-print",
+    toon => "stylise-toon-physical",
+    atmosphere => "atmosphere-moon",
+    fog => "volumetric-fog",
+    clouds => "clouds-sunset",
+    weather => "weather-rain",
+    ocean => "water-ocean",
+    fluids => "fluid-3d",
+    terrain => "terrain-layers",
+    grass => "terrain-grass",
+    meshlets => "meshlet-forest",
+    particles => "particles",
+    trails => "trails-beams",
+    sprites => "sprites-array",
+    text => "text-msdf",
+    tilemap => "tilemap-lit",
+    ui_shapes => "ui-shapes",
+    ui_glass => "ui-glass-dialog",
+    hooks => "hooks-planar",
+    views => "views-split",
+    garment => "visual-garment",
+    environment => "environment-map",
+    decals => "decals",
+}

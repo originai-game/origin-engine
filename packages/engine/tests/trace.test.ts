@@ -74,7 +74,7 @@ test("og run --trace lays every span where it ran: systems, passes, GPU passes a
   expect(jobs.every((j) => lanes.includes(j.tid))).toBe(true);
   expect(jobs.some((j) => j.name === "physics")).toBe(true);
 
-  if (run.tier === "none") return; // no renderer: no frames to time
+  if (run.tier === "none") throw new Error("missing GPU adapter: trace requires rendered frames");
   expect(of("render").length).toBeGreaterThan(0);
   expect(of("pass").length).toBeGreaterThan(0);
   const gpuFrames = of("gpu").filter((s) => s.name.startsWith("gpu frame"));

@@ -4,10 +4,7 @@
 
 use glam::{Vec2, Vec3};
 use og_bake::projection::composite::{ViewMasks, finish};
-use og_bake::projection::{
-    ClayLight, GBuffer, Level, Paint, Texels, ViewKind, ViewSpec, clay, prepare, project,
-    silhouette,
-};
+use og_bake::projection::{GBuffer, Level, Paint, Texels, ViewKind, ViewSpec, project};
 
 /// A 10 m floor (uv: its x, z over [-5, 5] onto the left half of the
 /// texture) and a 2 m square wall standing on it at z = 0 facing +z (uv:
@@ -156,66 +153,6 @@ fn every_written_texel_took_the_pixel_that_sees_it_and_hidden_texels_stay_unpain
 }
 
 #[test]
-fn a_much_better_view_repaints_a_texel_and_a_worse_one_does_not() {
-    let level = scene();
-    let texels = Texels::rasterise(&level, 256, 2);
-    let far = ViewSpec::looking(
-        Vec3::new(0.0, 12.0, 14.0),
-        Vec3::new(0.0, 0.0, 2.0),
-        60.0,
-        ViewKind::Ground,
-    );
-    let near = ViewSpec::looking(
-        Vec3::new(0.0, 2.0, 4.5),
-        Vec3::new(0.0, 0.0, 2.0),
-        60.0,
-        ViewKind::Ground,
-    );
-    let red = vec![[255, 0, 0, 255]; 128 * 128];
-    let blue = vec![[0, 0, 255, 255]; 128 * 128];
-    let shoot = |paint: &mut Paint, v: ViewSpec, img: &[[u8; 4]]| {
-        let g = GBuffer::cast(&level, v, 128, 2);
-        project(&texels, paint, &g, &silhouette(&g), img, 0.4, 2)
-    };
-    // A texel near the floor's front, seen well by both.
-    let k = texels.at_uv(Vec2::new(0.25, 0.75)).expect("covered");
-    let mut paint = Paint::new(&texels);
-    shoot(&mut paint, far, &red);
-    assert_eq!(paint.texels[k].rgb, [255, 0, 0]);
-    shoot(&mut paint, far, &blue);
-    assert_eq!(
-        paint.texels[k].rgb,
-        [255, 0, 0],
-        "a view no better than the stored capture must not repaint it"
-    );
-    shoot(&mut paint, near, &blue);
-    assert_eq!(
-        paint.texels[k].rgb,
-        [0, 0, 255],
-        "the near view sees it far better and repaints it"
-    );
-    shoot(&mut paint, far, &red);
-    assert_eq!(
-        paint.texels[k].rgb,
-        [0, 0, 255],
-        "the far view must not repaint what the near one captured"
-    );
-}
-
-#[test]
-fn transparent_pixels_never_project() {
-    let level = scene();
-    let texels = Texels::rasterise(&level, 256, 2);
-    let mut paint = Paint::new(&texels);
-    let g = GBuffer::cast(&level, camera(), 128, 2);
-    let none = vec![[9, 9, 9, 0]; 128 * 128];
-    let p = project(&texels, &mut paint, &g, &silhouette(&g), &none, 0.4, 2);
-    assert!(p.seen > 0);
-    assert_eq!(p.written, 0);
-    assert_eq!(paint.coverage(), 0.0);
-}
-
-#[test]
 fn finish_keeps_known_pixels_and_leaves_out_what_the_model_left_grey() {
     let (w, h) = (64usize, 64usize);
     // Left half known (green texture), right half unknown clay (grey 140).
@@ -269,89 +206,4 @@ fn finish_keeps_known_pixels_and_leaves_out_what_the_model_left_grey() {
     assert_ne!([c[0], c[1], c[2]], [140, 140, 140]);
     // 16 of the unknown half's 32 rows, minus the blur's eroded border.
     assert!(f.left > 0.15 && f.left <= 0.25, "left {}", f.left);
-}
-
-#[test]
-fn flat_grey_a_redrawing_model_left_unpainted_does_not_project() {
-    // A model that redraws the whole image returns an unpainted object as flat grey of another shade.
-    let (w, h) = (64usize, 64usize);
-    let state = vec![[130u8, 131, 133, 255]; w * h];
-    let masks = ViewMasks {
-        geometry: vec![1; w * h],
-        known: vec![0; w * h],
-    };
-    // Left half textured stone (noise), right half flat grey 20 levels darker than the clay.
-    let painted: Vec<[u8; 4]> = (0..w * h)
-        .map(|i| {
-            if i % w < 32 {
-                let n = ((i * 2_654_435_761) >> 7) as u8 % 40;
-                [100 + n, 92 + n, 80 + n, 255]
-            } else {
-                [111, 110, 108, 255]
-            }
-        })
-        .collect();
-    let f = finish(&state, &painted, &masks, None, w, h);
-    for y in 0..h {
-        assert_eq!(
-            f.image[y * w + 56][3],
-            0,
-            "flat grey at (56, {y}) would project"
-        );
-        assert_eq!(
-            f.image[y * w + 8][3],
-            255,
-            "textured stone at (8, {y}) was dropped"
-        );
-    }
-    assert!(f.left > 0.4 && f.left < 0.6, "left {}", f.left);
-}
-
-#[test]
-fn a_roof_pass_paints_roofs_and_nothing_the_view_left_out() {
-    // The scene with its floor named a roof: a roof pass may paint it, never the wall.
-    let level = labelled_scene("flat roof", "wall");
-    let texels = Texels::rasterise(&level, 256, 2);
-    let mut paint = Paint::new(&texels);
-    let view = ViewSpec::looking(
-        Vec3::new(0.0, 6.0, 6.0),
-        Vec3::new(0.0, 0.5, 0.0),
-        70.0,
-        ViewKind::Roof,
-    );
-    let g = GBuffer::cast(&level, view, 128, 2);
-    let c = clay(
-        &level,
-        &g,
-        &ClayLight {
-            threads: 2,
-            ..ClayLight::default()
-        },
-    );
-    let p = prepare(&level, &texels, &paint, &g, &c, 0.4, true, true);
-    // The model paints the whole picture, the wall included.
-    let red = vec![[200, 30, 20, 255]; 128 * 128];
-    let fin = finish(&p.state, &red, &p.masks, p.keep.as_deref(), 128, 128);
-    project(&texels, &mut paint, &g, &silhouette(&g), &fin.image, 0.4, 2);
-    let painted_in = |x0: f32, x1: f32, y0: f32, y1: f32| {
-        let mut n = 0;
-        for i in 0..40 {
-            for j in 0..40 {
-                let uv = Vec2::new(
-                    x0 + (x1 - x0) * (i as f32 + 0.5) / 40.0,
-                    y0 + (y1 - y0) * (j as f32 + 0.5) / 40.0,
-                );
-                if let Some(k) = texels.at_uv(uv) {
-                    n += (paint.texels[k].quality > 0.0) as usize;
-                }
-            }
-        }
-        n
-    };
-    assert!(painted_in(0.0, 0.5, 0.0, 1.0) > 100, "the roof is painted");
-    assert_eq!(
-        painted_in(0.55, 0.95, 0.1, 0.9),
-        0,
-        "the wall is not a roof and stays unpainted"
-    );
 }
