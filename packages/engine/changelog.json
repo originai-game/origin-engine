@@ -482,6 +482,10 @@
     ],
     "added": [
       {
+        "member": "og api find embeddings",
+        "summary": "`og api find` fuses BM25F with static word embeddings by reciprocal rank (k 20, embedding weight 0.7), so a query worded by purpose finds entries none of its words names. The model is minishlab/potion-base-8M (model2vec, MIT, third_party/potion-base-8M) cut to 128 dimensions and int8 (crates/og-api/search/words.bin, 4.1 MB, compiled into og); each entry's vector is built at `og api gen` and shipped in wiki/search.tsv. CPU only, no service. On the evaluation set, grown to 160 queries (crates/og-cli/tests/fixtures/api-find-queries.tsv), recall@1 rises from 46 to 53 and recall@5 from 90 to 100 over BM25F alone. The line output is unchanged; `--json` adds each entry's `bm25` and `cosine` beside the fused `score`."
+      },
+      {
         "member": "og api find",
         "summary": "`og api find` ranks with BM25F over each entry's name, summary, member names and body (camelCase, snake_case and dotted names split, plurals and -ing/-ed stemmed, a word one or two edits off still matching), from an index `og api gen` ships beside the wiki (wiki/search.tsv); a query takes milliseconds with no service. On the 96-query evaluation set (crates/og-cli/tests/fixtures/api-find-queries.tsv: queries by purpose, partial name and typo) recall@1 rises from 18 to 30 and recall@5 from 38 to 56. `--json` prints the entries with their scores; the line output and `og api show` are unchanged, and `og api show <module>` lists the module's members after its overview. The wiki is split: a module page keeps its overview, values, constants and a contents table (signature and one sentence per item), and every function, record, interface and type has its own page under wiki/<module>/ (ui.md 1.1 MB to 116 KB, render.md 0.6 MB to 54 KB)."
       },

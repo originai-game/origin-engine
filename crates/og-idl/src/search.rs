@@ -3,9 +3,10 @@
 //! snake_case and dot tokenizing, a light stemmer and typo tolerance (an
 //! unknown query word matches the index's words within one or two edits).
 //! `og api gen` builds the index from the generated pages and ships it
-//! beside them ([`INDEX_FILE`]); a query scores every entry in a few
-//! milliseconds on one core, with no service. It returns entries and scores
-//! only: the agent chooses.
+//! beside them ([`INDEX_FILE`]), with each entry's static embedding
+//! ([`crate::embed`]); a query's BM25F and embedding rankings are fused by
+//! reciprocal rank. A query scores every entry in milliseconds on one core,
+//! with no service. It returns entries and scores only: the agent chooses.
 
 use std::collections::BTreeMap;
 
@@ -284,7 +285,70 @@ pub struct Doc {
     pub page: String,
     pub summary: String,
     pub len: [u32; 4],
+    /// The entry's embedding (crate::embed), int8 with its scale.
+    pub vec: Vec<i8>,
+    pub vscale: f32,
 }
+
+/// One ranked entry: the fused score and the two rankers' own.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Hit {
+    pub doc: usize,
+    /// Reciprocal-rank fusion of the two rankings (an exact name adds 1).
+    pub score: f64,
+    /// BM25F, when the entry holds a query word.
+    pub bm25: Option<f64>,
+    /// The cosine of the query's and the entry's embeddings.
+    pub cosine: f32,
+}
+
+/// The text an entry is embedded from: its name split into words, twice (a
+/// name is the densest statement of purpose), its summary and the first
+/// hundred words of its prose, code and tables' markup left out.
+fn embed_text(e: &Entry) -> String {
+    let leaf = e.name.trim_start_matches("og.");
+    let mut name = String::new();
+    let mut prev_lower = false;
+    for c in leaf.chars() {
+        if c.is_uppercase() && prev_lower {
+            name.push(' ');
+        }
+        prev_lower = c.is_lowercase() || c.is_ascii_digit();
+        name.push(if c == '_' || c == '.' { ' ' } else { c });
+    }
+    let mut prose = String::new();
+    let mut code = false;
+    for line in e.body.lines() {
+        if line.starts_with("```") {
+            code = !code;
+            continue;
+        }
+        if code
+            || line.starts_with("Binding symbol ")
+            || line.starts_with("<sub>")
+            || line.starts_with("<a id=")
+        {
+            continue;
+        }
+        prose.push_str(line);
+        prose.push(' ');
+    }
+    let words: Vec<&str> = prose
+        .split(|c: char| c.is_whitespace() || matches!(c, '`' | '|' | '#' | '*' | '[' | ']'))
+        .filter(|w| !w.is_empty())
+        .take(100)
+        .collect();
+    format!("{name}. {name}. {} {}", e.summary, words.join(" "))
+}
+
+/// Reciprocal-rank fusion's constant: a small one lets either ranker's top
+/// few lead (20, measured on the evaluation set beside 10 and 40).
+const RRF_K: f64 = 20.0;
+/// The embedding ranking's weight in the fusion, BM25F's being 1: the
+/// lexical ranking stays the stronger voice.
+const EMBED_WEIGHT: f64 = 0.7;
+/// How many of the embedding ranking's best enter the fusion.
+const EMBED_TOP: usize = 100;
 
 /// The BM25F index of every entry: documents, average field lengths and,
 /// for each word, the entries holding it with its count per field.
@@ -299,6 +363,8 @@ impl SearchIndex {
         let mut ix = SearchIndex::default();
         for (d, e) in all.iter().enumerate() {
             let f = fields(e);
+            let (vec, vscale) =
+                crate::embed::quantize(&crate::embed::model().embed(&embed_text(e)));
             let mut counts: BTreeMap<&str, [u16; 4]> = BTreeMap::new();
             for (k, words) in f.iter().enumerate() {
                 for w in words {
@@ -318,6 +384,8 @@ impl SearchIndex {
                 page: e.page.clone(),
                 summary: e.summary.clone(),
                 len: [0, 1, 2, 3].map(|k| f[k].len() as u32),
+                vec,
+                vscale,
             });
         }
         ix
@@ -326,15 +394,18 @@ impl SearchIndex {
     /// The index as text: a header, one `doc` line per entry and one `term`
     /// line per word (`term<TAB>word<TAB>doc:n,n,n,n …`).
     pub fn to_text(&self) -> String {
-        let mut out =
-            String::from("# og api find index 1: BM25F over name, summary, members, body\n");
+        let mut out = String::from(
+            "# og api find index 2: BM25F over name, summary, members, body; embeddings (scale:base64 int8)\n",
+        );
         for d in &self.docs {
             out.push_str(&format!(
-                "doc\t{}\t{}\t{}\t{}\t{}\n",
+                "doc\t{}\t{}\t{}\t{}\t{}:{}\t{}\n",
                 d.name,
                 d.kind,
                 d.page,
                 d.len.map(|n| n.to_string()).join(","),
+                d.vscale,
+                crate::embed::base64(&d.vec.iter().map(|&x| x as u8).collect::<Vec<u8>>()),
                 d.summary.replace(['\t', '\n'], " ")
             ));
         }
@@ -355,7 +426,7 @@ impl SearchIndex {
     pub fn from_text(text: &str) -> Option<SearchIndex> {
         let mut ix = SearchIndex::default();
         let mut lines = text.lines();
-        if !lines.next()?.starts_with("# og api find index 1") {
+        if !lines.next()?.starts_with("# og api find index 2") {
             return None;
         }
         for line in lines {
@@ -369,6 +440,12 @@ impl SearchIndex {
                     for (k, n) in cols.next()?.split(',').enumerate().take(4) {
                         len[k] = n.parse().ok()?;
                     }
+                    let (scale, b64) = cols.next()?.split_once(':')?;
+                    let vscale = scale.parse().ok()?;
+                    let vec = crate::embed::unbase64(b64)?
+                        .into_iter()
+                        .map(|x| x as i8)
+                        .collect();
                     let summary = cols.next().unwrap_or("").to_string();
                     ix.docs.push(Doc {
                         name,
@@ -376,6 +453,8 @@ impl SearchIndex {
                         page,
                         summary,
                         len,
+                        vec,
+                        vscale,
                     });
                 }
                 "term" => {
@@ -406,7 +485,7 @@ impl SearchIndex {
     /// exact name first, then BM25F over the query's words; a word the index
     /// lacks counts the words within one edit (two for eight letters or
     /// more) at `FUZZY` weight.
-    pub fn search(&self, query: &str, kind: Option<&str>) -> Vec<(usize, f64)> {
+    pub fn bm25(&self, query: &str, kind: Option<&str>) -> Vec<(usize, f64)> {
         let n = self.docs.len() as f64;
         if n == 0.0 {
             return Vec::new();
@@ -513,6 +592,80 @@ impl SearchIndex {
         out.sort_by(|a, b| {
             b.1.total_cmp(&a.1)
                 .then_with(|| self.docs[a.0].name.cmp(&self.docs[b.0].name))
+        });
+        out
+    }
+
+    /// The entries for `query`, best first: an exact name first, then the
+    /// BM25F ranking and the embedding ranking fused by reciprocal rank, so
+    /// a query worded by purpose ("the screen trembles") finds what no word
+    /// of it names.
+    pub fn search(&self, query: &str, kind: Option<&str>) -> Vec<Hit> {
+        let lexical = self.bm25(query, kind);
+        // An entry whose whole multi-word name the query holds in order
+        // leads the fusion behind an exact name, as it leads BM25F.
+        let query_words = tokens(query);
+        let holds = |d: usize| {
+            let name = tokens(self.docs[d].name.rsplit('.').next().unwrap_or(""));
+            name.len() >= 2
+                && query_words
+                    .windows(name.len())
+                    .any(|w| w == name.as_slice())
+        };
+        let model = crate::embed::model();
+        let q = model.embed(query);
+        let cosine = |d: usize| -> f32 {
+            let doc = &self.docs[d];
+            doc.vec
+                .iter()
+                .zip(&q)
+                .map(|(&a, &b)| f32::from(a) * b)
+                .sum::<f32>()
+                * doc.vscale
+        };
+        let mut semantic: Vec<(usize, f32)> = if q.iter().any(|&x| x != 0.0) {
+            (0..self.docs.len())
+                .filter(|&d| kind.is_none_or(|k| self.docs[d].kind == k))
+                .map(|d| (d, cosine(d)))
+                .collect()
+        } else {
+            Vec::new()
+        };
+        semantic.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+        semantic.truncate(EMBED_TOP);
+        let mut hits: BTreeMap<usize, Hit> = BTreeMap::new();
+        for (rank, &(d, s)) in lexical.iter().enumerate() {
+            hits.insert(
+                d,
+                Hit {
+                    doc: d,
+                    score: 1.0 / (RRF_K + rank as f64 + 1.0)
+                        + if s >= 100.0 {
+                            1.0
+                        } else if holds(d) {
+                            0.5
+                        } else {
+                            0.0
+                        },
+                    bm25: Some(s),
+                    cosine: cosine(d),
+                },
+            );
+        }
+        for (rank, &(d, c)) in semantic.iter().enumerate() {
+            let h = hits.entry(d).or_insert(Hit {
+                doc: d,
+                score: 0.0,
+                bm25: None,
+                cosine: c,
+            });
+            h.score += EMBED_WEIGHT / (RRF_K + rank as f64 + 1.0);
+        }
+        let mut out: Vec<Hit> = hits.into_values().collect();
+        out.sort_by(|a, b| {
+            b.score
+                .total_cmp(&a.score)
+                .then_with(|| self.docs[a.doc].name.cmp(&self.docs[b.doc].name))
         });
         out
     }

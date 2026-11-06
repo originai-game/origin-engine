@@ -23,6 +23,12 @@ is one line here, written at the merge that changes
   `defaultRoots`, `installed`, `mount`, `summary`, `artBrief`, `readLook`
   and `presetLook` keep their signatures. An agent reads the engine through
   `og`: `og api find`/`show` over the API and the engine's guides.
+- **`og api find` adds static embeddings**: potion-base-8M (model2vec,
+  MIT) at 128 dimensions in int8, fused with BM25F by reciprocal rank. Each
+  entry's vector ships in `wiki/search.tsv`; the token table
+  (`crates/og-api/search/words.bin`) is compiled into `og`. On the 160-query
+  evaluation set recall@1 goes from 46 to 53 and recall@5 from 90 to 100
+  over BM25F alone. `--json` adds `bm25` and `cosine`.
 - **`og api find` ranks with BM25F**, from an index `og api gen` ships as
   `wiki/search.tsv`, over each entry's name, summary, member names and
   body, with camelCase and dot splitting, light stemming and one- or

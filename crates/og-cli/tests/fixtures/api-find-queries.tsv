@@ -95,3 +95,67 @@ draw a 2D star outline with a hole in it, three.js style	og.Shape
 keep every texture on the same small set of colours	og.ArtPalette
 game entry point default export	og.game
 built-in camera controller systems to list in the game	og.systems.cameras
+let the player aim the view by moving the mouse in a first-person game	og.PointerLock
+remember the player's volume and language choices for the next session	og.platform.saveSettings
+show the best scores of all players	og.platform.leaderboardTop
+the player bought something; record that it was handed over so it is not given twice	og.platform.grant
+tell the platform the game shows AI-made pictures	og.platform.aiMark
+send the other people in the multiplayer session a chat line	og.platform.roomSend
+put players together with strangers who want the same game mode	og.platform.quickPlay
+a single player id that is the same every time this person plays	og.platform.player
+offer a bonus life in exchange for watching a commercial	og.platform.showAd
+dust puff when the hero lands after jumping	og.CharacterEvent
+a mario-style hero that runs and jumps with tunable jump height	og.PlatformerController
+make a boat bob on the sea	og.Buoyancy
+a flag waving in the breeze	og.Cloth
+a cape that hangs off a character's shoulders and moves as they walk	og.Garment
+a car with four wheels and suspension	og.Vehicle
+a character goes limp and falls like a dead body	og.Ragdoll
+hang a lantern from a chain that swings	og.Rope
+find what is under the mouse click in 3D using the colliders	og.physics.raycast
+everything inside the blast radius	og.physics.overlap
+jelly that wobbles when hit	og.SoftBody
+an object passes through others without bouncing but I still want to know it touched	og.Collider | og.SensorEntered
+the music should pulse on every beat so I can sync visuals	og.MusicBeat
+muffle all sounds when the player dives underwater	og.AudioSnapshot
+turn the music down automatically while someone speaks	og.AudioBusFx
+procedurally generated sound effect from samples I compute	og.audio.createSound
+a camera that circles around the model while dragging	og.OrbitCamera
+a side-scroller where the view tracks the hero	og.Follow2D
+switch between several cinematic shots with smooth blends	og.CameraBrain
+a gun's kick pushes the view up a little	og.camera.kick
+the camera glides along a fixed track through the level	og.CameraRail
+picture-in-picture view of the rear of the car	og.CameraView
+a guard thinks with a behaviour tree and decides what to do	og.AiAgent
+the enemy plays its reload animation when its brain asks for it	og.AiActionStarted
+a soldier walks to a target point avoiding obstacles automatically	og.NavAgent
+a door the AI can path through only while it is open	og.nav.setLinkOpen
+enemies prefer roads and avoid mud when picking a route	og.NavFilter
+the head of the character turns to follow a moving target	og.LookAt
+feet stay planted on the floor without sliding	og.FootLock
+change the face expression smile on a 3D head	og.Blendshapes
+play the same animation flipped for the left hand	og.anim.mirror
+have the humanoid character wave hello	og.motion.pose
+characters say short random lines when nothing is happening	og.story.ambient
+a quest journal listing what the player started	og.story.quests
+lines of a conversation shown one at a time with choices	og.story.view | og.ui.dialogue
+show numbers like 1.2K for big scores in the player's language	og.i18n.formatCompact
+let the player switch the game to German in the settings menu	og.i18n.setLocale
+slow motion for only the enemies, not the player	og.time.setGroupScale
+smoothly slide a menu panel to a new position over half a second	og.tween.to
+grass and flowers sprinkled across the hills near the camera	og.TerrainScatter
+a cliff overhang the heightmap cannot express	og.TerrainStamp
+read which tile is at the mouse in my 2D level	og.tilemap.cellAt
+place trees spread out evenly with no two too close	og.procgen.poissonDisk
+torch light in a 2D dungeon with shadows behind walls	og.Light2D
+a laser from the gun to the hit point	og.Beam
+motion trail of ghost copies behind a dashing character	og.Afterimage
+fog that thickens in the valleys	og.Fog
+northern lights in the night sky	og.Aurora
+a shiny mirror on the bathroom wall	og.Mirror
+an indoor scene where the light bounces off the red walls	og.GlobalIllumination
+let players pick low medium or high graphics	og.render.applyQuality
+check the game reaches the boss room at least once during the run	og.assert.reachable
+how long the frame may take on a 120 Hz phone	testing §6
+how to keep the simulation the same on every machine when moving bodies	determinism §2
+a 3D crate written as text instead of a glb file	models §1

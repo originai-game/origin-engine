@@ -12,19 +12,19 @@
 //! package's `wiki/`, shipped in @origingame/engine) give every function,
 //! component, type, member, constant, value and guide section an anchor;
 //! an entry is the anchor's block or table row (`og_idl::search::entries`).
-//! `find` ranks entries with the BM25F index `og api gen` ships beside the
-//! pages (`search.tsv`, `og_idl::search`); `show` prints one entry without
+//! `find` ranks entries with the index `og api gen` ships beside the pages
+//! (`search.tsv`, `og_idl::search`: BM25F and static embeddings, fused); `show` prints one entry without
 //! its IDL source, so an agent reads a few kilobytes instead of a page.
 
-use og_idl::search::{Doc, Entry, SearchIndex, bare, entries};
+use og_idl::search::{Doc, Entry, Hit, SearchIndex, bare, entries};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 /// The ranked entries for `query`, best first, with their scores.
-pub fn find<'a>(ix: &'a SearchIndex, query: &str, kind: Option<&str>) -> Vec<(&'a Doc, f64)> {
+pub fn find<'a>(ix: &'a SearchIndex, query: &str, kind: Option<&str>) -> Vec<(&'a Doc, Hit)> {
     ix.search(query, kind)
         .into_iter()
-        .map(|(d, score)| (&ix.docs[d], score))
+        .map(|h| (&ix.docs[h.doc], h))
         .collect()
 }
 
@@ -268,7 +268,10 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
             .map(|(d, score)| {
                 serde_json::json!({
                     "name": d.name, "kind": d.kind, "page": format!("{}.md", d.page),
-                    "summary": d.summary, "score": (score * 1000.0).round() / 1000.0,
+                    "summary": d.summary,
+                    "score": (score.score * 10000.0).round() / 10000.0,
+                    "bm25": score.bm25.map(|b| (b * 1000.0).round() / 1000.0),
+                    "cosine": (f64::from(score.cosine) * 1000.0).round() / 1000.0,
                 })
             })
             .collect();
@@ -319,7 +322,7 @@ mod tests {
         load(&dir()).unwrap()
     }
 
-    fn names<'a>(hits: &[(&'a Doc, f64)]) -> Vec<&'a str> {
+    fn names<'a>(hits: &[(&'a Doc, Hit)]) -> Vec<&'a str> {
         hits.iter().map(|(d, _)| d.name.as_str()).collect()
     }
 
@@ -396,7 +399,7 @@ mod tests {
         assert!(names(&find(&ix, "raycast", Some("fn"))).contains(&"og.physics.raycast"));
         // Scores fall from first to last.
         let hits = find(&ix, "ray cast against colliders", None);
-        assert!(hits.windows(2).all(|w| w[0].1 >= w[1].1));
+        assert!(hits.windows(2).all(|w| w[0].1.score >= w[1].1.score));
         let one = show(&all, "CharacterController");
         assert_eq!(one.len(), 1);
         let text = render(one[0]);
@@ -444,9 +447,9 @@ mod tests {
             at1 += usize::from(got.first().is_some_and(|g| want.contains(g)));
             at5 += usize::from(got.iter().take(5).any(|g| want.contains(g)));
         }
-        assert!(n >= 90, "{n}");
+        assert!(n >= 160, "{n}");
         assert!(
-            at1 >= 28 && at5 >= 54,
+            at1 >= 51 && at5 >= 97,
             "recall@1 {at1}/{n}, recall@5 {at5}/{n}"
         );
     }

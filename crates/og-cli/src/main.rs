@@ -203,8 +203,8 @@ commands:
                       list what needs a hand edit; exit 0 done, 3 hand edits listed, 1 failed
   api find <words> [--kind fn|record|type|member|const|value|column|guide] [--limit N] [--json]
                       the API reference and guide entries for the words (a name, a purpose, a
-                      typo), ranked by BM25F over name, summary, members and body, one line
-                      each; --json adds each entry's score
+                      typo), ranked by BM25F over name, summary, members and body fused with
+                      static word embeddings, one line each; --json adds the scores
   api show <name>     one API entry in full: signature, fields, doc (og.CharacterController,
                       og.physics.raycast, BODY_STATIC; og. may be left out); a module shows its
                       overview and its members

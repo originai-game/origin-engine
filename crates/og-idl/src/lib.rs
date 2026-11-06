@@ -13,6 +13,7 @@
 //! did not change untouched, so an IDL edit rebuilds only the crates whose
 //! generated Rust it changes.
 
+pub mod embed;
 mod r#gen;
 mod index;
 mod json;
