@@ -1,0 +1,25 @@
+type particles
+version 1
+---
+# A round striking the arena: a fan of hot sparks off the surface and a puff
+# of dust (src/weapon.ts moves it to the hit, turns it to the surface and
+# restarts it with startTick).
+maxParticles 96
+shape cone 35 0.04
+rate 0
+burst 0 22
+duration 0.4
+looping false
+lifetime 0.18 0.42
+speed 3 8
+size 0.025 0.05
+colorOverLife {
+  key 0 9 5 1.6 1
+  key 0.5 4 1.4 0.3 0.9
+  key 1 1 0.3 0.05 0
+}
+gravity 0 -9 0
+drag 0.8
+texture "textures/spark.png"
+blend additive
+align velocity 0.05

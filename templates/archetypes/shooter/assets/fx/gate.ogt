@@ -1,0 +1,23 @@
+type particles
+version 1
+---
+# A foe coming through a gate: a ring of red light rising from the floor
+# (src/foes.ts restarts it at the gate).
+maxParticles 96
+shape box 0.9 0.05 0.9
+rate 0
+burst 0 48
+duration 0.8
+looping false
+lifetime 0.5 0.9
+speed 1.5 3
+size 0.04 0.08
+spread 8
+colorOverLife {
+  key 0 6 0.8 0.3 1
+  key 1 1.5 0.1 0.05 0
+}
+gravity 0 0 0
+drag 0.6
+texture "textures/spark.png"
+blend additive

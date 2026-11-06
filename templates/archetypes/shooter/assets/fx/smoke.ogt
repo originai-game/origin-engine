@@ -1,0 +1,23 @@
+type particles
+version 1
+---
+# The dark smoke a downed foe leaves for a moment, rising and spreading.
+maxParticles 48
+shape sphere 0.4
+spread 40
+rate 0
+burst 0 16
+duration 1.6
+looping false
+lifetime 0.9 1.6
+speed 0.4 1.4
+size 0.5 1.1
+sizeOverLife 0 0.6 1 1.8
+colorOverLife {
+  key 0 0.16 0.14 0.13 0.55
+  key 1 0.3 0.28 0.27 0
+}
+gravity 0 1.2 0
+drag 0.9
+texture "textures/smoke.png"
+blend alpha

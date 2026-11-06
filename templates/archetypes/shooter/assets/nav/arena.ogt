@@ -1,0 +1,22 @@
+type navmesh
+version 1
+---
+# The foes' navmesh, baked by `og cook` (og.nav.load("nav/arena.ogt")) from
+# the arena's scene: its models and its box colliders, for a walker 0.45 m
+# wide and 1.9 m tall (the drones fly the same mesh at their hover height).
+# The bounds keep the floor inside the canyon ring and the gates' pockets.
+# Written by tools/make-assets.py.
+agent {
+  radius 0.45
+  height 1.9
+  climb 0.4
+  slope 40
+}
+cellSize 0.2
+cellHeight 0.1
+tileSize 48
+scene "scenes/arena.ogt"
+bounds {
+  min -24.5 -0.6 -24.5
+  max 24.5 7 24.5
+}

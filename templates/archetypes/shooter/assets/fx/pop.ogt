@@ -1,0 +1,26 @@
+type particles
+version 1
+---
+# A foe going down: a burst of sparks and a ball of smoke where it stood
+# (src/foes.ts restarts it there when the foe falls).
+maxParticles 192
+shape sphere 0.35
+spread 180
+rate 0
+burst 0 70
+duration 1.1
+looping false
+lifetime 0.4 1.1
+speed 2.5 7
+size 0.04 0.1
+colorOverLife {
+  key 0 10 4 1 1
+  key 0.4 3 0.9 0.2 0.9
+  key 1 0.6 0.2 0.1 0
+}
+gravity 0 -8 0
+drag 0.6
+texture "textures/spark.png"
+blend additive
+align velocity 0.05
+collision 0.4 0.3

@@ -1,0 +1,12 @@
+type look
+version 1
+---
+# Holdout's look (og-taste §12), named by project.ogt and GameDesc.look:
+# the catalogue's faceted-low-poly preset (flat facets on every lit
+# material, AgX tone mapping) over the KayKit outpost, with the scifi UI
+# style (flat near-black glass, one ice-blue accent, mono telemetry) for a
+# shooter's HUD. src/world.ts lights the arena at dusk; a look written
+# below wins field by field (og new writes its own from --look).
+name "Holdout"
+extends "faceted-low-poly"
+ui "styles/scifi/style.ogt"

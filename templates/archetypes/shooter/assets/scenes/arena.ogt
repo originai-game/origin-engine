@@ -1,0 +1,1167 @@
+type scene
+version 1
+---
+# Holdout's arena, written by tools/make-assets.py (edit LAYOUT there and
+# run it again): the floor, the canyon ring and its three gates, the cover
+# (KayKit Space Base Bits, CC0) with a box collider each, the lamp posts,
+# the skyline beyond the ring and the points src/world.ts reads by name.
+# assets/nav/arena.ogt bakes the navmesh from it.
+name "Arena"
+entity "floor" {
+  Transform {
+    position 0 -0.5 0
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 90 1 90
+  }
+}
+entity "wall-0" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position -18 3 -21
+    quaternion 0 0.7071068 0 0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-0-solid" {
+  Transform {
+    position -18 3 -21
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-1" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position -18 3 21
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-1-solid" {
+  Transform {
+    position -18 3 21
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-2" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position -21 3 -18
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-2-solid" {
+  Transform {
+    position -21 3 -18
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-3" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position 21 3 -18
+    quaternion 0 0.7071068 0 0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-3-solid" {
+  Transform {
+    position 21 3 -18
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-4" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position -12 3 -21
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-4-solid" {
+  Transform {
+    position -12 3 -21
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-5" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position -12 3 21
+    quaternion 0 0.7071068 0 0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-5-solid" {
+  Transform {
+    position -12 3 21
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-6" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position -21 3 -12
+    quaternion 0 0.7071068 0 0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-6-solid" {
+  Transform {
+    position -21 3 -12
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-7" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position 21 3 -12
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-7-solid" {
+  Transform {
+    position 21 3 -12
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-8" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position -6 3 -21
+    quaternion 0 0.7071068 0 0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-8-solid" {
+  Transform {
+    position -6 3 -21
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-9" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position -6 3 21
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-9-solid" {
+  Transform {
+    position -6 3 21
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-10" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position -21 3 -6
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-10-solid" {
+  Transform {
+    position -21 3 -6
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-11" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position 21 3 -6
+    quaternion 0 0.7071068 0 0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-11-solid" {
+  Transform {
+    position 21 3 -6
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-12" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position 0 3 21
+    quaternion 0 0.7071068 0 0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-12-solid" {
+  Transform {
+    position 0 3 21
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-13" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position 6 3 -21
+    quaternion 0 0.7071068 0 0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-13-solid" {
+  Transform {
+    position 6 3 -21
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-14" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position 6 3 21
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-14-solid" {
+  Transform {
+    position 6 3 21
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-15" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position -21 3 6
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-15-solid" {
+  Transform {
+    position -21 3 6
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-16" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position 21 3 6
+    quaternion 0 0.7071068 0 0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-16-solid" {
+  Transform {
+    position 21 3 6
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-17" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position 12 3 -21
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-17-solid" {
+  Transform {
+    position 12 3 -21
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-18" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position 12 3 21
+    quaternion 0 0.7071068 0 0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-18-solid" {
+  Transform {
+    position 12 3 21
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-19" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position -21 3 12
+    quaternion 0 0.7071068 0 0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-19-solid" {
+  Transform {
+    position -21 3 12
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-20" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position 21 3 12
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-20-solid" {
+  Transform {
+    position 21 3 12
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-21" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position 18 3 -21
+    quaternion 0 0.7071068 0 0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-21-solid" {
+  Transform {
+    position 18 3 -21
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-22" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position 18 3 21
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-22-solid" {
+  Transform {
+    position 18 3 21
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-23" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position -21 3 18
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-23-solid" {
+  Transform {
+    position -21 3 18
+    quaternion 0 0.7071068 0 -0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "wall-24" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position 21 3 18
+    quaternion 0 0.7071068 0 0.7071068
+    scale 3 3 3
+  }
+}
+entity "wall-24-solid" {
+  Transform {
+    position 21 3 18
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "gate-back-0" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position 0 3 -27
+    quaternion 0 0 0 1
+    scale 3 3 3
+  }
+}
+entity "gate-back-0-solid" {
+  Transform {
+    position 0 3 -27
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "gate-0" {
+  Transform {
+    position 0 0 -20
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+}
+entity "gate-back-1" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position -27 3 0
+    quaternion 0 0 0 1
+    scale 3 3 3
+  }
+}
+entity "gate-back-1-solid" {
+  Transform {
+    position -27 3 0
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "gate-1" {
+  Transform {
+    position -20 0 0
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+}
+entity "gate-back-2" {
+  model "models/kaykit/terrain-tall.glb"
+  Transform {
+    position 27 3 0
+    quaternion 0 0 0 1
+    scale 3 3 3
+  }
+}
+entity "gate-back-2-solid" {
+  Transform {
+    position 27 3 0
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 6 6 6
+  }
+}
+entity "gate-2" {
+  Transform {
+    position 20 0 0
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+}
+entity "core" {
+  model "models/kaykit/drill-structure.glb"
+  Transform {
+    position 0 2.001 0
+    quaternion 0 0 0 1
+    scale 2.3 2.3 2.3
+  }
+}
+entity "core-solid" {
+  Transform {
+    position 0 1.6905 0
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 2.645 3.381 2.645
+  }
+}
+entity "stack-nw" {
+  model "models/kaykit/cargo-a-stacked.glb"
+  Transform {
+    position -6.5 -0 -6
+    quaternion 0 0.1564345 0 0.9876883
+    scale 1.4 1.4 1.4
+  }
+}
+entity "stack-nw-solid" {
+  Transform {
+    position -6.5 0.7 -6
+    quaternion 0 0.1564345 0 0.9876883
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 1.4 1.4 1.4
+  }
+}
+entity "stack-ne" {
+  model "models/kaykit/cargo-b-stacked.glb"
+  Transform {
+    position 6 -0 -6.5
+    quaternion 0 -0.1218693 0 0.9925462
+    scale 1.4 1.4 1.4
+  }
+}
+entity "stack-ne-solid" {
+  Transform {
+    position 6 0.7 -6.5
+    quaternion 0 -0.1218693 0 0.9925462
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 1.4 1.4 1.4
+  }
+}
+entity "stack-sw" {
+  model "models/kaykit/cargo-b-stacked.glb"
+  Transform {
+    position -6 -0 6.5
+    quaternion 0 -0.06975647 0 0.9975641
+    scale 1.4 1.4 1.4
+  }
+}
+entity "stack-sw-solid" {
+  Transform {
+    position -6 0.7 6.5
+    quaternion 0 -0.06975647 0 0.9975641
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 1.4 1.4 1.4
+  }
+}
+entity "stack-se" {
+  model "models/kaykit/cargo-a-stacked.glb"
+  Transform {
+    position 6.5 -0 6
+    quaternion 0 0.2334454 0 0.9723699
+    scale 1.4 1.4 1.4
+  }
+}
+entity "stack-se-solid" {
+  Transform {
+    position 6.5 0.7 6
+    quaternion 0 0.2334454 0 0.9723699
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 1.4 1.4 1.4
+  }
+}
+entity "low-n" {
+  model "models/kaykit/structure-low.glb"
+  Transform {
+    position 0 -0 -11.5
+    quaternion 0 0 0 1
+    scale 1.45 1.45 1.45
+  }
+}
+entity "low-n-solid" {
+  Transform {
+    position 0 0.725 -11.5
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 2.538 1.45 2.538
+  }
+}
+entity "low-w" {
+  model "models/kaykit/structure-low.glb"
+  Transform {
+    position -11.5 -0 0
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1.45 1.45 1.45
+  }
+}
+entity "low-w-solid" {
+  Transform {
+    position -11.5 0.725 0
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 2.538 1.45 2.538
+  }
+}
+entity "low-e" {
+  model "models/kaykit/structure-low.glb"
+  Transform {
+    position 11.5 -0 0
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1.45 1.45 1.45
+  }
+}
+entity "low-e-solid" {
+  Transform {
+    position 11.5 0.725 0
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 2.538 1.45 2.538
+  }
+}
+entity "tower-nw" {
+  model "models/kaykit/structure-tall.glb"
+  Transform {
+    position -12.5 -0 -12.5
+    quaternion 0 0 0 1
+    scale 1.55 1.55 1.55
+  }
+}
+entity "tower-nw-solid" {
+  Transform {
+    position -12.5 1.55 -12.5
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 2.712 3.1 2.712
+  }
+}
+entity "tower-ne" {
+  model "models/kaykit/structure-tall.glb"
+  Transform {
+    position 12.5 -0 -12.5
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1.55 1.55 1.55
+  }
+}
+entity "tower-ne-solid" {
+  Transform {
+    position 12.5 1.55 -12.5
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 2.712 3.1 2.712
+  }
+}
+entity "depot" {
+  model "models/kaykit/cargodepot-a.glb"
+  Transform {
+    position 12 -0 11.5
+    quaternion 0 -0.7071068 0 0.7071068
+    scale 1.45 1.45 1.45
+  }
+}
+entity "depot-solid" {
+  Transform {
+    position 12 0.812 11.5
+    quaternion 0 -0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 3.001 1.624 3.016
+  }
+}
+entity "lander" {
+  model "models/kaykit/lander-a.glb"
+  Transform {
+    position -12 -0 11.5
+    quaternion 0 0.258819 0 0.9659258
+    scale 1.7 1.7 1.7
+  }
+}
+entity "lander-solid" {
+  Transform {
+    position -12 1.0115 11.5
+    quaternion 0 0.258819 0 0.9659258
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 2.21 2.023 2.21
+  }
+}
+entity "pad" {
+  model "models/kaykit/landingpad-large.glb"
+  Transform {
+    position 0 -0 13
+    quaternion 0 0 0 1
+    scale 1.7 0.85 1.7
+  }
+}
+entity "crate-s" {
+  model "models/kaykit/containers-a.glb"
+  Transform {
+    position 3.6 -0 15.6
+    quaternion 0 0.08715574 0 0.9961947
+    scale 1.8 1.8 1.8
+  }
+}
+entity "solar-0" {
+  model "models/kaykit/solarpanel.glb"
+  Transform {
+    position -15.5 -0 3.8
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1.8 1.8 1.8
+  }
+}
+entity "solar-0-solid" {
+  Transform {
+    position -15.5 0.333 3.8
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 1.62 0.666 0.81
+  }
+}
+entity "solar-1" {
+  model "models/kaykit/solarpanel.glb"
+  Transform {
+    position -15.5 -0 -3.8
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1.8 1.8 1.8
+  }
+}
+entity "solar-1-solid" {
+  Transform {
+    position -15.5 0.333 -3.8
+    quaternion 0 0.7071068 0 0.7071068
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 1.62 0.666 0.81
+  }
+}
+entity "rocks-0" {
+  model "models/kaykit/rocks-b.glb"
+  Transform {
+    position 15.2 -0 -16
+    quaternion 0 0.3420201 0 0.9396926
+    scale 1.6 1.6 1.6
+  }
+}
+entity "rocks-0-solid" {
+  Transform {
+    position 15.2 0.8 -16
+    quaternion 0 0.3420201 0 0.9396926
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 2.72 1.6 2.56
+  }
+}
+entity "rocks-1" {
+  model "models/kaykit/rocks-b.glb"
+  Transform {
+    position -16 -0 16
+    quaternion 0 -0.1736482 0 0.9848078
+    scale 1.5 1.5 1.5
+  }
+}
+entity "rocks-1-solid" {
+  Transform {
+    position -16 0.75 16
+    quaternion 0 -0.1736482 0 0.9848078
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 2.55 1.5 2.4
+  }
+}
+entity "rock-0" {
+  model "models/kaykit/rock-b.glb"
+  Transform {
+    position 8.5 -0 -15.8
+    quaternion 0 0 0 1
+    scale 1.8 1.8 1.8
+  }
+}
+entity "rock-1" {
+  model "models/kaykit/rock-b.glb"
+  Transform {
+    position -9 -0 15.9
+    quaternion 0 0.5735764 0 0.819152
+    scale 1.5 1.5 1.5
+  }
+}
+entity "lamp-0" {
+  model "models/kaykit/lights.glb"
+  Transform {
+    position -4.6 -0 -16.8
+    quaternion 0 0 0 1
+    scale 2.2 2.2 2.2
+  }
+}
+entity "lamp-0-solid" {
+  Transform {
+    position -4.6 1.1 -16.8
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 0.66 2.2 0.66
+  }
+}
+entity "lamp-1" {
+  model "models/kaykit/lights.glb"
+  Transform {
+    position 4.6 -0 -16.8
+    quaternion 0 0 0 1
+    scale 2.2 2.2 2.2
+  }
+}
+entity "lamp-1-solid" {
+  Transform {
+    position 4.6 1.1 -16.8
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 0.66 2.2 0.66
+  }
+}
+entity "lamp-2" {
+  model "models/kaykit/lights.glb"
+  Transform {
+    position -16.8 -0 -4.6
+    quaternion 0 0 0 1
+    scale 2.2 2.2 2.2
+  }
+}
+entity "lamp-2-solid" {
+  Transform {
+    position -16.8 1.1 -4.6
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 0.66 2.2 0.66
+  }
+}
+entity "lamp-3" {
+  model "models/kaykit/lights.glb"
+  Transform {
+    position -16.8 -0 4.6
+    quaternion 0 0 0 1
+    scale 2.2 2.2 2.2
+  }
+}
+entity "lamp-3-solid" {
+  Transform {
+    position -16.8 1.1 4.6
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 0.66 2.2 0.66
+  }
+}
+entity "lamp-4" {
+  model "models/kaykit/lights.glb"
+  Transform {
+    position 16.8 -0 -4.6
+    quaternion 0 0 0 1
+    scale 2.2 2.2 2.2
+  }
+}
+entity "lamp-4-solid" {
+  Transform {
+    position 16.8 1.1 -4.6
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 0.66 2.2 0.66
+  }
+}
+entity "lamp-5" {
+  model "models/kaykit/lights.glb"
+  Transform {
+    position 16.8 -0 4.6
+    quaternion 0 0 0 1
+    scale 2.2 2.2 2.2
+  }
+}
+entity "lamp-5-solid" {
+  Transform {
+    position 16.8 1.1 4.6
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 0.66 2.2 0.66
+  }
+}
+entity "lamp-6" {
+  model "models/kaykit/lights.glb"
+  Transform {
+    position -4.2 -0 16.4
+    quaternion 0 0 0 1
+    scale 2.2 2.2 2.2
+  }
+}
+entity "lamp-6-solid" {
+  Transform {
+    position -4.2 1.1 16.4
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 0.66 2.2 0.66
+  }
+}
+entity "lamp-7" {
+  model "models/kaykit/lights.glb"
+  Transform {
+    position 4.2 -0 16.4
+    quaternion 0 0 0 1
+    scale 2.2 2.2 2.2
+  }
+}
+entity "lamp-7-solid" {
+  Transform {
+    position 4.2 1.1 16.4
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+  Collider {
+    shape 0
+    size 0.66 2.2 0.66
+  }
+}
+entity "hab-s" {
+  model "models/kaykit/basemodule-a.glb"
+  Transform {
+    position 0 -0 30
+    quaternion 0 1 0 6.123234e-17
+    scale 3.2 3.2 3.2
+  }
+}
+entity "hab-sw" {
+  model "models/kaykit/basemodule-e.glb"
+  Transform {
+    position -17 -0 31
+    quaternion 0 0.9848078 0 0.1736482
+    scale 3 3 3
+  }
+}
+entity "tower-far-ne" {
+  model "models/kaykit/structure-tall.glb"
+  Transform {
+    position 22 -0 -33
+    quaternion 0 0 0 1
+    scale 3.4 3.4 3.4
+  }
+}
+entity "tower-far-w" {
+  model "models/kaykit/structure-tall.glb"
+  Transform {
+    position -33 -0 -14
+    quaternion 0 0.3826834 0 0.9238795
+    scale 3 3 3
+  }
+}
+entity "depot-far-e" {
+  model "models/kaykit/cargodepot-a.glb"
+  Transform {
+    position 33 -0 16
+    quaternion 0 0 0 1
+    scale 3 3 3
+  }
+}
+entity "truck" {
+  model "models/kaykit/spacetruck-large.glb"
+  Transform {
+    position 27 1.026 27
+    quaternion 0 0.8660254 0 0.5
+    scale 9 9 9
+  }
+}
+entity "rocks-far-0" {
+  model "models/kaykit/rocks-b.glb"
+  Transform {
+    position -30 -0 26
+    quaternion 0 0.08715574 0 0.9961947
+    scale 4 4 4
+  }
+}
+entity "rocks-far-1" {
+  model "models/kaykit/rocks-b.glb"
+  Transform {
+    position 31 -0 -29
+    quaternion 0 0.6427876 0 0.7660444
+    scale 4.5 4.5 4.5
+  }
+}
+entity "spawn-0" {
+  Transform {
+    position -1.6 0 14.4
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+}
+entity "spawn-1" {
+  Transform {
+    position 1.6 0 14.4
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+}
+entity "duel-0" {
+  Transform {
+    position 0 0 15
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+}
+entity "duel-1" {
+  Transform {
+    position 0 0 -15
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+}
+entity "duel-2" {
+  Transform {
+    position -15 0 -9
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+}
+entity "duel-3" {
+  Transform {
+    position 15 0 9
+    quaternion 0 0 0 1
+    scale 1 1 1
+  }
+}

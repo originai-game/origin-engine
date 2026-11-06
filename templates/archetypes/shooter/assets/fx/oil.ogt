@@ -1,0 +1,24 @@
+type particles
+version 1
+---
+# A round striking a walker or a drone: a spray of glowing coolant and
+# shards from the wound (src/weapon.ts restarts it at the hit).
+maxParticles 96
+shape cone 50 0.06
+rate 0
+burst 0 18
+duration 0.5
+looping false
+lifetime 0.25 0.55
+speed 2 5
+size 0.03 0.07
+colorOverLife {
+  key 0 1.2 5 7 1
+  key 0.6 0.3 1.6 2.4 0.8
+  key 1 0.1 0.4 0.6 0
+}
+gravity 0 -12 0
+drag 0.5
+texture "textures/spark.png"
+blend additive
+align velocity 0.03

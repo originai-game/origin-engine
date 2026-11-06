@@ -1,0 +1,36 @@
+type project
+version 1
+---
+name "Holdout"
+id "shooter"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1
+look "looks/holdout.ogt"
+# The look's cook contract (og-build §8) holds every asset; these keep
+# their shape as made. KayKit's Space Base Bits (CC0) are a catalogue
+# family drawn faceted already, past faceted-low-poly's 200 faces a prop
+# at the silhouette bound, and the drone's rotor pods are part of its
+# read: `og cook --report` lists them and a game replaces them with its own.
+conform {
+  off "models/drone.glb"
+  off "models/kaykit/basemodule-a.glb"
+  off "models/kaykit/basemodule-e.glb"
+  off "models/kaykit/cargo-a-stacked.glb"
+  off "models/kaykit/cargo-b-stacked.glb"
+  off "models/kaykit/cargodepot-a.glb"
+  off "models/kaykit/containers-a.glb"
+  off "models/kaykit/drill-structure.glb"
+  off "models/kaykit/lander-a.glb"
+  off "models/kaykit/landingpad-large.glb"
+  off "models/kaykit/lights.glb"
+  off "models/kaykit/spacetruck-large.glb"
+  off "models/kaykit/structure-low.glb"
+  off "models/kaykit/structure-tall.glb"
+}
+publish {
+  probe player
+  out "dist"
+}
