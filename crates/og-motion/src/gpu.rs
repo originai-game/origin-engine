@@ -499,7 +499,15 @@ impl Gpu {
     /// On Windows the DX12 shader compiler is the static DXC, as og-render's
     /// instance: without it wgpu falls back to FXC, which took 26-30 s to
     /// compile the kernels on an RTX 5060 against 0.4 s on Vulkan.
+    ///
+    /// `OG_RENDERER=none` answers [`GpuError::NoAdapter`] natively, as it makes
+    /// og-render's renderers answer theirs (og-render's `RENDERER_SWITCH`):
+    /// a machine told it has no GPU never gets a software adapter here.
     pub async fn request_on(bundle: &Bundle, backends: wgpu::Backends) -> Result<Gpu, GpuError> {
+        #[cfg(not(target_arch = "wasm32"))]
+        if std::env::var("OG_RENDERER").is_ok_and(|v| v.trim().eq_ignore_ascii_case("none")) {
+            return Err(GpuError::NoAdapter("OG_RENDERER=none".into()));
+        }
         let descriptor = wgpu::InstanceDescriptor {
             backends,
             ..wgpu::InstanceDescriptor::new_without_display_handle()

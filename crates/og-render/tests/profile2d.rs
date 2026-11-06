@@ -37,10 +37,9 @@ fn water_and_volumetric_fog_are_not_drawn_in_the_2d_profile() {
         height: 64,
         ..Default::default()
     };
-    let Ok(plain) = render_to_rgba(&desc, &scene()) else {
-        eprintln!("no adapter: skipped");
-        return;
-    };
+    let plain = render_to_rgba(&desc, &scene()).expect(
+        "a GPU adapter: a GPU test, run where there is one (OG_RENDERER=none takes it away)",
+    );
     let mut world = scene();
     world.water.push(Water {
         transform: Mat4::IDENTITY,

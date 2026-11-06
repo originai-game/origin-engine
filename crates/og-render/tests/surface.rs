@@ -52,10 +52,9 @@ fn a_made_surface_bends_a_lit_ball_and_is_off_at_zero_strength() {
         height: 144,
         ..Default::default()
     };
-    let Ok(plain) = render_to_rgba(&desc, &ball(MaterialStyle::default())) else {
-        eprintln!("no adapter: skipped");
-        return;
-    };
+    let plain = render_to_rgba(&desc, &ball(MaterialStyle::default())).expect(
+        "a GPU adapter: a GPU test, run where there is one (OG_RENDERER=none takes it away)",
+    );
     let background: [u8; 4] = plain.pixels[..4].try_into().unwrap();
     let clay = |strength: f32| MaterialStyle {
         surface: MaterialSurface::Clay,
@@ -112,10 +111,9 @@ fn a_made_surface_keeps_the_normal_where_it_lies_in_the_face() {
         };
         scene
     };
-    let Ok(plain) = render_to_rgba(&desc, &scene(MaterialSurface::None)) else {
-        eprintln!("no adapter: skipped");
-        return;
-    };
+    let plain = render_to_rgba(&desc, &scene(MaterialSurface::None)).expect(
+        "a GPU adapter: a GPU test, run where there is one (OG_RENDERER=none takes it away)",
+    );
     let centre = |rgba: &[u8]| {
         let i = (48 * 96 + 48) * 4;
         [rgba[i], rgba[i + 1], rgba[i + 2]]

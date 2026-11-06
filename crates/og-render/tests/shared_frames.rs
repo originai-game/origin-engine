@@ -181,10 +181,9 @@ fn host(
 
 #[test]
 fn a_host_sees_each_frame_exactly_as_drawn_and_its_resize_reallocates_the_slots() {
-    let Some(mut engine) = renderer(96, 64, Some(OUTPUT_FORMAT)) else {
-        eprintln!("no adapter: skipped");
-        return;
-    };
+    let mut engine = renderer(96, 64, Some(OUTPUT_FORMAT)).expect(
+        "a GPU adapter: a GPU test, run where there is one (OG_RENDERER=none takes it away)",
+    );
     let path = socket("frames");
     let listener = UnixListener::bind(&path).unwrap();
     let (tx, seen) = mpsc::channel();
@@ -243,10 +242,9 @@ fn a_host_sees_each_frame_exactly_as_drawn_and_its_resize_reallocates_the_slots(
 
 #[test]
 fn a_host_that_keeps_every_slot_never_stalls_the_engine() {
-    let Some(mut engine) = renderer(32, 32, Some(OUTPUT_FORMAT)) else {
-        eprintln!("no adapter: skipped");
-        return;
-    };
+    let mut engine = renderer(32, 32, Some(OUTPUT_FORMAT)).expect(
+        "a GPU adapter: a GPU test, run where there is one (OG_RENDERER=none takes it away)",
+    );
     let path = socket("busy");
     let listener = UnixListener::bind(&path).unwrap();
     let (tx, rx) = mpsc::channel();
@@ -288,10 +286,9 @@ fn a_host_that_keeps_every_slot_never_stalls_the_engine() {
 
 #[test]
 fn without_a_host_the_renderer_draws_on_and_links_once_one_listens() {
-    let Some(engine) = renderer(32, 32, Some(OUTPUT_FORMAT)) else {
-        eprintln!("no adapter: skipped");
-        return;
-    };
+    let engine = renderer(32, 32, Some(OUTPUT_FORMAT)).expect(
+        "a GPU adapter: a GPU test, run where there is one (OG_RENDERER=none takes it away)",
+    );
     let path = socket("later");
     let mut link = FrameLink::connect(&path, &engine);
     let scene = ball([0.5, 0.5, 0.5, 1.0]);
