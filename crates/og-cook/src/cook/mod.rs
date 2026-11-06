@@ -23,6 +23,7 @@ mod fbx;
 mod flipbook;
 mod font;
 mod fracture;
+mod fracture_cache;
 pub mod icons;
 pub mod ktx2_source;
 mod lightmap;
@@ -447,6 +448,7 @@ pub fn cook_project_with_texture_cache(
     // The `type model` texts, built again under the art contract's face
     // budget once the look is read (below).
     let mut model_texts: BTreeMap<String, String> = BTreeMap::new();
+    let mut reused_fractures = BTreeSet::new();
     for s in sources.iter_mut() {
         // A model that says it is a character (`conform character`), read
         // from its text or import settings before a text becomes a glb.
@@ -511,16 +513,28 @@ pub fn cook_project_with_texture_cache(
         if s.kind == Kind::Model {
             let dir = s.path.parent().unwrap_or(Path::new("."));
             let text = model_texts.get(&s.rel).map(String::as_str);
+            let input_stamp = stamp(&[
+                &s.bytes,
+                text.unwrap_or_default().as_bytes(),
+                s.settings.as_ref().map_or("", |(text, _)| text).as_bytes(),
+            ]);
             match fracture::Settings::of(text, s.settings.as_ref().map(|(_, d)| d)).and_then(|f| {
-                f.map(|f| fracture::fracture_glb(&s.bytes, dir, &f))
-                    .transpose()
+                f.map(|f| {
+                    fracture_cache::run(root, &s.rel, input_stamp, dir, || {
+                        fracture::fracture_glb(&s.bytes, dir, &f)
+                    })
+                })
+                .transpose()
             }) {
-                Ok(Some(f)) => {
+                Ok(Some((f, cached))) => {
                     s.bytes = f.glb;
                     s.fracture = Some(f.asset);
                     // Its images now live in the binary; the files stay
                     // part of the source (its hash, what it consumed).
                     let (read, notes) = imported.take().unwrap_or_default();
+                    if cached {
+                        reused_fractures.insert(s.rel.clone());
+                    }
                     let mut all = read;
                     all.extend(f.read);
                     imported = Some((all, notes));
@@ -1705,7 +1719,11 @@ pub fn cook_project_with_texture_cache(
                     .as_ref()
                     .map_or(0, |g| g.external.iter().map(|e| e.1.len() as u64).sum()),
             outputs: Vec::new(),
-            notes: s.gltf.as_ref().map(|_| Vec::new()).unwrap_or_default(),
+            notes: if reused_fractures.contains(&s.rel) {
+                vec!["fracture: inputs unchanged, reused prefracture".into()]
+            } else {
+                Vec::new()
+            },
             error: s.error.clone(),
             cook_ms: 0.0,
         })

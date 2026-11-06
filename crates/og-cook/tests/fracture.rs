@@ -67,6 +67,64 @@ fn asset(root: &std::path::Path) -> FractureAsset {
 }
 
 #[test]
+fn unchanged_fracture_is_reused_but_source_and_dependency_edits_rebuild_it() {
+    let text = WALL
+        .replace("chunks 20", "chunks 4")
+        .replace("children 4", "children 0");
+    let root = cook("og-cook-fracture-reuse", &text, 1);
+    let options = CookOptions::default();
+    let rerun = || {
+        let report = cook_project(&root, &options).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        report
+    };
+    let reused = |r: &og_cook::Report| {
+        r.assets
+            .iter()
+            .any(|a| a.notes.iter().any(|n| n.contains("reused prefracture")))
+    };
+    let original = asset(&root).to_bytes();
+    let report = rerun();
+    assert!(reused(&report));
+    assert!(
+        report
+            .assets
+            .iter()
+            .flat_map(|a| &a.outputs)
+            .all(|o| !o.cooked)
+    );
+    assert_eq!(original, asset(&root).to_bytes());
+
+    let text = text.replace("seed 7", "seed 8");
+    std::fs::write(root.join("assets/props/wall.ogt"), &text).unwrap();
+    assert!(!reused(&rerun()));
+    assert_ne!(original, asset(&root).to_bytes());
+    assert!(reused(&rerun()));
+
+    let map = root.join("assets/props/interior.png");
+    let write_map = |color| {
+        image::RgbaImage::from_pixel(2, 2, image::Rgba(color))
+            .save(&map)
+            .unwrap()
+    };
+    write_map([255, 0, 0, 255]);
+    let text = text.replace("interior {", "interior {\n    map \"interior.png\"");
+    std::fs::write(root.join("assets/props/wall.ogt"), &text).unwrap();
+    assert!(!reused(&rerun()));
+    assert!(reused(&rerun()));
+    let manifest = std::fs::read(root.join("cooked/.cook.ogt")).unwrap();
+    write_map([0, 255, 0, 255]);
+    assert!(!reused(&rerun()));
+    assert_ne!(
+        manifest,
+        std::fs::read(root.join("cooked/.cook.ogt")).unwrap()
+    );
+    assert!(reused(&rerun()));
+    std::fs::remove_file(map).unwrap();
+    assert!(!cook_project(&root, &options).unwrap().ok());
+}
+
+#[test]
 fn a_wall_cooks_into_chunks_that_tile_it_with_bonds_anchors_and_hidden_children() {
     let root = cook("og-cook-fracture-wall", WALL, 0);
     let a = asset(&root);
