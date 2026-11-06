@@ -43,6 +43,66 @@ fn render(scene: &RenderScene) -> (RgbaImage, FrameStats) {
     (r.read_offscreen().expect("capture"), stats)
 }
 
+#[test]
+#[ignore = "requires GPU"]
+fn decals_project_on_terrain_and_reject_back_faces() {
+    use og_render::{ColorSpace, Decal, Mips, TextureData};
+    let desc = og_render::RenderDesc {
+        width: 96,
+        height: 96,
+        ..scenes::base_desc()
+    };
+    let mut renderer = Renderer::new_blocking(&desc).unwrap();
+    let mut scene = RenderScene::new();
+    let terrain = scene.add_terrain(TerrainData {
+        size: Vec2::splat(8.0),
+        columns: 3,
+        rows: 3,
+        heights: vec![-0.4, 0.0, 0.4, -0.4, 0.0, 0.4, -0.4, 0.0, 0.4].into(),
+        control: None,
+        holes: None,
+    });
+    scene.terrains.push(Terrain::new(terrain));
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 10.0, 0.0),
+        target: Vec3::ZERO,
+        up: Vec3::Z,
+        projection: Projection::Orthographic { height: 8.0 },
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    scene.post.tonemap = Tonemap::None;
+    let mut capture = |s: &RenderScene| {
+        let stats = renderer.render(s, &RenderTarget::Offscreen).unwrap();
+        assert!(stats.terrain_draws > 0);
+        renderer.read_offscreen().unwrap()
+    };
+    let bare = capture(&scene);
+    let atlas = scene.add_texture(TextureData {
+        width: 2,
+        height: 2,
+        rgba: [255, 0, 0, 255].repeat(4),
+        color_space: ColorSpace::Srgb,
+        mips: Mips::Generate,
+    });
+    scene.decal_atlas = Some(atlas);
+    let decal = Decal {
+        emissive: Vec3::X,
+        ..Decal::on_surface(Vec3::ZERO, Vec3::Y, Vec2::new(3.0, 2.0), 1.0, 0.0)
+    };
+    scene.decals.push(decal);
+    let marked = capture(&scene);
+    keep("terrain-decal", &marked);
+    assert!(px(&marked, 48, 48)[0] > px(&bare, 48, 48)[0] + 30.0);
+    assert_eq!(px(&marked, 12, 12), px(&bare, 12, 12));
+    scene.decals[0] = Decal {
+        emissive: decal.emissive,
+        ..Decal::on_surface(Vec3::ZERO, -Vec3::Y, Vec2::new(3.0, 2.0), 1.0, 0.0)
+    };
+    let backwards = capture(&scene);
+    assert_eq!(px(&backwards, 48, 48), px(&bare, 48, 48));
+}
+
 /// Writes a frame a test reads to `<target tmp>/og-terrain/<name>.png`
 /// (for looking at a failure).
 fn keep(name: &str, img: &RgbaImage) {

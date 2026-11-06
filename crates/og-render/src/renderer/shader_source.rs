@@ -14,7 +14,7 @@ pub(crate) const FRAME_WGSL: &str = concat!(
 /// The lit shader's vertex stages, lights and decals; the standard
 /// fragment shader and the prepass's follow it (`pbr_fs.wgsl`,
 /// `pbr_prepass.wgsl`), the physical one replaces both (`physical.wgsl`).
-const PBR_WGSL: &str = wgsl!("pbr.wgsl");
+const PBR_WGSL: &str = concat!(wgsl!("pbr.wgsl"), wgsl!("decals.wgsl"));
 const PBR_FS_WGSL: &str = wgsl!("pbr_fs.wgsl");
 const PBR_PREPASS_WGSL: &str = wgsl!("pbr_prepass.wgsl");
 /// The lean entry points plain materials draw through ([`GpuMaterial::lean`]).

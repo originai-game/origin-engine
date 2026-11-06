@@ -14,6 +14,13 @@
 // StandardMaterial (cascaded shadows, local lights, image-based light),
 // caustics under the frame's water, then fog.
 
+struct TerrainFx { decal_info: vec4<f32> };
+@group(3) @binding(0) var<uniform> fx: TerrainFx;
+@group(3) @binding(2) var decal_atlas: texture_2d<f32>;
+@group(3) @binding(3) var fx_sampler: sampler;
+@group(3) @binding(5) var<storage, read> decal_list: array<DecalGpu>;
+@group(3) @binding(6) var<storage, read> decal_cells: array<u32>;
+
 struct TerrainOut {
   @builtin(position) clip: vec4<f32>,
   @location(0) world: vec3<f32>,
@@ -497,6 +504,16 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, local: vec3<f32>, ground: f32, a
   s.metallic = 0.0;
   s.roughness = clamp(roughness, 0.04, 1.0);
   s.f0 = vec3<f32>(0.04);
+  let dpx = dpdx(p);
+  let dpy = dpdy(p);
+  var decal_emissive = vec3<f32>(0.0);
+  if (abs(fx.decal_info.x) > 0.5) {
+    let d = apply_decals(clip, p, n_geo, s.albedo, s.roughness, dpx, dpy);
+    s.albedo = d.albedo;
+    s.roughness = clamp(d.roughness, 0.04, 1.0);
+    decal_emissive = d.emissive;
+    if (d.normal.w > 0.0) { n = normalize(mix(n, d.normal.xyz, d.normal.w)); }
+  }
   // The weather on the ground, its hollows (the layers' relief) first.
   let weathered = weather_surface_at(s, n, n_geo, p, terrain_cavity(height), 1.0, WEATHER_GROUND);
   s = weathered.s;
@@ -578,7 +595,7 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, local: vec3<f32>, ground: f32, a
   if (view == 4u) { return vec4<f32>(diffuse_ibl, 1.0); }
   if (view == 5u) { return vec4<f32>(specular_ibl, 1.0); }
   if (view == 6u) { return vec4<f32>(color, 1.0); }
-  color += diffuse_ibl + specular_ibl;
+  color += diffuse_ibl + specular_ibl + decal_emissive;
 
   if (frame.light_color.w > 0.5 && frame.light_color.w < 1.5) {
     return vec4<f32>(cascade_tint(cascade_index(p)) * 4.0, 1.0);

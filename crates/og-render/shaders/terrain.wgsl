@@ -15,8 +15,7 @@
 // in texture-array slots; `table` maps every tile to its slot and fade.
 // Pyramid levels are decimations of the field: a coarser tile standing in
 // for one that has not arrived agrees with it on its own samples.
-// Heights are read with textureLoad and filtered here (R32Float is not
-// filterable without the float32-filterable feature). Shared by the lit, prepass and shadow passes,
+// Heights are read as f32 words and filtered here. Shared by the lit, prepass and shadow passes,
 // each of which prepends its own group 0.
 
 struct TerrainLayerGpu {
@@ -87,7 +86,7 @@ struct TerrainTable {
 
 @group(1) @binding(0) var<uniform> terrain: TerrainUniform;
 @group(1) @binding(1) var<uniform> level: TerrainLevel;
-@group(1) @binding(2) var heights: texture_2d_array<f32>;
+@group(1) @binding(2) var<storage, read> heights: array<f32>;
 @group(1) @binding(3) var terrain_normals: texture_2d_array<f32>;
 @group(1) @binding(4) var control_map: texture_2d_array<f32>;
 @group(1) @binding(5) var albedo0: texture_2d<f32>;
@@ -152,6 +151,15 @@ fn tile_ref(lvl: u32, u: vec2<f32>) -> TileRef {
   return r;
 }
 
+// The same rows as TerrainLayout::heights_rows: heights, then horizon words.
+fn height_word(p: vec2<i32>, slot: i32) -> f32 {
+  let t = u32(terrain.tiles.x);
+  let side = t + 3u;
+  let horizon = (t + 7u) / 8u + 1u;
+  let rows = side + (horizon * horizon * 4u + side - 1u) / side;
+  return heights[(u32(slot) * rows + u32(p.y)) * side + u32(p.x)];
+}
+
 // The height at level coordinates `u` from a resident tile: bilinear
 // between its four samples (the tile's border holds the neighbours').
 fn slot_height(r: TileRef, u: vec2<f32>) -> f32 {
@@ -162,10 +170,10 @@ fn slot_height(r: TileRef, u: vec2<f32>) -> f32 {
   let a = vec2<i32>(i);
   let b = min(a + 1, vec2<i32>(i32(t) + 2));
   let s = i32(r.slot);
-  let h00 = textureLoad(heights, a, s, 0).r;
-  let h10 = textureLoad(heights, vec2<i32>(b.x, a.y), s, 0).r;
-  let h01 = textureLoad(heights, vec2<i32>(a.x, b.y), s, 0).r;
-  let h11 = textureLoad(heights, b, s, 0).r;
+  let h00 = height_word(a, s);
+  let h10 = height_word(vec2<i32>(b.x, a.y), s);
+  let h01 = height_word(vec2<i32>(a.x, b.y), s);
+  let h11 = height_word(b, s);
   return mix(mix(h00, h10, f.x), mix(h01, h11, f.x), f.y);
 }
 
@@ -296,7 +304,7 @@ fn horizon_texel(r: TileRef, i: vec2<u32>) -> array<f32, 8> {
   var out: array<f32, 8>;
   for (var w = 0u; w < HORIZON_WORDS; w++) {
     let k = first + w;
-    let v = u32(textureLoad(heights, vec2<i32>(i32(k % hs), i32(hs + k / hs)), i32(r.slot), 0).r);
+    let v = u32(height_word(vec2<i32>(i32(k % hs), i32(hs + k / hs)), i32(r.slot)));
     for (var b = 0u; b < 2u; b++) {
       out[w * 2u + b] = (f32((v >> (12u * b)) & 4095u) / 4095.0 * 2.0 - 1.0) * 1.5707963;
     }
@@ -373,7 +381,7 @@ fn terrain_hole(s: vec2<f32>) -> bool {
   if (o.r.slot < 0.0) { return false; }
   let t = terrain.tiles.x;
   let c = clamp(floor(o.u) - o.r.tile * t, vec2<f32>(0.0), vec2<f32>(t)) + 1.0;
-  let h = textureLoad(heights, vec2<i32>(c), i32(o.r.slot), 0).r;
+  let h = height_word(vec2<i32>(c), i32(o.r.slot));
   return (bitcast<u32>(h) & 1u) != 0u;
 }
 

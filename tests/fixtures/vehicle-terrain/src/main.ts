@@ -7,7 +7,7 @@
 // which tests read it.
 //
 //   og run tests/fixtures/vehicle-terrain --commands "0.2:key_down:KeyW;2:key_down:KeyD;3:key_up:KeyD;3.5:quit"
-import { og, defineComponent, defineResource, defineSystem, f32, u32, BODY_DYNAMIC, BODY_STATIC, SHAPE_BOX, SHAPE_HEIGHTFIELD } from "@origingame/engine";
+import { og, defineComponent, defineResource, defineSystem, f32, u32, BODY_DYNAMIC, SHAPE_BOX, SHAPE_HEIGHTFIELD } from "@origingame/engine";
 import type { Entity, Quaternion, Vector3, World } from "@origingame/engine";
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
@@ -68,17 +68,11 @@ function build(world: World): void {
   must(world.insert(hills, og.Terrain, { data: info.data }));
   must(world.insert(hills, og.Collider, { shape: SHAPE_HEIGHTFIELD, mesh: info.geometry, friction: 1 }));
   const ground = must(og.terrain.sample(world, { data: info.data, origin: { x: 0, y: 0, z: 0 }, x: START.x, z: START.z })).height;
-  // The hills flattened under the road (og.terrain.edit), then the road on
-  // them: an asphalt slab, since og.Decal projects onto meshes and the skid
-  // marks are laid on it.
+  // A flattened track in the terrain itself: its heightfield carries the
+  // car and its surface receives the skid decals, with no covering mesh.
   for (let z = ROAD.z0; z <= ROAD.z1; z += 5) {
-    must(og.terrain.edit(world, info.data, { mode: "flatten", center: { x: START.x, y: ground - 0.3, z }, radius: ROAD.w, strength: 1, falloff: 0.4 }));
+    must(og.terrain.edit(world, info.data, { mode: "flatten", center: { x: START.x, y: ground + 0.1, z }, radius: ROAD.w, strength: 1, falloff: 0.4 }));
   }
-  const slab = must(world.spawn({ name: "road", position: { x: START.x, y: ground - 0.1, z: (ROAD.z0 + ROAD.z1) / 2 }, scale: { x: ROAD.w, y: 0.4, z: ROAD.z1 - ROAD.z0 } }));
-  const asphalt = must(og.render.standardMaterial(world, { color: { r: 0.16, g: 0.16, b: 0.17 }, roughness: 0.9 }));
-  must(world.insert(slab, og.Mesh, { geometry: must(og.render.boxGeometry(world, {})), material: asphalt }));
-  must(world.insert(slab, og.RigidBody, { kind: BODY_STATIC }));
-  must(world.insert(slab, og.Collider, { shape: SHAPE_BOX, size: { x: 1, y: 1, z: 1 }, friction: 1 }));
 
   const car = must(world.spawn({ name: "car", position: { x: START.x, y: ground + 1, z: START.z } }));
   must(world.insert(car, og.RigidBody, { kind: BODY_DYNAMIC, mass: 1000, angularDamping: 0.4, ccd: 1 }));

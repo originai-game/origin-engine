@@ -19,7 +19,7 @@
 //! have the same vertices with the same heights: no cracks, no T-junctions,
 //! and no pop when a level re-centres. Positions are computed in whole grid
 //! units, so the shared vertices are bit-identical. Heights are sampled
-//! bilinearly from an `R32Float` texture in the vertex shader; the normal
+//! bilinearly from an f32 storage buffer in the vertex shader; the normal
 //! map (built from the heights on the GPU, mipmapped) and the control map
 //! are filtered per pixel.
 //!
@@ -59,6 +59,7 @@
 //! terrain first uses it. A terrain of separate textures draws exactly as
 //! before.
 
+mod decals;
 mod renderer;
 pub(crate) use renderer::*;
 
@@ -1385,8 +1386,7 @@ struct GpuData {
     capacity: u32,
     /// Bumped whenever the arrays are made again (bind groups name it).
     generation: u64,
-    heights: wgpu::Texture,
-    heights_view: wgpu::TextureView,
+    heights: wgpu::Buffer,
     normals: wgpu::Texture,
     normals_view: wgpu::TextureView,
     control: Option<(wgpu::Texture, wgpu::TextureView)>,
@@ -1432,6 +1432,7 @@ type GroupKey = (
 pub(crate) struct TerrainRenderer {
     layout: wgpu::BindGroupLayout,
     passes: TerrainPasses,
+    pub decals: decals::TerrainDecals,
     /// The layer-array variant (a terrain whose layers sample texture
     /// arrays, [`Terrain::layer_arrays`]): its group layout, with the
     /// albedo (5) and normal (9) maps as 2D arrays and no other layer
@@ -1535,6 +1536,7 @@ pub(crate) struct TerrainPassLayouts<'a> {
     pub shadow: &'a wgpu::BindGroupLayout,
     pub terrain: &'a wgpu::BindGroupLayout,
     pub stamp: &'a wgpu::BindGroupLayout,
+    pub decals: &'a wgpu::BindGroupLayout,
     /// The corner cache read (the levels' passes) and written.
     pub corners: &'a wgpu::BindGroupLayout,
     pub corners_write: &'a wgpu::BindGroupLayout,
@@ -1567,6 +1569,15 @@ fn terrain_passes(
     };
     let lit_layout = pl(
         "terrain",
+        &[
+            layouts.frame,
+            layouts.terrain,
+            layouts.corners,
+            layouts.decals,
+        ],
+    );
+    let prepass_layout = pl(
+        "terrain prepass",
         &[layouts.frame, layouts.terrain, layouts.corners],
     );
     let shadow_layout = pl(
@@ -1576,6 +1587,15 @@ fn terrain_passes(
     let corners_layout = pl("terrain corners", &[layouts.corners_write, layouts.terrain]);
     let stamp_lit_layout = pl(
         "terrain stamp",
+        &[
+            layouts.frame,
+            layouts.terrain,
+            layouts.stamp,
+            layouts.decals,
+        ],
+    );
+    let stamp_prepass_layout = pl(
+        "terrain stamp prepass",
         &[layouts.frame, layouts.terrain, layouts.stamp],
     );
     let stamp_shadow_layout = pl(
@@ -1727,7 +1747,7 @@ fn terrain_passes(
         lit: Rc::new(lit("terrain", &lit_layout, "vs", "fs", &[])),
         prepass: Rc::new(prepass(
             "terrain prepass",
-            &lit_layout,
+            &prepass_layout,
             "vs",
             "fs_prepass",
             &[],
@@ -1748,7 +1768,7 @@ fn terrain_passes(
         )),
         stamp_prepass: Rc::new(prepass(
             "terrain stamp prepass",
-            &stamp_lit_layout,
+            &stamp_prepass_layout,
             "vs_stamp",
             "fs_stamp_prepass",
             STAMP_BUFFERS,
@@ -1868,11 +1888,12 @@ pub(crate) const GRASS_COMMON_WGSL: &str = wgsl3d!("grass_common.wgsl");
 /// The terrain's lit module after the frame group, the light tables and the lighting.
 pub(crate) fn terrain_lit_source(frame: &str, tables: &str, lighting: &str) -> String {
     format!(
-        "{frame}{tables}{lighting}{}{}{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{TERRAIN_LAYERS_WGSL}{TERRAIN_VERTEX_WGSL}{}",
+        "{frame}{tables}{lighting}{}{}{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{TERRAIN_LAYERS_WGSL}{TERRAIN_VERTEX_WGSL}{}{}",
         crate::WEATHER_SURFACE_WGSL,
         crate::AREA_WGSL,
         crate::wind::WIND_COMMON_WGSL,
-        wgsl3d!("terrain_lit.wgsl")
+        wgsl3d!("terrain_lit.wgsl"),
+        wgsl3d!("decals.wgsl")
     )
 }
 
@@ -1998,17 +2019,14 @@ mod tests {
     fn the_layer_array_variant_reads_two_arrays() {
         let standard = terrain_lit_source("", "", "");
         let array = terrain_array_source(&standard);
-        for gone in [
-            "albedo0",
-            "albedo3",
-            "normal1",
-            "normal3",
-            "texture_2d<f32>",
-        ] {
+        for gone in ["albedo0", "albedo3", "normal1", "normal3"] {
             assert!(standard.contains(gone));
             assert!(!array.contains(gone), "{gone}");
         }
-        assert_eq!(array.matches("texture_2d_array<f32>;").count(), 5);
+        // Normals, control, layer albedo and layer normals; the decal atlas
+        // remains the one 2D texture shared with the standard variant.
+        assert_eq!(array.matches("texture_2d_array<f32>;").count(), 4);
+        assert_eq!(array.matches("texture_2d<f32>;").count(), 1);
         assert!(array.contains("i32(terrain.layers[i].slope.w)"));
         assert!(array.contains("i32(terrain.layers[i].altitude.w)"));
         let tail = |s: &str| s[s.find("fn band(").unwrap()..].to_string();

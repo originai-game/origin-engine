@@ -76,7 +76,7 @@ fn place_raw(c: u32, r: u32) -> f32 {
   let tr = tile_ref(0u, u);
   if (tr.slot < 0.0) { return 0.0; }
   let l = clamp(vec2<i32>(u - tr.tile * t) + 1, vec2<i32>(0), vec2<i32>(i32(t) + 2));
-  return textureLoad(heights, l, i32(tr.slot), 0).r;
+  return height_word(l, i32(tr.slot));
 }
 
 fn place_sample(c: u32, r: u32) -> f32 {

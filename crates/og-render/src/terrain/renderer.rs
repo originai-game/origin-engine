@@ -2,6 +2,19 @@
 
 use super::*;
 
+fn heights_entry() -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding: 2,
+        visibility: wgpu::ShaderStages::VERTEX_FRAGMENT | wgpu::ShaderStages::COMPUTE,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Storage { read_only: true },
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    }
+}
+
 impl TerrainRenderer {
     /// Draw the lit pass into a target of `samples` per pixel from now on
     /// (the layer-array variant, made later, too).
@@ -76,7 +89,7 @@ impl TerrainRenderer {
             entries: &[
                 uniform(0, false),
                 uniform(1, true),
-                tex(2, false),
+                heights_entry(),
                 tex(3, true),
                 tex(4, true),
                 tex(5, true),
@@ -93,6 +106,7 @@ impl TerrainRenderer {
                 shadow: &self.shadow_layout,
                 terrain: &layout,
                 stamp: &self.stamp_layout,
+                decals: &self.decals.layout,
                 corners: &self.corners_layout,
                 corners_write: &self.corners_write_layout,
             },
@@ -163,6 +177,7 @@ impl TerrainRenderer {
                     shadow: &self.shadow_layout,
                     terrain: layout,
                     stamp: &self.stamp_layout,
+                    decals: &self.decals.layout,
                     corners: &self.corners_layout,
                     corners_write: &self.corners_write_layout,
                 },
@@ -218,7 +233,7 @@ impl TerrainRenderer {
         let mut entries = vec![
             uniform(0, false),
             uniform(1, true),
-            tex(2, false, array),
+            heights_entry(),
             tex(3, true, array),
             tex(4, true, array),
         ];
@@ -260,6 +275,7 @@ impl TerrainRenderer {
         // group 2), written at 0 of the writer's group 0.
         let corners_layout = storage(true, wgpu::ShaderStages::VERTEX);
         let corners_write_layout = storage(false, wgpu::ShaderStages::COMPUTE);
+        let decals = decals::TerrainDecals::new(device);
         let passes = terrain_passes(
             device,
             TerrainPassLayouts {
@@ -267,6 +283,7 @@ impl TerrainRenderer {
                 shadow: p.shadow_layout,
                 terrain: &layout,
                 stamp: &stamp_layout,
+                decals: &decals.layout,
                 corners: &corners_layout,
                 corners_write: &corners_write_layout,
             },
@@ -331,6 +348,7 @@ impl TerrainRenderer {
         TerrainRenderer {
             layout,
             passes,
+            decals,
             arrays: None,
             holed: [None, None],
             array_stand_ins: None,
@@ -397,14 +415,17 @@ impl TerrainRenderer {
             });
             (t, v)
         };
-        // Each slot's heights, then its horizon words.
-        let (heights, heights_view) = array(
-            "terrain heights",
-            (layout.heights_side(), layout.heights_rows()),
-            1,
-            wgpu::TextureFormat::R32Float,
-            1,
-        );
+        // Unfiltered f32 loads need no sampled texture slot. Keep the exact
+        // height/horizon layout, leaving the sixteenth texture for decals.
+        let heights = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("terrain heights"),
+            size: u64::from(layout.heights_side())
+                * u64::from(layout.heights_rows())
+                * u64::from(layers)
+                * 4,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         let ns = layout.normals_side();
         let (normals, normals_view) = array(
             "terrain normals",
@@ -437,7 +458,6 @@ impl TerrainRenderer {
             capacity,
             generation: self.generations,
             heights,
-            heights_view,
             normals,
             normals_view,
             control,
@@ -480,12 +500,8 @@ impl TerrainRenderer {
             rows_per_image: None,
         };
         let hs = gpu.layout.heights_side();
-        queue.write_texture(
-            layer(&gpu.heights, 0, slot),
-            bytemuck::cast_slice(&tile.heights),
-            row(hs, 4),
-            size(hs),
-        );
+        let offset = u64::from(slot) * u64::from(hs) * u64::from(gpu.layout.heights_rows()) * 4;
+        queue.write_buffer(&gpu.heights, offset, bytemuck::cast_slice(&tile.heights));
         // The horizon words in the rows under the heights as numbers (exact:
         // each under 2^24), the last row padded.
         let rows = gpu.layout.heights_rows() - hs;
@@ -493,22 +509,10 @@ impl TerrainRenderer {
         for (w, v) in words.iter_mut().zip(tile.horizon.iter()) {
             *w = *v as f32;
         }
-        queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                origin: wgpu::Origin3d {
-                    x: 0,
-                    y: hs,
-                    z: slot,
-                },
-                ..layer(&gpu.heights, 0, slot)
-            },
+        queue.write_buffer(
+            &gpu.heights,
+            offset + u64::from(hs) * u64::from(hs) * 4,
             bytemuck::cast_slice(&words),
-            row(hs, 4),
-            wgpu::Extent3d {
-                width: hs,
-                height: rows,
-                depth_or_array_layers: 1,
-            },
         );
         let mut at = 0usize;
         for (mip, side) in crate::terrain_tiles::mip_sides(gpu.layout.normals_side())
@@ -584,9 +588,13 @@ impl TerrainRenderer {
             // The atlases' layers must stay within `max_layers`. (`max`/`min`,
             // not `clamp`: a device with eight layers or fewer must not
             // panic.)
+            let height_bytes =
+                u64::from(layout.heights_side()) * u64::from(layout.heights_rows()) * 4;
+            let height_slots = device.limits().max_storage_buffer_binding_size / height_bytes;
             let capacity = (t.lod.budget() / layout.slot_bytes().max(1))
                 .max(8)
                 .min((self.max_layers as u64).max(1))
+                .min(height_slots)
                 .min(layout.tile_count() as u64) as u32;
             let view = TerrainView {
                 detail: scene.scatter_detail(ti),
@@ -1191,7 +1199,7 @@ impl TerrainRenderer {
                 let entries = [
                     (0, slot.uniform.as_entire_binding()),
                     (1, wgpu::BindingResource::Buffer(level)),
-                    (2, wgpu::BindingResource::TextureView(&data.heights_view)),
+                    (2, data.heights.as_entire_binding()),
                     (3, wgpu::BindingResource::TextureView(&data.normals_view)),
                     (4, wgpu::BindingResource::TextureView(control)),
                     (5, wgpu::BindingResource::TextureView(&albedo)),
@@ -1223,7 +1231,7 @@ impl TerrainRenderer {
                         offset: 0,
                         size: wgpu::BufferSize::new(std::mem::size_of::<LevelGpu>() as u64),
                     }),
-                    wgpu::BindingResource::TextureView(&data.heights_view),
+                    data.heights.as_entire_binding(),
                     wgpu::BindingResource::TextureView(&data.normals_view),
                     wgpu::BindingResource::TextureView(control),
                 ];
