@@ -73,6 +73,12 @@ fn nan_range_and_dangling_reference_are_violations_and_take_starts_clean() {
         "Target".into(),
         Some(json!({"of": foe}).to_string()),
     ));
+    value(og_world_insert(
+        e,
+        hero,
+        "og.Music".into(),
+        Some(json!({"start": -8.55}).to_string()),
+    ));
     value(og_engine_advance(e, 3));
     let clean = report(e, false);
     assert_eq!(clean["violations"], json!([]), "{clean}");
