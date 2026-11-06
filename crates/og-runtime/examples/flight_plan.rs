@@ -1442,12 +1442,25 @@ fn hash_replay() -> serde_json::Value {
         let v: serde_json::Value = serde_json::from_str(&og_engine_probe_dump(w, None)).unwrap();
         v["hash"].clone()
     }
+    // A snapshot's bytes, with any og.WorldRestored event removed: save and
+    // load deliver that notification on the first tick after a restore
+    // (rollback does not), and nothing else may differ
+    // (`restored_event.rs`).
+    fn normalized(w: u32) -> (Vec<u8>, bool) {
+        let text = value(og_world_snapshot(w, None));
+        let bytes = save_snapshot_bytes(text.as_str().unwrap()).unwrap();
+        let mut edit = og_ecs::SnapshotEdit::from_bytes(&bytes).unwrap();
+        let restored = edit.has_events("og.WorldRestored");
+        edit.replace_types(&["og.WorldRestored"], Vec::new())
+            .unwrap();
+        (edit.to_bytes(), restored)
+    }
     set_hooks(Rc::new(NoAssets));
     let baseline = start();
     let drawn = start();
     let calls = Rc::new(Cell::new(0));
     let mut snapshot = String::new();
-    let mut hashes = Vec::new();
+    let mut expected = Vec::new();
     for tick in 0..120 {
         set_render_backend(
             drawn,
@@ -1461,7 +1474,7 @@ fn hash_replay() -> serde_json::Value {
         value(og_engine_frame(baseline, 1000.0 / 60.0));
         value(og_engine_frame(drawn, 1000.0 / 60.0));
         assert_eq!(hash(baseline), hash(drawn));
-        hashes.push(hash(drawn));
+        expected.push((hash(drawn), normalized(drawn).0));
         if tick == 59 {
             snapshot = value(og_world_snapshot(drawn, None))
                 .as_str()
@@ -1472,23 +1485,36 @@ fn hash_replay() -> serde_json::Value {
     assert!(calls.get() > 0);
     value(og_world_restore(baseline, snapshot.clone(), None));
     value(og_world_restore(drawn, snapshot, None));
-    let immediate_equal = hash(drawn) == hashes[59];
+    let immediate_equal = hash(drawn) == expected[59].0;
     let mut replay_mismatch = None;
     let mut mismatch_ticks = Vec::new();
-    for (tick, expected) in hashes.iter().enumerate().skip(60) {
+    let mut notified_ticks = Vec::new();
+    for (tick, (expected_hash, expected_bytes)) in expected.iter().enumerate().skip(60) {
         set_render_backend(drawn, Some(Box::new(CpuPresentation(calls.clone())))).unwrap();
         value(og_engine_frame(baseline, 1000.0 / 60.0));
         value(og_engine_frame(drawn, 1000.0 / 60.0));
         assert_eq!(hash(baseline), hash(drawn));
-        if hash(drawn) != *expected {
-            mismatch_ticks.push(tick + 1);
+        let (bytes, restored) = normalized(drawn);
+        if restored {
+            notified_ticks.push(tick + 1);
         }
-        if hash(drawn) != *expected && replay_mismatch.is_none() {
-            replay_mismatch = Some(json!({"tick":tick+1,"expected":expected,"actual":hash(drawn)}));
+        // The first resumed tick carries the restore notification and must
+        // match in every other byte; every tick must match in its hash
+        // otherwise, and no later one may carry the notification.
+        let first = tick == 60;
+        let same = restored == first
+            && bytes == *expected_bytes
+            && (first || hash(drawn) == *expected_hash);
+        if !same {
+            mismatch_ticks.push(tick + 1);
+            if replay_mismatch.is_none() {
+                replay_mismatch =
+                    Some(json!({"tick":tick+1,"expected":expected_hash,"actual":hash(drawn)}));
+            }
         }
     }
     json!({"ticks":120,"restore_tick":60,"render_callbacks":calls.get(),"hash":hash(drawn),
-        "immediate_equal":immediate_equal,"mismatch_ticks":mismatch_ticks,
+        "immediate_equal":immediate_equal,"mismatch_ticks":mismatch_ticks,"notified_ticks":notified_ticks,
         "replay_pass":replay_mismatch.is_none(),"replay_mismatch":replay_mismatch,
         "scope":"Controller walk, CPU render callbacks, skipped rendering and snapshot replay; prototype palette not integrated"})
 }
