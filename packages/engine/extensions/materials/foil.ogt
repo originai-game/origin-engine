@@ -1,0 +1,16 @@
+type ui-material
+version 1
+---
+# Foil: a metallic sheen of thin bands that run diagonally and slide with
+# the pointer's tilt or the clock, bright where the art is bright, so a
+# card reads as stamped metal (the foil edition of deck-builders). Colours
+# are linear RGB.
+source "foil.wgsl"
+# How much of the sheen shows, 0–1.
+param amount float 0.6
+# The bands' spacing, CSS px.
+param scale float 22
+# The bands' slide, cycles a second (0: still; the tilt then moves them).
+param speed float 0.15
+# The metal's tint.
+param tint color 0.72 0.86 1.0

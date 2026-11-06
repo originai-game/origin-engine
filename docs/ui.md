@@ -269,7 +269,15 @@ glass is not the cause, most fail on solid glass too):
   the layer's texture, time and declared parameters, validated by naga to
   MSL, SPIR-V and HLSL at cook like every other shader (og-render's
   `tests/shaders.rs` covers the built-ins). Its parameters are reflected,
-  so they animate and tune like any prop.
+  so they animate and tune like any prop. Its `source` is read relative to
+  the material file first, then from `assets/`.
+- Material presets: the `materials` kit (`og ui add materials`,
+  `packages/engine/extensions/materials`) ships foil, holo, burn and rarity
+  glow as `type ui-material` assets with tunable parameters, the finishes
+  of deck-builders and gacha cards; a style dresses a part with one
+  (`material "ui-kits/materials/foil.ogt" 0.7`) or an element's layer
+  composites through it. Its skill (`using-ui-materials`) lists each
+  preset's parameters.
 
 ### 5.5 Particles, video and 3D in the UI
 

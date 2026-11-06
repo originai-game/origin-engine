@@ -557,7 +557,7 @@ pub(super) fn run(
                 .map_err(|_| CookError("a UI material is text (UTF-8)".into()))?;
             let name = s.rel.trim_end_matches(".ogt");
             let material =
-                crate::shader::parse_ui_material(name, text, &mut |src| read_sibling(s, src))
+                crate::shader::parse_ui_material(name, text, &mut |src| read_beside(s, src))
                     .map_err(CookError)?;
             let compiled = shader_check::validate_ui_material(&material)
                 .map_err(|e| CookError(format!("the UI material does not compile: {e}")))?;
@@ -689,6 +689,20 @@ fn split_texture(
 }
 
 /// The text of `rel` (an asset path) under the assets directory `s` came from.
+/// A file a source names, read relative to the source's own directory
+/// first (`foil.wgsl` beside `ui-kits/materials/foil.ogt`, so a kit's
+/// relative references survive installation, docs/ui.md §17.1), then as an
+/// asset path from `assets/` ([`read_sibling`]), as a style resolves its
+/// references.
+pub(super) fn read_beside(s: &Source, rel: &str) -> Result<String, String> {
+    if let Some((dir, _)) = s.rel.rsplit_once('/')
+        && let Ok(text) = read_sibling(s, &format!("{dir}/{rel}"))
+    {
+        return Ok(text);
+    }
+    read_sibling(s, rel)
+}
+
 pub(super) fn read_sibling(s: &Source, rel: &str) -> Result<String, String> {
     let mut root = s.path.clone();
     for _ in s.rel.split('/') {

@@ -1217,7 +1217,7 @@ pub fn cook_project_with_texture_cache(
             Kind::UiMaterial => {
                 let text = String::from_utf8_lossy(&s.bytes);
                 let wgsl = crate::shader::shader_source(&text)
-                    .map(|src| read_sibling(s, &src).unwrap_or_default())
+                    .map(|src| execute::read_beside(s, &src).unwrap_or_default())
                     .unwrap_or_default();
                 let st = stamp(&[b"ui-material", &hash, wgsl.as_bytes()]);
                 outs.push((

@@ -169,6 +169,10 @@
         "summary": "A style's `recolour \"<colour as painted>\" <role>` lines (and a dressing's own, or `recolour none`) make its painted art follow the palette: when the role's colour differs from the one the art was painted in, og cook recolours every authored slice and ornament in Oklab (hue turned, chroma and lightness moved by the accent's, other hues and greys kept) at each atlas density, beside the style (`<style>#atlas.png`), and measures the frames' tones again. Every painted built-in pack names its primary, so a game's copy with its own accent recolours its painted buttons and frames; an unchanged copy cooks nothing extra (docs/art.md §2.7)."
       },
       {
+        "member": "materials kit",
+        "summary": "`og ui add materials` installs per-element shader presets as `type ui-material` assets with tunable parameters: foil, holo, burn and rarity glow, each usable from a style dressing (`material \"ui-kits/materials/foil.ogt\" 0.7`) or an element's layer; `og ui sheet materials` reviews them."
+      },
+      {
         "member": "LabelDesc.uppercase, document label uppercase",
         "summary": "A label asks for uppercase in the UI's locale: the same ICU casing a type role with case upper uses (Turkish i, Greek final sigma), applied before measuring; the probe keeps the source text. Components ask for it instead of String.toUpperCase; the bundled kits do."
       },
@@ -578,6 +582,10 @@
       }
     ],
     "fixed": [
+      {
+        "member": "ui-material source",
+        "summary": "A `type ui-material`'s `source` is read relative to the material file first, then from assets/, so a material installed with a kit keeps finding its WGSL."
+      },
       {
         "member": "UI state version 16",
         "summary": "The UI state saves which finger holds each touch control (version 16); a save at version 15 upgrades on load."
