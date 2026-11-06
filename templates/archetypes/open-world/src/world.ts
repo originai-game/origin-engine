@@ -128,6 +128,8 @@ export function buildIsle(world: World): void {
   must(world.resource(og.Weather)).kind = WEATHER_NONE;
   const sun = must(world.spawn({ name: "sun", position: { x: 0, y: 60, z: 0 } }));
   must(world.insert(sun, og.DirectionalLight, { intensity: 3, castShadow: true }));
+  // The moonlight fill (setHour fades it in): cool from above, the moonlit ground's bounce from below.
+  Object.assign(must(world.resource(og.Environment)), { hemiSky: { r: 0.11, g: 0.14, b: 0.24 }, hemiGround: { r: 0.07, g: 0.08, b: 0.11 }, hemiIntensity: 0 });
   const day = must(world.resource(og.DayNight));
   Object.assign(day, { enabled: true, start: HOURS.title, speed: 0, tilt: 25, azimuth: 20, lightIntensity: 1, tintFog: true, step: 5, moonSize: 1.6, moonPhase: 0.5 });
 
@@ -151,7 +153,17 @@ export function setHour(world: World, hour: number): void {
   const up = smooth(5.5, 8, hour) * (1 - smooth(18.5, 20.5, hour));
   const fog = must(world.resource(og.Fog));
   fog.color = { r: FOG_NIGHT.r + (FOG_DAY.r - FOG_NIGHT.r) * up, g: FOG_NIGHT.g + (FOG_DAY.g - FOG_NIGHT.g) * up, b: FOG_NIGHT.b + (FOG_DAY.b - FOG_NIGHT.b) * up };
+  // The night sky's own ambient is nearly black (og.Atmosphere's night), so a
+  // surface the moon does not face (an explorer's side, a tree's) would go
+  // black while the ground it lights from above does not: a cool moonlight
+  // fill keeps their form at night.
+  // Night only: gone by 7:00, back from 19:00.
+  const night = 1 - smooth(5, 7, hour) * (1 - smooth(19, 20.5, hour));
+  must(world.resource(og.Environment)).hemiIntensity = MOON_FILL * night;
 }
+
+/** The moonlight fill's strength at full night (og.Environment's hemisphere light). */
+const MOON_FILL = 1.5;
 
 /** The fog by day and by night. */
 const FOG_DAY = { r: 0.72, g: 0.8, b: 0.86 };

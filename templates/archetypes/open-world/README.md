@@ -45,7 +45,10 @@ og build . --publish         # dist/: the play page as it ships (behind "tap to 
   vignette and a light teal-orange LUT. The run's clock drives the hour:
   110 s of daylight from 7:00 to 19:30, 22 s of night to the next 7:00,
   three days. At night the explorers' lanterns and the claimed braziers
-  light the dark.
+  light the dark, and a cool moonlight fill (`og.Environment`'s hemisphere
+  light, faded in after 19:00 and out by 7:00) keeps the explorers' and
+  the trees' sides readable where the night sky's own ambient is nearly
+  black and the moon lights only what faces up.
 - **A character on og.CharacterController** (og-physics): a capsule with a
   slope limit, step height, ground snap and coyote time; the move walks
   relative to the seat's view (WASD or the arrows, the left stick, the

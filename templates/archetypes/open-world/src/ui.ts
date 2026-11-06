@@ -720,7 +720,7 @@ export const Device = defineSystem("Device", { before: ["Ui"] }, (_q, _time, wor
 });
 
 /** The screens, the run's start, clock and end, the hold, the buses. */
-export const Ui = defineSystem("Ui", { reads: [Tuning, og.Gamepad, og.Pointers, og.PlayerInput, og.Lockstep, Hero, Node, Site, og.Transform], writes: [Game, SeatLook, og.Audio, og.DayNight, og.Fog] }, (_q, time, world) => {
+export const Ui = defineSystem("Ui", { reads: [Tuning, og.Gamepad, og.Pointers, og.PlayerInput, og.Lockstep, Hero, Node, Site, og.Transform], writes: [Game, SeatLook, og.Audio, og.DayNight, og.Fog, og.Environment] }, (_q, time, world) => {
   const g = must(world.resource(Game));
   if (time.tick === 0 || prefs.fresh) {
     prefs.fresh = false;
