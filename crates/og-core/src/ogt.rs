@@ -356,6 +356,21 @@ impl Document {
         parse(text)
     }
 
+    /// Parses only the header (`type`, `version`, up to `---`), with an
+    /// empty body: what a file is, for formats whose body has lines of
+    /// their own (og-ui's documents and styles).
+    pub fn parse_header(text: &str) -> Result<Document> {
+        let mut head = String::new();
+        for l in text.split('\n') {
+            head.push_str(l);
+            head.push('\n');
+            if l.trim() == "---" {
+                break;
+            }
+        }
+        parse(&head)
+    }
+
     /// The canonical text. Refused if a key, word or the type is not a valid
     /// identifier (it would not read back).
     pub fn to_text(&self) -> Result<String> {
@@ -536,6 +551,74 @@ fn tokenize(line: &str, n: usize) -> Result<Vec<Token>> {
 }
 
 /// Parses `.ogt` text into a [`Document`].
+/// One body line of an `.ogt` text, as [`parse`] reads it.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Line {
+    /// Blank, or only a comment.
+    Blank,
+    /// `}`: the open block ends.
+    Close,
+    /// `key value*`; `opens` when it ends with `{` (its `block` is then
+    /// `Some`, empty).
+    Entry { entry: Entry, opens: bool },
+}
+
+/// Reads one body line (`n` is its 1-based number, kept on the entry and
+/// in errors) by the grammar above. Formats that keep `.ogt`'s lines but
+/// add forms of their own (og-ui's documents and styles) read their other
+/// lines with it.
+pub fn parse_line(line: &str, n: usize) -> Result<Line> {
+    let mut tokens = tokenize(line, n)?.into_iter();
+    let key = match tokens.next() {
+        None => return Ok(Line::Blank),
+        Some(Token::Close) => {
+            if tokens.next().is_some() {
+                return Err(parse_error(n, "'}' must be alone on its line"));
+            }
+            return Ok(Line::Close);
+        }
+        Some(Token::Word(k)) if k != "true" && k != "false" => k,
+        Some(_) => {
+            return Err(parse_error(
+                n,
+                "a line starts with a key (a word other than true or false)",
+            ));
+        }
+    };
+    let mut entry = Entry::new(key);
+    entry.line = n;
+    let mut opens = false;
+    for token in tokens {
+        if opens {
+            return Err(parse_error(n, "'{' must end its line"));
+        }
+        match token {
+            Token::Word(w) => entry.values.push(Value::Word(w)),
+            Token::Number(v) => entry.values.push(Value::Number(v)),
+            Token::Str(s) => entry.values.push(Value::String(s)),
+            Token::Open => opens = true,
+            Token::Close => return Err(parse_error(n, "'}' must be alone on its line")),
+        }
+    }
+    if opens {
+        entry.block = Some(Block::new());
+    }
+    Ok(Line::Entry { entry, opens })
+}
+
+/// One value as the canonical writer writes it; `None` for a word that is
+/// not an identifier (it would not read back).
+pub fn value_text(value: &Value) -> Option<String> {
+    let mut out = String::new();
+    match value {
+        Value::Number(n) => out.push_str(n.text()),
+        Value::String(s) => write_string(&mut out, s),
+        Value::Word(w) if is_word(w) => out.push_str(w),
+        Value::Word(_) => return None,
+    }
+    Some(out)
+}
+
 pub fn parse(text: &str) -> Result<Document> {
     let mut lines = text
         .split('\n')
@@ -588,14 +671,9 @@ pub fn parse(text: &str) -> Result<Document> {
     let mut root = Block::new();
     let mut stack: Vec<(Entry, usize)> = Vec::new();
     for (n, line) in lines {
-        let tokens = tokenize(line, n)?;
-        let mut tokens = tokens.into_iter();
-        let key = match tokens.next() {
-            None => continue,
-            Some(Token::Close) => {
-                if tokens.next().is_some() {
-                    return Err(parse_error(n, "'}' must be alone on its line"));
-                }
+        let (entry, opens) = match parse_line(line, n)? {
+            Line::Blank => continue,
+            Line::Close => {
                 let (mut entry, _) = stack.pop().ok_or_else(|| parse_error(n, "unmatched '}'"))?;
                 entry.block.get_or_insert_with(Block::new);
                 match stack.last_mut() {
@@ -604,31 +682,9 @@ pub fn parse(text: &str) -> Result<Document> {
                 }
                 continue;
             }
-            Some(Token::Word(k)) if k != "true" && k != "false" => k,
-            Some(_) => {
-                return Err(parse_error(
-                    n,
-                    "a line starts with a key (a word other than true or false)",
-                ));
-            }
+            Line::Entry { entry, opens } => (entry, opens),
         };
-        let mut entry = Entry::new(key);
-        entry.line = n;
-        let mut opens = false;
-        for token in tokens {
-            if opens {
-                return Err(parse_error(n, "'{' must end its line"));
-            }
-            match token {
-                Token::Word(w) => entry.values.push(Value::Word(w)),
-                Token::Number(v) => entry.values.push(Value::Number(v)),
-                Token::Str(s) => entry.values.push(Value::String(s)),
-                Token::Open => opens = true,
-                Token::Close => return Err(parse_error(n, "'}' must be alone on its line")),
-            }
-        }
         if opens {
-            entry.block = Some(Block::new());
             stack.push((entry, n));
         } else {
             match stack.last_mut() {
