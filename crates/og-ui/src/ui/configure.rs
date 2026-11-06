@@ -23,6 +23,8 @@ impl Ui {
             nodes: Vec::new(),
             kinds: Vec::new(),
             prev_kinds: Vec::new(),
+            built: Default::default(),
+            anonymous: Default::default(),
             stack: Vec::new(),
             floating: Vec::new(),
             last_closed: NONE,
@@ -498,6 +500,8 @@ impl Ui {
         }
         self.nodes.clear();
         self.kinds.clear();
+        self.built.clear();
+        self.anonymous.clear();
         self.stack.clear();
         self.floating.clear();
         self.draws.clear();

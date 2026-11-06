@@ -1362,11 +1362,39 @@ impl Ui {
             {
                 continue;
             }
-            for (k, &a) in n.children.iter().enumerate() {
-                for &b in &n.children[k + 1..] {
-                    if !seen_at_all(a) || !seen_at_all(b) {
-                        continue;
+            // The pairs whose spans along the flow can meet, by a sweep
+            // from the start edge (a long list's rows meet only their
+            // neighbours, where a check of every pair is quadratic), then
+            // in the children's order, as each pair is reported.
+            let column = n.el.direction == Direction::Column;
+            let span = |r: &Rect| {
+                if column {
+                    (r.y, r.y + r.height)
+                } else {
+                    (r.x, r.x + r.width)
+                }
+            };
+            let mut by_start: Vec<(usize, (f32, f32))> = n
+                .children
+                .iter()
+                .enumerate()
+                .filter(|&(_, &c)| seen_at_all(c))
+                .map(|(k, &c)| (k, span(&shown(c))))
+                .collect();
+            by_start.sort_by(|x, y| x.1.0.total_cmp(&y.1.0).then(x.0.cmp(&y.0)));
+            let mut pairs: Vec<(usize, usize)> = Vec::new();
+            for (s, &(ka, (_, end))) in by_start.iter().enumerate() {
+                for &(kb, (start, _)) in &by_start[s + 1..] {
+                    if start > end {
+                        break;
                     }
+                    pairs.push((ka.min(kb), ka.max(kb)));
+                }
+            }
+            pairs.sort_unstable();
+            for (ka, kb) in pairs {
+                let (a, b) = (n.children[ka], n.children[kb]);
+                {
                     let r = shown(a).intersect(&shown(b));
                     if !area(&r) || out.len() >= MAX {
                         continue;
@@ -1401,8 +1429,8 @@ impl Ui {
         k.sig = Some(sig);
         k.fresh = fresh;
         k.laid_out = 0;
-        let by_key: og_core::IdMap<u64, usize> =
-            og_core::IdMap::from_iter(k.prev.iter().enumerate().map(|(i, p)| (p.key, i)));
+        let by_key: crate::id::KeyMap<usize> =
+            crate::id::KeyMap::from_iter(k.prev.iter().enumerate().map(|(i, p)| (p.key, i)));
         k.twin = nodes
             .iter()
             .map(|nd| by_key.get(&nd.key).copied().unwrap_or(NONE))

@@ -43,13 +43,14 @@ impl Ui {
         }
         let parent = self.parent();
         let anonymous = id.is_empty();
+        let parent_key = self.nodes[parent].key;
         let mut local = if anonymous {
-            let n = self.nodes[parent]
-                .children
-                .iter()
-                .filter(|&&c| self.kinds[c] == (kind, true))
-                .count();
-            format!("{kind}#{n}")
+            let n = self
+                .anonymous
+                .entry(child_key(parent_key, kind))
+                .or_insert(0);
+            *n += 1;
+            format!("{kind}#{}", *n - 1)
         } else {
             let name = id.as_str();
             if name.contains('/') {
@@ -62,17 +63,14 @@ impl Ui {
                 name.to_owned()
             }
         };
-        if self.nodes[parent]
-            .children
-            .iter()
-            .any(|&c| self.nodes[c].id == local)
-        {
+        let mut key = child_key(parent_key, &local);
+        if !self.built.insert(key) {
             let mut n = 1;
-            while self.nodes[parent]
-                .children
-                .iter()
-                .any(|&c| self.nodes[c].id == format!("{local}~{n}"))
-            {
+            loop {
+                key = child_key(parent_key, &format!("{local}~{n}"));
+                if self.built.insert(key) {
+                    break;
+                }
                 n += 1;
             }
             let renamed = format!("{local}~{n}");
@@ -82,7 +80,6 @@ impl Ui {
             ));
             local = renamed;
         }
-        let key = child_key(self.nodes[parent].key, &local);
         let index = self.nodes.len();
         self.nodes.push(Node::new(key, local, parent, el));
         self.kinds.push((kind, anonymous));

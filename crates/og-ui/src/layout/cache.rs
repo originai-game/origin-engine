@@ -233,7 +233,7 @@ pub(crate) struct LayoutCache {
     pub fresh: bool,
     /// Each element's own draw commands last frame, by key, reused while
     /// everything it draws from is unchanged.
-    pub cmds: og_core::IdMap<u64, Vec<crate::DrawCmd>>,
+    pub cmds: crate::id::KeyMap<Vec<crate::DrawCmd>>,
 }
 
 /// Everything an element's own commands are made from is as last frame

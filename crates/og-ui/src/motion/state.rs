@@ -151,8 +151,10 @@ pub(crate) struct BurstRun {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct MotionState {
-    /// Channels by `channel_key(element, channel)`.
-    pub channels: IdMap<u64, Channel>,
+    /// Channels by `channel_key(element, channel)`: looked up for every
+    /// channel of every animated element each tick, so a hash map; the
+    /// codec writes it in key order.
+    pub channels: crate::id::KeyMap<Channel>,
     /// State groups by `group_key(element, group)`.
     pub groups: IdMap<u64, GroupState>,
     /// States a timeline event set, by group key.

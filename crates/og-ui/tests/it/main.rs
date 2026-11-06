@@ -30,6 +30,8 @@ mod layout;
 mod linebreak;
 #[path = "../motion.rs"]
 mod motion;
+#[path = "../perf.rs"]
+mod perf;
 #[path = "../probe.rs"]
 mod probe;
 #[path = "../recognizers.rs"]

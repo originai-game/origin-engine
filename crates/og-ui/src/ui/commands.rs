@@ -143,8 +143,7 @@ impl Ui {
         let ends = crate::layout::subtree_ends(&self.nodes, order);
         let mut cmds: Vec<(DrawCmd, Affine)> = Vec::new();
         let ghosts = std::mem::take(&mut self.state.motion.ghosts);
-        let present: std::collections::BTreeSet<u64> =
-            order.iter().map(|&i| self.nodes[i].key).collect();
+        let present: crate::id::KeySet = order.iter().map(|&i| self.nodes[i].key).collect();
         let mut drawn = vec![false; ghosts.len()];
         let mut frozen: IdMap<u64, crate::motion::state::Frozen> = IdMap::new();
         // Open subtrees: (node, its first command, the order position past it).
@@ -154,7 +153,10 @@ impl Ui {
         // Elements whose commands and ancestors' fills are as last frame
         // (docs/ui.md §6.3): their commands are last frame's.
         let mut same = vec![false; self.nodes.len()];
-        let mut next: IdMap<u64, Vec<DrawCmd>> = IdMap::new();
+        let mut next = crate::id::KeyMap::<Vec<DrawCmd>>::with_capacity_and_hasher(
+            order.len(),
+            Default::default(),
+        );
         let prev_kinds = std::mem::take(&mut self.prev_kinds);
         let theme = self.theme;
         // An element's draw (crate::paint) in its layout box, at its

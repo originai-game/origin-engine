@@ -151,6 +151,56 @@ fn a_stack_overlays_and_undeclared_overlap_is_reported() {
     assert!(declared.iter().any(|(a, _)| a == "P/Tag"), "{declared:?}");
 }
 
+/// Siblings in a row's or a column's flow moved over each other (here by
+/// a transform) are reported pair by pair, in the children's order. Wrong
+/// implementations this catches: only neighbours compared (the moved
+/// first child meets the fourth and fifth, not the second), a sweep along
+/// the cross axis that stops early, the pairs in another order.
+#[test]
+fn siblings_moved_over_each_other_in_a_flow_are_reported_in_order() {
+    let mut ui = Ui::new(UiDesc::default());
+    let moved = |x: f32, y: f32| Props {
+        transform: Transform {
+            x,
+            y,
+            ..Transform::IDENTITY
+        },
+        ..Props::default()
+    };
+    ui.begin(InputFrame::default(), vp());
+    ui.open("Col", Element::column());
+    // Rows at y 0, 40, … 160; the first moved to 130..170.
+    boxed(&mut ui, "A0", 100.0, 40.0, moved(0.0, 130.0));
+    for k in 1..5 {
+        boxed(&mut ui, &format!("A{k}"), 100.0, 40.0, Props::default());
+    }
+    ui.close();
+    ui.open("Row", Element::row());
+    // Cells at x 0, 100, 200, 300; the first moved to 220..320.
+    boxed(&mut ui, "B0", 100.0, 40.0, moved(220.0, 0.0));
+    for k in 1..4 {
+        boxed(&mut ui, &format!("B{k}"), 100.0, 40.0, Props::default());
+    }
+    ui.close();
+    ui.end();
+    let shown: Vec<(String, String, bool)> = ui
+        .frame()
+        .overlaps
+        .iter()
+        .map(|o| (o.path.clone(), o.other.clone(), o.in_flow))
+        .collect();
+    let pair = |a: &str, b: &str| (a.to_string(), b.to_string(), true);
+    assert_eq!(
+        shown,
+        [
+            pair("Col/A3", "Col/A0"),
+            pair("Col/A4", "Col/A0"),
+            pair("Row/B2", "Row/B0"),
+            pair("Row/B3", "Row/B0"),
+        ]
+    );
+}
+
 #[test]
 fn a_badge_scrolled_out_of_its_list_overlaps_nothing_outside_it() {
     let mut ui = Ui::new(UiDesc::default());

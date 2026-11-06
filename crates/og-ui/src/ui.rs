@@ -396,6 +396,12 @@ pub struct Ui {
     pub(crate) kinds: Vec<(&'static str, bool)>,
     /// Last frame's `kinds`, beside `kept.prev`.
     prev_kinds: Vec<(&'static str, bool)>,
+    /// This frame's element keys under a parent, which a repeated id
+    /// would take again (`Ui::push` renames it), and the anonymous
+    /// elements of each kind under each parent: kept as built, so a
+    /// long list pays no scan of its siblings for each element.
+    built: crate::id::KeySet,
+    anonymous: crate::id::KeyMap<u32>,
     pub(crate) stack: Vec<usize>,
     pub(crate) floating: Vec<usize>,
     pub(crate) last_closed: usize,

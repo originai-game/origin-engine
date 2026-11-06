@@ -12,7 +12,6 @@ use crate::element::{CHANNELS, Prop};
 use crate::id::child_key;
 use crate::layout::{Rect, read_values, write_values};
 use crate::ui::Ui;
-use og_core::IdMap;
 
 /// A play asked for this tick, flattened at `end` (when every rectangle is known).
 #[derive(Clone, Debug, PartialEq)]
@@ -114,7 +113,7 @@ impl Ui {
         &self,
         c: &Choreo,
         root: u64,
-        present: &IdMap<u64, usize>,
+        present: &crate::id::KeyMap<usize>,
         offset: f32,
         index: u32,
         out: &mut Vec<Clip>,
@@ -252,9 +251,12 @@ impl Ui {
         let tokens = self.theme.motion;
         let reduced = self.theme.reduced_motion;
         let mut m = std::mem::take(&mut self.state.motion);
-        let present: IdMap<u64, usize> =
-            IdMap::from_iter(order.iter().map(|&i| (self.nodes[i].key, i)));
-        let mut touched: std::collections::BTreeSet<u64> = Default::default();
+        let present: crate::id::KeyMap<usize> =
+            crate::id::KeyMap::from_iter(order.iter().map(|&i| (self.nodes[i].key, i)));
+        let mut touched = crate::id::KeySet::with_capacity_and_hasher(
+            m.channels.len() + order.len(),
+            Default::default(),
+        );
 
         // Plays asked for this tick: flattened now that rectangles are known.
         for p in std::mem::take(&mut self.pending_plays) {
@@ -453,7 +455,9 @@ impl Ui {
         m.gestures.retain(|_, g| g.tick == now);
 
         // Each element: states, channels, entrance, FLIP.
-        let mut flip_rel: IdMap<usize, Rect> = IdMap::new();
+        // The nodes that animate their layout, by node (FLIP is relative to
+        // the nearest of them above).
+        let mut flip_rel = vec![false; self.nodes.len()];
         let mut starts: Vec<(u64, String)> = Vec::new();
         for &i in order {
             let key = self.nodes[i].key;
@@ -617,7 +621,7 @@ impl Ui {
                 let mut up = self.nodes[i].parent;
                 let mut origin = (0.0, 0.0);
                 while up != crate::layout::NONE {
-                    if flip_rel.contains_key(&up) {
+                    if flip_rel[up] {
                         let pr = self.nodes[up].rect;
                         origin = (pr.x, pr.y);
                         break;
@@ -630,7 +634,7 @@ impl Ui {
                     rect.width,
                     rect.height,
                 );
-                flip_rel.insert(i, rel);
+                flip_rel[i] = true;
                 let t = if reduced && fallback != Reduced::Keep {
                     Transition::Instant
                 } else {

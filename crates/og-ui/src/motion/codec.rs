@@ -276,9 +276,11 @@ impl W<'_> {
 
     pub fn motion(&mut self, m: &MotionState) {
         self.u32(m.channels.len() as u32);
-        for (k, c) in &m.channels {
-            self.u64(*k);
-            self.channel(c);
+        let mut keys: Vec<u64> = m.channels.keys().copied().collect();
+        keys.sort_unstable();
+        for k in keys {
+            self.u64(k);
+            self.channel(&m.channels[&k]);
         }
         self.u32(m.groups.len() as u32);
         for (k, g) in &m.groups {

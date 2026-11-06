@@ -77,3 +77,30 @@ pub(crate) fn child_key(parent: u64, id: &str) -> u64 {
 pub(crate) fn key_of_path(path: &str) -> u64 {
     path.split('/').fold(1, child_key)
 }
+
+/// Element keys to a value, for the lookups one tick makes (key to node):
+/// a hash map that never iterates, so its order cannot reach a frame. A
+/// key is already a stable hash, so the hasher passes it through.
+pub(crate) type KeyMap<V> =
+    std::collections::HashMap<u64, V, std::hash::BuildHasherDefault<KeyHasher>>;
+
+/// Element keys, for the membership one tick asks (as [`KeyMap`]).
+pub(crate) type KeySet = std::collections::HashSet<u64, std::hash::BuildHasherDefault<KeyHasher>>;
+
+/// The hasher of a [`KeyMap`]: a key's own bits.
+#[derive(Default)]
+pub(crate) struct KeyHasher(u64);
+
+impl std::hash::Hasher for KeyHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+    fn write(&mut self, bytes: &[u8]) {
+        for &b in bytes {
+            self.0 = self.0.rotate_left(8) ^ u64::from(b);
+        }
+    }
+    fn write_u64(&mut self, key: u64) {
+        self.0 = key;
+    }
+}

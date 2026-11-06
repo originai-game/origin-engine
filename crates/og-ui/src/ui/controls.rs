@@ -3,7 +3,6 @@ use super::*;
 impl Ui {
     /// Text in MSDF, wrapping at its width unless `nowrap`.
     pub fn label(&mut self, id: impl Into<Id>, text: &str, desc: LabelDesc) {
-        let t = self.theme;
         // A centred or end-aligned label left to fit its text in a column
         // takes the column's width, as a CSS block does: aligned in a box
         // only as wide as its text, it would sit at the column's start.
@@ -24,6 +23,8 @@ impl Ui {
                 ..Element::default()
             },
         );
+        // Borrowed, not copied: a label is the most frequent element.
+        let t = &self.theme;
         let mut step = desc.step.unwrap_or(t.type_ramp.body);
         step.uppercase |= desc.uppercase;
         let fit = desc.fit_min.map_or_else(Vec::new, |min| {

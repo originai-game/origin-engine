@@ -419,8 +419,8 @@ impl Ui {
         self.note_drag_and_drop(&order);
 
         // Interaction state for the next tick.
-        let mut present: IdMap<u64, usize> =
-            IdMap::from_iter(order.iter().map(|&i| (self.nodes[i].key, i)));
+        let mut present: crate::id::KeyMap<usize> =
+            crate::id::KeyMap::from_iter(order.iter().map(|&i| (self.nodes[i].key, i)));
         // A rich text's links are controls of their own, inside its node.
         for &i in &order {
             for l in &self.nodes[i].links {
@@ -513,7 +513,9 @@ impl Ui {
         // and the nodes with a role, with the paths their children name.
         let mut element_keys: Vec<u64> = Vec::new();
         let mut tree: Vec<(u64, crate::a11y::A11yNode)> = Vec::new();
-        let mut tree_path: IdMap<usize, String> = IdMap::new();
+        // The path of each node with a role, by node: read for every node's
+        // nearest named ancestor, so an array, not a map.
+        let mut tree_path: Vec<Option<String>> = vec![None; self.nodes.len()];
         let mut top_scope = 0u64;
         let mut top_locked = false;
         // The minimum touch target, in og-ui units (44 CSS px), on a touch screen.
@@ -527,7 +529,7 @@ impl Ui {
                     if up == NONE || up == 0 {
                         break String::new();
                     }
-                    if let Some(p) = tree_path.get(&up) {
+                    if let Some(p) = &tree_path[up] {
                         break p.clone();
                     }
                     up = if self.nodes[up].parent == NONE {
@@ -543,7 +545,7 @@ impl Ui {
                 self.path_of(i)
             };
             if !role.is_empty() {
-                tree_path.insert(i, path.clone());
+                tree_path[i] = Some(path.clone());
             }
             if n.scope && !n.inert {
                 top_scope = n.key;
