@@ -455,6 +455,29 @@ export function hand(rtl = false, width = 1200, phone = false) {
 }
 const cardEl = (engine: Engine, k: string) => byPath(engine, `Fan/${k}`)!;
 
+test("cardHand: in half a screen, its first frame places no card past its own half", () => {
+  // Wrong: with no fan measured yet, the first frame lays the cards across the whole viewport, past a hand beside another.
+  const sys = defineSystem(`UpHalf${systems++}`, {}, () => {
+    og.ui.anchor("Right", { anchor: "bottomRight", width: { kind: "fixed", px: 560 }, direction: "column" } as never, () => {
+      og.ui.cardHand("Hand", { cards: HAND, targets: TARGETS, cardWidth: 150 });
+    });
+  });
+  const made = createEngine(og.game({ tick: 60, systems: [sys] }) as unknown as GameToken);
+  if (!made.ok) throw new Error(made.reason);
+  const engine = made.value;
+  og.ui.previewViewport(engine.world, { width: 1280, height: 720, dpr: 1, coarsePointer: false, breakpoint: "desktop", safeArea: { left: 0, top: 0, right: 0, bottom: 0 } } as never);
+  const cards = () => elements(engine).filter((e) => /\/Fan\/[^/]+$/.test(e.path));
+  for (let frame = 0; frame < 4; frame++) {
+    engine.advance(1);
+    const half = byPath(engine, "Right")!;
+    for (const c of cards()) {
+      expect(c.x, `frame ${frame}: ${c.path} at x ${c.x}`).toBeGreaterThanOrEqual(half.x - 1);
+      expect(c.x + c.width, `frame ${frame}: ${c.path} ends at ${c.x + c.width}`).toBeLessThanOrEqual(half.x + half.width + 1);
+    }
+  }
+  expect(cards().length).toBe(HAND.length);
+});
+
 test("cardHand: a card dragged above the play line plays on release; let go below it, it goes back", () => {
   // Wrong: a release anywhere plays (a misdrag spends the card), or a release never does.
   const h = hand();

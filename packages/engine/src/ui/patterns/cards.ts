@@ -231,10 +231,6 @@ interface Place {
  */
 export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult {
   const { viewport: vp, touch, phone } = frame();
-  const cards = desc.cards ?? [];
-  const targets = desc.targets ?? [];
-  const keys = cards.map((c) => c.key ?? "");
-  const n = cards.length;
   const p = pointer();
   const tick = kit.tick();
   const out: Mut<Api.CardHandResult> = { played: null, aiming: null, hovered: null, inspect: null, dismissed: false, refused: null };
@@ -243,6 +239,12 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
   kit.open(id, { direction: "column", width: grow(), cross: "center", part: "CardHand.frame", partClass: "panel" });
   const h = readHand();
   const fanRect = kit.bounds(recallPath(`${id}~fan`));
+  // The fan's width is last frame's: on the first frame it has none, so the hand lays out its empty fan (measured for
+  // the next frame) instead of placing cards across a width it does not have (a hand in half a screen, beside another).
+  const cards = fanRect ? desc.cards ?? [] : [];
+  const targets = desc.targets ?? [];
+  const keys = cards.map((c) => c.key ?? "");
+  const n = cards.length;
   const fanW = fanRect?.width ?? vp.width - sa.left - sa.right;
 
   // Sizes: a card at rest, and lifted (laid out larger, so its rules read at their own size).

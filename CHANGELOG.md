@@ -91,6 +91,11 @@ is one line here, written at the merge that changes
   frames now draw at the configured render scale and preset and are no
   sample of automatic quality; a game's display frames adapt as before.
   No IDL change.
+- **og.ui.cardHand places no card past its own width on its first frame.**
+  With no fan measured yet, it laid the cards across the whole viewport,
+  so a hand in half a screen (two players on one device) ran off the
+  screen for a frame. The first frame lays out the empty fan, measured for
+  the next.
 - **Split-screen views stay under a glass menu.** With a frosted-glass UI
   surface up (a title card, a pause screen), the frame draws into the
   glass source and is copied over the output, but the viewport views
