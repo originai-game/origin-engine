@@ -221,6 +221,94 @@ impl Performance {
     }
 }
 
+/// How fast an authored clip's ankle must move, relative to its hips, to be
+/// stepping (m/s): a foot the clip carries faster than this is the clip's to
+/// move, not planted.
+const STEP_SPEED: f32 = 0.15;
+/// How far a reaction's `direction` may turn the hips from the character's
+/// facing over planted feet, rad (30°): further, the feet cannot stay where
+/// they are without crossing the legs, so the turn steps them.
+const PLANTED_TURN: f32 = 0.524;
+
+impl Performance {
+    /// Which of the `ankles` (left, right) an authored reaction steps this
+    /// frame: its clip, weighted at least half in, carries that ankle faster
+    /// than [`STEP_SPEED`] relative to its hips over the last 1/30 s. A
+    /// planted foot outranks the reaction's pose (it is a contact), except
+    /// where the clip itself takes the step. A reaction turned more than
+    /// [`PLANTED_TURN`] from the facing of `root` steps both feet.
+    pub fn stepping(
+        &self,
+        sys: &AnimationSystem,
+        skeleton: &SkeletonAsset,
+        map: &HumanoidMap,
+        root: &Trs,
+        ankles: [u32; 2],
+    ) -> [bool; 2] {
+        let mut stepping = [false; 2];
+        let Some(hips) = map.node("hips") else {
+            return stepping;
+        };
+        const DT: f32 = 1.0 / 30.0;
+        for reaction in [&self.previous_reaction, &self.reaction]
+            .into_iter()
+            .flatten()
+            .filter(|r| r.strength * r.time.weight() >= 0.5)
+        {
+            let direction = Vec3::from_array(reaction.direction);
+            if direction.length_squared() > 0.0 {
+                let turn = atan2(direction.x, direction.z) - heading_of(root.rotation);
+                let turn = atan2(og_core::math::sin(turn), og_core::math::cos(turn));
+                if turn.abs() > PLANTED_TURN {
+                    return [true; 2];
+                }
+            }
+            let Some(clip) = sys.clip(reaction.clip) else {
+                continue;
+            };
+            let binding = og_anim::bind(skeleton, &clip);
+            let at = |t: f32| {
+                let mut pose = og_anim::Pose::rest(skeleton);
+                og_anim::sample(skeleton, &clip, &binding, t.max(0.0), NONE, &mut pose);
+                let m = skeleton.model_space(&pose.nodes);
+                ankles.map(|a| {
+                    (a != NONE).then(|| m[a as usize].translation - m[hips as usize].translation)
+                })
+            };
+            let t = reaction.clip_time();
+            let (now, before) = (at(t), at(t - DT));
+            for k in 0..2 {
+                if let (Some(a), Some(b)) = (now[k], before[k]) {
+                    stepping[k] |= (a - b).length() > STEP_SPEED * DT;
+                }
+            }
+        }
+        stepping
+    }
+
+    /// A performance holding `clip` at `strength`, `at` seconds into it (at
+    /// most 10), fully blended in, to compose in tests.
+    #[cfg(test)]
+    pub(crate) fn holding(clip: u64, strength: f32, at: f32, direction: [f32; 3]) -> Performance {
+        let mut time = Envelope::new(20.0, 0.0);
+        time.elapsed = at;
+        Performance {
+            reaction: Some(Reaction {
+                clip,
+                direction,
+                strength,
+                hold_start: 0.0,
+                hold_end: 10.0,
+                duration: 10.0,
+                hand: String::new(),
+                hand_target: [0.0; 3],
+                time,
+            }),
+            ..Default::default()
+        }
+    }
+}
+
 fn look_chain(skeleton: &SkeletonAsset, map: &HumanoidMap) -> Result<Vec<u32>, String> {
     let (Some(head), Some(spine)) = (map.node("head"), map.node("spine")) else {
         return Err("lookAt needs mapped head and spine bones".into());

@@ -99,6 +99,12 @@ is one line here, written at the merge that changes
   at the apex and the legs come under the hips, so a running jump no longer
   reads as a dive. `dump_motion` reports the drawn feet's distance ahead of
   the hips (`feetAheadM`).
+- **Fixed: planted feet outrank `og.motion.react`.** The reaction's clip was
+  blended over the feet the planter had placed, legs and hips included, so a
+  reaction that lowered or turned the hips slid planted feet (33 cm in the
+  regression test). The feet are now planted after the reaction, the look and
+  the hand contact; a foot the reaction's own clip steps follows the clip,
+  and a reaction turned more than 30° from the facing steps both.
 - **Fixed: a falling og.CharacterController lands where it meets the
   ground.** Ground snapping now holds only a controller that stood on the
   ground at the start of its move (slopes and steps down), as rapier's own

@@ -1056,12 +1056,15 @@ fn palette(
         next.contacts
     };
     let root = Trs::new(a.position, a.rotation, Vec3::splat(a.scale));
-    s.planter.step(target, &mut pose.nodes, &root, &contacts);
-    if let Some(agent) = goals.agents.get(&a.entity) {
-        agent
-            .performance
-            .apply(sys, target, map, &root, &mut pose.nodes);
-    }
+    perform_and_plant(
+        &mut s.planter,
+        goals.agents.get(&a.entity).map(|g| &g.performance),
+        sys,
+        (target, map),
+        &root,
+        &mut pose.nodes,
+        contacts,
+    );
     let model = target.model_space(&pose.nodes);
     s.drawn_lean = map.node("hips").zip(map.node("head")).map(|(hips, head)| {
         lean_of(model[head as usize].translation - model[hips as usize].translation)
@@ -1103,6 +1106,34 @@ fn palette(
     let mut m = Vec::new();
     target.palette(a.skin, &pose.nodes, &mut m);
     (!m.is_empty()).then_some(m)
+}
+
+/// The generated pose's layers, in priority order (`docs/design.md` §2.7,
+/// "Priorities"): the authored performance over the generated pose (the
+/// reaction, the look, the hand contact on the head), then the feet planted
+/// on the generated contacts, which outrank both. A foot the reaction's own
+/// clip steps ([`Performance::stepping`]) is the clip's to move and is not
+/// planted.
+fn perform_and_plant(
+    planter: &mut Planter,
+    performance: Option<&super::performance::Performance>,
+    sys: &og_anim::AnimationSystem,
+    (target, map): (&SkeletonAsset, &HumanoidMap),
+    root: &Trs,
+    nodes: &mut [Trs],
+    mut contacts: [f32; 4],
+) {
+    if let Some(performance) = performance {
+        performance.apply(sys, target, map, root, nodes);
+        let stepping = performance.stepping(sys, target, map, root, [map.nodes[16], map.nodes[20]]);
+        for (k, step) in stepping.into_iter().enumerate() {
+            if step {
+                contacts[2 * k] = 0.0;
+                contacts[2 * k + 1] = 0.0;
+            }
+        }
+    }
+    planter.step(target, nodes, root, &contacts);
 }
 
 /// Compose authored performance on the animation pose during model startup.
@@ -1805,9 +1836,9 @@ mod tests {
     /// A flight's air pose turns legs swept back by the model forward at
     /// the hips to the bound, keeping each knee's bend, and leaves a frame
     /// with a foot down as generated.
-    #[test]
-    fn air_pose_brings_swept_back_legs_under_the_hips() {
-        use og_motion::contract::JOINTS;
+    /// A SOMA-named skeleton standing upright: hips 1 m up, legs of two
+    /// 0.45 m bones, feet forward.
+    fn standing() -> Skeleton {
         let parent = |j: usize| match j {
             0 => NONE,
             1..=9 => j as u32 - 1,
@@ -1822,10 +1853,19 @@ mod tests {
             25 | 29 => Vec3::new(0.0, -0.05, 0.12),
             _ => Vec3::new(0.0, 0.12, 0.0),
         };
-        let skeleton = Skeleton {
+        let mut rest: [Trs; og_motion::contract::JOINTS] =
+            std::array::from_fn(|j| Trs::new(offset(j), glam::Quat::IDENTITY, Vec3::ONE));
+        rest[0].translation = Vec3::new(0.0, 1.0, 0.0);
+        Skeleton {
             parents: std::array::from_fn(parent),
-            rest: std::array::from_fn(|j| Trs::new(offset(j), glam::Quat::IDENTITY, Vec3::ONE)),
-        };
+            rest,
+        }
+    }
+
+    #[test]
+    fn air_pose_brings_swept_back_legs_under_the_hips() {
+        use og_motion::contract::JOINTS;
+        let skeleton = standing();
         let asset = skeleton.asset();
         let pitch = |deg: f32| {
             let m = glam::Mat3::from_rotation_x(deg.to_radians());
@@ -1880,6 +1920,112 @@ mod tests {
         // With a foot down the legs are the model's.
         let (planted, _) = rerooted(&skeleton, &asset, &pose, pi, true, Some(apex));
         assert_eq!(legs(&planted), before);
+    }
+
+    /// Planted feet outrank an authored reaction: a reaction that lowers and
+    /// pitches the hips leaves both planted ankles on their anchors, one
+    /// whose clip steps the left foot moves that foot only, and one turned
+    /// 90° from the facing steps both (planted, the legs would cross).
+    #[test]
+    fn planted_feet_outrank_a_reaction_except_where_it_steps() {
+        use super::super::performance::Performance;
+        let asset = standing().asset();
+        let map = HumanoidMap::detect(&asset);
+        let legs: Vec<Leg> = [(14usize, 0usize), (18, 2)]
+            .iter()
+            .map(|&(b, contact)| Leg {
+                chain: [map.nodes[b], map.nodes[b + 1], map.nodes[b + 2]],
+                contact,
+            })
+            .collect();
+        assert!(legs.iter().all(|l| l.chain.iter().all(|&n| n != NONE)));
+        let mut world = og_ecs::World::new(&og_ecs::WorldDesc {
+            tick_rate: 60,
+            seed: 1,
+        })
+        .unwrap();
+        let sys = og_anim::install(&mut world).unwrap();
+        // Knees bent 0.5 rad, within reach (straight legs are soft IK's).
+        let mut rest = asset.rest_pose();
+        for (hip, knee) in [(22, 23), (26, 27)] {
+            rest[hip].rotation = glam::Quat::from_rotation_x(-0.25);
+            rest[knee].rotation = glam::Quat::from_rotation_x(0.5);
+        }
+        let frames = |f: &dyn Fn(usize, &mut Vec<Trs>)| -> Vec<Vec<Trs>> {
+            (0..31)
+                .map(|k| {
+                    let mut p = rest.clone();
+                    f(k, &mut p);
+                    p
+                })
+                .collect()
+        };
+        // Held: the hips 0.15 m lower and pitched 20° forward.
+        let crouch = frames(&|_, p| {
+            p[0].translation.y -= 0.15;
+            p[0].rotation = glam::Quat::from_rotation_x(20f32.to_radians());
+        });
+        // The left thigh swinging forward at 0.6 rad/s: a step.
+        let step = frames(&|k, p| {
+            p[22].rotation = glam::Quat::from_rotation_x(-0.25 - 0.02 * k as f32);
+        });
+        sys.add_clip(1, og_motion::soma::clip("crouch", &asset, &crouch))
+            .unwrap();
+        sys.add_clip(2, og_motion::soma::clip("step", &asset, &step))
+            .unwrap();
+        let root = Trs::IDENTITY;
+        let ankles = [map.nodes[16], map.nodes[20]].map(|n| n as usize);
+        let down = [1.0; 4];
+        for (clip, turned, moved) in [
+            (1, false, [false, false]),
+            (2, false, [true, false]),
+            (1, true, [true, true]),
+        ] {
+            let mut planter = Planter::new(legs.clone());
+            let mut nodes = rest.clone();
+            perform_and_plant(
+                &mut planter,
+                None,
+                &sys,
+                (&asset, &map),
+                &root,
+                &mut nodes,
+                down,
+            );
+            let anchors = ankles.map(|a| asset.model_space(&nodes)[a].translation);
+            let performance = Performance::holding(
+                clip,
+                1.0,
+                0.5,
+                if turned { [1.0, 0.0, 0.0] } else { [0.0; 3] },
+            );
+            let mut nodes = rest.clone();
+            perform_and_plant(
+                &mut planter,
+                Some(&performance),
+                &sys,
+                (&asset, &map),
+                &root,
+                &mut nodes,
+                down,
+            );
+            let m = asset.model_space(&nodes);
+            for k in 0..2 {
+                let off = (m[ankles[k]].translation - anchors[k]).length();
+                assert_eq!(
+                    off > 0.05,
+                    moved[k],
+                    "clip {clip} ankle {k}: {off} m off its anchor"
+                );
+                if !moved[k] {
+                    assert!(off < 0.005, "clip {clip} ankle {k}: {off} m off its anchor");
+                }
+            }
+            // The reaction itself was drawn: the hips lowered, or the thigh swung.
+            if clip == 1 && !turned {
+                assert!((m[0].translation.y - 0.85).abs() < 1e-3);
+            }
+        }
     }
 
     #[test]

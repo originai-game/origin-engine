@@ -1423,6 +1423,18 @@ window: Origin Desktop owns the AccessKit platform adapter (platform ask
     bend the model gave it. A running jump then leads with one leg, and
     from the apex on the feet are under the hips and the pelvis near
     upright, as in commercial running jumps.
+  - **Priorities.** A drawn frame is layered from least to most binding:
+    the generated pose; then the authored performance over it
+    (`motion.react`'s clip, `motion.lookAt` on the spine and head, the
+    reaction's hand contact on the final head); then the feet planted on
+    the generated contacts, which outrank both, so a reaction that lowers
+    or turns the hips bends the legs instead of sliding the feet; the root
+    is the Transform throughout. The one exception is a step the
+    reaction's own clip takes: an ankle its clip, at least half weighted
+    in, carries faster than 0.15 m/s relative to its hips is the clip's to
+    move and is not planted for that frame (`Performance::stepping`), and a
+    reaction whose `direction` turns the hips more than 30° from the facing
+    steps both feet (planted, the legs would cross).
   - **The streaming boundary holds the whole jump.** The presenter asks
     for a jump when its prediction of the mover reaches it (the agent's
     lookahead, which `prepare` adds to) and keeps its generated frames
