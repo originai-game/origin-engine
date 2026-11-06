@@ -222,6 +222,18 @@ opt-level = 3
 opt-level = 3
 [profile.dev.package.simd-adler32]
 opt-level = 3
+# The engine API's arguments and answers are JSON text (og-runtime's parse
+# and the json! answers): at -O0 serde_json was more than half of a UI kit
+# frame (3964 of 6911 samples, templates/ui-kit patterns without a
+# renderer). A dependency, so the cost is one rebuild, not the loop.
+[profile.dev.package.serde_json]
+opt-level = 3
+[profile.dev.package.itoa]
+opt-level = 3
+[profile.dev.package.zmij]
+opt-level = 3
+[profile.dev.package.memchr]
+opt-level = 3
 
 # The workspace crates in 16 codegen units instead of incremental's 256:
 # an edit recompiles and links fewer, larger units (an og-core edit's test
@@ -229,6 +241,13 @@ opt-level = 3
 # load; tests/evidence/build-speed-2026-10.md). Incremental stays on; off
 # was slower (og-render 7.5 s to 9.5 s). og-physics keeps the default with
 # its opt-level 3 above.
+# og-ui, og-runtime and og-cook at opt-level 1, as og-nav: every frame of a
+# game the tests run lays out its UI and answers its API calls, and every
+# test cook runs the cook's glyph outlines, all at -O0 before
+# (tests/evidence/gate-speed/opt-levels.md has the numbers: the UI kit's
+# components playtest 77.6 to 39.4 s of CPU with serde_json's line below,
+# og-cook's thread-count test 108 to 65 s). An edit to one of them builds
+# about 9 s longer.
 [profile.dev.package.og-core]
 codegen-units = 16
 [profile.dev.package.og-core-derive]
@@ -240,12 +259,15 @@ codegen-units = 16
 [profile.dev.package.og-render]
 codegen-units = 16
 [profile.dev.package.og-runtime]
+opt-level = 1
 codegen-units = 16
 [profile.dev.package.og-cook]
+opt-level = 1
 codegen-units = 16
 [profile.dev.package.og-bundle]
 codegen-units = 16
 [profile.dev.package.og-ui]
+opt-level = 1
 codegen-units = 16
 [profile.dev.package.og-api]
 codegen-units = 16
