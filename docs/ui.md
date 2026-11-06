@@ -6,69 +6,17 @@ API (`module ui` in `crates/og-api/api/ui.ogt`), the style format, the UI kinds
 of the art brief and the UI checks of `og`. `docs/design.md` §2.7 points
 here.
 
-Owner's decisions this design follows (2026-11-01):
+Goals:
 
-- UI and UX are the core of a game's picture, interaction animation
-  included. The UI is rebuilt to that bar, as a large and serious piece of
-  work, not a reskin of the current kit.
-- og-ui is extended to meet what games need; what it can do today never
-  limits the design.
-- Every genre is covered fully. The kit is not a demo.
+- UI and UX, interaction animation included, are the core of a game's
+  picture, held to the level of shipped commercial games.
+- Every genre is covered fully (the appendices).
 - UI is a base layer for agents: an agent authors it **and adjusts it**, so
   every value is data that can be read, changed live, checked and saved.
 - Quality over reach (design.md §1): current hardware, WebGPU only, no
   tiered fallbacks for low-end devices.
 - Generated art is first class: screens reserve explicit, specified places
   for generated images.
-
-## 1. Where it stands
-
-Measured at `c030bfe3` (the survey is in the thread that wrote this).
-
-**Kept, because it is right:**
-
-- Immediate-mode building from TypeScript with the tree laid out
-  Clay-style each tick, its retained state (`State::anims`, the toast
-  queue, focus, scroll, carets) in `Ui::save_state`, so a snapshot carries
-  the UI. Motion counted in ticks, arithmetic only.
-- Stable ids and paths (`A/B#3`) shared by hit tests, the probe and the
-  accessibility tree. `dump_ui`, `touch_move_to`, `move_to_text`,
-  `expect:ui:text`.
-- The text stack: MSDF text, bidi, shaping, kerning, font per run, run-time
-  CJK glyphs, the editor with IME, rich text.
-- One focus model across pointer, keyboard and pads, several pads,
-  multitouch gestures, the accessibility tree and its ARIA mirror on the web.
-- Styles as complete, validated assets, contrast measured over the real
-  atlas texels (`tests/packs.rs`, `tests/pack_contrast.rs`), `og style
-  eject|pack`.
-
-**Not enough:**
-
-- No data form for a screen. A screen exists only as per-tick TypeScript,
-  so an agent adjusts it by editing code, and nothing in the UI is
-  reflected, so Tune cannot touch it.
-- Six draw primitives (`DrawCmd`: glass, quad, image, bar, half, text): no
-  gradients, strokes, vector shapes, masks beyond rectangles, blend modes,
-  shadows outside a style part, or UI shaders.
-- No per-element transform, rotation, opacity or z order. Motion is seven
-  transition kinds, the hover and press springs, a count-up, a burst, a
-  shake, glyph effects and five screen covers: no keyframes, sequences,
-  visual states, layout animation or shared elements.
-- Styles dress twelve fixed element classes (`StylePart`). A new widget has
-  no art class of its own.
-- No world-space UI (nameplates are a `worldToScreen` recipe, damage numbers
-  are og-render's floating text), and 3D in the UI is a texture with no
-  input.
-- The fixed templates (`mainMenu`, `racingHud`, `resultsScreen` …) fail
-  outside their premise: English words, missing fields, genre assumptions
-  (brasswick #4 #10, meridian-loop #8 #10, kestrel-stair #15). Games then
-  rebuild them from raw rows and labels and copy their own spacing scales.
-- The art brief has no UI kinds; generated art reaches the UI as a plain
-  texture or a hand-packed nine-patch.
-- Nothing checks overlap, overflow, touch size, safe area,
-  focus reachability or localization expansion. The ui-kit's phone sheets
-  shipped with the platformer timer under the coin pill and the puzzle
-  Gallery button over "Target 1,000".
 
 ## 2. Principles
 
@@ -80,10 +28,11 @@ Measured at `c030bfe3` (the survey is in the thread that wrote this).
    through the probe, writable through Tune and the probe, and saved back
    to its file. Nothing is described twice (AGENTS.md, reflection is the
    single schema).
-3. **Every rule is checked.** What a UI designer reviews by eye (overlap,
-   overflow, hierarchy, touch size, reachability, contrast, missing
-   feedback, expansion) is a check with a path and a fix, run by `og ui
-   check` and `og test`.
+3. **Every rule is measured.** What a UI designer reviews by eye (overlap,
+   overflow, touch size, reachability, contrast, missing feedback,
+   expansion) is a finding or a measure with a path, reported by `og ui
+   check` and `og test` (§16.5). The engine reports facts; what a game
+   should want lives in the skills.
 4. **Motion is driven by state and is interruptible.** Widgets declare
    states; the engine animates between them on springs that keep their
    velocity when retargeted. Authored timelines are for sequences.
@@ -98,28 +47,19 @@ Measured at `c030bfe3` (the survey is in the thread that wrote this).
    screen, anchored to an entity, on a panel in the world and over a 3D
    viewport.
 8. **Deterministic, fast and measured.** UI state stays tick-driven and in
-   the snapshot. Each budget in §15 is a perf test.
+   the snapshot (`Ui::save_state`: animations, the toast queue, focus,
+   scroll, carets). Motion is counted in ticks. §15.1 sets the budgets.
 
 ## 3. Coverage
 
-The UI serves every genre the engine targets. The coverage contract:
-every row of the inventories in the appendices (screens B, HUD and world
-elements C, interactions D, motion E, art slots F) maps to
-
-- the engine capability that makes it possible (a section of this design),
-- a component or screen document in the library (§11) that implements it,
-- and a test in the kit (§17) that renders it in at least two styles, on
-  desktop and phone, with its interaction scripted.
-
-Appendix A lists the genres (35, from platformer to board games) with the
-capabilities each depends on. A genre is covered when every row it is
-tagged with is covered. The kit proves coverage with one **genre showcase**
-per genre family (§17), each a playable screen set, not a static sheet.
+Every row of the inventories in the appendices (screens B, HUD and world
+elements C, interactions D, motion E, art slots F) maps to the engine
+capability that makes it possible (a section of this design), a component
+or screen document that implements it (§11, §17), and a test that renders
+it. Appendix A lists the genres with the capabilities each depends on; a
+genre is covered when every row it is tagged with is covered.
 
 ## 4. Architecture
-
-Ten parts, from the GPU up. Each section below names the crate that owns
-it.
 
 | Part | Owner | Section |
 |---|---|---|
@@ -129,20 +69,19 @@ it.
 | Layers, input routing, actions and glyphs | og-ui `layers.rs`, `nav.rs`, og-input | §8 |
 | Data binding and formatting | og-ui `bind.rs`, og-i18n | §9 |
 | Documents: `type screen`, `type component` | og-ui `doc/`, og-cook | §10 |
-| Component library | og-ui (Rust core widgets), `packages/engine/src/ui/` (documents) | §11 |
+| Component library | og-ui (Rust core widgets), `packages/engine/src/ui/` (documents), `packages/engine/extensions/` (kits) | §11, §17 |
 | Styles v2 and art slots | og-ui `style_file.rs`, og-cook, knowledge `brief.ts` | §12, §13 |
 | World-space and 3D UI | og-ui `world.rs`, og-render | §14 |
 | Agent tooling: dump, write, Tune, preview, checks | og-probe, og-cli, `packages/engine/src/node` | §16 |
 
-Text, audio and haptics, and accessibility cut across these parts and have
-their own sections (§5.6, §7.8, §15.2).
+Text, audio and haptics, and accessibility cut across these parts (§5.6,
+§7.8, §15.2).
 
 ## 5. Rendering (og-render's UI pass)
 
-The overlay of quads becomes a UI pass of analytic primitives, drawn
-instanced by one family of pipelines, after post effects. The shapes are
-signed distance functions evaluated per pixel, so edges are exact at any
-scale and transform.
+The UI pass draws analytic primitives, instanced by one family of
+pipelines, after post effects. Shapes are signed distance functions
+evaluated per pixel, so edges are exact at any scale and transform.
 
 ### 5.1 Shapes
 
@@ -151,18 +90,15 @@ scale and transform.
   notch (inset), so a sci-fi panel's cut corners are geometry, not art.
 - Circle, ellipse, capsule, ring and arc segment (start, sweep, thickness,
   round or butt caps): cooldown sweeps, radial menus, gauges.
-- Regular polygon and star (sides, inner ratio, corner radius): hex
-  talent nodes, badges, burst stars.
-- Line and polyline with caps, joins and dashes; Bézier curves: targeting
-  arcs, connectors in skill trees and run maps, graphs.
+- Regular polygon and star (sides, inner ratio, corner radius).
+- Line and polyline with caps, joins and dashes; Bézier curves.
 - Vector paths: a `type vector` asset (SVG subset: paths, fills, strokes,
   gradients, groups) cooked to triangles with analytic antialiasing on
   their edges, drawn with the same paints. Icons keep the MTSDF icon sets.
 
 ### 5.2 Paints
 
-Each element has a list of fills and a list of strokes, drawn in order
-(layered paints, as in design tools):
+Each element has a list of fills and a list of strokes, drawn in order:
 
 - solid; linear, radial, conic and diamond gradients, up to 8 stops,
   interpolated in OKLab, with a dither to stop banding;
@@ -181,22 +117,19 @@ paints.
 
 Per element, in order: drop shadows (several, each with offset, blur,
 spread, colour), inner shadow, outer and inner glow, layer blur, and
-**backdrop** effects (blur, saturation, brightness: the current glass
-becomes `backdrop blur`). Opacity, and blend modes (normal, multiply,
-screen, add, overlay, soft light, colour dodge) per element against what is
-under it.
+**backdrop** effects (blur, saturation, brightness). Opacity, and blend
+modes (normal, multiply, screen, add, overlay, soft light, colour dodge)
+per element against what is under it.
 
-**Glass** is a backdrop with a material (og-render's `UiGlass`, zero
-values the plain frosted backdrop, unchanged): flat glass as the design
-language composes it, clear and coloured by what passes under it, with no
-specular rim, sheen or refraction. Its parts are a light tint over a
-modest blur with raised saturation, a hairline just inside the edge
-(CSS `inset 0 0 0 0.5px`), up to two soft shadows outside the shape only
-(CSS `box-shadow`s, never darkening what the glass shows), and CSS mixing
-(tint, hairline and shadows over sRGB-encoded values, so a tint reads as
-on a web page), all drawn by the backdrop's one instance. `solid` draws
-the tint opaque and reads nothing under it: a frame whose only glass is
-solid builds no blur pyramid. Three weights are presets
+**Glass** is a backdrop with a material (og-render's `UiGlass`; zero
+values are the plain frosted backdrop): flat glass, clear and coloured by
+what passes under it, with no specular rim, sheen or refraction. Its parts
+are a light tint over a modest blur with raised saturation, a hairline just
+inside the edge (CSS `inset 0 0 0 0.5px`), up to two soft shadows outside
+the shape only, and CSS mixing (tint, hairline and shadows over
+sRGB-encoded values), all drawn by the backdrop's one instance. `solid`
+draws the tint opaque and reads nothing under it: a frame whose only glass
+is solid builds no blur pyramid. Three weights are presets
 (`UiGlassStyle`): `thin` (10 px of CSS blur, the lightest tint: small
 controls over art), `regular` (22 px: bars, capsules) and `thick` (32 px
 and a denser tint: menus, popovers, dialogs, sheets, toasts), each with an
@@ -213,40 +146,16 @@ or a border. A style reaches it through `effect backdrop … glass <weight>
 saturation and the material.
 
 The weights that carry text, `regular` and `thick`, hold the scheme's `fg`
-at 4.5:1 or more over bright, dark and busy backdrops in either scheme,
-their current item and selected row included (og-tests
-`ui_glass_text_holds_contrast`, worst 2 % of each text box: lowest 4.73,
-the dark bar's current item over a bright sky). For that the dark
-`regular` tint is 64 %, denser than the platform's 52 % (3.56 there).
-`glass-thin` keeps its clear tints and carries **icons and play discs
-only, never text**: over a bright sky a dark thin capsule's text read
-1.78, a light one over a dark scene 3.24, and holding 4.5 would take
-about 68 % (dark) and 50 % (light), no longer thin.
+at 4.5:1 or more over bright, dark and busy backdrops in either scheme
+(for that the dark `regular` tint is 64 %). `glass-thin` carries **icons
+and play discs only, never text**.
 
-Palette pairs these scenes measured under 4.5:1 (the ui-scale stream
-fixes them when it generates the palette from `packages/design`; the
-glass is not the cause, most fail on solid glass too):
-
-- `fg-muted` on `fill-strong` (a selected row's shortcut): 3.0–3.8, and
-  3.51 on solid glass.
-- Amber text (`accent-ink`) on a bar's current-item fill: 1.80–4.31 (4.31
-  on solid glass); on a `regular` bar without the fill 2.25–4.78.
-- `fg-muted` on a `thick` menu whose scheme does not match the backdrop:
-  3.85–3.88 (light menu over a dark scene), 4.10–4.29 (dark menu over a
-  bright sky).
-- `accent-ink` "Undo" on a light `thick` toast over warm light: 4.26.
-- Translucent control tints: the platform's `material-control` (white 13
-  %) is specified for CSS's blending over encoded values; the UI pass
-  blends flat fills in linear light, where it reads about three times as
-  strong over dark glass (a white current item over a bright sky fell to
-  3.60). About 5 % draws as CSS's 13 % does there; the palette should
-  state its translucent fills for the engine's blending.
-- Dark dims are the reverse case: a black fill at alpha `a` over bright
-  art leaves `1 - a` of its linear light, which the eye reads as far more
-  than `1 - a` of its brightness. A 60 % black sweep over pale ice art
-  read as barely darker (U6c, 2026-11-02); 90 % reads as the 55–65 %
-  darkening the art bar asks of a cooldown (§15.5), and 75 % as about
-  half. State a dim by how it reads and measure it on bright art.
+The UI pass blends flat fills in linear light, not over encoded values as
+CSS does. A translucent fill specified for CSS reads stronger here (white
+at 13 % in CSS draws like about 5 % here over dark glass), and a black dim
+at alpha `a` over bright art reads far lighter than `1 - a` (90 % reads as
+a 55–65 % darkening, 75 % as about half). State translucent fills and dims
+for the engine's blending, and measure a dim on bright art.
 
 ### 5.4 Masks and layers
 
@@ -257,7 +166,7 @@ glass is not the cause, most fail on solid glass too):
   does, not by linear coverage: the composite restates it for the
   engine's linear-light blending against the content's opposite ground
   (white under a dark scrim, black under light text), so a dark scrim
-  darkens evenly through its fade instead of cutting in at its end.
+  darkens evenly through its fade.
 - An element marked `layer` draws its subtree into an offscreen target
   that is then composited with a **UI material**. Built-in materials:
   dissolve (noise threshold with an edge glow), shine sweep, hologram
@@ -266,24 +175,22 @@ glass is not the cause, most fail on solid glass too):
   alpha, and blur. All take their time from the UI clock.
 - Custom materials: a `type ui-material` asset is a WGSL function of uv,
   the layer's texture, time and declared parameters, validated by naga to
-  MSL, SPIR-V and HLSL at cook like every other shader (og-render's
-  `tests/shaders.rs` covers the built-ins). Its parameters are reflected,
-  so they animate and tune like any prop. Its `source` is read relative to
-  the material file first, then from `assets/`.
+  MSL, SPIR-V and HLSL at cook like every other shader. Its parameters are
+  reflected, so they animate and tune like any prop. Its `source` is read
+  relative to the material file first, then from `assets/`.
 - Material presets: the `materials` kit (`og ui add materials`,
   `packages/engine/extensions/materials`) ships foil, holo, burn and rarity
-  glow as `type ui-material` assets with tunable parameters, the finishes
-  of deck-builders and gacha cards; a style dresses a part with one
-  (`material "ui-kits/materials/foil.ogt" 0.7`) or an element's layer
-  composites through it. Its skill (`using-ui-materials`) lists each
-  preset's parameters.
+  glow as `type ui-material` assets with tunable parameters; a style
+  dresses a part with one (`material "ui-kits/materials/foil.ogt" 0.7`) or
+  an element's layer composites through it. Its skill
+  (`using-ui-materials`) lists each preset's parameters.
 
 ### 5.5 Particles, video and 3D in the UI
 
 - UI particle emitters in UI space (confetti, sparks, coin streams, rarity
   bursts), using og-render's GPU particles in a 2D overlay mode, attached
-  to an element and clipped by its layer. `burst` becomes a preset.
-- Video textures in image paints (already a texture source).
+  to an element and clipped by its layer. `burst` is a preset.
+- Video textures in image paints.
 - The **viewport** element shows a camera's view of a scene layer (a
   character on a turntable, an item to inspect, a car in a garage), with
   its own lights and environment, sized by layout, and passes input
@@ -292,25 +199,31 @@ glass is not the cause, most fail on solid glass too):
 
 ### 5.6 Text effects
 
-On top of the existing text stack: outline (outside, inside, centred, by
-the distance field, up to the font's reach), gradient fill, several
-shadows, per-glyph transforms (text on a path or arc, per-glyph timelines
-for typewriter, wave, bounce, shake and reveal), auto-fit (shrink to fit
-down to a minimum type step, then ellipsis: `LabelDesc.fitMin`), and inline
-images and icons in rich text with links that open pinnable nested tooltips
-(§11). Rich text's tags: `[b]`, `[i]` (a slant of the face), `[u]`, `[s]`,
-`[outline=w,colour]`, `[color=]`, `[size=]`, `[font=]`, `[icon=]` (an icon
-atlas cell), `[img=]` (any texture the game registers by name,
-`UiDesc.images`), `[action=]` (the action's device glyph, resolved every
-frame, so a prompt follows the pad the player picks up), `[link=]` and the
-per-glyph `[wave]`, `[shake]`, `[pulse]`.
+The text stack: MSDF text, bidi, shaping, kerning, font per run, run-time
+CJK glyphs, the editor with IME, rich text. On top of it: outline
+(outside, inside, centred, by the distance field, up to the font's reach),
+gradient fill, several shadows, per-glyph timelines for typewriter, wave,
+bounce, shake and reveal, auto-fit (shrink to fit down to a minimum type
+step, then ellipsis: `LabelDesc.fitMin`), and inline images and icons in
+rich text with links that open pinnable nested tooltips (§11). Text on a
+path or arc is not implemented. Rich text's tags: `[b]`, `[i]` (a slant of
+the face), `[u]`, `[s]`, `[outline=w,colour]`, `[color=]`, `[size=]`,
+`[font=]`, `[icon=]` (an icon atlas cell), `[img=]` (any texture the game
+registers by name, `UiDesc.images`), `[action=]` (the action's device
+glyph, resolved every frame, so a prompt follows the pad the player picks
+up), `[link=]` and the per-glyph `[wave]`, `[shake]`, `[pulse]`.
+
+`LabelDesc.uppercase` (the document label's `uppercase` prop) cases a label
+with the same ICU casing as a type role's `case upper` (§17.4), before it
+is measured; the probe keeps the source text. Components and kits use it
+instead of `String.toUpperCase`.
 
 ### 5.7 Batching
 
 All shapes, paints and effects other than layers and backdrops draw from
 one instance buffer through a small set of pipelines keyed by primitive
-family. Painter levels stay as today (overlap plus batch). A layer or a
-backdrop starts a new pass only for its region. Budgets in §15.
+family. Painter levels order overlap and batches. A layer or a backdrop
+starts a new pass only for its region. Budgets in §15.1.
 
 ## 6. Element model and layout
 
@@ -334,37 +247,40 @@ backdrop starts a new pass only for its region. Budgets in §15.
 - **Interaction**: interactive, focusable, hit slop, cursor, drag source and
   drop target, gesture recognizers (§8.5).
 
+Ids and paths (`A/B#3`) are stable and shared by hit tests, the probe and
+the accessibility tree.
+
 ### 6.2 Layout
 
-The current five walks stay, with additions:
+The tree is laid out Clay-style each tick, with:
 
 - **Grid**: tracks (`fr`, fixed, auto, min/max), gaps, spans, named areas,
-  auto-flow; a dense inventory grid and a dashboard are grids.
+  auto-flow.
 - **Stack**: children overlaid in the same rectangle (a card's art, frame,
   cost gem and name), each aligned by its own insets.
 - **Container queries**: a component chooses its layout by its own width,
-  not only by the viewport's breakpoint, so the same card works in a
-  four-column shop and a one-column phone list.
+  not only by the viewport's breakpoint.
 - **Breakpoint variants**: a document can override any prop per breakpoint
   (`phonePortrait`, `phoneLandscape`, `tablet`, `desktop`) and per
   orientation, and declare a different arrangement, not only a smaller one.
 - **Direction**: layouts mirror under right-to-left locales; insets and
   alignments are `start`/`end`.
 - **Baseline alignment** in rows of mixed type sizes.
-- **Overlap is an error unless declared.** Siblings in flow cannot overlap;
-  absolutely positioned and anchored elements that overlap another element
-  must say so (`overlaps: "<path>"`), or `og ui check` reports them with
-  both paths (§16.4). This makes the phone-sheet bugs of §1 failures. An
-  element is measured where its own and its ancestors' declared transforms
-  draw it (a label scaled down to fit a corner covers its scaled box, not
-  the line it was laid out on); motion is not part of the check.
+- **Overlap is a finding unless declared.** Siblings in flow cannot
+  overlap; absolutely positioned and anchored elements that overlap another
+  element must say so (`overlaps: "<path>"`), or `og ui check` reports them
+  with both paths (§16.5). An element is measured where its own and its
+  ancestors' declared transforms draw it (a label scaled down to fit a
+  corner covers its scaled box, not the line it was laid out on); motion is
+  not part of the check.
 
 ### 6.3 Invalidation
 
 A subtree whose inputs (props, bound values, size) have not changed since
-the last tick keeps its layout and draw commands. A changing subtree is
-re-laid out up to the nearest fixed-size ancestor. The probe reports
-elements rebuilt and laid out per tick (§16.1).
+the last tick keeps its layout and draw commands. The probe reports
+elements rebuilt and laid out per tick (§16.1). Re-laying out a changing
+subtree only up to its nearest fixed-size ancestor (a layout boundary) is
+not implemented.
 
 ## 7. Motion
 
@@ -385,8 +301,8 @@ element (or its style) gives the prop a motion. A spring is two numbers,
 **duration** (perceptual, ms) and **bounce** (−1 to 1), converted to
 stiffness and damping. Retargeting a spring in flight keeps its current
 value and velocity, so an interrupted hover, press or drag never jumps.
-Completion is reported at the perceptual duration. The existing hover and
-press springs become two uses of this.
+Completion is reported at the perceptual duration. The hover and press
+springs are two uses of this.
 
 ### 7.3 Visual states
 
@@ -411,14 +327,9 @@ them:
 
 - `sequence` and `parallel`;
 - `stagger` over a list by index, by distance from a point or from the
-  centre, with a total cap (the current panel stagger is one case);
+  centre, with a total cap;
 - `cascade`: each step's start waits for an event of the previous one (a
   score that counts chips, then multiplies, each step pitched higher).
-
-The result screen of a casual game is one timeline: the card springs in,
-three stars land in turn with a burst and a rising pitch, the score counts
-up, a "New best" ribbon slaps on, rewards stagger in, and the buttons take
-input last.
 
 ### 7.5 Presence and layout animation
 
@@ -426,25 +337,21 @@ input last.
   (inert, not hit-testable, not in the accessibility tree) until its exit
   finishes, so lists, toasts and panels leave the way they arrived.
 - **Glitch** (`glitch`, a transition kind beside fade, the slides, scale
-  and pop; any style can name it, `motion { enter glitch 0.8 }` with its
-  strength): the content draws through the glitch layer material (§5.4:
-  slices pushed sideways, colours split about 3.5 px) as it fades in or
-  out, over 150–180 ms whatever the style's base duration, weakening to
-  nothing as it settles. Its slice height comes from the element's id and
-  its slices are re-cut every two ticks of the tick-counted UI clock, so a
-  captured frame is the same every run; under reduced motion it is a plain
-  fade. An element's own exit (props) has no tear: it fades. A transition
-  between whole screens that captures the outgoing one is separate work.
+  and pop; `motion { enter glitch 0.8 }` with its strength): the content
+  draws through the glitch layer material (§5.4: slices pushed sideways,
+  colours split about 3.5 px) as it fades in or out, over 150–180 ms
+  whatever the style's base duration, weakening to nothing as it settles.
+  Its slice height comes from the element's id and its slices are re-cut
+  every two ticks of the UI clock, so a captured frame is the same every
+  run; under reduced motion it is a plain fade. An element's own exit
+  (props) has no tear: it fades. A transition between whole screens that
+  captures the outgoing one is not implemented.
 - **Layout animation**: an element whose laid-out rectangle changes
   (reordering, inserting, resizing, wrapping to a new line) moves from
-  the old rectangle to the new on a spring (the FLIP technique). A hand of
-  cards fanning open, an inventory sorting and a list item expanding are
-  this.
+  the old rectangle to the new on a spring (FLIP).
 - **Shared elements**: elements with the same `match` key on the screen
   being left and the one arriving morph between their rectangles,
-  transforms and corner radii, cross-fading their contents (a shop card
-  opening into its detail, a character portrait flying into the team
-  slot).
+  transforms and corner radii, cross-fading their contents.
 
 ### 7.6 Gestures
 
@@ -461,7 +368,7 @@ overshoot it allows. Components use tokens, so a style's personality
 (crisp and military, heavy and ornate, bouncy and casual) changes every
 motion at once. Under reduced motion each animation uses its declared
 fallback (a fade, or none) and decorative loops stop; `og ui check`
-requires the fallback.
+reports a missing fallback.
 
 The design language's timing table (`packages/design`, `motion.timing`;
 its Motion section has the table) sets what each moment moves on: hover
@@ -469,21 +376,19 @@ stickiness (the hover spring and a pad cursor's magnet), press squash,
 enter and exit, staggered cascades, toasts and screen transitions. A
 style's motion block overrides any row: `hoverSpring`, `magnet <0–1>`,
 `pressSpring`, `ease widgetEnter|widgetExit`, `stagger`, `staggerCap`,
-`toast <kind>`, `toastHold <ms> [<error ms>]` and `screen <ms>`. A
-row a style leaves out takes the table's, which keeps the frames the
-widgets drew before the table existed.
+`toast <kind>`, `toastHold <ms> [<error ms>]` and `screen <ms>`. A row a
+style leaves out takes the table's.
 
 ### 7.8 Sound and haptics
 
 Motion events and UI events play sounds and haptics from the style's sets
-(§12.4). The event list grows from six (hover, press, open, close,
-success, error) to: focus, select, confirm, cancel, back, open, close, tab,
-toggle on and off, slider and scroll ticks, typewriter blips, counter
+(§12.4): hover, press, focus, select, confirm, cancel, back, open, close,
+tab, toggle on and off, slider and scroll ticks, typewriter blips, counter
 ticks (pitch rising through a cascade), notification, warning, error,
 success, reward, and rarity reveals by tier. Haptics are patterns on the
 same events: pad rumble, the phone's vibration on the web and native, with
-a player setting for intensity and off. A sound is still queued for the
-tick of the input that caused it.
+a player setting for intensity and off. A sound is queued for the tick of
+the input that caused it.
 
 ## 8. Layers, input routing, actions and glyphs
 
@@ -509,12 +414,9 @@ both. The **active** layer is the top one whose input mode is `menu` or
 Back, `pop` (og.ui.pop's and a document's; a document's pops its own
 layer), `replace` and focus. While a layer is over it, it keeps the focus
 it had, and it hears `activate` and `deactivate` as it becomes and stops
-being the active one. This replaces each game's own focus and Back
-handling, which is where the FINDINGS show most UI bugs (brasswick #9,
-meridian-loop #9).
+being the active one.
 
-The model is Unreal CommonUI's activatable widgets, checked member by
-member (B9, 2026-11-06):
+The model is Unreal CommonUI's activatable widgets:
 
 | CommonUI | og-ui |
 |---|---|
@@ -527,9 +429,8 @@ member (B9, 2026-11-06):
 | The action bar from the active widget's bindings | `og.ui.actionBar`: the active layer's `actions` |
 | `bIsModal` | a `menu` or `modal` layer: `capture`, `under dim` |
 
-One difference is deliberate. CommonUI's modal stack is a queue that shows
-one modal at a time; here a second modal stacks over the first, because a
-confirm over a confirm is a pattern games use.
+One difference is deliberate: CommonUI shows one modal at a time; here a
+second modal stacks over the first (a confirm over a confirm).
 
 A pointer takes the topmost element whose box holds it, with two reaches
 past the box. An element's `hitSlop` reaches that far on any pointer; on a
@@ -552,23 +453,23 @@ toggle alternative (XAG 107).
 
 ### 8.3 Focus
 
-The current focus model stays (one focus for pointer, keys and pads,
-scopes, several local players with coloured rings) and gains: explicit
-neighbour overrides, focus groups that wrap or not, focus memory per
-layer and per group, an optional pad-driven virtual cursor for dense
-screens (a 4X map, an inventory grid), and several simultaneous cursors for
-local multiplayer selection screens.
+One focus for pointer, keys and pads, with scopes and several local
+players with coloured rings; explicit neighbour overrides, focus groups
+that wrap or not, focus memory per layer and per group, an optional
+pad-driven virtual cursor for dense screens (a 4X map, an inventory grid),
+and several simultaneous cursors for local multiplayer selection screens.
+Multitouch gestures and the accessibility tree (with its ARIA mirror on
+the web) follow the same model.
 
 ### 8.4 Player-customised HUD
 
-Elements marked `customizable` can be moved, scaled and faded by the
-player in a layout editor component and are saved in the game's settings.
-Virtual controls on touch (sticks, buttons) are customisable the same way.
-Shipped as `ElementProps.customize` (a key, per-axis locks and scale and
-opacity limits); placements are kept per player by key and applied before
-the frame's transforms, so touches follow them. `og.ui.setHudEdit` is the
-edit mode (press to select, drag to move, pinch or wheel to scale, the
-stick for pads), `og.ui.hudLayoutEditor` its panel, and
+Elements marked `customizable` (`ElementProps.customize`: a key, per-axis
+locks and scale and opacity limits) can be moved, scaled and faded by the
+player; virtual controls on touch (sticks, buttons) are customisable the
+same way. Placements are kept per player by key and applied before the
+frame's transforms, so touches follow them. `og.ui.setHudEdit` is the edit
+mode (press to select, drag to move, pinch or wheel to scale, the stick for
+pads), `og.ui.hudLayoutEditor` its panel, and
 `og.ui.hudLayout()`/`setHudLayout(json)` move a layout in and out of the
 game's settings. The pad-driven virtual cursor of §8.3 is
 `og.ui.setVirtualCursor` (speed, fine-aim acceleration, magnet, right-stick
@@ -595,8 +496,8 @@ compact (1.2K, 3.4M), engineering and scientific notation, letter notation
 for idle games, numbers past 1e308 through a mantissa and exponent value,
 durations and countdowns, percentages, plurals, ordinals, dates.
 
-Bindings are read once per tick after the game's systems, compared with
-the last values, and only changed bindings invalidate their subtrees (§6.3).
+Bindings are read once per tick after the game's systems. Invalidating
+only the subtrees of changed bindings (§6.3) is not implemented.
 
 ## 10. Documents
 
@@ -606,36 +507,8 @@ A **screen** (`type screen`) or **component** (`type component`) is an
 `.ogt` text document: an element tree with props, slots, bindings, state
 groups, timelines and breakpoint overrides. og-cook validates it against
 og-ui's reflection schema and cooks it into an `og.UiDocument` blob; the
-generated wiki documents every prop from the same schema.
-
-```
-type component
-version 1
----
-name "ShopCard"
-props { item: og.ItemView, price: number, selected: bool }
-parts { frame art name price rarity }
-states {
-  interaction { normal hover pressed disabled }
-  selection { off on = selected }
-  availability { available locked = !item.owned && price > wallet.gold }
-}
-stack frame {
-  part frame  fill token(panel) stroke 2 token(line) radius token(card) shape squircle
-  art art     slot itemThumb kind item aspect 1 focal 0.5 0.4 safe 0 0 1 0.7
-  column {
-    label name  text item.name step title maxLines 2 autofit caption
-    row price   { icon coin  counter text price format compact }
-  }
-  badge rarity  text item.rarity tone rarity(item.rarity) anchor topEnd
-}
-transition interaction hover   spring token(ui)  { translateY -4 shadow token(lift) }
-transition selection on        spring token(emphasis) { stroke 3 token(focus) }
-timeline unlock { 0 state availability available; 0 burst sparks; 0 sound reward }
-```
-
-The grammar above was the sketch for review; phase U3 settled it in
-crates/og-ui/README.md §Documents (one construct per `.ogt` line, props
+generated wiki documents every prop from the same schema. The grammar is
+`crates/og-ui/README.md` §Documents (one construct per `.ogt` line, props
 from og-ui's reflected element schema, `og.ui.documentSchema()`).
 
 ### 10.2 Documents and code
@@ -648,44 +521,60 @@ fills its slots with code-built content, and receives its events
 code alone still gets states, motion and checks, because they belong to
 the element model, not to the document.
 
+`tabs` is a document control with `items`, two-way `selected`, and a
+`changed` event. For any other `og.ui` widget or a kit component, a
+document declares a `slot` and game code fills it after mounting:
+
+```ts
+og.ui.screen("garage", vm);
+if (og.ui.openSlot("garage/Speed")) {
+  racing.speedometer("Speedometer", vm.speed);
+  og.ui.close();
+}
+```
+
+This is the document-to-widget bridge on both hosts: the slot owns
+placement, the typed call owns widget arguments and interactions. There is
+no untyped widget dispatch API and no executable strings in documents.
+
 ### 10.3 Why documents
 
-An agent changes a document by a small diff that `og dev` applies in place
-without reloading the game, keeping the UI state. Tune and the probe write
-any prop of it live and save the result back into the file (§16.3).
-Checks read its static structure: every slot, state, action and binding is
-known without running every path of the code.
+`og dev` applies a changed document in place without reloading the game,
+keeping the UI state. Tune and the probe write any prop of it live and save
+the result back into the file (§16.3). Checks read its static structure:
+every slot, state, action and binding is known without running every path
+of the code.
 
 ## 11. Component library
 
-The fixed templates with a field per word (`mainMenu`, `racingHud`,
-`resultsScreen` …) are removed. In their place:
+There are no fixed screen templates with a field per word. The library is:
 
 - **Components** built only from public primitives and documents, each with
   named parts a style can dress, slots a game fills, a viewmodel contract,
   state groups, motion, sounds, an accessibility role, probe ids, a wiki
   page and tests.
 - **Screen documents** for every screen type of Appendix B, which a game
-  copies (`og ui eject <screen>`) and edits as its own file, so no screen
-  is ever limited by a template's fields again.
+  copies (`og ui eject <screen>`) and edits as its own file.
 
-Categories (the full lists are the appendices):
+Generic components are `og.ui`'s; genre components and screens are kits'
+(§17.5). Categories (the full lists are the appendices):
 
 - **Foundations**: text, rich text, icon, image and art slot, shape,
   divider, spacer, viewport, particle emitter, layer.
 - **Controls**: buttons (all variants and the hold-to-confirm), toggles,
   checkboxes, radios, sliders and range sliders, steppers, selects,
   segmented tabs, text fields and areas, search with suggestions, colour
-  picker, key-binding capture, the on-screen keyboard.
-- **Containers and navigation**: panels and cards, scroll, tabs with
-  bumpers, carousel with snap, accordion, split views, sheets (bottom and
-  side, draggable), modals and confirms, popovers, menus and context menus,
+  picker, key-binding capture, the on-screen keyboard; the touch controls
+  `joystick`, `dpad` and `actionButton`, which take `disabled`, dress as
+  discs and keep the finger that went down on them in the UI state.
+- **Containers and navigation**: panels and cards, scroll (with `fade` and
+  `fadeInto`, in documents as in `og.ui.scrollArea`), tabs with bumpers,
+  carousel with snap, accordion, split views, sheets (bottom and side,
+  draggable), modals and confirms, popovers, menus and context menus,
   radial wheels, breadcrumbs, the action bar, pagination.
 - **Data**: virtualised lists, grids and sortable, filterable tables (10k
-  rows and more), trees, pan-and-zoom graphs (skill and tech trees, run
-  maps, flowcharts), charts (line, bar, area, radar, pie for stats and
-  post-match graphs), key-value and stat-compare rows with deltas, the
-  calendar.
+  rows and more), trees, pan-and-zoom graphs, charts (line, bar, area,
+  radar, pie), key-value and stat-compare rows with deltas, the calendar.
 - **Feedback**: toasts and the notification stack, badges, tooltips
   (nested, pinnable, with links; compare tooltips), progress and spinners,
   skeletons, counters with notation, banners and ribbons, the
@@ -693,87 +582,87 @@ Categories (the full lists are the appendices):
   captions to XAG 104.
 - **HUD**: meters (segmented, ghost damage, shield cells, orbs, radial
   stamina), ability bars with cooldown sweeps, charges and hotkeys,
-  buff and debuff grids with timers and stacks, unit, party and raid frames,
-  cast bars, crosshairs and hit markers, ammo, minimap and compass,
-  objective tracker, killfeed, scoreboards, timers, combo and judgement
-  pops, resource bars with rates, turn order, speedometer, scorebug, flight
-  ladder, damage direction, low-health vignette.
+  buff and debuff grids with timers and stacks, timers, minimap and
+  compass, objective tracker, low-health vignette; genre HUDs are kits'.
 - **World** (§14): nameplates, overhead bars, damage numbers, interaction
   prompts, waypoints and pings with edge clamping, placement ghosts, range
   and area telegraphs, path lines, selection rings, loot labels, speech
   bubbles.
-- **Genre patterns**: inventory grids with multi-cell items, rotation,
-  stacking and splitting; paperdolls; card hands (fan, hover lift, drag to
-  play with a targeting arc); pick-one-of-N rewards; gacha banners and pull
-  sequences; shops and stores; battle passes; lobbies, party and ready
-  checks; character select and versus screens; draft and ban; dialogue
-  with choices, timers and checks; the VN text box, backlog and gallery;
-  quest log and codex; the world map; level and saga maps; song select;
-  garage and tuning; management ledgers; the chat window; command cards
-  and control groups; the HUD layout editor; photo mode; the settings
-  tree (graphics, audio, controls with remapping, accessibility, language).
+- **Patterns**: the settings tree (graphics, audio, controls with
+  remapping, accessibility, language), the HUD layout editor, `heroButton`,
+  `starBar`, `overlayBar`, generic lists, slots, stores, rewards, cards and
+  world tags.
+
+`UiDesc.fallbackIcons` names an icon set that draws what the atlas (the
+game's icons, else the style's) lacks; `og.ui.icon`, rich text, action
+glyphs and art placeholders read the same chain.
 
 ### 11.1 Screen documents
 
-The library's screen documents are `packages/engine/src/ui/screens/`, in
-the engine package: 59 `type screen` documents, one or more for each row
-of Appendix B (`main-menu`, `pause`, `save-load`, `inventory` …), built
-from og-ui's elements. Each names its viewmodel (`props`), the events it
-emits and which og.ui component or pattern fills each slot at its top; its
-words are string keys (`screen.<name>.<word>`) with English fallbacks, and
-a `fixture default` previews it (`ui:push:<name>:default`). The directory's
-README.md holds the table from each Appendix B row to its documents, which
-the cook's test (`crates/og-cook/tests/documents.rs`) holds equal to
-Appendix B, cooking every document. Where an og.ui pattern fills a slot
-and draws its own title, tabs or actions (the settings tree, the ledger,
-photo mode …), the document leaves those to it. `og ui eject <screen>
-[project] [--force]` copies one into the game's `assets/ui/<screen>.ogt`
+Generic system screens (boot and splash, title, main menu, mode select,
+settings, pause, save and load, loading, results, leaderboard,
+calibration, tutorial, game over, HUD editor, creator tools, credits) are
+`type screen` documents in `packages/engine/src/ui/screens/`; genre
+screens live beside their kit's `extension.json` (§17). Each names its
+viewmodel (`props`), the events it emits and which og.ui component or
+pattern fills each slot at its top; its words are string keys
+(`screen.<name>.<word>`) with English fallbacks, and a `fixture default`
+previews it (`ui:push:<name>:default`). Where an og.ui pattern fills a
+slot and draws its own title, tabs or actions, the document leaves those
+to it.
+
+`packages/engine/extensions/tests/screen-catalogue.md` maps each Appendix B
+row to its documents; `packages/engine/extensions/tests/documents.rs`
+holds its rows equal to Appendix B's (it parses this file's Appendix B
+table) and cooks every document. `og ui eject <screen> [project]
+[--force]` copies a generic screen into the game's `assets/ui/<screen>.ogt`
 (refusing to overwrite without `--force`), where `og.load.document` loads
-it and the game edits it as its own; `og ui eject --list` prints each
-with its row.
+it; `og ui eject <kit>/<screen>` ejects a kit's (§17.1); `og ui eject
+--list` prints each with its row.
 
 ## 12. Styles v2
 
 ### 12.1 What a style is
 
 A style (`type style` version 2) has tokens, part dressings, a motion
-personality, a sound and haptic set, fonts, icons and art. It stays one
-complete asset a look's `ui` line names. The engine's default style (the
-design language the engine shares with origin-agent, `packages/design`,
-which replaces `prototype`) is origin-agent's look and the one a game draws
-in until it picks another. A game may ship it, a built-in pack, or a style
-of its own, generated or hand-made: restyling is a design choice for the
-game, never a requirement of the engine, its checks or a publish build (the
-owner, 2026-11-06, reversing 2026-11-02's rule). The design language binds
-the default style alone; a game's style may restyle, re-dress, re-shape or
-replace anything above the accessibility floor of §15.2.
+personality, a sound and haptic set, fonts, icons and art. It is one
+complete, validated asset a look's `ui` line names (`og style eject|pack`
+take it apart and back). The engine's default style is the design language
+the engine shares with origin-agent (`packages/design`), the one a game
+draws in until it picks another. A game may ship it, a built-in pack, or a
+style of its own, generated or hand-made: restyling is the game's choice,
+never a requirement of the engine, its checks or a publish build. The
+design language binds the default style alone; a game's style may restyle,
+re-dress, re-shape or replace anything above the accessibility floor of
+§15.2.
 
-The default style carries no hue in its chrome (the owner, 2026-11-02):
-its primary is the high-contrast neutral, a near-white fill with dark ink
-on dark surfaces, set apart from secondaries by fill and weight, and focus
-and selection are a neutral light edge or glow. Hierarchy, frames,
-material, type and spacing follow the clean sci-fi direction (concept B):
-deep navy surfaces, glass with a lit top edge, letter-spaced uppercase
-titles. Semantic roles (danger, success, warn, info) and game roles
-(health, mana, xp, gold, rarity) keep their hues because they carry
-meaning; a game brings every other colour in its own style.
+The default style carries no hue in its chrome: its primary is the
+high-contrast neutral (a near-white fill with dark ink on dark surfaces),
+set apart from secondaries by fill and weight; panels, controls,
+selection, focus, tabs, sliders and rings are drawn from the neutral
+ladder and told apart by tone, lift and weight. Hierarchy, frames,
+material, type and spacing follow the clean sci-fi direction (concept B,
+§15.5): deep navy surfaces, glass with a lit top edge, letter-spaced
+uppercase titles. Semantic roles (danger, success, warn, info) and game
+roles (health, mana, xp, gold, rarity, team) keep their hues because they
+carry meaning.
 
 ### 12.2 Tokens
 
-- **Colour**: the 33 roles of today, plus rarity tiers (common, uncommon,
+- **Colour**: the palette roles, plus rarity tiers (common, uncommon,
   rare, epic, legendary, mythic), team and player colours (8), damage and
   element types, and chart series. A style may also declare roles of its
-  own (a game's corruption, sanity or faction colours) beside the named
-  ones; components and game code read them by name like any role, and
-  contrast and completeness checks cover them (the owner, 2026-11-02). Each status and rarity colour is paired
-  with an icon or pattern, so no meaning is carried by colour alone (XAG
-  103).
+  own (a game's corruption, sanity or faction colours); components and
+  game code read them by name like any role, and the completeness checks
+  cover them. Each status and rarity colour is paired with an icon or
+  pattern, so no meaning is carried by colour alone (XAG 103). The
+  selection, primary and accent roles and the scene roles are §17.4's.
 - **Type**: a scale of display, title, heading, body, label, caption and
   numeric steps per breakpoint, with tracking, weight and line height;
-  fonts per role, with CJK and fallback faces as today. An optional
-  button step sets a button's words apart from label (the label step
-  when left out): a pixel face keeps label at a HUD's 12 and sets
-  buttons at body.
+  fonts per role, with CJK and fallback faces. An optional button step
+  sets a button's words apart from label (the label step when left out):
+  a pixel face keeps label at a HUD's 12 and sets buttons at body. §17.4
+  has the typography roles.
 - **Space, size and radius** scales; **elevation** (shadow sets per level);
   stroke widths; **shape language** (corner shape and radius per element
   class: squircle, notch, bevel, round, square).
@@ -783,10 +672,9 @@ The optional `motion` lines `ease widgetEnter <curve>` and
 `ease widgetExit <curve>` control built-in widget arrivals and departures:
 layer transitions, toasts, meter trails, staggered children and bursts.
 They accept four Bézier control points, `linear`, or `steps <1–60>`.
-When omitted, they retain the previous widget curves (enter:
-`0.23 1 0.32 1`; exit: `0.4 0 1 1`). They are separate from the existing
-`enter` and `exit` tokens because built-in widgets previously ignored
-those tokens; adopting them implicitly would move existing styles' frames.
+Omitted, they are enter `0.23 1 0.32 1` and exit `0.4 0 1 1`. They are
+separate from the `enter` and `exit` tokens, which built-in widgets do not
+read.
 
 ### 12.3 Part dressings
 
@@ -797,7 +685,7 @@ dressing sets paints, strokes, effects, shape, nine-slice art, ornaments
 (corners, flourishes, dividers, tiles), materials and sounds. A part a style
 does not dress is drawn from the tokens by the component's default, so a
 new component looks right in every style without new art. The twelve
-`StylePart` classes of version 1 become dressings of the matching parts;
+`StylePart` classes of version 1 are dressings of the matching parts;
 `og style upgrade` converts a version 1 style.
 
 An element-backed part also accepts an `appearance` block. It uses the
@@ -805,17 +693,15 @@ document property's reflected type and literal grammar (§10); properties
 marked `dressing` in `documentSchema` are accepted. `opacity` applies to
 the whole element, including its label and children; `motion` controls
 changes to its animatable properties. `color` and `step` apply when the
-part is a text element. Decorative parts also accept paints and `ink`;
-their appearance overrides are listed below.
-`padding` and `gap` override the part's container spacing before layout,
-including the measured size of a fit container. Four padding values are
-left, top, right, bottom, as in documents. A single value applies to all
-sides. These properties do not change hit slop or input routing.
-`width` and `height` set an element's layout size with the document size
-grammar. `x` and `y` translate the element and its children.
+part is a text element. `padding` and `gap` override the part's container
+spacing before layout, including the measured size of a fit container
+(four padding values are left, top, right, bottom; one value applies to
+all sides). `width` and `height` set an element's layout size with the
+document size grammar; `x` and `y` translate the element and its children.
 These overrides apply after the widget and responsive variants are built,
-before layout and motion. Unset properties retain the widget's defaults;
-more-specific selectors override only the properties they set.
+before layout and motion, and never change hit slop or input routing.
+Unset properties retain the widget's defaults; more-specific selectors
+override only the properties they set.
 
 ```ogt
 dress "ActionButton.face[disabled]" {
@@ -831,62 +717,52 @@ dress "Card.frame" {
 }
 ```
 
-HUD decorations expose `Meter.trail` and `Meter.separator`, both with the
-meter's `[kind=health|mana|xp|primary|custom]` attribute. The trail has
-`[loss]` when it follows a decrease. A joystick exposes `Joystick.knob`,
-`Joystick.rim`, `Joystick.shadow`, `Joystick.sheen`, and
-`Joystick.direction`, with `[active]` and `[disabled]` states. These parts
-accept the same fills, shapes, strokes, effects, and materials as other
-parts. An undressed decoration keeps its original drawing. Dressing only
-its fill retains its radius and adds no implicit outline or shadow.
-Input ownership, dead-zone rescaling, and meter interpolation remain
-engine logic, independent of these decorations.
+Decorative parts accept paints, `ink`, the same fills, shapes, strokes,
+effects and materials as other parts, and `appearance { width … height …
+x … y … opacity … }`: dimensions resize the decoration about its centre,
+then the offsets move it in CSS pixels; `percent` and `grow` use the owning
+widget's box; `fit` keeps the decoration's default size within its bounds;
+opacity multiplies the widget's. A widget's outer size and each
+decoration's size are independent (enlarging a joystick's base does not
+enlarge its knob). An undressed decoration keeps its original drawing;
+dressing only its fill keeps its radius and adds no outline or shadow. The
+decorative parts:
 
-Decorative parts also accept `appearance { width … height … x … y …
-opacity … }`. Dimensions resize the decoration about its centre, then
-the offsets move it in CSS pixels. `percent` and `grow` use the owning
-widget's box; `fit` keeps the decoration's default size within its bounds.
-Opacity multiplies the widget's opacity. None of these decoration edits
-change the control's hit box. A widget's outer size and each decoration's
-size are independent: enlarging a joystick's base does not implicitly
-enlarge its fixed-size knob.
+- `Meter.trail` and `Meter.separator`, with the meter's
+  `[kind=health|mana|xp|primary|custom]`; the trail has `[loss]` when it
+  follows a decrease. `Joystick.knob`, `Joystick.rim`, `Joystick.shadow`,
+  `Joystick.sheen` and `Joystick.direction`, with `[active]` and
+  `[disabled]`.
+- `Slider.track`, `Slider.fill`, `Slider.knob`, `Toggle.track`,
+  `Toggle.knob`, and a progress bar's `Meter.track` and `Meter.fill`. On
+  segmented tracks the override sizes each segment after distribution;
+  `segments` still owns their count and spacing.
+- `Minimap.marker[player]`, `Minimap.marker[tone=…]`,
+  `Minimap.markerOutline[player]`, `Skeleton.sheen`, `Spinner.dot[age=0…7]`
+  (zero is the leading dot), `ArtSlot.placeholder` (the disc used without
+  an icon set), `Toast.indicator[tone=…]`, `Spotlight.edge`,
+  `Slot.indicator[selected]` (the version 1 selection underline),
+  `Stepper.mark[axis=horizontal|vertical]` (hover, pressed, disabled) and
+  `Radio.mark` (on, hover, pressed, focused).
 
-The directly drawn `Slider.track`, `Slider.fill`, `Slider.knob`,
-`Toggle.track`, `Toggle.knob`, and progress bar's `Meter.track` and
-`Meter.fill` use these geometry overrides too. On segmented tracks, the
-override sizes each segment after distribution; `segments` still owns
-their count and spacing. Input value mapping and the control's hit box
-do not change when its decoration changes.
-
-Further decorative parts are `Minimap.marker[player]`,
-`Minimap.marker[tone=…]`, `Minimap.markerOutline[player]`,
-`Skeleton.sheen`, `Spinner.dot[age=0…7]` (zero is the leading dot),
-`ArtSlot.placeholder` (the disc used without an icon set),
-`Toast.indicator[tone=…]`, `Spotlight.edge`, and
-`Slot.indicator[selected]` (the version 1 selection underline).
-`Stepper.mark[axis=horizontal|vertical]` has hover, pressed, and disabled
-states; `Radio.mark` has on, hover, pressed, and focused states.
-
-Embedded strokes, sectors, and labels accept the same geometry and opacity
-properties, plus `appearance.color` (or `ink`). Labels also accept
+Embedded strokes, sectors and labels accept the same geometry and opacity
+properties, plus `appearance.color` (or `ink`); labels also accept
 `appearance.step`. They retain their primitive drawing: a sector stays a
-sector, not a rectangular fill. These parts are:
+sector. These parts are:
 
 - `Checkbox.mark[stroke=short|long][on]`,
   `Select.chevron[side=left|right][open][disabled]`,
   `Dpad.chevron[direction=Up|Down|Left|Right][pressed]`,
   `Dialogue.continue[side=left|right]`, and `Burst.ray`.
 - `Cooldown.track`, `Cooldown.sweep[ready]`, `Cooldown.mask`, and
-  `Cooldown.core[pressed][ready]`; the same track, sweep, mask, and core
-  parts on `ActionButton` dress its charge ring. The mask covers the unused
-  half of a partial sector; give it the track's colour. The core covers the
-  middle; its size controls ring thickness. Sector angle and the mask's
-  antialias overlap remain engine geometry.
+  `Cooldown.core[pressed][ready]`; the same parts on `ActionButton` dress
+  its charge ring. The mask covers the unused half of a partial sector;
+  give it the track's colour. The core covers the middle; its size
+  controls ring thickness.
 - `Meter.label[surface=fill|track]`, `Cooldown.label[ready]`,
   `ActionButton.label[disabled][pressed]`, `Minimap.north`,
-  `Dialogue.initial`, and `ArtSlot.label`. Meter label clipping still
-  follows the current value; changing its type or colour does not move
-  that boundary.
+  `Dialogue.initial`, and `ArtSlot.label`. Meter label clipping follows the
+  current value whatever its type or colour.
 - `Icon.image`, `ArtSlot.icon`, `Cooldown.icon[ready]`,
   `ActionButton.icon[disabled][pressed]`, `Dialogue.portraitIcon`, and
   `Minimap.image` accept geometry, tint (`color` or `ink`), and opacity.
@@ -894,66 +770,57 @@ sector, not a rectangular fill. These parts are:
   their square em box centred in it. The icon's layout box is unchanged.
   `Dpad.indicator[pressed][direction=Up|Down|Left|Right]` and `Burst.spark`
   accept the rectangle decoration properties.
-- HUD edit marks use `HudEditor.outline[side=top|bottom|left|right]`
-  (flagged `selected` on the selected element) and
-  `HudEditor.handle[selected]`. Their geometry, fill, radius, and effects
-  are decorations only: drag constraints, scale steps, and the saved
-  placement still operate on the customized element's box.
+- `HudEditor.outline[side=top|bottom|left|right]` (flagged `selected` on
+  the selected element) and `HudEditor.handle[selected]`: decorations
+  only; drag constraints, scale steps and the saved placement still use
+  the customised element's box.
 - `TextEdit.selection`, `TextEdit.composition`, and `TextEdit.caret`
-  dress both single-line fields and text areas. Their geometry and paints
-  do not change character selection, caret placement, or IME composition.
-  The caret's `appearance.motion` duration sets its blink half period,
-  rounded to ticks. It remains a binary blink, independent of the curve.
-  An unset duration keeps 530 ms; `instant` keeps it visible, as reduced
-  motion does. For example, `motion tween 100 linear` blinks for six ticks
-  shown and six hidden at 60 Hz. An edit or caret move restarts the shown
-  phase.
+  dress single-line fields and text areas without changing selection,
+  caret placement or IME composition. The caret's `appearance.motion`
+  duration sets its blink half period, rounded to ticks; the blink stays
+  binary. Unset is 530 ms; `instant` keeps it visible, as reduced motion
+  does (`motion tween 100 linear` blinks six ticks shown, six hidden at
+  60 Hz). An edit or caret move restarts the shown phase.
 - Focus outlines use the control's component with part `focus`, such as
-  `Button.focus[player=0]`. `player=1`, `2`, and `3` identify the extra
-  local-player rings. The accessibility outline also has `[outline]`.
-  Controls without a part use `Element.focus`. Geometry, shape, strokes,
-  and opacity change only the ring, never its control's hit box or focus.
-  An unset stroke keeps the legacy ring; `stroke none` removes it.
+  `Button.focus[player=0]`; `player=1`, `2` and `3` are the extra
+  local-player rings, and the accessibility outline also has `[outline]`.
+  Controls without a part use `Element.focus`. These change only the ring;
+  an unset stroke keeps the default ring, `stroke none` removes it.
 - `Skeleton.frame` controls the stack's spacing and bounds;
-  `Skeleton.line[last]` controls its shortened last line, and
-  `Skeleton.line` controls every line. `Spinner.base` controls its bounds.
-  `Skeleton.sheen` and the unqualified `Spinner.dot` use their
-  `appearance.motion` duration as the cycle period and a tween's curve
-  as the phase curve. `instant` stops at phase zero. Unset motion keeps
-  the skeleton's 1600 ms and the spinner's twice-`slow` periods.
+  `Skeleton.line[last]` its shortened last line and `Skeleton.line` every
+  line; `Spinner.base` the spinner's bounds. `Skeleton.sheen` and the
+  unqualified `Spinner.dot` use their `appearance.motion` duration as the
+  cycle period and a tween's curve as the phase curve; `instant` stops at
+  phase zero. Unset, the periods are 1600 ms and twice `slow`.
 - `Scroll.bar[axis=horizontal|vertical]` controls scrollbar geometry,
-  radius, paint, and effects. Scroll extent and drag mapping do not change.
-  `Heading.flourish[side=left|right]` controls the atlas ornament's size,
-  offset, tint, and opacity. A matching dressing opts headings below the
-  legacy 28 px threshold in. Alignment still chooses which sides fit;
-  `opacity 0` hides either side. The style supplies the ornament asset.
+  radius, paint and effects. `Heading.flourish[side=left|right]` controls
+  the atlas ornament's size, offset, tint and opacity; a matching dressing
+  opts headings below 28 px in, alignment chooses which sides fit, and
+  `opacity 0` hides a side. The style supplies the ornament asset.
 
-The engine retains input and layout rules: touch target floors, hit slop,
-pointer ownership, dead zones, value mapping, scroll extents, focus order,
-text shaping and selection, and HUD placement constraints. These are not
-appearance overrides. Primitive topology, clipping, pixel snapping, sector
-angles, and antialias overlap also remain in Rust. Paints, materials, and
-assets change their presentation without changing the interaction model.
+The engine keeps input and layout rules, which are not appearance: touch
+target floors, hit slop, pointer ownership, dead zones, value mapping,
+scroll extents, focus order, text shaping and selection, HUD placement
+constraints, meter interpolation. Primitive topology, clipping, pixel
+snapping, sector angles and antialias overlap also stay in Rust. Paints,
+materials and assets change presentation, never the interaction model.
 
-Legacy fallbacks retain their original numbers when no dressing applies,
-including text shadow reach and pixel-font effect quantization. Authored
-text effects through `og.ui.setDraw` replace the legacy text drop. This
-preserves existing styles rather than changing their frames to make a
-default more configurable. An authored value goes through the reflected
-property grammar, not a second list of widget-specific numeric tokens.
+With no dressing, the default drawing keeps its numbers (text shadow reach,
+pixel-font effect quantization). Authored text effects through
+`og.ui.setDraw` replace the default text drop. An authored value goes
+through the reflected property grammar, never a second list of
+widget-specific numeric tokens.
 
 A game shipped with a version 1 style keeps the screens it shipped with:
 an engine update may draw them better (antialiasing, contrast, a cleaner
-fill) but never changes what is on them or where. Its dialogs' titles take
-the ramp's xl in the body face, its ramp steps no tracking it did not set
-(the prototype ramp's), a grid's selected cell its `primary` underline and a
-burst (`ui.burst`, a results screen's earned star) its drawn rays and sparks
-rather than particles (`UiTheme.styleVersion` 1); its screens are its own
-ejected documents (§11), so engine work never re-lays them out. A version 1
+fill) but never changes what is on them or where (`UiTheme.styleVersion`
+1). Its dialogs' titles take the ramp's xl in the body face, its ramp
+steps no tracking it did not set, a grid's selected cell its `primary`
+underline and a burst (`ui.burst`) its drawn rays and sparks rather than
+particles; its screens are its own ejected documents (§11). A version 1
 file's slider knobs and switches take the control radius; `og style
-upgrade` writes `screens 1`, so the upgraded style keeps all of this but
-draws them round, as games shipped once upgraded. A new style (`og style
-new`, the packs) draws today's.
+upgrade` writes `screens 1`, which keeps all of this but draws them round.
+A new style (`og style new`, the packs) draws the current defaults.
 
 ### 12.4 Sound and haptic sets
 
@@ -962,31 +829,26 @@ repeats, volume and pitch ranges, and a haptic pattern.
 
 ### 12.5 Built-in styles and generated styles
 
-Six built-in styles are not enough. The engine ships at least twelve seed
-styles covering the look families of `og-taste` §12 (for example ornate
-fantasy, storybook, tactical military, sci-fi holographic, cyberpunk neon,
-casual cartoon, kawaii and anime gacha, pixel retro, paper and craft,
-diegetic horror, sports broadcast, ink and eastern brush); the list is
-settled with the owner in phase U4. The minimal modern seed was dropped
-(the owner, 2026-11-02): its quiet light choices remain `og style new`'s
-start when a look matches no family, but no built-in pack ships them.
-The same day the owner settled sixteen packs (fantasy, jade, kawaii,
-cartoon, midcore, storybook, craft, pixel, gilded, tactical, wasteland,
-dread, scifi, cyber, foundry, broadcast) and folded six into them: bubbly
-into cartoon, arcade into pixel, paper into storybook, inkwash into jade,
-neon into cyber, holo into scifi. The folded packs' fonts and icon sheets
-that seeds draw with live in `templates/styles/shared/`; the folded seeds'
-choices stay `og style new`'s start for their look families.
+The engine ships sixteen style packs under `templates/styles` (in a
+release, `styles/<name>`): fantasy, jade, kawaii, cartoon, midcore,
+storybook, craft, pixel, gilded, tactical, wasteland, dread, scifi, cyber,
+foundry, broadcast. Fantasy, scifi, cartoon and pixel are the flagship
+packs; the others are frozen. scifi is real-world spaceflight operations,
+kept apart from military sci-fi; cyber is high-contrast yellow, red and
+cyan with cut corners. Fonts and icon sheets shared by several packs live
+in `templates/styles/shared/`. Genre language is free; another game's
+names, logos, fonts and exact layouts are not.
 
 A **style generator** (`og style new`) makes a game its own style from the
 look, the premise and a few choices (palette seed, shape language,
-ornament level, motion personality): tokens and procedural dressings
-first, then the art slots of its frames, buttons, ornaments and icon set
-filled through the art brief (§13.3). Each pack owns `choices.json` and
-`style.ogt` as independent authored data; directory discovery supplies the
-seed catalogue. There is no regenerate-all command or seed-equality test.
-A generated style passes parsing and completeness checks, not contrast
-thresholds (§17, the owner's decision of 2026-11-04).
+ornament level, motion personality, finish): tokens and procedural
+dressings first, then the art slots of its frames, buttons, ornaments and
+icon set filled through the art brief (§13.3). With a look that matches no
+family it starts from quiet, light minimal choices. Each pack owns
+`choices.json` and `style.ogt` as independent authored data; directory
+discovery supplies the seed catalogue. There is no regenerate-all command
+or seed-equality test. A generated style passes parsing and completeness
+checks; contrast is a measure, not a threshold (§16.5).
 
 ### 12.6 Painted art at every density
 
@@ -1016,13 +878,14 @@ laid over it, a fit, a mask, and a treatment from the style (vignette,
 duotone, frame, rarity glow). Its placeholder is drawn from the style and
 the kind (a gradient, the kind's silhouette icon, the slot's name in
 the default style only), never an empty grey box, and `og ui check` reports
-placeholders still present at publish.
+slots still on their placeholder.
 
 ### 13.2 Kinds
 
-Appendix F lists them with their aspects: key art and title backgrounds,
-store capsules, the app icon, character splash and full body, portraits
-and busts with expression sets, VN sprites, event CGs, item and equipment
+Appendix F lists them with their aspects (og-ui's `SlotKind`,
+`crates/og-ui/src/slot.rs`): key art and title backgrounds, store
+capsules, the app icon, character splash and full body, portraits and
+busts with expression sets, VN sprites, event CGs, item and equipment
 icons (multi-cell for grid inventories), ability and buff icons, card art
 and card frames, unit portraits, level, track and song thumbnails, save
 thumbnails, menu backgrounds, banners, player banners and calling cards,
@@ -1033,14 +896,15 @@ buttons, ornaments, icon sets).
 
 ### 13.3 The art brief
 
-`og ui slots` lists every slot of a game with its spec. The art brief
-(`packages/knowledge/scripts/brief.ts`, a public contract) gains the UI
-kinds above, each with its aspect, focal point and safe area, the look's
-conform rules (`docs/art.md` §2.3), and, for style art, the nine-slice
-insets and the states to draw. Adding kinds to `ART_KINDS` is additive; any
-change to existing signatures follows AGENTS.md's rule for a break. A
-generated image lands in the slot after the look's conform pass, fades in
-when loaded, and streams like any texture.
+`og ui slots` lists every slot of a game with its spec and whether its art
+is set or it still draws the placeholder. The art brief
+(`packages/knowledge/scripts/brief.ts`, a public contract) has the UI kinds
+above, each with its aspect, focal point and safe area, the look's conform
+rules (`docs/art.md` §2.3), and, for style art, the nine-slice insets and
+the states to draw. Adding kinds to `ART_KINDS` is additive; any change to
+existing signatures follows AGENTS.md's rule for a break. A generated image
+lands in the slot after the look's conform pass, fades in when loaded, and
+streams like any texture.
 
 ## 14. World-space and 3D UI
 
@@ -1059,10 +923,10 @@ Three forms, by volume:
   frame. A template is declared once; each instance carries a few values
   (position, value, colour, start tick); its motion is a timeline evaluated
   in the shader; there is no per-instance layout. og-render's floating
-  text becomes one use of it.
+  text is one use of it.
 - **World panels**: a document drawn into a texture on a mesh (cockpit
-  screens, terminals, the Dead Space RIG, a shop sign), lit or unlit,
-  interactive through a ray from the pointer or a pad cursor.
+  screens, terminals, a shop sign), lit or unlit, interactive through a ray
+  from the pointer or a pad cursor.
 
 **Meta UI** (damage vignettes, low-health pulses, sanity distortion) is a
 full-screen layer element with a UI material over the scene.
@@ -1071,7 +935,7 @@ full-screen layer element with a UI material over the scene.
 
 ### 15.1 Performance budgets
 
-Measured by the perf lane on the reference machines (metal, DX12):
+On the reference machines (metal, DX12):
 
 - a dense menu screen (300 elements, 40 animating) builds, lays out and
   records its commands in ≤ 0.5 ms of CPU per tick;
@@ -1082,24 +946,23 @@ Measured by the perf lane on the reference machines (metal, DX12):
   overlay's glass and screen lines included);
 - a 10,000-row table scrolls without a frame over budget.
 
+No perf test measures these budgets yet.
+
 ### 15.2 Accessibility
 
-The accessibility tree, its ARIA mirror and reduced motion and transparency
-stay, and the bar rises to the Xbox Accessibility Guidelines:
+The accessibility tree, its ARIA mirror on the web, reduced motion and
+reduced transparency, held to the Xbox Accessibility Guidelines:
 
-- text scale to 150 % without loss of content (200 % deferred to a later
-  batch, the owner 2026-11-04; the player's text-size setting tops out at
-  150 % until then); minimum text 18 px at 1080p
-  on desktop and phone-equivalent sizes on touch, for menus, body text and
-  controls. A dense HUD (strategy, MMO, simulation readouts) may declare
-  its text dense (`ElementProps.dense` on the readouts' group) and go
-  smaller, down to 12 px at 1080p, provided it grows with the player's
-  text scale and passes the contrast rule (the owner, 2026-11-02; `og ui
-  check` holds a dense subtree to 12 px at 1080p times the text scale);
-  og-ui reaches the floor by its unit (`UiDesc.unitScale`, `UiTheme.unit`):
-  on a mouse or pad surface the UI lays out in units of its 1080p-equivalent
-  height over 720 CSS px, 1 to 2, and draws them at that size, so the whole
-  UI zooms with the surface: the style's lengths and a game's own px alike
+- text scale to 150 % without loss of content (the player's text-size
+  setting tops out at 150 %; 200 % is not implemented); minimum text 18 px
+  at 1080p on desktop and phone-equivalent sizes on touch, for menus, body
+  text and controls. A dense HUD (strategy, MMO, simulation readouts) may
+  declare its text dense (`ElementProps.dense` on the readouts' group) and
+  go smaller, down to 12 px at 1080p times the text scale, provided it
+  grows with the player's text scale. og-ui reaches the floor by its unit
+  (`UiDesc.unitScale`, `UiTheme.unit`): on a mouse or pad surface the UI
+  lays out in units of its 1080p-equivalent height over 720 CSS px, 1 to
+  2, and draws them at that size, so the whole UI zooms with the surface
   (a 1280×720 layout fills a 1080p window; body 14 is 21 CSS px, the
   smallest step 12 is 18), the player's text scale multiplying over it. A
   touch surface keeps CSS px; a game may pin it. What the UI gives a game
@@ -1111,9 +974,10 @@ stay, and the bar rises to the Xbox Accessibility Guidelines:
 - every hold has a toggle; every timed choice has a setting;
 - remapping through the settings components;
 - subtitles per XAG 104;
-- the native host sends incremental AccessKit trees over `ORIGIN_FRAMES_SOCKET`
-  (docs/design.md §2.6). The window-owning Origin Desktop applies them to
-  the OS and returns actions; its adapter remains platform ask 25.
+- the native host sends incremental AccessKit trees over
+  `ORIGIN_FRAMES_SOCKET` (docs/design.md §2.6). The window-owning Origin
+  Desktop applies them to the OS and returns actions; its adapter is
+  platform ask 25.
 
 ### 15.3 Localization
 
@@ -1121,212 +985,140 @@ Every screen is checked under a pseudo-locale that lengthens text by 40 %
 and adds accents and brackets, under a CJK locale and under a right-to-left
 locale (mirrored layout). No box is sized to its English text.
 
-### 15.4 The review bar (owner, 2026-11-01)
+### 15.4 The review bar
 
-The UI is held to the level of shipped commercial games. The look comes
-first (the owner, 2026-11-02): every UI branch has art direction, the art
-director's frame review is part of each round, and its notes bind the
-author's next round. Numeric gates serve the look and never force an
-ugly fix (a dark slab behind every name, a lit plate behind every label);
-where a gate and the art director disagree, the art director decides and
-the gate is loosened. The bar:
+The kit's and the packs' frames are reviewed by the art runner against
+shipped commercial games; `og ui check` and the gates report facts and
+never score a look (§16.5). How a frame is reviewed:
 
-- Each genre showcase is read beside screenshots of two shipped games of
-  its genre, and a screen that reads as a prototype beside them is held.
-- Every changed screen is read at desktop 1920×1080, tablet, phone
-  portrait 390×844 and phone landscape, in the kit's own style, and under
-  the pseudo-locale, a CJK locale, a right-to-left locale and 150 % text (200 % deferred, §15.2).
-- **What the review judges (the owner, 2026-11-05).** The kit and the
-  style packs are a polished baseline an agent builds from, not a promise
-  that every screen fits every style: a game may restyle and rework its
-  own UI. So a screen is judged in the kit's own style and a pack on its own
-  pages (`og ui sheet`, §17.3), never the cross product of every screen in
-  every pack. A UI frame is reviewed by the art director over a plain,
-  solid-colour ground, never over a 3D scene or key art the review would
-  have to invent: a scene behind a HUD is judged by that scene's own
-  tests, and no gate scores a label's legibility or contrast against what
-  is behind it. `onScene` and `sceneInk` stay as API for games.
-- `og ui check` reports nothing. A declared overlap is not a way to merge
-  a known defect: the kit's Gallery overlap is fixed, not carried.
+- A UI frame is drawn and reviewed over a plain, solid-colour ground (the
+  pack's), never over a 3D scene or key art: a scene behind a HUD is
+  judged by that scene's own tests, and no gate scores a label's
+  legibility or contrast against what is behind it. `onScene` and
+  `sceneInk` (§17.4) remain API for games.
+- The kits and the style packs are a polished baseline an agent builds
+  from, not a promise that every screen fits every style. A screen is
+  judged in its kit's own style and a pack on its own pages (`og ui
+  sheet`, §17.3), never as the cross product of every screen in every
+  pack.
+- A changed screen is read at desktop 1920×1080, tablet, phone portrait
+  390×844 and phone landscape, and under the pseudo-locale, a CJK locale,
+  a right-to-left locale and 150 % text.
 - Every interactive part is captured idle, hovered, pressed, focused and
-  disabled, and each transition is recorded as a clip and watched.
-- No placeholder survives: no flat-fill loading screen, no button whose
-  edge does not show, text that reads at a glance by the art director's
-  eye, and no two seed styles that read as one.
-- A merge with a defect seen in a frame is held and fixed, never recorded
-  as a reference.
+  disabled, and its transitions are watched.
+- A declared overlap (§6.2) is not a way to carry a known defect, and a
+  frame with a defect is fixed, never recorded as a reference.
 
-### 15.5 The art bar (owner, 2026-11-02)
+### 15.5 The art bar
 
-§15.4 catches defects; a frame can pass it and still read as a
-prototype. Every UI frame is also read against this checklist by the art
-review (the UI art director, beside the coordinator), and a frame that
-fails any item is held like a defect. The target is the look of shipped
-commercial games (Diablo IV, League of Legends, Destiny 2, Genshin
-Impact, Honkai: Star Rail, Hades, Balatro), desktop browser first.
+§15.4 says how frames are reviewed; this is the checklist the art review
+reads them against, aiming at the look of shipped commercial games
+(Diablo IV, League of Legends, Destiny 2, Genshin Impact, Honkai: Star
+Rail, Hades, Balatro), desktop browser first. It is a reviewer's read, not
+an engine check.
 
-**The approved concept.** Each main screen and HUD row has an approved
-concept image per style direction
-(`tests/evidence/ui-art/concepts/<direction>-<screen>.jpg`, chosen by the
-owner from the art review's options). A reference frame is read **side by
-side with its approved concept** before it is recorded, and the review
-names every place where the frame falls short of it. A frame with no
-approved concept is read against the nearest one. The concept sets the
-bar for hierarchy, material and art, not pixel positions: the layout may
-differ where the engine's components or the breakpoint require it.
+**Concepts.** `tests/evidence/ui-art/concepts/` holds the approved concept
+image per direction and screen (`<direction>-<screen>.jpg`: hud, menu,
+gacha, shop, inventory, settings, dialogue; its README lists them). B,
+clean sci-fi, is the target of the engine's default style (§12.1) and the
+kit's own frames; A, dark fantasy, of the fantasy pack; C, bright
+stylised anime, of the kawaii pack. A frame is read beside its concept (or
+the nearest one) for hierarchy, material and art, not pixel positions. In
+the default style any hued chrome is a finding.
 
-**Approved directions (owner, 2026-11-02).** B, clean sci-fi, is the
-target of the engine's default style and of the UI kit's own frames; A,
-dark fantasy, of the fantasy seed style; C, bright stylised anime, of the
-anime seed style. Each is approved for every screen it was drawn for:
+**One selection grammar in the packs.** In every style but the default and
+a version 1 style, a selected chip, slot or tab is one mark: the accent's
+hairline (`primary`, at the part's rim width where the style dresses a
+rim), a ground one step up (`controlStrong`) and its words in the accent's
+ink at 4.5:1 there (`dress::pack_grammar`). A selection or focus colour is
+never a tier hue. An unchecked checkbox or radio is a well whose rim reads
+3:1 on the well and on the panel (`dress::well_rim`).
 
-| Screen | Default style and kit | Fantasy seed | Anime seed |
-| --- | --- | --- | --- |
-| HUD (abilities, vitals, resources, minimap, buffs) | `B-hud` | `A-hud` | `C-hud` |
-| Main menu | `B-menu` | `A-menu` | `C-menu` |
-| Gacha banner | `B-gacha` | `A-gacha` | `C-gacha` |
-| Shop | `B-shop` | `A-shop` | `C-shop` |
-| Inventory and paperdoll | `B-inventory` | `A-inventory` | `C-inventory` |
-| Settings | `B-settings` | `A-settings` | `C-settings` |
-| Dialogue | `B-dialogue` | `A-dialogue` | `C-dialogue` |
+#### 15.5.1 Hierarchy
 
-B sets the default's hierarchy, frames, material and art; its colour
-values stay the design language's (`packages/design`). **The default's
-primary is neutral (owner, 2026-11-02)**: neither the concept's cyan nor
-amber. Its chrome (panels, controls, the primary button, selection,
-focus, tabs, sliders, rings) is drawn from the neutral ladder and told
-apart by tone, lift and weight; hue appears only on semantic roles
-(success, warning, danger, info) and game roles (health, mana, xp, gold,
-rarity, team), never on the chrome itself. Each game colours itself
-through its style; the seed styles keep their own palettes. A default
-frame is read against this rule: any hued chrome is a finding. The kit's art
-stays painted, and the showcase frames wear the seed styles with the
-default as one column beside them. The concepts' README lists every
-approved image and the genre sheets that extend the set.
+Each screen has one dominant element (the key art and logo of a title, the
+splash of a banner, the paperdoll of a character screen, the focused row
+of a settings page) with the most contrast, size or saturation, then at
+most two more levels: section titles and body. Titles use the style's
+display face and step (30–60 px at 1080p), section labels its caps or
+small caps, body 18–22 px, values tabular numerals.
 
-**One selection grammar in the packs (art review, 2026-11-04).** In every
-style but the default and a version 1 style, a selected chip, slot or tab
-is one mark: the accent's hairline (`primary`, at the part's rim width
-where the style dresses a rim), a ground one step up (`controlStrong`) and
-its words in the accent's ink at 4.5:1 there (`dress::pack_grammar`). A
-selection or focus colour is never a tier hue. An unchecked checkbox or
-radio is a well whose rim reads 3:1 on the well and on the panel
-(`dress::well_rim`).
+#### 15.5.2 One dominant element per control
 
-**Every pack a seed (owner, 2026-11-02).** Each style pack under
-`templates/styles` is a seed with an approved sheet of three screens (its
-genre's HUD, a menu or shop, settings) in the showcase archive
-(`ui-art/<id>`, docs/ci.md §Showcase), read like the table above; the
-README's coverage matrix gives each genre a primary and secondary seed.
-The owner settled sixteen packs (2026-11-02); bubbly, arcade, paper,
-inkwash, neon and holo were merged into cartoon, pixel, storybook, jade,
-cyber and scifi, and the README lists what each absorbing pack takes from
-the merged sheet. scifi is real-world spaceflight operations, kept apart
-from military sci-fi; cyber is high-contrast yellow, red and cyan with cut
-corners. Genre language is free; another game's names, logos, fonts and
-exact layouts are not.
+A slot, card or tile shows one primary reading (an ability's art, a card's
+art and name) and at most one centred numeral. Secondary values (a cost, a
+charge count, a stack, a hotkey) are small, in a fixed corner or a label
+outside the art, never two at the same size; a hotkey is a quiet label,
+never a boxed cap over the art. One primary action per layer, in the
+style's accent and material, larger or brighter than its secondaries.
 
-| Pack | HUD | Menu or shop | Settings |
-| --- | --- | --- | --- |
-| fantasy | `A-hud` | `A-shop` | `A-settings` |
-| jade | `jade-cultivation` (`ui-art/dba0973d790c`) | `jade-menu` (`ui-art/98481c251aeb`) | `jade-settings` (`ui-art/3f19757c41e2`) |
-| kawaii | `C-hud` | `C-shop` | `C-settings` |
-| cartoon | `cartoon-hud` (`ui-art/b476bf510b9c`) | `cartoon-menu` (`ui-art/18417a3dbdad`) | `cartoon-settings` (`ui-art/3fd89c603e7c`) |
-| midcore | `midcore-battle` (`ui-art/b88efa4bb6ac`) | `midcore-menu` (`ui-art/1aa6c4f07057`) | `midcore-settings` (`ui-art/442a633f59e7`) |
-| storybook | `storybook-hud` (`ui-art/dcc5fae146a1`) | `storybook-menu` (`ui-art/e181cf7311d3`) | `storybook-settings` (`ui-art/58673c78f815`) |
-| craft | `craft-hud` (`ui-art/ffd3635f6b19`) | `craft-menu` (`ui-art/a9e6efac42b5`) | `craft-settings` (`ui-art/84ffbbb1286f`) |
-| pixel | `pixel-hud` (`ui-art/3383564cc379`) | `pixel-menu` (`ui-art/187c8df6ca84`) | `pixel-settings` (`ui-art/41124ea7b1be`) |
-| gilded | `gilded-hud` (`ui-art/23b214a1d6ae`) | `gilded-menu` (`ui-art/75f688ef5276`) | `gilded-settings` (`ui-art/6ca093ebfc1e`) |
-| tactical | `tactical-hud` (`ui-art/5dc0d4592974`) | `tactical-menu` (`ui-art/9a9110d75f5e`) | `tactical-settings` (`ui-art/673672bc2ab1`) |
-| wasteland | `wasteland-hud` (`ui-art/13876c1858fa`) | `wasteland-menu` (`ui-art/37b06d223094`) | `wasteland-settings` (`ui-art/860fbeffcbb7`) |
-| dread | `dread-hud` (`ui-art/f3c187324b73`) | `dread-menu` (`ui-art/88d34c09a6b2`) | `dread-settings` (`ui-art/94d363b1c999`) |
-| scifi | `scifi-hud` (`ui-art/70c6e287e1a1`) | `scifi-menu` (`ui-art/371bdbc76e8d`) | `scifi-settings` (`ui-art/5c356aaad012`) |
-| cyber | `cyber-hud` (`ui-art/46b39cda6040`) | `cyber-menu` (`ui-art/b084a43067cb`) | `cyber-settings` (`ui-art/3cdb44b05813`) |
-| foundry | `foundry-build` (`ui-art/a19f7660818a`) | `foundry-menu` (`ui-art/2593651e20db`) | `foundry-settings` (`ui-art/2b3bf48492bf`) |
-| broadcast | `broadcast-hud` (`ui-art/342c9b49d2e6`) | `broadcast-menu` (`ui-art/734f4c4d2379`) | `broadcast-settings` (`ui-art/e16be56d19f0`) |
+#### 15.5.3 Real art over placeholder glyphs
 
-The checklist:
+Every slot that shows a thing (ability, item, buff, card, portrait,
+character, enemy, banner, level, backdrop) shows painted or rendered art
+from the art pipeline (§13), lit, saturated, filling its slot. Line icons
+are for system chrome only (close, back, settings, search, sort,
+chevrons). A kit or reference frame showing a placeholder silhouette, a
+letter in an empty slot, a star glyph as card art or a flat-colour wash as
+key art falls short; an empty equipment slot shows its kind's faint
+silhouette, not a letter. The kit's painted art is
+`templates/ui-kit/assets/textures/art/` (its `SOURCE.md`).
 
-1. **Hierarchy.** Each screen has one dominant element (the key art and
-   logo of a title, the splash of a banner, the paperdoll of a character
-   screen, the focused row of a settings page) with the most contrast,
-   size or saturation. Then at most two more levels: section titles and
-   body. Titles use the style's display face and step (30–60 px at
-   1080p), section labels its caps or small caps, body 18–22 px, values
-   tabular numerals. A frame whose title, labels and values share one
-   size and weight fails.
-2. **One dominant element per control.** A slot, card or tile shows one
-   primary reading (an ability's art, a card's art and name, an item's
-   art), and at most one centred numeral (a cooldown, a count-down, a
-   price). Secondary values (a cost, a charge count, a stack, a hotkey)
-   are small, in a fixed corner or a label outside the art, and never
-   two at the same size. A hotkey is a quiet label under or beside the
-   slot, never a boxed cap over the art. One primary action per layer,
-   in the style's accent and material, visibly larger or brighter than
-   its secondaries.
-3. **Real art over placeholder glyphs.** Every slot that shows a thing
-   (ability, item, buff, card, portrait, character, enemy, banner, level,
-   backdrop) shows painted or rendered art from the art pipeline
-   (§13), lit, saturated, filling its slot. Line icons are for system
-   chrome only (close, back, settings, search, sort, chevrons). A kit or
-   reference frame showing a placeholder silhouette, a letter in an empty
-   slot, a star glyph as card art or a flat-colour wash as key art fails;
-   an empty equipment slot shows its kind's faint silhouette, not a
-   letter.
-4. **Numerals.** Gameplay numerals (cooldowns, damage, health, prices,
-   counts) have a 1–2 px dark outline or shadow, or sit on a scrim, so
-   they read over any art at 4.5:1. Tabular figures in columns and
-   counters. Units and secondary parts (`/ 100`, `%`, `km/h`) are a step
-   smaller than the value. No numeral is coloured by state unless that
-   colour is the state (a red cost when unaffordable, a green delta for
-   a gain); a key label never carries state colour.
-5. **Selection and focus.** Selected, focused, hovered and pressed are
-   distinct and read on art: an accent glow (6–8 px at 1080p) or an
-   accent rim with a lift (shadow, scale 1.02–1.05), in the style's
-   accent. A pure white 1–2 px outline or a white fill as the selection
-   fails; flooding the selected item's art with a colour fails. Disabled
-   desaturates and darkens the art (about 35 % value) and shows why (a
-   lock, a slash, a reason line). Every state is captured (§15.4).
-6. **Depth and material.** At least three elevations are distinguishable
-   by value and light: the backdrop, the panel, the control (and a raised
-   or floating layer for menus and tooltips). Each surface has the
-   style's material: a lit edge (a hairline or a top-lit rim), an inner
-   shadow on wells and sockets, a drop shadow on raised parts, a
-   gradient or texture where the style has one. A flat grey rectangle
-   with no edge as a panel, button or socket fails. No translucent grey
-   box sits behind a HUD group: HUD pieces float on their own shadows.
-7. **Spacing rhythm.** All gaps and paddings come from the style's
-   space scale (a 4 or 8 px base), and a screen uses at most four steps
-   of it. Labels sit 4–6 px from what they label; groups are separated
-   by at least twice the gap inside them. A screen does not leave more
-   than a third of its area empty around a small centred card: either
-   the composition fills the frame (art, columns) or the card grows.
-8. **Motion stills.** The frames of a transition (§15.4's clips) are read
-   as stills: every mid-transition frame is a composed frame (no half
-   faded text over a hard edge, no element snapped while its neighbour
-   eases, no flash of an unstyled state). A key moment (a reveal, a
-   level up, a ready flash) has a frame that would work as a screenshot
-   of the game.
+#### 15.5.4 Numerals
 
-Each item becomes an `og ui check` rule where it can be measured (the
-numeral outline, the white-outline selection, the placeholder slot, the
-spacing scale); the rest stays a reviewer's read. The review records its
-findings in the stream's thread and, for the kit, in
-`tests/evidence/ui-art/`.
+Gameplay numerals (cooldowns, damage, health, prices, counts) have a
+1–2 px dark outline or shadow, or sit on a scrim, so they read over any
+art. Tabular figures in columns and counters (a type step's OpenType
+features: small caps, tabular and lining figures, case-sensitive forms,
+`crates/og-ui/src/shape.rs`). Units and secondary parts (`/ 100`, `%`,
+`km/h`) are a step smaller than the value. No numeral is coloured by state
+unless that colour is the state (a red cost when unaffordable, a green
+delta for a gain).
+
+#### 15.5.5 Selection and focus
+
+Selected, focused, hovered and pressed are distinct and read on art: an
+accent glow (6–8 px at 1080p) or an accent rim with a lift (shadow, scale
+1.02–1.05). A pure white 1–2 px outline or a white fill as the selection,
+or flooding the selected item's art with a colour, falls short. Disabled
+desaturates and darkens the art (about 35 % value) and shows why (a lock,
+a slash, a reason line).
+
+#### 15.5.6 Depth and material
+
+At least three elevations read by value and light: the backdrop, the
+panel, the control (and a floating layer for menus and tooltips). Each
+surface has the style's material: a lit edge, an inner shadow on wells and
+sockets, a drop shadow on raised parts, a gradient or texture where the
+style has one. No flat grey rectangle with no edge as a panel, button or
+socket; no translucent grey box behind a HUD group: HUD pieces float on
+their own shadows.
+
+#### 15.5.7 Spacing rhythm
+
+Gaps and paddings come from the style's space scale (a 4 or 8 px base),
+at most four steps of it per screen. Labels sit 4–6 px from what they
+label; groups are separated by at least twice the gap inside them. A
+screen does not leave more than a third of its area empty around a small
+centred card.
+
+#### 15.5.8 Motion stills
+
+Every mid-transition frame is a composed frame (no half-faded text over a
+hard edge, no element snapped while its neighbour eases, no flash of an
+unstyled state). A key moment (a reveal, a level up, a ready flash) has a
+frame that would work as a screenshot of the game.
 
 ## 16. Agent tooling: read, write, preview, check
 
-This is the base an agent stands on to adjust a UI.
-
 ### 16.1 Read
 
-`dump_ui` gains per element: the resolved props (box, transform, paints by
+`dump_ui` gives per element: the resolved props (box, transform, paints by
 token), the style part and dressing, the state of each group, bindings and
 their values, animations in flight with their progress, slot specs, the
-layer it belongs to, and whether it was rebuilt this tick. A
-`dump_ui:layers` lists the layer stack with input modes and focus. A
-`dump_ui:motion:<path>` samples a transition or timeline as a list of
-values over ticks.
+layer it belongs to, and whether it was rebuilt this tick. `dump_ui:layers`
+lists the layer stack with input modes and focus. `dump_ui:motion:<path>`
+(a transition or timeline sampled over ticks) is not implemented.
 
 ### 16.2 Write
 
@@ -1343,36 +1135,27 @@ Probe commands, for tests and live adjustment:
 Documents and style tokens are reflected, so Tune edits them while the
 game runs, and saving writes the value back into the `.ogt` that declared
 it (as `save_scene` does for scenes). `og dev` applies an edited document
-or style in place, keeping the UI state and the world.
+or style in place, keeping the UI state and the world, within a 300 ms
+reload budget.
 
 Loaded `type ui-material` assets also refresh in place. Editing their
 `source` WGSL or `param` defaults keeps the material handle and replaces
-the cooked shader and defaults after the manifest refresh. The renderer
+the cooked shader and defaults after the manifest refresh; the renderer
 invalidates its pipeline when the shader or parameter declaration changes.
-A failed cook leaves the previous material running.
+A failed cook leaves the previous material running. Custom materials in
+`dress` blocks resolve relative to the style file, are included in its
+cooked dependencies, and bind when the style is configured; reloading
+rebinds their defaults and preserves the style's part dressings.
 
-Custom materials in `dress` blocks resolve relative to the style file,
-are included in its cooked dependencies, and bind when the style is
-configured. Reloading rebinds their defaults and preserves the style's
-part dressings.
-
-For live tuning, `dump_ui.materials` lists each loaded asset's parameter
-names, WGSL types, defaults and current values directly from the cooked
-material declaration. `ui:material:effect.ogt.amount=0.6` changes the
-default uniform without a cook or shader compilation. Vectors take
-space-separated numbers; an empty value resets that parameter to its
-file default. Explicit per-layer parameters retain precedence. These are
-session edits: a changed material reloads its file defaults, and `ui:save`
-does not write material edits. Persist a chosen value in the material's
-`param` line (or the style's explicit material parameters).
-
-On macrunner's Metal host, a one-material `og dev` smoke test on 2026-11-05
-reported 131.0 ms for an external WGSL edit and 148.1 ms for a parameter
-default edit (one sample each, dev profile). Both included a rendered frame
-and met the 300 ms reload budget. The captured swatch changed from red to
-green without restarting the game. These are the dev command's
-rebuild-plus-swap timings, not a throughput benchmark or a bound for large
-projects.
+`dump_ui.materials` lists each loaded asset's parameter names, WGSL types,
+defaults and current values from the cooked material declaration.
+`ui:material:effect.ogt.amount=0.6` changes the default uniform without a
+cook or shader compilation. Vectors take space-separated numbers; an empty
+value resets that parameter to its file default. Explicit per-layer
+parameters take precedence. These are session edits: a changed material
+reloads its file defaults, and `ui:save` does not write material edits.
+Persist a chosen value in the material's `param` line (or the style's
+explicit material parameters).
 
 ### 16.4 Preview
 
@@ -1381,20 +1164,18 @@ breakpoints (desktop, phone portrait and landscape, tablet) × locales (the
 game's, pseudo, CJK, RTL) × states × text scale, from viewmodel fixtures
 (`fixtures/*.ogt`), with a JSON index of what each cell shows. `--film
 <path>.<timeline|transition>` renders a filmstrip of a motion at chosen
-ticks. These are what an agent reads (and the platform shows) before it
-claims a UI is done.
+ticks. These are what an agent reads before it claims a UI is done.
 
 ### 16.5 Check
 
-`og ui check` (also available to `og test`) reports facts, never
-verdicts (the owner, 2026-11-06: the engine supplies measurements and the
-agent decides). It exits 0 when it ran, whatever it found, and 1 only when
-it could not run. Its **findings**, each with the element paths and the
-prop that sets it:
+`og ui check` (also available to `og test`) reports facts, never verdicts.
+It exits 0 when it ran, whatever it found, and 1 only when it could not
+run. Its **findings**, each with the element paths and the prop that sets
+it:
 
 - overlap not declared (§6.2), across breakpoints and locales;
 - text clipped or truncated without ellipsis and a tooltip; overflow under
-  the pseudo-locale and at 150 % text (200 % deferred, §15.2);
+  the pseudo-locale and at 150 % text;
 - elements outside the safe area or under the shell's covered region;
 - focus: an interactive element unreachable by pad from the default
   focus, a focus trap, a layer without Back;
@@ -1403,8 +1184,8 @@ prop that sets it:
   without a sound in a styled game;
 - motion: durations outside the style's bounds, missing reduced-motion
   fallbacks, input refused longer than the style's entrance;
-- art: slots still on their placeholder; images whose focal point falls
-  outside the slot's crop (not checkable yet).
+- art: slots still on their placeholder. Images whose focal point falls
+  outside the slot's crop are not checked.
 
 Its **measures**, numbers held to no bar (the knowledge skills og-taste
 §3, §4, og-ui §8 and ui-craft say what a game usually wants):
@@ -1419,20 +1200,20 @@ Its **measures**, numbers held to no bar (the knowledge skills og-taste
 
 ### 16.6 Knowledge
 
-The `og-ui` skill is rewritten for documents, components, states, motion,
-slots and the checks. A new `ui-craft` skill holds the design craft:
-hierarchy, layout grammar per genre, motion personality, the conventions
-of each genre from Appendix A. `og-taste`'s UI parts point to it.
+The `og-ui` skill covers documents, components, states, motion, slots and
+the checks. The `ui-craft` skill holds the design craft: hierarchy, layout
+grammar per genre, motion personality, the conventions of each genre from
+Appendix A. `og-taste`'s UI parts point to it.
 
-## 17. Extensions (phase 0, approved 2026-11-04)
+## 17. Extensions
 
 The core owns elements, layout, motion, drawing, documents, style grammar
 and common components. Genre kits and style packs are directories, not
 host plugins. They use only the public TypeScript API and the document
-and style formats. Their versions are independent of the engine version.
-The first kits are RPG, shooter, puzzle/casual, gacha, strategy/TD and
-racing. Fantasy, scifi, cartoon and pixel are the flagship styles; the
-other packs are frozen. Contrast is not an acceptance check.
+and style formats, and their versions are independent of the engine
+version. Their suites run through `scripts/check.sh kits` (`ui` is an
+alias), separately from the engine's quick and functional lanes. Contrast
+is not an acceptance check.
 
 ### 17.1 Manifest and installation
 
@@ -1475,12 +1256,13 @@ is part of discovery or installation.
 versions, entry/type/skill paths and every document. The installed copy
 wins for a kind/name pair. `og ui eject <kit>/<document> [project]` copies
 an extension document to `assets/ui/<kit>/<document>.ogt`, alongside its
-companion documents and assets so relative references survive (§17.5). Existing companion edits
-are preserved; `--force` replaces only the requested document. Legacy library
-screen names remain supported. The installed documents are ordinary
-assets: `og.load.document(world, "ui-kits/racing/results.ogt")` uses the
-same cooked document on both hosts, with no runtime filesystem discovery.
-A look's `ui "fantasy"` finds the game's installed
+companion documents and assets so relative references survive (§17.5).
+Existing companion edits are preserved; `--force` replaces only the
+requested document. Library screen names (§11.1) are still accepted. The
+installed documents are ordinary assets:
+`og.load.document(world, "ui-kits/racing/results.ogt")` uses the same
+cooked document on both hosts, with no runtime filesystem discovery. A
+look's `ui "fantasy"` finds the game's installed
 `assets/styles/fantasy/style.ogt` before the bundled pack. Explicit asset
 paths remain valid. Installation preserves the directory tree and licences.
 
@@ -1503,100 +1285,37 @@ The registry is one TypeScript implementation shared by native and web.
 Components keep state in the engine's public world/UI memory APIs, not
 module globals, so snapshots and multiple worlds retain their meaning.
 
-### Genre ownership (2026-11-06)
-
-Only generic components remain in `og.ui`. Install an editable kit with
-`og ui add <kit>`; import its namespace explicitly from
-`@origingame/engine/extensions/<kit>/index.ts` or the installed
-`assets/ui-kits/<kit>/index.ts`. Types come from the same entry.
-The move changes ownership and imports only, not appearance or behavior.
-
-| Kit | Moved from `og.ui` in this wave |
-|---|---|
-| card | `cardHand`, `rewardChoice`, `deckBuilder` |
-| idle | `idleGenerator`, `prestigePanel` |
-| liveops | `storeFront`, `battlePass` |
-| story | `backlog`, `barks`, `cgGallery`, `routeChart` |
-| versus | `lobby`, `characterSelect`, `versus`, `draft`, `chat` |
-| rpg | `worldMap` |
-| rhythm | `songSelect`, `laneKeys`, `comboCounter`, `judgement` |
-| strategy | `ledger` |
-| photo | `photoMode` |
-| sports | `scorebug`, `matchStats`, `goalTimeline`, `playerPlate`, `substitution` |
-| flight | `flightHud` |
-
-Card owns the card/roguelike choice loop; versus owns multiplayer rosters,
-drafting and chat; story owns visual-novel readers and route/gallery views.
-Liveops owns the store and season progression. Flight and photo are separate
-optional kits rather than dependencies of every racing or action game.
-World maps extend RPG and management ledgers extend strategy.
-
-`heroButton`, `starBar`, `settingsTree` and `overlayBar` remain generic.
-Ability slots/bars and status grids remain common: they compose charges,
-cooldowns and effects in action, RPG, shooter and strategy games without a
-genre-specific screen flow. Generic meters, navigation, timers, the Rust
-meter/cooldown/minimap/zoom-view/joystick primitives are unchanged.
-
-Genre screen documents live beside their kit's `extension.json`; use
-`og ui eject <kit>/<screen>`. The complete Appendix B path catalogue is
-`packages/engine/extensions/tests/screen-catalogue.md`. Generic system screens
-stay in `src/ui/screens` (boot/menu, settings, pause, save/load, loading,
-results, leaderboard, calibration, tutorial, game-over, creator tools, credits).
-Kit and style suites run through `scripts/check.sh kits` (`ui` is an alias),
-separately from the engine's quick and functional lanes. Tests retain their
-assertions and reference bytes; known failures are not repaired by this move.
-
 ### 17.3 Pack authoring and review
 
 `style.ogt` is authored data. Each pack's choices file is local to that
 pack; `og style new` only bootstraps a new style, never regenerates the
 built-in collection. Adding a pack or kit requires no shared name list.
-The on-demand `og ui sheet <pack|kit>` renders baseline pages on the pack's
-own ground at desktop, phone and 150% text. It is not a gate step.
 
-`og ui sheet <pack|kit> [project] [--out DIR]` discovers extensions in the
-project (default `.`), including installed edits. Packs use the engine's
-shipped baseline project and its fixed component/pattern/HUD pages. A kit
-supplies `sheet/project.ogt` inside its own directory: its `ui { screen
-"name" "commands" }` entries are its fixed review pages. Those commands
-must establish each page independently, on the kit's style ground rather
-than a game scene. No kit name or page list is registered in the core.
-The tool copies its inputs to disposable working files, cooks and bundles
-them, and renders four cells per page: desktop and phone at 100% and 150%.
-It writes full-resolution frames, UI dumps, contact sheets and `index.json`.
-Missing captures or missing baseline page roots fail the command; visual
-judgment belongs to the reviewer, with no contrast score or reference gate.
+`og ui sheet <pack|kit> [project] [--out DIR]` renders a pack's or kit's
+baseline pages on demand; it is not a gate step. It discovers extensions
+in the project (default `.`), including installed edits. Packs use the
+engine's shipped baseline project and its fixed component/pattern/HUD
+pages. A kit supplies `sheet/project.ogt` inside its own directory: its
+`ui { screen "name" "commands" }` entries are its fixed review pages,
+whose commands must establish each page independently, on the kit's style
+ground rather than a game scene. No kit name or page list is registered in
+the core. The tool copies its inputs to disposable working files, cooks
+and bundles them, and renders four cells per page: desktop and phone at
+100 % and 150 % text. It writes full-resolution frames, UI dumps, contact
+sheets and `index.json`. Missing captures or missing baseline page roots
+fail the command; visual judgment belongs to the reviewer (§15.4), with no
+contrast score or reference gate.
 
-### Documents and arbitrary widgets
-
-`tabs` is a document control with `items`, two-way `selected`, and a
-`changed` event. For any other `og.ui` widget or an extension component,
-documents declare a `slot` and game code fills it after mounting:
-
-```ts
-og.ui.screen("garage", vm);
-if (og.ui.openSlot("garage/Speed")) {
-  racing.speedometer("Speedometer", vm.speed);
-  og.ui.close();
-}
-```
-
-This is the general document-to-widget bridge on both hosts. The slot
-owns placement; the typed call owns widget arguments and interactions.
-It avoids a second, untyped widget dispatch API or executable strings in
-documents. The same bridge accepts a common component such as
-`og.ui.slider`, without registering a new document element kind.
-
-### 17.4 Phase 0 dressing and typography contracts
+### 17.4 Dressing and typography contracts
 
 Painted art is addressed by **selector**, not by an engine slot enum.
 An `art-requests.json` slot with a new name supplies `size`, `insets` and
 `dress: ["Tabs.tab[selected]"]`; `kind: "styleFrame"` packs a nine-slice,
 `"ornament"` a whole piece, and `"styleButton"` a five-cell state sheet.
 `tint: true` on a frame keeps the widget's colour instead of baking it
-into the art. The historical slot names remain defaults; `bar` is an
-opt-in tinted `Meter.fill`, never an extra request imposed on every pack.
-Tabs, selected rows, ribbons and banners need no new core registration.
+into the art. The standard slot names remain defaults; `bar` is an
+opt-in tinted `Meter.fill`. Tabs, selected rows, ribbons and banners need
+no new core registration.
 
 A paint colour can carry `alpha <0..1>`, including a palette or custom
 role: `fill linear 90 primary alpha 0.25 0 accent alpha 0.8 1`.
@@ -1611,12 +1330,15 @@ It does not recolour the atlas or other components using the same art.
 
 The palette separates `selection`/`onSelection` (selected rows and tabs),
 `primary`/`onPrimary` (the main action), and `accent` (small emphasis).
-Old files derive selection from controlStrong, onSelection from ink and
-accent from highlight. `sceneInk`, `scenePlate` and `sceneShadow` are
-scheme-aware HUD roles (legacy fallback: ink, hud and shadow).
-`og.ui.label(..., { onScene: true })` uses sceneInk and sceneShadow;
-a HUD container with `background: { token: "scenePlate" }` is the plate
-treatment. Games tune these three roles in their style, not per widget.
+Files without them derive selection from controlStrong, onSelection from
+ink and accent from highlight. `sceneInk`, `scenePlate` and `sceneShadow`
+are scheme-aware HUD roles (fallback: ink, hud and shadow). Text drawn
+straight over the scene passes `onScene` (`LabelDesc.onScene`,
+`og.ui.label(..., { onScene: true })`, the ui-parts `text()` and `btn()`):
+ink roles become `sceneInk` at the same emphasis, with `sceneShadow`
+separation. A HUD container with `background: { token: "scenePlate" }` is
+the plate treatment. Games tune these three roles in their style, not per
+widget.
 
 `og.ui.icon(id, "base", { secondary: "detail", secondaryTint: { token:
 "accent" } })` overlays two named icons with independent inks. The
@@ -1629,10 +1351,10 @@ badges. Focus never covers art with a background-coloured cut. Put a
 decoration that must cover children in a child of its own, not a rim.
 
 `typography` is the drawing hierarchy, including weight, tracking and
-breakpoint sizes. The legacy ramp names are aliases, not a second set
-of authored numbers:
+breakpoint sizes. The ramp names are aliases, not a second set of
+authored numbers:
 
-| Typography role | Legacy ramp names |
+| Typography role | Ramp names |
 | --- | --- |
 | caption | xs, caption |
 | label | sm, meta |
@@ -1643,10 +1365,10 @@ of authored numbers:
 | display | xl5, xl6, displayLg |
 | hero | xl7, xl8, displayXl, displayXl2 |
 
-`hero` is optional for existing packs; without it, it is 1.5 times
-`display` at each breakpoint, up to the format's 400 px limit. The
-player's text scale multiplies after selecting the breakpoint, once.
-Buttons continue to use `button` (falling back to `label`).
+`hero` is optional; without it, it is 1.5 times `display` at each
+breakpoint, up to the format's 400 px limit. The player's text scale
+multiplies after selecting the breakpoint, once. Buttons use `button`
+(falling back to `label`).
 
 Type roles accept `cjkTracking <em>` and `case upper` after the font and
 OpenType tags, for example `label 16 22 0.06 600 body case upper`.
@@ -1658,34 +1380,44 @@ strings, editable values, cursor offsets or inline icons and key caps.
 Greek accents, Turkic dotted I and Lithuanian combining dots therefore
 follow their language, on both hosts.
 
-On the next minor upgrade, `og upgrade`'s `ui-typography` codemod converts
-v1 styles with the existing style upgrader. For v2 it comments out a
-superseded `ramp`, keeping its old numbers for review and preserving other
-source bytes. It lists `typography` for manual visual review: two old
-aliases with different sizes cannot both keep those sizes when they name
-one role. No version bump occurs in a feature stream; the integrating
-release head moves these unreleased breaking entries once for the wave.
+`og upgrade`'s `ui-typography` codemod converts v1 styles with the style
+upgrader. For v2 it comments out a superseded `ramp`, keeping its old
+numbers for review and preserving other source bytes, and lists
+`typography` for manual visual review: two old aliases with different
+sizes cannot both keep those sizes when they name one role.
 
-### 17.5 The first-wave genre kits (phase 1)
+### 17.5 The genre kits
 
-The genre components left `og.ui` for six bundled kits under
+Genre components are not in `og.ui`; they are bundled kits under
 `packages/engine/extensions/`. Each kit's `index.ts` registers one typed
-namespace, and its `types.ts` holds the data types that used to be
-generated from `ui-hud.ogt` and `ui-patterns.ogt`:
+namespace, and its `types.ts` holds its data types:
 
 | Kit | Members |
 |---|---|
-| `rpg` | `inventoryGrid`, `paperdoll`, `questLog`, `questTracker`, `conversation`, `unitFrame`, `partyFrames`, `raidFrames`, `castBar`, `turnOrder` |
+| `rpg` | `inventoryGrid`, `paperdoll`, `questLog`, `questTracker`, `conversation`, `unitFrame`, `partyFrames`, `raidFrames`, `castBar`, `turnOrder`, `worldMap` |
 | `shooter` | `crosshair`, `ammoCounter`, `killfeed`, `damageDirection`, `lowHealthVignette`, `scoreboard`, `loadout` |
 | `puzzle` | `sagaMap`, `goalChips` |
 | `gacha` | `gachaBanner`, `pullSequence` |
-| `strategy` | `productionQueue`, `selectionPanel`, `commandCard`, `rtsConsole`, `dragSelect`, `rtsCommands`, `wavePreview`, `resourceBar` |
+| `strategy` | `productionQueue`, `selectionPanel`, `commandCard`, `rtsConsole`, `dragSelect`, `rtsCommands`, `wavePreview`, `resourceBar`, `ledger` |
 | `racing` | `speedometer`, `standingsTower`, `lapTimer`, `rearView`, `raceBanner`, `itemSlot`, `driftScore`, `garage` |
+| `card` | `cardHand`, `rewardChoice`, `deckBuilder` |
+| `idle` | `idleGenerator`, `prestigePanel` |
+| `liveops` | `storeFront`, `battlePass` |
+| `story` | `backlog`, `barks`, `cgGallery`, `routeChart` |
+| `versus` | `lobby`, `characterSelect`, `versus`, `draft`, `chat` |
+| `rhythm` | `songSelect`, `laneKeys`, `comboCounter`, `judgement` |
+| `photo` | `photoMode` |
+| `sports` | `scorebug`, `matchStats`, `goalTimeline`, `playerPlate`, `substitution` |
+| `flight` | `flightHud` |
 
-Generic lists, slots, meters, timers (`hudTimer`), stars (`starBar`),
-counters, stores, rewards, cards and world tags stay in `og.ui`. A game
-imports a kit explicitly, from the bundled copy or from its installed
-copy after `og ui add <kit>`:
+`materials` is a kit of UI material presets (§5.4). Flight and photo are
+optional kits, not dependencies of every racing or action game. Generic
+lists, slots, meters, timers (`hudTimer`), stars (`starBar`), counters,
+stores, rewards, cards, world tags, `heroButton`, `settingsTree`,
+`overlayBar`, ability slots and bars, status grids, navigation and the
+Rust meter/cooldown/minimap/zoom-view/joystick primitives stay in `og.ui`.
+A game imports a kit explicitly, from the bundled copy or from its
+installed copy after `og ui add <kit>`; types come from the same entry:
 
 ```ts
 import { racing, type StandingsEntry } from "@origingame/engine/extensions/racing/index.ts";
@@ -1703,7 +1435,7 @@ are a contract within a minor version, and changing one is a breaking
 changelog entry. Every helper is built from `og.ui`'s public members and
 keeps its state in the UI's memory, so a kit runs unchanged on both hosts.
 
-`og upgrade` crosses this change with the `ui-kits` codemod. Its
+`og upgrade`'s `ui-kits` codemod moves a game onto the kits. Its
 changelog entry lists each kit's members and types, so a later kit needs
 no edit to the codemod. It rewrites `og.ui.<member>` to `<kit>.<member>`,
 moves the kit's types out of `@origingame/engine` imports and
@@ -1733,83 +1465,6 @@ rank, color }`) over the engine's `Rarity`: its colour tints the reveal,
 its label names it, and its rank orders the summary and, from 5, shines
 and bursts as legendary does. Scoreboards take any number of teams, a
 resource bar any resources, and a standings tower any field.
-
-### 17.6 Phase 1 common-component additions
-
-- **Locale-aware uppercase.** `LabelDesc.uppercase` (the document label's
-  `uppercase` prop) cases a label with the same ICU casing as a type
-  role's `case upper`, before it is measured, so Turkish and Greek case
-  right; the probe keeps the source text. Components and kits ask for it
-  instead of `String.toUpperCase`.
-- **Fallback icons.** `UiDesc.fallbackIcons` names an icon set that draws
-  what the atlas (the game's icons, else the style's) lacks. A pack keeps
-  the icons it paints; `og.ui.icon`, rich text, action glyphs and art
-  placeholders read the same chain.
-- **Scroll fades in documents.** The `scroll` kind takes `fade` and
-  `fadeInto`, as `og.ui.scrollArea` does, so a cut row reads as more.
-- **Touch controls.** `joystick`, `dpad` and `actionButton` take
-  `disabled` and dress as discs. Each keeps the finger that went down on
-  it, saved in the UI state (version 16, upgraded from 15 on load); the
-  stick rises from 0 past its dead zone and the d-pad reads eight ways.
-- **Scene text.** Text drawn straight over the scene passes `onScene`
-  (`LabelDesc.onScene`, the ui-parts `text()` and `btn()`): ink roles
-  become `sceneInk` at the same emphasis, with `sceneShadow` separation,
-  so a light style's dark ink stays readable over a dark scene.
-- **Reward choice.** Its cards scroll between the header and the actions,
-  at `<id>/Cards/Options/<key>` (was `<id>/Options/<key>`).
-
-## 17a. The existing coverage kit
-
-`templates/ui-kit` is rebuilt as the coverage proof:
-
-- one **genre showcase** per genre family (action and platformer, shooter
-  and battle royale, MOBA and arena, RPG (JRPG, ARPG, CRPG), MMO,
-  roguelike and card, strategy (RTS, 4X, tactics, tower defense, auto
-  battler), management (city, idle, life), puzzle and casual, gacha and
-  collection, rhythm, racing and sports, fighting and party, narrative and
-  VN, survival, horror, open world), each a playable set of its screens,
-  HUD and world UI, driven by fixtures;
-- every seed style on its own pages (§17.3), over its plain ground;
-- tests per showcase: reference frames on metal, filmstrips of its key
-  motions, scripted interactions (pad, touch, keys), and a clean `og ui
-  check`.
-
-The archetypes and examples move to the new components and screens in the
-same phase; their FINDINGS about templates close with it.
-
-## 18. Phases
-
-Each phase ends merged on main with its tests, reference frames on metal
-and the functional lane green; the wave's end runs `scripts/wave-end.sh`.
-At most five threads run at once (AGENTS.md); the split below keeps their
-files apart.
-
-| Phase | Content | Owns | Depends on |
-|---|---|---|---|
-| U1 | UI render pass: shapes, paints, strokes, effects, masks, blend, layers and materials, vector paths, text effects, UI particles, the viewport element | og-render `ui`, og-ui `draw.rs`, og-cook `vector`/`ui-material` | — |
-| U2 | Element model (transform, opacity, z, absolute, grid, stack, container queries, overlap rule) and motion (springs, states, timelines, choreography, presence, layout and shared-element animation, gestures) | og-ui `ui.rs`, `layout.rs`, `motion/` | — |
-| U3 | Documents and cook, data binding and formatting, the layer stack, actions and glyphs, Tune, probe writes, hot reload | og-ui `doc/`, `bind.rs`, `layers.rs`; og-cook; og-api; og-probe; og-runtime | U2 |
-| U4 | Styles v2 (tokens, part dressings, motion, sound and haptic sets), `og style upgrade`, art slots, the art brief's UI kinds, the style generator, the seed styles | og-ui `style_file.rs`; knowledge `brief.ts`; og-cli `style.rs`; `templates/styles` | U1 (paints), U2 (states) |
-| U5 | World-space UI: anchored elements, mass elements, world panels, meta UI | og-ui `world.rs`, og-render | U1, U2 |
-| U6 | Component library and screen documents for every row of the appendices | `packages/engine/src/ui/`, og-ui widgets | U3, U4 |
-| U7 | `og ui preview`, `og ui check`, the skills | og-cli, `packages/engine/src/node`, knowledge | U3 |
-| U8 | The kit's genre showcases, seed styles on them, archetypes and examples migrated, references, wave-end | templates, examples | U5, U6, U7 |
-
-Waves: **A** U1 ∥ U2 ∥ (U4's grammar and the brief's kinds); **B** U3 ∥ U5
-∥ U7's checks on the element model; **C** U4 rest ∥ U6 (split by
-category) ∥ U7 rest; **D** U8, split by genre families.
-
-The removal of the fixed templates and of `type style` version 1 at load
-(after `og style upgrade`) are breaking changes, released as a minor
-version with `changelog.json` breaking entries.
-
-## 19. Open for the owner
-
-- The seed styles (§12.5): which families, how many beyond twelve.
-- The document grammar (§10.1) after U2 lands.
-- The budgets of §15.1 once U1 and U2 measure.
-- Whether `og ui check` failures block `og publish` or only warn in the
-  first release.
 
 ---
 
@@ -2008,8 +1663,7 @@ layers, focus and styles.
 
 ## Appendix F. Art slot kinds
 
-Aspects are starting values for the brief, to be checked against current
-platform guidelines in U4.
+Aspects are starting values for the brief.
 
 | Kind | Aspect | Genres |
 |---|---|---|
@@ -2041,13 +1695,12 @@ platform guidelines in U4.
 
 ## Sources
 
-The survey of og-ui at `c030bfe3`; the research behind the appendices and
-§5–§8 drew on Unreal's CommonUI, UMG and its Viewmodel, Slate
-invalidation and the Retainer Box; Unity's UI Toolkit and its comparison
-with uGUI; Godot's containers, themes, Tween and SubViewport; Rive's state
-machines and data binding; NoesisGUI's Visual State Manager; Coherent
-Gameface; SwiftUI's springs and matched geometry; Flutter's Hero and
-staggered animations; the Game UI Database; the Xbox Accessibility
+The appendices and §5–§8 draw on Unreal's CommonUI, UMG and its Viewmodel,
+Slate invalidation and the Retainer Box; Unity's UI Toolkit and its
+comparison with uGUI; Godot's containers, themes, Tween and SubViewport;
+Rive's state machines and data binding; NoesisGUI's Visual State Manager;
+Coherent Gameface; SwiftUI's springs and matched geometry; Flutter's Hero
+and staggered animations; the Game UI Database; the Xbox Accessibility
 Guidelines (101–118) and the Game Accessibility Guidelines; GDC talks on
 the UI of Dead Space (2013), Hearthstone (2015) and Into the Breach
 (2019).

@@ -1,51 +1,9 @@
-# Art wave: a game's style as a contract on every asset, not a filter on the frame
+# The art contract: a game's style as a contract on every asset, not a filter on the frame
 
-Decided by the owner on 2026-10-28, after the review recorded in the
-thread of that day
-(https://ampcode.com/threads/T-6c20835f-dd62-4743-b673-a1cfbe426f7f). This
-document is the execution package: the problem, the design, ten streams
-(each one agent thread on its own branch, merged by the coordinator, this
-repository's rules in `AGENTS.md` §Build and gate discipline), the
-platform's part, and the release that ships it (0.7.0).
-
-## 1. What the review found
-
-- **A look is only the frame.** `type look` (`crates/og-bundle/src/look.rs`)
-  writes seven render resources (`RenderSettings`, `PostEffects`,
-  `Stylise`, `MaterialStyle`, `Fog`, `Sky`, `Environment`) and the UI
-  style. Models, textures, sprites, flipbooks, tile sets, animation timing
-  and the camera are untouched by it: a style is put over whatever assets
-  the game has.
-- **The catalogue promises more than the frame can hold.** 28 of the 37
-  styles say `look.support: full`, which only means every render primitive
-  the style names draws. Rendered side by side with a target image of each
-  style (Painter, 37 frames, `.amp/in/artifacts/style-compare-*.jpg` in the
-  review thread), about nine read as their style on the showcase diorama
-  (the filter-defined ones: 8-bit, monochrome and coarse pixel, monochrome
-  dither 3D, pencil hatching, black-figure pottery, layered silhouette,
-  the comic outlines). Faceted low-poly, sculpted clay, miniature diorama,
-  painterly 3D, paper craft, voxel worlds, neon vector, top-down tile
-  pixel and low-resolution 3D are indistinguishable from the plain
-  diorama, because what makes them is the assets: facets, voxels, clay
-  bevels, a tile grid, wireframes.
-- **Asset production does not know the style.** `producing-game-assets`
-  says "direction boards settle palette, shape language, atmosphere and
-  materials", `og-model` looks at a model "under the game's light and
-  look"; nothing turns a style's `assets` and `palette` (prose today) into
-  a constraint a generator, the cook or a check can hold.
-- **The pixel-art reference does it at the asset.** Pixelorama
-  (github.com/Orama-Interactive/Pixelorama, MIT) styles pixels in the
-  editor: a non-destructive stack of layer effects (Palettize, Posterize,
-  Outline, Drop Shadow, Gradient Map, Pixelize, HSV, curves; its
-  `src/UI/Timeline/LayerEffects/LayerEffectsSettings.gd`), indexed colour,
-  palette management, pixel-art rotation (cleanEdge, OmniScale, rotxel)
-  and tile maps, baked into the exported sheet. The style is in the asset
-  before any frame is drawn.
-- **No preview.** The catalogue has no image of any style; the only
-  pictures are fx-showcase's regression frames, one grey diorama 37 times.
-- **The platform never asks.** origin-agent's creation flow (the
-  Library's `GameCreation`) takes a prompt; ask 12 of
-  `docs/platform-asks.md` (the style step) is open.
+A look (`type look`) holds the frame's render resources and the UI style;
+the art contract adds what a style asks of the assets themselves, so the
+assets carry the style instead of a filter put over whatever the game has.
+The platform's part (the style chosen at creation) is §4.
 
 ## 2. The design
 
@@ -53,50 +11,48 @@ A style is one contract, held at four places:
 
 ```text
             ┌────────────── the contract: the game's look (.ogt, one source) ──────────────┐
-            │ the frame (as today)   ArtPalette  ArtPixels  ArtTexels  ArtShape              │
-            │ ArtLine  ArtMotion  ArtCamera   ui   (checks, preview: the catalogue)          │
+            │ the frame             ArtPalette  ArtPixels  ArtTexels  ArtShape              │
+            │ ArtLine  ArtMotion  ArtCamera   ui   (preview: the catalogue)                  │
             └────────┬──────────────────┬──────────────────┬──────────────────┬────────────┘
                      ▼                  ▼                  ▼                  ▼
             1 produce             2 conform (cook)     3 run               4 check
             the contract          every asset made     the frame's own     og style check:
             compiled into each    to the contract,     treatment, sprite   the assets' and
             generator request     deterministically,   outlines, palette   the frame's
-            (images, models,      sources untouched    swaps, pixel-art    numbers; the
-            og-model recipes)                          rotation, camera    critic's checks
+            (images, models,      sources untouched    swaps, pixel-art    numbers
+            og-model recipes)                          rotation, camera
 ```
 
-The root fix is 1 and 2: the assets carry the style. 3 keeps what really
-is a property of the frame (light, tone, fog, post) and adds the runtime
-pieces a style needs on a sprite. 4 makes the style measurable.
+1 and 2 make the assets carry the style. 3 keeps what really is a
+property of the frame (light, tone, fog, post) and adds the runtime
+pieces a style needs on a sprite. 4 measures the style.
 
 ### 2.1 The contract: seven art resources in the look
 
-New IDL module `art` (`crates/og-api/api/art.ogt`), seven resources a look
-sets like the render ones (by reflected name, `og-bundle/src/look.rs`
-`LOOK_RESOURCES` grows by seven). Each field's zero value is "no
-constraint", so a look without them, and every existing game, cooks and
-draws exactly as before. They are resources, so game code can read the
-contract too (a sprite snapping to `ArtPixels.unit`, a spawner picking
-from `ArtPalette`). The names (not final field lists; the stream settles
-them in the IDL, three.js vocabulary where one exists):
+The IDL module `art` (`crates/og-api/api/art.ogt`) declares seven
+resources a look sets like the render ones (by reflected name,
+`og-bundle/src/look.rs` `LOOK_RESOURCES`). Each field's zero value is "no
+constraint", so a look without them cooks and draws as a plain look. They
+are resources, so game code can read the contract too (a sprite snapping
+to `ArtPixels.unit`, a spawner picking from `ArtPalette`). The IDL holds
+the field lists; in outline:
 
 | Resource | Holds | Read by |
 |---|---|---|
-| `ArtPalette` | `colors` (a palette asset, `@palettes/*` or the game's), `strict` (every opaque texel on a palette colour), `rampSteps` (shades per hue), `accents` (colours reserved for signals), `dither` (none, bayer2/4/8, blueNoise) | conform 2D and 3D textures, check |
-| `ArtPixels` | `unit` (logical pixels per world unit, 2D), `logicalHeight` (as `Stylise.pixelHeight`), `spriteSizes` (allowed cell sizes, e.g. 16, 32), `rotation` (nearest, cleanEdge, prerotated N), `snap` | conform sprites, flipbooks, tile sets; runtime sprites; check |
+| `ArtPalette` | `colors` (a palette asset, `@palettes/*` or the game's), `strict` (every opaque texel on a palette colour), `maxColors`, `rampSteps` (shades per hue), `accents` (colours reserved for signals), `dither` (none, bayer2/4/8, blueNoise) | conform 2D and 3D textures, check |
+| `ArtPixels` | `unit` (logical pixels per world unit, 2D), `logicalHeight` (as `Stylise.pixelHeight`), `spriteSizes` (allowed cell sizes, e.g. 16, 32), `rotation` (nearest, cleanEdge, prerotated) with `rotationSteps`, `snap` | conform sprites, flipbooks, tile sets; runtime sprites; check |
 | `ArtTexels` | `density` (texels per metre), `maxSize`, `filter` (nearest, linear), `mips` | conform 3D textures, check |
-| `ArtShape` | `faceBudget` (per prop, per character), `normals` (smooth, flat, angle), `bevel` (radius in metres), `voxel` (edge in metres, 0 none), `silhouette` (min feature, metres) | conform models, og-model recipes, check |
-| `ArtLine` | `width` (logical px for sprites, px for meshes), `color`, `place` (outside, inside, both), `distanceFalloff` | conform sprites (baked outline), runtime meshes (MaterialStyle outline), check |
+| `ArtShape` | `propFaces`, `characterFaces` (the face budgets), `normals` (smooth, flat, angle) with `normalAngle`, `bevel` (radius in metres), `voxel` (edge in metres, 0 none), `silhouette` (min feature, metres) | conform models, og-model recipes, check |
+| `ArtLine` | `width` (logical px for sprites, px for meshes), `color`, `place` (outside, inside, both), `distanceFalloff`, `brush` | conform sprites (baked outline), runtime meshes (MaterialStyle outline), check |
 | `ArtMotion` | `stepFps` (animation on 2s/3s: 12, 8), `maxFrames` per clip, `squash` (0..1 default squash/stretch for og.tween presets) | conform flipbooks and clips, runtime `AnimationPlayer.stepFps` default, check |
-| `ArtCamera` | `projection` (perspective, orthographic), `pitch`/`yaw` (isometric presets), `fovRange`, `pixelPerfect` | runtime camera defaults (`og.camera` presets), check |
+| `ArtCamera` | `projection` (perspective, orthographic), `fixedAngle`, `pitch`/`yaw` (isometric presets), `fovMin`/`fovMax`, `pixelPerfect` | runtime camera defaults (`og.camera` presets), check |
 
-The catalogue entry's prose `assets` and `palette` become these values in
-each of the 37 presets (`templates/looks/<slug>.ogt`), and `og-taste` §12
-documents them. A game's look `extends` a preset and overrides field by
-field, as today.
+Each of the 37 presets (`templates/looks/<slug>.ogt`) sets these values,
+and `og-taste` §12 documents them. A game's look `extends` a preset and
+overrides field by field.
 
 **The project names its look.** The cook needs the contract before game
-code runs, so `project.ogt` gains `look "looks/<id>.ogt"` (the same id
+code runs, so `project.ogt` has `look "looks/<id>.ogt"` (the same id
 `GameDesc.look` takes; `GameDesc.look` unset falls back to it). `create`
 writes both. A project without the line conforms nothing.
 
@@ -126,8 +82,6 @@ own accepted assets once there are some) and the generator's parameters
 for retexture). It is a pure function with tests, written in TypeScript
 in the knowledge package (`scripts/brief.ts`), so the platform and an
 agent in a sandbox read the same.
-
-As built (stream A5, `tests/evidence/art/brief/NOTES.md`):
 
 - **The signature**, a public contract documented in the knowledge
   README's §The art brief: `artBrief(look: BriefLook, kind: ArtKind,
@@ -166,12 +120,12 @@ As built (stream A5, `tests/evidence/art/brief/NOTES.md`):
   in `faceted-low-poly`.
 - **The re-export**: `@origingame/create-game` re-exports the functions
   and types from `bin/brief.ts`, a byte-for-byte copy its prepack writes
-  and its tests hold equal; its package.json gains `main`. On the command
+  and its tests hold equal; its package.json has `main`. On the command
   line: `bun <knowledge>/scripts/brief.ts <kind> "<subject>" [--project
   <dir> | --look <slug>] [--reference <path>]... [--metres <n>] [--json]`.
 
-**The UI kinds** (docs/ui.md §13.3, added in phase U4): `ART_KINDS`
-grows, after the eight above and in this order, by the art-slot kinds of
+**The UI kinds** (docs/ui.md §13.3): `ART_KINDS`
+continues, after the eight above and in this order, by the art-slot kinds of
 docs/ui.md Appendix F, named as og-ui's `SlotKind` (`crates/og-ui/src/slot.rs`):
 `keyArt`, `capsule`, `logo`, `appIcon`, `characterSplash`, `fullBody`,
 `bust`, `vnSprite`, `eventCg`, `itemIcon`, `abilityIcon`, `cardArt`,
@@ -179,9 +133,9 @@ docs/ui.md Appendix F, named as og-ui's `SlotKind` (`crates/og-ui/src/slot.rs`):
 `menuBackground`, `menuPattern`, `banner`, `playerBanner`, `emblem`,
 `achievement`, `emote`, `currency`, `mapGlyph`, `talentIcon`, `tutorial`,
 `cosmeticPreview`, and the style's own art `styleFrame`, `styleButton`,
-`ornament`, `iconSet`. The change is additive: the signatures of
-`artBrief`, `readLook` and `presetLook` are unchanged, `BriefOptions`
-gains the optional `aspect`, `cells` and `insets`, and `ArtBrief` the
+`ornament`, `iconSet`. They are additive: the signatures of
+`artBrief`, `readLook` and `presetLook` are as above, `BriefOptions`
+has the optional `aspect`, `cells` and `insets`, and `ArtBrief` the
 optional `ui`.
 
 - **`UI_KINDS`** (exported) gives each kind's spec: the aspects it is
@@ -216,7 +170,7 @@ optional `ui`.
   whose prompt asks for lettering; `cosmeticPreview` is rendered from a
   viewport (docs/ui.md §5.5), and its brief describes the framing only.
 
-The skills change with it: `producing-game-assets` (platform knowledge,
+The skills that use it: `producing-game-assets` (platform knowledge,
 mounted from origin-agent; its engine side is the "consumer on Origin
 Engine" section, owned here through og-build: og-build §8, request, import,
 cook and read the report, opt out, check), `og-model` (§5: one recipe per
@@ -224,8 +178,7 @@ shape language, faceted, voxel, clay bevel, paper fold, wireframe for neon
 vector, with the og-geom generators; §6: the look's budget over the table)
 and `og-taste` (§1: the look is the contract and every asset request goes
 through the brief, with the command; §12: the cook conforms, the art bible
-keeps the brief of each kind). og-build §8 names `og style check` (§2.5)
-as coming until stream A6 lands. The craft skills `visual-acceptance`,
+keeps the brief of each kind). The craft skills `visual-acceptance`,
 `level-texturing`, `component-forge` and `recipe-craft` judge and make
 assets against the brief and the cook's report.
 
@@ -264,7 +217,7 @@ colours, and the quantise leaves a pixel whose drawn colour lies within
 through compression and filtering; a lit or fogged tone is quantised).
 The drawn colour is the lit scene's before exposure and the tone curve,
 so a tone-mapped look keeps its conformed art too, as the curve draws it.
-New runtime pieces, all off at their zero value:
+The runtime pieces, all off at their zero value:
 
 - **Sprite outline** (`Sprite.outline`, `outlineColor`, from `ArtLine`
   when unset and the look sets one): a pixel outline drawn by the sprite
@@ -273,24 +226,15 @@ New runtime pieces, all off at their zero value:
 - **Palette swap**: a sprite or tile layer draws its index texture through
   a palette row (`Sprite.paletteRow`, a palette texture of N rows):
   team colours, hit flashes in palette, day and night ramps.
-- **Pixel-art rotation**: `TextureFilter` gains `cleanEdge`, a sampler
+- **Pixel-art rotation**: `TextureFilter.cleanEdge`, a sampler
   mode in the sprite shader that rotates pixel art without blur or
   jaggies (cleanEdge, MIT).
 - **Camera presets** from `ArtCamera`: the main camera's projection,
   angle and field of view default to the contract; `pixelPerfect` snaps
-  the 2D camera (today's `Stylise.pixelSnap` path).
-- **The anime-cel frame (closed 2026-11-04).** The finding (no cel bands
-  and no outline on the showcase's `looks-anime-cel-3d` spheres) came
-  from a 480×270 thumbnail: the Metal frame (`ed80ae436`) shows two-tone
-  bands and the 2.5 px outline on every matte material, so for matte it
-  was never broken. What still keeps the frame from reading as anime is
-  the toon model and the textures, not the plumbing: metals never band,
-  ambient and IBL stay smooth, band edges alias (the toon model work of
-  the stylisation plan), and linear mesh textures kept their photographic
-  colours (closed by §2.3's palette limits on every colour texture). The toon model
-  is now rebuilt (the stylisation's line, toon and paint round): metals
-  band in their own colour with a toon highlight, `MaterialStyle.toonAmbient`
-  0 keeps the ambient flat under the bands, `toonSoftness` anti-aliases the
+  the 2D camera (the `Stylise.pixelSnap` path).
+- **Toon bands** (anime cel and the other toon presets): metals band in
+  their own colour with a toon highlight, `MaterialStyle.toonAmbient` 0
+  keeps the ambient flat under the bands, `toonSoftness` anti-aliases the
   band edges, and the preset's outline lies outside the silhouette
   (`outlinePlace`).
 - **Mesh lines from `ArtLine`**: where the frame's MaterialStyle sets no
@@ -315,46 +259,39 @@ the `ui { screen }` entries, at each viewport of `--sizes`, each labelled
 `<screen>@<viewport>` with its size and renderer tier): colour count,
 palette hit rate, edge statistics, the camera it was captured with
 (`og.Camera` through the probe) against `ArtCamera` (projection, pitch and
-yaw with `fixedAngle`, the field of view's range). The three catalogue
-checks and the style's `intended` traits go to a critic as written, but
-handing them over is the agent's step (visual-acceptance §5; `--critic`
-was removed 2026-11-06: the engine measures, the agent judges). JSON with `--json`, carrying the look's flattened art
-blocks and the scenes no capture script reaches. A reviewer measures a
-region of any of those frames with `og frame measure` (visual-acceptance
-§5, §6).
+yaw with `fixedAngle`, the field of view's range). The catalogue's checks
+and the style's `intended` traits go to a critic as the agent's step
+(visual-acceptance §5): the engine measures, the agent judges. JSON with
+`--json`, carrying the look's flattened art blocks and the scenes no
+capture script reaches. A reviewer measures a region of any of those
+frames with `og frame measure` (visual-acceptance §5, §6).
 `og build --publish` prints its summary as warnings; it never refuses a
 build (numbers cannot judge a style, og-taste §11).
 
 ### 2.6 The catalogue: honest layers, previews, sample scenes
 
-`looks/catalogue.json` goes to `schemaVersion` 2:
+`looks/catalogue.json` (`schemaVersion` 3):
 
 - `preview`: `previews/<slug>.webp` beside the catalogue, 960×540, one
-  picture of the style as a game (the review thread's Painter frames,
-  `packages/knowledge/looks/previews/`), checked present by the validator.
+  picture of the style as a game (`packages/knowledge/looks/previews/`),
+  checked present by the validator.
 - `look.layers`: which layers the style needs, among `frame` (the look's
   render resources), `conform` (the cook's asset conformance), `runtime`
   (§2.4), `authored` (art no conformance can make: painted portraits,
-  hand animation). `look.support` stays, now derived: `full` when every
+  hand animation). `look.support` is derived: `full` when every
   needed layer but `authored` is implemented, `content` when `authored`
   is needed, `partial` otherwise with `missing` naming what.
-- `look.family`: one of eight sample scenes (§3 stream A7, `examples/art-<family>`) the style is
-  proven on. **Removed in schema 3** (A4, 2026-11-05): a sample scene is
-  the tools' business, not a reader's, so it lives in
-  `tools/art-samples/scenes.json`. Schema 3 adds, for a creation UI to
-  filter and group by: `category` in plain terms (pixel art, retro 3D,
-  hand-drawn and painted, ink and comic, toon and stylised 3D, low-poly,
-  toy and handmade 3D, flat and graphic, realistic), `look.views` (the
-  creation views it suits, within its profiles), `look.mood` (the mood its
-  preset is drawn in, §2.10) and, for the 14 `content` styles,
-  `look.authored`: each art brief kind the style needs made and what it
-  must be. `artBrief` writes that into every request of the kind (an
-  `Authored` line) and `authoredArt(look)` lists them. Slugs are
-  unchanged.
-
-The showcase's 37-preset station stays as the frame regression it is; the
-proof that a style reads is its family's sample scene with conformed
-assets, one frame per style.
+- For a creation UI to filter and group by: `category` in plain terms
+  (pixel art, retro 3D, hand-drawn and painted, ink and comic, toon and
+  stylised 3D, low-poly, toy and handmade 3D, flat and graphic,
+  realistic), `look.views` (the creation views it suits, within its
+  profiles), `look.mood` (the mood its preset is drawn in, §2.10) and,
+  for the `content` styles, `look.authored`: each art brief kind the
+  style needs made and what it must be. `artBrief` writes that into every
+  request of the kind (an `Authored` line) and `authoredArt(look)` lists
+  them.
+- The sample scene a style is proven on is the tools' business, not the
+  catalogue's: `tools/art-samples/scenes.json`.
 
 ### 2.7 A style's painted art: the hand-off
 
@@ -617,7 +554,7 @@ art does not have.
 
 ### 2.9 The audio brief: every cue and effect a game needs
 
-The audio counterpart of §2.2 (plan item A9, 2026-11-05). The knowledge
+The audio counterpart of §2.2. The knowledge
 package's `scripts/brief.ts` exports `audioBrief(input: AudioBriefInput):
 AudioBrief`, re-exported by `@origingame/create-game` beside `artBrief`; an
 additive contract, kept stable like it (a change is a break with a
@@ -721,54 +658,18 @@ assets are lit and coloured for it. `og new --mood <word>` writes the
 line into the game's look; with no mood asked, the game keeps its
 preset's.
 
-## 3. Streams
-
-Each stream is one thread on branch `art/<stream>` from the main named in
-its brief, in `external-agent:claude-code` mode on Claude Opus 5.5 medium,
-at most five at once (`AGENTS.md`). Agents' loop: `cargo check -p`, the
-unit tests of the crate they edit, `og api check` after an IDL change;
-no frames in an orb (no lavapipe, `AGENTS.md`): the frames a change should
-move are named in the report and drawn on macrunner. They
-commit on the branch, push it, and report; they never merge, run the
-gate, record `metal` frames or publish. Evidence:
-`tests/evidence/art/<stream>/NOTES.md`.
-
-| # | Stream | Needs | Repo | Owns |
-|---|---|---|---|---|
-| A0 | `art/doc` | — | engine | this document, the catalogue's previews (37 webp), schema 2's `preview` and `layers` with honest values, the validator, og-taste §12's table (coordinator) |
-| A1 | `art/contract` | A0 | engine | the `art` IDL module (seven resources), look blocks, `project.ogt` `look`, `GameDesc.look` fallback, the 37 presets' values, `create` writing `project.ogt`'s look, wiki and `.d.ts` regenerated, og-game and og-taste docs, CHANGELOG lines |
-| A2 | `art/conform-2d` | A1 | engine | §2.3's 2D rows: the conform pass for textures used by sprites, flipbooks, tile sets and UI images, painted texel-space, index textures, prerotation; cook report entries; og-cook tests with fixtures whose expected texels are computed independently |
-| A3 | `art/conform-3d` | A1 | engine | §2.3's 3D rows and animation: decimation, normals, bevel, voxelise, vertex colours, texel density, palette, step fps; og-cook tests |
-| A4 | `art/runtime` | A1 | engine | §2.4: sprite outline, palette swap, cleanEdge filter, camera presets, `ArtMotion.stepFps` default, the anime-cel finding; og-tests scenes with their reference frames named (metal recorded by the coordinator) |
-| A5 | `art/brief` | A1 | engine | §2.2: `artBrief` in the knowledge package and its re-export from create-game, the skill changes (og-taste, og-model recipes, og-build, the consumer section) |
-| A6 | `art/check` | A2, A3 | engine | §2.5: `og style check`, the doctor line, the publish summary (`--critic` since removed, 2026-11-06) |
-| A7 | `art/samples` | A2, A3, A4 | engine | the eight family scenes (pixel side-on, pixel top-down, pixel-in-3D, painted 2D, ink and line 3D, shape and paper 3D, toon and comic 3D, cinematic 3D) in a new fx-showcase station or `examples/art-<family>`, each with assets made through `artBrief` and the cook's conformance; one frame per style; `look.family` filled |
-| P1 | `style-step` (merged into origin-agent `main` 2026-10-28: `0c54d85`, `cd2f6cc`, `89e00b4`) | A0 (catalogue 2, previews on main) | origin-agent | §4 |
-| R | release 0.7.0 | all | engine (macrunner) | §5 |
-
-Order: A0 now (the coordinator); A1 and P1 at once; after A1 merges, A2,
-A3 and A4; then A5, A6, A7; R last, then P1's pin move.
-
-Shared files and how they are touched: `crates/og-api/api/art.ogt` (A1 adds
-the module) and `api/render.ogt` (A4 appends sprite records; nothing reorders), `og-cook`'s
-`cook/mod.rs` (A2 and A3 each add one call into a new `cook/conform/`
-module of their own: `conform/texture2d.rs`, `conform/mesh.rs`),
-`og-render`'s sprite shader (A4 only), `templates/looks/*.ogt` (A1 only;
-later streams change values only with the coordinator), the catalogue
-(A0, then A7's `family`).
-
 ## 4. The platform: the style is chosen when a game is created
 
-Owner's requirement (2026-10-28): the home page's creation asks for the
-style, and the game is created with it. origin-agent (`web/`, `server/`,
-`packages/game`), one thread, branch `style-step`:
+The home page's creation asks for the style, and the game is created with
+it (origin-agent `web/`, `server/`, `packages/game`; ask 12 of
+`docs/platform-asks.md`):
 
 - **The picker.** Creating a game (the Library's `GameCreation`, the
   New Game prompt) shows, under the prompt, the style catalogue as cards
   (preview, name, descriptor, 2D or 3D, a badge when the style needs
   authored art). As the person types the premise, the three best matches
   (`pickStyle`'s weights, exported by `@origingame/create-game`) lead the
-  list; the rest is browsable by family. A style must be picked before
+  list; the rest is browsable by category. A style must be picked before
   Create (the recommendation preselected); the choice shows as a chip on
   the composer and can be changed until the first build.
 - **Created with it.** The scaffold writes the look with `--look <slug>`
@@ -784,32 +685,3 @@ style, and the game is created with it. origin-agent (`web/`, `server/`,
 - **Previews** come from the mounted knowledge
   (`knowledge/game/skills/og-taste/looks/previews/`), served as static
   files by the web build; no image is copied by hand.
-- **Pin.** Develop against the engine's main (the mount script from a
-  checkout); move `server/scripts/e2b/origin-engine.json` to 0.7.0 when R
-  publishes, and remount.
-
-## 5. Release 0.7.0
-
-A minor: a game whose look extends a preset now has its assets conformed
-by the cook (behaviour a game relied on changes), and the presets gain
-values. CHANGELOG and `changelog.json` carry one line per IDL member and
-a breaking entry for the conformance with its fix (`conform off`, or
-override the preset's art blocks to zero). The coordinator, on
-`macrunner` (`/Volumes/app/origin-engine`): merge, `og api gen --wiki`,
-record the `metal` frames the streams named and read them, the functional
-lane, the replay gate (the simulation is unchanged: conformance is cook
-time, the camera presets apply only through a look), `release.sh bump
-0.7.0`, the release build and verify on Mac, Linux and Windows, publish,
-tag, the receipt `tests/evidence/release/0.7.0.md`, §3 of
-`docs/release.md`. Then the platform's pin (§4).
-
-## 6. Done means
-
-- Each of the 37 styles has a preview in the package, honest layers, and
-  a frame on its family's sample scene that a reader names as the style
-  without being told (the coordinator reads them beside the previews).
-- A new game made from the home page with any style has, before its first
-  prompt, the look, the project's look line and the art bible; an asset
-  it adds is conformed by the cook and passes `og style check`, or the
-  check says what is off.
-- 0.7.0 is on npm and pinned by the platform.

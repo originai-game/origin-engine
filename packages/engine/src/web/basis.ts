@@ -1,5 +1,5 @@
-// KTX2 / Basis Universal transcoding for the web host (og-cook README §What
-// phase 2 owes: the Rust runtime has no Basis transcoder on wasm32). Cooked
+// KTX2 / Basis Universal transcoding for the web host (og-bundle README
+// §Formats: the Rust runtime has no Basis transcoder on wasm32). Cooked
 // textures are KTX2 files (ETC1S colour, UASTC normal and linear maps, or
 // lossless RGBA8 with zlib, which og-cook's runtime decodes itself); the engine
 // Worker transcodes the Basis ones here with Binomial's transcoder

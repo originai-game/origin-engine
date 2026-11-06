@@ -1,6 +1,6 @@
 //! The render origin: the frame is drawn relative to a point near the
 //! camera, so the GPU's f32 arithmetic works on small numbers however far
-//! from the world's zero the camera is (`docs/design.md` §5.4).
+//! from the world's zero the camera is (`docs/design.md` §2.6).
 //!
 //! A scene's positions are in a frame whose zero is [`RenderScene::origin`]
 //! in the caller's world. [`RenderScene::rebase`] moves that zero: every

@@ -87,7 +87,7 @@ fn the_material_schema_matches_the_idl() {
                 "normalScale",
                 "aoMapIntensity",
                 "unlit",
-                // The E1 effects round (crates/og-render/README.md §IDL additions).
+                // The effects (crates/og-render/README.md §From TypeScript).
                 "toon",
                 "gradientMap",
                 "rimColor",
