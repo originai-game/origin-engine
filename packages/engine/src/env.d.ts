@@ -82,6 +82,24 @@ declare module "bun:test" {
   export function expect(value: unknown, message?: string): Matchers;
 }
 
+declare module "node:net" {
+  interface Socket {
+    setEncoding(encoding: "utf8"): void;
+    on(event: "data", listener: (data: string) => void): void;
+    on(event: "error", listener: (error: Error) => void): void;
+    on(event: "end", listener: () => void): void;
+    write(data: string): boolean;
+    end(data?: string): void;
+    destroy(): void;
+  }
+  export function createConnection(path: string, listener: () => void): Socket;
+  export function createServer(listener: (socket: Socket) => void): {
+    listen(path: string, listener: () => void): void;
+    on(event: "error", listener: (error: Error) => void): void;
+    close(): void;
+  };
+}
+
 declare const process: {
   readonly env: Record<string, string | undefined>;
   readonly platform: string;
@@ -91,8 +109,9 @@ declare const process: {
   readonly pid: number;
   exit(code?: number): never;
   cwd(): string;
-  on(event: "exit" | "SIGUSR2", listener: () => void): unknown;
-  off(event: "exit" | "SIGUSR2", listener: () => void): unknown;
+  chdir(path: string): void;
+  on(event: "exit" | "SIGUSR2" | "SIGTERM" | "SIGINT", listener: () => void): unknown;
+  off(event: "exit" | "SIGUSR2" | "SIGTERM" | "SIGINT", listener: () => void): unknown;
   readonly stdout: { write(text: string): boolean };
   readonly stderr: { write(text: string): boolean };
 };

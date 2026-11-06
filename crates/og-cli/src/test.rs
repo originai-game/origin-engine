@@ -10,7 +10,7 @@
 //! project-relative path (with `/` separators), before any tests execute;
 //! `--skip` (repeatable) leaves out the suites whose path contains its
 //! substring, after `--filter` (a kit's playtests but its style sheets).
-//! `--jobs N` runs up to N playtests at once (default 1), each process's
+//! `--jobs N` runs up to N playtests at once (default CPU count), each process's
 //! output printed whole, in the playtests' order, once it and the ones
 //! before it have ended.
 //!
@@ -49,7 +49,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     let mut check = true;
     let mut filter = None;
     let mut skip: Vec<&str> = Vec::new();
-    let mut jobs = 1;
+    let mut jobs = std::thread::available_parallelism().map_or(1, usize::from);
     let mut args = args.iter();
     while let Some(a) = args.next() {
         match *a {
@@ -209,10 +209,14 @@ pub fn run(args: &[&str]) -> ExitCode {
         };
         // Each playtest's result line, for the frames it left unchecked.
         let results = std::env::temp_dir().join(format!("og-test-{}", std::process::id()));
+        let session = crate::session::client_args(&p.root, &package);
         let command = |i: usize, t: &PathBuf| {
             let mut cmd = project::bun(&package, "src/node/playtest-run.ts");
             cmd.arg("--file").arg(t).arg("--entry").arg(&bundle);
             cmd.arg("--result").arg(results.join(format!("{i}.json")));
+            if let Some(args) = &session {
+                cmd.args(args);
+            }
             if p.manifest {
                 cmd.arg("--root").arg(&p.root);
             }

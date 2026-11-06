@@ -305,6 +305,14 @@ pub fn run(args: &[&str]) -> ExitCode {
     if let Some(trace) = &a.trace {
         cmd.arg("--trace").arg(trace).arg("--trace-append");
     }
+    match crate::session::try_run(&p.root, &package, &cmd) {
+        Ok(Some(code)) => return code,
+        Ok(None) => {}
+        Err(error) => {
+            eprintln!("og run: {error}");
+            return ExitCode::FAILURE;
+        }
+    }
     supervise(cmd, a.port.is_some())
 }
 

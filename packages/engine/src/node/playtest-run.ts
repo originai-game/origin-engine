@@ -15,6 +15,7 @@ import { bundleGame } from "./build.ts";
 import { FrameUnchecked, PLAYTEST_CLOCK, type PlaytestAssertions, type PlaytestChecks, type PlaytestDesc, type PlaytestLockstep, type PlaytestRun } from "../playtest.ts";
 import { loadNativeHost, native } from "./index.ts";
 import { decodePng } from "./png.ts";
+import { runInSession } from "./session-client.ts";
 
 declare const Bun: {
   spawnSync(cmd: string[], o?: { cwd?: string; stdout?: string; stderr?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
@@ -148,7 +149,14 @@ type Summary = {
 const EMPTY_ASSERTIONS: PlaytestAssertions = { violations: [], uncovered: [], sites: [], defaults: { fields: 0, ticks: 0, values: 0, totalMs: 0, meanUs: 0, maxUs: 0 } };
 // Every process's violations and uncovered sites, for the result line (the session carries it per run).
 const assertionLog: { violations: unknown[]; uncovered: unknown[]; required: Array<{ name: string; fired: boolean }>; defaults: unknown[] } = { violations: [], uncovered: [], required: [], defaults: [] };
-const spawn = (c: string[], what: string): Summary | null => {
+const spawn = async (c: string[], what: string): Promise<Summary | null> => {
+  try {
+    const resident = await runInSession(c.slice(2), opt("--session"), opt("--session-build"));
+    if (resident) return summarise(resident.exitCode, resident.stdout, resident.stderr, what);
+  } catch (error) {
+    failures.push(`${what}: ${error instanceof Error ? error.message : String(error)}`);
+    return null;
+  }
   const r = Bun.spawnSync(c, { stdout: "pipe", stderr: "pipe" });
   return summarise(r.exitCode, new TextDecoder().decode(r.stdout), new TextDecoder().decode(r.stderr), what);
 };
@@ -262,7 +270,7 @@ if (room) {
   summary = results[0]!;
   peerSummaries.push(...results.slice(1));
   for (const [i, s] of peerSummaries.entries()) for (const f of s.unchecked ?? []) unchecked.push(`peer ${i + 1} ${f}`);
-} else summary = spawn(command(desc!.commands, out, clock), "og run");
+} else summary = await spawn(command(desc!.commands, out, clock), "og run");
 if (!summary) finish();
 requireFired(summary!.assertions ?? EMPTY_ASSERTIONS, "og run");
 const rendered = summary!.tier !== "none";
@@ -274,7 +282,7 @@ if (room) result = { ...result, netHashes: [summary!, ...peerSummaries].map((s) 
 // own directory: only their end hashes are kept.
 const hashes = [summary!.hash];
 for (let i = 1; i < Math.max(1, Math.floor(desc!.runs ?? 1)); i++) {
-  const again = spawn(command(desc!.commands, join(out, `.run-${i + 1}`), clock), `run ${i + 1} of ${desc!.runs}`);
+  const again = await spawn(command(desc!.commands, join(out, `.run-${i + 1}`), clock), `run ${i + 1} of ${desc!.runs}`);
   if (again) hashes.push(again.hash);
 }
 result = { ...result, hashes };
@@ -346,7 +354,7 @@ for (const [i, step] of (desc!.then ?? []).entries()) {
     later.push(runOf(all[0]!, dir, [], all.slice(1).map((s, p) => runOf(s, peerDir(p + 1), []))));
     continue;
   }
-  const s = spawn(command(step.commands, dir, step.clock ?? clock), `then[${i}]`);
+  const s = await spawn(command(step.commands, dir, step.clock ?? clock), `then[${i}]`);
   if (!s) finish();
   for (const f of s!.unchecked ?? []) unchecked.push(`then[${i}] ${f}`);
   later.push(runOf(s!, dir, []));

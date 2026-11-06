@@ -34,6 +34,7 @@ mod render;
 mod replay;
 mod run;
 mod serve_relay;
+mod session;
 mod sfx;
 mod style;
 mod style_art;
@@ -54,6 +55,7 @@ og: the Origin Engine tool
 usage: og <command> [options]
 
 commands:
+  session [project]    keep a worktree's native host warm for sequential fresh runs
   run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P]
       [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio <out.wav>]
       [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--room <ws url>]
@@ -287,6 +289,7 @@ fn main() -> ExitCode {
         ["relay", rest @ ..] => serve_relay::run(rest),
         ["probe", rest @ ..] => probe::run(rest),
         ["dev", rest @ ..] => dev::run(rest),
+        ["session", rest @ ..] => session::run(rest),
         ["check", rest @ ..] => check::run(rest),
         ["test", rest @ ..] => test::run(rest),
         ["build", rest @ ..] => bundle::run(rest),
