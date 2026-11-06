@@ -3,6 +3,18 @@ import { fallbackIcons } from "../../icons.ts";
 import manifest from "../../icons.json";
 
 let group = "settings";
+// Names the sheet's scifi atlas paints and the fallback set also has: the
+// atlas keeps them (UiDesc.fallbackIcons), which the precedence row shows
+// beside the fallback's own drawing, aliased as `fallback:<name>`.
+const PAINTED = ["heart", "coin", "home", "trophy"];
+const TINTS = ["primary", "danger", "gold", "success"] as const;
+const sheetIcons = {
+  ...fallbackIcons,
+  vectors: [
+    ...(fallbackIcons.vectors ?? []),
+    ...PAINTED.map(name => ({ ...fallbackIcons.vectors!.find(v => v.name === name)!, name: `fallback:${name}` })),
+  ],
+};
 const Sheet = defineSystem("FallbackIcons", {}, () => {
   og.ui.column("Page", {
     width: { kind: "grow" }, height: { kind: "grow" },
@@ -16,6 +28,18 @@ const Sheet = defineSystem("FallbackIcons", {}, () => {
         og.ui.richText("Inline", `[icon=${icon.name}] ${icon.name}`);
       });
     }
+    const first = manifest.icons.find(i => i.group === group)!.name;
+    og.ui.row("Tinted", { gap: 12 }, () => {
+      for (const token of TINTS) og.ui.icon(`Tint-${token}`, first, { size: 40, tint: { token } } as never);
+      og.ui.label("Caption", `${first}, tinted primary, danger, gold, success`, { color: { token: "inkMuted" } });
+    });
+    og.ui.row("AtlasFirst", { gap: 12 }, () => {
+      for (const name of PAINTED) {
+        og.ui.icon(`Atlas-${name}`, name, { size: 40 });
+        og.ui.icon(`Fallback-${name}`, `fallback:${name}`, { size: 40 });
+      }
+      og.ui.label("Caption", "the style's painted icon, then the fallback of the same name", { color: { token: "inkMuted" } });
+    });
   });
 });
 
@@ -24,7 +48,7 @@ export default og.game({
   start(world) {
     const style = og.load.style(world, "@styles/scifi/style.ogt");
     if (!style.ok) throw new Error(style.reason);
-    const configured = og.ui.configure(world, { style: style.value, fallbackIcons });
+    const configured = og.ui.configure(world, { style: style.value, fallbackIcons: sheetIcons });
     if (!configured.ok) throw new Error(configured.reason);
   },
   commands: {
