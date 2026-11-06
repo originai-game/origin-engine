@@ -290,7 +290,17 @@ fn a_floating_text_mixing_a_companion_draws_each_run_in_its_font() {
 
     // Flat: the Chinese run first, the Latin after it, in two fonts, the
     // line centred on x = 4 (its start left of the point, its end right).
-    let (zh, latin) = (piece("完美 "), piece("x2"));
+    // Paragraph shaping addresses uncooked companion glyphs by glyph id.
+    // Derive the expected keys from the source cmap with a separate parser,
+    // rather than depending on the runtime's choice of an atlas alias.
+    let bytes = std::fs::read(repo().join("templates/styles/cjk/NotoSansSC-Regular.ttf")).unwrap();
+    let face = ttf_parser::Face::parse(&bytes, 0).unwrap();
+    let companion = |text: &str| -> String {
+        text.chars()
+            .map(|c| char::from_u32(0xF0000 + u32::from(face.glyph_index(c).unwrap().0)).unwrap())
+            .collect()
+    };
+    let (zh, latin) = (piece(&companion("完美 ")), piece("x2"));
     assert_ne!(
         zh.3, latin.3,
         "the Chinese in the companion, the Latin in the body face"
@@ -302,7 +312,7 @@ fn a_floating_text_mixing_a_companion_draws_each_run_in_its_font() {
 
     // Faced: both turn about the point, aligned so the line's middle is it
     // (the Chinese run's align past its middle, the Latin's before its start).
-    let (zh, latin) = (piece("美完 "), piece("x3"));
+    let (zh, latin) = (piece(&companion("美完 ")), piece("x3"));
     let (fz, fl) = (zh.2.expect("faced"), latin.2.expect("faced"));
     assert_eq!((zh.1, latin.1), (-2.0, -2.0), "both at the point");
     assert!(

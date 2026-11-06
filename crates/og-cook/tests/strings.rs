@@ -153,7 +153,7 @@ fn an_arabic_font_carries_its_joined_forms_and_its_file() {
         .unwrap()
         .notes[0];
     assert!(note.contains("shaped script"), "{note}");
-    // A Latin font carries neither.
+    // An ASCII-only atlas carries layout tables but no runtime outlines.
     let latin = b"type import\nversion 1\n---\nfont {\n  charset ascii\n}\n".to_vec();
     let root = project(
         "latin",
@@ -174,5 +174,18 @@ fn an_arabic_font_carries_its_joined_forms_and_its_file() {
         .unwrap()
         .load_font("fonts/ar.ttf")
         .unwrap();
-    assert!(font.ttf.is_none() && font.glyphs.iter().all(|g| g.codepoint < 0xF_0000));
+    assert!(font.ttf.is_none());
+    let tables = font.shaping.expect("paragraph layout tables");
+    let face = ttf_parser::Face::parse(&tables, 0).unwrap();
+    assert!(
+        face.raw_face()
+            .table(ttf_parser::Tag::from_bytes(b"glyf"))
+            .is_none()
+    );
+    let file = og_ui::shape::FontFile::for_shaping(std::sync::Arc::new(tables)).unwrap();
+    assert_eq!(
+        file.advance('A'),
+        None,
+        "layout data must not enable runtime rasterization"
+    );
 }

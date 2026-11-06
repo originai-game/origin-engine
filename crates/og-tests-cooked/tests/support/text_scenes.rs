@@ -159,8 +159,17 @@ fn add(scene: &mut RenderScene, f: &CookedFont, kern: bool) -> UiFont {
     // The unkerned control is atlas-only: retaining OpenType data would
     // let the paragraph shaper read GPOS despite clearing the atlas pairs.
     let metrics = FontMetrics::from_msdf(&font).with_file(
-        kern.then(|| f.ttf.clone().and_then(|t| FontFile::new(Arc::new(t))))
-            .flatten(),
+        kern.then(|| {
+            f.ttf
+                .clone()
+                .and_then(|t| FontFile::new(Arc::new(t)))
+                .or_else(|| {
+                    f.shaping
+                        .clone()
+                        .and_then(|t| FontFile::for_shaping(Arc::new(t)))
+                })
+        })
+        .flatten(),
     );
     UiFont {
         handle: Some(scene.add_font(font)),
@@ -499,7 +508,45 @@ fn mixed_runs_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {
             }
         }
     }
-    shot(&[&ui], scene)
+    let mut discretionary = ui_of(&f, &f.display, &f.body);
+    discretionary.define_action(ActionDesc {
+        name: "jump".into(),
+        keys: vec!["KeyE".into()],
+        ..Default::default()
+    });
+    discretionary.begin(InputFrame::default(), vp());
+    discretionary.column(
+        "Discretionary",
+        Element {
+            width: Size::grow(),
+            padding: Insets {
+                left: 420.0,
+                top: 240.0,
+                ..Insets::default()
+            },
+            gap: 12.0,
+            ..Element::column()
+        },
+        |ui| {
+            for (id, width) in [("Narrow", 90.0), ("Wide", 190.0)] {
+                ui.rich_text(
+                    id,
+                    "[color=primary]extra\u{ad}[/color]ordinary [action=jump]",
+                    RichTextDesc {
+                        width: Size::Fixed(width),
+                        ..RichTextDesc::default()
+                    },
+                );
+            }
+        },
+    );
+    discretionary.end();
+    assert!(
+        discretionary.frame().warnings.is_empty(),
+        "{:?}",
+        discretionary.frame().warnings
+    );
+    shot(&[&ui, &discretionary], scene)
 }
 
 fn edit_scene(fonts: &[CookedFont]) -> (RenderScene, RenderDesc) {

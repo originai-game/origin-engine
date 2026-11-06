@@ -410,6 +410,9 @@ pub struct CookedFont {
     /// its words) or with `runtime true` (characters outside the charset
     /// are rendered from it when a text needs them).
     pub ttf: Option<Vec<u8>>,
+    /// OpenType tables for paragraph layout, without outlines or permission
+    /// to render characters outside the cooked charset.
+    pub shaping: Option<Vec<u8>>,
     /// An icon set's names (an `.ogt` of `type icons`, cook::icons): icon
     /// `i` is the glyph at U+E000 + i. Empty for a text font.
     pub names: Vec<String>,

@@ -18,9 +18,11 @@ is one line here, written at the merge that changes
 - **UI text uses cooked-font paragraph layout.** Parley, HarfRust and
   Skrifa replace rustybuzz and the space-only breaker. Unicode break
   opportunities, dictionary breaks and grapheme-safe overflow replace
-  the handwritten rules; plain labels draw soft hyphens only at taken
-  breaks. Rich-text atoms participate as inline boxes. Fonts recook to
-  retain their OpenType data; atlas-only legacy fonts keep table metrics.
+  the handwritten rules; plain labels and styled rich spans draw soft
+  hyphens only at taken breaks, reserving their width. Rich-text atoms
+  participate as inline boxes. Fonts recook to retain their OpenType
+  layout tables without enabling runtime rasterization or expanding a
+  declared charset; atlas-only legacy fonts keep table metrics.
   The MSDF renderer and text effects remain unchanged. No IDL change.
 
 - **Native accessibility has a shared-frame transport.** An opt-in,

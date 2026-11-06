@@ -13,7 +13,7 @@ default = ["cook", "basis", "transcode"]
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["og-render/bake", "dep:og-ai", "dep:og-story", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-destruct", "dep:og-video", "dep:ufbx"]
+cook = ["og-render/bake", "dep:og-ai", "dep:og-story", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:write-fonts", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-destruct", "dep:og-video", "dep:ufbx"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
@@ -71,6 +71,7 @@ mikktspace = { version = "0.3.0", default-features = false, features = ["glam"],
 fdsm = { version = "0.8.0", optional = true }
 fdsm-ttf-parser = { version = "0.2.0", optional = true }
 ttf-parser = { version = "0.25.1", optional = true }
+write-fonts = { version = "=0.55.0", default-features = false, optional = true }
 hound = { version = "3.5.1", optional = true }
 # Compressed sound sources (MP3, Ogg Vorbis, FLAC) decode to PCM at cook
 # time, pure Rust; the cook only, never the runtime or the wasm.

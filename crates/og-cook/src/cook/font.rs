@@ -18,6 +18,22 @@ mod overlap;
 /// Where a glyph id is drawn from: U+F0000 + id (Supplementary Private Use Area-A).
 pub const GLYPH_PUA: u32 = 0xF_0000;
 
+/// Shaping needs metrics and layout tables, not raster outlines or hints.
+/// FontBuilder writes the SFNT directory and checksums; glyph IDs stay intact.
+fn shaping_tables(face: &ttf_parser::Face) -> Vec<u8> {
+    let mut font = write_fonts::FontBuilder::new();
+    for tag in [
+        b"head", b"hhea", b"hmtx", b"maxp", b"OS/2", b"name", b"post", b"cmap", b"GDEF", b"GPOS",
+        b"GSUB", b"kern", b"fvar", b"avar", b"HVAR", b"VVAR", b"MVAR", b"STAT", b"vhea", b"vmtx",
+        b"BASE", b"morx", b"mort", b"kerx", b"ankr", b"trak",
+    ] {
+        if let Some(data) = face.raw_face().table(ttf_parser::Tag::from_bytes(tag)) {
+            font.add_raw(write_fonts::types::Tag::new(tag), data);
+        }
+    }
+    font.build()
+}
+
 /// Every glyph the font's GSUB substitutions reach from `start`, start included.
 fn substitution_closure(face: &ttf_parser::Face, start: &[ttf_parser::GlyphId]) -> Vec<u16> {
     closure_of(face, start, None)
@@ -801,9 +817,11 @@ pub fn cook(
         let ktx = ktx2::write_rgba8_zlib(width, h, px, false, false, format::COOKER_VERSION);
         w.raw(&format!("atlas.{i}"), ktx, 16);
     }
-    // Paragraph shaping needs OpenType data for Latin too (ligatures,
-    // marks and kerning). The atlas and its glyph keys stay unchanged.
-    w.raw("ttf", bytes.to_vec(), 16);
+    if s.runtime || shaping {
+        w.raw("ttf", bytes.to_vec(), 16);
+    } else {
+        w.raw("shaping", shaping_tables(&face), 16);
+    }
     if s.pixel > 0 {
         // The grid, as text: og-ui snaps the font's sizes to its multiples.
         w.raw("pixel", s.pixel.to_string().into_bytes(), 1);
@@ -940,7 +958,7 @@ mod tests {
                 .iter()
                 .map(|r| r.codepoint)
                 .collect();
-            (rows, b.raw("ttf").is_ok())
+            (rows, b.raw("ttf").is_ok() || b.raw("shaping").is_ok())
         };
         let (with, ships) = cooked(&["smcp"]);
         assert!(ships, "the file ships for run-time shaping");

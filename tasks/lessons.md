@@ -110,3 +110,11 @@ whole playable bounds into the live viewport after reserving HUD and input
 space. Check every player and field edge in the actual frame at both
 aspects, and assert projected field/UI separation in a native regression
 test; unclipped controls alone do not prove a playable layout.
+
+## 2026-11-06 — Text layout also owns cook and runtime contracts
+
+Retaining a font for shaping must not enable runtime rasterization or extend
+its declared charset. Verify missing-glyph diagnostics and the cooked payload
+budget alongside the UI tests, before handing the text stack to landing.
+Freeze the shaping code throughout a cross-host hash run: editing it between
+native and wasm builds compares revisions, not hosts.

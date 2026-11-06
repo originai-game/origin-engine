@@ -117,6 +117,7 @@ pub type ShapedRun = Option<Arc<Vec<Shaped>>>;
 /// A cooked font's file: shaping and run-time glyph metrics.
 pub struct FontFile {
     ttf: Arc<Vec<u8>>,
+    runtime: bool,
     units_per_em: f32,
     #[cfg(feature = "shaping")]
     shaper: harfrust::ShaperData,
@@ -136,7 +137,7 @@ impl std::fmt::Debug for FontFile {
 
 impl PartialEq for FontFile {
     fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.ttf, &other.ttf)
+        self.runtime == other.runtime && Arc::ptr_eq(&self.ttf, &other.ttf)
     }
 }
 
@@ -147,6 +148,16 @@ const CACHE_RUNS: usize = 4096;
 impl FontFile {
     /// The file of a cooked font (`None`: not a font Skrifa reads).
     pub fn new(ttf: Arc<Vec<u8>>) -> Option<Arc<FontFile>> {
+        Self::read(ttf, true)
+    }
+
+    /// Layout-only tables. Keeping shaping data does not opt a font into
+    /// runtime rasterization or extend the game's declared charset.
+    pub fn for_shaping(ttf: Arc<Vec<u8>>) -> Option<Arc<FontFile>> {
+        Self::read(ttf, false)
+    }
+
+    fn read(ttf: Arc<Vec<u8>>, runtime: bool) -> Option<Arc<FontFile>> {
         let face = skrifa::FontRef::new(&ttf).ok()?;
         let units_per_em = f32::from(
             face.metrics(Size::unscaled(), LocationRef::default())
@@ -156,6 +167,7 @@ impl FontFile {
         let shaper = harfrust::ShaperData::new(&face);
         Some(Arc::new(FontFile {
             ttf,
+            runtime,
             units_per_em,
             #[cfg(feature = "shaping")]
             shaper,
@@ -270,6 +282,9 @@ impl FontFile {
     /// metrics, recorded for the host to render; `None` when the font does
     /// not have it either.
     pub fn advance(&self, c: char) -> Option<f32> {
+        if !self.runtime {
+            return None;
+        }
         let a = self.lookup(c);
         if a.is_some()
             && !c.is_whitespace()
@@ -282,7 +297,7 @@ impl FontFile {
 
     /// Whether the font file has `c` (without recording it).
     pub fn covers(&self, c: char) -> bool {
-        self.lookup(c).is_some()
+        self.runtime && self.lookup(c).is_some()
     }
 
     /// Keep an atlas character when it names this glyph; otherwise request
@@ -297,9 +312,14 @@ impl FontFile {
         let face = skrifa::FontRef::new(&self.ttf).expect("validated font");
         if let Some(c) = [source, crate::text::mirror(source)]
             .into_iter()
-            .find(|&c| face.charmap().map(c).is_some_and(|g| g.to_u32() == id) && has(c))
+            .find(|&c| {
+                face.charmap().map(c).is_some_and(|g| g.to_u32() == id) && (has(c) || !self.runtime)
+            })
         {
             return c;
+        }
+        if id == 0 && !self.runtime {
+            return source;
         }
         let c = char::from_u32(GLYPH_PUA + id).expect("OpenType glyph id");
         if !has(c) {

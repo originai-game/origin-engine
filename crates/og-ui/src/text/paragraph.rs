@@ -288,6 +288,15 @@ pub(crate) fn rich(
     fonts: &dyn crate::layout::Metrics,
     width: Option<f32>,
 ) -> Option<(Vec<crate::rich::RichLine>, (f32, f32))> {
+    rich_at(content, fonts, width, None)
+}
+
+fn rich_at(
+    content: &crate::rich::RichContent,
+    fonts: &dyn crate::layout::Metrics,
+    width: Option<f32>,
+    direction: Option<Direction>,
+) -> Option<(Vec<crate::rich::RichLine>, (f32, f32))> {
     use crate::rich::{Piece, RichLine, Segment, span_metrics, span_tracking, span_width};
     let mut text = String::new();
     let mut ranges = Vec::new();
@@ -329,7 +338,18 @@ pub(crate) fn rich(
     for (index, (byte, _)) in text.char_indices().enumerate() {
         indices[byte] = index;
     }
-    CONTEXT.with_borrow_mut(|cx| {
+    let discretionary = width.is_some() && text.contains('\u{ad}');
+    let hyphens: Vec<_> = if discretionary {
+        content
+            .spans
+            .iter()
+            .map(|s| span_width(s, "-", fonts))
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let mut planned = None;
+    let result = CONTEXT.with_borrow_mut(|cx| {
         if cx.files.len() > 128 {
             *cx = Context::default();
         }
@@ -339,6 +359,12 @@ pub(crate) fn rich(
             .collect();
         let mut builder = cx.layout.ranged_builder(&mut cx.fonts, &text, 1.0, false);
         builder.set_line_break_override(Some(&super::keep_katakana));
+        if let Some(direction) = direction {
+            builder.set_base_direction(match direction {
+                Direction::Ltr => parley::BaseDirection::Ltr,
+                Direction::Rtl => parley::BaseDirection::Rtl,
+            });
+        }
         builder.push_default(StyleProperty::OverflowWrap(parley::OverflowWrap::Anywhere));
         for ((range, brush, _), family) in selected.iter().zip(&families) {
             builder.push(
@@ -365,11 +391,23 @@ pub(crate) fn rich(
                 range.clone(),
             );
         }
-        for atom in boxes {
-            builder.push_inline_box(atom);
+        for atom in &boxes {
+            builder.push_inline_box(atom.clone());
         }
         let mut layout = builder.build(&text);
         let widths = layout.calculate_content_widths();
+        if discretionary {
+            layout.break_all_lines(None);
+            planned = Some(rich_discretionary(
+                content,
+                &text,
+                &layout,
+                &boxes,
+                &hyphens,
+                width.unwrap(),
+            ));
+            return Some((Vec::new(), (widths.max, widths.min)));
+        }
         layout.break_all_lines(width);
         let mut lines = Vec::new();
         for line in layout.lines() {
@@ -445,5 +483,170 @@ pub(crate) fn rich(
             });
         }
         Some((lines, (widths.max, widths.min)))
-    })
+    });
+    let (mut lines, widths) = result?;
+    if let Some(planned) = planned {
+        // Release the font context before reshaping each chosen line. This
+        // gives contextual glyphs and bidi the actual visible hyphen, and
+        // keeps the original spans' ink, links, sizes and atomic content.
+        for (line, spans, base) in planned {
+            let (mut shaped, _) = rich_at(&line, fonts, None, Some(base))?;
+            for line in &mut shaped {
+                for piece in &mut line.pieces {
+                    piece.span = spans[piece.span];
+                }
+                for segment in line.shaped.iter_mut().flatten() {
+                    segment.span = spans[segment.span];
+                }
+            }
+            lines.extend(shaped);
+        }
+    }
+    Some((lines, widths))
+}
+
+/// Select discretionary breaks from shaped clusters, never from characters.
+/// Inline boxes keep their own advances and cannot be split. Each emitted
+/// line is reshaped by `rich_at`, with SHY replaced only at a taken break.
+fn rich_discretionary(
+    content: &crate::rich::RichContent,
+    text: &str,
+    layout: &Layout<Brush>,
+    boxes: &[parley::InlineBox],
+    hyphens: &[f32],
+    max: f32,
+) -> Vec<(crate::rich::RichContent, Vec<usize>, Direction)> {
+    struct Unit {
+        range: std::ops::Range<usize>,
+        span: usize,
+        width: f32,
+        atom: bool,
+    }
+    let mut units: Vec<_> = layout
+        .lines()
+        .flat_map(|l| l.runs())
+        .flat_map(|r| r.clusters())
+        .map(|c| Unit {
+            range: c.text_range(),
+            span: c.style().brush.span,
+            width: c.advance(),
+            atom: false,
+        })
+        .collect();
+    units.extend(boxes.iter().map(|b| Unit {
+        range: b.index..b.index,
+        span: b.id as usize,
+        width: b.width,
+        atom: true,
+    }));
+    units.sort_by_key(|u| (u.range.start, !u.atom));
+    let mut analysis = parley_engine::Analysis::new();
+    parley_engine::Analyzer::new().analyze(
+        text,
+        &parley_engine::AnalysisOptions {
+            line_break_override: Some(&super::keep_katakana),
+            ..Default::default()
+        },
+        &mut analysis,
+    );
+    let opportunities: std::collections::BTreeSet<_> = text
+        .char_indices()
+        .zip(analysis.char_info())
+        .filter_map(|((byte, _), info)| info.is_soft_wrap_opportunity().then_some(byte))
+        .collect();
+    let mut prefix = vec![0.0];
+    for u in &units {
+        prefix.push(prefix.last().unwrap() + u.width);
+    }
+    let shy = |i: usize| !units[i].atom && text[units[i].range.clone()].ends_with('\u{ad}');
+    let mut breaks = Vec::new();
+    let (mut start, mut at, mut best) = (0, 0, 0);
+    while at < units.len() {
+        let u = &units[at];
+        if !u.atom && text[u.range.clone()].contains('\n') {
+            breaks.push((start, at, false));
+            at += 1;
+            start = at;
+            best = at;
+            continue;
+        }
+        if at > start && (u.atom || units[at - 1].atom || opportunities.contains(&u.range.start)) {
+            let extra = if shy(at - 1) {
+                hyphens[units[at - 1].span]
+            } else {
+                0.0
+            };
+            if prefix[at] - prefix[start] + extra <= max {
+                best = at;
+            }
+        }
+        if prefix[at + 1] - prefix[start] > max && at > start {
+            let mut end = if best > start { best } else { at };
+            if best == start && end > start + 1 && shy(end - 1) {
+                end -= 1;
+            }
+            breaks.push((start, end, true));
+            start = end;
+            at = end;
+            best = end;
+        } else {
+            at += 1;
+        }
+    }
+    breaks.push((start, units.len(), false));
+    let mut styles = content.spans.clone();
+    for style in &mut styles {
+        style.text.clear();
+    }
+    let mut paragraph_start = 0;
+    let paragraphs: Vec<_> = text
+        .split_inclusive('\n')
+        .map(|paragraph| {
+            let entry = (
+                paragraph_start,
+                og_i18n::paragraph_direction(paragraph, Direction::Ltr),
+            );
+            paragraph_start += paragraph.len();
+            entry
+        })
+        .collect();
+    breaks
+        .into_iter()
+        .map(|(a, b, wrapped)| {
+            let mut line = crate::rich::RichContent {
+                spans: Vec::new(),
+                align: content.align,
+                wrap: content.wrap,
+            };
+            let mut spans = Vec::new();
+            for (i, u) in units.iter().enumerate().take(b).skip(a) {
+                let mut value = text[u.range.clone()].to_owned();
+                if wrapped && i + 1 == b && shy(i) {
+                    value.pop();
+                    value.push('-');
+                }
+                if !u.atom && spans.last() == Some(&u.span) {
+                    line.spans.last_mut().unwrap().text.push_str(&value);
+                } else {
+                    let mut span = styles[u.span].clone();
+                    span.text = value;
+                    line.spans.push(span);
+                    spans.push(u.span);
+                }
+            }
+            if line.spans.is_empty()
+                && let Some(first) = styles.first()
+            {
+                let mut span = first.clone();
+                span.text.clear();
+                span.atom = None;
+                line.spans.push(span);
+                spans.push(0);
+            }
+            let byte = units.get(a).map_or(text.len(), |u| u.range.start);
+            let paragraph = paragraphs.partition_point(|(start, _)| *start <= byte);
+            let base = paragraphs[paragraph - 1].1;
+            (line, spans, base)
+        })
+        .collect()
 }

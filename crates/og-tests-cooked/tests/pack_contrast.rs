@@ -1035,7 +1035,16 @@ fn add_cooked(scene: &mut RenderScene, f: &CookedFont) -> UiFont {
             .collect(),
     };
     let metrics = FontMetrics::from_msdf(&font)
-        .with_file(f.ttf.clone().and_then(|t| FontFile::new(Arc::new(t))))
+        .with_file(
+            f.ttf
+                .clone()
+                .and_then(|t| FontFile::new(Arc::new(t)))
+                .or_else(|| {
+                    f.shaping
+                        .clone()
+                        .and_then(|t| FontFile::for_shaping(Arc::new(t)))
+                }),
+        )
         .with_pixel(f.pixel);
     UiFont {
         handle: Some(scene.add_font(font)),

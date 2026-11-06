@@ -977,8 +977,15 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
     let file = font
         .ttf
         .clone()
-        .and_then(|t| og_ui::shape::FontFile::new(std::sync::Arc::new(t)));
-    if let Some(f) = &file {
+        .and_then(|t| og_ui::shape::FontFile::new(std::sync::Arc::new(t)))
+        .or_else(|| {
+            font.shaping
+                .clone()
+                .and_then(|t| og_ui::shape::FontFile::for_shaping(std::sync::Arc::new(t)))
+        });
+    if font.ttf.is_some()
+        && let Some(f) = &file
+    {
         rs.runtime_fonts.insert(
             render,
             super::glyphs::RuntimeFont::new(f.clone(), m.em_px, m.px_range, font.pixel),
