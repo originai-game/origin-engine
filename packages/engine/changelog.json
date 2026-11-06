@@ -6,7 +6,7 @@
     "breaking": [
       {
         "member": "gameplay templates",
-        "change": "The arena gameplay template is removed from the source tree. Its room, rollback, quick-play and seat-rejoin coverage uses a minimal lockstep input fixture instead.",
+        "change": "All gameplay templates (game, game-2d and all archetypes), fx-showcase and the ui-kit gallery are removed, with their playtests and frames. Small feature fixtures retain core engine coverage. UI packs, styles, looks and locales remain. Test evidence and template-only capture/replay tools are no longer committed or shipped.",
         "fix": "Start from og create's empty skeleton and author gameplay with the engine API; do not depend on gameplay-template source paths.",
         "find": []
       },
@@ -18,7 +18,7 @@
       },
       {
         "member": "engine distribution scaffold",
-        "change": "archetypes/, create/archetypes/ and create/template-2d/ are no longer shipped. create/template/ and the knowledge overlay carry the same empty skeleton, with an empty binary distribution list.",
+        "change": "archetypes/, create/archetypes/ and create/template-2d/ are no longer shipped. create/template/ and the knowledge overlay carry the same empty skeleton, with an empty binary distribution list. ui-sheet/ now contains a neutral control sheet instead of the UI gallery; its old screens and art are removed. Knowledge payload paths and content change, but mount and payload signatures stay the same.",
         "fix": "Consume the single skeleton and its create block. Do not depend on starter assets or a starter's first frame.",
         "find": []
       },

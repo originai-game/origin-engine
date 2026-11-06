@@ -1,5 +1,0 @@
-type look
-version 1
----
-# The engine preset "faceted-low-poly" (templates/looks/faceted-low-poly.ogt), shown by the looks station.
-extends "faceted-low-poly"

@@ -17,7 +17,7 @@ declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: n
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = join(pkg, "..", "..");
-const project = join(repo, "templates", "game");
+const project = join(repo, "tests", "fixtures", "cook-assets");
 
 function run(host: string, ...extra: string[]) {
   const r = Bun.spawnSync(["bun", "tests/support/anim-hash.ts", "--host", host, "--project", project, ...extra], { cwd: pkg });

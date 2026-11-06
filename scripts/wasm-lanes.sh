@@ -1,7 +1,7 @@
 #!/bin/sh
 # The one lanes wasm build: the gate's wasm-build step (scripts/check.sh),
 # packages/engine/scripts/build.sh and the determinism tool
-# (tools/wasm-determinism/run.sh) all run cargo through it, so the lanes
+# (the former test sample all run cargo through it, so the lanes
 # modules the size gate measures are the ones that ship and the ones whose
 # physics the determinism step compares (docs/web-export.md §Lanes).
 #

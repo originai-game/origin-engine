@@ -90,7 +90,7 @@ fn project() -> &'static Path {
             b"type import\nversion 1\n---\nmodel {\n  voxFps 4\n  voxClip idle 0 0\n  voxClip grow 0 2\n}\n",
         );
         write("models/crate.vox", &vox(&[[3, 3, 3]]));
-        let walker = std::fs::read(repo().join("templates/game/assets/models/walker.glb")).unwrap();
+        let walker = std::fs::read(repo().join("tests/fixtures/cook-assets/assets/models/walker.glb")).unwrap();
         write("models/walker.glb", &walker);
         write("models/walker-copy.glb", &walker);
         // Swap two palette slots without changing the GLB chunk lengths.

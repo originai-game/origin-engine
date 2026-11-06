@@ -56,8 +56,7 @@ if (answer.ok && typeof answer.data.value === "number") run.best[i] = Math.max(r
   `storeGet`). `og.platform.now(world)` is the host's clock at the last
   answer (or when the platform attached) advanced by the ticks since, so
   it is the one wall clock a game may read: the time away is a store
-  answer's `time` less the time the save wrote down
-  (`templates/archetypes/idle`, `tests/away.og.ts`). `info(world).clock`
+  answer's `time` less the time the save wrote down. `info(world).clock`
   says whose it is: `player`, `browser` (the web host's own, until the
   Player sends its time), `system` (native), `fixed` (`og run --clock`,
   playtests), `none` before the platform attaches (`now` answers 0).
@@ -135,7 +134,7 @@ the ad button or Share only where it is true.
   the default (the host's own locale may be another). Saving alone
   passes every test that never relaunches, and every reload comes back
   in the defaults. A `store: "keep"` playtest whose relaunch reads the
-  setting back proves it (§4; `templates/ui-kit/tests/settings-saved.og.ts`).
+  setting back proves it (§4; the former test sample).
 - Save on meaningful moments (a new best, a level done, settings closed),
   not every tick: writes are rate limited.
 - Never store anything the game can recompute, and never a secret: the
@@ -145,7 +144,7 @@ the ad button or Share only where it is true.
   store either as a secret or send them anywhere but back to the platform.
 
 The settings read, as the UI kit does it (`followSettings` in
-`templates/ui-kit/src/main.ts`, called by its system every tick):
+the former test sample, called by its system every tick):
 
 ```ts
 if (time.tick === 0) {
@@ -163,10 +162,8 @@ if (time.tick === 0) {
 ## 4. Test it
 
 - `dump_platform[:file]` lists every call with its method, arguments, tick,
-  state and answer, and what answers them: assert on it in a playtest
-  (`templates/archetypes/runner/tests/records.og.ts`; a stale write read
-  again and merged: `templates/archetypes/idle/tests/offline.og.ts` and
-  `templates/archetypes/roguelike/tests/win.og.ts`).
+  state and answer, and what answers them: assert on it in a playtest.
+  Include a stale write that is read again and merged before retrying.
 - `og run --platform-store save.json` keeps the local store in a file, so
   a second run sees the first's save; without it the store is in memory
   for the run. `og run --clock <UTC ms>` fixes the host clock at tick 0
@@ -176,8 +173,8 @@ if (time.tick === 0) {
   local store (`<out>/.store/platform.json`, a dot name no step's output
   may take, so `dump_platform:platform.json` is safe) for its run and its `then` steps (`{ commands, clock }`,
   each a fresh `og run`), and `check` reads each step's run in
-  `run.then[n]` (`templates/archetypes/idle/tests/away.og.ts`: saved at
-  `clock`, launched two hours later). A command that relaunches in the
+  `run.then[n]`: save at `clock`, then launch two hours later to check
+  offline progress. A command that relaunches in the
   same process stays for tests that need no second process.
 - In the browser, `packages/engine/tests/web/player.ts` shows the Player
   side: a framed game's first calls wait for the Player's `hello`, then go

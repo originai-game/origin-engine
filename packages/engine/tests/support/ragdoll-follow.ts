@@ -4,7 +4,7 @@
 // animated, the rig's rest pose placed at the entity, and the bones on the
 // first tick limp.
 //
-//   bun tests/support/ragdoll-follow.ts --project <templates/game> [--ticks 40]
+//   bun tests/support/ragdoll-follow.ts --project <the former test sample> [--ticks 40]
 
 import { og, defineSystem } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";

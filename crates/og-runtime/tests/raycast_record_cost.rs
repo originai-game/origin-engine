@@ -1,5 +1,5 @@
 //! The raycast record's cost of its own (debt round 2, `physics-push`;
-//! tests/evidence/depth/geometry/NOTES.md owed it): the probe's
+//! the former test sample owed it): the probe's
 //! before_tick reads the drawn meshes and their world matrices once a tick,
 //! so a raycast from inside a system sees them as the tick started. It is
 //! the same read as og.render.raycast outside a system, timed here through

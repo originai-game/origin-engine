@@ -46,7 +46,8 @@ tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 
 fail=0
 # The pins.
-for f in templates/*/package.json templates/archetypes/*/package.json; do
+for f in packages/create/template/package.json tests/fixtures/*/package.json; do
+  [ -f "$f" ] || continue
   if grep -q '"typescript":' "$f"; then
     og_err "check-conformance: $f declares typescript; og check (tsrs) is a project's checker"; fail=1
   fi
@@ -64,7 +65,7 @@ else
   # project; here, as og check does, through paths to packages/engine.
   configs=(packages/engine/tsconfig.json packages/engine/tsconfig.runtime.json
     packages/engine/tsconfig.templates.json)
-  for t in templates/*/ templates/archetypes/*/ tests/fixtures/*/; do
+  for t in packages/create/template/ packages/engine/sheets/*/ tests/fixtures/*/; do
     [ -f "$t/project.ogt" ] || continue
     t="${t%/}"; w="$tmp/wrap/$t"
     mkdir -p "$w"

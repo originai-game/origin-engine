@@ -1,4 +1,4 @@
-//! The soft bodies on the lanes (tests/evidence/P4/physics-lanes-2/): ropes,
+//! The soft bodies on the lanes (the former test sample ropes,
 //! cloths, 3D and 2D fluids and ragdolls, each scene stepped 120 ticks to
 //! settle and timed over 300 (the mean per tick of `World::step`), with
 //! the grains as measured (`Grains::measured`) or forced to split one kind

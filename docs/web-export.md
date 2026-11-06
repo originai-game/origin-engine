@@ -214,8 +214,7 @@ A call splits only from two tasks' worth of items, since waking the pool
 costs more than small work. TS systems keep their deterministic order on
 the engine thread. Every lane writes back in input order, so the world
 hash, captures and replays are identical with lanes on and off
-(`packages/engine/tests/lanes.test.ts`, the gate's determinism step
-`tools/wasm-determinism/run.sh`).
+(`packages/engine/tests/lanes.test.ts` and the native/wasm hash tests).
 
 **One wasm or two.** Two. A wasm module built with atomics needs shared
 memory, which needs cross-origin isolation, and without isolation it cannot
@@ -998,7 +997,7 @@ determinism, icons) is.
   behind the gate, a real click opens the gate, the frames match, the
   plan's checks hold, and the page, its Workers and Chrome (with its
   accessibility tree on) log no warning or error. Its built-in plan is
-  `templates/ui-kit`'s; `--script "<steps>" --title
+  the former test sample's; `--script "<steps>" --title
   <node> [--then "<steps>"] [--references <dir> --prefix <p>]` runs
   another, and `--playtest <file>` a playtest's own commands (its `then` as
   reloads; dump and game-command steps are refused, and its `check` is not

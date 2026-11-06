@@ -1,9 +1,0 @@
-type ui-material
-version 1
----
-# A duotone composite: the layer's luminance mapped from `dark` to `light`,
-# with scan bands drifting by the UI clock.
-source "ui/duotone.wgsl"
-param dark color 0.03 0.02 0.12
-param light color 1.0 0.72 0.25
-param band float 0.18

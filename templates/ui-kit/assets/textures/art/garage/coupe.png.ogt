@@ -1,7 +1,0 @@
-type import
-version 1
----
-# Painted kit art cut out on transparent ground (docs/ui.md §15.5.3).
-texture {
-  kind color
-}

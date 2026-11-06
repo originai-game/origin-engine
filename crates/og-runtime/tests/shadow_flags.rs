@@ -119,7 +119,9 @@ fn project() -> &'static Path {
         let crate_vox = std::fs::read(repo().join("crates/og-cook/tests/fixtures/vox/pivot.vox"))
             .expect("a static .vox");
         write("models/crate.vox", &crate_vox);
-        let walker = std::fs::read(repo().join("templates/game/assets/models/walker.glb")).unwrap();
+        let walker =
+            std::fs::read(repo().join("tests/fixtures/cook-assets/assets/models/walker.glb"))
+                .unwrap();
         write("models/walker.glb", &walker);
         write("scenes/flags.ogt", SCENE.as_bytes());
         let options = og_cook::CookOptions {

@@ -1,7 +1,7 @@
 // The Worker's error scopes on the published wgpu (src/web/gpu-errors.ts),
 // against stand-in WebGPU error classes: wgpu 30 panics on a GPUInternalError
 // popped from a scope, which is how PowerVR refuses the visibility buffer's
-// resolve (tests/evidence/compat/android/NOTES.md).
+// resolve (the former test sample
 //
 // Ways it could go wrong, and the check that catches each:
 // - the internal error still reaches wgpu → a GPUValidationError instead,

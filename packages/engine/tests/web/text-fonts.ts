@@ -3,7 +3,7 @@
 // this cooks them first, as og-ui's native test does (tests/text_gfx.rs).
 // crates/og-ui/tests/text-fonts (a project of the fonts' import settings,
 // `assets/fonts/<file>.ogt`) is copied into `dir` with each settings
-// file's font from templates/ui-kit/assets/fonts, and cooked with `og cook`
+// file's font from tests/fixtures/ui-text/assets/fonts, and cooked with `og cook`
 // (tests/support/og-bin.ts: $OG_BIN, else packages/engine/native/). The
 // harness serves `<dir>/cooked/` and hands og-tests-web the manifest and
 // every file (og_gfx_text_manifest, og_gfx_text_file); the module decodes
@@ -32,7 +32,7 @@ export interface TextFonts {
 /** Cooks crates/og-ui/tests/text-fonts into `dir` (emptied first); `repo` is the repository root. */
 export function cookTextFonts(repo: string, dir: string): TextFonts {
   const project = join(repo, "crates", "og-ui", "tests", "text-fonts");
-  const sources = join(repo, "templates", "ui-kit", "assets", "fonts");
+  const sources = join(repo, "tests", "fixtures", "ui-text", "assets", "fonts");
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
   cpSync(project, dir, { recursive: true });
@@ -41,7 +41,7 @@ export function cookTextFonts(repo: string, dir: string): TextFonts {
     .map((f) => f.slice(0, -".ogt".length))
     .sort();
   for (const f of fonts) {
-    if (!existsSync(join(sources, f))) throw new Error(`text-fonts names ${f}, which templates/ui-kit/assets/fonts does not have`);
+    if (!existsSync(join(sources, f))) throw new Error(`text-fonts names ${f}, which tests/fixtures/ui-text/assets/fonts does not have`);
     cpSync(join(sources, f), join(dir, "assets", "fonts", f));
   }
   cookProject(dir, repo);

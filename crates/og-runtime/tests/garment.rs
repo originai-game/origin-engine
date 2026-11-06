@@ -28,7 +28,9 @@ fn project() -> &'static Path {
             .join(format!("og-runtime-garment-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let walker = std::fs::read(repo.join("templates/game/assets/models/walker.glb")).unwrap();
+        let walker =
+            std::fs::read(repo.join("tests/fixtures/cook-assets/assets/models/walker.glb"))
+                .unwrap();
         let p = root.join("assets/models/walker.glb");
         std::fs::create_dir_all(p.parent().unwrap()).unwrap();
         std::fs::write(p, &walker).unwrap();

@@ -105,7 +105,7 @@ fn tables_are_validated_and_every_locale_is_checked_against_the_base() {
 fn an_arabic_font_carries_its_joined_forms_and_its_file() {
     let ttf = std::fs::read(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../templates/ui-kit/assets/fonts/NotoSansArabic-subset.ttf"
+        "/../../tests/fixtures/ui-text/assets/fonts/NotoSansArabic-subset.ttf"
     ))
     .unwrap();
     let settings =
@@ -162,7 +162,7 @@ fn an_arabic_font_carries_its_joined_forms_and_its_file() {
                 "fonts/ar.ttf",
                 std::fs::read(concat!(
                     env!("CARGO_MANIFEST_DIR"),
-                    "/../../templates/ui-kit/assets/fonts/NotoSansArabic-subset.ttf"
+                    "/../../tests/fixtures/ui-text/assets/fonts/NotoSansArabic-subset.ttf"
                 ))
                 .unwrap(),
             ),

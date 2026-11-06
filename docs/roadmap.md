@@ -64,9 +64,9 @@ minimum removed (b59654b2a).
 - **No gameplay templates.** `og create` writes one project skeleton; the
   creation choices (genre, view, art style, UI style, platform, input,
   players, languages, music) go into project.ogt's `create` block as
-  constraints and hints. examples/ is deleted (876766dc0); templates/archetypes,
-  templates/fx-showcase and the templates/ui-kit gallery are deleted next;
-  templates/game and game-2d become fixtures. Kept: the UI packs (kits and
+  constraints and hints. examples/, all gameplay templates, the effects
+  showcase and the UI gallery are deleted. Only inputs needed by core
+  feature tests remain as small fixtures. Kept: the UI packs (kits and
   style packs), templates/looks (artBrief is a platform contract), locales,
   packages/design.
 - **Fixtures** under `tests/fixtures/`, one per feature, a few seconds each,
@@ -103,6 +103,11 @@ Dropped: tag `archive/create-starters` a79e6bed8, tag `archive/ui-own-look` 363a
 
 ## Open defects
 
+- Rebuild these removed failing assertions in the 0.8.0 UI work: racing
+  speedometer tach/shift-light layout; RPG unit/party-frame level badges
+  at small text scales; light-style objective text versus HUD-plate ink;
+  ability-bar hotkey text scaling (the Q label is absent).
+  Their tests are deleted with the template cleanup, not fixed or waived.
 - og-cook reruns destruction fracture before hashing an up-to-date model
   (destruction-yard 13 s, over budget); og.Decal does not project onto
   terrain.

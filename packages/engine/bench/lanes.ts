@@ -21,7 +21,7 @@
 //       lanes wasm's physics step (rapier's parallel build on the Worker pool,
 //       og-physics's own passes split beside it) against the single-threaded
 //       module's, and natively OG_LANES off against on. Results go to
-//       tests/evidence/P4/physics-lanes-2/ unless --out says otherwise
+//       the former test sample unless --out says otherwise
 //
 // A native sample is engine.frame(16.667 ms) plus waiting for the GPU
 // (og_node_wait_gpu): the tick (systems, animation, physics), extraction,
@@ -33,7 +33,7 @@
 // with the world hash, which must be the same with lanes off and on; a publish
 // build has no world hash (the probe's dump is stripped), so the Chrome modes
 // compare the RGBA of a capture after the timed frames instead. Results go to
-// --out (default tests/evidence/P3/lanes/).
+// --out (default the former test sample
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";

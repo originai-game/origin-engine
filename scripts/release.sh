@@ -67,16 +67,8 @@ cmd_check() { bun scripts/release-bump.ts --check; }
 
 cmd_bump() {
   local v="${1:?scripts/release.sh bump <version>}"
-  # The golden replays first (docs/release.md §3): their hashes unchanged,
-  # or changelog.json's unreleased.simulation says "changed", before the
-  # bump moves unreleased into the version's entry.
-  bun scripts/replay-gate.ts || { og_err "release: the golden replays diverged (scripts/replay-gate.ts); set unreleased.simulation to \"changed\" in packages/engine/changelog.json if that is meant, and re-record with --update"; return 1; }
   bun scripts/release-bump.ts "$v" || return 1
   cargo update --workspace --offline -q || { og_err "release: cargo update --workspace failed (Cargo.lock)"; return 1; }
-  # tools/wasm-determinism is its own workspace with its own lock on the
-  # engine's crates by path; left at the old version, the gate's
-  # determinism step rewrites it (0.3.0 left it at 0.2.0 until 2026-10-24).
-  (cd tools/wasm-determinism && cargo update --workspace --offline -q) || { og_err "release: cargo update in tools/wasm-determinism failed (its Cargo.lock)"; return 1; }
   if ! grep -q "^## $v" CHANGELOG.md; then
     og_err "release: CHANGELOG.md has no \"## $v\" heading; write the entry (one line per IDL member added, changed or removed)"
     return 1
@@ -173,7 +165,7 @@ cmd_publish() {
       if (!m.verified?.container) problems.push("not verified in the linux-x64 container (scripts/release.sh verify)");
     }
     if (m.source === "build" && !m.version.includes("-dev.")) {
-      // The archives are a function of these paths: a later commit outside them (docs, tests/evidence) keeps the pack valid.
+      // The archives are a function of these paths: a later commit outside them (docs, the former test sample) keeps the pack valid.
       const git = (...a) => require("node:child_process").execFileSync("git", a, { encoding: "utf8" }).trim();
       const head = git("rev-parse", "HEAD");
       if (m.revision !== head) {

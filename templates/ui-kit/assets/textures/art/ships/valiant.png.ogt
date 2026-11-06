@@ -1,7 +1,0 @@
-type import
-version 1
----
-# A painted ship cut out on transparent ground (docs/ui.md §15.5.3): the slot's own ground shows through.
-texture {
-  kind color
-}

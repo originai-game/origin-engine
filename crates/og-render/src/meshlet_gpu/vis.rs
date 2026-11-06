@@ -14,7 +14,7 @@
 //! The resolve's pipelines are made inside error scopes. A device that
 //! refuses one (the Pixel 10's PowerVR D-Series driver answers
 //! VK_ERROR_UNKNOWN to the lit resolve, a valid pipeline its compiler does
-//! not fit: tests/evidence/compat/android/) turns the visibility buffer off
+//! not fit: the former test sample turns the visibility buffer off
 //! for good, and its clusters draw on the hardware path as they do with
 //! `RenderScene::visibility_buffer` off; until the device has answered
 //! (the web answers on a later frame) the soft clusters are not resolved.

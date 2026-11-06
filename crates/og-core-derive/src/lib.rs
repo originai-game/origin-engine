@@ -113,7 +113,7 @@ fn expand(input: &DeriveInput) -> syn::Result<TokenStream2> {
 
     // The schema is static data, one `FieldDecl` per field, that one
     // og-core function turns into a `Schema`: the code that builds it is
-    // compiled once, not once per reflected type (tests/evidence/r4/size-3).
+    // compiled once, not once per reflected type (the former test sample
     let schema_fields = fields.iter().map(|f| {
         let fname = f.rename.clone().unwrap_or_else(|| f.ident.to_string());
         let ty = &f.ty;

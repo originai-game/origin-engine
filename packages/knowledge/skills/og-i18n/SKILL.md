@@ -129,7 +129,7 @@ string "results.time" "タイム {time}"
   Noto face for that script holding exactly the characters your tables
   use, named first in that table's `fonts` line.
 - What the engine ships: `fonts/NotoSansSC-Regular-subset.ttf`, in a
-  project made from `templates/game` (Simplified Chinese: GB2312's 6,763
+  project made from the former test sample (Simplified Chinese: GB2312's 6,763
   hanzi, kana and Latin-1, 2.5 MB), the source for a Chinese subset and
   the styles' CJK `fallback`; an archetype project has no such file.
   The built-in UI styles bring their own Chinese faces (`cjk`,
@@ -145,7 +145,7 @@ string "results.time" "タイム {time}"
   Regular `.ttc` holds Japanese as face 0, Korean 1, Simplified 2,
   Traditional 3) into a folder outside `assets/` (`tools/fonts/`), so the
   cook never sees it, and records its licence.
-- Make the subset with `templates/ui-kit/tools/subset-font.py`, copied into
+- Make the subset with the former test sample, copied into
   the project's `tools/`: it reads every `string` of `assets/strings/`
   (`--locale ja` for one table, `--extra` for what players or playtests
   type), writes the subset and its import settings (`chars` listing every
@@ -225,7 +225,7 @@ answers the requested and active locale, the direction and the font chain.
 
 ## 6. Prove it
 
-- A playtest per locale that matters (`templates/ui-kit/tests/locales.og.ts`):
+- A playtest per locale that matters (the former test sample):
   `locale:<tag>` in the command script switches the locale, then
   `screenshot` each main screen and compare with references; read each
   frame for boxes, clipped words and wrong direction.

@@ -172,7 +172,7 @@ fn perf_lights_256() {
 /// Five transmissive objects: every frame copies the opaque scene and
 /// fills its mip chain for them to refract. The copy's view and its
 /// chain's views and bind groups are made with the copy, not each frame
-/// (tests/evidence/r4/perf-ui/NOTES.md: a view made each frame of a
+/// (the former test sample a view made each frame of a
 /// texture still in flight waited for the GPU on lavapipe).
 #[test]
 #[ignore = "requires GPU; wave-end perf"]
@@ -190,7 +190,7 @@ fn perf_showcase() {
 /// natively): the showcase drawn, read back and encoded as a PNG each
 /// frame, as the probe's `capture` and `screenshot` do. Level-6 zlib took
 /// about 90 ms of a 103 ms capture of Meridian Loop on the M4 Pro
-/// (tests/evidence/r4/measure/capture-profile).
+/// (the former test sample
 #[test]
 #[ignore = "requires GPU; wave-end perf"]
 fn perf_showcase_capture() {

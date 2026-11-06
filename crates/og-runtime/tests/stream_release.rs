@@ -82,7 +82,7 @@ fn project() -> &'static Path {
             "env/studio.ogt",
             b"type environment\nversion 1\n---\nsource \"studio.hdr\"\nsize 16\nsamples 16\n",
         );
-        let png = read("templates/fx-showcase/assets/textures/toon.png");
+        let png = read("tests/fixtures/texture-arrays/assets/textures/toon.png");
         write("tex/f0.png", &png);
         write("tex/f1.png", &png);
         write(
@@ -107,7 +107,7 @@ fn project() -> &'static Path {
         );
         write(
             "sprites/strip.png",
-            &read("templates/archetypes/topdown/assets/sprites/slime.png"),
+            &read("tests/fixtures/sprite-2d/assets/sprites/slime.png"),
         );
         write(
             "sprites/run.ogt",

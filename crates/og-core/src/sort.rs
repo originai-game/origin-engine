@@ -4,7 +4,7 @@
 //! driftsort for every element type and every comparator closure: two to
 //! eighteen kilobytes of wasm each, about 930 kB of the 3D publish module
 //! across the engine's and its dependencies' sorts
-//! (`tests/evidence/r4/size-2/NOTES.md`). These functions sort the same
+//! (`the former test sample`). These functions sort the same
 //! way, stably, with the same result for every comparator that is a total
 //! order, through one merge sort of `u32` positions that is not generic:
 //! each call site adds only its comparator and the permutation's

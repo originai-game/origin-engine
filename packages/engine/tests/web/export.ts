@@ -64,7 +64,7 @@ const save = (name: string, png: Uint8Array) => {
 // ── the builds ─────────────────────────────────────────────────────────
 const builds: Record<string, { dist: string; manifest: BuildManifest; total: { bytes: number; compressed: number }; files: Array<{ path: string; bytes: number; compressed: number }> }> = {};
 for (const game of ["runner", "match3"]) {
-  const project = join(repo, "templates", "archetypes", game);
+  const project = join(repo, "tests", "fixtures", game === "runner" ? "browser-host" : "sprite-2d");
   cookProject(project, repo);
   const dist = join(work, game);
   const b = await webBuild(project, join(project, "src", "main.ts"), dist, true, settingsOf(project));

@@ -8,7 +8,7 @@
 //! normal is not carried through the transform's inverse transpose, or an
 //! update leaves the old BVH (or the old physics mesh) in place.
 //!
-//! A cooked model (templates/game's dropship) raycasts without building a
+//! A cooked model (the former test sample's dropship) raycasts without building a
 //! BVH: each primitive's was cooked into its blob and loaded with its mesh
 //! (before, the first raycast that reached it built it then).
 
@@ -202,7 +202,7 @@ fn a_cooked_model_raycasts_without_building_a_bvh() {
     std::fs::create_dir_all(root.join("assets/models")).unwrap();
     std::fs::copy(
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../templates/game/assets/models/dropship.glb"),
+            .join("../../tests/fixtures/cook-assets/assets/models/dropship.glb"),
         root.join("assets/models/dropship.glb"),
     )
     .unwrap();

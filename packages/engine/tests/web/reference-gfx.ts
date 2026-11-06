@@ -16,7 +16,7 @@
 // cooked-font text frames (text-bidi, text-kerning, text-edit,
 // text-mixed-runs: crates/og-ui/tests/support/text_scenes.rs): their fonts
 // are cooked first with `og cook` (text-fonts.ts: crates/og-ui/tests/text-fonts
-// with templates/ui-kit's font files, as og-ui's text_gfx test cooks them),
+// with the former test sample's font files, as og-ui's text_gfx test cooks them),
 // served beside the module and handed to it before any scene opens; that
 // needs the og a build put in packages/engine/native/ (or $OG_BIN).
 //
@@ -45,7 +45,7 @@
 // each frame: the GPU cull's buffers after it (args and scan whole, the
 // others hashed per 4 KiB; og-tests-web og_gfx_cull_buffer, dev builds
 // only), for comparing one frame's cull between two browsers
-// (tests/evidence/compat/safari/probes/cull-compare.ts); --perf-out writes the
+// (the former test sample --perf-out writes the
 // timing JSON to <dir>/<tier>[-cpu-culling]/ instead (evidence runs).
 // Writes <out>/<tier>/<scene>.png, <scene>.diff.png on a mismatch and
 // reference-gfx-<tier>.json (default dist/test-gfx/out). Exits 1 when a
@@ -81,7 +81,7 @@ const android = androidOf(args);
 const safari = args.includes("--safari") ? safariDriverPath(args) : undefined;
 // A phone's frames (webgpu-android) and Safari's (webgpu-safari) are their own
 // reference tier, falling back to the browsers' webgpu and then metal; recorded
-// only for a legitimate implementation difference (tests/evidence/compat/).
+// only for a legitimate implementation difference (the former test sample
 const tier = android ? "webgpu-android" : safari ? "webgpu-safari" : "webgpu";
 const record = args.includes("--record");
 const work = join(pkg, "dist", "test-gfx");

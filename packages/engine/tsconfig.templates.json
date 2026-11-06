@@ -19,5 +19,5 @@
       "@origingame/engine/extensions/*": ["./extensions/*"]
     }
   },
-  "include": ["../../templates/*/src/**/*.ts", "../../templates/archetypes/*/src/**/*.ts"]
+  "include": ["../create/template/src/**/*.ts", "../../tests/fixtures/*/src/**/*.ts", "sheets/*/src/**/*.ts"]
 }

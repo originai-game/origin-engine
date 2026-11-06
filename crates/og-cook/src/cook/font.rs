@@ -932,7 +932,7 @@ mod tests {
     fn features_put_their_glyphs_in_the_atlas() {
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../templates/ui-kit/assets/fonts/EBGaramond-Medium.ttf"
+            "/../../tests/fixtures/ui-text/assets/fonts/EBGaramond-Medium.ttf"
         );
         let bytes = std::fs::read(path).expect("the kit's EB Garamond");
         let face = ttf_parser::Face::parse(&bytes, 0).unwrap();
@@ -977,7 +977,7 @@ mod tests {
     fn latin_default_contextual_glyphs_are_cooked() {
         let bytes = std::fs::read(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../templates/ui-kit/assets/fonts/Inter-Display.ttf"
+            "/../../tests/fixtures/ui-text/assets/fonts/Inter-Display.ttf"
         ))
         .unwrap();
         let (blob, _) = cook(
@@ -1070,8 +1070,14 @@ mod tests {
         let fonts = concat!(env!("CARGO_MANIFEST_DIR"), "/../../templates");
         let mut bad = Vec::new();
         for (file, c) in [
-            ("ui-kit/assets/fonts/Inter-Display.ttf", 'e'),
-            ("ui-kit/assets/fonts/Inter-Display.ttf", 't'),
+            (
+                "../tests/fixtures/ui-text/assets/fonts/Inter-Display.ttf",
+                'e',
+            ),
+            (
+                "../tests/fixtures/ui-text/assets/fonts/Inter-Display.ttf",
+                't',
+            ),
             ("styles/cjk/NotoSansSC-Regular.ttf", '商'),
             ("styles/cjk/ZCOOLKuaiLe-Regular.ttf", 'Y'),
             ("styles/cjk/ZCOOLKuaiLe-Regular.ttf", '?'),
@@ -1097,7 +1103,7 @@ mod tests {
     fn proportional_figures_are_warned_without_tnum() {
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../templates/ui-kit/assets/fonts/Inter-Display.ttf"
+            "/../../tests/fixtures/ui-text/assets/fonts/Inter-Display.ttf"
         );
         let bytes = std::fs::read(path).expect("the kit's Inter");
         let note = |features: &[&str]| {
@@ -1125,11 +1131,7 @@ mod tests {
     #[test]
     fn a_pixel_font_cooks_on_its_grid() {
         let read = |p: &str| {
-            std::fs::read(format!(
-                "{}/../../templates/{p}",
-                env!("CARGO_MANIFEST_DIR")
-            ))
-            .expect("the font")
+            std::fs::read(format!("{}/../../{p}", env!("CARGO_MANIFEST_DIR"))).expect("the font")
         };
         let cook_px = |bytes: &[u8], pixel: u32| {
             let s = FontSettings {
@@ -1142,7 +1144,7 @@ mod tests {
             let (blob, notes) = cook(bytes, &s, 2, 0).expect("cooks");
             (blob, notes.note)
         };
-        let (blob, note) = cook_px(&read("styles/cjk/FusionPixel12-zhHans.ttf"), 12);
+        let (blob, note) = cook_px(&read("templates/styles/cjk/FusionPixel12-zhHans.ttf"), 12);
         let b = og_blob::Blob::parse(&blob, "test").unwrap();
         assert_eq!(b.raw("pixel").unwrap(), b"12");
         let pad = ((16.0f32 / 2.0).ceil() + 1.0) / 48.0;
@@ -1173,11 +1175,11 @@ mod tests {
             "{note}"
         );
         let (_, note) = cook_px(
-            &read("archetypes/roguelike/assets/styles/lampdive/DotGothic16-Regular.ttf"),
+            &read("tests/fixtures/pixel-font/DotGothic16-Regular.ttf"),
             16,
         );
         assert!(note.contains("off the 16 px grid"), "{note}");
-        let (plain, _) = cook_px(&read("styles/cjk/FusionPixel12-zhHans.ttf"), 0);
+        let (plain, _) = cook_px(&read("templates/styles/cjk/FusionPixel12-zhHans.ttf"), 0);
         assert!(
             og_blob::Blob::parse(&plain, "test")
                 .unwrap()

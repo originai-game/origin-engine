@@ -144,7 +144,7 @@ Every effect is off until the game turns it on, as data:
   the screen transition too), so a HUD icon made of sprites sits on a UI
   panel at `layer: UI_LAYER + 1` while its screen shows.
 
-`templates/fx-showcase` shows every one of these on its first five stations;
+the former test sample shows every one of these on its first five stations;
 every field is in `og api show render`. Floating text,
 `og.render.floatingText(world, { text: "-12", position, color })`, pops a
 damage number or a pickup that rises and fades by itself (amounts: og-feel
@@ -280,9 +280,8 @@ blend additive
 render sprite 12
 ```
 
-`templates/archetypes/idle/assets/fx/` (taps, stars, a milestone),
-`templates/fx-showcase/assets/fx/` (fire, smoke, sparks with collision,
-2D embers) and `templates/archetypes/third-person/assets/fx/` hold more.
+the former test sample (fire, smoke, sparks with collision,
+2D embers) and the former test sample hold more.
 
 ## 3. Light, exposure, shadows and antialiasing
 
@@ -1011,7 +1010,7 @@ parameter, and `og.render.setMaterialShader(world, material, shader)` gives
 an existing material (a loaded model's, from `GltfInfo.materials`) the
 hooks. Alpha below `alphaTest` discards the fragment (a dissolve). Skinned
 meshes run the hooks too, and shadows and the depth prepass see the mesh
-where `vertex_offset` moved it. `templates/fx-showcase/assets/shaders/` has a
+where `vertex_offset` moved it. the former test sample has a
 dissolve, wind-swayed grass and a ripple on the walking walker.
 
 ## 10. Full custom shaders and custom post passes
@@ -1037,7 +1036,7 @@ An entry you leave out is the standard one.
   them. A dissolve's shadow therefore has its holes.
 - Make the material with `og.render.shaderMaterial` and set parameters with
   `og.render.setShaderParam`, as for hooks (§9).
-- `templates/fx-showcase/assets/shaders/dissolve-full.*` is the example.
+- the former test sample is the example.
 
 **Custom post passes.** A `type post` asset declares
 `fn post(f: PostInput, p: Params) -> vec4<f32>` in its `code` or `source`,
@@ -1064,7 +1063,7 @@ It returns linear HDR. To use one:
 
 The cook compiles it for every back end. A pass that a device still fails
 to compile is skipped and listed by `og.render.postErrors(world)`.
-`templates/fx-showcase/assets/post/crt.*` is a CRT example.
+the former test sample is a CRT example.
 
 ## 11. Render targets, second cameras, mirrors and layers
 

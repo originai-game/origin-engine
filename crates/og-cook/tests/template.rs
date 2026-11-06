@@ -1,5 +1,5 @@
 //! The cook and the runtime loaders, end to end on the project template
-//! (`templates/game/assets`): cook it, load what came out, compare with the
+//! (`tests/fixtures/cook-assets/assets`): cook it, load what came out, compare with the
 //! sources and render it.
 //!
 //! Ways this could fail, and the test that catches each:

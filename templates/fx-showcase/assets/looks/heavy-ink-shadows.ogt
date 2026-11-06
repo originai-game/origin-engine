@@ -1,5 +1,0 @@
-type look
-version 1
----
-# The engine preset "heavy-ink-shadows" (templates/looks/heavy-ink-shadows.ogt), shown by the looks station.
-extends "heavy-ink-shadows"

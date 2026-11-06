@@ -1,7 +1,0 @@
-type look
-version 1
----
-# Names the built-in cyber style (a seed og style new generated), so the cook puts it in the bundle (@styles/cyber/);
-# the kit loads the style itself and never applies this look.
-name "kit cyber"
-ui "cyber"

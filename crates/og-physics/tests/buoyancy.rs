@@ -209,7 +209,7 @@ fn a_hull_rides_the_waves_the_same_through_a_restore_and_a_second_run() {
 
 #[test]
 fn floaters_stay_in_the_water_through_the_gales_crests() {
-    // The boats sample (tests/evidence/r5-water/boats): three box boats and
+    // The boats sample (the former test sample three box boats and
     // four buoys set down on the storm frame's gale. Through six seconds of
     // its swell each stays wet, near its resting depth, and is never flung
     // clear of a crest.

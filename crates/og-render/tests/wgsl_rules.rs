@@ -3,7 +3,7 @@
 //! refuses a module whole, so every pipeline made from it draws nothing in
 //! a browser (the water, and with it whole frames, drew black in Chrome on
 //! Android: E5's water.json,
-//! tests/evidence/compat/windows/round-handoff.md). The browser compile in
+//! the former test sample The browser compile in
 //! reference-gfx.ts catches these at a wave's end; these run in the quick
 //! lane over every module `og_render::shader_sources` gives.
 

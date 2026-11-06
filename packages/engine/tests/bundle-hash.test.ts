@@ -1,5 +1,5 @@
 // A replay's game identity (bundleSha256, src/node/bundle-hash.ts) does not
-// depend on where the game was bundled: templates/game-2d copied into two
+// depend on where the game was bundled: the former test sample copied into two
 // directories at different depths and bundled by src/node/build.ts as og
 // does (from the directory og was run in) hashes the same. The bundles
 // themselves differ: bun's source markers name each directory, and its
@@ -26,7 +26,7 @@ test("the same game bundled in two directories has one bundle hash", () => {
   try {
     const bundles = [join(root, "a", "game"), join(root, "b", "deeper", "game")].map((dir) => {
       mkdirSync(dirname(dir), { recursive: true });
-      cpSync(join(repo, "templates", "game-2d", "src"), join(dir, "src"), { recursive: true });
+      cpSync(join(repo, "packages", "create", "template", "src"), join(dir, "src"), { recursive: true });
       const out = join(dir, ".og", "game.native.js");
       const r = Bun.spawnSync(["bun", join(pkg, "src/node/build.ts"), "--entry", join(dir, "src/main.ts"), "--out", out, "--target", "native"], { cwd: root });
       if (r.exitCode !== 0) throw new Error(new TextDecoder().decode(r.stderr));

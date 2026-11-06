@@ -1,5 +1,5 @@
 //! The CPU cost of the 3D fluid per 60 Hz tick (the phase 2 SPH round's
-//! cost table, `tests/evidence/P2/sph/costs.md`): each scene poured over a
+//! cost table, `the former test sample`): each scene poured over a
 //! floor (a 3D box, or a terrain bowl), stepped 120 ticks to settle, then
 //! timed over short windows of 30 ticks, the best of ten (the machine is
 //! shared; the best window is the one least disturbed). Release builds

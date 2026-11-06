@@ -32,7 +32,7 @@ declare const Bun: { spawnSync(cmd: string[], o?: { cwd?: string; env?: Record<s
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = join(pkg, "..", "..");
-const textures = join(repo, "templates", "game", "assets", "textures");
+const textures = join(repo, "tests", "fixtures", "cook-assets", "assets", "textures");
 
 // ── a .ogb section reader (crates/og-blob/README.md §Layout) ──────────────
 

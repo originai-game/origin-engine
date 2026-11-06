@@ -104,7 +104,7 @@ fn cooked_action_and_look_compose_release_and_replay_on_tick_time() {
     let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
         .join(format!("motion-performance-{}", std::process::id()));
     let source =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../templates/fx-showcase/assets");
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/motion/assets");
     for path in ["models/strider.glb", "anims/humanoid-clips.glb"] {
         let to = root.join("assets").join(path);
         std::fs::create_dir_all(to.parent().unwrap()).unwrap();

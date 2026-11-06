@@ -1,5 +1,5 @@
 //! The "bouncing boxes" world, shared by `tests/bouncing_boxes.rs` and the
-//! cross-target check in `tools/wasm-determinism/` (which includes this file
+//! cross-target check in `the former test sample` (which includes this file
 //! by path), so both run exactly the same simulation.
 //!
 //! Boxes fall, bounce off the walls of an arena with random jitter, emit

@@ -466,15 +466,13 @@ tree {
 - `dump_ai:<entity>[:file]` writes the behaviour, state, running node, the
   path from the root, status, blackboard and perception;
   `dump_nav:<entity>[:file]` the path, the corner it heads for and status.
-- A playtest per behaviour beat (`templates/archetypes/topdown/tests/ai.og.ts`
-  and `flee.og.ts`, `templates/game/tests/guard.og.ts`): place the hero with
+- A playtest per behaviour beat (the former test sample
+  and `flee.og.ts`, the former test sample): place the hero with
   a command, advance, dump, assert `node`, `state`, `sees` and positions.
-  `templates/archetypes/roguelike/tests/foes.og.ts` proves a turn-based
-  hunt (a tree that acts only on `Game.foesTurn`) and
-  `templates/archetypes/tower-defense/tests/maze.og.ts` a flow field
-  re-routed round placements and a placement refused because `findPath`
-  no longer reaches the goal.
-  `templates/archetypes/third-person` is the 3D action pattern: sentinels on
+  For turn-based AI, assert the tree acts only on the foe's turn. For
+  placement games, assert the flow field re-routes around a placement
+  and refuse it when `findPath` can no longer reach the goal.
+  the former test sample is the 3D action pattern: sentinels on
   a cooked navmesh with behaviour machines (patrol, alert, grab) raising
   the game's commands, restarted for a new run (`tests/sentinels.og.ts`,
   `tests/restart.og.ts`).

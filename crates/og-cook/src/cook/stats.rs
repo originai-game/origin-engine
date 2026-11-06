@@ -30,7 +30,7 @@
 //! (`warnings`): a model whose cooked raycast BVH is over that share of its
 //! blob, and at least [`BVH_WARN_BYTES`], pays for a BVH a game that never
 //! raycasts against it can drop with `model { raycast false }`. The 30 %
-//! default is read from the repository's models (tests/evidence/debt2/size/
+//! default is read from the repository's models (the former test sample
 //! NOTES.md): the small ones sit at 6 to 25 %, the large ones that cost a
 //! download at 26 to 49 % (the dropship 38.6 %, 108,384 B).
 //!

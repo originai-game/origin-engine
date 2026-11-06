@@ -118,8 +118,8 @@ done
 # The on-demand sheet project is data, not a gate or a hard-coded runtime template.
 rm -rf "$here/ui-sheet"
 mkdir -p "$here/ui-sheet"
-for part in assets src tools project.ogt; do
-  cp -R "$here/../../templates/ui-kit/$part" "$here/ui-sheet/$part"
+for part in assets src project.ogt; do
+  cp -R "$here/sheets/style/$part" "$here/ui-sheet/$part"
 done
 # og.motion's weights (docs/design.md §2.7) ship in motion/, read by og's
 # cook (og-cook's motion.rs). Use the same pin check as development builds.

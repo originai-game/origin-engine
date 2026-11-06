@@ -1,6 +1,6 @@
 //! Shaped scripts and right-to-left layout (E6 localization), through
 //! og-ui's public boundary: `FontMetrics::visual` with the UI kit's Arabic font
-//! (`templates/ui-kit/assets/fonts/NotoSansArabic-subset.ttf`) and a `Ui`
+//! (`tests/fixtures/ui-text/assets/fonts/NotoSansArabic-subset.ttf`) and a `Ui`
 //! laid out right to left.
 //!
 //! Ways it could fail, and the test that catches each:
@@ -32,7 +32,7 @@ use std::sync::Arc;
 fn arabic() -> FontMetrics {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../templates/ui-kit/assets/fonts/NotoSansArabic-subset.ttf"
+        "/../../tests/fixtures/ui-text/assets/fonts/NotoSansArabic-subset.ttf"
     );
     let file = FontFile::new(Arc::new(
         std::fs::read(path).expect("the kit's Arabic font"),
@@ -146,7 +146,7 @@ fn an_arabic_line_is_drawn_as_wide_as_it_was_laid_out() {
     const LINE: &str = "تُفتح البوابة عند الفجر. هل أنت مستعد للعبور؟";
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../templates/ui-kit/assets/fonts/NotoSansArabic-subset.ttf"
+        "/../../tests/fixtures/ui-text/assets/fonts/NotoSansArabic-subset.ttf"
     );
     let file = FontFile::new(Arc::new(
         std::fs::read(path).expect("the kit's Arabic font"),

@@ -1,4 +1,4 @@
-//! Run-time glyphs' cost for tests/evidence/P4/ui-text/NOTES.md: the UI
+//! Run-time glyphs' cost for the former test sample the UI
 //! kit's Chinese font, each character of a sample rendered from its
 //! outlines at 32 px/em, range 4 (the cook's geometry), per glyph.
 //!
@@ -10,7 +10,7 @@ use std::time::Instant;
 fn main() {
     let ttf = std::fs::read(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../templates/ui-kit/assets/fonts/NotoSansSC-Regular-subset.ttf"
+        "/../../tests/fixtures/ui-text/assets/fonts/NotoSansSC-Regular-subset.ttf"
     ))
     .expect("the kit's Chinese font");
     let sample = "欢迎回来旅人晨星おかえりなさい鬱龍警響議護顧驚體";

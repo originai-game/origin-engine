@@ -20,7 +20,7 @@ import { type El } from "./ui.ts";
 
 declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8Array } };
 
-export const kit = join(resolve(dirname(fileURLToPath(import.meta.url)), ".."), "..", "..", "..", "templates", "ui-kit");
+export const kit = join(resolve(dirname(fileURLToPath(import.meta.url)), ".."), "..", "..", "..", "tests", "fixtures", "ui-text");
 
 /** A desktop surface with a 40 px top and 30 px right safe inset (a TV's overscan). */
 export const DESKTOP_SAFE = { width: 1280, height: 720, dpr: 1, safeArea: { left: 0, top: 40, right: 30, bottom: 0 }, coarsePointer: false, breakpoint: "desktop" };

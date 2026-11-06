@@ -121,7 +121,7 @@ impl MipGenerator {
     /// ([`MipGenerator::record_chain`]). Making them each frame was 20
     /// views and 10 bind groups a frame for a 1280 x 720 copy, and a view
     /// of a texture the GPU is still reading waited for it on lavapipe
-    /// (tests/evidence/r4/perf-ui/NOTES.md).
+    /// (the former test sample
     pub(crate) fn chain(&self, device: &wgpu::Device, texture: &wgpu::Texture) -> MipChain {
         let levels: Vec<wgpu::TextureView> = (0..texture.mip_level_count())
             .map(|mip| {

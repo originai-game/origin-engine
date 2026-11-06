@@ -1,5 +1,5 @@
 //! og-ui's text frames, rendered headless with fonts the cook makes from the
-//! UI kit's sources (`templates/ui-kit/assets/fonts`: kerning, shaped
+//! UI kit's sources (`tests/fixtures/ui-text/assets/fonts`: kerning, shaped
 //! scripts), compared with `references/<tier>/text-*.png` under og-tests'
 //! tolerance (`OG_UI_CAPTURE=1` records this tier's). The scenes are
 //! `support/text_scenes.rs` (what each frame shows), which the browser
@@ -45,7 +45,7 @@ fn cooked() -> Vec<CookedFont> {
     let _ = std::fs::remove_dir_all(&root);
     let here = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../og-ui");
     copy_dir(&here.join("tests/text-fonts"), &root);
-    let src = here.join("../../templates/ui-kit/assets/fonts");
+    let src = here.join("../../tests/fixtures/ui-text/assets/fonts");
     for file in FONTS {
         std::fs::copy(src.join(file), root.join("assets/fonts").join(file)).expect("copy font");
     }

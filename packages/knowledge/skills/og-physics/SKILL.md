@@ -96,7 +96,7 @@ deterministic and part of snapshots (`og api show physics`):
   a tonne on the ground holds (friction beats the push). Lower
   `pushStrength` for a weak hero; `pushBodies: false` for a hero that
   never shoves (a crate then blocks like a wall).
-  `templates/archetypes/runner`'s courier is one.
+  the former test sample's courier is one.
 - `og.Vehicle` — a raycast car (3D, `throttle`, `steer`, `brake`; wheels
   from `og.physics.vehicleWheels`) or a car on wheel joints (2D). Its
   defaults drive a 1,000 kg road car: set the chassis's
@@ -170,9 +170,9 @@ deterministic and part of snapshots (`og api show physics`):
   `start`), or it drops in and bobs; a light cube floats tipped on an
   edge, as a wooden one does, so give a hull a flat box. Steer one with
   `applyForce` at its stern. A body with it takes no og.WaterSurface
-  `buoyancy`, only its splash. `tests/evidence/r5-water/boats` floats
+  `buoyancy`, only its splash. the former test sample floats
   three boats and four buoys on a gale.
 
 Readouts (`ropePoints`, `clothPoints`, `fluidParticles`,
 `fluid3dParticles`, `waterHeight`, `vehicleWheels`, `ragdollPose`) show
-the last step. `templates/fx-showcase` has a station for each.
+the last step. the former test sample has a station for each.

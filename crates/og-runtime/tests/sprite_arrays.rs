@@ -45,7 +45,7 @@ fn project() -> &'static Path {
             std::fs::create_dir_all(p.parent().unwrap()).unwrap();
             std::fs::write(p, bytes).unwrap();
         };
-        let png = std::fs::read(repo().join("templates/fx-showcase/assets/textures/toon.png"))
+        let png = std::fs::read(repo().join("tests/fixtures/texture-arrays/assets/textures/toon.png"))
             .unwrap();
         write("tex/f0.png", &png);
         write("tex/f1.png", &png);
@@ -53,7 +53,7 @@ fn project() -> &'static Path {
             "tex/frames.ogt",
             b"type texture-array\nversion 1\n---\nkind pixel\nlayer \"f0.png\"\nlayer \"f1.png\"\n",
         );
-        let slime = std::fs::read(repo().join("templates/archetypes/topdown/assets/sprites/slime.png"))
+        let slime = std::fs::read(repo().join("tests/fixtures/sprite-2d/assets/sprites/slime.png"))
             .unwrap();
         write("sprites/strip.png", &slime);
         write(

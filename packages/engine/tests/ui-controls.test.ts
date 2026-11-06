@@ -21,7 +21,7 @@ import { ogBin } from "./support/og-bin.ts";
 
 declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8Array } };
 
-const kit = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "templates", "ui-kit");
+const kit = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "tests", "fixtures", "ui-text");
 {
   loadNativeHost();
   const cooked = Bun.spawnSync([ogBin(), "cook", kit]);

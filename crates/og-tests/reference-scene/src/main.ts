@@ -2,7 +2,7 @@
 // names: 500 instanced objects (two meshes in four PBR materials, every one
 // casting and receiving shadows, each turning at its own rate), two shadowed
 // lights (the sun's cascades and a spot light), 20 skinned characters (the
-// CC0 walker of templates/game, 12 joints, each on its own clip, speed and
+// CC0 walker of the former test sample, 12 joints, each on its own clip, speed and
 // phase), and post (bloom, ambient occlusion, ACES, TAA). Nothing depends on
 // the wall clock, so a run of N ticks hashes the same on every host.
 //

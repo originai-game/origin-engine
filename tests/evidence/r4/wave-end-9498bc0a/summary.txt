@@ -1,2 +1,0 @@
-FAIL gate (exit 1, 283s)
-PASS web (0s)

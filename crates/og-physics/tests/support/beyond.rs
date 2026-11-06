@@ -7,7 +7,7 @@
 //! particle fluid, two fluids of one group layering and mixing, a water
 //! line, a 2D ragdoll knocked over and recovering), every input derived from
 //! the tick. `tests/beyond_determinism.rs` runs it twice and across a
-//! restore; `tools/wasm-determinism` hashes it on the host and on wasm32.
+//! restore; `the former test sample` hashes it on the host and on wasm32.
 #![allow(dead_code)]
 
 use og_core::glam::{Quat, Vec2, Vec3};

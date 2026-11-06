@@ -46,7 +46,7 @@ fn project() -> &'static std::path::Path {
         for m in ["strider", "walker"] {
             let to = root.join(format!("assets/models/{m}.glb"));
             std::fs::create_dir_all(to.parent().unwrap()).unwrap();
-            let from = repo.join(format!("templates/fx-showcase/assets/models/{m}.glb"));
+            let from = repo.join(format!("tests/fixtures/motion/assets/models/{m}.glb"));
             std::fs::copy(from, &to).unwrap();
         }
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();

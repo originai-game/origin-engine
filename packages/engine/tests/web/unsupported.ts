@@ -28,7 +28,7 @@ const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
-const project = join(repo, "templates", "archetypes", "runner");
+const project = join(repo, "tests", "fixtures", "browser-host");
 const work = join(pkg, "dist", "test-unsupported");
 const evidence = opt("--evidence") ? resolve(opt("--evidence")!) : undefined;
 const chrome = chromePath(args);

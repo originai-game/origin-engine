@@ -41,7 +41,7 @@ fn project() -> &'static Path {
             std::fs::write(p, bytes).unwrap();
         };
         let png =
-            std::fs::read(repo().join("templates/fx-showcase/assets/textures/toon.png")).unwrap();
+            std::fs::read(repo().join("tests/fixtures/texture-arrays/assets/textures/toon.png")).unwrap();
         write("tex/a.png", &png);
         write("tex/b.png", &png);
         write(

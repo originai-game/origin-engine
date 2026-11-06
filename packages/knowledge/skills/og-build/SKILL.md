@@ -255,7 +255,7 @@ sources together are the review.
   as `[voice, bus, gain]` (bus 0 master, 1 music, 2 sfx, 3 ui), the named
   entities' positions, scales and flipbook frames, the UI's element bounds,
   and the tick's step and render time. Take one just after an input or a
-  hit and assert on it (`templates/ui-kit/tests/hit.og.ts`).
+  hit and assert on it (the former test sample).
 - **`og ui check .`** lays out every screen project.ogt declares
   (`ui { screen ... }`, og-ui §8) over breakpoints, locales and text
   scale and reports what it measured, each with the element path, the value

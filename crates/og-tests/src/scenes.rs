@@ -690,7 +690,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         // Phase 3: 40,000 buildings in sixteen batches from the street
         // (walking down the avenue) and from the air. Perf only (no
-        // reference; tests/evidence/P3/culling/).
+        // reference; the former test sample
         "city-street" => |g, _| {
             g.scene = crate::culling_scenes::city_street();
             g.update = Some(crate::culling_scenes::walk);

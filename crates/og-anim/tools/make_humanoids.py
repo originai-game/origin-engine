@@ -29,7 +29,7 @@ bytes every run.
 """
 import json, math, os, struct, sys
 
-ROOT = sys.argv[1] if len(sys.argv) > 1 else "templates/fx-showcase"
+ROOT = sys.argv[1] if len(sys.argv) > 1 else "tests/fixtures/motion"
 
 
 # ── quaternions (x, y, z, w) ─────────────────────────────────────────────

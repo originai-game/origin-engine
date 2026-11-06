@@ -65,7 +65,7 @@ fn stage(name: &str, compress: bool) -> PathBuf {
         .join(name);
     let _ = std::fs::remove_dir_all(&root);
     let assets = root.join("assets");
-    let src = repo().join("templates/fx-showcase/assets");
+    let src = repo().join("tests/fixtures/motion/assets");
     for f in FILES {
         let to = assets.join(f);
         std::fs::create_dir_all(to.parent().unwrap()).unwrap();

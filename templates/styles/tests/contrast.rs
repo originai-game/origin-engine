@@ -11,8 +11,8 @@
 //! what is really under them: the frame's draw commands composited in
 //! linear light, a styled piece as the mean of its atlas texels (the
 //! style's `atlas.png`) times its tint. Styles: the four atlas packs of
-//! templates/ui-kit, Ember Vale's copy of the fantasy pack
-//! (templates/archetypes/third-person, `ember`), the archetypes' sparkorb,
+//! the former test sample, Ember Vale's copy of the fantasy pack
+//! (the former test sample `ember`), the archetypes' sparkorb,
 //! lampdive, lanebeat and pathguard (palette round two, row 77: sparkorb's primary label read
 //! 3.42:1, lampdive's placeholder 3.57:1, pathguard's primary 3.30:1 and
 //! its danger button 2.96:1, Hollowbell's danger badge 4.26:1, Lantern
@@ -41,10 +41,10 @@
 //! Vale's Set out read 5.3:1 by these commands and 3.36:1 in its game
 //! frame (owed row 48); with every primary and secondary label at 7:1 here
 //! the lowest in its game frames is 4.65:1
-//! (tests/evidence/P4/web-host-tools/fantasy-contrast.md). The bars hold
+//! (the former test sample The bars hold
 //! for every pack (the fantasy family since the web host and tools round,
 //! the other five since the UI shell round's palettes:
-//! tests/evidence/P4/ui-shell/pack-contrast.md); every row is printed.
+//! the former test sample every row is printed.
 //!
 //! Ways this could fail: a pack's accent or fill too dark for its ink once
 //! the frame art shades it; a muted or subtle ink that reads on paper
@@ -97,49 +97,13 @@ fn gate(r: f32, what: String, failing: &mut Vec<String>, warnings: &mut Vec<Stri
     }
 }
 
-fn packs() -> Vec<(String, PathBuf)> {
+fn styles() -> Vec<(String, PathBuf)> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../templates");
-    let mut out: Vec<(String, PathBuf)> = ["pixel", "cartoon", "fantasy", "scifi"]
+    let out: Vec<(String, PathBuf)> = ["pixel", "cartoon", "fantasy", "scifi"]
         .iter()
         .map(|n| (n.to_string(), root.join("styles").join(n)))
         .collect();
-    out.push((
-        "ember".into(),
-        root.join("archetypes/third-person/assets/styles/ember"),
-    ));
     out
-}
-
-/// The games' own styles: the archetypes' (each a pack recoloured by hand
-/// for its game; ember is in [`packs`]) and the three examples' (Hollowbell's
-/// and Lantern Vale's by hand, the Kestrel Stair's written by its
-/// tools/make-assets.ts from the paper pack). Held to every bar the packs
-/// are, the frame reading included (lampdive's DotGothic16 took the pixel
-/// pack's `textWeight body 0.5` and `px_range 8` for it: its pressed
-/// primary label read 3.91:1 in the frame without them).
-fn game_styles() -> Vec<(String, PathBuf)> {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    [
-        (
-            "sparkorb",
-            "templates/archetypes/idle/assets/styles/sparkorb",
-        ),
-        (
-            "lampdive",
-            "templates/archetypes/roguelike/assets/styles/lampdive",
-        ),
-        (
-            "lanebeat",
-            "templates/archetypes/rhythm/assets/styles/lanebeat",
-        ),
-        (
-            "pathguard",
-            "templates/archetypes/tower-defense/assets/styles/pathguard",
-        ),
-    ]
-    .iter()
-    .map(|(name, dir)| (name.to_string(), root.join(dir)))
-    .collect()
 }
 
 /// The seed styles of templates/styles that `og style new` generated
@@ -200,11 +164,6 @@ fn sources(
         }
     }
     out
-}
-
-/// The packs and the games' styles.
-fn styles() -> Vec<(String, PathBuf)> {
-    packs().into_iter().chain(game_styles()).collect()
 }
 
 fn lin(c: f32) -> f32 {
@@ -767,7 +726,7 @@ fn a_games_primary_colour_keeps_its_button_label_readable_on_every_pack() {
     ];
     let mut failing = Vec::new();
     let mut warnings: Vec<String> = Vec::new();
-    for (name, text, atlas) in sources(packs().into_iter().chain(seeds()), false) {
+    for (name, text, atlas) in sources(styles().into_iter().chain(seeds()), false) {
         let file = parse_style(&text).expect("parses");
         let tex = atlas_handle();
         for (cname, c) in primaries {

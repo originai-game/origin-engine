@@ -21,7 +21,7 @@ fn particles_are_deterministic(path: ParticleSimulation) {
     // first vkEnumeratePhysicalDevices under one lock while another
     // thread's device walks that list under another (debug names, device
     // function lookups), and the walk segfaults on the freed entry
-    // (tests/evidence/debt3/particle-sigsegv/NOTES.md; fixed upstream in
+    // (the former test sample fixed upstream in
     // 1.4.345). Each renderer is dropped before the next is made.
     let (a, sa, _) = run(&desc, &mut fx::particles_scene(), 601, stepped);
     let (b, _, _) = run(&desc, &mut fx::particles_scene(), 601, stepped);

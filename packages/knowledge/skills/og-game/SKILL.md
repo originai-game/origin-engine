@@ -800,7 +800,7 @@ These are the checks to use before opening frames. All of them run from
   the default invariants' cost. The probe's `assertions({ take: true })`
   starts a fresh report for an independent run.
 
-  A playtest may be expect steps and invariants alone: `templates/game/tests/smoke.og.ts`
+  A playtest may be expect steps and invariants alone: the former test sample
   is. Each expectation counts as a check. Without a renderer a frame or
   region expectation is unchecked, never failed. Take screen boxes from a
   `describe` of a good run, with a margin.

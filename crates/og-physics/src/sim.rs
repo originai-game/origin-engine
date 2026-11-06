@@ -1556,7 +1556,7 @@ fn after_step(
     } = sim;
     let grains = crate::lanes::now();
     // The pairs split only when the step is on the pool: below it, waking
-    // the pool for them costs more than it saves (tests/evidence/P4/physics-3/).
+    // the pool for them costs more than it saves (the former test sample
     let pairs = if split { grains.pairs } else { usize::MAX };
     // The solid pairs: each one's contact (its entities in order, the
     // deepest point and normal, the hit), its deepest penetration and the

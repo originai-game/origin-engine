@@ -15,6 +15,14 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Breaking: no gameplay templates or UI gallery.** All gameplay starter
+  trees, gallery scenes/art/frames and template-only checks are removed.
+  Core feature tests use small fixtures; reusable kits, styles, looks and
+  locales remain. The distribution's `ui-sheet/` is a neutral control sheet,
+  not the gallery. Knowledge mount signatures stay unchanged, but starter
+  assets and gameplay paths are absent from the payload. Generated evidence
+  is no longer committed. The template replay and standalone wasm-determinism
+  tools are removed; core replay and native/wasm hash tests remain.
 - **Jumps the simulation owns.** `og.motion.jump` (`JumpGoalDesc`:
   `height`, `distance`, `heading`, `prepare`, `recover`, `pose`) queues a
   jump: after its preparation the og.motion system takes off in the tick,

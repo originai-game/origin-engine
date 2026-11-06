@@ -1,4 +1,0 @@
-{"n":20000,"onePass":true,"reps":20,"badRuns":0,"worstMismatches":0,"errs":[]}
-{"n":20000,"onePass":false,"reps":20,"badRuns":0,"worstMismatches":0,"errs":[]}
-{"n":100000,"onePass":true,"reps":20,"badRuns":0,"worstMismatches":0,"errs":[]}
-{"n":100000,"onePass":false,"reps":20,"badRuns":0,"worstMismatches":0,"errs":[]}

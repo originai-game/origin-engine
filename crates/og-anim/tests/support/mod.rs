@@ -340,7 +340,7 @@ pub fn near_identity(m: &Mat4, eps: f32) -> bool {
         .all(|(a, b)| (a - b).abs() <= eps)
 }
 
-// ---- the tall rig retargeting reads (tests/retarget.rs, tools/wasm-determinism) ----
+// ---- the tall rig retargeting reads (tests/retarget.rs, the former test sample) ----
 
 /// (name, parent, model position in metres, model rotation)
 pub type NodeDef = (&'static str, u32, Vec3, Quat);

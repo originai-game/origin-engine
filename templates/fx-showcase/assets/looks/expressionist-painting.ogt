@@ -1,5 +1,0 @@
-type look
-version 1
----
-# The engine preset "expressionist-painting" (templates/looks/expressionist-painting.ogt), shown by the looks station.
-extends "expressionist-painting"

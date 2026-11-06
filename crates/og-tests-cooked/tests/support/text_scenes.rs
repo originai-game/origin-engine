@@ -1,7 +1,7 @@
 //! og-ui's cooked-font text frames (`references/<tier>/text-bidi.png`,
 //! `text-kerning`, `text-edit`, `text-mixed-runs`) as scenes ready to
 //! render, from the fonts [`FONTS`] names cooked (the project
-//! `tests/text-fonts`, its settings beside templates/ui-kit's font files).
+//! `tests/text-fonts`, its settings beside the former test sample's font files).
 //! Shared by the native test (`tests/text_gfx.rs`, which cooks them with
 //! og-cook) and the browser tiers (crates/og-tests-web includes this file;
 //! packages/engine/tests/web/reference-gfx.ts cooks the same project with
@@ -35,7 +35,7 @@ use og_ui::*;
 use std::sync::Arc;
 
 /// The fonts the frames draw with, in the order the scenes take them: the
-/// files of templates/ui-kit/assets/fonts, each cooked with its settings
+/// files of tests/fixtures/ui-text/assets/fonts, each cooked with its settings
 /// `tests/text-fonts/assets/fonts/<file>.ogt`.
 pub const FONTS: [&str; 6] = [
     "Inter-Display.ttf",

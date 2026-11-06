@@ -365,9 +365,9 @@ starting from these (the defaults are the first column):
   defaults (4.7 after one).
 - Prove it: `0.5:key_down:Space;0.9:dump_entity:hero:apex.json` — the dump
   shows `og.PlatformerController.jumping` and a height within 10 % of
-  `jumpHeight` at `timeToApex`. `templates/archetypes/runner`'s courier is a
+  `jumpHeight` at `timeToApex`. the former test sample's courier is a
   PlatformerController with its tuning in a `Tuning` resource;
-  `templates/archetypes/topdown`'s hero is a CharacterController in its
+  the former test sample's hero is a CharacterController in its
   top-down mode.
 
 ## 13. The checklist, proved
@@ -400,12 +400,12 @@ values with `get:` (og-build §1), which logs the value and writes it as JSON:
 11. **A hit is seen and heard at its tick**: `t:dump_pulse:hit.json` just
     after it writes that tick's hit stop and time scale, camera trauma,
     floating texts spawned and the playing voices with their bus (og-build
-    §5); `templates/ui-kit/tests/hit.og.ts` checks a hit this way.
+    §5); the former test sample checks a hit this way.
 
-`templates/archetypes/topdown`, `runner` and `match3` do all of this, and
+the former test sample, `runner` and `match3` do all of this, and
 `tower-defense`, `roguelike`, `idle` and `rhythm` too (each README's feel
 table names where); read their `src/` and `tests/` for working patterns.
-For a 3D action game, `templates/archetypes/third-person` is the pattern: a
+For a 3D action game, the former test sample is the pattern: a
 CharacterController over a level, clips retargeted at cook and run time
 through blend trees, and navmesh enemies on behaviour machines whose
 grabs land with hit stop and shake.

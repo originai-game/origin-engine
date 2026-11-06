@@ -13,7 +13,7 @@
 //! per-fragment loop's lights are unchanged.
 //!
 //! The CPU build was measured against a compute pass and kept: at 256
-//! lights it takes tens of microseconds (`tests/evidence/P2/render/`), less
+//! lights it takes tens of microseconds (`the former test sample`), less
 //! than a compute dispatch's own overhead. The tables reach the shader as
 //! read-only storage buffers.
 //!

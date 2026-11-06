@@ -1,3 +1,0 @@
-| scene | mode | p50 ms | p95 ms | sustained ms | fps |
-|---|---|---|---|---|---|
-| spheres | engine WebGL2 | 3.525 | 4.288 | 3.674 | 272 |

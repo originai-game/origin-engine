@@ -2,7 +2,7 @@
 //! og.Mesh entities is extracted into the renderer's scene every frame, and
 //! that must stay a pass over the columns. 20,000 moving spheres once took
 //! 174 ms a frame on the web because extraction decoded every og.Mesh row to
-//! JSON on the lanes (tests/evidence/P4/perf/).
+//! JSON on the lanes (the former test sample
 //!
 //! - `extraction_is_linear_and_never_decodes_meshes_on_the_lanes` (in the
 //!   gate): the frame of 20,000 meshes costs per instance at most three times
@@ -19,7 +19,7 @@
 //!   extraction reads some 30 fields of every row; looked up by name per
 //!   read (a binary search over the layout's names) they were about 5 % of
 //!   Hollowbell's release frame, read by offset ([`og_runtime`]'s
-//!   `codec::Slot`) they are not (tests/evidence/r4/perf-ui/NOTES.md).
+//!   `codec::Slot`) they are not (the former test sample
 //! - `perf_extract_models_20k` (ignored, the perf lane): the render of a
 //!   frame of 20,000 og.Model rows (the frame answer's `renderMs`, without
 //!   the tick) against `extract-models-20k.json`, the rows read in place by

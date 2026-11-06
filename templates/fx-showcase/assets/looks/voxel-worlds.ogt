@@ -1,5 +1,0 @@
-type look
-version 1
----
-# The engine preset "voxel-worlds" (templates/looks/voxel-worlds.ogt), shown by the looks station.
-extends "voxel-worlds"

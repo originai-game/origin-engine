@@ -46,7 +46,7 @@
 //
 // Needs packages/engine/dist (scripts/build.sh) and `bun install
 // --frozen-lockfile` in tools/bench. Writes <out>/threejs-comparison.json
-// and a screenshot per mode (default tests/evidence/P4/web-host-tools/).
+// and a screenshot per mode (default the former test sample
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, normalize } from "node:path";

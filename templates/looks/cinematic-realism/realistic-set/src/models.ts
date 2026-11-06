@@ -1,4 +1,4 @@
-// The realistic set's models (sets/realistic/, tools/art-samples/capture.ts):
+// The realistic set's models (sets/realistic/, the former test sample
 // scanned and generated assets in place of the family's primitives, for the
 // styles whose contract is realism (cinematic-realism, muted-cinematic-3d).
 // Sources and how each was packed: sets/realistic/README.md.

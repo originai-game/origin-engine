@@ -1,7 +1,0 @@
-type import
-version 1
----
-# Painted kit art (docs/ui.md §15.5.3): a colour texture.
-texture {
-  kind color
-}

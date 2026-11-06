@@ -7,3 +7,4 @@ tests/install/node_modules/
 .amp/portals/*
 /dist/
 templates/styles/*/art/sheet.png
+/tests/evidence/

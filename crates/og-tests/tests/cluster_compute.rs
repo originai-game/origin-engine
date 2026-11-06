@@ -2,7 +2,7 @@
 //! (og-render's README, "What phase 2 owes"). Ignored: a
 //! measurement, run by hand (`cargo test -p og-tests --release --test
 //! cluster_compute -- --ignored --nocapture`), whose numbers are in
-//! `tests/evidence/P4/perf/clusters-compute.md`.
+//! `the former test sample`.
 //!
 //! It times the cheapest compute build there could be for `lights-256`
 //! (243 lights in view): one dispatch over the 16 x 9 x 24 clusters, each

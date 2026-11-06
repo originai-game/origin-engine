@@ -20,7 +20,7 @@ import { ogBin } from "./og-bin.ts";
 
 declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8Array } };
 
-export const kit = join(resolve(dirname(fileURLToPath(import.meta.url)), ".."), "..", "..", "..", "templates", "ui-kit");
+export const kit = join(resolve(dirname(fileURLToPath(import.meta.url)), ".."), "..", "..", "..", "tests", "fixtures", "ui-text");
 
 // At module level, not in a hook: the kit's string tables (Arabic for right to left), cooked incrementally.
 {

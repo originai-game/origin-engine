@@ -18,7 +18,7 @@ import { drawsDuring } from "./support/ui.ts";
 
 declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8Array } };
 
-const kit = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "templates", "ui-kit");
+const kit = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "tests", "fixtures", "ui-text");
 
 // At module level, not in a hook (a hook's 5 s would not cover a cook on a
 // loaded machine): the kit's string tables, Arabic among them, cooked

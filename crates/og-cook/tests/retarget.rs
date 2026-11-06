@@ -1,4 +1,4 @@
-//! Retargeting at cook time: `templates/fx-showcase`'s animation library
+//! Retargeting at cook time: `the former test sample`'s animation library
 //! (`anims/humanoid-clips.glb`: Blender names, T-pose, legs 0.45 + 0.45 m,
 //! a walk made by IK with its feet planted) named by two characters'
 //! import settings, `animation { library … }`, and written into their
@@ -39,7 +39,7 @@ fn stage(name: &str) -> PathBuf {
     for d in ["assets/models", "assets/anims", "assets/rigs"] {
         std::fs::create_dir_all(dir.join(d)).unwrap();
     }
-    let fx = repo().join("templates/fx-showcase/assets");
+    let fx = repo().join("tests/fixtures/motion/assets");
     for f in [
         "models/strider.glb",
         "models/stout.glb",

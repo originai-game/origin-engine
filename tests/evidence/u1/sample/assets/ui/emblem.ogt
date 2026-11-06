@@ -1,6 +1,0 @@
-type vector
-version 1
----
-# The reward emblem: a gradient shield, an even-odd ring, a star and a
-# dashed rim (the SVG subset of og-cook's vector cook).
-source "ui/emblem.svg"

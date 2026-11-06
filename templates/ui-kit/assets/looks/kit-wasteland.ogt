@@ -1,7 +1,0 @@
-type look
-version 1
----
-# Names the built-in wasteland style (a seed og style new generated), so the cook puts it in the bundle (@styles/wasteland/);
-# the kit loads the style itself and never applies this look.
-name "kit wasteland"
-ui "wasteland"

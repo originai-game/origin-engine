@@ -22,7 +22,7 @@ fn project(name: &str, settings: Option<&str>) -> PathBuf {
     std::fs::create_dir_all(&models).unwrap();
     let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     std::fs::copy(
-        repo.join("templates/game/assets/models/dropship.glb"),
+        repo.join("tests/fixtures/cook-assets/assets/models/dropship.glb"),
         models.join("dropship.glb"),
     )
     .unwrap();

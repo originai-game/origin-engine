@@ -124,7 +124,7 @@ style's sounds; a style dresses its parts (`Menu.item[hover]`,
 | A stat sheet, an equip comparison | `og.ui.keyValueRows(id, { rows })`, `og.ui.statCompare(id, { rows: [{ label, current, next, max }] })` | nothing |
 | Daily rewards, events | `og.ui.calendar(id, { year, month, today, selected, marks })` (pass today in: no clock in the tick) | `selected`, `month`, `year` |
 
-`templates/ui-kit` shows each on its `containers`, `navigation`,
+the former test sample shows each on its `containers`, `navigation`,
 `overlays`, `data`, `charts` and `graph` screens (`demo:overlay:<name>`,
 `demo:data:<loading|empty|error>` pick a state).
 
@@ -154,7 +154,7 @@ is adjustable (mirrored right to left), and a style dresses the parts
 | A controls page | `og.ui.keyBindingRow(world, id, { action, device, slots })` (og.input's capture, its conflict asked inline: Swap, Replace, Cancel) | `capturing`, `changed`, `conflict` |
 | Typing with a pad or a finger | `og.ui.onScreenKeyboard(id, open, { value, layout, kana, compose, candidates })` (Y erases, LB/RB move the caret) | `value`, `composition`, `submitted`, `closed` |
 
-`templates/ui-kit` shows them on its `foundations`, `controls`, `ranges`,
+the former test sample shows them on its `foundations`, `controls`, `ranges`,
 `fields` and `bindings` screens (`demo:keyboard:<letters|kana|numeric|none>`,
 `demo:device:<keyboardMouse|xbox|playstation|switch>` pick a state).
 
@@ -399,7 +399,7 @@ Tab (or a pad) reaches a zoom view: `+` and `-` zoom it, `0` fits it
 again, the arrows pan it (they stay its own while it is focused). Script two
 fingers with `touch_start` for the first and `touch:1:down:<x,y>` /
 `touch:1:move:<x,y>` / `touch:1:up` for the second
-(`templates/ui-kit/tests/gestures.og.ts`).
+(the former test sample).
 
 ## 6. Styles: the look of the game's UI, motion, transitions, sounds
 
@@ -695,7 +695,7 @@ is drawn underlined at the caret until it commits. Script them:
 `type:<text>` (the text to the `;` exactly, a trailing space included),
 `compose:<text>` (`compose:` alone ends it) and `commit:<text>`, then read
 the field's value from `dump_ui` or the game's facts
-(`templates/ui-kit/tests/text.og.ts`). Fields take the typed-text stream
+(the former test sample). Fields take the typed-text stream
 (`og.TextInput`: the page's typing, `type:` and `commit:`); until a world
 has had any, a printable key pressed (`key_down:KeyM`) types its US-layout
 character, and from the first on keys only edit (Backspace, arrows), so
@@ -743,7 +743,7 @@ applies to Latin text only.
 
 ## 8. Proving it
 
-`templates/ui-kit` in the engine repository runs every component; its
+the former test sample in the engine repository runs every component; its
 playtests show how to drive UI from a script: `move_to_text:=shop` then
 `touch_start`/`touch_end`, `key_down:Tab`/`key_up:Tab`, a game command that
 calls `og.ui.navigate`, `dump_ui` for bounds and texts, and frame comparison

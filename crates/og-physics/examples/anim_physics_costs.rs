@@ -1,5 +1,5 @@
 //! The CPU cost of the phase 2 animation and physics round's features, per
-//! 60 Hz tick (`tests/evidence/P2/anim-physics/costs.md`): cloth with and
+//! 60 Hz tick (`the former test sample`): cloth with and
 //! without self-collision by particle count, fluids alone and in groups,
 //! and ragdolls in 2D and 3D. Each scene is built fresh three times, run 30
 //! ticks and then timed over 150 (the best of the three), so a cloth is

@@ -1,7 +1,0 @@
-type import
-version 1
----
-# A painted figure cut out on transparent ground (docs/ui.md §15.5.3): a conversation's speaker standing in the scene.
-texture {
-  kind color
-}

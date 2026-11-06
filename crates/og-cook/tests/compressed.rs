@@ -1,5 +1,5 @@
 //! Compressed textures at runtime (phase 2, owed row 32): the template's
-//! cooked Basis textures (`templates/game/assets`: stone.png colour,
+//! cooked Basis textures (`tests/fixtures/cook-assets/assets`: stone.png colour,
 //! stone_n.png normal map, and the models' base colour, metallic-roughness
 //! and normal maps) transcoded to the block format of each family the GPU
 //! takes, every cooked mip level uploaded, and drawn as their RGBA8 decode

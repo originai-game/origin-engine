@@ -11,7 +11,7 @@
 //! water, joints, wheels, ragdoll bodies, controller timers): the restored
 //! run diverges; an iteration order that is not fixed or a platform-
 //! dependent function: the two runs diverge (and the host and wasm32 hashes
-//! of tools/wasm-determinism would); a feature that does nothing: the
+//! of the former test sample would); a feature that does nothing: the
 //! checks on what moved fail.
 
 use crate::support;

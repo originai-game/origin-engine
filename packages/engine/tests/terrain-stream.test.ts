@@ -30,7 +30,7 @@ declare const Bun: {
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = join(pkg, "..", "..");
-const project = join(repo, "templates", "fx-showcase");
+const project = join(repo, "tests", "fixtures", "terrain-stream");
 const work = join(repo, "target", "evidence", "terrain-stream");
 
 type Terrain = { mode: string; budget: number; terrains: number; resident: number; waiting: number; inFlight: number; cached: number; cachedBytes: number; decoded: number };
@@ -39,7 +39,7 @@ const TICKS = 600;
 
 function run(name: string, mode: string): { hashes: string[]; first: Terrain; last: Terrain; ticks: number } {
   const out = join(work, name);
-  const steps = [`0:terrain_stream:${mode}`, "0:station:terrain", "0:set:og.Camera.position=4000,21,64"];
+  const steps = [`0:terrain_stream:${mode}`, "0:set:og.Camera.position=4000,21,64"];
   // A step at t seconds runs at the start of tick round(60 t): one dump a
   // tick, and the streamer's tiles after the first frame at the station.
   for (let k = 1; k <= TICKS; k++) {

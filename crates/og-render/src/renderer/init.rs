@@ -1289,7 +1289,7 @@ mod webkit_tests {
     #[test]
     fn webkit_is_safari_and_ios_not_blink_or_gecko() {
         let webkit = [
-            // Safari 27.2 on macOS (tests/evidence/compat/safari/adapter-macos.json).
+            // Safari 27.2 on macOS (the former test sample
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15",
             // Chrome on iOS: WebKit underneath.
             "Mozilla/5.0 (iPhone; CPU iPhone OS 27_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/150.0.0.0 Mobile/15E148 Safari/604.1",

@@ -1,8 +1,8 @@
-//! Shaping's cost for tests/evidence/E6/i18n-costs.json: an Arabic label
+//! Shaping's cost for the former test sample an Arabic label
 //! of the UI kit shaped and put in visual order with the kit's Noto Sans
 //! Arabic subset, and a Latin label (no shaping: passed through), per call.
 //!
-//!     cargo run --release -p og-ui --example shape_costs > tests/evidence/E6/i18n-costs.json
+//!     cargo run --release -p og-ui --example shape_costs > the former test sample
 
 use og_i18n::Direction;
 use og_ui::FontMetrics;
@@ -23,7 +23,7 @@ fn per_call_us(n: u32, f: impl Fn() -> String) -> f64 {
 fn main() {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../templates/ui-kit/assets/fonts/NotoSansArabic-subset.ttf"
+        "/../../tests/fixtures/ui-text/assets/fonts/NotoSansArabic-subset.ttf"
     );
     let t = Instant::now();
     let file = FontFile::new(Arc::new(

@@ -1,4 +1,4 @@
-// One host per process: the template's walker (templates/game/assets/models/
+// One host per process: the template's walker (tests/fixtures/cook-assets/assets/models/
 // walker.glb, cooked) loaded with og.load.animation and posed by og.anim:
 // one walker on an AnimationPlayer, one on a two-state AnimationGraph that a
 // system drives with p0, one with blendshape weights set by game code, and
@@ -6,7 +6,7 @@
 // anim.test.ts: the world hash, what the components were written, the
 // animation events a system read, and the refusals.
 //
-//   bun tests/support/anim-hash.ts --host node|web --project <templates/game> [--ticks 300]
+//   bun tests/support/anim-hash.ts --host node|web --project <the former test sample> [--ticks 300]
 
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";

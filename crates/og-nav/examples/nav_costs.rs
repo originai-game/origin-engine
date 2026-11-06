@@ -1,7 +1,7 @@
-//! The cost numbers of tests/evidence/E6/nav-costs.json: 200 agents on a
+//! The cost numbers of the former test sample 200 agents on a
 //! 256 × 256 grid and on a baked navmesh, path queries, flow fields, the bake.
 //!
-//!     cargo run --release -p og-nav --example nav_costs > tests/evidence/E6/nav-costs.json
+//!     cargo run --release -p og-nav --example nav_costs > the former test sample
 
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::{World, WorldDesc};

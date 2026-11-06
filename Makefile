@@ -1,5 +1,5 @@
 # Thin wrapper over scripts/; the scripts are the source of truth (docs/ci.md).
-.PHONY: check quick fmt clippy test test-quick wasm size drift bun-test bun-quick determinism tools perf web-reference list
+.PHONY: check quick fmt clippy test test-quick wasm size drift bun-test bun-quick tools perf web-reference list
 
 check:      ; scripts/check.sh
 quick:      ; scripts/check.sh quick
@@ -12,10 +12,9 @@ size: wasm
 drift:      ; scripts/check.sh drift
 bun-test:   ; scripts/check.sh bun-test
 bun-quick:  ; scripts/check.sh bun-quick
-determinism: ; scripts/check.sh determinism
 tools:      ; scripts/install-tools.sh
 perf:       ; scripts/perf.sh
-# The webgpu tier of templates/fx-showcase and the other web-reference runners in headless Chrome (docs/ci.md); needs Chrome.
+# Retained engine and fixture frames in headless Chrome (docs/ci.md); needs Chrome.
 # Path-aware like the lanes: skipped when its inputs did not change (scripts/check.sh --all web-reference runs it).
 web-reference: ; scripts/check.sh web-reference
 list:       ; scripts/check.sh --list

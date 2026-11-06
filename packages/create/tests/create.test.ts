@@ -18,6 +18,19 @@ function files(root: string): string[] {
   return readdirSync(root, { withFileTypes: true }).flatMap(e => e.isDirectory() ? files(join(root, e.name)).map(f => `${e.name}/${f}`) : e.isFile() ? [e.name] : []).sort();
 }
 
+test("packing and creating leave the source skeleton unchanged", () => {
+  const template = join(pkg, "template");
+  const paths = ["assets/.gitkeep", "gitattributes", "gitignore", "package.json", "project.ogt", "src/main.ts", "tests/smoke.og.ts", "tsconfig.json"];
+  // Also detects ignored output left by the old prepack, before the run.
+  expect(files(template)).toEqual(paths);
+  const before = paths.map(path => readFileSync(join(template, path), "utf8"));
+  const packed = Bun.spawnSync(["bun", join(pkg, "scripts/pack-template.ts")], { cwd: scratch });
+  expect(packed.exitCode, new TextDecoder().decode(packed.stderr)).toBe(0);
+  create({ dir: join(scratch, "source-isolation"), id: "origin-game" });
+  expect(files(template)).toEqual(paths);
+  expect(paths.map(path => readFileSync(join(template, path), "utf8"))).toEqual(before);
+});
+
 test("creation choices write manifest and look configuration, never gameplay", () => {
   const defaults = create({ dir: join(scratch, "default"), id: "same", name: "Same" });
   expect(defaults.choices).toEqual(resolveCreationChoices(""));

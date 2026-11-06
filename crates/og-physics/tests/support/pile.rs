@@ -265,7 +265,7 @@ pub fn pen(n: usize, seed: u32) -> (World, PhysicsSystem) {
 /// (a root chunk and its `og.Parent` chunks). Their mass properties are a
 /// sum of hulls', diagonalised by parry through glamx's eigensolver, the
 /// path that drifted between hosts until `third_party/glamx`; the
-/// cross-target check (`tools/wasm-determinism`) hashes this world.
+/// cross-target check (`the former test sample`) hashes this world.
 pub fn compounds(n: usize, seed: u32) -> (World, PhysicsSystem) {
     let (mut w, physics) = pen(0, seed);
     let mut rng = *w.resource::<Rng>().unwrap();

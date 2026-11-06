@@ -21,7 +21,7 @@ use og_ui::glyphs::{pixel_cells, render_glyph, render_glyph_on};
 fn sc() -> Vec<u8> {
     std::fs::read(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../templates/ui-kit/assets/fonts/NotoSansSC-Regular-subset.ttf"
+        "/../../tests/fixtures/ui-text/assets/fonts/NotoSansSC-Regular-subset.ttf"
     ))
     .expect("the kit's Chinese font")
 }

@@ -9,10 +9,10 @@ import { gpuTest } from "./support/gpu.ts";
 // time (lanes:<on|off>) reaches tick 180's hash and frame again. The on run
 // split animation (dump_lanes counts each site), and never the cull: its
 // 2,500 or so bounds are far below the 131,072 from which the frustum
-// cull splits (tests/evidence/debt3/cull-lane-grain/NOTES.md; og-render's
+// cull splits (the former test sample og-render's
 // unit test checks the split cull keeps the same bounds); nor the
 // extraction site: the crowd's og.Mesh rows are read from their columns
-// (owed row 50, tests/evidence/P4/perf/), so nothing in the scene is decoded
+// (owed row 50, the former test sample so nothing in the scene is decoded
 // row by row in two grains' worth; nor the physics site: the crowd's 48
 // crates are far below og-physics's body grain (200 bodies for every lane
 // thread, 800 on four), so the small world steps on the engine thread and

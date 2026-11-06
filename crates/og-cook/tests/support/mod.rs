@@ -16,9 +16,9 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
-/// `templates/game/assets`: what the template ships.
+/// `tests/fixtures/cook-assets/assets`: what the template ships.
 pub fn template_assets() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../templates/game/assets")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/cook-assets/assets")
 }
 
 /// A model of the template fixture by file name. `trickster.glb` is the

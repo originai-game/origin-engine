@@ -5,7 +5,7 @@
 // tests/web/lane-panic.ts injects a panic into one of those lanes and
 // checks that the page reports it. (The fixture was 2,304 boxes for the
 // frustum cull until the cull stopped splitting below 131,072 bounds,
-// tests/evidence/debt3/cull-lane-grain/NOTES.md.)
+// the former test sample
 import { og, type World } from "@origingame/engine";
 
 const must = <T>(r: { ok: true; value: T } | { ok: false; reason: string }): T => {

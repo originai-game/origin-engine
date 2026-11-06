@@ -1,9 +1,9 @@
 // The browser reference tiers of the effect and overlay frames:
-// templates/fx-showcase's five stations (every E1 effect, each under the
+// the former test sample's five stations (every E1 effect, each under the
 // screen-space HUD and og.ui badge the overlay pass draws) rendered in
 // headless Chrome on WebGPU (the engine's only web tier) at
 // 1280×720, DPR 1, from the dev web export's engine Worker, and compared
-// with templates/fx-showcase/references/<tier>/ (`webgpu`) when
+// with the former test sample (`webgpu`) when
 // that frame is committed there, else with `metal` (a tier with no
 // directory is judged against metal throughout), under og-tests' rule
 // (crates/og-tests/src/compare.rs): a channel off by more than 32/255 is an
@@ -39,7 +39,7 @@
 // cells a row; --record composes and writes the sheet): og-ui's kit in
 // reference-ui.ts.
 //
-// --looks runs templates/fx-showcase's looks station instead of its five
+// --looks runs the former test sample's looks station instead of its five
 // stations: tests/looks-script.ts's commands (the playtest's, without its
 // screenshots and quit) in one run, one shot per preset of the catalogue at
 // its screenshot's tick (37), each compared with references/<tier>/
@@ -63,8 +63,8 @@
 // phone with --android [<serial>] (cdp.ts Browser.android; its tier is
 // webgpu-android, judged against webgpu-android, else webgpu, else metal, a
 // webgpu-android frame recorded only for a legitimate difference:
-// tests/evidence/compat/android/), or Safari with --safari (webdriver.ts; its
-// tier is webgpu-safari, judged the same way: tests/evidence/compat/safari/).
+// the former test sample or Safari with --safari (webdriver.ts; its
+// tier is webgpu-safari, judged the same way: the former test sample
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
@@ -79,7 +79,6 @@ import { serve } from "./serve.ts";
 import { cookProject } from "../support/og-bin.ts";
 import { compareFrames as compare, decodePng, TOLERANCE, type Image } from "../support/png.ts";
 import { encodePngBest } from "../../src/node/png.ts";
-import { LOOK_COMMANDS, LOOK_FRAMES, LOOK_SHOTS } from "../../../../templates/fx-showcase/tests/looks-script.ts";
 
 declare const Bun: {
   build(o: { entrypoints: string[]; target: string; format: string }): Promise<{ success: boolean; logs: unknown[]; outputs: Array<{ text(): Promise<string> }> }>;
@@ -91,14 +90,13 @@ const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
-const project = join(repo, opt("--project") ?? join("templates", "fx-showcase"));
+const project = join(repo, opt("--project") ?? "tests/fixtures/vehicle-terrain");
 const android = androidOf(args);
 const safari = args.includes("--safari") ? safariDriverPath(args) : undefined;
 const tier = android ? "webgpu-android" : safari ? "webgpu-safari" : "webgpu";
 const record = args.includes("--record");
-const looks = args.includes("--looks");
 const work = join(pkg, "dist", "test-reference");
-const out = resolve(opt("--out") ?? join(work, looks ? "looks" : "out"));
+const out = resolve(opt("--out") ?? join(work, "out"));
 const TICK_RATE = 60;
 
 /**
@@ -107,7 +105,7 @@ const TICK_RATE = 60;
  * frames with it: its setup at tick 0, its commands without screenshots, `quit` and `dump_*`,
  * and each `<t>:screenshot:<file>` a shot at tick round(60 t).
  */
-const playtestFile = opt("--playtest") ?? (!looks && !opt("--script") && !opt("--shots") ? "tests/frames.og.ts" : undefined);
+const playtestFile = opt("--playtest") ?? (!opt("--script") && !opt("--shots") ? "tests/drive.og.ts" : undefined);
 const fromPlaytest = playtestFile
   ? await (async () => {
       const file = resolve(project, playtestFile);
@@ -141,27 +139,12 @@ const SHEET = opt("--sheet")
 
 /** The playtest's stations (tests/frames.og.ts): switched at `at` seconds, captured at tick `tick`, the tick its `screenshot` runs at. */
 const SHOTS = fromPlaytest?.shots ?? opt("--shots");
-const STATIONS: ReadonlyArray<{ name: string; at: number; tick: number }> = looks
-  ? LOOK_SHOTS.filter((s) => LOOK_FRAMES.includes(s.file)).map((s) => ({
-      name: s.file.replace(/\.png$/, ""),
-      at: 0,
-      tick: Math.round(s.at * TICK_RATE),
-    }))
-  : SHOTS
-  ? SHOTS.split(",").map((s) => {
+if (!SHOTS) throw new Error("provide --playtest or --shots");
+const STATIONS: ReadonlyArray<{ name: string; at: number; tick: number }> = SHOTS.split(",").map((s) => {
       const [name, tick] = s.split("@");
       return { name: name!.replace(/\.png$/, ""), at: 0, tick: Number(tick) };
-    })
-  : [
-      { name: "post", at: 0, tick: 60 },
-      { name: "lens", at: 1.1, tick: 120 },
-      { name: "fx", at: 2.1, tick: 240 },
-      { name: "2d", at: 4.1, tick: 300 },
-      { name: "stylised", at: 5.1, tick: 420 },
-    ];
-const SCRIPT = looks
-  ? LOOK_COMMANDS.join(";")
-  : fromPlaytest?.script ?? opt("--script") ?? STATIONS.filter((s) => s.at > 0).map((s) => `${s.at}:station:${s.name}`).join(";");
+    });
+const SCRIPT = fromPlaytest?.script ?? opt("--script") ?? "";
 if (args.includes("--print")) {
   console.log(JSON.stringify({ project: project.slice(repo.length + 1), size: `${WIDTH}x${HEIGHT}`, script: SCRIPT, shots: STATIONS.map((s) => `${s.name}@${s.tick}`) }, null, 1));
   process.exit(0);

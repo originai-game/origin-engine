@@ -123,7 +123,7 @@ must(world.insert(hips, og.SpringCollider, { skeleton: body, joint: HIPS, shape:
 
 ## 3. Clips by name and markers
 
-`templates/archetypes/third-person` (`src/anim.ts`: a 1D blend by speed,
+the former test sample (`src/anim.ts`: a 1D blend by speed,
 a hero retargeted at cook time and sentinels at run time) is the pattern,
 and for a 3D action game as a whole: a CharacterController over a level,
 clips retargeted at cook and at run time, blend trees, a navmesh and
@@ -503,7 +503,7 @@ arrive as `og.Skeleton2DEvent` (`entity`, `clip`, `name`); an
 `og.IkTarget2D` writes `reached` and `error` (its `weight` multiplies the
 constraint's own). The pose is a function of the component, the
 Transform and the targets, so a snapshot carries only the playback
-position and the boxes. `templates/game-2d`'s lamp keeper
+position and the boxes. the former test sample's lamp keeper
 (`assets/rigs/keeper.ogt`, `spawnKeeper`, `Walk`, `Plant`) shows all of
 it. A walk is the walk clip played while a system moves the entity, with
 the feet's targets stepping in time: each planted for half the cycle
@@ -514,7 +514,7 @@ the feet stay on the ground the IK finds.
 
 A cutscene, an intro, a scripted beat or a fly-through is a `type timeline`
 file, not code (`og api show timeline`, `og api show path`;
-`templates/game`'s `assets/timelines/intro.ogt` and `tests/intro.og.ts`
+the former test sample's `assets/timelines/intro.ogt` and `tests/intro.og.ts`
 are the pattern). Tracks of keys at seconds: between two keys the later
 key's `ease` (og.tween's names: `cubicInOut`, `quadIn`, ...) mixes them,
 outside them the value is held. Every value is evaluated at the

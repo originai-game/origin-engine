@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes templates/game/assets/models/walker.glb: the engine's self-made
+"""Writes tests/fixtures/cook-assets/assets/models/walker.glb: the engine's self-made
 (CC0 1.0) rigged test model. A 13-node walker (hips, spine, head, two
 three-joint legs, a three-joint left arm) skinned to one mesh of boxes, the
 head with two morph targets, and six clips covering every sampler:
@@ -11,7 +11,7 @@ blink a LINEAR weights channel, turn a 120-degree LINEAR rotation. Deterministic
 """
 import json, math, struct, sys
 
-OUT = sys.argv[1] if len(sys.argv) > 1 else "templates/game/assets/models/walker.glb"
+OUT = sys.argv[1] if len(sys.argv) > 1 else "tests/fixtures/cook-assets/assets/models/walker.glb"
 
 # name, parent, translation
 NODES = [

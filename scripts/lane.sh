@@ -53,9 +53,7 @@ case "${1:-}" in
     name="${2:?lane name}"; stream="${3:-}"
     dir="$main-$name"
     if ! git -C "$main" worktree list --porcelain | grep -qx "worktree $dir"; then
-      "$main/scripts/worktree.sh" "$name" >/dev/null
-      git -C "$dir" switch -q --detach main 2>/dev/null || true
-      touch "$(mark "$dir")"
+      echo "lane.sh: $dir is not a provisioned lane; choose an existing lane" >&2; exit 1
     fi
     if [ -n "$stream" ]; then
       b="$(base)"

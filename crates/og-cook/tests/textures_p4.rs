@@ -129,7 +129,8 @@ fn ktx2_sources_are_flipped_and_swizzled_to_rd_rgba_or_taken_as_they_are() {
     std::fs::write(root.join("assets/tex/plain.ktx2"), &as_is).unwrap();
     // A Basis ETC1S KTX2 the cook made from a PNG, tagged `ru`: decoded,
     // flipped and encoded again.
-    let stone = std::fs::read(repo().join("templates/game/assets/textures/stone.png")).unwrap();
+    let stone =
+        std::fs::read(repo().join("tests/fixtures/cook-assets/assets/textures/stone.png")).unwrap();
     std::fs::write(root.join("assets/tex/stone.png"), &stone).unwrap();
     let first = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(first.ok(), "{:?}", first.errors());

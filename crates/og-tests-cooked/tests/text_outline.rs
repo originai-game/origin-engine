@@ -1,6 +1,6 @@
 //! A text outline reaches the width it asks for on small text: the UI
 //! kit's body and display faces, cooked with their own import settings
-//! (templates/ui-kit/assets/fonts), draw a 2 px outline around 16 px text
+//! (tests/fixtures/ui-text/assets/fonts), draw a 2 px outline around 16 px text
 //! about 2 px wide.
 //!
 //! og-render's MSDF text bounds an outline by the distance field's reach,
@@ -30,7 +30,7 @@ const SIZE: f32 = 16.0;
 const WIDTH: f32 = 2.0;
 
 fn kit_fonts_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/ui-kit/assets/fonts")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/ui-text/assets/fonts")
 }
 
 /// The atlas page of `f` that holds `c`, as a scene font (og-runtime adds

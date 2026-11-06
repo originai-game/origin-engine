@@ -3,7 +3,7 @@
 //! the street (most of it outside the view or behind the nearest blocks)
 //! and from the air (most of it in view). The CPU-bound case of design §10:
 //! many instances, few batches, a frame whose cost is the culling and the
-//! submission rather than the GPU (`tests/evidence/P3/culling/`).
+//! submission rather than the GPU (`the former test sample`).
 
 use glam::{Mat4, Vec3};
 use og_render::{Camera, DirectionalLight, Exposure, Material, RenderScene, shapes};
@@ -16,7 +16,7 @@ pub const CITY_SPACING: f32 = 8.0;
 /// Buildings a side: [`CITY_SIDE`], or `OG_GFX_CITY_SIDE` (rounded up to an
 /// even number, so the avenue stays between two columns) to time the
 /// culling paths across instance counts
-/// (`tests/evidence/P4/web-host-tools/culling-threshold.md`).
+/// (`the former test sample`).
 pub fn city_side() -> u32 {
     std::env::var("OG_GFX_CITY_SIDE")
         .ok()

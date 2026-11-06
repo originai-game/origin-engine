@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Wave-end measurements on the current host, with no machine-specific lanes.
 # Usage: scripts/wave-end.sh [--dry-run] [--stages LIST]
-# Stages: gate,determinism,perf,web,art,conformance,release (all by default).
+# Stages: gate,perf,web,conformance,release (all by default).
 # Every stage runs even after a failure; nothing is published.
 # shellcheck disable=SC2329 # stage functions are dispatched by name below
 set -u -o pipefail
@@ -9,7 +9,7 @@ set -u -o pipefail
 . "$(dirname "$0")/lib.sh"
 cd "$OG_ROOT" || exit 1
 
-ALL_STAGES="gate determinism perf web art conformance release"
+ALL_STAGES="gate perf web conformance release"
 stages="$ALL_STAGES"
 dry=0
 usage() { sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'; }
@@ -40,19 +40,12 @@ run() {
 }
 
 stage_gate() { run scripts/check.sh --all; }
-stage_determinism() { run tools/wasm-determinism/run.sh; }
 stage_perf() { run scripts/perf.sh; }
 stage_web() { run scripts/check.sh web-reference; }
 
 # The art director's capture: one frame per catalogue style on the project
-# its family's profile draws (tools/art-samples/capture.ts), written under
+# its family's profile draws (the former test sample written under
 # $OUT/art/ to read; no committed reference is compared.
-stage_art() {
-  local og="$OG_TARGET_DIR/debug/og"
-  if [ "$dry" != 1 ] && [ ! -x "$og" ]; then og_err "no $og: the gate stage builds it (or cargo build -p og-cli)"; return 1; fi
-  [ "$dry" = 1 ] || rm -rf "$OUT/art"
-  run bun tools/art-samples/capture.ts --og "$og" --out "$OUT/art"
-}
 
 stage_conformance() { run scripts/tsrs-diff.sh; }
 stage_release() { run scripts/release.sh pack && run scripts/release.sh verify; }

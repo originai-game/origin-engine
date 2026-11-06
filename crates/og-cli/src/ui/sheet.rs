@@ -53,9 +53,9 @@ fn sheet(args: &[&str]) -> Result<(), String> {
             let source = if shipped.join("project.ogt").is_file() {
                 shipped
             } else {
-                package.join("../../templates/ui-kit")
+                package.join("sheets/style")
             };
-            for dir in ["assets", "src", "tools"] {
+            for dir in ["assets", "src"] {
                 copy_tree(&source.join(dir), &scratch.join(dir))?;
             }
             std::fs::copy(source.join("project.ogt"), scratch.join("project.ogt"))

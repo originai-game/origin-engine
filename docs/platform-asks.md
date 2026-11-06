@@ -248,8 +248,13 @@ rendering localized text. The lint does not prove glyph coverage.
 Changes after creation need the corresponding authored source/settings
 update; `--force` is not an update API. `artBrief`, `readLook`, `presetLook`
 and the knowledge mounting contracts keep their signatures. The mounted
-payload and archive contents change; see the breaking changelog and
-`tests/evidence/delete-templates/coverage.md` for exact removed paths.
+payload and archive contents change. The distribution no longer contains
+`archetypes/`, `create/archetypes/`, `create/template-2d/`, starter models,
+sprites, scenes, audio, fonts, or gameplay playtests. `create/template/`
+contains only the skeleton; `ui-sheet/` is a neutral style-control sheet,
+not the old UI gallery. No platform code should read gallery screen names,
+art or reference frames. `Roots.template`, `payload`, `installed`, `mount`
+and `summary` keep their public signatures. See the breaking changelog.
 
 ## Music and sound generation from the audio brief
 

@@ -221,7 +221,8 @@ fn split(
 
 #[test]
 fn physical_extensions_are_cooked_and_loaded() {
-    let png = std::fs::read(repo().join("templates/fx-showcase/assets/textures/toon.png")).unwrap();
+    let png = std::fs::read(repo().join("tests/fixtures/texture-arrays/assets/textures/toon.png"))
+        .unwrap();
     let glb = physical_glb(&png);
 
     // The runtime glTF loader (og-render's bridge).

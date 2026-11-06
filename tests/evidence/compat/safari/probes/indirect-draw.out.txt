@@ -1,3 +1,0 @@
-{"instances":16,"skip":0,"litPixels":10816,"differingPixels":0,"directMs":74,"indirectMs":7,"errs":[]}
-{"instances":16,"skip":20000,"litPixels":10816,"differingPixels":0,"directMs":3,"indirectMs":5,"errs":[]}
-{"instances":16,"skip":40000,"litPixels":10816,"differingPixels":0,"directMs":7,"indirectMs":3,"errs":[]}

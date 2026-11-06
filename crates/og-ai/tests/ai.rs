@@ -263,7 +263,7 @@ fn two_runs_and_a_restored_snapshot_decide_the_same() {
     );
 }
 
-/// The template's yard as og.nav and og.ai run it (templates/game: the
+/// The template's yard as og.nav and og.ai run it (the former test sample: the
 /// guard's machine on a navmesh round a wall), with what G2-4 must leave
 /// alone beside it: a crowd that separates without og.Crowd, a box obstacle
 /// set at run time, and a grid agent over weighted cells. Its world hash
@@ -273,7 +273,7 @@ fn two_runs_and_a_restored_snapshot_decide_the_same() {
 #[test]
 fn a_yard_without_g2_4_features_hashes_and_moves_as_before_it() {
     use og_nav::{Heightfield, NavMesh, NavParams, Obstacle, Steering};
-    const GUARD_MACHINE: &str = include_str!("../../../templates/game/assets/ai/guard.ogt");
+    const GUARD_MACHINE: &str = include_str!("../../../tests/fixtures/ai-nav/assets/ai/guard.ogt");
     struct Yard {
         world: World,
         ai: og_ai::AiSystem,

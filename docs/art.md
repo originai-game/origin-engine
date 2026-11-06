@@ -290,8 +290,8 @@ build (numbers cannot judge a style, og-taste §11).
   style needs made and what it must be. `artBrief` writes that into every
   request of the kind (an `Authored` line) and `authoredArt(look)` lists
   them.
-- The sample scene a style is proven on is the tools' business, not the
-  catalogue's: `tools/art-samples/scenes.json`.
+- A style's sample scene belongs to the game's art review, not the
+  catalogue. The engine ships no sample-game gallery.
 
 ### 2.7 A style's painted art: the hand-off
 

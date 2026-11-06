@@ -470,7 +470,7 @@ pub(crate) fn step(members: &mut [Member<'_>], dt: f32, gravity: Vec3, solids: &
             // visits them), but the pairs' transpose that needs costs what
             // the split saves: 8,000 particles on four lanes 8.37 against
             // 8.45 ms a tick, 2,000 1.56 against 1.84 (round three,
-            // tests/evidence/P4/physics-3/). So it stays this scatter.
+            // the former test sample So it stays this scatter.
             rho.iter_mut().for_each(|r| *r = 0.0);
             near.iter_mut().for_each(|r| *r = 0.0);
             for i in 0..n {

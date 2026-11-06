@@ -10,7 +10,7 @@
 //! in one pass that share an args buffer then read each other's counts:
 //! spheres-20k's ground plane drew with its spheres' 1,152 indices x 518
 //! instances, torn triangles and a 16-31 s frame
-//! (tests/evidence/compat/safari/NOTES.md). Fixed upstream by WebKit
+//! (the former test sample Fixed upstream by WebKit
 //! 6dca6330db (bug 321876: per-draw scratch). A cull that writes its args
 //! into one buffer copies each draw's to a buffer here after the cull,
 //! and its draws read those: a slot per draw.

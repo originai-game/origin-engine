@@ -8,7 +8,7 @@
 //! every token of the module in place and every line where it was: naga
 //! parses the same module, and its messages name the same lines. The
 //! comments were about 100 kB of the lanes wasm and 27 kB of its brotli
-//! (tests/evidence/P4/wasm-size/README.md).
+//! (the former test sample
 
 use std::path::Path;
 

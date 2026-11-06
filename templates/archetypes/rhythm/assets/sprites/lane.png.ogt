@@ -1,7 +1,0 @@
-type import
-version 1
----
-# A soft gradient: kept exact (RGBA8, no block compression), sampled nearest.
-texture {
-  kind pixel
-}

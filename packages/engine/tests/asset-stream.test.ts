@@ -221,7 +221,7 @@ beforeAll(() => {
   ];
   for (const [name, rgb] of colours) writeFileSync(join(root, "assets", "models", `${name}.glb`), texturedGlb(encodePng(solid(64, rgb))));
   writeFileSync(join(root, "assets", "textures", "sign.png"), encodePng(solid(256, [200, 160, 40])));
-  copyFileSync(join(repo, "templates", "game", "assets", "audio", "blip.wav"), join(root, "assets", "audio", "blip.wav"));
+  copyFileSync(join(repo, "tests", "fixtures", "cook-assets", "assets", "audio", "blip.wav"), join(root, "assets", "audio", "blip.wav"));
   writeFileSync(join(root, "assets", "scenes", "path.ogt"), SCENE);
   const cooked = Bun.spawnSync([ogBin(), "cook", root]);
   if (cooked.exitCode !== 0) throw new Error(new TextDecoder().decode(cooked.stderr));

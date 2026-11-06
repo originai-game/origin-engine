@@ -1,7 +1,0 @@
-type import
-version 1
----
-# Written by tools/make-assets.py: lossless RGBA8 (a tileset, drawn one texel to a pixel).
-texture {
-  kind pixel
-}

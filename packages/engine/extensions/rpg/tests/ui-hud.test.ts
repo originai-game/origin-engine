@@ -184,29 +184,3 @@ test("rpg.turnOrder as a list: rows top to bottom, the acting one first and sele
   expect(Math.round(stripe.x + stripe.width)).toBe(Math.round(row.x + row.width));
   expect(at(r, "Side/Turns/raider/Portrait")!.x).toBeLessThan(stripe.x);
 }, LOADED_MS);
-
-test("rpg.unitFrame and rpg.partyFrames: a level badge's figure is never under the smallest text; a status tile's art lies under its stacks on purpose", () => {
-  // Wrong: the badge sized off the portrait alone (a small party frame's 12 px badge, 6.7 px figure; 11.2 px on a large
-  // frame), or a tile's stack count reported over its own art.
-  const sys = defineSystem("HudLevels", {}, () => {
-    rpg.unitFrame("Me", { name: "Aria", level: "12", health: 80, size: "large", anchor: "topLeft" } as never);
-    rpg.partyFrames("Party", { size: "small", anchor: "left", members: [{ key: "a", name: "Bren", level: "47", health: 60 }, { key: "b", name: "Cass", level: "100", health: 90 }] } as never);
-    og.ui.statusGrid("Auras", { effects: [{ key: "bleed", name: "Bleed", debuff: true, type: "bleed", stacks: 3, remaining: 3.5, duration: 10 }], anchor: "bottomLeft" });
-  });
-  const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, { root: kit });
-  if (!r.ok) throw new Error(r.reason);
-  const e = r.value;
-  og.ui.previewViewport(e.world, DESKTOP_SAFE as never);
-  const font = og.load.font(e.world, "fonts/NotoSansSC-Regular-subset.ttf");
-  if (!font.ok) throw new Error(font.reason);
-  og.ui.configure(e.world, { font: font.value });
-  e.advance(6);
-  const f = JSON.parse((native() as unknown as { og_node_ui_frame(id: number): string }).og_node_ui_frame(e.id)) as UiFrameSnapshot;
-  const levels = f.texts.filter((x) => ["12", "47", "100"].includes(x.text));
-  expect(levels.map((x) => x.text).sort()).toEqual(["100", "12", "47"]);
-  for (const l of levels) expect(l.size).toBeGreaterThanOrEqual(12);
-  const overlaps = checkFrame(f, { screen: "hud", breakpoint: "desktop", locale: "", style: "", scale: 100, highContrast: false })
-    .filter((x) => x.rule === "overlap" && x.paths.some((p) => p.includes("/Tile/")))
-    .map((x) => x.paths.join(" × "));
-  expect(overlaps.join("; ")).toBe("");
-});

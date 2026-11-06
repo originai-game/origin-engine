@@ -1,5 +1,0 @@
-type look
-version 1
----
-# The engine preset "paper-craft" (templates/looks/paper-craft.ogt), shown by the looks station.
-extends "paper-craft"

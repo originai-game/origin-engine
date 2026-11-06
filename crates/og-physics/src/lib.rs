@@ -691,7 +691,7 @@ fn codec() -> impl bincode::Options {
 /// writes goes through this one encoder, so each type's serialisation is
 /// compiled once: bincode's `serialize` and `serialized_size` would each
 /// compile the whole rapier world's again (a size pass, a writer of
-/// another type), tens of kilobytes of wasm (`tests/evidence/r4/size-2`).
+/// another type), tens of kilobytes of wasm (`the former test sample`).
 pub(crate) fn encode<T: serde::Serialize + ?Sized>(
     out: &mut Vec<u8>,
     value: &T,

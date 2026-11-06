@@ -584,7 +584,7 @@ pub(crate) fn time_payload(ctx: &SystemContext<'_>) -> String {
 /// JavaScript's `Number` reads them back) where core's `{}` falls back to
 /// Dragon4 for most elapsed times, a fifth of a millisecond of every tick
 /// of the reference scene, measured on the retired WebGL2 tier
-/// (tests/evidence/r4/perf-webgl2-2/).
+/// (the former test sample
 /// The f32 fields keep `{}`: on an exact tie between two shortest
 /// candidates zmij rounds to even and core up.
 fn time_payload_of(scale: f32, hit_stop: u32, dt: f32, elapsed: f64) -> String {

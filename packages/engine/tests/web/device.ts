@@ -1,5 +1,5 @@
 // `og run --device chrome` end to end: the og binary cooks and exports
-// templates/game's publish build, serves it with COOP/COEP on 127.0.0.1, opens
+// the former test sample's publish build, serves it with COOP/COEP on 127.0.0.1, opens
 // it in headless Chrome over the DevTools protocol, taps the play gate and
 // times the first frame and the played frames. Checked: the report and
 // device.json exist; the first frame is after navigation; the display
@@ -12,7 +12,7 @@
 //   bun tests/web/device.ts [--project <dir>] [--out <dir>] [--chrome <path>] [--seconds N]
 //
 // --project (relative to the repository) runs another project's publish
-// build instead of templates/game's (tests/fixtures/vehicle-terrain, say),
+// build instead of the former test sample's (tests/fixtures/vehicle-terrain, say),
 // whose default output is dist/test-device/<project's name>.
 //
 // Writes <out>/webgpu/{report.md,device.json} and
@@ -38,7 +38,7 @@ const out = resolve(opt("--out") ?? join(pkg, "dist", "test-device", ...(project
 const seconds = opt("--seconds") ?? "3";
 const chrome = chromePath(args);
 const og = ogBin();
-const project = join(repo, projectRel ?? join("templates", "game"));
+const project = join(repo, projectRel ?? join("tests", "fixtures", "vehicle-terrain"));
 
 let failures = 0;
 const checks: Array<{ check: string; ok: boolean; detail?: unknown }> = [];

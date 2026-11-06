@@ -443,7 +443,7 @@ impl Renderer {
 /// made for filtered image rows. A 1280×720 frame encodes two to four times
 /// faster than at zlib's fastest level and 10 to 35 times faster than at
 /// level 6, in a file about 1.5 times level 6's on a detailed frame and up
-/// to 8 times on a flat one (`tests/evidence/r4/perf-capture/NOTES.md`);
+/// to 8 times on a flat one (`the former test sample`);
 /// the pixels decode exactly.
 pub fn png(image: &RgbaImage) -> Vec<u8> {
     let stride = image.width as usize * 4;

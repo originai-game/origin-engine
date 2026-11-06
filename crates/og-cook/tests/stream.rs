@@ -138,23 +138,24 @@ fn stage(root: &Path, scene: &str) {
     for d in ["models", "textures", "audio", "scenes"] {
         std::fs::create_dir_all(root.join("assets").join(d)).unwrap();
     }
-    let png = std::fs::read(repo().join("templates/fx-showcase/assets/textures/toon.png")).unwrap();
+    let png = std::fs::read(repo().join("tests/fixtures/texture-arrays/assets/textures/toon.png"))
+        .unwrap();
     let sheet = textured_glb(&png);
     for n in ["house-a", "house-b", "house-c", "hut"] {
         std::fs::write(root.join(format!("assets/models/{n}.glb")), &sheet).unwrap();
     }
     std::fs::copy(
-        repo().join("templates/game/assets/models/walker.glb"),
+        repo().join("tests/fixtures/cook-assets/assets/models/walker.glb"),
         root.join("assets/models/walker.glb"),
     )
     .unwrap();
     std::fs::copy(
-        repo().join("templates/fx-showcase/assets/textures/toon.png"),
+        repo().join("tests/fixtures/texture-arrays/assets/textures/toon.png"),
         root.join("assets/textures/stone.png"),
     )
     .unwrap();
     std::fs::copy(
-        repo().join("templates/game/assets/audio/blip.wav"),
+        repo().join("tests/fixtures/cook-assets/assets/audio/blip.wav"),
         root.join("assets/audio/blip.wav"),
     )
     .unwrap();

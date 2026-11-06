@@ -1,10 +1,10 @@
-//! The cost numbers of tests/evidence/E6/ai-costs.json: 200 guards running
+//! The cost numbers of the former test sample 200 guards running
 //! a behaviour tree (flee, bite, chase, patrol) with 120° sight against a
 //! wall ray, on a 64 × 64 grid through og.nav, chasing four moving heroes;
 //! the tick with og.ai thinking every tick, every third tick, and with the
 //! agents inactive (og.nav alone).
 //!
-//!     cargo run --release -p og-ai --example ai_costs > tests/evidence/E6/ai-costs.json
+//!     cargo run --release -p og-ai --example ai_costs > the former test sample
 
 use og_ai::{AiAgent, AiDesc, Behaviour, Perceivable, Perception, SightRay, install};
 use og_core::Reflect;

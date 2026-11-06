@@ -1,5 +1,5 @@
 //! Reflection probes beyond one room (docs/design.md §2.6; the debts of
-//! depth S6, `tests/evidence/debt/render-lod`):
+//! depth S6, `the former test sample`):
 //!
 //! - `probe-two-rooms`: two open-fronted rooms side by side, the left one
 //!   red, the right one blue, each with its reflection probe and a chrome

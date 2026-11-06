@@ -151,8 +151,8 @@ when the owner names it. Every occurrence of the version is written by
 `scripts/release.sh bump` and held equal by `packages/knowledge`'s test
 (`scripts/release.sh check`): the four `package.json`
 (`optionalDependencies` included), `scaffold/origin-engine.json`,
-`templates/*/project.ogt` and `package.json`, `templates/archetypes/*`,
-`tests/fixtures/*`, and what `create` writes into a new project.
+`packages/create/template`, `packages/engine/sheets`, `tests/fixtures/*`,
+and what `create` writes into a new project.
 
 A Game's `project.ogt` pins its own version; `og` reports a mismatch with
 the installed package (`og doctor` as a line, `og run`/`test`/`build` as a
@@ -213,21 +213,16 @@ replayed values; exit 0 the same, 3 diverged, 1 failed, 2 usage.
 engine path and path comments left out of its hash), so a divergence is
 then the game's as much as the engine's.
 
-**The patch gate.** `tests/replay/golden/` holds the golden traces
-(`goldens.json`: `templates/game` and `templates/game-2d`, 300 ticks
-each), and `scripts/replay-gate.ts` compares each with the og in
-`packages/engine/native` (or `$OG`). `release.sh bump` runs it first: a
-golden that diverges fails the bump unless `changelog.json`'s
-`unreleased.simulation` is `"changed"`, and a golden whose template
-changed fails as "re-record" (`--update`). A change that moves the
-simulation on purpose sets `simulation: "changed"` in the same merge and
-re-records the goldens.
+**Simulation checks.** Core replay, save/restore and native/wasm hash tests
+remain in the engine suites. The template-specific golden replay gate is
+removed with the gameplay templates. A change that moves simulation on
+purpose still sets `simulation: "changed"` in the same merge.
 
 **`scripts/release.sh`**, one verb per step:
 
 ```sh
 scripts/release.sh check              # every occurrence of the version equals packages/engine's
-scripts/release.sh bump <version>     # the replay gate, then every occurrence of the version, CHANGELOG.md's heading
+scripts/release.sh bump <version>     # every occurrence of the version, CHANGELOG.md's heading
 scripts/release.sh pack               # on the Mac: OG_RELEASE=1 pack.sh --linux-x64, create-game, design as tarballs (build intermediates), then archive
 # on studio-win, Git Bash, the same commit: OG_RELEASE=1 sh packages/engine/scripts/build.sh --native && sh packages/engine/scripts/pack.sh --native
 #   then copy packages/engine/dist/pack/origingame-engine-win32-x64-<v>.tgz into the Mac's dist/release/<v>/
@@ -367,10 +362,9 @@ Done: one version everywhere (`release.sh bump`/`check`, `og`'s pin
 notice and doctor line), the knowledge inside the engine package, the
 release script and the wave-end `release` stage, the install test (host,
 container, InstaBox), `og doctor` outside a checkout, and the archive
-channel of §1. R6: the template and `@origingame/create-game` ship nothing
-whose licence is not named (`templates/game/LICENSES.md`); the engine's
-test copies of unlicensed models stay in `crates/og-tests/assets/` and
-`templates/fx-showcase`, which no package carries.
+channel of §1. The skeleton ships no starter art. Retained test-only assets
+live under `tests/fixtures` and `crates/og-tests/assets`, outside release
+archives; fixture licence manifests record their provenance.
 
 ### L. The local loop on the platform (platform repository)
 

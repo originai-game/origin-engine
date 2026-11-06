@@ -235,7 +235,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // model draws nothing (meridian-loop #14). The rows are read in place
     // by offset, the fields resolved once a frame: decoding each row to
     // JSON was about a third of Lantern Vale's extraction
-    // (tests/evidence/r4/perf-ui/NOTES.md).
+    // (the former test sample
     let model_parts: Vec<(u64, u64, Parts, super::fx::ModelLook, f32, f32)> = match &layouts.model {
         Some(layout) => {
             let slot = |key| FieldSlot::of(layout, key);

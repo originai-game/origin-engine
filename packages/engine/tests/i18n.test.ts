@@ -1,5 +1,5 @@
 // og.i18n on the native host over the UI kit's cooked string tables
-// (templates/ui-kit/assets/strings: en, zh-CN, ja, ko, ar): the host's
+// (tests/fixtures/ui-text/assets/strings: en, zh-CN, ja, ko, ar): the host's
 // locale picks the table (ja-JP takes ja), t formats placeholders and
 // plurals in each language's rules, a key a locale lacks comes from the
 // base, a key no table has answers itself with one warning, and the active
@@ -15,7 +15,7 @@ import { ogBin } from "./support/og-bin.ts";
 
 declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8Array } };
 
-const kit = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "templates", "ui-kit");
+const kit = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "tests", "fixtures", "ui-text");
 
 // At module level, not in a hook: a hook's 5 s would not cover a cook on a
 // loaded machine (b2532cd's gate).
@@ -111,21 +111,4 @@ test("og.i18n: format functions follow the active locale, else the requested one
   expect(og.i18n.formatDate(w, t, { style: "long" })).toBe("2026年11月2日");
   og.i18n.setLocale(w, "en-US");
   expect(og.i18n.formatTime(w, t, { style: "medium" })).toBe("3:05:09\u202fPM");
-});
-
-test("the kit's words echo no shipped game: its tables and pattern screens name invented patrons, banners and items", () => {
-  // Wrong: a roguelite's gods and boons, a gacha's wish, its banners and its weapons, in English or as they ship
-  // localized (祈願, 祈愿, 기원, أمنية are that gacha's wish).
-  const echoes = [
-    "Zeus", "Ares", "Demeter", "Hermes", "Boon", "boon", "Chamber cleared", "Heart of the Titan", "Stygian", "Midas",
-    "Wish", "wish", "Epitome", "Wanderlust", "Starglitter", "Favonius", "Debate Club", "Black Tassel", "Thrilling Tales", "Cool Steel",
-    "祈願", "祈愿", "기원", "أمنية", "西风", "西風", "스타글리터", "スターグリッター", "星辉", "ゼウス", "제우스", "宙斯", "زيوس",
-  ];
-  const files = [...["en", "ja", "ko", "zh-CN", "ar"].map((l) => join(kit, "assets", "strings", `${l}.ogt`)), join(kit, "src", "patterns.ts")];
-  const found = files.flatMap((f) => {
-    // Asset paths (boons/…) are file names, not words a player reads.
-    const body = readFileSync(f, "utf8").replace(/boons\//g, "");
-    return echoes.filter((w) => body.includes(w)).map((w) => `${f.split("/").pop()}: ${w}`);
-  });
-  expect(found).toEqual([]);
 });

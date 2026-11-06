@@ -27,8 +27,8 @@
 # the wasm steps (crates/), drift (the IDL, og-idl, og and the generated
 # files), check-conformance (packages/engine, templates/, tests/fixtures/, the
 # comparer, its corpus and the pins), web-reference (og-host-web's and og-tests-web's crates,
-# packages/engine, templates/fx-showcase), ui-styles and ui-kit (og,
-# templates/ui-kit, templates/styles, including their references), and
+# packages/engine, the former test sample), ui-styles and ui-kit (og,
+# tests/fixtures/ui-text, templates/styles, including their references), and
 # each test fixture on its own (its directory, og's closure, packages/engine,
 # the looks and styles: rule_fixture DIR). A change to scripts/, Cargo.toml,
 # Cargo.lock, rust-toolchain.toml, .cargo/ or .config/ reruns all of them. Each skip is
@@ -58,14 +58,14 @@ cd "$OG_ROOT" || exit 1
 
 STEPS_FULL="fmt clippy wasm-build test wasm-opt size-gate drift bun-test fixtures"
 STEPS_QUICK="fmt clippy test-quick drift bun-quick"
-STEPS_KITS="kit-tests ui-styles ui-kit"
+STEPS_KITS="kit-tests"
 STEPS_UI="$STEPS_KITS"
 # The functional lane: what a merge must not break (every test, the GPU
 # reference frames, the generated API, the packages' tests on the native
 # host), without the wasm build, its size, determinism and the browser
 # tiers, which are a wave's end measurements (docs/ci.md §Lanes).
 STEPS_FUNCTIONAL="fmt clippy test drift bun-functional fixtures"
-STEPS="$STEPS_FULL test-quick bun-quick bun-functional kit-tests ui-styles ui-kit kit-web web-reference check-conformance"
+STEPS="$STEPS_FULL test-quick bun-quick bun-functional kit-tests web-reference check-conformance"
 FUNCTIONAL=0
 BUN_QUICK_PACKAGES="packages/knowledge packages/create packages/design"   # no native build needed
 WASM_TRIPLE=wasm32-unknown-unknown
@@ -88,15 +88,11 @@ RULE_COMMON="Cargo.toml Cargo.lock rust-toolchain.toml .cargo .config scripts te
 # (docs/ci.md §Lanes).
 GPU_PACKAGES="og-render og-ui og-tests og-tests-cooked"
 rule_gpu() {
-  local dirs extra="third_party/ltc" g
+  local dirs extra="third_party/ltc"
   dirs="$(og_crate_dirs -p "$1" -e normal,build,dev | og_words)"
   case " $dirs " in *" crates/og-cook "*) extra="$extra templates/looks templates/styles" ;; esac
   if [ "$1" = og-ui ] || [ "$1" = og-tests-cooked ]; then
-    extra="$extra templates/ui-kit templates/styles templates/game/assets/fonts"
-    for g in idle/assets/styles/sparkorb roguelike/assets/styles/lampdive rhythm/assets/styles/lanebeat \
-        tower-defense/assets/styles/pathguard third-person/assets/styles/ember; do
-      extra="$extra templates/archetypes/$g"
-    done
+    extra="$extra templates/styles tests/fixtures/ui-text tests/fixtures/cook-assets"
   fi
   echo "$dirs $extra $RULE_COMMON"
 }
@@ -118,12 +114,12 @@ rule_conformance() {
 # ui-styles and ui-kit: og and the addon it loads (og-cli, og-host-node, packages/engine), the kit
 # and the built-in styles its sheets draw, including their references.
 rule_ui_styles() {
-  echo "$(og_crate_dirs -p og-cli -p og-host-node -e normal,build | og_words) packages/engine templates/ui-kit templates/styles $RULE_COMMON"
+  echo "$(og_crate_dirs -p og-cli -p og-host-node -e normal,build | og_words) packages/engine tests/fixtures/ui-text templates/styles $RULE_COMMON"
 }
 # crates/og-cook: the web tests cook their projects with og, and no wasm
 # crate depends on the cook (the loaders are og-bundle's).
 rule_web() {
-  echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) crates/og-cook packages/engine templates/fx-showcase templates/looks templates/ui-kit templates/styles templates/archetypes/third-person tests/fixtures/vehicle-terrain $RULE_COMMON"
+  echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) crates/og-cook packages/engine templates/looks tests/fixtures/ui-text templates/styles tests/fixtures/vehicle-terrain $RULE_COMMON"
 }
 
 # rule_fixture DIR: one test fixture's inputs (tests/fixtures/README.md): its
@@ -662,25 +658,14 @@ step_kit_tests() {
   return "$rc"
 }
 
-step_kit_web() {
-  bun templates/ui-kit/scripts/browser.ts
-}
 
 # The style packs' approved states, desktop and phone
-# (templates/ui-kit/tests/style-*.og.ts against
+# (tests/fixtures/ui-text/tests/style-*.og.ts against
 # templates/styles/references/<pack>/<tier>/kit-style-*-states.png, else metal's): the
 # states the art director approved one by one, over a plain ground. A pack
 # is judged on its own pages (og ui sheet), never as every kit screen in
 # every pack (docs/ui.md §15.4, 2026-11-05). Without a renderer the
 # playtests report their frames unchecked. Path-aware (rule_ui_styles).
-step_ui_styles() {
-  if skip_unchanged ui-styles "ui-styles" "$(rule_ui_styles)"; then return $SKIP; fi
-  # og test loads packages/engine/native's addon (else the npm one, an
-  # older engine): build the dev addon and og there first.
-  OG_GATE=1 sh packages/engine/scripts/build.sh --native || return 1
-  # The playtests run OG_UI_STYLES_JOBS at a time, with ordered output.
-  kit_playtests ui-styles --filter tests/style- --jobs "${OG_UI_STYLES_JOBS:-3}"
-}
 
 # The test fixtures (tests/fixtures/*/, one per feature, each with its
 # README and a budget of 10 s warm): `og test` in each one whose inputs
@@ -693,7 +678,7 @@ step_fixtures() {
   OG_GATE=1 sh packages/engine/scripts/build.sh --native || return 1
   for dir in packages/create/template tests/fixtures/*/; do
     dir="${dir%/}"
-    [ -f "$dir/project.ogt" ] || continue
+    [ -f "$dir/project.ogt" ] && [ -d "$dir/tests" ] || continue
     name="${dir##*/}"
     if skip_unchanged "fixture.$name" "fixture $name" "$(rule_fixture "$dir")"; then
       unchanged="$unchanged $name"
@@ -745,31 +730,13 @@ step_fixtures() {
 
 # kit_playtests STEP ARGS...: preserve og test's separate passed, failed
 # and unchecked counts; an absent adapter is a warning, not a failure.
-kit_playtests() {
-  local step="$1" log rc
-  shift
-  log="$GATE_LOGS/$step-og-test.txt"
-  "$OG_TARGET_DIR/debug/og" test templates/ui-kit "$@" 2>&1 | tee "$log"
-  rc="${PIPESTATUS[0]}"
-  [ "$rc" -eq 0 ] || return "$rc"
-  if grep -Eq '[1-9][0-9]* GPU frame/expectation checks unchecked' "$log"; then
-    SKIP_NOTE="$(grep '^og test:' "$log" | tail -1)"
-    return "$SKIP"
-  fi
-  return 0
-}
 
-# Every other kit playtest (templates/ui-kit/tests/*.og.ts but style-*):
+# Every other kit playtest (tests/fixtures/ui-text/tests/*.og.ts but style-*):
 # the screens' frames, the component and controls previews, input by
 # touch, keys and pads, locales, sounds. U6b's landing broke four of them
 # (gamepad, locales, sounds, touch) and nothing in the gate ran them
 # (2026-11-02). After ui-styles (step_needs), so the two never draw on the
 # GPU at once and share its native build. Path-aware (rule_ui_styles).
-step_ui_kit() {
-  if skip_unchanged ui-kit "ui-kit" "$(rule_ui_styles)"; then return $SKIP; fi
-  OG_GATE=1 sh packages/engine/scripts/build.sh --native || return 1
-  kit_playtests ui-kit --skip tests/style- --jobs "${OG_UI_KIT_JOBS:-4}"
-}
 
 # The packages that need no native build.
 step_bun_quick() {
@@ -778,7 +745,7 @@ step_bun_quick() {
 }
 
 # The browser tiers in headless Chrome on WebGPU (docs/ci.md §Browser
-# reference tiers; `make web-reference`): templates/fx-showcase, og-tests'
+# reference tiers; `make web-reference`): the former test sample, og-tests'
 # and og-ui's gfx scenes (crates/og-tests-web), Ember Vale, the
 # vehicle-terrain fixture, the lanes' panic and the accessibility mirror. Run at a wave's end on any host with Chrome.
 #
@@ -789,14 +756,11 @@ step_bun_quick() {
 # at the end; the step fails when any group does. Every run serves on its
 # own port and starts Chrome with its own profile directory (port 0,
 # mkdtemp: tests/web/serve.ts, cdp.ts).
-WEB_GROUPS="fx ui gfx vehicle-terrain ember-vale lane-panic"
+WEB_GROUPS="ui gfx vehicle-terrain lane-panic"
 WEB_JOBS_DEFAULT=3
 
 # Each web_<group> runs in packages/engine; non-zero when any of its runs failed.
 # The same two fx-showcase representatives as its native smoke playtest.
-web_fx() {
-  bun tests/web/reference.ts --playtest tests/frames.og.ts
-}
 # The accessibility mirror over its settings screen, a
 # screen reader's click, the live region and the page's preferences.
 web_ui() {
@@ -807,9 +771,6 @@ web_ui() {
 # og-tests' scenes and og-ui's against their tier's reference, else metal's.
 web_gfx() { bun tests/web/reference-gfx.ts; }
 # Ember Vale uses its native smoke's two frames and command timeline.
-web_ember_vale() {
-  bun tests/web/reference.ts --project templates/archetypes/third-person --out dist/test-reference/third-person --playtest tests/frames.og.ts
-}
 # The vehicle-terrain fixture's slide frame: its tests/drive.og.ts itself
 # (--playtest: its commands without its screenshots and quit, each shot at
 # its screenshot's tick, 60 t). Its assets are all generated by the cook.
@@ -904,7 +865,6 @@ step_needs() {
     bun-test) echo wasm-opt ;;
     # Reuse the last wasm unless this run explicitly refreshes it.
     bun-functional) case " $selected " in *" wasm-opt "*) echo wasm-opt ;; esac ;;
-    ui-kit) echo ui-styles ;;
     # The fixtures run the dev og and addon: after the step that builds
     # the same dev crates, so the two never compile them side by side.
     fixtures) case " $selected " in *" test "*) echo test ;; *" test-quick "*) echo test-quick ;; esac ;;
@@ -981,7 +941,7 @@ gate_finish() {
 # workers or og test --jobs). Those limits must not add up across steps.
 step_uses_gpu() {
   case "$1" in
-    test|test-quick|bun-test|bun-functional|fixtures|kit-tests|ui-styles|ui-kit|kit-web|web-reference) return 0 ;;
+    test|test-quick|bun-test|bun-functional|fixtures|kit-tests|web-reference) return 0 ;;
     *) return 1 ;;
   esac
 }

@@ -144,14 +144,13 @@ and the platformer controller are og-physics, 2D skeletons og-anim §6,
   generated grid (procgen is og-core's skill).
 
 How many frames, how fast, which layer and how much parallax is og-feel
-§9–§11. `templates/archetypes/topdown` (a Zelda-like dungeon: a Tiled map
+§9–§11. the former test sample (a Zelda-like dungeon: a Tiled map
 with auto-tiled walls and collision, a four-direction flipbook hero on a
 top-down character controller, an enemy with a hurt flash and knockback,
 pickups with floating text, a door to a second room the camera scrolls to),
-`templates/archetypes/runner` and `templates/archetypes/match3` use all of
-this; `templates/archetypes/roguelike` carves a tilemap at run time from
-og.Rng and keeps its fog of war on a layer, and
-`templates/archetypes/tower-defense` writes placements to a map's layer.
+the former test sample and the former test sample use all of
+this. For generated maps, carve cells from og.Rng and keep fog of war on
+a separate layer; write building placements to the map's collision layer.
 
 ## 2. Flipbooks: the grammar
 
@@ -199,7 +198,7 @@ direction `forward`, `reverse` or `pingpong`) or TexturePacker's (JSON
 hash or array, its pivots taken; rotated frames are refused). The tags'
 clips come first, in the atlas's order, then the sheet's own `clip`
 blocks; a clip the sheet declares wins over a tag of the same name (to
-give it `event` lines or another `mode`). `templates/archetypes/runner`'s
+give it `event` lines or another `mode`). the former test sample's
 `assets/sprites/courier.ogt` is a grid sheet with five clips.
 
 ## 3. Tilesets: the grammar
@@ -241,7 +240,7 @@ bitmask16 counts N 1, E 2, S 4, W 8; blob47 counts N 1, NE 2, E 4, SE 8,
 S 16, SW 32, W 64, NW 128, a corner only when both its edges are set, so
 exactly 47 masks occur and the cook refuses a `rule` for any other with
 its line. The collision of a tile counts only on a layer marked
-`collision`. `templates/archetypes/topdown/tools/make-assets.py` draws the
+`collision`. the former test sample draws the
 47 wall shapes and writes their rules (`BLOB`, the sorted reduced masks,
 tile id = index); its `assets/tiles/dungeon.ogt`, the rules shortened:
 
@@ -369,7 +368,7 @@ tilemap {
 }
 ```
 
-`templates/archetypes/topdown/tools/make-assets.py` writes
+the former test sample writes
 `assets/maps/tomb.tmj` (a floor layer, a `walls` layer with `autotile`
 `wall` and `collision` true, a `decor` layer at `z` 15 drawn over the hero,
 and an object layer of spawns, coins, the door and two rooms) beside its

@@ -1,5 +1,5 @@
 //! The CPU cost of the physics beyond rigid bodies, per 60 Hz tick (the E5
-//! round's cost table, `tests/evidence/E5/feature-costs.md`): each feature
+//! round's cost table, `the former test sample`): each feature
 //! alone in a world with a floor, stepped 120 ticks to settle, then timed
 //! over 300 ticks (best of three). Release builds only give meaningful
 //! numbers:

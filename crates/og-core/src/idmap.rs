@@ -5,7 +5,7 @@
 //! its splits, removal with its merges and steals, iteration, drop) for
 //! every pair of key and value types: about three kilobytes of wasm a pair,
 //! and the engine keeps per-entity state in dozens of them (the B-tree was
-//! the module's largest code family, `tests/evidence/r4/size-3/NOTES.md`).
+//! the module's largest code family, `the former test sample`).
 //! An `IdMap` keeps its entries in a `Vec<(K, V)>` and orders them through
 //! one `BTreeMap<u64, u32>` from the key's bits to the entry's slot, which is
 //! the same type for every map, so the tree is compiled once in this crate;

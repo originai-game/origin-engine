@@ -603,7 +603,7 @@ impl Layout {
     /// did not change is not decoded again (the camera's, the render
     /// settings' and the post effects' decodes, their maps built and
     /// dropped, were about a tenth of a frame's wasm on the retired WebGL2
-    /// tier: tests/evidence/r4/perf-webgl2-2/NOTES.md).
+    /// tier: the former test sample
     pub fn decode_kept(&self, bytes: Vec<u8>) -> std::sync::Arc<Value> {
         let mut kept = self
             .kept
@@ -651,7 +651,7 @@ impl Key for str {
 /// answers `None` as the JSON would). Per-frame extraction resolves the
 /// fields it reads once per layout and reads each [`Row`] by offset, where
 /// a binary search over the names for every read was about 5 % of a 2D
-/// frame (Hollowbell's sprites, tests/evidence/P4/perf-games). A slot read
+/// frame (Hollowbell's sprites, the former test sample A slot read
 /// from a row of another layout reads that layout's bytes at the offset:
 /// keep a layout's slots beside it.
 #[derive(Clone, Copy, Debug)]

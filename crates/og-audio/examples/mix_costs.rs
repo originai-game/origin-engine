@@ -1,11 +1,11 @@
-//! The mixer's cost for tests/evidence/E6/audio-costs.json: 32 voices (a
+//! The mixer's cost for the former test sample 32 voices (a
 //! looped music bed and stems, spatial loops, one-shots retriggered on the
 //! beat) through every bus insert (low- and high-pass, the compressor,
 //! ducking, the reverb send) and per-voice low-pass (distance and
 //! occlusion), rendered headless for 20 s; milliseconds of mixing per second
 //! of audio, and the same without effects.
 //!
-//!     cargo run --release -p og-audio --example mix_costs > tests/evidence/E6/audio-costs.json
+//!     cargo run --release -p og-audio --example mix_costs > the former test sample
 
 use og_audio::{
     AudioBusFx, AudioDesc, AudioListener, AudioSource, Bus, HeadlessMode, HeadlessSink, SoundBank,

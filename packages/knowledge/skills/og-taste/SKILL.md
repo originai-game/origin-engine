@@ -178,12 +178,10 @@ to fit it.
   stage) moves its own ink towards white or black until it reads there,
   and the neutral badge does the same on its `fill`, so neither needs a
   second palette. A game's own style is held to the same bars: the
-  engine's `pack_contrast.rs` measures the archetypes'
-  styles too, and their fixes were value, not hue (pathguard's lantern
-  orange deepened under a cream label, sparkorb's gold to a burnished
-  amber under its cream ink, lampdive's plum fill darkened under its
-  placeholder);
-  it also reads the primary and secondary labels from a rendered frame,
+  engine's style-pack contrast checks measure each ink against its ground.
+  Fix contrast through value before changing hue: deepen an orange fill
+  under a cream label or a plum fill under a light placeholder.
+  Also read the primary and secondary labels from a rendered frame,
   where thin strokes may never reach their colour: a pixel font's one-pixel
   strokes fell between pixels and took half their ink, so a pixel face is
   imported with `pixel <grid>` (its pixels to the em) and drawn at whole

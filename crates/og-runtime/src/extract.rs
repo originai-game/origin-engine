@@ -554,7 +554,7 @@ pub(crate) fn rows(world: &World, layout: &Layout) -> Vec<(u64, Value)> {
         // A row's decode is allocations (a JSON map per row), and the lanes
         // wasm has one allocator behind one lock: 20,000 og.Mesh rows split
         // over eight Workers spent 116 ms of a 137 ms frame waiting for the
-        // lanes (owed row 50, tests/evidence/P4/perf/).
+        // lanes (owed row 50, the former test sample
         return cells.iter().map(|(e, b)| (*e, layout.decode(b))).collect();
     }
     og_lanes::map(og_lanes::Site::Extract, &cells, ROW_GRAIN, |(e, bytes)| {

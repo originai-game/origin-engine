@@ -261,7 +261,7 @@ impl Frustum {
 /// Bounds a lane task tests in [`Frustum::test_spheres`]: a test is about
 /// 5 ns, and with the split this small a pool thread that wakes late
 /// still finds work (coarser tasks measured slower at every count,
-/// tests/evidence/debt3/cull-lane-grain/NOTES.md).
+/// the former test sample
 pub(crate) const CULL_GRAIN: usize = 1024;
 
 /// Bounds from which [`Frustum::test_spheres`] splits across the lanes.
@@ -269,7 +269,7 @@ pub(crate) const CULL_GRAIN: usize = 1024;
 /// machine, milliseconds under load, against 5 ns a bound serially: the
 /// split lost at every count to 65,536 bounds idle and at every count
 /// loaded, and first won at every thread count to eight from 131,072
-/// bounds idle (tests/evidence/debt3/cull-lane-grain/NOTES.md).
+/// bounds idle (the former test sample
 pub(crate) const CULL_LANES_FROM: usize = 131_072;
 
 /// One cascade of the directional light.
@@ -994,7 +994,7 @@ mod tests {
     /// on and off and on any number of threads (run with `OG_LANES=<n>`),
     /// and the call goes to the pool only from `CULL_LANES_FROM` bounds:
     /// from 2,048 to 131,071 a split lost to the serial loop everywhere it
-    /// was measured (tests/evidence/debt3/cull-lane-grain/NOTES.md).
+    /// was measured (the former test sample
     #[test]
     fn the_cull_splits_only_from_its_threshold_and_keeps_the_same_bounds() {
         let frustum = view();

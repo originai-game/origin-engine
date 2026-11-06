@@ -257,7 +257,7 @@ export function createWire(options: WireOptions) {
             // No timeslice: the whole recording arrives in the one dataavailable before stop. Safari
             // (27.2) answers a stop() that lands on a timeslice's boundary with one empty chunk and
             // drops the slice's data: start(1000) stopped at 1000 ms was empty 16 times in 16
-            // (tests/evidence/compat/safari/NOTES.md).
+            // (the former test sample
             recorder.start();
             setTimeout(() => recorder.state !== "inactive" && recorder.stop(), seconds * 1000);
           });

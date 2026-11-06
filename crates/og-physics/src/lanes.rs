@@ -2,8 +2,8 @@
 //! site): from how many bodies the step goes to the pool for each thread
 //! count, and the grains of the passes og-physics splits itself. Measured
 //! with `examples/lanes_costs.rs` and `examples/soft_lanes_costs.rs`
-//! (tests/evidence/P4/physics-lanes/, tests/evidence/P4/physics-lanes-2/
-//! and tests/evidence/P4/physics-3/).
+//! (the former test sample the former test sample
+//! and the former test sample
 
 use std::sync::Mutex;
 
@@ -57,7 +57,7 @@ pub struct Grains {
 
 impl Grains {
     /// The measured grains for a lanes pool of `threads` threads (M4 Pro;
-    /// tests/evidence/P4/physics-lanes-2/ and tests/evidence/P4/physics-3/,
+    /// the former test sample and the former test sample
     /// which measured five and six threads apart).
     pub fn measured(threads: u32) -> Grains {
         Grains {
@@ -72,7 +72,7 @@ impl Grains {
             rows: 1024,
             ragdolls: usize::MAX,
             // Five threads split ropes from eight as four do, six from 16,
-            // seven and up from about 24 (tests/evidence/P4/physics-3/).
+            // seven and up from about 24 (the former test sample
             rope_work: match threads {
                 0..=5 => 800,
                 6 => 1600,
@@ -160,7 +160,7 @@ pub(crate) enum Soft {
 /// one the pool's threads wait to be scheduled while the engine thread
 /// waits for them (The Kestrel Stair's five cloths: 0.93 ms a tick
 /// serially, 2.9 to 4.2 ms on the pool at a load average of 20 to 25,
-/// tests/evidence/P4/perf-games/kestrel-stair.md). A call that went to the
+/// the former test sample A call that went to the
 /// pool is measured: when its wall time on the calling thread is no less
 /// than its jobs' own times summed (what running them one after the other
 /// would have taken), the pool did not pay, and the next calls of that

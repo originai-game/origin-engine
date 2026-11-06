@@ -7,7 +7,7 @@
 // release yet). An internal error is how a driver refuses a valid pipeline
 // it cannot compile: Chrome on the Pixel 10's PowerVR refuses the
 // visibility buffer's resolve so (og-render meshlet_gpu/vis.rs,
-// tests/evidence/compat/android/NOTES.md), and the renderer's `internal`
+// the former test sample and the renderer's `internal`
 // scope around it then panicked the wasm instead of turning the visibility
 // buffer off. wgpu is used as published (AGENTS.md), so the Worker hands such
 // an error to wgpu as a GPUValidationError carrying its message, which the

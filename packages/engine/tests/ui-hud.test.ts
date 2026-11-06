@@ -1,18 +1,10 @@
 import { expect, test } from "bun:test";
 
-import { defineSystem, og } from "@origingame/engine";
-
-import type { World } from "@origingame/engine";
-
-import { native } from "../src/node/index.ts";
-
-import { type UiFrameSnapshot } from "../src/node/ui-check.ts";
-
-import { createEngine, type GameToken } from "../src/runtime.ts";
+import { og } from "@origingame/engine";
 
 import { at, drawsDuring, dump, engineFor, type El } from "./support/ui.ts";
 
-import { below, states, kitEngine, kit, DESKTOP_SAFE, LOADED_MS } from "./support/hud.ts";
+import { below, states, kitEngine, LOADED_MS } from "./support/hud.ts";
 
 import "./support/hud.ts";
 
@@ -225,66 +217,6 @@ test("og.ui.hudTimer and objectiveTracker: tenths in the last ten seconds, steps
   expect(at(dump(e), "ObjHud/Obj/q1")).toBe(undefined);
 });
 
-test("in a light style the HUD's text over the scene is drawn light and its text on the HUD plate in the plate's ink", () => {
-  // Wrong: cartoon's dark ink drawn straight over a dark scene (the tracker, an orb's figure, a cooling slot's
-  // seconds), or a fixed white on its pale HUD plate (the timer).
-  let configured = false;
-  const sys = defineSystem("HudScene", {}, (_q, _t, world: World) => {
-    if (!configured) {
-      const style = og.load.style(world, "@styles/cartoon/style.ogt");
-      if (!style.ok) throw new Error(style.reason);
-      og.ui.configure(world, { style: style.value });
-      configured = true;
-    }
-    og.ui.hudTimer("T", { seconds: 74, total: 90 });
-    og.ui.objectiveTracker("Obj", { quests: [{ key: "q", title: "Seal the crypt", steps: [{ key: "s", text: "Light the braziers", count: 1, target: 3 }] }] });
-    og.ui.orbMeter("Mana", { value: 210, max: 300, kind: "mana", anchor: "bottomRight" } as never);
-    og.ui.abilityBar("Bar", { slots: [{ key: "a", icon: "bolt", cooldown: 4, cooldownMax: 8, hotkey: "Q" }] } as never);
-    og.ui.compass("Compass", { heading: 0 });
-  });
-  const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, { root: kit });
-  if (!r.ok) throw new Error(r.reason);
-  const e = r.value;
-  og.ui.previewViewport(e.world, { ...DESKTOP_SAFE, safeArea: { left: 0, top: 0, right: 0, bottom: 0 } } as never);
-  e.advance(4);
-  const f = JSON.parse((native() as unknown as { og_node_ui_frame(id: number): string }).og_node_ui_frame(e.id)) as UiFrameSnapshot;
-  const light = (s: string): number => {
-    const c = f.texts.find((x) => x.text === s)?.color;
-    if (!c) throw new Error(`no text "${s}": ${f.texts.map((x) => x.text).join(", ")}`);
-    return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
-  };
-  for (const s of ["Seal the crypt", "Light the braziers", "1/3", "210", "4.0", "Q"]) expect(light(s)).toBeGreaterThan(0.5);
-  expect(light("1:14")).toBeLessThan(0.2);
-  // Its own outline stands for the scene shadow: the label's was replaced by it, a warning on every outlined line
-  // (the tracker's count, the cooldown's seconds, the compass's points).
-  expect(f.warnings.filter((w) => w.includes("replaced the draw set"))).toEqual([]);
-  e.destroy();
-});
-
-test("an ability slot's hotkey grows with the player's text size", () => {
-  // Wrong: the key capped by a share of the slot, which grows only half as fast as the text (18 px for 19.5 at 150 %).
-  const sizeAt = (scale: number): number => {
-    let configured = false;
-    const sys = defineSystem("HotkeyScale", {}, (_q, _t, world: World) => {
-      if (!configured) {
-        const style = og.load.style(world, "@styles/fantasy/style.ogt");
-        if (!style.ok) throw new Error(style.reason);
-        og.ui.configure(world, { style: style.value, textScale: scale });
-        configured = true;
-      }
-      og.ui.abilityBar("Bar", { slots: [{ key: "a", icon: "bolt", hotkey: "Q" }] } as never);
-    });
-    const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, { root: kit });
-    if (!r.ok) throw new Error(r.reason);
-    const e = r.value;
-    og.ui.previewViewport(e.world, { ...DESKTOP_SAFE, safeArea: { left: 0, top: 0, right: 0, bottom: 0 } } as never);
-    e.advance(4);
-    const f = JSON.parse((native() as unknown as { og_node_ui_frame(id: number): string }).og_node_ui_frame(e.id)) as UiFrameSnapshot;
-    e.destroy();
-    return f.texts.find((x) => x.text === "Q")!.size;
-  };
-  expect(sizeAt(1.5) / sizeAt(1)).toBeGreaterThan(1.45);
-});
 
 test("og.ui.statBar as pips: n of max lit with a gap between equal pips, its value read; an icon as tall as its label on a thin track", () => {
   // Wrong: pips drawn as one bar with notches (no gap), counted off by one, a part of a pip lit for a part of its

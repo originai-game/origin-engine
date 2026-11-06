@@ -4,7 +4,7 @@
 # end. `og sfx library` writes every preset's `type sfx` .ogt into a scratch
 # project (target/sound-presets/assets/sfx), `og cook` synthesises them into
 # cooked sound blobs (target/sound-presets/cooked), and each preset is
-# rendered to a WAV twice: tests/evidence/E6/audio/presets.json records
+# rendered to a WAV twice: the former test sample records
 # each preset's length, its cooked blob's size and the SHA-256 of both
 # renders (equal: the synthesis is deterministic). `og` defaults to
 # target/debug/og.

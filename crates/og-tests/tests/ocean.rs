@@ -21,7 +21,7 @@ fn difference(a: &RgbaImage, b: &RgbaImage) -> f32 {
     (sum / a.pixels.len() as f64) as f32
 }
 
-/// The boats sample's floaters (tests/evidence/r5-water/boats) sit in the
+/// The boats sample's floaters (the former test sample sit in the
 /// sea the GPU draws: at their poses at 5 s and 6.5 s
 /// (`boats/waterline.txt`, the run's dump), the drawn surface's height
 /// under each, read back from the GPU (`Renderer::sea_heights`), has the
@@ -37,7 +37,7 @@ fn difference(a: &RgbaImage, b: &RgbaImage) -> f32 {
 fn the_floaters_sit_in_the_drawn_sea() {
     let text = std::fs::read_to_string(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../tests/evidence/r5-water/boats/waterline.txt"
+        "/../og-render/tests/assets/waterline.txt"
     ))
     .expect("the floaters' poses");
     let water = og_render::Water {

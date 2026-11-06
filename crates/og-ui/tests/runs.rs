@@ -85,7 +85,7 @@ fn faces(scene: &mut RenderScene) -> Faces {
     );
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../templates/ui-kit/assets/fonts/NotoSansArabic-subset.ttf"
+        "/../../tests/fixtures/ui-text/assets/fonts/NotoSansArabic-subset.ttf"
     );
     let file = FontFile::new(Arc::new(
         std::fs::read(path).expect("the kit's Arabic font"),
@@ -133,7 +133,7 @@ fn a_styles_cjk_companion_draws_its_chinese() {
     // glyphs render at run time.
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../templates/game/assets/fonts/NotoSansSC-Regular-subset.ttf"
+        "/../../tests/fixtures/cook-assets/assets/fonts/NotoSansSC-Regular-subset.ttf"
     );
     let file = FontFile::new(Arc::new(
         std::fs::read(path).expect("the template's Chinese font"),

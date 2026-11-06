@@ -221,7 +221,7 @@ type Parts = (
 /// a checker ground, the camera orbiting the bounds at `SPIKE_TIME`, and the
 /// shadow box fitted to the same bounds. The arithmetic follows the spike
 /// exactly (this reproduced `.spike-out/native.png` byte for byte, see
-/// `tests/evidence/M0/NOTES.md`).
+/// `the former test sample`).
 fn layout(scene: &mut RenderScene, models: &[Parts], count: u32, spacing: f32) {
     let n = models.len().max(1) as f32;
     let side_count = (count as f32).sqrt().ceil();

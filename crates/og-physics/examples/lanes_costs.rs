@@ -1,4 +1,4 @@
-//! The physics step with lanes off and on (tests/evidence/P4/physics-lanes/):
+//! The physics step with lanes off and on (the former test sample
 //! the 500-body pile of the determinism test (`tests/support/pile.rs`:
 //! a kinematic paddle, a sensor, one body churned every 20 ticks) and pens
 //! of `n` dynamic bodies of the same mixed shapes dropped on a floor, each

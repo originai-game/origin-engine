@@ -97,7 +97,7 @@ fn project() -> &'static Path {
             std::fs::create_dir_all(p.parent().unwrap()).unwrap();
             std::fs::write(p, bytes).unwrap();
         };
-        let showcase = repo().join("templates/fx-showcase/assets");
+        let showcase = repo().join("tests/fixtures/baked-light/assets");
         write(
             "models/cornell.glb",
             &std::fs::read(showcase.join("models/cornell.glb")).unwrap(),

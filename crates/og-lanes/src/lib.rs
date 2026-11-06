@@ -622,7 +622,7 @@ impl<T> Shared<T> {
 /// [`imp::ranges`], each result written in its item's slot. The pool's
 /// loop is compiled once, not once per item and result type: the lanes
 /// wasm carried about 300 kB of rayon instantiations of these helpers,
-/// one per caller (tests/evidence/P4/wasm-size/README.md).
+/// one per caller (the former test sample
 fn par_map<T, R, F>(items: &[T], grain: usize, f: F) -> Vec<R>
 where
     T: Sync,

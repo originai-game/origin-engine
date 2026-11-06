@@ -8,7 +8,7 @@
 //!
 //!     cargo run -p og-audio --example feature_costs
 //!
-//! The numbers in tests/evidence/r4/audio-propagation/NOTES.md are this
+//! The numbers in the former test sample are this
 //! example in the dev profile (og-audio at opt-level 0), so they are
 //! ratios to the base more than real-time costs; the release mixer is
 //! measured at a wave's end.

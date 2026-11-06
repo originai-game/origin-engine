@@ -681,7 +681,7 @@ pub(crate) fn assign_levels(cmds: Vec<(DrawCmd, Affine)>) -> Vec<DrawItem> {
 /// in the cells of a coarse grid it touches, and a command tests only the
 /// rectangles of its own cells: a screen transition's dissolve is 1,620
 /// quads over the frame, and testing each against every earlier command was
-/// 7 to 17 ms of a dev tick (Lantern Vale's playtests, tests/evidence/P4/perf-2).
+/// 7 to 17 ms of a dev tick (Lantern Vale's playtests, the former test sample
 fn assign(keyed: &[(Rect, Batch)]) -> Vec<Option<i32>> {
     let bounds: Vec<Rect> = keyed.iter().map(|(r, _)| *r).collect();
     let grid = Grid::over(&bounds);
@@ -747,7 +747,7 @@ impl Grid {
         // About one cell for every four commands, each at least 32 CSS px
         // across: a grid of the frame's 920 cells cost more to fill (a
         // backdrop is filed in every cell) than a HUD of a few dozen
-        // commands cost to test pair by pair (tests/evidence/r4/perf-ui).
+        // commands cost to test pair by pair (the former test sample
         let cells = (bounds.len() / 4).clamp(1, 64 * 64) as f32;
         let area = ((x1 - x0).max(1.0) * (y1 - y0).max(1.0)).max(1.0);
         let side = (area / cells).sqrt().max(32.0);

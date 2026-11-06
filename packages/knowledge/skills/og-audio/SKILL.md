@@ -22,7 +22,7 @@ given and taken, pickups, a door, a death, a win and a loss, every UI press.
   on the matching voice (it starts again from the top in that tick,
   playing or not, and the engine clears it; archetypes written before
   `retrigger` set `playing`, stopping a playing voice one tick and
-  starting it the next). Every archetype in `templates/archetypes` does
+  starting it the next). Every archetype in the former test sample does
   this; copy a `Voices`.
 - Vary repeated sounds: `pitch` 0.92–1.08 from the world's `og.Rng` for
   footsteps, hits and coins, so a stream of them does not machine-gun.
@@ -105,21 +105,20 @@ a mix bug, not loudness.
   `og.MusicBeat` brings, start the next bar's stems at that event's `time`
   plus a beat. og.audio runs on the world's ticks, which keep going at
   time scale 0, so a pause stops the stems and a resume starts them again.
-  `templates/archetypes/rhythm` (its `Band` system, and
-  `tests/band.og.ts`, which asserts every `startAt`) does this.
+  Assert every stem's `startAt` in the game's playtest.
 - Part-way starts: `startOffset` (seconds into the clip) with `startAt`
   starts a source that far in, to the sample, so a resume carries on from
   the beat it paused on: each stem sounding then starts at the count-in's
-  end with `startOffset` how far into it that beat is (the rhythm's
-  `tests/pause.og.ts` asserts both).
+  end with `startOffset` how far into it that beat is. Assert both fields
+  across pause and resume.
 - What the player hears lags the mix by the device's output latency:
   `og.audio.outputLatency(world)` (seconds; the Web Audio context's
   `outputLatency` or `baseLatency` plus the engine's buffer on the web, the
   device's callback-to-playback time natively, 0 headless; the system
   declares `og.Audio` among its reads). A rhythm game judges a press at
   its tick's time plus its event's `at` (og-game, input) less this and a
-  calibrated offset for the rest of the chain (the rhythm's `Play` system,
-  `tests/timing.og.ts`).
+  calibrated offset for the rest of the chain. Test presses on both sides
+  of the scoring window, including fractional-tick event times.
 - A crossfade: the new track `startAt: nextBar` with `fade: 2`, the old one
   `playing: false` with the same `fade`.
 - Music and sounds can stay as the generator returned them: `og cook`

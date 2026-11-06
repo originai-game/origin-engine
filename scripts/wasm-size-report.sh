@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Where a wasm module's bytes are, per crate and per function, measured on
 # the module that ships (wasm-bindgen, then scripts/wasm-opt.sh's flags)
-# rather than on the raw cargo output; tests/evidence/P4/wasm-size/README.md
+# rather than on the raw cargo output; the former test sample
 # has a report and what it led to.
 #
 #   scripts/wasm-size-report.sh [-n N] [--keep DIR] MODULE.wasm

@@ -30,7 +30,7 @@ use support::*;
 fn cooked() -> (CookedFont, CookedFont) {
     let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-ui-materials");
     let _ = std::fs::remove_dir_all(&root);
-    let kit = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../templates/ui-kit/assets");
+    let kit = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/ui-text/assets");
     let icons = root.join("assets/icons/iconoir");
     std::fs::create_dir_all(&icons).expect("icons dir");
     for e in std::fs::read_dir(kit.join("icons/iconoir")).expect("iconoir") {
@@ -317,7 +317,7 @@ fn the_materials_frame_matches_its_reference() {
     // the set grows with the kit, so the count is read from it rather than fixed here.
     let declared: Vec<String> = std::fs::read_to_string(
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../templates/ui-kit/assets/icons/iconoir.ogt"),
+            .join("../../tests/fixtures/ui-text/assets/icons/iconoir.ogt"),
     )
     .expect("the kit's set")
     .lines()

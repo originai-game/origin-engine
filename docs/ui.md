@@ -1017,10 +1017,8 @@ reads them against, aiming at the look of shipped commercial games
 Rail, Hades, Balatro), desktop browser first. It is a reviewer's read, not
 an engine check.
 
-**Concepts.** `tests/evidence/ui-art/concepts/` holds the approved concept
-image per direction and screen (`<direction>-<screen>.jpg`: hud, menu,
-gacha, shop, inventory, settings, dialogue; its README lists them). B,
-clean sci-fi, is the target of the engine's default style (§12.1) and the
+**Concepts.** Review images live in the art review, not committed evidence.
+Clean sci-fi is the target of the engine's default style (§12.1) and the
 kit's own frames; A, dark fantasy, of the fantasy pack; C, bright
 stylised anime, of the kawaii pack. A frame is read beside its concept (or
 the nearest one) for hierarchy, material and art, not pixel positions. In
@@ -1061,8 +1059,8 @@ are for system chrome only (close, back, settings, search, sort,
 chevrons). A kit or reference frame showing a placeholder silhouette, a
 letter in an empty slot, a star glyph as card art or a flat-colour wash as
 key art falls short; an empty equipment slot shows its kind's faint
-silhouette, not a letter. The kit's painted art is
-`templates/ui-kit/assets/textures/art/` (its `SOURCE.md`).
+silhouette, not a letter. Games supply their own painted art; the reusable
+UI packs supply controls and styles, not a gallery's inventory of art.
 
 #### 15.5.4 Numerals
 

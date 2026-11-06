@@ -45,7 +45,7 @@ const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
-const project = join(repo, "templates", "archetypes", "runner");
+const project = join(repo, "tests", "fixtures", "browser-host");
 const work = join(pkg, "dist", "test-wire");
 const outFile = resolve(opt("--out") ?? join(work, "transcript.json"));
 const safari = args.includes("--safari") ? safariDriverPath(args) : undefined;

@@ -111,7 +111,7 @@ impl Backend {
     /// writes 0). Without the pass, grass's LOD 1 and 2 blades, whose
     /// draws start at `l * GRASS_LOD_STRIDE`, drew as LOD 0, and the
     /// grass past LOD 0's ring was missing on DX12 (studio-win, 2026-11-05;
-    /// tests/evidence/compat/windows/native/).
+    /// the former test sample
     pub fn instance(self) -> wgpu::Instance {
         let mut flags = wgpu::InstanceFlags::from_build_config();
         if !self.backends().contains(wgpu::Backends::DX12) {
@@ -322,7 +322,7 @@ pub enum Culling {
 }
 
 /// The instances (not skinned) from which [`Culling::Auto`] culls a frame
-/// on the GPU. Measured on an M4 Pro (tests/evidence/P3/culling/NOTES.md):
+/// on the GPU. Measured on an M4 Pro (the former test sample
 /// at 40,000 instances the GPU path saved about 1.1 ms of `render` per
 /// frame natively (city-street, median 6.40 to 5.27 ms) and 0.6 ms on
 /// WebGPU, while on scenes of tens of instances it cost 0.4 to 1 ms more

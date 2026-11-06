@@ -2784,7 +2784,7 @@ mod tests {
         assert!(seconds(&next) > late);
     }
 
-    /// The boats sample's floaters (tests/evidence/r5-water/boats) ride the
+    /// The boats sample's floaters (the former test sample ride the
     /// drawn sea: at each, at several times, and at the hulls' keel corners
     /// and the buoys' centres as the run's dump has them
     /// (`boats/waterline.txt`), the height water.wgsl's vertices draw
@@ -2836,7 +2836,7 @@ mod tests {
         // The dumped poses' keel corners and buoy centres (5 s and 6.5 s).
         let poses = std::fs::read_to_string(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../tests/evidence/r5-water/boats/waterline.txt"
+            "/../og-render/tests/assets/waterline.txt"
         ))
         .expect("the floaters' poses");
         let mut points: Vec<(f64, f32, f32)> = Vec::new();

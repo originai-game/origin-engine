@@ -1,5 +1,5 @@
 // A template in headless Chrome, through `og build`'s web output: builds
-// templates/game or --project (cooking it first when cooked/ is missing) with
+// the former test sample or --project (cooking it first when cooked/ is missing) with
 // src/node/web-build.ts, serves the output with COOP/COEP, loads the play
 // page and calls the probe published on globalThis.__runtime_probe__ over the
 // request ring: hello, the --commands script (scheduled from the current
@@ -29,7 +29,7 @@ const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
-const project = resolve(opt("--project") ?? join(repo, "templates", "game"));
+const project = resolve(opt("--project") ?? join(repo, "tests", "fixtures", "vehicle-terrain"));
 const script = opt("--commands");
 const advance = Number(opt("--advance") ?? 0);
 const chrome =
