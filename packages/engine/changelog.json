@@ -5,6 +5,16 @@
     "simulation": "changed",
     "breaking": [
       {
+        "member": "og.ui layer stack order, pop and replace",
+        "change": "The layer stack is ordered by layer kind (hud, menu, modal, popover, toast, tooltip, system), then by push order, as Unreal CommonUI's layer groups are: a modal pushed before a menu stays over it, and a toast pushed before a modal stays over it. og.ui.pop, og.ui.replace, a document's `pop` and Back act on the active layer (the top one whose input is menu or all; the topmost with none), not the topmost: a toast over a pause menu no longer swallows Back or a pop meant for the menu, and a document's pop pops its own layer.",
+        "fix": "Nothing for most games. A game that pushed a toast or HUD screen and called og.ui.pop to remove it while a menu was open removes it by pushing it as a menu, or empties its viewmodel instead; a game that read the last of og.ui.layers as the focused layer reads the one whose active is true.",
+        "find": [
+          "og.ui.pop",
+          "og.ui.replace",
+          "og.ui.layers"
+        ]
+      },
+      {
         "member": "particle emitters: lit mesh blend default",
         "change": "An emitter drawn as lit meshes (render mesh with lit true) and no blend line now blends alpha, not additive: a solid chip, shard or splinter covers what is behind it instead of being added onto it, where a lit grey chip glowed white. Unlit meshes, billboards and sprites still blend additive by default, and a blend line always wins.",
         "fix": "Nothing for chips, shards and splinters: they now draw solid. An emitter that meant lit meshes to glow (lit embers, magic shards) adds a blend additive line.",
@@ -164,6 +174,10 @@
       }
     ],
     "added": [
+      {
+        "member": "UiLayer.active, activate and deactivate events",
+        "summary": "og.ui.layers lists active (the layer that takes Back, pop and focus), and a layer's events gain `activate` and `deactivate` as it becomes and stops being the active one (CommonUI's OnActivated and OnDeactivated), so a screen refreshes what it shows when the player returns to it."
+      },
       {
         "member": "motion timing table",
         "summary": "The design language's motion.timing (packages/design) names what hover, press, enter, exit, cascades, toasts and screen transitions move on; og-ui's widgets read it (theme::TIMING), and a style's motion block overrides a row with the new `toastHold <ms> [<error ms>]`, `screen <ms>` and `magnet <0–1>` lines beside the existing hoverSpring, pressSpring, eases and stagger. The defaults are the numbers the widgets used before, so no frame moves. VirtualCursorDesc.magnet 0 now takes the style's magnet."

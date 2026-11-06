@@ -41,6 +41,18 @@ is one line here, written at the merge that changes
   layered-silhouette, luminous-pixel, monochrome-pixel and
   minimal-geometric are redrawn in their looks' own palettes.
 
+- **The layer stack follows Unreal CommonUI's activatable screens.** The
+  stack is ordered by layer kind, then push order, so a modal pushed before
+  a menu stays over it and a toast stays over both. Back, focus, `pop`
+  (og.ui.pop and a document's) and og.ui.replace act on the active layer,
+  the top one whose input is menu or all, not the topmost: a toast over a
+  pause menu no longer swallows Back. A document's `pop` pops its own
+  layer. ui: `UiLayer.active` added; `UiDocEvent.kind` gains `activate` and
+  `deactivate`, sent as a layer becomes and stops being the active one;
+  `push`, `pop` and `replace` documented as acting by kind and on the
+  active layer (a break for a game that popped a toast over a menu;
+  changelog.json says how to fix it).
+
 - **Native accessibility has a shared-frame transport.** An opt-in,
   versioned socket extension carries incremental AccessKit trees with
   stable ids and frame-pixel bounds. Returned actions reach controls on

@@ -17265,7 +17265,7 @@
         },
         {
           "name": "push",
-          "doc": "Push a screen onto the layer stack (docs/ui.md §8.1); the layer under it remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it.",
+          "doc": "Push a screen onto the layer stack (docs/ui.md §8.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it.",
           "params": [
             {
               "name": "world",
@@ -17292,7 +17292,7 @@
         },
         {
           "name": "pop",
-          "doc": "Pop the top layer; the one under it takes its remembered focus. Answers the popped screen's name (empty: the stack was empty).",
+          "doc": "Pop the active layer; the next active one takes its remembered focus. Answers the popped screen's name (empty: the stack was empty).",
           "params": [
             {
               "name": "world",
@@ -17306,7 +17306,7 @@
         },
         {
           "name": "replace",
-          "doc": "Replace the top layer with a screen.",
+          "doc": "Replace the active layer with a screen.",
           "params": [
             {
               "name": "world",
@@ -73841,7 +73841,7 @@
         },
         "kind": {
           "type": "string",
-          "description": "click, changed, select, emit, action, set or back."
+          "description": "click, changed, select, emit, action, set, back, or activate and deactivate (a layer became or stopped being the active one)."
         },
         "name": {
           "type": "string",
@@ -73934,11 +73934,15 @@
         },
         "remember": {
           "type": "boolean",
-          "description": "Focus returns where it was when it is the top again."
+          "description": "Focus returns where it was when it is the active layer again."
         },
         "top": {
           "type": "boolean",
-          "description": "It is the top layer."
+          "description": "It is the topmost layer."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "It is the active layer: the top one whose input is menu or all (the topmost with none). It takes Back, pop and focus."
         },
         "hidden": {
           "type": "boolean",
@@ -73961,6 +73965,7 @@
         "focus",
         "remember",
         "top",
+        "active",
         "hidden",
         "inert"
       ],

@@ -88,6 +88,8 @@ pub struct DocHost {
     pub(crate) layers: crate::layers::LayerStack,
     /// The mount being built is the top layer that takes input (its `on action` triggers fire).
     pub(crate) accepts: bool,
+    /// The serial of the layer being built (0 outside one): what its `pop` pops.
+    pub(crate) building: u32,
 }
 
 impl Ui {

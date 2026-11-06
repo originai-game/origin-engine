@@ -4,7 +4,7 @@
     doc "Something a document did (docs/ui.md §10.2): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`."
     field mount String "The document's mount: the screen's name, or a component instance's path."
     field path String "The element's path."
-    field kind String "click, changed, select, emit, action, set or back."
+    field kind String "click, changed, select, emit, action, set, back, or activate and deactivate (a layer became or stopped being the active one)."
     field name String "The element's id (click), the prop (changed), the list (select), the event or action's name, or the viewmodel path a `set` wrote."
     field value Json "The new value (changed, set), the row's index (select); null otherwise."
   }
@@ -27,8 +27,9 @@
     field under String "What happens to the layers under it: none, dim, blur or hide."
     field back String "What Back does: pop, none or `emit <event>`."
     field focus String "Where focus starts, a path below its root (empty: its first control)."
-    field remember bool "Focus returns where it was when it is the top again."
-    field top bool "It is the top layer."
+    field remember bool "Focus returns where it was when it is the active layer again."
+    field top bool "It is the topmost layer."
+    field active bool "It is the active layer: the top one whose input is menu or all (the topmost with none). It takes Back, pop and focus."
     field hidden bool "A layer above hides it: it is not built."
     field inert bool "A menu layer above takes its input."
   }
@@ -108,7 +109,7 @@
   }
 
   fn push {
-    doc "Push a screen onto the layer stack (docs/ui.md §8.1); the layer under it remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it."
+    doc "Push a screen onto the layer stack (docs/ui.md §8.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it."
     param world World "The world."
     param screen String "The screen's name."
     param vm Json "Its viewmodel (null: its document's first fixture, else an empty object)." {
@@ -118,13 +119,13 @@
   }
 
   fn pop {
-    doc "Pop the top layer; the one under it takes its remembered focus. Answers the popped screen's name (empty: the stack was empty)."
+    doc "Pop the active layer; the next active one takes its remembered focus. Answers the popped screen's name (empty: the stack was empty)."
     param world World "The world."
     returns String
   }
 
   fn replace {
-    doc "Replace the top layer with a screen."
+    doc "Replace the active layer with a screen."
     param world World "The world."
     param screen String "The screen's name."
     param vm Json "Its viewmodel." {

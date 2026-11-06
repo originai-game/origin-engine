@@ -210,7 +210,7 @@ impl Ui {
                     .iter()
                     .map(|l| {
                         let mut v = l.to_json();
-                        if l.top {
+                        if l.active {
                             v["focused"] = json!(self.focus_path(0));
                         }
                         v

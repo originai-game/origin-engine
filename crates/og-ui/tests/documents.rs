@@ -443,6 +443,85 @@ fn a_menu_over_the_hud_takes_input_back_and_focus() {
     assert_eq!(ui.action_bar().len(), 0);
 }
 
+/// The stack is ordered by layer kind, as CommonUI's layer groups are, and
+/// the active layer is the top one that takes input, not the topmost: a
+/// toast over a menu leaves Back, focus and pop with the menu, a modal
+/// stays over a menu pushed after it, and a layer hears when it becomes
+/// and stops being the active one.
+#[test]
+fn the_active_layer_is_the_top_input_taker_of_a_kind_ordered_stack() {
+    let mut ui = ui();
+    let screen = |name: &str, layer: &str| {
+        format!(
+            "type screen\nversion 1\n---\nname \"{name}\"\nlayer {layer}\ncolumn Root {{\n  button Ok {{\n    text \"Ok\"\n  }}\n}}\n"
+        )
+    };
+    for (n, l) in [("notice", "toast"), ("confirm", "modal")] {
+        let src = screen(n, l);
+        ui.define_document(UiDocument::parse(&format!("ui/{n}.ogt"), &src).unwrap());
+    }
+    let names =
+        |ui: &Ui| -> Vec<String> { ui.layer_stack().into_iter().map(|l| l.screen).collect() };
+    ui.push_screen("hud", json!({ "gold": 1 })).unwrap();
+    ui.push_screen("shop", Value::Null).unwrap();
+    tick(&mut ui, InputFrame::default());
+    tick(&mut ui, InputFrame::default());
+    ui.take_doc_events();
+    // A toast over the menu: the menu keeps Back and focus.
+    ui.push_screen("notice", Value::Null).unwrap();
+    tick(&mut ui, InputFrame::default());
+    tick(&mut ui, InputFrame::default());
+    assert_eq!(ui.focus_path(0), "shop/Shop/Footer/Buy");
+    // A modal pushed now sits under the toast and over the menu.
+    ui.push_screen("confirm", Value::Null).unwrap();
+    assert_eq!(names(&ui), ["hud", "shop", "confirm", "notice"]);
+    tick(&mut ui, InputFrame::default());
+    tick(&mut ui, InputFrame::default());
+    assert_eq!(ui.focus_path(0), "confirm/Root/Ok", "the modal is active");
+    let events = ui.take_doc_events();
+    let fired = |kind: &str| -> Vec<String> {
+        events
+            .iter()
+            .filter(|e| e.kind == kind)
+            .map(|e| e.mount.clone())
+            .collect()
+    };
+    assert_eq!(fired("deactivate"), ["shop"], "{events:?}");
+    assert_eq!(fired("activate"), ["confirm"], "{events:?}");
+    // A menu pushed after the modal goes under it.
+    let src = screen("options", "menu");
+    ui.define_document(UiDocument::parse("ui/options.ogt", &src).unwrap());
+    ui.push_screen("options", Value::Null).unwrap();
+    assert_eq!(names(&ui), ["hud", "shop", "options", "confirm", "notice"]);
+    tick(&mut ui, InputFrame::default());
+    tick(&mut ui, InputFrame::default());
+    assert_eq!(
+        ui.focus_path(0),
+        "confirm/Root/Ok",
+        "the modal stays active"
+    );
+    // Back pops the modal, not the toast, then the menu under it; the shop
+    // returns with its focus.
+    ui.take_doc_events();
+    for _ in 0..2 {
+        tick(&mut ui, key("Escape"));
+        tick(&mut ui, InputFrame::default());
+        tick(&mut ui, InputFrame::default());
+        assert!(!ui.back(), "a menu layer took Back");
+    }
+    assert_eq!(names(&ui), ["hud", "shop", "notice"]);
+    assert_eq!(ui.focus_path(0), "shop/Shop/Footer/Buy", "focus memory");
+    let activated: Vec<String> = ui
+        .take_doc_events()
+        .into_iter()
+        .filter(|e| e.kind == "activate")
+        .map(|e| e.mount)
+        .collect();
+    assert_eq!(activated, ["options", "shop"]);
+    // pop_screen pops the active layer too.
+    assert_eq!(ui.pop_screen().as_deref(), Some("shop"));
+}
+
 #[test]
 fn dump_ui_names_each_elements_layer_source_bindings_and_states() {
     let mut ui = ui();

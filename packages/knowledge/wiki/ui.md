@@ -840,9 +840,9 @@ module ui {
 | [`og.ui.screen`](#fn-screen) | function | Mount a screen document (`type screen`, loaded with og.load.document) as a layer of the stack, pushed when it is not on it, with its viewmodel for this tick, and build it here: code fills its slots after this call (og.ui.openSlot). Its bindings read the viewmodel every tick, a Capitalised root (`Wallet.gold`) the resource as of the last tick; two-way controls write into it (each write is a `set` event). Layers code does not mount are built at the frame's end with the viewmodel they have. |
 | [`og.ui.component`](#fn-component) | function | Mount a component document (`type component`) here, inside whatever is open: its props are its viewmodel, its two-way writes come back in the answer's props. |
 | [`og.ui.openSlot`](#fn-openSlot) | function | Open a document's slot (a `slot` element built this tick) so code fills it; its children follow until og.ui.close. False when no such slot was built this tick. |
-| [`og.ui.push`](#fn-push) | function | Push a screen onto the layer stack (docs/ui.md §8.1); the layer under it remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it. |
-| [`og.ui.pop`](#fn-pop) | function | Pop the top layer; the one under it takes its remembered focus. Answers the popped screen's name (empty: the stack was empty). |
-| [`og.ui.replace`](#fn-replace) | function | Replace the top layer with a screen. |
+| [`og.ui.push`](#fn-push) | function | Push a screen onto the layer stack (docs/ui.md §8.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it. |
+| [`og.ui.pop`](#fn-pop) | function | Pop the active layer; the next active one takes its remembered focus. Answers the popped screen's name (empty: the stack was empty). |
+| [`og.ui.replace`](#fn-replace) | function | Replace the active layer with a screen. |
 | [`og.ui.clear`](#fn-clear) | function | Empty the layer stack. |
 | [`og.ui.layers`](#fn-layers) | function | The layer stack, bottom first. |
 | [`og.ui.screenVm`](#fn-screenVm) | function | A layer's viewmodel as its two-way bindings left it (the top layer of that screen); null when it is not on the stack. |
@@ -8788,7 +8788,7 @@ fn screen {
 }
 ```
 
-<sub>`api.ogt` line 25578</sub>
+<sub>`api.ogt` line 25579</sub>
 
 <a id="fn-component"></a>
 
@@ -8822,7 +8822,7 @@ fn component {
 }
 ```
 
-<sub>`api.ogt` line 25587</sub>
+<sub>`api.ogt` line 25588</sub>
 
 <a id="fn-openSlot"></a>
 
@@ -8850,13 +8850,13 @@ fn openSlot {
 }
 ```
 
-<sub>`api.ogt` line 25597</sub>
+<sub>`api.ogt` line 25598</sub>
 
 <a id="fn-push"></a>
 
 ### `og.ui.push`
 
-Push a screen onto the layer stack (docs/ui.md §8.1); the layer under it remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it.
+Push a screen onto the layer stack (docs/ui.md §8.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it.
 
 ```ts
 og.ui.push(world: World, screen: string, vm?: unknown): Result<number>
@@ -8874,7 +8874,7 @@ Binding symbol `og_ui_push` · publish builds: kept
 
 ```ogt
 fn push {
-  doc "Push a screen onto the layer stack (docs/ui.md §8.1); the layer under it remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it."
+  doc "Push a screen onto the layer stack (docs/ui.md §8.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it."
   param world World "The world."
   param screen String "The screen's name."
   param vm Json "Its viewmodel (null: its document's first fixture, else an empty object)." {
@@ -8884,13 +8884,13 @@ fn push {
 }
 ```
 
-<sub>`api.ogt` line 25603</sub>
+<sub>`api.ogt` line 25604</sub>
 
 <a id="fn-pop"></a>
 
 ### `og.ui.pop`
 
-Pop the top layer; the one under it takes its remembered focus. Answers the popped screen's name (empty: the stack was empty).
+Pop the active layer; the next active one takes its remembered focus. Answers the popped screen's name (empty: the stack was empty).
 
 ```ts
 og.ui.pop(world: World): string
@@ -8906,19 +8906,19 @@ Binding symbol `og_ui_pop` · publish builds: kept
 
 ```ogt
 fn pop {
-  doc "Pop the top layer; the one under it takes its remembered focus. Answers the popped screen's name (empty: the stack was empty)."
+  doc "Pop the active layer; the next active one takes its remembered focus. Answers the popped screen's name (empty: the stack was empty)."
   param world World "The world."
   returns String
 }
 ```
 
-<sub>`api.ogt` line 25613</sub>
+<sub>`api.ogt` line 25614</sub>
 
 <a id="fn-replace"></a>
 
 ### `og.ui.replace`
 
-Replace the top layer with a screen.
+Replace the active layer with a screen.
 
 ```ts
 og.ui.replace(world: World, screen: string, vm?: unknown): Result<number>
@@ -8936,7 +8936,7 @@ Binding symbol `og_ui_replace` · publish builds: kept
 
 ```ogt
 fn replace {
-  doc "Replace the top layer with a screen."
+  doc "Replace the active layer with a screen."
   param world World "The world."
   param screen String "The screen's name."
   param vm Json "Its viewmodel." {
@@ -8946,7 +8946,7 @@ fn replace {
 }
 ```
 
-<sub>`api.ogt` line 25619</sub>
+<sub>`api.ogt` line 25620</sub>
 
 <a id="fn-clear"></a>
 
@@ -8974,7 +8974,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 25629</sub>
+<sub>`api.ogt` line 25630</sub>
 
 <a id="fn-layers"></a>
 
@@ -9002,7 +9002,7 @@ fn layers {
 }
 ```
 
-<sub>`api.ogt` line 25635</sub>
+<sub>`api.ogt` line 25636</sub>
 
 <a id="fn-screenVm"></a>
 
@@ -9032,7 +9032,7 @@ fn screenVm {
 }
 ```
 
-<sub>`api.ogt` line 25641</sub>
+<sub>`api.ogt` line 25642</sub>
 
 <a id="fn-docEvents"></a>
 
@@ -9060,7 +9060,7 @@ fn docEvents {
 }
 ```
 
-<sub>`api.ogt` line 25648</sub>
+<sub>`api.ogt` line 25649</sub>
 
 <a id="fn-gameInput"></a>
 
@@ -9088,7 +9088,7 @@ fn gameInput {
 }
 ```
 
-<sub>`api.ogt` line 25654</sub>
+<sub>`api.ogt` line 25655</sub>
 
 <a id="fn-paused"></a>
 
@@ -9116,7 +9116,7 @@ fn paused {
 }
 ```
 
-<sub>`api.ogt` line 25660</sub>
+<sub>`api.ogt` line 25661</sub>
 
 <a id="fn-defineAction"></a>
 
@@ -9146,7 +9146,7 @@ fn defineAction {
 }
 ```
 
-<sub>`api.ogt` line 25666</sub>
+<sub>`api.ogt` line 25667</sub>
 
 <a id="fn-action"></a>
 
@@ -9174,7 +9174,7 @@ fn action {
 }
 ```
 
-<sub>`api.ogt` line 25673</sub>
+<sub>`api.ogt` line 25674</sub>
 
 <a id="fn-actionHeld"></a>
 
@@ -9202,7 +9202,7 @@ fn actionHeld {
 }
 ```
 
-<sub>`api.ogt` line 25679</sub>
+<sub>`api.ogt` line 25680</sub>
 
 <a id="fn-glyph"></a>
 
@@ -9232,7 +9232,7 @@ fn glyph {
 }
 ```
 
-<sub>`api.ogt` line 25685</sub>
+<sub>`api.ogt` line 25686</sub>
 
 <a id="fn-frameGlyph"></a>
 
@@ -9260,7 +9260,7 @@ fn frameGlyph {
 }
 ```
 
-<sub>`api.ogt` line 25692</sub>
+<sub>`api.ogt` line 25693</sub>
 
 <a id="fn-device"></a>
 
@@ -9288,7 +9288,7 @@ fn device {
 }
 ```
 
-<sub>`api.ogt` line 25698</sub>
+<sub>`api.ogt` line 25699</sub>
 
 <a id="fn-setDevice"></a>
 
@@ -9318,7 +9318,7 @@ fn setDevice {
 }
 ```
 
-<sub>`api.ogt` line 25704</sub>
+<sub>`api.ogt` line 25705</sub>
 
 <a id="fn-actionBar"></a>
 
@@ -9346,7 +9346,7 @@ fn actionBar {
 }
 ```
 
-<sub>`api.ogt` line 25711</sub>
+<sub>`api.ogt` line 25712</sub>
 
 <a id="fn-documentSchema"></a>
 
@@ -9369,7 +9369,7 @@ fn documentSchema {
 }
 ```
 
-<sub>`api.ogt` line 25717</sub>
+<sub>`api.ogt` line 25718</sub>
 
 <a id="fn-setProp"></a>
 
@@ -9403,7 +9403,7 @@ fn setProp {
 }
 ```
 
-<sub>`api.ogt` line 25722</sub>
+<sub>`api.ogt` line 25723</sub>
 
 <a id="fn-saveEdits"></a>
 
@@ -9431,7 +9431,7 @@ fn saveEdits {
 }
 ```
 
-<sub>`api.ogt` line 25731</sub>
+<sub>`api.ogt` line 25732</sub>
 
 ## Types
 
@@ -28776,7 +28776,7 @@ Something a document did (docs/ui.md §10.2): a click, a changed control, a list
 |---|---|---|---|---|---|---|
 | `mount` | `string` | `""` | — | — | — | The document's mount: the screen's name, or a component instance's path. |
 | `path` | `string` | `""` | — | — | — | The element's path. |
-| `kind` | `string` | `""` | — | — | — | click, changed, select, emit, action, set or back. |
+| `kind` | `string` | `""` | — | — | — | click, changed, select, emit, action, set, back, or activate and deactivate (a layer became or stopped being the active one). |
 | `name` | `string` | `""` | — | — | — | The element's id (click), the prop (changed), the list (select), the event or action's name, or the viewmodel path a `set` wrote. |
 | `value` | `unknown` | `null` | — | — | — | The new value (changed, set), the row's index (select); null otherwise. |
 
@@ -28785,7 +28785,7 @@ struct UiDocEvent {
   doc "Something a document did (docs/ui.md §10.2): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`."
   field mount String "The document's mount: the screen's name, or a component instance's path."
   field path String "The element's path."
-  field kind String "click, changed, select, emit, action, set or back."
+  field kind String "click, changed, select, emit, action, set, back, or activate and deactivate (a layer became or stopped being the active one)."
   field name String "The element's id (click), the prop (changed), the list (select), the event or action's name, or the viewmodel path a `set` wrote."
   field value Json "The new value (changed, set), the row's index (select); null otherwise."
 }
@@ -28833,8 +28833,9 @@ A layer of the stack (docs/ui.md §8.1), as its screen declares it.
 | `under` | `string` | `""` | — | — | — | What happens to the layers under it: none, dim, blur or hide. |
 | `back` | `string` | `""` | — | — | — | What Back does: pop, none or `emit <event>`. |
 | `focus` | `string` | `""` | — | — | — | Where focus starts, a path below its root (empty: its first control). |
-| `remember` | `boolean` | `false` | — | — | — | Focus returns where it was when it is the top again. |
-| `top` | `boolean` | `false` | — | — | — | It is the top layer. |
+| `remember` | `boolean` | `false` | — | — | — | Focus returns where it was when it is the active layer again. |
+| `top` | `boolean` | `false` | — | — | — | It is the topmost layer. |
+| `active` | `boolean` | `false` | — | — | — | It is the active layer: the top one whose input is menu or all (the topmost with none). It takes Back, pop and focus. |
 | `hidden` | `boolean` | `false` | — | — | — | A layer above hides it: it is not built. |
 | `inert` | `boolean` | `false` | — | — | — | A menu layer above takes its input. |
 
@@ -28850,8 +28851,9 @@ struct UiLayer {
   field under String "What happens to the layers under it: none, dim, blur or hide."
   field back String "What Back does: pop, none or `emit <event>`."
   field focus String "Where focus starts, a path below its root (empty: its first control)."
-  field remember bool "Focus returns where it was when it is the top again."
-  field top bool "It is the top layer."
+  field remember bool "Focus returns where it was when it is the active layer again."
+  field top bool "It is the topmost layer."
+  field active bool "It is the active layer: the top one whose input is menu or all (the topmost with none). It takes Back, pop and focus."
   field hidden bool "A layer above hides it: it is not built."
   field inert bool "A menu layer above takes its input."
 }
@@ -28882,7 +28884,7 @@ enum UiActionTrigger {
 }
 ```
 
-<sub>`api.ogt` line 25529</sub>
+<sub>`api.ogt` line 25530</sub>
 
 <a id="type-UiActionDesc"></a>
 
@@ -28919,7 +28921,7 @@ struct UiActionDesc {
 }
 ```
 
-<sub>`api.ogt` line 25536</sub>
+<sub>`api.ogt` line 25537</sub>
 
 <a id="type-UiDevice"></a>
 
@@ -28950,7 +28952,7 @@ enum UiDevice {
 }
 ```
 
-<sub>`api.ogt` line 25552</sub>
+<sub>`api.ogt` line 25553</sub>
 
 <a id="type-UiGlyph"></a>
 
@@ -28973,7 +28975,7 @@ struct UiGlyph {
 }
 ```
 
-<sub>`api.ogt` line 25562</sub>
+<sub>`api.ogt` line 25563</sub>
 
 <a id="type-UiActionHint"></a>
 
@@ -29000,7 +29002,7 @@ struct UiActionHint {
 }
 ```
 
-<sub>`api.ogt` line 25569</sub>
+<sub>`api.ogt` line 25570</sub>
 
 ## Column kinds
 

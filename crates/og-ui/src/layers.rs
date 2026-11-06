@@ -7,11 +7,17 @@
 //! layer where code calls it, and [`Ui::build_layers`] builds the rest once
 //! per tick, in stack order, before the frame is laid out.
 //!
-//! Input goes to the top layer that accepts it, once per tick: a layer
-//! whose input mode is `menu` or `all` is a focus scope (focus stays in it
-//! and it takes Back); the layers under a `menu` layer are inert; a
-//! capturing layer takes the pointer on its gaps too. [`Ui::game_input`]
-//! tells gameplay whether input is its this tick.
+//! The stack is ordered by layer kind, then by push order (Unreal
+//! CommonUI's layer groups): a modal pushed before a menu stays over it, a
+//! toast or tooltip over both. The **active** layer is the top one whose
+//! input mode is `menu` or `all` (the topmost with none), CommonUI's
+//! active activatable: it takes Back, `pop` and focus, keeps the focus it
+//! had while one is above it, and hears `activate` and `deactivate` as it
+//! becomes and stops being the active one. Input goes to it once per tick;
+//! a layer whose input mode is `menu` or `all` is a focus scope; the layers
+//! under a `menu` layer are inert; a capturing layer takes the pointer on
+//! its gaps too. [`Ui::game_input`] tells gameplay whether input is its
+//! this tick.
 
 use crate::bind::{Env, NoEnv};
 use crate::doc::build::{DocEvent, DocResponse};
@@ -25,7 +31,8 @@ use serde_json::{Value, json};
 #[derive(Clone, Debug, PartialEq)]
 pub enum LayerOp {
     Push(String, Value),
-    Pop,
+    /// Pops the layer of that serial (0: the active one).
+    Pop(u32),
     Replace(String, Value),
     Clear,
 }
@@ -40,7 +47,7 @@ pub struct Layer {
     pub vm: Value,
     /// The focus it had when a layer was pushed over it.
     pub focus: u64,
-    /// It was the top layer last tick.
+    /// It was the active layer last tick.
     pub was_top: bool,
     /// The tick it was last built.
     pub built: u64,
@@ -62,6 +69,9 @@ pub struct LayerInfo {
     pub screen: String,
     pub spec: LayerSpec,
     pub top: bool,
+    /// The top layer that takes input (the topmost with none): it takes
+    /// Back, `pop` and focus.
+    pub active: bool,
     /// Not built: a layer above hides it.
     pub hidden: bool,
     /// Takes no input: a menu layer is above it.
@@ -76,7 +86,7 @@ impl LayerInfo {
             "input": s.input.name(), "capture": s.capture, "pause": s.pause,
             "under": s.under.name(),
             "back": match &s.back { Back::Pop => "pop".to_string(), Back::None => "none".into(), Back::Emit(n) => format!("emit {n}") },
-            "focus": s.focus, "remember": s.remember, "top": self.top, "hidden": self.hidden, "inert": self.inert,
+            "focus": s.focus, "remember": s.remember, "top": self.top, "active": self.active, "hidden": self.hidden, "inert": self.inert,
         })
     }
 }
@@ -95,11 +105,19 @@ impl Ui {
         }
     }
 
-    /// Pushes a screen with its viewmodel; the layer under it remembers its
-    /// focus. Answers the layer's serial.
+    /// Pushes a screen with its viewmodel, over the layers of its kind and
+    /// below those of a later kind; the active layer remembers its focus.
+    /// Answers the layer's serial.
     pub fn push_screen(&mut self, screen: &str, vm: Value) -> Result<u32, String> {
-        self.screen_spec(screen)?;
-        let focus = self.state.focus;
+        if let Some(a) = self.active_layer() {
+            self.docs.layers.layers[a].focus = self.state.focus;
+        }
+        self.insert_screen(screen, vm)
+    }
+
+    /// Puts a layer into the stack at its kind's place.
+    fn insert_screen(&mut self, screen: &str, vm: Value) -> Result<u32, String> {
+        let kind = self.screen_spec(screen)?.kind;
         let vm = if vm.is_null() {
             self.document(screen)
                 .and_then(|d| d.fixture("default").cloned())
@@ -107,36 +125,46 @@ impl Ui {
         } else {
             vm
         };
+        let at = self
+            .docs
+            .layers
+            .layers
+            .iter()
+            .rposition(|l| self.screen_spec(&l.screen).is_ok_and(|s| s.kind <= kind))
+            .map_or(0, |k| k + 1);
         let st = &mut self.docs.layers;
-        if let Some(top) = st.layers.last_mut() {
-            top.focus = focus;
-        }
         st.next += 1;
         let serial = st.next;
-        st.layers.push(Layer {
-            serial,
-            screen: screen.to_string(),
-            vm,
-            ..Layer::default()
-        });
+        st.layers.insert(
+            at,
+            Layer {
+                serial,
+                screen: screen.to_string(),
+                vm,
+                ..Layer::default()
+            },
+        );
         Ok(serial)
     }
 
-    /// Pops the top layer; answers its screen.
-    pub fn pop_screen(&mut self) -> Option<String> {
-        self.docs.layers.layers.pop().map(|l| l.screen)
+    /// The active layer's index: the top one that takes input, else the topmost.
+    fn active_layer(&self) -> Option<usize> {
+        self.layer_stack().iter().position(|l| l.active)
     }
 
-    /// Replaces the top layer (the one under keeps its memory).
+    /// Pops the active layer; answers its screen.
+    pub fn pop_screen(&mut self) -> Option<String> {
+        let k = self.active_layer()?;
+        Some(self.docs.layers.layers.remove(k).screen)
+    }
+
+    /// Replaces the active layer (the others keep their focus memory).
     pub fn replace_screen(&mut self, screen: &str, vm: Value) -> Result<u32, String> {
         self.screen_spec(screen)?;
-        let focus = self.docs.layers.layers.iter().rev().nth(1).map(|l| l.focus);
-        self.docs.layers.layers.pop();
-        let serial = self.push_screen(screen, vm)?;
-        if let (Some(f), Some(under)) = (focus, self.docs.layers.layers.iter_mut().rev().nth(1)) {
-            under.focus = f;
+        if let Some(k) = self.active_layer() {
+            self.docs.layers.layers.remove(k);
         }
-        Ok(serial)
+        self.insert_screen(screen, vm)
     }
 
     /// Empties the stack.
@@ -156,6 +184,10 @@ impl Ui {
             .collect();
         let hide_from = specs.iter().rposition(|s| s.under == Under::Hide);
         let menu_at = specs.iter().rposition(|s| s.input == InputMode::Menu);
+        let active = specs
+            .iter()
+            .rposition(|s| s.input != InputMode::Game)
+            .or(st.len().checked_sub(1));
         st.iter()
             .enumerate()
             .map(|(k, l)| LayerInfo {
@@ -163,6 +195,7 @@ impl Ui {
                 screen: l.screen.clone(),
                 spec: specs[k].clone(),
                 top: k + 1 == st.len(),
+                active: active == Some(k),
                 hidden: hide_from.is_some_and(|h| k < h),
                 inert: menu_at.is_some_and(|m| k < m),
             })
@@ -298,8 +331,12 @@ impl Ui {
             let done = match op {
                 LayerOp::Push(s, vm) => self.push_screen(&s, vm).map(|_| ()),
                 LayerOp::Replace(s, vm) => self.replace_screen(&s, vm).map(|_| ()),
-                LayerOp::Pop => {
+                LayerOp::Pop(0) => {
                     self.pop_screen();
+                    Ok(())
+                }
+                LayerOp::Pop(serial) => {
+                    self.docs.layers.layers.retain(|l| l.serial != serial);
                     Ok(())
                 }
                 LayerOp::Clear => {
@@ -349,11 +386,31 @@ impl Ui {
         let tick = self.state.tick;
         let layer = self.docs.layers.layers[k].clone();
         self.docs.layers.layers[k].built = tick;
-        if info.hidden {
-            return DocResponse::default();
+        self.docs.layers.layers[k].was_top = info.active;
+        // CommonUI's OnActivated / OnDeactivated, before the layer's own events.
+        let mut lead = Vec::new();
+        if info.active != layer.was_top {
+            lead.push(DocEvent {
+                mount: layer.screen.clone(),
+                path: layer.screen.clone(),
+                kind: if info.active {
+                    "activate"
+                } else {
+                    "deactivate"
+                }
+                .into(),
+                name: String::new(),
+                value: Value::Null,
+            });
         }
-        let Some(doc) = self.docs.docs.get(&layer.screen).cloned() else {
-            return DocResponse::default();
+        let doc = match self.docs.docs.get(&layer.screen) {
+            Some(d) if !info.hidden => d.clone(),
+            _ => {
+                return DocResponse {
+                    events: lead,
+                    ..DocResponse::default()
+                };
+            }
         };
         let spec = &info.spec;
         let t = self.theme;
@@ -392,15 +449,19 @@ impl Ui {
                 None => true,
             },
         );
+        let building = std::mem::replace(&mut self.docs.building, layer.serial);
         let mut r = self.mount_doc(doc.clone(), layer.screen.clone(), &root_id, &mut vm, env);
+        self.docs.building = building;
         self.docs.accepts = accepts;
+        lead.append(&mut r.events);
+        r.events = lead;
         self.close();
         // Back: the topmost scope takes it (as a dialog does).
-        if info.top && self.nav.back && self.state.scope == key {
+        if info.active && self.nav.back && self.state.scope == key {
             match &spec.back {
                 Back::Pop => {
                     self.nav.back = false;
-                    self.docs.ops.push(LayerOp::Pop);
+                    self.docs.ops.push(LayerOp::Pop(layer.serial));
                 }
                 Back::Emit(name) => {
                     self.nav.back = false;
@@ -415,9 +476,9 @@ impl Ui {
                 Back::None => {}
             }
         }
-        // Focus: the layer that became the top takes its remembered focus,
-        // else its declared one (else its first control, the scope's rule).
-        if info.top && !layer.was_top {
+        // Focus: the layer that became the active one takes its remembered
+        // focus, else its declared one (else its first control, the scope's rule).
+        if info.active && !layer.was_top {
             let remembered = (spec.remember && layer.focus != 0).then_some(layer.focus);
             let declared = (!spec.focus.is_empty())
                 .then(|| crate::id::key_of_path(&format!("{}/{}", r.path, spec.focus)));
@@ -425,11 +486,10 @@ impl Ui {
                 self.request_focus = f;
             }
         }
-        if let Some(l) = self.docs.layers.layers.get_mut(k) {
-            if l.serial == layer.serial {
-                l.vm = vm;
-            }
-            l.was_top = info.top;
+        if let Some(l) = self.docs.layers.layers.get_mut(k)
+            && l.serial == layer.serial
+        {
+            l.vm = vm;
         }
         r
     }

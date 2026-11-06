@@ -717,7 +717,10 @@ impl Ui {
                     .docs
                     .ops
                     .push(crate::layers::LayerOp::Push(screen.clone(), Value::Null)),
-                Act::Pop => self.docs.ops.push(crate::layers::LayerOp::Pop),
+                Act::Pop => {
+                    let l = self.docs.building;
+                    self.docs.ops.push(crate::layers::LayerOp::Pop(l))
+                }
                 Act::Action(a) => {
                     self.fire_action(a);
                     b.event(path, "action", a, Value::Null);

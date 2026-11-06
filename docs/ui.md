@@ -503,9 +503,34 @@ manage it; a document declares its layer kind. Each layer declares:
   (dimmed, blurred through a backdrop, hidden, untouched);
 - its enter and exit transitions.
 
-Input goes to the top layer that accepts it, once per tick. This replaces
-each game's own focus and Back handling, which is where the FINDINGS show
-most UI bugs (brasswick #9, meridian-loop #9).
+The stack is ordered by kind in that list's order, then by push order: a
+modal pushed before a menu stays over it, and a toast or tooltip stays over
+both. The **active** layer is the top one whose input mode is `menu` or
+`all` (the topmost when none is). Input goes to it, once per tick. It takes
+Back, `pop` (og.ui.pop's and a document's; a document's pops its own
+layer), `replace` and focus. While a layer is over it, it keeps the focus
+it had, and it hears `activate` and `deactivate` as it becomes and stops
+being the active one. This replaces each game's own focus and Back
+handling, which is where the FINDINGS show most UI bugs (brasswick #9,
+meridian-loop #9).
+
+The model is Unreal CommonUI's activatable widgets, checked member by
+member (B9, 2026-11-06):
+
+| CommonUI | og-ui |
+|---|---|
+| Layer groups (Game, GameMenu, Menu, Modal) in a primary layout | layer kinds, ordered by kind, then push order |
+| `GetDesiredInputConfig` (Game, Menu, All) | `input game\|menu\|all`; `capture` for the mouse |
+| The active activatable takes input; widgets below it are deactivated | the active layer; the layers under a `menu` layer are inert |
+| `bIsBackHandler`, `NativeOnHandleBackAction` | `back pop\|none\|emit <event>` |
+| `GetDesiredFocusTarget`, `bAutoRestoreFocus` | `focus "<path>"`, `remember` |
+| `OnActivated`, `OnDeactivated` | `activate`, `deactivate` events |
+| The action bar from the active widget's bindings | `og.ui.actionBar`: the active layer's `actions` |
+| `bIsModal` | a `menu` or `modal` layer: `capture`, `under dim` |
+
+One difference is deliberate. CommonUI's modal stack is a queue that shows
+one modal at a time; here a second modal stacks over the first, because a
+confirm over a confirm is a pattern games use.
 
 A pointer takes the topmost element whose box holds it, with two reaches
 past the box. An element's `hitSlop` reaches that far on any pointer; on a

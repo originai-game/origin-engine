@@ -44132,7 +44132,9 @@ export interface UiDocEvent {
   readonly mount: string;
   /** The element's path. */
   readonly path: string;
-  /** click, changed, select, emit, action, set or back. */
+  /**
+   * click, changed, select, emit, action, set, back, or activate and deactivate (a layer became or stopped being the active one).
+   */
   readonly kind: string;
   /**
    * The element's id (click), the prop (changed), the list (select), the event or action's name, or the viewmodel path a `set` wrote.
@@ -44174,10 +44176,14 @@ export interface UiLayer {
   readonly back: string;
   /** Where focus starts, a path below its root (empty: its first control). */
   readonly focus: string;
-  /** Focus returns where it was when it is the top again. */
+  /** Focus returns where it was when it is the active layer again. */
   readonly remember: boolean;
-  /** It is the top layer. */
+  /** It is the topmost layer. */
   readonly top: boolean;
+  /**
+   * It is the active layer: the top one whose input is menu or all (the topmost with none). It takes Back, pop and focus.
+   */
+  readonly active: boolean;
   /** A layer above hides it: it is not built. */
   readonly hidden: boolean;
   /** A menu layer above takes its input. */
@@ -53897,7 +53903,7 @@ export declare namespace og {
      */
     function openSlot(path: string): boolean;
     /**
-     * Push a screen onto the layer stack (docs/ui.md §8.1); the layer under it remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it.
+     * Push a screen onto the layer stack (docs/ui.md §8.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it.
      *
      * @param world The world.
      * @param screen The screen's name.
@@ -53906,13 +53912,13 @@ export declare namespace og {
      */
     function push(world: World, screen: string, vm?: unknown): Result<number>;
     /**
-     * Pop the top layer; the one under it takes its remembered focus. Answers the popped screen's name (empty: the stack was empty).
+     * Pop the active layer; the next active one takes its remembered focus. Answers the popped screen's name (empty: the stack was empty).
      *
      * @param world The world.
      */
     function pop(world: World): string;
     /**
-     * Replace the top layer with a screen.
+     * Replace the active layer with a screen.
      *
      * @param world The world.
      * @param screen The screen's name.
