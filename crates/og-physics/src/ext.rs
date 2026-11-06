@@ -628,7 +628,12 @@ pub(crate) fn characters(
             step_height: c.step_height.max(0.0),
         };
         let moved = if c.gravity_scale > 0.0 {
-            let snap = if jumped || vertical > 0.0 {
+            // Snapping holds a character that stood on the ground down
+            // slopes and steps; one in the air (falling from a jump or off
+            // a ledge) lands where it meets the ground, not pulled down to
+            // ground within snapDistance in one tick (rapier's own
+            // controller snaps only when grounded at the start, too).
+            let snap = if jumped || vertical > 0.0 || !c.grounded {
                 0.0
             } else {
                 c.snap_distance

@@ -237,3 +237,39 @@ fn it_runs_up_and_down_a_30_degree_slope_at_its_speed_and_not_up_a_50_degree_one
         "the 50 degree slope stopped it at {p}"
     );
 }
+
+// A character falling onto the floor lands where it meets it. Snapping
+// holds a character that stood on the ground down slopes and steps; one in
+// the air must not be pulled down to ground within snapDistance in one tick
+// (a jump's landing then drops up to snapDistance at once, a visible pop),
+// and must still stand a skin over the floor once it lands.
+#[test]
+fn a_falling_controller_lands_where_it_meets_the_floor() {
+    let (mut w, _p) = world(Physics::default(), 1);
+    big_floor(&mut w);
+    let e = hero(&mut w, 0.0, 0.0, 1.0);
+    let mut y = transform(&w, e).position.y;
+    let mut fall = 0.0f32;
+    let mut landed = None;
+    for tick in 0..90 {
+        w.step().unwrap();
+        let now = transform(&w, e).position.y;
+        // At most what it falls at under gravity this tick, never a snap.
+        let g = 9.81 / 60.0;
+        assert!(
+            y - now <= (fall + g) / 60.0 + 1e-4,
+            "tick {tick}: dropped {} m falling at {fall} m/s",
+            y - now
+        );
+        fall = (y - now) * 60.0;
+        y = now;
+        if landed.is_none() && w.get::<CharacterController>(e).unwrap().grounded {
+            landed = Some(tick);
+        }
+    }
+    assert!(landed.is_some(), "it landed");
+    assert!(
+        (y - HALF - SKIN).abs() < 1e-3,
+        "standing with its centre at {y}"
+    );
+}
