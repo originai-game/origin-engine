@@ -103,6 +103,8 @@ declare module "node:net" {
     readonly destroyed: boolean;
     setEncoding(encoding: "utf8"): void;
     setTimeout(ms: number, listener?: () => void): void;
+    pause(): void;
+    resume(): void;
     on(event: "data", listener: (data: string) => void): void;
     on(event: "error", listener: (error: Error) => void): void;
     on(event: "end" | "close", listener: () => void): void;
@@ -115,7 +117,7 @@ declare module "node:net" {
     maxConnections: number;
     listen(path: string, listener: () => void): void;
     on(event: "error", listener: (error: Error) => void): void;
-    close(): void;
+    close(callback?: () => void): void;
   };
 }
 

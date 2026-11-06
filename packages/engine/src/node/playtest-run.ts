@@ -1,6 +1,6 @@
 // Runs one playtest (`tests/*.og.ts`) for `og test`: the script's commands
-// through `og run --headless --commands` in a fresh process (its `runs` and
-// `then` steps in more), then its checks over the files the runs wrote. A
+// through fresh runs in the worktree's session when available (dedicated
+// processes otherwise), then its checks over the files the runs wrote. A
 // playtest that made no check fails.
 //
 // Simulation-only playtests can run without a renderer. Requested frames
@@ -14,7 +14,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { bundleGame } from "./build.ts";
 import { FrameUnchecked, PLAYTEST_CLOCK, type PlaytestAssertions, type PlaytestChecks, type PlaytestDesc, type PlaytestLockstep, type PlaytestRun } from "../playtest.ts";
 import { loadNativeHost, native } from "./index.ts";
-import { decodePng } from "./png.ts";
+import { decodePng, encodePng } from "./png.ts";
+import { runInSession } from "./session-client.ts";
 
 declare const Bun: {
   spawnSync(cmd: string[], o?: { cwd?: string; stdout?: string; stderr?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
@@ -52,14 +53,45 @@ const adapterErrors = new Set<string>();
 // Notes on unchecked frames beyond the per-file lines (a check stopped by one).
 const notes: string[] = [];
 let result: Record<string, unknown> = {};
+const assertionLog: { violations: unknown[]; uncovered: unknown[]; required: Array<{ name: string; fired: boolean }>; defaults: unknown[] } = { violations: [], uncovered: [], required: [], defaults: [] };
+const captures = new Set<string>();
 
 function finish(): never {
   if (checks === 0 && unchecked.length === 0 && failures.length === 0) {
     failures.push("the playtest made no check: call t.ok, t.equal or t.near at least once");
   }
   const ok = failures.length === 0;
+  const failureCaptures = [];
+  for (const dir of captures) {
+    if (ok) {
+      rmSync(dir, { recursive: true, force: true });
+      continue;
+    }
+    let frame: { status: "captured"; path: string } | { status: "unavailable"; reason: string } = { status: "unavailable", reason: "no renderer or no completed frame" };
+    const raw = join(dir, "frame.rgba");
+    try {
+      if (existsSync(raw)) {
+        const bytes = readFileSync(raw);
+        if (bytes.length > 0) {
+          if (bytes.length < 8) throw new Error("truncated frame header");
+          const header = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+          const width = header.getUint32(0, true), height = header.getUint32(4, true);
+          if (width === 0 || height === 0 || bytes.length !== 8 + width * height * 4) throw new Error("invalid frame dimensions");
+          const path = join(dir, "frame.png");
+          writeFileSync(path, encodePng({ width, height, rgba: bytes.subarray(8) }));
+          frame = { status: "captured", path };
+        }
+      }
+    } catch (error) {
+      frame = { status: "unavailable", reason: error instanceof Error ? error.message : String(error) };
+    } finally {
+      rmSync(raw, { force: true });
+    }
+    const world = join(dir, "world.json"), snapshot = join(dir, "world.ogsave");
+    failureCaptures.push({ run: dirname(dir), world: existsSync(world) ? world : null, snapshot: existsSync(snapshot) ? snapshot : null, frame });
+  }
   const status = !ok ? "failed" : unchecked.length > 0 ? "unchecked" : "passed";
-  const line = { playtest: name, file, ok, status, checks, frameChecks, unchecked, uncheckedCount: unchecked.length, adapterErrors: [...adapterErrors], failures, notes, out, ms: +(performance.now() - t0).toFixed(0), assertions: assertionLog, ...result };
+  const line = { playtest: name, file, ok, status, checks, frameChecks, unchecked, uncheckedCount: unchecked.length, adapterErrors: [...adapterErrors], failures, failureCaptures, notes, out, ms: +(performance.now() - t0).toFixed(0), assertions: assertionLog, ...result };
   if (resultFile) {
     mkdirSync(dirname(resolve(resultFile)), { recursive: true });
     writeFileSync(resultFile, JSON.stringify(line) + "\n");
@@ -69,6 +101,7 @@ function finish(): never {
     const frames = `, ${unchecked.length} GPU frame/expectation checks unchecked`;
     process.stdout.write(`${!ok ? "FAIL" : unchecked.length > 0 ? "UNCHECKED" : "PASS"} ${name} (${checks} checks${frames}, ${line.ms} ms)${(line as { title?: string }).title ? ": " + (line as { title?: string }).title : ""}\n`);
     for (const f of failures) process.stdout.write(`  - ${f}\n`);
+    for (const capture of failureCaptures) process.stdout.write(`  evidence: ${capture.world ?? "world unavailable"}; ${capture.frame.status === "captured" ? capture.frame.path : capture.frame.reason}\n`);
     for (const u of unchecked) process.stdout.write(`  ~ ${u}: no renderer, frame unchecked\n`);
     for (const n of notes) process.stdout.write(`  ~ ${n}\n`);
     for (const u of assertionLog.uncovered as Array<{ run: string; kind: string; name: string; key?: string }>) process.stdout.write(`  ? ${u.run}: ${u.kind} '${u.name}'${u.key !== undefined ? ` [${u.key}]` : ""} never fired\n`);
@@ -116,7 +149,9 @@ const fakeFile = desc!.platform
 const invariantSteps = (desc!.invariants ?? []).map((i) => `0:invariant:${i}`);
 const command = (commands: string, dir: string, clock: number, room?: { url: string; ticks?: number | undefined; place: number }) => {
   const script = [...invariantSteps, commands].join(";");
-  const c = ["bun", join(here, "run.ts"), "--entry", entry!, "--commands", script, "--out", dir, "--json", "--clock", String(clock)];
+  const capture = join(dir, ".failure");
+  captures.add(capture);
+  const c = ["bun", join(here, "run.ts"), "--entry", entry!, "--commands", script, "--out", dir, "--json", "--clock", String(clock), "--failure-capture", capture];
   if (room) c.push("--room", room.url);
   if (room?.ticks !== undefined) c.push("--ticks", String(room.ticks));
   if (root) c.push("--root", root);
@@ -146,9 +181,15 @@ type Summary = {
   assertions?: PlaytestAssertions;
 };
 const EMPTY_ASSERTIONS: PlaytestAssertions = { violations: [], uncovered: [], sites: [], defaults: { fields: 0, ticks: 0, values: 0, totalMs: 0, meanUs: 0, maxUs: 0 } };
-// Every process's violations and uncovered sites, for the result line (the session carries it per run).
-const assertionLog: { violations: unknown[]; uncovered: unknown[]; required: Array<{ name: string; fired: boolean }>; defaults: unknown[] } = { violations: [], uncovered: [], required: [], defaults: [] };
-const spawn = (c: string[], what: string): Summary | null => {
+const spawn = async (c: string[], what: string): Promise<Summary | null> => {
+  try {
+    const shared = await runInSession(c.slice(2), opt("--session-socket"), opt("--session-build"));
+    if (shared) return summarise(shared.exitCode, shared.stdout, shared.stderr, what);
+  } catch (error) {
+    // A lost reply can follow persistent store writes. Never replay it alone.
+    failures.push(`${what}: ${error instanceof Error ? error.message : String(error)}`);
+    return null;
+  }
   const r = Bun.spawnSync(c, { stdout: "pipe", stderr: "pipe" });
   return summarise(r.exitCode, new TextDecoder().decode(r.stdout), new TextDecoder().decode(r.stderr), what);
 };
@@ -262,7 +303,7 @@ if (room) {
   summary = results[0]!;
   peerSummaries.push(...results.slice(1));
   for (const [i, s] of peerSummaries.entries()) for (const f of s.unchecked ?? []) unchecked.push(`peer ${i + 1} ${f}`);
-} else summary = spawn(command(desc!.commands, out, clock), "og run");
+} else summary = await spawn(command(desc!.commands, out, clock), "og run");
 if (!summary) finish();
 requireFired(summary!.assertions ?? EMPTY_ASSERTIONS, "og run");
 const rendered = summary!.tier !== "none";
@@ -270,11 +311,11 @@ unchecked.push(...(summary!.unchecked ?? []));
 result = { ...result, tick: summary!.tick, hash: summary!.hash, tier: summary!.tier, renderer: summary!.renderer, adapterError: summary!.adapterError, warnings: summary!.warnings };
 // A room's shared hashes, the run's first: equal ones are peers that stayed in step.
 if (room) result = { ...result, netHashes: [summary!, ...peerSummaries].map((s) => s.netHash ?? ""), lockstep: [summary!, ...peerSummaries].map((s) => s.lockstep ?? null) };
-// More runs of the same script (desc.runs), each in a fresh process into its
+// More runs of the same script (desc.runs), each with a fresh world into its
 // own directory: only their end hashes are kept.
 const hashes = [summary!.hash];
 for (let i = 1; i < Math.max(1, Math.floor(desc!.runs ?? 1)); i++) {
-  const again = spawn(command(desc!.commands, join(out, `.run-${i + 1}`), clock), `run ${i + 1} of ${desc!.runs}`);
+  const again = await spawn(command(desc!.commands, join(out, `.run-${i + 1}`), clock), `run ${i + 1} of ${desc!.runs}`);
   if (again) hashes.push(again.hash);
 }
 result = { ...result, hashes };
@@ -346,7 +387,7 @@ for (const [i, step] of (desc!.then ?? []).entries()) {
     later.push(runOf(all[0]!, dir, [], all.slice(1).map((s, p) => runOf(s, peerDir(p + 1), []))));
     continue;
   }
-  const s = spawn(command(step.commands, dir, step.clock ?? clock), `then[${i}]`);
+  const s = await spawn(command(step.commands, dir, step.clock ?? clock), `then[${i}]`);
   if (!s) finish();
   for (const f of s!.unchecked ?? []) unchecked.push(`then[${i}] ${f}`);
   later.push(runOf(s!, dir, []));

@@ -79,6 +79,7 @@ export interface RunControl {
 export async function run(argv: string[], output: RunOutput = hostProcess, control: RunControl = {}): Promise<number> {
   const process = { stdout: output.stdout, stderr: output.stderr, version: hostProcess.version };
   const cleanup: Array<() => void> = [];
+  let captureFailureCandidate: (() => void) | undefined;
   const cancelled = () => { if (control.signal?.aborted) throw new RunExit(130); };
   try {
     cancelled();
@@ -106,6 +107,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     let room: string | undefined;
     let restoreFile: string | undefined;
     let handoffFile: string | undefined;
+    let failureCapture: string | undefined;
     const setup: string[] = [];
     for (let i = 0; i < argv.length; i++) {
       const a = argv[i]!;
@@ -141,6 +143,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       else if (a === "--room") room = next();
       else if (a === "--restore") restoreFile = resolve(next());
       else if (a === "--handoff") handoffFile = resolve(next());
+      else if (a === "--failure-capture") failureCapture = resolve(next());
       else if (a === "--headless") {
         // Native runs are always headless; accepted for `og run --headless`.
       } else fail(`unknown argument '${a}'`);
@@ -262,6 +265,15 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     if (!created.ok) fail(`${entry}: ${created.reason}`);
     const engine: Engine = created.value;
     cleanup.push(() => engine.destroy());
+    if (failureCapture) captureFailureCandidate = () => {
+      mkdirSync(failureCapture, { recursive: true });
+      writeFileSync(join(failureCapture, "world.json"), JSON.stringify(engine.probe.dump({ what: "world" })));
+      const snapshot = engine.world.snapshot();
+      if (snapshot.ok) writeFileSync(join(failureCapture, "world.ogsave"), snapshot.value);
+      // Read the frame that actually ran, without another draw or replay.
+      // The harness encodes it only if its later assertions fail.
+      writeFileSync(join(failureCapture, "frame.rgba"), extras.og_node_render_frame(engine.id, true));
+    };
     // Without --realtime every frame is the script's (elapsed is one tick): its time is the machine's load, not a
     // display's, so automatic quality must not read it, or the same script draws at another render scale per run.
     if (!realtime) extras.og_node_scripted_frames(engine.id, true);
@@ -665,6 +677,11 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     throw error;
   } finally {
     const errors: unknown[] = [];
+    try {
+      captureFailureCandidate?.();
+    } catch (error) {
+      errors.push(error);
+    }
     for (const dispose of cleanup.reverse()) {
       try {
         dispose();

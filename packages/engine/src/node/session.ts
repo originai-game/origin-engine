@@ -15,7 +15,7 @@ declare module "node:os" {
 }
 
 type Request = { build: string; cwd: string; argv: string[]; env: Record<string, string> };
-type Event = { event: "accepted" } | { event: "stdout" | "stderr"; text: string } | { event: "exit"; code: number } | { event: "rejected"; reason: string };
+type Event = { event: "accepted" | "busy" } | { event: "stdout" | "stderr"; text: string } | { event: "exit"; code: number } | { event: "rejected"; reason: string };
 
 function request(value: unknown): Request {
   if (typeof value !== "object" || value === null || !("build" in value) || !("cwd" in value) || !("argv" in value) || !("env" in value))
@@ -74,6 +74,7 @@ const server = createServer((socket) => {
     received = true;
     socket.setTimeout(0);
     if (stopping || admitted >= 128 || pending >= 8) {
+      send({ event: "busy" });
       send({ event: "stderr", text: "og session: admission limit reached; command was not executed\n" });
       send({ event: "exit", code: 75 });
       socket.end();
@@ -159,6 +160,7 @@ const server = createServer((socket) => {
         active.delete(abort);
         pending--;
         idleSince = performance.now();
+        socket.setTimeout(10_000);
         socket.end();
         if (admitted >= 128 && pending === 0) stop(75);
       }
@@ -179,8 +181,9 @@ const stop = (code = 0) => {
   if (stopping) return;
   stopping = true;
   for (const controller of active) controller.abort();
-  server.close();
-  void queue.finally(() => {
+  const closed = new Promise<void>((resolve) => server.close(resolve));
+  // Retirement must flush the last result before the supervisor replaces us.
+  void Promise.all([queue, closed]).finally(() => {
     native().og_node_resident(false);
     rmSync(inputs, { recursive: true, force: true });
     process.exit(code);

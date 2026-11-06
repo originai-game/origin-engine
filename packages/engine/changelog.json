@@ -494,6 +494,10 @@
         "summary": "Check-bearing commands accept --require-checked to exit 1 when GPU checks remain unchecked; the default stays a warning. JSON summaries consistently expose uncheckedCount. og test retains its aggregate unchecked field as a deprecated alias; per-playtest unchecked remains a file list."
       },
       {
+        "member": "og test resident runs and failureCaptures",
+        "summary": "Playtest files, repeats and then steps share a worktree's running og session, preserving fresh-world isolation and ordered --jobs output. Room peers remain dedicated processes. Failed playtests retain the actual final world dump, snapshot and last drawn frame under .failure, reported in failureCaptures; passing suites discard them. PNG encoding happens only on failure, with no extra draw or replay. Missing frames remain explicitly unavailable. Resident retirement flushes its final reply before exiting."
+      },
+      {
         "member": "og.assert, og.WorldBounds, RuntimeProbe.assertions, invariant:, PlaytestDesc.invariants/require",
         "summary": "Per-tick properties after Antithesis's assertions: og.assert.always, sometimes, reachable, unreachable and each (one bucket per key), identified by name and the call's place, recorded beside the world and never in it (hashes unchanged); default invariants from reflection checked after every tick outside publish builds (no NaN or infinity, every number inside its field's min..max, no Entity field naming a despawned entity, roots inside og.WorldBounds), incremental from change ticks; the probe's assertions member (take starts a new report) and og run --json's assertions; the invariant: command action; playtests' invariants and require, and a list of every sometimes, reachable and each bucket that never fired."
       },

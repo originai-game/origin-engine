@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { ogBin } from "./support/og-bin.ts";
 import { attachRenderer } from "../src/node/index.ts";
 import { gpuTest } from "./support/gpu.ts";
+import { decodePng } from "../src/node/png.ts";
 
 declare const Bun: {
   spawnSync(cmd: string[], options: { cwd: string; env: Record<string, string | undefined> }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
@@ -36,6 +37,7 @@ interface Result {
   tier: string;
   hash: string;
   hashes: string[];
+  failureCaptures: { world: string | null; snapshot: string | null; frame: { status: "captured"; path: string } | { status: "unavailable"; reason: string } }[];
 }
 
 const result = (stdout: string): Result => JSON.parse(stdout.split("\n").find((l) => l.startsWith('{"playtest"'))!);
@@ -143,6 +145,18 @@ gpuTest("a GPU run checks the frames without changing simulation, dumps or hashe
   expect(lit.unchecked).toEqual([]);
   expect(existsSync(join(out, "surface.png"))).toBeTrue();
   expect(readFileSync(join(out, "ui.json"), "utf8")).toBe(blindUi);
+  expect(existsSync(join(out, ".failure"))).toBeFalse();
+  writeFileSync(join(game, "tests/surface.og.ts"), SURFACE.replace('t.ok(run.quit, "reached quit")', 't.ok(false, "deliberate failure")'));
+  const failed = run(command, true);
+  expect(failed.code).toBe(1);
+  const capture = result(failed.stdout).failureCaptures[0]!;
+  expect(capture.frame.status).toBe("captured");
+  if (capture.frame.status !== "captured" || !capture.world || !capture.snapshot) throw new Error("failure evidence is missing");
+  const image = decodePng(readFileSync(capture.frame.path));
+  expect([image.width, image.height]).toEqual([640, 480]);
+  expect(image.rgba).toEqual(decodePng(readFileSync(join(out, "surface.png"))).rgba);
+  expect(JSON.parse(readFileSync(capture.world, "utf8")).hash).toBe(lit.hash);
+  expect(readFileSync(capture.snapshot, "utf8")).toMatch(/^og-save:/);
 }, 120_000);
 
 test("a refused adapter is reported without hiding other renderer failures", () => {

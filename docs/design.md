@@ -2136,6 +2136,28 @@ the person's device through Player telemetry and from `og run --device`
 (safaridriver / Chrome DevTools on a paired phone, timing the publish build)
 when the person is present.
 
+`og session [project]` owns one local host per worktree. `og test` keeps
+each file's assertion harness independent, including with `--jobs`, but
+submits its game runs, repeats and `then` steps to that host in sequence.
+Each admission freezes its inputs; each run reloads game declarations and
+starts a fresh world, platform fake and audio sink. Only `store: "keep"`
+shares a playtest's persistent store. Room peers use dedicated processes
+because they must advance together. Lost replies are failures, not retries.
+The host admits at most eight outstanding runs. Playtest clients back off
+on an explicit pre-admission `busy` response for up to 60 seconds; they
+never retry an accepted run. The host retires after 128 admissions to bound
+its module cache, flushing its last reply before exiting. A client that
+stops reading a completed reply is disconnected after ten seconds.
+
+Before destroying a playtest run, the host saves its world and reads back
+the last drawn frame without another draw or replay. A passing suite
+discards these candidates; a failed suite encodes the frames as PNGs and
+reports `failureCaptures` with the world dump, save and frame paths. This
+includes failures in the harness's later assertions. An unavailable frame
+is reported as unavailable, never fabricated or counted as a passed check.
+These diagnostic saves are not presentation checkpoints and are not used
+to fork or resume runs.
+
 ## 6. Failure modes
 
 | Violation | Behaviour |

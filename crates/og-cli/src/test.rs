@@ -211,8 +211,16 @@ pub fn run(args: &[&str]) -> ExitCode {
         };
         // Each playtest's result line, for the frames it left unchecked.
         let results = std::env::temp_dir().join(format!("og-test-{}", std::process::id()));
+        let session_args = match crate::session::playtest_args(&p.root, &package) {
+            Ok(args) => args,
+            Err(e) => {
+                eprintln!("og test: {e}");
+                return ExitCode::FAILURE;
+            }
+        };
         let command = |i: usize, t: &PathBuf| {
             let mut cmd = project::bun(&package, "src/node/playtest-run.ts");
+            cmd.args(&session_args);
             cmd.arg("--file").arg(t).arg("--entry").arg(&bundle);
             cmd.arg("--result").arg(results.join(format!("{i}.json")));
             if p.manifest {

@@ -63,8 +63,8 @@ export interface NativeExtras {
   og_node_room_close(engine: number): boolean;
   /** Start a relay in this process on 127.0.0.1 (0 a free port) for as long as it lives. A Result with the port. */
   og_node_relay_start(port: number): string;
-  /** `og render`: the frame the loop drew last, RGBA8 rows at the offscreen size (empty without one). Not in publish builds. */
-  og_node_render_frame(engine: number): Uint8Array;
+  /** Last drawn RGBA8 rows (empty without a frame). `header` prefixes width and height as little-endian u32s. Development only. */
+  og_node_render_frame(engine: number, header?: boolean): Uint8Array;
   /** `og render --jobs`: the world as a render snapshot (empty when refused). */
   og_node_render_snapshot(engine: number): Uint8Array;
   /** Restores a render snapshot another process took: a wire Result of its tick. */

@@ -31,6 +31,7 @@ declare const Bun: {
     target: string;
     format: string;
     minify?: boolean;
+    throw?: boolean;
     sourcemap?: "none" | "inline" | "linked" | "external";
     naming?: string;
     plugins?: unknown[];
@@ -149,6 +150,7 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
     target: target === "native" ? "bun" : "browser",
     format: "esm",
     minify,
+    throw: false,
     sourcemap: "external",
     plugins: [engine],
   });

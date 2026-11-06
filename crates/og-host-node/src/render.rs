@@ -14,10 +14,18 @@ use napi::bindgen_prelude::Buffer;
 use napi_derive::napi;
 
 /// The last frame drawn, RGBA8 rows top first; empty without a renderer
-/// or before the first frame.
+/// or before the first frame. With a header, two little-endian u32s carry
+/// the actual width and height, including a resize during the run.
 #[napi(js_name = "og_node_render_frame")]
-pub fn og_node_render_frame(engine: u32) -> Buffer {
+pub fn og_node_render_frame(engine: u32, header: Option<bool>) -> Buffer {
     match og_runtime::render_frame(engine) {
+        Ok(f) if header == Some(true) => {
+            let mut bytes = Vec::with_capacity(8 + f.rgba.len());
+            bytes.extend_from_slice(&f.width.to_le_bytes());
+            bytes.extend_from_slice(&f.height.to_le_bytes());
+            bytes.extend_from_slice(&f.rgba);
+            bytes.into()
+        }
         Ok(f) => f.rgba.into(),
         Err(_) => Vec::new().into(),
     }

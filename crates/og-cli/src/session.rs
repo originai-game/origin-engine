@@ -82,6 +82,7 @@ mod local {
     #[serde(tag = "event", rename_all = "lowercase")]
     enum Event {
         Accepted,
+        Busy,
         Stdout { text: String },
         Stderr { text: String },
         Exit { code: u8 },
@@ -136,6 +137,8 @@ mod local {
             match event {
                 Event::Accepted if !accepted => accepted = true,
                 Event::Accepted => return Err("session accepted twice; not retried".into()),
+                Event::Busy if !accepted => {}
+                Event::Busy => return Err("session busy after accepting; not retried".into()),
                 Event::Stdout { text } => std::io::stdout()
                     .write_all(text.as_bytes())
                     .map_err(|e| e.to_string())?,
@@ -221,6 +224,25 @@ pub fn try_run(
         let _ = (project, package, command);
         Ok(None)
     }
+}
+
+/// Give each playtest harness the same host without changing its environment.
+pub fn playtest_args(project: &Path, package: &Path) -> Result<Vec<std::ffi::OsString>, String> {
+    #[cfg(unix)]
+    {
+        let socket = local::directory(project).join("host.sock");
+        if std::env::var("OG_SESSION").as_deref() != Ok("0") && socket.exists() {
+            return Ok(vec![
+                "--session-socket".into(),
+                socket.into_os_string(),
+                "--session-build".into(),
+                local::build(package)?.into(),
+            ]);
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = (project, package);
+    Ok(Vec::new())
 }
 
 pub fn run(args: &[&str]) -> ExitCode {

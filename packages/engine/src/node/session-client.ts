@@ -1,12 +1,12 @@
 import { createConnection } from "node:net";
 
 /** Null means refused before execution; a lost reply must never replay a run. */
-export function runInSession(argv: string[], socketPath: string | undefined, build: string | undefined, signal?: AbortSignal): Promise<{ exitCode: number; stdout: string; stderr: string } | null> {
-  if (!socketPath || !build || process.env.OG_SESSION === "0") return Promise.resolve(null);
-  if (signal?.aborted) return Promise.reject(new Error("session request cancelled before sending"));
+export async function runInSession(argv: string[], socketPath: string | undefined, build: string | undefined, signal?: AbortSignal): Promise<{ exitCode: number; stdout: string; stderr: string } | null> {
+  if (!socketPath || !build || process.env.OG_SESSION === "0") return null;
+  if (signal?.aborted) throw new Error("session request cancelled before sending");
   const payload = JSON.stringify({ build, cwd: process.cwd(), env: process.env, argv }) + "\n";
-  if (new TextEncoder().encode(payload).byteLength > 1024 * 1024) return Promise.reject(new Error("session request exceeds 1 MiB"));
-  return new Promise((resolve, reject) => {
+  if (new TextEncoder().encode(payload).byteLength > 1024 * 1024) throw new Error("session request exceeds 1 MiB");
+  const exchange = () => new Promise<{ exitCode: number; stdout: string; stderr: string } | "busy" | null>((resolve, reject) => {
     let sent = false;
     let accepted = false;
     let complete = false;
@@ -49,6 +49,12 @@ export function runInSession(argv: string[], socketPath: string | undefined, bui
           const value: unknown = JSON.parse(line);
           if (typeof value !== "object" || value === null || !("event" in value)) throw new Error("invalid session reply");
           if (value.event === "accepted" && !accepted) { accepted = true; continue; }
+          else if (value.event === "busy" && !accepted) {
+            complete = true;
+            socket.end();
+            resolve("busy");
+            return;
+          }
           else if (value.event === "stdout" && "text" in value && typeof value.text === "string") stdout += value.text;
           else if (value.event === "stderr" && "text" in value && typeof value.text === "string") stderr += value.text;
           else if (value.event === "exit" && "code" in value && typeof value.code === "number" && Number.isInteger(value.code) && value.code >= 0 && value.code <= 255) {
@@ -68,4 +74,12 @@ export function runInSession(argv: string[], socketPath: string | undefined, bui
       }
     });
   });
+  const deadline = performance.now() + 60_000;
+  for (;;) {
+    if (signal?.aborted) throw new Error("session request cancelled before sending");
+    const result = await exchange();
+    if (result !== "busy") return result;
+    if (performance.now() >= deadline) throw new Error("session remained busy for 60 seconds; command was not executed");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
 }

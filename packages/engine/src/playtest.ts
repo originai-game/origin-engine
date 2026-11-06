@@ -175,7 +175,7 @@ export interface PlaytestDesc {
    * published page plays a script without it and covers itself.
    */
   readonly setup?: string;
-  /** Run the script this many times in fresh processes (default 1) and report every end hash in `run.hashes`: a determinism check. The files are the first run's. */
+  /** Run the script this many times with fresh game state (default 1) and report every end hash in `run.hashes`: a determinism check. A resident host may reuse its process, never its world. The files are the first run's. */
   readonly runs?: number;
   /**
    * The host's clock at tick 0, UTC milliseconds (`og run --clock`): og.platform.now and the
@@ -208,7 +208,7 @@ export interface PlaytestDesc {
    * `store: "keep"` keeps one store per place across them.
    */
   readonly room?: PlaytestRoom;
-  /** More processes after the script, in order, each a fresh `og run` (a relaunch): their runs are `run.then`. With `room`, every place of the room relaunches at once. */
+  /** More fresh runs after the script, in order (a relaunch): their runs are `run.then`. With `room`, every place of the room relaunches at once. */
   readonly then?: readonly PlaytestStep[];
   /**
    * Properties checked after every tick of every process of the playtest, written first: each is

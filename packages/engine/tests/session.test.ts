@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createConnection, createServer } from "node:net";
@@ -9,7 +9,9 @@ import { runInSession } from "../src/node/session-client.ts";
 
 declare const Bun: {
   spawnSync(args: string[], options: { stdout: "pipe"; stderr: "pipe" }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
-  spawn(args: string[], options: { env: typeof process.env; stdout: "ignore"; stderr: "pipe" }): {
+  spawn(args: string[], options: { env: typeof process.env; stdout: "ignore" | "pipe"; stderr: "pipe" }): {
+    pid: number;
+    stdout: ReadableStream<Uint8Array>;
     stderr: ReadableStream<Uint8Array>;
     exitCode: number | null;
     exited: Promise<number>;
@@ -77,12 +79,15 @@ test.skipIf(process.platform === "win32")("RPC never retries an accepted request
   const dir = mkdtempSync(join(tmpdir(), "og-session-wire-"));
   const path = join(dir, "host.sock");
   let reply = "";
+  const replies: string[] = [];
+  let requests = 0;
   const server = createServer((socket) => {
     let received = false;
     socket.on("data", () => {
       if (received) return;
       received = true;
-      socket.end(reply);
+      requests++;
+      socket.end(replies.shift() ?? reply);
     });
     socket.on("error", () => socket.destroy());
   });
@@ -90,6 +95,14 @@ test.skipIf(process.platform === "win32")("RPC never retries an accepted request
   try {
     reply = '{"event":"accepted"}\n{"event":"stdout","text":"one"}\n{"event":"exit","code":7}\n';
     expect(await runInSession([], path, "test")).toEqual({ exitCode: 7, stdout: "one", stderr: "" });
+    replies.push('{"event":"busy"}\n{"event":"exit","code":75}\n');
+    const beforeBusy = requests;
+    expect(await runInSession([], path, "test")).toEqual({ exitCode: 7, stdout: "one", stderr: "" });
+    expect(requests - beforeBusy).toBe(2);
+    reply = '{"event":"accepted"}\n{"event":"busy"}\n';
+    const beforeAccepted = requests;
+    expect(await runInSession([], path, "test").catch((error: Error) => error.message)).toContain("invalid session reply");
+    expect(requests - beforeAccepted).toBe(1);
     reply = '{"event":"accepted"}\n{"event":"stdout","text":"partial side effect"}\n';
     expect(await runInSession([], path, "test").catch((error: Error) => error.message)).toContain("outcome unknown");
     reply = '{"event":"accepted"}\n{"event":"rejected","reason":"too late"}\n';
@@ -205,13 +218,91 @@ test.skipIf(process.platform === "win32")("resident recovers from exceptions and
     writeFileSync(entry, `import { og } from ${JSON.stringify(engine)};
 let starts = 0; export default og.game({start(world){starts++;world.spawn({name:"fresh"});},facts(){return {starts};}});`);
     const results = [];
-    for (let i = 2; i < 128; i++) {
+    for (let i = 2; i < 127; i++) {
       const result = await runInSession(argv, path, "test");
       const summary = JSON.parse(result?.stdout.trim() ?? "null");
       results.push([result?.exitCode, summary.entities, summary.facts.starts]);
     }
-    expect(results).toEqual(Array.from({ length: 126 }, () => [0, 1, 1]));
+    expect(results).toEqual(Array.from({ length: 125 }, () => [0, 1, 1]));
+    writeFileSync(entry, 'console.log("x".repeat(768 * 1024) + "MARKER-END");\n' + readFileSync(entry, "utf8"));
+    const lastReply = await new Promise<string>((resolve, reject) => {
+      let wire = "";
+      const socket = createConnection(path, () => {
+        socket.pause();
+        socket.write(JSON.stringify({ cwd: process.cwd(), env: process.env, build: "test", argv }) + "\n");
+        setTimeout(() => socket.resume(), 200);
+      });
+      socket.setEncoding("utf8");
+      socket.on("data", (chunk) => { wire += chunk; });
+      socket.on("error", reject);
+      socket.on("end", () => resolve(wire));
+    });
+    const events = lastReply.trim().split("\n").map((line) => JSON.parse(line));
+    expect(events.at(-1)).toEqual({ event: "exit", code: 0 });
+    const stdout = events.filter((event) => event.event === "stdout").map((event) => event.text).join("");
+    expect(stdout).toContain("x".repeat(768 * 1024) + "MARKER-END");
+    expect(JSON.parse(stdout.trim().split("\n").at(-1)!).facts.starts).toBe(1);
     expect(await host.exited).toBe(75);
+  } finally {
+    if (host.exitCode === null) host.kill("SIGTERM");
+    await host.exited;
+    rmSync(dir, { recursive: true, force: true });
+  }
+}, 30_000);
+
+test.skipIf(process.platform === "win32")("concurrent playtests share fresh runs, repeats and then steps in one host", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "og-session-playtests-"));
+  const path = join(dir, "host.sock");
+  const entry = join(dir, "game.ts");
+  const executions = join(dir, "executions.txt");
+  const engine = resolve(import.meta.dir!, "../src/index.ts");
+  const env = { ...process.env, OG_RENDERER: "none" };
+  writeFileSync(entry, `import { og } from ${JSON.stringify(engine)};
+import { appendFileSync } from "node:fs";
+appendFileSync(${JSON.stringify(executions)}, process.pid + "\\n");
+let starts = 0;
+export default og.game({start(world){starts++;for(let i=0;i<starts;i++)world.spawn({name:"fresh"+i});}});`);
+  const host = Bun.spawn(["bun", resolve(import.meta.dir!, "../src/node/session.ts"), path, "test"], { env, stdout: "ignore", stderr: "pipe" });
+  const invoke = async (name: string, source: string) => {
+    const file = join(dir, `${name}.og.ts`);
+    writeFileSync(file, source);
+    const child = Bun.spawn(["bun", resolve(import.meta.dir!, "../src/node/playtest-run.ts"),
+      "--file", file, "--entry", entry, "--out", join(dir, name), "--json", "--session-socket", path, "--session-build", "test"],
+      { env, stdout: "pipe", stderr: "pipe" });
+    const [code, stdout, stderr] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
+    return { code, summary: JSON.parse(stdout.trim().split("\n").at(-1)!), stderr };
+  };
+  const descriptor = (entities: number) => `export default {
+commands:"0.1:quit", runs:2, then:[{commands:"0.1:quit"}],
+check(run,t){t.equal(run.entities,${entities});t.equal(run.hashes[0],run.hashes[1]);t.equal(run.hash,run.then[0].hash);}
+};`;
+  try {
+    expect(new TextDecoder().decode((await host.stderr.getReader().read()).value)).toContain("listening");
+    for (const result of await Promise.all([invoke("first", descriptor(1)), invoke("second", descriptor(1))])) {
+      expect(result.code, JSON.stringify(result.summary) + result.stderr).toBe(0);
+      expect(result.summary.checks).toBe(3);
+      expect(result.summary.uncheckedCount).toBe(0);
+      expect(result.summary.failureCaptures).toEqual([]);
+      expect(existsSync(join(result.summary.out, ".failure"))).toBeFalse();
+      expect(result.stderr).not.toContain("running alone");
+    }
+    expect(readFileSync(executions, "utf8").trim().split("\n")).toEqual(Array(6).fill(String(host.pid)));
+    const failed = await invoke("first", descriptor(2));
+    expect(failed.code).toBe(1);
+    expect(failed.summary.failures.length).toBe(1);
+    expect(failed.summary.failureCaptures.length).toBe(3);
+    for (const capture of failed.summary.failureCaptures) {
+      const world = JSON.parse(readFileSync(capture.world, "utf8"));
+      expect(world.hash).toBe(failed.summary.hash);
+      expect(world.tick).toBe(6);
+      expect(readFileSync(capture.snapshot, "utf8")).toMatch(/^og-save:/);
+      expect(capture.frame.status).toBe("unavailable");
+      expect(existsSync(join(capture.run, ".failure/frame.rgba"))).toBeFalse();
+    }
+    expect((await invoke("first", descriptor(1))).code).toBe(0);
+    const malformed = await invoke("malformed", "export default { invalid syntax");
+    expect(malformed.code).toBe(1);
+    expect(malformed.summary.failures[0]).toContain("does not bundle");
   } finally {
     if (host.exitCode === null) host.kill("SIGTERM");
     await host.exited;
