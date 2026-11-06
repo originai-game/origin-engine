@@ -60,7 +60,7 @@ export default playtest({
     t.ok(p.calls.some((c) => c.method === "telemetry" && c.args["name"] === "run.over"), "the end went out as a run.over event");
     const words = texts(run, "summary.json");
     t.ok(words.includes("The crypt is sealed"), "the summary shows the win");
-    t.ok(words.some((w) => w.endsWith(" ★")), "with a new best time");
+    t.ok(words.some((w) => w.endsWith(" · new best")), "with a new best time");
     t.ok(words.includes("Runs 9 · crypts sealed 4"), "and the merged record");
     const again = game(run, "again.json");
     t.equal(again.phase, PLAY, "Again started a run");

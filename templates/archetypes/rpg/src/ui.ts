@@ -577,7 +577,7 @@ function summary(world: World, g: GameV): "again" | "menu" | null {
       og.ui.keyValue("Slain", say(world, "over.slain"), `${g.slain}`, true);
       og.ui.keyValue("Level", say(world, "over.level"), `${level}`, true);
       og.ui.keyValue("Gold", say(world, "over.gold"), `${g.gold}`, true);
-      og.ui.keyValue("Best", say(world, "over.best"), g.best > 0 ? seconds(g.best) + (g.newBest ? " ★" : "") : say(world, "over.none"), false);
+      og.ui.keyValue("Best", say(world, "over.best"), g.best > 0 ? seconds(g.best) + (g.newBest ? ` · ${say(world, "over.newBest")}` : "") : say(world, "over.none"), false);
     });
     og.ui.label("Record", say(world, "over.record", { runs: g.runs, wins: g.wins }), { color: { token: "inkMuted" }, align: "center", width: grow });
     og.ui.row("Actions", { width: grow, gap: S.sm }, () => {
