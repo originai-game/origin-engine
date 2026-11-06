@@ -1,7 +1,7 @@
 // Art-runner entry point. No GPU on --plan. Each rendered batch takes one
 // machine-wide GPU slot; never holds a slot while waiting for another batch.
 // bun scripts/render-ui-catalogue.ts --plan
-// bun scripts/render-ui-catalogue.ts --render [--only kit/rpg] [--out DIR] [--captures DIR]
+// bun scripts/render-ui-catalogue.ts --render [--only kit/rpg | --only screen/] [--out DIR] [--captures DIR]
 // --captures keeps the engine's captures in DIR and reuses a batch already
 // captured there, so a change to the framing reruns without the GPU.
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
@@ -18,7 +18,8 @@ const arg = (flag: string): string | undefined => {
 const out = resolve(arg("--out") ?? join(root, "packages/knowledge/ui"));
 const og = resolve(process.env.OG_BIN ?? join(root, "target/debug/og"));
 const only = arg("--only");
-const entries = catalogue.entries.filter(e => !only || e.id === only);
+// --only takes an id (kit/rpg) or a kind ending in a slash (screen/).
+const entries = catalogue.entries.filter(e => !only || e.id === only || (only.endsWith("/") && e.id.startsWith(only)));
 if (!entries.length) throw new Error(`Unknown catalogue id ${only}`);
 const fixtureSource = readFileSync(join(root, "scripts/ui-catalogue-fixtures/src/main.ts"), "utf8");
 const isolated = new Set([...fixtureSource.matchAll(/^  (?:"([^"]+)"|(\w+)): (?:\(\)|world) =>/gm)].map(m => m[1] ?? m[2]));
@@ -261,17 +262,45 @@ try {
         mkdirSync(join(project, "assets/looks"), { recursive: true });
         writeFileSync(join(project, "project.ogt"), `type project\nversion 1\n---\nname "Catalogue documents"\nid "ui-catalogue"\nengine "0.7.7"\nentry "src/main.ts"\nprofile "2d"\ntick 60\nseed 1\n`);
         writeFileSync(join(project, "assets/looks/catalogue.ogt"), 'type look\nversion 1\n---\nname "Catalogue"\nui "scifi"\n');
+        // A screen is mounted with its default fixture's viewmodel and its slots
+        // filled as a game fills them (scripts/ui-catalogue-fixtures/src/screens.ts):
+        // pushed bare, its lists, maps and trees would draw nothing.
+        cpSync(join(root, "scripts/ui-catalogue-fixtures/src/screens.ts"), join(project, "src/screens.ts"));
         const loads: string[] = [];
         const screens: string[] = [];
+        const vms: Record<string, unknown> = {};
         for (const e of items) {
           run(["ui", "eject", e.name, project]);
           const text = readFileSync(join(root, e.source), "utf8");
           const name = /^name "([^"]+)"/m.exec(text)?.[1];
           if (!name) throw new Error(`Unnamed document ${e.source}`);
+          const fixture = /^fixture default "((?:[^"\\]|\\.)*)"$/m.exec(text)?.[1];
+          vms[name] = fixture ? JSON.parse(JSON.parse(`"${fixture}"`)) : {};
           loads.push(`{const r = og.load.document(world, ${JSON.stringify(`ui/${e.name}.ogt`)}); if (!r.ok) throw new Error(r.reason);}`);
-          screens.push("--screen", `${name}=ui:push:${name}:default`);
+          screens.push("--screen", `${name}=page:${name}`);
         }
-        writeFileSync(join(project, "src/main.ts"), `import {og, defineSystem} from "@origingame/engine";\nconst Ground=defineSystem("Ground",{},()=>og.ui.column("Ground",{width:{kind:"grow"},height:{kind:"grow"},background:{token:"backdrop"}},()=>{}));\nexport default og.game({systems:[Ground], start(world){const style=og.load.style(world,"@styles/scifi/style.ogt");if(!style.ok)throw new Error(style.reason);og.ui.configure(world,{style:style.value});${loads.join("\n")}}});\n`);
+        writeFileSync(join(project, "src/main.ts"), [
+          `import {og, defineSystem} from "@origingame/engine";`,
+          `import {SCREEN_FILLS} from "./screens.ts";`,
+          `const VMS: Record<string, unknown> = ${JSON.stringify(vms)};`,
+          `let page = "";`,
+          `const Ground = defineSystem("Ground", {}, (_q, _t, world) => {`,
+          `  og.ui.column("Ground", {width: {kind: "grow"}, height: {kind: "grow"}, background: {token: "backdrop"}}, () => {});`,
+          `  if (!page) return;`,
+          `  og.ui.screen(page, VMS[page] as never);`,
+          `  SCREEN_FILLS[page]?.(world);`,
+          `});`,
+          `export default og.game({systems: [Ground], start(world) {`,
+          `  const style = og.load.style(world, "@styles/scifi/style.ogt"); if (!style.ok) throw new Error(style.reason);`,
+          `  og.ui.configure(world, {style: style.value});`,
+          `  ${loads.join("\n  ")}`,
+          `}, commands: {page: (world, args) => {`,
+          `  if (!args[0] || !(args[0] in VMS)) throw new Error(\`Unknown screen \${args[0]}\`);`,
+          `  for (let n = og.ui.layers(world).length; n > 0; n--) og.ui.pop(world);`,
+          `  page = args[0];`,
+          `}}});`,
+          ``,
+        ].join("\n"));
         if (!captured) run(["ui", "preview", project, ...screens, "--breakpoints", "desktop", "--scales", "100", "--locales", "game", "--out", captures], true);
         const capturesByName = cells(captures);
         for (const e of items) {
