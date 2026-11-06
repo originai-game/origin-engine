@@ -1150,14 +1150,21 @@ const OBSERVE = /^(screenshot|dump_[a-z_]+|expect|quit|help|listen|wait)$/;
 /**
  * The screens a playtest visits: one per screenshot, reached by the steps
  * before it that act (input, the game's commands; not dumps, checks or
- * other screenshots), captured at the screenshot's time.
+ * other screenshots), captured at the screenshot's time. A screenshot taken
+ * while the inspector is open (`inspect`, `inspect:on` or `inspect:<entity>`
+ * until `inspect:off`) is the development inspector's frame, not a screen of
+ * the game: the check reads the game's UI, which the panel only covers, and
+ * each of its cells drew the panel every frame (the template's two inspector
+ * playtests were 144 of og polish's 216 cells and most of its time).
  */
 export function screensFromPlaytest(playtest: string, commands: string): Array<{ name: string; commands: string; at: number }> {
   const steps = commands.split(";").map((x) => x.trim()).filter(Boolean);
   const out: Array<{ name: string; commands: string; at: number }> = [];
+  let inspecting = false;
   for (const [k, st] of steps.entries()) {
     const [t, act = "", arg = ""] = st.split(":");
-    if (act !== "screenshot") continue;
+    if (act === "inspect" && !["key", "mode", "space"].includes(arg)) inspecting = arg !== "off";
+    if (act !== "screenshot" || inspecting) continue;
     const shot = arg && !/^(full|\d+)$/.test(arg) ? arg.replace(/\.png$/, "") : `shot-${k}`;
     out.push({ name: `${playtest}-${shot}`, commands: steps.slice(0, k).filter((x) => !OBSERVE.test(x.split(":")[1] ?? "")).join(";"), at: Number(t) || 0 });
   }

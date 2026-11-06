@@ -398,6 +398,12 @@ test("the default screens: the values a show command's usage lists, else each pl
     { name: "menu-title", commands: "0:key_down:Enter", at: 0.5 },
     { name: "menu-shot-5", commands: "0:key_down:Enter;0.6:key_up:Enter", at: 1.5 },
   ]);
+  // A screenshot while the inspector is open is the inspector's frame: none until inspect:off closes it,
+  // and setting its key or gizmo mode neither opens nor closes it.
+  expect(screensFromPlaytest("edit", "0:inspect:mode:rotate;0.2:screenshot:a.png;0.5:inspect:crate;1:screenshot:b.png;1.2:inspect:space:local;1.5:screenshot:c.png;2:inspect:off;2.5:screenshot:d.png;3:inspect;3.5:screenshot:e.png")).toEqual([
+    { name: "edit-a", commands: "0:inspect:mode:rotate", at: 0.2 },
+    { name: "edit-d", commands: "0:inspect:mode:rotate;0.5:inspect:crate;1.2:inspect:space:local;2:inspect:off", at: 2.5 },
+  ]);
 });
 
 test("a label drawn in two inks with split clips (a meter's fill and track) is one line, neither cut nor mis-scaled", () => {
