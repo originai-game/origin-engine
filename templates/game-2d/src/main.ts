@@ -172,6 +172,9 @@ export const Control = defineSystem(
         pc.down[i] = playing && down ? 1 : 0;
         if (playing && pressed && (pc.grounded[i] === 1 || pc.coyote[i]! > 0)) g.sfx |= Sound.Jump;
         if (p[i * 3 + 1]! < FALL_Y) {
+          // Properties checked as the game runs (og.assert): a playtest's `require` names the ones it must reach.
+          og.assert.reachable("the courier falls into the pit");
+          og.assert.always(g.lives > 0, "a fall never happens with no life left", { lives: g.lives });
           g.lives -= 1;
           // The last life: Pickups puts every coin back.
           if (g.lives === 0) g.restart = true;
@@ -214,8 +217,12 @@ export const Pickups = defineSystem("Pickups", { writes: [Game, Coin, og.Sprite]
         g.coins += 1;
         g.sfx |= Sound.Coin;
       }
+      // One bucket per coin: a run that leaves one untaken lists it as never fired.
+      og.assert.each(Math.round(p[i * 3]! * 10) / 10, coin.taken[i] === 1, "each coin can be taken");
     }
   }
+  og.assert.always(g.coins <= g.total, "never more coins than the level holds", { coins: g.coins, total: g.total });
+  og.assert.sometimes(g.coins > 0, "the courier takes a coin");
   if (!g.won && g.heroX >= g.goalX) {
     g.won = true;
     g.sfx |= Sound.Coin;
@@ -440,6 +447,7 @@ export const Hud = defineSystem("Hud", { writes: [Game] }, (_q, _time, world) =>
   } else if (pause || og.ui.back()) {
     must(og.ui.push(world, "pause"));
     g.paused = true;
+    og.assert.reachable("the pause menu opens");
   }
   g.touchX = g.paused ? 0 : moveX;
   g.touchJump = !g.paused && jump;
