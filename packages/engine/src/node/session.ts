@@ -8,18 +8,21 @@ import { Console } from "node:console";
 import { Writable } from "node:stream";
 import { native } from "./index.ts";
 import { run } from "./run.ts";
+import { runUi } from "./ui-run.ts";
 import { freezeInputs } from "./session-inputs.ts";
 
 declare module "node:os" {
   export function freemem(): number;
 }
 
-type Request = { build: string; cwd: string; argv: string[]; env: Record<string, string> };
+type Request = { kind: "run" | "ui"; build: string; cwd: string; argv: string[]; env: Record<string, string> };
 type Event = { event: "accepted" | "busy" } | { event: "stdout" | "stderr"; text: string } | { event: "exit"; code: number } | { event: "rejected"; reason: string };
 
 function request(value: unknown): Request {
   if (typeof value !== "object" || value === null || !("build" in value) || !("cwd" in value) || !("argv" in value) || !("env" in value))
     throw new Error("expected build, cwd, argv and env");
+  const kind = "kind" in value ? value.kind : "run";
+  if (kind !== "run" && kind !== "ui") throw new Error("unknown session command kind");
   const { build, cwd, argv, env } = value;
   if (typeof build !== "string" || typeof cwd !== "string" || !Array.isArray(argv) || !argv.every((arg): arg is string => typeof arg === "string"))
     throw new Error("invalid session request");
@@ -30,7 +33,7 @@ function request(value: unknown): Request {
     environment[key] = val;
   }
   if (argv.some((arg) => ["--watch", "--port", "--room", "--handoff", "--restore", "--realtime", "--trace-append"].includes(arg))) throw new Error("interactive, restore and trace-append runs use a dedicated process");
-  return { build, cwd, argv, env: environment };
+  return { kind, build, cwd, argv, env: environment };
 }
 
 const [socketPath, build] = process.argv.slice(2);
@@ -146,7 +149,11 @@ const server = createServer((socket) => {
           },
         });
         globalThis.console = new Console({ stdout: stream("stdout"), stderr: stream("stderr"), ignoreErrors: false });
-        send({ event: "exit", code: await run(frozen.argv, output, { signal: abort.signal, ...(frozen.inputRoot ? { inputRoot: frozen.inputRoot } : {}) }) });
+        const control = { signal: abort.signal, ...(frozen.inputRoot ? { inputRoot: frozen.inputRoot } : {}) };
+        const code = call.kind === "ui"
+          ? await runUi(frozen.argv, output, { ...control, moduleLoaded: () => { admitted++; } })
+          : await run(frozen.argv, output, control);
+        send({ event: "exit", code });
       } catch (error) {
         const text = error instanceof Error ? (error.stack ?? error.message) : String(error);
         send({ event: "stderr", text: new TextDecoder().decode(new TextEncoder().encode(text).subarray(0, 64 * 1024)) + "\n" });

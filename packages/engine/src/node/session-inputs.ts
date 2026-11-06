@@ -1,5 +1,5 @@
 import { constants, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 // Generation copies are private to an admitted request. Mutable platform
 // stores and output paths remain live: those are state, not prepared inputs.
@@ -44,6 +44,7 @@ export function freezeInputs(argv: readonly string[], cwd: string, directory: st
   const dispose = () => rmSync(dir, { recursive: true, force: true });
   try {
     let inputRoot: string | undefined;
+    let sourceRoot: string | undefined;
     for (let i = 0; i < args.length; i++) {
       const flag = args[i];
       if (!["--entry", "--root", "--platform-fake"].includes(flag!)) continue;
@@ -54,6 +55,7 @@ export function freezeInputs(argv: readonly string[], cwd: string, directory: st
       copy(source, target);
       if (flag === "--root") {
         inputRoot = target;
+        sourceRoot = source;
         args[i] = source;
       } else {
         args[i] = target;
@@ -71,6 +73,16 @@ export function freezeInputs(argv: readonly string[], cwd: string, directory: st
           writeFileSync(`${target}.map`, JSON.stringify(map));
         }
       }
+    }
+    for (let i = 0; i < args.length; i++) {
+      if (args[i] !== "--playtest") continue;
+      const value = args[++i];
+      if (!value || !sourceRoot || !inputRoot) throw new Error("UI playtests require a project root");
+      const path = relative(sourceRoot, resolve(cwd, value));
+      if (isAbsolute(path) || path === ".." || path.startsWith(`..${sep}`)) throw new Error("UI playtest is outside the frozen project");
+      const frozen = join(inputRoot, path);
+      if (!existsSync(frozen)) throw new Error(`UI playtest is outside the frozen inputs: ${value}`);
+      args[i] = frozen;
     }
     for (const [path, before] of stamps) {
       if (stamp(path) !== before) throw new Error(`input changed during admission: ${path}`);

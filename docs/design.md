@@ -2144,8 +2144,9 @@ the person's device through Player telemetry and from `og run --device`
 (safaridriver / Chrome DevTools on a paired phone, timing the publish build)
 when the person is present.
 
-Headless `og run` and `og test` start a local host automatically when none
-is listening. Concurrent starters converge on the same inherited file lock;
+Headless `og run`, `og test`, `og ui check`, `og ui preview`, and `og ui sheet`
+start a local host automatically when none is listening. Concurrent starters
+converge on the same inherited file lock;
 they wait up to ten seconds for the socket before sending any command.
 `OG_SESSION=0` keeps the fresh-process path. `og session [project]` runs the
 same supervisor explicitly in the foreground. A session owns one host per
@@ -2159,9 +2160,19 @@ shares a playtest's persistent store. Room peers use dedicated processes
 because they must advance together. Lost replies are failures, not retries.
 The host admits at most eight outstanding runs. Playtest clients back off
 on an explicit pre-admission `busy` response for up to 60 seconds; they
-never retry an accepted run. The host retires after 128 admissions to bound
-its module cache, flushing its last reply before exiting. A client that
-stops reading a completed reply is disconnected after ten seconds.
+never retry an accepted run. The host retires after 128 admissions and UI
+module imports in total, draining accepted matrices before exiting to bound
+module-cache growth across requests. A client that stops reading a completed
+reply is disconnected after ten seconds.
+
+UI matrices use `ui::spawn` and `runUi(argv, output, control)` in
+`src/node/ui-run.ts`, on the same sequential queue as game runs. Each cell
+imports fresh declarations and creates its own world, platform, and renderer
+state. Cancellation, errors, and normal completion destroy the engine and
+restore pseudo-locale hooks. The invocation removes module copies and source
+maps and clears the frozen asset root. Screen discovery reads playtests from
+the frozen project too. Frames and check measures come from one cell pass;
+review commands can use this entry point without running the matrix twice.
 
 Native preparation keeps one bundle and source map under `.og/bundle` on
 Unix, with an inherited file lock covering compilation and publication.

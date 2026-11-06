@@ -20,18 +20,22 @@ test.skipIf(process.platform === "win32")("admitted inputs survive edits and kee
     writeFileSync(asset, "old mesh");
     writeFileSync(join(root, "project.ogt"), "old project");
     writeFileSync(fake, "old responses");
+    const playtest = join(root, "case.og.ts");
+    writeFileSync(playtest, "old screen commands");
     symlinkSync(asset, join(root, "cooked", "alias.ogb"));
-    const argv = ["--entry", entry, "--root", root, "--platform-fake", fake, "--platform-store", "store.json", "--out", "output"];
+    const argv = ["--entry", entry, "--root", root, "--platform-fake", fake, "--platform-store", "store.json", "--out", "output", "--playtest", playtest];
     const frozen = freezeInputs(argv, dir, generations);
     try {
       writeFileSync(entry, "export default 9;");
       writeFileSync(asset, "new mesh");
       writeFileSync(fake, "new responses");
+      writeFileSync(playtest, "new screen commands");
       expect(readFileSync(frozen.argv[1]!, "utf8")).toBe("export default 7;");
       expect(readFileSync(join(frozen.inputRoot!, "cooked", "alias.ogb"), "utf8")).toBe("old mesh");
       expect(readFileSync(join(frozen.inputRoot!, "project.ogt"), "utf8")).toBe("old project");
       expect(readFileSync(frozen.argv[5]!, "utf8")).toBe("old responses");
-      expect(frozen.argv.slice(6)).toEqual(argv.slice(6));
+      expect(readFileSync(frozen.argv[11]!, "utf8")).toBe("old screen commands");
+      expect(frozen.argv.slice(6, 10)).toEqual(argv.slice(6, 10));
       expect(frozen.argv[3]).toBe(root);
       expect(existsSync(join(frozen.inputRoot!, ".og"))).toBeFalse();
       expect(JSON.parse(readFileSync(`${frozen.argv[1]}.map`, "utf8")).sources).toEqual([join(root, "src/main.ts"), "og:worker"]);

@@ -95,8 +95,8 @@ fn sheet(args: &[&str]) -> Result<(), String> {
             forward.push("--json");
         }
         let status = spawn("sheet", &p, &package, &bundle, &out, &forward)?;
-        if !status.success() {
-            return Err(format!("renderer exited {status}"));
+        if status != ExitCode::SUCCESS {
+            return Err(format!("renderer exited {status:?}"));
         }
         Ok(())
     })();

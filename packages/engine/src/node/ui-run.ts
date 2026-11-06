@@ -29,7 +29,8 @@ import { nativePlatform } from "./platform.ts";
 import { bundleGame } from "./build.ts";
 import { decodePng, encodePng, type Image } from "./png.ts";
 import type { PlaytestDesc } from "../playtest.ts";
-import { boundHost, createEngine, type Engine, type GameToken } from "../runtime.ts";
+import { beginBundle, boundHost, createEngine, type Engine, type GameToken } from "../runtime.ts";
+import type { RunControl, RunOutput } from "./run.ts";
 import { og } from "../index.ts";
 import { cellName, checkFrame, checkLocales, formatText, measureFrame, measureScale, mergeFindings, pseudo, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiFinding, type UiFrameSnapshot, type UiMeasure } from "./ui-check.ts";
 import { sheet, type SheetCell } from "./ui-sheet.ts";
@@ -48,18 +49,36 @@ export const BREAKPOINTS: Record<string, { width: number; height: number; dpr: n
   tablet: { width: 820, height: 1180, dpr: 2, safeArea: { left: 0, top: 24, right: 0, bottom: 20 }, coarsePointer: true },
 };
 
-const argv = process.argv.slice(2);
-const mode = argv[0];
-const opt = (name: string) => {
-  const i = argv.indexOf(name);
-  return i >= 0 ? argv[i + 1] : undefined;
-};
-const opts = (name: string) => argv.flatMap((a, i) => (a === name && argv[i + 1] !== undefined ? [argv[i + 1]!] : []));
-const list = (name: string, d: string) => (opt(name) ?? d).split(",").map((s) => s.trim()).filter(Boolean);
+let version = 0;
+class UiExit extends Error {
+  readonly code: number;
+  constructor(code: number) {
+    super(`ui exited ${code}`);
+    this.code = code;
+  }
+}
 
-function fail(reason: string): never {
-  process.stderr.write(`og ui ${mode ?? ""}: ${reason}\n`);
-  process.exit(2);
+export interface UiRunControl extends RunControl {
+  moduleLoaded?: () => void;
+}
+
+/** One matrix, with fresh cells and invocation-owned resources. Calls must be sequential. */
+export async function runUi(argv: string[], output: RunOutput = process, control: UiRunControl = {}): Promise<number> {
+  const cleanup: Array<() => void> = [];
+  try {
+    return await main(argv, output, control, cleanup);
+  } catch (error) {
+    if (error instanceof UiExit) return error.code;
+    // Bun reads maps lazily; form the stack before removing the cell's copy.
+    if (error instanceof Error) void error.stack;
+    throw error;
+  } finally {
+    const errors: unknown[] = [];
+    for (const dispose of cleanup.reverse()) {
+      try { dispose(); } catch (error) { errors.push(error); }
+    }
+    if (errors.length > 0) throw new AggregateError(errors, "UI run cleanup failed");
+  }
 }
 
 /** `t:action;action` → each step timed (a bare action at `at`). */
@@ -94,13 +113,27 @@ function pseudoAbi(on: boolean): () => void {
   return () => Object.assign(abi, saved);
 }
 
-async function main(): Promise<void> {
+async function main(argv: string[], process: RunOutput, control: UiRunControl, cleanup: Array<() => void>): Promise<number> {
+  const mode = argv[0];
+  const opt = (name: string) => {
+    const i = argv.indexOf(name);
+    return i >= 0 ? argv[i + 1] : undefined;
+  };
+  const opts = (name: string) => argv.flatMap((a, i) => (a === name && argv[i + 1] !== undefined ? [argv[i + 1]!] : []));
+  const list = (name: string, d: string) => (opt(name) ?? d).split(",").map((s) => s.trim()).filter(Boolean);
+  function fail(reason: string): never {
+    process.stderr.write(`og ui ${mode ?? ""}: ${reason}\n`);
+    throw new UiExit(2);
+  }
+  const cancelled = () => { if (control.signal?.aborted) throw new UiExit(130); };
+  cancelled();
   if (mode !== "check" && mode !== "preview" && mode !== "sheet") fail("usage: bun src/node/ui-run.ts check|preview|sheet --entry <bundle> --root <project> --out <dir> [...]");
   const entry = opt("--entry"), root = opt("--root"), out = opt("--out");
   if (!entry || !root || !out) fail("--entry, --root and --out are required");
   const outDir = resolve(out!);
   mkdirSync(join(outDir, "cells"), { recursive: true });
-  const projectFile = join(root!, "project.ogt");
+  const inputRoot = control.inputRoot ?? root!;
+  const projectFile = join(inputRoot, "project.ogt");
   const project = existsSync(projectFile) ? readFileSync(projectFile, "utf8") : undefined;
   const profile = project ? (/^\s*profile\s+"(2d|3d)"/m.exec(project)?.[1] as "2d" | "3d" | undefined) : undefined;
   const show = opt("--show") ?? "show:{screen}";
@@ -115,7 +148,7 @@ async function main(): Promise<void> {
   const bps = list("--breakpoints", mode === "check" ? "desktop,phonePortrait,phoneLandscape,tablet" : "desktop,phonePortrait,phoneLandscape,tablet");
   for (const b of bps) if (!BREAKPOINTS[b]) fail(`--breakpoints: '${b}' is not one of ${Object.keys(BREAKPOINTS).join(", ")}`);
   // The locales: the game's own, pseudo, then a CJK and a right-to-left one the game has strings for.
-  const have = existsSync(join(root!, "assets", "strings")) ? readdirSync(join(root!, "assets", "strings")).map((f) => f.replace(/\.ogt$/, "")) : [];
+  const have = existsSync(join(inputRoot, "assets", "strings")) ? readdirSync(join(inputRoot, "assets", "strings")).map((f) => f.replace(/\.ogt$/, "")) : [];
   const cjk = have.find((l) => /^(ja|zh|ko)/.test(l)) ?? "ja";
   const rtl = have.find((l) => /^(ar|he|fa|ur)/.test(l)) ?? "ar";
   const locales = list("--locales", `game,pseudo,${cjk},${rtl}`).map((l) => (l === "game" ? "" : l));
@@ -129,19 +162,25 @@ async function main(): Promise<void> {
   const highContrast = argv.includes("--high-contrast");
 
   loadNativeHost();
+  if (control.inputRoot) {
+    native().og_node_input_root(resolve(root!), control.inputRoot);
+    cleanup.push(() => native().og_node_input_root(null, null));
+  }
   const extras = native() as unknown as { og_node_ui_frame(id: number): string };
   if (typeof extras.og_node_ui_frame !== "function") fail("this native addon has no og_node_ui_frame: rebuild it (packages/engine/scripts/build.sh)");
   // Each cell runs a fresh copy of the bundle: bun keys file:// modules by path and ignores a query, so one import
   // shared by every cell carried the game's module state over (a kit's dialogue handle from the last cell's engine
   // left every later cell of the screen an empty conversation, measured as passing).
-  let copies = 0;
   const leftovers: string[] = [];
-  process.on("exit", () => {
+  cleanup.push(() => {
     for (const f of leftovers) rmSync(f, { force: true });
   });
   const freshGame = async (): Promise<GameToken> => {
+    cancelled();
+    beginBundle();
+    control.moduleLoaded?.();
     const from = resolve(entry!);
-    const copy = from.replace(/(\.[cm]?[jt]s)?$/, (ext) => `.cell-${copies++}${ext || ".js"}`);
+    const copy = from.replace(/(\.[cm]?[jt]s)?$/, (ext) => `.cell-${version++}${ext || ".js"}`);
     copyFileSync(from, copy);
     leftovers.push(copy);
     // bun reads `<module>.map` when a stack is formed: kept until exit, so a cell's errors still name the .ts lines.
@@ -159,15 +198,13 @@ async function main(): Promise<void> {
     const game = await freshGame();
     const vp = BREAKPOINTS[bp]!;
     const restore = pseudoAbi(locale === "pseudo");
-    const created = createEngine(game, { root: resolve(root!), deferStart: true, ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}), ...(locale && locale !== "pseudo" ? { locale } : {}) });
-    if (!created.ok) {
-      restore();
-      fail(created.reason);
-    }
-    const engine: Engine = created.value;
+    let engine: Engine | undefined;
     const warnings: string[] = [];
     const images = new Map<string, Image>();
     try {
+      const created = createEngine(game, { root: resolve(root!), deferStart: true, ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}), ...(locale && locale !== "pseudo" ? { locale } : {}) });
+      if (!created.ok) fail(created.reason);
+      engine = created.value;
       engine.attachPlatform(nativePlatform());
       const attached = attachRenderer(engine.id, vp.width * vp.dpr, vp.height * vp.dpr);
       if (!attached.ok) fail(attached.reason);
@@ -181,6 +218,10 @@ async function main(): Promise<void> {
       const report = engine.probe.commands(script.join(";")) as { untilTick: number } | null;
       if (!report) fail(`the script is malformed: ${script.join(";")}`);
       for (let n = 0; n < 6000; n++) {
+        if (control.signal && n % 16 === 0) {
+          await new Promise<void>((resolve) => setTimeout(resolve, 0));
+          cancelled();
+        }
         const a = engine.frame(1000 / engine.rate);
         if (!a.ok) {
           warnings.push(a.reason ?? "the frame failed");
@@ -193,8 +234,8 @@ async function main(): Promise<void> {
       const f = JSON.parse(extras.og_node_ui_frame(engine.id)) as UiFrameSnapshot & { error?: string };
       return { frame: f.error ? null : f, images, warnings };
     } finally {
-      engine.destroy();
-      restore();
+      try { engine?.destroy(); }
+      finally { restore(); }
     }
   };
 
@@ -223,7 +264,10 @@ async function main(): Promise<void> {
   // the start screen. A bare check sees every screen the project has.
   if (screens.length === 0) {
     const helpGame = await freshGame();
-    const found = await defaultScreens(() => runHelp(helpGame), show, opts("--playtest"));
+    const found = await defaultScreens(() => runHelp(helpGame), show, opts("--playtest"), () => {
+      cancelled();
+      control.moduleLoaded?.();
+    });
     screens.push(...found.screens);
     process.stderr.write(`og ui ${mode}: ${screens.length} screen(s) from ${found.from}\n`);
   }
@@ -248,8 +292,7 @@ async function main(): Promise<void> {
     writeFileSync(join(outDir, "film.json"), JSON.stringify(index, null, 1) + "\n");
     process.stdout.write(argv.includes("--json") ? JSON.stringify({ film: file, index: join(outDir, "film.json"), uncheckedCount }) + "\n" : `og ui preview: filmstrip ${file}\n`);
     if (uncheckedCount > 0) process.stderr.write(`og ui preview: ${uncheckedCount} GPU captures unchecked\n`);
-    if (argv.includes("--require-checked") && uncheckedCount > 0) process.exitCode = 1;
-    return;
+    return argv.includes("--require-checked") && uncheckedCount > 0 ? 1 : 0;
   }
 
   // The matrix.
@@ -307,7 +350,7 @@ async function main(): Promise<void> {
   }
   const uncheckedCount = cells.filter((c) => c.frame === null).length;
   if (uncheckedCount > 0) process.stderr.write(`og ui ${mode}: ${uncheckedCount} GPU captures unchecked\n`);
-  if (argv.includes("--require-checked") && uncheckedCount > 0) process.exitCode = 1;
+  const exitCode = argv.includes("--require-checked") && uncheckedCount > 0 ? 1 : 0;
   if (mode === "sheet") {
     const sheets: string[] = [];
     for (const bp of bps) for (const scale of scales) for (const style of styles.length ? styles : [""]) {
@@ -319,7 +362,7 @@ async function main(): Promise<void> {
     }
     writeFileSync(join(outDir, "index.json"), JSON.stringify({ sheets, cells, pages: screens, breakpoints: bps, scales }, null, 2) + "\n");
     process.stdout.write(argv.includes("--json") ? JSON.stringify({ sheets, cells: cells.length, index: join(outDir, "index.json"), uncheckedCount }) + "\n" : `og ui sheet: ${cells.length} captures; ${join(outDir, "index.json")}\n`);
-    return;
+    return exitCode;
   }
   const findings = mergeFindings(all);
   const project_ = basename(resolve(root!));
@@ -342,10 +385,11 @@ async function main(): Promise<void> {
     writeFileSync(join(outDir, "index.json"), JSON.stringify({ project: project_, sheets: sheets.map((s) => basename(s)), axes: { screens: screens.map((s) => s.name), styles, breakpoints: bps, locales: locales.map((l) => l || "game"), scales }, cells: cells.map((c) => ({ ...c, locale: c.locale || "game" })) }, null, 1) + "\n");
     if (argv.includes("--json")) process.stdout.write(JSON.stringify({ sheets, index: join(outDir, "index.json"), cells: cells.length, findings: findings.length, uncheckedCount }) + "\n");
     else process.stdout.write(`og ui preview: ${cells.length} cell(s) in ${((performance.now() - t0) / 1000).toFixed(1)} s; ${sheets.map((s) => basename(s)).join(", ")}; ${join(outDir, "index.json")}\n`);
-    return;
+    return exitCode;
   }
   if (argv.includes("--json")) process.stdout.write(JSON.stringify({ cells: cells.length, findings, measures: measures.length, frames, report: join(outDir, "check.json"), uncheckedCount }) + "\n");
   else process.stdout.write(formatText(findings, `og ui check: ${project_}, ${cells.length} cell(s) in ${((performance.now() - t0) / 1000).toFixed(1)} s (${join(outDir, "check.json")})`, measures));
+  return exitCode;
 }
 
 /**
@@ -354,13 +398,14 @@ async function main(): Promise<void> {
  * from the probe's help), else each screenshot the playtests take (reached
  * by the steps before it, captured at its time), else the start screen.
  */
-async function defaultScreens(help: () => string, show: string, playtests: readonly string[]): Promise<{ screens: Array<{ name: string; commands: string; at?: number }>; from: string }> {
+async function defaultScreens(help: () => string, show: string, playtests: readonly string[], moduleLoaded?: () => void): Promise<{ screens: Array<{ name: string; commands: string; at?: number }>; from: string }> {
   const listed = screensFromHelp(help(), show);
   if (listed.length > 0) return { screens: listed, from: `the game's ${show.split(":")[0]} command's usage` };
   const out: Array<{ name: string; commands: string; at: number }> = [];
   const seen = new Set<string>();
   for (const file of playtests) {
-    const bundled = join(dirname(resolve(file)), `.ui-check-${basename(file)}.js`);
+    moduleLoaded?.();
+    const bundled = join(dirname(resolve(file)), `.ui-check-${version++}-${basename(file)}.js`);
     try {
       const b = await bundleGame(file, bundled, "native");
       if (!b.ok) continue;
@@ -383,4 +428,4 @@ async function defaultScreens(help: () => string, show: string, playtests: reado
 
 declare function atob(data: string): string;
 
-await main();
+if (import.meta.main) process.exit(await runUi(process.argv.slice(2)));

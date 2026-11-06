@@ -38,7 +38,7 @@
 
 use crate::project::{self, Project};
 use std::path::Path;
-use std::process::{Command, ExitCode, ExitStatus};
+use std::process::{Command, ExitCode};
 
 pub mod extensions;
 mod sheet;
@@ -153,8 +153,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         },
     );
     match spawn(mode, &p, &package, &bundle, &out, &forward) {
-        Ok(s) if s.success() => ExitCode::SUCCESS,
-        Ok(_) => ExitCode::FAILURE,
+        Ok(code) => code,
         Err(e) => {
             eprintln!("og ui {mode}: {e}");
             ExitCode::FAILURE
@@ -172,7 +171,7 @@ pub fn spawn(
     bundle: &Path,
     out: &Path,
     forward: &[&str],
-) -> Result<ExitStatus, String> {
+) -> Result<ExitCode, String> {
     let given = forward.contains(&"--screen") || forward.contains(&"--baseline");
     let declared = if given {
         Vec::new()
@@ -198,7 +197,11 @@ pub fn spawn(
     for t in &playtests {
         cmd.arg("--playtest").arg(t);
     }
+    if let Some(code) = crate::session::try_run(&p.root, package, &cmd)? {
+        return Ok(code);
+    }
     cmd.status()
+        .map(project::exit_of)
         .map_err(|e| format!("{} ({e})", project::NO_BUN))
 }
 

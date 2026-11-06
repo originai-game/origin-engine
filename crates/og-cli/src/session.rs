@@ -156,8 +156,16 @@ mod local {
         }) {
             return Ok(None);
         }
+        let kind = if command.get_args().next().is_some_and(|script| {
+            Path::new(script).file_name() == Some(std::ffi::OsStr::new("ui-run.ts"))
+        }) {
+            "ui"
+        } else {
+            "run"
+        };
         let mut socket = connect(project)?;
         let call = serde_json::json!({
+            "kind": kind,
             "build": build(package)?,
             "cwd": std::env::current_dir().map_err(|e| e.to_string())?,
             "env": std::env::vars().collect::<BTreeMap<_, _>>(),

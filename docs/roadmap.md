@@ -43,7 +43,6 @@ pitfalls, with no API restatement; names never change.
 | Stream | Thread | Branch |
 |---|---|---|
 | Art runner (reviews and lands visual heads) | [T-01a1b0c7](https://ampcode.com/threads/T-01a1b0c7-5f8c-7352-a5dc-d024892ea59e) | art-runner |
-| og session: resident session RPC and playtests | [T-01a1b0c8-1b44](https://ampcode.com/threads/T-01a1b0c8-1b44-773e-9143-d2b43bf515d7) | og-session |
 | og-cook fracture re-cook, og.Decal on terrain | [T-01a1b0c8-3db5](https://ampcode.com/threads/T-01a1b0c8-3db5-7421-9322-4e4629f2ab12) | cook-decal |
 | og.motion: geometry diagnosis, jump arc ownership, cases 04/05, skinned art review | [T-01a1b0ff](https://ampcode.com/threads/T-01a1b0ff-58c7-70fd-817c-80f5d7e6ecbd) | og-motion |
 | Gate and toolchain reform: landing queue first, then two lanes (quick, full), dependency-derived selection, Cargo overrides re-measured, dead scripts removed | [T-01a1b106](https://ampcode.com/threads/T-01a1b106-008f-775c-b0a3-c4689c659e78) | gate-reform |
@@ -58,6 +57,32 @@ Landed in the clean-up round: examples/ deleted with the path-aware `fixtures` s
 the destruction-yard and vehicle-terrain fixtures (to 876766dc0); meshlet
 determinism by stable GPU compaction (b54e9e5a2); Music.start's reflected
 minimum removed (b59654b2a).
+
+## Resident sessions
+
+The [session stream](https://ampcode.com/threads/T-01a1b0c8-1b44-773e-9143-d2b43bf515d7)
+provides automatic local hosts, isolated game runs and playtests, UI matrices,
+affected-suite selection, failure captures, strict unchecked-result handling,
+compiler-owned incremental checks, and validated native bundle reuse.
+
+The checker stays a subprocess. One warmed, CPU-only `vehicle-terrain`
+sample with the dev CLI measured launch plus `--version` at 5.7 ms out of
+a 131 ms checked run (4.4%). This is a launch-cost estimate, not a repeated
+benchmark or a shipping-build result; it does not justify checker residency.
+
+Remaining work belongs to these streams:
+
+- The [asset store](https://ampcode.com/threads/T-01a1b1f2-e53a-7673-b610-8c99dfc640d3)
+  adds the cook's stat index. Sessions still run the incremental cook scan.
+- The [UI foundation](https://ampcode.com/threads/T-01a1b1e4-5d51-73b5-a12b-ee59fd202b61)
+  adds document-driven review matrices through `ui::spawn` and `runUi`.
+  Review scratch projects must stay beneath the caller's worktree to share
+  its host instead of starting one for each temporary project.
+- Forking and capture-only remain off until presentation checkpoints cover
+  renderer state, interpolation, and the Presenter. Current failure captures
+  are diagnostics, not resumable presentation checkpoints.
+- Windows keeps the fresh-process path. Unix-only session transport and
+  bundle-cache validation remain part of the compatibility work.
 
 ## Decided in the clean-up
 
