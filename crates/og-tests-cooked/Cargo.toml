@@ -8,6 +8,9 @@ description = "Origin Engine tests that cook a project: og-tests' gfx scenes mad
 publish = false
 autotests = false
 
+[features]
+kit-tests = []
+
 [dependencies]
 og-tests = { path = "../og-tests" }
 og-render = { path = "../og-render" }
@@ -36,3 +39,8 @@ path = "src/bin/og-gfx.rs"
 [[test]]
 name = "tests"
 path = "tests/main.rs"
+
+[[test]]
+name = "style-diagnostics"
+path = "../../templates/styles/tests/contrast.rs"
+required-features = ["kit-tests"]

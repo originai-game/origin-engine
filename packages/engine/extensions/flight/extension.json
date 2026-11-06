@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "kind": "kit",
+  "name": "flight",
+  "version": "1.0.0",
+  "description": "flight UI components and screen documents",
+  "skill": "building-flight-ui/SKILL.md",
+  "entry": "index.ts",
+  "types": "types.ts"
+}

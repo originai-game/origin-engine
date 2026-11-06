@@ -1,3 +1,4 @@
+import { ledger } from "./src/ledger.ts";
 // The strategy kit (docs/ui.md §17): its components, registered as one typed
 // namespace beside og.ui. A game imports it explicitly:
 //
@@ -13,6 +14,7 @@ import { wavePreview } from "./src/waves.ts";
 export type * from "./types.ts";
 
 export const strategy = registerUiExtension("strategy", {
+  ledger,
   productionQueue,
   selectionPanel,
   commandCard,

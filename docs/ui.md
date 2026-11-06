@@ -1497,6 +1497,49 @@ The registry is one TypeScript implementation shared by native and web.
 Components keep state in the engine's public world/UI memory APIs, not
 module globals, so snapshots and multiple worlds retain their meaning.
 
+### Genre ownership (2026-11-06)
+
+Only generic components remain in `og.ui`. Install an editable kit with
+`og ui add <kit>`; import its namespace explicitly from
+`@origingame/engine/extensions/<kit>/index.ts` or the installed
+`assets/ui-kits/<kit>/index.ts`. Types come from the same entry.
+The move changes ownership and imports only, not appearance or behavior.
+
+| Kit | Moved from `og.ui` in this wave |
+|---|---|
+| card | `cardHand`, `rewardChoice`, `deckBuilder` |
+| idle | `idleGenerator`, `prestigePanel` |
+| liveops | `storeFront`, `battlePass` |
+| story | `backlog`, `barks`, `cgGallery`, `routeChart` |
+| versus | `lobby`, `characterSelect`, `versus`, `draft`, `chat` |
+| rpg | `worldMap` |
+| rhythm | `songSelect`, `laneKeys`, `comboCounter`, `judgement` |
+| strategy | `ledger` |
+| photo | `photoMode` |
+| sports | `scorebug`, `matchStats`, `goalTimeline`, `playerPlate`, `substitution` |
+| flight | `flightHud` |
+
+Card owns the card/roguelike choice loop; versus owns multiplayer rosters,
+drafting and chat; story owns visual-novel readers and route/gallery views.
+Liveops owns the store and season progression. Flight and photo are separate
+optional kits rather than dependencies of every racing or action game.
+World maps extend RPG and management ledgers extend strategy.
+
+`heroButton`, `starBar`, `settingsTree` and `overlayBar` remain generic.
+Ability slots/bars and status grids remain common: they compose charges,
+cooldowns and effects in action, RPG, shooter and strategy games without a
+genre-specific screen flow. Generic meters, navigation, timers, the Rust
+meter/cooldown/minimap/zoom-view/joystick primitives are unchanged.
+
+Genre screen documents live beside their kit's `extension.json`; use
+`og ui eject <kit>/<screen>`. The complete Appendix B path catalogue is
+`packages/engine/extensions/tests/screen-catalogue.md`. Generic system screens
+stay in `src/ui/screens` (boot/menu, settings, pause, save/load, loading,
+results, leaderboard, calibration, tutorial, game-over, creator tools, credits).
+Kit and style suites run through `scripts/check.sh kits` (`ui` is an alias),
+separately from the engine's quick and functional lanes. Tests retain their
+assertions and reference bytes; known failures are not repaired by this move.
+
 ### 17.3 Pack authoring and review
 
 `style.ogt` is authored data. Each pack's choices file is local to that

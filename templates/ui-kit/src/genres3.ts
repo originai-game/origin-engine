@@ -9,8 +9,11 @@
 import { og } from "@origingame/engine";
 import { art, chromeRoom, L, phone, type ArtName } from "./patterns.ts";
 import { frame } from "./genres.ts";
-import type { CgEntry, CollectionCard, PhotoControl, PhotoLook, DisplaySettings, Rarity, RouteScene, SettingEntry, SettingKind, Size, World } from "@origingame/engine";
+import type { DisplaySettings, Rarity, SettingEntry, SettingKind, Size, World } from "@origingame/engine";
 import { shooter, type LoadoutAttachment, type LoadoutSlot, type LoadoutStat } from "@origingame/engine/extensions/shooter/index.ts";
+import { card, type CollectionCard } from "@origingame/engine/extensions/card/index.ts";
+import { photo, type PhotoControl, type PhotoLook } from "@origingame/engine/extensions/photo/index.ts";
+import { story, type CgEntry, type RouteScene } from "@origingame/engine/extensions/story/index.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: n });
@@ -90,7 +93,7 @@ export function photoScreen(): boolean {
     // The game's own render of the shot through each filter and frame for their tiles.
     const filters: PhotoLook[] = FILTERS.map(([key, a]) => ({ key, name: L(`photo.filter.${key}`), image: art(a) }));
     const frames: PhotoLook[] = FRAMES.map(([key, , thumb]) => ({ key, name: L(`photo.frame.${key}`), image: art(thumb) }));
-    const r = og.ui.photoMode("Mode", {
+    const r = photo.photoMode("Mode", {
       tabs: ["camera", "lens", "filters", "frames"].map((key) => ({ key, label: L(`photo.tab.${key}`) })),
       tab: ph.tab,
       controls,
@@ -246,7 +249,7 @@ export function deckScreen(): void {
       // The legendaries are one to a deck.
       limit: rarity === "legendary" ? 1 : 0,
     }));
-    const r = og.ui.deckBuilder("Builder", {
+    const r = card.deckBuilder("Builder", {
       cards,
       deckName: L("deck.name"),
       deckImage: art("cards/ice"),
@@ -315,10 +318,10 @@ export function cgGalleryScreen(): void {
       fresh: key === "duel",
     }));
     // The gallery seated on the pack's panel, as a game's extras menu is, not straight on the scene.
-    let r!: ReturnType<typeof og.ui.cgGallery>;
+    let r!: ReturnType<typeof story.cgGallery>;
     const t = og.ui.frameTheme();
     og.ui.column("Seat", { width: grow, height: grow, padding: viewing ? { left: 0, top: 0, right: 0, bottom: 0 } : { left: t.space.md, top: t.space.md, right: t.space.md, bottom: t.space.md }, background: viewing ? undefined : { token: "panel" }, radius: t.radius.panel, frame: viewing ? undefined : "panel" } as never, () => {
-    r = og.ui.cgGallery("Cg", {
+    r = story.cgGallery("Cg", {
       title: L("vn.gallery.title"),
       chapters: [{ key: "", label: L("vn.all") }, ...["one", "two", "three"].map((key) => ({ key, label: L(`vn.chapter.${key}`) }))],
       chapter: vg.chapter,
@@ -370,7 +373,7 @@ export function routeChartScreen(): void {
       ending: ending ? L(`vn.ending.${ending}`) : "",
       good: ending === "good",
     }));
-    const r = og.ui.routeChart("Chart", {
+    const r = story.routeChart("Chart", {
       title: L("vn.routes.chart"),
       chapters: ["one", "two", "three", "four"].map((key) => ({ key, label: L(`vn.chapter.${key}`) })),
       scenes,

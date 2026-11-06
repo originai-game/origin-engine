@@ -647,11 +647,11 @@ mod tests {
     #[test]
     fn eject_copies_the_library_document_into_assets_ui() {
         let dir = game("copies");
-        let got = eject_from(&library(), "inventory", &dir, false).unwrap();
-        assert_eq!(got, dir.join("assets/ui/inventory.ogt"));
+        let got = eject_from(&library(), "pause", &dir, false).unwrap();
+        assert_eq!(got, dir.join("assets/ui/pause.ogt"));
         assert_eq!(
             std::fs::read(&got).unwrap(),
-            std::fs::read(library().join("inventory.ogt")).unwrap()
+            std::fs::read(library().join("pause.ogt")).unwrap()
         );
         std::fs::remove_dir_all(&dir).unwrap();
     }
@@ -696,25 +696,25 @@ mod tests {
                 .map(|s| s.name.as_str())
                 .collect()
         };
-        assert_eq!(rows("Garage, tuning, livery editor"), ["garage"]);
+        assert_eq!(rows("Save and load with thumbnails"), ["save-load"]);
         assert_eq!(
-            rows("Backlog, gallery, route flowchart"),
-            ["backlog", "gallery", "flowchart"]
+            rows("Boot, splash, title, main menu, mode select"),
+            ["splash", "title", "main-menu", "mode-select"]
         );
     }
 
     #[test]
     fn eject_of_an_unknown_name_answers_the_closest() {
         let dir = game("unknown");
-        let e = eject_from(&library(), "inventroy", &dir, false).unwrap_err();
+        let e = eject_from(&library(), "setings", &dir, false).unwrap_err();
         assert!(
-            e.contains("no library screen 'inventroy'") && e.contains("inventory"),
+            e.contains("no library screen 'setings'") && e.contains("settings"),
             "{e}"
         );
-        let e = eject_from(&library(), "map", &dir, false).unwrap_err();
-        assert!(e.contains("world-map") && e.contains("saga-map"), "{e}");
-        let e = eject_from(&library(), "shop", &dir, false).unwrap_err();
-        assert!(e.contains("the closest: vendor"), "{e}");
+        let e = eject_from(&library(), "load", &dir, false).unwrap_err();
+        assert!(e.contains("save-load") && e.contains("loading"), "{e}");
+        let e = eject_from(&library(), "onboarding", &dir, false).unwrap_err();
+        assert!(e.contains("the closest: tutorial"), "{e}");
         let e = eject_from(&library(), "zzzzzzzzzzzz", &dir, false).unwrap_err();
         assert!(e.contains("og ui eject --list"), "{e}");
         assert!(!dir.join("assets").exists());

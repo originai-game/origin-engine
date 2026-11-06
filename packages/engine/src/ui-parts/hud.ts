@@ -10,13 +10,7 @@
 // components that share them. A name here is a contract within a minor
 // version; a rename or a changed signature is a breaking changelog entry.
 
-export {
-  a11y, absolute, anchorOf, apply, arc, artTile, BLACK, box, bp, chip, claimAnnouncement, clamp01, close, countdown, drop, easeOut, edge,
-  ellipseShape, fillDraw, fitLevel, fixed, formatNumber, frame, glow, groups, hudPlace, hudRoom, hueOf, icon, inkOn, inner, innerGlow, keyId, kit,
-  leaf, lit, luminance, minText, mix, msToTicks, now, open, paintRgba, pct, pop, pulse, px, radial, reduced, type Rgba, role, rtl, sel, shapeOf,
-  shrunk, socketRim, solid, sound, spring, springTo, stepSize, stroke, teamColor, text, textScale, ticksToMs, token, trackDraw, ts, tsFit, u, ut,
-  vgrad, WHITE
-} from "../ui/hud/core.ts";
+export { BLACK, TAU, WHITE, a11y, absolute, anchorOf, apply, arc, artTile, box, bp, chip, claimAnnouncement, clamp01, close, countdown, drop, easeBack, easeOut, edge, ellipseShape, fillDraw, fitLevel, fixed, formatNumber, frame, glow, groups, hudPlace, hudRoom, hueOf, icon, inkOn, inner, innerGlow, keyId, kit, leaf, lit, luminance, minText, mix, msToTicks, now, open, paintRgba, pct, pop, pulse, px, radial, reduced, role, rtl, sel, shapeOf, shrunk, socketRim, solid, sound, spring, springTo, stepSize, stroke, teamColor, text, textScale, ticksToMs, token, trackDraw, ts, tsFit, type Props, type Rgba, u, ut, vgrad } from "../ui/hud/core.ts";
 export { slot, statusGrid } from "../ui/hud/abilities.ts";
 export { statBar } from "../ui/hud/meters.ts";
 export { minimapView, objectiveTracker } from "../ui/hud/nav.ts";

@@ -16,7 +16,6 @@ mod kit_gfx;
 mod layout;
 mod linebreak;
 mod motion;
-mod packs;
 mod probe;
 mod recognizers;
 mod rich;

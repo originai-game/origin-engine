@@ -9,9 +9,10 @@
 import { og } from "@origingame/engine";
 import { art, L, type ArtName } from "./patterns.ts";
 import { frame } from "./genres.ts";
-import type { AbilitySlotDesc, ChartSeries, ChatMessage, World, LedgerLine, MapOverlay, PickedColor, Size } from "@origingame/engine";
+import type { AbilitySlotDesc, ChartSeries, World, MapOverlay, PickedColor, Size } from "@origingame/engine";
 import { racing, type GarageCategory, type GaragePart, type GarageStat, type LiveryLayer } from "@origingame/engine/extensions/racing/index.ts";
-import { strategy, type SelectedUnit } from "@origingame/engine/extensions/strategy/index.ts";
+import { strategy, type SelectedUnit, type LedgerLine } from "@origingame/engine/extensions/strategy/index.ts";
+import { versus, type ChatMessage } from "@origingame/engine/extensions/versus/index.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: n });
@@ -205,7 +206,7 @@ export function ledgerScreen(): void {
     const incPrev = lines.filter((l) => l.section === "income").reduce((n, l) => n + (l.previous ?? 0), 0);
     const expPrev = lines.filter((l) => l.section === "expenses").reduce((n, l) => n + (l.previous ?? 0), 0);
     const n = PERIODS[ld.tab] ?? 12;
-    const r = og.ui.ledger("Budget", {
+    const r = strategy.ledger("Budget", {
       tabs: Object.keys(PERIODS).map((k) => ({ key: k, label: L(`ledger.tab.${k}`) })),
       tab: ld.tab,
       figures: [
@@ -352,7 +353,7 @@ export function chatScreen(): void {
   const unread = (ch: string): number => (ct.read.has(ch) ? 0 : messages.filter((m) => m.channel === ch).length);
   const mentions = (ch: string): number => (ct.read.has(ch) ? 0 : messages.filter((m) => m.channel === ch && /@Lumen\b/.test(m.text ?? "")).length);
   const build = (): void => {
-    const r = og.ui.chat("Chat", {
+    const r = versus.chat("Chat", {
       channels: CHAT_CHANNELS.map(([k, c, a]) => ({ key: k, name: L(`chat.ch.${k}`), color: c, all: !!a, readOnly: k === "system", unread: unread(k), mentions: mentions(k) })),
       channel: ct.channel,
       messages,

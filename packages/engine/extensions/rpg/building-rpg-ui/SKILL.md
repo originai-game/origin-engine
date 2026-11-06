@@ -41,7 +41,7 @@ rpg.conversation("Talk", { view: og.story.view(world, talk) });
 ```
 
 Call them from the system that builds the game's UI each tick. Generic
-pieces stay in `og.ui`: lists, slots, stat bars, tooltips, stat comparison, world tags and speech bubbles, og.ui.backlog.
+pieces stay in `og.ui`: lists, slots, stat bars, tooltips, stat comparison, world tags and speech bubbles, story.backlog.
 
 ## Change it
 

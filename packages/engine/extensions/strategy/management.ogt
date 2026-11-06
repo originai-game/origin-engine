@@ -1,0 +1,120 @@
+type screen
+version 1
+---
+# Management dashboards (docs/ui.md Appendix B: ledgers, budgets, graphs,
+# overlays). Close, the title and the Ledger and Map views at the head;
+# the Ledger view is the ledger on a panel over the game, the Map view
+# leaves the game's map clear with the overlay picker at the foot.
+#
+# Slot Ledger (the Ledger view) takes strategy.ledger("Ledger", desc): the
+# periods as tabs, the headline figures with their signed changes, the
+# ledger's sections and lines (sortable headings, each line's amount,
+# change and funding slider), the net at the foot, the history graph and a
+# section's breakdown. Its LedgerDesc: tabs ({ key, label }), tab, figures
+# ({ key, label, value, delta, format, unit, image, lowerIsBetter }),
+# sections ({ key, name, expense }), lines ({ key, section, name, image,
+# amount, previous, funding, warning, locked }), sort, descending,
+# fundingMin, fundingMax, fundingStep, periods, history (og.ui.chart's
+# series), graph, breakdown, currency and its words; its title is the
+# document's, so pass it empty. Its LedgerResult (tab, sort, descending,
+# funding, selected) is the game's to apply.
+#
+# Slot Overlays (the Map view) takes og.ui.overlayBar("Lenses", desc): the
+# overlays' round buttons, the shown one lit with its name, and its
+# legend's ramp over the bar. Its OverlayBarDesc: overlays ({ key, name,
+# image, ramp, low, high }), selected, label, offLabel; its result's
+# selected is the overlay the game draws on its map.
+#
+# Viewmodel: view (ledger or map). Events to code: view (the click wrote
+# view); Back pops it.
+name "management"
+layer menu
+under none
+focus "Header/Ledger"
+props {
+  view string "ledger or map."
+}
+actions {
+  back "Close"
+}
+fixture default "{\"view\": \"ledger\"}"
+column Screen {
+  width grow
+  height grow
+  padding 24
+  gap 12
+  at phone {
+    padding 12
+  }
+  row Header {
+    width grow
+    padding 8
+    gap 12
+    cross center
+    wrap true
+    frame hud
+    button Close {
+      key "screen.common.close"
+      text "Close"
+      variant quiet
+      on click pop
+    }
+    label Title {
+      key "screen.management.title"
+      text "Finances"
+      step xl
+      heading true
+    }
+    spacer
+    button Ledger {
+      key "screen.management.ledger"
+      text "Ledger"
+      variant ghost
+      on click set view "\"ledger\""
+      on click emit view
+      state selection bind "view != \"map\"" {
+        off {
+          opacity 0.85
+        }
+        on {
+          opacity 1
+        }
+      }
+    }
+    button Map {
+      key "screen.management.map"
+      text "Map"
+      variant ghost
+      on click set view "\"map\""
+      on click emit view
+      state selection bind "view == \"map\"" {
+        off {
+          opacity 0.85
+        }
+        on {
+          opacity 1
+        }
+      }
+    }
+  }
+  column LedgerPanel {
+    width grow
+    height grow
+    padding 16
+    background token panel
+    frame panel
+    visible bind "view != \"map\""
+    at phone {
+      padding 8
+    }
+    slot Ledger {
+      width grow
+      height grow
+    }
+  }
+  spacer
+  slot Overlays {
+    width grow
+    visible bind "view == \"map\""
+  }
+}

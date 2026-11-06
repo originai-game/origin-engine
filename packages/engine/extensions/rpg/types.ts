@@ -1,7 +1,8 @@
+import type { Anchor, DialogueView, Direction, MeterKind, Paint, QuestView, Rarity, Size, StatusEffect, Texture, UiRect, UnitClass, Vector2, Vector3 } from "@origingame/engine";
 // The rpg kit's data types, moved from the engine's generated og.ui
 // declarations (docs/ui.md §17). Edit them with the components that read them.
 
-import type { Anchor, DialogueView, Direction, MeterKind, Paint, QuestView, Rarity, Size, StatusEffect, Texture, UiRect, UnitClass, Vector2, Vector3 } from "@origingame/engine";
+
 
 /**
  * A cast or channel bar.
@@ -229,7 +230,7 @@ export interface ConversationResult {
   readonly chosen: number | null;
   /** Skip (or back) was pressed. */
   readonly skipped: boolean;
-  /** Log was pressed: show the backlog (og.ui.backlog). */
+  /** Log was pressed: show the backlog (story.backlog). */
   readonly log: boolean;
   /** Auto was pressed: flip ConversationDesc.auto. */
   readonly autoToggled: boolean;
@@ -1544,3 +1545,249 @@ export interface UnitFrameDesc {
  * - `"small"`: A target-of-target's or a pet's.
  */
 export type UnitFrameSize = "large" | "medium" | "small";
+
+/**
+ * A world map: the art, the regions and their fog, the places, the player.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface WorldMapDesc {
+  /**
+   * The map's art (art kind map); null draws the style's well with a grid.
+   *
+   * @default null
+   */
+  readonly texture?: Texture | null;
+  /**
+   * The map's width over its height; 0 is 16:9.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly aspect?: number;
+  /**
+   * The regions: their names and their fog.
+   *
+   * @default []
+   */
+  readonly regions?: readonly WorldRegion[];
+  /**
+   * The places.
+   *
+   * @default []
+   */
+  readonly markers?: readonly WorldMarker[];
+  /**
+   * The player's place across the map, 0 to 1; a negative value draws no player.
+   *
+   * @default -1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly playerX?: number;
+  /**
+   * The player's place down the map, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly playerY?: number;
+  /**
+   * The player's facing, clockwise from north.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly heading?: number;
+  /**
+   * The place whose detail is open (the game's: it passes WorldMapResult.selected back).
+   *
+   * @default ""
+   */
+  readonly selected?: string;
+  /**
+   * Kinds the legend has turned off: their pins are not drawn.
+   *
+   * @default []
+   */
+  readonly hidden?: readonly string[];
+  /**
+   * The map's title over the legend (the realm's name).
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * The most zoom; 0 is 4.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly maxZoom?: number;
+  /**
+   * The detail's action on a discovered fast-travel point.
+   *
+   * @default "Fast travel"
+   */
+  readonly travelLabel?: string;
+  /**
+   * The detail's action on another place.
+   *
+   * @default "Set waypoint"
+   */
+  readonly trackLabel?: string;
+  /**
+   * The detail's action on the tracked place.
+   *
+   * @default "Remove waypoint"
+   */
+  readonly untrackLabel?: string;
+  /**
+   * An undiscovered place's or region's name.
+   *
+   * @default "???"
+   */
+  readonly undiscoveredLabel?: string;
+  /**
+   * The legend's word for each kind, `{ quest: "Quests" }`; a kind without one shows its key.
+   *
+   * @default null
+   */
+  readonly kindLabels?: unknown;
+  /**
+   * The detail's close, to a screen reader.
+   *
+   * @default "Close"
+   */
+  readonly closeLabel?: string;
+}
+
+/** What the map was asked this tick, and where it is. */
+export interface WorldMapResult {
+  /**
+   * A pin was pressed (its key), or the detail was closed (empty): open or close its detail.
+   */
+  readonly selected: string | null;
+  /** Fast travel was pressed on a discovered fast-travel point. */
+  readonly travel: string | null;
+  /** Set or Remove waypoint was pressed: flip that place's tracking. */
+  readonly track: string | null;
+  /** A legend entry was pressed: show or hide that kind's pins. */
+  readonly toggled: string | null;
+  /** The map's zoom (1: the whole map). */
+  readonly zoom: number;
+  /** The middle of what it shows across the map, 0 to 1. */
+  readonly centerX: number;
+  /** The middle of what it shows down the map, 0 to 1. */
+  readonly centerY: number;
+}
+
+/**
+ * One place on the world map.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface WorldMarker {
+  /**
+   * Its key: its pin's element id, so its probe path is <id>/Map/Pins/<key>.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * What it is, for its pin's mark and the legend: quest, objective, fastTravel, shop, poi, boss, custom (any other word is a poi).
+   *
+   * @default ""
+   */
+  readonly kind?: string;
+  /**
+   * Its name: the pin's label when zoomed in, and the detail's title.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * The detail's line (what is there, the quest's step).
+   *
+   * @default ""
+   */
+  readonly description?: string;
+  /**
+   * Where across the map, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly x?: number;
+  /**
+   * Where down the map, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly y?: number;
+  /**
+   * Found: undiscovered places show as a faint mark under the fog and cannot be travelled to.
+   *
+   * @default true
+   */
+  readonly discovered?: boolean;
+  /**
+   * The tracked quest's or the custom waypoint: its pin rings and pulses.
+   *
+   * @default false
+   */
+  readonly tracked?: boolean;
+  /**
+   * The detail's picture (art kind thumbnail); null shows none.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+}
+
+/**
+ * A region of the world: its name on the map, and its fog until discovered.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface WorldRegion {
+  /**
+   * Its key.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name, set across the map at its centre in the display face's caps.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its centre across the map, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly x?: number;
+  /**
+   * Its centre down the map, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly y?: number;
+  /**
+   * How far its fog reaches, as a fraction of the map's width; 0 is 0.18.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly radius?: number;
+  /**
+   * Discovered: its fog is lifted and its name shown; else a cloud of fog over it and its name ???.
+   *
+   * @default false
+   */
+  readonly discovered?: boolean;
+}

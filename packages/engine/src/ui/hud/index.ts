@@ -5,11 +5,7 @@
 import { abilityBar, abilitySlot, statusGrid } from "./abilities.ts";
 import { orbMeter, radialMeter, statBar } from "./meters.ts";
 import { compass, minimapView, objectiveTracker } from "./nav.ts";
-import { comboCounter, judgement, scorebug } from "./scores.ts";
 import { hudTimer } from "./timer.ts";
-import { flightHud } from "./vehicles.ts";
-import { goalTimeline, matchStats, playerPlate, substitution } from "./sports.ts";
-import { laneKeys } from "./genres.ts";
 
 export const hud = Object.freeze({
   statBar,
@@ -22,13 +18,4 @@ export const hud = Object.freeze({
   compass,
   objectiveTracker,
   hudTimer,
-  comboCounter,
-  judgement,
-  scorebug,
-  flightHud,
-  matchStats,
-  goalTimeline,
-  playerPlate,
-  substitution,
-  laneKeys,
 });

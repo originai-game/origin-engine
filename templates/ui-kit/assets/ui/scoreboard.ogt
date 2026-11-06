@@ -9,7 +9,7 @@ version 1
 # (code pushes it while the key is held and pops it on release). Slots:
 # Board takes shooter.scoreboard (the teams in their colours, the rows,
 # the dead, ping bars, the MVP); Extra takes the match's own row
-# (objectives held, og.ui.matchStats). The kit's copy: the head sits on
+# (objectives held, sports.matchStats). The kit's copy: the head sits on
 # the pack's panel, never as bare text on the match; on a phone in
 # portrait it sits in the band between the top corners' HUD and the
 # thumbs' controls on the edges' middle.

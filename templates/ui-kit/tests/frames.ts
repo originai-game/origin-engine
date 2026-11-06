@@ -96,9 +96,11 @@ export function outDir(): string {
   return dirname(fileURLToPath(import.meta.url));
 }
 
-/** crates/og-ui/references, from the project's og-out/test/<name>/. */
-export function referencesDir(): string {
-  return resolve(outDir(), "..", "..", "..", "..", "..", "crates", "og-ui", "references");
+/** Package-owned references, from the project's og-out/test/<name>/. */
+export function referencesDir(name = ""): string {
+  const pack = /^kit-style-([a-z]+)-/.exec(name);
+  const templates = resolve(outDir(), "..", "..", "..", "..");
+  return pack ? join(templates, "styles", pack[1]!, "references") : join(templates, "ui-kit", "references");
 }
 
 /** Compares each screenshot with its reference (`<prefix><file>`), or records it. */
