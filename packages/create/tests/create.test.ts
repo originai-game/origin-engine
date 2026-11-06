@@ -108,14 +108,21 @@ test("applyCreationChoices takes a selection onto a copied profile template, ref
 test("every starter on seats carries the one seats.ts and its creation.ts is the mapping at its defaults", () => {
   const templates = join(pkg, "..", "..", "templates");
   const master = readFileSync(join(templates, "game-2d/src/seats.ts"), "utf8");
+  // The 3D camera rig: one view.ts, templates/game's, in every 3D starter.
+  const rig = readFileSync(join(templates, "game/src/view.ts"), "utf8");
   for (const [name, s] of Object.entries(STARTERS)) {
     const dir = join(templates, (s as { dir?: string }).dir ?? `archetypes/${name}`);
-    if (!existsSync(join(dir, "src/seats.ts"))) continue;
-    expect(readFileSync(join(dir, "src/seats.ts"), "utf8")).toBe(master);
-    expect(readFileSync(join(dir, "src/creation.ts"), "utf8")).toBe(creationModule(name as never, starterDefaults(name as never)));
+    expect(existsSync(join(dir, "project.ogt")), `starter ${name} has its game (${dir})`).toBeTrue();
+    expect(existsSync(join(dir, "src/seats.ts")), `starter ${name} is on seats`).toBeTrue();
+    expect(readFileSync(join(dir, "src/seats.ts"), "utf8"), `${name}'s src/seats.ts`).toBe(master);
+    expect(readFileSync(join(dir, "src/creation.ts"), "utf8"), `${name}'s src/creation.ts`).toBe(creationModule(name as never, starterDefaults(name as never)));
+    if (existsSync(join(dir, "src/view.ts"))) expect(readFileSync(join(dir, "src/view.ts"), "utf8"), `${name}'s src/view.ts`).toBe(rig);
   }
-  // Every genre starts somewhere, and every starter a genre names exists.
-  for (const g of CREATION_CHOICES.genre) expect(Object.keys(GENRES[g].starters).length).toBeGreaterThan(0);
+  // Every genre starts somewhere, and every starter a genre names is one of STARTERS (so exists, above).
+  for (const g of CREATION_CHOICES.genre) {
+    expect(Object.keys(GENRES[g].starters).length).toBeGreaterThan(0);
+    for (const s of Object.values(GENRES[g].starters)) expect(Object.keys(STARTERS)).toContain(s!);
+  }
 });
 
 const engine = join(pkg, "../engine");

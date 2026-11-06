@@ -278,7 +278,23 @@ New runtime pieces, all off at their zero value:
   jaggies (cleanEdge, MIT).
 - **Camera presets** from `ArtCamera`: the main camera's projection,
   angle and field of view default to the contract; `pixelPerfect` snaps
-  the 2D camera (today's `Stylise.pixelSnap` path).
+  the 2D camera (today's `Stylise.pixelSnap` path). The creation
+  choice's view writes the `ArtCamera` (`packages/create/bin/starters.ts`
+  `VIEW_PRESETS`), and the starter puts the matching controller on each
+  seat:
+
+  | View | Profile | `ArtCamera` | Controller |
+  |---|---|---|---|
+  | `side-2d` | 2d | `projection orthographic` | `og.Follow2D` |
+  | `top-down-2d` | 2d | `projection orthographic` | `og.Follow2D` |
+  | `isometric-2.5d` | 3d | `projection orthographic`, `fixedAngle`, `pitch 35.264`, `yaw 45` | `og.FollowCamera` at that angle |
+  | `third-person-3d` | 3d | `projection perspective`, `fovMin 45`, `fovMax 75` | `og.FollowCamera` |
+  | `first-person-3d` | 3d | `projection perspective`, `fovMin 60`, `fovMax 100` | `og.FirstPersonCamera` |
+
+  The 2D views start from `templates/game-2d`, the 3D ones from
+  `templates/game`, whose `src/view.ts` is the rig every 3D starter
+  shares (split screen per seat on one device, each peer's own seat
+  online).
 - **The anime-cel frame (closed 2026-11-04).** The finding (no cel bands
   and no outline on the showcase's `looks-anime-cel-3d` spheres) came
   from a 480×270 thumbnail: the Metal frame (`ed80ae436`) shows two-tone

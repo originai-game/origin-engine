@@ -6,8 +6,13 @@ and the 2D starter `templates/game-2d` (`project.ogt`, `src/`, `assets/`,
 `og build` take as is; `og new <dir> --archetype <name>` writes one, with
 its own profile. They rebuild the platform's six Godot Discover prototypes on Origin Engine,
 keeping each prototype's premise and lessons and none of its code or art,
-and add a top-down room built for the engine's 2D and game-feel modules
-and a third-person vale, the engine's mid-size 3D slice.
+and add a top-down room built for the engine's 2D and game-feel modules,
+a third-person vale, the engine's mid-size 3D slice, and the starters
+the creation choices map their genres to (`packages/create/bin/starters.ts`):
+a shooter, an RPG, a racer, an open isle and a card roguelike. Every one
+plays on seats (`src/seats.ts`): keys and mouse, pads or touch, alone, two
+on one device or two over a room, except the idle game, which is one
+player's alone.
 
 | Directory | Game | Profile | Input | Core loop |
 |---|---|---|---|---|
@@ -20,6 +25,11 @@ and a third-person vale, the engine's mid-size 3D slice.
 | `rhythm/` | Three-Lane Beat | 2d | A S D or the arrows, fingers on the lanes, a pad | read the notes falling to the line, hit each on its time, keep the combo and the groove, clear the song |
 | `arena/` | Coin Duel | 2d | WASD or the arrows, Space or Shift to dash, a pad; two players over a room | race the other player to the coin, first to five; played in lockstep through `og relay` or the platform's rooms |
 | `third-person/` | Ember Vale | 3d | WASD or the arrows, Shift, Space, hold F, Q and E; a pad; a touch joystick, Jump and Kindle | walk, wade and jump a lake vale at dusk, kindle four beacons before night while stone sentinels on their rounds hunt you |
+| `shooter/` | Holdout | 3d | WASD, the mouse, F or the left button to fire, Space, R; a pad; a touch stick, drag to look, Fire, Jump and Reload; first person, over the shoulder or isometric twin-stick | hold a landing field through five waves of walkers and beam drones with a hitscan rifle; two players co-op, split screen or over a room, or a duel to five frags |
+| `rpg/` | Greywatch Keep | 3d | WASD or the arrows, the mouse, Space or the left button to strike, E to talk, Q for a potion, 1–3 for a reply; a pad; a touch stick, drag to look, Attack, Talk and Potion; isometric, over the shoulder or first person | take the Warden's Seal quest from the castellan, put down the risen and their captain, open the chest and bring the seal back; two heroes co-op, split screen or over a room |
+| `racing/` | Redline Ring | 3d | W and S or the arrows to drive and brake, A and D to steer, Space to boost; a pad's triggers and stick; touch steering, Throttle, Brake and Boost; chase, bonnet or isometric | three laps against five rivals, drifting the bends and spending boost, first over the line wins; two players split screen or over a room |
+| `open-world/` | Saltwind Isle | 3d | WASD or the arrows, the mouse, Shift, Space, hold E; a pad; a touch stick, drag to look, Gather, Jump and Run; two on one device or over a room | explore an isle over three days, discover and claim five landmarks, gather wood and stone to bridge the strait to the north isle before the third nightfall |
+| `deckbuilder/` | Ashen Crown | 2d | taps on a card and a target, or the d-pad and Space, R to end the turn; a pad; side-on or on a table from above | play a deck through a six-step run of fights, an elite, rests and a boss, taking a card after each fight; two heroes co-op on one fight, each with its own deck |
 
 Each archetype's README has its rules, components, systems, tunables, the
 commands its playtests use and what a Maker changes first.

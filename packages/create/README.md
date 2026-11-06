@@ -73,7 +73,9 @@ The additive exports are `CREATION_CHOICES`, `CreationChoices`,
 `CreationInput`, `creationSchema(lookSlugs)`, `parseCreationInput(value)`,
 `inferCreationChoices(premise, input?, defaults?)`,
 `resolveCreationChoices(premise, input?, profile?, catalogue?)`, and
-`creationBlock(choices)`. `creationSchema` returns JSON Schema 2020-12.
+`creationBlock(choices)`, and with the mapping `applyCreationChoices(dir,
+selection, options?)`, `viewProfile`, `VIEW_PRESETS`, `GENRE_PLAYERS` and
+`genrePlayersRefused`. `creationSchema` returns JSON Schema 2020-12.
 `inferCreationChoices` applies deterministic English/Chinese keyword rules;
 `resolveCreationChoices` also matches and validates the catalogue look.
 Explicit fields win. Languages default to Japanese for kana, Chinese for
@@ -83,17 +85,73 @@ Han text, or English otherwise. Music defaults to `ambient`.
 as `Created.choices`. It installs the chosen UI pack, writes orientation
 and DPR limits under `publish`, and generates `src/creation.ts` with
 quality and controls. Phone quality starts at `low`, other targets at
-`medium`. Touch controls sit inside the host's live safe area. The 2D
-starter uses a d-pad and action button; other views use a joystick and
-action button. Keyboard actions can be rebound through `og.input`.
+`medium`.
 
-Local and online multiplayer use arena, with two seats. Local keyboard
-seats use WASD/Space and arrows/Enter; gamepad seats use indices 0 and 1.
-Online input goes through `og.net.submit`, and `og.Lockstep` enables
-`og check`'s lint. Its room playtest compares both peers' shared hashes.
-Other archetypes currently support choice-driven keyboard input only;
-touch/gamepad requests are refused rather than silently ignored. Custom
-template directories retain the legacy `create()` path.
+### What each choice starts
+
+`bin/starters.ts` is the mapping, as data beside the vocabulary: each
+genre's starter per view (and why a view has none), each view's camera
+preset, and each starter's controls, UI kit, engine systems and player
+counts (with the reason for any it refuses). The view picks the profile:
+`side-2d` and `top-down-2d` are 2D (the platform's overlay
+`templates/game-2d`), `isometric-2.5d`, `third-person-3d` and
+`first-person-3d` 3D (`templates/game`).
+
+| Genre | `side-2d` | `top-down-2d` | `isometric-2.5d` | `third-person-3d` | `first-person-3d` |
+|---|---|---|---|---|---|
+| action-platformer | `platformer` | `topdown` | — | `third-person` | — |
+| shooter | — | — | `shooter` | `shooter` | `shooter` |
+| rpg | — | — | `rpg` | `rpg` | `rpg` |
+| puzzle-match | `match3` | `match3` | — | — | — |
+| strategy-tower-defense | — | `tower-defense` | — | — | — |
+| racing | — | — | `racing` | `racing` | `racing` |
+| runner | `runner` | — | — | — | — |
+| roguelike-card | `deckbuilder` | `roguelike` | — | — | — |
+| idle | `idle` | `idle` | — | — | — |
+| rhythm | `rhythm` | `rhythm` | — | — | — |
+| arena | — | `arena` | `shooter` | `shooter` | `shooter` |
+| open-world | — | — | `open-world` | `open-world` | `open-world` |
+
+A dash is a pair create refuses, with the genre's reason (`GENRES[g].refuseView`).
+`platformer` is `templates/game-2d` (side-on rooftops, a top-down
+courtyard), `game` the 3D overlay `templates/game` in any 3D view; the
+rest are `templates/archetypes/<name>`. The kits come from
+`engine/extensions`: shooter, rpg (rpg, deckbuilder, open-world),
+racing, puzzle (match3) and strategy (tower-defense).
+
+Each view's camera (`VIEW_PRESETS`) is an `ArtCamera` written into the
+look and the controller the starter puts on each seat: orthographic
+`og.Follow2D` for both 2D views; `og.FollowCamera` behind the hero in
+third person; `og.FirstPersonCamera` at the eye in first person; an
+orthographic `og.FollowCamera` at true isometric (pitch 35.264°, yaw 45°)
+for `isometric-2.5d`, where the move is relative to the screen and the
+look turns the hero. The 3D starters share one rig, `src/view.ts`
+(`templates/game`'s; the test keeps the copies equal).
+
+### Seats: every input, every player count
+
+Every starter reads only `og.PlayerInput`, one entity per seat, which
+`src/seats.ts` (one file in every starter, kept equal by the test) fills
+from the keys, the mouse, the pads and the touch controls by the
+controls `src/creation.ts` names: `single` is seat 0 from every device;
+`local-multiplayer` two seats on one device (WASD and the left keys
+against the arrows and the right keys, pad 1 against pad 2, two sets of
+touch controls, split screen in 3D); `online-lockstep` this peer's seat
+over a room, with a room playtest that compares both peers' hashes. Menu
+and HUD buttons press a seat's control (`press`), so a room sees them on
+one tick; settings that differ per device stay out of the world. Every
+genre plays every count but `idle`, which refuses both multiplayer
+counts: its progress is made while the player is away, which a second
+seat cannot share and no lockstep room can run.
+
+A premise picks among the catalogue looks that suit its view
+(`look.views`); `--look` may name any look of the view's profile. The
+look carries the mood; music is a request (`audioBrief`), generated by
+the platform.
+Changing `create` later does not rewrite source automatically:
+`applyCreationChoices(dir, selection)` re-applies a selection to a game
+made from a profile's overlay. Do not use `--force` to update an authored
+game; it overwrites template files.
 
 `--lang` sets up the languages (bin/languages.ts): a string table per
 language under `assets/strings/` (the starter's own, the starters'
@@ -108,12 +166,6 @@ skills' og-i18n §0 says what each file is for. The additive exports are
 `canonicalTag`, `isRtl`, `localeScript`, `LocaleScript`, `PSEUDO_LOCALE`,
 `pseudoMessage` and `pseudoTable`. `templates/locales/make-fonts.py` remakes
 the faces from google/fonts.
-
-Genre mappings, camera presets and mood rendering are deferred; music
-is a request (`audioBrief`), generated by the platform. The fields record intent, not completed
-assets. Changing `create` later does not rewrite source automatically:
-update the corresponding generated source, look or publish settings.
-Do not use `--force` to update an authored game; it overwrites template files.
 
 ## The art brief
 
