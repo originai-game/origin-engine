@@ -73,7 +73,7 @@ fn a_frame_budget_slices_a_generation_without_changing_it() {
     // Far under one dispatch's cost: every dispatch is a slice of its own.
     gpu.set_frame_budget(Some(1e-6));
     let device = gpu.device().clone();
-    let mut future = Box::pin(gpu.generate(&inputs));
+    let mut future = std::pin::pin!(gpu.generate(&inputs));
     let mut cx = Context::from_waker(Waker::noop());
     let mut polls = 0;
     let sliced = loop {

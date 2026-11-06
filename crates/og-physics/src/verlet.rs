@@ -115,12 +115,12 @@ impl RopeState {
                 satisfy(&mut self.points, i, i + 1, rest, wa, wb);
             }
             if radius > 0.0 {
-                for i in 1..n {
+                for (i, point) in self.points.iter_mut().enumerate().take(n).skip(1) {
                     if i == last && end.is_some() {
                         continue;
                     }
-                    if let Some((p, _)) = solids.push_out(self.points[i], radius) {
-                        self.points[i] = planar(p, flat, z);
+                    if let Some((p, _)) = solids.push_out(*point, radius) {
+                        *point = planar(p, flat, z);
                     }
                 }
             }

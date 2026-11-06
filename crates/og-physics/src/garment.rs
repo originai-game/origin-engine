@@ -434,9 +434,7 @@ mod tests {
             ..Garment::default()
         };
         let mut rig = rig;
-        for k in 0..12 {
-            rig.freedom[k] = 0.0;
-        }
+        rig.freedom[..12].fill(0.0);
         let mut st = GarmentState::new(&g, 7, &rig, &pose);
         for _ in 0..120 {
             st.step(

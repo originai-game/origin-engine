@@ -604,8 +604,8 @@ impl IblGenerator {
         for face in 0..6 {
             draws.push((face, ENV_COPY, &group, 0.0, background));
         }
-        for i in 6..irr {
-            draws.push((i, DOWN, &self.passes[i].group, 0.0, 1.0));
+        for (i, pass) in self.passes.iter().enumerate().take(irr).skip(6) {
+            draws.push((i, DOWN, &pass.group, 0.0, 1.0));
         }
         for face in 0..6 {
             draws.push((irr + face, ENV_IRRADIANCE, &group, 0.0, 1.0));

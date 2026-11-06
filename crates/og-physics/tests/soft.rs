@@ -120,8 +120,7 @@ fn cloth_hangs_from_its_pins_flutters_in_the_wind_and_drapes_over_a_ball() {
     run(&mut w, 200);
     let c = p.cloth_points(flag).unwrap();
     assert_eq!((c.columns, c.rows), (10, 8));
-    for x in 0..10 {
-        let pin = c.points[x];
+    for (x, &pin) in c.points.iter().take(10).enumerate() {
         assert!(
             (pin - Vec3::new(x as f32 * 0.2, 5.0, 0.0)).length() < 1e-4,
             "pin {x} at {pin}"

@@ -64,3 +64,18 @@ test attributes, 241 playtests, 260 engine reference PNGs (89,081,222 B).
 The imported test-cleanup removes the redundant baked-batches reference:
 259 remain (88,873,738 B). `scripts/test-inventory.py --base 5387f79db`
 verified that every retained reference PNG is byte-identical.
+
+## Nightly lint repair, before category cuts
+
+Rebased onto `2fee10f2b`, including the package-owned frame cuts. The
+toolchain/consolidation milestone now passes the requested
+`cargo clippy --workspace --all-targets --keep-going -- -D warnings` on
+the pinned nightly (6.76 s incremental). No lint allowances were added.
+The remaining Cargo manifest warning identifies `og-motion`'s test-only
+pollster dependency; it is not a rustc/Clippy warning.
+
+The full, untrimmed nextest suite passed: **2787 passed, 26 ignored**,
+332.373 s execution, 394.70 s including incremental compilation. This is
+a single shared-runner validation, not a controlled speed-up comparison.
+Existing GPU comparisons passed without recording any references. The
+pending category cuts were set aside throughout this validation.

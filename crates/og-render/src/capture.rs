@@ -577,7 +577,7 @@ fn crc32(data: &[u8]) -> u32 {
     static TABLES: std::sync::OnceLock<Box<[[u32; 256]; 16]>> = std::sync::OnceLock::new();
     let t = TABLES.get_or_init(|| {
         let mut t = Box::new([[0u32; 256]; 16]);
-        for n in 0..256 {
+        for (n, entry) in t[0].iter_mut().enumerate() {
             let mut c = n as u32;
             for _ in 0..8 {
                 c = if c & 1 != 0 {
@@ -586,7 +586,7 @@ fn crc32(data: &[u8]) -> u32 {
                     c >> 1
                 };
             }
-            t[0][n] = c;
+            *entry = c;
         }
         for k in 1..16 {
             for n in 0..256 {

@@ -768,7 +768,7 @@ fn haptic_at(q: &P, at: usize) -> Result<(Haptic, usize), String> {
             }
             let mut h = Haptic::NONE;
             let mut last = 0.0;
-            for k in 0..n / 4 {
+            for (k, slot) in h.pulses.iter_mut().take(n / 4).enumerate() {
                 let b = at + k * 4;
                 let pulse = Pulse {
                     start_ms: q.num(b)?,
@@ -786,7 +786,7 @@ fn haptic_at(q: &P, at: usize) -> Result<(Haptic, usize), String> {
                     ));
                 }
                 last = pulse.start_ms;
-                h.pulses[k] = pulse;
+                *slot = pulse;
             }
             h.count = (n / 4) as u8;
             Ok((h, n))

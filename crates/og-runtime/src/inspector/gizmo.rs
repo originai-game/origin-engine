@@ -309,8 +309,7 @@ impl Gizmo {
                         return Some(Handle::Plane(i));
                     }
                 }
-                for i in 0..3 {
-                    let a = self.axes[i];
+                for (i, &a) in self.axes.iter().enumerate() {
                     if !visible(a) {
                         continue;
                     }
@@ -322,8 +321,8 @@ impl Gizmo {
                 }
             }
             Mode::Rotate => {
-                for i in 0..3 {
-                    let pts = ring(o, self.axes[i], l, 64);
+                for (i, &axis) in self.axes.iter().enumerate() {
+                    let pts = ring(o, axis, l, 64);
                     if let Some(d) = polyline_distance(view, at, &pts) {
                         offer(d, Handle::Ring(i));
                     }
@@ -337,8 +336,7 @@ impl Gizmo {
                 if at.distance(o2) <= PIXELS * CENTRE * 1.5 + REACH * 0.5 {
                     return Some(Handle::View);
                 }
-                for i in 0..3 {
-                    let a = self.axes[i];
+                for (i, &a) in self.axes.iter().enumerate() {
                     if !visible(a) {
                         continue;
                     }

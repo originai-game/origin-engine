@@ -9,7 +9,7 @@
 //! outside the snapshot (Started/Ended differ after restore); the step doing
 //! nothing (the pile does not move, events are not counted).
 
-mod support;
+use crate::support;
 
 use og_physics::*;
 use std::time::Instant;

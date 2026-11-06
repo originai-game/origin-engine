@@ -194,9 +194,9 @@ fn an_ogg_opus_source_cooks_like_any_sound() {
     let d = s.decode().unwrap();
     // The pre-skip trimmed: the chord is in phase with the source.
     let (mut signal, mut noise) = (0f64, 0f64);
-    for i in 2_000..46_000 {
+    for (i, &sample) in d.samples.iter().enumerate().take(46_000).skip(2_000) {
         let want = chord(i, 0, 48_000) * 32767.0;
-        let got = f64::from(d.samples[i]);
+        let got = f64::from(sample);
         signal += want * want;
         noise += (want - got) * (want - got);
     }

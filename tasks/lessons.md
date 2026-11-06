@@ -131,3 +131,8 @@ pack tests and reference images in sibling `templates/styles/tests/<pack>`
 and `templates/styles/references/<pack>` directories. After moving fixtures,
 run the cook-report budget and threaded-cook output tests: unchanged pixels
 do not prove unchanged shipped assets (ui-genre-move, 2026-11-06).
+
+When moving the Rust toolchain, run workspace Clippy with all targets,
+`--keep-going` and `-D warnings` before handing off the head. A native build
+and passing tests do not exercise newly enabled lints. Consolidation also
+requires sharing support modules instead of loading their source twice.

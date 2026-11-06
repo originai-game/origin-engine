@@ -496,8 +496,8 @@ pub fn sample(
             ChannelPath::Visibility => pose.visible[node as usize] = ClipAsset::visible(ch, p),
             ChannelPath::Weights => {
                 if mesh != NONE && skeleton.nodes[node as usize].mesh == mesh {
-                    for k in 0..(ch.lanes as usize).min(BLENDSHAPES) {
-                        pose.weights[k] = ClipAsset::weight(ch, p, k);
+                    for (k, weight) in pose.weights.iter_mut().take(ch.lanes as usize).enumerate() {
+                        *weight = ClipAsset::weight(ch, p, k);
                     }
                 }
             }

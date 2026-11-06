@@ -400,8 +400,8 @@ impl LineState {
                 let i1 = (((f.max.x - left_edge) / step).ceil() as usize).min(n - 1);
                 let width = (f.max.x - f.min.x).max(step);
                 let kick = f.velocity.y * w.splash * width.sqrt() * 8.0;
-                for i in i0..=i1 {
-                    self.velocities[i] += kick;
+                for velocity in self.velocities.iter_mut().take(i1 + 1).skip(i0) {
+                    *velocity += kick;
                 }
             }
             let depth = (level - f.min.y).clamp(0.0, (f.max.y - f.min.y).max(0.0));

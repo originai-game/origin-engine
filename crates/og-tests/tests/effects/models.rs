@@ -698,8 +698,12 @@ fn blendshapes_move_vertices_by_their_weights() {
                 normals: None,
             }
         ));
-        for t in 0..64 {
-            scene.skinned_instances[0].morph_weights[t] = weights(t);
+        for (t, weight) in scene.skinned_instances[0]
+            .morph_weights
+            .iter_mut()
+            .enumerate()
+        {
+            *weight = weights(t);
         }
         scene
     };

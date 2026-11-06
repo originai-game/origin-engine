@@ -2006,9 +2006,7 @@ mod tests {
         );
         assert!(ok(&fb[0], "maxFrames"));
         let mut stepped = sheet.clone();
-        for d in &mut stepped.clips[0].durations {
-            *d = 2.0 / 12.0;
-        }
+        stepped.clips[0].durations.fill(2.0 / 12.0);
         assert!(ok(&judge_flipbook(&c, "run.ogt", &stepped)[0], "stepFps"));
     }
 

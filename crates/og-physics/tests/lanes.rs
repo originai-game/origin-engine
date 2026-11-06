@@ -14,7 +14,7 @@
 //! The lanes switch, the grains and an injected fault are the process's:
 //! the tests here take turns (`ONE`).
 
-mod support;
+use crate::support;
 
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::World;

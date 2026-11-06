@@ -28,7 +28,7 @@ fn centroid(points: impl Iterator<Item = (i32, i32)>) -> Option<P> {
         sy += y as f64 + 0.5;
         n += 1;
     }
-    (n > 0).then(|| [(sx / n as f64) as f32, (sy / n as f64) as f32])
+    (n > 0).then_some([(sx / n as f64) as f32, (sy / n as f64) as f32])
 }
 
 /// Whether a canvas pixel of `p` lies in its joint-end band for `end`.

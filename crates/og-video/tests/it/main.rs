@@ -1,3 +1,3 @@
-#[cfg(all(feature = "decode"))]
+#[cfg(feature = "decode")]
 #[path = "../decode.rs"]
 mod decode;

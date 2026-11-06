@@ -21,7 +21,7 @@
 //! - a sink attached mid-game misses the music, or a despawned source's
 //!   voice plays on → `a_late_sink_hears_the_playing_loop_and_a_despawn_silences_it`
 
-mod support;
+use crate::support;
 
 use og_audio::{
     AudioPlayback, AudioSource, AudioStream, HeadlessMode, HeadlessSink, Mixer, MixerDesc, Op,

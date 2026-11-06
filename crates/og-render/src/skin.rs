@@ -404,10 +404,11 @@ impl DeformedVertices {
     }
 
     pub fn evaluated(&self) -> std::borrow::Cow<'_, Self> {
-        self.garment.as_ref().map_or_else(
-            || std::borrow::Cow::Borrowed(self),
-            |g| std::borrow::Cow::Owned(g.evaluate()),
-        )
+        self.garment
+            .as_ref()
+            .map_or(std::borrow::Cow::Borrowed(self), |g| {
+                std::borrow::Cow::Owned(g.evaluate())
+            })
     }
 }
 
