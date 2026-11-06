@@ -39,8 +39,10 @@ import { held, LOCAL, ONLINE, PAUSE, pressedNow, press, SEATS, Seats, setBot, se
 const CLIP = { idle: 0, run: 1, jump: 2, fall: 3 } as const;
 /** The camera's height in world units: 14 cells of 16 px, the 16bit-pixel look's 224-pixel frame. */
 const VIEW_H = 14;
-/** World units kept clear around the two couriers when the camera widens to hold both. */
+/** World units kept clear above and below the two couriers when the camera frames both. */
 const MARGIN = 2;
+/** And beside them: a sprite's half width and a little, so a portrait screen spends its narrow width on the couriers. */
+const MARGIN_X = 1.4;
 /** The ledges' collider layer (the map's `colliderLayers 2`), one-way for the courier. */
 const LEDGES = 2;
 /** The couriers' collider layer. */
@@ -219,19 +221,53 @@ export const Control = defineSystem(
 );
 
 /**
- * Two couriers: og.Camera widens (its height, presentation only) so both
- * stay in view with a margin at any aspect, a portrait phone's too, and
- * eases back to the level's 14 cells as they close up.
+ * Two couriers: Frame drives og.Camera (presentation only, never the
+ * world) so both stay in view with a margin, framed into the play rect:
+ * the part of the screen between the HUD's top corners and the touch
+ * controls (last frame's layout), so on a portrait phone the level fills
+ * the room between the two rather than a strip across the middle. It zooms
+ * no closer than one courier's view and eases as they part and close up.
  */
 export const Frame = defineSystem("Frame", { reads: [Game], writes: [og.Camera], after: ["Control"] }, (_q, time, world) => {
   if (SEATS < 2) return;
   const g = must(world.resource(Game));
   const camera = must(world.resource(og.Camera));
   const vp = og.ui.viewport(world);
-  const aspect = vp.width > 0 && vp.height > 0 ? vp.width / vp.height : 16 / 9;
-  const need = Math.max(VIEW_H, (Math.abs(g.heroX - g.hero2X) + 2 * MARGIN) / aspect, Math.abs(g.heroY - g.hero2Y) + BOX.h + 2 * MARGIN);
-  camera.height += (need - camera.height) * Math.min(1, time.dt * 6);
+  const w = vp.width > 0 ? vp.width : 16;
+  const h = vp.height > 0 ? vp.height : 9;
+  const rect = playRect(w, h);
+  // World units per UI unit: the couriers' bounds fit in the rect, never closer than VIEW_H across the screen.
+  const x0 = Math.min(g.heroX, g.hero2X) - MARGIN_X, x1 = Math.max(g.heroX, g.hero2X) + MARGIN_X;
+  const y0 = Math.min(g.heroY, g.hero2Y) - MARGIN, y1 = Math.max(g.heroY, g.hero2Y) + BOX.h + MARGIN;
+  const s = Math.max(VIEW_H / h, (x1 - x0) / rect.width, (y1 - y0) / rect.height);
+  // The bounds' middle sits at the rect's middle (screen y runs down, world y up), kept so the rect shows the level, not past its edges.
+  const inside = (c: number, half: number, size: number) => (2 * half >= size ? size / 2 : Math.min(Math.max(c, half), size - half));
+  const mx = inside((x0 + x1) / 2, (rect.width * s) / 2, LEVEL.width);
+  const my = inside((y0 + y1) / 2, (rect.height * s) / 2, LEVEL.height);
+  const cx = mx - (rect.x + rect.width / 2 - w / 2) * s;
+  const cy = my + (rect.y + rect.height / 2 - h / 2) * s;
+  const k = Math.min(1, time.dt * 6);
+  camera.height += (s * h - camera.height) * k;
+  camera.position = { x: camera.position.x + (cx - camera.position.x) * k, y: camera.position.y + (cy - camera.position.y) * k, z: camera.position.z };
 });
+
+/** The level's size in world units (its bottom-left corner at the origin), set by start. */
+const LEVEL = { width: 0, height: 0 };
+
+/** The screen's play rect, in og-ui units: below the HUD's top corners and above the touch controls, as last laid out. */
+function playRect(w: number, h: number): { x: number; y: number; width: number; height: number } {
+  let top = 0, bottom = h;
+  for (const id of ["Status", "Purse"]) {
+    const b = og.ui.bounds(id);
+    if (b !== null && b.y < h / 2) top = Math.max(top, b.y + b.height);
+  }
+  for (const id of ["TouchMove0", "TouchMove1", "TouchActions0"]) {
+    const b = og.ui.bounds(id);
+    if (b !== null && b.y > h / 2) bottom = Math.min(bottom, b.y);
+  }
+  // A sliver (a tiny window, a layout not run yet) frames the whole screen.
+  return bottom - top < h / 3 ? { x: 0, y: 0, width: w, height: h } : { x: 0, y: top, width: w, height: bottom - top };
+}
 
 /** A coin the courier's box touches is taken; reaching the goal clears the level; the last life lost puts every coin back. */
 export const Pickups = defineSystem("Pickups", { writes: [Game, Coin, og.Sprite], reads: [og.Transform], after: ["Control"] }, (q, _time, world) => {
@@ -548,6 +584,8 @@ export default og.game({
     const coin = must(og.load.flipbook(world, "sprites/coin.ogt"));
     spawnKeeper(world, must(og.load.rig2d(world, "rigs/keeper.ogt")));
     const height = map.height * map.tileHeight;
+    LEVEL.width = map.width * map.tileWidth;
+    LEVEL.height = height;
 
     const camera = must(world.resource(og.Camera));
     camera.orthographic = true;
@@ -580,10 +618,10 @@ export default og.game({
           // og-feel §12's platformer tunables; the ledges' layer is one-way.
           must(world.insert(hero, og.PlatformerController, { maxSpeed: 8, jumpHeight: 3.6, timeToApex: 0.4, oneWayLayers: LEDGES, wallJumps: false }));
         }
-        // The camera follows the couriers' middle (Control moves it).
+        // The camera follows the courier (two couriers: Frame frames them both).
         const view = must(world.spawn({ name: "view", position: { x: p.x, y: p.y, z: 0 } }));
         must(world.insert(view, View));
-        must(world.insert(view, og.Follow2D, { offset: { x: 0, y: 1.5 }, deadZone: { x: SEATS > 1 ? 2 : 1, y: 0.8 }, smoothTime: 0.12, lookAhead: 0.2, lookAheadMax: { x: 2, y: 1 } }));
+        if (SEATS === 1) must(world.insert(view, og.Follow2D, { offset: { x: 0, y: 1.5 }, deadZone: { x: 1, y: 0.8 }, smoothTime: 0.12, lookAhead: 0.2, lookAheadMax: { x: 2, y: 1 } }));
       } else if (o.kind === "coin") {
         const e = must(world.spawn({ name: o.name, position: { x: p.x, y: p.y, z: 0 } }));
         must(world.insert(e, Coin));
