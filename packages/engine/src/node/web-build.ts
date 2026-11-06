@@ -173,11 +173,35 @@ export interface BuildFile {
   readonly sha256: string;
 }
 
+interface PublishAssets {
+  readonly input: string;
+  readonly manifest: string;
+  readonly removed_files: string[];
+  readonly omitted: Array<{ id: string; file: string; bytes: number }>;
+  readonly computed: Array<{ source: string; line: number; prefix: string; reason: string }>;
+}
+
+function publishAssets(project: string, manifest: string): PublishAssets {
+  const path = join(project, ".og", "publish-assets.json");
+  const value: unknown = JSON.parse(readFileSync(path, "utf8"));
+  const file = (v: unknown): v is string => typeof v === "string" && v.length > 0 && !isAbsolute(v) && !v.includes("\\") && !v.split("/").some((p) => p === ".." || p === "." || p === "");
+  if (!(typeof value === "object" && value !== null
+    && "input" in value && value.input === manifest
+    && "manifest" in value && typeof value.manifest === "string"
+    && "removed_files" in value && Array.isArray(value.removed_files) && value.removed_files.every(file)
+    && "omitted" in value && Array.isArray(value.omitted) && value.omitted.every((r: unknown) => typeof r === "object" && r !== null && "id" in r && typeof r.id === "string" && "file" in r && file(r.file) && "bytes" in r && typeof r.bytes === "number" && Number.isSafeInteger(r.bytes) && r.bytes >= 0)
+    && "computed" in value && Array.isArray(value.computed) && value.computed.every((r: unknown) => typeof r === "object" && r !== null && "source" in r && typeof r.source === "string" && "line" in r && typeof r.line === "number" && Number.isSafeInteger(r.line) && r.line > 0 && "prefix" in r && typeof r.prefix === "string" && "reason" in r && typeof r.reason === "string")
+  )) throw new Error(`${path}: invalid or stale publication plan; run og cook`);
+  return value as PublishAssets;
+}
+
 /** og-build.json (docs/web-export.md §The manifest). */
 export interface BuildManifest {
   readonly format: 1;
   readonly engine: { readonly name: "origin-engine"; readonly version: string; readonly pinned: string };
   readonly build: "publish" | "dev";
+  /** Unreachable outputs omitted from this export, and conservative computed-load retention. */
+  readonly pruning: Pick<PublishAssets, "omitted" | "computed" | "removed_files"> | null;
   readonly game: { readonly name: string; readonly id: string; readonly profile: "2d" | "3d" };
   readonly entry: "index.html";
   /** The engine Worker's bundle as served: `game.js`, or in a publish build `game.<hash>.js`. */
@@ -748,6 +772,16 @@ export async function webBuild(project: string, entry: string, out: string, publ
   const p = settings.publish;
   const cooked = join(project, "cooked");
   if (!existsSync(join(cooked, ".cook.ogt"))) return fail(`${cooked} has no cooked bundle; run \`og cook ${project}\` first`);
+  const cookedManifest = readFileSync(join(cooked, ".cook.ogt"), "utf8");
+  let assets: PublishAssets | null = null;
+  if (publish) {
+    try {
+      assets = publishAssets(project, cookedManifest);
+    } catch (error) {
+      return fail(`cannot read publication plan: ${String(error)}; run og cook`);
+    }
+    for (const load of assets.computed) process.stderr.write(`og build: ${load.source}:${load.line}: ${load.reason}; retaining ${load.prefix ? `assets under ${load.prefix}` : "all assets"}\n`);
+  }
   // The engine module: a dev build takes the full one; a publish build the
   // variant of the game's profile, which a player downloads alone, and the
   // lanes variant of that profile from the same directory (one lanes module
@@ -802,8 +836,12 @@ export async function webBuild(project: string, entry: string, out: string, publ
   rmSync(join(out, "cooked", ".cook-times.ogt"), { force: true });
   rmSync(join(out, "cooked", ".conform.ogt"), { force: true });
   rmSync(join(out, "cooked", ".assets.ogt"), { force: true });
+  if (assets) {
+    for (const file of assets.removed_files) rmSync(join(out, "cooked", file), { force: true });
+    writeFileSync(join(out, "cooked", ".cook.ogt"), assets.manifest);
+  }
   // Streaming groups: a grouped output is read from its group's pack, so its own file is not shipped.
-  const split = streamGroupsOf(readFileSync(join(cooked, ".cook.ogt"), "utf8"));
+  const split = streamGroupsOf(assets?.manifest ?? cookedManifest);
   for (const f of split.grouped) rmSync(join(out, "cooked", f), { force: true });
   const packs = new Set(split.groups.map((g) => `cooked/${g.file}`));
   if (existsSync(join(out, MOTION_MODEL))) packs.add(MOTION_MODEL);
@@ -929,6 +967,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     format: 1,
     engine: { name: "origin-engine", version: ENGINE_VERSION, pinned: settings.engine },
     build: publish ? "publish" : "dev",
+    pruning: assets ? { omitted: assets.omitted, computed: assets.computed, removed_files: assets.removed_files } : null,
     game: { name: settings.name, id: settings.id, profile: settings.profile },
     entry: "index.html",
     worker: served("game.js"),

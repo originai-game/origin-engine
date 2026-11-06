@@ -5,6 +5,7 @@
 //! publish {
 //!   probe player            # player | all (a --publish build serves the player members)
 //!   out "dist"
+//!   keep "audio/**"         # asset roots in addition to scenes and static code references
 //!   isolation preferred     # required | preferred | off: crossOriginIsolation in og-build.json
 //!   fit fill                # fill | letterbox
 //!   aspect "16:9"           # letterbox: width:height
@@ -58,6 +59,7 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
     let source =
         std::fs::read_to_string(manifest).map_err(|e| format!("cannot read {file}: {e}"))?;
     let doc = og_core::ogt::parse(&source).map_err(|e| format!("{file}: {}", e.reason()))?;
+    og_cook::cook::assets::publish_keep(&doc)?;
     let b = &doc.body;
     let s = |k: &str| b.get(k).and_then(|e| e.string(0).ok()).map(str::to_string);
     let profile = s("profile").unwrap_or_else(|| "3d".into());
@@ -74,7 +76,7 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
     let mut publish = serde_json::Map::new();
     for e in &p.entries {
         let v = match e.key.as_str() {
-            "out" => continue,
+            "out" | "keep" => continue,
             // The export's cook reads it (`cook::texture_options`).
             "color_textures" => {
                 word(e, &file, &["etc1s", "uastc"])?;
@@ -265,6 +267,18 @@ mod tests {
         let out = super::settings(&file);
         std::fs::remove_dir_all(&dir).ok();
         out
+    }
+
+    #[test]
+    fn keep_patterns_are_checked_before_export() {
+        assert!(settings_of("keep", "  keep \"audio/**\" \"textures/icons/*\"\n").is_ok());
+        for value in ["", "true", "\"../private\""] {
+            assert!(
+                settings_of("bad-keep", &format!("  keep {value}\n"))
+                    .unwrap_err()
+                    .contains("publish.keep")
+            );
+        }
     }
 
     #[test]

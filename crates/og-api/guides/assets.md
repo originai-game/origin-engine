@@ -39,3 +39,21 @@ to delete source files.
 
 The sidecar describes the last cook. A subsequent cook refreshes the graph after
 TypeScript changes even when every cooked blob is unchanged.
+
+## 3. Publish pruning
+
+`og build --publish` omits unreachable outputs from the exported bundle and its
+manifest. The source `assets/` and development `cooked/` trees remain intact.
+`og-build.json` records omitted outputs and removed files under `pruning`, with
+the computed loads that retained a prefix or every asset.
+
+The project's `publish` block accepts `keep "audio/**" "textures/icons/*"`.
+Patterns match asset ids or source paths under `assets/`: `*` stays within one
+path segment, `**` crosses segments, and a trailing `/` keeps a folder's contents.
+Each match and its dependencies become roots. Multiple `keep` lines are allowed.
+
+A retained streaming pack keeps all its members and dependencies without changing
+the pack's bytes. A shared output file remains while any retained id names it.
+Escaped loader functions and namespaces retain every asset. Baked reflection
+probes remain because their ids depend on runtime placement; this is reported.
+The local `.og/publish-assets.json` plan is not shipped.

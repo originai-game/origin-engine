@@ -2023,7 +2023,9 @@ pub fn cook_project_with_texture_cache(
         std::fs::write(&manifest_path, &text)
             .map_err(|e| CookError(format!("{}: {e}", manifest_path.display())))?;
     }
-    assets::build(root, &manifest, &sources, &parsed_refs)?.write(&cooked_dir)?;
+    let index = assets::build(root, &manifest, &sources, &parsed_refs)?;
+    index.write(&cooked_dir)?;
+    index.write_publish_plan(root, &manifest)?;
     // Each asset's cook time: this run's (its outputs' summed) when it
     // cooked, else the one recorded; written only when one changed.
     let old_times = CookTimes::read(&cooked_dir);

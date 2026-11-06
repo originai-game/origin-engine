@@ -108,6 +108,15 @@ dates, no absolute paths, files in sorted order
   chunked sound is its first chunk there). Each group is its pack under
   `cooked/stream/`, with the memory its assets take once loaded (what
   `og.stream`'s budget counts) and its asset ids. The packs are in `files`.
+- `pruning` is `null` in a development build. A publish build lists `omitted`
+  outputs (`id`, `file`, `bytes`), `removed_files` relative to `cooked/`, and
+  `computed` loads (`source`, `line`, `prefix`, `reason`). An omitted id can
+  share a file with a retained id, so omitted bytes must not be summed as savings.
+  Roots are project asset references, placed scenes, TypeScript literals, and
+  `publish { keep "path/**" }` patterns. A computed load retains its static
+  prefix, or everything without a prefix. A needed streaming pack remains whole.
+  Pruning changes only the export, never source assets or development cooked files.
+  `cooked/.assets.ogt` and `.og/publish-assets.json` are local metadata, never shipped.
 
 ### Streaming groups
 

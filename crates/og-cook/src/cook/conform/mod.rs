@@ -199,7 +199,7 @@ impl ProjectConform {
 
 /// `*` matches within one path segment, `**` across them, a trailing `/`
 /// everything under that folder; anything else is the id itself.
-fn matches(pattern: &str, id: &str) -> bool {
+pub(super) fn matches(pattern: &str, id: &str) -> bool {
     if let Some(dir) = pattern.strip_suffix('/') {
         return id.starts_with(dir) && id[dir.len()..].starts_with('/');
     }

@@ -258,6 +258,9 @@ mod tests {
         let bytes = bundle.read(id).expect("kept by the cook");
         let map = bundle.environment(id, bytes.as_slice()).unwrap();
         assert_eq!(map.size, size);
+        let index = crate::cook::assets::Index::read(&dir).unwrap();
+        assert!(index.publish_plan(bundle.manifest()).omitted.is_empty());
+        assert_eq!(index.computed[0].reason, "runtime reflection-probe lookup");
         // Its tree is not cooked here: stale; and with the code changed too.
         let st = status(&dir, 7);
         assert_eq!(st.len(), 1);

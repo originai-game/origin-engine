@@ -59,6 +59,18 @@ fn asset_index_tracks_shared_model_textures_and_typescript_without_changing_blob
     )
     .unwrap();
     std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::write(
+        root.join("project.ogt"),
+        "type project\nversion 1\n---\npublish {\n  keep \"descending.*\"\n}\n",
+    )
+    .unwrap();
+    for alias in ["a-copy.png", "z-used.png"] {
+        std::fs::copy(
+            root.join("assets/texture.png"),
+            root.join("assets").join(alias),
+        )
+        .unwrap();
+    }
     std::fs::create_dir_all(root.join("assets/dynamic")).unwrap();
     std::fs::copy(
         root.join("assets/texture.png"),
@@ -85,7 +97,7 @@ og.load.defaultBundle(w);
 og.load.status(w, handle);
 og.load.gltf(w, "used.\u0067ltf");
 og.load.texture(w, `dynamic/${name}.png`);
-const fields = { sound: 'coin.ogt' };
+const fields = { sound: 'coin.ogt', texture: 'z-used.png' };
 "#,
     )
     .unwrap();
@@ -133,6 +145,27 @@ const fields = { sound: 'coin.ogt' };
     assert!(index.referenced_by(&shared.id).contains("used.gltf"));
     assert_eq!(index.computed.len(), 1);
     assert_eq!(index.computed[0].prefix, "dynamic/");
+    assert!(
+        reachable.contains("descending.png"),
+        "publish.keep is a root"
+    );
+    let plan: og_cook::cook::assets::PublishPlan =
+        serde_json::from_slice(&std::fs::read(root.join(".og/publish-assets.json")).unwrap())
+            .unwrap();
+    assert!(plan.omitted.iter().any(|o| o.id == "model.gltf"));
+    assert!(plan.omitted.iter().any(|o| o.id == "a-copy.png"));
+    assert!(
+        !plan.removed_files.contains("a-copy.png.ogb"),
+        "the retained alias still reads the canonical file"
+    );
+    let published = og_cook::runtime::Manifest::parse(&plan.manifest).unwrap();
+    assert!(
+        published
+            .outputs()
+            .any(|o| o.id == "z-used.png" && o.file == "a-copy.png.ogb")
+    );
+    assert!(!published.outputs().any(|o| o.id == "model.gltf"));
+    assert!(root.join("assets/model.gltf").is_file());
     let sidecar = std::fs::read(root.join("cooked/.assets.ogt")).unwrap();
     let manifest = std::fs::read(root.join("cooked/.cook.ogt")).unwrap();
     let (report, _) = cook(&root, None, &options);
@@ -151,6 +184,21 @@ const fields = { sound: 'coin.ogt' };
     let index = Index::read(&root).unwrap();
     assert_eq!(index.reachable().len(), index.assets.len());
     assert_eq!(index.computed[0].prefix, "");
+    let manifest =
+        og_cook::runtime::Manifest::parse(&String::from_utf8(manifest).unwrap()).unwrap();
+    assert!(index.publish_plan(&manifest).omitted.is_empty());
+    std::fs::write(
+        root.join("src/game.ts"),
+        "const load = og.load.gltf; load(w, name);",
+    )
+    .unwrap();
+    cook(&root, None, &options);
+    let index = Index::read(&root).unwrap();
+    assert!(
+        index.publish_plan(&manifest).omitted.is_empty(),
+        "an escaped loader must retain all assets"
+    );
+    assert_eq!(index.computed.len(), 1);
     std::fs::remove_dir_all(root).unwrap();
 }
 

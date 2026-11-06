@@ -4,7 +4,7 @@ use oxc_ast::ast::{CallExpression, Expression, StringLiteral, TemplateLiteral};
 use oxc_ast_visit::{Visit, walk};
 use oxc_parser::Parser;
 use oxc_span::{GetSpan, SourceType};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Range;
 use std::path::Path;
 use std::sync::OnceLock;
@@ -42,6 +42,7 @@ pub fn parse(path: &Path, text: &str) -> Result<References, String> {
     let mut visitor = Visitor {
         text,
         refs: References::default(),
+        called_namespaces: BTreeSet::new(),
     };
     visitor.visit_program(&parsed.program);
     Ok(visitor.refs)
@@ -50,6 +51,7 @@ pub fn parse(path: &Path, text: &str) -> Result<References, String> {
 struct Visitor<'s> {
     text: &'s str,
     refs: References,
+    called_namespaces: BTreeSet<u32>,
 }
 
 fn literal(expr: &Expression<'_>) -> Option<String> {
@@ -79,17 +81,19 @@ fn prefix(expr: &Expression<'_>) -> String {
     }
 }
 
-fn load_path_argument(expr: &Expression<'_>) -> Option<usize> {
-    let method = expr.get_inner_expression().as_member_expression()?;
-    let namespace = method
-        .object()
-        .get_inner_expression()
-        .as_member_expression()?;
-    if !namespace
+fn load_namespace(expr: &Expression<'_>) -> bool {
+    let Some(namespace) = expr.get_inner_expression().as_member_expression() else {
+        return false;
+    };
+    namespace
         .static_property_name()
         .is_some_and(|name| name == "load")
-        || !matches!(namespace.object().get_inner_expression(), Expression::Identifier(id) if id.name == "og")
-    {
+        && matches!(namespace.object().get_inner_expression(), Expression::Identifier(id) if id.name == "og")
+}
+
+fn load_path_argument(expr: &Expression<'_>) -> Option<usize> {
+    let method = expr.get_inner_expression().as_member_expression()?;
+    if !load_namespace(method.object()) {
         return None;
     }
     let Some(name) = method.static_property_name() else {
@@ -129,6 +133,21 @@ fn load_path_argument(expr: &Expression<'_>) -> Option<usize> {
 }
 
 impl<'a> Visit<'a> for Visitor<'_> {
+    fn visit_expression(&mut self, expr: &Expression<'a>) {
+        if load_namespace(expr) && !self.called_namespaces.contains(&expr.span().start) {
+            // An escaped loader/namespace may later be called with any path.
+            self.refs.computed.push(Computed {
+                prefix: String::new(),
+                line: self.text[..expr.span().start as usize]
+                    .bytes()
+                    .filter(|b| *b == b'\n')
+                    .count()
+                    + 1,
+            });
+        }
+        walk::walk_expression(self, expr);
+    }
+
     fn visit_string_literal(&mut self, s: &StringLiteral<'a>) {
         if let Some(value) = s.value.as_str() {
             self.refs.literals.push(Literal {
@@ -155,6 +174,11 @@ impl<'a> Visit<'a> for Visitor<'_> {
     }
 
     fn visit_call_expression(&mut self, call: &CallExpression<'a>) {
+        if let Some(method) = call.callee.get_inner_expression().as_member_expression()
+            && load_namespace(method.object())
+        {
+            self.called_namespaces.insert(method.object().span().start);
+        }
         if let Some(argument) = load_path_argument(&call.callee) {
             let path = call.arguments.get(argument).and_then(|a| a.as_expression());
             if path.is_none_or(|e| literal(e).is_none()) {

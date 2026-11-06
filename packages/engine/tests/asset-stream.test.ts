@@ -221,6 +221,7 @@ beforeAll(() => {
   ];
   for (const [name, rgb] of colours) writeFileSync(join(root, "assets", "models", `${name}.glb`), texturedGlb(encodePng(solid(64, rgb))));
   writeFileSync(join(root, "assets", "textures", "sign.png"), encodePng(solid(256, [200, 160, 40])));
+  writeFileSync(join(root, "assets", "textures", "unused.png"), encodePng(solid(8, [31, 72, 111])));
   copyFileSync(join(repo, "tests", "fixtures", "cook-assets", "assets", "audio", "blip.wav"), join(root, "assets", "audio", "blip.wav"));
   writeFileSync(join(root, "assets", "scenes", "path.ogt"), SCENE);
   const cooked = Bun.spawnSync([ogBin(), "cook", root]);
@@ -443,6 +444,12 @@ test("og build --publish ships each group as its pack beside the first group, an
   if (!b.ok) throw new Error(b.reason);
   expect(existsSync(join(root, "cooked", ".assets.ogt"))).toBeTrue();
   expect(existsSync(join(dist, "cooked", ".assets.ogt"))).toBeFalse();
+  expect(existsSync(join(root, "assets", "textures", "unused.png"))).toBeTrue();
+  expect(existsSync(join(root, "cooked", "textures", "unused.png.ogb"))).toBeTrue();
+  expect(existsSync(join(dist, "cooked", "textures", "unused.png.ogb"))).toBeFalse();
+  expect(readFileSync(join(dist, "cooked", ".cook.ogt"), "utf8")).not.toContain("unused.png");
+  expect(b.manifest?.pruning?.omitted.map((o) => o.id)).toEqual(["textures/unused.png"]);
+  expect(b.manifest?.pruning?.computed.map((c) => c.prefix)).toEqual(["models/"]);
   const sha = (f: string) => {
     const h = new Bun.CryptoHasher("sha256");
     h.update(new Uint8Array(readFileSync(join(dist, f))));

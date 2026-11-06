@@ -248,6 +248,21 @@ fn groups_are_packed_listed_and_stood_in_for() {
     // The manifest keeps all of it through its text.
     assert_eq!(&Manifest::parse(&m.to_text()).unwrap(), m);
 
+    let mut index = og_cook::cook::assets::Index::read(&root).unwrap();
+    index.roots.clear();
+    let empty = index.publish_plan(m);
+    assert!(Manifest::parse(&empty.manifest).unwrap().streams.is_empty());
+    assert!(empty.removed_files.contains("stream/cave.ogb"));
+    index.roots.insert("audio/blip.wav".into());
+    let kept = Manifest::parse(&index.publish_plan(m).manifest).unwrap();
+    assert_eq!(
+        kept.streams, m.streams,
+        "a retained pack and its scene keep all members and dependencies"
+    );
+    for output in m.outputs().filter(|o| o.group.is_some()) {
+        assert!(kept.outputs().any(|o| o == output));
+    }
+
     // A proxy: the coarsest LOD of every primitive, no textures.
     for n in ["house-a", "house-b", "house-c"] {
         let full = bundle.load_model(&format!("models/{n}.glb")).unwrap();

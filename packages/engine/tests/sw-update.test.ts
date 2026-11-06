@@ -128,21 +128,22 @@ test("a new build's service worker downloads only what changed, carrying the res
     "origin-engine_bg.111111111111.wasm": "engine",
     "cooked/.cook.ogt": "manifest 1",
     "cooked/hero.png.ogb": "hero",
+    "cooked/unused.png.ogb": "unused candidate",
     "cooked/stream/vale.ogb": "vale",
   };
   const first = await install(
     {
       version: "1111111111111111",
-      files: ["./", "index.html", "game.aaaaaaaaaaaa.js", "cooked/.cook.ogt", "cooked/hero.png.ogb"],
+      files: ["./", "index.html", "game.aaaaaaaaaaaa.js", "cooked/.cook.ogt", "cooked/hero.png.ogb", "cooked/unused.png.ogb"],
       single: ["origin-engine_bg.111111111111.wasm"],
       lanes: [],
       lazy: ["cooked/stream/vale.ogb"],
-      hashes: { "index.html": "i1", "game.aaaaaaaaaaaa.js": "g1", "origin-engine_bg.111111111111.wasm": "e1", "cooked/.cook.ogt": "m1", "cooked/hero.png.ogb": "h1", "cooked/stream/vale.ogb": "v1" },
+      hashes: { "index.html": "i1", "game.aaaaaaaaaaaa.js": "g1", "origin-engine_bg.111111111111.wasm": "e1", "cooked/.cook.ogt": "m1", "cooked/hero.png.ogb": "h1", "cooked/unused.png.ogb": "u1", "cooked/stream/vale.ogb": "v1" },
     },
     one,
     storage,
   );
-  expect(first).toEqual(["./", "cooked/.cook.ogt", "cooked/hero.png.ogb", "game.aaaaaaaaaaaa.js", "index.html", "origin-engine_bg.111111111111.wasm"]);
+  expect(first).toEqual(["./", "cooked/.cook.ogt", "cooked/hero.png.ogb", "cooked/unused.png.ogb", "game.aaaaaaaaaaaa.js", "index.html", "origin-engine_bg.111111111111.wasm"]);
   // The player visits the vale: the engine fetches its pack, the worker caches it.
   const old = [...storage.stores.keys()][0]!;
   storage.stores.get(old)!.set(`${SCOPE}cooked/stream/vale.ogb`, { body: "vale", type: "" });
@@ -166,6 +167,7 @@ test("a new build's service worker downloads only what changed, carrying the res
   // The old build's cache is gone after activation; the new one holds everything, the visited pack included.
   expect(storage.stores.size).toBe(1);
   const now = storage.stores.get([...storage.stores.keys()][0]!)!;
+  expect(now.has(`${SCOPE}cooked/unused.png.ogb`)).toBeFalse();
   expect(now.get(`${SCOPE}origin-engine_bg.111111111111.wasm`)?.body).toBe("engine");
   expect(now.get(`${SCOPE}cooked/hero.png.ogb`)?.body).toBe("hero");
   expect(now.get(`${SCOPE}cooked/stream/vale.ogb`)?.body).toBe("vale");

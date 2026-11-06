@@ -50,6 +50,59 @@ pub struct Index {
     pub computed: Vec<ComputedLoad>,
 }
 
+/// Local transport to the web exporter. The original manifest binds the plan
+/// to the cook that produced it; neither this file nor the index is shipped.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PublishPlan {
+    pub input: String,
+    pub manifest: String,
+    pub removed_files: BTreeSet<String>,
+    pub omitted: Vec<Omitted>,
+    pub computed: Vec<ComputedLoad>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Omitted {
+    pub id: String,
+    pub file: String,
+    pub bytes: u64,
+}
+
+/// Uses the same path patterns as project.conform: *, ** and folder/.
+pub fn publish_keep(doc: &Document) -> Result<Vec<String>, String> {
+    let mut patterns = Vec::new();
+    if let Some(block) = doc.body.get("publish").and_then(|e| e.block.as_ref()) {
+        for entry in block.get_all("keep") {
+            if entry.values.is_empty() || entry.block.is_some() {
+                return Err(format!(
+                    "project.ogt:{}: publish.keep takes quoted path patterns",
+                    entry.line
+                ));
+            }
+            for value in &entry.values {
+                let pattern = value.as_str().filter(|s| !s.is_empty()).ok_or_else(|| {
+                    format!(
+                        "project.ogt:{}: publish.keep takes quoted path patterns",
+                        entry.line
+                    )
+                })?;
+                let pattern = asset_id(pattern);
+                if pattern.starts_with('/')
+                    || pattern.contains('\\')
+                    || pattern.split('/').any(|p| p == "..")
+                {
+                    return Err(format!(
+                        "project.ogt:{}: publish.keep paths must stay under assets/",
+                        entry.line
+                    ));
+                }
+                patterns.push(pattern.to_string());
+            }
+        }
+    }
+    Ok(patterns)
+}
+
 impl Index {
     pub fn read(root: &Path) -> Result<Self, String> {
         let path = root.join("cooked").join(SIDECAR);
@@ -182,6 +235,81 @@ impl Index {
             }
         }
         seen
+    }
+
+    pub fn publish_plan(&self, manifest: &Manifest) -> PublishPlan {
+        let mut graph = self.clone();
+        let reachable = loop {
+            let reachable = graph.reachable();
+            let before = graph.roots.len();
+            // Packs remain byte-identical. Retain every member and its
+            // dependencies when any member or its declaring scene is needed.
+            for group in &manifest.streams {
+                if reachable.contains(&group.scene)
+                    || group.assets.iter().any(|id| reachable.contains(id))
+                {
+                    graph.roots.insert(group.scene.clone());
+                    graph.roots.extend(group.assets.iter().cloned());
+                    graph.roots.extend(
+                        self.assets
+                            .iter()
+                            .filter(|a| a.group.as_ref() == Some(&group.name))
+                            .map(|a| a.id.clone()),
+                    );
+                }
+            }
+            if graph.roots.len() == before {
+                break reachable;
+            }
+        };
+        let mut kept = manifest.clone();
+        let mut omitted = Vec::new();
+        for asset in &mut kept.assets {
+            asset.outputs.retain(|output| {
+                if reachable.contains(&output.id) {
+                    true
+                } else {
+                    omitted.push(Omitted {
+                        id: output.id.clone(),
+                        file: output.file.clone(),
+                        bytes: output.bytes,
+                    });
+                    false
+                }
+            });
+        }
+        kept.assets.retain(|asset| !asset.outputs.is_empty());
+        kept.streams.retain(|group| {
+            reachable.contains(&group.scene) || group.assets.iter().any(|id| reachable.contains(id))
+        });
+        let files = |m: &Manifest| -> BTreeSet<String> {
+            m.outputs()
+                .map(|o| o.file.clone())
+                .chain(m.streams.iter().map(|g| g.file.clone()))
+                .collect()
+        };
+        let removed_files = files(manifest).difference(&files(&kept)).cloned().collect();
+        omitted.sort_by(|a, b| a.id.cmp(&b.id));
+        PublishPlan {
+            input: manifest.to_text(),
+            manifest: kept.to_text(),
+            removed_files,
+            omitted,
+            computed: self.computed.clone(),
+        }
+    }
+
+    pub fn write_publish_plan(&self, root: &Path, manifest: &Manifest) -> Result<(), CookError> {
+        let dir = root.join(".og");
+        std::fs::create_dir_all(&dir).map_err(|e| CookError(e.to_string()))?;
+        let path = dir.join("publish-assets.json");
+        let bytes = serde_json::to_vec(&self.publish_plan(manifest))
+            .map_err(|e| CookError(e.to_string()))?;
+        if std::fs::read(&path).ok().as_deref() != Some(bytes.as_slice()) {
+            std::fs::write(&path, bytes)
+                .map_err(|e| CookError(format!("{}: {e}", path.display())))?;
+        }
+        Ok(())
     }
 
     pub fn referenced_by(&self, id: &str) -> BTreeSet<String> {
@@ -399,6 +527,18 @@ pub(super) fn build(
     let bundle = Bundle::open(&root.join("cooked")).map_err(|e| CookError(e.to_string()))?;
     let mut index = Index::default();
     for source in &manifest.assets {
+        if source.kind == super::probes::KIND {
+            // Probe ids derive from runtime placement rather than source literals.
+            index
+                .roots
+                .extend(source.outputs.iter().map(|o| o.id.clone()));
+            index.computed.push(ComputedLoad {
+                source: source.source.clone(),
+                line: 1,
+                prefix: "probes/".into(),
+                reason: "runtime reflection-probe lookup".into(),
+            });
+        }
         let input = sources.iter().find(|s| s.rel == source.source);
         let mut values: Vec<_> = parsed_refs
             .get(&source.source)
@@ -463,6 +603,18 @@ pub(super) fn build(
     }
     if let Ok(text) = std::fs::read_to_string(root.join("project.ogt")) {
         let doc = Document::parse(&text).map_err(|e| CookError(e.to_string()))?;
+        let keep = publish_keep(&doc).map_err(CookError)?;
+        index.roots.extend(
+            index
+                .assets
+                .iter()
+                .filter(|a| {
+                    keep.iter().any(|p| {
+                        super::conform::matches(p, &a.id) || super::conform::matches(p, &a.source)
+                    })
+                })
+                .map(|a| a.id.clone()),
+        );
         let mut values = Vec::new();
         text_values(&doc.body, &mut values);
         let refs: BTreeSet<_> = values.iter().flat_map(|v| resolve(v, "", &known)).collect();
