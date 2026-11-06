@@ -187,7 +187,10 @@ OG_GPU_IMPL
 
 og_gpu_machine="$og_gpu_root/gpu-lock.sh"
 og_gpu_mine="$(og_gpu_impl | sed -n 's/^og_gpu_lock_version=//p')"
-og_gpu_theirs="$(sed -n 's/^og_gpu_lock_version=//p' "$og_gpu_machine" 2>/dev/null | head -n 1)"
+# No machine copy yet (a fresh orb): sed's exit 2 would end a caller under
+# set -e -o pipefail (install-tools.sh), so it is read only when it exists.
+og_gpu_theirs=""
+[ ! -f "$og_gpu_machine" ] || og_gpu_theirs="$(sed -n 's/^og_gpu_lock_version=//p' "$og_gpu_machine" | head -n 1)"
 if [ "${og_gpu_theirs:-0}" -lt "$og_gpu_mine" ] && mkdir -p "$og_gpu_root" 2>/dev/null; then
   og_gpu_impl > "$og_gpu_machine.$$" && mv -f "$og_gpu_machine.$$" "$og_gpu_machine"
 fi
