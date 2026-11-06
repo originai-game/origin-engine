@@ -1386,30 +1386,36 @@ claims a UI is done.
 
 ### 16.5 Check
 
-`og ui check` (also available to `og test`) reports,
-each with the element paths and the prop to change:
+`og ui check` (also available to `og test`) reports facts, never
+verdicts (the owner, 2026-11-06: the engine supplies measurements and the
+agent decides). It exits 0 when it ran, whatever it found, and 1 only when
+it could not run. Its **findings**, each with the element paths and the
+prop that sets it:
 
 - overlap not declared (§6.2), across breakpoints and locales;
 - text clipped or truncated without ellipsis and a tooltip; overflow under
   the pseudo-locale and at 150 % text (200 % deferred, §15.2);
 - elements outside the safe area or under the shell's covered region;
-- touch targets under 44 CSS px on a coarse pointer;
-- contrast: an error only for live text under 3:1 on pixels (7:1 in the
-  high-contrast mode), measured on the drawn glyphs; under 4.5:1 it is a
-  warning for the art director to judge, and dimmed, decorative and
-  over-the-scene HUD text is judged by eye, not by the number;
-- text under the minimum size;
 - focus: an interactive element unreachable by pad from the default
   focus, a focus trap, a layer without Back;
-- accessibility names missing or in the wrong locale;
-- hierarchy: more than one primary action in a layer;
+- accessibility names missing, or the same in another locale;
 - feedback: an interactive element without hover or press states, or
   without a sound in a styled game;
 - motion: durations outside the style's bounds, missing reduced-motion
   fallbacks, input refused longer than the style's entrance;
-- art: slots still on their placeholder at publish; images whose focal
-  point falls outside the slot's crop;
-- performance: element counts, draws and per-tick times over §15.1.
+- art: slots still on their placeholder; images whose focal point falls
+  outside the slot's crop (not checkable yet).
+
+Its **measures**, numbers held to no bar (the knowledge skills og-taste
+§3, §4, og-ui §8 and ui-craft say what a game usually wants):
+
+- each live text's contrast on the drawn glyphs (dimmed, decorative and
+  over-the-scene text is not measured);
+- each text's size, and at 150 % and 200 % text the percentage of its
+  100 % size it is drawn at;
+- each control's shorter side on a coarse pointer;
+- the buttons filled with the primary, per layer;
+- the element count and draw commands per frame.
 
 ### 16.6 Knowledge
 

@@ -8,8 +8,8 @@ it in a glance while doing something else, on a phone held in one hand, in
 a language its author does not speak. This skill is how to design it so
 it survives that; `og-ui` is how to build it (`og.ui`), `og-taste` how it
 should look (the style, colour, type). Every rule below that can be
-measured is one of `og ui check`'s, so a design is proven, not judged by
-eye (§7).
+measured, `og ui check` reports as a fact or a number (§7); the numbers
+are held to no bar, so the bars below are yours to apply.
 
 ## Polish on the prebuilt engine
 
@@ -55,7 +55,7 @@ keep both under `mockups/<screen>/` at the project's root (outside
   thing it is for: Play on a title, Buy on a shop item, Confirm on a
   purchase. That one is the `primary` button; everything else is
   `secondary` or `quiet`. Two primaries make the player stop and read;
-  `og ui check` reports them (`primary-actions`).
+  `og ui check` counts them per layer (`primary-actions`).
 - **Three levels, no more.** The thing being decided (a card, an item's
   art, the score) is largest; its facts (price, stats, the timer) are the
   body step; meta (captions, hints, a version string) is the smallest
@@ -173,6 +173,8 @@ og ui preview . --screen hud=show:play --film "damage:30" --at 0,0.05,0.1,0.2,0.
 Read the sheet (`og-out/ui-preview/sheet-<screen>.png`, with
 `index.json` naming each cell) as a designer would, then read
 `og-out/ui-check/check.txt`: each finding names the element paths, what
-was measured, the limit, and the prop to change. Fix the prop, run the
-check again; a clean check on every cell is the bar. og-ui §8 has the
-commands and the rules in full.
+was found and the prop that sets it, and each measure lists its values
+from one end (the lowest contrast, the smallest text and target). Decide
+what the numbers mean for this game (og-taste §3, §4; og-ui §8's table of
+what a game usually wants), fix the prop, run the check again. og-ui §8
+has the commands and every rule.

@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { og, defineSystem, type World } from "@origingame/engine";
 import type * as Api from "@origingame/engine";
 import { loadNativeHost, native } from "../src/node/index.ts";
-import { checkFrame, checkScale, pseudo, type UiCell, type UiFrameSnapshot } from "../src/node/ui-check.ts";
+import { checkFrame, measureScale, pseudo, type UiCell, type UiFrameSnapshot } from "../src/node/ui-check.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { tableOrder } from "../src/ui/data/table.ts";
 import { niceTicks, formatDelta, formatNumber } from "../src/ui/data/format.ts";
@@ -1077,8 +1077,10 @@ test("150 % text: the containers, navigation and data components grow with the t
     }
     const cell: UiCell = { screen: "components", breakpoint: bp, locale: "", style: "", scale: 150, highContrast: false };
     expect(frames[1]!.texts.find((x) => x.text === probe)!.size).toBeCloseTo(frames[0]!.texts.find((x) => x.text === probe)!.size * 1.5, 1);
-    const found = [...checkFrame(frames[1]!, cell), ...checkScale(frames[0]!, frames[1]!, cell)].filter((f) => f.rule === "text-scale" && f.severity === "error");
-    expect(found.map((f) => `${f.paths.join(" × ")}: ${f.measured}`)).toEqual([]);
+    // At 150 % no text is cut, and every text is drawn at 150 % of its size (within 5 %).
+    const cuts = checkFrame(frames[1]!, cell).filter((f) => f.rule === "text-cut").map((f) => `${f.paths.join(" × ")}: ${f.measured}`);
+    const short = measureScale(frames[0]!, frames[1]!, cell).filter((m) => m.value < 0.95 * 150).map((m) => `${m.paths.join(" × ")}: ${m.detail}`);
+    expect([...cuts, ...short]).toEqual([]);
     // And no text spills out of the part that holds it (a fixed-height row its text outgrew,
     // which nothing clips, so the cut rule cannot see it).
     const els = frames[1]!.elements;

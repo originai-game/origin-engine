@@ -1,5 +1,5 @@
-// `og ui check` (docs/ui.md §16.5): the rules a UI designer checks by eye,
-// as checks with a path and a fix. One checker, called by `og ui check`
+// `og ui check` (docs/ui.md §16.5): what can be read off a laid-out UI,
+// as facts with a path, never as verdicts. One checker, called by `og ui check`
 // (ui-run.ts, over a screen set × breakpoints × locales) and by playtests (`checkUi`, from
 // `@origingame/engine/ui-check`, on the frames a `dump_ui:<name>.uicheck.json`
 // step saved). It reads one laid-out frame (`og_node_ui_frame`, the native
@@ -7,8 +7,14 @@
 // text, fills, the accessibility tree, layout counts, viewport and theme)
 // and, where there is one, the rendered frame (contrast on pixels).
 //
-// Every finding names the rule, the element path(s), the measured value,
-// the limit, the prop to change and the fix, as JSON and as text (`text`).
+// A finding is a fact about the frame that holds whatever the game's taste
+// (an undeclared overlap, text cut by its clip, a control a pad cannot
+// reach): the rule, the element path(s), what was measured, the prop that
+// sets it and a way to change it. A measure is a number with no threshold
+// (a text's contrast and size, a control's side, how far text grows with
+// the player's text scale, the primary buttons of a layer, the element
+// count): the engine holds none of them to a bar, and the knowledge
+// skills say what a game usually wants. Both are JSON and text (`text`).
 // The rules that need data later phases bring are listed in RULES with
 // status "not checkable yet" and the reason, never skipped silently.
 
@@ -103,31 +109,25 @@ export interface UiCell {
   style: string;
   /** Text scale, percent. */
   scale: number;
-  /** Laid out in high-contrast mode (the contrast bar is 7:1). */
+  /** Laid out in high-contrast mode. */
   highContrast: boolean;
 }
 
-export type Severity = "error" | "warning";
-
 export interface UiFinding {
   rule: string;
-  severity: Severity;
   /** The element(s), by path (`Hud.top/Timer`). */
   paths: string[];
-  /** What was measured, with its unit (`44×44 CSS px overlap`, `3.1:1`). */
+  /** What was found, with its numbers (`44×44 CSS px overlap`). */
   measured: string;
-  /** The bar it was held to. */
-  limit: string;
-  /** The prop (or token) to change. */
+  /** The prop (or token) that sets it. */
   prop: string;
+  /** A way to change it. */
   fix: string;
   /** The cells it was found in (`phonePortrait en`). */
   cells: string[];
-  /** The measured number in the first cell, for the rules that measure one (contrast's ratio, a text's or target's CSS px, an overlap's or overflow's px). */
+  /** The number in the first cell, for the rules that have one (an overlap's or overflow's area or px). */
   value?: number;
-  /** The bar `value` is held to: contrast 3 or 7 for an error and 4.5 for a warning, the minimum text size, 44 for a touch target, 0 for an overlap or overflow. */
-  bar?: number;
-  /** `value`'s and `bar`'s unit: `:1` (a contrast ratio), `CSS px`, `CSS px²`. */
+  /** `value`'s unit: `CSS px`, `CSS px²`. */
   unit?: string;
   /** Each cell it was found in, with the box it was found at: one entry per cell, in the order of `cells`. */
   at?: UiFindingAt[];
@@ -147,12 +147,39 @@ export interface UiFindingAt {
   frame?: string | null;
 }
 
+/**
+ * A number read off one cell, held to no bar: `contrast` (a live text's
+ * ratio on the drawn pixels, `:1`), `text-size` (a text's size, CSS px),
+ * `touch-target` (a control's shorter side on a coarse pointer, CSS px),
+ * `text-scale` (how large a text is drawn at the cell's text scale, as a
+ * percentage of its size at 100 %), `primary-actions` (the buttons filled
+ * with the palette's primary in one layer) and `elements` (the frame's
+ * element count).
+ */
+export interface UiMeasure {
+  measure: string;
+  /** The element(s), by path; `(frame)` for the element count. */
+  paths: string[];
+  value: number;
+  unit: string;
+  /** What else reads with the number (the text, its box, dense, high contrast, the sizes at 100 % and at the scale). */
+  detail: string;
+  /** The prop (or token) that sets it. */
+  prop: string;
+  /** The cell it was read in. */
+  cell: string;
+  /** The box, CSS px in the cell's viewport, or null. */
+  rect: Rect4 | null;
+}
+
 // ── the rules ──────────────────────────────────────────────────────────────
 
 export type RuleStatus = "checked" | "partial" | "not checkable yet";
 
 export interface UiRule {
   id: string;
+  /** A fact the checker reports as a finding, or a number it reports as a measure. */
+  kind: "finding" | "measure";
   /** docs/ui.md §16.5's words. */
   title: string;
   status: RuleStatus;
@@ -161,27 +188,27 @@ export interface UiRule {
 }
 
 export const RULES: readonly UiRule[] = [
-  { id: "overlap", title: "overlap not declared (§6.2), across breakpoints and locales", status: "checked" },
-  { id: "text-cut", title: "text clipped without an ellipsis, or drawn past its box", status: "checked" },
-  { id: "text-truncated", title: "text truncated with an ellipsis but without a tooltip", status: "partial", note: "the ellipsis is read from the drawn text; a tooltip exists only while hovered (og-ui builds it then), so its absence is reported as a warning until U3's dump_ui lists an element's tooltip" },
-  { id: "offscreen", title: "an interactive element laid out past the screen with nothing to scroll to it", status: "checked" },
-  { id: "pseudo-overflow", title: "overflow under the pseudo-locale (+40 % length, accents, brackets)", status: "checked", note: "the pseudo cells run every rule above on text lengthened in process (og.i18n.t and the text arguments of og.ui's widgets)" },
-  { id: "text-scale", title: "overflow at 150 % text (200 % deferred), and text that does not grow with the player's text size", status: "checked", note: "a scale cell configures UiDesc.textScale (og.ui.configure) and runs every rule above; a text cut there is reported under this rule, and a text drawn at less than the scale times its size at 100 % (a fixed size the scale does not reach) too" },
-  { id: "safe-area", title: "elements outside the safe area", status: "checked" },
-  { id: "covered", title: "elements under the shell's covered region", status: "checked" },
-  { id: "touch-target", title: "touch targets under 44 CSS px on a coarse pointer", status: "checked", note: "an element's hitSlop is not in the frame: a small control with slop enough is still reported; a link inside a rich text's sentence is exempt (WCAG 2.5.8)" },
-  { id: "contrast", title: "contrast of live text: an error under 3:1 (7:1 in high contrast), a warning under 4.5:1, on the drawn pixels; dimmed, disabled, decorative and over-the-scene text is judged by eye", status: "checked" },
-  { id: "text-size", title: "text under the minimum size", status: "checked", note: "18 px at 1080p; a dense HUD's readouts (ElementProps.dense) 12 px at 1080p times the text scale" },
-  { id: "focus-reach", title: "an interactive element unreachable by pad from the default focus", status: "checked" },
-  { id: "focus-trap", title: "a focus trap: a control the pad cannot leave back to the default focus", status: "partial", note: "the pad graph is walked both ways, but og-ui's direction rule (nearest, wrapping) leaves no geometric trap (none in 600,000 random layouts); the real trap, a scope Back does not close, needs U3's layer stack" },
-  { id: "layer-back", title: "a layer without Back", status: "not checkable yet", note: "the layer stack and its input modes are U3's (§8.1); a frame has no layers yet" },
-  { id: "a11y-name", title: "accessibility names missing", status: "checked" },
-  { id: "a11y-locale", title: "names and texts in the wrong locale (left untranslated)", status: "checked", note: "a cell of another locale is compared with the game's own, path by path" },
-  { id: "primary-actions", title: "more than one primary action in a layer", status: "partial", note: "a button is primary when its fill is the palette's primary; the layers are approximated by the base and each modal until U3's layer stack" },
-  { id: "feedback", title: "an interactive element without hover or press states, or without a sound in a styled game", status: "partial", note: "og-ui's widgets carry their hover and press; a custom interactive container is checked for declared visual states (frame.motion), its resolved states arrive with U3's dump_ui" },
-  { id: "motion", title: "durations outside the style's bounds, missing reduced-motion fallbacks, input refused longer than the entrance", status: "not checkable yet", note: "the style's motion bounds and per-element fallbacks are U4's style v2 tokens on U2's states; the frame does not carry a transition's duration or its reduced variant yet" },
-  { id: "art-slot", title: "art slots still on their placeholder; focal points outside the crop", status: "not checkable yet", note: "slots are specified (og_ui::slot) but not built into a frame or drawn from the style yet (U1, U4); nothing lists a slot's art" },
-  { id: "budget", title: "element counts and draws per tick over §15.1", status: "checked", note: "counts per frame (300 elements, the dense-menu budget); per-tick times are the perf lane's" },
+  { id: "overlap", kind: "finding", title: "overlap not declared (§6.2), across breakpoints and locales", status: "checked" },
+  { id: "text-cut", kind: "finding", title: "text clipped without an ellipsis, or drawn past its box (at any text scale)", status: "checked" },
+  { id: "text-truncated", kind: "finding", title: "text truncated with an ellipsis but without a tooltip", status: "partial", note: "the ellipsis is read from the drawn text; a tooltip exists only while hovered (og-ui builds it then), so a truncated text is reported until U3's dump_ui lists an element's tooltip" },
+  { id: "offscreen", kind: "finding", title: "an interactive element laid out past the screen with nothing to scroll to it", status: "checked" },
+  { id: "pseudo-overflow", kind: "finding", title: "overflow under the pseudo-locale (+40 % length, accents, brackets)", status: "checked", note: "the pseudo cells run every rule above on text lengthened in process (og.i18n.t and the text arguments of og.ui's widgets)" },
+  { id: "safe-area", kind: "finding", title: "elements outside the safe area", status: "checked" },
+  { id: "covered", kind: "finding", title: "elements under the shell's covered region", status: "checked" },
+  { id: "focus-reach", kind: "finding", title: "an interactive element unreachable by pad from the default focus", status: "checked" },
+  { id: "focus-trap", kind: "finding", title: "a focus trap: a control the pad cannot leave back to the default focus", status: "partial", note: "the pad graph is walked both ways, but og-ui's direction rule (nearest, wrapping) leaves no geometric trap (none in 600,000 random layouts); the real trap, a scope Back does not close, needs U3's layer stack" },
+  { id: "layer-back", kind: "finding", title: "a layer without Back", status: "not checkable yet", note: "the layer stack and its input modes are U3's (§8.1); a frame has no layers yet" },
+  { id: "a11y-name", kind: "finding", title: "accessibility names missing", status: "checked" },
+  { id: "a11y-locale", kind: "finding", title: "names and texts the same in another locale as in the game's own", status: "checked", note: "a cell of another locale is compared with the game's own, path by path" },
+  { id: "feedback", kind: "finding", title: "an interactive element without hover or press states, or a style without a hover or press sound", status: "partial", note: "og-ui's widgets carry their hover and press; a custom interactive container is checked for declared visual states (frame.motion), its resolved states arrive with U3's dump_ui" },
+  { id: "motion", kind: "finding", title: "durations outside the style's bounds, missing reduced-motion fallbacks, input refused longer than the entrance", status: "not checkable yet", note: "the style's motion bounds and per-element fallbacks are U4's style v2 tokens on U2's states; the frame does not carry a transition's duration or its reduced variant yet" },
+  { id: "art-slot", kind: "finding", title: "art slots still on their placeholder; focal points outside the crop", status: "not checkable yet", note: "slots are specified (og_ui::slot) but not built into a frame or drawn from the style yet (U1, U4); nothing lists a slot's art" },
+  { id: "contrast", kind: "measure", title: "each live text's contrast on the drawn pixels, :1", status: "checked", note: "dimmed, disabled, decorative and over-the-scene text is not measured: its ground is not the UI's" },
+  { id: "text-size", kind: "measure", title: "each text's size, CSS px (dense when its element declares ElementProps.dense)", status: "checked" },
+  { id: "touch-target", kind: "measure", title: "each control's shorter side on a coarse pointer, CSS px", status: "checked", note: "an element's hitSlop is not in the frame; a link inside a rich text's sentence is marked inline" },
+  { id: "text-scale", kind: "measure", title: "each text's size at the cell's text scale, as a percentage of its size at 100 %", status: "checked", note: "a scale cell configures UiDesc.textScale (og.ui.configure); a text cut there is a text-cut finding of that cell" },
+  { id: "primary-actions", kind: "measure", title: "the buttons filled with the palette's primary, per layer", status: "partial", note: "a button is primary when its fill is the palette's primary; the layers are approximated by the base and each modal until U3's layer stack" },
+  { id: "elements", kind: "measure", title: "the frame's element count and draw commands", status: "checked", note: "per frame; per-tick times are the perf lane's" },
 ];
 
 const ruleOf = new Map(RULES.map((r) => [r.id, r]));
@@ -201,24 +228,6 @@ const TOUCH_CONTROLS = new Set(["joystick", "dpad", "action"]);
 const PICTURES = new Set(["icon", "image"]);
 /** Containers: they place, they show nothing of their own. */
 const CONTAINERS = new Set(["anchor", "row", "column", "panel", "scroll", "spacer", "group", "stack", "grid", "root", ""]);
-
-/** The minimum text, CSS px (§15.2: 18 px at 1080p on desktop; phone-equivalent on touch). */
-export function minTextSize(v: UiFrameSnapshot["viewport"]): number {
-  if (v.coarsePointer) return 12;
-  return Math.max(12, Math.round((18 * Math.min(v.width, v.height * (16 / 9))) / 1920 * 10) / 10);
-}
-
-/**
- * The minimum text of a dense HUD's readouts (ElementProps.dense: strategy,
- * MMO, simulation), CSS px: §15.2's 12 px at 1080p on desktop, times the
- * player's text scale (`scale`, percent), so it grows with it. Touch takes
- * no allowance: its 12 px is already a phone's floor.
- */
-export function denseTextSize(v: UiFrameSnapshot["viewport"], scale = 100): number {
-  if (v.coarsePointer) return minTextSize(v);
-  const at1080 = Math.round((12 * Math.min(v.width, v.height * (16 / 9))) / 1920 * 10) / 10;
-  return Math.max(8, Math.round(at1080 * (scale / 100) * 10) / 10);
-}
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 const r2 = (x: number) => Math.round(x * 100) / 100;
@@ -407,10 +416,13 @@ const srgb = (v: number) => (v <= 0.0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4)
 const near = (a: number[], b: number[]) => (a[3] ?? 1) >= 0.95 && [0, 1, 2].reduce((n, k) => n + Math.abs(srgb(a[k]!) - srgb(b[k]!)), 0) < 0.025;
 
 export interface CheckOptions {
-  /** The rendered frame (device pixels), for contrast; without one contrast is not measured for this frame. */
-  image?: Image | null;
   /** Rules to leave out. */
   skip?: readonly string[];
+}
+
+export interface MeasureOptions {
+  /** The rendered frame (device pixels), for contrast; without one contrast is not measured for this frame. */
+  image?: Image | null;
 }
 
 /**
@@ -437,7 +449,7 @@ function drawnTexts(f: UiFrameSnapshot): UiFrameSnapshot["texts"] {
   return [...by.values()];
 }
 
-/** Every rule that one frame shows, for the cell it was taken in. */
+/** Every finding one frame shows, for the cell it was taken in (its numbers are `measureFrame`'s). */
 export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOptions = {}): UiFinding[] {
   const f: UiFrameSnapshot = { ...frame, texts: drawnTexts(frame) };
   const out: UiFinding[] = [];
@@ -446,12 +458,12 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
   const v = f.viewport;
   const paths = elementPaths(f);
   const byPath = new Map(paths.map((p, i) => [p, i]));
-  const add = (rule: string, x: Omit<UiFinding, "rule" | "severity" | "cells" | "at"> & { severity?: Severity; rect?: Rect4 | null }) => {
+  const add = (rule: string, x: Omit<UiFinding, "rule" | "cells" | "at"> & { rect?: Rect4 | null }) => {
     if (skip.has(rule)) return;
     const e = f.elements[byPath.get(x.paths[0] ?? "") ?? -1];
     const rect = x.rect !== undefined ? x.rect : e ? rectOf(e) : null;
-    const measure = { ...(x.value === undefined ? {} : { value: x.value }), ...(x.bar === undefined ? {} : { bar: x.bar }), ...(x.unit === undefined ? {} : { unit: x.unit }) };
-    out.push({ rule, severity: x.severity ?? "error", paths: x.paths, measured: x.measured, limit: x.limit, prop: x.prop, fix: x.fix, cells: [where], ...measure, at: [{ cell: where, viewport: [v.width, v.height], rect: rect && (rect.map(r1) as Rect4), ...(x.value === undefined ? {} : { value: x.value }) }] });
+    const measure = { ...(x.value === undefined ? {} : { value: x.value }), ...(x.unit === undefined ? {} : { unit: x.unit }) };
+    out.push({ rule, paths: x.paths, measured: x.measured, prop: x.prop, fix: x.fix, cells: [where], ...measure, at: [{ cell: where, viewport: [v.width, v.height], rect: rect && (rect.map(r1) as Rect4), ...(x.value === undefined ? {} : { value: x.value }) }] });
   };
   const kindAt = (p: string) => f.elements[byPath.get(p) ?? -1]?.kind ?? "";
   const underTouch = (i: number) => {
@@ -471,10 +483,8 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
       paths: [o.path, o.other],
       rect: o.rect,
       value: r1(o.rect[2] * o.rect[3]),
-      bar: 0,
       unit: "CSS px²",
       measured: `${r1(o.rect[2])}×${r1(o.rect[3])} CSS px overlap at ${r1(o.rect[0])},${r1(o.rect[1])}${o.inFlow ? " (siblings in the flow)" : ""}${pseudo}`,
-      limit: "no overlap unless declared",
       prop: o.inFlow ? `${o.path}: size, gap or wrap of its row` : `${o.path}: anchor, offset or insets (or \`overlaps: ["${o.other}"]\` in og.ui.props when it is meant)`,
       fix: o.inFlow
         ? `siblings in the flow never overlap: give their row room (wrap, a smaller step, grow) at ${v.breakpoint}`
@@ -483,10 +493,6 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
   }
 
   // Text: cut by its clip, drawn past its box, truncated.
-  const minSize = minTextSize(v);
-  const denseSize = denseTextSize(v, cell.scale);
-  const dense = f.dense ?? [];
-  const isDense = (path: string) => dense.some((d) => path === d || path.startsWith(`${d}/`));
   const sideways = f.sideways ?? [];
   const inSideways = (path: string) => sideways.some((d) => path.startsWith(`${d}/`));
   for (const t of f.texts) {
@@ -502,60 +508,36 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     // row at its top or bottom: the rest scrolls into view. A cut across the
     // line scrolls into view too inside a sideways scroller (a row of tabs or
     // chips); elsewhere (a right-to-left line past its box's start, the kit's
-    // gallery in Arabic) it stays, as a warning.
+    // gallery in Arabic) it stays.
     if (e?.clipped && (cutX <= 1 || inSideways(path))) continue;
     // What the cut took, along the axis it cut: never "0 px" for a line cut top or bottom.
     const cut = [cutX > 1 ? `${r1(cutX)} CSS px of its width` : "", cutY > h * 0.3 ? `${r1(cutY)} of its ${r1(h)} CSS px height` : ""].filter(Boolean).join(" and ");
     const ellipsis = /(…|\.\.\.)$/.test(t.text.trim());
     if (cutX > 1 || cutY > h * 0.3) {
-      add(cell.scale !== 100 ? "text-scale" : "text-cut", {
-        ...(e?.clipped ? { severity: "warning" as const } : {}),
+      add("text-cut", {
         paths: [path],
         rect: t.bounds,
         measured: `"${t.text.slice(0, 32)}" cut by its clip: ${cut}${pseudo}`,
-        limit: "text shows whole, or ends in an ellipsis with a tooltip",
         prop: `${path}: ellipsis and maxLines (og.ui.label), or its box's width`,
         fix: "let the box grow with its text, wrap it, or cut it with an ellipsis and give it a tooltip",
       });
     } else if (e && !PICTURES.has(e.kind ?? "") && w > e.width + 1.5 && (e.kind === "label" || e.kind === "button")) {
-      add(cell.scale !== 100 ? "text-scale" : "text-cut", {
+      add("text-cut", {
         paths: [path],
         rect: t.bounds,
         value: r1(w - e.width),
-        bar: 0,
         unit: "CSS px",
         measured: `"${t.text.slice(0, 32)}" is ${r1(w)} CSS px in a ${r1(e.width)} px box${pseudo}`,
-        limit: "text inside its box",
         prop: `${path}: width (fit or grow), or ellipsis`,
         fix: "no box is sized to its English text (§15.3): let it fit its text, or wrap",
       });
     }
     if (ellipsis && e && !/(…|\.\.\.)$/.test(e.text.trim())) {
       add("text-truncated", {
-        severity: "warning",
         paths: [path],
         measured: `"${e.text.slice(0, 40)}" drawn as "${t.text.slice(0, 40)}"${pseudo}`,
-        limit: "truncated text has a tooltip with the whole of it",
         prop: `${path}: og.ui.tooltip after it, or its width`,
         fix: "give it a tooltip (og.ui.tooltip right after the control) or room for the whole text; a tooltip cannot be seen in the frame data yet, so check that one exists",
-      });
-    }
-    const inDense = i >= 0 && isDense(path);
-    if (t.size + 0.01 < (inDense ? denseSize : minSize)) {
-      add("text-size", {
-        paths: [path],
-        rect: t.bounds,
-        value: r1(t.size),
-        bar: inDense ? denseSize : minSize,
-        unit: "CSS px",
-        measured: `${r1(t.size)} CSS px "${t.text.slice(0, 32)}"${inDense ? " (dense)" : ""}`,
-        limit: inDense
-          ? `${denseSize} CSS px at ${v.width}×${v.height} at ${cell.scale} % text (a dense HUD: 12 px at 1080p, growing with the text scale)`
-          : `${minSize} CSS px at ${v.width}×${v.height}${v.coarsePointer ? " on touch" : " (18 px at 1080p)"}`,
-        prop: `${path}: step (the type ramp's step, \`xs\` and \`meta\` are the smallest)`,
-        fix: inDense
-          ? "a dense readout may go to 12 px at 1080p, never below, and grows with UiDesc.textScale (§15.2)"
-          : "use the ramp's body step or larger for anything read in play (§15.2); a dense HUD's readouts (strategy, MMO, simulation) may declare `dense: true` in og.ui.props and go to 12 px at 1080p",
       });
     }
   }
@@ -566,10 +548,8 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     if (m) add("offscreen", {
       paths: [m[1]!],
       value: Number(m[2]),
-      bar: 0,
       unit: "CSS px",
       measured: `${m[2]} CSS px past the ${m[3]} screen${pseudo}`,
-      limit: "every control on screen or in a scroll container",
       prop: `${m[1]}: its container (a scroll container), step or direction`,
       fix: "fit the screen (a smaller step, fewer rows, a row instead of a column) or put it in a scroll container",
     });
@@ -593,10 +573,8 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
       add("safe-area", {
         paths: [paths[i]!],
         value: r1(outside),
-        bar: 0,
         unit: "CSS px²",
         measured: `${r1(outside)} CSS px² outside the safe area (${safe.map(r1).join(", ")})`,
-        limit: "inside the safe area",
         prop: `${paths[i]!}: its anchor or insets (anchored groups keep to the safe area by themselves)`,
         fix: "place it with og.ui.anchor (inside the safe area) or inset it by og.ui.frameViewport().safeArea",
       });
@@ -608,57 +586,8 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
         paths: [paths[i]!],
         rect: under,
         measured: `${r1(under[2])}×${r1(under[3])} CSS px under the shell's control at ${c.map(r1).join(", ")}`,
-        limit: "nothing under the host's control",
         prop: `${paths[i]!}: its placement (anchored groups move off the covered region; read og.ui.frameViewport().covered for a corner of your own)`,
         fix: "keep the top-left corner free of the player shell's Back",
-      });
-    }
-  }
-
-  // Touch targets.
-  if (v.coarsePointer) for (const [i, e] of f.elements.entries()) {
-    if (!INTERACTIVE.has(e.role ?? "") || e.disabled || e.clipped) continue;
-    if (e.width + 0.5 >= 44 && e.height + 0.5 >= 44) continue;
-    // A link inside a sentence (a rich text's span) is exempt (WCAG 2.5.8's inline exception).
-    if (e.kind === "link" && kindAt(paths[i]!.slice(0, paths[i]!.lastIndexOf("/"))) === "richtext") continue;
-    add("touch-target", {
-      paths: [paths[i]!],
-      value: r1(Math.min(e.width, e.height)),
-      bar: 44,
-      unit: "CSS px",
-      measured: `${r1(e.width)}×${r1(e.height)} CSS px`,
-      limit: "44×44 CSS px on a coarse pointer",
-      prop: `${paths[i]!}: size (min 44) or hitSlop`,
-      fix: "raise it to 44 CSS px (a control's `size`, a row's min height) or give it hit slop",
-    });
-  }
-
-  // Contrast, on the drawn pixels.
-  if (opts.image && !skip.has("contrast")) {
-    const scale = opts.image.width / v.width;
-    const scaled: UiDump = { tick: 0, elements: f.elements.map((e) => ({ ...e, x: e.x * scale, y: e.y * scale, width: e.width * scale, height: e.height * scale })) };
-    // The look comes first (§15.4, §16.5): live text under 3:1 is an error
-    // (7:1 in high contrast), under 4.5:1 a warning for the art director;
-    // dimmed, disabled, decorative and over-the-scene HUD text is judged by
-    // eye, not gated (disabled and decorative text textBoxes leaves out).
-    const high = cell.highContrast || v.highContrast || f.contrast === "high";
-    const bar = high ? 7 : 3;
-    for (const b of textBoxes(opts.image, scaled, (n) => laidInk(f, f.elements[n]!))) {
-      if (b.contrast >= (high ? 7 : 4.5)) continue;
-      const i = b.index;
-      if (!gated(f, f.elements[i]!)) continue;
-      const path = paths[i]!;
-      const error = b.contrast < bar;
-      add("contrast", {
-        ...(error ? {} : { severity: "warning" as const }),
-        paths: [path],
-        value: b.contrast,
-        bar: error ? bar : 4.5,
-        unit: ":1",
-        measured: `${b.contrast}:1 "${b.text.slice(0, 32)}"`,
-        limit: error ? `${bar}:1${high ? " (high contrast)" : " for live text"}` : "4.5:1 recommended (a warning: the art director judges it)",
-        prop: "the style's ink and ground tokens (palette), never per call",
-        fix: "og-taste §3 (value before hue): darken the ground or lighten the ink in the style's palette",
       });
     }
   }
@@ -684,14 +613,12 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
       if (p.rule === "focus-reach") add("focus-reach", {
         paths: [n.path, from],
         measured: `no pad direction leads from ${from} to it`,
-        limit: "every control reachable by d-pad from the default focus",
         prop: `${n.path}: its place in the layout (pads go to the nearest control in a direction; two controls in one place hide the second)`,
         fix: "line it up with its neighbours (a row or column the d-pad walks), or move the default focus (autofocus)",
       });
       else add("focus-trap", {
         paths: [n.path],
         measured: `from ${n.path} no pad path leads back to ${from}`,
-        limit: "no focus trap",
         prop: `${n.path}: its place in the layout`,
         fix: "every control reaches every other by d-pad: line the controls up in rows and columns",
       });
@@ -713,7 +640,6 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     add("focus-reach", {
       paths: [n.path],
       measured: "not focusable: keys and pads cannot reach it",
-      limit: "every control a pointer can press, a pad can reach",
       prop: `${n.path}: focusable (an interactive container takes \`nav\`), or og.ui.setNavigation on this screen`,
       fix: "make it focusable, or give the action a button or glyph a pad has",
     });
@@ -725,13 +651,108 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     add("a11y-name", {
       paths: [n.path],
       measured: `a ${n.role} with no accessible name`,
-      limit: "every control named",
       prop: `${n.path}: its text, or its desc's \`label\` where the widget has one (an icon button: the name of what it does)`,
       fix: "name it in the player's language (an icon button's name is what it does: \"Pause\")",
     });
   }
 
-  // Hierarchy: buttons filled with the primary colour, per layer (the base and each modal).
+  // Feedback: sounds in a styled game; states on custom interactive containers.
+  if (f.style !== "") for (const ev of ["hover", "press"]) if (!f.sounds[ev]) add("feedback", {
+    paths: ["(style)"],
+    measured: `the style ${f.style} has no ${ev} sound`,
+    prop: `the style's \`sounds ${ev}\` (or og.ui.configure({ sounds: { ${ev} } }))`,
+    fix: "og-taste §6 (feedback) and og-audio §3: give the style its hover and press sounds",
+  });
+  const stated = new Set(f.motion.filter((m) => m.states.length > 0).map((m) => m.path));
+  for (const [i, e] of f.elements.entries()) {
+    if (!INTERACTIVE.has(e.role ?? "") || FEEDBACK_KINDS.has(e.kind ?? "") || e.disabled) continue;
+    if ([...stated].some((p) => within(paths[i]!, p))) continue;
+    add("feedback", {
+      paths: [paths[i]!],
+      measured: `a custom ${e.role} (${e.kind || "container"}) with no visual states`,
+      prop: `${paths[i]!}: states (a \`press\` group: og.ui.props({ states }))`,
+      fix: "give it hover and press states (§7.3), or build it from og.ui.button",
+    });
+  }
+
+  return out;
+}
+
+
+/**
+ * Every number one frame shows, for the cell it was taken in, held to no
+ * bar: each live text's contrast on the drawn pixels (with `image`), each
+ * text's size, each control's shorter side on a coarse pointer, the primary
+ * buttons per layer and the element count. og-taste §3 and §4, og-ui §5
+ * and ui-craft say what a game usually wants of them.
+ */
+export function measureFrame(frame: UiFrameSnapshot, cell: UiCell, opts: MeasureOptions = {}): UiMeasure[] {
+  const f: UiFrameSnapshot = { ...frame, texts: drawnTexts(frame) };
+  const out: UiMeasure[] = [];
+  const where = cellName(cell);
+  const v = f.viewport;
+  const paths = elementPaths(f);
+  const byPath = new Map(paths.map((p, i) => [p, i]));
+  const add = (measure: string, x: Omit<UiMeasure, "measure" | "cell" | "rect"> & { rect?: Rect4 | null }) => {
+    const e = f.elements[byPath.get(x.paths[0] ?? "") ?? -1];
+    const rect = x.rect !== undefined ? x.rect : e ? rectOf(e) : null;
+    out.push({ measure, paths: x.paths, value: x.value, unit: x.unit, detail: x.detail, prop: x.prop, cell: where, rect: rect && (rect.map(r1) as Rect4) });
+  };
+  const kindAt = (p: string) => f.elements[byPath.get(p) ?? -1]?.kind ?? "";
+  const underTouch = (i: number) => {
+    for (const [j, e] of f.elements.entries()) if (TOUCH_CONTROLS.has(e.kind ?? "") && within(paths[i]!, paths[j]!)) return true;
+    return false;
+  };
+
+  // Text sizes.
+  const dense = f.dense ?? [];
+  const isDense = (path: string) => dense.some((d) => path === d || path.startsWith(`${d}/`));
+  for (const t of f.texts) {
+    if (!/[\p{L}\p{N}]/u.test(t.text)) continue;
+    const i = owner(f, t);
+    const path = i >= 0 ? paths[i]! : `text "${t.text.slice(0, 24)}"`;
+    add("text-size", {
+      paths: [path],
+      rect: t.bounds,
+      value: r1(t.size),
+      unit: "CSS px",
+      detail: `"${t.text.slice(0, 32)}"${i >= 0 && isDense(path) ? " (dense)" : ""} at ${v.width}×${v.height}${v.coarsePointer ? " on touch" : ""}`,
+      prop: `${path}: step (the type ramp's step)`,
+    });
+  }
+
+  // Touch targets: each control's shorter side on a coarse pointer.
+  if (v.coarsePointer) for (const [i, e] of f.elements.entries()) {
+    if (!INTERACTIVE.has(e.role ?? "") || e.disabled || e.clipped) continue;
+    const inline = e.kind === "link" && kindAt(paths[i]!.slice(0, paths[i]!.lastIndexOf("/"))) === "richtext";
+    add("touch-target", {
+      paths: [paths[i]!],
+      value: r1(Math.min(e.width, e.height)),
+      unit: "CSS px",
+      detail: `${r1(e.width)}×${r1(e.height)} CSS px${inline ? ", a link inline in a sentence" : ""}`,
+      prop: `${paths[i]!}: size or hitSlop`,
+    });
+  }
+
+  // Contrast, on the drawn pixels: live text only (dimmed, disabled, decorative and over-the-scene text has no UI
+  // ground to read against; textBoxes and gated leave it out).
+  if (opts.image) {
+    const scale = opts.image.width / v.width;
+    const scaled: UiDump = { tick: 0, elements: f.elements.map((e) => ({ ...e, x: e.x * scale, y: e.y * scale, width: e.width * scale, height: e.height * scale })) };
+    const high = cell.highContrast || v.highContrast || f.contrast === "high";
+    for (const b of textBoxes(opts.image, scaled, (n) => laidInk(f, f.elements[n]!))) {
+      if (!gated(f, f.elements[b.index]!)) continue;
+      add("contrast", {
+        paths: [paths[b.index]!],
+        value: b.contrast,
+        unit: ":1",
+        detail: `"${b.text.slice(0, 32)}"${high ? " in high contrast" : ""}`,
+        prop: "the style's ink and ground tokens (palette)",
+      });
+    }
+  }
+
+  // Primary actions: buttons filled with the primary colour, per layer (the base and each modal).
   const modals = f.elements.map((e, i) => (e.kind === "modal" ? paths[i]! : null)).filter((p): p is string => !!p);
   const layerOf = (p: string) => modals.filter((m) => within(p, m)).at(-1) ?? "base";
   const primaries = new Map<string, string[]>();
@@ -742,44 +763,17 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     const l = layerOf(paths[i]!);
     primaries.set(l, [...(primaries.get(l) ?? []), paths[i]!]);
   }
-  for (const [layer, ps] of primaries) if (ps.length > 1) add("primary-actions", {
+  for (const [layer, ps] of primaries) add("primary-actions", {
     paths: ps,
-    measured: `${ps.length} primary buttons in ${layer === "base" ? "the screen" : layer}`,
-    limit: "one primary action per screen or layer",
-    prop: `variant of all but the one action the screen is for (\`secondary\` or \`quiet\`)`,
-    fix: "one primary action per layer: the rest secondary",
+    rect: null,
+    value: ps.length,
+    unit: "buttons",
+    detail: `in ${layer === "base" ? "the screen" : layer}`,
+    prop: "each button's variant (`primary`, `secondary`, `quiet`)",
   });
 
-  // Feedback: sounds in a styled game; states on custom interactive containers.
-  if (f.style !== "") for (const ev of ["hover", "press"]) if (!f.sounds[ev]) add("feedback", {
-    paths: ["(style)"],
-    measured: `the style ${f.style} has no ${ev} sound`,
-    limit: "a styled game sounds its controls' hover and press",
-    prop: `the style's \`sounds ${ev}\` (or og.ui.configure({ sounds: { ${ev} } }))`,
-    fix: "og-taste §6 (feedback) and og-audio §3: give the style its hover and press sounds",
-  });
-  const stated = new Set(f.motion.filter((m) => m.states.length > 0).map((m) => m.path));
-  for (const [i, e] of f.elements.entries()) {
-    if (!INTERACTIVE.has(e.role ?? "") || FEEDBACK_KINDS.has(e.kind ?? "") || e.disabled) continue;
-    if ([...stated].some((p) => within(paths[i]!, p))) continue;
-    add("feedback", {
-      severity: "warning",
-      paths: [paths[i]!],
-      measured: `a custom ${e.role} (${e.kind || "container"}) with no visual states`,
-      limit: "hover and press states on every interactive element",
-      prop: `${paths[i]!}: states (a \`press\` group: og.ui.props({ states }))`,
-      fix: "give it hover and press states (§7.3), or build it from og.ui.button",
-    });
-  }
-
-  // Counts.
-  if (f.stats.elements > 300) add("budget", {
-    paths: ["(frame)"],
-    measured: `${f.stats.elements} elements, ${f.draws} draw commands`,
-    limit: "300 elements (the dense-menu budget of §15.1)",
-    prop: "the screen's structure: virtualise long lists (og.ui.list), fewer wrappers",
-    fix: "fewer elements per tick: a virtual list draws only the rows in view",
-  });
+  // The element count.
+  add("elements", { paths: ["(frame)"], rect: null, value: f.stats.elements, unit: "elements", detail: `${f.draws} draw commands`, prop: "the screen's structure (og.ui.list virtualises long lists)" });
   return out;
 }
 
@@ -797,10 +791,8 @@ export function checkLocales(base: UiFrameSnapshot, other: UiFrameSnapshot, cell
     if (!was || was !== n.name || n.role === "image" || !/\p{L}{2,}/u.test(n.name)) continue;
     out.push({
       rule: "a11y-locale",
-      severity: "warning",
       paths: [n.path],
       measured: `"${n.name.slice(0, 40)}" is the same in ${cell.locale} as in the game's own locale`,
-      limit: "names and texts in the player's locale",
       prop: `${n.path}: its text through og.i18n.t (a key in every string table)`,
       fix: "og-i18n §2: every word the player reads comes from the string table",
       cells: [cellName(cell)],
@@ -810,18 +802,18 @@ export function checkLocales(base: UiFrameSnapshot, other: UiFrameSnapshot, cell
 }
 
 /**
- * The text-scale rule's comparison: each text the 100 % frame draws, found
- * again in the scaled frame (by its string, in drawing order), drawn at
- * the scale times its size. A text that stays smaller is a size the
- * player's setting does not reach (a fixed pixel size, a text drawn by the
- * game from the style's authored tokens).
+ * The text-scale measure: each text the 100 % frame draws, found again in
+ * the scaled frame (by the element that draws it and its words, in drawing
+ * order), as the percentage of its 100 % size it is drawn at. A text that
+ * follows UiDesc.textScale reads the cell's scale (200 at 200 %); a fixed
+ * pixel size, or a text drawn by the game from the style's authored
+ * tokens, reads less.
  */
-export function checkScale(baseFrame: UiFrameSnapshot, scaledFrame: UiFrameSnapshot, cell: UiCell): UiFinding[] {
+export function measureScale(baseFrame: UiFrameSnapshot, scaledFrame: UiFrameSnapshot, cell: UiCell): UiMeasure[] {
   if (cell.scale === 100) return [];
   const base = { ...baseFrame, texts: drawnTexts(baseFrame) };
   const scaled = { ...scaledFrame, texts: drawnTexts(scaledFrame) };
-  const k = cell.scale / 100;
-  const out: UiFinding[] = [];
+  const out: UiMeasure[] = [];
   // Each line by the element that draws it and its words: paired by words alone in draw order, a "2" on a card's badge
   // was measured against a "2" in a list row once the larger text showed fewer cards. An element the scaled frame no
   // longer shows (scrolled or windowed out) has nothing to compare.
@@ -837,21 +829,21 @@ export function checkScale(baseFrame: UiFrameSnapshot, scaledFrame: UiFrameSnaps
   }
   const seen = new Set<string>();
   for (const t of base.texts) {
-    if (!/[\p{L}\p{N}]/u.test(t.text)) continue;
+    if (!/[\p{L}\p{N}]/u.test(t.text) || t.size <= 0) continue;
     const { key, path: owned } = keyOf(base, basePaths, t);
     const size = left.get(key)?.shift();
-    if (size === undefined || size + 0.05 >= t.size * k * 0.95 || seen.has(key)) continue;
+    if (size === undefined || seen.has(key)) continue;
     seen.add(key);
     const path = owned || `text "${t.text.slice(0, 24)}"`;
     out.push({
-      rule: "text-scale",
-      severity: "error",
+      measure: "text-scale",
       paths: [path],
-      measured: `"${t.text.slice(0, 32)}" ${r1(size)} CSS px at ${cell.scale} %, ${r1(t.size)} at 100 %`,
-      limit: `${r1(t.size * k)} CSS px: every text grows with UiDesc.textScale`,
-      prop: `${path}: step (a type ramp step, which the scale reaches), not a fixed size`,
-      fix: "size text from the ramp (og.ui's step) or multiply a size of your own by og.ui.theme().textScale (§15.2)",
-      cells: [cellName(cell)],
+      value: Math.round((100 * size) / t.size),
+      unit: "%",
+      detail: `"${t.text.slice(0, 32)}" ${r1(size)} CSS px at ${cell.scale} % text, ${r1(t.size)} at 100 %`,
+      prop: `${path}: step (a type ramp step, which the scale reaches), or a size multiplied by og.ui.theme().textScale`,
+      cell: cellName(cell),
+      rect: null,
     });
   }
   return out;
@@ -865,8 +857,7 @@ export function cellName(c: UiCell): string {
 export function mergeFindings(all: readonly UiFinding[]): UiFinding[] {
   const by = new Map<string, UiFinding>();
   for (const f of all) {
-    // By severity too: a cell whose measure is a warning (3.62:1) is never listed under another cell's error (1:1).
-    const k = `${f.rule}\u0000${f.severity}\u0000${f.paths.join("\u0000")}`;
+    const k = `${f.rule}\u0000${f.paths.join("\u0000")}`;
     const had = by.get(k);
     if (had) {
       for (const c of f.cells) if (!had.cells.includes(c)) had.cells.push(c);
@@ -876,18 +867,49 @@ export function mergeFindings(all: readonly UiFinding[]): UiFinding[] {
   return [...by.values()];
 }
 
-/** The report as text: one block per finding, then the rules not checkable yet. */
-export function formatText(findings: readonly UiFinding[], header = ""): string {
+/** Measures whose low values are the ones read first (the rest, high first). */
+const LOW_FIRST = new Set(["contrast", "text-size", "touch-target", "text-scale"]);
+
+/**
+ * Each measure's `n` values from one end, one per path (its lowest, or for
+ * primary-actions and elements its highest, over the cells): what a reader
+ * looks at first. The order is the only thing it adds; nothing is held to a bar.
+ */
+export function measureExtremes(measures: readonly UiMeasure[], n = 5): Map<string, UiMeasure[]> {
+  const out = new Map<string, UiMeasure[]>();
+  for (const id of new Set(measures.map((m) => m.measure))) {
+    const low = LOW_FIRST.has(id);
+    const by = new Map<string, UiMeasure>();
+    for (const m of measures) {
+      if (m.measure !== id) continue;
+      const k = m.paths.join("\u0000");
+      const had = by.get(k);
+      if (!had || (low ? m.value < had.value : m.value > had.value)) by.set(k, m);
+    }
+    out.set(id, [...by.values()].sort((a, b) => (low ? a.value - b.value : b.value - a.value)).slice(0, n));
+  }
+  return out;
+}
+
+/** The report as text: one block per finding, each measure's extremes, then the rules not checkable yet. */
+export function formatText(findings: readonly UiFinding[], header = "", measures: readonly UiMeasure[] = []): string {
   const L: string[] = [];
   if (header) L.push(header, "");
-  const errors = findings.filter((f) => f.severity === "error").length;
-  L.push(`${errors} error(s), ${findings.length - errors} warning(s)`, "");
+  L.push(`${findings.length} finding(s), ${measures.length} measure(s)`, "");
   for (const f of findings) {
-    L.push(`${f.severity === "error" ? "✗" : "!"} ${f.rule}: ${f.paths.join(" × ")}`);
-    L.push(`    measured ${f.measured}; limit ${f.limit}`);
+    L.push(`- ${f.rule}: ${f.paths.join(" × ")}`);
+    L.push(`    found    ${f.measured}`);
     L.push(`    change   ${f.prop}`);
-    L.push(`    fix      ${f.fix}`);
+    L.push(`    how      ${f.fix}`);
     L.push(`    in       ${f.cells.slice(0, 6).join("; ")}${f.cells.length > 6 ? `; and ${f.cells.length - 6} more` : ""}`);
+  }
+  const extremes = measureExtremes(measures);
+  if (extremes.size) {
+    L.push("", "Measures (no bar; each one's values from one end, one per path; all of them in check.json):");
+    for (const [id, ms] of extremes) {
+      L.push(`  ${id} (${LOW_FIRST.has(id) ? "lowest" : "highest"} first):`);
+      for (const m of ms) L.push(`    ${m.value} ${m.unit}  ${m.paths.join(" × ")}  ${m.detail}  (${m.cell})`);
+    }
   }
   const later = RULES.filter((r) => r.status !== "checked");
   if (later.length) {
@@ -907,17 +929,26 @@ interface RunFiles {
 
 /**
  * The checker over a playtest's frame: the script took `dump_ui:<name>.uicheck.json`
- * (the run saved `<name>.uiframe.json` beside it, og run's native host) and,
- * for contrast, `screenshot:<name>.png` at the same time. Rules in `skip`
- * are left out. `dir` is the run's output directory (the playtest's own:
- * PlaytestRun has no path, so pass the out dir when contrast is wanted).
+ * (the run saved `<name>.uiframe.json` beside it, og run's native host).
+ * Rules in `skip` are left out.
  */
-export function checkUi(run: RunFiles, name: string, opts: { cell?: Partial<UiCell>; skip?: readonly string[]; dir?: string } = {}): UiFinding[] {
+export function checkUi(run: RunFiles, name: string, opts: { cell?: Partial<UiCell>; skip?: readonly string[] } = {}): UiFinding[] {
+  const frame = run.json<UiFrameSnapshot>(`${name}.uiframe.json`);
+  const cell: UiCell = { screen: name, breakpoint: frame.viewport.breakpoint, locale: "", style: frame.style, scale: 100, highContrast: frame.viewport.highContrast, ...opts.cell };
+  return checkFrame(frame, cell, { skip: opts.skip ?? [] });
+}
+
+/**
+ * The measures of a playtest's frame, as `checkUi` reads it. For contrast
+ * the script also took `screenshot:<name>.png` at the same time and `dir`
+ * is the run's output directory (PlaytestRun has no path).
+ */
+export function measureUi(run: RunFiles, name: string, opts: { cell?: Partial<UiCell>; dir?: string } = {}): UiMeasure[] {
   const frame = run.json<UiFrameSnapshot>(`${name}.uiframe.json`);
   const png = opts.dir ? join(opts.dir, `${name}.png`) : "";
   const image = png && existsSync(png) ? decodePng(new Uint8Array(readFileSync(png))) : null;
   const cell: UiCell = { screen: name, breakpoint: frame.viewport.breakpoint, locale: "", style: frame.style, scale: 100, highContrast: frame.viewport.highContrast, ...opts.cell };
-  return checkFrame(frame, cell, { image, skip: opts.skip ?? [] });
+  return measureFrame(frame, cell, { image });
 }
 
 // ── pixels ─────────────────────────────────────────────────────────────────

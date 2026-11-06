@@ -3,7 +3,8 @@
 // text scale), each cell an engine of its own on the native host driven by
 // a command script as `og run --commands` drives one, its UI frame read
 // (`og_node_ui_frame`) and its frame captured. `check` runs the checker
-// (ui-check.ts) on every cell and merges the findings; `preview` writes a
+// (ui-check.ts) on every cell, merges the findings and keeps every
+// measure; it exits 0 when it ran, whatever it found; `preview` writes a
 // contact sheet and a JSON index of every cell; `--film` a filmstrip of a
 // motion at chosen times.
 //
@@ -30,7 +31,7 @@ import { decodePng, encodePng, type Image } from "./png.ts";
 import type { PlaytestDesc } from "../playtest.ts";
 import { boundHost, createEngine, type Engine, type GameToken } from "../runtime.ts";
 import { og } from "../index.ts";
-import { cellName, checkFrame, checkLocales, checkScale, formatText, mergeFindings, pseudo, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiFinding, type UiFrameSnapshot } from "./ui-check.ts";
+import { cellName, checkFrame, checkLocales, formatText, measureFrame, measureScale, mergeFindings, pseudo, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiFinding, type UiFrameSnapshot, type UiMeasure } from "./ui-check.ts";
 import { sheet, type SheetCell } from "./ui-sheet.ts";
 import { BASELINE } from "./ui-baseline.ts";
 
@@ -251,6 +252,7 @@ async function main(): Promise<void> {
   // The matrix.
   const cells: Cell[] = [];
   const all: UiFinding[] = [];
+  const measures: UiMeasure[] = [];
   const images: Image[] = [];
   const t0 = performance.now();
   for (const screen of screens) for (const style of styles.length ? styles : [""]) for (const bp of bps) {
@@ -280,12 +282,15 @@ async function main(): Promise<void> {
         let found: UiFinding[] = [];
         if (r.frame) {
           writeFileSync(join(outDir, uiFrame), JSON.stringify(r.frame));
-          if (mode !== "sheet") found = checkFrame(r.frame, cell, { image: img });
+          if (mode !== "sheet") {
+            found = checkFrame(r.frame, cell);
+            measures.push(...measureFrame(r.frame, cell, { image: img }));
+          }
           if (mode !== "sheet" && scale === 100) {
             unscaled = r.frame;
             if (locale === "") base = r.frame;
             else if (base) found.push(...checkLocales(base, r.frame, cell));
-          } else if (mode !== "sheet" && unscaled) found.push(...checkScale(unscaled, r.frame, cell));
+          } else if (mode !== "sheet" && unscaled) measures.push(...measureScale(unscaled, r.frame, cell));
         }
         // Each finding's place carries the cell's frame, so a reviewer opens the frame the box is on.
         const size = BREAKPOINTS[bp]!;
@@ -311,13 +316,12 @@ async function main(): Promise<void> {
     return;
   }
   const findings = mergeFindings(all);
-  const errors = findings.filter((f) => f.severity === "error").length;
   const project_ = basename(resolve(root!));
-  const rules = RULES.map((r) => ({ ...r, findings: findings.filter((f) => f.rule === r.id).length }));
+  const rules = RULES.map((r) => (r.kind === "finding" ? { ...r, findings: findings.filter((f) => f.rule === r.id).length } : { ...r, measures: measures.filter((m) => m.measure === r.id).length }));
   // Every cell's frame, so a reader holds a finding's `at` against the frame it was measured on.
   const frames = cells.map((c) => ({ cell: cellName(c), screen: c.screen, breakpoint: c.breakpoint, viewport: [BREAKPOINTS[c.breakpoint]!.width, BREAKPOINTS[c.breakpoint]!.height], frame: c.frame ? join(outDir, c.frame) : null }));
-  writeFileSync(join(outDir, "check.json"), JSON.stringify({ project: project_, cells: cells.length, errors, warnings: findings.length - errors, findings, rules, frames, cellList: cells.map((c) => ({ index: c.index, cell: cellName(c), dpr: c.dpr, frame: c.frame, uiFrame: c.uiFrame })) }, null, 1) + "\n");
-  writeFileSync(join(outDir, "check.txt"), formatText(findings, `og ui check: ${project_}, ${cells.length} cell(s) (${screens.length} screen(s) × ${Math.max(1, styles.length)} style(s) × ${bps.length} breakpoint(s) × ${locales.length} locale(s) × ${scales.length} scale(s))`));
+  writeFileSync(join(outDir, "check.json"), JSON.stringify({ project: project_, cells: cells.length, findings, measures, rules, frames, cellList: cells.map((c) => ({ index: c.index, cell: cellName(c), dpr: c.dpr, frame: c.frame, uiFrame: c.uiFrame })) }, null, 1) + "\n");
+  writeFileSync(join(outDir, "check.txt"), formatText(findings, `og ui check: ${project_}, ${cells.length} cell(s) (${screens.length} screen(s) × ${Math.max(1, styles.length)} style(s) × ${bps.length} breakpoint(s) × ${locales.length} locale(s) × ${scales.length} scale(s))`, measures));
   if (mode === "preview") {
     // One sheet per screen and style: a row per breakpoint, a column per locale and scale.
     const sheets: string[] = [];
@@ -334,9 +338,9 @@ async function main(): Promise<void> {
     else process.stdout.write(`og ui preview: ${cells.length} cell(s) in ${((performance.now() - t0) / 1000).toFixed(1)} s; ${sheets.map((s) => basename(s)).join(", ")}; ${join(outDir, "index.json")}\n`);
     return;
   }
-  if (argv.includes("--json")) process.stdout.write(JSON.stringify({ cells: cells.length, errors, warnings: findings.length - errors, findings, frames, report: join(outDir, "check.json") }) + "\n");
-  else process.stdout.write(formatText(findings, `og ui check: ${project_}, ${cells.length} cell(s) in ${((performance.now() - t0) / 1000).toFixed(1)} s (${join(outDir, "check.json")})`));
-  process.exit(errors > 0 ? 3 : 0);
+  if (argv.includes("--json")) process.stdout.write(JSON.stringify({ cells: cells.length, findings, measures: measures.length, frames, report: join(outDir, "check.json") }) + "\n");
+  else process.stdout.write(formatText(findings, `og ui check: ${project_}, ${cells.length} cell(s) in ${((performance.now() - t0) / 1000).toFixed(1)} s (${join(outDir, "check.json")})`, measures));
+  process.exit(0);
 }
 
 /**

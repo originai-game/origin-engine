@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { og, defineSystem } from "@origingame/engine";
 import type * as Api from "@origingame/engine";
 import { loadNativeHost, native } from "../src/node/index.ts";
-import { checkFrame, checkScale, pseudo, type UiCell, type UiFrameSnapshot } from "../src/node/ui-check.ts";
+import { checkFrame, measureScale, pseudo, type UiCell, type UiFrameSnapshot } from "../src/node/ui-check.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { bindingControls, deviceSlots } from "../src/ui/controls/bindings.ts";
 import { formatValue, snap } from "../src/ui/controls/base.ts";
@@ -687,8 +687,10 @@ test("150 % text: every control grows with the text and cuts none of it, on a de
     }
     const cell: UiCell = { screen: "controls", breakpoint: bp, locale: "", style: "", scale: 150, highContrast: false };
     expect(frames[1]!.texts.find((x) => x.text === "Volume")!.size).toBeCloseTo(frames[0]!.texts.find((x) => x.text === "Volume")!.size * 1.5, 1);
-    const found = [...checkFrame(frames[1]!, cell), ...checkScale(frames[0]!, frames[1]!, cell)].filter((f) => f.rule === "text-scale" && f.severity === "error");
-    expect(found.map((f) => `${f.paths.join(" × ")}: ${f.measured}`)).toEqual([]);
+    // At 150 % no text is cut, and every text is drawn at 150 % of its size (within 5 %).
+    const cuts = checkFrame(frames[1]!, cell).filter((f) => f.rule === "text-cut").map((f) => `${f.paths.join(" × ")}: ${f.measured}`);
+    const short = measureScale(frames[0]!, frames[1]!, cell).filter((m) => m.value < 0.95 * 150).map((m) => `${m.paths.join(" × ")}: ${m.detail}`);
+    expect([...cuts, ...short]).toEqual([]);
     const els = frames[1]!.elements;
     const spills: string[] = [];
     const parentOf = (i: number): number => {

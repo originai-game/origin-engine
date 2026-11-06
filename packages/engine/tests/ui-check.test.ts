@@ -1,9 +1,12 @@
 // `og ui check`'s rules (src/node/ui-check.ts, docs/ui.md §16.5), each on a
-// frame that violates it and on the same frame put right: every finding
-// names its rule, paths, measured value and the prop to change. The rules
-// that wait for later phases are listed as such, never dropped.
+// frame that shows the fact and on the same frame put right: every finding
+// names its rule, paths, what was found and the prop that sets it. The
+// measures (contrast, text size, touch targets, text scale, primary
+// actions, the element count) are numbers held to no bar: each is checked
+// for its value, its path and what it leaves out. The rules that wait for
+// later phases are listed as such, never dropped.
 import { expect, test } from "bun:test";
-import { checkFrame, checkLocales, checkScale, elementPaths, formatText, mergeFindings, neighbour, padFindings, padGraph, pseudo, RULES, screensFromHelp, screensFromPlaytest, type Rect4, type UiCell, type UiElementDump, type UiFrameSnapshot } from "../src/node/ui-check.ts";
+import { checkFrame, checkLocales, elementPaths, formatText, measureExtremes, measureFrame, measureScale, mergeFindings, neighbour, padFindings, padGraph, pseudo, RULES, screensFromHelp, screensFromPlaytest, type Rect4, type UiCell, type UiElementDump, type UiFrameSnapshot, type UiMeasure } from "../src/node/ui-check.ts";
 
 const cell: UiCell = { screen: "s", breakpoint: "phonePortrait", locale: "", style: "", scale: 100, highContrast: false };
 
@@ -32,13 +35,19 @@ function frame(over: Partial<UiFrameSnapshot> = {}, vp: Partial<UiFrameSnapshot[
 }
 
 const rules = (f: UiFrameSnapshot, c: UiCell = cell) => checkFrame(f, c).map((x) => x.rule);
+/** One measure's entries of a frame, as [path, value] pairs. */
+const measured = (id: string, f: UiFrameSnapshot, c: UiCell = cell, image: { width: number; height: number; rgba: Uint8Array } | null = null) =>
+  measureFrame(f, c, { image }).filter((m) => m.measure === id).map((m) => [m.paths.join(" × "), m.value] as const);
 
-test("every §16.5 rule is listed, and those waiting for a later phase say so with the reason", () => {
-  const ids = RULES.map((r) => r.id);
-  for (const id of ["overlap", "text-cut", "text-truncated", "pseudo-overflow", "text-scale", "safe-area", "covered", "touch-target", "contrast", "text-size", "focus-reach", "focus-trap", "layer-back", "a11y-name", "a11y-locale", "primary-actions", "feedback", "motion", "art-slot", "budget"]) expect(ids).toContain(id);
+test("every §16.5 rule is listed as a finding or a measure, and those waiting for a later phase say so with the reason", () => {
+  const kind = new Map(RULES.map((r) => [r.id, r.kind]));
+  for (const id of ["overlap", "text-cut", "text-truncated", "pseudo-overflow", "safe-area", "covered", "focus-reach", "focus-trap", "layer-back", "a11y-name", "a11y-locale", "feedback", "motion", "art-slot"]) expect(kind.get(id)).toBe("finding");
+  for (const id of ["contrast", "text-size", "touch-target", "text-scale", "primary-actions", "elements"]) expect(kind.get(id)).toBe("measure");
   for (const r of RULES.filter((r) => r.status !== "checked")) expect(r.note ?? "").not.toBe("");
   const text = formatText([]);
   for (const id of ["layer-back", "motion", "art-slot"]) expect(text).toContain(`${id} (not checkable yet)`);
+  // No verdict words: a report counts what it found and measured.
+  expect(text).not.toMatch(/error|warning/);
 });
 
 test("an undeclared overlap names both paths, the area and the prop; nested pairs are one finding", () => {
@@ -78,7 +87,7 @@ test("a row a scroll container cuts at its bottom edge is scrolling, not cut tex
   expect(got?.measured).not.toContain(" 0 CSS px");
   // A line cut across (a right-to-left line past its box's start) in a clipped element is still reported.
   const across = frame({ elements: [el("Blurb", "", "label", "text", [40, 219, 298, 18], { text: "Every widget", clipped: true })], texts: [{ ...line, text: "Every widget", bounds: [-83, 219, 421, 18] }] });
-  expect(checkFrame(across, cell).find((x) => x.rule === "text-cut")?.severity).toBe("warning");
+  expect(checkFrame(across, cell).find((x) => x.rule === "text-cut")?.paths).toEqual(["Blurb"]);
   // The same cut across inside a sideways scroller (a row of tabs) scrolls into view: no finding.
   const tabs = frame({ sideways: ["Tabs"], elements: [el("Tabs", "", "scroll", "", [18, 121, 354, 52]), el("Trade", "Tabs", "label", "text", [358, 131, 14, 32], { text: "Trade", clipped: true })], texts: [{ ...line, text: "Trade", bounds: [358, 131, 60, 32] }] });
   expect(rules(tabs)).not.toContain("text-cut");
@@ -108,7 +117,7 @@ test("a line is its own box's though it matches no text as written (uppercased, 
 test("text truncated with an ellipsis asks for a tooltip", () => {
   const f = frame({ elements: [el("Name", "", "label", "text", [10, 100, 60, 20], { text: "Excalibur of the North" })], texts: [{ text: "Excalib…", size: 14, bounds: [10, 100, 60, 20], clip: [0, 0, 390, 844], color: [1, 1, 1, 1] }] });
   const got = checkFrame(f, cell).find((x) => x.rule === "text-truncated");
-  expect(got?.severity).toBe("warning");
+  expect(got?.paths).toEqual(["Name"]);
   expect(got?.prop).toContain("tooltip");
 });
 
@@ -130,17 +139,20 @@ test("an element under the shell's covered region is a finding", () => {
   expect(rules(f(80))).not.toContain("covered");
 });
 
-test("a 30 px button on a coarse pointer is under 44 CSS px; on a mouse it is not checked", () => {
-  const small = [el("Close", "", "button", "button", [300, 100, 30, 30])];
-  expect(rules(frame({ elements: small }))).toContain("touch-target");
-  expect(rules(frame({ elements: small }, { coarsePointer: false, width: 1280, height: 720, safeArea: [0, 0, 0, 0] }))).not.toContain("touch-target");
-  expect(rules(frame({ elements: [el("Close", "", "button", "button", [300, 100, 44, 44])] }))).not.toContain("touch-target");
+test("touch targets: each control's shorter side on a coarse pointer, whatever its size; none on a mouse", () => {
+  const els = [el("Close", "", "button", "button", [300, 100, 30, 44]), el("Play", "", "button", "button", [20, 100, 200, 48])];
+  // The shorter side (30, not 44), and the 48 px button too: no bar decides which are listed.
+  expect(measured("touch-target", frame({ elements: els }))).toEqual([["Close", 30], ["Play", 48]]);
+  expect(measured("touch-target", frame({ elements: els }, { coarsePointer: false, width: 1280, height: 720, safeArea: [0, 0, 0, 0] }))).toEqual([]);
+  // No finding names a target's size.
+  expect(rules(frame({ elements: els }))).not.toContain("touch-target");
 });
 
-test("a link inside a sentence is exempt from the target size (WCAG 2.5.8); a standalone small link is not", () => {
+test("a link inside a sentence is measured and marked inline; a standalone link is not marked", () => {
   const para = el("P", "", "richtext", "text", [20, 100, 300, 20], { text: "Read the pact first." });
-  expect(rules(frame({ elements: [para, el("pact", "P", "link", "link", [90, 100, 30, 20], { text: "pact" })] }))).not.toContain("touch-target");
-  expect(rules(frame({ elements: [el("More", "", "link", "link", [90, 300, 30, 20], { text: "More" })] }))).toContain("touch-target");
+  const detail = (f: UiFrameSnapshot) => measureFrame(f, cell).filter((m) => m.measure === "touch-target").map((m) => [m.paths[0], m.detail.includes("inline")]);
+  expect(detail(frame({ elements: [para, el("pact", "P", "link", "link", [90, 100, 30, 20], { text: "pact" })] }))).toEqual([["P/pact", true]]);
+  expect(detail(frame({ elements: [el("More", "", "link", "link", [90, 300, 30, 20], { text: "More" })] }))).toEqual([["More", false]]);
 });
 
 /** A 120×40 image: a ground of `bg` with a block of "glyph" strokes of `ink`. */
@@ -154,51 +166,56 @@ function textImage(bg: number, ink: number) {
   return { width, height, rgba };
 }
 
-test("contrast is measured on pixels: live text is an error under 3:1 and a warning under 4.5:1; high contrast holds 7:1; dimmed and over-the-scene text is not gated", () => {
+test("contrast is measured on pixels for live text, as a number with no bar; dimmed and over-the-scene text is not measured", () => {
   const f = frame({ elements: [el("Hint", "", "label", "text", [0, 0, 120, 40], { text: "Hint text" })] }, { width: 120, height: 40, safeArea: [0, 0, 0, 0] });
-  const contrast = (fr: typeof f, img: ReturnType<typeof textImage>, c = cell) => checkFrame(fr, c, { image: img }).find((x) => x.rule === "contrast");
-  // About 2.3:1: an error.
-  expect(contrast(f, textImage(90, 150))?.severity).toBe("error");
-  expect(contrast(f, textImage(0, 255))).not.toBeDefined();
-  // About 3.5:1: under the 4.5 the art director judges, over the 3:1 floor: a warning, not an error.
-  expect(contrast(f, textImage(20, 108))?.severity).toBe("warning");
-  // About 5.7:1: enough for 4.5, not for the high-contrast bar of 7.
-  const mid = textImage(20, 150);
-  expect(contrast(f, mid)).not.toBeDefined();
-  expect(contrast(f, mid, { ...cell, highContrast: true })?.limit).toContain("7:1");
-  // Drawn in the style's dimmed ink, or over no UI ground (HUD over the scene): judged by eye.
+  const ratio = (fr: typeof f, img: ReturnType<typeof textImage>, c = cell) => measured("contrast", fr, c, img).find(([p]) => p === "Hint")?.[1];
+  // Ground 90 under ink 150 is about 2.3:1; black under white about 21:1; 20 under 108 about 3.5:1. Each is reported,
+  // high or low: the ordering of the three is the measure's, never a pass or a fail.
+  const low = ratio(f, textImage(90, 150))!, high = ratio(f, textImage(0, 255))!, mid = ratio(f, textImage(20, 108))!;
+  expect(low).toBeGreaterThan(1.5);
+  expect(low).toBeLessThan(3);
+  expect(high).toBeGreaterThan(15);
+  expect(mid).toBeGreaterThan(low);
+  expect(mid).toBeLessThan(4.5);
+  // High contrast changes nothing in the number, only says it in the detail.
+  const hc = measureFrame(f, { ...cell, highContrast: true }, { image: textImage(20, 150) }).find((m) => m.measure === "contrast")!;
+  expect(hc.value).toBe(ratio(f, textImage(20, 150))!);
+  expect(hc.detail).toContain("high contrast");
+  // No finding names contrast.
+  expect(checkFrame(f, cell).map((x) => x.rule)).not.toContain("contrast");
+  // Drawn in the style's dimmed ink, or over no UI ground (HUD over the scene): not measured.
   const drawn = (color: number[]) => [{ text: "Hint text", size: 16, bounds: [10, 12, 100, 16] as [number, number, number, number], clip: [0, 0, 120, 40] as [number, number, number, number], color }];
   const muted = [0.58, 0.58, 0.61, 1];
   const vp = { width: 120, height: 40, safeArea: [0, 0, 0, 0] as [number, number, number, number] };
   const dim = frame({ elements: f.elements, texts: drawn(muted), dimInks: [muted] }, vp);
-  expect(contrast(dim, textImage(90, 150))).not.toBeDefined();
+  expect(ratio(dim, textImage(90, 150))).not.toBeDefined();
   const live = frame({ elements: f.elements, texts: drawn([1, 1, 1, 1]), dimInks: [muted], grounds: [[0, 0, 120, 40]] }, vp);
-  expect(contrast(live, textImage(90, 150))?.severity).toBe("error");
+  expect(ratio(live, textImage(90, 150))).toBe(low);
   const overScene = frame({ elements: f.elements, texts: drawn([1, 1, 1, 1]), dimInks: [muted], grounds: [[200, 0, 50, 50]] }, vp);
-  expect(contrast(overScene, textImage(90, 150))).not.toBeDefined();
+  expect(ratio(overScene, textImage(90, 150))).not.toBeDefined();
+  // Without an image there is nothing to measure contrast on.
+  expect(measured("contrast", f)).toEqual([]);
 });
 
-test("text the layout draws at full ink that shows none fails at 1:1; text faded out, or a sliver a scroll cuts, is left out", () => {
+test("text the layout draws at full ink that shows none reads 1:1; text faded out, or a sliver a scroll cuts, is left out", () => {
   const vp = { width: 120, height: 40, safeArea: [0, 0, 0, 0] as [number, number, number, number] };
   type R4 = [number, number, number, number];
   const run = (alpha: number, clip: R4 = [0, 0, 120, 40]) => [{ text: "Inventory", size: 16, bounds: [10, 12, 100, 16] as R4, clip, color: [0.1, 0.1, 0.2, alpha] }];
   const at = (r: R4, clipped = false) => [el("Title", "", "label", "text", r, { text: "Inventory", clipped })];
-  const contrast = (fr: ReturnType<typeof frame>, img: ReturnType<typeof textImage>) => checkFrame(fr, cell, { image: img }).find((x) => x.rule === "contrast");
+  const ratio = (fr: ReturnType<typeof frame>, img: ReturnType<typeof textImage>) => measured("contrast", fr, cell, img)[0]?.[1];
   // Navy on indigo, as the pixels show it: the same value as the ground, no ink at all.
   const blank = textImage(60, 60);
-  const laid = contrast(frame({ elements: at([0, 0, 120, 40]), texts: run(1), grounds: [[0, 0, 120, 40]] }, vp), blank);
-  expect(laid?.severity).toBe("error");
-  expect(laid?.measured).toContain("1:1");
+  expect(ratio(frame({ elements: at([0, 0, 120, 40]), texts: run(1), grounds: [[0, 0, 120, 40]] }, vp), blank)).toBe(1);
   // Faded out (a transition, opacity 0; a world prompt past its maxDistance): not drawn, not measured, even over
   // pixels that read as ink (the scene's art behind it).
-  expect(contrast(frame({ elements: at([0, 0, 120, 40]), texts: run(0), grounds: [[0, 0, 120, 40]] }, vp), blank)).not.toBeDefined();
-  expect(contrast(frame({ elements: at([0, 0, 120, 40]), texts: run(0), grounds: [[0, 0, 120, 40]] }, vp), textImage(90, 150))).not.toBeDefined();
+  expect(ratio(frame({ elements: at([0, 0, 120, 40]), texts: run(0), grounds: [[0, 0, 120, 40]] }, vp), blank)).not.toBeDefined();
+  expect(ratio(frame({ elements: at([0, 0, 120, 40]), texts: run(0), grounds: [[0, 0, 120, 40]] }, vp), textImage(90, 150))).not.toBeDefined();
   // A scroll cuts it: most of its line in view is measured (its element is the part in view), a sliver is not.
-  expect(contrast(frame({ elements: at([0, 0, 120, 40], true), texts: run(1, [0, 0, 60, 40]), grounds: [[0, 0, 120, 40]] }, vp), textImage(90, 150))?.severity).toBe("error");
-  expect(contrast(frame({ elements: at([0, 0, 120, 14], true), texts: run(1, [0, 0, 120, 14]), grounds: [[0, 0, 120, 40]] }, vp), blank)).not.toBeDefined();
+  expect(ratio(frame({ elements: at([0, 0, 120, 40], true), texts: run(1, [0, 0, 60, 40]), grounds: [[0, 0, 120, 40]] }, vp), textImage(90, 150))).toBeLessThan(3);
+  expect(ratio(frame({ elements: at([0, 0, 120, 14], true), texts: run(1, [0, 0, 120, 14]), grounds: [[0, 0, 120, 40]] }, vp), blank)).not.toBeDefined();
 });
 
-test("a finding names the element measured, though ids repeat; known ink sets the glyphs' side on a speckled ground", () => {
+test("a measure names the element measured, though ids repeat; known ink sets the glyphs' side on a speckled ground", () => {
   type R4 = [number, number, number, number];
   const width = 240, height = 40, rgba = new Uint8Array(width * height * 4);
   // Left: dark strokes on a mid ground speckled with more light pixels than the strokes have (art behind a title).
@@ -217,30 +234,25 @@ test("a finding names the element measured, though ids repeat; known ink sets th
     texts: [run(0), run(120)],
     grounds: [[0, 0, width, height]],
   }, vp);
-  const found = checkFrame(f, cell, { image: img }).filter((x) => x.rule === "contrast");
-  // Only the right one fails, and by its own path: the left reads its dark strokes (5:1), not the speckles.
-  expect(found.map((x) => x.paths[0])).toEqual(["B/Text"]);
+  const got = new Map(measured("contrast", f, cell, img));
+  // Each by its own path: the left reads its dark strokes (about 5:1), not the speckles; the right 1:1.
+  expect(got.get("A/Text")!).toBeGreaterThan(4);
+  expect(got.get("B/Text")).toBe(1);
 });
 
-test("text under the minimum size: 10 px on a phone, 14 px at 1080p desktop", () => {
+test("text size: each text's size by its element, marked dense under a dense ancestor only", () => {
   const t = (size: number) => [{ text: "Small", size, bounds: [10, 100, 40, 14] as [number, number, number, number], clip: [0, 0, 1920, 1080] as [number, number, number, number], color: [1, 1, 1, 1] }];
   const els = [el("Small", "", "label", "text", [10, 100, 40, 14], { text: "Small" })];
-  expect(rules(frame({ elements: els, texts: t(10) }))).toContain("text-size");
-  expect(rules(frame({ elements: els, texts: t(14) }))).not.toContain("text-size");
+  expect(measured("text-size", frame({ elements: els, texts: t(10) }))).toEqual([["Small", 10]]);
+  expect(measured("text-size", frame({ elements: els, texts: t(14.04) }))).toEqual([["Small", 14]]);
+  expect(rules(frame({ elements: els, texts: t(10) }))).not.toContain("text-size");
+  // ElementProps.dense on an ancestor marks its readouts; a prefix of a path ("Hu") or no dense group does not.
   const desk = { coarsePointer: false, width: 1920, height: 1080, safeArea: [0, 0, 0, 0] as [number, number, number, number] };
-  expect(rules(frame({ elements: els, texts: t(14) }, desk))).toContain("text-size");
-  expect(rules(frame({ elements: els, texts: t(18) }, desk))).not.toContain("text-size");
-  // A dense HUD's readouts (ElementProps.dense, on an ancestor) go to 12 px
-  // at 1080p, never below, and the floor grows with the text scale; a
-  // sibling outside the dense group keeps 18.
   const hud = [el("Hud", "", "panel", "", [0, 0, 400, 200]), el("Small", "Hud", "label", "text", [10, 100, 40, 14], { text: "Small" })];
-  const dense = (size: number, d = ["Hud"]) => frame({ elements: hud, texts: t(size), dense: d }, desk);
-  expect(rules(dense(12))).not.toContain("text-size");
-  expect(rules(dense(11))).toContain("text-size");
-  expect(rules(dense(12, ["Hu"]))).toContain("text-size");
-  expect(rules(dense(12, []))).toContain("text-size");
-  expect(rules(dense(18), { ...cell, scale: 200 })).toContain("text-size");
-  expect(rules(dense(24), { ...cell, scale: 200 })).not.toContain("text-size");
+  const dense = (d: string[]) => measureFrame(frame({ elements: hud, texts: t(12), dense: d }, desk), cell).filter((m) => m.measure === "text-size").map((m) => [m.paths[0], m.detail.includes("(dense)")]);
+  expect(dense(["Hud"])).toEqual([["Hud/Small", true]]);
+  expect(dense(["Hu"])).toEqual([["Hud/Small", false]]);
+  expect(dense([])).toEqual([["Hud/Small", false]]);
 });
 
 test("pad reach: a control stacked on another is unreachable from the default focus; a non-focusable button too", () => {
@@ -312,39 +324,38 @@ test("a name left in the game's language in another locale is a finding", () => 
   expect(checkLocales(en, frame({ a11y: { focused: "", focusOrder: [], nodes: [n("プレイ")] } }), { ...cell, locale: "ja" })).toEqual([]);
 });
 
-test("at 200 % text, a cut is the text-scale rule's and a text that did not grow is a finding", () => {
+test("at 200 % text, a cut is a text-cut finding of that cell, and each text's growth is measured as a percentage", () => {
   const big: UiCell = { ...cell, scale: 200 };
   const els = [el("Panel", "", "panel", "", [0, 100, 100, 40]), el("Name", "Panel", "label", "text", [10, 110, 80, 20], { text: "Strength" }), el("Gold", "Panel", "label", "text", [10, 130, 80, 20], { text: "120" })];
   const line = (text: string, size: number, y: number, w: number) => ({ text, size, bounds: [10, y, w, size * 1.4] as [number, number, number, number], clip: [0, 100, 200, 400] as [number, number, number, number], color: [1, 1, 1, 1] });
-  // The same line cut in a 100 % cell is text-cut, in a 200 % cell text-scale.
   const cut = frame({ elements: els, texts: [{ ...line("Strength", 28, 110, 130), clip: [0, 100, 100, 40] }] });
   expect(rules(cut)).toContain("text-cut");
-  expect(rules(cut, big)).toContain("text-scale");
-  expect(rules(cut, big)).not.toContain("text-cut");
-  // "120" stays 14 px where "Strength" doubled: a size the scale does not reach.
+  expect(checkFrame(cut, big).filter((f) => f.rule === "text-cut").map((f) => f.cells)).toEqual([["s phonePortrait game locale 200 %"]]);
+  // "120" stays 14 px where "Strength" doubled: 100 % and 200 % of their sizes.
   const at100 = frame({ elements: els, texts: [line("Strength", 14, 110, 60), line("120", 14, 130, 24)] });
   const at200 = frame({ elements: els, texts: [line("Strength", 28, 110, 120), line("120", 14, 140, 24)] });
-  const got = checkScale(at100, at200, big);
-  expect(got.map((f) => f.rule)).toEqual(["text-scale"]);
-  expect(got[0]!.measured).toContain('"120" 14 CSS px at 200 %');
-  expect(checkScale(at100, at200, cell)).toEqual([]);
-  expect(checkScale(at100, frame({ elements: els, texts: [line("Strength", 28, 110, 120), line("120", 28, 140, 48)] }), big)).toEqual([]);
+  const grow = (a: UiFrameSnapshot, b: UiFrameSnapshot, c = big) => measureScale(a, b, c).map((m) => [m.paths[0], m.value]);
+  expect(grow(at100, at200)).toEqual([["Panel/Name", 200], ["Panel/Gold", 100]]);
+  expect(measureScale(at100, at200, big)[1]!.detail).toContain('"120" 14 CSS px at 200 % text, 14 at 100 %');
+  expect(measureScale(at100, at200, cell)).toEqual([]);
   // The same words on two elements are two texts: a badge's "2" the larger text scrolled out of view is not measured
   // against a row's "2" that doubled. (Paired by words alone in draw order, the row's 30 met the badge's 16.)
   const twos = [el("Badge", "", "label", "text", [10, 110, 20, 30], { text: "2" }), el("Copies", "", "label", "text", [10, 200, 40, 50], { text: "2" })];
   const both = frame({ elements: twos, texts: [line("2", 16, 110, 9), line("2", 15, 200, 9)] });
-  const rowOnly = frame({ elements: twos.slice(1), texts: [line("2", 30, 200, 17)] });
-  expect(checkScale(both, rowOnly, big)).toEqual([]);
-  // A "2" that did not grow is still found, by its own element.
-  expect(checkScale(both, frame({ elements: twos.slice(1), texts: [line("2", 15, 200, 9)] }), big).map((f) => f.paths)).toEqual([["Copies"]]);
+  expect(grow(both, frame({ elements: twos.slice(1), texts: [line("2", 30, 200, 17)] }))).toEqual([["Copies", 200]]);
+  expect(grow(both, frame({ elements: twos.slice(1), texts: [line("2", 15, 200, 9)] }))).toEqual([["Copies", 100]]);
 });
 
-test("two primary buttons in one layer are a finding; a primary and a translucent secondary are not", () => {
+test("primary actions: the buttons filled with the primary, counted per layer; a translucent secondary is not one", () => {
   const els = [el("Play", "", "button", "button", [20, 100, 200, 48]), el("Quit", "", "button", "button", [20, 160, 200, 48])];
-  const two = frame({ elements: els, fills: [{ rect: [20, 100, 200, 48], color: [0.2, 0.4, 0.9, 1] }, { rect: [20, 160, 200, 48], color: [0.2, 0.4, 0.9, 1] }] });
-  expect(checkFrame(two, cell).find((x) => x.rule === "primary-actions")?.paths).toEqual(["Play", "Quit"]);
-  const one = frame({ elements: els, fills: [{ rect: [20, 100, 200, 48], color: [0.2, 0.4, 0.9, 1] }, { rect: [20, 160, 200, 48], color: [0.25, 0.45, 0.95, 0.06] }] });
-  expect(rules(one)).not.toContain("primary-actions");
+  const prim = (f: UiFrameSnapshot) => measureFrame(f, cell).filter((m) => m.measure === "primary-actions").map((m) => [m.paths, m.value]);
+  expect(prim(frame({ elements: els, fills: [{ rect: [20, 100, 200, 48], color: [0.2, 0.4, 0.9, 1] }, { rect: [20, 160, 200, 48], color: [0.2, 0.4, 0.9, 1] }] }))).toEqual([[["Play", "Quit"], 2]]);
+  expect(prim(frame({ elements: els, fills: [{ rect: [20, 100, 200, 48], color: [0.2, 0.4, 0.9, 1] }, { rect: [20, 160, 200, 48], color: [0.25, 0.45, 0.95, 0.06] }] }))).toEqual([[["Play"], 1]]);
+  // A dialog is a layer of its own: one primary in it and one behind are two layers of one.
+  const modal = [...els, el("Ask", "", "modal", "dialog", [0, 0, 390, 844]), el("Yes", "Ask", "button", "button", [20, 400, 200, 48])];
+  const fills = [{ rect: [20, 100, 200, 48] as Rect4, color: [0.2, 0.4, 0.9, 1] }, { rect: [20, 400, 200, 48] as Rect4, color: [0.2, 0.4, 0.9, 1] }];
+  expect(prim(frame({ elements: modal, fills }))).toEqual([[["Play"], 1], [["Ask/Yes"], 1]]);
+  expect(rules(frame({ elements: els, fills }))).not.toContain("primary-actions");
 });
 
 test("feedback: a styled game without press and hover sounds, and a custom interactive container without states", () => {
@@ -355,9 +366,11 @@ test("feedback: a styled game without press and hover sounds, and a custom inter
   expect(rules(frame({ elements: card, motion: [{ path: "Card", states: [["press", "rest"]] }] }))).not.toContain("feedback");
 });
 
-test("over 300 elements is over the dense-menu budget", () => {
-  expect(rules(frame({ stats: { elements: 301, rebuilt: 0, laidOut: 0, keptCommands: 0 } }))).toContain("budget");
-  expect(rules(frame({ stats: { elements: 300, rebuilt: 0, laidOut: 0, keptCommands: 0 } }))).not.toContain("budget");
+test("the element count is measured on every frame, with its draws", () => {
+  const count = (n: number) => measureFrame(frame({ stats: { elements: n, rebuilt: 0, laidOut: 0, keptCommands: 0 }, draws: 7 }), cell).filter((m) => m.measure === "elements");
+  expect(count(301).map((m) => [m.value, m.detail])).toEqual([[301, "7 draw commands"]]);
+  expect(count(12).map((m) => m.value)).toEqual([12]);
+  expect(rules(frame({ stats: { elements: 301, rebuilt: 0, laidOut: 0, keptCommands: 0 } }))).not.toContain("elements");
 });
 
 test("the pseudo-locale is 40 % longer, accented and bracketed; numbers stay as they are", () => {
@@ -393,10 +406,9 @@ test("paths come from the accessibility tree, else the parent chain; findings me
   const merged = mergeFindings([...a, ...b]);
   expect(merged.length).toBe(1);
   expect(merged[0]!.cells).toEqual(["s phonePortrait game locale", "s phonePortrait pseudo"]);
-  // A cell whose measure is only a warning stays a warning: never listed under another cell's error and its number.
-  const at = (severity: "error" | "warning", measured: string, c: string) => ({ rule: "contrast", severity, paths: ["Key"], measured, limit: "", prop: "", fix: "", cells: [c] });
-  const mixed = mergeFindings([at("error", "1:1", "phone"), at("warning", "3.62:1", "desktop"), at("error", "2.91:1", "phone 150 %")]);
-  expect(mixed.map((m) => [m.severity, m.cells])).toEqual([["error", ["phone", "phone 150 %"]], ["warning", ["desktop"]]]);
+  // Another pair is another finding.
+  const c = checkFrame(frame({ overlaps: [{ path: "A", other: "C", rect: [0, 0, 5, 5], inFlow: false }] }), cell);
+  expect(mergeFindings([...a, ...c]).map((f) => f.paths)).toEqual([["A", "B"], ["A", "C"]]);
 });
 
 test("the default screens: the values a show command's usage lists, else each playtest screenshot reached by the steps before it", () => {
@@ -430,37 +442,37 @@ test("a label drawn in two inks with split clips (a meter's fill and track) is o
   const meter = { text: "Boost", size: 26, bounds: [375, 983, 70, 36] as [number, number, number, number], color };
   const scaled = frame({ elements: els, texts: [{ ...meter, clip: [312, 982, 121.5, 38] }, { ...meter, clip: [433.5, 982, 74.5, 38] }, { text: "Boost", size: 28, bounds: [724, 1082, 75, 40], clip: [720, 1060, 84, 84], color }] });
   const c200 = { ...cell, scale: 200 };
-  expect(checkFrame(scaled, c200).filter((f) => f.rule === "text-scale")).toEqual([]);
-  expect(checkScale(base, scaled, c200)).toEqual([]);
+  expect(checkFrame(scaled, c200).filter((f) => f.rule === "text-cut")).toEqual([]);
+  expect(measureScale(base, scaled, c200).map((m) => [m.paths[0], m.value])).toEqual([["Boost", 200], ["boost", 200]]);
 });
 
-test("a finding carries its number, its bar and its box per cell, so a reviewer can name the region and the value", () => {
+test("a measure carries its number, unit, cell and box; the extremes are each path's lowest over the cells", () => {
   // The label sits at 0,0 120×40 in a 120×40 frame; a ground of 90 under ink 150 measures about 2.3:1.
   const vp = { width: 120, height: 40, safeArea: [0, 0, 0, 0] as Rect4 };
   const f = frame({ elements: [el("Hint", "", "label", "text", [0, 0, 120, 40], { text: "Hint text" })] }, vp);
-  const error = checkFrame(f, cell, { image: textImage(90, 150) }).find((x) => x.rule === "contrast")!;
-  expect(error.unit).toBe(":1");
-  expect(error.bar).toBe(3);
-  expect(error.value!).toBeGreaterThan(1.5);
-  expect(error.value!).toBeLessThan(3);
-  expect(error.measured).toContain(`${error.value}:1`);
-  expect(error.at).toEqual([{ cell: "s phonePortrait game locale", viewport: [120, 40], rect: [0, 0, 120, 40], value: error.value }]);
-  // Under 4.5 but over 3: a warning whose bar is the recommended 4.5, not the error floor.
-  const warning = checkFrame(f, cell, { image: textImage(20, 108) }).find((x) => x.rule === "contrast")!;
-  expect([warning.severity, warning.bar]).toEqual(["warning", 4.5]);
-  // A text size on a phone: the line box (not the element's) and the 12 px touch floor it misses.
+  const c = measureFrame(f, cell, { image: textImage(90, 150) }).find((x) => x.measure === "contrast")!;
+  expect([c.unit, c.cell, c.rect]).toEqual([":1", "s phonePortrait game locale", [0, 0, 120, 40]]);
+  expect(c.detail).toContain('"Hint text"');
+  // A text size's box is the line's, not the element's.
   const small = frame({ elements: [el("Small", "", "label", "text", [10, 100, 80, 20], { text: "Small" })], texts: [{ text: "Small", size: 10, bounds: [12, 103, 40, 14], clip: [0, 0, 390, 844], color: [1, 1, 1, 1] }] });
-  const size = checkFrame(small, cell).find((x) => x.rule === "text-size")!;
-  expect([size.value, size.bar, size.unit]).toEqual([10, 12, "CSS px"]);
-  expect(size.at![0]!.rect).toEqual([12, 103, 40, 14]);
-  // The same finding in two cells is one finding with both places, each with its own box.
+  const size = measureFrame(small, cell).find((x) => x.measure === "text-size")!;
+  expect([size.value, size.unit, size.rect]).toEqual([10, "CSS px", [12, 103, 40, 14]]);
+  // The same control in two cells is two measures, each with its own box; the extremes keep the smaller per path.
   const wide = { ...cell, breakpoint: "phoneLandscape" };
-  const moved = frame({ elements: [el("Close", "", "button", "button", [700, 60, 30, 30])] }, { width: 844, height: 390, safeArea: [47, 0, 47, 21], breakpoint: "phoneLandscape" });
-  const merged = mergeFindings([...checkFrame(frame({ elements: [el("Close", "", "button", "button", [300, 100, 30, 30])] }), cell), ...checkFrame(moved, wide)]).filter((x) => x.rule === "touch-target");
-  expect(merged.length).toBe(1);
-  expect([merged[0]!.value, merged[0]!.bar]).toEqual([30, 44]);
-  expect(merged[0]!.at!.map((a) => [a.cell, a.viewport, a.rect])).toEqual([
-    ["s phonePortrait game locale", [390, 844], [300, 100, 30, 30]],
-    ["s phoneLandscape game locale", [844, 390], [700, 60, 30, 30]],
+  const moved = frame({ elements: [el("Close", "", "button", "button", [700, 60, 30, 30]), el("Open", "", "button", "button", [700, 160, 60, 50])] }, { width: 844, height: 390, safeArea: [47, 0, 47, 21], breakpoint: "phoneLandscape" });
+  const all: UiMeasure[] = [...measureFrame(frame({ elements: [el("Close", "", "button", "button", [300, 100, 36, 36]), el("Open", "", "button", "button", [300, 200, 44, 44])] }), cell), ...measureFrame(moved, wide)].filter((x) => x.measure === "touch-target");
+  expect(all.map((m) => [m.paths[0], m.value, m.cell, m.rect])).toEqual([
+    ["Close", 36, "s phonePortrait game locale", [300, 100, 36, 36]],
+    ["Open", 44, "s phonePortrait game locale", [300, 200, 44, 44]],
+    ["Close", 30, "s phoneLandscape game locale", [700, 60, 30, 30]],
+    ["Open", 50, "s phoneLandscape game locale", [700, 160, 60, 50]],
   ]);
+  expect(measureExtremes(all).get("touch-target")!.map((m) => [m.paths[0], m.value])).toEqual([["Close", 30], ["Open", 44]]);
+  // The element count reads highest first.
+  const counts = [12, 340, 80].map((n, i) => measureFrame(frame({ stats: { elements: n, rebuilt: 0, laidOut: 0, keptCommands: 0 } }), { ...cell, screen: `s${i}` })).flat();
+  expect(measureExtremes(counts).get("elements")!.map((m) => m.value)).toEqual([340]);
+  // The text report lists them with no bar.
+  const text = formatText([], "", all);
+  expect(text).toContain("touch-target (lowest first):");
+  expect(text).toContain("30 CSS px  Close");
 });

@@ -2,9 +2,11 @@
 //! screens laid out over styles × breakpoints × locales × text scale on
 //! the native host (packages/engine/src/node/ui-run.ts), each cell driven
 //! by a command script. `check` reports every rule of ui-check.ts with the
-//! element paths, the measured value and the prop to change, into
-//! DIR/check.json and check.txt (default `<project>/og-out/ui-check`), and
-//! exits 3 on an error finding; `preview` writes a contact sheet per screen
+//! element paths, what was found and the prop that sets it, and every
+//! measure (contrast, text size, touch target, text scale, primary actions,
+//! element count) with no bar, into DIR/check.json and check.txt (default
+//! `<project>/og-out/ui-check`); it exits 0 when it ran, whatever it found,
+//! and 1 when it could not run; `preview` writes a contact sheet per screen
 //! and style and index.json (default `<project>/og-out/ui-preview`), or with
 //! `--film` a filmstrip of a motion at chosen times.
 //!
@@ -152,8 +154,6 @@ pub fn run(args: &[&str]) -> ExitCode {
     );
     match spawn(mode, &p, &package, &bundle, &out, &forward) {
         Ok(s) if s.success() => ExitCode::SUCCESS,
-        // 3: findings (check), as og style check's off-contract exit.
-        Ok(s) if s.code() == Some(3) => ExitCode::from(3),
         Ok(_) => ExitCode::FAILURE,
         Err(e) => {
             eprintln!("og ui {mode}: {e}");

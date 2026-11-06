@@ -18,7 +18,7 @@ export default playtest({
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     for (const h of HUDS) {
-      const all = checkUi(run, h, { skip: ["contrast"] });
+      const all = checkUi(run, h);
       t.ok(run.json<{ elements: unknown[] }>(`${h}.uicheck.json`).elements.length > 20, `${h} was laid out (${run.json<{ elements: unknown[] }>(`${h}.uicheck.json`).elements.length} elements)`);
       const overlaps = all.filter((f) => f.rule === "overlap");
       t.equal(overlaps.map((f) => f.paths.join(" × ")).join("; "), "", `${h} has no undeclared overlap`);

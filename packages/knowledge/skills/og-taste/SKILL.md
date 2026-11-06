@@ -206,6 +206,15 @@ to fit it.
   multiples of its grid, every font pixel whole screen pixels; the pixel
   style sets Fusion Pixel 12 at 12, 24, 36, 48 and 72 px, and a copy of
   it with a DotGothic16 face still needs `textWeight body 0.5`).
+- **Read the drawn contrast**: `og ui check` measures every live text's
+  contrast on the frame's pixels and holds it to nothing. As a rule of
+  thumb, body text at 4.5:1 or more reads for everyone (WCAG AA), large or
+  display text and HUD readouts over a UI ground at 3:1 or more, and 7:1
+  in the high-contrast setting; under 3:1 most players strain. Text in a
+  deliberately dimmed ink (a placeholder, a disabled control) and text
+  over the game scene are not measured: judge them in the frame. A low
+  number on a CJK label at body size usually wants a heavier weight or a
+  larger step, not a new hue (og-build §5).
 - Saturated colour on large areas tires the eye: keep saturation for small
   things (the primary, icons, effects) and keep grounds calmer.
 - Status colours mean status: never use `danger` red as decoration.
@@ -225,6 +234,14 @@ to fit it.
   takes it as its fourth number after the CJK leading), and it is applied
   to Latin text only.
 - Headings get `heading: true` so the style's flourish frames them.
+- **Sizes that read**: `og ui check` reports every text's size (CSS px)
+  and how far it grows at 150 % and 200 % text. Usually: 12 px or more on
+  a phone, about 18 px at 1080p on desktop for anything read in play, a
+  dense HUD's readouts (strategy, MMO, simulation; `dense: true` in
+  og.ui.props) down to 12 px at 1080p; and every text growing with the
+  player's text scale (a text that reads 100 % in a 200 % cell has a fixed
+  size). Controls a thumb presses want 44×44 CSS px on touch (its
+  `touch-target` measure); a link inline in a sentence is the exception.
 
 ## 5. Motion
 
@@ -346,11 +363,11 @@ Run each item; each is checkable from a scripted run.
    element's rectangle outside the central third of the surface, inside the
    safe area.
 5. **Touch targets**: run with the phone viewport (`og.ui.previewViewport`,
-   `og run --size 1170x2532`) and check in `dump_ui` that every control is at
-   least 44 × 44 CSS px and nothing leaves the safe area.
-6. **Text legible**: body text at 13 px or more in `dump_ui` heights (a line
-   of at least 16 px); the style passes 4.5:1 (the built-ins' test, or the same
-   check over your atlas).
+   `og run --size 1170x2532`) and read `og ui check`'s `touch-target`
+   measures (44 × 44 CSS px is the usual size, §4) and its `safe-area`
+   findings.
+6. **Text legible**: read `og ui check`'s `text-size` and `contrast`
+   measures against §3 and §4 and in the frames.
 7. **Motion present**: captures 100 ms apart after `show:` differ (an
    entrance), and a score `dump_ui` text read twice during the results
    differs, then settles on the final value.

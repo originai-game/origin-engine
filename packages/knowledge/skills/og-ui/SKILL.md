@@ -798,33 +798,43 @@ review (every screen × style × breakpoint × locale); a playtest that runs in 
 `--screen`.
 Each cell is a fresh engine laid out through og.ui.previewViewport, so a
 game needs no viewport command of its own. Outputs land in
-`og-out/ui-check/` (check.json, check.txt; exit 3 on an error) and
-`og-out/ui-preview/` (sheet-<screen>.png, index.json, film.png).
-`--json` prints the same as check.json: every finding with its `value`,
-the `bar` it is held to and their `unit` (contrast's ratio against 3, 7
-or 4.5, a text's size against the floor, a target's side against 44), and
-`at`, one entry per cell with its viewport, the box in CSS px (the
-overlap, the text's line, else the element) and the cell's captured
-`frame`; `frames` lists every cell's frame. A reviewer's region and
-number come from there.
+`og-out/ui-check/` (check.json, check.txt) and `og-out/ui-preview/`
+(sheet-<screen>.png, index.json, film.png). `og ui check` exits 0 when
+it ran, whatever it found, and 1 only when it could not run: it reports
+facts and numbers, never a verdict, and you decide what to change.
+check.json holds every finding with its `at`, one entry per cell with its
+viewport, the box in CSS px (the overlap, the text's line, else the
+element) and the cell's captured `frame`; every measure with its `value`,
+`unit`, `cell` and box; and `frames`, every cell's frame. check.txt lists
+the findings and each measure's values from one end (the lowest contrast,
+the smallest text, the most elements). A reviewer's region and number
+come from there.
 
-What `og ui check` reports (docs/ui.md §16.5), each with the fix:
+What `og ui check` finds (docs/ui.md §16.5), each a fact with a way to
+change it:
 
-| Rule | What fails | Change |
+| Rule | What it found | Change |
 |---|---|---|
 | `overlap` | two elements over each other that nothing declared (§6.2): placed groups that collide at a breakpoint, siblings in the flow | the placed one's anchor, offset or a breakpoint variant; `overlaps: ["<path>"]` in og.ui.props when it is the design |
-| `text-cut`, `offscreen` | text cut by its clip, drawn wider than its box, a control past the screen with no scroll | let the box fit or wrap; `ellipsis` with a tooltip; a scroll container |
-| `text-truncated` | an ellipsis without a tooltip (a warning: a tooltip only exists while hovered) | og.ui.tooltip right after it |
+| `text-cut`, `offscreen` | text cut by its clip, drawn wider than its box (at any text scale, the 150 % and 200 % cells included), a control past the screen with no scroll | let the box fit or wrap; `ellipsis` with a tooltip; a scroll container |
+| `text-truncated` | an ellipsis without a tooltip (a tooltip only exists while hovered, so check one exists) | og.ui.tooltip right after it |
 | `safe-area`, `covered` | under the notch or home indicator, or under the player shell's Back (`Viewport.covered`) | place with og.ui.anchor, which keeps to both |
-| `touch-target` | an interactive element under 44×44 CSS px on a coarse pointer | its size, or hit slop |
-| `contrast` | live text on a UI ground under 3:1 on the pixels (7:1 in high contrast) is an error, under 4.5:1 a warning; dimmed, disabled and over-the-scene text is left to the eye | the style's palette, never per call |
-| `text-size` | text under 12 CSS px on touch, under 18 px at 1080p on desktop | a larger step of the ramp |
 | `focus-reach`, `focus-trap` | a control the d-pad cannot reach from the default focus (two in one place, not focusable), or cannot leave | line controls up in rows and columns; make it focusable. Not checked on a screen that calls `og.ui.setNavigation(false)` (its pad drives the game) |
 | `a11y-name`, `a11y-locale` | a control with no name; a name or text the same in another locale as in the game's own | its text (or its desc's `label`, where the widget has one); og.i18n.t |
-| `primary-actions` | more than one primary button in a layer | all but one `secondary` |
 | `feedback` | a styled game without hover and press sounds; a custom interactive container without visual states | the style's sounds; a `press` state group |
-| `budget` | over 300 elements in a frame | a virtual list, fewer wrappers |
-| `text-scale` | at 200 % text (`UiDesc.textScale` 2; the check runs it in the game's locale and the pseudo-locale), a text cut, or a text that did not grow (a fixed size of the game's own) | let boxes fit their text; size from the ramp's steps, or multiply your own sizes by `og.ui.theme().textScale` |
+
+What it measures, with no bar, and what a game usually wants of each
+(WCAG and platform guidance; your style and premise may decide otherwise,
+and a number is read with its frame):
+
+| Measure | Value | Usually wanted | Change |
+|---|---|---|---|
+| `contrast` | each live text's ratio on the drawn pixels (dimmed, disabled, decorative and over-the-scene text is not measured) | 4.5:1 for body text, at least 3:1 for large or display text, 7:1 in high-contrast mode (og-taste §3) | the style's palette, never per call |
+| `text-size` | each text's size in CSS px (`(dense)` under ElementProps.dense) | 12 px or more on touch; about 18 px at 1080p on desktop; a dense HUD's readouts (strategy, MMO, simulation) 12 px at 1080p, growing with the text scale (og-taste §4) | a larger step of the ramp |
+| `touch-target` | each control's shorter side on a coarse pointer (a link inline in a sentence is marked so) | 44×44 CSS px, inline links excepted (WCAG 2.5.8) | its size, or hit slop |
+| `text-scale` | each text's size at 150 % or 200 % text as a percentage of its 100 % size | the cell's scale: a text that reads less has a fixed size the player's setting does not reach | the ramp's steps, or your own sizes times `og.ui.theme().textScale` |
+| `primary-actions` | the buttons filled with the primary, per layer | one per screen or dialog (ui-craft) | all but one `secondary` |
+| `elements` | the frame's element count and draw commands | about 300 for a dense menu (docs/ui.md §15.1) | a virtual list, fewer wrappers |
 
 Not checkable yet, and reported as such: a layer without Back (the layer stack), motion bounds and
 reduced-motion fallbacks (the style's motion tokens on states), art
@@ -839,14 +849,18 @@ import { playtest } from "@origingame/engine/playtest";
 import { checkUi } from "@origingame/engine/ui-check";
 
 export default playtest({
-  name: "the HUD is clean on a phone",
+  name: "nothing on the phone HUD overlaps or is cut",
   commands: "0:show:play;0.8:dump_ui:hud.uicheck.json;0.9:quit",
   check(run, t) {
-    const errors = checkUi(run, "hud", { skip: ["contrast"] }).filter((f) => f.severity === "error");
-    t.equal(errors.map((f) => `${f.rule} ${f.paths.join(" × ")}`), [], "og ui check finds nothing");
+    const found = checkUi(run, "hud").filter((f) => ["overlap", "text-cut", "offscreen"].includes(f.rule));
+    t.equal(found.map((f) => `${f.rule} ${f.paths.join(" × ")}`), [], "no overlap, cut text or control past the screen");
   },
 });
 ```
+
+`measureUi(run, name, { dir })` reads the same frame's measures (contrast
+needs a `screenshot:<name>.png` at the same time and the run's out
+directory); a playtest asserts on them only what its game has decided.
 
 ui-craft has the design side: hierarchy, each genre's layout grammar and
 motion personality.
