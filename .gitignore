@@ -1,5 +1,6 @@
 target/
 **/.og/check/
+**/.og/bundle/
 tests/install/node_modules/
 .spike-out/
 .DS_Store

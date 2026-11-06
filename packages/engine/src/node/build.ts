@@ -19,7 +19,8 @@
 //
 //   bun src/node/build.ts --entry <src/main.ts> --out <file.js> [--target native|web] [--minify] [--json]
 
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { isBuiltin } from "node:module";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { placeAssertions } from "./assert-sites.ts";
@@ -37,6 +38,8 @@ declare const Bun: {
     plugins?: unknown[];
   }): Promise<{ success: boolean; logs: unknown[]; outputs: Array<{ path: string; kind: string; size: number; text(): Promise<string> }> }>;
   write(path: string, data: string): Promise<number>;
+  resolveSync(specifier: string, parent: string): string;
+  JSONC: { parse(text: string): unknown };
 };
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -72,6 +75,8 @@ export interface Bundled {
   /** The source map written beside the bundle (`<out>.map`). */
   readonly map?: string;
   readonly reason?: string;
+  /** Every resolved compiler input was in the caller's validated snapshot. */
+  readonly cacheable?: boolean;
 }
 
 /** How a bundle's source map is written (`bundleGame`). */
@@ -115,13 +120,23 @@ function projectRoot(entry: string): string {
 }
 
 /** Bundle `entry` (whose default export is `og.game(...)`) into `out`, its source map into `<out>.map`. */
-export async function bundleGame(entry: string, out: string, target: "native" | "web" | "script" = "native", minify = false, maps: MapOptions = {}): Promise<Bundled> {
+export async function bundleGame(entry: string, out: string, target: "native" | "web" | "script" = "native", minify = false, maps: MapOptions = {}, cacheInputs?: ReadonlySet<string>): Promise<Bundled> {
   const t0 = performance.now();
   const absEntry = resolve(entry);
+  let cacheable = cacheInputs !== undefined && target === "native";
+  for (const file of cacheInputs ?? []) {
+    if (!/^(?:ts|js)config(?:\.[^.]+)*\.json$/.test(basename(file))) continue;
+    try {
+      const config = Bun.JSONC.parse(readFileSync(file, "utf8"));
+      // Extended configs can read outside the captured tree, including npm
+      // packages. Compilation still works; only preparation reuse is refused.
+      if (typeof config !== "object" || config === null || "extends" in config) cacheable = false;
+    } catch { cacheable = false; }
+  }
   const engine = {
     name: "origin-engine",
     setup(build: {
-      onResolve(o: { filter: RegExp; namespace?: string }, f: (a: { path: string }) => unknown): void;
+      onResolve(o: { filter: RegExp; namespace?: string }, f: (a: { path: string; resolveDir: string }) => unknown): void;
       onLoad(o: { filter: RegExp; namespace?: string }, f: (a: { path: string }) => unknown): void;
     }) {
       build.onResolve({ filter: /^@origingame\/engine(\/.*)?$/ }, (a) => {
@@ -130,6 +145,20 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
         return { path: file, external: target === "native" };
       });
       build.onResolve({ filter: /^og:worker$/ }, () => ({ path: "worker", namespace: "og" }));
+      if (cacheInputs) {
+        build.onResolve({ filter: /.*/ }, (a) => {
+          if (isBuiltin(a.path) || a.path === "bun" || a.path.startsWith("bun:")) return undefined;
+          try {
+            const file = realpathSync(Bun.resolveSync(a.path, a.resolveDir || process.cwd()));
+            if (!cacheInputs.has(file)) cacheable = false;
+          } catch { cacheable = false; }
+          return undefined;
+        });
+        build.onLoad({ filter: /.*/, namespace: "file" }, (a) => {
+          if (!cacheInputs.has(realpathSync(a.path))) cacheable = false;
+          return undefined;
+        });
+      }
       // og.assert's places (src/node/assert-sites.ts), in the game's own files only.
       const project = projectRoot(absEntry);
       build.onLoad({ filter: /\.[cm]?[jt]sx?$/, namespace: "file" }, (a) => {
@@ -166,14 +195,16 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
     const raw = JSON.parse(await sourcemap.text()) as { sources: (string | null)[]; sourcesContent?: (string | null)[]; file?: string };
     // A virtual module's text (og:worker's, which imports the entry by its absolute path) is not the game's: left out.
     if (raw.sourcesContent) raw.sourcesContent = raw.sourcesContent.map((c, i) => (/^og:/.test(raw.sources[i] ?? "") ? null : c));
-    raw.sources = renameSources(raw.sources, dirname(resolve(out)), maps.root === undefined ? undefined : resolve(maps.root));
+    raw.sources = cacheInputs
+      ? raw.sources.map((source) => source === null || /^[a-z][\w+.-]*:/.test(source) ? source : resolve(process.cwd(), source))
+      : renameSources(raw.sources, dirname(resolve(out)), maps.root === undefined ? undefined : resolve(maps.root));
     raw.file = basename(out);
     mkdirSync(dirname(mapFile), { recursive: true });
     writeFileSync(mapFile, JSON.stringify(raw));
     if (maps.link !== false) text = `${text.replace(/\n*$/, "\n")}//# sourceMappingURL=${basename(mapFile)}\n`;
   } else rmSync(mapFile, { force: true });
   await Bun.write(out, text);
-  return { ok: true, out, bytes: new TextEncoder().encode(text).length, ms: +(performance.now() - t0).toFixed(1), ...(sourcemap ? { map: mapFile } : {}) };
+  return { ok: true, out, bytes: new TextEncoder().encode(text).length, ms: +(performance.now() - t0).toFixed(1), ...(sourcemap ? { map: mapFile } : {}), ...(cacheInputs ? { cacheable } : {}) };
 }
 
 if (import.meta.main) {
@@ -189,7 +220,16 @@ if (import.meta.main) {
     process.stderr.write("usage: bun src/node/build.ts --entry <src/main.ts> --out <file.js> [--target native|web] [--minify] [--json]\n");
     process.exit(2);
   }
-  const r = await bundleGame(entry, out, target, argv.includes("--minify"));
+  const planFile = opt("--cache-plan");
+  let cacheInputs: Set<string> | undefined;
+  if (planFile) {
+    const plan: unknown = JSON.parse(readFileSync(planFile, "utf8"));
+    if (typeof plan !== "object" || plan === null || !("files" in plan) || !Array.isArray(plan.files) || !plan.files.every((file): file is string => typeof file === "string"))
+      throw new Error("invalid native preparation plan");
+    cacheInputs = new Set(plan.files);
+  }
+  const r = await bundleGame(entry, out, target, argv.includes("--minify"), {}, cacheInputs);
+  if (planFile && r.ok && r.cacheable) writeFileSync(join(dirname(planFile), "eligible"), "1");
   if (argv.includes("--json")) process.stdout.write(JSON.stringify(r) + "\n");
   else if (r.ok) process.stdout.write(`bundled ${entry} -> ${out} (${r.bytes} bytes, ${r.ms} ms)\n`);
   if (!r.ok) {

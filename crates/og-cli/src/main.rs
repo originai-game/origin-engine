@@ -13,6 +13,7 @@ mod bake_lightmaps;
 mod bake_probes;
 mod bake_projection;
 mod bundle;
+mod bundle_cache;
 mod check;
 mod compare;
 mod contact_sheet;

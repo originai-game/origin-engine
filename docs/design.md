@@ -2163,6 +2163,19 @@ never retry an accepted run. The host retires after 128 admissions to bound
 its module cache, flushing its last reply before exiting. A client that
 stops reading a completed reply is disconnected after ten seconds.
 
+Native preparation keeps one bundle and source map under `.og/bundle` on
+Unix, with an inherited file lock covering compilation and publication.
+Unchanged inputs skip the bundler process. Each caller receives its own
+copy, so later compilation cannot replace an admitted run's bundle.
+The key covers the project tree, engine sources, executable metadata,
+environment, and resolver configurations. The compiler checks that every
+resolved source belongs to that snapshot. External sources, extended
+configurations, unsupported symlinks, and Bun preload configuration keep
+normal compilation rather than reuse. Trees above 32,768 entries or 64
+levels, and outputs above 64 MiB each, also stay uncached. Corrupt artifacts
+rebuild. `OG_SESSION=0` disables reuse; Windows retains normal compilation.
+Cooking remains incremental and runs before this preparation step.
+
 Before destroying a playtest run, the host saves its world and reads back
 the last drawn frame without another draw or replay. A passing suite
 discards these candidates; a failed suite encodes the frames as PNGs and

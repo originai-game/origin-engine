@@ -362,21 +362,29 @@ pub fn bundle_native(project: &Project, package: &Path) -> Result<NativeBundle, 
 
 /// Only a live watch session replaces its own bundle.
 pub fn bundle_native_to(project: &Project, package: &Path, out: &Path) -> Result<(), String> {
-    let status = bun(package, "src/node/build.ts")
+    let cache = crate::bundle_cache::BundleCache::open(project, package, out);
+    if cache.as_ref().is_some_and(|cache| cache.restore(out)) {
+        return Ok(());
+    }
+    let mut command = bun(package, "src/node/build.ts");
+    command
         .arg("--entry")
         .arg(&project.entry)
         .arg("--out")
         .arg(out)
         .arg("--target")
         .arg("native")
-        .stdout(std::process::Stdio::null())
-        .status()
-        .map_err(|e| format!("{NO_BUN} ({e})"))?;
+        .stdout(std::process::Stdio::null());
+    let cache = cache.filter(|cache| cache.configure(&mut command).is_ok());
+    let status = command.status().map_err(|e| format!("{NO_BUN} ({e})"))?;
     if !status.success() {
         return Err(format!(
             "{} does not bundle (the error is above)",
             project.entry.display()
         ));
+    }
+    if let Some(cache) = &cache {
+        cache.save(out);
     }
     Ok(())
 }
