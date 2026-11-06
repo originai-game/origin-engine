@@ -52,15 +52,7 @@ pub(super) fn eval_graph(
 ) -> Result<(Pose, Trs)> {
     if gs.asset != comp.asset || gs.layers.len() != graph.layers.len() {
         gs.asset = comp.asset;
-        gs.layers = graph
-            .layers
-            .iter()
-            .map(|l| LayerState {
-                state: l.entry as u32,
-                prev: NONE,
-                ..LayerState::default()
-            })
-            .collect();
+        gs.layers = graph.layers.iter().map(LayerState::entry).collect();
     }
     let params = comp.params();
     let speed = comp.speed.max(0.0);
@@ -72,71 +64,10 @@ pub(super) fn eval_graph(
     let mut leaders: Vec<Option<(Phase, Phase, i32)>> = vec![None; graph.sync_groups.len()];
     for (li, layer) in graph.layers.iter().enumerate() {
         let ls = &mut gs.layers[li];
-        if ls.state as usize >= layer.states.len() {
-            ls.state = layer.entry as u32;
-        }
-        // During a fade, the transition's `interrupt` says which may fire.
-        let guard = if ls.prev != NONE {
-            ls.guard
-        } else {
-            Interrupt::Any
-        };
-        for t in &layer.transitions {
-            let (cur, prev) = (ls.state as usize, ls.prev as usize);
-            // A source interrupt leaves from the state being faded out.
-            let from_source = guard == Interrupt::Source;
-            let open = match (guard, t.from) {
-                (Interrupt::None, _) => false,
-                (Interrupt::Source, Some(f)) => f == prev && t.to != cur,
-                (Interrupt::Source, None) => false,
-                (Interrupt::Next, Some(f)) => f == cur,
-                (Interrupt::Next, None) => false,
-                (Interrupt::Any, Some(f)) => f == cur,
-                (Interrupt::Any, None) => t.to != cur,
-            };
-            if !open || !t.conditions.iter().all(|c| c.holds(&params)) {
-                continue;
-            }
-            let (left, left_phase) = if from_source {
-                (prev, ls.prev_phase)
-            } else {
-                (cur, ls.phase)
-            };
-            if t.exit.is_some_and(|x| left_phase.total() < x as f64) {
-                continue;
-            }
-            let carried = match (layer.states[left].sync, layer.states[t.to].sync) {
-                // Between two states of one group the fraction carries over.
-                (Some(a), Some(b)) if a == b => left_phase.frac,
-                _ => 0.0,
-            };
-            // The fade continues from the state left (a source interrupt
-            // drops the target it abandons).
-            ls.prev = left as u32;
-            ls.prev_phase = left_phase;
-            ls.guard = t.interrupt;
-            ls.state = t.to as u32;
-            ls.phase = Phase {
-                cycles: 0,
-                frac: carried,
-            };
-            ls.time = 0.0;
-            ls.fade = 0.0;
-            ls.fade_duration = t.fade;
-            break;
-        }
+        ls.transition(layer, &params);
         let layer_weight = layer.weight(&params);
         // The cross-fade's progress after this tick.
-        let alpha = if ls.prev != NONE {
-            ls.fade += dt;
-            if ls.fade_duration > 0.0 && ls.fade < ls.fade_duration {
-                ls.fade / ls.fade_duration
-            } else {
-                1.0
-            }
-        } else {
-            1.0
-        };
+        let alpha = ls.fade_alpha(dt);
         let base = li == 0;
         let leaf_root = if base { root } else { None };
         let mut layer_blend = Blend::new();
@@ -247,10 +178,7 @@ pub(super) fn eval_graph(
         }
         ls.phase = cur_phase;
         ls.time += dt * speed;
-        if alpha >= 1.0 {
-            ls.prev = NONE;
-            ls.guard = Interrupt::Any;
-        }
+        ls.settle(alpha);
         let layer_pose = layer_blend.pose.unwrap_or_else(|| Pose::rest(skel));
         let mask = layer.node_weights(skel);
         match (layer.mode, &mask) {

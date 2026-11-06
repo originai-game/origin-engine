@@ -30,6 +30,7 @@ mod codec;
 mod flipbook;
 mod graph;
 mod ik;
+mod machine;
 mod pose;
 mod retarget;
 mod rig2d;

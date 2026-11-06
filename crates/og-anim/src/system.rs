@@ -14,6 +14,7 @@ use crate::asset::{ClipAsset, NONE, SkeletonAsset, bind};
 use crate::codec::{Reader, Writer};
 use crate::graph::{GraphAsset, Interrupt, LayerMode, Motion};
 use crate::ik;
+use crate::machine::{LayerState, Phase};
 use crate::pose::{Blend, Fired, Leaf, Pose, RootMotion, stepped};
 use crate::retarget::{FootPlants, HumanoidMap, TwistBone, share_twist, twist_bones};
 use crate::schema::*;
@@ -77,44 +78,6 @@ struct PlayerState {
     prev_looping: bool,
     fade: f32,
     fade_duration: f32,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-struct Phase {
-    cycles: u32,
-    frac: f32,
-}
-
-impl Phase {
-    fn total(self) -> f64 {
-        self.cycles as f64 + self.frac as f64
-    }
-    /// Advances by `d` cycles; returns the wraps.
-    fn advance(&mut self, d: f32) -> i32 {
-        let f = self.frac + d;
-        let k = f.floor();
-        self.frac = f - k;
-        if self.frac >= 1.0 {
-            self.frac = 0.0;
-        }
-        let k = k as i32;
-        self.cycles = self.cycles.saturating_add_signed(k);
-        k
-    }
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-struct LayerState {
-    state: u32,
-    phase: Phase,
-    time: f32,
-    prev: u32,
-    prev_phase: Phase,
-    fade: f32,
-    fade_duration: f32,
-    /// What may interrupt the fade in progress (the transition's
-    /// `interrupt`); `Any` when none is.
-    guard: Interrupt,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
