@@ -164,12 +164,12 @@ commands:
                       project.ogt's ui { screen \"<name>\" \"<commands>\" } and screens blocks declare,
                       else the values the game's show usage lists, else the playtests' screenshots)
                       out per style, breakpoint and
-                      locale (the game's, a pseudo-locale 40 % longer, CJK, RTL) and check what a
-                      designer checks by eye: undeclared overlap, cut text, the safe area and the
-                      shell's corner, 44 px touch targets, contrast on pixels, text size, pad reach,
-                      names, one primary action, feedback, counts; each finding names the paths, the
-                      measured value and the prop to change (DIR/check.json, check.txt; default
-                      <project>/og-out/ui-check); exit 0 clean, 3 with an error finding
+                      locale (the game's, a pseudo-locale 40 % longer, CJK, RTL) and report facts:
+                      findings (undeclared overlap, cut text, the safe area and the shell's corner,
+                      pad reach, names, feedback) with the paths, what was found and the prop, and
+                      measures with no bar (contrast on pixels, text size, touch targets, text
+                      scale, primary actions, element count) (DIR/check.json, check.txt; default
+                      <project>/og-out/ui-check); exit 0 when it ran, 1 when it could not
   ui preview [project] [the same options] [--film <commands> --at t,t,...]
                       a contact sheet per screen and style (a row per breakpoint, a column per
                       locale) and index.json of every cell, or a filmstrip of a motion at the

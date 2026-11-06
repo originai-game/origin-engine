@@ -194,12 +194,13 @@ How the holds are ruled:
 - **A measured failure is not a preference.** A preference (a colour you
   would choose, a polish no number decides) is a note, never a hold, and
   never blocks.
-- **Contrast is judged at the bar the engine's check states for that
-  element, never stricter**: og ui check's 3:1 for live UI text (7:1 in
-  high contrast; under 4.5:1 is its warning, a note unless the art bible
-  asks for more). Text over the
-  game scene that no check measures is the reviewer's eye: the note says
-  so, and quotes the `og frame measure` ratio it read.
+- **Contrast is judged against the game's own bar, never stricter.** The
+  engine holds no bar: og ui check measures each live UI text's ratio and
+  the reviewer applies the art bible's, else og-taste §3's rule of thumb:
+  under 3:1 for live UI text (7:1 in high contrast) is a hold, between 3:1
+  and 4.5:1 a note unless the art bible asks for more. Text over the game
+  scene that no check measures is the reviewer's eye: the note says so,
+  and quotes the `og frame measure` ratio it read.
 - **The style is the criterion.** Nothing the catalogue's `intended`
   names, nothing the look's contract sets, and no trait of another style
   is held: a game is never held to a different style or to the

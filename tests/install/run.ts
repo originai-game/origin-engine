@@ -227,13 +227,13 @@ function host(): void {
 
     if (!CORE) {
       // 4b. og ui check from the package (src/node/ui-run.ts): a reviewer's contrast numbers come from it, so the
-      // package must carry it (0.7.8-dev.17 did not). Exit 3 is findings, still a run; its JSON names each
-      // finding's value, bar and box, and every cell's frame.
+      // package must carry it (0.7.8-dev.17 did not). It exits 0 whatever it found; its JSON names each
+      // finding's box, the count of its measures, and every cell's frame.
       step = new Step("4b og ui check, og style check --sizes, og frame measure");
       const ui = run(step, [...ogCmd, "ui", "check", ".", "--breakpoints", "desktop,phoneLandscape", "--locales", "game", "--scales", "100", "--json"], demo, { allowFail: true });
-      if (ui.status !== 0 && ui.status !== 3) step.fail(`og ui check exited ${ui.status}\n${ui.stderr.slice(-2000)}`);
-      const checked = JSON.parse(ui.stdout.trim().split("\n").at(-1)!) as { cells: number; findings: Array<{ at?: unknown[] }>; frames?: Array<{ viewport: number[] }> };
-      if (!(checked.cells > 0) || checked.frames?.length !== checked.cells) step.fail(`og ui check --json: ${ui.stdout.slice(0, 400)}`);
+      if (ui.status !== 0) step.fail(`og ui check exited ${ui.status}\n${ui.stderr.slice(-2000)}`);
+      const checked = JSON.parse(ui.stdout.trim().split("\n").at(-1)!) as { cells: number; findings: Array<{ at?: unknown[] }>; measures: number; frames?: Array<{ viewport: number[] }> };
+      if (!(checked.cells > 0) || checked.frames?.length !== checked.cells || !(checked.measures > 0)) step.fail(`og ui check --json: ${ui.stdout.slice(0, 400)}`);
       if (checked.findings.some((f) => !Array.isArray(f.at))) step.fail("og ui check --json: a finding without its places (at)");
       log(`   og ui check: ${checked.cells} cell(s), ${checked.findings.length} finding(s)`);
       // The reviewer's other two: og style check at desktop and phone size (labelled frames with their tier), and a region
