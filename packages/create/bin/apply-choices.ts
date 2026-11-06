@@ -118,7 +118,9 @@ export function applyCreation(dir: string, c: CreationChoices, lookFile: string,
       ? "Two seats over a room in lockstep: og relay, then og run . --room ws://127.0.0.1:47900/game twice (tests/room.og.ts runs two peers and compares their worlds).\n"
       : "One seat, from the keys, the mouse, a pad or the touch controls.\n";
   const readme = join(dir, "README.md");
-  writeFileSync(readme, `${readFileSync(readme, "utf8").replace(/\n*$/, "\n")}
+  // A section written before (choices applied again) is replaced, up to the next heading.
+  const prose = readFileSync(readme, "utf8").replace(/\n*^## Creation choices\n[\s\S]*?(?=^## |(?![\s\S]))/m, "\n");
+  writeFileSync(readme, `${prose.replace(/\n*$/, "\n")}
 ## Creation choices
 
 project.ogt's create block holds the selection; og new wrote what it

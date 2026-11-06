@@ -157,12 +157,35 @@ const CURSOR_SPEED = 8;
 const MOUSE_LOOK = 0.12;
 const STICK_LOOK = 150 / 60;
 
+/** What a seat's touch controls hold this tick. */
+export interface TouchInput {
+  x: number;
+  y: number;
+  /** The look's turn this tick, degrees (aim `look`). */
+  lx: number;
+  ly: number;
+  buttons: number;
+}
+
+/** A game's own touch HUD for a seat, drawn in place of the default controls. */
+let ownTouch: ((seat: number) => TouchInput) | null = null;
+/**
+ * Draw the game's own touch controls instead of the default ones (a
+ * game whose phone layout is part of its look): called by Seats each tick
+ * for each local seat while touch shows; return what they hold, using
+ * bit(name) for the buttons.
+ */
+export function useTouchControls(draw: (seat: number) => TouchInput): void {
+  ownTouch = draw;
+}
+
 /**
  * The touch controls of a seat, and what they hold. Alone: the move bottom
  * left, the look and buttons bottom right. Local: each seat one column in
  * its own bottom corner (seat 0 left, seat 1 right), buttons over the move.
  */
-function touch(seat: number): { x: number; y: number; lx: number; ly: number; buttons: number } {
+function touch(seat: number): TouchInput {
+  if (ownTouch) return ownTouch(seat);
   const out = { x: 0, y: 0, lx: 0, ly: 0, buttons: 0 };
   const size = LOCAL ? 112 : 132;
   const move = () => {

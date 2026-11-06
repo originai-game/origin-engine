@@ -28,7 +28,7 @@ import { fileURLToPath } from "node:url";
 import { CREATION_CHOICES, creationBlock, inferCreationChoices, parseCreationInput } from "./choices.ts";
 import type { CreationChoices, CreationInput } from "./choices.ts";
 import { applyCreation } from "./apply-choices.ts";
-import { defaultView, GENRES, playersRefused, STARTERS, starterFor } from "./starters.ts";
+import { defaultView, genrePlayersRefused, GENRES, playersRefused, STARTERS, starterFor, VIEW_GENRE, VIEW_PRESETS, viewProfile } from "./starters.ts";
 import type { Genre, StarterName, View } from "./starters.ts";
 
 export { CREATION_CHOICES, creationBlock, creationSchema, inferCreationChoices, parseCreationInput } from "./choices.ts";
@@ -37,7 +37,7 @@ export type { CreationChoices, CreationInput } from "./choices.ts";
 export { canonicalTag, isRtl, localeScript } from "./languages.ts";
 export type { LocaleScript } from "./languages.ts";
 export { PSEUDO_LOCALE, pseudoMessage, pseudoTable } from "./pseudo-locale.ts";
-export { GENRES, STARTERS, VIEW_PRESETS, creationData, defaultView, genreViews, playersRefused, starterFor } from "./starters.ts";
+export { GENRE_PLAYERS, GENRES, STARTERS, VIEW_GENRE, VIEW_PRESETS, creationData, defaultView, genrePlayersRefused, genreViews, playersRefused, starterFor, viewProfile } from "./starters.ts";
 
 // The art brief (docs/art.md §2.2): a game's look compiled into the request
 // for one asset. bin/brief.ts is a copy of the knowledge package's
@@ -246,7 +246,8 @@ function profileOf(dir: string): Profile {
 export function templateDir(archetype?: string, profile: Profile = "3d"): string {
   const here = dirname(fileURLToPath(import.meta.url));
   if (archetype !== undefined) {
-    const roots = [join(here, "..", "archetypes"), join(here, "..", "..", "..", "templates", "archetypes")];
+    // As for the templates below: in the engine repository the live archetypes win over a stale packed copy.
+    const roots = [join(here, "..", "..", "..", "templates", "archetypes"), join(here, "..", "archetypes")];
     for (const root of roots) {
       if (existsSync(join(root, archetype, "project.ogt"))) return join(root, archetype);
     }
@@ -499,17 +500,71 @@ export function resolveCreationChoices(premise: string, input: CreationInput = {
   const style = styles.find(s => s.slug === slug && s.look.presetReady);
   if (!style) throw new Error(`no look preset '${slug}'`);
   // The mood defaults to the one the preset is drawn in; the premise's or the flag's wins.
-  return inferCreationChoices(premise, { ...input, look: slug, ui: parseCreationInput({ ui: input.ui ?? style.ui }).ui! }, parseCreationInput({ mood: style.look.mood }));
+  const choices = inferCreationChoices(premise, { ...input, look: slug, ui: parseCreationInput({ ui: input.ui ?? style.ui }).ui! }, parseCreationInput({ mood: style.look.mood }));
+  const drawn = viewProfile(choices.view);
+  if (!style.look.profiles.includes(drawn)) throw new Error(`the ${slug} look draws ${style.look.profiles.join(" and ")} only, and ${choices.view} is a ${drawn} view: choose a ${drawn} look or a ${style.look.profiles.join("/")} view`);
+  return choices;
 }
 
-/** The genre a view alone asks for: the one whose starter draws it best. */
-const VIEW_GENRE: Record<View, Genre> = {
-  "side-2d": "action-platformer",
-  "top-down-2d": "action-platformer",
-  "isometric-2.5d": "rpg",
-  "third-person-3d": "action-platformer",
-  "first-person-3d": "shooter",
-};
+/** What applyCreationChoices made: the full selection and the files it added. */
+export interface AppliedCreation {
+  readonly choices: CreationChoices;
+  readonly starter: StarterName;
+  readonly files: readonly string[];
+  readonly notes: readonly string[];
+}
+
+/**
+ * Applies a creation selection to a game already copied from a profile
+ * template (the platform's overlay: templates/game for 3d, templates/game-2d
+ * for 2d) or an archetype, in place: the selection is validated and filled
+ * in as og new does (parseCreationInput, the premise and the look
+ * catalogue), then refused with the reason when the view is not one the
+ * game's profile draws (VIEW_PRESETS[view].profile against project.ogt's
+ * `profile`), the look does not draw that profile, the starter does not
+ * draw the view, or the genre does not play the player count
+ * (GENRE_PLAYERS); else project.ogt's create block is written (replacing
+ * one it had) and applyCreation writes what it starts: src/creation.ts (the
+ * seats, controls and camera src/seats.ts and the game read), the look's
+ * ArtCamera and UI style, the genre's kit, the publish settings and, for
+ * online play, tests/room.og.ts. Idempotent: applying it again rewrites the
+ * same files.
+ */
+export function applyCreationChoices(dir: string, selection: unknown, options: { readonly premise?: string; readonly catalogue?: string } = {}): AppliedCreation {
+  const root = resolve(dir);
+  const manifest = join(root, "project.ogt");
+  if (!existsSync(manifest)) throw new Error(`${root} has no project.ogt: copy a template there first`);
+  const profile = profileOf(root);
+  const input = parseCreationInput(selection);
+  if (input.view !== undefined && viewProfile(input.view) !== profile) throw new Error(`${input.view} is a ${viewProfile(input.view)} view and this game is ${profile} (project.ogt's profile): copy the ${viewProfile(input.view)} template, or choose a ${profile} view`);
+  // A view the game does not name is its profile's default (side-2d, third-person-3d), not the premise's.
+  const choices = resolveCreationChoices(options.premise ?? "", { ...(input.view === undefined ? { view: profile === "2d" ? "side-2d" : "third-person-3d" } : {}), ...input }, profile, options.catalogue);
+  const committed = join(root, dirname(entryOf(root) ?? "src/main.ts"), "creation.ts");
+  const named = existsSync(committed) ? /"starter":\s*"([^"]+)"/.exec(readFileSync(committed, "utf8"))?.[1] : undefined;
+  if (named === undefined || !(named in STARTERS)) throw new Error(`${root} has no src/creation.ts naming its starter: it is not a template that takes creation choices`);
+  const starter = named as StarterName;
+  const s = STARTERS[starter] as { views: readonly View[] };
+  if (!s.views.includes(choices.view)) throw new Error(`the ${starter} starter draws ${s.views.join(", ")}, not ${choices.view}`);
+  const refused = genrePlayersRefused(choices.genre, choices.players) ?? playersRefused(starter, choices.players);
+  if (refused) throw new Error(refused);
+  const text = readFileSync(manifest, "utf8").replace(/\n*^create[ \t]*\{[\s\S]*?^\}\n?/m, "\n");
+  writeFileSync(manifest, `${text.replace(/\n*$/, "\n")}\n${creationBlock(choices)}`);
+  const look = lookFileOf(root);
+  const notes: string[] = [`${choices.genre} at ${choices.view} on the ${starter} starter (${profile}): the camera, the controls and the seats are in src/creation.ts`];
+  const files = applyCreation(root, choices, look, entryOf(root)!, starter, notes);
+  return { choices, starter, files, notes };
+}
+
+/** The look file a game draws with: project.ogt's `look` line, else its entry's GameDesc.look. */
+function lookFileOf(root: string): string {
+  const named = /^look[ \t]+"([^"]+)"/m.exec(readFileSync(join(root, "project.ogt"), "utf8"))?.[1];
+  if (named) return join("assets", named);
+  const entry = entryOf(root);
+  const fromEntry = entry === undefined ? undefined : LOOK_KEY.exec(readFileSync(join(root, entry), "utf8"))?.[2];
+  if (fromEntry === undefined) throw new Error(`${root} names no look (project.ogt's look line or GameDesc.look): the view's ArtCamera has nowhere to go`);
+  return `assets/looks/${fromEntry}.ogt`;
+}
+
 
 /**
  * A genre and view that start a game together: an explicit pair stands

@@ -5,7 +5,7 @@ import { afterAll, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
-import { artBrief, audioBrief, authoredArt, CREATION_CHOICES, localeScript, MOODS, pseudoMessage, creationBlock, creationSchema, inferCreationChoices, parseCreationInput, resolveCreationChoices, pickStyle, premiseProfile, presetLook, readCatalogue, readLook, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
+import { applyCreationChoices, artBrief, audioBrief, authoredArt, CREATION_CHOICES, localeScript, MOODS, pseudoMessage, creationBlock, creationSchema, inferCreationChoices, parseCreationInput, resolveCreationChoices, pickStyle, premiseProfile, presetLook, readCatalogue, readLook, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
 import { cpSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { SKIN_ELSEWHERE } from "../../knowledge/scripts/validate.ts";
@@ -22,6 +22,13 @@ afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 function cli(...args: string[]) {
   const r = Bun.spawnSync(["bun", join(pkg, "bin", "create.ts"), ...args], { cwd: scratch });
   return { code: r.exitCode, out: new TextDecoder().decode(r.stdout), err: new TextDecoder().decode(r.stderr) };
+}
+
+/** cli that must succeed: a failure throws with what create said. */
+function made(...args: string[]) {
+  const r = cli(...args);
+  if (r.code !== 0) throw new Error(`create ${args.join(" ")} exited ${r.code}: ${r.err || r.out}`);
+  return r;
 }
 
 test("creation choices infer a premise, preserve overrides, and serialize every choice", () => {
@@ -67,6 +74,37 @@ test("choice flags write a canonical create block and reject bad choices before 
   expect([...CREATION_CHOICES.ui].sort()).toEqual(readdirSync(styles).filter(s => existsSync(join(styles, s, "style.ogt"))).sort());
 });
 
+test("applyCreationChoices takes a selection onto a copied profile template, refusing what it cannot draw", () => {
+  const dir = join(scratch, "overlay-2d");
+  cpSync(join(pkg, "..", "..", "templates", "game-2d"), dir, { recursive: true, filter: (f) => !/[/\\](og-out|\.og|cooked)$/.test(f) });
+  const before = readFileSync(join(dir, "project.ogt"), "utf8");
+  // Each refusal names its reason and writes nothing.
+  expect(() => applyCreationChoices(dir, { view: "third-person-3d" })).toThrow("third-person-3d is a 3d view and this game is 2d");
+  expect(() => applyCreationChoices(dir, { view: "side-2d", look: "faceted-low-poly" })).toThrow("the faceted-low-poly look draws 3d only");
+  expect(() => applyCreationChoices(dir, { genre: "idle", view: "side-2d", players: "local-multiplayer" })).toThrow("idle with local-multiplayer: an idle game");
+  expect(() => applyCreationChoices(dir, { players: "mmo" })).toThrow("players");
+  expect(readFileSync(join(dir, "project.ogt"), "utf8")).toBe(before);
+  const selection = { genre: "action-platformer", view: "side-2d", players: "local-multiplayer", input: "gamepad", platform: "phone-landscape", look: "16bit-pixel" } as const;
+  const applied = applyCreationChoices(dir, selection);
+  expect(applied.starter).toBe("platformer");
+  expect(applied.choices).toMatchObject(selection);
+  const manifest = readFileSync(join(dir, "project.ogt"), "utf8");
+  expect(manifest).toContain('  players "local-multiplayer"');
+  expect(manifest).toContain("orientation landscape");
+  const creation = readFileSync(join(dir, "src/creation.ts"), "utf8");
+  expect(creation).toContain('"seats": 2');
+  expect(creation).toContain('"input": "gamepad"');
+  expect(readFileSync(join(dir, "assets/looks/origin-game-2d.ogt"), "utf8")).toContain("ArtCamera {\n  projection orthographic\n}");
+  // Applied again (or another selection), it rewrites the same files: one create block, the new choice.
+  applyCreationChoices(dir, { ...selection, players: "single" });
+  const again = readFileSync(join(dir, "project.ogt"), "utf8");
+  expect(again.match(/^create \{/gm)).toHaveLength(1);
+  expect(again).toContain('  players "single"');
+  expect(readFileSync(join(dir, "src/creation.ts"), "utf8")).toContain('"seats": 1');
+  expect(readFileSync(join(dir, "assets/looks/origin-game-2d.ogt"), "utf8").match(/^ArtCamera \{/gm)).toHaveLength(1);
+  expect(readFileSync(join(dir, "README.md"), "utf8").match(/^## Creation choices$/gm)).toHaveLength(1);
+});
+
 test("every starter on seats carries the one seats.ts and its creation.ts is the mapping at its defaults", () => {
   const templates = join(pkg, "..", "..", "templates");
   const master = readFileSync(join(templates, "game-2d/src/seats.ts"), "utf8");
@@ -101,7 +139,7 @@ test.skipIf(!existsSync(og))("local seats on one device each move their own cour
 }, 30000);
 
 test.skipIf(!existsSync(og))("local touch arena keeps the whole field clear of HUD and controls at both aspects", () => {
-  expect(cli("arena-fit", "--genre", "arena", "--players", "local-multiplayer", "--platform", "phone-portrait", "--look", "16bit-pixel", "--no-prompt").code).toBe(0);
+  made("arena-fit", "--genre", "arena", "--players", "local-multiplayer", "--platform", "phone-portrait", "--look", "16bit-pixel", "--no-prompt");
   const dir = join(scratch, "arena-fit");
   for (const [width, height] of [[390, 844], [844, 390]] as const) {
     const out = join(dir, `out-${width}`);
@@ -132,7 +170,7 @@ test.skipIf(!existsSync(og))("local arena routes asymmetric keys and pads to ind
     ["keyboard-mouse", "0.1:key_down:KeyD;0.1:key_down:ArrowUp;0.5:key_up:KeyD;0.5:key_up:ArrowUp"],
     ["gamepad", "0.1:gamepad:-@0:1,0;0.1:gamepad:-@1:0,-1;0.5:gamepad:-@0:0,0;0.5:gamepad:-@1:0,0"],
   ] as const) {
-    expect(cli(`local-${input}`, "--genre", "arena", "--players", "local-multiplayer", "--look", "16bit-pixel", "--input", input, "--no-prompt").code).toBe(0);
+    made(`local-${input}`, "--genre", "arena", "--players", "local-multiplayer", "--look", "16bit-pixel", "--input", input, "--no-prompt");
     const read = run(join(scratch, `local-${input}`), `${commands};0.6:dump_entity:fighter-0:red.json;0.6:dump_entity:fighter-1:blue.json;0.7:quit`);
     const red = read("red.json").components["og.Transform"].position, blue = read("blue.json").components["og.Transform"].position;
     // Red walked right only, Blue up only: each from its own seat (a tick of latency, as in a room).

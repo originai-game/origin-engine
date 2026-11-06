@@ -8,8 +8,8 @@
  * starter's committed creation.ts is this data at its own defaults, and
  * that the systems and kit named here are the ones its source uses).
  */
-import { CREATION_CHOICES } from "./choices.ts";
-import type { CreationChoices } from "./choices.ts";
+import { CREATION_CHOICES } from "./creation-vocabulary.ts";
+import type { CreationChoices } from "./creation-vocabulary.ts";
 
 export type Genre = CreationChoices["genre"];
 export type View = CreationChoices["view"];
@@ -89,6 +89,8 @@ export interface Starter {
   /** Seats it plays with local or online (2 for a duel or a pair). */
   readonly seats: number;
   readonly controls: Controls;
+  /** A view's own controls where they differ from `controls` (the 2D template's top-down walk has no jump). */
+  readonly viewControls?: Partial<Record<View, Controls>>;
   /** An official UI kit (packages/engine/extensions/<kit>) create installs into assets/ui-kits and the starter's HUD uses. */
   readonly kit: string | null;
   /** The engine modules the game plays on (each appears in its source as `og.<module>`). */
@@ -105,6 +107,7 @@ export const STARTERS = {
     systems: ["net", "rng", "render", "audio", "camera"],
     controls: { move: "stick", aim: "none", buttons: [{ name: "dash", label: "Dash", keys: k(["Space", "ShiftLeft"], ["Enter", "ShiftRight"]), pad: ["pad.a"] }] },
   },
+  // The 2D profile's template (templates/game-2d, the platform's 2D overlay): the courier's rooftops side-on.
   platformer: {
     dir: "game-2d", profile: "2d", views: ["side-2d"], players: BOTH_PLAYERS, seats: 2, kit: null,
     systems: ["net", "tilemap", "physics", "camera", "tween", "render", "audio", "i18n", "platform", "ui"],
@@ -134,8 +137,18 @@ export const STARTERS = {
     profile: "2d", views: ["top-down-2d"], players: BOTH_PLAYERS, seats: 2, kit: "strategy",
     systems: ["net", "nav", "tilemap", "tween", "render", "audio", "platform", "i18n", "ui"],
     controls: { move: "none", aim: "cursor", buttons: [
-      { name: "place", label: "Place", keys: k(["Space"], ["Enter"]), pad: ["pad.a"], mouse: "mouse.left", surface: true },
-      { name: "cycle", label: "Next plant", keys: k(["KeyQ", "Tab"], ["Period"]), pad: ["pad.rightBumper"] },
+      { name: "place", label: "Plant", keys: k(["Space"], ["Enter"]), pad: ["pad.a"] },
+      { name: "tap", label: "Plant here", keys: k([], []), pad: [], mouse: "mouse.left", surface: true },
+      { name: "cycle", label: "Next plant", keys: k(["KeyQ", "Tab"], ["Period"]), pad: ["pad.x", "pad.rightBumper"] },
+      { name: "thorn", label: "Thorn", keys: k(["Digit1"], ["Numpad1"]), pad: [] },
+      { name: "frost", label: "Frost lily", keys: k(["Digit2"], ["Numpad2"]), pad: [] },
+      { name: "hedge", label: "Hedge", keys: k(["Digit3"], ["Numpad3"]), pad: [] },
+      { name: "next", label: "Next wave", keys: k(["KeyN"], ["Slash"]), pad: ["pad.y"] },
+      { name: "menu", label: "Pause", keys: k(["KeyP"], []), pad: [] },
+      { name: "start", label: "Play", keys: k([], []), pad: [] },
+      { name: "title", label: "To the title", keys: k([], []), pad: [] },
+      { name: "settings", label: "Settings", keys: k([], []), pad: [] },
+      { name: "resume", label: "Resume", keys: k([], []), pad: [] },
     ] },
   },
   roguelike: {
@@ -158,9 +171,18 @@ export const STARTERS = {
       "online-lockstep": "lockstep runs only while every seat sends input each tick, and an idle game's progress is made while the player is away (the offline catch-up from the save's wall-clock stamp), which no room can run",
     },
     systems: ["rng", "tween", "render", "audio", "platform", "i18n", "ui"],
-    controls: { move: "none", aim: "none", buttons: [
-      { name: "tap", label: "Tap", keys: k(["Space"], []), pad: ["pad.a"], surface: true },
-      { name: "buy", label: "Buy", keys: k(["Enter"], []), pad: ["pad.x"], surface: true },
+    controls: { move: "none", aim: "cursor", buttons: [
+      { name: "tap", label: "Tap", keys: k(["Space", "Enter"], []), pad: ["pad.a"], surface: true },
+      { name: "buy", label: "Buy", keys: k(["KeyB"], []), pad: ["pad.x"], surface: true },
+      { name: "prev", label: "Previous", keys: k(["ArrowLeft"], []), pad: ["pad.left"], surface: true },
+      { name: "next", label: "Next", keys: k(["ArrowRight"], []), pad: ["pad.right"], surface: true },
+      { name: "buy1", label: "Buy Ember", keys: k(["Digit1"], []), pad: [], surface: true },
+      { name: "buy2", label: "Buy Storm", keys: k(["Digit2"], []), pad: [], surface: true },
+      { name: "buy3", label: "Buy Crystal", keys: k(["Digit3"], []), pad: [], surface: true },
+      { name: "buy4", label: "Buy Star", keys: k(["Digit4"], []), pad: [], surface: true },
+      { name: "nova", label: "Supernova", keys: k(["KeyN"], []), pad: ["pad.y"], surface: true },
+      { name: "menu", label: "Pause", keys: k(["KeyP"], []), pad: [], surface: true },
+      { name: "point", label: "Tap the orb", keys: k([], []), pad: [], mouse: "mouse.left", surface: true },
     ] },
   },
   rhythm: {
@@ -321,6 +343,40 @@ export const GENRES: { readonly [G in Genre]: GenreStart } = {
   },
 };
 
+/** The profile a view is made in: the platform's overlay for it (2d: templates/game-2d, 3d: templates/game). */
+export function viewProfile(view: View): "2d" | "3d" {
+  return VIEW_PRESETS[view].profile;
+}
+
+/** The genre a view alone asks for: the one whose starter draws it best. */
+export const VIEW_GENRE: Record<View, Genre> = {
+  "side-2d": "action-platformer",
+  "top-down-2d": "action-platformer",
+  "isometric-2.5d": "rpg",
+  "third-person-3d": "action-platformer",
+  "first-person-3d": "shooter",
+};
+
+/**
+ * The player counts each genre plays, and why it refuses the others: a
+ * count any of its starters plays stands, so a refusal is the genre's own
+ * (an idle game's progress is made while nobody plays).
+ */
+export const GENRE_PLAYERS: { readonly [G in Genre]: { readonly players: readonly Players[]; readonly refuse: Partial<Record<Players, string>> } } = Object.fromEntries(
+  CREATION_CHOICES.genre.map((g) => {
+    const starters = [...new Set(Object.values(GENRES[g].starters))].map((n) => STARTERS[n] as Starter);
+    const players = CREATION_CHOICES.players.filter((p) => starters.some((s) => s.players.includes(p)));
+    const refuse = Object.fromEntries(CREATION_CHOICES.players.filter((p) => !players.includes(p)).map((p) => [p, starters.map((s) => s.refuse?.[p]).find(Boolean) ?? "not supported"]));
+    return [g, { players, refuse }];
+  }),
+) as never;
+
+/** Why a genre refuses a player count, or null when it plays it. */
+export function genrePlayersRefused(genre: Genre, players: Players): string | null {
+  const rule = GENRE_PLAYERS[genre];
+  return rule.players.includes(players) ? null : `${genre} with ${players}: ${rule.refuse[players]}`;
+}
+
 /** The genre's default view: its first starter's. */
 export function defaultView(genre: Genre): View {
   return Object.keys(GENRES[genre].starters)[0] as View;
@@ -348,7 +404,7 @@ export function creationData(starter: StarterName, choices: CreationChoices) {
     ...choices,
     starter,
     seats: choices.players === "single" ? 1 : s.seats,
-    controls: s.controls,
+    controls: s.viewControls?.[choices.view] ?? s.controls,
     camera: preset.camera,
     rig: preset.rig,
     kit: s.kit,
@@ -358,7 +414,8 @@ export function creationData(starter: StarterName, choices: CreationChoices) {
 /** The defaults a starter's committed src/creation.ts holds: its default view, alone, at the desk. */
 export function starterDefaults(starter: StarterName): CreationChoices {
   const s: Starter = STARTERS[starter];
-  const genre = (Object.keys(GENRES) as Genre[]).find((g) => Object.values(GENRES[g].starters).includes(starter))!;
+  // A profile template no genre names (the 3D template) starts as the genre its default view asks for.
+  const genre = (Object.keys(GENRES) as Genre[]).find((g) => Object.values(GENRES[g].starters).includes(starter)) ?? VIEW_GENRE[s.views[0]!];
   return {
     genre, view: s.views[0]!, look: s.profile === "2d" ? "16bit-pixel" : "faceted-low-poly", mood: "bright", ui: s.profile === "2d" ? "pixel" : "storybook",
     platform: "desktop", input: "keyboard-mouse", players: s.defaultPlayers ?? "single", lang: ["en"], music: "ambient",

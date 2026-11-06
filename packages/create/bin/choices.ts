@@ -1,22 +1,9 @@
 /** Creation vocabulary, defaults and inference rules. What each choice starts is starters.ts. */
 import { defaultView } from "./starters.ts";
-export const CREATION_CHOICES = {
-  genre: ["action-platformer", "shooter", "rpg", "puzzle-match", "strategy-tower-defense", "racing", "runner", "roguelike-card", "idle", "rhythm", "arena", "open-world"],
-  view: ["side-2d", "top-down-2d", "isometric-2.5d", "third-person-3d", "first-person-3d"],
-  mood: ["bright", "dark", "warm", "cold", "soft", "high-contrast"],
-  ui: ["broadcast", "cartoon", "craft", "cyber", "dread", "fantasy", "foundry", "gilded", "kawaii", "pixel", "scifi", "storybook", "tactical", "wasteland"],
-  platform: ["phone-portrait", "phone-landscape", "desktop", "multi"],
-  input: ["touch", "keyboard-mouse", "gamepad"],
-  players: ["single", "local-multiplayer", "online-lockstep"],
-  music: ["chiptune", "orchestral", "electronic", "ambient", "folk", "rock"],
-} as const;
-
-type ChoiceKey = keyof typeof CREATION_CHOICES;
-export type CreationChoices = { readonly [K in ChoiceKey]: (typeof CREATION_CHOICES)[K][number] } & {
-  readonly look: string;
-  readonly lang: readonly string[];
-};
-export type CreationInput = Partial<CreationChoices>;
+export { CREATION_CHOICES } from "./creation-vocabulary.ts";
+export type { ChoiceKey, CreationChoices, CreationInput } from "./creation-vocabulary.ts";
+import { CREATION_CHOICES } from "./creation-vocabulary.ts";
+import type { ChoiceKey, CreationChoices, CreationInput } from "./creation-vocabulary.ts";
 
 const RULES: Partial<Record<ChoiceKey, readonly (readonly [string, RegExp])[]>> = {
   genre: [["arena", /arena|竞技|对战/i], ["shooter", /shoot|\bfps\b|射击/i], ["rpg", /\brpg\b|role.play|角色扮演/i], ["puzzle-match", /puzzle|match.?3|解谜|消除/i], ["strategy-tower-defense", /strategy|tower.defen|策略|塔防/i], ["racing", /rac(e|ing)|赛车/i], ["runner", /runner|跑酷/i], ["roguelike-card", /rogue|deck|card|卡牌/i], ["idle", /idle|incremental|放置/i], ["rhythm", /rhythm|节奏/i], ["open-world", /open.world|探索/i], ["action-platformer", /platform|action|动作|跳跃/i]],
