@@ -110,3 +110,11 @@ whole playable bounds into the live viewport after reserving HUD and input
 space. Check every player and field edge in the actual frame at both
 aspects, and assert projected field/UI separation in a native regression
 test; unclipped controls alone do not prove a playable layout.
+
+## 2026-11-06 — Separate look recommendations from compatibility
+
+Catalogue `look.views` lists views a look suits, not every view it can
+draw. Expose it as recommendation data in creation schemas, never as a
+hard refusal for an explicit selection. `look.profiles` is the hard
+compatibility boundary. Check a field's documented meaning before turning
+recommendation metadata into validation.
