@@ -294,6 +294,7 @@ fn particle_effect_color(in: ParticleOut, shape: f32, normal: vec3<f32>) -> vec4
   f.shape_uv = in.shape_uv;
   f.color = in.color;
   f.shape = shape;
+  f.profile = 1.0;
   f.textured = emitter.sheet2.y;
   f.world = in.world;
   f.normal = normal;

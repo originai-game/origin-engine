@@ -5,6 +5,8 @@
 use og_tests_cooked::gfx;
 use std::path::PathBuf;
 
+#[path = "gfx/effect_beam.rs"]
+mod effect_beam;
 #[path = "gfx/gltf_extensions.rs"]
 mod gltf_extensions;
 #[path = "gfx/impostors.rs"]

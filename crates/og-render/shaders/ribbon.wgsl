@@ -1,6 +1,8 @@
 // Trails, ribbons and beams: camera-facing strips blended into the HDR
 // target after the opaque scene (depth tested, no depth write). u runs
-// along the strip, v across it. Untextured strips get a soft edge across v.
+// along the strip, v across it. Untextured strips get a soft edge across v;
+// effect strips get it always (unless their material's mask is their cross
+// section), and an effect beam fades in over its width at each end.
 // Prepended by frame.wgsl.
 //
 // `vs_strip` turns the strip points (ribbons_gpu.rs; a trail's written by
@@ -19,7 +21,9 @@
 struct RibbonIn {
   @location(0) position_v: vec4<f32>,
   @location(1) color: vec4<f32>,
-  @location(2) extra: vec4<f32>,  // x: u, y: 1 when textured, z: life along the strip, w: random bits (24)
+  // x: u, y: 1 when textured plus the end cap (0 to 0.5), z: life along
+  // the strip, w: random bits (24)
+  @location(2) extra: vec4<f32>,
 };
 
 struct RibbonOut {
@@ -37,6 +41,9 @@ struct RibbonOut {
   @location(7) fx_c1: vec4<f32>,
   @location(8) fx_c2: vec4<f32>,
   @location(9) shape_uv: vec2<f32>,
+  // The share of the strip's life an effect fades in over at each end (a
+  // beam's: one width; 0 none).
+  @location(10) cap: f32,
 };
 
 fn strip_effect(o: ptr<function, RibbonOut>, life: f32, seed: u32, v: f32) {
@@ -55,7 +62,8 @@ fn vs(r: RibbonIn) -> RibbonOut {
   o.clip = frame.view_proj * vec4<f32>(r.position_v.xyz, 1.0);
   o.uv = vec2<f32>(r.extra.x, r.position_v.w);
   o.color = r.color;
-  o.textured = r.extra.y;
+  o.textured = select(0.0, 1.0, r.extra.y >= 0.75);
+  o.cap = r.extra.y - o.textured;
   o.world = r.position_v.xyz;
   o.oit_key = oit_key4(r.position_v, r.color.rgb);
   strip_effect(&o, r.extra.z, u32(r.extra.w), r.position_v.w);
@@ -67,7 +75,7 @@ struct StripPoint {
   width: f32,
   color: vec4<f32>,
   u: f32,
-  flags: u32,          // 1: has a point before, 2: after, 4: textured
+  flags: u32,          // 1: has a point before, 2: after, 4: textured; bits 16 up: the end cap × 131070
   life: f32,           // along the strip, 0 to 1
   seed: u32,
 };
@@ -96,6 +104,7 @@ fn vs_strip(@builtin(vertex_index) vi: u32) -> RibbonOut {
     o.color = vec4<f32>(0.0);
     o.textured = 0.0;
     o.world = vec3<f32>(0.0);
+    o.cap = 0.0;
     return o;
   }
   let far = k == 2u || k == 4u || k == 5u;
@@ -118,6 +127,7 @@ fn vs_strip(@builtin(vertex_index) vi: u32) -> RibbonOut {
   o.uv = vec2<f32>(p.u, select(0.0, 1.0, plus));
   o.color = p.color;
   o.textured = select(0.0, 1.0, (p.flags & 4u) != 0u);
+  o.cap = f32(p.flags >> 16u) / 131070.0;
   o.world = world;
   strip_effect(&o, p.life, p.seed, o.uv.y);
   return o;
@@ -162,8 +172,17 @@ fn ribbon_fragment(in: RibbonOut) -> vec4<f32> {
     var f: EffectFragment;
     f.uv = in.uv;
     f.shape_uv = in.shape_uv;
-    f.color = in.color;
+    // Light, not a slab: a beam fades in at its ends whatever the
+    // material, and the strip is soft across its width unless the
+    // material's mask is its cross-section. Squared: an additive colour
+    // above 1 stays bright until its alpha is low, so a tent alone reads
+    // as a slab with a soft rim.
+    let life = in.shape_uv.x;
+    let cap = max(in.cap, 1e-4);
+    let ends = select(1.0, smoothstep(0.0, cap, life) * smoothstep(0.0, cap, 1.0 - life), in.cap > 0.0);
+    f.color = vec4<f32>(in.color.rgb, in.color.a * ends);
     f.shape = soft;
+    f.profile = soft * soft;
     f.textured = in.textured;
     f.world = in.world;
     // A strip faces the eye: across it the normal turns as a tube's, so

@@ -51,6 +51,19 @@ fn bar_mask(scene: &mut RenderScene) -> TextureHandle {
     scene.add_texture(t)
 }
 
+/// A beam's cross section across v: a narrow hot core in a wide dim glow.
+fn core_mask(scene: &mut RenderScene) -> TextureHandle {
+    let mut t = texture(64, ColorSpace::Linear, |_, v| {
+        let x = (v - 0.5).abs() * 2.0;
+        let core = (1.0 - smooth(0.0, 0.35, x)).powi(2);
+        let glow = (1.0 - smooth(0.1, 1.0, x)).powi(2);
+        let b = ((0.7 * core + 0.3 * glow) * 255.0) as u8;
+        [b, b, b, 255]
+    });
+    t.mips = Mips::Generate;
+    scene.add_texture(t)
+}
+
 /// A soft ring across v (with polar coordinates, across the radius).
 fn ring_mask(scene: &mut RenderScene) -> TextureHandle {
     let mut t = texture(64, ColorSpace::Linear, |_, v| {
@@ -309,15 +322,20 @@ pub fn effect_materials_scene() -> RenderScene {
         position: effect_trail_at(0),
         tick: 0,
     });
-    // 6. A beam: an open tube of noise core between two points.
+    // 6. A beam: scrolling noise through a ramp, a mask across it for a
+    // hot core in a dim glow; the beam fades its ends itself.
+    let core = core_mask(&mut scene);
     let core = scene.add_effect_material(EffectMaterial {
         main: noise_tex(fine, 1.0, Vec2::new(-3.0, 0.0)),
-        color: [0.5, 1.6, 0.4, 1.0],
-        intensity: EffectValue::Constant(1.0),
-        fresnel: Some(Fresnel {
-            power: 1.5,
-            strength: 1.0,
-            invert: true,
+        ramp: Some(ColorCurve::new(&[
+            (0.0, [0.3, 1.4, 0.35, 0.7]),
+            (0.6, [0.8, 2.8, 0.7, 0.9]),
+            (1.0, [3.0, 5.0, 2.4, 1.0]),
+        ])),
+        mask: Some(EffectTexture {
+            texture: Some(core),
+            channel: EffectChannel::Red,
+            ..Default::default()
         }),
         ..Default::default()
     });

@@ -211,6 +211,10 @@ struct EffectFragment {
   // The surface's fixed shape when it has no texture (a soft dot, a soft
   // edge; 1 otherwise), applied when the material has no main texture.
   shape: f32,
+  // The surface's own cross-section, applied unless the material has a
+  // mask (which is then the cross-section): a strip's soft edge across its
+  // width; 1 for particles and meshes.
+  profile: f32,
   // 1 when the surface has a texture of its own (group 1).
   textured: f32,
   world: vec3<f32>,
@@ -268,6 +272,8 @@ fn effect_shade(f: EffectFragment, surface: texture_2d<f32>) -> vec4<f32> {
   let mask_tex = textureSampleGrad(effect_mask, effect_sampler, uv_mask, gk[0], gk[1]);
   if ((bits & FX_MASK) != 0u) {
     c.a *= effect_scalar(mask_tex, effect.flags.z);
+  } else {
+    c.a *= f.profile;
   }
   // Erosion: cut under the amount, a soft border, a coloured edge.
   let uv_noise = effect_uv(2u, f.shape_uv);

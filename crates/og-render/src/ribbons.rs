@@ -152,8 +152,8 @@ impl Default for Beam {
 pub(crate) struct RibbonVertex {
     position_v: [f32; 4],
     color: [f32; 4],
-    /// x: u, y: 1 when textured, z: the life along the strip, w: its
-    /// random bits (24, exact in a float).
+    /// x: u, y: 1 when textured plus [`Strip::cap`], z: the life along
+    /// the strip, w: its random bits (24, exact in a float).
     extra: [f32; 4],
 }
 
@@ -220,6 +220,8 @@ pub(crate) const POINT_PREV: u32 = 1;
 pub(crate) const POINT_NEXT: u32 = 2;
 /// [`StripPoint::flags`]: the strip is textured.
 pub(crate) const POINT_TEXTURED: u32 = 4;
+/// [`StripPoint::flags`] from bit 16: [`Strip::cap`] in steps of this.
+const CAP_STEPS: f32 = 131_070.0;
 
 /// `struct StripPoint` in ribbon.wgsl and trails.wgsl: one point of a
 /// strip, which the vertex shader turns into its edge across the view.
@@ -232,6 +234,7 @@ pub(crate) struct StripPoint {
     /// The texture coordinate along the strip.
     pub u: f32,
     /// [`POINT_PREV`], [`POINT_NEXT`], [`POINT_TEXTURED`]; 0: no segment.
+    /// From bit 16 the strip's end cap ([`CAP_STEPS`]).
     pub flags: u32,
     /// Its life along the strip for an effect material: 0 at the first
     /// point (a trail's head), 1 at the last.
@@ -250,7 +253,7 @@ pub(crate) fn strip_points(s: &Strip, out: &mut Vec<StripPoint>) {
         POINT_TEXTURED
     } else {
         0
-    };
+    } | (((s.cap.clamp(0.0, 0.5) * CAP_STEPS).round() as u32) << 16);
     for (i, (p, &l)) in s.points.iter().zip(&lengths).enumerate() {
         let u = match s.uv {
             RibbonUv::Stretch => l / total,
@@ -312,6 +315,10 @@ pub(crate) struct Strip {
     pub effect: Option<crate::EffectMaterialHandle>,
     /// Its random bits for an effect material (24 bits: they ride a float).
     pub seed: u32,
+    /// The share of its life an effect material fades in over at each end,
+    /// 0 to 0.5 (a beam's: one width of its length; 0 for trails and
+    /// ribbons, whose ends are their curves').
+    pub cap: f32,
 }
 
 impl Trails {
@@ -425,6 +432,7 @@ impl Trails {
                 u_offset: 0.0,
                 effect: style.effect,
                 seed: strip_seed(t.id),
+                cap: 0.0,
             });
         }
         let frame = self.frame;
@@ -496,6 +504,7 @@ pub(crate) fn fixed_strips(
             u_offset: 0.0,
             effect: r.effect,
             seed: 0,
+            cap: 0.0,
         });
     }
     let time = tick as f32 / tick_rate;
@@ -536,6 +545,7 @@ pub(crate) fn fixed_strips(
             u_offset: -time * b.scroll,
             effect: b.effect,
             seed: hash_seed(b.seed) & 0x00ff_ffff,
+            cap: (b.width / axis.length().max(1e-6)).min(0.5),
         });
     }
     strips
@@ -569,7 +579,7 @@ fn emit_strip(
     let n = s.points.len();
     let lengths = cumulative(&s.points.iter().map(|p| p.position).collect::<Vec<_>>());
     let total = lengths.last().copied().unwrap_or(0.0).max(1e-6);
-    let textured = s.texture.is_some() as u32 as f32;
+    let textured = s.texture.is_some() as u32 as f32 + s.cap.clamp(0.0, 0.5);
     let edge = |i: usize| -> (Vec3, Vec3, f32) {
         let p = s.points[i].position;
         let prev = s.points[i.saturating_sub(1)].position;
