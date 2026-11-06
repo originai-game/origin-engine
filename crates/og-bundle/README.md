@@ -39,18 +39,18 @@ type (`format::type_hash`); the schema version is the root's. All in
 
 | Blob | Root | Sections |
 |---|---|---|
-| `og.Model` | `ModelMeta` (counts, default scene, skipped animations/skins, default-scene bounds) | `primitives` `PrimitiveRow` (material, attribute bits, vertex count/stride, byte ranges in `vertices`/`indices`, index count, LOD range, dequantisation offset/scale), `lods` `LodRow` (index range, simplify error), `meshes` `MeshRow` (primitive range, name), `materials` `MaterialRow`, `textures` `TextureRefRow` (asset id, kind), `nodes` `NodeRow` (parent, mesh, name, TRS, `visible`: 0 when `KHR_node_visibility` hides it at rest; schema 2 added it, and the stamps of every model, proxy and `#anim` carry `nodes-v2`, so each re-cooks once), `scenes` `SceneRow`, `roots` (u32), `strings` (UTF-8 pool), `vertices`, `indices` (meshopt streams, 4-aligned per primitive) |
+| `og.Model` | `ModelMeta` (counts, default scene, skipped animations/skins, default-scene bounds) | `primitives` `PrimitiveRow` (material, attribute bits, vertex count/stride, byte ranges in `vertices`/`indices`, index count, LOD range, dequantisation offset/scale), `lods` `LodRow` (index range, simplify error), `meshes` `MeshRow` (primitive range, name), `materials` `MaterialRow`, `textures` `TextureRefRow` (asset id, kind), `nodes` `NodeRow` (parent, mesh, name, TRS, `visible`: 0 when `KHR_node_visibility` hides it at rest; schema 2, stamped `nodes-v2`), `scenes` `SceneRow`, `roots` (u32), `strings` (UTF-8 pool), `vertices`, `indices` (meshopt streams, 4-aligned per primitive) |
 | `og.Texture` | `TextureMeta` (size, levels, kind, codec, colour space, alpha, supercompression) | `ktx2`: a complete KTX2 file, 16-aligned |
 | `og.TextureArray` | `TextureArrayMeta` (size, layers, levels, kind) | `layers` `ArrayLayerRow` (the layers' texture ids in `strings`), `strings` |
 | `og.Sound` | `SoundMeta` (rate, channels, frames, QOA frames per chunk, chunk count; 0 0 when whole) | `qoa`: a complete QOA file, or of a chunked sound its header and first chunk |
 | `og.SoundChunk` | `SoundChunkMeta` (chunk, first QOA frame, frame count) | `qoa`: the chunk's QOA frames |
 | `og.Font` | `FontMeta` (units/em, em_px, px_range, ascender, descender, line gap, glyph and page counts, page size, uncooked code points) | `glyphs` `GlyphRow` sorted by code point (shaped forms at U+F0000 + glyph id), `kerning` `KernRow` (left, right, adjust in em) sorted by pair, `atlas.<n>` KTX2 RGBA8/zlib, `ttf` (the font file, with a shaped script or `runtime true`) |
-| `og.Animation` | `AnimMeta` (counts; schema 2 added `hidden_count`, so every `#anim` cooked before the visibility track re-cooks) | `nodes` `NodeRow`, `hidden` (u32 nodes hidden at rest, ascending), `skins` `SkinRow`, `joints` (u32), `inverse_binds` (f32 ×16 per joint, column-major), `clips` `ClipRow` (name, duration, rate, source rate, frames, channel and event ranges), `channels` `ChannelRow` (node, path, source interpolation, lanes, sample offset, codec, keys, packed offset), `samples` (f32), `packed` (u16 quantised keys), `events` `EventRow`, `skin_streams` `SkinStreamRow` + `skin_data`, `morphs` `MorphRow` (moved-vertex count, data and index streams) + `targets` `TargetRow` (moved range) + `morph_data`, `strings` |
+| `og.Animation` | `AnimMeta` (counts, `hidden_count`; schema 2) | `nodes` `NodeRow`, `hidden` (u32 nodes hidden at rest, ascending), `skins` `SkinRow`, `joints` (u32), `inverse_binds` (f32 ×16 per joint, column-major), `clips` `ClipRow` (name, duration, rate, source rate, frames, channel and event ranges), `channels` `ChannelRow` (node, path, source interpolation, lanes, sample offset, codec, keys, packed offset), `samples` (f32), `packed` (u16 quantised keys), `events` `EventRow`, `skin_streams` `SkinStreamRow` + `skin_data`, `morphs` `MorphRow` (moved-vertex count, data and index streams) + `targets` `TargetRow` (moved range) + `morph_data`, `strings` |
 | `og.Scene` | `SceneMeta` (counts, name) | `entities` `EntityRow` (name, parent, instance), `refs` `RefRow` (asset ids), `components` `ComponentRow` (name, layout hash, rows, inferred), `strings`, `c.<Type>` rows (`u32` entity index + packed fields), `s.<Type>` schema JSON |
 | `og.Tileset` | `TilesetMeta` (text bytes) | `text` (the canonical tileset `.ogt`) |
 | `og.Tilemap` | `TilemapMeta` (width, height, tile px, unit, layer/object/tileset/prop counts) | `layers` `MapLayerRow` (name, tileset, terrain name, parallax, offset, opacity, flags visible/collision/repeat x/repeat y/terrain, z, first cell), `cells` (u32 LE per cell, layer after layer, og-tilemap's cell encoding), `objects` `MapObjectRow` (name, kind, rect, property range), `props` `MapPropRow`, `tilesets` `MapTilesetRow` (asset id, or embedded canonical text), `strings` |
 | `og.EnvironmentMap` | `EnvironmentMeta` (size, levels, texel count, the source's width and height, intensity, rotation, samples; 0 for a KTX2's own prefiltered levels) | `texels` (og-render's `EnvironmentMapData::texels`: RGB9E5 u32 LE, level after level, each the six faces +x −x +y −y +z −z, rows from the top; zlib), `irradiance` `EnvironmentShRow` × 9 (r, g, b of the irradiance-over-π harmonics) |
-| `og.Terrain` | `TerrainMeta` (size, samples, tile size and count, height range, layer count, control map size, height blend, lod, cast shadows, collision, the layer arrays' ids as ranges of `strings`; version 3) | `tiles` `TerrainTileRow` (first sample, size, range, byte range in `heights`), `heights` (per tile u16 LE, zlib), `layers` `TerrainLayerRow` (texture names as ranges of `strings`, og-render's layer fields, its layers of the arrays; version 2), `strings`, `control` (RGBA8, zlib) |
+| `og.Terrain` | `TerrainMeta` (size, samples, tile size and count, height range, layer count, control map size, height blend, lod, cast shadows, collision, the layer arrays' ids as ranges of `strings`; version 3) | `tiles` `TerrainTileRow` (first sample, size, range, byte range in `heights`), `heights` (per tile u16 LE, zlib), `layers` `TerrainLayerRow` (texture names as ranges of `strings`, og-render's layer fields, its layers of the arrays), `strings`, `control` (RGBA8, zlib) |
 | `og.Look` | `LookMeta` (text bytes) | `text` (the canonical, flattened look) |
 | `og.Palette` | `PaletteMeta` (colour count) | `rgb` (3 bytes per colour, sRGB) |
 | `og.Lut` | `LutMeta` (side, 32) | `rgba` (size³ RGBA8, red fastest) |
@@ -89,8 +89,7 @@ with no block format, or no renderer attached yet. og-runtime's loaders
 pass the attached backend's formats to the host's texture hook; natively
 basisu transcodes here, on the web the engine Worker transcodes with
 Binomial's transcoder once the renderer is attached, to the format
-`og_web_texture_target` names. On the template's five Basis textures the
-GPU holds 2.5 MB instead of 10.1 MB (`tests/evidence/P2/render/compressed-textures.md`).
+`og_web_texture_target` names.
 
 ## Animation samples
 
@@ -116,31 +115,8 @@ frame is rebuilt when it is read with the same interpolation the
 reduction measured, scalar and in a fixed order, so every host gets the
 same floats and a pose is bit for bit the one the frames written out as
 f32 give (og-cook's `tests/anim_compress.rs`: the world hash of every clip played
-forwards, slowed and backwards is the same tick for tick, and was the
-same before this change). A channel whose 16-bit quantisation alone would
+forwards, slowed and backwards is the same tick for tick). A channel whose 16-bit quantisation alone would
 miss the tolerance stays f32. The tolerance is per lane in the channel's units
 (metres, unit-quaternion components, scale, weight); its default, 1e-4, is
 0.1 mm and 0.011°. Retargeting reads the clips uncompressed, then the
 model's `#anim` compresses the result.
-
-On fx-showcase's animated models (the game template, third-person and
-og-tests carry copies of the same files), the `#anim` blobs in bytes
-(`tests/evidence/P4/cook/anim-compress.md`):
-
-| Model | Before (r3, f32) | f32 + constants + sparse morphs | Compressed (1e-4) | Samples f32 → compressed |
-|---|---:|---:|---:|---:|
-| `walker.glb` (6 clips, 4 morph targets) | 9,002 | 9,051 | 6,203 | 4,892 → 2,028 |
-| `trickster.glb` (4 clips) | 121,879 | 106,967 | 99,479 | 25,200 → 2,012 |
-| `strider.glb` (3 retargeted clips) | 21,285 | 20,501 | 10,293 | 15,940 → 4,448 |
-| `stout.glb` (no clips) | 4,136 | 4,200 | 4,200 | — |
-| `puppet2d.glb` (1 clip) | 8,427 | 8,603 | 5,899 | 4,836 → 2,132 |
-| `anims/humanoid-clips.glb` (3 clips) | 14,736 | 12,576 | 7,648 | 11,636 → 4,150 |
-| **total** | **179,465** | **161,898** | **133,722** | **62,504 → 14,770** |
-
-The trickster's blob is mostly its skin stream (93 KB of joints and
-weights per vertex). Every compressed lane is within the tolerance (worst
-9.97e-5), every node within 0.18 mm in model space, and the trickster posed
-mid-clip by either cook renders within og-tests' default frame tolerance
-of the other (RMSE 0.0028, 73 of 921,600 pixels past 32 levels, all on
-silhouette edges). f32 stays the default, so every committed reference
-frame is unchanged.

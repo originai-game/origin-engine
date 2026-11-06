@@ -1,6 +1,6 @@
 # og-physics
 
-Physics for the engine (`docs/design.md` §2.4, §2.7; phase 1 M6): rapier3d
+Physics for the engine (`docs/design.md` §2.4, §2.7): rapier3d
 and rapier2d (`enhanced-determinism`) as one scheduled system, `og.physics`,
 over the ECS. Game code owns the components; the system steps them and
 writes the dynamic bodies back.
@@ -17,6 +17,12 @@ let hit = physics.query(&world)?.raycast(&RaycastDesc { origin, direction: -Vec3
 Features `physics3d` and `physics2d` (both default) choose the rapier
 builds; `og.Physics.profile` (3 or 2) chooses the one a world steps. In 2D
 bodies move in the xy plane and rotate about z; a transform keeps its z.
+Every record below is in the IDL's physics module
+(`crates/og-api/api/physics.ogt`), and og-runtime links og-physics for both
+hosts; the readouts (`ropePoints`, `clothPoints`, `fluidParticles`,
+`waterHeight`, `vehicleWheels`, `ragdollPose`) and the rig from an og-anim
+skeleton (`ragdollRigFromSkeleton`, `setRagdollRig`) are `og.physics`
+functions.
 
 ## API map
 
@@ -49,8 +55,8 @@ are `u32` constants in `src/schema.rs`.
 | `og.CollisionEnded` | event | `a`, `b` |
 | `og.SensorEntered`, `og.SensorExited` | event | `sensor`, `other` |
 | `og.JointBroken` | event | `joint`, `body`, `other`, `force`, `torque`; in joint entity order |
-| `og.ContactHook` | component | `one_way`, `surface_velocity`, `friction`, `restitution`, `ignore` (G2-3 hooks) |
-| `og.BodySlept`, `og.BodyWoke` | event | `entity`; in entity order (G2-3 sleep) |
+| `og.ContactHook` | component | `one_way`, `surface_velocity`, `friction`, `restitution`, `ignore` |
+| `og.BodySlept`, `og.BodyWoke` | event | `entity`; in entity order |
 | `og.Contact` | event | `a`, `b`, `sensor` (bit 0: a is a sensor, bit 1: b); every touching pair, each tick |
 
 `og.ContactHook`, `og.BodySlept`, `og.BodyWoke`, `og.JointBroken`,
@@ -58,11 +64,11 @@ are `u32` constants in `src/schema.rs`.
 registers one and grants it to `og.physics` (and the query system), as a
 host does once a game names it (og-runtime's `lazy.rs`). Until then the
 events are not sent and no hooks are read, so a world that never uses
-them keeps the type table, saves and hash it had before G2-3.
+them keeps the type table, saves and hash of a world without them.
 
 A collider without a `RigidBody` is static at its transform, unless its
 entity's `og.Parent` chain reaches a `RigidBody`: then it is a compound
-child of the nearest such body (G2-3, `gather::ancestor_body`), placed at
+child of the nearest such body (`gather::ancestor_body`), placed at
 its pose relative to it (the transforms between them composed, the body's
 scale applied), in entity order. Its mass adds by density, or the body's
 `mass` is shared among its colliders by theirs; it keeps its own friction,
@@ -74,8 +80,7 @@ fluids, water and ragdolls may sit on a child entity: the gather places
 them at the entity's world pose, its transform after its parents' down
 the `og.Parent` chain (`world_pose`, as the renderer composes
 `og.MatrixWorld`; the runtime's ragdoll targets and water heights use the
-same), so a cape on a body's child follows the body (`tests/soft.rs`;
-kestrel-stair #10). Events sent in
+same), so a cape on a body's child follows the body (`tests/soft.rs`). Events sent in
 tick N are read in tick N+1.
 
 ## Determinism and the state block
@@ -119,24 +124,20 @@ shape of every convex-hull, triangle-mesh and height-field collider out of
 the rapier world's bytes and keeps its key (shape, handle, scale) and
 place instead (`sim::save`), and decoding rebuilds each from the geometry
 registered then (from the shape cache when it holds it) and splices it
-back, so the restored world is rapier's byte for byte (`tests/saves.rs`: a
-7,200-triangle ground, a hull and a height field save to 12 KB instead of
-630 KB). Register them in a fresh engine before restoring: a save naming
+back, so the restored world is rapier's byte for byte (`tests/saves.rs`).
+Register them in a fresh engine before restoring: a save naming
 one that is not is refused, naming it.
 
+### The block's extension trailer
 
-### The block's extension trailer (G2-3)
-
-What G2-3 keeps beyond the first form of the simulation (compound
-children's built poses; sleep, joint breaking, the drivetrain and soft
-volumes) is not in `Sim`'s bincode but in a trailer after the
-block, in og-ecs's shared state-block format (`og_ecs::trailer`, which
+Compound children's built poses, sleep, joint breaking, the drivetrain,
+soft volumes and garments are not in `Sim`'s bincode but in a trailer after
+the block, in og-ecs's shared state-block format (`og_ecs::trailer`, which
 `og.nav` and `og.ai` use too): `OGXT`, a format byte 1, then sections of
 a little-endian `u16` tag, `u32` length and bytes, tags ascending
 (`sim::SimExt`). It is written only when a section is non-empty, so a world
-using none of it saves and hashes byte for byte as before
-(`tests/unchanged.rs` pins the beyond scenario's hashes from cb1d65bf), and
-a decoder skips a tag it does not know: a later extension adds a tag.
+using none of it saves and hashes without one (`tests/unchanged.rs` pins
+the beyond scenario's hashes), and a decoder skips a tag it does not know: a later extension adds a tag.
 Tags: 1 compounds, 2 sleep (the rest counters), 3 hooks (some collider has its contact hooks on, an empty section), 4 vehicles (a drivetrain's gearbox, wheel children), 5 soft volumes (each og.SoftBody's points and surface), 6 garments (each og.Garment's points, targets and constraints).
 
 ## The step on the lanes
@@ -180,19 +181,17 @@ og-physics splits its own work besides (`src/lanes.rs`, `Grains`):
   pairs with the particles after it) and the collisions with solids and
   the container run by ranges of particles from two grains, the ranges'
   pairs joined in particle order: the pairs, and their order, of one
-  thread. The density pass could gather each particle's sums in the order
-  its scatter visits them, bit for bit, but the pairs' transpose that needs
-  costs what the split saves (8,000 3D particles on four lanes: 8.37 ms
-  scattered, 8.45 gathered), so it stays the scatter. Viscosity,
+  thread. The density pass stays a serial scatter: gathering each
+  particle's sums needs a transpose of the pairs that costs what the split
+  saves. Viscosity,
   relaxation and mixing are Gauss-Seidel over the pairs in index order:
   particle i's pairs read what particle i - 1's wrote whenever they are
   neighbours, a chain as long as the fluid, which only an order that
   moves every bit (Jacobi, two colours) would split. They stay serial.
 - **Ragdolls** are planned alone (targets, blend, the limp and recover
   switches, each bone's pose) by ranges of ragdolls (`ragdolls`) and synced
-  to rapier in ragdoll order. The split never pays: 1,024 ragdolls of
-  three bones spend 0.2 ms in their sync, most of it the rapier calls, so
-  the grain is off.
+  to rapier in ragdoll order. The split does not pay (the sync is mostly
+  rapier calls), so the grain is off.
 - **Queries** (`PhysicsSystem::query`, `tick_query`, the raycast, shape
   cast and overlap) run through `og_lanes::serial`: on the calling thread
   inside its one-thread pool, so parry's own `rayon::join` runs inline and
@@ -218,24 +217,16 @@ six 2D fluids and 24 ragdolls in each profile going limp and recovering,
 each with every pass split by `Grains::always`, with lanes off and with
 the measured grains: one hash and one snapshot), `tests/pile.rs` (a pen at
 `pool_bodies` stepped with lanes on and off), `tools/wasm-determinism`
-(physics_hash 18126409214070009362 before and after rounds two and three;
-6597690808174327434 once the platformer moved itself, its 2D scenario's
-walker running and landing differently by design, and 947364242694612608
-with `og.PlatformerController.impulse` in its record; the kinematic rule
-leaves it; 15539601638348908910 once the character controller moved
-itself, its 3D scenario's walker standing a skin over the floor by design,
-the 2D scenario's world hash unchanged by the shared move; natively with lanes off, on four and eight threads and with every pass
+(natively with lanes off, on four and eight threads and with every pass
 split on four and on eight; the wasm's builds hash the same scenarios) and
 `packages/engine/tests/lanes.test.ts` (a 1,000-box pile through the native
 engine with lanes off and on four threads). The lanes wasm itself is
 checked in the browser (`bench/lanes.ts --chrome --pile`: the same capture
 in its three modes).
 
-The grains were measured on the M4 Pro (8 performance and 4 efficiency
-cores, shared with other builds), `examples/lanes_costs.rs` for the step
-and `examples/soft_lanes_costs.rs` for the soft bodies and ragdolls:
-`tests/evidence/P4/physics-lanes/`, `tests/evidence/P4/physics-lanes-2/`
-and `tests/evidence/P4/physics-3/`.
+`Grains::measured(threads)`, the default grains, chosen with
+`examples/lanes_costs.rs` (the step) and `examples/soft_lanes_costs.rs`
+(soft bodies and ragdolls):
 
 | threads | step on the pool from | edges a task (on the pool) | rows a task | ropes split from | cloths from | fluid sets from | particles a task | bodies, ragdolls |
 |---|---|---|---|---|---|---|---|---|
@@ -244,20 +235,6 @@ and `tests/evidence/P4/physics-3/`.
 | 5 | 1,000 | 2,048 | 1,024 | 1,600 (8 ropes) | 4,000 (4 cloths) | 1,000 | 2D 256, 3D 512 | never |
 | 6 | 1,000 | 2,048 | 1,024 | 3,200 (16 ropes) | 4,000 | 1,000 | 2D 256, 3D 512 | never |
 | 7 and up | 1,500 | 2,048 | 1,024 | 4,800 (24 ropes) | 4,000 | 1,000 | 2D 256, 3D 512 | never |
-
-Rapier's stages wait for their slowest worker, and with more threads some
-land on an efficiency core or a busy one, so the step pays later the more
-threads it wakes: on four lanes from about 500 bodies (-35 % at 2,000), on
-six from about 1,000, on eight from about 1,500 (-13 % at 2,000). Around
-rapier a pen of 2,000 now spends 1.24 ms lanes off and 1.20 on four lanes
-(gather, sync, readout and write-back; 1.51 and 1.64 before round three),
-a pen of 4,000 2.76 and 2.07 to 2.30 on the pools. Ropes, cloths and
-fluid sets pay as soon as there are a few: 128 ropes 0.90 to 0.29 ms on
-four lanes, 32 cloths 1.22 to 0.38, eight 3D fluids of 1,000 6.5 to 1.8
-(1.4 on eight lanes). One fluid gains from its split passes: a 2D fluid of
-1,000 particles 1.39 to 0.77 ms, of 8,000 15.1 to 6.6; a 3D fluid of
-2,000 1.81 to 1.47, of 8,000 11.6 to 7.7 (its serial relaxation weighs
-more).
 
 ### Where the time goes: `stats`
 
@@ -277,7 +254,7 @@ went to the pool. The clock is `Instant` natively and each Worker's
 hash, nothing in the simulation reads them. `lanes_costs --phases` prints
 their means.
 
-## Beyond rigid bodies (the E5 round)
+## Beyond rigid bodies
 
 Components over the same rapier world and state block (`src/schema_ext.rs`,
 reached from TypeScript through `crates/og-api/api/physics.ogt`'s physics module):
@@ -288,10 +265,10 @@ reached from TypeScript through `crates/og-api/api/physics.ogt`'s physics module
 | `og.CharacterController` | a kinematic capsule moved by `move` after the step, its own move (below): slopes to `max_slope`, steps to `step_height`, ground snapping, carried by the moving platform it stands on, jumps on the rising edge with coyote time, pushes dynamic bodies, blocked by what its collider's layers and mask meet; writes `grounded`, `velocity`, `ground` |
 | `og.PlatformerController` | 2D: run acceleration, jump height and time to apex, fall and jump-cut gravity, apex hang, coyote time, jump buffer, air jumps, wall slide and jump, one-way layers with drop-through, corner correction, moving platforms, an `impulse` the game sets (a knock-back) taken once; its own move (below), blocked by what its collider's layers and mask meet; sends `og.CharacterEvent` |
 | `og.Vehicle` | 3D: rapier's raycast vehicle (carried in `raycast_vehicle.rs` with its roll influence and skid info public, one pass per wheel, the tyre impulses sized with each body's effective inverse mass so locked axes count, and the opposite of every wheel impulse applied to a dynamic ground body: a car on a raft weighs on it and drives it backwards, momentum conserved; fixed and kinematic ground take nothing) with a top-speed fade and reverse braking, its wheel rays filtered by the chassis collider's layers and mask, `roll_influence` (0: corners flat), brakes in newtons a wheel, defaults for a 1,000 kg car, `slip` written; 2D: wheel bodies on sprung, motorised wheel joints; `vehicle_wheels` for drawing, with each wheel's `slip` and `side_speed` |
-| `og.Vehicle` drivetrain (G2-3) | `model` VEHICLE_DRIVETRAIN: `drivetrain.rs`, rapier-free, turns throttle and forward speed into a torque at the driven wheels through the torque curve, a gear and the final drive, with an automatic or manual gearbox whose gear, rpm and clutch are the trailer's tag 4 (`SimExt::vehicles`); 3D splits it across the driven wheels as forces at their radius, 2D drives the wheel motors towards the gear's top speed with it. `handbrake` brakes and loosens the handbrake wheels (`handbrakeGrip` on their friction slip and side stiffness), `driftGrip` their side stiffness while they slide. `og.VehicleWheel` children (lazy, found among parented entities, up to 16 in entity order) replace the implicit wheels; what building bakes in of them is kept in the tag 4 entry so a changed child rebuilds the controller. An arcade car on its implicit wheels writes no entry, so its block does not move. |
+| `og.Vehicle` drivetrain | `model` VEHICLE_DRIVETRAIN: `drivetrain.rs`, rapier-free, turns throttle and forward speed into a torque at the driven wheels through the torque curve, a gear and the final drive, with an automatic or manual gearbox whose gear, rpm and clutch are the trailer's tag 4 (`SimExt::vehicles`); 3D splits it across the driven wheels as forces at their radius, 2D drives the wheel motors towards the gear's top speed with it. `handbrake` brakes and loosens the handbrake wheels (`handbrakeGrip` on their friction slip and side stiffness), `driftGrip` their side stiffness while they slide. `og.VehicleWheel` children (lazy, found among parented entities, up to 16 in entity order) replace the implicit wheels; what building bakes in of them is kept in the tag 4 entry so a changed child rebuilds the controller. An arcade car on its implicit wheels writes no entry, so its block does not move. |
 | `og.Rope`, `og.Cloth` | Verlet strands and grids with pins, wind and gusts, pushed out of every solid collider; cloth with `friction` against solids, `substeps`, and self-collision by `thickness` (below); `rope_points`, `cloth_points` |
-| `og.SoftBody` (G2-3) | PBD soft volumes (`softbody.rs`): an icosphere, a box's faces or a closed registered mesh (welded), 2D a ring; per substep, `iterations` passes of pins (`pinTop`), edge distances by `stiffness`, the volume constraint (Müller et al. 2007: every point along the volume's gradient, 2D the area's) towards `pressure` × the rest volume, and push-out of solids at `thickness`, then friction. One-way like cloth; lazy, so found by `SystemContext::query_with` over the granted type; its points and surface are the trailer's tag 5 (`SimExt::softs`), written only while one exists; `soft_body_points` |
-| `og.Garment` (R9) | Cloth on a skinned character (`garment.rs`), 3D only: the host hands each tick the skin's targets for the rig's points in the world (`set_garment_rig` once, a welded mesh with each point's freedom; `set_garment_pose` each tick, after the animation; og-runtime's `garment.rs` skins them on the CPU), and per substep the points integrate gravity and a gusting wind, then `iterations` passes of edges, bends, the backstop behind the skin's normal, the reach (`freedom` × `maxDistance`, 0 within `pinTop` of the top) and push-out of solids at `radius`; the skin carries each point (`previous` moves with its correction). One-way like cloth; lazy; the trailer's tag 6 (`SimExt::garments`), shifted with the origin; `garment_points` |
+| `og.SoftBody` | PBD soft volumes (`softbody.rs`): an icosphere, a box's faces or a closed registered mesh (welded), 2D a ring; per substep, `iterations` passes of pins (`pinTop`), edge distances by `stiffness`, the volume constraint (Müller et al. 2007: every point along the volume's gradient, 2D the area's) towards `pressure` × the rest volume, and push-out of solids at `thickness`, then friction. One-way like cloth; lazy, so found by `SystemContext::query_with` over the granted type; its points and surface are the trailer's tag 5 (`SimExt::softs`), written only while one exists; `soft_body_points` |
+| `og.Garment` | Cloth on a skinned character (`garment.rs`), 3D only: the host hands each tick the skin's targets for the rig's points in the world (`set_garment_rig` once, a welded mesh with each point's freedom; `set_garment_pose` each tick, after the animation; og-runtime's `garment.rs` skins them on the CPU), and per substep the points integrate gravity and a gusting wind, then `iterations` passes of edges, bends, the backstop behind the skin's normal, the reach (`freedom` × `maxDistance`, 0 within `pinTop` of the top) and push-out of solids at `radius`; the skin carries each point (`previous` moves with its correction). One-way like cloth; lazy; the trailer's tag 6 (`SimExt::garments`), shifted with the origin; `garment_points` |
 | `og.Fluid2D` | double density relaxation (Clavet et al.) on a grid in a fixed order, velocity capped at half the radius per substep; fluids of one `group` simulated together, layering by `density` and blending by `mixing` (below); `fluid_particles`, `fluid_mix` |
 | `og.Fluid3D` | 3D profile: the same model over a spatial hash, against 3D colliders and height fields, in optional `bounds`, with an emitter (`emitRate` up to `maxCount`) and a sink box; groups layer and mix as in 2D (below); `fluid3d_particles`, `fluid3d_mix` |
 | `og.WaterSurface`, `og.WaterLine` | a height field and a spring line splashed by crossing bodies (`og.Splash`), buoyancy and drag on dynamic bodies; `water_heights`, `water_line` |
@@ -302,33 +279,20 @@ rest), in entity order, inside the state block: `tests/beyond_determinism.rs`
 runs a 3D and a 2D world with every feature 1200 ticks twice to the same
 hash and snapshot, and a restore at tick 600 ends in the same world and the
 same ropes, cloth, fluid, water, wheels and bones. Rigs are assets like
-meshes. CPU costs
-per feature: `cargo run --release -p og-physics --example soft_costs`
-(`tests/evidence/E5/feature-costs.md`) and, for the phase 2 round's,
-`--example anim_physics_costs` (`tests/evidence/P2/anim-physics/costs.md`),
-and for the 3D fluid `--example fluid3d_costs`
-(`tests/evidence/P2/sph/costs.md`).
+meshes. CPU costs per feature: `cargo run --release -p og-physics --example
+soft_costs`, `--example anim_physics_costs` and, for the 3D fluid,
+`--example fluid3d_costs`.
 
 ### The controllers' move (`src/mover.rs`)
 
 `og.CharacterController` (both profiles) and `og.PlatformerController`
 move their shape themselves, not through rapier's
 `KinematicCharacterController`. That controller casts with its skin as
-parry's target distance, and parry 0.31's support-map cast with a target
-distance is off by up to the distance (a 0.7 × 1.25 box 2 cm over a 74 m
-floor travels 1.98 cm, not 1 cm), while a cast starting within it falls
-back on a contact query that returns nothing at some places. A run
-grazing the floor then met it at random with a tilted normal: in 2D the
-controller's slope rule (2D has no horizontal tangent) took the whole
-step, the run stuttering to 0 m/s every few ticks (a 2D platformer's
-finding #16), and a shape put exactly on a floor fell 11 mm into it and stuck
-(#15); in 3D (row 72, measured with a 3D game's capsule, radius 0.3,
-1.6 m, at 6 m/s) a run dropped to 0 to 0.4 m/s for a tick every second or
-so on one box, on adjacent boxes and on a triangle mesh, the capsule stood
-1 mm over the floor instead of its 2 cm skin and crept up 0.1 mm a tick,
-one put on the floor sank 9 cm, 0.2 m stairs with 0.3 m treads stopped it
-at the first step (the autostep wanted the capsule's width on the tread)
-and a 30° slope was climbed at 4.4 m/s across. Exact casts (no target
+parry's target distance, and parry's support-map cast with a target
+distance is off by up to the distance, while a cast starting within it
+falls back on a contact query that returns nothing at some places: runs
+grazing the floor stutter, shapes put on a floor sink into it, and stairs
+stop the autostep. Exact casts (no target
 distance) from a millimetre away or more measure to 2e-5 m, so the move
 keeps its `skin` itself: rising, up then across; otherwise lifted two
 skins (less under a ceiling), across (up a walkable slope keeping its
@@ -343,22 +307,15 @@ ground, not a dynamic body, at most `stepHeight` over the ground it stood
 on; with `gravityScale` 0 it slides in any direction. Both filter what
 blocks them by the collider's `layers` and `mask` (each one's layers
 meeting the other's mask), as rapier does for bodies.
-`tests/platformer_ground.rs`: a run holds `maxSpeed` tick after tick on
-one box, on twelve adjacent boxes and on a tilemap's collision
-rectangles, runs up and down a 30° hill at its speed and is stopped by a
-60° one, and a controller written to the floor's height at 190 places
-stands a skin over it and runs. `tests/character_ground.rs`, all failing
-on rapier's controller: a 3D run holds its speed every tick, its centre a
-skin over the floor, on one box (along x and diagonally), on adjacent
-boxes, on a triangle mesh and on a height field; a capsule written to the
-floor's height at 190 places on each stands a skin over it and runs; 0.2 m
-stairs are climbed and descended at walking speed on the ground every
-tick; steps of 0.1 to 0.345 m are climbed at `stepHeight` 0.35 and 0.36,
-0.4 and 0.6 m ones are not; a 30° hill is run up and down at full speed
-and a 50° slope stops it. `tests/controllers.rs` walks both controllers
-through walls their layers do not meet.
+`tests/platformer_ground.rs` and `tests/character_ground.rs` hold a run's
+speed every tick on one box, adjacent boxes, a tilemap's rectangles, a
+triangle mesh and a height field, a shape written to the floor's height
+standing a skin over it, stairs and steps up to `stepHeight` climbed and
+higher ones not, and walkable slopes run at full speed while steeper ones
+stop it; `tests/controllers.rs` walks both controllers through walls their
+layers do not meet.
 
-### Phase 2: cloth self-collision, fluid groups, 2D ragdolls
+### Cloth self-collision, fluid groups, 2D ragdolls
 
 - **Cloth self-collision** (`og.Cloth.thickness`, 0 off): each substep
   finds, from a grid of cell 1.5 × `thickness` sorted by cell and index,
@@ -370,7 +327,7 @@ through walls their layers do not meet.
   (default 1) splits the tick, the damping spread over them; `friction`
   (default 0) takes part of the slide of a point resting on a solid, so a
   cloth lowered onto the floor folds instead of spreading. With
-  `thickness` 0, `substeps` 1 and `friction` 0 the step is the E5 one.
+  `thickness` 0, `substeps` 1 and `friction` 0 the step is plain cloth's.
   `tests/self_collision.rs`: a 20 × 20 sheet lowered onto the floor piles up
   in layers and no two of its points that are not near neighbours come
   closer than 0.99 × the thickness at any tick (without it, they meet and
@@ -388,7 +345,7 @@ through walls their layers do not meet.
   and their mass follows. `fluid_mix(entity)` reads a member's lane and its
   particles' mix (og-runtime draws a group as one metaball surface whose
   colour follows it). A fluid alone (group 0, or the only one of its group)
-  steps exactly as before. `tests/fluid_groups.rs`: a heavy fluid poured on
+  steps exactly as an ungrouped fluid. `tests/fluid_groups.rs`: a heavy fluid poured on
   a light one sinks under it (397 of 400 heavy particles below the light
   fluid's median), with `mixing` 1 the two blend (each particle's share
   within ±0.005 of a half, the amounts kept to 1e-3).
@@ -399,7 +356,7 @@ through walls their layers do not meet.
   within the limit (1.12 rad at most landing under the body's weight; 3.03
   without a limit), and it recovers.
 
-### Phase 2: 3D particle fluids (`og.Fluid3D`, `src/fluid3d.rs`)
+### 3D particle fluids (`og.Fluid3D`, `src/fluid3d.rs`)
 
 Double density relaxation (Clavet, Beaudoin and Poulin 2005) rather than
 position-based fluids: one neighbour search and two passes a substep, where
@@ -430,12 +387,9 @@ layering, mixing, emitters and sinks mean the same in both.
   pours two into a terrain bowl). `fluid3d_particles(entity)` and
   `fluid3d_mix(entity)`; og-runtime hands the particles to og-render's
   screen-space surface (`Scene::fluids_3d`).
-- **Cost** (`--example fluid3d_costs`, M4 Pro, ms of CPU a tick; wasm32
-  within 10 % of native except 4,000 at one substep, 18 % faster):
-  1,000 particles 0.39 at one substep and 0.60 at two; 2,000: 0.86 and
-  1.8; 4,000: 2.6 and 4.2; 8,000: 4.6 and 9.8. Particles piled deep (2,000
-  in a terrain bowl) cost about twice those on a floor, having more
-  neighbours. Keep a scene to a few thousand particles at two substeps.
+- **Cost**: particles piled deep cost about twice those on a floor,
+  having more neighbours. Keep a scene to a few thousand particles at two
+  substeps (`--example fluid3d_costs`).
 - `tests/fluid3d.rs`: a block poured into a pool settles inside its bounds,
   a zero-gravity drop holds together and rounds, a viscous fluid spreads
   slower than water, fluid poured into a terrain bowl and onto a box stays
@@ -454,9 +408,9 @@ the persistent world, rewinding by restore), `queries.rs`, `profile_2d.rs`,
 its JSON report; lanes on and off on a pen large enough for the pool),
 `lanes.rs` (every split pass against lanes off, ragdolls among them, the
 pool threshold, the stats' phases and where they ran, queries off
-rayon's global pool, a panic in a query), and the E5 round's `joints.rs`,
-`vehicles.rs`, `soft.rs`, `ragdoll.rs`, `beyond_determinism.rs`, and phase 2's `fluid3d.rs`. The dev profile builds og-physics and rapier at
-`opt-level = 3`; the pile takes about 15 s. `examples/lanes_costs.rs`
+rayon's global pool, a panic in a query), `joints.rs`, `vehicles.rs`,
+`soft.rs`, `ragdoll.rs`, `beyond_determinism.rs` and `fluid3d.rs`. The dev
+profile builds og-physics and rapier at `opt-level = 3`. `examples/lanes_costs.rs`
 times the step with lanes off and on (`OG_LANES=off|4|8`, release;
 `--forced` puts every step on the pool, `--phases` prints the stats'
 phases, `--bodies`, `--pairs` and `--rows` set those grains) and
@@ -464,27 +418,7 @@ phases, `--bodies`, `--pairs` and `--rows` set those grains) and
 `--particles N`, `--ragdolls N`, `--rope-work N`, `--cloth-work N`,
 `--only`).
 
-## Status 2026-10-18 (what phase 1 still owes)
-
-- **Reaching TypeScript**: every record above is in the IDL's physics
-  module (`crates/og-api/api/physics.ogt`, the E5 records since b8cdc04), and
-  og-runtime links og-physics for both hosts. The readouts (`ropePoints`,
-  `clothPoints`, `fluidParticles`, `waterHeight`, `vehicleWheels`,
-  `ragdollPose`) and the rig from an og-anim skeleton
-  (`ragdollRigFromSkeleton`, `setRagdollRig`) are `og.physics` functions.
-- **Character controller**: delivered in the E5 round (above), with the 2D
-  platformer controller, joints, vehicles, soft bodies, fluids, water and
-  ragdolls.
-- **wasm size**, measured (`tests/evidence/M6/physics-wasm-size.json`): the
-  crate adds 694 KB brotli for the 3D profile, 541 KB for 2D and 1.05 MB
-  for both to a module that already links og-core and og-ecs, which keeps
-  og-host-web (1.10 MB at 49ed935) inside the download budget (4 MB
-  then, 16 MB since 2026-11-01).
-- Evidence of the crate: `tests/evidence/M6/physics-*` (the pile's hashes
-  agree in debug and release, and the restore at tick 1800 ends in the
-  uninterrupted run's world).
-
-### Sleep (G2-3)
+## Sleep
 
 `src/sleep.rs`. With `og.Physics.sleep_ticks` above 0, a dynamic body
 slower than `sleep_speed` before and after each of that many steps in a
@@ -501,7 +435,7 @@ sleep flag is rapier's, in its saved world. `og.RigidBody.sleeping` is
 written back, and `og.BodySlept` / `og.BodyWoke` are sent in entity
 order. `same_body` keeps the two sleep fields out of the rebuild test.
 
-### Breaking joints and contact hooks (G2-3)
+## Breaking joints and contact hooks
 
 `ext::break_joints` runs after each substep: a joint whose load passes
 `break_force` or `break_torque` is removed, in entity order, with its
@@ -513,9 +447,9 @@ from the anchor to the body's centre of mass, where rapier applies the
 linear part, added to the torque. A shock absorbed in the first solver
 substep (an impulse, `apply_force`, which `apply_pushes` applies as one)
 does not count; a load held through the step does. A broken joint is
-skipped by `sync_joints` until its component says otherwise. The new
-fields are `#[serde(skip)]` in `TrackedJoint`, so the block's bytes do
-not move.
+skipped by `sync_joints` until its component says otherwise. The
+breaking fields are `#[serde(skip)]` in `TrackedJoint`, so they are not in
+the block's bincode.
 
 `og.ContactHook`, once registered, is read into `Scene::hooks` per collider entity (`get_bytes`, not a query, since the system's queries are fixed at install); `sim::sync_hooks` turns
 rapier's active hooks on for the colliders of hooked entities (and off

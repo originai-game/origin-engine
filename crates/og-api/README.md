@@ -36,8 +36,8 @@ and `og api check` (the gate's drift step) holds them to the IDL.
 | host ABI interface | `packages/engine/src/generated/abi.ts` | the TypeScript runtime (`HostAbi`, `SYMBOLS`) |
 | wiki: one page per module and `index.md` | `packages/knowledge/wiki/` | agents, through `@origingame/engine-knowledge` (mounted as the `og-game` skill's `reference/`) |
 
-Every generated file retains its historical `api.ogt` header; that name
-now means the concatenated IDL. Wiki pages quote each declaration's IDL text
+Every generated file's header names `api.ogt`, meaning the concatenated
+IDL. Wiki pages quote each declaration's IDL text
 with the line it starts on, its TypeScript form, its docs, its fields' defaults, ranges and
 units, and its binding symbol; `index.md` maps every module, type, function
 and member to its anchor (`crates/og-idl/tests/wiki.rs` holds the quotes to
@@ -55,15 +55,15 @@ og api check   # CI: exit 1 and the differing files on drift
 
 ## The `.ogt` grammar
 
-`api/parts.txt` lists the files in their original declaration order:
+`api/parts.txt` lists the files in declaration order:
 `prelude.ogt` contains everything before the first module, and each
 `<module>.ogt` contains one whole module. Edit that module's file (for
 example `api/ui.ogt`); append a new module's filename to `parts.txt`.
 The loader concatenates the parts verbatim: keep their final newlines.
 No part gains a header; only the prelude has `type api`. Model lines and
-the wiki's historical `api.ogt` citations count through the concatenation,
+the wiki's `api.ogt` citations count through the concatenation,
 while errors name the part file and its own 1-based line. Missing parts
-are read errors. The generated outputs are unchanged by the split.
+are read errors.
 
 The concatenation is ordinary `.ogt` text read by `og_core::ogt`, the engine's one
 reader (its module docs are the authority). The grammar, one construct per
@@ -285,7 +285,7 @@ view tables. Both hosts depend on it; `og-cli` does not.
   and whether memory may move next, so a host may keep a column's buffer
   while the column stays put and must detach it before it moves. Every
   structural change outside systems goes through the runtime, and a running
-  system's only structural command in M2 is `despawn`, which the runtime
+  system's only structural command is `despawn`, which the runtime
   records; a new structural path must call `queued_structural`.
 - **Inside a system**, the world serves the system's views, `Time`, `Rng`,
   `alive`, `find`, `nameOf`, `tick`, `has` (from its own views), and through
@@ -309,7 +309,7 @@ view tables. Both hosts depend on it; `og-cli` does not.
   drawn over the finished frame whatever the camera; the effect resources
   and components are read by `runtime/fx.rs` during extraction.
 - Entity names live in the runtime, not in snapshots or the world hash.
-- **E4 feel modules** (`runtime/feel.rs`): `og.tween` (og-tween, writing
+- **Feel modules** (`runtime/feel.rs`): `og.tween` (og-tween, writing
   every registered component) and `og.flipbook` (og-anim) run after the
   game's systems and before `og.anim`; `og.tilemap` (adopts og.Tilemap
   entities, keeps their og-tilemap `MapState`, spawns and despawns the

@@ -143,26 +143,9 @@ grid's costs, every navmesh's obstacles and every flow field's targets, so
 snapshots restore edits made at runtime and the world hash covers them;
 loaded grids and meshes are assets, not state.
 
-## Costs
-
-`cargo run --release -p og-nav --example nav_costs` (Apple M4 Pro, one
-thread; `tests/evidence/E6/nav-costs.json` has the full record):
-
-| | |
-|---|---|
-| 256 × 256 grid, 12 % walls: A* / JPS per random query | 0.31 ms / 0.19 ms (1,884 / 977 nodes) |
-| flow field over the 256 × 256 grid | 3.5 ms |
-| 200 agents on the grid, a tick (separation on) | 0.25 ms; the tick they all plan 4.9 ms (32 plans) |
-| 200 agents on a flow field, a tick | 0.18 ms |
-| 64 × 64 m arena (1,512 triangles): bake / build | 12.4 ms / 5.6 ms, 401 polygons in 64 tiles |
-| navmesh query | 0.023 ms (82 polygons expanded, 7 corners) |
-| an obstacle's rebuild | 0.84 ms (12 tiles) |
-| 200 agents on the navmesh, a tick | 0.22 ms |
-
 ## Tests
 
-`cargo test -p og-nav` (`tests/nav.rs`, through the public API; each was
-broken once and failed, `tests/evidence/E6/break-and-restore.md`):
+`cargo test -p og-nav` (`tests/nav.rs`, through the public API):
 
 | Test | Asserts |
 |---|---|

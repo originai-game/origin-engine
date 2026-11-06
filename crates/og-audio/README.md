@@ -1,6 +1,6 @@
 # og-audio
 
-Audio for the engine (`docs/design.md` §2.2, §2.7; phase 1 M6): a tick-side
+Audio for the engine (`docs/design.md` §2.2, §2.7): a tick-side
 system that turns component changes into a deterministic, time-stamped
 **command stream**, and a **mixer** that renders that stream to PCM outside
 the tick. The mixer never writes the world; `world_hash` covers the command
@@ -19,8 +19,7 @@ sink.pump();                                                                // 8
 Pure Rust over og-core and og-ecs; builds for `wasm32-unknown-unknown`. The
 QOA codec is og-bundle's own `src/qoa.rs`, compiled into this crate by path
 (`og_audio::qoa`) so audio needs neither og-bundle nor its og-render
-dependency (Assets: moving `qoa.rs` into a tiny crate would make this an
-ordinary dependency).
+dependency.
 
 ## API map
 
@@ -41,12 +40,9 @@ ordinary dependency).
 
 Field order, names and storage types are the layout (`og_core::reflect`);
 the IDL must declare them exactly so (an IDL record with the same name and
-layout is adopted by `install`). `u32` flags hold 0 or 1 until og-core's
-one-byte `bool` and `enum` field types land for component columns; then
-`loop`, `spatial` and `playing` become `bool` and `bus` an enum (a layout
-change both sides make together). `sound` is a `Sound` handle stored as
-`u64` (the IDL needs a `column Sound`, `Uint32Array` stride 2, as for
-`Geometry`, and the codec's `Kind::parse` a `Sound` → `U64` arm).
+layout is adopted by `install`). `loop`, `spatial` and `playing` are
+`bool`; `bus` is the `AudioBus` enum, stored as its `u32` index; `sound` is
+a `Sound` handle stored as `u64`.
 
 ### `og.AudioSource` (component)
 
@@ -94,7 +90,7 @@ with none, the origin looking down −Z.
 | 0 | `entity` | Entity (u64) | the source's entity |
 | 1 | `sound` | Sound (u64) | the sound |
 | 2 | `voice` | u32 | the voice id in the command stream |
-| 3 | `reason` (`SoundEnded` only) | u32 | 0 finished, 1 stopped (`playing` = 0), 2 removed (the AudioSource left a living entity), 3 replaced (`sound` changed while playing), 4 culled (§E6), 5 retriggered (§Resampling, virtual voices, retrigger) |
+| 3 | `reason` (`SoundEnded` only) | u32 | 0 finished, 1 stopped (`playing` = 0), 2 removed (the AudioSource left a living entity), 3 replaced (`sound` changed while playing), 4 culled (§Effects, music, priority, occlusion, listen), 5 retriggered (§Resampling, virtual voices, retrigger) |
 
 Sent during the tick it happens; systems read them the tick after (og-ecs
 event semantics). A despawned entity's voice is silenced without an event.
@@ -190,8 +186,7 @@ playhead. Only the regular commands are hashed.
   some of its QOA bytes in memory (§Chunked sounds).
 - **Voices**: resampling at `pitch × source rate / output rate`, by a
   windowed sinc (`og.Audio.resampler` sinc, the default) or linear
-  interpolation (`linear`, the mix before round 4; §Resampling, virtual
-  voices, retrigger); at a loop seam both read `loopStart` as the frame
+  interpolation (`linear`; §Resampling, virtual voices, retrigger); at a loop seam both read `loopStart` as the frame
   after `loopEnd − 1`, so a sample-continuous loop region is seamless.
   Gain, pan and bus changes ramp over 256 frames; stops fade over 256; a
   resynced voice fades in; a fresh one starts at full gain (attacks kept).
@@ -215,7 +210,7 @@ playhead. Only the regular commands are hashed.
 - **Limiter**: stereo-linked peak envelope (instant attack, 100 ms release)
   through a tanh soft knee from 0.8: output peaks stay below 1.0.
 
-## E6: effects, music, priority, occlusion, listen
+## Effects, music, priority, occlusion, listen
 
 Records (`schema.rs`, IDL module `audio`):
 
@@ -232,7 +227,7 @@ Records (`schema.rs`, IDL module `audio`):
   (from the next tick on). `og.MusicBeat` (event) per beat, in the tick
   whose interval holds it.
 - `og.SoundEnded.reason` 4 (`SOUND_CULLED`): the voice cap.
-- `og.ReverbZone` (component, wave 11; kestrel-stair #21): a box (`size`
+- `og.ReverbZone` (component): a box (`size`
   along the entity's axes) or a sphere (`radius`) with `fade` (m), `bus`,
   `send`, `room`, `damping`, and `weight` written back. Each tick the
   listener's weight in each zone is `ReverbZone::weight_at`: 1 inside, then
@@ -258,24 +253,24 @@ a negative position. With `fade`, a start is a silent play and a params
 ramping to the gain over `fade`; a stop and every change ramp over it.
 
 `listen`: every mixer made by `Mixer::for_link` records what it renders
-into the link's two-second ring (`AudioLink::listen`); the null sink now
+into the link's two-second ring (`AudioLink::listen`); the null sink
 renders at 48 kHz into that ring only, so the probe's `listen` member and
 the command channel's `listen[:path][:seconds]` action have the last
 seconds a person would have heard, headless too. `og run --audio out.wav`
 captures the whole run (its SHA-256 is in `--json`).
 
-Tests: `tests/mix.rs` (each broken once, `tests/evidence/E6/break-and-restore.md`):
+Tests: `tests/mix.rs`:
 bus filters per bus, ducking 12 dB and back, the compressor's 10.5 dB, the
 reverb tail, a reverb zone (the open air, half way through its fade, inside,
 nothing sent standing still, the open air back; the same walk twice and
 across a restore; a click rings inside and not outside), scheduled starts on their sample and stems aligned, the music
 clock and a stinger on the bar line, a two-second crossfade, the voice cap,
 occlusion and distance dulling, and the same PCM twice with `listen`
-returning its last second (`$OG_EVIDENCE_DIR/M6/e6-mix.{wav,json}`).
+returning its last second.
 
 ## Propagation
 
-Doppler, cone directivity and the HRTF panner (round 4). Doppler and the
+Doppler, cone directivity and the HRTF panner. Doppler and the
 cone are computed in the tick, like gain and pan, so they are part of the
 stream and the world hash; the HRTF is the mixer's, steered by `hrtf`
 commands.
@@ -308,7 +303,7 @@ Records (`schema.rs`, IDL module `audio`):
   held within ±c/2, so the shift stays within ×1/3..×3. The shifted pitch
   is the voice's pitch in the stream, so the playhead (and the tick a
   one-shot ends on) follows it. Static scenes compute a ratio of exactly
-  1: their stream is the one before Doppler, bit for bit.
+  1: their stream is the one without Doppler, bit for bit.
 - **Cones** (Web Audio's PannerNode cone, three.js PositionalAudio's
   `setDirectionalCone`): with θ the angle between the source's world +Z
   (three.js orients a PositionalAudio by +Z) and the listener, the gain is
@@ -331,7 +326,7 @@ Records (`schema.rs`, IDL module `audio`):
   256-frame ramp. No pinna or shoulder echoes: sources move between the
   ears, front/back and up/down are not resolved. Non-spatial sources keep
   their pan. With `equalpower` no `hrtf` command is sent and the voice
-  path is the one before the HRTF, sample for sample.
+  path is the one without the HRTF, sample for sample.
 
 Tests: `tests/propagation.rs` (Doppler against OpenAL's formula in f64 at
 20 m/s coming and going, heard 440 Hz → 467/416 Hz, factor 0 on either
@@ -365,12 +360,7 @@ engine-owned `og.AudioPlayback.virtual` (bool), `SOUND_RETRIGGERED` (5).
   bit for bit. Tables are built from `+ − × ÷` and `sqrt` (series for sin
   and I0), the same on every host. The choice reaches the mixer as an fx
   command (`fx::RESAMPLER` 22, on master) with the others, so it is in
-  the stream, the hash and every resync. `linear` keeps the old output
-  exactly (a scratch scene of seven pitched voices at three rates hashed
-  the same as on the base); measured on a 15 kHz tone from 44.1 kHz:
-  linear −3.4 dB on the tone and its image at −11.5 dB, sinc 0.0 dB and
-  −74 dB; pitched 2.5× from 6 kHz, the folded image −28 dB linear,
-  −90 dB sinc.
+  the stream, the hash and every resync.
 - **Virtual voices**: past `maxVoices` a source with `virtualize` is not
   culled: its voice is stopped in the mixer and `AudioPlayback.virtual`
   set; its playhead (the tick side's `cursor`) runs on, a one-shot ends on
@@ -379,15 +369,13 @@ engine-owned `og.AudioPlayback.virtual` (bool), `SOUND_RETRIGGERED` (5).
   one back within it is played at its cursor (a resumed play, fading in
   over 256 frames, with its `hrtf` direction), so it is heard where it
   would have been, reading the clock, not restarting. One that is heard
-  and falls outside goes virtual; one without `virtualize` is culled as
-  before. Fresh sources past the cap start virtual.
+  and falls outside goes virtual; one without `virtualize` is culled. Fresh sources past the cap start virtual.
 - **Retrigger**: `retrigger` true starts the sound again from the top in
   that tick (its `startOffset`, `startAt` and `fade` as a fresh start):
   a playing voice is stopped (`SOUND_RETRIGGERED`) and a new voice id
   plays it; a source not playing (ended, stopped, culled) plays; either
   way the engine clears `retrigger` and sets `playing` true. No level
-  change on `playing` is needed (a `Voices` system no longer has to stop
-  a voice one tick and start it the next).
+  change on `playing` is needed.
 
 Tests: `tests/voices.rs` (the sinc against linear on the 15 kHz tone and
 2.5× pitch-up, and identical on its own frames; a virtual voice at
@@ -449,22 +437,11 @@ cut apart, and decode to its samples exactly.
 Nothing here reaches the world: the tick side times a sound by its rate
 and length alone, so `world_hash` is the same chunked or whole.
 
-Tests: `tests/chunks.rs` (the distances of a voice looping from 20 s,
-30 s in, and of a second at twice the pitch: the chunk under each
-playhead 0, the next by its seconds, the loop start's by the wrap; each
-broken once: without the voice's held
-chunks the crossfade's tail went silent at sample 5,765,120; with chunks
-indexed past their last frame a wrong-length chunk was accepted). A
-3-minute stereo 48 kHz track (6.99 MB of QOA, 46 chunks of 3.9 s) looping
-from 20 s with a 120 bpm `og.Music` clock and, at 60 s, a two-second
-crossfade to a second voice of it started 100 s in (wrapping at 180 s),
-190 s in all: the chunked mix is sample-identical to the whole-file mix
-(9,120,000 frames), the music clock beats the same 380 times, and at most
-918,200 B (6 chunks) are resident at once against the whole file's
-6,989,848 B; with a loader and the mixer pumped every 600 ticks it is
-identical again; a missing chunk plays silence, then sound once put;
-wrong-length chunks and wrong chunk counts are refused
-(`$OG_EVIDENCE_DIR/M6/chunks.json`). og-cook's `tests/sound_chunks.rs`
+Tests: `tests/chunks.rs` (the distances of looping and pitched voices; a
+long looping track with a music clock and a crossfade mixes
+sample-identical chunked and whole, with a bounded resident set, and again
+with a loader; a missing chunk plays silence, then sound once put;
+wrong-length chunks and wrong chunk counts are refused). og-cook's `tests/sound_chunks.rs`
 checks the cook (the chunks laid end to end are the whole file's bytes,
 the settings re-cook only that sound, the threshold, a chunked sound in a
 stream group packing its head alone), `tests/chunks.rs` a chunked sound
@@ -479,20 +456,15 @@ audio tests'.
 
 ## Decoding beside the tick
 
-Debt round 3 (`tests/evidence/debt3/audio-decode/NOTES.md`). Before it a
-short sound was decoded whole when it entered the bank (inside
-`og.load.sound`, on the engine thread: 6 s of 48 kHz stereo is a whole
-file's decode in one call) and a long one by each voice as the mixer
-reached its frames, in the pump after the frame (on the web, the engine
-Worker). Now neither happens on the engine thread unless a frame is
-needed before anything decoded it.
+Decoding runs off the engine thread unless a frame is needed before
+anything decoded it.
 
 - **The frame cache.** A QOA or chunked sound is indexed at insert (its
   frame table, checked as the decoder reads it) and holds one slot per
   QOA frame. The frames of a sound up to the bank's resident seconds are
   pinned (once decoded they stay, as the whole decode did); of a longer
   one only the first is, the others are held while the decode-ahead
-  wants them. `insert_pcm` sounds are PCM as before.
+  wants them. `insert_pcm` sounds are PCM.
 - **What is decoded is planned from the world.** Each sound queues its
   pinned frames when it enters the bank (`insert_*`, `replace_*`). The
   `og.audio` system, at the start of every tick with a sink attached,
@@ -518,7 +490,7 @@ needed before anything decoded it.
   out again; an answer of another length, or for a key not in flight, is
   refused.
 - **A miss is decoded where it is read.** A voice reaching a frame not in
-  the cache decodes it itself (today's path), to the same samples, and
+  the cache decodes it itself, to the same samples, and
   keeps a pinned one for the others; `DecodeStats.misses` counts them.
   So the PCM is a function of the command stream whatever the helper
   did: no helper, a slow one, a racing thread. The misses that remain
@@ -537,9 +509,7 @@ needed before anything decoded it.
   FNV-1a hash, whole and as the jobs' one-frame files, the bun test also
   after the export's minifying build.
 
-Tests: `tests/decode.rs` (each broken once and failing: a miss playing
-silence, the plan stopping at the loop's end, an answer of another
-length taken, the pins decoded on the inserting thread), and
+Tests: `tests/decode.rs` and
 `packages/engine/tests/audio-decoder.test.ts` (the TS decoder against the
 fixture's hash, its Worker source after minifying, `AudioDecoder` feeding
 a real Worker and answering a bank).
@@ -621,7 +591,7 @@ hosts files):
    `--audio out.wav`, `device` when asked) and pumps after each step.
 5. `hello`/capabilities: `modules` lists `audio`.
 
-## Bus graph, snapshots, audio events, Opus (G2-5)
+## Bus graph, snapshots, audio events, Opus
 
 **The bus graph.** Sixteen buses (`MAX_BUSES`): the four built-ins and
 user buses 4 to 15, each declared by an `og.AudioBusNode { index, parent,
@@ -685,13 +655,12 @@ first is decoded there, to the same samples). Natively the decode thread
 takes both codecs; on the web the decoder Worker takes QOA only
 (`take_decode_jobs`), and the engine Worker's pump decodes four Opus
 packets after each frame's PCM (`decode_opus_step`), never inside a tick.
-opus-pure (pure Rust, BSD-3-Clause) is the codec; at opt-level s it adds
-about 235 KB raw, 82 KB brotli, to the wasm.
+opus-pure (pure Rust, BSD-3-Clause) is the codec.
 
 ## Tests
 
 `cargo test -p og-audio` (`tests/audio.rs`, sounds synthesised and QOA-encoded
-in `tests/support/`). Each was broken once and failed, then restored:
+in `tests/support/`):
 
 | Test | Asserts | Broken by |
 |---|---|---|
@@ -706,45 +675,11 @@ in `tests/support/`). Each was broken once and failed, then restored:
 | `the_scripted_scene_renders_to_a_wav` | 2.5 s of the scene, sound from frame 0, no sample above 1.0; writes `audio-scene.wav` and its waveform | — |
 | `tests/parented.rs`: `a_source_on_a_child_follows_its_moving_parent` | a source 2 m ahead of a cart moving x −10 to 10 sends, every tick, the same gain, pan and cutoff bits as a source placed there itself, the same stream hash, twice | each entity's own `Transform` again (`Places::world`) |
 | `a_listener_under_a_rig_hears_from_the_rig` | a listener under a rig at x 10 turned +90° about Y hears a source at (10, 0, 3) hard left at gain 1/3; the rig moved and turned back, 6 m right and 3 m behind | the same |
-| `tests/graph.rs` (G2-5) | the bus graph's routing and a snapshot's blend, sample for sample against an offline render; the equaliser's bands, the echo's frames and the waveshaper's harmonics; audio events' choices identical for one seed and different for another, og.Rng untouched, round-robin and shuffle orders; cooldowns, voice limits with and without stealing, despawned voices; an Opus round trip above 30 dB through the mixer; a 40 s Opus track streamed sample-identical to its whole decode with every helper schedule | — |
+| `tests/graph.rs` | the bus graph's routing and a snapshot's blend, sample for sample against an offline render; the equaliser's bands, the echo's frames and the waveshaper's harmonics; audio events' choices identical for one seed and different for another, og.Rng untouched, round-robin and shuffle orders; cooldowns, voice limits with and without stealing, despawned voices; an Opus round trip above 30 dB through the mixer; a 40 s Opus track streamed sample-identical to its whole decode with every helper schedule | — |
 | `a_zone_under_a_parent_is_where_its_parent_puts_it` | a radius-1 zone under a hall at x 20 scaled 2: weight 0 at the origin, 1 at 1.5 m from the hall; the hall moved to the origin takes its zone | the same |
 
-Measured on an M4 Pro: 1 s of the 32-voice mix renders in 17.5 ms
-(release, 1.7 % of real time) and 336 ms (debug). Evidence:
-`tests/evidence/M6/audio-*`.
-
 ```sh
-export CARGO_TARGET_DIR=$PWD/target/agent-audio
 cargo test -p og-audio && cargo test --release -p og-audio --test audio one_second
 cargo check --target wasm32-unknown-unknown -p og-audio
 cargo clippy -p og-audio --all-targets --all-features -- -D warnings
 ```
-
-## Status 2026-10-20
-
-The wiring §Host contract lists is in: og-runtime installs og-audio in
-every engine (`modules.rs`) and publishes the link, `og.load.sound` puts
-the cooked sound in the engine's bank and answers that handle, `og run`
-opens a `null` sink (`capture` with `--audio out.wav`, `device` when
-asked), the web shell and engine Worker attach `WorkerAudio` and pump
-after each frame, `hello` lists `audio`, and `api/audio.ogt`'s `audio` module
-declares the records, resources and events above (E6 added its own,
-§E6). Of §Records' note, `loop`, `spatial` and `playing` are `bool` now;
-`bus` is still a `u32` index. Evidence of the crate:
-`tests/evidence/M6/audio-*`, the E6 mix (`tests/evidence/E6/`) and
-chunked sounds (`tests/evidence/P4/cook/sound-chunks.md`).
-
-## What phase 2 owes
-
-Effects, ducking, ray-cast occlusion, distance low-pass, music clock and
-crossfades, scheduled starts, priority and the voice cap, `listen`, `og run
---audio`, chunked streaming of long sounds, propagation (Doppler, cones,
-the HRTF), the windowed sinc, virtual voices, retrigger and decoding
-beside the tick have landed (§E6, §Chunked sounds, §Propagation,
-§Resampling, virtual voices, retrigger, §Decoding beside the tick).
-Nothing is owed. The last item, decoding off the engine Worker, landed in
-debt round 3; round 4 had left it because a decode on another Worker that
-lands late would play silence and make the PCM depend on timing. The
-miss path answers that (a frame not decoded yet is decoded where it is
-read, to the same samples), and no threaded wasm is needed: the decoder
-Worker shares no memory with the engine.

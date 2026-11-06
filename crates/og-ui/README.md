@@ -1,6 +1,6 @@
 # og-ui
 
-The Origin Engine UI (`docs/design.md` §2.7, M6 in `docs/phase-1.md`): an
+The Origin Engine UI (`docs/design.md` §2.7): an
 immediate-mode toolkit whose tree is declared every tick, laid out
 Clay-style, dressed by the game's own UI style (`type style`; the
 engine's default style until it picks one: the design language the engine
@@ -801,11 +801,10 @@ palette's own side it draws the palette's ink as it is (the tests hold
 the palette there), and on the other side (a light style's badge straight
 on its dark screen, a dark style's on a light card) its ink moves towards
 its own end of the scale until it reads 4.5:1 (`Srgba::readable_on`: a
-deep green lightens, keeping its hue as far as the bar allows; cartoon's
-success read 1.98:1 on its stage before). The neutral badge's ground is
-its own flat `control`, so `inkMuted` moves wherever it does not read on it
-(neon's 2.81:1), and where no ink of its side could, the fill darkens or
-lightens away from it instead (scifi's mid-blue fill, 2.15:1).
+deep green lightens, keeping its hue as far as the bar allows). The neutral
+badge's ground is its own flat `control`, so `inkMuted` moves wherever it
+does not read on it, and where no ink of its side could, the fill darkens
+or lightens away from it instead.
 
 ## Icon sets
 
@@ -947,12 +946,12 @@ measures exactly as og-render lays out, so measured and drawn text agree.
   `font`), and the label, rich text, field and area draw one text command
   per run, each in its own font, at the advance where the run before it
   ended (`text::pieces`). Fields edit mixed text with the same boxes. A
-  text one font covers lays out exactly as before.
+  text one font covers lays out as one run.
 - **Kerning.** The cook's pair table rides in `MsdfFont::kerning` and
   `FontMetrics::kern`; og-render applies it between neighbours in world
   and overlay text alike, and og-ui measures with it (a line is measured
   whole, so pairs across words count; a line that fits whole is not
-  broken). A font without pairs lays out byte for byte as before.
+  broken). A font without pairs lays out unkerned.
 - **Bidi and shaping** run in og-ui, at layout, on both hosts (the same
   Rust in the wasm and the native addon), so measured widths, line breaks,
   hit testing and drawing agree. A line with a right-to-left or shaped
@@ -1040,18 +1039,11 @@ measures exactly as og-render lays out, so measured and drawn text agree.
 
 ## What it costs
 
-The shipping wasm (`og_host_web-publish`, after wasm-opt, brotli -q 11;
-`tests/evidence/P4/ui-text/NOTES.md`): 3,205,718 B before the phase 4 text
-round, 3,243,486 B after it (+37,768 B, +1.2 %: unicode-bidi, ttf-parser's
-outline reader, the run-time glyph renderer, the editing and the kerning;
-77.3 % of the 4 MB budget). rustybuzz was already in it: built without the
-`shaping` feature the same module is 3,113,221 B, so shaping costs 130,265
-B brotli (444 KB raw), which a game with no shaped script can leave out
-(`og-host-web --no-default-features --features publish`; the shipped build
-keeps it on). A run-time CJK glyph takes 1.26 ms on average and at most
-2.37 ms to render natively at 32 px/em (`examples/glyph_costs.rs`, 16
-characters, release, Apple M4 Pro); once per character, then it is an
-atlas glyph like any other.
+rustybuzz (shaping) is behind the default `shaping` feature: a game with no
+shaped script can leave it out of the wasm (`og-host-web
+--no-default-features --features publish`; the shipped build keeps it on).
+A run-time CJK glyph is rendered once per character, then it is an atlas
+glyph like any other (`examples/glyph_costs.rs` times it).
 
 ## Layout
 
@@ -1159,11 +1151,7 @@ exactly as authored over any game, at any camera, sharp under TAA:
 
 The runtime (`og_runtime::modules::emit`) writes the frame into
 `RenderScene::overlay` with scale 0 (fit the output's height), so the UI
-shows over 3D games at any camera; the camera-plane workaround is gone.
-Recapturing on the overlay moved only clipped content: the store list's top
-row now shows the lower half of "Item 0" and its Buy button, where the CPU
-clip hid the whole line (`tests/evidence/E2/ui-sample-screen-before-after.png`);
-eleven kit references moved the same way and were recaptured on `metal`.
+shows over 3D games at any camera.
 
 ## Input
 
@@ -1321,93 +1309,27 @@ cargo check --target wasm32-unknown-unknown -p og-ui
 | `tests/kit_gfx.rs` | the widget set (tabs, an open select menu with the focus ring, stepper, radio, checkboxes, chips, badges, meters with trail, notches and label, skeleton, four cooldown rings, stick, d-pad, action button, spinner, a toast) matches `references/<tier>/widget-set.png` in 4 sprite draws; the pies are the expected half-disc angles |
 | `templates/ui-kit/tests/*.og.ts` | through the command channel on the native host: every template at 1280×720 and 390×844@3 matches `references/<tier>/kit-{desktop,phone}-<screen>.png` over the pack's plain ground; the packs' approved states match their cells of `references/<tier>/kit-style-<pack>[-phone]-states.png`; an iris transition, the count-up and UI voices (`juice`); touch, keyboard and gamepad flows, drag and drop, the phone's safe area and 44 px targets, the tutorial spotlight (`templates/ui-kit/README.md`) |
 
-Each was checked by breaking the code it covers (the kit round's breaks are
-in `tests/evidence/E1/ui-break-and-restore.md`; earlier: grow caps, the
-release-inside rule, label probe text, element order, scroll clipping, wheel
-scrolling, a theme constant, the primary colour, the saved scroll state,
-Backspace, the toggle's click). Every reference frame (85: the five scenes,
-the four text scenes, the materials scene, 23 desktop and 22 phone kit
-screens, the text screen's three, 15 locale screens, 12 style sheets of
-21 cells) is committed for `metal` and `vulkan-cpu` (Mesa lavapipe, CI's
-tier), and the browser tiers judge the 77 they run (not the materials
-scene, which cooks its icons, nor the kit's text playtest) against
-`metal`, and the four text scenes since release-f2 (their fonts cooked by
-the runner, below; their browser runs and any per-tier references the
-coordinator's, not yet recorded). The fields round added `text-fields-2` and
-`text-mixed-runs` and moved `text-bidi` (its mixed Latin and Arabic line
-is now drawn a run per face). The UI shell round re-recorded the frames its
-edge light, glass, materials screen and pack palettes moved
-(`tests/evidence/P4/ui-shell/`). All 80 were re-recorded in the
-phase 4 text round (kerning, error-corrected atlases, the display face;
-`tests/evidence/P4/ui-text/`), and the vulkan-cpu frames now match metal
-with no outlier (RMSE at most 0.0019). A tier without its own reference compares with the
-`metal` one and says so. `vulkan-cpu` is recorded with `OG_UI_CAPTURE=1`
-in the `og-lavapipe` image with Linux binaries from `cargo zigbuild
---target x86_64-unknown-linux-gnu.2.31` (the commands are in
-`tests/evidence/P2/ui-tiers/NOTES.md`). The browser tiers come from
-`packages/engine/tests/web/reference-gfx.ts` (the five scenes and the
-four text scenes, compiled into og-tests-web; the text scenes' fonts
-cooked first from `tests/text-fonts` with `og cook` and handed to the
-module as blobs, `tests/web/text-fonts.ts`) and `reference-ui.ts` (the kit playtests through
-reference.ts), both in `scripts/check.sh web-reference`, `--record` to
-re-record (`docs/ci.md` §Browser reference tiers). The other tiers matched
-`metal` within the tolerance everywhere before the text round (the largest
-gap the large titles' edge coverage, 0.038 % outliers, RMSE 0.0089 on
-`kit-desktop-settings`, which lavapipe and both browser tiers shared); the
-browser tiers have not been rerun against the re-recorded frames. The test font is og-tests'
-committed MSDF atlas (Noto Sans SC subset, OFL).
+Reference frames are committed for `metal`; a tier without its own
+reference compares with the `metal` one and says so. The browser tiers
+come from `packages/engine/tests/web/reference-gfx.ts` (the five scenes and
+the text scenes, compiled into og-tests-web; the text scenes' fonts cooked
+first from `tests/text-fonts` with `og cook` and handed to the module as
+blobs, `tests/web/text-fonts.ts`) and `reference-ui.ts` (the kit playtests
+through reference.ts), both in `scripts/check.sh web-reference`, `--record`
+to re-record (`docs/ci.md` §Browser reference tiers). The test font is
+og-tests' committed MSDF atlas (Noto Sans SC subset, OFL).
 
-## What phase 2 owes
+## Known limits
 
-- **Text**: og-ui's cooked-font text frames in the browser tiers
-  (`text-bidi`, `text-kerning`, `text-edit`, `text-mixed-runs` cook their
-  fonts, which og-tests-web cannot; `text-fields-2` draws the test font and
-  runs there): since release-f2 the browser runner cooks them
-  (`tests/text-fonts` through `og cook`) and og-tests-web draws them from
-  the blobs; their first browser run and references are the
-  coordinator's. Words are UAX #29's without a dictionary: Thai, Lao, Khmer
+- **Text**: words are UAX #29's without a dictionary: Thai, Lao, Khmer
   and Myanmar move a grapheme cluster at a time, Han and Hiragana a
   character at a time, a Katakana run as one word. Backspace takes a whole
   grapheme cluster in every script (some platforms take an Indic or Thai
   cluster's last mark alone). A press at a bidi run's edge lands on the
-  stop's leading place, and ↑/↓ keep that place's x. (The kill buffer with
-  Ctrl+Y and Ctrl+T, and ← and → moving visually across a bidi edge, owed
-  row 59's remainder, landed in release-f2. The caret and Backspace by grapheme
-  clusters, ←/→ and word moves as they point in right-to-left runs, the
-  emacs keys F, B, N, P, D, H, K, U and W under mac keys, mac keys on a
-  native host on macOS, a mixed text's line placed by every face's extents
-  and a moving span that mixes faces moving glyph by glyph landed in the
-  ui-five round. Cmd told apart from
-  Ctrl with macOS's editing keys, UAX #29 words for moves, double clicks
-  and undo, and a font per grapheme cluster landed in the ui-4 round; a
-  font per run inside one label, word-wise moves, double- and
-  triple-click selection, undo and redo, and drag autoscroll in the fields
-  round; the display and rounded faces, kerning, bidi inside one
-  rich-text span, shaping with rustybuzz, run-time CJK glyphs, ellipsis
-  truncation, selection, text areas, IME composition and the caret blink
-  in the phase 4 UI text round; rich text in the phase 2 UI round.)
+  stop's leading place, and ↑/↓ keep that place's x.
 - **Accessibility**: a reader's adjust reaches the UI through the
   mirrored native range's `input` and `change` events (checked over the
   stand-in DOM, `packages/engine/tests/web-a11y-range.test.ts`, and in
-  Chrome by `tests/web/a11y.ts`), not with VoiceOver itself. (Bounds in
-  the tree, `A11yNode::value_min`, `value_max` and `value_now`, mirrored
-  as `aria-valuemin`, `-max` and `-now`, landed in the ui-five round; a
-  stepper's spinbutton adjustable like the slider, and
-  reduced transparency flattening scrims and translucent fills with
-  `UiTheme.reducedTransparency`, landed in the ui-4 round; sliders
-  mirrored as native ranges and `prefers-reduced-transparency` in the
-  fields round; the tree in the phase 2 UI round; the shell's mirror, live
-  regions, focus following, requests from the DOM and the page's motion
-  and contrast preferences in the phase 4 UI shell round.)
+  Chrome by `tests/web/a11y.ts`), not checked with VoiceOver itself.
 - **Materials**: each glass run with overlay content under it rebuilds
-  the blur pyramid once (`tests/evidence/P4/ui-shell/glass-cost.md`; an
-  optimisation, deferred). (Miter and bevel joins in an icon set's field,
-  a set's `join` line and every kit screen on the iconoir set landed in
-  the ui-five round; glass in the phase 2 UI round; glass over overlay
-  layers, the edge light and icon sets in the phase 4 UI shell round.)
-- (Input: a two-finger fling and a zoom view's keys landed in the ui-five
-  round; pads beyond the first in the phase 2 UI round; two-finger
-  scroll, pinch and the zoom view in the phase 4 UI shell round.)
-- (Layout: aspect ratios landed in the phase 4 UI shell round; two-axis
-  scrolling, nested handoff, momentum and draggable scrollbars in the
-  phase 2 UI round.)
+  the blur pyramid once.

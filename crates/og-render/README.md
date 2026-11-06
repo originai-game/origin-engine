@@ -1,11 +1,8 @@
 # og-render
 
-The Origin Engine renderer (`docs/design.md` §2.6, M3 in `docs/phase-1.md`):
-wgpu, WGSL shaders in `crates/og-render/shaders/`, one code path for native
-(Metal, Vulkan, DX12, headless for executors) and the browser (WebGPU
-only; the WebGL2 tier was retired on 2026-11-01). It started as the spike's renderer; M0
-reproduced the spike's frame byte for byte
-(`tests/evidence/M0/spike-frame-reproduced.png`).
+The Origin Engine renderer (`docs/design.md` §2.6): wgpu, WGSL shaders in
+`crates/og-render/shaders/`, one code path for native (Metal, Vulkan,
+DX12, headless for executors) and the browser (WebGPU only).
 
 The crate knows nothing about the ECS. Its whole input is a `RenderScene`;
 the world → scene extraction belongs to the layer above.
@@ -14,56 +11,59 @@ the world → scene extraction belongs to the layer above.
 
 | Type | What it is |
 |---|---|
-| `RenderDesc` | How to create a renderer: `width`, `height`, `backend` (`Auto`, `WebGpu`, `Metal`, `Vulkan`), `output_format` (`None` = `Rgba8UnormSrgb` offscreen, the surface's choice on a surface), `antialias`, `shadow_map_size`, `shadow_cascades`, `texture_compression`, `particles`, `culling`, `point_shadows` (`PointShadows::{Auto, Cube, Paraboloid}`), `taa_history` (`TaaHistory::{Bilinear, CatmullRom}`), `taa_sharpen` (0 to 1), `planar_reflections` (1 or 2, `MAX_PLANAR_REFLECTIONS`). Default 1280×720, `Auto`, `Antialias::Off`, point shadows `Auto`, a bilinear TAA history, no sharpening, one planar reflection. |
-| `Antialias` | `Off`, `Tier` (the engine's default method: TAA on every backend), and the explicit `Msaa4`, `Taa` and `Fxaa`. `RenderInfo::antialias` reports what was resolved; `Msaa4` falls back to `Fxaa` where the HDR format cannot be multisampled ([Shadows and antialiasing](#shadows-and-antialiasing)). |
-| `Renderer` | `Renderer::new(&desc).await` (headless), `Renderer::with_surface(&desc, &instance, surface).await` (presents), `render(&scene, &target) -> Result<FrameStats>`, `resize`, `info`, `reset_history` (TAA, on a camera cut), `save_state() -> RendererState` and `restore_state(state)` (the adapted exposure and its tick, kept on the GPU for a world snapshot; `RendererState::id`/`from_id` carry it as a u64), `capture().await -> RgbaImage` and `poll()` on every host. Native only: `new_blocking`, `wait_idle`, `read_offscreen()` (= `capture` blocking). |
-| `renderer_disabled()`, `RENDERER_SWITCH` | Native: `OG_RENDERER=none` in the environment makes `Renderer::new` and `with_surface` answer `NoAdapter` naming the switch, as on a machine without a usable adapter (the platform's engine and probe sandboxes), so hosts' no-renderer path is testable beside a GPU (docs/ci.md §Switches in the environment). |
+| `RenderDesc` | How to create a renderer: `width`, `height`, `backend` (`Auto`: DX12 on Windows, Metal or Vulkan elsewhere, WebGPU in a browser; `WebGpu`, `Metal`, `Vulkan`), `output_format` (`None`: `Rgba8UnormSrgb` offscreen, the surface's choice on a surface), `hdr` with `paper_white_nits` (0: 203) and `peak_nits` (0: 1000), `antialias`, `shadow_map_size` (2048), `shadow_cascades` (at most `MAX_CASCADES`, 4), `texture_compression`, `particles`, `culling`, `point_shadows` (`PointShadows::{Auto, Cube, Paraboloid}`), `taa_history` (`TaaHistory::{Bilinear, CatmullRom}`), `taa_sharpen` (0 to 1), `volumetric`, `planar_reflections` (1 or 2, `MAX_PLANAR_REFLECTIONS`), `transparency`, `transparency_layers`, `low_power`, `timestamps`, and the test switches `without_features` and `indirect_per_draw`. Default 1280×720, `Auto`, `Antialias::Off`, point shadows `Auto`, a bilinear TAA history, no sharpening, one planar reflection. `RenderDesc::mobile()` is the phone preset. |
+| `Antialias` | `Off`, `Tier` (the engine's default method: TAA on every backend), and the explicit `Msaa4`, `Taa`, `Fxaa`, `Smaa` and `SmaaT2x`. `RenderInfo::antialias` reports what was resolved; `Msaa4` falls back to `Fxaa` where the HDR format cannot be multisampled ([Shadows and antialiasing](#shadows-and-antialiasing)). |
+| `Renderer` | `Renderer::new(&desc).await` (headless), `Renderer::with_surface(&desc, &instance, surface).await` (presents), `render(&scene, &target) -> Result<FrameStats>`, `resize`, `info`, `reset_history` (TAA, on a camera cut), `save_state() -> RendererState` and `restore_state(state)` (the adapted exposure and its tick, kept on the GPU for a world snapshot; `RendererState::id`/`from_id` carry it as a u64), `capture().await -> RgbaImage`, `poll()` and `warm()` on every host. Native only: `new_blocking`, `wait_idle`, `read_offscreen()` (= `capture` blocking). |
+| `renderer_disabled()`, `RENDERER_SWITCH` | Native: `OG_RENDERER=none` makes `Renderer::new` and `with_surface` answer `NoAdapter` naming the switch, as on a machine without a usable adapter, so a host's no-renderer path is testable beside a GPU (`docs/ci.md` §Switches in the environment). |
 | `render_to_rgba(&desc, &scene)` | Native, blocking: one frame headless → `RgbaImage` (RGBA8, rows top to bottom). |
 | `RenderTarget` | `Offscreen` (the renderer's own texture, readable), `Surface` (acquire, draw, present), `View(&TextureView)`. |
-| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_texture_source`, `add_material`, `add_font`, `add_terrain`, `add_terrain_stream`, `add_environment_map`, `add_texture_array`, `add_palette`, `add_lut` → handles; `set_material`, `set_terrain`, `set_terrain_stream` replace one, `set_terrain_tile` hands a streamed terrain a tile; `remove_mesh`, `remove_texture`, `remove_material`, `remove_font`, `remove_environment_map`, `remove_texture_array`, `remove_palette`, `remove_lut` free one: [Resources and removal](#resources-and-removal)), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `environment_map`, `post`, `stylise`, `sprites`, `sprite_arrays`, `texts`, `overlay`, `debug`, `terrains`, `water`, `particles`, `colliders` (`SceneCollider::{Plane, Box, Sphere, HeightField}`: what CPU-simulated particles bounce off), `tick`, `tick_rate`. `mesh_handle(index)` turns a mesh index back into its handle (the runtime's skinned copies). The renderer uploads what is new or changed and frees what was removed before the next frame. |
-| `MeshData`, `Vertex`, `TextureData`, `Material` | As before: triangle lists (a vertex's `tangent` in glTF's frame, generated at upload when `w` is 0: `MeshData::generate_tangents`); RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
-| `VertexEncoding` | How a mesh's vertices are held on the GPU: `Full` (default, `Vertex` as given, 64 bytes) or `Compact` (16 bytes where a plain material draws it; quantised): `RenderScene::set_vertex_encoding(mesh, encoding)`, `vertex_encoding(mesh)`. [Instance and vertex encodings](#instance-and-vertex-encodings). |
-| `StandardMaterial`, `PhysicalExtensions` | The reflected three.js material (`MeshStandardMaterial` fields, `MeshPhysicalMaterial`'s clearcoat, sheen, transmission, iridescence, anisotropy and `ior`: [Physical materials](#physical-materials-p4)); glTF's `KHR_materials_*` extensions of one material with textures as handles or indices, `apply` lays them over a `StandardMaterial` as three.js's `GLTFLoader` does. `mapArray`/`mapLayer` and `normalMapArray`/`normalMapLayer` read the base colour and normal from texture-array layers ([Array maps](#array-maps-materials-and-terrain-layers)). |
-| `Instance` | `(mesh, material, transform, material_layer, fx, cast_shadows, receive_shadows)`, submitted one by one; batched by (mesh, material, cast_shadows). `material_layer` (`None`: the material's) is the texture-array layer an array-map material samples for this instance alone: [Array maps](#array-maps-materials-and-terrain-layers). `fx` (`InstanceFx { flash, flash_color, tint }`, `InstanceFx::NONE` the material's own look; `SkinnedInstance::fx` the same) is this instance's own hit flash and tint: [Instance looks](#instance-looks-the-hit-flash-of-one-instance). `cast_shadows` (drawn into the shadow passes; a (mesh, material)'s non-casters are a batch of their own) and `receive_shadows` (darkened by the shadow maps; carried in the record, no batch of its own), both on from `add_instance` and `SkinnedInstance::new`: [Which instances receive](#shadows-and-antialiasing). The transform is affine: the GPU holds its columns' xyz, the layer and the look, 64 bytes ([Instance and vertex encodings](#instance-and-vertex-encodings)). |
+| `RenderScene` | Resources with handles (`add_mesh`, `add_texture`, `add_texture_source`, `add_material`, `add_font`, `add_terrain`, `add_terrain_stream`, `add_environment_map`, `add_texture_array`, `add_palette`, `add_lut`; `set_material`, `set_terrain`, `set_terrain_stream`, `set_terrain_tile` replace one; `remove_*` free one: [Resources and removal](#resources-and-removal)), and the per-frame public fields `instances`, `camera`, `light`, `lights`, `environment`, `environment_map`, `post`, `stylise`, `quality`, `sprites`, `sprite_arrays`, `texts`, `overlay`, `debug`, `terrains`, `water`, `particles`, `colliders` (`SceneCollider::{Plane, Box, Sphere, HeightField}`: what CPU-simulated particles bounce off), `tick`, `tick_rate`. `mesh_handle(index)` turns a mesh index back into its handle. The renderer uploads what is new or changed and frees what was removed before the next frame. |
+| `MeshData`, `Vertex`, `TextureData`, `Material` | Triangle lists (a vertex's `tangent` in glTF's frame, generated at upload when `w` is 0: `MeshData::generate_tangents`); RGBA8 with `color_space` and `mips`; glTF metallic-roughness with `alpha_mode` (`Opaque`, `Mask`). |
+| `VertexEncoding` | How a mesh's vertices are held on the GPU: `Full` (default, `Vertex` as given, 64 bytes) or `Compact` (16 bytes where a plain material draws it; quantised): `RenderScene::set_vertex_encoding(mesh, encoding)`, `vertex_encoding(mesh)` ([Instance and vertex encodings](#instance-and-vertex-encodings)). |
+| `StandardMaterial`, `PhysicalExtensions` | The reflected three.js material (`MeshStandardMaterial` fields, `MeshPhysicalMaterial`'s clearcoat, sheen, transmission, iridescence, anisotropy and `ior`: [Physical materials](#physical-materials)); glTF's `KHR_materials_*` extensions of one material, which `apply` lays over a `StandardMaterial` as three.js's `GLTFLoader` does. `mapArray`/`mapLayer` and `normalMapArray`/`normalMapLayer` read the base colour and normal from texture-array layers ([Array maps](#array-maps-materials-and-terrain-layers)). |
+| `Instance` | `(mesh, material, transform, material_layer, fx, cast_shadows, receive_shadows)`, submitted one by one; batched by (mesh, material, cast_shadows). `material_layer` (`None`: the material's) is the texture-array layer an array-map material samples for this instance. `fx` (`InstanceFx { flash, flash_color, tint }`, `InstanceFx::NONE` the material's own look; `SkinnedInstance::fx` the same): [Instance looks](#instance-looks-the-hit-flash-of-one-instance). `cast_shadows` and `receive_shadows`, both on from `add_instance` and `SkinnedInstance::new`: [Shadows and antialiasing](#shadows-and-antialiasing). The transform is affine; the GPU record is 64 bytes ([Instance and vertex encodings](#instance-and-vertex-encodings)). |
 | `Camera` | `position`, `target`, `up`, `projection` (`Perspective { fov_y_degrees }`, `Orthographic { height }`), `near`, `far`, `exposure`. `Camera::orthographic_2d(center, height)` is the 2D camera (looking down −z at the z = 0 plane). |
-| `Exposure` | `Manual { ev }` (×2^ev; `Exposure::linear(k)` from a multiplier) or `Auto { compensation, min_ev, max_ev, adapt_speed_up, adapt_speed_down }`: the frame's log-average luminance brought to 0.18. With both speeds 0 (`Exposure::auto()`) from the current frame only, so the same frame always gets the same exposure; otherwise adapted over the scene's ticks (see [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation)). |
-| `DirectionalLight` | `direction_to_light`, `color`, `intensity`, `cast_shadows`, `shadow_bounds` (`Auto`: the instances' bounds; `Sphere`), `max_shadow_distance` (default 200 m; shadows fade over its last tenth), `shadow_softness` (PCSS: the penumbra's width per metre between caster and receiver; 0, the default, is the hard edge) and `cascade_blend` (the fraction of each cascade's depth over which it fades into the next; 0 by default). Three cascades. |
-| `Light`, `LightKind` | Point and spot lights (`Point`; `Spot { direction, angle_degrees, penumbra }`) with `position`, `color`, `intensity` (radiance at 1 m), `range`, `cast_shadows`. Clustered (see [Forward+](#forward-phase-2)): lights whose range misses the view are culled (`FrameStats::lights_culled`), up to `MAX_LIGHTS` = 256 in view are drawn (past it the brightest at the camera are kept, the rest counted in `lights_dropped`); of those in view with `cast_shadows`, `RenderInfo::shadowed_lights` (`MAX_SHADOWED_LIGHTS` = 8) get shadows, the most radiant at the camera first (the rest counted in `shadowed_lights_dropped`). |
-| `PostEffects`, `Bloom`, `Tonemap` | `bloom: Option<Bloom { threshold, knee, intensity }>` (threshold in exposed units: 1.0 is display white), `tonemap: Aces` (default), `Agx` (Blender 4's and three.js's AgX fit, base look), `Neutral` (Khronos PBR Neutral, three.js `NeutralToneMapping`: colours up to 0.76 pass through less a dielectric's 0.04, only highlights roll off) or `None` (clamp: authored 2D colours come out exact). |
-| `EnvironmentMapData`, `EnvironmentMap`, `bake` | A prefiltered environment map (level 0's face `size`, `ENVIRONMENT_MAP_LEVELS` = 5 levels of RGB9E5 `texels`, level m at roughness m/4, `irradiance` as nine harmonics) and how a frame uses one (`map`, `rotation` about +y in radians, `background_intensity`); `rgb9e5`, `rgb9e5_decode`, `sh9`, `face_direction`; feature `bake`: `bake::bake(&Equirect, &BakeDesc)` and `bake::bake_cube`, the cook's prefilter, and `bake::from_prefiltered(&PrefilteredCube, &BakeDesc)`, a cube's own prefiltered mip chain taken as it is. See [Phase 4](#phase-4-environment-maps-agx-exposure-adaptation). |
-| `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down; a flipped region swaps u0/u1 or v0/v1), `layer`, `clip` (an index into the overlay's clip rectangles; ignored in the world). Sorted by (layer, sort key, texture); within those, submission order. `anchored_at(pivot)`: the same quad anchored elsewhere (a faced nine-slice's pieces turn about the panel's anchor). |
-| `SpriteFacing`, `sun_card_right` | `sprite_facing` (by sprite index, like `sprite_layers`): billboards, `None` (the xy plane), `Camera` (the view plane), `CameraY` (upright, turned about y). Turned in the sprite vertex shader for each camera, sorted back to front from its eye among the transparent meshes, culled by bounds (`FrameStats::sprites_culled`); a faced sprite's drop shadow is cast by its sun-facing card (`sun_card_right`, `ShadowGround::fit_facing`). `TextFacing` (`RenderScene::text_facing`): world text as a billboard, turned about its aligned point. See [Billboards](#billboards). |
-| `SpriteArray`, `TextureArrayData`, `TextureArrayInfo` | `sprite_arrays` (and `Overlay::sprite_arrays` for screen sprites): a sprite drawn from layer `layer` of a texture array (`add_texture_array`: same-sized layers uploaded as one `D2Array`; `set_texture_array_filter` for pixel art) instead of its texture, with glow, flash, 2D lighting and blend; `ParticleEmitter::array` draws a 2D emitter's particles from one. See [The 2D batch](#the-2d-batch-e4). |
-| `SpriteShadow`, `ShadowGround`, `ShadowBend`, `SPRITE_SHADOW_LIFT`, `SHADOW_BEND_ROWS`, `SHADOW_BEND_COLUMNS`, `SHADOW_BEND_TOLERANCE` | `sprite_shadows`: a world sprite's drop shadow along the sun onto its `ground` (a plane through `height` under the anchor with a `normal`; the plane y = 0 by default; `ShadowGround::fit` fits one to a terrain under the shadow, and bends it, `bend`, over a hollow or ridge the plane misses), faded where the cascades already shadow that ground, drawn before the sprites of its layer (see [The 2D batch](#the-2d-batch-e4)). |
-| `SpriteOrder`, `TextOutline`, `TextureFilter` | Per-frame side lists by index, so `Sprite` and `Text` keep their fields: `sprite_order` gives a sprite a sort key within its layer (top-down y sorting: `-y` of the feet; default 0), `text_outlines` an outline (width as a fraction of half the font's distance range, linear colour) to a world text; `set_texture_filter(texture, Nearest)` samples a texture by its nearest texel wherever sprites, tiles and particles draw it (pixel art); `CleanEdge` runs torcado's cleanEdge (MIT, `third_party/cleanedge/`) in sprite.wgsl, so a turned pixel sprite or tile keeps its texels' colours and its edges are redrawn as slopes, never blended (texture arrays, the overlay and particles take it as nearest). |
-| `SpriteOutline`, `paletted_texture` | The art contract's runtime pieces (docs/art.md §2.4). `sprite_outlines` gives a world sprite a pixel outline drawn by sprite.wgsl from its texture's alpha: the clear logical pixels within `width` (a diamond) of an opaque one take its colour, a logical pixel `pixel` texels, the quad grown by the width so the line fits outside the art, and texels outside the sprite's region clear (a sheet's next frame never lines it). `paletted_texture(index, palette, row)` is a palette swap: an index texture as the cook writes `<id>#index` (alpha the palette index plus one) through row `row` of a palette texture, made once per (index, palette, row) on the CPU from the two RGBA8 sources and drawn as any texture, by a sprite or a tile layer. |
-| `TileLayer`, `TileChunk`, `TileQuad`, `TileAnimation` | `tile_layers`: chunked tile quads (shared `Arc<Vec<TileChunk>>`, so an unchanged layer copies no tiles) drawn through the sprite batch before the sprites of their layer, chunks culled to an orthographic view, with `repeat` per axis (scrolling backgrounds) and animated quads cycling uvs by `time`. `FrameStats::tiles` / `tile_chunks` count what was drawn. |
+| `Exposure` | `Manual { ev }` (×2^ev; `Exposure::linear(k)` from a multiplier) or `Auto { compensation, min_ev, max_ev, adapt_speed_up, adapt_speed_down }`: the frame's log-average luminance brought to 0.18. With both speeds 0 (`Exposure::auto()`) from the current frame only; otherwise adapted over the scene's ticks ([Exposure adaptation](#environment-maps-agx-exposure-adaptation)). |
+| `DirectionalLight` | `direction_to_light`, `color`, `intensity`, `cast_shadows`, `shadow_bounds` (`Auto`: the instances' bounds; `Sphere`), `max_shadow_distance` (default 200 m; shadows fade over its last tenth), `shadow_softness` (PCSS: the penumbra's width per metre between caster and receiver; 0, the default, is the hard edge) and `cascade_blend` (the fraction of each cascade's depth over which it fades into the next; 0 by default). |
+| `Light`, `LightKind` | Point and spot lights (`Point`; `Spot { direction, angle_degrees, penumbra }`) with `position`, `color`, `intensity` (radiance at 1 m), `range`, `cast_shadows`. Clustered ([Forward+](#forward)): lights whose range misses the view are culled (`FrameStats::lights_culled`), up to `MAX_LIGHTS` = 256 in view are drawn (past it the brightest at the camera, the rest counted in `lights_dropped`); of those with `cast_shadows`, at most the quality's `shadowed_lights` within `RenderInfo::shadowed_lights` (`MAX_SHADOWED_LIGHTS` = 16) get shadows, the most radiant at the camera first (the rest counted in `shadowed_lights_dropped`). |
+| `PostEffects`, `Bloom`, `Tonemap` | `bloom: Option<Bloom { threshold, knee, intensity }>` (threshold in exposed units: 1.0 is display white), `tonemap: Aces` (default), `Agx` (Blender 4's and three.js's AgX, base look), `Neutral` (Khronos PBR Neutral, three.js `NeutralToneMapping`) or `None` (clamp: authored 2D colours come out exact). |
+| `EnvironmentMapData`, `EnvironmentMap`, `bake` | A prefiltered environment map (level 0's face `size`, `ENVIRONMENT_MAP_LEVELS` = 5 levels of RGB9E5 `texels`, level m at roughness m/4, `irradiance` as nine harmonics) and how a frame uses one (`map`, `rotation` about +y in radians, `background_intensity`); `rgb9e5`, `rgb9e5_decode`, `sh9`, `face_direction`; feature `bake`: `bake::bake(&Equirect, &BakeDesc)`, `bake::bake_cube` and `bake::from_prefiltered(&PrefilteredCube, &BakeDesc)` ([Environment maps](#environment-maps-agx-exposure-adaptation)). |
+| `Sprite` | A textured quad in the world xy plane facing +z: `texture` (`None` = solid), `position`, `size`, `anchor`, `rotation`, `color` (linear RGBA), `uv_rect` (v down; a flipped region swaps u0/u1 or v0/v1), `layer`, `clip` (an index into the overlay's clip rectangles; ignored in the world). Sorted by (layer, sort key, texture); within those, submission order. `anchored_at(pivot)`: the same quad anchored elsewhere. |
+| `SpriteFacing`, `TextFacing`, `sun_card_right` | Billboards: `sprite_facing` (by sprite index) `None` (the xy plane), `Camera` (the view plane), `CameraY` (upright, turned about y); `RenderScene::text_facing` for world text ([Billboards](#billboards)). |
+| `SpriteArray`, `TextureArrayData`, `TextureArrayInfo` | `sprite_arrays` (and `Overlay::sprite_arrays`): a sprite drawn from layer `layer` of a texture array (`add_texture_array`: same-sized layers uploaded as one `D2Array`; `set_texture_array_filter` for pixel art) instead of its texture; `ParticleEmitter::array` draws a 2D emitter's particles from one ([The 2D batch](#the-2d-batch)). |
+| `SpriteShadow`, `ShadowGround`, `ShadowBend`, `SPRITE_SHADOW_LIFT`, `SHADOW_BEND_ROWS`, `SHADOW_BEND_COLUMNS`, `SHADOW_BEND_TOLERANCE` | `sprite_shadows`: a world sprite's drop shadow along the sun onto its `ground` ([The 2D batch](#the-2d-batch)). |
+| `SpriteOrder`, `TextOutline`, `TextureFilter` | Per-frame side lists by index, so `Sprite` and `Text` keep their fields: `sprite_order` gives a sprite a sort key within its layer (top-down y sorting: `-y` of the feet; default 0), `text_outlines` an outline (width as a fraction of half the font's distance range, linear colour) to a world text. `set_texture_filter(texture, Nearest)` samples a texture by its nearest texel wherever sprites, tiles and particles draw it (pixel art); `CleanEdge` runs torcado's cleanEdge (MIT, `third_party/cleanedge/`) in sprite.wgsl, so a turned pixel sprite or tile keeps its texels' colours and its edges are redrawn as slopes (texture arrays, the overlay and particles take it as nearest). |
+| `SpriteOutline`, `paletted_texture` | The art contract's runtime pieces (`docs/art.md` §2.4). `sprite_outlines` gives a world sprite a pixel outline drawn by sprite.wgsl from its texture's alpha: the clear logical pixels within `width` (a diamond) of an opaque one take its colour, a logical pixel `pixel` texels, the quad grown by the width, texels outside the sprite's region clear. `paletted_texture(index, palette, row)` is a palette swap: an index texture as the cook writes `<id>#index` (alpha the palette index plus one) through row `row` of a palette texture, made once per (index, palette, row) on the CPU and drawn as any texture. |
+| `TileLayer`, `TileChunk`, `TileQuad`, `TileAnimation` | `tile_layers`: chunked tile quads (shared `Arc<Vec<TileChunk>>`, so an unchanged layer copies no tiles) drawn through the sprite batch before the sprites of their layer, chunks culled to an orthographic view, with `repeat` per axis (scrolling backgrounds) and animated quads cycling uvs by `time`. `FrameStats::tiles` / `tile_chunks`. |
 | `nine_slice(sprite, insets, texture_size, world_per_pixel)` | The nine sprites of a nine-slice panel: corners keep their size, edges stretch along one axis, the centre along both; insets clamp to half the sprite. |
-| `MsdfFont`, `Glyph`, `Kern`, `Text`, `GlyphPlacement` | An MSDF atlas (`TextureHandle`, linear, no mips) plus `distance_range`, `line_height`, the glyph table (`advance`, `plane_bounds` in em y up, `atlas_bounds` in pixels y down: msdf-atlas-gen's layout) and `kerning` (`Kern { left, right, adjust }` em: the cook's pair table; empty for a font that does not kern). `Text { font, text, position, size, rotation, color, layer, clip, tracking, weight, glow, placements }` lays out left to right with `\n`, each glyph advancing by its advance, the kerning with the character before it and `tracking` em (CSS `letter-spacing`), world and overlay alike (`FontLayout::walk`); a shaper's `placements` (one `GlyphPlacement { advance, x, y }` em per character, as og-ui hands a bidi or shaped line) replace those and offset each glyph (marks on their bases). Missing characters take no space, break the kerning pair and are counted in `FrameStats::missing_glyphs`. `MsdfFont::measure` is a line's width as laid out. `RenderScene::set_font` replaces a font's glyph table (glyphs rendered at run time joining a page): fonts carry a revision and the renderer re-lays them out. Text sorts with the sprites. `weight` (a faux bold, CSS px of the distance field) and `glow` (`TextGlow { color, radius }`) are the overlay's (below). |
-| `Overlay` | The screen-space layer drawn last (`RenderScene::overlay: Option<Overlay>`): `sprites` and `texts` in CSS pixels, origin top left, y down; `width`, `height` (the CSS viewport) and `scale` (device pixels per CSS pixel; 0 fits the height); `clips` (`add_clip([x, y, w, h])` → the index a sprite or text names in `clip`). See [The overlay](#the-overlay). |
-| `TerrainData`, `TerrainControl`, `TerrainHandle` | A terrain's geometry: `columns` × `rows` heights (m) over a `size` rectangle centred on its origin, row-major from -z and -x, and an optional RGBA8 control map (one channel per layer). `height(local)` (on the triangles the renderer and physics use), `normal(local)`, `range()`, `cell()`, `check()`. See [Terrain](#phase-2-terrain). |
-| `Terrain`, `TerrainLayer`, `TerrainLod` | A terrain drawn this frame (`RenderScene::terrains`): its data, its `transform` (rotation, scale and translation from the terrain's own space, centred on the height field at height 0, to the world), up to `MAX_TERRAIN_LAYERS` = 4 layers (albedo and normal maps, tint, roughness, `tile`, `triplanar`, slope and altitude rules with fades), `height_blend`, `cast_shadows`, and the clipmap's `lod` (finest `spacing`, `ring` quads per side). |
-| `DebugView` | `None`, `Cascades` (red/green/blue per cascade, black beyond). |
-| `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_casters`, `lights`, `lights_dropped`, `lights_culled`, `cluster_lights`, `cluster_lights_dropped`, `sprites`, `glyphs`, `sprite_draws`, `missing_glyphs` (overlay ones included), `overlay_sprites`, `overlay_glyphs`, `overlay_draws`, `texture_bytes` (textures, texture arrays, environment maps, palettes and colour LUTs on the GPU; removed ones count nothing), `frame`, `taa_history` (whether TAA blended history this frame), `shadowed_lights` and `shadowed_lights_dropped`, `particle_collision_skipped`, and phase 2's `terrain_draws` (clipmap levels in the main pass), `terrain_triangles`, `terrain_shadow_draws`, `reflection_draws` (the planar reflection pass). |
-| `RenderInfo` | Adapter, backend, device type, `antialias`, `shadow_map_size`, `shadow_cascades`, `shadowed_lights`, `point_shadows` (resolved: `Cube` or `Paraboloid`), `texture_formats`, `backend_tier()`: the reference-frame directory name and the tier the probe's hello and `og.render.capabilities` report (`tier_name(backend, device_type, adapter)`: `vulkan-cpu` for a software rasterizer, `is_software_adapter`: a CPU device type, or an adapter named llvmpipe, lavapipe or SwiftShader). |
-| `RenderError` | `NoAdapter`, `NoDevice`, `Surface`, `InvalidHandle`, `Readback`, `Unsupported`, `InvalidData`. |
+| `MsdfFont`, `Glyph`, `Kern`, `Text`, `GlyphPlacement` | An MSDF atlas (`TextureHandle`, linear, no mips) plus `distance_range`, `line_height`, the glyph table (`advance`, `plane_bounds` in em y up, `atlas_bounds` in pixels y down: msdf-atlas-gen's layout) and `kerning` (`Kern { left, right, adjust }` em). `Text { font, text, position, size, rotation, color, layer, clip, tracking, weight, glow, placements }` lays out left to right with `\n`, each glyph advancing by its advance, the kerning with the character before it and `tracking` em (CSS `letter-spacing`), world and overlay alike (`FontLayout::walk`); a shaper's `placements` (one `GlyphPlacement { advance, x, y }` em per character, as og-ui hands a bidi or shaped line) replace those. Missing characters take no space, break the kerning pair and are counted in `FrameStats::missing_glyphs`. `MsdfFont::measure` is a line's width. `RenderScene::set_font` replaces a font's glyph table (glyphs rendered at run time); fonts carry a revision and the renderer re-lays them out. Text sorts with the sprites. `weight` and `glow` are the overlay's ([The overlay](#the-overlay)). |
+| `Overlay` | The screen-space layer drawn last (`RenderScene::overlay: Option<Overlay>`): `sprites`, `texts`, `sprite_arrays` and `glass` in CSS pixels, origin top left, y down; `width`, `height` (the CSS viewport) and `scale` (device pixels per CSS pixel; 0 fits the height); `clips` (`add_clip([x, y, w, h])` → the index a sprite or text names in `clip`). |
+| `TerrainData`, `TerrainControl`, `TerrainHandle` | A terrain's geometry: `columns` × `rows` heights (m) over a `size` rectangle centred on its origin, row-major from -z and -x, and an optional RGBA8 control map (one channel per layer). `height(local)` (on the triangles the renderer and physics use), `normal(local)`, `range()`, `cell()`, `check()` ([Terrain](#terrain)). |
+| `Terrain`, `TerrainLayer`, `TerrainLod` | A terrain drawn this frame (`RenderScene::terrains`): its data, its `transform`, up to `MAX_TERRAIN_LAYERS` = 16 layers (four with textures of their own, sixteen from `layer_arrays`; a pixel blends its four strongest), `height_blend`, `cast_shadows`, and the clipmap's `lod` (finest `spacing`, `ring` quads per side, `budget`). |
+| `RenderQuality`, `QualityPreset` | What a frame may cost, read every frame ([What a frame may cost](#what-a-frame-may-cost-renderquality)). |
+| `DebugView` | `None`, `Cascades` (red/green/blue per cascade, black beyond), `AmbientOcclusion`, and others listed on the enum. |
+| `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_cached`, `shadow_casters`, `lights`, `lights_dropped`, `lights_culled`, `cluster_lights`, `cluster_lights_dropped`, `sprites`, `sprites_culled`, `glyphs`, `sprite_draws`, `missing_glyphs` (overlay ones included), `overlay_sprites`, `overlay_glyphs`, `overlay_draws`, `texture_bytes`, `instance_upload_bytes`, `frame`, `taa_history` (whether TAA blended history this frame), `shadowed_lights`, `shadowed_lights_dropped`, `particle_collision_skipped`, `terrain_draws`, `terrain_triangles`, `terrain_shadow_draws`, `terrain_tiles`, `terrain_uploads`, `scatter_draws`, `scatter_copies`, `scatter_built`, `reflection_draws`, and GPU culling's counts ([The render graph](#the-render-graph)). |
+| `RenderInfo` | Adapter, backend, device type, `antialias`, `msaa_samples`, `shadow_map_size`, `shadow_cascades`, `shadowed_lights`, `point_shadows` (resolved: `Cube` or `Paraboloid`), `planar_reflections`, `transparency`, `texture_formats`, `pipeline_cache`, `hdr_supported`, `hdr`, and `backend_tier()`: the reference-frame directory name and the tier the probe's hello and `og.render.capabilities` report (`tier_name(backend, device_type, adapter)`: `vulkan-cpu` for a software rasterizer, `is_software_adapter`: a CPU device type, or an adapter named llvmpipe, lavapipe or SwiftShader). |
+| `RenderError` | `NoAdapter`, `NoDevice`, `Surface`, `SurfaceOccluded`, `InvalidHandle`, `Readback`, `Unsupported`, `InvalidData`, `DeviceLost`. |
 | `shapes` | `sphere`, `plane`, `cuboid(size)`, `tetrahedron`, `checker`. |
-| `gltf` (feature `gltf`) | `load_glb(bytes) -> GltfModel`, `GltfModel::add_to(&mut scene) -> ModelParts`, `ModelParts::instance`. A bridge until the cook (M4). |
+| `gltf` (feature `gltf`) | `load_glb(bytes) -> GltfModel`, `GltfModel::add_to(&mut scene) -> ModelParts`, `ModelParts::instance`; `gltf::physical_extensions`. Games load cooked models; this bridge serves tests and tools. |
 | `wgpu` | The wgpu this crate is built on, re-exported for hosts. |
 
 ## Resources and removal
 
 Every resource kind a game streams has a generation-tagged handle: a
 handle's low 24 bits are its slot, the top 8 the slot's generation.
-`remove_mesh`, `remove_texture`, `remove_material`, `remove_font` (the P4
-perf round, db105bd), `remove_environment_map`, `remove_texture_array`,
-`remove_palette` and `remove_lut` (the sprites-arrays round: a streaming
-group's colour LUTs) empty a slot and move its generation on; the renderer
-frees the GPU copy before the next frame (by slot revision: a refilled slot
-is uploaded again, an emptied one dropped), and the next add of the kind
+`remove_mesh`, `remove_texture`, `remove_material`, `remove_font`,
+`remove_environment_map`, `remove_texture_array`, `remove_palette` and
+`remove_lut` empty a slot and move its generation on; the renderer frees
+the GPU copy before the next frame (by slot revision: a refilled slot is
+uploaded again, an emptied one dropped), and the next add of the kind
 fills the slot again under the new generation, so an old handle never
-reaches the new resource. A stale handle is refused everywhere: the
-setters (`set_mesh`, `set_material`, `set_font`, `set_texture_filter`,
+reaches the new resource. A skinned or morphed mesh's slot is retired,
+not reused.
+
+A stale handle is refused everywhere: the setters (`set_mesh`,
+`set_material`, `set_font`, `set_texture_filter`,
 `set_texture_array_filter`, ...) return false, the getters (`mesh`,
 `font`, `environment_map_data`, `texture_array`, `palette`, `lut`) `None`,
 `contains_*` false, and `render` refuses a frame that still names one
@@ -73,402 +73,273 @@ text's font or a live font's atlas, `environment_map`, the colour
 grading's LUT, the stylisation's palette, a terrain's layer array). A
 removed texture is also cleared from every material slot and the decal
 atlas, a removed texture array from every material's `mapArray` and
-`normalMapArray` (they draw without it). Removing what the frame still uses is the caller's to avoid:
-og-runtime's streaming keeps such a resource, with a warning, until the
-frame stops using it. `FrameStats::texture_bytes` counts textures, arrays
-(padding layers included), environment maps (every level of the six RGB9E5
-faces), palettes (256 × 1 RGBA8) and LUTs (32³ RGBA8), so a frame after a
-removal reports the freed bytes gone. The image-based light is keyed by the map slot's
+`normalMapArray` (they draw without it). Removing what the frame still
+uses is the caller's to avoid: og-runtime's streaming keeps such a
+resource, with a warning, until the frame stops using it.
+
+`FrameStats::texture_bytes` counts textures (every level as allocated),
+arrays (padding layers included), environment maps (every level of the
+six RGB9E5 faces), palettes (256 × 1 RGBA8) and LUTs (32³ RGBA8); removed
+ones count nothing. The image-based light is keyed by the map slot's
 revision, the stylisation's bind group by the palette's, so a refilled
 slot never draws the old resource. Tests: og-tests `tests/removal.rs`.
 
 ## The render graph
 
 A feature-gated pass sequence per `render` call, run on the render graph
-object (`src/graph.rs`, M6: declared targets and passes, data-flow order,
-aliased transients; §What phase 2 owes). Passes whose feature is off are
-not recorded.
+object (`src/graph.rs`: declared targets and passes, data-flow order,
+aliased transients). Passes whose feature is off are not recorded. An
+effect pass declares every prepass texture it binds (`lindepth`,
+`gbuffer`), not only its own input, so the graph never aliases a target
+a pass still reads.
 
 1. **Sync.** New meshes, textures (with the **mip pass**: one fullscreen
    triangle per level, linear-space box filter), materials, fonts. When the
    sky changes, the **IBL passes** run (sky cube, irradiance, GGX prefilter,
-   BRDF LUT; render passes only); with an environment
-   map they copy the cooked map into the same cubes instead.
+   BRDF LUT; render passes only); with an environment map they copy the
+   cooked map into the same cubes instead. Instance buffers write only the
+   4 KiB blocks that changed (`src/upload.rs`, `FrameStats::
+   instance_upload_bytes`): on the CPU path the sorted records of the
+   batches a list draws whole and the culled copies appended after them; a
+   buffer just grown, or a frame of another length, is written whole.
 2. **Batch and cull** (CPU). Instances stably sorted by (mesh, material);
    each sorted instance gets a world bounding sphere. Both are kept across
    frames (`instances.rs`): the sort is redone only when the submission's
-   (mesh, material) sequence or a drawn mesh's bounds changed, and an
+   (mesh, material) sequence or a drawn mesh's bounds changed, an
    instance's sphere and GPU transform only when its transform changed
-   (bit for bit), so a still field costs one pass over the submission and
-   no sort. Every pass gets a draw
-   list per batch: the instances whose sphere touches the pass's volume
-   (`Frustum::test_spheres`, each flag its own sphere's, so the lists are
-   the same on any number of threads). The tests run on the calling thread
-   below 131,072 bounds and on the lanes from there (og-lanes' `cull`
-   site, 1,024 bounds a task): a test is about 5 ns and a split pays a
-   pool wake and join of 50 µs to milliseconds, so it lost at every count
-   to 65,536 on an idle machine and at every count on a loaded one
-   (`tests/evidence/debt3/cull-lane-grain/NOTES.md`). A
-   batch that loses less than a tenth of its instances is drawn whole (no
-   copy); otherwise its visible transforms are appended to the instance
-   buffer. Draws bind a buffer slice.
-   Sprites and glyphs are sorted by (layer, kind, texture or font) into runs.
+   bit for bit. Every pass gets a draw list per batch: the instances whose
+   sphere touches the pass's volume (`Frustum::test_spheres`; the lists
+   are the same on any number of threads). The tests run on the calling
+   thread below 131,072 bounds and on the lanes from there (og-lanes'
+   `cull` site, 1,024 bounds a task). A batch that loses less than a
+   tenth of its instances is drawn whole; otherwise its visible transforms
+   are appended to the instance buffer. Draws bind a buffer slice. Sprites
+   and glyphs are sorted by (layer, kind, texture or font) into runs.
+
    **GPU culling** (`cull_gpu.rs`; `RenderDesc::culling`: `Culling::Auto`
    by default, which takes it from `GPU_CULLING_MIN_INSTANCES` (16,384)
    instances, `Culling::Gpu` at any size) replaces the per-pass lists with
-   compute and indirect draws (native Metal, Vulkan, DX12 and the
-   browser's WebGPU):
-   the sorted instances are uploaded once, a compute stage tests them
+   compute and indirect draws: a compute stage tests the sorted instances
    against every shadow face, the planar reflection and the camera, last
-   frame's visible opaque occluders are drawn at this frame's camera into
-   a depth buffer of their own, a depth pyramid (farthest depth per texel,
-   each level's size taken from the screen's, not `textureDimensions`,
-   which llvmpipe answers wrongly) is built from it, and a second stage
-   drops camera instances whose box lies behind it. Each pass's visible
-   instances are compacted in sorted order by a deterministic prefix sum
-   and every batch is one `draw_indexed_indirect`, so both paths draw the
-   same frame. A frame with no occluder material, or no earlier camera
-   visibility, skips the occluders, their depth and the pyramid.
-   `Culling::Cpu` (a real choice: no compute dispatch or readback for a
-   small frame), object motion blur and frames over the storage-binding
-   limit keep the CPU path. The counts come back through a readback ring
-   for frames after `Renderer::request_culling_counts`:
-   `FrameStats::gpu_culling`, `occluded`, `occluded_triangles`,
-   `in_view_triangles`, `occluder_draws` and `counts_lag` (the GPU totals
-   lag by that many frames; `finish_stats` waits for the frame's own
-   natively). `og-gfx` takes `OG_GFX_CULLING=gpu|cpu|auto`;
-   `og-tests/tests/culling.rs` renders eight scenes both ways
-   (`tests/evidence/P3/culling/`).
+   frame's visible opaque occluders are drawn at this frame's camera into a
+   depth pyramid, and a second stage drops camera instances whose box lies
+   behind it. Each pass's visible instances are compacted in sorted order
+   by a deterministic prefix sum and every batch is one
+   `draw_indexed_indirect`, so both paths draw the same frame.
+   `Culling::Cpu` (no compute dispatch or readback for a small frame),
+   object motion blur and frames over the storage-binding limit keep the
+   CPU path. The counts come back through a readback ring for frames after
+   `Renderer::request_culling_counts`: `FrameStats::gpu_culling`,
+   `occluded`, `occluded_triangles`, `in_view_triangles`, `occluder_draws`
+   and `counts_lag` (the GPU totals lag by that many frames;
+   `finish_stats` waits for the frame's own natively). wgpu's
+   indirect-call validation is off (`Backend::instance`): cull.wgsl writes
+   the arguments in range by construction. `og-gfx` takes
+   `OG_GFX_CULLING=gpu|cpu|auto`; `og-tests/tests/culling.rs` renders
+   eight scenes both ways.
 3. **Cascaded shadows** for the directional light (`frame.rs`): splits
    between the near plane and the nearer of `max_shadow_distance` and the
-   far side of `shadow_bounds`, λ = 0.8 between logarithmic and uniform.
-   Each cascade is the bounding sphere of its camera slice (its size does
-   not change as the camera turns), its centre snapped to the shadow map's
-   texel grid in light space (texels do not swim), its depth range reaching
-   towards the light to the top of the scene bounds. Casters are culled to
-   the cascade's box **and** to the camera slice swept towards the light
-   (the slice planes whose normal faces the light); on `gltf-reference` and
-   `spheres-20k` this draws 45 % and 36 % fewer casters with identical
-   frames. Three passes into a 2048² `R32Float` array (depth also written as
-   colour) with a shared depth buffer, front faces culled.
-4. **Local shadows**: per shadowed light (at most `RenderInfo::shadowed_lights`:
-   8 since the P4 shadows round), six cube
-   faces or two paraboloid hemispheres (point, by `PointShadows`) or one
-   perspective view (spot), each a pass into a 512² `R32Float` array
-   layer storing distance / range, casters culled to the face frustum.
-   With terrain, each of its clipmap levels that reaches into the face's
-   or cascade's volume is drawn too; with a planar water reflection the
-   **reflection pass** follows the shadows (§Phase 2: water).
-   While a 3D fluid has particles the **fluid-3d pass** follows
-   (§Phase 2: 3D fluids).
-5. **Main pass** into the `Rgba16Float` HDR target (4× multisampled with a
+   far side of `shadow_bounds`, λ = 0.8 between logarithmic and uniform;
+   `RenderQuality::shadow_cascades` of them (3 by default, at most
+   `RenderInfo::shadow_cascades`). Each cascade is the bounding sphere of
+   its camera slice (its size does not change as the camera turns), its
+   centre snapped to the shadow map's texel grid in light space (texels do
+   not swim), its depth range reaching towards the light to the top of the
+   scene bounds. Casters are culled to the cascade's box **and** to the
+   camera slice swept towards the light. One pass per cascade into a
+   `shadow_map_size`² `R32Float` array (depth also written as colour) with
+   a shared depth buffer, front faces culled.
+4. **Local shadows**: per shadowed light, six cube faces or two
+   paraboloid hemispheres (point, by `PointShadows`) or one perspective
+   view (spot), each a pass into a `LOCAL_SHADOW_SIZE` (512)² array layer,
+   casters culled to the face frustum. With terrain, each of its clipmap
+   levels that reaches into the face's or cascade's volume is drawn too;
+   with a planar water reflection the **reflection pass** follows the
+   shadows ([Water](#water)). While a 3D fluid has particles the
+   **fluid-3d pass** follows ([3D fluids](#3d-fluids)).
+5. **Depth-normal prepass**, on demand: it runs when something reads it
+   (AO, outlines, depth of field, motion blur, god rays, soft particles,
+   water, 3D fluids, the stylisation's depth ink and surface patterns).
+   It changes no lit pixel; it costs a second geometry pass.
+6. **Main pass** into the `Rgba16Float` HDR target (multisampled with a
    resolve when MSAA is on): forward PBR (`pbr.wgsl`) with the directional
-   light, its cascade picked by view depth (the same slices its casters were
-   culled to), the point and spot lights of the fragment's cluster
-   (Forward+, below; inverse square windowed to the range, smooth spot
-   cone), split-sum IBL,
-   emissive, alpha mask, derivative normal maps. Shadow lookups are bilinear
-   PCF with explicit compares on `textureLoad`.
-   **Shadow bias works at any scale:** the normal offset and the depth bias
-   are in world units proportional to the cascade's texel size (the depth
-   bias then converted to that cascade's normalized depth), where the old
-   single map spent a fixed bias in normalized depth over the whole scene
-   (about a metre on a 400 m field). The **sky pass** draws the sky cube at
-   the far plane over uncovered pixels. **Sprites and text** follow, alpha
-   blended, depth-tested against the scene without writing depth: one
-   instanced draw per run, quads built from the vertex index; text uses the
-   MSDF median with a screen-space distance range from `fwidth`.
-6. **TAA** (when on): a Halton(2,3) jitter of 8 positions is applied to the
+   light, its cascade picked by view depth (the same slices its casters
+   were culled to), the point and spot lights of the fragment's cluster
+   ([Forward+](#forward); inverse square windowed to the range, smooth
+   spot cone), split-sum IBL, emissive, alpha mask, normal maps in the
+   vertex tangent frame. Shadow lookups are bilinear PCF with explicit
+   compares on `textureLoad`. **Shadow bias works at any scale:** the
+   normal offset and the depth bias are in world units proportional to the
+   cascade's texel size (the depth bias then converted to that cascade's
+   normalized depth). The **sky pass** draws the sky cube at the far plane
+   over uncovered pixels. **Sprites and text** follow, alpha blended,
+   depth-tested against the scene without writing depth: one instanced draw
+   per run, quads built from the vertex index; text uses the MSDF median
+   with a screen-space distance range from `fwidth`. With water,
+   transmission or particle distortion the main pass splits after the sky
+   and copies the resolved scene (`scene-copy`, the `transmission` copy).
+7. **TAA** (when on): a Halton(2,3) jitter of 8 positions is applied to the
    projection as a clip-space translation; the TAA pass reprojects the
-   history through the depth buffer with the unjittered matrices (camera
-   motion), clamps it to the current 3×3 neighbourhood in YCoCg and blends
-   10 % of the current frame with luminance weights. History ping-pongs
-   between two targets and restarts on resize, a new scene or
-   `reset_history`.
-7. **Metering** (auto exposure): log2 luminance into 64², then 8×8 averages
+   history through the depth buffer with the unjittered matrices, clamps it
+   to the current 3×3 neighbourhood in YCoCg and blends 10 % of the current
+   frame with luminance weights. History ping-pongs between two targets and
+   restarts on resize, a new scene, a look change or `reset_history`.
+8. **Metering** (auto exposure): log2 luminance into 64², then 8×8 averages
    to 8² and 1² (`textureLoad`, no float filtering), read by the bloom
    prefilter and the tonemap through `textureLoad`. With adapt speeds the
    **exposure-adapt** pass follows: the 1×1 `R32Float` adapted EV walks
    towards the metered one, and the bloom prefilter and the tonemap read it
    instead.
-8. **Bloom**: a 13-tap prefilter with exposure and a soft-knee threshold into
-   a half-resolution chain (up to 6 levels), 13-tap downsamples, then tent
-   upsamples added back level by level.
-9. **Tonemap**: exposure × (HDR + bloom × intensity) → ACES, AgX, Khronos PBR Neutral or clamp → the
-   output. An sRGB output is encoded by the hardware; a non-sRGB one
-   (WebGPU canvases are `Bgra8Unorm`) by the shader (`fs_srgb_encode`). A
-   surface takes an sRGB format where one is offered (native windows).
-10. **Overlay** (when `scene.overlay` is set; `overlay.rs`, `overlay.wgsl`):
-    after the graph, straight into the output or its sRGB view (see below).
+9. **Bloom**: a 13-tap prefilter with exposure and a soft-knee threshold
+   into a half-resolution chain (up to 6 levels), 13-tap downsamples, then
+   tent upsamples added back level by level.
+10. **Tonemap**: exposure × (HDR + bloom × intensity) → ACES, AgX, Khronos
+    PBR Neutral or clamp → the output, or the LDR chain when a stylise or
+    antialiasing pass follows ([Stylisation](#stylisation)). An sRGB
+    output is encoded by the hardware; a non-sRGB one (WebGPU canvases are
+    `Bgra8Unorm`) by the shader (`fs_srgb_encode`). A surface takes an sRGB
+    format where one is offered (native windows).
+11. **Overlay** (when `scene.overlay` is set; `overlay.rs`,
+    `overlay.wgsl`): after the graph, straight into the output or its sRGB
+    view ([The overlay](#the-overlay)).
 
-## Forward+ (phase 2)
+## Forward+
 
-Point and spot lights are clustered (`src/clusters.rs`, owed row 30 of
-`docs/phase-1.md`). The view is cut into `CLUSTER_GRID` = 16 × 9 screen
-tiles × 24 depth slices (logarithmic between the camera's near and far
-planes; even for an orthographic camera). Each frame the CPU culls the
-lights whose sphere (`range`) misses the view frustum, keeps up to
-`MAX_LIGHTS` = 256 (past it the ones with the most radiance at the camera:
-intensity times the colour's brightest channel over the squared distance,
-at least 1 m), and assigns each to the clusters its sphere can touch: the
-view-space box of the sphere, clipped to the near plane and projected,
-widened by a pixel for the TAA jitter, and the slices of its depth range.
-A cluster holds at most `MAX_CLUSTER_LIGHTS` = 64; past it a cluster
-keeps its most important lights (the references' buffer holds every
-cluster at its cap). The lit shader finds its
-cluster from the pixel and the view depth and shades that cluster's lights
-in scene order, so every frame of up to eight lights is byte for byte the
-frame of the old per-fragment loop (every reference passes at RMSE 0), and
-a frame of 243 lights is the frame of the same lights brute-forced over
-every pixel (RMSE 0) in a tenth of the time.
+Point and spot lights are clustered (`src/clusters.rs`). The view is cut
+into `CLUSTER_GRID` = 16 × 9 screen tiles × 24 depth slices (logarithmic
+between the camera's near and far planes; even for an orthographic
+camera). Each frame the CPU culls the lights whose sphere (`range`)
+misses the view frustum, keeps up to `MAX_LIGHTS` = 256 (past it the ones
+with the most radiance at the camera: intensity times the colour's
+brightest channel over the squared distance, at least 1 m), and assigns
+each to the clusters its sphere can touch: the view-space box of the
+sphere, clipped to the near plane and projected, widened by a pixel for
+the TAA jitter, and the slices of its depth range. A cluster holds at
+most `MAX_CLUSTER_LIGHTS` = 64; past it a cluster keeps its most
+important lights. The lit shader finds its cluster from the pixel and
+the view depth and shades that cluster's lights in scene order, so a
+clustered frame is the frame of the same lights brute-forced over every
+pixel.
 
-The tables are three buffers in the frame group (bindings 7 to 9: the light
-records, one word per cluster with its first reference and count, and the
-references as bytes), all storage buffers. The build runs on the CPU:
-38 to 53 microseconds for
-256 lights, less than a compute build costs to record and submit alone
-(`tests/evidence/P4/perf/clusters-compute.md`; the P2 numbers in
-`tests/evidence/P2/render/forward-plus.md`). Stats: `lights` (drawn), `lights_culled`,
-`lights_dropped`, `cluster_lights` (references stored),
-`cluster_lights_dropped`.
+The tables are three storage buffers in the frame group (bindings 7 to
+9: the light records, one word per cluster with its first reference and
+count, and the references as bytes). The build runs on the CPU: a
+compute build costs more to record and submit than the CPU build takes
+([What phase 2 owes](#what-phase-2-owes-decisions)). Stats: `lights`
+(drawn), `lights_culled`, `lights_dropped`, `cluster_lights`
+(references stored), `cluster_lights_dropped`.
 
 The terrain's lit pass reads the same tables. The planar reflection pass
-(water) shades the main view's lights through clusters of its own, built
-for the mirrored camera over the same light records
-(`ClusterBuilder::build_kept`; the oblique projection moves only depth, so
-the tiles follow the mirrored camera's x and y).
+shades the main view's lights through clusters of its own, built for the
+mirrored camera over the same light records (`ClusterBuilder::build_kept`;
+the oblique projection moves only depth, so the tiles follow the mirrored
+camera's x and y).
 
 A reflection probe's face has no clusters (its uniform's `cluster` is
 zero, `probes.rs`): every lit shader loops every light record of the
-frame there. The standard and physical fragments did so already; terrain,
-scattered copies, the 3D fluid's composite and full material shaders
-share area.wgsl's `surface_local_lights`, which takes the cluster's lights
-when the frame has clusters and every light when it has none (before the
-debt round 3 those four read cluster 0 of the main camera in a face, so a
-local light was missing or wrong in their reflections; og-tests probes
-`local_lights_reach_terrain_and_fluids_in_a_capture`). *Limit:* the
-records are the main camera's kept lights, so a light whose range misses
-the main view lights nothing in a capture either; keeping lights for the
-due faces would change which lights the main view's shadow budget picks
-on capture frames.
+frame there (terrain, scattered copies, the 3D fluid's composite and full
+material shaders through area.wgsl's `surface_local_lights`). *Limit:*
+the records are the main camera's kept lights, so a light whose range
+misses the main view lights nothing in a capture either.
 
 ## Shadows and antialiasing
 
-The shadows-aa round (P4, `tests/evidence/P4/shadows-aa/`) closed the
-shadow and antialiasing lines phase 2 owed (`src/shadows.rs`,
-`src/frame.rs`, `shaders/lighting.wgsl`, `shaders/shadow_pass.wgsl`,
-`src/post.rs`, `shaders/fxaa.wgsl`, `shaders/taa.wgsl`). Everything new is
-off by default: every earlier reference frame is byte for byte what it
-was. (The round also served the WebGL2 tier, retired on 2026-11-01; its
-measurements below are history.)
+`src/shadows.rs`, `src/shadow_cache.rs`, `src/frame.rs`,
+`shaders/lighting.wgsl`, `shaders/shadow_pass.wgsl`, `src/post.rs`,
+`shaders/fxaa.wgsl`, `shaders/taa.wgsl`. Everything below is off by
+default unless stated.
 
-**Shadowed local lights.** Up to `RenderInfo::shadowed_lights` point and
-spot lights cast shadows in a frame: 8
-(`og.render.capabilities().maxShadowedLights`). When more in view cast,
-the ones with the most radiance at the camera keep theirs (the clusters'
-score: intensity × the colour's brightest channel over the squared
-distance; ties in scene order) and the rest are counted in
+**Shadowed local lights.** Up to `RenderInfo::shadowed_lights`
+(`MAX_SHADOWED_LIGHTS` = 16, `og.render.capabilities().maxShadowedLights`)
+point and spot lights cast shadows in a frame, `RenderQuality::
+shadowed_lights` of them (8 by default). When more in view cast, the
+ones with the most radiance at the camera keep theirs (the clusters'
+score; ties in scene order) and the rest are counted in
 `FrameStats::shadowed_lights_dropped`; `shadowed_lights` counts the drawn
-ones. Each gets consecutive layers of one 512² `R32Float` array, handed out
-in scene order: a spot one view, a point light six cube faces or two
-paraboloid hemispheres. The array starts at twelve layers and grows once,
-to its capacity (48 layers with cube faces), the first frame whose
-scene could need more.
+ones. Each gets consecutive layers of one array, handed out in scene
+order: a spot one view, a point light six cube faces or two paraboloid
+hemispheres. The array starts at twelve layers and grows once, to its
+capacity, the first frame whose scene could need more.
 
-**Static shadow caching** (`src/shadow_cache.rs`, after Unreal's
-virtual shadow maps' separate static cache and HDRP's mixed cached
-shadows). Each cascade and local face keeps what its static casters drew
-while its view stands still: a caster is static once it has stood still
-for eight frames (its drawn transform, sway, mesh and material and their
-revisions unchanged), and a batch (mesh and material) is dynamic while one
-of its instances moves, while foliage sways in a wind and always with a
-material shader (its clock). The rule is that whatever a vertex shader
-moves without its transform changing is dynamic: foliage sway (og.Model's
-`sway` and the branch and leaf wind) and material vertex hooks through the
-batch (`shadow_cache::deforms`); skinned and morphed meshes, scattered
-copies in a wind, og.Grass's shadow and the meshlet path's casters by
-drawing over every layer they reach each frame. A new vertex deformation
-must join one of the two. A layer with nothing dynamic in it is not
-drawn at all; a layer with dynamic casters copies its static casters
-(shadow value and depth) back from a texture of its own and draws only
-the dynamic ones over them, the skinned casters, scattered copies, grass,
-terrain levels and clustered casters among them (they follow the camera
-or move every frame). A static caster that appears, goes, starts or stops
-moving draws again only the layers its old and new spheres reach; a layer
-whose view changed (a cascade following the camera, a light that moved)
-draws every caster in one pass, as without a cache, and caches from the
+**Which faces a pass stores.** Every shadow pass culls a front-sided
+caster's front faces. A local layer is `Rg32Float` and holds its casters'
+far sides (red) and near sides (green), both drawn in one render pass per
+face; the lit shaders compare against their midpoint (Woo 1992,
+`shadow_target.rs`, `lighting.wgsl` `local_depth`), so a closed caster
+never shadows its own lit side and a zero-thickness floor does not shadow
+itself. A texel with no far side (a single-sided plane, a wall) casts
+nothing. A local light's biases are a tenth of a texel of depth and a
+quarter of the normal offset, per metre of distance (`frame.rs`
+`local_lights`). The paraboloid hemispheres mirror x so they store the
+same faces as cube faces. The cascades keep far sides alone.
+
+**Which instances cast and receive.** `Instance::cast_shadows` keeps an
+instance out of every shadow pass while it still receives (its instances
+are runs of their own). `Instance::receive_shadows` (and
+`SkinnedInstance::receive_shadows`) lights an instance as if nothing
+stood between it and any light; the flag rides in the instance record's
+layer lane (`instances::layer_bits`), so it never splits a batch.
+og-runtime sets them from `og.Mesh.castShadow` (off by default, as
+three.js), `og.Model.castShadow` (on by default, from the load's
+`GltfDesc`), and `og.Mesh.receiveShadow` / `og.Model.receiveShadow` (on
+by default).
+
+**Static shadow caching** (`src/shadow_cache.rs`, after Unreal's virtual
+shadow maps' static cache and HDRP's mixed cached shadows). Each cascade
+and local face keeps what its static casters drew while its view stands
+still. A caster is static once its drawn transform, sway, mesh and
+material and their revisions have been unchanged for eight frames.
+Whatever a vertex shader moves without its transform changing is
+dynamic, either through the batch (`shadow_cache::deforms`: foliage
+sway, material vertex hooks) or by drawing over every layer it reaches
+each frame (skinned and morphed meshes, scattered copies, og.Grass,
+terrain levels, the meshlet path's casters); a new vertex deformation
+must join one of the two. A layer with nothing dynamic is not drawn; one
+with dynamic casters copies its static casters back from its cache and
+draws only the dynamic ones over them; a caster that appears, goes,
+starts or stops moving redraws only the layers its old and new spheres
+reach; a layer whose view changed draws everything and caches from the
 first frame its view stays. `FrameStats::shadow_cached` counts the layers
-whose static casters came from the cache (`shadow_passes` still counts
-every layer). Nothing feeds back into the simulation.
+served from the cache (`shadow_passes` still counts every layer).
 
-**Contact shadows** (contact.wgsl `cs_contact`, `post/contact.rs`,
-`frame.rs` `contact_lights`). Only the three shadowed point and spot lights brightest
-at the camera (the shadows' importance: radiance over squared distance,
-ties in scene order) get screen-space contact shadows; every other
-shadowed light keeps its shadow map alone, and rect lights never get them.
-The pass is Bend Studio's screen-space shadows (Days Gone; Graham
-Aldridge, SIGGRAPH 2023; `third_party/bend-sss`, Apache-2.0) with its
-recommended settings: from each pixel 60 samples, one per pixel along
-the line towards the light's screen position, compared in a depth that
-is affine along that line, where every pixel is a slab 0.5 % of its depth
-to the far plane thick. A sample hides the light only where the ray passes
-through that slab, so a silhouette in front of a far surface never
-shadows it; the first four samples shadow hard, the rest average in four
-groups, the last eight fade out. It runs as Bend's compute wave: 64
-threads per run of pixels along the line, the run's depths read once
-into workgroup memory and shared by every thread's samples, each light's
-runs dispatched from the screen edges in towards its pixel
-(`post/contact.rs` `dispatch_list`), and a thread whose pixel the light
-does not reach returns before it walks. The runs of neighbouring lines
-converge towards the light, so near it several threads (up to some
-hundred) write one pixel: each `atomicMax`es a key into the light's
-screen of the mask buffer (its frame, how near its line passes to the
-pixel's centre, the mask), so the nearest line's shadow is kept whatever
-order the GPU runs them in, and a frame is the same frame every time
-(with plain stores, the last writer won and some 50 pixels of
-point-spot-lights changed from one frame to the next). The masks share the AO texture
-(its gba, the AO in r), so they
-are off with screen-space GI, and only the standard and physical lit
-shaders read them (not terrain, scattered copies, custom lit shaders,
-probe faces, views or planar reflections). They resolve the centimetres
-where a caster meets what it stands on, which a local map's texels (1.4 to
-3.1 cm at 3.6 m from the light) cannot. Every frame with a shadowed point or
-spot light draws the prepass for them.
+**Contact shadows** (contact.wgsl `cs_contact`, `post/contact.rs`). The
+three shadowed point and spot lights brightest at the camera get
+screen-space contact shadows; rect lights never do. The pass is Bend
+Studio's screen-space shadows (`third_party/bend-sss`, Apache-2.0) with
+its recommended settings (60 samples along the line to the light, a
+depth slab 0.5 % of the pixel's depth thick) as a compute wave of 64
+threads per run of pixels; overlapping runs resolve by `atomicMax` on a
+key, so the result does not depend on GPU order. The masks share the AO
+texture (its gba), so they are off with screen-space GI, and only the
+standard and physical lit shaders read them (not terrain, scattered
+copies, custom lit shaders, probe faces, views or planar reflections).
+They make the frame draw the prepass.
 
 **Point shadows** (`RenderDesc::point_shadows`, the IDL's
 `RenderOptions.pointShadows`): `Cube` draws six 90° faces, `Paraboloid` the
 hemisphere below the light and the one above, each in one pass (the
-projection scaled into 0.9 of the disc, so filtering at the seam reads up to
-96° from the axis). A paraboloid projection is not linear: vertices are
-projected and triangles stay straight between them, so a large caster's
-silhouette is approximate; the distance each texel stores is measured along
-its own ray to the triangle's plane (from the world position's screen
-derivatives), exact for flat triangles of any size, so a one-quad ground
-does not shadow itself. The texels are about 2.2 times coarser at a
-hemisphere's centre than a cube face's, and the normal offset and depth
-bias grow with them. On `point-spot-lights` the paraboloid frame is within
-RMSE 0.0023 of the cube one (102 outlier pixels, on shadow edges and the
-ring at the light's height) in 3 passes instead of 7. `Auto` picks cube
-faces on every backend. Measured in Chrome on the M4 Pro
-(`reference-gfx.ts --time 60`), on WebGPU one point light costs the same
-either way (0.44 against 0.45 ms) and eight lights (six point) 0.60
-against 1.33 ms; natively on metal 0.4–0.5 against 0.6–0.9 ms and
-0.8–1.0 against 2.2–2.7 ms, most of it the CPU encoding 38 shadow passes
-instead of 14 (`tests/evidence/P4/shadows-aa/`). A frame with a few
-shadowed point lights costs nearly nothing more with cube faces, whose
-texels are finer, so `Auto` keeps them; `Paraboloid` is the choice for a
-game with many shadowed point lights, which saves about 0.7 ms a frame
-with it.
-
-**Which faces a pass stores, and which instances cast** (web findings
-#4, wave 13). Every shadow pass culls a front-sided caster's front
-faces, so a closed caster stores its far side and its lit side never
-compares against itself. A local light's biases are therefore small (R8,
-`frame.rs` `local_lights`): a tenth of a texel of depth and a quarter of
-the normal offset, per metre of distance, where a texel spans 2 tan(fov /
-2) / size radians at the view's centre (a 55° spot's 114° view: 1.54 times
-a cube face's). Larger ones read the floor beside a closed caster's base
-as lit through the tent's taps (`local_shadows_touch_their_casters`). A
-local map storing the nearest surface instead (tried in R8) made lit
-surfaces compare against themselves, which striped them under a spot whose
-texels were undersized, lost a lamp's glass around its own light, and in a
-paraboloid brought back the curved band below convex edges described
-next. The paraboloid projection looked down its axis
-with x as is, a mirror image of a perspective camera's, so its triangles
-reached the rasteriser with the opposite winding and the hemispheres
-stored the faces turned towards the light: a light inside a closed
-caster (a lamp's glass box around its own light) was lit by paraboloids
-and dark by cube faces, and a box's top edge drew a curved shadow band
-down its own lit side (the cube frame of `shadows-crypt` against the
-paraboloid one: RMSE 0.0148 before, 0.0036 after). The hemispheres
-mirror x now (`shadow_pass.wgsl` `shadow_project` and `local_distance`,
-`lighting.wgsl` `local_shadow`) and store the far side as the cube
-faces do; `point-shadows-paraboloid` moved by RMSE 0.0021 (contact
-shadows at the spheres' and pillars' feet) and was re-recorded.
-Far sides alone shadowed a floor of two coplanar single-sided quads
-facing apart (fx-showcase's window-room.glb) with itself: its down quad
-is a caster at the floor's depth, and the closed-receiver rule then
-compared the floor past it (the volumetric station's spot pool lost half
-its light). A local layer now holds the midpoint of its casters' near
-and far sides (Woo 1992, `shadow_target.rs`): the layer is Rg32Float,
-the far sides (faces turned from the light) in red and the near sides
-in green, and the lit shaders compare against the midpoint of the two
-(`lighting.wgsl` `local_depth`). Both are drawn in one render pass per
-face: every caster's far sides, depth-tested, then its near sides over
-them, tested less-or-equal, each into its channel. A first version drew
-each face's near sides in a second render pass, mirrored in x, and
-resolved the midpoint in a compute pass. With 8 cube point lights (48
-faces) moving at 1080p on the M4 Pro, the shadow passes added 4.5 ms of
-GPU time and 3.3 ms of encoding to a frame that way, 3.2 and 2.0 now,
-and 1.3 and 1.9 with far sides alone; reading two channels costs the
-lit pass about 0.7 ms more. (Summing each pass's own timestamps
-overstates a tile-based GPU's time where passes overlap: these are the
-frame's wall time, moving against still, less its encoding.)
-The midpoint lies inside a closed caster and at a zero-thickness one's plane, so
-every receiver compares as an open one (`a_twin_floor_is_lit_by_local_lights`),
-and a box's base stays shadowed (the 8x8 filter's blocker search now
-sees the box's middle, which also straightened the stepped far edge of
-`shadows-local-contact`, re-recorded). A texel with no far side (a
-single-sided plane, a wall) casts nothing, as before. The cascades keep
-far sides and the closed rule; the same midpoint for them is a
-follow-up.
-[`Instance::cast_shadows`] keeps an instance out of every shadow pass
-(the sun's cascades and the local lights' views) while it still
-receives: its instances are runs of their own (`instances.rs`), and the
-shadow lists skip those batches. og-runtime sets it from
-`og.Mesh.castShadow` (off by default, as three.js) and
-`og.Model.castShadow` (on by default: a loaded model casts, as it always
-has). Before, every mesh cast whatever its flag: The
-Kestrel Stair's crypt lamp, a 0.22 m glass box with its point light at
-the centre, shadowed the whole crypt from its own light with cube faces
-and not on the retired WebGL2 tier (paraboloids), which the web round
-read as the sun's shadow missing under the roof (crypt RMSE 0.046
-against `metal`). `shadows-crypt` is that room: a roof and walls under a
-low sun, a non-casting glass box around a shadowed point light, which
-lights the altar and the pillar and throws a post's shadow.
-
-**Which instances receive** (owed row 87, after wave 13).
-[`Instance::receive_shadows`] (and `SkinnedInstance::receive_shadows`,
-whose `cast_shadows` keeps a skinned (mesh, material)'s non-casters a
-batch of their own as the static runs do) lights an instance as if
-nothing stood between it and any light: the lit shaders (`pbr_fs.wgsl`,
-`physical.wgsl`, and `local_light`/`physical_local` for the point and
-spot lights) read the sun's cascades and the local lights' maps only
-where `look_receives`. The flag rides in the instance record's layer lane
-(`instances::layer_bits`: the array-map layer plus one as before for an
-instance that receives, negated less one for one that does not;
-`look_layer` reads the layer back), so it never splits a batch and a
-receiving instance's record is the bytes it was: every og-gfx scene's
-Metal frame stayed byte-identical. og-runtime sets it from
-`og.Mesh.receiveShadow` and `og.Model.receiveShadow`, both on by default
-(every mesh and model received before), and `og.Model.castShadow` from a
-model's own field, which world.instantiate and a scene's `model` line
-take from the load's `GltfDesc` (on when omitted). `shadow-flags` holds
-it: a model that casts as added beside one that casts none, and in a
-wall's shadow a box and a model that receive beside a box and a model
-that do not.
+projection scaled into 0.9 of the disc). A large caster's silhouette is
+approximate (triangles stay straight between projected vertices); the
+stored distance is exact for flat triangles of any size. The texels are
+about 2.2 times coarser at a hemisphere's centre than a cube face's.
+`Auto` picks cube faces; `Paraboloid` is the choice for a game with many
+shadowed point lights (two passes instead of six each).
 
 **The sun's soft shadows and cascade blending** (`DirectionalLight::
 shadow_softness`, `cascade_blend`, the IDL's `shadowSoftness` and
 `cascadeBlend`). PCSS: 16 Vogel-disc reads search the cascade for blockers
 over the widest penumbra the cascade allows (24 texels at most), then 16
 bilinear PCF taps (64 compares) filter over the penumbra their mean depth
-gives, softness × the distance from blocker to receiver; a slope term keeps
-the wide kernel off receivers tilted from the light. Contact shadows stay
-sharp and penumbrae widen with height (`shadows-soft`: penumbra pixels on a
-plain ground 759 hard, 7,073 at softness 0.03). Blending: each cascade's
-last `cascade_blend` of its depth fades into the next, whose fit reaches
-back over that band so its casters are there. Both read with
-`textureLoad` compares. PCSS costs 0.22 ms on WebGPU (`shadows-soft` 0.64 against
-0.41 ms hard) and about 0.4 ms on metal at 1280×720.
+gives, softness × the distance from blocker to receiver; a slope term
+keeps the wide kernel off receivers tilted from the light. Blending: each
+cascade's last `cascade_blend` of its depth fades into the next, whose fit
+reaches back over that band so its casters are there. Both read with
+`textureLoad` compares.
 
 **FXAA** (`Antialias::Fxaa`): FXAA 3.11's quality path (eight edge-search
 steps) over the tonemapped image, which the tonemap writes into an sRGB
 8-bit target the FXAA pass reads and writes to the output before the
-overlay, so the HUD stays sharp. One pass, no history; `Msaa4` resolves
-to it where the HDR target cannot be multisampled (it resolved to `Off`
-before). It costs 0.08 ms on WebGPU (`fxaa` 0.50 against 0.41 ms without
-antialiasing) and about 0.1 ms on metal.
+overlay, so the HUD stays sharp. One pass, no history.
 
 **4× MSAA** (`Antialias::Msaa4`): the HDR target and the depth buffer
 multisampled, resolved before the post chain. No jitter and no history,
@@ -480,46 +351,30 @@ reference high preset (Jimenez et al., 2012), with perceptual luma edges,
 diagonal/corner searches and area/search lookup textures. Three passes
 after tonemapping and stylisation, before pixel-grid upscale and the
 overlay. Edges use sRGB-encoded luma; neighbourhood blending uses linear
-colour. No jitter or history: this replaces rather than stacks with TAA,
-and TAAU remains exclusive to TAA. Dedicated edge/weight/blend layouts
-use 2/5/3 bindings (weights read the shared temporal uniform), with no extra
-lit bindings. Reference and WGSL-port
-licences, provenance and texture dimensions: `third_party/smaa/`.
-The `smaa` thin-geometry reference scene is for Metal capture by macrunner.
+colour. No jitter or history; it replaces TAA rather than stacking with
+it. The edge/weight/blend layouts use 2/5/3 bindings (weights read the
+shared temporal uniform), with no extra lit bindings. Licences, provenance
+and texture dimensions: `third_party/smaa/`.
 
 **SMAA T2x** (`Antialias::SmaaT2x`, TypeScript `antialias: "smaaT2x"`)
 uses the reference's alternating quarter-pixel diagonal jitter and area
-layers 1/2. It reuses TAA's camera/object velocity, reprojection, cut/reset
-validity and neighbourhood clamp, but stores two raw SMAA frames in its
-own sRGB history pair (float under resolved HDR), not an accumulated result.
-The two-frame mean is linear, including alpha; the first frame after a cut,
-resize, scene or stylisation switch uses only the current frame. T2x runs
-after tonemapping but before stylisation, lens distortion, upscale and UI,
-so motion coordinates match and the overlay never enters history.
-It is exclusive of TAA, TAAU and MSAA; render scale uses spatial upscaling,
-and `taaHistory`/`taaSharpen` apply only to TAA. Antialias mode is selected
-when creating the renderer: changing between TAA and T2x creates fresh
-resources and history. GI retains its own scene-linear history.
-The resolve reuses the eight-binding TAA layout; no lit bindings change.
-`smaa-t2x` and `smaa-t2x-moving` are the static and half-scale camera/object
-motion acceptance scenes. S2x remains deferred to the compatibility phase.
+layers 1/2. It reuses TAA's velocity, reprojection, cut/reset validity
+and neighbourhood clamp, but keeps two raw SMAA frames in its own sRGB
+history pair and takes their linear mean (the first frame after a cut,
+resize, scene or stylisation switch uses only the current one). It runs
+after tonemapping, before stylisation, lens distortion, upscale and UI,
+so the overlay never enters history. It is exclusive of TAA, TAAU and
+MSAA; render scale uses spatial upscaling, and `taaHistory`/`taaSharpen`
+apply only to TAA. The mode is chosen when the renderer is created. S2x
+is not implemented.
 
-**Bloom follows the antialiasing.** Bloom's prefilter reads the lit
-image after antialiasing, so the method decides how much of a
-thin emitter's energy reaches it. The 4× MSAA resolve averages the HDR
-samples linearly and keeps a sub-pixel emissive line's energy; TAA's
-resolve weights each colour by 1 / (1 + luma) and clamps the history to
-the current frame's 3×3 neighbourhood, so a line a jittered frame
-covers in one pixel and misses in the next settles far darker than its
-linear average, and its halo is weaker and narrower. Neither is a
-backend difference: on one adapter (lavapipe) Meridian Loop's title
-frame with `antialias` `msaa4` was within RMSE 0.0039 (0.010 % outliers)
-of the retired WebGL2 tier's MSAA frame and as far from metal's TAA
-reference (0.0499, 4.86 %) as that frame was (0.0495, 4.79 %); with
-`taa` the same adapter was 0.060 from it, with `off` 0.0128
-(`tests/evidence/r3/meridian-webgl2/`). A look with bloom over thin
-emissive lines (Meridian Loop's neon grid and windows) therefore differs
-between `msaa4` and `taa` by design.
+**Bloom follows the antialiasing.** Bloom's prefilter reads the lit image
+after antialiasing, so the method decides how much of a thin emitter's
+energy reaches it: the MSAA resolve averages the HDR samples linearly and
+keeps a sub-pixel emissive line's energy; TAA's resolve weights each
+colour by 1 / (1 + luma) and clamps the history, so a thin line settles
+darker and its halo is weaker. A look with bloom over thin emissive lines
+therefore differs between `msaa4` and `taa` by design, on every backend.
 
 **TAA's history and sharpening** (`RenderDesc::taa_history`,
 `taa_sharpen`; the IDL's `taaHistory` and `taaSharpen`):
@@ -527,65 +382,18 @@ between `msaa4` and `taa` by design.
 (Jimenez's bilinear-tap form) before the neighbourhood clamp, which keeps
 it sharp when the camera moves; `taa_sharpen` adds a pass after TAA into
 its own target (the history stays unsharpened): an unsharp mask over the
-four neighbours clamped to their range. On the thin geometry under a
-camera sliding 2 cm a frame, the mean absolute Laplacian of the luma is
-7.07 bilinear, 7.38 Catmull-Rom, 8.61 with 0.5 sharpening. Catmull-Rom and 0.5 sharpening together cost 0.06 ms on
-WebGPU (`taa-sharp` 0.55 against `taa` 0.49 ms) and about 0.1 ms on
-metal.
+four neighbours clamped to their range.
 
 **Where TAA reads its history.** The pixel's centre in uv is
-`in.pos.xy / size` (the window position, exact on every backend), not
-the interpolated `in.uv`, and a pixel nothing moved under (a reprojection
-of less than a thousandth of a pixel) reads its own history texel with
-`textureLoad`, unfiltered, so no sampler or varying precision can move
-the history of a still camera. On metal the still path is byte for byte
-the old frames (the 37 looks frames, `taa`); the moving path moved
-`taa-sharp` (a sliding camera) by RMSE 0.00029, max 4 levels. It did
-not change the then WebGL2 tier's looks station frames (still 30 of 37
-apart from metal, to four decimals). The browser diagnostics then put the
-divergence in TAA's history loop on WebGL2: with the jitter zeroed and
-the camera still, WebGL2 settles 0.5 to 0.75 px to the side of WebGPU,
-blurred, as a history read with a small sideways offset every frame
-would; with no history (every frame its own) the tiers agree. A still
-camera is therefore decided on the CPU (`still_camera`: the history's
-view-projection and the current one equal to a millionth of each entry)
-and sent in the uniform (`TaaUniform::still`); then every pixel reads
-its own history texel with no reprojection computed on the GPU at all.
-Metal is byte for byte unchanged (the looks frames, every og-gfx scene).
-
-**What differed on GL (row 68, history: the WebGL2 tier is retired):
-the depth read as 0.** TAA read the
-depth buffer with `textureLoad` (GLSL `texelFetch`). wgpu's GL backend
-binds no sampler object to a texture only `texelFetch` reads, so the
-texture's own filtering applies, and wgpu sets it to nearest only for
-unfilterable colour formats: the `Depth32Float` buffer kept GL's default
-linear filtering, which makes a `DEPTH_COMPONENT32F` texture without a
-compare mode incomplete under GLSL ES 3.0, and `texelFetch` of an
-incomplete texture returns 0. Every pixel was therefore reprojected from
-the near plane. Natively, through ANGLE's Metal renderer (the one Chrome's
-WebGL2 uses on macOS, loaded by wgpu's `angle` feature for the
-diagnosis), a motion visualisation read 0 for the depth everywhere and
-`taa-sharp` (the sliding camera) came out at RMSE 0.074 against metal,
-its poles broken into dashes. For a still camera the motion is the
-difference of two equal products, but at the near plane the products of
-a world point 2800 m out (fx-showcase's looks station) cancel to a few
-ulps of 2800 against a `w` of 0.1 m, and ANGLE's compiled shader rounds
-the current and the previous product differently: a TAA harness on
-ANGLE measured a still camera's motion up to 0.025 px with the depth at
-0 (3.8e-5 px on Metal, 5.5e-4 px on ANGLE with the real depth), above
-the own-texel test's 1e-3 px, so the history was resampled bilinearly
-at a small offset every frame: the sideways drift the browser showed.
-naga's GLSL itself was not the cause: it declares `precision highp`
-for floats and ints, and the shader alone, given the depth, matched
-Metal on ANGLE to within one 16-bit step for still and moving cameras.
-The resolve now reads the depth through a nearest sampler of its own
-(`depth_sampler`, binding 5) at the pixel's centre, which reads the
-texel `textureLoad` read on every backend (and made the GL backend bind
-a sampler to that unit); it stays, as the read that is exact everywhere.
-Metal: every og-gfx scene and the 37 looks frames byte for byte
-unchanged. ANGLE: `taa-sharp` RMSE 0.00028 and `taa-motion` 0.00010
-against metal. The CPU's still decision stays (it spares the
-reprojection where nothing moved).
+`in.pos.xy / size` (the window position, exact on every backend), not the
+interpolated `in.uv`. A still camera is decided on the CPU
+(`still_camera`: the history's view-projection and the current one equal
+to a millionth of each entry) and sent in the uniform
+(`TaaUniform::still`); then, and wherever a reprojection moves less than
+a thousandth of a pixel, a pixel reads its own history texel with
+`textureLoad`, unfiltered, so no sampler or varying precision can move the
+history of a still camera. The resolve reads the depth through a nearest
+sampler of its own (`depth_sampler`, binding 5) at the pixel's centre.
 
 **Ambient occlusion.** `AoMethod::Auto` (the default, and what
 `PostEffects.ao` asks for) is GTAO on every backend; `Ssao` (a cheaper
@@ -597,14 +405,14 @@ stay explicit choices.
 `RenderScene::quality` (`src/quality.rs`) is read every frame on top of
 what the scene asks for; the API's RenderSettings carries its fields one
 to one and `og.render.applyQuality` writes a `QualityPreset`'s row of
-them, so the probe reads what is drawn. The default is the full frame
-and is medium's row: every scale is the identity there, so a frame at
-the default is byte for byte the frame without the field.
+them, so the probe reads what is drawn. Each switch only takes away, each
+scale only scales what the scene asks for. The default is medium's row.
 
 | Field | low | medium | high | Changing it |
 |---|---|---|---|---|
 | `rect_shadows` | false | true | true | free |
-| `shadowed_lights` | 2 | 8 | 8 | free; `RenderInfo::shadowed_lights` caps it |
+| `shadowed_lights` | 2 | 8 | 16 | free; `RenderInfo::shadowed_lights` caps it |
+| `shadow_cascades` | 2 | 3 | 4 | remakes the cascade array; `RenderInfo::shadow_cascades` caps it |
 | `shadow_map_scale` | 0.5 | 1 | 2 | remakes the shadow maps |
 | `volumetric_fog` | false | true | true | free |
 | `soft_particles` | false | true | true | free |
@@ -615,31 +423,26 @@ the default is byte for byte the frame without the field.
 | `ssr_step_scale` | 0.5 | 1 | 2 | free (a uniform) |
 | `volumetric_step_scale` | 0.5 | 1 | 2 | remakes the froxel volumes (the raymarch's steps are a uniform) |
 | `msaa_samples` | 1 | 4 | 4 | remakes the multisampled targets; `RenderInfo::msaa_samples` caps it |
+| `upscaler` | `Taau` | `Taau` | `Fsr3` | `docs/upscalers.md` |
 
 `ao_resolution` replaces `AmbientOcclusion::resolution` where it is
 `Some`; `None` draws the scene's. `ssr_step_scale` multiplies
 `ScreenSpaceReflections::steps` (within 4 to 128) and
 `volumetric_step_scale` the froxel grid's 64 slices (8 to 256) or the
-raymarch's 24 steps (4 to 96). Low's halves and half-resolution AO
-only show where a game turns SSR, AO or volumetric fog back on after
-the preset.
+raymarch's 24 steps (4 to 96). `shadow_map_scale` keeps each map within
+64 texels and the device's limit (and 4096 for the cascades).
+`RenderQuality::capped(preset)` is a quality no costlier than a preset's
+row (automatic quality's steps cap the game's own quality, never raise
+it).
 
 The device caps two fields, and the fields keep what was asked: at most
 `RenderInfo::shadowed_lights` lights cast shadows, and
 `RenderInfo::msaa_samples` (4 where `Antialias` resolved to `Msaa4` when
 the renderer was made, else 1) caps `msaa_samples`, so under TAA, FXAA
-or none a quality of 4 draws one sample;
-`RenderInfo::antialias` says what is drawn now.
-
-What high costs on lavapipe (per-pass GPU timestamps, mean of 10 frames
-at 1280×720, `tests/evidence/debt3/quality-presets/NOTES.md`): the AO
-pair at full against a scene's half 12.7 → 23.6 ms, `ssr` 13.3 → 28.4
-ms, the froxel `volumetric` pass 40.2 → 82.1 ms, each cascade two to
-four times medium's. Not run-time knobs yet, so not in a preset:
-the PCSS taps and the PCF kernel (WGSL constants), GTAO's slices and
-steps (constants), the bloom chain's depth (set by the target's size;
-deeper widens the glow, a look rather than a quality) and the cascade
-count (made with the renderer: `RenderDesc::shadow_cascades`).
+or none a quality of 4 draws one sample; `RenderInfo::antialias` says
+what is drawn now. Not run-time knobs, so not in a preset: the PCSS taps
+and the PCF kernel (WGSL constants), GTAO's slices and steps (constants)
+and the bloom chain's depth (set by the target's size).
 
 ## The overlay
 
@@ -653,61 +456,62 @@ view (`view_formats`, where `DownlevelFlags::VIEW_FORMATS` or
 `SURFACE_VIEW_FORMATS` allow it), so translucent fills blend as on Metal.
 Only a caller's non-sRGB `RenderTarget::View`, or a backend without view
 reinterpretation, falls back to the shader encoding, which blends encoded
-values. Positions are CSS pixels from the top-left corner, scaled by
-`Overlay::scale` (0: the output's height over `Overlay::height`). Sprites and
-text are sorted by (layer, texture or font) into instanced runs (stable
-within a run); each instance carries an optional clip rectangle tested per
-pixel, so a scrolled list cuts a glyph in half instead of dropping it.
-Overlay text also takes `weight` (the fill's edge moved out by that many CSS
-pixels of the distance field: a faux bold) and `glow`: a soft halo read from
-the font's distance field in the same MSDF pipeline, drawn as one extra
-instance per glyph, every glyph's glow before every fill so no halo lies
-over ink. The distance is the MTSDF's true field in alpha (round past
-corners), or the median for a plain MSDF; it falls off quadratically to
-`radius`, capped where the field ends (half the font's `distance_range` in
-atlas pixels at the size drawn, so a font cooked with `px_range 12` glows
-three times as far as one with 4); og-ui's skins use it for `textGlow`
-(og-ui's `tests/gfx.rs` `a_text_glow_is_a_halo_from_the_distance_field`
-and `references/<tier>/text-glow.png`; the cost is
-`tests/evidence/P2/ui/text-glow-cost.md`). The weight stays within the
-field's reach too, so a thin field never fills the glyph's quad.
-*The UI's layer* (`UI_LAYER` 1000, `UI_OVERLAY_LAYER`, `screen_layer`):
-og-runtime emits og.ui's painter levels from `UI_OVERLAY_LAYER` (2^20) up
-and a game's screen sprites and screen text at `screen_layer(layer)`:
-their own layer up to `UI_LAYER`, under every UI element, and lifted by
-2^21 above it, over every one (a HUD icon of sprites on a UI panel), the
-order among screen layers kept. They all drew under the UI whatever their
-layer before (hollowbell FINDINGS #8). og-ui's `tests/screen_layers.rs`
-and `references/<tier>/screen-layers.png`: a panel, a sprite at 999
-under it, one at 999 half past its edge, one at 1001 on it and one at
-1002 over that one.
+values.
+
+Positions are CSS pixels from the top-left corner, scaled by
+`Overlay::scale` (0: the output's height over `Overlay::height`). Sprites
+and text are sorted by (layer, texture or font) into instanced runs
+(stable within a run); each instance carries an optional clip rectangle
+tested per pixel, so a scrolled list cuts a glyph in half instead of
+dropping it.
+
+Overlay text also takes `weight` (the fill's edge moved out by that many
+CSS pixels of the distance field: a faux bold) and `glow`
+(`TextGlow { color, radius }`): a soft halo read from the font's distance
+field in the same MSDF pipeline, drawn as one extra instance per glyph,
+every glyph's glow before every fill so no halo lies over ink. The
+distance is the MTSDF's true field in alpha (round past corners), or the
+median for a plain MSDF; it falls off quadratically to `radius`, capped
+where the field ends (half the font's `distance_range` in atlas pixels at
+the size drawn, so a font cooked with `px_range 12` glows three times as
+far as one with 4). The weight stays within the field's reach too. og-ui's
+skins use it for `textGlow`.
+
+*The UI's layer* (`UI_LAYER` 1000, `UI_OVERLAY_LAYER` 2^20,
+`screen_layer`): og-runtime emits og.ui's painter levels from
+`UI_OVERLAY_LAYER` up and a game's screen sprites and screen text at
+`screen_layer(layer)`: their own layer up to `UI_LAYER`, under every UI
+element, and lifted by 2^21 above it, over every one (a HUD icon of
+sprites on a UI panel), the order among screen layers kept. og-ui's
+`tests/screen_layers.rs` and `references/<tier>/screen-layers.png` hold it.
+
 `Overlay::sprite_arrays` draws overlay sprites from a layer of a texture
-array, one draw per array (see [The 2D batch](#the-2d-batch-e4)).
+array, one draw per array ([The 2D batch](#the-2d-batch)).
+
 `Overlay::glass` holds glass panels (`Glass`: a rounded rectangle, a blur
-radius, a tint and its share, an opacity, a layer and a clip): a frame with
-any renders its tonemap into a texture of its own (`src/glass.rs`), copies
-it into the output exactly, and downsamples it into a six-level
+radius, a tint and its share, an opacity, a layer and a clip): a frame
+with any renders its tonemap into a texture of its own (`src/glass.rs`),
+copies it into the output exactly, and downsamples it into a six-level
 `Rgba16Float` pyramid of 13-tap blurs (decoding an sRGB-encoded source);
 each panel samples the level its blur asks for, trilinear between levels,
 tints it and masks it to its rounded rectangle, sorted with the overlay's
 other runs at its layer. It blurs the scene under the overlay, not other
-overlay content; the pyramid is a render target of `Rgba16Float` (renderable on WebGPU, Metal, Vulkan and DX12); a frame without glass pays nothing (og-ui's `tests/gfx.rs`
-`a_glass_panel_blurs_the_frame_under_it_and_nothing_else` and
-`references/<tier>/glass.png`; the cost is
-`tests/evidence/P2/ui/glass-cost.md`). Every
-tier runs it (render passes only); screenshots, `capture` and
-`read_offscreen` include it; `FrameStats` counts `overlay_sprites`,
+overlay content; a frame without glass pays nothing.
+
+Every tier runs the overlay (render passes only); screenshots, `capture`
+and `read_offscreen` include it; `FrameStats` counts `overlay_sprites`,
 `overlay_glyphs` and `overlay_draws`. Tests: `tests/gfx.rs`
 `the_overlay_is_drawn_after_post_untonemapped_and_clipped`,
 `the_overlay_blends_in_linear_light_on_a_non_srgb_output`, the `overlay`
-reference scene (the showcase under TAA with a HUD; `metal` and
-`vulkan-cpu`), and fx-showcase's HUD and og.ui badge on `webgpu`
-(`make web-reference`).
+reference scene (the showcase under TAA with a HUD); og-ui's `tests/gfx.rs`
+`a_text_glow_is_a_halo_from_the_distance_field` and
+`a_glass_panel_blurs_the_frame_under_it_and_nothing_else`.
 
 ## From TypeScript
 
-Every E1 effect is declared from a game through the IDL (`crates/og-api/api/render.ogt`,
-module `render`), on both hosts, off by default:
+Every effect is declared from a game through the IDL
+(`crates/og-api/api/render.ogt`, module `render`), on both hosts, off by
+default:
 
 | og-render | TypeScript |
 |---|---|
@@ -716,52 +520,44 @@ module `render`), on both hosts, off by default:
 | `Decal` | component `og.Decal` with the atlas in `og.RenderSettings.decalAtlas` |
 | `ParticleSystem` | component `og.ParticleSystem` naming an emitter from `og.load.emitter` (`.ogt` of type `particles`, cooked by og-cook) |
 | `Trail`, `Beam`, `Ribbon` | components `og.Trail`, `og.Beam`; `og.render.ribbon(world, desc)` per tick |
-| `SpriteFx` | `SpriteDesc` `flash`, `flashColor`, `glow`, `blend` |
+| `SpriteFx` | `SpriteDesc` `flash`, `flashColor`, `glow`, `blend`, `toneMapped` |
 | Toon, rim, dissolve, flash, outline per material | `StandardMaterialDesc` fields, set with `og.render.standardMaterial` / `updateMaterial` |
-| Skinning and blendshapes | `og.Skeleton` + `og.AnimationPlayer`, `og.Blendshapes` (the runtime keeps skinned copies of a model's meshes); `og.Garment`'s simulated vertices through `SkinnedInstance::deformed` and `RenderScene::deformed_vertices`; `og.CrowdAnimation`'s baked clips through `RenderScene::baked_clips` and `SkinnedInstance::baked`, blended on the GPU (`skin.rs`, the palette buffer's layout; frustum-culled on the CPU like every skinned instance, not GPU-culled or clustered yet) |
+| Skinning and blendshapes | `og.Skeleton` + `og.AnimationPlayer`, `og.Blendshapes` (the runtime keeps skinned copies of a model's meshes); `og.Garment`'s simulated vertices through `SkinnedInstance::deformed` and `RenderScene::deformed_vertices`; `og.CrowdAnimation`'s baked clips through `RenderScene::baked_clips` and `SkinnedInstance::baked`, blended on the GPU (`skin.rs`; frustum-culled on the CPU like every skinned instance, not GPU-culled or clustered) |
 | `Overlay` | `SpriteDesc.screen` / `TextDesc.screen` with an optional `clip` `[x, y, w, h]`; og-ui draws into it |
-
-`templates/fx-showcase` shows each of them on five stations with references
-on `metal`, `vulkan-cpu` and `webgpu` (the last from headless
-Chrome, `make web-reference`; each matches `metal` within og-tests'
-tolerance; `tests/evidence/E2/`).
 
 **Capture** (`capture.rs`): the offscreen target copied to a buffer and
 mapped. One async function on both hosts: natively it polls the device; on
 the web the mapping completes through WebGPU's `mapAsync`. It reads only
 the offscreen target, so a page needs no `preserveDrawingBuffer`; a probe
-capture renders a frame to `Offscreen` first. It runs in Chrome on
-WebGPU: every frame
-`make web-reference` compares is a probe capture. A capture whose frame
-was read leaves its buffer to the next capture of the same size.
+capture renders a frame to `Offscreen` first. A capture whose frame was
+read leaves its buffer to the next capture of the same size.
 `png(&image)` is the probe's encoder (`capture`, `sweep`, `screenshot`):
 rows filtered `Up` and deflated by fdeflate as they are filtered, the
-pixels decoding exactly (tests/evidence/r4/perf-capture/NOTES.md).
+pixels decoding exactly.
 
 ## Backend tiers
 
 Every backend is one tier: compute, storage buffers and indirect draws
-are assumed (`docs/design.md` §2.6, §8). The WebGL2 tier (wgpu's GL
-backend, with 4× MSAA, four shadowed lights, paraboloid point shadows,
-SSAO and CPU particles) was retired on 2026-11-01; on the web the engine
-is WebGPU only.
+are assumed (`docs/design.md` §2.6, §8). On the web the engine is WebGPU
+only.
 
-| Backends | Reference directory (`tier_name`) | Antialiasing (`Tier`) | Shadowed local lights | Point shadows (`Auto`) | AO (`Auto`) | Particle collision |
-|---|---|---|---|---|---|---|
-| Metal, Vulkan (GPU or lavapipe), DX12, WebGPU | `metal`, `vulkan`, `vulkan-cpu`, `dx12`, `webgpu` | TAA | 8 | cube faces | GTAO | the depth buffer (compute) |
+| Backends | Reference directory (`tier_name`) | Antialiasing (`Tier`) | Point shadows (`Auto`) | AO (`Auto`) | Particle collision |
+|---|---|---|---|---|---|
+| Metal, Vulkan (GPU or lavapipe), DX12, WebGPU | `metal`, `vulkan`, `vulkan-cpu`, `dx12`, `webgpu` | TAA | cube faces | GTAO | the depth buffer (compute) |
 
 The device is asked for `Limits::downlevel_defaults()` at the adapter's
-resolution. Shadow maps are `R32Float` colour arrays read with
-`textureLoad` and compared explicitly, the HDR target is `Rgba16Float`,
-and IBL, mips, metering and bloom are render passes. A lit pipeline has
-16 sampled textures per stage (the downlevel limits): the lit skinned
-pipeline uses frame 5, material 8, fx 2, so the sky cube is the sky
-pass's own group. The physical pipelines pack their maps into one array
-texture and use 14 ([Physical materials](#physical-materials-p4)). The
-choices that remain (`Antialias::Msaa4` and `Fxaa`,
-`PointShadows::Paraboloid`, `AoMethod::Ssao`, the volumetric raymarch,
-`Culling::Cpu`, `ParticleSimulation::Cpu`) are a game's to make for its
-look or its budget, on every backend.
+resolution. Shadow maps are `R32Float` (cascades) and `Rg32Float` (local
+layers) colour arrays read with `textureLoad` and compared explicitly,
+the HDR target is `Rgba16Float`, and IBL, mips, metering and bloom are
+render passes. A lit pipeline has 16 sampled textures per stage (the
+downlevel limits): the lit skinned pipeline uses frame 5, material 8,
+fx 2, so the sky cube is the sky pass's own group. The physical pipelines
+pack their maps into one array texture and use 14
+([Physical materials](#physical-materials)). The remaining choices
+(`Antialias::Msaa4`, `Fxaa`, `Smaa`, `SmaaT2x`, `PointShadows::Paraboloid`,
+`AoMethod::Ssao`, the volumetric raymarch, `Culling::Cpu`,
+`ParticleSimulation::Cpu`) are a game's to make for its look or its
+budget, on every backend.
 
 ## Shared frames
 
@@ -787,17 +583,99 @@ native host (`og-host-node`) links when the variable is set.
 
 ## Testing
 
-**HDR output is opt-in and not yet accepted on a real HDR display.**
-Real-display acceptance is deferred to the compatibility phase (owner decision,
-2026-11-04). The native Metal/XDR attempt negotiated HDR but remained occluded,
-with zero successful presents. Neither that negotiation nor SDR-preview capture
-establishes display acceptance. Landing the feature requires unchanged SDR
-reference frames; it does not remove the outstanding HDR display validation.
+`crates/og-tests` is the gfx reference harness. Each named scene renders
+headless at 1280×720 (after its warm-up frames, with its per-frame update)
+and is compared with `crates/og-tests/references/<backend-tier>/<scene>.png`
+(`og_tests::compare::Tolerance`): a pixel is an outlier when a channel
+differs by more than 32/255; the frame fails above 0.5 % outliers or an
+RGB RMSE above 0.01. On failure the actual frame and a diff go to
+`target/…/tmp/og-gfx/<tier>/`. A missing reference fails. Metal is the
+reference platform; `vulkan-cpu` references are not recorded. The same
+scenes compile for wasm32, where `crates/og-tests-web` draws them on
+`webgpu` (`make web-reference`), judged against `metal`.
 
-Native HDR acceptance needs a real surface: neither `og run`'s shared-frame
-preview nor the headless reference harness configures an HDR swapchain.
-The opt-in `og-tests` surface example opens a native window and calls
-`Renderer::with_surface`, then presents each frame through `RenderTarget::Surface`:
+Scenes named here (the effect, atmosphere, terrain, water, stylisation
+and sprite scenes are listed in their sections):
+
+| Scene | What it shows |
+|---|---|
+| `gltf-reference` | Trickster + dropship × 25 with CSM, sky, mips. |
+| `spheres-20k` | 20,000 spheres submitted one by one: 2 batches, ≤ 10 draws. |
+| `cascades-200m` | A 420 m field, pillars to 190 m, a wall at 200 m, short kerbs and blocks: shadows in every cascade. |
+| `point-spot-lights` | Night, 7 local lights, a shadowed spot and a shadowed point light (7 shadow passes). |
+| `point-shadows-paraboloid` | The same with the point light's shadow in two paraboloid hemispheres: 3 passes. |
+| `shadows-local-8` | Night plaza: eight shadowed lights (six point, two spot; 38 passes) and two dim ones far behind whose shadows are left out. |
+| `shadows-local-contact` | Local shadows with contact shadows at casters' feet. |
+| `shadows-crypt` | A roofed room under a low sun with a shadowed point light inside a glass box that casts no shadow (`Instance::cast_shadows`): the light reaches the altar and the pillar, a post's shadow falls beside them. |
+| `shadow-flags` | A low sun over a field: a trickster casting beside one with `cast_shadows` off, and in a wall's shadow a box and a trickster that receive beside ones with `receive_shadows` off. |
+| `vox-keyframes` | A `.vox` cooked by og-cook (native only, `NATIVE_SCENES`) under a transform keyed at frames 0 and 2 (MagicaVoxel `nTRN` frames), sampled with og-anim and skinned as og-runtime poses a model. |
+| `shadows-soft` | A low sun with PCSS (softness 0.03) and cascade blending (0.2): a cube's contact shadow sharp, a raised plank's and a floating ball's penumbrae wide, poles across the cascade split. |
+| `taa` | Thin poles and bars after 16 TAA frames. |
+| `fxaa` | The same geometry with FXAA. |
+| `taa-sharp` | The same under TAA with the camera sliding 2 cm a frame, Catmull-Rom history and 0.5 sharpening. |
+| `smaa`, `smaa-t2x`, `smaa-t2x-moving` | The thin geometry under SMAA 1x; SMAA T2x still, and under half-scale camera and object motion. |
+| `bloom` | Emissive spheres with bloom. |
+| `exposure` | A dim dusk scene metered to middle grey. |
+| `post-agx`, `post-neutral` | The `bloom` scene through AgX and through Khronos PBR Neutral. |
+| `post-blur` | The `bloom` scene through a zoom blur (0.15, 16 taps) towards a point off centre. |
+| `post-lens` | The spike's scene through a centred barrel lens (0.35), the corners fitted. |
+| `post-adjust` | The spike's scene through a LUT at 0.6 with colour adjustments baked into the same table. |
+| `environment-map` | Chrome and white spheres from mirror to rough lit only by a cooked 64×32 HDR studio, turned 0.6 rad, drawn as the background. |
+| `text-msdf` | Latin and CJK MSDF text from 0.32 to 4.5 world units, rotated. |
+| `sky-only` | The sky with the sun in view: 2 draws. |
+| `showcase` | Models, CSM, a shadowed spot and point light, bloom, auto exposure, world-space text and sprites, the default antialiasing (`Tier`: TAA). |
+| `overlay` | The showcase under TAA with a HUD. |
+| `lights-256` | Night over a plaza lit by 256 point and spot lights (Forward+; 243 in view). |
+| `materials` | Metalness and roughness rows, emissive, normal maps, clearcoat, alpha mask and blend, double-sided, unlit, a non-uniformly scaled ellipsoid. |
+| `materials-array` | Texture-array maps: eight cubes of one tile material on their own layers in one batch, a cube of plain 2D textures beside them, blended panes of one array material, a sphere with only a normal array. |
+| `materials-physical` | Every `MeshPhysicalMaterial` lobe: clearcoat with its maps, sheen, iridescence, anisotropy, clear, frosted and amber glass, a transmission-mapped cube and a high-`ior` ball. |
+| `model-flash` | Three instances of one glTF model, one flashing white and one tinted, and two skinned cylinders of one material, one flashing red. |
+| `skinned-hooks` | Skinned cylinders drawn with a material shader that ripples, bands and lifts them; their shadows and AO follow. |
+
+Behaviour tests in `tests/gfx.rs` read frames rather than code: the cascade
+debug view puts cascade 0 at the camera's feet and cascade 2 at the horizon;
+short casters (0.5 m blocks, 0.6 m kerbs) shadow pixels in every cascade of
+the 400 m scene; local shadows darken the ground; MSAA and TAA turn
+black/white edges into partial coverage; bloom brightens the surroundings
+of emitters; metered exposure gives the same brightness for a scene lit 16×
+brighter (manual does not); higher sprite layers draw on top; missing
+glyphs and foreign font handles are reported; a BGRA non-sRGB output
+captures the same picture as RGBA sRGB; lights past the shadow budget are
+counted. Each was checked by breaking the code it covers.
+
+```sh
+cargo test --release -p og-tests -p og-tests-cooked                 # gfx + the wasm32 compile check
+OG_GFX_CAPTURE=1 cargo test --release -p og-tests -p og-tests-cooked --test tests gfx::      # re-record this tier
+OG_GFX_CAPTURE=spheres-20k cargo test --release -p og-tests -p og-tests-cooked --test tests gfx::  # one scene
+cargo test --release -p og-tests --test tests -- --ignored perf::          # perf vs crates/og-tests/perf/
+OG_PERF_RECORD=1 cargo test --release -p og-tests --test tests -- --ignored perf:: --test-threads=1
+cargo run --release -p og-tests-cooked --bin og-gfx -- --all --frames 120        # stats, timings, RMSE
+cargo run --release -p og-tests-cooked --bin og-gfx -- --costs                   # the feature-cost table (--costs-p2, --costs-e5)
+OG_GFX_DEBUG_CASCADES=1 cargo run --release -p og-tests-cooked --bin og-gfx -- cascades-200m --out c.png
+```
+
+`og-gfx` also takes `OG_GFX_BACKEND`, `OG_GFX_CULLING`, `OG_GFX_COMPACT`
+(every mesh compact) and `OG_GFX_QUALITY`. Perf baselines are in
+`crates/og-tests/perf/` per tier and adapter, compared with 15 %
+tolerance.
+
+**The MSDF test atlas** (`crates/og-tests/assets/fonts/noto-sans-sc-msdf.*`)
+is Noto Sans SC (an OFL subset; `OFL.txt` alongside), ASCII plus
+原点引擎文字渲染, generated with
+[msdf-atlas-gen](https://github.com/Chlumsky/msdf-atlas-gen) (commit
+6148900):
+`msdf-atlas-gen -font NotoSansSC-Regular-subset.ttf -charset noto-sans-sc-msdf.charset -type msdf -format png -size 32 -pxrange 4 -dimensions 512 256 -yorigin top -imageout noto-sans-sc-msdf.png -csv noto-sans-sc-msdf.csv -json noto-sans-sc-msdf.json`.
+`og_tests::scenes::load_font` reads the PNG, the CSV (glyphs) and two
+numbers of the JSON (`distanceRange`, `lineHeight`). The cook owns
+producing atlases; the renderer only takes a texture and a glyph table.
+
+**HDR output** (`RenderDesc::hdr`, `paper_white_nits`, `peak_nits`) is
+opt-in and not yet accepted on a real HDR display; with HDR off the SDR
+frames are unchanged. Neither `og run`'s shared-frame preview nor the
+headless harness configures an HDR swapchain, so acceptance needs a real
+surface: the opt-in `og-tests` surface example opens a native window,
+calls `Renderer::with_surface` and presents each frame through
+`RenderTarget::Surface`:
 
 ```sh
 cargo build -p og-tests --example surface --features surface
@@ -807,158 +685,31 @@ OG_GFX_BACKEND=metal target/debug/examples/surface ui-glass-bright hdr
 OG_GFX_BACKEND=metal target/debug/examples/surface views-split hdr
 ```
 
-Arguments are scene, `hdr|sdr`, paper-white nits, peak nits, frame count
-(0/default: until the window closes), and optional preview PNG. Named scenes
-and their per-frame updates are the same as the reference harness. Resize
-reconfigures the surface. The log reports monitor, adapter, requested HDR,
-supported/resolved HDR and settings; an HDR request resolving to SDR fails
-instead of claiming HDR acceptance. There is no headless fallback. This
-example is outside the default gate and adds no window dependency to normal
-headless runs. Authors only compile it; macrunner runs it on the real display.
-
-Occlusion is not a failed swapchain: `RenderError::SurfaceOccluded` means no
-drawable was acquired and no frame was presented. The driver pauses until
-the window becomes visible, without reconfiguring or counting hidden frames.
-It activates/focuses the native app on macOS; if it remains occluded, reveal
-the window on the unlocked display. Closing before any successful present
-reports that acceptance did not run, rather than reporting a successful test.
-
-Observe highlights, paper white, translucent UI/glass and split-screen on the
-actual HDR display; `hdr_resolved=true` proves surface configuration, not
-physical luminance. The optional PNG exercises retained-frame capture but is
-an explicitly clipped SDR preview, never HDR evidence or a reference replacement.
-Paper-white/peak changes require another run (renderer-creation settings).
-
-`crates/og-tests` is the gfx reference harness. Each named scene renders
-headless at 1280×720 (after its warm-up frames, with its per-frame update)
-and is compared with `crates/og-tests/references/<backend-tier>/<scene>.png`:
-a pixel is an outlier when a channel differs by more than 32/255; the frame
-fails above 0.5 % outliers or an RGB RMSE above 0.01. On failure the actual
-frame and a diff go to `target/…/tmp/og-gfx/<tier>/`. A missing reference
-fails.
-
-| Scene | What it proves |
-|---|---|
-| `gltf-reference` | The spike's scene (trickster + dropship × 25) with CSM, sky, mips. |
-| `spheres-20k` | 20,000 spheres submitted one by one: 2 batches, ≤ 10 draws. |
-| `cascades-200m` | A 420 m field, pillars to 190 m, a wall at 200 m, short kerbs and blocks: shadows in every cascade. |
-| `point-spot-lights` | Night, 7 local lights, a shadowed spot and a shadowed point light (7 shadow passes). |
-| `point-shadows-paraboloid` | The same with the point light's shadow in two paraboloid hemispheres: 3 passes, RMSE 0.0023 against the cube frame. |
-| `shadows-local-8` | Night plaza: eight shadowed lights (six point, two spot; 38 passes) and two dim ones far behind whose shadows are left out. |
-| `shadows-crypt` | A roofed room under a low sun with a shadowed point light inside a glass box that casts no shadow (`Instance::cast_shadows`): the light reaches the altar and the pillar, a post's shadow falls beside them; paraboloids store the same faces as cube faces. |
-| `shadow-flags` | A low sun over a field: a trickster added as is (casting) beside one with `cast_shadows` off (no shadow), and in a 5 m wall's shadow a red box and a trickster that receive (dark) beside a box and a trickster with `receive_shadows` off (lit as if the wall were not there). |
-| `vox-keyframes` | A `.vox` written by the scene and cooked by og-cook (native only, `NATIVE_SCENES`): a grey slab, a blue post and a red block under a transform keyed at frames 0 and 2 (MagicaVoxel `nTRN` frames, owed row 63), sampled with og-anim and skinned as og-runtime poses a model; the left copy at frame 0 (the block on the slab left of the post), the right at frame 2 (right of the post, lifted, its shadow on the slab). |
-| `shadows-soft` | A low sun with PCSS (softness 0.03) and cascade blending (0.2): a cube's contact shadow sharp, a raised plank's and a floating ball's penumbrae wide, poles across the cascade split. |
-| `taa` | Thin poles and bars after 16 TAA frames. |
-| `fxaa` | The same geometry with FXAA. |
-| `taa-sharp` | The same under TAA with the camera sliding 2 cm a frame, Catmull-Rom history and 0.5 sharpening (`Antialias::Taa`: the browser's moving-camera TAA frame). |
-| `bloom` | Emissive spheres with bloom. |
-| `exposure` | A dim dusk scene metered to middle grey. |
-| `post-agx` | The `bloom` scene through AgX: lower contrast, the orange and magenta halos paler than under ACES, the cores rolling to white. |
-| `post-neutral` | The `bloom` scene through Khronos PBR Neutral: the spheres' bodies as saturated as their authored colour (ACES darkens and shifts them), the over-exposed cores rolling to white. |
-| `post-blur` | The `bloom` scene through a zoom blur (0.15, 16 taps) towards a point left of and above the centre: the blue sphere near it sharp, the outer spheres stretched into ovals along the lines to it, the floor's checks smeared radially, the bloom glowing round the streaks (it runs after the blur). |
-| `post-lens` | The spike's scene through a centred barrel lens (0.35): the robots and drones magnified at the centre, the floor's far edge and the horizon bowed into arcs, the corners fitted (no black). |
-| `post-adjust` | The spike's scene through the teal-orange LUT at 0.6, then colour adjustments baked into the same table (`ColorAdjust`: temperature 0.06, contrast 0.15, vibrance 0.25, shadows towards teal): deeper blue-violet robots, the far floor and the haze a warm sand, richer yellow crates. |
-| `environment-map` | Chrome and white spheres from mirror to rough lit only by a cooked 64×32 HDR studio (baked here as the cook bakes it), turned 0.6 rad, drawn as the background. |
-| `sprites-20k` | 20,000 sprites (3 textures, one a 2×2 atlas, 2 layers), orthographic: 3 sprite draws. |
-| `sprites-array` | Sixteen sprites of an eight-layer pixel-art flipbook array (nearest; the second row flipped and turned), six of a three-layer smooth array added over a plain textured strip: one draw per array and blend, three in all. |
-| `sprites-array-fx` | The same two arrays through the other paths: four glowing flipbook sprites over a strip (glow pass), a fountain of round, glowing, added particles on random layers of the smooth array, a flipbook emitter stepping each particle through the layers by age, and four overlay sprites of the flipbook's even layers beside a plain one; after 60 ticks. 5 sprite draws (three world, two overlay). |
-| `text-msdf` | Latin and CJK MSDF text from 0.32 to 4.5 world units, rotated. |
-| `sky-only` | The sky with the sun in view: 2 draws. |
-| `showcase` | Models, CSM, a shadowed spot and point light, bloom, auto exposure, world-space text and sprites, the default antialiasing (`Tier`: TAA). |
-| `lights-256` | Night over a plaza lit by 256 point and spot lights (Forward+; 243 in view). |
-| `atmosphere-moon` | The night colonnade with a waxing gibbous moon in view. |
-| `materials` | Every M6 material feature: metalness and roughness rows, emissive, normal maps, clearcoat, alpha mask and blend, double-sided, unlit, a non-uniformly scaled ellipsoid. |
-| `materials-array` | Texture-array maps (round of the cook's owed lines; references to record on metal and vulkan-cpu): eight cubes of one tile material (a four-layer sRGB colour array and a four-layer normal array), seven on their own layers and one on the material's, one batch; a cube of layer 1 as plain 2D textures beside them; two blended panes of one array material (layer 0, and the material's 3); a sphere with only a normal array (orange over the white stand-in). 5 batches, 13 instances. |
-| `materials-physical` | Every `MeshPhysicalMaterial` lobe: clearcoat with its three maps, sheen plain and mapped, iridescence on black and on metal, anisotropy plain and swirled by its map, then clear, frosted and amber glass, a transmission-mapped cube and a high-`ior` ball in front of a plinth of coloured bars. |
-| `skinned-hooks` | Skinned cylinders drawn with a material shader that ripples, bands and lifts them; their shadows and AO follow. |
-| `terrain-near`, `terrain-mid`, `terrain-far` | Phase 2: the 2 km island (clipmap, four layers, shadows, fog) from 2 m, 150 m and 700 m. |
-| `terrain-grass-wind` | The grass meadow (`terrain-grass`) in a gusting `Wind` at tick 90 (strength 0.4 towards +x and a little +z, gust 0.7): the tufts lean downwind, further where a gust passes, their tips lower; the boulders, plain instances, stand still. |
-| `water-planar`, `water-shadows`, `water-underwater` | Phase 2: the lake's planar reflection, shadows on the water, the view from under it with caustics. |
-
-Behaviour tests in `tests/gfx.rs` read frames rather than code: the cascade
-debug view puts cascade 0 at the camera's feet and cascade 2 at the horizon;
-short casters (0.5 m blocks, 0.6 m kerbs) shadow pixels in every cascade of
-the 400 m scene (fails with the old normalized bias); local shadows darken
-the ground; MSAA and TAA turn black/white edges into partial coverage; bloom
-brightens the surroundings of emitters; metered exposure gives the same
-brightness for a scene lit 16× brighter (manual does not); higher sprite
-layers draw on top; missing glyphs and foreign font handles are reported;
-a BGRA non-sRGB output captures the same picture as RGBA sRGB; lights past
-eight are counted. Each was checked by breaking the code it covers.
-
-```sh
-export CARGO_TARGET_DIR=$PWD/target/agent-render   # any target dir works
-cargo test --release -p og-tests -p og-tests-cooked                 # gfx + the wasm32 compile check
-OG_GFX_CAPTURE=1 cargo test --release -p og-tests -p og-tests-cooked --test tests gfx::      # re-record this tier
-OG_GFX_CAPTURE=spheres-20k cargo test --release -p og-tests -p og-tests-cooked --test tests gfx::  # one scene
-cargo test --release -p og-tests --test tests -- --ignored perf::          # perf vs crates/og-tests/perf/
-OG_PERF_RECORD=1 cargo test --release -p og-tests --test tests -- --ignored perf:: --test-threads=1
-cargo run --release -p og-tests-cooked --bin og-gfx -- --all --frames 120        # stats, timings, RMSE
-cargo run --release -p og-tests-cooked --bin og-gfx -- --costs                   # the feature-cost table
-OG_GFX_DEBUG_CASCADES=1 cargo run --release -p og-tests-cooked --bin og-gfx -- cascades-200m --out c.png
-```
-
-**The `vulkan-cpu` tier** (Mesa lavapipe, what CI runs on) is recorded in the
-platform's E2B probe sandbox: cross-build `og-gfx` and the gfx test binary
-with `cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.31 -p
-og-tests --bin og-gfx --test tests`, then `bun
-crates/og-tests/scripts/capture-vulkan-cpu.ts` (after `bun install --cwd
-tools/bench` once). One sandbox run (about a minute) captures every scene,
-runs the gfx tests against the captured frames (all pass, RMSE 0: lavapipe
-is deterministic), times two scenes, and writes the frames to
-`references/vulkan-cpu/` and the logs to `$CARGO_TARGET_DIR/vulkan-cpu/`.
-The sandbox's Mesa (25.0.7, LLVM 15) may differ from CI's; the tolerance is
-expected to absorb it (Metal vs lavapipe is RMSE 0.001–0.007 per scene).
-
-**The MSDF test atlas** (`crates/og-tests/assets/fonts/noto-sans-sc-msdf.*`)
-is Noto Sans SC (the platform template's OFL subset; `OFL.txt` alongside),
-ASCII plus 原点引擎文字渲染, generated with
-[msdf-atlas-gen](https://github.com/Chlumsky/msdf-atlas-gen) (built from
-source, commit 6148900):
-`msdf-atlas-gen -font NotoSansSC-Regular-subset.ttf -charset noto-sans-sc-msdf.charset -type msdf -format png -size 32 -pxrange 4 -dimensions 512 256 -yorigin top -imageout noto-sans-sc-msdf.png -csv noto-sans-sc-msdf.csv -json noto-sans-sc-msdf.json`.
-`og_tests::scenes::load_font` reads the PNG, the CSV (glyphs) and two numbers
-of the JSON (`distanceRange`, `lineHeight`). The cook (M4) owns producing
-atlases; the renderer only takes a texture and a glyph table.
+Arguments are scene (the reference harness's), `hdr|sdr`, paper-white
+nits, peak nits, frame count (0: until the window closes) and an optional
+preview PNG (a clipped SDR preview, never HDR evidence). An HDR request
+resolving to SDR fails; there is no headless fallback, and the example is
+outside the default gate. `RenderError::SurfaceOccluded` means no drawable
+was acquired and no frame presented: the driver waits for the window to
+become visible, and closing before any present reports that acceptance
+did not run. `hdr_resolved=true` proves surface configuration, not
+physical luminance.
 
 ## Performance
 
-M4 Pro, Metal, 1280×720, on a machine shared with other builds and an iOS
-simulator (load average 20–60), so numbers carry ±10 % noise. Interleaved
-A/B against the M0 renderer (same glam `scalar-math`), 9 rounds of 200
-frames, median: `gltf-reference` 1.58 ms (M0: 1.59 ms), `spheres-20k` 6.78 ms
-(M0: 8.04 ms). The new shadow pipeline costs nothing on these scenes: three
-cascades draw fewer casters than M0's single map because of the swept-slice
-culling, and the main pass culls to the frustum. `sprites-20k`, 20,000
-sprites moved and resubmitted every frame, takes 1.0–1.3 ms (the M3 budget
-is 2 ms). Per-feature costs are in `tests/evidence/M3/feature-costs.md`
-(`og-gfx --costs`); perf baselines are in `crates/og-tests/perf/` per tier
-and adapter, compared with 15 % tolerance.
-
 ### Pipelines made on first use
 
-A pipeline is a program to compile, and on the retired WebGL2 tier wgpu
-compiled and linked each one synchronously when it was made (ANGLE's
-compile, then the status read that waits for it). `Renderer::new` used to
-make every fixed pipeline up front, 52 programs on the WebGL2 page of the
-dogfood games, most of them
-for passes the first frame does not draw (water, metaballs, 3D fluids,
-terrain, 2D lights, glass, ribbons, the sprite variants, bloom, TAA and the
-eleven effect passes): 400 to 550 ms before the first frame. Each is now a
+Every pipeline the renderer does not need for its first frame is a
 `Deferred` (`src/deferred.rs`), made from the same descriptor when a pass
 first sets it, and the shader modules only those passes use are parsed
 then too (`deferred::module`), so a frame compiles only what it draws and
-every frame is the frame it was (the pipelines are the same objects, made
-later). `Renderer::warm()` makes the rest one per call, the likeliest
-first, and answers false when none is left: the web Worker calls it in
-idle time behind the play gate (`og_web_warm`), so a pass met later does
-not stop a frame to compile. Measured in headless Chrome 150 on the three
-dogfood games' publish builds (`packages/engine/tests/web/dogfood.ts
---boot`, three runs each, median, 2026-10-21): the then WebGL2 renderer's
-creation went from 507 / 546 / 461 ms to 129 / 155 / 127 ms (Lantern Vale,
-Hollowbell, Kestrel Stair) and the first frame from 1,405 / 1,118 / 1,197
-ms to 703 / 701 / 705 ms; WebGPU's creation from 22 / 13 / 21 ms to 10 /
-10 / 9 ms.
+every frame is the frame it would be with every pipeline made up front.
+`Renderer::warm()` makes the rest one per call, the likeliest first, and
+answers false when none is left: the web Worker calls it in idle time
+behind the play gate (`og_web_warm`), so a pass met later does not stop a
+frame to compile. Compiled pipelines are kept across runs where wgpu has
+a pipeline cache (Vulkan; `set_pipeline_cache_dir`,
+`RenderInfo::pipeline_cache`); Metal and the browsers keep their own.
 
 ### Lit pipeline variants
 
@@ -973,31 +724,23 @@ and AO code out. Physical materials take `physical.wgsl`'s.
 A **plain** material takes the lean pipelines (`pbr_lean.wgsl`;
 `GpuMaterial::lean`): opaque, not physical, no texture of any kind, no
 toon, rim, flash, dissolve or outline, no alpha cut and no material
-shader (the material style counts: a styled material is judged as
-styled). Its unskinned instances draw with `vs_lean` / `fs_lean`, which
-read position, normal and colour and interpolate 10 floats (world
-position, normal, colour), and in the prepass with `vs_prepass_lean` /
-`fs_prepass_lean` (position and normal in; world position, normal and the
-two motion clips out, 14 floats). Positions come from the same
-`lit_place` as the full path's (retro 3D's snap included) and the
-fragments run the full path's shading (`lit_fragment`,
-`prepass_targets`; the white default maps are still sampled, at uv 0),
-so the pixels are the full pipeline's byte for byte. The `DISCARD`
-override drops the fragment discard a plain material never takes, which
-keeps the early depth test (hidden surface removal on Apple GPUs), except
-where the fragments take screen derivatives (flat shading, or decals in
-the frame; `Batch::derivatives`): on Metal a shader with a discard
-computes derivatives differently, so there the discard stays. The lean
-pipelines are keyed (side, effects, derivatives), the lean prepass (side,
-derivatives), made at first use: one of each for a typical scene, at most
-12 and 6. Materials with texture-array maps draw through a variant of the
-full lit, prepass and shadow pipelines ([Array
-maps](#array-maps-materials-and-terrain-layers)), never the lean ones. Shadow casters that are not skinned, dissolving or hooked read
-their position alone whatever their material (`shadow.wgsl` `vs_lean` /
+shader (a styled material is judged as styled). Its unskinned instances
+draw with `vs_lean` / `fs_lean` (position, normal and colour in; 10
+interpolated floats) and in the prepass with `vs_prepass_lean` /
+`fs_prepass_lean` (14 floats). Positions come from the same `lit_place`
+and the fragments run the full path's shading, so the pixels are the full
+pipeline's byte for byte. The `DISCARD` override drops the fragment
+discard, which keeps the early depth test, except where the fragments
+take screen derivatives (flat shading, or decals in the frame;
+`Batch::derivatives`): on Metal a shader with a discard computes
+derivatives differently. The lean pipelines are keyed (side, effects,
+derivatives), the lean prepass (side, derivatives), made at first use.
+Materials with texture-array maps draw through a variant of the full lit,
+prepass and shadow pipelines ([Array
+maps](#array-maps-materials-and-terrain-layers)), never the lean ones.
+Shadow casters that are not skinned, dissolving or hooked read their
+position alone whatever their material (`shadow.wgsl` `vs_lean` /
 `fs_lean`: the world position the only varying; no extra pipeline).
-spheres-20k on an M4 Pro (dev og-gfx): 7.1 to 4.6 ms a frame, every
-Metal `--all` frame byte-identical to the full path's
-(`tests/evidence/P4/lean/`).
 
 ### Instance looks: the hit flash of one instance
 
@@ -1012,18 +755,11 @@ in an f32, so GPU culling's compaction copies them unchanged; the tint as
 its distance from white, so a record of zeros is no look), reach the
 fragment as a flat varying, and are applied by `pbr_fs.wgsl`'s
 `lit_fragment` (the full and the lean paths, the array-map variant) and
-`physical.wgsl` on every tier, each behind a branch, so an instance
-without a look shades bit for bit as before. One (mesh, material) is one
-draw whatever its instances show. The runtime fills it from `og.Model`'s
-`tint`, `flash` and `flashColor` (`og.tween.flash` takes an og.Model
-entity: kestrel-stair #11), and og.Mesh's `flash` and `flashColor` the
-same way since row 85 (it had drawn a flashing mesh through a copy of its
-material at one of 16 flash levels: a draw and a material per level, each
-copy kept as its material was when made, so a material updated during the
-flash, a dissolve, flashed stale; the amount is continuous now, the colour
-8 bits a channel). The og-tests scene `model-flash` (three instances of one glTF
-model, one flashing white and one tinted, and two skinned cylinders of one
-material, one flashing red) holds it on metal.
+`physical.wgsl`, each behind a branch, so an instance without a look
+shades as without the feature. One (mesh, material) is one draw whatever
+its instances show. The runtime fills it from `og.Model`'s `tint`,
+`flash` and `flashColor` (`og.tween.flash` takes an og.Model entity) and
+from og.Mesh's `flash` and `flashColor`. Scene `model-flash`.
 
 ### Instance and vertex encodings
 
@@ -1031,55 +767,33 @@ material, one flashing red) holds it on metal.
 culling's regions, the previous transforms of object motion, the
 scattered copies) holds an instance's transform as the x, y and z of its
 four columns and, after them, an array-map instance's layer with whether
-it receives shadows (`instances::layer_bits`) and the
-instance's look (`instances::GpuTransform`: `Float32x3` attributes 4 to 7
-and a `Float32x4` at 8, pbr.wgsl's `InstanceFxIn`; 16 floats a slot in
+it receives shadows (`instances::layer_bits`) and the instance's look
+(`instances::GpuTransform`: `Float32x3` attributes 4 to 7 and a
+`Float32x4` at 8, pbr.wgsl's `InstanceFxIn`; 16 floats a slot in
 `cull.wgsl`); a skinned instance holds the columns before its palette and
 its look after its morph weights (`skin::SkinnedInstanceGpu`, the look at
-attribute 13). The record was 52 bytes until the look joined it (wave 11):
-every Metal `og-gfx --all` frame stayed byte-identical. `instance.wgsl`'s
-`instance_matrix` rebuilds the 4x4 with the fourth row (0, 0, 0, 1), so
-an `Instance::transform` is affine. The points such a matrix moves have a
-w of 1 the shader compiler can see, and Metal then reorders the sum of the
-projection that follows (the w term first), which moved vertices by an ulp
-and flipped edge pixels in 45 of the 68 `og-gfx --all` frames. Those
-projections (the view, the cascades and spots, last frame's view, the
-occluders', GPU culling's screen boxes) go through `mul_point`, the column
-order fused chain the compiler used when w came from the buffer, and a
-point moved by a material's `vertex_offset` keeps the plain product
-(`hooks.rs` `moved_clip`): every Metal frame is the 64-byte encoding's,
-byte for byte. The SPIR-V, HLSL and browser tiers compile the same
-arithmetic; their references are compared under the gate's tolerance.
+attribute 13). `instance.wgsl`'s `instance_matrix` rebuilds the 4x4 with
+the fourth row (0, 0, 0, 1), so an `Instance::transform` is affine. The
+projections of the points such a matrix moves go through `mul_point`, a
+column-order fused chain, so Metal does not reorder the sum and move
+vertices by an ulp; a point moved by a material's `vertex_offset` keeps
+the plain product (`hooks.rs` `moved_clip`).
 
 **Vertices: 16 bytes, opt-in.** `VertexEncoding::Compact`
 (`RenderScene::set_vertex_encoding`; `compact.rs`) uploads a mesh as the
 position in `Unorm16x4` over its bounds, the normal octahedral in
 `Snorm16x2` and the colour in `Unorm8x4`; no uv and no tangent, which no
-plain material reads. The bounds' corner and size are not a shader input:
-a (mesh, material) run that draws the compact vertices folds them into
-its instances' GPU transforms (`Run::dequant`), so the vertex stage reads
-a point in the unit box; the normal is stored through the bounds' scale,
-so the normal matrix of (instance x dequantisation) turns it back. The
-lean lit, lean prepass, lean shadow caster and occluder-depth pipelines
-have compact variants (`vs_lean_compact`, `vs_prepass_lean_compact`,
-shadow `vs_lean_compact`, `cull_depth.wgsl` `vs_compact`), GPU culling
-reads the unit box's bounds with a radius that never shrinks the
-sphere, and CPU culling keeps the mesh's own. The f32 vertices of a
-compact mesh are uploaded only when something else draws it (a material
-that is not plain, a scatter, a skinned instance: `Renderer::ensure_full`),
-so a mesh that only plain materials draw never holds them on the GPU.
-Skinned and morphed meshes ignore it. It is quantised (the position to
-1/65535 of the bounds, the normal to about 1e-4 rad, the colour to 8
-bits), so its pixels are near `Full`'s, not equal: the default stays
-`Full` and every reference frame with it. `og-gfx` takes
-`OG_GFX_COMPACT=1` (every mesh compact): all 68 `--all` scenes draw, the
-largest difference against the `Full` frames rmse 0.011 (`showcase`).
-Natively the sphere field's GPU time does not move with it
-(`tests/evidence/P4/parity/`): its 221 vertices sit in cache, and the
-pass is bound by its 7.3 million triangles (its time follows the
-instance count, not the pixels, the varyings or the vertex fetch).
+plain material reads. A run that draws the compact vertices folds the
+bounds into its instances' GPU transforms (`Run::dequant`). The lean lit,
+lean prepass, lean shadow caster and occluder-depth pipelines have
+compact variants. The f32 vertices of a compact mesh are uploaded only
+when something else draws it (a material that is not plain, a scatter, a
+skinned instance: `Renderer::ensure_full`). Skinned and morphed meshes
+ignore it. It is quantised (the position to 1/65535 of the bounds, the
+normal to about 1e-4 rad, the colour to 8 bits), so its pixels are near
+`Full`'s, not equal: the default stays `Full`.
 
-## The 2D batch (E4)
+## The 2D batch
 
 Everything world-space 2D goes through one sorted list per frame: sprites,
 2D particles and glyphs keyed by (layer, sort key, source), then tile
@@ -1087,473 +801,307 @@ layers and layered trails (`trail_layers: (Trail::id, layer)`) placed
 before the sprites of their layer (tiles first), adjacent runs of one
 source merged into one instanced draw. A layered trail is drawn with the
 ribbon pipeline inside the sprite order (unlayered trails, ribbons and
-beams still draw with the 3D scene), so a 2D sprite's trail shows over a
-tile background. Glyph instances carry an outline in their otherwise
-unused flash colour and glow strength; `fs_msdf` grows the shape by the
-width and mixes the fill over the outline (width 0 is the old shader's
-output exactly). With every new list empty the frame is the pre-E4 frame:
-every gfx and effects reference passes unchanged.
+beams draw with the 3D scene), so a 2D sprite's trail shows over a tile
+background. Glyph instances carry an outline in their otherwise unused
+flash colour and glow strength; `fs_msdf` grows the shape by the width
+and mixes the fill over the outline. A sprite or glyph instance is 104
+bytes.
 
 **Texture arrays** (`sprite_arrays`, `SpriteArray { sprite, array, layer
 }`): a world sprite draws from a layer of a texture array instead of its
 texture, through pipeline variants (`shaders/sprite_array.wgsl`, made on
-the first frame that draws one) that sample a `texture_2d_array`: alpha,
-additive and the glow buffer's, one per sprite pipeline. The instance
-carries its layer (location 7 of the sprite instance, which the other
-sprite pipelines do not read), so the run key is (blend, array): every
-sprite of one array is one instanced draw whichever layer it shows, where a
-sheet of separate textures would break the run at each frame. The group's
-view is an explicit `D2Array`, made with exactly the layers the caller
-gave. A layer past the array's count is
-refused (`InvalidData`). Array sprites take the hit flash, 2D lighting,
-fog, the additive blend, the soft dot and the glow pass (a glowing array
-sprite joins the glow runs by array, sorted after the plain textures, so
-every existing glow run keeps its order). Screen sprites draw from arrays
-too (`Overlay::sprite_arrays`, indexing `Overlay::sprites`): the overlay's
-variant (`shaders/overlay_array.wgsl`, in the output's format and its sRGB
-view's, made on the first frame with one) reads the layer from the overlay
-instance's otherwise unused `effect.w`, one draw per array. 2D particles
-draw from an array when their emitter names one (`ParticleEmitter::array`,
-sprite mode only: a billboard emitter with an array is refused): the
-layers are the sheet's frames, picked by the sheet's mode (`OverLife` and
+first use) for the alpha, additive and glow blends. The run key is (blend,
+array): every sprite of one array is one instanced draw whichever layer
+it shows. A layer past the array's count is refused (`InvalidData`).
+Array sprites take the hit flash, 2D lighting, fog, the soft dot and the
+glow pass. Screen sprites draw from arrays too (`Overlay::sprite_arrays`,
+indexing `Overlay::sprites`; `shaders/overlay_array.wgsl`), one draw per
+array. 2D particles draw from an array when their emitter names one
+(`ParticleEmitter::array`, sprite mode only: a billboard emitter with an
+array is refused), the layers picked by the sheet's mode (`OverLife` and
 `Fps` by age, `Random` per particle; `sheet.frames` limits them, 0 every
-layer), every particle of the array one draw; `ParticleEmitter::round`
-gives sprite particles the soft dot's round edge over their texture or
-layer. MSDF text never samples an array. og-runtime's `og.Sprite { array,
+layer); `ParticleEmitter::round` gives sprite particles the soft dot's
+round edge. MSDF text never samples an array. og-runtime's `og.Sprite { array,
 arrayLayer }`, `SpriteDesc.array` (world or screen), an emitter's `array`
 line and a flipbook sheet with `array true` (its frames cooked into an
-array, frame n drawn as layer n) all come here. Tests: og-tests
-`sprites-array` (an eight-frame pixel-art flipbook in two rows and a
-three-layer smooth array added over a plain strip: three draws; unchanged
-byte for byte by the round that added the other paths), `sprites-array-fx`
-(glowing array sprites, a round glowing emitter on random layers and a
-flipbook emitter by age, four overlay array sprites beside a plain one),
-`a_sprite_draws_the_layer_of_its_texture_array`,
-`array_sprites_glow_and_draw_in_the_overlay` and
-`array_particles_take_their_layers_by_age_or_at_random`.
+array, frame n drawn as layer n) all come here. Scenes `sprites-20k`
+(20,000 sprites of 3 textures, one a 2×2 atlas, 2 layers: 3 sprite
+draws), `sprites-array` (a pixel-art flipbook array and a smooth array
+over a plain strip: three draws), `sprites-array-fx` (glowing array
+sprites, array particles at random and by age, overlay array sprites: 5
+sprite draws).
 
 **Drop shadows** (`sprite_shadows`, `SpriteShadow { sprite, opacity,
-ground }`; the IDL's `SpriteDesc.dropShadow` and `Sprite.dropShadow`): a world
-sprite's shadow is one more instance of its quad, region and texture (or
-array layer) in black at `opacity` times its alpha, keyed `f32::MIN` so it
-draws before every sprite of its layer, whose `ground` (location 6: on,
-the x and z moved per metre of height, the ground's height) makes the
-vertex shader carry each corner of the standing quad along the scene's
-sun (`RenderScene::light`) down to the plane y = 0, lifted
-`SPRITE_SHADOW_LIFT` (1 cm) over a ground mesh there. Depth-tested as the
-sprites are, so the set's geometry in front hides it. None with the sun at
-or below the horizon; a low sun is raised to about 11° so a shadow is at
-most five times the sprite's height (`shadow_ground`). Pixel sprites in a
-3D set (a perspective camera over the xz ground) cast shadows that agree
-with the meshes' cascades; a 2D camera looking down -z sees the plane edge
-on. Shadows are not counted in `FrameStats::sprites`. The instance grew
-by those 16 bytes (100 a sprite or glyph; 104 since billboards). Tests: `sprites.rs`'s
-`a_drop_shadow_draws_first_in_its_layer_projected_along_the_sun` and
-`a_low_sun_casts_at_most_five_heights` (CPU), og-tests `sprites-shadow`.
+ground }`; the IDL's `SpriteDesc.dropShadow` and `Sprite.dropShadow`): a
+world sprite's shadow is one more instance of its quad, region and
+texture (or array layer) in black at `opacity` times its alpha, keyed
+`f32::MIN` so it draws before every sprite of its layer; the vertex shader
+carries each corner of the standing quad along the scene's sun
+(`RenderScene::light`) down to its ground, lifted `SPRITE_SHADOW_LIFT`
+(1 cm). Depth-tested as the sprites are. None with the sun at or below
+the horizon; a low sun is raised to about 11° so a shadow is at most five
+times the sprite's height (`shadow_ground`). Shadows are not counted in
+`FrameStats::sprites`.
 
-*Off the plane y = 0* (stylisation round three): a shadow's `ground`
-(`ShadowGround { height, normal }`) puts it on the plane through `height`
-under the sprite's anchor, tilted to `normal`: `ground.w` carries the
-height (plus the lift), and the shadow instance's `fx.yz` (glow, lighting
-and the soft dot are never a shadow's, and the vertex shader zeroes them
-for one) the rise per metre along x and z, so the instance layout is
-unchanged; the vertex shader (`sloped_shadow`, sprite.wgsl and
-sprite_array.wgsl) moves each corner down the sun until it meets that
-plane, a slope steeper than about 70° taken as that steep and a sun
-grazing the slope held to five heights. A level ground keeps the old
-projection, byte for byte. `ShadowGround::fit(height_at, sprite, sun)`
-fits the plane to uneven ground: through the ground at the anchor, along
-the slope to where the shadow's tip falls and across it over the sprite's
-width, raised where the ground between bulges above it, so the shadow
-never sinks into a hill. og-runtime gives every shadow the level ground
-of `dropShadowHeight` (0 by default) and, where an og.Terrain drawn under
-the anchor is higher, the plane fitted to that terrain
-(`terrain::ground_drop_shadows`, sampling as `og.terrain.sample` does,
-streamed tiles included). *In the cascades*: the fragment shader reads
-the sun's cascaded shadow at the shadow's point (lighting.wgsl
-`cascade_shadow`, now prepended to the sprite shaders) and multiplies the
-shadow's alpha by the light there, so where a wall or tree already
-shadows the ground the drop shadow fades out instead of darkening it
-twice. Tests: `sprites.rs`'s
-`a_drop_shadow_lies_on_its_ground_at_its_height_and_slope` and
-`a_fitted_ground_follows_the_terrain_under_the_shadow`, og-runtime
-`tests/drop_shadows.rs` (a cooked ramp terrain, a deck above it, a sprite
-off it and an immediate sprite), og-tests `sprites-shadow-terrain`
-(figures on hills, one on a deck, one whose shadow runs out of a wall's
-shadow). The sprite vertex shader's slope path moves `sprites-20k` on
-Metal by at most 2/255 on 261 pixels (the compiler's code for the
-standing quad changes with it; no shadow in that scene); every other
-reference is byte-identical.
+- *The ground*: `ShadowGround { height, normal }` is the plane through
+  `height` under the sprite's anchor, tilted to `normal` (y = 0 by
+  default; a slope steeper than about 70° is taken as that steep).
+  `ShadowGround::fit(height_at, sprite, sun)` fits the plane to uneven
+  ground so the shadow never sinks into a hill. og-runtime gives every
+  shadow the level ground of `dropShadowHeight` (0 by default) and, where
+  an og.Terrain under the anchor is higher, the plane fitted to it
+  (`terrain::ground_drop_shadows`).
+- *Bent*: where the plane misses the ground under a 5 × 3 grid of the quad
+  (`SHADOW_BEND_ROWS` × `SHADOW_BEND_COLUMNS`) by more than
+  `SHADOW_BEND_TOLERANCE` (3 cm plus 3 % of the sprite's height), `fit`
+  bends it (`ShadowGround::bend`, `ShadowBend`): the shadow is drawn as
+  4 × 2 seamless cells over the ground's heights. *Limit*: a feature
+  narrower than a cell is bridged, and where the ground falls away steeper
+  than the sun the cells stretch across it.
+- *In the cascades*: the shadow's alpha is multiplied by the sun's
+  cascaded light at its point, so where a wall or tree already shadows the
+  ground the drop shadow fades out instead of darkening it twice.
 
-*Bent over hollows* (stylisation round four): one plane cannot follow a
-hollow or a ridge narrower than the shadow (it floated over the one and
-was lifted over the other). `ShadowGround::bend` (`ShadowBend`) holds the
-ground's heights under a 5 × 3 grid of the sprite's quad (rows up the
-quad, so along the shadow; columns across it), each point carried down
-the sun to the first ground its ray meets (`landing`: marched over three
-sprite heights, then bisected). `ShadowGround::fit` keeps the plane where
-it lies within `SHADOW_BEND_TOLERANCE` (3 cm, plus 3 % of the sprite's
-height) of the ground under every grid point's landing on it, and bends
-otherwise, so og-runtime's terrain shadows bend with no change there. A
-bent shadow is drawn as 4 × 2 instances of the sprite, one per cell
-(`ground.x` 2): the cell's column and row in the two flash bytes a shadow
-never uses, its corners' heights in `ground.w` and `fx`, so the instance
-layout is unchanged again. The vertex shaders (`bent_vertex`, sprite.wgsl;
-the same in sprite_array.wgsl) compute each corner from the whole quad,
-so cells meeting at a corner compute it alike and the shadow has no
-seams, and carry it down the sun to its height; the plane path is the
-round-three code behind an early return (`sprites-20k` byte-identical).
-*Limit*: between grid points the ground is taken as straight, so a
-feature narrower than a cell (a quarter of the shadow's length, half the
-sprite's width) is still bridged, a bump between two points can cover
-the shadow there, and where the ground falls away steeper than the sun
-(the far wall of a deep pit) the cells stretch across the part in the
-ground's own shadow. Tests: `sprites.rs`'s
-`a_shadow_bends_over_a_hollow_narrower_than_itself` (a pit and a ridge,
-the eight cells and their corners), og-tests `sprites-shadow-terrain`,
-which gains a hollow 0.4 m deep and about 1.4 m across and a figure whose
-shadow dips into it (its reference moves).
+Scenes `sprites-shadow` and `sprites-shadow-terrain` (figures on hills,
+on a deck, in a wall's shadow, over a hollow); og-runtime
+`tests/drop_shadows.rs`.
 
 Tests: `tests/sprites2d.rs` (sort keys across textures within a layer,
 layers still win; tile culling, tiles under their layer's sprites, repeat
 filling the view's edge, an animated quad on its second frame; nearest
 against linear sampling; nine-slice borders at their texel size; an
-outline only when asked, the fill kept; a trail hidden under a layer-0
-sprite without a layer and shown over it on layer 1), each broken once
-(`tests/evidence/E4/break-and-restore.md`).
+outline only when asked; a trail hidden under a layer-0 sprite without a
+layer and shown over it on layer 1).
 
 ### Billboards
 
 `RenderScene::sprite_facing` (`SpriteFacing`, by sprite index; past the
 end, `None`; the IDL's `og.Sprite.facing` and `SpriteDesc.facing`, enum
 `SpriteFacing` `none | camera | cameraY`): a world sprite turned towards
-the camera that draws it, three.js `Sprite`. *Chosen: a mode of the
-sprite, not a component or a draw path of its own.* The quad, texture or
-array layer, region, flash, glow, 2D lighting, blend, fog, untonemapped
-pipelines, drop shadow and runs are the sprite's; only where its corners
-stand changes. The instance carries the mode (`facing`, location 8, 4
-bytes: 104 a sprite or glyph) and the sprite and array vertex shaders
-place each corner with `stand` (sprite.wgsl, sprite_array.wgsl): 0 the
-old expression, `(xy + rotated, z)`, behind an early return; 1 along the
-camera's right and up; 2 along the camera's right laid level (+x when it
-points straight up) and +y; 3, internal, along the sun-facing card's
-right (`sun_card_right`: the sun as a camera's right) and +y. The
-camera's axes are two new members at the end of the frame uniform
-(`view_right`, `view_up`, frame.wgsl), written from each `CameraFrame`'s
-view (`CameraFrame::axes`) wherever a frame group is: the main camera,
-the planar reflection's mirrored eye, every `View` (views.rs) and every
-reflection probe face (probes.rs). So every pass that draws sprites
-turns them to its own eye on the GPU, as `views::camera_gpu` turns the
-particle billboards; nothing on the CPU (the simulation, the probe's
-snapshots) reads the turn. `rotation` still turns the quad within its own
-plane; the quad turns about its anchor.
+the camera that draws it, three.js `Sprite`. It is a mode of the sprite:
+everything else about the sprite (texture, region, flash, glow, 2D
+lighting, blend, fog, drop shadow, runs) is unchanged; only where its
+corners stand changes (`stand` in sprite.wgsl and sprite_array.wgsl, from
+the frame uniform's `view_right` and `view_up`). Every pass that draws
+sprites (the main camera, the planar reflection, every `View`, every probe
+face) turns them to its own eye on the GPU; nothing on the CPU reads the
+turn. `rotation` still turns the quad within its own plane, about its
+anchor.
 
-*Sorting.* A faced sprite without a `sprite_order` key, tone mapped,
-sorts with the transparent meshes (`SpriteFrame::billboards`): its depth
-is the view depth of its anchor along the eye's forward (`SpriteEye`),
-the transparent meshes' own sort key (`Renderer::sort_transparent`), and
-the transparent list is cut where a billboard falls between two of its
-instances (`DrawList::before`), so `draw_blended` draws meshes and
-billboards in one back-to-front order: a billboard behind a glass pane
-shows through it, one in front draws over it (a billboard as far as a
-mesh draws after it). Their drop shadows (`billboard_shadows`) draw
-first, before the transparent meshes: they lie on the opaque ground,
-and drawn after a billboard, which writes no depth, they would darken
-it. The main pass, every view and every reflection probe face do this
-from their own eye (a due capture builds its sprite list per face, from
-the probe along the face's forward, culled to the face). Such a
-billboard leaves its layer's order: among the billboards ties go by
-layer, then submission. With a key it keeps the old place, sorted by
-(layer, key) after the transparent meshes, particles and lines; so does
-an untonemapped one, whose cover pass belongs to the sprite order. A
-faced sprite's layer no longer orders it against unfaced sprites (they
-draw after it). Particles and every unfaced sprite still draw after the
-transparent meshes (*limit*, as before: their order is the layers').
-*Culling.* Its
-bounds are the sphere round the anchor through the farthest corner
-(`sprite_radius`, whatever its turn); the main camera and each view drop
-a faced sprite (and its glow; not its drop shadow, which may show) whose
-sphere misses their frustum (`FrameStats::sprites_culled`, the main
-camera's); probe faces cull none. Unfaced sprites are not culled, as
-before. *Drop shadows.* A faced sprite's shadow is cast by the quad
-stood upright facing the sun (`FACING_SUN`), so a billboard's shadow is
-its whole shape from every camera and the same in every view;
-`ShadowGround::fit_facing` takes a bend's grid points on that card, and
-og-runtime's terrain shadows call it with the sprite's facing. The id
-pass (`id_pass.rs`) turns faced sprites to its camera (`face_axes`, the
-CPU twin of `stand`). og-runtime anchors a faced nine-slice's pieces at
-the panel's anchor (`Sprite::anchored_at`), so the panel turns as one;
-an og.Sprite's afterimages face as it does, its blob shadow stays flat.
-*World text* faces too (`RenderScene::text_facing`, a `TextFacing { text,
-facing, align }` per text, the last for an index winning; the IDL's
-`TextDesc.facing` and `FloatingTextDesc.facing`): every glyph of a faced
-text is anchored at its pivot, `position` moved along each line's
-baseline by `align` of that line's width (`FontLayout::walk` returns the
-widths), with its corner as the anchor's offset, so the sprite shader
-turns the whole text as one panel with no change of its own. og-runtime
-hands an aligned faced text over whole with its alignment (an unfaced
-one keeps the per-line shift along world x), and a faced floating text
-with `align` 0.5 about its point. A faced text sorts as a billboard by
-its pivot's depth and is not culled. Tests: `sprites.rs`'s
+- *Sorting.* A tone-mapped faced sprite without a `sprite_order` key sorts
+  back to front with the transparent meshes by its anchor's view depth
+  (`SpriteFrame::billboards`, `DrawList::before`), its drop shadow drawn
+  before them; ties go by layer, then submission. With a key, or
+  untonemapped, it keeps its place in the sprite order. Particles and
+  unfaced sprites draw after the transparent meshes, in their layers'
+  order.
+- *Culling.* The main camera and each view drop a faced sprite (and its
+  glow, not its drop shadow) whose bounding sphere about the anchor misses
+  their frustum (`FrameStats::sprites_culled`); probe faces cull none.
+  Unfaced sprites are not culled.
+- *Drop shadows.* A faced sprite's shadow is cast by the quad stood
+  upright facing the sun (`FACING_SUN`, `ShadowGround::fit_facing`), so it
+  is the same in every view. The id pass turns faced sprites to its camera
+  (`face_axes`). og-runtime anchors a faced nine-slice's pieces at the
+  panel's anchor (`Sprite::anchored_at`), so the panel turns as one.
+- *World text* (`RenderScene::text_facing`, `TextFacing { text, facing,
+  align }`; the IDL's `TextDesc.facing` and `FloatingTextDesc.facing`):
+  every glyph of a faced text is anchored at its pivot, each line shifted
+  by `align` of its width, so the whole text turns as one panel. It sorts
+  as a billboard by its pivot's depth and is not culled.
+
+Tests: `sprites.rs`'s
 `faced_sprites_sort_back_to_front_cull_to_the_frustum_and_cast_sun_facing_shadows`
 and `a_sprite_anchored_elsewhere_keeps_its_corners`, og-runtime
-`tests/billboards.rs`, og-tests `sprites-billboard`
-(`billboards_face_each_camera_sort_back_to_front_and_cull_by_bounds`: the
-reference, one culled, and the frame unchanged byte for byte when two
-translucent puffs are submitted the other way round), `vulkan-cpu`
-reference (the `metal` one is owed); og-tests gfx
-`billboards_sort_among_transparent_meshes` (behind a glass pane a red
-billboard takes the glass's blue, 255/63/63 → 196/103/210, in front a
-green one is unchanged; the old order left the red one 255/63/63) and
-`world_text_faces_the_camera`; og-runtime `tests/text_facing.rs`.
+`tests/billboards.rs` and `tests/text_facing.rs`, og-tests
+`sprites-billboard`, gfx `billboards_sort_among_transparent_meshes` and
+`world_text_faces_the_camera`.
 
 ### Untonemapped sprites
 
 `SpriteFx::tone_mapped` false (the IDL's `SpriteDesc.toneMapped` and
 `Sprite.toneMapped`, three.js `Material.toneMapped`): an alpha-blended
 world sprite that keeps its colours as given while the scene around it
-rides exposure, bloom and the tone curve: a cream speech bubble that
-auto exposure at dusk had blown to white and haloed (lantern-vale
-FINDINGS #17). *Chosen: drawn in place, flagged in the HDR alpha*, not
-in a pass after the tonemap. The sprite stays in the main pass, so it is
-depth tested against the scene's depth buffer (a pass after the tonemap
-would need that depth at the output's sample count, which 4× MSAA
-cannot give a single-sampled target) and sorted
-with the other sprites. Before the frame's first such run a cover
-(`sprite.wgsl` `vs_cover`/`fs_cover`, a pipeline with no groups) sets the
-HDR target's alpha to 1 and keeps its colour; the sprite's pipeline
-(`UNTONEMAPPED_BLEND`, `fs_untonemapped`: no fog) blends its colour as
-alpha blending does and takes the alpha towards 0 by its coverage, a
-tone-mapped sprite or glyph over it takes it back towards 1. The alpha is
-then the tone-mapped fraction of each pixel: the MSAA resolve averages
-it, TAA blends it with the colour's weights (its history clamped to the
-neighbourhood's range, so a moving bubble leaves no trail), outlines,
-depth bands, depth of field and motion blur pass it on, the bloom
-prefilter weights its taps by it (`bloom_tap`: such a sprite neither
-blooms nor dims the bloom round it) and the tonemap mixes the clamped,
-unexposed colour with the curve by it (post.wgsl `tonemapped`; the
-post uniform's `extra.y` says the frame has one, so every other frame's
-pixels are unchanged). Grading, vignette, grain, the screen flash and
-the stylise chain after the tonemap still apply. An additive sprite adds
-light to the scene and is always tone mapped. og-tests
-`sprites-untonemapped` (TAA, `metal`): a tone-mapped bubble blown
-towards white with a halo beside untonemapped ones in their cream and
-red, one half behind a crate, one from a texture array, a tone-mapped
-marker over a corner of one.
+rides exposure, bloom and the tone curve (a speech bubble at dusk under
+auto exposure). It is drawn in place, flagged in the HDR alpha, so it
+stays depth-tested against the scene and sorted with the other sprites.
+A cover pass sets the HDR target's alpha to 1 before the frame's first
+such run; the sprite (`UNTONEMAPPED_BLEND`, `fs_untonemapped`: no fog)
+takes the alpha towards 0 by its coverage and a tone-mapped sprite over
+it takes it back. The alpha is then each pixel's tone-mapped fraction,
+which MSAA, TAA and the HDR effects carry, bloom weights its taps by, and
+the tonemap uses to mix the clamped, unexposed colour with the curve
+(post.wgsl `tonemapped`). Grading, vignette, grain, the screen flash and
+the stylise chain after the tonemap still apply. An additive sprite adds light to the scene and is
+always tone mapped. Scene `sprites-untonemapped`.
 
-## E1 effects
+## Effects
 
 Everything a game declares on `RenderScene` as data (`src/effects.rs`,
-`particles.rs`, `ribbons.rs`, `light2d.rs`, `skin.rs`); a field left at its
-default records no pass and costs nothing (`effects_off_add_no_passes`).
+`particles.rs`, `ribbons.rs`, `light2d.rs`, `skin.rs`); a field left at
+its default records no pass and costs nothing
+(`effects_off_add_no_passes`).
 
-- **Post stack**: ambient occlusion (`AoMethod::Gtao` / `Ssao`, applied to
-  the ambient term; `AoResolution::Half` searches and blurs every second
-  pixel and adds a depth-aware `ao-upsample` pass; the
-  full-resolution blur reads its 4x4 taps as gathers), outlines (depth and normal edges, per-scene or
-  per-material colour and width; below), depth of field (`DofQuality::Low` / `High`), motion
-  blur from per-object and camera motion vectors (`fx.rs` carries the
-  previous view-projection), god rays, colour grading by `ColorLut`,
-  colour adjustments after it (`ColorAdjust`: white balance, brightness
-  and contrast, colour balance, hue, saturation, vibrance, greyscale,
-  invert and threshold, RedGPU's adjustments; baked with the grading
-  table into one 32³ table on the CPU when either changes, so they add
-  no pass and cost nothing while they hold still),
-  a zoom, spin or directional blur of the whole frame (`ScreenBlur`,
-  RedGPU's zoom, radial and directional blurs with the spin and the
-  directional reach measured in pixels on any aspect: `fs_screen_blur`,
-  one HDR pass after motion blur into `hdr.blur`, before the custom
-  passes, bloom and the tonemap; it binds the prepass only when the frame
-  has one),
-  vignette, chromatic aberration, lens distortion (`LensDistortion`,
-  RedGPU's barrel and pincushion with the radius in pixels and a barrel
-  fitted to its farthest corner; the `lens` pass of the chain after the
-  tonemap, below), film grain seeded by the tick, screen
-  flash and camera shake (a deterministic offset of the camera, not a
-  post pass).
-- **Decals**: up to 65,536 projected boxes per frame (`MAX_DECALS`), read
+- **Post stack**: ambient occlusion (`AoMethod::Gtao` / `Ssao`, applied
+  to the ambient term; `AoResolution::Half` searches and blurs every
+  second pixel and adds a depth-aware `ao-upsample` pass), outlines (depth
+  and normal edges, per-scene or per-material colour and width;
+  [Stylisation](#stylisation)), depth of field (`DofQuality::Low` /
+  `High`), motion blur from per-object and camera motion vectors (`fx.rs`
+  carries the previous view-projection), god rays, colour grading by
+  `ColorLut`, colour adjustments after it (`ColorAdjust`: white balance,
+  brightness and contrast, colour balance, hue, saturation, vibrance,
+  greyscale, invert and threshold, RedGPU's adjustments; baked with the
+  grading table into one 32³ table on the CPU when either changes, so they
+  add no pass), a zoom, spin or directional blur of the whole frame
+  (`ScreenBlur`, RedGPU's, the spin and the directional reach in pixels:
+  `fs_screen_blur`, one HDR pass after motion blur into `hdr.blur`, before
+  the custom passes, bloom and the tonemap), vignette, chromatic
+  aberration, lens distortion (`LensDistortion`: the `lens` pass of the
+  chain after the tonemap, [Stylisation](#stylisation)), film grain
+  seeded by the tick, screen flash and camera shake (a deterministic
+  offset of the camera, not a post pass).
+- **Decals**: up to `MAX_DECALS` (65,536) projected boxes per frame, read
   by the lit shader from two storage buffers of the effect group (the
-  records, binding 5, and their clusters, binding 6: each decal's bounding
-  sphere binned into the light clusters' grid, at most
+  records, binding 5, and their clusters, binding 6: each decal's
+  bounding sphere binned into the light clusters' grid, at most
   `MAX_CLUSTER_DECALS` (255) a cluster, the newest kept), each capped to
   its box; views without decal clusters (a planar reflection, a
   render-to-texture view) walk every record. A decal's `normal_rect` is a
-  tangent-space normal map in the same atlas (an sRGB atlas read back to
-  its stored values), blended over the surface's normal after its own
-  normal map by the box's fade (its flat texels change nothing). The
-  shader picks a decal's mip level itself, capped where its region still
-  spans eight texels, and keeps the bilinear taps inside the region, so
-  neither image bleeds into its neighbour at a grazing angle (pbr.wgsl
-  `decal_sample`).
+  tangent-space normal map in the same atlas, blended over the surface's
+  normal after its own normal map by the box's fade. The shader picks a
+  decal's mip level itself, capped where its region still spans eight
+  texels, and keeps the bilinear taps inside the region, so neither image
+  bleeds into its neighbour (pbr.wgsl `decal_sample`).
 - **Particles**: `ParticleEmitter` assets and `ParticleSystem`s with
-  curves, bursts, noise, sprite sheets, collision against the depth buffer
-  (compute) or against `RenderScene::colliders` (the CPU path:
+  curves, bursts, noise, sprite sheets, collision against the depth
+  buffer (compute) or against `RenderScene::colliders` (the CPU path:
   planes, boxes, spheres and terrain height fields, which og-runtime fills
-  from its og.Collider components; a step from outside a shape to inside
-  bounces, as the compute shader's response), soft fade against the scene,
-  local or world space, 2D emitters drawn as sprites (from a texture or a
-  texture array's layers, `ParticleEmitter::array`, with `round` for the
-  soft dot's edge). Simulated by compute (`ParticleSimulation::Auto`;
+  from its og.Collider components), soft fade against the scene, local or
+  world space, 2D emitters drawn as sprites (from a texture or a texture
+  array's layers). Simulated by compute (`ParticleSimulation::Auto`;
   sprite-mode emitters on the CPU), or on the CPU for every emitter with
-  `ParticleSimulation::Cpu` (the state is Rust's to read, and it collides
-  with the scene's colliders instead of the depth buffer); without collision both paths
-  give the same particles (`gpu_and_cpu_paths_simulate_the_same_particles`)
-  and a 600-tick run is deterministic on either.
-  R7 adds three render modes and events. `ParticleRender::Mesh { mesh }`
-  draws each particle as an instance of a mesh (`shapes::tetrahedron`,
-  `cuboid`, `sphere` or a model's), sized by the size curve and turned by
+  `ParticleSimulation::Cpu` (the state is Rust's to read); without
+  collision both paths give the same particles
+  (`gpu_and_cpu_paths_simulate_the_same_particles`) and a 600-tick run is
+  deterministic on either. `ParticleRender::Mesh { mesh }` draws each
+  particle as an instance of a mesh, sized by the size curve and turned by
   its rotation and spin about its own random axis, depth-written and
   back-face culled. `lit` shades billboards (as a soft ball facing the
-  camera) and meshes (by their normals) with the sun and its cascades, the
-  sky's irradiance and the clustered local lights; the particle pipeline
-  binds the frame group, its own sprite texture and two draw textures
-  (8 sampled textures), so the lit pipelines' sixteen are untouched.
-  `distortion` (billboards) bends the opaque scene behind each particle by
-  up to that fraction of the screen's height along the texture's red and
-  green (an untextured one wavers by a smooth field in screen space that
-  rises with the scene clock, the same for every particle over a pixel,
-  so overlapping ones blend instead of shredding), from a copy of the scene
-  (`scene-copy`, the water's) after the opaque pass; the transparent
-  particles draw after it. `sub_emitters` (up to `MAX_SUB_EMITTERS`, 4)
-  fire another emitter's particles at a parent's birth, death or
-  collision (`ParticleEventKind`; a collision is a hit faster than
-  `IMPACT_SPEED`, 0.5 m/s, into the surface), one level deep; a system
-  with any runs on the CPU path. `CpuParticles::advance` reports the
-  system's `ParticleEvent`s, and a host that reads them simulates the
-  system in its own tick and hands the renderer its state
-  (`RenderScene::hosted_particles`), drawn as it stands: og-runtime does
-  this for the emitters with an `events` line once a game names
-  og.ParticleEvent.
+  camera) and meshes with the sun and its cascades, the sky's irradiance
+  and the clustered local lights (the particle pipeline binds 8 sampled
+  textures). `distortion` (billboards) bends the opaque scene behind each
+  particle by up to that fraction of the screen's height along the
+  texture's red and green (an untextured one by a smooth screen-space
+  field), from `scene-copy` after the opaque pass. `sub_emitters` (up to
+  `MAX_SUB_EMITTERS`, 4) fire another emitter's particles at a parent's
+  birth, death or collision (`ParticleEventKind`; a collision is a hit
+  faster than `IMPACT_SPEED`, 0.5 m/s), one level deep; a system with any
+  runs on the CPU path. `CpuParticles::advance` reports the system's
+  `ParticleEvent`s, and a host that reads them simulates the system in
+  its own tick and hands the renderer its state
+  (`RenderScene::hosted_particles`): og-runtime does this for emitters
+  with an `events` line once a game names og.ParticleEvent.
 - **Trails, ribbons and beams**: `Trail` keeps a per-id history for its
   `TrailStyle`'s lifetime; `Ribbon` is an explicit polyline; `Beam` joins
   two points and scrolls with the tick.
 - **2D lighting**: `Lighting2d` with `Light2d`s shadowed by `Occluder2d`s
   (soft penumbrae) and an order-independent glow buffer; only the lit
-  sprite layer range is affected; `SpriteFx` adds flash, glow, lit and soft
-  per sprite. Tile layers in the range are lit as its sprites are
+  sprite layer range is affected; `SpriteFx` adds flash, glow, lit and
+  soft per sprite. Tile layers in the range are lit as its sprites are
   (`TileLayer::lit`, true unless the map's layer opts out: og-tilemap's
   `lit false`, a Tiled layer's bool property `lit`, the blob's
-  `layer_flag::UNLIT`): every tile instance carries the lit flag the
-  sprite shader reads (`fx.y`), so the ambient, the lights and the
-  occluders' shadows reach a tilemap on every tier, the same pipeline.
+  `layer_flag::UNLIT`). Tests: `tests/sprites2d.rs`
+  `tile_layers_in_the_lit_range_take_the_2d_light`, scene `tilemap-lit`.
 - **The glow in views**: a `View` (views.rs) draws its glowing sprites
   into a chain of its own at half its size and runs the frame's bloom
-  filters over it (`bloom_chain.wgsl`'s 13-tap `downsample13` and
-  `bloom_tent`, which post.wgsl's `fs_bloom_down` and `fs_bloom_up` call
-  too; as many levels as `post::bloom_levels` at the view's size), then
-  adds level 0 onto its image at the weight the tonemap gives the frame's
-  glow (the bloom's intensity when the lit image blooms, else the glow's).
-  The same sprite glowing in a view and in the frame has the same halo
-  (og-tests targets `a_views_glow_spreads_as_the_frames_bloom`: 188 at
-  140 px in both, where the old box-filtered mips gave the view 171); the
-  view has no lit-image bloom of its own (post effects are the main
-  camera's).
-  Before, tiles were never lit (hollowbell FINDINGS #9: a dark cave of
-  tiles drew as authored). Tests: `tests/sprites2d.rs`
-  `tile_layers_in_the_lit_range_take_the_2d_light` (near, far, behind a
-  wall, opted out, out of the range; broken once by an unlit flag) and
-  the og-tests scene `tilemap-lit` (a dark cave of three tile layers, a
-  torch and a crystal, a pillar's and a ledge's shadows on the back wall,
-  a window's sky layer kept as authored).
+  filters over it (`bloom_chain.wgsl`'s `downsample13` and `bloom_tent`,
+  which post.wgsl's `fs_bloom_down` and `fs_bloom_up` call too), then adds
+  level 0 onto its image at the weight the tonemap gives the frame's glow,
+  so a sprite glowing in a view and in the frame has the same halo
+  (`a_views_glow_spreads_as_the_frames_bloom`); the view has no lit-image
+  bloom of its own (post effects are the main camera's).
 - **Skinning and blendshapes**: `SkinData` + `JointPalette` (a storage
-  buffer, the morph deltas beside the palette),
-  `MorphTargets` weighted per instance, up to 64 targets per mesh, their
-  deltas packed sparsely and their weights in the palette buffer after the
-  joints, this frame's and the previous one's (for the skinned prepass's
-  motion vectors); the buffer's sections are laid out in one place, the
-  module doc of `skin.rs` (§The palette buffer). og-anim writes the palettes.
-- **Stylised**: toon ramp, rim light, dissolve per material. Every
-  fragment entry point has one `discard` (`dissolve_at` returns a flag the
-  caller folds in): on Metal a second discard in an entry point did not take
-  effect, so dissolved pixels drew black
-  (`dissolved_pixels_leave_no_trace_in_the_prepass`).
-- **Graph declarations**: an effect pass declares every prepass texture it
-  binds (`lindepth`, `gbuffer`), not only its own input; with depth of
-  field, motion blur and TAA together the graph had aliased a target a pass
-  wrote with one it read (`every_effect_pass_together_under_taa`).
+  buffer, the morph deltas beside the palette), `MorphTargets` weighted
+  per instance, up to 64 targets per mesh, their deltas packed sparsely
+  and their weights in the palette buffer after the joints, this frame's
+  and the previous one's (for the skinned prepass's motion vectors); the
+  buffer's layout is in one place, the module doc of `skin.rs` (§The
+  palette buffer). og-anim writes the palettes.
+- **Stylised materials**: toon ramp, rim light, dissolve per material.
+  Every fragment entry point has one `discard` (`dissolve_at` returns a
+  flag the caller folds in): on Metal a second discard in an entry point
+  does not take effect (`dissolved_pixels_leave_no_trace_in_the_prepass`).
 
-References for every effect scene on `metal` and `vulkan-cpu`
-(`og-tests/references/*/{ao-gtao,ao-ssao,decals,dof-low,dof-high,fx-2d,
-god-rays,motion-blur,particles,particles-cpu,post-grade,skinning,stylised,
-trails-beams}.png`); features-off references are byte-identical to the
-pre-E1 ones. Costs: `tests/evidence/E1/vfx-feature-costs.md` (`og-gfx
---costs`).
+Scenes: `ao-gtao`, `ao-ssao`, `decals`, `dof-low`, `dof-high`, `fx-2d`,
+`god-rays`, `motion-blur`, `particles`, `particles-cpu`, `post-grade`,
+`skinning`, `stylised`, `trails-beams`; `every_effect_pass_together_under_taa`.
 
-## E5: atmosphere, water, fluids, material shaders
+## Atmosphere, water, fluids, material shaders
 
-All off by default: a scene that sets none of them draws exactly the frame
-it drew before (every earlier reference is unchanged).
+All off by default: a scene that sets none of them draws no pass for them.
 
-- **Fog** (`RenderScene::fog`, `src/atmosphere.rs`): distance fog
-  from the camera (exponential from `start` and, when `end > start`, a
-  linear ramp to `end` as well), integrated
-  exponential height fog, forward scattering towards `sun_color`, applied
-  in the lit, sky, particle, strip and world-sprite shaders (blended
-  effects fade into it by `fog_keep`); the overlay is never fogged.
+- **Fog** (`RenderScene::fog`, `src/atmosphere.rs`): distance fog from the
+  camera (exponential from `start` and, when `end > start`, a linear ramp
+  to `end` as well), integrated exponential height fog, forward
+  scattering towards `sun_color`, applied in the lit, sky, particle, strip
+  and world-sprite shaders (blended effects fade into it by `fog_keep`);
+  the overlay is never fogged.
 - **Sky** (`SkyLook` on `ProceduralSky::look`, `Background::Procedural`):
   zenith, horizon and ground colours, sun disc and glow, hashed stars, a
-  moon disc (phase 2, owed row 28: `moon_size`, `moon_phase` 0 new to 0.5
-  full, `moon_intensity`, `moon_color`, `moon_direction`, zero meaning
-  opposite the sun; lit from the right while waxing, darker maria, a faint
+  moon disc (`moon_size`, `moon_phase` 0 new to 0.5 full,
+  `moon_intensity`, `moon_color`, `moon_direction`, zero meaning opposite
+  the sun; lit from the right while waxing, darker maria, a faint
   earthshine and halo, hiding the stars behind it, set below the horizon;
-  off at size 0, so every earlier frame is unchanged), drawn per pixel so a
-  moving sun moves smoothly; the image-based light is
-  generated from the same look (`IblGenerator` keeps its pipelines and
-  textures, so regenerating it for a day-night step allocates nothing).
-  `day_night(hours, tilt, azimuth)` gives the sun or moon light, the sky,
-  the ambient and a fog tint as a pure function of the clock.
+  off at size 0), drawn per pixel so a moving sun moves smoothly; the
+  image-based light is generated from the same look (`IblGenerator` keeps
+  its pipelines and textures, so regenerating it for a day-night step
+  allocates nothing). `day_night(hours, tilt, azimuth)` gives the sun or
+  moon light, the sky, the ambient and a fog tint as a pure function of
+  the clock. The physical sky and clouds: [Sky and weather](#sky-and-weather).
 - **Weather** (`weather(kind, …)`, `src/weather.rs`): rain, snow, dust and
   mist as an emitter placed over the camera (`WeatherLook::origin`), a fog
   and a dimming of the light.
-- **Water** (`RenderScene::water`, `src/water.rs`, `shaders/water.wgsl`): a
-  grid displaced by an optional height field, travelling detail normals,
-  colour by the water's depth over the scene (the depth prepass, which a
-  frame with water always runs), foam where it meets geometry and on steep
-  crests, refraction of a copy of the scene, reflections by a march through
-  the depth prepass and the prefiltered sky cubemap where that misses.
-  The main pass splits after the sky: the
-  resolved scene is copied to `scene-copy` (`hdr` gains `COPY_SRC` only in
-  frames with water), then water, transparents, particles, strips and
-  sprites draw over it.
+- **Water**: [Water](#water).
 - **2D water** (`RenderScene::water_2d`): a side-on body and its lip as
   strips in the sprite order.
 - **Metaballs** (`RenderScene::metaballs`, `src/metaballs.rs`): a fluid's
   particles added as kernels into one channel of a field target before the
   main pass, composited at the fluid's sprite layer by a threshold with an
-  antialiased edge and a rim. Phase 2: fluids sharing a `group` are one
-  surface: the group takes a field's run of four channels (one per `lane`),
-  a particle adds its kernel into its lanes' channels by its `mix`, and the
+  antialiased edge and a rim. Fluids sharing a `group` are one surface:
+  the group takes a field's run of four channels (one per `lane`), a
+  particle adds its kernel into its lanes' channels by its `mix`, and the
   surface is thresholded on the sum and coloured by the channels' shares,
   so blended particles draw blended colours. Lone fluids take one channel.
-  Surfaces are packed into up to `FIELDS` (4) field targets
-  (`metaballs`, `metaballs.1`…; one field pass each, all read by the main
-  pass), so up to `MAX_FLUIDS` (16) fluids draw a frame; a lone fluid draws
-  exactly as before (`fluid-2d` at RMSE 0). og-tests' `fluid-groups` scene:
-  six lone pools, a group blending water into oil, a group layered.
-- **Material shaders** (`MaterialShader`, `src/hooks.rs`): a WGSL snippet
-  defining any of `vertex_offset`, `surface_color`, `surface_normal`,
-  `surface_emissive`, with up to eight declared parameters read from the
-  material uniform; `RenderScene::add_shader`, `set_material_shader`,
-  `set_shader_param`. A material with a shader draws with its own lit,
-  shadow and prepass pipelines, static and skinned (phase 2, owed row 23:
-  shadows and the depth prepass are displaced by `vertex_offset` and cut
-  by `surface_color`'s alpha; the shadow pass's uniform carries the clock
-  for `h.time`), every other material with the built-in identity hooks.
-  `lit_module_source` is the module og-cook compiles with naga for every
-  back end.
-- **Mesh replacement** (`RenderScene::set_mesh`): cloth and other generated
-  geometry, uploaded again in place when the sizes match.
+  Surfaces are packed into up to `FIELDS` (4) field targets (`metaballs`,
+  `metaballs.1`…; one field pass each), so up to `MAX_FLUIDS` (16) fluids
+  draw a frame. Scenes `fluid-2d`, `fluid-groups`.
+- **Mesh replacement** (`RenderScene::set_mesh`): cloth and other
+  generated geometry, uploaded again in place when the sizes match.
 
-References on `metal` and `vulkan-cpu`: `og-tests/references/*/{atmosphere-fog,
-atmosphere-dusk,atmosphere-night,water-3d,water-2d,fluid-2d,shader-hooks,
-weather-rain,weather-snow}.png`, with behaviour tests in
-`og-tests/tests/atmosphere.rs`; the moon's `atmosphere-moon` (a waxing
-gibbous moon over the night colonnade) with `og-tests/tests/moon.rs`
-(phases, size, the horizon). Costs: `tests/evidence/E5/feature-costs.md`.
+Scenes: `atmosphere-fog`, `atmosphere-dusk`, `atmosphere-night`,
+`atmosphere-moon`, `water-3d`, `water-2d`, `fluid-2d`, `shader-hooks`,
+`weather-rain`, `weather-snow`; behaviour tests in
+`og-tests/tests/atmosphere.rs` and `tests/moon.rs` (phases, size, the
+horizon).
 
-## Phase 2 materials
+### Material shaders
 
-Owed row 31 (`og-tests/tests/materials.rs`, the `materials` reference):
+`MaterialShader` (`src/hooks.rs`): a WGSL snippet defining any of
+`vertex_offset`, `surface_color`, `surface_normal`, `surface_emissive`,
+with up to eight declared parameters read from the material uniform;
+`RenderScene::add_shader`, `set_material_shader`, `set_shader_param`. A
+material with a shader draws with its own lit, shadow and prepass
+pipelines, static and skinned: shadows and the depth prepass are
+displaced by `vertex_offset` and cut by `surface_color`'s alpha (the
+shadow pass's uniform carries the clock for `h.time`); every other
+material draws with the built-in identity hooks. `lit_module_source` is
+the module og-cook compiles with naga for every back end. A material
+shader makes its batch dynamic for the shadow cache.
+
+## Materials
+
+`og-tests/tests/materials.rs`, scene `materials`:
 
 - **Normals under a non-uniform scale** go through the inverse transpose of
   the model's upper 3×3 (its cofactor matrix, flipped for a mirroring
@@ -1564,22 +1112,23 @@ Owed row 31 (`og-tests/tests/materials.rs`, the `materials` reference):
   +u and its green up the image. It comes from the file (the glTF bridge
   reads `TANGENT`), from the cook (MikkTSpace on v flipped, so cooked and
   exported tangents agree), or is generated at upload for a mesh without
-  (`MeshData::generate_tangents`, Lengyel's method). The old frame from
-  screen derivatives is gone: in a y-down framebuffer it had turned both
-  tangent axes round, so every normal map read inverted.
-- **Clearcoat** (`StandardMaterial::clearcoat`, `clearcoatRoughness`, three.js
-  `MeshPhysicalMaterial` names): Filament's clear coat, a GGX lobe with 4 %
-  reflectance and Kelemen's visibility on the surface's normal before the
-  normal map, over the base it dims by its Fresnel, for the lights and the
-  image-based light. Its maps came in P4 ([Physical
-  materials](#physical-materials-p4)).
+  (`MeshData::generate_tangents`, Lengyel's method).
+- **Clearcoat** (`StandardMaterial::clearcoat`, `clearcoatRoughness`,
+  three.js `MeshPhysicalMaterial` names): Filament's clear coat, a GGX
+  lobe with 4 % reflectance and Kelemen's visibility on the surface's
+  normal before the normal map, over the base it dims by its Fresnel, for
+  the lights and the image-based light. Its maps: [Physical
+  materials](#physical-materials).
+- `StandardMaterial` from reflected material assets with sorted
+  transparency (`transparent`: back to front, no depth write),
+  double-sided and unlit materials.
 
-## Physical materials (P4)
+## Physical materials
 
 `StandardMaterial` carries three.js `MeshPhysicalMaterial`'s fields under
 its names, with glTF `KHR_materials_*` meanings (`src/physical.rs`,
 `shaders/physical.wgsl`; `og-tests/tests/physical.rs` and the
-`materials-physical` reference):
+`materials-physical` scene):
 
 - **Clearcoat maps**: `clearcoatMap` (red, times `clearcoat`),
   `clearcoatRoughnessMap` (green), `clearcoatNormalMap` with
@@ -1605,9 +1154,9 @@ its names, with glTF `KHR_materials_*` meanings (`src/physical.rs`,
   `attenuationDistance`, and puts it in place of the diffuse light, as
   three.js does. So a transmissive object shows the opaque scene, the sky
   and terrain behind it, not water, transparent or other transmissive
-  objects; it casts a shadow like an opaque one (as in three.js) and is
-  left out of the depth prepass, the planar reflection and GPU occlusion
-  like a blended one. `ior` also sets a dielectric's F0, ((ior - 1) / (ior + 1))².
+  objects; it casts a shadow like an opaque one and is left out of the
+  depth prepass, the planar reflection and GPU occlusion like a blended
+  one. `ior` also sets a dielectric's F0, ((ior - 1) / (ior + 1))².
 - **Iridescence** (`iridescence`, `iridescenceIOR`,
   `iridescenceThicknessRange`, `iridescenceMap` red,
   `iridescenceThicknessMap` green between the range's ends): Belcour and
@@ -1624,19 +1173,15 @@ its names, with glTF `KHR_materials_*` meanings (`src/physical.rs`,
 of these maps, sheen, transmission, iridescence or anisotropy above 0, or
 an `ior` other than 1.5, on a material that is neither `unlit` nor `toon`
 (both replace the lighting model). Every other material, the scalar
-clearcoat included, draws with the standard pipelines and module text it
-always did: every earlier og-tests frame is byte for byte the frame of
-the renderer before this change (`tests/evidence/P4/materials/`). A physical material with every lobe off draws the standard
-frame (RMSE 0, `tests/physical.rs`).
+clearcoat included, draws with the standard pipelines. A physical
+material with every lobe off draws the standard frame.
 
 **Sixteen texture slots per stage: packing, and a pipeline of its own.**
 A physical material may sample 18 maps, past the 16 sampled textures per
-stage of the downlevel limits the device is asked for (the rule was
-first WebGL2's sixteen units per pipeline, retired with that tier). A
-physical material keeps
-its standard bind group (every pass but its lit one: shadows, the depth
-prepass, the planar reflection and scatter draw it as before) and gets a
-second one for the physical pipelines, whose layout differs:
+stage of the downlevel limits. It keeps its standard bind group (every
+pass but its lit one: shadows, the depth prepass, the planar reflection
+and scatter draw it as before) and gets a second one for the physical
+pipelines, whose layout differs:
 
 | Group | Textures |
 |---|---|
@@ -1661,25 +1206,24 @@ group's layer (-1: white):
 | film | the coat's normal (xyz; z rebuilt from a two-channel BC5/EAC map) | | | iridescence (r) |
 | anisotropy | anisotropy (rgb) | | | film thickness (g) |
 
-The alternative, pipeline permutations keyed by which map groups a
-material uses, would have needed more than one permutation for a material
-with every map, and a texture atlas would have bled between maps under
-mipmapping. The pack costs one RGBA8 texel per layer used and a few passes
-when a material is first drawn. `tests/shaders.rs` validates the physical
-shader and the pack shader and translates them to MSL, SPIR-V and HLSL.
+Pipeline permutations keyed by which map groups a material uses would
+need more than one permutation for a material with every map, and a
+texture atlas would bleed between maps under mipmapping. The pack costs
+one RGBA8 texel per layer used and a few passes when a material is first
+drawn. `tests/shaders.rs` validates the physical shader and the pack
+shader and translates them to MSL, SPIR-V and HLSL.
 
 **Backends.** Every lobe and map draws on every backend. The
-transmission copy's mip chain is made with render passes (the mip
-pass). The physical shader asks no texture for its level count; it
-derives it from the copy's size.
+transmission copy's mip chain is made with render passes. The physical
+shader asks no texture for its level count; it derives it from the copy's
+size.
 
 **From glTF.** The cook and the glTF bridge read the seven extensions with
 one parser (`gltf::physical_extensions`, the textures as their kinds: the
 sheen colour as sRGB colour, the coat's normal as a normal map, the rest
 linear) into `PhysicalExtensions`; a cooked model stores them in its
 material rows (`og.ModelMaterial` version 2) and adds a material with any
-as a standard material (`CookedModel::standard_material`), one without in
-its glTF shape as before.
+as a standard material (`CookedModel::standard_material`).
 
 ## Array maps (materials and terrain layers)
 
@@ -1692,136 +1236,115 @@ one resource, one material and one draw.
 `shaders/shadow_array.wgsl`). `StandardMaterial::mapArray` and
 `normalMapArray` are texture-array slots (`TextureArrayHandle::slot`, 0
 none) with `mapLayer` and `normalMapLayer`; a material with either reads
-its base colour and normal map from the arrays only (`map` and `normalMap`
-are not read; a missing one is a one-layer white or flat-normal array).
-`Instance::material_layer` replaces both layers for one instance, so
-instances of one material on any layers stay one (mesh, material) batch
-and one instanced draw. The layer travels beside the instance's
-transform in its 64 bytes (`instances::GpuTransform::layer`: the layer
-plus one, 0 for every other instance; [Instance and vertex
-encodings](#instance-and-vertex-encodings)), so culling, sorting, GPU
-culling's compaction and the instance buffer carry it without a new
-stream (a float holds layers exactly to 2^24). The array-map variant's
-vertex stages read it at location 8, the others never do, so positions
-are the standard path's, and array-map materials are
-never occluders (the occluder depth
-pass reads transforms as they are).
+its base colour and normal map from the arrays only (`map` and
+`normalMap` are not read; a missing one is a one-layer white or
+flat-normal array). `Instance::material_layer` replaces both layers for
+one instance, so instances of one material on any layers stay one (mesh,
+material) batch and one instanced draw. The layer travels in the
+instance's 64 bytes (`instances::GpuTransform::layer`: the layer plus
+one, 0 for every other instance; a float holds layers exactly to 2^24),
+so culling, sorting and GPU culling's compaction carry it without a new
+stream. The array-map variant's vertex stages read it at location 8;
+array-map materials are never occluders.
 
 One variant of the standard lit, prepass and shadow pipelines draws them,
 made when a scene first draws such a material: its module is the standard
-lit module's own text with bindings 1 and 4 declared `texture_2d_array`,
-every sample of them at the fragment's layers, a flat `layer` varying on
-`VertexOut` and `PrepassOut` (`@location(7)`), and `vs`, `fs`,
-`vs_prepass`, `fs_prepass` renamed `*_standard` with `pbr_array.wgsl`'s in
-their place; the shadow variant renames `vs` and `vs_lean` and appends
-`shadow_array.wgsl`'s. Each rewrite asserts the text it replaces, so a
-change to the standard shaders fails `tests/shaders.rs` instead of drifting.
-The standard builders (`pbr_pipeline`, `prepass_pipeline`,
-`shadow_pipeline`) make the variant's pipelines from those modules and the
-variant's layouts (the material group with two `D2Array` bindings, same
-texture count, so the skinned pipeline still fits its sixteen slots),
-keyed as the standard ones: a typical scene adds one lit, one prepass and
-one shadow pipeline. A material's array group is a second bind group (its
+lit module's text with bindings 1 and 4 declared `texture_2d_array`, a
+flat `layer` varying and `pbr_array.wgsl`'s (`shadow_array.wgsl`'s) entry
+points in place of the standard ones. Each rewrite asserts the text it
+replaces, so a change to the standard shaders fails `tests/shaders.rs`
+instead of drifting. A material's array group is a second bind group (its
 standard group stays for shadows with a dissolve, scatter and everything
-else); the layers are in the material uniform's `coat.zw`, 0 for every
-other material, whose uniforms, modules and pipelines are unchanged.
-Skinned instances take their material's layers. Physical materials and
-material shaders keep their 2D path (`StandardMaterial::draws_array_maps`).
-og-runtime: `StandardMaterialDesc.mapArray`, `mapLayer`, `normalMapArray`,
+else); the layers are in the material uniform's `coat.zw`. Skinned
+instances take their material's layers.
+Physical materials and material shaders keep their 2D path
+(`StandardMaterial::draws_array_maps`). og-runtime:
+`StandardMaterialDesc.mapArray`, `mapLayer`, `normalMapArray`,
 `normalMapLayer` and `og.Mesh.materialLayer` (-1: the material's); an
 array a material samples stays resident while it does. Tests: the
 material unit tests, `tests/shaders.rs`, og-runtime
-`tests/material_arrays.rs`, og-tests `materials-array`.
+`tests/material_arrays.rs`, scene `materials-array`.
 
 **Terrain layers** (`src/terrain.rs`). `Terrain::layer_arrays` names an
 albedo array and a normal array, each `TerrainLayer` its `albedo_layer`
-and `normal_layer` (in its uniform's unused `slope.w` and `altitude.w`).
-Such a terrain binds the two arrays in place of up to eight textures,
-through a variant of the terrain group layout (bindings 5 and 9 as
-`D2Array`, 6 to 8 and 10 to 12 gone) and of its lit, prepass and shadow
-pipelines, made when a terrain first needs it; the variant's modules are
-the standard ones' text with the two arrays declared and `layer_albedo` /
+and `normal_layer` (in its uniform's `slope.w` and `altitude.w`). Such a
+terrain binds the two arrays in place of up to eight textures, through a
+variant of the terrain group layout (bindings 5 and 9 as `D2Array`, 6 to
+8 and 10 to 12 gone) and of its lit, prepass and shadow pipelines, made
+when a terrain first needs it; the variant's modules are the standard
+ones' text with the two arrays declared and `layer_albedo` /
 `layer_normal_map` reading them. Every `TerrainDraw` carries its own
 pipelines and `draw_levels` sets them per terrain, so terrains of either
-kind draw in one pass. A terrain of separate textures uploads, binds and
-draws exactly as before. og-cook's `layers` / `layerNormals` and
-`albedoLayer` / `normalLayer` reach it through og-runtime. Tests: the
-terrain unit test of the variant's source, og-runtime
-`tests/material_arrays.rs`, og-tests `layer_arrays_draw_as_separate_layer_textures`
-(terrain-near both ways, within the arrays' CPU-made mips).
+kind draw in one pass. og-cook's `layers` / `layerNormals` and
+`albedoLayer` / `normalLayer` reach it through og-runtime. Tests:
+og-runtime `tests/material_arrays.rs`, og-tests
+`layer_arrays_draw_as_separate_layer_textures`.
 
 ## Compressed textures at runtime
 
-Owed row 32. The renderer still does not transcode: hosts hand it a
-`TextureSource` (`RenderScene::add_texture_source`), RGBA8 level 0 with mips
-built on the GPU, or every level pre-encoded in one of
-`RenderInfo::texture_formats`. og-runtime's loaders pass the attached
-backend's formats to the host's texture hook, so cooked Basis textures now
-reach the GPU as BC7/BC5 on desktop GPUs, ASTC 4x4 on Apple and most Android,
-ETC2/EAC RG11 elsewhere (og-cook's README §KTX2 says which kind gets which).
-`FrameStats::texture_bytes` is the GPU memory of the scene's textures, every
-level as allocated. Measured on the template's textures:
-`tests/evidence/P2/render/compressed-textures.md`.
+The renderer does not transcode: hosts hand it a `TextureSource`
+(`RenderScene::add_texture_source`), RGBA8 level 0 with mips built on the
+GPU, or every level pre-encoded in one of `RenderInfo::texture_formats`
+(BC7/BC5, ASTC 4×4, ETC2/EAC, RGBA8, chosen per adapter and
+`RenderDesc::texture_compression`). og-runtime's loaders pass the
+attached backend's formats to the host's texture hook, so cooked Basis
+textures reach the GPU as BC7/BC5 on desktop GPUs, ASTC 4x4 on Apple and
+most Android, ETC2/EAC RG11 elsewhere (og-cook's README §KTX2 says which
+kind gets which). `RenderDesc::mobile()` puts ASTC/ETC2 first.
 
-## Phase 2: terrain
+## Terrain
 
 `src/terrain.rs`, `src/terrain_tiles.rs` (the tile pyramid),
 `shaders/terrain.wgsl` (the clipmap vertex, the tile lookups),
 `terrain_lit.wgsl` (shading, the prepass), `terrain_shadow.wgsl`. Off
-unless `RenderScene::terrains` names one: every earlier reference frame is
-unchanged.
+unless `RenderScene::terrains` names one.
 
 - **Data.** `add_terrain(TerrainData)` once (a field in memory);
   `set_terrain` replaces it (a runtime edit). Or streamed:
   `add_terrain_stream(TerrainLayout, range)` and `set_terrain_tile(handle,
-  index, Some(Arc<TerrainTile>) | None)` as tiles arrive or leave (phase
-  3); `set_terrain_stream` starts it over.
-- **Tiles (phase 3).** A terrain is drawn from a pyramid of tiles
-  (`TerrainLayout`: level `k` every `2^k`-th sample of the field, cut into
-  tiles of `tile` quads, 128 by default; the last level one tile).
-  A `TerrainTile` holds `(tile + 3)²` heights (a border of one), the normal
-  map of its `tile + 1` samples as half floats with every mip (built on the
-  CPU, one-sided at the terrain's edge), and `(control + 2)²` control
-  texels with mips (`ControlPyramid`: the map resampled to `control`
-  texels per level-0 tile, halved per level). Tiles live in three texture
-  arrays (`R32Float` heights, `Rg16Float` normals, `Rgba8Unorm` control),
-  one layer per slot; a 16 KiB uniform table gives every tile its slot and
-  fade. `terrain_tiles_wanted(layout, terrain, range, TerrainView,
-  capacity)` ranks what a frame needs: from the top level down, the tile
-  whose samples look largest on screen is refined into its four children
-  until every sample is under a pixel or `TerrainLod::budget` (16 MiB by
-  default, at least 8 slots) is spent, the level-0 tiles within
-  `TerrainView::detail` first; each after its parent. A field in memory
-  makes its wanted tiles at once; a streamed one draws those of them it
-  holds. A vertex and a pixel read the finest resident tile at their point,
-  so a tile that has not arrived shows its parent; a streamed tile fades in
-  over twelve frames once its parent has. Levels are decimations of the
-  field, so heights agree wherever two of them meet: no cracks with any
-  set of resident tiles (`FrameStats::terrain_tiles`, `terrain_uploads`).
+  index, Some(Arc<TerrainTile>) | None)` as tiles arrive or leave;
+  `set_terrain_stream` starts it over.
+- **Tiles.** A terrain is drawn from a pyramid of tiles (`TerrainLayout`:
+  level `k` every `2^k`-th sample of the field, cut into tiles of `tile`
+  quads, 128 by default; the last level one tile). A `TerrainTile` holds
+  `(tile + 3)²` heights (a border of one), its normal map as half floats
+  with every mip, and `(control + 2)²` control texels with mips
+  (`ControlPyramid`); tiles live in three texture arrays (`R32Float`
+  heights, `Rg16Float` normals, `Rgba8Unorm` control), one layer per slot.
+  `terrain_tiles_wanted(layout, terrain, range, TerrainView, capacity)`
+  refines from the top level down, the tile whose samples look largest on
+  screen first, until every sample is under a pixel or `TerrainLod::budget`
+  (16 MiB by default, at least 8 slots) is spent, the level-0 tiles within
+  `TerrainView::detail` first. A vertex and a pixel read the finest
+  resident tile at their point, so a missing tile shows its parent; a
+  streamed tile fades in over twelve frames. Levels are decimations of the
+  field, so there are no cracks with any set of resident tiles
+  (`FrameStats::terrain_tiles`, `terrain_uploads`).
 - **The clipmap.** Level `l` is `ring` × `ring` quads (64 by default) of
   `spacing · 2^l` around the camera, its centre snapped to twice its
   spacing so vertices never move in the world. One index buffer holds the
   full grid (level 0) and the ring with its hole at each of the four
   places the finer level's snapping can put it; each level is one indexed
-  draw with its uniform slot by dynamic offset. The levels end when the next one's hole would cover the
-  terrain or lie beyond the far plane. In the outer eighth of each level
-  its odd vertices slide onto the coarser grid (CDLOD's morph, by the
-  camera's own position, so it is continuous as it moves): at the edge the
-  two levels share vertices and heights bit for bit (positions are whole
-  grid units until scaled), so there are no cracks and no pops.
-- **Layers.** Up to four: weight = control channel × slope band × altitude
-  band, sharpened by the layers' heights (the albedo's alpha) with
-  `height_blend`, normalised (all zero: the first layer). Each is sampled
-  over world xz every `tile` m or triplanar (Golus's whiteout normals), its
-  normal map applied in the frame of the terrain's normal; samples inside
-  branches use `textureSampleGrad` with the pixel's own derivatives. The
-  maps are each layer's own textures (up to eight bound), or layers of two
-  texture arrays (`Terrain::layer_arrays`, two bound): [Array
-  maps](#array-maps-materials-and-terrain-layers).
+  draw with its uniform slot by dynamic offset. The levels end when the
+  next one's hole would cover the terrain or lie beyond the far plane. In
+  the outer eighth of each level its odd vertices slide onto the coarser
+  grid (CDLOD's morph, by the camera's own position, so it is continuous
+  as it moves): at the edge the two levels share vertices and heights bit
+  for bit, so there are no cracks and no pops.
+- **Layers.** Weight = control channel × slope band × altitude band,
+  sharpened by the layers' heights (the albedo's alpha) with
+  `height_blend`, normalised (all zero: the first layer); a pixel blends
+  its four strongest. Each is sampled over world xz every `tile` m or
+  triplanar (Golus's whiteout normals), its normal map applied in the
+  frame of the terrain's normal; samples inside branches use
+  `textureSampleGrad` with the pixel's own derivatives. The maps are each
+  layer's own textures (up to four layers, eight textures bound), or
+  layers of two texture arrays (`Terrain::layer_arrays`, up to sixteen
+  layers): [Array maps](#array-maps-materials-and-terrain-layers).
 - **Light.** The `StandardMaterial` lighting from `lighting.wgsl` (shared
-  with pbr.wgsl and water.wgsl now): the directional light with cascaded
-  shadows, the eight local lights with their shadows, the image-based
-  light, caustics under the frame's water, then fog.
+  with pbr.wgsl and water.wgsl): the directional light with cascaded
+  shadows, the shadowed local lights, the image-based light, caustics
+  under the frame's water, then fog.
 - **Shadows.** The terrain casts into the cascades and the local lights'
   faces (both faces of the open surface; each level culled to the pass's
   volume) and receives them; its bounds join `ShadowBounds::Auto`.
@@ -1833,102 +1356,77 @@ unchanged.
   cell and the seed, kept with the probability of its layer's weight there
   (`layer_weights`: the shader's weights before the height blend), upright
   or leaning with the ground by `align`. `RenderScene::scatters`
-  (`ScatterDraw { terrain, mesh, material, scatter }`, phase 3) has the
-  renderer place them itself (`src/scatter.rs`, `shaders/scatter*.wgsl`),
-  32 × 32 cells at a time: a chunk's transforms are built once when it
-  comes within `distance` (again only when its terrain data, placement,
-  layers or settings change; a streamed terrain's once its level-0 tiles
-  are resident, sixteen a frame), kept in an instance buffer of its own
-  while in use, culled per pass and drawn with one instanced draw. The
-  vertex shader drops copies past `distance` and the fragment shader thins
-  them out over the outer `fade` with an interleaved-gradient dither, at
-  full size, in the lit, prepass and shadow passes alike. The copies take
-  their StandardMaterial's colour (factor, texture, vertex colours),
-  cut-off, metalness, roughness, emissive, unlit and flat modes; not its
-  normal map or effects. `Terrain::scatter(data, TerrainScatter, camera)`
-  answers the same copies within `distance` on the CPU (tests, tools):
-  nearest rows first, at most 65,536. `FrameStats::scatter_draws`,
-  `scatter_copies`, `scatter_built`. With `TerrainScatter::gpu` (a visual
-  mode, on by default; og.TerrainScatter `gpuPlacement`) a chunk is placed by a compute
-  job instead (`src/scatter_place.rs`, `shaders/scatter_place.wgsl`): the
-  same rules read from the level-0 tiles the GPU holds, its copies, count
-  and indirect draws written into its buffer with nothing read back
-  (`scatter_copies` counts only the CPU's), 128 a frame for a streamed
-  terrain. The footprint chain is evaluated in dependency order: each
-  earlier scatter into one bit per cell over the region a later one
-  reaches, read by the next. `Terrain::scatter_among` stays the answer
-  for gameplay.
-- **Impostors** (R6, `src/impostor.rs`, `shaders/impostor*.wgsl`). An
-  `Impostor { material, grid, center, radius }` is a model baked by the
-  cook (`model { impostor true }`) from `grid × grid` directions over the
-  sphere (an octahedral map, +y at the grid's centre) into two atlases,
-  bound as its StandardMaterial's `map` (albedo, coverage in alpha) and
-  `normalMap` (normal in each frame's basis, depth in alpha). It draws as
-  one card facing the eye (the light in the shadow passes) that blends the
-  three frames around the eye's direction by weight and coverage, lit by
-  the blended normal at the blended depth, as a scattered copy is lit.
-  `RenderScene::impostors` (`ImpostorDraw { impostor, transform,
-  cast_shadows }`, grouped by atlas into one instanced draw each) holds
-  the models og-runtime picked at their impostor's level, the last of
-  their chain; a `ScatterDraw` with an `impostor` draws its copies past
-  `impostor_distance` as cards, cross-dithered with the meshes over the
-  last tenth before it. The cards are new entry points of the scatter
-  modules and read only the material group's map and normal map: the lit
-  stages bind nothing new.
+  (`ScatterDraw { terrain, mesh, material, scatter }`) has the renderer
+  place them itself (`src/scatter.rs`), in chunks of 32 × 32 cells built
+  once when they come within `distance` (again only when the terrain,
+  placement, layers or settings change), each one instanced draw culled
+  per pass. Copies past `distance` are dropped and the outer `fade` is
+  dithered out, in the lit, prepass and shadow passes alike. The copies
+  take their StandardMaterial's colour, cut-off, metalness, roughness,
+  emissive, unlit and flat modes, not its normal map or effects.
+  `Terrain::scatter(data, TerrainScatter, camera)` answers the same copies
+  on the CPU (nearest rows first, at most 65,536); `Terrain::scatter_among`
+  is the answer for gameplay. With `TerrainScatter::gpu` (on by default;
+  og.TerrainScatter `gpuPlacement`) a compute job places a chunk from the
+  level-0 tiles the GPU holds, with nothing read back (`scatter_copies`
+  counts only the CPU's). `FrameStats::scatter_draws`, `scatter_copies`,
+  `scatter_built`.
+- **Impostors** (`src/impostor.rs`). An `Impostor { material, grid,
+  center, radius }` is a model baked by the cook (`model { impostor true
+  }`) from `grid × grid` directions (an octahedral map) into an albedo
+  and a normal-depth atlas, bound as its material's `map` and
+  `normalMap`. It draws as one card facing the eye that blends the three
+  nearest frames. `RenderScene::impostors` (`ImpostorDraw { impostor,
+  transform, cast_shadows }`, one instanced draw per atlas) holds the
+  models og-runtime picked at their impostor level; a `ScatterDraw` with
+  an `impostor` draws its copies past `impostor_distance` as cards,
+  cross-dithered with the meshes over the last tenth before it.
 - **Wind.** `RenderScene::wind` (`Wind { strength, direction, speed, gust
   }`, og.Wind; `None` or strength 0 still) sways the copies of every
-  scatter whose `TerrainScatter::sway` is above 0, in the vertex stage of
-  the lit, prepass and shadow passes (`scatter_sway` in
-  `scatter_common.wgsl`), before a material shader's hooks: a vertex `h`
-  above the copy's origin moves downwind by `lean × h × min(h / top, 1)`
-  (`top` the mesh's top above its origin, so the root stays put and the
-  tip moves furthest) and drops to keep its distance from the root. The
-  lean is `strength × sway × (1 + gust × w)`, `w` a wave of two octaves
-  (the second at 2.3 times the wavenumber) that travels downwind at
-  `speed` over `WIND_WAVELENGTH` (10 m), its phase offset per copy by a
-  hash of its position, so gusts sweep across the field and neighbours do
-  not move in lockstep. RedGPU's wave travels upwind and its copies sway
-  about an upright stem; here the mean is a lean. The phases are reduced
-  in f64 on the CPU from the tick, so an hour-long session sways as
-  smoothly as its first minute, and the previous frame's are kept for the
-  motion vectors (TAA, motion blur). A chunk's bounds grow by the
-  furthest tip. Test `wind_sways_scattered_copies_downwind` (plates on
-  stems seen from above move by the formula in a steady wind, between 0
-  and twice it in gusts; strength 0 and sway 0 draw what no wind draws);
-  scene `terrain-grass-wind`.
+  scatter whose `TerrainScatter::sway` is above 0, in the vertex stage
+  (`scatter_sway`): a vertex `h` above the copy's origin moves downwind by
+  `lean × h × min(h / top, 1)`, the lean `strength × sway × (1 + gust ×
+  w)`, `w` a two-octave wave travelling downwind at `speed` over
+  `WIND_WAVELENGTH` (10 m). The phases are reduced in f64 from the tick,
+  and the previous frame's are kept for motion vectors. `wind_shader()` is
+  the same sway for placed models, a material shader (`og.wind`) that
+  og-runtime gives an `og.Model` with a `sway`. Test
+  `wind_sways_scattered_copies_downwind`.
 
-Cost: `tests/evidence/P2/terrain-water/feature-costs.md`.
+Scenes: `terrain-near`, `terrain-mid`, `terrain-far` (the 2 km island of
+`og_tests::terrain_scenes`, clipmap, four layers, shadows, fog, from 2 m,
+150 m and 700 m) and `terrain-grass-wind` (the meadow in a gusting wind at
+tick 90; the boulders, plain instances, stand still); tests in
+`og-tests/tests/terrain.rs`.
 
-## Phase 2: water
+## Water
 
-Each off by default on `Water` (every earlier water frame is unchanged):
+`RenderScene::water` (`src/water.rs`, `shaders/water.wgsl`): a grid
+displaced by an optional height field, travelling detail normals, colour
+by the water's depth over the scene (the depth prepass, which a frame
+with water always runs), foam where it meets geometry and on steep
+crests, refraction of a copy of the scene, reflections by a march through
+the depth prepass and the prefiltered sky cubemap where that misses. The
+main pass splits after the sky: the resolved scene is copied to
+`scene-copy` (`hdr` gains `COPY_SRC` only in frames with water), then
+water, transparents, particles, strips and sprites draw over it. Each of
+the following is off by default on `Water`:
 
-- **Wind on placed models** (R6). `wind_shader()` is a material shader
-  (`og.wind`) whose `vertex_offset` hook sways a mesh as `scatter_sway`
-  sways a copy: each vertex above the model's origin moves downwind by
-  its height, from its parameters `wind` (direction, strength × sway,
-  gust) and `wave` (`wind_phases` at the tick, the wavenumber, the
-  model's top). A hooked material draws through the lit, prepass and
-  shadow pipelines every material shader uses, static or skinned, so its
-  shadow and depth sway with it. og-runtime gives an `og.Model` with a
-  `sway` a copy of each of its materials running it and writes the
-  parameters each frame; nothing feeds back into the simulation.
 - **Planar reflection** (`planar_reflection`, the fraction of the output's
-  resolution; one surface a frame, the first that asks (a grid surface
-  first), with the camera above it and perspective; with
+  resolution): one surface a frame, the first that asks (a grid surface
+  first), with the camera above it and perspective. With
   `RenderDesc::planar_reflections` 2, a second surface in view draws its
   own into `reflection.1`, and the effect group's binding 4 lets material
   shaders read the first (`planar_reflection`, planar.wgsl; the
   lightmapped pipelines then take a group without it, `fx_lean_layout`).
-  With 1, a second surface reflects as without one and the effect group
-  keeps its four bindings). The camera mirrored in the surface
-  (`look_at` of the mirrored eye, target and up: a proper rotation, so
-  the image is flipped left to right and winding is unchanged) draws the
-  opaque meshes, skinned meshes, terrain and sky into the graph's
-  `reflection` target (`FramePass::Reflection`, before the main pass;
-  multisampled with a resolve on the MSAA tier) with its own frame and
-  effect uniforms. Its projection's near plane is the water's plane, 2 cm
-  up (Lengyel's oblique clipping), so nothing below the surface is
+  With 1, a second surface reflects as without one. The camera mirrored
+  in the surface (`look_at` of the mirrored eye, target and up: a proper
+  rotation, so the image is flipped left to right and winding is
+  unchanged) draws the opaque meshes, skinned meshes, terrain and sky into
+  the graph's `reflection` target (`FramePass::Reflection`, before the
+  main pass; multisampled with a resolve under MSAA) with its own frame
+  and effect uniforms. Its projection's near plane is the water's plane,
+  2 cm up (Lengyel's oblique clipping), so nothing below the surface is
   reflected; the sky's rays use the unclipped projection. The water
   samples it at `(1 - u, v)`, shifted by the waves.
 - **Shadows** (`shadows`, 0 to 1): the directional light's cascaded shadow
@@ -1945,95 +1443,67 @@ Each off by default on `Water` (every earlier water frame is unchanged):
   the first surface that has them, inside its rectangle, fading with depth.
 - **Tessellation**: a surface is drawn as a grid of at most 256 m cells
   (`MAX_CELL`, at least `segments` a side, at most 256), so a 24 km sea is
-  94 x 94 cells, not two triangles; a clipped giant triangle is
-  interpolated metres off on llvmpipe, which moved the shore foam
-  (`tests/evidence/P3/streaming/foam/NOTES.md`).
+  94 × 94 cells, not two triangles.
 
-Tests and references (`metal`, `vulkan-cpu`): `og-tests/tests/terrain.rs`
-and the scenes `terrain-near`, `terrain-mid`, `terrain-far` (the 2 km
-island of `og_tests::terrain_scenes` from 2 m, 150 m and 700 m), and
-`water-planar`, `water-shadows`, `water-underwater`; each test was broken
-once (`tests/evidence/P2/terrain-water/break-and-restore.md`).
+Scenes: `water-3d`, `water-planar`, `water-shadows`, `water-underwater`;
+tests in `og-tests/tests/terrain.rs`.
 
-## R5: the sea and flow maps
+### The sea and flow maps
 
-Each off by default on `Water` (every earlier water frame is unchanged):
+Each off by default on `Water`:
 
 - **Sea** (`wind`, `swell`, `choppiness`; og.Water.wind): the grid is
   displaced by `og_core::ocean`'s 32 Gerstner waves of a Pierson–Moskowitz
-  sea for the wind with JONSWAP's peak enhancement (γ 3.3) (peak `0.877 g / U`, significant
-  height `0.21 U² / g × swell`, one wave placed at random in each of 32
-  bands of length from 1.6 to 1/80 of the peak's, so no fixed ratios and no
-  lattice; deep-water dispersion; a random spread about the wind, wider the
+  sea for the wind with JONSWAP's peak enhancement (γ 3.3) (peak
+  `0.877 g / U`, significant height `0.21 U² / g × swell`, one wave placed
+  at random in each of 32 bands of length from 1.6 to 1/80 of the peak's;
+  deep-water dispersion; a random spread about the wind, wider the
   shorter; fixed phases; the waves under a sixth of the peak's length
   raised to Cox and Munk's mean square slope `0.003 + 0.00512 U`; each
-  wave's steepness `choppiness / 32`, so the sum never folds). A sea's grid
-  is finest at its centre, `w(g) = g (0.15 + 0.85 g²)` across it, so 256
-  segments over 6 km give 3.5 m cells in the middle and 63 m at the rim,
-  which then lies under a pixel below the horizon. The waves lie over the absolute world's xz: the uniform
-  holds each wave's phase at the scene's origin, `(φ - ω t + k d · origin)
-  mod 2π`, computed in f64 from the tick (`water::seconds`), so the pattern
-  stays put as the origin or the surface moves and long games keep their
-  precision. The vertices take the waves at least four grid cells long;
-  the fragments take every wave's analytic normal (each faded where it is
-  under four of the pixel's footprint, from the distance and the slant, not
-  screen derivatives, which jump at the grid's triangle edges), under the
-  detail ripples (faded the same way), and foam whitecaps where the crests
-  of the waves at least an eighth of the peak's length bunch (Gerstner's
-  `Σ k Q a sin`) past the deviate whose tail is twice Monahan's measured
-  cover for the wind (`3.84e-6 U^3.41`), lit by the sun and the sky,
-  whatever `foam_width`. The simulation reads the same surface:
-  `og.physics.waterHeight` evaluates `og_core::ocean::Ocean::height` (the
-  rest point found by fixed-point steps, then its height) at the tick, in
-  the absolute world (og.WorldOrigin's zero added), never the GPU. The
+  wave's steepness `choppiness / 32`, so the sum never folds). A sea's
+  grid is finest at its centre, `w(g) = g (0.15 + 0.85 g²)` across it. The
+  waves lie over the absolute world's xz, their phases at the scene's
+  origin computed in f64 from the tick (`water::seconds`), so the pattern
+  stays put as the origin moves. The vertices take the waves at least four
+  grid cells long, the fragments every wave's analytic normal (faded under
+  the pixel's footprint) and foam whitecaps where the crests bunch, after
+  Monahan's whitecap cover for the wind (`3.84e-6 U^3.41`). The simulation
+  reads the same surface: `og.physics.waterHeight` evaluates
+  `og_core::ocean::Ocean::height` at the tick, never the GPU; the
   underwater view tests the eye against it too. A level surface only; a
-  surface over a mesh has none. Test `water::tests` (the drawn
-  displacement is og_core's at the same absolute point, at two origins);
-  `og_core::ocean::tests`; the bun test `r5-sea.test.ts`.
+  surface over a mesh has none. Tests `water::tests`,
+  `og_core::ocean::tests`.
+- **The drawn sea and the tick's sea.** The drawn sea adds render-only
+  FFT cascades (`ocean_cascades` in `water.wgsl`) to the Gerstner waves
+  the tick reads, so it lies off `og.physics.waterHeight` by decimetres.
+  Under a hull `hull_calm` fades the FFT chop over each floater's
+  footprint, so a floater sits in the sea that is drawn
+  (`shallow_floaters_sit_in_the_drawn_shoaled_sea`). A deterministic CPU
+  FFT band the tick reads is not implemented.
 - **Flow map** (`flow_map`; three.js Water2's flowMap): rg × 2 - 1 is the
   flow's direction per point over the mesh's uv or the grid from its -x -z
   corner (the image's top at +z), `flow`'s length the speed (zero: 0.03),
-  for the normal map's two layers (Water2's look) or, without a normal map,
-  the travelling waves, whose fronts then lie across the flow: two copies
-  sliding along it, restarting every three seconds half a period apart and
-  cross-faded, so the fronts bend where the map turns the flow (without a
-  map, a `flow` alone now carries them too). Binding 9 of the water group.
+  for the normal map's two layers (Water2's look) or, without a normal
+  map, the travelling waves, whose fronts then lie across the flow: two
+  copies sliding along it, restarting every three seconds half a period
+  apart and cross-faded. Binding 9 of the water group.
 
-**The tick's sea and the drawn sea (W7 deferred, 2026-11-04).** The drawn
-sea adds render-only FFT cascades (`ocean_cascades` in `water.wgsl`) to
-the Gerstner waves the tick reads, so it lies off `og.physics.waterHeight`:
-0.159 m RMS (0.454 m at most) in `water-ocean`, 0.164 m (0.546 m) in
-`water-ocean-storm`, 0.111 m (0.303 m) in `water-shore` and 0.095 m
-(0.310 m) in `water-ocean-dusk-storm`, measured over the frames' near sea.
-Under a hull the gap is about 0: `hull_calm` fades the FFT chop over each
-floater's footprint, so a floater sits in the sea that is drawn
-(`shallow_floaters_sit_in_the_drawn_shoaled_sea`). The cost is calmer fine
-chop under each hull. W7, a deterministic CPU FFT band the tick reads too
-(Tessendorf's method, or Crest's CPU queries, MIT), would remove that
-calming. It was deferred because floaters already sit in the drawn sea.
-Revisit it if the calmed chop shows, or if something other than a hull (a
-swimmer, spray against a rock) needs the drawn height.
-
-og.Water is lazy from R5 (`og-runtime/src/lazy.rs`): a world without water
-keeps its type table and hash as the surface grows.
-
-Tests and frames (`og-tests/tests/ocean.rs`, `og_tests::ocean_scenes`):
+Scenes (`og-tests/tests/ocean.rs`, `og_tests::ocean_scenes`):
 `water-ocean` (a 9 m/s breeze in the afternoon), `water-ocean-storm` (a
 17 m/s gale at full choppiness under an overcast, whitecaps),
 `water-ocean-sunset` (a 6 m/s breeze into the low sun: the glitter path),
-`water-flow-map` (a stream parting round a boulder). Sample:
-`tests/evidence/r5-water/` (buoys set on `waterHeight`).
+`water-flow-map` (a stream parting round a boulder).
 
-## Phase 2: 3D fluids
+## 3D fluids
 
 `Scene::fluids_3d` (`src/fluid3d.rs`, `shaders/fluid3d.wgsl`,
 `shaders/fluid3d_blur.wgsl`; og-runtime fills it from every visible
 `og.Fluid3D`) draws particle fluids as one screen-space surface. The CPU
 uploads each frame's particles as instances (their positions come from
-og-physics' CPU solver anyway), so the passes need no storage buffer or
-compute. The frame pass `fluid-3d`
-runs after the depth prepass and before the main pass, while a fluid has
-particles (the prepass and the split main pass are then forced on):
+og-physics' CPU solver), so the passes need no storage buffer or compute.
+The frame pass `fluid-3d` runs after the depth prepass and before the
+main pass, while a fluid has particles (the prepass and the split main
+pass are then forced on):
 
 1. sphere imposters write the nearest view depth into `fluid.depth`
    (`fluid.zbuf` for the depth test), discarded behind the prepass's depth;
@@ -2046,57 +1516,35 @@ particles (the prepass and the split main pass are then forced on):
 4. the composite, in the main pass after the scene copy and water, rebuilds
    normals from the smoothed depth, refracts the copied scene by
    `refraction` and absorbs it by the thickness (the exponential of the
-   optical depth, what passes taking the particles' colour), lights the body with the sun and its cascades, the
+   optical depth), lights the body with the sun and its cascades, the
    image-based light and the clustered local lights, reflects the
    environment by Schlick's Fresnel times `reflectivity`, fogs, and writes
    its depth, so later transparent draws and the frame's effects see it.
 
 All the frame's fluids share one surface: they merge where they meet, each
-particle carrying its own colour (a group's mix colours them, so poured
-fluids blend), but the look (reflectivity, refraction, smoothing) is the
-first fluid's. Marching cubes was not built (nor measured): the
-screen-space passes cost two blur passes and a composite over the pixels
-the fluid covers plus two instanced draws, whatever the particle count, where a polygonised
-surface needs a density grid and a mesh rebuilt every frame.
+particle carrying its own colour (a group's mix colours them), but the
+look (reflectivity, refraction, smoothing) is the first fluid's. The cost
+is two blur passes and a composite over the pixels the fluid covers plus
+two instanced draws, whatever the particle count; marching cubes is not
+implemented. Scene `fluid-3d` (a blue pool in a tiled basin with an orange
+drop above it, lit by the sun and an orange point light),
+`og-tests/tests/fluids3d.rs`.
 
-Cost (`og-gfx --costs-p2`, the `fluid-3d` scene: two fluids, 2,534
-particles, about a third of a 1280×720 frame): about 1.1 ms of GPU on an Apple M4 Pro
-(metal: +1.08 to +1.17 ms over three runs of 36 draws, 0.5 to 1.3 ms
-without it) and +144 ms on lavapipe (`vulkan-cpu`, a CPU rasteriser, 219
-vs 75 ms). The CPU's
-part is og-physics' step (`crates/og-physics/README.md`).
-
-Tests and references (`metal`, `vulkan-cpu`): `og-tests/tests/fluids3d.rs`
-and the scene `fluid-3d` (a blue pool in a tiled basin with an orange drop
-above it, lit by the sun and an orange point light); each check was broken
-once (`tests/evidence/P2/sph/break-and-restore.md`). fx-showcase's
-`fluids3d` station has references on `metal`, `vulkan-cpu` and `webgpu`.
-
-## Phase 4: environment maps, AgX, exposure adaptation
+## Environment maps, AgX, exposure adaptation
 
 **Environment maps** (`src/environment.rs`, design §2.6 "IBL from an
 environment map prefiltered at cook time"). og-cook's `type environment`
 prefilters an equirectangular `.hdr`/`.exr` at cook time with this crate's
-`bake` feature (it must match the renderer's face orientation, the
-roughness of each level and ibl.wgsl's GGX sampling, so it lives here; the
-runtime wasm never enables it): the image resampled 2×2 per texel into the
-level-0 cube (three.js's equirectangular mapping: the centre column is +x,
-three quarters +z), a box mip chain, levels 1–4 by GGX importance sampling
-(Hammersley, the source level picked from each sample's solid angle) at
-roughness m/4, and the irradiance projected onto order-2 harmonics by texel
-solid angle and convolved with the cosine lobe (band factors 1, 2/3, 1/4,
-stored as E/π). Texels are RGB9E5 (`Rgb9e5Ufloat`): 4 bytes a texel
-against RGBA16F's 8, sampled and filtered on every backend (WebGPU core,
-Metal, Vulkan's and DX12's mandatory formats); the map is only
-sampled, never a render target. A 128² map is 524 KB before zlib. A KTX2
-cube whose own mips are already GGX-prefiltered (og-cook's `prefiltered
-true`: cmgen's, IBLBaker's, the glTF IBL sampler's, level k of L at
-roughness k / (L − 1)) is not filtered again: `bake::from_prefiltered`
-reads the map's level m at lod m/4 · (L − 1), trilinearly between the
-file's two nearest levels, turned and scaled, and copies a level whose lod
-is a whole level of the map's size texel for texel (a chain of five levels
-from the map's size comes through unchanged); the irradiance is projected
-from level 0 as above.
+`bake` feature (it must match the renderer's face orientation, level
+roughness and ibl.wgsl's GGX sampling, so it lives here; the runtime wasm
+never enables it): the level-0 cube in three.js's equirectangular mapping
+(the centre column is +x), levels 1–4 by GGX importance sampling at
+roughness m/4, and the irradiance as order-2 harmonics (stored as E/π).
+Texels are RGB9E5 (`Rgb9e5Ufloat`, 4 bytes), sampled and filtered on
+every backend. A KTX2 cube whose own mips are already GGX-prefiltered
+(og-cook's `prefiltered true`: level k of L at roughness k / (L − 1)) is
+not filtered again: `bake::from_prefiltered` resamples its levels to
+roughness m/4.
 
 `RenderScene::add_environment_map` uploads it as a cube; a frame sets
 `environment_map: Some(EnvironmentMap { map, rotation, background_intensity })`.
@@ -2104,29 +1552,26 @@ The IBL generator then copies it, turned about +y, into its own cubes
 instead of drawing the sky (`fs_env_copy`: level 0 into the 256² sky cube
 scaled by the background intensity, whose mips are downsampled as for the
 sky, level m into prefiltered mip m; `fs_env_irradiance`: the harmonics
-evaluated into the 32² irradiance cube): 90 passes, as many as the sky's, only when the map, its
-turn or background intensity changes. Every shader that reads the
-image-based light (pbr, terrain, water, the sky pass, the planar
-reflection) reads the map with no change, so `pbr.wgsl` is untouched;
-`Environment::intensity` still scales the light and `Background::Sky`
-draws the map. Without a map the sky's passes, parameters and WGSL math
-are as before: the sky-lit references (`gltf-reference`, `sky-only`,
-`showcase`, …) match at max channel difference 0.
+evaluated into the 32² irradiance cube), only when the map, its turn or
+background intensity changes. Every shader that reads the image-based
+light (pbr, terrain, water, the sky pass, the planar reflection) reads the
+map with no change; `Environment::intensity` still scales the light and
+`Background::Sky` draws the map.
 
 **AgX** (`Tonemap::Agx`, `post.wgsl`'s `agx`): linear sRGB to Rec.2020,
 the inset matrix, log2 encoding over −12.47..+4.03 EV, the sixth-order
 contrast polynomial, the outset, 2.2 back to linear and Rec.2020 to sRGB:
 the base look of Blender 4, Filament and three.js `AgXToneMapping`. ACES
-stays the default, so no reference moved.
+is the default.
 
 **Khronos PBR Neutral** (`Tonemap::Neutral`, `post.wgsl`'s and
 `views.wgsl`'s `neutral`; ported from RedGPU's `khronosPbrNeutral`, the
 same curve as three.js `NeutralToneMapping`): the 0.04 of a dielectric's
 Fresnel reflection is taken off (less near black, `x - 6.25x²` under
 0.08), so a base colour lit by white light shows as authored; a colour
-whose peak is then under 0.76 passes through, a brighter one is scaled
-so its peak rolls off as `1 - 0.24² / (peak - 0.52)` and mixed towards
-white by `1 - 1 / (0.15 (peak - new peak) + 1)`. Reference `post-neutral`.
+whose peak is then under 0.76 passes through, a brighter one is scaled so
+its peak rolls off as `1 - 0.24² / (peak - 0.52)` and mixed towards white
+by `1 - 1 / (0.15 (peak - new peak) + 1)`.
 
 **Exposure adaptation** (`Exposure::Auto { adapt_speed_up,
 adapt_speed_down }`, EV per second; the IDL's
@@ -2137,41 +1582,19 @@ by at most speed × dt, where dt is the scene's tick delta since the
 previous adapted frame over `tick_rate`: the tick owns time, nothing reads
 a clock, so the same ticks give the same frames however often they are
 drawn (a capture at the same tick moves nothing). A speed of 0 is instant
-in its direction; the first adapted frame, one after a frame without
-adaptation, or one whose tick went back starts at the metered EV. The
-adapted EV is world-time state: `Renderer::save_state` copies it (with its
-tick) into a 64-texel ring on the GPU, no readback, and `restore_state`
-copies it back into both textures; og-probe's snapshot, restore and sweep
-call them through `Capture::save_state`/`restore_state` (og-runtime's
+in its direction. The first adapted frame, one after a frame without
+adaptation, or one whose tick went back starts at the metered EV; a frame
+of tick 0, drawn before the first tick, meters at once and is never
+adapted from, so hosts that draw a tick-0 frame (the web shell behind the
+play gate) and hosts that do not adapt alike. The adapted EV is
+world-time state: `Renderer::save_state` copies it (with its tick) into a
+64-texel ring on the GPU, no readback, and `restore_state` copies it back
+into both textures; og-probe's snapshot, restore and sweep call them
+through `Capture::save_state`/`restore_state` (og-runtime's
 `RenderBackend`), so a sweep's values all start from the call's exposure
-and a restored world redraws its frames. `og-tests/tests/exposure.rs`: two
-renderers adapt identically over 330 ticks after a 4 EV drop, the frame
-1.5 s in lies between, it settles within 1 % of instant metering, a
-restore to tick 31 redraws tick 120 byte for byte, and zero speeds equal
-`Exposure::auto()` bit for bit.
+and a restored world redraws its frames. `og-tests/tests/exposure.rs`.
 
-**Where adaptation starts** (web findings #5, wave 13). A frame of tick
-0, drawn before the first tick, meters at once and is never adapted
-from: the next adapted frame starts afresh. The web shell draws one
-behind the play gate (and the reference page one at boot), `og run`
-draws none, so the adaptation used to start at a frame one host drew
-and the other did not. That frame was also the first a streamed terrain
-was drawn in, before any of its tiles had arrived (og-runtime's
-streamer now settles a terrain the first frame it is drawn, as a
-capture does): Lantern Vale's first frame drew no ground, metered 2.5 EV
-brighter than the vale, and the dusk look adapting at 1 EV/s up stayed
-under-exposed for its first two seconds, a little less on the web,
-whose tick-0 frame metered differently (title RMSE 0.031 and start
-0.036 against `metal` on both browser tiers of the time). Now the first ticked frame
-meters the whole vale on every host: the title and start references
-were re-recorded (RMSE 0.173 and 0.044 against the old ones, the
-exposure at its target from the first frame), and a native run that
-draws a tick-0 frame first (as the web does) matches one that does not
-within RMSE 0.007 at the title. `tests/exposure.rs`: a tick-0 frame of a
-16× darker view leaves ticks 1 and 40 byte for byte those of a renderer
-that never drew it (fails on the old code at tick 1).
-
-## Phase 4: stylisation
+## Stylisation
 
 The primitives a look composes into a non-photographic frame
 (`src/stylise.rs`; the IDL's `Stylise` and `MaterialStyle` resources, set
@@ -2194,310 +1617,155 @@ built. `RenderCapabilities.stylise` names what this renderer draws
   upscale` fits the output's height (a hard request, with the border it
   implies), else and for 0 the largest that does; the width is the
   aspect's columns rounded, at most the output's width over the scale, so
-  at most one column gives way to the scale. 240 rows at 1280 × 720 were
-  427 columns, 1281 pixels at 3x, and fell back to 2x inside a 213-pixel
-  border with `upscale` 3 ignored (hollowbell FINDINGS #7); they are 426
-  columns at 3x, a 1-pixel border each side. Every other height of the
-  look presets fits as before at 720p. Tests: `stylise.rs`'s
-  `the_pixel_grid_keeps_its_scale_and_drops_at_most_a_column` (720p,
-  1080p, a phone both ways, every fit inside its output); og-tests
-  `stylise-palette` and `stylise-retro` (240 rows) were re-recorded at
-  3x.
+  at most one column gives way to the scale (240 rows at 1280 × 720 are
+  426 columns at 3x). Test `stylise.rs`'s
+  `the_pixel_grid_keeps_its_scale_and_drops_at_most_a_column`.
 - **A look change is a cut**: when the primitives that are on change
   between two frames (`Stylise::chain_bits`: a pass added or removed, the
   pixel grid, retro 3D, the material style; not their settings), the
-  renderer drops the TAA history as `reset_history` does, so the first
-  frame of a new look holds no ghost of the old one
-  (`FrameStats::taa_history` false there). og-tests `tests/taa_look.rs`:
-  the look's first frame equals, byte for byte, the frame of a renderer
-  given `reset_history`; a posterize change keeps the history.
+  renderer drops the TAA history as `reset_history` does
+  (`FrameStats::taa_history` false there; `tests/taa_look.rs`).
 - **The chain after the tonemap** (`chain_passes` in post.rs): the tonemap
   writes `ldr.0` (sRGB8) when any pass follows, and each of `paint`,
-  `lines`, `lens`, `quantize`, `fxaa` and `upscale` reads one LDR target and writes
-  the next, the last into the output (sRGB-encoded in the shader where the
-  output is not an sRGB format). Pipelines are made on first use
-  (`PostPasses::ensure_chain`).
+  `lines`, `lens`, `quantize`, `fxaa` and `upscale` reads one LDR target
+  and writes the next, the last into the output (sRGB-encoded in the
+  shader where the output is not an sRGB format). Pipelines are made on
+  first use (`PostPasses::ensure_chain`).
   - `paint`: a Kuwahara filter of four sectors (turned and stretched along
     the image's edges by `anisotropy`), pigment pooling at the edges, a
     bleed from a ring two radii out, and a tileable canvas texture laid
     over the frame through a repeating sampler, or on the surfaces
     (`Paint::canvas_space`, below).
   - `lines`: cross-hatching from the tone (one stroke set per level, each
-    turned further, over a paper-light ground), halftone dots on a
-    rotated grid sized by the tone, and ink on luminance edges (a Sobel
-    gradient, widened by the max over the line's width). With
-    `Ink::depth` (the IDL's `Stylise.inkDepth`) above 0 the frame runs the
-    depth-normal prepass and the lines pass binds its `lindepth` and
-    `gbuffer` (stylise bindings 7 and 8; the far-depth and black
-    placeholders for the other chain passes and frames without one, and
-    the graph declares the reads so nothing aliases them first): a pixel
-    is also inked, at that strength, where a neighbour at the line's
-    width is farther by more than `Ink::depth_threshold` (4 % by default;
-    a silhouette, on the nearer surface) or of about the same depth and
-    turned past `Ink::normal_threshold` (1 − cos, 0.4 by default; a
-    crease), the outline pass's defaults (the IDL's `inkDepthThreshold`
-    and `inkNormalThreshold`), never on the sky. Comic looks get contours
-    round flat colours that luminance misses.
-  - `lens`: `PostEffects::lens_distortion` (not a stylisation, but it bends
-    the frame after the two passes that read the prepass, so their lines
-    bend with the image, and before the quantisation, so a palette stays
-    exact): each pixel samples the image at the centre plus its offset
-    times `1 + amount r²` (r in pixels, 1 at a centred lens's corners)
-    times the scale that keeps a barrel's farthest corner on the image,
-    bilinear, or nearest under a pixel grid; black beyond the image.
-  - `quantize`: posterisation in display space with an ordered Bayer 2/4/8
-    dither (bit-interleaved in the shader), blue noise or
+    turned further, over a paper-light ground), halftone dots on a rotated
+    grid sized by the tone, and ink on luminance edges (a Sobel gradient,
+    widened by the max over the line's width). With `Ink::depth` (the
+    IDL's `Stylise.inkDepth`) above 0 the frame runs the depth-normal
+    prepass and the lines pass binds its `lindepth` and `gbuffer`
+    (stylise bindings 7 and 8; placeholders for the other chain passes
+    and frames without one): a pixel is also inked, at that strength,
+    where a neighbour at the line's width is farther by more than
+    `Ink::depth_threshold` (4 % by default; a silhouette, on the nearer
+    surface) or of about the same depth and turned past
+    `Ink::normal_threshold` (1 − cos, 0.4 by default; a crease), the
+    outline pass's defaults (the IDL's `inkDepthThreshold` and
+    `inkNormalThreshold`), never on the sky.
+  - `lens`: `PostEffects::lens_distortion` (it bends the frame after the
+    two passes that read the prepass, so their lines bend with the image,
+    and before the quantisation, so a palette stays exact): each pixel
+    samples the image at the centre plus its offset times `1 + amount r²`
+    (r in pixels, 1 at a centred lens's corners) times the scale that
+    keeps a barrel's farthest corner on the image, bilinear, or nearest
+    under a pixel grid; black beyond the image.
+  - `quantize`: posterisation in display space with an ordered Bayer
+    2/4/8 dither (bit-interleaved in the shader), blue noise or
     interleaved-gradient noise (`DitherPattern::InterleavedGradient`),
-    then the nearest colour of a 256-entry palette (`RenderScene::add_palette`,
-    a 256 × 1 sRGB texture) by Oklab distance. The blue noise is a 64 × 64
-    void-and-cluster tile (`src/blue_noise.rs`, `data/blue-noise-64.r8`,
-    4096 B: each of 256 levels on 16 texels, a σ 1.5 Gaussian on the torus,
-    integer energies, a fixed seed; its test runs the routine again and
-    compares the bytes) uploaded once as `R8Unorm` with the post passes
-    (binding 6) and repeated per dither cell: every 8 × 8 block within 8.6
-    levels of the middle (31 for the same values shuffled), no
-    4-neighbours within 8 levels.
-    A pixel whose drawn colour (the scene before the stylise passes, the
-    chain's head, binding 12) lies within 6 sRGB levels a channel of a
-    colour of art the cook conformed (a texture's own `<id>#palette`,
-    which the runtime adds with `RenderScene::add_conformed_colors` as it
-    loads the texture; the reach covers block compression and filtering)
-    is left as drawn: posterise and dither step only what the cook did not
-    conform (lit and fogged tones, plain or runtime-loaded materials), so
-    a look stays the fallback on any material while conformed art keeps
-    its flat fields. The set is a spatial hash of sRGB bytes bucketed by
-    sixteens (`stylise::conformed_table`, an R32Uint square at binding
-    11), at most eight buckets probed per pixel; a 1 × 1 empty table
-    skips it.
+    then the nearest colour of a 256-entry palette
+    (`RenderScene::add_palette`, a 256 × 1 sRGB texture) by Oklab
+    distance. The blue noise is a 64 × 64 void-and-cluster tile
+    (`src/blue_noise.rs`, `data/blue-noise-64.r8`, 4096 B, regenerated
+    and compared by its test). A pixel whose drawn colour lies within 6
+    sRGB levels a channel of a colour of art the cook conformed (a
+    texture's `<id>#palette`, added with
+    `RenderScene::add_conformed_colors` as the texture loads) is left as
+    drawn: posterise and dither step only what the cook did not conform
+    (`stylise::conformed_table`, a spatial hash at binding 11).
 - **Surface space** (`StyliseSpace::Surface`: `Paint::canvas_space`,
   `Hatching::space`, `Halftone::space`; the IDL's `paintCanvasSpace`,
   `hatchingSpace`, `halftoneSpace`, capability `surfaceSpace`): the
   pattern is laid on the surfaces instead of over the frame. The frame
-  runs the depth-normal prepass (`Stylise::on_surfaces`) and the paint and
-  lines passes bind its `lindepth` and `gbuffer`; each pixel's point is
-  rebuilt from its view depth (the inverse projection, the camera's
-  rotation) relative to a surface origin, the 1024 m grid point under the
-  camera, computed in f64 on the CPU (`post::surface_origin`), so the
-  patterns keep their precision far from the world's origin, and its
-  world normal weights three planar projections (the planes facing x, y
-  and z, weights |n|⁴). The canvas is sampled on the three planes at
-  `canvas_world_scale` texels per metre (128 by default) with the level
-  of one pixel's footprint, its uv at the origin carried per axis so the
-  grain does not jump when the origin moves. Hatching and halftone lay
-  the screen pattern's stroke sets and dot grids, same tone thresholds,
-  turns and angle, in metres on each plane: the spacing that is
-  `scale` (`size`) pixels where the surface lies falls between two
-  powers of two, and the coarser octave's lines (dots) are a subset of
-  the finer's, so the finer one fades in and out by the fraction between
-  them (a tonal art map's levels): the strokes wrap round spheres, stay
-  on the objects as the camera moves, and keep about their pixel spacing
-  from near to far. *The footprint* (the octave's and the canvas level's
-  measure) is taken along the depth gradient: the longer of the steps to
-  the neighbours across and down, each rebuilt at its own depth and taken
-  on the side whose depth is nearer (a silhouette does not count), never
-  less than the pixel's width across the ray nor more than 32 times it
-  (`FOOTPRINT_STRETCH`), so on a floor seen at a grazing angle the
-  pattern is never finer than its spacing along the depth either; the
-  marks' edges and the strokes' widths follow the two steps themselves
-  (seen on each plane, `plane_steps`), one screen pixel across the mark
-  in whatever direction it runs, so the coarser octave stays crisp across
-  the floor (in object space the instance's own steps between texels on
-  it, else the footprint's square). Measured across the pixel alone (round
-  four), a long receding floor took an octave too fine along its depth,
-  whose sub-pixel dots and strokes aliased into faint bands as the
-  octaves faded (owed row 55). The sky keeps the screen pattern. The
-  space is a setting, not a pass (`chain_bits` unchanged). og-tests
-  `stylise-surface`: a pencil drawing of clay forms (hatching and a paper
-  canvas on the surfaces, depth ink with its thresholds set);
-  `stylise-halftone-surface`: the toon scene's dots on the surfaces, with
-  ink on luminance and depth edges.
-- **Object space** (`StyliseSpace::Object`; the IDL's `object` of the same
-  three fields, capability `objectSpace`): the surface patterns laid in
-  each mesh instance's own space, so a moving, turning or skinned object
-  carries its strokes, dots and grain. *Chosen: the object-space
-  position, not an instance id.* An id would need every instance's
-  inverse transform where the post passes can read it (a storage buffer
-  or a texture of transforms uploaded again) and a
-  free channel in the prepass targets, which has none (normal and
-  velocity, depth, outline). Instead, after the prepass the object pass
-  (`stylise_object.rs`, `stylise_object.wgsl`; inside the prepass's graph
-  pass, which then stores `pre-depth` and also writes `object-space`)
-  draws the prepass's opaque instances again, placed by the lit shader's
-  `lit_place` as every lit and prepass vertex is, against the prepass
-  depth (`LessEqual`, no depth write, a bias of −4 units and −0.5 slope
-  towards the camera) into an `Rgba32Uint` target: xyz the bits of the
-  position in metres along the instance's axes (the mesh position times
-  each model axis's length, so a scaled instance keeps the pattern's
-  size; a skinned one its blended bind pose, so the marks follow the
-  skin), w its normal there (inverse-scaled, two 15-bit octahedral
-  components) with bit 0 set. The paint and lines passes bind it at
-  stylise binding 9 (a zero texel on other frames and passes) and, where
-  the space's code asks (`StyliseUniform::surface` 2, 1 world, 0 screen),
-  lay the triplanar patterns at that position with the world footprint
-  for the octaves (rotation keeps lengths) and no world offset for the
-  canvas. Pixels the pass leaves at 0 keep the world pattern: terrain and
-  scattered copies (not instances) and the vertices a material shader's
-  vertex offset moves (drawn without it, they miss the prepass depth);
-  the sky keeps the screen pattern. *Limits*: alpha-cut holes are not cut
-  in the object pass (a pixel seen through one takes the cut surface's
-  coordinates); neighbouring instances meet with unrelated pattern
-  phases. *Cost*: a second geometry pass of the opaque instances, only on
-  frames a look uses object space; the module (the lit source with the
-  built-in hooks) and its pipelines are made the first such frame. og-tests
-  `tests/stylise_space.rs` (the hatched scene moved with its camera: 0
-  pixels differ in object space, 1.07 % in world space; with the
-  placeholder bound instead the object frames differ as the world ones
-  do) and the scene `stylise-object` (the surface drawing in object space
-  with a box tilted on two axes and a 4 × 0.4 × 0.5 beam: the strokes run
-  along each one's faces, square on the beam).
+  runs the depth-normal prepass (`Stylise::on_surfaces`); each pixel's
+  point is rebuilt from its view depth relative to the 1024 m grid point
+  under the camera (f64 on the CPU, `post::surface_origin`) and its world
+  normal weights three planar projections (|n|⁴). The canvas is sampled at
+  `canvas_world_scale` texels per metre (128 by default). Hatching and
+  halftone lay the screen pattern in metres on each plane, blending the
+  two power-of-two octaves around `scale` (`size`) pixels (a tonal art
+  map), with the footprint taken along the depth gradient (at most
+  `FOOTPRINT_STRETCH`, 32, pixel widths). The sky keeps the screen
+  pattern. The space is a setting, not a pass.
+- **Object space** (`StyliseSpace::Object`, capability `objectSpace`):
+  the surface patterns laid in each mesh instance's own space, so a
+  moving, turning or skinned object carries its marks. After the prepass
+  the object pass (`stylise_object.rs`) draws the opaque instances again
+  against the prepass depth into an `Rgba32Uint` target (the position in
+  metres along the instance's axes, a skinned one's blended bind pose, and
+  an octahedral normal), read at stylise binding 9. Terrain, scattered
+  copies and vertices a material shader's vertex offset moves keep the
+  world pattern. *Limits*: alpha-cut holes are not cut; neighbouring
+  instances meet with unrelated pattern phases. It costs a second geometry
+  pass, only on frames a look uses it. `tests/stylise_space.rs`.
 - **Hatching from depth** (`Hatching::depth`, the IDL's `hatchingDepth`,
-  0 to 1): the prepass's silhouettes and creases darken the tone the
-  strokes follow (`depth_band`, stylise.wgsl), so the strokes gather along
-  contours and folds as `inkDepth` inks them; with it the frame runs the
-  prepass (`Stylise::depth_edges`), and the weight rides in the uniform's
-  `ink_depth.w`. The edges are `Ink`'s thresholds (the outline pass's
-  defaults without ink) found 1, half and one stroke spacing away
-  (`contour_at`). A silhouette there is a break in the inverse depth,
-  which is affine across a plane in screen space: of two opposite
-  neighbours, d0/d + d0/d' − 2 is 0 on any plane however steeply it
-  recedes and below minus the depth step on the nearer side of a
-  silhouette. The ink's own test (a farther neighbour by the step) would
-  ink a long floor at the stroke spacing's distance; the ink keeps it,
-  byte for byte, at its line width.
+  0 to 1): the prepass's silhouettes and creases (`Ink`'s thresholds, at
+  1, half and one stroke spacing, `contour_at`) darken the tone the
+  strokes follow, so the strokes gather along contours and folds; the
+  frame then runs the prepass (`Stylise::depth_edges`).
 - **Depth bands** (`DepthBands`): an HDR pass after the main pass
-  (fxpost.wgsl `fs_depth_bands`, over the prepass depth) cuts the scene from
-  `near` to `far` into `count` equal layers, the first in the near colour,
-  the last (from one band before `far`, and beyond it) in the far colour,
-  those between stepping evenly in OkLCh (`band_color`: lightness and
-  chroma straight, hue the short way round, a grey end taking the other's
-  hue), so a plum-to-gold ramp passes through rose and amber instead of
-  the grey-brown a straight line in RGB crosses. `flatten` 1 replaces the
-  shading with the band's colour; 0 tints it: the lit colour times the
-  band's colour at unit luminance, a coloured filter through which the
-  shading, the value and the surfaces' own hues show (it used to be the
-  band's colour times the lit luminance, which replaced every hue:
-  lantern-vale FINDINGS #19); between, a mix. The outline pass reads the
-  banded image. The bands follow view depth, so they read in side and
-  three-quarter views; a camera looking down sees its play area at one
-  depth, in one band.
+  (fxpost.wgsl `fs_depth_bands`, over the prepass depth) cuts the scene
+  from `near` to `far` into `count` equal layers, the first in the near
+  colour, the last (from one band before `far`, and beyond it) in the far
+  colour, those between stepping evenly in OkLCh (`band_color`: lightness
+  and chroma straight, hue the short way round, a grey end taking the
+  other's hue). `flatten` 1 replaces the shading with the band's colour;
+  0 tints it (the lit colour times the band's colour at unit luminance);
+  between, a mix. The outline pass reads the banded image. The bands
+  follow view depth.
 - **Retro 3D** (`Retro3d`, pbr.wgsl `retro_clip` and `stylised_uv`): the
   clip position snapped to a screen grid of `vertex_snap` logical pixels,
   depth quantised to `depth_bits`, and affine texturing by interpolating
-  uv × w and dividing by the interpolated w in the fragment (no
-  `noperspective` qualifier). The physical shader
-  shares the vertex path; the prepass alpha cut stays perspective-correct.
-- **The material style** (`MaterialStyle`, material.rs `styled`): every lit
-  material that leaves a stylised field at its default takes the scene's
-  (toon and its ramp, the rim, the outline, flat facets), re-uploaded
-  whenever the style changes; `shadow_tint` moves shadowed sunlight
-  towards a colour (pbr_fs.wgsl and physical.wgsl, an additive term on the
-  diffuse), and `outline_distance` scales each material outline's width by
-  that distance over the view depth in the prepass, at most four times the
-  width (never for an orthographic camera). The outline pass
-  (fxpost.wgsl `fs_outline`) tests a neighbour's depth against where the
-  pixel's own surface would be there when the pixel, the neighbour and the
-  one opposite are one object facing one way (1/depth is affine in screen
-  space on a plane, `surface_ahead`, at most twice the pixel's depth), so
-  a surface at a grazing angle is lined only where it ends: a 1,600 m ground under a chase camera was one wash of
-  outline with the distance term and a band along the horizon without it
-  (meridian-loop #7, og-tests `stylise-outline-ground`). Two exceptions (lantern-vale FINDINGS #16, where a
-  look's toon silently switched the lanterns' lacquer and the slimes'
-  jelly off): a material with `styled` 0 (the IDL's
-  `StandardMaterialDesc.styled false`) is drawn exactly as declared,
-  `styled` returning it whole and its uniform's mode bit 8 turning the
-  frame's shadow tint and outline distance off for it; and the style's
-  toon passes by a material with a physical lobe
-  (`StandardMaterial::has_physical_lobes`: a clear coat, sheen,
-  transmission, iridescence, anisotropy, an `ior` other than 1.5, or one
-  of their maps), since toon shading has none of them: it keeps its
-  physical shading and takes the rest of the style (rim, outline, flat
-  facets, shadow tint). *Chosen*: a material that names a physical lobe
-  has chosen its lighting model, and a scene-wide default must not undo
-  that without a word; a game that wants it toon anyway sets its own
-  `toon`, knowingly dropping the lobe. og-tests `stylise-toon-physical`:
-  under a toon style, a plain red sphere in bands, a lacquered one with
-  its coat's sharp highlight, a jelly refracting the stripes behind it,
-  and an unstyled one in plain PBR without rim or outline.
+  uv × w and dividing by the interpolated w in the fragment. The physical
+  shader shares the vertex path; the prepass alpha cut stays
+  perspective-correct.
+- **The material style** (`MaterialStyle`, material.rs `styled`): every
+  lit material that leaves a stylised field at its default takes the
+  scene's (toon and its ramp, the rim, the outline, flat facets),
+  re-uploaded whenever the style changes; `shadow_tint` moves shadowed
+  sunlight towards a colour, and `outline_distance` scales each material
+  outline's width by that distance over the view depth, at most four times
+  the width (never for an orthographic camera). The outline pass lines a
+  surface at a grazing angle only where it ends (`surface_ahead`). A
+  material with `styled` 0 (the IDL's `StandardMaterialDesc.styled false`)
+  is drawn exactly as declared; a material with a physical lobe
+  (`StandardMaterial::has_physical_lobes`) keeps its physical shading
+  under the style's toon and takes the rest of the style (a game that
+  wants it toon sets its own `toon`).
 - **Hull outlines** (`StandardMaterial::outlineWidth`, the style's
   `outline_width`; fxpost.wgsl `fs_outline`): a material's own outline is
-  what toon shading's inverted hull draws, the object's silhouette (a
-  farther neighbour at the line's width), where one part of it passes in
-  front of another, and its creases against *other* objects (a box on
-  the floor, a character against a wall), never the edges between its
-  own faces. The prepass writes each fragment's object id (pbr.wgsl
-  `object_id`: 1 to 255, a hash of the instance's transform, the skinned
-  instance's and not its joints'; 0 for terrain and scattered copies)
-  into the outline target beside the colour and width (Rgba8Unorm read
-  as bytes: the colour in 5:6:5 over r and g, the width in eighths of a
-  pixel, the id; `outline_bytes`), and the outline pass lines a crease
-  only where the ids differ. *Chosen over smoothed outline normals*: an
-  outline here is a screen-space pass over the prepass, not an extruded
-  shell, and its crease test inked every edge of an unwelded mesh (a
-  `.vox` model's greedy quads, a flat-shaded rock): a voxel canopy became
-  a net of lines and a small voxel slime all ink (lantern-vale FINDINGS
-  #15). Smoothed normals would need a vertex stream and a prepass channel
-  the prepass has no room for (the skinned prepass spends the sixteen
-  vertex attributes of the downlevel limits) and still ink small hard-edged meshes whose
-  smoothed normals turn within the line's width; the id keeps every face
-  of one object clean whatever its topology, skinned included, at no
-  extra target. Neighbouring objects share an id one time in 255 (their
-  contact line then goes). The scene's outline (`PostEffects.outline`)
-  still lines every crease. og-tests `stylise-outline-voxels`: a voxel
-  tree, a voxel mound and a stepped block (unwelded, flat-shaded) and a
-  smooth sphere under a 2.5 px toon outline, each a clean silhouette
-  with its contact line on the ground.
-
+  what toon shading's inverted hull draws: the object's silhouette, where
+  one part of it passes in front of another, and its creases against
+  *other* objects, never the edges between its own faces. The prepass
+  writes each fragment's object id (1 to 255, a hash of the instance's
+  transform; 0 for terrain and scattered copies) into the outline target
+  beside the colour (5:6:5) and width (eighths of a pixel;
+  `outline_bytes`), and the outline pass lines a crease only where the ids
+  differ, so an unwelded mesh (a `.vox` model, a flat-shaded rock) stays
+  clean. Neighbouring objects share an id one time in 255. The scene's
+  outline (`PostEffects.outline`) still lines every crease.
 - **Built-in canvases and palettes**: a look names the engine's own
   `"@canvas/paper"`, `"@canvas/linen"`, `"@canvas/watercolor"` (tileable
   256² grey, the paint pass reads the red channel) and `"@palettes/lcd2"`,
   `handheld4`, `dusk16`, `bright32`, `1bit`; the cook adds the ones its
   looks name to the bundle under reserved ids (og-cook's README, *Built-in
   look assets*), so the renderer sees an ordinary texture and palette.
-  watercolor-wash, paper-craft and painterly-3d lay the canvases,
-  monochrome-pixel and monochrome-dither-3d quantise to `handheld4` and
-  `1bit`.
 - Beside the frame's stylisation: sprite drop shadows ([The 2D
-  batch](#the-2d-batch-e4)) for pixel sprites in 3D sets, on terrain,
-  decks and steps and faded inside the cascades' shadow, and og-anim's
-  stepped playback (`AnimationPlayer.stepFps`) for stop motion on twos.
+  batch](#the-2d-batch)) and og-anim's stepped playback
+  (`AnimationPlayer.stepFps`) for stop motion on twos.
 
 Scenes: `stylise-pixel`, `stylise-palette`, `stylise-print`,
-`stylise-halftone`, `stylise-paint`, `stylise-bands`, `stylise-retro`,
-`stylise-material`, `stylise-ink-depth` (flat unlit shapes of one colour
-where every line is a silhouette or crease) and `sprites-shadow` (og-tests,
-`metal` and `vulkan-cpu` references), `stylise-surface` and
-`sprites-shadow-terrain` (round three, `metal`; the latter moves in round
-four with its hollow), `stylise-object` and `stylise-halftone-surface`
-(round four; recorded by the round's merge), and fx-showcase's `looks`
-station, one frame per preset of `templates/looks/`, which the browser
-tier compares too (`reference.ts --looks` in `scripts/check.sh
-web-reference`, every frame against `metal`). The station's HUD line
-names the preset shown (`P4 station  looks  <slug>`, `none` before a
-look; `look:<slug>` sets it), so each frame identifies itself. Every style
-of the catalogue (`packages/knowledge/looks/catalogue.json`) is now
-`full` or `content`; `inked-comic-3d` hatches its shadows on the surfaces
-(`hatchingSpace surface`, `hatchingDepth` 0.7) in place of the screen
-halftone, as its check asks (ink marks painted onto surfaces).
-Round five adds `stylise-outline-voxels`, `stylise-toon-physical`,
-`sprites-untonemapped` and `stylise-bands-tint` (`metal`). The footprint
-along the depth gradient (owed row 55) re-recorded `stylise-surface`,
-`stylise-object` and `stylise-halftone-surface`.
+`stylise-halftone`, `stylise-paint`, `stylise-bands`, `stylise-bands-tint`,
+`stylise-retro`, `stylise-material`, `stylise-ink-depth` (flat unlit shapes
+of one colour where every line is a silhouette or crease),
+`stylise-surface` (hatching and a paper canvas on clay forms, depth ink),
+`stylise-halftone-surface`, `stylise-object` (the surface drawing in object
+space with a tilted box and a beam), `stylise-outline-ground` (a long
+ground under a chase camera, lined only where it ends),
+`stylise-outline-voxels` (unwelded voxel models under a toon outline),
+`stylise-toon-physical` (a toon style over plain, lacquered, jelly and
+unstyled spheres). The looks presets of `templates/looks/` are drawn by
+fx-showcase's `looks` station, which the browser tier compares too
+(`reference.ts --looks` in `scripts/check.sh web-reference`).
 
-Round three delivered what round two left: hatching and halftone on the
-surfaces (strokes follow the tone and the form), the canvas on the
-surfaces, drop shadows on terrain and explicit heights that fade inside
-the cascades' shadow, and `inkDepth`'s thresholds as fields. Round four
-delivered object space (a moving object carries its marks), drop
-shadows bent over hollows and ridges narrower than themselves, hatching
-from depth (`hatchingDepth`), the halftone-on-surface scene, a preset in
-surface space (`inked-comic-3d`) and the looks frames' HUD naming their
-preset. The octave fade's faint bands on a long receding floor are gone
-since the footprint is measured along the depth gradient (owed row 55).
-Still open: object space leaves terrain, scattered copies and vertex-offset
-materials in world space and does not cut alpha holes; a bent shadow
-bridges features narrower than a cell of its 4 × 2 grid.
-
-## R4: sky and weather
+## Sky and weather
 
 **The physical sky** (`sky_physical.rs`, `shaders/sky_scatter.wgsl`):
 `SkyLook::physical` set to a `PhysicalAtmosphere` (Earth's by default,
@@ -2505,27 +1773,21 @@ Hillaire 2020's coefficients) draws the sky by single scattering through
 air (Rayleigh) and haze (Mie, Cornette–Shanks phase) with ozone
 absorption, in a spherical atmosphere, plus Hillaire's multiple-scattering
 term. The sky pass marches 24 samples per pixel, the image-based light's
-sky 16; the optical depth towards the sun is the Chapman function's
-closed approximation (exact to 4 % against a numeric column, a unit
-test), so there is no transmittance texture and no new binding: the
-atmosphere is 38 vec4s of the frame uniform (`frame.sky_scatter`) and of
-the IBL generator's parameters (its slot grew from 256 to 1024 bytes).
-The multiple-scattering table (16 sun angles at 0 and 8 km) is
-integrated on the CPU once per atmosphere and cached. The same
-formulas run on the CPU (`PhysicalAtmosphere::radiance`,
-`sun_transmittance`), which the unit tests check (blue noon zenith,
-brighter horizon and sun glow, red sun at 2°, a twilight zenith kept
-blue by ozone, darkening through twilight) and which
-`DayNightLook::with_atmosphere` uses for the sun's colour through the
-air and the fog's colour (the sky's cosine-weighted mean; looking into
-the sun, the horizon's glow under it). Saturated highlights of the drawn
-sky and the sun's disc are rolled off keeping their hue (`sky_rolloff`),
-so a sunset's glow and disc stay orange under the tone curve; the disc
-darkens towards its limb. The night floor (`PhysicalAtmosphere::night`)
-is set above airglow, so land under a twilight or night sky keeps a deep
-blue-grey ambient. The brightness
-is scaled so the sky's mean irradiance at noon matches the gradient
-sky's. Frames: `sky-physical-noon`, `-sunset`, `-twilight`, `-hazy`.
+sky 16; the optical depth towards the sun is the Chapman function's closed
+approximation, so there is no transmittance texture and no new binding:
+the atmosphere is 38 vec4s of the frame uniform (`frame.sky_scatter`) and
+of the IBL generator's parameters (a 1024-byte slot). The
+multiple-scattering table (16 sun angles at 0 and 8 km) is integrated on
+the CPU once per atmosphere and cached. The same formulas run on the CPU
+(`PhysicalAtmosphere::radiance`, `sun_transmittance`), which
+`DayNightLook::with_atmosphere` uses for the sun's colour through the air
+and the fog's colour. Saturated highlights of the drawn sky and the sun's
+disc are rolled off keeping their hue (`sky_rolloff`); the disc darkens
+towards its limb. The night floor (`PhysicalAtmosphere::night`) is set
+above airglow, so land under a twilight or night sky keeps a deep
+blue-grey ambient. The brightness is scaled so the sky's mean irradiance
+at noon matches the gradient sky's. Scenes `sky-physical-noon`,
+`-sunset`, `-twilight`, `-hazy`.
 
 **Clouds** (`clouds.rs`, `shaders/clouds_noise.wgsl`, `sky.wgsl`'s
 `clouds_over`): `RenderScene::clouds` draws, over the procedural sky, a
@@ -2536,53 +1798,44 @@ the sun with three octaves of Wrenninge's multiple scattering, a two-lobe
 Henyey–Greenstein phase, the irradiance cube as ambient) and a streaked
 cirrus layer above it, faded into the sky with distance. Under the
 physical sky the sun on a sample is the sunlight above the air through
-the sky's own transmittance down to that height, so a sunset lights low
-clouds orange from below and they keep it after the ground's sunset;
-otherwise it is the frame's directional light. A lightning strike lights
-them from inside about the bolt's root (`Clouds::flash`, set by
-`add_lightning`), scattered evenly. Their shapes come from a 64³ tiling
-noise volume (Perlin–Worley and value noise equalised to uniform, Worley
-detail, coverage), made by one compute pass the first frame with clouds
-(until then the sky group binds a 1³ placeholder), read at two scales
-blended across the sky so the lobes vary in size, cut flat at the base
-and eroded most at the tops.
-The wind moves them by the tick's clock (the offset wraps at four tiles).
-They are not in the image-based light; `Clouds::light` is how much their
-cover dims the sun and the sky, which the runtime applies. Frames:
-`clouds-fair`, `-overcast`, `-sunset`, `-gradient`.
+the sky's own transmittance down to that height; otherwise it is the
+frame's directional light. A lightning strike lights them from inside
+about the bolt's root (`Clouds::flash`, set by `add_lightning`). Their
+shapes come from a 64³ tiling noise volume (Perlin–Worley and value noise
+equalised to uniform, Worley detail, coverage), made by one compute pass
+the first frame with clouds (until then the sky group binds a 1³
+placeholder), read at two scales blended across the sky, cut flat at the
+base and eroded most at the tops. The wind moves them by the tick's clock
+(the offset wraps at four tiles). They are not in the image-based light;
+`Clouds::light` is how much their cover dims the sun and the sky, which
+the runtime applies. Scenes `clouds-fair`, `-overcast`, `-sunset`,
+`-gradient`.
 
 **Weather on surfaces and lightning** (`weather.rs` `SurfaceWeather`,
-`add_lightning`; `shaders/weather_surface.wgsl`): `RenderScene::surface_weather`
-wets, puddles and snows every standard, physical (lean included) and
-terrain surface from two vec4s of the frame uniform: no binding is added
-to the lit stages (their storage buffers are spoken for after R7's
-decals). Wet porous surfaces darken at their own roughness (darker
-than dry at every angle) and sealed ones, smooth or metal, gain a sheen
+`add_lightning`; `shaders/weather_surface.wgsl`):
+`RenderScene::surface_weather` wets, puddles and snows every standard,
+physical (lean included) and terrain surface from two vec4s of the frame
+uniform: no binding is added to the lit stages. Wet porous surfaces darken
+at their own roughness and sealed ones, smooth or metal, gain a sheen
 (Lagarde 2013); puddles fill the hollows of a world-space noise on level
 ground, mirror-smooth, rippled by raindrop rings while it rains; snow
 settles on what faces up, deeper cover reaching steeper faces, its edge
 broken by noise. The masks follow the world position and the geometric
-normal (a normal map shades the cover without moving it). Roofs shelter
-what is under them through the weather occlusion map (`shelter_view`):
-the depth of what is nearest the sky, drawn like a shadow cascade from
-above along the fall (the rain or snow slanted by og.Weather's wind, at
-most 45°) over `SurfaceWeather::shelter` metres around the camera (64 by
-default; 0: none), and compared in `weather_open` with a 5×5 filter that
-softens the drip line over `DRIP_EDGE`. It is the cascade array's last
-layer (`fit_shelter_layer` adds it only while the scene has surface
-weather, so the array otherwise keeps its size; its index comes from
+normal. Roofs shelter what is under them through the weather occlusion
+map (`shelter_view`): the depth nearest the sky, drawn like a shadow
+cascade along the fall (slanted by og.Weather's wind, at most 45°) over
+`SurfaceWeather::shelter` metres around the camera (64 by default; 0:
+none), filtered 5×5 over `DRIP_EDGE`. It is the cascade array's last
+layer while the scene has surface weather (its index from
 `frame.weather_shelter.x`, never a constant), takes only static casters
-and terrain (no skinned or scattered copies; clustered casters through a
-shadow view of the meshlet dispatch, as a cascade's), and is drawn again only
-when `shelter_key` changes: the camera crosses an eighth of the square,
-the fall turns, or a caster inside moves, appears or goes (the static
-shadow cache, `src/shadow_cache.rs`, could later carry that test).
-The tick's wetness, puddles and snow depth are the open ground's; the
-map is drawn only. A strike (`add_lightning`) is a
+and terrain, and is redrawn only when `shelter_key` changes (the camera
+crosses an eighth of the square, the fall turns, or a caster inside
+changes). The tick's wetness, puddles and snow depth are
+the open ground's; the map is drawn only. A strike (`add_lightning`) is a
 double flash of the sky's light, a light over the strike and a bolt by
 midpoint displacement seeded by the strike's number. The state they draw
 is the runtime's og.WeatherState, simulated in the tick (og-runtime
-`weather.rs`). Frames: `weather-wet`, `-snow-cover`, `-lightning`,
+`weather.rs`). Scenes `weather-wet`, `-snow-cover`, `-lightning`,
 `-shelter-snow`, `-shelter-rain`, `-shelter-meshlet`.
 
 ## Reflection probe faces
@@ -2593,27 +1846,24 @@ draw besides the capture itself:
 
 - **Face targets** (`FaceTargets`, one set per face size): the face's
   depth prepass, its copy (water and 3D fluids refract it) and the 3D
-  fluids' targets, 24, 8 and 36 bytes a texel (25 to 71 MB at 1024²).
-  They are made the first frame a capture of that size needs them and
-  kept only while one is due or a realtime probe of that size draws its
-  own (`face_target_sizes`): a baked probe's go the frame after its
-  capture and are made again if it is ever due again (a new face size or
-  sample count), so a scene of baked probes holds none after its first
-  frame. A realtime probe keeps them between its captures, which would
-  otherwise reallocate them every interval. A capture drawn after the
-  targets were freed and remade is bit for bit the first (checked in the
-  debt round 3); og-render `probes::tests::face_targets_are_kept_for_due_and_realtime_captures_only`.
-- **Water's reflections.** A face's water marches its
-  screen-space reflection through the face's own depth prepass and copy,
-  as the frame's water does through its own (`WaterRenderer::face_draws`
-  keeps `look.y`): what the surface mirrors as seen from the probe's
-  point, which is what the whole capture is. Rays that leave the face
-  fall back to the environment, as rays leaving the screen do in the
-  frame. og-tests probes
+  fluids' targets, 24, 8 and 36 bytes a texel. They are made the first
+  frame a capture of that size needs them and kept only while one is due
+  or a realtime probe of that size draws its own (`face_target_sizes`): a
+  baked probe's go the frame after its capture and are made again if it
+  is ever due again, so a scene of baked probes holds none after its first
+  frame. A realtime probe keeps them between its captures. A capture drawn
+  after the targets were freed and remade is bit for bit the first;
+  `probes::tests::face_targets_are_kept_for_due_and_realtime_captures_only`.
+- **Water's reflections.** A face's water marches its screen-space
+  reflection through the face's own depth prepass and copy, as the
+  frame's water does through its own (`WaterRenderer::face_draws` keeps
+  `look.y`): what the surface mirrors as seen from the probe's point. Rays
+  that leave the face fall back to the environment, as rays leaving the
+  screen do in the frame. og-tests probes
   `water_in_a_capture_reflects_the_face_in_screen_space`. The planar
-  reflection stays off in faces: it is a second pass from the camera
-  mirrored in the surface, one surface a frame, and a face would need its
-  own (six per capture, each with an oblique clip and its own target).
+  reflection stays off in faces: it is a second pass from the mirrored
+  camera, one surface a frame, and a face would need its own (six per
+  capture, each with an oblique clip and its own target).
 - **What water and 3D fluids see through (left out, deliberately).** The
   face's copy is taken after the sky, before the transparent meshes, so
   water and fluids in a face show the opaque face behind them and not
@@ -2628,100 +1878,30 @@ draw besides the capture itself:
   per instance, and drawing the transparents into the copy and again
   after would blend them twice.
 
-## What phase 2 owes
+## What phase 2 owes: decisions
 
-Delivered in P4: clearcoat maps, sheen, transmission (with volume and
-`ior`), iridescence and anisotropy ([Physical
-materials](#physical-materials-p4)); cascade blending, PCSS soft shadows
-for the sun, cube or dual-paraboloid point shadows, up to 8
-shadowed local lights, TAA's Catmull-Rom history and
-sharpening, FXAA, and the CPU particle path's collision
-([Shadows and antialiasing](#shadows-and-antialiasing)).
+Choices made on the renderer's open lines, and what is not built:
 
-Delivered since M3 (8d160fe, M6): the render graph object (`src/graph.rs`:
-declared targets and passes, data-flow order, aliased transients; the
-existing passes run on it with every reference unchanged);
-`StandardMaterial` from reflected material assets with sorted transparency
-(`transparent`, back to front, no depth write), double-sided and unlit
-materials; pre-encoded texture uploads (BC7/BC5, ASTC 4×4, ETC2/EAC, RGBA8)
-with their mips, chosen per tier and reported in
-`RenderInfo::texture_formats`; `shadow_map_size`, `shadow_cascades` and
-`RenderDesc::mobile()` (two 1024² cascades, ASTC/ETC2 first). Evidence:
-`tests/evidence/M6/render-*`.
-
-- **Render graph**: a depth prepass for every frame. *Decided (P4 perf):
-  on demand.* The depth-normal prepass runs when an effect reads it (AO,
-  outlines, depth of field, motion blur, god rays, soft particles, water,
-  3D fluids). Forced on every frame it changes no lit pixel (the lit pass
-  keeps its own depth test, and the clusters come from light volumes, not
-  scene depth) and costs a second geometry pass: spheres-20k 9.98 to 16.56
-  ms (+66 %), city-street +0.3 ms, city-aerial +0.5 ms, showcase within
-  noise (`tests/evidence/P4/perf/prepass.md`). Design §2.6 says so.
-- **Browser references** (phase 2, owed row 22): og-tests-web, a wasm
-  harness of og-tests' scenes, draws them on `webgpu` in
-  `make web-reference`, judged against `metal`, beside
-  `templates/fx-showcase`. There is no GL tier, native or in the
-  browser: the WebGL2 tier was retired on 2026-11-01.
-- *Delivered (round four, r4/render-billboards):* 2D billboards,
-  camera-facing world sprites (`SpriteFacing`: the view plane, or upright
-  about y), through the sprite batch and in every view
-  ([Billboards](#billboards)).
-- (Fog landed in E5, in the lit, sky, particle, strip and sprite shaders
-  rather than as a post pass (§E5: atmosphere); per-texture filtering is
-  `set_texture_filter`, nearest for pixel art. Kerning,
-  shaped placements and glyph tables that grow at run time landed in the
-  phase 4 UI text round; shaping and bidi themselves are og-ui's, CJK
-  coverage the cook's `runtime true` with og-ui's run-time glyphs.)
-- *Delivered (P4 perf, `tests/evidence/P4/perf/`):*
-  - **Instance upload dirty tracking** (12749c1): the CPU path's instance
-    buffer and GPU culling's input region keep a copy of what they hold and
-    write only the 4 KiB blocks that changed (`src/upload.rs`); a buffer
-    just grown, or a frame of another length, is written
-    whole. `FrameStats::instance_upload_bytes`; og-tests `tests/upload.rs`.
-    Since r4/perf-webgl2-3 only the blocks a draw reads: on the CPU path
-    the sorted records of the batches a list draws whole and the culled
-    copies appended after them, so a batch drawn from copies does not also
-    send its sorted records (20,000 spheres a fifth off screen: 2.32 MB a
-    frame, 116 bytes an instance, to 1.04 MB, the 64 of one record per
-    sphere drawn). The previous transforms of object motion go through
-    the same tracking.
-  - **Resources can be removed** (db105bd): `RenderScene::remove_mesh`,
-    `remove_texture`, `remove_material`, `remove_font` free the slot on the
-    GPU before the next frame; the next add of the kind reuses it under a
-    new generation (handles carry the slot in 24 bits and an 8-bit
-    generation), so a removed handle is refused by every setter and, in a
-    frame's instances, sprites, texts or font atlases, by `render`
-    (`InvalidHandle`). Removing a texture clears the material slots that
-    sampled it. A skinned or morphed mesh's slot is retired, not reused.
-    og-runtime unloads a streaming group's model textures through
-    `remove_texture`. og-tests `tests/removal.rs`.
-  - **Shader cooking per backend** (912e333, 8779ca8): every WGSL module
-    (`og_render::shader_sources`) is validated by naga and written as
-    MSL, SPIR-V and HLSL in the gate (`tests/shaders.rs`), so a shader error is a failed build, not a
-    player's crash. Compiled pipelines are kept across runs where wgpu has
-    a pipeline cache (Vulkan; `set_pipeline_cache_dir`,
-    `RenderInfo::pipeline_cache`); Metal and the browsers keep their own.
-    The wasm still ships WGSL: the browser compiles WGSL itself, and a
-    second form would only add to the download.
-  - **Cluster build in compute**: measured, not kept. For `lights-256` the
-    CPU build takes 38 to 53 us a frame; the cheapest compute build (one
-    dispatch, no importance order, so not even byte-identical) takes 97 to
-    134 us to upload, encode and submit and 279 to 385 us of GPU on Metal
-    (`tests/evidence/P4/perf/clusters-compute.md`,
-    og-tests `tests/cluster_compute.rs`). The CPU build stays.
-  - **The lit pass's per-instance GPU cost** (owed row 50's remainder,
-    branch `r-lean`): plain materials draw through lean lit, prepass and
-    shadow pipelines ([Lit pipeline variants](#lit-pipeline-variants)):
-    10 interpolated floats instead of 23, only the attributes read, no
-    discard where no derivative is taken. spheres-20k natively 7.1 to
-    4.6 ms (GPU-bound to about CPU-bound in the dev build), the §7
-    reference scene unchanged, every Metal `og-gfx --all` frame
-    byte-identical to main's (`tests/evidence/P4/lean/`). Then (branch
-    `render-parity`, `tests/evidence/P4/parity/`): instances are 52 bytes
-    on the GPU, plain meshes can be 16-byte vertices (opt-in), the sort and
-    the bounding spheres are kept across frames, wgpu's indirect-call
-    validation is off natively and objc2 has no debug assertions in the
-    dev profile; every Metal `og-gfx --all` frame byte-identical. The
-    field is GPU-bound natively, on its 7.3 million triangles a pass. The
-    browser comparison with three.js (`tools/bench/threejs-compare.ts`)
-    has not been run again.
+- **The depth prepass runs on demand**, not every frame: forced on every
+  frame it changes no lit pixel (the lit pass keeps its own depth test,
+  and the clusters come from light volumes, not scene depth) and costs a
+  second geometry pass. `docs/design.md` §2.6 says so.
+- **Instance upload dirty tracking**: the CPU path's instance buffer, GPU
+  culling's input region and the previous transforms of object motion
+  keep a copy of what they hold and write only the 4 KiB blocks that
+  changed (`src/upload.rs`, [The render graph](#the-render-graph));
+  `FrameStats::instance_upload_bytes`; og-tests `tests/upload.rs`.
+- **Shader cooking per backend**: every WGSL module
+  (`og_render::shader_sources`) is validated by naga and written as MSL,
+  SPIR-V and HLSL in the gate (`tests/shaders.rs`), so a shader error is a
+  failed build, not a player's crash. The wasm ships WGSL: the browser
+  compiles WGSL itself.
+- **The cluster build stays on the CPU**: a compute build (one dispatch,
+  no importance order) costs more to upload, encode and submit than the
+  CPU build takes, plus its GPU time (og-tests `tests/cluster_compute.rs`,
+  an ignored measurement run by hand).
+- **Fog** is applied in the lit, sky, particle, strip and sprite shaders,
+  not as a post pass ([Atmosphere](#atmosphere-water-fluids-material-shaders)).
+- **Text**: kerning, shaped placements and glyph tables that grow at run
+  time are here; shaping and bidi are og-ui's, CJK coverage the cook's
+  `runtime true` with og-ui's run-time glyphs.

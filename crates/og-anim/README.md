@@ -81,13 +81,12 @@ A clip change starts the new clip at 0 (or at `time` if the game wrote it in
 the same tick).
 
 **Stepped playback** (`stepFps`, the sculpted-clay look's stop motion "on
-twos" at 12): only the sampled pose steps. `time` advances every tick as
-before, so markers fire in the tick playback passes them and root motion
+twos" at 12): only the sampled pose steps. `time` advances every tick,
+so markers fire in the tick playback passes them and root motion
 travels smoothly; the pose (of the clip and of the one fading out) is
 sampled at `floor(time × stepFps) / stepFps`, so it holds for a whole step
 whatever the tick rate, and a one-shot that reached its end shows its last
-frame. A pure function of the clip time: nothing new in the state block,
-snapshots and restores as before.
+frame. A pure function of the clip time: nothing in the state block.
 
 ### `og.AnimationGraph` (component)
 
@@ -176,7 +175,7 @@ nothing. Limits bind only what og.anim's solvers turn: two-bone IK clamps
 each joint as it is turned, root first (a target the limits keep away is
 missed, `reached` false); FABRIK with a limited joint turns and clamps
 the chain after every pass and starts the next pass from it (without
-limits it runs as before, bit for bit); `og.LookAt` clamps each joint it
+limits it runs unclamped); `og.LookAt` clamps each joint it
 turns. The clip's pose itself is never clamped. A second limit on the same
 joint replaces the first (query order). A hinge from a two-bone solve
 whose bend plane is not exactly the hinge's wants a little `swing` play
@@ -219,7 +218,7 @@ the entity frame, root motion and clip blends do not move a held foot.
 The `og.anim` state block keeps every lock that is held or releasing
 (its entity, the skeleton it holds, the point, the release time); a
 restored world holds the same feet in the same places. A world without
-foot locks saves exactly the bytes it did before.
+foot locks has no lock in its block.
 
 ### `og.SpringBone` (component, on its own entity; one per chain)
 
@@ -252,7 +251,7 @@ moved over dt, and the joint turns by the shortest arc onto it
 (`weight` blends the local rotation). Joint `i` of `n` (top 0) springs at
 `frequency · (1 + (tipFrequency − 1)·i/(n−1))` with damping
 `damping · (1 + (tipDamping − 1)·i/(n−1))`: at 1 and 1 every joint has the
-chain's own, bit for bit as before the two fields existed. Before the
+chain's own, bit for bit. Before the
 joint turns, the tail is pushed out of each collider (below) whose
 `layers` meet `colliders`, in query order: onto the circle where the
 bone's sphere about its head meets the collider grown by the spring's
@@ -424,7 +423,7 @@ target's node of the same humanoid bone, else the node of the same name
 (a prop), and drops it where the target has neither. The final flags are
 in the state block (tagged section 4: per skeleton entity with a hidden
 node, its hidden nodes; written only when some node is hidden, so a
-world without visibility saves, and hashes, as before).
+world without visibility has no such section).
 
 ## Palette contract with og-render
 
@@ -436,9 +435,9 @@ entity in entity order:
   `model(joint) · inverseBind(joint)` in the skeleton's model space. At the
   bind pose every matrix is the identity. A skinned vertex is drawn at
   `MatrixWorld(entity) · Σᵢ wᵢ · palette[jᵢ] · v`; the skinned mesh node's
-  own transform is not applied (glTF). `JointPalette` is `Vec<Mat4>` until
-  og-render's own type lands; og-render implements `PaletteSink` (or the
-  extraction converts).
+  own transform is not applied (glTF). og-anim's `JointPalette` is
+  `Vec<Mat4>`; og-runtime's extraction implements `PaletteSink` and hands
+  the palettes to og-render.
 - `morph_weights(entity, mesh, &[f32; 8])` for entities with
   `og.Blendshapes`: the weights for the glTF mesh `mesh`'s targets.
 - `AnimOutput::drawn`: per skeleton node, whether its primitives are
@@ -449,10 +448,10 @@ Vertex data comes from the cook, per model primitive, indexed as
 `CookedModel::primitives` and per cooked vertex in the model blob's order:
 `CookedAnimation::skin_streams` (`joints: [u16; 4]`, `weights: [f32; 4]`
 summing to 1) and `morphs` (per target position deltas, normal deltas when
-every target has them, names, default weights). The renderer needs a skinned
-vertex input (joints + weights, storage-buffer palette with a vertex-texture
-fallback on GL) and per-primitive morph deltas; bounds for culling should be
-widened by the palette (owed on the render side).
+every target has them, names, default weights). The renderer takes them as
+a skinned vertex input (joints + weights, a storage-buffer palette) and
+per-primitive morph deltas, and bounds a skinned mesh by its joints' boxes
+through the palette (og-render's `skin.rs`).
 
 ## Determinism and the state block
 
@@ -483,7 +482,7 @@ chain; palettes use exact `Mat4` products.
 
 ## Tests
 
-`cargo test -p og-anim` (the walk takes ~14 s in debug, 2 s in release):
+`cargo test -p og-anim`:
 
 | Test | Asserts |
 |---|---|
@@ -506,8 +505,7 @@ f32 ones on every committed animated model (each lane within the
 tolerance, each node within 0.5 mm per metre, a posed frame within the
 gfx tolerance). `crates/og-cook/tests/animation.rs` covers the cook side: every cooked
 sample of `walker.glb` (at its source rates and at 60 Hz) and
-`trickster.glb` equals an independent glTF sampler within 1e-5 (largest
-error 1.2e-7); joints, weights and morph deltas follow the cooked vertices;
+`trickster.glb` equals an independent glTF sampler within 1e-5; joints, weights and morph deltas follow the cooked vertices;
 markers from `extras."og.events"` and import settings; a cooked walker
 plays here with markers at the right ticks.
 
@@ -515,7 +513,7 @@ The walker rig the tests use is `tests/support/` (procedural) and
 `templates/game/assets/models/walker.glb` (generated by
 `tools/make_rig.py`, CC0).
 
-## Retargeting (phase 2)
+## Retargeting
 
 `HumanoidMap` says which node of a skeleton is each of the 52 standard
 humanoid bones (`HUMAN_BONES`, VRM's and Unity's names: `hips`, `spine`,
@@ -607,7 +605,7 @@ clip posing the skeleton this tick (the base layer's and the player's,
 the ones foot locks read) turns its segment's bone or the next, and none
 of them has the twist bone's rotation. The nodes below a driven twist
 bone keep their model rotations. A retargeted clip writes its twist bones,
-so it plays as before bit for bit; so does a skeleton without twist bones
+so none is driven for it; nor for a skeleton without twist bones
 or whose clips key them. What each clip does to each twist bone is worked
 out once per (skeleton, clip) and cached like the bindings.
 
@@ -615,8 +613,7 @@ The cook applies it to a model's `animation { library … }` (og-cook's
 README) and the runtime to `og.anim.retarget`. `tests/retarget.rs` retargets
 the walker onto a taller Mixamo-named rig (armature scale 0.01, A-posed
 arms, thigh 0.70 and shin 0.44 m against 0.45 and 0.45): planted feet within
-2 mm of the ground and not sliding (0 measured; 11.5 mm off with forward
-kinematics alone), the hips' travel scaled by the leg ratio, the A-posed
+2 mm of the ground and not sliding, the hips' travel scaled by the leg ratio, the A-posed
 arm waving parallel to the walker's, the clip played by og.anim.
 
 ## Mirroring
@@ -663,7 +660,7 @@ tick. `Channel::decoded` writes the frames out (the cook re-encodes a
 retargeted or mirrored clip from them); `mirror` and `retarget` emit f32
 channels.
 
-## Flipbooks (sprite animation, E4)
+## Flipbooks (sprite animation)
 
 `install_flipbook(&mut World) -> FlipbookSystem` registers `og.Flipbook`
 and `og.FlipbookEvent` and schedules `og.flipbook` (with its state block)
@@ -741,5 +738,4 @@ Tests: `tests/flipbook.rs` (the sheet's grid and named frames, mistakes by
 line, the canonical round trip; a loop at 10 fps changing frame every six
 ticks and firing once per pass; ping-pong's turn, once's hold and finish;
 a clip change restarting, a silent seek, speed and pause; slow motion and
-hit stop; a snapshot mid-clip giving the same transcript and hash). The
-event transcript of a run is in `tests/evidence/E4/flipbook-events.json`.
+hit stop; a snapshot mid-clip giving the same transcript and hash).
