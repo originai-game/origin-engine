@@ -24686,6 +24686,14 @@
           "description": "Turn the offset with the entity's rotation, so the camera stays behind it.",
           "default": false
         },
+        "seat": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Online play: drive og.Camera only on the device that plays this seat (og.Lockstep.localPlayer while a room runs, else 0), so each peer's camera follows its own player while every peer holds the same components; -1, any device (the first carrier in query order drives it).",
+          "default": -1,
+          "minimum": -1
+        },
         "smoothTime": {
           "type": "number",
           "description": "Roughly how long the camera takes to catch up with a moved entity; 0 snaps it there every tick.",
@@ -24700,7 +24708,7 @@
     "FirstPersonCamera": {
       "x-og-kind": "component",
       "x-og-module": "camera",
-      "description": "Looks out of the entity carrying it: a first-person 3D view whose eye sits `eye` above the entity's position and turns by `yaw` about +Y and `pitch` up from the horizon (three.js PointerLockControls, with a pad's right stick). With `enabled` it turns by the mouse's movement while the pointer is locked (og.Pointers.movement; set og.PointerLock.wanted during play) and by the right stick of `gamepad`; otherwise the game sets yaw and pitch, as a lockstep game does from og.PlayerInput's aim. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.\nIt moves only og.Camera and its own yaw and pitch: the game turns the body and walks it along `yaw` (forward is (-sin yaw, 0, -cos yaw)). Every angle is computed with deterministic arithmetic, so a replay looks the same way on every host.",
+      "description": "Looks out of the entity carrying it: a first-person 3D view whose eye sits `eye` above the entity's position and turns by `yaw` about +Y and `pitch` up from the horizon (three.js PointerLockControls, with a pad's right stick). With `enabled` it turns by the mouse's movement while the pointer is locked (og.Pointers.movement; set og.PointerLock.wanted during play) and by the right stick of `gamepad`; otherwise the game sets yaw and pitch, as a lockstep game does from og.PlayerInput's aim, with one per seat and `seat` set so each peer looks out of its own. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.\nIt moves only og.Camera and its own yaw and pitch: the game turns the body and walks it along `yaw` (forward is (-sin yaw, 0, -cos yaw)). Every angle is computed with deterministic arithmetic, so a replay looks the same way on every host.",
       "type": "object",
       "properties": {
         "eye": {
@@ -24767,6 +24775,14 @@
           "description": "With enabled: the pad whose right stick turns it, counted from 1; 0 every pad.",
           "default": 0,
           "maximum": 8
+        },
+        "seat": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Online play: drive og.Camera only on the device that plays this seat (og.Lockstep.localPlayer while a room runs, else 0), so each peer's camera follows its own player while every peer holds the same components; -1, any device (the first carrier in query order drives it).",
+          "default": -1,
+          "minimum": -1
         },
         "invertY": {
           "type": "boolean",
@@ -24866,6 +24882,14 @@
           "x-og-unit": "m",
           "x-og-worldspace": "root",
           "readOnly": true
+        },
+        "seat": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Online play: drive og.Camera only on the device that plays this seat (og.Lockstep.localPlayer while a room runs, else 0), so each peer's camera follows its own player while every peer holds the same components; -1, any device (the first carrier in query order drives it).",
+          "default": -1,
+          "minimum": -1
         },
         "clamp": {
           "type": "boolean",

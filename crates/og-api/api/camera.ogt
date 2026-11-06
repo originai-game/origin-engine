@@ -228,6 +228,10 @@ module camera {
       unit m
     }
     field followRotation bool "Turn the offset with the entity's rotation, so the camera stays behind it."
+    field seat i32 "Online play: drive og.Camera only on the device that plays this seat (og.Lockstep.localPlayer while a room runs, else 0), so each peer's camera follows its own player while every peer holds the same components; -1, any device (the first carrier in query order drives it)." {
+      default -1
+      min -1
+    }
     field smoothTime f32 "Roughly how long the camera takes to catch up with a moved entity; 0 snaps it there every tick." {
       default 0.25
       min 0
@@ -237,7 +241,7 @@ module camera {
   }
 
   component FirstPersonCamera {
-    doc "Looks out of the entity carrying it: a first-person 3D view whose eye sits `eye` above the entity's position and turns by `yaw` about +Y and `pitch` up from the horizon (three.js PointerLockControls, with a pad's right stick). With `enabled` it turns by the mouse's movement while the pointer is locked (og.Pointers.movement; set og.PointerLock.wanted during play) and by the right stick of `gamepad`; otherwise the game sets yaw and pitch, as a lockstep game does from og.PlayerInput's aim. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera."
+    doc "Looks out of the entity carrying it: a first-person 3D view whose eye sits `eye` above the entity's position and turns by `yaw` about +Y and `pitch` up from the horizon (three.js PointerLockControls, with a pad's right stick). With `enabled` it turns by the mouse's movement while the pointer is locked (og.Pointers.movement; set og.PointerLock.wanted during play) and by the right stick of `gamepad`; otherwise the game sets yaw and pitch, as a lockstep game does from og.PlayerInput's aim, with one per seat and `seat` set so each peer looks out of its own. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera."
     doc "It moves only og.Camera and its own yaw and pitch: the game turns the body and walks it along `yaw` (forward is (-sin yaw, 0, -cos yaw)). Every angle is computed with deterministic arithmetic, so a replay looks the same way on every host."
     field eye Vector3 "Where the eye sits relative to the entity's position, in world axes (a capsule's head height)." {
       default 0 1.6 0
@@ -278,6 +282,10 @@ module camera {
     }
     field gamepad u32 "With enabled: the pad whose right stick turns it, counted from 1; 0 every pad." {
       max 8
+    }
+    field seat i32 "Online play: drive og.Camera only on the device that plays this seat (og.Lockstep.localPlayer while a room runs, else 0), so each peer's camera follows its own player while every peer holds the same components; -1, any device (the first carrier in query order drives it)." {
+      default -1
+      min -1
     }
     field invertY bool "With enabled: moving the mouse or the stick up looks down."
     field enabled bool "Turn by the mouse while the pointer is locked and by the right stick; false: the game sets yaw and pitch (a lockstep game, where both come from og.PlayerInput)." {
@@ -328,6 +336,10 @@ module camera {
       worldspace root
       readonly true
       unit m
+    }
+    field seat i32 "Online play: drive og.Camera only on the device that plays this seat (og.Lockstep.localPlayer while a room runs, else 0), so each peer's camera follows its own player while every peer holds the same components; -1, any device (the first carrier in query order drives it)." {
+      default -1
+      min -1
     }
     field clamp bool "Keep the camera centre between boundsMin and boundsMax."
     field boundsMin Vector2 "The smallest x and y the camera centre takes with clamp." {

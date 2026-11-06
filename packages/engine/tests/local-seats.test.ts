@@ -98,3 +98,24 @@ test("og.FirstPersonCamera looks by the locked mouse and holds its pitch", () =>
   expect(forward().y).toBeCloseTo(Math.sin(1.48), 5);
   engine.destroy();
 });
+
+test("a follow camera with a seat drives og.Camera only on that seat's device", () => {
+  // Seat 1's follower comes first in query order; outside a room this device plays seat 0, so seat 0's must drive.
+  const created = createEngine(og.game({
+    systems: [...og.systems.cameras],
+    start(world) {
+      for (const [seat, x] of [[1, 40], [0, -40]] as const) {
+        const e = world.spawn({ name: `hero-${seat}`, position: { x, y: 0, z: 0 } });
+        if (!e.ok) throw new Error(e.reason);
+        world.insert(e.value, og.FollowCamera, { seat, smoothTime: 0, offset: { x: 0, y: 2, z: 6 } });
+      }
+    },
+  }) as unknown as GameToken);
+  if (!created.ok) throw new Error(created.reason);
+  const engine = created.value;
+  engine.advance(2);
+  const c = engine.world.resource(og.Camera);
+  if (!c.ok) throw new Error(c.reason);
+  expect(c.value.position.x).toBeCloseTo(-40, 4);
+  engine.destroy();
+});

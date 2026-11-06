@@ -756,6 +756,11 @@
           "default": false
         },
         {
+          "name": "seat",
+          "column": "i32",
+          "default": -1
+        },
+        {
           "name": "smoothTime",
           "column": "f32",
           "default": 0.25,
@@ -816,6 +821,11 @@
           "name": "gamepad",
           "column": "u32",
           "default": 0
+        },
+        {
+          "name": "seat",
+          "column": "i32",
+          "default": -1
         },
         {
           "name": "invertY",
@@ -900,6 +910,11 @@
             "y": 0
           },
           "readonly": true
+        },
+        {
+          "name": "seat",
+          "column": "i32",
+          "default": -1
         },
         {
           "name": "clamp",

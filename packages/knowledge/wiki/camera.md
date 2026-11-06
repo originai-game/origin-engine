@@ -25,7 +25,7 @@ module camera {
 | [`og.Camera`](#record-Camera) | resource | The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation. |
 | [`og.OrbitCamera`](#record-OrbitCamera) | component | Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own. |
 | [`og.FollowCamera`](#record-FollowCamera) | component | Chases the entity carrying it with og.Camera: a third-person 3D view that eases towards a point offset from the entity and looks at it. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera. |
-| [`og.FirstPersonCamera`](#record-FirstPersonCamera) | component | Looks out of the entity carrying it: a first-person 3D view whose eye sits `eye` above the entity's position and turns by `yaw` about +Y and `pitch` up from the horizon (three.js PointerLockControls, with a pad's right stick). With `enabled` it turns by the mouse's movement while the pointer is locked (og.Pointers.movement; set og.PointerLock.wanted during play) and by the right stick of `gamepad`; otherwise the game sets yaw and pitch, as a lockstep game does from og.PlayerInput's aim. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera. |
+| [`og.FirstPersonCamera`](#record-FirstPersonCamera) | component | Looks out of the entity carrying it: a first-person 3D view whose eye sits `eye` above the entity's position and turns by `yaw` about +Y and `pitch` up from the horizon (three.js PointerLockControls, with a pad's right stick). With `enabled` it turns by the mouse's movement while the pointer is locked (og.Pointers.movement; set og.PointerLock.wanted during play) and by the right stick of `gamepad`; otherwise the game sets yaw and pitch, as a lockstep game does from og.PlayerInput's aim, with one per seat and `seat` set so each peer looks out of its own. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera. |
 | [`og.Follow2D`](#record-Follow2D) | component | Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime (smoothTimeY for y when set) and, with clamp, stays inside the bounds; lookAhead leads it in the direction the entity moves. The camera keeps its z, rotation and projection. Driven by og.systems.cameras; og.CameraZone entities then keep the view inside the zone the entity is in. |
 | [`og.CameraZone`](#record-CameraZone) | component | A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. The engine's og.camera system picks the zone after the game's systems (into og.Camera's zone fields); entering another zone scrolls the view across over the new zone's scrollTime, or jumps when it is 0. A zone smaller than the view centres it. |
 | [`og.CameraRail`](#record-CameraRail) | component | Moves og.Camera along a spline through p0 to p(points - 1) (Catmull-Rom, through every point) to the point nearest the entity carrying it, easing by smoothTime: a corridor, a side-scroller's track, a 3D chase on rails. A perspective camera looks at the entity; an orthographic one keeps its z and rotation. Applied by the engine's og.camera system after the game's systems. |
@@ -66,7 +66,7 @@ fn shake {
 }
 ```
 
-<sub>`api.ogt` line 3814</sub>
+<sub>`api.ogt` line 3826</sub>
 
 <a id="fn-punch"></a>
 
@@ -96,7 +96,7 @@ fn punch {
 }
 ```
 
-<sub>`api.ogt` line 3821</sub>
+<sub>`api.ogt` line 3833</sub>
 
 <a id="fn-kick"></a>
 
@@ -128,7 +128,7 @@ fn kick {
 }
 ```
 
-<sub>`api.ogt` line 3828</sub>
+<sub>`api.ogt` line 3840</sub>
 
 ## Components, resources and events
 
@@ -521,6 +521,7 @@ Token `og.FollowCamera`, registered under the schema name `og.FollowCamera`; its
 | `offset` | `Vector3` | `{ x: 0, y: 2, z: 6 }` | — | `m` | — | Where the camera sits relative to the entity: in the entity's own axes with followRotation, else in world axes. |
 | `lookOffset` | `Vector3` | `{ x: 0, y: 1, z: 0 }` | — | `m` | — | The point the camera looks at, relative to the entity's position. |
 | `followRotation` | `boolean` | `false` | — | — | — | Turn the offset with the entity's rotation, so the camera stays behind it. |
+| `seat` | `number` | `-1` | ≥ -1 | — | — | Online play: drive og.Camera only on the device that plays this seat (og.Lockstep.localPlayer while a room runs, else 0), so each peer's camera follows its own player while every peer holds the same components; -1, any device (the first carrier in query order drives it). |
 | `smoothTime` | `number` | `0.25` | ≥ 0 | `s` | tunable | Roughly how long the camera takes to catch up with a moved entity; 0 snaps it there every tick. |
 
 ```ogt
@@ -535,6 +536,10 @@ component FollowCamera {
     unit m
   }
   field followRotation bool "Turn the offset with the entity's rotation, so the camera stays behind it."
+  field seat i32 "Online play: drive og.Camera only on the device that plays this seat (og.Lockstep.localPlayer while a room runs, else 0), so each peer's camera follows its own player while every peer holds the same components; -1, any device (the first carrier in query order drives it)." {
+    default -1
+    min -1
+  }
   field smoothTime f32 "Roughly how long the camera takes to catch up with a moved entity; 0 snaps it there every tick." {
     default 0.25
     min 0
@@ -550,7 +555,7 @@ component FollowCamera {
 
 ### `og.FirstPersonCamera` (component)
 
-Looks out of the entity carrying it: a first-person 3D view whose eye sits `eye` above the entity's position and turns by `yaw` about +Y and `pitch` up from the horizon (three.js PointerLockControls, with a pad's right stick). With `enabled` it turns by the mouse's movement while the pointer is locked (og.Pointers.movement; set og.PointerLock.wanted during play) and by the right stick of `gamepad`; otherwise the game sets yaw and pitch, as a lockstep game does from og.PlayerInput's aim. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.
+Looks out of the entity carrying it: a first-person 3D view whose eye sits `eye` above the entity's position and turns by `yaw` about +Y and `pitch` up from the horizon (three.js PointerLockControls, with a pad's right stick). With `enabled` it turns by the mouse's movement while the pointer is locked (og.Pointers.movement; set og.PointerLock.wanted during play) and by the right stick of `gamepad`; otherwise the game sets yaw and pitch, as a lockstep game does from og.PlayerInput's aim, with one per seat and `seat` set so each peer looks out of its own. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.
 
 It moves only og.Camera and its own yaw and pitch: the game turns the body and walks it along `yaw` (forward is (-sin yaw, 0, -cos yaw)). Every angle is computed with deterministic arithmetic, so a replay looks the same way on every host.
 
@@ -566,12 +571,13 @@ Token `og.FirstPersonCamera`, registered under the schema name `og.FirstPersonCa
 | `sensitivity` | `number` | `0.0021` | ≥ 0 | `rad` | tunable | With enabled: the turn per CSS pixel of mouse movement while the pointer is locked (0.0021, about 0.12 degrees). |
 | `stickSpeed` | `number` | `2.6` | ≥ 0 | `radps` | tunable | With enabled: the turn per second at the right stick's full deflection (2.6, about 150 degrees). |
 | `gamepad` | `number` | `0` | ≤ 8 | — | — | With enabled: the pad whose right stick turns it, counted from 1; 0 every pad. |
+| `seat` | `number` | `-1` | ≥ -1 | — | — | Online play: drive og.Camera only on the device that plays this seat (og.Lockstep.localPlayer while a room runs, else 0), so each peer's camera follows its own player while every peer holds the same components; -1, any device (the first carrier in query order drives it). |
 | `invertY` | `boolean` | `false` | — | — | — | With enabled: moving the mouse or the stick up looks down. |
 | `enabled` | `boolean` | `true` | — | — | — | Turn by the mouse while the pointer is locked and by the right stick; false: the game sets yaw and pitch (a lockstep game, where both come from og.PlayerInput). |
 
 ```ogt
 component FirstPersonCamera {
-  doc "Looks out of the entity carrying it: a first-person 3D view whose eye sits `eye` above the entity's position and turns by `yaw` about +Y and `pitch` up from the horizon (three.js PointerLockControls, with a pad's right stick). With `enabled` it turns by the mouse's movement while the pointer is locked (og.Pointers.movement; set og.PointerLock.wanted during play) and by the right stick of `gamepad`; otherwise the game sets yaw and pitch, as a lockstep game does from og.PlayerInput's aim. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera."
+  doc "Looks out of the entity carrying it: a first-person 3D view whose eye sits `eye` above the entity's position and turns by `yaw` about +Y and `pitch` up from the horizon (three.js PointerLockControls, with a pad's right stick). With `enabled` it turns by the mouse's movement while the pointer is locked (og.Pointers.movement; set og.PointerLock.wanted during play) and by the right stick of `gamepad`; otherwise the game sets yaw and pitch, as a lockstep game does from og.PlayerInput's aim, with one per seat and `seat` set so each peer looks out of its own. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera."
   doc "It moves only og.Camera and its own yaw and pitch: the game turns the body and walks it along `yaw` (forward is (-sin yaw, 0, -cos yaw)). Every angle is computed with deterministic arithmetic, so a replay looks the same way on every host."
   field eye Vector3 "Where the eye sits relative to the entity's position, in world axes (a capsule's head height)." {
     default 0 1.6 0
@@ -613,6 +619,10 @@ component FirstPersonCamera {
   field gamepad u32 "With enabled: the pad whose right stick turns it, counted from 1; 0 every pad." {
     max 8
   }
+  field seat i32 "Online play: drive og.Camera only on the device that plays this seat (og.Lockstep.localPlayer while a room runs, else 0), so each peer's camera follows its own player while every peer holds the same components; -1, any device (the first carrier in query order drives it)." {
+    default -1
+    min -1
+  }
   field invertY bool "With enabled: moving the mouse or the stick up looks down."
   field enabled bool "Turn by the mouse while the pointer is locked and by the right stick; false: the game sets yaw and pitch (a lockstep game, where both come from og.PlayerInput)." {
     default true
@@ -620,7 +630,7 @@ component FirstPersonCamera {
 }
 ```
 
-<sub>`api.ogt` line 3467</sub>
+<sub>`api.ogt` line 3471</sub>
 
 <a id="record-Follow2D"></a>
 
@@ -641,6 +651,7 @@ Token `og.Follow2D`, registered under the schema name `og.Follow2D`; its value t
 | `lookAheadSmoothing` | `number` | `0.4` | ≥ 0 | `s` | tunable | Roughly how long the lead takes to turn when the entity does. |
 | `lead` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | read only | Controller state: the current lead. |
 | `last` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | read only, worldspace `root` | Controller state: the entity's position on the previous tick. |
+| `seat` | `number` | `-1` | ≥ -1 | — | — | Online play: drive og.Camera only on the device that plays this seat (og.Lockstep.localPlayer while a room runs, else 0), so each peer's camera follows its own player while every peer holds the same components; -1, any device (the first carrier in query order drives it). |
 | `clamp` | `boolean` | `false` | — | — | — | Keep the camera centre between boundsMin and boundsMax. |
 | `boundsMin` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | worldspace `world` | The smallest x and y the camera centre takes with clamp. |
 | `boundsMax` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | worldspace `world` | The largest x and y the camera centre takes with clamp. |
@@ -690,6 +701,10 @@ component Follow2D {
     readonly true
     unit m
   }
+  field seat i32 "Online play: drive og.Camera only on the device that plays this seat (og.Lockstep.localPlayer while a room runs, else 0), so each peer's camera follows its own player while every peer holds the same components; -1, any device (the first carrier in query order drives it)." {
+    default -1
+    min -1
+  }
   field clamp bool "Keep the camera centre between boundsMin and boundsMax."
   field boundsMin Vector2 "The smallest x and y the camera centre takes with clamp." {
     worldspace world
@@ -702,7 +717,7 @@ component Follow2D {
 }
 ```
 
-<sub>`api.ogt` line 3516</sub>
+<sub>`api.ogt` line 3524</sub>
 
 <a id="record-CameraZone"></a>
 
@@ -739,7 +754,7 @@ component CameraZone {
 }
 ```
 
-<sub>`api.ogt` line 3571</sub>
+<sub>`api.ogt` line 3583</sub>
 
 <a id="record-CameraRail"></a>
 
@@ -814,7 +829,7 @@ component CameraRail {
 }
 ```
 
-<sub>`api.ogt` line 3589</sub>
+<sub>`api.ogt` line 3601</sub>
 
 <a id="record-VirtualCamera"></a>
 
@@ -940,7 +955,7 @@ component VirtualCamera {
 }
 ```
 
-<sub>`api.ogt` line 3638</sub>
+<sub>`api.ogt` line 3650</sub>
 
 <a id="record-CameraBrain"></a>
 
@@ -1060,7 +1075,7 @@ resource CameraBrain {
 }
 ```
 
-<sub>`api.ogt` line 3725</sub>
+<sub>`api.ogt` line 3737</sub>
 
 <a id="record-CameraCut"></a>
 
@@ -1087,4 +1102,4 @@ event CameraCut {
 }
 ```
 
-<sub>`api.ogt` line 3805</sub>
+<sub>`api.ogt` line 3817</sub>

@@ -174,6 +174,7 @@
       }
     ],
     "added": [
+      {"member": "FollowCamera.seat, FirstPersonCamera.seat, Follow2D.seat", "summary": "A camera controller with a seat drives og.Camera only on the device that plays it (og.Lockstep.localPlayer in a running room, else 0): each peer's camera follows its own player while every peer holds the same components. -1, the default, keeps the first carrier."},
       {"member": "og.FirstPersonCamera, og.systems.cameras' og.firstPersonCamera", "summary": "A first-person camera controller: the eye sits above the entity and turns by yaw and pitch (pitch clamped), by the locked mouse and a pad's right stick, or by the game's own values (a lockstep game's og.PlayerInput aim)."},
       {"member": "InputDesc.player (og.net.submit, submitInput, command)", "summary": "Local multiplayer through og.PlayerInput: outside a room a game gives each local seat's input with player, so the same seat-reading systems play on one device and over a room; in a running room only this peer's own seat is accepted."},
       {"member": "InputBinding.gamepad", "summary": "A binding's pad controls read only one pad (1 to 8; 0 any): each local seat's actions on its own pad. Bindings on different pads never conflict, and a rebinding keeps its slot's pad."},

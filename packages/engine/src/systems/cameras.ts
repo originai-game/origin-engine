@@ -26,6 +26,21 @@ const Follow2D = T.Follow2D!;
 const Pointers = T.Pointers!;
 const PointerLock = T.PointerLock!;
 const Gamepad = T.Gamepad!;
+const Lockstep = T.Lockstep!;
+
+/** The seat this device plays: og.Lockstep.localPlayer while a room runs, else 0. */
+function deviceSeat(world: WorldImpl): number {
+  const l = world.resource(Lockstep);
+  if (!l.ok) return 0;
+  const v = l.value as unknown as { running: boolean; localPlayer: number };
+  return v.running ? v.localPlayer : 0;
+}
+
+/** The first row whose `seat` is -1 (any device) or this device's: -1 when none. */
+function driver(a: ArchetypeLike, seat: ArrayLike<number>, mine: number): number {
+  for (let i = 0; i < a.count; i++) if (seat[i]! < 0 || seat[i] === mine) return i;
+  return -1;
+}
 
 const PI = 3.141592653589793;
 const TAU = 2 * PI;
@@ -169,27 +184,29 @@ export const orbitCamera = defineSystem(
 /** og.followCamera: a smoothed chase camera. */
 export const followCamera = defineSystem(
   "og.followCamera",
-  { reads: [Transform, FollowCamera], writes: [Camera] },
+  { reads: [Transform, FollowCamera, Lockstep], writes: [Camera] },
   (q: QueryLike, time: { dt: number }, world: WorldImpl) => {
+    const mine = deviceSeat(world);
     for (const a of q.archetypes()) {
-      if (a.count === 0) continue;
       const f = a.column(FollowCamera);
+      const i = driver(a, f.seat, mine);
+      if (i < 0) continue;
       const tr = a.column(Transform);
       const p = tr.position;
       const r = tr.quaternion;
-      const pos = { x: p[0]!, y: p[1]!, z: p[2]! };
-      let offset = { x: f.offset[0]!, y: f.offset[1]!, z: f.offset[2]! };
-      if (f.followRotation[0]) offset = rotate({ x: r[0]!, y: r[1]!, z: r[2]!, w: r[3]! }, offset);
+      const pos = { x: p[i * 3]!, y: p[i * 3 + 1]!, z: p[i * 3 + 2]! };
+      let offset = { x: f.offset[i * 3]!, y: f.offset[i * 3 + 1]!, z: f.offset[i * 3 + 2]! };
+      if (f.followRotation[i]) offset = rotate({ x: r[i * 4]!, y: r[i * 4 + 1]!, z: r[i * 4 + 2]!, w: r[i * 4 + 3]! }, offset);
       const cam = camera(world);
       if (!cam) return;
-      const k = ease(time.dt, f.smoothTime[0]!);
+      const k = ease(time.dt, f.smoothTime[i]!);
       const c = cam.position;
       const eye = {
         x: c.x + (pos.x + offset.x - c.x) * k,
         y: c.y + (pos.y + offset.y - c.y) * k,
         z: c.z + (pos.z + offset.z - c.z) * k,
       };
-      aim(cam, eye, { x: pos.x + f.lookOffset[0]!, y: pos.y + f.lookOffset[1]!, z: pos.z + f.lookOffset[2]! });
+      aim(cam, eye, { x: pos.x + f.lookOffset[i * 3]!, y: pos.y + f.lookOffset[i * 3 + 1]!, z: pos.z + f.lookOffset[i * 3 + 2]! });
       return;
     }
   },
@@ -222,38 +239,43 @@ function rightStick(world: WorldImpl, gamepad: number): { x: number; y: number }
 /** og.firstPersonCamera: mouse-look while the pointer is locked and the right stick, or the game's own yaw and pitch. */
 export const firstPersonCamera = defineSystem(
   "og.firstPersonCamera",
-  { reads: [Transform, Pointers, PointerLock, Gamepad], writes: [FirstPersonCamera, Camera] },
+  { reads: [Transform, Pointers, PointerLock, Gamepad, Lockstep], writes: [FirstPersonCamera, Camera] },
   (q: QueryLike, time: { dt: number }, world: WorldImpl) => {
+    const mine = deviceSeat(world);
     for (const a of q.archetypes()) {
-      if (a.count === 0) continue;
       const f = a.column(FirstPersonCamera);
-      const p = a.column(Transform).position;
-      let yaw = f.yaw[0]!;
-      let pitch = f.pitch[0]!;
-      if (f.enabled[0]) {
-        const flip = f.invertY[0] ? -1 : 1;
-        const lock = world.resource(PointerLock);
-        const ptr = world.resource(Pointers);
-        if (lock.ok && ptr.ok && (lock.value as unknown as { locked: boolean }).locked) {
-          const m = (ptr.value as unknown as { movement: { x: number; y: number } }).movement;
-          yaw -= m.x * f.sensitivity[0]!;
-          pitch -= m.y * f.sensitivity[0]! * flip;
+      const i = driver(a, f.seat, mine);
+      if (i < 0) continue;
+      // Every row clamps and wraps its own angles (the same on every peer); only the device's turns by this device's mouse.
+      for (let r = 0; r < a.count; r++) {
+        let yaw = f.yaw[r]!;
+        let pitch = f.pitch[r]!;
+        if (r === i && f.enabled[r]) {
+          const flip = f.invertY[r] ? -1 : 1;
+          const lock = world.resource(PointerLock);
+          const ptr = world.resource(Pointers);
+          if (lock.ok && ptr.ok && (lock.value as unknown as { locked: boolean }).locked) {
+            const m = (ptr.value as unknown as { movement: { x: number; y: number } }).movement;
+            yaw -= m.x * f.sensitivity[r]!;
+            pitch -= m.y * f.sensitivity[r]! * flip;
+          }
+          const stick = rightStick(world, f.gamepad[r]!);
+          const turn = f.stickSpeed[r]! * time.dt;
+          yaw -= stick.x * turn;
+          pitch -= stick.y * turn * flip;
         }
-        const stick = rightStick(world, f.gamepad[0]!);
-        const turn = f.stickSpeed[0]! * time.dt;
-        yaw -= stick.x * turn;
-        pitch -= stick.y * turn * flip;
+        yaw -= Math.floor((yaw + PI) / TAU) * TAU;
+        pitch = clamp(pitch, f.minPitch[r]!, f.maxPitch[r]!);
+        f.yaw[r] = yaw;
+        f.pitch[r] = pitch;
       }
-      yaw -= Math.floor((yaw + PI) / TAU) * TAU;
-      pitch = clamp(pitch, f.minPitch[0]!, f.maxPitch[0]!);
-      f.yaw[0] = yaw;
-      f.pitch[0] = pitch;
       const cam = camera(world);
       if (!cam) return;
+      const p = a.column(Transform).position;
       // rotation = Ry(yaw) * Rx(pitch), from half angles.
-      const [sy, cy] = sincos(yaw / 2);
-      const [sp, cp] = sincos(pitch / 2);
-      cam.position = { x: p[0]! + f.eye[0]!, y: p[1]! + f.eye[1]!, z: p[2]! + f.eye[2]! };
+      const [sy, cy] = sincos(f.yaw[i]! / 2);
+      const [sp, cp] = sincos(f.pitch[i]! / 2);
+      cam.position = { x: p[i * 3]! + f.eye[i * 3]!, y: p[i * 3 + 1]! + f.eye[i * 3 + 1]!, z: p[i * 3 + 2]! + f.eye[i * 3 + 2]! };
       cam.quaternion = { x: cy * sp, y: sy * cp, z: -sy * sp, w: cy * cp };
       return;
     }
@@ -263,12 +285,36 @@ export const firstPersonCamera = defineSystem(
 /** og.follow2D: a dead-zone follower in the xy plane, with look-ahead and per-axis smoothing. */
 export const follow2D = defineSystem(
   "og.follow2D",
-  { reads: [Transform], writes: [Follow2D, Camera] },
+  { reads: [Transform, Lockstep], writes: [Follow2D, Camera] },
   (q: QueryLike, time: { dt: number }, world: WorldImpl) => {
+    const mine = deviceSeat(world);
     for (const a of q.archetypes()) {
-      if (a.count === 0) continue;
       const f = a.column(Follow2D);
+      const i = driver(a, f.seat, mine);
+      if (i < 0) continue;
       const p = a.column(Transform).position;
+      // Every row keeps its own lead (world state, the same on every peer); the device's row moves the camera.
+      const last = f.last;
+      const lead = f.lead;
+      const max = f.lookAheadMax;
+      for (let r = 0; r < a.count; r++) {
+        const px = p[r * 3]!;
+        const py = p[r * 3 + 1]!;
+        const la = f.lookAhead[r]!;
+        if (la > 0 && time.dt > 0) {
+          const fresh = last[r * 2] === 0 && last[r * 2 + 1] === 0;
+          const vx = fresh ? 0 : (px - last[r * 2]!) / time.dt;
+          const vy = fresh ? 0 : (py - last[r * 2 + 1]!) / time.dt;
+          const k = ease(time.dt, f.lookAheadSmoothing[r]!);
+          lead[r * 2] = lead[r * 2]! + (clamp(vx * la, -max[r * 2]!, max[r * 2]!) - lead[r * 2]!) * k;
+          lead[r * 2 + 1] = lead[r * 2 + 1]! + (clamp(vy * la, -max[r * 2 + 1]!, max[r * 2 + 1]!) - lead[r * 2 + 1]!) * k;
+        } else {
+          lead[r * 2] = 0;
+          lead[r * 2 + 1] = 0;
+        }
+        last[r * 2] = px;
+        last[r * 2 + 1] = py;
+      }
       const cam = camera(world);
       if (!cam) return;
       const c = cam.position;
@@ -276,35 +322,15 @@ export const follow2D = defineSystem(
         const d = target - cur;
         return d > dead ? target - dead : d < -dead ? target + dead : cur;
       };
-      // Look-ahead: lead by the entity's velocity times lookAhead, eased.
-      const last = f.last;
-      const lead = f.lead;
-      const px = p[0]!;
-      const py = p[1]!;
-      const la = f.lookAhead[0]!;
-      if (la > 0 && time.dt > 0) {
-        const fresh = last[0] === 0 && last[1] === 0;
-        const vx = fresh ? 0 : (px - last[0]!) / time.dt;
-        const vy = fresh ? 0 : (py - last[1]!) / time.dt;
-        const max = f.lookAheadMax;
-        const k = ease(time.dt, f.lookAheadSmoothing[0]!);
-        lead[0] = lead[0]! + (clamp(vx * la, -max[0]!, max[0]!) - lead[0]!) * k;
-        lead[1] = lead[1]! + (clamp(vy * la, -max[1]!, max[1]!) - lead[1]!) * k;
-      } else {
-        lead[0] = 0;
-        lead[1] = 0;
-      }
-      last[0] = px;
-      last[1] = py;
-      const st = f.smoothTime[0]!;
-      const sy = f.smoothTimeY[0]!;
+      const st = f.smoothTime[i]!;
+      const sy = f.smoothTimeY[i]!;
       const kx = ease(time.dt, st);
       const ky = ease(time.dt, sy >= 0 ? sy : st);
-      let x = c.x + (goal(c.x, px + f.offset[0]! + lead[0]!, f.deadZone[0]!) - c.x) * kx;
-      let y = c.y + (goal(c.y, py + f.offset[1]! + lead[1]!, f.deadZone[1]!) - c.y) * ky;
-      if (f.clamp[0]) {
-        x = clamp(x, f.boundsMin[0]!, Math.max(f.boundsMin[0]!, f.boundsMax[0]!));
-        y = clamp(y, f.boundsMin[1]!, Math.max(f.boundsMin[1]!, f.boundsMax[1]!));
+      let x = c.x + (goal(c.x, p[i * 3]! + f.offset[i * 2]! + lead[i * 2]!, f.deadZone[i * 2]!) - c.x) * kx;
+      let y = c.y + (goal(c.y, p[i * 3 + 1]! + f.offset[i * 2 + 1]! + lead[i * 2 + 1]!, f.deadZone[i * 2 + 1]!) - c.y) * ky;
+      if (f.clamp[i]) {
+        x = clamp(x, f.boundsMin[i * 2]!, Math.max(f.boundsMin[i * 2]!, f.boundsMax[i * 2]!));
+        y = clamp(y, f.boundsMin[i * 2 + 1]!, Math.max(f.boundsMin[i * 2 + 1]!, f.boundsMax[i * 2 + 1]!));
       }
       if (x !== c.x || y !== c.y) cam.position = { x, y, z: c.z };
       return;

@@ -100,7 +100,11 @@ is one line here, written at the merge that changes
   pad (no cross-seat conflicts; rebinding keeps the pad). New
   `og.FirstPersonCamera` in `og.systems.cameras`: an eye above the entity
   turned by the locked mouse and the right stick, or by the game's yaw and
-  pitch. Additive; no world changes for games that use none of them.
+  pitch. Camera controllers (`og.FollowCamera`, `og.FirstPersonCamera`,
+  `og.Follow2D`) take a `seat`: each peer's camera follows its own player
+  while the components stay identical across peers. Follow2D now keeps
+  every carrier's look-ahead, not only the driving one's. Additive; no
+  world changes for games that use none of them.
 
 - **A flat look's mesh textures keep their patches again.** The flat
   abstraction of a 3D look's colour textures (two Kuwahara passes, then

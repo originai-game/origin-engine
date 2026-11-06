@@ -14,7 +14,7 @@ module systems {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 25793</sub>
+<sub>`api.ogt` line 25805</sub>
 
 ## Contents
 
@@ -40,4 +40,4 @@ const cameras: readonly System[]
 value cameras List.System "The camera controllers, in this order: og.orbitCamera (og.OrbitCamera), og.followCamera (og.FollowCamera), og.firstPersonCamera (og.FirstPersonCamera) and og.follow2D (og.Follow2D). Each moves og.Camera only while an entity carries its component. List them before the game's systems that read og.Camera: `systems: [...og.systems.cameras, ...yours]`."
 ```
 
-<sub>`api.ogt` line 25797</sub>
+<sub>`api.ogt` line 25809</sub>
