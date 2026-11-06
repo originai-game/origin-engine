@@ -2136,8 +2136,14 @@ the person's device through Player telemetry and from `og run --device`
 (safaridriver / Chrome DevTools on a paired phone, timing the publish build)
 when the person is present.
 
-`og session [project]` owns one local host per worktree. `og test` keeps
-each file's assertion harness independent, including with `--jobs`, but
+Headless `og run` and `og test` start a local host automatically when none
+is listening. Concurrent starters converge on the same inherited file lock;
+they wait up to ten seconds for the socket before sending any command.
+`OG_SESSION=0` keeps the fresh-process path. `og session [project]` runs the
+same supervisor explicitly in the foreground. A session owns one host per
+worktree and exits after five idle minutes, or after one idle second when
+free memory is below 256 MiB. Gaps between active requests do not retire it.
+`og test` keeps each file's assertion harness independent, including with `--jobs`, but
 submits its game runs, repeats and `then` steps to that host in sequence.
 Each admission freezes its inputs; each run reloads game declarations and
 starts a fresh world, platform fake and audio sink. Only `store: "keep"`

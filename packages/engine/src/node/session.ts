@@ -192,7 +192,8 @@ const stop = (code = 0) => {
 process.on("SIGTERM", () => stop());
 process.on("SIGINT", () => stop());
 setInterval(() => {
-  if (pending === 0 && (performance.now() - idleSince > 5 * 60_000 || freemem() < 256 * 1024 * 1024)) {
+  const idle = performance.now() - idleSince;
+  if (pending === 0 && (idle > 5 * 60_000 || (idle > 1000 && freemem() < 256 * 1024 * 1024))) {
     log("og session: exiting on idle timeout or low memory\n");
     stop();
   }

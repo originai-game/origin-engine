@@ -6,6 +6,7 @@ import { createConnection, createServer } from "node:net";
 import { bundleGame } from "../src/node/build.ts";
 import { run } from "../src/node/run.ts";
 import { runInSession } from "../src/node/session-client.ts";
+import { ogBin } from "./support/og-bin.ts";
 
 declare const Bun: {
   spawnSync(args: string[], options: { stdout: "pipe"; stderr: "pipe" }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
@@ -203,10 +204,13 @@ test.skipIf(process.platform === "win32")("resident recovers from exceptions and
   const path = join(dir, "host.sock");
   const entry = join(dir, "game.ts");
   const engine = resolve(import.meta.dir!, "../src/index.ts");
-  const host = Bun.spawn(["bun", resolve(import.meta.dir!, "../src/node/session.ts"), path, "test"], { env: process.env, stdout: "ignore", stderr: "pipe" });
+  const memory = join(dir, "memory.ts");
+  writeFileSync(memory, 'import { mock } from "bun:test"; import * as os from "node:os"; mock.module("node:os", () => ({ ...os, freemem: () => 0 }));');
+  const host = Bun.spawn(["bun", "--preload", memory, resolve(import.meta.dir!, "../src/node/session.ts"), path, "test"], { env: process.env, stdout: "ignore", stderr: "pipe" });
   const argv = ["--entry", entry, "--ticks", "1", "--no-render", "--json"];
   try {
-    expect(new TextDecoder().decode((await host.stderr.getReader().read()).value)).toContain("listening");
+    const reader = host.stderr.getReader();
+    expect(new TextDecoder().decode((await reader.read()).value)).toContain("listening");
     writeFileSync(entry, 'throw new Error("module exception");');
     const failed = await runInSession(argv, path, "test");
     expect(failed?.exitCode).toBe(1);
@@ -220,6 +224,7 @@ let starts = 0; export default og.game({start(world){starts++;world.spawn({name:
     const results = [];
     for (let i = 2; i < 127; i++) {
       const result = await runInSession(argv, path, "test");
+      if (result === null) throw new Error(`host stopped at admission ${i}: ${new TextDecoder().decode((await reader.read()).value)}`);
       const summary = JSON.parse(result?.stdout.trim() ?? "null");
       results.push([result?.exitCode, summary.entities, summary.facts.starts]);
     }
@@ -306,6 +311,41 @@ check(run,t){t.equal(run.entities,${entities});t.equal(run.hashes[0],run.hashes[
   } finally {
     if (host.exitCode === null) host.kill("SIGTERM");
     await host.exited;
+    rmSync(dir, { recursive: true, force: true });
+  }
+}, 30_000);
+
+test.skipIf(process.platform === "win32")("CLI races auto-start one resident for bare entries and preserves the cold opt-out", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "og-session-autostart-"));
+  const entry = join(dir, "main.ts");
+  const pidFile = join(dir, "host.pid");
+  const env = { ...process.env, OG_RENDERER: "none", OG_ENGINE_PACKAGE: resolve(import.meta.dir!, ".."), OG_SESSION: "1" };
+  writeFileSync(entry, `import { og } from "@origingame/engine";
+import { writeFileSync } from "node:fs";
+writeFileSync(${JSON.stringify(pidFile)},String(process.pid));
+let starts=0;export default og.game({start(w){starts++;w.spawn({name:"fresh"});},facts(){return {pid:process.pid,starts};}});`);
+  const invoke = async (cold = false) => {
+    const child = Bun.spawn([ogBin(), "run", entry, "--headless", "--no-check", "--no-render", "--ticks", "2", "--json"],
+      { env: { ...env, ...(cold ? { OG_SESSION: "0" } : {}) }, stdout: "pipe", stderr: "pipe" });
+    const [code, stdout, stderr] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
+    expect(code, stdout + stderr).toBe(0);
+    expect(stderr).not.toContain("running alone");
+    return JSON.parse(stdout.trim().split("\n").at(-1)!);
+  };
+  let hostPid: number | undefined;
+  try {
+    const pair = await Promise.all([invoke(), invoke()]);
+    hostPid = pair[0].facts.pid;
+    expect(pair[1].facts).toEqual(pair[0].facts);
+    expect(pair[0].facts.starts).toBe(1);
+    expect(pair[0].hash).toBe(pair[1].hash);
+    const later = await invoke();
+    expect(later.facts.pid).toBe(hostPid);
+    const cold = await invoke(true);
+    expect(cold.facts.pid).not.toBe(hostPid);
+    expect(cold.hash).toBe(later.hash);
+  } finally {
+    if (hostPid) Bun.spawnSync(["kill", "-TERM", String(hostPid)], { stdout: "pipe", stderr: "pipe" });
     rmSync(dir, { recursive: true, force: true });
   }
 }, 30_000);

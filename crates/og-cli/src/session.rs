@@ -89,12 +89,61 @@ mod local {
         Rejected { reason: String },
     }
 
+    pub(super) fn connect(project: &Path) -> Result<UnixStream, String> {
+        use std::os::unix::process::CommandExt;
+        use std::time::{Duration, Instant};
+        let socket = directory(project).join("host.sock");
+        match UnixStream::connect(&socket) {
+            Ok(stream) => return Ok(stream),
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    std::io::ErrorKind::NotFound | std::io::ErrorKind::ConnectionRefused
+                ) => {}
+            Err(e) => return Err(e.to_string()),
+        }
+        // Start races converge on the supervisor's inherited file lock.
+        // Detached descriptors keep a caller's output pipe from staying open.
+        let mut child = Command::new(std::env::current_exe().map_err(|e| e.to_string())?)
+            .arg("session")
+            .arg(project)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .process_group(0)
+            .spawn()
+            .map_err(|e| format!("cannot start session: {e}"))?;
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            if let Ok(stream) = UnixStream::connect(&socket) {
+                // Reap this supervisor if the caller is long lived; it is
+                // otherwise adopted by the OS when the CLI exits.
+                std::thread::spawn(move || {
+                    let _ = child.wait();
+                });
+                return Ok(stream);
+            }
+            let _ = child.try_wait().map_err(|e| e.to_string())?;
+            if Instant::now() >= deadline {
+                std::thread::spawn(move || {
+                    let _ = child.wait();
+                });
+                return Err(
+                    "session did not become ready within 10 seconds; no command was sent".into(),
+                );
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+
     pub fn try_run(
         project: &Path,
         package: &Path,
         command: &Command,
     ) -> Result<Option<ExitCode>, String> {
-        if std::env::var("OG_SESSION").as_deref() == Ok("0") {
+        if std::env::var("OG_SESSION").as_deref() == Ok("0")
+            || !package.join("src/node/session.ts").is_file()
+        {
             return Ok(None);
         }
         let argv = command
@@ -107,18 +156,7 @@ mod local {
         }) {
             return Ok(None);
         }
-        let mut socket = match UnixStream::connect(directory(project).join("host.sock")) {
-            Ok(socket) => socket,
-            Err(error)
-                if matches!(
-                    error.kind(),
-                    std::io::ErrorKind::NotFound | std::io::ErrorKind::ConnectionRefused
-                ) =>
-            {
-                return Ok(None);
-            }
-            Err(error) => return Err(error.to_string()),
-        };
+        let mut socket = connect(project)?;
         let call = serde_json::json!({
             "build": build(package)?,
             "cwd": std::env::current_dir().map_err(|e| e.to_string())?,
@@ -166,9 +204,13 @@ mod local {
             [path] if !path.starts_with('-') => path,
             _ => return Err("usage: og session [project]".into()),
         };
-        let project = Project::open(Path::new(path))?;
-        let package = project::engine_package(Some(&project.root)).ok_or(project::NO_ENGINE)?;
-        let dir = directory(&project.root);
+        let root = if Path::new(path).is_dir() {
+            Path::new(path).canonicalize().map_err(|e| e.to_string())?
+        } else {
+            Project::open(Path::new(path))?.root
+        };
+        let package = project::engine_package(Some(&root)).ok_or(project::NO_ENGINE)?;
+        let dir = directory(&root);
         fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
         fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).map_err(|e| e.to_string())?;
         let lock: File = OpenOptions::new()
@@ -231,7 +273,10 @@ pub fn playtest_args(project: &Path, package: &Path) -> Result<Vec<std::ffi::OsS
     #[cfg(unix)]
     {
         let socket = local::directory(project).join("host.sock");
-        if std::env::var("OG_SESSION").as_deref() != Ok("0") && socket.exists() {
+        if std::env::var("OG_SESSION").as_deref() != Ok("0")
+            && package.join("src/node/session.ts").is_file()
+        {
+            drop(local::connect(project)?);
             return Ok(vec![
                 "--session-socket".into(),
                 socket.into_os_string(),
