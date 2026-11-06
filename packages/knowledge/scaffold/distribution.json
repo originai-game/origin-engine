@@ -99,6 +99,27 @@
       "sha256": "08fc5f94045344b469f4757650f54c4afdc11725e0d32958fe989ceefe852cd2",
       "licence": "unrecorded: add it to the template's LICENSES.md",
       "source": "templates/game/references/metal/intro-8.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
+    },
+    {
+      "path": "references/metal/smoke-first-person-3d.png",
+      "bytes": 109179,
+      "sha256": "3419da35d93782eca16cf763dabbebeaee6fb00f817fe106cd90e51751e63640",
+      "licence": "unrecorded: add it to the template's LICENSES.md",
+      "source": "templates/game/references/metal/smoke-first-person-3d.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
+    },
+    {
+      "path": "references/metal/smoke-isometric-2.5d.png",
+      "bytes": 107082,
+      "sha256": "fad0fabc4222e4e6103ba2dcfbc6e96b4276eb80ad8764983ebaa63febc5522a",
+      "licence": "unrecorded: add it to the template's LICENSES.md",
+      "source": "templates/game/references/metal/smoke-isometric-2.5d.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
+    },
+    {
+      "path": "references/metal/smoke-third-person-3d.png",
+      "bytes": 122415,
+      "sha256": "4d97ec3b10ad0839ce18d64abcf1a82d9c088c4aa2cd7be775b52a9c45d042e2",
+      "licence": "unrecorded: add it to the template's LICENSES.md",
+      "source": "templates/game/references/metal/smoke-third-person-3d.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
     }
   ]
 }
