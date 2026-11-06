@@ -134,6 +134,14 @@ pub(crate) fn module_sources(shader: &MaterialShader, planar: bool) -> (String, 
             )
         }
         ShaderMode::Full { lit } => (lit_source(shader, lit), shadow_source(shader)),
+        // Only sprites run a sprite shader; a mesh draws plain.
+        ShaderMode::Sprite => {
+            let hooks = crate::hooks::default_hooks();
+            (
+                crate::lit_source_with(&hooks, planar),
+                crate::shadow_source(&hooks),
+            )
+        }
     }
 }
 

@@ -14,4 +14,4 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Navigation "A grid, a navmesh or a flow field agents plan on."
 ```
 
-<sub>`api.ogt` line 13540</sub>
+<sub>`api.ogt` line 13541</sub>

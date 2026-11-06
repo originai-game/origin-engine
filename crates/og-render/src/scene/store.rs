@@ -155,6 +155,7 @@ impl RenderScene {
             sprite_arrays: Vec::new(),
             sprite_shadows: Vec::new(),
             sprite_outlines: Vec::new(),
+            sprite_shading: Vec::new(),
             texture_filters: Vec::new(),
             texture_sizes: Default::default(),
             texture_normals: Vec::new(),
@@ -1886,7 +1887,8 @@ impl RenderScene {
         true
     }
 
-    /// `material`'s shader and parameters.
+    /// `material`'s shader and parameters as a mesh draws it: none for a
+    /// shader of [`crate::ShaderMode::Sprite`], which only sprites run.
     pub fn material_shader(
         &self,
         material: MaterialHandle,
@@ -1895,6 +1897,30 @@ impl RenderScene {
             .get(material.index())
             .copied()
             .flatten()
+            .filter(|(s, _)| self.shaders[s.index()].mode != crate::ShaderMode::Sprite)
+    }
+
+    /// `material`'s shader and parameters as a sprite draws it
+    /// ([`crate::SpriteShading`]): a shader of hooks or of
+    /// [`crate::ShaderMode::Sprite`], none for a full shader.
+    pub fn sprite_shader(
+        &self,
+        material: MaterialHandle,
+    ) -> Option<(ShaderHandle, [[f32; 4]; crate::MAX_SHADER_PARAMS])> {
+        self.material_shaders
+            .get(material.index())
+            .copied()
+            .flatten()
+            .filter(|_| {
+                self.material_slots
+                    .live(material.index(), material.generation())
+            })
+            .filter(|(s, _)| {
+                matches!(
+                    self.shaders[s.index()].mode,
+                    crate::ShaderMode::Hooks | crate::ShaderMode::Sprite
+                )
+            })
     }
 
     pub fn mesh_count(&self) -> usize {

@@ -20,7 +20,7 @@ module load {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 7912</sub>
+<sub>`api.ogt` line 7913</sub>
 
 ## Contents
 
@@ -121,7 +121,7 @@ column TextureArray {
 }
 ```
 
-<sub>`api.ogt` line 7923</sub>
+<sub>`api.ogt` line 7924</sub>
 
 ```ogt
 column Asset {
@@ -132,7 +132,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 7930</sub>
+<sub>`api.ogt` line 7931</sub>
 
 ```ogt
 column Sound {
@@ -143,7 +143,7 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 7937</sub>
+<sub>`api.ogt` line 7938</sub>
 
 ```ogt
 column Font {
@@ -154,7 +154,7 @@ column Font {
 }
 ```
 
-<sub>`api.ogt` line 7944</sub>
+<sub>`api.ogt` line 7945</sub>
 
 ```ogt
 column Style {
@@ -165,4 +165,4 @@ column Style {
 }
 ```
 
-<sub>`api.ogt` line 7951</sub>
+<sub>`api.ogt` line 7952</sub>

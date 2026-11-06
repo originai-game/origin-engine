@@ -23,7 +23,7 @@ module motion {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 26762</sub>
+<sub>`api.ogt` line 26763</sub>
 
 ## Contents
 
@@ -74,4 +74,4 @@ column MotionGoalKind {
 }
 ```
 
-<sub>`api.ogt` line 26778</sub>
+<sub>`api.ogt` line 26779</sub>

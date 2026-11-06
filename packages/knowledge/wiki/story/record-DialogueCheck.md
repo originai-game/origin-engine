@@ -29,4 +29,4 @@ event DialogueCheck {
 }
 ```
 
-<sub>`api.ogt` line 14487</sub>
+<sub>`api.ogt` line 14488</sub>

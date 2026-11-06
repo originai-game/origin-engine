@@ -21,7 +21,10 @@
 //! binding contract (`custom.rs`) instead of the hooks, lit by the frame's
 //! lights (`lit`, the default) or drawn as returned (`unlit`); its shadow
 //! casters' module is compiled too. `mode hooks` (the
-//! default) is the hooks.
+//! default) is the hooks. `mode sprite` is the hooks of the sprite shader
+//! only (og-render `sprite_hooks.rs`): the code may call
+//! `sprite_texel(uv)`, and the cook compiles the sprite module with it; a
+//! mesh given such a shader draws plain.
 
 use og_core::ogt::{Document, Entry, Number, Value};
 use og_render::{MaterialShader, ParamKind, ShaderMode, ShaderParam};
@@ -159,9 +162,10 @@ fn parse_entries(
                         ShaderMode::Full { lit: true }
                     }
                     (Some("full"), Some("unlit"), 2) => ShaderMode::Full { lit: false },
+                    (Some("sprite"), None, 1) => ShaderMode::Sprite,
                     _ => {
                         return Err(format!(
-                            "line {line}: `mode hooks` or `mode full [lit|unlit]`"
+                            "line {line}: `mode hooks`, `mode sprite` or `mode full [lit|unlit]`"
                         ));
                     }
                 };
@@ -231,12 +235,17 @@ pub fn shader_text(shader: &MaterialShader) -> String {
 
 fn entries_text(ty: &str, code: &str, params: &[ShaderParam], mode: ShaderMode) -> String {
     let mut doc = Document::new(ty, 1);
-    if let ShaderMode::Full { lit } = mode {
-        doc.body.entries.push(
+    match mode {
+        ShaderMode::Full { lit } => doc.body.entries.push(
             Entry::new("mode")
                 .with(Value::Word("full".into()))
                 .with(Value::Word(if lit { "lit" } else { "unlit" }.into())),
-        );
+        ),
+        ShaderMode::Sprite => doc
+            .body
+            .entries
+            .push(Entry::new("mode").with(Value::Word("sprite".into()))),
+        ShaderMode::Hooks => {}
     }
     doc.body
         .entries

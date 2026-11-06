@@ -34,4 +34,4 @@ fn abilitySlot {
 }
 ```
 
-<sub>`api.ogt` line 21823</sub>
+<sub>`api.ogt` line 21824</sub>

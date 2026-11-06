@@ -43,4 +43,4 @@ struct GestureSpec {
 }
 ```
 
-<sub>`api.ogt` line 20588</sub>
+<sub>`api.ogt` line 20589</sub>

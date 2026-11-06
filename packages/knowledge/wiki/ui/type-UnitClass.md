@@ -27,4 +27,4 @@ enum UnitClass {
 }
 ```
 
-<sub>`api.ogt` line 21920</sub>
+<sub>`api.ogt` line 21921</sub>

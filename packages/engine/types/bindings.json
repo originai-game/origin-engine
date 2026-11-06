@@ -1976,6 +1976,11 @@
           "name": "paletteRow",
           "column": "u32",
           "default": 0
+        },
+        {
+          "name": "material",
+          "column": "Material",
+          "default": 0
         }
       ]
     },

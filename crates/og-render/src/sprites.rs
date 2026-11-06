@@ -158,6 +158,9 @@ pub(crate) const SPRITE_ARRAY_LAYOUT: wgpu::VertexBufferLayout<'static> = SPRITE
 pub(crate) enum RunSource {
     /// A sprite texture (`None`: solid white) and its blend.
     Sprite(SpriteBlend, Option<TextureHandle>),
+    /// As `Sprite`, drawn with a material's shader hooks
+    /// ([`crate::SpriteShading`], `sprite_hooks.rs`).
+    Shaded(SpriteBlend, Option<TextureHandle>, crate::MaterialHandle),
     /// A sprite-mode particle system simulated in compute: range `n` of
     /// [`GpuSprites`], whose instances `particles_sprites.wgsl` writes into
     /// its own buffer (`first`/`count` index that buffer); drawn as the
@@ -712,6 +715,22 @@ pub(crate) fn build<'a>(
         }
         lines.insert(o.sprite, o);
     }
+    // Material shaders by sprite index (the last entry wins); a material
+    // without a shader sprites run draws plain.
+    let mut shading: HashMap<u32, crate::MaterialHandle> = HashMap::new();
+    for m in &scene.sprite_shading {
+        if m.sprite as usize >= scene.sprites.len() {
+            return Err(RenderError::InvalidHandle(format!(
+                "sprite_shading: sprite {} of {}",
+                m.sprite,
+                scene.sprites.len()
+            )));
+        }
+        match scene.sprite_shader(m.material) {
+            Some(_) => shading.insert(m.sprite, m.material),
+            None => shading.remove(&m.sprite),
+        };
+    }
     let mut shadow_count = 0u32;
     let mut culled = 0u32;
     let outlines: HashMap<u32, &crate::TextOutline> =
@@ -771,7 +790,13 @@ pub(crate) fn build<'a>(
         // A billboard of its own depth sorts with the transparent meshes
         // (`billboards`); with a key, or untonemapped (its cover pass is
         // the sprite order's), it keeps the layer order.
-        let board = faced && tone_mapped && !order.contains_key(&(i as u32));
+        let shaded = shading.get(&(i as u32)).copied();
+        let board = faced && tone_mapped && shaded.is_none() && !order.contains_key(&(i as u32));
+        // Its texture, with the material's hooks when it has one.
+        let plain = |blend| match shaded {
+            Some(m) => RunSource::Shaded(blend, s.texture, m),
+            None => RunSource::Sprite(blend, s.texture),
+        };
         // A billboard sorts back to front from the eye within its layer.
         let key = match order.get(&(i as u32)) {
             Some(&k) => k,
@@ -801,7 +826,7 @@ pub(crate) fn build<'a>(
                     shadow.layer = layer;
                     RunSource::Array(SpriteBlend::Alpha, array)
                 }
-                None => RunSource::Sprite(SpriteBlend::Alpha, s.texture),
+                None => plain(SpriteBlend::Alpha),
             };
             let cells = match on.bend {
                 // Bent over the ground: one instance per cell of the quad.
@@ -859,13 +884,7 @@ pub(crate) fn build<'a>(
             ));
             continue;
         }
-        keyed.push((
-            s.layer,
-            key,
-            RunSource::Sprite(blend, s.texture),
-            !tone_mapped,
-            inst,
-        ));
+        keyed.push((s.layer, key, plain(blend), !tone_mapped, inst));
     }
     let sprite_boards = boards.len() as u32;
     for e in extra.iter().filter(|e| e.layers & mask != 0) {

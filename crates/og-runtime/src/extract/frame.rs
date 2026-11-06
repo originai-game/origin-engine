@@ -59,6 +59,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.sprite_arrays.clear();
     scene.sprite_shadows.clear();
     scene.sprite_outlines.clear();
+    scene.sprite_shading.clear();
     scene.text_outlines.clear();
     scene.tile_layers.clear();
     scene.trail_layers.clear();

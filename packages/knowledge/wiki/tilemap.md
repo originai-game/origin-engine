@@ -29,7 +29,7 @@ module tilemap {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 12559</sub>
+<sub>`api.ogt` line 12560</sub>
 
 ## Contents
 
@@ -74,4 +74,4 @@ column TilemapAsset {
 }
 ```
 
-<sub>`api.ogt` line 12569</sub>
+<sub>`api.ogt` line 12570</sub>

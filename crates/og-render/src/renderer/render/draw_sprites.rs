@@ -131,6 +131,45 @@ impl Renderer {
                 current = None;
                 continue;
             }
+            // A sprite drawn with a material shader (prepared before the
+            // pass); while its pipelines are not ready, or when the device
+            // refused them, it draws plain.
+            let source = match source {
+                RunSource::Shaded(blend, t, m) => {
+                    let hooks = self.sprite_hooks.as_ref();
+                    let shader = scene.sprite_shader(m).map(|(s, _)| s.index());
+                    let pipeline = hooks
+                        .zip(shader)
+                        .and_then(|(h, s)| h.pipeline(s, blend, tone_mapped));
+                    if let (Some(pipeline), Some(params)) =
+                        (pipeline, hooks.and_then(|h| h.group(m.index())))
+                    {
+                        pass.set_pipeline(pipeline);
+                        pass.set_bind_group(
+                            1,
+                            match t {
+                                None => &self.white_sprite_group,
+                                Some(t) => self.cache.sprite_groups[t.index()]
+                                    .as_ref()
+                                    .expect("made before the pass"),
+                            },
+                            &[],
+                        );
+                        pass.set_bind_group(3, params, &[]);
+                        let start = run.first as u64 * SPRITE_STRIDE;
+                        pass.set_vertex_buffer(
+                            0,
+                            instances.slice(start..start + run.count as u64 * SPRITE_STRIDE),
+                        );
+                        pass.draw(0..6, 0..run.count);
+                        draws += 1;
+                        current = None;
+                        continue;
+                    }
+                    RunSource::Sprite(blend, t)
+                }
+                source => source,
+            };
             if let RunSource::Sprite(blend, t) = source
                 && let Some(group) = self.normal_group(scene, t)
             {
@@ -153,6 +192,7 @@ impl Renderer {
                 | RunSource::Mesh(_)
                 | RunSource::Tiles(_)
                 | RunSource::Array(..)
+                | RunSource::Shaded(..)
                 | RunSource::Particles(_) => {
                     unreachable!("drawn above")
                 }

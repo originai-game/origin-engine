@@ -594,7 +594,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 6406</sub>
+<sub>`api.ogt` line 6407</sub>
 
 ```ogt
 column Shader {
@@ -605,7 +605,7 @@ column Shader {
 }
 ```
 
-<sub>`api.ogt` line 6463</sub>
+<sub>`api.ogt` line 6464</sub>
 
 ```ogt
 column LineMode {
@@ -616,7 +616,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 7256</sub>
+<sub>`api.ogt` line 7257</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -627,7 +627,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 7466</sub>
+<sub>`api.ogt` line 7467</sub>
 
 ```ogt
 column RenderTarget {
@@ -638,7 +638,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 7475</sub>
+<sub>`api.ogt` line 7476</sub>
 
 ```ogt
 column Post {
@@ -649,7 +649,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 7611</sub>
+<sub>`api.ogt` line 7612</sub>
 
 ## Constants
 
@@ -671,22 +671,22 @@ const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never 
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 6359</sub>
+<sub>`api.ogt` line 6360</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 6360</sub>
+<sub>`api.ogt` line 6361</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
 ```
 
-<sub>`api.ogt` line 6361</sub>
+<sub>`api.ogt` line 6362</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>`api.ogt` line 6398</sub>
+<sub>`api.ogt` line 6399</sub>

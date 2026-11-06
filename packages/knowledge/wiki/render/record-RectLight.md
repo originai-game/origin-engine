@@ -50,4 +50,4 @@ component RectLight {
 }
 ```
 
-<sub>`api.ogt` line 7647</sub>
+<sub>`api.ogt` line 7648</sub>

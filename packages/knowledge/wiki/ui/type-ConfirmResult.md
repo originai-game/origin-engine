@@ -21,4 +21,4 @@ struct ConfirmResult {
 }
 ```
 
-<sub>`api.ogt` line 17865</sub>
+<sub>`api.ogt` line 17866</sub>

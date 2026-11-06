@@ -120,6 +120,12 @@ pub trait RenderBackend {
     fn post_errors(&self, _scene: &RenderScene) -> Vec<(u32, String)> {
         Vec::new()
     }
+    /// The material shaders whose sprite pipelines failed to compile, by
+    /// shader index, with the message (og-render's
+    /// `Renderer::sprite_shader_errors`).
+    fn sprite_shader_errors(&self) -> Vec<(usize, String)> {
+        Vec::new()
+    }
     /// Draw the scene offscreen at `width`×`height` (0×0: the target's size)
     /// and read it back. Native hosts block on the readback; the web host
     /// answers a frame it requested earlier (request on tick N, answer on

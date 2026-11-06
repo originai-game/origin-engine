@@ -91,8 +91,14 @@ pub fn validate_shader(shader: &MaterialShader) -> Result<Vec<String>, String> {
     use naga::valid::{Capabilities, ValidationFlags, Validator};
     // A full shader's casters run its code too (custom.rs).
     type Source = fn(&MaterialShader) -> String;
-    let mut modules: Vec<Source> = vec![og_render::lit_module_source];
-    if shader.mode != ShaderMode::Hooks {
+    // A sprite shader runs only in the sprite module. A hooks shader is
+    // checked as a mesh draws it: on a sprite, one calling a lit-only
+    // helper draws plain (og-render sprite_hooks.rs).
+    let mut modules: Vec<Source> = match shader.mode {
+        ShaderMode::Sprite => vec![og_render::sprite_module_source],
+        _ => vec![og_render::lit_module_source],
+    };
+    if matches!(shader.mode, ShaderMode::Full { .. }) {
         modules.push(og_render::shadow_module_source);
     }
     for source in modules {
@@ -200,6 +206,37 @@ mod tests {
         assert_eq!(done, ["SPIR-V, MSL"]);
         let again = parse_shader("crt", &shader_text(&s), &mut refuse).expect("round trip");
         assert_eq!(again, s);
+    }
+
+    /// A sprite shader validates against the sprite module, where
+    /// `sprite_texel` exists, keeps its mode through the canonical text, and
+    /// is refused at its own line when it calls what the sprite module
+    /// lacks; the same code as a hooks shader is refused by the lit module.
+    #[test]
+    fn a_sprite_shader_cooks_against_the_sprite_module() {
+        let text = |mode: &str, code: &str| {
+            format!(
+                "type shader\nversion 1\n---\nmode {mode}\ncode \"{}\"\nparam amount float 0.5\n",
+                code.replace('\n', "\\n")
+            )
+        };
+        let code = "fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32> {\n  return mix(c, sprite_texel(h.uv + vec2<f32>(p.amount * 0.01, 0.0)), 0.5);\n}";
+        let s = parse_shader("shimmer", &text("sprite", code), &mut refuse).expect("parses");
+        assert_eq!(s.mode, ShaderMode::Sprite);
+        validate_shader(&s).expect("validates");
+        let again = parse_shader("shimmer", &shader_text(&s), &mut refuse).expect("round trip");
+        assert_eq!(again, s);
+        let hooks = parse_shader("shimmer", &text("hooks", code), &mut refuse).expect("parses");
+        let e = validate_shader(&hooks).expect_err("no sprite_texel on a mesh");
+        assert!(e.contains("sprite_texel"), "{e}");
+        let broken = parse_shader(
+            "shimmer",
+            &text("sprite", &code.replace("sprite_texel", "mesh_texel")),
+            &mut refuse,
+        )
+        .expect("parses");
+        let e = validate_shader(&broken).expect_err("refused");
+        assert!(e.contains("hooks:2"), "{e}");
     }
 
     /// A post pass cooks for every back end and round-trips; a broken one

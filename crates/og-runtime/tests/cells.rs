@@ -335,9 +335,10 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
 /// (-> 79335c265b345be8) Stylise's watercolour fields.
 /// (-> e223289c85a94822) Stylise.posterizeMode.
 /// (-> 7506f7b4f8bdfe5d) Skeleton2D.blendClip, blendTime and blend (version 2).
+/// (-> 4f9d35da02e4355c) Sprite.material.
 const WELL_FIRST: f64 = (1u64 << 32 | 4) as f64;
 const WELL_AFTER_RELOAD: f64 = (2u64 << 32 | 4) as f64;
-const END_HASH: &str = "7506f7b4f8bdfe5d";
+const END_HASH: &str = "4f9d35da02e4355c";
 
 /// The world with the village persisting and spawning `budget` entities a
 /// tick (0: all at once).

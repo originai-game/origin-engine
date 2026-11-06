@@ -23,4 +23,4 @@ enum PowerPreference {
 }
 ```
 
-<sub>`api.ogt` line 6535</sub>
+<sub>`api.ogt` line 6536</sub>

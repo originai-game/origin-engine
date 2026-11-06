@@ -25,4 +25,4 @@ enum GradientSpread {
 }
 ```
 
-<sub>`api.ogt` line 22771</sub>
+<sub>`api.ogt` line 22772</sub>

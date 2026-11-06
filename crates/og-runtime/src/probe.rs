@@ -138,7 +138,7 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
         "dump_render",
         og_probe::CommandDesc {
             usage: "dump_render[:path]".into(),
-            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), render time, its order-independent transparency (`transparency`: whether the blended surfaces went through it, the nodes a pixel kept in the linked lists, 0 when weighted, and the pixels that fell back to weighted with how many frames old that count is), how many og.Model entities drew each level of detail, and the fraction between the last two ticks it was drawn at (interpolation, null at the tick), the antialiasing resolved, the frames drawn and the frames TAA's history holds (antialias, frameIndex, taaHistoryFrames)".into(),
+            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), render time, its order-independent transparency (`transparency`: whether the blended surfaces went through it, the nodes a pixel kept in the linked lists, 0 when weighted, and the pixels that fell back to weighted with how many frames old that count is), how many og.Model entities drew each level of detail, and the fraction between the last two ticks it was drawn at (interpolation, null at the tick), the antialiasing resolved, the frames drawn and the frames TAA's history holds (antialias, frameIndex, taaHistoryFrames), and the material shaders whose sprite pipelines the device refused (spriteShaderErrors: shader and message; their sprites draw plain)".into(),
         },
         0,
         move |_world, _args| {
@@ -181,6 +181,13 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
                 "taaHistoryFrames": rs.backend.as_ref().and_then(|b| b.history()).map(|h| h.1),
                 // The frame's reflection probes: baked ones sampling a capture
                 // `og bake probes` wrote (`bakedFromCache`) or drawing their own.
+                // Material shaders a sprite draws with (og.Sprite.material)
+                // that the device refused for sprites: a hooks shader calling
+                // a helper only the lit shader has. Their sprites draw plain.
+                "spriteShaderErrors": rs.backend.as_ref().map_or_else(Vec::new, |b| b.sprite_shader_errors()).into_iter().map(|(i, e)| json!({
+                    "shader": rs.scene.shaders().get(i).map(|s| s.name.clone()),
+                    "error": e,
+                })).collect::<Vec<_>>(),
                 "reflectionProbes": rs.scene.reflection_probes.iter().map(|p| json!({
                     "entity": p.id,
                     "mode": if p.mode == og_render::ProbeMode::Realtime { "realtime" } else { "baked" },

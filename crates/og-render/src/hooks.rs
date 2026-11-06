@@ -117,6 +117,10 @@ pub enum ShaderMode {
     /// `custom.rs`; `lit`: the surface they return is lit by the frame's
     /// lights, else its colour is drawn as returned.
     Full { lit: bool },
+    /// The hooks of the sprite shader only (`sprite_hooks.rs`): the code
+    /// may also call `sprite_texel(uv)`, the sprite's texture at `uv`
+    /// (distortion, chromatic splits). A mesh given one draws plain.
+    Sprite,
 }
 
 impl MaterialShader {
@@ -226,10 +230,23 @@ const DEFAULT_HOOKS: [&str; 4] = [
     "fn surface_emissive(h: Hook, p: Params, e: vec3<f32>) -> vec3<f32> { return e; }\n",
 ];
 
-/// The `Hook` and `Params` structs, `shader_params()`, the snippet and the
-/// built-in hooks it leaves out. Placed after material.wgsl (it reads
-/// `material.custom`).
+/// The `Hook` and `Params` structs, `shader_params()`, the snippet, the
+/// built-in hooks it leaves out and the lit vertex stage's `moved_clip`.
+/// Placed after material.wgsl (it reads `material.custom`).
 pub(crate) fn hooks_section(params: &[ShaderParam], code: &str) -> String {
+    let mut s = hook_functions(params, code);
+    s.push_str(if defines(code, "vertex_offset") {
+        MOVED_CLIP_OFFSET
+    } else {
+        MOVED_CLIP
+    });
+    s
+}
+
+/// [`hooks_section`] without `moved_clip`: what any module that declares a
+/// `material` uniform with `custom` and `previous_custom` takes (the
+/// sprite module, `sprite_hooks.rs`).
+pub(crate) fn hook_functions(params: &[ShaderParam], code: &str) -> String {
     let mut s = String::from("// Material shader hooks (hooks.rs).\n");
     s.push_str(HOOK_STRUCT);
     s.push_str("struct Params {\n");
@@ -261,11 +278,6 @@ pub(crate) fn hooks_section(params: &[ShaderParam], code: &str) -> String {
             s.push_str(default);
         }
     }
-    s.push_str(if defines(code, "vertex_offset") {
-        MOVED_CLIP_OFFSET
-    } else {
-        MOVED_CLIP
-    });
     s
 }
 
@@ -284,6 +296,13 @@ const MOVED_CLIP_OFFSET: &str =
 /// The built-in hooks (identities).
 pub(crate) fn default_hooks() -> String {
     hooks_section(&[], "")
+}
+
+/// The sprite shader module's source with `shader`'s hooks, as the
+/// renderer compiles it for sprites drawn with it (`sprite_hooks.rs`). The
+/// cook validates a `mode sprite` shader with this.
+pub fn sprite_module_source(shader: &MaterialShader) -> String {
+    crate::sprite_hooks::source(shader)
 }
 
 /// The lit shader module's source with `hooks`, as the renderer compiles

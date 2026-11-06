@@ -666,6 +666,9 @@ impl RenderBackend for OffscreenBackend {
             .map(|(h, e)| (h.0, e))
             .collect()
     }
+    fn sprite_shader_errors(&self) -> Vec<(usize, String)> {
+        self.renderer.sprite_shader_errors()
+    }
     fn capture(
         &mut self,
         scene: &og_render::RenderScene,

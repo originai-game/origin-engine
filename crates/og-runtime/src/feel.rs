@@ -380,6 +380,7 @@ slots!(
         outline_color: "outlineColor",
         palette: "palette",
         palette_row: "paletteRow",
+        material: "material",
     }
 );
 

@@ -57,6 +57,15 @@ impl Renderer {
         self.custom_posts.errors(scene.id())
     }
 
+    /// The material shaders whose sprite pipelines failed to compile on
+    /// this device, by shader index, with the device's message: their
+    /// sprites draw plain (`sprite_hooks.rs`).
+    pub fn sprite_shader_errors(&self) -> Vec<(usize, String)> {
+        self.sprite_hooks
+            .as_ref()
+            .map_or_else(Vec::new, |h| h.errors())
+    }
+
     /// A headless renderer (draws to [`RenderTarget::Offscreen`] or caller views).
     pub async fn new(desc: &RenderDesc) -> Result<Renderer, RenderError> {
         if renderer_disabled() {
@@ -1239,6 +1248,7 @@ impl Renderer {
                 adapter.get_downlevel_capabilities().flags,
             ),
             sprite_normals: None,
+            sprite_hooks: None,
             oit,
             sprite_shader,
             ribbon_shader,

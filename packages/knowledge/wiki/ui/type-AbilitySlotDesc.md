@@ -75,4 +75,4 @@ struct AbilitySlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 21784</sub>
+<sub>`api.ogt` line 21785</sub>

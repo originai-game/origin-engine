@@ -27,4 +27,4 @@ struct InputResult {
 }
 ```
 
-<sub>`api.ogt` line 19730</sub>
+<sub>`api.ogt` line 19731</sub>

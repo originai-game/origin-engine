@@ -15,6 +15,8 @@ mod shaders;
 #[cfg(any(target_os = "macos", target_os = "linux", windows))]
 #[path = "../shared_frames.rs"]
 mod shared_frames;
+#[path = "../sprite_hooks.rs"]
+mod sprite_hooks;
 #[path = "../surface.rs"]
 mod surface;
 #[path = "../tier.rs"]

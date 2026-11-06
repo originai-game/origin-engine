@@ -14,4 +14,4 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Path "A path: its points, kind and arc-length table."
 ```
 
-<sub>`api.ogt` line 26020</sub>
+<sub>`api.ogt` line 26021</sub>

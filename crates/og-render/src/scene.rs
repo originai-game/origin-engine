@@ -337,6 +337,9 @@ pub struct RenderScene {
     /// Pixel outlines of single world sprites, by sprite index (the last
     /// entry for an index wins; [`SpriteOutline`]).
     pub sprite_outlines: Vec<SpriteOutline>,
+    /// Material shaders of single world sprites, by sprite index (the last
+    /// entry for an index wins; [`SpriteShading`]).
+    pub sprite_shading: Vec<SpriteShading>,
     /// Three.js layer masks of the instances, by index in `instances`
     /// (bit `n` set: on layer `n`): an index past the end is on layer 0
     /// alone (mask 1), as every object is in three.js. A camera draws the

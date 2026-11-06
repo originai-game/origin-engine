@@ -23,4 +23,4 @@ struct ChoiceIndexResult {
 }
 ```
 
-<sub>`api.ogt` line 19466</sub>
+<sub>`api.ogt` line 19467</sub>

@@ -25,4 +25,4 @@ enum BadgeKind {
 }
 ```
 
-<sub>`api.ogt` line 21145</sub>
+<sub>`api.ogt` line 21146</sub>

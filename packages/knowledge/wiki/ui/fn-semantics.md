@@ -28,4 +28,4 @@ fn semantics {
 }
 ```
 
-<sub>`api.ogt` line 23125</sub>
+<sub>`api.ogt` line 23126</sub>

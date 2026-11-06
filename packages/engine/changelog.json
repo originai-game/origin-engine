@@ -982,6 +982,10 @@
       {
         "member": "og.Skeleton2D.blendClip, blendTime, blend",
         "summary": "A second clip sampled beside `clip` and mixed in by `blend` (0 to 1, slot draw order and attachments from the heavier clip); a graph sets them, a game may too. Defaults 0: the skeleton plays one clip as before."
+      },
+      {
+        "member": "og.Sprite.material, shader `mode sprite`, sprite_texel",
+        "summary": "A sprite draws through a material shader's hooks: og.Sprite.material takes a material from og.render.shaderMaterial, the same shader asset, material and og.render.setShaderParam a mesh uses. vertex_offset moves the quad's corners, surface_color changes its colour before the 2D light (an alpha of 0 cuts it: a dissolve), surface_emissive adds light after it. A shader of the new `mode sprite` runs on sprites only and may call `sprite_texel(uv)` to read its texture anywhere (distortion, chromatic splits); the cook validates it against the sprite module. Sprites of one material, texture and blend are one draw. A hooks shader that calls a lit-only helper draws its sprites plain and is named in dump_render's new spriteShaderErrors. 0 is none: existing sprites draw as before."
       }
     ],
     "fixed": [

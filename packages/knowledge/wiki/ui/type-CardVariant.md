@@ -27,4 +27,4 @@ enum CardVariant {
 }
 ```
 
-<sub>`api.ogt` line 17699</sub>
+<sub>`api.ogt` line 17700</sub>

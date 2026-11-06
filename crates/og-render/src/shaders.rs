@@ -97,6 +97,23 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     add("lines", crate::lines::LINES_WGSL.to_string());
     add("sky", crate::sky_source());
     add("sprite", crate::sprite_source());
+    // A sprite drawn with a material shader: every hook, parameters and
+    // the sprite-only `sprite_texel` (sprite_hooks.rs).
+    let example = crate::sprite_hooks::example();
+    add("sprite hooks", crate::sprite_hooks::source(&example));
+    // Without vertex_offset: the built-in one fills in.
+    let colour_only = crate::MaterialShader {
+        code: example
+            .code
+            .split("fn surface_color")
+            .nth(1)
+            .map_or_else(String::new, |rest| format!("fn surface_color{rest}")),
+        ..example
+    };
+    add(
+        "sprite hooks (colour only)",
+        crate::sprite_hooks::source(&colour_only),
+    );
     // The probe GI's trace and blend (gi_probes.rs).
     add("gi probes trace", crate::gi_probes::trace_source());
     add("gi probes blend", crate::gi_probes::blend_source());

@@ -25,6 +25,12 @@ is one line here, written at the merge that changes
   `og sprite inspect` measures a source or a built sheet: delays, drawn
   bounds and centroid drift, duplicates, the loop seam and the edge
   fringe, numbers only.
+- **Sprite material shaders.** `og.Sprite.material` draws a sprite
+  through a material shader's hooks (vertex_offset, surface_color,
+  surface_emissive) with the mesh's shader assets and parameters, so a
+  dissolve, freeze, shimmer or palette effect is a shader. Shaders of the
+  new `mode sprite` run on sprites only and may read the texture anywhere
+  with `sprite_texel(uv)`. dump_render reports `spriteShaderErrors`.
 - **Animation graphs on 2D.** `og.anim.graph({ sprite: true, ... })`
   makes a graph of flipbook or rig2d clips; an og.AnimationGraph beside
   an og.Flipbook cuts between states on frame boundaries, and beside an

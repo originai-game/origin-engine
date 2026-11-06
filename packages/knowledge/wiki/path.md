@@ -17,7 +17,7 @@ module path {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 26016</sub>
+<sub>`api.ogt` line 26017</sub>
 
 ## Contents
 
@@ -55,7 +55,7 @@ column Path {
 }
 ```
 
-<sub>`api.ogt` line 26022</sub>
+<sub>`api.ogt` line 26023</sub>
 
 ```ogt
 column PathKind {
@@ -66,4 +66,4 @@ column PathKind {
 }
 ```
 
-<sub>`api.ogt` line 26036</sub>
+<sub>`api.ogt` line 26037</sub>

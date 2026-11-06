@@ -401,6 +401,21 @@ pub struct SpriteOutline {
     pub color: [f32; 4],
 }
 
+/// A world sprite drawn with a material's shader
+/// ([`RenderScene::sprite_shading`], `sprite_hooks.rs`): the material's
+/// shader hooks (of [`crate::ShaderMode::Hooks`] or
+/// [`crate::ShaderMode::Sprite`]) and parameters move its corners, change
+/// its colour and add light. A material without such a shader, or a
+/// sprite drawn from a texture array, draws plain; so does its glow. A
+/// faced sprite drawn with one keeps the sprite order (it does not sort
+/// with the transparent meshes).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SpriteShading {
+    /// The index in [`RenderScene::sprites`].
+    pub sprite: u32,
+    pub material: crate::MaterialHandle,
+}
+
 /// The widest [`SpriteOutline::width`], in logical pixels.
 pub const MAX_SPRITE_OUTLINE: f32 = 4.0;
 

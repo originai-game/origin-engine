@@ -27,4 +27,4 @@ struct StoryAsset {
 }
 ```
 
-<sub>`api.ogt` line 14517</sub>
+<sub>`api.ogt` line 14518</sub>

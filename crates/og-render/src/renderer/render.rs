@@ -790,6 +790,10 @@ impl Renderer {
                         self.sprite_normal_group(scene, t);
                     }
                 }
+                RunSource::Shaded(_, t, m) => {
+                    self.sprite_group(t);
+                    self.sprite_hooks_prepare(scene, m);
+                }
                 RunSource::Array(_, a) => self.sprite_array_group(scene, a),
                 RunSource::Mesh(i) => {
                     let t = scene.sprite_meshes[i as usize].texture;

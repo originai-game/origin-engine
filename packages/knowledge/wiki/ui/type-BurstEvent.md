@@ -25,4 +25,4 @@ struct BurstEvent {
 }
 ```
 
-<sub>`api.ogt` line 20755</sub>
+<sub>`api.ogt` line 20756</sub>

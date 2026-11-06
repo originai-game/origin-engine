@@ -14,4 +14,4 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 7919</sub>
+<sub>`api.ogt` line 7920</sub>

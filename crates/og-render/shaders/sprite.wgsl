@@ -186,6 +186,12 @@ fn drop_shadow_visible(p: vec3<f32>) -> f32 {
 
 @vertex
 fn vs(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
+  return sprite_vertex(vi, s);
+}
+
+// The quad's corner `vi` of instance `s` (`vs`; sprite_hooks.wgsl moves it
+// by a material shader's vertex_offset).
+fn sprite_vertex(vi: u32, s: SpriteIn) -> SpriteOut {
   // Two triangles: (0,0) (1,0) (1,1) / (0,0) (1,1) (0,1), counter-clockwise.
   var corners = array<vec2<f32>, 6>(
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0),

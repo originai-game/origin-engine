@@ -36,4 +36,4 @@ struct PlaceGoalDesc {
 }
 ```
 
-<sub>`api.ogt` line 26822</sub>
+<sub>`api.ogt` line 26823</sub>

@@ -1337,6 +1337,9 @@ mod canvas {
                 .map(|(h, e)| (h.0, e))
                 .collect()
         }
+        fn sprite_shader_errors(&self) -> Vec<(usize, String)> {
+            self.renderer.sprite_shader_errors()
+        }
         /// Request on one call, answer on a later one: the first call draws
         /// offscreen and starts the readback; a later call at the same size
         /// answers the frame once the copy has landed (the scene as it was

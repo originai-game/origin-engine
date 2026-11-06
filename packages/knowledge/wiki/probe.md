@@ -23,7 +23,7 @@ module probe {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 24039</sub>
+<sub>`api.ogt` line 24040</sub>
 
 ## Contents
 
@@ -107,34 +107,34 @@ module probe {
 const PROBE_GLOBAL String "__runtime_probe__" "The global the page publishes the probe on."
 ```
 
-<sub>`api.ogt` line 24045</sub>
+<sub>`api.ogt` line 24046</sub>
 
 ```ogt
 const PROBE_VERSION u32 5 "The RuntimeProbe contract revision both sides speak."
 ```
 
-<sub>`api.ogt` line 24046</sub>
+<sub>`api.ogt` line 24047</sub>
 
 ```ogt
 const PROBE_WIRE_VERSION u32 1 "The wire revision hello reports."
 ```
 
-<sub>`api.ogt` line 24047</sub>
+<sub>`api.ogt` line 24048</sub>
 
 ```ogt
 const REPLAY_SEED_PARAM String "replay-seed" "The page query parameter that starts a deterministic replay from a uint32 seed."
 ```
 
-<sub>`api.ogt` line 24048</sub>
+<sub>`api.ogt` line 24049</sub>
 
 ```ogt
 const PLAYTEST_MAX_TICKS u32 3600 "The longest playtest one request may advance, in fixed steps."
 ```
 
-<sub>`api.ogt` line 24049</sub>
+<sub>`api.ogt` line 24050</sub>
 
 ```ogt
 const PROBE_PROGRAM_MAX_OPERATIONS u32 256 "The most operations one probe program may carry."
 ```
 
-<sub>`api.ogt` line 24050</sub>
+<sub>`api.ogt` line 24051</sub>

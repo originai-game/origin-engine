@@ -31,4 +31,4 @@ struct TextureArrayInfo {
 }
 ```
 
-<sub>`api.ogt` line 8027</sub>
+<sub>`api.ogt` line 8028</sub>

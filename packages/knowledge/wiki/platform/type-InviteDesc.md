@@ -26,4 +26,4 @@ struct InviteDesc {
 }
 ```
 
-<sub>`api.ogt` line 15197</sub>
+<sub>`api.ogt` line 15198</sub>

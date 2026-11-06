@@ -48,4 +48,4 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 6175</sub>
+<sub>`api.ogt` line 6176</sub>

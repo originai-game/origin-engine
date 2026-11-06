@@ -30,4 +30,4 @@ struct TextOutlineDesc {
 }
 ```
 
-<sub>`api.ogt` line 23057</sub>
+<sub>`api.ogt` line 23058</sub>

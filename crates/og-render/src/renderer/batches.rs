@@ -237,6 +237,31 @@ impl Renderer {
     /// Texture `t`'s normal-mapped group (sprite_normals.rs) when 2D
     /// lighting is on and it has a normal map, made or made again when
     /// what it reads changed; the pipelines on first use.
+    /// Material `m`'s sprite pipelines and parameter group
+    /// (`sprite_hooks.rs`).
+    pub(crate) fn sprite_hooks_prepare(&mut self, scene: &RenderScene, m: MaterialHandle) {
+        let Some((shader, params)) = scene.sprite_shader(m) else {
+            return;
+        };
+        let hooks = self.sprite_hooks.get_or_insert_with(|| {
+            sprite_hooks::SpriteHooks::new(
+                &self.device,
+                [
+                    &self.frame_layout,
+                    &self.sprite_layout,
+                    &self.sprite_fx_layout,
+                ],
+                self.samples,
+            )
+        });
+        hooks.prepare_shader(
+            &self.device,
+            shader.index(),
+            &scene.shaders()[shader.index()],
+        );
+        hooks.prepare_material(&self.device, &self.queue, m.index(), params);
+    }
+
     pub(crate) fn sprite_normal_group(&mut self, scene: &RenderScene, t: TextureHandle) {
         let Some(n) = scene
             .texture_normal(t)

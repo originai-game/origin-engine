@@ -27,4 +27,4 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 7497</sub>
+<sub>`api.ogt` line 7498</sub>

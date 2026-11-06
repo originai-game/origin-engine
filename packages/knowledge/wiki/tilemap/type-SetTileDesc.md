@@ -32,4 +32,4 @@ struct SetTileDesc {
 }
 ```
 
-<sub>`api.ogt` line 12723</sub>
+<sub>`api.ogt` line 12724</sub>

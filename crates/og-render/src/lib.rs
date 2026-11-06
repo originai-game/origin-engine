@@ -286,6 +286,7 @@ mod skin;
 pub use garment::{GarmentDeformation, GarmentTopology};
 mod sky_physical;
 mod sprite_array;
+mod sprite_hooks;
 mod sprite_mesh;
 mod sprite_normals;
 mod sprite_skin;
@@ -352,7 +353,7 @@ pub use grass::{DistanceLod, Grass, GrassDraw, GrassType};
 pub use headless::render_to_rgba;
 pub use hooks::{
     MAX_SHADER_PARAMS, MaterialShader, ParamKind, SHADER_HOOKS, ShaderMode, ShaderParam,
-    lit_module_source, physical_module_source, shadow_module_source,
+    lit_module_source, physical_module_source, shadow_module_source, sprite_module_source,
 };
 pub use id_pass::{
     IdCamera, IdFrame, IdObject, IdSources, id_pass_size, projection_name, render_ids,
@@ -809,6 +810,9 @@ pub struct Renderer {
     /// The normal-mapped sprite pipelines and texture groups, made on the
     /// first frame that draws a normal-mapped texture lit.
     sprite_normals: Option<sprite_normals::SpriteNormals>,
+    /// Sprites drawn with a material shader (`sprite_hooks.rs`), made on
+    /// the first frame that draws one.
+    sprite_hooks: Option<sprite_hooks::SpriteHooks>,
     tiles_gpu: Option<tiles_gpu::Tiles>,
     tiles_gpu_supported: bool,
     /// Order-independent transparency's mode, arena, resolve and

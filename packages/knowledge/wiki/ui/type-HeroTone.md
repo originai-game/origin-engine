@@ -27,4 +27,4 @@ enum HeroTone {
 }
 ```
 
-<sub>`api.ogt` line 19949</sub>
+<sub>`api.ogt` line 19950</sub>

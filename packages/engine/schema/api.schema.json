@@ -29637,6 +29637,11 @@
           "maximum": 4294967295,
           "description": "The row of `palette` drawn (past the last, the last).",
           "default": 0
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "Draw through a material shader's hooks: a material from og.render.shaderMaterial (an og.load.shader of `mode hooks`, the same asset a mesh draws with, or `mode sprite`), its parameters set with og.render.setShaderParam. vertex_offset moves the quad's corners, surface_color changes its colour before the 2D light (texture times tint and flash; an alpha of 0 cuts it, a dissolve), surface_emissive adds light after it; surface_normal is not called. The hooks see `local` as the point on the quad (x and y 0 to 1 from its bottom-left corner), `uv` the texture coordinate, `color` the tint and `time` the scene clock; a `mode sprite` shader may also call `sprite_texel(uv)`, the sprite's texture anywhere (distortion, a chromatic split). Dissolve, freeze, heat shimmer and palette effects are shaders, not engine features. Sprites of one material, texture and blend are one draw; a material per sprite (its own parameters) is a draw per sprite. Its drop shadow takes the shader's alpha; its glow, blob shadow and afterimages draw plain, as does a sprite drawn from a texture array, and a faced one keeps the sprite order. A hooks shader that calls a helper only meshes have draws its sprites plain, named in dump_render's spriteShaderErrors. 0 is none.",
+          "default": 0
         }
       },
       "additionalProperties": false

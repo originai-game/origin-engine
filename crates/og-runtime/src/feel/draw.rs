@@ -78,6 +78,9 @@ struct SpriteOut {
     /// `Sprite.outline`: its width and logical pixel (texels) and colour
     /// ([`og_render::SpriteOutline`]).
     outline: Option<(f32, f32, [f32; 3])>,
+    /// `Sprite.material`: drawn with its shader's hooks
+    /// ([`og_render::SpriteShading`]).
+    material: Option<og_render::MaterialHandle>,
 }
 
 /// A floating text's facing as the og.sprite state block stores it (its
@@ -139,6 +142,12 @@ fn push(scene: &mut og_render::RenderScene, s: SpriteOut) {
             width,
             pixel,
             color: [r, g, b, 1.0],
+        });
+    }
+    if let Some(material) = s.material {
+        scene.sprite_shading.push(og_render::SpriteShading {
+            sprite: index,
+            material,
         });
     }
     if s.cast_shadow {
@@ -286,6 +295,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     // og.LightMask2D by entity: the 2D lights each receiver takes.
     let light_masks = crate::fx::light_masks(world, &rs.draw.fx);
     let textures = rs.textures.clone();
+    let materials = rs.materials.clone();
     let arrays = &rs.texture_arrays;
     let scene = &mut rs.scene;
     let (art, notes) = (&mut rs.art, &mut rs.notes);
@@ -348,6 +358,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             .and_then(super::assets::index_of)
             .and_then(|i| textures.get(i).copied());
         let row = v.uint(&s.palette_row).unwrap_or(0) as u32;
+        // Its material shader (og.Sprite.material): the material's handle,
+        // live in the render state.
+        let material = v
+            .num(&s.material)
+            .and_then(super::assets::index_of)
+            .and_then(|i| materials.get(i).copied());
         let mut swap = |scene: &mut og_render::RenderScene, t| match palette {
             Some(p) => super::art::paletted(scene, (&mut *art, &mut *notes), t, p, row),
             None => t,
@@ -396,6 +412,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     tone_mapped: true,
                     facing: og_render::SpriteFacing::None,
                     outline: None,
+                    material: None,
                 },
             );
         }
@@ -446,6 +463,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                         tone_mapped,
                         facing,
                         outline: None,
+                        material: None,
                     },
                 );
             }
@@ -508,6 +526,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     tone_mapped,
                     facing,
                     outline,
+                    material,
                 },
             );
         }
