@@ -154,6 +154,10 @@ commands:
                       the loop seam against the frame-to-frame steps, the alpha edge fringe
                       (numbers only; a flat border is keyed before measuring unless --key off);
                       --out writes the measured frames side by side (a sheet: its packed texture)
+  vfx add <pack|directory> [project]
+                      copy an effect pack (`kind vfx`: type vfx effects, emitters, effect
+                      materials and their textures) into the game's assets/vfx/<pack>/ to use
+                      and change; `og ui list` names the bundled packs
   style list          the built-in UI styles' slugs, each with its signature
   style eject <slug> [<name>] [--project <dir>] [--force]
                       write the built-in style <slug> (style.ogt, atlas, icons, fonts and their
@@ -329,6 +333,7 @@ fn main() -> ExitCode {
         ["i18n", rest @ ..] => i18n::run(rest),
         ["style", rest @ ..] => style::run(rest),
         ["ui", rest @ ..] => ui::run(rest),
+        ["vfx", "add", rest @ ..] => ui::extensions::add(rest, "vfx"),
         ["frame", rest @ ..] => frame::run(rest),
         [] => {
             eprint!("{USAGE}");

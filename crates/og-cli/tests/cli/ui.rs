@@ -103,3 +103,71 @@ fn the_material_presets_install_and_cook_with_their_wgsl_beside_them() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// `og vfx add <directory>` installs an effect pack (`kind vfx`) into
+/// assets/vfx/<name>/, where its composed effects cook with the emitters
+/// they name by the installed path; a second add refuses, and a pack with
+/// code (`entry`) is not a valid vfx pack.
+///
+/// Ways it could fail: the pack copied into a kit's or a style's folder,
+/// an existing installation replaced, or a vfx pack allowed to ship code.
+#[test]
+fn a_vfx_pack_installs_into_assets_vfx_and_cooks() {
+    let dir = scratch_root();
+    let project = dir.join("game");
+    std::fs::create_dir_all(project.join("src")).unwrap();
+    std::fs::write(project.join("src/main.ts"), "export default 0;\n").unwrap();
+    std::fs::write(
+        project.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    let pack = dir.join("hits");
+    std::fs::create_dir_all(&pack).unwrap();
+    let manifest = |extra: &str| {
+        format!(
+            "{{\"format\":1,\"kind\":\"vfx\",\"name\":\"hits\",\"version\":\"1.0.0\",\"description\":\"Hit effects\"{extra}}}"
+        )
+    };
+    std::fs::write(pack.join("extension.json"), manifest("")).unwrap();
+    std::fs::write(
+        pack.join("sparks.ogt"),
+        "type particles\nversion 1\n---\nrate 10\n",
+    )
+    .unwrap();
+    std::fs::write(
+        pack.join("hit.ogt"),
+        "type vfx\nversion 1\n---\nduration 0.5\nimpact 0.1\nemitter \"vfx/hits/sparks.ogt\" {\n  at 0\n}\n",
+    )
+    .unwrap();
+    let add = || {
+        let out = og()
+            .args(["vfx", "add"])
+            .arg(&pack)
+            .arg(&project)
+            .output()
+            .unwrap();
+        (out.status.code(), text(&out))
+    };
+    let (code, out) = add();
+    assert_eq!(code, Some(0), "{out}");
+    assert!(project.join("assets/vfx/hits/hit.ogt").is_file(), "{out}");
+    let (code, out) = add();
+    assert_eq!(code, Some(1), "{out}");
+    assert!(out.contains("already exists"), "{out}");
+
+    let out = og().arg("cook").current_dir(&project).output().unwrap();
+    assert!(out.status.success(), "{}", text(&out));
+
+    std::fs::write(
+        pack.join("extension.json"),
+        manifest(",\"entry\":\"index.ts\",\"types\":\"index.d.ts\""),
+    )
+    .unwrap();
+    std::fs::write(pack.join("index.ts"), "").unwrap();
+    std::fs::write(pack.join("index.d.ts"), "").unwrap();
+    std::fs::remove_dir_all(project.join("assets/vfx")).unwrap();
+    let (code, out) = add();
+    assert_eq!(code, Some(1), "{out}");
+    assert!(out.contains("invalid extension manifest"), "{out}");
+}

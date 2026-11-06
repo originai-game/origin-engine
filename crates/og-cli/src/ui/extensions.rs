@@ -85,7 +85,7 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
     .map_err(|e| format!("{}: {e}", path.display()))?;
     let m = &manifest;
     if m.format != 1
-        || !matches!(m.kind.as_str(), "kit" | "style")
+        || !matches!(m.kind.as_str(), "kit" | "style" | "vfx")
         || !m.name.starts_with(|c: char| c.is_ascii_lowercase())
         || !m
             .name
@@ -98,7 +98,7 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
             .all(|s| !s.is_empty() && s.bytes().all(|c| c.is_ascii_digit()))
         || m.description.trim().is_empty()
         || m.entry.is_some() != m.types.is_some()
-        || (m.kind == "style" && m.entry.is_some())
+        || (m.kind != "kit" && m.entry.is_some())
     {
         return Err(format!(
             "{}: invalid extension manifest (docs/ui.md §17.1)",
@@ -151,6 +151,7 @@ pub fn discover(project: &Path) -> Result<Vec<Extension>, String> {
     }
     roots.push((project.join("assets/ui-kits"), true));
     roots.push((project.join("assets/styles"), true));
+    roots.push((project.join("assets/vfx"), true));
     let mut extensions = BTreeMap::new();
     for (root, installed) in roots {
         if !root.exists() {
@@ -189,10 +190,10 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
     if !project.join("project.ogt").is_file() {
         return Err(format!("{}: no project.ogt", project.display()));
     }
-    let family = if extension.manifest.kind == "kit" {
-        "ui-kits"
-    } else {
-        "styles"
+    let family = match extension.manifest.kind.as_str() {
+        "kit" => "ui-kits",
+        "style" => "styles",
+        _ => "vfx",
     };
     let target = project
         .join("assets")
@@ -233,7 +234,7 @@ pub fn add(args: &[&str], kind: &str) -> ExitCode {
         let (name, project) = match args {
             [name] => (*name, Path::new(".")),
             [name, project] => (*name, Path::new(project)),
-            _ => return Err("usage: og ui|style add <name|directory> [project]".into()),
+            _ => return Err("usage: og ui|style|vfx add <name|directory> [project]".into()),
         };
         let extension = if Path::new(name).join("extension.json").is_file() {
             read(Path::new(name), false)?

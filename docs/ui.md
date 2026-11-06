@@ -1427,7 +1427,8 @@ An extension has an `extension.json` at its root:
 }
 ```
 
-`kind` is `kit` or `style`. Names use lowercase ASCII letters, digits and
+`kind` is `kit`, `style` or `vfx` (an effect pack: `type vfx` effects with
+the emitters, effect materials and textures they name). Names use lowercase ASCII letters, digits and
 hyphens, starting with a letter. `format` versions this manifest contract;
 `version` versions the extension. All paths are relative to the directory,
 without parent traversal or symlinks. Official packs carry no skill: how
@@ -1435,7 +1436,7 @@ to use, change and review them is the `kits`, `ui-materials` and `screens`
 guides (`og api show kits`). An optional `skill` path is still
 validated and printed for a game's own pack. `entry`
 and `types` are optional together for a document-only kit. A style has
-`style.ogt` at its root and no executable entry. Documents are discovered
+`style.ogt` at its root and no executable entry; neither has a vfx pack. Documents are discovered
 recursively by their `type screen` or `type component` header, rather than
 listed in a shared registry. Asset references within a pack are relative;
 shared built-in fonts may still use `@styles/`.
@@ -1445,7 +1446,10 @@ Official styles stay in `templates/styles/<name>` and ship in the engine's
 `styles/<name>`. Both use the same manifest. A game installs an editable
 copy with `og ui add <name|directory> [project]` or
 `og style add <name|directory> [project]`. Kits go in
-`assets/ui-kits/<name>`, styles in `assets/styles/<name>`. An existing
+`assets/ui-kits/<name>`, styles in `assets/styles/<name>`; effect packs
+install with `og vfx add <name|directory> [project]` into
+`assets/vfx/<name>`, where their effects name each other as
+`vfx/<name>/<file>`. An existing
 installation is never silently replaced. No network fetch or code execution
 is part of discovery or installation.
 
