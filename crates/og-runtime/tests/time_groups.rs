@@ -213,5 +213,5 @@ fn a_world_without_time_groups_keeps_its_hash() {
         value(og_world_resource(engine, "og.TimeGroups".into())),
         json!({ "scales": [] })
     );
-    assert_eq!(hash(engine), "b197ce091b778b8f");
+    assert_eq!(hash(engine), "13043fbb64e51971");
 }

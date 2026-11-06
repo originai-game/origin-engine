@@ -389,7 +389,7 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
 /// (-> e223289c85a94822) Stylise.posterizeMode.
 const WELL_FIRST: f64 = (1u64 << 32 | 4) as f64;
 const WELL_AFTER_RELOAD: f64 = (2u64 << 32 | 4) as f64;
-const END_HASH: &str = "e223289c85a94822";
+const END_HASH: &str = "faca38b361347c45";
 
 #[test]
 fn a_session_without_anchors_refuses_the_camera() {

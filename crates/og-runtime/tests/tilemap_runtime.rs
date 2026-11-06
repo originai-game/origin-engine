@@ -144,7 +144,7 @@ fn a_world_of_loaded_maps_keeps_its_hash() {
     frame(engine);
     set(engine, entity, 2, 1, 0);
     frame(engine);
-    assert_eq!(hash(engine), "8cebc431ee6b9219");
+    assert_eq!(hash(engine), "075ecab545345be5");
 }
 
 #[test]

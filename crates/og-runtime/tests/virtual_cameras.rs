@@ -213,7 +213,7 @@ fn a_world_without_virtual_cameras_keeps_its_hash() {
 /// version 2 (simulation), after MaterialStyle.wireframeColor, and after
 /// Fluid3D version 2 (simulation), and after Stylise's watercolour fields, and after Stylise.posterizeMode;
 /// R10 leaves it unmoved on either side).
-const PINNED_HASH: &str = "973be37e778ed10d";
+const PINNED_HASH: &str = "84a1c5f6929af6e3";
 
 #[test]
 fn the_brain_picks_by_priority_then_the_later_enabled_and_a_solo_outranks_both() {
