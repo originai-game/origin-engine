@@ -44,6 +44,19 @@ fn cell(col: u32, row: u32) -> (u32, u32) {
 
 const BACKING: [f32; 4] = [0.03, 0.035, 0.045, 1.0];
 
+/// sRGB bytes as `px` reads them back (through linear light).
+fn ink(rgb: [u8; 3]) -> [f32; 3] {
+    let l = |c: u8| {
+        let c = f32::from(c) / 255.0;
+        if c <= 0.04045 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    srgb8([l(rgb[0]), l(rgb[1]), l(rgb[2]), 1.0])
+}
+
 /// Corner shapes cut where their geometry says: 12 px in from a 28 px
 /// corner a round corner is inside, a bevel's and a notch's cut leave the
 /// card; 4 px in, the squircle (radius 48, continuous) is still outside
@@ -54,17 +67,6 @@ const BACKING: [f32; 4] = [0.03, 0.035, 0.045, 1.0];
 fn ui_shapes_cut_their_corners_rings_and_arcs() {
     let r = render("ui-shapes");
     let back = srgb8(BACKING);
-    let ink = |rgb: [u8; 3]| {
-        let l = |c: u8| {
-            let c = f32::from(c) / 255.0;
-            if c <= 0.04045 {
-                c / 12.92
-            } else {
-                ((c + 0.055) / 1.055).powf(2.4)
-            }
-        };
-        srgb8([l(rgb[0]), l(rgb[1]), l(rgb[2]), 1.0])
-    };
     // The shapes' top left corners are 20 px into their cells.
     let corner = |col: u32, d: u32| {
         let (x, y) = cell(col, 0);
@@ -130,6 +132,89 @@ fn ui_shapes_cut_their_corners_rings_and_arcs() {
         "{} UI draws",
         r.stats.sprite_draws
     );
+}
+
+/// Run-time paths (`ui_scenes::paths`): the nonzero ring keeps its
+/// reversed inner circle as a hole; one self-crossing star is solid by
+/// nonzero and hollow by even-odd, its spikes drawn by both; the heart's
+/// cubics leave the notch between its lobes; a stroke draws the outline,
+/// not the inside; a drop shadow darkens past the heart's edge; the morph
+/// half way is neither the square nor the circle; a turned, squashed
+/// heart keeps its point; a 14 px heart draws.
+#[test]
+#[ignore = "requires GPU"]
+fn ui_paths_fill_by_their_rule_and_take_every_mode() {
+    let r = render("ui-paths");
+    let back = srgb8(BACKING);
+    let centre = |col: u32, row: u32| {
+        let (x, y) = cell(col, row);
+        (x + 90, y + 75)
+    };
+    let at = |col: u32, row: u32, dx: i32, dy: i32| {
+        let (x, y) = centre(col, row);
+        px(&r, (x as i32 + dx) as u32, (y as i32 + dy) as u32)
+    };
+    let check = |what: &str, got: [f32; 3], want: [f32; 3]| {
+        assert!(near(got, want, 3.0), "{what}: {got:?}, not {want:?}");
+    };
+    let red = ink([239, 83, 80]);
+    let cyan = ink([77, 208, 225]);
+    let amber = ink([255, 183, 77]);
+    let violet = ink([186, 104, 200]);
+    // The heart (140 px): inside, in a lobe, and the notch between them.
+    check("the heart", at(0, 0, 0, 0), red);
+    check("the heart's left lobe", at(0, 0, -32, -55), red);
+    check("the notch between the lobes", at(0, 0, 0, -50), back);
+    // The ring: its hole by nonzero (the inner circle runs the other way).
+    check("the ring's hole", at(1, 0, 0, 0), back);
+    check("the ring", at(1, 0, 46, 0), cyan);
+    // The star: nonzero fills the pentagon, even-odd leaves it; both draw
+    // the spikes (50 px up, inside the top spike).
+    check("the nonzero star's pentagon", at(2, 0, 0, 0), amber);
+    check("the even-odd star's pentagon", at(3, 0, 0, 0), back);
+    check("the nonzero star's spike", at(2, 0, 0, -50), amber);
+    check("the even-odd star's spike", at(3, 0, 0, -50), violet);
+    // On the lines that cross the nonzero star's inside (its pentagon's
+    // top edge, 64·cos 72° above the centre, and a lower one): no seam.
+    check("the nonzero star's inner line", px(&r, 530, 95), amber);
+    check(
+        "the nonzero star's inner line, left",
+        at(2, 0, -12, -16),
+        amber,
+    );
+    // The stroked heart (120 px): its outline at the left lobe, not its inside.
+    check("the stroke's inside", at(0, 1, 0, 0), back);
+    check("the stroke", at(0, 1, -60, -21), red);
+    // The drop shadow (6, 8) past the heart's right edge.
+    let shadow = at(1, 1, 58, 4);
+    assert!(
+        shadow.iter().zip(back).all(|(s, b)| *s < b - 4.0),
+        "the path's drop shadow: {shadow:?} over {back:?}"
+    );
+    check("the shadowed heart", at(1, 1, 0, 0), cyan);
+    // The morph half way: at 45° the square's edge is at 52.5 px on each
+    // axis, the circle's at 42.4, the morph's at 47.5.
+    check(
+        "inside the morph, outside the circle",
+        at(3, 1, 45, 45),
+        violet,
+    );
+    check(
+        "outside the morph, inside the square",
+        at(3, 1, 50, 50),
+        back,
+    );
+    // The heart squashed to 70 % wide and turned 25°: its point, local
+    // (0, 51), lies left of and below the centre; just inside it is drawn,
+    // just past it is not.
+    let (sn, cs) = 25f32.to_radians().sin_cos();
+    let turned = |y: f32| at(4, 1, (-sn * y).round() as i32, (cs * y).round() as i32);
+    let green = ink([129, 199, 132]);
+    check("inside the turned heart's point", turned(44.0), green);
+    check("at the turned heart's point", turned(49.0), green);
+    check("past the turned heart's point", turned(56.0), back);
+    // The 14 px heart at (1060, 60).
+    check("the 14 px heart", px(&r, 1067, 67), ink([255, 241, 118]));
 }
 
 /// World-space UI (`docs/ui.md` §14, `ui_scenes::world`): occluders hide a

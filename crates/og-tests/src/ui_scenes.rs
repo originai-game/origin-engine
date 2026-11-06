@@ -18,6 +18,8 @@
 //! - `ui-glass-*` (§5.3): flat glass's weights, hairline, shadows, the
 //!   scrim and the fallbacks over bright, dark and busy backdrops
 //!   (`glass.rs`).
+//! - `ui-paths`: run-time vector paths, filled by both rules, under a
+//!   gradient, stroked, shadowed, morphed and transformed (`paths.rs`).
 //! - `ui-world` (`docs/ui.md` §14): mass elements (damage numbers,
 //!   nameplates faded behind a wall, bars with a ghost, icons, a compact
 //!   score) and two occluded panels over a lit 3D scene.
@@ -32,10 +34,12 @@ use og_render::{
 
 mod effects_layers;
 mod glass;
+mod paths;
 mod text_world;
 
 pub use effects_layers::{blur_detail, effects, layers};
 pub use glass::{GlassInk, GlassScene, glass_scene};
+pub use paths::{heart, paths, star};
 pub use text_world::*;
 
 const W: f32 = 1280.0;

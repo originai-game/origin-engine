@@ -238,6 +238,16 @@ fn shape_bounds(s: &UiShape) -> Rect {
         center += Vec2::new(m[0] * mid.x + m[2] * mid.y, m[1] * mid.x + m[3] * mid.y);
         half = (hi - lo) * 0.5 + Vec2::splat(0.5 * width * limit);
     }
+    if let UiGeometry::Path(path) = &s.geometry {
+        // A path's box is its curves' (controls included), not its paint's.
+        let Some((lo, hi)) = path.bounds() else {
+            return Rect::default();
+        };
+        let m = s.transform;
+        let mid = (lo + hi) * 0.5;
+        center += Vec2::new(m[0] * mid.x + m[2] * mid.y, m[1] * mid.x + m[3] * mid.y);
+        half = (hi - lo) * 0.5;
+    }
     let mut grow = 1.0;
     let mut shift = Vec2::ZERO;
     match s.mode {
@@ -1702,5 +1712,42 @@ mod levels {
         // The corner quad, after both cuts end, is cut by neither.
         let after = ui.shapes[3].clip.expect("a rectangle");
         assert!(ui.clips.iter().all(|c| c.rect != after));
+    }
+
+    /// A path's bounds are its curves' under its transform, not its paint
+    /// box's: a heart whose point reaches 51 px below a 20 px box, turned
+    /// 25° and squashed to 60 % high, keeps its point inside what the
+    /// layer and the levels see.
+    #[test]
+    fn a_turned_squashed_path_keeps_its_point_in_its_bounds() {
+        let mut path = og_render::UiPath::new();
+        path.move_to(Vec2::new(-60.0, -21.0))
+            .cubic_to(
+                Vec2::new(-60.0, -60.0),
+                Vec2::new(60.0, -60.0),
+                Vec2::new(60.0, -21.0),
+            )
+            .line_to(Vec2::new(0.0, 51.0))
+            .close();
+        let (s, c) = 25f32.to_radians().sin_cos();
+        let mut shape = UiShape::rect([90.0, 90.0, 20.0, 20.0], 0.0, [1.0; 4]);
+        shape.geometry = UiGeometry::Path(std::sync::Arc::new(path));
+        shape.transform = [c, s, -s * 0.6, c * 0.6];
+        let b = shape_bounds(&shape);
+        // The point at local (0, 51) on the screen.
+        let tip = Vec2::new(100.0 - s * 0.6 * 51.0, 100.0 + c * 0.6 * 51.0);
+        assert!(
+            b.x <= tip.x && tip.x <= b.right() && b.y <= tip.y && tip.y <= b.bottom(),
+            "{b:?} misses the point at {tip}"
+        );
+        // And the left lobe at (-60, -21).
+        let lobe = Vec2::new(
+            100.0 - c * 60.0 + s * 0.6 * 21.0,
+            100.0 - s * 60.0 - c * 0.6 * 21.0,
+        );
+        assert!(
+            b.x <= lobe.x && lobe.y >= b.y,
+            "{b:?} misses the lobe at {lobe}"
+        );
     }
 }

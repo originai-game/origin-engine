@@ -95,6 +95,16 @@ evaluated per pixel, so edges are exact at any scale and transform.
 - Vector paths: a `type vector` asset (SVG subset: paths, fills, strokes,
   gradients, groups) cooked to triangles with analytic antialiasing on
   their edges, drawn with the same paints. Icons keep the MTSDF icon sets.
+- Run-time vector paths (og-render's `UiGeometry::Path`, a `UiPath` of
+  moves, lines, quadratic and cubic Béziers and closes, nonzero or
+  even-odd), nothing cooked, so a path can change every frame: charts,
+  morphs (`UiPath::lerp` between paths of the same verbs) and imported
+  animation. A path is a shape like any other: its signed distance per
+  pixel, from its curves as quadratics sorted into bands (Slug's banding
+  and root eligibility, Inigo Quilez's distance to a quadratic;
+  `third_party/vector-paths/`), so it takes every paint and mode. Strokes
+  of a path are a band around its outline (round where it turns); a line
+  with joins, caps and dashes is `UiPath::flatten` into polylines.
 
 ### 5.2 Paints
 

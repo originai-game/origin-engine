@@ -194,6 +194,7 @@ pub const SCENES: &[&str] = &[
     "grass-wind",
     "post-blur",
     "ui-shapes",
+    "ui-paths",
     "ui-paints",
     "ui-effects",
     "ui-layers",
@@ -1602,6 +1603,10 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // effects, layers and materials, text effects, and a cooked vector.
         "ui-shapes" => |g, _| {
             g.scene = crate::ui_scenes::shapes();
+            Ok(())
+        },
+        "ui-paths" => |g, _| {
+            g.scene = crate::ui_scenes::paths();
             Ok(())
         },
         "ui-paints" => |g, _| {

@@ -143,6 +143,7 @@ fn area(g: &UiGeometry) -> (u32, [f32; 4], [f32; 4]) {
             [0.0; 4],
         ),
         UiGeometry::Polyline { .. } => (4, [0.0; 4], [0.0; 4]),
+        UiGeometry::Path(_) => (6, [0.0; 4], [0.0; 4]),
     }
 }
 
@@ -353,7 +354,10 @@ pub(crate) fn clip_heads(
             }
             None => 0,
         };
-        let r = if matches!(c.geometry, UiGeometry::Polyline { .. }) {
+        let r = if matches!(
+            c.geometry,
+            UiGeometry::Polyline { .. } | UiGeometry::Path(_)
+        ) {
             parent
         } else {
             tables.clip(c, parent)
@@ -410,6 +414,45 @@ pub(crate) fn shape(
             g.geo = geo;
             g.geo2 = geo2;
             g.kinds[0] = word;
+        }
+        UiGeometry::Path(path) => {
+            // Local units a CSS px: the distance is read past the outline
+            // as far as the mode draws, and two device pixels more at any
+            // density down to half a pixel a CSS px.
+            let px = 1.0 / (m[0] * m[3] - m[1] * m[2]).abs().sqrt().max(1e-6);
+            let glass_reach = |sh: &UiGlassShadow| {
+                if sh.color[3] > 0.0 {
+                    1.5 * sh.blur.max(0.0) + sh.spread.max(0.0) + sh.offset.abs().max_element()
+                } else {
+                    0.0
+                }
+            };
+            let reach = match s.mode {
+                UiMode::Fill => 0.0,
+                UiMode::Stroke(st) => st.width.max(0.0),
+                UiMode::Shadow {
+                    offset,
+                    blur,
+                    spread,
+                }
+                | UiMode::InnerShadow {
+                    offset,
+                    blur,
+                    spread,
+                } => 1.5 * blur.max(0.0) + spread.abs() + offset.abs().max_element(),
+                UiMode::Backdrop { glass, .. } => {
+                    glass_reach(&glass.shadows[0]).max(glass_reach(&glass.shadows[1]))
+                }
+            };
+            match path::write(path, reach + 4.0 * px, 0.05 * px, &mut tables.points) {
+                Some(p) => {
+                    g.geo = p.geo;
+                    g.geo2 = [p.rule, 0.0, 0.0, 0.0];
+                }
+                // Nothing to draw: no bands.
+                None => g.geo = [0.0; 4],
+            }
+            g.kinds[0] = 6;
         }
         other => {
             let (word, geo, geo2) = area(other);

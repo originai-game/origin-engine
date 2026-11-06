@@ -62,6 +62,8 @@ const GEO_POLYGON: u32 = 3u;
 const GEO_POLYLINE: u32 = 4u;
 // A clip record that is a depth test against the scene (UiOccluder).
 const GEO_OCCLUDE: u32 = 5u;
+// A vector path (src/ui/path.rs).
+const GEO_PATH: u32 = 6u;
 const CORNER_ROUND: u32 = 0u;
 const CORNER_SQUIRCLE: u32 = 1u;
 const CORNER_BEVEL: u32 = 2u;
@@ -377,6 +379,191 @@ fn sd_filled_path(p: vec2<f32>, first: u32, count: u32) -> vec2<f32> {
     }
   }
   return vec2<f32>(select(best, -best, inside), along);
+}
+
+// The distance from the origin to the quadratic Bézier `a b c` (relative
+// to the sample) and the parameter of its nearest point: Inigo Quilez's
+// closed form (MIT, third_party/vector-paths/), the nearest of the cubic's
+// real roots.
+fn dist_quad(a: vec2<f32>, b: vec2<f32>, c: vec2<f32>) -> vec2<f32> {
+  let qa = b - a;
+  let qb = a - 2.0 * b + c;
+  let qc = qa * 2.0;
+  let qd = a;
+  let kk = 1.0 / dot(qb, qb);
+  let kx = kk * dot(qa, qb);
+  let ky = kk * (2.0 * dot(qa, qa) + dot(qd, qb)) / 3.0;
+  let kz = kk * dot(qd, qa);
+  let pp = ky - kx * kx;
+  let p3 = pp * pp * pp;
+  let q = kx * (2.0 * kx * kx - 3.0 * ky) + kz;
+  var h = q * q + 4.0 * p3;
+  var res: f32;
+  var tt: f32;
+  if (h >= 0.0) {
+    h = sqrt(h);
+    let x = (vec2<f32>(h, -h) - q) * 0.5;
+    let uv = sign(x) * pow(abs(x), vec2<f32>(1.0 / 3.0));
+    tt = clamp(uv.x + uv.y - kx, 0.0, 1.0);
+    let e = qd + (qc + qb * tt) * tt;
+    res = dot(e, e);
+  } else {
+    let z = sqrt(-pp);
+    let v = acos(clamp(q / (pp * z * 2.0), -1.0, 1.0)) / 3.0;
+    let m = cos(v);
+    let n = sin(v) * 1.732050808;
+    let t = clamp(vec2<f32>(m + m, -n - m) * z - kx, vec2<f32>(0.0), vec2<f32>(1.0));
+    let e0 = qd + (qc + qb * t.x) * t.x;
+    let e1 = qd + (qc + qb * t.y) * t.y;
+    res = dot(e0, e0);
+    tt = t.x;
+    if (dot(e1, e1) < res) {
+      res = dot(e1, e1);
+      tt = t.y;
+    }
+  }
+  // The ends, against the roots' precision on nearly flat curves.
+  if (dot(a, a) < res) {
+    res = dot(a, a);
+    tt = 0.0;
+  }
+  if (dot(c, c) < res) {
+    res = dot(c, c);
+    tt = 1.0;
+  }
+  return vec2<f32>(sqrt(res), tt);
+}
+
+// The signed crossings of the ray from the origin to +x with the
+// quadratic `a b c`: Slug's root eligibility (MIT or Apache-2.0,
+// third_party/vector-paths/), which counts a crossing at a shared
+// endpoint once and a tangent touch never.
+fn quad_crossings(a: vec2<f32>, b: vec2<f32>, c: vec2<f32>) -> i32 {
+  let shift = select(0u, 2u, a.y > 0.0) + select(0u, 4u, b.y > 0.0) + select(0u, 8u, c.y > 0.0);
+  let code = (0x2E74u >> shift) & 3u;
+  if (code == 0u) {
+    return 0;
+  }
+  let ay = a.y - 2.0 * b.y + c.y;
+  let by = a.y - b.y;
+  let ax = a.x - 2.0 * b.x + c.x;
+  let bx = a.x - b.x;
+  var t1: f32;
+  var t2: f32;
+  if (abs(ay) < 1.0 / 65536.0) {
+    t1 = a.y * 0.5 / by;
+    t2 = t1;
+  } else {
+    let d = sqrt(max(by * by - ay * a.y, 0.0));
+    t1 = (by - d) / ay;
+    t2 = (by + d) / ay;
+  }
+  var w = 0;
+  if ((code & 1u) != 0u && (ax * t1 - bx * 2.0) * t1 + a.x > 0.0) {
+    w += 1;
+  }
+  if (code > 1u && (ax * t2 - bx * 2.0) * t2 + a.x > 0.0) {
+    w -= 1;
+  }
+  return w;
+}
+
+// A path's curve: its points relative to a sample, and whether it is a line.
+struct PathCurve {
+  a: vec2<f32>,
+  b: vec2<f32>,
+  c: vec2<f32>,
+  line: bool,
+};
+
+// The band list (its first record, its length) local height `y` is in.
+fn path_band(y: f32, geo: vec4<f32>) -> vec2<u32> {
+  let nb = u32(geo.z);
+  let header = u32(geo.y);
+  let top = points[header + 1u].x;
+  let band = u32(clamp(floor((y - top) / max(geo.w, 1e-6)), 0.0, f32(nb - 1u)));
+  let head = points[header + 2u + band];
+  return vec2<u32>(u32(head.x), u32(head.y));
+}
+
+// Curve `k` of the band list at `start`, relative to `p`.
+fn path_curve(geo: vec4<f32>, start: u32, k: u32, p: vec2<f32>) -> PathCurve {
+  let ci = u32(points[start + k / 4u][k % 4u]);
+  let r0 = points[u32(geo.x) + 2u * ci];
+  let r1 = points[u32(geo.x) + 2u * ci + 1u];
+  return PathCurve(r0.xy - p, r0.zw - p, r1.xy - p, r1.z > 0.5);
+}
+
+// The winding number at local `p`: a ray to +x through its band.
+fn path_winding(p: vec2<f32>, geo: vec4<f32>) -> i32 {
+  let band = path_band(p.y, geo);
+  var w = 0;
+  for (var k = 0u; k < band.y; k++) {
+    let q = path_curve(geo, band.x, k, p);
+    w += quad_crossings(q.a, q.b, q.c);
+  }
+  return w;
+}
+
+fn path_inside(w: i32, rule: f32) -> bool {
+  if (rule > 0.5) {
+    return (w & 1) != 0;
+  }
+  return w != 0;
+}
+
+// A path's signed distances (src/ui/path.rs `write`; `sd2` there mirrors
+// it): x the fill's, to the curves within the margin where inside meets
+// outside, so a line crossing the inside of a nonzero fill is no edge; y
+// the line's, to every curve, what strokes follow. Each is signed by the
+// winding number of a ray to +x and the fill rule. A curve's sides are
+// judged at its nearest point: the winding just on the sample's side of it
+// (a second ray from there) and that plus the curve's direction across it.
+// geo: the curves' first record, the header's, the bands' count, a band's
+// height; `rule` 1 for even-odd.
+fn sd_path(p: vec2<f32>, geo: vec4<f32>, rule: f32) -> vec2<f32> {
+  if (geo.z < 0.5) {
+    return vec2<f32>(1e9);
+  }
+  let margin = points[u32(geo.y) + 1u].y;
+  let band = path_band(p.y, geo);
+  let here = path_inside(path_winding(p, geo), rule);
+  var fill = 1e9;
+  var line = 1e9;
+  for (var k = 0u; k < band.y; k++) {
+    let q = path_curve(geo, band.x, k, p);
+    var d: f32;
+    var t: f32;
+    if (q.line) {
+      let ab = q.c - q.a;
+      t = clamp(-dot(q.a, ab) / max(dot(ab, ab), 1e-12), 0.0, 1.0);
+      d = length(q.a + ab * t);
+    } else {
+      let dt = dist_quad(q.a, q.b, q.c);
+      d = dt.x;
+      t = dt.y;
+    }
+    line = min(line, d);
+    if (d >= fill || d > margin) {
+      continue;
+    }
+    let u = 1.0 - t;
+    let at = q.a * (u * u) + q.b * (2.0 * u * t) + q.c * (t * t);
+    let tangent = (q.b - q.a) * u + (q.c - q.b) * t;
+    let cr = tangent.x * -at.y - tangent.y * -at.x;
+    var s = 0;
+    if (abs(cr) > 1e-9) {
+      s = select(-1, 1, cr > 0.0);
+    }
+    // Just on the sample's side of the curve's nearest point.
+    let near = at * (1.0 - min(0.01 / max(d, 0.01), 1.0));
+    let w = path_winding(p + near, geo);
+    if (s == 0 || path_inside(w, rule) != path_inside(w + s, rule)) {
+      fill = d;
+    }
+  }
+  let sg = select(1.0, -1.0, here);
+  return vec2<f32>(sg * fill, sg * line);
 }
 
 // The cut of a segment at a sharp joint `j` between directions `d0` and
@@ -779,7 +966,16 @@ fn vs_shape(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
     // The glass's shadows, outside it (none: the quad as it was).
     grow += max(glass_shadow_reach(s.paint, s.paint2.a), glass_shadow_reach(s.paint3, s.paint4.a));
   }
-  let local = corners[vi] * (s.center_half.zw + vec2<f32>(grow));
+  var local = corners[vi] * (s.center_half.zw + vec2<f32>(grow));
+  if ((s.kinds.x & 15u) == GEO_PATH) {
+    // A path's quad is its curves' box (its header), not the paint's.
+    if (s.geo.z < 0.5) {
+      local = vec2<f32>(0.0);
+    } else {
+      let b = points[u32(s.geo.y)];
+      local = mix(b.xy - vec2<f32>(grow), b.zw + vec2<f32>(grow), corners[vi] * 0.5 + 0.5);
+    }
+  }
   var o: UiOut;
   o.position = device_position(s.center_half.xy + mat_apply(s.xform, local));
   o.local = local;
@@ -803,7 +999,8 @@ fn local_px(local: vec2<f32>) -> f32 {
   return max(0.5 * (length(dpdxFine(local)) + length(dpdyFine(local))), 1e-6);
 }
 
-// The shape's distance at `p` (x) and the length along a polyline there (y).
+// The shape's distance at `p` (x) and the length along a polyline there
+// (y); a path's y is its line's distance (sd_path).
 fn shape_distance(s: UiInstance, p: vec2<f32>) -> vec2<f32> {
   let kind = s.kinds.x & 15u;
   let corner = (s.kinds.x >> 4u) & 15u;
@@ -811,6 +1008,9 @@ fn shape_distance(s: UiInstance, p: vec2<f32>) -> vec2<f32> {
   let join = (s.kinds.x >> 12u) & 15u;
   if (kind == GEO_POLYLINE && s.geo.z > 1.5) {
     return sd_filled_path(p, u32(s.geo.x), u32(s.geo.y));
+  }
+  if (kind == GEO_PATH) {
+    return sd_path(p, s.geo, s.geo2.x);
   }
   if (kind == GEO_POLYLINE) {
     return sd_polyline(p, u32(s.geo.x), u32(s.geo.y), s.geo.z > 0.5, s.geo2.y, cap, join, s.geo2.z);
@@ -852,11 +1052,12 @@ fn mode_coverage(s: UiInstance, p: vec2<f32>, px: f32) -> f32 {
   if (mode == MODE_STROKE && (kind != GEO_POLYLINE || filled)) {
     // A band of the width around the outline, its centre moved by the alignment.
     let hw = 0.5 * max(s.mode.x, 0.0);
-    let band = abs(sd.x - s.mode.y);
+    // A path's strokes follow every curve (y), self-crossings included.
+    let band = abs(select(sd.x, sd.y, kind == GEO_PATH) - s.mode.y);
     var d = band - hw;
     if (s.mode.z > 0.0 && filled) {
       d = dashed(d, band, hw, sd.y, s.mode.z, s.mode.w, s.mode2.x, u32(s.mode2.y), 0.0);
-    } else if (s.mode.z > 0.0) {
+    } else if (s.mode.z > 0.0 && kind != GEO_PATH) {
       let a = outline_along(p, kind, cap, s.center_half.zw, s.geo, s.geo);
       // Every outline is closed but a partial arc's.
       let open = kind == GEO_ARC && abs(s.geo.y) < TAU;

@@ -8,10 +8,10 @@ use crate::draw::DrawCmd;
 use crate::motion::codec::{R, W};
 use og_core::glam::Vec2;
 use og_render::{
-    TextureHandle, UiAlign, UiBlend, UiBuiltin, UiCap, UiCorner, UiEdge, UiFit, UiGeometry,
-    UiGradient, UiGradientKind, UiImage, UiJoin, UiMask, UiMaterial, UiMaterialHandle, UiMode,
-    UiPaint, UiShape, UiSpread, UiStop, UiStroke, UiTextEffects, UiTextOutline, UiTextShadow,
-    UiVectorHandle,
+    TextureHandle, UiAlign, UiBlend, UiBuiltin, UiCap, UiCorner, UiEdge, UiFillRule, UiFit,
+    UiGeometry, UiGradient, UiGradientKind, UiImage, UiJoin, UiMask, UiMaterial, UiMaterialHandle,
+    UiMode, UiPaint, UiPath, UiShape, UiSpread, UiStop, UiStroke, UiTextEffects, UiTextOutline,
+    UiTextShadow, UiVectorHandle, UiVerb,
 };
 
 fn v2(w: &mut W, v: Vec2) {
@@ -153,8 +153,28 @@ fn geometry(w: &mut W, g: &UiGeometry) {
                 UiJoin::Bevel => w.u8(2),
             }
         }
+        UiGeometry::Path(path) => {
+            w.u8(5);
+            w.u8(u8::from(path.fill_rule == UiFillRule::EvenOdd));
+            w.u32(path.verbs.len() as u32);
+            for v in &path.verbs {
+                w.u8(index_of(&VERBS, v));
+            }
+            w.u32(path.points.len() as u32);
+            for p in &path.points {
+                v2(w, *p);
+            }
+        }
     }
 }
+
+const VERBS: [UiVerb; 5] = [
+    UiVerb::Move,
+    UiVerb::Line,
+    UiVerb::Quad,
+    UiVerb::Cubic,
+    UiVerb::Close,
+];
 
 fn rgeometry(r: &mut R) -> Option<UiGeometry> {
     Some(match r.u8()? {
@@ -201,6 +221,28 @@ fn rgeometry(r: &mut R) -> Option<UiGeometry> {
                     _ => return None,
                 },
             }
+        }
+        5 => {
+            let mut path = UiPath {
+                fill_rule: if r.u8()? == 1 {
+                    UiFillRule::EvenOdd
+                } else {
+                    UiFillRule::NonZero
+                },
+                ..UiPath::default()
+            };
+            let n = r.u32()? as usize;
+            path.verbs.reserve(n.min(4096));
+            for _ in 0..n {
+                path.verbs.push(*VERBS.get(r.u8()? as usize)?);
+            }
+            let n = r.u32()? as usize;
+            path.points.reserve(n.min(4096));
+            for _ in 0..n {
+                path.points.push(rv2(r)?);
+            }
+            path.check().ok()?;
+            UiGeometry::Path(std::sync::Arc::new(path))
         }
         _ => return None,
     })
@@ -894,5 +936,29 @@ mod tests {
             });
             assert_eq!(back, Some(g));
         }
+    }
+
+    /// A run-time path keeps its verbs, points and even-odd rule (a
+    /// leaving chart or imported shape draws as it left); a cut-short one
+    /// reads as nothing, not as a different path.
+    #[test]
+    fn a_vector_path_keeps_its_curves_through_the_codec() {
+        let mut path = UiPath::new();
+        path.move_to(Vec2::new(1.0, 2.0))
+            .quad_to(Vec2::new(5.0, -3.0), Vec2::new(9.0, 2.0))
+            .cubic_to(
+                Vec2::new(9.0, 8.0),
+                Vec2::new(1.0, 8.0),
+                Vec2::new(1.0, 4.0),
+            )
+            .close();
+        path.ellipse(Vec2::new(4.0, 4.0), Vec2::new(2.0, 1.0));
+        path.fill_rule = UiFillRule::EvenOdd;
+        let g = UiGeometry::Path(std::sync::Arc::new(path));
+        let mut bytes = Vec::new();
+        geometry(&mut W(&mut bytes), &g);
+        let read = |b: &[u8]| rgeometry(&mut R { bytes: b, at: 0 });
+        assert_eq!(read(&bytes), Some(g));
+        assert_eq!(read(&bytes[..bytes.len() - 4]), None);
     }
 }

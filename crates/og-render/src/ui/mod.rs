@@ -35,6 +35,7 @@ pub(crate) mod build;
 pub mod glass;
 pub mod mass;
 pub(crate) mod pass;
+pub mod path;
 
 pub use glass::{
     GLASS_BLUR_SCALE, UiElevation, UiGlassFallback, UiGlassStyle, UiGlassWeight, ui_scrim,
@@ -44,6 +45,7 @@ pub use mass::{
     UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiOccluder, UiOcclusion, UiParticleShape,
     format_number,
 };
+pub use path::{UiFillRule, UiPath, UiVerb};
 
 use crate::TextureHandle;
 use crate::hooks::{ParamKind, ShaderParam};
@@ -131,6 +133,13 @@ pub enum UiGeometry {
         cap: UiCap,
         join: UiJoin,
     },
+    /// A vector path ([`UiPath`], local, relative to the centre) of lines
+    /// and Béziers, nothing flattened: fills cover it by its fill rule,
+    /// strokes outline it (round where it turns, as a band around a
+    /// distance; [`UiPath::flatten`] into polylines for joins, caps and
+    /// dashes), shadows and glows take its outline. The paint's box is the
+    /// shape's (`half`), so a path may reach past it.
+    Path(std::sync::Arc<UiPath>),
 }
 
 /// How a gradient's parameter runs over the shape's box.
