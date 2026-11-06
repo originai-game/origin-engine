@@ -31,15 +31,26 @@ fn step_ms(eng: &Engine, t0: f64) -> f64 {
 /// Up to `steps` ticks through the probe (due command steps run on the
 /// way). `Err` names the tick and the failing system.
 pub(crate) fn advance_probe(eng: &Engine, steps: u64) -> Result<u64, String> {
-    tick_boundary(eng)?;
+    if eng.stepping.get() {
+        return Err("advance was called from inside a system".into());
+    }
     eng.render.borrow_mut().capture_ms = 0.0;
     let t0 = rprobe::now_ms();
     let mut left = steps;
     let tick = loop {
-        let chunk = left.min(og_probe::PLAYTEST_MAX_TICKS);
+        // A batch has exactly the boundaries of repeated single advances:
+        // host answers and pending assets must reach the next fixed tick.
+        if let Some(host) = hooks() {
+            host.pump_platform(eng.id)?;
+        }
+        tick_boundary(eng)?;
+        let chunk = left.min(1);
         let stepped = rprobe::with_probe(eng, false, |p, w| p.advance(w, chunk));
         super::modules::end_of_ticks();
         super::stream::sound_chunks(eng);
+        if let Some(host) = hooks() {
+            host.pump_platform(eng.id)?;
+        }
         let tick = stepped?.map_err(err)?;
         left -= chunk;
         if left == 0 || eng.probe.borrow().quit_requested() {
@@ -58,9 +69,6 @@ pub fn advance(id: u32, steps: u32) -> String {
         Ok(e) => e,
         Err(e) => return refuse(e),
     };
-    if eng.stepping.get() {
-        return refuse("advance was called from inside a system");
-    }
     match advance_probe(&eng, u64::from(steps)) {
         Ok(tick) => ok(json!(tick)),
         Err(e) => refuse(e),
@@ -402,6 +410,17 @@ pub fn answer_call(id: u32, call: &og_probe::rpc::Call) -> String {
             return json!({ "jsonrpc": "2.0", "id": call.id, "error": { "code": og_probe::rpc::INTERNAL_ERROR, "message": e } }).to_string()
         }
     };
+    #[cfg(not(feature = "publish"))]
+    if call.method == "advance" {
+        use og_probe::rpc::{INTERNAL_ERROR, error_frame, result_frame, steps};
+        return match steps(&call.params) {
+            Ok(count) => match advance_probe(&eng, count) {
+                Ok(tick) => result_frame(&call.id, json!(tick)),
+                Err(error) => error_frame(&call.id, INTERNAL_ERROR, &format!("advance: {error}")),
+            },
+            Err(error) => error_frame(&call.id, error.code, &error.message),
+        };
+    }
     // `hello` only says who is speaking. The runtime asks it while creating
     // an engine (packages/engine/src/runtime.ts learnBuild), so with
     // `deferStart` it must not run GameDesc.start before the host has

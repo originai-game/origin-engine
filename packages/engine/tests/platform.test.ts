@@ -14,8 +14,9 @@ import type { World } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
 import { nativePlatform } from "../src/node/platform.ts";
 import { emptyDocument, localPlatform, memoryPersistence } from "../src/platform-local.ts";
-import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
+import { createEngine, fixedClock, type Engine, type GameToken } from "../src/runtime.ts";
 import { playerPlatform } from "../shell/platform.ts";
+import advanceGame, { State as AdvanceState } from "./fixtures/advance/game.ts";
 
 beforeAll(() => {
   loadNativeHost();
@@ -36,6 +37,42 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
 
 type Res = { request: number; method: string; ok: boolean; data: Record<string, unknown>; error?: { code: string; retryable: boolean; revision: number }; tick: number } | null;
 const result = (w: World, r: number) => og.platform.result(w, r) as unknown as Res;
+
+test("batched advances preserve timed input and platform answers at every tick", () => {
+  const run = (batch: boolean, mode: "engine" | "probe" | "rpc") => {
+    const engine = start(advanceGame);
+    try {
+      engine.setClock(fixedClock(engine, 1767225600000));
+      engine.attachPlatform(localPlatform(memoryPersistence()));
+      const commands: string[] = [];
+      for (let tick = 0; tick < 32; tick++) {
+        const at = tick / engine.rate;
+        if (tick === 6) commands.push(`${at}:key_down:KeyW`);
+        if (tick === 18) commands.push(`${at}:key_up:KeyW`);
+        commands.push(`${at}:dump_world`);
+      }
+      expect(engine.probe.commands(commands.join(";"))?.scheduled).toBe(34);
+      for (let tick = 0; tick < 32; tick += batch ? 32 : 1) {
+        const steps = batch ? 32 : 1;
+        if (mode === "engine") expect(must(engine.advance(steps))).toBe(tick + steps);
+        else if (mode === "probe") expect(engine.probe.advance(steps)).toBe(tick + steps);
+        else expect(JSON.parse(engine.call(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "advance", params: { steps } }))).result).toBe(tick + steps);
+      }
+      const hashes = engine.takeOutputs().map((output) => JSON.parse(output.data).hash);
+      expect(hashes.length).toBe(32);
+      hashes.push(engine.hash());
+      return { hashes, state: { ...must(engine.world.resource(AdvanceState)) } };
+    } finally {
+      engine.destroy();
+    }
+  };
+  const single = run(false, "engine");
+  expect(single.state).toEqual({ request: 1, answered: 25, pressedAt: 6, releasedAt: 18 });
+  for (const mode of ["engine", "probe", "rpc"] as const) {
+    expect(run(true, mode)).toEqual(single);
+    expect(run(false, mode)).toEqual(single);
+  }
+});
 
 /** Requests made by the Caller system on tick 1, and answers it saw. */
 const Calls = defineResource("PtCalls", { set: u32(), get: u32(), submit: u32(), top: u32(), around: u32(), point: u32(), mark: u32(), answered: u32(), answeredAt: f64() });

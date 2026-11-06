@@ -52,7 +52,7 @@ use std::rc::Rc;
 #[derive(Clone, Debug)]
 pub struct Dispatch {
     /// 0 system, 1 command, 2 facts, 3 a run condition (answers `=true`
-    /// or `=false`), 4 a hook (payload: the entity).
+    /// or `=false`), 4 a hook (payload: the entity), 5 the platform pump.
     pub kind: u32,
     pub engine: u32,
     /// The callback id the runtime's table holds the function under.
@@ -79,6 +79,10 @@ pub trait Hooks {
     /// Call the JavaScript dispatcher. `Ok` carries what it answered after
     /// a leading `=` (facts), `Err` the error it reported or threw.
     fn dispatch(&self, call: &Dispatch) -> Result<String, String>;
+    /// Answer host requests between fixed ticks, outside the probe borrow.
+    fn pump_platform(&self, _engine: u32) -> Result<(), String> {
+        Ok(())
+    }
     /// The views handed out since the last call are retired. A host that
     /// copied columns out copies writable ones back now (the memory is still
     /// where it was). `moving` says whether column memory may move next (a

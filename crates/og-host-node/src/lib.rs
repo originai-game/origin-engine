@@ -351,6 +351,20 @@ unsafe fn js_string(env: sys::napi_env, value: sys::napi_value) -> String {
 }
 
 impl Hooks for NodeHooks {
+    fn pump_platform(&self, engine: u32) -> Result<(), String> {
+        self.dispatch(&Dispatch {
+            kind: 5,
+            engine,
+            id: 0,
+            query: 0,
+            tick: 0.0,
+            dt: 0.0,
+            elapsed: 0.0,
+            payload: String::new(),
+        })
+        .map(|_| ())
+    }
+
     fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
         let env = env();
         if env.is_null() {

@@ -116,6 +116,20 @@ pub(crate) struct WebHooks {
 }
 
 impl Hooks for WebHooks {
+    fn pump_platform(&self, engine: u32) -> Result<(), String> {
+        self.dispatch(&Dispatch {
+            kind: 5,
+            engine,
+            id: 0,
+            query: 0,
+            tick: 0.0,
+            dt: 0.0,
+            elapsed: 0.0,
+            payload: String::new(),
+        })
+        .map(|_| ())
+    }
+
     fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
         let args = js_sys::Array::new();
         for v in [

@@ -117,7 +117,8 @@ fn string<'a>(params: &'a Value, key: &str) -> Result<&'a str, RpcError> {
         .ok_or_else(|| RpcError::invalid(format!("{key} must be a string")))
 }
 
-fn steps(params: &Value) -> Result<u64, RpcError> {
+/// Validate the fixed-step count for a probe advance.
+pub fn steps(params: &Value) -> Result<u64, RpcError> {
     params
         .get("steps")
         .and_then(Value::as_u64)

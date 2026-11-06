@@ -1348,8 +1348,18 @@ function message(e: unknown): string {
   return text.startsWith("=") ? ` ${text}` : text;
 }
 
-/** What the engine calls: kind 0 a system, 1 a command, 2 the facts function, 3 a run condition, 4 a hook. */
+const engines = new Map<number, Engine>();
+
+/** What the engine calls: kind 0 a system, 1 a command, 2 facts, 3 a run condition, 4 a hook, 5 the platform between ticks. */
 const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payload) => {
+  if (kind === 5) {
+    try {
+      engines.get(engine)?.pumpPlatform();
+      return "";
+    } catch (e) {
+      return message(e);
+    }
+  }
   const fn = callbacks[id];
   const world = worldFor(engine);
   const outer = running;
@@ -1506,6 +1516,7 @@ export class Engine {
     rates.set(id, (time.ok ? time.value.rate : undefined) ?? game.tick);
     learnBuild(id);
     this.attachPlatform(noPlatform);
+    engines.set(id, this);
   }
 
   /** The fixed tick rate the engine runs at, in hertz (GameDesc.tick, else project.ogt's `tick`, else 60). */
@@ -1569,11 +1580,8 @@ export class Engine {
 
   /** Take fixed steps: the tick reached, or the first failing system with its tick. */
   advance(steps: number): Result<number> {
-    // Calls made between ticks are answered before the first of these ticks applies answers.
-    this.pumpPlatform();
     const answer = parse<Result<number>>(abi().og_engine_advance(this.id, steps));
     epoch++;
-    this.pumpPlatform();
     return answer;
   }
 
@@ -1657,6 +1665,7 @@ export class Engine {
 
   destroy(): boolean {
     epoch++;
+    engines.delete(this.id);
     worlds.delete(this.id);
     engineGames.delete(this.id);
     forgetRecords(this.id);
