@@ -829,14 +829,12 @@ repeats, volume and pitch ranges, and a haptic pattern.
 
 ### 12.5 Built-in styles and generated styles
 
-The engine ships sixteen style packs under `templates/styles` (in a
-release, `styles/<name>`): fantasy, jade, kawaii, cartoon, midcore,
-storybook, craft, pixel, gilded, tactical, wasteland, dread, scifi, cyber,
-foundry, broadcast. Fantasy, scifi, cartoon and pixel are the flagship
-packs; the others are frozen. scifi is real-world spaceflight operations,
-kept apart from military sci-fi; cyber is high-contrast yellow, red and
-cyan with cut corners. Fonts and icon sheets shared by several packs live
-in `templates/styles/shared/`. Genre language is free; another game's
+The engine ships four style packs under `templates/styles` (in a
+release, `styles/<name>`): fantasy, scifi, cartoon and pixel; the UI work
+of 0.8.0 adds the next ones. scifi is real-world spaceflight operations,
+kept apart from military sci-fi. Fonts and icon sheets shared by several
+packs live in `templates/styles/shared/`, the CJK fonts the packs fall
+back to in `templates/styles/cjk/`. Genre language is free; another game's
 names, logos, fonts and exact layouts are not.
 
 A **style generator** (`og style new`) makes a game its own style from the
@@ -1019,9 +1017,8 @@ an engine check.
 
 **Concepts.** Review images live in the art review, not committed evidence.
 Clean sci-fi is the target of the engine's default style (§12.1) and the
-kit's own frames; A, dark fantasy, of the fantasy pack; C, bright
-stylised anime, of the kawaii pack. A frame is read beside its concept (or
-the nearest one) for hierarchy, material and art, not pixel positions. In
+kit's own frames; dark fantasy, of the fantasy pack. A frame is read
+beside its concept (or the nearest one) for hierarchy, material and art, not pixel positions. In
 the default style any hued chrome is a finding.
 
 **One selection grammar in the packs.** In every style but the default and
@@ -1391,18 +1388,8 @@ namespace, and its `types.ts` holds its data types:
 | `gacha` | `gachaBanner`, `pullSequence` |
 | `strategy` | `productionQueue`, `selectionPanel`, `commandCard`, `rtsConsole`, `dragSelect`, `rtsCommands`, `wavePreview`, `resourceBar`, `ledger` |
 | `racing` | `speedometer`, `standingsTower`, `lapTimer`, `rearView`, `raceBanner`, `itemSlot`, `driftScore`, `garage` |
-| `card` | `cardHand`, `rewardChoice`, `deckBuilder` |
-| `idle` | `idleGenerator`, `prestigePanel` |
-| `liveops` | `storeFront`, `battlePass` |
-| `story` | `backlog`, `barks`, `cgGallery`, `routeChart` |
-| `versus` | `lobby`, `characterSelect`, `versus`, `draft`, `chat` |
-| `rhythm` | `songSelect`, `laneKeys`, `comboCounter`, `judgement` |
-| `photo` | `photoMode` |
-| `sports` | `scorebug`, `matchStats`, `goalTimeline`, `playerPlate`, `substitution` |
-| `flight` | `flightHud` |
 
-`materials` is a kit of UI material presets (§5.4). Flight and photo are
-optional kits, not dependencies of every racing or action game. Generic
+`materials` is a kit of UI material presets (§5.4). Generic
 lists, slots, meters, timers (`hudTimer`), stars (`starBar`), counters,
 stores, rewards, cards, world tags, `heroButton`, `settingsTree`,
 `overlayBar`, ability slots and bars, status grids, navigation and the

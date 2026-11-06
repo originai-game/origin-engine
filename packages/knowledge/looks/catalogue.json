@@ -15,9 +15,7 @@
     "pixel",
     "cartoon",
     "fantasy",
-    "scifi",
-    "storybook",
-    "cyber"
+    "scifi"
   ],
   "artBibleTemplate": "Art bible for {title}. Premise: {premise}. Camera: {camera}; platform and display size: {platform}. Style: {name} ({descriptor}) Direction: {direction} Palette: {palette}. Asset specs: {assets}. UI: the {ui} style the preset names (a `ui` line in the game's look picks another, or the game's own styles/<name>/style.ogt), re-coloured to this palette. Avoid: {avoid}. Proof: the game's look is assets/looks/{game}.ogt, extending \"{slug}\"; capture the title, play and results screens with og run and check each against: {checks}. Every later asset is made inside this bible; a request for one asset never redesigns the style.",
   "styles": [
@@ -77,7 +75,7 @@
           }
         ]
       },
-      "ui": "storybook",
+      "ui": "fantasy",
       "palette": {
         "size": "free, but 3 to 5 dominant masses per scene",
         "rules": "Complementary clashes in shadows; one dominant temperature per scene; avoid neutral greys."
@@ -210,7 +208,7 @@
         ],
         "missing": []
       },
-      "ui": "storybook",
+      "ui": "fantasy",
       "palette": {
         "size": "12 to 24 colours",
         "rules": "Light values dominate; two or three pigments mixed into the rest; no pure black."
@@ -339,7 +337,7 @@
         ],
         "missing": []
       },
-      "ui": "storybook",
+      "ui": "cartoon",
       "palette": {
         "size": "16 to 32 colours",
         "rules": "Colour per material, gradients only from lighting and fog."
@@ -625,7 +623,7 @@
           }
         ]
       },
-      "ui": "storybook",
+      "ui": "fantasy",
       "palette": {
         "size": "10 to 16 colours",
         "rules": "Parchment ground, iron-gall ink, a few mineral pigments (ultramarine, vermilion, verdigris) and gold."
@@ -763,7 +761,7 @@
         ],
         "missing": []
       },
-      "ui": "storybook",
+      "ui": "cartoon",
       "palette": {
         "size": "graphite or sepia ramp plus paper, optional single accent",
         "rules": "Value from line density only; the accent marks danger or the goal."
@@ -1065,7 +1063,7 @@
           }
         ]
       },
-      "ui": "storybook",
+      "ui": "fantasy",
       "palette": {
         "size": "the source paintings' own",
         "rules": "Grade all sources to a common varnish tone with a LUT."
@@ -1144,7 +1142,7 @@
           }
         ]
       },
-      "ui": "storybook",
+      "ui": "cartoon",
       "palette": {
         "size": "monochrome ink or 4 to 8 light colours",
         "rules": "White or off-white ground; colour never hides line."
@@ -1541,7 +1539,7 @@
         ],
         "missing": []
       },
-      "ui": "cyber",
+      "ui": "scifi",
       "palette": {
         "size": "24 to 48 colours",
         "rules": "A near-black ground with two or three saturated light hues; no mid-grey fills; accents reserved for interactables."
@@ -1799,7 +1797,7 @@
         ],
         "missing": []
       },
-      "ui": "cyber",
+      "ui": "scifi",
       "palette": {
         "size": "24 to 48 colours",
         "rules": "Two tones per material (lit, shadow) with hue-shifted shadows; highlights as shapes."
@@ -1942,7 +1940,7 @@
           }
         ]
       },
-      "ui": "storybook",
+      "ui": "cartoon",
       "palette": {
         "size": "8 to 16 colours",
         "rules": "Colours of real paper stock: muted, slightly warm; white is off-white."
@@ -2297,7 +2295,7 @@
         ],
         "missing": []
       },
-      "ui": "cyber",
+      "ui": "scifi",
       "palette": {
         "size": "1 hue in 4 to 6 values, or black plus a gradient sky",
         "rules": "Value steps per layer; colour only in the far layers or a single accent."
@@ -2363,7 +2361,7 @@
         ],
         "missing": []
       },
-      "ui": "cyber",
+      "ui": "scifi",
       "palette": {
         "size": "3 to 6 colours",
         "rules": "One ground, one figure colour, one accent; contrast by hue and value."
@@ -2430,7 +2428,7 @@
         ],
         "missing": []
       },
-      "ui": "cyber",
+      "ui": "scifi",
       "palette": {
         "size": "black plus 2 to 4 saturated hues",
         "rules": "Each hue one meaning (player, enemy, pickup); white only for the hottest centres."

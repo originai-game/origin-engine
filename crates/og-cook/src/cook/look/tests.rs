@@ -452,10 +452,7 @@ fn a_built_in_style_is_its_packs_files_read_from_the_checkout() {
 /// does not carry megabytes of outlines it never draws.
 #[test]
 fn a_styles_chinese_companions_ride_with_a_chinese_game_only() {
-    let look = (
-        "looks/x.ogt",
-        "type look\nversion 1\n---\nui \"storybook\"\n",
-    );
+    let look = ("looks/x.ogt", "type look\nversion 1\n---\nui \"fantasy\"\n");
     let cjk = |files: &[(&str, &str)]| -> Vec<&'static str> {
         let root = project(files);
         builtin_files(look.0, look.1, &root)
@@ -482,41 +479,10 @@ fn a_styles_chinese_companions_ride_with_a_chinese_game_only() {
     assert_eq!(
         chinese,
         [
-            "@styles/cjk/NotoSansSC-Regular.ttf",
-            "@styles/cjk/NotoSansSC-Regular.ttf.ogt",
             "@styles/cjk/NotoSerifSC-SemiBold.ttf",
             "@styles/cjk/NotoSerifSC-SemiBold.ttf.ogt",
         ]
     );
-}
-
-/// A generated seed style draws with the packs' fonts and icons
-/// (`@styles/fantasy/Cinzel-Bold.ttf`): a game that names it gets
-/// them in its bundle, whatever its languages, with their settings.
-#[test]
-fn a_seed_styles_shared_fonts_and_icons_ride_with_the_game() {
-    let look = ("looks/x.ogt", "type look\nversion 1\n---\nui \"gilded\"\n");
-    let root = project(&[look]);
-    let ids: Vec<&str> = builtin_files(look.0, look.1, &root)
-        .into_iter()
-        .map(|(id, _)| id)
-        .collect();
-    for id in [
-        "@styles/gilded/style.ogt",
-        "@styles/gilded/sfx-tap.ogt",
-        "@styles/fantasy/Cinzel-Bold.ttf",
-        "@styles/fantasy/Cinzel-Bold.ttf.ogt",
-        "@styles/fantasy/Newsreader-Medium.ttf",
-        "@styles/fantasy/icons.png",
-        "@styles/fantasy/icons.png.ogt",
-    ] {
-        assert!(ids.contains(&id), "{id}: {ids:?}");
-    }
-    assert!(
-        !ids.iter().any(|id| id.starts_with("@styles/cjk/")),
-        "{ids:?}"
-    );
-    assert!(!ids.contains(&"@styles/fantasy/atlas.png"), "{ids:?}");
 }
 
 #[test]

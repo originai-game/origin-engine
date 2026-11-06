@@ -45,9 +45,11 @@ fn the_library_screens_cook_and_cover_every_screen_of_appendix_b() {
         .take_while(|l| l.starts_with('|'))
         .map(|l| {
             let cells: Vec<&str> = l.split('|').map(str::trim).collect();
+            // `—`: a row with no document yet (its kit was removed).
             let docs = cells[2]
                 .split(',')
                 .map(|d| d.trim().trim_matches('`').to_string())
+                .filter(|d| d != "—")
                 .collect();
             (cells[1].to_string(), docs)
         })

@@ -39,14 +39,14 @@ test("creation choices write manifest and look configuration, never gameplay", (
   expect(read("default/src/main.ts")).toBe('import { og } from "@origingame/engine";\n\nexport default og.game({});\n');
   for (const [i, view] of CREATION_CHOICES.view.entries()) {
     const dir = `choice-${i}`;
-    const r = cli(dir, "--id", "same", "--name", "Same", "--genre", "arena", "--view", view, "--look", "16bit-pixel", "--mood", "cold", "--ui", "dread", "--platform", "phone-portrait", "--input", "gamepad", "--players", "online-lockstep", "--lang", "ja,en,ar", "--music", "folk");
+    const r = cli(dir, "--id", "same", "--name", "Same", "--genre", "arena", "--view", view, "--look", "16bit-pixel", "--mood", "cold", "--ui", "scifi", "--platform", "phone-portrait", "--input", "gamepad", "--players", "online-lockstep", "--lang", "ja,en,ar", "--music", "folk");
     expect(r.code, r.err).toBe(0);
     expect(files(join(scratch, dir))).toEqual(expected);
     for (const f of expected.filter(f => f !== "project.ogt" && f !== "assets/looks/same.ogt")) expect(read(dir, f)).toBe(read("default", f));
-    expect(read(dir, "assets/looks/same.ogt")).toBe('type look\nversion 1\n---\nextends "16bit-pixel"\nmood "cold"\nui "dread"\n');
+    expect(read(dir, "assets/looks/same.ogt")).toBe('type look\nversion 1\n---\nextends "16bit-pixel"\nmood "cold"\nui "scifi"\n');
     const manifest = read(dir, "project.ogt");
     expect(manifest.slice(0, manifest.indexOf("create {"))).toBe(read("default/project.ogt").split("create {")[0]);
-    for (const line of ['genre "arena"', `view "${view}"`, 'look "16bit-pixel"', 'mood "cold"', 'ui "dread"', 'platform "phone-portrait"', 'input "gamepad"', 'players "online-lockstep"', 'lang "ja" "en" "ar"', 'music "folk"']) expect(manifest).toContain(line);
+    for (const line of ['genre "arena"', `view "${view}"`, 'look "16bit-pixel"', 'mood "cold"', 'ui "scifi"', 'platform "phone-portrait"', 'input "gamepad"', 'players "online-lockstep"', 'lang "ja" "en" "ar"', 'music "folk"']) expect(manifest).toContain(line);
     expect(manifest).toMatch(/^look "looks\/same.ogt"$/m);
     expect(manifest).not.toMatch(/^profile |orientation|dpr_cap/m);
   }
@@ -74,7 +74,7 @@ test("creation choices infer a premise, preserve overrides, and serialize every 
   const c = resolveCreationChoices("温暖的手机横屏平台跳跃", { mood: "cold", music: "folk", look: "16bit-pixel" });
   expect(c).toEqual({ genre: "action-platformer", view: "side-2d", look: "16bit-pixel", mood: "cold", ui: "pixel", platform: "phone-landscape", input: "touch", players: "single", lang: ["zh"], music: "folk" });
   expect(inferCreationChoices("isometric online shooter", { platform: "desktop", input: "gamepad" })).toMatchObject({ genre: "shooter", view: "isometric-2.5d", players: "online-lockstep", input: "gamepad" });
-  expect(resolveCreationChoices("", { look: "16bit-pixel", ui: "dread" }).ui).toBe("dread");
+  expect(resolveCreationChoices("", { look: "16bit-pixel", ui: "scifi" }).ui).toBe("scifi");
   expect(() => parseCreationInput({ players: "mmo" })).toThrow("players");
   expect(() => parseCreationInput({ lang: [] })).toThrow("lang");
   expect(() => parseCreationInput({ lang: ["en", "en"] })).toThrow("lang");
@@ -142,7 +142,7 @@ test("the packed package creates the same skeleton and briefs from its own prese
   expect(listing).toContain("template/src/main.ts");
   expect(listing).not.toContain("template/.og");
   expect(listing).not.toContain("template/loop");
-  const r = Bun.spawnSync(["bun", join(installed, "bin/create.ts"), join(scratch, "packed"), "--players", "online-lockstep", "--ui", "dread", "--no-prompt"]);
+  const r = Bun.spawnSync(["bun", join(installed, "bin/create.ts"), join(scratch, "packed"), "--players", "online-lockstep", "--ui", "scifi", "--no-prompt"]);
   expect(r.exitCode, new TextDecoder().decode(r.stderr)).toBe(0);
   expect(existsSync(join(scratch, "packed/.og"))).toBeFalse();
   expect(existsSync(join(scratch, "packed/loop"))).toBeFalse();

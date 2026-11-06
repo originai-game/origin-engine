@@ -1,14 +1,14 @@
 use crate::support::*;
 use og_ui::*;
 
-/// The storybook seed (version 2, no atlas), with `dress` blocks added to
-/// its dressings.
+/// The fantasy pack's style, with `dress` blocks added to its dressings
+/// (the theme is made without its atlas).
 pub fn dressed(dress: &str) -> Ui {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../templates/styles/storybook/style.ogt"
+        "/../../templates/styles/fantasy/style.ogt"
     );
-    let text = std::fs::read_to_string(path).expect("the storybook seed");
+    let text = std::fs::read_to_string(path).expect("the fantasy style");
     let file = parse_style(&format!("{text}{dress}")).unwrap_or_else(|e| panic!("{e}"));
     let mut ui = ui_with_font(test_font_metrics());
     ui.set_theme(file.theme(None, [0; 6]));

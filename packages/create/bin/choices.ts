@@ -5,7 +5,7 @@ export const CREATION_CHOICES = {
   genre: ["action-platformer", "shooter", "rpg", "puzzle-match", "strategy-tower-defense", "racing", "runner", "roguelike-card", "idle", "rhythm", "arena", "open-world"],
   view: ["side-2d", "top-down-2d", "isometric-2.5d", "third-person-3d", "first-person-3d"],
   mood: ["bright", "dark", "warm", "cold", "soft", "high-contrast"],
-  ui: ["broadcast", "cartoon", "craft", "cyber", "dread", "fantasy", "foundry", "gilded", "kawaii", "pixel", "scifi", "storybook", "tactical", "wasteland"],
+  ui: ["cartoon", "fantasy", "pixel", "scifi"],
   platform: ["phone-portrait", "phone-landscape", "desktop", "multi"],
   input: ["touch", "keyboard-mouse", "gamepad"],
   players: ["single", "local-multiplayer", "online-lockstep"],
@@ -80,7 +80,7 @@ export function inferCreationChoices(premise: string, input: CreationInput = {},
   const players = validated.players ?? inferred.players ?? defaults.players ?? "single";
   const base: CreationChoices = {
     genre: "action-platformer", view: players === "single" ? "third-person-3d" : "top-down-2d", look: "faceted-low-poly",
-    mood: "bright", ui: "storybook", platform: "desktop", input: "keyboard-mouse",
+    mood: "bright", ui: "cartoon", platform: "desktop", input: "keyboard-mouse",
     players: "single", lang: /[\u3040-\u30ff]/u.test(premise) ? ["ja"] : /[\u4e00-\u9fff]/u.test(premise) ? ["zh"] : ["en"], music: "ambient",
   };
   const suggestions = parseCreationInput(inferred);

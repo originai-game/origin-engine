@@ -280,5 +280,5 @@ fn every_packs_bag_cell_takes_its_slots_selected_and_tier_marks() {
             }
         }
     }
-    assert!(packs >= 12, "{packs} packs");
+    assert!(packs >= 4, "{packs} packs");
 }

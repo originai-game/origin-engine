@@ -4,7 +4,7 @@ version 1
 # Graphite cross-hatching in four tones with ink on the edges.
 name "Pencil and hatched drawing"
 mood "soft"
-ui "storybook"
+ui "cartoon"
 Stylise {
   hatching 0.9
   hatchingScale 6

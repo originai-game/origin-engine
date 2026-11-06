@@ -121,9 +121,9 @@ fn a_pixel_font_is_set_at_multiples_of_its_grid() {
 fn display_text_under_the_styles_display_min_takes_the_body_face() {
     let pack = std::fs::read_to_string(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../templates/styles/storybook/style.ogt"
+        "/../../templates/styles/fantasy/style.ogt"
     ))
-    .expect("the storybook seed");
+    .expect("the fantasy style");
     let text = pack.replacen("fonts {\n", "fonts {\n  displayMin 18\n", 1);
     let file = og_ui::style_file::parse_style(&text).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(file.theme.art.display_min, 18.0);

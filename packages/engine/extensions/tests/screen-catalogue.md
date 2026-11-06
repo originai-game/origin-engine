@@ -33,6 +33,8 @@ document leaves those to it (pass the pattern an empty `title`).
 `crates/og-cook/tests/documents.rs` reads the table below: its rows are
 Appendix B's, in order, and every document it names cooks. `og ui eject
 --list` prints it.
+A row whose cell is — has no document since its kit was removed; 0.8.0's
+UI work rebuilds those screens.
 
 | Appendix B row | Documents |
 |---|---|
@@ -48,37 +50,37 @@ Appendix B's, in order, and every document it names cooks. `og ui eject
 | Skill, talent, passive and tech trees | `rpg/skill-tree` |
 | Crafting and recipe book | `rpg/crafting` |
 | Shop and vendor in the world | `rpg/vendor` |
-| Store (bundles, rotations) | `liveops/store` |
+| Store (bundles, rotations) | — |
 | Gacha banner and pull results; pack opening | `gacha/gacha-banner`, `gacha/pull-results` |
-| Battle pass and season track | `liveops/battle-pass` |
-| Daily login, missions, events hub | `liveops/daily-login`, `liveops/events-hub` |
-| Mailbox | `liveops/mailbox` |
+| Battle pass and season track | — |
+| Daily login, missions, events hub | — |
+| Mailbox | — |
 | World map (fog, markers, fast travel) | `rpg/world-map` |
 | Level and saga map | `puzzle/saga-map` |
-| Run map (branching nodes) | `card/run-map` |
-| Reward choice (pick N of M) | `card/reward-choice` |
+| Run map (branching nodes) | — |
+| Reward choice (pick N of M) | — |
 | Quest log, journal, codex, bestiary, encyclopedia | `rpg/quest-log`, `rpg/codex` |
 | Dialogue (choices, checks, timers) | `rpg/dialogue` |
-| Backlog, gallery, route flowchart | `story/backlog`, `story/gallery`, `story/flowchart` |
-| Deck builder and collection | `card/deck-builder` |
+| Backlog, gallery, route flowchart | — |
+| Deck builder and collection | — |
 | Roster, team builder, character detail and ascension | `gacha/roster`, `gacha/character-detail` |
-| Character select and versus | `versus/character-select`, `versus/versus` |
-| Draft and ban with timers | `versus/draft` |
-| Lobby, party, matchmaking, ready check | `versus/lobby`, `versus/matchmaking` |
+| Character select and versus | — |
+| Draft and ban with timers | — |
+| Lobby, party, matchmaking, ready check | — |
 | Scoreboard | `shooter/scoreboard` |
 | Results and post-match (grades, XP cascades, graphs) | `results`, `racing/race-results` |
 | Leaderboards (global, friends, leagues) | `leaderboard` |
-| Song and track select with preview | `rhythm/song-select` |
+| Song and track select with preview | — |
 | Garage, tuning, livery editor | `racing/garage` |
 | Management dashboards (ledgers, budgets, graphs, overlays) | `strategy/management` |
 | Diplomacy and trade | `strategy/diplomacy` |
 | Auction house and market | `rpg/auction-house` |
-| Guild, friends, chat | `versus/social` |
-| Training mode with frame data | `versus/training` |
+| Guild, friends, chat | — |
+| Training mode with frame data | — |
 | Calibration (audio offset, brightness, controller) | `calibration` |
-| Photo mode | `photo/photo-mode` |
-| Replay and spectator | `versus/replay` |
-| Prestige and meta-progression hub | `idle/prestige` |
+| Photo mode | — |
+| Replay and spectator | — |
+| Prestige and meta-progression hub | — |
 | Tutorial and onboarding overlays | `tutorial` |
 | Death, retry, revive offer, game over | `game-over` |
 | Creator tools (inspector, hierarchy, catalogues) | `creator-tools` |

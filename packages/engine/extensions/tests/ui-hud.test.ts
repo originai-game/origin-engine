@@ -12,12 +12,6 @@ import { shooter } from "@origingame/engine/extensions/shooter/index.ts";
 
 import { strategy } from "@origingame/engine/extensions/strategy/index.ts";
 
-import { flight } from "@origingame/engine/extensions/flight/index.ts";
-
-import { rhythm } from "@origingame/engine/extensions/rhythm/index.ts";
-
-import { sports } from "@origingame/engine/extensions/sports/index.ts";
-
 import { below, states, LOADED_MS, VIEWPORTS } from "../../tests/support/hud.ts";
 
 import "../../tests/support/hud.ts";
@@ -48,48 +42,22 @@ test("shooter.killfeed, resourceBar and scoreboard: newest first within max and 
   expect(below(els, "FeedHud/Feed").length).toBe(0);
 });
 
-test("rhythm.comboCounter, judgement, turnOrder, scorebug, speedometer, flightHud: what each reads", () => {
-  let count = 9;
-  let judgeAt = 0;
+test("rpg.turnOrder and racing.speedometer: what each reads", () => {
   const e = engineFor("HudMisc", () => {
-    rhythm.comboCounter("Combo", { count, multiplier: 4 });
-    rhythm.judgement("Judge", { last: { text: "PERFECT", tier: 0, offsetMs: -12, at: judgeAt } });
     rpg.turnOrder("Turns", { units: [{ key: "hero", name: "Hero", current: true }, { key: "imp", name: "Imp", team: 1 }, { key: "mage", name: "Mage", atb: 0.5 }] });
-    sports.scorebug("Bug", { home: { abbr: "LAL", score: 98 }, away: { abbr: "BOS", score: 101, possession: true }, clock: "2:41", period: "Q4" });
     racing.speedometer("Speedo", { speed: 212, maxSpeed: 300, rpm: 0.92, gear: "5" });
-    flight.flightHud("Flight", { speed: 420, altitude: 12500, heading: Math.PI / 2, pitch: 0.1, roll: 0.3 });
   });
   e.advance(3);
-  let els = dump(e);
-  expect(at(els, "ComboHud/Combo/Count")?.text).toBe("9");
-  expect(at(els, "JudgeHud/Judge/Word")?.text).toBe("PERFECT");
-  expect(at(els, "JudgeHud/Judge/Timing")?.text).toBe("Early 12ms");
+  const els = dump(e);
   expect(below(els, "TurnsHud/Turns").filter((x) => x.path.split("/").length === 3).map((x) => x.id)).toEqual(["hero", "imp", "mage"]);
   expect(at(els, "TurnsHud/Turns/hero/Now/Text")?.text).toBe("Now");
-  expect(at(els, "BugHud/Bug/Bar/Away/ScoreBox/Score")?.text).toBe("101");
   expect(at(els, "SpeedoHud/Speedo")?.value).toBe("212 km/h, gear 5");
   expect(states(at(els, "SpeedoHud/Speedo")).rev).toBe("redline");
-  expect(at(els, "FlightHud/Flight/SpeedBox")?.value).toBe("420");
-  expect(at(els, "FlightHud/Flight/HeadingBox")?.value).toBe("090");
-  count = 10;
-  e.advance(2);
-  els = dump(e);
-  expect(states(at(els, "ComboHud/Combo")).combo).toBe("milestone");
-  count = 0;
-  judgeAt = -1000;
-  e.advance(2);
-  els = dump(e);
-  expect(states(at(els, "ComboHud/Combo")).combo).toBe("broken");
-  expect(at(els, "JudgeHud/Judge/Word")).toBe(undefined);
-  // A broken combo shows for 600 ms: 36 ticks after it broke.
-  e.advance(35);
-  expect(states(at(dump(e), "ComboHud/Combo")).combo).toBe("idle");
 }, LOADED_MS);
 
-test("strategy.wavePreview and laneKeys: the waves past max fold into dots, the current lit; caps under their lanes, a held one down", () => {
+test("strategy.wavePreview: the waves past max fold into dots, the current lit", () => {
   const e = engineFor("HudGenres", () => {
     strategy.wavePreview("Waves", { current: 8, max: 4, waves: Array.from({ length: 6 }, (_, i) => ({ key: `w${i + 7}`, number: i + 7, name: "Crawlers", count: (i + 1) * 3, boss: i === 4 })) });
-    rhythm.laneKeys("Lanes", { y: 600, lanes: [{ key: "a", hotkey: "D", x: 500 }, { key: "b", hotkey: "F", x: 640 }, { key: "c", hotkey: "J", x: 780 }], pressed: ["b"] });
   });
   e.advance(4);
   const els = dump(e);
@@ -99,14 +67,6 @@ test("strategy.wavePreview and laneKeys: the waves past max fold into dots, the 
   expect(at(els, "WavesHud/Waves/More")).toBeDefined();
   expect(at(els, "WavesHud/Waves/w7/Count")?.text).toBe("×3");
   expect(at(els, "WavesHud/Waves/w8")?.role).toBe("text");
-  // Each cap centred on its lane, under the hit line; the held one pressed lower than its neighbours.
-  for (const [k, x] of [["a", 500], ["b", 640], ["c", 780]] as const) {
-    const cap = at(els, `LanesHud/Lanes/${k}`)!;
-    expect(cap.x + cap.width / 2).toBeCloseTo(x, 0);
-    expect(cap.y).toBeGreaterThan(600);
-  }
-  expect(at(els, "LanesHud/Lanes/b")!.y).toBeGreaterThan(at(els, "LanesHud/Lanes/a")!.y);
-  expect(at(els, "LanesHud/Lanes/c/Glyph")?.text).toBe("J");
 }, LOADED_MS);
 
 test("components anchored at one point stack in the order built instead of drawing over each other", () => {
@@ -115,7 +75,6 @@ test("components anchored at one point stack in the order built instead of drawi
     og.ui.hudTimer("Round", { seconds: 42 });
     strategy.resourceBar("Res", { items: [{ key: "g", name: "Gold", amount: 10 }] });
     og.ui.objectiveTracker("Obj", { quests: [{ key: "q", title: "Hold", steps: [{ key: "s", text: "Hold the line" }] }] });
-    rhythm.comboCounter("Combo", { count: 12 });
     shooter.ammoCounter("Ammo", { magazine: 12, magazineMax: 30 });
     racing.speedometer("Speed", { speed: 120 });
   });
@@ -128,8 +87,6 @@ test("components anchored at one point stack in the order built instead of drawi
   };
   expect([overlap("CompassHud", "RoundHud"), overlap("RoundHud", "ResHud"), overlap("CompassHud", "ResHud")]).toEqual([false, false, false]);
   expect(at(els, "CompassHud")!.y).toBeLessThan(at(els, "RoundHud")!.y);
-  // At a side's middle: the first centred, the next under it.
-  expect(overlap("ObjHud", "ComboHud")).toBe(false);
   // At a bottom corner: the second rises over the first.
   expect(overlap("AmmoHud", "SpeedHud")).toBe(false);
   expect(at(els, "SpeedHud")!.y).toBeLessThan(at(els, "AmmoHud")!.y);
