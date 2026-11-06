@@ -1,4 +1,5 @@
-/** Creation vocabulary, defaults and inference rules. Extend this data for new starters. */
+/** Creation vocabulary, defaults and inference rules. What each choice starts is starters.ts. */
+import { defaultView } from "./starters.ts";
 export const CREATION_CHOICES = {
   genre: ["action-platformer", "shooter", "rpg", "puzzle-match", "strategy-tower-defense", "racing", "runner", "roguelike-card", "idle", "rhythm", "arena", "open-world"],
   view: ["side-2d", "top-down-2d", "isometric-2.5d", "third-person-3d", "first-person-3d"],
@@ -71,7 +72,7 @@ export function inferCreationChoices(premise: string, input: CreationInput = {},
   const platform = validated.platform ?? inferred.platform ?? defaults.platform ?? "desktop";
   const players = validated.players ?? inferred.players ?? defaults.players ?? "single";
   const base: CreationChoices = {
-    genre: "action-platformer", view: players === "single" ? "third-person-3d" : "top-down-2d", look: "faceted-low-poly",
+    genre: "action-platformer", view: defaultView((validated.genre ?? inferred.genre ?? defaults.genre ?? "action-platformer") as CreationChoices["genre"]), look: "faceted-low-poly",
     mood: "bright", ui: "storybook", platform: "desktop", input: "keyboard-mouse",
     players: "single", lang: /[\u3040-\u30ff]/u.test(premise) ? ["ja"] : /[\u4e00-\u9fff]/u.test(premise) ? ["zh"] : ["en"], music: "ambient",
   };

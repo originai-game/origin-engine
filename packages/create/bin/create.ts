@@ -28,6 +28,8 @@ import { fileURLToPath } from "node:url";
 import { CREATION_CHOICES, creationBlock, inferCreationChoices, parseCreationInput } from "./choices.ts";
 import type { CreationChoices, CreationInput } from "./choices.ts";
 import { applyCreation } from "./apply-choices.ts";
+import { defaultView, GENRES, playersRefused, STARTERS, starterFor } from "./starters.ts";
+import type { Genre, StarterName, View } from "./starters.ts";
 
 export { CREATION_CHOICES, creationBlock, creationSchema, inferCreationChoices, parseCreationInput } from "./choices.ts";
 export type { CreationChoices, CreationInput } from "./choices.ts";
@@ -35,6 +37,7 @@ export type { CreationChoices, CreationInput } from "./choices.ts";
 export { canonicalTag, isRtl, localeScript } from "./languages.ts";
 export type { LocaleScript } from "./languages.ts";
 export { PSEUDO_LOCALE, pseudoMessage, pseudoTable } from "./pseudo-locale.ts";
+export { GENRES, STARTERS, VIEW_PRESETS, creationData, defaultView, genreViews, playersRefused, starterFor } from "./starters.ts";
 
 // The art brief (docs/art.md §2.2): a game's look compiled into the request
 // for one asset. bin/brief.ts is a copy of the knowledge package's
@@ -421,14 +424,22 @@ export function create(options: CreateOptions): Created {
     ...options.choices,
     ...(options.look === undefined ? {} : { look: options.look }),
   }, options.profile, options.catalogue);
+  let starter: StarterName | undefined;
   if (selection) {
     if (options.template !== undefined) throw new Error("choice-driven creation requires a shipped starter, not --template");
-    if (selection.players !== "single") {
-      if ((options.archetype !== undefined && options.archetype !== "arena") || options.profile !== undefined) throw new Error("multiplayer requires the arena starter: omit --archetype/--profile or use --archetype arena");
-      options = { ...options, archetype: "arena" };
+    if (options.profile !== undefined) throw new Error("--profile with creation choices: the view decides the profile (--view side-2d or top-down-2d for 2D); drop --profile");
+    const found = starterFor(selection.genre, selection.view);
+    if ("refused" in found) throw new Error(found.refused);
+    starter = found.starter;
+    if (options.archetype !== undefined && options.archetype !== starter) {
+      const asked = STARTERS[options.archetype as StarterName] as { views: readonly View[] } | undefined;
+      if (!asked || !asked.views.includes(selection.view)) throw new Error(`--archetype ${options.archetype} does not draw ${selection.view}; ${selection.genre} at ${selection.view} starts from ${starter} (omit --archetype)`);
+      starter = options.archetype as StarterName;
     }
-    if (options.archetype && options.archetype !== "arena" && selection.input !== "keyboard-mouse") throw new Error(`the ${options.archetype} starter has no creation input adapter yet: omit --archetype, use arena, or choose keyboard-mouse`);
-    options = { ...options, look: selection.look };
+    const why = playersRefused(starter, selection.players);
+    if (why) throw new Error(why);
+    const dirOf = (STARTERS[starter] as { dir?: string }).dir;
+    options = { ...options, look: selection.look, ...(dirOf === undefined ? { archetype: starter } : { archetype: undefined, profile: STARTERS[starter].profile }) };
   }
   const dir = resolve(options.dir);
   const id = options.id ?? slug(options.name ?? basename(dir));
@@ -442,7 +453,7 @@ export function create(options: CreateOptions): Created {
       throw new Error(`${dir} is not empty; pick an empty directory, or pass --force to write the template over it`);
     }
   }
-  if (options.profile !== undefined && options.archetype !== undefined) {
+  if (options.profile !== undefined && options.archetype !== undefined && !starter) {
     throw new Error(`--profile and --archetype together: an archetype has its own profile (${options.archetype}); drop one`);
   }
   const asked = options.profile ?? (selection ? (selection.view.endsWith("2d") ? "2d" : "3d") : options.premise !== undefined ? premiseProfile(options.premise) : null);
@@ -472,14 +483,15 @@ export function create(options: CreateOptions): Created {
   const { look, notes } = writeLook(dir, name, id, choice, written);
   if (selection) {
     writeFileSync(manifest, `${readFileSync(manifest, "utf8")}\n${creationBlock(selection)}`);
-    for (const f of applyCreation(dir, selection, look.file, entryOf(dir)!, options.archetype, profile.value, notes)) if (!written.includes(f)) written.push(f);
-    notes.push("genre/view camera presets and music generation are subsequent steps; the create block records their requested values");
+    for (const f of applyCreation(dir, selection, look.file, entryOf(dir)!, starter!, notes)) if (!written.includes(f)) written.push(f);
+    notes.push(`${selection.genre} at ${selection.view} starts from the ${starter} starter; music generation is a later step, and the create block records it`);
   }
   return { dir, name, id, files: written, profile, look, notes, ...(selection ? { choices: selection } : {}) };
 }
 
 /** Resolve the premise against the same look catalogue as artBrief, with explicit choices winning. */
 export function resolveCreationChoices(premise: string, input: CreationInput = {}, profile?: Profile, catalogue?: string): CreationChoices {
+  input = { ...input, ...reconcileView(inferCreationChoices(premise, input), input) };
   const asked = inferCreationChoices(premise, input);
   const styles = readCatalogue(catalogue);
   const effectiveProfile = profile ?? (asked.view.endsWith("2d") ? "2d" : "3d");
@@ -488,6 +500,28 @@ export function resolveCreationChoices(premise: string, input: CreationInput = {
   if (!style) throw new Error(`no look preset '${slug}'`);
   // The mood defaults to the one the preset is drawn in; the premise's or the flag's wins.
   return inferCreationChoices(premise, { ...input, look: slug, ui: parseCreationInput({ ui: input.ui ?? style.ui }).ui! }, parseCreationInput({ mood: style.look.mood }));
+}
+
+/** The genre a view alone asks for: the one whose starter draws it best. */
+const VIEW_GENRE: Record<View, Genre> = {
+  "side-2d": "action-platformer",
+  "top-down-2d": "action-platformer",
+  "isometric-2.5d": "rpg",
+  "third-person-3d": "action-platformer",
+  "first-person-3d": "shooter",
+};
+
+/**
+ * A genre and view that start a game together: an explicit pair stands
+ * (create refuses it with the reason when no starter draws it); a chosen
+ * view with an inferred genre takes a genre that draws it; an inferred
+ * view gives way to the genre's default.
+ */
+function reconcileView(asked: CreationChoices, input: CreationInput): Partial<CreationChoices> {
+  if (!("refused" in starterFor(asked.genre, asked.view))) return {};
+  if (input.genre !== undefined && input.view !== undefined) return {};
+  if (input.view !== undefined) return { genre: VIEW_GENRE[input.view] };
+  return { view: defaultView(asked.genre) };
 }
 
 /**

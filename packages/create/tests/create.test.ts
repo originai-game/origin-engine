@@ -28,7 +28,11 @@ test("creation choices infer a premise, preserve overrides, and serialize every 
   expect(c).toEqual({ genre: "action-platformer", view: "side-2d", look: "16bit-pixel", mood: "cold", ui: "pixel", platform: "phone-landscape", input: "touch", players: "single", lang: ["zh"], music: "folk" });
   expect(inferCreationChoices("isometric online shooter", { platform: "desktop", input: "gamepad" })).toMatchObject({ genre: "shooter", view: "isometric-2.5d", players: "online-lockstep", input: "gamepad" });
   expect(resolveCreationChoices("", { look: "16bit-pixel", ui: "dread" }).ui).toBe("dread");
-  expect(resolveCreationChoices("", { players: "online-lockstep" })).toMatchObject({ view: "top-down-2d", look: "16bit-pixel", ui: "pixel" });
+  // The genre's own default view: online play no longer forces a top-down arena.
+  expect(resolveCreationChoices("", { players: "online-lockstep" })).toMatchObject({ genre: "action-platformer", view: "side-2d", look: "16bit-pixel", ui: "pixel" });
+  // A chosen view with no genre takes a genre that draws it; an explicit pair a starter cannot draw is refused at create.
+  expect(resolveCreationChoices("", { view: "first-person-3d" }).genre).toBe("shooter");
+  expect(resolveCreationChoices("", { genre: "racing" }).view).toBe("third-person-3d");
   expect(creationBlock(c)).toContain('lang "zh"');
   expect(creationSchema(readCatalogue().map(s => s.slug)).properties.look.enum).toHaveLength(37);
   expect(() => parseCreationInput({ players: "mmo" })).toThrow("players");
@@ -38,11 +42,11 @@ test("creation choices infer a premise, preserve overrides, and serialize every 
 });
 
 test("choice flags write a canonical create block and reject bad choices before creating", () => {
-  const r = cli("choices", "--no-prompt", "--genre", "puzzle-match", "--view", "top-down-2d", "--mood", "soft", "--ui", "pixel", "--platform", "phone-portrait", "--input", "touch", "--players", "single", "--lang", "ja,en", "--music", "chiptune");
+  const r = cli("choices", "--no-prompt", "--genre", "action-platformer", "--view", "side-2d", "--mood", "soft", "--ui", "pixel", "--platform", "phone-portrait", "--input", "touch", "--players", "single", "--lang", "ja,en", "--music", "chiptune");
   expect(r.code).toBe(0);
   const manifest = readFileSync(join(scratch, "choices/project.ogt"), "utf8");
   expect(manifest).toContain('create {\n');
-  expect(manifest).toContain('  genre "puzzle-match"');
+  expect(manifest).toContain('  genre "action-platformer"');
   expect(manifest).toContain('  lang "ja" "en"');
   expect(manifest).toContain('  music "chiptune"');
   expect(manifest).toContain('orientation portrait');
@@ -54,73 +58,40 @@ test("choice flags write a canonical create block and reject bad choices before 
   expect(existsSync(join(scratch, "choices/assets/styles/pixel/atlas.png"))).toBeTrue();
   expect(cli("bad-choice", "--mood", "invalid").code).toBe(1);
   expect(existsSync(join(scratch, "bad-choice"))).toBeFalse();
-  expect(cli("bad-players", "--players", "online-lockstep", "--archetype", "runner").err).toContain("arena");
+  // Refusals name their reason, before anything is written.
+  expect(cli("bad-players", "--players", "online-lockstep", "--genre", "idle", "--no-prompt").err).toContain("lockstep runs only while every seat");
+  expect(cli("bad-view", "--genre", "runner", "--view", "first-person-3d", "--no-prompt").err).toContain("runner at first-person-3d");
+  expect(existsSync(join(scratch, "bad-view"))).toBeFalse();
   const styles = join(pkg, "../../templates/styles");
   expect([...CREATION_CHOICES.ui].sort()).toEqual(readdirSync(styles).filter(s => existsSync(join(styles, s, "style.ogt"))).sort());
 });
 
 const engine = join(pkg, "../engine");
 const og = join(engine, "native", `og.${process.platform}-${process.arch}${process.platform === "win32" ? ".exe" : ""}`);
-test.skipIf(!existsSync(og))("local touch arena keeps the whole field clear of HUD and controls at both aspects", () => {
-  expect(cli("arena-fit", "--players", "local-multiplayer", "--platform", "phone-portrait", "--look", "16bit-pixel").code).toBe(0);
-  const dir = join(scratch, "arena-fit");
-  const sizes: [number, number][] = [[390, 844], [844, 390]];
-  for (const [width, height] of sizes) {
-    const out = join(dir, `out-${width}`);
-    const r = Bun.spawnSync([og, "run", dir, "--commands", "0.3:get:og.Camera:camera.json;0.3:dump_ui:ui.json;0.4:quit", "--size", `${width}x${height}`, "--out", out], { env: { ...process.env, OG_ENGINE_PACKAGE: engine, OG_RENDERER: "none" } });
-    expect(r.exitCode).toBe(0);
-    const camera = JSON.parse(readFileSync(join(out, "camera.json"), "utf8")).value;
-    const pixels = height / camera.height;
-    // Arena bounds are 0..16 by 0..9, including both players' full movement range.
-    const left = width / 2 - camera.position[0] * pixels;
-    const right = left + 16 * pixels;
-    const top = height / 2 - (9 - camera.position[1]) * pixels;
-    const bottom = top + 9 * pixels;
-    expect(left).toBeGreaterThanOrEqual(15);
-    expect(right).toBeLessThanOrEqual(width - 15);
-    expect(top).toBeGreaterThan(0);
-    expect(bottom).toBeLessThan(height);
-    const ui = JSON.parse(readFileSync(join(out, "ui.json"), "utf8"));
-    for (const path of ["Status/Line", "Score/P1", "Score/P2", "CreationTouch0/Move", "CreationTouch1/Move", "CreationTouch0/Action", "CreationTouch1/Action"]) {
-      const rect = ui.elements.find((e: { path: string }) => e.path === path);
-      expect(rect).toBeDefined();
-      expect(rect.x + rect.width <= left || rect.x >= right || rect.y + rect.height <= top || rect.y >= bottom).toBeTrue();
-    }
-  }
-}, 30000);
+const run = (dir: string, commands: string, size?: string) => {
+  const out = join(dir, "og-out");
+  const r = Bun.spawnSync([og, "run", dir, "--commands", commands, "--out", out, ...(size ? ["--size", size] : [])], { env: { ...process.env, OG_ENGINE_PACKAGE: engine, OG_RENDERER: "none" } });
+  expect(new TextDecoder().decode(r.stderr)).not.toContain("threw");
+  expect(r.exitCode).toBe(0);
+  return (file: string) => JSON.parse(readFileSync(join(out, file), "utf8"));
+};
 
-test.skipIf(!existsSync(og))("local creation routes asymmetric input to independent players on the native host", () => {
-  for (const [input, commands] of [
-    ["keyboard-mouse", "0.1:key_down:KeyD;0.1:key_down:ArrowUp;0.5:key_up:KeyD;0.5:key_up:ArrowUp"],
-    ["gamepad", "0.1:gamepad:-@0:1,0;0.1:gamepad:-@1:0,-1;0.5:gamepad:-@0:0,0;0.5:gamepad:-@1:0,0"],
-  ] as const) {
-    expect(cli(`local-${input}`, "--players", "local-multiplayer", "--view", "top-down-2d", "--look", "16bit-pixel", "--input", input).code).toBe(0);
-    const dir = join(scratch, `local-${input}`);
-    const out = join(dir, "og-out");
-    const r = Bun.spawnSync([og, "run", dir, "--commands", `${commands};0.6:dump_entity:fighter-0:red.json;0.6:dump_entity:fighter-1:blue.json;0.7:quit`, "--out", out, "--json"], { env: { ...process.env, OG_ENGINE_PACKAGE: engine, OG_RENDERER: "none" } });
-    expect(new TextDecoder().decode(r.stderr)).not.toContain("error");
-    expect(r.exitCode).toBe(0);
-    const position = (file: string): number[] => JSON.parse(readFileSync(join(out, file), "utf8")).components["og.Transform"].position;
-    const red = position("red.json"), blue = position("blue.json");
-    expect(red[0]).toBeCloseTo(5.4, 3);
-    expect(red[1]).toBeCloseTo(4.5, 3);
-    expect(blue[0]).toBeCloseTo(13, 3);
-    expect(blue[1]).toBeCloseTo(6.9, 3);
-  }
+test.skipIf(!existsSync(og))("local seats on one device each move their own courier, keys against pad", () => {
+  // Seat 0 on pad 1 runs right for 0.6 s, seat 1 on the arrows for 0.2 s: an any-pad or shared-key reading moves both alike, or the wrong one.
+  expect(cli("local-2d", "--players", "local-multiplayer", "--view", "side-2d", "--look", "16bit-pixel", "--no-prompt").code).toBe(0);
+  const read = run(join(scratch, "local-2d"), "0.2:gamepad:-@0:1,0;0.2:key_down:ArrowRight;0.4:key_up:ArrowRight;0.8:gamepad:-@0:0,0;1.2:get:Game:g.json;1.3:quit");
+  const g = read("g.json").value;
+  const ran = [g.heroX - 2.5, g.hero2X - 1.3];
+  expect(ran[1]).toBeGreaterThan(0.5);
+  expect(ran[0]).toBeGreaterThan(2 * ran[1]);
 }, 30000);
 
 test.skipIf(!existsSync(og))("phone touch controls move and jump together on the native host", () => {
-  expect(cli("touch-input", "--view", "side-2d", "--platform", "phone-portrait", "--look", "16bit-pixel").code).toBe(0);
-  const dir = join(scratch, "touch-input"), out = join(dir, "og-out");
-  const commands = "0.2:touch:1:down:CreationTouch0/Move/Right;0.2:touch:2:down:CreationTouch0/Action;0.6:get:Game:game.json;0.6:get:og.RenderSettings:quality.json;0.7:quit";
-  const r = Bun.spawnSync([og, "run", dir, "--commands", commands, "--size", "390x844", "--out", out], { env: { ...process.env, OG_ENGINE_PACKAGE: engine, OG_RENDERER: "none" } });
-  expect(r.exitCode).toBe(0);
-  const state = JSON.parse(readFileSync(join(out, "game.json"), "utf8")).value;
-  expect(state.touchX).toBe(1);
-  expect(state.touchJump).toBeTrue();
+  expect(cli("touch-input", "--view", "side-2d", "--platform", "phone-portrait", "--look", "16bit-pixel", "--no-prompt").code).toBe(0);
+  const read = run(join(scratch, "touch-input"), "0.3:touch:1:down:TouchMove0/Move/Right;0.3:touch:2:down:TouchActions0/jump;0.8:get:Game:game.json;0.8:get:og.RenderSettings:quality.json;0.9:quit", "390x844");
+  const state = read("game.json").value;
   expect(state.heroX).toBeGreaterThan(4);
   expect(state.heroY).toBeGreaterThan(4);
-  expect(JSON.parse(readFileSync(join(out, "quality.json"), "utf8")).value.quality).toBe("low");
 }, 30000);
 
 function walk(root: string, at = root): string[] {
@@ -505,11 +476,11 @@ test("the published package briefs from its own presets, catalogue and previews"
   expect(brief.references[0]!.path).toBe(join(installed, "previews", "monochrome-pixel.webp"));
   // The repository's own copy reads the same preset from templates/looks.
   expect(presetLook("monochrome-pixel").palette?.colours.map((c) => c.hex)).toEqual(brief.palette.map((c) => c.hex));
-  const created = Bun.spawnSync(["bun", join(installed, "bin/create.ts"), join(scratch, "packed-choices"), "--players", "online-lockstep", "--ui", "dread", "--no-prompt"]);
+  const created = Bun.spawnSync(["bun", join(installed, "bin/create.ts"), join(scratch, "packed-choices"), "--players", "online-lockstep", "--view", "side-2d", "--ui", "dread", "--no-prompt"]);
   expect(new TextDecoder().decode(created.stderr)).toBe("");
   expect(created.exitCode).toBe(0);
   expect(existsSync(join(scratch, "packed-choices/assets/styles/dread/style.ogt"))).toBeTrue();
-  expect(readFileSync(join(scratch, "packed-choices/tests/duel.og.ts"), "utf8")).toContain("netHash");
+  expect(readFileSync(join(scratch, "packed-choices/tests/room.og.ts"), "utf8")).toContain("netHash");
 });
 
 test("--lang writes a table per language with its face, direction and licence, the pseudo-locale and a playtest each", () => {

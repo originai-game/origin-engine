@@ -9,6 +9,11 @@
 // what the controller did, coins to take, a pit that costs a life, a goal
 // at the far end, a camera that follows, og.ui's HUD components and the
 // game's pause screen (assets/ui/pause.ogt).
+//
+// Every courier is a seat (src/seats.ts): its og.PlayerInput is all the
+// systems read, so the run plays alone, two on one device (a second
+// courier, the camera keeping both) or two over a room in lockstep, as
+// src/creation.ts says.
 // Everything the starter shows is in og-game §8 (sprites, flipbooks,
 // tilemaps), §13 (the controller) and og-feel §12 (its tunables).
 //
@@ -26,8 +31,9 @@
 // The frame's look is data: GameDesc.look names a file under assets/looks/
 // that extends a preset of the style catalogue, applied before start runs.
 
-import { og, defineComponent, defineResource, defineSystem, bool, f32, u32, SHAPE_BOX } from "@origingame/engine";
+import { og, defineComponent, defineResource, defineSystem, bool, f32, math, u32, SHAPE_BOX } from "@origingame/engine";
 import type { FlipbookInfo, Result, Rig2DInfo, TileObject, World } from "@origingame/engine";
+import { held, LOCAL, ONLINE, PAUSE, pressedNow, press, SEATS, Seats, setBot, setupSeats } from "./seats.ts";
 
 /** The courier's clips, in the sheet's file order (og-game §8): `start` checks them. */
 const CLIP = { idle: 0, run: 1, jump: 2, fall: 3 } as const;
@@ -35,11 +41,17 @@ const CLIP = { idle: 0, run: 1, jump: 2, fall: 3 } as const;
 const VIEW_H = 14;
 /** The ledges' collider layer (the map's `colliderLayers 2`), one-way for the courier. */
 const LEDGES = 2;
+/** The couriers' collider layer. */
+const COURIERS = 8;
 /** The courier's box (og.Collider): its feet are its position. */
 const BOX = { w: 0.9, h: 1.9 } as const;
 /** Below this the courier fell into the pit. */
 const FALL_Y = -3;
 const LIVES = 3;
+/** The second seat's courier: a cool tint over the same sheet (linear). */
+const SECOND_INK = { r: 0.55, g: 0.8, b: 1 };
+/** sqrt(x² + y²) the same on every JavaScript engine (Math.hypot is not: og check's lockstep lint). */
+const hypot = (x: number, y: number): number => Math.sqrt(x * x + y * y);
 /** The keeper's ramp: a plank from (x0, y0) on the roof rising at `slope` (tan 12°) to x1. */
 const RAMP = { x0: 4.5, y0: 2, x1: 7.6, slope: 0.21256, sinHalf: 0.104528, cosHalf: 0.994522 } as const;
 /** The ramp's top at x. */
@@ -57,7 +69,7 @@ const WALK = { speed: 0.5, stride: 0.4, lift: 0.08 } as const;
  * at its steepest). A foot sent elsewhere (setting off, stopping, a turn)
  * steps there no faster.
  */
-const FOOT_SPEED = Math.hypot(2 * WALK.speed, 2 * WALK.speed * RAMP.slope + (8 * WALK.lift * WALK.speed) / WALK.stride);
+const FOOT_SPEED = hypot(2 * WALK.speed, 2 * WALK.speed * RAMP.slope + (8 * WALK.lift * WALK.speed) / WALK.stride);
 /** Each foot's place standing: this far ahead of the keeper, or behind it. */
 const STANCE = 0.15;
 /**
@@ -70,10 +82,13 @@ const STANCE = 0.15;
  * 12-tick turn left a foot behind its leg near the edge, up to 0.008 m
  * out of reach). 21 ticks at 60 Hz.
  */
-const TURN_TICKS = Math.ceil(0.5 + Math.PI / (2 * Math.asin(FOOT_SPEED / 60 / (2 * STANCE * Math.hypot(1, RAMP.slope)))));
+const TURN_TICKS = Math.ceil(0.5 + Math.PI / (2 * math.asin(FOOT_SPEED / 60 / (2 * STANCE * hypot(1, RAMP.slope)))));
 
-/** The courier. */
-export const Hero = defineComponent("Hero", { spawnX: f32(0, { unit: "m" }), spawnY: f32(0, { unit: "m" }) });
+/** A courier: its spawn and its seat's buttons last tick (for presses). */
+export const Hero = defineComponent("Hero", { spawnX: f32(0, { unit: "m" }), spawnY: f32(0, { unit: "m" }), before: u32() });
+
+/** What the camera follows: the couriers' middle (one courier: the courier). */
+export const View = defineComponent("View", {});
 
 /** A coin of the map's `coin` objects; taken once. */
 export const Coin = defineComponent("Coin", { taken: bool() });
@@ -104,15 +119,15 @@ export const Game = defineResource("Game", {
   /** The last life was lost: Pickups starts the level again. */
   restart: bool(),
   goalX: f32(0, { unit: "m" }),
+  /** Seat 0's courier, and seat 1's when it plays. */
   heroX: f32(0, { unit: "m" }),
   heroY: f32(0, { unit: "m" }),
+  hero2X: f32(0, { unit: "m" }),
+  hero2Y: f32(0, { unit: "m" }),
   /** Sounds asked for this tick (Sound bits), played by Voices. */
   sfx: u32(),
-  /** The pause menu is open: the courier and time hold. */
+  /** The pause menu is open (a seat's PAUSE toggles it): the couriers and time hold. */
   paused: bool(),
-  /** The HUD's touch controls this tick (a phone): the run and the held jump. */
-  touchX: f32(0, { min: -1, max: 1 }),
-  touchJump: bool(),
   /** The keeper's breaths: og.Skeleton2DEvent "inhale" (the idle clip's event at 0). */
   inhales: u32(),
   /** The keeper's footfalls: og.Skeleton2DEvent "step" (the walk clip's, one per foot). */
@@ -143,34 +158,41 @@ function must<T>(r: Result<T>): T {
 }
 
 /**
- * Input to the controller, on the press's tick (og-feel §1): the run, the
- * held jump (released early, the jump is lower), Down to drop through a
- * ledge. The jump's sound starts on the press while the controller can
- * jump (og-feel §12). A fall into the pit costs a life and puts the
- * courier back at the spawn; the last life starts the level again.
+ * Each seat's og.PlayerInput to its courier's controller, on the press's
+ * tick (og-feel §1): the run, the held jump (released early, the jump is
+ * lower), Down to drop through a ledge. The jump's sound starts on the
+ * press while the controller can jump (og-feel §12). A seat's PAUSE opens
+ * or closes the pause menu for everyone. A fall into the pit costs a life
+ * and puts the courier back at its spawn; the last life starts the level
+ * again. The View follows the couriers' middle.
  */
 export const Control = defineSystem(
   "Control",
-  { reads: [Hero, og.Input, og.Gamepad], writes: [Game, og.PlatformerController, og.Transform], after: ["Hud"] },
+  { reads: [og.PlayerInput], writes: [Game, Hero, og.PlatformerController, og.Transform] },
   (q, _time, world) => {
     const g = must(world.resource(Game));
-    const input = must(world.resource(og.Input));
-    const pad = must(world.resource(og.Gamepad));
-    const stick = pad.axis("leftX", 0);
-    const run = Math.max(-1, Math.min(1, input.axis("ArrowLeft", "ArrowRight") + input.axis("KeyA", "KeyD") + (Math.abs(stick) > 0.25 ? stick : 0) + g.touchX));
-    const jump = input.down("Space") || input.down("ArrowUp") || input.down("KeyW") || pad.down("a", 0) || g.touchJump;
-    const pressed = input.pressed("Space") || input.pressed("ArrowUp") || input.pressed("KeyW") || pad.pressed("a", 0);
-    const down = input.down("ArrowDown") || input.down("KeyS") || pad.down("down", 0);
+    let sx = 0, sy = 0, n = 0;
+    // Pause first: two seats pressing it on one tick toggle it once.
+    let toggle = false;
     for (const a of q.archetypes()) {
+      const input = a.column(og.PlayerInput);
+      const hero = a.column(Hero);
+      for (let i = 0; i < a.count; i++) toggle ||= pressedNow(input.buttons[i]!, hero.before[i]!, "pause");
+    }
+    if (toggle) g.paused = !g.paused;
+    for (const a of q.archetypes()) {
+      const input = a.column(og.PlayerInput);
       const hero = a.column(Hero);
       const pc = a.column(og.PlatformerController);
       const p = a.column(og.Transform).position;
       for (let i = 0; i < a.count; i++) {
+        const buttons = input.buttons[i]!;
         const playing = !g.won && !g.paused;
-        pc.moveX[i] = playing ? run : 0;
-        pc.jump[i] = playing && jump ? 1 : 0;
-        pc.down[i] = playing && down ? 1 : 0;
-        if (playing && pressed && (pc.grounded[i] === 1 || pc.coyote[i]! > 0)) g.sfx |= Sound.Jump;
+        pc.moveX[i] = playing ? input.x[i]! : 0;
+        pc.jump[i] = playing && held(buttons, "jump") ? 1 : 0;
+        pc.down[i] = playing && input.y[i]! < -0.5 ? 1 : 0;
+        if (playing && pressedNow(buttons, hero.before[i]!, "jump") && (pc.grounded[i] === 1 || pc.coyote[i]! > 0)) g.sfx |= Sound.Jump;
+        hero.before[i] = buttons;
         if (p[i * 3 + 1]! < FALL_Y) {
           g.lives -= 1;
           // The last life: Pickups puts every coin back.
@@ -179,10 +201,20 @@ export const Control = defineSystem(
           p[i * 3 + 1] = hero.spawnY[i]!;
           pc.velocity[i * 3] = pc.velocity[i * 3 + 1] = 0;
         }
-        g.heroX = p[i * 3]!;
-        g.heroY = p[i * 3 + 1]!;
+        if (input.player[i] === 0) {
+          g.heroX = p[i * 3]!;
+          g.heroY = p[i * 3 + 1]!;
+        } else {
+          g.hero2X = p[i * 3]!;
+          g.hero2Y = p[i * 3 + 1]!;
+        }
+        sx += p[i * 3]!;
+        sy += p[i * 3 + 1]!;
+        n += 1;
       }
     }
+    const view = world.find("view");
+    if (view !== null && n > 0) must(world.set(view, og.Transform, { position: { x: sx / n, y: sy / n, z: 0 } }));
   },
 );
 
@@ -206,9 +238,11 @@ export const Pickups = defineSystem("Pickups", { writes: [Game, Coin, og.Sprite]
         sprite.visible[i] = 1;
       }
       if (coin.taken[i] === 1) continue;
-      const dx = Math.abs(p[i * 3]! - g.heroX);
-      const dy = p[i * 3 + 1]! - g.heroY;
-      if (dx < BOX.w / 2 + 0.35 && dy > -0.35 && dy < BOX.h + 0.35) {
+      const near = (hx: number, hy: number) => {
+        const dy = p[i * 3 + 1]! - hy;
+        return Math.abs(p[i * 3]! - hx) < BOX.w / 2 + 0.35 && dy > -0.35 && dy < BOX.h + 0.35;
+      };
+      if (near(g.heroX, g.heroY) || (SEATS > 1 && near(g.hero2X, g.hero2Y))) {
         coin.taken[i] = 1;
         sprite.visible[i] = 0;
         g.coins += 1;
@@ -216,7 +250,7 @@ export const Pickups = defineSystem("Pickups", { writes: [Game, Coin, og.Sprite]
       }
     }
   }
-  if (!g.won && g.heroX >= g.goalX) {
+  if (!g.won && (g.heroX >= g.goalX || (SEATS > 1 && g.hero2X >= g.goalX))) {
     g.won = true;
     g.sfx |= Sound.Coin;
   }
@@ -260,7 +294,7 @@ export const Walk = defineSystem("Walk", { writes: [KeeperWalk, og.Skeleton2D, o
     if (time.scaledDt === 0) return;
     w.turning += 1;
     if (w.turning < TURN_TICKS) {
-      w.squash = Math.cos((Math.PI * (w.turning - 0.5)) / (TURN_TICKS - 0.5));
+      w.squash = math.cos((Math.PI * (w.turning - 0.5)) / (TURN_TICKS - 0.5));
     } else {
       w.turning = 0;
       w.squash = 1;
@@ -345,7 +379,7 @@ export const Plant2D = defineSystem("Plant", { reads: [og.Skeleton2DEvent], writ
       plant.y[i] = fy;
       target[i * 2] = fx;
       target[i * 2 + 1] = fy;
-      if (Math.hypot(wx - fx, rampY(wx) + ANKLE + lift - fy) > 1e-5 || lift > 0) down = false;
+      if (hypot(wx - fx, rampY(wx) + ANKLE + lift - fy) > 1e-5 || lift > 0) down = false;
     }
   }
   w.landed = down;
@@ -360,7 +394,7 @@ export const Plant2D = defineSystem("Plant", { reads: [og.Skeleton2DEvent], writ
 
 /** (x, y) moved towards (tx, ty) by at most `reach`. */
 function toward(x: number, y: number, tx: number, ty: number, reach: number): [number, number] {
-  const d = Math.hypot(tx - x, ty - y);
+  const d = hypot(tx - x, ty - y);
   if (d <= reach) return [tx, ty];
   return [x + ((tx - x) * reach) / d, y + ((ty - y) * reach) / d];
 }
@@ -393,13 +427,12 @@ function chip(id: string, build: () => void): void {
 
 /**
  * The HUD (og.ui's HUD components, docs/ui.md §11): the lives as pips and
- * the level's name top left, the coins, the score and Pause top right and,
- * on a phone, a d-pad and Jump (taken by Control this tick: Hud runs
- * first). Pause (the button, Escape or the pad's Start) pushes the game's
- * pause screen (assets/ui/pause.ogt), which holds time until Resume or
- * Back pops it.
+ * the level's name top left, the coins, the score and Pause top right (the
+ * touch controls are the seats', src/seats.ts). Pause (the button, Escape
+ * or a pad's Start) shows the game's pause screen (assets/ui/pause.ogt)
+ * while Game.paused holds time, until Resume or Back.
  */
-export const Hud = defineSystem("Hud", { writes: [Game] }, (_q, _time, world) => {
+export const Hud = defineSystem("Hud", { reads: [Game] }, (_q, _time, world) => {
   const g = must(world.resource(Game));
   const t = (key: string) => og.i18n.t(world, key);
   // The keys move the courier, not the focus.
@@ -408,42 +441,32 @@ export const Hud = defineSystem("Hud", { writes: [Game] }, (_q, _time, world) =>
     og.ui.statBar("Lives", { value: g.lives, max: LIVES, kind: "health", style: "pips", width: { kind: "fixed", px: 96 }, name: t("hud.lives") });
     chip("LevelBox", () => og.ui.label("Level", t(g.won ? "hud.clear" : "hud.level"), { step: "meta", color: { token: "inkMuted" }, nowrap: true }));
   });
-  let pause = false;
   og.ui.anchor("Purse", { anchor: "topRight", gap: 8, cross: "center" }, () => {
     chip("Coins", () => {
       if (og.ui.hasIcon("coin")) og.ui.icon("Coin", "coin", { size: 20, tint: { token: "gold" } });
       og.ui.counter("Count", g.coins, { font: "mono" });
     });
     chip("Score", () => og.ui.counter("Points", g.coins * 100, { font: "mono" }));
-    if (og.ui.actionButton("Pause", t("hud.pause"), { icon: "pause", size: 44 }).clicked) pause = true;
+    // Pause acts through the seat's input (src/seats.ts), so a room pauses on one tick.
+    if (og.ui.actionButton("Pause", t("hud.pause"), { icon: "pause", size: 44 }).clicked) press("pause");
   });
-  // A d-pad and Jump where the pointer is a finger (og-ui §5).
-  let moveX = 0;
-  let jump = false;
-  if (og.ui.frameViewport().coarsePointer) {
-    og.ui.anchor("TouchMove", { anchor: "bottomLeft" }, () => {
-      const d = og.ui.dpad("Dpad", {});
-      moveX = (d.right ? 1 : 0) - (d.left ? 1 : 0);
-    });
-    og.ui.anchor("TouchActions", { anchor: "bottomRight" }, () => {
-      jump = og.ui.actionButton("Jump", t("hud.jump"), { primary: true, size: 76 }).pressed;
-    });
-  }
-  if (g.paused) {
-    // The pause screen is built here so its events come back this tick.
-    for (const e of og.ui.screen("pause").events) {
-      if ((e.kind === "emit" || e.kind === "back") && e.name === "resume") {
-        og.ui.pop(world);
-        g.paused = false;
-      }
-    }
-  } else if (pause || og.ui.back()) {
+  // The pause screen follows Game.paused; its Resume and Back press pause again.
+  if (g.paused && !pauseShown) {
     must(og.ui.push(world, "pause"));
-    g.paused = true;
+    pauseShown = true;
+  } else if (!g.paused && pauseShown) {
+    og.ui.pop(world);
+    pauseShown = false;
   }
-  g.touchX = g.paused ? 0 : moveX;
-  g.touchJump = !g.paused && jump;
+  if (pauseShown) {
+    for (const e of og.ui.screen("pause").events) {
+      if ((e.kind === "emit" || e.kind === "back") && e.name === "resume") press("pause");
+    }
+  }
 });
+
+/** Whether this device shows the pause screen (UI state, not the world's). */
+let pauseShown = false;
 
 /**
  * The lamp keeper: a plank ramp, the rig on it facing the spawn, a foot
@@ -499,8 +522,9 @@ export default og.game({
   tick: 60,
   seed: 1,
   resources: [Game, KeeperWalk],
-  systems: [Hud, Control, Pickups, Animate, Walk, Plant2D, Voices],
+  systems: [Seats, Control, Pickups, Animate, Walk, Plant2D, Hud, Voices],
   start(world) {
+    setupSeats(world);
     const map = must(og.load.tilemap(world, "maps/level.ogt"));
     const courier = must(og.load.flipbook(world, "sprites/courier.ogt"));
     checkClips(courier);
@@ -525,14 +549,23 @@ export default og.game({
     for (const o of map.objects) {
       const p = at(o, height);
       if (o.kind === "spawn") {
-        const hero = must(world.spawn({ name: "hero", position: { x: p.x, y: p.y, z: 0 } }));
-        must(world.insert(hero, Hero, { spawnX: p.x, spawnY: p.y }));
-        must(world.insert(hero, og.Sprite, { texture: courier.texture, width: 2, height: 2.5, anchor: { x: 0.5, y: 0 }, layer: 2 }));
-        must(world.insert(hero, og.Flipbook, { sheet: courier.sheet, clip: CLIP.idle }));
-        must(world.insert(hero, og.Collider, { shape: SHAPE_BOX, size: { x: BOX.w, y: BOX.h, z: 1 }, offset: { x: 0, y: BOX.h / 2, z: 0 } }));
-        // og-feel §12's platformer tunables; the ledges' layer is one-way.
-        must(world.insert(hero, og.PlatformerController, { maxSpeed: 8, jumpHeight: 3.6, timeToApex: 0.4, oneWayLayers: LEDGES, wallJumps: false }));
-        must(world.insert(hero, og.Follow2D, { offset: { x: 0, y: 1.5 }, deadZone: { x: 1, y: 0.8 }, smoothTime: 0.12, lookAhead: 0.2, lookAheadMax: { x: 2, y: 1 } }));
+        // One courier per seat: seat 1 a step behind, in the second player's ink.
+        for (let seat = 0; seat < SEATS; seat++) {
+          const x = p.x - seat * 1.2;
+          const hero = must(world.spawn({ name: seat === 0 ? "hero" : `hero-${seat}`, position: { x, y: p.y, z: 0 } }));
+          must(world.insert(hero, Hero, { spawnX: x, spawnY: p.y }));
+          must(world.insert(hero, og.PlayerInput, { player: seat }));
+          must(world.insert(hero, og.Sprite, { texture: courier.texture, width: 2, height: 2.5, anchor: { x: 0.5, y: 0 }, layer: 2, ...(seat > 0 ? { color: SECOND_INK } : {}) }));
+          must(world.insert(hero, og.Flipbook, { sheet: courier.sheet, clip: CLIP.idle }));
+          // On their own layer, which no courier's mask takes: co-op couriers pass through each other.
+          must(world.insert(hero, og.Collider, { shape: SHAPE_BOX, size: { x: BOX.w, y: BOX.h, z: 1 }, offset: { x: 0, y: BOX.h / 2, z: 0 }, layers: COURIERS, mask: ~COURIERS >>> 0 }));
+          // og-feel §12's platformer tunables; the ledges' layer is one-way.
+          must(world.insert(hero, og.PlatformerController, { maxSpeed: 8, jumpHeight: 3.6, timeToApex: 0.4, oneWayLayers: LEDGES, wallJumps: false }));
+        }
+        // The camera follows the couriers' middle (Control moves it).
+        const view = must(world.spawn({ name: "view", position: { x: p.x, y: p.y, z: 0 } }));
+        must(world.insert(view, View));
+        must(world.insert(view, og.Follow2D, { offset: { x: 0, y: 1.5 }, deadZone: { x: SEATS > 1 ? 2 : 1, y: 0.8 }, smoothTime: 0.12, lookAhead: 0.2, lookAheadMax: { x: 2, y: 1 } }));
       } else if (o.kind === "coin") {
         const e = must(world.spawn({ name: o.name, position: { x: p.x, y: p.y, z: 0 } }));
         must(world.insert(e, Coin));
@@ -559,6 +592,8 @@ export default og.game({
     if (font.ok) og.ui.configure(world, { font: font.value });
   },
   commands: {
+    /** `bot:<n>`: this device's seats play a scripted run (0 hands them back to the player). */
+    bot: (_world, args) => setBot(Number(args[0])),
     /** `warp:<x>:<y>`: put the courier's feet there. */
     warp: (world, args) => {
       const hero = world.find("hero");
@@ -575,12 +610,13 @@ export default og.game({
     },
   },
   commandHelp: {
+    bot: { usage: "<n>", doc: "This device's seats take scripted input by the tick (1, 2, ...); 0 gives them back." },
     warp: { usage: "<x>:<y>", doc: "Put the courier's feet at a world point." },
     keeper: { usage: "<x>", doc: "Send the lamp keeper walking along its ramp to x." },
   },
   facts: (world) => {
     const g = world.resource(Game);
     if (!g.ok) return {};
-    return { coins: g.value.coins, total: g.value.total, lives: g.value.lives, won: g.value.won, inhales: g.value.inhales, steps: g.value.steps, x: g.value.heroX, y: g.value.heroY };
+    return { coins: g.value.coins, total: g.value.total, lives: g.value.lives, won: g.value.won, inhales: g.value.inhales, steps: g.value.steps, x: g.value.heroX, y: g.value.heroY, seats: SEATS, ...(SEATS > 1 ? { x2: g.value.hero2X, y2: g.value.hero2Y } : {}) };
   },
 });
