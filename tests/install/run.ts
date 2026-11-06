@@ -24,7 +24,7 @@
 //   2. `og new demo --engine <v>` scaffolds from the dist's create/: the pin,
 //      no node_modules, `.og/engine` pointing at the dist's engine/
 //   3. `og --version` prints the version; `og doctor` passes (the renderer
-//      line may be `none`)
+//      line may be `none`: then 4b's og style check must refuse, naming it)
 //   4. `og check`, `og test` (frames unchecked without a renderer), `og build
 //      --publish`: og-build.json names the version, the shipped publish wasm is
 //      the dist's byte for byte
@@ -35,10 +35,11 @@
 //   8. a project with an MP3 sound (fixtures/tone.mp3): og run cooks it, plays
 //      it (og.AudioPlayback's playhead at 0.5 s) and the mix is not silent
 //   9. a look naming the built-in fantasy style: og cook reads it from the
-//      engine's styles/ and the bundle carries that pack only
+//      engine's styles/ and the bundle adds that pack only to the demo's own
 //
 // --container builds tests/install/Dockerfile (node 22, bun) and runs this
-// script inside it with --host-only, the archives mounted read-only. With
+// script inside it with --host-only and OG_RENDERER=none (it has no GPU), the
+// archives mounted read-only. With
 // --record the pass is recorded in release.json (verified.host,
 // verified.container) for scripts/release.sh publish to read.
 
@@ -239,13 +240,21 @@ function host(): void {
       // of one of them measured by og frame measure.
       // Exit 3 is the template's dropship off faceted-low-poly's face budget (project.ogt says so): still a run.
       const style = run(step, [...ogCmd, "style", "check", ".", "--title", "0.5:screenshot", "--sizes", "desktop,phone", "--json"], demo, { allowFail: true });
-      if (style.status !== 0 && style.status !== 3) step.fail(`og style check exited ${style.status}\n${style.stderr.slice(-2000)}`);
-      const styled = JSON.parse(style.stdout.trim().split("\n").at(-1)!) as { frames: Array<{ label: string; path: string; size: number[] }> };
-      const labels = styled.frames.map((f) => f.label).sort();
-      if (labels.join(",") !== "title@desktop,title@phoneLandscape") step.fail(`og style check --sizes framed ${labels.join(", ")}`);
-      const measured = og(step, demo, "frame", "measure", styled.frames[0]!.path, "--units", "fraction", "--region", "0,0,0.5,0.5", "--json");
-      const ratio = (JSON.parse(measured.stdout) as { metrics: { contrast: { ratio: number } } }).metrics.contrast.ratio;
-      if (!(ratio >= 1)) step.fail(`og frame measure printed ${measured.stdout.slice(0, 200)}`);
+      const styled = JSON.parse(style.stdout.trim().split("\n").at(-1)!) as { frames: Array<{ label: string; path: string; size: number[] }>; frameErrors?: string[] };
+      if (renderer?.[1] === "none") {
+        // No GPU (the container, OG_RENDERER=none): og style check has no frame to judge, and must say so
+        // rather than pass on nothing; og frame measure has no frame to read.
+        const said = (styled.frameErrors ?? []).filter((e) => e.includes("no renderer"));
+        if (style.status !== 1 || styled.frames.length !== 0 || said.length !== 2) step.fail(`og style check without a renderer exited ${style.status}, framed ${styled.frames.length}, frameErrors ${JSON.stringify(styled.frameErrors)}`);
+        log(`   og style check without a renderer: refused, ${said.length} frame errors naming it`);
+      } else {
+        if (style.status !== 0 && style.status !== 3) step.fail(`og style check exited ${style.status}\n${style.stderr.slice(-2000)}`);
+        const labels = styled.frames.map((f) => f.label).sort();
+        if (labels.join(",") !== "title@desktop,title@phoneLandscape") step.fail(`og style check --sizes framed ${labels.join(", ")}`);
+        const measured = og(step, demo, "frame", "measure", styled.frames[0]!.path, "--units", "fraction", "--region", "0,0,0.5,0.5", "--json");
+        const ratio = (JSON.parse(measured.stdout) as { metrics: { contrast: { ratio: number } } }).metrics.contrast.ratio;
+        if (!(ratio >= 1)) step.fail(`og frame measure printed ${measured.stdout.slice(0, 200)}`);
+      }
 
     
     }
@@ -333,17 +342,28 @@ function host(): void {
 
       // 9. A built-in style, read from the dist's engine/styles/ (og
       // compiles none in): a look naming fantasy cooks that pack, its three
-      // densities, and no other pack.
+      // densities, and no other pack. The demo already cooks what its own
+      // look names (the template's look extends a preset with a pack, and
+      // packs read templates/styles/shared/'s fonts and icons), so "no other"
+      // is against the demo's cook without the fantasy look.
       step = new Step("9 a built-in UI style from the engine's styles/");
       if (!existsSync(join(enginePkg, "styles", "fantasy", "atlas@3x.png"))) step.fail(`${enginePkg} carries no styles/fantasy/atlas@3x.png`);
+      const packs = (): Set<string> => {
+        og(step, demo, "cook", ".");
+        const cooked = readFileSync(join(demo, "cooked", ".cook.ogt"), "utf8");
+        return new Set([...cooked.matchAll(/@styles\/([a-z0-9-]+)\//g)].map(m => m[1]!));
+      };
+      const before = packs();
+      if (before.has("fantasy")) step.fail(`the demo cooks fantasy before a look names it: ${[...before].join(", ")}`);
       writeFileSync(join(demo, "assets", "looks", "fantasy-ui.ogt"), "type look\nversion 1\n---\nui \"fantasy\"\n");
-      og(step, demo, "cook", ".");
+      const after = packs();
       const cooked = readFileSync(join(demo, "cooked", ".cook.ogt"), "utf8");
       for (const f of ["style.ogt", "atlas.png", "atlas@2x.png", "atlas@3x.png"]) {
         if (!cooked.includes(`@styles/fantasy/${f}`)) step.fail(`the cook has no @styles/fantasy/${f}`);
       }
-      const others = [...new Set([...cooked.matchAll(/@styles\/([a-z0-9-]+)\//g)].map(m => m[1]))].filter(p => p !== "fantasy");
-      if (others.length) step.fail(`a game naming fantasy cooked other packs too: ${others.join(", ")}`);
+      const others = [...after].filter(p => p !== "fantasy" && !before.has(p));
+      if (others.length) step.fail(`a look naming fantasy cooked other packs too: ${others.join(", ")} (the demo alone cooks ${[...before].join(", ") || "none"})`);
+      log(`   fantasy cooked beside the demo's own ${[...before].join(", ") || "none"}`);
       rmSync(join(demo, "assets", "looks", "fantasy-ui.ogt"));
 
     
@@ -367,7 +387,9 @@ function container(): void {
   run(step, ["bun", join(repo, "packages", "launcher", "build.ts"), launcher], repo);
   const mounts = ["-v", `${HERE}:/install:ro`, "-v", `${launcher}:/launcher:ro`, "-v", `${FROM}:/channel/${VERSION}:ro`];
   const inner = ["bun", "/install/run.ts", "--version", VERSION!, "--host-only", "--from", `/channel/${VERSION}`, "--installer", "/launcher/install.sh", ...(CORE ? ["--core"] : []), ...(PUBKEY ? ["--pubkey", PUBKEY] : [])];
-  const r = spawnSync("docker", ["run", "--rm", "--platform", "linux/amd64", ...mounts, "-w", "/tmp", IMAGE, ...inner], { encoding: "utf8", stdio: ["ignore", "inherit", "inherit"], timeout: 60 * 60_000 });
+  // The container has no GPU: a sandbox without one runs og with OG_RENDERER=none (docs/platform-asks.md
+  // #20), so og test runs every suite's checks and leaves the frames unchecked, rather than failing at the adapter.
+  const r = spawnSync("docker", ["run", "--rm", "--platform", "linux/amd64", "-e", "OG_RENDERER=none", ...mounts, "-w", "/tmp", IMAGE, ...inner], { encoding: "utf8", stdio: ["ignore", "inherit", "inherit"], timeout: 60 * 60_000 });
   if (r.status !== 0) step.fail(`the container run exited ${r.status}`);
 }
 
