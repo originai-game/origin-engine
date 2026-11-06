@@ -191,6 +191,9 @@ export function sceneryModel(): Uint8Array {
   const dark = glb.material({ name: "steel", pbrMetallicRoughness: { baseColorFactor: [0.06, 0.05, 0.1, 1], metallicFactor: 0.8, roughnessFactor: 0.35 } });
   const sign = glb.material({ name: "sign", pbrMetallicRoughness: { baseColorTexture: { index: glb.texture(checker()) }, metallicFactor: 0, roughnessFactor: 0.6 }, emissiveTexture: { index: 0 }, emissiveFactor: [1, 1, 1] });
   const tower = glb.material({ name: "tower", pbrMetallicRoughness: { baseColorFactor: [0.05, 0.04, 0.09, 1], metallicFactor: 0.3, roughnessFactor: 0.6 }, emissiveTexture: { index: glb.texture(windows()) }, emissiveFactor: [1.6, 1.6, 1.6] });
+  // The skyline's rim: a white emissive bar along each tower's corners and roof edges, the synthwave
+  // silhouette (5ccff020f gave a wire its surface's colour, so the towers' own edges draw their dark face).
+  const rim = glb.material({ name: "tower-rim", pbrMetallicRoughness: { baseColorFactor: [0.05, 0.05, 0.05, 1], metallicFactor: 0, roughnessFactor: 1 }, emissiveFactor: [1.6, 1.6, 1.6] });
   const ridge = glb.material({ name: "ridge", pbrMetallicRoughness: { baseColorFactor: [0.02, 0.012, 0.04, 1], metallicFactor: 0, roughnessFactor: 1 } });
   glb.json.extensionsUsed.push("KHR_materials_emissive_strength");
   const m = new MeshBuilder();
@@ -274,6 +277,15 @@ export function sceneryModel(): Uint8Array {
     const w = 14 + r() * 26;
     const h = 30 + r() * r() * 150;
     m.box(tower, [cx - w / 2, -0.02, cz - w / 2], [cx + w / 2, h, cz + w / 2], { tile: 64, skip: "-y" });
+    // About a pixel at this distance: four corner posts and the roof's four edges.
+    const e = 0.08;
+    for (const [x, z] of [[cx - w / 2, cz - w / 2], [cx + w / 2, cz - w / 2], [cx - w / 2, cz + w / 2], [cx + w / 2, cz + w / 2]] as const) {
+      m.box(rim, [x - e, -0.02, z - e], [x + e, h + e, z + e], { skip: "-y" });
+    }
+    m.box(rim, [cx - w / 2 - e, h - e, cz - w / 2 - e], [cx + w / 2 + e, h + e, cz - w / 2 + e], { skip: "-y" });
+    m.box(rim, [cx - w / 2 - e, h - e, cz + w / 2 - e], [cx + w / 2 + e, h + e, cz + w / 2 + e], { skip: "-y" });
+    m.box(rim, [cx - w / 2 - e, h - e, cz - w / 2 - e], [cx - w / 2 + e, h + e, cz + w / 2 + e], { skip: "-y" });
+    m.box(rim, [cx + w / 2 - e, h - e, cz - w / 2 - e], [cx + w / 2 + e, h + e, cz + w / 2 + e], { skip: "-y" });
     if (r() < 0.35) m.box(tubeOf([1, 0.12, 0.75]), [cx - w / 2 - 0.2, h, cz - w / 2 - 0.2], [cx + w / 2 + 0.2, h + 0.4, cz + w / 2 + 0.2], { skip: "-y" });
   }
   for (let k = 0; k < 48; k++) {
