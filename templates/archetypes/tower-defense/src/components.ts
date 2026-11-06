@@ -5,7 +5,8 @@
 // The round (Game), the knobs (Tuning) and the player's settings (Prefs)
 // are resources. The actors are pooled rows spawned in `start`: one Plant
 // per buildable cell (placing a plant switches its row on), the Visitors
-// (the creeps) and the Shots, plus the Cursor and one Sfx row per sound.
+// (the creeps) and the Shots, plus a Cursor per seat (with its
+// og.PlayerInput) and one Sfx row per sound.
 
 import { bool, defineComponent, defineResource, f32, f64, i32, u32 } from "@origingame/engine";
 
@@ -49,9 +50,12 @@ export const Game = defineResource("Game", {
   refusal: u32(0, { doc: "Refusal.* of the last refused placement." }),
   refusedTick: i32(-1, { unit: "ticks", doc: "The tick of the last refusal (the HUD shakes the gold on it)." }),
   shots: u32(0, { doc: "Shots fired." }),
-  selected: u32(Plant.Thorn, { doc: "The plant the next placement sets (Plant.*)." }),
-  cursorX: i32(4, { doc: "The cursor's cell, a map column." }),
-  cursorY: i32(9, { doc: "The cursor's cell, a map row (0 the top)." }),
+  selected: u32(Plant.Thorn, { doc: "The plant seat 0's next placement sets (Plant.*)." }),
+  cursorX: i32(4, { doc: "Seat 0's cursor's cell, a map column." }),
+  cursorY: i32(9, { doc: "Seat 0's cursor's cell, a map row (0 the top)." }),
+  selected2: u32(Plant.Thorn, { doc: "The plant seat 1's next placement sets (Plant.*), when two play." }),
+  cursor2X: i32(4, { doc: "Seat 1's cursor's cell, a map column." }),
+  cursor2Y: i32(5, { doc: "Seat 1's cursor's cell, a map row (0 the top)." }),
   score: u32(0, { doc: "The last round's score: kills × 10 + light × 50 + coins left." }),
   best: u32(0, { doc: "The best score, from the store." }),
   newBest: bool(false),
@@ -68,9 +72,6 @@ export const Game = defineResource("Game", {
   reset: bool(false, { doc: "A new round asked the Plants and Visitors systems to clear their rows." }),
   sfx: u32(0, { doc: "Sound.* bits waiting to play." }),
   held: bool(false, { doc: "The time scale is held at 0 (paused or in the settings)." }),
-  viewW: f32(0, { unit: "cssPx", doc: "The surface the camera was last framed for." }),
-  viewH: f32(0, { unit: "cssPx" }),
-  viewTop: f32(0, { unit: "cssPx" }),
   language: u32(0, { doc: "Prefs.language, mirrored for the facts." }),
   grid: f64(0, { doc: "The og.nav grid of the field." }),
   field: f64(0, { doc: "The og.nav flow field to the doorstep." }),
@@ -143,9 +144,12 @@ export const Shot = defineComponent("Shot", {
   tween: f64(0, { doc: "Its flight's og.tween handle; the shot is free once that tween is done." }),
 });
 
-/** The cell cursor the keys and the pad move. */
+/** A seat's cell cursor, on the entity carrying its og.PlayerInput: its keys and pad step it, its taps set it. */
 export const Cursor = defineComponent("Cursor", {
   moves: u32(0, { doc: "Times it moved." }),
+  before: u32(0, { doc: "The seat's og.PlayerInput.buttons last tick (presses are the bits new this tick)." }),
+  stepX: i32(0, { doc: "The move's column direction last tick (-1, 0, 1): a step is a new direction." }),
+  stepY: i32(0, { doc: "The move's row direction last tick (-1 up, 0, 1 down)." }),
 });
 
 /** One voice: plays its sound once when Game.sfx asks for its bit. */

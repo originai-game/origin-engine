@@ -10,11 +10,17 @@
 // field beside the tray on a wide screen, between the HUD rows on a
 // phone), sets the buses from the settings and reads and writes the
 // settings and the best score through og.platform.
+//
+// A button that changes the world (Play, Pause, a plant on the tray, the
+// next wave, the menus') presses its control (press in src/seats.ts): the
+// Control system acts on the bit in og.PlayerInput the next tick, so in a
+// room every peer sees it on the same tick.
 
 import { og, defineSystem } from "@origingame/engine";
 import type { Entity, Value, World } from "@origingame/engine";
 import { Game, Phase, Plant, PLANTS, Prefs, Tuning } from "./components.ts";
 import { COLS, cost, lazyTuning, ROWS, WAVES } from "./systems.ts";
+import { LOCAL, localSeats, press } from "./seats.ts";
 
 /** The languages the settings offer, each named in its own language. */
 export const LANGUAGES = [
@@ -84,6 +90,9 @@ export function startRound(world: World, g: GameV, t: TuneV): void {
   g.selected = Plant.Thorn;
   g.cursorX = 4;
   g.cursorY = 9;
+  g.selected2 = Plant.Thorn;
+  g.cursor2X = 4;
+  g.cursor2Y = 5;
   const grid = g.grid as unknown as never;
   for (let y = 1; y < ROWS - 1; y++) {
     for (let x = 1; x < COLS - 1; x++) {
@@ -96,13 +105,16 @@ export function startRound(world: World, g: GameV, t: TuneV): void {
   g.pendingPlants = 0;
 }
 
+/** The surface the camera was last framed for: this peer's own, as og.Camera is (never world state). */
+const framed = { w: 0, h: 0, top: 0 };
+
 /** Frames the camera on the field for this surface: beside the tray on a wide screen, between the HUD rows on a phone. */
-function frameCamera(world: World, g: GameV): void {
+function frameCamera(world: World): void {
   const vp = og.ui.frameViewport();
-  if (vp.width <= 0 || vp.height <= 0 || (vp.width === g.viewW && vp.height === g.viewH && vp.safeArea.top === g.viewTop)) return;
-  g.viewW = vp.width;
-  g.viewH = vp.height;
-  g.viewTop = vp.safeArea.top;
+  if (vp.width <= 0 || vp.height <= 0 || (vp.width === framed.w && vp.height === framed.h && vp.safeArea.top === framed.top)) return;
+  framed.w = vp.width;
+  framed.h = vp.height;
+  framed.top = vp.safeArea.top;
   const cam = world.resource(og.Camera);
   if (!cam.ok) return;
   const portrait = vp.width < vp.height;
@@ -213,26 +225,26 @@ function hud(world: World, theme: Theme, g: GameV, t: TuneV): void {
     // A refused placement shakes the purse once, with the error sound (og-ui §6).
     if (g.refusedTick === world.tick) og.ui.shake({ sound: true });
   });
-  let paused = false;
   og.ui.anchor("Waves", { anchor: "topRight", gap: theme.space.sm, cross: "center" }, () => {
     og.ui.row("Wave", { cross: "center", padding: { left: theme.space.md, top: theme.space.xs, right: theme.space.md, bottom: theme.space.xs }, frame: "hud", background: { token: "panel" }, radius: theme.radius.bar }, () => {
       og.ui.label("Label", say(world, "hud.wave", { n: Math.max(1, g.wave), total: WAVES.length }), { step: "lg", font: "display", nowrap: true });
     });
-    if (og.ui.actionButton("Pause", say(world, "hud.pause"), { icon: "pause", size: 48 }).clicked) paused = true;
+    if (og.ui.actionButton("Pause", say(world, "hud.pause"), { icon: "pause", size: 48 }).clicked) press("pause");
   });
-  if (paused) g.paused = true;
-  // The tray: the three plants, the selected one in the accent, an unaffordable one disabled; and the next wave.
+  // The tray: the three plants, this device's seat's in the accent (with two on one device, seat 2's tagged), and the next wave.
+  const mine = localSeats(world)[0] === 1 ? g.selected2 : g.selected;
   og.ui.anchor("Tray", { anchor: small ? "bottom" : "right", direction: small ? "row" : "column", gap: theme.space.sm, cross: "center" }, () => {
     PLANTS.forEach((name, kind) => {
       const price = cost(t, kind);
-      const chosen = g.selected === kind;
+      const chosen = mine === kind;
       og.ui.column(og.ui.idi("Plant", kind), { cross: "center", gap: theme.space.xxs, padding: { left: theme.space.sm, top: theme.space.xs, right: theme.space.sm, bottom: theme.space.sm }, frame: "card", background: { token: "panel" }, radius: theme.radius.panel }, () => {
         og.ui.row("Top", { cross: "center", gap: theme.space.xs }, () => {
           og.ui.image("Picture", { texture: g.sheet as unknown as never, uv: uvOf(PICTURE[kind]!), width: px(small ? 32 : 44), height: px(small ? 32 : 44) });
           // The price: muted when the purse covers it, in danger's ink when it does not.
           og.ui.label("Price", `${price}`, { step: "lg", font: "display", color: { token: g.gold >= price ? "inkMuted" : "danger" }, nowrap: true, width: px(40), align: "center" });
+          if (LOCAL && g.selected2 === kind) og.ui.badge("Seat2", "2P", "info");
         });
-        if (og.ui.button("Pick", say(world, `tower.${name}`), { variant: chosen ? "primary" : "secondary", size: small ? "medium" : "small", width: px(small ? 86 : 104) }).clicked) g.selected = kind;
+        if (og.ui.button("Pick", say(world, `tower.${name}`), { variant: chosen ? "primary" : "secondary", size: small ? "medium" : "small", width: px(small ? 86 : 104) }).clicked) press(name);
       });
     });
     if (!small) callButton(world, g, small);
@@ -250,7 +262,7 @@ function hud(world: World, theme: Theme, g: GameV, t: TuneV): void {
 function callButton(world: World, g: GameV, small: boolean): void {
   if (g.inWave || g.wave >= WAVES.length) return;
   const secs = Math.ceil(g.breakTicks / 60);
-  if (og.ui.button("Next", `${say(world, "hud.next")} ${secs}`, { variant: "secondary", size: small ? "medium" : "medium" }).clicked) g.callNext = true;
+  if (og.ui.button("Next", `${say(world, "hud.next")} ${secs}`, { variant: "secondary", size: small ? "medium" : "medium" }).clicked) press("next");
 }
 
 /** The settings dialog: volumes, language, motion; saved through og.platform when it closes. */
@@ -280,7 +292,7 @@ function settings(world: World, theme: Theme, g: GameV, p: PrefsV): void {
   });
   if (JSON.stringify(prefsValue(p)) !== before) applyPrefs(world, p);
   if (g.settingsOpen && (done || m.dismissed)) {
-    g.settingsOpen = false;
+    press("settings");
     must(og.platform.saveSettings(world, prefsValue(p)));
     p.saves += 1;
   }
@@ -334,7 +346,7 @@ function layer(world: World, name: string, shown: boolean, vm: object = {}): str
 }
 
 /** The screens, the camera's framing, the buses, the platform's answers. */
-export const Ui = defineSystem("Ui", { reads: [Tuning], writes: [Game, Prefs, og.Camera, og.Audio], after: ["Visitors"] }, (_q, time, world) => {
+export const Ui = defineSystem("Ui", { reads: [Tuning, og.Lockstep], writes: [Game, Prefs, og.Camera, og.Audio], after: ["Visitors"] }, (_q, time, world) => {
   const game = world.resource(Game);
   const prefs = world.resource(Prefs);
   if (!game.ok || !prefs.ok) return;
@@ -343,7 +355,7 @@ export const Ui = defineSystem("Ui", { reads: [Tuning], writes: [Game, Prefs, og
   const p = prefs.value;
   platform(world, g, p);
   if (time.tick === 0) applyPrefs(world, p);
-  frameCamera(world, g);
+  frameCamera(world);
   // Paused: the garden holds (time scale 0); playing: it runs at 1 (og-feel §3: never left below 1).
   const hold = g.phase === Phase.Play && (g.paused || g.settingsOpen);
   if (hold !== g.held) {
@@ -356,22 +368,19 @@ export const Ui = defineSystem("Ui", { reads: [Tuning], writes: [Game, Prefs, og
   const shown = og.ui.screenTransition("Screens", screen, { kind: p.reducedMotion ? "fade" : "iris", durationMs: 600 }).shown;
   // The title and the pause are the game's screen documents (assets/ui/main-menu.ogt, pause.ogt).
   for (const e of layer(world, "main-menu", shown === "title")) {
-    if (!g.settingsOpen && e === "play") startRound(world, g, t);
-    if (e === "settings") g.settingsOpen = true;
+    if (!g.settingsOpen && e === "play") press("start");
+    if (e === "settings") press("settings");
   }
   // Back from its Settings the pause keeps the focus on Settings, as the pause shipped.
   const fromSettings = og.ui.memory("pause.fromSettings", 0);
   const pauseUp = shown === "play" && g.paused && !g.settingsOpen;
   for (const e of layer(world, "pause", pauseUp)) {
-    if (e === "resume") g.paused = false;
+    if (e === "resume") press("resume");
     if (e === "settings") {
-      g.settingsOpen = true;
+      press("settings");
       og.ui.remember("pause.fromSettings", 1);
     }
-    if (e === "quit") {
-      g.paused = false;
-      g.phase = Phase.Title;
-    }
+    if (e === "quit") press("title");
   }
   if (pauseUp && fromSettings === 1) {
     og.ui.setFocus("pause/Pause/Panel/Menu/Settings");
@@ -384,8 +393,8 @@ export const Ui = defineSystem("Ui", { reads: [Tuning], writes: [Game, Prefs, og
   } else {
     og.ui.setNavigation(true);
     const c = endCard(world, theme, g, t);
-    if (c === "retry") startRound(world, g, t);
-    if (c === "menu") g.phase = Phase.Title;
+    if (c === "retry") press("start");
+    if (c === "menu") press("title");
   }
   settings(world, theme, g, p);
   if (g.language !== p.language) g.language = p.language;

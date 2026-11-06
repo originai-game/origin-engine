@@ -9,10 +9,16 @@
 // `start` loads the field (assets/maps/garden.ogt: a tilemap whose hedges
 // and stones block), makes the walking grid and the flow field from it,
 // and spawns the pools: one Bed row per lawn cell (off until a plant is
-// set), the visitors, the shots, the cursor, the lantern and one voice per
-// sound; it loads the screen documents (assets/ui/) too. The systems are
-// in src/systems.ts, the screens in src/ui.ts, the state in
+// set), the visitors, the shots, a cursor per seat, the lantern and one
+// voice per sound; it loads the screen documents (assets/ui/) too. The
+// systems are in src/systems.ts, the screens in src/ui.ts, the state in
 // src/components.ts.
+//
+// Every seat (src/seats.ts) is a cursor entity carrying its og.PlayerInput,
+// all the systems read: alone, one gardener; with two on one device or in a
+// room, two gardeners on one lawn sharing the purse, the light and the
+// waves, each with its own cursor (seat 2's in its ink) and its own plant.
+// The whole lawn is on one screen, so the camera frames it for both.
 
 import { og } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
@@ -20,6 +26,7 @@ import { checkClips, clipOf } from "./art.ts";
 import { Bed, Cursor, Game, Phase, Prefs, Sfx, Shot, Sound, Tuning, Visitor } from "./components.ts";
 import { buildable, cellCenter, COLS, Control, DOOR, endRound, fire, place, Plants, ROWS, SHOTS, Visitors, VISITORS, Voices, WAVES } from "./systems.ts";
 import { LANGUAGES, startRound, Ui } from "./ui.ts";
+import { SEATS, Seats, setBot, setupSeats, useTouchControls } from "./seats.ts";
 
 /** The night behind the field, linear. */
 const NIGHT = { r: 0.0047, g: 0.0137, b: 0.0091 };
@@ -32,6 +39,9 @@ function must<T>(r: { ok: true; value?: T } | { ok: false; reason: string }): T 
 }
 
 function start(world: World): void {
+  setupSeats(world);
+  // The touch HUD is the game's own: the tray and a tap on the lawn (src/ui.ts), no default sticks or buttons.
+  useTouchControls(() => ({ x: 0, y: 0, lx: 0, ly: 0, buttons: 0 }));
   for (const l of LANGUAGES) must(og.i18n.load(world, `strings/${l.code}.ogt`));
   const style = must(og.load.style(world, "styles/pathguard/style.ogt"));
   const sound = (path: string) => must(og.load.sound(world, path));
@@ -108,8 +118,11 @@ function start(world: World): void {
   must(world.insert(glow, og.Sprite, { texture: must(og.load.texture(world, "sprites/glow.png")), width: 24, height: 24, color: { r: 0.45, g: 0.75, b: 0.55 }, opacity: 0.22, layer: -40 }));
   const flies = must(world.spawn({ name: "fireflies", position: { x: COLS / 2, y: ROWS / 2, z: 0 } }));
   must(world.insert(flies, og.ParticleSystem, { emitter: must(og.load.emitter(world, "fx/fireflies.ogt")), seed: 7 }));
-  const cursor = must(world.spawn({ name: "cursor", position: { x: -40, y: -40, z: 0 } }));
-  must(world.insert(cursor, Cursor));
+  for (let seat = 0; seat < SEATS; seat++) {
+    const cursor = must(world.spawn({ name: seat === 0 ? "cursor" : `cursor-${seat + 1}`, position: { x: -40, y: -40, z: 0 } }));
+    must(world.insert(cursor, Cursor));
+    must(world.insert(cursor, og.PlayerInput, { player: seat }));
+  }
 
   // The voices: one per sound, played by Voices; the music loops on its bus.
   const voices: [string, number, "sfx" | "ui", number][] = [
@@ -157,7 +170,7 @@ function plantCmd(world: World, args: readonly string[]): void {
   if (kind < 0) throw new Error("write plant:<thorn|frost|hedge>:<x>:<y>");
   const g = gameOf(world);
   g.selected = kind;
-  place(world, g, must(world.resource(Tuning)), num(args[1], "x"), num(args[2], "y"));
+  place(world, g, must(world.resource(Tuning)), num(args[1], "x"), num(args[2], "y"), kind);
 }
 
 /** `gold:<n>`: set the purse. */
@@ -206,10 +219,10 @@ export default og.game({
   tick: 60,
   seed: 1,
   resources: [Game, Tuning, Prefs],
-  systems: [Control, Plants, Visitors, Ui, Voices],
+  systems: [Seats, Control, Plants, Visitors, Ui, Voices],
   render: { antialias: "off" },
   start,
-  commands: { fire, begin, plant: plantCmd, gold, wave, lose, win, viewport, language },
+  commands: { fire, begin, plant: plantCmd, gold, wave, lose, win, viewport, language, bot: (_world, args) => setBot(Number(args[0])) },
   commandHelp: {
     fire: { usage: "<plant>", doc: "The plants' behaviour command (og.ai queues it with the plant's handle): a shot at what it sees." },
     begin: { usage: "", doc: "Start a round now, as Play on the title does." },
@@ -220,6 +233,7 @@ export default og.game({
     win: { usage: "", doc: "End the round as won now." },
     viewport: { usage: "<desktop|phone>", doc: "Lay the UI out for a phone in portrait (390×844 at 3×) or back for the surface." },
     language: { usage: "<en|zh-CN>", doc: "Switch the language as the settings do." },
+    bot: { usage: "<n>", doc: "Play this device's seats by scripted bot n (by the tick alone, the same in every session); 0 hands them back." },
   },
   facts: (world) => {
     const game = world.resource(Game);
@@ -243,6 +257,7 @@ export default og.game({
       walking: g.walking,
       selected: ["thorn", "frost", "hedge"][g.selected],
       cursor: { x: g.cursorX, y: g.cursorY },
+      ...(SEATS > 1 ? { selected2: ["thorn", "frost", "hedge"][g.selected2], cursor2: { x: g.cursor2X, y: g.cursor2Y } } : {}),
       cursorBuildable: buildable(world, g, g.cursorX, g.cursorY),
       won: g.won,
       score: g.score,

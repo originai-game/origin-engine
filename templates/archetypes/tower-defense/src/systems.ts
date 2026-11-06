@@ -1,7 +1,8 @@
-// Path Guard's systems, in tick order: Control (the cursor, the tray keys,
-// a tap or a key setting a plant), Plants (reloads, sight, the shooting
-// clip), Visitors (the waves, the walk, hits landing, pops and leaks) and
-// Voices (each requested sound once). The UI is src/ui.ts; `fire`, the
+// Path Guard's systems, in tick order: Control (each seat's cursor and
+// plant from its og.PlayerInput, a tap or a key setting a plant, the round's
+// buttons), Plants (reloads, sight, the shooting clip), Visitors (the
+// waves, the walk, hits landing, pops and leaks) and Voices (each requested
+// sound once). The UI is src/ui.ts; `fire`, the
 // plants' behaviour command, is here.
 //
 // A plant's mind is data: assets/ai/plant.ogt, run by og.ai before these
@@ -17,7 +18,8 @@ import { og, defineSystem, NAV_ARRIVED } from "@origingame/engine";
 import type { Entity, Value, View, World } from "@origingame/engine";
 import { Bed, Cursor, Game, Phase, Plant, PLANTS, Prefs, Refusal, Sfx, Shot, Sound, Tuning, Visitor } from "./components.ts";
 import { clipOf } from "./art.ts";
-import { say } from "./ui.ts";
+import { say, startRound } from "./ui.ts";
+import { bit, pressedNow } from "./seats.ts";
 
 /** The field: 9 × 13 cells of one world unit; the map's top-left corner is at (0, 13). */
 export const COLS = 9;
@@ -25,6 +27,8 @@ export const ROWS = 13;
 /** The gate's cell (the visitors' spawn) and the doorstep's (their goal), map columns and rows. */
 export const GATE = { x: 4, y: 0 } as const;
 export const DOOR = { x: 4, y: 12 } as const;
+/** sqrt(x² + y²) the same on every JavaScript engine (Math.hypot is not: og check's lockstep lint). */
+const hypot = (x: number, y: number): number => Math.sqrt(x * x + y * y);
 /** Pool sizes. */
 export const VISITORS = 24;
 export const SHOTS = 24;
@@ -120,12 +124,12 @@ function float(world: World, text: string, x: number, y: number, color: { r: num
 }
 
 /**
- * Sets the selected plant on a cell, or refuses with the reason: too few
+ * Sets a plant (Plant.*) on a cell, or refuses with the reason: too few
  * coins, the cell taken, a visitor standing there, or a path closed (the
  * gate's to the doorstep or any visitor's). The grid's cost is set first and
  * put back when the path check fails.
  */
-export function place(world: World, g: GameV, t: TuneV, x: number, y: number): boolean {
+export function place(world: World, g: GameV, t: TuneV, x: number, y: number, kind: number): boolean {
   const refuse = (why: number, text: string) => {
     g.refused += 1;
     g.refusal = why;
@@ -135,7 +139,7 @@ export function place(world: World, g: GameV, t: TuneV, x: number, y: number): b
     return false;
   };
   if (!buildable(world, g, x, y) || padOf(world, g, x, y) >= 0 || occupied(g, x, y)) return refuse(Refusal.Taken, say(world, "float.taken"));
-  const price = cost(t, g.selected);
+  const price = cost(t, kind);
   if (g.gold < price) return refuse(Refusal.Poor, say(world, "float.poor", { n: price - g.gold }));
   const grid = g.grid as unknown as never;
   const navY = ROWS - 1 - y;
@@ -147,7 +151,7 @@ export function place(world: World, g: GameV, t: TuneV, x: number, y: number): b
   g.gold -= price;
   g.placed += 1;
   // The pads layer holds which plant stands on each cell; the Plants system switches the cell's row on.
-  must(og.tilemap.setTile(world, { entity: g.map as unknown as Entity, layer: "pads", x, y, tile: PAD[g.selected]! }));
+  must(og.tilemap.setTile(world, { entity: g.map as unknown as Entity, layer: "pads", x, y, tile: PAD[kind]! }));
   g.pendingPlants += 1;
   g.sfx |= Sound.Plant;
   return true;
@@ -168,97 +172,131 @@ function pathsOpen(world: World, g: GameV): boolean {
   return true;
 }
 
-/** The world point under a CSS pixel of the play surface, through the camera Frame wrote. */
-export function screenToWorld(world: World, px: number, py: number): { x: number; y: number } | null {
-  const cam = world.resource(og.Camera);
-  const vp = og.ui.viewport(world);
-  if (!cam.ok || vp.height <= 0) return null;
-  const scale = vp.height / cam.value.height;
-  return { x: cam.value.position.x + (px - vp.width / 2) / scale, y: cam.value.position.y - (py - vp.height / 2) / scale };
+/** Seat 1's ink: its cursor and its range ring, a cool tint over the sheet's (linear). */
+export const SECOND_INK = { r: 0.55, g: 0.8, b: 1 } as const;
+
+/** A seat's cursor cell and plant: seat 0's in Game.cursorX, cursorY, selected; seat 1's in cursor2X, cursor2Y, selected2. */
+export function seatOf(g: GameV, seat: number): { x: number; y: number; kind: number } {
+  return seat === 0 ? { x: g.cursorX, y: g.cursorY, kind: g.selected } : { x: g.cursor2X, y: g.cursor2Y, kind: g.selected2 };
 }
 
+function setCursor(g: GameV, seat: number, x: number, y: number): void {
+  if (seat === 0) {
+    g.cursorX = x;
+    g.cursorY = y;
+  } else {
+    g.cursor2X = x;
+    g.cursor2Y = y;
+  }
+}
+
+function select(g: GameV, seat: number, kind: number): void {
+  if (seatOf(g, seat).kind !== kind) g.sfx |= Sound.Move;
+  if (seat === 0) g.selected = kind;
+  else g.selected2 = kind;
+}
+
+/** A stick or key direction as a step: -1, 0 or 1 past half a tilt. */
+const dir = (v: number) => (v > 0.5 ? 1 : v < -0.5 ? -1 : 0);
+
 /**
- * The player's hands: the cursor (arrows, WASD, the pad's d-pad), the tray
- * (1, 2, 3, the pad's X), setting a plant (Space, Enter, the pad's A, or a
- * tap on the lawn, which also moves the cursor), the next wave (N, the
- * pad's Y) and pause (Escape, P, the pad's Start). Every input is answered
- * on its tick: the cursor moves with a tick of sound, a plant pops up, a
- * refusal says why.
+ * The players' hands, from each seat's og.PlayerInput (src/seats.ts): the
+ * seat's cursor steps a cell on each new direction of its move (the arrows,
+ * WASD, the d-pad, a stick's flick), its plant is picked by thorn, frost,
+ * hedge or cycle, `place` sets it under the cursor and `tap` (a click or a
+ * tap on the lawn, at the seat's aim point) moves the cursor there and sets
+ * it. The round's own buttons are anyone's: the next wave, pause (a toggle;
+ * `menu` only opens it), and the menus' presses (start, title, settings,
+ * resume), each acting once however many seats press it on a tick. Every
+ * input is answered on its tick: the cursor moves with a tick of sound, a
+ * plant pops up, a refusal says why.
  */
 export const Control = defineSystem(
   "Control",
-  { reads: [og.Input, og.Gamepad, og.Camera, Tuning], writes: [Game, Cursor, og.Transform] },
-  (q, time, world) => {
+  { reads: [og.PlayerInput, Tuning], writes: [Game, Cursor, og.Transform] },
+  (q, _time, world) => {
     const game = world.resource(Game);
-    const input = world.resource(og.Input);
-    const pad = world.resource(og.Gamepad);
-    if (!game.ok || !input.ok || !pad.ok) return;
+    if (!game.ok) return;
     const g = game.value;
     const t = lazyTuning(world);
-    const inp = input.value;
-    const gp = pad.value;
     const playing = g.phase === Phase.Play && !g.paused && !g.settingsOpen;
+    // The bits any seat pressed this tick, for the round's buttons.
+    let any = 0;
     for (const a of q.archetypes()) {
       const cur = a.column(Cursor);
+      const input = a.column(og.PlayerInput);
       const p = a.column(og.Transform).position;
       for (let i = 0; i < a.count; i++) {
+        const seat = input.player[i]!;
+        const buttons = input.buttons[i]!;
+        const before = cur.before[i]!;
+        cur.before[i] = buttons;
+        any |= buttons & ~before;
+        const sx = dir(input.x[i]!);
+        const sy = -dir(input.y[i]!);
+        const dx = sx !== cur.stepX[i] ? sx : 0;
+        const dy = sy !== cur.stepY[i] ? sy : 0;
+        cur.stepX[i] = sx;
+        cur.stepY[i] = sy;
+        const now = (name: string) => pressedNow(buttons, before, name);
         if (!playing) {
           p[i * 3] = PARK.x;
           p[i * 3 + 1] = PARK.y;
           // Focus moving over a menu ticks (og-ui plays nothing when keyboard or pad focus moves).
-          const nav = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab"].some((k) => inp.pressed(k)) || (["up", "down", "left", "right"] as const).some((b) => gp.pressed(b));
-          if (nav) g.sfx |= Sound.Move;
+          if (dx !== 0 || dy !== 0 || now("cycle")) g.sfx |= Sound.Move;
           continue;
         }
-        let dx = 0;
-        let dy = 0;
-        if (inp.pressed("ArrowLeft") || inp.pressed("KeyA") || gp.pressed("left")) dx -= 1;
-        if (inp.pressed("ArrowRight") || inp.pressed("KeyD") || gp.pressed("right")) dx += 1;
-        if (inp.pressed("ArrowUp") || inp.pressed("KeyW") || gp.pressed("up")) dy -= 1;
-        if (inp.pressed("ArrowDown") || inp.pressed("KeyS") || gp.pressed("down")) dy += 1;
+        let at = seatOf(g, seat);
         if (dx !== 0 || dy !== 0) {
-          g.cursorX = Math.max(1, Math.min(COLS - 2, g.cursorX + dx));
-          g.cursorY = Math.max(1, Math.min(ROWS - 2, g.cursorY + dy));
+          setCursor(g, seat, Math.max(1, Math.min(COLS - 2, at.x + dx)), Math.max(1, Math.min(ROWS - 2, at.y + dy)));
           cur.moves[i] = cur.moves[i]! + 1;
           g.sfx |= Sound.Move;
         }
-        if (inp.pressed("Digit1")) select(g, Plant.Thorn);
-        if (inp.pressed("Digit2")) select(g, Plant.Frost);
-        if (inp.pressed("Digit3")) select(g, Plant.Hedge);
-        if (gp.pressed("x")) select(g, (g.selected + 1) % PLANTS.length);
-        if (inp.pressed("KeyN") || gp.pressed("y")) g.callNext = true;
-        if (inp.pressed("Escape") || inp.pressed("KeyP") || gp.pressed("start")) g.paused = true;
-        if (inp.pressed("Space") || inp.pressed("Enter") || gp.pressed("a")) place(world, g, t, g.cursorX, g.cursorY);
+        if (now("thorn")) select(g, seat, Plant.Thorn);
+        if (now("frost")) select(g, seat, Plant.Frost);
+        if (now("hedge")) select(g, seat, Plant.Hedge);
+        if (now("cycle")) select(g, seat, (seatOf(g, seat).kind + 1) % PLANTS.length);
+        at = seatOf(g, seat);
+        if (now("place")) place(world, g, t, at.x, at.y, at.kind);
         // A tap on the lawn moves the cursor there and plants.
-        if (inp.buttonPressed("left")) {
-          const at = screenToWorld(world, inp.pointer.x, inp.pointer.y);
-          if (at !== null && at.x >= 0 && at.x < COLS && at.y >= 0 && at.y < ROWS) {
-            const c = cellOf(at.x, at.y);
-            g.cursorX = c.x;
-            g.cursorY = c.y;
-            place(world, g, t, c.x, c.y);
-          }
+        const ax = input.aimX[i]!;
+        const ay = input.aimY[i]!;
+        if (now("tap") && ax >= 0 && ax < COLS && ay >= 0 && ay < ROWS) {
+          const c = cellOf(ax, ay);
+          setCursor(g, seat, c.x, c.y);
+          place(world, g, t, c.x, c.y, at.kind);
         }
-        const c = cellCenter(g.cursorX, g.cursorY);
+        at = seatOf(g, seat);
+        const c = cellCenter(at.x, at.y);
         p[i * 3] = c.x;
         p[i * 3 + 1] = c.y;
-        // The cursor and, for a shooting plant, its range: drawn this tick.
-        const ok = buildable(world, g, g.cursorX, g.cursorY) && g.gold >= cost(t, g.selected);
+        // The cursor and, for a shooting plant, its range: drawn this tick, seat 1's in its ink.
+        const ink = seat === 0 ? {} : { color: SECOND_INK };
+        const ok = buildable(world, g, at.x, at.y) && g.gold >= cost(t, at.kind);
         const frame = ok ? 18 : 19;
         const sheet = g.sheet as unknown as never;
-        must(og.render.sprite(world, { texture: sheet, position: { x: c.x, y: c.y, z: 0 }, width: 1, height: 1, uv: [(frame % 8) / 8, Math.floor(frame / 8) / 3, (frame % 8 + 1) / 8, (Math.floor(frame / 8) + 1) / 3], layer: 8 }));
-        const r = range(t, g.selected);
-        if (ok && r > 0) must(og.render.sprite(world, { texture: g.ring as unknown as never, position: { x: c.x, y: c.y, z: 0 }, width: r * 2, height: r * 2, layer: 7, opacity: 0.85 }));
+        must(og.render.sprite(world, { texture: sheet, position: { x: c.x, y: c.y, z: 0 }, width: 1, height: 1, uv: [(frame % 8) / 8, Math.floor(frame / 8) / 3, (frame % 8 + 1) / 8, (Math.floor(frame / 8) + 1) / 3], layer: 8, ...ink }));
+        const r = range(t, at.kind);
+        if (ok && r > 0) must(og.render.sprite(world, { texture: g.ring as unknown as never, position: { x: c.x, y: c.y, z: 0 }, width: r * 2, height: r * 2, layer: 7, opacity: 0.85, ...ink }));
       }
     }
-    void time;
+    const pressed = (name: string) => (any & bit(name)) !== 0;
+    const inPlay = g.phase === Phase.Play && !g.settingsOpen;
+    if (playing && pressed("next")) g.callNext = true;
+    if (inPlay && pressed("pause")) g.paused = !g.paused;
+    else if (playing && pressed("menu")) g.paused = true;
+    else if (inPlay && g.paused && pressed("resume")) g.paused = false;
+    if (pressed("settings")) {
+      if (g.settingsOpen) g.settingsOpen = false;
+      else if (g.phase === Phase.Title || (g.phase === Phase.Play && g.paused)) g.settingsOpen = true;
+    } else if (!g.settingsOpen && pressed("title") && (g.phase === Phase.Over || (g.phase === Phase.Play && g.paused))) {
+      g.paused = false;
+      g.phase = Phase.Title;
+    } else if (!g.settingsOpen && pressed("start") && g.phase !== Phase.Play) {
+      startRound(world, g, t);
+    }
   },
 );
-
-function select(g: GameV, kind: number): void {
-  if (g.selected !== kind) g.sfx |= Sound.Move;
-  g.selected = kind;
-}
 
 /** Plants: reload, sight from the tunables, the shooting clip back to the sway. Held by a hit stop. */
 export const Plants = defineSystem(
@@ -356,7 +394,7 @@ export function fire(world: World, args: readonly string[]): void {
   if (shot === null) return;
   const from = { x: at.value.position.x, y: at.value.position.y + 0.2 };
   let to = { x: tp.value.position.x, y: tp.value.position.y };
-  const flight = Math.min(0.5, Math.hypot(to.x - from.x, to.y - from.y) / t.shotSpeed);
+  const flight = Math.min(0.5, hypot(to.x - from.x, to.y - from.y) / t.shotSpeed);
   // Lead the target by where it walks during the flight.
   to = { x: to.x + nav.value.velocity.x * flight, y: to.y + nav.value.velocity.y * flight };
   const kind = b.kind;
@@ -503,7 +541,7 @@ export const Visitors = defineSystem(
           pop(world, g, t, v, sprite, nav, fx, i, x, y);
           continue;
         }
-        if (Math.hypot(x - goal.x, y - goal.y) < 0.45 || nav.status[i] === NAV_ARRIVED) {
+        if (hypot(x - goal.x, y - goal.y) < 0.45 || nav.status[i] === NAV_ARRIVED) {
           leak(world, g, t, v, i);
           park(p, nav, fx, i);
           sprite.visible[i] = 0;

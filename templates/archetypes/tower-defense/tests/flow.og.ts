@@ -1,6 +1,6 @@
 // The core loop through real input: Play on the title, a hedge picked on
 // the tray and tapped onto the lawn (the tap also moves the cursor there),
-// two thorns set beside it with the keys (1, the arrows, Space), then the first wave: visitors come through the gate and
+// two thorns set beside it with the keys (1, A and D, Space: seat 0's, alone or beside a second seat), then the first wave: visitors come through the gate and
 // walk to the doorstep, the thorns see them (og.ai), shoot, and every
 // visitor turned away pays its bounty.
 import { playtest } from "@origingame/engine/playtest";
@@ -15,10 +15,10 @@ export default playtest({
     tap("Plant#2/Pick", 1.3),
     tapCell(4, 4, 1.5),
     press("Digit1", 1.8),
-    press("ArrowLeft", 2.3),
+    press("KeyA", 2.3),
     press("Space", 2.4),
-    press("ArrowRight", 2.5),
-    press("ArrowRight", 2.6),
+    press("KeyD", 2.5),
+    press("KeyD", 2.6),
     press("Space", 2.7),
     "2.9:get:Game:set.json",
     "2.95:screenshot:play.png",

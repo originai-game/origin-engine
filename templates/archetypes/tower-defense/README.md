@@ -85,10 +85,19 @@ following the machine's load (`tests/evidence/P2/archetypes/frame-time.md`).
 
 ## Rules
 
-- **Plants.** Pick one on the tray (or 1, 2, 3; the pad's X cycles), then
-  tap a lawn cell (or move the cursor with the arrows, WASD or the d-pad
-  and press Space, Enter or A). It costs its price at once and stands
-  until the round ends.
+- **Plants.** Pick one on the tray (or 1, 2, 3; Q, Tab or the pad's X
+  cycles), then tap a lawn cell (or move the cursor with the arrows, WASD
+  or the d-pad and press Space, Enter or A). It costs its price at once and
+  stands until the round ends.
+- **Two gardeners.** With two players (src/creation.ts `players`: on one
+  device, or over a room in lockstep) both tend one lawn, sharing the
+  purse, the light and the waves; each has a cursor (the second in a cool
+  ink) and a plant of its own. On one device the first plays WASD, Q, 1–3,
+  Space, N, the mouse and pad 1; the second the arrows, Period, Numpad 1–3,
+  Enter, Slash and pad 2 (its pick is tagged 2P on the tray). Every input
+  reaches the game as the seat's og.PlayerInput (src/seats.ts), and the
+  tray, the HUD and the menus press their controls rather than write the
+  world.
 
   | Plant | Price | Does |
   |---|---|---|
@@ -219,6 +228,7 @@ resource with `get:Game`.
 | `tests/phone.og.ts` | 390 × 844 at 3×: the tray along the bottom with touch-sized buttons inside the safe area, the pause button below the notch |
 | `tests/frames.og.ts` | the title, a wave in a small maze and the end card match `references/<tier>/` (`OG_FX_CAPTURE=1 og test .` records them) |
 | `tests/replay.og.ts` | a round with taps, keys, shots, frost and pops, run twice, ends on one hash |
+| `tests/seats.og.ts` | keys, the pad, a tap and a phone's tray card reach the seat's og.PlayerInput and play its cursor; with two on one device, each seat's keys and pad move only its own cursor and plant |
 
 Each one fails when the behaviour it names is broken (one was broken on
 purpose and restored: `tests/evidence/P2/archetypes/break-and-restore.md`
