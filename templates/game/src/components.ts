@@ -68,6 +68,7 @@ export const Hero = defineComponent("Hero", {
   clip: u32(0, { doc: "0 idle, 1 walk, 2 run." }),
   startX: f32(0),
   startZ: f32(0),
+  fresh: bool(false, { doc: "A run starts this tick: HeroMove turns its look towards the pad." }),
 });
 
 /** A power cell: picked up by a hero within its reach. */

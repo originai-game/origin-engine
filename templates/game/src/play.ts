@@ -18,7 +18,7 @@ import { og, defineSystem, math, SHAPE_BOX, SHAPE_CAPSULE } from "@origingame/en
 import type { Entity, Value, World } from "@origingame/engine";
 import { Cell, Ending, Health, Hero, Mission, Phase, Rise, Run, Sound, Tuning, Voice } from "./components.ts";
 import { creation } from "./creation.ts";
-import { held, PAUSE, pressedNow, SEATS } from "./seats.ts";
+import { held, LOCAL, localSeats, PAUSE, pressedNow, SEATS } from "./seats.ts";
 import { bodyLayer, FIRST_PERSON, ISOMETRIC, SeatLook, setupView, walkDirection } from "./view.ts";
 
 export const CELLS = 5;
@@ -38,8 +38,8 @@ const SECOND_START = { x: 7.5, z: 0.5 } as const;
 const SECOND_TINT = { r: 0.45, g: 0.75, b: 1 };
 /** The fence: a square of low rails 12 m out, inside the navmesh's bounds. */
 const FENCE = 12;
-/** The dropship hovers this high over the pad once it has lifted. */
-const LIFT = 3.6;
+/** The dropship hovers this high over the pad once it has lifted: above the first- and third-person views at Start, high over the pad isometric. */
+const LIFT = 6;
 /** The capsule (radius 0.3, a 1.1 m segment): its centre this far above the feet. */
 const WAIST = 0.85;
 /** Ticks the summary shows before Play again answers. */
@@ -48,6 +48,18 @@ const UP = { x: 0, y: 1, z: 0 };
 const DEG = Math.PI / 180;
 /** The isometric view's heading (the look's ArtCamera yaw): the stick walks relative to the screen. */
 const ISO_YAW = ((creation.camera as { yaw?: number }).yaw ?? 45) * DEG;
+/**
+ * The look's heading at Start (first and third person): north-west into the
+ * yard, a cell ahead and the guard's rounds between, the pad, the crate and
+ * the wall's end on the right.
+ */
+export const START_YAW = 2;
+/** First person: the layer of a seat's held lantern, drawn by that seat's own eye alone. */
+const handsLayer = (seat: number) => 8 << seat;
+/** The lantern from the eye: right, down and ahead (metres, in the look's axes). */
+const HANDS_AT = { x: 0.3, y: -0.3, z: -0.62 } as const;
+/** The lantern's size in the view. */
+const HANDS_SCALE = 0.7;
 
 type MissionV = Value<typeof Mission>;
 type TuneV = Value<typeof Tuning>;
@@ -146,8 +158,9 @@ function beginRun(world: World, m: MissionV): void {
   if (FIRST_PERSON) all.forEach((hero, seat) => must(world.set(hero, og.Model, { layers: bodyLayer(seat) })));
   // Third person sits 4.5 m behind and 1.6 m above the hero's feet (raised as the look tips down).
   setupView(world, all, { behind: 4.5, above: 1.6 });
-  // Each hero turns its back to the camera: forward is where the view looks (-Z).
-  for (const hero of all) must(world.set(hero, Hero, { facing: Math.PI }));
+  // Each hero looks towards the pad on its first tick (HeroMove: its SeatLook is placed when this system ends).
+  for (const hero of all) must(world.set(hero, Hero, { fresh: true }));
+  if (FIRST_PERSON) spawnHands(world, all.length);
 
   // The fence rises round the yard.
   const rail = must(og.render.standardMaterial(world, { color: { r: 0.36, g: 0.33, b: 0.3 }, roughness: 0.85 }));
@@ -191,6 +204,83 @@ function beginRun(world: World, m: MissionV): void {
   m.runs += 1;
 }
 
+/**
+ * First person: a cell lantern in each seat's right hand (a forearm, a
+ * grip and a glowing cell), on that seat's hands layer, so its own eye
+ * draws it and nobody else's does; it casts no shadow (the body does).
+ * Hands puts it before the eye every tick.
+ */
+function spawnHands(world: World, seats: number): void {
+  const skin = must(og.render.standardMaterial(world, { color: { r: 0.72, g: 0.56, b: 0.4 }, roughness: 0.8 }));
+  const metal = must(og.render.standardMaterial(world, { color: { r: 0.16, g: 0.17, b: 0.2 }, roughness: 0.45, metalness: 0.6 }));
+  const glow = must(og.render.standardMaterial(world, { color: { r: 1, g: 0.5, b: 0.05 }, emissive: { r: 1, g: 0.42, b: 0.02 }, emissiveIntensity: 1.4, roughness: 0.35 }));
+  const arm = must(og.render.boxGeometry(world, { width: 0.09, height: 0.09, depth: 0.42 }));
+  const grip = must(og.render.boxGeometry(world, { width: 0.12, height: 0.05, depth: 0.12 }));
+  const cage = must(og.render.boxGeometry(world, { width: 0.02, height: 0.2, depth: 0.02 }));
+  const cell = must(og.render.octahedronGeometry(world, { radius: 0.07 }));
+  for (let seat = 0; seat < seats; seat++) {
+    const hands = must(world.spawn({ name: `hands-${seat}`, scale: { x: HANDS_SCALE, y: HANDS_SCALE, z: HANDS_SCALE } }));
+    const part = (name: string, geometry: typeof arm, material: typeof skin, at: { x: number; y: number; z: number }) => {
+      const e = must(world.spawn({ name: `hands-${seat}-${name}`, parent: hands, position: at }));
+      must(world.insert(e, og.Mesh, { geometry, material, castShadow: false, layers: handsLayer(seat) }));
+    };
+    // The forearm reaches in from below the screen's right edge to the grip.
+    part("arm", arm, skin, { x: 0.02, y: -0.06, z: 0.2 });
+    part("grip", grip, metal, { x: 0, y: 0, z: 0 });
+    part("cap", grip, metal, { x: 0, y: 0.22, z: 0 });
+    for (const [i, [x, z]] of ([[0.05, 0.05], [-0.05, 0.05], [0.05, -0.05], [-0.05, -0.05]] as const).entries()) part(`bar-${i}`, cage, metal, { x, y: 0.11, z });
+    part("cell", cell, glow, { x: 0, y: 0.11, z: 0 });
+  }
+}
+
+/** Ry(yaw) * Rx(pitch): a look's orientation. */
+function yawPitch(yaw: number, pitch: number) {
+  const sy = math.sin(yaw / 2), cy = math.cos(yaw / 2), sp = math.sin(pitch / 2), cp = math.cos(pitch / 2);
+  return { x: cy * sp, y: sy * cp, z: -sy * sp, w: cy * cp };
+}
+
+/**
+ * First person: each seat's lantern before its eye, along its look, swaying
+ * a little with its steps. After the cameras, from the same position they
+ * placed the eye at.
+ */
+export const Hands = defineSystem("Hands", { reads: [SeatLook, Hero, og.Lockstep], writes: [og.Transform, og.Camera, og.CameraView] }, (_q, _time, world) => {
+  if (!FIRST_PERSON || world.find("hands-0") === null) return;
+  // Each eye draws its own lantern too (with the world and the others' bodies, src/view.ts).
+  if (LOCAL) {
+    for (let seat = 0; seat < SEATS; seat++) {
+      const v = world.find(`view-${seat}`);
+      const cv = v === null ? null : world.get(v, og.CameraView);
+      if (v !== null && cv?.ok && (cv.value.layers & handsLayer(seat)) === 0) must(world.set(v, og.CameraView, { layers: cv.value.layers | handsLayer(seat) }));
+    }
+  } else {
+    const cam = must(world.resource(og.Camera));
+    const own = handsLayer(localSeats(world)[0] ?? 0);
+    if ((cam.layers & own) === 0) cam.layers |= own;
+  }
+  for (let seat = 0; seat < SEATS; seat++) {
+    const lantern = world.find(`hands-${seat}`);
+    if (lantern === null) continue;
+    const hero = heroOf(world, seat);
+    const look = must(world.get(hero, SeatLook));
+    const me = must(world.get(hero, Hero));
+    const p = must(world.get(hero, og.Transform)).position;
+    const sway = me.grounded ? Math.min(1, me.speed / 2.6) : 0;
+    const phase = me.stepClock * Math.PI;
+    const o = { x: HANDS_AT.x + 0.012 * sway * math.sin(phase), y: HANDS_AT.y - 0.016 * sway * Math.abs(math.cos(phase)), z: HANDS_AT.z };
+    // The offset in the look's axes: right (cos yaw, 0, -sin yaw), up, and forward along yaw and pitch.
+    const sy = math.sin(look.yaw), cy = math.cos(look.yaw), sp = math.sin(look.pitch), cp = math.cos(look.pitch);
+    const up = { x: sy * sp, y: cp, z: cy * sp };
+    const fwd = { x: -sy * cp, y: sp, z: -cy * cp };
+    const at = {
+      x: p.x + cy * o.x + up.x * o.y - fwd.x * o.z,
+      y: p.y + 1.6 + up.y * o.y - fwd.y * o.z,
+      z: p.z - sy * o.x + up.z * o.y - fwd.z * o.z,
+    };
+    must(world.set(lantern, og.Transform, { position: at, quaternion: yawPitch(look.yaw, look.pitch) }));
+  }
+});
+
 /** A new run after the summary: every hero home, every cell back, the guard to its post. */
 function resetRun(world: World, m: MissionV): void {
   for (const hero of heroes(world)) {
@@ -199,7 +289,7 @@ function resetRun(world: World, m: MissionV): void {
     must(world.set(hero, og.CharacterController, { move: { x: 0, y: 0, z: 0 }, jump: false }));
     const hp = must(world.get(hero, Health));
     must(world.set(hero, Health, { hp: hp.max }));
-    must(world.set(hero, Hero, { ...me, invulnerable: 0, airTime: 0 }));
+    must(world.set(hero, Hero, { ...me, invulnerable: 0, airTime: 0, fresh: true }));
   }
   for (let i = 0; i < CELLS; i++) {
     const e = world.find(`cell-${i}`);
@@ -235,7 +325,7 @@ export const Flow = defineSystem(
   {
     reads: [og.PlayerInput, og.Lockstep],
     // Start's tick inserts what the run plays on (beginRun), and a new run resets it.
-    writes: [Run, Mission, Hero, Health, Cell, Rise, Voice, SeatLook, og.Transform, og.CharacterController, og.Collider, og.Skeleton, og.AnimationPlayer, og.Perceivable, og.FollowCamera, og.FirstPersonCamera, og.CameraView, og.Camera, og.Model, og.Mesh, og.AudioSource, og.AiAgent],
+    writes: [Run, Mission, Hero, Health, Cell, Rise, Voice, SeatLook, og.Transform, og.CharacterController, og.Collider, og.Skeleton, og.AnimationPlayer, og.Perceivable, og.FollowCamera, og.FirstPersonCamera, og.CameraView, og.Camera, og.Model, og.Mesh, og.AudioSource, og.AiAgent, og.Parent],
     after: ["Seats"],
   },
   (_q, _time, world) => {
@@ -288,6 +378,13 @@ export const HeroMove = defineSystem(
 let clips: { idle: number; walk: number; run: number } | null = null;
 
 function step(world: World, m: MissionV, t: TuneV, hero: Entity, me: HeroV, input: Value<typeof og.PlayerInput>, dt: number): void {
+  if (me.fresh) {
+    // A run's first tick: the look towards the pad (first and third person), the back to the camera.
+    me.fresh = false;
+    if (!ISOMETRIC) must(world.set(hero, SeatLook, { yaw: START_YAW, pitch: FIRST_PERSON ? 0 : -0.25 }));
+    me.facing = ISOMETRIC ? Math.PI : START_YAW + Math.PI;
+    must(world.set(hero, og.Transform, { quaternion: og.transform.fromAxisAngle(UP, me.facing) }));
+  }
   if (dt === 0) return;
   const look = must(world.get(hero, SeatLook));
   const cc = must(world.get(hero, og.CharacterController));

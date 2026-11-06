@@ -28,7 +28,7 @@ import { og, defineSystem, SHAPE_BOX } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { Alarm, Health, Run, Spin, Velocity } from "./components.ts";
 import { Hud, LANGUAGES, prefs, setLanguage } from "./hud.ts";
-import { CELLS, Flow, heroName, heroOf, HeroMove, Lift, missionOf, must, spawnHeroes, Voices, Yard } from "./play.ts";
+import { CELLS, Flow, Hands, heroName, heroOf, HeroMove, Lift, missionOf, must, spawnHeroes, Voices, Yard } from "./play.ts";
 import { Seats, SEATS, setBot, setupSeats } from "./seats.ts";
 import { ViewRig } from "./view.ts";
 
@@ -116,7 +116,7 @@ export default og.game({
   // Seats first (every seat's input for the tick), then the run's flow and
   // its heroes, the view rig before the engine's camera controllers, the
   // yard's rules, the screens, and the hello's systems.
-  systems: [Seats, Flow, HeroMove, ViewRig, ...og.systems.cameras, Yard, Voices, Hud, Move, StartSpin, Drop, Chime, Rotate, Lift],
+  systems: [Seats, Flow, HeroMove, ViewRig, ...og.systems.cameras, Hands, Yard, Voices, Hud, Move, StartSpin, Drop, Chime, Rotate, Lift],
   // MSAA keeps world-space sprites and text sharp; TAA would blur them across
   // frames. The UI draws over the finished frame either way.
   render: { antialias: "msaa4" },

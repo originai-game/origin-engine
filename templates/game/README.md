@@ -43,7 +43,7 @@ packages/create's starters.ts, never by hand) names it, and `src/view.ts`
 | View | Camera | The move | The look |
 |---|---|---|---|
 | `third-person-3d` (default) | `og.FollowCamera` 4.5 m behind and 1.6 m above the hero, looking at its head | relative to the view | turns the camera round the hero and tips it |
-| `first-person-3d` | `og.FirstPersonCamera` at the eye, 1.6 m up; the hero's own body is on its seat's layer (`bodyLayer`), which its own eye does not draw, so its shadow still falls | relative to the view | turns the head and the body |
+| `first-person-3d` | `og.FirstPersonCamera` at the eye, 1.6 m up; the hero's own body is on its seat's layer (`bodyLayer`), which its own eye does not draw, so its shadow still falls; a cell lantern in its right hand (`Hands`, on the seat's hands layer, drawn by its own eye alone) | relative to the view | turns the head and the body |
 | `isometric-2.5d` | an orthographic `og.FollowCamera` at the look's ArtCamera angle (35.264° down, turned 45°) | relative to the screen: up walks up the screen | turns the hero only |
 
 Every hero is a seat (`src/seats.ts`, the same file in every starter): the
@@ -59,6 +59,11 @@ game reads `og.PlayerInput` alone, so the yard plays
 - **online-lockstep**: two peers over a room, each peer's camera following
   its own seat (the controllers' `seat`, `og.Lockstep.localPlayer`), every
   peer running the whole yard.
+
+At Start first and third person look north-west into the yard (`START_YAW`
+in `src/play.ts`): a cell ahead, the guard's rounds between, the pad, the
+crate and the wall's end on the right; the dropship hovers 6 m up, above
+both views and high over the pad isometric.
 
 It is co-op: the cells and the pad are shared, either hero can escape, and
 the guard hunts the nearest hero it sees. Buttons that change the world go
@@ -80,6 +85,7 @@ from a script (the room test).
 | `HeroMove` | `src/play.ts` | the capsule's walk, run and jump on `og.CharacterController`, the body's turn, idle/walk/run clips, steps |
 | `ViewRig`, then `og.systems.cameras` | `src/view.ts` | each seat's look and its camera or split-screen half |
 | `Yard` | `src/play.ts` | cells taken, the guard's grab, the lit pad and the escape |
+| `Hands` | `src/play.ts` | first person: each seat's lantern before its eye, swaying with its steps |
 | `Voices`, `Hud` | `src/play.ts`, `src/hud.ts` | the sounds; the title, HUD, pause, settings and summary |
 | `Move`, `StartSpin`, `Drop`, `Chime`, `Rotate`, `Lift` | `src/main.ts`, `src/play.ts` | the hello: the dropship spins up, the crate falls and chimes, the lifts ease |
 
