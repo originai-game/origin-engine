@@ -19,6 +19,36 @@ Keep missing engine capabilities in one list with the desired appearance
 and a reproducing screen. Hand that list to an engine thread for a batch
 implementation, then continue polish on its prebuilt engine.
 
+## Mock it up before building: static, then motion
+
+Commercial UI (DICE's GDC 2018 pipeline, Persona 5's menus, Hades') is
+designed in two mockups before a line of the screen is built: a still,
+then its motion. Do the same for every screen and HUD a game adds, and
+keep both under `mockups/<screen>/` at the project's root (outside
+`assets/`, so the cook never bundles them):
+
+1. **Static mockup.** One picture of the screen in the game's style at
+   desktop and phone portrait: what is primary, where every block sits,
+   the painted frames, icons and ornaments it uses, its type steps. Make
+   it from the art brief (`styleArtBriefs` and an `artBrief` of kind
+   `menuBackground` or `keyArt` with the style's concept sheets as
+   references), or by laying out the screen's document with fixtures and
+   `og ui preview` before any game code feeds it. Write beside it
+   `mockup.md`: the one primary action, the three levels of §1, which
+   painted parts and material presets (`og ui add materials`) it needs,
+   and what is still missing art.
+2. **Motion mockup.** The same screen as a filmstrip of what moves and
+   when, read against the style's timing table (the design language's
+   `motion.timing`, docs/ui.md §7.7): the entrance cascade, the hover
+   and press on the primary, the toast, the transition out.
+   `og ui preview . --screen menu=show:menu --film "<commands>" --at
+   0,0.05,0.1,0.2,0.4` writes it; name each still's moment in
+   `mockup.md` ("0.1 s: second row half in"). Retune the style's
+   motion rows here, not in widget code.
+3. **Build** to the two mockups. visual-acceptance §2 checks the built
+   screen against them: a built screen that drifted from its mockup is
+   either fixed or the mockup is redrawn and the reason written down.
+
 ## 1. Hierarchy: what the eye reads first
 
 - **One primary action per layer.** A screen (or a dialog over it) has one

@@ -63,6 +63,17 @@ touch reach or how the screen behaves. Match camera, scale and conditions
 when comparing builds; state any difference you could not remove instead of
 treating two unrelated pictures as a before and after.
 
+A UI screen built after its mockups (ui-craft, "Mock it up before
+building") is judged against `mockups/<screen>/` too: capture the built
+screen at the mockup's viewports and the filmstrip at the same `--at`
+times, and compare them cell by cell. The same element is primary, the
+blocks sit where the still put them, the painted parts and materials it
+named are drawn (not a flat fill standing in), and each motion still
+shows the moment `mockup.md` names at that time (a cascade's row half in
+at 0.1 s, not all in or none). A difference is a hold, unless the
+mockup was redrawn with the reason beside it. No mockup for a new screen
+is itself a hold: ask for one before judging the build.
+
 ## 3. Fix the stage that failed
 
 When the direction is wrong, settle it before polishing anything locally.
