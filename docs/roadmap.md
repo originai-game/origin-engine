@@ -20,18 +20,19 @@ threads linked here; rules are in `AGENTS.md`.
 
 ## Running
 
-| Stream | Thread | Branch | State |
-|---|---|---|---|
-| Docs simplification (phase-1.md and the showcase archive removed, normative docs cut to current content) | [T-01a1b0a1](https://ampcode.com/threads/T-01a1b0a1-5b3d-7726-9b19-2f0ddd05d359) | docs-simplify | running |
+| Stream | Thread | Branch |
+|---|---|---|
+| Art runner (reviews and lands visual heads) | [T-01a1b0c7](https://ampcode.com/threads/T-01a1b0c7-5f8c-7352-a5dc-d024892ea59e) | art-runner |
+| Delete gameplay templates; `og create` writes a skeleton | [T-01a1b0c8-100e](https://ampcode.com/threads/T-01a1b0c8-100e-77d8-864a-caab317a24a0) | delete-templates |
+| og session: resident session RPC and playtests | [T-01a1b0c8-1b44](https://ampcode.com/threads/T-01a1b0c8-1b44-773e-9143-d2b43bf515d7) | og-session |
+| Build-speed experiments | [T-01a1b0c8-2b90](https://ampcode.com/threads/T-01a1b0c8-2b90-7365-bc5f-40a0a9d253fc) | build-speed |
+| og-cook fracture re-cook, og.Decal on terrain | [T-01a1b0c8-3db5](https://ampcode.com/threads/T-01a1b0c8-3db5-7421-9322-4e4629f2ab12) | cook-decal |
 
-The clean-up round's other threads are archived; their hand-offs are in
-artifact 9de31d6e-98f1-479b-8d6f-8e191b620da4. Next threads, briefed from it
-after docs-simplify lands: a new art runner, delete-templates (phase 2, WIP
-44716c502), og session (WIP og-session e0245a20b), presentation checkpoints,
-build-speed experiments (scripts at a3a14d29f), and the og-cook fracture
-re-cook with og.Decal on terrain.
+Hand-offs from the clean-up round: artifact
+9de31d6e-98f1-479b-8d6f-8e191b620da4. Waiting: presentation checkpoints
+(after delete-templates).
 
-Landed this round: examples/ deleted with the path-aware `fixtures` step and
+Landed in the clean-up round: examples/ deleted with the path-aware `fixtures` step and
 the destruction-yard and vehicle-terrain fixtures (to 876766dc0); meshlet
 determinism by stable GPU compaction (b54e9e5a2); Music.start's reflected
 minimum removed (b59654b2a).
