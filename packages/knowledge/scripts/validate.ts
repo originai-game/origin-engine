@@ -552,6 +552,8 @@ interface Style {
   premise: Record<string, string>;
   look: { preset: string; presetReady: boolean; support: string; layers: string[]; family: string; profiles: string[]; primitives: string[]; missing: string[] };
   ui: string;
+  /** The look's accent, `#rrggbb`: og new turns the game's own copy of the `ui` pack toward it (docs/ui.md §12.1). */
+  uiAccent: string;
   palette: { size: string; rules: string };
   assets: Record<string, string>;
   artBible: { direction: string; avoid: string[] };
@@ -620,6 +622,7 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
     else if (!existsSync(join(roots.pkg, s.preview))) problems.push(`${id}: ${s.preview} does not exist (a 960x540 picture of the style as a game)`);
     if (!categories.includes(s.category)) problems.push(`${id}: category ${s.category} is none of ${categories.join(", ")}`);
     if (!packs.includes(s.ui)) problems.push(`${id}: ui ${s.ui} is none of the built-in styles (${packs.join(", ")})`);
+    if (!/^#[0-9a-f]{6}$/.test(s.uiAccent ?? "")) problems.push(`${id}: uiAccent is ${JSON.stringify(s.uiAccent)}, not a lowercase #rrggbb (the accent og new turns the game's own style toward)`);
     if (!Array.isArray(s.checks) || s.checks.length !== 3 || !s.checks.every(text)) problems.push(`${id}: needs exactly three checks a critic can judge on a frame`);
     // What a critic must not hold against the style: said once, the same for every critic (og-taste §12), and blind
     // like the checks (og style check --critic prints it), so it never names the style.

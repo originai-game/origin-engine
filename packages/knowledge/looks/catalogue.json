@@ -59,6 +59,7 @@
         ]
       },
       "ui": "storybook",
+      "uiAccent": "#d06a2c",
       "palette": {
         "size": "free, but 3 to 5 dominant masses per scene",
         "rules": "Complementary clashes in shadows; one dominant temperature per scene; avoid neutral greys."
@@ -120,6 +121,7 @@
         "missing": []
       },
       "ui": "fantasy",
+      "uiAccent": "#e23b2e",
       "palette": {
         "size": "20 to 40 colours",
         "rules": "Deep warm or cool shadow colour shared by all materials; accents in one hue family per faction."
@@ -180,6 +182,7 @@
         "missing": []
       },
       "ui": "storybook",
+      "uiAccent": "#5c8fc2",
       "palette": {
         "size": "12 to 24 colours",
         "rules": "Light values dominate; two or three pigments mixed into the rest; no pure black."
@@ -242,6 +245,7 @@
         "missing": []
       },
       "ui": "fantasy",
+      "uiAccent": "#e0a040",
       "palette": {
         "size": "sprites 32 to 64 colours; the set is unconstrained but graded to match",
         "rules": "Grade the 3D set with a LUT towards the sprites' palette so the two read as one world."
@@ -300,6 +304,7 @@
         "missing": []
       },
       "ui": "storybook",
+      "uiAccent": "#e98a4e",
       "palette": {
         "size": "16 to 32 colours",
         "rules": "Colour per material, gradients only from lighting and fog."
@@ -365,6 +370,7 @@
         ]
       },
       "ui": "cartoon",
+      "uiAccent": "#e07a52",
       "palette": {
         "size": "warm, slightly desaturated plasticine colours",
         "rules": "Matte surfaces; saturation from the clay, not the light."
@@ -425,6 +431,7 @@
         "missing": []
       },
       "ui": "pixel",
+      "uiAccent": "#e04848",
       "palette": {
         "size": "8 to 16 colours",
         "rules": "Ramps of 3 or 4 steps per material; one shared black; no gradients; background colours darker or desaturated against sprites."
@@ -484,6 +491,7 @@
         "missing": []
       },
       "ui": "pixel",
+      "uiAccent": "#6cbf4a",
       "palette": {
         "size": "32 to 64 colours (a voxel palette)",
         "rules": "One palette for the whole world; shade by light, not by palette steps."
@@ -545,6 +553,7 @@
         ]
       },
       "ui": "storybook",
+      "uiAccent": "#2c56b8",
       "palette": {
         "size": "10 to 16 colours",
         "rules": "Parchment ground, iron-gall ink, a few mineral pigments (ultramarine, vermilion, verdigris) and gold."
@@ -607,6 +616,7 @@
         ]
       },
       "ui": "cartoon",
+      "uiAccent": "#c8463a",
       "palette": {
         "size": "sepia or muted primaries, 12 to 24 colours",
         "rules": "Inked black lines, flat fills, a warm faded grade over everything."
@@ -666,6 +676,7 @@
         "missing": []
       },
       "ui": "storybook",
+      "uiAccent": "#c43c30",
       "palette": {
         "size": "graphite or sepia ramp plus paper, optional single accent",
         "rules": "Value from line density only; the accent marks danger or the goal."
@@ -729,6 +740,7 @@
         ]
       },
       "ui": "fantasy",
+      "uiAccent": "#8a7cff",
       "palette": {
         "size": "cool desaturated base with 1 or 2 glowing accents",
         "rules": "Dark blue-grey grounds, pale characters, glows in one hue."
@@ -792,6 +804,7 @@
         ]
       },
       "ui": "fantasy",
+      "uiAccent": "#e8b04a",
       "palette": {
         "size": "free, organised by warm light and cool shadow",
         "rules": "Saturation highest at the light's edge; value grouping in three planes."
@@ -854,6 +867,7 @@
         ]
       },
       "ui": "cartoon",
+      "uiAccent": "#d6577e",
       "palette": {
         "size": "16 to 32 colours",
         "rules": "Soft saturated hues, coloured line work, patterns from the same palette."
@@ -915,6 +929,7 @@
         ]
       },
       "ui": "storybook",
+      "uiAccent": "#b8893c",
       "palette": {
         "size": "the source paintings' own",
         "rules": "Grade all sources to a common varnish tone with a LUT."
@@ -976,6 +991,7 @@
         ]
       },
       "ui": "storybook",
+      "uiAccent": "#3a7bd5",
       "palette": {
         "size": "monochrome ink or 4 to 8 light colours",
         "rules": "White or off-white ground; colour never hides line."
@@ -1038,6 +1054,7 @@
         ]
       },
       "ui": "fantasy",
+      "uiAccent": "#b0552a",
       "palette": {
         "size": "2 to 4 colours",
         "rules": "Ochre ground, black figures, a lighter line colour, optional red-brown."
@@ -1098,6 +1115,7 @@
         "missing": []
       },
       "ui": "fantasy",
+      "uiAccent": "#b8241c",
       "palette": {
         "size": "muted 12 to 24 colours plus black",
         "rules": "Desaturated mid-tones, black for every shadow, one blood or fire accent."
@@ -1158,6 +1176,7 @@
         "missing": []
       },
       "ui": "pixel",
+      "uiAccent": "#84a440",
       "palette": {
         "size": "2 colours plus at most 1 accent",
         "rules": "Pick ink and paper first; shading only through dither or pattern; the accent means one thing."
@@ -1218,6 +1237,7 @@
         "missing": []
       },
       "ui": "pixel",
+      "uiAccent": "#4ab0e8",
       "palette": {
         "size": "32 to 64 colours",
         "rules": "Ramps of 4 to 6 steps; hue-shifted shadows (cooler) and highlights (warmer); saturated accents on characters, calmer backgrounds."
@@ -1279,6 +1299,7 @@
         "missing": []
       },
       "ui": "fantasy",
+      "uiAccent": "#d89a3a",
       "palette": {
         "size": "48 to 128 colours",
         "rules": "Long hue-shifted ramps; a value plan per scene that keeps the play area mid-value and the foreground darkest."
@@ -1340,6 +1361,7 @@
         "missing": []
       },
       "ui": "cyber",
+      "uiAccent": "#ff4fa3",
       "palette": {
         "size": "24 to 48 colours",
         "rules": "A near-black ground with two or three saturated light hues; no mid-grey fills; accents reserved for interactables."
@@ -1400,6 +1422,7 @@
         "missing": []
       },
       "ui": "fantasy",
+      "uiAccent": "#58b06a",
       "palette": {
         "size": "32 to 64 colours",
         "rules": "Floors desaturated and mid-value; walls darker on their faces; characters most saturated."
@@ -1462,6 +1485,7 @@
         "missing": []
       },
       "ui": "scifi",
+      "uiAccent": "#c9a24a",
       "palette": {
         "size": "free, but posterised to 32 levels per channel",
         "rules": "Fog colour equals the clear colour; dithered gradients."
@@ -1521,6 +1545,7 @@
         "missing": []
       },
       "ui": "pixel",
+      "uiAccent": "#e8c040",
       "palette": {
         "size": "6 to 16 colours",
         "rules": "Each scene has one dominant mass colour; detail colour only where the eye should go."
@@ -1583,6 +1608,7 @@
         "missing": []
       },
       "ui": "cyber",
+      "uiAccent": "#ff6f91",
       "palette": {
         "size": "24 to 48 colours",
         "rules": "Two tones per material (lit, shadow) with hue-shifted shadows; highlights as shapes."
@@ -1644,6 +1670,7 @@
         "missing": []
       },
       "ui": "scifi",
+      "uiAccent": "#f2c230",
       "palette": {
         "size": "free, saturated",
         "rules": "Bold local colours, black ink for all shadow edges."
@@ -1708,6 +1735,7 @@
         ]
       },
       "ui": "storybook",
+      "uiAccent": "#d9824a",
       "palette": {
         "size": "8 to 16 colours",
         "rules": "Colours of real paper stock: muted, slightly warm; white is off-white."
@@ -1773,6 +1801,7 @@
         ]
       },
       "ui": "cartoon",
+      "uiAccent": "#f0a848",
       "palette": {
         "size": "soft pastel 24 to 48 colours",
         "rules": "Bright but slightly desaturated; warm sunlight, cool shadows."
@@ -1836,6 +1865,7 @@
         ]
       },
       "ui": "fantasy",
+      "uiAccent": "#5aa8a0",
       "palette": {
         "size": "free, harmonised by a LUT",
         "rules": "Two or three dominant hues per area; graded towards them."
@@ -1898,6 +1928,7 @@
         "missing": []
       },
       "ui": "scifi",
+      "uiAccent": "#d8a060",
       "palette": {
         "size": "free, graded",
         "rules": "One grade per area; avoid oversaturation; skin tones protected."
@@ -1959,6 +1990,7 @@
         "missing": []
       },
       "ui": "scifi",
+      "uiAccent": "#c0403a",
       "palette": {
         "size": "greys and one accent",
         "rules": "Desaturated everything; the accent is red or warm light only where the story points."
@@ -2019,6 +2051,7 @@
         "missing": []
       },
       "ui": "cyber",
+      "uiAccent": "#e8a050",
       "palette": {
         "size": "1 hue in 4 to 6 values, or black plus a gradient sky",
         "rules": "Value steps per layer; colour only in the far layers or a single accent."
@@ -2079,6 +2112,7 @@
         "missing": []
       },
       "ui": "cyber",
+      "uiAccent": "#ff5a3c",
       "palette": {
         "size": "3 to 6 colours",
         "rules": "One ground, one figure colour, one accent; contrast by hue and value."
@@ -2141,6 +2175,7 @@
         "missing": []
       },
       "ui": "cyber",
+      "uiAccent": "#40f0ff",
       "palette": {
         "size": "black plus 2 to 4 saturated hues",
         "rules": "Each hue one meaning (player, enemy, pickup); white only for the hottest centres."
@@ -2200,6 +2235,7 @@
         "missing": []
       },
       "ui": "pixel",
+      "uiAccent": "#e0503c",
       "palette": {
         "size": "2 to 4 colours",
         "rules": "Ink and paper, optionally one mid-tone and one accent."
@@ -2265,6 +2301,7 @@
         ]
       },
       "ui": "fantasy",
+      "uiAccent": "#ffd9a0",
       "palette": {
         "size": "dark cool masses plus warm luminous accents",
         "rules": "Value structure first: dark foreground, mid play plane, glowing background."

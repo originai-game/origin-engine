@@ -27,10 +27,15 @@ import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CREATION_CHOICES, creationBlock, inferCreationChoices, parseCreationInput } from "./choices.ts";
 import type { CreationChoices, CreationInput } from "./choices.ts";
-import { applyCreation } from "./apply-choices.ts";
+import { applyCreation, styleRoot } from "./apply-choices.ts";
+import { styleName, writeOwnStyle } from "./own-style.ts";
+import type { Mood, OwnStyle } from "./own-style.ts";
 
 export { CREATION_CHOICES, creationBlock, creationSchema, inferCreationChoices, parseCreationInput } from "./choices.ts";
 export type { CreationChoices, CreationInput } from "./choices.ts";
+// The game's own UI style (docs/ui.md §12.7): the fingerprint og-cli compares, and the recolour og new applies.
+export { canonical, fnv64, recolour, styleFingerprint, styleName } from "./own-style.ts";
+export type { Mood, OwnStyle } from "./own-style.ts";
 
 // The art brief (docs/art.md §2.2): a game's look compiled into the request
 // for one asset. bin/brief.ts is a copy of the knowledge package's
@@ -112,6 +117,8 @@ export interface Created {
   readonly files: readonly string[];
   readonly profile: CreatedProfile;
   readonly look: CreatedLook;
+  /** The game's own UI style, copied from the pack its look or choices name and recoloured; null when the look names none (the template's runner, a look with no preset). */
+  readonly style: OwnStyle | null;
   /** What the game's author should know, such as reference frames a look will move. */
   readonly notes: readonly string[];
 }
@@ -126,6 +133,8 @@ export interface Style {
   /** `profiles`: the project profiles the look draws for, `2d`, `3d` or both (a flipbook or hand-pixelled style is 2D only, a style of meshes and lit materials 3D only). */
   readonly look: { readonly presetReady: boolean; readonly support: string; readonly profiles: readonly Profile[]; readonly missing: readonly string[] };
   readonly ui: string;
+  /** The look's accent (`#rrggbb`): the game's own copy of the `ui` pack is turned toward it. */
+  readonly uiAccent?: string;
 }
 
 /** The style catalogue this copy of the package reads. */
@@ -326,8 +335,8 @@ function lookText(name: string, style: Style | undefined, slug: string | null, i
     head.push(
       `# It extends the style catalogue's ${slug} preset (${style.name}),`,
       style.look.support === "full" ? "# whose primitives all draw today." : `# support ${style.look.support}: ${style.look.missing.join("; ")}.`,
-      `# The preset dresses the UI in the built-in ${style.ui} style; a \`ui "<slug>"\``,
-      `# line here picks another, or the game's own assets/styles/<name>/style.ogt.`,
+      `# The \`ui\` line names the game's own UI style, assets/styles/<name>/, which`,
+      `# og new copied from the preset's built-in ${style.ui} pack: restyle it.`,
     );
   } else if (slug) head.push(`# It extends ${slug}.`);
   else head.push("# It extends no preset yet: the frame is the engine's defaults plus the lines below.");
@@ -369,7 +378,7 @@ function lookReadme(look: CreatedLook, style: Style | undefined, entry: string, 
     "",
   ];
   if (look.extends && style) {
-    lines.push(`It extends \`${look.extends}\`${how}: "${style.name}" in the style`, `catalogue. ${style.descriptor} Its UI style is \`${style.ui}\`.`, "");
+    lines.push(`It extends \`${look.extends}\`${how}: "${style.name}" in the style`, `catalogue. ${style.descriptor} Its UI style is the game's own copy of`, `the built-in \`${style.ui}\` pack (below).`, "");
   } else if (look.extends) lines.push(`It extends \`${look.extends}\`${how}.`, "");
   else lines.push("It extends no preset yet: the frame is the engine's defaults plus what", "the file sets.", "");
   lines.push(
@@ -461,10 +470,113 @@ export function create(options: CreateOptions): Created {
   const { look, notes } = writeLook(dir, name, id, choice, written);
   if (selection) {
     writeFileSync(manifest, `${readFileSync(manifest, "utf8")}\n${creationBlock(selection)}`);
-    written.push(...applyCreation(dir, selection, look.file, entryOf(dir)!, options.archetype, profile.value));
+    written.push(...applyCreation(dir, selection, entryOf(dir)!, options.archetype, profile.value));
     notes.push("genre/view camera presets, mood rendering, language assets and music generation are subsequent steps; the create block records their requested values");
   }
-  return { dir, name, id, files: written, profile, look, notes, ...(selection ? { choices: selection } : {}) };
+  const style = ownStyle(dir, name, id, look, choice.styles, selection, written);
+  return { dir, name, id, files: written, profile, look, style, notes, ...(selection ? { choices: selection } : {}) };
+}
+
+/** A top-level `ui "..."` line of a look's text; null without one. */
+function uiLine(text: string): string | null {
+  return /^ui[ \t]+"([^"]+)"[ \t]*$/m.exec(text)?.[1] ?? null;
+}
+
+/** Every file under `root` (src/, assets/), with a name ending in one of `ext`. */
+function sources(root: string, ext: RegExp): string[] {
+  if (!existsSync(root)) return [];
+  return readdirSync(root, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? (SKIPPED.has(e.name) ? [] : sources(join(root, e.name), ext)) : ext.test(e.name) ? [join(root, e.name)] : []));
+}
+
+const LOAD_STYLE = /(og\.load\.style\([^,]+,\s*["'`])styles\/([a-z0-9-]+)\/style\.ogt(["'`])/g;
+
+/**
+ * The game's own UI style (docs/ui.md §12.7): a copy of the style the game
+ * draws in, `assets/styles/<id>/`, recoloured from the look's accent and the
+ * game's mood, named by the look's `ui` line. The style it is copied from:
+ * the creation choices' pack; else a style of the template's own that its
+ * code loads (`og.load.style(world, "styles/<x>/style.ogt")`), then the
+ * look's `ui` line (a built-in slug or the template's own), then the
+ * look's preset's pack. Code that loaded the template's style loads the
+ * copy, and the template's style goes once nothing names it. None when
+ * nothing names a style.
+ */
+function ownStyle(dir: string, title: string, id: string, look: CreatedLook, styles: readonly Style[], selection: CreationChoices | undefined, written: string[]): OwnStyle | null {
+  const lookPath = join(dir, look.file);
+  const lookText = readFileSync(lookPath, "utf8");
+  const own = (x: string) => existsSync(join(dir, "assets", "styles", x, "style.ogt"));
+  const code = sources(join(dir, "src"), /\.(ts|tsx|js|mjs)$/);
+  const loaded = code.flatMap((f) => [...readFileSync(f, "utf8").matchAll(LOAD_STYLE)].map((m) => m[2]!)).find(own);
+  const line = uiLine(lookText);
+  const preset = styles.find((s) => s.slug === look.extends);
+  let source: { dir: string; from: string; template: string | null } | null = null;
+  const builtin = (slug: string) => {
+    const at = join(styleRoot(), slug);
+    if (!existsSync(join(at, "style.ogt"))) throw new Error(`no built-in UI style ${slug}`);
+    return { dir: at, from: `the built-in ${slug} pack`, template: null };
+  };
+  const template = (x: string) => ({ dir: join(dir, "assets", "styles", x), from: `the template's ${x} style`, template: x });
+  if (selection) source = builtin(selection.ui);
+  else if (loaded) source = template(loaded);
+  else if (line) {
+    const at = /^@styles\/([a-z0-9-]+)\/style\.ogt$/.exec(line)?.[1];
+    const mine = /^styles\/([a-z0-9-]+)\/style\.ogt$/.exec(line)?.[1];
+    if (at) source = builtin(at);
+    else if (mine && own(mine)) source = template(mine);
+    else if (!line.includes("/")) source = own(line) ? template(line) : builtin(line);
+  } else if (preset) source = builtin(preset.ui);
+  if (!source) return null;
+  const name = styleName(id);
+  const accent = preset?.uiAccent ?? null;
+  const made = writeOwnStyle(dir, source.dir, name, source.from, accent, (selection?.mood ?? null) as Mood | null, title, source.template);
+  const ui = `ui "${made.id}"`;
+  writeFileSync(lookPath, line !== null ? lookText.replace(/^ui[ \t]+"[^"]+"[ \t]*$/m, ui) : `${lookText.replace(/\n*$/, "\n")}${ui}\n`);
+  // The template's style: its code loads the copy, and the template's goes once nothing names it.
+  const old = source.template;
+  if (old !== null && old !== name) {
+    for (const f of code) {
+      const text = readFileSync(f, "utf8");
+      const next = text.replace(LOAD_STYLE, (all, head: string, x: string, tail: string) => (x === old ? `${head}styles/${name}/style.ogt${tail}` : all));
+      if (next !== text) writeFileSync(f, next);
+    }
+    const named = [...code, ...sources(join(dir, "assets"), /\.ogt$/).filter((f) => !f.startsWith(join(dir, "assets", "styles", old) + "/"))].some((f) => new RegExp(`["'\`]styles/${old}/`).test(readFileSync(f, "utf8")));
+    if (!named) {
+      rmSync(join(dir, "assets", "styles", old), { recursive: true, force: true });
+      for (let i = written.length - 1; i >= 0; i--) if (written[i]!.startsWith(`assets/styles/${old}/`)) written.splice(i, 1);
+    }
+  }
+  for (let i = written.length - 1; i >= 0; i--) if (written[i]!.startsWith(`assets/styles/${name}/`)) written.splice(i, 1);
+  written.push(...made.files);
+  const readme = join(dir, "README.md");
+  writeFileSync(readme, `${readFileSync(readme, "utf8").replace(/\n*$/, "\n")}${styleReadme(made)}`);
+  return made;
+}
+
+/** The README section on the game's own style: where it is and what to restyle first. */
+function styleReadme(s: OwnStyle): string {
+  return `
+## The UI style
+
+The game's UI draws in its own style, \`assets/styles/${s.name}/\` (named by the
+look's \`ui\` line), which og new copied from ${s.from} and recoloured from the
+look's accent and the game's mood. It is a starting point, not the game's look:
+\`og ui check\` reports it and \`og build --publish\` refuses it while it is
+still as generated or identical to a built-in pack. Keep the components'
+behaviour, layout rules, input and localization; restyle, in this order:
+
+1. **The palette** in \`style.ogt\` (\`palette { }\`): the primary and its
+   states, the surfaces (backdrop, panel, control) and the ink, from the look's
+   art; semantic and game roles (danger, health, gold) keep their meaning.
+2. **The frames and buttons**: the painted parts in \`art/\`, repacked with
+   \`og style art assets/styles/${s.name}\`, or the part dressings in \`style.ogt\`.
+   The recolour reached only the palette: painted parts keep the pack's colours
+   until they are repainted.
+3. **The type**: the display and body fonts (\`fonts { }\`).
+4. **The icons** (\`icons\`), the motion personality and the sounds.
+
+Then the screens: an ejected screen (\`og ui eject\`) is refused unchanged, and
+every art slot (\`og ui slots\`) needs the game's own art.
+`;
 }
 
 /** Resolve the premise against the same look catalogue as artBrief, with explicit choices winning. */

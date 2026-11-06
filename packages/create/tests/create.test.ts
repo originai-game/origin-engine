@@ -5,7 +5,7 @@ import { afterAll, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
-import { artBrief, CREATION_CHOICES, creationBlock, creationSchema, inferCreationChoices, parseCreationInput, resolveCreationChoices, pickStyle, premiseProfile, presetLook, readCatalogue, readLook, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
+import { artBrief, CREATION_CHOICES, creationBlock, creationSchema, fnv64, inferCreationChoices, parseCreationInput, resolveCreationChoices, pickStyle, premiseProfile, presetLook, readCatalogue, readLook, RIG_TEMPLATES, rigParts, styleFingerprint, words } from "../bin/create.ts";
 import { cpSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { SKIN_ELSEWHERE } from "../../knowledge/scripts/validate.ts";
@@ -46,13 +46,64 @@ test("choice flags write a canonical create block and reject bad choices before 
   expect(manifest).toContain('  lang "ja" "en"');
   expect(manifest).toContain('  music "chiptune"');
   expect(manifest).toContain('orientation portrait');
-  expect(readFileSync(join(scratch, "choices/assets/looks/choices.ogt"), "utf8")).toContain('ui "styles/pixel/style.ogt"');
-  expect(existsSync(join(scratch, "choices/assets/styles/pixel/atlas.png"))).toBeTrue();
+  expect(readFileSync(join(scratch, "choices/assets/looks/choices.ogt"), "utf8")).toContain('ui "styles/choices/style.ogt"');
+  expect(existsSync(join(scratch, "choices/assets/styles/choices/atlas.png"))).toBeTrue();
+  expect(existsSync(join(scratch, "choices/assets/styles/pixel"))).toBeFalse();
   expect(cli("bad-choice", "--mood", "invalid").code).toBe(1);
   expect(existsSync(join(scratch, "bad-choice"))).toBeFalse();
   expect(cli("bad-players", "--players", "online-lockstep", "--archetype", "runner").err).toContain("arena");
   const styles = join(pkg, "../../templates/styles");
   expect([...CREATION_CHOICES.ui].sort()).toEqual(readdirSync(styles).filter(s => existsSync(join(styles, s, "style.ogt"))).sort());
+});
+
+test("og new gives the game its own style: the pack recoloured from the look and mood, with the fingerprint og-cli checks", () => {
+  // The vector og-cli's own_look tests hold too (crates/og-cli/src/own_look.rs): one fingerprint in both.
+  expect(fnv64(new TextEncoder().encode("a"))).toBe("af63dc4c8601ec8c");
+  const vector = join(scratch, "vector", "assets", "styles", "x");
+  mkdirSync(vector, { recursive: true });
+  writeFileSync(join(vector, "style.ogt"), 'type style\nversion 2\n---\n# a comment\nname "x"\natlas "atlas.png" 4 4  \n\npalette {\n  ink "#ffffff"\n}\nicons "@styles/pixel/icons.png"\n');
+  writeFileSync(join(vector, "atlas.png"), new Uint8Array([1, 2, 3]));
+  writeFileSync(join(vector, "atlas@2x.png"), new Uint8Array([4]));
+  expect(styleFingerprint(vector)).toBe("3cee0326d15ccf5c");
+
+  expect(cli("own", "--no-prompt", "--ui", "fantasy", "--look", "gothic-contour", "--mood", "warm").code).toBe(0);
+  const dir = join(scratch, "own", "assets", "styles", "own");
+  const style = readFileSync(join(dir, "style.ogt"), "utf8");
+  const pack = readFileSync(join(pkg, "..", "..", "templates", "styles", "fantasy", "style.ogt"), "utf8");
+  expect(topLevel(style, "name")).toBe("own");
+  expect(JSON.parse(readFileSync(join(dir, "extension.json"), "utf8")).name).toBe("own");
+  // The provenance line carries the copy's fingerprint as written; the pack's is another.
+  const line = /^# og:generated from the built-in fantasy pack, fingerprint ([0-9a-f]{16}):/m.exec(style);
+  expect(line?.[1]).toBe(styleFingerprint(dir)!);
+  expect(styleFingerprint(dir)).not.toBe(styleFingerprint(join(pkg, "..", "..", "templates", "styles", "fantasy")));
+  const colour = (text: string, key: string) => new RegExp(`^  ${key} "(#[0-9a-f]{6,8})"`, "m").exec(text)?.[1];
+  // The accent turned to gothic-contour's violet (#8a7cff), a quarter of the way to warm; its lightness kept.
+  const lch = (hex: string) => {
+    const lin = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+    const [r, g, b] = [1, 3, 5].map((i) => lin(parseInt(hex.slice(i, i + 2), 16) / 255));
+    const l = Math.cbrt(0.4122214708 * r! + 0.5363325363 * g! + 0.0514459929 * b!), m = Math.cbrt(0.2119034982 * r! + 0.6806995451 * g! + 0.1073969566 * b!), s = Math.cbrt(0.0883024619 * r! + 0.2817188376 * g! + 0.6299787005 * b!);
+    const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s, B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+    return { l: 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s, h: ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360 };
+  };
+  const violet = lch("#8a7cff").h, packPrimary = lch(colour(pack, "primary")!), primary = lch(colour(style, "primary")!);
+  const warmed = (violet + ((((55 - violet + 540) % 360) - 180) * 0.25) + 360) % 360;
+  expect(Math.abs(primary.h - warmed)).toBeLessThan(3);
+  expect(Math.abs(primary.l - packPrimary.l)).toBeLessThan(0.02);
+  // Roles that carry meaning keep their colour (docs/ui.md §12.1).
+  for (const key of ["danger", "health", "gold", "onPrimary"]) expect(colour(style, key)).toBe(colour(pack, key));
+  expect(topLevel(read("own", "assets", "looks", "own.ogt"), "ui")).toBe("styles/own/style.ogt");
+  expect(read("own", "README.md")).toContain("## The UI style");
+
+  // An archetype whose code loads its own style loads the game's copy, and the template's goes.
+  expect(cli("beat", "--archetype", "rhythm", "--no-prompt").code).toBe(0);
+  expect(read("beat", "src", "main.ts")).toContain('og.load.style(world, "styles/beat/style.ogt")');
+  expect(existsSync(join(scratch, "beat", "assets", "styles", "lanebeat"))).toBeFalse();
+  const beat = read("beat", "assets", "styles", "beat", "style.ogt");
+  expect(beat).toContain('atlas "styles/beat/atlas.png"');
+  expect(/fingerprint ([0-9a-f]{16})/.exec(beat)?.[1]).toBe(styleFingerprint(join(scratch, "beat", "assets", "styles", "beat"))!);
+  // A game id that starts with a digit gets a style name an extension may have.
+  expect(cli("2048", "--no-prompt").code).toBe(0);
+  expect(existsSync(join(scratch, "2048", "assets", "styles", "game-2048", "style.ogt"))).toBeTrue();
 });
 
 const engine = join(pkg, "../engine");
@@ -130,10 +181,17 @@ function walk(root: string, at = root): string[] {
 // stores media as plain blobs); a scaffold gets them as `.gitattributes`.
 const scaffolded = (f: string) => (f === "gitattributes" ? ".gitattributes" : f);
 const copied = (root: string) => walk(root).filter((f) => !/^(cooked|dist|og-out|node_modules|\.og)\//.test(f)).map(scaffolded);
-/** What a scaffold of `root` holds: its files, its look renamed to the game's id (or added), and a README. */
-function expected(root: string, id: string): string[] {
+/** The files of a built-in pack, as the game's own style `id` (own-style.ts copies the whole pack). */
+function packFiles(pack: string, id: string): string[] {
+  const dir = join(pkg, "..", "..", "templates", "styles", pack);
+  const all = (at: string): string[] => readdirSync(at, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? all(join(at, e.name)) : [relative(dir, join(at, e.name))]));
+  return all(dir).map((f) => `assets/styles/${id}/${f}`);
+}
+
+/** What a scaffold of `root` holds: its files, its look renamed to the game's id (or added), a README, and the game's own copy of `pack` when its look names one. */
+function expected(root: string, id: string, pack?: string): string[] {
   const files = copied(root).filter((f) => !f.startsWith("assets/looks/"));
-  return [...new Set([...files, `assets/looks/${id}.ogt`, "README.md"])].sort();
+  return [...new Set([...files, `assets/looks/${id}.ogt`, "README.md", ...(pack ? packFiles(pack, id) : [])])].sort();
 }
 const sourceFiles = copied(template).sort();
 
@@ -148,7 +206,7 @@ test("scaffolds every template file with the game's name and id", () => {
   expect(r.code).toBe(0);
   expect(r.out).toContain("og run .");
   const dir = join(scratch, "space-run");
-  expect(walk(dir).sort()).toEqual(expected(template, "space-run"));
+  expect(walk(dir).sort()).toEqual(expected(template, "space-run", "storybook"));
   expect(sourceFiles).toContain("project.ogt");
   expect(sourceFiles.some((f) => f.startsWith("assets/"))).toBeTrue();
   const manifest = readFileSync(join(dir, "project.ogt"), "utf8");
@@ -251,7 +309,7 @@ test("--profile 2d scaffolds the 2D starter with its look renamed; the output na
   const r = cli("hop", "--profile", "2d", "--name", "Hop", "--no-prompt");
   expect(r.code).toBe(0);
   expect(r.out).toContain("Profile: 2d (--profile)");
-  expect(walk(join(scratch, "hop")).sort()).toEqual(expected(template2d, "hop"));
+  expect(walk(join(scratch, "hop")).sort()).toEqual(expected(template2d, "hop", "pixel"));
   const manifest = readFileSync(join(scratch, "hop", "project.ogt"), "utf8");
   expect(manifest.split("\n")).toContain('profile "2d"');
   expect(manifest.split("\n")).toContain('name "Hop"');
@@ -265,7 +323,7 @@ test("--profile 2d scaffolds the 2D starter with its look renamed; the output na
   const three = cli("flat", "--profile", "3d", "--no-prompt");
   expect(three.code).toBe(0);
   expect(three.out).toContain("Profile: 3d (--profile)");
-  expect(walk(join(scratch, "flat")).sort()).toEqual(expected(template, "flat"));
+  expect(walk(join(scratch, "flat")).sort()).toEqual(expected(template, "flat", "storybook"));
   const plain = cli("plain", "--no-prompt");
   expect(plain.code).toBe(0);
   expect(plain.out).toContain("Profile: 3d.\n");
@@ -330,7 +388,8 @@ test("--look extends the catalogue preset it names; an unknown slug is refused w
   expect(r.out).toContain("extends anime-cel-3d (--look)");
   const look = read("cel", "assets", "looks", "cel.ogt");
   expect(topLevel(look, "extends")).toBe("anime-cel-3d");
-  expect(look).toContain("built-in cyber style"); // the preset's UI style, as the catalogue gives it
+  expect(look).toContain("built-in cyber pack: restyle it"); // the preset's UI pack, as the catalogue gives it, copied
+  expect(topLevel(look, "ui")).toBe("styles/cel/style.ogt");
   expect(read("cel", "README.md")).toContain("It extends `anime-cel-3d`, chosen with `--look`");
   const bad = cli("nope-look", "--look", "photoreal-ultra");
   expect(bad.code).not.toBe(0);
@@ -411,7 +470,10 @@ test("an archetype without a look gets one: GameDesc.look inserted into og.game(
 test("the idle archetype's look carries over: its UI style and render settings stay, a preset goes under them", () => {
   expect(cli("orb", "--archetype", "idle").code).toBe(0);
   const plain = read("orb", "assets", "looks", "orb.ogt");
-  expect(topLevel(plain, "ui")).toBe("styles/sparkorb/style.ogt");
+  // The archetype's style becomes the game's own copy, its files named under the copy.
+  expect(topLevel(plain, "ui")).toBe("styles/orb/style.ogt");
+  expect(existsSync(join(scratch, "orb", "assets", "styles", "sparkorb"))).toBeFalse();
+  expect(read("orb", "assets", "styles", "orb", "style.ogt")).not.toContain("styles/sparkorb/");
   expect(plain).toContain("RenderSettings {\n  toneMapped false\n  environmentIntensity 0\n}");
   expect(topLevel(plain, "extends")).toBeNull();
   expect(existsSync(join(scratch, "orb", "assets", "looks", "idle.ogt"))).toBeFalse();
@@ -419,7 +481,7 @@ test("the idle archetype's look carries over: its UI style and render settings s
   expect(cli("orb2", "--archetype", "idle", "--look", "luminous-pixel").code).toBe(0);
   const lit = read("orb2", "assets", "looks", "orb2.ogt");
   expect(topLevel(lit, "extends")).toBe("luminous-pixel");
-  expect(topLevel(lit, "ui")).toBe("styles/sparkorb/style.ogt");
+  expect(topLevel(lit, "ui")).toBe("styles/orb2/style.ogt");
   expect(lit.indexOf('extends "luminous-pixel"')).toBeLessThan(lit.indexOf("RenderSettings {"));
 });
 
@@ -504,6 +566,6 @@ test("the published package briefs from its own presets, catalogue and previews"
   const created = Bun.spawnSync(["bun", join(installed, "bin/create.ts"), join(scratch, "packed-choices"), "--players", "online-lockstep", "--ui", "dread", "--no-prompt"]);
   expect(new TextDecoder().decode(created.stderr)).toBe("");
   expect(created.exitCode).toBe(0);
-  expect(existsSync(join(scratch, "packed-choices/assets/styles/dread/style.ogt"))).toBeTrue();
+  expect(existsSync(join(scratch, "packed-choices/assets/styles/packed-choices/style.ogt"))).toBeTrue();
   expect(readFileSync(join(scratch, "packed-choices/tests/duel.og.ts"), "utf8")).toContain("netHash");
 });

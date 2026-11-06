@@ -214,6 +214,12 @@ function host(): void {
     og(step, demo, "check", ".");
     const test = og(step, demo, "test", ".");
     log(`   og test: ${test.stdout.trim().split("\n").slice(-2).join(" | ")}`);
+    // og new's style is the game's own copy of its pack, still as generated: publish refuses it (docs/ui.md §12.7)
+    // until the game restyles it, here its primary.
+    const refused = run(step, [...ogCmd, "build", ".", "--publish"], demo, { allowFail: true });
+    if (refused.status === 0 || !refused.stderr.includes("assets/styles/demo/style.ogt: unchanged since og new generated it")) step.fail(`og build --publish took the style og new generated, unchanged:\n${refused.stderr}`);
+    const styleFile = join(demo, "assets", "styles", "demo", "style.ogt");
+    writeFileSync(styleFile, readFileSync(styleFile, "utf8").replace(/^  primary "#[0-9a-f]{6}"/m, '  primary "#2f6fd0"'));
     og(step, demo, "build", ".", "--publish");
     const buildJson = join(demo, "dist", "og-build.json");
     if (!existsSync(buildJson)) step.fail("og build --publish wrote no dist/og-build.json");

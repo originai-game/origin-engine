@@ -1,10 +1,10 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { CreationChoices } from "./choices.ts";
 
 /** Packs are also copied into the released create/ directory by pack-template.ts. */
-function styleRoot(): string {
+export function styleRoot(): string {
   const here = dirname(fileURLToPath(import.meta.url));
   for (const root of [join(here, "../../../templates/styles"), join(here, "../styles")]) {
     if (existsSync(join(root, "pixel/style.ogt"))) return root;
@@ -100,15 +100,9 @@ ${c.view === "side-2d" ? `      const pad = og.ui.dpad("Move", { size: 112 });
 }
 
 /** Apply supported starter wiring; genre and camera selection belong to the next mapping step. */
-export function applyCreation(dir: string, c: CreationChoices, lookFile: string, entry: string, archetype: string | undefined, profile: string): string[] {
-  const styles = styleRoot();
-  const style = join(styles, c.ui);
-  if (!existsSync(join(style, "style.ogt"))) throw new Error(`no installable UI style ${c.ui}`);
-  const target = join(dir, "assets/styles", c.ui);
-  mkdirSync(dirname(target), { recursive: true });
-  cpSync(style, target, { recursive: true });
-  const look = readFileSync(join(dir, lookFile), "utf8").replace(/^ui\s+"[^"]*"\s*$/gm, "");
-  writeFileSync(join(dir, lookFile), `${look}\nui "styles/${c.ui}/style.ogt"\n`);
+export function applyCreation(dir: string, c: CreationChoices, entry: string, archetype: string | undefined, profile: string): string[] {
+  // The UI pack becomes the game's own style in create (own-style.ts), after this.
+  if (!existsSync(join(styleRoot(), c.ui, "style.ogt"))) throw new Error(`no installable UI style ${c.ui}`);
 
   const manifest = join(dir, "project.ogt");
   const orientation = c.platform === "phone-portrait" ? "portrait" : c.platform === "phone-landscape" ? "landscape" : "any";
@@ -192,9 +186,6 @@ export default playtest({
   }
   writeFileSync(main, code);
   const readme = join(dir, "README.md");
-  writeFileSync(readme, `${readFileSync(readme, "utf8")}\n## Creation choices\n\nThe selection is in project.ogt's create block. src/creation.ts applies input\nand quality; publish applies orientation. UI anchors use the host's live\nsafe area. The selected UI pack is installed under assets/styles/${c.ui}.\nMood, music and languages are recorded for subsequent art/audio/localization\nwork. Genre-to-archetype and view camera presets are not applied yet.\n${c.players === "local-multiplayer" ? "Two seats: WASD + Space and arrows + Enter, or gamepads 0 and 1.\n" : c.players === "online-lockstep" ? "Run og check (Lockstep enables its lint), then og relay and two og run . --room ws://127.0.0.1:47900/game processes. tests/duel.og.ts checks a two-peer room.\n" : ""}`);
-  function files(root: string, prefix: string): string[] {
-    return readdirSync(root, { withFileTypes: true }).flatMap(e => e.isDirectory() ? files(join(root, e.name), `${prefix}/${e.name}`) : [`${prefix}/${e.name}`]);
-  }
-  return [`${dirname(entry)}/creation.ts`, ...files(target, `assets/styles/${c.ui}`)];
+  writeFileSync(readme, `${readFileSync(readme, "utf8")}\n## Creation choices\n\nThe selection is in project.ogt's create block. src/creation.ts applies input\nand quality; publish applies orientation. UI anchors use the host's live\nsafe area. The game's own UI style is a recoloured copy of the selected ${c.ui}\npack (The UI style, below).\nMood, music and languages are recorded for subsequent art/audio/localization\nwork. Genre-to-archetype and view camera presets are not applied yet.\n${c.players === "local-multiplayer" ? "Two seats: WASD + Space and arrows + Enter, or gamepads 0 and 1.\n" : c.players === "online-lockstep" ? "Run og check (Lockstep enables its lint), then og relay and two og run . --room ws://127.0.0.1:47900/game processes. tests/duel.og.ts checks a two-peer room.\n" : ""}`);
+  return [`${dirname(entry)}/creation.ts`];
 }
