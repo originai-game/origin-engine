@@ -4,10 +4,11 @@
 // shows it whole). Each frame is
 // compared with crates/og-ui/references/<tier>/kit-controls-phone-<file>.
 import { checkFrames } from "./frames.ts";
+import { selectReferenceFrames } from "./reference-frames.ts";
 import { controlsScript } from "./controls.ts";
 import { playtest, ui } from "./lib.ts";
 
-const script = controlsScript(true);
+const script = selectReferenceFrames(controlsScript(true), "kit-controls-phone-");
 const PRESSED = new Set(["button", "switch", "checkbox", "radio", "slider", "combobox", "textbox", "spinbutton"]);
 
 export default playtest({

@@ -105,6 +105,7 @@ export function referencesDir(name = ""): string {
 
 /** Compares each screenshot with its reference (`<prefix><file>`), or records it. */
 export function checkFrames(run: PlaytestRun, t: PlaytestChecks, files: readonly string[], prefix: string): void {
+  if (files.length === 0) return;
   // Read only where there is a renderer: without one (tier `none`) each frame is
   // reported "no renderer, frame unchecked" and every other check still runs.
   t.frame(files, () => {

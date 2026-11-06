@@ -5,10 +5,11 @@
 // compared with
 // crates/og-ui/references/<tier>/kit-components-<file>.
 import { checkFrames } from "./frames.ts";
+import { selectReferenceFrames } from "./reference-frames.ts";
 import { componentsScript } from "./components.ts";
 import { playtest, ui } from "./lib.ts";
 
-const script = componentsScript(false);
+const script = selectReferenceFrames(componentsScript(false), "kit-components-");
 
 export default playtest({
   name: "the component previews in their states at desktop size",

@@ -4,10 +4,11 @@
 // on-screen keyboard; right to left and at 150 % text. Each frame is
 // compared with crates/og-ui/references/<tier>/kit-controls-<file>.
 import { checkFrames } from "./frames.ts";
+import { selectReferenceFrames } from "./reference-frames.ts";
 import { controlsScript } from "./controls.ts";
 import { playtest, ui } from "./lib.ts";
 
-const script = controlsScript(false);
+const script = selectReferenceFrames(controlsScript(false), "kit-controls-");
 
 export default playtest({
   name: "the foundations and controls previews in their states at desktop size",

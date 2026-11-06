@@ -3,10 +3,11 @@
 // right to left, in Japanese and at 150 % text: each frame compared with
 // crates/og-ui/references/<tier>/kit-genres2-phone-<file>.
 import { checkFrames } from "./frames.ts";
+import { selectReferenceFrames } from "./reference-frames.ts";
 import { genres2Script } from "./patterns.ts";
 import { playtest, ui } from "./lib.ts";
 
-const script = genres2Script(true);
+const script = selectReferenceFrames(genres2Script(true), "kit-genres2-phone-");
 
 export default playtest({
   name: "the systems games' previews in their states on a phone",

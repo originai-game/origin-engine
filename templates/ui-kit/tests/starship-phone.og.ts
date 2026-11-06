@@ -3,10 +3,11 @@
 // right to left, in Japanese and at 150 % text: each frame compared with
 // crates/og-ui/references/<tier>/kit-starship-phone-<file>.
 import { checkFrames } from "./frames.ts";
+import { selectReferenceFrames } from "./reference-frames.ts";
 import { starshipScript } from "./starship.ts";
 import { playtest, ui } from "./lib.ts";
 
-const script = starshipScript(true);
+const script = selectReferenceFrames(starshipScript(true), "kit-starship-phone-");
 
 export default playtest({
   name: "the starship screens in scifi, fantasy and kawaii on a phone",

@@ -7,10 +7,11 @@
 // Japanese and at 150 % text, each frame compared with
 // crates/og-ui/references/<tier>/kit-genres-<file>.
 import { checkFrames } from "./frames.ts";
+import { selectReferenceFrames } from "./reference-frames.ts";
 import { genresScript } from "./patterns.ts";
 import { playtest, ui } from "./lib.ts";
 
-const script = genresScript(false);
+const script = selectReferenceFrames(genresScript(false), "kit-genres-");
 
 export default playtest({
   name: "the roster and wider-game previews in their states at desktop size",

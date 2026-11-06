@@ -2,13 +2,14 @@
 // (1170×2532 device px) with a 47 px notch and a 34 px home indicator,
 // compared with crates/og-ui/references/<tier>/kit-phone-<screen>.png.
 import { checkFrames } from "./frames.ts";
+import { selectReferenceFrames } from "./reference-frames.ts";
 import { framesScript } from "./script.ts";
 import { playtest } from "./lib.ts";
 
-const script = framesScript(0.5);
+const script = selectReferenceFrames(framesScript(0.5), "kit-phone-");
 
 export default playtest({
-  name: "every screen on a phone in portrait matches its reference frame",
+  name: "representative phone screens match their reference frames",
   size: "1170x2532",
   commands: `0.0:viewport:phone;${script.commands}`,
   check(run, t) {

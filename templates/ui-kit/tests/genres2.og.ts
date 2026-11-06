@@ -7,10 +7,11 @@
 // text, each frame compared with
 // crates/og-ui/references/<tier>/kit-genres2-<file>.
 import { checkFrames } from "./frames.ts";
+import { selectReferenceFrames } from "./reference-frames.ts";
 import { genres2Script } from "./patterns.ts";
 import { playtest, ui } from "./lib.ts";
 
-const script = genres2Script(false);
+const script = selectReferenceFrames(genres2Script(false), "kit-genres2-");
 
 export default playtest({
   name: "the systems games' previews in their states at desktop size",

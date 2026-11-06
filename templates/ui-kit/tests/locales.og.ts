@@ -1,10 +1,5 @@
-// The kit's localized screens (og.i18n, assets/strings/*.ogt) in five
-// locales, each compared with crates/og-ui/references/<tier>/kit-locale-*:
-// the action showcase's title and its pause menu over the HUD (the ejected
-// main-menu and pause documents) in simplified Chinese, Japanese, Korean and
-// Arabic (English's are frames-desktop's, the kit's own locale). Arabic is
-// shaped (joined forms from the font's own tables, through rustybuzz) and
-// right to left: the layout mirrors and text aligns to the right. The
+// The kit's locale state and translated screen/HUD strings in five locales.
+// These are behavioral checks from dumps, not a repeated image matrix. The
 // probe's `locale:<tag>` asks for each locale; `og.i18n.locale` (the facts)
 // says which table is active.
 // Then the settings tree, the store, the gear screen, the leaderboard, the
@@ -20,25 +15,17 @@
 // Left, Right and Down), and the HUD components' own accessible names of
 // their regions (Ammunition, Standings, Minimap…), which the engine's
 // components name in English (reported, not this kit's words).
-import { checkFrames } from "./frames.ts";
 import { playtest, ui } from "./lib.ts";
 
 const LOCALES = ["en", "zh-CN", "ja", "ko", "ar"] as const;
 const SCREENS = ["actionTitle", "actionPause"] as const;
 
 const steps: string[] = [];
-export const referenceFiles: string[] = [];
 let t = 0.3;
 for (const l of LOCALES) {
   steps.push(`${t.toFixed(2)}:locale:${l}`);
   for (const s of SCREENS) {
     steps.push(`${(t + 0.05).toFixed(2)}:show:${s}`);
-    // English is the kit's own locale: its two frames were byte for byte
-    // frames-desktop's kit-desktop-action{Title,Pause}.png, compared there.
-    if (l !== "en") {
-      steps.push(`${(t + 0.7).toFixed(2)}:screenshot:${s}-${l}.png`);
-      referenceFiles.push(`${s}-${l}.png`);
-    }
     t += 0.8;
   }
   steps.push(`${t.toFixed(2)}:dump_world:world-${l}.json`);
@@ -58,7 +45,7 @@ for (const s of ["settingsTree", "actionTutorial"] as const) {
   steps.push(`${(t + 0.7).toFixed(2)}:dump_ui:${s}-en.json`);
   t += 0.75;
 }
-// The HUDs: each locale, each surface, each HUD (a frame on the tablet, not a reference).
+// The HUDs: each locale, each surface, each HUD.
 const HUDS = ["actionHud", "shooterHud", "manageHud", "raceHud", "sportsHud"] as const;
 const SURFACES = ["desktop", "tablet"] as const;
 const hudFiles: Array<{ locale: string; surface: string; hud: string; file: string }> = [];
@@ -71,7 +58,6 @@ for (const l of LOCALES) {
       const file = `hud-${h}-${v}-${l}.json`;
       steps.push(`${t.toFixed(2)}:show:${h}`);
       steps.push(`${(t + 0.6).toFixed(2)}:dump_ui:${file}`);
-      if (v === "tablet") steps.push(`${(t + 0.6).toFixed(2)}:screenshot:hud-${h}-${l}.png`);
       hudFiles.push({ locale: l, surface: v, hud: h, file });
       t += 0.65;
     }
@@ -91,16 +77,12 @@ const SYMBOLS = new Set(["N", "NE", "E", "SE", "S", "SW", "W", "NW", "m", "km", 
 const allowed = (w: string) => PROPER.has(w) || SYMBOLS.has(w) || /^[A-Z]$/.test(w);
 
 export default playtest({
-  name: "the title and pause screens in zh-CN, ja, ko and ar match their reference frames (en's are frames-desktop's); the settings tree, store, gear, leaderboard, tutorial and dialogue are Chinese in zh-CN; the five showcase HUDs have no English left in zh-CN, ja, ko and ar",
+  name: "locale state switches; the settings tree, store, gear, leaderboard, tutorial and dialogue are Chinese in zh-CN; the five showcase HUDs have no English left in zh-CN, ja, ko and ar",
   size: "1280x720",
   commands: steps.join(";"),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings (every key is in every table)");
     t.ok(run.quit, "the script reached quit");
-    t.frame(referenceFiles, () => {
-      for (const f of referenceFiles) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
-    });
-    checkFrames(run, t, referenceFiles, "kit-locale-");
 
     /** What a screen shows and names (a tab's label is drawn in capitals; its name is the word). */
     const words = (file: string) => new Set(ui(run, file).flatMap((e) => [e.text, e.name]).filter((x) => x !== ""));

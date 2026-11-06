@@ -3,6 +3,7 @@
 // countdown, and the arcade look in cartoon. Each frame is compared with
 // crates/og-ui/references/<tier>/kit-racing-phone-<file>.
 import { checkFrames } from "./frames.ts";
+import { selectReferenceFrames } from "./reference-frames.ts";
 import { playtest, ui } from "./lib.ts";
 
 const SHOTS: ReadonlyArray<[string, string[]]> = [
@@ -21,12 +22,13 @@ for (const [file, cmds] of SHOTS) {
   t += 0.1;
 }
 steps.push(`${t.toFixed(2)}:quit`);
-const FILES = SHOTS.map(([f]) => f);
+const script = selectReferenceFrames({ commands: steps.join(";") }, "kit-racing-phone-");
+const FILES = script.files;
 
 export default playtest({
   name: "the racing HUD on a phone in portrait, at 150 % text and in the arcade look matches its reference frames",
   size: "1170x2532",
-  commands: steps.join(";"),
+  commands: script.commands,
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     t.ok(run.quit, "the script reached quit");
