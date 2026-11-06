@@ -22,20 +22,27 @@ threads linked here; rules are in `AGENTS.md`.
 
 | Stream | Thread | Branch | State |
 |---|---|---|---|
-| Art runner (reviews and lands visual heads) | [T-01a1a6fb](https://ampcode.com/threads/T-01a1a6fb-4bac-7225-9d26-d222c57c8dbf) | lane-9 | running |
-| Test restructure → build-speed experiments | [T-01a1afbc](https://ampcode.com/threads/T-01a1afbc-ce51-702d-a930-d7c8a23ff1a7) | test-restructure | restructure landed; experiments next |
-| og session: a resident session for og run/test/cook/check, playtests that fork from snapshots | [T-01a1affb](https://ampcode.com/threads/T-01a1affb-cc71-73c7-a7a6-a493299b5e18) | og-session | resident fresh-boot core local; RPC and playtests next |
-| Delete examples and gameplay templates, per-feature fixtures | [T-01a1b07f](https://ampcode.com/threads/T-01a1b07f-da72-762c-93d7-ea54ef14b117) | delete-examples | phase 1 examples, phase 2 templates |
-| Meshlet determinism (1-px GPU race) | [T-01a1b08f](https://ampcode.com/threads/T-01a1b08f-10de-7202-8509-b47c75d88967) | meshlet-determinism | proving the cause |
 | Docs simplification (phase-1.md and the showcase archive removed, normative docs cut to current content) | [T-01a1b0a1](https://ampcode.com/threads/T-01a1b0a1-5b3d-7726-9b19-2f0ddd05d359) | docs-simplify | running |
+
+The clean-up round's other threads are archived; their hand-offs are in
+artifact 9de31d6e-98f1-479b-8d6f-8e191b620da4. Next threads, briefed from it
+after docs-simplify lands: a new art runner, delete-templates (phase 2, WIP
+44716c502), og session (WIP og-session e0245a20b), presentation checkpoints,
+build-speed experiments (scripts at a3a14d29f), and the og-cook fracture
+re-cook with og.Decal on terrain.
+
+Landed this round: examples/ deleted with the path-aware `fixtures` step and
+the destruction-yard and vehicle-terrain fixtures (to 876766dc0); meshlet
+determinism by stable GPU compaction (b54e9e5a2); Music.start's reflected
+minimum removed (b59654b2a).
 
 ## Decided in the clean-up
 
 - **No gameplay templates.** `og create` writes one project skeleton; the
   creation choices (genre, view, art style, UI style, platform, input,
   players, languages, music) go into project.ogt's `create` block as
-  constraints and hints. examples/, templates/archetypes,
-  templates/fx-showcase and the templates/ui-kit gallery are deleted;
+  constraints and hints. examples/ is deleted (876766dc0); templates/archetypes,
+  templates/fx-showcase and the templates/ui-kit gallery are deleted next;
   templates/game and game-2d become fixtures. Kept: the UI packs (kits and
   style packs), templates/looks (artBrief is a platform contract), locales,
   packages/design.
@@ -75,6 +82,9 @@ Dropped: `create-starters` a79e6bed8, `ui-own-look` 363ab979b.
 
 - `advance(N)` in one call schedules a timed command differently from
   per-tick stepping, which moves the world hash.
+- og-cook reruns destruction fracture before hashing an up-to-date model
+  (destruction-yard 13 s, over budget); og.Decal does not project onto
+  terrain.
 - Nine hover/selected kit frames show no state; the phone's radial aimed
   frame equals unaimed; Tune's live edits are not saved by `ui:save`.
 
