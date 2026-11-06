@@ -707,6 +707,9 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
 
 // ── og ui check over every declared screen ─────────────────────────────────
 
+/** og ui check's rules of the project's files, not a frame's (og-cli's own_look.rs): each finding is shown. */
+const OWN_LOOK = new Set(["own-style", "eject-unchanged", "fallback-icons", "art-slot"]);
+
 /** What og ui check wrote (ui-run.ts's check.json), as polish reads it. */
 export interface UiCheckFile {
   cells: number;
@@ -744,6 +747,12 @@ export function uiCheckFindings(check: UiCheckFile | null): { summary: UiCheckSu
     else r.warnings++;
   }
   const findings: Finding[] = [];
+  // The templates the game still ships as shipped (docs/ui.md §12.1): warnings while developing, each shown, since
+  // og build --publish refuses every one.
+  for (const f of check.findings) {
+    if (!OWN_LOOK.has(f.rule)) continue;
+    findings.push({ measure: `ui check: ${f.rule}`, where: f.paths.join(", "), detail: `${f.measured} (og build --publish refuses it)`, fix: `${f.prop}; ${f.fix}` });
+  }
   for (const [rule, n] of Object.entries(rules)) {
     if (n.errors === 0) continue;
     const first = check.findings.find((f) => f.rule === rule && f.severity === "error")!;

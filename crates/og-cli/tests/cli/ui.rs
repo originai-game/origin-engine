@@ -34,10 +34,14 @@ fn ui_eject_takes_the_installed_kit_document_and_only_its_companions() {
     let (code, out) = run(&["ui", "eject", "racing/race-results"]);
     assert_eq!(code, Some(0), "{out}");
     let ejected = dir.join("assets/ui/racing");
-    assert_eq!(
-        std::fs::read_to_string(ejected.join("race-results.ogt")).unwrap(),
-        edited
+    let copy = std::fs::read_to_string(ejected.join("race-results.ogt")).unwrap();
+    let (head, body) = copy.split_once("\n---\n").unwrap();
+    let (provenance, rest) = body.split_once('\n').unwrap();
+    assert!(
+        provenance.starts_with("# og:ejected from the racing kit's race-results.ogt, fingerprint "),
+        "{provenance}"
     );
+    assert_eq!(format!("{head}\n---\n{rest}"), edited);
     for kit_only in [
         "index.ts",
         "types.ts",
@@ -55,6 +59,6 @@ fn ui_eject_takes_the_installed_kit_document_and_only_its_companions() {
     assert_eq!(code, Some(1), "{out}");
     assert_eq!(
         std::fs::read_to_string(ejected.join("race-results.ogt")).unwrap(),
-        edited
+        copy
     );
 }

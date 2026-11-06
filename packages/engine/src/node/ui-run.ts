@@ -310,6 +310,9 @@ async function main(): Promise<void> {
     process.stdout.write(argv.includes("--json") ? JSON.stringify({ sheets, cells: cells.length, index: join(outDir, "index.json") }) + "\n" : `og ui sheet: ${cells.length} captures; ${join(outDir, "index.json")}\n`);
     return;
   }
+  // The project's own findings (og-cli's own_look.rs, `--own`): templates the game still ships as shipped.
+  const own = opt("--own");
+  if (own && existsSync(own)) all.push(...(JSON.parse(readFileSync(own, "utf8")) as UiFinding[]));
   const findings = mergeFindings(all);
   const errors = findings.filter((f) => f.severity === "error").length;
   const project_ = basename(resolve(root!));

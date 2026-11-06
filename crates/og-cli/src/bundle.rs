@@ -111,6 +111,11 @@ pub fn run(args: &[&str]) -> ExitCode {
         eprintln!("og build --publish: {e}");
         return ExitCode::FAILURE;
     }
+    // The templates as shipped (docs/ui.md §12.1): a published game's look is its own.
+    if publish && let Err(e) = crate::own_look::refuse(&p.root, Some(&package)) {
+        eprintln!("og build --publish: {e}");
+        return ExitCode::FAILURE;
+    }
     if check && let Err(e) = crate::check::require(&p, &package, json) {
         eprintln!("og build: {e}");
         return ExitCode::FAILURE;

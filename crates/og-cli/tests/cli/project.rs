@@ -239,7 +239,45 @@ fn a_2d_publish_build_refuses_the_3d_world_by_scene_and_line() {
     assert_eq!((code, exported), (Some(1), false), "{t}");
     assert!(t.contains("still draws its UI in the default style"), "{t}");
     assert!(t.contains("assets/looks/main.ogt"), "{t}");
+    // A built-in pack as it is is refused too (docs/ui.md §12.1, the owner,
+    // 2026-11-06): the packs are a starting point and the look is the game's.
     look("ui \"@styles/storybook/style.ogt\"\n");
+    let (code, t, exported) = build(&["build", "--publish"]);
+    assert_eq!((code, exported), (Some(1), false), "{t}");
+    assert!(
+        t.contains("assets/looks/main.ogt: the look draws its UI in the built-in storybook pack"),
+        "{t}"
+    );
+    // A renamed copy of the pack is still the pack: refused by content.
+    let pack = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles/storybook");
+    let mine = game.join("assets/styles/main");
+    std::fs::create_dir_all(&mine).unwrap();
+    for e in std::fs::read_dir(&pack).unwrap().flatten() {
+        if e.path().is_file() {
+            std::fs::copy(e.path(), mine.join(e.file_name())).unwrap();
+        }
+    }
+    let style = std::fs::read_to_string(mine.join("style.ogt")).unwrap();
+    std::fs::write(
+        mine.join("style.ogt"),
+        style.replacen("name \"storybook\"", "name \"main\"", 1),
+    )
+    .unwrap();
+    look("ui \"styles/main/style.ogt\"\n");
+    let (code, t, exported) = build(&["build", "--publish"]);
+    assert_eq!((code, exported), (Some(1), false), "{t}");
+    assert!(
+        t.contains("assets/styles/main/style.ogt: identical to the built-in storybook pack"),
+        "{t}"
+    );
+    // Restyled (its primary): the game's own, and it publishes.
+    std::fs::write(
+        mine.join("style.ogt"),
+        style
+            .replacen("name \"storybook\"", "name \"main\"", 1)
+            .replacen("primary \"#863d2c\"", "primary \"#2c5a86\"", 1),
+    )
+    .unwrap();
     let (code, t, exported) = build(&["build", "--publish"]);
     assert_eq!((code, exported), (Some(0), true), "{t}");
     // A 2D project without them publishes as before.

@@ -26,6 +26,7 @@ mod frame;
 mod i18n;
 mod lockstep_lint;
 mod migrate;
+mod own_look;
 mod polish;
 mod prefab;
 mod probe;

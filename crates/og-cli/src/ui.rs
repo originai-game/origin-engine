@@ -196,6 +196,16 @@ pub fn spawn(
         .arg("--out")
         .arg(out)
         .args(forward);
+    // The templates the game still ships as shipped (own_look.rs): the
+    // project's findings, beside the frames'.
+    if mode == "check" {
+        let file = out.join("own-look.json");
+        std::fs::create_dir_all(out).map_err(|e| format!("{}: {e}", out.display()))?;
+        let found = crate::own_look::findings(&p.root, Some(package));
+        std::fs::write(&file, crate::own_look::to_json(&found).to_string())
+            .map_err(|e| format!("{}: {e}", file.display()))?;
+        cmd.arg("--own").arg(file);
+    }
     for (name, commands) in &declared {
         cmd.arg("--screen").arg(format!("{name}={commands}"));
     }
@@ -474,7 +484,11 @@ fn eject_from(
     }
     let parent = target.parent().expect("assets/ui");
     std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
-    std::fs::write(&target, bytes).map_err(|e| format!("{}: {e}", target.display()))?;
+    // The copy records what it was (own_look.rs): unchanged, og ui check reports it and publish refuses it.
+    let text = String::from_utf8(bytes).map_err(|e| format!("{}: {e}", source.display()))?;
+    let line = crate::own_look::ejected_line(&format!("the library's {name} screen"), &text);
+    std::fs::write(&target, crate::own_look::with_provenance(&text, &line))
+        .map_err(|e| format!("{}: {e}", target.display()))?;
     Ok(target)
 }
 
@@ -623,7 +637,18 @@ mod tests {
             document
         );
         let target = extensions::eject("test-racing/pages/results", &dir, false).unwrap();
-        assert_eq!(std::fs::read_to_string(&target).unwrap(), document);
+        // The kit's document with the line that records what it was.
+        let copied = std::fs::read_to_string(&target).unwrap();
+        assert!(
+            copied.contains(
+                "\n---\n# og:ejected from the test-racing kit's pages/results.ogt, fingerprint "
+            ),
+            "{copied}"
+        );
+        assert_eq!(
+            crate::own_look::canonical(&copied, false),
+            crate::own_look::canonical(document, false)
+        );
         crate::cook::cook(&dir, 0, false).unwrap();
         let bundle = og_cook::runtime::Bundle::open(&dir.join("cooked")).unwrap();
         assert!(bundle.read("ui-kits/test-racing/pages/results.ogt").is_ok());
@@ -653,10 +678,25 @@ mod tests {
         let dir = game("copies");
         let got = eject_from(&library(), "inventory", &dir, false).unwrap();
         assert_eq!(got, dir.join("assets/ui/inventory.ogt"));
+        let copied = std::fs::read_to_string(&got).unwrap();
+        let shipped = std::fs::read_to_string(library().join("inventory.ogt")).unwrap();
         assert_eq!(
-            std::fs::read(&got).unwrap(),
-            std::fs::read(library().join("inventory.ogt")).unwrap()
+            crate::own_look::canonical(&copied, false),
+            crate::own_look::canonical(&shipped, false)
         );
+        // Left as shipped, it is reported by what it recorded (no engine
+        // package to compare with here), and a comment changes nothing.
+        std::fs::write(&got, format!("{copied}# looked at it\n")).unwrap();
+        let unchanged = |dir: &Path| {
+            crate::own_look::findings(dir, None)
+                .into_iter()
+                .filter(|f| f.rule == "eject-unchanged")
+                .map(|f| f.path)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(unchanged(&dir), ["assets/ui/inventory.ogt"]);
+        std::fs::write(&got, copied.replacen("gap 24", "gap 20", 1)).unwrap();
+        assert!(unchanged(&dir).is_empty());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
@@ -671,8 +711,11 @@ mod tests {
         assert_eq!(std::fs::read_to_string(&target).unwrap(), "the game's own");
         eject_from(&library(), "pause", &dir, true).unwrap();
         assert_eq!(
-            std::fs::read(&target).unwrap(),
-            std::fs::read(library().join("pause.ogt")).unwrap()
+            crate::own_look::canonical(&std::fs::read_to_string(&target).unwrap(), false),
+            crate::own_look::canonical(
+                &std::fs::read_to_string(library().join("pause.ogt")).unwrap(),
+                false
+            )
         );
         std::fs::remove_dir_all(&dir).unwrap();
     }

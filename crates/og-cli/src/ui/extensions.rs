@@ -331,6 +331,12 @@ pub fn eject(name: &str, project: &Path, force: bool) -> Result<PathBuf, String>
         std::fs::create_dir_all(dest.parent().unwrap()).map_err(|e| e.to_string())?;
         std::fs::copy(extension.directory.join(companion), dest).map_err(|e| e.to_string())?;
     }
+    // The ejected document records what it was (own_look.rs): unchanged, og
+    // ui check reports it and og build --publish refuses it.
+    let text = std::fs::read_to_string(&target).map_err(|e| e.to_string())?;
+    let line = crate::own_look::ejected_line(&format!("the {kit} kit's {file}"), &text);
+    std::fs::write(&target, crate::own_look::with_provenance(&text, &line))
+        .map_err(|e| e.to_string())?;
     Ok(target)
 }
 
