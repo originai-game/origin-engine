@@ -2,7 +2,7 @@
 // template file with the game's name and id, a directory that is not empty is
 // refused unless --force, and build output is never copied.
 import { afterAll, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { artBrief, audioBrief, authoredArt, CREATION_CHOICES, localeScript, MOODS, pseudoMessage, creationBlock, creationSchema, inferCreationChoices, parseCreationInput, resolveCreationChoices, pickStyle, premiseProfile, presetLook, readCatalogue, readLook, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
@@ -61,6 +61,38 @@ test("choice flags write a canonical create block and reject bad choices before 
 
 const engine = join(pkg, "../engine");
 const og = join(engine, "native", `og.${process.platform}-${process.arch}${process.platform === "win32" ? ".exe" : ""}`);
+// The engine package with its web exporter replaced by one that leaves a
+// mark: og build --publish runs every check (the publish block, the cook,
+// the type check) for real and stops before the export, which needs a wasm
+// build this test does not.
+function markingEngine(mark: string): string {
+  const stub = join(scratch, "marking-engine");
+  // Every entry a symlink to the real package's but the path down to web-build.ts.
+  const mirror = (from: string, to: string, except: string) => {
+    mkdirSync(to, { recursive: true });
+    for (const name of readdirSync(from)) if (name !== except) symlinkSync(join(from, name), join(to, name));
+  };
+  if (!existsSync(stub)) {
+    mirror(engine, stub, "src");
+    mirror(join(engine, "src"), join(stub, "src"), "node");
+    mirror(join(engine, "src", "node"), join(stub, "src", "node"), "web-build.ts");
+  }
+  writeFileSync(join(stub, "src", "node", "web-build.ts"), `await Bun.write(${JSON.stringify(mark)}, "");\n`);
+  return stub;
+}
+
+test.skipIf(!existsSync(og))("a project made with creation choices builds with --publish", () => {
+  expect(cli("chosen", "--no-prompt", "--ui", "cyber", "--platform", "phone-portrait", "--players", "single").code).toBe(0);
+  const dir = join(scratch, "chosen");
+  // The publish block og build reads: fit is fill or letterbox (docs/web-export.md).
+  expect(read("chosen", "project.ogt")).toMatch(/^publish \{[\s\S]*^  fit fill$/m);
+  const mark = join(scratch, "exported");
+  const r = Bun.spawnSync([og, "build", dir, "--publish"], { env: { ...process.env, OG_ENGINE_PACKAGE: markingEngine(mark), OG_RENDERER: "none" } });
+  const out = new TextDecoder().decode(r.stdout) + new TextDecoder().decode(r.stderr);
+  expect(r.exitCode, out).toBe(0);
+  expect(existsSync(mark)).toBeTrue();
+}, 60_000);
+
 test.skipIf(!existsSync(og))("local touch arena keeps the whole field clear of HUD and controls at both aspects", () => {
   expect(cli("arena-fit", "--players", "local-multiplayer", "--platform", "phone-portrait", "--look", "16bit-pixel").code).toBe(0);
   const dir = join(scratch, "arena-fit");
