@@ -313,23 +313,27 @@ export const SeatChanges = defineSystem("SeatChanges", { reads: [og.SeatDropped,
 });
 
 /**
- * The camera keeps the whole floor (both fighters' reach) clear of the HUD
- * and, on touch, of the controls (src/seats.ts's corners), inside the
- * host's live safe area at any aspect. Presentation: og.Camera is each
- * peer's own (never hashed).
+ * The camera: without touch controls the floor with a margin, centred (as
+ * start sets it); with them, the whole floor clear of the HUD and the
+ * controls (src/seats.ts's corners) inside the host's live safe area at
+ * any aspect. Presentation: og.Camera is each peer's own (never hashed).
  */
 function fitCamera(world: World): void {
   const vp = og.ui.viewport(world);
   if (vp.width <= 0 || vp.height <= 0) return;
+  const camera = must(world.resource(og.Camera));
+  if (!usesTouch()) {
+    camera.height = HEIGHT + 2;
+    camera.position = { x: WIDTH / 2, y: HEIGHT / 2, z: 50 };
+    return;
+  }
   const portrait = vp.height > vp.width;
-  const touch = usesTouch();
-  const side = touch && !portrait ? (LOCAL ? 160 : 240) : 16;
+  const side = portrait ? 16 : LOCAL ? 160 : 240;
   const left = vp.safeArea.left + side;
   const right = vp.width - vp.safeArea.right - side;
-  const top = vp.safeArea.top + (touch ? 136 : 72);
-  const bottom = vp.height - vp.safeArea.bottom - (touch && portrait ? 240 : touch ? 24 : 56);
+  const top = vp.safeArea.top + 136;
+  const bottom = vp.height - vp.safeArea.bottom - (portrait ? 240 : 24);
   const scale = Math.max(WIDTH / Math.max(1, right - left), HEIGHT / Math.max(1, bottom - top));
-  const camera = must(world.resource(og.Camera));
   camera.height = scale * vp.height;
   camera.position = { x: WIDTH / 2 + ((vp.width - left - right) * scale) / 2, y: HEIGHT / 2 + ((top + bottom - vp.height) * scale) / 2, z: 50 };
 }

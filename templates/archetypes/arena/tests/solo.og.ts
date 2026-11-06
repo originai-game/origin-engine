@@ -1,8 +1,11 @@
 // Coin Duel alone (no room): the local keys drive Red. D walks it right
 // through the coin at the centre (Red 1), Space dashes, and the HUD reads
 // both scores. The frame at 2 s is what
-// `og polish` reads for contrast, text size and the HUD's share.
+// `og polish` reads for contrast, text size and the HUD's share, and is
+// compared with references/<tier>/solo.png (tests/frames.ts): one player
+// on a desktop keeps the floor's framing.
 import { playtest } from "@origingame/engine/playtest";
+import { checkFrames } from "./frames.ts";
 
 export default playtest({
   name: "alone, the keys walk Red through the coin and dash it, and the HUD shows the scores",
@@ -19,4 +22,7 @@ export default playtest({
     "2:expect:ui:text:Local: Red",
     "2.2:quit",
   ].join(";"),
+  check(run, t) {
+    checkFrames(run, t, ["solo.png"], "");
+  },
 });
