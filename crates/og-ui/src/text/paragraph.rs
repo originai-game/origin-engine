@@ -189,6 +189,19 @@ pub(super) fn layout(
     width: Option<f32>,
 ) -> Option<Layout<Brush>> {
     let runs = metrics.font_runs(text);
+    // `tnum` on a face whose figures stay proportional under it (Meridian's
+    // Chakra Petch has no `tnum`): the run path sets its digits on the
+    // widest digit's advance (FontMetrics::tabulate), which a shaped layout
+    // would not, and a counting clock would change width as it runs.
+    if super::tabulates(text, features)
+        && runs.iter().any(|(_, k)| {
+            metrics
+                .part(*k)
+                .is_some_and(|m| m.tabular_advance(features).is_some())
+        })
+    {
+        return None;
+    }
     let files = runs
         .iter()
         .map(|(_, k)| {
