@@ -1,0 +1,15 @@
+type look
+version 1
+---
+# minimal-geometric in a dark mood: the dark layer without its vignette. Under posterize a
+# vignette's falloff steps into rings across the flat sky and ground.
+RenderSettings {
+  exposure 0.72
+  environmentIntensity 0.35
+}
+PostEffects {
+  temperature -0.06
+  contrast 0.12
+  saturation -0.2
+  balanceShadows -0.02 0 0.04
+}

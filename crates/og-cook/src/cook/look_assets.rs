@@ -175,9 +175,24 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
         include_str!("../../../../templates/looks/moods/bright/monochrome-pixel.ogt"),
     ),
     (
+        "bright",
+        Some("muted-cinematic-3d"),
+        include_str!("../../../../templates/looks/moods/bright/muted-cinematic-3d.ogt"),
+    ),
+    (
         "dark",
         None,
         include_str!("../../../../templates/looks/moods/dark.ogt"),
+    ),
+    (
+        "dark",
+        Some("bold-comic-illustration"),
+        include_str!("../../../../templates/looks/moods/dark/bold-comic-illustration.ogt"),
+    ),
+    (
+        "dark",
+        Some("minimal-geometric"),
+        include_str!("../../../../templates/looks/moods/dark/minimal-geometric.ogt"),
     ),
     (
         "dark",
@@ -230,9 +245,19 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
         include_str!("../../../../templates/looks/moods/soft/monochrome-dither-3d.ogt"),
     ),
     (
+        "soft",
+        Some("muted-cinematic-3d"),
+        include_str!("../../../../templates/looks/moods/soft/muted-cinematic-3d.ogt"),
+    ),
+    (
         "high-contrast",
         None,
         include_str!("../../../../templates/looks/moods/high-contrast.ogt"),
+    ),
+    (
+        "high-contrast",
+        Some("minimal-geometric"),
+        include_str!("../../../../templates/looks/moods/high-contrast/minimal-geometric.ogt"),
     ),
     (
         "high-contrast",

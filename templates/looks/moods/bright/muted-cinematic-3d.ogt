@@ -1,0 +1,18 @@
+type look
+version 1
+---
+# muted-cinematic-3d in a bright mood: its stage is under-exposed (0.8) and
+# grey-fogged, so the generic layer barely moves it; a full stop more light
+# and a lifted, paler fog.
+RenderSettings {
+  exposure 1.4
+  environmentIntensity 0.75
+}
+PostEffects {
+  temperature 0.05
+  brightness 0.03
+  saturation 0.12
+}
+Fog {
+  color "#a4a4aa"
+}

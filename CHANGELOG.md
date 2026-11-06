@@ -25,6 +25,22 @@ is one line here, written at the merge that changes
   declared charset; atlas-only legacy fonts keep table metrics.
   The MSDF renderer and text effects remain unchanged. No IDL change.
 
+- **Posterize can keep hues: `Stylise.posterizeMode`.** `channel` (the
+  default, as before) rounds each display channel to its own step;
+  `tone` steps a colour's value and its tint apart, so light, exposure
+  and a mood move the value and never the hue. render: `PosterizeMode`,
+  `Quantize.mode`. The minimal-geometric and heavy-ink-shadows presets
+  name `tone`: their own frames move (minimal-geometric's ground reads
+  its grey-green, not a snapped grey), and their moods no longer turn
+  grounds green or hills pastel. Mood layers of their own for
+  minimal-geometric and bold-comic-illustration (dark and high-contrast
+  without a vignette; bold-comic's dark without the shadow balance that
+  ringed its sky) and muted-cinematic-3d (bright and soft that read);
+  `@palettes/handheld4-high-contrast`'s two light greens drawn closer, so
+  a flat sky no longer dithers into a dot grid. The previews of
+  layered-silhouette, luminous-pixel, monochrome-pixel and
+  minimal-geometric are redrawn in their looks' own palettes.
+
 - **Native accessibility has a shared-frame transport.** An opt-in,
   versioned socket extension carries incremental AccessKit trees with
   stable ids and frame-pixel bounds. Returned actions reach controls on

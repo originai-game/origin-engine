@@ -1,7 +1,8 @@
 type look
 version 1
 ---
-# Flat facets and six clean tones, nothing else.
+# Flat facets and six clean tones, nothing else; the tones step value and tint
+# apart (posterizeMode tone), so a mood moves a colour's value, never its hue.
 name "Minimal geometric color"
 mood "soft"
 ui "cyber"
@@ -10,6 +11,7 @@ MaterialStyle {
 }
 Stylise {
   posterize 6
+  posterizeMode tone
 }
 RenderSettings {
   toneMapping none

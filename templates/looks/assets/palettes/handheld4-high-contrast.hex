@@ -1,6 +1,6 @@
-; Four handheld greens in a high-contrast mood: near-black and near-white with two greens between.
+; Four handheld greens in a high-contrast mood: a near-black ink and a deep green, then two close light greens so a flat sky dithers between near neighbours.
 ; The engine's built-in palette @palettes/handheld4-high-contrast (templates/looks/assets/generate.ts), CC0.
 0b0f0a
 2e4a26
-9cc24a
-f4fbe0
+c6de7c
+eaf4c4

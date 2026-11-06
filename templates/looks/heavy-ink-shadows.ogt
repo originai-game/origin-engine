@@ -3,7 +3,8 @@ version 1
 ---
 # Cel bands whose dark side and cast shadows are solid black ink
 # (MaterialStyle.shadowDarkness 1: no sun and no ambient light there), thick
-# ink, six muted tones, a near-black sky and a blood-red haze.
+# ink, six muted tones (value and tint stepped apart, so a mood never turns
+# the drained hills pastel), a near-black sky and a blood-red haze.
 name "Heavy ink and shadow"
 mood "dark"
 ui "fantasy"
@@ -16,6 +17,7 @@ Stylise {
   inkThreshold 0.1
   inkWidth 2
   posterize 6
+  posterizeMode tone
 }
 Sky {
   enabled true

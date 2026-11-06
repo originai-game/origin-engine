@@ -1,0 +1,15 @@
+type look
+version 1
+---
+# bold-comic-illustration in a dark mood: posterize 6 steps every channel
+# apart, so a vignette or a shadow balance over the sky's gradient breaks it
+# into one ring per channel; the layer darkens and cools without them.
+RenderSettings {
+  exposure 0.72
+  environmentIntensity 0.35
+}
+PostEffects {
+  temperature -0.06
+  contrast 0.12
+  saturation -0.2
+}

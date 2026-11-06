@@ -668,7 +668,24 @@ the cook:
   two palette-bound styles quantise every pixel to a fixed palette after
   the grading, so grading alone barely moves them; their layers swap the
   palette (`Stylise.palette` and `ArtPalette.colors`) for the mood's
-  (`@palettes/handheld4-<mood>`, `@palettes/1bit-<mood>`).
+  (`@palettes/handheld4-<mood>`, `@palettes/1bit-<mood>`). A posterized
+  style's layer leaves out what posterize breaks: the vignette (its
+  falloff steps into rings over a flat sky or ground; minimal-geometric
+  and bold-comic-illustration in dark and high-contrast), and, under
+  per-channel posterize, the shadow balance (bold-comic-illustration's
+  dark sky, one ring per channel). muted-cinematic-3d's under-exposed,
+  grey-fogged stage takes its own bright (a stop more light, a paler
+  fog) and soft (a lower-contrast curve, lifted shadows, a paler fog).
+
+A posterized look whose moods must keep its colours' hues names
+`Stylise.posterizeMode tone`: the value and the tint (the linear channels
+over the largest) are stepped apart, so light, exposure and a mood move a
+colour's value and never its hue. Per channel (`channel`, the default), a
+low-saturation colour flips hue as light pushes one channel across its
+step before the others: minimal-geometric's grey-green ground read grey
+in its own mood and mint, green or teal in the others, heavy-ink-shadows'
+red-brown hills olive and pastel. minimal-geometric and
+heavy-ink-shadows name `tone`.
 
 A layer sets the frame's grading, light and palette only (`PostEffects`,
 `RenderSettings`, `Environment`, `Fog`, `Sky`, `Stylise.palette`,

@@ -1,0 +1,17 @@
+type look
+version 1
+---
+# muted-cinematic-3d in a soft mood: a low-contrast curve, lifted shadows and
+# a paler fog over the stage.
+RenderSettings {
+  exposure 1.1
+  environmentIntensity 0.9
+}
+PostEffects {
+  brightness 0.05
+  contrast -0.32
+  saturation -0.1
+}
+Fog {
+  color "#8c8c92"
+}

@@ -232,8 +232,8 @@ const palettes: Record<string, { about: string; colors: string[] }> = {
     colors: ["101c2c", "2f4f6e", "6f9bb8", "c8e4ef"],
   },
   "handheld4-high-contrast": {
-    about: "Four handheld greens in a high-contrast mood: near-black and near-white with two greens between.",
-    colors: ["0b0f0a", "2e4a26", "9cc24a", "f4fbe0"],
+    about: "Four handheld greens in a high-contrast mood: a near-black ink and a deep green, then two close light greens so a flat sky dithers between near neighbours.",
+    colors: ["0b0f0a", "2e4a26", "c6de7c", "eaf4c4"],
   },
   "1bit-bright": {
     about: "One bit in a bright mood: a lifted charcoal ink and white.",
