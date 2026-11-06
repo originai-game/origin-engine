@@ -134,7 +134,7 @@ setInterval(() => {
     console.log(JSON.stringify({ event: 'bundled', n: ++bundled }));
   }
   if (reloaded < bundled && existsSync(release) && Number(readFileSync(release, 'utf8')) > reloaded) {
-    console.log(JSON.stringify({ event: 'reload', ok: true, latencyMs: 1, report: {}, tick: ++reloaded }));
+    console.log(JSON.stringify({ event: 'reload', ok: true, latencyMs: 1000, report: {}, tick: ++reloaded }));
   }
 }, 10);
 "#,
@@ -221,6 +221,8 @@ setInterval(() => {
                 .take()
                 .expect("each reload has its own landed check");
             assert_eq!(event["ok"], true, "the reload went through: {event}");
+            assert_eq!(event["swapMs"].as_f64(), Some(1000.0), "{event}");
+            assert_eq!(event["withinBudget"], false, "latency is reported: {event}");
             assert_eq!(
                 event["check"],
                 serde_json::json!({
