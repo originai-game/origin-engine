@@ -4,6 +4,7 @@
 mod actions;
 mod protocol;
 
+use crate::assertions::Assertions;
 use crate::base64;
 use crate::command::{
     self, CORE_ACTIONS, CommandDesc, CommandHandler, CommandInfo, CommandStep, CommandsReport,
@@ -21,6 +22,7 @@ use og_core::glam::{Mat3, Quat, Vec3};
 use og_core::{Error, ErrorKind, FieldType, Layout, Rng, Schema};
 use og_ecs::{Entity, QueryDesc, SchemaId, World};
 use serde_json::{Map, Value, json};
+use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::rc::Rc;
 
@@ -79,6 +81,7 @@ pub const MEMBERS: &[&str] = &[
     "expect",
     "expectations",
     "save_scene",
+    "assertions",
 ];
 
 /// The player-facing members a `publish` build keeps.
@@ -215,6 +218,15 @@ pub struct Probe {
     pub(crate) reader: Option<ReaderFn>,
     /// Expectations evaluated since the host last took them.
     pub(crate) expectations: Vec<ExpectResult>,
+    /// The run's assertions: the game's, the default invariants' and the
+    /// script's `invariant:` steps' (shared with the host, which records
+    /// the game's calls while a system runs).
+    pub(crate) assertions: Rc<RefCell<Assertions>>,
+    /// The script's `invariant:` steps, each an expectation (its words
+    /// after `invariant:`) evaluated after every tick.
+    pub(crate) invariants: Vec<Vec<String>>,
+    /// An invariant is being evaluated: its expectation is not kept or logged.
+    pub(crate) quiet: bool,
     /// Event types an expectation counts, with their counts, and each
     /// one's count when the script that asks began.
     pub(crate) events: BTreeMap<String, Watch>,
@@ -482,6 +494,9 @@ impl Probe {
             scene_writer: None,
             reader: None,
             expectations: Vec::new(),
+            assertions: Rc::default(),
+            invariants: Vec::new(),
+            quiet: false,
             events: BTreeMap::new(),
             event_base: BTreeMap::new(),
             tuned: BTreeSet::new(),
@@ -1109,6 +1124,8 @@ impl Probe {
             let now = world.time().tick;
             self.shift_schedule(next, now);
         }
+        #[cfg(not(feature = "publish"))]
+        self.check_invariants(world);
         Ok(())
     }
 

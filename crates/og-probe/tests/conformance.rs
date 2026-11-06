@@ -97,7 +97,11 @@ fn every_member_answers_as_protocol_5_says() {
     assert_eq!(hello["tier"], json!("vulkan"));
     assert!(["dev", "release"].contains(&hello["build"].as_str().unwrap()));
     assert_eq!(hello["members"], json!(MEMBERS));
-    assert_eq!(MEMBERS.len(), 26, "13 protocol-5 members + 13 wire members");
+    assert_eq!(MEMBERS.len(), 27, "13 protocol-5 members + 14 wire members");
+    // assertions: an empty report, a fresh one after take.
+    let report = t.ok("assertions", json!({"take": true}));
+    assert_eq!(report["violations"], json!([]));
+    assert_eq!(t.ok("assertions", json!({}))["epoch"], json!(1));
 
     // tick, state: the fixed head, then the game's facts.
     assert_eq!(t.tick(), 0);

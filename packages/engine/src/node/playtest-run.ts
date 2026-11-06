@@ -12,7 +12,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { bundleGame } from "./build.ts";
-import { FrameUnchecked, PLAYTEST_CLOCK, type PlaytestChecks, type PlaytestDesc, type PlaytestLockstep, type PlaytestRun } from "../playtest.ts";
+import { FrameUnchecked, PLAYTEST_CLOCK, type PlaytestAssertions, type PlaytestChecks, type PlaytestDesc, type PlaytestLockstep, type PlaytestRun } from "../playtest.ts";
 import { loadNativeHost, native } from "./index.ts";
 import { decodePng } from "./png.ts";
 
@@ -58,7 +58,7 @@ function finish(): never {
     failures.push("the playtest made no check: call t.ok, t.equal or t.near at least once");
   }
   const ok = failures.length === 0;
-  const line = { playtest: name, file, ok, checks, frameChecks, unchecked, failures, notes, out, ms: +(performance.now() - t0).toFixed(0), ...result };
+  const line = { playtest: name, file, ok, checks, frameChecks, unchecked, failures, notes, out, ms: +(performance.now() - t0).toFixed(0), assertions: assertionLog, ...result };
   if (resultFile) {
     mkdirSync(dirname(resolve(resultFile)), { recursive: true });
     writeFileSync(resultFile, JSON.stringify(line) + "\n");
@@ -70,6 +70,7 @@ function finish(): never {
     for (const f of failures) process.stdout.write(`  - ${f}\n`);
     for (const u of unchecked) process.stdout.write(`  ~ ${u}: no renderer, frame unchecked\n`);
     for (const n of notes) process.stdout.write(`  ~ ${n}\n`);
+    for (const u of assertionLog.uncovered as Array<{ run: string; kind: string; name: string; key?: string }>) process.stdout.write(`  ? ${u.run}: ${u.kind} '${u.name}'${u.key !== undefined ? ` [${u.key}]` : ""} never fired\n`);
   }
   process.exit(ok ? 0 : 1);
 }
@@ -110,8 +111,11 @@ const fakeFile = desc!.platform
       return path;
     })()
   : undefined;
+// PlaytestDesc.invariants: `invariant:` steps at tick 0 of every process's script.
+const invariantSteps = (desc!.invariants ?? []).map((i) => `0:invariant:${i}`);
 const command = (commands: string, dir: string, clock: number, room?: { url: string; ticks?: number | undefined; place: number }) => {
-  const c = ["bun", join(here, "run.ts"), "--entry", entry!, "--commands", commands, "--out", dir, "--json", "--clock", String(clock)];
+  const script = [...invariantSteps, commands].join(";");
+  const c = ["bun", join(here, "run.ts"), "--entry", entry!, "--commands", script, "--out", dir, "--json", "--clock", String(clock)];
   if (room) c.push("--room", room.url);
   if (room?.ticks !== undefined) c.push("--ticks", String(room.ticks));
   if (root) c.push("--root", root);
@@ -136,7 +140,11 @@ type Summary = {
   warnings: string[];
   unchecked?: string[];
   expectations?: { failed: number; results: ExpectResult[] };
+  assertions?: PlaytestAssertions;
 };
+const EMPTY_ASSERTIONS: PlaytestAssertions = { violations: [], uncovered: [], sites: [], defaults: { fields: 0, ticks: 0, values: 0, totalMs: 0, meanUs: 0, maxUs: 0 } };
+// Every process's violations and uncovered sites, for the result line (the session carries it per run).
+const assertionLog: { violations: unknown[]; uncovered: unknown[]; required: Array<{ name: string; fired: boolean }>; defaults: unknown[] } = { violations: [], uncovered: [], required: [], defaults: [] };
 const spawn = (c: string[], what: string): Summary | null => {
   const r = Bun.spawnSync(c, { stdout: "pipe", stderr: "pipe" });
   return summarise(r.exitCode, new TextDecoder().decode(r.stdout), new TextDecoder().decode(r.stderr), what);
@@ -148,8 +156,8 @@ function summarise(exitCode: number, stdout: string, stderr: string, what: strin
   } catch {
     summary = null;
   }
-  // A run whose only failure is its expectations exits 1 with its summary: each is a check.
-  const expectedOnly = exitCode === 1 && summary !== null && (summary.expectations?.failed ?? 0) > 0;
+  // A run whose only failures are its expectations or assertions exits 1 with its summary: each is a check.
+  const expectedOnly = exitCode === 1 && summary !== null && ((summary.expectations?.failed ?? 0) > 0 || (summary.assertions?.violations.length ?? 0) > 0);
   if ((exitCode !== 0 && !expectedOnly) || !summary) {
     failures.push(`${what} failed (exit ${exitCode}): ${stderr.trim() || stdout.trim()}`);
     return null;
@@ -163,7 +171,45 @@ function summarise(exitCode: number, stdout: string, stderr: string, what: strin
       if (e.status === "fail") failures.push(`${what}: expect:${e.expect} failed at tick ${e.tick}: expected ${JSON.stringify(e.expected)}, observed ${JSON.stringify(e.observed)}; ${e.reason}`);
     }
   }
+  const a = summary.assertions ?? EMPTY_ASSERTIONS;
+  // Every invariant site (the playtest's, a failed default, the game's always) is one check per process.
+  checks += a.sites.filter((s) => s.kind === "always" || s.kind === "unreachable").length;
+  for (const v of a.violations) {
+    const where = [v.entity && `on ${v.entity}`, v.component && v.field && `${v.component}.${v.field}`].filter(Boolean).join(" ");
+    failures.push(`${what}: ${v.origin} ${v.kind} '${v.name}'${v.location && v.origin === "game" ? ` (${v.location})` : ""} failed at tick ${v.tick}${where ? ` ${where}` : ""}: ${v.message}; observed ${JSON.stringify(v.value)}${v.expected !== null && v.expected !== undefined ? `, expected ${JSON.stringify(v.expected)}` : ""}${v.details !== null && v.details !== undefined ? `, details ${JSON.stringify(v.details)}` : ""}${v.failures > 1 ? ` (${v.failures} failing calls)` : ""}`);
+  }
+  assertionLog.violations.push(...a.violations.map((v) => ({ run: what, ...v })));
+  assertionLog.uncovered.push(...a.uncovered.map((u) => ({ run: what, ...u })));
+  assertionLog.defaults.push({ run: what, ...a.defaults });
   return summary;
+}
+
+/** PlaytestDesc.require over a run's report: each named site (or `name[key]` bucket) fired. */
+function requireFired(a: PlaytestAssertions, what: string): void {
+  for (const want of desc!.require ?? []) {
+    checks++;
+    const m = /^(.*)\[(.*)\]$/.exec(want);
+    const name = m ? m[1]! : want;
+    const sites = a.sites.filter((s) => s.name === name && s.kind !== "always" && s.kind !== "unreachable");
+    let fired: boolean;
+    let why = "";
+    if (sites.length === 0) {
+      fired = false;
+      why = `no og.assert.sometimes, reachable or each named '${name}' ran or was declared: check the name`;
+    } else if (m) {
+      fired = sites.some((s) => s.buckets?.some((b) => b.key === m[2] && b.fired));
+      if (!fired) why = `bucket [${m[2]}] never held${sites.some((s) => s.buckets?.some((b) => b.key === m[2])) ? "" : " (never seen)"}`;
+    } else {
+      fired = sites.some((s) => s.fired && (s.kind !== "each" || (s.buckets ?? []).every((b) => b.fired)));
+      if (!fired) {
+        const s = sites[0]!;
+        const open = (s.buckets ?? []).filter((b) => !b.fired).map((b) => b.key);
+        why = s.kind === "each" && open.length > 0 ? `buckets never held: ${open.join(", ")}` : s.ran ? "it ran but never held" : "the run never got there";
+      }
+    }
+    assertionLog.required.push({ name: want, fired });
+    if (!fired) failures.push(`${what}: required ${sites[0]?.kind ?? "assertion"} '${want}' never fired: ${why}`);
+  }
 }
 const clock = desc!.clock ?? PLAYTEST_CLOCK;
 
@@ -210,6 +256,7 @@ if (room) {
   for (const [i, s] of peerSummaries.entries()) for (const f of s.unchecked ?? []) unchecked.push(`peer ${i + 1} ${f}`);
 } else summary = spawn(command(desc!.commands, out, clock), "og run");
 if (!summary) finish();
+requireFired(summary!.assertions ?? EMPTY_ASSERTIONS, "og run");
 const rendered = summary!.tier !== "none";
 unchecked.push(...(summary!.unchecked ?? []));
 result = { ...result, tick: summary!.tick, hash: summary!.hash, tier: summary!.tier, warnings: summary!.warnings };
@@ -243,6 +290,7 @@ const runOf = (s: Summary, dir: string, later: readonly PlaytestRun[], peers: re
     files: s.outputs.map((o) => o.slice(dir.length + 1)),
     warnings: s.warnings,
     then: later,
+    assertions: s.assertions ?? EMPTY_ASSERTIONS,
     netHash: s.netHash ?? "",
     lockstep: s.lockstep ?? null,
     peers,

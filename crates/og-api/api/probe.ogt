@@ -701,6 +701,13 @@ module probe {
       doc "Every expectation evaluated since the last call (scripts' `expect:` steps, programs, expect()), and the counts."
       returns ExpectReport
     }
+    fn assertions {
+      doc "The run's assertions (og.assert, the default invariants, `invariant:` steps): every site with whether it fired, each violated one's first violation with its tick, entity, record, field and value, each's buckets, and what never fired. With take, the report is answered and a new one starts: the sites stay listed, unfired, so an independent run (another playtest, a sibling fork) inherits none of this one's violations or coverage."
+      param take bool "Start a new report after answering this one." {
+        default false
+      }
+      returns AssertReport
+    }
     fn saveScene {
       doc "Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned."
       param write bool "Replace each scene's source file." {

@@ -742,6 +742,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         world: UnsafeCell::new(a.world),
         stepping: Cell::new(false),
         state: RefCell::new(state),
+        assertions: probe.assertions(),
         probe: RefCell::new(probe),
         render,
         assets: RefCell::new(Assets {
@@ -879,6 +880,7 @@ pub fn destroy(id: u32) -> bool {
     og_audio::retire_link(id);
     super::e6::retire(id);
     super::timeline::retire(id);
+    crate::invariants::forget(id);
     ENGINES.with(|e| {
         if let Some(slot) = e.borrow_mut().get_mut(id as usize) {
             *slot = None;

@@ -1,4 +1,4 @@
-//! The depth wave's modules' trait implementations (DebugApi): every
+//! The depth wave's modules' trait implementations (DebugApi, AssertApi): every
 //! member is the host-neutral runtime's.
 
 use crate::NodeHost;
@@ -38,5 +38,11 @@ impl DebugApi for NodeHost {
     }
     fn og_debug_enabled(&self, world: u32) -> bool {
         rt::og_debug_enabled(world)
+    }
+}
+
+impl AssertApi for NodeHost {
+    fn og_assert_record(&self, world: u32, record: String) -> u32 {
+        rt::og_assert_record(world, record)
     }
 }

@@ -67,7 +67,7 @@ fn register {
 }
 ```
 
-<sub>`api.ogt` line 23944</sub>
+<sub>`api.ogt` line 23945</sub>
 
 <a id="fn-parse"></a>
 
@@ -95,7 +95,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 23952</sub>
+<sub>`api.ogt` line 23953</sub>
 
 <a id="fn-help"></a>
 
@@ -123,7 +123,7 @@ fn help {
 }
 ```
 
-<sub>`api.ogt` line 23958</sub>
+<sub>`api.ogt` line 23959</sub>
 
 <a id="fn-schedule"></a>
 
@@ -153,7 +153,7 @@ fn schedule {
 }
 ```
 
-<sub>`api.ogt` line 23964</sub>
+<sub>`api.ogt` line 23965</sub>
 
 ## Types
 
@@ -196,6 +196,7 @@ A string: one of the variants below. The zero value is `"screenshot"`.
 | `"quit"` | `quit`: exit. |
 | `"describe"` | `describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, what each secondary camera (og.CameraView, og.Mirror) shows from its own pass, the UI elements with rects and text, the camera. |
 | `"expect"` | `expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=), `entity:<id>:<path>==<value>` (a field of its dump_entity: `render.lod==2`, `og.Transform.position.y>0`), `timings:<path>==<value>` (state().timings: `triangles<=1500000`). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked, as are an entity's `render.*` fields and the renderer's timings (`triangles`, `render`, `passes`). |
+| `"invariant"` | `invariant:<what>`: from now on, check an expectation (any `expect:` form but `region` and `frame`) after every tick: the first tick it fails is an assertion violation (og.assert's report, the probe's `assertions`) with the tick and the observed value, which fails `og run --json` (exit 1) and the playtest. A playtest's `invariants` are these steps. |
 | `"save_scene"` | `save_scene[:path][:spawned]`: write every scene the world was assembled from back from the world (the boot scene's, then each og.world.instantiate made, each to its own `.ogt`): only the lines whose values changed (comments and order kept), the fields set or patch tuned, and resources as `resource <Name> { }` blocks; with `spawned`, the entities the game spawned at run time under the boot scene's marked section. To each scene's source, or with a path the boot scene's to that file under the output directory and the others beside it. |
 | `"help"` | `help`: list every action the channel knows, core and registered. |
 | `"mouse_move"` | `mouse_move:dx,dy`: move the mouse by relative CSS pixels (movementX/Y, summed in og.Pointers.movement: mouse-look) with the pointer's position held, as a locked pointer moves. |
@@ -235,6 +236,7 @@ enum CoreAction {
   variant quit "`quit`: exit."
   variant describe "`describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, what each secondary camera (og.CameraView, og.Mirror) shows from its own pass, the UI elements with rects and text, the camera."
   variant expect "`expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=), `entity:<id>:<path>==<value>` (a field of its dump_entity: `render.lod==2`, `og.Transform.position.y>0`), `timings:<path>==<value>` (state().timings: `triangles<=1500000`). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked, as are an entity's `render.*` fields and the renderer's timings (`triangles`, `render`, `passes`)."
+  variant invariant "`invariant:<what>`: from now on, check an expectation (any `expect:` form but `region` and `frame`) after every tick: the first tick it fails is an assertion violation (og.assert's report, the probe's `assertions`) with the tick and the observed value, which fails `og run --json` (exit 1) and the playtest. A playtest's `invariants` are these steps."
   variant save_scene "`save_scene[:path][:spawned]`: write every scene the world was assembled from back from the world (the boot scene's, then each og.world.instantiate made, each to its own `.ogt`): only the lines whose values changed (comments and order kept), the fields set or patch tuned, and resources as `resource <Name> { }` blocks; with `spawned`, the entities the game spawned at run time under the boot scene's marked section. To each scene's source, or with a path the boot scene's to that file under the output directory and the others beside it."
   variant help "`help`: list every action the channel knows, core and registered."
   variant mouse_move "`mouse_move:dx,dy`: move the mouse by relative CSS pixels (movementX/Y, summed in og.Pointers.movement: mouse-look) with the pointer's position held, as a locked pointer moves."
@@ -271,7 +273,7 @@ callback CommandHandler {
 }
 ```
 
-<sub>`api.ogt` line 23907</sub>
+<sub>`api.ogt` line 23908</sub>
 
 <a id="type-CommandDesc"></a>
 
@@ -295,7 +297,7 @@ struct CommandDesc {
 }
 ```
 
-<sub>`api.ogt` line 23913</sub>
+<sub>`api.ogt` line 23914</sub>
 
 <a id="type-CommandStep"></a>
 
@@ -320,7 +322,7 @@ struct CommandStep {
 }
 ```
 
-<sub>`api.ogt` line 23920</sub>
+<sub>`api.ogt` line 23921</sub>
 
 <a id="type-CommandInfo"></a>
 
@@ -345,7 +347,7 @@ struct CommandInfo {
 }
 ```
 
-<sub>`api.ogt` line 23929</sub>
+<sub>`api.ogt` line 23930</sub>
 
 <a id="type-CommandsReport"></a>
 
@@ -368,4 +370,4 @@ struct CommandsReport {
 }
 ```
 
-<sub>`api.ogt` line 23937</sub>
+<sub>`api.ogt` line 23938</sub>

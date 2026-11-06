@@ -2,6 +2,13 @@
 // `og run --commands`, then checks over what the run wrote. `og test` runs
 // every one in its own process and fails a playtest that made no check.
 //
+// Write properties first: `invariants` are checked after every tick (the
+// first failing tick and its value are the failure), the engine's default
+// invariants (NaN, ranges, dangling entities, og.WorldBounds) and the game's
+// og.assert calls run beside them, and `require` names the og.assert
+// sometimes/reachable/each sites the run must see fire. Keep a frame only
+// for what only a frame shows (a look, a layout), inside `t.frame`.
+//
 // Without a renderer (the platform's engine and probe sandboxes carry none;
 // `OG_RENDERER=none` makes any machine so) the run is the same run, but a
 // `screenshot` writes no PNG: the checks that read a frame go inside
@@ -57,12 +64,40 @@ export interface PlaytestRun {
   wav(file: string): { rate: number; frames: number; peak: number; rms: number };
   /** The runs of PlaytestDesc.then, in order, each with its own files (empty without `then`). */
   readonly then: readonly PlaytestRun[];
+  /** The run's assertions (the probe's `assertions`): violations, sites, buckets and what never fired. */
+  readonly assertions: PlaytestAssertions;
   /** og.net's shared hash at the end (og.net.hash): the world without this process's session, what lockstep peers compare. */
   readonly netHash: string;
   /** With PlaytestDesc.room: og.net.status at the end (running, the start tick, the seats, the first divergent tick); null outside a room. */
   readonly lockstep: PlaytestLockstep | null;
   /** With PlaytestDesc.room: the room's other processes (peer scripts 1, 2, ...), each with its own files; empty outside a room. */
   readonly peers: readonly PlaytestRun[];
+}
+
+/** One violated assertion: its first failure. */
+export interface PlaytestViolation {
+  readonly kind: string;
+  /** `game` (og.assert), `default` (from reflection) or `playtest` (an invariant). */
+  readonly origin: string;
+  readonly name: string;
+  readonly location: string;
+  readonly tick: number;
+  readonly entity?: string | null;
+  readonly component?: string | null;
+  readonly field?: string | null;
+  readonly value: unknown;
+  readonly expected: unknown;
+  readonly message: string;
+  readonly details: unknown;
+  readonly failures: number;
+}
+
+/** A run's assertion report (IDL `assert.AssertReport`). */
+export interface PlaytestAssertions {
+  readonly violations: readonly PlaytestViolation[];
+  readonly uncovered: ReadonlyArray<{ kind: string; name: string; location: string; key?: string; ran?: boolean }>;
+  readonly sites: ReadonlyArray<{ kind: string; origin: string; name: string; location: string; ran: boolean; fired: boolean; firstTick: number | null; failures: number; buckets?: ReadonlyArray<{ key: string; fired: boolean; firstTick: number | null }> }>;
+  readonly defaults: { fields: number; ticks: number; values: number; totalMs: number; meanUs: number; maxUs: number };
 }
 
 /** og.net.status of a playtest process in a room, at its end. */
@@ -176,7 +211,22 @@ export interface PlaytestDesc {
   /** More processes after the script, in order, each a fresh `og run` (a relaunch): their runs are `run.then`. With `room`, every place of the room relaunches at once. */
   readonly then?: readonly PlaytestStep[];
   /**
-   * Checks over what the run wrote. Optional when the script carries `expect:` steps: each
+   * Properties checked after every tick of every process of the playtest, written first: each is
+   * an `expect:` form but `region` and `frame` (`state:lives>=0`, `entity:hero:og.Transform.position.y>-5`),
+   * run as an `invariant:` step from tick 0. The first tick one fails is a failure naming the tick
+   * and the observed value. The engine's default invariants (no NaN, every field inside its
+   * min..max, no dangling Entity, og.WorldBounds) and the game's og.assert.always run beside them.
+   */
+  readonly invariants?: readonly string[];
+  /**
+   * The og.assert.sometimes, reachable and each sites (by name) the run must see fire: one that
+   * never fired fails the playtest. Every other site that never fired is listed as uncovered,
+   * never a failure. `each` names a site, all of whose buckets the run saw must hold; `name[key]`
+   * names one bucket.
+   */
+  readonly require?: readonly string[];
+  /**
+   * Checks over what the run wrote. Optional when the script carries `expect:` steps, `invariants` or `require`: each
    * expectation is a check (a failed one fails the playtest with its tick and observed value,
    * a frame one without a renderer is unchecked), so a playtest can be its script alone.
    */
@@ -196,9 +246,13 @@ export const PLAYTEST_CLOCK = 1767225600000;
 
 /** Declare a playtest: the default export of a `tests/*.og.ts` file. */
 export function playtest(desc: PlaytestDesc): PlaytestDesc {
-  const expects = /(^|;)\s*[\d.]+:expect:/.test(desc.commands ?? "");
+  const expects = /(^|;)\s*[\d.]+:(expect|invariant):/.test(desc.commands ?? "") || (desc.invariants?.length ?? 0) > 0 || (desc.require?.length ?? 0) > 0;
   if (!desc.name || !desc.commands || (typeof desc.check !== "function" && !expects)) {
-    throw new Error("playtest({ name, commands, check }) needs all three (check may be left out when the commands carry expect: steps)");
+    throw new Error("playtest({ name, commands, check }) needs all three (check may be left out when the commands carry expect: steps, or with invariants or require)");
+  }
+  for (const i of desc.invariants ?? []) {
+    if (/^(region|frame):/.test(i)) throw new Error(`invariant '${i}' reads a frame, which every tick cannot afford: check it with an expect: step at the tick it matters`);
+    if (i.includes(";")) throw new Error(`invariant '${i}' holds a ';': one expectation each`);
   }
   return Object.freeze({ ...desc });
 }

@@ -39454,6 +39454,7 @@ export interface UiActionHint {
  * - `"quit"`: `quit`: exit.
  * - `"describe"`: `describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, what each secondary camera (og.CameraView, og.Mirror) shows from its own pass, the UI elements with rects and text, the camera.
  * - `"expect"`: `expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=), `entity:<id>:<path>==<value>` (a field of its dump_entity: `render.lod==2`, `og.Transform.position.y>0`), `timings:<path>==<value>` (state().timings: `triangles<=1500000`). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked, as are an entity's `render.*` fields and the renderer's timings (`triangles`, `render`, `passes`).
+ * - `"invariant"`: `invariant:<what>`: from now on, check an expectation (any `expect:` form but `region` and `frame`) after every tick: the first tick it fails is an assertion violation (og.assert's report, the probe's `assertions`) with the tick and the observed value, which fails `og run --json` (exit 1) and the playtest. A playtest's `invariants` are these steps.
  * - `"save_scene"`: `save_scene[:path][:spawned]`: write every scene the world was assembled from back from the world (the boot scene's, then each og.world.instantiate made, each to its own `.ogt`): only the lines whose values changed (comments and order kept), the fields set or patch tuned, and resources as `resource <Name> { }` blocks; with `spawned`, the entities the game spawned at run time under the boot scene's marked section. To each scene's source, or with a path the boot scene's to that file under the output directory and the others beside it.
  * - `"help"`: `help`: list every action the channel knows, core and registered.
  * - `"mouse_move"`: `mouse_move:dx,dy`: move the mouse by relative CSS pixels (movementX/Y, summed in og.Pointers.movement: mouse-look) with the pointer's position held, as a locked pointer moves.
@@ -39461,7 +39462,7 @@ export interface UiActionHint {
  * - `"apply_prefab"`: `apply_prefab:<entity>[:<Component>[.<field>]][:base]`: move an entity's prefab overrides (all, a component's or one field; a field set at run time too) into its prefab's `.ogt` at the entity's node, and out of its scene's instance block, so the scene cooks to the same world and every other instance takes the values; with `base`, into a variant's base (docs/design.md §2.5, prefabs).
  * - `"revert_prefab"`: `revert_prefab:<entity>[:<Component>[.<field>]]`: drop an entity's prefab overrides (all, a component's or one field) from its scene's instance block, and set the live values back to the prefab's.
  */
-export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "key_down" | "key_up" | "type" | "compose" | "commit" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "get" | "seed" | "pause" | "resume" | "advance" | "quit" | "describe" | "expect" | "save_scene" | "help" | "mouse_move" | "pointer_lock" | "apply_prefab" | "revert_prefab";
+export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "key_down" | "key_up" | "type" | "compose" | "commit" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "get" | "seed" | "pause" | "resume" | "advance" | "quit" | "describe" | "expect" | "invariant" | "save_scene" | "help" | "mouse_move" | "pointer_lock" | "apply_prefab" | "revert_prefab";
 
 /**
  * A registered action. It runs at the start of the tick it was scheduled for.
@@ -40635,6 +40636,12 @@ export interface EngineProbe extends RuntimeProbe {
    * Every expectation evaluated since the last call (scripts' `expect:` steps, programs, expect()), and the counts.
    */
   expectations(): ExpectReport;
+  /**
+   * The run's assertions (og.assert, the default invariants, `invariant:` steps): every site with whether it fired, each violated one's first violation with its tick, entity, record, field and value, each's buckets, and what never fired. With take, the report is answered and a new one starts: the sites stay listed, unfired, so an independent run (another playtest, a sibling fork) inherits none of this one's violations or coverage.
+   *
+   * @param take Start a new report after answering this one. Default `false`.
+   */
+  assertions(take?: boolean): AssertReport;
   /**
    * Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned.
    *
@@ -42110,6 +42117,205 @@ export interface DebugDrawDesc {
 
 
 
+
+
+
+
+
+
+
+// ── assert ──────────────────────────────────────────────────────
+// Assertions: properties of the game checked as it runs, after the Antithesis SDK's. `og.assert.always(world.get(hero, Health).hp >= 0, "hp never negative", { hp })` holds on every call, `og.assert.sometimes(boss.phase === 2, "boss reaches phase 2")` must hold at least once in a run, `og.assert.reachable("door opened")` must run at least once, `og.assert.unreachable("fell through the floor")` must never run, and `og.assert.each(level, cleared, "each level cleared")` keeps one bucket per distinct key, each of which must hold once.
+// Each is identified by its name and the place it is called from (`src/player.ts:42`, which the build records for every `og.assert.<kind>(...)` call, so a site that never runs is still listed). A call that passes costs a lookup in the runtime, without a call into the engine; nothing an assertion does reaches the world, so a run with them hashes and replays as one without.
+// Violations and coverage go through the probe (`assertions`) into `og run --json`'s `assertions` and `og test`'s results: the tick, the name and place, and the values (`details`). At the end of a run, every `sometimes`, `reachable` and `each` bucket that never fired is listed as uncovered: a sometimes that never fires is a test that never got there. A playtest's `require` names the ones that must fire.
+// Beside them, every tick of a development or test build checks the default invariants from reflection: no NaN or infinity in a reflected float, a number inside its field's min..max where it declares one, no Entity field naming a despawned entity, and, where the world declares og.WorldBounds, every entity's place inside them. They read the components that changed (where the world tracks their changes) or every row, never write, and name the entity, component, field and value of their first failure.
+// Not in publish builds: every member does nothing there, so a game may leave its assertions in.
+
+/**
+ * What an assertion asks.
+ * - `"always"`: Its condition holds on every call: a false one is a violation.
+ * - `"sometimes"`: Its condition holds on at least one call in the run.
+ * - `"reachable"`: It runs at least once in the run.
+ * - `"unreachable"`: It never runs: a call is a violation.
+ * - `"each"`: Its condition holds once for each distinct key it was called with.
+ */
+export type AssertKind = "always" | "sometimes" | "reachable" | "unreachable" | "each";
+
+/**
+ * One assertion call the runtime reports to the engine (og.assert.record): its first call, a violation, or its first firing in a report.
+ */
+export interface AssertRecord {
+  /** The assertion's kind. */
+  readonly kind: AssertKind;
+  /** Its name. */
+  readonly name: string;
+  /** Where it is called (`src/player.ts:42`); empty when the build did not record one. */
+  readonly location: string;
+  /** The condition (true for reachable and unreachable, which have none). */
+  readonly condition: boolean;
+  /** The bucket of an each, as text; empty otherwise. */
+  readonly key: string;
+  /** What the call passed as details (null for none). */
+  readonly details: unknown;
+  /** The tick of the call. */
+  readonly tick: number;
+  /** A site the build found, sent before it runs: listed, not counted as a call. */
+  readonly declared: boolean;
+}
+
+/**
+ * Who declared an assertion.
+ * - `"game"`: The game's og.assert calls.
+ * - `"default"`: The engine's default invariants from reflection.
+ * - `"playtest"`: A playtest's `invariant:` steps (PlaytestDesc.invariants).
+ */
+export type AssertOrigin = "game" | "default" | "playtest";
+
+/** One bucket of an each. */
+export interface AssertBucket {
+  /** The bucket's key, as text. */
+  readonly key: string;
+  /** Whether its condition held once. */
+  readonly fired: boolean;
+  /** The first tick it held. */
+  readonly firstTick: number | null;
+}
+
+/** One assertion in the report: by its kind, name and place. */
+export interface AssertSite {
+  /** Its kind. */
+  readonly kind: AssertKind;
+  /** Who declared it. */
+  readonly origin: AssertOrigin;
+  /** Its name. */
+  readonly name: string;
+  /** Where it is called; for a default invariant, the record and field (`Health.hp`). */
+  readonly location: string;
+  /** Whether it was called in this report (a site the build found may never run). */
+  readonly ran: boolean;
+  /** Whether a sometimes held, a reachable ran, or an each's bucket held. */
+  readonly fired: boolean;
+  /** The first tick it fired. */
+  readonly firstTick: number | null;
+  /** How many calls violated it. */
+  readonly failures: number;
+  /** An each's buckets, in the order first seen. */
+  readonly buckets?: readonly AssertBucket[];
+  /** An each's buckets past the 1,024 kept. */
+  readonly bucketsDropped?: number;
+}
+
+/** A site's first violation. */
+export interface AssertViolation {
+  /** The site's kind. */
+  readonly kind: AssertKind;
+  /** Who declared it. */
+  readonly origin: AssertOrigin;
+  /** Its name. */
+  readonly name: string;
+  /** Its place. */
+  readonly location: string;
+  /** The first tick it failed. */
+  readonly tick: number;
+  /** The entity a default invariant found it on (its probe id). */
+  readonly entity: string | null;
+  /** The record: a component or a resource. */
+  readonly component: string | null;
+  /** The field. */
+  readonly field: string | null;
+  /** What was there (a NaN or an infinity as text). */
+  readonly value: unknown;
+  /** What was expected: a range, live, finite, the bounds. */
+  readonly expected: unknown;
+  /** What went wrong, in words. */
+  readonly message: string;
+  /** What the call passed as details. */
+  readonly details: unknown;
+  /** How many calls violated the site in this report. */
+  readonly failures: number;
+  /** The last tick it failed. */
+  readonly lastTick: number;
+}
+
+/** A sometimes, reachable or each bucket that never fired. */
+export interface AssertUncovered {
+  /** The site's kind. */
+  readonly kind: AssertKind;
+  /** Its name. */
+  readonly name: string;
+  /** Its place. */
+  readonly location: string;
+  /** An each's bucket that never held. */
+  readonly key?: string;
+  /** Whether it was called at all (false: the run never got there). */
+  readonly ran?: boolean;
+}
+
+/** What the default invariants cost, measured outside the tick. */
+export interface AssertCost {
+  /** The reflected fields they check. */
+  readonly fields: number;
+  /** The ticks they checked in this report. */
+  readonly ticks: number;
+  /** The values they read in this report. */
+  readonly values: number;
+  /**
+   * Their time in this report.
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly totalMs: number;
+  /** Their mean time a tick, in microseconds. */
+  readonly meanUs: number;
+  /** Their slowest tick, in microseconds. */
+  readonly maxUs: number;
+}
+
+/** The run's assertions since the report began (the probe's assertions member). */
+export interface AssertReport {
+  /** The report's number: take moves it on. */
+  readonly epoch: number;
+  /** Violating calls, summed over the sites. */
+  readonly failures: number;
+  /** Each violated site's first violation, in the order they happened. */
+  readonly violations: readonly AssertViolation[];
+  /** What never fired: a run whose sometimes never held did not test what it names. */
+  readonly uncovered: readonly AssertUncovered[];
+  /**
+   * Every site seen or declared (default invariants once they fail), each with its buckets: the hints a search of the game's states starts from.
+   */
+  readonly sites: readonly AssertSite[];
+  /** Sites past the 4,096 kept. */
+  readonly sitesDropped: number;
+  /** The default invariants' cost. */
+  readonly defaults: AssertCost;
+}
+
+/**
+ * Where the world's entities may be: naming it turns on the default invariant that every entity's place (its og.MatrixWorld translation, else a root's og.Transform.position) lies inside min..max on every tick. A world that never names it has no bounds and keeps its hash.
+ *
+ * The `WorldBounds` resource (token `og.WorldBounds`).
+ */
+export interface WorldBounds {
+  /**
+   * The lowest corner.
+   *
+   * @default { x: -1000, y: -1000, z: -1000 }
+   * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
+   */
+  min: Vector3;
+  /**
+   * The highest corner.
+   *
+   * @default { x: 1000, y: 1000, z: 1000 }
+   * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
+   */
+  max: Vector3;
+  /** Leave the bounds unchecked. */
+  off: boolean;
+}
 
 
 
@@ -49255,6 +49461,65 @@ export declare namespace og {
      * @param world The world asked.
      */
     function enabled(world: World): boolean;
+  }
+  /**
+   * Where the world's entities may be: naming it turns on the default invariant that every entity's place (its og.MatrixWorld translation, else a root's og.Transform.position) lies inside min..max on every tick. A world that never names it has no bounds and keeps its hash.
+   */
+  const WorldBounds: ResourceType<{ readonly min: FieldSpec<"Vector3">; readonly max: FieldSpec<"Vector3">; readonly off: FieldSpec<"bool"> }, WorldBounds>;
+  /**
+   * Assertions: properties of the game checked as it runs, after the Antithesis SDK's. `og.assert.always(world.get(hero, Health).hp >= 0, "hp never negative", { hp })` holds on every call, `og.assert.sometimes(boss.phase === 2, "boss reaches phase 2")` must hold at least once in a run, `og.assert.reachable("door opened")` must run at least once, `og.assert.unreachable("fell through the floor")` must never run, and `og.assert.each(level, cleared, "each level cleared")` keeps one bucket per distinct key, each of which must hold once.
+   * Each is identified by its name and the place it is called from (`src/player.ts:42`, which the build records for every `og.assert.<kind>(...)` call, so a site that never runs is still listed). A call that passes costs a lookup in the runtime, without a call into the engine; nothing an assertion does reaches the world, so a run with them hashes and replays as one without.
+   * Violations and coverage go through the probe (`assertions`) into `og run --json`'s `assertions` and `og test`'s results: the tick, the name and place, and the values (`details`). At the end of a run, every `sometimes`, `reachable` and `each` bucket that never fired is listed as uncovered: a sometimes that never fires is a test that never got there. A playtest's `require` names the ones that must fire.
+   * Beside them, every tick of a development or test build checks the default invariants from reflection: no NaN or infinity in a reflected float, a number inside its field's min..max where it declares one, no Entity field naming a despawned entity, and, where the world declares og.WorldBounds, every entity's place inside them. They read the components that changed (where the world tracks their changes) or every row, never write, and name the entity, component, field and value of their first failure.
+   * Not in publish builds: every member does nothing there, so a game may leave its assertions in.
+   */
+  namespace assert {
+    /**
+     * The condition holds on every call: a false one is a violation, reported with its tick, its name, its place and `details`.
+     *
+     * @param condition What must hold.
+     * @param name What it means, in a few words: `hp never negative`.
+     * @param details Values worth seeing when it fails, as `{ hp, damage }`.
+     */
+    function always(condition: boolean, name: string, details?: unknown | null): void;
+    /**
+     * The condition holds on at least one call in the run; one that never held is listed as uncovered when the run ends.
+     *
+     * @param condition What must hold at least once.
+     * @param name What it means: `boss reaches phase 2`.
+     * @param details Values worth seeing at the first time it holds.
+     */
+    function sometimes(condition: boolean, name: string, details?: unknown | null): void;
+    /**
+     * This line runs at least once in the run; one that never ran is listed as uncovered.
+     *
+     * @param name What reaching it means: `door opened`.
+     * @param details Values worth seeing the first time.
+     */
+    function reachable(name: string, details?: unknown | null): void;
+    /**
+     * This line never runs: running it is a violation.
+     *
+     * @param name What reaching it would mean: `fell through the floor`.
+     * @param details Values worth seeing when it does.
+     */
+    function unreachable(name: string, details?: unknown | null): void;
+    /**
+     * One bucket per distinct key (a level, a weapon, an enemy kind): each bucket the run saw must hold its condition once (Antithesis's SOMETIMES_EACH). Buckets seen that never held are listed as uncovered, and every bucket is in the probe's report, the hints a search of the game's states starts from.
+     *
+     * @param key The bucket: a string, a number, or a small object of either (`{ level, weapon }`).
+     * @param condition What must hold once in the bucket.
+     * @param name What it means: `each level cleared`.
+     */
+    function each(key: unknown, condition: boolean, name: string): void;
+    /**
+     * The one call the members above make into the engine: a site's first call, a violation or a first firing. Game code calls those, not this. With null, it only answers the report's epoch.
+     *
+     * @param world The world the assertion was called in.
+     * @param record The call, or null.
+     * @returns The report's epoch: it moves on each time the probe's assertions member starts a new report.
+     */
+    function record(world: World, record: AssertRecord | null): number;
   }
   /**
    * Moves the entity along a path at `speed`, by the engine's og.path system after the game's systems and before physics: og.Transform.position is the path's point at `distance` plus `offset` (in the path's frame with align, else in world axes). Advanced by scaled time (slow motion, hit stop). The distance is the component's own field, so a snapshot, a restore and the world hash carry it, and writing it moves the entity there.

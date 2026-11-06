@@ -215,6 +215,9 @@ pub(crate) struct Engine {
     /// The renderer side, shared with the probe's capture hook.
     pub render: Rc<RefCell<RenderState>>,
     pub assets: RefCell<Assets>,
+    /// The run's assertions (the probe's, shared): the game's og.assert
+    /// calls reach it while a system runs, when the probe is busy.
+    pub assertions: Rc<RefCell<og_probe::assertions::Assertions>>,
 }
 
 impl Engine {

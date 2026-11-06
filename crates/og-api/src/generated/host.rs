@@ -1299,6 +1299,8 @@ pub trait ProbeApi: Wire {
     fn og_engine_probe_expect(&self, engine_probe: u32, what: String) -> String;
     /// `EngineProbe.expectations`
     fn og_engine_probe_expectations(&self, engine_probe: u32) -> String;
+    /// `EngineProbe.assertions`
+    fn og_engine_probe_assertions(&self, engine_probe: u32, take: Option<bool>) -> String;
     /// `EngineProbe.saveScene`
     fn og_engine_probe_save_scene(&self, engine_probe: u32, write: Option<bool>, spawned: Option<bool>) -> String;
 }
@@ -1367,6 +1369,12 @@ pub trait DebugApi: Wire {
     fn og_debug_set_enabled(&self, world: u32, enabled: bool);
     /// `og.debug.enabled`
     fn og_debug_enabled(&self, world: u32) -> bool;
+}
+
+/// `assert`: packages/knowledge/wiki/assert.md.
+pub trait AssertApi: Wire {
+    /// `og.assert.record`
+    fn og_assert_record(&self, world: u32, record: String) -> u32;
 }
 
 /// `path`: packages/knowledge/wiki/path.md.
@@ -1462,9 +1470,9 @@ pub trait DestructionApi: Wire {
 }
 
 /// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi {}
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi {}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi> Host for T {}
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -2032,6 +2040,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_engine_probe_describe",
     "og_engine_probe_expect",
     "og_engine_probe_expectations",
+    "og_engine_probe_assertions",
     "og_engine_probe_save_scene",
     "og_terrain_load",
     "og_terrain_sample",
@@ -2058,6 +2067,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_debug_view",
     "og_debug_set_enabled",
     "og_debug_enabled",
+    "og_assert_record",
     "og_path_create",
     "og_path_find",
     "og_path_sample",

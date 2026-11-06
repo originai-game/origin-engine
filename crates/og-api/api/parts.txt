@@ -46,6 +46,7 @@ terrain.ogt
 stream.ogt
 video.ogt
 debug.ogt
+assert.ogt
 path.ogt
 timeline.ogt
 net.ogt

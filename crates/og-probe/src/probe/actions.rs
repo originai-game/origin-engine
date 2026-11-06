@@ -491,6 +491,8 @@ impl Probe {
             #[cfg(not(feature = "publish"))]
             "expect" => self.expect_args(world, args, Some(step.at)).map(|_| ()),
             #[cfg(not(feature = "publish"))]
+            "invariant" => self.add_invariant(args),
+            #[cfg(not(feature = "publish"))]
             "apply_prefab" | "revert_prefab" => {
                 // `<action>:<entity>[:<Component>[.<field>]][:base]`, over
                 // the source files (docs/design.md §2.5, prefabs).

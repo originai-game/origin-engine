@@ -2957,6 +2957,12 @@ pub fn og_engine_probe_expectations(engine_probe: u32) -> String {
 
 #[cfg(not(feature = "publish"))]
 #[wasm_bindgen]
+pub fn og_engine_probe_assertions(engine_probe: u32, take: Option<bool>) -> String {
+    <Host as ProbeApi>::og_engine_probe_assertions(&Host, engine_probe, take)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
 pub fn og_engine_probe_save_scene(engine_probe: u32, write: Option<bool>, spawned: Option<bool>) -> String {
     <Host as ProbeApi>::og_engine_probe_save_scene(&Host, engine_probe, write, spawned)
 }
@@ -3095,6 +3101,12 @@ pub fn og_debug_set_enabled(world: u32, enabled: bool) {
 #[wasm_bindgen]
 pub fn og_debug_enabled(world: u32) -> bool {
     <Host as DebugApi>::og_debug_enabled(&Host, world)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_assert_record(world: u32, record: String) -> u32 {
+    <Host as AssertApi>::og_assert_record(&Host, world, record)
 }
 
 #[wasm_bindgen]

@@ -3542,6 +3542,13 @@ pub fn og_engine_probe_expectations(env: Env, engine_probe: u32) -> String {
 }
 
 #[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_engine_probe_assertions")]
+pub fn og_engine_probe_assertions(env: Env, engine_probe: u32, take: Option<bool>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProbeApi>::og_engine_probe_assertions(&Host, engine_probe, take)
+}
+
+#[cfg(not(feature = "publish"))]
 #[napi(js_name = "og_engine_probe_save_scene")]
 pub fn og_engine_probe_save_scene(env: Env, engine_probe: u32, write: Option<bool>, spawned: Option<bool>) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -3707,6 +3714,13 @@ pub fn og_debug_set_enabled(env: Env, world: u32, enabled: bool) {
 pub fn og_debug_enabled(env: Env, world: u32) -> bool {
     let _env = crate::EnvScope::enter(&env);
     <Host as DebugApi>::og_debug_enabled(&Host, world)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_assert_record")]
+pub fn og_assert_record(env: Env, world: u32, record: String) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AssertApi>::og_assert_record(&Host, world, record)
 }
 
 #[napi(js_name = "og_path_create")]

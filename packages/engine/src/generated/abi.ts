@@ -1177,6 +1177,8 @@ export interface HostAbi<A, V> {
   og_engine_probe_expect(engine_probe: number, what: string): string;
   /** `EngineProbe.expectations` */
   og_engine_probe_expectations(engine_probe: number): string;
+  /** `EngineProbe.assertions` */
+  og_engine_probe_assertions(engine_probe: number, take: boolean | undefined): string;
   /** `EngineProbe.saveScene` */
   og_engine_probe_save_scene(engine_probe: number, write: boolean | undefined, spawned: boolean | undefined): string;
   /** `og.terrain.load` */
@@ -1229,6 +1231,8 @@ export interface HostAbi<A, V> {
   og_debug_set_enabled(world: number, enabled: boolean): void;
   /** `og.debug.enabled` */
   og_debug_enabled(world: number): boolean;
+  /** `og.assert.record` */
+  og_assert_record(world: number, record: string): number;
   /** `og.path.create` */
   og_path_create(world: number, desc: string | undefined): string;
   /** `og.path.find` */
@@ -1869,6 +1873,7 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_probe_describe",
   "og_engine_probe_expect",
   "og_engine_probe_expectations",
+  "og_engine_probe_assertions",
   "og_engine_probe_save_scene",
   "og_terrain_load",
   "og_terrain_sample",
@@ -1895,6 +1900,7 @@ export const SYMBOLS: readonly string[] = [
   "og_debug_view",
   "og_debug_set_enabled",
   "og_debug_enabled",
+  "og_assert_record",
   "og_path_create",
   "og_path_find",
   "og_path_sample",

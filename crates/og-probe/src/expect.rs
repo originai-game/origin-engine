@@ -388,7 +388,14 @@ fn dump_path<'v>(value: &'v Value, path: &str) -> Option<&'v Value> {
 fn at_path<'v>(value: &'v Value, path: &str) -> Option<&'v Value> {
     path.split('.').try_fold(value, |v, key| match v {
         Value::Object(m) => m.get(key),
-        Value::Array(a) => a.get(key.parse::<usize>().ok()?),
+        // A vector's lane by name, as the API writes it (`position.y`): dumps hold vectors as arrays.
+        Value::Array(a) => a.get(match key {
+            "x" | "r" => 0,
+            "y" | "g" => 1,
+            "z" | "b" => 2,
+            "w" => 3,
+            _ => key.parse::<usize>().ok()?,
+        }),
         _ => None,
     })
 }
@@ -836,6 +843,10 @@ impl Probe {
     }
 
     fn record(&mut self, r: ExpectResult) -> ExpectResult {
+        // An invariant's evaluation, every tick: its result is the caller's alone.
+        if self.quiet {
+            return r;
+        }
         self.note(r.tick, r.status == Status::Fail, r.line());
         self.expectations.push(r.clone());
         r
@@ -944,6 +955,15 @@ mod tests {
             Some(&json!(1.5))
         );
         assert_eq!(dump_path(&dump, "og.Mesh.x"), None);
+        let arrays = json!({"og.Transform": {"position": [1.0, 2.5, 3.0]}});
+        assert_eq!(
+            dump_path(&arrays, "og.Transform.position.y"),
+            Some(&json!(2.5))
+        );
+        assert_eq!(
+            dump_path(&arrays, "og.Transform.position.2"),
+            Some(&json!(3.0))
+        );
     }
 
     fn args(s: &str) -> Vec<String> {

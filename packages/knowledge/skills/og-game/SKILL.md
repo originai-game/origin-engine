@@ -99,15 +99,19 @@ The order the games found productive:
    the visible entities nearest first, each with its screen box, pick point,
    depth and the fraction hidden; the UI elements with rects and text; the
    camera (§9).
-7. **Playtests with reference frames** (og-build §3): `tests/*.og.ts`
-   asserting on facts, `get:` answers and dumps, or written as `expect:`
-   steps alone, which `og run` itself checks (§9), one per feature, and a
-   frames playtest comparing screenshots with `references/<tier>/`, its
-   frame reads inside `t.frame`: in a sandbox without a renderer each
-   screenshot is reported "no renderer, frame unchecked" and passes while
-   every other check runs, and the frames are verified where there is a
-   renderer (the author's machine, the browser-check sandbox, an executor
-   with a GPU).
+7. **Playtests: invariants first, frames last** (og-build §3): put the
+   game's properties in its code with og.assert (`always` for what must
+   hold every call, `sometimes`/`reachable` for what a good run gets to,
+   `each` for one bucket per level, weapon or enemy kind), then write
+   `tests/*.og.ts` with `invariants` (expectations checked after every
+   tick), `require` (the og.assert sites the run must reach) and `expect:`
+   steps or checks on facts, `get:` answers and dumps, one per feature.
+   The engine's default invariants (no NaN, every field in its min..max,
+   no dangling Entity, og.WorldBounds) run beside them. Keep a screenshot
+   only for what only a frame shows (a look, a layout), compared with
+   `references/<tier>/` inside `t.frame`: two representative frames, not
+   one per moment. Without a renderer each is reported "no renderer,
+   frame unchecked" and passes while every other check runs.
 8. **Polish** (og-build §5): `og polish` until its findings are gone; each
    names the section that fixes it (og-taste §10, og-feel §13).
 
@@ -807,7 +811,23 @@ These are the checks to use before opening frames. All of them run from
   expect:state:score>=3                         a fact of GameDesc.facts by dotted path (== != < <= > >=)
   ```
 
-  A playtest may be expect steps alone: `templates/game/tests/smoke.og.ts`
+- **`invariant:<op>`** (any `expect:` form but region and frame) checks
+  the expectation after every tick from then on; the first tick it fails
+  is an assertion violation with the observed value, and the run exits 1.
+  A playtest's `invariants` are these steps from tick 0.
+- **og.assert** in game code: `og.assert.always(hp >= 0, "hp never
+  negative", { hp })`, `og.assert.sometimes(boss.phase === 2, "boss
+  reaches phase 2")`, `og.assert.reachable("door opened")`,
+  `og.assert.unreachable("fell through the floor")`, `og.assert.each(level,
+  cleared, "each level cleared")`. Nothing reaches the world (the hash and
+  replays are unchanged) and a publish build drops them. `og run --json`'s
+  `assertions` lists each violation's first tick with its details, every
+  site with whether it fired and each's buckets, `uncovered` (what never
+  fired: a sometimes there means the run never got where it names) and
+  the default invariants' cost. The probe's `assertions({ take: true })`
+  starts a fresh report for an independent run.
+
+  A playtest may be expect steps and invariants alone: `templates/game/tests/smoke.og.ts`
   is. Each expectation counts as a check. Without a renderer a frame or
   region expectation is unchecked, never failed. Take screen boxes from a
   `describe` of a good run, with a margin.
