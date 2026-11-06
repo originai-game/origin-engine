@@ -16,7 +16,7 @@
 #   scripts/check.sh --list     the step names
 #
 # Steps run concurrently as their inputs allow (step_needs below), each
-# with its log in $OG_EVIDENCE_DIR/gate/<step>.log, printed whole when the
+# with its log in $OG_EVIDENCE_DIR/gate/runs/<run>/<step>.log, printed whole when the
 # step ends; the first FAIL stops the others and the gate.
 # OG_GATE_JOBS=N runs at most N steps at once (1: one at a time, in order).
 #
@@ -218,7 +218,14 @@ run_tests() {
     [ "$FUNCTIONAL" = 1 ] && filters+=("not test(og_render_checks_for_wasm32)")
     for f in ${filters[@]+"${filters[@]}"}; do expr="${expr:+$expr & }$f"; done
     [ -z "$expr" ] || args+=(-E "$expr")
+    local junit="$OG_TARGET_DIR/nextest/${NEXTEST_PROFILE:-default}/junit.xml"
+    rm -f "$junit"
     cargo nextest run "${args[@]}"; rc=$?
+    if [ -f "$junit" ]; then
+      cp "$junit" "$GATE_LOGS/$key.junit.xml" || return 1
+    else
+      og_say "NOTE: nextest emitted no JUnit report; see $key.log for the build/run result"
+    fi
     if [ "$rc" -eq 0 ] && [ "$doc" = 1 ]; then cargo test --workspace --doc; rc=$?; fi
   else
     # cargo test runs a binary's tests on threads of one process, and two
@@ -605,6 +612,7 @@ BUN_GATE_TIMEOUT="${OG_BUN_TEST_TIMEOUT:-30000}"
 bun_test_packages() {
   local pkg ran=0
   for pkg in "$@"; do
+    pkg="${pkg%/}"
     [ -f "$pkg/package.json" ] || continue
     og_need bun || return 1
     if ! (cd "$pkg" && bun -e 'process.exit(require("./package.json").scripts?.test ? 0 : 1)'); then
@@ -619,7 +627,12 @@ bun_test_packages() {
         (cd "$pkg" && bun install) || return 1
       fi
     fi
-    (cd "$pkg" && bun run test) || return 1
+    # Measure every file, including setup/teardown, rather than summing
+    # individual test assertions. A fresh file never changes scheduling
+    # using durations left by an earlier measurement.
+    local timings="$GATE_LOGS/bun-${pkg##*/}.timings.json"
+    rm -f "$timings"
+    (cd "$pkg" && bun run test --timings="$timings" --update-timings) || return 1
     ran=$((ran + 1))
   done
   [ "$ran" -gt 0 ] || og_say "no package under packages/ has a test script yet"
@@ -890,7 +903,7 @@ step_web_reference() {
 # and the wasm32 ones (target/wasm, target/wasm32-unknown-unknown) take
 # different cargo locks, so the Rust and the wasm chains overlap, and cargo
 # serialises what shares a directory. Each step writes its own log
-# ($OG_EVIDENCE_DIR/gate/<step>.log), printed whole when it ends.
+# ($OG_EVIDENCE_DIR/gate/runs/<run>/<step>.log), printed whole when it ends.
 
 # step_needs STEP: the steps whose outputs STEP reads. A selected STEP starts
 # after those of them that are selected; --only STEP adds them.
@@ -1091,7 +1104,7 @@ fi
 og_lock_acquire "$OG_TARGET_DIR" "scripts/check.sh ${selected}" || exit 1
 # Running steps stop with the gate (Ctrl-C, a FAIL, a kill), then the lock goes.
 trap 'gate_cancel; og_lock_release' EXIT
-GATE_LOGS="$OG_EVIDENCE_DIR/gate"
+GATE_LOGS="$OG_EVIDENCE_DIR/gate/runs/$(date -u +%Y%m%dT%H%M%SZ)-$$"
 mkdir -p "$GATE_LOGS"
 # The gate's builds and tests yield to the editor, the agents and the
 # browser beside them (not in CI, where the runner is the gate's alone).
@@ -1108,6 +1121,8 @@ done
 started="$(date +%s)"
 og_say "Origin Engine gate: $(git rev-parse --short HEAD 2>/dev/null || echo no-git) $(rustc --version 2>/dev/null) target=$OG_TARGET_DIR"
 OG_GATE_TREE="$(og_worktree_tree)" || OG_GATE_TREE=""
+printf 'head=%s\ntree=%s\nstarted=%s\nsteps=%s\nforce_all=%s\n' \
+  "$(git rev-parse HEAD)" "$OG_GATE_TREE" "$started" "$selected" "$FORCE_ALL" > "$GATE_LOGS/run.txt"
 if [ "$FORCE_ALL" = 1 ]; then
   if [ -n "${CI:-}" ]; then og_say "every step and test runs (CI)"; else og_say "every step and test runs (--all)"; fi
 elif [ -z "$OG_GATE_TREE" ]; then
@@ -1160,6 +1175,8 @@ write_summary() {
     line="$(gate_get line "$s")"
     [ -z "$line" ] || printf '%s\n' "$line"
   done > "$summary"
+  cp "$summary" "$GATE_LOGS/summary.txt"
+  printf 'finished=%s\n' "$(date +%s)" >> "$GATE_LOGS/run.txt"
 }
 og_say ""
 if [ -n "$FAILED" ]; then

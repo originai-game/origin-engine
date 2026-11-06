@@ -322,7 +322,10 @@ the cap). The gate renices itself by 10. Native cargo builds lock
 `target/wasm32-unknown-unknown`, so the two chains overlap; determinism
 builds into `target/wasm-determinism`.
 
-Each step writes its output to `<target>/evidence/gate/<step>.log`. A step
+Each run retains its logs under `<target>/evidence/gate/runs/<UTC-time>-<pid>/`.
+`run.txt` records the commit, working tree, selected steps, force-all flag,
+and start/end timestamps. Each step writes `<step>.log`, `<step>.time`
+(wall seconds), and `<step>.rc` (exit status). A step
 prints `--> [n/N] step started` when it starts; when it ends the gate
 prints `==> [n/N] step`, the whole log, then `PASS`, `FAIL` or `SKIPPED`
 with its duration. The first `FAIL` stops the steps still running (each
@@ -330,7 +333,13 @@ reported as `CANCELLED step (Ns): stopped when 'x' failed; partial log …`),
 the gate prints `gate FAILED at 'x'` and exits non-zero; the lock is
 released only after those steps have stopped, and Ctrl-C stops them the
 same way. On success it prints `gate PASSED (n/N steps, Ns)`. The per-step
-lines land in `target/evidence/check-summary.txt`. The script honours
+lines land in `target/evidence/check-summary.txt` and the run's `summary.txt`.
+Nextest writes `<step>.junit.xml`: testcase times are execution seconds,
+and their sum per binary is not wall time because tests run concurrently.
+Configured exclusions are in the log, not JUnit's skipped count. Bun writes
+`bun-<package>.timings.json`, with milliseconds per test file. Each run starts
+with fresh timing files so telemetry does not change test scheduling. Missing
+reports on a failed or cancelled run are not zero-duration passes. The script honours
 `CARGO_TARGET_DIR` and exports `OG_EVIDENCE_DIR` (default
 `<target>/evidence`) and `OG_WASM_OUT` (`<target>/og-wasm`) for test
 harnesses and `build.sh`.

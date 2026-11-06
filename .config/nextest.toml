@@ -55,3 +55,7 @@ priority = 50
 slow-timeout = { period = "120s", terminate-after = 3 }
 fail-fast = false
 retries = 0
+
+# Per-binary and per-test execution time, separate from Cargo build time.
+[profile.default.junit]
+path = "junit.xml"
