@@ -508,6 +508,10 @@
         "summary": "`og assets` queries the unshipped cooked/.assets.ogt metadata and reference graph by text, --kind, --group and --unused. --refs lists dependencies, --by lists referrers, --dupes finds identical outputs and --dupes --near N compares texture dHashes and sound loudness-envelope hashes at the caller's Hamming threshold. --json returns structured results. Game TypeScript is parsed with OXC; computed og.load paths retain their static prefix, or everything without a prefix, and are reported. `og api find` discovers the assets guide."
       },
       {
+        "member": "og assets mv",
+        "summary": "og assets mv <from> <to> moves a source and its import settings, rewriting matching static asset-id literals in OGT documents and game TypeScript. Computed loads are reported, not rewritten. Destinations must be absent; parsing and path checks precede staged writes with rollback backups. Source-relative dependencies inside models and maps still need review when moving across directories. Run og cook afterward to refresh outputs."
+      },
+      {
         "member": "og cache gc, og cook",
         "summary": "Native cooks share BLAKE3 action keys and authenticated contents under ~/.cache/origingame/cook-v1/{ac,cas}, including texture and content-keyed prefracture results. A per-project .og/cook-index records file stats and content hashes and skips source reads on unchanged cooks. The store defaults to a 10 GiB cap, configurable with OG_COOK_CACHE_MAX_BYTES; og cache gc [--max-bytes N] [--json] trims it on demand. Cache eviction never deletes source assets or cooked outputs. FNV world/schema hashes and in-blob stamps, streaming packs and service-worker SHA256 remain unchanged."
       },

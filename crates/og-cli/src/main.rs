@@ -121,6 +121,8 @@ commands:
   assets [--kind KIND] [--group GROUP] [--unused] [--refs] [--by] [--dupes [--near N]] [--json] [text]
                       query cooked metadata; --refs shows dependencies, --by their users;
                       --near uses caller-chosen Hamming distance 0..64; --project DIR selects a project
+  assets mv <from> <to> [--project DIR] [--json]
+                      move a source and its import settings, rewrite static OGT/TS asset references
   cache gc [--max-bytes N] [--json]
                       trim the shared cook action/content cache (default cap 10 GiB)
   bake lightmaps [project] [--samples N] [--bounces N] [--texels-per-metre N] [--sky R,G,B] [--scene <id>]

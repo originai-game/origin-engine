@@ -13,6 +13,7 @@
 mod action_cache;
 pub mod anim;
 pub mod animated;
+pub mod asset_move;
 pub mod assets;
 pub mod audio;
 mod autorig;

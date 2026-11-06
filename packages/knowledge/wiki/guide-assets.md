@@ -87,3 +87,25 @@ the content store. Video projects and models with external dependencies outside
 `assets/` are planned again. Removing the index forces a full source check.
 Neither cache changes FNV world hashes, schema hashes, in-blob stamps, or the
 web service worker's SHA256 hashes.
+
+<a id="guide-assets-5"></a>
+### `assets §5` Move source assets
+
+`og assets mv <from> <to> [--project DIR] [--json]` moves one file under
+`assets/` and its `type import` sidecar. Paths accept the `assets/` prefix.
+The destination and its import sidecar must not exist.
+
+The command rewrites exact matching string literals in asset OGT documents,
+`project.ogt`, and game TypeScript, including `#subasset` suffixes. It preserves
+comments, regular expressions, and partial filename matches. All matching
+literals are rewritten, including strings outside asset fields.
+Computed loads remain unchanged and produce warnings when their prefix covers
+the moved file. Source-relative dependencies inside models and map formats
+are not rewritten; moves between directories report that limitation.
+
+Parsing and path checks finish before files change. Writes are staged under
+`.og/asset-move`; a failed installation restores originals when possible.
+If recovery cannot finish, the command retains backups and reports their path.
+An interrupted move's journal must be recovered before another move starts.
+The command does not recook. Run `og cook` afterward to refresh outputs and
+the inventory. `--json` returns `from`, `to`, `rewritten`, and `warnings`.

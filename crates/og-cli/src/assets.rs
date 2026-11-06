@@ -1,4 +1,4 @@
-//! Queries the cook's unshipped asset index; never edits source assets.
+//! Asset queries and source moves.
 use og_cook::cook::assets::Index;
 use serde_json::json;
 use std::path::PathBuf;
@@ -15,6 +15,9 @@ pub fn run(args: &[&str]) -> ExitCode {
 }
 
 fn query(args: &[&str]) -> Result<(), String> {
+    if let ["mv", rest @ ..] = args {
+        return move_asset(rest);
+    }
     let mut root = PathBuf::from(".");
     let (mut kind, mut group, mut text) = (None, None, None);
     let (mut unused, mut refs, mut by, mut dupes, mut json_output) =
@@ -160,6 +163,45 @@ fn query(args: &[&str]) -> Result<(), String> {
                     format!("prefix {:?}", c.prefix)
                 }
             );
+        }
+    }
+    Ok(())
+}
+
+fn move_asset(args: &[&str]) -> Result<(), String> {
+    let mut root = PathBuf::from(".");
+    let mut json_output = false;
+    let mut paths = Vec::new();
+    let mut args = args.iter().copied();
+    while let Some(arg) = args.next() {
+        match arg {
+            "--project" => root = PathBuf::from(args.next().ok_or("--project needs a directory")?),
+            "--json" => json_output = true,
+            flag if flag.starts_with('-') => return Err(format!("unknown option {flag}")),
+            path => paths.push(path),
+        }
+    }
+    let [from, to] = paths.as_slice() else {
+        return Err("usage: og assets mv <from> <to> [--project DIR] [--json]".into());
+    };
+    let report = og_cook::cook::asset_move::move_asset(&root, from, to)?;
+    if json_output {
+        println!(
+            "{}",
+            serde_json::to_string(&report).map_err(|e| e.to_string())?
+        );
+    } else {
+        println!(
+            "moved {} to {}; rewrote {} files; run og cook to refresh cooked outputs",
+            report.from,
+            report.to,
+            report.rewritten.len()
+        );
+        for path in report.rewritten {
+            println!("  {path}");
+        }
+        for warning in report.warnings {
+            eprintln!("warning: {warning}");
         }
     }
     Ok(())

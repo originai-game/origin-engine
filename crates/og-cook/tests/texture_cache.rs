@@ -48,6 +48,100 @@ fn hit(r: &Report) -> bool {
 }
 
 #[test]
+fn asset_move_preserves_sources_and_rewrites_parsed_references_only() {
+    use og_cook::cook::asset_move::move_asset;
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("asset-move");
+    let _ = std::fs::remove_dir_all(&root);
+    project(&root, 30, false, true);
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    let code = r#"// og.load.texture(w, 'texture.png');
+const re = /texture.png/;
+const notAnAsset = 'texture.png.backup';
+og.load.texture(w, 'texture.\u0070ng');
+const fields = { texture: `assets/texture.png`, normal: 'texture.png#normal' };
+og.load.texture(w, `tex${name}.png`);
+"#;
+    std::fs::write(root.join("src/main.ts"), code).unwrap();
+    let scene = "type scene\nversion 1\n---\n# keep this comment: \"texture.png\"\nresource Assets {\n  texture \"assets/texture.png\"\n}\n";
+    std::fs::write(root.join("assets/main.ogt"), scene).unwrap();
+    let source = std::fs::read(root.join("assets/texture.png")).unwrap();
+    let settings = std::fs::read(root.join("assets/texture.png.ogt")).unwrap();
+    let options = CookOptions {
+        schemas: vec![og_core::reflect::Schema {
+            name: "Assets".into(),
+            version: 1,
+            doc: String::new(),
+            fields: vec![og_core::reflect::FieldSchema::new(
+                "texture",
+                og_core::reflect::FieldType::string(64).unwrap(),
+            )],
+        }],
+        ..CookOptions::default()
+    };
+    let (_, expected) = cook(&root, None, &options);
+
+    assert!(move_asset(&root, "../outside.png", "new.png").is_err());
+    std::fs::write(root.join("assets/new.png.ogt"), &settings).unwrap();
+    assert!(move_asset(&root, "texture.png", "new.png").is_err());
+    std::fs::remove_file(root.join("assets/new.png.ogt")).unwrap();
+    std::fs::write(root.join("src/broken.ts"), "const = ;").unwrap();
+    assert!(move_asset(&root, "texture.png", "art/new.png").is_err());
+    assert_eq!(
+        std::fs::read(root.join("assets/texture.png")).unwrap(),
+        source
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("src/main.ts")).unwrap(),
+        code
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("assets/main.ogt")).unwrap(),
+        scene
+    );
+    std::fs::remove_file(root.join("src/broken.ts")).unwrap();
+
+    let report = move_asset(&root, "assets/texture.png", "art/new.png").unwrap();
+    assert_eq!(report.rewritten, ["assets/main.ogt", "src/main.ts"]);
+    assert_eq!(report.warnings.len(), 1);
+    assert!(report.warnings[0].contains("computed load"));
+    assert!(!root.join("assets/texture.png").exists());
+    assert!(!root.join("assets/texture.png.ogt").exists());
+    assert!(!root.join(".og/asset-move").exists());
+    assert_eq!(
+        std::fs::read(root.join("assets/art/new.png")).unwrap(),
+        source
+    );
+    assert_eq!(
+        std::fs::read(root.join("assets/art/new.png.ogt")).unwrap(),
+        settings
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("assets/main.ogt")).unwrap(),
+        scene.replace(
+            "texture \"assets/texture.png\"",
+            "texture \"assets/art/new.png\""
+        )
+    );
+    let changed = std::fs::read_to_string(root.join("src/main.ts")).unwrap();
+    assert!(changed.contains("// og.load.texture(w, 'texture.png');"));
+    assert!(changed.contains("/texture.png/"));
+    assert!(changed.contains("'texture.png.backup'"));
+    assert!(changed.contains("og.load.texture(w, \"art/new.png\")"));
+    assert!(changed.contains("texture: \"assets/art/new.png\""));
+    assert!(changed.contains("normal: \"art/new.png#normal\""));
+    assert!(changed.contains("`tex${name}.png`"));
+    let report = cook_project_with_texture_cache(&root, &options, None).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+    assert!(bundle.output("texture.png").is_err());
+    assert_eq!(
+        bundle.read("art/new.png").unwrap().as_ref(),
+        expected.as_slice()
+    );
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn asset_index_tracks_shared_model_textures_and_typescript_without_changing_blobs() {
     use og_cook::cook::assets::Index;
     let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("asset-index");
