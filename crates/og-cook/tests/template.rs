@@ -176,11 +176,11 @@ fn every_thread_count_cooks_the_same_bytes() {
     };
     let reference = cook(&base.join("reference"), 1);
     // Fifteen outputs (timelines/intro.ogt with its .srt among them, and
-    // the intro's music, audio/sting.ogt), the seven of the built-in
-    // cartoon style its look's preset names (its style, its two fonts, its
-    // atlas at three densities and its icon sheet), the manifest and the
-    // cook times.
-    assert_eq!(reference.len(), 24, "{:?}", reference.keys());
+    // the intro's music, audio/sting.ogt), the eleven of the built-in
+    // storybook style its look's preset names (its style and seven sounds,
+    // the two shared fonts and the icon sheet it draws with), the manifest
+    // and the cook times.
+    assert_eq!(reference.len(), 28, "{:?}", reference.keys());
     let runs = if std::env::var_os("OG_GATE_ALL").is_some() {
         10
     } else {

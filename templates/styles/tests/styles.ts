@@ -163,7 +163,7 @@ export function unsettled(run: PlaytestRun, screen: string): string {
 /**
  * The script with a dump_ui just before each screenshot, at its tick: the
  * playtest refuses a capture taken while an entrance (a layer's, a
- * transition's, a stagger, a pack's glitch) or an exit is still in
+ * transition's, a stagger, the cyber pack's glitch) or an exit is still in
  * flight, since a pack cannot be judged from a frame caught mid-presence.
  */
 export function withSettleDumps(commands: string): string {
@@ -208,13 +208,13 @@ export const STYLE_STATES: Record<string, readonly StyleState[]> = Object.fromEn
 /**
  * The phone's states, composed into kit-style-<name>-phone-states.png at
  * the phone's own DPR (the surface's 390×844@3): the horror HUD at 100 and
- * 150 % text in scifi and fantasy (art, 2026-11-04: the world
+ * 150 % text in scifi, storybook and fantasy (art, 2026-11-04: the world
  * prompt's name over the scene in the scheme's light ink, its gap above the
  * chip, the d-pad clear of the battery). The phone sheet's own cells are at
  * 100 % only.
  */
 export const PHONE_STYLE_STATES: Record<string, readonly StyleState[]> = Object.fromEntries(
-  ["scifi", "fantasy"].map((style) => [
+  ["scifi", "storybook", "fantasy"].map((style) => [
     style,
     ["100", "150"].map((scale) => ({ name: `state-horror-${scale}`, commands: [`demo:text:${scale}`, "show:horrorHud"] })),
   ]),

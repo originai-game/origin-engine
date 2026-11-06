@@ -1,0 +1,124 @@
+type screen
+version 1
+---
+# Store (docs/ui.md Appendix B: bundles, rotations). The premium store:
+# the purse with top-up at the head, the rotation's sections with their
+# refresh timers, featured bundles, owned and sold-out offers, and the
+# offer's detail before the purchase.
+#
+# Viewmodel: section (the selected tab), sections (the tabs), refresh
+# (seconds to the rotation). Events to code: section (the click wrote
+# section), topUp, restore (Back pops it). Slots: Store takes liveops.storeFront (the
+# purse, the sections, the offers; it answers the offer chosen: code
+# confirms with og.ui.confirm and pushes the platform purchase); Detail
+# takes the chosen offer's contents (og.ui.dialog over og.ui.card).
+name "store"
+layer menu
+focus "Body/Store"
+props {
+  sections list "The store's tabs: { name, fresh (bool) }."
+  section number "The selected tab's index."
+  refresh number "Seconds until the rotation changes."
+}
+actions {
+  confirm "Select"
+  back "Back"
+  tabNext "Next tab"
+  tabPrev "Previous tab"
+}
+fixture default "{\"sections\": [{\"name\": \"Featured\", \"fresh\": true}, {\"name\": \"Daily\", \"fresh\": false}, {\"name\": \"Bundles\", \"fresh\": false}, {\"name\": \"Gems\", \"fresh\": false}], \"section\": 0, \"refresh\": 30240}"
+column Screen {
+  width grow
+  height grow
+  padding 32
+  gap 12
+  at phone {
+    padding 16
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    wrap true
+    button Back {
+      key "screen.common.back"
+      text "Back"
+      variant quiet
+      on click pop
+    }
+    label Title {
+      key "screen.store.title"
+      text "Store"
+      step xl2
+      heading true
+      at phone {
+        step xl
+      }
+    }
+    spacer
+    label Refresh {
+      text "New items in {refresh, countdown}"
+      step caption
+      color token inkMuted
+    }
+    button TopUp {
+      key "screen.store.topUp"
+      text "Get gems"
+      variant primary
+      size small
+      at phone {
+        size medium
+      }
+      on click emit topUp
+    }
+  }
+  row Tabs {
+    width grow
+    wrap true
+    gap 6
+    focusGroup wrap
+    for s in sections {
+      button Tab {
+        text bind s.name
+        variant ghost
+        on click set section "$index"
+        on click emit section
+        state selection bind "$index == section" {
+          off {
+            opacity 0.85
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+    }
+  }
+  column Body {
+    width grow
+    height grow
+    gap 12
+    slot Store {
+      width grow
+      height grow
+    }
+    slot Detail {
+      width grow
+    }
+  }
+  row Footer {
+    width grow
+    gap 12
+    align end
+    button Restore {
+      key "screen.store.restore"
+      text "Restore purchases"
+      variant quiet
+      size small
+      at phone {
+        size medium
+      }
+      on click emit restore
+    }
+  }
+}

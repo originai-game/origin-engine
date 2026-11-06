@@ -17,7 +17,8 @@
 //! 3.42:1, lampdive's placeholder 3.57:1, pathguard's primary 3.30:1 and
 //! its danger button 2.96:1, Hollowbell's danger badge 4.26:1, Lantern
 //! Vale's success, warn and info badges 3.15, 2.72 and 4.07:1, before
-//! their palettes moved); a generated style for every
+//! their palettes moved); the seed styles `og style new` generated
+//! (templates/styles/gilded … inkwash) and a generated style for every
 //! shape language and finish, drawn with their procedural dressings and no
 //! atlas (docs/ui.md §12.5: a generated style passes what a built-in one
 //! does). Every style is drawn with its dressings set, as the runtime sets

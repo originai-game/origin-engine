@@ -5,12 +5,6 @@
     "simulation": "changed",
     "breaking": [
       {
-        "member": "UI kits and style packs",
-        "change": "The bundled UI kits card, flight, idle, liveops, photo, rhythm, sports, story and versus and the style packs broadcast, craft, cyber, dread, foundry, gilded, kawaii, storybook, tactical and wasteland are removed until 0.8.0's UI work rebuilds them. The kits rpg, shooter, puzzle, gacha, strategy, racing and materials and the packs fantasy, scifi, cartoon and pixel stay. The look presets that named storybook now name fantasy or cartoon, those that named cyber name scifi, and create's UI-style choice offers the four kept packs.",
-        "fix": "A game that imported a removed kit keeps its installed copy (assets/ui-kits/<kit>) or moves to og.ui and a kept kit; a game whose look names a removed pack (`ui \"storybook\"`) names a kept one or installs its own copy under assets/styles/<name>.",
-        "find": ["extensions/card", "extensions/flight", "extensions/idle", "extensions/liveops", "extensions/photo", "extensions/rhythm", "extensions/sports", "extensions/story", "extensions/versus", "ui \"broadcast\"", "ui \"craft\"", "ui \"cyber\"", "ui \"dread\"", "ui \"foundry\"", "ui \"gilded\"", "ui \"kawaii\"", "ui \"storybook\"", "ui \"tactical\"", "ui \"wasteland\""]
-      },
-      {
         "member": "engine skills",
         "change": "The engine ships no skills: the 25 knowledge skills (og-2d, og-ai, og-anim, og-audio, og-build, og-core, og-destruction, og-feel, og-game, og-i18n, og-model, og-net, og-physics, og-platform-sdk, og-render, og-story, og-taste, og-ui, architecture-discipline, component-forge, level-texturing, localization, recipe-craft, ui-craft, visual-acceptance) are deleted, with the skill:<name> packs, the game/skills mounts (the style catalogue beside og-taste and the three-to-og guide beside og-game included) and the IDL modules' `skill` key. The knowledge package mounts only the scaffold overlay.",
         "fix": "Read the engine through og: `og api find <words>` and `og api show <name>` answer the API and the guides (`og api show start`). The platform removes the engine's former skill directories from its knowledge tree and stops pinning their packs.",

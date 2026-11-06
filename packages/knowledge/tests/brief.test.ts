@@ -254,9 +254,9 @@ test("style art is a nine-slice with its insets and one cell per state", () => {
 });
 
 test("a generated style's art requests become one brief per slot, in its shape language, finish and palette", () => {
-  // A style og style new wrote ("gilded"): six frames, the button and the primary, three
-  // ornaments (ornament rich), the icon set.
-  const file = join(import.meta.dir, "fixtures", "generated-art-requests.json");
+  // templates/styles/gilded/art-requests.json, written by og style new: six
+  // frames, the button and the primary, three ornaments (ornament rich), the icon set.
+  const file = join(import.meta.dir, "..", "..", "..", "templates", "styles", "gilded", "art-requests.json");
   const requests = JSON.parse(readFileSync(file, "utf8"));
   const briefs = styleArtBriefs(presetLook("16bit-pixel"), requests);
   expect(briefs.map((b) => b.slot)).toEqual([

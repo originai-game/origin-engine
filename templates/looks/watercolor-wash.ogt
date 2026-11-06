@@ -8,7 +8,7 @@ version 1
 # every edge wavering with the relief, a bright exposure.
 name "Watercolor washes"
 mood "soft"
-ui "fantasy"
+ui "storybook"
 Stylise {
   paintRadius 3
   paintAnisotropy 0.4

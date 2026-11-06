@@ -338,7 +338,7 @@ reviewed as a diff.
 4. **Recolour.** Painted art keeps the colours it was painted in, so a
    game's copy of a pack (`og new`'s own style, `og style eject`) whose
    palette moves to the game's accent would still draw the pack's accent
-   in every `authored` slice (a yellow primary button under a blue
+   in every `authored` slice (cyber's yellow primary button under a blue
    palette). A style says which painted accents follow which palette role
    with `recolour "<colour as painted>" <role>` lines after its `atlas`
    line (every painted pack has `recolour "<its primary>" primary`); a

@@ -24,8 +24,6 @@ style with its documents.
 A kit is a directory with an `extension.json`, TypeScript components
 registered with `registerUiExtension`, screen documents and its own
 SKILL.md, which says how to use it: read that skill before using the kit.
-The bundled kits are `rpg`, `shooter`, `puzzle`, `gacha`, `strategy` and
-`racing`, with `materials` (UI material presets); `og ui list` names them.
 
 - `og ui add <kit>` installs an editable copy under `assets/ui-kits/<kit>`;
   the game imports the installed `index.ts`. Edit the copy freely; an
@@ -43,8 +41,7 @@ The bundled kits are `rpg`, `shooter`, `puzzle`, `gacha`, `strategy` and
 A style pack (`assets/styles/<name>/style.ogt`, or a bundled one named by
 slug) sets tokens (colours, type, radii, spacing, motion), part dressings,
 sounds and haptics for every component. The look's `ui "<slug>"` picks it;
-`og style list` names the bundled ones: `fantasy`, `scifi`, `cartoon` and
-`pixel`.
+`og style list` names the bundled ones.
 
 - Change a style by ejecting it (`og style eject <slug>`) and editing the
   copy, or by `og style add`. Never restyle components one by one in code:

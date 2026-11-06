@@ -1,0 +1,76 @@
+{
+  "name": "tactical",
+  "look": "tactical military",
+  "premise": "a squad tactics game of briefings, loadouts and grid maps",
+  "scheme": "dark",
+  "seed": [
+    "#9aae5c",
+    1.0
+  ],
+  "ground": [
+    "#101210",
+    1.0
+  ],
+  "ink": null,
+  "accent": [
+    "#e0b13a",
+    1.0
+  ],
+  "onPrimary": null,
+  "shadow": null,
+  "shape": "cut",
+  "ornament": "light",
+  "motion": "mechanical",
+  "finish": "flat",
+  "fonts": [
+    "@styles/shared/Rajdhani-Bold.ttf",
+    "@styles/shared/ChakraPetch-SemiBold.ttf",
+    "@styles/scifi/JetBrainsMono-Regular.ttf",
+    "@styles/cjk/NotoSansSC-Regular.ttf",
+    "@styles/cjk/NotoSansSC-Bold.ttf"
+  ],
+  "icons": "@styles/scifi/icons.png",
+  "body": 15.0,
+  "labelTracking": 0.12,
+  "displayTracking": null,
+  "sound": {
+    "tap": [
+      "click",
+      7,
+      0.7
+    ],
+    "confirm": [
+      "select",
+      8,
+      0.75
+    ],
+    "back": [
+      "back",
+      4,
+      0.7
+    ],
+    "open": [
+      "click",
+      9,
+      0.55
+    ],
+    "error": [
+      "error",
+      3,
+      0.75
+    ],
+    "reward": [
+      "powerup",
+      4,
+      0.8
+    ],
+    "volume": 0.6,
+    "hover": true,
+    "spread": 0.02
+  },
+  "glitch": 0.0,
+  "danger": null,
+  "info": null,
+  "dressings": [],
+  "displayMin": null
+}

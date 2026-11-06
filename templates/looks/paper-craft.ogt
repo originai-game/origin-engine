@@ -4,7 +4,7 @@ version 1
 # Flat facets with a fine contour, ambient occlusion in the folds, the engine's paper surface on every material and a paper grain over all of it (the engine's @canvas/paper). No posterize: its per-channel rounding turns near-neutral card colours another hue.
 name "Folded paper & papercraft"
 mood "soft"
-ui "cartoon"
+ui "storybook"
 MaterialStyle {
   flatShading true
   outlineWidth 1

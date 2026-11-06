@@ -5,7 +5,7 @@ version 1
 # apart (posterizeMode tone), so a mood moves a colour's value, never its hue.
 name "Minimal geometric color"
 mood "soft"
-ui "scifi"
+ui "cyber"
 MaterialStyle {
   flatShading true
 }

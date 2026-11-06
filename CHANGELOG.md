@@ -15,20 +15,6 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
-- **Breaking: nine UI kits and ten style packs removed.** The bundled kits
-  `card`, `flight`, `idle`, `liveops`, `photo`, `rhythm`, `sports`, `story`
-  and `versus` and the style packs `broadcast`, `craft`, `cyber`, `dread`,
-  `foundry`, `gilded`, `kawaii`, `storybook`, `tactical` and `wasteland` are
-  deleted with their tests and references, to be rebuilt in 0.8.0's UI
-  work. `rpg`, `shooter`, `puzzle`, `gacha`, `strategy`, `racing` and
-  `materials` stay, as do `fantasy`, `scifi`, `cartoon` and `pixel` (with
-  `shared` and the CJK fonts in `cjk`). Looks that named `storybook` name
-  `fantasy` (classical-painting-collage, expressionist-painting,
-  illuminated-manuscript, watercolor-wash) or `cartoon` (detailed-doodle,
-  faceted-low-poly, paper-craft, pencil-hatching); those that named `cyber`
-  name `scifi`. `og create`'s UI-style choice offers the four kept packs and
-  defaults to `cartoon`. `og upgrade` lists every line of a game that names
-  a removed kit or pack.
 - **Breaking: the engine ships no skills.** The 25 skill packs under
   `packages/knowledge/skills/` (`og-core`, `og-game`, `og-build`, `og-ui`,
   `og-taste` and the rest) and `packages/knowledge/guides/` are deleted,

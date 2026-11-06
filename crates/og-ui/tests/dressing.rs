@@ -35,7 +35,7 @@ use pack_support::*;
 fn a_tight_field_takes_its_components_text_parts() {
     let style = std::fs::read_to_string(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../templates/styles/fantasy/style.ogt"
+        "/../../templates/styles/storybook/style.ogt"
     ))
     .unwrap();
     let dress = r##"dress "Poem.text" {

@@ -1,0 +1,125 @@
+{
+  "choices": {
+    "finish": "gradient",
+    "motion": "snappy",
+    "ornament": "none",
+    "scheme": "dark",
+    "seed": "#e8322b",
+    "shape": "sharp"
+  },
+  "look": "sports broadcast",
+  "palette": {
+    "backdrop": "#0a1431",
+    "highlight": "#ffde52",
+    "ink": "#fef3f2",
+    "line": "#49495e",
+    "panel": "#21243e",
+    "primary": "#f28c88"
+  },
+  "premise": "an arcade football game framed like a live TV broadcast",
+  "slots": [
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "broadcast/panel",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "broadcast/card",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "broadcast/field",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "broadcast/slot",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "broadcast/tooltip",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "broadcast/hud",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleButton",
+      "name": "broadcast/button",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleButton",
+      "name": "broadcast/button-primary",
+      "safe": null
+    },
+    {
+      "aspect": [
+        1,
+        1
+      ],
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "iconSet",
+      "name": "broadcast/icons",
+      "safe": null
+    }
+  ],
+  "style": "broadcast"
+}

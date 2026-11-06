@@ -175,9 +175,8 @@ create package, not a separate platform vocabulary:
 
 - `CREATION_CHOICES` owns the enums. `creationSchema(readCatalogue().map(s => s.slug))`
   returns the form's JSON Schema 2020-12. The look catalogue still owns its
-  37 slugs. There are four installable UI packs (`fantasy`, `scifi`,
-  `cartoon`, `pixel`); `cjk` and `shared` contain support assets, not
-  styles. `CREATION_CHOICES.ui` offers only those four.
+  37 slugs. There are 14 installable UI packs in this revision, not 16;
+  `cjk` and `shared` contain support assets, not styles.
 - `resolveCreationChoices(premise, partialChoices)` returns suggestions
   with explicit choices preserved. Display and confirm the required
   choices. The language heuristic recognizes kana and Han text, otherwise
@@ -362,21 +361,3 @@ skill (its instructions, create mode and own skills point at `og help` and
 - `scripts/knowledge/production-bundle.test.mjs:50`–`:54` keeps passing (it
   already excludes `game/skills/og-*` other than the platform's
   `og-platform`).
-
-## The removed UI kits and style packs
-
-**Ask 30, open.** From the first engine version after 0.7.7 the engine
-bundles the first-wave UI packs only, until 0.8.0's UI work rebuilds the
-rest: kits `rpg`, `shooter`, `puzzle`, `gacha`, `strategy`, `racing` and
-`materials`; style packs `fantasy`, `scifi`, `cartoon` and `pixel` (with
-`shared` and `cjk`). The kits `card`, `flight`, `idle`, `liveops`,
-`photo`, `rhythm`, `sports`, `story` and `versus` and the packs
-`broadcast`, `craft`, `cyber`, `dread`, `foundry`, `gilded`, `kawaii`,
-`storybook`, `tactical` and `wasteland` are deleted. origin-agent's
-creation form takes its UI-style options from `CREATION_CHOICES.ui`
-(ask 24) and the catalogue's `ui` fields, both already repointed (the
-looks that named `storybook` now name `fantasy` or `cartoon`, those that
-named `cyber` name `scifi`); nothing in origin-agent's server, prompts,
-evals, knowledge, runner or web names a removed kit or pack (read at
-a03ebad), so the ask is to re-read the form's options from the pinned
-version, not to edit code.

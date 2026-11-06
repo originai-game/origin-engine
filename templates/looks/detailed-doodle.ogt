@@ -8,7 +8,7 @@ version 1
 # sketchbook white: on white a grey floor's cool tint read as lavender-grey.
 name "Fine-line doodle worlds"
 mood "bright"
-ui "cartoon"
+ui "storybook"
 Stylise {
   ink true
   inkThreshold 0.1

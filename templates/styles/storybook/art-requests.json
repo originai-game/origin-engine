@@ -1,0 +1,158 @@
+{
+  "choices": {
+    "finish": "paper",
+    "motion": "floaty",
+    "ornament": "rich",
+    "scheme": "light",
+    "seed": "#b5523b",
+    "shape": "soft"
+  },
+  "look": "storybook",
+  "palette": {
+    "backdrop": "#efe3c8",
+    "highlight": "#3a5a43",
+    "ink": "#210f0b",
+    "line": "#d3ccc4",
+    "panel": "#faf5ed",
+    "primary": "#863d2c"
+  },
+  "premise": "a gentle illustrated adventure told like a picture book",
+  "slots": [
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "storybook/panel",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "storybook/card",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "storybook/field",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "storybook/slot",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "storybook/tooltip",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleFrame",
+      "name": "storybook/hud",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleButton",
+      "name": "storybook/button",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "styleButton",
+      "name": "storybook/button-primary",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "ornament",
+      "name": "storybook/corner",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "ornament",
+      "name": "storybook/divider",
+      "safe": null
+    },
+    {
+      "aspect": "free",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "ornament",
+      "name": "storybook/flourish",
+      "safe": null
+    },
+    {
+      "aspect": [
+        1,
+        1
+      ],
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "iconSet",
+      "name": "storybook/icons",
+      "safe": null
+    }
+  ],
+  "style": "storybook"
+}

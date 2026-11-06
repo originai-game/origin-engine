@@ -1,0 +1,7 @@
+type import
+version 1
+---
+# A style atlas painted (og style art).
+texture {
+  kind color
+}
