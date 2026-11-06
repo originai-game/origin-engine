@@ -24,8 +24,4 @@ image = { workspace = true }
 
 [[test]]
 name = "tests"
-path = "tests/main.rs"
-
-[[test]]
-name = "audio"
-path = "tests/audio.rs"
+path = "tests/it/main.rs"

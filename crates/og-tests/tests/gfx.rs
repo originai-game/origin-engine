@@ -12,7 +12,9 @@ use og_tests::gfx;
 use og_tests::scenes::{self, GfxScene};
 use std::path::PathBuf;
 
+#[path = "gfx/overlay_effects.rs"]
 mod overlay_effects;
+#[path = "gfx/sprites_post.rs"]
 mod sprites_post;
 
 fn out_dir() -> PathBuf {

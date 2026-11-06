@@ -1,4 +1,5 @@
 [package]
+autotests = false
 name = "og-motion"
 version = "0.7.7"
 edition.workspace = true
@@ -36,3 +37,7 @@ reference = []
 [dev-dependencies]
 og-motion = { path = ".", features = ["reference"] }
 naga = { version = "30.0.1", features = ["wgsl-in", "msl-out", "spv-out", "hlsl-out"] }
+
+[[test]]
+name = "tests"
+path = "tests/it/main.rs"

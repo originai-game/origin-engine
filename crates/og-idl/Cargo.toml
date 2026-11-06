@@ -15,4 +15,4 @@ serde_json = { version = "1", features = ["float_roundtrip"] }
 
 [[test]]
 name = "tests"
-path = "tests/main.rs"
+path = "tests/it/main.rs"

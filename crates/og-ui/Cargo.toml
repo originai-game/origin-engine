@@ -49,10 +49,6 @@ accesskit = { version = "=0.25.2", features = ["serde"] }
 image = { workspace = true }
 
 [[test]]
-name = "tests"
-path = "tests/main.rs"
-
-[[test]]
 name = "style-packs"
 path = "../../templates/styles/tests/packs.rs"
 required-features = ["kit-tests"]
@@ -61,3 +57,7 @@ required-features = ["kit-tests"]
 [[example]]
 name = "gen-theme"
 path = "scripts/gen_theme.rs"
+
+[[test]]
+name = "tests"
+path = "tests/it/main.rs"

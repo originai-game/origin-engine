@@ -13,4 +13,4 @@ glam = { workspace = true }
 
 [[test]]
 name = "tests"
-path = "tests/main.rs"
+path = "tests/it/main.rs"

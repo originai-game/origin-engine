@@ -18,7 +18,7 @@ node, which CI takes from `actions/setup-node`.
 
 | Tool | Version | Pinned by |
 |---|---|---|
-| Rust (rustc, rustfmt, clippy, rust-src for the lanes wasm's `-Z build-std`; wasm32-unknown-unknown, wasm32-wasip1 (the AV1 fallback decoder, `packages/engine/scripts/build-av1.sh`) and x86_64-linux-gnu targets) | 1.99.1, edition 2024, `rust-version` 1.99 | `rust-toolchain.toml`, `Cargo.toml` `[workspace.package]` |
+| Rust (rustc, rustfmt, clippy, rust-src and rustc-codegen-cranelift-preview; wasm32-unknown-unknown, wasm32-wasip1 and x86_64-linux-gnu targets) | nightly-2026-11-05 (1.101.0-nightly), edition 2024, `rust-version` 1.99 | `rust-toolchain.toml`, `Cargo.toml` `[workspace.package]` |
 | wgpu / naga | 30.0.1 | `Cargo.toml` `[workspace.dependencies]` |
 | AccessKit (native shared-frame accessibility schema) | 0.25.2 | `crates/og-ui/Cargo.toml` (exact; serde enabled, no OS adapter in the engine) |
 | Parley / parley_engine, HarfRust, Skrifa (UI text) | 0.12.0 / 0.12.0, 0.12.0, 0.44.0 | `crates/og-ui/Cargo.toml` (exact compatible stack; default features off, `libm`, Parley `complex-scripts`, no system font discovery) |
@@ -33,9 +33,34 @@ node, which CI takes from `actions/setup-node`.
 | ShellCheck (CI lints `scripts/*.sh` with it; Ubuntu's 0.9 reports what 0.11 does not) | 0.11.0 | `SHELLCHECK_VERSION` in `scripts/install-tools.sh` (Homebrew's on macOS) |
 | node (`determinism`'s wasm32 runs) | 24 in CI | `.github/actions/provision` |
 | sccache (the rustc wrapper, `.cargo/config.toml`; not used in CI) | 0.14.0 | `SCCACHE_VERSION` in `scripts/install-tools.sh` |
+| mold (Linux native linker) | distribution package | `.agents/setup`, `scripts/install-tools.sh`; `.cargo/config.toml` selects it |
 | cargo-zigbuild, zig (`build.sh --linux-x64`) | 0.23.4, 0.17.0 here | not pinned; outside the gate |
 | Chrome for Testing (`make web-reference`, browser tests) | 150 | `CHROME_PATH`; outside the gate |
 | Mesa lavapipe (CPU rendering in orbs) | minimum 25.0.7 | `.agents/setup`; Debian bookworm-backports supplies Mesa and apt resolves its dependencies |
+
+Dev and test default to Cranelift with four frontend threads (`-Zthreads=4`).
+The per-package LLVM overrides in `.cargo/config.toml` cover the Node addon's
+Mach-O section limit, unsupported ARM NEON intrinsics in JPEG and physics,
+and the existing optimized codecs and per-frame paths. **arm64 macOS uses
+LLVM for the whole target:** mixing backends hangs the UI and cook in shared
+SIMD code on this nightly. Build-time executables also use LLVM. Release,
+wasm and wasm-gate use LLVM. A wasm dev check selects LLVM because Cranelift
+does not support that target. Cargo keeps metadata in `.rmeta` instead of
+duplicating it in libraries (`unstable.embed-metadata = false`). The dated
+nightly uses Cargo's new build-directory layout; consumers must use Cargo's
+artifact messages, not guess paths under `target/debug/deps`.
+
+| Native target | Dev/test backend and frontend | Linker | Verification |
+|---|---|---|---|
+| arm64 macOS | LLVM target fallback, `-Zthreads=4` | platform linker | Selected controls passed on macrunner |
+| x86_64 Linux | Cranelift, explicit LLVM package overrides, `-Zthreads=4` | mold | Unverified in this lane |
+| x86_64-pc-windows-msvc (studio-win) | Cranelift, explicit LLVM package overrides, `-Zthreads=4` | rust-lld (lld-link), not link.exe | **Unverified on studio-win** |
+
+The dated nightly includes the MSVC target. Windows Cranelift is available
+upstream, but this configuration is not a successful Windows build report.
+If a package fails there, add its LLVM override; if mixed backends fail,
+use a whole-target LLVM override as on arm64 macOS. All shipping profiles
+remain LLVM on every target. Neither mold nor wild supports Windows.
 
 wgpu 31 is not on crates.io (2026-10-19, 2026-10-21 and 2026-10-24: `cargo
 search wgpu` and `cargo search naga` list 30.0.1 as the newest), so wgpu
@@ -243,34 +268,18 @@ had grown `target/` to 143 GB.
 
 ### Test binaries
 
-Each crate's integration tests are one binary, `tests` (`tests/main.rs`
-declares every file under `tests/` as a module; `autotests = false` and one
-`[[test]]` in its `Cargo.toml`). An edit used to relink one ~80 MB
-executable per test file, 199 of them after an og-core edit, and those
-links were 78–85 % of the CPU of every incremental test build. Measured
-2026-10-26 in an orb (16 cores, Linux, rust-lld, warm), `cargo test
---workspace --no-run` after appending a function to a crate's `lib.rs`:
+Each crate has at most one default integration binary, `tests`, declared
+at `tests/it/main.rs` with `autotests = false`. The opt-in `kit-tests`
+targets belong to the separate kits lane. The November 6 consolidation
+reduces the engine's integration binaries from 37 to 23, not from 318:
+most files were already modules after the October consolidation.
 
-| Edit | Before (231 executables) | After (58) |
-|---|---|---|
-| og-core | 23.0 s | 7.9 s |
-| og-render | 20.1 s | 7.5 s |
-| og-runtime | 12.5 s | 5.4–5.9 s |
-
-nextest still runs every test in a process of its own, so the merge changes
-no test's isolation; `cargo nextest list` gives the same 1068 integration
-tests before and after. A test is now named `<module>::<test>` in the
-`tests` binary: `cargo test -p og-ui --test tests gfx::` runs what `--test
-gfx` ran, and nextest filters use `package(..) & test(/^module::/)`. A new
-test file is a `mod` line in its crate's `tests/main.rs`.
-
-A file stays its own binary when its tests change process-wide state that
-another module's tests would see under plain `cargo test` (threads of one
-process), or when they assert a wall-clock bound: og-physics' `lanes` and
-`pile` (the lanes switch, grains and an injected fault), og-runtime's
-`extract_cost`, og-audio's `audio` and og-tests' `render`. Such a file is a
-`[[test]]` of its own in the crate's `Cargo.toml`, named in the header of
-its `tests/main.rs`. Crates with one test file keep cargo's default.
+Single-crate checks belong inline under `#[cfg(test)]`; core, blob,
+geometry and localization checks now live beside their implementation.
+Integration targets cover cross-crate contracts, GPU rendering and the
+CLI. nextest runs each test in its own process, including tests that
+change process-wide state. Use nextest, or `cargo test -- --test-threads=1`
+when running these tests directly. Filters use `package(..) & test(/^module::/)`.
 
 The test build (`--workspace`) and the gate's dev `og` and addon
 (`cargo build -p og-host-node -p og-cli`, `packages/engine/scripts/build.sh`)

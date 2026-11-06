@@ -38,7 +38,7 @@ path = "src/bin/og-gfx.rs"
 
 [[test]]
 name = "tests"
-path = "tests/main.rs"
+path = "tests/it/main.rs"
 
 [[test]]
 name = "style-diagnostics"

@@ -11,7 +11,7 @@ step() {
 
 # Cache prerequisites and a warm dev build (prewarm, at the end) in the
 # project snapshot.
-packages=(build-essential pkg-config libasound2-dev brotli shellcheck curl ca-certificates unzip xz-utils)
+packages=(build-essential mold pkg-config libasound2-dev brotli shellcheck curl ca-certificates unzip xz-utils)
 missing=()
 for package in "${packages[@]}"; do
   if [[ $(dpkg-query -W -f='${Status}' "$package" 2>/dev/null || true) != 'install ok installed' ]]; then
@@ -58,7 +58,8 @@ if ! command -v rustup >/dev/null; then
   step curl -fsSL --retry 3 https://sh.rustup.rs -o "$tmp/rustup.sh"
   step sh "$tmp/rustup.sh" -y --profile minimal --default-toolchain none --no-modify-path
 fi
-# rustup reads the version, components and targets from rust-toolchain.toml.
+# rustup installs the dated nightly, including rustc-codegen-cranelift-preview,
+# and the LLVM wasm targets from rust-toolchain.toml.
 step rustup show active-toolchain
 
 # Avoid compiling nextest from source during setup. The repository leaves its

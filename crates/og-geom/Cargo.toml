@@ -1,4 +1,5 @@
 [package]
+autotests = false
 name = "og-geom"
 version = "0.7.7"
 edition.workspace = true

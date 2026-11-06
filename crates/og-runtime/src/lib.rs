@@ -27,6 +27,8 @@
 //! Single-threaded by construction: every table is thread-local, and an
 //! engine never leaves the thread that created it.
 
+#![recursion_limit = "256"]
+
 mod ai;
 mod anim;
 mod api;

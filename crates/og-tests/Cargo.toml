@@ -34,8 +34,4 @@ required-features = ["surface"]
 
 [[test]]
 name = "tests"
-path = "tests/main.rs"
-
-[[test]]
-name = "render"
-path = "tests/render.rs"
+path = "tests/it/main.rs"

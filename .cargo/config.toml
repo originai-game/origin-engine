@@ -8,3 +8,124 @@
 # off); CI does that, caching target/ instead.
 [build]
 rustc-wrapper = "sccache"
+rustflags = ["-Zthreads=4"]
+
+[unstable]
+codegen-backend = true
+embed-metadata = false
+
+[profile.dev]
+codegen-backend = "cranelift"
+
+[profile.dev.build-override]
+codegen-backend = "llvm"
+
+# LLVM fallbacks: napi exceeds Cranelift's Mach-O section limit;
+# JPEG's ARM NEON sqxtn and physics' fmaxnm are unsupported intrinsics.
+# Packages with an explicit dev opt-level retain LLVM optimization: the
+# cook's codecs must write the shipping bytes and hot loops stay usable.
+[profile.dev.package.adler2]
+codegen-backend = "llvm"
+[profile.dev.package.basis-universal]
+codegen-backend = "llvm"
+[profile.dev.package.basis-universal-sys]
+codegen-backend = "llvm"
+[profile.dev.package.fdsm]
+codegen-backend = "llvm"
+[profile.dev.package.glam]
+codegen-backend = "llvm"
+[profile.dev.package.glamx]
+codegen-backend = "llvm"
+[profile.dev.package.image]
+codegen-backend = "llvm"
+[profile.dev.package.itoa]
+codegen-backend = "llvm"
+[profile.dev.package.libm]
+codegen-backend = "llvm"
+[profile.dev.package.memchr]
+codegen-backend = "llvm"
+[profile.dev.package.meshopt]
+codegen-backend = "llvm"
+[profile.dev.package.miniz_oxide]
+codegen-backend = "llvm"
+[profile.dev.package.naga]
+codegen-backend = "llvm"
+[profile.dev.package.nalgebra]
+codegen-backend = "llvm"
+[profile.dev.package.og-bake]
+codegen-backend = "llvm"
+[profile.dev.package.og-cook]
+codegen-backend = "llvm"
+[profile.dev.package.og-host-node]
+codegen-backend = "llvm"
+[profile.dev.package.og-nav]
+codegen-backend = "llvm"
+[profile.dev.package.og-physics]
+codegen-backend = "llvm"
+[profile.dev.package.og-runtime]
+codegen-backend = "llvm"
+[profile.dev.package.og-ui]
+codegen-backend = "llvm"
+[profile.dev.package.opus-pure]
+codegen-backend = "llvm"
+[profile.dev.package.parry2d]
+codegen-backend = "llvm"
+[profile.dev.package.parry3d]
+codegen-backend = "llvm"
+[profile.dev.package.rapier2d]
+codegen-backend = "llvm"
+[profile.dev.package.rapier3d]
+codegen-backend = "llvm"
+[profile.dev.package.rav1d]
+codegen-backend = "llvm"
+[profile.dev.package.serde_json]
+codegen-backend = "llvm"
+[profile.dev.package.simba]
+codegen-backend = "llvm"
+[profile.dev.package.simd-adler32]
+codegen-backend = "llvm"
+[profile.dev.package.ufbx]
+codegen-backend = "llvm"
+[profile.dev.package.wgpu]
+codegen-backend = "llvm"
+[profile.dev.package.wgpu-core]
+codegen-backend = "llvm"
+[profile.dev.package.wgpu-hal]
+codegen-backend = "llvm"
+[profile.dev.package.wgpu-types]
+codegen-backend = "llvm"
+[profile.dev.package.wide]
+codegen-backend = "llvm"
+[profile.dev.package.zmij]
+codegen-backend = "llvm"
+[profile.dev.package.zune-jpeg]
+codegen-backend = "llvm"
+
+# Shipping and size measurements never use Cranelift.
+[profile.release]
+codegen-backend = "llvm"
+
+[profile.wasm]
+codegen-backend = "llvm"
+
+[profile.wasm-gate]
+codegen-backend = "llvm"
+
+[target.'cfg(target_os = "linux")']
+rustflags = ["-Zthreads=4", "-C", "link-arg=-fuse-ld=mold"]
+
+# studio-win: Cranelift in dev/test (with the package overrides above),
+# LLVM when shipping. rust-lld uses its lld-link frontend for MSVC.
+# Configuration only: not yet verified on studio-win.
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld"
+rustflags = ["-Zthreads=4"]
+
+# Cranelift has no wasm backend, including cargo check in the dev profile.
+[target.'cfg(target_arch = "wasm32")']
+rustflags = ["-Zthreads=4", "-Zcodegen-backend=llvm"]
+
+# cg_clif and LLVM still disagree on parts of the arm64 macOS Rust ABI.
+# Mixed generic SIMD code hangs in HashMap insertion on this nightly.
+[target.'cfg(all(target_os = "macos", target_arch = "aarch64"))']
+rustflags = ["-Zthreads=4", "-Zcodegen-backend=llvm"]

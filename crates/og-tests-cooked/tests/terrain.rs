@@ -5,6 +5,7 @@ use og_render::RgbaImage;
 use og_tests_cooked::gfx;
 use std::path::PathBuf;
 
+#[path = "terrain/streaming_wind.rs"]
 mod streaming_wind;
 
 fn check(scene: &str) -> gfx::GfxReport {

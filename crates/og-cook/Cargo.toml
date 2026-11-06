@@ -103,7 +103,7 @@ required-features = ["cook"]
 
 [[test]]
 name = "tests"
-path = "tests/main.rs"
+path = "tests/it/main.rs"
 
 [[test]]
 name = "kit-documents"

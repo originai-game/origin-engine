@@ -5,9 +5,13 @@
 use og_tests_cooked::gfx;
 use std::path::PathBuf;
 
+#[path = "gfx/gltf_extensions.rs"]
 mod gltf_extensions;
+#[path = "gfx/impostors.rs"]
 mod impostors;
+#[path = "gfx/meshlets.rs"]
 mod meshlets;
+#[path = "gfx/overlay_effects.rs"]
 mod overlay_effects;
 
 fn out_dir() -> PathBuf {

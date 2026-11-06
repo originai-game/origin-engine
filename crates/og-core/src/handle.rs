@@ -374,3 +374,107 @@ impl<T> Pool<T> {
         })
     }
 }
+
+#[cfg(test)]
+mod handle_contracts {
+    //! Generational handles: a dead handle is an error value, never an alias.
+
+    use crate::handle::{HandleAllocator, SlotState};
+    use crate::{ErrorKind, Handle, Pool, RawHandle};
+
+    #[test]
+    fn a_freed_slot_reused_does_not_revive_old_handles() {
+        let mut pool: Pool<&str> = Pool::new();
+        let a = pool.insert("a");
+        let b = pool.insert("b");
+        assert_eq!(*pool.get(a).unwrap(), "a");
+        assert_eq!(pool.remove(a).unwrap(), "a");
+        let c = pool.insert("c"); // reuses a's slot
+        assert_eq!(c.raw().index(), a.raw().index());
+        assert_ne!(c, a);
+        let err = pool.get(a).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::DeadHandle);
+        assert!(err.reason().contains("dead"), "{}", err.reason());
+        assert_eq!(pool.remove(a).unwrap_err().kind(), ErrorKind::DeadHandle);
+        assert_eq!(*pool.get(c).unwrap(), "c");
+        assert_eq!(pool.len(), 2);
+        let live: Vec<_> = pool.iter().map(|(h, v)| (h, *v)).collect();
+        assert_eq!(live, vec![(c, "c"), (b, "b")]);
+        let never = Handle::<&str>::from_raw(RawHandle::new(99, 1));
+        assert_eq!(pool.get(never).unwrap_err().kind(), ErrorKind::DeadHandle);
+    }
+
+    #[test]
+    fn bits_round_trip_and_zero_is_never_live() {
+        let mut alloc = HandleAllocator::new();
+        let h = alloc.alloc();
+        assert_eq!(h.generation(), 1);
+        assert_ne!(h.to_bits(), 0);
+        assert_eq!(RawHandle::from_bits(h.to_bits()), h);
+        assert!(!alloc.is_alive(RawHandle::from_bits(0)));
+    }
+
+    #[test]
+    fn allocator_parts_rebuild_the_same_allocator_and_reject_inconsistency() {
+        let mut alloc = HandleAllocator::new();
+        let hs: Vec<_> = (0..5).map(|_| alloc.alloc()).collect();
+        alloc.free(hs[1]).unwrap();
+        alloc.free(hs[3]).unwrap();
+        let slots: Vec<SlotState> = alloc.slots().collect();
+        let rebuilt = HandleAllocator::from_parts(&slots, alloc.free_list()).unwrap();
+        assert_eq!(rebuilt, alloc);
+        let (mut a, mut b) = (alloc.clone(), rebuilt);
+        assert_eq!(a.alloc(), b.alloc());
+
+        let mut live_in_free = slots.clone();
+        live_in_free[1].alive = true;
+        assert!(HandleAllocator::from_parts(&live_in_free, &[1, 3]).is_err());
+        assert!(HandleAllocator::from_parts(&slots, &[3]).is_err()); // slot 1 lost
+        assert!(HandleAllocator::from_parts(&slots, &[1, 1, 3]).is_err());
+        assert!(HandleAllocator::from_parts(&slots, &[1, 3, 9]).is_err());
+    }
+
+    #[test]
+    fn a_slot_retires_before_its_ids_stop_being_exact_javascript_numbers() {
+        use crate::handle::{MAX_GENERATION, RETIRED_GENERATION};
+        const MAX_SAFE_INTEGER: u64 = (1 << 53) - 1;
+        assert_eq!(RETIRED_GENERATION, 1 << 21);
+        let mut alloc = HandleAllocator::new();
+        let other = alloc.alloc(); // slot 0 stays live throughout
+        let mut last = alloc.alloc();
+        for generation in 1..=MAX_GENERATION {
+            assert_eq!((last.index(), last.generation()), (1, generation));
+            alloc.free(last).unwrap();
+            if generation < MAX_GENERATION {
+                last = alloc.alloc();
+            }
+        }
+        // The last handle slot 1 ever gave out, with the largest index possible,
+        // is still exact as an f64.
+        assert_eq!(last.generation(), MAX_GENERATION);
+        let widest = RawHandle::new(u32::MAX, MAX_GENERATION).to_bits();
+        assert_eq!(widest, MAX_SAFE_INTEGER);
+        assert_eq!(widest as f64 as u64, widest);
+        // Slot 1 is retired: never handed out again, its last handle stays dead.
+        assert!(alloc.free_list().is_empty());
+        let next = alloc.alloc();
+        assert_eq!((next.index(), next.generation()), (2, 1));
+        assert_eq!(alloc.free(last).unwrap_err().kind(), ErrorKind::DeadHandle);
+        assert!(alloc.is_alive(other));
+        assert_eq!(alloc.slot_count(), 3);
+
+        // A retired slot survives a rebuild; impossible generations are refused.
+        let slots: Vec<SlotState> = alloc.slots().collect();
+        assert_eq!(slots[1].generation, RETIRED_GENERATION);
+        assert!(!slots[1].alive);
+        let rebuilt = HandleAllocator::from_parts(&slots, alloc.free_list()).unwrap();
+        assert_eq!(rebuilt, alloc);
+        let mut bad = slots.clone();
+        bad[1].generation = RETIRED_GENERATION + 1;
+        assert!(HandleAllocator::from_parts(&bad, &[]).is_err());
+        let mut bad = slots.clone();
+        bad[1].alive = true;
+        assert!(HandleAllocator::from_parts(&bad, &[]).is_err());
+        assert!(HandleAllocator::from_parts(&slots, &[1]).is_err());
+    }
+}

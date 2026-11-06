@@ -26,6 +26,8 @@
 //! # Ok(()) }
 //! ```
 
+#![recursion_limit = "256"]
+
 /// A file of `shaders/` as the renderer compiles it: the copy build.rs
 /// wrote with its `//` comments removed (every token and line kept), so
 /// the comments stay in the sources and out of the wasm.

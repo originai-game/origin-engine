@@ -113,10 +113,15 @@ fn keys(k: &[UiKey]) -> InputFrame {
     }
 }
 
+#[path = "widgets/appearance.rs"]
 mod appearance;
+#[path = "widgets/controls.rs"]
 mod controls;
+#[path = "widgets/navigation.rs"]
 mod navigation;
+#[path = "widgets/scrolling.rs"]
 mod scrolling;
+#[path = "widgets/touch.rs"]
 mod touch;
 
 /// Touches as og-input's `og.Pointers` holds them, tick by tick: each

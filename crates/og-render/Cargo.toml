@@ -92,4 +92,4 @@ wasm-bindgen = "=0.2.129"
 
 [[test]]
 name = "tests"
-path = "tests/main.rs"
+path = "tests/it/main.rs"

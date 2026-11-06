@@ -30,4 +30,4 @@ tungstenite = { version = "=0.30.0", default-features = false, features = ["hand
 
 [[test]]
 name = "tests"
-path = "tests/main.rs"
+path = "tests/it/main.rs"

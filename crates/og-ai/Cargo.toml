@@ -1,4 +1,5 @@
 [package]
+autotests = false
 name = "og-ai"
 version = "0.7.7"
 edition.workspace = true
@@ -13,3 +14,7 @@ og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
 og-nav = { path = "../og-nav" }
 og-audio = { path = "../og-audio" }
+
+[[test]]
+name = "tests"
+path = "tests/it/main.rs"

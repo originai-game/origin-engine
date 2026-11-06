@@ -79,8 +79,4 @@ ttf-parser = "=0.25.1"
 
 [[test]]
 name = "tests"
-path = "tests/main.rs"
-
-[[test]]
-name = "extract_cost"
-path = "tests/extract_cost.rs"
+path = "tests/it/main.rs"

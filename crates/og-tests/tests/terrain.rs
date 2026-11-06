@@ -20,13 +20,21 @@ use og_tests::terrain_scenes as ts;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+#[path = "terrain/displacement.rs"]
 mod displacement;
+#[path = "terrain/grass.rs"]
 mod grass;
+#[path = "terrain/impostors.rs"]
 mod impostors;
+#[path = "terrain/material.rs"]
 mod material;
+#[path = "terrain/sampling_scatter.rs"]
 mod sampling_scatter;
+#[path = "terrain/stamps.rs"]
 mod stamps;
+#[path = "terrain/streaming_wind.rs"]
 mod streaming_wind;
+#[path = "terrain/wind_models.rs"]
 mod wind_models;
 
 use sampling_scatter::{crack_view, holes, rmse};

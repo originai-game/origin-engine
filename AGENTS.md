@@ -392,7 +392,7 @@ imports only: retain every assertion, known failure and reference byte.
   GitHub checks after a push, never wait on them, and never mention them
   in a report ("no checks" is neither a pass nor news).
 
-- Toolchain versions (Rust 1.99.1 and edition 2024, wgpu 30, binaryen 133,
+- Toolchain versions (Rust nightly-2026-11-05 and edition 2024, wgpu 30, binaryen 133,
   wasm-bindgen 0.2.129, TypeScript 7.0.2, bun 1.4.4) and where each is
   pinned: `docs/ci.md` §Toolchain, the one place they are stated. A version
   move changes that table and its pin in the same commit.

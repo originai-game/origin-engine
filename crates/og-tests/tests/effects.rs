@@ -21,10 +21,15 @@ use og_tests::fx_scenes as fx;
 use og_tests::{gfx, scenes};
 use std::path::PathBuf;
 
+#[path = "effects/models.rs"]
 mod models;
+#[path = "effects/particles.rs"]
 mod particles;
+#[path = "effects/post.rs"]
 mod post;
+#[path = "effects/quality.rs"]
 mod quality;
+#[path = "effects/sprites.rs"]
 mod sprites;
 
 fn out_dir() -> PathBuf {

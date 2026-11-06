@@ -16,4 +16,4 @@ serde_json = "1"
 
 [[test]]
 name = "tests"
-path = "tests/main.rs"
+path = "tests/it/main.rs"

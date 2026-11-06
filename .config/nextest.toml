@@ -49,7 +49,7 @@ threads-required = 2
 [[profile.default.overrides]]
 filter = '''
 package(og-tests) | package(og-tests-cooked) | (package(og-cook) & test(/^(animation|template)::/))
-| binary_id(og-physics::pile) | (package(og-anim) & test(/^walk::/))
+| (package(og-physics) & test(/^pile::/)) | (package(og-anim) & test(/^walk::/))
 '''
 priority = 50
 
