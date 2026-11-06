@@ -201,7 +201,7 @@ pub fn prepare(
     package: &Path,
     check: bool,
     json: bool,
-) -> Result<std::path::PathBuf, String> {
+) -> Result<project::NativeBundle, String> {
     prepare_traced(p, package, check, json, None)
 }
 
@@ -213,7 +213,7 @@ pub fn prepare_traced(
     check: bool,
     json: bool,
     trace: Option<&Path>,
-) -> Result<std::path::PathBuf, String> {
+) -> Result<project::NativeBundle, String> {
     let origin = crate::trace::epoch_ms();
     let mut cook_spans = Vec::new();
     if p.has_assets() {
@@ -288,6 +288,14 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
     if let Some(trace) = &a.trace {
         cmd.arg("--trace").arg(trace).arg("--trace-append");
+    }
+    match crate::session::try_run(&p.root, &package, &cmd) {
+        Ok(Some(code)) => return code,
+        Ok(None) => {}
+        Err(error) => {
+            eprintln!("og run: {error}");
+            return ExitCode::FAILURE;
+        }
     }
     supervise(cmd, a.port.is_some())
 }

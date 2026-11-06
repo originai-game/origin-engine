@@ -462,10 +462,14 @@ impl Hooks for NodeHooks {
     }
 
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
-        match std::fs::read(path) {
+        match std::fs::read(self.asset_file(path)) {
             Ok(bytes) => Fetch::Ready(bytes),
             Err(e) => Fetch::Failed(e.to_string()),
         }
+    }
+
+    fn asset_file(&self, path: &str) -> String {
+        resident::asset_file(path)
     }
 }
 

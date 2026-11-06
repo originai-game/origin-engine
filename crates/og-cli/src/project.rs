@@ -313,21 +313,60 @@ pub fn bun(package: &Path, script: &str) -> Command {
 
 pub const NO_BUN: &str = "cannot start bun; install it: curl -fsSL https://bun.sh/install | bash";
 
-/// Bundles the game for the native host into `.og/game.native.js` and
-/// returns its path.
-pub fn bundle_native(project: &Project, package: &Path) -> Result<PathBuf, String> {
-    let out = if project.manifest {
-        project.work_dir().join("game.native.js")
-    } else {
-        std::env::temp_dir()
-            .join(format!("og-run-{}", std::process::id()))
-            .join("game.native.js")
+/// A command owns its bundle until its last run completes. Another command
+/// cannot replace it while it waits for the resident host.
+pub struct NativeBundle(PathBuf);
+
+impl std::ops::Deref for NativeBundle {
+    type Target = Path;
+    fn deref(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl AsRef<std::ffi::OsStr> for NativeBundle {
+    fn as_ref(&self) -> &std::ffi::OsStr {
+        self.0.as_os_str()
+    }
+}
+
+impl Drop for NativeBundle {
+    fn drop(&mut self) {
+        if let Some(dir) = self.0.parent() {
+            let _ = std::fs::remove_dir_all(dir);
+        }
+    }
+}
+
+pub fn bundle_native(project: &Project, package: &Path) -> Result<NativeBundle, String> {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let mut builder = std::fs::DirBuilder::new();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    let dir = loop {
+        let serial = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let dir = std::env::temp_dir().join(format!("og-bundle-{}-{serial}", std::process::id()));
+        match builder.create(&dir) {
+            Ok(()) => break dir,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(format!("{}: {error}", dir.display())),
+        }
     };
+    let bundle = NativeBundle(dir.join("game.native.js"));
+    bundle_native_to(project, package, &bundle)?;
+    Ok(bundle)
+}
+
+/// Only a live watch session replaces its own bundle.
+pub fn bundle_native_to(project: &Project, package: &Path, out: &Path) -> Result<(), String> {
     let status = bun(package, "src/node/build.ts")
         .arg("--entry")
         .arg(&project.entry)
         .arg("--out")
-        .arg(&out)
+        .arg(out)
         .arg("--target")
         .arg("native")
         .stdout(std::process::Stdio::null())
@@ -339,7 +378,7 @@ pub fn bundle_native(project: &Project, package: &Path) -> Result<PathBuf, Strin
             project.entry.display()
         ));
     }
-    Ok(out)
+    Ok(())
 }
 
 /// The exit code of a child, as og's own.

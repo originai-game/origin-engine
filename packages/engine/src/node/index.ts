@@ -46,6 +46,8 @@ export interface NativeExtras {
   og_node_views_mode(): string;
   /** Retain the device and compatible pipelines between sequential fresh runs. */
   og_node_resident(enabled: boolean): void;
+  /** Redirect reads only; source-edit commands still write to the project. */
+  og_node_input_root(root: string | null, frozen: string | null): void;
   og_node_attach_offscreen(engine: number, width: number, height: number): string;
   /** Waits for the offscreen renderer's GPU work (frame-time benches). */
   og_node_wait_gpu(engine: number): string;

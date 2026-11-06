@@ -790,7 +790,7 @@ pub fn run(args: &[&str]) -> ExitCode {
             source += 1;
             c.start(source);
         }
-        match project::bundle_native(&p, &package) {
+        match project::bundle_native_to(&p, &package, &bundle) {
             Ok(_) => pending.push((saved, saved.elapsed().as_secs_f64() * 1000.0, source)),
             Err(e) => eprintln!("og dev: {e}; the game keeps running the last bundle"),
         }

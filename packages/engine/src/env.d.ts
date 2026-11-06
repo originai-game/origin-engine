@@ -25,9 +25,12 @@ declare module "node:fs" {
   export function writeSync(fd: number, data: Uint8Array, offset?: number, length?: number): number;
   export function rmSync(path: string, options?: { recursive?: boolean; force?: boolean }): void;
   export function mkdirSync(path: string, options?: { recursive?: boolean }): void;
-  export function copyFileSync(from: string, to: string): void;
+  export const constants: { COPYFILE_FICLONE: number };
+  export function copyFileSync(from: string, to: string, mode?: number): void;
   export function renameSync(from: string, to: string): void;
-  export function statSync(path: string): { mtimeMs: number; size: number; isDirectory(): boolean };
+  interface Stats { mtimeMs: number; ctimeMs: number; ino: number; size: number; isDirectory(): boolean; isFile(): boolean; isSymbolicLink(): boolean }
+  export function statSync(path: string): Stats;
+  export function lstatSync(path: string): Stats;
   export function watch(path: string, listener: (event: string, file: string | null) => void): { close(): void };
 }
 
@@ -82,6 +85,40 @@ declare module "bun:test" {
   export function expect(value: unknown, message?: string): Matchers;
 }
 
+declare module "node:stream" {
+  export class Writable {
+    constructor(options: { write(chunk: Uint8Array, encoding: string, done: () => void): void });
+  }
+}
+
+declare module "node:console" {
+  export const Console: {
+    new(options: { stdout: import("node:stream").Writable; stderr: import("node:stream").Writable; ignoreErrors: boolean }): typeof globalThis.console;
+  };
+}
+
+declare module "node:net" {
+  interface Socket {
+    readonly writableLength: number;
+    readonly destroyed: boolean;
+    setEncoding(encoding: "utf8"): void;
+    setTimeout(ms: number, listener?: () => void): void;
+    on(event: "data", listener: (data: string) => void): void;
+    on(event: "error", listener: (error: Error) => void): void;
+    on(event: "end" | "close", listener: () => void): void;
+    write(data: string): boolean;
+    end(data?: string): void;
+    destroy(): void;
+  }
+  export function createConnection(path: string, listener: () => void): Socket;
+  export function createServer(listener: (socket: Socket) => void): {
+    maxConnections: number;
+    listen(path: string, listener: () => void): void;
+    on(event: "error", listener: (error: Error) => void): void;
+    close(): void;
+  };
+}
+
 declare const process: {
   readonly env: Record<string, string | undefined>;
   readonly platform: string;
@@ -92,8 +129,9 @@ declare const process: {
   exitCode?: number;
   exit(code?: number): never;
   cwd(): string;
-  on(event: "exit" | "SIGUSR2", listener: () => void): unknown;
-  off(event: "exit" | "SIGUSR2", listener: () => void): unknown;
+  chdir(path: string): void;
+  on(event: "exit" | "SIGUSR2" | "SIGTERM" | "SIGINT", listener: () => void): unknown;
+  off(event: "exit" | "SIGUSR2" | "SIGTERM" | "SIGINT", listener: () => void): unknown;
   readonly stdout: { write(text: string): boolean };
   readonly stderr: { write(text: string): boolean };
 };

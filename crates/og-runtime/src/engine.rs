@@ -105,6 +105,11 @@ pub trait Hooks {
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
         Fetch::Failed(format!("{path}: this host reads no files"))
     }
+    /// The native file behind a read, captured before a background audio
+    /// mixer uses it. A resident host may read an immutable input generation.
+    fn asset_file(&self, path: &str) -> String {
+        path.to_owned()
+    }
     /// A streaming group let go of its pack `pack` (it was unloaded, or the
     /// pack failed): a host that keeps fetched packs and transcoded
     /// textures drops the pack and the group's `textures` (asset ids) now,

@@ -350,7 +350,7 @@ fn declared_look(root: &Path) -> Result<Option<String>, String> {
     let p = crate::project::Project::open(root)?;
     let package = crate::project::engine_package(Some(root)).ok_or(crate::project::NO_ENGINE)?;
     let bundle = crate::project::bundle_native(&p, &package)?;
-    let output = p.work_dir().join("game-look.json");
+    let output = bundle.with_file_name("game-look.json");
     let status = crate::project::bun(&package, "src/node/game-look.ts")
         .arg(&bundle)
         .arg(&output)

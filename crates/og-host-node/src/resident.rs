@@ -13,6 +13,30 @@ thread_local! {
     static ENABLED: Cell<bool> = const { Cell::new(false) };
     static CLEANUP: Cell<bool> = const { Cell::new(false) };
     static IDLE: RefCell<Option<Renderer>> = const { RefCell::new(None) };
+    static INPUT: RefCell<Option<(std::path::PathBuf, std::path::PathBuf)>> = const { RefCell::new(None) };
+}
+
+#[napi(js_name = "og_node_input_root")]
+pub fn input_root(root: Option<String>, frozen: Option<String>) {
+    INPUT.with(|input| *input.borrow_mut() = root.zip(frozen).map(|(a, b)| (a.into(), b.into())));
+}
+
+pub(crate) fn asset_file(path: &str) -> String {
+    INPUT.with(|input| {
+        input
+            .borrow()
+            .as_ref()
+            .and_then(|(root, frozen)| {
+                std::path::Path::new(path)
+                    .strip_prefix(root)
+                    .ok()
+                    .map(|rel| frozen.join(rel))
+            })
+            .map_or_else(
+                || path.to_owned(),
+                |path| path.to_string_lossy().into_owned(),
+            )
+    })
 }
 
 #[napi(js_name = "og_node_resident")]

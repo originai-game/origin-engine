@@ -1487,7 +1487,8 @@ pub(crate) fn chunk_loader(assets: &Assets, sound: &CookedSound) -> og_audio::Ch
             let id = og_bundle::runtime::chunk_id(&sound.id, n);
             let (bundle, dir) = assets.bundle_for(&id).ok()?;
             let out = bundle.output(&id).ok()?;
-            Some((format!("{dir}/{}", out.file), out.stamp))
+            let path = hooks()?.asset_file(&format!("{dir}/{}", out.file));
+            Some((path, out.stamp))
         })
         .collect();
     std::sync::Arc::new(move |n| {

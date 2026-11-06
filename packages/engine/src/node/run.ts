@@ -70,11 +70,18 @@ export interface RunOutput {
   stderr: { write(text: string): void };
 }
 
+export interface RunControl {
+  signal?: AbortSignal;
+  inputRoot?: string;
+}
+
 /** Runs sequentially in one host, destroying every run-owned resource on exit. */
-export async function run(argv: string[], output: RunOutput = hostProcess): Promise<number> {
+export async function run(argv: string[], output: RunOutput = hostProcess, control: RunControl = {}): Promise<number> {
   const process = { stdout: output.stdout, stderr: output.stderr, version: hostProcess.version };
   const cleanup: Array<() => void> = [];
+  const cancelled = () => { if (control.signal?.aborted) throw new RunExit(130); };
   try {
+    cancelled();
     const hostEntered = unixMs();
     let entry = "";
     let root: string | undefined;
@@ -171,6 +178,10 @@ export async function run(argv: string[], output: RunOutput = hostProcess): Prom
     const addonStart = unixMs();
     loadNativeHost();
     const extras = native();
+    if (root && control.inputRoot) {
+      extras.og_node_input_root(root, control.inputRoot);
+      cleanup.push(() => extras.og_node_input_root(null, null));
+    }
     hostPhase("addon-load", addonStart);
     /** Takes the engine's spans (each where it ran) onto the trace; `last` waits for the GPU's frames in flight. */
     function takeTrace(engineId: number, last = false): void {
@@ -232,7 +243,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess): Prom
       extras.og_node_trace(BEFORE_ENGINE, true);
       cleanup.push(() => extras.og_node_trace(BEFORE_ENGINE, false));
     }
-    const project = projectText(root);
+    const project = projectText(control.inputRoot ?? root);
     const profile = projectProfile(project);
     const probing = commands !== undefined || port !== undefined || watchFile !== undefined || room !== undefined || handoffFile !== undefined;
     // With a renderer, GameDesc.start runs once it is attached (as the web Worker
@@ -427,8 +438,15 @@ export async function run(argv: string[], output: RunOutput = hostProcess): Prom
     let quit = false;
 
     if (!probing) {
-      const advanced = engine.advance(ticks ?? 0);
-      if (!advanced.ok) fail(advanced.reason);
+      let left = ticks ?? 0;
+      do {
+        cancelled();
+        const count = control.signal ? Math.min(left, 16) : left;
+        const advanced = engine.advance(count);
+        if (!advanced.ok) fail(advanced.reason);
+        left -= count;
+        if (left > 0) await new Promise((resolve) => setTimeout(resolve, 0));
+      } while (left > 0);
       sink.pump();
     } else {
       let pendingReload: { mtimeMs: number; importMs: number } | null = null;
@@ -501,6 +519,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess): Prom
           drain();
         }
         const elapsed = realtime ? performance.now() - last : tickMs;
+        cancelled();
         last = performance.now();
         if (room !== undefined) extras.og_node_room_pump(engine.id);
         const answer = engine.frame(elapsed);
@@ -518,6 +537,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess): Prom
         takeTrace(engine.id);
         drain();
         const tick = answer.tick ?? 0;
+        if (control.signal && tick % 16 === 0) await sleep(0);
         if (answer.quit) {
           quit = true;
           break;
@@ -639,6 +659,9 @@ export async function run(argv: string[], output: RunOutput = hostProcess): Prom
     return frameFailed || expectations.failed > 0 || assertions.violations.length > 0 || (requireChecked && summary.uncheckedCount > 0) ? 1 : 0;
   } catch (error) {
     if (error instanceof RunExit) return error.code;
+    // Bun resolves source maps lazily; materialize the stack before cleanup
+    // removes this run's private module and its map.
+    if (error instanceof Error) void error.stack;
     throw error;
   } finally {
     const errors: unknown[] = [];
