@@ -136,3 +136,9 @@ When moving the Rust toolchain, run workspace Clippy with all targets,
 `--keep-going` and `-D warnings` before handing off the head. A native build
 and passing tests do not exercise newly enabled lints. Consolidation also
 requires sharing support modules instead of loading their source twice.
+
+Template playtests can be shipped scaffold contracts, not just engine test
+load. Before deleting one, inspect create-game's choice overlays and packed
+package tests. Arena's `duel.og.ts` supplies online-lockstep scaffolds and
+must remain even when other replays are cut; run create-package tests after
+template deletions, not only the retained native smokes.

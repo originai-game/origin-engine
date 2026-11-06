@@ -140,9 +140,10 @@ retained frames as unchanged. Raw validation is in
 
 ## Template and lane cuts
 
-Removed 150 replay playtests and 121 template/example reference PNGs.
+Removed 149 replay playtests and 121 template/example reference PNGs.
 Each affected project retains one smoke; 14 frame-bearing projects retain
-two reference comparisons each. Arena retains its solo smoke. Game,
+two reference comparisons each. Arena retains its solo smoke and its
+two-peer duel: create-game ships the latter for online-lockstep choices. Game,
 game-2d and runner belong to the invariants stream; ui-kit and styles
 belong to the kits stream and were not changed here. The six examples'
 orphaned screen-schema helpers and snapshots were deleted with their
@@ -151,7 +152,7 @@ Meridian uses its existing input-only published script (10.1 simulated
 seconds), replacing the 121-second full replay.
 
 Measured against 5387f79db, before rebasing these cuts beyond 92fe84b92,
-repository-wide playtests fall from 241 to 91. Together with the separately
+repository-wide playtests fall from 241 to 92. Together with the separately
 landed kit cut, total references fall from 1364 to 195 (54 engine, 141 package/example). All retained
 template/example PNG bytes and tolerances are unchanged.
 
@@ -214,7 +215,13 @@ is included in this deletion head. Windows remains unverified.
 The template/lane head rebased cleanly onto 8be30462a, including the landed
 engine cut f86cbac8d and invariants 443357b6b. Engine typecheck and shell
 syntax checks pass after rebase. The combined inventory now has 1610
-textual Rust tests, 79728 integration lines, 91 playtests and 194 reference
+textual Rust tests, 79728 integration lines, 92 playtests and 194 reference
 PNGs (54 engine, 140 package/example); the four added tests and runner's
 one removed frame belong to the invariants stream. Smoke runtime evidence
 above predates that rebase; it is not a claim to have rebuilt invariants.
+
+Landing found that arena's duel is a shipped online-lockstep scaffold
+contract. It was restored unchanged. After refreshing the native addon
+and packed template overlay, all 28 create-package tests pass (1409
+assertions, 12.43 s), including the published-package duel check. The cut
+therefore removes 149 rather than 150 playtests.
