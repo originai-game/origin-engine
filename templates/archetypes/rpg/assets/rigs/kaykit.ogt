@@ -1,0 +1,25 @@
+type rig
+version 1
+---
+# KayKit's Rig_Medium (every character of Greywatch: the knight, the
+# barbarian, the castellan and the skeletons), bone by bone: its names
+# are Blender-like but carry no neck, shoulders or fingers, and its hand
+# is the `wrist` (the `hand` and `handslot` below it hold the weapon).
+hips "hips"
+spine "spine"
+chest "chest"
+head "head"
+leftUpperArm "upperarm.l"
+leftLowerArm "lowerarm.l"
+leftHand "wrist.l"
+rightUpperArm "upperarm.r"
+rightLowerArm "lowerarm.r"
+rightHand "wrist.r"
+leftUpperLeg "upperleg.l"
+leftLowerLeg "lowerleg.l"
+leftFoot "foot.l"
+leftToes "toes.l"
+rightUpperLeg "upperleg.r"
+rightLowerLeg "lowerleg.r"
+rightFoot "foot.r"
+rightToes "toes.r"

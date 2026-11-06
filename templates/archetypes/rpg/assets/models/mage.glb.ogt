@@ -1,0 +1,9 @@
+type import
+version 1
+---
+# A KayKit character (tools/compose.py): its clips are the library's
+# (anims/humanoid.glb), retargeted by the cook onto Rig_Medium.
+animation {
+  rig "rigs/kaykit.ogt"
+  library "anims/humanoid.glb"
+}

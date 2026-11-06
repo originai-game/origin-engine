@@ -1,0 +1,93 @@
+type dialogue
+version 1
+---
+# Castellan Maren at the gate (src/story.ts starts it when a hero talks to
+# her). The first time she asks for help, and the party may ask what
+# happened, who she is, or what it pays before it agrees or walks off;
+# agreeing starts the `seal` quest (story/seal.ogt). While the yard is
+# being cleared she urges the party on; once the seal is in the bag she
+# takes it, which completes the quest and wins the run (src/story.ts reads
+# og.QuestUpdated). Every quoted string is a key of assets/strings/*.ogt.
+name maren
+start greet
+speaker maren {
+  name "npc.maren"
+  side left
+}
+node greet {
+  if "stage(seal) == 'report'" report
+  if "status(seal) == 'active'" remind
+  if "seen(maren.refuse)" again
+  say maren "maren.hello"
+  choice "maren.ask.what" {
+    goto story
+  }
+  choice "maren.ask.who" {
+    goto who
+  }
+  choice "maren.leave"
+}
+node again {
+  say maren "maren.again"
+  choice "maren.accept" {
+    goto accept
+  }
+  choice "maren.leave"
+}
+node who {
+  say maren "maren.who"
+  choice "maren.ask.what" {
+    goto story
+  }
+  choice "maren.leave"
+}
+node story {
+  say maren "maren.story"
+  say maren "maren.story2"
+  choice "maren.accept" {
+    goto accept
+  }
+  choice "maren.ask.pay" {
+    goto pay
+  }
+  choice "maren.refuse" {
+    goto refuse
+  }
+}
+node pay {
+  say maren "maren.pay"
+  choice "maren.accept" {
+    goto accept
+  }
+  choice "maren.refuse" {
+    goto refuse
+  }
+}
+node accept {
+  say maren "maren.accepted"
+  quest start seal
+  emit accepted
+}
+node refuse {
+  say maren "maren.refused"
+}
+node remind {
+  if "stage(seal) == 'fetch'" fetch
+  say maren "maren.remind" {
+    arg left "4 - count(seal, risen)"
+  }
+}
+node fetch {
+  say maren "maren.fetch"
+}
+node report {
+  say maren "maren.report"
+  choice "maren.give" {
+    goto thanks
+  }
+}
+node thanks {
+  quest progress seal report
+  say maren "maren.thanks"
+  emit won
+}

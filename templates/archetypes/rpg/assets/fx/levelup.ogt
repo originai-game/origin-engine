@@ -1,0 +1,24 @@
+type particles
+version 1
+---
+# A level reached: a ring of gold sparks bursting up from the hero's feet
+# (src/heroes.ts restarts it with startTick).
+maxParticles 160
+shape sphere 0.6 surface
+spread 12
+rate 0
+burst 0 80
+duration 1.6
+looping false
+lifetime 0.9 1.5
+speed 2 4.5
+size 0.04 0.09
+colorOverLife {
+  key 0 7 5 1.6 1
+  key 1 2 0.8 0.1 0
+}
+gravity 0 -1.5 0
+drag 0.5
+texture "textures/spark.png"
+blend additive
+align velocity 0.04

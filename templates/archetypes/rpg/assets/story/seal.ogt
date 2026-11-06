@@ -1,0 +1,42 @@
+type quest
+version 1
+---
+# The yard's one quest, given by Castellan Maren (story/maren.ogt): put the
+# risen down (src/foes.ts counts each with og.story.progress), take the
+# warden's seal from the chest by the crypt door (src/story.ts), and bring
+# it back to her. Turning it in completes the quest, which wins the run.
+id seal
+title "quest.seal"
+summary "quest.seal.summary"
+category main
+giver "npc.maren"
+region "region.yard"
+reward "item.gold" 50 {
+  rarity common
+}
+reward "item.ring" 1 {
+  rarity rare
+}
+stage clear {
+  objective risen "quest.seal.risen" {
+    target 4
+  }
+  objective captain "quest.seal.captain" {
+    target 1
+    marker 0.4 0 -7.6
+  }
+  next fetch
+}
+stage fetch {
+  objective seal "quest.seal.chest" {
+    target 1
+    marker 0 0 -10.8
+  }
+  next report
+}
+stage report {
+  objective report "quest.seal.report" {
+    target 1
+    marker -8.2 0 6.3
+  }
+}

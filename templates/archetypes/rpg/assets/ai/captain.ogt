@@ -1,0 +1,66 @@
+type behaviour
+version 1
+---
+# The risen captain (og.ai). It wanders a little round where it rose; when it sees a
+# hero (og.Perception: within Tuning.sight, in its cone, not behind a wall
+# or a pillar) it raises the game's `alarm` and hunts the nearest at its
+# chasing pace; within its reach it stops and raises `strike` (src/foes.ts
+# winds the blow up, plays it and lands it on the clip's `hit`), then
+# hunts again. Out of sight it searches where it last saw the party, then
+# goes back to wandering. The paces and the reach are its Foe's fields.
+name "captain"
+machine {
+  initial idle
+  state idle {
+    wander {
+      radius 1.5
+      wait 2.5
+      speed Foe.walk
+    }
+    to hunt {
+      check sees
+      check Game.phase is 1
+    }
+  }
+  state hunt {
+    enter {
+      command alarm
+    }
+    chase {
+      speed Foe.chase
+      reach 1.0
+    }
+    to strike {
+      check targetDistance below Foe.reach
+      check Foe.stagger below 0.01
+    }
+    to search {
+      check sees is false
+    }
+    to idle {
+      check Game.phase not 1
+    }
+  }
+  state strike {
+    enter {
+      stop
+      command strike
+    }
+    stop
+    to hunt {
+      after 1.6
+    }
+  }
+  state search {
+    move_to lastSeen {
+      speed Foe.walk
+    }
+    to hunt {
+      check sees
+      check Game.phase is 1
+    }
+    to idle {
+      after 3
+    }
+  }
+}

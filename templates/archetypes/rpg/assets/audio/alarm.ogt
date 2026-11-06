@@ -1,0 +1,9 @@
+type sfx
+version 1
+---
+# og sfx's "laser" preset, synthesised by og cook.
+preset "laser"
+seed 0
+pitch 0.6
+length 1
+volume 0.8

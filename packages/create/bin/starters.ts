@@ -243,11 +243,16 @@ export const STARTERS = {
   },
   rpg: {
     profile: "3d", views: ["isometric-2.5d", "third-person-3d", "first-person-3d"], players: BOTH_PLAYERS, seats: 2, kit: "rpg",
-    systems: ["net", "physics", "nav", "camera", "render", "audio", "tween", "platform", "i18n", "ui"],
+    systems: ["net", "physics", "nav", "ai", "story", "camera", "render", "audio", "tween", "platform", "i18n", "ui"],
     controls: { move: "stick", aim: "look", buttons: [
       { name: "attack", label: "Attack", keys: k(["Space", "KeyJ"], ["Enter", "Slash"]), pad: ["pad.a"], mouse: "mouse.left" },
       { name: "talk", label: "Talk", keys: k(["KeyE"], ["Period"]), pad: ["pad.x"] },
       { name: "potion", label: "Potion", keys: k(["KeyQ"], ["Comma"]), pad: ["pad.y"] },
+      // A conversation's choices: the number keys, or a tap or click on the line (the dialogue's own surface).
+      { name: "choice1", label: "Choice 1", keys: k(["Digit1"], ["Numpad1"]), pad: [], surface: true },
+      { name: "choice2", label: "Choice 2", keys: k(["Digit2"], ["Numpad2"]), pad: [], surface: true },
+      { name: "choice3", label: "Choice 3", keys: k(["Digit3"], ["Numpad3"]), pad: [], surface: true },
+      { name: "menu", label: "Menu", keys: k([], []), pad: [], surface: true },
     ] },
   },
   racing: {

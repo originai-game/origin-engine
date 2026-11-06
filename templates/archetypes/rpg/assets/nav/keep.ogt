@@ -1,0 +1,232 @@
+type navmesh
+version 1
+---
+# Greywatch's yard, baked by og cook (og.nav.load(world, "nav/keep.ogt")):
+# the floor and every solid box of src/layout.ts, written by
+# tools/make-nav.ts. Edit the layout and run it again, never this file.
+agent {
+  radius 0.45
+  height 1.8
+  climb 0.3
+  slope 40
+}
+cellSize 0.2
+cellHeight 0.1
+tileSize 32
+bounds {
+  min -10.8 -1 -13.6
+  max 10.8 2 13.6
+}
+box {
+  center 0 -0.1 0
+  size 23.6 0.2 29.2
+}
+box {
+  center -8.4 1.4 -12.95
+  size 2.8 2.8 0.7
+}
+box {
+  center -5.6 1.4 -12.95
+  size 2.8 2.8 0.7
+}
+box {
+  center -2.8 1.4 -12.95
+  size 2.8 2.8 0.7
+}
+box {
+  center 0 1.4 -12.95
+  size 2.8 2.8 0.7
+}
+box {
+  center 2.8 1.4 -12.95
+  size 2.8 2.8 0.7
+}
+box {
+  center 5.6 1.4 -12.95
+  size 2.8 2.8 0.7
+}
+box {
+  center 8.4 1.4 -12.95
+  size 2.8 2.8 0.7
+}
+box {
+  center -10.15 1.4 -11.2
+  size 0.7 2.8 2.8
+}
+box {
+  center -10.15 1.4 -8.4
+  size 0.7 2.8 2.8
+}
+box {
+  center -10.15 1.4 -5.6
+  size 0.7 2.8 2.8
+}
+box {
+  center -10.15 1.4 -2.8
+  size 0.7 2.8 2.8
+}
+box {
+  center -10.15 1.4 0
+  size 0.7 2.8 2.8
+}
+box {
+  center -10.15 1.4 2.8
+  size 0.7 2.8 2.8
+}
+box {
+  center -10.15 1.4 5.6
+  size 0.7 2.8 2.8
+}
+box {
+  center -10.15 1.4 8.4
+  size 0.7 2.8 2.8
+}
+box {
+  center -10.15 1.4 11.2
+  size 0.7 2.8 2.8
+}
+box {
+  center -8.4 0.42 12.95
+  size 2.8 0.84 0.7
+}
+box {
+  center -5.6 0.42 12.95
+  size 2.8 0.84 0.7
+}
+box {
+  center -2.8 0.42 12.95
+  size 2.8 0.84 0.7
+}
+box {
+  center 0 0.42 12.95
+  size 2.8 0.84 0.7
+}
+box {
+  center 2.8 0.42 12.95
+  size 2.8 0.84 0.7
+}
+box {
+  center 5.6 0.42 12.95
+  size 2.8 0.84 0.7
+}
+box {
+  center 8.4 0.42 12.95
+  size 2.8 0.84 0.7
+}
+box {
+  center 10.15 0.42 -11.2
+  size 0.7 0.84 2.8
+}
+box {
+  center 10.15 0.42 -8.4
+  size 0.7 0.84 2.8
+}
+box {
+  center 10.15 0.42 -5.6
+  size 0.7 0.84 2.8
+}
+box {
+  center 10.15 0.42 -2.8
+  size 0.7 0.84 2.8
+}
+box {
+  center 10.15 0.42 0
+  size 0.7 0.84 2.8
+}
+box {
+  center 10.15 0.42 2.8
+  size 0.7 0.84 2.8
+}
+box {
+  center 10.15 0.42 5.6
+  size 0.7 0.84 2.8
+}
+box {
+  center 10.15 0.42 8.4
+  size 0.7 0.84 2.8
+}
+box {
+  center 10.15 0.42 11.2
+  size 0.7 0.84 2.8
+}
+box {
+  center -10.15 1.75 -12.95
+  size 1.05 3.5 1.05
+}
+box {
+  center 10.15 1.75 -12.95
+  size 1.05 3.5 1.05
+}
+box {
+  center -10.15 1.4 12.95
+  size 1.05 2.8 1.05
+}
+box {
+  center 10.15 0.56 12.95
+  size 1.05 1.12 1.05
+}
+box {
+  center -4.2 1.4 -1.4
+  size 1.05 2.8 1.05
+}
+box {
+  center 4.2 1.4 -1.4
+  size 1.05 2.8 1.05
+}
+box {
+  center -4.2 1.4 -6.6
+  size 1.05 2.8 1.05
+}
+box {
+  center 4.2 1.4 -6.6
+  size 1.05 2.8 1.05
+}
+box {
+  center -8.2 0.75 -10.7
+  size 1.5 1.5 1.5
+}
+box {
+  center -6.6 0.7 -11.2
+  size 1.2 1.4 1.2
+}
+box {
+  center -8.6 0.35 -8.8
+  size 0.7 0.7 0.7
+}
+box {
+  center 4.4 0.8 -11.4
+  size 2.4 1.6 1.6
+}
+box {
+  center 8.4 0.7 -10.9
+  size 1.2 1.4 1.2
+}
+box {
+  center 8.5 0.35 1.8
+  size 0.7 0.7 0.7
+}
+box {
+  center 7.8 0.35 2.8
+  size 0.7 0.7 0.7
+}
+box {
+  center 8.2 0.75 7.6
+  size 1.5 1.5 1.5
+}
+box {
+  center -1.6 0.7 5.2
+  size 1.2 1.4 1.2
+}
+box {
+  center -0.5 0.35 5.8
+  size 0.7 0.7 0.7
+}
+box {
+  center 0 0.35 -10.8
+  size 1.2 0.7 0.9
+}
+area {
+  id 1
+  center -7.1 0 8
+  size 5.4 2 9.2
+}

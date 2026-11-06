@@ -1,0 +1,23 @@
+type particles
+version 1
+---
+# A draught drunk: green motes rising round the hero (src/heroes.ts
+# restarts it with startTick).
+maxParticles 96
+shape sphere 0.45
+spread 25
+rate 0
+burst 0 40
+duration 1.2
+looping false
+lifetime 0.7 1.2
+speed 0.6 1.6
+size 0.04 0.08
+colorOverLife {
+  key 0 0.6 3 0.8 1
+  key 1 0.2 1.2 0.3 0
+}
+gravity 0 1.2 0
+drag 0.8
+texture "textures/spark.png"
+blend additive
