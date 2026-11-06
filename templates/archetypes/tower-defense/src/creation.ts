@@ -172,5 +172,7 @@ export const creation = {
     "projection": "orthographic"
   },
   "rig": "og.Follow2D",
-  "kit": "strategy"
+  "kit": "strategy",
+  "quality": "medium",
+  "strings": []
 } as const;

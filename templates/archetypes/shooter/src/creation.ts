@@ -76,5 +76,7 @@ export const creation = {
     "fovMax": 100
   },
   "rig": "og.FirstPersonCamera",
-  "kit": "shooter"
+  "kit": "shooter",
+  "quality": "medium",
+  "strings": []
 } as const;

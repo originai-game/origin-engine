@@ -432,8 +432,13 @@ export function playersRefused(starter: StarterName, players: Players): string |
   return `${starter} with ${players}: ${s.refuse?.[players] ?? "not supported"}`;
 }
 
-/** The selection the starter's src/creation.ts carries: the choices, its seats, controls and camera. */
-export function creationData(starter: StarterName, choices: CreationChoices) {
+/**
+ * The selection the starter's src/creation.ts carries: the choices, its
+ * seats, controls and camera, the graphics preset its platform starts at
+ * (`low` on a phone) and the string tables src/seats.ts loads for a starter
+ * that loads none itself (`strings`, from og new --lang).
+ */
+export function creationData(starter: StarterName, choices: CreationChoices, strings: readonly string[] = []) {
   const s: Starter = STARTERS[starter];
   const preset = VIEW_PRESETS[choices.view];
   return {
@@ -444,6 +449,8 @@ export function creationData(starter: StarterName, choices: CreationChoices) {
     camera: preset.camera,
     rig: preset.rig,
     kit: s.kit,
+    quality: choices.platform.startsWith("phone-") ? "low" : "medium",
+    strings,
   };
 }
 
@@ -459,13 +466,13 @@ export function starterDefaults(starter: StarterName): CreationChoices {
 }
 
 /** The file every starter reads its selection from. */
-export function creationModule(starter: StarterName, choices: CreationChoices): string {
+export function creationModule(starter: StarterName, choices: CreationChoices, strings: readonly string[] = []): string {
   return `// The creation choices this game was made with (project.ogt's create block),
 // with what they start: the seats, the controls and the camera. Written by
 // og new from packages/create/bin/starters.ts; src/seats.ts and the game
 // read it. Edit the create block and run og new's choices again, or edit
 // here by hand: nothing else reads the block at run time.
-export const creation = ${JSON.stringify(creationData(starter, choices), null, 2)} as const;
+export const creation = ${JSON.stringify(creationData(starter, choices, strings), null, 2)} as const;
 `;
 }
 

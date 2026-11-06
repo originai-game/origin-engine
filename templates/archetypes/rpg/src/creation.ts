@@ -131,5 +131,7 @@ export const creation = {
     "yaw": 45
   },
   "rig": "og.FollowCamera",
-  "kit": "rpg"
+  "kit": "rpg",
+  "quality": "medium",
+  "strings": []
 } as const;

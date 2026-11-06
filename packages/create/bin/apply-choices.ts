@@ -69,8 +69,9 @@ export default playtest({
  * Returns the files it added.
  */
 export function applyCreation(dir: string, c: CreationChoices, lookFile: string, entry: string, starter: StarterName, notes: string[] = []): string[] {
-  const archetype = starter !== "game" && starter !== "game-2d";
-  const langs = applyLanguages(dir, c.lang, { entry, starter, archetype });
+  // The shipped translations are kept by the starter's directory (templates/locales/strings/game-2d).
+  const own = (STARTERS[starter] as { dir?: string }).dir;
+  const langs = applyLanguages(dir, c.lang, { entry, starter: own ?? starter, archetype: own === undefined });
   notes.push(...langs.notes);
   if (langs.load) notes.push(`the ${starter} starter draws its words as literals: move them into assets/strings/ (localization §1) before the language tables show anything`);
   const written: string[] = [...langs.files];
@@ -106,7 +107,7 @@ export function applyCreation(dir: string, c: CreationChoices, lookFile: string,
 
   const creation = join(dir, dirname(entry), "creation.ts");
   if (!existsSync(join(dir, dirname(entry), "seats.ts"))) throw new Error(`the ${starter} starter has no src/seats.ts: it cannot take creation choices`);
-  writeFileSync(creation, creationModule(starter, c));
+  writeFileSync(creation, creationModule(starter, c, langs.load ?? []));
   if (c.players === "online-lockstep") {
     writeFileSync(join(dir, "tests/room.og.ts"), ROOM_TEST);
     written.push("tests/room.og.ts");

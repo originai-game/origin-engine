@@ -588,7 +588,9 @@ test("the published package briefs from its own presets, catalogue and previews"
 });
 
 test("--lang writes a table per language with its face, direction and licence, the pseudo-locale and a playtest each", () => {
-  const r = cli(join(scratch, "langs"), "--no-prompt", "--lang", "zh,en,ar,ja,th");
+  // The 3D overlay templates/game, which keeps its LANGUAGES list in src/hud.ts.
+  const game = ["--view", "third-person-3d", "--archetype", "game"];
+  const r = cli(join(scratch, "langs"), "--no-prompt", ...game, "--lang", "zh,en,ar,ja,th");
   expect(r.code).toBe(0);
   const dir = join(scratch, "langs");
   const read = (f: string) => readFileSync(join(dir, f), "utf8");
@@ -600,25 +602,27 @@ test("--lang writes a table per language with its face, direction and licence, t
   expect(read("assets/strings/ar.ogt")).toContain('fonts "fonts/NotoSansArabic-Regular.ttf"');
   expect(read("assets/strings/ja.ogt")).toContain('string "menu.start" "スタート"');
   // A language with no shipped translation gets an empty table, never copied English, and a note.
-  expect(read("assets/strings/th.ogt")).not.toContain("string ");
+  // (Only the settings' language names, each in its own language.)
+  expect(read("assets/strings/th.ogt").split("\n").filter((l) => l.startsWith("string ") && !l.startsWith('string "lang.'))).toEqual([]);
+  expect(read("assets/strings/th.ogt")).toContain('string "lang.ja" "日本語"');
   expect(r.out).toContain("Noto Sans Thai");
   // Faces with their licences; the import cooks the table's own characters.
   for (const f of ["NotoSansArabic-Regular.ttf", "OFL-NotoSansArabic.txt", "NotoSansJP-Regular-subset.ttf", "OFL-NotoSansJP.txt"]) expect(existsSync(join(dir, "assets/fonts", f))).toBeTrue();
   expect(read("assets/fonts/LICENSES.md")).toContain("`NotoSansJP-Regular-subset.ttf`");
   expect(read("assets/fonts/NotoSansJP-Regular-subset.ttf.ogt")).toContain("ス");
-  // Every table loaded, the pseudo-locale last; the smoke test reads the new base's word.
-  expect(read("src/main.ts")).toContain('["zh-CN","en","ar","ja","th","qps-ploc"]');
-  expect(read("tests/smoke.og.ts")).toContain("expect:ui:text:=已开始");
+  // Every table in the settings' list, the base first; the pseudo-locale loaded after them, never offered.
+  expect(read("src/hud.ts")).toContain('export const LANGUAGES = [\n  { code: "zh-CN", key: "lang.zh" },\n  { code: "en", key: "lang.en" },\n  { code: "ar", key: "lang.ar" },\n  { code: "ja", key: "lang.ja" },\n  { code: "th", key: "lang.th" },\n] as const;');
+  expect(read("src/main.ts")).toContain('must(og.i18n.load(world, "strings/qps-ploc.ogt"));');
   // The frame playtests keep the words and the locale their references were recorded in.
-  for (const f of ["inspector", "inspector-gizmo", "intro"]) expect(read(`tests/${f}.og.ts`)).toMatch(/^\s*setup: "locale:en",$/m);
-  expect(read("tests/smoke.og.ts")).not.toContain("locale:en");
+  for (const f of ["inspector", "inspector-gizmo", "intro", "smoke"]) expect(read(`tests/${f}.og.ts`)).toMatch(/^\s*setup: "locale:en",$/m);
+  expect(read("tests/smoke.og.ts")).toContain("expect:ui:text:=Cells 0/5");
   // English unchosen: its table stays for the frames (not the base, last), and the note says why.
-  const ar = cli(join(scratch, "langs-ar"), "--no-prompt", "--lang", "ar");
+  const ar = cli(join(scratch, "langs-ar"), "--no-prompt", ...game, "--lang", "ar");
   expect(ar.code).toBe(0);
   const arRead = (f: string) => readFileSync(join(scratch, "langs-ar", f), "utf8");
   expect(arRead("assets/strings/ar.ogt")).toMatch(/^base true$/m);
   expect(arRead("assets/strings/en.ogt")).not.toMatch(/^base/m);
-  expect(arRead("src/main.ts")).toContain('["ar","en","qps-ploc"]');
+  expect(arRead("src/hud.ts")).toContain('  { code: "ar", key: "lang.ar" },\n  { code: "en", key: "lang.en" },\n] as const;');
   expect(arRead("tests/intro.og.ts")).toContain('setup: "locale:en"');
   expect(ar.out).toContain("en stays as a table");
   expect(read("assets/strings/qps-ploc.ogt")).toContain('string "menu.start" "[开始 开]"');

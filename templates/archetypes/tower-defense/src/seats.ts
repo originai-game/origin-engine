@@ -112,8 +112,17 @@ export function localSeats(world: World): number[] {
 
 const name = (control: string, seat: number) => `${control}@${seat}`;
 
-/** Call once in start: lockstep for an online game, and every local seat's actions. */
+/**
+ * Call once in start: the platform's graphics preset and the language tables
+ * og new wrote for a game that loads none itself, lockstep for an online
+ * game, and every local seat's actions.
+ */
 export function setupSeats(world: World): void {
+  // `medium` is every quality field at its default, so only a phone's `low` is applied.
+  const quality = creation.quality as "low" | "medium" | "high";
+  if (quality !== "medium") must(og.render.applyQuality(world, quality));
+  const strings: readonly string[] = creation.strings;
+  for (const table of strings) must(og.i18n.load(world, table));
   const lock = world.resource(og.Lockstep);
   if (lock.ok) {
     lock.value.enabled = ONLINE;

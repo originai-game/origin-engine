@@ -116,5 +116,7 @@ export const creation = {
     "projection": "orthographic"
   },
   "rig": "og.Follow2D",
-  "kit": null
+  "kit": null,
+  "quality": "medium",
+  "strings": []
 } as const;

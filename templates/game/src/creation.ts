@@ -78,5 +78,7 @@ export const creation = {
     "fovMax": 75
   },
   "rig": "og.FollowCamera",
-  "kit": null
+  "kit": null,
+  "quality": "medium",
+  "strings": []
 } as const;

@@ -45,5 +45,7 @@ export const creation = {
     "projection": "orthographic"
   },
   "rig": "og.Follow2D",
-  "kit": "puzzle"
+  "kit": "puzzle",
+  "quality": "medium",
+  "strings": []
 } as const;

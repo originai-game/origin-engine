@@ -110,9 +110,12 @@ function loaderOf(dir: string, entry: string): Loader {
   const main = join(dir, entry);
   const code = readFileSync(main, "utf8");
   if (/^\s*must\(og\.i18n\.load\(world, "strings\/en\.ogt"\)\);$/m.test(code)) return { kind: "line", file: main };
-  const ui = join(dirname(main), "ui.ts");
-  if (existsSync(ui) && /^export const LANGUAGES = \[[\s\S]*?\] as const;$/m.test(readFileSync(ui, "utf8"))) return { kind: "list", ui, main };
-  return { kind: "none" };
+  // The LANGUAGES list lives in the module that draws the settings: ui.ts, or another beside the entry (hud.ts).
+  const list = /^export const LANGUAGES = \[[\s\S]*?\] as const;$/m;
+  const src = dirname(main);
+  const candidates = ["ui.ts", ...readdirSync(src).filter((f) => f.endsWith(".ts") && f !== "ui.ts").sort()];
+  const ui = candidates.map((f) => join(src, f)).find((f) => existsSync(f) && list.test(readFileSync(f, "utf8")));
+  return ui ? { kind: "list", ui, main } : { kind: "none" };
 }
 
 interface Planned {
@@ -157,7 +160,10 @@ export function applyLanguages(dir: string, langs: readonly string[], ctx: { ent
         : { tag, strings: [], from: "empty" };
     if (!plan.some((p) => p.tag === next.tag)) plan.push(next);
   }
-  const baseKeys = new Set(ownBase?.table.strings.map(([k]) => k) ?? []);
+  const loader = loaderOf(dir, ctx.entry);
+  const listed = loader.kind === "list";
+  // A listed starter's lang.* keys are the endonyms written below, never a translation's own.
+  const baseKeys = new Set(ownBase?.table.strings.map(([k]) => k).filter((k) => !listed || !k.startsWith("lang.")) ?? []);
   const complete = (p: Planned) => [...baseKeys].every((k) => p.strings.some(([key]) => key === k));
   // The base: an archetype's English (its playtests read it), else the first complete chosen table.
   let base = ctx.archetype && ownBase ? plan.find((p) => p.file === ownBase.file) : plan.find(complete);
@@ -178,8 +184,6 @@ export function applyLanguages(dir: string, langs: readonly string[], ctx: { ent
     plan.push({ tag: refTag, strings: ownBase.table.strings, from: "starter", file: ownBase.file });
     notes.push(`${refTag} stays as a table: ${framed.join(", ")} compare frames recorded in it and pin it (setup locale:${refTag}); record those references again in another locale and set their setup, then drop it`);
   }
-  const loader = loaderOf(dir, ctx.entry);
-  const listed = loader.kind === "list";
 
   // Faces: one per script, with its licence and its row in LICENSES.md.
   const faces = new Map<string, LocaleFace>();

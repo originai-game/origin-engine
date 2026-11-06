@@ -500,7 +500,13 @@ export function resolveCreationChoices(premise: string, input: CreationInput = {
   const style = styles.find(s => s.slug === slug && s.look.presetReady);
   if (!style) throw new Error(`no look preset '${slug}'`);
   // The mood defaults to the one the preset is drawn in; the premise's or the flag's wins.
-  const choices = inferCreationChoices(premise, { ...input, look: slug, ui: parseCreationInput({ ui: input.ui ?? style.ui }).ui! }, parseCreationInput({ mood: style.look.mood }));
+  let choices = inferCreationChoices(premise, { ...input, look: slug, ui: parseCreationInput({ ui: input.ui ?? style.ui }).ui! }, parseCreationInput({ mood: style.look.mood }));
+  if (input.view === undefined && profile === undefined && !style.look.profiles.includes(viewProfile(choices.view))) {
+    // No view asked and a look of the other profile: the genre's view the look draws, one it suits first.
+    const views = (Object.keys(GENRES[choices.genre].starters) as View[]).filter((v) => style.look.profiles.includes(viewProfile(v)));
+    const view = views.find((v) => style.look.views.includes(v)) ?? views[0];
+    if (view !== undefined) choices = { ...choices, view };
+  }
   const drawn = viewProfile(choices.view);
   if (!style.look.profiles.includes(drawn)) throw new Error(`the ${slug} look draws ${style.look.profiles.join(" and ")} only, and ${choices.view} is a ${drawn} view: choose a ${drawn} look or a ${style.look.profiles.join("/")} view`);
   return choices;
