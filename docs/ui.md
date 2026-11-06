@@ -1064,7 +1064,7 @@ stay, and the bar rises to the Xbox Accessibility Guidelines:
 - subtitles per XAG 104;
 - the native host sends incremental AccessKit trees over `ORIGIN_FRAMES_SOCKET`
   (docs/design.md §2.6). The window-owning Origin Desktop applies them to
-  the OS and returns actions; its adapter remains platform ask 24.
+  the OS and returns actions; its adapter remains platform ask 25.
 
 ### 15.3 Localization
 

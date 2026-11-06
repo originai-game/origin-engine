@@ -1646,7 +1646,7 @@ between frames and applies them in the next UI tick, checking the current
 focus scope, disabled state, and target existence. Numeric controls retain
 their bounds and step; text edits retain their length limit and undo history.
 The engine owns no OS window. Origin Desktop owns the AccessKit platform
-adapter and maps the frame's coordinates into its window (platform ask 24).
+adapter and maps the frame's coordinates into its window (platform ask 25).
 The web shell's DOM mirror is unchanged.
 
 ### 2.7 Animation, physics, navigation, audio, UI **(D)**

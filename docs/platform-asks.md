@@ -167,7 +167,7 @@ it hands back (a player, a friend, a purchase, an invite) is opaque, at most
 
 ## Native accessibility in Origin Desktop (B8, 2026-11-05)
 
-**Ask 24 — open.** Origin Desktop owns the OS AccessKit adapter for its
+**Ask 25 — open.** Origin Desktop owns the OS AccessKit adapter for its
 Preview window. The engine owns no window and must not attach an adapter
 to another process's handle. The engine supplies the tree and consumes
 actions through the shared-frame socket (docs/design.md §2.6).
