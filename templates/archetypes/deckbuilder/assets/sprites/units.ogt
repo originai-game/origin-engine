@@ -1,0 +1,65 @@
+type flipbook
+version 1
+---
+# Written by tools/make-assets.py: 48 px cells, 16 px a world unit (a cell
+# is 3 x 3 units). Each unit stands side-on in two idle frames (the foes
+# face left, at the heroes), then each is a table token seen from above.
+texture "units.png"
+pivot 0.5 0
+grid 48 48 8 4
+clip warden {
+  frames 0 1
+  durations 0.60 0.4
+}
+clip hunter {
+  frames 2 3
+  durations 0.65 0.4
+}
+clip imp {
+  frames 4 5
+  durations 0.70 0.4
+}
+clip hound {
+  frames 6 7
+  durations 0.75 0.4
+}
+clip slime {
+  frames 8 9
+  durations 0.80 0.4
+}
+clip knight {
+  frames 10 11
+  durations 0.85 0.4
+}
+clip king {
+  frames 12 13
+  durations 0.90 0.4
+}
+clip warden-token {
+  frames 14
+  fps 1
+}
+clip hunter-token {
+  frames 15
+  fps 1
+}
+clip imp-token {
+  frames 16
+  fps 1
+}
+clip hound-token {
+  frames 17
+  fps 1
+}
+clip slime-token {
+  frames 18
+  fps 1
+}
+clip knight-token {
+  frames 19
+  fps 1
+}
+clip king-token {
+  frames 20
+  fps 1
+}

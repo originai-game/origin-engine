@@ -1,0 +1,98 @@
+type screen
+version 1
+---
+# Ashen Crown's title (ejected from the library's main-menu, docs/ui.md
+# §11.1): the game's name and tagline on a card over the ash plain (the
+# style's panel frame in its hud fill), Begin and Settings, and the keys
+# under them in the card, as the title shipped (on a phone the card stands
+# at the bottom). Its words are the game's string keys
+# (assets/strings/*.ogt).
+#
+# Events to code (src/ui.ts): play, settings.
+name "main-menu"
+layer menu
+under none
+back none
+actions {
+  confirm "Select"
+}
+stack Title {
+  width grow
+  height grow
+  column Screen {
+    width grow
+    height grow
+    padding 32
+    align center
+    cross center
+    at phone {
+      padding 16
+      align end
+    }
+    column Card {
+      width 380
+      padding 24
+      gap 24
+      cross center
+      background token hud
+      frame panel
+      radius 0
+      at phone {
+        width grow
+        padding 16
+      }
+      column Heading {
+        width grow
+        gap 4
+        cross center
+        label Name {
+          key "title.name"
+          text "Ashen Crown"
+          step displayLg
+          font display
+          textAlign center
+          heading true
+          width grow
+          at phone {
+            step displayMd
+          }
+        }
+        label Tagline {
+          key "title.tagline"
+          text "Six steps to the Ashen Throne, one deck each"
+          color token inkMuted
+          textAlign center
+          width grow
+        }
+      }
+      column Menu {
+        width grow
+        gap 8
+        focusGroup wrap
+        button Play {
+          key "title.play"
+          text "Begin"
+          variant primary
+          size large
+          width grow
+          on click emit play
+        }
+        button Settings {
+          key "title.settings"
+          text "Settings"
+          size large
+          width grow
+          on click emit settings
+        }
+      }
+      label Footer {
+        key "title.footer"
+        text "Arrows pick a card and a foe · Space plays · R ends the turn"
+        step meta
+        color token inkFaint
+        textAlign center
+        width grow
+      }
+    }
+  }
+}

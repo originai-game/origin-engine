@@ -1,0 +1,16 @@
+type project
+version 1
+---
+name "Ashen Crown"
+id "deckbuilder"
+engine "0.7.7"
+entry "src/main.ts"
+# The game's look: its art contract the cook reads, GameDesc.look's default.
+look "looks/ashen.ogt"
+profile "2d"
+tick 60
+seed 1
+publish {
+  probe player
+  out "dist"
+}

@@ -1,0 +1,8 @@
+type import
+version 1
+---
+# Drawn at the look's grid already: the look's palette, never resampled.
+conform ui
+texture {
+  kind pixel
+}

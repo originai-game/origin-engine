@@ -1,0 +1,12 @@
+type look
+version 1
+---
+# Ashen Crown's look: the engine's 16-bit pixel look (224 px tall, 16 px a
+# world unit, the cook's palette and grid), the ashen style for the UI.
+# `og create` writes the starter's own look over this one.
+name "Ashen Crown"
+extends "16bit-pixel"
+ui "styles/ashen/style.ogt"
+ArtCamera {
+  projection orthographic
+}
