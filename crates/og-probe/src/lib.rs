@@ -53,5 +53,6 @@ pub use probe::{
     AfterTickFn, BUILD, DeriveFn, DumpKind, ENGINE_VERSION, FRAME_UNCHECKED, GateFn, Heard,
     InputFilterFn, ListenFn, MAX_CAPTURE_EDGE, MAX_SNAPSHOTS, MAX_SWEEP_VALUES, MEMBERS,
     PLAYTEST_MAX_TICKS, PROBE_PROGRAM_MAX_OPERATIONS, PROBE_VERSION, PROBE_WIRE_VERSION,
-    PUBLISH_MEMBERS, Probe, ReaderFn, SweepDesc, resource_json, served_members, time_json,
+    PUBLISH_MEMBERS, Probe, ReaderFn, RunCheckpoint, SweepDesc, resource_json, served_members,
+    time_json,
 };

@@ -193,6 +193,14 @@ impl Inbox {
         std::mem::take(&mut *self.0.lock().unwrap_or_else(|e| e.into_inner()))
     }
 
+    pub(crate) fn checkpoint(&self) -> Vec<Queued> {
+        self.0.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    pub(crate) fn restore_checkpoint(&self, actions: Vec<Queued>) {
+        *self.0.lock().unwrap_or_else(|e| e.into_inner()) = actions;
+    }
+
     /// Puts back, ahead of anything queued since, actions taken and not run.
     pub(crate) fn requeue(&self, actions: Vec<Queued>) {
         if !actions.is_empty() {

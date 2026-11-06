@@ -2,7 +2,10 @@
 //! command channel's execution, over a world the host owns and passes in.
 
 mod actions;
+mod checkpoint;
 mod protocol;
+
+pub use checkpoint::RunCheckpoint;
 
 use crate::assertions::Assertions;
 use crate::base64;
@@ -165,6 +168,7 @@ struct SweepJob {
     polls: u32,
 }
 
+#[derive(Clone)]
 enum Queued {
     /// A step and where in its tick it falls (its time less the tick's, in
     /// ticks: -0.5 to 0.5), the stamp its input events carry.
@@ -173,6 +177,7 @@ enum Queued {
     Inject(InjectedInput),
 }
 
+#[derive(Clone)]
 struct Registered {
     desc: CommandDesc,
     handler: Handler,

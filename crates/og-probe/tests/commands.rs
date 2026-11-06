@@ -322,3 +322,87 @@ fn a_gate_that_restores_a_peers_snapshot_keeps_the_steps_on_the_shared_ticks() {
     assert_eq!(dumps.len(), 1);
     assert_eq!(dumps[0].0, 41);
 }
+
+#[test]
+fn run_checkpoints_restep_every_tick_without_changing_world_or_command_outputs() {
+    let script = "0:key_down:ArrowRight;0.05:touch_move:17,43;0.1:set:player.Health.hp=57;0.15:screenshot:a.png;0.2:key_up:ArrowRight;0.25:screenshot:b.png;0.3:quit";
+    let mut fresh = build(29, true);
+    let mut forked = build(29, true);
+    fresh.probe.schedule(&fresh.world, script).unwrap();
+    forked.probe.schedule(&forked.world, script).unwrap();
+    for _ in 0..30 {
+        fresh.probe.step(&mut fresh.world).unwrap();
+        let saved = forked.probe.checkpoint(&forked.world).unwrap();
+        forked.probe.step(&mut forked.world).unwrap();
+        let hash = forked.world.world_hash();
+        forked
+            .probe
+            .restore_checkpoint(&mut forked.world, &saved)
+            .unwrap();
+        forked.probe.step(&mut forked.world).unwrap();
+        assert_eq!(forked.world.world_hash(), hash, "restore then re-step");
+        assert_eq!(
+            forked.world.world_hash(),
+            fresh.world.world_hash(),
+            "fresh replay"
+        );
+        assert_eq!(forked.probe.accepted(), fresh.probe.accepted());
+        assert_eq!(forked.probe.take_outputs(), fresh.probe.take_outputs());
+        assert_eq!(forked.probe.quit_requested(), fresh.probe.quit_requested());
+        if fresh.probe.quit_requested() {
+            return;
+        }
+    }
+    panic!("script did not finish");
+}
+
+#[test]
+fn run_checkpoint_discards_a_siblings_mutations_quit_and_queued_commands() {
+    let mut h = build(17, false);
+    let mut assertion = og_probe::assertions::Call {
+        kind: og_probe::assertions::Kind::Each,
+        origin: og_probe::assertions::Origin::Game,
+        name: "path".into(),
+        location: "test".into(),
+        condition: true,
+        key: "left".into(),
+        details: Value::Null,
+        tick: 0,
+        declared: true,
+    };
+    h.probe.assertions().borrow_mut().record(&assertion);
+    let empty_report = h.probe.assertions().borrow().report();
+    let start = h.probe.checkpoint(&h.world).unwrap();
+    let script = "0:touch_move:19,71;0:touch_start;0.1:set:player.Health.hp=39;0.2:quit";
+    h.probe.schedule(&h.world, script).unwrap();
+    run(&mut h, 30);
+    let expected_hash = h.world.world_hash();
+    let expected_inputs = h.probe.accepted();
+    h.probe
+        .schedule(&h.world, "0:set:player.Health.hp=999")
+        .unwrap();
+    h.probe.inbox().push("key_down", vec!["ArrowLeft".into()]);
+    assertion.declared = false;
+    assertion.tick = 12;
+    h.probe.assertions().borrow_mut().record(&assertion);
+    assert_ne!(h.probe.assertions().borrow().report(), empty_report);
+    h.probe.restore_checkpoint(&mut h.world, &start).unwrap();
+    assert!(!h.probe.quit_requested());
+    assert_eq!(h.probe.accepted(), 0);
+    assert_eq!(h.probe.assertions().borrow().report(), empty_report);
+    h.probe.schedule(&h.world, script).unwrap();
+    run(&mut h, 30);
+    assert_eq!(h.world.world_hash(), expected_hash);
+    assert_eq!(h.probe.accepted(), expected_inputs);
+    assert!(h.probe.quit_requested());
+
+    let mut other = build(17, false);
+    let before = other.world.world_hash();
+    assert!(
+        other
+            .probe
+            .restore_checkpoint(&mut other.world, &start)
+            .is_err()
+    );
+    assert_eq!(other.world.world_hash(), before);
+}

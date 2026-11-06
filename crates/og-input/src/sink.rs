@@ -29,6 +29,15 @@ pub trait InputSink {
     fn end_tick(&mut self, world: &mut World);
     /// Events the input layer accepted since load.
     fn accepted(&self) -> u32;
+    /// State outside the world, for a development run checkpoint. A custom
+    /// sink without this capability cannot participate in snapshot forks.
+    fn checkpoint(&self) -> Option<serde_json::Value> {
+        None
+    }
+    /// Restore a checkpoint from this sink. A refusal leaves it unchanged.
+    fn restore_checkpoint(&mut self, _state: &serde_json::Value) -> bool {
+        false
+    }
 }
 
 /// The engine's [`InputSink`]: writes the world's [`Input`] resource and
@@ -218,5 +227,17 @@ impl InputSink for InputLayer {
 
     fn accepted(&self) -> u32 {
         self.accepted
+    }
+
+    fn checkpoint(&self) -> Option<serde_json::Value> {
+        Some(serde_json::json!(self.accepted))
+    }
+
+    fn restore_checkpoint(&mut self, state: &serde_json::Value) -> bool {
+        let Some(accepted) = state.as_u64().and_then(|v| u32::try_from(v).ok()) else {
+            return false;
+        };
+        self.accepted = accepted;
+        true
     }
 }
