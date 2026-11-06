@@ -315,10 +315,10 @@ the `ui { screen }` entries, at each viewport of `--sizes`, each labelled
 `<screen>@<viewport>` with its size and renderer tier): colour count,
 palette hit rate, edge statistics, the camera it was captured with
 (`og.Camera` through the probe) against `ArtCamera` (projection, pitch and
-yaw with `fixedAngle`, the field of view's range), and the three catalogue
-checks and the style's `intended` traits handed to the critic as written
-(`--critic` prints the prompt and the frames; the platform's critic
-answers them). JSON with `--json`, carrying the look's flattened art
+yaw with `fixedAngle`, the field of view's range). The three catalogue
+checks and the style's `intended` traits go to a critic as written, but
+handing them over is the agent's step (visual-acceptance §5; `--critic`
+was removed 2026-11-06: the engine measures, the agent judges). JSON with `--json`, carrying the look's flattened art
 blocks and the scenes no capture script reaches. A reviewer measures a
 region of any of those frames with `og frame measure` (visual-acceptance
 §5, §6).
@@ -741,7 +741,7 @@ gate, record `metal` frames or publish. Evidence:
 | A3 | `art/conform-3d` | A1 | engine | §2.3's 3D rows and animation: decimation, normals, bevel, voxelise, vertex colours, texel density, palette, step fps; og-cook tests |
 | A4 | `art/runtime` | A1 | engine | §2.4: sprite outline, palette swap, cleanEdge filter, camera presets, `ArtMotion.stepFps` default, the anime-cel finding; og-tests scenes with their reference frames named (metal recorded by the coordinator) |
 | A5 | `art/brief` | A1 | engine | §2.2: `artBrief` in the knowledge package and its re-export from create-game, the skill changes (og-taste, og-model recipes, og-build, the consumer section) |
-| A6 | `art/check` | A2, A3 | engine | §2.5: `og style check`, the doctor line, the publish summary, `--critic` |
+| A6 | `art/check` | A2, A3 | engine | §2.5: `og style check`, the doctor line, the publish summary (`--critic` since removed, 2026-11-06) |
 | A7 | `art/samples` | A2, A3, A4 | engine | the eight family scenes (pixel side-on, pixel top-down, pixel-in-3D, painted 2D, ink and line 3D, shape and paper 3D, toon and comic 3D, cinematic 3D) in a new fx-showcase station or `examples/art-<family>`, each with assets made through `artBrief` and the cook's conformance; one frame per style; `look.family` filled |
 | P1 | `style-step` (merged into origin-agent `main` 2026-10-28: `0c54d85`, `cd2f6cc`, `89e00b4`) | A0 (catalogue 2, previews on main) | origin-agent | §4 |
 | R | release 0.7.0 | all | engine (macrunner) | §5 |

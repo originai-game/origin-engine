@@ -1,5 +1,5 @@
 //! `og style check [project] [--title <commands>] [--play <commands>]
-//! [--results <commands>] [--size WxH] [--no-frames] [--critic] [--json]`:
+//! [--results <commands>] [--size WxH] [--no-frames] [--json]`:
 //! the project's style measured against its look's art contract
 //! (docs/art.md §2.5).
 //!
@@ -56,11 +56,7 @@
 //! perspective camera's field of view against `fovMin` and `fovMax`; a
 //! camera off the contract makes the exit status 3. The coverage line
 //! names each scene project.ogt declares with no capture script (a screen
-//! of its name; the start scene is covered by `play`). `--critic` prints only the catalogue
-//! entry's three checks as written, the traits the style means (the
-//! entry's `intended`, which a critic must not read as defects) and the
-//! frames, for a blind critic: never the style's name, slug or the look's
-//! id. `--json` prints one JSON document, its `contract` the flattened art
+//! of its name; the start scene is covered by `play`). `--json` prints one JSON document, its `contract` the flattened art
 //! blocks the frames were judged against.
 //!
 //! A project with no look in project.ogt or GameDesc has no contract: it says so
@@ -85,9 +81,9 @@ mod measures;
 pub use measures::*;
 use measures::{LINE_RGB, pct, srgb8};
 
-const USAGE: &str = "usage: og style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH | --sizes desktop,phone,...] [--no-frames] [--critic] [--json]";
+const USAGE: &str = "usage: og style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH | --sizes desktop,phone,...] [--no-frames] [--json]";
 
-/// The catalogue of styles (the knowledge package's), for `--critic`'s checks.
+/// The catalogue of styles (the knowledge package's), to name the slug a look builds on.
 const CATALOGUE: &str = include_str!("../../../packages/knowledge/looks/catalogue.json");
 
 /// The screens every game is captured at, first and in this order (each
@@ -331,29 +327,6 @@ fn catalogue_styles() -> Vec<Value> {
     serde_json::from_str::<Value>(CATALOGUE)
         .ok()
         .and_then(|c| c["styles"].as_array().cloned())
-        .unwrap_or_default()
-}
-
-/// The catalogue's `intended` for `slug`: the traits that look like defects
-/// but are the style (hard steps, dither, broken edges), as written.
-pub fn catalogue_intended(slug: &str) -> Option<String> {
-    catalogue_styles()
-        .iter()
-        .find(|e| e["slug"] == slug)
-        .and_then(|e| e["intended"].as_str().map(str::to_string))
-}
-
-/// The catalogue's three checks for `slug`, as written.
-pub fn catalogue_checks(slug: &str) -> Vec<String> {
-    catalogue_styles()
-        .iter()
-        .find(|e| e["slug"] == slug)
-        .and_then(|e| e["checks"].as_array())
-        .map(|c| {
-            c.iter()
-                .filter_map(|s| s.as_str().map(str::to_string))
-                .collect()
-        })
         .unwrap_or_default()
 }
 
@@ -1002,11 +975,7 @@ pub fn to_json(m: &Measured, frames: &[Frame], frame_errors: &[String], cov: &Co
                 "hex": p.iter().map(|q| format!("#{:02x}{:02x}{:02x}", q[0], q[1], q[2])).collect::<Vec<_>>(),
             })),
             "art": c.art,
-            "style": slug.as_ref().map(|s| json!({
-                "slug": s,
-                "checks": catalogue_checks(s),
-                "intended": catalogue_intended(s),
-            })),
+            "style": slug.as_ref().map(|s| json!({ "slug": s })),
         },
         "coverage": {
             "screens": cov.screens,
@@ -1154,43 +1123,6 @@ pub fn report(m: &Measured, frames: &[Frame], frame_errors: &[String], cov: &Cov
     s
 }
 
-/// `--critic`: the catalogue's checks as written, the traits the style
-/// means (never defects) and the frames, nothing that names the style.
-pub fn critic(checks: &[String], intended: Option<&str>, frames: &[Frame], json: bool) -> String {
-    let prompt = "Look at the frames below. For each check, answer yes or no, with one sentence on what in the frames shows it. What the style means is not a defect.";
-    if json {
-        return json!({
-            "prompt": prompt,
-            "checks": checks,
-            "intended": intended,
-            "frames": frames.iter().map(|f| f.path.display().to_string()).collect::<Vec<_>>(),
-            "shots": frames.iter().map(|f| json!({
-                "label": f.label(), "screen": f.screen, "viewport": f.viewport,
-                "size": f.size, "tier": f.tier, "path": f.path.display().to_string(),
-            })).collect::<Vec<_>>(),
-        })
-        .to_string();
-    }
-    let mut s = format!("{prompt}\n\nchecks:\n");
-    if checks.is_empty() {
-        s.push_str("  (none: the look builds on no catalogue style)\n");
-    }
-    for (i, c) in checks.iter().enumerate() {
-        s.push_str(&format!("  {}. {c}\n", i + 1));
-    }
-    if let Some(t) = intended {
-        s.push_str(&format!("\nthe style, not a defect:\n  {t}\n"));
-    }
-    s.push_str("\nframes:\n");
-    if frames.is_empty() {
-        s.push_str("  (none captured)\n");
-    }
-    for f in frames {
-        s.push_str(&format!("  {}  {}\n", f.label(), f.path.display()));
-    }
-    s
-}
-
 /// The summary `og build --publish` prints as warnings: one line per asset
 /// off the contract (at most `max`), and how many more.
 pub fn warnings(m: &Measured, max: usize) -> Vec<String> {
@@ -1241,7 +1173,6 @@ struct Args {
     size: Option<String>,
     sizes: Option<String>,
     frames: bool,
-    critic: bool,
     json: bool,
 }
 
@@ -1252,14 +1183,12 @@ fn parse(args: &[&str]) -> Result<Args, String> {
         size: None,
         sizes: None,
         frames: true,
-        critic: false,
         json: false,
     };
     let mut i = 0;
     while i < args.len() {
         match args[i] {
             "--json" => a.json = true,
-            "--critic" => a.critic = true,
             "--no-frames" => a.frames = false,
             f @ ("--title" | "--play" | "--results" | "--size" | "--sizes") => {
                 let Some(v) = args.get(i + 1) else {
@@ -1406,26 +1335,6 @@ pub fn run(args: &[&str]) -> ExitCode {
                 }
             }
         }
-    }
-    if a.critic {
-        let slug = measured.contract.slug();
-        let checks = slug.as_deref().map(catalogue_checks).unwrap_or_default();
-        let intended = slug.as_deref().and_then(catalogue_intended);
-        print!("{}", critic(&checks, intended.as_deref(), &frames, a.json));
-        if a.json {
-            println!();
-        }
-        for e in &frame_errors {
-            eprintln!(
-                "og style check: a frame could not be captured: {}",
-                e.lines().next().unwrap_or("")
-            );
-        }
-        return if frame_errors.is_empty() {
-            ExitCode::SUCCESS
-        } else {
-            ExitCode::FAILURE
-        };
     }
     if a.json {
         println!("{}", to_json(&measured, &frames, &frame_errors, &cov));
@@ -2008,51 +1917,6 @@ mod tests {
         let mut stepped = sheet.clone();
         stepped.clips[0].durations.fill(2.0 / 12.0);
         assert!(ok(&judge_flipbook(&c, "run.ogt", &stepped)[0], "stepFps"));
-    }
-
-    #[test]
-    fn the_critic_reads_the_checks_and_frames_and_never_the_style() {
-        let checks = catalogue_checks("16bit-pixel");
-        assert_eq!(checks.len(), 3);
-        let frames = vec![Frame {
-            screen: "play".into(),
-            viewport: "phoneLandscape".into(),
-            size: [844, 390],
-            tier: Some("high".into()),
-            path: PathBuf::from("/g/og-out/style/play/screenshot-000210.png"),
-            colours: 0,
-            colours95: 0,
-            palette_hit: None,
-            edges: Edges::default(),
-            grid: 1,
-            camera: Value::Null,
-            camera_checks: Vec::new(),
-        }];
-        let styles = catalogue_styles();
-        let entry = styles.iter().find(|e| e["slug"] == "16bit-pixel").unwrap();
-        let name = entry["name"].as_str().unwrap();
-        for json in [false, true] {
-            let intended = catalogue_intended("16bit-pixel");
-            let out = critic(&checks, intended.as_deref(), &frames, json);
-            assert!(out.contains("play@phoneLandscape"), "{out}");
-            assert!(
-                out.contains(intended.as_deref().unwrap().split(' ').next().unwrap()),
-                "{out}"
-            );
-            for c in &checks {
-                let c = if json {
-                    serde_json::to_string(c).unwrap()
-                } else {
-                    c.clone()
-                };
-                assert!(out.contains(c.trim_matches('"')), "{out}");
-            }
-            assert!(out.contains("screenshot-000210.png"));
-            assert!(
-                !out.contains("16bit") && !out.contains(name) && !out.contains("looks/"),
-                "{out}"
-            );
-        }
     }
 
     fn project(text: &str) -> PathBuf {

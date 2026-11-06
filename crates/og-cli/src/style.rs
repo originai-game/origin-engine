@@ -54,7 +54,7 @@ use image::{Rgba, RgbaImage};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og style list\n       og style add <pack|directory> [project]\n       og style new <name> [--look <family>] [--premise <text>] [--seed <#rrggbb>] [--scheme dark|light] [--shape <s>] [--ornament <o>] [--motion <m>] [--finish <f>] [--project <dir> | --out <dir>] [--force]\n       og style upgrade <style.ogt> [--out <file>] [--check]\n       og style eject <slug> [<name>] [--project <dir>] [--force]\n       og style pack <dir> [--out <dir>]\n       og style art <pack dir> [--art <dir>] [--check]\n       og style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH] [--no-frames] [--critic] [--json]";
+const USAGE: &str = "usage: og style list\n       og style add <pack|directory> [project]\n       og style new <name> [--look <family>] [--premise <text>] [--seed <#rrggbb>] [--scheme dark|light] [--shape <s>] [--ornament <o>] [--motion <m>] [--finish <f>] [--project <dir> | --out <dir>] [--force]\n       og style upgrade <style.ogt> [--out <file>] [--check]\n       og style eject <slug> [<name>] [--project <dir>] [--force]\n       og style pack <dir> [--out <dir>]\n       og style art <pack dir> [--art <dir>] [--check]\n       og style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH] [--no-frames] [--json]";
 
 /// The parts a nine-patch can dress (og-ui's `StylePart` names) and `soft`.
 const SLICES: [&str; 13] = [

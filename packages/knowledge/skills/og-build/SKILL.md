@@ -550,15 +550,13 @@ palette hit rate, edge density, the share of hard one-pixel steps (pixel
 art and hard outlines are high, filtered and blurred edges low) and the
 frame's pixel grid. `--no-frames` skips them.
 
-`--critic` prints the style's three catalogue checks as written, the
-traits the style means (`intended`, og-taste §12) and the frames with
-their labels, and nothing that names the style (no name, slug or look
-id): hand it to a blind critic, who answers each check from the frames.
 `--json` prints one document (`contract`, `coverage`, `assets`,
 `optOuts`, `frames`, `summary`); its `contract` carries the look's
 flattened art blocks (`art`, colours as sRGB hex), the palette's colours
-and the catalogue's `checks` and `intended`, so a reviewer gets the terms
-from the run that measured them.
+and the catalogue slug the look builds on (`style.slug`), so a reviewer
+gets the terms from the run that measured them. A blind critic of the
+style's three catalogue checks is the agent's step, not the command's
+(visual-acceptance §5).
 
 **Measuring a region.** `og frame measure <png> --region x,y,w,h
 [--units fraction] [--against x,y,w,h] [--metric
