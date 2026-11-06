@@ -835,13 +835,17 @@ pub(crate) fn drawn_line(
 
 /// One text command's worth of a line: the font, what it draws and where
 /// it starts, `dx` em from the line's start (its width `width` em; 0 for
-/// the one piece of a font that is not mixed).
+/// the one piece of a font that is not mixed), and `source`, the line's
+/// characters it draws as written, in logical order: what reads the
+/// frame reads those, never `text`, whose shaped glyphs are private-use
+/// characters (a face's `locl` digits, joined Arabic) in visual order.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Piece {
     pub font: Option<FontHandle>,
     pub dx: f32,
     pub width: f32,
     pub text: String,
+    pub source: String,
     pub placements: Vec<GlyphPlacement>,
 }
 
@@ -868,17 +872,20 @@ pub fn pieces_with(
             dx: 0.0,
             width: 0.0,
             text,
+            source: line.to_string(),
             placements,
         }];
     }
     split(
         font,
+        line,
         &font.metrics.visual_with(line, default, tracking, features),
     )
 }
 
-/// Visual glyphs cut into one piece per run of one font, left to right.
-pub(crate) fn split(font: &UiFont, glyphs: &[VisualGlyph]) -> Vec<Piece> {
+/// Visual glyphs of `line` cut into one piece per run of one font, left
+/// to right.
+pub(crate) fn split(font: &UiFont, line: &str, glyphs: &[VisualGlyph]) -> Vec<Piece> {
     let mut out = Vec::new();
     let mut x = 0.0f32;
     for run in glyphs.chunk_by(|a, b| a.font == b.font) {
@@ -889,11 +896,28 @@ pub(crate) fn split(font: &UiFont, glyphs: &[VisualGlyph]) -> Vec<Piece> {
             dx: x,
             width,
             text,
+            source: source_of(line, glyphs, run),
             placements,
         });
         x += width;
     }
     out
+}
+
+/// The characters of `line` that `run`, some of its visual glyphs `all`,
+/// draws, in logical order: from its first glyph's character up to the
+/// next character another glyph of the line starts at (a cluster's
+/// characters, and the bidi marks no glyph draws, with the glyph before).
+pub(crate) fn source_of(line: &str, all: &[VisualGlyph], run: &[VisualGlyph]) -> String {
+    let start = run.iter().map(|g| g.index).min().unwrap_or(0);
+    let last = run.iter().map(|g| g.index).max().unwrap_or(0);
+    let end = all
+        .iter()
+        .map(|g| g.index)
+        .filter(|&i| i > last)
+        .min()
+        .unwrap_or(usize::MAX);
+    line.chars().skip(start).take(end - start).collect()
 }
 
 /// Characters that keep the font of the run before them in a mixed text:

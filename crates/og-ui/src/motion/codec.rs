@@ -215,6 +215,7 @@ impl W<'_> {
                 baseline,
                 size,
                 text,
+                source,
                 color,
                 font,
                 bounds,
@@ -229,6 +230,7 @@ impl W<'_> {
                 self.f32(*baseline);
                 self.f32(*size);
                 self.str(text);
+                self.str(source);
                 self.color4(color);
                 self.u32(font.to_bits());
                 self.rect(bounds);
@@ -409,6 +411,9 @@ pub(crate) fn prop_index(p: Prop) -> u8 {
 pub(crate) struct R<'a> {
     pub bytes: &'a [u8],
     pub at: usize,
+    /// The state version that wrote the bytes: before 17 a text command
+    /// carried no source characters (they read as its drawn text).
+    pub version: u32,
 }
 
 impl R<'_> {
@@ -600,6 +605,11 @@ impl R<'_> {
                 let baseline = self.f32()?;
                 let size = self.f32()?;
                 let text = self.str()?;
+                let source = if self.version >= 17 {
+                    self.str()?
+                } else {
+                    text.clone()
+                };
                 let color = self.color4()?;
                 let font = FontHandle::from_bits(self.u32()?);
                 let bounds = self.rect()?;
@@ -623,6 +633,7 @@ impl R<'_> {
                     baseline,
                     size,
                     text,
+                    source,
                     color,
                     font,
                     bounds,

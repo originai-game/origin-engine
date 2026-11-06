@@ -201,6 +201,7 @@ fn a_grouped_world_restores_its_scales_in_a_fresh_session() {
 /// 623aedb758cbc484 after Fluid3D version 2 (simulation).
 /// 7d9de53141456069 after Stylise's watercolour fields.
 /// b197ce091b778b8f after Stylise.posterizeMode.
+/// 4d241142da7ae19c after UI state version 17 (a text command's source characters).
 #[test]
 fn a_world_without_time_groups_keeps_its_hash() {
     set_hooks(Rc::new(Game));
@@ -213,5 +214,5 @@ fn a_world_without_time_groups_keeps_its_hash() {
         value(og_world_resource(engine, "og.TimeGroups".into())),
         json!({ "scales": [] })
     );
-    assert_eq!(hash(engine), "b197ce091b778b8f");
+    assert_eq!(hash(engine), "4d241142da7ae19c");
 }

@@ -515,6 +515,7 @@ impl Ui {
                     baseline: snap(baseline),
                     size,
                     text: pc.text,
+                    source: pc.source,
                     color: color.fade(alpha).linear(),
                     font: handle,
                     bounds: Rect::new(x + ox, top, if one { w } else { pc.width * size }, lh),

@@ -93,7 +93,15 @@ pub enum DrawCmd {
         x: f32,
         baseline: f32,
         size: f32,
+        /// What the font draws: the characters as written, or a visual
+        /// line's glyphs in visual order (a shaped glyph a private-use
+        /// character, [`crate::text::VisualGlyph::ch`]).
         text: String,
+        /// The characters `text` draws as written, in logical order: what
+        /// reads the frame (`og ui check`, a test's drawn texts) reads
+        /// these, so a face's `locl` digits or joined Arabic still read as
+        /// their words ([`crate::text::Piece::source`]).
+        source: String,
         color: [f32; 4],
         font: FontHandle,
         /// The line box, for overlap.

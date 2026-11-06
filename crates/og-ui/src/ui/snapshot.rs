@@ -330,7 +330,9 @@ impl Ui {
     /// layouts (a game gives its saved layouts back with
     /// [`Ui::set_hud_layout`]), and the state of version 15 with no touch
     /// control holding a finger (a held stick takes its finger again on
-    /// the next frame).
+    /// the next frame), and the state of version 16 with each leaving
+    /// element's text read as the characters it draws (it carried no
+    /// source characters).
     /// Refused for another version, or bytes that do not read as theirs.
     pub fn upgrade_state(bytes: &[u8]) -> og_core::Result<Vec<u8>> {
         let bad = |why: String| {
@@ -353,7 +355,7 @@ impl Ui {
                 };
                 Ok(ui.save_state())
             }
-            11..=15 => {
+            11..=16 => {
                 let s = r.state(version).ok_or_else(|| {
                     bad(format!("truncated or malformed version {version} state"))
                 })?;
@@ -378,7 +380,7 @@ impl Ui {
                 Ok(ui.save_state())
             }
             v => Err(bad(format!(
-                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 15"
+                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 16"
             ))),
         }
     }
@@ -655,6 +657,7 @@ impl Reader<'_> {
         let mut r = crate::motion::codec::R {
             bytes: self.bytes,
             at: self.at,
+            version,
         };
         s.motion = r.motion()?;
         self.at = r.at;

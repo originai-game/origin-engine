@@ -2,8 +2,8 @@
 //! §16.5), development only: `og_node_ui_frame` is an engine's last laid-out
 //! UI frame read between ticks, as JSON, with what the probe's `dump_ui`
 //! does not carry: the undeclared overlaps, the layout counts and draw
-//! commands, every drawn line of text (its string as drawn, size, line box
-//! and clip), the fills (for the primary action), the accessibility tree
+//! commands, every drawn line of text (its characters as written, size, line
+//! box and clip), the fills (for the primary action), the accessibility tree
 //! with its focus order, the elements in visual states, the frame's
 //! warnings, and the viewport and theme facts the rules read (safe area,
 //! covered region, pointer, contrast mode, the style's sounds).
@@ -91,14 +91,14 @@ fn frame(engine: u32) -> Value {
         .into_iter()
         .filter_map(|c| match c {
             DrawCmd::Text {
-                text,
+                source,
                 size,
                 bounds,
                 clip,
                 color,
                 ..
             } => Some(json!({
-                "text": text, "size": size, "bounds": rect(bounds), "clip": rect(clip),
+                "text": source, "size": size, "bounds": rect(bounds), "clip": rect(clip),
                 "color": color,
             })),
             _ => None,

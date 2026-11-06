@@ -133,7 +133,7 @@ fn set(engine: u32, entity: f64, x: u32, y: u32, tile: i32) {
 /// (to f6c957ee4976ed4a), then Fluid3D's simulation (to c53a68e4d5af79aa), each of
 /// which moves every raw world hash.
 /// PostEffects' ssrMaxRoughness and ssrResolution (to f917a356541f94e3) and
-/// Stylise's watercolour fields (to da2b397551633113), then Stylise.posterizeMode (to 8cebc431ee6b9219), each of which moves every raw world hash.
+/// Stylise's watercolour fields (to da2b397551633113), then Stylise.posterizeMode (to 8cebc431ee6b9219), then UI state version 17 (to 32050b0bfcc8487e), each of which moves every raw world hash.
 #[test]
 fn a_world_of_loaded_maps_keeps_its_hash() {
     set_hooks(Rc::new(Game));
@@ -144,7 +144,7 @@ fn a_world_of_loaded_maps_keeps_its_hash() {
     frame(engine);
     set(engine, entity, 2, 1, 0);
     frame(engine);
-    assert_eq!(hash(engine), "8cebc431ee6b9219");
+    assert_eq!(hash(engine), "32050b0bfcc8487e");
 }
 
 #[test]

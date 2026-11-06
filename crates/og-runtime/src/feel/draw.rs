@@ -578,6 +578,7 @@ fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
                 dx: 0.0,
                 width: 0.0,
                 text: t.text.clone(),
+                source: t.text.clone(),
                 placements: Vec::new(),
             };
             parts.push((p.pages.clone(), 0.0, 0.0, piece));

@@ -832,6 +832,7 @@ impl Ui {
                         baseline: snap(baseline - em * 0.02),
                         size,
                         text: label.clone(),
+                        source: label.clone(),
                         color: color.fade(alpha).linear(),
                         font: handle,
                         bounds: Rect::new(r.x + m + pad, plate.y, w, plate.height),
@@ -855,6 +856,7 @@ impl Ui {
                             baseline: top + side,
                             size: side,
                             text: ch.to_string(),
+                            source: ch.to_string(),
                             color: color.fade(alpha).linear(),
                             font,
                             bounds: Rect::new(x, top, side, side),
@@ -893,12 +895,14 @@ impl Ui {
                          dy: f32,
                          a: f32,
                          text: String,
+                         source: String,
                          placements: Vec<og_render::GlyphPlacement>,
                          w: f32| DrawCmd::Text {
                 x: snap(x),
                 baseline: snap(baseline + dy),
                 size,
                 text,
+                source,
                 color: color.fade(alpha * a).linear(),
                 font: handle,
                 bounds: Rect::new(x, r.y + dy, w, r.height),
@@ -936,7 +940,8 @@ impl Ui {
                         x += w;
                         continue;
                     };
-                    let (text, placements) = crate::text::FontMetrics::drawn(run);
+                    let (drawn, placements) = crate::text::FontMetrics::drawn(run);
+                    let source = crate::text::source_of(&text, glyphs, run);
                     let (dy, a) = effect(g);
                     let copies = if smear > 0.0 {
                         &[smear, 0.0][..]
@@ -948,7 +953,8 @@ impl Ui {
                             x: snap(x + dx),
                             baseline: snap(baseline + dy),
                             size,
-                            text: text.clone(),
+                            text: drawn.clone(),
+                            source: source.clone(),
                             color: color.fade(alpha * a).linear(),
                             font: f,
                             bounds: Rect::new(x + dx, r.y + dy, w, r.height),
@@ -964,7 +970,7 @@ impl Ui {
             } else if let Some(glyphs) = piece.glyphs.as_ref().filter(|_| mixed) {
                 // A segment mixing fonts: a command per font, each where its
                 // glyphs start.
-                for pc in crate::text::split(font, glyphs) {
+                for pc in crate::text::split(font, &text, glyphs) {
                     let Some(f) = pc.font else { continue };
                     // Bold: a copy one device pixel to the right first.
                     let copies = if smear > 0.0 {
@@ -978,6 +984,7 @@ impl Ui {
                             baseline: snap(baseline),
                             size,
                             text: pc.text.clone(),
+                            source: pc.source.clone(),
                             color: color.fade(alpha).linear(),
                             font: f,
                             bounds: Rect::new(
@@ -1004,11 +1011,20 @@ impl Ui {
                         0.0,
                         1.0,
                         drawn.clone(),
+                        text.clone(),
                         placements.clone(),
                         r.width,
                     ));
                 }
-                cmds.push(glyph(r.x, 0.0, 1.0, drawn, placements, r.width));
+                cmds.push(glyph(
+                    r.x,
+                    0.0,
+                    1.0,
+                    drawn,
+                    text.clone(),
+                    placements,
+                    r.width,
+                ));
             } else if s.fx == SpanFx::None || still {
                 if smear > 0.0 {
                     cmds.push(glyph(
@@ -1016,11 +1032,20 @@ impl Ui {
                         0.0,
                         1.0,
                         text.clone(),
+                        text.clone(),
                         Vec::new(),
                         r.width,
                     ));
                 }
-                cmds.push(glyph(r.x, 0.0, 1.0, text.clone(), Vec::new(), r.width));
+                cmds.push(glyph(
+                    r.x,
+                    0.0,
+                    1.0,
+                    text.clone(),
+                    text.clone(),
+                    Vec::new(),
+                    r.width,
+                ));
             } else {
                 // Glyph by glyph: each moved by the span's effect at this tick.
                 let mut x = r.x;
@@ -1031,9 +1056,17 @@ impl Ui {
                         + chars.get(g + 1).map_or(0.0, |&nx| m.kern(c, nx) * size);
                     let (dy, a) = effect(g);
                     if smear > 0.0 {
-                        cmds.push(glyph(x + smear, dy, a, cs.clone(), Vec::new(), w));
+                        cmds.push(glyph(
+                            x + smear,
+                            dy,
+                            a,
+                            cs.clone(),
+                            cs.clone(),
+                            Vec::new(),
+                            w,
+                        ));
                     }
-                    cmds.push(glyph(x, dy, a, cs, Vec::new(), w));
+                    cmds.push(glyph(x, dy, a, cs.clone(), cs, Vec::new(), w));
                     x += w;
                 }
             }

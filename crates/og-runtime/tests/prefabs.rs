@@ -290,8 +290,9 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// 11b306c51fde2306, MaterialStyle.wireframeColor, then to
 /// 892f0ccf9ecd891a, Fluid3D version 2 (simulation), then to
 /// 08de39dee3b96ead, Stylise's watercolour fields, then to
-/// f1f3f9d2e7afce23, Stylise.posterizeMode).
-const BY_HAND_HASH: &str = "f1f3f9d2e7afce23";
+/// f1f3f9d2e7afce23, Stylise.posterizeMode, then to
+/// d1ff90914731a400, UI state version 17, a text command's source characters).
+const BY_HAND_HASH: &str = "d1ff90914731a400";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {

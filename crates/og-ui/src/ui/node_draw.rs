@@ -453,6 +453,7 @@ impl Ui {
                                         baseline: snap(baseline + dy),
                                         size,
                                         text: pc.text.clone(),
+                                        source: pc.source.clone(),
                                         color: color.fade(alpha).linear(),
                                         font,
                                         bounds: Rect::new(
@@ -806,6 +807,7 @@ impl Ui {
                             baseline: snap(baseline),
                             size,
                             text: pc.text,
+                            source: pc.source,
                             color: color.fade(alpha).linear(),
                             font: handle,
                             bounds: Rect::new(
@@ -844,6 +846,7 @@ impl Ui {
                         baseline: top + size,
                         size,
                         text: ch.to_string(),
+                        source: ch.to_string(),
                         color: color.fade(alpha).linear(),
                         font: *font,
                         bounds: Rect::new(x, top, size, size),

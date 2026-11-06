@@ -857,6 +857,7 @@ mod tests {
         let mut r = R {
             bytes: &bytes,
             at: 0,
+            version: crate::ui::STATE_VERSION,
         };
         for c in &cmds {
             assert_eq!(r.cmd().as_ref(), Some(c));
@@ -891,6 +892,7 @@ mod tests {
             let back = rgeometry(&mut R {
                 bytes: &bytes,
                 at: 0,
+                version: crate::ui::STATE_VERSION,
             });
             assert_eq!(back, Some(g));
         }

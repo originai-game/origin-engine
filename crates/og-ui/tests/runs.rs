@@ -760,3 +760,58 @@ fn a_weight_and_a_locale_pick_the_styles_real_faces() {
     assert_eq!(drawn(fonts), [go(bold.handle)]);
     assert_eq!(drawn(one), [go(f.latin.handle), go(f.latin.handle)]);
 }
+
+#[test]
+fn a_shaped_line_reads_as_written() {
+    // Noto Sans SC's default script applies `locl` to Latin figures: its
+    // shaped "1/3" draws glyph ids (private-use characters), not "1/3".
+    // What reads the frame (og ui check, a HUD test's drawn texts) must
+    // still read the figures and words as written, in logical order.
+    let mut scene = RenderScene::new();
+    let f = faces(&mut scene);
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../templates/game/assets/fonts/NotoSansSC-Regular-subset.ttf"
+    );
+    let file = FontFile::new(Arc::new(std::fs::read(path).expect("the Chinese font")))
+        .expect("a font rustybuzz reads");
+    let sc = UiFont {
+        handle: f.cjk.handle,
+        metrics: f.cjk.metrics.clone().with_file(Some(file)),
+    };
+    let shaped = Faces {
+        latin: sc,
+        cjk: f.cjk.clone(),
+        arabic: f.arabic.clone(),
+    };
+    for line in ["1/3", "Lv 12 原点", "187"] {
+        let frame = label_frame(&shaped, line);
+        let drawn: Vec<(String, String)> = frame
+            .items
+            .iter()
+            .filter_map(|i| match &i.cmd {
+                DrawCmd::Text { text, source, .. } => Some((text.clone(), source.clone())),
+                _ => None,
+            })
+            .collect();
+        assert!(
+            drawn
+                .iter()
+                .any(|(t, _)| t.chars().any(|c| c as u32 >= GLYPH_PUA)),
+            "{line:?} draws shaped glyphs: {drawn:?}"
+        );
+        let read: String = drawn.iter().map(|(_, s)| s.as_str()).collect();
+        assert_eq!(read, line, "{drawn:?}");
+    }
+    // A mixed label: each run's command reads its own characters.
+    let frame = label_frame(&f, "Score 原点 42");
+    let read: Vec<String> = frame
+        .items
+        .iter()
+        .filter_map(|i| match &i.cmd {
+            DrawCmd::Text { source, .. } => Some(source.clone()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(read, ["Score ", "原点 ", "42"]);
+}
