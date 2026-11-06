@@ -28,7 +28,7 @@ function card(id: string, title: string, material: string | null): void {
     og.ui.column(`${id}Art`, { width: { kind: "grow" }, height: { kind: "fixed", px: 132 }, background: { token: "primary" }, radius: 8, align: "center", cross: "center" }, () => {
       og.ui.icon(`${id}Icon`, "crown", { size: 64 });
     });
-    og.ui.label(`${id}Title`, title, { step: "heading" });
+    og.ui.label(`${id}Title`, title, { step: "lg" });
     og.ui.label(`${id}Note`, material ?? "no material", { step: "caption" });
   });
 }
