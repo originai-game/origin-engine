@@ -389,6 +389,11 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         super::net::after_tick(id, world);
         // The resources UI documents read, for the next tick's bindings.
         super::modules::docs::snapshot(id, world);
+        // The default invariants from reflection, last: they read the tick's end.
+        #[cfg(not(feature = "publish"))]
+        if let Ok(eng) = engine(id) {
+            super::invariants::after_tick(&eng, world);
+        }
     }));
     // A tick that would load a cell whose sub-scene's pack has not landed
     // is held (G3-3); then og.net's lockstep holds it until every player's

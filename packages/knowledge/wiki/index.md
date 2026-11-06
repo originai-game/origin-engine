@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 39 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 40 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -122,6 +122,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 |---|---|---|---|
 | [`commands`](commands.md) | `og.commands.*` | dropped | The command channel: actions scheduled on simulation time, from `og run --commands "t:action[:args];..."` or the probe's commands(). |
 | [`probe`](probe.md) | types and tokens | kept | The probe: RuntimeProbe protocol 5 (origin/packages/contracts/src/probe.ts) served natively, plus the engine's wire members. |
+| [`assert`](assert.md) | `og.assert.*` | dropped | Assertions: properties of the game checked as it runs, after the Antithesis SDK's. `og.assert.always(world.get(hero, Health).hp >= 0, "hp never negative", { hp })` holds on every call, `og.assert.sometimes(boss.phase === 2, "boss reaches phase 2")` must hold at least once in a run, `og.assert.reachable("door opened")` must run at least once, `og.assert.unreachable("fell through the floor")` must never run, and `og.assert.each(level, cleared, "each level cleared")` keeps one bucket per distinct key, each of which must hold once. |
 
 ### `og-net`
 
@@ -176,7 +177,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2173 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2190 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -249,6 +250,15 @@ Field units the docs and Tune use.
 | [`ArtRotation`](art.md#type-ArtRotation) | enum | art | — |
 | [`ArtRotation()`](art.md#column-ArtRotation) | column kind | art | — |
 | [`ArtSlotDesc`](ui.md#type-ArtSlotDesc) | desc struct | ui | — |
+| [`AssertBucket`](assert.md#type-AssertBucket) | struct | assert | — |
+| [`AssertCost`](assert.md#type-AssertCost) | struct | assert | — |
+| [`AssertKind`](assert.md#type-AssertKind) | enum | assert | — |
+| [`AssertOrigin`](assert.md#type-AssertOrigin) | enum | assert | — |
+| [`AssertRecord`](assert.md#type-AssertRecord) | struct | assert | — |
+| [`AssertReport`](assert.md#type-AssertReport) | struct | assert | — |
+| [`AssertSite`](assert.md#type-AssertSite) | struct | assert | — |
+| [`AssertUncovered`](assert.md#type-AssertUncovered) | struct | assert | — |
+| [`AssertViolation`](assert.md#type-AssertViolation) | struct | assert | — |
 | [`Asset`](load.md#type-Asset) | handle | load | — |
 | [`Asset()`](load.md#column-Asset) | column kind | load | — |
 | [`AudioBus`](audio.md#type-AudioBus) | enum | audio | — |
@@ -474,6 +484,7 @@ Field units the docs and Tune use.
 | [`EmitterDesc`](ui.md#type-EmitterDesc) | desc struct | ui | — |
 | [`EmitterPreset`](ui.md#type-EmitterPreset) | enum | ui | — |
 | [`EngineProbe`](probe.md#type-EngineProbe) | interface | probe | — |
+| [`EngineProbe.assertions`](probe.md#member-EngineProbe-assertions) | method | probe | `og_engine_probe_assertions` |
 | [`EngineProbe.capture`](probe.md#member-EngineProbe-capture) | method | probe | `og_engine_probe_capture` |
 | [`EngineProbe.commands`](probe.md#member-EngineProbe-commands) | method | probe | `og_engine_probe_commands` |
 | [`EngineProbe.describe`](probe.md#member-EngineProbe-describe) | method | probe | `og_engine_probe_describe` |
@@ -858,6 +869,12 @@ Field units the docs and Tune use.
 | [`og.ArtPixels`](art.md#record-ArtPixels) | resource | art | — |
 | [`og.ArtShape`](art.md#record-ArtShape) | resource | art | — |
 | [`og.ArtTexels`](art.md#record-ArtTexels) | resource | art | — |
+| [`og.assert.always`](assert.md#fn-always) | function | assert | — |
+| [`og.assert.each`](assert.md#fn-each) | function | assert | — |
+| [`og.assert.reachable`](assert.md#fn-reachable) | function | assert | — |
+| [`og.assert.record`](assert.md#fn-record) | function | assert | `og_assert_record` |
+| [`og.assert.sometimes`](assert.md#fn-sometimes) | function | assert | — |
+| [`og.assert.unreachable`](assert.md#fn-unreachable) | function | assert | — |
 | [`og.AssetFailed`](load.md#record-AssetFailed) | event | load | — |
 | [`og.AssetReady`](load.md#record-AssetReady) | event | load | — |
 | [`og.atmosphere.timeOfDay`](atmosphere.md#fn-timeOfDay) | function | atmosphere | `og_atmosphere_time_of_day` |
@@ -1635,6 +1652,7 @@ Field units the docs and Tune use.
 | [`og.Wheel`](input.md#record-Wheel) | event | input | — |
 | [`og.Wind`](atmosphere.md#record-Wind) | resource | atmosphere | — |
 | [`og.WindMotor`](atmosphere.md#record-WindMotor) | component | atmosphere | — |
+| [`og.WorldBounds`](assert.md#record-WorldBounds) | resource | assert | — |
 | [`og.WorldOrigin`](transform.md#record-WorldOrigin) | resource | transform | — |
 | [`og.WorldRestored`](world.md#record-WorldRestored) | event | world | — |
 | [`OrbMeterDesc`](ui.md#type-OrbMeterDesc) | desc struct | ui | — |

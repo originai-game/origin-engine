@@ -15,6 +15,15 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Playtests check properties every tick.** `og.assert` (`always`,
+  `sometimes`, `reachable`, `unreachable`, `each`) records a game's
+  properties beside the world, never in it. Outside publish builds every
+  tick also checks the default invariants from reflection: no NaN, every
+  number inside its field's range, no dangling Entity, roots inside
+  `og.WorldBounds`. A playtest's `invariants` and `require`, the
+  `invariant:` action and the probe's `assertions` report name the first
+  failing tick, the entity, the field and the value, and list every
+  sometimes that never fired.
 - **UI text uses cooked-font paragraph layout.** Parley, HarfRust and
   Skrifa replace rustybuzz and the space-only breaker. Unicode break
   opportunities, dictionary breaks and grapheme-safe overflow replace

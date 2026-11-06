@@ -388,6 +388,14 @@ interface Running {
 
 let running: Running | null = null;
 
+/** The engine and tick of the call into game code in progress (og.assert's), or null between calls. */
+let calling: { readonly engine: number; readonly tick: number; readonly world: object } | null = null;
+
+/** The engine, its world and the tick game code is running in now: og.assert records into it. */
+export function currentCall(): { readonly engine: number; readonly tick: number; readonly world: object } | null {
+  return calling;
+}
+
 interface ViewInfo {
   readonly view: number;
   readonly count: number;
@@ -541,6 +549,11 @@ class QueryImpl {
 
 /** Whether the bound host is a publish build (the probe's hello says), learnt when the first engine is made. */
 let publishBuild: boolean | null = null;
+
+/** Whether the bound host is a publish build, once an engine was made (null before). */
+export function isPublishBuild(): boolean | null {
+  return publishBuild;
+}
 
 function learnBuild(engine: number): void {
   publishBuild ??= (parse<{ build?: string } | null>(abi().og_engine_probe_hello(engine))?.build ?? "dev") === "publish";
@@ -1340,6 +1353,8 @@ const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payloa
   const fn = callbacks[id];
   const world = worldFor(engine);
   const outer = running;
+  const outerCall = calling;
+  calling = { engine, tick, world };
   engineCalls++;
   inGame++;
   try {
@@ -1396,6 +1411,7 @@ const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payloa
     }
     inGame--;
     running = outer;
+    calling = outerCall;
     epoch++;
     engineCalls++;
   }
@@ -1736,6 +1752,7 @@ function makeProbe(id: number) {
     describe: () => parse(a().og_engine_probe_describe(id)),
     expect: (what: string) => parse(a().og_engine_probe_expect(id, what)),
     expectations: () => parse(a().og_engine_probe_expectations(id)),
+    assertions: (take?: boolean) => parse(a().og_engine_probe_assertions(id, take)),
     saveScene: (write?: boolean, spawned?: boolean) => parse(a().og_engine_probe_save_scene(id, write, spawned)),
   });
 }

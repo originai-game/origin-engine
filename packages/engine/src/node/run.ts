@@ -489,6 +489,8 @@ if (frameFailed) process.stderr.write(`og run: ${frameFailed}\n`);
 const dump = engine.probe.dump({ what: "world" }) as unknown as { hash: string; entities: number; tick: number; systems?: SystemTimes };
 // The script's expectations (`expect:` steps): a failure fails the run.
 const expectations = engine.probe.expectations();
+// The run's assertions (og.assert, the default invariants, `invariant:` steps): a violation fails the run.
+const assertions = engine.probe.assertions() as unknown as { violations: unknown[]; uncovered: unknown[] };
 // og polish's order statistics (src/node/polish.ts), so the two agree.
 const percentile = (xs: number[], q: number): number => {
   if (xs.length === 0) return 0;
@@ -542,12 +544,16 @@ const summary = {
   outputs,
   warnings,
   expectations,
+  assertions,
 };
 if (asJson) process.stdout.write(JSON.stringify(summary) + "\n");
 else {
   process.stdout.write(`tick ${dump.tick} hash ${dump.hash} entities ${dump.entities}\n`);
   if (expectations.results.length > 0) process.stdout.write(`expectations: ${expectations.passed} passed, ${expectations.failed} failed, ${expectations.unchecked} unchecked\n`);
+  for (const v of assertions.violations as Array<{ name: string; tick: number; entity?: string | null; value: unknown; message: string }>)
+    process.stdout.write(`assertion failed at tick ${v.tick}: ${v.name}${v.entity ? ` on ${v.entity}` : ""}: ${v.message} (${JSON.stringify(v.value)})\n`);
+  for (const u of assertions.uncovered as Array<{ kind: string; name: string; key?: string }>) process.stdout.write(`never fired: ${u.kind} ${u.name}${u.key !== undefined ? ` [${u.key}]` : ""}\n`);
 }
 if (listening !== undefined) extras.og_node_probe_close(engine.id);
 if (room !== undefined) extras.og_node_room_close(engine.id);
-process.exit(frameFailed || expectations.failed > 0 ? 1 : 0);
+process.exit(frameFailed || expectations.failed > 0 || assertions.violations.length > 0 ? 1 : 0);

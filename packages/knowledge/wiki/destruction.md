@@ -20,7 +20,7 @@ module destruction {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 26769</sub>
+<sub>`api.ogt` line 26961</sub>
 
 ## Contents
 
@@ -85,7 +85,7 @@ fn damage {
 }
 ```
 
-<sub>`api.ogt` line 27023</sub>
+<sub>`api.ogt` line 27215</sub>
 
 <a id="fn-explode"></a>
 
@@ -115,7 +115,7 @@ fn explode {
 }
 ```
 
-<sub>`api.ogt` line 27031</sub>
+<sub>`api.ogt` line 27223</sub>
 
 <a id="fn-fracture"></a>
 
@@ -145,7 +145,7 @@ fn fracture {
 }
 ```
 
-<sub>`api.ogt` line 27038</sub>
+<sub>`api.ogt` line 27230</sub>
 
 <a id="fn-info"></a>
 
@@ -175,7 +175,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 27045</sub>
+<sub>`api.ogt` line 27237</sub>
 
 <a id="fn-material"></a>
 
@@ -205,7 +205,7 @@ fn material {
 }
 ```
 
-<sub>`api.ogt` line 27052</sub>
+<sub>`api.ogt` line 27244</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -233,7 +233,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 27059</sub>
+<sub>`api.ogt` line 27251</sub>
 
 ## Components, resources and events
 
@@ -328,7 +328,7 @@ component Destructible {
 }
 ```
 
-<sub>`api.ogt` line 26788</sub>
+<sub>`api.ogt` line 26980</sub>
 
 <a id="record-Chunk"></a>
 
@@ -368,7 +368,7 @@ component Chunk {
 }
 ```
 
-<sub>`api.ogt` line 26850</sub>
+<sub>`api.ogt` line 27042</sub>
 
 <a id="record-Fractured"></a>
 
@@ -408,7 +408,7 @@ event Fractured {
 }
 ```
 
-<sub>`api.ogt` line 26870</sub>
+<sub>`api.ogt` line 27062</sub>
 
 <a id="record-Destruction"></a>
 
@@ -466,7 +466,7 @@ resource Destruction {
 }
 ```
 
-<sub>`api.ogt` line 26888</sub>
+<sub>`api.ogt` line 27080</sub>
 
 ## Types
 
@@ -514,7 +514,7 @@ struct DamageDesc {
 }
 ```
 
-<sub>`api.ogt` line 26925</sub>
+<sub>`api.ogt` line 27117</sub>
 
 <a id="type-ExplosionDesc"></a>
 
@@ -562,7 +562,7 @@ struct ExplosionDesc {
 }
 ```
 
-<sub>`api.ogt` line 26951</sub>
+<sub>`api.ogt` line 27143</sub>
 
 <a id="type-DestructibleInfo"></a>
 
@@ -600,7 +600,7 @@ struct DestructibleInfo {
 }
 ```
 
-<sub>`api.ogt` line 26979</sub>
+<sub>`api.ogt` line 27171</sub>
 
 <a id="type-DestructibleMaterial"></a>
 
@@ -641,7 +641,7 @@ struct DestructibleMaterial {
 }
 ```
 
-<sub>`api.ogt` line 26995</sub>
+<sub>`api.ogt` line 27187</sub>
 
 <a id="type-DestructionCapabilities"></a>
 
@@ -664,7 +664,7 @@ struct DestructionCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 27016</sub>
+<sub>`api.ogt` line 27208</sub>
 
 ## Constants
 
@@ -686,64 +686,64 @@ struct DestructionCapabilities {
 const CAUSE_IMPACT u32 0 "Fractured.cause: a collision's impulse (og.CollisionStarted) past the prop's impactThreshold."
 ```
 
-<sub>`api.ogt` line 26776</sub>
+<sub>`api.ogt` line 26968</sub>
 
 ```ogt
 const CAUSE_DAMAGE u32 1 "Fractured.cause: og.destruction.damage."
 ```
 
-<sub>`api.ogt` line 26777</sub>
+<sub>`api.ogt` line 26969</sub>
 
 ```ogt
 const CAUSE_EXPLOSION u32 2 "Fractured.cause: og.destruction.explode."
 ```
 
-<sub>`api.ogt` line 26778</sub>
+<sub>`api.ogt` line 26970</sub>
 
 ```ogt
 const CAUSE_STRESS u32 3 "Fractured.cause: the stress solver: a part that could no longer hold its own weight."
 ```
 
-<sub>`api.ogt` line 26779</sub>
+<sub>`api.ogt` line 26971</sub>
 
 ```ogt
 const CAUSE_SHATTER u32 4 "Fractured.cause: a chunk with children (the fracture block's `children`) took three times the damage that breaks a bond of its cross-section, and broke into them: they fly free, each its own body, leaving a hole."
 ```
 
-<sub>`api.ogt` line 26780</sub>
+<sub>`api.ogt` line 26972</sub>
 
 ```ogt
 const MATERIAL_BRICK u32 0 "og.destruction.material: brickwork in mortar (no-tension masonry: stands by its weight, steps back over its piers)."
 ```
 
-<sub>`api.ogt` line 26781</sub>
+<sub>`api.ogt` line 26973</sub>
 
 ```ogt
 const MATERIAL_CONCRETE u32 1 "og.destruction.material: plain concrete (strong, breaks in chunky lumps, holds what is left)."
 ```
 
-<sub>`api.ogt` line 26782</sub>
+<sub>`api.ogt` line 26974</sub>
 
 ```ogt
 const MATERIAL_WOOD u32 2 "og.destruction.material: timber boards (light and weak across the grain: splinters where it lands or is struck)."
 ```
 
-<sub>`api.ogt` line 26783</sub>
+<sub>`api.ogt` line 26975</sub>
 
 ```ogt
 const MATERIAL_GLASS u32 3 "og.destruction.material: a glass pane (shatters at a touch, no stress solver)."
 ```
 
-<sub>`api.ogt` line 26784</sub>
+<sub>`api.ogt` line 26976</sub>
 
 ```ogt
 const MATERIAL_STONE u32 4 "og.destruction.material: dry-laid stone (masonry with no mortar: no tension, heavier and tougher than brick)."
 ```
 
-<sub>`api.ogt` line 26785</sub>
+<sub>`api.ogt` line 26977</sub>
 
 ```ogt
 const CAUSE_FRACTURE u32 5 "Fractured.cause: og.destruction.fracture."
 ```
 
-<sub>`api.ogt` line 26786</sub>
+<sub>`api.ogt` line 26978</sub>

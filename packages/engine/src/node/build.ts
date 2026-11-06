@@ -19,9 +19,10 @@
 //
 //   bun src/node/build.ts --entry <src/main.ts> --out <file.js> [--target native|web] [--minify] [--json]
 
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { placeAssertions } from "./assert-sites.ts";
 
 declare const Bun: {
   build(o: {
@@ -104,6 +105,14 @@ export function renameSources(sources: readonly (string | null)[], dir: string, 
   });
 }
 
+/** The project an entry belongs to: the nearest directory above it with a project.ogt, else the entry's own. */
+function projectRoot(entry: string): string {
+  for (let dir = dirname(entry); ; dir = dirname(dir)) {
+    if (existsSync(join(dir, "project.ogt"))) return dir;
+    if (dirname(dir) === dir) return dirname(entry);
+  }
+}
+
 /** Bundle `entry` (whose default export is `og.game(...)`) into `out`, its source map into `<out>.map`. */
 export async function bundleGame(entry: string, out: string, target: "native" | "web" | "script" = "native", minify = false, maps: MapOptions = {}): Promise<Bundled> {
   const t0 = performance.now();
@@ -112,7 +121,7 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
     name: "origin-engine",
     setup(build: {
       onResolve(o: { filter: RegExp; namespace?: string }, f: (a: { path: string }) => unknown): void;
-      onLoad(o: { filter: RegExp; namespace: string }, f: (a: { path: string }) => unknown): void;
+      onLoad(o: { filter: RegExp; namespace?: string }, f: (a: { path: string }) => unknown): void;
     }) {
       build.onResolve({ filter: /^@origingame\/engine(\/.*)?$/ }, (a) => {
         const file = engineFile(a.path);
@@ -120,6 +129,15 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
         return { path: file, external: target === "native" };
       });
       build.onResolve({ filter: /^og:worker$/ }, () => ({ path: "worker", namespace: "og" }));
+      // og.assert's places (src/node/assert-sites.ts), in the game's own files only.
+      const project = projectRoot(absEntry);
+      build.onLoad({ filter: /\.[cm]?[jt]sx?$/, namespace: "file" }, (a) => {
+        if (!a.path.startsWith(project + sep) || a.path.includes(`${sep}node_modules${sep}`) || a.path.startsWith(ENGINE_ROOT + sep)) return undefined;
+        const text = readFileSync(a.path, "utf8");
+        if (!text.includes("og.assert.")) return undefined;
+        const loader = /\.[cm]?tsx$/.test(a.path) ? "tsx" : /\.[cm]?ts$/.test(a.path) ? "ts" : /x$/.test(a.path) ? "jsx" : "js";
+        return { contents: placeAssertions(text, relative(project, a.path).split(sep).join("/")), loader };
+      });
       build.onLoad({ filter: /.*/, namespace: "og" }, () => ({
         contents: `import { startWorker } from "@origingame/engine/web/worker";\nimport game from ${JSON.stringify(absEntry)};\nstartWorker(game);\n`,
         loader: "ts",

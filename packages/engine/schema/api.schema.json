@@ -17500,6 +17500,21 @@
               "publish": false
             },
             {
+              "name": "assertions",
+              "doc": "The run's assertions (og.assert, the default invariants, `invariant:` steps): every site with whether it fired, each violated one's first violation with its tick, entity, record, field and value, each's buckets, and what never fired. With take, the report is answered and a new one starts: the sites stay listed, unfired, so an independent run (another playtest, a sibling fork) inherits none of this one's violations or coverage.",
+              "params": [
+                {
+                  "name": "take",
+                  "type": "bool",
+                  "optional": true,
+                  "default": false,
+                  "doc": "Start a new report after answering this one."
+                }
+              ],
+              "returns": "AssertReport",
+              "publish": false
+            },
+            {
               "name": "saveScene",
               "doc": "Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): its entities' and resources' changed field lines and the fields set and patch tuned, keeping every other line, comment and the order; with spawned, the entities the game spawned under the boot scene's marked section. The probe writes the files only with write; otherwise the texts are returned.",
               "params": [
@@ -18239,6 +18254,173 @@
             }
           ],
           "returns": "bool",
+          "publish": false
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "assert",
+      "doc": "Assertions: properties of the game checked as it runs, after the Antithesis SDK's. `og.assert.always(world.get(hero, Health).hp >= 0, \"hp never negative\", { hp })` holds on every call, `og.assert.sometimes(boss.phase === 2, \"boss reaches phase 2\")` must hold at least once in a run, `og.assert.reachable(\"door opened\")` must run at least once, `og.assert.unreachable(\"fell through the floor\")` must never run, and `og.assert.each(level, cleared, \"each level cleared\")` keeps one bucket per distinct key, each of which must hold once.\nEach is identified by its name and the place it is called from (`src/player.ts:42`, which the build records for every `og.assert.<kind>(...)` call, so a site that never runs is still listed). A call that passes costs a lookup in the runtime, without a call into the engine; nothing an assertion does reaches the world, so a run with them hashes and replays as one without.\nViolations and coverage go through the probe (`assertions`) into `og run --json`'s `assertions` and `og test`'s results: the tick, the name and place, and the values (`details`). At the end of a run, every `sometimes`, `reachable` and `each` bucket that never fired is listed as uncovered: a sometimes that never fires is a test that never got there. A playtest's `require` names the ones that must fire.\nBeside them, every tick of a development or test build checks the default invariants from reflection: no NaN or infinity in a reflected float, a number inside its field's min..max where it declares one, no Entity field naming a despawned entity, and, where the world declares og.WorldBounds, every entity's place inside them. They read the components that changed (where the world tracks their changes) or every row, never write, and name the entity, component, field and value of their first failure.\nNot in publish builds: every member does nothing there, so a game may leave its assertions in.",
+      "place": "namespace",
+      "publish": false,
+      "types": [
+        "AssertKind",
+        "AssertRecord",
+        "AssertOrigin",
+        "AssertBucket",
+        "AssertSite",
+        "AssertViolation",
+        "AssertUncovered",
+        "AssertCost",
+        "AssertReport",
+        "WorldBounds"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "always",
+          "doc": "The condition holds on every call: a false one is a violation, reported with its tick, its name, its place and `details`.",
+          "params": [
+            {
+              "name": "condition",
+              "type": "bool",
+              "optional": false,
+              "doc": "What must hold."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "What it means, in a few words: `hp never negative`."
+            },
+            {
+              "name": "details",
+              "type": "Option<Json>",
+              "optional": true,
+              "doc": "Values worth seeing when it fails, as `{ hp, damage }`."
+            }
+          ],
+          "returns": "Void",
+          "publish": false,
+          "host": false
+        },
+        {
+          "name": "sometimes",
+          "doc": "The condition holds on at least one call in the run; one that never held is listed as uncovered when the run ends.",
+          "params": [
+            {
+              "name": "condition",
+              "type": "bool",
+              "optional": false,
+              "doc": "What must hold at least once."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "What it means: `boss reaches phase 2`."
+            },
+            {
+              "name": "details",
+              "type": "Option<Json>",
+              "optional": true,
+              "doc": "Values worth seeing at the first time it holds."
+            }
+          ],
+          "returns": "Void",
+          "publish": false,
+          "host": false
+        },
+        {
+          "name": "reachable",
+          "doc": "This line runs at least once in the run; one that never ran is listed as uncovered.",
+          "params": [
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "What reaching it means: `door opened`."
+            },
+            {
+              "name": "details",
+              "type": "Option<Json>",
+              "optional": true,
+              "doc": "Values worth seeing the first time."
+            }
+          ],
+          "returns": "Void",
+          "publish": false,
+          "host": false
+        },
+        {
+          "name": "unreachable",
+          "doc": "This line never runs: running it is a violation.",
+          "params": [
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "What reaching it would mean: `fell through the floor`."
+            },
+            {
+              "name": "details",
+              "type": "Option<Json>",
+              "optional": true,
+              "doc": "Values worth seeing when it does."
+            }
+          ],
+          "returns": "Void",
+          "publish": false,
+          "host": false
+        },
+        {
+          "name": "each",
+          "doc": "One bucket per distinct key (a level, a weapon, an enemy kind): each bucket the run saw must hold its condition once (Antithesis's SOMETIMES_EACH). Buckets seen that never held are listed as uncovered, and every bucket is in the probe's report, the hints a search of the game's states starts from.",
+          "params": [
+            {
+              "name": "key",
+              "type": "Json",
+              "optional": false,
+              "doc": "The bucket: a string, a number, or a small object of either (`{ level, weapon }`)."
+            },
+            {
+              "name": "condition",
+              "type": "bool",
+              "optional": false,
+              "doc": "What must hold once in the bucket."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "What it means: `each level cleared`."
+            }
+          ],
+          "returns": "Void",
+          "publish": false,
+          "host": false
+        },
+        {
+          "name": "record",
+          "doc": "The one call the members above make into the engine: a site's first call, a violation or a first firing. Game code calls those, not this. With null, it only answers the report's epoch.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world the assertion was called in."
+            },
+            {
+              "name": "record",
+              "type": "Option<AssertRecord>",
+              "optional": false,
+              "doc": "The call, or null."
+            }
+          ],
+          "returns": "u32",
+          "returnsDoc": "The report's epoch: it moves on each time the probe's assertions member starts a new report.",
           "publish": false
         }
       ],
@@ -67564,6 +67746,7 @@
         "quit",
         "describe",
         "expect",
+        "invariant",
         "save_scene",
         "help",
         "mouse_move",
@@ -67601,6 +67784,7 @@
         "quit": "`quit`: exit.",
         "describe": "`describe[:path]`: write the frame as data (probe.Description): the visible entities with screen boxes, depth order and occlusion from the entity-id pass, what each secondary camera (og.CameraView, og.Mirror) shows from its own pass, the UI elements with rects and text, the camera.",
         "expect": "`expect:<what>`: assert at this tick (probe.ExpectResult): `entity:<id>:within:x,y,w,h` (its visible box, CSS pixels) or `:within:x0,y0,z0,x1,y1,z1` (its position, world units), `event:<Name>[:count]`, `ui:text:[=]<text>`, `region:x,y,w,h:color:#rrggbb[:tolerance]`, `frame:<ref.png>:rmse:<=v`, `state:<path>==<value>` (also != < <= > >=), `entity:<id>:<path>==<value>` (a field of its dump_entity: `render.lod==2`, `og.Transform.position.y>0`), `timings:<path>==<value>` (state().timings: `triangles<=1500000`). A failure is a warning with the tick and the observed value; `og run --json` lists every result and exits 1 on a failure. Frame expectations without a renderer are unchecked, as are an entity's `render.*` fields and the renderer's timings (`triangles`, `render`, `passes`).",
+        "invariant": "`invariant:<what>`: from now on, check an expectation (any `expect:` form but `region` and `frame`) after every tick: the first tick it fails is an assertion violation (og.assert's report, the probe's `assertions`) with the tick and the observed value, which fails `og run --json` (exit 1) and the playtest. A playtest's `invariants` are these steps.",
         "save_scene": "`save_scene[:path][:spawned]`: write every scene the world was assembled from back from the world (the boot scene's, then each og.world.instantiate made, each to its own `.ogt`): only the lines whose values changed (comments and order kept), the fields set or patch tuned, and resources as `resource <Name> { }` blocks; with `spawned`, the entities the game spawned at run time under the boot scene's marked section. To each scene's source, or with a path the boot scene's to that file under the output directory and the others beside it.",
         "help": "`help`: list every action the channel knows, core and registered.",
         "mouse_move": "`mouse_move:dx,dy`: move the mouse by relative CSS pixels (movementX/Y, summed in og.Pointers.movement: mouse-look) with the pointer's position held, as a locked pointer moves.",
@@ -71870,6 +72054,486 @@
             "z": 0,
             "w": 1
           }
+        }
+      },
+      "additionalProperties": false
+    },
+    "AssertKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "assert",
+      "description": "What an assertion asks.",
+      "type": "string",
+      "enum": [
+        "always",
+        "sometimes",
+        "reachable",
+        "unreachable",
+        "each"
+      ],
+      "x-og-variants": {
+        "always": "Its condition holds on every call: a false one is a violation.",
+        "sometimes": "Its condition holds on at least one call in the run.",
+        "reachable": "It runs at least once in the run.",
+        "unreachable": "It never runs: a call is a violation.",
+        "each": "Its condition holds once for each distinct key it was called with."
+      }
+    },
+    "AssertRecord": {
+      "x-og-kind": "struct",
+      "x-og-module": "assert",
+      "description": "One assertion call the runtime reports to the engine (og.assert.record): its first call, a violation, or its first firing in a report.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/AssertKind",
+          "description": "The assertion's kind."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name."
+        },
+        "location": {
+          "type": "string",
+          "description": "Where it is called (`src/player.ts:42`); empty when the build did not record one."
+        },
+        "condition": {
+          "type": "boolean",
+          "description": "The condition (true for reachable and unreachable, which have none)."
+        },
+        "key": {
+          "type": "string",
+          "description": "The bucket of an each, as text; empty otherwise."
+        },
+        "details": {
+          "description": "What the call passed as details (null for none)."
+        },
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick of the call."
+        },
+        "declared": {
+          "type": "boolean",
+          "description": "A site the build found, sent before it runs: listed, not counted as a call."
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "location",
+        "condition",
+        "key",
+        "details",
+        "tick",
+        "declared"
+      ],
+      "additionalProperties": false
+    },
+    "AssertOrigin": {
+      "x-og-kind": "enum",
+      "x-og-module": "assert",
+      "description": "Who declared an assertion.",
+      "type": "string",
+      "enum": [
+        "game",
+        "default",
+        "playtest"
+      ],
+      "x-og-variants": {
+        "game": "The game's og.assert calls.",
+        "default": "The engine's default invariants from reflection.",
+        "playtest": "A playtest's `invariant:` steps (PlaytestDesc.invariants)."
+      }
+    },
+    "AssertBucket": {
+      "x-og-kind": "struct",
+      "x-og-module": "assert",
+      "description": "One bucket of an each.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The bucket's key, as text."
+        },
+        "fired": {
+          "type": "boolean",
+          "description": "Whether its condition held once."
+        },
+        "firstTick": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The first tick it held."
+        }
+      },
+      "required": [
+        "key",
+        "fired",
+        "firstTick"
+      ],
+      "additionalProperties": false
+    },
+    "AssertSite": {
+      "x-og-kind": "struct",
+      "x-og-module": "assert",
+      "description": "One assertion in the report: by its kind, name and place.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/AssertKind",
+          "description": "Its kind."
+        },
+        "origin": {
+          "$ref": "#/$defs/AssertOrigin",
+          "description": "Who declared it."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name."
+        },
+        "location": {
+          "type": "string",
+          "description": "Where it is called; for a default invariant, the record and field (`Health.hp`)."
+        },
+        "ran": {
+          "type": "boolean",
+          "description": "Whether it was called in this report (a site the build found may never run)."
+        },
+        "fired": {
+          "type": "boolean",
+          "description": "Whether a sometimes held, a reachable ran, or an each's bucket held."
+        },
+        "firstTick": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The first tick it fired."
+        },
+        "failures": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many calls violated it."
+        },
+        "buckets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AssertBucket"
+          },
+          "description": "An each's buckets, in the order first seen."
+        },
+        "bucketsDropped": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "An each's buckets past the 1,024 kept."
+        }
+      },
+      "required": [
+        "kind",
+        "origin",
+        "name",
+        "location",
+        "ran",
+        "fired",
+        "firstTick",
+        "failures"
+      ],
+      "additionalProperties": false
+    },
+    "AssertViolation": {
+      "x-og-kind": "struct",
+      "x-og-module": "assert",
+      "description": "A site's first violation.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/AssertKind",
+          "description": "The site's kind."
+        },
+        "origin": {
+          "$ref": "#/$defs/AssertOrigin",
+          "description": "Who declared it."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name."
+        },
+        "location": {
+          "type": "string",
+          "description": "Its place."
+        },
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The first tick it failed."
+        },
+        "entity": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The entity a default invariant found it on (its probe id)."
+        },
+        "component": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The record: a component or a resource."
+        },
+        "field": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The field."
+        },
+        "value": {
+          "description": "What was there (a NaN or an infinity as text)."
+        },
+        "expected": {
+          "description": "What was expected: a range, live, finite, the bounds."
+        },
+        "message": {
+          "type": "string",
+          "description": "What went wrong, in words."
+        },
+        "details": {
+          "description": "What the call passed as details."
+        },
+        "failures": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many calls violated the site in this report."
+        },
+        "lastTick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The last tick it failed."
+        }
+      },
+      "required": [
+        "kind",
+        "origin",
+        "name",
+        "location",
+        "tick",
+        "entity",
+        "component",
+        "field",
+        "value",
+        "expected",
+        "message",
+        "details",
+        "failures",
+        "lastTick"
+      ],
+      "additionalProperties": false
+    },
+    "AssertUncovered": {
+      "x-og-kind": "struct",
+      "x-og-module": "assert",
+      "description": "A sometimes, reachable or each bucket that never fired.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/AssertKind",
+          "description": "The site's kind."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name."
+        },
+        "location": {
+          "type": "string",
+          "description": "Its place."
+        },
+        "key": {
+          "type": "string",
+          "description": "An each's bucket that never held."
+        },
+        "ran": {
+          "type": "boolean",
+          "description": "Whether it was called at all (false: the run never got there)."
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "location"
+      ],
+      "additionalProperties": false
+    },
+    "AssertCost": {
+      "x-og-kind": "struct",
+      "x-og-module": "assert",
+      "description": "What the default invariants cost, measured outside the tick.",
+      "type": "object",
+      "properties": {
+        "fields": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The reflected fields they check."
+        },
+        "ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The ticks they checked in this report."
+        },
+        "values": {
+          "type": "number",
+          "description": "The values they read in this report."
+        },
+        "totalMs": {
+          "type": "number",
+          "description": "Their time in this report.",
+          "x-og-unit": "ms"
+        },
+        "meanUs": {
+          "type": "number",
+          "description": "Their mean time a tick, in microseconds."
+        },
+        "maxUs": {
+          "type": "number",
+          "description": "Their slowest tick, in microseconds."
+        }
+      },
+      "required": [
+        "fields",
+        "ticks",
+        "values",
+        "totalMs",
+        "meanUs",
+        "maxUs"
+      ],
+      "additionalProperties": false
+    },
+    "AssertReport": {
+      "x-og-kind": "struct",
+      "x-og-module": "assert",
+      "description": "The run's assertions since the report began (the probe's assertions member).",
+      "type": "object",
+      "properties": {
+        "epoch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The report's number: take moves it on."
+        },
+        "failures": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Violating calls, summed over the sites."
+        },
+        "violations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AssertViolation"
+          },
+          "description": "Each violated site's first violation, in the order they happened."
+        },
+        "uncovered": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AssertUncovered"
+          },
+          "description": "What never fired: a run whose sometimes never held did not test what it names."
+        },
+        "sites": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AssertSite"
+          },
+          "description": "Every site seen or declared (default invariants once they fail), each with its buckets: the hints a search of the game's states starts from."
+        },
+        "sitesDropped": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Sites past the 4,096 kept."
+        },
+        "defaults": {
+          "$ref": "#/$defs/AssertCost",
+          "description": "The default invariants' cost."
+        }
+      },
+      "required": [
+        "epoch",
+        "failures",
+        "violations",
+        "uncovered",
+        "sites",
+        "sitesDropped",
+        "defaults"
+      ],
+      "additionalProperties": false
+    },
+    "WorldBounds": {
+      "x-og-kind": "resource",
+      "x-og-module": "assert",
+      "description": "Where the world's entities may be: naming it turns on the default invariant that every entity's place (its og.MatrixWorld translation, else a root's og.Transform.position) lies inside min..max on every tick. A world that never names it has no bounds and keeps its hash.",
+      "type": "object",
+      "properties": {
+        "min": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The lowest corner.",
+          "default": {
+            "x": -1000,
+            "y": -1000,
+            "z": -1000
+          },
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
+        },
+        "max": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The highest corner.",
+          "default": {
+            "x": 1000,
+            "y": 1000,
+            "z": 1000
+          },
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
+        },
+        "off": {
+          "type": "boolean",
+          "description": "Leave the bounds unchecked.",
+          "default": false
         }
       },
       "additionalProperties": false

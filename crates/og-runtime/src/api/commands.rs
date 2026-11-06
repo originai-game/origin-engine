@@ -240,6 +240,15 @@ pub fn og_engine_probe_expectations(probe: u32) -> String {
     member(probe, "expectations", json!({})).to_string()
 }
 
+pub fn og_engine_probe_assertions(probe: u32, take: Option<bool>) -> String {
+    member(
+        probe,
+        "assertions",
+        json!({ "take": take.unwrap_or(false) }),
+    )
+    .to_string()
+}
+
 pub fn og_engine_probe_save_scene(
     probe: u32,
     write: Option<bool>,

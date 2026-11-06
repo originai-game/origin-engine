@@ -1,0 +1,184 @@
+module assert {
+  skill og-build
+  doc "Assertions: properties of the game checked as it runs, after the Antithesis SDK's. `og.assert.always(world.get(hero, Health).hp >= 0, \"hp never negative\", { hp })` holds on every call, `og.assert.sometimes(boss.phase === 2, \"boss reaches phase 2\")` must hold at least once in a run, `og.assert.reachable(\"door opened\")` must run at least once, `og.assert.unreachable(\"fell through the floor\")` must never run, and `og.assert.each(level, cleared, \"each level cleared\")` keeps one bucket per distinct key, each of which must hold once."
+  doc "Each is identified by its name and the place it is called from (`src/player.ts:42`, which the build records for every `og.assert.<kind>(...)` call, so a site that never runs is still listed). A call that passes costs a lookup in the runtime, without a call into the engine; nothing an assertion does reaches the world, so a run with them hashes and replays as one without."
+  doc "Violations and coverage go through the probe (`assertions`) into `og run --json`'s `assertions` and `og test`'s results: the tick, the name and place, and the values (`details`). At the end of a run, every `sometimes`, `reachable` and `each` bucket that never fired is listed as uncovered: a sometimes that never fires is a test that never got there. A playtest's `require` names the ones that must fire."
+  doc "Beside them, every tick of a development or test build checks the default invariants from reflection: no NaN or infinity in a reflected float, a number inside its field's min..max where it declares one, no Entity field naming a despawned entity, and, where the world declares og.WorldBounds, every entity's place inside them. They read the components that changed (where the world tracks their changes) or every row, never write, and name the entity, component, field and value of their first failure."
+  doc "Not in publish builds: every member does nothing there, so a game may leave its assertions in."
+  publish false
+
+  enum AssertKind {
+    doc "What an assertion asks."
+    variant always "Its condition holds on every call: a false one is a violation."
+    variant sometimes "Its condition holds on at least one call in the run."
+    variant reachable "It runs at least once in the run."
+    variant unreachable "It never runs: a call is a violation."
+    variant each "Its condition holds once for each distinct key it was called with."
+  }
+
+  struct AssertRecord {
+    doc "One assertion call the runtime reports to the engine (og.assert.record): its first call, a violation, or its first firing in a report."
+    field kind AssertKind "The assertion's kind."
+    field name String "Its name."
+    field location String "Where it is called (`src/player.ts:42`); empty when the build did not record one."
+    field condition bool "The condition (true for reachable and unreachable, which have none)."
+    field key String "The bucket of an each, as text; empty otherwise."
+    field details Json "What the call passed as details (null for none)."
+    field tick u32 "The tick of the call."
+    field declared bool "A site the build found, sent before it runs: listed, not counted as a call."
+  }
+
+  enum AssertOrigin {
+    doc "Who declared an assertion."
+    variant game "The game's og.assert calls."
+    variant default "The engine's default invariants from reflection."
+    variant playtest "A playtest's `invariant:` steps (PlaytestDesc.invariants)."
+  }
+
+  struct AssertBucket {
+    doc "One bucket of an each."
+    field key String "The bucket's key, as text."
+    field fired bool "Whether its condition held once."
+    field firstTick Option.u32 "The first tick it held."
+  }
+
+  struct AssertSite {
+    doc "One assertion in the report: by its kind, name and place."
+    field kind AssertKind "Its kind."
+    field origin AssertOrigin "Who declared it."
+    field name String "Its name."
+    field location String "Where it is called; for a default invariant, the record and field (`Health.hp`)."
+    field ran bool "Whether it was called in this report (a site the build found may never run)."
+    field fired bool "Whether a sometimes held, a reachable ran, or an each's bucket held."
+    field firstTick Option.u32 "The first tick it fired."
+    field failures u32 "How many calls violated it."
+    field buckets List.AssertBucket "An each's buckets, in the order first seen." {
+      optional true
+    }
+    field bucketsDropped u32 "An each's buckets past the 1,024 kept." {
+      optional true
+    }
+  }
+
+  struct AssertViolation {
+    doc "A site's first violation."
+    field kind AssertKind "The site's kind."
+    field origin AssertOrigin "Who declared it."
+    field name String "Its name."
+    field location String "Its place."
+    field tick u32 "The first tick it failed."
+    field entity Option.String "The entity a default invariant found it on (its probe id)."
+    field component Option.String "The record: a component or a resource."
+    field field Option.String "The field."
+    field value Json "What was there (a NaN or an infinity as text)."
+    field expected Json "What was expected: a range, live, finite, the bounds."
+    field message String "What went wrong, in words."
+    field details Json "What the call passed as details."
+    field failures u32 "How many calls violated the site in this report."
+    field lastTick u32 "The last tick it failed."
+  }
+
+  struct AssertUncovered {
+    doc "A sometimes, reachable or each bucket that never fired."
+    field kind AssertKind "The site's kind."
+    field name String "Its name."
+    field location String "Its place."
+    field key String "An each's bucket that never held." {
+      optional true
+    }
+    field ran bool "Whether it was called at all (false: the run never got there)." {
+      optional true
+    }
+  }
+
+  struct AssertCost {
+    doc "What the default invariants cost, measured outside the tick."
+    field fields u32 "The reflected fields they check."
+    field ticks u32 "The ticks they checked in this report."
+    field values f64 "The values they read in this report."
+    field totalMs f64 "Their time in this report." {
+      unit ms
+    }
+    field meanUs f64 "Their mean time a tick, in microseconds."
+    field maxUs f64 "Their slowest tick, in microseconds."
+  }
+
+  struct AssertReport {
+    doc "The run's assertions since the report began (the probe's assertions member)."
+    field epoch u32 "The report's number: take moves it on."
+    field failures u32 "Violating calls, summed over the sites."
+    field violations List.AssertViolation "Each violated site's first violation, in the order they happened."
+    field uncovered List.AssertUncovered "What never fired: a run whose sometimes never held did not test what it names."
+    field sites List.AssertSite "Every site seen or declared (default invariants once they fail), each with its buckets: the hints a search of the game's states starts from."
+    field sitesDropped u32 "Sites past the 4,096 kept."
+    field defaults AssertCost "The default invariants' cost."
+  }
+
+  resource WorldBounds {
+    doc "Where the world's entities may be: naming it turns on the default invariant that every entity's place (its og.MatrixWorld translation, else a root's og.Transform.position) lies inside min..max on every tick. A world that never names it has no bounds and keeps its hash."
+    field min Vector3 "The lowest corner." {
+      default -1000 -1000 -1000
+      worldspace world
+      unit m
+    }
+    field max Vector3 "The highest corner." {
+      default 1000 1000 1000
+      worldspace world
+      unit m
+    }
+    field off bool "Leave the bounds unchecked."
+  }
+
+  fn always {
+    doc "The condition holds on every call: a false one is a violation, reported with its tick, its name, its place and `details`."
+    host false
+    param condition bool "What must hold."
+    param name String "What it means, in a few words: `hp never negative`."
+    param details Option.Json "Values worth seeing when it fails, as `{ hp, damage }`." {
+      optional true
+    }
+  }
+
+  fn sometimes {
+    doc "The condition holds on at least one call in the run; one that never held is listed as uncovered when the run ends."
+    host false
+    param condition bool "What must hold at least once."
+    param name String "What it means: `boss reaches phase 2`."
+    param details Option.Json "Values worth seeing at the first time it holds." {
+      optional true
+    }
+  }
+
+  fn reachable {
+    doc "This line runs at least once in the run; one that never ran is listed as uncovered."
+    host false
+    param name String "What reaching it means: `door opened`."
+    param details Option.Json "Values worth seeing the first time." {
+      optional true
+    }
+  }
+
+  fn unreachable {
+    doc "This line never runs: running it is a violation."
+    host false
+    param name String "What reaching it would mean: `fell through the floor`."
+    param details Option.Json "Values worth seeing when it does." {
+      optional true
+    }
+  }
+
+  fn each {
+    doc "One bucket per distinct key (a level, a weapon, an enemy kind): each bucket the run saw must hold its condition once (Antithesis's SOMETIMES_EACH). Buckets seen that never held are listed as uncovered, and every bucket is in the probe's report, the hints a search of the game's states starts from."
+    host false
+    param key Json "The bucket: a string, a number, or a small object of either (`{ level, weapon }`)."
+    param condition bool "What must hold once in the bucket."
+    param name String "What it means: `each level cleared`."
+  }
+
+  fn record {
+    doc "The one call the members above make into the engine: a site's first call, a violation or a first firing. Game code calls those, not this. With null, it only answers the report's epoch."
+    param world World "The world the assertion was called in."
+    param record Option.AssertRecord "The call, or null."
+    returns u32 "The report's epoch: it moves on each time the probe's assertions member starts a new report."
+  }
+}

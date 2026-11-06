@@ -250,6 +250,11 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::origin::EVENT,
         enable: |_, _| Ok(()),
     },
+    // og.assert's bounds: the default invariants read them (crate::invariants).
+    Lazy {
+        name: crate::invariants::BOUNDS,
+        enable: |_, _| Ok(()),
+    },
     // G3-2: og.video plays it; a world without footage keeps its hash
     // whatever the player's layout becomes.
     Lazy {

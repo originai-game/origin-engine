@@ -179,8 +179,39 @@ file path, using `/` separators: `--filter lobby` selects every matching
 No matching files is a failure, not a passing empty run. The project's
 type check still runs. Drop the filter for the complete regression run.
 
-Put every check that reads a frame (`run.png`, a decoded screenshot, a
-comparison with `references/`) inside `t.frame(files, () => ...)`:
+Write properties before frames. A property names the first tick and the
+value that went wrong; a reference frame names only the last tick's pixels,
+and breaks on every change of look:
+
+```ts
+export default playtest({
+  name: "the courier takes the coins, pauses, and the pit costs a life",
+  // Checked after every tick (any expect: form but region and frame).
+  invariants: ["state:lives>=2", "state:y>=-3", "entity:crate:og.Transform.position.y>=0.4"],
+  // og.assert.sometimes / reachable / each sites in src/ that must fire.
+  require: ["the courier takes a coin", "the pause menu opens", "each level cleared[2]"],
+  commands: "0.5:key_down:ArrowRight;...;5.1:quit",
+});
+```
+
+Every process of the playtest also checks the engine's default invariants
+from reflection each tick: no NaN or infinity in a reflected float, every
+number inside its field's `min`..`max`, no Entity field naming a despawned
+entity, and, where the game sets `og.WorldBounds`, every root entity's
+position inside them (they read only what changed; the cost is in
+`run.assertions.defaults`, about 70 µs a tick for the game template). A
+violation fails the playtest as `default always 'in range Health.hp'
+failed at tick 212 on #4.0 Health.hp: -5 is below the field's minimum 0`.
+`og test` lists every og.assert sometimes, reachable and each bucket that
+never fired (`? reachable 'the guard raises the alarm' never fired`):
+a weak test, not a failure, until `require` names it. `run.assertions`
+holds the whole report for `check`. The game's side, `og.assert.always`,
+`sometimes`, `reachable`, `unreachable` and `each`, is `og api show assert`.
+
+Keep a frame only for what only a frame shows (the look of a screen, a
+layout, a colour), usually two representative frames per game. Put every
+check that reads a frame (`run.png`, a decoded screenshot, a comparison
+with `references/`) inside `t.frame(files, () => ...)`:
 
 ```ts
 check(run, t) {

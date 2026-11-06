@@ -347,6 +347,11 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
         "Assert at this tick: a failure is logged as a warning with the tick and the observed value, and fails `og run --json` (exit 1) and the playtest; a frame expectation without a renderer is unchecked.",
     ),
     (
+        "invariant",
+        "invariant:<an expect: form but region and frame>",
+        "From now on, check the expectation after every tick: the first tick it fails is an assertion violation (the probe's `assertions`, `og run --json`'s) with the tick and the observed value, which fails `og run` (exit 1) and the playtest.",
+    ),
+    (
         "save_scene",
         "save_scene[:path][:spawned]",
         "Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): only the lines whose values changed (comments and order kept), plus the fields and resources set or patch tuned; with spawned, the entities the game spawned under the boot scene's marked section; over each scene's .ogt, or the boot scene's to path under the output directory and the others beside it.",

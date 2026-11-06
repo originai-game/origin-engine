@@ -222,6 +222,57 @@ impl World {
         Ok(&self.registry.info(id).schema)
     }
 
+    /// How many types are registered (ids are `0..type_count()`).
+    pub fn type_count(&self) -> usize {
+        self.registry.len()
+    }
+
+    /// Reads component `id` archetype by archetype, between ticks, for
+    /// checks that never write (the default invariants): each archetype's
+    /// entities, the bytes of each of the component's field columns in
+    /// field order, and the rows whose value changed after change tick
+    /// `since` (`None`: every row, as for a component the world does not
+    /// track). An archetype holding component `without`, one with no such
+    /// row, and one a view holds a column of mutably are skipped.
+    pub fn scan_component(
+        &self,
+        id: SchemaId,
+        since: Option<u64>,
+        without: Option<SchemaId>,
+        mut f: impl FnMut(&[Entity], &[&[u8]], Option<&[u32]>),
+    ) {
+        for arch in &self.archetypes {
+            let Some(position) = arch.position(id) else {
+                continue;
+            };
+            if without.is_some_and(|w| arch.has(w)) {
+                continue;
+            }
+            if arch.entities.is_empty() {
+                continue;
+            }
+            let rows: Option<Vec<u32>> = since.and_then(|s| {
+                arch.ticks[position].as_ref().map(|t| {
+                    (0..t.changed.len() as u32)
+                        .filter(|&r| t.changed[r as usize] > s)
+                        .collect()
+                })
+            });
+            if rows.as_ref().is_some_and(Vec::is_empty) {
+                continue;
+            }
+            let borrowed: Vec<_> = arch
+                .columns_of(position)
+                .filter_map(|c| arch.columns[c].try_borrow().ok())
+                .collect();
+            if borrowed.len() != arch.columns_of(position).len() {
+                continue;
+            }
+            let cols: Vec<&[u8]> = borrowed.iter().map(|c| c.bytes()).collect();
+            f(&arch.entities, &cols, rows.as_deref());
+        }
+    }
+
     /// Every registered schema, in id order.
     pub fn schemas(&self) -> Vec<Schema> {
         self.registry

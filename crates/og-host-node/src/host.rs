@@ -1730,6 +1730,10 @@ impl ProbeApi for NodeHost {
         rt::og_engine_probe_expectations(engine_probe)
     }
 
+    fn og_engine_probe_assertions(&self, engine_probe: u32, take: Option<bool>) -> String {
+        rt::og_engine_probe_assertions(engine_probe, take)
+    }
+
     fn og_engine_probe_save_scene(
         &self,
         engine_probe: u32,

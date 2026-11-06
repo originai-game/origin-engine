@@ -39,6 +39,8 @@ mod insert_ranges;
 #[cfg(not(feature = "publish"))]
 #[path = "../inspector.rs"]
 mod inspector;
+#[path = "../invariants.rs"]
+mod invariants;
 #[path = "../material_arrays.rs"]
 mod material_arrays;
 #[path = "../mesh_flash.rs"]
