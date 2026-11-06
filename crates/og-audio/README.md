@@ -107,8 +107,10 @@ sound), `gain f32`, `pan f32`, `pitch f32`, `bus u32`, `flags u32`,
 `loopStart u32`, `loopEnd u32` (what the mixer was last told).
 
 `og.AudioStream` (resource): `hash u64` (the stream hash), `commands u64`,
-`nextVoice u32`, `voices u32`, `tickRate u32`, `busSent Vector4` (gains
-last sent; negative before the first tick).
+`nextVoice u32`, `voices u32`, `tickRate u32`. The built-in buses' gains
+(og.Audio's volumes, each device's own and never hashed by lockstep) are
+sent to the sink when they change but stay out of the stream hash and the
+world: two peers with different volumes hash the same.
 
 ## Tick semantics
 

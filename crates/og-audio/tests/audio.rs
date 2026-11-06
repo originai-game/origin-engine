@@ -748,3 +748,45 @@ fn a_rollback_replay_plays_each_sound_once_stops_a_mispredicted_one_and_leaves_t
         }
     }
 }
+
+/// The player's volumes are each device's own (og.Audio, which lockstep
+/// never hashes): two peers at different volumes must keep one stream
+/// hash, or a room desyncs on its first ticks, while each sink still hears
+/// its own volume. Before, the bus gains were commands of the hashed stream
+/// and `busSent` world state.
+#[test]
+fn the_players_volumes_reach_the_sink_and_stay_out_of_the_stream_hash() {
+    let run = |music: f32| {
+        let bank = SoundBank::new();
+        let sounds = scene_sounds(&bank);
+        let (mut world, link) = scene(&bank, sounds, SceneOptions::default());
+        world.resource_mut::<og_audio::Audio>().unwrap().music = music;
+        link.attach();
+        let mut bus = Vec::new();
+        for _ in 0..120 {
+            world.step().unwrap();
+            for p in link.drain() {
+                bus.extend(
+                    p.commands
+                        .iter()
+                        .filter(|c| c.op == Op::Bus && c.bus == 1)
+                        .map(|c| c.gain),
+                );
+            }
+        }
+        let s = *world.resource::<AudioStream>().unwrap();
+        (s.hash, s.commands, bus)
+    };
+    let (loud, quiet) = (run(1.0), run(0.7));
+    assert_eq!(
+        (loud.0, loud.1),
+        (quiet.0, quiet.1),
+        "one stream hash and count at either volume"
+    );
+    assert_eq!(
+        loud.2,
+        vec![1.0],
+        "the sink hears the music bus once, at full volume"
+    );
+    assert_eq!(quiet.2, vec![0.7], "and at the quieter device's own volume");
+}

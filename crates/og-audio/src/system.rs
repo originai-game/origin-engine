@@ -12,7 +12,7 @@ use crate::schema::{
 use crate::sound::SoundBank;
 use og_core::IdMap;
 use og_core::Result;
-use og_core::glam::{Quat, Vec3, Vec4};
+use og_core::glam::{Quat, Vec3};
 use og_core::hash::StableHasher;
 use og_ecs::{Entity, QueryDesc, SystemContext, SystemDesc, World};
 use std::collections::VecDeque;
@@ -66,6 +66,11 @@ struct LinkState {
     replay: Option<Replay>,
     /// The plays each recent tick sent the sink: (voice, sound).
     sent: std::collections::BTreeMap<u64, Vec<(u32, u64)>>,
+    /// The built-in buses' gains last sent (master, music, sfx, ui; None
+    /// before the first tick). This device's own: they carry og.Audio, the
+    /// player's volumes, which lockstep never hashes, so they stay out of
+    /// the world and out of og.AudioStream's hash.
+    bus_sent: Option<[f32; BUS_COUNT]>,
 }
 
 /// The ticks a rollback runs again (presentation only: nothing here reaches
@@ -197,6 +202,26 @@ impl AudioLink {
         s.last_tick = Some(tick);
         s.next_tick = tick + 1;
         s.attached && std::mem::take(&mut s.resync)
+    }
+
+    /// The bus gains to send this tick: those that differ from the last sent, which they become.
+    fn bus_changes(&self, gains: [f32; BUS_COUNT]) -> Vec<(usize, f32)> {
+        let mut s = self.state.lock().expect("audio link");
+        let changed = (0..BUS_COUNT)
+            .filter(|&b| s.bus_sent.is_none_or(|was| was[b] != gains[b]))
+            .map(|b| (b, gains[b]))
+            .collect();
+        s.bus_sent = Some(gains);
+        changed
+    }
+
+    /// The bus gains last sent (a resync sends them again).
+    fn bus_now(&self) -> [f32; BUS_COUNT] {
+        self.state
+            .lock()
+            .expect("audio link")
+            .bus_sent
+            .unwrap_or([0.0; BUS_COUNT])
     }
 
     fn publish(&self, packet: TickPacket, live: Vec<u32>) {
@@ -333,7 +358,6 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
         next_voice: 1,
         voices: 0,
         tick_rate,
-        bus_sent: Vec4::splat(-1.0),
         fx: fx_hash(&fx_state(&[None; BUS_COUNT], &Audio::default())),
         listener: 0,
         listener_at: Vec3::ZERO,
@@ -1117,17 +1141,16 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
     for (b, g) in gains.iter_mut().enumerate() {
         *g = g.max(0.0) * snap.gain[b];
     }
-    let sent = stream.bus_sent.to_array();
-    for (b, (&g, &was)) in gains.iter().zip(sent.iter()).enumerate() {
-        if g != was {
-            let mut c = Command::new(Op::Bus, tick);
-            c.bus = b as u8;
-            c.gain = g.max(0.0);
-            c.position = ramp;
-            commands.push(c);
-        }
+    // The player's volumes are this device's (og.Audio is never hashed):
+    // their commands reach the sink but not the stream's hash or count.
+    let mut volumes: Vec<Command> = Vec::new();
+    for (b, g) in link.bus_changes(gains.map(|g| g.max(0.0))) {
+        let mut c = Command::new(Op::Bus, tick);
+        c.bus = b as u8;
+        c.gain = g;
+        c.position = ramp;
+        volumes.push(c);
     }
-    stream.bus_sent = Vec4::from_array(gains.map(|g| g.max(0.0)));
 
     // The listener.
     let mut ear = Ear {
@@ -1647,7 +1670,7 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
 
     let packet = if resync {
         let mut all = vec![Command::new(Op::StopAll, tick)];
-        for (b, &g) in stream.bus_sent.to_array().iter().enumerate() {
+        for (b, &g) in link.bus_now().iter().enumerate() {
             let mut c = Command::new(Op::Bus, tick);
             c.bus = b as u8;
             c.gain = g;
@@ -1668,9 +1691,10 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
             resync: true,
         }
     } else {
+        volumes.extend(commands);
         TickPacket {
             tick,
-            commands,
+            commands: volumes,
             live: None,
             resync: false,
         }

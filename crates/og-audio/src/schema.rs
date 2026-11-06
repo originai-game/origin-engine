@@ -399,9 +399,6 @@ pub struct AudioStream {
     /// Ticks per second, fixed at install.
     #[reflect(name = "tickRate")]
     pub tick_rate: u32,
-    /// The bus gains last sent (master, music, sfx, ui); negative before the first tick.
-    #[reflect(name = "busSent")]
-    pub bus_sent: og_core::glam::Vec4,
     /// A hash of the bus effects last sent.
     pub fx: u64,
     /// The listener heard from last tick (its entity's bits; 0: none).

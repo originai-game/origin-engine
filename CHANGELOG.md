@@ -91,6 +91,13 @@ is one line here, written at the merge that changes
   frames now draw at the configured render scale and preset and are no
   sample of automatic quality; a game's display frames adapt as before.
   No IDL change.
+- **Rooms no longer desync on the players' volumes.** og.Audio (each
+  device's own volumes, never hashed by lockstep) reached the hashed
+  og.AudioStream: its bus gains were commands of the stream hash and its
+  `busSent` world state, so two peers at different volumes desynced on
+  their first ticks. The gains still reach each device's mixer when they
+  change, but stay out of the stream hash and the world (og.AudioStream
+  loses `busSent`); simulation hashes move.
 - **Local seats and a first-person camera.** `og.net.submit` (and
   `submitInput`, `command`) takes a `player`: outside a room each local
   seat's input drives its own `og.PlayerInput`, so a game that reads seats
