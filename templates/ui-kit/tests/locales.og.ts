@@ -1,11 +1,12 @@
 // The kit's localized screens (og.i18n, assets/strings/*.ogt) in five
 // locales, each compared with crates/og-ui/references/<tier>/kit-locale-*:
 // the action showcase's title and its pause menu over the HUD (the ejected
-// main-menu and pause documents) in English, simplified Chinese, Japanese,
-// Korean and Arabic. Arabic is shaped (joined forms from the font's own
-// tables, through rustybuzz) and right to left: the layout mirrors and text
-// aligns to the right. The probe's `locale:<tag>` asks for each locale;
-// `og.i18n.locale` (the facts) says which table is active.
+// main-menu and pause documents) in simplified Chinese, Japanese, Korean and
+// Arabic (English's are frames-desktop's, the kit's own locale). Arabic is
+// shaped (joined forms from the font's own tables, through rustybuzz) and
+// right to left: the layout mirrors and text aligns to the right. The
+// probe's `locale:<tag>` asks for each locale; `og.i18n.locale` (the facts)
+// says which table is active.
 // Then the settings tree, the store, the gear screen, the leaderboard, the
 // tutorial and the dialogue in zh-CN: every word they draw (the documents'
 // keyed words, the patterns' descs' label fields, og-i18n §2) comes from the
@@ -32,8 +33,12 @@ for (const l of LOCALES) {
   steps.push(`${t.toFixed(2)}:locale:${l}`);
   for (const s of SCREENS) {
     steps.push(`${(t + 0.05).toFixed(2)}:show:${s}`);
-    steps.push(`${(t + 0.7).toFixed(2)}:screenshot:${s}-${l}.png`);
-    referenceFiles.push(`${s}-${l}.png`);
+    // English is the kit's own locale: its two frames were byte for byte
+    // frames-desktop's kit-desktop-action{Title,Pause}.png, compared there.
+    if (l !== "en") {
+      steps.push(`${(t + 0.7).toFixed(2)}:screenshot:${s}-${l}.png`);
+      referenceFiles.push(`${s}-${l}.png`);
+    }
     t += 0.8;
   }
   steps.push(`${t.toFixed(2)}:dump_world:world-${l}.json`);
@@ -86,7 +91,7 @@ const SYMBOLS = new Set(["N", "NE", "E", "SE", "S", "SW", "W", "NW", "m", "km", 
 const allowed = (w: string) => PROPER.has(w) || SYMBOLS.has(w) || /^[A-Z]$/.test(w);
 
 export default playtest({
-  name: "the title and pause screens in en, zh-CN, ja, ko and ar match their reference frames; the settings tree, store, gear, leaderboard, tutorial and dialogue are Chinese in zh-CN; the five showcase HUDs have no English left in zh-CN, ja, ko and ar",
+  name: "the title and pause screens in zh-CN, ja, ko and ar match their reference frames (en's are frames-desktop's); the settings tree, store, gear, leaderboard, tutorial and dialogue are Chinese in zh-CN; the five showcase HUDs have no English left in zh-CN, ja, ko and ar",
   size: "1280x720",
   commands: steps.join(";"),
   check(run, t) {
