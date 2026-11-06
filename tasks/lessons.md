@@ -125,3 +125,9 @@ subshells. Keep the PID of what you launch (`$!`) and stop only that. If
 another thread's gate or process is in your way, tell the coordinator or
 that thread; do not stop it yourself (B9, 2026-11-06: killing lane-8's step
 subshells left its gate holding the machine-wide lock).
+
+Style-pack directories are shipped asset roots, not workspace roots. Keep
+pack tests and reference images in sibling `templates/styles/tests/<pack>`
+and `templates/styles/references/<pack>` directories. After moving fixtures,
+run the cook-report budget and threaded-cook output tests: unchanged pixels
+do not prove unchanged shipped assets (ui-genre-move, 2026-11-06).

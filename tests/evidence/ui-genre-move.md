@@ -49,3 +49,14 @@ Engine quick/functional/full lanes do not invoke these package suites. Optional
 Rust targets use `kit-tests`; shared helpers do not register extra suites.
 The concurrent test-restructure stream must preserve these package-owned tests
 and references when consolidating engine tests.
+
+## Landing correction
+
+The landing gate caught style tests and reference PNGs inside the shipped
+pack roots. They now live outside those roots at `templates/styles/tests/<pack>`
+and `templates/styles/references/<pack>`; no cook exclusion or runtime change
+was needed. Both previously failing cook tests pass:
+`every_thread_count_cooks_the_same_bytes` and
+`every_asset_type_reports_its_figures_and_its_budgets_flag_it`.
+All five style suites pass again, and their five reference PNGs remain
+byte-identical. This correction does not perform the later frame reduction.

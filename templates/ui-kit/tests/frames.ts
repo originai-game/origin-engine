@@ -100,7 +100,7 @@ export function outDir(): string {
 export function referencesDir(name = ""): string {
   const pack = /^kit-style-([a-z]+)-/.exec(name);
   const templates = resolve(outDir(), "..", "..", "..", "..");
-  return pack ? join(templates, "styles", pack[1]!, "references") : join(templates, "ui-kit", "references");
+  return pack ? join(templates, "styles", "references", pack[1]!) : join(templates, "ui-kit", "references");
 }
 
 /** Compares each screenshot with its reference (`<prefix><file>`), or records it. */

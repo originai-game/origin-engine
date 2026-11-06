@@ -760,7 +760,7 @@ step_kit_web() {
 
 # The style packs' approved states, desktop and phone
 # (templates/ui-kit/tests/style-*.og.ts against
-# templates/styles/<pack>/references/<tier>/kit-style-*-states.png, else metal's): the
+# templates/styles/references/<pack>/<tier>/kit-style-*-states.png, else metal's): the
 # states the art director approved one by one, over a plain ground. A pack
 # is judged on its own pages (og ui sheet), never as every kit screen in
 # every pack (docs/ui.md §15.4, 2026-11-05). Without a renderer the

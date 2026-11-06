@@ -92,7 +92,7 @@ for (const name of only) {
   }
   const sheet = pack ? SHEETS[size] : undefined;
   if (pack && !sheet) throw new Error(`${name}: no sheet layout for ${size}`);
-  const cmd = ["bun", join(pkg, "tests/web/reference.ts"), ...pass, "--project", "templates/ui-kit", "--references", pack ? `templates/styles/${pack[1]}/references` : "templates/ui-kit/references", "--size", size, "--script", script.join(";"), "--shots", shots.join(","), "--out", out];
+  const cmd = ["bun", join(pkg, "tests/web/reference.ts"), ...pass, "--project", "templates/ui-kit", "--references", pack ? `templates/styles/references/${pack[1]}` : "templates/ui-kit/references", "--size", size, "--script", script.join(";"), "--shots", shots.join(","), "--out", out];
   if (pack) cmd.push("--sheet", `kit-style-${pack[1]}${pack[2] ?? ""}-states.png,${sheet!.factor},${sheet!.cols}`);
   console.log(`---- ${name} (${tier}, ${size}, ${shots.length} frames)`);
   const ok = Bun.spawnSync(cmd, { cwd: pkg, stdout: "inherit", stderr: "inherit" }).exitCode === 0;
