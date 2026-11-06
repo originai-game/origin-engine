@@ -3,7 +3,6 @@ version 1
 ---
 # 模板的简体中文字符串（og.i18n）；每个键都与 en.ogt 一一对应。
 locale "zh-CN"
-fonts "fonts/NotoSansSC-Regular-subset.ttf"
 string "menu.title" "Origin Engine"
 string "menu.prompt" "按开始键出发"
 string "menu.start" "开始"
