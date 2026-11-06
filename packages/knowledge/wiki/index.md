@@ -114,7 +114,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 
 | Module | TypeScript | Publish builds | Summary |
 |---|---|---|---|
-| [`ui`](ui.md) | `og.ui.*` | kept | The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the engine's default style, for prototypes only, until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it. |
+| [`ui`](ui.md) | `og.ui.*` | kept | The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the engine's default style until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it. |
 
 ### `og-build`
 

@@ -114,8 +114,7 @@ palette role and radius), its atlas and icons (CC0, drawn by
 in its look (`ui "fantasy"`), or copies the directory into its own
 `assets/styles/<name>/` to change it and names that (`ui
 "styles/<name>/style.ogt"`); a game that shows CJK adds a `fallback` font.
-Without one, a game's UI draws in the engine's default style, for
-prototypes only (`og build --publish` refuses it).
+Without one, a game's UI draws in the engine's default style.
 
 | Style | Look |
 |---|---|

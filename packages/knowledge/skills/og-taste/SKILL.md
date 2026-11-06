@@ -5,9 +5,8 @@ description: Art direction for a game on Origin Engine — choosing a style from
 
 A game is judged in its first second, before anyone reads a word. The
 engine's UI is correct by default and characterless by default: its
-default style is the design language of the engine and origin-agent, for
-prototyping only (a publish build refuses it), and the game's UI never
-borrows the Origin platform's look. This
+default style is the design language of the engine and origin-agent, and
+the game's UI never borrows the Origin platform's look. This
 skill is how to give a game a look of its own and keep it consistent. The
 mechanics are og-ui's (styles, motion and sounds are og-ui §6) and the amounts of game feel
 og-feel's; this is the taste.
@@ -80,8 +79,7 @@ The entry also names the palette rules, the asset specs and the UI style
 its preset carries (the look's `ui` line, §12), so a game that extends a
 preset is dressed by it from the first frame. The game's UI follows the
 game's art, never the Origin platform's: without a style it draws in the
-engine's default style (for prototypes only), and `og build --publish`
-refuses it. The built-in
+engine's default style, neutral by design. The built-in
 styles (`og style list`) are starting points, not the
 only looks:
 
@@ -333,9 +331,11 @@ Each of these is a defect, not a style choice:
 
 Run each item; each is checkable from a scripted run.
 
-1. **A style is configured**: `og.ui.theme(world).style` is not empty and
-   not the default style (log it from a command, or read it in a playtest through
-   a `facts` field).
+1. **The style is the one you chose**: `og.ui.theme(world).style` names it
+   (empty is the default style; log it from a command, or read it in a
+   playtest through a `facts` field). A game with a look of its own usually
+   reads better with a UI style to match (§1); the default and the built-ins
+   ship as they are too.
 2. **Title, pause and results screens captured**: `og run --headless --commands
    "0.5:show:title;1.5:screenshot:title.png;…"` (with the game's own commands);
    look at each capture in greyscale: the one thing per screen reads first.

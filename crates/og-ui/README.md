@@ -4,7 +4,7 @@ The Origin Engine UI (`docs/design.md` §2.7, M6 in `docs/phase-1.md`): an
 immediate-mode toolkit whose tree is declared every tick, laid out
 Clay-style, dressed by the game's own UI style (`type style`; the
 engine's default style until it picks one: the design language the engine
-shares with origin-agent, `packages/design`, for prototypes only), drawn through og-render's sprite and
+shares with origin-agent, `packages/design`), drawn through og-render's sprite and
 MSDF text batches, and addressable by the probe through stable string ids
 (`touch_move_to`, `move_to_text`, `dump_ui`).
 
@@ -752,8 +752,8 @@ style** (`src/theme.rs`, generated from `packages/design/tokens.json` by
 language's neutral ladder, amber primary and focus, radii 4/6/capsule/12,
 flat glass on floating chrome (`default_dressings`: dialogs, sheets,
 menus, popovers and tooltips thick, HUD capsules and action hints regular)
-and borderless controls. It is for origin-agent and prototypes; `og build --publish` refuses a
-game left in it (`dump_ui`'s `style` is empty). Nothing of a style comes from the platform: the
+and borderless controls; a game may ship it as it is (`dump_ui`'s
+`style` is then empty). Nothing of a style comes from the platform: the
 engine owns these values and the platform's design language styles only
 its own pages and the player shell (`docs/design.md` §9).
 

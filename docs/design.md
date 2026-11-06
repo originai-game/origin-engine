@@ -1772,7 +1772,7 @@ The web shell's DOM mirror is unchanged.
   ids are stable strings so the command channel can target them
   (`touch_move_to`, `move_to_text`, `dump_ui`). A game's UI is the game's,
   never the platform's: the engine owns its values (`crates/og-ui/src/theme.rs`,
-  no platform token reaches it) and every game dresses its UI in a **style**
+  no platform token reaches it) and a game dresses its UI in a **style**
   (`type style`, `og.load.style`), one complete asset: the scheme, every
   palette role, the four radii (small, control, bar, panel), the type ramp,
   fonts, icons, nine-slice frames per element class, ornaments, motion and
