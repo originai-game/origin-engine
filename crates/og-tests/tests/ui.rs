@@ -50,6 +50,7 @@ const BACKING: [f32; 4] = [0.03, 0.035, 0.045, 1.0];
 /// where the round one of 28 would be too. A ring has its hole and an arc
 /// stops at its sweep. The whole UI is a handful of draws.
 #[test]
+#[ignore = "requires GPU"]
 fn ui_shapes_cut_their_corners_rings_and_arcs() {
     let r = render("ui-shapes");
     let back = srgb8(BACKING);
@@ -136,6 +137,7 @@ fn ui_shapes_cut_their_corners_rings_and_arcs() {
 /// their back, ghost and fill where their values put them; the mass
 /// elements' numbers and names draw at all.
 #[test]
+#[ignore = "requires GPU"]
 fn ui_world_occludes_and_draws_mass_elements() {
     let r = render("ui-world");
     let pink = srgb8([0.9, 0.3, 0.6, 1.0]);

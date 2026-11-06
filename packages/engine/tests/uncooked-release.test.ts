@@ -1,3 +1,4 @@
+import { gpuTest } from "./support/gpu.ts";
 // og.load.release on a real renderer (tests/fixtures/uncooked-release): the
 // memory a 1024 px image and a 131,072-triangle model took when loaded
 // uncooked is given back when they are released, on the GPU (textures,
@@ -26,7 +27,7 @@ interface Memory {
   gpu: { textures: number; meshes: number; total: number } | null;
 }
 
-test("og.load.release gives back what an uncooked image and model took on the GPU and the heap", () => {
+gpuTest("og.load.release gives back what an uncooked image and model took on the GPU and the heap", () => {
   const out = mkdtempSync(join(tmpdir(), "og-uncooked-release-"));
   try {
     // Ticks 15 (the warm-up drawn, before the loads at 20), 45 (drawn) and

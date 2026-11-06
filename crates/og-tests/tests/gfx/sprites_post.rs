@@ -4,6 +4,7 @@ use super::*;
 /// array's filter; a layer past the array's count, or an array that was
 /// removed, is refused.
 #[test]
+#[ignore = "requires GPU"]
 fn a_sprite_draws_the_layer_of_its_texture_array() {
     use og_render::{
         ColorSpace, SpriteArray, TextureArrayData, TextureData, TextureFilter, TextureSource,
@@ -113,6 +114,7 @@ fn pixel(img: &RgbaImage, x: u32, y: u32) -> [u8; 3] {
 /// particles without their array (as untextured soft dots): no layer's
 /// colour shows.
 #[test]
+#[ignore = "requires GPU"]
 fn array_particles_take_their_layers_by_age_or_at_random() {
     use og_render::{
         Burst, EmitterShape, ParticleEmitter, ParticleRender, ParticleSystem, SheetMode,

@@ -23,6 +23,7 @@ fn frame(renderer: &mut Renderer, scene: &og_render::RenderScene) -> FrameStats 
 /// bytes per sphere drawn. (It wrote the sorted records too: 20,000
 /// records and the copies, 116 bytes a sphere at a fifth out of view.)
 #[test]
+#[ignore = "requires GPU"]
 fn only_the_records_a_draw_reads_are_uploaded() {
     let mut built = scenes::build("spheres-20k").expect("scene");
     built.desc.culling = Culling::Cpu;

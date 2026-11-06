@@ -23,6 +23,7 @@ serde_json = "1"
 # og-ui's tests that cook (tests/text_gfx.rs, materials_gfx.rs,
 # pack_contrast.rs) and og-ui's test support they include by path.
 [dev-dependencies]
+pollster = { workspace = true }
 og-ui = { path = "../og-ui" }
 # tests/support/text_scenes.rs reads the cooked fonts with og-bundle's loaders
 # (og-tests-web includes it by path, without og-cook).

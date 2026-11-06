@@ -117,24 +117,22 @@ export function native(): NativeExtras {
 
 /**
  * Attaches the headless renderer a native run draws with and answers its
- * tier. The engine draws on a GPU only (docs/design.md §2.6): when the
- * adapter request fails, the answer is a refusal naming the adapter's
- * error, and the run that asked for a renderer fails with it, never going
- * on as tier `none`. Only `OG_RENDERER=none` runs without one, on purpose
- * (docs/ci.md §Switches): then the tier is `none`.
+ * tier. An unavailable adapter leaves simulation running with unchecked
+ * frames; other initialization errors still fail.
  */
 export function attachRenderer(
   engine: number,
   width: number,
   height: number,
   attach: (engine: number, width: number, height: number) => string = (e, w, h) => native().og_node_attach_offscreen(e, w, h),
-): Result<string> {
+): { ok: true; value: string; adapterError: string | null } | { ok: false; reason: string } {
   const attached = JSON.parse(attach(engine, width, height)) as { ok: boolean; value?: string; reason?: string };
-  if (attached.ok) return { ok: true, value: attached.value! };
-  if (process.env.OG_RENDERER?.trim().toLowerCase() === "none") return { ok: true, value: "none" };
-  // The addon's refusal names the adapter's error and the fix ("no GPU
-  // adapter: <wgpu's error>; set OG_RENDERER=none to run without a renderer").
-  return { ok: false, reason: attached.reason ?? "no renderer" };
+  if (attached.ok) return { ok: true, value: attached.value!, adapterError: null };
+  const reason = attached.reason ?? "no renderer";
+  if (!reason.startsWith("no GPU adapter:")) return { ok: false, reason };
+  const expected = process.env.OG_RENDERER?.trim().toLowerCase() === "none";
+  process.stderr.write(`WARNING ${expected ? "" : "unexpected "}missing GPU: ${reason}; GPU checks are skipped/unchecked, not passed\n`);
+  return { ok: true, value: "none", adapterError: reason };
 }
 
 /** Import a game bundle (its default export is `og.game(...)`) and assemble its engine (`options.root`: the project whose cooked/ it opens). */

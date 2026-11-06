@@ -1,3 +1,4 @@
+import { gpuUnavailable } from "./support/gpu.ts";
 // Footage (docs/design.md §2.9): a `type video` cooked by ffmpeg plays on
 // an og.Sprite through og.VideoPlayer (tests/fixtures/video: testsrc2 with
 // its frame count burned in, every frame different, 30 fps, at a 30 Hz
@@ -62,7 +63,7 @@ interface Dump {
   components: Record<string, Record<string, number | boolean>>;
 }
 
-test.skipIf(!hasFfmpeg)("a cooked video plays on a sprite: tick 90 shows the source's frame 3 s in, and its sound follows a seek", () => {
+test.skipIf(!hasFfmpeg || gpuUnavailable)("a cooked video plays on a sprite: tick 90 shows the source's frame 3 s in, and its sound follows a seek", () => {
   const out = mkdtempSync(join(tmpdir(), "og-video-"));
   try {
     const script = "3:screenshot:video-90.png;3:dump_entity:screen:t90.json;3:set:screen.og.VideoPlayer.time=1;3.034:dump_entity:screen:seek.json;3.067:dump_entity:screen:after.json;3.1:quit";
@@ -100,7 +101,7 @@ test.skipIf(!hasFfmpeg)("a cooked video plays on a sprite: tick 90 shows the sou
   }
 }, 300_000);
 
-test.skipIf(!hasFfmpeg)("two players of one video at different times show different frames", () => {
+test.skipIf(!hasFfmpeg || gpuUnavailable)("two players of one video at different times show different frames", () => {
   const out = mkdtempSync(join(tmpdir(), "og-video-pair-"));
   try {
     const script = "0.5:pair;3:screenshot:pair.png;3:dump_entity:screen:a.json;3:dump_entity:screen2:b.json;3.1:quit";
@@ -135,7 +136,7 @@ test.skipIf(!hasFfmpeg)("two players of one video at different times show differ
   }
 }, 300_000);
 
-test.skipIf(!hasFfmpeg)("a video frame shows as an og.Mesh material map and on an og.ui image", () => {
+test.skipIf(!hasFfmpeg || gpuUnavailable)("a video frame shows as an og.Mesh material map and on an og.ui image", () => {
   const out = mkdtempSync(join(tmpdir(), "og-video-surfaces-"));
   try {
     const script = "0.5:surfaces;3:screenshot:surfaces.png;3:dump_entity:screen:a.json;3.1:quit";
@@ -170,7 +171,7 @@ test.skipIf(!hasFfmpeg)("a video frame shows as an og.Mesh material map and on a
 // the frame it wrapped to. Each is nearer its own source frame than either
 // neighbour, so a frame decoded a step late or from the wrong key frame
 // fails. Broken before: there were no streams (the cook refused `stream`).
-test.skipIf(!hasFfmpeg)("a streamed video shows its tick's frame, after a seek and across a loop", () => {
+test.skipIf(!hasFfmpeg || gpuUnavailable)("a streamed video shows its tick's frame, after a seek and across a loop", () => {
   const out = mkdtempSync(join(tmpdir(), "og-video-stream-"));
   try {
     const script = [
@@ -228,7 +229,7 @@ test.skipIf(!hasFfmpeg)("a streamed video shows its tick's frame, after a seek a
 // behind the sound); two players of one stream share one decoder (the
 // second shows the first's frame, or each waits on frames the other
 // skipped).
-test.skipIf(!hasFfmpeg)("a streamed video's sound stays with its picture through a pause, a loop and a second player", () => {
+test.skipIf(!hasFfmpeg || gpuUnavailable)("a streamed video's sound stays with its picture through a pause, a loop and a second player", () => {
   const out = mkdtempSync(join(tmpdir(), "og-video-sync-"));
   try {
     const script = [

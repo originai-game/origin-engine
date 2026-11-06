@@ -9,6 +9,7 @@ use og_tests::scenes;
 /// order (shadows, main, TAA, metering, bloom down and up, tonemap) and the
 /// transient textures it allocated.
 #[test]
+#[ignore = "requires GPU"]
 fn the_showcase_frame_is_recorded_from_its_graph() {
     let mut built = scenes::build("showcase").expect("scene");
     let mut renderer = Renderer::new_blocking(&built.desc).expect("renderer");
@@ -63,6 +64,7 @@ fn the_showcase_frame_is_recorded_from_its_graph() {
 /// full-resolution `ao` the main pass reads; the default keeps today's two
 /// full-resolution passes.
 #[test]
+#[ignore = "requires GPU"]
 fn half_resolution_ao_adds_its_upsample_and_halves_its_targets() {
     let mut built = scenes::build("ao-gtao").expect("scene");
     let mut renderer = Renderer::new_blocking(&built.desc).expect("renderer");

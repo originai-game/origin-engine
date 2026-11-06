@@ -149,6 +149,7 @@ fn shadow_of(post: Vec3) -> (Vec3, Vec3) {
 /// used, if outside it reads as shadowed (the clamped border), or if the
 /// focus or the drop is ignored.
 #[test]
+#[ignore = "requires GPU"]
 fn the_shadow_box_shadows_inside_it_and_lights_outside_it() {
     let (desc, scene) = built("shadow-box");
     let (near, open_near) = shadow_of(fs::BOX_NEAR_POST);
@@ -233,6 +234,7 @@ fn the_shadow_box_shadows_inside_it_and_lights_outside_it() {
 /// colour, if the light reaches the reflections, if 0 is not off, or if
 /// the light is scaled by the environment's intensity.
 #[test]
+#[ignore = "requires GPU"]
 fn the_hemisphere_light_lights_by_facing_and_only_diffusely() {
     let (desc, scene) = built("hemisphere-light");
     let off = |i: f32| {

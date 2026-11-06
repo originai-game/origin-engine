@@ -7,6 +7,7 @@ import { expect, test } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gpuUnavailable } from "./support/gpu.ts";
 
 // The gate's path-aware lane skips this file: it spawns og processes for
 // minutes (docs/ci.md §Lanes). `scripts/check.sh --all`, CI and a plain
@@ -34,7 +35,7 @@ export default og.game({ resources: [Score], systems: [Count], start(world) {
 `;
 
 for (const render of [false, true]) {
-  test.skipIf(SLOW)(`a watched bundle reloads and migrates a changed layout (render=${render})`, async () => {
+  test.skipIf(SLOW || (render && gpuUnavailable))(`a watched bundle reloads and migrates a changed layout (render=${render})`, async () => {
     const dir = join(pkg, "tests", `.reload-${process.pid}-${render}`);
     mkdirSync(dir, { recursive: true });
     const entry = join(dir, "game.ts");

@@ -70,6 +70,7 @@ fn draw(renderer: &mut Renderer, scene: &RenderScene) -> Result<RgbaImage, Rende
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn a_removed_mesh_is_refused_and_its_slot_reused_under_a_new_generation() {
     let mut scene = flat_scene();
     let plane = scene.add_mesh(shapes::plane(4.0, 1.0));
@@ -139,6 +140,7 @@ fn layers(n: usize) -> TextureArrayData {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn environment_maps_texture_arrays_and_palettes_leave_the_frame_and_its_bytes() {
     let mut scene = flat_scene();
     let plane = scene.add_mesh(shapes::plane(4.0, 1.0));

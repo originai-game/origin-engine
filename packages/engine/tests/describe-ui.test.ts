@@ -1,3 +1,4 @@
+import { gpuTest } from "./support/gpu.ts";
 // describe's occlusion counts the UI (docs/design.md §3.4): templates/game's
 // tick-1 frame at 880×495, where the HUD panel (Menu, an opaque background
 // from x 24 to 272) covers most of the crate hanging at the top left. The ways this could fail, each asserted below: the HUD is ignored
@@ -27,7 +28,7 @@ type Described = {
 // 880×495: the starter's Menu panel (its look's storybook style) covers the
 // falling crate in part there; at 800×450 it hides the crate whole, and an
 // entity with no pixel shown is not described.
-test("a HUD panel over an entity counts in its occlusion: templates/game at tick 1, 880×495", () => {
+gpuTest("a HUD panel over an entity counts in its occlusion: templates/game at tick 1, 880×495", () => {
   const out = mkdtempSync(join(tmpdir(), "og-describe-ui-"));
   const r = Bun.spawnSync(
     [ogBin(), "run", ".", "--headless", "--no-check", "--size", "880x495", "--commands", "0.016:pause;0.016:describe:d.json", "--out", out, "--json"],

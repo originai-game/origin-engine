@@ -10,6 +10,7 @@ use super::*;
 /// corner, and no corner of the frame is black. The lens is one pass,
 /// none at amount 0.
 #[test]
+#[ignore = "requires GPU"]
 fn lens_distortion_bends_by_its_formula() {
     let (w, h) = (320.0f32, 180.0f32);
     let scene = |lens: Option<LensDistortion>| {
@@ -122,6 +123,7 @@ fn sharpness(img: &RgbaImage, r: (u32, u32, u32, u32)) -> f32 {
 /// Depth of field keeps the focus band sharp and blurs the near ground; the
 /// high quality gathers more taps (a different, smoother result).
 #[test]
+#[ignore = "requires GPU"]
 fn depth_of_field_blurs_outside_the_focus_band() {
     let desc = scenes::base_desc();
     let low = fx::dof_scene(DofQuality::Low).expect("scene");

@@ -1,3 +1,9 @@
+#![feature(custom_test_frameworks, test)]
+#![test_runner(gpu_tests::run)]
+use og_render::wgpu as gpu_wgpu;
+#[path = "../../../../tests/gpu.rs"]
+mod gpu_tests;
+
 #[path = "../a11y.rs"]
 mod a11y;
 #[path = "../button_contrast.rs"]

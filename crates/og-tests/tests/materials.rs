@@ -54,6 +54,7 @@ fn studio() -> RenderScene {
 /// Thin-leaf transmission is tinted direct light, including on the back
 /// side, and an intervening caster extinguishes it. Test both lit pipelines.
 #[test]
+#[ignore = "requires GPU"]
 fn leaf_backlighting_is_tinted_and_shadowed() {
     for clearcoat in [0.0, 0.4] {
         let mut scene = studio();
@@ -118,6 +119,7 @@ fn leaf_backlighting_is_tinted_and_shadowed() {
 /// alone does not have, sharper the smoother the coat; no coat is the
 /// plain material.
 #[test]
+#[ignore = "requires GPU"]
 fn clearcoat_adds_a_glossy_layer() {
     let ball = |coat: f32, coat_roughness: f32| {
         let mut scene = studio();

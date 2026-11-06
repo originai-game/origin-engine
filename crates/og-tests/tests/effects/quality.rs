@@ -5,6 +5,7 @@ use super::*;
 /// Particles, trails and the post stack all off: no extra passes (the
 /// features-off budget), counted from the frame graph.
 #[test]
+#[ignore = "requires GPU"]
 fn effects_off_add_no_passes() {
     let built = scenes::build("gltf-reference").expect("scene");
     let (_, stats) = frame(&built.desc, &built.scene);
@@ -65,6 +66,7 @@ fn moved(a: &RgbaImage, b: &RgbaImage, by: u8) -> Option<([u32; 4], usize, f32, 
 /// round high was medium with doubled shadow maps and nothing else: the
 /// three high frames below equalled the `shadows only` ones.
 #[test]
+#[ignore = "requires GPU"]
 fn the_high_preset_refines_ao_reflections_and_fog_and_medium_moves_nothing() {
     use og_render::{AoResolution, QualityPreset, RenderQuality};
     let default = RenderQuality::default();

@@ -1,3 +1,4 @@
+import { gpuTest } from "./support/gpu.ts";
 // Lanes (crates/og-lanes) change where the parallel systems run, never what
 // they produce: the reference scene with 2000 more boxes, 160 more walkers
 // and 48 falling crates, natively with lanes off (OG_LANES=off) and on four threads
@@ -61,7 +62,7 @@ function run(lanes: string, replayLanes: string): Run {
   return JSON.parse(out.trim().split("\n").pop()!) as Run;
 }
 
-test("lanes on and off give the same world hashes, the same pixels and the same replays", () => {
+gpuTest("lanes on and off give the same world hashes, the same pixels and the same replays", () => {
   const off = run("off", "on");
   const on = run("4", "off");
   // The on run ran in parallel and the off run did not: the comparison is never between two serial runs.

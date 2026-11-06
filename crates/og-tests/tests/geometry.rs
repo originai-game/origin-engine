@@ -55,6 +55,7 @@ fn wire_cube(
 /// background. Before, the wire's line was drawn on the silhouette too,
 /// half outside the outline: a second, red edge round the shape.
 #[test]
+#[ignore = "requires GPU"]
 fn an_outlined_wireframe_leaves_the_silhouette_to_the_outline() {
     let img = wire_cube(
         og_render::StandardMaterial {
@@ -100,6 +101,7 @@ fn an_outlined_wireframe_leaves_the_silhouette_to_the_outline() {
 /// map not bound or sampled at the wrong group (white or black), the line
 /// colour ignored (green).
 #[test]
+#[ignore = "requires GPU"]
 fn a_wireframe_takes_its_surface_colour_or_the_looks_line_colour() {
     let green = og_render::TextureData {
         width: 4,

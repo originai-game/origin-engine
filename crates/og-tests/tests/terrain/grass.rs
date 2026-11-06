@@ -81,6 +81,7 @@ fn blade_pixels_above(img: &RgbaImage) -> usize {
 /// half a second, to at least 80 % of the untouched field. Before G3
 /// nothing read a pusher: the blades stood as tall under it.
 #[test]
+#[ignore = "requires GPU"]
 fn a_grass_pusher_tramples_the_blades_and_they_recover() {
     let mut scene = trample_scene();
     let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
@@ -137,6 +138,7 @@ fn a_grass_pusher_tramples_the_blades_and_they_recover() {
 /// height above the ground. Before G5 a blade was lit alike root to tip
 /// (no canopy, no shadows by default): a ratio near 1.
 #[test]
+#[ignore = "requires GPU"]
 fn a_low_sun_darkens_the_meadow_towards_its_roots() {
     let mut scene = trample_scene();
     let g = &mut scene.grass[0].grass;

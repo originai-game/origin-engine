@@ -37,6 +37,7 @@ fn mean(img: &og_render::RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32) -> [f32;
 /// frames were the same pixels, so `baked-batches` has no reference of its
 /// own any more).
 #[test]
+#[ignore = "requires GPU"]
 fn every_batch_kind_draws_its_lightmap() {
     let standard = gfx::render("baked-cornell").expect("render").image;
     let batches = gfx::render("baked-batches").expect("render").image;
@@ -85,6 +86,7 @@ fn every_batch_kind_draws_its_lightmap() {
 /// uvs let go) and from elsewhere, the restore: the baked frame again, byte
 /// for byte.
 #[test]
+#[ignore = "requires GPU"]
 fn a_renderer_restore_keeps_the_baked_frame() {
     use og_render::{RenderTarget, Renderer};
     let built = og_tests::scenes::build("baked-cornell").expect("build");
@@ -141,6 +143,7 @@ fn project(camera: &og_render::Camera, p: glam::Vec3) -> (u32, u32) {
 /// Before the debt round 2 `custom_lit.wgsl` lit it as a point at its
 /// centre without its shadow.
 #[test]
+#[ignore = "requires GPU"]
 fn a_full_custom_shader_lights_rect_lights_with_their_shadow() {
     let read = |custom: bool, cast: bool| {
         let (scene, points) = if custom {

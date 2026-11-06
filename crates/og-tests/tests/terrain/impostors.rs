@@ -23,6 +23,7 @@ fn ball_pixel(c: [f32; 3]) -> bool {
 /// or the card's roughness from the atlas differing from the material's
 /// (the atlas at translucency 0 then reading unlike no atlas).
 #[test]
+#[ignore = "requires GPU"]
 fn a_leaf_card_lets_the_sun_through_from_behind() {
     let (leaf, _) = render(&is::impostor_backlit_scene(Some(0.8)));
     keep("impostor-backlit", &leaf);
@@ -76,6 +77,7 @@ fn crossfade_scene() -> RenderScene {
 /// static interleaved-gradient threshold, which dropped the same pixels
 /// every frame: grain TAA could not resolve.
 #[test]
+#[ignore = "requires GPU"]
 fn the_crossfade_turns_its_noise_every_render_frame() {
     let mut scene = crossfade_scene();
     scene.debug = og_render::DebugView::Albedo;

@@ -75,7 +75,7 @@ PASS_NOTE="" # what a step that passed left out, for the summary
 
 # The inputs of each path-aware rule (og_unchanged in scripts/lib.sh).
 # Everything reruns on a change to the build's own configuration.
-RULE_COMMON="Cargo.toml Cargo.lock rust-toolchain.toml .cargo .config scripts"
+RULE_COMMON="Cargo.toml Cargo.lock rust-toolchain.toml .cargo .config scripts tests/gpu.rs"
 # rule_gpu PKG: the inputs of one GPU package's reference tests: the
 # workspace crates in its closure (with dev-dependencies), what they embed
 # from outside crates/ (og-render's LTC table; og-cook's built-in looks and
@@ -179,6 +179,10 @@ step_clippy() {
 run_tests() {
   local key="$1" doc="$2" rc pk gpu_ran=() skipped=()
   shift 2
+  local gpu_reports="$GATE_LOGS/$key-gpu-reports"
+  mkdir -p "$gpu_reports"
+  rm -f "$gpu_reports/"*.txt
+  export OG_GPU_REPORT_DIR="$gpu_reports"
   local exclude=("$@")
   for pk in $GPU_PACKAGES; do
     case " ${exclude[*]+${exclude[*]}} " in *" $pk "*) continue ;; esac
@@ -221,6 +225,16 @@ run_tests() {
       cargo test "${gpu_args[@]}" -- --test-threads=1; rc=$?
     fi
   fi
+  if compgen -G "$gpu_reports/*.txt" >/dev/null; then
+    cat "$gpu_reports/"*.txt | sort -u
+    [ "$rc" -eq 0 ] || return "$rc"
+    local skipped
+    skipped=$(sort -u "$gpu_reports/"*.txt | sed -n 's/.*; \([0-9][0-9]*\) GPU tests skipped (.*/\1/p' | awk '{n += $1} END {print n+0}')
+    SKIP_NOTE="$skipped GPU tests skipped/unchecked: no adapter; CPU checks passed"
+    unset OG_GPU_REPORT_DIR
+    return "$SKIP"
+  fi
+  unset OG_GPU_REPORT_DIR
   [ "$rc" -eq 0 ] || return "$rc"
   for pk in ${gpu_ran[@]+"${gpu_ran[@]}"}; do og_green_set "$key.gpu.$pk"; done
   return 0
@@ -645,9 +659,8 @@ step_ui_styles() {
   kit_playtests ui-styles --filter tests/style- --jobs "${OG_UI_STYLES_JOBS:-3}"
 }
 
-# kit_playtests STEP ARGS...: og test templates/ui-kit ARGS, failing when
-# it left any frame unchecked: a gate machine without a usable renderer
-# must fail rather than count unchecked frames as passes.
+# kit_playtests STEP ARGS...: preserve og test's separate passed, failed
+# and unchecked counts; an absent adapter is a warning, not a failure.
 kit_playtests() {
   local step="$1" log rc
   shift
@@ -655,10 +668,11 @@ kit_playtests() {
   "$OG_TARGET_DIR/debug/og" test templates/ui-kit "$@" 2>&1 | tee "$log"
   rc="${PIPESTATUS[0]}"
   [ "$rc" -eq 0 ] || return "$rc"
-  if grep -q 'frame(s) unchecked' "$log"; then
-    og_err "$step: missing GPU renderer; $(grep -o '[0-9]* frame(s) unchecked' "$log" | tail -1), so nothing was compared"
-    return 1
+  if grep -Eq '[1-9][0-9]* GPU frame/expectation checks unchecked' "$log"; then
+    SKIP_NOTE="$(grep '^og test:' "$log" | tail -1)"
+    return "$SKIP"
   fi
+  return 0
 }
 
 # Every other kit playtest (templates/ui-kit/tests/*.og.ts but style-*):

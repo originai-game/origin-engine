@@ -64,6 +64,7 @@ fn diff(a: &RgbaImage, b: &RgbaImage, r: Rect) -> f32 {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn the_pool_tints_shows_through_and_refracts_what_lies_behind_it() {
     let wet = frame(|_| {});
     let dry = frame(|s| s.fluids_3d.clear());
@@ -90,6 +91,7 @@ fn the_pool_tints_shows_through_and_refracts_what_lies_behind_it() {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn the_drop_is_drawn_in_its_particles_colours() {
     let wet = frame(|_| {});
     let dry = frame(|s| s.fluids_3d.clear());

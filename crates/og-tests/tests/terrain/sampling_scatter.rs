@@ -195,6 +195,7 @@ fn is_background(img: &RgbaImage, at: (u32, u32)) -> bool {
 /// or not (normals follow the transform). Scattered copies stand on the
 /// transformed surface.
 #[test]
+#[ignore = "requires GPU"]
 fn a_terrain_honours_its_transform() {
     let quarter = Mat4::from_rotation_y(std::f32::consts::FRAC_PI_2);
     let cases: [(&str, Mat4, Vec3, bool); 7] = [

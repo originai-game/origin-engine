@@ -86,6 +86,7 @@ fn place(scene: &mut RenderScene, by: Vec3) {
 const FAR: Vec3 = Vec3::new(999_424.0, 0.0, 598_016.0);
 
 #[test]
+#[ignore = "requires GPU"]
 fn a_scene_a_thousand_kilometres_out_draws_as_at_the_world_zero() {
     // Each with the rmse its frame may differ by: the crypt's sun shadows
     // round, the others' frames only by the GPU's arithmetic.
@@ -161,6 +162,7 @@ fn run(build: Build, step: Step, frames: u32, rebase_at: Option<u32>) -> Vec<Rgb
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn moving_the_render_origin_keeps_the_history_in_place() {
     let cases: [(&str, Build, Step); 2] = [
         (

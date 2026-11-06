@@ -156,6 +156,7 @@ fn measured_outline(font: &str) -> f32 {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn a_2_px_outline_on_16_px_text_is_about_2_px_wide_in_the_kit_faces() {
     let mut failing = Vec::new();
     for font in KIT_FONTS {

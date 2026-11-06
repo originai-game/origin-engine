@@ -104,6 +104,7 @@ fn disc(renderer: &mut Renderer) -> Vec<(u32, u32)> {
 /// Broken by the PBR ambient: the hemisphere's white sky over a black
 /// ground lit the top and left the bottom dark.
 #[test]
+#[ignore = "requires GPU"]
 fn toon_ambient_is_flat() {
     let mut renderer = Renderer::new_blocking(&desc()).expect("renderer");
     let disc = disc(&mut renderer);
@@ -181,6 +182,7 @@ fn red(c: [u8; 3]) -> bool {
 /// intermediate coverage at its rim. Broken when the place was ignored:
 /// the line was inside only (no red pixel off the box).
 #[test]
+#[ignore = "requires GPU"]
 fn outlines_outside_ink_round_the_silhouette() {
     let mut renderer = Renderer::new_blocking(&desc()).expect("renderer");
     let plain = draw(&mut renderer, &box_scene(OutlinePlace::Inside, 0.0));

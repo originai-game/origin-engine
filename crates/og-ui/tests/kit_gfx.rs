@@ -15,6 +15,7 @@ use std::path::PathBuf;
 use support::*;
 
 #[test]
+#[ignore = "requires GPU"]
 fn the_widget_set_matches_its_reference_frame() {
     let shot = with_test_font(widget_set_shot);
     let frame = shot.ui.frame();
@@ -174,6 +175,7 @@ fn stick_shot(font: &FontFiles, push: Option<Vec2>) -> (Shot, JoystickResponse) 
 /// against `references/<tier>/stick-held.png`; the frame at rest has its
 /// knob centred.
 #[test]
+#[ignore = "requires GPU"]
 fn a_held_stick_draws_its_knob_pushed_inside_its_base() {
     let render = |push: Option<Vec2>| {
         let (shot, out) = with_test_font(|f| stick_shot(f, push));

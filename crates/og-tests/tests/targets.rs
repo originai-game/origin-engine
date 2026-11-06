@@ -19,6 +19,7 @@ fn frame(scene: &og_render::RenderScene) -> og_render::RgbaImage {
 /// when its camera sees layer 1 and nothing when it does not, and never
 /// change the main frame around it (the main camera is on layer 0).
 #[test]
+#[ignore = "requires GPU"]
 fn a_view_draws_transparents_sprites_particles_and_lines_on_its_layers() {
     use og_tests::target_scenes::{ViewKind, view_kinds_scene};
     // The monitor on the back wall, with a pixel's margin.
@@ -64,6 +65,7 @@ fn a_view_draws_transparents_sprites_particles_and_lines_on_its_layers() {
 /// lighting; 2D fluids), and its soft particles read a placeholder depth
 /// and vanished.
 #[test]
+#[ignore = "requires GPU"]
 fn a_view_draws_the_main_passs_effects() {
     use og_tests::target_scenes::{ViewFx, view_fx_scene};
     let mut failures = Vec::new();

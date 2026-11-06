@@ -1,3 +1,4 @@
+import { gpuTest } from "./support/gpu.ts";
 // Terrain tile streaming leaves the simulation alone (phase 3): the
 // fx-showcase terrain station (a 256 m valley the hero walks across,
 // sampling the ground under it every tick) runs 600 ticks through `og run`
@@ -61,7 +62,7 @@ function run(name: string, mode: string): { hashes: string[]; first: Terrain; la
   return { hashes, first: read("first.json").terrain as Terrain, last: read("last.json").terrain as Terrain, ticks: summary.ticks };
 }
 
-test(
+gpuTest(
   "terrain tiles arriving after the first frame leave all 600 simulation hashes unchanged",
   () => {
     rmSync(work, { recursive: true, force: true });

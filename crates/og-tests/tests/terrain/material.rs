@@ -5,6 +5,7 @@
 use super::*;
 
 #[test]
+#[ignore = "requires GPU"]
 fn cell_variation_leaves_opaque_normal_maps_unchanged() {
     for anti_tiling in [0.0, 1.0] {
         let mut scene = ts::tiling_scene(anti_tiling);

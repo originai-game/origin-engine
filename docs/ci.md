@@ -338,7 +338,8 @@ split, and the lowest such crate is its cause.
 | perf | `scripts/perf.sh`: ignored `perf_*` assertions in og-tests, og-runtime and og-audio, release profile, serially under every GPU slot. | wave-end only |
 
 Rust test steps fall back to `cargo test` when nextest is unavailable,
-serializing the GPU packages. Missing adapters fail on every host. Input
+serializing the GPU packages. Missing adapters warn on every host; GPU
+tests are skipped, not passed. Input
 caching follows §Lanes. Bun tests have a 30-second per-test timeout through
 `OG_BUN_TEST_TIMEOUT`; a real hang fails. `scripts/test-gate-guards.sh`
 checks missing and partial wasm outputs for bun-functional, bun-test and
@@ -362,8 +363,8 @@ There is no GitHub test CI (owner decision, 2026-11-04). The supported
 gate is `scripts/check.sh`; do not subscribe to or wait for GitHub checks.
 Historical workflow files and earlier timings are not a second test lane.
 Every supported machine runs the same selected lane and needs a real GPU
-for rendering tests. Neither a CPU adapter nor a missing renderer excuses
-an unchecked reference frame.
+for rendering tests. Missing adapters leave reference frames unchecked;
+an unchecked frame is never evidence of a rendering pass.
 
 A second workflow, `.github/workflows/release.yml` (`workflow_dispatch`
 only, no secrets, nothing published), is the fallback release pack when
@@ -527,9 +528,26 @@ the load average past 100 and every step past its timeouts):
 Run the same named lane on every host. There is no Windows-only subset,
 orb lane, nextest partition/archive, or wasm import/export test routing.
 Platform backends still differ (Metal, DX12, Vulkan and browser WebGPU),
-but missing adapters and unsupported required GPU capabilities fail tests.
-`OG_RENDERER=none` is useful to test explicit simulation-only behavior;
-it never turns an unchecked frame assertion into a pass.
+but test selection does not. A missing adapter produces a loud warning
+with wgpu's error and skipped/unchecked counts, not a failing exit status.
+Other initialization errors and failed checks still fail.
+`OG_RENDERER=none` is optional; it makes the missing adapter expected and
+never turns an unchecked frame assertion into a pass.
+
+Rust GPU tests declare `#[ignore = "requires GPU"]` in an adapter-aware
+`tests/it` binary (`tests/gpu.rs`). Discovery enables them when an adapter
+exists, otherwise libtest and nextest count them as ignored/skipped.
+Keep `requires GPU; wave-end perf` for GPU tests that also require explicit
+perf selection. Bun uses `gpuTest` from `tests/support/gpu.ts`, or
+`test.skipIf(gpuUnavailable || otherPrerequisiteMissing)` for combined
+requirements. Do not return early from a test body to implement a skip.
+The gate forwards nextest's captured adapter-discovery warnings and does
+not cache an unchecked GPU run as a green reference result.
+Nextest has no runtime-skip protocol: do not force unavailable GPU tests
+with `--run-ignored all/only`. That unsupported invocation is rejected,
+because nextest would otherwise call a zero-exit runtime skip a pass.
+Use `cargo test -- --ignored` for explicit ignored-test runs (as the perf
+lane does); its text and JSON preserve the ignored status and exit zero.
 
 Browser groups use separate ports and profile/output directories. Work that
 writes the same project's export stays in one group. `OG_WEB_JOBS` controls
@@ -686,28 +704,28 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
   this process runs without a renderer", `og_render::renderer_disabled`),
   as on a machine with no usable adapter. The platform's `engine` and
   `probe` sandboxes set it (docs/design.md §5: they carry no renderer), and
-  the switch makes the path testable on a machine with a GPU. It is the
-  only way to run without a renderer: the engine draws on a GPU only
-  (docs/design.md §2.6), so a native run whose adapter request fails
-  without the switch fails, naming the adapter's error, and never goes on
-  as tier `none` (`attachRenderer`, packages/engine's node/index.ts; until
-  2026-11-02 it went on, and a playtest passed with its frames unchecked
-  and its warnings unread). Without a renderer the run is the same run: the simulation, the probe, `dump_*`,
+  the switch makes the path testable on a machine with a GPU. It is optional:
+  an unavailable adapter warns with wgpu's error and continues as tier
+  `none` (`attachRenderer`, packages/engine's node/index.ts). The switch
+  removes only the warning's "unexpected" wording. Without a renderer
+  the run is the same run: the simulation, the probe, `dump_*`,
   snapshots and the world hash are identical (rendering never feeds back
   into simulation; the native host keeps the play surface at `--size`); a
   `screenshot` step writes no PNG and logs, not as a warning, `<t>s
   screenshot: no renderer, frame unchecked (<file>)` (og-probe's
   `FRAME_UNCHECKED`); `hello.tier` is `none` and `capture` answers null.
-  `og run --json` reports `tier: "none"` and the frames in `unchecked`;
+  `og run --json` reports `tier: "none"`, `renderer: "none"`,
+  `adapterError`, the frames in `unchecked` and `uncheckedCount`;
   `og test` runs every playtest check outside `t.frame`, prints one
   `~ <file>: no renderer, frame unchecked` line per screenshot and the
-  count in its summary, and fails with a missing-GPU error if any frame
-  is unchecked. Simulation-only playtests can still pass without a GPU;
-  `og doctor` reports the renderer `none`, not as a problem. Any other value, or none, leaves
+  count in its summary. It counts unchecked suites separately from passes;
+  exit status is zero unless an executed check failed. Simulation-only
+  playtests can still pass without a GPU; `og doctor` reports
+  the renderer `none`, not as a problem. Any other value, or none, leaves
   the adapters alone; the web host always has its canvas's. The gfx
-  suites (og-tests, og-ui's reference frames, `og-gfx`) need a renderer and
-  fail under the switch. `packages/engine/tests/no-renderer.test.ts` and
-  og-runtime's `tests/it/no_renderer.rs` hold the contract; frames are verified
+  test suites need a renderer and register GPU tests as skipped under the
+  switch. `packages/engine/tests/no-renderer.test.ts` and
+  og-runtime's `tests/no_renderer.rs` hold the contract; frames are verified
   where there is a renderer: the author's machine, the browser-check
   sandbox, an executor with a GPU.
 

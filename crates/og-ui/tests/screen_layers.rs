@@ -38,6 +38,7 @@ fn square(x: f32, y: f32, size: f32, color: [f32; 4], layer: i32) -> Sprite {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn screen_sprites_above_the_ui_layer_draw_over_the_ui() {
     assert_eq!(screen_layer(UI_LAYER), UI_LAYER, "at the UI's layer: under");
     assert!(screen_layer(UI_LAYER + 1) > UI_OVERLAY_LAYER + (1 << 20) - 1);

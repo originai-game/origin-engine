@@ -180,6 +180,7 @@ fn host(
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn a_host_sees_each_frame_exactly_as_drawn_and_its_resize_reallocates_the_slots() {
     let mut engine = renderer(96, 64, Some(OUTPUT_FORMAT)).expect(
         "a GPU adapter: a GPU test, run where there is one (OG_RENDERER=none takes it away)",
@@ -241,6 +242,7 @@ fn a_host_sees_each_frame_exactly_as_drawn_and_its_resize_reallocates_the_slots(
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn a_host_that_keeps_every_slot_never_stalls_the_engine() {
     let mut engine = renderer(32, 32, Some(OUTPUT_FORMAT)).expect(
         "a GPU adapter: a GPU test, run where there is one (OG_RENDERER=none takes it away)",

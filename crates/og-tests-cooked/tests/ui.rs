@@ -19,6 +19,7 @@ fn px(r: &Rendered, x: u32, y: u32) -> [f32; 3] {
 
 /// The cooked emblem's even-odd ring keeps its hole.
 #[test]
+#[ignore = "requires GPU"]
 fn ui_vector_fills_by_its_rule() {
     let r = render("ui-vector");
     // The 640 px emblem: view box 120 at 640/120 px a unit from (600, 40).

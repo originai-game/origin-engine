@@ -62,6 +62,7 @@ fn cascade_of(p: &[u8]) -> Option<usize> {
 /// cascade covering the bottom row (the ground at the camera's feet) is 0,
 /// and the far ground at the horizon is covered by cascade 2.
 #[test]
+#[ignore = "requires GPU"]
 fn cascades_cover_the_view_near_to_far() {
     let (debug, _, _) = cascade_frames(true);
     let w = debug.width as usize;
@@ -105,6 +106,7 @@ fn cascades_cover_the_view_near_to_far() {
 /// or none, which a quality asking 4 does not change. Before the debt
 /// round nothing said so: a preset's 4 was drawn at 1 unseen.
 #[test]
+#[ignore = "requires GPU"]
 fn the_device_msaa_caps_the_qualitys() {
     use og_render::RenderQuality;
     let scene = RenderScene::new();

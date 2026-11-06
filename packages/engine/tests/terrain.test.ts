@@ -1,3 +1,4 @@
+import { gpuTest } from "./support/gpu.ts";
 // Terrain through the TypeScript API on the native host (IDL module
 // `terrain`, phase 2): a cooked terrain (tests/fixtures/terrain, a 6 m hill
 // on a gentle slope, 129 × 129 samples over 64 m) loads with its layer's
@@ -186,7 +187,7 @@ test("a ball rests on the terrain and a character walks up the hill", () => {
   expect(b.y).toBeLessThan(under + 0.75);
 });
 
-test("an edit raises the ground for sample, physics and the renderer", () => {
+gpuTest("an edit raises the ground for sample, physics and the renderer", () => {
   const { engine, info } = start({ x: 0, y: 0, z: 0 }, [160, 90]);
   const w = engine.world;
   // The camera looking down at a flat-ish spot east of the hill.
@@ -280,7 +281,7 @@ test("the hole brush cuts the terrain out for sample and physics, and fill close
   expect(at(20, 20).hole).toBeFalse();
 });
 
-test("og.Terrain draws the terrain, and a layer reads back and retunes", () => {
+gpuTest("og.Terrain draws the terrain, and a layer reads back and retunes", () => {
   const { engine, info } = start({ x: 0, y: 0, z: 0 }, [160, 90]);
   const w = engine.world;
   view(w, { x: 0, y: 20, z: 40 }, { x: 0, y: 2, z: 0 });
@@ -305,7 +306,7 @@ test("og.Terrain draws the terrain, and a layer reads back and retunes", () => {
   expect(Math.abs(gone[0]! - red[0]!) + Math.abs(gone[1]! - red[1]!)).toBeGreaterThan(20);
 });
 
-test("og.TerrainScatter grows copies of a mesh over the terrain near the camera", () => {
+gpuTest("og.TerrainScatter grows copies of a mesh over the terrain near the camera", () => {
   const { engine, info, terrain } = start({ x: 0, y: 0, z: 0 }, [160, 90]);
   const w = engine.world;
   view(w, { x: 0, y: 30, z: 36 }, { x: 0, y: 0, z: 0 });

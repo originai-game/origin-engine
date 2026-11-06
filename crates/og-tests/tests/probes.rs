@@ -56,6 +56,7 @@ fn face_mean(capture: &(u32, Vec<f32>), face: usize) -> [f32; 3] {
 /// placed there by its transform does. Picked by its bind pose's bounds,
 /// as before the debt round 2, it reflected the red room it is not in.
 #[test]
+#[ignore = "requires GPU"]
 fn a_skinned_instance_takes_the_probe_of_its_pose() {
     let desc = scenes::base_desc();
     let frame = |posed: Option<bool>| {
@@ -116,6 +117,7 @@ fn a_skinned_instance_takes_the_probe_of_its_pose() {
 /// before the debt round 3 these shaders still read one (the main camera's
 /// first), so the light was missing from the face as it is here bare.
 #[test]
+#[ignore = "requires GPU"]
 fn local_lights_reach_terrain_and_fluids_in_a_capture() {
     let desc = scenes::base_desc();
     let blue = |position| og_render::Light {

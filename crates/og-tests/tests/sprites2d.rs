@@ -105,6 +105,7 @@ fn two_texels(scene: &mut RenderScene) -> og_render::TextureHandle {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn tile_layers_cull_chunks_draw_under_their_layer_repeat_and_animate() {
     let make = |repeat: [Option<f32>; 2]| {
         let mut scene = flat();
@@ -210,6 +211,7 @@ fn tile_layers_cull_chunks_draw_under_their_layer_repeat_and_animate() {
 /// shadowed; a mask ignored (the receiver lit by every light), or the
 /// strips mixed up so a mask-2 receiver reads mask 1's light.
 #[test]
+#[ignore = "requires GPU"]
 fn spot_global_and_masked_2d_lights() {
     use og_render::{Light2d, Light2dKind, Lighting2d};
     let white = |scene: &mut RenderScene, x: f32, mask: Option<u32>| {

@@ -21,6 +21,7 @@ fn reference_dir(tier: &str) -> PathBuf {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn sample_screen_matches_its_reference_frame() {
     let (shot, s) = with_test_font(sample_screen_shot);
     let frame = shot.ui.frame();
@@ -103,6 +104,7 @@ fn sample_screen_matches_its_reference_frame() {
 /// scrolled half out are cut exactly at its edge (quads and text alike), and
 /// nothing it holds shows outside its rectangle.
 #[test]
+#[ignore = "requires GPU"]
 fn a_scroll_container_clips_everything_it_draws() {
     let mut scene = RenderScene::new();
     let font = add_test_font(&mut scene);
@@ -209,6 +211,7 @@ fn a_scroll_container_clips_everything_it_draws() {
 /// past the distance range (where the field is flat, it would end at the
 /// glyph quad's hard edge).
 #[test]
+#[ignore = "requires GPU"]
 fn a_text_glow_is_a_halo_from_the_distance_field() {
     let render = |glow: bool| {
         let (scene, desc) = with_test_font(|f| glow_scene(f, glow, 1));
@@ -394,6 +397,7 @@ fn inked_frame(
 /// second copy), or it moves the glyphs further than their tracked
 /// advance (a letter-spaced bold word).
 #[test]
+#[ignore = "requires GPU"]
 fn bold_rich_text_is_heavier_ink_never_a_box() {
     let steps: [(&str, StepOf); 3] = [
         ("xs", |r| r.xs),
@@ -487,6 +491,7 @@ fn bold_rich_text_is_heavier_ink_never_a_box() {
 /// 14 px Play on the default style's primary reads pale grey though its
 /// ink is #111113 (the kit's old main menu at 1280×720).
 #[test]
+#[ignore = "requires GPU"]
 fn dark_small_text_on_light_keeps_its_weight() {
     let dark = Srgba::rgb(0x11, 0x11, 0x13);
     let light = Srgba::rgb(0xec, 0xec, 0xee);
@@ -539,6 +544,7 @@ fn stripes_frame(glass: &[og_render::Glass]) -> (Vec<u8>, usize, usize, og_rende
 /// pyramid is not decoded (a darker or brighter average), or the tint is
 /// ignored.
 #[test]
+#[ignore = "requires GPU"]
 fn a_glass_panel_blurs_the_frame_under_it_and_nothing_else() {
     let panel = glass_panel();
     let (plain, w, h, _) = stripes_frame(&[]);
@@ -619,6 +625,7 @@ fn rendered(scene: &RenderScene, desc: &RenderDesc) -> (Vec<u8>, og_render::Fram
 /// bar missing outside the panel), the pyramid is rebuilt from a source
 /// that already holds the content above the glass (the square smeared).
 #[test]
+#[ignore = "requires GPU"]
 fn a_glass_panel_blurs_the_overlay_layers_below_it() {
     let (scene, desc) = glass_reference_scene();
     let (glass, stats) = rendered(&scene, &desc);
@@ -850,6 +857,7 @@ fn text_glow_cost() {
 /// the undone text or the caret drawn wrong, the area's lines not cut at
 /// its top edge mid-line (a scroll by whole lines), a missing glyph.
 #[test]
+#[ignore = "requires GPU"]
 fn text_fields_match_their_reference_frame() {
     let shot = with_test_font(text_fields_shot);
     let frame = shot.ui.frame();
@@ -922,6 +930,7 @@ fn text_fields_match_their_reference_frame() {
 /// (the Linear-mip sampler: the outline lightens to the fill's side), or
 /// the anisotropic filter blurs what is drawn 1:1.
 #[test]
+#[ignore = "requires GPU"]
 fn a_middle_squeezed_six_times_keeps_its_outline_as_dark_as_the_art() {
     use og_render::{ColorSpace, Mips, Sprite, TextureData};
     let (w, h) = (64u32, 64u32);
@@ -1018,6 +1027,7 @@ fn a_middle_squeezed_six_times_keeps_its_outline_as_dark_as_the_art() {
 /// to the corners but not the shape's local space (a sheared box with
 /// upright edges), or the draw's shapes left in the layout box.
 #[test]
+#[ignore = "requires GPU"]
 fn a_skewed_element_draws_its_parallelogram() {
     let vp = Viewport {
         width: 400.0,
@@ -1156,6 +1166,7 @@ fn a_skewed_element_draws_its_parallelogram() {
 /// scrim then hardly darkens until the mask is nearly whole, so its fade
 /// reads as a line (U6c's frame scrim in round 13).
 #[test]
+#[ignore = "requires GPU"]
 fn a_gradient_mask_fades_as_it_reads() {
     use og_ui::paint::{Clip, ElementDraw, Gradient, Mask, Paint, Stop};
     let vp = Viewport {

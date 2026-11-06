@@ -29,8 +29,8 @@
 //   sandboxes set) the run is the same run: the play surface keeps --size, a
 //   `screenshot` writes no PNG and is listed in --json's `unchecked` ("no
 //   renderer, frame unchecked"), the tier is `none`, and the exit status does
-//   not change. A refused adapter without the switch fails the run, naming
-//   the adapter's error (`attachRenderer`, docs/design.md §2.6).
+//   not change. An unavailable adapter also takes this path, with a warning
+//   naming wgpu's error. Other renderer errors still fail the run.
 // - With --trace: the run in the Chrome trace format (src/trace.ts and
 //   crates/og-runtime/src/trace.rs have the threads): each tick with its
 //   systems, each frame with its render passes' CPU encoding and their GPU
@@ -263,11 +263,12 @@ function drain(): void {
 }
 
 let tier = "none";
+let adapterError: string | null = null;
 if (deferStart) {
   const attached = attachRenderer(engine.id, size.width, size.height);
   if (!attached.ok) fail(attached.reason);
   tier = attached.value;
-  if (tier === "none") process.stderr.write(`INFO no renderer (OG_RENDERER=none): the run is the same, a screenshot writes no frame and reports it unchecked, capture answers null\n`);
+  adapterError = attached.adapterError;
   // The first tick boundary: GameDesc.start, with the surface in place.
   const started = engine.advance(0);
   if (!started.ok) fail(started.reason);
@@ -536,10 +537,13 @@ const summary = {
   systems,
   runtime: typeof Bun !== "undefined" ? `bun ${Bun.version}` : `node ${process.version}`,
   tier,
+  renderer: tier,
+  adapterError,
   // Whether the device timed each render pass on the GPU (RenderCapabilities.gpuTimestamps): the trace's gpu thread and ProbeTimings.gpuPasses.
   gpuTimestamps: (JSON.parse(boundHost()!.abi.og_render_capabilities(engine.id)) as { gpuTimestamps?: boolean }).gpuTimestamps ?? false,
   quit,
   unchecked,
+  uncheckedCount: unchecked.length + expectations.unchecked,
   audio: { mode: audioMode, commands: audioStats.commands, receivedHash: audioStats.receivedHash, wavSha256 },
   outputs,
   warnings,
@@ -548,7 +552,7 @@ const summary = {
 };
 if (asJson) process.stdout.write(JSON.stringify(summary) + "\n");
 else {
-  process.stdout.write(`tick ${dump.tick} hash ${dump.hash} entities ${dump.entities}\n`);
+  process.stdout.write(`tick ${dump.tick} hash ${dump.hash} entities ${dump.entities}; ${summary.uncheckedCount} GPU frame/expectation checks unchecked${adapterError ? `: ${adapterError}` : ""}\n`);
   if (expectations.results.length > 0) process.stdout.write(`expectations: ${expectations.passed} passed, ${expectations.failed} failed, ${expectations.unchecked} unchecked\n`);
   for (const v of assertions.violations as Array<{ name: string; tick: number; entity?: string | null; value: unknown; message: string }>)
     process.stdout.write(`assertion failed at tick ${v.tick}: ${v.name}${v.entity ? ` on ${v.entity}` : ""}: ${v.message} (${JSON.stringify(v.value)})\n`);

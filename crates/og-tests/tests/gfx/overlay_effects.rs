@@ -24,6 +24,7 @@ fn near(p: [u8; 3], linear: [f32; 3], within: f32) -> bool {
 /// (sRGB-encoded), its edges are sharp on every TAA frame, it covers the
 /// scene without a depth test, and its clip cuts rows at the clip's edge.
 #[test]
+#[ignore = "requires GPU"]
 fn the_overlay_is_drawn_after_post_untonemapped_and_clipped() {
     let g = built("overlay");
     let mut renderer = Renderer::new_blocking(&g.desc).expect("renderer");
@@ -100,6 +101,7 @@ fn the_overlay_is_drawn_after_post_untonemapped_and_clipped() {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn skeleton_2d_gpu_weighting_matches_cpu_triangles() {
     let desc = built("skeleton-2d").desc;
     for normal in [false, true] {

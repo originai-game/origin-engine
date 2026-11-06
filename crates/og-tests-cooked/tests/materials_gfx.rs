@@ -310,6 +310,7 @@ fn touches(p: &mut og_input::Pointers, at: [Vec2; 2]) -> InputFrame {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn the_materials_frame_matches_its_reference() {
     let (set, body) = cooked();
     // The cook names exactly the icons the set declares (each `icon "<name>" ["<svg>"]` line), no more and no fewer:

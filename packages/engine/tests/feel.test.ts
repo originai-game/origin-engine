@@ -1,3 +1,4 @@
+import { gpuTest } from "./support/gpu.ts";
 // The E4 game-feel modules through TypeScript on the native host: og.Sprite
 // drawn from components (y sorting, flips through the region, blob
 // shadows), tweens of any numeric field with completion events, squash and
@@ -58,7 +59,7 @@ function flat(w: World): void {
 const red = { r: 1, g: 0, b: 0 };
 const blue = { r: 0, g: 0, b: 1 };
 
-test("og.Sprite draws at its entity, y-sorted, with a blob shadow under it", () => {
+gpuTest("og.Sprite draws at its entity, y-sorted, with a blob shadow under it", () => {
   const scene = (sortY: boolean) => (w: World) => {
     flat(w);
     // Red is lower on the screen (y -0.5) but submitted first.
@@ -181,7 +182,7 @@ test("a hit stop holds physics and scaled tweens while systems keep ticking, and
   expect(engine.hash()).toBe(after);
 });
 
-test("camera trauma, punch and kick change the frame, decay, and leave the world's camera alone", () => {
+gpuTest("camera trauma, punch and kick change the frame, decay, and leave the world's camera alone", () => {
   const Row = defineSystem("FtRow", {}, (_q, _t, world: World) => {
     for (let i = -6; i <= 6; i += 2) og.render.sprite(world, { position: { x: i, y: 0, z: 0 }, width: 1, height: 6, color: { r: 1, g: 1, b: 1 } });
   });
@@ -217,7 +218,7 @@ test("camera trauma, punch and kick change the frame, decay, and leave the world
   expect(og.camera.shake(kicked.world, 2).ok).toBeFalse();
 });
 
-test("og.tween.flash whitens an og.Sprite and fades back", () => {
+gpuTest("og.tween.flash whitens an og.Sprite and fades back", () => {
   const engine = start(og.game({
     start: (w: World) => {
       flat(w);

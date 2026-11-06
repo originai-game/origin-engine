@@ -31,6 +31,7 @@ fn check(scene: &str) -> gfx::GfxReport {
 macro_rules! references {
     ($($name:ident => $scene:literal),+ $(,)?) => {
         $(#[test]
+        #[ignore = "requires GPU"]
         fn $name() {
             check($scene);
         })+

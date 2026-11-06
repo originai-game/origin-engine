@@ -56,6 +56,7 @@ fn renderer() -> Renderer {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn adaptation_converges_identically_and_survives_a_restore() {
     // Instant metering of the dim scene: where the adaptation must land.
     let mut instant = scene(1.0);
@@ -131,6 +132,7 @@ fn adaptation_converges_identically_and_survives_a_restore() {
 /// 1 on (web findings #5: Lantern Vale's title and start were brighter on
 /// the web, adapting from tick 0's frame).
 #[test]
+#[ignore = "requires GPU"]
 fn a_frame_before_the_first_tick_does_not_start_the_adaptation() {
     // Tick 0 sees the scene 16x darker than the ticks after it (as a game's
     // first frame, before its systems placed the camera, can).

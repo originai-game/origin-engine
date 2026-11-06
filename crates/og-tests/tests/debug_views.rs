@@ -75,6 +75,7 @@ fn difference(a: &[u8], b: &[u8]) -> u8 {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn every_shading_path_honours_each_diagnostic_or_marks_it_unsupported() {
     for name in [
         "terrain-near",
@@ -198,6 +199,7 @@ fn every_shading_path_honours_each_diagnostic_or_marks_it_unsupported() {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn terrain_projection_and_vertical_density_use_the_sampled_axes() {
     use glam::{Mat4, Vec2};
     use og_render::{

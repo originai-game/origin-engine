@@ -225,3 +225,47 @@ contract. It was restored unchanged. After refreshing the native addon
 and packed template overlay, all 28 create-package tests pass (1409
 assertions, 12.43 s), including the published-package duel check. The cut
 therefore removes 149 rather than 150 playtests.
+
+## Missing adapters warn and leave checks unchecked (2026-11-06)
+
+The owner's revised policy keeps simulation running when no GPU adapter
+is available. Rust uses adapter-aware libtest discovery, Bun registers
+GPU tests as skipped, and native commands report unchecked frames and
+the adapter error. No reference PNG or tolerance changes in this head.
+
+Validation on macrunner, nightly-2026-11-05, LLVM:
+
+| Check | Result |
+|---|---|
+| Workspace nextest, `OG_RENDERER=none`, final tree | 1448 passed, 191 skipped, 0 failed; 38.506 s |
+| GPU discovery reports | 177 GPU skips across six binaries, including explicitly ignored GPU perf tests; the remaining 14 skips are not GPU tests |
+| Changed Bun test files, `OG_RENDERER=none OG_WASM_STALE=1 OG_GATE=1` | 24 passed, 35 skipped, 0 failed; 1210 assertions, 13.72 s |
+| Metal Bun control: no-renderer, render, og-render | 15 passed, 0 failed; 127 assertions, 10.36 s |
+| Direct libtest JSON, forced ignored motion GPU tests | 0 passed, 2 ignored, exit 0; adapter reason in both ignored events |
+| Nextest forced unavailable GPU tests | Explicit unsupported-invocation error, 0 passed; rejected rather than misreported as passing |
+| Workspace Clippy, all targets, `--keep-going -- -D warnings` | Pass |
+| Native CLI/addon build and engine typecheck | Pass |
+| Gate missing-wasm guard tests, shell syntax, diff whitespace | Pass |
+
+Earlier controls before the final docs rebase and reporting changes:
+the no-GPU baseline had 1449 passes, 163 failures and 28 ignored tests.
+After skip registration it had the same 1449 passes, no failures and
+191 skips. The Metal control ran 1611 tests successfully, with 29 skips
+(28 existing ignores and the stale-wasm check excluded), in 93.377 s.
+The later remove-polish landing removed one CLI test. These are correctness
+controls, not same-load speed-up measurements.
+
+An unconfigured broad Bun run before rebasing onto remove-polish was not
+green: 523 passed, 33 skipped and 26 failed. It included stale-wasm host
+comparisons, removed-polish expectations and a HUD text failure. Two
+missing GPU registrations in reload tests were fixed; changed-file tests
+above pass. This head does not claim a fresh wasm or a full functional gate.
+
+Nextest cannot encode a runtime skip. Normal discovery works, but forcing
+unavailable tests with `--run-ignored all/only` is explicitly rejected,
+as approved by the owner. Direct libtest preserves ignored status even
+with `--ignored`. GPU report files keep the gate from caching an unchecked
+run as green. Windows and Linux adapter behavior remain unverified here.
+Raw logs are in `target/evidence/test-restructure/`, named `no-gpu-final-workspace`,
+`gpu-bun-changed-none`, `gpu-bun-final-metal`, `gpu-libtest-final`, and
+`gpu-forced-nextest-final`.

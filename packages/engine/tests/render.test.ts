@@ -1,3 +1,4 @@
+import { gpuTest } from "./support/gpu.ts";
 // What game code draws, read from frames the native host renders offscreen
 // and the probe captures: immediate-mode sprites last exactly the ticks that
 // submit them, screen-space sprites and text land in the overlay over the
@@ -31,7 +32,7 @@ function capture(engine: Engine): Image {
 
 const isWhite = (p: number[]) => p.every((c) => c > 200);
 
-test("GPU waits follow renderer replacement and engine destruction", () => {
+gpuTest("GPU waits follow renderer replacement and engine destruction", () => {
   const engine = start(og.game({}));
   expect(JSON.parse(native().og_node_wait_gpu(engine.id)).ok).toBeTrue();
   expect(JSON.parse(native().og_node_attach_offscreen(engine.id, W, H)).ok).toBeTrue();
@@ -43,7 +44,7 @@ test("GPU waits follow renderer replacement and engine destruction", () => {
   expect(JSON.parse(native().og_node_wait_gpu(engine.id)).ok).toBeFalse();
 });
 
-test("a sprite submitted on some ticks is drawn after those ticks only", () => {
+gpuTest("a sprite submitted on some ticks is drawn after those ticks only", () => {
   // Sprites on ticks 0 and 1, none after: the queue must not outlive them.
   const Draw = defineSystem("RtDraw", {}, (_q, _t, world: World) => {
     if (world.tick < 2) og.render.sprite(world, { position: { x: 0, y: 0, z: -5 }, width: 3, height: 3 });
@@ -97,7 +98,7 @@ function wall(world: World, material?: Parameters<typeof og.render.standardMater
   return m;
 }
 
-test("screen-space sprites are drawn over the finished frame in CSS pixels, untonemapped and clipped", () => {
+gpuTest("screen-space sprites are drawn over the finished frame in CSS pixels, untonemapped and clipped", () => {
   const Hud = defineSystem("RtHud", {}, (_q, _t, world: World) => {
     og.render.sprite(world, { screen: true, position: { x: 10, y: 10, z: 0 }, width: 40, height: 30, anchor: { x: 0, y: 0 }, color: { r: 1, g: 0.5, b: 0 } });
     og.render.sprite(world, { screen: true, position: { x: 80, y: 10, z: 0 }, width: 40, height: 40, anchor: { x: 0, y: 0 }, color: { r: 0, g: 0, b: 1 }, clip: [80, 10, 20, 40] });
@@ -114,7 +115,7 @@ test("screen-space sprites are drawn over the finished frame in CSS pixels, unto
   expect(diff(pixel(img, 110, 30), [0, 0, 255])).toBeGreaterThan(40);
 });
 
-test("PostEffects reach the frame: a screen flash and a vignette", () => {
+gpuTest("PostEffects reach the frame: a screen flash and a vignette", () => {
   const plain = frameOf(og.game({ start: (w: World) => void wall(w) }));
   const flashed = frameOf(
     og.game({
@@ -143,7 +144,7 @@ test("PostEffects reach the frame: a screen flash and a vignette", () => {
   expect(Math.abs(centre(vignetted) - centre(plain))).toBeLessThan(6);
 });
 
-test("a Decal component projects onto the wall", () => {
+gpuTest("a Decal component projects onto the wall", () => {
   const base = (w: World) => wall(w);
   const plain = frameOf(og.game({ start: base }));
   const decal = frameOf(
@@ -164,7 +165,7 @@ test("a Decal component projects onto the wall", () => {
   expect(diff(pixel(decal, 4, 4), pixel(plain, 4, 4))).toBeLessThan(6);
 });
 
-test("2D lighting: Lighting2D darkens lit layers and a Light2D lights around it", () => {
+gpuTest("2D lighting: Lighting2D darkens lit layers and a Light2D lights around it", () => {
   const board = (w: World) => {
     const cam = must(w.resource(og.Camera));
     cam.orthographic = true;
@@ -197,7 +198,7 @@ test("2D lighting: Lighting2D darkens lit layers and a Light2D lights around it"
   expect(meanLuma(unlit, W - 30, H / 2 - 4, W - 10, H / 2 + 4)).toBeGreaterThan(150);
 });
 
-test("trails, beams and ribbons draw strips", () => {
+gpuTest("trails, beams and ribbons draw strips", () => {
   const dark = (w: World) => {
     const s = must(w.resource(og.RenderSettings));
     s.environmentIntensity = 0;
@@ -249,7 +250,7 @@ test("trails, beams and ribbons draw strips", () => {
   expect(og.render.ribbon(start(og.game({})).world, { points: [] }).ok).toBeFalse();
 });
 
-test("material and sprite effects: a hit flash, toon bands, dissolve", () => {
+gpuTest("material and sprite effects: a hit flash, toon bands, dissolve", () => {
   const flashed = frameOf(og.game({ start: (w: World) => void wall(w, { flash: 1, flashColor: { r: 0, g: 0, b: 1 } }) }));
   const [r, g, b] = pixel(flashed, W / 2, H / 2);
   expect(b).toBeGreaterThan(r + 100);
@@ -268,7 +269,7 @@ test("material and sprite effects: a hit flash, toon bands, dissolve", () => {
   expect(p[0]!).toBeGreaterThan(p[1]! + 100);
 });
 
-test("camera shake moves the view deterministically by the tick", () => {
+gpuTest("camera shake moves the view deterministically by the tick", () => {
   const shaken = (trauma: number) =>
     frameOf(
       og.game({

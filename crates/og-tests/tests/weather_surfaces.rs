@@ -95,6 +95,7 @@ fn concrete() -> StandardMaterial {
 /// is a mottle of dark damp and dry ground, where in the rain the same
 /// wetness darkens it evenly. (Drying was even everywhere.)
 #[test]
+#[ignore = "requires GPU"]
 fn the_ground_dries_in_patches_after_the_rain() {
     let area =
         |w: Option<SurfaceWeather>| blocks(&plain(concrete(), false, w), 160, 1120, 200, 700);
@@ -143,6 +144,7 @@ const DRY_ALIKE: f32 = 0.5 / 255.0;
 /// the two halves are alike: both flat, their spreads within half a grey
 /// level ([`DRY_ALIKE`]) of each other.
 #[test]
+#[ignore = "requires GPU"]
 fn puddles_fill_the_low_parts_of_a_surface_first() {
     let relief = TextureData {
         width: 2,

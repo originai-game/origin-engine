@@ -29,6 +29,7 @@ fn draw(renderer: &mut Renderer, scene: &RenderScene, frames: u32) -> RgbaImage 
 /// materials, the sky's light) on its first frame, and draws it as the
 /// first renderer drew its first.
 #[test]
+#[ignore = "requires GPU"]
 fn a_renderer_made_again_after_a_lost_device_draws_the_same_frame() {
     let g = scenes::build("materials").expect("scene");
     let mut renderer = Renderer::new_blocking(&g.desc).expect("renderer");
@@ -59,6 +60,7 @@ fn a_renderer_made_again_after_a_lost_device_draws_the_same_frame() {
 /// close to the full-scale frame but not equal; and the render targets'
 /// memory falls.
 #[test]
+#[ignore = "requires GPU"]
 fn the_render_scale_draws_the_scene_smaller_and_the_output_at_its_size() {
     let g = scenes::build("materials").expect("scene");
     let mut renderer = Renderer::new_blocking(&g.desc).expect("renderer");

@@ -1,3 +1,4 @@
+import { gpuTest } from "./support/gpu.ts";
 // The project template end to end on the native host: `create` scaffolds it,
 // `og test` cooks its assets (a behaviour and a navmesh among them) and runs
 // its playtests through `og run --headless --commands` (the smoke test and
@@ -27,7 +28,7 @@ const run = (cmd: string[]) => {
   return { code: r.exitCode, out: decode(r.stdout) + decode(r.stderr) };
 };
 
-test("a scaffolded game cooks, passes its playtest and leaves the frame and dumps", () => {
+gpuTest("a scaffolded game cooks, passes its playtest and leaves the frame and dumps", () => {
   rmSync(evidence, { recursive: true, force: true });
   mkdirSync(evidence, { recursive: true });
   const created = run(["bun", join(repo, "packages", "create", "bin", "create.ts"), game, "--name", "Smoke Game"]);

@@ -7,6 +7,7 @@ use super::*;
 // ---------------------------------------------------------------------------
 
 #[test]
+#[ignore = "requires GPU"]
 fn decals_project_onto_surfaces_past_the_old_cap() {
     let base = fx::decals_scene();
     let desc = scenes::base_desc();
@@ -63,6 +64,7 @@ fn decals_project_onto_surfaces_past_the_old_cap() {
 /// map on a mirrored sprite (its uvs flipped) turns with the art, and a
 /// flat map draws exactly as no map does.
 #[test]
+#[ignore = "requires GPU"]
 fn a_normal_mapped_sprite_is_lit_by_where_its_normal_faces() {
     let enc = |c: f32| ((c * 0.5 + 0.5) * 255.0).round() as u8;
     let map = |n: Vec3| og_render::TextureData {

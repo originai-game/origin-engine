@@ -1,3 +1,4 @@
+import { gpuTest } from "./support/gpu.ts";
 // `og render` (docs/design.md §2.9): two runs of one script give the same
 // frames byte for byte (frames.json's SHA-256 of each frame's RGBA rows)
 // and the same audio, a render split over jobs (snapshots restored, warm-up
@@ -34,7 +35,7 @@ function render(out: string, ...extra: string[]): Frames {
   return JSON.parse(readFileSync(join(out, "frames.json"), "utf8")) as Frames;
 }
 
-test("two og render runs of one script give the same frames and audio, and --jobs gives the frames of one job", () => {
+gpuTest("two og render runs of one script give the same frames and audio, and --jobs gives the frames of one job", () => {
   const dir = mkdtempSync(join(tmpdir(), "og-render-"));
   try {
     const a = render(join(dir, "a"));
@@ -99,7 +100,7 @@ function windows(wav: Uint8Array, seconds: number): number[] {
   return peaks;
 }
 
-test("the intro's audio and music tracks sound in the rendered wav, silence before the first cue", () => {
+gpuTest("the intro's audio and music tracks sound in the rendered wav, silence before the first cue", () => {
   const dir = mkdtempSync(join(tmpdir(), "og-render-intro-"));
   try {
     const r = Bun.spawnSync([ogBin(), "render", "templates/game", "--timeline", "intro", "--audio", "--fps", "10", "--size", "160x90", "--no-check", "--out", dir], { cwd: repo });

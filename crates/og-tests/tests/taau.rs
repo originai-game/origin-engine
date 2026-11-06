@@ -50,6 +50,7 @@ fn diff(a: &RgbaImage, b: &RgbaImage) -> f64 {
 /// the jitter's 32 phases the frame is nearer the full-scale TAA frame
 /// than one frame at half scale upscaled bilinearly.
 #[test]
+#[ignore = "requires GPU"]
 fn taau_resolves_the_half_scale_scene_to_the_output() {
     let scene = scenes::thin_geometry();
     let mut full = Renderer::new_blocking(&desc(Antialias::Taa)).expect("renderer");
@@ -88,6 +89,7 @@ fn taau_resolves_the_half_scale_scene_to_the_output() {
 /// dozen frames it is nearer the frame a fresh history draws of the same
 /// pose than without them, where only the clamp holds back its trail.
 #[test]
+#[ignore = "requires GPU"]
 fn a_moving_object_takes_its_history_along_its_motion_vectors() {
     let mut scene = scenes::thin_geometry();
     let sphere = scene.instances.len() - 1;

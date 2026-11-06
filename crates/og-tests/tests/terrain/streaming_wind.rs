@@ -12,6 +12,7 @@ use super::*;
 /// Broken before G1 by the static dither: a fading copy kept its full
 /// footprint with holes in it, grain that TAA cannot resolve.
 #[test]
+#[ignore = "requires GPU"]
 fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
     let n = 257u32;
     let size = 1024.0f32;
@@ -207,6 +208,7 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
 /// tick and from copy to copy. Strength 0 and sway 0 draw what no wind
 /// draws.
 #[test]
+#[ignore = "requires GPU"]
 fn wind_sways_scattered_copies_downwind() {
     let n = 129u32;
     let data = TerrainData::flat(Vec2::splat(256.0), n, n);

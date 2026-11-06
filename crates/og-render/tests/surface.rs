@@ -46,6 +46,7 @@ fn roughness(rgba: &[u8], width: usize, background: [u8; 4]) -> f64 {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn a_made_surface_bends_a_lit_ball_and_is_off_at_zero_strength() {
     let desc = RenderDesc {
         width: 192,
@@ -80,6 +81,7 @@ fn a_made_surface_bends_a_lit_ball_and_is_off_at_zero_strength() {
 /// (Mikkelsen's determinant is zero), so it keeps the shading normal and
 /// lights the quad like the plain material instead of drawing it black.
 #[test]
+#[ignore = "requires GPU"]
 fn a_made_surface_keeps_the_normal_where_it_lies_in_the_face() {
     let desc = RenderDesc {
         width: 96,

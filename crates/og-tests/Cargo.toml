@@ -28,6 +28,9 @@ og-bake = { path = "../og-bake" }
 pollster = { workspace = true, optional = true }
 winit = { version = "0.30.12", default-features = false, features = ["rwh_06", "x11"], optional = true }
 
+[dev-dependencies]
+pollster = { workspace = true }
+
 [[example]]
 name = "surface"
 required-features = ["surface"]

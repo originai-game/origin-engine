@@ -31,6 +31,7 @@ fn scene() -> RenderScene {
 const _: () = assert!(!WORLD_3D);
 
 #[test]
+#[ignore = "requires GPU"]
 fn water_and_volumetric_fog_are_not_drawn_in_the_2d_profile() {
     let desc = RenderDesc {
         width: 96,

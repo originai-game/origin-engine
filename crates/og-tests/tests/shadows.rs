@@ -250,6 +250,7 @@ fn kept_spread(
 /// a dark column along the ball). Each keeps its direct light, for a spot
 /// and for both point shadow storages.
 #[test]
+#[ignore = "requires GPU"]
 fn contact_shadows_never_darken_what_lies_behind_a_silhouette() {
     use shadow_scenes::{CONTACT_BOX, SILHOUETTE_BALL, SILHOUETTE_POLE};
     let desc = scenes::base_desc();
@@ -336,6 +337,7 @@ fn contact_shadows_never_darken_what_lies_behind_a_silhouette() {
 /// renderer that saw only the final scene draws, on the CPU and the GPU
 /// culling paths.
 #[test]
+#[ignore = "requires GPU"]
 fn cached_shadow_layers_draw_what_fresh_ones_do() {
     for culling in [Culling::Cpu, Culling::Gpu] {
         let desc = RenderDesc {

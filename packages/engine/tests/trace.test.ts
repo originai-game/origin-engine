@@ -1,3 +1,4 @@
+import { gpuTest } from "./support/gpu.ts";
 // `og run --trace` (docs/design.md §3.4): a traced run of the lanes pile
 // (tests/fixtures/trace: 2,500 boxes drawn, a system of the game's own) on
 // four lanes, rendered where a renderer is, held to the Chrome trace
@@ -44,7 +45,7 @@ test("a trace laid end to end fails the check, one with recorded starts passes",
   expect(checkTrace(doc([3, 14, 85])).errors.join("\n")).toContain("without nesting");
 });
 
-test("og run --trace lays every span where it ran: systems, passes, GPU passes and lane jobs", () => {
+gpuTest("og run --trace lays every span where it ran: systems, passes, GPU passes and lane jobs", () => {
   const out = join(mkdtempSync(join(tmpdir(), "og-trace-")), "trace.json");
   const r = Bun.spawnSync(
     [ogBin(), "run", "game.ts", "--headless", "--ticks", "20", "--commands", "0:pause;0:resume", "--no-check", "--trace", out, "--json"],

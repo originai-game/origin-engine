@@ -46,6 +46,7 @@ fn mean(image: &RgbaImage) -> f64 {
 /// frame is nearer the full-scale TAA frame than a bilinear upscale and
 /// differs from TAAU's (the choice is honoured).
 #[test]
+#[ignore = "requires GPU"]
 fn fsr_resolves_the_half_scale_scene_to_the_output() {
     let mut scene = scenes::thin_geometry();
     let mut full = Renderer::new_blocking(&desc(Antialias::Taa)).expect("renderer");

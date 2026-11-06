@@ -789,13 +789,6 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
                 Ok(()) => e,
                 Err(v) => format!("{e}; and the play surface: {v}"),
             };
-            // The refusal names the fix: running without a renderer is a
-            // choice (`attachRenderer` fails the run on anything else).
-            let e = if og_render::renderer_disabled() {
-                e
-            } else {
-                format!("{e}; set OG_RENDERER=none to run without a renderer")
-            };
             format!(r#"{{"ok":false,"reason":{}}}"#, napi_json_string(&e))
         }
     }

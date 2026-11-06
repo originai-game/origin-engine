@@ -10,6 +10,7 @@ use og_tests_cooked::scenes;
 /// at 333×7, whose rows are padded on readback and whose filtered rows are
 /// not a whole number of the encoder's 8-byte words.
 #[test]
+#[ignore = "requires GPU"]
 fn a_capture_png_decodes_to_the_captured_pixels() {
     let g = scenes::build("vox-keyframes").expect("scene");
     let mut renderer = Renderer::new_blocking(&g.desc).expect("renderer");

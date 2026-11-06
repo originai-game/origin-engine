@@ -113,6 +113,7 @@ fn moved(renderer: &mut Renderer, space: StyliseSpace) -> f64 {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn a_moving_object_carries_its_strokes_in_object_space() {
     let mut renderer = Renderer::new_blocking(&desc()).expect("renderer");
     let object = moved(&mut renderer, StyliseSpace::Object);

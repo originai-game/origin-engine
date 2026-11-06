@@ -69,6 +69,7 @@ fn mean(img: &RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32) -> f32 {
 /// with no star showing through, the first quarter lights the right half
 /// and the last quarter the left.
 #[test]
+#[ignore = "requires GPU"]
 fn the_phase_lights_the_disc() {
     let full = moon(0.5, 2.4);
     let (cx, cy, radius) = disc(&full, 2.4);
@@ -124,6 +125,7 @@ fn the_phase_lights_the_disc() {
 
 /// Below the horizon the moon draws nothing: the frame is the moonless one.
 #[test]
+#[ignore = "requires GPU"]
 fn the_moon_sets_below_the_horizon() {
     let mut scene = p2_scenes::moon_scene(0.5, 2.4);
     if let Some(look) = scene.environment.sky.look.as_mut() {

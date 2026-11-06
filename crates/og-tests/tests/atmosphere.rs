@@ -31,6 +31,7 @@ fn luma(p: [f32; 3]) -> f32 {
 /// on the next frame, in place when the sizes match and in new buffers when
 /// they do not; a skinned mesh is refused.
 #[test]
+#[ignore = "requires GPU"]
 fn a_replaced_mesh_draws_its_new_shape() {
     let mut s = RenderScene::new();
     let quad = |x: f32, w: f32| og_render::MeshData {
@@ -170,6 +171,7 @@ fn linear_pixel(image: &RgbaImage, x: u32, y: u32) -> [f32; 3] {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn a_moving_hdr_sun_stays_stable_through_temporal_resolves() {
     for (name, aa, scale) in [
         ("taa", og_render::Antialias::Taa, 1.0),

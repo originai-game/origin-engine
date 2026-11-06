@@ -205,6 +205,7 @@ const COMPRESSED: Tolerance = Tolerance {
 };
 
 #[test]
+#[ignore = "requires GPU"]
 fn compressed_textures_draw_as_their_rgba8_decode() {
     let b = bundle();
     let stone = [
@@ -361,6 +362,7 @@ fn cooked_reference(
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn cooked_models_with_compressed_textures_render_the_gltf_reference_scene() {
     let b = bundle();
     let mut lines = Vec::new();

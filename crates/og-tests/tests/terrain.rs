@@ -118,6 +118,7 @@ fn project(camera: &Camera, p: Vec3) -> (u32, u32) {
 /// 30 degrees, white above 40 m; a control map that paints the fourth
 /// (green) over the -x half's flat ground.
 #[test]
+#[ignore = "requires GPU"]
 fn layers_follow_slope_altitude_and_the_control_map() {
     let n = 257u32;
     let size = 256.0f32;
@@ -237,6 +238,7 @@ fn layers_follow_slope_altitude_and_the_control_map() {
 /// is clear from above, the surface overhead shows the sky inside Snell's
 /// window, and caustics light the bed in a pattern only when asked.
 #[test]
+#[ignore = "requires GPU"]
 fn the_underwater_view_fogs_shows_the_surface_and_caustics() {
     let make = |eye_y: f32, caustics: f32| {
         let mut scene = RenderScene::new();

@@ -989,14 +989,13 @@ is one line here, written at the merge that changes
   (`statBar`, `ammoCounter`, `hudTimer`, `resourceBar`, `speedometer`,
   `lapTimer` …); `og.ui.confirm` and `og.ui.dialog` replace the two
   dialogs. `changelog.json` maps each one.
-- **Breaking: a refused GPU adapter fails the run.** A native `og run`,
-  `og test`, `og render`, `og polish` or `og ui check` whose adapter
-  request fails exits 2 with "no GPU adapter: <wgpu's error>; set
-  OG_RENDERER=none to run without a renderer", instead of going on as tier
-  `none`. The engine draws on a GPU only (docs/design.md §2.6);
-  `OG_RENDERER=none` is the only way to run without a renderer, and with it
-  a run is what it was. Sandboxes without a GPU set it
-  (`docs/platform-asks.md` ask 20).
+- **Changed: a missing GPU warns and leaves frames unchecked.** Native
+  `og run` and `og test` continue as renderer `none` when no adapter is
+  available. Warnings name wgpu's error; JSON includes `renderer`,
+  `adapterError` and unchecked counts. Unchecked suites are not passed;
+  executed checks still fail normally. Rust and Bun GPU tests register as
+  skipped without an adapter. `OG_RENDERER=none` remains optional and
+  removes only the warning's "unexpected" wording (platform ask 20).
 - **Fixed: the missing-glyph warning without a renderer.** og-ui reads
   each frame's texts against each face's metrics, and `og.render.text` and
   `og.render.floatingText` are read when queued, so the warning is the same

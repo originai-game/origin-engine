@@ -121,6 +121,7 @@ fn posterized(rgb: [u8; 3]) -> RenderScene {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn conformed_art_keeps_its_colour_while_the_rest_still_quantises() {
     let mut renderer = Renderer::new_blocking(&desc()).expect("renderer");
     // Without the conformed set the look's quantise steps the art: the
@@ -191,6 +192,7 @@ fn conformed_art_keeps_its_colour_while_the_rest_still_quantises() {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn tone_posterize_keeps_a_colours_hue_as_its_light_moves() {
     let mut renderer = Renderer::new_blocking(&desc()).expect("renderer");
     // The field under light k: its linear colour scaled, as exposure or a

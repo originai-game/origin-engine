@@ -198,6 +198,7 @@ fn texture_scene(color: og_render::TextureUpload, normal: og_render::TextureUplo
 /// those formats with their cooked mips draw the same frame as the same
 /// texels in RGBA8; a format the device was not set up for is refused.
 #[test]
+#[ignore = "requires GPU"]
 fn compressed_formats_are_chosen_per_tier_and_draw_like_rgba8() {
     let mut table = Vec::new();
     for preference in [

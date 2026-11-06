@@ -1,3 +1,4 @@
+import { gpuTest } from "./support/gpu.ts";
 // Streaming groups through the TypeScript API on the native host (IDL
 // module `stream`, phase 3). A staged project's scene declares three groups
 // along a path down -z: "meadow" (a hut and a sign texture, within 50 m of
@@ -291,7 +292,7 @@ function hue(img: Image): string {
   return "grey";
 }
 
-test("three groups load and unload along the path by trigger and priority, within the budget", () => {
+gpuTest("three groups load and unload along the path by trigger and priority, within the budget", () => {
   const engine = start(true);
   const w = engine.world;
   const shot = (name: string): string => {

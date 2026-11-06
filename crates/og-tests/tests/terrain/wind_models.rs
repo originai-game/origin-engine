@@ -13,6 +13,7 @@ use og_tests::wind_scenes as ws;
 /// A bent tree is not a moving tree. History must contain the previous
 /// deformation, and advance when the wind pauses, not just when it changes.
 #[test]
+#[ignore = "requires GPU"]
 fn model_wind_velocity_stops_when_the_wind_stops_changing() {
     let mut scene = ws::wind_scene(true, 90);
     let red = scene.instances[1].material;

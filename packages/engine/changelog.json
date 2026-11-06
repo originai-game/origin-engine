@@ -339,9 +339,9 @@
         ]
       },
       {
-        "member": "og run, og test, og render, og polish, og ui check (no GPU adapter)",
-        "change": "A native run whose GPU adapter request fails now exits 2 with \"no GPU adapter: <wgpu's error>; set OG_RENDERER=none to run without a renderer\", instead of printing INFO no renderer and going on as tier none (where a screenshot was unchecked and a playtest passed having drawn nothing, and a missing-glyph warning never came). The engine draws on a GPU only (docs/design.md §2.6); OG_RENDERER=none is the only way to run without a renderer, and with it a run is the same as before: tier none, screenshots unchecked, capture null.",
-        "fix": "On a machine or sandbox without a GPU, set OG_RENDERER=none in the environment of every og command (an image's ENV line, a CI job's env, a shell profile). Code that read og run --json's tier \"none\" as no adapter reads it as the switch.",
+        "member": "og run, og test (no GPU adapter)",
+        "change": "A missing GPU adapter warns with wgpu's error and continues as renderer none. GPU tests and frame checks are skipped/unchecked, never counted as passed; exit status is zero if no executed check failed. JSON adds renderer, adapterError and unchecked counts. Other renderer initialization errors still fail.",
+        "fix": "Read unchecked counts separately from passes. OG_RENDERER=none is optional in GPU-less sandboxes; it removes only the warning's unexpected wording. tier none can mean an unavailable adapter or the explicit switch; adapterError explains which.",
         "find": [
           "tier === \"none\"",
           "og_node_attach_offscreen",

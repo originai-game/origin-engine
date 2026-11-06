@@ -168,9 +168,15 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   other: they are slower together than in a queue. The gate runs two steps
   at once by default (`OG_GATE_JOBS`) and reniced by 10.
 - **The same lane runs the same tests on every machine.** No machine-specific
-  routing, archives, partitions or silent GPU skips. A GPU test without an
-  adapter fails and names the missing GPU. Use the existing gate and GPU
-  slot locks to queue work; never stop another stream's processes.
+  routing, archives, partitions or silent GPU skips. With no adapter, warn
+  with wgpu's error and count GPU tests and frame checks as skipped/unchecked,
+  never passed. Exit successfully if no executed check failed. Native
+  `og run` and `og test` continue as renderer `none`; `OG_RENDERER=none`
+  is optional and only makes the warning expected. Rust GPU tests use
+  `#[ignore = "requires GPU"]` with `tests/gpu.rs`'s adapter-aware harness;
+  Bun GPU tests use `tests/support/gpu.ts`. Keep CPU checks runnable.
+  Use the existing gate and GPU slot locks to queue work; never stop
+  another stream's processes.
 - **Tests have a cost budget.** A regression defaults to an inline unit
   test. Integration tests cover cross-crate contracts, CLI behavior or GPU
   frames, in one binary per crate (`autotests = false`, `tests/it/main.rs`).

@@ -22,6 +22,7 @@ fn on_magenta(mut scene: RenderScene) -> RenderScene {
 /// wherever the camera stands (across their snapping steps): no
 /// background shows through the ground.
 #[test]
+#[ignore = "requires GPU"]
 fn displaced_levels_leave_no_cracks() {
     let mut scene = on_magenta(ts::displaced_scene(ts::DISPLACED_RELIEF));
     let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
@@ -53,6 +54,7 @@ fn displaced_levels_leave_no_cracks() {
 /// texture's own tones alone spread them (the scene with `cell_variation`
 /// 0: the code before drew that, every stone the same blue-grey).
 #[test]
+#[ignore = "requires GPU"]
 fn each_sett_takes_its_own_tone() {
     let spread = |cells: f32| {
         let mut scene = ts::displaced_scene(ts::DISPLACED_RELIEF);

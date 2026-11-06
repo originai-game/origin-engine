@@ -61,6 +61,7 @@ fn draw(renderer: &mut Renderer, scene: &RenderScene) -> (RgbaImage, bool) {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn a_look_that_switches_the_stylisation_resets_the_taa_history() {
     let mut scene = scenes::thin_geometry();
     let mut look = Renderer::new_blocking(&desc()).expect("renderer");
@@ -100,6 +101,7 @@ fn a_look_that_switches_the_stylisation_resets_the_taa_history() {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn smaa_t2x_keeps_only_two_frames_and_resets_on_cuts() {
     let desc = RenderDesc {
         antialias: Antialias::SmaaT2x,

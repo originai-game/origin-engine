@@ -129,13 +129,13 @@ fn perf_of(scene: &str, capture: bool) -> (f64, String) {
 }
 
 #[test]
-#[ignore]
+#[ignore = "requires GPU; wave-end perf"]
 fn perf_gltf_reference() {
     perf("gltf-reference");
 }
 
 #[test]
-#[ignore]
+#[ignore = "requires GPU; wave-end perf"]
 fn perf_spheres_20k() {
     perf("spheres-20k");
 }
@@ -143,14 +143,14 @@ fn perf_spheres_20k() {
 /// The per-instance cost when every transform changes each frame (owed
 /// row 50): the sphere field bobbing, every instance uploaded again.
 #[test]
-#[ignore]
+#[ignore = "requires GPU; wave-end perf"]
 fn perf_spheres_20k_moving() {
     perf("spheres-20k-moving");
 }
 
 /// The M3 budget: 20,000 moving sprites in at most 2 ms on the M4 Pro.
 #[test]
-#[ignore]
+#[ignore = "requires GPU; wave-end perf"]
 fn perf_sprites_20k() {
     perf("sprites-20k");
 }
@@ -158,13 +158,13 @@ fn perf_sprites_20k() {
 /// Phase 2's Forward+ pair: the night scene's seven lights and the
 /// 256-light plaza.
 #[test]
-#[ignore]
+#[ignore = "requires GPU; wave-end perf"]
 fn perf_point_spot_lights() {
     perf("point-spot-lights");
 }
 
 #[test]
-#[ignore]
+#[ignore = "requires GPU; wave-end perf"]
 fn perf_lights_256() {
     perf("lights-256");
 }
@@ -175,13 +175,13 @@ fn perf_lights_256() {
 /// (tests/evidence/r4/perf-ui/NOTES.md: a view made each frame of a
 /// texture still in flight waited for the GPU on lavapipe).
 #[test]
-#[ignore]
+#[ignore = "requires GPU; wave-end perf"]
 fn perf_materials_physical() {
     perf("materials-physical");
 }
 
 #[test]
-#[ignore]
+#[ignore = "requires GPU; wave-end perf"]
 fn perf_showcase() {
     perf("showcase");
 }
@@ -192,7 +192,7 @@ fn perf_showcase() {
 /// about 90 ms of a 103 ms capture of Meridian Loop on the M4 Pro
 /// (tests/evidence/r4/measure/capture-profile).
 #[test]
-#[ignore]
+#[ignore = "requires GPU; wave-end perf"]
 fn perf_showcase_capture() {
     let (ms, adapter) = perf_of("showcase", true);
     if adapter.contains("M4 Pro") {
@@ -206,7 +206,7 @@ fn perf_showcase_capture() {
 /// The E4 budget: a 256x256 map with four layers (one animated, one at half
 /// parallax) panned at 1280x720 in under 1 ms per frame on the M4 Pro.
 #[test]
-#[ignore]
+#[ignore = "requires GPU; wave-end perf"]
 fn perf_tilemap_256() {
     let (ms, adapter) = perf("tilemap-256");
     if adapter.contains("M4 Pro") {
@@ -302,19 +302,19 @@ fn crowd(scene: &str) {
 }
 
 #[test]
-#[ignore]
+#[ignore = "requires GPU; wave-end perf"]
 fn perf_crowd_5k() {
     crowd("crowd-5k");
 }
 
 #[test]
-#[ignore]
+#[ignore = "requires GPU; wave-end perf"]
 fn perf_crowd_20k() {
     crowd("crowd-20k");
 }
 
 #[test]
-#[ignore]
+#[ignore = "requires GPU; wave-end perf"]
 fn perf_crowd_50k() {
     crowd("crowd-50k");
 }
@@ -323,7 +323,7 @@ fn perf_crowd_50k() {
 /// shadow angles, at 4096, and with normal-mapped receivers (for the
 /// record: the baselines catch a regression).
 #[test]
-#[ignore]
+#[ignore = "requires GPU; wave-end perf"]
 fn perf_lights_2d() {
     for scene in ["lights-2d-64", "lights-2d-64-4096", "lights-2d-64-normal"] {
         let (ms, adapter) = perf(scene);

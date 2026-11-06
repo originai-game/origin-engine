@@ -46,6 +46,7 @@ fn differs(a: &RgbaImage, b: &RgbaImage, (x0, y0, x1, y1): (u32, u32, u32, u32))
 /// compute draws, and what the old renderer drew of a fluid with no
 /// particles: nothing) leaves the basin's floor bare.
 #[test]
+#[ignore = "requires GPU"]
 fn a_visual_fluid_flows_on_the_gpu_from_its_spawn_box() {
     let mut visual = visual_scenes::visual_fluid_scene(true);
     let flowed = frames(&mut visual, visual_scenes::FLUID_TICKS);
@@ -68,6 +69,7 @@ fn a_visual_fluid_flows_on_the_gpu_from_its_spawn_box() {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn visual_bodies_move_on_the_gpu_while_the_host_meshes_stay_at_rest() {
     let mut visual = visual_scenes::visual_bodies_scene(true);
     // The renderer reads the scene (`&RenderScene`): its meshes stay the

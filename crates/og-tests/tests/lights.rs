@@ -55,6 +55,7 @@ fn changed(a: &RgbaImage, b: &RgbaImage) -> usize {
 /// pixels where geometry meets the ground may change, with the depth
 /// buffer's precision. Perspective and orthographic.
 #[test]
+#[ignore = "requires GPU"]
 fn moving_the_depth_slices_changes_nothing() {
     let desc = scenes::base_desc();
     let mut scene = p2_scenes::many_lights(256);
@@ -96,6 +97,7 @@ fn moving_the_depth_slices_changes_nothing() {
 /// Past MAX_LIGHTS visible lights the least important are dropped: 256
 /// bright lights and 40 faint far ones draw as the 256 alone.
 #[test]
+#[ignore = "requires GPU"]
 fn past_max_lights_the_faint_far_ones_are_dropped() {
     let desc = scenes::base_desc();
     let mut scene = p2_scenes::many_lights(0);

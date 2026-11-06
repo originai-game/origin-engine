@@ -72,6 +72,7 @@ fn studio() -> RenderScene {
 /// glass blurs it, and absorption tints it; a white opaque ball shows
 /// none of it.
 #[test]
+#[ignore = "requires GPU"]
 fn transmission_refracts_the_scene_behind() {
     // `bands`: the backdrop in 0.25 m bands instead of halves.
     let make_on = |m: StandardMaterial, bands: bool| {
@@ -161,6 +162,7 @@ fn transmission_refracts_the_scene_behind() {
 
 /// The transmission map: where it is black the glass is opaque.
 #[test]
+#[ignore = "requires GPU"]
 fn a_transmission_map_masks_the_glass() {
     let make = |map: bool| {
         let mut scene = studio();

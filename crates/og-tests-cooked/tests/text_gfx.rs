@@ -105,6 +105,7 @@ fn check(name: &str, (scene, desc): (RenderScene, RenderDesc)) -> og_render::Fra
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn text_frames_match_their_references() {
     let fonts = cooked();
     assert!(

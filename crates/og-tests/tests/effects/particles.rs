@@ -46,11 +46,13 @@ fn particles_are_deterministic(path: ParticleSimulation) {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn a_600_tick_gpu_particle_run_is_deterministic() {
     particles_are_deterministic(ParticleSimulation::Auto);
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn a_600_tick_cpu_particle_run_is_deterministic() {
     particles_are_deterministic(ParticleSimulation::Cpu);
 }
@@ -63,6 +65,7 @@ fn a_600_tick_cpu_particle_run_is_deterministic() {
 /// fountain passed through every collider and was counted as skipped,
 /// and a billboard one met only what the depth prepass drew.
 #[test]
+#[ignore = "requires GPU"]
 fn compute_particles_bounce_off_the_scene_colliders() {
     let run_with = |sprite: bool, colliders: Vec<og_render::SceneCollider>| {
         let mut scene = collision_scene(true);
@@ -168,6 +171,7 @@ fn collision_scene(collide: bool) -> RenderScene {
 /// A trail grows while its head moves, empties a lifetime after it stops,
 /// and restarts when time runs backwards.
 #[test]
+#[ignore = "requires GPU"]
 fn trails_remember_the_path_for_their_lifetime() {
     let mut scene = RenderScene::new();
     let style = scene.add_trail_style(TrailStyle {

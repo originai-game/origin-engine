@@ -145,6 +145,8 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
     let mut failed = 0;
     let mut unchecked = 0;
+    let mut unchecked_suites = 0;
+    let mut adapter_errors = std::collections::BTreeSet::new();
     // The type check first: its failure leaves no bundle for the playtests.
     let checked = if check {
         if p.has_assets() {
@@ -243,17 +245,33 @@ pub fn run(args: &[&str]) -> ExitCode {
                     return ExitCode::FAILURE;
                 }
             }
-            unchecked += unchecked_frames(&results.join(format!("{i}.json")));
+            if let Ok(bytes) = std::fs::read(results.join(format!("{i}.json")))
+                && let Ok(result) = serde_json::from_slice::<serde_json::Value>(&bytes)
+            {
+                let count = result["unchecked"].as_array().map_or(0, Vec::len);
+                unchecked += count;
+                if count > 0 && matches!(status, Ok(true)) {
+                    unchecked_suites += 1;
+                }
+                if let Some(errors) = result["adapterErrors"].as_array() {
+                    adapter_errors
+                        .extend(errors.iter().filter_map(|v| v.as_str().map(str::to_owned)));
+                }
+            }
         }
         let _ = std::fs::remove_dir_all(&results);
     }
     let total = usize::from(!unit.is_empty()) + playtests.len() + usize::from(check_failed);
+    let passed = total - failed - unchecked_suites;
     if json {
         println!(
             "{}",
             serde_json::json!({
                 "event": "test", "ok": failed == 0, "suites": total, "failed": failed,
-                "unchecked": unchecked,
+                "passed": passed, "uncheckedSuites": unchecked_suites, "unchecked": unchecked,
+                "renderer": if adapter_errors.is_empty() { serde_json::Value::Null } else { serde_json::json!("none") },
+                "adapterError": adapter_errors.first(),
+                "adapterErrors": adapter_errors,
                 "check": match &checked {
                     Some(Ok(r)) => r.brief(),
                     // A checker that failed.
@@ -263,18 +281,12 @@ pub fn run(args: &[&str]) -> ExitCode {
             })
         );
     }
-    let frames = if unchecked > 0 {
-        format!(
-            "; {unchecked} frame(s) unchecked: no renderer here (frames are verified on the author's machine, in the browser-check sandbox or on an executor with a GPU)"
-        )
-    } else {
-        String::new()
-    };
+    println!(
+        "og test: {passed} suite(s) passed, {failed} failed, {unchecked_suites} unchecked; {unchecked} GPU frame/expectation checks unchecked"
+    );
     if failed == 0 {
-        println!("og test: {total} suite(s) passed{frames}");
         ExitCode::SUCCESS
     } else {
-        println!("og test: {failed} of {total} suite(s) failed{frames}");
         ExitCode::FAILURE
     }
 }
@@ -319,14 +331,4 @@ fn parallel(
         }
     });
     statuses
-}
-
-/// How many frames a playtest's result line (`playtest-run.ts --result`)
-/// reports unchecked; 0 when it wrote none.
-fn unchecked_frames(result: &Path) -> usize {
-    std::fs::read(result)
-        .ok()
-        .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
-        .and_then(|v| v["unchecked"].as_array().map(Vec::len))
-        .unwrap_or(0)
 }

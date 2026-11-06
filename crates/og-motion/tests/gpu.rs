@@ -28,6 +28,7 @@ fn case_inputs(case: &Bundle) -> Inputs {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn gpu_generation_matches_the_cpu() {
     let bundle = fixture("tiny.safetensors");
     let inputs = case_inputs(&fixture("case.safetensors"));
@@ -62,6 +63,7 @@ fn gpu_generation_matches_the_cpu() {
 /// as the engine's frame loop polls it; the result is the unsliced one,
 /// bit for bit (the same dispatches in the same order).
 #[test]
+#[ignore = "requires GPU"]
 fn a_frame_budget_slices_a_generation_without_changing_it() {
     use std::future::Future;
     use std::task::{Context, Poll, Waker};

@@ -1,3 +1,4 @@
+import { gpuTest } from "./support/gpu.ts";
 // Looks through the TypeScript API on the native host (IDL `load.look`,
 // `load.lookInfo`, `load.palette`, `render.applyLook`, `render.look`,
 // `GameDesc.look`; og-cook's `look` module): a cooked look
@@ -91,7 +92,7 @@ test("GameDesc.look is flattened over its base and applied before start runs", (
   expect((og.ui.theme(engine.world) as unknown as { style: string }).style).toBe("tiny");
 });
 
-test("the look's antialias is the renderer's when GameDesc.render leaves it out", () => {
+gpuTest("the look's antialias is the renderer's when GameDesc.render leaves it out", () => {
   const engine = start({ look: "looks/dusk.ogt" });
   const attached = JSON.parse(native().og_node_attach_offscreen(engine.id, 64, 64)) as { ok: boolean; reason?: string };
   if (!attached.ok) throw new Error(`no renderer: ${attached.reason}`);

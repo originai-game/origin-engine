@@ -15,6 +15,7 @@ use og_tests_cooked::impostor_scenes::{CARD_AT, MESH_AT, impostor_self_shadow_sc
 /// (the trunk dark or lit at random over its height), or shading what the
 /// sun sees (the crown's top as dark as the trunk).
 #[test]
+#[ignore = "requires GPU"]
 fn a_cards_trunk_is_in_its_own_crowns_shadow() {
     let (scene, (min, max)) = impostor_self_shadow_scene().expect("the cooked tree");
     let mut r = Renderer::new_blocking(&og_tests::scenes::base_desc()).expect("renderer");

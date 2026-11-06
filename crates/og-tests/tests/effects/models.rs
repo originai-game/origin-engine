@@ -8,6 +8,7 @@ use super::*;
 /// shader's blend is the CPU's. Then a crowd of 35 cylinders playing one
 /// shared clip at their own frames.
 #[test]
+#[ignore = "requires GPU"]
 fn baked_clips_pose_a_crowd_like_their_palettes() {
     let desc = small();
     let (mesh, skin) = fx::skinned_cylinder(0.3, 24, 24);
@@ -134,6 +135,7 @@ fn baked_clips_pose_a_crowd_like_their_palettes() {
 /// the plain mesh; the positions of the blendshape test's taller cylinder
 /// draw that cylinder, so the shader reads every vertex, odd and even.
 #[test]
+#[ignore = "requires GPU"]
 fn deformed_vertices_replace_the_mesh() {
     let desc = small();
     let (mesh, _) = fx::skinned_cylinder(0.3, 24, 24);

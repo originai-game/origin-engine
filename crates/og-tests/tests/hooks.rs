@@ -75,6 +75,7 @@ const SHIFT: Vec3 = Vec3::new(1.5, 0.6, -0.5);
 /// A box moved by its material shader draws, shadows and occludes as the
 /// box moved by its transform.
 #[test]
+#[ignore = "requires GPU"]
 fn an_offset_mesh_draws_shadows_and_occludes_where_it_moved() {
     let render = |by_shader: bool| {
         let mut scene = stage();
@@ -97,6 +98,7 @@ fn an_offset_mesh_draws_shadows_and_occludes_where_it_moved() {
 /// The same for skinned meshes: the bending cylinders moved by the shader
 /// draw, shadow and occlude as the cylinders moved by their transforms.
 #[test]
+#[ignore = "requires GPU"]
 fn an_offset_skinned_mesh_draws_shadows_and_occludes_where_it_moved() {
     let render = |by_shader: bool| {
         let mut scene = stage();

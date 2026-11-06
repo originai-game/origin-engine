@@ -103,6 +103,7 @@ const SCENES: &[(&str, u32)] = &[
 ];
 
 #[test]
+#[ignore = "requires GPU"]
 fn gpu_culling_draws_the_cpu_paths_frame() {
     let dir = out_dir();
     std::fs::create_dir_all(&dir).expect("output directory");
@@ -214,6 +215,7 @@ fn gpu_culling_draws_the_cpu_paths_frame() {
 /// the meshes' frame than the empty avenue's) but not the meshes' pixels
 /// (they are drawn).
 #[test]
+#[ignore = "requires GPU"]
 fn crowd_cards_draw_the_far_members_and_only_them() {
     let run = |cards: bool, crowd: bool| {
         let mut built = scenes::build("crowd-lods").expect("scene");

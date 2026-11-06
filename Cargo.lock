@@ -2569,6 +2569,7 @@ dependencies = [
  "og-ui",
  "og-video",
  "opus-pure",
+ "pollster",
  "ruzstd",
  "serde_json",
  "symphonia",
@@ -2880,6 +2881,7 @@ dependencies = [
  "og-render",
  "og-tests",
  "og-ui",
+ "pollster",
  "serde_json",
 ]
 
@@ -2944,6 +2946,7 @@ dependencies = [
  "og-tween",
  "parley",
  "parley_engine",
+ "pollster",
  "serde",
  "serde_json",
  "skrifa",

@@ -193,6 +193,7 @@ fn posed_trickster(root: &Path, clip: &str, t: f32) -> og_render::RgbaImage {
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn compressed_clips_stay_within_tolerance_and_shrink() {
     let f32_root = stage("f32", false);
     let q_root = stage("quantized", true);

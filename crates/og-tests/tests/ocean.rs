@@ -33,6 +33,7 @@ fn difference(a: &RgbaImage, b: &RgbaImage) -> f32 {
 /// records it), where it bared a corner by 6 cm. Prints each floater's
 /// clearance against the drawn sea and the tick's.
 #[test]
+#[ignore = "requires GPU"]
 fn the_floaters_sit_in_the_drawn_sea() {
     let text = std::fs::read_to_string(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -194,6 +195,7 @@ fn hull_cuts(text: &str, tick: u64) -> Vec<og_render::WaterCut> {
 /// 2 cm, under the buoys floating there, so floaters blended between ticks
 /// stay on them.
 #[test]
+#[ignore = "requires GPU"]
 fn the_sea_moves_between_ticks_in_step_with_the_tick() {
     let water = og_render::Water {
         size: Vec2::splat(6000.0),

@@ -12,6 +12,7 @@ use super::*;
 /// tints read green (77, 211, 99), yellow (215, 211, 77) and orange
 /// (218, 176, 50) on Metal: told apart by hue, not by a fixed channel.
 #[test]
+#[ignore = "requires GPU"]
 fn meshlet_forest_tints_coarser_levels_farther() {
     let img = gfx::render("meshlet-forest").expect("render").image;
     // The horizon is at row 352 of 720; the canopies' bottoms above it.
@@ -60,6 +61,7 @@ fn meshlet_forest_tints_coarser_levels_farther() {
 /// buffer over GPU culling's compacted ranges) moves the history the
 /// wrong way and fails as surely as one without them.
 #[test]
+#[ignore = "requires GPU"]
 fn a_moving_instance_takes_its_history_along_on_every_culling_path() {
     use og_render::{
         Antialias, Culling, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage,

@@ -53,6 +53,7 @@ fn draw(renderer: &mut Renderer, scene: &RenderScene, frames: u32) -> RgbaImage 
 }
 
 #[test]
+#[ignore = "requires GPU"]
 fn a_device_with_other_encodings_draws_textures_transcoded_again_for_it() {
     let texture = cooked();
     let g = scenes::build("materials").expect("scene");

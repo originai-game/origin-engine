@@ -3,8 +3,8 @@
 // `then` steps in more), then its checks over the files the runs wrote. A
 // playtest that made no check fails.
 //
-// Simulation-only playtests can run without a renderer. A requested frame
-// requires a GPU: an unchecked frame fails the playtest and names it.
+// Simulation-only playtests can run without a renderer. Requested frames
+// without a GPU are reported unchecked, never counted as passed.
 //
 //   bun src/node/playtest-run.ts --file <tests/x.og.ts> --entry <game bundle> [--root <project>] [--out <dir>] [--json] [--result <file>]
 
@@ -48,25 +48,26 @@ let checks = 0;
 let frameChecks = 0;
 // Every screenshot taken without a renderer, by the file it would have written, in order.
 const unchecked: string[] = [];
+const adapterErrors = new Set<string>();
 // Notes on unchecked frames beyond the per-file lines (a check stopped by one).
 const notes: string[] = [];
 let result: Record<string, unknown> = {};
 
 function finish(): never {
-  if (unchecked.length > 0) failures.push(`missing GPU renderer: ${unchecked.length} requested frame check(s) could not run (${unchecked.join(", ")})`);
-  if (checks === 0 && failures.length === 0) {
+  if (checks === 0 && unchecked.length === 0 && failures.length === 0) {
     failures.push("the playtest made no check: call t.ok, t.equal or t.near at least once");
   }
   const ok = failures.length === 0;
-  const line = { playtest: name, file, ok, checks, frameChecks, unchecked, failures, notes, out, ms: +(performance.now() - t0).toFixed(0), assertions: assertionLog, ...result };
+  const status = !ok ? "failed" : unchecked.length > 0 ? "unchecked" : "passed";
+  const line = { playtest: name, file, ok, status, checks, frameChecks, unchecked, uncheckedCount: unchecked.length, adapterErrors: [...adapterErrors], failures, notes, out, ms: +(performance.now() - t0).toFixed(0), assertions: assertionLog, ...result };
   if (resultFile) {
     mkdirSync(dirname(resolve(resultFile)), { recursive: true });
     writeFileSync(resultFile, JSON.stringify(line) + "\n");
   }
   if (asJson) process.stdout.write(JSON.stringify(line) + "\n");
   else {
-    const frames = unchecked.length > 0 ? `, ${unchecked.length} frame${unchecked.length === 1 ? "" : "s"} unchecked` : "";
-    process.stdout.write(`${ok ? "PASS" : "FAIL"} ${name} (${checks} checks${frames}, ${line.ms} ms)${(line as { title?: string }).title ? ": " + (line as { title?: string }).title : ""}\n`);
+    const frames = `, ${unchecked.length} GPU frame/expectation checks unchecked`;
+    process.stdout.write(`${!ok ? "FAIL" : unchecked.length > 0 ? "UNCHECKED" : "PASS"} ${name} (${checks} checks${frames}, ${line.ms} ms)${(line as { title?: string }).title ? ": " + (line as { title?: string }).title : ""}\n`);
     for (const f of failures) process.stdout.write(`  - ${f}\n`);
     for (const u of unchecked) process.stdout.write(`  ~ ${u}: no renderer, frame unchecked\n`);
     for (const n of notes) process.stdout.write(`  ~ ${n}\n`);
@@ -136,6 +137,8 @@ type Summary = {
   entities: number;
   quit: boolean;
   tier: string;
+  renderer: string;
+  adapterError: string | null;
   outputs: string[];
   warnings: string[];
   unchecked?: string[];
@@ -161,6 +164,11 @@ function summarise(exitCode: number, stdout: string, stderr: string, what: strin
   if ((exitCode !== 0 && !expectedOnly) || !summary) {
     failures.push(`${what} failed (exit ${exitCode}): ${stderr.trim() || stdout.trim()}`);
     return null;
+  }
+  if (summary.adapterError && !adapterErrors.has(summary.adapterError)) {
+    adapterErrors.add(summary.adapterError);
+    const expected = process.env.OG_RENDERER?.trim().toLowerCase() === "none";
+    process.stderr.write(`WARNING ${expected ? "" : "unexpected "}missing GPU: ${summary.adapterError}; frame checks are unchecked, not passed\n`);
   }
   for (const e of summary.expectations?.results ?? []) {
     if (e.status === "unchecked") unchecked.push(`${what}: expect:${e.expect}`);
@@ -259,7 +267,7 @@ if (!summary) finish();
 requireFired(summary!.assertions ?? EMPTY_ASSERTIONS, "og run");
 const rendered = summary!.tier !== "none";
 unchecked.push(...(summary!.unchecked ?? []));
-result = { ...result, tick: summary!.tick, hash: summary!.hash, tier: summary!.tier, warnings: summary!.warnings };
+result = { ...result, tick: summary!.tick, hash: summary!.hash, tier: summary!.tier, renderer: summary!.renderer, adapterError: summary!.adapterError, warnings: summary!.warnings };
 // A room's shared hashes, the run's first: equal ones are peers that stayed in step.
 if (room) result = { ...result, netHashes: [summary!, ...peerSummaries].map((s) => s.netHash ?? ""), lockstep: [summary!, ...peerSummaries].map((s) => s.lockstep ?? null) };
 // More runs of the same script (desc.runs), each in a fresh process into its
