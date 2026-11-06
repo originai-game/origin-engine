@@ -645,6 +645,35 @@ pub const DURATIONS_MS: Durations = Durations {
     spring: 520.0,
 };
 
+/// The timing table's own numbers (the design language's `motion.timing`;
+/// its other rows name the durations, eases and springs above). A style's
+/// motion block overrides each (docs/ui.md §7.7).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Timing {
+    /// How much a pad's virtual cursor slows and settles over a control, 0–1.
+    pub magnet: f32,
+    /// The press squash's spring back: its damping over `instant`.
+    pub press_damping: f32,
+    /// A cascade's step between children and the most it spreads over, ms.
+    pub cascade_step_ms: f32,
+    pub cascade_cap_ms: f32,
+    /// How long a toast stays, and an error's toast, ms.
+    pub toast_hold_ms: f32,
+    pub toast_danger_ms: f32,
+    /// A screen transition covers and reveals over this many `slow` durations.
+    pub screen_slows: f32,
+}
+
+pub const TIMING: Timing = Timing {
+    magnet: 0.5,
+    press_damping: 0.55,
+    cascade_step_ms: 40.0,
+    cascade_cap_ms: 400.0,
+    toast_hold_ms: 3200.0,
+    toast_danger_ms: 6000.0,
+    screen_slows: 2.0,
+};
+
 /// A spring: damping ratio (1 critically damped, below 1 overshoots) and
 /// response (the time to reach the target, not a duration), milliseconds.
 #[derive(Clone, Copy, Debug, PartialEq)]

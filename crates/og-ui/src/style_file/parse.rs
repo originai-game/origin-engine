@@ -563,6 +563,12 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                         }
                         "stagger" if !v2 => m.stagger_ms = q.num(0)?.max(0.0),
                         "progress" => m.progress_ms = q.num(0)?.max(0.0),
+                        "toastHold" => {
+                            m.toast_hold_ms = q.num(0)?.max(1.0);
+                            m.toast_danger_ms = q.num_or(1, m.toast_hold_ms)?.max(1.0);
+                        }
+                        "screen" => m.screen_ms = q.num(0)?.max(1.0),
+                        "magnet" => m.magnet = Some(q.num(0)?.clamp(0.0, 1.0)),
                         "shake" => m.shake = q.num(0)?.max(0.0),
                         "pop" => m.pop = q.num(0)?.clamp(0.0, 1.0),
                         "hoverSpring" | "pressSpring" => {
@@ -597,9 +603,9 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                                 continue;
                             }
                             return Err(q.err(if v2 {
-                                "is a motion setting: enter, toast, progress, shake, pop, hoverSpring, pressSpring, spring, ease, duration, stagger, staggerCap or overshoot"
+                                "is a motion setting: enter, toast, toastHold, screen, magnet, progress, shake, pop, hoverSpring, pressSpring, spring, ease, duration, stagger, staggerCap or overshoot"
                             } else {
-                                "is a motion setting: enter, stagger, toast, progress, shake, pop, hoverSpring or pressSpring"
+                                "is a motion setting: enter, stagger, toast, toastHold, screen, magnet, progress, shake, pop, hoverSpring or pressSpring"
                             }));
                         }
                     }

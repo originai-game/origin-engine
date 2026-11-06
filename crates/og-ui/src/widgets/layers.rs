@@ -342,12 +342,19 @@ impl Ui {
     /// duration and leaves; at most three are up (older ones leave first).
     /// A press on one dismisses it. Callable between ticks. Returns its id.
     pub fn toast(&mut self, text: &str, desc: ToastDesc) -> u32 {
+        let (m, table) = (self.theme.art.motion, crate::theme::TIMING);
         let ms = if desc.duration_ms > 0.0 {
             desc.duration_ms
         } else if desc.tone == Tone::Danger {
-            6000.0
+            if m.toast_danger_ms > 0.0 {
+                m.toast_danger_ms
+            } else {
+                table.toast_danger_ms
+            }
+        } else if m.toast_hold_ms > 0.0 {
+            m.toast_hold_ms
         } else {
-            3200.0
+            table.toast_hold_ms
         };
         self.state.next_toast += 1;
         let id = self.state.next_toast;

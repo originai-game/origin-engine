@@ -327,6 +327,29 @@ pub fn generate(tokens: &str) -> Result<String, String> {
     }
     o.push_str("};\n\n");
 
+    o.push_str(TIMING_HEAD);
+    let number = |path: &[&str]| -> Result<f32, String> {
+        get(&t, path)?
+            .as_f64()
+            .map(|n| n as f32)
+            .ok_or_else(|| format!("tokens.json: {} is not a number", path.join(".")))
+    };
+    for (field, value) in [
+        ("magnet", number(&timing("hover.magnet"))?),
+        ("press_damping", number(&timing("press.damping"))?),
+        ("cascade_step_ms", unit(&t, &timing("cascade.step"), "ms")?),
+        ("cascade_cap_ms", unit(&t, &timing("cascade.cap"), "ms")?),
+        ("toast_hold_ms", unit(&t, &timing("toast.hold"), "ms")?),
+        (
+            "toast_danger_ms",
+            unit(&t, &timing("toast.holdDanger"), "ms")?,
+        ),
+        ("screen_slows", number(&timing("screen.slow"))?),
+    ] {
+        writeln!(o, "    {field}: {},", num(value)).unwrap();
+    }
+    o.push_str("};\n\n");
+
     o.push_str(SPRING_HEAD);
     for (name, key, doc) in [
         (
@@ -687,6 +710,36 @@ pub struct Durations {
 }
 
 pub const DURATIONS_MS: Durations = Durations {
+"#;
+
+/// The path of a row of `motion.timing` (`hover.magnet`).
+fn timing(k: &str) -> Vec<&str> {
+    ["motion", "timing"]
+        .into_iter()
+        .chain(k.split('.'))
+        .collect()
+}
+
+const TIMING_HEAD: &str = r#"/// The timing table's own numbers (the design language's `motion.timing`;
+/// its other rows name the durations, eases and springs above). A style's
+/// motion block overrides each (docs/ui.md §7.7).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Timing {
+    /// How much a pad's virtual cursor slows and settles over a control, 0–1.
+    pub magnet: f32,
+    /// The press squash's spring back: its damping over `instant`.
+    pub press_damping: f32,
+    /// A cascade's step between children and the most it spreads over, ms.
+    pub cascade_step_ms: f32,
+    pub cascade_cap_ms: f32,
+    /// How long a toast stays, and an error's toast, ms.
+    pub toast_hold_ms: f32,
+    pub toast_danger_ms: f32,
+    /// A screen transition covers and reveals over this many `slow` durations.
+    pub screen_slows: f32,
+}
+
+pub const TIMING: Timing = Timing {
 "#;
 
 const SPRING_HEAD: &str = r#"/// A spring: damping ratio (1 critically damped, below 1 overshoots) and

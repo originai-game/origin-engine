@@ -165,6 +165,10 @@
     ],
     "added": [
       {
+        "member": "motion timing table",
+        "summary": "The design language's motion.timing (packages/design) names what hover, press, enter, exit, cascades, toasts and screen transitions move on; og-ui's widgets read it (theme::TIMING), and a style's motion block overrides a row with the new `toastHold <ms> [<error ms>]`, `screen <ms>` and `magnet <0–1>` lines beside the existing hoverSpring, pressSpring, eases and stagger. The defaults are the numbers the widgets used before, so no frame moves. VirtualCursorDesc.magnet 0 now takes the style's magnet."
+      },
+      {
         "member": "style recolour lines",
         "summary": "A style's `recolour \"<colour as painted>\" <role>` lines (and a dressing's own, or `recolour none`) make its painted art follow the palette: when the role's colour differs from the one the art was painted in, og cook recolours every authored slice and ornament in Oklab (hue turned, chroma and lightness moved by the accent's, other hues and greys kept) at each atlas density, beside the style (`<style>#atlas.png`), and measures the frames' tones again. Every painted built-in pack names its primary, so a game's copy with its own accent recolours its painted buttons and frames; an unchanged copy cooks nothing extra (docs/art.md §2.7)."
       },

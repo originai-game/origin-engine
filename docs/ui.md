@@ -464,6 +464,16 @@ motion at once. Under reduced motion each animation uses its declared
 fallback (a fade, or none) and decorative loops stop; `og ui check`
 requires the fallback.
 
+The design language's timing table (`packages/design`, `motion.timing`;
+its Motion section has the table) sets what each moment moves on: hover
+stickiness (the hover spring and a pad cursor's magnet), press squash,
+enter and exit, staggered cascades, toasts and screen transitions. A
+style's motion block overrides any row: `hoverSpring`, `magnet <0–1>`,
+`pressSpring`, `ease widgetEnter|widgetExit`, `stagger`, `staggerCap`,
+`toast <kind>`, `toastHold <ms> [<error ms>]` and `screen <ms>`. A
+row a style leaves out takes the table's, which keeps the frames the
+widgets drew before the table existed.
+
 ### 7.8 Sound and haptics
 
 Motion events and UI events play sounds and haptics from the style's sets

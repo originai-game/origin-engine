@@ -26008,7 +26008,7 @@ export interface VirtualCursorDesc {
    */
   readonly accel?: number;
   /**
-   * 0 to 1: how much it slows over a control and, once the stick rests, pulls to the control's centre; 0 is 0.5, negative is none.
+   * 0 to 1: how much it slows over a control and, once the stick rests, pulls to the control's centre; 0 takes the style's motion magnet (the design language's timing table: 0.5), negative is none.
    *
    * @default 0
    * @range ..1

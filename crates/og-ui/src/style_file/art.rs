@@ -358,9 +358,21 @@ pub struct StyleMotion {
     /// The spring the hover lift moves on (`None`: `motion.spring.default`
     /// of the style, damping 1 and 350 ms: it settles without overshoot).
     pub hover_spring: Option<crate::theme::Spring>,
-    /// The spring the press squash moves on (`None`: damping 0.55 over
-    /// `motion.duration.instant`: in at once, a small bounce on release).
+    /// The spring the press squash moves on (`None`: the timing table's
+    /// press damping, 0.55, over `motion.duration.instant`: in at once, a
+    /// small bounce on release).
     pub press_spring: Option<crate::theme::Spring>,
+    /// How long a toast stays and an error's toast stays, ms (`toastHold
+    /// <ms> [<danger ms>]`; 0: the timing table's, 3200 and 6000).
+    pub toast_hold_ms: f32,
+    pub toast_danger_ms: f32,
+    /// A screen transition's whole cover and reveal, ms (`screen <ms>`; 0:
+    /// the timing table's, twice `slow`).
+    pub screen_ms: f32,
+    /// How much a pad's virtual cursor slows and settles over a control
+    /// (`magnet <0–1>`; `None`: the timing table's, 0.5), when the game's
+    /// `VirtualCursorDesc.magnet` leaves it 0.
+    pub magnet: Option<f32>,
 }
 
 /// The UI events a style can sound.

@@ -367,7 +367,7 @@ impl Ui {
             .hover_spring
             .unwrap_or(crate::theme::SPRING_DEFAULT);
         let press_spring = art.motion.press_spring.unwrap_or(crate::theme::Spring {
-            damping: 0.55,
+            damping: crate::theme::TIMING.press_damping,
             response_ms: t.durations_ms.instant,
         });
         // Each spring is a motion channel (docs/ui.md §7.2): a retarget

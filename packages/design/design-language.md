@@ -320,6 +320,21 @@ gestures the runtime spring in `ui-svelte` `motion/spring.ts`, Swift
 - **Arrive helpers**: `RouteRise` (keyed by route) and `Stagger`
   (`useStagger`, at most 8 steps) wrap the route-rise and list-stagger motion.
 - **Celebrate** (bursts, confetti, rings, holo) only when something happened.
+- **The timing table** (`motion.timing`) names what each moment moves on, so
+  a game's style retunes one row instead of a widget:
+
+  | Moment | Default | A style's override (`motion { … }`) |
+  | --- | --- | --- |
+  | Hover stickiness | lift on the `default` spring; a pad cursor's magnet 0.5 | `hoverSpring`, `magnet <0–1>` |
+  | Press squash | in at once, back on damping 0.55 over `instant` (120 ms) | `pressSpring`, a dressing's `press` |
+  | Enter / exit | `base` on `out` / `fast` on `exit` | `ease widgetEnter`, `ease widgetExit`, `duration base`/`fast` |
+  | Staggered cascade | 40 ms a step, never past 400 ms | `stagger`, `staggerCap` |
+  | Toast | in over `base`, held 3200 ms (an error 6000), out over `fast` | `toast <kind>`, `toastHold <ms> [<error ms>]` |
+  | Screen transition | cover then reveal over twice `slow` | `screen <ms>` |
+
+  The engine's widgets read these rows (og-ui's `theme::TIMING`, generated
+  from `tokens.json`), and the defaults are the numbers the widgets drew
+  with before the table, so no frame moved when it arrived.
 - `prefers-reduced-motion` keeps state changes and drops spatial movement:
   colour and opacity still transition (overlays and views cross-fade), every
   rise, scale, slide, glide and drag spring jumps. Motion never delays a

@@ -2180,3 +2180,31 @@ fn a_focus_ring_draws_over_its_neighbours_and_its_scrolls_fade() {
         "the ring ({ring}) over the scroll's fade ({fade})"
     );
 }
+
+/// The timing table's toast hold (docs/ui.md §7.7): a style's `toastHold`
+/// row overrides it, a style without one keeps the table's 3200 ms. At
+/// 60 ticks a second a toast held 1000 ms is leaving by tick 70 in the
+/// overriding style and still up there in the other.
+///
+/// Ways it could fail: the row parsed but the toast still taking the
+/// fixed default, or the table's default moved for every style.
+#[test]
+fn a_styles_toast_hold_overrides_the_timing_table() {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../templates/styles/storybook/style.ogt"
+    );
+    let source = std::fs::read_to_string(path).unwrap();
+    for (extra, gone) in [("\n toastHold 1000", true), ("", false)] {
+        let style =
+            parse_style(&source.replacen("motion {", &format!("motion {{{extra}"), 1)).unwrap();
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_theme(style.theme(None, [0; 6]));
+        ui.toast("Saved", ToastDesc::default());
+        for _ in 0..90 {
+            ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+            ui.end();
+        }
+        assert_eq!(ui.toasts().is_empty(), gone, "toastHold {extra:?}");
+    }
+}

@@ -436,8 +436,10 @@ impl Ui {
         let now = self.state.tick;
         let ms = if desc.duration_ms > 0.0 {
             desc.duration_ms
+        } else if t.art.motion.screen_ms > 0.0 {
+            t.art.motion.screen_ms
         } else {
-            2.0 * t.durations_ms.slow
+            crate::theme::TIMING.screen_slows * t.durations_ms.slow
         };
         let half = (self.ticks_for(ms) as u64).div_ceil(2).max(1);
         let st = self

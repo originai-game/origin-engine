@@ -47,13 +47,15 @@ impl VirtualCursorDesc {
         }
     }
 
-    fn magnet(&self) -> f32 {
+    /// Its magnet, `style` (the style's, else the timing table's) when it
+    /// leaves it 0.
+    fn magnet(&self, style: f32) -> f32 {
         if self.magnet > 0.0 {
             self.magnet.min(1.0)
         } else if self.magnet < 0.0 {
             0.0
         } else {
-            0.5
+            style
         }
     }
 
@@ -153,7 +155,13 @@ impl Ui {
             v.placed = true;
         }
         let tps = self.ticks_per_second.max(1) as f32;
-        let magnet = d.magnet();
+        let magnet = d.magnet(
+            self.theme
+                .art
+                .motion
+                .magnet
+                .unwrap_or(crate::theme::TIMING.magnet),
+        );
         let over = self.control_at(v.pos).map(|h| (h.key, h.full));
         match stick {
             Some((dir, amount)) => {
