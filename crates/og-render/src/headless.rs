@@ -17,6 +17,11 @@ impl Renderer {
         pollster::block_on(Renderer::new(desc))
     }
 
+    /// [`Renderer::restart`], blocking (native only).
+    pub fn restart_blocking(self, desc: &RenderDesc) -> Result<Renderer, RenderError> {
+        pollster::block_on(self.restart(desc))
+    }
+
     /// [`Renderer::recreate`] headless, blocking: a renderer like this one
     /// on a new device (after [`Renderer::lost`]).
     pub fn recreate_blocking(&self) -> Result<Renderer, RenderError> {
