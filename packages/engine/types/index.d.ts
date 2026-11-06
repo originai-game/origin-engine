@@ -299,6 +299,8 @@ export interface ColumnKinds {
   ArtProjection: { readonly array: Uint32Array; readonly stride: 1; readonly value: ArtProjection };
   /** A MotionGoalKind field: the variant's index. */
   MotionGoalKind: { readonly array: Uint32Array; readonly stride: 1; readonly value: MotionGoalKind };
+  /** A VfxAsset handle field (0 is none). */
+  VfxAsset: { readonly array: Uint32Array; readonly stride: 2; readonly value: VfxAsset };
 }
 
 // ── math ────────────────────────────────────────────────────────
@@ -12626,6 +12628,7 @@ export interface PrefabLink {
    */
   readonly root: Entity;
 }
+
 
 
 
@@ -44359,6 +44362,172 @@ export interface DestructionCapabilities {
 
 
 
+// ── vfx ─────────────────────────────────────────────────────────
+// Composed effects: one effect (a fireball's impact, a heal, a level-up) as a timeline of elements in an `.ogt` of `type vfx`, Effekseer's and Niagara's systems as text the agent reads and diffs. A file has `duration <seconds>`, `loop true|false`, `event <seconds> "<name>"` and `impact <seconds>` (`event <seconds> "impact"`, at most one; the same four lines mean the same in a `type vfx2d` pixel effect), and element blocks, each with `at <seconds>` from the effect's start, `offset <x> <y> <z>` and `rotate <x> <y> <z>` (degrees) in the effect's space, and `life <seconds>` or `until <seconds>` for those that last: `emitter "<id>"` (an og.load.emitter asset; `until` stops its emission and its particles live out; `seed`), `mesh sphere | quad | ring | box | cylinder | "<model id>"` (drawn with `effect "<id>"`, an effect material: `scale`, a value over its life, `spin` degrees per second, `color`, `blend additive | alpha`), `trail` (`effect`, `width <head> <tail>`, `lifetime`, `color`, `orbit <radius> <turns per second>` and `rise <metres per second>` about and up the element's y), `beam` (`to <x> <y> <z>` from the element, `width`, `effect`, `segments`, `jitter`, `color`), `light` (a point light: `color`, `intensity` a value over its life, `distance`), `decal` (projected down the element's -y: `uv <u0> <v0> <u1> <v1>`, its region of og.RenderSettings.decalAtlas, `size <x> <y> <z>` with y the depth it reaches, `fade <seconds>` at its end, `color`), `flash` (a soft glow facing the eye: `size` a value over its life, `color`), `shake` (`trauma`, og.camera.shake) and `sound "<id>"` (`volume`, `pitch <min> <max>` picked by the seed; a child entity with og.AudioSource at the element, cut when the effect despawns). A value is a number, `random <min> <max>` (fixed per instance) or `curve <t> <v> ...` over the element's life. `og cook` checks the file and that what it names is in the project.
+// An og.Vfx plays one from its startTick at its entity's MatrixWorld, so an effect follows the entity it is spawned on (og.vfx.spawn with a parent) or stays where it was spawned. Its visuals are drawn from (asset, seed, startTick, the tick) alone: the renderer expands its elements every frame and nothing of them is world state, so a replay, a restore or a seek draws the same effect. Its gameplay side runs in the tick, in the engine's og.vfx system (scheduled when a game first names og.Vfx or og.VfxEvent, after the systems defined so far): each `event` line sends an og.VfxEvent on the tick its time lands on (startTick plus its time rounded to ticks; an effect started after og.vfx ran that tick catches up on the next), each `shake` adds its trauma and each `sound` plays, then an effect that has ended and does not loop despawns its entity and its sounds (unless `despawn` is false). Element times run on the tick.
+
+/**
+ * A loaded composed effect (og.load.vfx): its elements and the emitters, effect materials, meshes, textures and sounds they name.
+ *
+ * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
+ */
+export type VfxAsset = number & { readonly [handleType]: "VfxAsset" };
+
+/**
+ * A VfxAsset handle field (0 is none).
+ *
+ * A `VfxAsset` field: stored in a `Uint32Array` with stride 2.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function VfxAsset(value?: VfxAsset, options?: FieldOptions): FieldSpec<"VfxAsset">;
+
+/**
+ * Plays a composed effect at the entity's MatrixWorld from startTick (og.vfx.spawn makes one in a call).
+ *
+ * The value of the `Vfx` component (token `og.Vfx`).
+ */
+export interface Vfx {
+  /** The effect (og.load.vfx); 0 plays nothing. */
+  asset: VfxAsset;
+  /**
+   * Its random seed: what `random` values, emitters and sound pitches pick (instances with different seeds differ).
+   */
+  seed: number;
+  /**
+   * The tick it started: write the tick (`world.tick`) to play it, or to play it again. Its default, never written, waits: an effect spawned ahead of its use plays nothing until a tick is written.
+   *
+   * @default 4294967295
+   */
+  startTick: number;
+  /**
+   * Its size: offsets, meshes, trails, beams, lights' reach, decals and flashes scale with it; its emitters are placed and shaped by the scaled transform.
+   *
+   * @default 1
+   * @range 0..
+   */
+  scale: number;
+  /**
+   * Multiplies the colour of everything it draws (linear; above 1 brightens).
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  tint: Color;
+  /**
+   * Despawn the entity on the tick after a non-looping effect ends.
+   *
+   * @default true
+   */
+  despawn: boolean;
+  /**
+   * Written by og.vfx: the last tick it ran this effect through (its events, shakes and sounds up to there are sent). Writing startTick again plays it from the start.
+   *
+   * @default 4294967295
+   * @readonly written by the engine
+   */
+  readonly ran: number;
+}
+
+/**
+ * A composed effect reached one of its `event` lines (an `impact` line included, named `impact`): the frame a fireball lands, a slash connects, a spell resolves. Read in the tick after, like every event; a replay sends the same.
+ *
+ * The payload of the `VfxEvent` event (token `og.VfxEvent`).
+ */
+export interface VfxEvent {
+  /** The entity with the og.Vfx. */
+  readonly entity: Entity;
+  /** The effect. */
+  readonly asset: VfxAsset;
+  /** The event's name (at most 63 bytes). */
+  readonly name: string;
+  /**
+   * Its time in the effect.
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly time: number;
+}
+
+/**
+ * Where and how og.vfx.spawn plays an effect.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface VfxSpawnDesc {
+  /**
+   * The effect (og.load.vfx).
+   *
+   * @default 0
+   */
+  readonly asset?: VfxAsset;
+  /**
+   * Where: in the world, or in the parent's space with a parent.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly position?: Vector3;
+  /**
+   * Its turn, as position.
+   *
+   * @default { x: 0, y: 0, z: 0, w: 1 }
+   */
+  readonly rotation?: Quaternion;
+  /**
+   * An entity to follow (a sword's tip, a character's chest): the effect's entity becomes its child, so it moves with it and despawns with it.
+   *
+   * @default null
+   */
+  readonly parent?: Entity | null;
+  /**
+   * Its size (og.Vfx.scale).
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly scale?: number;
+  /**
+   * Its tint (og.Vfx.tint).
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  readonly tint?: Color;
+  /**
+   * Its seed (og.Vfx.seed); 0 takes one from the new entity's id, so each instance differs and a replay repeats it.
+   *
+   * @default 0
+   */
+  readonly seed?: number;
+}
+
+/** A loaded composed effect. */
+export interface VfxInfo {
+  /** Its handle. */
+  readonly asset: VfxAsset;
+  /**
+   * Its length.
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration: number;
+  /** Whether it starts over at its end. */
+  readonly loop: boolean;
+  /** Its events' names in time order, `impact` included. */
+  readonly events: readonly string[];
+  /**
+   * Its impact's time, or -1 without one.
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly impact: number;
+  /**
+   * Its elements' kinds, in file order (emitter, mesh, trail, beam, light, decal, flash, shake, sound).
+   */
+  readonly elements: readonly string[];
+}
+
+
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -45726,6 +45895,14 @@ export declare namespace og {
      * @returns Refused for a path not in the bundle (run og cook) or a file that is not a timeline.
      */
     function timeline(world: World, path: string): Result<TimelineAsset>;
+    /**
+     * Load a composed effect: an `.ogt` of `type vfx` (the og.vfx module's file: a duration, events and a timeline of emitters, effect meshes, trails, beams, lights, decals, flashes, shakes and sounds), with every emitter, effect material, model and sound it names. Loaded once per path; play it with og.vfx.spawn or an og.Vfx whose asset is the handle.
+     *
+     * @param world The world.
+     * @param path The effect's asset id, such as `fx/fireball-impact.ogt`.
+     * @returns Refused for a path not in the bundle (run og cook), a file that is not a vfx, or an asset it names that will not load.
+     */
+    function vfx(world: World, path: string): Result<VfxAsset>;
     /**
      * Load a cooked 2D rig (an `.ogt` of `type rig2d`, written by hand or imported by the cook from DragonBones JSON) and its texture, and register it with og.skeleton2d. Loading the same path again answers the same handles.
      *
@@ -50084,5 +50261,35 @@ export declare namespace og {
      * @param world The world.
      */
     function capabilities(world: World): DestructionCapabilities;
+  }
+  /**
+   * Plays a composed effect at the entity's MatrixWorld from startTick (og.vfx.spawn makes one in a call).
+   */
+  const Vfx: ComponentType<{ readonly asset: FieldSpec<"VfxAsset">; readonly seed: FieldSpec<"u32">; readonly startTick: FieldSpec<"u32">; readonly scale: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly despawn: FieldSpec<"bool">; readonly ran: FieldSpec<"u32"> }, Vfx>;
+  /**
+   * A composed effect reached one of its `event` lines (an `impact` line included, named `impact`): the frame a fireball lands, a slash connects, a spell resolves. Read in the tick after, like every event; a replay sends the same.
+   */
+  const VfxEvent: EventType<VfxEvent>;
+  /**
+   * Composed effects: one effect (a fireball's impact, a heal, a level-up) as a timeline of elements in an `.ogt` of `type vfx`, Effekseer's and Niagara's systems as text the agent reads and diffs. A file has `duration <seconds>`, `loop true|false`, `event <seconds> "<name>"` and `impact <seconds>` (`event <seconds> "impact"`, at most one; the same four lines mean the same in a `type vfx2d` pixel effect), and element blocks, each with `at <seconds>` from the effect's start, `offset <x> <y> <z>` and `rotate <x> <y> <z>` (degrees) in the effect's space, and `life <seconds>` or `until <seconds>` for those that last: `emitter "<id>"` (an og.load.emitter asset; `until` stops its emission and its particles live out; `seed`), `mesh sphere | quad | ring | box | cylinder | "<model id>"` (drawn with `effect "<id>"`, an effect material: `scale`, a value over its life, `spin` degrees per second, `color`, `blend additive | alpha`), `trail` (`effect`, `width <head> <tail>`, `lifetime`, `color`, `orbit <radius> <turns per second>` and `rise <metres per second>` about and up the element's y), `beam` (`to <x> <y> <z>` from the element, `width`, `effect`, `segments`, `jitter`, `color`), `light` (a point light: `color`, `intensity` a value over its life, `distance`), `decal` (projected down the element's -y: `uv <u0> <v0> <u1> <v1>`, its region of og.RenderSettings.decalAtlas, `size <x> <y> <z>` with y the depth it reaches, `fade <seconds>` at its end, `color`), `flash` (a soft glow facing the eye: `size` a value over its life, `color`), `shake` (`trauma`, og.camera.shake) and `sound "<id>"` (`volume`, `pitch <min> <max>` picked by the seed; a child entity with og.AudioSource at the element, cut when the effect despawns). A value is a number, `random <min> <max>` (fixed per instance) or `curve <t> <v> ...` over the element's life. `og cook` checks the file and that what it names is in the project.
+   * An og.Vfx plays one from its startTick at its entity's MatrixWorld, so an effect follows the entity it is spawned on (og.vfx.spawn with a parent) or stays where it was spawned. Its visuals are drawn from (asset, seed, startTick, the tick) alone: the renderer expands its elements every frame and nothing of them is world state, so a replay, a restore or a seek draws the same effect. Its gameplay side runs in the tick, in the engine's og.vfx system (scheduled when a game first names og.Vfx or og.VfxEvent, after the systems defined so far): each `event` line sends an og.VfxEvent on the tick its time lands on (startTick plus its time rounded to ticks; an effect started after og.vfx ran that tick catches up on the next), each `shake` adds its trauma and each `sound` plays, then an effect that has ended and does not loop despawns its entity and its sounds (unless `despawn` is false). Element times run on the tick.
+   */
+  namespace vfx {
+    /**
+     * Play a composed effect now: a new entity with og.Transform (at the desc's position and rotation, a child of its parent when it has one) and og.Vfx started at this tick (world.tick). A system calling it writes og.Transform, og.Vfx and, with a parent, og.Parent. The entity despawns when the effect ends (og.Vfx.despawn).
+     *
+     * @param world The world.
+     * @param desc The effect and where.
+     * @returns Refused for an asset not loaded in this world or a dead parent.
+     */
+    function spawn(world: World, desc?: VfxSpawnDesc): Result<Entity>;
+    /**
+     * What a loaded composed effect holds.
+     *
+     * @param world The world.
+     * @param asset The effect.
+     * @returns Refused for an effect not loaded in this world.
+     */
+    function info(world: World, asset: VfxAsset): Result<VfxInfo>;
   }
 }

@@ -27,4 +27,4 @@ enum WipeSide {
 }
 ```
 
-<sub>`api.ogt` line 17648</sub>
+<sub>`api.ogt` line 17655</sub>

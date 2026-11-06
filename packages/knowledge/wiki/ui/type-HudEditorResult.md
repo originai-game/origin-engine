@@ -21,4 +21,4 @@ struct HudEditorResult {
 }
 ```
 
-<sub>`api.ogt` line 17473</sub>
+<sub>`api.ogt` line 17480</sub>

@@ -42,6 +42,7 @@ pub(crate) struct FxLayouts {
     pub particles: Option<Layout>,
     pub trail: Option<Layout>,
     pub beam: Option<Layout>,
+    pub vfx: Option<Layout>,
     pub skeleton: Option<Layout>,
     pub crowd: Option<Layout>,
     pub stylise: Option<Layout>,
@@ -67,6 +68,7 @@ impl FxLayouts {
             particles: get("og.ParticleSystem"),
             trail: get("og.Trail"),
             beam: get("og.Beam"),
+            vfx: get(crate::vfx::COMPONENT),
             skeleton: get("og.Skeleton"),
             crowd: get("og.CrowdAnimation"),
             stylise: get("og.Stylise"),
@@ -889,6 +891,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
     scene.decals.clear();
     scene.particles.clear();
     scene.particle_layers.clear();
+    scene.effect_meshes.clear();
     scene.hosted_particles.clear();
     let hosted = fx.host.as_ref().map(|h| super::particle_events::lock(h));
     scene.trails.clear();
@@ -1098,7 +1101,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
 }
 
 /// A trail style's identity: the bits of its fields.
-fn style_key(s: &TrailStyle) -> Vec<u32> {
+pub(crate) fn style_key(s: &TrailStyle) -> Vec<u32> {
     let mut k = vec![s.lifetime.to_bits(), s.min_distance.to_bits()];
     k.extend(
         s.width
@@ -1994,7 +1997,7 @@ fn parse_linked(
 
 /// A mesh particle's mesh: a built-in shape (made once) or a model's first
 /// mesh, the model loaded with the emitter.
-fn particle_mesh(
+pub(crate) fn particle_mesh(
     eng: &super::engine::Engine,
     mesh: og_bundle::fx::ParticleMesh<'_>,
 ) -> Result<MeshHandle, String> {

@@ -23,4 +23,4 @@ event QuestUpdated {
 }
 ```
 
-<sub>`api.ogt` line 14497</sub>
+<sub>`api.ogt` line 14504</sub>

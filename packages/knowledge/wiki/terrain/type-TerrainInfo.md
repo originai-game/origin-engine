@@ -49,4 +49,4 @@ struct TerrainInfo {
 }
 ```
 
-<sub>`api.ogt` line 25195</sub>
+<sub>`api.ogt` line 25202</sub>

@@ -108,7 +108,7 @@ pub fn parse_effect(text: &str, links: &mut EffectLinks<'_>) -> Result<EffectMat
     parse_effect_block(&doc.body, links)
 }
 
-fn nums(e: &Entry, from: usize) -> Result<Vec<f32>, String> {
+pub(crate) fn nums(e: &Entry, from: usize) -> Result<Vec<f32>, String> {
     e.values[from.min(e.values.len())..]
         .iter()
         .map(|v| {
@@ -120,14 +120,14 @@ fn nums(e: &Entry, from: usize) -> Result<Vec<f32>, String> {
         .collect()
 }
 
-fn one(e: &Entry) -> Result<f32, String> {
+pub(crate) fn one(e: &Entry) -> Result<f32, String> {
     match nums(e, 0)?[..] {
         [v] => Ok(v),
         _ => Err(format!("line {}: `{}` takes one number", e.line, e.key)),
     }
 }
 
-fn flag(e: &Entry) -> Result<bool, String> {
+pub(crate) fn flag(e: &Entry) -> Result<bool, String> {
     e.values
         .first()
         .and_then(Value::as_bool)
@@ -135,7 +135,7 @@ fn flag(e: &Entry) -> Result<bool, String> {
 }
 
 /// A value from `values` (a number, `random a b`, `curve t v ...`).
-fn value(e: &Entry, from: usize) -> Result<EffectValue, String> {
+pub(crate) fn value(e: &Entry, from: usize) -> Result<EffectValue, String> {
     let usage = || {
         format!(
             "line {}: {} <number> | random <min> <max> | curve <t> <v> ...",

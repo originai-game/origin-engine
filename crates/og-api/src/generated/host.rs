@@ -575,6 +575,8 @@ pub trait LoadApi: Wire {
     fn og_load_video_info(&self, world: u32, video: f64) -> String;
     /// `og.load.timeline`
     fn og_load_timeline(&self, world: u32, path: String) -> String;
+    /// `og.load.vfx`
+    fn og_load_vfx(&self, world: u32, path: String) -> String;
     /// `og.load.rig2d`
     fn og_load_rig2d(&self, world: u32, path: String) -> String;
     /// `og.load.imageData`
@@ -1473,10 +1475,18 @@ pub trait DestructionApi: Wire {
     fn og_destruction_capabilities(&self, world: u32) -> String;
 }
 
-/// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi {}
+/// `vfx`: packages/knowledge/wiki/vfx.md.
+pub trait VfxApi: Wire {
+    /// `og.vfx.spawn`
+    fn og_vfx_spawn(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.vfx.info`
+    fn og_vfx_info(&self, world: u32, asset: f64) -> String;
+}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi> Host for T {}
+/// Every trait: a host is a type that implements all of them.
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi + VfxApi {}
+
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi + VfxApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -1710,6 +1720,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_video",
     "og_load_video_info",
     "og_load_timeline",
+    "og_load_vfx",
     "og_load_rig2d",
     "og_load_image_data",
     "og_load_gltf_data",
@@ -2110,6 +2121,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_destruction_info",
     "og_destruction_material",
     "og_destruction_capabilities",
+    "og_vfx_spawn",
+    "og_vfx_info",
 ];
 
 pub use og_records::{COLUMNS, ColumnDecl, FieldDecl, RECORDS, RecordDecl};

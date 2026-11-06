@@ -129,6 +129,8 @@ mod tube_path;
 mod ui_configure;
 #[path = "../ui_material_reload.rs"]
 mod ui_material_reload;
+#[path = "../vfx.rs"]
+mod vfx;
 #[path = "../video_rendition.rs"]
 mod video_rendition;
 #[path = "../virtual_cameras.rs"]

@@ -40,4 +40,4 @@ resource ArtPalette {
 }
 ```
 
-<sub>`api.ogt` line 26623</sub>
+<sub>`api.ogt` line 26630</sub>

@@ -99,6 +99,7 @@ mod timeline;
 mod trace;
 mod ui_draw;
 mod uncooked;
+mod vfx;
 mod video;
 mod views;
 mod weather;
@@ -273,6 +274,7 @@ pub use timeline::{
 pub use trace::{BEFORE_ENGINE as TRACE_BEFORE_ENGINE, set as trace_set, take as trace_take};
 pub use ui_draw::{og_load_ui_material, og_load_vector, og_ui_set_draw};
 pub use uncooked::Decoded;
+pub use vfx::{og_load_vfx, og_vfx_info, og_vfx_spawn};
 pub use video::{og_load_video, og_load_video_info, og_video_capabilities};
 pub use views::{
     og_load_post, og_render_post_errors, og_render_render_target, og_render_set_post_param,

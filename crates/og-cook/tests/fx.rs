@@ -354,3 +354,34 @@ fn an_effect_material_cooks_and_an_emitter_names_it() {
         report.errors()
     );
 }
+
+/// A composed effect (`type vfx`) cooks to a blob the runtime parses back,
+/// and one naming an emitter or sound that is not in the project is
+/// refused by name.
+#[test]
+fn a_vfx_cooks_and_what_it_names_must_exist() {
+    let vfx = "type vfx\nversion 1\n---\nduration 1\nimpact 0.2\nemitter \"fx/sparks.ogt\" {\n  at 0\n}\n";
+    let broken = "type vfx\nversion 1\n---\nduration 1\nemitter \"fx/none.ogt\" {\n  at 0\n}\nsound \"sfx/none.wav\" {\n  at 0\n}\n";
+    let root = project(
+        "vfx",
+        &[
+            ("fx/hit.ogt", vfx.as_bytes()),
+            ("fx/broken.ogt", broken.as_bytes()),
+            (
+                "fx/sparks.ogt",
+                b"type particles\nversion 1\n---\nrate 10\n",
+            ),
+        ],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    let errors = report.errors().join("\n");
+    assert!(errors.contains("fx/broken.ogt"), "{errors}");
+    assert!(errors.contains("emitter fx/none.ogt"), "{errors}");
+    assert!(errors.contains("sound sfx/none.wav"), "{errors}");
+    assert!(!errors.contains("fx/hit.ogt"), "{errors}");
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let id = "fx/hit.ogt";
+    let bytes = std::fs::read(root.join("cooked").join(&bundle.output(id).unwrap().file)).unwrap();
+    let v = og_bundle::vfx::parse_vfx(&bundle.vfx_text(id, &bytes).unwrap()).unwrap();
+    assert_eq!(v.events[0].name, "impact");
+}

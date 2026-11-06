@@ -44,4 +44,4 @@ struct LootLabelDesc {
 }
 ```
 
-<sub>`api.ogt` line 22585</sub>
+<sub>`api.ogt` line 22592</sub>

@@ -25,4 +25,4 @@ enum LineJoin {
 }
 ```
 
-<sub>`api.ogt` line 22702</sub>
+<sub>`api.ogt` line 22709</sub>

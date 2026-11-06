@@ -25,4 +25,4 @@ event SeatRejoined {
 }
 ```
 
-<sub>`api.ogt` line 26359</sub>
+<sub>`api.ogt` line 26366</sub>

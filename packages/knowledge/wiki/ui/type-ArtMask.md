@@ -27,4 +27,4 @@ enum ArtMask {
 }
 ```
 
-<sub>`api.ogt` line 19018</sub>
+<sub>`api.ogt` line 19025</sub>

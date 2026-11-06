@@ -30,4 +30,4 @@ struct TooltipStat {
 }
 ```
 
-<sub>`api.ogt` line 21181</sub>
+<sub>`api.ogt` line 21188</sub>

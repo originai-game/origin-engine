@@ -150,4 +150,4 @@ resource WeatherState {
 }
 ```
 
-<sub>`api.ogt` line 10975</sub>
+<sub>`api.ogt` line 10982</sub>

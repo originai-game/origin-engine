@@ -26,4 +26,4 @@ struct TextEffectsDesc {
 }
 ```
 
-<sub>`api.ogt` line 23070</sub>
+<sub>`api.ogt` line 23077</sub>

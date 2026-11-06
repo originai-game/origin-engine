@@ -20,7 +20,7 @@ module nav {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 13536</sub>
+<sub>`api.ogt` line 13543</sub>
 
 ## Contents
 
@@ -91,7 +91,7 @@ column Navigation {
 }
 ```
 
-<sub>`api.ogt` line 13543</sub>
+<sub>`api.ogt` line 13550</sub>
 
 ## Constants
 
@@ -108,34 +108,34 @@ column Navigation {
 const NAV_IDLE u32 0 "NavAgent.status: not seeking."
 ```
 
-<sub>`api.ogt` line 13550</sub>
+<sub>`api.ogt` line 13557</sub>
 
 ```ogt
 const NAV_MOVING u32 1 "NavAgent.status: following a path or a flow field."
 ```
 
-<sub>`api.ogt` line 13551</sub>
+<sub>`api.ogt` line 13558</sub>
 
 ```ogt
 const NAV_ARRIVED u32 2 "NavAgent.status: within stopDistance of the target."
 ```
 
-<sub>`api.ogt` line 13552</sub>
+<sub>`api.ogt` line 13559</sub>
 
 ```ogt
 const NAV_UNREACHABLE u32 3 "NavAgent.status: no path reaches the target, or the agent is off its grid or navmesh."
 ```
 
-<sub>`api.ogt` line 13553</sub>
+<sub>`api.ogt` line 13560</sub>
 
 ```ogt
 const NAV_PARTIAL u32 4 "NavAgent.status: the target is cut off; moving to the reachable point nearest it."
 ```
 
-<sub>`api.ogt` line 13554</sub>
+<sub>`api.ogt` line 13561</sub>
 
 ```ogt
 const NAV_ON_LINK u32 5 "NavAgent.status: crossing an off-mesh link (a jump, a ladder, a door, a teleport)."
 ```
 
-<sub>`api.ogt` line 13555</sub>
+<sub>`api.ogt` line 13562</sub>

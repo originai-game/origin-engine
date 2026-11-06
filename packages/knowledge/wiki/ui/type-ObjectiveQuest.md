@@ -44,4 +44,4 @@ struct ObjectiveQuest {
 }
 ```
 
-<sub>`api.ogt` line 22086</sub>
+<sub>`api.ogt` line 22093</sub>

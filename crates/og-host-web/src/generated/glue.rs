@@ -1264,6 +1264,11 @@ pub fn og_load_timeline(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_vfx(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_vfx(&Host, world, path)
+}
+
+#[wasm_bindgen]
 pub fn og_load_rig2d(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_rig2d(&Host, world, path)
 }
@@ -3298,4 +3303,14 @@ pub fn og_destruction_material(world: u32, kind: u32) -> String {
 #[wasm_bindgen]
 pub fn og_destruction_capabilities(world: u32) -> String {
     <Host as DestructionApi>::og_destruction_capabilities(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> String {
+    <Host as VfxApi>::og_vfx_spawn(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_vfx_info(world: u32, asset: f64) -> String {
+    <Host as VfxApi>::og_vfx_info(&Host, world, asset)
 }

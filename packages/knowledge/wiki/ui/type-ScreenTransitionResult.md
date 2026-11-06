@@ -27,4 +27,4 @@ struct ScreenTransitionResult {
 }
 ```
 
-<sub>`api.ogt` line 17669</sub>
+<sub>`api.ogt` line 17676</sub>

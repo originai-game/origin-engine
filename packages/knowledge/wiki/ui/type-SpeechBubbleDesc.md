@@ -54,4 +54,4 @@ struct SpeechBubbleDesc {
 }
 ```
 
-<sub>`api.ogt` line 22622</sub>
+<sub>`api.ogt` line 22629</sub>

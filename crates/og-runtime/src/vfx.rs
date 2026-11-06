@@ -1,0 +1,798 @@
+//! Composed effects (`type vfx`, og_bundle::vfx): `og.load.vfx`, the
+//! `og.vfx` system that runs their gameplay side in the tick (og.VfxEvent,
+//! shakes, sounds, the despawn at the end) and their extraction, which
+//! expands every playing og.Vfx into the renderer's particle systems,
+//! effect meshes, trails, beams, lights and decals from (asset, seed,
+//! startTick, the tick) alone. Nothing extraction makes is world state.
+//!
+//! og.Vfx and og.VfxEvent are lazy (`super::lazy`): a world that never names
+//! them keeps its type table and hash, and has no og.vfx system.
+
+use super::codec::{Layout, RecordKind};
+use super::extract::{Hierarchy, RenderState};
+use glam::{Mat4, Quat, Vec3};
+use og_bundle::vfx::{Vfx, VfxKind, VfxShape};
+use og_core::{Error, ErrorKind};
+use og_ecs::{Entity, QueryDesc, SchemaId, SystemContext, SystemDesc, World};
+use og_render::{
+    Beam, ColorCurve, Curve, Decal, EffectMaterial, EffectMaterialHandle, EffectMesh,
+    EmitterHandle, Fresnel, Light, LightKind, MeshHandle, ParticleBlend, ParticleSystem, RibbonUv,
+    Trail, TrailStyle,
+};
+use serde_json::{Value, json};
+use std::cell::RefCell;
+use std::sync::{Arc, Mutex};
+
+pub(crate) const COMPONENT: &str = "og.Vfx";
+pub(crate) const EVENT: &str = "og.VfxEvent";
+pub(crate) const RECORDS: [&str; 2] = [COMPONENT, EVENT];
+const SYSTEM: &str = "og.vfx";
+/// og.Vfx.startTick's and ran's unwritten value.
+const UNSET: u64 = u32::MAX as u64;
+/// VfxAsset handles: this tag, then the load index plus one.
+const TAG: u64 = 0x7d << 32;
+
+fn handle(index: usize) -> f64 {
+    (TAG | (index as u64 + 1)) as f64
+}
+
+/// A VfxAsset handle's load index.
+fn index(v: &Value) -> Option<usize> {
+    let h = v.as_f64()? as u64;
+    (h & !0xffff_ffff == TAG && h & 0xffff_ffff > 0).then(|| (h & 0xffff_ffff) as usize - 1)
+}
+
+/// `og.VfxEvent`, registered from this type (its name is a str64), not
+/// from the IDL's declaration.
+#[derive(Clone, Copy, Debug, Default, PartialEq, og_core::Reflect)]
+#[reflect(name = "og.VfxEvent")]
+pub struct VfxEvent {
+    pub entity: u64,
+    pub asset: u64,
+    pub name: og_core::Str64,
+    pub time: f32,
+}
+
+/// What an element draws from or plays, linked at load.
+#[derive(Clone, Debug)]
+pub(crate) enum Link {
+    Emitter(EmitterHandle),
+    Mesh(MeshHandle, EffectMaterialHandle),
+    Effect(Option<EffectMaterialHandle>),
+    /// A sound's handle (og.AudioSource.sound).
+    Sound(f64),
+    None,
+}
+
+/// A loaded composed effect.
+#[derive(Debug)]
+pub(crate) struct Loaded {
+    pub id: String,
+    pub vfx: Vfx,
+    /// Per element, in file order.
+    pub links: Vec<Link>,
+}
+
+/// The effects a world loaded, by load index; shared by the loads, the
+/// og.vfx system and extraction.
+pub(crate) type Registry = Arc<Mutex<Vec<Arc<Loaded>>>>;
+
+thread_local! {
+    static SHARED: RefCell<og_core::IdMap<u32, Registry>> = const { RefCell::new(og_core::IdMap::new()) };
+}
+
+pub(crate) fn shared(engine: u32) -> Registry {
+    SHARED.with(|s| s.borrow_mut().entry(engine).or_default().clone())
+}
+
+fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+fn invalid(m: impl Into<String>) -> Error {
+    Error::new(ErrorKind::Invalid, m.into())
+}
+
+// ── loading ─────────────────────────────────────────────────────────────────
+
+/// A built-in effect mesh, made once.
+fn builtin_mesh(eng: &super::engine::Engine, shape: &VfxShape) -> Result<MeshHandle, String> {
+    use og_render::geometry::primitives as p;
+    let (name, make): (&'static str, fn() -> og_render::MeshData) = match shape {
+        VfxShape::Sphere => ("vfx:sphere", || og_render::shapes::sphere(32, 20)),
+        VfxShape::Quad => ("vfx:quad", || og_render::shapes::plane_xy(1.0, 1.0)),
+        VfxShape::Ring => ("vfx:ring", || {
+            p::ring(0.5, 1.0, 64, 2, 0.0, std::f32::consts::TAU)
+        }),
+        VfxShape::Box => ("vfx:box", || og_render::shapes::cuboid(Vec3::ONE)),
+        VfxShape::Cylinder => ("vfx:cylinder", || {
+            p::cylinder(&p::Cylinder {
+                radius_top: 0.5,
+                radius_bottom: 0.5,
+                open_ended: true,
+                ..Default::default()
+            })
+        }),
+        VfxShape::Model(m) => {
+            return super::fx::particle_mesh(eng, og_bundle::fx::ParticleMesh::Asset(m));
+        }
+    };
+    let mut rs = eng.render.borrow_mut();
+    if let Some(&h) = rs.fx.particle_meshes.get(name) {
+        return Ok(h);
+    }
+    let h = rs.scene.add_mesh(make());
+    rs.fx.particle_meshes.insert(name, h);
+    Ok(h)
+}
+
+/// The flash's material: a soft ball whose silhouette fades, so it reads
+/// as a glow facing the eye from every side.
+fn flash_material(eng: &super::engine::Engine) -> EffectMaterialHandle {
+    let mut rs = eng.render.borrow_mut();
+    if let Some(h) = rs.effects.flash {
+        return h;
+    }
+    let h = rs.scene.add_effect_material(EffectMaterial {
+        fresnel: Some(Fresnel {
+            power: 1.6,
+            strength: 1.0,
+            invert: true,
+        }),
+        blend: Some(ParticleBlend::Additive),
+        ..Default::default()
+    });
+    rs.effects.flash = Some(h);
+    h
+}
+
+fn link(eng: &super::engine::Engine, kind: &VfxKind) -> Result<Link, String> {
+    Ok(match kind {
+        VfxKind::Emitter { id, .. } => {
+            let i = super::fx::load_emitter(eng, id)?;
+            Link::Emitter(eng.render.borrow().fx.emitters[i])
+        }
+        VfxKind::Mesh { shape, effect, .. } => {
+            let mesh = builtin_mesh(eng, shape)?;
+            Link::Mesh(mesh, super::effect::load_effect(eng, effect)?)
+        }
+        VfxKind::Trail { effect, .. } | VfxKind::Beam { effect, .. } => Link::Effect(
+            effect
+                .as_deref()
+                .map(|e| super::effect::load_effect(eng, e))
+                .transpose()?,
+        ),
+        VfxKind::Flash { .. } => {
+            Link::Mesh(builtin_mesh(eng, &VfxShape::Sphere)?, flash_material(eng))
+        }
+        VfxKind::Sound { id, .. } => {
+            Link::Sound(super::assets::handle(super::assets::load_sound(eng, id)?) as f64)
+        }
+        VfxKind::Light { .. } | VfxKind::Decal { .. } | VfxKind::Shake { .. } => Link::None,
+    })
+}
+
+/// `og.load.vfx`: its load index, loading what it names once.
+pub(crate) fn load(eng: &super::engine::Engine, path: &str) -> Result<usize, String> {
+    let id = og_bundle::runtime::asset_id(path).to_string();
+    let registry = shared(eng.id);
+    if let Some(i) = lock(&registry).iter().position(|l| l.id == id) {
+        return Ok(i);
+    }
+    let text = {
+        let assets = eng.assets.borrow();
+        let (bytes, bundle) = assets.blob(&id)?;
+        bundle
+            .vfx_text(&id, bytes.bytes())
+            .map_err(|e| e.to_string())?
+    };
+    let vfx = og_bundle::vfx::parse_vfx(&text).map_err(|e| format!("{id}: {e}"))?;
+    let links = vfx
+        .elements
+        .iter()
+        .map(|e| link(eng, &e.kind))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("{id}: {e}"))?;
+    let mut r = lock(&registry);
+    r.push(Arc::new(Loaded { id, vfx, links }));
+    eng.render.borrow_mut().effects.vfx = Some(registry.clone());
+    Ok(r.len() - 1)
+}
+
+fn loaded(engine: u32, asset: f64) -> Result<Arc<Loaded>, String> {
+    index(&json!(asset))
+        .and_then(|i| lock(&shared(engine)).get(i).cloned())
+        .ok_or_else(|| format!("{asset} is not a vfx loaded in this world (og.load.vfx)"))
+}
+
+fn wire(r: Result<Value, String>) -> String {
+    match r {
+        Ok(v) => super::ok(v),
+        Err(e) => super::refuse(e),
+    }
+}
+
+/// A wire answer's value, or its reason.
+fn answer(text: &str) -> Result<Value, String> {
+    let v: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
+    if v["ok"].as_bool() == Some(true) {
+        Ok(v["value"].clone())
+    } else {
+        Err(v["reason"].as_str().unwrap_or("refused").to_string())
+    }
+}
+
+pub fn og_load_vfx(world: u32, path: String) -> String {
+    wire(
+        super::engine::engine(world)
+            .and_then(|eng| load(&eng, &path))
+            .map(|i| json!(handle(i))),
+    )
+}
+
+pub fn og_vfx_info(world: u32, asset: f64) -> String {
+    wire((|| {
+        super::engine::engine(world)?;
+        let l = loaded(world, asset)?;
+        let v = &l.vfx;
+        Ok(json!({
+            "asset": asset,
+            "duration": v.duration,
+            "loop": v.looping,
+            "events": v.events.iter().map(|e| e.name.clone()).collect::<Vec<_>>(),
+            "impact": v.events.iter().find(|e| e.name == og_bundle::vfx::IMPACT).map_or(-1.0, |e| e.time),
+            "elements": v.elements.iter().map(|e| e.kind.name()).collect::<Vec<_>>(),
+        }))
+    })())
+}
+
+pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> String {
+    wire((|| {
+        let d: Value = match desc.as_deref() {
+            Some(t) => serde_json::from_str(t).map_err(|e| e.to_string())?,
+            None => json!({}),
+        };
+        let asset = d["asset"].as_f64().unwrap_or(0.0);
+        loaded(world, asset)?;
+        let mut spawn = serde_json::Map::new();
+        for (from, to) in [
+            ("position", "position"),
+            ("rotation", "quaternion"),
+            ("parent", "parent"),
+        ] {
+            if let Some(v) = d.get(from).filter(|v| !v.is_null()) {
+                spawn.insert(to.into(), v.clone());
+            }
+        }
+        let e = answer(&super::api::og_world_spawn(
+            world,
+            Some(Value::Object(spawn).to_string()),
+        ))?;
+        let bits = e.as_u64().ok_or("world.spawn answered no entity")?;
+        let seed = match d["seed"].as_u64().unwrap_or(0) {
+            0 => (splitmix(bits) as u32).max(1),
+            s => s as u32,
+        };
+        let mut v = json!({
+            "asset": asset,
+            "seed": seed,
+            "startTick": super::api::og_world_get_tick(world),
+        });
+        for k in ["scale", "tint"] {
+            if let Some(x) = d.get(k).filter(|x| !x.is_null()) {
+                v[k] = x.clone();
+            }
+        }
+        answer(&super::api::og_world_insert(
+            world,
+            bits as f64,
+            COMPONENT.into(),
+            Some(v.to_string()),
+        ))?;
+        Ok(e)
+    })())
+}
+
+// ── shared arithmetic ───────────────────────────────────────────────────────
+
+fn splitmix(x: u64) -> u64 {
+    let mut z = x.wrapping_add(0x9e37_79b9_7f4a_7c15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    z ^ (z >> 31)
+}
+
+/// An element's random value, 0 to 1, fixed per instance.
+fn random(seed: u32, element: usize) -> f32 {
+    (splitmix(u64::from(seed) << 16 | element as u64) >> 40) as f32 / (1u64 << 24) as f32
+}
+
+/// The renderer id of an instance's element (a system, a trail, a mesh).
+fn element_id(entity: u64, element: usize) -> u64 {
+    splitmix(entity ^ ((element as u64 + 1) << 52)) & !(1 << 63)
+}
+
+fn ticks(seconds: f32, rate: f32) -> u64 {
+    (f64::from(seconds) * f64::from(rate)).round().max(0.0) as u64
+}
+
+/// The tick an instance's current cycle started (a looping effect starts
+/// over every duration), or None before it starts or after a non-looping
+/// one ends.
+fn cycle_start(v: &Vfx, start: u64, tick: u64, rate: f32) -> Option<u64> {
+    if tick < start {
+        return None;
+    }
+    let len = ticks(v.duration, rate).max(1);
+    let since = tick - start;
+    if v.looping {
+        Some(start + since / len * len)
+    } else {
+        (since <= len).then_some(start)
+    }
+}
+
+// ── the tick: events, shakes, sounds and the end ─────────────────────────────
+
+struct Records {
+    vfx: (SchemaId, Layout),
+    event: (SchemaId, Layout),
+    source: (SchemaId, Layout),
+    transform: (SchemaId, Layout),
+    parent: (SchemaId, Layout),
+}
+
+fn layout(world: &World, name: &str, kind: RecordKind) -> og_core::Result<(SchemaId, Layout)> {
+    let id = world.id_by_name(name)?;
+    Ok((id, Layout::from_schema(world.schema(id)?, kind)))
+}
+
+/// Registers og.vfx on a world that names og.Vfx or og.VfxEvent
+/// (`super::lazy`), after every system scheduled so far.
+pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
+    if world.systems().contains(&SYSTEM) || world.id_by_name(COMPONENT).is_err() {
+        return Ok(());
+    }
+    let Ok(event) = layout(world, EVENT, RecordKind::Event) else {
+        // og.VfxEvent registers with og.Vfx (super::lazy's TOGETHER); its
+        // partner's enable schedules the system.
+        return Ok(());
+    };
+    let r = Records {
+        vfx: layout(world, COMPONENT, RecordKind::Component)?,
+        event,
+        source: layout(world, "og.AudioSource", RecordKind::Component)?,
+        transform: layout(world, "og.Transform", RecordKind::Component)?,
+        parent: layout(world, "og.Parent", RecordKind::Component)?,
+    };
+    let feel = super::engine::engine(engine_id)
+        .ok()
+        .and_then(|e| e.state.borrow().feel.clone())
+        .map(|f| f.shared);
+    let registry = shared(engine_id);
+    let names = [COMPONENT, "og.Parent"];
+    world.add_system(
+        SystemDesc {
+            name: SYSTEM.into(),
+            reads: names.iter().map(|n| n.to_string()).collect(),
+            writes: vec![
+                COMPONENT.into(),
+                EVENT.into(),
+                "og.AudioSource".into(),
+                "og.Transform".into(),
+                "og.Parent".into(),
+            ],
+            queries: names
+                .iter()
+                .map(|n| QueryDesc {
+                    read: vec![n.to_string()],
+                    ..QueryDesc::default()
+                })
+                .collect(),
+            ..Default::default()
+        },
+        move |ctx| system(ctx, &registry, feel.as_deref(), &r),
+    )
+}
+
+fn system(
+    ctx: &mut SystemContext<'_>,
+    registry: &Mutex<Vec<Arc<Loaded>>>,
+    feel: Option<&Mutex<super::feel::FeelShared>>,
+    r: &Records,
+) -> og_core::Result<()> {
+    let time = ctx.time();
+    let rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
+    let tick = time.tick;
+    let mut rows = Vec::new();
+    for a in ctx.query(0)? {
+        rows.extend_from_slice(a.entities());
+    }
+    og_core::sort::sort_by_key(&mut rows, |e| e.index());
+    let mut ended = Vec::new();
+    for e in rows {
+        let bytes = ctx.get_bytes(e, r.vfx.0)?;
+        let mut v = r.vfx.1.decode(&bytes);
+        let start = v["startTick"].as_u64().unwrap_or(UNSET);
+        let Some(l) = index(&v["asset"]).and_then(|i| lock(registry).get(i).cloned()) else {
+            continue;
+        };
+        if start == UNSET || tick < start {
+            continue;
+        }
+        let fx = &l.vfx;
+        let len = ticks(fx.duration, rate).max(1);
+        // The ticks to run: those after the last run (a startTick written
+        // again starts over), at most one cycle back.
+        let ran = v["ran"].as_u64().unwrap_or(UNSET);
+        let from = if ran != UNSET && ran >= start {
+            if ran >= tick {
+                continue;
+            }
+            ran + 1
+        } else {
+            start
+        };
+        let from = from.max(tick.saturating_sub(len));
+        let seed = v["seed"].as_u64().unwrap_or(0) as u32;
+        let scale = v["scale"].as_f64().unwrap_or(1.0) as f32;
+        // Whether a time lands on one of the ticks run (its tick in the
+        // cycle; a looping effect's end is its next start).
+        let due = |at: f32| -> bool {
+            let k = ticks(at, rate).min(len);
+            let k = if fx.looping { k % len } else { k };
+            (from..=tick).any(|t| {
+                let since = t - start;
+                k == if fx.looping { since % len } else { since }
+            })
+        };
+        for ev in &fx.events {
+            if due(ev.time) {
+                let value = json!({ "entity": e.to_bits(), "asset": v["asset"], "name": ev.name, "time": ev.time });
+                let b = r.event.1.encode(None, Some(&value)).map_err(invalid)?;
+                ctx.send_bytes(r.event.0, &b)?;
+            }
+        }
+        for (i, el) in fx.elements.iter().enumerate() {
+            if !due(el.at) {
+                continue;
+            }
+            match (&el.kind, &l.links[i]) {
+                (VfxKind::Shake { trauma }, _) => {
+                    if let Some(f) = feel {
+                        lock(f)
+                            .camera_ops
+                            .push(super::feel::CameraOp::Shake(*trauma));
+                    }
+                }
+                (VfxKind::Sound { volume, pitch, .. }, Link::Sound(sound)) => {
+                    let p = pitch[0] + (pitch[1] - pitch[0]) * random(seed, i);
+                    let o = el.offset * scale;
+                    let src = json!({
+                        "sound": sound, "volume": volume, "pitch": p,
+                        "playing": true, "spatial": true,
+                    });
+                    let at = json!({ "position": { "x": o.x, "y": o.y, "z": o.z } });
+                    ctx.spawn_bytes(vec![
+                        (
+                            r.source.0,
+                            r.source.1.encode(None, Some(&src)).map_err(invalid)?,
+                        ),
+                        (
+                            r.transform.0,
+                            r.transform.1.encode(None, Some(&at)).map_err(invalid)?,
+                        ),
+                        (
+                            r.parent.0,
+                            r.parent
+                                .1
+                                .encode(None, Some(&json!({ "entity": e.to_bits() })))
+                                .map_err(invalid)?,
+                        ),
+                    ])?;
+                }
+                _ => {}
+            }
+        }
+        v["ran"] = json!(tick);
+        let out = r.vfx.1.encode(Some(&bytes), Some(&v)).map_err(invalid)?;
+        ctx.set_bytes(e, r.vfx.0, &out)?;
+        if !fx.looping && tick - start >= len && v["despawn"].as_bool().unwrap_or(true) {
+            ended.push(e);
+        }
+    }
+    if ended.is_empty() {
+        return Ok(());
+    }
+    // The ended effects and their sounds (children by og.Parent).
+    let mut children = Vec::new();
+    for a in ctx.query(1)? {
+        children.extend_from_slice(a.entities());
+    }
+    for c in children {
+        let p = r.parent.1.decode(&ctx.get_bytes(c, r.parent.0)?);
+        let parent = Entity::from_bits(p["entity"].as_u64().unwrap_or(0));
+        if ended.contains(&parent) && ctx.get_bytes(c, r.source.0).is_ok() {
+            ctx.despawn(c)?;
+        }
+    }
+    for e in ended {
+        ctx.despawn(e)?;
+    }
+    Ok(())
+}
+
+// ── extraction ──────────────────────────────────────────────────────────────
+
+fn f(v: &Value, k: &str, d: f32) -> f32 {
+    v[k].as_f64().map_or(d, |x| x as f32)
+}
+
+fn tinted(c: [f32; 4], t: Vec3) -> [f32; 4] {
+    [c[0] * t.x, c[1] * t.y, c[2] * t.z, c[3]]
+}
+
+fn euler(deg: Vec3) -> Quat {
+    let r = deg * (std::f32::consts::PI / 180.0);
+    use og_core::math::quat_from_axis_angle as turn;
+    turn(Vec3::X, r.x) * turn(Vec3::Y, r.y) * turn(Vec3::Z, r.z)
+}
+
+/// Every playing og.Vfx expanded into the scene's systems, meshes, trails,
+/// beams, lights and decals for the frame at `tick`.
+pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, tick: u64) {
+    let Some(registry) = rs.effects.vfx.clone() else {
+        return;
+    };
+    let rows = super::fx::rows(world, rs.draw.fx.vfx.as_ref());
+    if rows.is_empty() {
+        return;
+    }
+    let loaded = lock(&registry).clone();
+    let rate = rs.scene.tick_rate.max(1.0);
+    for (e, v) in rows {
+        let Some(l) = index(&v["asset"]).and_then(|i| loaded.get(i)) else {
+            continue;
+        };
+        let start = v["startTick"].as_u64().unwrap_or(UNSET);
+        if start == UNSET {
+            continue;
+        }
+        let fx = &l.vfx;
+        let Some(cycle) = cycle_start(fx, start, tick, rate) else {
+            continue;
+        };
+        let seed = v["seed"].as_u64().unwrap_or(0) as u32;
+        let scale = f(&v, "scale", 1.0).max(0.0);
+        let tint = super::fx::color(&v["tint"], Vec3::ONE);
+        let m = h.world_of(e) * Mat4::from_scale(Vec3::splat(scale));
+        let t = (tick - cycle) as f32 / rate;
+        for (i, (el, link)) in fx.elements.iter().zip(&l.links).enumerate() {
+            let te = t - el.at;
+            if te < 0.0 {
+                continue;
+            }
+            let local = m * el.local();
+            let life = el.life.max(1e-4);
+            let x = (te / life).clamp(0.0, 1.0);
+            let rnd = random(seed, i);
+            let id = element_id(e, i);
+            let alive = te <= el.life;
+            match (&el.kind, link) {
+                (VfxKind::Emitter { seed: s, .. }, Link::Emitter(handle)) => {
+                    let begin = cycle + ticks(el.at, rate);
+                    let emitter = tinted_emitter(rs, *handle, tint);
+                    rs.scene.particles.push(ParticleSystem {
+                        stop_tick: (el.life > 0.0).then(|| begin + ticks(el.life, rate).max(1)),
+                        start_tick: begin,
+                        ..ParticleSystem::new(
+                            id,
+                            emitter,
+                            local,
+                            u64::from(seed.wrapping_add(*s)),
+                            tick,
+                        )
+                    });
+                }
+                (
+                    VfxKind::Mesh {
+                        scale: size,
+                        spin,
+                        color,
+                        blend,
+                        ..
+                    },
+                    Link::Mesh(mesh, material),
+                ) if alive => {
+                    rs.scene.effect_meshes.push(EffectMesh {
+                        id,
+                        mesh: *mesh,
+                        material: *material,
+                        transform: local
+                            * Mat4::from_quat(euler(*spin * te))
+                            * Mat4::from_scale(Vec3::splat(size.eval(x, rnd))),
+                        life: x,
+                        seed: u64::from(seed) ^ i as u64,
+                        color: tinted(*color, tint),
+                        blend: *blend,
+                        layers: 1,
+                    });
+                }
+                (VfxKind::Flash { size, color }, Link::Mesh(mesh, material)) if alive => {
+                    rs.scene.effect_meshes.push(EffectMesh {
+                        id,
+                        mesh: *mesh,
+                        material: *material,
+                        transform: local * Mat4::from_scale(Vec3::splat(size.eval(x, rnd))),
+                        life: x,
+                        seed: u64::from(seed) ^ i as u64,
+                        color: tinted(*color, tint),
+                        blend: ParticleBlend::Additive,
+                        layers: 1,
+                    });
+                }
+                (
+                    VfxKind::Trail {
+                        width,
+                        lifetime,
+                        color,
+                        orbit,
+                        rise,
+                        ..
+                    },
+                    Link::Effect(effect),
+                ) if te <= el.life + lifetime => {
+                    let tc = te.min(el.life);
+                    let a = orbit[1] * tc * std::f32::consts::TAU;
+                    let (sa, ca) = og_core::math::sin_cos(a);
+                    let p = Vec3::new(orbit[0] * ca, rise * tc, orbit[0] * sa);
+                    let style = TrailStyle {
+                        lifetime: *lifetime,
+                        min_distance: 0.02 * scale,
+                        width: Curve::linear(width[0] * scale, width[1] * scale),
+                        color: ColorCurve::constant(tinted(*color, tint)),
+                        uv: RibbonUv::Stretch,
+                        blend: ParticleBlend::Additive,
+                        effect: *effect,
+                        ..Default::default()
+                    };
+                    let key = super::fx::style_key(&style);
+                    let handle = match rs.fx.trail_styles.get(&key) {
+                        Some(h) => *h,
+                        None => {
+                            let h = rs.scene.add_trail_style(style);
+                            rs.fx.trail_styles.insert(key, h);
+                            h
+                        }
+                    };
+                    rs.scene.trails.push(Trail {
+                        id,
+                        style: handle,
+                        position: local.transform_point3(p),
+                        tick,
+                    });
+                }
+                (
+                    VfxKind::Beam {
+                        to,
+                        width,
+                        color,
+                        segments,
+                        jitter,
+                        ..
+                    },
+                    Link::Effect(effect),
+                ) if alive => {
+                    rs.scene.beams.push(Beam {
+                        start: local.transform_point3(Vec3::ZERO),
+                        end: local.transform_point3(*to),
+                        width: width * scale,
+                        color: tinted(*color, tint),
+                        segments: *segments,
+                        jitter: jitter * scale,
+                        seed: u64::from(seed) ^ i as u64,
+                        blend: ParticleBlend::Additive,
+                        effect: *effect,
+                        ..Default::default()
+                    });
+                }
+                (
+                    VfxKind::Light {
+                        color,
+                        intensity,
+                        distance,
+                    },
+                    _,
+                ) if alive => {
+                    rs.scene.lights.push(Light {
+                        kind: LightKind::Point,
+                        position: local.transform_point3(Vec3::ZERO),
+                        color: Vec3::from_array(*color) * tint,
+                        intensity: intensity.eval(x, rnd).max(0.0),
+                        range: distance * scale,
+                        cast_shadows: false,
+                    });
+                }
+                (
+                    VfxKind::Decal {
+                        uv,
+                        size,
+                        fade,
+                        color,
+                    },
+                    _,
+                ) if alive => {
+                    let a = if *fade > 0.0 {
+                        ((el.life - te) / fade).clamp(0.0, 1.0)
+                    } else {
+                        1.0
+                    };
+                    let c = tinted(*color, tint);
+                    // Its unit box projects along its -z: turned down the
+                    // element's -y, y the depth.
+                    rs.scene.decals.push(Decal {
+                        transform: local
+                            * Mat4::from_rotation_x(-std::f32::consts::FRAC_PI_2)
+                            * Mat4::from_scale(Vec3::new(size.x, size.z, size.y)),
+                        uv_rect: *uv,
+                        color: [c[0], c[1], c[2], c[3] * a],
+                        ..Default::default()
+                    });
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+/// `handle` drawn with its colour times `tint`: a copy of the emitter per
+/// tint, made once.
+fn tinted_emitter(rs: &mut RenderState, handle: EmitterHandle, tint: Vec3) -> EmitterHandle {
+    if tint == Vec3::ONE {
+        return handle;
+    }
+    let key = (handle, tint.to_array().map(f32::to_bits));
+    if let Some(&h) = rs.effects.tinted.get(&key) {
+        return h;
+    }
+    let Some(mut e) = rs.scene.emitter(handle).cloned() else {
+        return handle;
+    };
+    e.color = tinted(e.color, tint);
+    let h = rs.scene.add_emitter(e);
+    rs.effects.tinted.insert(key, h);
+    h
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn vfx(looping: bool) -> Vfx {
+        Vfx {
+            duration: 1.0,
+            looping,
+            events: Vec::new(),
+            elements: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn a_cycle_starts_at_the_start_and_over_at_each_duration_when_looping() {
+        // 60 ticks a second: a 1 s effect started at tick 100.
+        assert_eq!(cycle_start(&vfx(false), 100, 99, 60.0), None);
+        assert_eq!(cycle_start(&vfx(false), 100, 160, 60.0), Some(100));
+        assert_eq!(cycle_start(&vfx(false), 100, 161, 60.0), None);
+        assert_eq!(cycle_start(&vfx(true), 100, 161, 60.0), Some(160));
+        assert_eq!(cycle_start(&vfx(true), 100, 280, 60.0), Some(280));
+    }
+
+    #[test]
+    fn instances_differ_by_seed_and_elements_by_index() {
+        assert_ne!(random(1, 0), random(2, 0));
+        assert_ne!(random(1, 0), random(1, 1));
+        assert!((0.0..1.0).contains(&random(7, 3)));
+        assert_ne!(element_id(5, 0), element_id(5, 1));
+        assert_eq!(element_id(5, 0) >> 63, 0);
+    }
+}

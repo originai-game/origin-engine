@@ -29,4 +29,4 @@ struct RoomInfo {
 }
 ```
 
-<sub>`api.ogt` line 15403</sub>
+<sub>`api.ogt` line 15410</sub>

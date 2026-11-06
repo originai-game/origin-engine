@@ -1846,6 +1846,7 @@ export const load = Object.freeze({
   gltfInfo: (world: WorldImpl, asset: number) => parse(abi().og_load_gltf_info(world.id, asset)),
   animation: (world: WorldImpl, path: string) => parse(abi().og_load_animation(world.id, path)),
   timeline: (world: WorldImpl, path: string) => parse(abi().og_load_timeline(world.id, path)),
+  vfx: (world: WorldImpl, path: string) => parse(abi().og_load_vfx(world.id, path)),
   flipbook: (world: WorldImpl, path: string) => parse(abi().og_load_flipbook(world.id, path)),
   rig: (world: WorldImpl, path: string) => parse(abi().og_load_rig(world.id, path)),
   rig2d: (world: WorldImpl, path: string) => parse(abi().og_load_rig2d(world.id, path)),

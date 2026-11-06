@@ -1515,6 +1515,12 @@ pub fn og_load_timeline(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_timeline(&Host, world, path)
 }
 
+#[napi(js_name = "og_load_vfx")]
+pub fn og_load_vfx(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_vfx(&Host, world, path)
+}
+
 #[napi(js_name = "og_load_rig2d")]
 pub fn og_load_rig2d(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -3950,4 +3956,16 @@ pub fn og_destruction_material(env: Env, world: u32, kind: u32) -> String {
 pub fn og_destruction_capabilities(env: Env, world: u32) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as DestructionApi>::og_destruction_capabilities(&Host, world)
+}
+
+#[napi(js_name = "og_vfx_spawn")]
+pub fn og_vfx_spawn(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as VfxApi>::og_vfx_spawn(&Host, world, desc)
+}
+
+#[napi(js_name = "og_vfx_info")]
+pub fn og_vfx_info(env: Env, world: u32, asset: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as VfxApi>::og_vfx_info(&Host, world, asset)
 }

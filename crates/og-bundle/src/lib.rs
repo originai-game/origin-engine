@@ -35,3 +35,4 @@ pub mod qoa;
 pub mod runtime;
 pub mod scene_text;
 pub mod shader;
+pub mod vfx;

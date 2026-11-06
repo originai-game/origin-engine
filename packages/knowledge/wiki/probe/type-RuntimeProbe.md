@@ -15,7 +15,7 @@ interface RuntimeProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 24614</sub>
+<sub>`api.ogt` line 24621</sub>
 
 <a id="member-RuntimeProbe-version"></a>
 
@@ -35,7 +35,7 @@ prop version u32 "PROBE_VERSION." {
 }
 ```
 
-<sub>`api.ogt` line 24618</sub>
+<sub>`api.ogt` line 24625</sub>
 
 <a id="member-RuntimeProbe-tick"></a>
 
@@ -59,7 +59,7 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 24621</sub>
+<sub>`api.ogt` line 24628</sub>
 
 <a id="member-RuntimeProbe-state"></a>
 
@@ -83,7 +83,7 @@ fn state {
 }
 ```
 
-<sub>`api.ogt` line 24626</sub>
+<sub>`api.ogt` line 24633</sub>
 
 <a id="member-RuntimeProbe-advance"></a>
 
@@ -111,7 +111,7 @@ fn advance {
 }
 ```
 
-<sub>`api.ogt` line 24631</sub>
+<sub>`api.ogt` line 24638</sub>
 
 <a id="member-RuntimeProbe-pause"></a>
 
@@ -134,7 +134,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 24636</sub>
+<sub>`api.ogt` line 24643</sub>
 
 <a id="member-RuntimeProbe-resume"></a>
 
@@ -157,7 +157,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 24640</sub>
+<sub>`api.ogt` line 24647</sub>
 
 <a id="member-RuntimeProbe-input"></a>
 
@@ -186,7 +186,7 @@ fn input {
 }
 ```
 
-<sub>`api.ogt` line 24644</sub>
+<sub>`api.ogt` line 24651</sub>
 
 <a id="member-RuntimeProbe-accepted"></a>
 
@@ -209,7 +209,7 @@ fn accepted {
 }
 ```
 
-<sub>`api.ogt` line 24650</sub>
+<sub>`api.ogt` line 24657</sub>
 
 <a id="member-RuntimeProbe-pick"></a>
 
@@ -240,7 +240,7 @@ fn pick {
 }
 ```
 
-<sub>`api.ogt` line 24654</sub>
+<sub>`api.ogt` line 24661</sub>
 
 <a id="member-RuntimeProbe-entity"></a>
 
@@ -269,7 +269,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 24661</sub>
+<sub>`api.ogt` line 24668</sub>
 
 <a id="member-RuntimeProbe-bounds"></a>
 
@@ -297,7 +297,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 24667</sub>
+<sub>`api.ogt` line 24674</sub>
 
 <a id="member-RuntimeProbe-patch"></a>
 
@@ -329,7 +329,7 @@ fn patch {
 }
 ```
 
-<sub>`api.ogt` line 24672</sub>
+<sub>`api.ogt` line 24679</sub>
 
 <a id="member-RuntimeProbe-run"></a>
 
@@ -357,4 +357,4 @@ fn run {
 }
 ```
 
-<sub>`api.ogt` line 24679</sub>
+<sub>`api.ogt` line 24686</sub>

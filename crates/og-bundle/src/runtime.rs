@@ -686,6 +686,19 @@ impl Bundle {
             .map_err(|_| invalid(&blob, "the effect text is not UTF-8"))
     }
 
+    /// The validated text of a composed effect blob (parse it with
+    /// [`crate::vfx::parse_vfx`]).
+    pub fn vfx_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
+        let blob = self.blob::<format::Vfx>(id, bytes)?;
+        let meta = one::<format::VfxMeta>(&blob)?;
+        let text = blob.raw("text")?;
+        if text.len() < meta.text_bytes as usize {
+            return Err(invalid(&blob, "the vfx text is cut short"));
+        }
+        String::from_utf8(text[..meta.text_bytes as usize].to_vec())
+            .map_err(|_| invalid(&blob, "the vfx text is not UTF-8"))
+    }
+
     /// The material shader of a shader blob.
     pub fn shader(&self, id: &str, bytes: &[u8]) -> Result<og_render::MaterialShader, LoadError> {
         let blob = self.blob::<format::Shader>(id, bytes)?;

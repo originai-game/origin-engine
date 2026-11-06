@@ -72,4 +72,4 @@ struct MinimapViewDesc {
 }
 ```
 
-<sub>`api.ogt` line 21967</sub>
+<sub>`api.ogt` line 21974</sub>

@@ -43,4 +43,4 @@ struct CelebrationDesc {
 }
 ```
 
-<sub>`api.ogt` line 21510</sub>
+<sub>`api.ogt` line 21517</sub>

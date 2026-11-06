@@ -29,4 +29,4 @@ enum BannerKind {
 }
 ```
 
-<sub>`api.ogt` line 21434</sub>
+<sub>`api.ogt` line 21441</sub>

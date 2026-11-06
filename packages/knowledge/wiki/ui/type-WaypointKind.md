@@ -31,4 +31,4 @@ enum WaypointKind {
 }
 ```
 
-<sub>`api.ogt` line 22357</sub>
+<sub>`api.ogt` line 22364</sub>

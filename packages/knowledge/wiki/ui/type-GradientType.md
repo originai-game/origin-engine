@@ -27,4 +27,4 @@ enum GradientType {
 }
 ```
 
-<sub>`api.ogt` line 22764</sub>
+<sub>`api.ogt` line 22771</sub>

@@ -61,6 +61,7 @@ mod timeline;
 pub mod ts_refs;
 pub mod ui_screens;
 pub mod vector;
+mod vfx;
 pub mod video;
 pub mod vox;
 
@@ -115,6 +116,7 @@ enum Kind {
     Lut,
     Emitter,
     Effect,
+    Vfx,
     Style,
     Document,
     Tileset,
@@ -155,6 +157,7 @@ impl Kind {
             Kind::Lut => "lut",
             Kind::Emitter => "emitter",
             Kind::Effect => "effect",
+            Kind::Vfx => "vfx",
             Kind::Style => "style",
             Kind::Document => "document",
             Kind::Tileset => "tileset",
@@ -284,6 +287,7 @@ enum Work<'a> {
     Lut(&'a Source),
     Emitter(&'a Source),
     Effect(&'a Source),
+    Vfx(&'a Source),
     Style(&'a Source),
     Document(&'a Source),
     Tileset(&'a Source),
@@ -1275,6 +1279,11 @@ pub fn cook_project_with_texture_cache(
                     .collect();
                 let st = stamp(&[b"effect", &hash, refs.join("\n").as_bytes()]);
                 outs.push((s.rel.clone(), format::Effect::NAME, st, Work::Effect(s)));
+            }
+            Kind::Vfx => {
+                let st = vfx::stamp_inputs(s, &|id| known.contains(id));
+                let st = stamp(&[b"vfx", &hash, st.as_bytes()]);
+                outs.push((s.rel.clone(), format::Vfx::NAME, st, Work::Vfx(s)));
             }
             Kind::Shader => {
                 // The stamp covers the WGSL file the shader names.

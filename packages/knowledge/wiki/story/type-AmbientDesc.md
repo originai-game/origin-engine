@@ -32,4 +32,4 @@ struct AmbientDesc {
 }
 ```
 
-<sub>`api.ogt` line 14632</sub>
+<sub>`api.ogt` line 14639</sub>

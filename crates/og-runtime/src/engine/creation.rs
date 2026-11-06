@@ -209,6 +209,7 @@ pub(crate) fn assemble(
             || super::feel::REGISTERED_BY_FEEL.contains(&decl.schema)
             || super::timeline::REGISTERED_BY_TIMELINE.contains(&decl.schema)
             || decl.schema == super::stream::EVENT
+            || decl.schema == crate::vfx::EVENT
         {
             continue;
         }
@@ -255,6 +256,13 @@ pub(crate) fn assemble(
     }
     // og.timeline's events (the marker's name is a str64).
     super::timeline::register_records(&mut world, &mut layouts)?;
+    // og.VfxEvent (its name is a str64): its layout from its Rust type,
+    // registered lazily (super::super::lazy) like og.Vfx.
+    {
+        use og_core::Reflect;
+        let l = Layout::from_schema(&crate::vfx::VfxEvent::schema(), RecordKind::Event);
+        layouts.insert(l.schema.clone(), l);
+    }
     // og.stream's event (its group is a str64), registered as it is sent.
     {
         world

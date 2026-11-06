@@ -303,6 +303,14 @@ row!(
 );
 
 row!(
+    /// The root of a composed effect blob (an `.ogt` of `type vfx`).
+    VfxMeta, "og.Vfx", 1 {
+        /// Bytes of the validated vfx text in `text`.
+        text_bytes: u32,
+    }
+);
+
+row!(
     /// The root of a UI style blob (an `.ogt` of `type style`).
     StyleMeta, "og.UiStyle", 1 {
         /// Bytes of the validated style text in `text`.
@@ -454,6 +462,16 @@ impl BlobKind for Effect {
     const NAME: &'static str = "og.EffectMaterial";
     fn schemas() -> Vec<Schema> {
         vec![EffectMeta::schema()]
+    }
+}
+
+/// The composed effect blob: `text` holds the vfx file the cook validated
+/// (`crate::vfx`), parsed again at load.
+pub struct Vfx;
+impl BlobKind for Vfx {
+    const NAME: &'static str = "og.Vfx";
+    fn schemas() -> Vec<Schema> {
+        vec![VfxMeta::schema()]
     }
 }
 

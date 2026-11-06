@@ -111,4 +111,4 @@ component Garment {
 }
 ```
 
-<sub>`api.ogt` line 9581</sub>
+<sub>`api.ogt` line 9588</sub>

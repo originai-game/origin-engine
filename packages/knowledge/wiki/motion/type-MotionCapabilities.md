@@ -25,4 +25,4 @@ struct MotionCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 26999</sub>
+<sub>`api.ogt` line 27006</sub>

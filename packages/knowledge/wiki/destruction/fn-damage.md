@@ -32,4 +32,4 @@ fn damage {
 }
 ```
 
-<sub>`api.ogt` line 27352</sub>
+<sub>`api.ogt` line 27359</sub>

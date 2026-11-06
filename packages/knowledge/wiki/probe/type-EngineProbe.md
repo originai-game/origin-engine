@@ -18,7 +18,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 24686</sub>
+<sub>`api.ogt` line 24693</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -42,7 +42,7 @@ fn hello {
 }
 ```
 
-<sub>`api.ogt` line 24691</sub>
+<sub>`api.ogt` line 24698</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -83,7 +83,7 @@ fn capture {
 }
 ```
 
-<sub>`api.ogt` line 24696</sub>
+<sub>`api.ogt` line 24703</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -113,7 +113,7 @@ fn sweep {
 }
 ```
 
-<sub>`api.ogt` line 24709</sub>
+<sub>`api.ogt` line 24716</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -136,7 +136,7 @@ fn reload {
 }
 ```
 
-<sub>`api.ogt` line 24716</sub>
+<sub>`api.ogt` line 24723</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -159,7 +159,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 24720</sub>
+<sub>`api.ogt` line 24727</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -187,7 +187,7 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 24724</sub>
+<sub>`api.ogt` line 24731</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -217,7 +217,7 @@ fn dump {
 }
 ```
 
-<sub>`api.ogt` line 24729</sub>
+<sub>`api.ogt` line 24736</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -245,7 +245,7 @@ fn commands {
 }
 ```
 
-<sub>`api.ogt` line 24736</sub>
+<sub>`api.ogt` line 24743</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -275,7 +275,7 @@ fn listen {
 }
 ```
 
-<sub>`api.ogt` line 24741</sub>
+<sub>`api.ogt` line 24748</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -298,7 +298,7 @@ fn memory {
 }
 ```
 
-<sub>`api.ogt` line 24748</sub>
+<sub>`api.ogt` line 24755</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -321,7 +321,7 @@ fn describe {
 }
 ```
 
-<sub>`api.ogt` line 24752</sub>
+<sub>`api.ogt` line 24759</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -349,7 +349,7 @@ fn expect {
 }
 ```
 
-<sub>`api.ogt` line 24756</sub>
+<sub>`api.ogt` line 24763</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -372,7 +372,7 @@ fn expectations {
 }
 ```
 
-<sub>`api.ogt` line 24761</sub>
+<sub>`api.ogt` line 24768</sub>
 
 <a id="member-EngineProbe-assertions"></a>
 
@@ -402,7 +402,7 @@ fn assertions {
 }
 ```
 
-<sub>`api.ogt` line 24765</sub>
+<sub>`api.ogt` line 24772</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
@@ -436,7 +436,7 @@ fn saveScene {
 }
 ```
 
-<sub>`api.ogt` line 24772</sub>
+<sub>`api.ogt` line 24779</sub>
 
 <a id="member-EngineProbe-pickUi"></a>
 
@@ -466,4 +466,4 @@ fn pickUi {
 }
 ```
 
-<sub>`api.ogt` line 24782</sub>
+<sub>`api.ogt` line 24789</sub>

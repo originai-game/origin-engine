@@ -509,6 +509,8 @@ export interface HostAbi<A, V> {
   og_load_video_info(world: number, video: number): string;
   /** `og.load.timeline` */
   og_load_timeline(world: number, path: string): string;
+  /** `og.load.vfx` */
+  og_load_vfx(world: number, path: string): string;
   /** `og.load.rig2d` */
   og_load_rig2d(world: number, path: string): string;
   /** `og.load.imageData` */
@@ -1309,6 +1311,10 @@ export interface HostAbi<A, V> {
   og_destruction_material(world: number, kind: number): string;
   /** `og.destruction.capabilities` */
   og_destruction_capabilities(world: number): string;
+  /** `og.vfx.spawn` */
+  og_vfx_spawn(world: number, desc: string | undefined): string;
+  /** `og.vfx.info` */
+  og_vfx_info(world: number, asset: number): string;
 }
 
 /** Every binding symbol, in binding-table order, then the lifecycle members. */
@@ -1543,6 +1549,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_video",
   "og_load_video_info",
   "og_load_timeline",
+  "og_load_vfx",
   "og_load_rig2d",
   "og_load_image_data",
   "og_load_gltf_data",
@@ -1943,6 +1950,8 @@ export const SYMBOLS: readonly string[] = [
   "og_destruction_info",
   "og_destruction_material",
   "og_destruction_capabilities",
+  "og_vfx_spawn",
+  "og_vfx_info",
   "og_host_set_dispatcher",
   "og_engine_create",
   "og_engine_destroy",

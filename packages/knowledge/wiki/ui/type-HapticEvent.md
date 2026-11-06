@@ -19,4 +19,4 @@ struct HapticEvent {
 }
 ```
 
-<sub>`api.ogt` line 20751</sub>
+<sub>`api.ogt` line 20758</sub>

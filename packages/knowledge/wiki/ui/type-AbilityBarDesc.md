@@ -38,4 +38,4 @@ struct AbilityBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 21833</sub>
+<sub>`api.ogt` line 21840</sub>

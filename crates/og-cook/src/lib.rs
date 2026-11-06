@@ -18,7 +18,7 @@
 
 pub use og_bundle::{
     anim_codec, effect, format, fx, ktx2, lightmap, look, meshopt_codec, opus, qoa, runtime,
-    scene_text, shader,
+    scene_text, shader, vfx,
 };
 
 #[cfg(feature = "cook")]

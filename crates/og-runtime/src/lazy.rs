@@ -261,6 +261,16 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::video::PLAYER,
         enable: |w, _| w.grant(crate::video::VIDEO_SYSTEM, &[crate::video::PLAYER]),
     },
+    // 3D VFX: og.vfx plays composed effects, sends og.VfxEvent and
+    // despawns them, once a game names og.Vfx or og.VfxEvent.
+    Lazy {
+        name: crate::vfx::COMPONENT,
+        enable: crate::vfx::enable,
+    },
+    Lazy {
+        name: crate::vfx::EVENT,
+        enable: crate::vfx::enable,
+    },
     // R7: og.particles simulates the systems whose emitters send events
     // and sends them, once a game names the event.
     Lazy {
@@ -369,6 +379,7 @@ const TOGETHER: &[&[&str]] = &[
     &crate::feel::vcam::RECORDS,
     &crate::weather::RECORDS,
     &crate::destruction::RECORDS,
+    &crate::vfx::RECORDS,
     &[
         crate::stream::cells::CELL,
         crate::stream::cells::MEMBER,

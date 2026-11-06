@@ -35,4 +35,4 @@ fn reachable {
 }
 ```
 
-<sub>`api.ogt` line 25983</sub>
+<sub>`api.ogt` line 25990</sub>

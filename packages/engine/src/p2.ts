@@ -1,4 +1,4 @@
-// The phase 2 and depth modules' namespaces (IDL `terrain`, `stream`, `path`, `timeline`, `motion`, `destruction`): thin calls into the host's binding symbols,
+// The phase 2 and depth modules' namespaces (IDL `terrain`, `stream`, `path`, `timeline`, `motion`, `destruction`, `vfx`): thin calls into the host's binding symbols,
 // typed by the generated declarations through index.ts.
 
 import type { HostAbi } from "./generated/abi.ts";
@@ -61,6 +61,12 @@ export const timeline = Object.freeze({
   pause: (world: W, entity: number) => parse(abi().og_timeline_pause(world.id, entity)),
   seek: (world: W, entity: number, time: number) => parse(abi().og_timeline_seek(world.id, entity, time)),
   stop: (world: W, entity: number) => parse(abi().og_timeline_stop(world.id, entity)),
+});
+
+/** og.vfx: composed effects (`type vfx`) played by og.Vfx. */
+export const vfx = Object.freeze({
+  spawn: (world: W, desc?: unknown) => parse(abi().og_vfx_spawn(world.id, json(desc))),
+  info: (world: W, asset: number) => parse(abi().og_vfx_info(world.id, asset)),
 });
 
 /** og.video: how streams play on this host (the module's other calls are og.load.video and og.VideoPlayer). */

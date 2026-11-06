@@ -114,6 +114,15 @@ impl TimelineApi for WebHost {
     }
 }
 
+impl VfxApi for WebHost {
+    fn og_vfx_spawn(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_vfx_spawn(world, desc)
+    }
+    fn og_vfx_info(&self, world: u32, asset: f64) -> String {
+        rt::og_vfx_info(world, asset)
+    }
+}
+
 impl MotionApi for WebHost {
     fn og_motion_pose(&self, world: u32, entity: f64, desc: Option<String>) -> String {
         rt::og_motion_pose(world, entity, desc)

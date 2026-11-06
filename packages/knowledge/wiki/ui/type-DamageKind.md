@@ -33,4 +33,4 @@ enum DamageKind {
 }
 ```
 
-<sub>`api.ogt` line 22276</sub>
+<sub>`api.ogt` line 22283</sub>

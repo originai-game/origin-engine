@@ -243,3 +243,6 @@ export const MATERIAL_WOOD: typeof Api.MATERIAL_WOOD = 2;
 export const MATERIAL_GLASS: typeof Api.MATERIAL_GLASS = 3;
 export const MATERIAL_STONE: typeof Api.MATERIAL_STONE = 4;
 export const CAUSE_FRACTURE: typeof Api.CAUSE_FRACTURE = 5;
+
+// vfx
+export const VfxAsset = ((value = 0 as Api.VfxAsset, options) => spec("VfxAsset", value, options)) as typeof Api.VfxAsset;
