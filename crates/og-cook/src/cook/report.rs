@@ -1,7 +1,7 @@
 use super::*;
 
 /// One output in the report.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct OutputReport {
     pub id: String,
     pub file: String,
@@ -21,7 +21,7 @@ pub struct OutputReport {
 }
 
 /// One source asset in the report.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct AssetReport {
     pub source: String,
     pub kind: String,
@@ -102,7 +102,7 @@ impl CookTimes {
 }
 
 /// What a cook did.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Report {
     pub root: String,
     pub cooker: String,

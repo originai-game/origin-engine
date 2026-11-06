@@ -23,7 +23,7 @@ use std::path::Path;
 
 /// What conformance did to one asset, for the cook report (`og cook
 /// --report`, `Report::conform`): every change and every opt-out.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ConformEntry {
     /// The asset id (under `assets/`).
     pub source: String,
@@ -32,7 +32,7 @@ pub struct ConformEntry {
     pub what: String,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ConformAction {
     /// The cooked asset differs from its source to meet the contract.
     Changed,

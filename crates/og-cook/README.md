@@ -44,39 +44,43 @@ change as it is saved: §Cook times).
    delete outputs of removed or failed sources, write
    `cooked/.cook.ogt` when it changed. Return the `Report`.
 
-### Shared texture results
+### Shared cook results
 
-After the per-project manifest check, ordinary standalone and glTF textures
-can reuse a shared on-disk result. Compression settings and quality are
-unchanged. The key is the existing cook stamp (input content, options,
-encoder identity and cooker version), plus the expected type hash and schema
-version. The result is the exact `.ogb` the uncached cook would write.
-Standalone texture stamps also include their asset-relative path, so a
-renamed standalone texture is a miss; a fresh project at another root is not.
-Arrays, video frames and other asset processing do not use this cache.
+Native cooks use BLAKE3 action keys and verified contents in
+`$HOME/.cache/origingame/cook-v1/{ac,cas}`. Without HOME, Windows uses
+`$LOCALAPPDATA/origingame/cook-v1`. Texture and sound keys cover their source
+bytes, settings and output stamp. Other output keys also cover project inputs
+and ids. Prefracture keys cover the model and discovered dependency contents,
+not its pathname. Video work keeps its existing encoder path.
 
-`OG_TEXTURE_CACHE=/path/to/cache og cook` selects an isolated cache directory;
-`OG_TEXTURE_CACHE=off` (or an empty value) disables it. Otherwise it uses
-`$XDG_CACHE_HOME/origingame/texture-results-v1`, falling back to
-`$LOCALAPPDATA/origingame/texture-results-v1` on Windows, then
-`$HOME/.cache/origingame/texture-results-v1`; without these, it is disabled.
+`OG_COOK_CACHE=/path/to/cache og cook` selects an isolated store;
+`OG_COOK_CACHE=off` (or an empty value) disables it. `OG_TEXTURE_CACHE` is a
+fallback for existing callers. `OG_COOK_CACHE_MAX_BYTES` sets the size cap
+(default 10 GiB). `og cache gc [--max-bytes N] [--json]` trims the store.
 Rust callers can use `cook::cook_project_with_texture_cache(root, options,
 Some(path))`, or `None` to disable caching without reading or changing the
-environment. The cache tests use this entry point and private temporary paths.
+environment. This entry point retains its historical name but selects the whole
+store. The cache tests use private temporary paths.
 
-Entries are `.ogb` containers holding the result and its FNV-1a content hash.
-Reads validate that hash, the container, the result's type/schema and its cook
-stamp. Missing, corrupt or unwritable entries fall back to normal cooking.
+Reads validate BLAKE3 contents and the result's blob type, schema and cook stamp.
+Missing, corrupt or unwritable entries fall back to normal cooking.
 Writers exclusively create a sibling temporary file and rename the completed
 entry into place; concurrent cooks may duplicate work but cannot expose a
-partial result. A hit adds `shared texture cache hit` to the asset's notes
-instead of reporting encoder work. The output still counts as processed
+partial result. A hit adds `shared texture cache hit` or `shared cook cache hit`
+to the asset's notes. The output still counts as processed
 (`cooked: true`), with cache lookup time, and enters the normal project write
 and manifest path. Unchanged project outputs remain `cooked: false`.
 
+The per-project `.og/cook-index` records file size, timestamps, file identity and
+BLAKE3 content hash. An unchanged cook reuses its report without reading source
+bytes. Changed projects are planned again, with unchanged scanned sources read
+from the content store when available. Video projects and models with dependencies
+outside `assets/` are replanned. The index and shared store are never shipped.
+
 This is a disposable, trusted local cache, not an authenticated artifact store.
-There is no eviction policy: remove its directory to reclaim space. Interrupted
-writes may leave unused `.tmp` files; they are never read as entries.
+Eviction drops unreferenced contents first, then the oldest actions and their
+unshared contents. Interrupted writes can leave `.tmp` files; GC removes them
+after an hour, leaving recent writes alone even if they exceed the cap.
 
 ### Importers
 

@@ -15,6 +15,7 @@ mod bake_probes;
 mod bake_projection;
 mod bundle;
 mod bundle_cache;
+mod cache;
 mod check;
 mod compare;
 mod contact_sheet;
@@ -120,6 +121,8 @@ commands:
   assets [--kind KIND] [--group GROUP] [--unused] [--refs] [--by] [--dupes [--near N]] [--json] [text]
                       query cooked metadata; --refs shows dependencies, --by their users;
                       --near uses caller-chosen Hamming distance 0..64; --project DIR selects a project
+  cache gc [--max-bytes N] [--json]
+                      trim the shared cook action/content cache (default cap 10 GiB)
   bake lightmaps [project] [--samples N] [--bounces N] [--texels-per-metre N] [--sky R,G,B] [--scene <id>]
                       trace the light of the scenes with static models or LightVolumes into
                       <scene>.lightmap.ogt and .ktx2 beside them (CPU, native), then cook
@@ -313,6 +316,7 @@ fn main() -> ExitCode {
         ["build", rest @ ..] => bundle::run(rest),
         ["cook", rest @ ..] => cook::run(rest),
         ["assets", rest @ ..] => assets::run(rest),
+        ["cache", rest @ ..] => cache::run(rest),
         ["bake", "projection", rest @ ..] => bake_projection::run(rest),
         ["bake", "probes", rest @ ..] => bake_probes::run(rest),
         ["bake", rest @ ..] => bake_lightmaps::run(rest),

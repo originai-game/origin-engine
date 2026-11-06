@@ -14,6 +14,8 @@
 //! `basis` encodes textures with basis-universal; `cook` (the default) adds
 //! the importers and encoders.
 
+#![cfg_attr(windows, feature(windows_by_handle, windows_change_time))]
+
 pub use og_bundle::{
     anim_codec, format, fx, ktx2, lightmap, look, meshopt_codec, opus, qoa, runtime, scene_text,
     shader,

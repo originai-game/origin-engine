@@ -73,8 +73,10 @@ fn unchanged_fracture_is_reused_but_source_and_dependency_edits_rebuild_it() {
         .replace("children 4", "children 0");
     let root = cook("og-cook-fracture-reuse", &text, 1);
     let options = CookOptions::default();
+    let cache = root.join(".og/test-cache");
     let rerun = || {
-        let report = cook_project(&root, &options).unwrap();
+        let report =
+            og_cook::cook::cook_project_with_texture_cache(&root, &options, Some(&cache)).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         report
     };
@@ -84,6 +86,8 @@ fn unchanged_fracture_is_reused_but_source_and_dependency_edits_rebuild_it() {
             .any(|a| a.notes.iter().any(|n| n.contains("reused prefracture")))
     };
     let original = asset(&root).to_bytes();
+    std::fs::remove_file(root.join(".og/cook-index")).unwrap();
+    rerun();
     let report = rerun();
     assert!(reused(&report));
     assert!(
@@ -93,6 +97,17 @@ fn unchanged_fracture_is_reused_but_source_and_dependency_edits_rebuild_it() {
             .flat_map(|a| &a.outputs)
             .all(|o| !o.cooked)
     );
+    assert_eq!(original, asset(&root).to_bytes());
+
+    let old = root.join("assets/props/wall.ogt");
+    let renamed = root.join("assets/props/renamed.ogt");
+    std::fs::rename(&old, &renamed).unwrap();
+    assert!(
+        reused(&rerun()),
+        "rename must reuse the content-keyed fracture"
+    );
+    std::fs::rename(&renamed, &old).unwrap();
+    rerun();
     assert_eq!(original, asset(&root).to_bytes());
 
     let text = text.replace("seed 7", "seed 8");

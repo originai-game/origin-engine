@@ -48,6 +48,13 @@ pub(super) struct Scan {
 }
 
 pub(super) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
+    scan_with(assets_dir, &|path| std::fs::read(path))
+}
+
+pub(super) fn scan_with(
+    assets_dir: &Path,
+    read_file: &impl Fn(&Path) -> std::io::Result<Vec<u8>>,
+) -> Result<Scan, CookError> {
     let mut files = Vec::new();
     walk(assets_dir, "", &mut files)
         .map_err(|e| CookError(format!("{}: {e}", assets_dir.display())))?;
@@ -57,7 +64,8 @@ pub(super) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
     let mut builtins: BTreeMap<String, &'static [u8]> = BTreeMap::new();
     for (rel, path) in &files {
         if ext(rel) == "ogt"
-            && let Ok(text) = std::fs::read_to_string(path)
+            && let Ok(text) =
+                read_file(path).and_then(|b| String::from_utf8(b).map_err(std::io::Error::other))
             && Document::parse(&text).is_ok_and(|d| d.ty == crate::look::LOOK_TYPE)
         {
             for (id, bytes) in look::builtin_files(rel, &text, assets_dir) {
@@ -67,7 +75,8 @@ pub(super) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
         // A game's own style may name the built-in packs' fonts and icons
         // (a generated one does) and the shared Chinese companions too.
         if ext(rel) == "ogt"
-            && let Ok(text) = std::fs::read_to_string(path)
+            && let Ok(text) =
+                read_file(path).and_then(|b| String::from_utf8(b).map_err(std::io::Error::other))
             && Document::parse(&text).is_ok_and(|d| d.ty == og_ui::style_file::STYLE_TYPE)
         {
             for (id, bytes) in look::shared_files(&text) {
@@ -84,7 +93,7 @@ pub(super) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
     let read = |rel: &str, path: &Path| -> Result<Vec<u8>, CookError> {
         match builtins.get(rel) {
             Some(b) => Ok(b.to_vec()),
-            None => std::fs::read(path).map_err(|e| CookError(format!("{}: {e}", path.display()))),
+            None => read_file(path).map_err(|e| CookError(format!("{}: {e}", path.display()))),
         }
     };
 

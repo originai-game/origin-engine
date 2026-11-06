@@ -62,3 +62,28 @@ the pack's bytes. A shared output file remains while any retained id names it.
 Escaped loader functions and namespaces retain every asset. Baked reflection
 probes remain because their ids depend on runtime placement; this is reported.
 The local `.og/publish-assets.json` plan is not shipped.
+
+<a id="guide-assets-4"></a>
+### `assets §4` Cook cache
+
+Native cooks share BLAKE3-keyed actions and contents in
+`~/.cache/origingame/cook-v1/ac` and `cas`. Texture and prefracture results use
+this store. A prefracture action includes the contents of its external dependencies,
+so renaming a source does not invalidate the fracture. Other outputs include
+their project inputs and asset id when their bytes depend on names or references.
+Video work still uses its existing encoder path and incremental stamps.
+
+`OG_COOK_CACHE` selects another directory; `off` disables the shared store.
+The older `OG_TEXTURE_CACHE` variable remains a fallback. The default size cap
+is 10 GiB. `OG_COOK_CACHE_MAX_BYTES` changes it. Cooks trim the store after
+work; `og cache gc [--max-bytes N] [--json]` also trims it on demand.
+Eviction removes disposable cache files, never source assets or cooked outputs.
+Missing or corrupt cache content causes a recook.
+
+The project's `.og/cook-index` records file stats and BLAKE3 content hashes.
+Unchanged inputs and outputs reuse the previous cook result without reading source
+bytes. A changed project is planned again; unchanged scanned sources can read from
+the content store. Video projects and models with external dependencies outside
+`assets/` are planned again. Removing the index forces a full source check.
+Neither cache changes FNV world hashes, schema hashes, in-blob stamps, or the
+web service worker's SHA256 hashes.

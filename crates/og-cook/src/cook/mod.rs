@@ -10,12 +10,14 @@
 //! are written only when their bytes change; outputs of removed or failed
 //! sources are deleted. The same inputs give byte-identical `cooked/`.
 
+mod action_cache;
 pub mod anim;
 pub mod animated;
 pub mod assets;
 pub mod audio;
 mod autorig;
 pub mod bc6h;
+pub mod cache;
 pub mod conform;
 pub use conform::{ConformAction, ConformEntry};
 pub mod cube_source;
@@ -27,6 +29,7 @@ mod font;
 mod fracture;
 mod fracture_cache;
 pub mod icons;
+mod index;
 pub mod ktx2_source;
 mod lightmap;
 pub mod look;
@@ -51,7 +54,6 @@ mod terrain;
 mod terrain_generate;
 mod texture;
 pub mod texture_array;
-mod texture_cache;
 pub mod tilemap;
 mod timeline;
 pub mod ts_refs;
@@ -410,7 +412,7 @@ fn not_split(bytes: &[u8], k: u32, group: Option<&String>) -> Option<String> {
 /// Cooks `<root>/assets` into `<root>/cooked`. Per-asset failures are in the
 /// report ([`Report::ok`]); an `Err` means the cook could not run at all.
 pub fn cook_project(root: &Path, options: &CookOptions) -> Result<Report, CookError> {
-    let cache = texture_cache::default_path();
+    let cache = cache::default_path();
     cook_project_with_texture_cache(root, options, cache.as_deref())
 }
 
@@ -422,6 +424,11 @@ pub fn cook_project_with_texture_cache(
     texture_cache: Option<&Path>,
 ) -> Result<Report, CookError> {
     let started = Instant::now();
+    let cook_index = index::Index::open(root, options, texture_cache);
+    if let Some(mut report) = cook_index.unchanged() {
+        report.elapsed_ms = started.elapsed().as_secs_f64() * 1000.0;
+        return Ok(report);
+    }
     let assets_dir = root.join("assets");
     let cooked_dir = root.join("cooked");
     let threads = if options.threads == 0 {
@@ -446,7 +453,7 @@ pub fn cook_project_with_texture_cache(
         mut sources,
         mut ignored,
         mut early_errors,
-    } = scan(&assets_dir)?;
+    } = scan::scan_with(&assets_dir, &|path| cook_index.read(path))?;
     let mut consumed: BTreeSet<String> = BTreeSet::new();
     // Flipbooks of animated sources become ordinary sheets (`animated.rs`).
     animated::expand(&mut sources, &mut consumed);
@@ -525,7 +532,15 @@ pub fn cook_project_with_texture_cache(
             ]);
             match fracture::Settings::of(text, s.settings.as_ref().map(|(_, d)| d)).and_then(|f| {
                 f.map(|f| {
-                    fracture_cache::run(root, &s.rel, input_stamp, dir, || {
+                    let key = cache::key(
+                        "fracture",
+                        &[
+                            &s.bytes,
+                            text.unwrap_or_default().as_bytes(),
+                            s.settings.as_ref().map_or("", |(text, _)| text).as_bytes(),
+                        ],
+                    );
+                    fracture_cache::run(texture_cache, &key, input_stamp, dir, || {
                         fracture::fracture_glb(&s.bytes, dir, &f)
                     })
                 })
@@ -1724,6 +1739,27 @@ pub fn cook_project_with_texture_cache(
         }
     }
 
+    let project_key = texture_cache
+        .and_then(|_| cook_index.content_key())
+        .map(|input| {
+            let dependencies: Vec<_> = sources
+                .iter()
+                .flat_map(|s| {
+                    s.gltf.iter().flat_map(move |g| {
+                        g.external.iter().map(move |(name, bytes)| {
+                            (&s.rel, name, blake3::hash(bytes).to_hex().to_string())
+                        })
+                    })
+                })
+                .collect();
+            cache::key(
+                "outputs",
+                &[
+                    input.as_bytes(),
+                    &serde_json::to_vec(&dependencies).expect("dependency strings"),
+                ],
+            )
+        });
     // Cook what is stale, in parallel; results land by plan index.
     type Done = (Result<(Vec<u8>, Vec<String>), CookError>, f64, f64, u32);
     let results: Vec<Mutex<Option<Done>>> = plan.iter().map(|_| Mutex::new(None)).collect();
@@ -1743,6 +1779,7 @@ pub fn cook_project_with_texture_cache(
                 &prefab_texts,
             );
             let budgets = &budgets;
+            let project_key = project_key.as_deref();
             scope.spawn(move || {
                 loop {
                     let k = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -1750,7 +1787,7 @@ pub fn cook_project_with_texture_cache(
                     let p = &plan[i];
                     let t = Instant::now();
                     let start = t.duration_since(started).as_secs_f64() * 1000.0;
-                    let r = texture_cache::run(texture_cache, p, || {
+                    let r = action_cache::run(texture_cache, p, options, project_key, || {
                         run(p, options, threads, schemas, known, prefab_texts, budgets)
                     });
                     *results[i].lock().expect("no poisoning") =
@@ -2261,7 +2298,7 @@ pub fn cook_project_with_texture_cache(
         }
     }
     reports.sort_by(|a, b| a.source.cmp(&b.source));
-    Ok(Report {
+    let report = Report {
         conform: conformed,
         warnings,
         root: root.display().to_string(),
@@ -2271,7 +2308,28 @@ pub fn cook_project_with_texture_cache(
         ignored,
         removed,
         elapsed_ms: started.elapsed().as_secs_f64() * 1000.0,
-    })
+    };
+    let assets_path = assets_dir.canonicalize().ok();
+    let bounded = sources.iter().all(|s| {
+        s.kind != Kind::Video
+            && s.gltf.as_ref().is_none_or(|g| {
+                g.external.iter().all(|(name, _)| {
+                    s.path
+                        .parent()
+                        .unwrap_or(&assets_dir)
+                        .join(name)
+                        .canonicalize()
+                        .ok()
+                        .zip(assets_path.as_ref())
+                        .is_some_and(|(path, assets)| path.starts_with(assets))
+                })
+            })
+    });
+    cook_index.save(&report, bounded);
+    if let Some(path) = texture_cache {
+        let _ = cache::Store::new(path.to_owned()).gc(cache::max_bytes());
+    }
+    Ok(report)
 }
 
 type OutputBytes = std::sync::Arc<[u8]>;

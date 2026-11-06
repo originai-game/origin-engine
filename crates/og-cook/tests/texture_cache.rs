@@ -227,9 +227,27 @@ fn identical_outputs_share_a_file_and_survive_canonical_changes() {
         manifest
     );
 
-    // Changing the shared file's owner must not overwrite the surviving alias.
+    // A stat-index hit must not hide a modified cooked file.
+    let file = root.join("cooked/a.png.ogb");
+    let mut broken = expected.clone();
+    *broken.last_mut().unwrap() ^= 1;
+    std::fs::write(&file, broken).unwrap();
+    assert_eq!(cook(&root, None, &options).1, expected);
+
+    // Changing the shared file's owner must not overwrite the surviving alias,
+    // including when an editor restores the source's previous modification time.
+    let modified = std::fs::metadata(root.join("assets/a.png"))
+        .unwrap()
+        .modified()
+        .unwrap();
     image::RgbaImage::from_pixel(8, 8, image::Rgba([200, 0, 0, 255]))
         .save(root.join("assets/a.png"))
+        .unwrap();
+    std::fs::File::options()
+        .write(true)
+        .open(root.join("assets/a.png"))
+        .unwrap()
+        .set_modified(modified)
         .unwrap();
     let (_, bytes) = cook(&root, None, &options);
     assert_eq!(bytes, expected);
@@ -299,7 +317,9 @@ fn shared_texture_results_reuse_invalidate_recover_and_match_uncached_bytes() {
             r.assets
                 .iter()
                 .flat_map(|a| a.notes.iter().cloned())
-                .filter(|n| !n.contains("shared texture cache hit"))
+                .filter(|n| {
+                    !n.contains("shared texture cache hit") && !n.contains("shared cook cache hit")
+                })
                 .collect()
         };
         assert_eq!(said(&r), said(&first), "the hit keeps the cook's notes");
@@ -307,14 +327,13 @@ fn shared_texture_results_reuse_invalidate_recover_and_match_uncached_bytes() {
         assert!(!hit(&r));
         assert!(r.cooked_outputs().is_empty(), "project manifest still wins");
 
-        // Flip a payload byte without changing either blob's header or length.
-        for e in std::fs::read_dir(&cache).unwrap() {
+        // Corrupt contents without changing their names or lengths.
+        for e in std::fs::read_dir(cache.join("cas")).unwrap() {
             let path = e.unwrap().path();
             let mut bytes = std::fs::read(&path).unwrap();
-            let blob = og_blob::Blob::parse(&bytes, "entry").unwrap();
-            let section = blob.section("result").unwrap();
-            let offset = (section.offset + section.size - 1) as usize;
-            bytes[offset] ^= 1;
+            if let Some(last) = bytes.last_mut() {
+                *last ^= 1;
+            }
             std::fs::write(path, bytes).unwrap();
         }
         let (r, bytes) = cook(&fresh("recovery", 30), Some(&cache), &options);
@@ -362,6 +381,15 @@ fn shared_texture_results_reuse_invalidate_recover_and_match_uncached_bytes() {
             &options,
         );
         assert!(hit(&r));
+        assert_eq!(bytes, expected);
+
+        let store = og_cook::cook::cache::Store::new(concurrent_cache.clone());
+        let gc = store.gc(0).unwrap();
+        assert!(gc.before > 0);
+        assert_eq!(gc.after, 0);
+        assert!(projects[0].join("assets/texture.png").is_file());
+        let (r, bytes) = cook(&fresh("after-gc", 30), Some(&concurrent_cache), &options);
+        assert!(!hit(&r));
         assert_eq!(bytes, expected);
     }
     std::fs::remove_dir_all(root).unwrap();
