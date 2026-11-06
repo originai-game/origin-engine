@@ -3,7 +3,8 @@
 #
 #   scripts/check.sh            the path-aware full lane: during a round, after a change
 #   scripts/check.sh quick      the quick lane: fmt clippy test-quick drift bun-quick
-#   scripts/check.sh ui         quick plus path-aware UI style and kit playtests
+#   scripts/check.sh ui         alias of kits: UI package suites, independent of engine lanes
+#   scripts/check.sh kits       kit behavior, documents, style packs and template playtests
 #   scripts/check.sh windows    the Windows lane: what studio-win adds to the Mac's
 #                               functional lane at the same commit (wasm-import
 #                               test-windows web-reference; OG_WASM_FROM names the
@@ -31,7 +32,7 @@
 # files), check-conformance (packages/engine, templates/, examples/, the
 # comparer, its corpus and the pins), web-reference (og-host-web's and og-tests-web's crates,
 # packages/engine, templates/fx-showcase), ui-styles and ui-kit (og,
-# templates/ui-kit, templates/styles, og-ui's references). A change to scripts/, Cargo.toml,
+# templates/ui-kit, templates/styles, including their references). A change to scripts/, Cargo.toml,
 # Cargo.lock, rust-toolchain.toml, .cargo/ or .config/ reruns all of them. Each skip is
 # printed with its reason. --all, or CI set in the environment, runs
 # everything.
@@ -59,17 +60,18 @@ cd "$OG_ROOT" || exit 1
 
 STEPS_FULL="fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism"
 STEPS_QUICK="fmt clippy test-quick drift bun-quick"
-STEPS_UI="$STEPS_QUICK ui-styles ui-kit"
+STEPS_KITS="kit-tests ui-styles ui-kit"
+STEPS_UI="$STEPS_KITS"
 # The functional lane: what a merge must not break (every test, the GPU
 # reference frames, the generated API, the packages' tests on the native
 # host), without the wasm build, its size, determinism and the browser
 # tiers, which are a wave's end measurements (docs/ci.md §Lanes).
-STEPS_FUNCTIONAL="fmt clippy test drift bun-functional ui-styles ui-kit"
+STEPS_FUNCTIONAL="fmt clippy test drift bun-functional"
 # The Windows lane: the Mac's wasm at the same inputs instead of a wasm
 # build, the tests whose result a platform can change, and the browser
 # tiers in Chrome on D3D12 (docs/ci.md §Two machines).
 STEPS_WINDOWS="wasm-import test-windows web-reference"
-STEPS="$STEPS_FULL test-quick bun-quick bun-functional ui-styles ui-kit web-reference check-conformance wasm-export wasm-import test-windows"
+STEPS="$STEPS_FULL test-quick bun-quick bun-functional kit-tests ui-styles ui-kit kit-web web-reference check-conformance wasm-export wasm-import test-windows"
 FUNCTIONAL=0
 WINDOWS=0
 BUN_QUICK_PACKAGES="packages/knowledge packages/create packages/design"   # no native build needed
@@ -121,9 +123,9 @@ rule_conformance() {
   echo "packages/engine templates examples crates/og-cli/src/check.rs scripts/tsrs-diff.sh scripts/tsrs-corpus scripts/install-tools.sh scripts/lib.sh"
 }
 # ui-styles and ui-kit: og and the addon it loads (og-cli, og-host-node, packages/engine), the kit
-# and the built-in styles its sheets draw, and og-ui's references.
+# and the built-in styles its sheets draw, including their references.
 rule_ui_styles() {
-  echo "$(og_crate_dirs -p og-cli -p og-host-node -e normal,build | og_words) packages/engine templates/ui-kit templates/styles crates/og-ui/references $RULE_COMMON"
+  echo "$(og_crate_dirs -p og-cli -p og-host-node -e normal,build | og_words) packages/engine templates/ui-kit templates/styles $RULE_COMMON"
 }
 # crates/og-cook: the web tests cook their projects with og, and no wasm
 # crate depends on the cook (the loaders are og-bundle's).
@@ -742,9 +744,23 @@ step_bun_test() {
   OG_GATE=1 OG_BUN_TEST_TIMEOUT="$BUN_GATE_TIMEOUT" bun_test_packages packages/*/
 }
 
+step_kit_tests() {
+  local rc=0
+  OG_GATE=1 sh packages/engine/scripts/build.sh --native || return 1
+  cargo test -p og-cook --features kit-tests --test kit-documents || rc=1
+  cargo test -p og-ui --features kit-tests --test style-packs || rc=1
+  cargo test -p og-tests-cooked --features kit-tests --test style-diagnostics || rc=1
+  bun test --timeout "$BUN_GATE_TIMEOUT" packages/engine/extensions || rc=1
+  return "$rc"
+}
+
+step_kit_web() {
+  bun templates/ui-kit/scripts/browser.ts
+}
+
 # The style packs' approved states, desktop and phone
 # (templates/ui-kit/tests/style-*.og.ts against
-# crates/og-ui/references/<tier>/kit-style-*-states.png, else metal's): the
+# templates/styles/<pack>/references/<tier>/kit-style-*-states.png, else metal's): the
 # states the art director approved one by one, over a plain ground. A pack
 # is judged on its own pages (og ui sheet), never as every kit screen in
 # every pack (docs/ui.md §15.4, 2026-11-05). Without a renderer the
@@ -796,8 +812,8 @@ step_bun_quick() {
 
 # The browser tiers in headless Chrome on WebGPU (docs/ci.md §Browser
 # reference tiers; `make web-reference`): templates/fx-showcase, og-tests'
-# and og-ui's gfx scenes (crates/og-tests-web), og-ui's kit frames
-# (templates/ui-kit), Ember Vale, two example games, the lanes' panic and
+# and og-ui's gfx scenes (crates/og-tests-web), Ember Vale,
+# two example games, the lanes' panic and
 # the accessibility mirror. In the windows lane and a wave's end, no other:
 # CI has no Chrome for Testing.
 #
@@ -829,12 +845,10 @@ web_fx() {
   bun tests/web/reference.ts --looks || rc=1
   return "$rc"
 }
-# templates/ui-kit: og-ui's kit frames, each reference playtest a fresh run
-# like its own; then the accessibility mirror over its settings screen, a
+# The accessibility mirror over its settings screen, a
 # screen reader's click, the live region and the page's preferences.
 web_ui() {
   local rc=0
-  bun tests/web/reference-ui.ts || rc=1
   bun tests/web/a11y.ts || rc=1
   return "$rc"
 }
@@ -1028,7 +1042,7 @@ gate_finish() {
 # workers or og test --jobs). Those limits must not add up across steps.
 step_uses_gpu() {
   case "$1" in
-    test|test-quick|test-windows|bun-test|bun-functional|ui-styles|ui-kit|web-reference) return 0 ;;
+    test|test-quick|test-windows|bun-test|bun-functional|kit-tests|ui-styles|ui-kit|kit-web|web-reference) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -1090,12 +1104,13 @@ if [ "$FORCE_ALL" = 1 ]; then WASM_PROFILE_DEFAULT=wasm; else WASM_PROFILE_DEFAU
 
 if [ "$ONLY" = 1 ]; then
   [ "$#" -gt 0 ] || { og_err "--only needs at least one step (scripts/check.sh --list)"; exit 2; }
-  case "$1" in quick|ui|functional|windows) og_err "--only takes steps, not a lane"; exit 2 ;; esac
+  case "$1" in quick|ui|kits|functional|windows) og_err "--only takes steps, not a lane"; exit 2 ;; esac
 fi
 case "${1:-}" in
   "") selected="$STEPS_FULL" ;;
   quick) shift; selected="$STEPS_QUICK${*:+ $*}" ;;
   ui) shift; selected="$STEPS_UI${*:+ $*}" ;;
+  kits) shift; selected="$STEPS_KITS${*:+ $*}" ;;
   functional) shift; FUNCTIONAL=1; selected="$STEPS_FUNCTIONAL${*:+ $*}" ;;
   windows) shift; WINDOWS=1; selected="$STEPS_WINDOWS${*:+ $*}" ;;
   *) selected="$*" ;;
