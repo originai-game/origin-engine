@@ -31,6 +31,13 @@ threads linked here; rules are in `AGENTS.md`.
 2. **The gate rewritten on the clean tree** (gate-reform), not patched.
 3. **Feature work resumes**, rebased and landed in larger complete heads.
 
+Stale branches (the owner, 2026-11-07): 68 obsolete remote branches were
+deleted; each head is kept as tag `archive/<branch>`. Live branches and the
+compatibility-phase WIP (safari, webboot, android) stay.
+
+Skills are cut hard (the owner): they keep only workflow, judgment and
+pitfalls, with no API restatement; names never change.
+
 ## Running
 
 | Stream | Thread | Branch |
@@ -86,13 +93,13 @@ minimum removed (b59654b2a).
 | Item | Where | Left |
 |---|---|---|
 | Presentation checkpoints | [T-01a1b075](https://ampcode.com/threads/T-01a1b075-9b61-72b7-baee-649cbe0824da) (stopped) | TAA, frame_index, GI/SSR histories not restored; terrain fade per frame; the motion Presenter on wall clock; InterpState and Presenter dropped on restore; a bundler check for module-scope state |
-| Creation choices schema and labels | `platform-scaffold-contract` 6a62b9cd0 | reuse the labels and schema for the skeleton's constraints; its 2D overlay is dropped |
-| UI catalogue, `og ui find`, fallback icons | `ui-catalogue` c2681af7d | rebase |
-| Text source beside locl glyphs | `ui-text-source` f4ae8a0f7 | never reviewed |
+| Creation choices schema and labels | tag `archive/platform-scaffold-contract` 6a62b9cd0 | reuse the labels and schema for the skeleton's constraints; its 2D overlay is dropped |
+| UI catalogue, `og ui find`, fallback icons | tag `archive/ui-catalogue` c2681af7d | rebase |
+| Text source beside locl glyphs | tag `archive/ui-text-source` f4ae8a0f7 | never reviewed |
 | Invariants follow-ups | main | incremental checks of untracked components (changes the snapshot's og.ecs block), `require` over then-steps and room peers, `invariant:` paths, a web run |
 | Origin-agent | [T-c41d3348](https://ampcode.com/threads/T-c41d3348-90e2-4342-b2c8-1319ccde89e8) | ask 27 (polish removal) told; the skeleton-and-constraints ask follows delete-examples |
 
-Dropped: `create-starters` a79e6bed8, `ui-own-look` 363ab979b.
+Dropped: tag `archive/create-starters` a79e6bed8, tag `archive/ui-own-look` 363ab979b.
 
 ## Open defects
 
