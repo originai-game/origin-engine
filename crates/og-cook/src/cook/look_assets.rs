@@ -166,6 +166,11 @@ pub const MOOD_LAYERS: &[(&str, Option<&str>, &str)] = &[
     ),
     (
         "bright",
+        Some("minimal-geometric"),
+        include_str!("../../../../templates/looks/moods/bright/minimal-geometric.ogt"),
+    ),
+    (
+        "bright",
         Some("monochrome-dither-3d"),
         include_str!("../../../../templates/looks/moods/bright/monochrome-dither-3d.ogt"),
     ),
