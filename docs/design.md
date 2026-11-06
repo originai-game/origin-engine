@@ -146,6 +146,19 @@ fallback.
   are built on it, and so are a game's saves (`world.snapshot` and
   `world.restore`, in every build: the blob as text for the platform store,
   restored with the session kept).
+- Save/load delivers `og.WorldRestored { from, tick }` on the first tick
+  after `world.restore`. Before that tick, the restored world hashes as
+  the saved world did. The notification is observable simulation state:
+  it is included in that tick's events, snapshot and `world_hash`. A replay
+  without a restore therefore has a different hash on the first resumed
+  tick, even when no system handles the event. With no resulting state
+  changes, subsequent ticks match again. Rollback's internal rewind does
+  not emit this notification: it repeats history rather than loading a save.
+  Save/load replay tests compare equal notification histories, or compare
+  the first resumed snapshots with only `og.WorldRestored` removed and
+  compare subsequent hashes normally. They must not ignore all differences
+  on that tick. `og-runtime`'s `restored_event` tests check the event's
+  lifetime and byte-for-byte parity of the remaining snapshot state.
 - Floating point: simulation uses `f32` with the same operations on both
   hosts; the engine ships its own `sin`/`cos`/`atan2`/`exp` so results do not
   depend on the host's `Math`. Physics (rapier) is built with its
