@@ -417,27 +417,33 @@ EOF_LANES
 }
 
 # wasm-bindgen (when the module uses it, at the Cargo.lock version, out-name
-# origin-engine as packages/engine ships it) then wasm-opt -Oz; writes
+# origin-engine as packages/engine ships it) then wasm-opt -Oz for shipping
+# and --all builds; development keeps bindgen's module. Writes
 # target/og-wasm/opt/<name>.wasm for every variant (opt-all.txt) and lists
 # the shipping ones in opt.txt: the -publish* and -lanes* variants (one of
 # each per game profile) when any were built, else all. A -lanes* module is
 # bindgen'd as origin-engine-lanes and optimised with --threads. size-gate reads opt.txt; build.sh under OG_GATE=1 reads both.
-# wasm_opt_one RAW NAME: wasm-bindgen (when the module uses it) then wasm-opt
-# into $OG_WASM_OUT/opt/NAME.wasm.
+# wasm_opt_one RAW NAME: process into $OG_WASM_OUT/opt/NAME.wasm.
 # The flags are scripts/wasm-opt.sh's, the one invocation build.sh ships with.
 wasm_opt_one() {
-  local raw="$1" name="$2" input="$1" lock have key cache out=origin-engine threads=()
+  local raw="$1" name="$2" input="$1" lock have key cache out=origin-engine threads=() optimise=1
   case "$name" in *-lanes*) out=origin-engine-lanes; threads=(--threads) ;; esac
+  # Development loads bindgen's module, not the unused optimised copy.
+  # Keep --all (wave-end) and the size gate's fallback input optimised.
+  if [ "$FORCE_ALL" != 1 ] && [ "$name" = og_host_web ] \
+      && grep -q '/og_host_web-publish.wasm$' "$OG_WASM_OUT/built.txt"; then
+    optimise=0
+  fi
   # A raw module byte-identical to one already optimised (an edit that does
   # not reach the wasm: a test, a comment, native-only code) takes the
   # earlier result: same input, tools and flags, same output.
-  key="$(og_sha256 "$raw") $(wasm-bindgen --version 2>/dev/null) $(wasm-opt --version 2>/dev/null) $("$OG_ROOT/scripts/wasm-opt.sh" --flags ${threads[@]+"${threads[@]}"}) $out"
+  key="$(og_sha256 "$raw") $(wasm-bindgen --version 2>/dev/null) $(wasm-opt --version 2>/dev/null) $("$OG_ROOT/scripts/wasm-opt.sh" --flags ${threads[@]+"${threads[@]}"}) $out $optimise"
   cache="$OG_CONTENT_CACHE/opt/$name"
   if [ "$FORCE_ALL" != 1 ] && [ -f "$cache/key" ] && [ "$(cat "$cache/key")" = "$key" ] && [ -f "$cache/opt.wasm" ]; then
     rm -rf "$OG_WASM_OUT/bindgen/$name"
     if [ -d "$cache/bindgen" ]; then mkdir -p "$OG_WASM_OUT/bindgen" && cp -R "$cache/bindgen" "$OG_WASM_OUT/bindgen/$name"; fi
     cp "$cache/opt.wasm" "$OG_WASM_OUT/opt/$name.wasm" || return 1
-    og_say "$name: $(og_bytes "$raw") B raw, byte-identical to the last optimised module: reused $(og_bytes "$OG_WASM_OUT/opt/$name.wasm") B ($OG_CONTENT_CACHE/opt)"
+    og_say "$name: $(og_bytes "$raw") B raw, byte-identical to the last processed module: reused $(og_bytes "$OG_WASM_OUT/opt/$name.wasm") B ($OG_CONTENT_CACHE/opt)"
     return 0
   fi
   if grep -q '__wbindgen_placeholder__' "$raw"; then
@@ -453,8 +459,13 @@ wasm_opt_one() {
     input="$OG_WASM_OUT/bindgen/$name/${out}_bg.wasm"
   fi
   # The flags and why: scripts/wasm-opt.sh.
-  "$OG_ROOT/scripts/wasm-opt.sh" ${threads[@]+"${threads[@]}"} "$input" "$OG_WASM_OUT/opt/$name.wasm" || return 1
-  og_say "$name: $(og_bytes "$raw") B raw -> $(og_bytes "$input") B bindgen -> $(og_bytes "$OG_WASM_OUT/opt/$name.wasm") B wasm-opt -Oz"
+  if [ "$optimise" = 1 ]; then
+    "$OG_ROOT/scripts/wasm-opt.sh" ${threads[@]+"${threads[@]}"} "$input" "$OG_WASM_OUT/opt/$name.wasm" || return 1
+    og_say "$name: $(og_bytes "$raw") B raw -> $(og_bytes "$input") B bindgen -> $(og_bytes "$OG_WASM_OUT/opt/$name.wasm") B wasm-opt -Oz"
+  else
+    cp "$input" "$OG_WASM_OUT/opt/$name.wasm" || return 1
+    og_say "$name: $(og_bytes "$input") B bindgen (development: no wasm-opt)"
+  fi
   rm -rf "$cache"; mkdir -p "$cache"
   [ ! -d "$OG_WASM_OUT/bindgen/$name" ] || cp -R "$OG_WASM_OUT/bindgen/$name" "$cache/bindgen"
   cp "$OG_WASM_OUT/opt/$name.wasm" "$cache/opt.wasm" && printf '%s\n' "$key" > "$cache/key"

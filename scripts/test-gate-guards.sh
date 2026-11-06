@@ -86,5 +86,41 @@ else
   echo "ok   explicitly selected wasm: bun-functional waits for the refreshed module"
 fi
 
+# Use real wasm-opt output: development may bypass it only when the size
+# list selects publish variants. --all and the no-publish fallback must not.
+if command -v wasm-as >/dev/null && command -v wasm-opt >/dev/null; then
+  t="$scratch/optimisation"; w="$t/og-wasm"
+  mkdir -p "$w/raw"
+  printf '%s\n' '(module (func (export "answer") (result i32) (i32.add (i32.const 1) (i32.const 2))))' > "$scratch/input.wat"
+  wasm-as "$scratch/input.wat" -o "$w/raw/og_host_web.wasm" || exit 1
+  cp "$w/raw/og_host_web.wasm" "$w/raw/og_host_web-publish.wasm"
+  "$root/scripts/wasm-opt.sh" "$w/raw/og_host_web.wasm" "$scratch/expected.wasm" || exit 1
+  if cmp -s "$scratch/expected.wasm" "$w/raw/og_host_web.wasm"; then
+    echo 'FAIL optimisation fixture does not distinguish optimised output'; exit 1
+  fi
+  printf '%s\n' "$w/raw/og_host_web.wasm" "$w/raw/og_host_web-publish.wasm" > "$w/built.txt"
+  for mode in dev full dev-again fallback; do
+    args=(wasm-opt)
+    [ "$mode" != full ] || args=(--all wasm-opt)
+    [ "$mode" != fallback ] || printf '%s\n' "$w/raw/og_host_web.wasm" > "$w/built.txt"
+    # Invalidate the step's path cache, not the content cache: full -> dev
+    # and dev -> fallback must never reuse the wrong optimisation mode.
+    rm -f "$t/og-gate/green/wasm-opt"
+    if ! (cd "$root" && PATH="$scratch/bin:$PATH" CARGO_TARGET_DIR="$t" OG_GATE_MACHINE_DIR="$t/machine" \
+      scripts/check.sh "${args[@]}") > "$scratch/$mode.log" 2>&1; then
+      cat "$scratch/$mode.log"; exit 1
+    fi
+    expected="$scratch/expected.wasm"
+    case "$mode" in dev|dev-again) expected="$w/raw/og_host_web.wasm" ;; esac
+    cmp "$expected" "$w/opt/og_host_web.wasm" || exit 1
+    while IFS= read -r module; do
+      cmp "$scratch/expected.wasm" "$module" || exit 1
+    done < "$w/opt.txt"
+    echo "ok   $mode: development output and size-gate input retain their contracts"
+  done
+else
+  echo 'SKIP optimisation cases: wasm-as and wasm-opt required'
+fi
+
 [ "$failures" -eq 0 ] || { echo "$failures case(s) failed"; exit 1; }
 echo "every case failed as it should"

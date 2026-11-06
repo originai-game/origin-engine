@@ -148,6 +148,13 @@ optimised (keyed by its SHA-256, the wasm-bindgen and wasm-opt versions and
 the flags) reuses the earlier bindgen output and `-Oz` module, and a module
 measured before reuses its brotli size. `--all` bypasses that cache.
 
+Outside `--all`, the development `og_host_web` module skips wasm-opt when
+the build includes its publish variant. Development already loads the
+unoptimised bindgen output. Publish and lanes variants still run wasm-opt,
+as does every module under `--all`. A build without publish variants keeps
+the development module optimised because the size gate measures it instead.
+The content cache distinguishes these modes.
+
 **Build settings the gate relies on.** The dev profile has no debuginfo
 (on macOS it stays in object files every Metal process reads;
 `CARGO_PROFILE_DEV_DEBUG=line-tables-only` gives backtraces with lines).
@@ -207,7 +214,7 @@ split, and the lowest such crate is its cause.
 | `bun-quick` | Knowledge, create and design package tests, without rebuilding native artifacts. | quick |
 | `bun-functional` | Package tests with the last full lane's wasm. Missing or partial wasm outputs fail, never shrink the suite. | functional |
 | `wasm-build` | Build `scripts/wasm-crates.txt` variants. Feature variants keep separate caches under `target/wasm-*`; outputs go to `target/og-wasm/raw`. | full |
-| `wasm-opt` | Bindgen followed by `scripts/wasm-opt.sh`. `opt.txt` lists shipping variants; `opt-all.txt` lists every optimized module. | full |
+| `wasm-opt` | Bindgen followed by `scripts/wasm-opt.sh`, except the development module outside `--all` when publish variants exist. `opt.txt` lists optimized size-gate inputs; `opt-all.txt` lists every processed module. | full |
 | `size-gate` | Brotli-11 bytes of each optimized module in `opt.txt`, checked against `wasm_core_brotli_bytes`. | full |
 | `bun-test` | Package tests and typechecks using the dev addon and gate-produced wasm (`OG_GATE=1`), without a second release build. | full |
 | `determinism` | `tools/wasm-determinism/run.sh`: equal math digests and world hashes across native, scalar wasm, SIMD wasm and both physics profiles' threaded builds. | full |
