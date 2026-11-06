@@ -85,7 +85,7 @@ fn references() -> Vec<PathBuf> {
     }
     let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut out = Vec::new();
-    for root in ["crates", "templates", "examples", "packages"] {
+    for root in ["crates", "templates", "packages", "tests/fixtures"] {
         walk(&repo.join(root), false, &mut out);
     }
     out.sort();

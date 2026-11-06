@@ -1,15 +1,17 @@
-// The demolition yard as `og run` plays it (examples/demolition-yard's own
-// game and commands, on the native host): its beats at their times, then
-// each end's pier height in standing brickwork (chunks within 10 cm of
-// where they stood before the charge) and the pillar's stump.
+// The destruction yard as `og run` plays it (the fixture's own game, its
+// commands on its BEATS' ticks, on the native host), then each end's pier
+// height in standing brickwork (chunks within 10 cm of where they stood
+// before the charge) and the pillar's stump.
 //
-//   bun tests/support/yard-piers.ts --project <examples/demolition-yard>
+//   bun tests/support/yard-piers.ts --project <tests/fixtures/destruction-yard>
 import { copyFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { og } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
 import { createEngine, type GameToken } from "../../src/runtime.ts";
+
+type V = { x: number; y: number; z: number };
 
 const argv = process.argv.slice(2);
 const project = argv[argv.indexOf("--project") + 1]!;
@@ -20,14 +22,17 @@ loadNativeHost();
 const here = dirname(fileURLToPath(import.meta.url));
 const copy = join(here, ".yard-main.ts");
 copyFileSync(join(project, "src", "main.ts"), copy);
-const game = await import(copy).then((m) => m.default as GameToken).finally(() => rmSync(copy, { force: true }));
+const { default: game, BEATS, WALL, PILLAR } = await import(copy)
+  .then((m) => m as { default: GameToken; BEATS: ReadonlyArray<readonly [number, string]>; WALL: V; PILLAR: V })
+  .finally(() => rmSync(copy, { force: true }));
 const must = <T>(r: { ok: true; value: T } | { ok: false; reason: string }): T => {
   if (!r.ok) throw new Error(r.reason);
   return r.value;
 };
 const engine = must(createEngine(game, { root: project }));
 
-type V = { x: number; y: number; z: number };
+/** The tick the rubble has settled by. */
+const SETTLED = 330;
 type Q = { x: number; y: number; z: number; w: number };
 const rotate = (q: Q, v: V): V => {
   const u = { x: q.x, y: q.y, z: q.z };
@@ -60,22 +65,22 @@ function chunks(world: World, prop: number): Map<number, V> {
 const w = engine.world;
 const wall = w.find("wall")!;
 const pillar = w.find("pillar")!;
-must(engine.advance(55));
+// Where every chunk stood before the first beat, then the beats, then time
+// for the rubble to settle.
+let at = BEATS[0]![0] - 5;
+must(engine.advance(at));
 const wallBefore = chunks(w, wall);
 const pillarBefore = chunks(w, pillar);
-// og run's beats (the example's header): boom at 1 s, strike 2.6, drop 3, throw 3.1, kick 3.2.
-const beats: Array<[number, string]> = [[60, "boom"], [156, "strike"], [180, "drop"], [186, "throw"], [192, "kick"]];
-let at = 55;
-for (const [tick, name] of beats) {
+for (const [tick, name] of BEATS) {
   must(engine.advance(tick - at));
   must(engine.command(name, []) as never);
   at = tick;
 }
-must(engine.advance(390 - at));
+must(engine.advance(SETTLED - at));
 const standing = (before: Map<number, V>, now: Map<number, V>) =>
   [...now].filter(([c, p]) => { const b = before.get(c); return b && Math.hypot(p.x - b.x, p.y - b.y, p.z - b.z) < 0.1; }).map(([, p]) => p);
 const wallNow = standing(wallBefore, chunks(w, wall));
-const wx = -3;
+const wx = WALL.x;
 const pier = (side: number) => wallNow.filter((p) => (p.x - wx) * side > 0.9 && (p.x - wx) * side < 2.6).reduce((m, p) => Math.max(m, p.y), 0);
 // What spans the hole: a block high over its middle with air under it
 // (one on the rubble heap rests on the pieces under it).
@@ -84,6 +89,6 @@ const spans = all.filter((p) => Math.abs(p.x - wx) < 0.25 && p.y > 1.5 && all.fi
 const stump = standing(pillarBefore, chunks(w, pillar)).reduce((m, p) => Math.max(m, p.y), 0);
 const pillarNow = [...chunks(w, pillar).values()];
 // The pillar's tallest standing piece and, of what lies, the farthest from its axis.
-const PX = 1.2, PZ = -0.4;
+const [PX, PZ] = [PILLAR.x, PILLAR.z];
 const lying = pillarNow.reduce((m, p) => Math.max(m, Math.hypot(p.x - PX, p.z - PZ)), 0);
 console.log(JSON.stringify({ left: pier(-1), right: pier(1), spans, stump, pillarTop: pillarNow.reduce((m, p) => Math.max(m, p.y), 0), pillarChunks: pillarNow.length, lying, hash: engine.hash() }));

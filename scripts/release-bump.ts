@@ -11,9 +11,9 @@
 // @origingame/engine's optionalDependencies on its platform packages), the
 // scaffold's origin-engine.json (engine.version and template.version), every
 // project's `engine "<v>"` line and `"@origingame/engine": "<v>"` dependency
-// (templates/, templates/archetypes/, examples/, the test fixtures and
-// benches), the inline project.ogt texts of the tests and scripts, and the
-// workspace crates' Cargo.toml (og --version prints og-cli's). Cargo.lock
+// (templates/, templates/archetypes/, tests/fixtures/ and the benches),
+// the inline project.ogt texts of the tests and scripts, and the workspace
+// crates' Cargo.toml (og --version prints og-cli's). Cargo.lock
 // follows through `cargo update --workspace --offline`, run by release.sh.
 //
 // packages/engine/changelog.json (the machine-readable changelog the
@@ -63,7 +63,7 @@ function sites(): Site[] {
   s.push({ path: "packages/engine/package.json", re: /("@origingame\/engine-(?:darwin-arm64|linux-x64|win32-x64)":\s*")([^"]+)(")/g });
   s.push({ path: "packages/knowledge/scaffold/origin-engine.json", re: /("version":\s*")([^"]+)(")/g });
   // Projects: project.ogt's engine line and package.json's dependency.
-  const projectDirs = ["templates", "examples", "tools/bench", "crates/og-tests/reference-scene", "packages/engine/tests/fixtures"];
+  const projectDirs = ["templates", "tests/fixtures", "tools/bench", "crates/og-tests/reference-scene", "packages/engine/tests/fixtures"];
   for (const d of projectDirs) {
     for (const p of walk(d, (n) => n === "project.ogt")) s.push({ path: p, re: /(^engine\s+")([^"]+)(")/gm });
     for (const p of walk(d, (n) => n === "package.json")) {

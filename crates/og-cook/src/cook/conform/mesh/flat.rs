@@ -304,28 +304,3 @@ fn merge_regions(ix: &mut [Option<usize>], w: usize, h: usize, area: usize) {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The art samples' lawn (examples/art-toon-3d's ground, a 512² photo
-    /// of grass) flattened at anime-cel-3d's palette (48 colours, two
-    /// shades a hue) keeps its two greens beside its dirt. With each texel
-    /// weighed by its activity, as the 2D cut weighs a raw texture, the
-    /// borders of the darker patches (all that is busy once the Kuwahara
-    /// passes have run) lost the cut to the field and merged into it: the
-    /// ground drew one olive with pale flecks.
-    #[test]
-    fn a_lawn_keeps_its_darker_patches() {
-        let glb = include_bytes!("../../../../../../examples/art-toon-3d/assets/models/ground.glb");
-        let json_len = u32::from_le_bytes(glb[12..16].try_into().unwrap()) as usize;
-        let json: serde_json::Value = serde_json::from_slice(&glb[20..20 + json_len]).unwrap();
-        let view = &json["bufferViews"][json["images"][0]["bufferView"].as_u64().unwrap() as usize];
-        let at = 28 + json_len + view["byteOffset"].as_u64().unwrap_or(0) as usize;
-        let len = view["byteLength"].as_u64().unwrap() as usize;
-        let mut img = crate::cook::texture::decode(&glb[at..at + len]).unwrap();
-        let (_, after, _) = flatten(&mut img, 48, 2).expect("flattened");
-        assert_eq!(after, 3, "the lawn flattened to {after} colours");
-    }
-}

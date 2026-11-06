@@ -36,38 +36,6 @@ update its generated controls, publish settings or look as appropriate;
 
 ## What works
 
-`examples/<name>` in this package's skills is a game in the engine's
-source repository (https://github.com/originai-game/origin-engine/tree/main/examples),
-not installed with the package; read one there when a skill points to it.
-What a game starts from is installed: the archetypes in the engine's dist
-(`og new <dir> --archetype <name>`, or Origin's `engine_scaffold`).
-
-Three games were written from this package alone: `examples/lantern-vale`
-(a 3D top-down adventure), `examples/hollowbell` (a 2D platformer) and
-`examples/kestrel-stair` (a 3D third-person action-adventure). What they
-asked for the documented way worked the first time: a Tiled map
-with a blob47 auto-tiled terrain, Tiled's parallax and objects with
-properties (og-2d §4); flipbook frame events driving footsteps, strikes and a
-bell; texture arrays as world sprites, screen sprites and emitter layers;
-streaming groups of `.vox` models and textures loading as the camera
-neared them (§6); a look applied before `start` and a second one at a tick
-for the results (og-taste §13); `og.physics.overlap` on a layer and with sensors;
-a character controller shoving a pile of bodies (og-physics §2); a skinned glTF on
-twos (og-anim §1). In The Kestrel Stair: one clip library retargeted at cook time
-onto a Mixamo-named, A-posed character, and at run time
-(`og.anim.retarget`) onto an Unreal-named one (its bones detected) and
-onto one whose bones only a `type rig` file names, all three playing
-through blend trees the first time, the clips' `hit` markers coming
-through both retargets (og-anim §4); a slam lunging about a metre by root motion,
-`Skeleton.rootMotion` planar for its length; a navmesh baked from the
-level's glTF (og-ai §1); the 3D character controller over triangle-mesh
-slopes, steps and ledges, refusing a scree too steep (og-physics §2); a cape, four
-banners in a gusting wind and a chain with a lamp at its last link (og-physics §2);
-`world.snapshot()` and `world.restore()` across a relaunch, bringing back
-93 entities with their cloth, paths and minds (§8). `og cook` took their
-47, 69 and 62 assets cold in 8.2 s, 3.6 s and 8.5 s, about 0.1 s after a
-change, without a warning, and its refusals named the line and the fix.
-
 ## Writing a game from this package
 
 The order the games found productive:
@@ -230,7 +198,7 @@ An example inside the engine repository has no `node_modules`: its
 `packages/engine/types/index.d.ts` and `packages/engine/src/playtest.ts`
 (with `packages/engine/src/env.d.ts` and a `host.d.ts` for the `node:`
 modules and globals its bun scripts touch), and `og check .` reads it
-(`examples/hollowbell`, `examples/lantern-vale`).
+(the fixtures under `tests/fixtures/`).
 
 ## 3. Components, resources, systems, the game
 
@@ -496,7 +464,7 @@ PNG or JPEG textures. The handle is pending until a tick boundary puts it in
 place. Then `og.load.imageInfo` gives an image's `texture`, and a model is
 spawned like a cooked one. From a system, which cannot `world.instantiate`,
 spawn an entity and insert `og.Model { asset }`. Never wait in a loop: check
-`og.load.status` each tick, as `examples/uncooked-load` does. Completions
+`og.load.status` each tick. Completions
 are journaled, so `og replay` replays them at the same tick. In a lockstep
 room the content is only on the peer that made it: send the bytes with
 `og.platform.roomSend` (64 KiB a message), let every peer load them, and let
@@ -668,8 +636,8 @@ to 64 KiB a key: a record in one key, the world in a slot
 
   How big a save is, and so where it goes: a world of a few entities
   snapshots to about 11 KiB of text (most of it the table of every
-  registered type), Hollowbell (a 2D platformer of 189 entities) to about
-  25 KiB, Kestrel Stair (a 3D world of 93 entities: five skinned
+  registered type), a 2D platformer of 189 entities to about
+  25 KiB, a 3D world of 93 entities (five skinned
   characters on graphs, five cloths and a rope, five navmesh agents with
   minds) to about 78 KB, 5,000 entities (half of them physics bodies) to
   about 437 KiB, written in about 100 ms and restored in about 65 ms
@@ -775,8 +743,7 @@ to 64 KiB a key: a record in one key, the world in a slot
 - **A record** (`storeSet(world, { key: "save", value: { chimes, glimmers,
   checkpoint } })`): a few hundred bytes of what progress means, rebuilt
   into a world on Continue. Smaller, readable on a title screen, and it
-  survives any change to the game's types; right for checkpoint games
-  (examples/hollowbell's `src/save.ts`).
+  survives any change to the game's types; right for checkpoint games.
 
 Test either across a relaunch with a playtest's `store: "keep"` and
 `then` (og-platform-sdk §4). A watch replay (the start's snapshot and a

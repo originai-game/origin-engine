@@ -3,7 +3,7 @@
 //! Every pipeline is a program to compile before a pass draws with it:
 //! the renderer making all of its fixed pipelines up front cost the web
 //! page of the retired WebGL2 tier 400 to 550 ms before its first frame
-//! (examples/WEB-FINDINGS.md #11), most of them for passes the first frame
+//! (web finding #11), most of them for passes the first frame
 //! does not draw (water, metaballs, fluids, terrain, scatter,
 //! particles, 2D lights, ribbons, bloom, depth of field…). A [`Deferred`]
 //! pipeline is made from the same descriptor when a pass first sets it, so

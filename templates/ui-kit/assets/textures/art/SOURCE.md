@@ -28,8 +28,8 @@ the shop's merchant, so each style's screens sit on their own scene:
 |---|---|---|
 | `portraits/brann.jpg` | bust (the shop's merchant) | origin MCP `generate_image` (gpt-image-2.5-sunburst), same direction as the set above, 512 px |
 | `scenes/scifi.jpg`, `cyber.jpg`, `tactical.jpg`, `broadcast.jpg`, `kawaii.jpg`, `jade.jpg`, `wasteland.jpg`, `midcore.jpg`, `foundry.jpg` | menuBackground (16:9, the left 40 % calm for the menu) | origin MCP `generate_image` (gpt-image-2.5-sunburst), one prompt per style direction, cut to 1280×720 |
-| `scenes/gothic-halls.jpg`, `storybook-vale.jpg`, `doodle-town.jpg`, `golden-valley.jpg`, `manuscript.jpg` | menuBackground | copies of the art samples' far layers (`examples/art-paint-2d/styles/<gothic-contour, decorative-storybook, detailed-doodle, classical-painting-collage, illuminated-manuscript>/art/backdrop.jpg`), made for this repository with Painter (`tests/evidence/art/samples/NOTES.md`) |
-| `scenes/pixel-dusk.png` | menuBackground | `examples/art-pixel-side/styles/detailed-pixel/art/backdrop.png`, scaled ×3 by nearest neighbour |
+| `scenes/gothic-halls.jpg`, `storybook-vale.jpg`, `doodle-town.jpg`, `golden-valley.jpg`, `manuscript.jpg` | menuBackground | copies of the art samples' far layers (the former `examples/art-paint-2d/styles/<gothic-contour, decorative-storybook, detailed-doodle, classical-painting-collage, illuminated-manuscript>/art/backdrop.jpg`), made for this repository with Painter (`tests/evidence/art/samples/NOTES.md`) |
+| `scenes/pixel-dusk.png` | menuBackground | the former `examples/art-pixel-side/styles/detailed-pixel/art/backdrop.png` (git history), scaled ×3 by nearest neighbour |
 
 ## Round 2 (2026-11-02, the art review's notes)
 

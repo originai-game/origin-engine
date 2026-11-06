@@ -1,4 +1,4 @@
-//! Two web findings (examples/WEB-FINDINGS.md, wave 13) at the runtime:
+//! Two web findings of wave 13 at the runtime:
 //!
 //! - #4: `og.Mesh.castShadow` reaches the renderer: a mesh casts shadows
 //!   only when its flag says so (off by default, as three.js), so The

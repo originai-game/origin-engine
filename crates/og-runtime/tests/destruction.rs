@@ -44,7 +44,7 @@ fracture {
 "#;
 
 /// A brick wall tied in at both ends, as a wall between two others is:
-/// demolition-yard's, 5 × 2.4 m.
+/// the destruction-yard fixture's, 5 × 2.4 m.
 const BRICK: &str = r#"type model
 version 1
 ---
@@ -318,7 +318,7 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
                 )
             })
             .collect();
-        // demolition-yard's charge: at the face of its foot, in the middle.
+        // the destruction yard's charge: at the face of its foot, in the middle.
         // Masonry's impactThreshold (heavy blocks land at hundreds of N·s, so
         // a lower one lets every falling block knock the piers apart).
         value(og_runtime::og_destruction_explode(
@@ -554,8 +554,8 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
 
 #[test]
 fn a_struck_pillar_falls_to_its_stump() {
-    let src =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/demolition-yard");
+    let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/destruction-yard");
     let root = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("scratch-pillar");
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(&root).unwrap();

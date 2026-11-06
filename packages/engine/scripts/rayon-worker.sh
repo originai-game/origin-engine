@@ -5,7 +5,7 @@
 # `pkg.default(data.module, data.memory)`, the two-argument form wasm-bindgen
 # 0.2.129's glue warns about on every Worker ("using deprecated parameters
 # for the initialization function; pass a single object instead", eight
-# lines a lanes page: examples/WEB-FINDINGS.md #8). The pinned versions stay
+# lines a lanes page: web finding #8). The pinned versions stay
 # (docs/ci.md §Toolchain); this rewrites that one call to the single-object
 # form the glue takes, `{ module_or_path, memory }`, which instantiates the
 # same module on the same memory.

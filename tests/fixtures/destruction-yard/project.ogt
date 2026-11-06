@@ -1,0 +1,12 @@
+type project
+version 1
+---
+# A test fixture, not a template (tests/fixtures/README.md): og.destruction
+# on a brick wall, a concrete pillar and a glass pane.
+name "Destruction yard"
+id "destruction-yard"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1

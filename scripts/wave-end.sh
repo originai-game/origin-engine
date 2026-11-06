@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Wave-end measurements on the current host, with no machine-specific lanes.
-# Usage: scripts/wave-end.sh [--dry-run] [--stages LIST] [--record art[/FAMILY]]
+# Usage: scripts/wave-end.sh [--dry-run] [--stages LIST]
 # Stages: gate,perf,web,art,conformance,release (all by default).
 # Every stage runs even after a failure; nothing is published.
 set -u -o pipefail
@@ -10,14 +10,12 @@ cd "$OG_ROOT" || exit 1
 
 ALL_STAGES="gate perf web art conformance release"
 stages="$ALL_STAGES"
-record=""
 dry=0
 usage() { sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'; }
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --dry-run) dry=1 ;;
     --stages) stages="$(printf '%s' "${2:?--stages LIST}" | tr ',' ' ')"; shift ;;
-    --record) record="$(printf '%s' "${2:?--record NAMES}" | tr ',' ' ')"; shift ;;
     -h|--help) usage; exit 0 ;;
     *) og_err "wave-end: unknown argument '$1'"; usage >&2; exit 2 ;;
   esac
@@ -25,9 +23,6 @@ while [ "$#" -gt 0 ]; do
 done
 for s in $stages; do
   case " $ALL_STAGES " in *" $s "*) ;; *) og_err "wave-end: unknown stage '$s' (stages: $ALL_STAGES)"; exit 2 ;; esac
-done
-for r in $record; do
-  case "$r" in art|art/*) ;; *) og_err "wave-end: --record takes art or art/<family>"; exit 2 ;; esac
 done
 
 OUT="$OG_EVIDENCE_DIR/wave-end"
@@ -43,31 +38,18 @@ run() {
   return "${PIPESTATUS[0]}"
 }
 
-recorded() {
-  local r
-  for r in $record; do
-    case "$r" in art|"art/$1") return 0 ;; esac
-  done
-  return 1
-}
-
 stage_gate() { run scripts/check.sh --all; }
 stage_perf() { run scripts/perf.sh; }
 stage_web() { run scripts/check.sh web-reference; }
 
+# The art director's capture: one frame per catalogue style on the project
+# its family's profile draws (tools/art-samples/capture.ts), written under
+# $OUT/art/ to read; no committed reference is compared.
 stage_art() {
-  local dir family out rc=0 args=() og="$OG_TARGET_DIR/debug/og"
+  local og="$OG_TARGET_DIR/debug/og"
   if [ "$dry" != 1 ] && [ ! -x "$og" ]; then og_err "no $og: the gate stage builds it (or cargo build -p og-cli)"; return 1; fi
-  for dir in examples/art-*/; do
-    dir="${dir%/}"
-    family="${dir#examples/art-}"
-    if recorded "$family"; then out="$dir/references/metal"
-    else out="$OUT/art/$family"; [ "$dry" = 1 ] || rm -rf "$out"; fi
-    run bun tools/art-samples/capture.ts --only "$family" --og "$og" --out "$out" || rc=1
-    args+=(--set "art-$family" "$out" "$dir/references/metal")
-  done
-  run bun scripts/frames-vs-metal.ts --out "$OUT/art-vs-metal.tsv" "${args[@]}" || rc=1
-  return "$rc"
+  [ "$dry" = 1 ] || rm -rf "$OUT/art"
+  run bun tools/art-samples/capture.ts --og "$og" --out "$OUT/art"
 }
 
 stage_conformance() { run scripts/tsrs-diff.sh; }
@@ -79,7 +61,6 @@ if [ "$dry" != 1 ]; then
 fi
 
 note=""
-[ -z "$record" ] || note=", recording: $(printf '%s' "$record" | og_words)"
 [ "$dry" != 1 ] || note="$note (dry run: nothing runs)"
 say "wave-end: $(git rev-parse --short HEAD 2>/dev/null || echo no-git), stages: $(printf '%s' "$stages" | og_words)$note"
 summary=""

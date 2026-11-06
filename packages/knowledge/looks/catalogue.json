@@ -1929,7 +1929,7 @@
           "MaterialStyle.surface"
         ],
         "missing": [
-          "the art is content: models built as card sheets with og-model's paper fold recipe (examples/art-shape-3d/styles/paper-craft: folded cones, cut card hills stood in layers, a card plateau); the engine draws the card grain (MaterialStyle.surface paper) on whatever it is given"
+          "the art is content: models built as card sheets with og-model's paper fold recipe (templates/looks/paper-craft/models: folded cones, cut card hills stood in layers, a card plateau); the engine draws the card grain (MaterialStyle.surface paper) on whatever it is given"
         ],
         "authored": [
           {

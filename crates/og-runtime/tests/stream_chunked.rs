@@ -1,5 +1,4 @@
-//! A sound cooked in chunks inside a streaming group (examples/
-//! WEB-FINDINGS.md #2): until its group is resident it is silence of its
+//! A sound cooked in chunks inside a streaming group (web finding #2): until its group is resident it is silence of its
 //! own length and nothing of it is read; once the group's pack lands, its
 //! head (the first chunk) takes the stand-in's handle and its other chunks
 //! are read ahead of the playheads, the nearest first, as a chunked sound of

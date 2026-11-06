@@ -132,7 +132,7 @@ output) and the engine asks for each other chunk ahead of its playheads;
 in a streaming group its first chunk comes in the pack, and no chunk of it
 is asked for before the group is resident or after it unloads (the music
 of the three dogfood games, all in the first group, cost their boots one
-chunk each, 63 to 123 kB brotli: examples/WEB-FINDINGS.md #2). The boot's
+chunk each, 63 to 123 kB brotli: web finding #2; the numbered web findings were examples/WEB-FINDINGS.md, deleted on 2026-11-06 and kept in git history). The boot's
 progress (`expect.cooked`) counts only the first group. `packages/engine/tests/asset-stream.test.ts` checks
 the split, and `packages/engine/tests/web/stream.ts` plays it in Chrome: no
 pack at boot, each pack fetched once when its group is wanted, the
@@ -1228,16 +1228,14 @@ icons) is.
   opens the gate, the frames match, the plan's checks over `state` and
   `mirror` hold, and the page, its Workers and Chrome (with its
   accessibility tree on, as under a screen reader) log no warning or
-  error. Its plans: `examples/hollowbell` (the title at tick 60 against
-  metal's `title.png`, New game pressed, a name typed into the focused
-  field, Begin, ArrowRight held) and `templates/ui-kit` (the gallery
+  error. Its plan: `templates/ui-kit` (the gallery
   against `kit-desktop-gallery.png`, Settings and Escape, then Mute and
   简体中文 saved and a reload that comes back in Chinese); `--script
   "<steps>" --title <node> [--then "<steps>"] [--references <dir>
   --prefix <p>]` runs another, and `--playtest <file>` a playtest's own
   commands (its `then` as reloads; dump and game-command steps are
   refused, and its `check` is not run: only its frames are judged). Run
-  by hand, one Chrome at a time (examples/WEB-FINDINGS.md #6); no gate
+  by hand, one Chrome at a time (web finding #6); no gate
   lane runs it.
 - `og doctor` (no arguments) checks what the author's loop needs: bun
   (node is optional when bun is present), the engine package, its native

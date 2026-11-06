@@ -1,5 +1,5 @@
 // The platform's first answers behind the play gate (src/web/settle.ts,
-// examples/WEB-FINDINGS.md #1): the Worker takes the game's first tick, then
+// web finding #1): the Worker takes the game's first tick, then
 // one tick per round of answers, so the title a returning player sees behind
 // the gate already shows the saved language and the slot's Continue. Run on
 // the native host with the local platform answering, as the page's storage

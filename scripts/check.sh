@@ -25,7 +25,7 @@
 # none of its inputs changed since: each GPU package's reference tests on
 # its own (og-render, og-ui, og-tests, og-tests-cooked: rule_gpu PKG),
 # the wasm steps (crates/), drift (the IDL, og-idl, og and the generated
-# files), check-conformance (packages/engine, templates/, examples/, the
+# files), check-conformance (packages/engine, templates/, tests/fixtures/, the
 # comparer, its corpus and the pins), web-reference (og-host-web's and og-tests-web's crates,
 # packages/engine, templates/fx-showcase), ui-styles and ui-kit (og,
 # templates/ui-kit, templates/styles, including their references). A change to scripts/, Cargo.toml,
@@ -109,9 +109,9 @@ packages/engine/types packages/engine/schema packages/engine/src/generated \
 crates/og-records/src/generated crates/og-host-web/src/generated crates/og-host-node/src/generated packages/knowledge/wiki $RULE_COMMON"
 }
 # check-conformance: what the two checkers read (the engine package, the
-# templates, the examples), the comparer, and where the pins are stated.
+# templates, the test fixtures), the comparer, and where the pins are stated.
 rule_conformance() {
-  echo "packages/engine templates examples crates/og-cli/src/check.rs scripts/tsrs-diff.sh scripts/tsrs-corpus scripts/install-tools.sh scripts/lib.sh"
+  echo "packages/engine templates tests/fixtures crates/og-cli/src/check.rs scripts/tsrs-diff.sh scripts/tsrs-corpus scripts/install-tools.sh scripts/lib.sh"
 }
 # ui-styles and ui-kit: og and the addon it loads (og-cli, og-host-node, packages/engine), the kit
 # and the built-in styles its sheets draw, including their references.
@@ -121,7 +121,7 @@ rule_ui_styles() {
 # crates/og-cook: the web tests cook their projects with og, and no wasm
 # crate depends on the cook (the loaders are og-bundle's).
 rule_web() {
-  echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) crates/og-cook packages/engine templates/fx-showcase templates/looks templates/ui-kit templates/styles templates/archetypes/third-person examples/brasswick examples/meridian-loop $RULE_COMMON"
+  echo "$(og_crate_dirs -p og-host-web -p og-tests-web --target "$WASM_TRIPLE" -e normal,build | og_words) crates/og-cook packages/engine templates/fx-showcase templates/looks templates/ui-kit templates/styles templates/archetypes/third-person tests/fixtures/vehicle-terrain $RULE_COMMON"
 }
 
 # skip_unchanged KEY WHAT RULE...: true (and prints why) when KEY may be
@@ -545,7 +545,7 @@ step_drift() {
 }
 
 # tsrs (og check) against tsgo on the engine's configs, every template, the
-# examples and scripts/tsrs-corpus (scripts/tsrs-diff.sh): a diagnostic tsgo
+# test fixtures and scripts/tsrs-corpus (scripts/tsrs-diff.sh): a diagnostic tsgo
 # reports and tsrs does not fails; every other difference is logged, not
 # failed. In no lane: a wave's end runs it (scripts/wave-end.sh). Reads
 # sources only, never a build output, so it waits for no step.
@@ -695,18 +695,17 @@ step_bun_quick() {
 
 # The browser tiers in headless Chrome on WebGPU (docs/ci.md §Browser
 # reference tiers; `make web-reference`): templates/fx-showcase, og-tests'
-# and og-ui's gfx scenes (crates/og-tests-web), Ember Vale,
-# two example games, the lanes' panic and
-# the accessibility mirror. Run at a wave's end on any host with Chrome.
+# and og-ui's gfx scenes (crates/og-tests-web), Ember Vale, the
+# vehicle-terrain fixture, the lanes' panic and the accessibility mirror. Run at a wave's end on any host with Chrome.
 #
-# Seven groups, each with the projects only it cooks and exports (two
+# Six groups, each with the projects only it cooks and exports (two
 # runs of one project in parallel would cook and export into the same
 # directories), run OG_WEB_JOBS at a time (default 3, or 1 for serial), each
 # group's output in $GATE_LOGS/web-reference/<group>.log, printed in order
 # at the end; the step fails when any group does. Every run serves on its
 # own port and starts Chrome with its own profile directory (port 0,
 # mkdtemp: tests/web/serve.ts, cdp.ts).
-WEB_GROUPS="fx ui gfx meridian-loop brasswick ember-vale lane-panic"
+WEB_GROUPS="fx ui gfx vehicle-terrain ember-vale lane-panic"
 WEB_JOBS_DEFAULT=3
 
 # Each web_<group> runs in packages/engine; non-zero when any of its runs failed.
@@ -727,20 +726,12 @@ web_gfx() { bun tests/web/reference-gfx.ts; }
 web_ember_vale() {
   bun tests/web/reference.ts --project templates/archetypes/third-person --out dist/test-reference/third-person --playtest tests/frames.og.ts
 }
-# An example game's frames: its tests/frames.og.ts itself (--playtest: its
-# commands without its screenshots and quit, each shot at its screenshot's
-# tick, 60 t). Its style packs' art and fonts and its music are not
-# committed: a checkout without them makes them first (tools/make-assets.ts,
-# as wave-end.sh's stage_prepare and each README say).
-web_game() {
-  if ! ls "$OG_ROOT/examples/$1"/assets/styles/*/atlas.png "$OG_ROOT/examples/$1"/assets/music/*.wav > /dev/null 2>&1; then
-    og_say "web-reference: examples/$1 has no generated assets yet: bun tools/make-assets.ts"
-    (cd "$OG_ROOT/examples/$1" && bun tools/make-assets.ts) || return 1
-  fi
-  bun tests/web/reference.ts --project "examples/$1" --playtest tests/frames.og.ts --out "dist/test-reference/$1"
+# The vehicle-terrain fixture's slide frame: its tests/drive.og.ts itself
+# (--playtest: its commands without its screenshots and quit, each shot at
+# its screenshot's tick, 60 t). Its assets are all generated by the cook.
+web_vehicle_terrain() {
+  bun tests/web/reference.ts --project tests/fixtures/vehicle-terrain --playtest tests/drive.og.ts --out dist/test-reference/vehicle-terrain
 }
-web_brasswick() { web_game brasswick; }
-web_meridian_loop() { web_game meridian-loop; }
 # A panic inside a lane reaches the page as a crash within 5 s, not a hang
 # (docs/web-export.md §Errors), and the same fault single-threaded.
 web_lane_panic() { bun tests/web/lane-panic.ts; }

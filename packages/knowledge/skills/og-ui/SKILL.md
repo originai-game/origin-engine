@@ -18,12 +18,6 @@ batch. Resume with its prebuilt engine rather than adding a game workaround.
 
 ## What works
 
-Games written from this package alone (`examples/lantern-vale`,
-`examples/hollowbell`, `examples/kestrel-stair`) built title, pause,
-dialogue, shop, inventory, level select, leaderboard, settings and
-results screens, and a style copied into the game restyled every one.
-Every word came from their string tables.
-
 ## 1. The rule of the kit
 
 Every component and widget is **one call per tick, data in, answer out**:
@@ -740,7 +734,7 @@ Fonts (the one rule for every label, field and button):
    the role's font first, then the locale's fonts, `UiDesc.fallbackFonts`
    (a Hebrew or Devanagari face, a CJK face cooked with `runtime true`) and
    the style's `fallback`; a letter and its accents stay in one face. A
-   CJK-only subset (lantern-vale's `tools/subset-font.py`) gives this: the
+   CJK-only subset gives this: the
    Latin in the style's face, the Chinese in Noto, on one line.
 
 So choose by the subset: keep Latin in the CJK subset for one face per

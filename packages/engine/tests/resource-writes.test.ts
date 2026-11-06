@@ -1,5 +1,5 @@
 // A resource handle reads and writes the resource's packed bytes (FINDINGS
-// #19 of examples/kestrel-stair): a system writing 200 fields a tick with
+// #19 of kestrel-stair): a system writing 200 fields a tick with
 // engine calls between the writes gives the world the engine's JSON path
 // (one call per field) gave, on both hosts, and a replay from a save
 // reaches the same hash. Each run is its own process

@@ -590,7 +590,7 @@ pub fn og_nav_flow_at(world: u32, field: f64, point: String) -> String {
 }
 
 /// `NavMeshInfo`: the bounds are its polygons' (FINDINGS #9 of
-/// examples/kestrel-stair: the floor's origin plus the agent's height was
+/// kestrel-stair: the floor's origin plus the agent's height was
 /// not where a baked level's terraces are).
 fn mesh_info(h: u64, m: &NavMesh) -> Value {
     let (min, max) = m.bounds();

@@ -12,9 +12,8 @@
 //   bun tests/web/device.ts [--project <dir>] [--out <dir>] [--chrome <path>] [--seconds N]
 //
 // --project (relative to the repository) runs another project's publish
-// build instead of templates/game's: the example games' own device runs,
-// examples/brasswick and examples/meridian-loop (release row F4), whose
-// default output is dist/test-device/<project's name>.
+// build instead of templates/game's (tests/fixtures/vehicle-terrain, say),
+// whose default output is dist/test-device/<project's name>.
 //
 // Writes <out>/webgpu/{report.md,device.json} and
 // <out>/device-result.json (default dist/test-device). Exits 1 when a check

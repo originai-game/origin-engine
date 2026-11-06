@@ -2,8 +2,9 @@
 
 The circuit and the car the racing showcase's HUD draws over
 (src/raceScene.ts): the Meridian Loop's, copied unchanged from
-examples/meridian-loop/assets/models, where that game's
-tools/make-assets.ts generates them from its circuit's numbers (the
+that game's assets/models (deleted with examples/ on 2026-11-06; git
+history keeps it), where its tools/make-assets.ts generated them from
+its circuit's numbers (the
 kit's src/raceTrack.ts is the same file). Original work for the project,
 CC0 1.0 like the rest of the kit's art.
 

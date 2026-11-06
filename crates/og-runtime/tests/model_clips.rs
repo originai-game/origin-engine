@@ -1,6 +1,6 @@
 //! A model's clips seen from game code: `GltfInfo.animations` lists the
 //! clip names of the model's `#anim` blob (FINDINGS #3 of
-//! `examples/lantern-vale`: it was always empty), and an animated `.vox`
+//! `lantern-vale`: it was always empty), and an animated `.vox`
 //! (MagicaVoxel frames cooked into mesh-swap clips) plays on an
 //! og.AnimationPlayer: one frame's primitive is drawn at a time, as a plain
 //! instance (a frame that never moves has no joint: no palette matrix, no

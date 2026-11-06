@@ -27,8 +27,8 @@ It prints every character the source font lacks and exits 1 when there are
 any: a Japanese table subset from a Chinese face (Noto Sans SC) loses the
 Japanese forms of kanji such as 鐘 鈴 険 続 設 語 楽 効, and the frame would
 show boxes. Run it again after a string changes, then `og cook`. Needs
-fontTools (pip install fonttools). Promoted from examples/lantern-vale's and
-examples/hollowbell's tools/subset-font.py, which subset Noto Sans SC.
+fontTools (pip install fonttools). Promoted from lantern-vale's and
+hollowbell's tools/subset-font.py, which subset Noto Sans SC.
 """
 import argparse
 import os

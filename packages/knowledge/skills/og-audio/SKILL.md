@@ -10,22 +10,6 @@ the same script renders the same samples on every host. The API is in
 
 ## What works
 
-Two games written from this package alone (`examples/lantern-vale`,
-`examples/hollowbell`) put this skill to work: Lantern Vale's four-minute
-track, cooked in 4-second chunks, streams from the title screen under the
-effects' duck, Hollowbell's music streams the same way, flipbook frame
-events put Hollowbell's footsteps, strikes and bell on their exact frames,
-and every damage moment was heard. In The Kestrel Stair
-(`examples/kestrel-stair`, a 3D third-person game) spatial sources (the
-braziers, the imps' chitter, the crypt's drip, the bell) were heard from a
-listener on the camera with distance, pan, distance dulling and occlusion
-behind walls, each read back exactly through `og.AudioPlayback` with
-`get:`; its 2:40 track streamed in 4-second
-chunks on the music bus. Its crypt is an `og.ReverbZone` (a box with a
-1.5 m `fade`, the sfx bus sending 0.55 to a room of 0.92 at damping 0.25;
-§4, §6): a playtest read the zone's `weight` 0 from the door and 1 inside,
-while og.Audio and the bus kept the open air's room 0.5 and send 0.12.
-
 ## 1. Every event sounds
 
 A game with no sound feels broken, whatever it shows. Before anything else,

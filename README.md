@@ -255,7 +255,6 @@ packages/
   knowledge        skills, guides, the generated wiki, looks, scaffold (shipped inside the engine package)
   launcher         og, the launcher: install.sh, install.ps1 and the version a game pins (docs/release.md §1)
 templates/         game (3D), game-2d, archetypes/, looks/, styles/, ui-kit, fx-showcase
-examples/          art-style samples, sample games and feature samples (autorig, motion-course, uncooked-load, ...)
 tests/             evidence/, install/ (the install test), replay/ (replay goldens)
 scripts/           check.sh (the gate), lane.sh, worktree.sh, release.sh, wave-end.sh, showcase.ts, ...
 tools/             art samples, benches, wasm determinism

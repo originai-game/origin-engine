@@ -13,8 +13,7 @@
 //! style's `atlas.png`) times its tint. Styles: the four atlas packs of
 //! templates/ui-kit, Ember Vale's copy of the fantasy pack
 //! (templates/archetypes/third-person, `ember`), the archetypes' sparkorb,
-//! lampdive, lanebeat and pathguard and the examples' hollowbell, lantern
-//! and kestrel (palette round two, row 77: sparkorb's primary label read
+//! lampdive, lanebeat and pathguard (palette round two, row 77: sparkorb's primary label read
 //! 3.42:1, lampdive's placeholder 3.57:1, pathguard's primary 3.30:1 and
 //! its danger button 2.96:1, Hollowbell's danger badge 4.26:1, Lantern
 //! Vale's success, warn and info badges 3.15, 2.72 and 4.07:1, before
@@ -137,9 +136,6 @@ fn game_styles() -> Vec<(String, PathBuf)> {
             "pathguard",
             "templates/archetypes/tower-defense/assets/styles/pathguard",
         ),
-        ("hollowbell", "examples/hollowbell/assets/styles/hollowbell"),
-        ("lantern", "examples/lantern-vale/assets/styles/lantern"),
-        ("kestrel", "examples/kestrel-stair/assets/styles/kestrel"),
     ]
     .iter()
     .map(|(name, dir)| (name.to_string(), root.join(dir)))

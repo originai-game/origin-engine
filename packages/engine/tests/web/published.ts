@@ -1,4 +1,4 @@
-// A playtest's script on the bytes that ship (examples/WEB-FINDINGS.md #6):
+// A playtest's script on the bytes that ship (web finding #6):
 // the project published as its author publishes it (`og build --publish`,
 // the og binary, the project's profile), served as the platform opens a
 // release (play-origin.ts: the top-level page with `window.__OG_GAME`, a
@@ -10,7 +10,7 @@
 // publish build has no command channel (og-build §6), so a step that is
 // not input or a capture is refused, never skipped.
 //
-//   bun tests/web/published.ts --project examples/hollowbell [--no-build] [--no-isolation]
+//   bun tests/web/published.ts --project templates/ui-kit [--no-build] [--no-isolation]
 //       [--script "<steps>" [--then "<steps>"] | --playtest <file>] [--title <node>]
 //       [--references <dir>] [--prefix <name prefix>]
 //       [--out <dir>] [--chrome <path>]
@@ -52,16 +52,10 @@
 // commands (its `then` steps as relaunches: reloads under the service
 // worker), which must be input and screenshot steps only; its `check`
 // reads files a published page cannot write, so only its frames are
-// judged. Without --script or --playtest the project's plan
-// below is the script: examples/hollowbell (the title against metal's
-// title.png, New game pressed, a name typed into the focused field, Begin,
-// ArrowRight held), examples/brasswick (title.png and start.png, frames.og.ts's
-// presses through the level select into the first level, ArrowRight held,
-// Escape, Español in the settings, a reload in Spanish),
-// examples/meridian-loop (tests/frames.og.ts's two pub-*.png frames,
-// Time trial, the countdown, W up the straight, Escape; then Deutsch in the
-// settings and a reload in German) and templates/ui-kit (the gallery against
-// kit-desktop-gallery.png, Settings pressed, Escape back). A plan may name a
+// judged. Without --script or --playtest the project's plan below is the
+// script: templates/ui-kit (the gallery against kit-desktop-gallery.png,
+// Settings pressed, Escape back, 简体中文 saved through the play origin's
+// store and read back after a reload). A plan may name a
 // playtest of its project whose steps run with its own (`playtest`).
 //
 // Writes <out>/<id>/<tier>[-single]/published.json, the captures (and a
@@ -83,7 +77,7 @@ const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
-const projectRel = opt("--project") ?? "examples/hollowbell";
+const projectRel = opt("--project") ?? "templates/ui-kit";
 const project = join(repo, projectRel);
 const id = projectRel.split("/").pop()!;
 const tier = "webgpu";
@@ -128,156 +122,6 @@ interface Plan {
 }
 
 const PLANS: Record<string, Plan> = {
-  hollowbell: {
-    title: "new",
-    script: [
-      // tests/frames.og.ts's title.png is this tick's frame (its 0.2:name:Wren is no part of the title).
-      "1.0:screenshot:title.png",
-      "1.0:state:title.json",
-      // New game, pressed with the mouse where the mirror says it is: the name dialog, its field focused.
-      "1.1:touch_move_to:new",
-      "1.15:touch_start",
-      "1.2:touch_end",
-      "1.6:mirror:naming.json",
-      // Typed: real key presses into the focused field (the shell's text entry, text-input.ts).
-      "1.7:type:Wren",
-      "2.0:state:named.json",
-      "2.1:touch_move_to:Begin",
-      "2.15:touch_start",
-      "2.2:touch_end",
-      "2.8:state:begun.json",
-      "2.9:key_down:ArrowRight",
-      "3.6:key_up:ArrowRight",
-      "3.7:state:ran.json",
-      "3.8:quit",
-    ],
-    check(run) {
-      const naming = run.mirror("naming.json");
-      const named = run.state("named.json").facts ?? {};
-      const begun = run.state("begun.json").facts ?? {};
-      const ran = run.state("ran.json").facts ?? {};
-      return [
-        [run.state("title.json").facts?.["phase"] === "title", "tick 60 is the title (facts.phase)"],
-        [naming.nodes.some((n) => n.role === "textbox"), "the press on New game opened the name dialog: a text box in the mirror"],
-        [naming.focused?.tag === "TEXTAREA" && !naming.focused.hidden && !!naming.focused.label, `the focus is in a named text box no aria-hidden hides (${JSON.stringify(naming.focused)})`],
-        [named["name"] === "Wren", `the typed keys reached the game: facts.name is ${JSON.stringify(named["name"])}`],
-        [begun["phase"] === "play", `Begin started the run (facts.phase ${JSON.stringify(begun["phase"])})`],
-        [typeof ran["x"] === "number" && typeof begun["x"] === "number" && (ran["x"] as number) > (begun["x"] as number) + 1, `ArrowRight held moved Wren right (x ${begun["x"]} to ${ran["x"]})`],
-      ];
-    },
-  },
-  brasswick: {
-    title: "new",
-    script: [
-      // tests/frames.og.ts's title.png and start.png are these ticks' frames: its presses on the way, the
-      // level select opened and closed, New game. Its 0.2:unlock:2 is a command (the select shows one level
-      // open here, not two), and neither frame shows the select.
-      "1.0:screenshot:title.png",
-      "1.0:state:title.json",
-      "1.1:touch_move_to:levels",
-      "1.117:touch_start",
-      "1.15:touch_end",
-      "1.6:mirror:levels.json",
-      "2.1:key_down:Escape",
-      "2.134:key_up:Escape",
-      "2.6:touch_move_to:new",
-      "2.617:touch_start",
-      "2.65:touch_end",
-      "3.8:screenshot:start.png",
-      "3.8:state:start.json",
-      "4.0:key_down:ArrowRight",
-      "5.0:key_up:ArrowRight",
-      "5.1:state:ran.json",
-      "5.3:key_down:Escape",
-      "5.334:key_up:Escape",
-      "5.8:state:paused.json",
-      // The settings from pause: the Language tab, Español, Done (og.settings through the play origin's store).
-      "6.0:touch_move_to:settings",
-      "6.017:touch_start",
-      "6.05:touch_end",
-      "6.6:touch_move_to:Tab#3",
-      "6.617:touch_start",
-      "6.65:touch_end",
-      "7.0:touch_move_to:Option#1",
-      "7.017:touch_start",
-      "7.05:touch_end",
-      "7.4:touch_move_to:Done",
-      "7.417:touch_start",
-      "7.45:touch_end",
-      "8.0:state:saved.json",
-      "8.1:quit",
-    ],
-    // A returning player's reload: the title in Spanish (FINDINGS #16: the answers are read before the title is built).
-    then: [["1.0:state:reloaded.json", "1.0:mirror:title-es.json", "1.1:quit"]],
-    check(run) {
-      const facts = (f: string) => run.state(f).facts ?? {};
-      const start = facts("start.json");
-      const ran = facts("ran.json");
-      const levels = run.mirror("levels.json");
-      const title = run.mirror("title-es.json");
-      const set = run.calls(0).filter((c) => c.method === "store.set" && c.args["key"] === "og.settings");
-      const read = run.calls(1).filter((c) => c.method === "store.get" && c.args["key"] === "og.settings");
-      const newGame = title.nodes.find((n) => n.path === "new" || n.path.endsWith("/new"));
-      return [
-        [facts("title.json")["phase"] === "title", "tick 60 is the title (facts.phase)"],
-        [levels.nodes.some((n) => n.path.split("/").includes("Levels")), "the press on Level select opened it: its cards in the mirror"],
-        [start["phase"] === "play" && start["level"] === 1, `Escape closed the select and New game started the first level (facts ${JSON.stringify({ phase: start["phase"], level: start["level"] })})`],
-        [typeof ran["x"] === "number" && typeof start["x"] === "number" && (ran["x"] as number) > (start["x"] as number) + 1, `ArrowRight held moved Wick right (x ${start["x"]} to ${ran["x"]})`],
-        [facts("paused.json")["paused"] === true, "Escape in play paused (facts.paused)"],
-        [facts("saved.json")["language"] === "es", `the Language tab's Español took (facts.language ${JSON.stringify(facts("saved.json")["language"])})`],
-        [set.length >= 1, `og.settings went to the play origin's store (${set.length} store.set)`],
-        [read.length === 1, `the reloaded page asked the play origin for og.settings (${read.length} store.get)`],
-        [facts("reloaded.json")["language"] === "es" && newGame?.name === "Partida nueva", `and came back in Spanish (facts.language ${JSON.stringify(facts("reloaded.json")["language"])}, New game reads ${JSON.stringify(newGame?.name)})`],
-      ];
-    },
-  },
-  "meridian-loop": {
-    title: "start",
-    // The smoke's title and straight frames use real input on both hosts.
-    // State checks still cover countdown, pause, settings and a reload.
-    playtest: "tests/frames.og.ts",
-    script: [
-      "1.2:state:title.json",
-      "3.0:state:countdown.json",
-      "8.5:state:straight.json",
-      "10.0:state:paused.json",
-      // The settings from pause: the Language tab, Deutsch, Done.
-      "10.2:touch_move_to:settings",
-      "10.217:touch_start",
-      "10.25:touch_end",
-      "10.8:touch_move_to:Tab#3",
-      "10.817:touch_start",
-      "10.85:touch_end",
-      "11.2:touch_move_to:Option#1",
-      "11.217:touch_start",
-      "11.25:touch_end",
-      "11.6:touch_move_to:Done",
-      "11.617:touch_start",
-      "11.65:touch_end",
-      "12.2:state:saved.json",
-      "12.3:quit",
-    ],
-    then: [["1.0:state:reloaded.json", "1.0:mirror:title-de.json", "1.1:quit"]],
-    check(run) {
-      const facts = (f: string) => run.state(f).facts ?? {};
-      const straight = facts("straight.json");
-      const title = run.mirror("title-de.json");
-      const set = run.calls(0).filter((c) => c.method === "store.set" && c.args["key"] === "og.settings");
-      const read = run.calls(1).filter((c) => c.method === "store.get" && c.args["key"] === "og.settings");
-      const start = title.nodes.find((n) => n.path === "start" || n.path.endsWith("/start"));
-      // Phase of src/components.ts: Title 0, Countdown 1, Racing 2.
-      return [
-        [facts("title.json")["phase"] === 0, "tick 72 is the title (facts.phase)"],
-        [facts("countdown.json")["phase"] === 1, `the press on Time trial started the countdown (facts.phase ${JSON.stringify(facts("countdown.json")["phase"])})`],
-        [straight["phase"] === 2 && typeof straight["kmh"] === "number" && (straight["kmh"] as number) > 20, `W held drove the car up the straight (facts.phase ${JSON.stringify(straight["phase"])}, ${straight["kmh"]} km/h)`],
-        [facts("paused.json")["paused"] === true, "Escape over the race paused (facts.paused)"],
-        [facts("saved.json")["language"] === "de", `the Language tab's Deutsch took (facts.language ${JSON.stringify(facts("saved.json")["language"])})`],
-        [set.length >= 1, `og.settings went to the play origin's store (${set.length} store.set)`],
-        [read.length === 1, `the reloaded page asked the play origin for og.settings (${read.length} store.get)`],
-        [facts("reloaded.json")["language"] === "de" && start?.name === "Zeitfahren", `and came back in German (facts.language ${JSON.stringify(facts("reloaded.json")["language"])}, Time trial reads ${JSON.stringify(start?.name)})`],
-      ];
-    },
-  },
   "ui-kit": {
     title: "UI kit",
     references: "crates/og-ui/references",
@@ -312,7 +156,7 @@ const PLANS: Record<string, Plan> = {
       "5.0:state:saved.json",
       "5.1:quit",
     ],
-    // A reload, as a returning player's: the settings come back from the store (WEB-FINDINGS #10).
+    // A reload, as a returning player's: the settings come back from the store (web finding #10).
     then: [["1.0:state:reloaded.json", "1.1:quit"]],
     check(run) {
       const screen = (f: string) => run.state(f).facts?.["screen"];

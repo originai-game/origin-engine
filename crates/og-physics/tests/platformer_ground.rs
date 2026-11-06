@@ -1,4 +1,4 @@
-//! og.PlatformerController on the ground (examples/hollowbell's findings
+//! og.PlatformerController on the ground (hollowbell's findings
 //! #15 and #16): a run on flat ground holds maxSpeed tick after tick, on
 //! one box, on adjacent boxes and on a tilemap's collision rectangles, and
 //! a controller put exactly on a floor stands on it and runs.

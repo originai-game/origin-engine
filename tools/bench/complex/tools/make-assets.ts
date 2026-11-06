@@ -7,13 +7,13 @@
 // - the prop kit: pine, oak, three rocks, bush, crate, barrel, fence,
 //   lamp post, house (with blended window glass), market stall, each with
 //   its own materials and 256 x 256 textures embedded in the .glb;
-// - models/villager.glb: a box-bodied humanoid on examples/kestrel-stair's
-//   clip library skeleton, with the library's nine clips in the file (so
+// - models/villager.glb: a box-bodied humanoid on the clip library's
+//   skeleton (tools/lib/rig.ts), with the library's nine clips in the file (so
 //   three.js's GLTFLoader and og.load.animation read the same clips);
-// - the engine's own CC0 models copied in: walker.glb (crates/og-tests/
-//   reference-scene), palm, berry and islet (examples/rumpus-isle), car and
-//   ghost (examples/meridian-loop), stair (examples/kestrel-stair), and
-//   dropship.glb (templates/game, MIT);
+// - the engine's own models copied in: walker.glb (crates/og-tests/
+//   reference-scene) and the bench's own models/ (palm, berry, islet, car,
+//   ghost and stair, CC0, kept from the dogfood games deleted on 2026-11-06;
+//   dropship.glb, MIT, from the 3D template);
 // - the particle textures and the two emitters (fx/fire.ogt, fx/smoke.ogt)
 //   written from src/layout.js's FX table, which three-complex.js simulates.
 //
@@ -23,10 +23,10 @@
 import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Glb, MeshBuilder, quat, v3 } from "../../../../examples/kestrel-stair/tools/gltf.ts";
-import type { Q, V3 } from "../../../../examples/kestrel-stair/tools/gltf.ts";
-import { draw, fbm, hash2, png, rng } from "../../../../examples/kestrel-stair/tools/media.ts";
-import { BODIES, character, library } from "../../../../examples/kestrel-stair/tools/rig.ts";
+import { Glb, MeshBuilder, quat, v3 } from "./lib/gltf.ts";
+import type { Q, V3 } from "./lib/gltf.ts";
+import { draw, fbm, hash2, png, rng } from "./lib/media.ts";
+import { BODIES, character, library } from "./lib/rig.ts";
 import { FX, GRID, SIZE, height, slope, LAKE, VILLAGE, FIELD, PARK } from "../src/layout.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -376,7 +376,7 @@ function stall(): Uint8Array {
 // ── the villager: kestrel-stair's library skeleton, a box body, the library's clips ──
 (BODIES as Record<string, unknown>)["villager"] = {
   scheme: "blender",
-  // examples/kestrel-stair/tools/rig.ts's LIBRARY proportions, so the body's rest pose is the clips'.
+  // tools/lib/rig.ts's LIBRARY proportions, so the body's rest pose is the clips'.
   prop: {
     hips: 1.0, spine: 0.12, chest: 0.2, neck: 0.2, head: 0.1, headSize: 0.22,
     shoulderX: 0.04, shoulderY: 0.06, clavicle: 0.14, upperArm: 0.28, lowerArm: 0.26, hand: 0.14, armDrop: 0,
@@ -508,13 +508,7 @@ write("models/stall.glb", stall());
 write("models/villager.glb", villager());
 const copies: [string, string][] = [
   ["crates/og-tests/reference-scene/assets/models/walker.glb", "walker.glb"],
-  ["examples/rumpus-isle/assets/models/palm.glb", "palm.glb"],
-  ["examples/rumpus-isle/assets/models/berry.glb", "berry.glb"],
-  ["examples/rumpus-isle/assets/models/islet.glb", "islet.glb"],
-  ["examples/meridian-loop/assets/models/car.glb", "car.glb"],
-  ["examples/meridian-loop/assets/models/ghost.glb", "ghost.glb"],
-  ["examples/kestrel-stair/assets/models/stair.glb", "stair.glb"],
-  ["templates/game/assets/models/dropship.glb", "dropship.glb"],
+  ...["palm", "berry", "islet", "car", "ghost", "stair", "dropship"].map((m): [string, string] => [`tools/bench/complex/models/${m}.glb`, `${m}.glb`]),
 ];
 for (const [from, to] of copies) copyFileSync(join(repo, from), join(assets, "models", to));
 write("textures/flame.png", puff(3, 1.4));

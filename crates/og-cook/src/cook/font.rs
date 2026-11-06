@@ -1173,7 +1173,7 @@ mod tests {
             "{note}"
         );
         let (_, note) = cook_px(
-            &read("../examples/hollowbell/assets/styles/hollowbell/DotGothic16-Regular.ttf"),
+            &read("archetypes/roguelike/assets/styles/lampdive/DotGothic16-Regular.ttf"),
             16,
         );
         assert!(note.contains("off the 16 px grid"), "{note}");

@@ -4,7 +4,7 @@
 // catch a missing member, because src/index.ts assembles `og` from plain
 // objects cast to the declared type. og.load.textureArray was declared,
 // typed, documented and bound on both hosts, and still `not a function`
-// (examples/lantern-vale/FINDINGS.md #9); EngineProbe.listen likewise.
+// (lantern-vale/FINDINGS.md #9); EngineProbe.listen likewise.
 //
 // And the other way round: every member a game can reach (the package's
 // named exports, `og` and its namespaces, the World and its queries and

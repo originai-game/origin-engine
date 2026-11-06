@@ -116,7 +116,7 @@ fn project() -> &'static Path {
             std::fs::create_dir_all(p.parent().unwrap()).unwrap();
             std::fs::write(p, bytes).unwrap();
         };
-        let crate_vox = std::fs::read(repo().join("examples/lantern-vale/assets/models/rock.vox"))
+        let crate_vox = std::fs::read(repo().join("crates/og-cook/tests/fixtures/vox/pivot.vox"))
             .expect("a static .vox");
         write("models/crate.vox", &crate_vox);
         let walker = std::fs::read(repo().join("templates/game/assets/models/walker.glb")).unwrap();

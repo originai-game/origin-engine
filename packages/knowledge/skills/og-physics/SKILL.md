@@ -44,8 +44,7 @@ while they approach. `impulse` (N·s, at least 0) is the normal impulse the
 solver gave the pair in that step, summed over substeps and contact points:
 `b` took `impulse` along `normal` and `a` the same against it, so heavier
 bodies hitting give more. Scale feedback on the closing speed (how fast)
-or the impulse (how hard, mass included), as
-`examples/rumpus-isle/src/critters.ts` does for its bumps.
+or the impulse (how hard, mass included).
 
 ```ts
 const hit = og.physics.raycast(world, { origin: eye, direction: { x: 0, y: 0, z: -1 }, maxDistance: 30, filter: { mask: 0b10, exclude: player } });

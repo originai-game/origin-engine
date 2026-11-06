@@ -505,7 +505,7 @@ test("the art brief is re-exported: bin/brief.ts is the knowledge package's, and
 
 test("rigParts is re-exported beside the art brief and names the four templates for any other", () => {
   expect([...RIG_TEMPLATES]).toEqual(["humanoid-side", "humanoid-front", "quadruped", "creature"]);
-  // The mage's lowest layers (examples/autorig/assets/chars/mage.psd): its legs, image-left first.
+  // The mage's lowest layers (autorig/assets/chars/mage.psd): its legs, image-left first.
   const legs = rigParts("humanoid-front").filter((p) => /^(leg|foot)/.test(p.layer));
   expect(legs.map((p) => [p.layer, p.side, p.bone, p.required])).toEqual([
     ["leg-upper-l", "l", "leg-upper-l", true],

@@ -14,16 +14,6 @@ use them.
 
 ## What works
 
-The Kestrel Stair (`examples/kestrel-stair`, a 3D third-person action
-game written from this package alone) baked its navmesh from the level's
-glTF with one `model` line (§1), and five agents ran on it: imps on a
-behaviour tree (patrol, chase, a 0.25 s wind-up and a bite, flight when
-hurt) and wardens on a machine (patrol, alert, chase, slam, search), each
-raising the game's commands, with sight occluded by the level,
-`og.Steering` separation and avoidance, and `og.nav.setObstacle` closing
-the summit gate until it rose. Two processes of a full session of chases
-end on one world hash.
-
 ## 1. Pick the navigation
 
 | World | Navigation | How |
@@ -145,8 +135,7 @@ link {                         # an off-mesh link: a gap jumped, a ladder, a doo
   million columns (raise `cellSize` or bound it); its report notes the
   triangles, cells, polygons and tiles it baked.
 
-The Kestrel Stair's, baked from its glTF level (`tools/level.ts` writes it
-beside the model):
+One baked from a glTF level (a level tool writes it beside the model):
 
 ```text
 type navmesh
@@ -350,7 +339,7 @@ tree {                         # one root node; or a `machine` (below), never bo
 A machine replaces the tree. Every think it checks the current state's
 transitions in order and takes the first that holds (running the exit
 actions, then the new state's enter actions), then ticks the state's
-nodes as one sequence. The Kestrel Stair's warden:
+nodes as one sequence. A warden:
 
 ```text
 type behaviour

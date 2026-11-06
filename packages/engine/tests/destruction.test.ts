@@ -1,5 +1,5 @@
-// og.destruction on both hosts: examples/demolition-yard's wall, pillar and
-// pane (each tuned by og.destruction.material) blown, struck and hit give
+// og.destruction on both hosts: the destruction-yard fixture's wall, pillar
+// and pane (each tuned by og.destruction.material) blown, struck and hit give
 // the same world hash, the same og.Fractured events and the same props'
 // state on the native addon and the wasm module: the fracture, the stress
 // solver and the chunks' bodies are one deterministic simulation. Each
@@ -18,7 +18,7 @@ declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: n
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = join(pkg, "..", "..");
-const project = join(repo, "examples", "demolition-yard");
+const project = join(repo, "tests", "fixtures", "destruction-yard");
 
 function run(host: string) {
   const r = Bun.spawnSync(["bun", "tests/support/destruction-hash.ts", "--host", host, "--project", project], { cwd: pkg });
@@ -48,10 +48,10 @@ test.skipIf(STALE_WASM)("a wall, a pillar and a pane break the same way on both 
 // The yard as og run plays it (its own game, commands and beats, the native
 // host): its charge leaves two piers of standing brickwork, one a third of
 // the wall's 2.4 m, nothing spanning the hole, and the struck pillar a
-// stump that its own falling top does not crush. Each held in the frames
-// the art review reads, and each broken by a change that passed the
-// wall-alone test (a charge reaching the piers' feet, M7's 0.55 and 0.75 m).
-test("the demolition yard leaves two piers, a clear hole and a pillar stump", () => {
+// stump that its own falling top does not crush. Each was broken once by a
+// change that passed the wall-alone test (a charge reaching the piers'
+// feet, M7's 0.55 and 0.75 m).
+test("the destruction yard leaves two piers, a clear hole and a pillar stump", () => {
   cookProject(project, repo);
   const r = Bun.spawnSync(["bun", "tests/support/yard-piers.ts", "--project", project], { cwd: pkg });
   const out = new TextDecoder().decode(r.stdout);

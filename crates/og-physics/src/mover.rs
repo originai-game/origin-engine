@@ -10,7 +10,7 @@
 //! contact query that returns nothing at some places (x 26 of a floor from
 //! 8 to 82). So a run grazing the floor met it at random with a tilted
 //! normal and lost its step: in 2D the slope rule (no horizontal tangent)
-//! took the whole step away (FINDINGS #16 of examples/hollowbell), in 3D a
+//! took the whole step away (FINDINGS #16 of hollowbell), in 3D a
 //! capsule running over adjacent boxes or a triangle mesh dropped to under
 //! 0.4 m/s for a tick every second or so; and a shape put exactly on a
 //! floor fell into it (11 mm for the 2D box, #15; 9 cm for a 3D capsule)

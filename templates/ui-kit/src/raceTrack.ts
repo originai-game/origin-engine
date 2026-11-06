@@ -1,5 +1,5 @@
 // The racing showcase's circuit as numbers (src/raceScene.ts, src/race.ts'
-// map): the Meridian Loop's (examples/meridian-loop/src/track.ts, copied
+// map): the Meridian Loop's (meridian-loop/src/track.ts, copied
 // verbatim below this header), whose models the kit draws behind its racing
 // HUD (assets/models/race: the road, walls, scenery and ground made from
 // these samples by that game's tools/make-assets.ts). Pure arithmetic.

@@ -4,7 +4,7 @@
 // presses Apply, which writes og.settings; the second reads og.settings on
 // its first tick and comes back muted and in Chinese, the title's words
 // from the zh-CN table and the tree's values where Apply left them
-// (examples/WEB-FINDINGS.md #10: the kit saved its settings and never read
+// (web finding #10: the kit saved its settings and never read
 // them, so a reload came back in English).
 import { demo, playtest, tap, ui } from "./lib.ts";
 

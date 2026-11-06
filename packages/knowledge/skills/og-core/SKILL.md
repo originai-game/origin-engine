@@ -12,23 +12,6 @@ that works on one host, one seed or one machine and not the next.
 
 ## What works
 
-`examples/<name>` in this package's skills is a game in the engine's
-source repository (https://github.com/originai-game/origin-engine/tree/main/examples),
-not installed with the package; read one there when a skill points to it.
-What a game starts from is installed: the archetypes in the engine's dist
-(`og new <dir> --archetype <name>`, or Origin's `engine_scaffold`).
-
-Two games written from this package alone (`examples/lantern-vale`, a 3D
-adventure, and `examples/hollowbell`, a 2D platformer) hold these rules
-for a whole game, not a toy: each ends a full session run in two processes
-on one world hash, a player's name and a save live in `str` fields as
-world state, and a resource or column a system did not declare is refused
-with the system and the record named, so the fix is one line. A third,
-The Kestrel Stair (`examples/kestrel-stair`, 3D third-person), restored
-`world.snapshot()` after a relaunch with `world.restore()`: 93 entities
-came back with their cloth, navmesh paths and behaviour state, and a full
-session in two processes ended on one hash.
-
 ## 1. Game code is TypeScript, and only TypeScript
 
 A game is `src/*.ts` against `@origingame/engine`. Never add Rust, a second
@@ -119,10 +102,9 @@ world and the same inputs give the same run to the tick, so a game records
 its own inputs and replays them. Three things are called "replay": the
 probe's and playtests' re-runs (`og run --commands`, `--seed`: tests,
 og-build §4), a **watch replay** (the player's run driven again) and a
-**ghost** (a past run drawn beside the player). The last two are game code;
-examples/meridian-loop does both (`src/replay.ts`, `src/tape.ts`,
-`src/tapes.ts`, `src/ghost.ts`; `tests/replay.og.ts` checks the replay
-crosses the line on the race's own ticks).
+**ghost** (a past run drawn beside the player). The last two are game
+code: record the inputs (or, for a ghost, the poses) each tick, and drive
+them again from tick 0 of the same world.
 
 Watch replay: snapshot the start, tape the inputs, restore and feed the tape.
 

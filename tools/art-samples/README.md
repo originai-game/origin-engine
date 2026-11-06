@@ -8,28 +8,16 @@ frame regression it is). Evidence and the per-style table:
 
 ## The scenes
 
-`examples/art-<scene>` for the eight sample scenes, each style's named in
-`scenes.json` (internal to these tools; the catalogue does not carry it): pixel-side, pixel-topdown, pixel-3d, paint-2d, ink-3d,
-shape-3d, toon-3d, cinematic-3d. Each is a small game project (no game
-logic) with the same beats: a hero, a stepped tree, a crate, a lantern,
-the ground and a far layer. Its `project.ogt` names `looks/sample.ogt`,
-which extends the family's first style; `beats.json` lists each asset with
-the art brief it was requested with (kind, subject, metres).
-
-- **2D families** (pixel-side, pixel-topdown, paint-2d): every beat is a
-  sprite (`src/main.ts`), sized from `src/cells.ts` (the brief's cells).
-- **3D families**: every beat is a cooked model (`assets/models/`: `type
-  model` text built with og-model §5's generators, and two glbs whose
-  textures the cook conforms); `src/scene.ts` places them, `src/main.ts`
-  gives the family's camera. pixel-3d stands its hero and tree as
-  billboarded pixel sprites; shape-3d takes an untextured field.
-- **`styles/<slug>/`**: a style whose direction differs from its family's
-  base brings its own sources, laid over `assets/` when it runs (the
-  pixel-side and paint-2d styles, neon-vector's black-and-glow models).
-- **`sets/<name>/`**: another asset set of the family that several styles
-  share, named by `styles/<slug>/set` and laid over the project (its
-  models in place of the family's): cinematic-3d's `realistic` set for
-  cinematic-realism and muted-cinematic-3d.
+The art-sample scenes (`examples/art-<scene>`) were deleted on 2026-11-06
+with the rest of `examples/`, and their committed Metal references with
+them. `capture.ts` now draws each style on the project its family's
+profile draws (`families.json`: `templates/game-2d` for the 2D families,
+`templates/game` for the 3D ones), with the look set to extend the style,
+for the art director to read: wave-end's art stage writes the frames under
+`target/evidence/wave-end/art/` and compares nothing. The authored art a
+content style relies on is kept beside its look, `templates/looks/<slug>/`
+(`templates/looks/AUTHORED.md`); `prepare.ts`, `slice.py`, `tiles.py`,
+`pack.py`, `make3d.py` and `neon.py` are how that art was made.
 
 ## The tools
 
@@ -52,7 +40,7 @@ the art brief it was requested with (kind, subject, metres).
   terrains (path, pond, ledge) with the tile set's text.
 - `pack.py`: a downloaded model (glTF or glb) packed into one glb sized to
   its beat, its maps re-encoded and sized (the cinematic-3d family's
-  realistic set, `examples/art-cinematic-3d/sets/realistic/README.md`).
+  realistic set, `templates/looks/cinematic-realism/realistic-set/README.md`).
 - `make3d.py`: writes the crate and ground glbs around their textures;
   `neon.py`: neon-vector's sources from the base models.
 - `catalogue.py <capture-dir> <evidence-dir>`: `look.support` and
@@ -60,12 +48,8 @@ the art brief it was requested with (kind, subject, metres).
   beside the preview) and the check's result; og-taste §12's table
   follows.
 
-## Reference frames
+## Frames
 
-The frame of style `<slug>` is `examples/art-<family>/references/<tier>/<slug>.png`
-at 1280x720: `bun tools/art-samples/capture.ts --only <family> --out
-examples/art-<family>/references/metal` on macrunner records a family's.
-The wave's end redraws every family (`scripts/wave-end.sh`, stage `art`:
-captures in `target/evidence/wave-end/art/<family>/`, compared with the
-committed frames in `art-vs-metal.tsv`); `--record art` or
-`--record art/<family>` records them in place.
+No frame here is a reference. `bun tools/art-samples/capture.ts --out DIR`
+draws every style (or `--only <slug|family>,...`) for the art director to
+read; the wave's end runs it into `target/evidence/wave-end/art/`.

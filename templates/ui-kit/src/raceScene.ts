@@ -109,7 +109,7 @@ function mul(a: Q, b: Q): Q {
   };
 }
 
-/** The rotation that looks from eye at target, +y up (the camera looks down its -z): examples/meridian-loop/src/view.ts. */
+/** The rotation that looks from eye at target, +y up (the camera looks down its -z): meridian-loop/src/view.ts. */
 function lookAt(eye: V, target: V): Q {
   let zx = eye.x - target.x, zy = eye.y - target.y, zz = eye.z - target.z;
   const zl = Math.hypot(zx, zy, zz) || 1;

@@ -276,7 +276,7 @@ test("a generated style's art requests become one brief per slot, in its shape l
 });
 
 test("rigParts lists a template's layers back to front, each with its side, its bone and its joint's rule", () => {
-  // humanoid-front as the mage draws it (examples/autorig/art/mage.py): the legs behind the robe, the
+  // humanoid-front as the mage draws it (autorig/art/mage.py): the legs behind the robe, the
   // image-left side before the right, the staff under the hand that holds it. og-cook's
   // rig_parts_match_the_templates holds the fields equal to its templates; this holds the shape.
   const front = rigParts("humanoid-front");

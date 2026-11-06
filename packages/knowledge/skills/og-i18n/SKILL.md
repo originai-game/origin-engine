@@ -14,16 +14,6 @@ and points here for every call.
 
 ## What works
 
-Two games written from this package alone (`examples/lantern-vale`,
-`examples/hollowbell`) ship English and Simplified Chinese from string
-tables: the cook warned of no missing key in either, the results template
-showed its localised Best and New best, a name was typed partly through an
-input method, and a style copied without its CJK `fallback` was refused by
-the cook with the line named. The Kestrel Stair (`examples/kestrel-stair`)
-ships English and Japanese: its Noto Sans JP subset cut by the ui-kit's
-`tools/subset-font.py` needed no other step, and its locales playtest
-finds no English word of a template left in Japanese on eight screens.
-
 ## 0. Start from the choice
 
 A game made with `og new --lang zh,en,ar` (or the platform's language

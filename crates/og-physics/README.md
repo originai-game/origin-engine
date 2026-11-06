@@ -320,9 +320,9 @@ floor travels 1.98 cm, not 1 cm), while a cast starting within it falls
 back on a contact query that returns nothing at some places. A run
 grazing the floor then met it at random with a tilted normal: in 2D the
 controller's slope rule (2D has no horizontal tangent) took the whole
-step, the run stuttering to 0 m/s every few ticks (examples/hollowbell
-#16), and a shape put exactly on a floor fell 11 mm into it and stuck
-(#15); in 3D (row 72, measured with Lantern Vale's capsule, radius 0.3,
+step, the run stuttering to 0 m/s every few ticks (a 2D platformer's
+finding #16), and a shape put exactly on a floor fell 11 mm into it and stuck
+(#15); in 3D (row 72, measured with a 3D game's capsule, radius 0.3,
 1.6 m, at 6 m/s) a run dropped to 0 to 0.4 m/s for a tick every second or
 so on one box, on adjacent boxes and on a triangle mesh, the capsule stood
 1 mm over the floor instead of its 2 cm skin and crept up 0.1 mm a tick,

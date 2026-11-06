@@ -27,8 +27,8 @@
 // as it is and each shot is compared with <dir>/references/<tier>/<name>.png
 // (each shot falls back to metal's on its own). --playtest <file> (relative
 // to the project) takes the script and shots from a frames playtest instead,
-// as reference-ui.ts does the kit's: its commands without screenshots, `quit`
-// and `dump_*`, each `<t>:screenshot:<file>` a shot at tick round(60 t), its
+// as reference-ui.ts does the kit's: its commands without screenshots, `quit`,
+// `expect:frame` and `dump_*`, each `<t>:screenshot:<file>` a shot at tick round(60 t), its
 // size the canvas's; one process (a playtest with `then`, `room` or `seed`
 // is refused). --print prints the script and shots it would run and exits,
 // with no cook, export or Chrome. --size WxH drives another
@@ -125,7 +125,8 @@ const fromPlaytest = playtestFile
       for (const step of desc.commands.split(";")) {
         const [at, action, ...rest] = step.split(":");
         if (action === "screenshot") shots.push(`${rest[0]!.replace(/\.png$/, "")}@${Math.round(Number(at) * TICK_RATE)}`);
-        else if (action !== "quit" && !action!.startsWith("dump_")) script.push(step);
+        // A frame expectation is this script's own shot comparison, against this tier's reference.
+        else if (action !== "quit" && !action!.startsWith("dump_") && !(action === "expect" && rest[0] === "frame")) script.push(step);
       }
       return { script: script.join(";"), shots: shots.join(","), size: desc.size };
     })()

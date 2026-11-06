@@ -443,7 +443,7 @@ occurrence of the version is written by `scripts/release.sh bump` and
 held equal by `packages/knowledge`'s test: the four `package.json`
 (`optionalDependencies` included), `scaffold/origin-engine.json`,
 `templates/*/project.ogt` and `package.json`, `templates/archetypes/*`,
-`examples/*`, and what `create` writes into a new project. A Game's
+`tests/fixtures/*`, and what `create` writes into a new project. A Game's
 `project.ogt` pins its own version; `og` reports a mismatch with the
 installed package (`og doctor` as a line, `og run`/`test`/`build` as a
 warning: the installed package runs, the pin is the author's record of

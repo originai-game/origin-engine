@@ -11,21 +11,6 @@ needs a browser or a Rust toolchain. The command channel is
 
 ## What works
 
-The loop held for two whole games written from this package alone
-(`examples/lantern-vale`, `examples/hollowbell`): `og cook` took 47 and 69
-assets cold in 8.2 s and 3.6 s and under 100 ms after a change, without a
-warning, and every refusal named the line and the fix (a copied UI style, as
-styles were then called, without its CJK `fallback` named the line and og-taste §1;
-`PostEffects.vignette is true or false` named the line). Scripted runs gave
-the same frames every time, `store: "keep"` relaunches and two-process
-replays worked the first time they were asked for. The third, The Kestrel Stair (`examples/kestrel-stair`, 3D
-third-person), cooked 62 assets cold in 8.5 s (110 outputs, 9.9 MB) and
-about 0.1 s after a change, without a warning, its refusals naming the
-line; two processes of a full session (chases, bites, strikes, a rest, the
-gate, the bell) ended on one world hash, every input was answered within
-a tick and every damage moment held by hit stop, shake, a number and a
-sound.
-
 ## 1. The loop
 
 1. **Cook** after any change under `assets/`: `og cook`. It is incremental

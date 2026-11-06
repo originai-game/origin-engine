@@ -1,5 +1,5 @@
 //! og.CharacterController (3D) on the ground, the 3D side of row 72 (the
-//! cause of examples/hollowbell's #15 and #16, measured here too before
+//! cause of hollowbell's #15 and #16, measured here too before
 //! the move was replaced: on rapier's character controller a run dropped
 //! to 0 to 0.4 m/s for a tick every second or so on one box, on adjacent
 //! boxes and on a triangle mesh, a capsule put on the floor sank 9 cm

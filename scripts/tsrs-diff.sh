@@ -8,8 +8,8 @@
 #   scripts/tsrs-diff.sh [CONFIG...]
 #
 # Without arguments: packages/engine's three tsconfigs, every template (with
-# the paths og check gives a project without node_modules), the five
-# examples and the error corpus scripts/tsrs-corpus/ (22 files, one error a
+# the paths og check gives a project without node_modules), every test
+# fixture under tests/fixtures/ and the error corpus scripts/tsrs-corpus/ (22 files, one error a
 # game author makes each). Each config runs once per checker (`-p CONFIG
 # --noEmit --incremental false --pretty false --checkers 4`; tsrs adds
 # `--checkerAssignment go --noLazyMembers`, the order closest to tsgo's) and
@@ -46,7 +46,7 @@ tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 
 fail=0
 # The pins.
-for f in templates/*/package.json templates/archetypes/*/package.json examples/*/package.json; do
+for f in templates/*/package.json templates/archetypes/*/package.json; do
   if grep -q '"typescript":' "$f"; then
     og_err "check-conformance: $f declares typescript; og check (tsrs) is a project's checker"; fail=1
   fi
@@ -64,7 +64,7 @@ else
   # project; here, as og check does, through paths to packages/engine.
   configs=(packages/engine/tsconfig.json packages/engine/tsconfig.runtime.json
     packages/engine/tsconfig.templates.json)
-  for t in templates/*/ templates/archetypes/*/; do
+  for t in templates/*/ templates/archetypes/*/ tests/fixtures/*/; do
     [ -f "$t/project.ogt" ] || continue
     t="${t%/}"; w="$tmp/wrap/$t"
     mkdir -p "$w"
@@ -76,7 +76,6 @@ else
 EOF
     configs+=("$w/tsconfig.json")
   done
-  for e in brasswick hollowbell kestrel-stair lantern-vale meridian-loop rumpus-isle; do configs+=("examples/$e/tsconfig.json"); done
   configs+=(scripts/tsrs-corpus/tsconfig.json)
 fi
 

@@ -1,5 +1,5 @@
 // The text entry's textarea (src/web/text-input.ts) as assistive
-// technology meets it (examples/WEB-FINDINGS.md #7): the main-thread shell
+// technology meets it (web finding #7): the main-thread shell
 // (src/web/shell.ts) started against a stand-in Worker that answers its
 // start and then sends what the engine Worker sends when the UI focuses a
 // text field (`text`, then the frame's `a11y` tree), over a stand-in

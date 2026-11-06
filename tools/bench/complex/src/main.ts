@@ -12,7 +12,7 @@
 //   model: instanced by (geometry, material); 24 translucent ghost carts
 //   move round the ring road every tick;
 // - 48 skinned characters on two models and 14 clips (24 walkers, 24
-//   villagers on kestrel-stair's clip library), each on its own clip,
+//   villagers on the clip library of tools/lib/rig.ts), each on its own clip,
 //   speed and phase;
 // - the sun with three 2048 cascades over 120 m, two shadowed spot lights
 //   and two shadowed point lights (cube shadows);

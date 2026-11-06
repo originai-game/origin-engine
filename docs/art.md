@@ -595,7 +595,7 @@ layer's place), or a folder's file names sorted, so a `NN-` prefix
 from the part's name (`01-leg-upper-l.png` is `leg-upper-l`). A few clips
 bring an arm in front for their length (the attack's striking arm, the
 wave's hand). `rigParts` lists each template's parts in the order the
-example art draws them (`examples/autorig/art/`), the far or image-left
+example art draws them (og-cook's autorig tests), the far or image-left
 side first.
 
 **Refusals name the layer and the file, and the fix** (`autorig.rs`,

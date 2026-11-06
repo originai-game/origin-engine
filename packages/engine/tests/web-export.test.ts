@@ -40,7 +40,7 @@ const read = (dir: string, f: string) => readFileSync(join(dir, f), "utf8");
  * helper) that pass positional arguments, which wasm-bindgen 0.2.129's
  * glue warns about on every call ("using deprecated parameters …; pass a
  * single object instead"): the helper made one per pool Worker until
- * scripts/rayon-worker.sh (examples/WEB-FINDINGS.md #8). The engine's own
+ * scripts/rayon-worker.sh (web finding #8). The engine's own
  * calls (src/web/host.ts) pass one object.
  */
 function positionalInits(dir: string): string[] {
@@ -60,7 +60,7 @@ function positionalInits(dir: string): string[] {
   return found;
 }
 
-test("the lanes pool's Worker starts the glue with one object, so a lanes page logs no deprecated-parameters warning (WEB-FINDINGS #8)", () => {
+test("the lanes pool's Worker starts the glue with one object, so a lanes page logs no deprecated-parameters warning (web finding #8)", () => {
   let helpers = 0;
   for (const variant of ["web-publish", "web-publish-2d"]) {
     const dir = join(pkg, "dist", variant);
@@ -165,7 +165,7 @@ test.skipIf(SLOW)("og-build.json names every file beside it, with bytes and sha2
   expect(precache.lanes).toContain(names["origin-engine-lanes.js"]);
   expect(precache.lanes).toContain(names["origin-engine-lanes_bg.wasm"]);
   expect(precache.lanes.some((f) => f.startsWith("snippets/"))).toBe(true);
-  // The pool Worker's helper as published: its init call takes one object (WEB-FINDINGS #8).
+  // The pool Worker's helper as published: its init call takes one object (web finding #8).
   expect(positionalInits(dir)).toEqual([]);
   for (const f of [...precache.single, ...precache.lanes]) expect(precache.files).not.toContain(f);
   // The lanes variant ships beside the single-threaded engine, and the page knows its size.

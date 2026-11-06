@@ -246,8 +246,7 @@ for (const f of world.events(og.Fractured)) {
   (chips, grit, splinters, shards) are `lit true` meshes, which blend
   alpha unless told otherwise; never give them `blend additive`, under
   which a lit grey chip added onto the ground glows white, as paper
-  confetti. `examples/demolition-yard`
-  has an emitter for each row but metal under `assets/fx/`.
+  confetti.
 - `debris`: fine pieces as visuals only. Where a chunk shatters, its
   pieces smaller than og.Destruction.debrisVolume never become bodies:
   they fly on the GPU instead, each with its own shape and cut faces,
@@ -286,6 +285,6 @@ for (const f of world.events(og.Fractured)) {
   bursts despawn after `fxLifetime`. Lower maxChunks on a phone, raise it
   for a set piece.
 
-`examples/demolition-yard` has a wall, a pillar, a crate and a pane, with
-commands that break each one (`boom`, `strike`, `drop`, `throw`,
-`kick` for the fence), lit with GlobalIllumination `both`.
+The engine's test fixture `tests/fixtures/destruction-yard` (in the
+engine's source repository) has a brick wall, a concrete pillar and a
+glass pane, with commands that break each one (`boom`, `strike`, `throw`).

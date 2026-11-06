@@ -1,10 +1,10 @@
-// One host per process: examples/demolition-yard's cooked props (a brick
+// One host per process: the destruction-yard fixture's cooked props (a brick
 // wall, a concrete pillar, a glass pane, each tuned by og.destruction.
 // material) on a slab, blown, struck and hit by a ball on fixed ticks
 // between advances. Advances --ticks and prints JSON for destruction.test.ts: the
 // world hash, the og.Fractured events read, and each prop's info.
 //
-//   bun tests/support/destruction-hash.ts --host node|web --project <examples/demolition-yard> [--ticks 240]
+//   bun tests/support/destruction-hash.ts --host node|web --project <tests/fixtures/destruction-yard> [--ticks 240]
 
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";

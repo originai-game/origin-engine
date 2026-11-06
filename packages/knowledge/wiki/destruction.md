@@ -50,7 +50,7 @@ module destruction {
 | [`og.destruction.explode`](#fn-explode) | function | An explosion: damage to every destructible in reach (as og.destruction.damage), then a push outwards to their loose chunks. Applied by og.destruction this tick, as damage. Push other bodies with og.physics.applyImpulse. |
 | [`og.destruction.fracture`](#fn-fracture) | function | Break every bond of a destructible at once (this tick, as damage): its anchored chunks stay, the rest fall. |
 | [`og.destruction.info`](#fn-info) | function | How much of a destructible stands. |
-| [`og.destruction.material`](#fn-material) | function | A material's og.Destructible tuning (MATERIAL_*): toughness, strength, friction, tension, density and how hard a hit must be to hurt it, measured against the props of the demolition-yard example (a brick wall, a concrete pillar, a crate, a pane). Pair it with a model whose fracture block has the same `style` (brick, concrete, wood, glass). |
+| [`og.destruction.material`](#fn-material) | function | A material's og.Destructible tuning (MATERIAL_*): toughness, strength, friction, tension, density and how hard a hit must be to hurt it, measured against the props of the destruction-yard test fixture (a brick wall, a concrete pillar, a crate, a pane). Pair it with a model whose fracture block has the same `style` (brick, concrete, wood, glass). |
 | [`og.destruction.capabilities`](#fn-capabilities) | function | What destruction does on this device. |
 
 ## Functions
@@ -181,7 +181,7 @@ fn info {
 
 ### `og.destruction.material`
 
-A material's og.Destructible tuning (MATERIAL_*): toughness, strength, friction, tension, density and how hard a hit must be to hurt it, measured against the props of the demolition-yard example (a brick wall, a concrete pillar, a crate, a pane). Pair it with a model whose fracture block has the same `style` (brick, concrete, wood, glass).
+A material's og.Destructible tuning (MATERIAL_*): toughness, strength, friction, tension, density and how hard a hit must be to hurt it, measured against the props of the destruction-yard test fixture (a brick wall, a concrete pillar, a crate, a pane). Pair it with a model whose fracture block has the same `style` (brick, concrete, wood, glass).
 
 ```ts
 og.destruction.material(world: World, kind: number): Result<DestructibleMaterial>
@@ -198,7 +198,7 @@ Binding symbol `og_destruction_material` · publish builds: kept
 
 ```ogt
 fn material {
-  doc "A material's og.Destructible tuning (MATERIAL_*): toughness, strength, friction, tension, density and how hard a hit must be to hurt it, measured against the props of the demolition-yard example (a brick wall, a concrete pillar, a crate, a pane). Pair it with a model whose fracture block has the same `style` (brick, concrete, wood, glass)."
+  doc "A material's og.Destructible tuning (MATERIAL_*): toughness, strength, friction, tension, density and how hard a hit must be to hurt it, measured against the props of the destruction-yard test fixture (a brick wall, a concrete pillar, a crate, a pane). Pair it with a model whose fracture block has the same `style` (brick, concrete, wood, glass)."
   param world World "The world."
   param kind u32 "MATERIAL_*."
   returns Result.DestructibleMaterial "Refused for a kind that is none of MATERIAL_*."

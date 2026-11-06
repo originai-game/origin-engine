@@ -30,10 +30,10 @@
 // (`--time 600`). A publish build has no command channel (og-build §6), so
 // a frames playtest made of game commands cannot run on the published page
 // itself; tests/web/published.ts runs a script of input and capture steps
-// there, on its own clock (examples/WEB-FINDINGS.md #6). The served page
+// there, on its own clock (web finding #6). The served page
 // and the mirror-driven input are tests/web/play-origin.ts, shared with it.
 //
-//   bun tests/web/dogfood.ts --project examples/hollowbell [--frames] [--no-play]
+//   bun tests/web/dogfood.ts --project templates/ui-kit [--frames] [--no-play]
 //       [--no-build] [--no-isolation] [--throttle <Mbit/s>] [--boot] [--label <name>]
 //       [--out <dir>] [--chrome <path>]
 //
@@ -76,7 +76,7 @@ const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
-const projectRel = opt("--project") ?? "examples/hollowbell";
+const projectRel = opt("--project") ?? "templates/ui-kit";
 const project = join(repo, projectRel);
 const tier = "webgpu";
 const chrome = chromePath(args);
@@ -93,7 +93,7 @@ mkdirSync(out, { recursive: true });
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const td = new TextDecoder();
 
-/** What the run found, in the order found (WEB-FINDINGS reads these). */
+/** What the run found, in the order found. */
 const notes: string[] = [];
 const note = (s: string) => {
   notes.push(s);
@@ -127,50 +127,6 @@ interface Plan {
 }
 /** Each game's plan, from its README's controls and its ui.ts ids (the mirror's paths end in them). */
 const PLANS: Record<string, Plan> = {
-  "lantern-vale": {
-    title: "play",
-    start: [{ click: "play" }, { wait: 1500 }],
-    play: ["KeyW", "KeyD", "KeyS", "KeyA"],
-    quit: [{ key: "Escape" }, { wait: 600 }, { click: "quit" }],
-    language: [{ click: "settings" }, { wait: 700 }, { click: "简体中文" }, { wait: 400 }, { click: "Done" }],
-    translated: "出发",
-  },
-  hollowbell: {
-    title: "new",
-    start: [{ click: "new" }, { wait: 700 }, { click: "Begin" }, { wait: 1500 }],
-    play: ["ArrowRight", "Space", "ArrowRight", "KeyX"],
-    quit: [{ key: "Escape" }, { wait: 600 }, { click: "quit" }],
-    language: [{ click: "settings" }, { wait: 700 }, { click: "简体中文" }, { wait: 400 }, { click: "Done" }],
-    translated: "新游戏",
-  },
-  "kestrel-stair": {
-    title: "new",
-    start: [{ click: "new" }, { wait: 1200 }, { key: "Enter" }, { wait: 400 }, { click: "Skip" }, { wait: 500 }, { click: "Skip" }, { wait: 1500 }],
-    play: ["KeyW", "KeyD", "KeyW", "KeyA"],
-    quit: [{ key: "Escape" }, { wait: 600 }, { click: "quit" }],
-    board: [{ click: "records" }, { wait: 1500 }, { key: "Escape" }, { wait: 800 }],
-    language: [{ click: "settings" }, { wait: 900 }, { click: "Language" }, { wait: 500 }, { click: "日本語" }, { wait: 400 }, { click: "Done" }],
-    translated: "新しい旅",
-  },
-  brasswick: {
-    title: "new",
-    start: [{ click: "new" }, { wait: 1500 }],
-    play: ["ArrowRight", "Space", "ArrowRight", "ArrowLeft"],
-    quit: [{ key: "Escape" }, { wait: 600 }, { click: "quit" }],
-    language: [{ click: "settings" }, { wait: 900 }, { click: "Language" }, { wait: 500 }, { click: "Español" }, { wait: 400 }, { click: "Done" }],
-    translated: "Partida nueva",
-  },
-  "meridian-loop": {
-    title: "start",
-    // Time trial, then the three-second countdown.
-    start: [{ click: "start" }, { wait: 3600 }],
-    play: ["KeyW", "KeyW", "KeyW", "KeyA", "KeyW", "KeyW", "KeyD", "KeyW"],
-    // Escape over the racing HUD pauses; Quit to title.
-    quit: [{ key: "Escape" }, { wait: 700 }, { click: "quit" }],
-    board: [{ click: "board" }, { wait: 1500 }, { key: "Escape" }, { wait: 800 }],
-    language: [{ click: "settings" }, { wait: 900 }, { click: "Language" }, { wait: 500 }, { click: "Deutsch" }, { wait: 400 }, { click: "Done" }],
-    translated: "Zeitfahren",
-  },
   "ui-kit": {
     title: "UI kit",
     start: [{ click: "platformer" }, { wait: 1000 }],
@@ -474,7 +430,7 @@ if (!args.includes("--no-play")) {
       await page.until("typeof __runtime_probe__ === 'object'", 60_000);
       await page.until("document.querySelector('#og-gate') && !document.getElementById('og-gate').hidden", 60_000).catch(() => {});
       // Behind the gate (the first screen a returning player sees), then after the gate: the
-      // Worker applies the store's answers behind the gate (src/web/settle.ts; WEB-FINDINGS #1).
+      // Worker applies the store's answers behind the gate (src/web/settle.ts; web finding #1).
       await wait(1500);
       const behind = await page.eval<Array<{ path: string; role: string; name: string; states: string[] }>>(TREE);
       const translatedBehindGate = (await page.eval(FIND(plan.translated))) !== null;
@@ -496,7 +452,7 @@ if (!args.includes("--no-play")) {
       const tree2 = await page.eval<Array<{ path: string; role: string; name: string }>>(TREE);
       play["a11yReloaded"] = tree2.map((n) => `${n.role}:${n.name}`).slice(0, 40);
       // Memory at the end of the run: the engine's own (__runtime_probe__.memory(): the wasm linear
-      // memory, the counted heap, WEB-FINDINGS #9), and the browser processes' resident memory.
+      // memory, the counted heap, web finding #9), and the browser processes' resident memory.
       play["memoryEnd"] = await page.eval("__runtime_probe__.memory?.() ?? null").catch((e) => ({ error: String(e) }));
       play["memoryApi"] = await page.eval<string>("typeof performance.measureUserAgentSpecificMemory");
       let heap = 0;

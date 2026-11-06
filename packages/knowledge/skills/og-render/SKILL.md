@@ -253,7 +253,7 @@ subEmitter death "fx/pop.ogt" 12 0.3   # <birth | death | collision> "<emitter i
 - The cook refuses an unknown line, a missing texture, array, mesh model
   or sub-emitter, and a value of the wrong shape, naming the line.
 
-A hit's sparks in a 2D game (Hollowbell's `fx/hit.ogt`):
+A hit's sparks in a 2D game (`fx/hit.ogt`):
 
 ```text
 type particles

@@ -16,16 +16,6 @@ prove it.
 
 ## What works
 
-In Hollowbell (`examples/hollowbell`, a 2D platformer written from this
-package alone) every input was answered within a tick and every damage moment held by hit stop,
-shake, a number and a sound, as was Lantern Vale's, a 3D adventure.
-An `og.CameraZone` held its boss arena, and flipbook frame events put the
-footsteps and the strikes on their exact frames. The Kestrel Stair
-(`examples/kestrel-stair`, a 3D third-person game) measured the same: hit stop by weight, a shake, a number and a sound on every
-strike landing on its clip's `hit` marker, and the 3D character controller
-at full speed every tick (3.2 m/s walking) over level ground, an 18° ramp,
-a 34° path and stairs, refusing a 63° scree.
-
 ## 1. Answer on the same tick
 
 - Read input in a system and act in **the same tick**: start the jump, the

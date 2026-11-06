@@ -33,7 +33,7 @@ It is a level at the size of a shipped Discover game, not a stress field:
 | props | 5,261 copies of 19 models, 80 mesh parts in 60 materials, 3.03 million triangles: 1,100 pines, 700 oaks, 900 rocks (three shapes), 900 bushes, 300 berry shrubs, 180 palms, 24 islets, 260 crates, 240 barrels, 420 fence panels, 96 lamp posts, 36 houses, 32 market stalls, 40 cars, 6 stairs, 3 dropships, 24 ghost carts |
 | moving props | the 24 ghost carts, moved round the ring road every tick |
 | transparency | the water, the houses' window glass, the dropships' cockpits, the ghost carts, the smoke |
-| skinned characters | 48 on two models: 24 walkers (12 joints, five clips) and 24 villagers (21 joints, nine clips of examples/kestrel-stair's library), each on its own clip, speed and phase |
+| skinned characters | 48 on two models: 24 walkers (12 joints, five clips) and 24 villagers (21 joints, nine clips of the library in complex/tools/lib/rig.ts), each on its own clip, speed and phase |
 | lights | the sun with three 2048 cascades over 120 m; two spot and two point lights, all four shadowed (512 maps, cube faces for the points) |
 | particles | 20 emitters (4 fires, added; 16 smokes, blended), at most 64 particles each |
 | post | AO, bloom, ACES; TAA |

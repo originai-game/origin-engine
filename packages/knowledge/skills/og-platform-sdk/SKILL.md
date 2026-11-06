@@ -15,17 +15,7 @@ the platform's `og-platform` skill is the Player and readiness side.
 
 ## What works
 
-Hollowbell (`examples/hollowbell`, written from this package alone) keeps
-its run in the store (`og.platform.storeSet` at the revision it read, a
-conflict read again and written back) and proves Continue across a
-relaunch with a `store: "keep"` playtest; Lantern Vale
-(`examples/lantern-vale`) keeps its settings through
-`og.platform.saveSettings`. The relaunch worked the first time it was
-asked for as §4 says. The Kestrel Stair (`examples/kestrel-stair`) keeps
-its whole world at a waystone (`world.snapshot()`, about 78 KB of text, in
-parts under the store's 64 KiB a key) and continues it after a
-`store: "keep"` relaunch, its progress at the revision read with a
-conflict merged, and a won climb on an ascending leaderboard. The store's
+The store's
 limits are the platform's (64 KiB a key, 64 keys and 1 MiB per player and
 game), so the world goes through `og.platform.saveSlot`: its parts
 (`run.a0`, `run.a1`) in whichever of the slot's two banks of keys

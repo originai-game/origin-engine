@@ -28,19 +28,6 @@ implements it. Music and language choices likewise need their own assets.
 
 ## What works
 
-Both games written from this package alone took their look from a preset
-tuned in their own look file: Lantern Vale
-(`examples/lantern-vale`) the anime cel preset with ink, a tinted shadow
-side and a painted second look for the results; Hollowbell
-(`examples/hollowbell`) a 16-bit pixel grid with its own 32-colour palette
-through `Stylise.palette` and a Bayer dither, and the 2D glow. Swapping the
-look at a tick (`og.render.applyLook`) for the results worked the first
-time in both. The Kestrel Stair (`examples/kestrel-stair`, 3D
-third-person) took a look extending `watercolor-wash`
-(AgX, bloom, a violet shadow tint, a pale fog, the synthetic sky) under
-`og.DayNight`, and `luminous-layered-painting` applied at a tick for the
-ending and the results.
-
 ## 1. Choose a style from the premise
 
 Write the premise in one line, then answer four questions:
@@ -193,12 +180,11 @@ to fit it.
   stage) moves its own ink towards white or black until it reads there,
   and the neutral badge does the same on its `fill`, so neither needs a
   second palette. A game's own style is held to the same bars: the
-  engine's `pack_contrast.rs` measures the archetypes' and examples'
+  engine's `pack_contrast.rs` measures the archetypes'
   styles too, and their fixes were value, not hue (pathguard's lantern
   orange deepened under a cream label, sparkorb's gold to a burnished
   amber under its cream ink, lampdive's plum fill darkened under its
-  placeholder, Lantern Vale's status colours taken back to the fantasy
-  style's deep ones);
+  placeholder);
   it also reads the primary and secondary labels from a rendered frame,
   where thin strokes may never reach their colour: a pixel font's one-pixel
   strokes fell between pixels and took half their ink, so a pixel face is

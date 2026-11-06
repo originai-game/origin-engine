@@ -6,7 +6,7 @@ auto-tiling terrains, with its `type tileset` text.
     tiles.py sheet <generated.png> <out.png>
         the generated sheet (drawn at about 16x, not a whole scale) sampled
         at each logical pixel's centre onto its 64 x 64 grid: the source
-        the atlas is made from (examples/art-pixel-topdown/sources/)
+        the atlas is made from (the pixel top-down art sample, deleted with examples/ on 2026-11-06)
     tiles.py atlas <sheet.png> <atlas.png> <tileset.ogt> <texture-id> [scale]
         the atlas: tiles 0-15 the sheet's own (grass, path, cliff face and
         steps, water, bush, stump), then 47 tiles per terrain: `path`

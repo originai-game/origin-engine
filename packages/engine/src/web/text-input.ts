@@ -23,7 +23,7 @@
 // reader meets one text box, inside the dialog it belongs to. While no field
 // is focused the textarea is aria-hidden; it never holds the focus hidden
 // (Chrome blocks that and a reader lands on an unnamed box:
-// examples/WEB-FINDINGS.md #7).
+// web finding #7).
 
 import type { InjectedInput } from "./input.ts";
 

@@ -176,8 +176,8 @@ changed:
 | each GPU package's reference tests (og-render, og-ui, og-tests, og-tests-cooked) in test and test-quick | that package's dependency closure and embedded assets; cooked fixtures additionally depend on og-cook and the template inputs they read | the rest runs; the summary names each cached package. This is input caching, never selection by host or GPU availability |
 | wasm-build, wasm-opt, size-gate | `crates/` | the last outputs in `target/og-wasm` are reused (only when every file they list exists; a step that ran upstream in this invocation always runs the next) |
 | drift | `crates/og-api` (`api/<module>.ogt`), og-idl and the crates it builds on, `crates/og-cli`, and every generated directory (`og_idl::OUTPUT_DIRS`), so a hand edit to a generated file is still caught | |
-| check-conformance (in no lane; `scripts/check.sh check-conformance`) | `packages/engine`, `templates/`, `examples/`, `crates/og-cli/src/check.rs`, `scripts/tsrs-diff.sh`, `scripts/tsrs-corpus/`, `scripts/install-tools.sh`, `scripts/lib.sh` | |
-| web-reference (`make web-reference`; in no lane) | og-host-web's and og-tests-web's crates for wasm32 (og-tests-web takes og-tests' scenes, assets and references and og-ui's, whose references hold ui-kit's frames), `packages/engine`, `templates/fx-showcase`, `templates/looks`, `templates/ui-kit`, `templates/archetypes/third-person`, `examples/brasswick`, `examples/meridian-loop` | |
+| check-conformance (in no lane; `scripts/check.sh check-conformance`) | `packages/engine`, `templates/`, `tests/fixtures/`, `crates/og-cli/src/check.rs`, `scripts/tsrs-diff.sh`, `scripts/tsrs-corpus/`, `scripts/install-tools.sh`, `scripts/lib.sh` | |
+| web-reference (`make web-reference`; in no lane) | og-host-web's and og-tests-web's crates for wasm32 (og-tests-web takes og-tests' scenes, assets and references and og-ui's, whose references hold ui-kit's frames), `packages/engine`, `templates/fx-showcase`, `templates/looks`, `templates/ui-kit`, `templates/archetypes/third-person`, `tests/fixtures/vehicle-terrain` | |
 
 A change to `scripts/`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`,
 `.cargo/` or `.config/` reruns every one of them. Each skip prints its
@@ -627,7 +627,7 @@ wasm-bindgen writes `snippets/` (the pool's Worker script) beside
 either profile's lanes files. wasm-bindgen-rayon's helper there starts
 each pool Worker with `pkg.default(module, memory)`, the positional form
 the pinned wasm-bindgen's glue warns about once a Worker (eight warnings a
-lanes page, examples/WEB-FINDINGS.md #8), so build.sh rewrites that one
+lanes page, web finding #8), so build.sh rewrites that one
 call to the single-object form, `{ module_or_path, memory }`
 (`packages/engine/scripts/rayon-worker.sh`, which stops the build when the
 helper has neither form), and `tests/web-export.test.ts` checks the
@@ -799,14 +799,12 @@ and `--shots title@54,beacon@204,dawn@432` (each at its screenshot's tick,
 `metal` (2026-10-19) title is at RMSE 0.00131, beacon 0.00475 with
 0.060 % outliers, dawn 0.00067.
 
-`web-reference` also runs two of the example games (release
-row F4): Brasswick's nine frames (`examples/brasswick`: title, levels,
-start, door, stomp, gate, pause, settings-es, results; the last at tick
-1092) and Meridian Loop's ten (`examples/meridian-loop`: title, jump,
-slide, countdown, race, ghost, pause, results, board, settings-de; the
-last at tick 7272, two minutes of race). reference.ts takes them with
-`--project examples/<game> --playtest tests/frames.og.ts --out
-dist/test-reference/<game>`: the script and the shots are read from the
+`web-reference` also runs one fixture's playtest:
+`tests/fixtures/vehicle-terrain`'s drive (a driven og.Vehicle on
+terrain, its HUD, smoke and skid marks; `tests/fixtures/README.md`).
+reference.ts takes it with
+`--project tests/fixtures/vehicle-terrain --playtest tests/drive.og.ts --out
+dist/test-reference/vehicle-terrain`: the script and the shots are read from the
 playtest itself (its commands without screenshots, `quit` and `dump_*`,
 each shot at its screenshot's tick, 60 t), so a retimed playtest moves its
 browser frames with it and no command in `scripts/check.sh` has to follow
