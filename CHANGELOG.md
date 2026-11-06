@@ -94,11 +94,16 @@ is one line here, written at the merge that changes
   `MotionStatus` gains `airborne`. The motion model never decides takeoff,
   height or landing; its jump is drawn in place on the simulation's flight,
   retimed to the landing each tick predicts from the arc and the ground
-  along it (a ledge up lands early, a drop late). In the air the drawn pose
-  is bounded toward the landing: the lean eases from 30° at takeoff to 10°
-  at the apex and the legs come under the hips, so a running jump no longer
-  reads as a dive. `dump_motion` reports the drawn feet's distance ahead of
-  the hips (`feetAheadM`).
+  along it (a ledge up lands early, a drop late). The air pose is the
+  model's: no lean, lean-rate or leg bound is applied to any drawn frame.
+  `dump_motion` reports the drawn feet's distance ahead of the hips
+  (`feetAheadM`).
+- **Fixed: a running jump no longer dives.** The model's goals now keep the
+  simulation's time and place: the rest of a walk, run or pose the model
+  is already in merges into the next goal when less of it is left than the
+  model's shortest generation, instead of costing a whole generation behind
+  the simulation. A running jump's goal had started 3.3 m behind its apex,
+  and the model lunged toward horizontal.
 - **Fixed: planted feet outrank `og.motion.react`.** The reaction's clip was
   blended over the feet the planter had placed, legs and hips included, so a
   reaction that lowered or turned the hips slid planted feet (33 cm in the

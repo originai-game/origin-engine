@@ -1409,20 +1409,19 @@ window: Origin Desktop owns the AccessKit platform adapter (platform ask
     it. Without a controller the landing is the fixed arc's. The drawn
     frame reaches the retimed one at no more than three times the clip's
     rate.
-  - **A jump's air pose is bounded toward a landing.** The student
-    generates a running jump as a dive: the body pitched toward
-    horizontal and both legs swept back up to the hips' height (its
-    training data has no jump windows from the original library). Every
-    frame of a jump clip leans at most 30° (the pelvis to the chest, then
-    the hips to the head); off the ground the bound eases (smoothstep)
-    from the takeoff to the clip's own apex, half its flight, to 10°, and
-    each leg's swing back from straight below its hip is bounded too, the
-    leg further forward from 15° to 0° and the other from 45° to 5°, held
-    to touchdown (`og_motion::flight::air_pose`). A leg past its bound turns
-    forward at the hip, about the body's side axis, so its knee keeps the
-    bend the model gave it. A running jump then leads with one leg, and
-    from the apex on the feet are under the hips and the pelvis near
-    upright, as in commercial running jumps.
+  - **Each model goal keeps the simulation's time and place.** The next
+    goal is where the simulation will be when the pose it is in changes,
+    timed from the end of the frames already generated. A pose the model is
+    already in (a walk or run, or the rest of the pose the last goal asked
+    for) merges into the next goal when less of it is left than the
+    model's shortest generation (six tokens, 0.57 s); a new pose keeps its
+    goal however short, and a jump's rise always does, so the model reaches
+    the jump's pose at the apex. Asked for on its own, that remainder cost
+    the model a whole generation behind the simulation, and the goal after
+    then asked it to cover the gap at once: a running jump's goal started
+    3.3 m behind its apex, and the model lunged into a dive.
+  - **The air pose is the model's.** Nothing bounds the drawn lean, its
+    rate or the legs' swing.
   - **Priorities.** A drawn frame is layered from least to most binding:
     the generated pose; then the authored performance over it
     (`motion.react`'s clip, `motion.lookAt` on the spine and head, the
