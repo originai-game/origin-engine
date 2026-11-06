@@ -21,10 +21,12 @@ use std::sync::Arc;
 /// A kit font as the cook makes it with `features`: its printable ASCII by
 /// code point and every glyph by id (U+F0000 + id), advances from `hmtx`.
 pub(crate) fn font(file: &str) -> UiFont {
-    let path = format!(
-        "{}/../../templates/ui-kit/assets/fonts/{file}",
-        env!("CARGO_MANIFEST_DIR")
-    );
+    font_at(&format!("templates/ui-kit/assets/fonts/{file}"))
+}
+
+/// [`font`] for a font at `path` from the repository's root.
+fn font_at(path: &str) -> UiFont {
+    let path = format!("{}/../../{path}", env!("CARGO_MANIFEST_DIR"));
     let bytes = std::fs::read(&path).expect("a kit font");
     let face = ttf_parser::Face::parse(&bytes, 0).expect("a font ttf-parser reads");
     let em = f32::from(face.units_per_em());
@@ -158,6 +160,36 @@ fn tabular_figures_hold_a_width_without_the_feature() {
     let p = pieces_with(&ui, "1:08", Direction::Ltr, 0.0, tnum);
     assert_eq!(p[0].placements.len(), 4, "{p:?}");
     assert!((p[0].placements[0].advance - wide).abs() < 1e-5);
+}
+
+/// The same backstop for a face that ships its file but has no `tnum`
+/// (Meridian's Chakra Petch, whose 1 is 374 units and 0 644): shaped by
+/// the paragraph layout, its digits kept their own advances and the race
+/// clock and the gear changed width as they counted.
+#[test]
+fn tabular_figures_hold_a_width_in_a_shaped_face_without_the_feature() {
+    let f = font_at("examples/meridian-loop/assets/styles/meridian/ChakraPetch-SemiBold.ttf");
+    let m = &f.metrics;
+    let tnum = feature(&["tnum"]);
+    let width = |s: &str, f| m.measure_with(s, 100.0, 0.0, f);
+    assert!((width("1", Features::NONE) - width("0", Features::NONE)).abs() > 20.0);
+    assert!(
+        (width("1", tnum) - width("0", tnum)).abs() < 1e-3,
+        "{} vs {}",
+        width("1", tnum),
+        width("0", tnum)
+    );
+    assert!((width("09683", tnum) - width("11111", tnum)).abs() < 1e-3);
+    let p = pieces_with(&f, "1/3", Direction::Ltr, 0.0, tnum);
+    let drawn: f32 = p
+        .iter()
+        .flat_map(|p| &p.placements)
+        .map(|g| g.advance)
+        .sum();
+    assert!(
+        (drawn * 100.0 - width("1/3", tnum)).abs() < 1e-2,
+        "drawn as measured: {p:?}"
+    );
 }
 
 /// Text in the numeric font role sets tabular figures by default, laid out
