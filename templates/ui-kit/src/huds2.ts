@@ -12,6 +12,7 @@ import { at, frame, gameScene, held, hudArt, pauseButton, SEEN, atClear } from "
 import { rpg } from "@origingame/engine/extensions/rpg/index.ts";
 import { shooter } from "@origingame/engine/extensions/shooter/index.ts";
 import { strategy } from "@origingame/engine/extensions/strategy/index.ts";
+import { rhythm } from "@origingame/engine/extensions/rhythm/index.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: Math.max(0, Math.round(n)) });
@@ -408,7 +409,7 @@ export function rhythmHud(world: World): void {
     }
   });
   const pressed = ["d", "f", "j", "k"].filter((_, i) => (tick + i * 13) % 26 < 6);
-  og.ui.laneKeys("Keys", { lanes: ["d", "f", "j", "k"].map((key, i) => ({ key, hotkey: key.toUpperCase(), x: left + lane * i + lane / 2, color: LANE_HUES[i]! })), y: hitY, width: lane - 12, pressed, hit: pressed });
+  rhythm.laneKeys("Keys", { lanes: ["d", "f", "j", "k"].map((key, i) => ({ key, hotkey: key.toUpperCase(), x: left + lane * i + lane / 2, color: LANE_HUES[i]! })), y: hitY, width: lane - 12, pressed, hit: pressed });
   // The judgement and the combo stand over the highway and the stage: a plate of the style's HUD ground under each
   // holds it, so a pack whose tiers' inks are meant for light panels still reads over the dark well and the lights.
   // Each plate is tight to its text, so the notes stay in view around it.
@@ -447,8 +448,8 @@ export function rhythmHud(world: World): void {
   }
   const tiers = ["sc.rhythm.perfect", "sc.rhythm.great", "sc.rhythm.perfect", "sc.rhythm.good"];
   const beat = Math.floor(tick / 26);
-  og.ui.judgement("Judge", { last: { text: L(tiers[beat % 4]!), tier: [0, 1, 0, 2][beat % 4]!, offsetMs: [0, -18, 0, 26][beat % 4]!, at: beat * 26 }, earlyLabel: L("sc.rhythm.early"), lateLabel: L("sc.rhythm.late"), anchor: "center", offsetY: -Math.round(40 * k) });
-  og.ui.comboCounter("Combo", { count: 212 + beat, label: L("sc.combo"), breakLabel: L("sc.comboBreak"), milestones: [250, 500], anchor: "center" });
+  rhythm.judgement("Judge", { last: { text: L(tiers[beat % 4]!), tier: [0, 1, 0, 2][beat % 4]!, offsetMs: [0, -18, 0, 26][beat % 4]!, at: beat * 26 }, earlyLabel: L("sc.rhythm.early"), lateLabel: L("sc.rhythm.late"), anchor: "center", offsetY: -Math.round(40 * k) });
+  rhythm.comboCounter("Combo", { count: 212 + beat, label: L("sc.combo"), breakLabel: L("sc.comboBreak"), milestones: [250, 500], anchor: "center" });
   const plate = { background: hudGround, radius: t.radius["panel"] ?? 12, frame: "hud" as const, padding: { left: t.space.sm, top: t.space.xs, right: t.space.sm, bottom: t.space.sm } };
   // Beside the song's plate where both fit the width (as laid last tick); where they would meet (a phone at large
   // text) the score takes the bottom end corner, clear of the judgement and the combo in the middle (the keys rise
@@ -504,7 +505,7 @@ export function fightHud(world: World): void {
       });
     });
   });
-  if (!small) og.ui.comboCounter("Combo", { count: 4 + Math.floor((tick % 240) / 40), label: L("sc.fight.hits"), breakLabel: L("sc.comboBreak"), milestones: [10], anchor: "left" });
+  if (!small) rhythm.comboCounter("Combo", { count: 4 + Math.floor((tick % 240) / 40), label: L("sc.fight.hits"), breakLabel: L("sc.comboBreak"), milestones: [10], anchor: "left" });
   // The super gauges sit where the thumbs go: on a touch screen the buttons' own fill shows the super.
   if (!touch) {
     og.ui.anchor("Super1", { anchor: "bottomLeft", margin: m, direction: "column", gap: 2 }, () => {

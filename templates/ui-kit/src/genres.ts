@@ -8,7 +8,10 @@
 
 import { og } from "@origingame/engine";
 import { art, besideChrome, chromeRoom, L, phone, titleLine, type ArtName } from "./patterns.ts";
-import type { DraftTeam, LobbyMember, RosterEntry, SelectCursor, Size, SongEntry, WorldMarker, WorldRegion } from "@origingame/engine";
+import type { Size } from "@origingame/engine";
+import { rhythm, type SongEntry } from "@origingame/engine/extensions/rhythm/index.ts";
+import { rpg, type WorldMarker, type WorldRegion } from "@origingame/engine/extensions/rpg/index.ts";
+import { versus, type DraftTeam, type LobbyMember, type RosterEntry, type SelectCursor } from "@origingame/engine/extensions/versus/index.ts";
 
 type Mut<T> = { -readonly [K in keyof T]: T[K] };
 const grow: Size = { kind: "grow" };
@@ -85,7 +88,7 @@ export function lobbyScreen(): void {
       you: "you" in m,
       accepted: lob.found && ("you" in m ? lob.accepted : m.key !== "wren"),
     }));
-    const r = og.ui.lobby("Party", {
+    const r = versus.lobby("Party", {
       members,
       slots: 5,
       mode: { name: L("lobby.mode.ranked"), detail: L("lobby.mode.detail"), image: art("scenes/golden-valley") },
@@ -163,7 +166,7 @@ export function charactersScreen(): void {
       { key: "p1", name: "P1", entry: cs.entry, confirmed: cs.confirmed, team: 0, you: true },
       { key: "p2", name: "P2", entry: cs.rival, confirmed: cs.rivalConfirmed, team: 1 },
     ];
-    const r = og.ui.characterSelect("Chars", {
+    const r = versus.characterSelect("Chars", {
       roster: roster(),
       cursors,
       secondsLeft: 24,
@@ -192,7 +195,7 @@ let vsProgress = 0.64;
 /** A versus screen (Tekken, a MOBA's loading screen): both fighters on their halves, the mark between, the load along the foot. */
 export function versusScreen(): void {
   frame("Versus", "", () => {
-    const r = og.ui.versus("Vs", {
+    const r = versus.versus("Vs", {
       left: { name: "Lumen", character: "Aria", splash: art("figures/aria"), detail: L("vs.record", { w: 128, l: 64 }), team: 0 },
       right: { name: "Riven", character: "Kael", splash: art("figures/kael"), detail: L("vs.record", { w: 211, l: 97 }), team: 1 },
       versusLabel: L("vs.mark"),
@@ -237,7 +240,7 @@ export function draftScreen(): void {
     },
   ];
   frame("Draft", L("draft.title"), () => {
-    const r = og.ui.draft("Draft", {
+    const r = versus.draft("Draft", {
       teams,
       roster: roster().map((e) => ({ ...e, locked: false })),
       phase: dr.phase,
@@ -311,7 +314,7 @@ export function mapScreen(): void {
       tracked: wm.tracked === p.key,
       image: "art" in p ? art(p.art as ArtName) : null,
     }));
-    const r = og.ui.worldMap("Map", {
+    const r = rpg.worldMap("Map", {
       texture: art("maps/world"),
       aspect: 16 / 9,
       regions,
@@ -386,7 +389,7 @@ export function songsScreen(): void {
       isNew: "isNew" in s,
     }));
     const song = SONGS.find((s) => s.key === sg.selected) ?? SONGS[0];
-    const r = og.ui.songSelect("Wheel", {
+    const r = rhythm.songSelect("Wheel", {
       songs,
       selected: sg.selected,
       difficulty: sg.chart,

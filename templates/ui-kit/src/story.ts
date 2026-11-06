@@ -11,6 +11,7 @@ import { og } from "@origingame/engine";
 import type { DialogueView, QuestView, Size, World } from "@origingame/engine";
 import { art, besideChrome, chromeRoom, L, titleLine } from "./patterns.ts";
 import { rpg } from "@origingame/engine/extensions/rpg/index.ts";
+import { story } from "@origingame/engine/extensions/story/index.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: n });
@@ -283,7 +284,7 @@ function talk(world: World, id: string, dialogue: string, layout: "cinematic" | 
   });
   if (dl.log && dl.conv >= 0) {
     og.ui.anchor(`${id}Log`, { anchor: "topLeft", margin: 0, offsetX: -sa.left, offsetY: -sa.top, width: px(vp.width), height: px(vp.height), direction: "column", padding: { left: sa.left, top: sa.top + top, right: sa.right, bottom: sa.bottom } }, () => {
-      const b = og.ui.backlog("Backlog", { lines: og.story.history(world, dl.conv), title: L("log.title"), closeLabel: L("log.close"), replayLabel: L("log.replay"), emptyLabel: L("log.empty") });
+      const b = story.backlog("Backlog", { lines: og.story.history(world, dl.conv), title: L("log.title"), closeLabel: L("log.close"), replayLabel: L("log.replay"), emptyLabel: L("log.empty") });
       if (b.closed) dl.log = false;
     });
   }

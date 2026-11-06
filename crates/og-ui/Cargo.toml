@@ -9,6 +9,7 @@ autotests = false
 
 [features]
 default = ["shaping"]
+kit-tests = []
 # Run-time shaping with HarfRust: Arabic joining, Indic clusters and
 # conjuncts, marks placed by the font's GPOS. Without it a shaped script is
 # drawn unshaped (its characters in visual order); bidi, kerning and run-time
@@ -50,6 +51,11 @@ image = { workspace = true }
 [[test]]
 name = "tests"
 path = "tests/main.rs"
+
+[[test]]
+name = "style-packs"
+path = "../../templates/styles/tests/packs.rs"
+required-features = ["kit-tests"]
 
 # The default style's generator (scripts/gen-theme.sh runs it).
 [[example]]

@@ -30,7 +30,7 @@ results screens, a style copied into the game restyled every one, and
 Every component and widget is **one call per tick, data in, answer out**:
 
 ```ts
-const r = og.ui.storeFront("Shop", { /* the offers, the wallet */ });
+const r = liveops.storeFront("Shop", { /* the offers, the wallet */ });
 if (r.chosen !== null) { /* take the price, grant the item */ }
 ```
 
@@ -76,8 +76,8 @@ if (og.ui.openSlot("pause/Side")) { og.ui.card(/* … */); og.ui.close(); }
 | A leaderboard | `leaderboard` | `og.ui.table` with its loading, empty and error states |
 | Loading | `loading` | its viewmodel's real progress (a spinner when unknown); `nextTip`, `continue` |
 | Onboarding | `tutorial` | `next`, `skip`; its Highlight slot (`og.ui.shapeBox`, `og.ui.effectLayer`) or `og.ui.spotlight` around the target |
-| Dialogue, a cutscene | `dialogue`, `backlog` | `rpg.conversation`, `og.ui.backlog` |
-| A shop, an inventory | `store`, `vendor`, `inventory`, `stash` | `og.ui.storeFront`, `rpg.inventoryGrid` (drag and drop, multi-cell items) |
+| Dialogue, a cutscene | `dialogue`, `backlog` | `rpg.conversation`, `story.backlog` |
+| A shop, an inventory | `store`, `vendor`, `inventory`, `stash` | `liveops.storeFront`, `rpg.inventoryGrid` (drag and drop, multi-cell items) |
 | Level select | `saga-map` | `puzzle.sagaMap` (`picked`, `refused` for a locked level) |
 | A yes/no question, a notice | none | `og.ui.confirm(id, open, { title, message, confirmLabel, danger })`, `og.ui.dialog(id, open, { title, message, actions }, build)` |
 | A short message | none | `og.ui.toast(world, text, { tone })` (anywhere: systems, commands) |
@@ -87,7 +87,7 @@ A HUD is the HUD components in `og.ui.anchor` groups (or their own
 `abilityBar`, `hudTimer`, `comboCounter`, `resourceBar` (currencies and
 rates), `scorebug`, `speedometer`, `lapTimer`, `standingsTower`,
 `minimapView`, `compass`, `objectiveTracker`, `killfeed` (`og api find
-hud` lists them); an idle game adds `og.ui.idleGenerator`, a puzzle
+hud` lists them); an idle game adds `idle.idleGenerator`, a puzzle
 `og.ui.starBar` and `puzzle.goalChips`. Every pattern is in
 `og api show ui` beside its screen document.
 

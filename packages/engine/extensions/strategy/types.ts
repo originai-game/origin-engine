@@ -1,7 +1,8 @@
+import type { AbilitySlotDesc, Anchor, ChartKind, ChartSeries, MinimapViewDesc, NumberFormat, NumberFormatDesc, Paint, Texture, Vector2 } from "@origingame/engine";
 // The strategy kit's data types, moved from the engine's generated og.ui
 // declarations (docs/ui.md §17). Edit them with the components that read them.
 
-import type { AbilitySlotDesc, Anchor, MinimapViewDesc, NumberFormatDesc, Paint, Texture, Vector2 } from "@origingame/engine";
+
 
 /**
  * An RTS command card.
@@ -798,4 +799,356 @@ export interface WavePreviewDesc {
    * @default "right"
    */
   readonly anchor?: Anchor | null;
+}
+
+/**
+ * A management ledger: the headline figures, the lines by section with their budgets, and the history graph.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LedgerDesc {
+  /**
+   * The screen's title (Budget); empty shows none (the game titles it).
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * The periods or views; empty shows no tabs.
+   *
+   * @default []
+   */
+  readonly tabs?: readonly LedgerTab[];
+  /**
+   * The selected tab's key.
+   *
+   * @default ""
+   */
+  readonly tab?: string;
+  /**
+   * The headline figures, start to end.
+   *
+   * @default []
+   */
+  readonly figures?: readonly LedgerFigure[];
+  /**
+   * The sections, top to bottom.
+   *
+   * @default []
+   */
+  readonly sections?: readonly LedgerSection[];
+  /**
+   * The lines, each in its section, in the game's order (the ledger sorts them by `sort`).
+   *
+   * @default []
+   */
+  readonly lines?: readonly LedgerLine[];
+  /**
+   * The column the lines are sorted by within each section: name, amount, change, or empty for the game's order.
+   *
+   * @default ""
+   */
+  readonly sort?: string;
+  /**
+   * The sort runs high to low.
+   *
+   * @default false
+   */
+  readonly descending?: boolean;
+  /**
+   * The sliders' low end, in percent.
+   *
+   * @default 50
+   */
+  readonly fundingMin?: number;
+  /**
+   * The sliders' high end, in percent.
+   *
+   * @default 150
+   */
+  readonly fundingMax?: number;
+  /**
+   * The sliders' step, in percent.
+   *
+   * @default 5
+   */
+  readonly fundingStep?: number;
+  /**
+   * The history's categories, oldest first (the months).
+   *
+   * @default []
+   */
+  readonly periods?: readonly string[];
+  /**
+   * The history's series over the periods (income, expenses, balance); empty shows no graph.
+   *
+   * @default []
+   */
+  readonly history?: readonly ChartSeries[];
+  /**
+   * How the history is drawn (a line by default).
+   *
+   * @default "line"
+   */
+  readonly graph?: ChartKind;
+  /**
+   * A section whose lines' shares are drawn as a donut beside the history; empty shows none.
+   *
+   * @default ""
+   */
+  readonly breakdown?: string;
+  /**
+   * The money's sign, written before amounts ($, ¥); empty writes bare numbers.
+   *
+   * @default ""
+   */
+  readonly currency?: string;
+  /**
+   * The name column's heading.
+   *
+   * @default "Name"
+   */
+  readonly nameLabel?: string;
+  /**
+   * The amount column's heading.
+   *
+   * @default "Amount"
+   */
+  readonly amountLabel?: string;
+  /**
+   * The change column's heading.
+   *
+   * @default "Change"
+   */
+  readonly changeLabel?: string;
+  /**
+   * The slider column's heading.
+   *
+   * @default "Budget"
+   */
+  readonly fundingLabel?: string;
+  /**
+   * Said before a section's total, and the net's caption.
+   *
+   * @default "Total"
+   */
+  readonly totalLabel?: string;
+  /**
+   * The net line's caption at the ledger's foot.
+   *
+   * @default "Net"
+   */
+  readonly netLabel?: string;
+  /**
+   * The graph's heading.
+   *
+   * @default "History"
+   */
+  readonly historyLabel?: string;
+  /**
+   * The donut's heading.
+   *
+   * @default "Breakdown"
+   */
+  readonly breakdownLabel?: string;
+  /**
+   * The donut's line for the smaller lines it folds together when the legend would not fit its card.
+   *
+   * @default "Other"
+   */
+  readonly otherLabel?: string;
+  /**
+   * A locked slider, to a screen reader.
+   *
+   * @default "Locked"
+   */
+  readonly lockedLabel?: string;
+}
+
+/**
+ * One headline figure over the ledger (Balance, Income, Expenses, Population).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LedgerFigure {
+  /**
+   * Its key: its tile's element id.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name, the tile's caption.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its value this period.
+   *
+   * @default 0
+   */
+  readonly value?: number;
+  /**
+   * Its change since the last period, shown signed with an arrow; 0 shows none.
+   *
+   * @default 0
+   */
+  readonly delta?: number;
+  /**
+   * How the value and the change are written (grouped by default).
+   *
+   * @default "grouped"
+   */
+  readonly format?: NumberFormat;
+  /**
+   * A unit after the value (a currency's sign is the game's, in the label or the unit).
+   *
+   * @default ""
+   */
+  readonly unit?: string;
+  /**
+   * Its art (art kind itemIcon) on the tile; null shows none.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * A fall is good news (expenses, debt, crime): the change's colour turns over.
+   *
+   * @default false
+   */
+  readonly lowerIsBetter?: boolean;
+}
+
+/** A line's slider was moved. */
+export interface LedgerFunding {
+  /** The line. */
+  readonly key: string;
+  /** Its new value, in percent. */
+  readonly value: number;
+}
+
+/**
+ * One line of the ledger: a tax, a service, a department, a contract.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LedgerLine {
+  /**
+   * Its key: its row's element id, so its probe path is <id>/Body/Ledger/List/<key>.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * The section it stands in.
+   *
+   * @default ""
+   */
+  readonly section?: string;
+  /**
+   * Its name, the row's reading.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its art (art kind itemIcon) at the row's start; null draws the style's placeholder mark.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * Its amount this period (positive; the section says which way it runs).
+   *
+   * @default 0
+   */
+  readonly amount?: number;
+  /**
+   * Its amount last period, for its change; a negative value shows none.
+   *
+   * @default -1
+   */
+  readonly previous?: number;
+  /**
+   * Its budget or tax rate as a slider in percent; a negative value shows no slider (a fixed line).
+   *
+   * @default -1
+   */
+  readonly funding?: number;
+  /**
+   * A problem with it (Underfunded: crime rising), shown with a warning mark; empty shows none.
+   *
+   * @default ""
+   */
+  readonly warning?: string;
+  /**
+   * Its slider cannot move yet (a policy not unlocked): shown inert with a lock.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+}
+
+/** What the player asked for this tick, for the game to apply. */
+export interface LedgerResult {
+  /** Another tab was pressed. */
+  readonly tab: string | null;
+  /**
+   * A column's heading was pressed: sort by it (the same column again turns the order over).
+   */
+  readonly sort: string | null;
+  /** The order asked for with `sort`. */
+  readonly descending: boolean;
+  /** A line's slider was moved. */
+  readonly funding: LedgerFunding | null;
+  /** A line was pressed (the game may open its detail or its overlay). */
+  readonly selected: string | null;
+}
+
+/**
+ * A section of the ledger's lines (Income, Expenses; Revenue, Upkeep).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LedgerSection {
+  /**
+   * Its key: the lines' `section`.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its heading, with its total.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its lines cost money: their total is taken from the net, and its change's colour turns over.
+   *
+   * @default false
+   */
+  readonly expense?: boolean;
+}
+
+/**
+ * One of the ledger's periods or views (Month, Quarter, Year).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LedgerTab {
+  /**
+   * Its key.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its word.
+   *
+   * @default ""
+   */
+  readonly label?: string;
 }

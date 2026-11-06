@@ -25,6 +25,9 @@ import { racing } from "@origingame/engine/extensions/racing/index.ts";
 import { rpg, type UnitFrameDesc } from "@origingame/engine/extensions/rpg/index.ts";
 import { shooter, type KillfeedEntry } from "@origingame/engine/extensions/shooter/index.ts";
 import { strategy } from "@origingame/engine/extensions/strategy/index.ts";
+import { flight } from "@origingame/engine/extensions/flight/index.ts";
+import { rhythm } from "@origingame/engine/extensions/rhythm/index.ts";
+import { sports } from "@origingame/engine/extensions/sports/index.ts";
 
 type UnitCommand = AbilitySlotDesc;
 
@@ -340,7 +343,7 @@ function shooterScreen(world: World): void {
   shooter.killfeed("Feed", { entries: state.kills, max: 5 });
   if (small()) return;
   og.ui.anchor("Score", { anchor: "bottomLeft", direction: "column", gap: 8 }, () => {
-    og.ui.scorebug("Bug", {
+    sports.scorebug("Bug", {
       home: { abbr: "LAL", score: did("score") ? 101 : 98, timeouts: 3, timeoutsMax: 7, possession: true },
       away: { abbr: "BOS", score: 99, timeouts: 5, timeoutsMax: 7 },
       clock: "2:41", period: "Q4", shotClock: "14", situation: L("Bonus"), anchor: null,
@@ -396,8 +399,8 @@ function strategyScreen(): void {
   });
   // A phone held sideways has no height to stack the combo under the tracker: it takes the left side.
   const sideways = og.ui.frameViewport().breakpoint === "phoneLandscape";
-  og.ui.comboCounter("Combo", { count: state.hits >= 2 ? state.hits * 5 : did("break") ? 0 : 47, multiplier: 4, decay: 1 - (s % 2) / 2, ...(sideways ? { anchor: "left" as const } : {}) });
-  og.ui.judgement("Judge", { last: did("hit") ? { text: "PERFECT", tier: 0, offsetMs: -12, at: state.acts.hit! } : did("break") ? { text: "MISS", tier: 4, at: state.acts.break! } : null, offsetY: 160 });
+  rhythm.comboCounter("Combo", { count: state.hits >= 2 ? state.hits * 5 : did("break") ? 0 : 47, multiplier: 4, decay: 1 - (s % 2) / 2, ...(sideways ? { anchor: "left" as const } : {}) });
+  rhythm.judgement("Judge", { last: did("hit") ? { text: "PERFECT", tier: 0, offsetMs: -12, at: state.acts.hit! } : did("break") ? { text: "MISS", tier: 4, at: state.acts.break! } : null, offsetY: 160 });
   if (did("score")) {
     shooter.scoreboard("Board", {
       title: L("Bind · Competitive"), subtitle: L("Round 14 · 7–6"),
@@ -597,9 +600,9 @@ function sportsScreen(world: World): void {
     return;
   }
   const clock = 67 * 60 + 42 + Math.floor(s);
-  og.ui.scorebug("Bug", { home: { ...home, score: goals }, away: { ...away, score: 1 }, clock: `${Math.floor(clock / 60)}:${String(clock % 60).padStart(2, "0")}`, added: "+3" });
+  sports.scorebug("Bug", { home: { ...home, score: goals }, away: { ...away, score: 1 }, clock: `${Math.floor(clock / 60)}:${String(clock % 60).padStart(2, "0")}`, added: "+3" });
   // A phone has no room for two plates side by side on the top edge: possession goes under the scorebug.
-  og.ui.matchStats("Poss", { title: tr("possession", "Possession"), anchor: phone ? "topLeft" : "topRight", home, away, stats: [{ key: "poss", home: 58, away: 42, homeText: "58%", awayText: "42%" }] });
+  sports.matchStats("Poss", { title: tr("possession", "Possession"), anchor: phone ? "topLeft" : "topRight", home, away, stats: [{ key: "poss", home: 58, away: 42, homeText: "58%", awayText: "42%" }] });
   if (!phone || vp.breakpoint === "phoneLandscape") {
     og.ui.minimapView("Radar", {
       // Held sideways, the start side's top holds the scorebug and possession: the radar takes the bottom end.
@@ -613,9 +616,9 @@ function sportsScreen(world: World): void {
     });
   }
   // On a phone the substitution's lower third takes the bottom while play is stopped; the player's plate gives way.
-  if (!(phone && did("place"))) og.ui.playerPlate("Me", { number: "10", name: tr("martin", "Martin"), logo: home.logo, color: home.color, stamina: Math.max(0.2, 0.7 - s * 0.02) });
+  if (!(phone && did("place"))) sports.playerPlate("Me", { number: "10", name: tr("martin", "Martin"), logo: home.logo, color: home.color, stamina: Math.max(0.2, 0.7 - s * 0.02) });
   if (did("place")) {
-    og.ui.substitution("Sub", {
+    sports.substitution("Sub", {
       caption: tr("substitution", "Substitution"), offLabel: tr("out", "Out"), onLabel: tr("in", "In"),
       off: { number: "7", name: tr("reyes", "Reyes"), image: art("player-reyes") },
       on: { number: "19", name: tr("kova", "Kova"), image: art("player-kova") },
@@ -660,14 +663,14 @@ function fullTime(world: World, tr: (k: string, en: string) => string, art: (k: 
       });
     });
     og.ui.panel("Scorers", { width: { kind: "fixed", px: w }, padding: { left: 16, right: 16, top: 12, bottom: 12 } }, () => {
-      og.ui.goalTimeline("Goals", { events: [
+      sports.goalTimeline("Goals", { events: [
         { key: "g1", team: 0, name: tr("anderson", "J. Anderson"), minute: "23'" },
         { key: "g2", team: 0, name: tr("tanaka", "M. Tanaka"), minute: "68'" },
         { key: "g3", team: 1, name: tr("moreau", "L. Moreau"), minute: "57'" },
         ...(goals > 2 ? [{ key: "g4", team: 0, name: tr("kova", "Kova"), minute: "84'" }] : []),
       ] });
     });
-    const stats = () => og.ui.matchStats("Stats", { title: tr("matchStats", "Match stats"), header: true, home, away, stats: [
+    const stats = () => sports.matchStats("Stats", { title: tr("matchStats", "Match stats"), header: true, home, away, stats: [
       { key: "poss", label: tr("possession", "Possession"), home: 58, away: 42, homeText: "58%", awayText: "42%" },
       { key: "shots", label: tr("shots", "Shots"), home: 14, away: 9 },
       { key: "target", label: tr("onTarget", "On target"), home: 6, away: 3 },
@@ -708,7 +711,7 @@ function fullTime(world: World, tr: (k: string, en: string) => string, art: (k: 
 
 function flightScreen(): void {
   const s = seconds();
-  og.ui.flightHud("Flight", { pitch: 0.12 + 0.06 * Math.sin(s), roll: 0.35 * Math.sin(s * 0.6), heading: 1.4 + s * 0.05, speed: 412, altitude: 12450 + s * 30, verticalSpeed: 1800, pathX: 0.02, pathY: -0.04 });
+  flight.flightHud("Flight", { pitch: 0.12 + 0.06 * Math.sin(s), roll: 0.35 * Math.sin(s * 0.6), heading: 1.4 + s * 0.05, speed: 412, altitude: 12450 + s * 30, verticalSpeed: 1800, pathX: 0.02, pathY: -0.04 });
 }
 
 // ── world ─────────────────────────────────────────────────────────────────

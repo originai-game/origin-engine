@@ -13,10 +13,13 @@ import { storyCommand } from "./story.ts";
 import { genreScene, genresCommand, resetGenres } from "./genres.ts";
 import { genres2Command, resetGenres2 } from "./genres2.ts";
 import { genres3Command, resetGenres3 } from "./genres3.ts";
-import type { CardTarget, HandCard, RewardOption, Size, StoreOffer, UiRect, World } from "@origingame/engine";
+import type { Size, UiRect, World } from "@origingame/engine";
 import { gacha, type PullItem } from "@origingame/engine/extensions/gacha/index.ts";
 import { puzzle } from "@origingame/engine/extensions/puzzle/index.ts";
 import { rpg, type GridItem, type InventoryCarry, type InventoryMove, type PaperdollSlot } from "@origingame/engine/extensions/rpg/index.ts";
+import { idle } from "@origingame/engine/extensions/idle/index.ts";
+import { liveops, type StoreOffer } from "@origingame/engine/extensions/liveops/index.ts";
+import { card as cardKit, type CardTarget, type HandCard, type RewardOption } from "@origingame/engine/extensions/card/index.ts";
 
 /** A fixture the preview changes: its readonly fields writable. */
 type Mut<T> = { -readonly [K in keyof T]: T[K] };
@@ -551,7 +554,7 @@ let tableScroll = { look: "", on: false };
 /** The kit's hand: the cardHand over the table's viewmodel, and the game's side of a play. */
 function hand(targets: CardTarget[]): void {
   {
-    const r = og.ui.cardHand("Hand", {
+    const r = cardKit.cardHand("Hand", {
       cards: c.hand.map((x) => {
         const base = (x.key ?? "").replace(/\d+$/, "");
         return { ...x, name: L(`cards.${base}.name`), typeLine: L(`cards.type.${base}`), text: L(`cards.${base}.text`), image: art(`cards/${base}` as ArtName), playable: x.playable !== false && (x.cost ?? 0) <= c.energy };
@@ -637,7 +640,7 @@ export function rewardsScreen(): void {
   const top = small ? chromeRoom(t.space.lg).top : t.space.xl;
   og.ui.anchor("Rewards", { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", align: small ? "start" : "center", padding: { left: small ? t.space.sm : t.space.xl, top, right: small ? t.space.sm : t.space.xl, bottom: small ? t.space.sm : Math.max(Math.round(72 * Math.max(1, t.textScale ?? 1)), chromeRoom().bottom) } }, () => {
     {
-    const res = og.ui.rewardChoice("Choice", {
+    const res = cardKit.rewardChoice("Choice", {
       options: r.offer.map((o) => rewardWords(o)),
       title: L("rewards.title"),
       subtitle: r.taken ? L("rewards.taken", { list: r.taken }) : two ? L("rewards.chooseTwo") : L("rewards.choose"),
@@ -1170,7 +1173,7 @@ export function generatorsScreen(): void {
         for (const g0 of ig.gens) {
           const locked = "locked" in g0 && g0.locked;
           const cost = g0.cost * (n === 1 ? 1 : n === 10 ? 11.2 : 140);
-          const r = og.ui.idleGenerator(g0.key, {
+          const r = idle.idleGenerator(g0.key, {
             name: L(`idle.gen.${g0.key}`),
             image: art(g0.art as ArtName),
             level: g0.level,
@@ -1196,7 +1199,7 @@ export function generatorsScreen(): void {
       });
     };
     const prestige = (): void => {
-      const p0 = og.ui.prestigePanel("Prestige", {
+      const p0 = idle.prestigePanel("Prestige", {
         title: L("idle.prestige"),
         lead: L("idle.ascendFor"),
         rewardText: L("idle.shards", { n: 128 }),
@@ -1278,7 +1281,7 @@ export function storeScreen(): void {
     return x;
   };
   screen("Shop", L("store.title"), L("store.sub"), () => {
-    const r = og.ui.storeFront("Store", {
+    const r = liveops.storeFront("Store", {
       wallet: [
         { key: "gems", name: L("store.gems"), amount: sto.gems, image: art("boons/crystal"), topUp: true },
         { key: "coins", name: L("store.coins"), amount: sto.coins, image: art("boons/gold"), topUp: true },
@@ -1363,7 +1366,7 @@ export function passScreen(): void {
     };
   });
   screen("Pass", L("pass.title"), "", () => {
-    const r = og.ui.battlePass("Pass", {
+    const r = liveops.battlePass("Pass", {
       title: L("pass.season"),
       image: art("scenes/gacha-moonlit-tide"),
       endsIn: 18 * 86400 + 6 * 3600,

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "kind": "kit",
+  "name": "rhythm",
+  "version": "1.0.0",
+  "description": "rhythm UI components and screen documents",
+  "skill": "building-rhythm-ui/SKILL.md",
+  "entry": "index.ts",
+  "types": "types.ts"
+}

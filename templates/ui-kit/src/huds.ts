@@ -13,6 +13,8 @@ import { packGround } from "./ground.ts";
 import { shooter, type KillfeedEntry } from "@origingame/engine/extensions/shooter/index.ts";
 import { strategy } from "@origingame/engine/extensions/strategy/index.ts";
 import { type StandingsEntry } from "@origingame/engine/extensions/racing/index.ts";
+import { rhythm } from "@origingame/engine/extensions/rhythm/index.ts";
+import { sports } from "@origingame/engine/extensions/sports/index.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: Math.max(0, Math.round(n)) });
@@ -233,7 +235,7 @@ export function actionHud(world: World, under = false): boolean {
     // Where under them it would reach the thumbs' buttons (a phone on its side at large text), it stands beside them instead.
     const buttons = og.ui.bounds("Buttons");
     const beside = run !== null && buttons !== null && top + h + t.space.sm > buttons.y;
-    og.ui.anchor("ComboHud", { anchor: "topRight", margin: m, offsetX: beside ? -Math.round(run.width + t.space.md) : 0, offsetY: beside ? 0 : Math.round(top - vp.safeArea.top - m) }, () => og.ui.comboCounter("Combo", { ...combo, anchor: null }));
+    og.ui.anchor("ComboHud", { anchor: "topRight", margin: m, offsetX: beside ? -Math.round(run.width + t.space.md) : 0, offsetY: beside ? 0 : Math.round(top - vp.safeArea.top - m) }, () => rhythm.comboCounter("Combo", { ...combo, anchor: null }));
   }
 
   if (touch) {
@@ -462,8 +464,8 @@ export function sportsHud(world: World): void {
   gameScene(world, "scenes/genre-sports", { x: 0.5, y: 0.5 });
   const tick = og.ui.tick();
   const secs = 67 * 60 + 12 + Math.floor(tick / 60);
-  og.ui.scorebug("Bug", { home: { ...HOME, possession: true }, away: AWAY, clock: `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`, period: L("sc.sports.half2"), situation: tick % 600 < 300 ? L("sc.sports.corner") : "", anchor: "topLeft" });
-  og.ui.playerPlate("Player", { number: "10", name: "D. Arlo", color: HOME.color, stamina: 0.64, segments: 10, anchor: "bottom" });
+  sports.scorebug("Bug", { home: { ...HOME, possession: true }, away: AWAY, clock: `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`, period: L("sc.sports.half2"), situation: tick % 600 < 300 ? L("sc.sports.corner") : "", anchor: "topLeft" });
+  sports.playerPlate("Player", { number: "10", name: "D. Arlo", color: HOME.color, stamina: 0.64, segments: 10, anchor: "bottom" });
   og.ui.minimapView("Radar", {
     size: Math.round((small ? 110 : 180) * k), shape: "square", north: "", pitch: true, zoom: 1,
     markers: [
@@ -485,10 +487,10 @@ export function sportsHud(world: World): void {
     const plate = og.ui.bounds("PlayerHud");
     const look = `${vp.width}x${vp.height}|${t.textScale ?? 1}|${t.style}`;
     const foot = vp.breakpoint === "desktop" && !held("sportsSub", look, plate !== null && was !== null && was.y + was.height > plate.y && was.x + was.width + t.space.sm > plate.x);
-    if (foot) og.ui.substitution("Sub", { ...sub, anchor: "bottomLeft" });
+    if (foot) sports.substitution("Sub", { ...sub, anchor: "bottomLeft" });
     else if (bug && was && bug.x + bug.width + t.space.sm > was.x) {
-      og.ui.anchor("SubHud", { anchor: "topRight", margin: m, offsetY: Math.round(bug.y + bug.height + t.space.sm - (vp.safeArea.top + m)) }, () => og.ui.substitution("Sub", { ...sub, anchor: null }));
-    } else og.ui.substitution("Sub", { ...sub, anchor: "topRight" });
+      og.ui.anchor("SubHud", { anchor: "topRight", margin: m, offsetY: Math.round(bug.y + bug.height + t.space.sm - (vp.safeArea.top + m)) }, () => sports.substitution("Sub", { ...sub, anchor: null }));
+    } else sports.substitution("Sub", { ...sub, anchor: "topRight" });
   }
 }
 
@@ -505,9 +507,9 @@ export function matchFacts(world: World): void {
     const vp = og.ui.frameViewport();
     const room = vp.height - vp.safeArea.top - vp.safeArea.bottom - 2 * m - chromeRoom().bottom - 2 * t.space.lg;
     og.ui.scroll("Board", { width: grow, height: { kind: "fit", max: Math.max(160, room) }, gap: t.space.md, padding: { left: 0, top: 0, right: 0, bottom: 0 }, fade: 24, fadeInto: "hud" }, () => {
-      og.ui.scorebug("Bug", { home: HOME, away: AWAY, clock: "90:00", period: "", final: L("sc.sports.ft"), anchor: null });
-      og.ui.goalTimeline("Goals", { events: [{ key: "g1", team: 0, name: "D. Arlo", minute: "23'", icon: "ball" }, { key: "g2", team: 1, name: "R. Kade", minute: "51'", icon: "ball" }, { key: "g3", team: 0, name: "T. Ilves", minute: "88'", icon: "ball", note: L("sc.sports.pen") }], anchor: null });
-      og.ui.matchStats("Stats", {
+      sports.scorebug("Bug", { home: HOME, away: AWAY, clock: "90:00", period: "", final: L("sc.sports.ft"), anchor: null });
+      sports.goalTimeline("Goals", { events: [{ key: "g1", team: 0, name: "D. Arlo", minute: "23'", icon: "ball" }, { key: "g2", team: 1, name: "R. Kade", minute: "51'", icon: "ball" }, { key: "g3", team: 0, name: "T. Ilves", minute: "88'", icon: "ball", note: L("sc.sports.pen") }], anchor: null });
+      sports.matchStats("Stats", {
         home: HOME, away: AWAY, header: false,
         stats: [
           { key: "pos", label: L("sc.sports.possession"), home: 58, away: 42, homeText: "58%", awayText: "42%" },

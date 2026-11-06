@@ -1,3 +1,4 @@
+import { worldMap } from "./src/maps.ts";
 // The rpg kit (docs/ui.md §17): its components, registered as one typed
 // namespace beside og.ui. A game imports it explicitly:
 //
@@ -14,6 +15,7 @@ import { turnOrder } from "./src/turns.ts";
 export type * from "./types.ts";
 
 export const rpg = registerUiExtension("rpg", {
+  worldMap,
   inventoryGrid,
   paperdoll,
   questLog,

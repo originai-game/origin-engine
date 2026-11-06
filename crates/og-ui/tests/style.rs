@@ -1846,35 +1846,6 @@ fn a_dressing_draws_with_the_ui_pass_types() {
     }
 }
 
-/// A style's motion tokens reach the motion code: each built-in style's
-/// named springs keep their damping ratio and response in `Theme::motion`.
-#[test]
-fn a_styles_motion_tokens_drive_the_motion_code() {
-    for slug in ["cartoon", "pixel", "scifi"] {
-        let path = format!(
-            "{}/../../templates/styles/{slug}/style.ogt",
-            env!("CARGO_MANIFEST_DIR")
-        );
-        let text = std::fs::read_to_string(&path).expect("a built-in style");
-        let theme = parse_style(&text).expect("it parses").theme;
-        let tokens = &theme.tokens;
-        for (name, got) in [
-            (og_ui::tokens::SpringName::Ui, theme.motion.ui),
-            (og_ui::tokens::SpringName::Playful, theme.motion.playful),
-        ] {
-            let want = tokens.spring(name);
-            assert_eq!(got.duration_ms, want.duration_ms, "{slug} {name:?}");
-            let damping = want.to_spring().damping;
-            assert!(
-                (1.0 - got.bounce - damping).abs() < 1e-4 || got.bounce == -0.95,
-                "{slug} {name:?}: bounce {} for damping {damping}",
-                got.bounce
-            );
-        }
-        assert_eq!(theme.motion.stagger_ms, tokens.motion.stagger_ms, "{slug}");
-    }
-}
-
 /// A version 1 style's buttons and tabs set their labels in its ramp's
 /// `body` step, as they did before widgets drew as parts: the `label`
 /// role its tokens derive is that step (at a label's weight), and its

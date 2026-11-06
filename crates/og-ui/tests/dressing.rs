@@ -24,39 +24,9 @@ use og_ui::dress::PartRef;
 use og_ui::tokens::{ElementClass, Feedback, Haptic, HapticPreset, SoundEvent};
 use og_ui::*;
 
-/// The storybook seed (version 2, no atlas), with `dress` blocks added to
-/// its dressings.
-fn dressed(dress: &str) -> Ui {
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../templates/styles/storybook/style.ogt"
-    );
-    let text = std::fs::read_to_string(path).expect("the storybook seed");
-    let file = parse_style(&format!("{text}{dress}")).unwrap_or_else(|e| panic!("{e}"));
-    let mut ui = ui_with_font(test_font_metrics());
-    ui.set_theme(file.theme(None, [0; 6]));
-    ui.set_dressings(file.dressings.clone());
-    ui
-}
-
-fn fills_in(ui: &Ui, rect: Rect) -> Vec<[f32; 4]> {
-    ui.frame()
-        .items
-        .iter()
-        .filter_map(|i| i.cmd.filled())
-        .filter(|(r, _)| {
-            (r.x - rect.x).abs() < 1.0
-                && (r.y - rect.y).abs() < 1.0
-                && (r.width - rect.width).abs() < 1.0
-        })
-        .map(|(_, c)| c)
-        .collect()
-}
-
-fn near(a: [f32; 4], b: Srgba) -> bool {
-    let l = b.linear();
-    (0..3).all(|k| (a[k] - l[k]).abs() < 0.01)
-}
+#[path = "../../../templates/styles/tests/support.rs"]
+mod pack_support;
+use pack_support::*;
 
 #[test]
 fn a_disabled_touch_controls_opacity_is_authored_by_its_state_dressing() {
@@ -1393,93 +1363,6 @@ fn a_pixel_face_on_a_filled_shape_takes_no_drop() {
 }
 
 #[test]
-fn a_packs_selected_chip_slot_and_tab_share_one_grammar_and_its_wells_read_3_to_1() {
-    // Wrong: a pack's selected chip inverting (the default's grammar), a
-    // selected slot keeping its thin rim and recess, a tab no hairline; or
-    // an unchecked box's rim the 1.3:1 `line`, lost on its panel.
-    use og_ui::dress::{token_effects, token_strokes, well_rim};
-    use og_ui::paint::{ColorRef, Paint};
-    let accent = |s: &[og_ui::paint::Stroke]| {
-        s.len() == 1
-            && matches!(&s[0].paint, Paint::Solid(ColorRef::Token { name, .. }) if name == "primary")
-    };
-    let ui = dressed("");
-    let pack = ui.theme();
-    let hair = pack.tokens.stroke(og_ui::tokens::StrokeWidth::Hairline);
-    for (component, part, class) in [
-        ("Chip", "base", ElementClass::Chip),
-        ("Slot", "frame", ElementClass::Slot),
-        ("Tabs", "tab", ElementClass::Tab),
-    ] {
-        let p = PartRef::new(component, part, class).flag("selected");
-        let s = token_strokes(&p, pack);
-        assert!(
-            accent(&s) && s[0].width == hair,
-            "{component}: an accent hairline"
-        );
-        assert!(
-            token_effects(&p, pack).is_empty(),
-            "{component}: flat, no recess or shadow"
-        );
-        let def = token_strokes(&p, &Theme::default());
-        let thin = Theme::default()
-            .tokens
-            .stroke(og_ui::tokens::StrokeWidth::Thin);
-        match component {
-            "Slot" => assert!(
-                accent(&def) && def[0].width == thin,
-                "the default's slot rim"
-            ),
-            _ => assert!(def.is_empty(), "{component}: the default's, no rim"),
-        }
-    }
-    // The chip's ground is one step up and its words the accent's ink.
-    let mut ui = dressed("");
-    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-    ui.chip(
-        "On",
-        "All",
-        ChipDesc {
-            selected: true,
-            ..ChipDesc::default()
-        },
-    );
-    ui.end();
-    let e = ui.frame().element("On").unwrap().clone();
-    let fills = fills_in(&ui, Rect::new(e.x, e.y, e.width, e.height));
-    assert!(
-        fills.iter().any(|f| near(*f, pack.palette.control_strong)),
-        "on controlStrong: {fills:?}"
-    );
-    assert!(
-        !fills.iter().any(|f| near(*f, pack.palette.ink)),
-        "not inverted"
-    );
-    // Every pack's unchecked well is found at 3:1 on its well and panel.
-    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles");
-    for e in std::fs::read_dir(dir).unwrap() {
-        let f = e.unwrap().path().join("style.ogt");
-        let Ok(text) = std::fs::read_to_string(&f) else {
-            continue;
-        };
-        let t = parse_style(&text).unwrap().theme(None, [0; 6]);
-        let rim = well_rim(&t);
-        for ground in [t.palette.panel, t.palette.panel_raised] {
-            assert!(
-                rim.contrast(ground.fade(1.0)) >= 3.0,
-                "{}: {}",
-                f.display(),
-                rim.contrast(ground)
-            );
-        }
-        let p = PartRef::new("Checkbox", "box", ElementClass::Field);
-        assert!(
-            matches!(&token_strokes(&p, &t)[..], [s] if matches!(s.paint, Paint::Solid(ColorRef::Literal(c)) if c == rim))
-        );
-    }
-}
-
-#[test]
 fn slice_none_drops_a_less_specific_dressings_art() {
     // Wrong: a `[danger]` dressing inheriting `Button.base`'s slice, so its
     // own fill (scifi's red ABORT) never shows under the pack's art.
@@ -1560,40 +1443,6 @@ fn a_segmented_track_fills_whole_segments_along_its_ramp() {
         !fills.iter().any(|(_, c)| near(*c, mid)),
         "no third segment filled"
     );
-}
-
-#[test]
-fn every_packs_bag_cell_takes_its_slots_selected_and_tier_marks() {
-    // Wrong: a pack's tier rims and selection dressed on `Slot.frame` only,
-    // so the kit's bag (`Inventory.item[rarity=…][selected]`) draws none.
-    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles");
-    let mut packs = 0;
-    for e in std::fs::read_dir(dir).unwrap() {
-        let f = e.unwrap().path().join("style.ogt");
-        let Ok(text) = std::fs::read_to_string(&f) else {
-            continue;
-        };
-        packs += 1;
-        let set = og_ui::dress::DressSet::new(parse_style(&text).unwrap().dressings);
-        for tier in ["none", "common", "rare", "legendary"] {
-            for sel in [false, true] {
-                let of = |c, p| {
-                    PartRef::new(c, p, ElementClass::Slot)
-                        .attr("rarity", tier)
-                        .flag_if(sel, "selected")
-                };
-                let slot = set.resolve(&of("Slot", "frame"));
-                let bag = set.resolve(&of("Inventory", "item"));
-                assert_eq!(
-                    bag.draw,
-                    slot.draw,
-                    "{}: {tier} selected={sel}",
-                    f.display()
-                );
-            }
-        }
-    }
-    assert!(packs >= 12, "{packs} packs");
 }
 
 /// A focus ring sits outside its control: a row as wide as its scroll had

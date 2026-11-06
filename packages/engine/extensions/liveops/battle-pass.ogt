@@ -1,0 +1,114 @@
+type screen
+version 1
+---
+# Battle pass and season track (docs/ui.md Appendix B). The season's name
+# and time left, the level and its XP, the free and premium tracks, and the
+# weekly challenges that feed it.
+#
+# Viewmodel: season, ends (seconds), challenges, tab. Events to code: tab
+# (the click wrote tab), claimAll, unlock (Back pops it). Slots: Pass takes
+# liveops.battlePass (the header's level and XP, the tiers on both tracks,
+# claim and claim all, unlock premium; it answers the reward claimed);
+# ChallengeList takes puzzle.goalChips or rpg.questTracker for the weekly
+# challenges.
+name "battle-pass"
+layer menu
+focus "Body/Pass"
+props {
+  season string "The season's name."
+  ends number "Seconds until it ends."
+  tab string "track or challenges."
+}
+actions {
+  confirm "Claim"
+  back "Back"
+  tabNext "Next tab"
+  tabPrev "Previous tab"
+}
+fixture default "{\"season\": \"Season 4 · Tides\", \"ends\": 1814400, \"tab\": \"track\"}"
+column Screen {
+  width grow
+  height grow
+  padding 24
+  gap 12
+  at phone {
+    padding 12
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    wrap true
+    button Back {
+      key "screen.common.back"
+      text "Back"
+      variant quiet
+      on click pop
+    }
+    column Season {
+      gap 2
+      label Name {
+        text bind season
+        step xl2
+        heading true
+        at phone {
+          step lg
+        }
+      }
+      label Ends {
+        text "Ends in {ends, duration}"
+        step caption
+        color token inkMuted
+      }
+    }
+    spacer
+    row Tabs {
+      gap 6
+      button Track {
+        key "screen.battle-pass.track"
+        text "Rewards"
+        variant ghost
+        on click set tab "\"track\""
+        state selection bind "tab == \"track\"" {
+          off {
+            opacity 0.85
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+      button Challenges {
+        key "screen.battle-pass.challenges"
+        text "Challenges"
+        variant ghost
+        on click set tab "\"challenges\""
+        state selection bind "tab == \"challenges\"" {
+          off {
+            opacity 0.85
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+    }
+  }
+  column Body {
+    width grow
+    height grow
+    slot Pass {
+      width grow
+      height grow
+      visible bind "tab == \"track\""
+    }
+    scroll ChallengeScroll {
+      width grow
+      height grow
+      visible bind "tab == \"challenges\""
+      slot ChallengeList {
+        width grow
+      }
+    }
+  }
+}

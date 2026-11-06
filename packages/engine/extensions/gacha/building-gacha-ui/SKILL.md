@@ -35,7 +35,7 @@ if (r.pull) token = startPull(r.pull);
 ```
 
 Call them from the system that builds the game's UI each tick. Generic
-pieces stay in `og.ui`: the store (`og.ui.storeFront`), reward choice, cards, celebrations, counters and timers.
+pieces stay in `og.ui`: the store (`liveops.storeFront`), reward choice, cards, celebrations, counters and timers.
 
 Tiers are the game's. A unit or pull item takes the engine's `rarity`
 (common … mythic), or its own `tier: { label: "SSR", rank: 6, color:

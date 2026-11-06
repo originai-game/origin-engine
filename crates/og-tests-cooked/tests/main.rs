@@ -8,7 +8,6 @@
 mod device_formats;
 mod gfx;
 mod materials_gfx;
-mod pack_contrast;
 mod render;
 mod support;
 mod terrain;
