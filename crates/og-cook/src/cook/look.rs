@@ -429,7 +429,7 @@ fn default_numbers(json: &str) -> Vec<f64> {
         .unwrap_or_default()
 }
 
-/// `base` laid in `mood` (docs/art.md §2.9): the mood's layer for `slug`
+/// `base` laid in `mood` (docs/art.md §2.10): the mood's layer for `slug`
 /// over it, a number moving the base's value (else the field's default) by
 /// the layer's distance from the default, clamped to the field's range and
 /// rounded for a whole-number field; any other value replacing the base's.

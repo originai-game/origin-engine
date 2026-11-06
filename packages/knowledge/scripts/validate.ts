@@ -577,7 +577,7 @@ export const PROFILES = ["2d", "3d"] as const;
 export const LAYERS = ["frame", "conform", "runtime", "authored"] as const;
 /** What `look.views` may name: the creation choice's views (create's choices.ts, held equal by its tests); a `-2d` view needs the 2d profile, the rest 3d. */
 export const VIEWS = ["side-2d", "top-down-2d", "isometric-2.5d", "third-person-3d", "first-person-3d"] as const;
-/** What `look.mood` may name: the moods a look takes (og-bundle's MOODS, create's choices.ts; docs/art.md §2.9). */
+/** What `look.mood` may name: the moods a look takes (og-bundle's MOODS, create's choices.ts; docs/art.md §2.10). */
 export const MOODS = ["bright", "dark", "warm", "cold", "soft", "high-contrast"] as const;
 /** The placeholders the art-bible template may use. */
 export const BIBLE_FIELDS = ["title", "premise", "camera", "platform", "name", "descriptor", "direction", "palette", "assets", "ui", "avoid", "game", "slug", "checks"] as const;

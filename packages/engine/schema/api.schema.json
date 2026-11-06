@@ -28706,7 +28706,7 @@
               "type": "null"
             }
           ],
-          "description": "The mood it is drawn in (bright, dark, warm, cold, soft or high-contrast): a preset's own, or the one the game's look asked for, whose layer the cook laid over the preset (docs/art.md §2.9); unset for a look that names none."
+          "description": "The mood it is drawn in (bright, dark, warm, cold, soft or high-contrast): a preset's own, or the one the game's look asked for, whose layer the cook laid over the preset (docs/art.md §2.10); unset for a look that names none."
         },
         "resources": {
           "type": "array",

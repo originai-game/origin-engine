@@ -39,7 +39,7 @@ is one line here, written at the merge that changes
   mood it is drawn in, and a game's look naming another has the mood's
   layer (`templates/looks/moods/`: grading, exposure, ambient light, and
   for monochrome-pixel and monochrome-dither-3d a palette of the mood)
-  laid over its preset before its own fields (docs/art.md §2.9). Ten
+  laid over its preset before its own fields (docs/art.md §2.10). Ten
   built-in palettes join (`@palettes/handheld4-<mood>`,
   `@palettes/1bit-<mood>`). render: `LookInfo.mood` added. A game whose
   look names no mood draws as before.

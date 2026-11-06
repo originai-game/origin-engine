@@ -1,6 +1,6 @@
 # Moods
 
-A look's `mood "<word>"` (docs/art.md §2.9). A preset's own `mood` line names
+A look's `mood "<word>"` (docs/art.md §2.10). A preset's own `mood` line names
 the mood it is drawn in. A game's look that asks for another mood has the
 mood's layer laid over the preset its `extends` chain reaches, before the
 game's own fields:

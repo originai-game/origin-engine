@@ -8633,7 +8633,7 @@ export interface LookInfo {
    */
   readonly extends: readonly string[];
   /**
-   * The mood it is drawn in (bright, dark, warm, cold, soft or high-contrast): a preset's own, or the one the game's look asked for, whose layer the cook laid over the preset (docs/art.md §2.9); unset for a look that names none.
+   * The mood it is drawn in (bright, dark, warm, cold, soft or high-contrast): a preset's own, or the one the game's look asked for, whose layer the cook laid over the preset (docs/art.md §2.10); unset for a look that names none.
    */
   readonly mood: string | null;
   /**

@@ -39,7 +39,7 @@ the art brief it was requested with (kind, subject, metres).
   (`DIR/<slug>.png`) and `og style check --no-frames --json`
   (`DIR/<slug>.style.json`). `--mood bright,dark,...` (and `own`, the
   preset's own mood) runs each mood the sample's look asks for
-  (docs/art.md §2.9) into `DIR/<slug>@<mood>.png`. Use the `og` and addon of the commit under
+  (docs/art.md §2.10) into `DIR/<slug>@<mood>.png`. Use the `og` and addon of the commit under
   test (`OG_NATIVE_ADDON`, `OG_ENGINE_PACKAGE`).
 - `prepare.ts <project>`: briefs every beat with `artBrief` under the
   project's look and writes each image's import settings (`conform { size

@@ -43,7 +43,7 @@ export const ART_KINDS = [
 ] as const;
 export type ArtKind = (typeof ART_KINDS)[number];
 
-/** The moods a look takes (`mood "<word>"`, docs/art.md §2.9): og-bundle's MOODS and create's choices, held equal by the tests. */
+/** The moods a look takes (`mood "<word>"`, docs/art.md §2.10): og-bundle's MOODS and create's choices, held equal by the tests. */
 export const MOODS = ["bright", "dark", "warm", "cold", "soft", "high-contrast"] as const;
 export type Mood = (typeof MOODS)[number];
 
@@ -929,7 +929,7 @@ export function parseLook(text: string, at = "look"): LookText {
 const assetId = (p: string) => p.replace(/^\.?\/?assets\//, "");
 
 /**
- * The mood's layer for a preset (og-cook's `lay_mood`, docs/art.md §2.9):
+ * The mood's layer for a preset (og-cook's `lay_mood`, docs/art.md §2.10):
  * `moods/<mood>/<slug>.ogt` beside the presets, else `moods/<mood>.ogt`. The
  * brief reads only its palette and art fields, which it lays by replacing;
  * the frame's numbers it moves are the cook's.

@@ -108,7 +108,7 @@ schema and premise inference through `@origingame/create-game`.
 `resolveCreationChoices` adds catalogue matching. These exports are
 additive public contracts beside the art brief; existing signatures stay
 unchanged. The UI choice defaults to the look's `ui` line but can override
-it, and the mood to the look's own (§2.9), which the game's look then
+it, and the mood to the look's own (§2.10), which the game's look then
 names. Music still records intent only. See create's README for the
 function signatures and `docs/platform-asks.md` for the creation UI ask.
 
@@ -346,7 +346,7 @@ build (numbers cannot judge a style, og-taste §11).
   hand-drawn and painted, ink and comic, toon and stylised 3D, low-poly,
   toy and handmade 3D, flat and graphic, realistic), `look.views` (the
   creation views it suits, within its profiles), `look.mood` (the mood its
-  preset is drawn in, §2.9) and, for the 14 `content` styles,
+  preset is drawn in, §2.10) and, for the 14 `content` styles,
   `look.authored`: each art brief kind the style needs made and what it
   must be. `artBrief` writes that into every request of the kind (an
   `Authored` line) and `authoredArt(look)` lists them. Slugs are

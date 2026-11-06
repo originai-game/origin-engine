@@ -9,7 +9,7 @@
 // Writes DIR/<slug>.png (the reference name of the style's frame:
 // examples/art-<scene>/references/<tier>/<slug>.png when DIR is that
 // tier's directory) and DIR/<slug>.style.json (the check's JSON). With
-// --mood, the sample's look asks each mood (docs/art.md §2.9; `own` for
+// --mood, the sample's look asks each mood (docs/art.md §2.10; `own` for
 // the preset's own, no mood line) and the frames are DIR/<slug>@<mood>.png.
 // Run `og` and the addon of the commit under test (OG_NATIVE_ADDON,
 // OG_ENGINE_PACKAGE), as every frame of a branch.

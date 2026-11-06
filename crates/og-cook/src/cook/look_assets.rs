@@ -153,7 +153,7 @@ pub const PRESETS: &[(&str, &str)] = &[
     ),
 ];
 
-/// The moods' layers (`templates/looks/moods/`, docs/art.md §2.9), compiled
+/// The moods' layers (`templates/looks/moods/`, docs/art.md §2.10), compiled
 /// into the cook: `(mood, None)` is the layer for every style, `(mood,
 /// Some(slug))` one style's in its place. A look asking a preset for a mood
 /// other than the preset's own has the layer laid over the preset

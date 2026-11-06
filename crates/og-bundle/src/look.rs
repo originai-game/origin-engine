@@ -106,7 +106,7 @@ pub const ANTIALIAS: [&str; 4] = ["tier", "off", "msaa4", "taa"];
 /// The moods a look takes (`mood "<word>"`), the creation choice's words
 /// (`packages/create/bin/choices.ts`, held equal by its tests). Each is a
 /// layer of the frame's grading, light and, for a palette-bound style, its
-/// palette (`templates/looks/moods/`), docs/art.md §2.9.
+/// palette (`templates/looks/moods/`), docs/art.md §2.10.
 pub const MOODS: [&str; 6] = ["bright", "dark", "warm", "cold", "soft", "high-contrast"];
 
 /// The longest `extends` chain the cook follows.
