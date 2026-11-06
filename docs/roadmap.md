@@ -33,7 +33,10 @@ threads linked here; rules are in `AGENTS.md`.
 
 Hand-offs from the clean-up round: artifact
 9de31d6e-98f1-479b-8d6f-8e191b620da4. Waiting: presentation checkpoints, in Claude Code on Opus, once
-delete-templates has landed (the owner).
+delete-templates has landed (the owner). After this round, og.motion resumes in Claude Code on
+Opus for 0.8.0 (the owner): the two geometry findings (8.4° encoded lean,
+~70 cm vertical drift), the jump's vertical-arc ownership, hopping and train
+cases 04/05, then a skinned art review.
 
 Landed in the clean-up round: examples/ deleted with the path-aware `fixtures` step and
 the destruction-yard and vehicle-terrain fixtures (to 876766dc0); meshlet
