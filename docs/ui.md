@@ -1706,8 +1706,10 @@ resource bar any resources, and a standings tower any field.
   (`LabelDesc.onScene`, the ui-parts `text()` and `btn()`): ink roles
   become `sceneInk` at the same emphasis, with `sceneShadow` separation,
   so a light style's dark ink stays readable over a dark scene.
-- **Reward choice.** Its cards scroll between the header and the actions,
-  at `<id>/Cards/Options/<key>` (was `<id>/Options/<key>`).
+- **Reward choice.** Its header and cards scroll above the actions, at
+  `<id>/Cards/Header` and `<id>/Cards/Options/<key>` (were `<id>/Header`
+  and `<id>/Options/<key>`), so a long title at large text never leaves
+  the cards a 0 px scroll or pushes an action off the screen.
 
 ## 17a. The existing coverage kit
 

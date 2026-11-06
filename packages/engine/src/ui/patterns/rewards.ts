@@ -66,27 +66,27 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
   const rk = kit.memory("~r.rk", 0);
   let nextArmed = armed;
 
-  if (desc.title || desc.subtitle) {
-    kit.column("Header", { width: grow(), gap: u(4), cross: "center" }, () => {
-      // The screen's display line, centred over the choices (a roguelite's blessing, a deckbuilder's reward); what to do under it.
-      if (desc.title) text("Title", desc.title, { step: phone ? "xl3" : "displayMd", heading: true, font: "display", align: "center", width: grow(), maxLines: 2 });
-      if (desc.subtitle) text("Subtitle", desc.subtitle, { step: st(phone ? 14 : 18), color: "inkMuted", align: "center", width: grow(), maxLines: 2 });
-    });
-  }
-
   // Sizes: side by side, each as wide as asked and as the row allows; a phone in portrait stacks compact rows.
   const room = vp.width - vp.safeArea.left - vp.safeArea.right - u(48);
   const gap = u(phone ? 12 : 24);
   const cw = portrait ? room : Math.floor(Math.min(desc.cardWidth && desc.cardWidth > 0 ? desc.cardWidth : u(260), (room - gap * Math.max(0, n - 1)) / Math.max(1, n)));
   const compact = portrait || vp.height - vp.safeArea.top - vp.safeArea.bottom < 480;
 
-  // The cards scroll between the header and the actions, as tall as they are until the room runs out (a scroll's least
+  // The header and the cards scroll above the actions, as tall as they are until the room runs out (a scroll's least
   // height is none), so the actions stay in view however many rewards, how large the text or how short the screen: a
-  // whole choice scrolled put them out of view, under its fade.
-  kit.openScroll("Cards", { width: grow(), gap: 0, padding: xy(u(6), 0), fade: 32, fadeInto: "shadow" } as never);
+  // whole choice scrolled put them out of view, under its fade, and a header kept out of the scroll left the cards no
+  // room at all (a phone's two-line title at 150 % text in a long translation: a 0 px scroll, Skip pushed off).
+  kit.openScroll("Cards", { width: grow(), gap: 0, fade: 32, fadeInto: "shadow" } as never);
+  if (desc.title || desc.subtitle) {
+    kit.column("Header", { width: grow(), gap: u(4), cross: "center", padding: { left: 0, right: 0, top: 0, bottom: u(20) } }, () => {
+      // The screen's display line, centred over the choices (a roguelite's blessing, a deckbuilder's reward); what to do under it.
+      if (desc.title) text("Title", desc.title, { step: phone ? "xl3" : "displayMd", heading: true, font: "display", align: "center", width: grow(), maxLines: 2 });
+      if (desc.subtitle) text("Subtitle", desc.subtitle, { step: st(phone ? 14 : 18), color: "inkMuted", align: "center", width: grow(), maxLines: 2 });
+    });
+  }
   // Its top padding keeps a standing card's corner tag (it stands above the card) and a hover's lift inside any clip
   // around it; a compact row draws its tag inline, so it keeps only the lift (the rest pushed a phone's actions off).
-  kit.open("Options", { direction: portrait ? "column" : "row", gap, cross: "stretch", align: "center", width: grow(), padding: { left: 0, right: 0, top: u(compact ? 10 : 22), bottom: 0 }, part: "Reward.options", partClass: "panel" });
+  kit.open("Options", { direction: portrait ? "column" : "row", gap, cross: "stretch", align: "center", width: grow(), padding: { left: u(6), right: u(6), top: u(compact ? 10 : 22), bottom: 0 }, part: "Reward.options", partClass: "panel" });
   opts.forEach((o, i) => {
     const key = o.key ?? `r${i}`;
     const tier = rarityColor(o.rarity);

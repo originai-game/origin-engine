@@ -603,9 +603,10 @@ function rewards(extra: Partial<Api.RewardChoiceDesc> = {}, after?: () => void) 
   return { engine, results, press, picked, options: () => options };
 }
 
-test("rewardChoice: cards that outgrow the room scroll between the header and the actions, which stay in it", () => {
-  // Wrong: the whole choice laid out past the room (a phone's Skip off the screen), or scrolled with the cards so its
-  // actions go out of view under the fade.
+test("rewardChoice: a header and cards that outgrow the room scroll above the actions, which stay in it", () => {
+  // Wrong: the whole choice laid out past the room (a phone's Skip off the screen), scrolled with the cards so its
+  // actions go out of view under the fade, or its header kept out of the scroll, which left the cards a 0 px scroll
+  // under a long title (a phone's pseudo-locale at 150 % text) and pushed Skip off the screen.
   const options = [...REWARDS, ...REWARDS.map((o) => ({ ...o, key: `${o.key}2` }))].map((o) => ({ ...o, locked: false }));
   const phone = { width: 390, height: 844, dpr: 3, coarsePointer: true, breakpoint: "phonePortrait", safeArea: { left: 0, top: 47, right: 0, bottom: 34 } } as const;
   for (const [viewport, h] of [[phone, 691], [{}, 520]] as const) {
@@ -618,6 +619,21 @@ test("rewardChoice: cards that outgrow the room scroll between the header and th
     expect(cards.height).toBeLessThan(h);
     for (const a of actions) expect(a.y).toBeGreaterThanOrEqual(cards.y + cards.height - 0.5);
   }
+  // A two-line title and subtitle over a short room: the header scrolls with the cards, which keep the room the
+  // actions leave (before, the header took it and the cards had none).
+  const title = "The Storm Warden's Gift of Thunder, Iron and the Long Night";
+  const subtitle = "Choose one blessing to carry into the next room of the crypt, or skip it for gold";
+  const e = run(() => og.ui.column("Box", { width: { kind: "grow" }, height: { kind: "fixed", px: 360 } }, () => og.ui.rewardChoice("Rew", { title, subtitle, options, rerolls: 2, banishes: 1, skipLabel: "Skip · take 25 gold" })), phone);
+  e.advance(30);
+  const box = byPath(e, "Box")!;
+  const cards = byPath(e, "Rew/Cards")!;
+  for (const k of ["Reroll", "Banish", "Skip"]) {
+    const a = byPath(e, `Rew/Actions/${k}`)!;
+    expect(a.y + a.height).toBeLessThanOrEqual(box.y + box.height + 0.5);
+    expect(a.y).toBeGreaterThanOrEqual(cards.y + cards.height - 0.5);
+  }
+  expect(cards.height).toBeGreaterThanOrEqual(150);
+  expect(byPath(e, "Rew/Cards/Header/Title")).toBeDefined();
 });
 
 test("rewardChoice: with one pick a press takes the reward at once; a locked one shakes and is refused", () => {
