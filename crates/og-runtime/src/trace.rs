@@ -234,6 +234,25 @@ pub(crate) fn load(id: &str, start: f64, bytes: usize) {
     });
 }
 
+/// Capture extraction, GPU readback and PNG encoding, attributed like asset loads.
+pub(crate) fn capture(start: f64) {
+    if !on() {
+        return;
+    }
+    LOADS.with(|events| {
+        let mut events = events.borrow_mut();
+        events.extend(thread_named(8, "capture"));
+        events.push(span(
+            "capture",
+            "capture",
+            8,
+            start,
+            now() - start,
+            json!({}),
+        ));
+    });
+}
+
 /// The start of a span when tracing (0 otherwise, never read).
 pub(crate) fn start() -> f64 {
     if on() { now() } else { 0.0 }

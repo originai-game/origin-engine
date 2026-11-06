@@ -226,12 +226,32 @@ pub fn prepare_traced(
         }
     }
     if let Some(path) = trace {
-        crate::trace::write_prelude(path, cook_spans, origin)?;
+        crate::trace::write_prelude(path, cook_spans.clone(), origin)?;
     }
     if check {
+        let start = crate::trace::epoch_ms();
+        let timer = std::time::Instant::now();
         crate::check::require(p, package, json)?;
+        cook_spans.push(crate::trace::prepare_event(
+            "typecheck",
+            start,
+            timer.elapsed().as_secs_f64() * 1000.0,
+            origin,
+        ));
     }
-    project::bundle_native(p, package)
+    let start = crate::trace::epoch_ms();
+    let timer = std::time::Instant::now();
+    let bundle = project::bundle_native(p, package)?;
+    cook_spans.push(crate::trace::prepare_event(
+        "bundle",
+        start,
+        timer.elapsed().as_secs_f64() * 1000.0,
+        origin,
+    ));
+    if let Some(path) = trace {
+        crate::trace::write_prelude(path, cook_spans, origin)?;
+    }
+    Ok(bundle)
 }
 
 pub fn run(args: &[&str]) -> ExitCode {

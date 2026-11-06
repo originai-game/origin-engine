@@ -55,6 +55,7 @@ import { nativePlatform, readFake } from "./platform.ts";
 import { Trace, unixMs, type TraceDocument } from "../trace.ts";
 import { beginBundle, boundHost, createEngine, fixedClock, type Engine, type GameToken, type Result } from "../runtime.ts";
 
+const hostEntered = unixMs();
 const argv = process.argv.slice(2);
 let entry = "";
 let root: string | undefined;
@@ -128,13 +129,24 @@ if (seed !== undefined && (!Number.isInteger(seed) || seed < 0)) fail("--seed ta
 if (clock !== undefined && !(Number.isFinite(clock) && clock > 0)) fail("--clock takes UTC milliseconds since 1970, such as 1767225600000");
 if (port !== undefined && (!Number.isInteger(port) || port < 0 || port > 65535)) fail("--port takes 0 (a free port) to 65535");
 
-loadNativeHost();
-const extras = native();
-
 // --trace: the Chrome trace (src/trace.ts), continuing og's prelude (the cook) when appending.
 const trace = tracePath
   ? new Trace({ producer: "og run --trace", process: "og run", ...(traceAppend && existsSync(tracePath) ? { prior: JSON.parse(readFileSync(tracePath, "utf8")) as Partial<TraceDocument> } : {}) })
   : undefined;
+function hostPhase(name: string, start: number, end = unixMs()): void {
+  if (!trace) return;
+  const ts = Math.round((start - trace.origin) * 1000);
+  trace.events.push({ name, cat: "host", ph: "X", pid: 1, tid: 7, ts, dur: Math.max(0, Math.round((end - trace.origin) * 1000) - ts) });
+}
+if (trace) {
+  trace.events.push({ name: "thread_name", ph: "M", pid: 1, tid: 7, args: { name: "host" } });
+  const bundle = trace.events.find(e => e.name === "bundle" && e.cat === "prepare");
+  if (bundle) hostPhase("process-start-and-imports", trace.origin + ((bundle.ts ?? 0) + (bundle.dur ?? 0)) / 1000, hostEntered);
+}
+const addonStart = unixMs();
+loadNativeHost();
+const extras = native();
+hostPhase("addon-load", addonStart);
 /** Takes the engine's spans (each where it ran) onto the trace; `last` waits for the GPU's frames in flight. */
 function takeTrace(engineId: number, last = false): void {
   if (!trace) return;
@@ -185,7 +197,9 @@ function projectProfile(text: string | undefined): "2d" | "3d" | undefined {
   return m ? (m[1] as "2d" | "3d") : undefined;
 }
 
+const importStart = unixMs();
 const game = await importGame(entry);
+hostPhase("game-import", importStart);
 // Loads made while the engine is created (its boot scene's) are traced too.
 const BEFORE_ENGINE = 0xffffffff;
 if (tracePath) extras.og_node_trace(BEFORE_ENGINE, true);
@@ -195,7 +209,9 @@ const probing = commands !== undefined || port !== undefined || watchFile !== un
 // With a renderer, GameDesc.start runs once it is attached (as the web Worker
 // does), so og.render.capabilities reports the play surface's size there.
 const deferStart = probing && render;
+const createStart = unixMs();
 const created = createEngine(game, { ...(seed === undefined ? {} : { seed }), ...(root ? { root } : {}), ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}), ...(locale ? { locale } : {}), ...(deferStart ? { deferStart } : {}) });
+hostPhase("engine-create", createStart);
 if (!created.ok) fail(`${entry}: ${created.reason}`);
 const engine: Engine = created.value;
 // Without --realtime every frame is the script's (elapsed is one tick): its time is the machine's load, not a
@@ -265,12 +281,16 @@ function drain(): void {
 let tier = "none";
 let adapterError: string | null = null;
 if (deferStart) {
+  const attachStart = unixMs();
   const attached = attachRenderer(engine.id, size.width, size.height);
+  hostPhase("renderer-attach", attachStart);
   if (!attached.ok) fail(attached.reason);
   tier = attached.value;
   adapterError = attached.adapterError;
   // The first tick boundary: GameDesc.start, with the surface in place.
+  const startTime = unixMs();
   const started = engine.advance(0);
+  hostPhase("game-start", startTime);
   if (!started.ok) fail(started.reason);
 }
 drain();
@@ -468,6 +488,7 @@ if (!probing) {
   }
 }
 const ms = performance.now() - t0;
+hostPhase("run-loop", performance.timeOrigin + t0);
 drain();
 if (tracePath) {
   takeTrace(engine.id, true);

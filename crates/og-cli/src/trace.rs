@@ -16,12 +16,13 @@ use serde_json::{Value, json};
 use std::path::Path;
 
 /// The trace's thread ids and names.
-pub const LANES: [(u32, &str); 5] = [
+pub const LANES: [(u32, &str); 6] = [
     (1, "engine"),
     (2, "render"),
     (3, "load"),
     (4, "cook"),
     (5, "gpu"),
+    (6, "prepare"),
 ];
 
 /// The first thread id of the cook's threads (cook thread `n` is this + n).
@@ -74,6 +75,13 @@ pub fn cook_events(report: &Report, start_ms: f64, origin_ms: f64) -> Vec<Value>
         }
     }
     out
+}
+
+/// A preparation phase on the CLI's clock, relative to the trace origin.
+pub fn prepare_event(name: &str, start_ms: f64, duration_ms: f64, origin_ms: f64) -> Value {
+    let mut event = span(name, 6, start_ms - origin_ms, duration_ms, json!({}));
+    event["cat"] = json!("prepare");
+    event
 }
 
 /// A thread's name and its place among the trace's threads.

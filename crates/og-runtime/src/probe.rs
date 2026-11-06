@@ -111,6 +111,7 @@ impl Capture for RuntimeCapture {
     }
 
     fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Frame> {
+        let capture_start = super::trace::start();
         let mut rs = self.render.try_borrow_mut().ok()?;
         // Captured frames show every wanted terrain tile, whatever the decode timing.
         rs.terrain.settle = true;
@@ -127,6 +128,7 @@ impl Capture for RuntimeCapture {
         });
         // The probe's work, not the game's: the tick's step time leaves it out.
         rs.capture_ms += now_ms() - t0;
+        super::trace::capture(capture_start);
         frame
     }
 }
