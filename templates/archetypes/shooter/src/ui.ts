@@ -292,9 +292,14 @@ function topLine(world: World, g: GameV): void {
     capsule("Score", () => og.ui.label("Value", `${g.score}`, { step: "lg", font: "mono", nowrap: true }));
   });
   if (g.waveState === WaveState.Breather && g.mode === Mode.Holdout && g.ending === Ending.None) {
-    og.ui.anchor("Incoming", { anchor: "center", offsetY: -110, direction: "column", cross: "center", gap: S.xs }, () => {
-      og.ui.label("Title", say(world, g.wave === 1 ? "hud.first" : "hud.incoming", { n: g.wave }), { step: "displaySm", font: "display", nowrap: true });
-      og.ui.label("Count", `${Math.ceil(Math.max(0, g.waveTimer))}`, { step: "xl", font: "mono", color: { token: "warn" }, nowrap: true });
+    // Over each view's own centre: one banner alone, one in each half with two seats here.
+    const w = og.ui.frameViewport().width;
+    const halves = LOCAL ? [-w / 4, w / 4] : [0];
+    halves.forEach((offsetX, i) => {
+      og.ui.anchor(`Incoming${LOCAL ? i : ""}`, { anchor: "center", offsetX, offsetY: -110, direction: "column", cross: "center", gap: S.xs }, () => {
+        og.ui.label("Title", say(world, g.wave === 1 ? "hud.first" : "hud.incoming", { n: g.wave }), { step: LOCAL && usesTouch() ? "lg" : "displaySm", font: "display", nowrap: true });
+        og.ui.label("Count", `${Math.ceil(Math.max(0, g.waveTimer))}`, { step: "xl", font: "mono", color: { token: "warn" }, nowrap: true });
+      });
     });
   }
 }
@@ -337,7 +342,8 @@ function seatHud(world: World, g: GameV, seat: number, half: -1 | 0 | 1): void {
   // stack at the top, under the run's line, clear of the crosshair.
   const corner = touch ? (half === 1 ? "topRight" : "topLeft") : half === 1 ? "bottomRight" : "bottomLeft";
   const inColumn = LOCAL || touch;
-  og.ui.anchor(`Vitals${suffix}`, { anchor: corner, offsetY: touch ? 60 : 0, direction: "column", gap: S.sm, cross: half === 1 ? "end" : "start" }, () => {
+  // Two seats on a phone: an 8 px gutter, so a reloading panel (ring, word and reserve) stays inside its half.
+  og.ui.anchor(`Vitals${suffix}`, { anchor: corner, margin: touch && LOCAL ? S.sm : null, offsetY: touch ? 60 : 0, direction: "column", gap: S.sm, cross: half === 1 ? "end" : "start" }, () => {
     if (LOCAL) og.ui.label("Seat", say(world, "hud.player", { n: seat + 1 }), { step: "sm", font: "display", color: { token: seat === 0 ? "warn" : "info" }, nowrap: true });
     capsule("Health", () => {
       og.ui.icon("Glyph", "heart", { size: 20, tint: { token: me.health / t.health < 0.35 ? "danger" : "ink" } });
@@ -350,11 +356,12 @@ function seatHud(world: World, g: GameV, seat: number, half: -1 | 0 | 1): void {
 }
 
 function ammo(world: World, me: Value<typeof Hero>, t: Value<typeof Tuning>, anchor: "bottomRight" | null): void {
-  // Two seats on a phone: each half is under 200 px wide, so the rounds alone (no name, mode, pips or reload words; the ring stays).
+  // Two seats on a phone: each half is under 200 px wide, so no pips (24 of them are wider than
+  // the half) and the reload's short word; the weapon's line and the hint stay.
   const narrow = LOCAL && usesTouch();
   shooter.ammoCounter("Ammo", {
-    magazine: me.mag, magazineMax: t.magazine, reserve: me.reserve, weapon: narrow ? "" : say(world, "hud.rifle"), fireMode: narrow ? "" : say(world, "hud.auto"),
-    reloading: me.reload > 0 ? 1 - me.reload / t.reloadSeconds : null, reloadLabel: narrow ? "" : say(world, "hud.reloading"), reloadHint: narrow ? "" : say(world, usesTouch() ? "hud.reload.touch" : "hud.reload.keys"),
+    magazine: me.mag, magazineMax: t.magazine, reserve: me.reserve, weapon: say(world, "hud.rifle"), fireMode: say(world, "hud.auto"),
+    reloading: me.reload > 0 ? 1 - me.reload / t.reloadSeconds : null, reloadLabel: say(world, narrow ? "hud.reloading.short" : "hud.reloading"), reloadHint: say(world, usesTouch() ? "hud.reload.touch" : "hud.reload.keys"),
     anchor, pips: !narrow,
   });
 }
@@ -591,6 +598,8 @@ export const Ui = defineSystem("Ui", { reads: [Tuning, og.Pointers, og.PlayerInp
   }
   clock(world, g, time.scaledDt);
 
+  // Two seats here: a dark line down the seam between the halves, under every screen.
+  if (LOCAL) divider();
   const screen = g.phase === Phase.Title ? "title" : g.phase === Phase.Play ? "play" : "over";
   const shown = og.ui.screenTransition("Screens", screen, { kind: prefs.reducedMotion ? "fade" : "dissolve", durationMs: 500 }).shown;
   const touch = usesTouch();
@@ -622,6 +631,14 @@ export const Ui = defineSystem("Ui", { reads: [Tuning, og.Pointers, og.PlayerInp
   setLookLive(g.phase === Phase.Play && !g.paused && !settingsOpen && g.ending === Ending.None);
   settings(world);
 });
+
+/** The split screen's seam: a 3 px dark line the full height of the frame, as split screens draw it. */
+function divider(): void {
+  const vp = og.ui.frameViewport();
+  og.ui.anchor("Divider", { anchor: "top", margin: 0, offsetY: -vp.safeArea.top }, () => {
+    og.ui.shapeBox("Line", { kind: "rect", width: px(3), height: px(vp.height), fill: "backdrop" });
+  });
+}
 
 /** The language as the facts report it. */
 export function languageCode(): string {

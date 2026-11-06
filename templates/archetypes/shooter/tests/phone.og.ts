@@ -42,6 +42,7 @@ export default playtest({
     "4.05:get:hero.Hero:jumped.json",
     tap(`${HANDS}/Small/Reload`, 4.6),
     "4.75:get:hero.Hero:reloading.json",
+    "4.75:dump_ui:reload-ui.json",
     "4.8:screenshot:play.png",
     "4.9:quit",
   ].join(";"),
@@ -81,6 +82,15 @@ export default playtest({
     t.ok(fired.mag < 24 && fired.mag >= 18, `holding Fire fires (${24 - fired.mag} rounds)`);
     t.ok(value<Hero>(run, "jumped.json").jumps === 1, "Jump jumps");
     t.ok(value<Hero>(run, "reloading.json").reload > 0, "Reload reloads");
+    // Reloading, seat 0's rounds still say so and keep the weapon's line, inside its own part of the screen.
+    const reload = elements(run, "reload-ui.json");
+    const word = reload.find((e) => e.path.startsWith("Vitals") && e.id === "ReloadLabel");
+    t.ok(word !== undefined && word.text !== "", `the rounds panel says it is reloading (${word?.text})`);
+    t.ok(reload.some((e) => e.path.startsWith("Vitals") && e.id === "Name" && e.text !== ""), "and keeps the weapon's name");
+    const ammo0 = reload.find((e) => e.path === (LOCAL ? "Vitals0/Ammo" : "Vitals/Ammo"));
+    const seam = reload.find((e) => e.path === "Divider/Line");
+    t.ok(ammo0 !== undefined && (!LOCAL || (seam !== undefined && ammo0.x + ammo0.width <= seam.x)), `which stays in seat 0's half (ends at ${ammo0 ? Math.round(ammo0.x + ammo0.width) : "?"}, the seam at ${seam ? Math.round(seam.x) : "none"})`);
+    t.ok(LOCAL === (seam !== undefined), LOCAL ? "a dark seam divides the halves" : "alone, no seam");
     t.frame("play.png", () => t.equal(run.png("play.png").width, 1170, "play.png captured at the phone's device pixels"));
     // The phone frame: first person alone and split (references/<tier>/fp-phone-play.png, fp-local-phone-play.png).
     checkFrames(run, t, ["play.png"], `${VARIANT}-phone-`, VARIANT === "fp");

@@ -1,7 +1,8 @@
 // Two frames at 1280×720 compared with references/<tier>/, one pair per
 // view (first person, over the shoulder, isometric) and for the
 // first-person split screen: the title over the landing field, and the
-// fight, the rifle mid-burst (its flash, a tracer, the impacts) at two
+// fight (with two seats the seam between the halves and the wave's banner in
+// each), the rifle mid-burst (its flash, a tracer, the impacts) at two
 // walkers and a drone charging its beam, with the shooter kit's HUD.
 // `OG_FX_CAPTURE=1 og test .` records this tier's references.
 import { playtest } from "@origingame/engine/playtest";

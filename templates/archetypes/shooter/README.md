@@ -74,8 +74,10 @@ og build . --publish         # dist/: the play page as it ships (behind "tap to 
   killfeed, the damage direction and the low-health vignette; the wave,
   the foes left and the score at the top; health bottom left and the
   rounds bottom right (on a touch screen both under the top line, leaving
-  the bottom to the controls; two seats on a phone get the rounds alone,
-  without the name and pips, to fit their halves); Pause top right.
+  the bottom to the controls; two seats on a phone drop the pips and say
+  "Reload" for "Reloading" to fit their halves); Pause top right. With two
+  seats on one screen a 3 px dark seam divides the halves and the wave's
+  banner sits over each half.
 - **Screens on og.ui and the scifi style** (`assets/styles/scifi`): the
   title and the pause are the game's screen documents
   (`assets/ui/main-menu.ogt`, `pause.ogt`); the settings (the volumes, the
