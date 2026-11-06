@@ -52,3 +52,27 @@ test("affected selection includes transitive game inputs and conservatively reta
   expect(await select()).toEqual(["unit.test.ts", "reader.test.ts", "unresolved.test.ts"]);
   expect(await affected(project, "entry.ts", suites, "no-such-revision").then(() => false, () => true)).toBe(true);
 });
+
+test("computed imports and implicit runtime reads cannot be skipped as independent", async () => {
+  const root = mkdtempSync(join(tmpdir(), "og-runtime-inputs-"));
+  roots.push(root);
+  writeFileSync(join(root, "entry.ts"), "export default {};");
+  const sources = [
+    'export const load = (path: string) => import(path);',
+    'export const read = () => Bun.file("data.ts").text();',
+    'export const read = () => B\\u0075n.file("data.ts").text();',
+    'export const read = () => globalThis["Bun"].file("data.ts").text();',
+    'export const load = () => require("./data");',
+  ];
+  const suites = sources.map((source, i) => {
+    const file = `runtime-${i}.test.ts`;
+    writeFileSync(join(root, file), source);
+    return file;
+  });
+  writeFileSync(join(root, "independent.test.ts"), "export const answer = 42;");
+  git(root, "init", "-q");
+  git(root, "add", ".");
+  git(root, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", "baseline");
+  writeFileSync(join(root, "data.ts"), "export default 5;");
+  expect((await affected(root, "entry.ts", [...suites, "independent.test.ts"], "HEAD")).selected).toEqual(suites);
+});

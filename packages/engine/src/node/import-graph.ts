@@ -5,6 +5,7 @@ import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 declare const Bun: {
   Transpiler: new (options: { loader: "ts" | "tsx" }) => {
     scanImports(source: string): Array<{ path: string }>;
+    transformSync(source: string): string;
   };
   file(path: string): { text(): Promise<string> };
   resolveSync(specifier: string, parent: string): string;
@@ -63,7 +64,15 @@ export class ImportGraph {
       return [...dependencies];
     }
     const parser = extension === ".tsx" || extension === ".jsx" ? this.parsers.tsx : this.parsers.ts;
-    for (const imported of parser.scanImports(await Bun.file(file).text())) {
+    const source = await Bun.file(file).text();
+    // scanImports omits computed imports and implicit host globals entirely.
+    // Reject runtime escape hatches, including literal dynamic imports, rather
+    // than treating an empty static import list as proof of independence.
+    // Normalize with Bun's parser first (escaped identifiers and comments).
+    if (/\b(?:Bun|process|globalThis|global|eval|Function|fetch|require)\b|\bimport\s*\(|\.constructor\b/.test(parser.transformSync(source))) {
+      throw new Error(`runtime dependencies of ${file} require execution`);
+    }
+    for (const imported of parser.scanImports(source)) {
       if (imported.path === "bun" || /^(?:node:)?(?:fs(?:\/promises)?|child_process|worker_threads)$/.test(imported.path)) {
         throw new Error(`runtime dependencies of ${file} require execution`);
       }
