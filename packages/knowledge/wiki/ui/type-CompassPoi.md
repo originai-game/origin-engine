@@ -38,4 +38,4 @@ struct CompassPoi {
 }
 ```
 
-<sub>`api.ogt` line 22007</sub>
+<sub>`api.ogt` line 22021</sub>

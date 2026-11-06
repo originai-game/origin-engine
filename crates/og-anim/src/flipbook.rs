@@ -6,6 +6,10 @@
 //! stores (with Aseprite and TexturePacker frames and tags resolved into
 //! `frame` lines and clips), and what [`FlipbookSheet::parse`] reads back.
 
+use crate::asset::NONE;
+use crate::codec::{Reader, Writer};
+use crate::graph2d::{Machine, SpriteGraph, heaviest};
+use crate::schema::AnimationGraph;
 use og_core::IdMap;
 use og_core::ogt::{Document, Entry};
 use og_core::{Error, ErrorKind, Reflect, Result, Str64};
@@ -145,6 +149,28 @@ impl FlipClip {
             .iter()
             .map(|&i| self.durations[i as usize])
             .sum()
+    }
+
+    /// The clip time at which the frame shown at `time` ends (a `once`
+    /// clip's last frame ends at the clip's end).
+    fn frame_end(&self, time: f32) -> f32 {
+        let cycle = self.cycle();
+        let total: f32 = cycle.iter().map(|&i| self.durations[i as usize]).sum();
+        if total <= 0.0 || cycle.is_empty() {
+            return 0.0;
+        }
+        if self.mode == FlipMode::Once && time >= total {
+            return total;
+        }
+        let k = (time / total).floor().max(0.0);
+        let mut end = k * total;
+        for &i in &cycle {
+            end += self.durations[i as usize];
+            if time < end {
+                break;
+            }
+        }
+        end
     }
 
     /// (step, clip frame) at `time` seconds: `step` counts frames entered
@@ -599,10 +625,33 @@ pub(crate) struct Playback {
     pub base: u64,
 }
 
+/// Per entity an og.AnimationGraph drives: its machine and the layer,
+/// state and sync group of the clip on screen ([`NONE`]: none yet).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Driven {
+    machine: Machine,
+    layer: u32,
+    state: u32,
+    sync: u32,
+}
+
+impl Default for Driven {
+    fn default() -> Self {
+        Driven {
+            machine: Machine::default(),
+            layer: NONE,
+            state: NONE,
+            sync: NONE,
+        }
+    }
+}
+
 #[derive(Default)]
 struct Shared {
     sheets: IdMap<u64, Arc<FlipbookSheet>>,
+    graphs: IdMap<u64, Arc<SpriteGraph>>,
     playback: IdMap<u64, Playback>,
+    driven: IdMap<u64, Driven>,
 }
 
 fn lock(m: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
@@ -629,6 +678,16 @@ impl FlipbookSystem {
     pub fn sheet(&self, handle: u64) -> Option<Arc<FlipbookSheet>> {
         lock(&self.shared).sheets.get(&handle).cloned()
     }
+
+    /// Registers (or replaces) graph `handle` (not 0) for the flipbooks an
+    /// og.AnimationGraph of it drives.
+    pub fn add_graph(&self, handle: u64, graph: Arc<SpriteGraph>) -> Result<()> {
+        if handle == 0 {
+            return Err(Error::new(ErrorKind::Invalid, "graph handle 0 means none"));
+        }
+        lock(&self.shared).graphs.insert(handle, graph);
+        Ok(())
+    }
 }
 
 /// Registers `og.Flipbook` and `og.FlipbookEvent` and schedules
@@ -636,11 +695,18 @@ impl FlipbookSystem {
 pub fn install_flipbook(world: &mut World) -> Result<FlipbookSystem> {
     world.register::<Flipbook>()?;
     world.register::<FlipbookEvent>()?;
+    world.register::<AnimationGraph>()?;
     let shared = Arc::new(Mutex::new(Shared::default()));
     let desc = SystemDesc::new(FLIPBOOK_SYSTEM)
         .write::<Flipbook>()
         .write::<FlipbookEvent>()
-        .query(QueryDesc::new().write::<Flipbook>());
+        .write::<AnimationGraph>()
+        .query(QueryDesc::new().write::<Flipbook>())
+        .query(
+            QueryDesc::new()
+                .read::<Flipbook>()
+                .write::<AnimationGraph>(),
+        );
     let s = shared.clone();
     world.add_system(desc, move |ctx| run(ctx, &s))?;
     world.add_state_block(FLIPBOOK_SYSTEM, Box::new(FlipState(shared.clone())))?;
@@ -658,15 +724,31 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     for a in ctx.query(0)? {
         entities.extend_from_slice(a.entities());
     }
+    let mut graphed = std::collections::BTreeSet::new();
+    for a in ctx.query(1)? {
+        graphed.extend(a.entities().iter().map(|e| e.to_bits()));
+    }
     let mut sh = lock(shared);
     let mut events = Vec::new();
     let mut seen = std::collections::BTreeSet::new();
+    let mut driven_seen = std::collections::BTreeSet::new();
     for e in entities {
         let key = e.to_bits();
         let mut f: Flipbook = ctx.get(e)?;
         let Some(sheet) = sh.sheets.get(&f.sheet).cloned() else {
             continue;
         };
+        if graphed.contains(&key) {
+            let mut comp: AnimationGraph = ctx.get(e)?;
+            if let Some(graph) = sh.graphs.get(&comp.asset).cloned() {
+                driven_seen.insert(key);
+                let gdt = ctx.group_dt(groups.as_ref(), e, dt);
+                let prev = sh.playback.get(&key).copied();
+                let d = sh.driven.entry(key).or_default();
+                drive(&mut f, &mut comp, d, &graph, &sheet, gdt, prev.is_some());
+                ctx.set(e, comp)?;
+            }
+        }
         let Some(clip) = sheet.clips.get(f.clip as usize) else {
             continue;
         };
@@ -737,11 +819,61 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
         );
     }
     sh.playback.retain(|k, _| seen.contains(k));
+    sh.driven.retain(|k, _| driven_seen.contains(k));
     drop(sh);
     for ev in events {
         ctx.send(ev)?;
     }
     Ok(())
+}
+
+/// Steps the graph that drives flipbook `f` by `dt` and writes the clip it
+/// shows and its rate: a new clip cuts in once the frame on screen ends
+/// (at once when nothing plays or nothing was shown), at its start, or at
+/// the phase it had when the cut stays within one state or one sync group.
+fn drive(
+    f: &mut Flipbook,
+    comp: &mut AnimationGraph,
+    d: &mut Driven,
+    graph: &SpriteGraph,
+    sheet: &FlipbookSheet,
+    dt: f32,
+    shown: bool,
+) {
+    let clip_of = |id: u64| sheet.clip(graph.name(id));
+    let played = d.machine.step(comp.asset, graph, comp, dt, false, &|id| {
+        clip_of(id).map(|c| sheet.clips[c as usize].duration())
+    });
+    let Some(p) = heaviest(&played) else {
+        return;
+    };
+    let want = clip_of(p.clip).expect("a played clip is the sheet's");
+    let sync = p.sync.map_or(NONE, |g| g as u32);
+    if want != f.clip || d.state == NONE {
+        let advance = dt * f.speed.clamp(0.0, 10.0);
+        let cut = match sheet.clips.get(f.clip as usize) {
+            Some(cur) if shown && f.playing && !f.finished && advance > 0.0 && d.state != NONE => {
+                f.time + advance >= cur.frame_end(f.time)
+            }
+            _ => true,
+        };
+        if cut {
+            let carry =
+                (d.layer, d.state) == (p.layer, p.state) || (sync != NONE && sync == d.sync);
+            f.time = if carry && want != f.clip {
+                p.before.frac * sheet.clips[want as usize].duration()
+            } else if want != f.clip {
+                0.0
+            } else {
+                f.time
+            };
+            f.clip = want;
+            (d.layer, d.state, d.sync) = (p.layer, p.state, sync);
+        }
+    } else {
+        (d.layer, d.state, d.sync) = (p.layer, p.state, sync);
+    }
+    f.speed = p.rate.clamp(0.0, 10.0);
 }
 
 /// Events of the frames entered at steps `from..=to` of `clip`'s cycle.
@@ -777,6 +909,9 @@ fn fire(
 
 struct FlipState(Arc<Mutex<Shared>>);
 
+/// The state block's contents: the playback and the graph-driven entities.
+type Saved = (IdMap<u64, Playback>, IdMap<u64, Driven>);
+
 impl StateBlock for FlipState {
     fn save(&self, out: &mut Vec<u8>) {
         let sh = lock(&self.0);
@@ -789,14 +924,45 @@ impl StateBlock for FlipState {
             out.extend_from_slice(&p.step.to_le_bytes());
             out.extend_from_slice(&p.base.to_le_bytes());
         }
+        // Graph-driven entities, written only when there are some (so a
+        // world without graphs saves, and hashes, as before).
+        if !sh.driven.is_empty() {
+            let mut w = Writer::new(out);
+            w.u32(sh.driven.len() as u32);
+            for (k, d) in &sh.driven {
+                w.u64(*k);
+                d.machine.save(&mut w);
+                w.u32(d.layer);
+                w.u32(d.state);
+                w.u32(d.sync);
+            }
+        }
     }
 
     fn decode(&self, bytes: &[u8]) -> Result<Box<dyn Any + Send>> {
         let bad = || Error::new(ErrorKind::Parse, "og.flipbook state block: truncated");
         let n =
             u32::from_le_bytes(bytes.get(0..4).ok_or_else(bad)?.try_into().expect("4")) as usize;
-        if bytes.len() != 4 + n * 40 {
+        if bytes.len() < 4 + n * 40 {
             return Err(bad());
+        }
+        let mut driven = IdMap::new();
+        if bytes.len() > 4 + n * 40 {
+            let mut r = Reader::new(&bytes[4 + n * 40..]);
+            for _ in 0..r.count(32)? {
+                let k = r.u64()?;
+                let machine = Machine::load(&mut r)?;
+                driven.insert(
+                    k,
+                    Driven {
+                        machine,
+                        layer: r.u32()?,
+                        state: r.u32()?,
+                        sync: r.u32()?,
+                    },
+                );
+            }
+            r.finish()?;
         }
         let mut map = IdMap::new();
         for i in 0..n {
@@ -813,16 +979,17 @@ impl StateBlock for FlipState {
                 },
             );
         }
-        Ok(Box::new(map))
+        let saved: Saved = (map, driven);
+        Ok(Box::new(saved))
     }
 
     fn apply(&mut self, decoded: Option<Box<dyn Any + Send>>) {
-        lock(&self.0).playback = decoded
-            .map(|d| {
-                *d.downcast::<IdMap<u64, Playback>>()
-                    .expect("decoded by FlipState")
-            })
+        let (playback, driven) = decoded
+            .map(|d| *d.downcast::<Saved>().expect("decoded by FlipState"))
             .unwrap_or_default();
+        let mut sh = lock(&self.0);
+        sh.playback = playback;
+        sh.driven = driven;
     }
 
     /// Frames and clips only: nothing in the world.

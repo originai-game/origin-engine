@@ -26,4 +26,4 @@ struct FriendsDesc {
 }
 ```
 
-<sub>`api.ogt` line 15173</sub>
+<sub>`api.ogt` line 15187</sub>

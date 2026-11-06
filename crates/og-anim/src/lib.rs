@@ -29,6 +29,7 @@ mod asset;
 mod codec;
 mod flipbook;
 mod graph;
+mod graph2d;
 mod ik;
 mod machine;
 mod pose;
@@ -53,6 +54,7 @@ pub use graph::{
     Condition, GraphAsset, Interrupt, Layer, LayerMode, MaskEntry, Motion, MotionNode, Op, State,
     Transition,
 };
+pub use graph2d::SpriteGraph;
 pub use ik::{IkResult, chain as ik_chain, fabrik, look_at, two_bone};
 pub use pose::{Pose, sample, stepped};
 pub use retarget::{

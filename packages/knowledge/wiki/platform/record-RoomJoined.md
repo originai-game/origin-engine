@@ -29,4 +29,4 @@ event RoomJoined {
 }
 ```
 
-<sub>`api.ogt` line 15407</sub>
+<sub>`api.ogt` line 15421</sub>

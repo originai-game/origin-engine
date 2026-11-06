@@ -37,4 +37,4 @@ struct DamageNumbersDesc {
 }
 ```
 
-<sub>`api.ogt` line 22283</sub>
+<sub>`api.ogt` line 22297</sub>

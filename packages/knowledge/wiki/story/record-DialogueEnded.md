@@ -21,4 +21,4 @@ event DialogueEnded {
 }
 ```
 
-<sub>`api.ogt` line 14468</sub>
+<sub>`api.ogt` line 14482</sub>

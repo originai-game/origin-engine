@@ -102,7 +102,7 @@ const VERSIONS: &[(&str, u32, u64)] = &[
     ("og.SensorEntered", 1, 0xa33b45062725b7f1),
     ("og.SensorExited", 1, 0xcaa743ce70b55c7a),
     ("og.Skeleton", 1, 0xdf1d8ad824fb1c2a),
-    ("og.Skeleton2D", 1, 0x0987b2b676dc1ad4),
+    ("og.Skeleton2D", 2, 0x46d09afdee412117),
     ("og.Skeleton2DEvent", 1, 0x4ade934299b37c48),
     ("og.SoundEnded", 1, 0x90355457f6c84261),
     ("og.SoundStarted", 1, 0xb828d371c76e923c),

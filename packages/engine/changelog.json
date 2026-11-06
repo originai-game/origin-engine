@@ -974,6 +974,14 @@
       {
         "member": "og sprite inspect",
         "summary": "`og sprite inspect <file.gif|.webp|.png|sheet.ogt> [--key auto|off|#rrggbb] [--tolerance T] [--out frames.png] [--json]` measures an animated sprite source, or a sheet built from them: frame count and delays, each frame's drawn bounds, centroid and coverage with their drift from the first frame, duplicate frames, the loop seam (last to first) beside the mean and largest frame-to-frame step, alpha levels and the edge fringe (edge and partial texels, the colour step to the interior and the distance to the background). Numbers only, no thresholds."
+      },
+      {
+        "member": "GraphDesc.sprite, og.AnimationGraph on og.Flipbook and og.Skeleton2D",
+        "summary": "og.anim.graph(desc) with `sprite: true` builds a graph whose states name flipbook or rig2d clips; an og.AnimationGraph beside an og.Flipbook or og.Skeleton2D then drives it with the same states, parameters, transitions, interrupts and layers as a 3D skeleton. A flipbook cuts hard, only when the frame on screen ends (a transition's fade is ignored), keeping the phase within one state or sync group; a 2D skeleton cross-fades and blends its two heaviest leaves. The graph runs in the tick, its state is saved with the world and restored by snapshot. Off unless a graph is attached; existing games are unchanged."
+      },
+      {
+        "member": "og.Skeleton2D.blendClip, blendTime, blend",
+        "summary": "A second clip sampled beside `clip` and mixed in by `blend` (0 to 1, slot draw order and attachments from the heavier clip); a graph sets them, a game may too. Defaults 0: the skeleton plays one clip as before."
       }
     ],
     "fixed": [

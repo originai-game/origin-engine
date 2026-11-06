@@ -19,4 +19,4 @@ struct MinimapResult {
 }
 ```
 
-<sub>`api.ogt` line 21993</sub>
+<sub>`api.ogt` line 22007</sub>

@@ -55,4 +55,4 @@ struct WaypointDesc {
 }
 ```
 
-<sub>`api.ogt` line 22352</sub>
+<sub>`api.ogt` line 22366</sub>

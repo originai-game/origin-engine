@@ -14,6 +14,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `text` | `string` | `""` | — | — | — | The graph's `.ogt` text (`type animgraph`, `version 1`). |
 | `clips` | `readonly ClipInfo[]` | `[]` | — | — | — | The clips a `clip <motion> "<name>"` line may name, by ClipInfo.name: usually og.load.animation's `clips`. |
+| `sprite` | `boolean` | `false` | — | — | — | A graph for og.Flipbook and og.Skeleton2D: its `clip` lines name clips of the sheet or rig of the entity it runs on, looked up by name as it plays (a clip the sheet lacks plays nothing), and `clips` is not read. |
 
 ```ogt
 struct GraphDesc {
@@ -21,7 +22,8 @@ struct GraphDesc {
   desc true
   field text String "The graph's `.ogt` text (`type animgraph`, `version 1`)."
   field clips List.ClipInfo "The clips a `clip <motion> \"<name>\"` line may name, by ClipInfo.name: usually og.load.animation's `clips`."
+  field sprite bool "A graph for og.Flipbook and og.Skeleton2D: its `clip` lines name clips of the sheet or rig of the entity it runs on, looked up by name as it plays (a clip the sheet lacks plays nothing), and `clips` is not read."
 }
 ```
 
-<sub>`api.ogt` line 12034</sub>
+<sub>`api.ogt` line 12035</sub>

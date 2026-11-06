@@ -48,4 +48,4 @@ struct ExplosionDesc {
 }
 ```
 
-<sub>`api.ogt` line 27265</sub>
+<sub>`api.ogt` line 27279</sub>

@@ -28,4 +28,4 @@ struct GradientStop {
 }
 ```
 
-<sub>`api.ogt` line 22764</sub>
+<sub>`api.ogt` line 22778</sub>

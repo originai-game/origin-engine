@@ -245,3 +245,141 @@ clip still {
     let ik = w.get::<IkTarget2D>(t).unwrap();
     assert!(!ik.reached && (ik.error - 2.0).abs() < 1e-4, "{ik:?}");
 }
+
+const ARM: &str = r#"type rig2d
+version 1
+---
+texture "arm.png"
+size 8 8
+unit 10
+bone arm {
+  length 10
+}
+clip low {
+  duration 1
+  bone arm {
+    rotate 0 0
+  }
+  event 0.5 "tick"
+}
+clip high {
+  duration 1
+  bone arm {
+    rotate 0 90
+  }
+}
+clip slam {
+  duration 0.5
+  loop false
+  bone arm {
+    rotate 0 -45
+  }
+  event 0.1 "bang"
+}
+"#;
+
+const ARM_GRAPH: &str = r#"type animgraph
+version 1
+---
+param lift
+clip low "low"
+clip high "high"
+clip hit "slam" {
+  loop false
+}
+blend1d pose lift {
+  child low 0
+  child high 1
+}
+layer base {
+  state hold pose
+  state slam hit
+  entry hold
+  transition hold slam {
+    when lift gt 1.5
+    fade 0.25
+  }
+}
+"#;
+
+/// The arm bone's world angle in degrees, as og.skeleton2d's pose draws it.
+fn arm_angle(w: &World, sys: &Skeleton2dSystem, e: Entity) -> f32 {
+    let s = w.get::<Skeleton2D>(e).unwrap();
+    let rig = sys.rig(9).unwrap();
+    let frame = skeleton_frame(&rig, &Transform::default(), false);
+    let m = skeleton_pose(&rig, &s, &frame, &[]).world[0];
+    og_core::math::atan2(m.b, m.a).to_degrees()
+}
+
+/// An animation graph drives a 2D skeleton by clip names: a 1D blend is
+/// the two clips around its parameter blended by weight, and a
+/// transition cross-fades over its `fade` from the state it leaves, its
+/// events firing; a restored world continues the same. Ways this could
+/// fail: the heavier clip alone is drawn (no blend), the blend weight is
+/// the lighter's complement, the turn blends the long way, the fade cuts,
+/// the slam's event is lost, the machine is not in the snapshot.
+#[test]
+fn a_graph_blends_and_cross_fades_a_2d_skeleton() {
+    let mut w = World::new(&WorldDesc {
+        tick_rate: 64,
+        seed: 1,
+    })
+    .unwrap();
+    let sys = install_skeleton2d(&mut w).unwrap();
+    sys.add_rig(9, Rig2dAsset::parse(ARM).unwrap()).unwrap();
+    sys.add_graph(
+        4,
+        std::sync::Arc::new(SpriteGraph::parse(ARM_GRAPH).unwrap()),
+    )
+    .unwrap();
+    let mut g = AnimationGraph::new(4);
+    g.p0 = 0.25;
+    let e = w
+        .spawn((
+            Transform::default(),
+            Skeleton2D {
+                rig: 9,
+                ..Default::default()
+            },
+            g,
+        ))
+        .unwrap();
+    for _ in 0..4 {
+        w.step().unwrap();
+    }
+    let s = w.get::<Skeleton2D>(e).unwrap();
+    assert_eq!((s.clip, s.blend_clip), (0, 1), "low, high over it");
+    assert!((s.blend - 0.25).abs() < 1e-6, "{}", s.blend);
+    assert!(
+        (arm_angle(&w, &sys, e) - 22.5).abs() < 1e-3,
+        "{}",
+        arm_angle(&w, &sys, e)
+    );
+    // Lift past the threshold: hold (all high, +90) fades into slam (-45).
+    let mut g = w.get::<AnimationGraph>(e).unwrap();
+    g.p0 = 2.0;
+    w.insert(e, g).unwrap();
+    let snap = w.snapshot();
+    let mut seen = Vec::new();
+    let mut angles = Vec::new();
+    for _ in 0..20 {
+        w.step().unwrap();
+        seen.extend(events(&w));
+        angles.push(arm_angle(&w, &sys, e));
+    }
+    // After 8 ticks of 1/64 s the 0.25 s fade is half way: -45 + 135/2.
+    assert!((angles[7] - 22.5).abs() < 1e-2, "{angles:?}");
+    assert!((angles[3] - 56.25).abs() < 1e-2, "a quarter in: {angles:?}");
+    assert!((angles[19] + 45.0).abs() < 1e-3, "slam alone: {angles:?}");
+    let s = w.get::<Skeleton2D>(e).unwrap();
+    assert_eq!((s.clip, s.blend), (2, 0.0));
+    assert_eq!(w.get::<AnimationGraph>(e).unwrap().state, 1);
+    assert_eq!(seen, ["bang"], "the slam's event at 0.1 s");
+    w.restore(&snap).unwrap();
+    let mut again = Vec::new();
+    for _ in 0..20 {
+        w.step().unwrap();
+        again.push(arm_angle(&w, &sys, e));
+    }
+    assert_eq!(again, angles);
+}

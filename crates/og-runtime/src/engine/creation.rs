@@ -109,7 +109,8 @@ const REGISTERED_BY_MODULES: &[&str] = &[
 /// og.AudioBusFx, version 2: the bus graph and the bus effects;
 /// og-physics's og.RigidBody and og.Physics, version 2: sleep; og.Joint,
 /// version 2: breaking; og.Vehicle, version 2: the drivetrain; og.Cloth,
-/// og.SoftBody, og.Garment and og.Fluid3D, version 2: simulation; the runtime's
+/// og.SoftBody, og.Garment and og.Fluid3D, version 2: simulation; og.Skeleton2D,
+/// version 2: a second blended clip; the runtime's
 /// og.VideoPlayer, version 2: an f64 time; og.Wind, version 2: the
 /// simulated field's turbulence and gust size).
 pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
@@ -123,6 +124,8 @@ pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
         "og.Vehicle" => og_physics::Vehicle::schema().version,
         // R9: 64 blendshape weights (`influences`).
         "og.Blendshapes" => og_anim::Blendshapes::schema().version,
+        // The 2D graph: Skeleton2D's blendClip, blendTime and blend.
+        "og.Skeleton2D" => og_anim::Skeleton2D::schema().version,
         // simulation (gameplay or visual).
         "og.Cloth" => og_physics::Cloth::schema().version,
         "og.SoftBody" => og_physics::SoftBody::schema().version,

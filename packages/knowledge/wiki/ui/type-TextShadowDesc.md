@@ -33,4 +33,4 @@ struct TextShadowDesc {
 }
 ```
 
-<sub>`api.ogt` line 23028</sub>
+<sub>`api.ogt` line 23042</sub>

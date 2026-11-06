@@ -78,6 +78,11 @@ function start(world: World): void {
   out.missingClip = missing.ok ? null : missing.reason;
   const broken = og.anim.graph(world, { text: "type animgraph\nversion 1\n---\nlayer base {\n  state rest nowhere\n}\n", clips: a.clips });
   out.brokenGraph = broken.ok ? null : broken.reason;
+  // A sprite graph names flipbook or rig2d clips by name, resolved as it plays.
+  const sprite = og.anim.graph(world, { sprite: true, text: "type animgraph\nversion 1\n---\nparam speed\nclip idle \"idle\"\nclip run \"run\"\nlayer base {\n  state idle idle\n  state run run\n  entry idle\n  transition idle run {\n    when speed gt 0.5\n  }\n}\n" });
+  out.spriteGraph = sprite.ok ? typeof sprite.value : sprite.reason;
+  const spriteBroken = og.anim.graph(world, { sprite: true, text: "type animgraph\nversion 1\n---\nlayer base {\n  state idle nowhere\n}\n" });
+  out.spriteBroken = spriteBroken.ok ? null : spriteBroken.reason;
 
   const spawn = (name: string, x: number) => {
     const e = world.spawn({ name, position: { x, y: 0, z: 0 } });

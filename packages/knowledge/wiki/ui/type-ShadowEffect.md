@@ -37,4 +37,4 @@ struct ShadowEffect {
 }
 ```
 
-<sub>`api.ogt` line 22891</sub>
+<sub>`api.ogt` line 22905</sub>

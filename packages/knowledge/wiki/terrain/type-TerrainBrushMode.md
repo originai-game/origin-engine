@@ -33,4 +33,4 @@ enum TerrainBrushMode {
 }
 ```
 
-<sub>`api.ogt` line 24792</sub>
+<sub>`api.ogt` line 24806</sub>

@@ -25,6 +25,12 @@ is one line here, written at the merge that changes
   `og sprite inspect` measures a source or a built sheet: delays, drawn
   bounds and centroid drift, duplicates, the loop seam and the edge
   fringe, numbers only.
+- **Animation graphs on 2D.** `og.anim.graph({ sprite: true, ... })`
+  makes a graph of flipbook or rig2d clips; an og.AnimationGraph beside
+  an og.Flipbook cuts between states on frame boundaries, and beside an
+  og.Skeleton2D cross-fades and blends two clips (new
+  `Skeleton2D.blendClip`, `blendTime`, `blend`). Deterministic, in the
+  world snapshot.
 - **Breaking: the engine ships no skills.** The 25 skill packs under
   `packages/knowledge/skills/` (`og-core`, `og-game`, `og-build`, `og-ui`,
   `og-taste` and the rest) and `packages/knowledge/guides/` are deleted,

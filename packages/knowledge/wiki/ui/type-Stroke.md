@@ -46,4 +46,4 @@ struct Stroke {
 }
 ```
 
-<sub>`api.ogt` line 22867</sub>
+<sub>`api.ogt` line 22881</sub>

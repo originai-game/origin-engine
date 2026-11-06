@@ -187,6 +187,24 @@ fn graph(eng: &Engine, desc: &Value) -> Result<Value, String> {
     let text = desc["text"]
         .as_str()
         .ok_or("desc.text is the graph's .ogt text (`type animgraph`); it is missing")?;
+    // A graph for og.Flipbook and og.Skeleton2D: its clip lines name the
+    // sheet's or rig's clips, found as it plays.
+    if desc["sprite"].as_bool() == Some(true) {
+        let graph = std::sync::Arc::new(
+            og_anim::SpriteGraph::parse(text).map_err(|e| format!("the graph: {}", e.reason()))?,
+        );
+        let feel = super::feel::feel_of(eng)?;
+        let mut st = eng.state.borrow_mut();
+        let h = st.anim_assets.mint();
+        feel.flipbooks
+            .add_graph(h, graph.clone())
+            .map_err(|e| format!("the graph: {}", e.reason()))?;
+        feel.skeletons
+            .add_graph(h, graph.clone())
+            .map_err(|e| format!("the graph: {}", e.reason()))?;
+        st.feel_assets.graphs.insert(h, graph);
+        return Ok(json!(h as f64));
+    }
     let mut by_name = BTreeMap::new();
     for c in desc["clips"].as_array().into_iter().flatten() {
         let (Some(name), Some(h)) = (c["name"].as_str(), c["clip"].as_f64()) else {

@@ -54,10 +54,13 @@ test.skipIf(STALE_WASM)("og.anim poses the walker the same way on both hosts", (
   // Refusals name the fix.
   expect(node.missingClip).toMatch(/no-such-clip/);
   expect(node.brokenGraph).toMatch(/line|nowhere/);
+  expect(node.spriteGraph).toBe("number");
+  expect(node.spriteBroken).toMatch(/line|nowhere/);
   // One engine, two hosts.
   expect(web.hash).toBe(node.hash);
   expect(web.skeleton).toEqual(node.skeleton);
   expect(web.graph).toEqual(node.graph);
+  expect(web.spriteBroken).toBe(node.spriteBroken);
   // The pose moved the world: a different tick count is another hash.
   expect(run("node", "--ticks", "301").hash).not.toBe(node.hash);
 }, 240_000);

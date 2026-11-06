@@ -8,6 +8,8 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, which the graph names in `param` order (`param speed` is p0, the next `param` is p1, ...).
 
+On an entity with an og.Flipbook or an og.Skeleton2D, a graph registered with GraphDesc.sprite drives it instead: its `clip` lines name the sheet's or rig's clips, so one graph serves every sheet with those names. A flipbook shows the heaviest clip (an upper override layer at weight 0.5 or more wins over the layers under it) and its rate: transitions cut, never fade, and wait for the frame on screen to end; a cut within one state (a blend's other clip) or between states of one sync group keeps the phase. A 2D skeleton blends the two heaviest clips (Skeleton2D.clip and blendClip, their times and `blend`) and cross-fades over a transition's `fade`. Additive layers and masks are skeleton-only. The machines are world state (the og.flipbook and og.skeleton2d state blocks); weight is not used there.
+
 Token `og.AnimationGraph`, registered under the schema name `og.AnimationGraph`; its value type is `AnimationGraph`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -29,6 +31,7 @@ Token `og.AnimationGraph`, registered under the schema name `og.AnimationGraph`;
 ```ogt
 component AnimationGraph {
   doc "Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, which the graph names in `param` order (`param speed` is p0, the next `param` is p1, ...)."
+  doc "On an entity with an og.Flipbook or an og.Skeleton2D, a graph registered with GraphDesc.sprite drives it instead: its `clip` lines name the sheet's or rig's clips, so one graph serves every sheet with those names. A flipbook shows the heaviest clip (an upper override layer at weight 0.5 or more wins over the layers under it) and its rate: transitions cut, never fade, and wait for the frame on screen to end; a cut within one state (a blend's other clip) or between states of one sync group keeps the phase. A 2D skeleton blends the two heaviest clips (Skeleton2D.clip and blendClip, their times and `blend`) and cross-fades over a transition's `fade`. Additive layers and masks are skeleton-only. The machines are world state (the og.flipbook and og.skeleton2d state blocks); weight is not used there."
   field asset GraphAsset "The graph asset; 0 is none."
   field weight f32 "How much of the pose the graph decides over the rest pose." {
     default 1

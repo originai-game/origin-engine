@@ -29,4 +29,4 @@ struct DpadDesc {
 }
 ```
 
-<sub>`api.ogt` line 16847</sub>
+<sub>`api.ogt` line 16861</sub>

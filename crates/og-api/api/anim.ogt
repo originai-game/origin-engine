@@ -166,6 +166,7 @@ module anim {
 
   component AnimationGraph {
     doc "Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, which the graph names in `param` order (`param speed` is p0, the next `param` is p1, ...)."
+    doc "On an entity with an og.Flipbook or an og.Skeleton2D, a graph registered with GraphDesc.sprite drives it instead: its `clip` lines name the sheet's or rig's clips, so one graph serves every sheet with those names. A flipbook shows the heaviest clip (an upper override layer at weight 0.5 or more wins over the layers under it) and its rate: transitions cut, never fade, and wait for the frame on screen to end; a cut within one state (a blend's other clip) or between states of one sync group keeps the phase. A 2D skeleton blends the two heaviest clips (Skeleton2D.clip and blendClip, their times and `blend`) and cross-fades over a transition's `fade`. Additive layers and masks are skeleton-only. The machines are world state (the og.flipbook and og.skeleton2d state blocks); weight is not used there."
     field asset GraphAsset "The graph asset; 0 is none."
     field weight f32 "How much of the pose the graph decides over the rest pose." {
       default 1
@@ -570,6 +571,7 @@ module anim {
     desc true
     field text String "The graph's `.ogt` text (`type animgraph`, `version 1`)."
     field clips List.ClipInfo "The clips a `clip <motion> \"<name>\"` line may name, by ClipInfo.name: usually og.load.animation's `clips`."
+    field sprite bool "A graph for og.Flipbook and og.Skeleton2D: its `clip` lines name clips of the sheet or rig of the entity it runs on, looked up by name as it plays (a clip the sheet lacks plays nothing), and `clips` is not read."
   }
 
   fn graph {
@@ -666,7 +668,7 @@ module anim {
 
   component Flipbook {
     doc "Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot, or, for an `array true` sheet, the frame's layer of its texture array whole (the sprite keeps its size, colour, flips and layer). Played by the engine's og.flipbook system by scaled time (Time.scaledDt: slow motion, hit stop), after the game's systems."
-    doc "Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent. The playback position is world state (the og.flipbook state block)."
+    doc "Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent. The playback position is world state (the og.flipbook state block). An og.AnimationGraph of a GraphDesc.sprite graph on the entity writes clip, time and speed each tick: its states by the sheet's clip names, cut on frame boundaries."
     field sheet FlipbookSheet "The sheet (og.load.flipbook's `sheet`); 0 is none."
     field clip u32 "The clip: an index into FlipbookInfo.clips (og.anim.clip finds one by name)." {
       min 0
@@ -786,6 +788,18 @@ module anim {
     }
     field finished bool "Written: a clip that does not loop reached its end (or its start, played backwards)." {
       readonly true
+    }
+    field blendClip u32 "A second clip blended over `clip` by `blend`: an index into Rig2DInfo.clips. Each bone's offsets from the setup pose (turns the short way), slot colours and mesh deforms mix by `blend`; what a slot shows, the draw order and IK bends come from the heavier clip. Only `clip`'s events fire (an og.AnimationGraph fires both's)." {
+      min 0
+    }
+    field blendTime f32 "Seconds into blendClip; advanced with `time` (by `speed`, wrapping when `loop`), set it to seek." {
+      min 0
+      unit s
+    }
+    field blend f32 "How much of the pose blendClip decides: 0 none (the default), 1 all of it. An og.AnimationGraph writes clip, blendClip, their times and blend each tick." {
+      min 0
+      max 1
+      tunable true
     }
   }
 

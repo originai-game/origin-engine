@@ -25,4 +25,4 @@ struct BannerResult {
 }
 ```
 
-<sub>`api.ogt` line 21446</sub>
+<sub>`api.ogt` line 21460</sub>

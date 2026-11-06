@@ -8,8 +8,11 @@
 //! ([`skeleton_pose`]), so extraction draws it from the same inputs and
 //! nothing visual is kept as state.
 
-use crate::rig2d::{Affine2, Pose2d, Rig2dAsset, atan2};
-use crate::schema::Transform;
+use crate::codec::{Reader as Bytes, Writer};
+use crate::graph2d::{Machine, Played, SpriteGraph, heaviest};
+use crate::machine::Phase;
+use crate::rig2d::{Affine2, Clip2d, Pose2d, Rig2dAsset, atan2};
+use crate::schema::{AnimationGraph, Transform};
 use og_core::IdMap;
 use og_core::glam::Vec2;
 use og_core::{Error, ErrorKind, Reflect, Result, Str64};
@@ -23,7 +26,7 @@ pub const SKELETON2D_SYSTEM: &str = "og.skeleton2d";
 /// Plays a clip of a 2D rig at the entity: drawn as textured triangles in
 /// the sprite order at `layer`, lit by og.Lighting2D like a sprite there.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.Skeleton2D")]
+#[reflect(name = "og.Skeleton2D", version = 2)]
 pub struct Skeleton2D {
     /// The rig (og.load.rig2d's `rig`); 0 is none.
     pub rig: u64,
@@ -49,6 +52,16 @@ pub struct Skeleton2D {
     pub skin: u32,
     /// Written: a clip that does not loop reached its end.
     pub finished: bool,
+    /// A second clip blended over `clip` by `blend`: an index into Rig2DInfo.clips.
+    #[reflect(name = "blendClip", min = 0)]
+    pub blend_clip: u32,
+    /// Seconds into blendClip; advanced with `time` (by `speed`, wrapping
+    /// when `loop`), set it to seek.
+    #[reflect(name = "blendTime", unit = "s", min = 0)]
+    pub blend_time: f32,
+    /// How much of the pose blendClip decides: 0 none, 1 all of it.
+    #[reflect(min = 0, max = 1, tunable)]
+    pub blend: f32,
 }
 
 impl Default for Skeleton2D {
@@ -63,6 +76,9 @@ impl Default for Skeleton2D {
             layer: 0,
             skin: 0,
             finished: false,
+            blend_clip: 0,
+            blend_time: 0.0,
+            blend: 0.0,
         }
     }
 }
@@ -151,7 +167,12 @@ pub fn skeleton_pose(
         .iter()
         .map(|(c, p, w)| (*c as usize, inv.apply(p.x, p.y), *w))
         .collect();
-    rig.pose_in_skin(rig.clips.get(s.clip as usize), s.time, &t, s.skin)
+    let blend = rig
+        .clips
+        .get(s.blend_clip as usize)
+        .filter(|_| s.blend > 0.0)
+        .map(|c| (c, s.blend_time, s.blend.clamp(0.0, 1.0)));
+    rig.pose_blend_in_skin(rig.clips.get(s.clip as usize), s.time, blend, &t, s.skin)
 }
 
 /// A bounding box a skeleton's pose showed: its slot (`slot/child-slot`
@@ -175,7 +196,10 @@ struct Playback {
 #[derive(Default)]
 struct Shared {
     rigs: IdMap<u64, Arc<Rig2dAsset>>,
+    graphs: IdMap<u64, Arc<SpriteGraph>>,
     playback: IdMap<u64, Playback>,
+    /// Per skeleton an og.AnimationGraph drives: its machine.
+    driven: IdMap<u64, Machine>,
     /// Per skeleton whose rig has boxes: the boxes its last pose showed.
     boxes: IdMap<u64, Vec<Skeleton2dBox>>,
 }
@@ -204,6 +228,16 @@ impl Skeleton2dSystem {
         lock(&self.shared).rigs.get(&handle).cloned()
     }
 
+    /// Registers (or replaces) graph `handle` (not 0) for the skeletons an
+    /// og.AnimationGraph of it drives.
+    pub fn add_graph(&self, handle: u64, graph: Arc<SpriteGraph>) -> Result<()> {
+        if handle == 0 {
+            return Err(Error::new(ErrorKind::Invalid, "graph handle 0 means none"));
+        }
+        lock(&self.shared).graphs.insert(handle, graph);
+        Ok(())
+    }
+
     /// The bounding boxes skeleton `entity` (its bits) showed when
     /// og.skeleton2d last posed it; `None` before that, or when it has no
     /// og.Skeleton2D with a loaded rig.
@@ -219,14 +253,21 @@ pub fn install_skeleton2d(world: &mut World) -> Result<Skeleton2dSystem> {
     world.register::<Skeleton2D>()?;
     world.register::<Skeleton2DEvent>()?;
     world.register::<IkTarget2D>()?;
+    world.register::<AnimationGraph>()?;
     let shared = Arc::new(Mutex::new(Shared::default()));
     let desc = SystemDesc::new(SKELETON2D_SYSTEM)
         .read::<Transform>()
         .write::<Skeleton2D>()
         .write::<IkTarget2D>()
         .write::<Skeleton2DEvent>()
+        .write::<AnimationGraph>()
         .query(QueryDesc::new().write::<Skeleton2D>())
-        .query(QueryDesc::new().write::<IkTarget2D>());
+        .query(QueryDesc::new().write::<IkTarget2D>())
+        .query(
+            QueryDesc::new()
+                .read::<Skeleton2D>()
+                .write::<AnimationGraph>(),
+        );
     let s = shared.clone();
     world.add_system(desc, move |ctx| run(ctx, &s))?;
     world.add_state_block(SKELETON2D_SYSTEM, Box::new(SkeletonState(shared.clone())))?;
@@ -247,15 +288,41 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     for a in ctx.query(1)? {
         targets.extend_from_slice(a.entities());
     }
+    let mut graphed = std::collections::BTreeSet::new();
+    for a in ctx.query(2)? {
+        graphed.extend(a.entities().iter().map(|e| e.to_bits()));
+    }
     let mut sh = lock(shared);
     let mut events = Vec::new();
     let mut seen = std::collections::BTreeSet::new();
+    let mut driven_seen = std::collections::BTreeSet::new();
     for &e in &skeletons {
         let key = e.to_bits();
         let mut s: Skeleton2D = ctx.get(e)?;
         let Some(rig) = sh.rigs.get(&s.rig).cloned() else {
             continue;
         };
+        if graphed.contains(&key) {
+            let mut comp: AnimationGraph = ctx.get(e)?;
+            if let Some(graph) = sh.graphs.get(&comp.asset).cloned() {
+                seen.insert(key);
+                driven_seen.insert(key);
+                let gdt = ctx.group_dt(groups.as_ref(), e, dt);
+                let m = sh.driven.entry(key).or_default();
+                drive(key, &mut s, &mut comp, m, &graph, &rig, gdt, &mut events);
+                ctx.set(e, comp)?;
+                ctx.set(e, s)?;
+                sh.playback.insert(
+                    key,
+                    Playback {
+                        rig: s.rig,
+                        clip: s.clip,
+                        time: s.time,
+                    },
+                );
+                continue;
+            }
+        }
         let Some(clip) = rig.clips.get(s.clip as usize) else {
             continue;
         };
@@ -327,6 +394,18 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
                 s.finished = (step > 0.0 && to >= d) || (step < 0.0 && to <= 0.0);
             }
         }
+        // The blended clip plays along at the same rate.
+        if s.blend > 0.0
+            && let Some(b) = rig.clips.get(s.blend_clip as usize)
+            && b.duration > 0.0
+        {
+            let t = s.blend_time + step;
+            s.blend_time = if s.looping {
+                t - b.duration * (t / b.duration).floor()
+            } else {
+                t.clamp(0.0, b.duration)
+            };
+        }
         for (t, name) in fired.into_iter().take(MAX_EVENTS) {
             if let Ok(name) = Str64::new(name) {
                 events.push(Skeleton2DEvent {
@@ -367,6 +446,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
         );
     }
     sh.playback.retain(|k, _| seen.contains(k));
+    sh.driven.retain(|k, _| driven_seen.contains(k));
     // Each skeleton with IK targets or boxes posed at the new time: the
     // targets' `reached` and `error`, and the boxes the pose shows.
     let mut by_skeleton: IdMap<u64, Vec<(Entity, IkTarget2D)>> = IdMap::new();
@@ -428,6 +508,106 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     Ok(())
 }
 
+/// Steps the graph that drives skeleton `s` by `dt`: the two heaviest
+/// clip leaves become its clip and blendClip with their times and
+/// `blend`, and every clip event either passes is sent.
+#[allow(clippy::too_many_arguments)]
+fn drive(
+    key: u64,
+    s: &mut Skeleton2D,
+    comp: &mut AnimationGraph,
+    m: &mut Machine,
+    graph: &SpriteGraph,
+    rig: &Rig2dAsset,
+    dt: f32,
+    events: &mut Vec<Skeleton2DEvent>,
+) {
+    let clip_of = |id: u64| rig.clip(graph.name(id));
+    let mut played = m.step(comp.asset, graph, comp, dt, true, &|id| {
+        clip_of(id).map(|c| rig.clips[c as usize].duration)
+    });
+    let Some(a) = heaviest(&played) else {
+        s.blend = 0.0;
+        return;
+    };
+    if let Some(i) = played.iter().rposition(|p| *p == a) {
+        played.remove(i);
+    }
+    let b = heaviest(&played);
+    let at = |p: &Played, ph: Phase| -> (u32, &Clip2d, f32) {
+        let c = clip_of(p.clip).expect("a played clip is the rig's");
+        let clip = &rig.clips[c as usize];
+        let t = if p.looping || ph.cycles == 0 {
+            ph.frac * clip.duration
+        } else {
+            clip.duration
+        };
+        (c, clip, t)
+    };
+    let (ca, _, ta) = at(&a, a.after);
+    s.clip = ca;
+    s.time = ta;
+    s.looping = a.looping;
+    s.finished = !a.looping && a.after.cycles >= 1;
+    match b {
+        Some(b) => {
+            let (cb, _, tb) = at(&b, b.after);
+            s.blend_clip = cb;
+            s.blend_time = tb;
+            s.blend = b.weight / (a.weight + b.weight);
+        }
+        None => {
+            s.blend_clip = ca;
+            s.blend_time = ta;
+            s.blend = 0.0;
+        }
+    }
+    // Events: each leaf's clip from its time before this tick to after.
+    let mut sent = 0;
+    let mut done: Vec<u32> = Vec::new();
+    for p in std::iter::once(a).chain(b) {
+        let (c, clip, t1) = at(&p, p.after);
+        if done.contains(&c) {
+            continue;
+        }
+        done.push(c);
+        let (_, _, t0) = at(&p, p.before);
+        let d = clip.duration;
+        // A state just entered fires the events at its start.
+        let mut lo = if p.before == Phase::default() {
+            -1.0
+        } else {
+            t0
+        };
+        let mut spans = Vec::new();
+        if p.looping && p.wraps > 0 {
+            spans.push((lo, d));
+            for _ in 1..p.wraps.min(MAX_EVENTS as i32) {
+                spans.push((-1.0, d));
+            }
+            lo = -1.0;
+        }
+        spans.push((lo, t1));
+        for (lo, hi) in spans {
+            for (t, name) in clip.events.iter().filter(|(t, _)| *t > lo && *t <= hi) {
+                if sent >= MAX_EVENTS {
+                    return;
+                }
+                if let Ok(name) = Str64::new(name) {
+                    events.push(Skeleton2DEvent {
+                        entity: key,
+                        clip: c,
+                        name,
+                        time: *t,
+                        armature: Str64::default(),
+                    });
+                    sent += 1;
+                }
+            }
+        }
+    }
+}
+
 struct SkeletonState(Arc<Mutex<Shared>>);
 
 /// Reads the state block's little-endian fields in order.
@@ -464,8 +644,12 @@ impl Reader<'_> {
     }
 }
 
-/// The state block's contents: the playback and the boxes.
-type Saved = (IdMap<u64, Playback>, IdMap<u64, Vec<Skeleton2dBox>>);
+/// The state block's contents: the playback, the boxes and the graph-driven skeletons.
+type Saved = (
+    IdMap<u64, Playback>,
+    IdMap<u64, Vec<Skeleton2dBox>>,
+    IdMap<u64, Machine>,
+);
 
 impl StateBlock for SkeletonState {
     fn save(&self, out: &mut Vec<u8>) {
@@ -493,6 +677,16 @@ impl StateBlock for SkeletonState {
                     out.extend_from_slice(&p.x.to_le_bytes());
                     out.extend_from_slice(&p.y.to_le_bytes());
                 }
+            }
+        }
+        // Graph-driven skeletons, written only when there are some (so a
+        // world without graphs saves, and hashes, as before).
+        if !sh.driven.is_empty() {
+            let mut w = Writer::new(out);
+            w.u32(sh.driven.len() as u32);
+            for (k, m) in &sh.driven {
+                w.u64(*k);
+                m.save(&mut w);
             }
         }
     }
@@ -531,20 +725,27 @@ impl StateBlock for SkeletonState {
             }
             boxes.insert(key, list);
         }
+        let mut driven = IdMap::new();
         if r.at != bytes.len() {
-            return Err(Reader::bad());
+            let mut d = Bytes::new(&bytes[r.at..]);
+            for _ in 0..d.count(20)? {
+                let k = d.u64()?;
+                driven.insert(k, Machine::load(&mut d)?);
+            }
+            d.finish()?;
         }
-        let saved: Saved = (playback, boxes);
+        let saved: Saved = (playback, boxes, driven);
         Ok(Box::new(saved))
     }
 
     fn apply(&mut self, decoded: Option<Box<dyn Any + Send>>) {
-        let (playback, boxes) = decoded
+        let (playback, boxes, driven) = decoded
             .map(|d| *d.downcast::<Saved>().expect("decoded by SkeletonState"))
             .unwrap_or_default();
         let mut sh = lock(&self.0);
         sh.playback = playback;
         sh.boxes = boxes;
+        sh.driven = driven;
     }
 
     /// The boxes are in the frame their skeleton's Transform is written in:

@@ -771,6 +771,39 @@ block keeps, per entity, the clip and time it last wrote, the step (frames
 entered since the clip started) and the whole cycles taken off `time`, so a
 restored world sends the same events on the same ticks.
 
+### Graphs on 2D targets (`graph2d.rs`)
+
+An `animgraph` registered with `GraphDesc.sprite` (`SpriteGraph::parse`:
+its `clip` lines name the target's clips, by name, as it plays, so one
+graph serves every sheet or rig with those names) drives the og.Flipbook
+or og.Skeleton2D of an entity whose og.AnimationGraph names it, run by
+og.flipbook or og.skeleton2d before they play (`FlipbookSystem::add_graph`,
+`Skeleton2dSystem::add_graph`). The machines are og.anim's
+(`machine.rs`: the same transitions, conditions, exit times, interrupts,
+sync groups and layer weights); `state` and `stateTime` are written as
+on a skeleton.
+
+- **Flipbook**: the heaviest clip leaf shows (an upper override layer
+  covers the ones under it by its weight; of equal weights the upper, the
+  current state). A transition completes at once (its `fade` is not
+  used), and the clip on screen changes only when its current frame ends
+  (`time + dt · speed` reaching the frame's end), or at once when nothing
+  plays (paused, finished, speed 0, nothing shown yet): a frame is never
+  shortened. The new clip starts at its first frame (firing its events),
+  or, when the cut stays within one state (a blend's other leaf) or
+  between states of one sync group, at the state's phase (a seek). The
+  graph writes `clip`, `time` and `speed` (the graph's speed by the
+  state's and the clip line's); the sheet's mode decides looping.
+- **2D skeleton**: the two heaviest leaves become `clip` and `blendClip`
+  with their times (each leaf at its state's phase: `frac · duration`
+  looping, held at its end otherwise) and `blend` (the second's share);
+  transitions cross-fade over their `fade`; both clips' events fire as
+  their times pass them (a state just entered fires its events at 0).
+
+Additive layers are skipped and masks ignored on 2D targets. The machine
+of each driven entity is in its system's state block, after the
+playback, written only when one exists.
+
 Drawing is the runtime's: an entity with `og.Flipbook` and `og.Sprite` is
 drawn with the sheet's texture, the current frame's region and pivot (an
 `array true` sheet: its array's layer of that frame, whole, and the

@@ -34,4 +34,4 @@ fn damageNumbers {
 }
 ```
 
-<sub>`api.ogt` line 22301</sub>
+<sub>`api.ogt` line 22315</sub>

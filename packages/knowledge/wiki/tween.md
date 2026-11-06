@@ -20,7 +20,7 @@ module tween {
   # declarations follow, each on its own page
 ```
 
-<sub>`api.ogt` line 12346</sub>
+<sub>`api.ogt` line 12360</sub>
 
 ## Contents
 
@@ -62,7 +62,7 @@ column Tween {
 }
 ```
 
-<sub>`api.ogt` line 12353</sub>
+<sub>`api.ogt` line 12367</sub>
 
 ```ogt
 column Ease {
@@ -73,4 +73,4 @@ column Ease {
 }
 ```
 
-<sub>`api.ogt` line 12386</sub>
+<sub>`api.ogt` line 12400</sub>

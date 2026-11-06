@@ -17702,6 +17702,7 @@ export interface AnimationPlayer {
 
 /**
  * Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, which the graph names in `param` order (`param speed` is p0, the next `param` is p1, ...).
+ * On an entity with an og.Flipbook or an og.Skeleton2D, a graph registered with GraphDesc.sprite drives it instead: its `clip` lines name the sheet's or rig's clips, so one graph serves every sheet with those names. A flipbook shows the heaviest clip (an upper override layer at weight 0.5 or more wins over the layers under it) and its rate: transitions cut, never fade, and wait for the frame on screen to end; a cut within one state (a blend's other clip) or between states of one sync group keeps the phase. A 2D skeleton blends the two heaviest clips (Skeleton2D.clip and blendClip, their times and `blend`) and cross-fades over a transition's `fade`. Additive layers and masks are skeleton-only. The machines are world state (the og.flipbook and og.skeleton2d state blocks); weight is not used there.
  *
  * The value of the `AnimationGraph` component (token `og.AnimationGraph`).
  */
@@ -18375,6 +18376,12 @@ export interface GraphDesc {
    * @default []
    */
   readonly clips?: readonly ClipInfo[];
+  /**
+   * A graph for og.Flipbook and og.Skeleton2D: its `clip` lines name clips of the sheet or rig of the entity it runs on, looked up by name as it plays (a clip the sheet lacks plays nothing), and `clips` is not read.
+   *
+   * @default false
+   */
+  readonly sprite?: boolean;
 }
 
 
@@ -18527,7 +18534,7 @@ export type FlipMode = "loop" | "pingPong" | "once";
 
 /**
  * Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot, or, for an `array true` sheet, the frame's layer of its texture array whole (the sprite keeps its size, colour, flips and layer). Played by the engine's og.flipbook system by scaled time (Time.scaledDt: slow motion, hit stop), after the game's systems.
- * Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent. The playback position is world state (the og.flipbook state block).
+ * Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent. The playback position is world state (the og.flipbook state block). An og.AnimationGraph of a GraphDesc.sprite graph on the entity writes clip, time and speed each tick: its states by the sheet's clip names, cut on frame boundaries.
  *
  * The value of the `Flipbook` component (token `og.Flipbook`).
  */
@@ -18712,6 +18719,26 @@ export interface Skeleton2D {
    * @readonly written by the engine
    */
   readonly finished: boolean;
+  /**
+   * A second clip blended over `clip` by `blend`: an index into Rig2DInfo.clips. Each bone's offsets from the setup pose (turns the short way), slot colours and mesh deforms mix by `blend`; what a slot shows, the draw order and IK bends come from the heavier clip. Only `clip`'s events fire (an og.AnimationGraph fires both's).
+   *
+   * @range 0..
+   */
+  blendClip: number;
+  /**
+   * Seconds into blendClip; advanced with `time` (by `speed`, wrapping when `loop`), set it to seek.
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  blendTime: number;
+  /**
+   * How much of the pose blendClip decides: 0 none (the default), 1 all of it. An og.AnimationGraph writes clip, blendClip, their times and blend each tick.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  blend: number;
 }
 
 /**
@@ -46166,6 +46193,7 @@ export declare namespace og {
   const AnimationPlayer: ComponentType<{ readonly clip: FieldSpec<"ClipAsset">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly weight: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly stepFps: FieldSpec<"f32">; readonly finished: FieldSpec<"bool"> }, AnimationPlayer>;
   /**
    * Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, which the graph names in `param` order (`param speed` is p0, the next `param` is p1, ...).
+   * On an entity with an og.Flipbook or an og.Skeleton2D, a graph registered with GraphDesc.sprite drives it instead: its `clip` lines name the sheet's or rig's clips, so one graph serves every sheet with those names. A flipbook shows the heaviest clip (an upper override layer at weight 0.5 or more wins over the layers under it) and its rate: transitions cut, never fade, and wait for the frame on screen to end; a cut within one state (a blend's other clip) or between states of one sync group keeps the phase. A 2D skeleton blends the two heaviest clips (Skeleton2D.clip and blendClip, their times and `blend`) and cross-fades over a transition's `fade`. Additive layers and masks are skeleton-only. The machines are world state (the og.flipbook and og.skeleton2d state blocks); weight is not used there.
    */
   const AnimationGraph: ComponentType<{ readonly asset: FieldSpec<"GraphAsset">; readonly weight: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly p0: FieldSpec<"f32">; readonly p1: FieldSpec<"f32">; readonly p2: FieldSpec<"f32">; readonly p3: FieldSpec<"f32">; readonly p4: FieldSpec<"f32">; readonly p5: FieldSpec<"f32">; readonly p6: FieldSpec<"f32">; readonly p7: FieldSpec<"f32">; readonly state: FieldSpec<"u32">; readonly stateTime: FieldSpec<"f32"> }, AnimationGraph>;
   /**
@@ -46202,7 +46230,7 @@ export declare namespace og {
   const AnimationEvent: EventType<AnimationEvent>;
   /**
    * Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot, or, for an `array true` sheet, the frame's layer of its texture array whole (the sprite keeps its size, colour, flips and layer). Played by the engine's og.flipbook system by scaled time (Time.scaledDt: slow motion, hit stop), after the game's systems.
-   * Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent. The playback position is world state (the og.flipbook state block).
+   * Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent. The playback position is world state (the og.flipbook state block). An og.AnimationGraph of a GraphDesc.sprite graph on the entity writes clip, time and speed each tick: its states by the sheet's clip names, cut on frame boundaries.
    */
   const Flipbook: ComponentType<{ readonly sheet: FieldSpec<"FlipbookSheet">; readonly clip: FieldSpec<"u32">; readonly speed: FieldSpec<"f32">; readonly playing: FieldSpec<"bool">; readonly frame: FieldSpec<"u32">; readonly time: FieldSpec<"f32">; readonly finished: FieldSpec<"bool">; readonly loops: FieldSpec<"u32"> }, Flipbook>;
   /**
@@ -46213,7 +46241,7 @@ export declare namespace og {
    * Plays a clip of a 2D rig at the entity: the og.skeleton2d system advances it by scaled time (Time.scaledDt) after the game's systems and fires its events as og.Skeleton2DEvent; extraction draws its slots, in their order, as textured triangles of the sprite batch at `layer` (region attachments as quads, mesh attachments weighted to bones and deformed by the clip), lit by og.Lighting2D when the layer is in its range, as a sprite there is. The rig's pixels are `unit` to a world unit and +y is up; the entity's og.Transform places, turns (about z) and scales it.
    * Changing `clip` restarts at 0 (or at `time`, written in the same tick); writing a different time is a seek and fires no events. The pose is a function of these fields, the Transform and the og.IkTarget2D on it; the playback position is world state (the og.skeleton2d state block).
    */
-  const Skeleton2D: ComponentType<{ readonly rig: FieldSpec<"Rig2D">; readonly clip: FieldSpec<"u32">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly flipX: FieldSpec<"bool">; readonly layer: FieldSpec<"i32">; readonly skin: FieldSpec<"u32">; readonly finished: FieldSpec<"bool"> }, Skeleton2D>;
+  const Skeleton2D: ComponentType<{ readonly rig: FieldSpec<"Rig2D">; readonly clip: FieldSpec<"u32">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly flipX: FieldSpec<"bool">; readonly layer: FieldSpec<"i32">; readonly skin: FieldSpec<"u32">; readonly finished: FieldSpec<"bool">; readonly blendClip: FieldSpec<"u32">; readonly blendTime: FieldSpec<"f32">; readonly blend: FieldSpec<"f32"> }, Skeleton2D>;
   /**
    * A 2D skeleton's clip, or the clip a child armature in one of its slots plays, passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. Read in the tick after, like every event; a clip started at 0 fires its events at 0, a looping clip fires each once per pass.
    */

@@ -27,4 +27,4 @@ enum CelebrationKind {
 }
 ```
 
-<sub>`api.ogt` line 21487</sub>
+<sub>`api.ogt` line 21501</sub>

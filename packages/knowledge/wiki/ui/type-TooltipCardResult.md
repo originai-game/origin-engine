@@ -25,4 +25,4 @@ struct TooltipCardResult {
 }
 ```
 
-<sub>`api.ogt` line 21224</sub>
+<sub>`api.ogt` line 21238</sub>

@@ -33,4 +33,4 @@ struct MinimapDesc {
 }
 ```
 
-<sub>`api.ogt` line 16790</sub>
+<sub>`api.ogt` line 16804</sub>

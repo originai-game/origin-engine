@@ -29,4 +29,4 @@ struct CooldownDesc {
 }
 ```
 
-<sub>`api.ogt` line 16753</sub>
+<sub>`api.ogt` line 16767</sub>

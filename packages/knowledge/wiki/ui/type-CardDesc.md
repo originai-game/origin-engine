@@ -52,4 +52,4 @@ struct CardDesc {
 }
 ```
 
-<sub>`api.ogt` line 17707</sub>
+<sub>`api.ogt` line 17721</sub>

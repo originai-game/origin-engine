@@ -258,6 +258,25 @@ impl Rig2dAsset {
         self.pose_of(self.body(), clip, time, targets, swaps, name)
     }
 
+    /// [`Rig2dAsset::pose_in_skin`] with `blend`, a second clip, its time
+    /// and its weight (0 to 1), blended over `clip` (og.Skeleton2D's
+    /// blendClip, blendTime and blend).
+    pub fn pose_blend_in_skin(
+        &self,
+        clip: Option<&Clip2d>,
+        time: f32,
+        blend: Option<(&Clip2d, f32, f32)>,
+        targets: &[(usize, [f32; 2], f32)],
+        skin: u32,
+    ) -> Pose2d {
+        let worn = (skin as usize)
+            .checked_sub(1)
+            .and_then(|i| self.skins.get(i));
+        let swaps = worn.map_or(&[][..], |k| k.swaps.as_slice());
+        let name = worn.map_or("default", |k| k.name.as_str());
+        self.pose_blended(self.body(), clip, time, blend, targets, swaps, name)
+    }
+
     /// The pose of `body` wearing `swaps`; its child armatures wear their
     /// skins named `skin`, else their defaults.
     fn pose_of(
@@ -269,77 +288,39 @@ impl Rig2dAsset {
         swaps: &[(usize, Option<usize>)],
         skin: &str,
     ) -> Pose2d {
-        // x, y, rotation, scale x, scale y, skew.
-        let mut local: Vec<[f32; 6]> = body
-            .bones
-            .iter()
-            .map(|b| [b.x, b.y, b.rotation, b.scale[0], b.scale[1], b.skew])
-            .collect();
-        let mut slots: Vec<Option<usize>> = body.slots.iter().map(|s| s.attachment).collect();
-        let mut colors: Vec<[f32; 4]> = body.slots.iter().map(|s| s.color).collect();
-        let mut offsets: Vec<[f32; 4]> = body.slots.iter().map(|s| s.offset).collect();
-        let mut order: Vec<usize> = (0..body.slots.len()).collect();
-        let mut deforms: Vec<(usize, Vec<f32>)> = Vec::new();
-        let mut ik_keys: Vec<(f32, bool)> = body
-            .iks
-            .iter()
-            .map(|c| (c.weight, c.counterclockwise))
-            .collect();
-        let lerp4 =
-            |a: &[f32; 4], b: &[f32; 4], f: f32| [0, 1, 2, 3].map(|i| a[i] + (b[i] - a[i]) * f);
-        if let Some(c) = clip {
-            for t in &c.bones {
-                let l = &mut local[t.bone];
-                if let Some(r) = sample(&t.rotate, time, |a, b, f| Rotation {
-                    degrees: a.degrees + turn_delta(a.degrees, b.degrees, a.turn) * f,
-                    turn: a.turn,
-                }) {
-                    l[2] += r.degrees;
-                }
-                if let Some(k) = sample(&t.skew, time, |a, b, f| a + (b - a) * f) {
-                    l[5] += k;
-                }
-                if let Some([x, y]) = sample(&t.translate, time, lerp2) {
-                    l[0] += x;
-                    l[1] += y;
-                }
-                if let Some([x, y]) = sample(&t.scale, time, lerp2) {
-                    l[3] *= x;
-                    l[4] *= y;
-                }
+        self.pose_blended(body, clip, time, None, targets, swaps, skin)
+    }
+
+    /// [`Rig2dAsset::pose_of`] with a second clip `(clip, time, weight)`
+    /// blended over the first by its weight: each bone's offsets from the
+    /// setup pose (the turn the short way), colours and deforms in
+    /// proportion; what a slot shows, the draw order and IK bend from the
+    /// heavier.
+    #[allow(clippy::too_many_arguments)]
+    fn pose_blended(
+        &self,
+        body: Body<'_>,
+        clip: Option<&Clip2d>,
+        time: f32,
+        blend: Option<(&Clip2d, f32, f32)>,
+        targets: &[(usize, [f32; 2], f32)],
+        swaps: &[(usize, Option<usize>)],
+        skin: &str,
+    ) -> Pose2d {
+        let Sampled {
+            mut local,
+            mut slots,
+            colors,
+            offsets,
+            order,
+            deforms,
+            ik_keys,
+        } = match blend {
+            Some((other, at, w)) if w > 0.0 => {
+                Sampled::of(body, clip, time).blend(Sampled::of(body, Some(other), at), w.min(1.0))
             }
-            for t in &c.slots {
-                if let Some((_, a)) = t.attachment.iter().rev().find(|(k, _)| *k <= time) {
-                    slots[t.slot] = *a;
-                }
-                if let Some(v) = sample(&t.color, time, lerp4) {
-                    colors[t.slot] = v;
-                }
-                if let Some(v) = sample(&t.offset, time, lerp4) {
-                    offsets[t.slot] = v;
-                }
-            }
-            for t in &c.deforms {
-                if let Some(v) = sample(&t.keys, time, |a: &Vec<f32>, b: &Vec<f32>, f| {
-                    a.iter().zip(b).map(|(x, y)| x + (y - x) * f).collect()
-                }) {
-                    deforms.push((t.attachment, v));
-                }
-            }
-            if let Some((_, o)) = c.order.iter().rev().find(|(k, _)| *k <= time)
-                && !o.is_empty()
-            {
-                order = o.clone();
-            }
-            for t in &c.iks {
-                if let Some(k) = sample(&t.keys, time, |a, b, f| IkKey {
-                    weight: a.weight + (b.weight - a.weight) * f,
-                    counterclockwise: a.counterclockwise,
-                }) {
-                    ik_keys[t.ik] = (k.weight.clamp(0.0, 1.0), k.counterclockwise);
-                }
-            }
-        }
+            _ => Sampled::of(body, clip, time),
+        };
         // The skin: what each slot shows in place of the default's.
         for a in slots.iter_mut() {
             if let Some(&(_, to)) = a.and_then(|x| swaps.iter().find(|(f, _)| *f == x)) {
@@ -870,5 +851,153 @@ fn sample<T: Clone>(keys: &[Key<T>], t: f32, lerp: impl Fn(&T, &T, f32) -> T) ->
             }
         }
         _ => Some(k.value.clone()),
+    }
+}
+
+/// A body's pose before IK and constraints: each bone's local `[x, y,
+/// rotation, scale x, scale y, skew]` and the slots' attachments, colours
+/// and offsets, the draw order, the deforms and the IK keys, at `time` of
+/// a clip.
+struct Sampled {
+    local: Vec<[f32; 6]>,
+    slots: Vec<Option<usize>>,
+    colors: Vec<[f32; 4]>,
+    offsets: Vec<[f32; 4]>,
+    order: Vec<usize>,
+    deforms: Vec<(usize, Vec<f32>)>,
+    ik_keys: Vec<(f32, bool)>,
+}
+
+impl Sampled {
+    fn of(body: Body<'_>, clip: Option<&Clip2d>, time: f32) -> Sampled {
+        // x, y, rotation, scale x, scale y, skew.
+        let mut local: Vec<[f32; 6]> = body
+            .bones
+            .iter()
+            .map(|b| [b.x, b.y, b.rotation, b.scale[0], b.scale[1], b.skew])
+            .collect();
+        let mut slots: Vec<Option<usize>> = body.slots.iter().map(|s| s.attachment).collect();
+        let mut colors: Vec<[f32; 4]> = body.slots.iter().map(|s| s.color).collect();
+        let mut offsets: Vec<[f32; 4]> = body.slots.iter().map(|s| s.offset).collect();
+        let mut order: Vec<usize> = (0..body.slots.len()).collect();
+        let mut deforms: Vec<(usize, Vec<f32>)> = Vec::new();
+        let mut ik_keys: Vec<(f32, bool)> = body
+            .iks
+            .iter()
+            .map(|c| (c.weight, c.counterclockwise))
+            .collect();
+        let lerp4 =
+            |a: &[f32; 4], b: &[f32; 4], f: f32| [0, 1, 2, 3].map(|i| a[i] + (b[i] - a[i]) * f);
+        if let Some(c) = clip {
+            for t in &c.bones {
+                let l = &mut local[t.bone];
+                if let Some(r) = sample(&t.rotate, time, |a, b, f| Rotation {
+                    degrees: a.degrees + turn_delta(a.degrees, b.degrees, a.turn) * f,
+                    turn: a.turn,
+                }) {
+                    l[2] += r.degrees;
+                }
+                if let Some(k) = sample(&t.skew, time, |a, b, f| a + (b - a) * f) {
+                    l[5] += k;
+                }
+                if let Some([x, y]) = sample(&t.translate, time, lerp2) {
+                    l[0] += x;
+                    l[1] += y;
+                }
+                if let Some([x, y]) = sample(&t.scale, time, lerp2) {
+                    l[3] *= x;
+                    l[4] *= y;
+                }
+            }
+            for t in &c.slots {
+                if let Some((_, a)) = t.attachment.iter().rev().find(|(k, _)| *k <= time) {
+                    slots[t.slot] = *a;
+                }
+                if let Some(v) = sample(&t.color, time, lerp4) {
+                    colors[t.slot] = v;
+                }
+                if let Some(v) = sample(&t.offset, time, lerp4) {
+                    offsets[t.slot] = v;
+                }
+            }
+            for t in &c.deforms {
+                if let Some(v) = sample(&t.keys, time, |a: &Vec<f32>, b: &Vec<f32>, f| {
+                    a.iter().zip(b).map(|(x, y)| x + (y - x) * f).collect()
+                }) {
+                    deforms.push((t.attachment, v));
+                }
+            }
+            if let Some((_, o)) = c.order.iter().rev().find(|(k, _)| *k <= time)
+                && !o.is_empty()
+            {
+                order = o.clone();
+            }
+            for t in &c.iks {
+                if let Some(k) = sample(&t.keys, time, |a, b, f| IkKey {
+                    weight: a.weight + (b.weight - a.weight) * f,
+                    counterclockwise: a.counterclockwise,
+                }) {
+                    ik_keys[t.ik] = (k.weight.clamp(0.0, 1.0), k.counterclockwise);
+                }
+            }
+        }
+        Sampled {
+            local,
+            slots,
+            colors,
+            offsets,
+            order,
+            deforms,
+            ik_keys,
+        }
+    }
+
+    /// `self` with `other` blended over it by `w` (0 to 1).
+    fn blend(mut self, other: Sampled, w: f32) -> Sampled {
+        let lerp = |a: f32, b: f32| a + (b - a) * w;
+        for (a, b) in self.local.iter_mut().zip(&other.local) {
+            a[0] = lerp(a[0], b[0]);
+            a[1] = lerp(a[1], b[1]);
+            let d = (b[2] - a[2]) - 360.0 * ((b[2] - a[2]) / 360.0 + 0.5).floor();
+            a[2] += d * w;
+            for i in 3..6 {
+                a[i] = lerp(a[i], b[i]);
+            }
+        }
+        for (a, b) in self.colors.iter_mut().zip(&other.colors) {
+            *a = [0, 1, 2, 3].map(|i| lerp(a[i], b[i]));
+        }
+        for (a, b) in self.offsets.iter_mut().zip(&other.offsets) {
+            *a = [0, 1, 2, 3].map(|i| lerp(a[i], b[i]));
+        }
+        // Deforms are offsets from the mesh: one only one clip keys blends with none.
+        let mut deforms: Vec<(usize, Vec<f32>)> = Vec::new();
+        for (att, v) in &self.deforms {
+            let o = other.deforms.iter().find(|d| d.0 == *att).map(|d| &d.1);
+            deforms.push((
+                *att,
+                v.iter()
+                    .enumerate()
+                    .map(|(i, x)| lerp(*x, o.and_then(|o| o.get(i)).copied().unwrap_or(0.0)))
+                    .collect(),
+            ));
+        }
+        for (att, v) in &other.deforms {
+            if !self.deforms.iter().any(|d| d.0 == *att) {
+                deforms.push((*att, v.iter().map(|x| x * w).collect()));
+            }
+        }
+        self.deforms = deforms;
+        for (a, b) in self.ik_keys.iter_mut().zip(&other.ik_keys) {
+            a.0 = lerp(a.0, b.0);
+            if w >= 0.5 {
+                a.1 = b.1;
+            }
+        }
+        if w >= 0.5 {
+            self.slots = other.slots;
+            self.order = other.order;
+        }
+        self
     }
 }

@@ -176,3 +176,108 @@ fn a_clip_change_restarts_a_seek_is_silent_and_speed_scales() {
     run(&mut w, e, 10);
     assert_eq!(flip(&w, e).time, held.time);
 }
+
+const GRAPH: &str = r#"type animgraph
+version 1
+---
+param speed
+param attack
+clip stand "wave"
+clip walk "walk"
+clip strike "attack"
+layer base {
+  state idle stand
+  state move walk
+  state hit strike
+  entry idle
+  transition idle move {
+    when speed gt 0.5
+  }
+  transition move idle {
+    when speed le 0.5
+  }
+  transition any hit {
+    when attack gt 0.5
+  }
+  transition hit idle {
+    exit 1
+  }
+}
+"#;
+
+/// Steps one tick with the graph's parameters; the clip and frame shown
+/// and the events sent.
+fn graph_tick(w: &mut World, e: Entity, speed: f32, attack: f32) -> (u32, u32, Vec<String>) {
+    let mut g = w.get::<AnimationGraph>(e).unwrap();
+    (g.p0, g.p1) = (speed, attack);
+    w.insert(e, g).unwrap();
+    w.step().unwrap();
+    let ev = w
+        .pending_events::<FlipbookEvent>()
+        .unwrap()
+        .iter()
+        .map(|v| format!("{}@{}", v.name.as_str(), v.frame))
+        .collect();
+    let f = flip(w, e);
+    (f.clip, f.frame, ev)
+}
+
+/// An animation graph drives a flipbook by clip names: the entry state
+/// shows at once, a transition cuts in only when the frame on screen
+/// ends (never shortening it, never waiting for the clip's end), a once
+/// clip's `exit 1` returns as soon as it finished, and a restored world
+/// continues the same. Ways this could fail: the cut is immediate (wave's
+/// first frame shortened), waits for the whole cycle, a fade blends
+/// nothing and delays the cut, the attack's events are lost in the cut,
+/// the machine is not part of the snapshot.
+#[test]
+fn a_graph_drives_a_flipbook_cutting_on_frame_boundaries() {
+    let (mut w, fb, e) = world();
+    fb.add_graph(9, std::sync::Arc::new(SpriteGraph::parse(GRAPH).unwrap()))
+        .unwrap();
+    w.insert(e, AnimationGraph::new(9)).unwrap();
+    let wave = 1;
+    let walk = 0;
+    let attack = 2;
+    // Entry: wave from the first tick.
+    assert_eq!(graph_tick(&mut w, e, 0.0, 0.0).0, wave);
+    graph_tick(&mut w, e, 0.0, 0.0);
+    graph_tick(&mut w, e, 0.0, 0.0);
+    // 0.05 s into wave's 0.1 s first frame: the walk waits for it to end.
+    let mut seq = Vec::new();
+    for _ in 0..6 {
+        seq.push(graph_tick(&mut w, e, 1.0, 0.0));
+    }
+    let cut = seq.iter().position(|t| t.0 == walk).expect("walk cut in");
+    assert!(
+        seq[..cut].iter().all(|t| (t.0, t.1) == (wave, 0)),
+        "wave's frame 0 until the cut: {seq:?}"
+    );
+    // Six ticks of 1/60 s hold the 0.1 s frame: the cut is the 6th tick.
+    assert_eq!(cut + 3 + 1, 6, "{seq:?}");
+    assert_eq!(seq[cut].1, 0, "walk from its first frame");
+    assert_eq!(w.get::<AnimationGraph>(e).unwrap().state, 1, "move");
+    // Attack: stop and strike; the strike cuts in at walk's frame end,
+    // fires its hit and returns to idle (wave) as soon as it finished.
+    let snap = w.snapshot();
+    let mut a = Vec::new();
+    for i in 0..30 {
+        a.push(graph_tick(&mut w, e, 0.0, if i < 3 { 1.0 } else { 0.0 }));
+    }
+    let start = a.iter().position(|t| t.0 == attack).expect("the strike");
+    let back = a[start..]
+        .iter()
+        .position(|t| t.0 == wave)
+        .expect("back to wave")
+        + start;
+    assert!(a.iter().flat_map(|t| &t.2).any(|ev| ev == "hit@1"), "{a:?}");
+    // 0.15 s of strike: 9 ticks, the 10th returns.
+    assert_eq!(back - start, 9, "{a:?}");
+    // A restored world plays the same ticks.
+    w.restore(&snap).unwrap();
+    let mut b = Vec::new();
+    for i in 0..30 {
+        b.push(graph_tick(&mut w, e, 0.0, if i < 3 { 1.0 } else { 0.0 }));
+    }
+    assert_eq!(a, b);
+}

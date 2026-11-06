@@ -32,4 +32,4 @@ fn cooldown {
 }
 ```
 
-<sub>`api.ogt` line 17253</sub>
+<sub>`api.ogt` line 17267</sub>

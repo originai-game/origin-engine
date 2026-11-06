@@ -5697,6 +5697,22 @@
           "column": "bool",
           "default": false,
           "readonly": true
+        },
+        {
+          "name": "blendClip",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "blendTime",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "blend",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
         }
       ]
     },

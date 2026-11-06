@@ -248,6 +248,9 @@ pub(crate) struct FeelAssets {
     pub maps: IdMap<u64, Arc<MapAsset>>,
     /// 2D rigs and their textures, by handle.
     pub rigs: IdMap<u64, (og_anim::Rig2dAsset, usize)>,
+    /// Graphs for flipbooks and 2D skeletons (og.anim.graph's `sprite`),
+    /// by their og.anim handle.
+    pub graphs: IdMap<u64, Arc<og_anim::SpriteGraph>>,
     pub(crate) loaded: BTreeMap<String, Value>,
 }
 
@@ -269,6 +272,10 @@ impl FeelAssets {
         for (h, (rig, t)) in &self.rigs {
             let _ = feel.skeletons.add_rig(*h, rig.clone());
             lock(&feel.rig_textures).insert(*h, *t);
+        }
+        for (h, g) in &self.graphs {
+            let _ = feel.flipbooks.add_graph(*h, g.clone());
+            let _ = feel.skeletons.add_graph(*h, g.clone());
         }
         let mut t = lock(&feel.tiles);
         for (h, m) in &self.maps {
