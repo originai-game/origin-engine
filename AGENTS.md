@@ -142,10 +142,14 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - Authors work in their own lane on macrunner with the Metal GPU and run their
   own tests, scoped GPU suites and frames.
 - **Landing.** A head that moves no reference frame and changes no look is
-  landed by its author: rebase onto `origin/main`, `scripts/check.sh quick`,
-  push to main, post to Slack. A head that moves frames or changes a look goes
+  landed by its author with `scripts/land.sh`, then posted to Slack. The command
+  runs quick and serialises rebase/push separately from the gate lock; disjoint
+  changes without common inputs reuse the passing gate. Overlap or shared
+  inputs rerun quick with its input cache before retrying. Never push main
+  directly. A head that moves frames or changes a look goes
   to the art runner, who reviews the look against commercial games and lands
-  it. A failure found later goes back to its branch as a fix-forward commit.
+  it with the same command. A failure found later goes back to its branch as
+  a fix-forward commit.
 - A file split moves code verbatim (only `mod`, `use` and visibility edits)
   and is reviewed with `git diff --color-moved`.
 - Reports carry their numbers and frame paths; evidence is committed only when

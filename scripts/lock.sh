@@ -65,7 +65,7 @@ og_lock_alive() {
   kill -0 "$1" 2>/dev/null || return 1
   command -v ps >/dev/null 2>&1 || return 0
   case "$(ps -p "$1" -o command= 2>/dev/null)" in
-    *check.sh*|*build.sh*|*pack.sh*|*wave-end.sh*) return 0 ;;
+    *check.sh*|*build.sh*|*pack.sh*|*wave-end.sh*|*land.sh*) return 0 ;;
     *) return 1 ;;
   esac
 }

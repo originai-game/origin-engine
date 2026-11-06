@@ -5,6 +5,26 @@ GitHub CI. The rules it rests on are in AGENTS.md §Building and testing: one
 target directory, the dev profile for every native step, tests that never
 run `cargo`.
 
+## Landing without gate starvation
+
+Authors land non-visual heads with `scripts/land.sh`; the art runner uses the
+same command after approving visual heads. Start with a clean, committed
+branch. The command rebases onto fetched main and runs `check.sh quick`.
+It then takes the repository-wide landing lock in the common Git directory,
+separate from the machine gate lock, fetches main again, and pushes.
+
+If main advanced while quick ran, the command compares both sides from the
+tested base. Disjoint file changes reuse the pass only when neither side
+touches common build inputs or generated/drift-checked files. Otherwise it
+rebases, releases the landing lock, and runs quick again; existing per-step
+input records skip unaffected work. No gate runs under the landing lock.
+Push rejection caused by another main advance retries the same comparison;
+other push failures stop. A rebase conflict stops for the author to resolve.
+No force push is used. Rerunning after success is a no-op.
+
+`python3 scripts/test-landing.py` exercises concurrent landings against a
+disposable local bare remote, including overlap, shared inputs and failures.
+
 ## Toolchain
 
 The one place the versions are stated. Each is pinned where the third
