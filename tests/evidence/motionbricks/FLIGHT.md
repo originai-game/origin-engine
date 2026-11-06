@@ -387,7 +387,9 @@ is part of the motion.jump art review.
 The example's `world_replay` differed from the uninterrupted run at tick 61
 only, the first tick after its restore, also with no og.motion component and
 no controller: that tick delivers og.WorldRestored (`restored_event.rs`),
-which the original run never saw. From tick 62 every hash matches, and the
-replay check now starts there (`mismatch_ticks` still lists 61). The
+which the original run never saw. From tick 62 every hash matches. The
+check still fails on tick 61: whether that tick's hash difference is a
+defect or the rule is open with the og session owner, and the check is not
+relaxed until it is settled. The
 `motion_goals` tests restore a jump mid-flight and match the uninterrupted
 run's hash after it lands.

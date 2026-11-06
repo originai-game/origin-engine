@@ -1483,10 +1483,7 @@ fn hash_replay() -> serde_json::Value {
         if hash(drawn) != *expected {
             mismatch_ticks.push(tick + 1);
         }
-        // The first tick after a restore delivers og.WorldRestored
-        // (`restored_event.rs`), which the original run never saw: that
-        // tick differs by design, and the replay must match from the next.
-        if hash(drawn) != *expected && tick > 60 && replay_mismatch.is_none() {
+        if hash(drawn) != *expected && replay_mismatch.is_none() {
             replay_mismatch = Some(json!({"tick":tick+1,"expected":expected,"actual":hash(drawn)}));
         }
     }
