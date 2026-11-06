@@ -195,9 +195,11 @@ pub struct Flow {
     pub speed: f32,
 }
 
-/// Fading by the angle between the surface and the eye: `f = (1 - |n·v|)^power`.
-/// A rim (`invert` false) keeps the edges and clears the middle (a shield,
-/// a bubble); inverted, the silhouette fades (soft spheres, smoke shells).
+/// Fading by the angle between the surface and the eye. A rim (`invert`
+/// false), `(1 - |n·v|)^power`, keeps the edges and clears the middle (a
+/// shield, a bubble); inverted, `|n·v|^power`, the silhouette fades out
+/// well inside the limb, so no edge of the mesh shows (soft spheres, glows,
+/// columns, smoke shells); a higher power fades further in.
 /// `strength` blends it in (0 none, 1 full).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Fresnel {
@@ -265,6 +267,30 @@ impl Default for EffectMaterial {
 }
 
 impl EffectMaterial {
+    /// A flash: a radial glow with no silhouette when drawn on a sphere,
+    /// `|n·v|^3` (about `(1 − r²)^1.5` from its centre out, a tenth of the
+    /// centre by 0.8 of the radius), additive, faded where it meets the
+    /// scene so it never covers what it lights, and dying out fast over its
+    /// life (half gone by a fifth of it, a tenth left by three fifths).
+    pub fn glow() -> Self {
+        EffectMaterial {
+            fresnel: Some(Fresnel {
+                power: 3.0,
+                strength: 1.0,
+                invert: true,
+            }),
+            intensity: EffectValue::Curve(Curve::new(&[
+                (0.0, 1.0),
+                (0.2, 0.45),
+                (0.6, 0.1),
+                (1.0, 0.0),
+            ])),
+            soft_depth: 0.4,
+            blend: Some(ParticleBlend::Additive),
+            ..Default::default()
+        }
+    }
+
     /// Refuses a material the renderer cannot draw, naming why.
     pub fn validate(&self) -> Result<(), String> {
         self.intensity.check("intensity")?;
@@ -793,6 +819,30 @@ impl EffectRenderer {
             None => (&self.groups[0], 0),
         }
     }
+}
+
+/// An effect column or tube: an open cylinder of radius 0.5 from y −0.5 to
+/// 0.5 (u round it, v up it) whose vertex alpha falls to 0 at both open
+/// ends (smoothly over the bottom quarter and the top third), so a column
+/// of noise drawn on it has no square end or rim.
+pub fn effect_cylinder() -> crate::MeshData {
+    use crate::geometry::primitives as p;
+    let mut m = p::cylinder(&p::Cylinder {
+        radius_top: 0.5,
+        radius_bottom: 0.5,
+        height_segments: 12,
+        open_ended: true,
+        ..Default::default()
+    });
+    let s = |a: f32, b: f32, x: f32| {
+        let u = ((x - a) / (b - a)).clamp(0.0, 1.0);
+        u * u * (3.0 - 2.0 * u)
+    };
+    for v in &mut m.vertices {
+        let t = v.position[1] + 0.5;
+        v.color[3] = s(0.0, 0.25, t) * (1.0 - s(0.65, 1.0, t));
+    }
+    m
 }
 
 #[cfg(test)]

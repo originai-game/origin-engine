@@ -1,0 +1,12 @@
+type project
+version 1
+---
+# A test fixture, not a template (tests/fixtures/README.md): two composed
+# effects (type vfx), a hit and a heal, on a dark ground.
+name "VFX hit"
+id "vfx-hit"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1

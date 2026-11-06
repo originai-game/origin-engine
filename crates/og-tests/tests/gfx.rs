@@ -10,6 +10,8 @@ use og_render::{
 };
 use og_tests::scenes::{self, GfxScene};
 
+#[path = "gfx/effect_glow.rs"]
+mod effect_glow;
 #[path = "gfx/overlay_effects.rs"]
 mod overlay_effects;
 #[path = "gfx/sprites_post.rs"]

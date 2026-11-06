@@ -294,8 +294,12 @@ fn effect_shade(f: EffectFragment, surface: texture_2d<f32>) -> vec4<f32> {
   // Fresnel: by the angle to the eye.
   if ((bits & FX_FRESNEL) != 0u) {
     let v = select(normalize(frame.view_pos.xyz - f.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
-    let rim = pow(1.0 - clamp(abs(dot(normalize(f.normal), v)), 0.0, 1.0), max(effect.fresnel.x, 1e-3));
-    let k = select(rim, 1.0 - rim, effect.fresnel.z > 0.5);
+    // A rim brightens towards the limb; inverted, (n·v)^power is a soft
+    // silhouette whose alpha is well down before the limb (the higher the
+    // power, the further in), so no mesh edge shows.
+    let ndv = clamp(abs(dot(normalize(f.normal), v)), 0.0, 1.0);
+    let p = max(effect.fresnel.x, 1e-3);
+    let k = select(pow(1.0 - ndv, p), pow(ndv, p), effect.fresnel.z > 0.5);
     c.a *= mix(1.0, k, clamp(effect.fresnel.y, 0.0, 1.0));
   }
   // The hook (hooks.rs: surface_color, then surface_emissive added).

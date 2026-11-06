@@ -16,8 +16,8 @@ use og_core::{Error, ErrorKind};
 use og_ecs::{Entity, QueryDesc, SchemaId, SystemContext, SystemDesc, World};
 use og_render::{
     Beam, ColorCurve, Curve, Decal, EffectMaterial, EffectMaterialHandle, EffectMesh,
-    EmitterHandle, Fresnel, Light, LightKind, MeshHandle, ParticleBlend, ParticleSystem, RibbonUv,
-    Trail, TrailStyle,
+    EmitterHandle, Light, LightKind, MeshHandle, ParticleBlend, ParticleSystem, RibbonUv, Trail,
+    TrailStyle,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -105,14 +105,7 @@ fn builtin_mesh(eng: &super::engine::Engine, shape: &VfxShape) -> Result<MeshHan
             p::ring(0.5, 1.0, 64, 2, 0.0, std::f32::consts::TAU)
         }),
         VfxShape::Box => ("vfx:box", || og_render::shapes::cuboid(Vec3::ONE)),
-        VfxShape::Cylinder => ("vfx:cylinder", || {
-            p::cylinder(&p::Cylinder {
-                radius_top: 0.5,
-                radius_bottom: 0.5,
-                open_ended: true,
-                ..Default::default()
-            })
-        }),
+        VfxShape::Cylinder => ("vfx:cylinder", og_render::effect_cylinder),
         VfxShape::Model(m) => {
             return super::fx::particle_mesh(eng, og_bundle::fx::ParticleMesh::Asset(m));
         }
@@ -126,22 +119,13 @@ fn builtin_mesh(eng: &super::engine::Engine, shape: &VfxShape) -> Result<MeshHan
     Ok(h)
 }
 
-/// The flash's material: a soft ball whose silhouette fades, so it reads
-/// as a glow facing the eye from every side.
+/// The flash's material (og_render's glow), made once.
 fn flash_material(eng: &super::engine::Engine) -> EffectMaterialHandle {
     let mut rs = eng.render.borrow_mut();
     if let Some(h) = rs.effects.flash {
         return h;
     }
-    let h = rs.scene.add_effect_material(EffectMaterial {
-        fresnel: Some(Fresnel {
-            power: 1.6,
-            strength: 1.0,
-            invert: true,
-        }),
-        blend: Some(ParticleBlend::Additive),
-        ..Default::default()
-    });
+    let h = rs.scene.add_effect_material(EffectMaterial::glow());
     rs.effects.flash = Some(h);
     h
 }
