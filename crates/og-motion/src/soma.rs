@@ -21,6 +21,14 @@ use crate::contract::{JOINT_NAMES, JOINTS, Mat3, Pose, SAMPLE_RATE};
 pub const CONTACT: f32 = 0.5;
 /// Frames over which a planted foot rejoins its generated path when it lifts.
 pub const RELEASE_FRAMES: usize = 4;
+/// The share of a leg's length over which its reach softens before full
+/// extension (soft IK): a planted ankle moving that close to straight-leg
+/// reach is followed more and more slowly, so the knee straightens
+/// smoothly instead of snapping straight in the last millimetres.
+pub const SOFT_REACH: f32 = 0.02;
+/// A generated knee this far (a share of the thigh) off the hip-to-ankle
+/// line names the leg's bend plane; a straighter leg keeps the last one.
+const BEND_PLANE: f32 = 0.02;
 
 /// The legs: (thigh, shin, ankle) joints and the ankle's contact index.
 const LEGS: [([usize; 3], usize); 2] = [([22, 23, 24], 0), ([26, 27, 28], 2)];
@@ -136,6 +144,9 @@ struct Plant {
     released: usize,
     /// Where the ankle was last held, in the world.
     last: GVec3,
+    /// The way the knee bends off the hip-to-ankle line, in the world: the
+    /// generated knee's, held while the generated leg is straight.
+    bend: Option<GVec3>,
 }
 
 impl Plant {
@@ -144,6 +155,7 @@ impl Plant {
         anchor: None,
         released: RELEASE_FRAMES,
         last: GVec3::ZERO,
+        bend: None,
     };
 }
 
@@ -165,9 +177,13 @@ impl Planter {
     }
 
     /// Lets go of every planted foot at once (a cut: the character was moved).
+    /// The knees' bend planes are kept: a cut does not turn a knee.
     pub fn release(&mut self) {
         for (_, plant) in &mut self.legs {
-            *plant = Plant::FREE;
+            *plant = Plant {
+                bend: plant.bend,
+                ..Plant::FREE
+            };
         }
     }
 
@@ -183,9 +199,24 @@ impl Planter {
     ) {
         let to_model = root.inverse();
         for (leg, plant) in &mut self.legs {
-            let ankle = leg.chain[2] as usize;
+            let [hip, knee, ankle] = leg.chain.map(|j| j as usize);
             let model = skeleton.model_space(pose);
             let generated = root.transform_point(model[ankle].translation);
+            // The knee is a hinge: it bends in the generated knee's plane,
+            // and a straight generated leg keeps the plane it last bent in
+            // (never an arbitrary one, which bends the knee sideways or
+            // backwards).
+            let (a, b, c) = (
+                model[hip].translation,
+                model[knee].translation,
+                model[ankle].translation,
+            );
+            let thigh = (b - a).length();
+            let along = (c - a).normalize_or_zero();
+            let off = (b - a) - along * (b - a).dot(along);
+            if off.length() > BEND_PLANE * thigh {
+                plant.bend = Some(root.rotation * off.normalize());
+            }
             let down = contacts[leg.contact] > CONTACT;
             let target = if down {
                 let at = *plant.anchor.get_or_insert(generated);
@@ -202,19 +233,34 @@ impl Planter {
                 plant.last + (generated - plant.last) * k
             };
             let foot = model[ankle].rotation;
-            two_bone(
-                skeleton,
-                pose,
-                &leg.chain,
+            let target = soft_reach(
+                a,
                 to_model.transform_point(target),
-                None,
-                1.0,
-                &[],
+                thigh + (c - b).length(),
             );
+            let pole = plant.bend.map(|d| a + to_model.rotation * d);
+            two_bone(skeleton, pose, &leg.chain, target, pole, 1.0, &[]);
             let shin = skeleton.model_space(pose)[leg.chain[1] as usize].rotation;
             pose[ankle].rotation = (shin.conjugate() * foot).normalize();
         }
     }
+}
+
+/// `target` drawn toward `hip` so a leg of `length` reaches it with soft IK
+/// (Andy Nicholas, "Soft IK", 2009): within dₛ = `length` × (1 −
+/// [`SOFT_REACH`]) it is unchanged; beyond, its distance d is eased to
+/// dₛ + r·(1 − e^(−(d − dₛ)/r)), r = `length` − dₛ, which reaches `length`
+/// only at infinity. The knee straightens smoothly as a planted ankle moves
+/// out of reach, the ankle then short of it by at most r/e at full extension.
+fn soft_reach(hip: GVec3, target: GVec3, length: f32) -> GVec3 {
+    let room = SOFT_REACH * length;
+    let start = length - room;
+    let d = (target - hip).length();
+    if d <= start || room <= 0.0 {
+        return target;
+    }
+    let eased = start + room * (1.0 - og_core::math::exp(-(d - start) / room));
+    hip + (target - hip) * (eased / d)
 }
 
 /// A run of local poses (consecutive frames at 30 Hz) as a clip of the

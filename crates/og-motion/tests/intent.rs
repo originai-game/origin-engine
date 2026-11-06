@@ -212,3 +212,107 @@ fn a_heel_on_the_ground_stays_put_and_lets_go_smoothly() {
         }
     }
 }
+
+// The knee is a hinge. A planted heel the hips drop toward needs the knee
+// to bend; when the generated leg is straight, its own knee names no bend
+// plane, and the solve must keep the one it last bent in (forward, +Z
+// here), not pick an arbitrary one (sideways, or backwards).
+#[test]
+fn a_straight_generated_leg_bends_its_knee_where_it_last_bent() {
+    let asset = skeleton().asset();
+    let bend = |a: f32| Quat::from_rotation_x(a);
+    let generated: Vec<Vec<Trs>> = (0..10)
+        .map(|f| {
+            let mut pose = asset.rest_pose();
+            // Bent knees standing, then straight legs with the hips 8 cm
+            // lower: the planted ankle is 8 cm inside the straight leg.
+            pose[0].translation = Vec3::new(0.0, if f < 4 { 0.9 } else { 0.82 }, 0.0);
+            if f < 4 {
+                for (thigh, shin) in [(22, 23), (26, 27)] {
+                    pose[thigh].rotation = bend(-0.3);
+                    pose[shin].rotation = bend(0.6);
+                }
+            }
+            pose
+        })
+        .collect();
+    let contacts = vec![[0.9, 0.0, 0.9, 0.0]; 10];
+    let mut planted = generated.clone();
+    plant_feet(&asset, &mut planted, &contacts);
+    for (f, pose) in planted.iter().enumerate().skip(4) {
+        let m = asset.model_space(pose);
+        for (hip, knee, ankle) in [(22, 23, 24), (26, 27, 28)] {
+            let (a, b, c) = (
+                m[hip].translation,
+                m[knee].translation,
+                m[ankle].translation,
+            );
+            // Still on its anchor (the bent stance's ankle).
+            let anchor = asset.model_space(&generated[0])[ankle].translation;
+            assert!(
+                (c - anchor).length() < 1e-3,
+                "frame {f}: ankle {c} off {anchor}"
+            );
+            // The bent stance's ankle is at y 0.85 − 0.9·cos 0.3 = −0.0097,
+            // so the hip (0.77 m) is 0.7797 m over it on two 0.45 m bones:
+            // the knee is √(0.45² − 0.38985²) = 0.2248 m forward of that
+            // line, and not aside.
+            let off = (b - a) - (c - a).normalize() * (b - a).dot((c - a).normalize());
+            assert!(
+                (off.z - 0.2248).abs() < 0.002 && off.x.abs() < 1e-3,
+                "frame {f}: knee off its line by {off}"
+            );
+        }
+    }
+}
+
+// A planted heel the hips rise away from: the knee straightens as it nears
+// straight-leg reach, never in one step (the knee pop of a hard two-bone
+// solve, which straightens the last centimetres of bend in one frame).
+#[test]
+fn a_leg_reaching_full_extension_straightens_without_a_pop() {
+    let asset = skeleton().asset();
+    let bend = |a: f32| Quat::from_rotation_x(a);
+    let frames = 20;
+    let generated: Vec<Vec<Trs>> = (0..frames)
+        .map(|f| {
+            let mut pose = asset.rest_pose();
+            // A knee bent 0.2 rad, the hips rising 4 mm a frame: the
+            // planted ankle 0.8955 m from the hip at first, out of the
+            // 0.9 m leg's reach by frame 2.
+            pose[0].translation = Vec3::new(0.0, 0.9 + 0.004 * f as f32, 0.0);
+            pose[22].rotation = bend(-0.1);
+            pose[23].rotation = bend(0.2);
+            pose[24].rotation = bend(-0.1);
+            pose
+        })
+        .collect();
+    let contacts = vec![[0.9, 0.0, 0.0, 0.0]; frames];
+    let mut planted = generated.clone();
+    plant_feet(&asset, &mut planted, &contacts);
+    let knee = |p: &[Trs]| {
+        let m = asset.model_space(p);
+        let (a, b, c) = (m[22].translation, m[23].translation, m[24].translation);
+        let along = (c - a).normalize();
+        ((b - a) - along * (b - a).dot(along)).length()
+    };
+    let bends: Vec<f32> = planted.iter().map(|p| knee(p)).collect();
+    // A hard solve takes the knee from 2.2 cm off the line to straight
+    // between frames 1 and 2; soft reach eases it over many frames.
+    for f in 1..frames {
+        let step = (bends[f] - bends[f - 1]).abs();
+        assert!(step < 0.012, "frame {f}: knee moved {step} m ({bends:?})");
+    }
+    // The ankle keeps to its anchor within the softened reach: short of it
+    // by no more than the leg's soft room.
+    let anchor = asset.model_space(&generated[0])[24].translation;
+    for (f, p) in planted.iter().enumerate() {
+        let hip = asset.model_space(p)[22].translation;
+        let ankle = asset.model_space(p)[24].translation;
+        let short = (anchor - hip).length().min(0.9) - (ankle - hip).length();
+        assert!(
+            short < 0.9 * og_motion::soma::SOFT_REACH + 1e-4,
+            "frame {f}: {short}"
+        );
+    }
+}
