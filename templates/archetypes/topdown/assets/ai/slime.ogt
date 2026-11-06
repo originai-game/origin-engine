@@ -4,6 +4,9 @@ version 1
 # The slime (crates/og-ai/README.md has every node). og.ai runs it before
 # the game's systems; the first branch that does not fail decides, and the
 # tree is re-checked every tick, so seeing the hero halts the patrol at once.
+# "The hero" is its og.Perception's target: the nearest hero it sees (any
+# seat's; a downed one is hidden, ties go to the lower entity), so in co-op
+# it turns on whichever hero comes closer, the same on every peer.
 name "slime"
 route beat {                       # the west room's middle, round the key's corner
   point 13.5 6.5 0

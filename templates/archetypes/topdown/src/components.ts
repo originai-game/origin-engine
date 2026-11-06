@@ -4,9 +4,9 @@
 //
 // The run's state (Game) and the knobs (Tuning) are resources, so every
 // system reads them without carrying them on its rows. The actors are
-// components: one Hero, one Slime, the Pickups and the Sfx voices.
+// components: a Hero per seat, one Slime, the Pickups and the Sfx voices.
 
-import { bool, defineComponent, defineResource, f32, f64, i32, u32 } from "@origingame/engine";
+import { bool, defineComponent, defineResource, f32, f64, i32, list, u32 } from "@origingame/engine";
 
 /** Which way the hero faces: the clip row of src/art.ts and the attack's direction. */
 export const Facing = { Down: 0, Up: 1, Left: 2, Right: 3 } as const;
@@ -17,32 +17,28 @@ export const PickupKind = { Coin: 1, Key: 2 } as const;
 /** Sound requests: bits of Game.sfx that the Sfx system plays once each. */
 export const Sound = { Hit: 1, Hurt: 2, Coin: 4, Key: 8, Door: 16, Step: 32 } as const;
 
-/** The run: the hero's health and purse, the door, the room and the effects' bookkeeping. */
+/** The run: the party's purse, the key, the door, the room and the effects' bookkeeping (each hero's own state is its Hero). */
 export const Game = defineResource("Game", {
-  hp: u32(3, { doc: "The hero's hearts left." }),
-  hpMax: u32(3, { doc: "Hearts at the start." }),
-  coins: u32(0, { doc: "Coins picked up." }),
+  hpMax: u32(3, { doc: "Each hero's hearts at the start." }),
+  coins: u32(0, { doc: "Coins picked up (shared by the party)." }),
   coinsTotal: u32(0, { doc: "Coins the map placed (worked out in start)." }),
-  hasKey: bool(false, { doc: "The key is picked up." }),
+  hasKey: bool(false, { doc: "The key is picked up (shared: either hero carrying it opens the door)." }),
   doorOpen: bool(false, { doc: "The doorway between the rooms is open." }),
-  room: u32(1, { doc: "The room the hero stands in: 1 west, 2 east." }),
+  room: u32(1, { doc: "The party's room: 1 west, 2 east. With two heroes both are in it (Control brings a straggler through the doorway)." }),
   enemyHp: u32(0, { doc: "The slime's health (0 once it is dead)." }),
   enemyHits: u32(0, { doc: "Hits the slime has taken; the third is a crit." }),
-  heroX: f32(0, { unit: "m", doc: "The hero's feet, written by Control for the other systems." }),
-  heroY: f32(0, { unit: "m" }),
-  facing: u32(Facing.Down, { doc: "Facing.* of src/components.ts." }),
-  swing: bool(false, { doc: "The sword's strike frame fired this tick (the hero's 'hit' flipbook event)." }),
-  swingX: f32(0, { unit: "m", doc: "The strike's centre." }),
-  swingY: f32(0, { unit: "m" }),
+  heroX: list(f32(), 2, { doc: "Each seat's hero's feet (seat order), written by Control for the other systems." }),
+  heroY: list(f32(), 2),
+  heroUp: list(u32(), 2, { doc: "1 while the seat's hero stands (hp above 0)." }),
+  strikeX: list(f32(), 2, { doc: "The sword strikes of this tick (a hero's 'hit' flipbook event): each one's centre." }),
+  strikeY: list(f32(), 2),
+  strikerX: list(f32(), 2, { doc: "Where the hero of each strike stood (a struck slime is knocked away from it)." }),
+  strikerY: list(f32(), 2),
   swings: u32(0, { doc: "Strikes so far." }),
   steps: u32(0, { doc: "Footsteps (the walk clips' 'step' events)." }),
-  iframes: u32(0, { unit: "ticks", doc: "Ticks the hero is invulnerable for after a hurt." }),
-  hurts: u32(0, { doc: "Times the hero was hurt." }),
-  downTicks: u32(0, { unit: "ticks", doc: "Ticks since hp reached 0; the hero stands up at the spawn after a while." }),
+  hurts: u32(0, { doc: "Times a hero was hurt." }),
   spawnX: f32(0, { unit: "m", doc: "The map's spawn point." }),
   spawnY: f32(0, { unit: "m" }),
-  knockX: f32(0, { unit: "m/s", doc: "The hero's knockback velocity; it decays every tick." }),
-  knockY: f32(0, { unit: "m/s" }),
   doorX: f32(0, { unit: "m", doc: "The doorway's centre (from the map's door object)." }),
   doorY: f32(0, { unit: "m" }),
   doorCellX: u32(0, { doc: "The doorway's first cell (map columns and rows)." }),
@@ -70,8 +66,10 @@ export const Tuning = defineResource("Tuning", {
   iframes: u32(50, { min: 0, max: 180, step: 5, unit: "ticks", tunable: true, label: "Invulnerable ticks" }),
 });
 
-/** The hero: the attack and dash timers and the clip on show. */
+/** A hero (one per seat, its og.PlayerInput's player): its hearts, facing, the attack and dash timers, and its seat's buttons last tick. */
 export const Hero = defineComponent("Hero", {
+  hp: u32(3, { doc: "Hearts left." }),
+  facing: u32(Facing.Down, { doc: "Facing.* of src/components.ts." }),
   attack: u32(0, { unit: "ticks", doc: "Ticks left in the current swing; input waits until 0." }),
   dash: u32(0, { unit: "ticks", doc: "Ticks left in the current dash." }),
   dashCooldown: u32(0, { unit: "ticks" }),
@@ -79,6 +77,11 @@ export const Hero = defineComponent("Hero", {
   dashY: f32(0),
   dashes: u32(0, { doc: "Dashes so far." }),
   moving: bool(false, { doc: "Walk input was held this tick." }),
+  iframes: u32(0, { unit: "ticks", doc: "Ticks it is invulnerable for after a hurt." }),
+  knockX: f32(0, { unit: "m/s", doc: "Its knockback velocity; it decays every tick." }),
+  knockY: f32(0, { unit: "m/s" }),
+  downTicks: u32(0, { unit: "ticks", doc: "Ticks since hp reached 0; it stands up at the spawn after a while." }),
+  before: u32(0, { doc: "Its seat's og.PlayerInput.buttons last tick (for presses)." }),
 });
 
 /** A slime: health, its own knockback and the death. What it does is assets/ai/slime.ogt (og.ai) moving it on the map's grid (og.nav). */
@@ -103,13 +106,13 @@ export const Pickup = defineComponent("Pickup", {
 });
 
 /**
- * The run's facts, copied from Game onto the hero every tick by the Hud
- * system: `dump_entity:hero` shows them, which is how the playtests read the
- * run (the command channel dumps entities, not resources).
+ * The run's facts, copied from Game and each hero's own Hero onto it every
+ * tick by the Hud system: `dump_entity:hero` shows them, which is how the
+ * playtests read the run (the command channel dumps entities, not resources).
  */
 export const Report = defineComponent("Report", {
   room: u32(1),
-  hp: u32(0),
+  hp: u32(0, { doc: "This hero's hearts." }),
   coins: u32(0),
   hasKey: bool(false),
   doorOpen: bool(false),
@@ -118,7 +121,7 @@ export const Report = defineComponent("Report", {
   swings: u32(0),
   steps: u32(0),
   hurts: u32(0),
-  facing: u32(0),
+  facing: u32(0, { doc: "This hero's facing." }),
   doorWall: i32(0, { doc: "og.tilemap.getTile of the walls terrain at the doorway's first cell: the auto-tiled wall tile while closed, -1 once open." }),
 });
 

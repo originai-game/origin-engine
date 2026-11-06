@@ -6,18 +6,25 @@
 // layers (floor, the wall terrain that auto-tiles and collides, the door,
 // torches drawn above the hero) and its objects (the spawn, the enemy, the
 // pickups, the door and the two rooms). `start` below loads it, spawns the
-// actors at its objects, gives each room a camera zone and the hero a 2D
-// follow camera. The slime's mind is data: assets/ai/slime.ogt, a behaviour
-// tree og.ai runs (patrol, chase on sight, bite, flee when hurt), walking a
-// grid og.nav makes from the map's wall collision. The systems are in
+// actors at its objects, gives each room a camera zone and the heroes a 2D
+// follow camera on their middle. The slime's mind is data:
+// assets/ai/slime.ogt, a behaviour tree og.ai runs (patrol, chase on sight,
+// bite, flee when hurt) against the nearest hero it sees, walking a grid
+// og.nav makes from the map's wall collision. The systems are in
 // src/systems.ts, the state in src/components.ts, the flipbook sheets in
 // src/art.ts.
+//
+// Every hero is a seat (src/seats.ts): its og.PlayerInput is all the
+// systems read, so the tomb plays alone, two in co-op on one device (a
+// second, tinted hero beside the first, the coins, the key and the door
+// shared) or two over a room in lockstep, as src/creation.ts says.
 
 import { og, BODY_DYNAMIC, LOCK_ROTATION_X, LOCK_ROTATION_Y, LOCK_ROTATION_Z, LOCK_TRANSLATION_Z, SHAPE_BOX } from "@origingame/engine";
 import type { Entity, FlipbookInfo, World } from "@origingame/engine";
 import { checkHeroClips, clip, heroClip, HeroClip, loadSheets } from "./art.ts";
 import { Facing, Game, Hero, Pickup, PickupKind, Report, Slime, Sfx, Sound, Tuning } from "./components.ts";
-import { biteHero, Control, defineActions, Door, Hud, openDoor, Pickups, Slimes, Voices } from "./systems.ts";
+import { biteHero, Control, Door, heroName, Hud, openDoor, Pickups, SEAT_GAP, Slimes, Voices } from "./systems.ts";
+import { SEATS, Seats, setBot, setupSeats } from "./seats.ts";
 
 /** The visible height in tiles: a whole room (12 tall), as in the old top-down adventures. */
 const VIEW_HEIGHT = 12;
@@ -30,6 +37,10 @@ const ACTOR_LAYER = 0;
 const WALLS = 1;
 const HERO = 4;
 const SLIMES = 2;
+
+/** The second seat's hero: a cool tint over the same sheet (linear), and its dash's ghosts. */
+const SECOND_INK = { r: 0.55, g: 0.8, b: 1 };
+const SECOND_GHOST = { r: 0.45, g: 0.75, b: 1 };
 
 const LOCK_2D = LOCK_TRANSLATION_Z | LOCK_ROTATION_X | LOCK_ROTATION_Y | LOCK_ROTATION_Z;
 
@@ -67,7 +78,7 @@ function body(world: World, e: Entity, w: number, h: number, layer: number): voi
 }
 
 function start(world: World): void {
-  defineActions(world);
+  setupSeats(world);
   const sheets = loadSheets(world);
   checkHeroClips(sheets.hero);
   const font = must(og.load.font(world, "fonts/ui.ttf"));
@@ -148,19 +159,27 @@ function start(world: World): void {
   game.roomSplit = split;
   game.spawnX = spawn.x;
   game.spawnY = spawn.y;
-  game.heroX = spawn.x;
-  game.heroY = spawn.y;
+  game.heroX = Array.from({ length: SEATS }, (_, seat) => spawn.x + seat * SEAT_GAP);
+  game.heroY = Array.from({ length: SEATS }, () => spawn.y);
+  game.heroUp = Array.from({ length: SEATS }, () => 1);
 
-  // The hero: the sprite, the walk, the body, the dash's ghosts and the camera.
-  const hero = actor(world, "hero", spawn.x, spawn.y, sheets.hero, heroClip(HeroClip.Idle, Facing.Down), 0.35);
-  // The hero walks as og.CharacterController in its top-down mode (gravityScale 0): a kinematic box that slides along the walls.
-  must(world.insert(hero, og.Collider, { shape: SHAPE_BOX, size: { x: 0.6, y: 0.35, z: 1 }, offset: { x: 0, y: 0.35 / 2, z: 0 }, friction: 0, layers: HERO, mask: WALLS }));
-  must(world.insert(hero, og.CharacterController, { gravityScale: 0, snapDistance: 0, stepHeight: 0, pushBodies: false }));
-  must(world.insert(hero, Hero));
-  must(world.insert(hero, Report));
-  must(world.insert(hero, og.Perceivable, { team: 1, eyeHeight: 0 }));
-  must(world.insert(hero, og.Afterimage, { count: 4, interval: 2, opacity: 0.5, color: { r: 1, g: 0.75, b: 0.45 }, active: false }));
-  must(world.insert(hero, og.Follow2D, { offset: { x: 0, y: 0.5 }, deadZone: { x: 0.6, y: 0.4 }, smoothTime: 0.12, lookAhead: 0.15, lookAheadMax: { x: 1.5, y: 1 } }));
+  // A hero per seat (src/seats.ts gives its og.PlayerInput): the sprite, the walk, the body and the dash's ghosts; seat 1 stands beside seat 0, tinted.
+  for (let seat = 0; seat < SEATS; seat++) {
+    const x = spawn.x + seat * SEAT_GAP;
+    const hero = actor(world, heroName(seat), x, spawn.y, sheets.hero, heroClip(HeroClip.Idle, Facing.Down), 0.35);
+    if (seat > 0) must(world.set(hero, og.Sprite, { color: SECOND_INK }));
+    // The hero walks as og.CharacterController in its top-down mode (gravityScale 0): a kinematic box that slides along the walls. Heroes pass through each other.
+    must(world.insert(hero, og.Collider, { shape: SHAPE_BOX, size: { x: 0.6, y: 0.35, z: 1 }, offset: { x: 0, y: 0.35 / 2, z: 0 }, friction: 0, layers: HERO, mask: WALLS }));
+    must(world.insert(hero, og.CharacterController, { gravityScale: 0, snapDistance: 0, stepHeight: 0, pushBodies: false }));
+    must(world.insert(hero, og.PlayerInput, { player: seat }));
+    must(world.insert(hero, Hero, { hp: game.hpMax }));
+    must(world.insert(hero, Report));
+    must(world.insert(hero, og.Perceivable, { team: 1, eyeHeight: 0 }));
+    must(world.insert(hero, og.Afterimage, { count: 4, interval: 2, opacity: 0.5, color: seat > 0 ? SECOND_GHOST : { r: 1, g: 0.75, b: 0.45 }, active: false }));
+  }
+  // The camera follows the heroes' middle (Control moves the view; the rooms' zones keep it in the party's room).
+  const view = must(world.spawn({ name: "view", position: { x: spawn.x + ((SEATS - 1) * SEAT_GAP) / 2, y: spawn.y, z: 0 } }));
+  must(world.insert(view, og.Follow2D, { offset: { x: 0, y: 0.5 }, deadZone: { x: 0.6, y: 0.4 }, smoothTime: 0.12, lookAhead: 0.15, lookAheadMax: { x: 1.5, y: 1 } }));
 
   // An orthographic camera on the spawn's room.
   const camera = must(world.resource(og.Camera));
@@ -199,7 +218,7 @@ function num(s: string | undefined, what: string): number {
   return n;
 }
 
-/** `place:<x>:<y>`: put the hero's feet at a world point, standing still. */
+/** `place:<x>:<y>`: put seat 0's hero's feet at a world point, standing still. */
 function place(world: World, args: readonly string[]): void {
   const hero = heroOf(world);
   const x = num(args[0], "x");
@@ -207,8 +226,8 @@ function place(world: World, args: readonly string[]): void {
   must(world.set(hero, og.Transform, { position: { x, y, z: 0 } }));
   must(world.set(hero, og.CharacterController, { move: { x: 0, y: 0, z: 0 } }));
   const g = must(world.resource(Game));
-  g.heroX = x;
-  g.heroY = y;
+  g.heroX = g.heroX.map((v, seat) => (seat === 0 ? x : v));
+  g.heroY = g.heroY.map((v, seat) => (seat === 0 ? y : v));
 }
 
 /** `slime:<x>:<y>`: move the slime there. */
@@ -227,11 +246,11 @@ function give(world: World, args: readonly string[]): void {
   else throw new Error("write give:<key|coin|door>");
 }
 
-/** `face:<down|up|left|right>`: turn the hero. */
+/** `face:<down|up|left|right>`: turn seat 0's hero. */
 function face(world: World, args: readonly string[]): void {
   const f = { down: Facing.Down, up: Facing.Up, left: Facing.Left, right: Facing.Right }[args[0] ?? ""];
   if (f === undefined) throw new Error("write face:<down|up|left|right>");
-  must(world.resource(Game)).facing = f;
+  must(world.set(heroOf(world), Hero, { facing: f }));
 }
 
 const round = (n: number) => Math.round(n * 100) / 100;
@@ -240,11 +259,12 @@ export default og.game({
   tick: 60,
   seed: 1,
   resources: [Game, Tuning],
-  systems: [Control, Slimes, Pickups, Door, Voices, Hud],
+  systems: [Seats, Control, Slimes, Pickups, Door, Voices, Hud],
   render: { antialias: "off" },
   start,
-  commands: { place, slime, give, face, bite: biteHero },
+  commands: { place, slime, give, face, bite: biteHero, bot: (_world, args) => setBot(Number(args[0])) },
   commandHelp: {
+    bot: { usage: "<n>", doc: "This device's seats take scripted input by the tick (1, 2, ...); 0 gives them back." },
     place: { usage: "<x>:<y>", doc: "Put the hero's feet at a world point, standing still." },
     slime: { usage: "<x>:<y>", doc: "Move the slime there." },
     give: { usage: "<key|coin|door>", doc: "Give the key or a coin, or open the doorway." },
@@ -258,19 +278,22 @@ export default og.game({
     if (!g.ok || hero === null || map === null) return null;
     const v = g.value;
     const h = world.get(hero, Hero);
+    const second = SEATS > 1 ? world.find(heroName(1)) : null;
+    const h2 = second === null ? null : world.get(second, Hero);
     const slimeE = world.find("slime");
     const s = slimeE === null ? null : world.get(slimeE, og.Transform);
     return {
       room: v.room,
-      hp: v.hp,
+      hp: h.ok ? h.value.hp : 0,
       coins: v.coins,
       hasKey: v.hasKey,
       enemyHp: v.enemyHp,
       doorOpen: v.doorOpen,
       doorWall: og.tilemap.getTile(world, map, "walls", v.doorCellX, v.doorCellY),
-      hero: { x: round(v.heroX), y: round(v.heroY) },
+      hero: { x: round(v.heroX[0] ?? 0), y: round(v.heroY[0] ?? 0) },
+      ...(SEATS > 1 ? { seats: SEATS, hero2: { x: round(v.heroX[1] ?? 0), y: round(v.heroY[1] ?? 0) }, hp2: h2 !== null && h2.ok ? h2.value.hp : 0 } : {}),
       slime: s !== null && s.ok ? { x: round(s.value.position.x), y: round(s.value.position.y) } : null,
-      facing: ["down", "up", "left", "right"][v.facing],
+      facing: h.ok ? ["down", "up", "left", "right"][h.value.facing] : null,
       steps: v.steps,
       swings: v.swings,
       hits: v.enemyHits,

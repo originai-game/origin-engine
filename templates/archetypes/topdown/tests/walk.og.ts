@@ -17,10 +17,10 @@ export default playtest({
     hold("KeyW", 1.4, 3.0),
     "3.1:dump_entity:hero:up.json",
     // Left along the wall to the west wall (column 0 covers x 0..1; the box is 0.6 wide).
-    "3.2:key_down:ArrowLeft",
+    "3.2:key_down:KeyA",
     "3.6:dump_entity:hero:walking-left.json",
     "3.6:screenshot:walk.png",
-    "5.4:key_up:ArrowLeft",
+    "5.4:key_up:KeyA",
     "5.5:dump_entity:hero:left.json",
     "5.6:quit",
   ].join(";"),

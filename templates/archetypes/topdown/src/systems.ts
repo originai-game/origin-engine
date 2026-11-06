@@ -1,5 +1,6 @@
-// Tomb Room's systems, in tick order: Control (the hero: walk, swing, dash,
-// hurt), Slimes (take hits, knockback and death; what a slime decides is
+// Tomb Room's systems, in tick order (after src/seats.ts's Seats, which
+// gives each seat's input to og.PlayerInput): Control (a hero per seat:
+// walk, swing, dash, hurt; the party's room), Slimes (take hits, knockback and death; what a slime decides is
 // assets/ai/slime.ogt, run by og.ai before these systems and moved by og.nav
 // after them), Pickups (coins and the key), Door (the locked doorway and the
 // rooms), Sfx (the voices) and Hud (screen text). `biteHero` is the
@@ -16,6 +17,7 @@ import { og, defineSystem } from "@origingame/engine";
 import type { Entity, Value, Vector3, View, World } from "@origingame/engine";
 import { HeroClip, heroClip } from "./art.ts";
 import { Facing, Game, Hero, Pickup, PickupKind, Report, Slime, Sfx, Sound, Tuning } from "./components.ts";
+import { LOCAL, pressedNow, SEATS } from "./seats.ts";
 
 /** The swing's length: the attack clips' two frames (0.07 s + 0.18 s). */
 export const ATTACK_TICKS = 15;
@@ -51,46 +53,36 @@ function float(world: World, font: never, text: string, at: Vector3, color: { r:
   must(og.render.floatingText(world, { text, position: at, font, size: 0.42, color, crit, rise: 1.1, lifetime: 0.75 }));
 }
 
-/** The hero's actions (defineActions, at start): what the player rebinds, read instead of keys. */
-export const MOVE = "move";
-export const ATTACK = "attack";
-export const DASH = "dash";
-
-/**
- * The hero's actions with their default bindings: keys and a pad drive each
- * one, the player may rebind them (og.input.rebind), and a prompt reads
- * their glyph on the device used last (og.input.glyph).
- */
-export function defineActions(world: World): void {
-  must(og.input.defineAction(world, {
-    name: MOVE,
-    kind: "axis2",
-    label: "Move",
-    bindings: [
-      { up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD" },
-      { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight" },
-      { control: "pad.leftXY" },
-      { control: "pad.dpad" },
-    ],
-  }));
-  must(og.input.defineAction(world, {
-    name: ATTACK,
-    label: "Attack",
-    bindings: [{ control: "Space" }, { control: "KeyJ" }, { control: "pad.a" }],
-  }));
-  must(og.input.defineAction(world, {
-    name: DASH,
-    label: "Dash",
-    bindings: [{ control: "ShiftLeft" }, { control: "ShiftRight" }, { control: "KeyK" }, { control: "pad.b" }],
-  }));
+/** A seat's hero: `hero` for seat 0, `hero-<seat>` for the others. */
+export function heroName(seat: number): string {
+  return seat === 0 ? "hero" : `hero-${seat}`;
 }
 
-/** The hero: the move action walks it on the tick it is read; attack swings, dash dashes; hurt knocks it back and flickers it. */
+/** Seat 1's hero stands this far right of seat 0's at the spawn. */
+export const SEAT_GAP = 1;
+
+/** sqrt(x² + y²) the same on every JavaScript engine (Math.hypot is not: og check's lockstep lint). */
+export const hypot = (x: number, y: number): number => Math.sqrt(x * x + y * y);
+
+/** Where a straggler, or a hero standing up while the party is in the east room, comes in: just inside the party's room by the doorway. */
+function entry(g: GameValue, room: number, seat: number): { x: number; y: number } {
+  return { x: g.doorX + (room === 2 ? 2.5 : -2.5), y: g.doorY - 0.5 - 0.6 * seat };
+}
+
+/**
+ * The heroes, one per seat: each reads its seat's og.PlayerInput (the move,
+ * src/creation.ts's attack and dash bits) on the tick it arrives; attack
+ * swings, dash dashes; hurt knocks it back and flickers it. The party is in
+ * one room: once a standing hero crosses into the other room, the others
+ * are brought through the doorway beside it (the camera's zones then
+ * scroll), and a hero standing up again does so in the party's room. The
+ * camera's view entity follows the heroes' middle.
+ */
 export const Control = defineSystem(
   "Control",
   {
-    reads: [Tuning, og.FlipbookEvent],
-    writes: [Game, Hero, og.Transform, og.CharacterController, og.Flipbook, og.Sprite, og.Afterimage],
+    reads: [og.PlayerInput, Tuning, og.FlipbookEvent],
+    writes: [Game, Hero, og.Transform, og.CharacterController, og.Flipbook, og.Sprite, og.Afterimage, og.Perceivable],
   },
   (q, time, world) => {
     const game = world.resource(Game);
@@ -98,20 +90,60 @@ export const Control = defineSystem(
     if (!game.ok || !tune.ok) return;
     const g = game.value;
     const t = tune.value;
-    g.swing = false;
+    // The party's room: the room a standing hero has crossed into (alone, the hero's room).
+    let room = g.room;
     for (const a of q.archetypes()) {
+      const hero = a.column(Hero);
+      const p = a.column(og.Transform).position;
+      for (let i = 0; i < a.count; i++) {
+        const r = p[i * 3]! < g.roomSplit ? 1 : 2;
+        if (SEATS === 1 || (hero.hp[i]! > 0 && r !== g.room)) room = r;
+      }
+    }
+    g.room = room;
+    const xs = [0, 0];
+    const ys = [0, 0];
+    const up = [0, 0];
+    const strikeX: number[] = [];
+    const strikeY: number[] = [];
+    const strikerX: number[] = [];
+    const strikerY: number[] = [];
+    let sx = 0;
+    let sy = 0;
+    let n = 0;
+    for (const a of q.archetypes()) {
+      const input = a.column(og.PlayerInput);
       const hero = a.column(Hero);
       const p = a.column(og.Transform).position;
       const v = a.column(og.CharacterController).move;
       const fb = a.column(og.Flipbook);
       const sprite = a.column(og.Sprite);
       const ghost = a.column(og.Afterimage);
+      const seen = a.column(og.Perceivable);
       for (let i = 0; i < a.count; i++) {
         const me = a.entity(i);
+        const seat = input.player[i]!;
+        if (SEATS > 1 && (p[i * 3]! < g.roomSplit ? 1 : 2) !== room) {
+          // A straggler: brought through the doorway beside the others.
+          const at = entry(g, room, seat);
+          p[i * 3] = at.x;
+          p[i * 3 + 1] = at.y;
+          hero.knockX[i] = 0;
+          hero.knockY[i] = 0;
+        }
         const x = p[i * 3]!;
         const y = p[i * 3 + 1]!;
-        g.heroX = x;
-        g.heroY = y;
+        xs[seat] = x;
+        ys[seat] = y;
+        up[seat] = hero.hp[i]! > 0 ? 1 : 0;
+        sx += x;
+        sy += y;
+        n += 1;
+        // The seat's presses, read every tick (a press during a hit stop is spent, as a key's was).
+        const buttons = input.buttons[i]!;
+        const attackPressed = pressedNow(buttons, hero.before[i]!, "attack");
+        const dashPressed = pressedNow(buttons, hero.before[i]!, "dash");
+        hero.before[i] = buttons;
         // The flipbook's frame events from the hero's clips.
         for (const e of world.events(og.FlipbookEvent)) {
           if (e.entity !== me) continue;
@@ -120,61 +152,65 @@ export const Control = defineSystem(
             g.sfx |= Sound.Step;
           }
           if (e.name === "hit") {
-            const d = facingVector(g.facing);
-            g.swing = true;
+            const d = facingVector(hero.facing[i]!);
             g.swings += 1;
-            g.swingX = x + d.x * t.reach;
-            g.swingY = y + CHEST + d.y * t.reach;
+            strikeX.push(x + d.x * t.reach);
+            strikeY.push(y + CHEST + d.y * t.reach);
+            strikerX.push(x);
+            strikerY.push(y);
           }
         }
+        // A downed hero is hidden from the slimes (their own team's).
+        seen.team[i] = hero.hp[i]! > 0 ? 1 : 2;
         // A hit stop holds the body (physics is frozen); the timers wait with it.
         if (time.hitStop > 0) continue;
 
-        if (g.iframes > 0) g.iframes -= 1;
-        sprite.opacity[i] = g.iframes > 0 && Math.floor(g.iframes / 4) % 2 === 1 ? 0.35 : 1;
-        g.knockX *= 0.8;
-        g.knockY *= 0.8;
-        if (Math.abs(g.knockX) < 0.05) g.knockX = 0;
-        if (Math.abs(g.knockY) < 0.05) g.knockY = 0;
+        if (hero.iframes[i]! > 0) hero.iframes[i] = hero.iframes[i]! - 1;
+        sprite.opacity[i] = hero.iframes[i]! > 0 && Math.floor(hero.iframes[i]! / 4) % 2 === 1 ? 0.35 : 1;
+        let kx = hero.knockX[i]! * 0.8;
+        let ky = hero.knockY[i]! * 0.8;
+        if (Math.abs(kx) < 0.05) kx = 0;
+        if (Math.abs(ky) < 0.05) ky = 0;
+        hero.knockX[i] = kx;
+        hero.knockY[i] = ky;
 
-        // Down: the hero lies still, then stands up at the spawn with full hearts.
-        if (g.hp === 0) {
+        // Down: the hero lies still, then stands up at the spawn (the party's room's way in) with full hearts.
+        if (hero.hp[i] === 0) {
           hero.attack[i] = 0;
           hero.dash[i] = 0;
           ghost.active[i] = 0;
           v[i * 3] = 0;
           v[i * 3 + 1] = 0;
-          g.downTicks += 1;
-          if (g.downTicks >= DOWN_TICKS) {
-            g.hp = g.hpMax;
-            g.downTicks = 0;
-            g.iframes = t.iframes;
-            p[i * 3] = g.spawnX;
-            p[i * 3 + 1] = g.spawnY;
+          hero.downTicks[i] = hero.downTicks[i]! + 1;
+          if (hero.downTicks[i]! >= DOWN_TICKS) {
+            hero.hp[i] = g.hpMax;
+            hero.downTicks[i] = 0;
+            hero.iframes[i] = t.iframes;
+            const at = SEATS > 1 && room === 2 ? entry(g, room, seat) : { x: g.spawnX + seat * SEAT_GAP, y: g.spawnY };
+            p[i * 3] = at.x;
+            p[i * 3 + 1] = at.y;
           }
           continue;
         }
 
-        // Which way the player points: the `move` action (WASD, the arrows,
-        // the left stick or the d-pad; the strongest binding wins, a diagonal
-        // is at most 1 long, the stick's dead zone is the action map's).
-        const m = og.input.actionVector(world, MOVE);
-        const len = Math.hypot(m.x, m.y);
-        const mx = len > 1 ? m.x / len : m.x;
-        const my = len > 1 ? m.y / len : m.y;
+        // Which way the seat points: og.PlayerInput's move (WASD, the arrows,
+        // a stick, a d-pad or the touch stick; src/seats.ts), a diagonal at
+        // most 1 long.
+        const len = hypot(input.x[i]!, input.y[i]!);
+        const mx = len > 1 ? input.x[i]! / len : input.x[i]!;
+        const my = len > 1 ? input.y[i]! / len : input.y[i]!;
         const moving = len > 0;
         hero.moving[i] = moving ? 1 : 0;
 
         if (hero.dashCooldown[i]! > 0) hero.dashCooldown[i] = hero.dashCooldown[i]! - 1;
-        const attackPressed = og.input.actionPressed(world, ATTACK);
-        const dashPressed = og.input.actionPressed(world, DASH);
 
         // Facing follows the stronger axis; a diagonal keeps the old facing when it is one of its two keys.
-        if (moving && hero.attack[i] === 0) g.facing = faceOf(mx, my, g.facing);
+        if (moving && hero.attack[i] === 0) hero.facing[i] = faceOf(mx, my, hero.facing[i]!);
+        const facing = hero.facing[i]!;
 
         if (attackPressed && hero.attack[i] === 0 && hero.dash[i] === 0) hero.attack[i] = ATTACK_TICKS;
         if (dashPressed && hero.attack[i] === 0 && hero.dash[i] === 0 && hero.dashCooldown[i] === 0) {
-          const d = moving ? { x: mx, y: my } : facingVector(g.facing);
+          const d = moving ? { x: mx, y: my } : facingVector(facing);
           hero.dash[i] = t.dashTicks;
           hero.dashCooldown[i] = t.dashCooldown;
           hero.dashX[i] = d.x;
@@ -196,18 +232,28 @@ export const Control = defineSystem(
           vy = my * t.speed;
         }
         ghost.active[i] = hero.dash[i]! > 0 ? 1 : 0;
-        v[i * 3] = vx + g.knockX;
-        v[i * 3 + 1] = vy + g.knockY;
+        v[i * 3] = vx + kx;
+        v[i * 3 + 1] = vy + ky;
         v[i * 3 + 2] = 0;
 
         // The clip: a swing, a walk or a stand, in the facing's row. A clip change restarts it.
         const swinging = hero.attack[i]! > 0;
         const action = swinging ? HeroClip.Attack : moving || hero.dash[i]! > 0 ? HeroClip.Walk : HeroClip.Idle;
-        const want = heroClip(action, g.facing);
+        const want = heroClip(action, facing);
         if (fb.clip[i] !== want) fb.clip[i] = want;
-        sprite.flipX[i] = g.facing === Facing.Left ? 1 : 0;
+        sprite.flipX[i] = facing === Facing.Left ? 1 : 0;
       }
     }
+    g.heroX = xs.slice(0, SEATS);
+    g.heroY = ys.slice(0, SEATS);
+    g.heroUp = up.slice(0, SEATS);
+    g.strikeX = strikeX;
+    g.strikeY = strikeY;
+    g.strikerX = strikerX;
+    g.strikerY = strikerY;
+    // The camera follows the heroes' middle (og.Follow2D on the view; the rooms' og.CameraZone keep it in the party's room).
+    const view = world.find("view");
+    if (view !== null && n > 0) must(world.set(view, og.Transform, { position: { x: sx / n, y: sy / n, z: 0 } }));
   },
 );
 
@@ -251,7 +297,8 @@ export const Slimes = defineSystem(
         const me = a.entity(i);
         const x = p[i * 3]!;
         const y = p[i * 3 + 1]!;
-        eyes.sight[i] = g.hp > 0 ? t.slimeSight : 0;
+        // It sees the nearest standing hero (og.Perception picks it; a downed one is hidden), and none while every hero is down.
+        eyes.sight[i] = g.heroUp.includes(1) ? t.slimeSight : 0;
         if (s.dead[i]) {
           nav.drive[i] = 0;
           ai.active[i] = 0;
@@ -263,9 +310,10 @@ export const Slimes = defineSystem(
           continue;
         }
 
-        // The sword's strike frame: a circle of radius reach around the swing point.
-        if (g.swing && Math.hypot(g.swingX - x, g.swingY - (y + 0.3)) < t.reach + 0.35) {
-          hitSlime(world, me, g, t, s, i, x, y, font);
+        // Each sword strike of this tick: a circle of radius reach around its swing point.
+        for (let k = 0; k < g.strikeX.length && !s.dead[i]; k++) {
+          if (hypot(g.strikeX[k]! - x, g.strikeY[k]! - (y + 0.3)) >= t.reach + 0.35) continue;
+          hitSlime(world, me, g, t, s, i, x, y, font, k);
           fb.clip[i] = s.hurt[i]!;
         }
         if (s.dead[i] || time.hitStop > 0) {
@@ -293,9 +341,10 @@ export const Slimes = defineSystem(
 
 /**
  * `bite:<slime>`: the behaviour's attack (og.ai queues it with the slime's
- * handle when the hero is in reach; it runs before the next tick). The hero
- * is hurt and knocked away unless it is down or still blinking, and the
- * slime bounces back off the bite, so it does not sit on the hero.
+ * handle when its target is in reach; it runs before the next tick). The
+ * nearest standing hero in reach that is not still blinking (the lower seat
+ * on a tie) is hurt and knocked away, and the slime bounces back off the
+ * bite, so it does not sit on the hero.
  */
 export function biteHero(world: World, args: readonly string[]): void {
   const me = Number(args[0]) as Entity;
@@ -306,14 +355,21 @@ export function biteHero(world: World, args: readonly string[]): void {
   if (!game.ok || !tune.ok || !slime.ok || !at.ok) throw new Error(`bite: ${args[0]} is not a slime`);
   const g = game.value;
   const s = slime.value;
-  if (s.dead || s.stun > 0 || g.hp === 0 || g.iframes > 0) return;
-  const dx = g.heroX - at.value.position.x;
-  const dy = g.heroY - at.value.position.y;
-  const d = Math.hypot(dx, dy);
-  if (d > 0.85) return;
-  const ux = d > 0.01 ? dx / d : 0;
-  const uy = d > 0.01 ? dy / d : 1;
-  hurtHero(world, g, tune.value, ux, uy, fontOf(g));
+  if (s.dead || s.stun > 0) return;
+  let best: { e: Entity; h: Value<typeof Hero>; seat: number; d: number; dx: number; dy: number } | null = null;
+  for (let seat = 0; seat < g.heroX.length; seat++) {
+    const e = world.find(heroName(seat));
+    const h = e === null ? null : world.get(e, Hero);
+    if (e === null || h === null || !h.ok || h.value.hp === 0 || h.value.iframes > 0) continue;
+    const dx = g.heroX[seat]! - at.value.position.x;
+    const dy = g.heroY[seat]! - at.value.position.y;
+    const d = hypot(dx, dy);
+    if (d <= 0.85 && (best === null || d < best.d)) best = { e, h: h.value, seat, d, dx, dy };
+  }
+  if (best === null) return;
+  const ux = best.d > 0.01 ? best.dx / best.d : 0;
+  const uy = best.d > 0.01 ? best.dy / best.d : 1;
+  hurtHero(world, g, tune.value, best.e, best.h, best.seat, ux, uy, fontOf(g));
   must(world.set(me, Slime, { knockX: -ux * tune.value.knockback * 0.5, knockY: -uy * tune.value.knockback * 0.5, stun: 20, bites: s.bites + 1 }));
 }
 
@@ -321,24 +377,29 @@ type GameValue = Value<typeof Game>;
 type TuneValue = Value<typeof Tuning>;
 type SlimeView = View<typeof Slime>;
 
-function hitSlime(world: World, me: Entity, g: GameValue, t: TuneValue, s: SlimeView, i: number, x: number, y: number, font: never): void {
+/** Strike `k` of this tick (Game.strikeX) lands on slime row i. */
+function hitSlime(world: World, me: Entity, g: GameValue, t: TuneValue, s: SlimeView, i: number, x: number, y: number, font: never, k: number): void {
   g.enemyHits += 1;
   const dmg = DAMAGE[Math.min(g.enemyHits, DAMAGE.length) - 1]!;
   const crit = g.enemyHits >= DAMAGE.length;
   const hp = Math.max(0, s.hp[i]! - dmg);
   s.hp[i] = hp;
   g.enemyHp = hp;
-  // Knocked away from the hero.
-  let kx = x - g.heroX;
-  let ky = y - g.heroY;
-  const kd = Math.hypot(kx, ky);
+  // Knocked away from the hero that struck it (on top of it: the way the hero faces, its strike's direction).
+  const hx = g.strikerX[k]!;
+  const hy = g.strikerY[k]!;
+  let kx = x - hx;
+  let ky = y - hy;
+  const kd = hypot(kx, ky);
   if (kd > 0.01) {
     kx /= kd;
     ky /= kd;
   } else {
-    const f = facingVector(g.facing);
-    kx = f.x;
-    ky = f.y;
+    kx = g.strikeX[k]! - hx;
+    ky = g.strikeY[k]! - CHEST - hy;
+    const fd = hypot(kx, ky);
+    kx /= fd;
+    ky /= fd;
   }
   s.knockX[i] = kx * t.knockback;
   s.knockY[i] = ky * t.knockback;
@@ -359,27 +420,21 @@ function hitSlime(world: World, me: Entity, g: GameValue, t: TuneValue, s: Slime
   }
 }
 
-function hurtHero(world: World, g: GameValue, t: TuneValue, dx: number, dy: number, font: never): void {
-  g.hp = Math.max(0, g.hp - 1);
+function hurtHero(world: World, g: GameValue, t: TuneValue, hero: Entity, h: Value<typeof Hero>, seat: number, dx: number, dy: number, font: never): void {
+  const hp = Math.max(0, h.hp - 1);
   g.hurts += 1;
-  g.iframes = t.iframes;
-  g.knockX = dx * t.knockback;
-  g.knockY = dy * t.knockback;
-  if (g.hp === 0) g.downTicks = 0;
-  const hero = world.find("hero");
-  if (hero !== null) {
-    must(og.tween.flash(world, { entity: hero, color: RED, duration: 0.2 }));
-    must(og.tween.squash(world, { entity: hero, impact: { x: 1.3, y: 0.75 }, duration: 0.22 }));
-  }
+  must(world.set(hero, Hero, { hp, iframes: t.iframes, knockX: dx * t.knockback, knockY: dy * t.knockback, ...(hp === 0 ? { downTicks: 0 } : {}) }));
+  must(og.tween.flash(world, { entity: hero, color: RED, duration: 0.2 }));
+  must(og.tween.squash(world, { entity: hero, impact: { x: 1.3, y: 0.75 }, duration: 0.22 }));
   // A hit taken holds the world a light hit's length (og-feel §3), shorter
   // than the hero's own blows, with the flash, the shake and the sound.
   must(og.time.hitStop(world, Math.max(2, t.hitStop - 1)));
   must(og.camera.shake(world, 0.4));
-  float(world, font, "-1", { x: g.heroX, y: g.heroY + 1.2, z: 0 }, RED);
+  float(world, font, "-1", { x: g.heroX[seat]!, y: g.heroY[seat]! + 1.2, z: 0 }, RED);
   g.sfx |= Sound.Hurt;
 }
 
-/** Coins and the key hover until the hero's chest touches them, then pop up and fade. */
+/** Coins and the key hover until a standing hero's chest touches them (the lower seat first), then pop up and fade; the party shares them. */
 export const Pickups = defineSystem(
   "Pickups",
   { writes: [Game, Pickup, og.Transform, og.Sprite], after: ["Slimes"] },
@@ -403,7 +458,11 @@ export const Pickups = defineSystem(
         const x = p[i * 3]!;
         const base = pk.baseY[i]!;
         p[i * 3 + 1] = base + 0.08 * tri(world.tick + i * 13, 70);
-        if (g.hp === 0 || Math.hypot(g.heroX - x, g.heroY + CHEST - (base + 0.4)) > 0.7) continue;
+        let taker = -1;
+        for (let seat = 0; seat < g.heroX.length && taker < 0; seat++) {
+          if (g.heroUp[seat] === 1 && hypot(g.heroX[seat]! - x, g.heroY[seat]! + CHEST - (base + 0.4)) <= 0.7) taker = seat;
+        }
+        if (taker < 0) continue;
         pk.taken[i] = 1;
         pk.takenTicks[i] = 0;
         const at = { x, y: base + 1.1, z: 0 };
@@ -419,23 +478,22 @@ export const Pickups = defineSystem(
         must(og.tween.to(world, { entity: me, field: "position.y", to: [base + 0.9], duration: 0.3, ease: "quadOut" }));
         must(og.tween.to(world, { entity: me, component: og.Sprite, field: "opacity", to: [0], duration: 0.3, delay: 0.08, ease: "quadIn" }));
         must(og.tween.squash(world, { entity: me, impact: { x: 0.6, y: 1.6 }, duration: 0.3 }));
-        const hero = world.find("hero");
+        const hero = world.find(heroName(taker));
         if (hero !== null) must(og.tween.squash(world, { entity: hero, impact: { x: 0.85, y: 1.2 }, duration: 0.2 }));
       }
     }
   },
 );
 
-/** The doorway: locked until the key; with it, the wall cells clear (re-tiling their neighbours and dropping their colliders). */
+/** The doorway: locked until the key; with it (whoever took it), the wall cells clear as a standing hero walks up (re-tiling their neighbours and dropping their colliders). */
 export const Door = defineSystem("Door", { writes: [Game], after: ["Pickups"] }, (_q, time, world) => {
   const game = world.resource(Game);
   if (!game.ok) return;
   const g = game.value;
-  g.room = g.heroX < g.roomSplit ? 1 : 2;
   if (time.hitStop > 0) return;
   if (g.lockedFor > 0) g.lockedFor -= 1;
-  if (g.doorOpen || g.hp === 0) return;
-  const near = Math.abs(g.heroX - g.doorX) < 1.6 && Math.abs(g.heroY - g.doorY) < 1.3;
+  if (g.doorOpen) return;
+  const near = g.heroX.some((x, seat) => g.heroUp[seat] === 1 && Math.abs(x - g.doorX) < 1.6 && Math.abs(g.heroY[seat]! - g.doorY) < 1.3);
   if (!near) return;
   const font = fontOf(g);
   if (!g.hasKey) {
@@ -492,17 +550,21 @@ export const Voices = defineSystem("Voices", { reads: [Sfx], writes: [Game, og.R
   g.sfx = left;
 });
 
-/** The HUD: hearts, coins, the key and the room, in screen space; the controls for the first seconds. Also copies the facts into the hero's Report. */
-export const Hud = defineSystem("Hud", { reads: [Game], writes: [Report], after: ["Voices"] }, (q, _time, world) => {
+/** The HUD: each hero's hearts, the coins, the key and the room, in screen space; the controls for the first seconds. Also copies the facts into each hero's Report. */
+export const Hud = defineSystem("Hud", { reads: [Game, Hero, og.PlayerInput], writes: [Report], after: ["Voices"] }, (q, _time, world) => {
   const game = world.resource(Game);
   if (!game.ok) return;
   const g = game.value;
   const map = world.find("tomb");
+  const hearts = [0, 0];
   for (const a of q.archetypes()) {
     const r = a.column(Report);
+    const hero = a.column(Hero);
+    const seat = a.column(og.PlayerInput).player;
     for (let i = 0; i < a.count; i++) {
+      hearts[seat[i]!] = hero.hp[i]!;
       r.room[i] = g.room;
-      r.hp[i] = g.hp;
+      r.hp[i] = hero.hp[i]!;
       r.coins[i] = g.coins;
       r.hasKey[i] = g.hasKey ? 1 : 0;
       r.doorOpen[i] = g.doorOpen ? 1 : 0;
@@ -511,7 +573,7 @@ export const Hud = defineSystem("Hud", { reads: [Game], writes: [Report], after:
       r.swings[i] = g.swings;
       r.steps[i] = g.steps;
       r.hurts[i] = g.hurts;
-      r.facing[i] = g.facing;
+      r.facing[i] = hero.facing[i]!;
       r.doorWall[i] = map === null ? -1 : og.tilemap.getTile(world, map, "walls", g.doorCellX, g.doorCellY);
     }
   }
@@ -530,15 +592,30 @@ export const Hud = defineSystem("Hud", { reads: [Game], writes: [Report], after:
   const right = band.x + band.width - pad;
   const line = (text: string, x: number, y: number, color: { r: number; g: number; b: number }, align: "start" | "center" | "end" = "start", s = size) =>
     must(og.render.text(world, { font, text, position: { x, y, z: 0 }, size: s, color, align, screen: true, outline: 0.5, outlineColor: { r: 0.008, g: 0.008, b: 0.011 } }));
-  line(`HP ${g.hp}/${g.hpMax}`, left, band.y + pad + size, g.hp > 1 ? WHITE : RED);
+  const hp = (seat: number) => `HP ${hearts[seat]}/${g.hpMax}`;
+  line(SEATS > 1 ? `P1 ${hp(0)}` : hp(0), left, band.y + pad + size, hearts[0]! > 1 ? WHITE : RED);
   line(`COINS ${g.coins}/${g.coinsTotal}`, left, band.y + pad + size * 2.3, GOLD);
   if (g.hasKey) line("KEY", left, band.y + pad + size * 3.6, GOLD);
   line(`ROOM ${g.room}`, right, band.y + pad + size, WHITE, "end");
+  if (SEATS > 1) line(`P2 ${hp(1)}`, right, band.y + pad + size * 2.3, hearts[1]! > 1 ? WHITE : RED, "end");
   if (world.tick < 300 && g.room === 1) {
     // The prompt names each action's binding on the device used last, so a
     // pad or a rebinding changes it: "W A S D move  ·  Space attack  ·  Shift dash".
-    const named = (action: string, verb: string) => `${og.input.glyph(world, action)?.text ?? "?"} ${verb}`;
-    line([named(MOVE, "move"), named(ATTACK, "attack"), named(DASH, "dash")].join("  ·  "), band.x + band.width / 2, band.y + band.height - pad, MINT, "center", Math.round(size * 0.75));
+    // Each local seat's own actions (src/seats.ts names them `<control>@<seat>`); a room shows this peer's.
+    const prompt = (seat: number) => {
+      // The font holds ← and → but not ↑ ↓: the arrow keys' composite is named.
+      const named = (action: string, verb: string) => {
+        const glyph = og.input.glyph(world, `${action}@${seat}`)?.text ?? "?";
+        return `${glyph.includes("↑") ? "Arrows" : glyph} ${verb}`;
+      };
+      return [named("move", "move"), named("attack", "attack"), named("dash", "dash")].join("  ·  ");
+    };
+    const small = Math.round(size * 0.75);
+    if (LOCAL) {
+      line(`P1  ${prompt(0)}`, band.x + band.width / 2, band.y + band.height - pad - small * 1.4, MINT, "center", small);
+      line(`P2  ${prompt(1)}`, band.x + band.width / 2, band.y + band.height - pad, MINT, "center", small);
+    } else line(prompt(0), band.x + band.width / 2, band.y + band.height - pad, MINT, "center", small);
   }
-  if (g.hp === 0) line("You fell. Back to the start...", w / 2, h / 2, RED, "center", Math.round(size * 1.2));
+  const fallen = hearts.slice(0, SEATS).findIndex((n) => n === 0);
+  if (fallen >= 0) line(SEATS > 1 ? `P${fallen + 1} fell. Back to the start...` : "You fell. Back to the start...", w / 2, h / 2, RED, "center", Math.round(size * 1.2));
 });

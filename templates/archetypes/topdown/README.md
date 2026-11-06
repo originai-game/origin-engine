@@ -40,10 +40,26 @@ dead zone and scrolls between the rooms by og.CameraZone's scrollTime
 screen-space text).
 
 
+## Seats
+
+Every hero is a seat (`src/seats.ts`, the same file in every starter;
+`src/creation.ts` holds the creation choices). Alone, seat 0 takes every
+key and pad. Two on one device (co-op): a second, tinted hero stands
+beside the first; WASD, Space/J and Shift/K with pad 1 are seat 0's, the
+arrows, Enter or / and right Shift or . with pad 2 seat 1's, or a touch
+column each. The coins, the key and the door are shared (either hero with
+the key opens it), the slime turns on the nearest hero it sees, and a
+downed hero stands up at the spawn (in the east room, at its side of the
+doorway). The party is in one room: once a hero crosses the doorway the
+other is brought through beside it, so the camera, on the heroes'
+middle, scrolls to that room. Online, each peer drives its seat over a
+room in lockstep (`tests/room.og.ts` in such a project).
+
 ## Rules
 
 - **Moving.** The `move` action (WASD, the arrows, a pad's left stick or
-  d-pad; `defineActions` in `src/systems.ts`) moves the hero at
+  d-pad, or the touch stick; `src/seats.ts` gives it to the seat's
+  `og.PlayerInput`, the only input the systems read) moves the hero at
   `Tuning.speed` on the tick it is read; a diagonal is at most 1 long, a
   stick part way walks part speed. The player may rebind every action
   (`og.input.rebind`), and the hint at the bottom names each one's binding
@@ -119,7 +135,7 @@ world unit; the map's bottom-left corner is the world origin, y up.
 
 `start` (`src/main.ts`) reads the objects: actors spawn at their points,
 the door's rectangle gives the cells to clear, and each room's rectangle
-becomes an `og.CameraZone`. The hero carries `og.Follow2D` (a small dead
+becomes an `og.CameraZone`. A `view` entity on the heroes' middle carries `og.Follow2D` (a small dead
 zone, `smoothTime` 0.12, `lookAhead` 0.15), and the orthographic view is
 12 cells tall: a whole room, as in the old top-down adventures, and the
 view scrolls across to room 2 over the zones' `scrollTime` (0.45 s) when
@@ -130,19 +146,19 @@ fields through the crossing with `get:og.Camera`).
 
 | Type | Kind | What it holds |
 |---|---|---|
-| `Game` | resource | hearts, coins, the key, the door, the room, the slime's hp and hits, the hero's position and facing for the other systems, the strike of this tick, footsteps, invulnerability, knockback, the spawn, the door's cells, sound requests, the font |
+| `Game` | resource | the shared coins, key and door, the party's room, the slime's hp and hits, each seat's hero position and whether it stands for the other systems, the strikes of this tick, footsteps, the spawn, the door's cells, sound requests, the font |
 | `Tuning` | resource | the knobs below |
-| `Hero` | the hero | the swing and dash timers, the dash direction, dashes so far |
+| `Hero` | each hero (one per seat, with `og.PlayerInput`) | hearts, facing, the swing and dash timers, the dash direction, dashes so far, invulnerability, knockback, the down timer, the seat's buttons last tick |
 | `Slime` | the slime | hp, knockback, stun, bites, death, its clip indices (it also has `og.NavAgent`, `og.AiAgent` and `og.Perception`; the hero has `og.Perceivable`) |
 | `Pickup` | coins and the key | kind, taken, the resting height |
 | `Sfx` | one entity per sound | its `Sound.*` bit (the entity also has `og.AudioSource`) |
-| `Report` | the hero | the run's facts, copied from `Game` each tick so `dump_entity:hero` shows them |
+| `Report` | each hero | the run's facts, copied from `Game` and its `Hero` each tick so `dump_entity:hero` shows them |
 
 ## Systems (in tick order)
 
 | System | Reads | Writes | Job |
 |---|---|---|---|
-| `Control` | `og.Input`, `Tuning`, `og.FlipbookEvent` | `Game`, `Hero`, `og.Transform`, `og.CharacterController`, `og.Flipbook`, `og.Sprite`, `og.Afterimage` | footsteps and strikes from the hero's frame events; walk, swing, dash, knockback, blinking, falling; the clip and flip |
+| `Control` | `og.PlayerInput`, `Tuning`, `og.FlipbookEvent` | `Game`, `Hero`, `og.Transform`, `og.CharacterController`, `og.Flipbook`, `og.Sprite`, `og.Afterimage` | footsteps and strikes from the hero's frame events; walk, swing, dash, knockback, blinking, falling; the clip and flip |
 | `Slimes` | `Tuning` | `Game`, `Slime`, `og.Transform`, `og.Velocity`, `og.Flipbook`, `og.Sprite`, `og.NavAgent`, `og.AiAgent`, `og.Perception` | take strikes (all five effects), knockback and stun (`NavAgent.drive` off meanwhile), death (the AI stops), sight from `Tuning.slimeSight` |
 | `Pickups` | — | `Game`, `Pickup`, `og.Transform`, `og.Sprite` | hover, take by overlap, pop and fade |
 | `Door` | — | `Game` | the room, "locked", opening the doorway |
@@ -218,6 +234,7 @@ They are the field defaults in `src/components.ts`.
 | `tests/door.og.ts` | the doorway blocks without the key; walking over the key takes it; the door opens (the wall cell cleared), the key is spent, the hero reaches room 2 |
 | `tests/frames.og.ts` | four frames match `references/<tier>/`: the west room at rest, the crit's freeze frame, a dash, the east room through the open doorway (`OG_FX_CAPTURE=1 og test .` records them) |
 | `tests/replay.og.ts` | a whole visit, run twice in fresh processes, ends on the same world hash |
+| `tests/seats.og.ts` | keys, pad 1 and pad 2 reach the seats' `og.PlayerInput`: alone they all drive the hero; two on one device, the arrows, pad 2, Enter and right Shift drive seat 1's hero while seat 0's stays put; the camera's view stands on the heroes' middle |
 
 Each one fails when the behaviour it names is broken (checked by halving
 the walk speed, dropping the hit's flash, leaving the doorway's walls in
