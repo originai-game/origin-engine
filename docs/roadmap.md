@@ -27,6 +27,7 @@ threads linked here; rules are in `AGENTS.md`.
 | og session: resident session RPC and playtests | [T-01a1b0c8-1b44](https://ampcode.com/threads/T-01a1b0c8-1b44-773e-9143-d2b43bf515d7) | og-session |
 | Build-speed experiments | [T-01a1b0c8-2b90](https://ampcode.com/threads/T-01a1b0c8-2b90-7365-bc5f-40a0a9d253fc) | build-speed |
 | og-cook fracture re-cook, og.Decal on terrain | [T-01a1b0c8-3db5](https://ampcode.com/threads/T-01a1b0c8-3db5-7421-9322-4e4629f2ab12) | cook-decal |
+| origin-agent: platform design aligned (ask 27, skeleton + constraints, unchecked results, invariants) | [T-01a1b0ca](https://ampcode.com/threads/T-01a1b0ca-8527-7155-9ca3-754ac90ba663) | engine-design-sync (origin-agent) |
 
 Hand-offs from the clean-up round: artifact
 9de31d6e-98f1-479b-8d6f-8e191b620da4. Waiting: presentation checkpoints, in Claude Code on Opus, once
