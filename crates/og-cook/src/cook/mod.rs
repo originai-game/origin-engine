@@ -570,7 +570,6 @@ pub fn cook_project_with_texture_cache(
             }
         }
         let mut h = StableHasher::new();
-        h.write_str(&s.rel);
         h.write(&s.bytes);
         if let Some((text, _)) = &s.settings {
             h.write_str(text);
@@ -847,7 +846,28 @@ pub fn cook_project_with_texture_cache(
         if s.error.is_some() {
             continue;
         }
-        let hash = s.hash.to_le_bytes();
+        // These cookers consume only bytes/options. The other kinds resolve
+        // relative references or write source-derived names/sub-asset ids;
+        // their location remains part of the action, not the content hash.
+        let hash = match s.kind {
+            Kind::Texture
+            | Kind::Sound
+            | Kind::Font
+            | Kind::Lut
+            | Kind::Emitter
+            | Kind::Document
+            | Kind::Dialogue
+            | Kind::Quest
+            | Kind::Strings
+            | Kind::Shader
+            | Kind::Post
+            | Kind::Tileset
+            | Kind::Rig
+            | Kind::MotionAction
+            | Kind::Palette => stamp(&[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()]),
+            _ => stamp(&[&s.hash.to_le_bytes(), s.rel.as_bytes()]),
+        }
+        .to_le_bytes();
         let mut outs: Vec<(String, &'static str, u64, Work)> = Vec::new();
         match s.kind {
             Kind::Model => {
@@ -1650,8 +1670,7 @@ pub fn cook_project_with_texture_cache(
             let fresh = old_outputs.get(id.as_str()).is_some_and(|o| {
                 o.stamp == st
                     && o.ty == ty
-                    && o.file == file
-                    && std::fs::read(cooked_dir.join(&file)).is_ok_and(|b| {
+                    && std::fs::read(cooked_dir.join(&o.file)).is_ok_and(|b| {
                         b.len() as u64 == o.bytes
                             && hash_bytes(&b) == o.hash
                             && og_blob::Blob::parse(&b, &file).is_ok_and(|blob| {
@@ -1763,7 +1782,7 @@ pub fn cook_project_with_texture_cache(
                     if !mine.is_empty() {
                         log.insert(key, mine);
                     }
-                    (Some(bytes), true, ms, start, worker)
+                    (Some(OutputBytes::from(bytes)), true, ms, start, worker)
                 }
                 Some((Err(e), ..)) => {
                     r.error = Some(e.0);
@@ -1806,6 +1825,35 @@ pub fn cook_project_with_texture_cache(
                 worker,
             },
         ));
+    }
+    // Resolve all aliases before writing: a changed canonical source may
+    // overwrite the file an unchanged alias still reads. Compare the bytes,
+    // not just their hash, and choose filenames in id order.
+    let mut shared: BTreeMap<(u64, u64), Vec<(String, OutputBytes)>> = BTreeMap::new();
+    let mut ordered: Vec<_> = new_outputs
+        .iter_mut()
+        .filter(|(si, _)| reports[**si].error.is_none())
+        .flat_map(|(_, outs)| outs.iter_mut())
+        .collect();
+    ordered.sort_by(|a, b| a.0.id.cmp(&b.0.id));
+    for (m, bytes, rep) in ordered {
+        let data = match bytes.take() {
+            Some(data) => data,
+            None => {
+                let file = &old_outputs[m.id.as_str()].file;
+                std::fs::read(cooked_dir.join(file))
+                    .map_err(|e| CookError(format!("cooked/{file}: {e}")))?
+                    .into()
+            }
+        };
+        let bucket = shared.entry((m.hash, m.bytes)).or_default();
+        if let Some((file, _)) = bucket.iter().find(|(_, b)| *b == data) {
+            m.file = file.clone();
+        } else {
+            bucket.push((m.file.clone(), data.clone()));
+            *bytes = Some(data);
+        }
+        rep.file = m.file.clone();
     }
     let mut manifest = Manifest {
         cooker: COOKER_VERSION.to_string(),
@@ -1881,6 +1929,7 @@ pub fn cook_project_with_texture_cache(
             files.push((o.file.clone(), bytes));
         }
         files.sort_by(|a, b| a.0.cmp(&b.0));
+        files.dedup_by(|a, b| a.0 == b.0);
         let mut h = StableHasher::new();
         h.write_str(name);
         for (f, b) in &files {
@@ -2188,5 +2237,7 @@ pub fn cook_project_with_texture_cache(
     })
 }
 
+type OutputBytes = std::sync::Arc<[u8]>;
+
 /// A planned output's manifest entry, its new bytes (None: up to date) and report line.
-type NewOutput = (ManifestOutput, Option<Vec<u8>>, OutputReport);
+type NewOutput = (ManifestOutput, Option<OutputBytes>, OutputReport);

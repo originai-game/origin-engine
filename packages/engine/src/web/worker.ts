@@ -536,7 +536,7 @@ export interface Fetched {
  * playhead needs soonest first, then the packs by their group's priority.
  */
 export async function preloadBundle(
-  glue: WebExtras,
+  glue: Pick<WebExtras, "og_web_put_file" | "og_web_fail_file" | "og_web_bundle_files">,
   root: string,
   progress: (value: number, stage: string) => void,
   received?: Received,
@@ -557,6 +557,7 @@ export async function preloadBundle(
   // A long sound's chunks (og.SoundChunk) are fetched as its playheads near
   // them, a streamed texture's whole chain (`#mips`) when it is big on screen.
   const listed = all.filter((o) => o.group === undefined && o.type !== "og.SoundChunk" && o.type !== "og.VideoStream" && !o.id.endsWith("#mips"));
+  const files = [...new Set(listed.map((o) => o.file))];
   let fetched = 0;
   let failed = 0;
   const blobs = new Map<string, Uint8Array>();
@@ -564,27 +565,27 @@ export async function preloadBundle(
   // fetched all at once fails some with "Failed to fetch" (Chrome runs out
   // of sockets and buffers).
   let next = 0;
-  const one = async (o: (typeof listed)[number]) => {
-    const path = `${dir}/${o.file}`;
+  const one = async (file: string) => {
+    const path = `${dir}/${file}`;
     try {
       const bytes = await bytesOf(path, received, received ? () => progress(received.value, "fetch") : undefined);
       glue.og_web_put_file(path, bytes);
-      blobs.set(o.id, bytes);
+      blobs.set(file, bytes);
     } catch (e) {
       failed++;
       tellLoadFailure(path, e);
       glue.og_web_fail_file(path, `cannot fetch ${path} (${e instanceof Error ? e.message : String(e)})`);
     }
     ++fetched;
-    if (!received) progress(0.1 + 0.7 * (fetched / Math.max(1, listed.length)), "fetch");
+    if (!received) progress(0.1 + 0.7 * (fetched / Math.max(1, files.length)), "fetch");
   };
   await Promise.all(
-    Array.from({ length: Math.min(FETCH_CONCURRENCY, listed.length) }, async () => {
-      while (next < listed.length) await one(listed[next++]!);
+    Array.from({ length: Math.min(FETCH_CONCURRENCY, files.length) }, async () => {
+      while (next < files.length) await one(files[next++]!);
     }),
   );
-  const textures = listed.filter((o) => o.type === "og.Texture" && blobs.has(o.id)).map((o) => ({ id: o.id, bytes: blobs.get(o.id)! }));
-  return { files: listed.length - failed, failed, manifest, textures, streamed: all.length - listed.length };
+  const textures = listed.filter((o) => o.type === "og.Texture" && blobs.has(o.file)).map((o) => ({ id: o.id, bytes: blobs.get(o.file)! }));
+  return { files: files.length - failed, failed, manifest, textures, streamed: all.length - listed.length };
 }
 
 /**

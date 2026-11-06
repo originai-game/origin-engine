@@ -257,9 +257,10 @@ export interface StreamGroupFile {
 }
 
 /** A cooked manifest's streaming groups and the files of their outputs (written by og cook; crates/og-bundle/src/runtime.rs). */
-function streamGroupsOf(manifest: string): { groups: Array<{ name: string; file: string; priority: number; memory: number; assets: string[] }>; grouped: string[] } {
+export function streamGroupsOf(manifest: string): { groups: Array<{ name: string; file: string; priority: number; memory: number; assets: string[] }>; grouped: string[] } {
   const groups: Array<{ name: string; file: string; priority: number; memory: number; assets: string[] }> = [];
   const grouped: string[] = [];
+  const standalone = new Set<string>();
   let output: { file?: string; group?: boolean } | null = null;
   let group: (typeof groups)[number] | null = null;
   const unquote = (v: string) => JSON.parse(v) as string;
@@ -279,11 +280,12 @@ function streamGroupsOf(manifest: string): { groups: Array<{ name: string; file:
     if (/^  output /.test(line)) output = {};
     else if (output && /^  \}$/.test(line)) {
       if (output.group && output.file) grouped.push(output.file);
+      else if (output.file) standalone.add(output.file);
       output = null;
     } else if (output && (m = /^    file ("(?:[^"\\]|\\.)*")$/.exec(line))) output.file = unquote(m[1]!);
     else if (output && /^    group "/.test(line)) output.group = true;
   }
-  return { groups, grouped };
+  return { groups, grouped: [...new Set(grouped)].filter((file) => !standalone.has(file)) };
 }
 
 /** Files, raw bytes and compressed bytes (the size table's codec). */

@@ -37,6 +37,7 @@ fn a_shader_cooks_for_every_back_end_and_loads() {
         "ok",
         &[
             ("shaders/dissolve.ogt", DISSOLVE),
+            ("shaders/copy.ogt", DISSOLVE),
             ("shaders/dissolve.wgsl", DISSOLVE_WGSL),
         ],
     );
@@ -52,6 +53,17 @@ fn a_shader_cooks_for_every_back_end_and_loads() {
         "the WGSL file is carried in the blob"
     );
     assert_eq!(shader.params, expected.params);
+    let copy = "shaders/copy.ogt";
+    assert_eq!(
+        bundle.asset(id).unwrap().source_hash,
+        bundle.asset(copy).unwrap().source_hash
+    );
+    assert_eq!(
+        bundle.output(id).unwrap().file,
+        bundle.output(copy).unwrap().file
+    );
+    let bytes = bundle.read(copy).unwrap();
+    assert_eq!(bundle.shader(copy, &bytes).unwrap().name, copy);
 }
 
 #[test]

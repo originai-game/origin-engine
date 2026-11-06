@@ -491,6 +491,7 @@ pub fn asset_id(path: &str) -> &str {
 pub struct Bundle {
     manifest: Manifest,
     index: BTreeMap<String, usize>,
+    assets: BTreeMap<String, usize>,
     outputs: Vec<ManifestOutput>,
     #[cfg(not(target_arch = "wasm32"))]
     dir: Option<std::path::PathBuf>,
@@ -502,9 +503,17 @@ impl Bundle {
         let manifest = Manifest::parse(text)?;
         let outputs: Vec<ManifestOutput> = manifest.outputs().cloned().collect();
         let index = og_core::sort::map(outputs.iter().enumerate().map(|(i, o)| (o.id.clone(), i)));
+        let assets = og_core::sort::map(
+            manifest
+                .assets
+                .iter()
+                .enumerate()
+                .map(|(i, a)| (a.source.clone(), i)),
+        );
         Ok(Bundle {
             manifest,
             index,
+            assets,
             outputs,
             #[cfg(not(target_arch = "wasm32"))]
             dir: None,
@@ -537,10 +546,9 @@ impl Bundle {
     /// `assets/` prefix optional): its source hash and its outputs.
     pub fn asset(&self, source: &str) -> Result<&ManifestAsset, LoadError> {
         let source = asset_id(source);
-        self.manifest
-            .assets
-            .iter()
-            .find(|a| a.source == source)
+        self.assets
+            .get(source)
+            .map(|&i| &self.manifest.assets[i])
             .ok_or_else(|| LoadError::NotCooked {
                 id: source.to_string(),
             })

@@ -6,8 +6,50 @@
 import { expect, test } from "bun:test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { preloadBundle } from "../src/web/worker.ts";
+import { streamGroupsOf } from "../src/node/web-build.ts";
 
 declare const Bun: { build(o: { entrypoints: string[]; target: string; format: string }): Promise<{ success: boolean; outputs: Array<{ text(): Promise<string> }> }> };
+
+test("publish keeps a shared file needed outside a streaming pack", () => {
+  const output = (id: string, file: string, group: boolean) => `  output "${id}" {\n    file "${file}"\n${group ? '    group "later"\n' : ""}  }\n`;
+  for (const reversed of [false, true]) {
+    const outputs = [output("a", "shared.ogb", true), output("b", "shared.ogb", false), output("c", "only-packed.ogb", true)];
+    if (reversed) outputs.reverse();
+    expect(streamGroupsOf(outputs.join("")).grouped).toEqual(["only-packed.ogb"]);
+  }
+});
+
+test("bundle preload fetches a shared file once but retains every texture id", async () => {
+  const fetchBefore = globalThis.fetch;
+  const fetched: string[] = [];
+  const stored: string[] = [];
+  try {
+    globalThis.fetch = (async (input: string | URL | Request) => {
+      fetched.push(String(input));
+      return new Response("shared bytes");
+    }) as typeof fetch;
+    const result = await preloadBundle({
+      og_web_bundle_files: () => JSON.stringify([
+        { id: "z.png", file: "a.png.ogb", type: "og.Texture" },
+        { id: "a.png", file: "a.png.ogb", type: "og.Texture" },
+        { id: "stream.png", file: "a.png.ogb", type: "og.Texture", group: "later" },
+        { id: "a.png#mips", file: "a.png.mips.ogb", type: "og.Texture" },
+      ]),
+      og_web_put_file: (path) => { stored.push(path); },
+      og_web_fail_file: (path, reason) => { throw new Error(`${path}: ${reason}`); },
+    }, "https://play.example", () => {});
+    expect(fetched).toEqual(["https://play.example/cooked/.cook.ogt", "https://play.example/cooked/a.png.ogb"]);
+    expect(stored).toEqual(fetched);
+    expect(result.files).toBe(1);
+    expect(result.failed).toBe(0);
+    expect(result.streamed).toBe(2);
+    expect(result.textures.map((t) => t.id)).toEqual(["z.png", "a.png"]);
+    expect(result.textures[0]!.bytes).toBe(result.textures[1]!.bytes);
+  } finally {
+    globalThis.fetch = fetchBefore;
+  }
+});
 
 const SCOPE = "https://play.example/g/r/";
 const swSource = (async () => {

@@ -48,6 +48,72 @@ fn hit(r: &Report) -> bool {
 }
 
 #[test]
+fn identical_outputs_share_a_file_and_survive_canonical_changes() {
+    use og_cook::runtime::Bundle;
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("shared-cooked-files");
+    let _ = std::fs::remove_dir_all(&root);
+    project(&root, 30, false, false);
+    std::fs::copy(root.join("assets/texture.png"), root.join("assets/a.png")).unwrap();
+    let options = CookOptions::default();
+    let (_, expected) = cook(&root, None, &options);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    assert_eq!(bundle.output("texture.png").unwrap().file, "a.png.ogb");
+    assert_eq!(
+        bundle.asset("assets/texture.png").unwrap().source,
+        "texture.png"
+    );
+    assert!(!root.join("cooked/texture.png.ogb").exists());
+    let manifest = std::fs::read(root.join("cooked/.cook.ogt")).unwrap();
+    let (r, bytes) = cook(&root, None, &options);
+    assert!(r.cooked_outputs().is_empty());
+    assert_eq!(bytes, expected);
+    assert_eq!(
+        std::fs::read(root.join("cooked/.cook.ogt")).unwrap(),
+        manifest
+    );
+
+    // Changing the shared file's owner must not overwrite the surviving alias.
+    image::RgbaImage::from_pixel(8, 8, image::Rgba([200, 0, 0, 255]))
+        .save(root.join("assets/a.png"))
+        .unwrap();
+    let (_, bytes) = cook(&root, None, &options);
+    assert_eq!(bytes, expected);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    assert_eq!(
+        bundle.output("texture.png").unwrap().file,
+        "texture.png.ogb"
+    );
+    assert_ne!(bundle.read("a.png").unwrap().as_ref(), expected.as_slice());
+
+    std::fs::copy(root.join("assets/texture.png"), root.join("assets/a.png")).unwrap();
+    cook(&root, None, &options);
+    std::fs::remove_file(root.join("assets/a.png")).unwrap();
+    let (r, bytes) = cook(&root, None, &options);
+    assert!(r.cooked_outputs().is_empty());
+    assert_eq!(bytes, expected);
+    assert!(!root.join("cooked/a.png.ogb").exists());
+    assert!(root.join("cooked/texture.png.ogb").exists());
+
+    std::fs::copy(root.join("assets/texture.png"), root.join("assets/a.png")).unwrap();
+    std::fs::write(
+        root.join("assets/main.ogt"),
+        "type scene\nversion 1\n---\nstream \"later\" {\n asset \"a.png\"\n asset \"texture.png\"\n}\n",
+    )
+    .unwrap();
+    cook(&root, None, &options);
+    let pack = std::fs::read(root.join("cooked/stream/later.ogb")).unwrap();
+    assert_eq!(
+        og_cook::runtime::unpack(&pack).unwrap(),
+        [("a.png.ogb".into(), expected)]
+    );
+    cook(&root, None, &options);
+    assert_eq!(
+        std::fs::read(root.join("cooked/stream/later.ogb")).unwrap(),
+        pack
+    );
+}
+
+#[test]
 fn shared_texture_results_reuse_invalidate_recover_and_match_uncached_bytes() {
     let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
         .join(format!("texture-cache-{}", std::process::id()));
