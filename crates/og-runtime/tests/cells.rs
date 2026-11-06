@@ -386,9 +386,10 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
 /// (-> 517fa38fa844e663) MaterialStyle.wireframeColor.
 /// (-> 995055f8898d61f7) Fluid3D version 2 (simulation).
 /// (-> 79335c265b345be8) Stylise's watercolour fields.
+/// (-> e223289c85a94822) Stylise.posterizeMode.
 const WELL_FIRST: f64 = (1u64 << 32 | 4) as f64;
 const WELL_AFTER_RELOAD: f64 = (2u64 << 32 | 4) as f64;
-const END_HASH: &str = "79335c265b345be8";
+const END_HASH: &str = "e223289c85a94822";
 
 #[test]
 fn a_session_without_anchors_refuses_the_camera() {
