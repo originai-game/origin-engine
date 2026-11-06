@@ -8,16 +8,22 @@
 // dissolve (a fade with reduced motion). Every string is a key of
 // assets/strings/*.ogt.
 //
-// The Ui system also starts dives (a fresh seed from og.Rng), ends them a
-// beat after the lamp goes out or the relic is taken, sizes the camera for
-// the surface, sets the buses and keeps the settings and the dive record
-// in og.platform (the record written at the revision read, and merged when
-// another device wrote it first).
+// The Ui system also ends dives a beat after the lamp goes out or the relic
+// is taken, sizes the camera for the surface (two delvers on one device:
+// wide enough for both), sets the buses and keeps the settings and the
+// dive record in og.platform (the record written at the revision read, and
+// merged when another device wrote it first; a room keeps none, every
+// peer's world being the same). A menu or HUD button that changes the
+// world presses its seat's bit (src/seats.ts's press: pause, dive, quit,
+// wait, drink) and the Hero system acts on it, so a room acts on one tick;
+// the touch d-pads are the seats' move (useTouchControls).
 
 import { og, defineSystem } from "@origingame/engine";
 import type { Value, World } from "@origingame/engine";
-import { FOES, Game, Phase, Prefs, Tuning } from "./components.ts";
-import { lazyTuning, must, OVER_DELAY } from "./systems.ts";
+import { FOES, Game, Phase, Tuning } from "./components.ts";
+import { prefs } from "./device.ts";
+import { LOCAL, ONLINE, press, SEATS, useTouchControls, usesTouch } from "./seats.ts";
+import { inRoom, lazyTuning, must, OVER_DELAY, partyDown } from "./systems.ts";
 
 export const LANGUAGES = [
   { code: "en", key: "lang.en" },
@@ -31,7 +37,6 @@ export const FLOORS = 2;
 const S = { xxs: 2, xs: 4, sm: 8, md: 12, lg: 16 } as const;
 
 type GameV = Value<typeof Game>;
-type PrefsV = Value<typeof Prefs>;
 
 export function say(world: World, key: string, args?: Record<string, string | number>): string {
   return og.i18n.t(world, key, args);
@@ -40,7 +45,15 @@ export function say(world: World, key: string, args?: Record<string, string | nu
 const grow = { kind: "grow" } as const;
 const px = (n: number) => ({ kind: "fixed", px: n }) as const;
 
-/** A new dive: a fresh seed, the lamp-bearer whole, floor 1 carved on this tick. */
+/** This device's own screen state: the settings dialog, the surface the camera was sized for, each local seat's touch d-pad. */
+let settingsOpen = false;
+let viewW = 0;
+let viewH = 0;
+const touchMove = [{ x: 0, y: 0 }, { x: 0, y: 0 }];
+// The HUD draws the d-pads (one per local seat); the seats read what they hold.
+useTouchControls((seat) => ({ x: touchMove[seat]?.x ?? 0, y: touchMove[seat]?.y ?? 0, lx: 0, ly: 0, buttons: 0 }));
+
+/** A new dive: a fresh seed, the delvers whole, floor 1 carved on this tick. */
 export function startDive(world: World, g: GameV): void {
   const t = lazyTuning(world);
   const rng = world.resource(og.Rng);
@@ -52,6 +65,9 @@ export function startDive(world: World, g: GameV): void {
   g.deepest = 1;
   g.hpMax = t.heroHp;
   g.hp = t.heroHp;
+  // Online before the room runs, seat 1 has nobody at it yet (the Hero system brings it in when the room starts).
+  g.hpMax2 = SEATS > 1 && (!ONLINE || inRoom(world)) ? t.heroHp : 0;
+  g.hp2 = g.hpMax2;
   g.attack = t.heroAttack;
   g.armour = 0;
   g.lamp = t.lamp;
@@ -64,8 +80,6 @@ export function startDive(world: World, g: GameV): void {
   g.turns = 0;
   g.killedBy = -1;
   g.overTicks = 0;
-  g.lock = 0;
-  g.queued = 0;
   g.foesTurn = false;
   g.newRecord = false;
   g.build = true;
@@ -75,37 +89,39 @@ export function startDive(world: World, g: GameV): void {
 
 /** The dive record ({dives, relics}) written at the revision it was read at. */
 function saveRecord(world: World, g: GameV): void {
+  if (inRoom(world)) return;
   const r = og.platform.storeSet(world, { key: "record", value: { dives: g.dives, relics: g.relics }, revision: g.recordRevision });
   if (r.ok) g.recordWrite = r.value;
 }
 
-function applyPrefs(world: World, p: PrefsV): void {
+/** The buses' volumes from this device's settings (og.Audio is each peer's own and in no snapshot, so a restored or joining world takes them again). */
+function applyPrefs(world: World, p: typeof prefs): void {
   const audio = world.resource(og.Audio);
-  if (audio.ok) {
-    audio.value.master = p.master;
-    audio.value.music = p.music;
-    audio.value.sfx = p.effects;
-    audio.value.ui = p.effects;
-  }
+  if (!audio.ok) return;
+  const a = audio.value;
+  if (a.master !== p.master) a.master = p.master;
+  if (a.music !== p.music) a.music = p.music;
+  if (a.sfx !== p.effects) a.sfx = p.effects;
+  if (a.ui !== p.effects) a.ui = p.effects;
 }
 
-function setLanguage(world: World, p: PrefsV, index: number): void {
-  p.language = Math.max(0, Math.min(LANGUAGES.length - 1, index));
-  og.i18n.setLocale(world, LANGUAGES[p.language]!.code);
+export function setLanguage(world: World, index: number): void {
+  prefs.language = Math.max(0, Math.min(LANGUAGES.length - 1, index));
+  og.i18n.setLocale(world, LANGUAGES[prefs.language]!.code);
 }
 
-function prefsValue(p: PrefsV) {
+function prefsValue(p: typeof prefs) {
   return { masterVolume: p.master, musicVolume: p.music, sfxVolume: p.effects, language: LANGUAGES[p.language]!.code, reducedMotion: p.reducedMotion };
 }
 
 /**
- * og.platform: the settings and the record asked for on tick 0 and applied
- * when they answer; a record write refused for a stale revision (another
+ * og.platform: the settings (this device's, src/device.ts) and the record
+ * asked for on tick 0 and applied when they answer; a record write refused for a stale revision (another
  * device dived meanwhile) is read again, merged (the stored counts plus
  * what this device added since it last read or wrote them) and written at
  * the new revision.
  */
-function platform(world: World, g: GameV, p: PrefsV): void {
+function platform(world: World, g: GameV, p: typeof prefs): void {
   if (world.tick === 0) {
     p.loadRequest = og.platform.loadSettings(world);
     const r = og.platform.storeGet(world, "record");
@@ -123,11 +139,12 @@ function platform(world: World, g: GameV, p: PrefsV): void {
         if (typeof s.sfxVolume === "number") p.effects = s.sfxVolume;
         if (typeof s.reducedMotion === "boolean") p.reducedMotion = s.reducedMotion;
         const at = LANGUAGES.findIndex((l) => l.code === s.language);
-        if (at >= 0) setLanguage(world, p, at);
-        applyPrefs(world, p);
+        if (at >= 0) setLanguage(world, at);
       }
     }
   }
+  // A peer's own answers come back on its own ticks: a running room keeps no record.
+  if (inRoom(world)) return;
   if (g.recordRequest !== 0) {
     const r = og.platform.result(world, g.recordRequest);
     if (r !== null) {
@@ -171,15 +188,27 @@ function capsule(id: string, build: () => void): void {
   og.ui.row(id, { gap: S.xs, cross: "center", padding: { left: S.sm, top: S.xs, right: S.md, bottom: S.xs }, frame: "hud", background: { token: "panel" } }, build);
 }
 
+/** A d-pad's held direction as a seat's move (right, up). */
+function dpadMove(seat: number, size: number): void {
+  const d = og.ui.dpad("Pad", { size });
+  touchMove[seat] = { x: d.up ? 0 : d.right ? 1 : d.down ? 0 : d.left ? -1 : 0, y: d.up ? 1 : d.right ? 0 : d.down ? -1 : 0 };
+}
+
 function hud(world: World, g: GameV): void {
-  const vp = og.ui.frameViewport();
-  const touch = vp.coarsePointer;
+  const touch = usesTouch();
   og.ui.setNavigation(false);
   og.ui.anchor("Status", { anchor: "topLeft", direction: "column", gap: S.sm }, () => {
     capsule("Health", () => {
       og.ui.icon("Heart", "heart", { size: 22, tint: { token: g.hp * 3 <= g.hpMax ? "danger" : "ink" } });
       og.ui.meter("Bar", g.hp, g.hpMax, { kind: "health", label: `${g.hp}/${g.hpMax}`, width: px(touch ? 110 : 150) });
     });
+    // The second delver's health, its heart in the second seat's ink.
+    if (SEATS > 1) {
+      capsule("Health2", () => {
+        og.ui.icon("Heart", "heart", { size: 22, tint: { token: g.hp2 * 3 <= g.hpMax2 ? "danger" : "primary" } });
+        og.ui.meter("Bar", g.hp2, g.hpMax2, { kind: "health", label: `${g.hp2}/${g.hpMax2}`, width: px(touch ? 110 : 150) });
+      });
+    }
     capsule("Stats", () => {
       og.ui.icon("Sword", "sword", { size: 20 });
       og.ui.counter("Attack", g.attack, { font: "mono", width: px(22) });
@@ -189,35 +218,41 @@ function hud(world: World, g: GameV): void {
       og.ui.counter("Gold", g.gold, { font: "mono", width: px(40) });
     });
   });
-  let paused = false;
   og.ui.anchor("Depth", { anchor: "topRight", gap: S.sm, cross: "center" }, () => {
     capsule("Floor", () => og.ui.label("Label", say(world, "hud.floor", { n: g.floor, total: FLOORS }), { step: "lg", nowrap: true }));
-    if (og.ui.actionButton("Pause", say(world, "hud.pause"), { icon: "pause", size: 48 }).clicked) paused = true;
+    if (og.ui.actionButton("Pause", say(world, "hud.pause"), { icon: "pause", size: 48 }).clicked) press("pause");
   });
-  if (paused) g.paused = true;
+  // A refused draught (the Hero system, after this one, refused it last tick) shakes the flask once, with the error sound (og-ui §6).
+  const refused = (seat: number) => g.refusedTick === world.tick - 1 && g.refusedSeat === seat;
+  if (LOCAL && touch) {
+    // Two on one device: each seat's column in its own bottom corner, Wait and Drink over its d-pad.
+    for (let seat = 0; seat < 2; seat++) {
+      og.ui.anchor(`Seat${seat}`, { anchor: seat === 0 ? "bottomLeft" : "bottomRight", direction: "column", gap: S.sm, cross: "center" }, () => {
+        og.ui.row("Actions", { gap: S.sm, cross: "center" }, () => {
+          if (og.ui.actionButton("Wait", say(world, "hud.wait"), { icon: "clock", size: 48 }).clicked) press("wait", seat);
+          if (og.ui.actionButton("Drink", say(world, "hud.drink"), { icon: "potion", size: 52 }).clicked) press("drink", seat);
+          if (refused(seat)) og.ui.shake({ sound: true });
+          if (seat === 0) og.ui.label("Count", `× ${g.potions}`, { font: "mono", nowrap: true });
+        });
+        dpadMove(seat, 120);
+      });
+    }
+    return;
+  }
   og.ui.anchor("Hands", { anchor: "bottomLeft", gap: S.md, cross: "end" }, () => {
     og.ui.column("Flask", { cross: "center", gap: S.xxs }, () => {
-      if (og.ui.actionButton("Drink", say(world, "hud.drink"), { icon: "potion", size: 60 }).clicked) g.padDrink = true;
-      // A refused draught (the Hero system, after this one, refused it last tick) shakes the flask once, with the error sound (og-ui §6).
-      if (g.refusedTick === world.tick - 1) og.ui.shake({ sound: true });
+      if (og.ui.actionButton("Drink", say(world, "hud.drink"), { icon: "potion", size: 60 }).clicked) press("drink");
+      if (refused(0)) og.ui.shake({ sound: true });
       og.ui.label("Count", `× ${g.potions}`, { font: "mono", nowrap: true });
     });
-    if (touch && og.ui.actionButton("Wait", say(world, "hud.wait"), { icon: "clock", size: 52 }).clicked) g.padWait = true;
+    if (touch && og.ui.actionButton("Wait", say(world, "hud.wait"), { icon: "clock", size: 52 }).clicked) press("wait");
   });
-  let dir = 0;
-  if (touch) {
-    og.ui.anchor("Move", { anchor: "bottomRight" }, () => {
-      const d = og.ui.dpad("Pad", { size: 150 });
-      dir = d.up ? 1 : d.right ? 2 : d.down ? 3 : d.left ? 4 : 0;
-    });
-  }
-  if (dir !== g.padDir) g.padDir = dir;
+  if (touch) og.ui.anchor("Move", { anchor: "bottomRight" }, () => dpadMove(0, 150));
 }
 
-function settings(world: World, g: GameV, p: PrefsV): void {
+function settings(world: World, p: typeof prefs): void {
   let done = false;
-  const before = JSON.stringify(prefsValue(p));
-  const m = og.ui.modal("Settings", g.settingsOpen, { title: say(world, "settings.title"), width: px(Math.min(420, og.ui.frameViewport().width - 32)) }, () => {
+  const m = og.ui.modal("Settings", settingsOpen, { title: say(world, "settings.title"), width: px(Math.min(420, og.ui.frameViewport().width - 32)) }, () => {
     const slider = (id: string, key: string, value: number): number => {
       let out = value;
       og.ui.row(id, { width: grow, gap: S.md, cross: "center" }, () => {
@@ -232,15 +267,14 @@ function settings(world: World, g: GameV, p: PrefsV): void {
     p.effects = slider("Effects", "settings.effects", p.effects);
     og.ui.label("LanguageLabel", say(world, "settings.language"), { color: { token: "inkMuted" } });
     const r = og.ui.radio("Language", LANGUAGES.map((l) => say(world, l.key)), p.language, { horizontal: true });
-    if (r.selected !== p.language) setLanguage(world, p, r.selected);
+    if (r.selected !== p.language) setLanguage(world, r.selected);
     p.reducedMotion = og.ui.toggle("Motion", p.reducedMotion, say(world, "settings.motion")).on;
     og.ui.row("Footer", { width: grow, align: "end" }, () => {
       if (og.ui.button("Done", say(world, "settings.done"), { variant: "primary" }).clicked) done = true;
     });
   });
-  if (JSON.stringify(prefsValue(p)) !== before) applyPrefs(world, p);
-  if (g.settingsOpen && (done || m.dismissed)) {
-    g.settingsOpen = false;
+  if (settingsOpen && (done || m.dismissed)) {
+    settingsOpen = false;
     must(og.platform.saveSettings(world, prefsValue(p)));
     p.saves += 1;
   }
@@ -286,29 +320,38 @@ function layer(world: World, name: string, shown: boolean, vm: object = {}): str
 }
 
 /** The screens, the dive's start and end, the camera, the buses, the platform's answers. */
-export const Ui = defineSystem("Ui", { reads: [Tuning], writes: [Game, Prefs, og.Camera, og.Audio, og.Rng] }, (_q, time, world) => {
+export const Ui = defineSystem("Ui", { reads: [Tuning, og.Lockstep], writes: [Game, og.Camera, og.Audio, og.Rng] }, (_q, _time, world) => {
   const game = world.resource(Game);
-  const prefs = world.resource(Prefs);
-  if (!game.ok || !prefs.ok) return;
+  if (!game.ok) return;
   const g = game.value;
-  const p = prefs.value;
+  const p = prefs;
   platform(world, g, p);
-  if (time.tick === 0) applyPrefs(world, p);
+  applyPrefs(world, p);
+  touchMove[0] = { x: 0, y: 0 };
+  touchMove[1] = { x: 0, y: 0 };
   // The camera: 13 cells tall on a wide screen, 10 cells across a portrait one.
   const vp = og.ui.frameViewport();
-  if (vp.width > 0 && (vp.width !== g.viewW || vp.height !== g.viewH)) {
-    g.viewW = vp.width;
-    g.viewH = vp.height;
+  if (vp.width > 0 && (vp.width !== viewW || vp.height !== viewH)) {
+    viewW = vp.width;
+    viewH = vp.height;
     const cam = world.resource(og.Camera);
     if (cam.ok) cam.value.height = vp.width < vp.height ? (10 * vp.height) / vp.width : 13;
   }
-  const hold = g.phase === Phase.Play && (g.paused || g.settingsOpen);
+  if (LOCAL && vp.width > 0 && g.phase === Phase.Play) {
+    // Two on one device: wide and tall enough for both delvers and two cells round them, eased (each device's own view).
+    const cam = world.resource(og.Camera);
+    const base = vp.width < vp.height ? (10 * vp.height) / vp.width : 13;
+    const want = Math.max(base, Math.abs(g.heroY - g.hero2Y) + 5, ((Math.abs(g.heroX - g.hero2X) + 5) * vp.height) / vp.width);
+    if (cam.ok && Math.abs(cam.value.height - want) > 0.01) cam.value.height += (want - cam.value.height) * 0.12;
+  }
+  // The settings hold this device's time alone, so a room's settings hold nothing.
+  const hold = g.phase === Phase.Play && (g.paused || (settingsOpen && !inRoom(world)));
   if (hold !== g.held) {
     must(og.time.setScale(world, hold ? 0 : 1));
     g.held = hold;
   }
   // A beat after the lamp goes out or the relic is taken, the summary.
-  if (g.phase === Phase.Play && (g.hp <= 0 || g.won)) {
+  if (g.phase === Phase.Play && (partyDown(g) || g.won)) {
     g.overTicks += 1;
     if (g.overTicks === OVER_DELAY) {
       g.phase = Phase.Over;
@@ -322,22 +365,19 @@ export const Ui = defineSystem("Ui", { reads: [Tuning], writes: [Game, Prefs, og
   const shown = og.ui.screenTransition("Screens", screen, { kind: p.reducedMotion ? "fade" : "dissolve", durationMs: 600 }).shown;
   // The title and the pause are the game's screen documents (assets/ui/main-menu.ogt, pause.ogt).
   for (const e of layer(world, "main-menu", shown === "title")) {
-    if (!g.settingsOpen && e === "play") startDive(world, g);
-    if (e === "settings") g.settingsOpen = true;
+    if (!settingsOpen && e === "play") press("dive");
+    if (e === "settings") settingsOpen = true;
   }
   // Back from its Settings the pause keeps the focus on Settings, as the pause shipped.
   const fromSettings = og.ui.memory("pause.fromSettings", 0);
-  const pauseUp = shown === "play" && g.paused && !g.settingsOpen;
+  const pauseUp = shown === "play" && g.paused && !settingsOpen;
   for (const e of layer(world, "pause", pauseUp)) {
-    if (e === "resume") g.paused = false;
+    if (e === "resume") press("pause");
     if (e === "settings") {
-      g.settingsOpen = true;
+      settingsOpen = true;
       og.ui.remember("pause.fromSettings", 1);
     }
-    if (e === "quit") {
-      g.paused = false;
-      g.phase = Phase.Title;
-    }
+    if (e === "quit") press("quit");
   }
   if (pauseUp && fromSettings === 1) {
     og.ui.setFocus("pause/Pause/Panel/Menu/Settings");
@@ -350,9 +390,8 @@ export const Ui = defineSystem("Ui", { reads: [Tuning], writes: [Game, Prefs, og
   } else {
     og.ui.setNavigation(true);
     const c = summary(world, g);
-    if (c === "again") startDive(world, g);
-    if (c === "menu") g.phase = Phase.Title;
+    if (c === "again") press("dive");
+    if (c === "menu") press("quit");
   }
-  settings(world, g, p);
-  if (g.language !== p.language) g.language = p.language;
+  settings(world, p);
 });

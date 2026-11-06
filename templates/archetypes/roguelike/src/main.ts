@@ -8,6 +8,14 @@
 // strike is charged and telegraphed. The lamp out is the end of the dive
 // (no second chances): the summary, then a new dive.
 //
+// Every delver is a seat (src/seats.ts): its og.PlayerInput is all the
+// systems read, so the dive plays alone, two in co-op on one device (a
+// second delver beside the first, in a cooler ink, the camera framing
+// both) or two over a room in lockstep, as src/creation.ts says. Each
+// seat takes its own step; the world's turn (the foes, the finds) comes
+// once every delver on its feet has. A delver struck down is out until the
+// floor ends; both down, the lamp is out; the relic wins for both.
+//
 // `start` loads the floor (assets/maps/dive.ogt, carved at run time), the
 // sheet, the minds, the sounds and the screen documents (assets/ui/), and
 // spawns the pools: the lamp-bearer, ten foes, twelve finds and a voice
@@ -18,16 +26,20 @@
 import { og } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
 import { checkClips, clipOf } from "./art.ts";
-import { Foe, FOE_SLOTS, FOES, Foes, Game, Hero, Loot, LOOT_SLOTS, Phase, Prefs, Sfx, Sound, Tuning } from "./components.ts";
+import { Foe, FOE_SLOTS, FOES, Foes, Game, Hero, heroName, Loot, LOOT_SLOTS, Phase, setCell, setHp, Sfx, Sound, Tuning } from "./components.ts";
 import { H, W } from "./dive.ts";
 import { brace, hunt, roam, strike } from "./foes.ts";
+import { LOCAL, ONLINE, SEATS, Seats, setBot, setupSeats } from "./seats.ts";
 import { FoeTurn, Fog, HeroTurn, LootTurn, Voices } from "./systems.ts";
-import { FLOORS, LANGUAGES, startDive, Ui } from "./ui.ts";
+import { prefs } from "./device.ts";
+import { FLOORS, LANGUAGES, setLanguage, startDive, Ui } from "./ui.ts";
 
 /** The tomb's dark, linear. */
 const DARK = { r: 0.0024, g: 0.0018, b: 0.0034 };
 /** Collision layer of the floor's walls: they hide the lamp-bearer from the foes. */
 const WALLS = 1;
+/** The second seat's delver: a cool tint over the same sheet (linear). */
+const SECOND_INK = { r: 0.55, g: 0.8, b: 1 };
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T;
 function must(r: { ok: true } | { ok: false; reason: string }): void;
@@ -37,6 +49,7 @@ function must<T>(r: { ok: true; value?: T } | { ok: false; reason: string }): T 
 }
 
 function start(world: World): void {
+  setupSeats(world);
   for (const l of LANGUAGES) must(og.i18n.load(world, `strings/${l.code}.ogt`));
   const style = must(og.load.style(world, "styles/lampdive/style.ogt"));
   const sound = (path: string) => must(og.load.sound(world, path));
@@ -78,15 +91,26 @@ function start(world: World): void {
     must(world.insert(e, og.Sprite, { width: w, height: h, color: DARK, layer: 25 }));
   });
 
-  const sprite = (e: Entity, clip: string, layer: number, visible: boolean) => {
-    must(world.insert(e, og.Sprite, { texture: sheet.texture, width: 1, height: 1, layer, visible, sortY: true }));
+  const sprite = (e: Entity, clip: string, layer: number, visible: boolean, color = { r: 1, g: 1, b: 1 }) => {
+    must(world.insert(e, og.Sprite, { texture: sheet.texture, width: 1, height: 1, layer, visible, sortY: true, color }));
     must(world.insert(e, og.Flipbook, { sheet: sheet.sheet, clip: clipOf(clip) }));
   };
-  const hero = must(world.spawn({ name: "hero", position: { x: W / 2, y: H / 2, z: 0 } }));
-  sprite(hero, "hero", 3, true);
-  must(world.insert(hero, Hero));
-  must(world.insert(hero, og.Perceivable, { team: 1 }));
-  must(world.insert(hero, og.Follow2D, { smoothTime: 0.15, deadZone: { x: 0.5, y: 0.4 } }));
+  // A delver per seat. The camera: alone it follows the lamp-bearer; two on
+  // one device, the delvers' middle (`view`, moved by the Hero system); in a
+  // room each peer's follows its own seat's delver.
+  const follow = { smoothTime: 0.15, deadZone: { x: 0.5, y: 0.4 } };
+  for (let seat = 0; seat < SEATS; seat++) {
+    const hero = must(world.spawn({ name: heroName(seat), position: { x: W / 2 + seat, y: H / 2, z: 0 } }));
+    sprite(hero, "hero", 3, true, seat > 0 ? SECOND_INK : undefined);
+    must(world.insert(hero, Hero, { seat }));
+    must(world.insert(hero, og.PlayerInput, { player: seat }));
+    must(world.insert(hero, og.Perceivable, { team: 1 }));
+    if (!LOCAL) must(world.insert(hero, og.Follow2D, ONLINE ? { ...follow, seat } : follow));
+  }
+  if (LOCAL) {
+    const view = must(world.spawn({ name: "view", position: { x: W / 2, y: H / 2, z: 0 } }));
+    must(world.insert(view, og.Follow2D, { smoothTime: 0.15, deadZone: { x: 1, y: 0.8 } }));
+  }
   for (let i = 0; i < FOE_SLOTS; i++) {
     const f = must(world.spawn({ name: `foe-${i}`, position: { x: -60, y: -60, z: 0 } }));
     sprite(f, FOES[i % 2]!, 2, false);
@@ -155,9 +179,16 @@ function descend(world: World): void {
   g.build = true;
 }
 
-/** `hp:<n>`: set the lamp-bearer's health. */
+/** The seat a command names after its own arguments (0 when none). */
+function seatArg(s: string | undefined): number {
+  const seat = s === undefined ? 0 : num(s, "seat");
+  if (!Number.isInteger(seat) || seat < 0 || seat >= SEATS) throw new Error(`seat is 0${SEATS > 1 ? ` to ${SEATS - 1}` : ""}`);
+  return seat;
+}
+
+/** `hp:<n>[:<seat>]`: set a delver's health (the lamp-bearer's when no seat is given). */
 function hp(world: World, args: readonly string[]): void {
-  gameOf(world).hp = num(args[0], "n");
+  setHp(gameOf(world), seatArg(args[1]), num(args[0], "n"));
 }
 
 /** `give:<potion|blade|ward|oil>`: a find, as picking it up gives it. */
@@ -172,15 +203,15 @@ function give(world: World, args: readonly string[]): void {
   } else throw new Error("write give:<potion|blade|ward|oil>");
 }
 
-/** `warp:<x>:<y>`: put the lamp-bearer on a cell (the fog follows). */
+/** `warp:<x>:<y>[:<seat>]`: put a delver on a cell (the lamp-bearer when no seat is given; the fog follows). */
 function warp(world: World, args: readonly string[]): void {
   const g = gameOf(world);
   const x = num(args[0], "x");
   const y = num(args[1], "y");
-  g.heroX = x;
-  g.heroY = y;
+  const seat = seatArg(args[2]);
+  setCell(g, seat, x, y);
   g.fogDirty = true;
-  const hero = world.find("hero");
+  const hero = world.find(heroName(seat));
   if (hero !== null) must(world.set(hero, og.Transform, { position: { x: x + 0.5, y: H - y - 0.5, z: 0 } }));
 }
 
@@ -190,13 +221,11 @@ function viewport(world: World, args: readonly string[]): void {
   og.ui.previewViewport(world, args[0] === "phone" ? phone : null);
 }
 
-/** `language:<en|zh-CN>`. */
+/** `language:<en|zh-CN>`: this device's language. */
 function language(world: World, args: readonly string[]): void {
-  const p = must(world.resource(Prefs));
   const at = LANGUAGES.findIndex((l) => l.code === args[0]);
   if (at < 0) throw new Error("write language:<en|zh-CN>");
-  p.language = at;
-  og.i18n.setLocale(world, LANGUAGES[at]!.code);
+  setLanguage(world, at);
 }
 
 /** `stale_record`: another device writes the dive record (the next write here is refused as stale and merged). */
@@ -207,11 +236,11 @@ function staleRecord(world: World): void {
 export default og.game({
   tick: 60,
   seed: 1,
-  resources: [Game, Tuning, Prefs, Foes],
-  systems: [...og.systems.cameras, Ui, HeroTurn, FoeTurn, LootTurn, Fog, Voices],
+  resources: [Game, Tuning, Foes],
+  systems: [Seats, ...og.systems.cameras, Ui, HeroTurn, FoeTurn, LootTurn, Fog, Voices],
   render: { antialias: "off" },
   start,
-  commands: { strike, hunt, roam, brace, dive, descend, hp, give, warp, viewport, language, stale_record: staleRecord },
+  commands: { strike, hunt, roam, brace, dive, descend, hp, give, warp, viewport, language, stale_record: staleRecord, bot: (_world, args) => setBot(Number(args[0])) },
   commandHelp: {
     strike: { usage: "<foe>", doc: "A foe's strike at the lamp-bearer beside it (its behaviour raises it)." },
     hunt: { usage: "<foe>", doc: "A foe's step along og.nav's path to the lamp-bearer (its behaviour raises it)." },
@@ -219,12 +248,13 @@ export default og.game({
     brace: { usage: "<foe>", doc: "The guardian holds its ground (its behaviour raises it)." },
     dive: { usage: "[<seed>]", doc: "Start a dive now, as Dive does; with a seed, that dive." },
     descend: { usage: "", doc: "Go down to the next floor now, as the stairs do." },
-    hp: { usage: "<n>", doc: "Set the lamp-bearer's health." },
+    hp: { usage: "<n>[:<seat>]", doc: "Set a delver's health (the lamp-bearer's when no seat is given)." },
     give: { usage: "<potion|blade|ward|oil>", doc: "A find, as picking it up gives it." },
-    warp: { usage: "<x>:<y>", doc: "Put the lamp-bearer on a cell (column, row from the top)." },
+    warp: { usage: "<x>:<y>[:<seat>]", doc: "Put a delver on a cell (column, row from the top; the lamp-bearer when no seat is given)." },
     viewport: { usage: "<desktop|phone>", doc: "Lay the UI out for a phone in portrait (390×844 at 3×)." },
     language: { usage: "<en|zh-CN>", doc: "Switch the language as the settings do." },
     stale_record: { usage: "", doc: "Another device writes the dive record, so this one's next write is refused as stale and merged." },
+    bot: { usage: "<n>", doc: "This device's seats take scripted input by the tick (1, 2, ...); 0 gives them back." },
   },
   facts: (world) => {
     const game = world.resource(Game);
@@ -248,13 +278,15 @@ export default og.game({
       finds: g.finds,
       turns: g.turns,
       hero: { x: g.heroX, y: g.heroY },
+      seats: SEATS,
+      ...(SEATS > 1 ? { hp2: g.hp2, hero2: { x: g.hero2X, y: g.hero2Y } } : {}),
       lit: g.lit,
       seen: g.seen,
       won: g.won,
       killedBy: g.killedBy >= 0 ? FOES[g.killedBy] : null,
       dives: g.dives,
       relics: g.relics,
-      language: LANGUAGES[g.language]!.code,
+      language: LANGUAGES[prefs.language]!.code,
     };
   },
 });

@@ -1,22 +1,27 @@
-// Lamp Dive's systems, in tick order after the screens (src/ui.ts): Hero
-// (carving a floor, the lamp-bearer's turn: a step, a strike, a wait or a
-// draught), Foes (placing them, the strikes that land on them, their deaths
-// and whether the lamp shows them), Loot (placing finds, picking them up)
-// and Fog (what the lamp lights). The foes' own turn is data:
-// assets/ai/*.ogt run by og.ai, whose commands (src/foes.ts) move and strike.
+// Lamp Dive's systems, in tick order after the seats (src/seats.ts) and the
+// screens (src/ui.ts): Hero (carving a floor, each delver's turn: a step, a
+// strike, a wait or a draught), Foes (placing them, the strikes that land
+// on them, their deaths and whether the lamp shows them), Loot (placing
+// finds, picking them up) and Fog (what the lamps light). The foes' own
+// turn is data: assets/ai/*.ogt run by og.ai, whose commands (src/foes.ts)
+// move and strike.
 //
-// A turn: the lamp-bearer acts on the tick a key lands, Game.foesTurn goes
-// up; on the next tick og.ai thinks with it up, so every foe queues one
-// command, and the Foes system takes it down; the commands run before the
-// tick after. The lamp-bearer acts again once its step's tween is done.
+// A turn: each delver up acts on the tick its seat's input (og.PlayerInput)
+// asks; once every delver up has acted, the world's turn: Game.foesTurn
+// goes up; on the next tick og.ai thinks with it up, so every foe queues
+// one command, and the Foes system takes it down; the commands run before
+// the tick after. A delver acts again once its step's tween is done. Alone
+// there is one delver, so its every action is a turn.
 
 import { og, defineSystem } from "@origingame/engine";
 import type { Entity, RngStream, Value, View, World } from "@origingame/engine";
 import { clipOf, TILE } from "./art.ts";
 import { floorStream, H, planFloor, W } from "./dive.ts";
 import type { Plan } from "./dive.ts";
-import { Foe, FoeKind, FOE_SLOTS, FOES, Foes, Game, Hero, Loot, LOOT, LootKind, Phase, Prefs, Sfx, Sound, Tuning } from "./components.ts";
-import { say } from "./ui.ts";
+import { cellOf, Foe, FoeKind, FOE_SLOTS, FOES, Foes, Game, Hero, hpMaxOf, hpOf, Loot, LOOT, LootKind, Phase, setCell, setHp, Sfx, Sound, Tuning } from "./components.ts";
+import { prefs } from "./device.ts";
+import { LOCAL, ONLINE, pressedNow, SEATS } from "./seats.ts";
+import { say, startDive } from "./ui.ts";
 
 type GameV = Value<typeof Game>;
 type TuneV = Value<typeof Tuning>;
@@ -31,10 +36,9 @@ const PARK = { x: -60, y: -60, z: 0 } as const;
 /** Ticks a card waits after the lamp goes out or the relic is taken. */
 export const OVER_DELAY = 50;
 
-/** The camera feel's scale: 0.3 under reduced motion (og-feel), 1 otherwise. */
-export function feel(world: World): number {
-  const p = world.resource(Prefs);
-  return p.ok && p.value.reducedMotion ? 0.3 : 1;
+/** The camera feel's scale: 0.3 under this device's reduced motion (og-feel), 1 otherwise. */
+export function feel(): number {
+  return prefs.reducedMotion ? 0.3 : 1;
 }
 
 export function must(r: { ok: true } | { ok: false; reason: string }): void {
@@ -75,6 +79,43 @@ export function float(world: World, text: string, x: number, y: number, color: {
   must(og.render.floatingText(world, { text, position: { x, y, z: 0 }, size, color, crit, rise: 0.9, lifetime: 0.8 }));
 }
 
+/** A room runs this world in lockstep (every peer's the same): what is this device's own (its settings, its record) stays out of it. */
+export function inRoom(world: World): boolean {
+  if (!ONLINE) return false;
+  const lock = world.resource(og.Lockstep);
+  return lock.ok && lock.value.running;
+}
+
+/** Every delver is down: the run is lost. */
+export function partyDown(g: GameV): boolean {
+  for (let s = 0; s < SEATS; s++) if (hpOf(g, s) > 0) return false;
+  return true;
+}
+
+/** The seat of the delver on its feet standing on a cell, or -1. */
+export function delverAt(g: GameV, x: number, y: number): number {
+  for (let s = 0; s < SEATS; s++) {
+    const c = cellOf(g, s);
+    if (hpOf(g, s) > 0 && c.x === x && c.y === y) return s;
+  }
+  return -1;
+}
+
+/** The seat of the delver on its feet nearest a cell (by steps; seat 0 on a tie), or -1. */
+export function nearestDelver(g: GameV, x: number, y: number): number {
+  let best = -1;
+  let far = 1e9;
+  for (let s = 0; s < SEATS; s++) {
+    const c = cellOf(g, s);
+    const d = Math.abs(c.x - x) + Math.abs(c.y - y);
+    if (hpOf(g, s) > 0 && d < far) {
+      best = s;
+      far = d;
+    }
+  }
+  return best;
+}
+
 /** The plan of the floor the dive is on. */
 export function planOf(rng: { fork(label: string): RngStream }, g: GameV): Plan {
   return planFloor(floorStream(rng, g.seed, g.floor), g.floor);
@@ -101,181 +142,270 @@ function carve(world: World, g: GameV, plan: Plan): void {
   g.stairsY = plan.stairs ? plan.stairs.y : -1;
 }
 
-/** The direction keys, the pad's d-pad and the HUD's d-pad (Ui writes Game.padDir): 0 none, 1 up, 2 right, 3 down, 4 left. */
-function heldDirection(inp: Value<typeof og.Input>, gp: Value<typeof og.Gamepad>, pad: number): number {
-  if (inp.down("ArrowUp") || inp.down("KeyW") || gp.down("up") || pad === 1) return 1;
-  if (inp.down("ArrowRight") || inp.down("KeyD") || gp.down("right") || pad === 2) return 2;
-  if (inp.down("ArrowDown") || inp.down("KeyS") || gp.down("down") || pad === 3) return 3;
-  if (inp.down("ArrowLeft") || inp.down("KeyA") || gp.down("left") || pad === 4) return 4;
-  return 0;
+/** The second delver's start: the first open cell beside the first's (right, left, below, above) that no foe stands on. */
+function beside(plan: Plan): { x: number; y: number } {
+  const { x, y } = plan.start;
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    const cx = x + dx;
+    const cy = y + dy;
+    if (cx < 0 || cy < 0 || cx >= W || cy >= H || plan.walls[cy * W + cx] === 1) continue;
+    if (plan.foes.some((f) => f.x === cx && f.y === cy)) continue;
+    return { x: cx, y: cy };
+  }
+  return { x, y };
 }
 
-function navPressed(inp: Value<typeof og.Input>, gp: Value<typeof og.Gamepad>): boolean {
-  return inp.pressed("ArrowUp") || inp.pressed("ArrowDown") || inp.pressed("ArrowLeft") || inp.pressed("ArrowRight") || gp.pressed("up") || gp.pressed("down") || gp.pressed("left") || gp.pressed("right");
+/** A move (og.PlayerInput's x, y) as a direction: 0 none, 1 up, 2 right, 3 down, 4 left. */
+function direction(x: number, y: number): number {
+  if (y >= 0.5) return 1;
+  if (x >= 0.5) return 2;
+  if (y <= -0.5) return 3;
+  if (x <= -0.5) return 4;
+  return 0;
 }
 
 const STEP = [null, { x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }] as const;
 
 /**
- * The lamp-bearer's turn. A direction (an arrow, WASD, the d-pad, a tap on
- * the next cell) steps there, strikes the foe standing there, or bumps the
- * stone; Space (the pad's A) waits; Q (1, the pad's X, Drink) drinks. A held
- * direction repeats after 14 ticks, then every 7. Stepping on the stairs
- * goes down. Every action but a bump or an empty flask ends the turn.
+ * The delvers' turns, each from its seat's og.PlayerInput. A direction (an
+ * arrow, WASD, a d-pad, a tap on the next cell) steps there, strikes the
+ * foe standing there, or bumps the stone (or the other delver); Wait (Space,
+ * the pad's A) waits; Drink (Q, 1, the pad's X) drinks. A held direction
+ * repeats after 14 ticks, then every 7. Every action but a bump or an empty
+ * flask is the delver's turn; the world's turn comes once every delver up
+ * has had its own. Stepping on the stairs takes the party down (a downed
+ * delver rises on the next floor). The seats' pause, dive and quit bits
+ * (the menus press them, src/ui.ts) pause, start a dive and leave one.
  */
 export const HeroTurn = defineSystem(
   "Hero",
-  { reads: [og.Input, og.Gamepad, og.Camera, Foes, Tuning, Prefs], writes: [Game, Hero, og.Transform, og.Sprite, og.Rng], after: ["Ui"] },
+  { reads: [og.PlayerInput, og.SeatDropped, og.SeatRejoined, og.Lockstep, Foes, Tuning], writes: [Game, Hero, og.Transform, og.Sprite, og.Perceivable, og.Rng], after: ["Ui"] },
   (q, time, world) => {
     const game = world.resource(Game);
-    const input = world.resource(og.Input);
-    const gamepad = world.resource(og.Gamepad);
     const rngR = world.resource(og.Rng);
-    if (!game.ok || !input.ok || !gamepad.ok || !rngR.ok) return;
+    if (!game.ok || !rngR.ok) return;
     const g = game.value;
-    const inp = input.value;
-    const gp = gamepad.value;
     const rng = rngR.value;
     const t = lazyTuning(world);
+    if (ONLINE) {
+      // A seat a room dropped holds nobody's turn up until it is back.
+      for (const e of world.events(og.SeatDropped)) g.away |= 1 << e.seat;
+      for (const e of world.events(og.SeatRejoined)) g.away &= ~(1 << e.seat);
+    }
+    // The menus' bits first: two seats pressing pause on one tick toggle it once.
+    let pause = false;
+    let dive = false;
+    let quit = false;
+    for (const a of q.archetypes()) {
+      const input = a.column(og.PlayerInput);
+      const hero = a.column(Hero);
+      for (let i = 0; i < a.count; i++) {
+        const b = input.buttons[i]!;
+        const before = hero.before[i]!;
+        pause ||= pressedNow(b, before, "pause");
+        dive ||= pressedNow(b, before, "dive");
+        quit ||= pressedNow(b, before, "quit");
+      }
+    }
+    if (pause && g.phase === Phase.Play && (g.paused || (!partyDown(g) && !g.won))) g.paused = !g.paused;
+    if (quit && (g.phase === Phase.Over || (g.phase === Phase.Play && g.paused))) {
+      g.paused = false;
+      g.phase = Phase.Title;
+    }
+    if (dive && g.phase !== Phase.Play) startDive(world, g);
+    // Online, a dive started before the room ran has nobody at seat 1 (its delver waits, dim): the room's start brings it in.
+    if (SEATS > 1 && g.hpMax2 === 0 && g.phase === Phase.Play && inRoom(world)) {
+      g.hpMax2 = t.heroHp;
+      g.hp2 = t.heroHp;
+    }
+
+    // The map is adopted on its first tick, so the first carve waits a tick.
+    const plan = g.build && world.tick > 0 ? planOf(rng, g) : null;
+    if (plan !== null) {
+      const down = partyDown(g);
+      carve(world, g, plan);
+      setCell(g, 0, plan.start.x, plan.start.y);
+      if (SEATS > 1) {
+        const b = beside(plan);
+        setCell(g, 1, b.x, b.y);
+      }
+      // A delver downed on the floor above rises on this one with half its health.
+      for (let s = 0; s < SEATS && !down; s++) if (hpOf(g, s) <= 0) setHp(g, s, Math.ceil(hpMaxOf(g, s) / 2));
+      g.build = false;
+      g.place = true;
+      g.fogDirty = true;
+      g.deepest = Math.max(g.deepest, g.floor);
+    }
+
+    let descended = false;
+    let sx = 0;
+    let sy = 0;
+    let n = 0;
     for (const a of q.archetypes()) {
       const hero = a.column(Hero);
+      const input = a.column(og.PlayerInput);
       const p = a.column(og.Transform).position;
+      const sprite = a.column(og.Sprite);
+      const eyes = a.column(og.Perceivable);
       for (let i = 0; i < a.count; i++) {
         const me = a.entity(i);
-        // The map is adopted on its first tick, so the first carve waits a tick.
-        if (g.build && world.tick > 0) {
-          const plan = planOf(rng, g);
-          carve(world, g, plan);
-          g.heroX = plan.start.x;
-          g.heroY = plan.start.y;
-          const c = cellCenter(plan.start.x, plan.start.y);
-          p[i * 3] = c.x;
-          p[i * 3 + 1] = c.y;
-          g.build = false;
-          g.place = true;
-          g.fogDirty = true;
-          g.deepest = Math.max(g.deepest, g.floor);
+        const seat = hero.seat[i]!;
+        const buttons = input.buttons[i]!;
+        const before = hero.before[i]!;
+        if (before !== buttons) hero.before[i] = buttons;
+        if (plan !== null) {
+          const c = cellOf(g, seat);
+          const at = cellCenter(c.x, c.y);
+          p[i * 3] = at.x;
+          p[i * 3 + 1] = at.y;
+          hero.lock[i] = 0;
+          hero.queued[i] = 0;
+          hero.acted[i] = 0;
         }
-        // The lamp's warm light around the lamp-bearer (under the fog), behind the title too.
+        if (SEATS > 1) {
+          // A downed delver lies dim, and the foes look past it.
+          const upNow = hpOf(g, seat) > 0;
+          const opacity = upNow ? 1 : 0.35;
+          if (Math.abs(sprite.opacity[i]! - opacity) > 0.01) sprite.opacity[i] = opacity;
+          const team = upNow ? 1 : 2;
+          if (eyes.team[i] !== team) eyes.team[i] = team;
+        }
+        sx += p[i * 3]!;
+        sy += p[i * 3 + 1]!;
+        n += 1;
+        // The lamp's warm light around the delver (under the fog), behind the title too.
         must(og.render.sprite(world, { texture: g.glow as unknown as never, position: { x: p[i * 3]!, y: p[i * 3 + 1]!, z: 0 }, width: g.lamp * 2.4, height: g.lamp * 2.4, color: { r: 1, g: 0.72, b: 0.35 }, opacity: 0.28, blend: "additive", layer: 1 }));
+        const dir = direction(input.x[i]!, input.y[i]!);
+        const last = hero.lastDir[i]!;
         // On a menu (the title, pause, settings, the summary) the arrows and the d-pad move the focus: a tick.
-        if (g.phase !== Phase.Play || g.paused || g.settingsOpen) {
-          if (navPressed(inp, gp)) g.sfx |= Sound.Move;
+        if (g.phase !== Phase.Play || g.paused) {
+          if (dir !== 0 && dir !== last) g.sfx |= Sound.Move;
+          if (dir !== last) hero.lastDir[i] = dir;
           continue;
         }
-        if (g.hp <= 0 || g.won) continue;
-        if (g.lock > 0 && time.hitStop === 0) g.lock -= 1;
-        if (inp.pressed("Escape") || inp.pressed("KeyP") || gp.pressed("start")) {
-          g.paused = true;
-          continue;
-        }
+        if (hpOf(g, seat) <= 0 || g.won) continue;
+        if (hero.lock[i]! > 0 && time.hitStop === 0) hero.lock[i] = hero.lock[i]! - 1;
         // Read the input every tick (so a press during the foes' turn is held, not lost), act when the turn is ours.
-        const dir = heldDirection(inp, gp, g.padDir);
-        if (dir !== 0 && dir === g.lastDir) g.repeat += 1;
-        else g.repeat = 0;
-        if (dir !== g.lastDir) g.lastDir = dir;
-        const fresh = dir !== 0 && g.repeat === 0;
-        const repeated = dir !== 0 && g.repeat >= 14 && (g.repeat - 14) % 7 === 0;
-        let want = fresh || repeated ? dir : 0;
-        let wait = inp.pressed("Space") || inp.pressed("Period") || gp.pressed("a") || g.padWait;
-        let drink = inp.pressed("KeyQ") || inp.pressed("Digit1") || gp.pressed("x") || g.padDrink;
-        if (g.padWait) g.padWait = false;
-        if (g.padDrink) g.padDrink = false;
-        if (inp.buttonPressed("left")) {
+        if (dir !== 0 && dir === last) hero.repeat[i] = hero.repeat[i]! + 1;
+        else if (hero.repeat[i] !== 0) hero.repeat[i] = 0;
+        if (dir !== last) hero.lastDir[i] = dir;
+        const r = hero.repeat[i]!;
+        let want = dir !== 0 && (r === 0 || (r >= 14 && (r - 14) % 7 === 0)) ? dir : 0;
+        const from = cellOf(g, seat);
+        if (pressedNow(buttons, before, "step")) {
           // A tap on the next cell (up, down, left or right) acts toward it.
-          const at = screenToWorld(world, inp.pointer.x, inp.pointer.y);
-          if (at !== null) {
-            const cx = Math.floor(at.x);
-            const cy = H - 1 - Math.floor(at.y);
-            const dx = cx - g.heroX;
-            const dy = cy - g.heroY;
-            if (Math.abs(dx) + Math.abs(dy) === 1) want = dx === 1 ? 2 : dx === -1 ? 4 : dy === 1 ? 3 : 1;
-          }
+          const dx = Math.floor(input.aimX[i]!) - from.x;
+          const dy = H - 1 - Math.floor(input.aimY[i]!) - from.y;
+          if (Math.abs(dx) + Math.abs(dy) === 1) want = dx === 1 ? 2 : dx === -1 ? 4 : dy === 1 ? 3 : 1;
         }
+        const wait = pressedNow(buttons, before, "wait");
+        const drink = pressedNow(buttons, before, "drink");
         // An action asked for while the last one plays out waits for its turn (one, the latest).
-        if (want !== 0 || wait || drink) g.queued = drink ? 6 : wait ? 5 : want;
-        if (g.foesTurn || g.lock > 0 || g.queued === 0) continue;
-        want = g.queued <= 4 ? g.queued : 0;
-        wait = g.queued === 5;
-        drink = g.queued === 6;
-        g.queued = 0;
-        if (drink) {
-          if (g.potions === 0 || g.hp >= g.hpMax) {
+        if (want !== 0 || wait || drink) hero.queued[i] = drink ? 6 : wait ? 5 : want;
+        const action = hero.queued[i]!;
+        if (g.foesTurn || hero.lock[i]! > 0 || action === 0 || hero.acted[i]) continue;
+        // One strike lands a tick: the other delver's waits for the next.
+        if (action <= 4 && g.strikeSlot >= 0 && foeAt(world, from.x + STEP[action]!.x, from.y + STEP[action]!.y) >= 0) continue;
+        hero.queued[i] = 0;
+        const acted = () => {
+          hero.acted[i] = 1;
+          hero.lock[i] = Math.max(1, Math.round(t.stepTime * 60));
+        };
+        const c = cellCenter(from.x, from.y);
+        if (action === 6) {
+          const hp = hpOf(g, seat);
+          const max = hpMaxOf(g, seat);
+          if (g.potions === 0 || hp >= max) {
             g.refusedTick = world.tick;
-            const c = cellCenter(g.heroX, g.heroY);
+            g.refusedSeat = seat;
             float(world, say(world, g.potions === 0 ? "float.empty" : "float.whole"), c.x, c.y + 0.8, WHITE, false, 0.35);
             continue;
           }
-          const healed = Math.min(t.potionHeal, g.hpMax - g.hp);
+          const healed = Math.min(t.potionHeal, max - hp);
           g.potions -= 1;
-          g.hp += healed;
+          setHp(g, seat, hp + healed);
           g.sfx |= Sound.Drink;
-          const c = cellCenter(g.heroX, g.heroY);
           float(world, say(world, "float.heal", { n: healed }), c.x, c.y + 0.7, GREEN);
           must(og.tween.flash(world, { entity: me, color: GREEN, duration: 0.2 }));
           must(og.tween.squash(world, { entity: me, impact: { x: 0.85, y: 1.2 }, duration: 0.2 }));
-          endTurn(world, g, t);
+          acted();
           continue;
         }
-        if (wait) {
+        if (action === 5) {
           must(og.tween.squash(world, { entity: me, impact: { x: 1.08, y: 0.92 }, duration: 0.15 }));
           g.sfx |= Sound.Move;
-          endTurn(world, g, t);
+          acted();
           continue;
         }
-        const step = STEP[want]!;
-        const tx = g.heroX + step.x;
-        const ty = g.heroY + step.y;
+        const step = STEP[action]!;
+        const tx = from.x + step.x;
+        const ty = from.y + step.y;
         const foe = foeAt(world, tx, ty);
         if (foe >= 0) {
           // A strike: the lunge, the die's +0 or +1; the Foes system lands it this tick.
           g.strikeSlot = foe;
+          g.strikeSeat = seat;
           g.strikeDamage = g.attack + (rng.chance(0.5) ? 1 : 0);
-          const from = cellCenter(g.heroX, g.heroY);
           must(og.tween.sequence(world, [
-            { entity: me, field: "position", to: [from.x + step.x * 0.35, from.y - step.y * 0.35, 0], duration: 0.05, ease: "quadOut" },
-            { entity: me, field: "position", to: [from.x, from.y, 0], duration: 0.09, ease: "quadIn" },
+            { entity: me, field: "position", to: [c.x + step.x * 0.35, c.y - step.y * 0.35, 0], duration: 0.05, ease: "quadOut" },
+            { entity: me, field: "position", to: [c.x, c.y, 0], duration: 0.09, ease: "quadIn" },
           ]));
-          endTurn(world, g, t);
+          acted();
           continue;
         }
-        if (isWall(world, g, tx, ty)) {
+        if (isWall(world, g, tx, ty) || delverAt(g, tx, ty) >= 0) {
           hero.bumps[i] = hero.bumps[i]! + 1;
           g.sfx |= Sound.Bump;
           must(og.tween.squash(world, { entity: me, impact: step.x !== 0 ? { x: 0.85, y: 1.1 } : { x: 1.1, y: 0.85 }, duration: 0.12 }));
           continue;
         }
-        g.heroX = tx;
-        g.heroY = ty;
+        setCell(g, seat, tx, ty);
         hero.steps[i] = hero.steps[i]! + 1;
         g.sfx |= Sound.Step;
         g.fogDirty = true;
         const to = cellCenter(tx, ty);
         must(og.tween.to(world, { entity: me, field: "position", to: [to.x, to.y, 0], duration: t.stepTime, ease: "quadOut" }));
+        acted();
         if (tx === g.stairsX && ty === g.stairsY) {
-          // Down the stairs: the next floor is carved on the next tick.
+          // Down the stairs, the whole party: the next floor is carved on the next tick.
           g.floor += 1;
           g.build = true;
           g.sfx |= Sound.Stairs;
           float(world, say(world, "float.floor", { n: g.floor }), to.x, to.y + 0.8, GOLD, true);
-          must(og.camera.punch(world, 0.1 * feel(world)));
-          // The foes of the floor left behind take no turn.
-          endTurn(world, g, t);
-          g.foesTurn = false;
-          continue;
+          must(og.camera.punch(world, 0.1 * feel()));
+          descended = true;
         }
-        endTurn(world, g, t);
       }
+    }
+    // The world's turn, once every delver up has acted; the foes of a floor left behind take none.
+    const away = g.away;
+    let waiting = 0;
+    let upCount = 0;
+    for (const a of q.archetypes()) {
+      const hero = a.column(Hero);
+      for (let i = 0; i < a.count; i++) {
+        const seat = hero.seat[i]!;
+        if (hpOf(g, seat) <= 0 || (away & (1 << seat)) !== 0) continue;
+        upCount += 1;
+        if (!hero.acted[i]) waiting += 1;
+      }
+    }
+    if (descended || (upCount > 0 && waiting === 0)) {
+      g.turns += 1;
+      g.foesTurn = !descended;
+      if (!descended) g.foesAt = world.tick;
+      for (const a of q.archetypes()) {
+        const hero = a.column(Hero);
+        for (let i = 0; i < a.count; i++) if (hero.acted[i]) hero.acted[i] = 0;
+      }
+    }
+    // Two on one device: the camera frames the delvers' middle (src/main.ts's `view`).
+    if (LOCAL && n > 0) {
+      const view = world.find("view");
+      if (view !== null) must(world.set(view, og.Transform, { position: { x: sx / n, y: sy / n, z: 0 } }));
     }
   },
 );
-
-function endTurn(world: World, g: GameV, t: TuneV): void {
-  g.turns += 1;
-  g.foesTurn = true;
-  g.foesAt = world.tick;
-  g.lock = Math.max(1, Math.round(t.stepTime * 60));
-}
 
 /** The foe slot standing on a cell, from the Foes resource, or -1. */
 function foeAt(world: World, x: number, y: number): number {
@@ -284,16 +414,6 @@ function foeAt(world: World, x: number, y: number): number {
   const f = foes.value as unknown as Record<string, number>;
   for (let i = 0; i < FOE_SLOTS; i++) if (f[`x${i}`] === x && f[`y${i}`] === y) return i;
   return -1;
-}
-
-/** The world point under a CSS pixel, through the orthographic camera. */
-export function screenToWorld(world: World, px: number, py: number): { x: number; y: number } | null {
-  const cam = world.resource(og.Camera);
-  const vp = og.ui.viewport(world);
-  if (!cam.ok || vp.height <= 0) return null;
-  const scale = vp.height / cam.value.height;
-  const at = cam.value.position;
-  return { x: at.x + (px - vp.width / 2) / scale, y: at.y - (py - vp.height / 2) / scale };
 }
 
 /** A foe's numbers by FoeKind.*. */
@@ -312,7 +432,7 @@ export function stats(t: TuneV, kind: number): { hp: number; attack: number } {
  */
 export const FoeTurn = defineSystem(
   "Foes",
-  { reads: [Tuning, Prefs, og.Rng], writes: [Game, Foes, Foe, og.Transform, og.Sprite, og.Flipbook, og.AiAgent, og.Perception], after: ["Hero"] },
+  { reads: [Tuning, og.Rng], writes: [Game, Foes, Foe, og.Transform, og.Sprite, og.Flipbook, og.AiAgent, og.Perception], after: ["Hero"] },
   (q, time, world) => {
     const game = world.resource(Game);
     const foes = world.resource(Foes);
@@ -406,9 +526,10 @@ function strike(world: World, g: GameV, f: View<typeof Foe>, i: number, me: Enti
   must(og.tween.squash(world, { entity: me, impact: { x: 1.3, y: 0.7 }, duration: 0.2 }));
   const t = lazyTuning(world);
   must(og.time.hitStop(world, t.hitStop + (crit ? 2 : 0)));
-  const k = feel(world);
+  const k = feel();
   must(og.camera.shake(world, (kind === FoeKind.Guardian ? 0.3 : 0.15) * k));
-  must(og.camera.kick(world, { x: x - (g.heroX + 0.5), y: y - (H - g.heroY - 0.5), z: 0 }, 0.1 * k));
+  const by = cellCenter(cellOf(g, g.strikeSeat).x, cellOf(g, g.strikeSeat).y);
+  must(og.camera.kick(world, { x: x - by.x, y: y - by.y, z: 0 }, 0.1 * k));
   if (hp === 0) {
     f.active[i] = 0;
     f.dying[i] = 24;
@@ -416,17 +537,17 @@ function strike(world: World, g: GameV, f: View<typeof Foe>, i: number, me: Enti
     g.sfx |= kind === FoeKind.Guardian ? Sound.Roar : Sound.Kill;
     if (kind === FoeKind.Guardian) {
       must(og.time.hitStop(world, 12));
-      must(og.camera.shake(world, 0.6 * feel(world)));
+      must(og.camera.shake(world, 0.6 * feel()));
     }
     must(og.tween.to(world, { entity: me, field: "scale", to: [1.6, 0, 1], duration: 0.3, delay: 0.05, ease: "backIn" }));
     must(og.tween.to(world, { entity: me, component: og.Sprite, field: "opacity", to: [0], duration: 0.3, delay: 0.05, ease: "quadIn" }));
   }
 }
 
-/** Finds: placed when a floor is carved, taken when the lamp-bearer steps on them, shown where the lamp lights. */
+/** Finds: placed when a floor is carved, taken when a delver on its feet steps on them, shown where a lamp lights. */
 export const LootTurn = defineSystem(
   "Loot",
-  { reads: [Prefs, og.Rng], writes: [Game, Loot, og.Transform, og.Sprite, og.Flipbook], after: ["Foes"] },
+  { reads: [og.Rng], writes: [Game, Loot, og.Transform, og.Sprite, og.Flipbook], after: ["Foes"] },
   (q, time, world) => {
     const game = world.resource(Game);
     const rngR = world.resource(og.Rng);
@@ -475,7 +596,7 @@ export const LootTurn = defineSystem(
           continue;
         }
         sprite.visible[i] = g.phase !== Phase.Title && lit(world, g, l.cx[i]!, l.cy[i]!) ? 1 : 0;
-        if (g.phase !== Phase.Play || l.cx[i] !== g.heroX || l.cy[i] !== g.heroY || g.hp <= 0) continue;
+        if (g.phase !== Phase.Play || delverAt(g, l.cx[i]!, l.cy[i]!) < 0) continue;
         take(world, g, l.kind[i]!, l.amount[i]!, p[i * 3]!, p[i * 3 + 1]!);
         l.active[i] = 0;
         l.taken[i] = 1;
@@ -523,14 +644,14 @@ function take(world: World, g: GameV, kind: number, amount: number, x: number, y
       g.overTicks = 0;
       g.sfx |= Sound.Won;
       say1("item.relic");
-      must(og.camera.punch(world, 0.15 * feel(world)));
+      must(og.camera.punch(world, 0.15 * feel()));
       break;
   }
 }
 
 /**
- * What the lamp lights: when the lamp-bearer moves, every cell within the
- * lamp's reach that a straight line from it reaches without crossing stone
+ * What the lamps light: when a delver moves, every cell within the lamp's
+ * reach that a straight line from a delver reaches without crossing stone
  * is cleared of fog; cells lit before and not now are remembered (dimmed);
  * cells never lit stay dark.
  */
@@ -544,13 +665,16 @@ export const Fog = defineSystem("Fog", { writes: [Game], after: ["Loot"] }, (_q,
   const r = g.lamp;
   const reach = Math.ceil(r);
   const seen = new Set<number>();
-  for (let dy = -reach; dy <= reach; dy++) {
-    for (let dx = -reach; dx <= reach; dx++) {
-      if (dx * dx + dy * dy > r * r) continue;
-      const x = g.heroX + dx;
-      const y = g.heroY + dy;
-      if (x < 0 || y < 0 || x >= W || y >= H) continue;
-      if (lineClear(world, g, g.heroX, g.heroY, x, y)) seen.add(y * W + x);
+  for (let s = 0; s < SEATS; s++) {
+    const from = cellOf(g, s);
+    for (let dy = -reach; dy <= reach; dy++) {
+      for (let dx = -reach; dx <= reach; dx++) {
+        if (dx * dx + dy * dy > r * r) continue;
+        const x = from.x + dx;
+        const y = from.y + dy;
+        if (x < 0 || y < 0 || x >= W || y >= H || seen.has(y * W + x)) continue;
+        if (lineClear(world, g, from.x, from.y, x, y)) seen.add(y * W + x);
+      }
     }
   }
   let known = 0;

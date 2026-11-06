@@ -3,29 +3,30 @@
 // Pause along the top and the draught, Wait and a d-pad of touch-sized
 // buttons along the bottom; the d-pad steps and Wait waits.
 import { playtest } from "@origingame/engine/playtest";
-import { game, PLAY, tap } from "./lib.ts";
+import { game, partner, PLAY, script, tap, TWO } from "./lib.ts";
 
 interface Element { id: string; parent: string; path: string; kind: string; x: number; y: number; width: number; height: number }
 
 export default playtest({
   name: "the phone layout: a HUD inside the safe area and a d-pad that steps",
   size: "1170x2532",
-  commands: [
+  commands: script([
     "0.1:viewport:phone",
     "0.9:dump_ui:title.json",
     tap("Play", 1.0),
     "1.1:touch_move:10,400",
     "1.7:get:Game:started.json",
     "1.8:dump_ui:hud.json",
-    tap("Pad/Up", 1.9),
+    // Two on one device: seat 0's column bottom left; seat 1 waits so the world's turn comes.
+    tap(TWO ? "Seat0/Pad/Up" : "Pad/Up", 1.9) + partner(1.9),
     "2.0:touch_move:10,400",
     "2.3:get:Game:up.json",
-    tap("Wait", 2.4),
+    tap(TWO ? "Seat0/Actions/Wait" : "Wait", 2.4) + partner(2.4),
     "2.5:touch_move:10,400",
     "2.8:get:Game:waited.json",
     "2.9:screenshot:play.png",
     "3.0:quit",
-  ].join(";"),
+  ]),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     const started = game(run, "started.json");

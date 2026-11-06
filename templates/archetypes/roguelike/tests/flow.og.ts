@@ -5,11 +5,11 @@
 // turn), then on up into the rats coming to meet the lamp (walking into a
 // foe strikes it), and Q drinks the flask.
 import { playtest } from "@origingame/engine/playtest";
-import { component, game, PLAY, press, presses, tap, TITLE } from "./lib.ts";
+import { component, game, PLAY, press, presses, script, tap, TITLE, turn } from "./lib.ts";
 
 export default playtest({
   name: "a dive from the title: steps, a bump, the lamp's light, strikes and a draught",
-  commands: [
+  commands: script([
     "0.3:get:Game:title.json",
     "0.9:screenshot:title.png",
     tap("Play", 1.0),
@@ -22,11 +22,11 @@ export default playtest({
     presses(Array(12).fill("ArrowUp"), 3.1),
     "6.2:get:Game:fought.json",
     "6.25:screenshot:fought.png",
-    press("KeyQ", 6.3),
+    turn("KeyQ", 6.3),
     "6.7:get:Game:drank.json",
     "6.7:dump_entity:hero:hero.json",
     "6.8:quit",
-  ].join(";"),
+  ]),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     t.ok(run.quit, "the script reached quit");

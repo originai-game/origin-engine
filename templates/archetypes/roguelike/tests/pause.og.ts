@@ -3,13 +3,13 @@
 // the music slider moves, Done saves the settings through og.platform, and
 // Resume gives the turn back, in the chosen language.
 import { playtest } from "@origingame/engine/playtest";
-import { game, type PlatformDump, press, tap, texts } from "./lib.ts";
+import { game, type PlatformDump, press, script, tap, texts, turn } from "./lib.ts";
 
 export default playtest({
   name: "Escape pauses, settings switch the language and save, Resume gives the turn back",
-  commands: [
+  commands: script([
     "0.3:dive:7",
-    press("ArrowUp", 0.6),
+    turn("ArrowUp", 0.6),
     press("Escape", 1.0),
     "1.2:get:Game:paused.json",
     "1.2:get:og.TimeScale.scale:scale.json",
@@ -25,15 +25,14 @@ export default playtest({
     "2.75:touch_end",
     "3.2:screenshot:settings-zh.png",
     tap("Done", 3.4),
-    "3.9:get:Prefs:prefs.json",
     "3.9:dump_platform:platform.json",
     tap("Resume", 4.0),
     "4.6:dump_ui:play-zh.json",
-    press("ArrowUp", 4.7),
+    turn("ArrowUp", 4.7),
     "5.0:get:Game:resumed.json",
     "5.1:screenshot:play-zh.png",
     "5.2:quit",
-  ].join(";"),
+  ]),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     const paused = game(run, "paused.json");
@@ -41,12 +40,14 @@ export default playtest({
     t.equal(paused.turns, 1, "after one step");
     t.equal(run.json<{ value: number }>("scale.json").value, 0, "the dive holds: time scale 0");
     t.equal(game(run, "held.json").turns, 1, "a step key while paused takes no turn");
-    const prefs = run.json<{ value: { language: number; music: number; saves: number } }>("prefs.json").value;
-    t.equal(prefs.language, 1, "简体中文 was chosen");
-    t.ok(prefs.music < 0.7, `the music slider moved (${prefs.music.toFixed(2)})`);
-    t.equal(prefs.saves, 1, "Done saved once");
+    // The settings are this device's (src/device.ts), in no world resource: what Done saved through og.platform says what they are.
     const p = run.json<PlatformDump>("platform.json");
-    const saved = p.calls.find((c) => c.method === "store.set" && c.args["key"] === "og.settings");
+    const saves = p.calls.filter((c) => c.method === "store.set" && c.args["key"] === "og.settings");
+    const prefs = (saves[0]?.args["value"] ?? {}) as { language?: string; musicVolume?: number };
+    t.equal(prefs.language === "zh-CN" ? 1 : 0, 1, "简体中文 was chosen");
+    t.ok((prefs.musicVolume ?? 1) < 0.7, `the music slider moved (${(prefs.musicVolume ?? 1).toFixed(2)})`);
+    t.equal(saves.length, 1, "Done saved once");
+    const saved = saves[0];
     t.equal((saved?.args["value"] as { language?: string } | undefined)?.language, "zh-CN", "the settings went to og.platform with the language");
     t.ok(texts(run, "play-zh.json").includes("第 1/2 层"), "the HUD speaks 简体中文");
     const resumed = game(run, "resumed.json");

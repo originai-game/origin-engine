@@ -154,7 +154,13 @@ export const STARTERS = {
   roguelike: {
     profile: "2d", views: ["top-down-2d"], players: BOTH_PLAYERS, seats: 2, kit: null,
     systems: ["net", "tilemap", "procgen", "rng", "tween", "render", "audio", "platform", "i18n", "ui"],
-    controls: { move: "dpad", aim: "none", buttons: [{ name: "wait", label: "Wait", keys: k(["Space", "Period"], ["Enter", "Numpad0"]), pad: ["pad.a"] }] },
+    controls: { move: "dpad", aim: "cursor", buttons: [
+      { name: "wait", label: "Wait", keys: k(["Space", "Period"], ["Enter", "Numpad0"]), pad: ["pad.a"] },
+      { name: "drink", label: "Drink", keys: k(["KeyQ", "Digit1"], ["Slash", "Numpad1"]), pad: ["pad.x"] },
+      { name: "step", label: "Step", keys: k([], []), pad: [], mouse: "mouse.left", surface: true },
+      { name: "dive", label: "Dive", keys: k([], []), pad: [], surface: true },
+      { name: "quit", label: "Quit", keys: k([], []), pad: [], surface: true },
+    ] },
   },
   deckbuilder: {
     profile: "2d", views: ["side-2d", "top-down-2d"], players: BOTH_PLAYERS, seats: 2, kit: "rpg",

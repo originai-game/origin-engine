@@ -2,18 +2,18 @@
 // through, run twice in fresh processes, ends on the same world hash, and
 // the floor it carved is the same both times.
 import { playtest } from "@origingame/engine/playtest";
-import { game, press, presses, tap } from "./lib.ts";
+import { game, presses, script, tap, turn } from "./lib.ts";
 
 export default playtest({
   name: "a dive with steps, strikes and the foes' turns replays to the same hash",
   runs: 2,
-  commands: [
+  commands: script([
     tap("Play", 0.3),
     presses(["ArrowUp", "ArrowRight", "ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "ArrowUp", "Space", "ArrowRight", "ArrowRight"], 0.9),
-    press("KeyQ", 3.5),
+    turn("KeyQ", 3.5),
     "4.0:get:Game:end.json",
     "4.1:quit",
-  ].join(";"),
+  ]),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     t.equal(run.hashes.length, 2, "two runs");

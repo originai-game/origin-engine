@@ -120,6 +120,20 @@ feel 77–80: the p95 follows the machine's load, not the game
 - **The end.** The lamp out (health 0) or the relic taken ends the dive;
   50 ticks later the summary. Nothing carries over to the next dive but the
   record of dives and relics.
+- **Seats.** Input reaches the game only as each seat's og.PlayerInput
+  (`src/seats.ts`, `src/creation.ts`); the menus and the HUD press a seat's
+  bits (pause, dive, quit, wait, drink) rather than write the world. With
+  two players (co-op on one device: WASD and Space, Q against the arrows
+  and Enter, `/`, pad 1 against pad 2, or a touch column each; or over a
+  room in lockstep) a second delver, in a cooler ink, starts beside the
+  first. Each takes its own step; the world's turn (the foes, the finds)
+  comes once every delver on its feet has acted. A delver struck to 0 lies
+  down until the floor ends (it rises below with half its health); both
+  down, the lamp is out; the relic wins for both. The draughts, the blade,
+  the ward, the oil and the gold are the party's. On one device the camera
+  frames both delvers' middle, widening to keep both; in a room each
+  peer's follows its own seat. A room keeps no record or settings while it
+  runs (each peer's own answers would differ).
 
 Everything is deterministic: the clock is the fixed tick, the plans come
 from `og.Rng` streams, og.ai and og.nav are deterministic and in
@@ -144,11 +158,11 @@ snapshots, and `tests/replay.og.ts` replays a dive to the same hash.
 
 | Type | Kind | What it holds |
 |---|---|---|
-| `Game` | resource | the phase, the seed, the floor, the lamp-bearer's numbers and cell, the counts (turns, kills, hits, hurts, finds), the foes' turn, the queued action, the record, sound requests, the map, grid and mind handles, the lit and seen cells |
+| `Game` | resource | the phase, the seed, the floor, each delver's health and cell (seat 0's `hp`, `heroX`, seat 1's `hp2`, `hero2X`), the party's numbers, the counts (turns, kills, hits, hurts, finds), the foes' turn, the seats a room dropped, the record, sound requests, the map, grid and mind handles, the lit and seen cells |
 | `Tuning` | resource | the knobs below |
-| `Prefs` | resource | the volumes, the language, reduced motion, the settings request |
+| `prefs` (`src/device.ts`) | this device's own, in no world | the volumes, the language, reduced motion, the settings request: presentation only, so a room's players keep their own |
 | `Foes` | resource | where each foe stands (the Hero system reads it to strike what it walks into) |
-| `Hero` | the lamp-bearer | steps, bumps |
+| `Hero` | a delver per seat (with its og.PlayerInput) | its seat, steps, bumps, its lock, queued action, held direction, last buttons, whether it acted this turn |
 | `Foe` | the 10 pooled foes | slot, kind, health, strike, cell, turns, the charge, the fall |
 | `Loot` | the 12 pooled finds | slot, kind, coins, cell, the pickup |
 | `Sfx` | one row per sound | its `Sound.*` bit, its plays |
@@ -157,9 +171,10 @@ snapshots, and `tests/replay.og.ts` replays a dive to the same hash.
 
 | System | Job |
 |---|---|
-| `og.systems.cameras` | the camera follows the lamp-bearer (`og.Follow2D`) |
-| `Ui` | the screens, starting and ending dives, the camera's height for the surface, the buses, the platform's answers |
-| `Hero` | carves a floor, draws the lamp's glow, the lamp-bearer's turn (step, strike, bump, wait, draught, stairs) |
+| `Seats` | each seat's keys, pad, touch d-pad and the HUD's presses to og.net.submit (`src/seats.ts`) |
+| `og.systems.cameras` | the camera follows the lamp-bearer (`og.Follow2D`; two on one device, their middle) |
+| `Ui` | the screens, ending dives, the camera's height for the surface, the buses, the platform's answers |
+| `Hero` | the menus' bits (pause, dive, quit), carves a floor, draws the lamps' glow, each delver's turn from its og.PlayerInput (step, strike, bump, wait, draught, stairs), the world's turn once every delver up has acted |
 | `Foes` | places a floor's foes, lands the lamp-bearer's strike, the falls, which foes the lamp shows, the charge's tint, the board; takes the foes' turn down once og.ai has thought with it |
 | `Loot` | places a floor's finds, picks them up, shows the lit ones |
 | `Fog` | what the lamp lights |
@@ -229,6 +244,7 @@ playtests read the same values from the `Game` resource with `get:Game`.
 | `tests/foes.og.ts` | a rat that sees the lamp hunts it and strikes beside it; a strike lands, the second fells the rat and it leaves the board |
 | `tests/lose.og.ts` | the lamp out by a rat; the summary after a beat with how and where; Dive again starts from nothing (new seed, the blade gone) |
 | `tests/win.og.ts` | the stairs to floor 2 (the foes left behind take no turn), the guardian fought and felled, the relic, the record merged after a stale write, the summary, Title |
+| `tests/seats.og.ts` | The arrows, the pad's d-pad and the phone HUD's d-pad each reach seat 0's og.PlayerInput and take a step |
 | `tests/pause.og.ts` | Escape holds the dive (time scale 0, keys take no turn); settings switch to 简体中文 and move the music; Done saves through og.platform; Resume |
 | `tests/pad.og.ts` | a gamepad alone starts, steps, holds a direction, waits, drinks and is refused, pauses and resumes |
 | `tests/phone.og.ts` | 390 × 844 at 3×: the HUD inside the safe area, touch-sized buttons, the d-pad steps and Wait waits |

@@ -3,11 +3,11 @@
 // the lamp-bearer's strikes land on a rat (a hit stop, the number) and the
 // second fells it. Seed 7's first floor has a rat at (6, 7).
 import { playtest } from "@origingame/engine/playtest";
-import { foe, game, press, presses } from "./lib.ts";
+import { foe, game, presses, script, turn } from "./lib.ts";
 
 export default playtest({
   name: "a rat hunts and strikes; two strikes fell it",
-  commands: [
+  commands: script([
     "0.3:dive:7",
     "0.5:warp:3:7",
     "0.6:get:Foes:before.json",
@@ -17,14 +17,14 @@ export default playtest({
     "2.0:get:Game:struck.json",
     "2.2:dive:7",
     "2.4:warp:5:7",
-    press("ArrowRight", 2.6),
+    turn("ArrowRight", 2.6),
     "2.75:get:Game:hit.json",
     "2.75:dump_entity:foe-0:hit-foe.json",
     presses(["ArrowRight", "ArrowRight"], 2.9),
     "3.6:get:Game:felled.json",
     "3.6:get:Foes:felled-foes.json",
     "3.7:quit",
-  ].join(";"),
+  ]),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     const [x0, y0] = foe(run, "before.json", 0);

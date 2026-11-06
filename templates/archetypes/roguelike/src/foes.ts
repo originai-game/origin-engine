@@ -2,12 +2,16 @@
 // queues each with the foe's handle; they run before the next tick). One
 // command is one foe's whole turn.
 //
-// - strike: the lamp-bearer is next to it: it loses the foe's strike less
-//   its armour (at least 1), twice that for a charged strike; a hit holds
-//   the world, flashes the lamp-bearer red, shakes and kicks the camera.
-// - hunt: a step along og.nav's path to the lamp-bearer (or to where the
-//   foe last saw it), never onto another foe; into the lamp-bearer it is a
-//   strike.
+// Each foe goes for the delver on its feet nearest it (seat 0 on a tie);
+// alone that is the lamp-bearer.
+// - strike: a delver is next to it: it loses the foe's strike less the
+//   armour (at least 1), twice that for a charged strike; a hit holds the
+//   world, flashes the delver red, shakes and kicks the camera. With two
+//   delvers, one struck to 0 is down until the floor ends; the last one
+//   down puts the lamp out.
+// - hunt: a step along og.nav's path to the delver (or to where the foe
+//   last saw it), never onto another foe or a delver; into the delver it
+//   is a strike.
 // - roam: a step in a direction of the dice (rats roam every turn,
 //   skeletons every other).
 // - brace: the guardian holds its ground.
@@ -17,9 +21,9 @@
 
 import { og } from "@origingame/engine";
 import type { Entity, Value, World } from "@origingame/engine";
-import { Foe, FoeKind, FOE_SLOTS, Game, Sound } from "./components.ts";
+import { cellOf, Foe, FoeKind, FOE_SLOTS, Game, heroName, hpOf, setHp, Sound } from "./components.ts";
 import { H, W } from "./dive.ts";
-import { cellCenter, feel, float, isWall, lazyTuning, must, must2, RED } from "./systems.ts";
+import { cellCenter, delverAt, feel, float, isWall, lazyTuning, must, must2, nearestDelver, partyDown, RED } from "./systems.ts";
 import { say } from "./ui.ts";
 
 type FoeV = Value<typeof Foe>;
@@ -37,7 +41,7 @@ function context(world: World, args: readonly string[]): Ctx | null {
   const game = world.resource(Game);
   if (!foe.ok || !game.ok) throw new Error(`${args[0]} is not a foe`);
   const g = game.value;
-  if (!foe.value.active || foe.value.dying > 0 || g.hp <= 0 || g.won) return null;
+  if (!foe.value.active || foe.value.dying > 0 || partyDown(g) || g.won) return null;
   return { me, f: foe.value as FoeV, g };
 }
 
@@ -69,29 +73,31 @@ function occupied(world: World, x: number, y: number, me: Entity): boolean {
 
 function stepTo(world: World, c: Ctx, x: number, y: number): boolean {
   if (x < 0 || y < 0 || x >= W || y >= H || isWall(world, c.g, x, y) || occupied(world, x, y, c.me)) return false;
-  if (x === c.g.heroX && y === c.g.heroY) return false;
+  if (delverAt(c.g, x, y) >= 0) return false;
   must(world.set(c.me, Foe, { cx: x, cy: y }));
   const to = cellCenter(x, y);
   must(og.tween.to(world, { entity: c.me, field: "position", to: [to.x, to.y, 0], duration: lazyTuning(world).stepTime, ease: "quadOut" }));
   return true;
 }
 
-/** `strike:<foe>`: the foe strikes the lamp-bearer beside it. */
+/** `strike:<foe>`: the foe strikes the delver beside it. */
 export function strike(world: World, args: readonly string[]): void {
   const c = context(world, args);
   if (c === null) return;
   const { f, g } = c;
-  if (Math.abs(f.cx - g.heroX) + Math.abs(f.cy - g.heroY) !== 1) {
+  const seat = nearestDelver(g, f.cx, f.cy);
+  const cell = cellOf(g, seat);
+  if (Math.abs(f.cx - cell.x) + Math.abs(f.cy - cell.y) !== 1) {
     hunt(world, args);
     return;
   }
   const charged = f.charging;
   const dmg = Math.max(1, f.attack * (charged ? 2 : 1) - g.armour);
-  g.hp = Math.max(0, g.hp - dmg);
+  setHp(g, seat, Math.max(0, hpOf(g, seat) - dmg));
   g.hurts += 1;
   g.sfx |= Sound.Hurt;
-  const hero = world.find("hero");
-  const at = cellCenter(g.heroX, g.heroY);
+  const hero = world.find(heroName(seat));
+  const at = cellCenter(cell.x, cell.y);
   float(world, say(world, "float.hurt", { n: dmg }), at.x, at.y + 0.7, RED, charged);
   if (hero !== null) {
     must(og.tween.flash(world, { entity: hero, color: RED, duration: 0.2 }));
@@ -103,33 +109,34 @@ export function strike(world: World, args: readonly string[]): void {
     { entity: c.me, field: "position", to: [from.x + (at.x - from.x) * 0.35, from.y + (at.y - from.y) * 0.35, 0], duration: 0.05, ease: "quadOut" },
     { entity: c.me, field: "position", to: [from.x, from.y, 0], duration: 0.09, ease: "quadIn" },
   ]));
-  const dead = g.hp === 0;
+  const dead = partyDown(g);
   must(og.time.hitStop(world, dead ? 16 : charged ? 8 : 3));
-  const k = feel(world);
+  const k = feel();
   must(og.camera.shake(world, (dead ? 0.7 : charged ? 0.5 : 0.25) * k));
   must(og.camera.kick(world, { x: at.x - from.x, y: at.y - from.y, z: 0 }, (charged ? 0.25 : 0.12) * k));
   if (dead) {
     g.killedBy = f.kind;
     g.overTicks = 0;
-    g.sfx |= Sound.Fall;
   }
+  if (hpOf(g, seat) === 0) g.sfx |= Sound.Fall;
   turnTaken(world, c);
 }
 
-/** `hunt:<foe>`: a step along og.nav's path to the lamp-bearer, or to where the foe last saw it. */
+/** `hunt:<foe>`: a step along og.nav's path to the nearest delver, or to where the foe last saw one. */
 export function hunt(world: World, args: readonly string[]): void {
   const c = context(world, args);
   if (c === null) return;
   const { f, g } = c;
   const eyes = world.get(c.me, og.Perception);
   const sees = eyes.ok && eyes.value.sees;
-  let tx = g.heroX;
-  let ty = g.heroY;
+  const cell = cellOf(g, nearestDelver(g, f.cx, f.cy));
+  let tx = cell.x;
+  let ty = cell.y;
   if (!sees && eyes.ok) {
     tx = Math.floor(eyes.value.lastSeen.x);
     ty = H - 1 - Math.floor(eyes.value.lastSeen.y);
   }
-  if (Math.abs(f.cx - g.heroX) + Math.abs(f.cy - g.heroY) === 1 && sees) {
+  if (Math.abs(f.cx - cell.x) + Math.abs(f.cy - cell.y) === 1 && sees) {
     strike(world, args);
     return;
   }

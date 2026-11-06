@@ -6,15 +6,15 @@
 // end's write is refused as stale, read again and merged (this dive's
 // relic added to the other device's counts).
 import { playtest } from "@origingame/engine/playtest";
-import { foe, game, OVER, type PlatformDump, press, presses, tap, texts } from "./lib.ts";
+import { foe, game, OVER, type PlatformDump, presses, script, tap, texts, turn } from "./lib.ts";
 
 export default playtest({
   name: "down the stairs, past the guardian, the relic, a merged record and the summary",
-  commands: [
+  commands: script([
     "0.3:dive:7",
     "0.5:warp:23:10",
     "0.6:get:Game:above.json",
-    press("ArrowDown", 0.7),
+    turn("ArrowDown", 0.7),
     "1.0:get:Game:below.json",
     "1.0:get:Foes:below-foes.json",
     "1.1:warp:22:14",
@@ -28,7 +28,7 @@ export default playtest({
     tap("Menu", 5.2),
     "5.8:get:Game:menu.json",
     "5.9:quit",
-  ].join(";"),
+  ]),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     const above = game(run, "above.json");

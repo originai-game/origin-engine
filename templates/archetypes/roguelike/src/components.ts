@@ -2,12 +2,16 @@
 // the probe, Tune and the command channel's `get` and `set` read and write
 // them by name.
 //
-// The dive (Game), the knobs (Tuning), the player's settings (Prefs) and
+// The dive (Game), the knobs (Tuning) and
 // where each foe stands (Foes, so the hero's system can find what it walks
-// into) are resources. The actors are pooled rows spawned in `start`: the
-// hero, the foes, the loot and one voice per sound.
+// into) are resources. The actors are pooled rows spawned in `start`: a
+// delver per seat (src/seats.ts), the foes, the loot and one voice per
+// sound. Seat 0's delver is the lamp-bearer of Game.heroX, heroY, hp and
+// hpMax; seat 1's, when two play, has the *2 fields. What a party finds
+// (draughts, the blade, the ward, oil, gold) is the party's.
 
 import { bool, defineComponent, defineResource, f32, f64, i32, u32 } from "@origingame/engine";
+import type { Value } from "@origingame/engine";
 
 /** The screen the game is on. */
 export const Phase = { Title: 0, Play: 1, Over: 2 } as const;
@@ -31,7 +35,6 @@ export const LOOT_SLOTS = 12;
 export const Game = defineResource("Game", {
   phase: u32(Phase.Title, { doc: "Phase.* of src/components.ts." }),
   paused: bool(false),
-  settingsOpen: bool(false),
   held: bool(false, { doc: "The time scale is held at 0 (paused or in the settings)." }),
   dives: u32(0, { doc: "Dives started on this device (the store's `record`)." }),
   relics: u32(0, { doc: "Dives that took the relic (the store's `record`)." }),
@@ -47,8 +50,10 @@ export const Game = defineResource("Game", {
   deepest: u32(0),
   build: bool(false, { doc: "The Hero system carves the floor this tick." }),
   place: bool(false, { doc: "The Foes and Loot systems place this floor's rows this tick." }),
-  hp: i32(0),
+  hp: i32(0, { doc: "Seat 0's health (0: down until the floor ends)." }),
   hpMax: i32(0),
+  hp2: i32(0, { doc: "Seat 1's health, when two play." }),
+  hpMax2: i32(0),
   attack: i32(0, { doc: "Damage a strike deals (before the die's +0 or +1)." }),
   armour: i32(0, { doc: "Damage a foe's strike loses." }),
   lamp: f32(0, { unit: "cells", doc: "How far the lamp lights." }),
@@ -61,19 +66,17 @@ export const Game = defineResource("Game", {
   turns: u32(0),
   heroX: i32(0, { doc: "The lamp-bearer's cell, a map column." }),
   heroY: i32(0, { doc: "The lamp-bearer's cell, a map row (0 the top)." }),
+  hero2X: i32(0, { doc: "Seat 1's cell, when two play." }),
+  hero2Y: i32(0),
+  away: u32(0, { doc: "Seats a room dropped (bit per seat): the world's turn waits for none of them." }),
   stairsX: i32(-1, { doc: "The stairs' cell on floor 1 (-1 none)." }),
   stairsY: i32(-1),
   foesTurn: bool(false, { doc: "The foes act this turn: their behaviour (assets/ai/*.ogt) checks it." }),
-  lock: u32(0, { unit: "ticks", doc: "Ticks before the next action is taken (the step's or the strike's animation)." }),
-  strikeSlot: i32(-1, { doc: "The foe the lamp-bearer struck this tick, for the Foes system."}),
+  strikeSlot: i32(-1, { doc: "The foe a delver struck this tick, for the Foes system (one strike lands a tick)."}),
   strikeDamage: i32(0),
-  queued: u32(0, { doc: "An action asked for while the last played out (0 none, 1-4 a direction, 5 wait, 6 drink)." }),
-  repeat: u32(0, { unit: "ticks", doc: "Ticks a direction has been held (it repeats after 14, then every 7)." }),
-  lastDir: u32(0, { doc: "The direction held last tick (0 none, 1 up, 2 right, 3 down, 4 left)." }),
-  padDir: u32(0, { doc: "The HUD d-pad's direction this tick (written by Ui)." }),
-  padWait: bool(false, { doc: "The HUD's Wait was pressed this tick." }),
-  padDrink: bool(false, { doc: "The HUD's Drink was pressed this tick." }),
+  strikeSeat: u32(0, { doc: "The seat whose delver struck." }),
   refusedTick: i32(-1, { unit: "ticks", doc: "The tick a draught was refused (the HUD shakes Drink)." }),
+  refusedSeat: u32(0),
   foesAt: i32(-1, { unit: "ticks", doc: "The tick foesTurn went up; the Foes system takes it down on a later tick, after og.ai has thought with it." }),
   foeMind: f64(0, { doc: "assets/ai/foe.ogt's behaviour handle." }),
   guardianMind: f64(0, { doc: "assets/ai/guardian.ogt's behaviour handle." }),
@@ -88,9 +91,6 @@ export const Game = defineResource("Game", {
   grid: f64(0, { doc: "The floor's og.nav grid." }),
   map: f64(0, { doc: "The floor's og.Tilemap entity." }),
   glow: f64(0, { doc: "The lamp's light texture." }),
-  viewW: f32(0, { unit: "cssPx" }),
-  viewH: f32(0, { unit: "cssPx" }),
-  language: u32(0, { doc: "Prefs.language, mirrored for the facts." }),
 });
 
 /** The knobs. Tune reads the tunable fields; `set:Tuning.<field>=<value>` writes them. */
@@ -110,17 +110,6 @@ export const Tuning = defineResource("Tuning", {
   hitStop: u32(4, { min: 0, max: 12, unit: "ticks", tunable: true, label: "Hit stop" }),
 });
 
-/** The player's settings: kept in og.platform's settings, restored on the first ticks. */
-export const Prefs = defineResource("Prefs", {
-  master: f32(1, { min: 0, max: 1 }),
-  music: f32(0.7, { min: 0, max: 1 }),
-  effects: f32(1, { min: 0, max: 1 }),
-  language: u32(0, { doc: "0 English, 1 简体中文 (LANGUAGES in src/ui.ts)." }),
-  reducedMotion: bool(false),
-  loadRequest: u32(0),
-  saves: u32(0),
-});
-
 /** Where each foe stands and whether it is up: the Hero system reads it to strike what it walks into. */
 export const Foes = defineResource("Foes", Object.fromEntries(
   Array.from({ length: FOE_SLOTS }, (_, i) => [
@@ -129,11 +118,53 @@ export const Foes = defineResource("Foes", Object.fromEntries(
   ]).flat(),
 ) as Record<string, ReturnType<typeof i32>>);
 
-/** The lamp-bearer. */
+/** A delver (seat 0's is the lamp-bearer): its turn's bookkeeping; its cell and health are Game's. */
 export const Hero = defineComponent("Hero", {
+  seat: u32(0, { doc: "Its og.PlayerInput's player." }),
   steps: u32(0, { doc: "Cells walked." }),
   bumps: u32(0, { doc: "Steps into stone (refused with a bump)." }),
+  lock: u32(0, { unit: "ticks", doc: "Ticks before its next action is taken (the step's or the strike's animation)." }),
+  queued: u32(0, { doc: "An action asked for while the last played out (0 none, 1-4 a direction, 5 wait, 6 drink)." }),
+  repeat: u32(0, { unit: "ticks", doc: "Ticks a direction has been held (it repeats after 14, then every 7)." }),
+  lastDir: u32(0, { doc: "The direction held last tick (0 none, 1 up, 2 right, 3 down, 4 left)." }),
+  before: u32(0, { doc: "Its seat's og.PlayerInput.buttons last tick (for presses)." }),
+  acted: bool(false, { doc: "It acted this turn: the world's turn comes once every delver up has." }),
 });
+
+type GameV = Value<typeof Game>;
+
+/** A seat's delver's cell. */
+export function cellOf(g: GameV, seat: number): { x: number; y: number } {
+  return seat === 0 ? { x: g.heroX, y: g.heroY } : { x: g.hero2X, y: g.hero2Y };
+}
+
+export function setCell(g: GameV, seat: number, x: number, y: number): void {
+  if (seat === 0) {
+    g.heroX = x;
+    g.heroY = y;
+  } else {
+    g.hero2X = x;
+    g.hero2Y = y;
+  }
+}
+
+export function hpOf(g: GameV, seat: number): number {
+  return seat === 0 ? g.hp : g.hp2;
+}
+
+export function hpMaxOf(g: GameV, seat: number): number {
+  return seat === 0 ? g.hpMax : g.hpMax2;
+}
+
+export function setHp(g: GameV, seat: number, hp: number): void {
+  if (seat === 0) g.hp = hp;
+  else g.hp2 = hp;
+}
+
+/** A seat's delver entity: `hero`, then `hero-1`. */
+export function heroName(seat: number): string {
+  return seat === 0 ? "hero" : `hero-${seat}`;
+}
 
 /** A foe: a pooled row a floor switches on. What it decides is assets/ai/<kind>.ogt (og.ai). */
 export const Foe = defineComponent("Foe", {
