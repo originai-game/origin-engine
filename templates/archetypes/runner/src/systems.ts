@@ -638,9 +638,14 @@ export const HudText = defineSystem("Hud", { reads: [Run, Hud, Tuning, Race, og.
         // A race: each courier's metres (OUT once it crashed), and the winner on the card.
         const d = [run.distance[i]!, race.value.distance];
         const out = [run.out[i] === 1, race.value.out];
-        const line = (seat: number) => `P${seat + 1} ${Math.floor(d[seat]!)} m${out[seat] ? "  OUT" : ""}${seat === you ? "  (YOU)" : ""}`;
-        text(line(0), left + 0.4, top - 0.8, 0.55);
-        text(line(1), left + 0.4, top - 1.5, 0.55, RIVAL);
+        // The tag in its courier's ink, then the metres in white past a clear gap: "P1  5 m", never "P15 m".
+        const line = (seat: number, y: number) => {
+          const tag = `P${seat + 1}`;
+          text(tag, left + 0.4, y, 0.55, seat === 0 ? MINT : RIVAL);
+          text(`${Math.floor(d[seat]!)} m${out[seat] ? "  OUT" : ""}${seat === you ? "  (YOU)" : ""}`, left + 0.4 + width(tag, 0.55) + 0.45, y, 0.55, WHITE);
+        };
+        line(0, top - 0.8);
+        line(1, top - 1.5);
         if (phase === Phase.Running && run.phaseTicks[i]! < 240) {
           centred("Tap: hop   Hold: high jump", top - 2.4, 0.45, MINT);
           centred("点按小跳 · 按住高跳", top - 3, 0.4, MINT);
@@ -674,7 +679,7 @@ export const HudText = defineSystem("Hud", { reads: [Run, Hud, Tuning, Race, og.
 const WHITE = { r: 1, g: 1, b: 1 };
 const MINT = { r: 0.3, g: 0.85, b: 0.75 };
 const CORAL = { r: 1, g: 0.25, b: 0.18 };
-/** The second courier's ink (its sprite's tint, src/main.ts), for its HUD lines. */
+/** The second courier's ink (its palette's blue, sprites/courier-p2), for its HUD lines. */
 export const RIVAL = { r: 0.55, g: 0.8, b: 1 };
 
 /** The best score from the player's store: asked for on the first tick, taken when the answer arrives (outside a running room). */
