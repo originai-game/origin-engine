@@ -70,11 +70,15 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
     } else {
         og_idl::generate(&api)
     };
-    match crate::ui::catalogue::generate(root, &api) {
-        Ok(file) => files.push(file),
-        Err(e) => {
-            eprintln!("og api gen: {e}");
-            return ExitCode::FAILURE;
+    // The UI catalogue is not a wiki page: `--wiki` leaves it, as it leaves
+    // the bindings, and the full run regenerates it from the UI sources.
+    if !wiki {
+        match crate::ui::catalogue::generate(root, &api) {
+            Ok(file) => files.push(file),
+            Err(e) => {
+                eprintln!("og api gen: {e}");
+                return ExitCode::FAILURE;
+            }
         }
     }
     let written = match og_idl::write(root, &files) {

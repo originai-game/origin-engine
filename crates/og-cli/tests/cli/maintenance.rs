@@ -256,9 +256,28 @@ fn api_check_passes_on_the_repository() {
     assert!(text(&out).contains("match crates/og-api/api"));
 }
 
+/// The repository's UI sources the catalogue (packages/knowledge/ui/
+/// catalogue.json) is generated from, linked into a scratch root so a full
+/// `og api gen` there generates every file it generates in the repository.
+fn link_catalogue_sources(root: &std::path::Path) {
+    for dir in [
+        "packages/engine/src/ui",
+        "packages/engine/extensions",
+        "templates/styles",
+    ] {
+        let link = root.join(dir);
+        std::fs::create_dir_all(link.parent().unwrap()).unwrap();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(repo().join(dir), &link).unwrap();
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_dir(repo().join(dir), &link).unwrap();
+    }
+}
+
 #[test]
 fn api_check_detects_a_hand_edit_and_a_stray_file_and_gen_repairs_them() {
     let root = scratch_root();
+    link_catalogue_sources(&root);
     let root_arg = root.to_str().unwrap();
     let r#gen = og()
         .args(["api", "gen", "--root", root_arg])
