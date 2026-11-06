@@ -125,6 +125,49 @@ pub fn retime(flight: ClipFlight, start: usize, frames: usize, rate: f32, time: 
     frame.clamp(0.0, last)
 }
 
+/// The bound on a jump's drawn air pose at `phase` of the clip's own flight
+/// (0 at its takeoff, 1 at its touchdown), [`air_pose`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AirPose {
+    /// How far the leg further forward may swing back from straight below
+    /// its hip, rad.
+    pub lead: f32,
+    /// The same for the other leg, rad.
+    pub trail: f32,
+    /// How far the body may lean from upright (the pelvis to the chest, the
+    /// hips to the head), rad.
+    pub lean: f32,
+}
+
+/// The phase of a flight its apex is at.
+const APEX: f32 = 0.5;
+
+/// A running jump's air pose (`docs/design.md` §2.7, "Jumps"): at takeoff a
+/// leg may trail the push-off (45°) and the body lean into it (30°); toward
+/// the apex both ease (smoothstep) to the landing's, the legs under the
+/// hips (the lead straight below, the trail within 5°) and the body near
+/// upright (10°), and hold there to touchdown. A generated flight that
+/// pitches toward horizontal with both legs swept back reads as a dive,
+/// not a jump; commercial running jumps lead with one leg and bring both
+/// under the hips before touchdown.
+pub fn air_pose(phase: f32) -> AirPose {
+    let t = (phase / APEX).clamp(0.0, 1.0);
+    let t = t * t * (3.0 - 2.0 * t);
+    let lerp = |a: f32, b: f32| (a + (b - a) * t).to_radians();
+    AirPose {
+        lead: lerp(15.0, 0.0),
+        trail: lerp(45.0, 5.0),
+        lean: lerp(30.0, 10.0),
+    }
+}
+
+/// How far a leg swings back from straight below its hip, rad: the angle in
+/// the body's sagittal plane (forward +Z, up +Y) of `hip_to_ankle`, positive
+/// behind.
+pub fn swing_back(hip_to_ankle: [f32; 3]) -> f32 {
+    og_core::math::atan2(-hip_to_ankle[2], -hip_to_ankle[1])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

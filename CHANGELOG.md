@@ -33,7 +33,11 @@ is one line here, written at the merge that changes
   `MotionStatus` gains `airborne`. The motion model never decides takeoff,
   height or landing; its jump is drawn in place on the simulation's flight,
   retimed to the landing each tick predicts from the arc and the ground
-  along it (a ledge up lands early, a drop late).
+  along it (a ledge up lands early, a drop late). In the air the drawn pose
+  is bounded toward the landing: the lean eases from 30° at takeoff to 10°
+  at the apex and the legs come under the hips, so a running jump no longer
+  reads as a dive. `dump_motion` reports the drawn feet's distance ahead of
+  the hips (`feetAheadM`).
 - **Fixed: a falling og.CharacterController lands where it meets the
   ground.** Ground snapping now holds only a controller that stood on the
   ground at the start of its move (slopes and steps down), as rapier's own

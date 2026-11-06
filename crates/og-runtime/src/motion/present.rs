@@ -222,6 +222,10 @@ struct Shown {
     /// The lean (hips to head) last drawn, rad.
     lean: Option<f32>,
     drawn_lean: Option<f32>,
+    /// How far the drawn ankles are ahead of the hips along the facing, m
+    /// (their mean): behind in a stride's push-off, under or ahead of the
+    /// hips coming down to a landing.
+    feet_ahead: Option<f32>,
     /// The model goals asked for, oldest first, until their frames are
     /// shown: what each frame's tag names.
     issued: VecDeque<Issued>,
@@ -240,6 +244,10 @@ struct Clip {
     drawn: f32,
     /// The clip's own flight, once it has generated one.
     flight: Option<flight::ClipFlight>,
+    /// How far through that flight the drawn frame is, 0 at its takeoff
+    /// and 1 at its touchdown (the simulation's flight's length while the
+    /// touchdown is not generated yet); `None` before the takeoff.
+    air: Option<f32>,
 }
 
 /// A model goal asked for: its id (the frames' tag), its library pose and
@@ -827,6 +835,7 @@ fn jump_clip(
             frames: std::iter::once(prev).chain(s.next).collect(),
             drawn: s.phase.min(if s.next.is_some() { 1.0 } else { 0.0 }),
             flight: None,
+            air: None,
         });
     }
     let clip = s.clip.as_mut().expect("set above");
@@ -850,8 +859,9 @@ fn jump_clip(
         s.requested = None;
     }
     let natural = clip.drawn + elapsed * RATE;
+    let flight_frames = c.jump.map(|j| 2.0 * j.v0 / j.gravity.max(1e-3) * RATE);
     let target = c.jump.and_then(|j| {
-        let flight_frames = 2.0 * j.v0 / j.gravity.max(1e-3) * RATE;
+        let flight_frames = flight_frames.unwrap_or(0.0);
         let min = ((MIN_FLIGHT * flight_frames) as usize).max(2);
         let contacts: Vec<[f32; 4]> = clip.frames.iter().map(|f| f.contacts).collect();
         let fl = flight::clip_flight(&contacts, 0, min)?;
@@ -877,6 +887,15 @@ fn jump_clip(
     let to = target.unwrap_or(natural);
     let last = clip.frames.len().saturating_sub(1) as f32;
     clip.drawn = (clip.drawn + (to - clip.drawn).clamp(-step, step)).clamp(0.0, last);
+    clip.air = clip.flight.and_then(|fl| {
+        let takeoff = fl.takeoff as f32;
+        let end = fl
+            .touchdown
+            .map(|t| t as f32)
+            .or(flight_frames.map(|n| takeoff + n))?;
+        (clip.drawn >= takeoff)
+            .then(|| ((clip.drawn - takeoff) / (end - takeoff).max(1.0)).min(1.0))
+    });
     let k = clip.drawn.floor() as usize;
     s.prev = clip.frames.get(k).copied();
     s.next = clip.frames.get(k + 1).copied();
@@ -888,14 +907,17 @@ fn jump_clip(
 /// the ground, the root's pitch (pelvis to chest), turning the whole body
 /// about the hips,
 /// then the spine's (hips to head), turning the torso at the spine so the
-/// legs keep their bend. Answers the transforms and the lean (hips to
-/// head) they have.
+/// legs keep their bend. Off the ground in a jump's flight, `air` bounds
+/// each leg's swing back below its hip ([`flight::air_pose`]), turning the
+/// thigh forward so the knee keeps its bend. Answers the transforms and
+/// the lean (hips to head) they have.
 fn rerooted(
     skeleton: &Skeleton,
     asset: &SkeletonAsset,
     pose: &Pose,
     max: f32,
     grounded: bool,
+    air: Option<flight::AirPose>,
 ) -> (Vec<Trs>, f32) {
     let h = heading(pose.positions[RIGHT_LEG], pose.positions[LEFT_LEG]);
     let mut local = skeleton.local(pose);
@@ -918,6 +940,27 @@ fn rerooted(
         let spine = unlean(from_hips(&local, HEAD), max);
         let r0 = local[0].rotation;
         local[SPINE].rotation = (r0.inverse() * spine * r0 * local[SPINE].rotation).normalize();
+    }
+    if let Some(air) = air.filter(|_| !grounded) {
+        let m = asset.model_space(&local);
+        let swing = |hip: usize, ankle: usize| {
+            flight::swing_back((m[ankle].translation - m[hip].translation).to_array())
+        };
+        let legs = [(LEFT_LEG, LEFT_ANKLE), (RIGHT_LEG, RIGHT_ANKLE)];
+        let swings = legs.map(|(hip, ankle)| swing(hip, ankle));
+        let lead = if swings[0] <= swings[1] { 0 } else { 1 };
+        for (k, (hip, _)) in legs.into_iter().enumerate() {
+            let bound = if k == lead { air.lead } else { air.trail };
+            if swings[k] <= bound {
+                continue;
+            }
+            // About the body's side axis: a negative turn about +X swings
+            // the leg forward (+Z), whatever the thigh's own frame.
+            let turn = og_core::math::quat_from_axis_angle(Vec3::X, bound - swings[k]);
+            let parent = m[skeleton.parents[hip] as usize].rotation;
+            local[hip].rotation =
+                (parent.inverse() * turn * parent * local[hip].rotation).normalize();
+        }
     }
     let lean = lean_of(from_hips(&local, HEAD));
     (local, lean)
@@ -953,13 +996,19 @@ fn palette(
     // Every frame of a jump clip is the jump's, the fall and landing the
     // model generated toward the pose after it included.
     let jumping = s.clip.is_some();
+    // In the clip's flight the air pose bounds the legs and, tighter
+    // toward the apex, the lean.
+    let air = s.clip.as_ref().and_then(|c| c.air).map(flight::air_pose);
     let bound = |f: &Frame| {
         let pose = if jumping {
             Some(JUMP)
         } else {
             s.issued(f).map(|g| g.pose)
         };
-        lean_bound(pose).min(rate)
+        let air = air
+            .filter(|_| !grounded(f))
+            .map_or(std::f32::consts::PI, |a| a.lean);
+        lean_bound(pose).min(air).min(rate)
     };
     let (a0, l0) = rerooted(
         &r.soma_skeleton,
@@ -967,6 +1016,7 @@ fn palette(
         &prev.pose,
         bound(&prev),
         grounded(&prev),
+        air,
     );
     let (a1, l1) = rerooted(
         &r.soma_skeleton,
@@ -974,6 +1024,7 @@ fn palette(
         &next.pose,
         bound(&next),
         grounded(&next),
+        air,
     );
     s.lean = Some(l0 + (l1 - l0) * s.phase.clamp(0.0, 1.0));
     let mut frames = [a0, a1];
@@ -1035,6 +1086,19 @@ fn palette(
     if l != NONE && r != NONE {
         let at = |n: u32| model[n as usize].translation.to_array();
         s.facing = heading(at(r), at(l));
+        let forward = Vec3::new(
+            og_core::math::sin(s.facing),
+            0.0,
+            og_core::math::cos(s.facing),
+        );
+        let (la, ra) = (map.nodes[16], map.nodes[20]);
+        s.feet_ahead = map
+            .node("hips")
+            .filter(|_| la != NONE && ra != NONE)
+            .map(|hips| {
+                let mid = (model[la as usize].translation + model[ra as usize].translation) * 0.5;
+                (mid - model[hips as usize].translation).dot(forward)
+            });
     }
     let mut m = Vec::new();
     target.palette(a.skin, &pose.nodes, &mut m);
@@ -1149,6 +1213,7 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
                 slide: (0.0, 0, 0.0),
                 lean: None,
                 drawn_lean: None,
+                feet_ahead: None,
                 issued: VecDeque::new(),
                 next_id: 0,
                 clip: None,
@@ -1386,6 +1451,7 @@ pub(crate) fn dump(eng: &Engine) -> Value {
                 // The drawn body's lean from upright (hips to head).
                 "leanDeg": s.drawn_lean.map(|l| l.to_degrees()),
                 "sourceLeanDeg": s.lean.map(|l| l.to_degrees()),
+                "feetAheadM": s.feet_ahead,
                 // The drawn frame: the pose its model goal asked for, and
                 // how far behind the frame clock it is (s).
                 "drawnPose": s.next.and_then(|f| s.issued(&f)).map(|g| POSES[g.pose]),
@@ -1450,6 +1516,7 @@ mod tests {
             slide: (0.0, 0, 0.0),
             lean: None,
             drawn_lean: None,
+            feet_ahead: None,
             issued: VecDeque::new(),
             next_id: 0,
             clip: None,
@@ -1733,6 +1800,86 @@ mod tests {
             assert_eq!(predicted, pose, "the imminent pose was skipped");
             assert!(seconds <= 0.3);
         }
+    }
+
+    /// A flight's air pose turns legs swept back by the model forward at
+    /// the hips to the bound, keeping each knee's bend, and leaves a frame
+    /// with a foot down as generated.
+    #[test]
+    fn air_pose_brings_swept_back_legs_under_the_hips() {
+        use og_motion::contract::JOINTS;
+        let parent = |j: usize| match j {
+            0 => NONE,
+            1..=9 => j as u32 - 1,
+            10..=21 => 3,
+            22 | 26 => 0,
+            _ => j as u32 - 1,
+        };
+        let offset = |j: usize| match j {
+            22 => Vec3::new(0.1, -0.05, 0.0),
+            26 => Vec3::new(-0.1, -0.05, 0.0),
+            23 | 24 | 27 | 28 => Vec3::new(0.0, -0.45, 0.0),
+            25 | 29 => Vec3::new(0.0, -0.05, 0.12),
+            _ => Vec3::new(0.0, 0.12, 0.0),
+        };
+        let skeleton = Skeleton {
+            parents: std::array::from_fn(parent),
+            rest: std::array::from_fn(|j| Trs::new(offset(j), glam::Quat::IDENTITY, Vec3::ONE)),
+        };
+        let asset = skeleton.asset();
+        let pitch = |deg: f32| {
+            let m = glam::Mat3::from_rotation_x(deg.to_radians());
+            std::array::from_fn(|r| std::array::from_fn(|c| m.col(c)[r]))
+        };
+        let mut pose = Pose {
+            positions: [[0.0; 3]; JOINTS],
+            rotations: [pitch(0.0); JOINTS],
+        };
+        pose.positions[0] = [0.0, 1.0, 0.0];
+        pose.positions[LEFT_LEG] = [0.1, 0.95, 0.0];
+        pose.positions[RIGHT_LEG] = [-0.1, 0.95, 0.0];
+        // The hips pitched forward, both thighs swept back (the left far
+        // behind with its knee straight, the right less, its knee bent).
+        pose.rotations[..22].fill(pitch(20.0));
+        pose.rotations[22] = pitch(80.0);
+        pose.rotations[23..26].fill(pitch(80.0));
+        pose.rotations[26] = pitch(50.0);
+        pose.rotations[27..30].fill(pitch(95.0));
+        let legs = |local: &[Trs]| {
+            let m = asset.model_space(local);
+            [(22, 23, 24), (26, 27, 28)].map(|(hip, knee, ankle)| {
+                let at = |j: usize| m[j].translation;
+                let swing = flight::swing_back((at(ankle) - at(hip)).to_array());
+                let bend = (at(knee) - at(hip)).angle_between(at(ankle) - at(knee));
+                (swing, bend)
+            })
+        };
+        let pi = std::f32::consts::PI;
+        let (free, _) = rerooted(&skeleton, &asset, &pose, pi, false, None);
+        let before = legs(&free);
+        assert!(before[0].0 > 1.3 && before[1].0 > 0.8, "{before:?}");
+        // At the apex: the lead (the right) straight below the hip, the
+        // trail within 5°, both knees bent as generated.
+        let apex = flight::air_pose(0.5);
+        let (bounded, _) = rerooted(&skeleton, &asset, &pose, pi, false, Some(apex));
+        let after = legs(&bounded);
+        assert!((after[1].0 - apex.lead).abs() < 1e-3, "{after:?}");
+        assert!((after[0].0 - apex.trail).abs() < 1e-3, "{after:?}");
+        for k in 0..2 {
+            assert!(
+                (after[k].1 - before[k].1).abs() < 1e-3,
+                "knee {k}: {after:?}"
+            );
+        }
+        // At takeoff the trail may stay 45° behind: only the left turns.
+        let takeoff = flight::air_pose(0.0);
+        let (early, _) = rerooted(&skeleton, &asset, &pose, pi, false, Some(takeoff));
+        let early = legs(&early);
+        assert!((early[0].0 - takeoff.trail).abs() < 1e-3, "{early:?}");
+        assert!((early[1].0 - takeoff.lead).abs() < 1e-3, "{early:?}");
+        // With a foot down the legs are the model's.
+        let (planted, _) = rerooted(&skeleton, &asset, &pose, pi, true, Some(apex));
+        assert_eq!(legs(&planted), before);
     }
 
     #[test]

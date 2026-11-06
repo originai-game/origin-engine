@@ -1389,6 +1389,20 @@ window: Origin Desktop owns the AccessKit platform adapter (platform ask
     it. Without a controller the landing is the fixed arc's. The drawn
     frame reaches the retimed one at no more than three times the clip's
     rate.
+  - **A jump's air pose is bounded toward a landing.** The student
+    generates a running jump as a dive: the body pitched toward
+    horizontal and both legs swept back up to the hips' height (its
+    training data has no jump windows from the original library). Every
+    frame of a jump clip leans at most 30° (the pelvis to the chest, then
+    the hips to the head); off the ground the bound eases (smoothstep)
+    from the takeoff to the clip's own apex, half its flight, to 10°, and
+    each leg's swing back from straight below its hip is bounded too, the
+    leg further forward from 15° to 0° and the other from 45° to 5°, held
+    to touchdown (`og_motion::flight::air_pose`). A leg past its bound turns
+    forward at the hip, about the body's side axis, so its knee keeps the
+    bend the model gave it. A running jump then leads with one leg, and
+    from the apex on the feet are under the hips and the pelvis near
+    upright, as in commercial running jumps.
   - **The streaming boundary holds the whole jump.** The presenter asks
     for a jump when its prediction of the mover reaches it (the agent's
     lookahead, which `prepare` adds to) and keeps its generated frames
