@@ -108,7 +108,7 @@ export function applyCreation(dir: string, c: CreationChoices, entry: string, ar
   const orientation = c.platform === "phone-portrait" ? "portrait" : c.platform === "phone-landscape" ? "landscape" : "any";
   let text = readFileSync(manifest, "utf8");
   const publish = /^publish[ \t]*\{([\s\S]*?)^\}/m;
-  const settings = `\n  orientation ${orientation}\n  fit contain\n  dpr_cap ${c.platform.startsWith("phone-") ? 2 : 3}\n`;
+  const settings = `\n  orientation ${orientation}\n  fit fill\n  dpr_cap ${c.platform.startsWith("phone-") ? 2 : 3}\n`;
   text = publish.test(text) ? text.replace(publish, (_, body: string) => `publish {${body.replace(/^\s*(orientation|fit|dpr_cap)\s+.*$/gm, "")}${settings}}`) : `${text}\npublish {${settings}}\n`;
   writeFileSync(manifest, text);
 
