@@ -12,6 +12,7 @@
 //! bits on every host, so a fracture replays.
 
 pub mod stress;
+pub mod terrain2d;
 
 use glam::Vec3;
 use serde::{Deserialize, Serialize};
