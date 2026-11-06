@@ -20,6 +20,17 @@ threads linked here; rules are in `AGENTS.md`.
 5. **Templates and showcase content** are rebuilt with care after the feature
    work.
 
+## Now (the owner, 2026-11-07)
+
+1. **One destructive cleanup head** (delete-templates): every gameplay
+   template, its playtests and references, tests that exist only for them,
+   tests/evidence, dead scripts and tools, the stale CI workflow, the
+   determinism tool, and tests red because their code is redone in 0.8.0.
+   Minimal fixtures only for core features that lost their only coverage.
+   No other thread lands until it is on main.
+2. **The gate rewritten on the clean tree** (gate-reform), not patched.
+3. **Feature work resumes**, rebased and landed in larger complete heads.
+
 ## Running
 
 | Stream | Thread | Branch |
