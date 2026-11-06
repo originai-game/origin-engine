@@ -1377,3 +1377,49 @@ fn a_model_that_says_conform_character_is_held_to_the_character_budget() {
         ])
     );
 }
+
+/// A UI style's atlas keeps its layout under a look that shrinks mesh
+/// textures, and so do its denser copies (`atlas "atlas.png" w h 2 3`:
+/// `atlas@2x.png`, `atlas@3x.png`), which a phone's HUD draws from.
+#[test]
+fn a_styles_dense_atlases_keep_their_layout_like_its_atlas() {
+    let style = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles/cyber");
+    let mut files = vec![
+        ("project.ogt".to_string(), PROJECT.as_bytes().to_vec()),
+        (
+            "assets/looks/main.ogt".to_string(),
+            format!(
+                "{}ui \"styles/cyber/style.ogt\"\n",
+                look("ArtTexels {\n  maxSize 32\n}\n")
+            )
+            .into_bytes(),
+        ),
+    ];
+    // The style as the engine ships it: its files beside style.ogt (not its art sources).
+    for e in std::fs::read_dir(&style).unwrap() {
+        let p = e.unwrap().path();
+        if p.is_file() {
+            let f = p.file_name().unwrap().to_string_lossy().to_string();
+            files.push((
+                format!("assets/styles/cyber/{f}"),
+                std::fs::read(&p).unwrap(),
+            ));
+        }
+    }
+    let refs: Vec<(&str, Vec<u8>)> = files.iter().map(|(p, b)| (p.as_str(), b.clone())).collect();
+    let root = project("style-dense-atlas", &refs);
+    cook(&root);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    for (id, size) in [
+        ("styles/cyber/atlas.png", (512, 262)),
+        ("styles/cyber/atlas@2x.png", (1024, 524)),
+        ("styles/cyber/atlas@3x.png", (1536, 786)),
+    ] {
+        let tex = bundle.load_texture(id).unwrap();
+        assert_eq!(
+            (tex.meta.width, tex.meta.height),
+            size,
+            "{id} keeps the style's layout"
+        );
+    }
+}

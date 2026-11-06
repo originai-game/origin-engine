@@ -97,6 +97,11 @@ is one line here, written at the merge that changes
   (og.CameraView without a target) still drew into the output, so the
   copy covered them and each half showed only the main camera's image.
   They now draw into the glass source when glass is on.
+- **A UI style's denser atlases keep their layout under a look.** The cook
+  named a style's `atlas.png` as the style's, but conformed its
+  `atlas@2x.png` and `atlas@3x.png` (`atlas "atlas.png" w h 2 3`) as mesh
+  textures, shrinking a phone's HUD art under a look's `ArtTexels`. They
+  are now the style's too, their layout kept.
 - **Rooms no longer desync on the players' volumes.** og.Audio (each
   device's own volumes, never hashed by lockstep) reached the hashed
   og.AudioStream: its bus gains were commands of the stream hash and its

@@ -168,16 +168,31 @@ fn style_images(s: &Source, known: &BTreeSet<String>) -> Vec<String> {
         return Vec::new();
     };
     let dir = s.rel.rsplit_once('/').map_or("", |(d, _)| d);
-    ["atlas", "icons"]
-        .iter()
-        .filter_map(|k| {
-            doc.body
-                .get(k)?
+    let mut named = Vec::new();
+    for k in ["atlas", "icons"] {
+        let Some(e) = doc.body.get(k) else { continue };
+        let Some(p) = e.values.first().and_then(Value::as_str) else {
+            continue;
+        };
+        named.push(p.to_string());
+        // `atlas "atlas.png" w h 2 3`: its denser copies (`atlas@2x.png`,
+        // `atlas@3x.png`) are the same art at the same layout, so the
+        // style's too, not mesh textures.
+        if k == "atlas" {
+            for d in e
                 .values
-                .first()?
-                .as_str()
-                .map(str::to_string)
-        })
+                .iter()
+                .skip(3)
+                .filter_map(|v| v.as_number().map(|n| n.as_f64()))
+            {
+                if d == 2.0 || d == 3.0 {
+                    named.push(og_ui::style_file::dense_name(p, d as u32));
+                }
+            }
+        }
+    }
+    named
+        .into_iter()
         .map(|p| {
             let rel = if dir.is_empty() {
                 p.clone()
