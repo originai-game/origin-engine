@@ -710,6 +710,11 @@ pub struct UiFrame {
     /// tracks dragged sideways (a carousel's), for `og ui check`: a line
     /// their edge cuts across scrolls into view.
     pub sideways: Vec<String>,
+    /// The paths of the labels that fit their text to their width
+    /// (`fitMin`), each with its floor, the size of the smallest step it
+    /// takes, in units, for `og ui check`: such a label drawn smaller than
+    /// the player's text scale asks is shrunk to its column on purpose.
+    pub fitted: Vec<(String, f32)>,
     /// What motion did this frame: timeline events (sounds, haptics,
     /// callbacks), plays that ended, swipes, snaps and drops.
     pub events: Vec<UiEvent>,

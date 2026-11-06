@@ -339,6 +339,24 @@ test("at 200 % text, a cut is the text-scale rule's and a text that did not grow
   expect(checkScale(both, frame({ elements: twos.slice(1), texts: [line("2", 15, 200, 9)] }), big).map((f) => f.paths)).toEqual([["Copies"]]);
 });
 
+test("at 150 % text, a label that fits its text passes at or above its fit floor and fails below it", () => {
+  // Wrong: every fitted label an error (a phone's logo that shrinks to its column is meant to), or a fit floor that
+  // excuses any size (a logo drawn below its smallest step, or a fixed size on a label that names a floor).
+  const c150: UiCell = { ...cell, scale: 150 };
+  const els = [el("Logo", "", "label", "text", [10, 100, 300, 60], { text: "Origin Engine" })];
+  const line = (size: number) => ({ text: "Origin Engine", size, bounds: [10, 100, 280, size * 1.2] as [number, number, number, number], clip: [0, 0, 400, 800] as [number, number, number, number], color: [1, 1, 1, 1] });
+  const at100 = frame({ elements: els, texts: [line(40)] });
+  // 150 % asks for 60 px; the logo fit its column at 36, its floor 32 (the ramp's lg at 150 %).
+  const fitted = (size: number, floor: number) => frame({ elements: els, texts: [line(size)], fitted: [{ path: "Logo", floor }] });
+  expect(checkScale(at100, fitted(36, 32), c150)).toEqual([]);
+  expect(checkScale(at100, fitted(32, 32), c150)).toEqual([]);
+  expect(checkScale(at100, fitted(30, 32), c150).map((f) => f.paths)).toEqual([["Logo"]]);
+  // Without a floor the same 36 px is a size the scale did not reach.
+  expect(checkScale(at100, frame({ elements: els, texts: [line(36)] }), c150).map((f) => f.paths)).toEqual([["Logo"]]);
+  // Another element's floor excuses nothing.
+  expect(checkScale(at100, frame({ elements: els, texts: [line(36)], fitted: [{ path: "Title", floor: 20 }] }), c150).map((f) => f.paths)).toEqual([["Logo"]]);
+});
+
 test("two primary buttons in one layer are a finding; a primary and a translucent secondary are not", () => {
   const els = [el("Play", "", "button", "button", [20, 100, 200, 48]), el("Quit", "", "button", "button", [20, 160, 200, 48])];
   const two = frame({ elements: els, fills: [{ rect: [20, 100, 200, 48], color: [0.2, 0.4, 0.9, 1] }, { rect: [20, 160, 200, 48], color: [0.2, 0.4, 0.9, 1] }] });

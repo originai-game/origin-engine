@@ -401,6 +401,19 @@ impl Ui {
             })
             .map(|&i| self.path_of(i))
             .collect();
+        // A label that fits its text (`fitMin`) and its floor, the smallest
+        // step it takes: shrunk to its column at the player's larger text,
+        // it is as large as it was meant to be.
+        let fitted: Vec<(String, f32)> = order
+            .iter()
+            .filter_map(|&i| {
+                let n = &self.nodes[i];
+                let Content::Text(t) = &n.content else {
+                    return None;
+                };
+                Some((self.path_of(i), t.fit.last()?.size * n.scale))
+            })
+            .collect();
         self.apply_shakes(&order);
         self.apply_stagger(&order);
         self.run_motion(&order);
@@ -1000,6 +1013,7 @@ impl Ui {
             overlaps,
             dense,
             sideways,
+            fitted,
             events: std::mem::take(&mut self.events),
             stats: LayoutStats {
                 laid_out: self.kept.laid_out,

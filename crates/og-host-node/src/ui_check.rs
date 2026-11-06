@@ -134,6 +134,7 @@ fn frame(engine: u32) -> Value {
         })).collect::<Vec<_>>(),
         "dense": f.dense,
         "sideways": f.sideways,
+        "fitted": f.fitted.iter().map(|(p, floor)| json!({ "path": p, "floor": floor * u })).collect::<Vec<_>>(),
         "stats": {
             "elements": f.stats.elements, "rebuilt": f.stats.rebuilt,
             "laidOut": f.stats.laid_out, "keptCommands": f.stats.kept_commands,

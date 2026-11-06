@@ -78,9 +78,11 @@ export interface UiFrameSnapshot {
   dense?: string[];
   /** Paths of the scroll containers that scroll sideways: a line their edge cuts across scrolls into view. */
   sideways?: string[];
+  /** Labels that fit their text to their width (fitMin), each with its floor: the smallest step's size, CSS px. */
+  fitted?: Array<{ path: string; floor: number }>;
   stats: { elements: number; rebuilt: number; laidOut: number; keptCommands: number };
   draws: number;
-  /** Every drawn line of text: the string as drawn, its size and line box, and its clip. */
+  /** Every drawn line of text: its characters as written (a shaped line's too), its size and line box, and its clip. */
   texts: Array<{ text: string; size: number; bounds: Rect4; clip: Rect4; color: number[] }>;
   /** Solid and image fills of at least 8×8 CSS px, linear RGBA. */
   fills: Array<{ rect: Rect4; color: number[] }>;
@@ -168,7 +170,7 @@ export const RULES: readonly UiRule[] = [
   { id: "text-truncated", title: "text truncated with an ellipsis but without a tooltip", status: "partial", note: "the ellipsis is read from the drawn text; a tooltip exists only while hovered (og-ui builds it then), so its absence is reported as a warning until U3's dump_ui lists an element's tooltip" },
   { id: "offscreen", title: "an interactive element laid out past the screen with nothing to scroll to it", status: "checked" },
   { id: "pseudo-overflow", title: "overflow under the pseudo-locale (+40 % length, accents, brackets)", status: "checked", note: "the pseudo cells run every rule above on text lengthened in process (og.i18n.t and the text arguments of og.ui's widgets)" },
-  { id: "text-scale", title: "overflow at 150 % text (200 % deferred), and text that does not grow with the player's text size", status: "checked", note: "a scale cell configures UiDesc.textScale (og.ui.configure) and runs every rule above; a text cut there is reported under this rule, and a text drawn at less than the scale times its size at 100 % (a fixed size the scale does not reach) too" },
+  { id: "text-scale", title: "overflow at 150 % text (200 % deferred), and text that does not grow with the player's text size", status: "checked", note: "a scale cell configures UiDesc.textScale (og.ui.configure) and runs every rule above; a text cut there is reported under this rule, and a text drawn at less than the scale times its size at 100 % (a fixed size the scale does not reach) too, unless it is a label that fits its text (fitMin) at or above its fit floor" },
   { id: "safe-area", title: "elements outside the safe area", status: "checked" },
   { id: "covered", title: "elements under the shell's covered region", status: "checked" },
   { id: "touch-target", title: "touch targets under 44 CSS px on a coarse pointer", status: "checked", note: "an element's hitSlop is not in the frame: a small control with slop enough is still reported; a link inside a rich text's sentence is exempt (WCAG 2.5.8)" },
@@ -816,7 +818,9 @@ export function checkLocales(base: UiFrameSnapshot, other: UiFrameSnapshot, cell
  * again in the scaled frame (by its string, in drawing order), drawn at
  * the scale times its size. A text that stays smaller is a size the
  * player's setting does not reach (a fixed pixel size, a text drawn by the
- * game from the style's authored tokens).
+ * game from the style's authored tokens). A label that fits its text
+ * (fitMin) and shrank to its column is meant to: it passes at or above
+ * its fit floor and still fails below it.
  */
 export function checkScale(baseFrame: UiFrameSnapshot, scaledFrame: UiFrameSnapshot, cell: UiCell): UiFinding[] {
   if (cell.scale === 100) return [];
@@ -837,12 +841,15 @@ export function checkScale(baseFrame: UiFrameSnapshot, scaledFrame: UiFrameSnaps
     const { key } = keyOf(scaled, scaledPaths, t);
     left.set(key, [...(left.get(key) ?? []), t.size]);
   }
+  const floors = new Map((scaledFrame.fitted ?? []).map((f) => [f.path, f.floor]));
   const seen = new Set<string>();
   for (const t of base.texts) {
     if (!/[\p{L}\p{N}]/u.test(t.text)) continue;
     const { key, path: owned } = keyOf(base, basePaths, t);
     const size = left.get(key)?.shift();
     if (size === undefined || size + 0.05 >= t.size * k * 0.95 || seen.has(key)) continue;
+    const floor = floors.get(owned);
+    if (floor !== undefined && size + 0.05 >= floor) continue;
     seen.add(key);
     const path = owned || `text "${t.text.slice(0, 24)}"`;
     out.push({
