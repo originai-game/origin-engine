@@ -1,1 +1,1 @@
-export { default } from "../../styles/fantasy/tests/style-fantasy.og.ts";
+export { default } from "../../styles/tests/fantasy/style-fantasy.og.ts";
