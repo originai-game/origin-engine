@@ -471,9 +471,11 @@ stream group packing its head alone), `tests/chunks.rs` a chunked sound
 taking its silent stand-in's handle (`replace_chunked`) and a chunk landing
 after its group unloaded let go, og-runtime's `tests/stream_chunked.rs`
 that no chunk of a grouped one is read before its group is resident nor
-after it is let go, and `packages/engine/tests/sound-chunks.test.ts`
-runs the idle archetype's music cooked whole and in 2-second chunks
-through `og run --audio` for 35 s (the loop wraps): the same WAV.
+after it is let go, and that one outside a group, cooked whole and in
+1-second chunks, mixes the same samples for 10 s through a capture sink
+(the loop wraps, and a 4 s advance mixed at once reads its chunks through
+the bank's loader). `og run --audio`'s capture is packages/engine's
+audio tests'.
 
 ## Decoding beside the tick
 
