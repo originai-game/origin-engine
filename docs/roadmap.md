@@ -86,8 +86,6 @@ Dropped: `create-starters` a79e6bed8, `ui-own-look` 363ab979b.
 
 ## Open defects
 
-- `advance(N)` in one call schedules a timed command differently from
-  per-tick stepping, which moves the world hash.
 - og-cook reruns destruction fracture before hashing an up-to-date model
   (destruction-yard 13 s, over budget); og.Decal does not project onto
   terrain.
