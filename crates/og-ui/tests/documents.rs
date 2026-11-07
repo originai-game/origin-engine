@@ -144,6 +144,77 @@ fn tick(ui: &mut Ui, input: InputFrame) {
 }
 
 #[test]
+fn keyed_document_rows_keep_identity_after_reorder_and_build_the_empty_branch() {
+    use og_ui::bind::Expr;
+    use og_ui::doc::NodeKind;
+
+    let mut document = UiDocument::parse(
+        "rows.ogt",
+        r#"type screen
+version 2
+---
+name rows
+column Root {
+  for item in items {
+    button Row {
+      text bind item.name
+      on appear emit appeared
+    }
+  }
+  label Empty {
+    text "No rows"
+  }
+}
+"#,
+    )
+    .unwrap();
+    let empty_node = document.nodes[document.root].children.pop().unwrap();
+    let each = document.nodes[document.root].children[0];
+    let NodeKind::For { key, empty, .. } = &mut document.nodes[each].kind else {
+        panic!("expected each");
+    };
+    *key = Expr::parse("item.id").unwrap();
+    empty.push(empty_node);
+    document.nodes[empty_node].parent = each;
+
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(document);
+    let a = json!({"id": "sword", "name": "Sword"});
+    let b = json!({"id": "shield", "name": "Shield"});
+    ui.push_screen("rows", json!({"items": [a, b]})).unwrap();
+    tick(&mut ui, InputFrame::default());
+    let appeared = ui.take_doc_events();
+    let keys: Vec<_> = appeared
+        .iter()
+        .filter(|e| e.name == "appeared")
+        .map(|e| e.row_key.as_str())
+        .collect();
+    assert_eq!(keys, ["sword", "shield"]);
+    assert!(
+        ui.doc_built()
+            .iter()
+            .any(|e| e.path == "rows/Root/Row#sword")
+    );
+    assert!(!ui.doc_built().iter().any(|e| e.path.ends_with("/Empty")));
+
+    ui.set_screen_vm("rows", json!({"items": [b, a]}));
+    tick(&mut ui, InputFrame::default());
+    let paths: Vec<_> = ui
+        .doc_built()
+        .iter()
+        .map(|e| e.path.as_str())
+        .filter(|path| path.contains("Row#"))
+        .collect();
+    assert_eq!(paths, ["rows/Root/Row#shield", "rows/Root/Row#sword"]);
+    assert!(ui.take_doc_events().iter().all(|e| e.name != "appeared"));
+
+    ui.set_screen_vm("rows", json!({"items": []}));
+    tick(&mut ui, InputFrame::default());
+    assert!(ui.doc_built().iter().any(|e| e.path == "rows/Root/Empty"));
+    assert!(!ui.doc_built().iter().any(|e| e.path.contains("Row#")));
+}
+
+#[test]
 fn length_tokens_follow_the_active_style_in_layout_and_states() {
     let source = r#"type screen
 version 2

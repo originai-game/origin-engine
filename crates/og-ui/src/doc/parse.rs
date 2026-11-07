@@ -268,6 +268,12 @@ impl Ctx {
                         NodeKind::For {
                             var: w[0].clone(),
                             list,
+                            key: Expr::Bin(
+                                crate::bind::Op::Add,
+                                Box::new(Expr::Lit(serde_json::json!(""))),
+                                Box::new(Expr::Path("$index".into())),
+                            ),
+                            empty: Vec::new(),
                         },
                         String::new(),
                     ),
@@ -338,8 +344,10 @@ impl Ctx {
             kind: kind.clone(),
             id,
             line: e.line,
+            source_offset: 0,
             props: Vec::new(),
             at: Vec::new(),
+            rules: Vec::new(),
             groups: Vec::new(),
             triggers: Vec::new(),
             args: Vec::new(),

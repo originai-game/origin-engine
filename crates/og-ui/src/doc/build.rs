@@ -211,6 +211,7 @@ struct Build<'a> {
     env: &'a dyn Env,
     /// `(name, value, the viewmodel path it came from)`.
     locals: Vec<(String, Value, Option<String>)>,
+    row_key: String,
     events: Vec<DocEvent>,
     writes: Vec<(String, Value)>,
 }
@@ -256,6 +257,7 @@ impl Build<'_> {
         self.events.push(DocEvent {
             mount: self.mount.clone(),
             path: path.to_string(),
+            row_key: self.row_key.clone(),
             kind: kind.to_string(),
             name: name.to_string(),
             value,
@@ -265,6 +267,7 @@ impl Build<'_> {
     fn value(&self, ui: &Ui, ty: Ty, v: &PropValue) -> Option<V> {
         match v {
             PropValue::Lit(l) => lit(ui, l),
+            PropValue::Model(path) => coerce(ui, ty, &self.scope().get(path)),
             PropValue::Bind(e, f) => {
                 let x = self.eval(e);
                 match (f, ty) {
@@ -356,6 +359,14 @@ impl Ui {
             let or_ok = q.orientation.is_none_or(|o| o == orientation);
             if bp_ok && or_ok {
                 sets.extend(props.iter());
+            }
+        }
+        for (q, condition, props) in &n.rules {
+            if (q.breakpoints.is_empty() || q.breakpoints.contains(&bp))
+                && q.orientation.is_none_or(|o| o == orientation)
+                && condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
+            {
+                sets.extend(props);
             }
         }
         for p in sets {

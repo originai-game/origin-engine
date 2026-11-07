@@ -393,6 +393,7 @@ impl Ui {
             lead.push(DocEvent {
                 mount: layer.screen.clone(),
                 path: layer.screen.clone(),
+                row_key: String::new(),
                 kind: if info.active {
                     "activate"
                 } else {
@@ -468,6 +469,7 @@ impl Ui {
                     r.events.push(DocEvent {
                         mount: layer.screen.clone(),
                         path: r.path.clone(),
+                        row_key: String::new(),
                         kind: "back".into(),
                         name: name.clone(),
                         value: Value::Null,

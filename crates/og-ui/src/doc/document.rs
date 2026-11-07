@@ -21,6 +21,7 @@ impl UiDocument {
                 .props
                 .iter()
                 .chain(node.at.iter().flat_map(|(_, props)| props))
+                .chain(node.rules.iter().flat_map(|(_, _, props)| props))
             {
                 if let PropValue::Lit(Lit::Paint(paint)) = &prop.value {
                     check(paint, prop.line);
@@ -113,10 +114,12 @@ impl UiDocument {
             d.text.clear();
             for n in &mut d.nodes {
                 n.line = 0;
+                n.source_offset = 0;
                 for p in n
                     .props
                     .iter_mut()
                     .chain(n.at.iter_mut().flat_map(|(_, ps)| ps.iter_mut()))
+                    .chain(n.rules.iter_mut().flat_map(|(_, _, ps)| ps.iter_mut()))
                 {
                     p.line = 0;
                     p.source.clear();
@@ -160,6 +163,7 @@ impl UiDocument {
             fixtures: Vec::new(),
             nodes: Vec::new(),
             root: NONE,
+            warnings: Vec::new(),
         };
         // The layer kind first: the other layer lines change its defaults.
         if let Some(e) = doc.body.get("layer") {
@@ -379,6 +383,7 @@ impl UiDocument {
             let mut p = Vec::new();
             match v {
                 PropValue::Bind(e, _) => e.paths(&mut p),
+                PropValue::Model(path) => p.push(path.clone()),
                 PropValue::Template(t) => t.paths(&mut p),
                 PropValue::Lit(_) => {}
             }
@@ -410,7 +415,12 @@ impl UiDocument {
         };
         let mut out: Vec<String> = Vec::new();
         for n in &self.nodes {
-            for p in n.props.iter().chain(n.at.iter().flat_map(|a| &a.1)) {
+            for p in n
+                .props
+                .iter()
+                .chain(n.at.iter().flat_map(|a| &a.1))
+                .chain(n.rules.iter().flat_map(|(_, _, props)| props))
+            {
                 if p.spec == spec
                     && let PropValue::Lit(Lit::Str(id)) = &p.value
                     && !out.contains(id)
@@ -426,6 +436,7 @@ impl UiDocument {
     pub fn node_paths(&self, n: &DocNode, out: &mut Vec<String>) {
         let value = |v: &PropValue, out: &mut Vec<String>| match v {
             PropValue::Bind(e, _) => e.paths(out),
+            PropValue::Model(path) => out.push(path.clone()),
             PropValue::Template(t) => t.paths(out),
             PropValue::Lit(_) => {}
         };
@@ -434,6 +445,14 @@ impl UiDocument {
         }
         for (_, v, _) in &n.args {
             value(v, out);
+        }
+        for (_, condition, props) in &n.rules {
+            if let Some(condition) = condition {
+                condition.paths(out);
+            }
+            for p in props {
+                value(&p.value, out);
+            }
         }
         for g in &n.groups {
             if let Some(b) = &g.bind {
@@ -449,7 +468,10 @@ impl UiDocument {
             }
         }
         match &n.kind {
-            NodeKind::For { list, .. } => list.paths(out),
+            NodeKind::For { list, key, .. } => {
+                list.paths(out);
+                key.paths(out);
+            }
             NodeKind::If(e) => e.paths(out),
             _ => {}
         }

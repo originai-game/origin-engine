@@ -67587,6 +67587,10 @@
           "type": "string",
           "description": "The element's path."
         },
+        "rowKey": {
+          "type": "string",
+          "description": "Stable collection key of the innermost each row; empty outside a row. Never an index."
+        },
         "kind": {
           "type": "string",
           "description": "click, changed, select, emit, action, set, back, or activate and deactivate (a layer became or stopped being the active one)."
@@ -67602,6 +67606,7 @@
       "required": [
         "mount",
         "path",
+        "rowKey",
         "kind",
         "name",
         "value"

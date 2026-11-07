@@ -9,6 +9,8 @@ pub struct DocEvent {
     pub mount: String,
     /// The element's path.
     pub path: String,
+    /// Stable key of the innermost each row; empty outside a row.
+    pub row_key: String,
     /// `click`, `changed`, `select`, `emit`, `action`, `set`, `back`.
     pub kind: String,
     /// The event's or the action's name, or the path a `set` wrote.
@@ -18,7 +20,7 @@ pub struct DocEvent {
 
 impl DocEvent {
     pub fn to_json(&self) -> Value {
-        json!({ "mount": self.mount, "path": self.path, "kind": self.kind, "name": self.name, "value": self.value })
+        json!({ "mount": self.mount, "path": self.path, "rowKey": self.row_key, "kind": self.kind, "name": self.name, "value": self.value })
     }
 }
 
@@ -240,6 +242,7 @@ impl Ui {
             vm,
             env,
             locals: Vec::new(),
+            row_key: String::new(),
             events: Vec::new(),
             writes: Vec::new(),
         };

@@ -39277,6 +39277,8 @@ export interface UiDocEvent {
   readonly mount: string;
   /** The element's path. */
   readonly path: string;
+  /** Stable collection key of the innermost each row; empty outside a row. Never an index. */
+  readonly rowKey: string;
   /**
    * click, changed, select, emit, action, set, back, or activate and deactivate (a layer became or stopped being the active one).
    */

@@ -200,6 +200,8 @@ pub enum PropValue {
     Lit(Lit),
     /// `bind <expr> [format [digits]]`.
     Bind(Expr, Option<Format>),
+    /// An explicit writable source path (`bind:value={$volume}`).
+    Model(String),
     /// A text with arguments.
     Template(Template),
 }
@@ -310,11 +312,21 @@ pub enum NodeKind {
     /// An element of a [`schema::KINDS`] kind.
     Element(&'static str),
     /// `for <var> in <list> { template }`.
-    For { var: String, list: Expr },
+    For {
+        var: String,
+        list: Expr,
+        key: Expr,
+        empty: Vec<usize>,
+    },
     /// `if <expr> { … }`.
     If(Expr),
     /// `use <Component> <id> { args }`.
     Use(String),
+    Snippet(String),
+    Render {
+        name: String,
+        optional: bool,
+    },
 }
 
 /// One node of a document's tree.
@@ -324,9 +336,13 @@ pub struct DocNode {
     /// Its element id (empty: anonymous).
     pub id: String,
     pub line: usize,
+    /// Byte offset of the authored node, used by source-preserving probe edits.
+    pub source_offset: usize,
     pub props: Vec<PropSet>,
     /// Breakpoint and orientation overrides, in order (later wins).
     pub at: Vec<(AtQuery, Vec<PropSet>)>,
+    /// Scoped CSS rules in cascade order, with their reactive match condition.
+    pub rules: Vec<(AtQuery, Option<Expr>, Vec<PropSet>)>,
     pub groups: Vec<DocGroup>,
     pub triggers: Vec<Trigger>,
     /// A component instance's arguments (`use`): its props by name.
@@ -363,6 +379,8 @@ pub struct UiDocument {
     pub fixtures: Vec<(String, serde_json::Value)>,
     pub nodes: Vec<DocNode>,
     pub root: usize,
+    /// Author diagnostics that publish promotes to errors.
+    pub warnings: Vec<String>,
 }
 
 pub(crate) const NONE: usize = usize::MAX;

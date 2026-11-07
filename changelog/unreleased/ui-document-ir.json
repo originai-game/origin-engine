@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "og.ui.UiDocEvent",
+      "change": "Document events include a separate rowKey field for the innermost collection row.",
+      "fix": "Keep rowKey when forwarding document events; use an empty string for events outside collection rows."
+    }
+  ],
+  "added": [
+    {
+      "member": "UI document IR",
+      "summary": "Explicit model paths, keyed each expressions with empty branches, named snippets and render references, and conditional scoped style rules for the retained document adapter."
+    }
+  ]
+}

@@ -20,13 +20,38 @@ impl Ui {
                 }
                 return None;
             }
-            NodeKind::For { var, list } => {
+            NodeKind::Snippet(_) => return None,
+            NodeKind::Render { name, optional } => {
+                if let Some(snippet) = doc
+                    .nodes
+                    .iter()
+                    .find(|n| n.kind == NodeKind::Snippet(name.clone()))
+                {
+                    for &child in &snippet.children {
+                        self.build_node(b, child, None);
+                    }
+                } else if !optional {
+                    self.warnings.push(format!(
+                        "{}:{}: supply content '{name}' at mount",
+                        doc.source, n.line
+                    ));
+                }
+                return None;
+            }
+            NodeKind::For {
+                var, list, empty, ..
+            } => {
                 let items = b.eval(list);
                 let origin = match list {
                     crate::bind::Expr::Path(p) => b.write_path(p),
                     _ => None,
                 };
                 let items = items.as_array().cloned().unwrap_or_default();
+                if items.is_empty() {
+                    for &child in empty {
+                        self.build_node(b, child, None);
+                    }
+                }
                 for (k, item) in items.into_iter().enumerate() {
                     self.build_item(b, n, var, item, k, origin.as_deref());
                 }
@@ -51,6 +76,12 @@ impl Ui {
                             Lit::Strs(s) => json!(s),
                             _ => Value::Null,
                         },
+                        PropValue::Model(p) => {
+                            if let Some(w) = b.write_path(p) {
+                                links.push((k.clone(), w));
+                            }
+                            b.scope().get(p)
+                        }
                         PropValue::Bind(e, f) => {
                             if let crate::bind::Expr::Path(p) = e
                                 && let Some(w) = b.write_path(p)
@@ -550,18 +581,34 @@ impl Ui {
         b.locals
             .push((var.to_string(), item, origin.map(|o| format!("{o}.{k}"))));
         b.locals.push(("$index".into(), json!(k), None));
+        let NodeKind::For { key, .. } = &n.kind else {
+            unreachable!()
+        };
+        let row_key = b.eval(key);
+        let Some(row_key) = row_key.as_str().filter(|key| !key.is_empty()) else {
+            self.warnings.push(format!(
+                "{}:{}: each key must be a nonempty string",
+                b.doc.source, n.line
+            ));
+            b.locals.pop();
+            b.locals.pop();
+            return;
+        };
+        let outer_key = std::mem::replace(&mut b.row_key, row_key.into());
         let doc = b.doc.clone();
         for &c in &n.children {
-            // Each item's elements are told apart by its index (`Item#3`).
             let id = match &doc.nodes[c].kind {
                 NodeKind::Element(kind) if doc.nodes[c].id.is_empty() => {
-                    Some(format!("{kind}#{k}"))
+                    Some(format!("{kind}#{row_key}"))
                 }
-                NodeKind::Element(_) | NodeKind::Use(_) => Some(format!("{}#{k}", doc.nodes[c].id)),
+                NodeKind::Element(_) | NodeKind::Use(_) => {
+                    Some(format!("{}#{row_key}", doc.nodes[c].id))
+                }
                 _ => None,
             };
             self.build_node(b, c, id.as_deref());
         }
+        b.row_key = outer_key;
         b.locals.pop();
         b.locals.pop();
     }
@@ -580,7 +627,7 @@ impl Ui {
     ) {
         let doc = b.doc.clone();
         let Some(&f) = n.children.first() else { return };
-        let NodeKind::For { var, list } = &doc.nodes[f].kind else {
+        let NodeKind::For { var, list, .. } = &doc.nodes[f].kind else {
             return;
         };
         let items = b.eval(list).as_array().cloned().unwrap_or_default();
@@ -665,7 +712,8 @@ impl Ui {
     fn write_back(&mut self, b: &mut Build<'_>, n: &DocNode, prop: &str, v: Value) {
         let bound = n.props.iter().rev().find(|p| p.name() == prop);
         if let Some(p) = bound
-            && let PropValue::Bind(crate::bind::Expr::Path(path), _) = &p.value
+            && let PropValue::Model(path) | PropValue::Bind(crate::bind::Expr::Path(path), _) =
+                &p.value
             && let Some(w) = b.write_path(path)
         {
             b.writes.push((w.clone(), v.clone()));
