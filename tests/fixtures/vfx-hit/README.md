@@ -13,5 +13,8 @@ What it checks:
 - `tests/hit.og.ts` (`og test tests/fixtures/vfx-hit`): each effect sends
   its event once, and one frame with the heal 1.1 s in and the hit 0.1 s in
   matches `references/metal/hit.png` (rmse ≤ 3).
+- `tests/heal.og.ts`: the heal alone resolves once, and the frame 1.22 s
+  in, its resolve flash over the post, matches `references/metal/heal.png`
+  (rmse ≤ 3).
 
 Budget: under 10 s warm (measured 0.9 s of run warm, 3.1 s with its cook).
