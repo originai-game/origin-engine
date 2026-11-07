@@ -673,6 +673,8 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
     let blend = blend(cx, node);
     let texture = cx.texture(node);
     let mut base = peak * p.scale;
+    // A ring's own shape: its lines in the element.
+    let mut ring = String::new();
     let shape = match &node.draw {
         Draw::Ring(r) => {
             if r.billboard != 2 {
@@ -684,11 +686,30 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
                 .fold(0.0, f32::max)
                 .max(1e-4);
             let mid = 0.5;
-            let inner = (r.inner.at(mid * life, life) / outer(mid).max(1e-4)).clamp(0.0, 1.0);
+            let inner = (r.inner.at(mid * life, life) / outer(mid).max(1e-4)).clamp(0.0, 16.0);
+            // Its edges' heights along its axis, in its outer radius.
+            let height = |t: f32| {
+                let o = outer(t).max(1e-4);
+                [
+                    r.outer_height.at(t * life, life) / o,
+                    r.inner_height.at(t * life, life) / o,
+                ]
+            };
+            let h = height(mid);
             let inner_moves = (0..=8).any(|i| {
                 let t = i as f32 / 8.0;
                 ((r.inner.at(t * life, life) / outer(t).max(1e-4)) - inner).abs() > 0.15
             });
+            let height_moves = (0..=8).any(|i| {
+                let hh = height(i as f32 / 8.0);
+                (hh[0] - h[0]).abs() > 0.15 || (hh[1] - h[1]).abs() > 0.15
+            });
+            if height_moves {
+                cx.find(
+                    node,
+                    "a ring whose height changes over its life: its middle height kept",
+                );
+            }
             if inner_moves {
                 cx.find(
                     node,
@@ -701,20 +722,22 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
                 let c = c.at(at, life);
                 [linear(c[0]), linear(c[1]), linear(c[2]), c[3]]
             };
-            let start = (360.0 - r.viewing_angle) * 0.5;
-            let model = glb::ring(
-                inner,
-                r.center_ratio,
-                start,
-                start + r.viewing_angle,
-                64,
-                [
-                    lin(&r.outer_color),
-                    lin(&r.center_color),
-                    lin(&r.inner_color),
-                ],
-            );
-            let id = cx.write(&leaf(node, "ring.glb"), OutKind::Model, model);
+            // Effekseer's arc is centred on +y.
+            let start = (360.0 - r.viewing_angle) * 0.5 + 90.0;
+            let cs = [
+                lin(&r.outer_color),
+                lin(&r.center_color),
+                lin(&r.inner_color),
+            ];
+            let _ = writeln!(ring, "  inner {}", n(inner));
+            let _ = writeln!(ring, "  band {}", n(r.center_ratio));
+            if h[0].abs() > 1e-4 || h[1].abs() > 1e-4 {
+                let _ = writeln!(ring, "  height {}", ns(&h));
+            }
+            if r.viewing_angle < 360.0 {
+                let _ = writeln!(ring, "  arc {}", ns(&[start, r.viewing_angle]));
+            }
+            let _ = writeln!(ring, "  colors {}", ns(&cs.concat()));
             // The ring's radius over life times the node's scale.
             let keys = curve::keys(
                 |t| {
@@ -728,7 +751,7 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
             let pk = keys.iter().map(|k| k.1[0]).fold(0.0, f32::max).max(1e-4);
             scale = keys.iter().map(|(t, v)| (*t, [v[0] / pk])).collect();
             base = pk * p.scale;
-            format!("\"{id}\"")
+            "ring".into()
         }
         Draw::Model { model: Some(m), .. } => {
             if !square {
@@ -837,6 +860,7 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
         };
         let mut s = format!("mesh {shape} {{\n");
         element_head(&mut s, at, &me);
+        s.push_str(&ring);
         let _ = writeln!(s, "  life {}", n(life / FPS));
         let _ = writeln!(s, "  effect \"{effect}\"");
         if scale.len() > 1 && !curve::flat(&scale, 1e-3) {

@@ -106,10 +106,21 @@ fn invalid(m: impl Into<String>) -> Error {
 /// A built-in effect mesh, made once.
 fn builtin_mesh(eng: &super::engine::Engine, shape: &VfxShape) -> Result<MeshHandle, String> {
     use og_render::geometry::primitives as p;
+    if let VfxShape::Ring(Some(r)) = shape {
+        // A ring of its own shape, made once per shape.
+        let name = format!("vfx:ring {r:?}");
+        let mut rs = eng.render.borrow_mut();
+        if let Some(&h) = rs.fx.particle_meshes.get(&name) {
+            return Ok(h);
+        }
+        let h = rs.scene.add_mesh(og_render::effect_ring(r));
+        rs.fx.particle_meshes.insert(name, h);
+        return Ok(h);
+    }
     let (name, make): (&'static str, fn() -> og_render::MeshData) = match shape {
         VfxShape::Sphere => ("vfx:sphere", || og_render::shapes::sphere(32, 20)),
         VfxShape::Quad => ("vfx:quad", || og_render::shapes::plane_xy(1.0, 1.0)),
-        VfxShape::Ring => ("vfx:ring", || {
+        VfxShape::Ring(_) => ("vfx:ring", || {
             p::ring(0.5, 1.0, 64, 2, 0.0, std::f32::consts::TAU)
         }),
         VfxShape::Box => ("vfx:box", || og_render::shapes::cuboid(Vec3::ONE)),
@@ -123,7 +134,7 @@ fn builtin_mesh(eng: &super::engine::Engine, shape: &VfxShape) -> Result<MeshHan
         return Ok(h);
     }
     let h = rs.scene.add_mesh(make());
-    rs.fx.particle_meshes.insert(name, h);
+    rs.fx.particle_meshes.insert(name.to_string(), h);
     Ok(h)
 }
 

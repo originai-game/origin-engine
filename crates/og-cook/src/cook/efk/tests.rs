@@ -98,31 +98,75 @@ fn ring_nodes_are_ring_meshes_at_their_start_times() {
     let rings: Vec<_> = v
         .elements
         .iter()
-        .filter(|e| matches!(&e.kind, og_bundle::vfx::VfxKind::Mesh { shape: og_bundle::vfx::VfxShape::Model(m), .. } if m.ends_with(".ring.glb")))
+        .filter_map(|e| match &e.kind {
+            og_bundle::vfx::VfxKind::Mesh {
+                shape: og_bundle::vfx::VfxShape::Ring(Some(r)),
+                ..
+            } => Some((e, r)),
+            _ => None,
+        })
         .collect();
     assert_eq!(rings.len(), 8, "{}", c.vfx);
+    // A ring is no file: its shape is lines of its element.
+    assert!(
+        !c.files.iter().any(|f| f.kind == OutKind::Model),
+        "{:?}",
+        c.files.iter().map(|f| &f.id).collect::<Vec<_>>()
+    );
     // `Ring`: life 50 frames, the default outer radius 2 at a fixed scale
     // of 2; `Ring(Inner)` 60 frames later.
-    assert!((rings[0].life - 50.0 / 60.0).abs() < 1e-3);
-    assert_eq!(rings[0].at, 0.0);
-    assert!((rings[1].at - 1.0).abs() < 1e-4);
-    let og_bundle::vfx::VfxKind::Mesh { scale, blend, .. } = &rings[0].kind else {
+    let (e0, r0) = rings[0];
+    assert!((e0.life - 50.0 / 60.0).abs() < 1e-3);
+    assert_eq!(e0.at, 0.0);
+    assert!((rings[1].0.at - 1.0).abs() < 1e-4);
+    let og_bundle::vfx::VfxKind::Mesh { scale, blend, .. } = &e0.kind else {
         unreachable!()
     };
     assert_eq!(*scale, og_render::EffectValue::Constant(4.0));
     assert_eq!(*blend, og_render::ParticleBlend::Alpha);
-    // The ring's mesh: inner radius 1 of the outer's 2, its colours across.
-    let glb = &c
-        .files
-        .iter()
-        .find(|f| f.id.ends_with("#n0.ring.glb"))
-        .unwrap()
-        .bytes;
-    let g = gltf::Gltf::from_slice(glb).unwrap();
-    let prim = g.meshes().next().unwrap().primitives().next().unwrap();
-    assert!(prim.get(&gltf::Semantic::Colors(0)).is_some());
-    let pos = prim.get(&gltf::Semantic::Positions).unwrap();
-    assert_eq!(pos.max().unwrap()[0].as_f64().unwrap() as f32, 1.0);
+    // Inner radius 1 of the outer's 2, flat, its colours across: the
+    // edges clear, the band opaque.
+    assert_eq!(r0.inner, 0.5);
+    assert_eq!(r0.height, [0.0; 2]);
+    assert_eq!(r0.length, 360.0);
+    assert_eq!(
+        [r0.colors[0][3], r0.colors[1][3], r0.colors[2][3]],
+        [0.0, 1.0, 0.0]
+    );
+}
+
+#[test]
+fn a_ring_whose_edges_differ_in_height_is_a_tube() {
+    // Outer and inner at radius 1, the outer 0.8 up the ring's axis
+    // (Effekseer's x a radius, y a height): a tube, not a ring of no width.
+    let c = run(&project(
+        "<Node><DrawingValues><Type>4</Type><Ring>\
+         <Outer_Fixed><Location><X>1</X><Y>0.8</Y></Location></Outer_Fixed>\
+         <Inner_Fixed><Location><X>1</X><Y>0</Y></Location></Inner_Fixed>\
+         </Ring></DrawingValues><Name>T</Name><Children /></Node>",
+    ));
+    let mesh = &c.vfx[c.vfx.find("mesh ring {").expect("a ring")..];
+    assert_eq!(line(mesh, "inner"), "inner 1", "{}", c.vfx);
+    assert_eq!(line(mesh, "height"), "height 0.8 0", "{}", c.vfx);
+    let v = og_bundle::vfx::parse_vfx(&c.vfx).unwrap();
+    let og_bundle::vfx::VfxKind::Mesh {
+        shape: og_bundle::vfx::VfxShape::Ring(Some(r)),
+        ..
+    } = &v.elements[0].kind
+    else {
+        panic!("{}", c.vfx)
+    };
+    // Its triangles have area.
+    let m = og_render::effect_ring(r);
+    let area: f32 = m
+        .indices
+        .chunks(3)
+        .map(|t| {
+            let p = |i: u32| glam::Vec3::from(m.vertices[i as usize].position);
+            (p(t[1]) - p(t[0])).cross(p(t[2]) - p(t[0])).length() * 0.5
+        })
+        .sum();
+    assert!(area > 1.0, "{area}");
 }
 
 #[test]
@@ -233,7 +277,7 @@ fn rings_spawned_together_keep_the_light_of_those_not_drawn() {
     let colors: Vec<_> = c
         .vfx
         .lines()
-        .filter(|l| l.trim().starts_with("color"))
+        .filter(|l| l.trim().starts_with("color "))
         .collect();
     assert_eq!(colors.len(), 4, "{}", c.vfx);
     assert!(

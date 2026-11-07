@@ -341,7 +341,8 @@ pub use debris::{
 };
 pub use effect::{
     EFFECT_DRIVERS, EFFECT_PARAMS, EffectChannel, EffectMaterial, EffectMaterialHandle, EffectMesh,
-    EffectTexture, EffectUv, EffectValue, Erosion, Flow, Fresnel, effect_cylinder,
+    EffectRing, EffectTexture, EffectUv, EffectValue, Erosion, Flow, Fresnel, effect_cylinder,
+    effect_ring,
 };
 pub use effects::*;
 #[cfg(feature = "bake")]

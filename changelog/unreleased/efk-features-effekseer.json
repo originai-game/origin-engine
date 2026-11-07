@@ -3,12 +3,20 @@
     {
       "member": "ArtShape.propFaces",
       "summary": "A model that says `conform effect` (an effect's mesh, in its import settings or `type model` text) is held to no face budget: the cook neither simplifies it nor warns of it, and og style check skips its faces. og vfx import writes it beside every mesh it makes, and an Effekseer project in assets/ gives its meshes the same."
+    },
+    {
+      "member": "og.vfx",
+      "summary": "A vfx `mesh ring` element takes its own shape: `inner <radius>`, `band <0..1>`, `height <outer> <inner>` (a cone, a tube), `arc <start> <length>`, `segments <n>` and `colors <outer rgba> <band rgba> <inner rgba>`, built at load with u along its arc and v across it. A plain `mesh ring` draws as before. og vfx import writes Effekseer rings this way instead of a .glb per ring node."
     }
   ],
   "fixed": [
     {
       "member": "og vfx import",
       "summary": "Effects imported into one folder share their textures: each file is copied once into <out-dir>/textures/ (a different file of the same name under its name with its content's hash), not once per effect; importing again changes nothing."
+    },
+    {
+      "member": "og vfx import",
+      "summary": "An Effekseer ring whose edges differ in height (a tube or a cone, Effekseer's ring y) keeps its height. It was drawn with no width, and with a look's flat normals it cooked to no triangles and failed og.load.vfx with 'the model has no mesh'."
     },
     {
       "member": "og cook",

@@ -169,8 +169,9 @@ pub(crate) struct FxState {
     /// it draws nothing while the array's streaming group is not resident.
     pub emitter_arrays: IdMap<usize, usize>,
     pub by_path: BTreeMap<String, usize>,
-    /// Built-in mesh particles' shapes (`render mesh box`), made once.
-    pub particle_meshes: BTreeMap<&'static str, MeshHandle>,
+    /// Built-in mesh particles' shapes (`render mesh box`) and effect
+    /// meshes (`vfx:ring ...`), made once.
+    pub particle_meshes: BTreeMap<String, MeshHandle>,
     /// Each loaded model's materials by glTF material index, those no
     /// part draws with included (`ModelParts::materials`: a fracture's
     /// mortar), by the model's asset handle.
@@ -2016,7 +2017,7 @@ pub(crate) fn particle_mesh(
                 _ => og_render::shapes::tetrahedron(),
             };
             let h = rs.scene.add_mesh(data);
-            rs.fx.particle_meshes.insert(name, h);
+            rs.fx.particle_meshes.insert(name.to_string(), h);
             Ok(h)
         }
         ParticleMesh::Asset(model) => {

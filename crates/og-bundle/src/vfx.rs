@@ -20,6 +20,11 @@
 //! }
 //! mesh ring {                       # sphere | quad | ring | box | cylinder | "<model id>"
 //!   at 0.25
+//!   inner 0.6  band 0.5             # a ring's own shape (any of these lines): inner radius
+//!   height 0 0                      # (outer 1), middle band, the outer and inner edge's
+//!   arc 90 180  segments 64         # height up +z (a cone, a tube), arc (start, length in
+//!   colors 1 1 1 0  1 1 1 1  1 1 1 0  # degrees from +x), segments; rgba at outer, band,
+//!                                   # inner (u along the arc, v 0 outer to 1 inner)
 //!   life 0.4                        # seconds
 //!   effect "fx/shock.ogt"           # its effect material (`type effect`)
 //!   scale curve 0 0.5 1 3           # a value over its life: uniform scale
@@ -142,7 +147,10 @@ impl VfxElement {
 pub enum VfxShape {
     Sphere,
     Quad,
-    Ring,
+    /// The built-in ring (inner radius 0.5, its uv laid flat over it), or,
+    /// with any of `inner`, `band`, `height`, `arc`, `segments` and `colors`, a ring
+    /// of that shape (og_render::EffectRing: u along its arc, v across).
+    Ring(Option<og_render::EffectRing>),
     Box,
     Cylinder,
     /// A model asset id (its first mesh).
@@ -414,7 +422,7 @@ fn element(e: &Entry) -> Result<VfxElement, String> {
                     Some(Value::Word(w)) => match w.as_str() {
                         "sphere" => VfxShape::Sphere,
                         "quad" => VfxShape::Quad,
-                        "ring" => VfxShape::Ring,
+                        "ring" => VfxShape::Ring(None),
                         "box" => VfxShape::Box,
                         "cylinder" => VfxShape::Cylinder,
                         other => {
@@ -580,6 +588,33 @@ fn element(e: &Entry) -> Result<VfxElement, String> {
                     [p] => [p, p],
                     [a, b] => [a, b],
                     _ => return Err(format!("line {kl}: pitch <p> | <min> <max>")),
+                }
+            }
+            (
+                key @ ("inner" | "band" | "height" | "arc" | "segments" | "colors"),
+                VfxKind::Mesh {
+                    shape: VfxShape::Ring(ring),
+                    ..
+                },
+            ) => {
+                let r = ring.get_or_insert_with(og_render::EffectRing::default);
+                let v = nums(k, 0)?;
+                match (key, &v[..]) {
+                    ("inner", [x]) => r.inner = x.clamp(0.0, 16.0),
+                    ("height", [o, i]) => r.height = [*o, *i],
+                    ("band", [x]) => r.band = x.clamp(0.0, 1.0),
+                    ("arc", [a, l]) => (r.start, r.length) = (*a, l.clamp(0.0, 360.0)),
+                    ("segments", [n]) => r.segments = (n.round() as u32).clamp(3, 256),
+                    ("colors", c) if c.len() == 12 => {
+                        for (i, row) in r.colors.iter_mut().enumerate() {
+                            row.copy_from_slice(&c[i * 4..i * 4 + 4]);
+                        }
+                    }
+                    _ => {
+                        return Err(format!(
+                            "line {kl}: a ring takes inner <radius>, band <0..1>, height <outer> <inner>, arc <start> <length>, segments <n>, colors <outer rgba> <band rgba> <inner rgba>"
+                        ));
+                    }
                 }
             }
             (other, kind) => {

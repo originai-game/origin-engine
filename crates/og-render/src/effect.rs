@@ -821,6 +821,88 @@ impl EffectRenderer {
     }
 }
 
+/// An effect ring with its own shape (a `type vfx` mesh element's `mesh
+/// ring` with `inner`, `band`, `height`, `arc`, `segments` or `colors`): an
+/// arc of a ring about +z, outer radius 1 (flat in the xy plane facing +z
+/// unless its edges are raised along +z: a cone, a tube), three rows of
+/// vertices round it (the outer edge, a middle band and the inner edge),
+/// each with its own colour, u along the arc and v 0 at the outer edge, 0.5
+/// at the band, 1 at the inner (Effekseer's ring, `RingRendererBase.h`, MIT,
+/// `third_party/effekseer/`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct EffectRing {
+    /// The inner radius (0 to 16; past 1 the inner edge lies outside).
+    pub inner: f32,
+    /// Where the middle band lies between the inner (0) and outer (1) edge.
+    pub band: f32,
+    /// The outer and the inner edge's height along +z.
+    pub height: [f32; 2],
+    /// Where the arc starts, degrees counter-clockwise from +x.
+    pub start: f32,
+    /// The arc's length in degrees (360 a whole ring).
+    pub length: f32,
+    /// Segments round the arc, 3 to 256.
+    pub segments: u32,
+    /// Linear colours at the outer edge, the band and the inner edge.
+    pub colors: [[f32; 4]; 3],
+}
+
+impl Default for EffectRing {
+    fn default() -> Self {
+        EffectRing {
+            inner: 0.5,
+            band: 0.5,
+            height: [0.0; 2],
+            start: 0.0,
+            length: 360.0,
+            segments: 64,
+            colors: [[1.0; 4]; 3],
+        }
+    }
+}
+
+/// The mesh of an [`EffectRing`].
+pub fn effect_ring(r: &EffectRing) -> crate::MeshData {
+    let segments = r.segments.clamp(3, 256);
+    let inner = r.inner.clamp(0.0, 16.0);
+    let band = r.band.clamp(0.0, 1.0);
+    let [ho, hi] = r.height;
+    let rows = [
+        (1.0, ho, 0.0, r.colors[0]),
+        (
+            inner + (1.0 - inner) * band,
+            hi + (ho - hi) * band,
+            0.5,
+            r.colors[1],
+        ),
+        (inner, hi, 1.0, r.colors[2]),
+    ];
+    let mut vertices = Vec::with_capacity((segments as usize + 1) * 3);
+    for i in 0..=segments {
+        let u = i as f32 / segments as f32;
+        let a = (r.start + r.length * u).to_radians();
+        let (s, c) = og_core::math::sin_cos(a);
+        for (radius, z, v, color) in rows {
+            vertices.push(crate::Vertex {
+                position: [c * radius, s * radius, z],
+                normal: [0.0, 0.0, 1.0],
+                uv: [u, v],
+                color,
+                tangent: [0.0; 4],
+            });
+        }
+    }
+    let mut indices = Vec::with_capacity(segments as usize * 12);
+    for i in 0..segments {
+        for row in 0..2 {
+            let a = i * 3 + row;
+            let b = a + 3;
+            indices.extend_from_slice(&[a, b, b + 1, a, b + 1, a + 1]);
+        }
+    }
+    crate::MeshData { vertices, indices }
+}
+
 /// An effect column or tube: an open cylinder of radius 0.5 from y −0.5 to
 /// 0.5 (u round it, v up it) whose vertex alpha falls to 0 at both open
 /// ends (smoothly over the bottom quarter and the top third), so a column

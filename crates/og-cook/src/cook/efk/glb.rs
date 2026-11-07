@@ -1,8 +1,7 @@
-//! The meshes an imported effect draws, written as glTF binaries: an
-//! Effekseer ring (its arc, its inner and outer radius, its colours across
-//! as vertex colours and its UVs as Effekseer lays them,
-//! `RingRendererBase.h`) and an `.efkmodel` (`Model/Effekseer.Model.cpp`;
-//! both MIT, `third_party/effekseer/`).
+//! The models an imported effect draws, written as glTF binaries: an
+//! `.efkmodel` (`Model/Effekseer.Model.cpp`, MIT, `third_party/effekseer/`).
+//! A ring is no file: its shape is lines of its `mesh ring` element
+//! (og_render::EffectRing).
 
 /// A vertex: position, normal, uv, linear colour.
 pub struct V {
@@ -91,51 +90,6 @@ pub fn write(vs: &[V], indices: &[u32]) -> Vec<u8> {
     out.extend_from_slice(b"BIN\0");
     out.extend_from_slice(&bin);
     out
-}
-
-/// A ring in the xy plane facing +z, of outer radius 1: `inner` the inner
-/// radius, `center` where its middle band lies (0 inner, 1 outer), the arc
-/// from `start` to `end` degrees (Effekseer's 0 is +y), `segments` around;
-/// colours (linear) at the outer edge, the middle band and the inner edge.
-/// Its v runs 0 at the outer edge to 1 at the inner, u 0 to 1 along the arc.
-pub fn ring(
-    inner: f32,
-    center: f32,
-    start: f32,
-    end: f32,
-    segments: u32,
-    colors: [[f32; 4]; 3],
-) -> Vec<u8> {
-    let segments = segments.clamp(3, 256);
-    let mid = inner + (1.0 - inner) * center;
-    let rows = [
-        (1.0, 0.0, colors[0]),
-        (mid, 0.5, colors[1]),
-        (inner, 1.0, colors[2]),
-    ];
-    let mut vs = Vec::new();
-    for i in 0..=segments {
-        let u = i as f32 / segments as f32;
-        let a = (start + 90.0 + (end - start) * u).to_radians();
-        let (s, c) = og_core::math::sin_cos(a);
-        for (r, v, col) in rows {
-            vs.push(V {
-                p: [c * r, s * r, 0.0],
-                n: [0.0, 0.0, 1.0],
-                uv: [u, v],
-                c: col,
-            });
-        }
-    }
-    let mut idx = Vec::new();
-    for i in 0..segments {
-        for row in 0..2 {
-            let a = i * 3 + row;
-            let b = a + 3;
-            idx.extend_from_slice(&[a, b, b + 1, a, b + 1, a + 1]);
-        }
-    }
-    write(&vs, &idx)
 }
 
 /// An `.efkmodel`'s first frame as a glTF binary.

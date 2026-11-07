@@ -52,6 +52,11 @@ pub struct Ring {
     /// Outer and inner radius over the life (x of each location).
     pub outer: Anim,
     pub inner: Anim,
+    /// Outer and inner height over the life (y of each location), along
+    /// the ring's axis: a ring whose edges differ in height is a cone or a
+    /// tube.
+    pub outer_height: Anim,
+    pub inner_height: Anim,
     pub center_ratio: f32,
     /// Degrees of the arc drawn (360 a whole ring).
     pub viewing_angle: f32,
@@ -585,25 +590,25 @@ fn node(e: &El, path: String) -> Result<Node, String> {
         }
         4 => {
             let r = dv.child("Ring").unwrap_or(&empty);
-            let loc = |name: &str, d: f32| -> Anim {
+            let loc = |name: &str, d: f32, k: usize| -> Anim {
                 match int(r, name, 0) {
                     1 => {
                         let p = r.child(&format!("{name}_PVA"));
                         Anim::Pva {
-                            p: v2rnd(p.and_then(|p| p.child("Location")), [d, 0.0])[0],
-                            v: v2rnd(p.and_then(|p| p.child("Velocity")), [0.0; 2])[0],
-                            a: v2rnd(p.and_then(|p| p.child("Acceleration")), [0.0; 2])[0],
+                            p: v2rnd(p.and_then(|p| p.child("Location")), [d, d])[k],
+                            v: v2rnd(p.and_then(|p| p.child("Velocity")), [0.0; 2])[k],
+                            a: v2rnd(p.and_then(|p| p.child("Acceleration")), [0.0; 2])[k],
                         }
                     }
                     2 => {
                         let p = r.child(&format!("{name}_Easing"));
                         Anim::Easing {
-                            s: v2rnd(p.and_then(|p| p.child("Start")), [d, 0.0])[0],
-                            e: v2rnd(p.and_then(|p| p.child("End")), [d, 0.0])[0],
+                            s: v2rnd(p.and_then(|p| p.child("Start")), [d, d])[k],
+                            e: v2rnd(p.and_then(|p| p.child("End")), [d, d])[k],
                             ease: Ease::read(p),
                         }
                     }
-                    _ => Anim::Fixed(v2(r.at(&format!("{name}_Fixed/Location")), [d, 0.0])[0]),
+                    _ => Anim::Fixed(v2(r.at(&format!("{name}_Fixed/Location")), [d, d])[k]),
                 }
             };
             let ratio = match int(r, "CenterRatio", 0) {
@@ -641,8 +646,10 @@ fn node(e: &El, path: String) -> Result<Node, String> {
             };
             Draw::Ring(Box::new(Ring {
                 billboard: int(r, "Billboard", 2),
-                outer: loc("Outer", 2.0),
-                inner: loc("Inner", 1.0),
+                outer: loc("Outer", 2.0, 0),
+                inner: loc("Inner", 1.0, 0),
+                outer_height: loc("Outer", 0.0, 1),
+                inner_height: loc("Inner", 0.0, 1),
                 center_ratio: ratio.clamp(0.0, 1.0),
                 viewing_angle: angle.clamp(0.0, 360.0),
                 outer_color: col("OuterColor", [255.0, 255.0, 255.0, 0.0]),
