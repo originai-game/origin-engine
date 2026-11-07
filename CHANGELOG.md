@@ -119,6 +119,15 @@ is one line here, written at the merge that changes
   regression test). The feet are now planted after the reaction, the look and
   the hand contact; a foot the reaction's own clip steps follows the clip,
   and a reaction turned more than 30° from the facing steps both.
+- **Fixed: a world restored after terrain edits steps as the run did.**
+  A restore replays og.terrain's edit log on the next tick; handing
+  physics the cooked heights and then each brush rebuilt every collider of
+  the field, so a restored run left the uninterrupted one on its first
+  tick. The replay now hands physics the final heights once (the
+  snapshot's change nothing), and a field re-registered with other heights
+  before the first step after a restore (a snapshot taken before a later
+  edit) reloads the restored simulation over them instead of rebuilding
+  its colliders. World hashes of runs without a restore do not move.
 - **Fixed: a falling og.CharacterController lands where it meets the
   ground.** Ground snapping now holds only a controller that stood on the
   ground at the start of its move (slopes and steps down), as rapier's own

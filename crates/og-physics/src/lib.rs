@@ -371,6 +371,10 @@ pub(crate) struct Shared {
     /// Never filled (height fields are 3D only); the step is written once.
     #[cfg(feature = "physics2d")]
     pub chunks2: BTreeMap<ShapeKey, rapier2d::prelude::SharedShape>,
+    /// The bytes of the simulation a restore applied, until the next step
+    /// ([`Restored`]).
+    #[cfg(feature = "physics3d")]
+    pub restored: Option<Restored>,
     /// Why no height field can be registered in this build
     /// ([`PhysicsSystem::refuse_heightfields`]): every SHAPE_HEIGHTFIELD
     /// collider is refused with it.
@@ -668,9 +672,23 @@ enum Saved {
     Empty,
     Pushes(Vec<Push>),
     #[cfg(feature = "physics3d")]
-    D3(Box<dim3::Sim>, Vec<Push>),
+    D3(Box<dim3::Sim>, Vec<Push>, Option<Restored>),
     #[cfg(feature = "physics2d")]
     D2(Box<dim2::Sim>, Vec<Push>),
+}
+
+/// A restored 3D simulation's bytes, kept until the first step after the
+/// restore: its asset shapes were built from the height fields registered
+/// as it was decoded, which a world that ran on past an edit holds edited.
+/// Until that step, a field registered with other heights (the terrain's
+/// edit log replayed to the snapshot's) reloads the simulation from these
+/// bytes over them ([`reload_restored`]) instead of rebuilding its
+/// colliders, so the restored world steps as the snapshot's did.
+#[cfg(feature = "physics3d")]
+pub(crate) struct Restored {
+    sim: Vec<u8>,
+    holes: Vec<Hole>,
+    sections: Vec<(u16, Vec<u8>)>,
 }
 
 /// A SHAPE_TRIMESH collider's shape over `mesh` at scale 1, as a collider
@@ -711,6 +729,35 @@ pub(crate) fn decode<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> bincode::R
 /// not yet applied, then the simulation's bytes without its asset shapes
 /// and where they go (empty with tag 0, no simulation yet).
 type Block = (Vec<Push>, Vec<Hole>, Vec<u8>);
+
+/// After a restore and before the next step, height field `handle` was
+/// registered with other heights: the restored simulation is decoded again
+/// from its bytes over them (its shape caches for the field dropped), its
+/// colliders, contacts and handles as the snapshot had them. `false` when
+/// no restored simulation built a shape from the field: the caller marks
+/// it stale as usual.
+#[cfg(feature = "physics3d")]
+fn reload_restored(shared: &mut Shared, handle: u64) -> Result<bool> {
+    let Some(source) = shared.restored.take() else {
+        return Ok(false);
+    };
+    if !source.holes.iter().any(|h| h.key.mesh == handle) {
+        shared.restored = Some(source);
+        return Ok(false);
+    }
+    shared.shapes3.retain(|k, _| k.mesh != handle);
+    shared.chunks3.retain(|k, _| k.mesh != handle);
+    let sections: Vec<(u16, &[u8])> = source
+        .sections
+        .iter()
+        .map(|(k, b)| (*k, b.as_slice()))
+        .collect();
+    let mut sim = outside(|| dim3::load(&source.sim, &source.holes, shared))?;
+    sim.ext = dim3::SimExt::from_sections(&sections)?;
+    shared.sim3 = Some(Box::new(sim));
+    shared.restored = Some(source);
+    Ok(true)
+}
 
 impl StateBlock for PhysicsState {
     fn save(&self, out: &mut Vec<u8>) {
@@ -765,9 +812,17 @@ impl StateBlock for PhysicsState {
             0 => Saved::Pushes(pushes),
             #[cfg(feature = "physics3d")]
             PROFILE_3D => {
-                let mut sim = outside(|| dim3::load(&sim, &holes, &mut lock(&self.0)))?;
-                sim.ext = dim3::SimExt::from_sections(&sections)?;
-                Saved::D3(Box::new(sim), pushes)
+                let mut built = outside(|| dim3::load(&sim, &holes, &mut lock(&self.0)))?;
+                built.ext = dim3::SimExt::from_sections(&sections)?;
+                let fields = holes
+                    .iter()
+                    .any(|h| h.key.shape & 0xff == SHAPE_HEIGHTFIELD);
+                let source = fields.then(|| Restored {
+                    sim,
+                    holes,
+                    sections: sections.iter().map(|&(k, b)| (k, b.to_vec())).collect(),
+                });
+                Saved::D3(Box::new(built), pushes, source)
             }
             #[cfg(feature = "physics2d")]
             PROFILE_2D => {
@@ -788,6 +843,10 @@ impl StateBlock for PhysicsState {
     fn apply(&mut self, decoded: Option<Box<dyn Any + Send>>) {
         let mut shared = lock(&self.0);
         // The restored colliders are as saved, whatever was registered before.
+        #[cfg(feature = "physics3d")]
+        {
+            shared.restored = None;
+        }
         shared.stale_meshes.clear();
         shared.field_edits.clear();
         shared.pushes.clear();
@@ -807,9 +866,10 @@ impl StateBlock for PhysicsState {
             None | Some(Saved::Empty) => {}
             Some(Saved::Pushes(p)) => shared.pushes = p,
             #[cfg(feature = "physics3d")]
-            Some(Saved::D3(sim, p)) => {
+            Some(Saved::D3(sim, p, source)) => {
                 shared.sim3 = Some(sim);
                 shared.pushes = p;
+                shared.restored = source;
             }
             #[cfg(feature = "physics2d")]
             Some(Saved::D2(sim, p)) => {
@@ -824,6 +884,11 @@ impl StateBlock for PhysicsState {
     /// read before the shift: dropped, so the next query records again.
     fn shift(&mut self, s: &og_ecs::Shift) {
         let mut shared = lock(&self.0);
+        #[cfg(feature = "physics3d")]
+        {
+            // Moved in place: its bytes are no longer the simulation's.
+            shared.restored = None;
+        }
         #[cfg(feature = "physics3d")]
         if let Some(sim) = shared.sim3.as_deref_mut() {
             sim.shift(s);
@@ -1142,6 +1207,10 @@ impl PhysicsSystem {
             return Ok(());
         }
         shared.heightfields.insert(handle, Arc::new(field));
+        #[cfg(feature = "physics3d")]
+        if reload_restored(&mut shared, handle)? {
+            return Ok(());
+        }
         shared.stale_meshes.insert(handle);
         shared.field_edits.remove(&handle);
         #[cfg(feature = "physics3d")]
@@ -1198,6 +1267,10 @@ impl PhysicsSystem {
         let whole_pending =
             shared.stale_meshes.contains(&handle) && !shared.field_edits.contains_key(&handle);
         shared.heightfields.insert(handle, Arc::new(field));
+        #[cfg(feature = "physics3d")]
+        if reload_restored(&mut shared, handle)? {
+            return Ok(());
+        }
         shared.stale_meshes.insert(handle);
         #[cfg(feature = "physics3d")]
         {
@@ -1887,6 +1960,8 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
                 {
                     shared.sim2 = None;
                 }
+                // Stepped: the restored bytes are behind the simulation now.
+                shared.restored = None;
                 let mut sim = shared.sim3.take().unwrap_or_default();
                 let out = dim3::step(&settings, dt, tick, &scene, &mut shared, &mut sim)?;
                 shared.sim3 = Some(sim);

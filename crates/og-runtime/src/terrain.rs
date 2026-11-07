@@ -249,6 +249,7 @@ pub(crate) fn replay_if_restored(eng: &Engine) -> Result<(), String> {
         log.edits.clone()
     };
     let count = eng.render.borrow().terrain.loaded.len();
+    let mut replayed = std::collections::BTreeMap::new();
     for i in 0..count {
         let (render, layout, range, collision, field) = {
             let mut rs = eng.render.borrow_mut();
@@ -277,8 +278,8 @@ pub(crate) fn replay_if_restored(eng: &Engine) -> Result<(), String> {
             rs.scene.set_terrain_stream(render, layout, range);
             rs.terrain.streamer.forget(i);
         }
-        if let (true, Some(f)) = (collision, field) {
-            set_heightfield(eng, GEOMETRY_BASE + i as u64, &f)?;
+        if collision {
+            replayed.insert(i, field);
         }
     }
     for (id, brush) in edits {
@@ -290,6 +291,18 @@ pub(crate) fn replay_if_restored(eng: &Engine) -> Result<(), String> {
             continue;
         }
         edit_loaded(eng, i, &b, false)?;
+        if eng.render.borrow().terrain.loaded[i].collision {
+            replayed.insert(i, eng.render.borrow().terrain.loaded[i].field.clone());
+        }
+    }
+    // Physics gets each field's heights once, as the edits left them: the
+    // snapshot's heights (a restore within the run that edited them) change
+    // nothing, so the restored colliders keep their contacts and handles
+    // and the world goes on as the uninterrupted run does.
+    for (i, field) in replayed {
+        if let Some(f) = field {
+            set_heightfield(eng, GEOMETRY_BASE + i as u64, &f)?;
+        }
     }
     Ok(())
 }
@@ -974,8 +987,8 @@ fn terrain_id(t: &TerrainState, i: usize) -> String {
         .unwrap_or_default()
 }
 
-/// Applies a brush or a stamp's patch to loaded terrain `i` (and logs it,
-/// unless replaying).
+/// Applies a brush or a stamp's patch to loaded terrain `i` (and logs it
+/// and hands its heights to physics, unless replaying).
 fn edit_loaded(eng: &Engine, i: usize, b: &Value, log: bool) -> Result<Value, String> {
     {
         let (touched, snapshot, collision) = {
@@ -1013,7 +1026,8 @@ fn edit_loaded(eng: &Engine, i: usize, b: &Value, log: bool) -> Result<Value, St
             };
             rs.terrain.streamer.forget(i);
         }
-        if collision {
+        // A replay registers the final heights once (`replay_if_restored`).
+        if collision && log {
             match region {
                 // Physics rebuilds only the chunks of its colliders under it.
                 Some((lo, hi)) => edit_heightfield(eng, GEOMETRY_BASE + i as u64, &data, lo, hi)?,

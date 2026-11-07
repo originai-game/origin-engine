@@ -251,6 +251,31 @@ test("terrain edits are world state: a snapshot keeps them and a restore brings 
   expect(replay.engine.hash()).toBe(raised.hash);
 });
 
+// A restore replays the edit log on the next tick. Handing physics the
+// cooked heights and then each brush rebuilt every collider of the field,
+// dropping the contacts the snapshot carried: the restored run left the
+// uninterrupted one on its first tick (vehicle-terrain's car). Restored
+// after a later edit, the colliders were first built from the edited
+// heights, then rebuilt from the snapshot's.
+test("a restore within a run that edited the terrain goes on tick for tick as the run did, before or after a later edit", () => {
+  const { engine, info } = start();
+  const w = engine.world;
+  must(og.terrain.edit(w, info.data as never, { mode: "raise" as never, center: { x: -20, y: 0, z: 10 }, radius: 6, strength: 2 }));
+  const ball = must(w.spawn({ name: "ball", position: { x: -20, y: 14, z: 10 } }));
+  w.insert(ball, og.RigidBody, {});
+  w.insert(ball, og.Collider, { shape: SHAPE_SPHERE, radius: 0.5 });
+  expect(engine.advance(40).ok).toBeTrue();
+  const saved = engine.probe.snapshot() as { id: string };
+  const hashes = (): string[] => Array.from({ length: 30 }, () => (expect(engine.advance(1).ok).toBeTrue(), engine.hash()));
+  const run = hashes();
+  expect(engine.probe.restore(saved.id)).toBeTrue();
+  expect(hashes()).toEqual(run);
+  must(og.terrain.edit(w, info.data as never, { mode: "raise" as never, center: { x: -20, y: 0, z: 10 }, radius: 6, strength: 1 }));
+  expect(engine.advance(5).ok).toBeTrue();
+  expect(engine.probe.restore(saved.id)).toBeTrue();
+  expect(hashes()).toEqual(run);
+});
+
 test("the hole brush cuts the terrain out for sample and physics, and fill closes it", () => {
   const { engine, info } = start();
   const w = engine.world;
