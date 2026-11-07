@@ -24,12 +24,16 @@
 //!    that a native host blocks when the agent has nothing left to show
 //!    (`og run` stepping faster than real time draws every frame that way,
 //!    so its frames after the first batch do not depend on timing).
-//! 4. **The pose.** Each agent plays its frames at 30 Hz on the frame's
-//!    clock, blending the two around it: re-rooted onto og.Transform (the
-//!    hips over the entity, facing its heading), retargeted to its rig
-//!    (`og_anim::retarget`), its feet planted in the world from the
-//!    model's contacts (`og_motion::soma::Planter`), as the joint palette
-//!    of its og.Skeleton's skin.
+//! 4. **The pose.** Each agent plays its frames on the frame's clock,
+//!    blending the two around it, a walk or run at the rate that makes its
+//!    stride cover the ground the Transform does (30 Hz otherwise):
+//!    re-rooted onto og.Transform (the hips over the entity, facing its
+//!    heading, and following the generated hips' own travel within
+//!    [`MAX_OFFSET`]), retargeted to its rig (`og_anim::retarget`), its
+//!    feet planted in the world where the pose shows them on the ground
+//!    (never the model's contact channel) and stepped when left behind
+//!    (`og_motion::soma::Planter`), as the joint palette of its
+//!    og.Skeleton's skin.
 //!
 //! Presentation only: nothing here writes the world, and nothing the tick
 //! reads depends on it.
@@ -98,6 +102,203 @@ const RIGHT_ANKLE: usize = 28;
 const MAX_LAG: f64 = 0.25;
 /// SOMA's head joint.
 const HEAD: usize = 6;
+/// The bounds of a walk's or run's playback rate (stride warping by
+/// time): the generated gait is played so its hips cover the ground the
+/// simulation's Transform does, between these multiples of its rate.
+const MIN_WARP: f32 = 0.5;
+const MAX_WARP: f32 = 2.5;
+/// The half-life over which the playback rate follows the speed ratio, s.
+const WARP_HALF_LIFE: f32 = 0.08;
+/// A foot is on the ground, as the pose shows it (in the model's own
+/// world, never from its contact channel), when its ankle comes within
+/// [`DOWN_HEIGHT`] m of its rest height over the ground moving slower than
+/// [`DOWN_SPEED`] m/s, or rests within [`HELD_HEIGHT`] of it, slower than
+/// [`HELD_SPEED`], for [`HELD_FRAMES`] drawn frames (a held pose's foot,
+/// put down onto the ground); it lifts when it rises [`LIFT_HEIGHT`] over
+/// where it touched down or moves faster than [`LIFT_SPEED`].
+const DOWN_HEIGHT: f32 = 0.05;
+const DOWN_SPEED: f32 = 0.6;
+const HELD_HEIGHT: f32 = 0.2;
+/// A character holding a pose in place keeps a foot down up to this high,
+/// m: a held pose's shifting and fidgeting feet stand on the ground (the
+/// planter steps them when they are left behind).
+const HOLD_HEIGHT: f32 = 0.35;
+const HELD_SPEED: f32 = 0.06;
+const HELD_FRAMES: u32 = 6;
+const LIFT_HEIGHT: f32 = 0.04;
+const LIFT_SPEED: f32 = 1.0;
+/// The drawn hips follow the generated hips' own travel and are drawn
+/// back to the Transform with this half-life, s, never farther from it
+/// than [`MAX_OFFSET`] m (times the character's scale): within a stride
+/// the hips speed up and slow down, as a walker's do, over feet that stay
+/// put, while the Transform moves at the simulation's even speed.
+const OFFSET_HALF_LIFE: f32 = 0.35;
+const MAX_OFFSET: f32 = 0.15;
+/// How fast the drawn hips may move to keep the planted feet still, m/s.
+const FOLLOW_SPEED: f32 = 1.5;
+
+/// A drawn foot is on the ground, for [`Footing`], when its ankle is
+/// within this of its rest height over the Transform, m (times the scale).
+const ON_GROUND: f32 = 0.03;
+/// The slide speeds [`Footing`] counts samples above, m/s.
+const SLIDE: [f32; 2] = [0.1, 0.3];
+
+/// The drawn feet as they move in the world, measured on every shown frame
+/// from where they are drawn and nothing else (no contact channel, the
+/// model's or the pose's): a foot on the ground in two consecutive frames
+/// is a sample of its speed over the ground, counted by what the character
+/// is doing; while it holds a pose, how high its feet are over the ground.
+#[derive(Clone, Debug, Default, PartialEq)]
+struct Footing {
+    last: [Option<(Vec3, bool)>; 2],
+    segments: BTreeMap<&'static str, Slides>,
+    /// Frames of a held pose, those with a foot held over [`ON_GROUND`]
+    /// without moving across the ground (floating, not stepping), and the
+    /// highest a foot was over its rest height, m.
+    held: (u32, u32, f32),
+    floating: bool,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct Slides {
+    frames: u32,
+    samples: u32,
+    over: [u32; 2],
+    max: f32,
+}
+
+impl Footing {
+    /// Records foot `k` drawn `at` over `rest` (its rest ankle height in
+    /// the world) in `segment`, `dt` s after the last frame.
+    /// A jump's clip (`clip`) is no held pose, whatever the goal.
+    fn record(
+        &mut self,
+        k: usize,
+        at: Vec3,
+        rest: f32,
+        (segment, air, clip): (&'static str, bool, bool),
+        dt: f32,
+    ) {
+        let height = at.y - rest;
+        let down = !air && height < ON_GROUND;
+        let across = match self.last[k] {
+            Some((was, _)) if dt > 0.0 => Vec3::new(at.x - was.x, 0.0, at.z - was.z).length() / dt,
+            _ => 0.0,
+        };
+        let seg = self.segments.entry(segment).or_default();
+        if k == 0 {
+            seg.frames += 1;
+        }
+        if let Some((_, true)) = self.last[k]
+            && down
+            && dt > 0.0
+        {
+            let speed = across;
+            seg.samples += 1;
+            for (n, limit) in seg.over.iter_mut().zip(SLIDE) {
+                *n += (speed > limit) as u32;
+            }
+            seg.max = seg.max.max(speed);
+        }
+        self.last[k] = Some((at, down));
+        if segment == "hold" && !air && !clip {
+            // A frame counts once, however many of its feet float.
+            if k == 0 {
+                self.held.0 += 1;
+                self.floating = false;
+            }
+            // Up and not moving across: floating (a foot stepping across
+            // the ground is lifted by the step).
+            if height > ON_GROUND && across < SLIDE[0] && !self.floating {
+                self.floating = true;
+                self.held.1 += 1;
+            }
+            self.held.2 = self.held.2.max(height);
+        }
+    }
+
+    fn json(&self) -> Value {
+        let segments: serde_json::Map<String, Value> = self
+            .segments
+            .iter()
+            .map(|(k, s)| {
+                (
+                    (*k).to_string(),
+                    json!({
+                        "frames": s.frames,
+                        "samples": s.samples,
+                        "over0_1": s.over[0],
+                        "over0_3": s.over[1],
+                        "maxMps": s.max,
+                    }),
+                )
+            })
+            .collect();
+        json!({
+            "onGroundM": ON_GROUND,
+            "segments": segments,
+            "held": { "frames": self.held.0, "floating": self.held.1, "maxM": self.held.2 },
+        })
+    }
+}
+
+/// What an agent is doing, as [`Footing`] counts it: a walk or a run (by
+/// the speed it asks for), a turn, a jump's takeoff, flight or landing,
+/// or holding a pose.
+fn segment_of(agent: Option<&super::Agent>, drive: bool) -> &'static str {
+    let Some(c) = agent.and_then(|g| g.current) else {
+        return "hold";
+    };
+    match c.goal.kind {
+        Kind::WalkTo if c.goal.speed >= RUN_SPEED => "run",
+        Kind::WalkTo => "walk",
+        Kind::Face | Kind::Place if drive => "turn",
+        Kind::Jump => match c.jump.map(|j| j.stage) {
+            Some(JumpStage::Air) => "air",
+            Some(JumpStage::Landed) => "landing",
+            _ => "takeoff",
+        },
+        _ => "hold",
+    }
+}
+
+/// One foot's contact as the pose shows it, with hysteresis.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct Foot {
+    /// The ankle's height over its rest height where it touched down.
+    touched: Option<f32>,
+    /// Drawn frames it has been held still.
+    still: u32,
+}
+
+impl Foot {
+    /// Whether the foot is down at `height` m over its rest height, moving
+    /// at `speed` m/s. A character `holding` a pose in place keeps every foot
+    /// below [`HOLD_HEIGHT`] that is not swung fast on the ground.
+    fn step(&mut self, height: f32, speed: f32, holding: bool) -> bool {
+        self.still = if speed < HELD_SPEED {
+            self.still + 1
+        } else {
+            0
+        };
+        let held = holding && height < HOLD_HEIGHT && speed < LIFT_SPEED;
+        match self.touched {
+            Some(_) if held => {}
+            Some(t) if height > t.max(0.0) + LIFT_HEIGHT || speed > LIFT_SPEED => {
+                self.touched = None;
+            }
+            Some(_) => {}
+            None if held
+                || (height < DOWN_HEIGHT && speed < DOWN_SPEED)
+                || (height < HELD_HEIGHT && self.still >= HELD_FRAMES) =>
+            {
+                self.touched = Some(height);
+            }
+            None => {}
+        }
+        self.touched.is_some()
+    }
+}
 
 type Running = Pin<Box<dyn Future<Output = (Gpu, Result<(StudentOutput, Vec<f32>), GpuError>)>>>;
 
@@ -208,6 +409,19 @@ struct Shown {
     /// The lean (hips to head) last drawn, rad.
     lean: Option<f32>,
     drawn_lean: Option<f32>,
+    /// The rate the generated frames play at (1 is the model's own): a
+    /// walk or run is played at the simulation's speed over the ground.
+    warp: f32,
+    /// The feet's contacts as the drawn pose shows them.
+    feet: [Foot; 2],
+    /// The drawn root's offset from the Transform in the world, and the
+    /// generated hips (model world, over the ground) and heading it last
+    /// followed: presentation only, never read by the simulation.
+    offset: Vec3,
+    followed: Option<(Vec3, f32)>,
+    /// The drawn feet measured without any contact signal (`dump_motion`'s
+    /// `footing`).
+    footing: Footing,
     /// How far the drawn ankles are ahead of the hips along the facing, m
     /// (their mean): behind in a stride's push-off, under or ahead of the
     /// hips coming down to a landing.
@@ -281,6 +495,52 @@ impl Shown {
             c.frames.len().saturating_sub(c.drawn.floor() as usize + 1)
         });
         motion.queued(self.character) + clip + self.pending.len()
+    }
+
+    /// The playback rate after `elapsed` s: in a walk or run, the
+    /// simulation's speed over the ground over the generated hips' (so a
+    /// planted foot stays where it is in the world while the Transform
+    /// carries the hips), and fast while the simulation has stopped and
+    /// the model is still walking there; 1 in anything else.
+    fn warp_for(&mut self, elapsed: f32) -> f32 {
+        let gait = self.clip.is_none()
+            && self
+                .prev
+                .and_then(|f| self.issued(&f))
+                .is_some_and(|g| is_gait(g.pose));
+        let to = match (self.prev, self.next) {
+            (Some(a), Some(b)) if gait => {
+                // The generated stride's speed: how fast the hips pass over
+                // the feet on the ground (what a planted foot sees, whether
+                // or not the model holds it still), else the hips' own.
+                let flat = |f: &Frame, j: usize| {
+                    let [x, _, z] = f.pose.positions[j];
+                    Vec3::new(x, 0.0, z)
+                };
+                let hips = flat(&b, 0) - flat(&a, 0);
+                let down: Vec<Vec3> = [LEFT_ANKLE, RIGHT_ANKLE]
+                    .into_iter()
+                    .zip(self.feet)
+                    .filter(|(_, f)| f.touched.is_some())
+                    .map(|(j, _)| hips - (flat(&b, j) - flat(&a, j)))
+                    .collect();
+                let stride = if down.is_empty() {
+                    hips.length()
+                } else {
+                    down.iter().map(|d| d.length()).sum::<f32>() / down.len() as f32
+                } * RATE;
+                let sim = Vec3::new(self.velocity.x, 0.0, self.velocity.z).length();
+                if sim < 0.1 || stride < 0.05 {
+                    MAX_WARP
+                } else {
+                    (sim / stride).clamp(MIN_WARP, MAX_WARP)
+                }
+            }
+            _ => 1.0,
+        };
+        let k = 1.0 - og_core::math::exp(-elapsed * std::f32::consts::LN_2 / WARP_HALF_LIFE);
+        self.warp += (to - self.warp) * k;
+        self.warp
     }
 
     fn count_wait(&mut self) {
@@ -570,6 +830,9 @@ fn pose_of(agent: &super::Agent, speed: f32) -> usize {
             _ => JUMP,
         },
         Some(c) if matches!(c.goal.kind, Kind::Place | Kind::Pose) => c.goal.pose as usize,
+        // A walk is walked or run at the speed it asks for, through its
+        // start and its braking: a run that brakes into a jump is a run.
+        Some(c) if c.goal.kind == Kind::WalkTo && speed > 0.3 => gait(c.goal.speed),
         _ if speed > 0.3 => gait(speed),
         Some(c) if c.goal.kind == Kind::WalkTo => c.goal.pose as usize,
         _ => agent.hold as usize,
@@ -594,16 +857,16 @@ fn predict(goals: &Goals, a: &Seen, shown: &Shown, queued: f32) -> (Vec3, f32, u
             for _ in 0..(queued * RATE) as usize {
                 advance(&mut agent, &a.settings, &mut p, &mut h, step);
             }
-            // A pose the model is already in (a walk or run, or the rest of
-            // the pose the last goal asked for) merges into the next when
+            // The rest of the pose the last goal asked for (the walk or run
+            // the model is in, or a held pose) merges into the next when
             // less than the shortest generation of it is left: asked for on
             // its own, the model spends that generation on it and falls
             // behind the simulation, and the goal after asks it to lunge. A
-            // new pose keeps its goal however short, and a jump's rise keeps
-            // its own: the model reaches the jump's pose at the apex.
+            // new pose keeps its goal however short, a change of gait (a
+            // run between two walks) included, and a jump's rise keeps its
+            // own: the model reaches the jump's pose at the apex.
             let last_asked = shown.issued.back().map(|i| i.pose);
-            let carries_on =
-                |pose: usize| pose != JUMP && (is_gait(pose) || last_asked == Some(pose));
+            let carries_on = |pose: usize| pose != JUMP && last_asked == Some(pose);
             let mut last = None;
             for k in 0..(HORIZON * RATE) as usize {
                 let (p0, h0) = (p, h);
@@ -878,6 +1141,38 @@ fn jump_clip(
     s.phase = clip.drawn - k as f32;
 }
 
+/// Moves the drawn root's offset on by `dt` s: the generated hips' travel
+/// since the last frame (turned from the model's heading to the
+/// Transform's) less the Transform's, eased back to none and bounded. A
+/// jump clip (the Transform carries it), a cut in the generated motion or
+/// the first frame draws the hips on the Transform.
+fn follow_hips(
+    (offset, followed): (&mut Vec3, &mut Option<(Vec3, f32)>),
+    a: &Seen,
+    (prev, next, t): (&Frame, &Frame, f32),
+    velocity: Vec3,
+    cut: bool,
+    dt: f32,
+) {
+    let at = |j: usize| {
+        let (u, v) = (prev.pose.positions[j], next.pose.positions[j]);
+        Vec3::new(u[0] + (v[0] - u[0]) * t, 0.0, u[2] + (v[2] - u[2]) * t)
+    };
+    let hips = at(0);
+    let h = heading(at(RIGHT_LEG).to_array(), at(LEFT_LEG).to_array());
+    match *followed {
+        Some((last, last_h)) if !cut && hips.distance(last) < 0.3 => {
+            let moved = rotation_of(heading_of(a.rotation) - last_h) * (hips - last);
+            let sim = Vec3::new(velocity.x, 0.0, velocity.z) * dt;
+            *offset += moved * a.scale - sim;
+            let k = og_core::math::exp(-dt * std::f32::consts::LN_2 / OFFSET_HALF_LIFE);
+            *offset = (*offset * k).clamp_length_max(MAX_OFFSET * a.scale);
+        }
+        _ => *offset = Vec3::ZERO,
+    }
+    *followed = Some((hips, h));
+}
+
 /// `pose`'s local transforms re-rooted: the hips over the origin at their
 /// height, facing +Z, and the lean (hips to head) they have.
 fn rerooted(skeleton: &Skeleton, asset: &SkeletonAsset, pose: &Pose) -> (Vec<Trs>, f32) {
@@ -899,6 +1194,7 @@ fn palette(
     s: &mut Shown,
     goals: &Goals,
     sys: &og_anim::AnimationSystem,
+    dt: f32,
 ) -> Option<Vec<Mat4>> {
     let (target, map) = s.target.as_ref()?;
     let prev = s.prev?;
@@ -929,12 +1225,85 @@ fn palette(
     let mut pose = AnimPose::rest(target);
     let binding = og_anim::bind(target, &out.clip);
     og_anim::sample(target, &out.clip, &binding, s.phase / RATE, NONE, &mut pose);
-    let contacts = if s.phase < 0.5 {
-        prev.contacts
-    } else {
-        next.contacts
-    };
+    // The feet's contacts from the generated pose itself: each ankle's
+    // height over its rest height in the model's world and its speed
+    // there (the model's own time), with hysteresis. Never in the air.
+    let jump = goals
+        .agents
+        .get(&a.entity)
+        .and_then(|g| g.current)
+        .and_then(|c| c.jump)
+        .map(|j| j.stage);
+    let airborne = jump == Some(JumpStage::Air);
+    // Holding a pose in place: no goal, or a pose goal, with the Transform
+    // standing still.
+    let holding = jump.is_none()
+        && Vec3::new(s.velocity.x, 0.0, s.velocity.z).length() < 0.05
+        && goals
+            .agents
+            .get(&a.entity)
+            .is_none_or(|g| g.current.is_none_or(|c| c.goal.kind == Kind::Pose));
+    let rest = r.soma.model_space(&r.soma.rest_pose())[LEFT_ANKLE]
+        .translation
+        .y;
+    let t = s.phase.clamp(0.0, 1.0);
+    let mut contacts = [0.0; 4];
+    for (k, ankle) in [LEFT_ANKLE, RIGHT_ANKLE].into_iter().enumerate() {
+        let (u, v) = (prev.pose.positions[ankle], next.pose.positions[ankle]);
+        let height = u[1] + (v[1] - u[1]) * t - rest;
+        let speed = Vec3::from_array(v).distance(Vec3::from_array(u)) * RATE;
+        let down = s.feet[k].step(height, speed, holding) && !airborne;
+        if airborne {
+            s.feet[k] = Foot::default();
+        }
+        contacts[2 * k] = if down { 1.0 } else { 0.0 };
+    }
     let root = Trs::new(a.position, a.rotation, Vec3::splat(a.scale));
+    let cut = s.clip.is_some();
+    let (t, velocity) = (s.phase.clamp(0.0, 1.0), s.velocity);
+    follow_hips(
+        (&mut s.offset, &mut s.followed),
+        a,
+        (&prev, &next, t),
+        velocity,
+        cut,
+        dt,
+    );
+    // The body is carried over the feet it stands on: the hips move by
+    // how far the generated ankles of the planted feet have drifted from
+    // where those feet stand (at most FOLLOW_SPEED), so the drawn stride
+    // keeps its feet still and the offset, bounded and eased back, takes
+    // up the difference with the Transform.
+    if !airborne {
+        let model = target.model_space(&pose.nodes);
+        let drift: Vec<Vec3> = s
+            .planter
+            .planted()
+            .map(|(leg, at)| {
+                let ankle = model[leg.chain[2] as usize].translation;
+                let g = root.transform_point(ankle + a.rotation.inverse() * s.offset / a.scale);
+                Vec3::new(at.x - g.x, 0.0, at.z - g.z)
+            })
+            .collect();
+        if !drift.is_empty() {
+            let mean = drift.iter().copied().sum::<Vec3>() / drift.len() as f32;
+            s.offset += mean.clamp_length_max(FOLLOW_SPEED * a.scale * dt);
+            s.offset = s.offset.clamp_length_max(MAX_OFFSET * a.scale);
+        }
+    }
+    if let Some(hips) = map.node("hips")
+        && s.offset != Vec3::ZERO
+    {
+        let local = a.rotation.inverse() * s.offset / a.scale;
+        let parent = target.nodes[hips as usize].parent;
+        let local = if parent == NONE {
+            local
+        } else {
+            let p = target.model_space(&pose.nodes)[parent as usize];
+            p.rotation.inverse() * local / p.scale
+        };
+        pose.nodes[hips as usize].translation += local;
+    }
     perform_and_plant(
         &mut s.planter,
         goals.agents.get(&a.entity).map(|g| &g.performance),
@@ -942,7 +1311,7 @@ fn palette(
         (target, map),
         &root,
         &mut pose.nodes,
-        contacts,
+        (contacts, (!airborne).then_some(a.position.y), dt),
     );
     let model = target.model_space(&pose.nodes);
     s.drawn_lean = map.node("hips").zip(map.node("head")).map(|(hips, head)| {
@@ -963,6 +1332,22 @@ fn palette(
             s.slide = (s.slide.0 + d, s.slide.1 + 1, s.slide.2.max(d));
         }
         s.planted[k] = Some(at);
+    }
+    let rest = s.planter.rest();
+    let segment = segment_of(goals.agents.get(&a.entity), a.settings.drive);
+    for (k, ankle) in [map.nodes[16], map.nodes[20]].into_iter().enumerate() {
+        if ankle == NONE {
+            continue;
+        }
+        let at = root.transform_point(model[ankle as usize].translation);
+        let clip = s.clip.is_some();
+        s.footing.record(
+            k,
+            at,
+            a.position.y + rest[k] * a.scale,
+            (segment, airborne, clip),
+            dt,
+        );
     }
     let (l, r) = (map.nodes[14], map.nodes[18]);
     if l != NONE && r != NONE {
@@ -1000,7 +1385,7 @@ fn perform_and_plant(
     (target, map): (&SkeletonAsset, &HumanoidMap),
     root: &Trs,
     nodes: &mut [Trs],
-    mut contacts: [f32; 4],
+    (mut contacts, ground, dt): ([f32; 4], Option<f32>, f32),
 ) {
     if let Some(performance) = performance {
         performance.apply(sys, target, map, root, nodes);
@@ -1012,7 +1397,7 @@ fn perform_and_plant(
             }
         }
     }
-    planter.step(target, nodes, root, &contacts);
+    planter.step(target, nodes, root, &contacts, ground, dt);
 }
 
 /// Compose authored performance on the animation pose during model startup.
@@ -1123,6 +1508,11 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
                 slide: (0.0, 0, 0.0),
                 lean: None,
                 drawn_lean: None,
+                warp: 1.0,
+                feet: [Foot::default(); 2],
+                offset: Vec3::ZERO,
+                followed: None,
+                footing: Footing::default(),
                 feet_ahead: None,
                 issued: VecDeque::new(),
                 next_id: 0,
@@ -1144,13 +1534,15 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
                     }
                 }
             });
-            let legs = s.target.as_ref().map_or(Vec::new(), |(_, m)| {
+            let legs = s.target.as_ref().map_or(Vec::new(), |(t, m)| {
+                let rest = t.model_space(&t.rest_pose());
                 [(14usize, 0usize), (18, 2)]
                     .iter()
                     .filter(|(b, _)| (0..3).all(|k| m.nodes[b + k] != NONE))
                     .map(|&(b, contact)| Leg {
                         chain: [m.nodes[b], m.nodes[b + 1], m.nodes[b + 2]],
                         contact,
+                        rest: rest[m.nodes[b + 2] as usize].translation.y,
                     })
                     .collect()
             });
@@ -1170,7 +1562,7 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
         if serial != s.serial
             || (r.motion.goals(s.character) == 0 && s.ahead(&r.motion) < lookahead.max(1))
         {
-            let queued = s.ahead(&r.motion) as f32 / RATE;
+            let queued = s.ahead(&r.motion) as f32 / (RATE * s.warp);
             let (at, h, pose, seconds) = predict(&goals, a, s, queued);
             let mut goal = Goal::placed(r.library.frames(pose), [at.x, at.z], h);
             // A walk or run keeps time by its distance; forced short, the
@@ -1200,7 +1592,13 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
     start_flight(r);
     for a in &agents {
         let s = p.agents.get_mut(&a.entity).expect("added above");
-        s.phase += elapsed * RATE;
+        // Frames played faster or slower than the model's rate are due
+        // that much sooner or later: the goals' clocks move with them.
+        let warp = s.warp_for(elapsed);
+        for g in &mut s.issued {
+            g.start += f64::from((1.0 - warp) * elapsed);
+        }
+        s.phase += elapsed * RATE * warp;
         if s.prev.is_none() {
             s.phase = 0.0;
         }
@@ -1265,7 +1663,7 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
             s.phase = s.phase.min(1.0);
         }
         if let Some(sys) = sys.as_ref()
-            && let Some(m) = palette(r, a, s, &goals, sys)
+            && let Some(m) = palette(r, a, s, &goals, sys, elapsed)
         {
             s.shown += 1;
             p.palettes.insert(a.entity, m);
@@ -1350,6 +1748,7 @@ pub(crate) fn dump(eng: &Engine) -> Value {
                 "framesStarved": s.starved,
                 "framesWarmup": s.warmup,
                 "facing": s.facing,
+                "footing": s.footing.json(),
                 "plantedSlide": {
                     "frames": s.slide.1,
                     "meanMm": if s.slide.1 > 0 { 1000.0 * s.slide.0 / s.slide.1 as f32 } else { 0.0 },
@@ -1426,6 +1825,11 @@ mod tests {
             slide: (0.0, 0, 0.0),
             lean: None,
             drawn_lean: None,
+            warp: 1.0,
+            feet: [Foot::default(); 2],
+            offset: Vec3::ZERO,
+            followed: None,
+            footing: Footing::default(),
             feet_ahead: None,
             issued: VecDeque::new(),
             next_id: 0,
@@ -1740,6 +2144,55 @@ mod tests {
         }
     }
 
+    #[test]
+    fn prediction_never_merges_a_change_of_gait() {
+        // The model is walking (the last goal asked for a walk) and the
+        // simulation runs 1 m at 3.6 m/s, then walks on: the run is shorter
+        // than the shortest generation, but a change of gait keeps its own
+        // goal instead of being folded into the walk after it.
+        let walk = |x: f32, speed: f32| super::super::Goal {
+            kind: Kind::WalkTo,
+            pose: 0,
+            target: Vec3::new(x, 0.0, 0.0),
+            heading: 0.0,
+            duration: 0.0,
+            speed,
+            arrival_heading: None,
+            deceleration: 3.0,
+            acceleration: 1000.0,
+            height: 0.0,
+            prepare: 0.0,
+        };
+        let a = Seen {
+            entity: 1,
+            settings: Settings::of(&json!({"drive":true})),
+            position: Vec3::ZERO,
+            rotation: rotation_of(std::f32::consts::FRAC_PI_2),
+            scale: 1.0,
+            skeleton: 1,
+            skin: 0,
+        };
+        let mut goals = Goals::default();
+        let mut agent = super::super::Agent::default();
+        agent.queue.push_back(walk(1.0, 3.6));
+        agent.queue.push_back(walk(4.0, 1.3));
+        goals.agents.insert(1, agent);
+        let mut s = shown();
+        s.issued.push_back(Issued {
+            id: 0,
+            pose: gait(1.3),
+            start: 0.0,
+        });
+        let (at, _, pose, seconds) = predict(&goals, &a, &s, 0.0);
+        assert_eq!(pose, gait(3.6), "the run was merged into the walk");
+        assert!(seconds < MIN_SEGMENT, "{seconds} s");
+        assert!(
+            (at.x - 1.0).abs() < 0.05,
+            "the run's goal ends at x {}",
+            at.x
+        );
+    }
+
     /// A SOMA-named skeleton standing upright: hips 1 m up, legs of two
     /// 0.45 m bones, feet forward.
     fn standing() -> Skeleton {
@@ -1771,6 +2224,89 @@ mod tests {
     /// whose clip steps the left foot moves that foot only, and one turned
     /// 90° from the facing steps both (planted, the legs would cross).
     #[test]
+    fn a_planter_on_the_ground_puts_feet_down_and_steps_them_one_at_a_time() {
+        // Ways this could fail: a foot planted where the pose holds it up
+        // (a floating foot), a foot left behind sliding to its pose along
+        // the ground instead of stepping, both feet stepping at once.
+        let asset = standing().asset();
+        let map = HumanoidMap::detect(&asset);
+        let at_rest = asset.model_space(&asset.rest_pose());
+        let legs: Vec<Leg> = [(14usize, 0usize), (18, 2)]
+            .iter()
+            .map(|&(b, contact)| Leg {
+                chain: [map.nodes[b], map.nodes[b + 1], map.nodes[b + 2]],
+                contact,
+                rest: at_rest[map.nodes[b + 2] as usize].translation.y,
+            })
+            .collect();
+        let rest_y = legs[0].rest;
+        // Knees bent: the generated ankles are held 0.12 m over the ground.
+        let mut pose = asset.rest_pose();
+        for (hip, knee) in [(22, 23), (26, 27)] {
+            pose[hip].rotation = glam::Quat::from_rotation_x(-0.6);
+            pose[knee].rotation = glam::Quat::from_rotation_x(1.2);
+        }
+        let ankles = legs.iter().map(|l| l.chain[2] as usize).collect::<Vec<_>>();
+        let lifted = asset.model_space(&pose)[ankles[0]].translation.y - rest_y;
+        assert!(lifted > 0.05, "the generated ankle is {lifted} m up");
+        let mut planter = Planter::new(legs);
+        let dt = 1.0 / 60.0;
+        let mut root = Trs::IDENTITY;
+        let mut nodes = pose.clone();
+        planter.step(&asset, &mut nodes, &root, &[1.0; 4], Some(0.0), dt);
+        let m = asset.model_space(&nodes);
+        for &a in &ankles {
+            let up = m[a].translation.y - rest_y;
+            assert!(up.abs() < 0.01, "a planted foot {up} m off the ground");
+        }
+        // The body carried on at 0.9 m/s over its planted feet.
+        let mut last: Vec<Vec3> = ankles.iter().map(|&a| m[a].translation).collect();
+        let mut steps = [0u32; 2];
+        let mut highest = [0.0f32; 2];
+        for frame in 1..90 {
+            root.translation.x = 0.015 * frame as f32;
+            let mut nodes = pose.clone();
+            planter.step(&asset, &mut nodes, &root, &[1.0; 4], Some(0.0), dt);
+            let m = asset.model_space(&nodes);
+            let mut moving = 0;
+            for (k, &a) in ankles.iter().enumerate() {
+                let w = root.transform_point(m[a].translation);
+                let across = Vec3::new(w.x - last[k].x, 0.0, w.z - last[k].z).length();
+                // A step moves a foot centimetres a frame; a planted foot
+                // at the edge of its reach eases by a fraction of one.
+                if across > 2e-3 {
+                    moving += 1;
+                    steps[k] += 1;
+                    // Across the ground only ever lifted, past the first
+                    // and last few millimetres of the step.
+                    highest[k] = highest[k].max(w.y - rest_y);
+                }
+                last[k] = w;
+            }
+            assert!(moving < 2, "frame {frame}: both feet stepping at once");
+        }
+        for k in 0..2 {
+            assert!(steps[k] > 0, "foot {k} never stepped after the body");
+            assert!(
+                highest[k] > 0.03,
+                "foot {k} stepped {} m high: slid along the ground",
+                highest[k]
+            );
+        }
+        // Each foot kept up with the body's pose.
+        let m = asset.model_space(&pose);
+        for (k, &a) in ankles.iter().enumerate() {
+            let generated = root.transform_point(m[a].translation);
+            assert!(
+                (last[k].x - generated.x).abs() < 0.25,
+                "foot {k} at {} behind {}",
+                last[k].x,
+                generated.x
+            );
+        }
+    }
+
+    #[test]
     fn planted_feet_outrank_a_reaction_except_where_it_steps() {
         use super::super::performance::Performance;
         let asset = standing().asset();
@@ -1780,6 +2316,7 @@ mod tests {
             .map(|&(b, contact)| Leg {
                 chain: [map.nodes[b], map.nodes[b + 1], map.nodes[b + 2]],
                 contact,
+                rest: 0.0,
             })
             .collect();
         assert!(legs.iter().all(|l| l.chain.iter().all(|&n| n != NONE)));
@@ -1834,7 +2371,7 @@ mod tests {
                 (&asset, &map),
                 &root,
                 &mut nodes,
-                down,
+                (down, None, 1.0 / 30.0),
             );
             let anchors = ankles.map(|a| asset.model_space(&nodes)[a].translation);
             let performance = Performance::holding(
@@ -1851,7 +2388,7 @@ mod tests {
                 (&asset, &map),
                 &root,
                 &mut nodes,
-                down,
+                (down, None, 1.0 / 30.0),
             );
             let m = asset.model_space(&nodes);
             for k in 0..2 {

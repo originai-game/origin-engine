@@ -46,6 +46,37 @@ queues (walk to a point, turn, a library pose, a jump).
   once. A crowd of motion agents waits longer for each goal's motion; keep
   og.motion for the characters the player watches and clips for the rest.
 
+### 2.1 Feet on the ground
+
+The drawn feet are judged by where they are drawn, never by a contact
+signal: `dump_motion`'s `footing` measures every shown frame. A foot is on
+the ground when its ankle is within 3 cm of its rest height over the
+Transform; a foot on the ground in two frames running is a sample of its
+speed across the ground, counted by what the agent is doing (`walk`, `run`,
+`turn`, `takeoff`, `landing`, `hold`; `air` has none). In a held pose
+(`hold`), a frame floats when a foot is over those 3 cm without moving
+across (a stepping foot is lifted by its step).
+
+What a motion agent should show over a course of walks, a run, jumps and
+held poses (the `motion-feet` fixture holds the engine to it):
+
+| Measure | Skating looks like | Hold it to |
+|---|---|---|
+| samples faster than 0.1 m/s | a foot creeping | under 5% (the engine shows 0.5–2%) |
+| samples faster than 0.3 m/s outside a takeoff | a foot gliding | under 1% |
+| floating frames of a held pose | a foot hovering | under 2% |
+
+The engine gets there without the model's help: a walk or run is played
+at the speed the simulation moves the Transform (stride warping in time),
+the drawn hips follow the generated hips' travel within 0.15 m of the
+Transform, a foot is planted where the pose shows it low and slow (in a
+held pose wherever it is under 0.35 m) and put down on the ground, a
+planted foot left behind or let go steps (lifted 7 cm, one foot at a
+time), a swing over the ground is lifted clear of it, and the hips lower
+for a planted foot out of reach. Queue walks with a speed for each gait:
+a walkTo gains speed at its `acceleration` and carries it into the next
+walk or jump, so the generated stride has a start and a run to follow.
+
 <a id="guide-animation-3"></a>
 ### `animation §3` Clips and graphs
 

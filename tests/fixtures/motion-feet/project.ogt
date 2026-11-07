@@ -1,0 +1,13 @@
+type project
+version 1
+---
+# A test fixture, not a template (tests/fixtures/README.md): og.motion's
+# drawn feet over a course of walks, a run, two jumps, a crouch, a turn and
+# held gestures, on two rigs.
+name "Motion feet"
+id "motion-feet"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1
