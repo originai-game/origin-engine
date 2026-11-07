@@ -1301,16 +1301,16 @@ pub(crate) fn posed_model(
         notes,
         ..
     } = rs;
-    let rs_motion = &motion.palettes;
     let Some(anim) = fx.anim.as_ref() else {
         return false;
     };
     let Some(mut out) = anim.output(Entity::from_bits(entity)) else {
         return false;
     };
-    // og.motion's generated pose, made for this frame, when it has one.
-    let matrices = match rs_motion.get(&entity) {
-        Some(m) if m.len() == out.palette.len() => m.clone(),
+    // og.motion's generated pose, when it has one: between ticks, blended
+    // from the tick before's like og-anim's.
+    let matrices = match motion.drawn(entity, alpha) {
+        Some(m) if m.len() == out.palette.len() => m,
         _ => super::interpolate::pose(interp, entity, alpha, &out.palette, &mut out.weights),
     };
     let Some(info) = fx.models.get(&asset).cloned() else {

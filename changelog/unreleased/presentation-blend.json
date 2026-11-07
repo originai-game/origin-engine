@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.motion presentation",
+      "summary": "A display frame between ticks (a 120 Hz screen on a 60 Hz tick, ProMotion) blends each og.motion agent's pose from the tick before's at the frame's alpha, as og-anim's poses are (translation and scale lerped, rotation slerped), instead of holding the tick's pose until the next. Captures, the probe and frames on a tick boundary draw the tick; the blend steps nothing and stays outside the presentation checkpoint and its hash."
+    }
+  ]
+}

@@ -585,6 +585,11 @@ pub(crate) struct Presenter {
     /// The palette each agent is drawn with this frame, by entity bits
     /// (`fx::posed_model` takes it in place of og-anim's).
     pub palettes: IdMap<u64, Vec<Mat4>>,
+    /// The palettes of the tick stepped before [`Presenter::stepped`], with
+    /// that tick: what a display frame between the two blends from
+    /// ([`Presenter::drawn`]). Display only, so outside the checkpoint and
+    /// its hash.
+    previous: Option<(u64, IdMap<u64, Vec<Mat4>>)>,
     /// Only palettes made from generated frames this render, never fallback.
     generated: BTreeSet<u64>,
     /// og.motion.capabilities asked: load even without an agent.
@@ -606,9 +611,34 @@ impl Presenter {
     pub(crate) fn forget(&mut self) {
         self.agents.clear();
         self.palettes.clear();
+        self.previous = None;
         self.generated.clear();
         self.clock = None;
         self.stepped = None;
+    }
+
+    /// The palette `entity` is drawn with on a frame at `alpha` (the
+    /// hierarchy's blend for it, `None` at the tick): this tick's, per joint
+    /// blended from the tick before's (translation and scale lerped,
+    /// rotation slerped, as og-anim's `crate::interpolate::pose`) when that
+    /// tick drew the agent with as many joints. Captures, the probe and a
+    /// frame on a tick boundary draw the tick; nothing here is stepped.
+    pub(crate) fn drawn(&self, entity: u64, alpha: Option<f32>) -> Option<Vec<Mat4>> {
+        let now = self.palettes.get(&entity)?;
+        let before = alpha
+            .zip(self.previous.as_ref())
+            .and_then(|(a, (tick, p))| {
+                let m = p.get(&entity).filter(|m| m.len() == now.len())?;
+                (Some(tick + 1) == self.stepped).then_some((a, m))
+            });
+        Some(match before {
+            Some((a, m0)) => m0
+                .iter()
+                .zip(now)
+                .map(|(&m0, &m1)| crate::extract::blend(m0, m1, a, f32::INFINITY))
+                .collect(),
+            None => now.clone(),
+        })
     }
 
     /// The state a presentation checkpoint keeps (`crate::presentation`):
@@ -655,6 +685,7 @@ impl Presenter {
         r.queued = c.outstanding.clone();
         self.agents = c.agents.clone();
         self.palettes = c.palettes.clone();
+        self.previous = None;
         self.generated = c.generated.clone();
         self.clock = c.clock;
         self.stepped = c.stepped;
@@ -1658,8 +1689,10 @@ pub(crate) fn step(eng: &Engine) {
     let mut rs = eng.render.borrow_mut();
     let rs = &mut *rs;
     let p = &mut rs.motion;
+    // The tick before's palettes, which display frames until the next tick
+    // blend from.
+    p.previous = p.stepped.map(|t| (t, std::mem::take(&mut p.palettes)));
     p.stepped = Some(tick);
-    p.palettes.clear();
     p.generated.clear();
     // The model loads as soon as the bundle declares it (a game that uses
     // og.motion), before any agent needs it.
@@ -2612,6 +2645,55 @@ mod tests {
                 assert!((m[0].translation.y - 0.85).abs() < 1e-3);
             }
         }
+    }
+
+    #[test]
+    fn a_display_frame_between_two_ticks_draws_a_pose_between_theirs() {
+        use glam::Quat;
+        let joint = |x: f32, yaw: f32| {
+            Mat4::from_rotation_translation(Quat::from_rotation_y(yaw), Vec3::new(x, 0.0, 0.0))
+        };
+        let before = vec![joint(0.0, 0.0), joint(1.0, 0.2)];
+        let now = vec![joint(1.0, 0.6), joint(3.0, -0.4)];
+        let mut p = Presenter {
+            previous: Some((4, IdMap::from_iter([(7, before.clone())]))),
+            stepped: Some(5),
+            ..Presenter::default()
+        };
+        p.palettes.insert(7, now.clone());
+        // The tick itself (captures, the probe, a tick boundary).
+        assert_eq!(p.drawn(7, None), Some(now.clone()));
+        for a in [0.25f32, 0.5, 0.75] {
+            let m = p.drawn(7, Some(a)).unwrap();
+            for (k, (want0, want1)) in [((0.0, 0.0), (1.0, 0.6)), ((1.0, 0.2), (3.0, -0.4))]
+                .into_iter()
+                .enumerate()
+            {
+                let (s, r, t) = m[k].to_scale_rotation_translation();
+                let (yaw, _, _) = r.to_euler(glam::EulerRot::YXZ);
+                let x = want0.0 + (want1.0 - want0.0) * a;
+                let y = want0.1 + (want1.1 - want0.1) * a;
+                assert!(
+                    (t.x - x).abs() < 1e-5,
+                    "joint {k} at {a}: x {} not {x}",
+                    t.x
+                );
+                assert!(
+                    (yaw - y).abs() < 1e-5,
+                    "joint {k} at {a}: yaw {yaw} not {y}"
+                );
+                assert!(
+                    (s - Vec3::ONE).abs().max_element() < 1e-5,
+                    "joint {k}: scale {s}"
+                );
+                assert!(m[k] != before[k] && m[k] != now[k]);
+            }
+        }
+        // A tick skipped since, or another rig: the tick's pose.
+        p.previous.as_mut().unwrap().0 = 3;
+        assert_eq!(p.drawn(7, Some(0.5)), Some(now.clone()));
+        p.previous = Some((4, IdMap::from_iter([(7, before[..1].to_vec())])));
+        assert_eq!(p.drawn(7, Some(0.5)), Some(now));
     }
 
     #[test]

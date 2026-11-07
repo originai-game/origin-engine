@@ -258,8 +258,10 @@ cancellable `og dev` checks use the stateless path.
     for when an agent first needs it; nothing skips frames to catch up a
     wall clock. Its checkpoint keeps every agent as drawn, the model's
     queued frames and the outstanding batch's inputs, which a restore
-    runs again (the batch then on the GPU is dropped). A frame draws the
-    tick's pose: the Presenter does not blend between ticks.
+    runs again (the batch then on the GPU is dropped). A display frame
+    between ticks blends each agent's palette from the tick before's at
+    alpha, as og-anim's (translation and scale lerped, rotation slerped);
+    captures and the probe draw the tick, and the blend steps nothing.
     Terrain tiles fade in by the frame's seconds; a capture draws every
     resident tile settled.
 - Game state in a JS module is in neither the world snapshot nor the
