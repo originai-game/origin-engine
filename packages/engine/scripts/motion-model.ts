@@ -1,14 +1,16 @@
-// og.motion's weights in the bucket (docs/design.md §2.7): the file
-// motion.json pins lives in the private S3 bucket origin-engine-showcase
-// (OVHcloud, docs/ci.md §The model bucket) under motion/<sha256>.safetensors, so
-// pack.sh can fetch it on any machine without a copy of og-motion-train.
+// og.motion's weights (docs/design.md §2.7): the file motion.json pins is
+// read anonymously from its public `url` (the R2 bucket origin-engine-models,
+// docs/ci.md §The model bucket), so any machine can fetch it without
+// credentials or a copy of og-motion-train. The private S3 bucket
+// origin-engine-showcase (OVHcloud) under motion/<sha256>.safetensors is the
+// fallback and the upload target.
 //
 //   bun scripts/motion-model.ts fetch <out>    download the pinned file to <out>, checked against its sha
 //   bun scripts/motion-model.ts upload <file>  put <file> in the bucket, refused unless it is the pinned file
 //   bun scripts/motion-model.ts ensure         install the pin in the package, reusing a verified local copy
 //   bun scripts/motion-model.ts verify         read and verify the remote pin, even with a local copy
 //
-// Credentials: OG_SHOWCASE_S3_ACCESS_KEY and OG_SHOWCASE_S3_SECRET_KEY (the
+// Credentials, for upload and the fallback only: OG_SHOWCASE_S3_ACCESS_KEY and OG_SHOWCASE_S3_SECRET_KEY (the
 // showcase bucket's S3 user); OG_SHOWCASE_BUCKET, OG_SHOWCASE_S3_ENDPOINT and
 // OG_SHOWCASE_S3_REGION override the bucket, endpoint and region.
 import { createHash } from "node:crypto";
@@ -17,7 +19,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const pkg = fileURLToPath(new URL("..", import.meta.url));
-const pin = JSON.parse(readFileSync(join(pkg, "motion.json"), "utf8")) as { file: string; sha256: string; bytes: number; key: string };
+const pin = JSON.parse(readFileSync(join(pkg, "motion.json"), "utf8")) as { file: string; sha256: string; bytes: number; key: string; url?: string };
 
 function fail(message: string): never {
   console.error(`motion-model: ${message}`);
@@ -54,6 +56,17 @@ function check(bytes: Uint8Array, what: string): void {
 
 async function remote(): Promise<Uint8Array> {
   let bytes: Uint8Array;
+  if (pin.url) try {
+    const response = await fetch(pin.url);
+    if (response.ok) {
+      bytes = new Uint8Array(await response.arrayBuffer());
+      check(bytes, pin.url);
+      return bytes;
+    }
+    console.error(`motion-model: ${pin.url} answered ${response.status}; trying the bucket`);
+  } catch (e) {
+    console.error(`motion-model: could not read ${pin.url} (${e}); trying the bucket`);
+  }
   try {
     bytes = new Uint8Array(await client().file(pin.key).arrayBuffer());
   } catch (e) {

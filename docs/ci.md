@@ -577,15 +577,19 @@ commit.
 
 ## The model bucket
 
-og.motion's weights, which `packages/engine` ships, are not in git. They
-live in the private S3 bucket `origin-engine-showcase` on OVHcloud Object
-Storage (endpoint `https://s3.bhs.io.cloud.ovh.net`, region `bhs`) under
-`motion/<sha256>.safetensors`; `packages/engine/motion.json` pins the file
-(`file`, `sha256`, `bytes`, `key`). The credentials are
-`OG_SHOWCASE_S3_ACCESS_KEY` and `OG_SHOWCASE_S3_SECRET_KEY` (project
-secrets that orbs and the runners receive); `OG_SHOWCASE_BUCKET`,
-`OG_SHOWCASE_S3_ENDPOINT` and `OG_SHOWCASE_S3_REGION` override the
-bucket, endpoint and region.
+og.motion's weights, which `packages/engine` ships, are not in git.
+`packages/engine/motion.json` pins the file (`file`, `sha256`, `bytes`,
+`key`, `url`). Every machine reads it anonymously from `url`, the public
+Cloudflare R2 bucket `origin-engine-models` (it holds only pinned model
+files and is not listable), so no credentials are needed to fetch. The
+private S3 bucket `origin-engine-showcase` on OVHcloud Object Storage
+(endpoint `https://s3.bhs.io.cloud.ovh.net`, region `bhs`) keeps the same
+file under `motion/<sha256>.safetensors`, as the fallback and the upload
+target; its credentials are `OG_SHOWCASE_S3_ACCESS_KEY` and
+`OG_SHOWCASE_S3_SECRET_KEY`, and `OG_SHOWCASE_BUCKET`,
+`OG_SHOWCASE_S3_ENDPOINT` and `OG_SHOWCASE_S3_REGION` override them. A new
+pin is put in both: `upload` for OVH, then `wrangler r2 object put
+origin-engine-models/<key> --file <file> --remote`.
 
 `bun packages/engine/scripts/motion-model.ts`:
 
