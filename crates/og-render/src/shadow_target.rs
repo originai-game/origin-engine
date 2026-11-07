@@ -26,6 +26,8 @@
 //! mirrored raster resolved by a compute pass, and 1.3 and 1.9 for far
 //! sides alone.
 
+use std::cell::OnceCell;
+
 use crate::{DEPTH_FORMAT, Side};
 
 /// The local shadow array's format: far sides in red, near sides in green.
@@ -99,19 +101,87 @@ impl ShadowTarget {
     }
 }
 
-/// A caster's pipelines, one per [`ShadowTarget`].
-pub(crate) struct ShadowSet([wgpu::RenderPipeline; 3]);
+/// A caster's pipelines, one per [`ShadowTarget`]. A [`ShadowSet::lazy`]
+/// set makes a local layer's two when a pass first draws with one, or
+/// when [`ShadowSet::local`] asks for them (the batches' sets, in a frame
+/// whose scene has a shadowed local light: inside the frame span, so the
+/// web host asks for them asynchronously). A scene whose local lights
+/// cast no shadow then compiles one shadow pipeline per caster, not three.
+pub(crate) struct ShadowSet<P = wgpu::RenderPipeline> {
+    cascade: P,
+    local: OnceCell<[P; 2]>,
+    make: Option<Box<dyn Fn(ShadowTarget) -> P>>,
+}
 
-impl ShadowSet {
-    pub(crate) fn new(mut make: impl FnMut(ShadowTarget) -> wgpu::RenderPipeline) -> ShadowSet {
-        ShadowSet([
-            make(ShadowTarget::Cascade),
-            make(ShadowTarget::LocalFar),
-            make(ShadowTarget::LocalNear),
-        ])
+impl<P> ShadowSet<P> {
+    /// The three pipelines now.
+    pub(crate) fn new(mut make: impl FnMut(ShadowTarget) -> P) -> ShadowSet<P> {
+        let cascade = make(ShadowTarget::Cascade);
+        let local = [make(ShadowTarget::LocalFar), make(ShadowTarget::LocalNear)];
+        ShadowSet {
+            cascade,
+            local: OnceCell::from(local),
+            make: None,
+        }
     }
 
-    pub(crate) fn get(&self, target: ShadowTarget) -> &wgpu::RenderPipeline {
-        &self.0[target as usize]
+    /// The cascade's pipeline now, a local layer's two when first wanted.
+    pub(crate) fn lazy(make: impl Fn(ShadowTarget) -> P + 'static) -> ShadowSet<P> {
+        ShadowSet {
+            cascade: make(ShadowTarget::Cascade),
+            local: OnceCell::new(),
+            make: Some(Box::new(make)),
+        }
+    }
+
+    pub(crate) fn get(&self, target: ShadowTarget) -> &P {
+        match target {
+            ShadowTarget::Cascade => &self.cascade,
+            ShadowTarget::LocalFar => &self.local()[0],
+            ShadowTarget::LocalNear => &self.local()[1],
+        }
+    }
+
+    /// A local layer's two pipelines, made now if they were not yet.
+    pub(crate) fn local(&self) -> &[P; 2] {
+        self.local.get_or_init(|| {
+            let make = self
+                .make
+                .as_ref()
+                .expect("a set without its local pipelines keeps its builder");
+            [make(ShadowTarget::LocalFar), make(ShadowTarget::LocalNear)]
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    #[test]
+    fn a_lazy_set_makes_the_local_layers_pipelines_only_when_one_is_wanted() {
+        let made = Rc::new(RefCell::new(Vec::new()));
+        let log = made.clone();
+        let set = ShadowSet::lazy(move |t| {
+            log.borrow_mut().push(t);
+            t as u32
+        });
+        assert_eq!(*set.get(ShadowTarget::Cascade), 0);
+        assert_eq!(*made.borrow(), [ShadowTarget::Cascade]);
+        assert_eq!(*set.get(ShadowTarget::LocalNear), 2);
+        assert_eq!(*set.get(ShadowTarget::LocalFar), 1);
+        set.local();
+        assert_eq!(
+            *made.borrow(),
+            [
+                ShadowTarget::Cascade,
+                ShadowTarget::LocalFar,
+                ShadowTarget::LocalNear
+            ]
+        );
+        let eager = ShadowSet::new(|t| t as u32);
+        assert_eq!(*eager.get(ShadowTarget::LocalNear), 2);
     }
 }

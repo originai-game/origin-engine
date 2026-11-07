@@ -75,17 +75,22 @@ impl Renderer {
             self.probes
                 .ensure_targets(&self.device, probe_frame, face_copy, face_fluid);
         }
+        // A local light's shadow faces may be drawn this frame (frame.rs
+        // `local_lights` shadows only the lights that cast).
+        let local_shadows = scene.quality.shadowed_lights.min(self.info.shadowed_lights) > 0
+            && scene.lights.iter().any(|l| l.cast_shadows);
         self.ensure_pipelines(
             batches,
             skinned_batches,
             prepass || view_depth || face_depth,
+            local_shadows,
         );
         // A view may draw a skinned batch the main camera culled or hides.
         for v in &*view_skinned {
-            self.ensure_pipelines(&[], v, view_depth);
+            self.ensure_pipelines(&[], v, view_depth, local_shadows);
         }
         for v in &*probe_skinned {
-            self.ensure_pipelines(&[], v, face_depth);
+            self.ensure_pipelines(&[], v, face_depth, local_shadows);
         }
         // Lightmapped batches (lightmap.rs): their family's pipeline, and a
         // physical one's standard family too (passes without the physical
