@@ -319,8 +319,13 @@ def preview(args):
                 "show": (end - s["tick"]) / TICK,
             }
         missing = [i for i in ids if i not in timing]
-        if missing:
+        if missing and not args.skip_failed:
             sys.exit(f"never started: {missing}")
+        if missing:
+            # Reviewing a pack that is not finished: sheets for the rest.
+            print(f"never started, skipped: {missing}", file=sys.stderr)
+            keep = [(i, rel) for i, rel in zip(ids, effects) if i not in missing]
+            ids, effects = [k[0] for k in keep], [k[1] for k in keep]
 
         # Pass 2, on the GPU: shots, render dumps and the trace.
         t, cmds, plan = 0.5, [], {}
@@ -395,6 +400,8 @@ def preview(args):
             }
             (out / (rel[:-4] + ".cost.json")).write_text(json.dumps(cost, indent=2) + "\n")
             rows.append((rel, cost))
+        if f"vfx/{name}/{args.cover}" not in timing:
+            args.cover = None
         cover = args.cover or next((e["path"] for e in assets["effects"] if timing[f"vfx/{name}/{e['path']}"]["impact"] is not None), effects[0])
         cp = plan[f"vfx/{name}/{cover}"]
         tm = timing[f"vfx/{name}/{cover}"]
@@ -402,7 +409,9 @@ def preview(args):
         Image.open(root / "out" / f"{pick}.png").convert("RGB").save(out / "cover.png", optimize=True)
 
         for e in assets["effects"]:
-            tm = timing[f"vfx/{name}/{e['path']}"]
+            tm = timing.get(f"vfx/{name}/{e['path']}")
+            if tm is None:
+                continue
             e["loop"] = tm["loop"]
             e["durationSeconds"] = round(tm["duration"], 3)
             e["impact"] = tm["impact"] is not None
@@ -430,6 +439,8 @@ def main():
     p.add_argument("--og", default=str(Path(__file__).resolve().parent.parent / "target/debug/og"))
     p.add_argument("--cover")
     p.add_argument("--keep", action="store_true")
+    p.add_argument("--skip-failed", action="store_true",
+                   help="render the effects that load and list the rest, instead of refusing")
     args = ap.parse_args()
     manifest(args) if args.cmd == "manifest" else preview(args)
 
