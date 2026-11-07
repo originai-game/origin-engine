@@ -1,5 +1,6 @@
 // The few host globals the loaders touch, declared here so the runtime
-// type-checks without @types/node or bun-types (game code never sees them).
+// type-checks without @types/node (game code never sees them). `bun:test` is
+// the vendored bun-types (tsconfig.runtime.json `paths`), the file games see.
 
 declare module "node:module" {
   export function createRequire(url: string): ((id: string) => unknown) & { resolve(id: string): string };
@@ -49,48 +50,6 @@ declare module "node:zlib" {
   export function deflateSync(data: Uint8Array, options?: { level?: number }): Uint8Array;
   export function brotliCompressSync(data: Uint8Array | string, options?: { params?: Record<number, number> }): Uint8Array;
   export const constants: { BROTLI_PARAM_QUALITY: number; BROTLI_MAX_QUALITY: number; BROTLI_PARAM_SIZE_HINT: number };
-}
-
-declare module "bun:test" {
-  type Body = () => unknown | Promise<unknown>;
-  export function test(name: string, body: Body, timeout?: number): void;
-  export namespace test {
-    /** The test runs unless `condition` holds (then it is reported skipped). */
-    function skipIf(condition: boolean): (name: string, body: Body, timeout?: number) => void;
-    /** One test per row, the row spread into the body (`%s` in the name is the row's first value). */
-    function each<T extends readonly unknown[]>(rows: readonly T[]): (name: string, body: (...row: [...T]) => unknown, timeout?: number) => void;
-  }
-  export function describe(name: string, body: () => void): void;
-  export function setDefaultTimeout(ms: number): void;
-  export function beforeAll(body: Body): void;
-  export function beforeEach(body: Body): void;
-  export function afterAll(body: Body): void;
-  interface Matchers {
-    toBe(value: unknown): void;
-    toEqual(value: unknown): void;
-    toStrictEqual(value: unknown): void;
-    toHaveLength(n: number): void;
-    toBeTrue(): void;
-    toBeFalse(): void;
-    toBeGreaterThan(value: number): void;
-    toBeGreaterThanOrEqual(value: number): void;
-    toBeLessThanOrEqual(n: number): void;
-    toMatchObject(o: Record<string, unknown>): void;
-    toBeLessThan(value: number): void;
-    toBeCloseTo(value: number, digits?: number): void;
-    toBeNull(): void;
-    toBeDefined(): void;
-    toMatch(pattern: RegExp | string): void;
-    toContain(value: unknown): void;
-    toThrow(pattern?: RegExp | string): void;
-    not: Matchers;
-  }
-  /** `message` names the assertion in its failure (bun's custom failure message). */
-  export function expect(value: unknown, message?: string): Matchers;
-  export namespace expect {
-    /** The running test fails unless it makes an assertion. */
-    function hasAssertions(): void;
-  }
 }
 
 declare module "node:stream" {

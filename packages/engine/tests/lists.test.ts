@@ -84,6 +84,6 @@ test.skipIf(STALE_WASM)("a list field gives the same answers and the same world 
   const node = runOn("node");
   const web = runOn("web");
   expect(web.host).toBe("web");
-  expect({ ...web, host: "node" }).toEqual(node);
+  expect<unknown>({ ...web, host: "node" }).toEqual(node);
   expect(web.hash).toBe(node.hash);
 }, 120_000);

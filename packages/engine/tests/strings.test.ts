@@ -78,6 +78,6 @@ test.skipIf(STALE_WASM)("a str field gives the same answers and the same world h
   const web = runOn("web");
   expect(web.host).toBe("web");
   // Every answer, the view's bytes, the probe's outputs and the log's lines included, then the hash.
-  expect({ ...web, host: "node" }).toEqual(node);
+  expect<unknown>({ ...web, host: "node" }).toEqual(node);
   expect(web.hash).toBe(node.hash);
 }, 120_000);

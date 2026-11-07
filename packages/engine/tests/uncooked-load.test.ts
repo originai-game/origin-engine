@@ -53,7 +53,7 @@ function run(ticks: number, journal?: unknown): { engine: Engine; hashes: string
   const made = createEngine(game);
   if (!made.ok) throw new Error(made.reason);
   const engine = made.value;
-  if (journal) expect(og.load.replayCompletions(engine.world as unknown as World, journal as never)).toEqual({ ok: true });
+  if (journal) expect<unknown>(og.load.replayCompletions(engine.world as unknown as World, journal as never)).toEqual({ ok: true });
   const hashes: string[] = [];
   for (let i = 0; i < ticks; i++) {
     const r = engine.advance(1);
@@ -199,7 +199,7 @@ test("a web-timed glTF completion replays at its recorded tick: pending until it
   if (!made.ok) throw new Error(made.reason);
   const world = made.value.world as unknown as World;
   const journal = [{ request: 0, tick: 0, ok: true }, { request: 1, tick: 4, ok: true }];
-  expect(og.load.replayCompletions(world, journal as never)).toEqual({ ok: true });
+  expect<unknown>(og.load.replayCompletions(world, journal as never)).toEqual({ ok: true });
   const r = og.load.gltfData(world, "creations/kite.glb", quadGlb(image), {});
   if (!r.ok) throw new Error(r.reason);
   const seen: string[] = [];
@@ -234,7 +234,7 @@ test("og.load.release gives back the memory an uncooked image and model took, an
   expect([og.load.status(world, picture.value), og.load.status(world, grid.value)]).toEqual(["ready", "ready"]);
   const loaded = live();
   expect(loaded - before).toBeGreaterThan(8_000_000);
-  for (const a of [picture.value, grid.value]) expect(og.load.release(world, a)).toEqual({ ok: true });
+  for (const a of [picture.value, grid.value]) expect<unknown>(og.load.release(world, a)).toEqual({ ok: true });
   expect(engine.advance(1).ok).toBe(true);
   // What stays is the handles' bookkeeping, not the content.
   expect(loaded - live()).toBeGreaterThan(0.95 * (loaded - before));
@@ -243,11 +243,11 @@ test("og.load.release gives back the memory an uncooked image and model took, an
   const again = world.instantiate(grid.value, {});
   expect(!again.ok && again.reason).toBe("creations/field.glb was released (og.load.release)");
   expect(!og.load.imageInfo(world, picture.value).ok).toBe(true);
-  expect(og.load.release(world, grid.value)).toEqual({ ok: true });
+  expect<unknown>(og.load.release(world, grid.value)).toEqual({ ok: true });
   // A pending load released before its boundary never lands and is never journaled.
   const pending = og.load.imageData(world, "drawings/late.png", image, {});
   if (!pending.ok) throw new Error(pending.reason);
-  expect(og.load.release(world, pending.value)).toEqual({ ok: true });
+  expect<unknown>(og.load.release(world, pending.value)).toEqual({ ok: true });
   expect(engine.advance(2).ok).toBe(true);
   expect(og.load.status(world, pending.value)).toBe("failed");
   expect(og.load.completions(world).map((c) => c.request)).toEqual([0, 1, 2]);
@@ -295,7 +295,7 @@ test("an uncooked HDR environment is in place at the boundary after its call, li
   expect(engine.advance(1).ok).toBe(true);
   // Not og.load.environment's: a cooked path of the same name is a different asset.
   expect(og.load.environment(world, "uploads/sky.hdr").ok).toBe(false);
-  expect(og.load.release(world, r.value)).toEqual({ ok: true });
+  expect<unknown>(og.load.release(world, r.value)).toEqual({ ok: true });
   // og.Environment still names the map: the frame is lit by the sky, nothing is refused.
   expect(engine.advance(2).ok).toBe(true);
   expect(og.load.status(world, r.value)).toBe("failed");

@@ -142,7 +142,7 @@ test("a save restored between ticks hashes as the saved world, and the world goe
   expect(engine.hash()).not.toBe(hash);
 
   const restored = engine.world.restore(save.value);
-  expect(restored).toEqual({ ok: true, value: null });
+  expect<unknown>(restored).toEqual({ ok: true, value: null });
   expect(engine.hash()).toBe(hash);
   expect(engine.world.tick).toBe(30);
   expect(run(engine).coins).toBe(coins);

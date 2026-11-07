@@ -184,7 +184,7 @@ test("world.spatial answers as brute force, nearest first, ties in entity order"
       .map((p) => ({ entity: p.e, d2: (p.x - c.x) ** 2 + (p.y - c.y) ** 2 + (p.z - c.z) ** 2 }))
       .sort((a, b) => a.d2 - b.d2 || a.entity - b.entity);
     const r = 1 + (k % 6);
-    expect(index.value.within(c, r).map((n) => n.entity)).toEqual(want.filter((n) => n.d2 <= r * r).map((n) => n.entity));
-    expect(index.value.nearest(c, 5).map((n) => n.entity)).toEqual(want.slice(0, 5).map((n) => n.entity));
+    expect<unknown>(index.value.within(c, r).map((n) => n.entity)).toEqual(want.filter((n) => n.d2 <= r * r).map((n) => n.entity));
+    expect<unknown>(index.value.nearest(c, 5).map((n) => n.entity)).toEqual(want.slice(0, 5).map((n) => n.entity));
   }
 });

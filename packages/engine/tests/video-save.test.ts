@@ -43,7 +43,7 @@ function engineOf(game: unknown): Engine {
 test("a save with an f32 VideoPlayer.time restores with its player intact", () => {
   const engine = engineOf(plain);
   engine.advance(1);
-  expect(engine.world.restore(fixture.player.save)).toEqual({ ok: true, value: null });
+  expect<unknown>(engine.world.restore(fixture.player.save)).toEqual({ ok: true, value: null });
   expect(engine.world.tick).toBe(fixture.tick);
   const screen = engine.world.find("screen");
   expect(screen).not.toBeNull();
@@ -61,7 +61,7 @@ test("a save without a player restores as a world that never had the type", () =
   here.advance(SAVE_AT);
   const restored = engineOf(plain);
   restored.advance(1);
-  expect(restored.world.restore(fixture.plain.save)).toEqual({ ok: true, value: null });
+  expect<unknown>(restored.world.restore(fixture.plain.save)).toEqual({ ok: true, value: null });
   expect(restored.world.tick).toBe(fixture.tick);
   // The SSR defaults moved since the fixture was written; the save keeps its own.
   asSaved(here);

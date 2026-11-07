@@ -217,7 +217,7 @@ test("accordion: a tap opens a section and says expanded; single closes the othe
 test("menu: entries take menu roles, a tap chooses, a submenu opens beside its row and chooses", () => {
   // Wrong: a check entry announced as a plain item, a submenu that never opens, a chosen id from the wrong level.
   let open = true;
-  let chosen: string | null = null;
+  let chosen = null as string | null;
   const engine = run(() => {
     og.ui.button("Opener", "Options", {});
     const at = og.ui.lastPath();
@@ -256,7 +256,7 @@ test("menu: entries take menu roles, a tap chooses, a submenu opens beside its r
 
 test("menu: Back closes it, answering dismissed without a choice", () => {
   let open = true;
-  let chosen: string | null = null;
+  let chosen = null as string | null;
   const engine = run(() => {
     const r = og.ui.menu("Menu", open, { at: { x: 200, y: 200 }, entries: [{ id: "a", label: "Alpha" }, { id: "b", label: "Beta" }] });
     if (r.chosen !== null) chosen = r.chosen;
@@ -271,7 +271,7 @@ test("menu: Back closes it, answering dismissed without a choice", () => {
 test("menu: the forward arrow opens a submenu into its first entry, the back arrow closes it to its row; mirrored in right to left", () => {
   // Wrong: Right moves the focus off the row (or wraps), Left in the submenu leaves it open, or the arrows are not mirrored.
   for (const dir of ["ltr", "rtl"] as const) {
-    let chosen: string | null = null;
+    let chosen = null as string | null;
     const engine = run(() => {
       og.ui.button("Opener", "Options", {});
       const r = og.ui.menu("Menu", true, {
@@ -325,7 +325,7 @@ test("menu: on a phone a submenu drills in, its rows replacing the menu's under 
   // Wrong: a submenu that opens beside its row on a 390 px screen (covering the parent), a back row
   // that does nothing, or Back that closes the whole menu from inside the submenu.
   let open = true;
-  let chosen: string | null = null;
+  let chosen = null as string | null;
   const engine = run(() => {
     og.ui.button("Opener", "Options", {});
     const r = og.ui.menu("Menu", open, {
@@ -377,7 +377,7 @@ test("menu: on a phone a submenu drills in, its rows replacing the menu's under 
 test("menu: a press while it still eases in chooses (nothing waits for the open motion)", () => {
   // Wrong: the surface inert for its 140 ms entrance, so a quick player's press is dropped.
   let open = false;
-  let chosen: string | null = null;
+  let chosen = null as string | null;
   const engine = run(() => {
     if (og.ui.button("Opener", "Options", {}).clicked) open = true;
     const at = og.ui.lastPath();
@@ -490,7 +490,7 @@ test("carousel: the next arrow moves on a page, the dots say which is current", 
 });
 
 test("breadcrumbs: a long path collapses its middle into a menu that goes back to a hidden crumb", () => {
-  let chosen: number | null = null;
+  let chosen = null as number | null;
   const engine = run(() => {
     const r = og.ui.breadcrumbs("Path", { items: [{ label: "Home" }, { label: "Inventory" }, { label: "Weapons" }, { label: "Swords" }, { label: "Rare" }, { label: "Moonblade" }], maxShown: 4 });
     if (r.chosen !== null) chosen = r.chosen;
@@ -518,7 +518,7 @@ test("splitView: a press of the focused divider steps to the next snap ratio", (
 
 test("radialMenu: a stick's aim chooses the slice it points at, a release picks it", () => {
   // Wrong: slices counted from 3 o'clock, or counterclockwise.
-  let picked: number | null = null;
+  let picked = null as number | null;
   let aim = { x: 1, y: 0 };
   let release = false;
   const engine = run(() => {
@@ -535,8 +535,8 @@ test("radialMenu: a stick's aim chooses the slice it points at, a release picks 
 
 test("radialMenu: the pointer picks by angle anywhere on a slice; a release in the hole cancels; Right steps round", () => {
   // Wrong: slices hit-tested as overlapping rectangles (the topmost wins everywhere), or a press in the hole that chooses.
-  let picked: number | null = null;
-  let hovered: number | null = null;
+  let picked = null as number | null;
+  let hovered = null as number | null;
   const engine = run(() => {
     const r = og.ui.radialMenu("Wheel", true, { items: [{ label: "Up" }, { label: "Right" }, { label: "Down" }, { label: "Left" }, { label: "Bag", disabled: true }, { label: "Map" }] });
     if (r.chosen !== null) picked = r.chosen;
@@ -564,12 +564,12 @@ test("radialMenu: the pointer picks by angle anywhere on a slice; a release in t
   key(engine, "ArrowRight");
   expect(hovered).toBe(5);
   key(engine, "Enter");
-  expect(picked).toBe(5);
+  expect<unknown>(picked).toBe(5);
 });
 
 test("radialMenu: a slice's cost shows under its label; an unaffordable slice stays choosable", () => {
   // Wrong: the cost dropped, or an unaffordable slice made unchoosable (the game refuses it and says why).
-  let picked: number | null = null;
+  let picked = null as number | null;
   const engine = run(() => {
     const r = og.ui.radialMenu("Wheel", true, { items: [{ label: "Laser", icon: "bolt", cost: "100" }, { label: "Cannon", icon: "bomb", cost: "150", unaffordable: true }, { label: "Frost", icon: "drop", cost: "120" }], aim: { x: 0.9, y: 0.4 }, release: true });
     if (r.chosen !== null) picked = r.chosen;
@@ -683,7 +683,7 @@ test("dataList: loading says busy, empty says so, rows are virtualised", () => {
 
 test("tree: a tap on a branch opens it, showing its children one level deeper", () => {
   let expanded: string[] = [];
-  let chosen: string | null = null;
+  let chosen = null as string | null;
   const engine = run(() => {
     const r = og.ui.tree("Codex", { items: [{ id: "beasts", label: "Beasts" }, { id: "wolf", parent: "beasts", label: "Wolf" }, { id: "bear", parent: "beasts", label: "Bear" }, { id: "places", label: "Places" }], expanded });
     expanded = r.expanded.slice();
@@ -701,7 +701,7 @@ test("tree: a tap on a branch opens it, showing its children one level deeper", 
 
 test("nodeGraph: zoom in scales it, a node tap chooses it, a locked node says so", () => {
   let zoom = 1;
-  let chosen: string | null = null;
+  let chosen = null as string | null;
   const engine = run(() => {
     const r = og.ui.nodeGraph("Skills", { zoom, nodes: [{ id: "root", x: 0, y: 0, label: "Strength", state: "done" }, { id: "cleave", x: 120, y: 120, label: "Cleave", state: "available" }, { id: "rage", x: 240, y: 0, label: "Rage", state: "locked" }], links: [{ from: "root", to: "cleave" }, { from: "root", to: "rage" }] });
     zoom = r.zoom;
@@ -844,7 +844,7 @@ test("nodeGraph: a graph wider than its window opens centred on its root, fades 
 
 test("chart: a figure described from its data; each category a target that answers its press", () => {
   // Wrong: an unnamed picture, categories only reachable by pointer.
-  let clicked: number | null = null;
+  let clicked = null as number | null;
   const engine = run(() => {
     const r = og.ui.chart("Gold", { kind: "bar", title: "Gold per day", categories: ["Mon", "Tue", "Wed", "Thu"], series: [{ label: "Earned", values: [120, 340, 90, 410] }, { label: "Spent", values: [80, 200, 150, 60] }] });
     if (r.clicked !== null) clicked = r.clicked;
@@ -865,8 +865,8 @@ test("chart: a figure described from its data; each category a target that answe
 test("chart: a pointer anywhere inside a pie's wedge picks that wedge, at its edges and by the centre too; mirrored in right to left", () => {
   // Wrong: wedges hit-tested by rectangles (a neighbour's overlaps a wedge's edge and the centre), or angles counted the wrong way.
   for (const dir of ["ltr", "rtl"] as const) {
-    let hovered: number | null = null;
-    let clicked: number | null = null;
+    let hovered = null as number | null;
+    let clicked = null as number | null;
     const engine = run(() => {
       const r = og.ui.chart("Loot", { kind: "pie", categories: ["A", "B", "C"], series: [{ values: [1, 1, 2] }] });
       hovered = r.hovered;

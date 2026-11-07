@@ -453,7 +453,7 @@ test("inputField: an error marks it invalid with its message described, the clea
 test("searchBox: typing shows matching suggestions, Down walks them, Enter chooses one", () => {
   // Wrong: Down leaving the suggestions closed, or Enter submitting the query instead of the focused suggestion.
   let q = "";
-  let chosen: string | null = null;
+  let chosen = null as string | null;
   const engine = run(() => {
     const r = og.ui.searchBox("Find", q, { suggestions: ["Iron sword", "Iron shield", "Oak bow"], filter: true });
     q = r.query;

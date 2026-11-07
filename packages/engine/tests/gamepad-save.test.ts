@@ -47,7 +47,7 @@ test("a four-pad save restores without migrate and replays as that build did", (
   engine.advance(1);
 
   const restored = engine.world.restore(fixture.save);
-  expect(restored).toEqual({ ok: true, value: null });
+  expect<unknown>(restored).toEqual({ ok: true, value: null });
   expect(engine.world.tick).toBe(fixture.tick);
   expect(run(engine)).toEqual(fixture.atSave);
 

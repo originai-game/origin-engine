@@ -412,7 +412,7 @@ test("dump_stream lists the budget, the peak, every group and the events; og.str
     ["meadow", "stream/meadow.ogb", 2, "resident"],
     ["tower", "stream/tower.ogb", 1, "unloaded"],
   ]);
-  expect(dump.groups.find((g) => g.name === "meadow")!.trigger).toEqual({ kind: "distance", anchor: [0, 0, -60], radius: 50, unload: 110 });
+  expect<unknown>(dump.groups.find((g) => g.name === "meadow")!.trigger).toEqual({ kind: "distance", anchor: [0, 0, -60], radius: 50, unload: 110 });
   expect(dump.events.length).toBe(2);
   const r = og.stream.status(engine.world, "nowhere") as unknown as { ok: boolean; reason: string };
   expect(r.ok).toBeFalse();

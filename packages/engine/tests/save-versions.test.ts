@@ -118,7 +118,7 @@ test("a save from engine 0.7.7 restores on this build without migrate, as this b
   const old = made.value;
   old.advance(1);
   // On the build before the engine's migrations: "state block 'og.ui': UI state: version 9, expected 11".
-  expect(old.world.restore(save)).toEqual({ ok: true, value: null });
+  expect<unknown>(old.world.restore(save)).toEqual({ ok: true, value: null });
   expect(old.world.tick).toBe(fixture.tick);
   const run = old.world.resource(Run);
   expect(run.ok && { ...run.value }).toEqual(fixture.run);
@@ -184,7 +184,7 @@ test("a selection saves and restores only the tagged entities and the chosen res
   w.insert(coin, Wallet, { gold: 1234 });
   e.advance(2);
 
-  expect(w.restore(save.value)).toEqual({ ok: true, value: null });
+  expect<unknown>(w.restore(save.value)).toEqual({ ok: true, value: null });
   const hero = w.find("hero")!;
   const wallet = w.get(hero, Wallet);
   expect(wallet.ok && wallet.value.gold).toBe(7);

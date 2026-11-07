@@ -118,7 +118,7 @@ test("og.story: lines and choices resolve through og.i18n, re-resolve on a local
   expect(w.events(og.QuestUpdated).map((x) => [x.quest, x.status])).toEqual([["rescue", "active"]]);
   expect(must<{ lines: number; conversations: number; activeQuests: number }>(w.resource(og.Story))).toEqual({ lines: 1, conversations: 1, activeQuests: 1 });
 
-  expect(og.story.choose(w, c, 0)).toEqual({ ok: true });
+  expect<unknown>(og.story.choose(w, c, 0)).toEqual({ ok: true });
   expect(og.story.get(w, "gold")).toBe(0);
   v = og.story.view(w, c) as unknown as View;
   expect([v.key, v.seq, v.choices.length]).toEqual(["smith.thanks", 2, 0]);

@@ -52,7 +52,7 @@ const near = (a: number, b: number) => Math.abs(a - b) < 1e-6;
 test("a save with version-1 2D lights restores with every field and the new defaults", () => {
   const engine = engineOf(plain);
   engine.advance(1);
-  expect(engine.world.restore(fixture.lit.save)).toEqual({ ok: true, value: null });
+  expect<unknown>(engine.world.restore(fixture.lit.save)).toEqual({ ok: true, value: null });
   expect(engine.world.tick).toBe(fixture.tick);
   const l = must(engine.world.resource(og.Lighting2D));
   expect([l.enabled, l.maxLayer, l.shadowAngles]).toEqual([true, 40, 1024]);
@@ -74,7 +74,7 @@ test("a save without 2D lights restores as a world that never had the types", ()
   here.advance(SAVE_AT);
   const restored = engineOf(plain);
   restored.advance(1);
-  expect(restored.world.restore(fixture.plain.save)).toEqual({ ok: true, value: null });
+  expect<unknown>(restored.world.restore(fixture.plain.save)).toEqual({ ok: true, value: null });
   expect(restored.world.tick).toBe(fixture.tick);
   // The SSR defaults moved since the fixture was written; the save keeps its own.
   asSaved(here);
