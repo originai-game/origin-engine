@@ -208,6 +208,12 @@ pub struct TextureOptions {
     /// bark and stone detail). Off by default; project.ogt's `cook { color_textures uastc }` turns it on and
     /// `publish { color_textures etc1s }` off again for the web export (og-cli's `cook::texture_options`).
     pub color_uastc: bool,
+    /// Make the mips as a WebGL `generateMipmap` does (three.js' textures): each level the one before sampled
+    /// bilinearly at the new texel's centre (the 2 × 2 mean on even sizes), clamped at the edges, colour in linear
+    /// light, instead of the encoder's own filter (basisu's Kaiser, which wraps round the edges). Off by default;
+    /// project.ogt's `cook { mips webgl }` turns it on for games tuned under three.js, whose cut-out cards keep
+    /// more alpha in their smallest levels (og-cli's `cook::texture_options`).
+    pub webgl_mips: bool,
 }
 
 impl Default for TextureOptions {
@@ -220,14 +226,17 @@ impl Default for TextureOptions {
             mipmaps: true,
             force_toktx: false,
             color_uastc: false,
+            webgl_mips: false,
         }
     }
 }
 
 impl TextureOptions {
+    /// The settings every texture's stamp holds; an option that is off adds nothing, so the default cook's stamps
+    /// stay as they were.
     pub(super) fn describe(&self) -> String {
         format!(
-            "etc1s {} uastc {} rdo {} zstd {} mips {} normal y in alpha{}",
+            "etc1s {} uastc {} rdo {} zstd {} mips {} normal y in alpha{}{}",
             self.etc1s_quality,
             self.uastc_level,
             self.uastc_rdo.map_or("off".to_string(), |r| r.to_string()),
@@ -237,7 +246,8 @@ impl TextureOptions {
                 " colour uastc"
             } else {
                 ""
-            }
+            },
+            if self.webgl_mips { " mips webgl" } else { "" }
         )
     }
 }

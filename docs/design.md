@@ -234,6 +234,10 @@ cancellable `og dev` checks use the stateless path.
   project.ogt's `cook { color_textures uastc }` says otherwise (four times
   the bytes, no 4×4 block colour loss); `publish { color_textures etc1s }`
   overrides it for the web export's cook (`og build`, `og run --device`).
+  `cook { mips webgl }` makes every texture's mips as a WebGL
+  `generateMipmap` does (a box on even sizes, the centre taps of a linear
+  blit on odd ones, clamped, sRGB averaged in linear light) instead of with
+  basisu's own filter, for a game tuned under three.js; off by default.
 - Reusable production assets come through the platform's asset MCP; the
   cook consumes what the agent put in `assets/`.
 
