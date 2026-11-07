@@ -76,7 +76,7 @@ mod scan;
 
 pub use execute::slice_tone;
 use execute::{read_sibling, run, style_atlas};
-pub use options::{CookOptions, FontSettings, MeshOptions, TextureOptions};
+pub use options::{CookOptions, FontSettings, MeshOptions, Palette, TextureOptions};
 use options::{
     anim_settings, conform_off, font_settings, mesh_for, mesh_texture, model_stream_textures,
     own_conform_off, settings_block, texture_kind, texture_stream,

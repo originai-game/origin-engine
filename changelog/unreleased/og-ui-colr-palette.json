@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "font { palette }",
+      "summary": "A COLR colour font cooks its glyphs in the CPAL palette it names: an index (`palette 2`), or `light` or `dark`, the first palette the font marks for that background. A palette the font lacks is refused, naming how many it has; without the setting palette 0 is used, as before (crates/og-cook/README.md §Colour glyphs)."
+    }
+  ]
+}

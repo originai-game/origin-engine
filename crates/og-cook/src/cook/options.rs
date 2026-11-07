@@ -276,6 +276,23 @@ pub struct FontSettings {
     pub color: bool,
     /// The colour images' pixels per em (`color_px 64`).
     pub color_px: f32,
+    /// The CPAL palette the colour glyphs are painted with (`palette 2`,
+    /// `palette dark`).
+    pub palette: Palette,
+}
+
+/// A COLR font's CPAL palette (`font { palette ... }`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Palette {
+    /// Palette 0, the font's default.
+    #[default]
+    First,
+    /// The palette at this index.
+    Index(u16),
+    /// The first palette the font marks usable on a light background.
+    Light,
+    /// The first palette the font marks usable on a dark background.
+    Dark,
 }
 
 impl Default for FontSettings {
@@ -291,6 +308,7 @@ impl Default for FontSettings {
             pixel: 0,
             color: false,
             color_px: 64.0,
+            palette: Palette::First,
         }
     }
 }
@@ -306,7 +324,13 @@ impl FontSettings {
             self.page_size,
             if self.runtime { " runtime" } else { "" },
             if self.color {
-                format!(" color {}", self.color_px)
+                let palette = match self.palette {
+                    Palette::First => String::new(),
+                    Palette::Index(i) => format!(" palette {i}"),
+                    Palette::Light => " palette light".into(),
+                    Palette::Dark => " palette dark".into(),
+                };
+                format!(" color {}{palette}", self.color_px)
             } else {
                 String::new()
             }
@@ -497,6 +521,26 @@ pub(super) fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSetti
                             e.line
                         )
                     })?
+                }
+                "palette" => {
+                    let v = e.values.first();
+                    f.palette = match v.and_then(|v| v.as_word()) {
+                        Some("light") => Palette::Light,
+                        Some("dark") => Palette::Dark,
+                        _ => match v
+                            .and_then(|v| v.as_number()?.as_u64().ok())
+                            .map(u16::try_from)
+                        {
+                            Some(Ok(0)) => Palette::First,
+                            Some(Ok(i)) => Palette::Index(i),
+                            _ => {
+                                return Err(format!(
+                                    "line {}: palette takes a CPAL palette's index, light or dark",
+                                    e.line
+                                ));
+                            }
+                        },
+                    };
                 }
                 "color_px" => {
                     f.color_px = e.f32(0).map_err(err)?;

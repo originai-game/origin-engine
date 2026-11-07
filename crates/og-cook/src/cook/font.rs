@@ -9,7 +9,7 @@
 //! Unicode, so no character of the font can alias one), which is what og-ui
 //! draws a shaped run as.
 
-use super::{CookError, FontSettings};
+use super::{CookError, FontSettings, Palette};
 use crate::format::{self, *};
 use crate::ktx2;
 use og_blob::BlobWriter;
@@ -1052,7 +1052,7 @@ fn colour_glyphs(
     s: &FontSettings,
 ) -> Result<Colour, CookError> {
     let font = skrifa::FontRef::new(bytes).map_err(|e| CookError(format!("font: {e}")))?;
-    let palette = colr::palette(&font);
+    let palette = colr::palette(&font, s.palette).map_err(CookError)?;
     let mut out = Colour::default();
     for g in glyphs.iter_mut() {
         let gid = if (GLYPH_ID_KEYS..GLYPH_ID_KEYS + 0x1_0000).contains(&g.codepoint) {
@@ -1510,6 +1510,57 @@ mod tests {
             "{}",
             e.0
         );
+    }
+
+    /// `palette` picks the CPAL palette the colour glyphs are painted
+    /// with: by index, or the first the font marks for a dark or a light
+    /// background (the test font's 1 and 2); a palette the font lacks is
+    /// refused, naming how many it has.
+    #[test]
+    fn a_colour_font_cooks_in_the_palette_it_names() {
+        let bytes = std::fs::read(format!(
+            "{}/../../tests/fixtures/ui-text/assets/fonts/test_glyphs-glyf_colr_1.ttf",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        let page = |palette| {
+            let s = FontSettings {
+                charset: Vec::new(),
+                chars: "\u{F0100}".into(),
+                color: true,
+                palette,
+                ..FontSettings::default()
+            };
+            let (blob, _) = cook(&bytes, &s, 2, 0).map_err(|e| e.0)?;
+            let b = og_blob::Blob::parse(&blob, "test").unwrap();
+            let rows = b
+                .table::<GlyphRow>("glyphs", row_hash::<GlyphRow>())
+                .unwrap();
+            let r = *rows.iter().find(|r| r.codepoint == 0xF0100).unwrap();
+            let (w, _, rgba) = ktx2::decode_rgba8(b.raw("color.0").unwrap(), 0).unwrap();
+            // The gradient's first fifth, mid-height.
+            let (x, y) = (r.atlas_x + r.atlas_w / 5, r.atlas_y + r.atlas_h / 2);
+            let i = ((y * w + x) * 4) as usize;
+            Ok::<_, String>((rgba.clone(), [rgba[i], rgba[i + 1], rgba[i + 2]]))
+        };
+        let (first, red) = page(Palette::First).unwrap();
+        let (dark, navy) = page(Palette::Dark).unwrap();
+        let (light, orange) = page(Palette::Light).unwrap();
+        assert_eq!(page(Palette::Index(1)).unwrap().0, dark);
+        assert_eq!(page(Palette::Index(2)).unwrap().0, light);
+        assert!(first != dark && dark != light);
+        // Palette 0 starts red, 1 a dark navy, 2 orange.
+        assert!(red[0] > 200 && red[1] < 60, "{red:?}");
+        assert!(
+            navy[2] > navy[0] && navy.iter().all(|&v| v < 140),
+            "{navy:?}"
+        );
+        assert!(
+            orange[0] > 230 && (90..170).contains(&orange[1]) && orange[2] < 60,
+            "{orange:?}"
+        );
+        let e = page(Palette::Index(3)).expect_err("refused");
+        assert!(e.contains("3 CPAL palette(s)"), "{e}");
     }
 
     /// A colour glyph whose paint uses the text's colour (COLR palette

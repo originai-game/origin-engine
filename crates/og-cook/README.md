@@ -447,7 +447,12 @@ for the text's alpha and without glow, outline or shadow, on both hosts.
 Only fonts that ask carry colour pages, and an emoji font is its own asset,
 loaded when a game loads it. A font none of whose cooked characters is
 coloured refuses the setting, as does `runtime true` (run-time glyphs have
-no colour). Palette 0 is used.
+no colour). The images are painted with CPAL palette 0, or the one
+`palette` names: an index (`palette 2`), or `light` or `dark`, the first
+palette the font marks for that background; a palette the font lacks is
+refused. One palette is cooked per font: a game that shows the same glyphs
+in two palettes imports the font twice (a copy of the file with its own
+`.ogt`), so each palette costs its pages only where it is used.
 
 A glyph whose paint uses the text's colour (palette entry 0xFFFF) is
 painted twice, with a black foreground and a white one, side by side on the

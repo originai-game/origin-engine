@@ -40,17 +40,43 @@ const MAX_EM: f32 = 4.0;
 /// Transparent pixels round an image's ink.
 const PAD: i32 = 4;
 
-/// The fonts' palette 0 as premultiplied-free sRGB in 0..1, RGBA.
-pub fn palette(font: &FontRef) -> Vec<[f32; 4]> {
-    font.color_palettes()
-        .get(0)
+/// The font's CPAL palette `which` as straight sRGB in 0..1, RGBA; empty
+/// for a font without palettes. An index past the font's palettes, or a
+/// light or dark palette it does not mark, is an error naming what it has.
+pub fn palette(font: &FontRef, which: super::Palette) -> Result<Vec<[f32; 4]>, String> {
+    use super::Palette;
+    let palettes = font.color_palettes();
+    let n = palettes.len();
+    let marked = |bits: u32| {
+        (0..n).find(|&i| {
+            palettes
+                .get(i)
+                .and_then(|p| p.palette_type())
+                .is_some_and(|t| t.bits() & bits != 0)
+        })
+    };
+    let index = match which {
+        Palette::First => 0,
+        Palette::Index(i) if i < n => i,
+        Palette::Index(i) => {
+            return Err(format!("palette {i}: the font has {n} CPAL palette(s), 0 to {}", n.saturating_sub(1)));
+        }
+        Palette::Light => marked(1).ok_or_else(|| {
+            format!("palette light: none of the font's {n} CPAL palette(s) is marked for a light background")
+        })?,
+        Palette::Dark => marked(2).ok_or_else(|| {
+            format!("palette dark: none of the font's {n} CPAL palette(s) is marked for a dark background")
+        })?,
+    };
+    Ok(palettes
+        .get(index)
         .map(|p| {
             p.colors()
                 .iter()
                 .map(|c| [c.red, c.green, c.blue, c.alpha].map(|v| f32::from(v) / 255.0))
                 .collect()
         })
-        .unwrap_or_default()
+        .unwrap_or_default())
 }
 
 /// Draws glyph `gid` in colour at `em_px` pixels per em, palette entry
