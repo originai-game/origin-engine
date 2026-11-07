@@ -125,9 +125,11 @@ def manifest(args):
             "durationSeconds": old.get(rel, {}).get("durationSeconds", 0),
             "impact": old.get(rel, {}).get("impact", False),
             "category": m.get("category", ""),
-            "element": m.get("element", ""),
             "keywords": sorted({k.lower() for k in m.get("keywords", [])}),
         }
+        # Optional in the contract: omitted, never empty.
+        if m.get("element"):
+            e["element"] = m["element"]
         out_effects.append(e)
     doc = {
         "format": 1,

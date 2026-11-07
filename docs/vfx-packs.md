@@ -43,7 +43,7 @@ Beside `extension.json`, `format` 1:
 - `effects`: one per effect a game spawns (`type vfx` or `vfx2d`, not its
   emitters or materials): `path`, `type`, `title`, `loop`,
   `durationSeconds`, `impact` (whether it sends one), `category`,
-  `element`, `keywords`.
+  `element` (optional: omitted when an effect has none), `keywords`.
 
 The platform computes the pack's content hash (sha256 over the lines
 `<path>\0<sha256>\n` sorted by path).
