@@ -237,15 +237,35 @@ pub fn import(file: &Path, out: &Path, root: Option<&Path>) -> Result<Imported, 
         let bytes = read(p).unwrap_or_default();
         let n = normalise_rel(p);
         let name = n.rsplit('/').next().unwrap_or(&n);
-        let free = |rel: &str| {
-            shared
+        // A copy whose name differs only in case is the same file on a
+        // case-insensitive file system: it is that copy, under its own
+        // name, when it holds these bytes, else this one takes its hash.
+        let taken = |rel: &str| -> Option<(String, bool)> {
+            if let Some((r, b)) = shared
                 .borrow()
                 .values()
-                .all(|(r, b)| r != rel || *b == bytes)
-                && std::fs::read(out.join(rel)).map_or(true, |b| b == bytes)
+                .find(|(r, _)| r.eq_ignore_ascii_case(rel))
+            {
+                return Some((r.clone(), *b == bytes));
+            }
+            let dir = std::fs::read_dir(out.join(TEXTURES)).ok()?;
+            let r = dir
+                .flatten()
+                .map(|e| format!("{TEXTURES}{}", e.file_name().to_string_lossy()))
+                .find(|r| r.eq_ignore_ascii_case(rel))?;
+            let same = std::fs::read(out.join(&r)).is_ok_and(|b| b == bytes);
+            Some((r, same))
         };
         let mut rel = format!("{TEXTURES}{name}");
-        if !free(&rel) {
+        let clash = match taken(&rel) {
+            Some((on, true)) => {
+                rel = on;
+                false
+            }
+            Some((_, false)) => true,
+            None => false,
+        };
+        if clash {
             let mut h = og_core::hash::StableHasher::new();
             h.write(&bytes);
             let hash = format!("{:08x}", h.finish() as u32);

@@ -387,6 +387,58 @@ fn effects_imported_into_one_folder_share_their_textures() {
 }
 
 #[test]
+fn texture_names_that_differ_in_case_are_one_file() {
+    // a/ names `star.png`, b/ the same bytes as `Star.png`, c/ other bytes
+    // as `STAR.png`: on a case-insensitive file system these are one path,
+    // so b shares a's copy under a's name and c takes its hash, and every
+    // id names a file as it is spelt on disk.
+    let root = std::env::temp_dir().join(format!("og-efk-case-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    for (dir, tex, bytes) in [
+        ("a", "star.png", png(8, 8)),
+        ("b", "Star.png", png(8, 8)),
+        ("c", "STAR.png", png(16, 16)),
+    ] {
+        let d = root.join("src").join(dir);
+        std::fs::create_dir_all(&d).unwrap();
+        std::fs::write(d.join(tex), bytes).unwrap();
+        std::fs::write(
+            d.join(format!("{dir}.efkproj")),
+            project(&format!(
+                "<Node><RendererCommonValues><ColorTexture>{tex}</ColorTexture></RendererCommonValues>\
+                 <DrawingValues><Type>2</Type></DrawingValues><Name>S</Name><Children /></Node>"
+            )),
+        )
+        .unwrap();
+    }
+    let out = root.join("assets/fx");
+    for dir in ["a", "b", "c"] {
+        let f = root.join("src").join(dir).join(format!("{dir}.efkproj"));
+        import(&f, &out, Some(&root.join("assets"))).unwrap();
+    }
+    let mut h = og_core::hash::StableHasher::new();
+    h.write(&png(16, 16));
+    let c_name = format!("STAR-{:08x}.png", h.finish() as u32);
+    let mut pngs: Vec<String> = std::fs::read_dir(out.join("textures"))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    pngs.sort();
+    let mut want = vec!["star.png".to_string(), c_name.clone()];
+    want.sort();
+    assert_eq!(pngs, want);
+    for (dir, tex) in [("a", "star.png"), ("b", "star.png"), ("c", c_name.as_str())] {
+        let e = std::fs::read_to_string(out.join(dir).join("n0.emitter.ogt")).unwrap();
+        assert_eq!(
+            line(&e, "texture"),
+            format!("texture \"fx/textures/{tex}\""),
+            "{dir}"
+        );
+    }
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
 fn a_node_under_an_instanced_parent_is_a_life_sub_emitter() {
     // P spawns 6 instances moving up at 0.1 a frame; each spawns sprites
     // S, 3 a frame apart, 10 of them. One parent emitter (P's 6, moving,
