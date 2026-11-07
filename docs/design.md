@@ -221,9 +221,9 @@ cancellable `og dev` checks use the stateless path.
     renderer's `save_state`, the adapted auto exposure), outside
     `world_hash`; the snapshot reports a presentation hash of it
     (`SnapshotInfo.presentation`, per host and backend, since what it
-    holds is float state of one renderer). A restore brings the checkpoint
-    back and drops the interpolation pair and the motion Presenter's
-    shown poses: the first frame after a restore draws the tick.
+    holds is float state of one renderer), with og.motion's Presenter
+    state below. A restore brings the checkpoint back and drops the
+    interpolation pair: the first frame after a restore draws the tick.
   - *Frame history, per effect* (og-render's `Renderer::render_capture`,
     which every capture goes through). TAA, GI and SSR accumulation, the
     previous camera (motion vectors), time, wind and sway are reset before
@@ -250,15 +250,16 @@ cancellable `og dev` checks use the stateless path.
     hidden outside it; that is the contract here, with the presentation
     state in its own checkpoint so the world's savestate and hash stay
     the simulation's alone.
-  - *Not yet tick-stepped.* The motion Presenter (§2.7) keeps per-agent
-    state (phase, playback warp, foot contacts, the drawn root's offset,
-    the planter's legs) that `present()` advances once per drawn frame, by
-    the frame's step in tick time (`(tick + alpha) × dt`, at most 0.25 s),
-    so how many frames are drawn changes it; and its frames arrive from GPU
-    batches decoded within a wall-time budget. A capture does not depend on
-    it only because a restore drops it. Stepping it by the tick needs its
-    checkpoint to hold the frames queued and in flight, or a capture to
-    wait for the batches.
+  - *og.motion.* The motion Presenter (§2.7) steps once a tick by the
+    tick's dt (its phase, playback warp, foot contacts, the drawn root's
+    offset, the planter's legs), whether or not a frame is drawn. Its
+    model batches are taken a fixed `BATCH_SECONDS` after they start,
+    waited for natively, and decoded whole; the model's load is waited
+    for when an agent first needs it; nothing skips frames to catch up a
+    wall clock. Its checkpoint keeps every agent as drawn, the model's
+    queued frames and the outstanding batch's inputs, which a restore
+    runs again (the batch then on the GPU is dropped). A frame draws the
+    tick's pose: the Presenter does not blend between ticks.
     Terrain tiles fade in by the frame's seconds; a capture draws every
     resident tile settled.
 - Game state in a JS module is in neither the world snapshot nor the

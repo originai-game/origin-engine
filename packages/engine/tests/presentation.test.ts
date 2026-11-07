@@ -19,13 +19,16 @@ import { gpuTest } from "./support/gpu.ts";
 //   physics) → the world hashes
 // - presentation state not stepped deterministically under rollback → the SyncTest
 import { expect } from "bun:test";
-import { cpSync, mkdtempSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { cookProject } from "./support/og-bin.ts";
+import { cookProject, ogBin } from "./support/og-bin.ts";
 
-declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
+declare const Bun: {
+  spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
+  spawn(cmd: string[]): { kill(): void };
+};
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = join(pkg, "..", "..");
@@ -78,3 +81,37 @@ gpuTest("SyncTest: four ticks rolled back and played again on every tick of the 
   expect(sync.mismatches).toEqual([]);
   expect(sync.checked).toBe(47);
 }, 120_000);
+
+// og.motion steps by the tick (crates/og-runtime/src/motion/present.rs):
+// its batches are taken at a fixed tick and the model is waited for when
+// an agent first needs it, so the poses drawn never depend on how fast the
+// machine runs. Two runs of motion-feet's course, the second beside busy
+// CPU loops, draw the same frames and measure the same feet: a wall clock
+// left in (a skip to catch up, a decode budget, the first batch's latency)
+// moves the counts between runs, and more under load.
+interface MotionAgent { entity: number; framesShown: number; framesStarved: number; framesWarmup: number; footing: unknown; plantedSlide: unknown }
+
+function motionCourse(out: string): Pick<MotionAgent, "entity" | "framesShown" | "framesStarved" | "framesWarmup" | "footing" | "plantedSlide">[] {
+  const project = join(repo, "tests", "fixtures", "motion-feet");
+  const r = Bun.spawnSync([ogBin(), "run", "--headless", project, "--size", "640x360", "--commands", "14.2:dump_motion:feet.json;14.25:quit", "--out", out, "--json"], { cwd: repo });
+  if (r.exitCode !== 0) throw new Error(new TextDecoder().decode(r.stderr));
+  const agents = (JSON.parse(readFileSync(join(out, "feet.json"), "utf8")) as { model: { agents: MotionAgent[] } }).model.agents;
+  return agents.map(({ entity, framesShown, framesStarved, framesWarmup, footing, plantedSlide }) => ({ entity, framesShown, framesStarved, framesWarmup, footing, plantedSlide }));
+}
+
+gpuTest("og.motion draws the same frames and feet on two runs of motion-feet, one under load", () => {
+  cookProject(join(repo, "tests", "fixtures", "motion-feet"), repo);
+  const dir = mkdtempSync(join(tmpdir(), "og-motion-runs-"));
+  const busy: { kill(): void }[] = [];
+  try {
+    const quiet = motionCourse(join(dir, "quiet"));
+    expect(quiet.length).toBe(2);
+    expect(quiet.every((a) => a.framesShown > 300)).toBe(true);
+    for (let i = 0; i < 8; i++) busy.push(Bun.spawn(["bun", "-e", "for (;;) {}"]));
+    const loaded = motionCourse(join(dir, "loaded"));
+    expect(loaded).toEqual(quiet);
+  } finally {
+    for (const b of busy) b.kill();
+    rmSync(dir, { recursive: true, force: true });
+  }
+}, 180_000);

@@ -29,6 +29,8 @@ const KEPT: usize = 64;
 /// The presentation state a world snapshot was taken with.
 struct Checkpoint {
     particles: IdMap<u64, Arc<og_render::ParticleHistory>>,
+    /// og.motion's drawn agents and the model's queued work.
+    motion: crate::motion::present::MotionCheckpoint,
     /// The renderer's ([`super::RenderBackend::save_state`]).
     renderer: u64,
 }
@@ -49,6 +51,7 @@ pub(crate) fn save(rs: &mut RenderState) -> u64 {
         c.next,
         Checkpoint {
             particles: rs.particle_history.clone(),
+            motion: rs.motion.checkpoint(),
             renderer,
         },
     ));
@@ -60,31 +63,40 @@ pub(crate) fn save(rs: &mut RenderState) -> u64 {
 
 /// Brings back checkpoint `id` with the snapshot it was taken with; 0, or
 /// one no longer kept, starts the presentation state afresh. Interpolation
-/// and og.motion's drawn poses start afresh either way: the restored tick's
-/// display frames draw the tick (their blend reads the tick before's
-/// world, which no snapshot holds), and og.motion's model draws from the
-/// restored world.
+/// starts afresh either way: the restored tick's display frames draw the
+/// tick (their blend reads the tick before's world, which no snapshot
+/// holds).
 pub(crate) fn restore(rs: &mut RenderState, id: u64) {
     let kept = rs
         .checkpoints
         .kept
         .iter()
         .find(|(k, _)| *k == id)
-        .map(|(_, c)| (c.particles.clone(), c.renderer));
-    let (particles, renderer) = kept.unwrap_or_default();
-    rs.particle_history = particles;
-    rs.interp.forget();
-    rs.motion.forget();
-    if let Some(b) = rs.backend.as_mut() {
-        b.restore_state(renderer);
+        .map(|(_, c)| (c.particles.clone(), c.motion.clone(), c.renderer));
+    match kept {
+        Some((particles, motion, renderer)) => {
+            rs.particle_history = particles;
+            rs.motion.restore(&motion);
+            if let Some(b) = rs.backend.as_mut() {
+                b.restore_state(renderer);
+            }
+        }
+        None => {
+            rs.particle_history = Default::default();
+            rs.motion.forget();
+            if let Some(b) = rs.backend.as_mut() {
+                b.restore_state(0);
+            }
+        }
     }
+    rs.interp.forget();
 }
 
 /// The presentation hash: FNV-1a over the state a checkpoint keeps that the
-/// CPU holds (each particle system's ticks, in id order). Equal hashes on
+/// CPU holds (og.motion's, then each particle system's ticks, in id order). Equal hashes on
 /// one host and backend mean the same frames from the same world.
 pub(crate) fn hash(rs: &RenderState) -> u64 {
-    let mut h = 0xcbf2_9ce4_8422_2325u64;
+    let mut h = rs.motion.hash();
     let mut put = |bytes: &[u8]| {
         for &b in bytes {
             h = (h ^ u64::from(b)).wrapping_mul(0x0000_0100_0000_01b3);

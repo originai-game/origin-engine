@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.motion presentation",
+      "summary": "The drawn poses no longer depend on the wall clock or the machine's speed: the Presenter steps once a tick by the tick's dt (also when no frame is drawn), takes each model batch a fixed 0.5 s of ticks after it starts (waiting for it natively), decodes a batch whole, waits for the model's load once an agent needs it, and never skips frames to catch up. Two runs draw the same frames and feet, under load too. A probe snapshot's presentation checkpoint keeps every agent as drawn, the queued frames and the outstanding batch (run again on a restore), and they enter SnapshotInfo.presentation. A display frame draws the tick's pose; the Presenter no longer blends between ticks."
+    }
+  ]
+}

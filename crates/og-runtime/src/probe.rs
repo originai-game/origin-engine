@@ -30,6 +30,8 @@ use std::rc::Rc;
 pub(crate) struct RuntimeCapture {
     pub render: Rc<RefCell<RenderState>>,
     pub tier: String,
+    /// The engine, for og.motion's step at the captured tick.
+    pub engine: u32,
 }
 
 impl Capture for RuntimeCapture {
@@ -109,6 +111,11 @@ impl Capture for RuntimeCapture {
     }
 
     fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Frame> {
+        // og.motion at the captured tick, as a display frame there steps it
+        // (once a tick: a frame drawn at this tick already did).
+        if let Ok(eng) = engine(self.engine) {
+            super::motion::present::step(&eng);
+        }
         let mut rs = self.render.try_borrow_mut().ok()?;
         // Captured frames show every wanted terrain tile, whatever the decode timing.
         rs.terrain.settle = true;
@@ -452,6 +459,9 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
             if let Ok(mut rs) = eng.render.try_borrow_mut() {
                 super::interpolate::before_tick(&mut rs, world);
             }
+            // og.motion steps once a tick with the world the tick left,
+            // whether or not a frame is drawn.
+            super::motion::present::step(&eng);
         }
     }));
     if let Some(ui) = eng.state.borrow().ui.as_ref() {
@@ -727,6 +737,7 @@ pub(crate) fn attach(eng: &Engine, backend: Option<Box<dyn super::RenderBackend>
         probe.set_capture(Box::new(RuntimeCapture {
             render: eng.render.clone(),
             tier,
+            engine: eng.id,
         }));
     }
 }

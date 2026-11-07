@@ -311,7 +311,7 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
     super::assets::retranscode(eng);
     // The tick this frame shows: its notes (and a missing glyph) are this tick's.
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
-    crate::motion::present::present(eng, alpha);
+    crate::motion::present::step(eng);
     let mut passes = Vec::new();
     let mut gpu = Vec::new();
     let mut frame = og_render::FrameStats::default();

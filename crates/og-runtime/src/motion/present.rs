@@ -1,30 +1,34 @@
 //! og.motion's presentation: the motion model on the renderer's GPU, and
 //! each agent's generated pose drawn in place of og.anim's joint palette.
 //!
-//! Before each frame is drawn ([`present`], from `engine::tick`'s render):
+//! Once a tick ([`step`], from the probe's before-tick hook and before a
+//! frame is drawn; at most once per tick), with a renderer attached:
 //!
 //! 1. **The weights.** As soon as the open bundle declares the model (its
 //!    manifest's `motion` entry, a game that uses og.motion) and a
 //!    renderer is attached, `cooked/motion/model.ogb` is read, unpacked
 //!    and its two networks put on the renderer's device
 //!    ([`RenderBackend::compute`]): natively on a thread of its own, on
-//!    the web from a fetch that lands at a later frame. Until then, or
-//!    when that fails, the backend is none and og.anim's pose is drawn.
+//!    the web from a fetch that lands at a later frame. Once an agent
+//!    needs it a native host waits for the load, so the tick the model
+//!    starts at is the agent's. Until then, or when that fails, og.anim's
+//!    pose is drawn.
 //! 2. **Goals for the model.** An agent whose generated frames run short
-//!    of its `lookahead` (or of two batches' measured latency) gets the
+//!    of its `lookahead` (or of two batches' [`BATCH_SECONDS`]) gets the
 //!    next model goal: where the simulation's goals will have it at the
 //!    first change of its pose, at most [`HORIZON`] seconds on (the mover
 //!    run ahead with [`super::advance`]; without drive, its Transform's
 //!    velocity), in the pose it will be in there.
-//! 3. **One batch for every agent** runs at a time, never blocking the
-//!    frame: it is submitted in slices of about [`FRAME_BUDGET_MS`] of GPU
-//!    time, one a frame, its readback polled each frame, and its
-//!    characters decoded into frames a few a frame ([`DECODE_BUDGET_MS`]).
-//!    Until an agent's first frames land, og.anim's pose is drawn; after
-//!    that a native host blocks when the agent has nothing left to show
-//!    (`og run` stepping faster than real time draws every frame that way,
-//!    so its frames after the first batch do not depend on timing).
-//! 4. **The pose.** Each agent plays its frames on the frame's clock,
+//! 3. **One batch for every agent** runs at a time: it is submitted in
+//!    slices of about [`FRAME_BUDGET_MS`] of GPU time, one a tick, and its
+//!    frames are taken [`BATCH_SECONDS`] after it started, at a fixed tick
+//!    (waited for then, natively), all its characters decoded at once.
+//!    A native host also waits for it when an agent has nothing left to
+//!    show. Nothing drawn depends on the wall clock or the GPU's speed:
+//!    two runs draw the same poses, and a presentation checkpoint
+//!    ([`Presenter::checkpoint`]) keeps the agents, the queued frames and
+//!    the outstanding batch, run again on a restore.
+//! 4. **The pose.** Each agent plays its frames on the tick's clock,
 //!    blending the two around it, a walk or run at the rate that makes its
 //!    stride cover the ground the Transform does (30 Hz otherwise):
 //!    re-rooted onto og.Transform (the hips over the entity, facing its
@@ -80,10 +84,12 @@ const MIN_SEGMENT: f32 = (MIN_TOKENS * POSES_PER_TOKEN - 2 * BOUNDARY_FRAMES - 1
 /// about this much, one a frame (`Gpu::set_frame_budget`), so a frame of
 /// 16.7 ms keeps room for the scene.
 const FRAME_BUDGET_MS: f64 = 3.0;
-/// The CPU time a landed batch's decoding may take in one frame, ms: its
-/// characters are decoded in turn until this is spent (one at least), the
-/// rest in the next frames (16 agents took 16.5 ms in one frame).
-const DECODE_BUDGET_MS: f64 = 3.0;
+/// How long after it starts a batch's frames are taken, s: at that tick,
+/// waiting for it natively if it is still running, and never sooner unless
+/// an agent has nothing left to show. A fixed number of ticks, not the
+/// GPU's speed, so a machine's load never changes what is drawn (the
+/// sliced batch of 16 agents takes 0.5 to 0.6 s).
+const BATCH_SECONDS: f32 = 0.5;
 /// The model's frame rate.
 const RATE: f32 = 30.0;
 /// Tokens either side of a model goal's own duration it may take
@@ -97,9 +103,6 @@ const CATCH_UP: f32 = 3.0;
 /// SOMA's ankles, the joints a jump's local height measures to the ground.
 const LEFT_ANKLE: usize = 24;
 const RIGHT_ANKLE: usize = 28;
-/// How far behind the frame clock a drawn frame may fall before frames are
-/// skipped to catch up, s.
-const MAX_LAG: f64 = 0.25;
 /// SOMA's head joint.
 const HEAD: usize = 6;
 /// The bounds of a walk's or run's playback rate (stride warping by
@@ -318,10 +321,14 @@ struct Flight {
     future: Running,
     batch: Batch,
     started: f64,
+    /// The tick its frames are taken at ([`BATCH_SECONDS`] after its start).
+    due: u64,
+    /// Started before a restore: its result is dropped when it lands.
+    stale: bool,
 }
 
-/// A batch read back, its characters decoded a few a frame
-/// ([`DECODE_BUDGET_MS`]) into their agents' frames.
+/// A batch read back, held until its tick, then decoded into its agents'
+/// frames.
 struct Landing {
     batch: Batch,
     student: StudentOutput,
@@ -334,6 +341,7 @@ struct Landing {
     /// Waited for (a starved agent on a native host): its latency is not
     /// the sliced one.
     forced: bool,
+    due: u64,
 }
 
 struct Ready {
@@ -344,6 +352,9 @@ struct Ready {
     device: wgpu::Device,
     flight: Option<Flight>,
     landing: Option<Landing>,
+    /// A restored checkpoint's batch, with its tick: started again once the
+    /// GPU is free, in place of a new one.
+    queued: Option<(Batch, u64)>,
     statics: Arc<Statics>,
     motion: Motion,
     library: Library,
@@ -389,6 +400,7 @@ enum Model {
 }
 
 /// An agent as drawn.
+#[derive(Clone)]
 struct Shown {
     character: usize,
     prev: Option<Frame>,
@@ -450,6 +462,7 @@ struct Shown {
 }
 
 /// A jump's generated frames and the one drawn (fractional).
+#[derive(Clone)]
 struct Clip {
     frames: Vec<Frame>,
     drawn: f32,
@@ -460,6 +473,7 @@ struct Clip {
 /// A model goal asked for: its id (the frames' tag), its library pose and
 /// the frame clock its first frame is for (now plus the frames queued
 /// before it).
+#[derive(Clone)]
 struct Issued {
     id: u32,
     pose: usize,
@@ -577,8 +591,10 @@ pub(crate) struct Presenter {
     wanted: bool,
     #[cfg(not(target_arch = "wasm32"))]
     loading: Option<Loading>,
-    /// The frame clock of the last frame presented.
+    /// The clock (tick × dt) of the last tick stepped.
     clock: Option<f64>,
+    /// The last tick stepped ([`step`] runs once a tick).
+    stepped: Option<u64>,
     model_bytes: u64,
     batches: u64,
     last_batch: (usize, f64),
@@ -592,7 +608,129 @@ impl Presenter {
         self.palettes.clear();
         self.generated.clear();
         self.clock = None;
+        self.stepped = None;
     }
+
+    /// The state a presentation checkpoint keeps (`crate::presentation`):
+    /// every agent as drawn, the model's characters with their queued
+    /// frames, and the batch outstanding (its inputs and tick, not its GPU
+    /// work, which [`Presenter::restore`] starts again).
+    pub(crate) fn checkpoint(&self) -> MotionCheckpoint {
+        let ready = match &self.model {
+            Model::Ready(r) => Some(r),
+            _ => None,
+        };
+        MotionCheckpoint {
+            agents: self.agents.clone(),
+            palettes: self.palettes.clone(),
+            generated: self.generated.clone(),
+            clock: self.clock,
+            stepped: self.stepped,
+            motion: ready.map(|r| r.motion.clone()),
+            outstanding: ready.and_then(|r| outstanding(r)),
+        }
+    }
+
+    /// Brings back [`Presenter::checkpoint`]'s state: the frames after it
+    /// are the ones the saved run drew. The batch on the GPU now is not the
+    /// checkpoint's: natively it is waited for and dropped, on the web
+    /// dropped when it lands; the checkpoint's batch runs again in its
+    /// place, due at its own tick.
+    pub(crate) fn restore(&mut self, c: &MotionCheckpoint) {
+        let Model::Ready(r) = &mut self.model else {
+            self.forget();
+            return;
+        };
+        let Some(motion) = &c.motion else {
+            self.forget();
+            return;
+        };
+        if let Some(f) = r.flight.as_mut() {
+            f.stale = true;
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        poll_flight(r, true, &mut self.errors);
+        r.landing = None;
+        r.motion = motion.clone();
+        r.queued = c.outstanding.clone();
+        self.agents = c.agents.clone();
+        self.palettes = c.palettes.clone();
+        self.generated = c.generated.clone();
+        self.clock = c.clock;
+        self.stepped = c.stepped;
+    }
+
+    /// FNV-1a over what [`Presenter::checkpoint`] keeps (part of the
+    /// presentation hash): equal on one host and backend means the same
+    /// poses drawn from the same world.
+    pub(crate) fn hash(&self) -> u64 {
+        use std::fmt::Write;
+        let mut text = String::new();
+        let _ = write!(text, "{:?}|{:?}|", self.clock, self.stepped);
+        for (e, s) in &self.agents {
+            let _ = write!(
+                text,
+                "{e}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|",
+                (s.character, s.prev, s.next, s.phase, s.serial, &s.requested),
+                (
+                    &s.planter,
+                    s.last_position,
+                    s.velocity,
+                    s.shown,
+                    s.starved,
+                    s.warmup
+                ),
+                (s.facing, s.planted, s.slide, s.lean, s.drawn_lean, s.warp),
+                (s.feet, s.offset, s.followed, s.feet_ahead),
+                s.footing,
+                s.issued
+                    .iter()
+                    .map(|g| (g.id, g.pose, g.start))
+                    .collect::<Vec<_>>(),
+                s.next_id,
+                s.clip.as_ref().map(|c| (&c.frames, c.drawn, c.flight)),
+                s.pending,
+                self.palettes.get(e),
+                self.generated.contains(e),
+            );
+        }
+        if let Model::Ready(r) = &self.model {
+            let _ = write!(
+                text,
+                "{:?}|{:?}",
+                r.motion,
+                outstanding(r).map(|(b, due)| (b.characters, b.inputs, due))
+            );
+        }
+        let mut h = 0xcbf2_9ce4_8422_2325u64;
+        for b in text.bytes() {
+            h = (h ^ u64::from(b)).wrapping_mul(0x0000_0100_0000_01b3);
+        }
+        h
+    }
+}
+
+/// The batch a checkpoint keeps: in flight, landed and held for its tick,
+/// or queued after a restore.
+fn outstanding(r: &Ready) -> Option<(Batch, u64)> {
+    r.flight
+        .as_ref()
+        .filter(|f| !f.stale)
+        .map(|f| (f.batch.clone(), f.due))
+        .or_else(|| r.landing.as_ref().map(|l| (l.batch.clone(), l.due)))
+        .or_else(|| r.queued.clone())
+}
+
+/// og.motion's part of a presentation checkpoint ([`Presenter::checkpoint`]).
+#[derive(Clone, Default)]
+pub(crate) struct MotionCheckpoint {
+    agents: BTreeMap<u64, Shown>,
+    palettes: IdMap<u64, Vec<Mat4>>,
+    generated: BTreeSet<u64>,
+    clock: Option<f64>,
+    stepped: Option<u64>,
+    motion: Option<Motion>,
+    outstanding: Option<(Batch, u64)>,
 }
 
 fn now_ms() -> f64 {
@@ -675,6 +813,7 @@ fn ready(parts: Parts) -> Model {
         device: parts.device,
         flight: None,
         landing: None,
+        queued: None,
         latency: 500.0,
         failure: None,
         startup,
@@ -700,10 +839,18 @@ type Loading = std::sync::mpsc::Receiver<(u64, Result<Parts, String>)>;
 /// uploaded on a thread of its own (wgpu's device takes buffers and
 /// pipelines from any thread), so no frame waits for it; on the web the
 /// host's fetch lands at a later frame, which then unpacks and uploads it.
-fn load(p: &mut Presenter, eng: &Engine, backend: Option<&dyn RenderBackend>) -> Model {
+/// `wait`: natively, wait for the thread's answer (an agent needs the model
+/// this tick); the web cannot wait.
+fn load(p: &mut Presenter, eng: &Engine, backend: Option<&dyn RenderBackend>, wait: bool) -> Model {
     #[cfg(not(target_arch = "wasm32"))]
     if let Some(rx) = &p.loading {
-        return match rx.try_recv() {
+        let answer = if wait {
+            rx.recv()
+                .map_err(|_| std::sync::mpsc::TryRecvError::Disconnected)
+        } else {
+            rx.try_recv()
+        };
+        return match answer {
             Ok((bytes, r)) => {
                 p.loading = None;
                 p.model_bytes = p.model_bytes.max(bytes);
@@ -751,6 +898,7 @@ fn load(p: &mut Presenter, eng: &Engine, backend: Option<&dyn RenderBackend>) ->
     }
     #[cfg(target_arch = "wasm32")]
     {
+        let _ = wait;
         let bytes = match hooks().map(|h| h.read_asset(&path)) {
             Some(crate::assets::Fetch::Ready(b)) => b,
             Some(crate::assets::Fetch::Pending) => {
@@ -956,6 +1104,9 @@ fn poll_flight(r: &mut Ready, block: bool, errors: &mut Vec<String>) -> bool {
     }
     r.rate = gpu.rate();
     r.gpu = Some(gpu);
+    if flight.stale {
+        return true;
+    }
     match result {
         Ok((student, local)) => {
             r.failure = None;
@@ -967,6 +1118,7 @@ fn poll_flight(r: &mut Ready, block: bool, errors: &mut Vec<String>) -> bool {
                 motion: vec![0.0; FRAMES * MOTION_FEATURES],
                 started: flight.started,
                 forced: block,
+                due: flight.due,
             });
         }
         Err(e) => {
@@ -979,13 +1131,12 @@ fn poll_flight(r: &mut Ready, block: bool, errors: &mut Vec<String>) -> bool {
     true
 }
 
-/// Decodes the landed batch's characters into their frames for about
-/// `budget` ms (`None`: all of them); answers whether none are left.
-fn decode(r: &mut Ready, budget: Option<f64>, stats: &mut (u64, (usize, f64))) -> bool {
+/// Decodes the landed batch's characters into their frames, all of them:
+/// how many are decoded never depends on the time it takes.
+fn decode(r: &mut Ready, stats: &mut (u64, (usize, f64))) {
     let Some(l) = r.landing.as_mut() else {
-        return true;
+        return;
     };
-    let t0 = now_ms();
     let n = l.batch.characters.len();
     while l.next < n {
         let i = l.next;
@@ -1000,28 +1151,28 @@ fn decode(r: &mut Ready, budget: Option<f64>, stats: &mut (u64, (usize, f64))) -
         r.motion
             .accept_character(&l.batch, i, l.student.counts[i], &l.motion);
         l.next += 1;
-        if budget.is_some_and(|b| now_ms() - t0 >= b) {
-            break;
-        }
     }
-    if l.next < n {
-        return false;
-    }
+    // Wall time, a diagnostic (and the web's frames kept across a jump).
     let latency = now_ms() - l.started;
-    if !(l.forced || budget.is_none()) {
+    if !l.forced {
         r.latency = latency;
     }
     stats.0 += 1;
     stats.1 = (n, latency);
     r.landing = None;
-    true
 }
 
-fn start_flight(r: &mut Ready) {
-    if r.flight.is_some() || r.landing.is_some() {
+/// Starts the next batch, its frames due at tick `due`; a restored
+/// checkpoint's batch first, with its own tick.
+fn start_flight(r: &mut Ready, due: u64) {
+    if r.flight.is_some() || r.landing.is_some() || r.gpu.is_none() {
         return;
     }
-    let Some(batch) = r.motion.batch(usize::MAX) else {
+    let Some((batch, due)) = r
+        .queued
+        .take()
+        .or_else(|| r.motion.batch(usize::MAX).map(|b| (b, due)))
+    else {
         return;
     };
     let Some(mut gpu) = r.gpu.take() else {
@@ -1047,6 +1198,8 @@ fn start_flight(r: &mut Ready) {
         }),
         batch,
         started,
+        due,
+        stale: false,
     });
 }
 
@@ -1480,18 +1633,32 @@ fn fallback(
 }
 
 /// Before a frame is drawn: generated motion, then authored performance.
-pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
-    let agents = seen(eng);
+pub(crate) fn step(eng: &Engine) {
     let (tick, dt) = match eng.world() {
         Ok(w) => (w.time().tick, w.time().dt),
         Err(_) => return,
     };
-    let now = (tick as f64 + f64::from(alpha.unwrap_or(0.0))) * f64::from(dt);
+    {
+        let rs = eng.render.borrow();
+        // Once a tick, with a renderer to run the model on.
+        if rs.backend.is_none() || rs.motion.stepped == Some(tick) {
+            return;
+        }
+    }
+    let agents = seen(eng);
+    let now = tick as f64 * f64::from(dt);
+    let batch_ticks = if dt > 0.0 {
+        (BATCH_SECONDS / dt).ceil() as u64
+    } else {
+        1
+    };
+    let due = tick + batch_ticks;
     let sys = eng.state.borrow().anim.clone();
     let goals = lock(&shared(eng.id)).clone();
     let mut rs = eng.render.borrow_mut();
     let rs = &mut *rs;
     let p = &mut rs.motion;
+    p.stepped = Some(tick);
     p.palettes.clear();
     p.generated.clear();
     // The model loads as soon as the bundle declares it (a game that uses
@@ -1501,7 +1668,12 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
         return;
     }
     if matches!(p.model, Model::Unloaded | Model::Waiting(_)) {
-        p.model = load(p, eng, rs.backend.as_deref());
+        p.model = load(p, eng, rs.backend.as_deref(), false);
+        // An agent waits for the weights natively: the tick the model
+        // starts at is then the agent's, never the load's wall time.
+        if !agents.is_empty() && matches!(p.model, Model::Waiting(_)) {
+            p.model = load(p, eng, rs.backend.as_deref(), true);
+        }
     }
     if agents.is_empty() {
         p.agents.clear();
@@ -1514,8 +1686,15 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
         return;
     };
     let mut stats = (p.batches, p.last_batch);
+    // The batch runs a slice a tick; its frames are taken at its tick
+    // (waited for then, natively), however soon it landed.
     poll_flight(r, false, &mut p.errors);
-    decode(r, Some(DECODE_BUDGET_MS), &mut stats);
+    if r.flight.as_ref().is_some_and(|f| tick >= f.due) {
+        poll_flight(r, true, &mut p.errors);
+    }
+    if r.landing.as_ref().is_some_and(|l| tick >= l.due) {
+        decode(r, &mut stats);
+    }
     p.agents
         .retain(|e, _| agents.iter().any(|a| a.entity == *e));
     for a in &agents {
@@ -1597,7 +1776,7 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
         // latency (sliced across frames, 0.5 to 0.6 s for 16 agents): one
         // batch runs at a time, so a goal asked for while another is on its
         // way waits for it, then for its own.
-        let ahead = a.settings.lookahead.max(2.0 * r.latency as f32 / 1000.0);
+        let ahead = a.settings.lookahead.max(2.0 * BATCH_SECONDS);
         let lookahead = (ahead * RATE) as usize;
         if serial != s.serial
             || (r.motion.goals(s.character) == 0 && s.ahead(&r.motion) < lookahead.max(1))
@@ -1629,7 +1808,7 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
             r.motion.push(s.character, goal);
         }
     }
-    start_flight(r);
+    start_flight(r, due);
     for a in &agents {
         let s = p.agents.get_mut(&a.entity).expect("added above");
         // Frames played faster or slower than the model's rate are due
@@ -1667,22 +1846,8 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
                 break;
             }
             poll_flight(r, true, &mut p.errors);
-            decode(r, None, &mut stats);
-            start_flight(r);
-        }
-        // Behind the clock (the first batch's latency, a goal the model
-        // took longer over): frames are skipped until the drawn one is
-        // within MAX_LAG of the time it was generated for.
-        while s.clip.is_none()
-            && let Some(next) = s.next
-            && let Some(at) = s
-                .issued(&next)
-                .map(|g| g.start + f64::from(next.index) / f64::from(RATE))
-            && now - at > MAX_LAG
-            && let Some(f) = s.pending.pop_front().or_else(|| r.motion.pop(s.character))
-        {
-            s.prev = s.next;
-            s.next = Some(f);
+            decode(r, &mut stats);
+            start_flight(r, due);
         }
         if let Some(prev) = s.prev {
             // Goals before the drawn frame's are done with (ids ascend).
@@ -1714,7 +1879,7 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
             }
         }
     }
-    start_flight(r);
+    start_flight(r, due);
     (p.batches, p.last_batch) = stats;
     fallback(eng, p, &agents, &goals, sys.as_ref());
 }
