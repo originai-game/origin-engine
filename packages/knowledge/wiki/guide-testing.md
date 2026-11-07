@@ -2,12 +2,12 @@
 
 # The `testing` guide: Building, checking and testing
 
-The build, check and test loop of an Origin Engine game. Invariants first (og.assert, playtest invariants and require), frames only for looks, what an unchecked result means, the probe and dumps, and performance.
+The build, check and test loop of an Origin Engine game. Playtests as bun:test files, invariants first (og.assert, playtest invariants and require), frames only for looks, what an unchecked result means, the probe and dumps, and performance.
 
 The API of everything here: `og api show assert`, `og api show commands`,
-`og api show probe`, `og api show debug`, and the `PlaytestDesc` type in
-`@origingame/engine/playtest`. `og <command> --help` gives each command's
-flags.
+`og api show probe`, `og api show debug`, and `runPlaytest`, `PlaytestDesc`
+and `PlaytestRun` in `@origingame/engine/playtest`. `og <command> --help`
+gives each command's flags.
 
 <a id="guide-testing-1"></a>
 ### `testing §1` The loop
@@ -54,22 +54,56 @@ tick, not as pictures compared afterwards.
 - Assertions cost nothing in publish builds and never touch the world
   hash: leave them in.
 
-A playtest is a script and its properties. Its `check` function is
-optional when `invariants`, `require` or `expect:` steps say everything.
-Write one per thing the game promises (the loop completes, the player can
-lose, a save restores, a level can be cleared), each a few seconds of
-ticks. Drive input with the command channel's actions (key, pointer,
-touch, gamepad, `move_to_text`), not by setting state the player could
-not set.
+A playtest file, `tests/<name>.og.ts`, is an ordinary `bun:test` file:
+`describe`, `test` and `expect` as Bun and Vitest write them. Inside a test,
+`await runPlaytest({ commands, ... })` plays the script headless in fresh
+processes of the game `og test` built and resolves to the run: its tick,
+hashes, files (`run.json`, `run.png`, `run.wav`), `run.then` relaunches and
+`run.peers` in a room. Each call is a fresh world, so one test can play two
+runs and compare them.
+
+```ts
+import { describe, expect, test } from "bun:test";
+import { runPlaytest } from "@origingame/engine/playtest";
+
+describe("the shop", () => {
+  test("a completed purchase pays 100 gems once", async () => {
+    const run = await runPlaytest({
+      commands: "0.5:buy;2.5:get:Wallet:wallet.json;2.6:quit",
+      require: ["the purchase is delivered"],
+    });
+    expect(run.json<{ value: { gems: number } }>("wallet.json").value.gems).toBe(100);
+  });
+});
+```
+
+- The script's `invariants`, `require` and `expect:` steps are one
+  assertion: `runPlaytest` rejects with each failure, its tick and its
+  value. A test can be the call alone.
+- Every test makes an assertion; one that made none fails.
+- Pick the matcher by meaning: `toBe` for a number, string or boolean,
+  `toEqual` for a parsed dump or an array, `toStrictEqual` when an
+  `undefined` member matters. A tolerance is absolute:
+  `expect(Math.abs(a - b)).toBeLessThanOrEqual(0.1)`; `toBeCloseTo` takes
+  decimal places, not a tolerance.
+- `og test` runs each file in its own `bun test` against the built game;
+  a bare `bun test` has no game to play.
+
+Write one test per thing the game promises (the loop completes, the
+player can lose, a save restores, a level can be cleared), each a few
+seconds of ticks. Drive input with the command channel's actions (key,
+pointer, touch, gamepad, `move_to_text`), not by setting state the player
+could not set.
 
 <a id="guide-testing-3"></a>
 ### `testing §3` Frames are for looks
 
 A screenshot answers what the game looks like, never whether it works.
 
-- Put every check that reads a frame inside `t.frame(files, () => ...)`.
+- Put every check that reads a frame inside `run.frame(files, () => ...)`.
   Without a renderer the frame is unchecked: the check does not run, the
-  report says so, and the playtest passes on its other checks.
+  report says so, and the test goes on to its other checks. A frame read
+  outside it without a renderer fails the test (FrameUnchecked).
 - An unchecked frame is not a passed frame. `run.unchecked` lists them
   and `run.tier` is `none`. Never report a look as verified from a run
   whose tier was `none`; rerun where a GPU is present, or say that it was

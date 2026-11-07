@@ -72,7 +72,8 @@ else
 { "extends": "$OG_ROOT/$t/tsconfig.json",
   "compilerOptions": { "paths": {
     "@origingame/engine": ["$OG_ROOT/packages/engine/types/index.d.ts"],
-    "@origingame/engine/playtest": ["$OG_ROOT/packages/engine/src/playtest.ts"] } } }
+    "@origingame/engine/playtest": ["$OG_ROOT/packages/engine/src/playtest.ts"],
+    "bun:test": ["$OG_ROOT/packages/engine/vendor/bun-types/test.d.ts"] } } }
 EOF
     configs+=("$w/tsconfig.json")
   done

@@ -1,0 +1,16 @@
+{
+  "breaking": [
+    {
+      "member": "playtest (@origingame/engine/playtest)",
+      "change": "A playtest file (`tests/*.og.ts`) is a bun:test file: describe, test and expect from \"bun:test\", each test awaiting `runPlaytest({ commands, ... })`, which plays the script in fresh processes of the game og test built and resolves to the PlaytestRun. `playtest()`, the default export, `PlaytestDesc.name` and `check(run, t)` with t.ok, t.equal, t.near and t.frame are removed. The script's expect: steps, invariants and require are one assertion: runPlaytest rejects with each failure. A test with no assertion fails. A frame read without a renderer outside `run.frame` now fails the test (FrameUnchecked) instead of ending the check.",
+      "fix": "Write `test(\"what it proves\", async () => { const run = await runPlaytest({ commands }); expect(run.quit).toBe(true); })`. t.ok(x) becomes expect(x).toBe(true) or a matcher on the value; t.equal compared JSON text, so use toBe for a primitive and toEqual or toStrictEqual for a structure; t.near(a, b, tol) is an absolute tolerance, `expect(Math.abs(a - b)).toBeLessThanOrEqual(tol)` (toBeCloseTo takes decimal places); t.frame(files, f) becomes run.frame(files, f). A game's tsconfig maps \"bun:test\" to `.og/engine/vendor/bun-types/test.d.ts`, as the template's does.",
+      "find": ["playtest(", "export default playtest", "PlaytestChecks", "t.frame", "t.near", "t.equal", "t.ok"]
+    }
+  ],
+  "added": [
+    {
+      "member": "PlaytestRun.frame, runPlaytest",
+      "summary": "One test can play several runs (each a fresh world) and compare them; `og test --json` reports each file's `tests`, its failures by test name and every expect() as `checks`."
+    }
+  ]
+}

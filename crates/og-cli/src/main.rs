@@ -109,10 +109,11 @@ commands:
                       --json prints the diagnostics as one `check` event; og run, og test and
                       og build check before bundling (--no-check skips it), og dev on each save
   test [project] [--filter <path>] [--jobs N] [--json] [--no-check] [--require-checked]
-                      the project's bun tests, then each tests/*.og.ts playtest headless
+                      the project's bun tests, then each tests/*.og.ts playtest file (bun:test,
+                      its tests awaiting runPlaytest) under bun test against the built game
                       --filter selects suite files by a project-relative path substring;
                       --affected <git-revision> selects changed dependencies (unknown inputs run all);
-                      --jobs N runs up to N playtests at once, each one's output whole, in order
+                      --jobs N runs up to N playtest files at once, each one's output whole, in order
   build [project] [--publish] [--out DIR] [--json] [--no-check]
                       cook, type-check and export the game to dist/ (or publish.out): the player shell,
                       game.js, the web host, cooked/, og-build.json, _headers; --publish keeps

@@ -1,8 +1,10 @@
 //! `og test [project] [--filter <path>] [--skip <path>] [--jobs N] [--json] [--no-check]`: the project's type check
-//! (crate::check), its bun tests (`*.test.ts`), then each playtest script
-//! `tests/*.og.ts` through `og run --headless --commands` in its own process
-//! (`packages/engine/src/node/playtest-run.ts`). Fails when anything fails,
-//! and when there was nothing to run. A type error fails the run and the
+//! (crate::check), its bun tests (`*.test.ts`), then each playtest file
+//! `tests/*.og.ts` in its own `bun test` (`packages/engine/src/node/playtest-run.ts`):
+//! a bun:test file whose tests `await runPlaytest({ commands })`, each call
+//! fresh `og run --headless --commands` processes of the bundle built here.
+//! A test that made no assertion fails. Fails when anything fails, and when
+//! there was nothing to run. A type error fails the run and the
 //! playtests do not run (there is no bundle); the bun tests still do.
 //! `--json` prints the `check` event first and a `test` event last, with
 //! the check's `{ok, ms, errors}`.
@@ -10,14 +12,15 @@
 //! project-relative path (with `/` separators), before any tests execute;
 //! `--skip` (repeatable) leaves out the suites whose path contains its
 //! substring, after `--filter` (a kit's playtests but its style sheets).
-//! `--jobs N` runs up to N playtests at once (default 1), each process's
-//! output printed whole, in the playtests' order, once it and the ones
-//! before it have ended.
+//! `--jobs N` runs up to N playtest files at once (default 1), each one's
+//! output printed whole, in the files' order, once it and the ones before
+//! it have ended.
 //!
 //! Without a renderer (the platform's engine and probe sandboxes,
-//! `OG_RENDERER=none`) a playtest's screenshots are frames unchecked: each
-//! playtest lists its own, the summary counts them, and they never change
-//! the exit status unless `--require-checked` is requested.
+//! `OG_RENDERER=none`) a playtest's screenshots and `run.frame` checks are
+//! frames unchecked, never passed: each file lists its own, the summary
+//! counts them, and they never change the exit status unless
+//! `--require-checked` is requested.
 
 use crate::project::{self, Project};
 use std::path::{Path, PathBuf};
@@ -254,7 +257,7 @@ pub fn run(args: &[&str]) -> ExitCode {
                 return ExitCode::FAILURE;
             }
         };
-        // Each playtest's result line, for the frames it left unchecked.
+        // Each playtest file's result line, for the frames it left unchecked.
         let results = std::env::temp_dir().join(format!("og-test-{}", std::process::id()));
         let session_args = match crate::session::playtest_args(&p.root, &package) {
             Ok(args) => args,

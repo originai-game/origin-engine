@@ -747,6 +747,8 @@ impl Target {
             serde_json::json!({
                 "@origingame/engine": [typescript_path(&pkg.join("types/index.d.ts"))],
                 "@origingame/engine/playtest": [typescript_path(&pkg.join("src/playtest.ts"))],
+                // A playtest file's describe/test/expect (bun:test's own declarations, vendored).
+                "bun:test": [typescript_path(&pkg.join("vendor/bun-types/test.d.ts"))],
                 // og ui check's rules over a playtest's frames (docs/ui.md §6).
                 "@origingame/engine/ui-check": [typescript_path(&pkg.join("src/node/ui-check.ts"))],
                 // What a UI kit is written with, and the bundled kits (docs/ui.md §4).
@@ -798,8 +800,17 @@ impl Target {
             if let Some(o) = options.as_object_mut() {
                 o.remove("paths");
             }
-            if let Some(paths) = engine_paths.filter(|_| !engine_in_node_modules) {
-                options["paths"] = paths;
+            match (engine_paths, package) {
+                (Some(paths), _) if !engine_in_node_modules => options["paths"] = paths,
+                // The engine resolves through node_modules; a playtest file's
+                // bun:test still resolves to the package's vendored declarations.
+                (_, Some(pkg)) => {
+                    let pkg = pkg.canonicalize().unwrap_or_else(|_| pkg.to_path_buf());
+                    options["paths"] = serde_json::json!({
+                        "bun:test": [typescript_path(&pkg.join("vendor/bun-types/test.d.ts"))],
+                    });
+                }
+                _ => {}
             }
             let include: Vec<String> = if p.manifest {
                 template["include"]

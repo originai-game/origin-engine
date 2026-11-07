@@ -1,3 +1,4 @@
-// Corpus 03-exact-optional: exactOptionalPropertyTypes, undefined for an optional field
-import { playtest } from "@origingame/engine/playtest";
-export default playtest({ name: "n", commands: "0.1:quit", seed: undefined, check(run, t) { t.ok(run.quit, "quit"); } });
+// Corpus 03-exact-optional: an optional property given undefined under exactOptionalPropertyTypes
+import { expect, test } from "bun:test";
+import { runPlaytest } from "@origingame/engine/playtest";
+test("n", async () => { const run = await runPlaytest({ commands: "0.1:quit", seed: undefined }); expect(run.quit).toBe(true); });

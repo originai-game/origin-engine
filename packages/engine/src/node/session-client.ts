@@ -1,10 +1,10 @@
 import { createConnection } from "node:net";
 
 /** Null means refused before execution; a lost reply must never replay a run. */
-export async function runInSession(argv: string[], socketPath: string | undefined, build: string | undefined, signal?: AbortSignal, kind: "run" | "ui" = "run"): Promise<{ exitCode: number; stdout: string; stderr: string } | null> {
-  if (!socketPath || !build || process.env.OG_SESSION === "0") return null;
+export async function runInSession(argv: string[], socketPath: string | undefined, build: string | undefined, signal?: AbortSignal, kind: "run" | "ui" = "run", env: Record<string, string | undefined> = process.env): Promise<{ exitCode: number; stdout: string; stderr: string } | null> {
+  if (!socketPath || !build || env.OG_SESSION === "0") return null;
   if (signal?.aborted) throw new Error("session request cancelled before sending");
-  const payload = JSON.stringify({ kind, build, cwd: process.cwd(), env: process.env, argv }) + "\n";
+  const payload = JSON.stringify({ kind, build, cwd: process.cwd(), env, argv }) + "\n";
   if (new TextEncoder().encode(payload).byteLength > 1024 * 1024) throw new Error("session request exceeds 1 MiB");
   const exchange = () => new Promise<{ exitCode: number; stdout: string; stderr: string } | "busy" | null>((resolve, reject) => {
     let sent = false;

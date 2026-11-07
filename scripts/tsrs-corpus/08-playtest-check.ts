@@ -1,3 +1,4 @@
-// Corpus 08-playtest-check: t.ok without its message
-import { playtest } from "@origingame/engine/playtest";
-export default playtest({ name: "n", commands: "0.1:quit", check(run, t) { t.ok(run.quit); } });
+// Corpus 08-playtest-check: a matcher without its expected value
+import { expect, test } from "bun:test";
+import { runPlaytest } from "@origingame/engine/playtest";
+test("n", async () => { const run = await runPlaytest({ commands: "0.1:quit" }); expect(run.quit).toBe(); });

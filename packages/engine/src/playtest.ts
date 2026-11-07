@@ -1,32 +1,44 @@
-// Playtest scripts (`tests/*.og.ts`): a command script run headless through
-// `og run --commands`, then checks over what the run wrote. `og test` runs
-// every one in its own process and fails a playtest that made no check.
+// Playtests (`tests/*.og.ts`): bun:test files whose tests run the game.
+// `og test` builds the game, then runs each file under `bun test`; inside a
+// test, `await runPlaytest({ commands })` plays the command script headless
+// through `og run --commands` in fresh processes and resolves to what the
+// run wrote, read with `expect` as any other value.
 //
 // Write properties first: `invariants` are checked after every tick (the
 // first failing tick and its value are the failure), the engine's default
 // invariants (NaN, ranges, dangling entities, og.WorldBounds) and the game's
 // og.assert calls run beside them, and `require` names the og.assert
-// sometimes/reachable/each sites the run must see fire. Keep a frame only
-// for what only a frame shows (a look, a layout), inside `t.frame`.
+// sometimes/reachable/each sites the run must see fire. They, the script's
+// `expect:` steps and every violation are one assertion of the test:
+// `runPlaytest` rejects with each failure, its tick and its value. Keep a
+// frame only for what only a frame shows (a look, a layout), inside
+// `run.frame`.
 //
 // Without a renderer (the platform's engine and probe sandboxes carry none;
 // `OG_RENDERER=none` makes any machine so) the run is the same run, but a
 // `screenshot` writes no PNG: the checks that read a frame go inside
-// `t.frame(files, () => ...)`, which runs them with a renderer and otherwise
-// reports each file "no renderer, frame unchecked" and passes. Frames are
-// verified where there is a renderer: the author's machine, the
-// browser-check sandbox, an executor with a GPU.
+// `run.frame(files, () => ...)`, which runs them with a renderer and
+// otherwise reports each file "no renderer, frame unchecked" (never passed;
+// `og test` counts it). Reading a frame outside it without a renderer throws
+// FrameUnchecked, which fails the test.
 //
-//   import { playtest } from "@origingame/engine/playtest";
-//   export default playtest({
-//     name: "the trickster spins after S",
-//     commands: "0.5:type:s;2.0:screenshot:spin.png;2.2:dump_entity:trickster:t.json;2.5:quit",
-//     check(run, t) {
-//       t.ok(run.quit, "the script reached quit");
-//       t.ok(run.json<{ components: Record<string, { speed: number }> }>("t.json").components.Spin!.speed > 0, "Spin started");
-//       t.frame("spin.png", () => t.equal(run.png("spin.png").width, 1280, "the frame is 1280 wide"));
-//     },
+// Every test of a playtest makes an assertion (`og test` runs them with
+// `expect.hasAssertions()`): one that made none fails.
+//
+//   import { describe, expect, test } from "bun:test";
+//   import { runPlaytest } from "@origingame/engine/playtest";
+//
+//   describe("the trickster", () => {
+//     test("spins after S", async () => {
+//       const run = await runPlaytest({ commands: "0.5:type:s;2.0:screenshot:spin.png;2.2:dump_entity:trickster:t.json;2.5:quit" });
+//       expect(run.quit, "the script reached quit").toBe(true);
+//       expect(run.json<{ components: Record<string, { speed: number }> }>("t.json").components.Spin!.speed).toBeGreaterThan(0);
+//       run.frame("spin.png", () => expect(run.png("spin.png").width, "the frame is 1280 wide").toBe(1280));
+//     });
 //   });
+//
+// A tolerance is absolute: `expect(Math.abs(actual - expected)).toBeLessThanOrEqual(tolerance)`
+// (`toBeCloseTo` takes decimal places, not a tolerance).
 
 import { decodePng, encodePngBest } from "./node/png.ts";
 import type { LocalFake } from "./platform-local.ts";
@@ -54,7 +66,7 @@ export interface PlaytestRun {
   readonly warnings: readonly string[];
   /** A written JSON output, parsed. Throws when the run wrote no such file. */
   json<T = unknown>(file: string): T;
-  /** A written PNG's size. Throws when the run wrote no such file (and, for a screenshot taken without a renderer, a FrameUnchecked: read frames inside `t.frame`). */
+  /** A written PNG's size. Throws when the run wrote no such file (and, for a screenshot taken without a renderer, a FrameUnchecked: read frames inside `frame`). */
   png(file: string): { width: number; height: number; bytes: number };
   /** A written PNG decoded: its RGBA8 rows, for checks that read pixels (contrast, a colour at a point). Throws as `png` does. */
   pixels(file: string): { width: number; height: number; rgba: Uint8Array };
@@ -72,6 +84,13 @@ export interface PlaytestRun {
   readonly lockstep: PlaytestLockstep | null;
   /** With PlaytestDesc.room: the room's other processes (peer scripts 1, 2, ...), each with its own files; empty outside a room. */
   readonly peers: readonly PlaytestRun[];
+  /**
+   * The checks that read frames (`png`, `pixels`, a comparison with references/): `check`
+   * runs when the run had a renderer. Without one it does not run, each of `files` is
+   * reported "no renderer, frame unchecked" (never passed), and the test goes on to the
+   * checks after it. Every check outside `frame` runs either way.
+   */
+  frame(files: string | readonly string[], check: () => void): void;
 }
 
 /** One violated assertion: its first failure. */
@@ -130,24 +149,9 @@ export interface PlaytestRoom {
   readonly ticks?: number;
 }
 
-/** The checks a playtest makes; a playtest that made none fails. */
-export interface PlaytestChecks {
-  ok(condition: unknown, what: string): void;
-  equal<T>(actual: T, expected: T, what: string): void;
-  near(actual: number, expected: number, tolerance: number, what: string): void;
-  /**
-   * The checks that read frames (`run.png`, a decoded screenshot, a comparison with
-   * references/): `check` runs when the playtest had a renderer. Without one it does not run,
-   * each of `files` is reported "no renderer, frame unchecked", and the playtest passes on its
-   * other checks. Every check outside `t.frame` runs either way.
-   */
-  frame(files: string | readonly string[], check: () => void): void;
-}
-
 /**
- * What reading a screenshot the run took without a renderer throws. A check function stopped by
- * one passes with its frame unchecked (the checks after it did not run, and the report says so):
- * put frame checks inside `t.frame` so every other check runs.
+ * What reading a screenshot the run took without a renderer throws: the test fails, naming the
+ * frame. Put frame checks inside `run.frame`, which reports them unchecked instead.
  */
 export class FrameUnchecked extends Error {
   readonly file: string;
@@ -158,9 +162,8 @@ export class FrameUnchecked extends Error {
   }
 }
 
+/** What `runPlaytest` plays: the script and the processes it runs in. */
 export interface PlaytestDesc {
-  /** One line on what the playtest proves. */
-  readonly name: string;
   /** `t:action[:args];...`, as `og run --commands`. End it with `quit`. */
   readonly commands: string;
   /** The replay seed; omitted is GameDesc.seed. */
@@ -225,12 +228,6 @@ export interface PlaytestDesc {
    * names one bucket.
    */
   readonly require?: readonly string[];
-  /**
-   * Checks over what the run wrote. Optional when the script carries `expect:` steps, `invariants` or `require`: each
-   * expectation is a check (a failed one fails the playtest with its tick and observed value,
-   * a frame one without a renderer is unchecked), so a playtest can be its script alone.
-   */
-  readonly check?: (run: PlaytestRun, t: PlaytestChecks) => void | Promise<void>;
 }
 
 /** A later process of a playtest (`PlaytestDesc.then`). */
@@ -244,17 +241,17 @@ export interface PlaytestStep {
 /** The clock a playtest's processes start at when it names none: 2026-01-01T00:00:00Z. */
 export const PLAYTEST_CLOCK = 1767225600000;
 
-/** Declare a playtest: the default export of a `tests/*.og.ts` file. */
-export function playtest(desc: PlaytestDesc): PlaytestDesc {
-  const expects = /(^|;)\s*[\d.]+:(expect|invariant):/.test(desc.commands ?? "") || (desc.invariants?.length ?? 0) > 0 || (desc.require?.length ?? 0) > 0;
-  if (!desc.name || !desc.commands || (typeof desc.check !== "function" && !expects)) {
-    throw new Error("playtest({ name, commands, check }) needs all three (check may be left out when the commands carry expect: steps, or with invariants or require)");
-  }
-  for (const i of desc.invariants ?? []) {
-    if (/^(region|frame):/.test(i)) throw new Error(`invariant '${i}' reads a frame, which every tick cannot afford: check it with an expect: step at the tick it matters`);
-    if (i.includes(";")) throw new Error(`invariant '${i}' holds a ';': one expectation each`);
-  }
-  return Object.freeze({ ...desc });
+/**
+ * Plays `desc` headless, in fresh processes of the game `og test` built, and resolves to what the
+ * first run wrote (its `runs`, `then` steps and room peers beside it). The script's `expect:`
+ * steps, `invariants`, `require` and every og.assert violation make one assertion: it rejects
+ * with each failure. A run that does not finish rejects too. Call it inside a test of a
+ * `tests/*.og.ts` file that `og test` runs; each call is new processes, never a reused world.
+ */
+export function runPlaytest(desc: PlaytestDesc): Promise<PlaytestRun> {
+  // The runner is node code, reached at run time so a game type-checks its playtests without node's declarations.
+  const runner = (import.meta as unknown as { url: string }).url.replace(/[^/]*$/, "node/run-playtest.ts");
+  return (import(runner) as Promise<{ runPlaytest(desc: PlaytestDesc): Promise<PlaytestRun> }>).then((m) => m.runPlaytest(desc));
 }
 
 /**

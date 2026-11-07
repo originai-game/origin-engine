@@ -70,10 +70,11 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { settingsOf, webBuild } from "../../src/node/web-build.ts";
 import { bundleGame } from "../../src/node/build.ts";
-import { recordReference, type PlaytestDesc } from "../../src/playtest.ts";
+import { recordReference } from "../../src/playtest.ts";
+import { collectPlaytests } from "../../src/node/playtest-files.ts";
 import { androidOf, Browser, chromePath } from "./cdp.ts";
 import { Firefox, firefoxPath } from "./bidi.ts";
 import { Safari, safariDriverPath } from "./webdriver.ts";
@@ -111,11 +112,10 @@ const playtestFile = opt("--playtest") ?? (!opt("--script") && !opt("--shots") ?
 const fromPlaytest = playtestFile
   ? await (async () => {
       const file = resolve(project, playtestFile);
-      const bundled = join(pkg, "dist", "test-reference", `.${basename(project)}.playtest.js`);
-      mkdirSync(dirname(bundled), { recursive: true });
-      const b = await bundleGame(file, bundled, "native");
-      if (!b.ok) throw new Error(`${file} does not bundle: ${b.reason}`);
-      const desc = ((await import(pathToFileURL(bundled).href)) as { default: PlaytestDesc }).default;
+      // The file's one runPlaytest call: its script, collected without playing it.
+      const descs = await collectPlaytests(file, project);
+      if (descs.length !== 1) throw new Error(`${file} plays ${descs.length} scripts: the reference page takes a playtest file with one runPlaytest call`);
+      const desc = descs[0]!;
       // One fresh process on the game's own seed: what the page runs.
       for (const k of ["then", "room", "seed"] as const) if (desc[k] !== undefined) throw new Error(`${opt("--playtest")} sets ${k}: the reference page runs one process of the game's own seed`);
       if (opt("--script") || opt("--shots")) throw new Error("--playtest takes its script and shots from the playtest: pass neither --script nor --shots");

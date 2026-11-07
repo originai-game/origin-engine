@@ -10,7 +10,7 @@ genre and view. The platform mounts its text as
 | `src/main.ts` | An empty `export default og.game({})` |
 | `package.json` | Commands that call the installed `og` |
 | `tsconfig.json` | Strict TypeScript over source and tests |
-| `tests/smoke.og.ts` | A start-and-quit playtest |
+| `tests/smoke.og.ts` | A start-and-quit playtest (bun:test, `runPlaytest`) |
 | `assets/.gitkeep` | Keeps the empty source-asset directory in the payload |
 | `.gitignore` | Excludes cooked assets, build output, and local installs |
 | `.gitattributes` | Routes future media through Git LFS |

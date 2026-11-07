@@ -505,7 +505,7 @@ measures. `native/build-profile` records `dev` or `release`;
   `hello.tier` is `none` and `capture` answers null. `og run --json`
   reports `tier: "none"`, `renderer: "none"`, `adapterError`, the frames in
   `unchecked` and `uncheckedCount`; `og test` runs every check outside
-  `t.frame`, prints one `~ <file>: no renderer, frame unchecked` line per
+  `run.frame`, prints one `~ <file>: no renderer, frame unchecked` line per
   screenshot and counts unchecked suites separately from passes; exit
   status is zero unless an executed check failed. `--require-checked` on
   `og run`, `og test`, `og check`, `og ui check` (also preview), `og frame

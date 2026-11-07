@@ -200,8 +200,8 @@ test("og test keeps the local store across a playtest's processes with store: ke
   const r = Bun.spawnSync([ogBin(), "test", game], { cwd: repo, env: { ...process.env, OG_ENGINE_PACKAGE: pkg } });
   const out = new TextDecoder().decode(r.stdout) + new TextDecoder().decode(r.stderr);
   if (r.exitCode !== 0) throw new Error(out);
-  expect(out).toMatch(/PASS away \(7 checks/);
-  expect(out).toMatch(/PASS fresh \(2 checks/);
+  expect(out).toMatch(/PASS away \(1 tests, 7 checks/);
+  expect(out).toMatch(/PASS fresh \(1 tests, 2 checks/);
   expect(out).toContain("2 suite(s) passed");
 }, 300_000);
 

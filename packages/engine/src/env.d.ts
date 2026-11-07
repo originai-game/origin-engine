@@ -22,6 +22,7 @@ declare module "node:fs" {
   export function readFileSync(path: string): Uint8Array;
   export function readFileSync(path: string, encoding: string): string;
   export function writeFileSync(path: string, data: string | Uint8Array): void;
+  export function appendFileSync(path: string, data: string): void;
   export function writeSync(fd: number, data: Uint8Array, offset?: number, length?: number): number;
   export function rmSync(path: string, options?: { recursive?: boolean; force?: boolean }): void;
   export function mkdirSync(path: string, options?: { recursive?: boolean }): void;
@@ -62,10 +63,13 @@ declare module "bun:test" {
   export function describe(name: string, body: () => void): void;
   export function setDefaultTimeout(ms: number): void;
   export function beforeAll(body: Body): void;
+  export function beforeEach(body: Body): void;
   export function afterAll(body: Body): void;
   interface Matchers {
     toBe(value: unknown): void;
     toEqual(value: unknown): void;
+    toStrictEqual(value: unknown): void;
+    toHaveLength(n: number): void;
     toBeTrue(): void;
     toBeFalse(): void;
     toBeGreaterThan(value: number): void;
@@ -83,6 +87,10 @@ declare module "bun:test" {
   }
   /** `message` names the assertion in its failure (bun's custom failure message). */
   export function expect(value: unknown, message?: string): Matchers;
+  export namespace expect {
+    /** The running test fails unless it makes an assertion. */
+    function hasAssertions(): void;
+  }
 }
 
 declare module "node:stream" {

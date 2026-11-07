@@ -3,6 +3,7 @@
   "compilerOptions": {
     "paths": {
       "@origingame/engine": ["../../packages/engine/types/index.d.ts"],
+      "bun:test": ["../../packages/engine/vendor/bun-types/test.d.ts"],
       "@origingame/engine/playtest": ["../../packages/engine/src/playtest.ts"]
     }
   },

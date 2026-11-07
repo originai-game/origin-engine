@@ -2297,10 +2297,15 @@ rebuild. `OG_SESSION=0` disables reuse; Windows retains normal compilation.
 Cooking remains incremental and runs before this preparation step.
 
 Before destroying a playtest run, the host saves its world and reads back
-the last drawn frame without another draw or replay. A passing suite
-discards these candidates; a failed suite encodes the frames as PNGs and
-reports `failureCaptures` with the world dump, save and frame paths. This
-includes failures in the harness's later assertions. An unavailable frame
+the last drawn frame without another draw or replay. A playtest file is a
+`bun:test` file whose tests await `runPlaytest` (one call is fresh
+processes, its script's expectations, invariants and required sites one
+assertion that rejects with each failure); `og test` runs each file under
+`bun test` with a preload that fails a test without an assertion. A passing
+file discards these candidates; a failed one encodes the frames as PNGs and
+reports `failureCaptures` with the world dump, save and frame paths: of the
+runs `runPlaytest` rejected, else of every run, since a failed `expect`
+after a call does not name its run. An unavailable frame
 is reported as unavailable, never fabricated or counted as a passed check.
 These diagnostic saves are not presentation checkpoints and are not used
 to fork or resume runs.

@@ -277,10 +277,12 @@ export default og.game({start(world){starts++;for(let i=0;i<starts;i++)world.spa
     const [code, stdout, stderr] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
     return { code, summary: JSON.parse(stdout.trim().split("\n").at(-1)!), stderr };
   };
-  const descriptor = (entities: number) => `export default {
-commands:"0.1:quit", runs:2, then:[{commands:"0.1:quit"}],
-check(run,t){t.equal(run.entities,${entities});t.equal(run.hashes[0],run.hashes[1]);t.equal(run.hash,run.then[0].hash);}
-};`;
+  const descriptor = (entities: number) => `import { expect, test } from "bun:test";
+import { runPlaytest } from "@origingame/engine/playtest";
+test("fresh runs", async () => {
+const run = await runPlaytest({ commands: "0.1:quit", runs: 2, then: [{ commands: "0.1:quit" }] });
+expect(run.entities).toBe(${entities}); expect(run.hashes[1]).toBe(run.hashes[0]); expect(run.then[0].hash).toBe(run.hash);
+});`;
   try {
     expect(new TextDecoder().decode((await host.stderr.getReader().read()).value)).toContain("listening");
     for (const result of await Promise.all([invoke("first", descriptor(1)), invoke("second", descriptor(1))])) {
@@ -307,7 +309,7 @@ check(run,t){t.equal(run.entities,${entities});t.equal(run.hashes[0],run.hashes[
     expect((await invoke("first", descriptor(1))).code).toBe(0);
     const malformed = await invoke("malformed", "export default { invalid syntax");
     expect(malformed.code).toBe(1);
-    expect(malformed.summary.failures[0]).toContain("does not bundle");
+    expect(malformed.summary.failures[0]).toContain("does not load");
   } finally {
     if (host.exitCode === null) host.kill("SIGTERM");
     await host.exited;

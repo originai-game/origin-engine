@@ -22,13 +22,12 @@
 // og.ui's widgets), the other locales by the engine's locale.
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { attachRenderer, loadNativeHost, native } from "./index.ts";
 import { nativePlatform } from "./platform.ts";
-import { bundleGame } from "./build.ts";
 import { decodePng, encodePng, type Image } from "./png.ts";
-import type { PlaytestDesc } from "../playtest.ts";
+import { collectPlaytests } from "./playtest-files.ts";
 import { beginBundle, boundHost, createEngine, type Engine, type GameToken } from "../runtime.ts";
 import type { RunControl, RunOutput } from "./run.ts";
 import { og } from "../index.ts";
@@ -465,21 +464,18 @@ async function defaultScreens(help: () => string, show: string, playtests: reado
   const seen = new Set<string>();
   for (const file of playtests) {
     moduleLoaded?.();
-    const bundled = join(dirname(resolve(file)), `.ui-check-${version++}-${basename(file)}.js`);
     try {
-      const b = await bundleGame(file, bundled, "native");
-      if (!b.ok) continue;
-      const desc = ((await import(pathToFileURL(bundled).href)) as { default?: PlaytestDesc }).default;
-      for (const sc of screensFromPlaytest(basename(file).replace(/\.og\.ts$/, ""), desc?.commands ?? "")) {
-        if (seen.has(sc.commands)) continue;
-        seen.add(sc.commands);
-        out.push(sc);
+      // Each runPlaytest call's script, in order (the second of a file names its screens <file>-2-<shot>).
+      const descs = await collectPlaytests(file);
+      for (const [i, desc] of descs.entries()) {
+        for (const sc of screensFromPlaytest(basename(file).replace(/\.og\.ts$/, "") + (i > 0 ? `-${i + 1}` : ""), desc.commands)) {
+          if (seen.has(sc.commands)) continue;
+          seen.add(sc.commands);
+          out.push(sc);
+        }
       }
     } catch {
       continue;
-    } finally {
-      rmSync(bundled, { force: true });
-      rmSync(`${bundled}.map`, { force: true });
     }
   }
   if (out.length > 0) return { screens: out, from: `the screenshots of ${playtests.length} playtest(s)` };
