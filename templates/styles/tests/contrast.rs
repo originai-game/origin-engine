@@ -960,13 +960,15 @@ fn add_cooked(scene: &mut RenderScene, f: &CookedFont) -> UiFont {
     let font = MsdfFont {
         atlas,
         distance_range: m.px_range,
+        foreground: false,
+        silhouette: false,
         line_height: m.ascender - m.descender + m.line_gap,
         glyphs: f
             .glyphs
             .iter()
             .filter_map(|g| {
                 Some(Glyph {
-                    codepoint: char::from_u32(g.codepoint)?,
+                    key: char::from_u32(g.codepoint)?.into(),
                     advance: g.advance,
                     plane_bounds: [g.plane_left, g.plane_bottom, g.plane_right, g.plane_top],
                     atlas_bounds: [
