@@ -117,6 +117,7 @@ pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
     use og_core::Reflect;
     schema.version = match schema.name.as_str() {
         "og.AudioSource" => og_audio::AudioSource::schema().version,
+        "og.AudioEvent" => og_audio::AudioEvent::schema().version,
         "og.AudioBusFx" => og_audio::AudioBusFx::schema().version,
         "og.RigidBody" => og_physics::RigidBody::schema().version,
         "og.Physics" => og_physics::Physics::schema().version,

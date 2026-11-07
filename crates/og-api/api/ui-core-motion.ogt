@@ -562,7 +562,7 @@
   struct SoundEvent {
     doc "A UI sound of the style."
     field name String "hover, press, open, close, success or error."
-    field pitch f32 "Its pitch (1: as recorded); a cascade step raises it 6 %." {
+    field playbackRate f32 "Its pitch (1: as recorded); a cascade step raises it 6 %." {
       default 1
     }
   }
@@ -737,7 +737,7 @@
     field target String "The element's path."
     field play u32 "The play (0: none)."
     field index u32 "The clip's step in a cascade or stagger."
-    field pitch f32 "A sound's pitch: its own times 1.06 per cascade step."
+    field playbackRate f32 "A sound's pitch: its own times 1.06 per cascade step."
   }
 
   struct UiOverlap {

@@ -1,0 +1,8 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {"member":"AudioSource.playbackRate","change":"Renamed rate-valued pitch to playbackRate in AudioSource, AudioEvent and reflected AudioPlayback, with no alias.","fix":"Use playbackRate; 2 still doubles pitch and halves duration. pitchJitter remains semitones. ECS lifetime and startAt world seconds are unchanged."},
+    {"member":"timeline.audio.playbackRate","change":"Timeline and VFX sound keys use playbackRate instead of pitch.","fix":"Rename sound key pitch to playbackRate. Do not rename procedural SFX pitch: it changes oscillator frequency independently of length."},
+    {"member":"SoundEvent.playbackRate","change":"UI SoundEvent, UiMotionEvent and styleTokens feedback JSON use playbackRate instead of pitch.","fix":"Rename rate fields in UI sound descriptions and event consumers; camera tilt and sports-pitch fields are unchanged."}
+  ]
+}

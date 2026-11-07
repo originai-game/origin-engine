@@ -325,7 +325,7 @@ fn write_track(tr: &Track) -> Entry {
                 let mut kb = Block::new();
                 kb.push(Entry::new("sound").with(Value::String(k.sound.clone())));
                 kb.push(Entry::new("volume").with(num(k.volume)));
-                kb.push(Entry::new("pitch").with(num(k.pitch)));
+                kb.push(Entry::new("playbackRate").with(num(k.pitch)));
                 kb.push(Entry::new("bus").with(Value::Word(bus_name(k.bus).into())));
                 b.push(key_entry(k.time, kb));
             }

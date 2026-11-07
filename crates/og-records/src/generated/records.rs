@@ -24532,7 +24532,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "pitch",
+                name: "playbackRate",
                 column: "f32",
                 default: "1",
                 readonly: false,
@@ -25951,7 +25951,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "pitch",
+                name: "playbackRate",
                 column: "f32",
                 default: "1",
                 readonly: false,

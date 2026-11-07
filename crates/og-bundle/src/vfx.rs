@@ -66,7 +66,7 @@
 //!   at 0.25  trauma 0.3
 //! }
 //! sound "sfx/boom.wav" {
-//!   at 0.25  volume 0.8  pitch 0.9 1.1   # a pitch picked from the range by the seed
+//!   at 0.25  volume 0.8  playbackRate 0.9 1.1   # a playback rate picked from the range by the seed
 //! }
 //! flipbook "fx/slash.ogt" {         # a flipbook sheet (a `type vfx2d` pixel effect, or `type flipbook`)
 //!   at 0.1                          # its first clip, once, facing the eye; it ends with the clip
@@ -604,11 +604,11 @@ fn element(e: &Entry) -> Result<VfxElement, String> {
             ("size", VfxKind::Flipbook { size, .. }) => *size = one(k)?.max(0.0),
             ("trauma", VfxKind::Shake { trauma }) => *trauma = one(k)?.clamp(0.0, 1.0),
             ("volume", VfxKind::Sound { volume, .. }) => *volume = one(k)?.max(0.0),
-            ("pitch", VfxKind::Sound { pitch, .. }) => {
+            ("playbackRate", VfxKind::Sound { pitch, .. }) => {
                 *pitch = match nums(k, 0)?[..] {
                     [p] => [p, p],
                     [a, b] => [a, b],
-                    _ => return Err(format!("line {kl}: pitch <p> | <min> <max>")),
+                    _ => return Err(format!("line {kl}: playbackRate <rate> | <min> <max>")),
                 }
             }
             (
@@ -677,7 +677,7 @@ fn element(e: &Entry) -> Result<VfxElement, String> {
 mod tests {
     use super::*;
 
-    const FIREBALL: &str = "type vfx\nversion 1\n---\nduration 1.5\nimpact 0.3\nevent 0.9 \"linger\"\nemitter \"fx/sparks.ogt\" {\n  at 0.3\n  until 0.5\n  offset 0 0.5 0\n  seed 4\n}\nmesh ring {\n  at 0.3\n  life 0.4\n  effect \"fx/shock.ogt\"\n  scale curve 0 0.5 1 3\n  spin 0 180 0\n}\ntrail {\n  at 0\n  until 0.6\n  width 0.3 0.05\n  orbit 0.6 1.5\n}\nlight {\n  at 0.3\n  life 0.4\n  intensity curve 0 12 1 0\n}\ndecal {\n  at 0.3\n  life 4\n  uv 0 0 0.5 0.5\n  size 2\n  fade 1\n}\nshake {\n  at 0.3\n  trauma 0.4\n}\nsound \"sfx/boom.wav\" {\n  at 0.3\n  pitch 0.9 1.1\n}\n";
+    const FIREBALL: &str = "type vfx\nversion 1\n---\nduration 1.5\nimpact 0.3\nevent 0.9 \"linger\"\nemitter \"fx/sparks.ogt\" {\n  at 0.3\n  until 0.5\n  offset 0 0.5 0\n  seed 4\n}\nmesh ring {\n  at 0.3\n  life 0.4\n  effect \"fx/shock.ogt\"\n  scale curve 0 0.5 1 3\n  spin 0 180 0\n}\ntrail {\n  at 0\n  until 0.6\n  width 0.3 0.05\n  orbit 0.6 1.5\n}\nlight {\n  at 0.3\n  life 0.4\n  intensity curve 0 12 1 0\n}\ndecal {\n  at 0.3\n  life 4\n  uv 0 0 0.5 0.5\n  size 2\n  fade 1\n}\nshake {\n  at 0.3\n  trauma 0.4\n}\nsound \"sfx/boom.wav\" {\n  at 0.3\n  playbackRate 0.9 1.1\n}\n";
 
     #[test]
     fn a_file_sets_its_timeline_and_names_its_assets() {

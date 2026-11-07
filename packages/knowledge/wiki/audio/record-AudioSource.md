@@ -19,7 +19,7 @@ Token `og.AudioSource`, registered under the schema name `og.AudioSource`; its v
 | `sound` | `Sound` | `0` | — | — | — | The sound, from og.load.sound; 0 plays nothing. A handle not yet loaded waits and starts on the first tick it is there. |
 | `bus` | `AudioBus` | `"sfx"` | — | — | — | The bus it plays on. |
 | `volume` | `number` | `1` | 0 … 4 | — | tunable | Linear gain. |
-| `pitch` | `number` | `1` | 0.0625 … 16 | — | tunable | Playback rate: 2 is an octave up and half as long. |
+| `playbackRate` | `number` | `1` | 0.0625 … 16 | — | tunable | Playback rate: 2 is an octave up and half as long. |
 | `pan` | `number` | `0` | -1 … 1 | — | tunable | Stereo position of a non-spatial source, -1 left to 1 right. |
 | `loop` | `boolean` | `false` | — | — | — | Loop between loopStart and loopEnd, seamlessly. |
 | `loopStart` | `number` | `0` | ≥ 0 | `s` | — | Where a loop restarts. |
@@ -59,7 +59,7 @@ component AudioSource {
     max 4
     tunable true
   }
-  field pitch f32 "Playback rate: 2 is an octave up and half as long." {
+  field playbackRate f32 "Playback rate: 2 is an octave up and half as long." {
     default 1
     min 0.0625
     max 16

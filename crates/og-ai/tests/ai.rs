@@ -626,8 +626,9 @@ fn a_yard_without_g2_4_features_hashes_and_moves_as_before_it() {
 }
 
 /// [`a_yard_without_g2_4_features_hashes_and_moves_as_before_it`]'s world
-/// hash and trajectory digest on main 67a07d57 (before G2-4).
-const YARD_HASH: &str = "10c3d2daa0248e7e";
+/// hash after AudioSource's playbackRate schema rename. Its trajectory
+/// digest remains the one on main 67a07d57 (before G2-4).
+const YARD_HASH: &str = "d52f845b64859580";
 const YARD_TRAIL: &str = "944e29cc07af861e";
 
 fn files(map: &[(&str, &str)]) -> impl FnMut(&str) -> Result<String, String> + use<> {

@@ -15,7 +15,7 @@ What happened in the UI's motion this tick.
 | `target` | `string` | `""` | — | — | — | The element's path. |
 | `play` | `number` | `0` | — | — | — | The play (0: none). |
 | `index` | `number` | `0` | — | — | — | The clip's step in a cascade or stagger. |
-| `pitch` | `number` | `0` | — | — | — | A sound's pitch: its own times 1.06 per cascade step. |
+| `playbackRate` | `number` | `0` | — | — | — | A sound's pitch: its own times 1.06 per cascade step. |
 
 ```ogt
 struct UiMotionEvent {
@@ -25,7 +25,7 @@ struct UiMotionEvent {
   field target String "The element's path."
   field play u32 "The play (0: none)."
   field index u32 "The clip's step in a cascade or stagger."
-  field pitch f32 "A sound's pitch: its own times 1.06 per cascade step."
+  field playbackRate f32 "A sound's pitch: its own times 1.06 per cascade step."
 }
 ```
 

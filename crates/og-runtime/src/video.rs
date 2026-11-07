@@ -301,7 +301,7 @@ fn run(
         let mut s = audio.1.decode(&ab);
         s["sound"] = json!(c.sound as f64);
         s["playing"] = json!(playing && !finished && !seek && speed > 0.0);
-        s["pitch"] = json!(speed.max(0.0625));
+        s["playbackRate"] = json!(speed.max(0.0625));
         s["loop"] = json!(looped);
         // The loop wraps where the picture does, never at the sound's own
         // end (an encoder's last frame may run past it).

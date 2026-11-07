@@ -3,8 +3,9 @@
 //! `og run --audio out.wav` writes) are a click at the timeline's 0 s,
 //! silence, a tone from its audio key at 1 s for its 0.25 s, silence, and
 //! the music from its key at 2 s rising over its 0.5 s fade-in, steady,
-//! falling over its 0.5 s fade-out to its `end` at 3.5 s, and silence
-//! after. The capture is written to `$OG_EVIDENCE_DIR/timeline-sound.wav`.
+//! falling over its 0.5 s fade-out to its `end` at 3.5 s. At 4 s the tone
+//! plays at playbackRate 2 for 0.125 s. The capture is written to
+//! `$OG_EVIDENCE_DIR/timeline-sound.wav`.
 //!
 //! Ways this could fail: a voice spawned but never started (the music's
 //! voice written with `looping`, not og.AudioSource's `loop`, refused the
@@ -55,6 +56,10 @@ track audio {
   }
   key 1 {
     sound "audio/tone.wav"
+  }
+  key 4 {
+    sound "audio/tone.wav"
+    playbackRate 2
   }
 }
 track music {
@@ -175,7 +180,15 @@ fn the_timelines_sound_is_heard_where_its_keys_put_it() {
         falling < 0.5 * full && falling > 0.0,
         "fade-out: {falling} of {full}"
     );
-    assert!(peak(3.6, 4.9) < 1e-3, "after its end: {}", peak(3.6, 4.9));
+    assert!(peak(3.6, 3.98) < 1e-3, "after music: {}", peak(3.6, 3.98));
+    // The same 0.25 s clip at playbackRate 2 lasts 0.125 s, not 0.25 s.
+    // The late silence rejects an ignored rate or an independent pitch shift.
+    assert!(rms(4.03, 4.10) > 0.1, "the double-rate tone is audible");
+    assert!(
+        peak(4.18, 4.9) < 1e-3,
+        "double-rate tone ended: {}",
+        peak(4.18, 4.9)
+    );
     let evidence = std::env::var_os("OG_EVIDENCE_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("evidence"));

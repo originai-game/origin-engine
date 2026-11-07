@@ -19,7 +19,7 @@ Token `og.AudioEvent`, registered under the schema name `og.AudioEvent`; its val
 | `order` | `AudioEventOrder` | `"random"` | — | — | — | How the next sound is chosen. |
 | `volume` | `number` | `1` | 0 … 4 | — | tunable | Linear gain. |
 | `volumeJitter` | `number` | `0` | 0 … 24 | `db` | tunable | Each play's volume varies uniformly by up to this many dB either way. |
-| `pitch` | `number` | `1` | 0.0625 … 16 | — | tunable | Playback rate. |
+| `playbackRate` | `number` | `1` | 0.0625 … 16 | — | tunable | Playback rate. |
 | `pitchJitter` | `number` | `0` | 0 … 24 | — | tunable | Each play's pitch varies uniformly by up to this many semitones either way. |
 | `cooldown` | `number` | `0` | 0 … 60 | `s` | tunable | A trigger sooner than this after the last play is ignored (and still reset). |
 | `maxVoices` | `number` | `0` | 0 … 64 | — | — | The most voices of this event at once; 0 is no limit. |
@@ -58,7 +58,7 @@ component AudioEvent {
     unit db
     tunable true
   }
-  field pitch f32 "Playback rate." {
+  field playbackRate f32 "Playback rate." {
     default 1
     min 0.0625
     max 16

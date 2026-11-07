@@ -264,7 +264,7 @@ pub(super) fn evaluate(
                     }
                     let offset = if fire { 0.0 } else { (t - k.time) * k.pitch };
                     let v = json!({
-                        "sound": handle as f64, "bus": k.bus, "volume": k.volume, "pitch": k.pitch,
+                        "sound": handle as f64, "bus": k.bus, "volume": k.volume, "playbackRate": k.pitch,
                         "playing": true, "startOffset": offset,
                     });
                     let bytes = r.source.1.encode(None, Some(&v)).map_err(invalid)?;

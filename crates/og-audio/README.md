@@ -6,6 +6,15 @@ system that turns component changes into a deterministic, time-stamped
 the tick. The mixer never writes the world; `world_hash` covers the command
 stream, never the PCM.
 
+The public rate field is `playbackRate`, as in Web Audio: 2 doubles the
+frequency and halves the duration. It is not independent pitch shifting.
+`AudioSource` and `AudioEvent`, timeline and VFX sound keys, and UI motion
+sound events use this name. `pitchJitter` stays in semitones; a procedural
+SFX preset's `pitch` changes oscillator frequency without changing length.
+The ECS lifetime stays unchanged: `playing` is level-triggered, `startAt`
+uses world seconds, and completion is `SoundEnded` on the next readable
+tick. No AudioContext object or callback is saved in the world.
+
 ```rust
 let link = og_audio::install(&mut world, &og_audio::AudioDesc::default())?;   // after the game's systems
 og_audio::publish_link(engine_id, link.clone());                            // so the host's sink finds it
@@ -51,7 +60,7 @@ a `Sound` handle stored as `u64`.
 | 0 | `sound` | Sound (u64) | 0 | | the sound; 0 plays nothing; a handle not (yet) in the bank waits and starts on the first tick it is there |
 | 1 | `bus` | u32 | 2 | 0–3 | 0 master, 1 music, 2 sfx, 3 ui |
 | 2 | `volume` | f32 | 1 | 0–4, tunable | linear gain |
-| 3 | `pitch` | f32 | 1 | 1/16–16, tunable | playback rate: 2 is an octave up and half as long |
+| 3 | `playbackRate` | f32 | 1 | 1/16–16, tunable | 2 is an octave up and half as long |
 | 4 | `pan` | f32 | 0 | -1–1, tunable | stereo position of a non-spatial source |
 | 5 | `loop` | u32 | 0 | 0/1 | loop between `loopStart` and `loopEnd`, seamlessly |
 | 6 | `loopStart` | f32 | 0 | s | where a loop restarts |
@@ -99,7 +108,7 @@ event semantics). A despawned entity's voice is silenced without an event.
 
 `og.AudioPlayback` (component, present while a source plays): `voice u32`,
 `sound u64`, `cursor f64` (playhead at the next tick's start, frames of the
-sound), `gain f32`, `pan f32`, `pitch f32`, `bus u32`, `flags u32`,
+sound), `gain f32`, `pan f32`, `playbackRate f32`, `bus u32`, `flags u32`,
 `loopStart u32`, `loopEnd u32` (what the mixer was last told).
 
 `og.AudioStream` (resource): `hash u64` (the stream hash), `commands u64`,

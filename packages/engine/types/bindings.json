@@ -5861,7 +5861,7 @@
           "tunable": true
         },
         {
-          "name": "pitch",
+          "name": "playbackRate",
           "column": "f32",
           "default": 1,
           "tunable": true
@@ -6294,7 +6294,7 @@
           "tunable": true
         },
         {
-          "name": "pitch",
+          "name": "playbackRate",
           "column": "f32",
           "default": 1,
           "tunable": true

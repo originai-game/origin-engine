@@ -51,7 +51,7 @@ function find(world: World, name: string): Entity {
   return e;
 }
 
-/** A sine with its first overtones, one second looped: the engine's hum, pitched by og.AudioSource.pitch. */
+/** A sine with its first overtones, one second looped: the engine's hum, pitched by og.AudioSource.playbackRate. */
 function engineTone(world: World) {
   const rate = 48000;
   const samples = new Float32Array(rate);
@@ -95,7 +95,7 @@ function build(world: World): void {
     const w = must(world.spawn({ name: `wheel-${x < 0 ? "l" : "r"}${z > 0 ? "f" : "b"}`, parent: car, position: { x, y: -0.3, z }, quaternion: across }));
     must(world.insert(w, og.Mesh, { geometry: tyre, material: rubber, castShadow: true }));
   }
-  must(world.insert(car, og.AudioSource, { sound: engineTone(world), bus: "sfx", loop: true, volume: 0.4, pitch: 0.6 }));
+  must(world.insert(car, og.AudioSource, { sound: engineTone(world), bus: "sfx", loop: true, volume: 0.4, playbackRate: 0.6 }));
 
   const smoke = must(og.load.emitter(world, "fx/smoke.ogt"));
   for (const side of [-1, 1]) {
@@ -156,7 +156,7 @@ const Effects = defineSystem("Effects", { writes: [Drive, og.ParticleSystem, og.
     og.assert.reachable("the rear slides");
   }
   const a = must(world.get(car, og.AudioSource));
-  must(world.set(car, og.AudioSource, { ...a, pitch: 0.6 + Math.min(1.4, d.kmh / 60) }));
+  must(world.set(car, og.AudioSource, { ...a, playbackRate: 0.6 + Math.min(1.4, d.kmh / 60) }));
 });
 
 /** Skid marks while the rear slides: a ring of og.Decal (a system of its own, since a query matches the entities holding every component it names). */

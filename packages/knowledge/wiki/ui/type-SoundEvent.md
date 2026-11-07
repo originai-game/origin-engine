@@ -11,13 +11,13 @@ A UI sound of the style.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `name` | `string` | `""` | — | — | — | hover, press, open, close, success or error. |
-| `pitch` | `number` | `1` | — | — | — | Its pitch (1: as recorded); a cascade step raises it 6 %. |
+| `playbackRate` | `number` | `1` | — | — | — | Its pitch (1: as recorded); a cascade step raises it 6 %. |
 
 ```ogt
 struct SoundEvent {
   doc "A UI sound of the style."
   field name String "hover, press, open, close, success or error."
-  field pitch f32 "Its pitch (1: as recorded); a cascade step raises it 6 %." {
+  field playbackRate f32 "Its pitch (1: as recorded); a cascade step raises it 6 %." {
     default 1
   }
 }

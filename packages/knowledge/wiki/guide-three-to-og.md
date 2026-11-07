@@ -346,6 +346,13 @@ if (hits.length > 0) og.debug.sphere(world, hits[0].point, 0.05);
   (`og api show camera`).
 - **No Euler objects.** A rotation is a quaternion; Euler angles go
   through `quat.fromEuler` once, where they are written.
+- **Audio stays in the ECS.** three.js Audio's `setPlaybackRate(2)` maps to
+  `AudioSource.playbackRate: 2`: double frequency, half duration, as in Web
+  Audio. `playing` controls the source's lifetime; `startAt` is world time,
+  not AudioContext time. `SoundEnded` reports completion on a tick. There
+  are no saved AudioNodes or `onended` callbacks. Panner distance and cone
+  fields keep Web Audio names; engine HRTF models head shadow and delay,
+  not the browser's full pinna response.
 - **No mutation helpers on values.** `vector.add(v)`, `clone()`,
   `multiplyScalar(s)` and the other in-place methods are the pure `vec3`
   and `quat` functions.

@@ -392,7 +392,7 @@ fn event_kind(theme: &Theme, v: &Value) -> Option<EventKind> {
     Some(match v["kind"].as_str()? {
         "sound" => EventKind::Sound {
             name: string(&v["name"]),
-            pitch: f(v, "pitch", 1.0),
+            pitch: f(v, "playbackRate", 1.0),
         },
         "haptic" => EventKind::Haptic(string(&v["name"])),
         "burst" => EventKind::Burst {
@@ -612,7 +612,7 @@ pub fn og_ui_motion_events() -> String {
             .map(|e| {
                 json!({
                     "kind": e.kind, "name": e.name, "target": e.target,
-                    "play": e.play, "index": e.index, "pitch": e.pitch,
+                    "play": e.play, "index": e.index, "playbackRate": e.pitch,
                 })
             })
             .collect::<Vec<_>>()

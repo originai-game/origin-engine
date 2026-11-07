@@ -527,7 +527,7 @@ fn tokens_json(t: &og_ui::StyleTokens) -> Value {
             let pulses: Vec<[f32; 4]> = f.haptic.pulses().iter().map(|p| [p.start_ms, p.ms, p.low, p.high]).collect();
             (
                 e.name().to_string(),
-                json!({ "sounds": f.count, "volume": f.volume, "pitch": f.pitch, "haptic": pulses }),
+                json!({ "sounds": f.count, "volume": f.volume, "playbackRate": f.pitch, "haptic": pulses }),
             )
         })
         .collect();

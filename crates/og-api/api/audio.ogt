@@ -66,7 +66,7 @@ module audio {
       max 4
       tunable true
     }
-    field pitch f32 "Playback rate: 2 is an octave up and half as long." {
+    field playbackRate f32 "Playback rate: 2 is an octave up and half as long." {
       default 1
       min 0.0625
       max 16
@@ -507,7 +507,7 @@ module audio {
       unit db
       tunable true
     }
-    field pitch f32 "Playback rate." {
+    field playbackRate f32 "Playback rate." {
       default 1
       min 0.0625
       max 16

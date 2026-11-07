@@ -556,7 +556,7 @@ fn system(
                     let p = pitch[0] + (pitch[1] - pitch[0]) * random(seed, i);
                     let o = el.offset * scale;
                     let src = json!({
-                        "sound": sound, "volume": volume, "pitch": p,
+                        "sound": sound, "volume": volume, "playbackRate": p,
                         "playing": true, "spatial": true,
                     });
                     let at = json!({ "position": { "x": o.x, "y": o.y, "z": o.z } });

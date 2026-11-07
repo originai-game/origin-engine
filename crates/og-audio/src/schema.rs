@@ -38,7 +38,7 @@ impl Bus {
 /// plays; setting `playing` to false stops it; a one-shot that reaches its
 /// end sets `playing` back to false and emits `og.SoundEnded`.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.AudioSource", version = 2)]
+#[reflect(name = "og.AudioSource", version = 3)]
 pub struct AudioSource {
     /// The sound to play (a Sound handle); 0 plays nothing. A handle not yet in the bank waits and starts on the first tick it is there.
     pub sound: u64,
@@ -49,7 +49,7 @@ pub struct AudioSource {
     #[reflect(min = 0, max = 4, default = 1, tunable)]
     pub volume: f32,
     /// Playback rate: 2 is an octave up and half as long.
-    #[reflect(min = 0.0625, max = 16, default = 1, tunable)]
+    #[reflect(name = "playbackRate", min = 0.0625, max = 16, default = 1, tunable)]
     pub pitch: f32,
     /// Stereo position of a non-spatial source, -1 left to 1 right.
     #[reflect(min = -1, max = 1, tunable)]
@@ -346,7 +346,7 @@ pub struct SoundEnded {
 /// Engine-owned: what the mixer was last told about a playing source, and
 /// where the tick side's playhead is. Present while the source plays.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
-#[reflect(name = "og.AudioPlayback")]
+#[reflect(name = "og.AudioPlayback", version = 2)]
 pub struct AudioPlayback {
     /// The voice id.
     pub voice: u32,
@@ -358,7 +358,8 @@ pub struct AudioPlayback {
     pub gain: f32,
     /// The pan last sent.
     pub pan: f32,
-    /// The pitch last sent.
+    /// The playback rate last sent.
+    #[reflect(name = "playbackRate")]
     pub pitch: f32,
     /// The bus last sent.
     pub bus: u32,
@@ -844,7 +845,7 @@ pub mod event_order {
 /// og.AudioSource and og.AudioEventVoice, parented to this entity, so a
 /// spatial event is heard where its entity is), despawned when it ends.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.AudioEvent")]
+#[reflect(name = "og.AudioEvent", version = 2)]
 pub struct AudioEvent {
     /// The variations (og.load.sound or og.audio.createSound handles); 0s are skipped.
     pub sounds: List<u64, 8>,
@@ -860,7 +861,7 @@ pub struct AudioEvent {
     #[reflect(name = "volumeJitter", min = 0, max = 24, unit = "db", tunable)]
     pub volume_jitter: f32,
     /// Playback rate.
-    #[reflect(min = 0.0625, max = 16, default = 1, tunable)]
+    #[reflect(name = "playbackRate", min = 0.0625, max = 16, default = 1, tunable)]
     pub pitch: f32,
     /// Each play's pitch varies by up to this many semitones either way.
     #[reflect(name = "pitchJitter", min = 0, max = 24, tunable)]

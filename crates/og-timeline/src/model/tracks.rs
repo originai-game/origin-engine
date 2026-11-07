@@ -286,14 +286,20 @@ fn sounds(block: &Block) -> Result<Vec<SoundKey>, String> {
             match f.key.as_str() {
                 "sound" => k.sound = string(f)?,
                 "volume" => k.volume = volume(f)?,
-                "pitch" => {
+                "playbackRate" => {
                     k.pitch = one_number(f)?;
                     if k.pitch <= 0.0 {
-                        return Err(at(f, "pitch is a playback rate, more than 0"));
+                        return Err(at(f, "playbackRate is a rate multiplier, more than 0"));
                     }
                 }
                 "bus" => k.bus = bus(f)?,
-                _ => return Err(unknown(f, "audio key entry", "sound, volume, pitch or bus")),
+                _ => {
+                    return Err(unknown(
+                        f,
+                        "audio key entry",
+                        "sound, volume, playbackRate or bus",
+                    ));
+                }
             }
         }
         if k.sound.is_empty() {
