@@ -1866,6 +1866,33 @@
           "returns": "ResourceType<F>",
           "returnsDoc": "The token `world.resource` and system declarations take.",
           "publish": true
+        },
+        {
+          "name": "defineEvent",
+          "doc": "Declare a reflected gameplay event. Its stable name and packed field layout identify recorded intents; changing that layout refuses old intent recordings.",
+          "generics": [
+            {
+              "name": "F",
+              "bound": "Fields"
+            }
+          ],
+          "params": [
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The event's unique name, PascalCase."
+            },
+            {
+              "name": "fields",
+              "type": "F",
+              "optional": false,
+              "doc": "The payload layout, as for defineComponent."
+            }
+          ],
+          "returns": "EventType<F>",
+          "returnsDoc": "The token world.events, world.emit and input.intent take.",
+          "publish": true
         }
       ],
       "interfaces": [],
@@ -3052,6 +3079,19 @@
             }
           ],
           "returns": "Void"
+        },
+        {
+          "name": "UiSetupFn",
+          "doc": "Register named presentation stores. Called after start and after hot-reload restore, never per tick. World reads may choose initial values; world writes and gameplay side effects are refused. Existing IDs keep values, kept callbacks are replaced, and removed IDs are disposed. Document mounts await the Svelte parser IR.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world, read only during registration."
+            }
+          ],
+          "returns": "Void"
         }
       ]
     },
@@ -3516,6 +3556,8 @@
       "place": "namespace",
       "publish": true,
       "types": [
+        "RecordedIntent",
+        "PauseIntent",
         "InputDevice",
         "ActionKind",
         "TouchZone",
@@ -3580,6 +3622,72 @@
         }
       ],
       "functions": [
+        {
+          "name": "intent",
+          "doc": "Send a reflected gameplay intent for the next tick and record its name, packed payload and layout hash. UI controls use this boundary instead of writing gameplay state. Inside a system, declare the event among its writes.",
+          "generics": [
+            {
+              "name": "E",
+              "bound": "AnyEvent"
+            }
+          ],
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The game world."
+            },
+            {
+              "name": "event",
+              "type": "E",
+              "optional": false,
+              "doc": "The reflected event type supplies the stable name and schema."
+            },
+            {
+              "name": "payload",
+              "type": "Value<E>",
+              "optional": false,
+              "doc": "The event's fields."
+            }
+          ],
+          "returns": "Result<Void>",
+          "publish": true
+        },
+        {
+          "name": "takeIntents",
+          "doc": "Drain accepted intents in delivery order for recording. Call regularly; no presentation state is included.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The game world."
+            }
+          ],
+          "returns": "List<RecordedIntent>",
+          "publish": true
+        },
+        {
+          "name": "replayIntent",
+          "doc": "Deliver recorded input between ticks without UI state. Refuse an unknown event, layout hash mismatch, invalid payload or wrong tick as an error value without changing the world.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The game world."
+            },
+            {
+              "name": "intent",
+              "type": "RecordedIntent",
+              "optional": false,
+              "doc": "The recorded input."
+            }
+          ],
+          "returns": "Result<Void>",
+          "publish": true
+        },
         {
           "name": "defineAction",
           "doc": "Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it.",
@@ -8796,7 +8904,8 @@
         "Music",
         "MusicBeat",
         "SoundStarted",
-        "SoundEnded"
+        "SoundEnded",
+        "AudioFeedbackDesc"
       ],
       "consts": [
         {
@@ -8837,6 +8946,33 @@
         }
       ],
       "functions": [
+        {
+          "name": "playFeedback",
+          "doc": "Play a presentation-only one-shot on the UI bus in this tick (the next tick when called between ticks). Creates no world entity or event, changes no simulation hash, and is not saved or replayed on restore. Silently unheard when no audio sink is attached. Use AudioSource for gameplay audio.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose presentation audio sink plays it."
+            },
+            {
+              "name": "sound",
+              "type": "Sound",
+              "optional": false,
+              "doc": "A loaded sound."
+            },
+            {
+              "name": "desc",
+              "type": "AudioFeedbackDesc",
+              "optional": true,
+              "doc": "Volume and playback rate."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an unloaded sound or invalid volume/playbackRate.",
+          "publish": true
+        },
         {
           "name": "createSound",
           "doc": "Make a sound from PCM the game computed: it plays, loops and pitches as a loaded one (AudioSource.sound, AudioEvent.sounds), always resident, stored as 16-bit PCM, and og.load.soundInfo reports it. Between ticks or inside a system alike; the handle is the next one the bank gives, so a game that makes its sounds in the same order on every launch (in GameDesc.start) names the same handles in its saves.",
@@ -11857,6 +11993,7 @@
         "MetaDesc",
         "SceneViewportDesc",
         "SceneViewportInfo",
+        "UiCollectionDesc",
         "UiDocEvent",
         "UiDocResponse",
         "UiLayer",
@@ -16395,6 +16532,27 @@
           "publish": true
         },
         {
+          "name": "scope",
+          "doc": "The entry to named svelte/store-compatible presentation data. Rust owns values and the dependency graph. No Svelte compiler, runes, TS elements or asynchronous primitives. Document mounting awaits the Svelte parser IR; this entry does not target the old screen dialect. See docs/ui.md for a worked example and If you know Svelte.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the presentation checkpoint."
+            },
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "An explicit, nonempty stable scope name."
+            }
+          ],
+          "returns": "UiScope",
+          "publish": true,
+          "host": false
+        },
+        {
           "name": "screen",
           "doc": "Mount a screen document (`type screen`, loaded with og.load.document) as a layer of the stack, pushed when it is not on it, with its viewmodel for this tick, and build it here: code fills its slots after this call (og.ui.openSlot). Its bindings read the viewmodel every tick, a Capitalised root (`Wallet.gold`) the resource as of the last tick; two-way controls write into it (each write is a `set` event). Layers code does not mount are built at the frame's end with the viewmodel they have.",
           "generics": [
@@ -16828,7 +16986,211 @@
           "publish": true
         }
       ],
-      "interfaces": [],
+      "interfaces": [
+        {
+          "name": "UiSource",
+          "doc": "A store's stable checkpoint identity. Stores are created in a named scope.",
+          "members": [
+            {
+              "name": "scope",
+              "prop": "String",
+              "doc": "The owning scope.",
+              "publish": true
+            },
+            {
+              "name": "id",
+              "prop": "String",
+              "doc": "The store ID within that scope.",
+              "publish": true
+            }
+          ]
+        },
+        {
+          "name": "UiScope",
+          "doc": "Named presentation stores for one world, following the svelte/store contract. Svelte template documents own structure; this scope supplies data. Re-register the same IDs on reload to preserve source values.",
+          "members": [
+            {
+              "name": "id",
+              "prop": "String",
+              "doc": "The stable scope ID.",
+              "publish": true
+            },
+            {
+              "name": "writable",
+              "doc": "Create a named writable store with subscribe, set and update. Re-registration preserves its checkpointed value. Failures are reported by takeErrors; setters also return Result.",
+              "generics": [
+                {
+                  "name": "T",
+                  "bound": "Json"
+                }
+              ],
+              "params": [
+                {
+                  "name": "id",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "An explicit, nonempty stable store ID."
+                },
+                {
+                  "name": "initial",
+                  "type": "T",
+                  "optional": false,
+                  "doc": "The initial serializable value, used only for a new store."
+                }
+              ],
+              "returns": "UiWritable<T>",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "readable",
+              "doc": "Create a named readable store. start runs when its first subscriber arrives and its cleanup runs when the last leaves. No promises, timers or wall-clock work in a tick.",
+              "generics": [
+                {
+                  "name": "T",
+                  "bound": "Json"
+                }
+              ],
+              "params": [
+                {
+                  "name": "id",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The stable store ID."
+                },
+                {
+                  "name": "initial",
+                  "type": "T",
+                  "optional": false,
+                  "doc": "The initial serializable value."
+                },
+                {
+                  "name": "start",
+                  "type": "UiStart<T>",
+                  "optional": true,
+                  "doc": "The synchronous start/stop notifier."
+                }
+              ],
+              "returns": "UiReadable<T>",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "derived",
+              "doc": "Derive a store synchronously from one store or a tuple of stores. Inputs are explicit and settle before subscribers run; undeclared reads and reentrant writes report errors in every build. Failure preserves the last good value, or the optional initial fallback; without either it reports an error and yields undefined.",
+              "generics": [
+                {
+                  "name": "S",
+                  "bound": "UiStores"
+                },
+                {
+                  "name": "T",
+                  "bound": "Json"
+                }
+              ],
+              "params": [
+                {
+                  "name": "id",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The stable derived store ID, also its callback reload identity."
+                },
+                {
+                  "name": "stores",
+                  "type": "S",
+                  "optional": false,
+                  "doc": "One named store or a readonly tuple of named stores from this world."
+                },
+                {
+                  "name": "compute",
+                  "type": "UiDerive<S,T>",
+                  "optional": false,
+                  "doc": "A pure synchronous function of the input values."
+                },
+                {
+                  "name": "initial",
+                  "type": "T",
+                  "optional": true,
+                  "doc": "An optional fallback if the first computation fails."
+                }
+              ],
+              "returns": "UiReadable<T>",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "get",
+              "doc": "Read a store by subscribing and immediately unsubscribing, as svelte/store get does.",
+              "generics": [
+                {
+                  "name": "T",
+                  "bound": "Json"
+                }
+              ],
+              "params": [
+                {
+                  "name": "store",
+                  "type": "UiReadable<T>",
+                  "optional": false,
+                  "doc": "The named store."
+                }
+              ],
+              "returns": "T",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "collection",
+              "doc": "The engine-specific store: ordered rows with stable string keys, plus insert, remove, move and field patch. Duplicate keys and key-changing patches are refused. Re-registration keeps data and order.",
+              "generics": [
+                {
+                  "name": "T",
+                  "bound": "Json"
+                }
+              ],
+              "params": [
+                {
+                  "name": "id",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The stable collection ID."
+                },
+                {
+                  "name": "items",
+                  "type": "List<T>",
+                  "optional": false,
+                  "doc": "Initial rows, used only for a new collection."
+                },
+                {
+                  "name": "desc",
+                  "type": "UiCollectionDesc",
+                  "optional": true,
+                  "doc": "The key field."
+                }
+              ],
+              "returns": "UiCollection<T>",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "takeErrors",
+              "doc": "Drain operation and scheduler errors naming scope and store. Errors are reported in publish too; the scheduler never throws into the engine.",
+              "params": [],
+              "returns": "List<String>",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "dispose",
+              "doc": "Remove the scope's stores and subscriptions and run start/stop cleanups.",
+              "params": [],
+              "returns": "Result<Void>",
+              "publish": true,
+              "host": false
+            }
+          ]
+        }
+      ],
       "callbacks": [
         {
           "name": "UiBuild",
@@ -20635,6 +20997,18 @@
           "description": "Called once before the first tick, after the first scene spawned. A throw fails the run: no tick runs on the half-built world, `og run`, `og test` and `og dev` exit non-zero naming the error with its stack, and the web shell shows it.",
           "default": null
         },
+        "ui": {
+          "anyOf": [
+            {
+              "x-og-type": "UiSetupFn"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Register retained UI after start and after a hot-reload restore. The engine checks world_hash before and after. Duplicate IDs, incompatible store types and gameplay writes fail registration as errors; ui never reruns start. Fresh-process restore runs start, then ui, then restores named presentation values.",
+          "default": null
+        },
         "render": {
           "$ref": "#/$defs/RenderOptions",
           "description": "How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer.",
@@ -20653,7 +21027,7 @@
           "items": {
             "$ref": "#/$defs/SaveMigration"
           },
-          "description": "The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order, so a save of any earlier version arrives at the current one (rename a field, transform values with the old record in hand, drop or split a type, add an entity). The engine's own migrations run before them, on what an older engine wrote of its state: a save from 0.7.7 restores with its game data, engine components and og.Rng as this build has them, and og.ui's state upgraded; that state had no motion channels, so an element on screen at the save (a toast, a dialog) plays its entrance again after the restore (presentation only: the restored UI state differs from one this build ran only in when that entrance began, and every restore of the save plays it alike).",
+          "description": "The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order (rename a field, transform values with the old record in hand, drop or split a type, add an entity). The save envelope must be og-save:3; earlier envelope formats are refused with both versions in the error, never converted.",
           "default": []
         },
         "look": {
@@ -21492,6 +21866,60 @@
         "tiles",
         "rotations",
         "attempt"
+      ],
+      "additionalProperties": false
+    },
+    "RecordedIntent": {
+      "x-og-kind": "struct",
+      "x-og-module": "input",
+      "description": "One deterministic input, independent of presentation checkpoints. Replay it between ticks, when world.time.tick equals tick.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "number",
+          "description": "The simulation boundary at which the input was sent."
+        },
+        "name": {
+          "type": "string",
+          "description": "The reflected event name."
+        },
+        "layoutHash": {
+          "type": "string",
+          "description": "The schema layout hash as an exact decimal u64."
+        },
+        "payload": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "description": "The reflected packed field bytes, each 0 to 255."
+        }
+      },
+      "required": [
+        "tick",
+        "name",
+        "layoutHash",
+        "payload"
+      ],
+      "additionalProperties": false
+    },
+    "PauseIntent": {
+      "x-og-kind": "event",
+      "x-og-module": "input",
+      "description": "An engine gameplay intent: apply scale at the next tick boundary. UI pause layers send this through the same recorded intent path as game controls.",
+      "type": "object",
+      "properties": {
+        "scale": {
+          "type": "number",
+          "description": "Simulation time scale; zero pauses.",
+          "minimum": 0,
+          "maximum": 10
+        }
+      },
+      "required": [
+        "scale"
       ],
       "additionalProperties": false
     },
@@ -42362,6 +42790,26 @@
       ],
       "additionalProperties": false
     },
+    "AudioFeedbackDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "audio",
+      "description": "Presentation-only one-shot parameters.",
+      "type": "object",
+      "properties": {
+        "volume": {
+          "type": "number",
+          "description": "Linear gain.",
+          "default": 1,
+          "minimum": 0
+        },
+        "playbackRate": {
+          "type": "number",
+          "description": "Playback rate, strictly greater than zero.",
+          "default": 1
+        }
+      },
+      "additionalProperties": false
+    },
     "Navigation": {
       "x-og-kind": "handle",
       "x-og-module": "nav",
@@ -43736,7 +44184,7 @@
     "AiActionStarted": {
       "x-og-kind": "event",
       "x-og-module": "ai",
-      "description": "A game action (`action <name> args` in a behaviour) started: play it (a reload, a door, a line of dialogue) and call og.ai.finish when it is over; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded.",
+      "description": "A game action (`action <name> args` in a behaviour) started: play its animation (such as a reload), open its door or speak its dialogue, then call og.ai.finish when it ends; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded.",
       "type": "object",
       "properties": {
         "entity": {
@@ -67612,6 +68060,19 @@
         "at",
         "ray"
       ],
+      "additionalProperties": false
+    },
+    "UiCollectionDesc": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A keyed collection's identity rule. The key is data, never the row index.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The row field containing a nonempty string key; empty means id."
+        }
+      },
       "additionalProperties": false
     },
     "UiDocEvent": {

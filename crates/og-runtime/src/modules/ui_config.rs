@@ -1,7 +1,7 @@
 use super::*;
 
 /// A UI with the theme and fonts of `previous` (a hot reload keeps them).
-pub(crate) fn new_ui(tick: u32, previous: Option<&SharedUi>) -> SharedUi {
+pub(crate) fn new_ui(tick: u32, previous: Option<&SharedUi>) -> Result<SharedUi, String> {
     let (theme, fonts, icons, style_name) = match previous {
         Some(p) => {
             let ui = p.lock();
@@ -33,13 +33,18 @@ pub(crate) fn new_ui(tick: u32, previous: Option<&SharedUi>) -> SharedUi {
     // A hot reload keeps the documents loaded (and the timelines they define).
     if let Some(p) = previous {
         let p = p.lock();
+        ui.inherit_store_registrations(&p);
         for name in p.documents() {
             if let Some(d) = p.document(&name) {
                 ui.define_document(d.clone());
             }
         }
+        ui.restore_state(&p.save_state())
+            .map_err(|e| e.reason().to_owned())?;
+        ui.restore_world_state(&p.save_world_state())
+            .map_err(|e| e.reason().to_owned())?;
     }
-    SharedUi::new(ui)
+    Ok(SharedUi::new(ui))
 }
 
 /// The UiDesc a configure call makes: the last one's fields with the ones

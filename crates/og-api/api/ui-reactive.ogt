@@ -1,0 +1,91 @@
+  interface UiSource {
+    doc "A store's stable checkpoint identity. Stores are created in a named scope."
+    prop scope String "The owning scope." {
+      host false
+    }
+    prop id String "The store ID within that scope." {
+      host false
+    }
+  }
+
+  struct UiCollectionDesc {
+    doc "A keyed collection's identity rule. The key is data, never the row index."
+    field key String "The row field containing a nonempty string key; empty means id." {
+      optional true
+    }
+  }
+
+  interface UiScope {
+    doc "Named presentation stores for one world, following the svelte/store contract. Svelte template documents own structure; this scope supplies data. Re-register the same IDs on reload to preserve source values."
+    prop id String "The stable scope ID." {
+      host false
+    }
+    fn writable {
+      host false
+      generic T Json
+      doc "Create a named writable store with subscribe, set and update. Re-registration preserves its checkpointed value. Failures are reported by takeErrors; setters also return Result."
+      param id String "An explicit, nonempty stable store ID."
+      param initial T "The initial serializable value, used only for a new store."
+      returns UiWritable.T
+    }
+    fn readable {
+      host false
+      generic T Json
+      doc "Create a named readable store. start runs when its first subscriber arrives and its cleanup runs when the last leaves. No promises, timers or wall-clock work in a tick."
+      param id String "The stable store ID."
+      param initial T "The initial serializable value."
+      param start UiStart.T "The synchronous start/stop notifier." {
+        optional true
+      }
+      returns UiReadable.T
+    }
+    fn derived {
+      host false
+      generic S UiStores
+      generic T Json
+      doc "Derive a store synchronously from one store or a tuple of stores. Inputs are explicit and settle before subscribers run; undeclared reads and reentrant writes report errors in every build. Failure preserves the last good value, or the optional initial fallback; without either it reports an error and yields undefined."
+      param id String "The stable derived store ID, also its callback reload identity."
+      param stores S "One named store or a readonly tuple of named stores from this world."
+      param compute UiDerive.S.T "A pure synchronous function of the input values."
+      param initial T "An optional fallback if the first computation fails." {
+        optional true
+      }
+      returns UiReadable.T
+    }
+    fn get {
+      host false
+      generic T Json
+      doc "Read a store by subscribing and immediately unsubscribing, as svelte/store get does."
+      param store UiReadable.T "The named store."
+      returns T
+    }
+    fn collection {
+      host false
+      generic T Json
+      doc "The engine-specific store: ordered rows with stable string keys, plus insert, remove, move and field patch. Duplicate keys and key-changing patches are refused. Re-registration keeps data and order."
+      param id String "The stable collection ID."
+      param items List.T "Initial rows, used only for a new collection."
+      param desc UiCollectionDesc "The key field." {
+        optional true
+      }
+      returns UiCollection.T
+    }
+    fn takeErrors {
+      host false
+      doc "Drain operation and scheduler errors naming scope and store. Errors are reported in publish too; the scheduler never throws into the engine."
+      returns List.String
+    }
+    fn dispose {
+      host false
+      doc "Remove the scope's stores and subscriptions and run start/stop cleanups."
+      returns Result.Void
+    }
+  }
+
+  fn scope {
+    host false
+    doc "The entry to named svelte/store-compatible presentation data. Rust owns values and the dependency graph. No Svelte compiler, runes, TS elements or asynchronous primitives. Document mounting awaits the Svelte parser IR; this entry does not target the old screen dialect. See docs/ui.md for a worked example and If you know Svelte."
+    param world World "The world that owns the presentation checkpoint."
+    param id String "An explicit, nonempty stable scope name."
+    returns UiScope
+  }

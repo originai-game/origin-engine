@@ -3,7 +3,9 @@
 //! each playing source's playhead (so `SoundEnded` lands on a tick that only
 //! depends on the world), and hands the commands to an attached sink.
 
-use crate::command::{Command, FLAG_LOOP, FLAG_SPATIAL, Op, TickPacket, encode, fx};
+use crate::command::{
+    Command, FLAG_LOOP, FLAG_PRESENTATION, FLAG_SPATIAL, Op, TickPacket, encode, fx,
+};
 use crate::schema::{
     Audio, AudioBusFx, AudioBusNode, AudioEvent, AudioEventVoice, AudioListener, AudioMix,
     AudioPlayback, AudioSnapshot, AudioSource, AudioStream, BUS_COUNT, GRAPH_LEN, GRAPH_STRIDE,
@@ -66,6 +68,8 @@ struct LinkState {
     replay: Option<Replay>,
     /// The plays each recent tick sent the sink: (voice, sound).
     sent: std::collections::BTreeMap<u64, Vec<(u32, u64)>>,
+    feedback: Vec<Command>,
+    next_feedback: u32,
 }
 
 /// The ticks a rollback runs again (presentation only: nothing here reaches
@@ -99,6 +103,46 @@ impl std::fmt::Debug for AudioLink {
 }
 
 impl AudioLink {
+    /// A non-world one-shot on the UI bus. It is never saved, hashed or
+    /// replayed from a world snapshot, and creates no ECS entity or event.
+    pub fn play_feedback(
+        &self,
+        tick: u64,
+        sound: u64,
+        volume: f32,
+        pitch: f32,
+    ) -> std::result::Result<(), String> {
+        if !volume.is_finite() || volume < 0.0 || !pitch.is_finite() || pitch <= 0.0 {
+            return Err("feedback requires finite volume >= 0 and pitch > 0".into());
+        }
+        if self.bank.get(sound).is_none() {
+            return Err("feedback sound is not loaded".into());
+        }
+        let mut state = self.state.lock().expect("audio link");
+        if !state.attached || state.replay.is_some() {
+            return Ok(());
+        }
+        state.next_feedback = state.next_feedback.wrapping_add(1).max(1);
+        let mut command = Command::new(Op::Play, tick);
+        command.flags = FLAG_PRESENTATION;
+        command.bus = crate::schema::Bus::Ui as u8;
+        command.voice = state.next_feedback;
+        command.sound = sound;
+        command.gain = volume;
+        command.pitch = pitch;
+        state.feedback.push(command);
+        Ok(())
+    }
+
+    /// Discard unheard presentation sounds on restore; never replay them.
+    pub fn clear_feedback(&self) {
+        let mut state = self.state.lock().expect("audio link");
+        state.feedback.clear();
+        for packet in &mut state.packets {
+            packet.commands.retain(|c| c.flags & FLAG_PRESENTATION == 0);
+        }
+    }
+
     /// The sounds.
     pub fn bank(&self) -> &SoundBank {
         &self.bank
@@ -130,6 +174,7 @@ impl AudioLink {
         let mut s = self.state.lock().expect("audio link");
         s.attached = false;
         s.packets.clear();
+        s.feedback.clear();
     }
 
     pub fn attached(&self) -> bool {
@@ -251,6 +296,13 @@ impl AudioLink {
         }
         let floor = tick.saturating_sub(KEEP_SENT);
         s.sent.retain(|t, _| *t >= floor);
+        // Appended after the deterministic stream was hashed and its replay
+        // history recorded. These voices belong only to this presentation.
+        for command in s.feedback.drain(..) {
+            if command.tick == tick {
+                packet.commands.push(command);
+            }
+        }
         if packet.resync || name_live || live != s.last_live {
             packet.live = Some(live.clone());
         }
@@ -341,6 +393,7 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
     let link = match &desc.link {
         Some(l) if l.tick_rate == tick_rate => {
             // The new world's first tick resyncs the sink (a gap in ticks).
+            l.clear_feedback();
             l.state.lock().expect("audio link").resync = true;
             l.clone()
         }

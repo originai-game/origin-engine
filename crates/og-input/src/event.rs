@@ -202,6 +202,12 @@ impl A11yAct {
 /// `key` is a `KeyboardEvent.code` name.
 #[derive(Clone, Debug, PartialEq)]
 pub enum InjectedInput {
+    /// A reflected event recorded independently of presentation state.
+    Intent {
+        name: String,
+        layout_hash: u64,
+        payload: Vec<u8>,
+    },
     Key {
         key: String,
         action: KeyAction,
@@ -266,6 +272,16 @@ impl InjectedInput {
     /// shape (which the probe answers as a refusal, `false`).
     pub fn from_json(value: &Value) -> Option<InjectedInput> {
         match value.get("kind")?.as_str()? {
+            "intent" => Some(InjectedInput::Intent {
+                name: value.get("name")?.as_str()?.to_owned(),
+                layout_hash: value.get("layoutHash")?.as_str()?.parse().ok()?,
+                payload: value
+                    .get("payload")?
+                    .as_array()?
+                    .iter()
+                    .map(|v| u8::try_from(v.as_u64()?).ok())
+                    .collect::<Option<Vec<_>>>()?,
+            }),
             "key" => {
                 let key = value.get("key")?.as_str()?;
                 if key.is_empty() {
@@ -386,6 +402,14 @@ impl InjectedInput {
     /// The event as protocol 5 JSON.
     pub fn to_json(&self) -> Value {
         match self {
+            InjectedInput::Intent {
+                name,
+                layout_hash,
+                payload,
+            } => json!({
+                "kind": "intent", "name": name,
+                "layoutHash": layout_hash.to_string(), "payload": payload,
+            }),
             InjectedInput::Key {
                 key,
                 action,

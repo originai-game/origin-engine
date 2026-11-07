@@ -85,7 +85,7 @@ pub use motion::{
 use super::engine::{Engine, engine, running};
 use super::{ok, ok_void, parse, refuse};
 use og_core::glam::Vec3;
-use og_ecs::{Entity, StateBlock, SystemDesc, World};
+use og_ecs::{Entity, SystemDesc, World};
 use og_physics::{
     MeshDesc, OverlapDesc, Physics, PhysicsQuery, PhysicsSystem, QueryFilter, RaycastDesc,
     ShapeCastDesc, ShapeDesc,
@@ -100,15 +100,12 @@ use og_ui::{
     TransitionKind, TypeStep, Ui, UiDesc, UiFont, Viewport,
 };
 use serde_json::{Map, Value, json};
-use std::any::Any;
 use std::cell::Cell;
 
 /// The system that opens the UI frame, before the game's systems.
 pub const UI_BEGIN: &str = "og.ui.begin";
 /// The system that closes and lays out the UI frame, after them.
 pub const UI_END: &str = "og.ui.end";
-/// The state block that carries the UI's interaction state.
-pub const UI_STATE: &str = "og.ui";
 /// The system that plays the UI's event sounds (before og.audio, so they
 /// start in the tick of their input).
 pub const UI_SOUND: &str = "og.ui.sound";
@@ -142,6 +139,17 @@ pub(crate) fn mount_front(
     profile: u32,
     ui: &SharedUi,
 ) -> Result<(PhysicsSystem, og_input::SharedActions), String> {
+    world
+        .add_system(
+            SystemDesc::new("og.input.intents").read::<og_input::PauseIntent>(),
+            |ctx| {
+                for intent in ctx.events::<og_input::PauseIntent>()? {
+                    ctx.set_time_scale(intent.scale)?;
+                }
+                Ok(())
+            },
+        )
+        .map_err(err)?;
     let physics = PhysicsSystem::register(
         world,
         Physics {
@@ -206,7 +214,7 @@ pub(crate) fn mount_front(
 }
 
 /// The modules' systems that run after the game's: the UI's end, the
-/// physics step and audio; then the UI's state block.
+/// physics step and audio. UI state belongs to the presentation checkpoint.
 pub(crate) fn mount_back(
     world: &mut World,
     engine_id: u32,
@@ -218,73 +226,57 @@ pub(crate) fn mount_back(
     let shared = ui.clone();
     let feed = ui_world::Feed::of(world);
     world
-        .add_system(feed.desc(UI_END), move |ctx| {
-            let (warnings, missing) = {
-                let mut ui = shared.lock();
-                docs::end_of_frame(engine_id, &mut ui, ctx);
-                // The tick's camera and anchored entities (docs/ui.md §1).
-                feed.before_end(ctx, &mut ui);
-                BUILDING.with(|b| b.set(None));
-                let frame = ui.end();
-                (frame.warnings.clone(), frame.missing_glyphs.clone())
-            };
-            if !warnings.is_empty() {
-                note_warnings(engine_id, warnings);
-            }
-            // The characters the frame's texts draw that their faces lack,
-            // found by og-ui on the CPU: the same with a renderer or none.
-            if !missing.is_empty()
-                && let Ok(eng) = engine(engine_id)
-            {
-                let missing = crate::glyphs::unjudged(&mut eng.render.borrow_mut(), &missing);
-                crate::glyphs::warn_missing(&eng, ctx.time().tick, missing);
-            }
-            Ok(())
-        })
-        .map_err(err)?;
-    super::physics_ext::schedule_ragdoll_targets(world, engine_id, &physics)?;
-    super::garment::schedule(world, engine_id, &physics)?;
-    physics.schedule(world).map_err(err)?;
-    // UI sounds: the events this tick's UI queued (its begin, from the
-    // input, and its widgets), played on the ui bus. A voice per event
-    // (its entity kept in the UI state) restarts on a repeat. This runs
-    // before og.audio, so og.audio turns the new sources into this tick's
-    // commands: the sound starts in the tick of the input that caused it.
-    let shared = ui.clone();
-    world
         .add_system(
-            SystemDesc::new(UI_SOUND).write::<og_audio::AudioSource>(),
+            feed.desc(UI_END).write::<og_input::PauseIntent>(),
             move |ctx| {
-                // Each play is one of its event's set, at the volume and
-                // pitch the set's ranges gave it (og-ui chose them from
-                // the UI state's own stream, so a replay plays the same).
-                let plays = shared.lock().take_feedback();
-                if plays.is_empty() {
-                    return Ok(());
+                let (warnings, missing) = {
+                    let mut ui = shared.lock();
+                    docs::end_of_frame(engine_id, &mut ui, ctx)?;
+                    // The tick's camera and anchored entities (docs/ui.md §1).
+                    feed.before_end(ctx, &mut ui);
+                    BUILDING.with(|b| b.set(None));
+                    let frame = ui.end();
+                    (frame.warnings.clone(), frame.missing_glyphs.clone())
+                };
+                if !warnings.is_empty() {
+                    note_warnings(engine_id, warnings);
                 }
-                for play in plays {
-                    if play.sound == 0 {
-                        continue;
-                    }
-                    let slot = play.event.index();
-                    let old = shared.lock().voices_mut()[slot];
-                    if old != 0 {
-                        let e = Entity::from_bits(old);
-                        if ctx.is_alive(e) {
-                            ctx.despawn(e)?;
-                        }
-                    }
-                    let e = ctx.spawn((og_audio::AudioSource {
-                        bus: og_audio::Bus::Ui as u32,
-                        volume: play.volume,
-                        pitch: play.pitch,
-                        ..og_audio::AudioSource::new(play.sound)
-                    },))?;
-                    shared.lock().voices_mut()[slot] = e.to_bits();
+                // The characters the frame's texts draw that their faces lack,
+                // found by og-ui on the CPU: the same with a renderer or none.
+                if !missing.is_empty()
+                    && let Ok(eng) = engine(engine_id)
+                {
+                    let missing = crate::glyphs::unjudged(&mut eng.render.borrow_mut(), &missing);
+                    crate::glyphs::warn_missing(&eng, ctx.time().tick, missing);
                 }
                 Ok(())
             },
         )
+        .map_err(err)?;
+    super::physics_ext::schedule_ragdoll_targets(world, engine_id, &physics)?;
+    super::garment::schedule(world, engine_id, &physics)?;
+    physics.schedule(world).map_err(err)?;
+    // Queue feedback before og.audio publishes this tick's packet. The
+    // mixer receives it after hashing the simulation stream, with no ECS voice.
+    let shared = ui.clone();
+    world
+        .add_system(SystemDesc::new(UI_SOUND), move |ctx| {
+            let plays = shared.lock().take_feedback();
+            let Some(link) = og_audio::link(engine_id) else {
+                return Ok(());
+            };
+            for play in plays {
+                if play.sound == 0 {
+                    continue;
+                }
+                if let Err(reason) =
+                    link.play_feedback(ctx.time().tick, play.sound, play.volume, play.pitch)
+                {
+                    note_warnings(engine_id, vec![reason]);
+                }
+            }
+            Ok(())
+        })
         .map_err(err)?;
     let audio = og_audio::install(
         world,
@@ -300,15 +292,6 @@ pub(crate) fn mount_back(
     // (og-audio's `decode.rs`). Once per bank: a reload keeps the old one.
     #[cfg(not(target_arch = "wasm32"))]
     audio.bank().start_decode_thread();
-    world
-        .add_state_block(UI_STATE, Box::new(UiState(ui.clone())))
-        .map_err(err)?;
-    world
-        .add_state_block(
-            ui_world::UI_WORLD_STATE,
-            Box::new(ui_world::WorldState(ui.clone())),
-        )
-        .map_err(err)?;
     Ok(Mounted {
         physics,
         ui,
@@ -334,31 +317,6 @@ fn note_warnings(engine_id: u32, warnings: Vec<String>) {
                 .push(json!({ "tick": tick, "warning": true, "text": format!("og.ui: {w}") }));
         }
     }
-}
-
-/// The UI's interaction state as world state.
-struct UiState(SharedUi);
-
-impl StateBlock for UiState {
-    fn save(&self, out: &mut Vec<u8>) {
-        out.extend_from_slice(&self.0.lock().save_state());
-    }
-
-    fn decode(&self, bytes: &[u8]) -> og_core::Result<Box<dyn Any + Send>> {
-        Ui::default().restore_state(bytes)?;
-        Ok(Box::new(bytes.to_vec()))
-    }
-
-    fn apply(&mut self, decoded: Option<Box<dyn Any + Send>>) {
-        let bytes = match decoded.and_then(|d| d.downcast::<Vec<u8>>().ok()) {
-            Some(b) => *b,
-            None => Ui::default().save_state(),
-        };
-        let _ = self.0.lock().restore_state(&bytes);
-    }
-
-    /// The UI is in the screen's space.
-    fn shift(&mut self, _: &og_ecs::Shift) {}
 }
 
 // ── the viewport ────────────────────────────────────────────────────────────

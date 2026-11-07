@@ -277,6 +277,15 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "Overwrite a resource with packed bytes followed by the layout epoch they were made with (as og_engine_read_resource answers): how the runtime flushes a handle's field writes, once before the next engine call and at the end of every system. Read-only fields keep their value. A Result; refused for a stale epoch, a wrong size, an invalid value or a resource the running system did not declare among its writes.",
     ),
     (
+        "og_engine_ui_patch",
+        &[
+            ("world", "u32", "number"),
+            ("bytes", "Self::Bytes", "Uint8Array"),
+        ],
+        "Self::Bytes",
+        "Apply a binary UI source/computation patch batch. Replies are binary results in request order. Source values and the dependency graph belong to this engine; the TypeScript runtime executes requested computation IDs outside the engine lock.",
+    ),
+    (
         "og_platform_take",
         &[("engine", "u32", "number")],
         "String",

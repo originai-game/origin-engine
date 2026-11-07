@@ -429,9 +429,9 @@ pub fn answer_call(id: u32, call: &og_probe::rpc::Call) -> String {
     }
     let answer = rprobe::with_probe(&eng, true, |p, w| rprobe::answer(p, w, call));
     let swapped = answer.as_ref().is_ok_and(|a| a.1);
-    rprobe::after_reload(&eng, swapped);
+    let registered = rprobe::after_reload(&eng, swapped);
     rprobe::resync_names(&eng);
-    match answer {
+    match answer.and_then(|answer| registered.map(|()| answer)) {
         Ok(a) => a.0,
         Err(e) => json!({ "jsonrpc": "2.0", "id": call.id, "error": { "code": og_probe::rpc::INTERNAL_ERROR, "message": e } }).to_string(),
     }

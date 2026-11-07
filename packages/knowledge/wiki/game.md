@@ -23,6 +23,7 @@ module game {
 |---|---|---|---|
 | [`FactsFn`](game/type-FactsFn.md) | callback |  | The game's own facts for the probe's state(): a small JSON object, computed from the world without changing it. |
 | [`StartFn`](game/type-StartFn.md) | callback |  | The game's setup: called once before the first tick, after GameDesc.scene has spawned. |
+| [`UiSetupFn`](game/type-UiSetupFn.md) | callback |  | Register named presentation stores. |
 | [`GameDesc`](game/type-GameDesc.md) | desc struct |  | A game: its tick, scenes, systems and commands. |
 | [`Game`](game/type-Game.md) | interface |  | A declared game, the bundle's default export. |
 | [`og.game`](game/fn-game.md) | function | `(desc?: GameDesc): Game` | Declare the game. The bundle's default export is its result. |

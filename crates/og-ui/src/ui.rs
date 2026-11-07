@@ -513,6 +513,7 @@ pub struct Ui {
     pub(crate) dressable: std::collections::HashSet<usize>,
     /// Documents, their mounts and the layer stack (docs/ui.md §2.1, §2.1).
     pub(crate) docs: crate::doc::build::DocHost,
+    pub(crate) reactive: crate::reactive::session::Session,
     /// Named UI actions and the last device (docs/ui.md §2.1).
     pub(crate) actions: crate::actions::Actions,
     /// World-space UI (`crate::world`): anchors, panels, mass elements,

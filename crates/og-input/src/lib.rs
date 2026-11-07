@@ -39,7 +39,7 @@ pub use event::{
 pub use glyph::{Device, Glyph, key_glyph, key_labels, pad_glyph, set_key_labels};
 pub use keys::{KEY_CODES, KEY_SET_BITS, key_for_char, key_index};
 pub use resource::{
-    A11yAction, Gamepad, GamepadAxis, Input, InputEvent, KeyDown, KeySet, KeyUp, PointerDown,
-    PointerLock, PointerMove, PointerUp, Pointers, TextInput, Wheel, register,
+    A11yAction, Gamepad, GamepadAxis, Input, InputEvent, KeyDown, KeySet, KeyUp, PauseIntent,
+    PointerDown, PointerLock, PointerMove, PointerUp, Pointers, TextInput, Wheel, register,
 };
 pub use sink::{InputLayer, InputSink, RingReport, WorldInput};

@@ -12,6 +12,61 @@ use og_input::{
 use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 
+#[test]
+fn recorded_intent_replays_and_refuses_changed_layout_without_mutation() {
+    let (mut original, mut sink, _) = world();
+    let (mut replay, mut replay_sink, _) = world();
+    let id = original.id::<KeyUp>().unwrap();
+    let hash = original.schema(id).unwrap().layout_hash();
+    let payload = og_core::reflect::to_bytes(&KeyUp {
+        key: og_core::Str64::new("KeyQ").unwrap(),
+        at: 0.25,
+    })
+    .unwrap();
+    let input = InjectedInput::Intent {
+        name: "og.KeyUp".into(),
+        layout_hash: hash,
+        payload: payload.clone(),
+    };
+    let recorded = input.to_json();
+    let decoded = InjectedInput::from_json(&recorded).unwrap();
+    assert_eq!(decoded, input);
+    let before = replay.world_hash();
+    let error = replay_sink
+        .inject_intent(&mut replay, "og.KeyUp", hash ^ 1, &payload)
+        .unwrap_err();
+    assert!(error.reason().contains("layout hash"));
+    assert_eq!(replay.world_hash(), before);
+    assert!(
+        replay_sink
+            .inject_intent(&mut replay, "og.KeyUp", hash, &payload[..1])
+            .is_err()
+    );
+    assert_eq!(replay.world_hash(), before);
+    let pause = replay.id::<og_input::PauseIntent>().unwrap();
+    let pause_hash = replay.schema(pause).unwrap().layout_hash();
+    for scale in [-0.1, 10.1, f32::NAN, f32::INFINITY] {
+        let bytes = og_core::reflect::to_bytes(&og_input::PauseIntent { scale }).unwrap();
+        assert!(
+            replay_sink
+                .inject_intent(&mut replay, "og.PauseIntent", pause_hash, &bytes)
+                .is_err()
+        );
+        assert_eq!(replay.world_hash(), before);
+    }
+    assert_eq!(replay_sink.accepted(), 0);
+    assert!(sink.inject(&mut original, &input));
+    assert!(replay_sink.inject(&mut replay, &decoded));
+    assert_ne!(original.world_hash(), before);
+    assert_eq!(original.world_hash(), replay.world_hash());
+    assert_eq!(
+        replay.pending_events::<KeyUp>().unwrap()[0].key.as_str(),
+        "KeyQ"
+    );
+    let mut ring = og_input::ring::new_ring();
+    assert!(!og_input::ring::write(&mut ring, &decoded));
+}
+
 fn key(code: &str, action: KeyAction) -> InjectedInput {
     InjectedInput::Key {
         key: code.into(),

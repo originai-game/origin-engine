@@ -38,7 +38,7 @@
 //! - **Limiter**: stereo-linked peak envelope (instant attack, 100 ms
 //!   release) through a tanh soft knee at -1.9 dBFS: |output| < 1.0.
 
-use crate::command::{Command, Op, TickPacket, fx};
+use crate::command::{Command, FLAG_PRESENTATION, Op, TickPacket, fx};
 use crate::dsp::{Band, Biquad, Compressor, Delay, Drive, Ducker, Hrtf, OnePole, Reverb};
 use crate::listen::Listen;
 use crate::resample::{History, Region};
@@ -115,6 +115,7 @@ struct Timed {
 
 struct Voice {
     id: u32,
+    presentation: bool,
     reader: Reader,
     stereo: bool,
     frames: u64,
@@ -178,6 +179,10 @@ fn pan_matrix(pan: f32, stereo: bool, gain: f32) -> [f32; 4] {
 }
 
 impl Voice {
+    fn matches(&self, command: &Command) -> bool {
+        self.id == command.voice && self.presentation == (command.flags & FLAG_PRESENTATION != 0)
+    }
+
     /// `chain`: each bus's gain times its parents' ([`Mixer::chain`]).
     fn retarget(&mut self, chain: &[f32; MAX_BUSES], frames: u32) {
         let g = if self.stopping {
@@ -711,7 +716,7 @@ impl Mixer {
             Event::Live(live) => {
                 let chain = self.chain();
                 for v in &mut self.voices {
-                    if !v.stopping && live.binary_search(&v.id).is_err() {
+                    if !v.presentation && !v.stopping && live.binary_search(&v.id).is_err() {
                         v.stopping = true;
                         v.retarget(&chain, FADE_FRAMES);
                     }
@@ -725,7 +730,7 @@ impl Mixer {
                     Op::Stop => {
                         let fade = self.ramp_frames(c.position, FADE_FRAMES);
                         let chain = self.chain();
-                        for v in self.voices.iter_mut().filter(|v| v.id == c.voice) {
+                        for v in self.voices.iter_mut().filter(|v| v.matches(&c)) {
                             v.stopping = true;
                             v.retarget(&chain, fade);
                         }
@@ -736,7 +741,7 @@ impl Mixer {
                         for v in self
                             .voices
                             .iter_mut()
-                            .filter(|v| v.id == c.voice && !v.stopping)
+                            .filter(|v| v.matches(&c) && !v.stopping)
                         {
                             v.apply(&c);
                             v.lp.set(c.lowpass, rate, ramp);
@@ -795,7 +800,7 @@ impl Mixer {
                         for v in self
                             .voices
                             .iter_mut()
-                            .filter(|v| v.id == c.voice && !v.stopping)
+                            .filter(|v| v.matches(&c) && !v.stopping)
                         {
                             let at = c.position.max(0.0);
                             if v.pos < 0.0 {
@@ -817,7 +822,7 @@ impl Mixer {
                         for v in self
                             .voices
                             .iter_mut()
-                            .filter(|v| v.id == c.voice && !v.stopping)
+                            .filter(|v| v.matches(&c) && !v.stopping)
                         {
                             match (&mut v.hrtf, off) {
                                 (Some(_), true) => v.hrtf = None,
@@ -861,7 +866,7 @@ impl Mixer {
         for v in self
             .voices
             .iter_mut()
-            .filter(|v| v.id == c.voice && !v.stopping)
+            .filter(|v| v.matches(c) && !v.stopping)
         {
             v.stopping = true;
             v.retarget(&buses, FADE_FRAMES);
@@ -872,6 +877,7 @@ impl Mixer {
         }
         let mut v = Voice {
             id: c.voice,
+            presentation: c.flags & FLAG_PRESENTATION != 0,
             stereo: data.channels > 1,
             frames,
             // Negative: it starts that many source frames later.

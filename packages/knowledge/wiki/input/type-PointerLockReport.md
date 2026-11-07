@@ -19,4 +19,4 @@ struct PointerLockReport {
 }
 ```
 
-<sub>Module `input` line 640</sub>
+<sub>Module `input` line 679</sub>

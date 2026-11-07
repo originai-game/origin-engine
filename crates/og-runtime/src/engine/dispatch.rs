@@ -126,6 +126,8 @@ pub(crate) struct State {
     pub game_spawned: std::collections::BTreeSet<u64>,
     /// GameDesc.start, until it has run.
     pub start: Option<u32>,
+    /// Pending registration, including an absent GameDesc.ui. None means it ran.
+    pub ui_setup: Option<Option<u32>>,
     /// What GameDesc.start threw: the world is half-built, so every later
     /// advance, frame and probe call is refused with it.
     pub start_failed: Option<String>,
@@ -156,6 +158,8 @@ pub(crate) struct State {
     pub log: Vec<Value>,
     /// Command outputs for `og_engine_take_outputs`.
     pub outputs: Vec<og_probe::Output>,
+    /// Accepted reflected inputs, drained by input.takeIntents.
+    pub recorded_intents: Vec<Value>,
     /// A rebuilt bundle's state, waiting for the probe's reload to swap it in.
     pub reloaded: Option<Box<Assembled>>,
     /// The physics profile (2 or 3), from the host's options.

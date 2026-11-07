@@ -30,6 +30,11 @@ pub struct Pick {
 /// building the frame from the world as of the current tick. Rendering never
 /// feeds back into the world, so `capture` takes it shared.
 pub trait Capture {
+    /// Whether a renderer is attached. A headless host may still checkpoint
+    /// presentation state through this hook without producing frames.
+    fn has_renderer(&self) -> bool {
+        true
+    }
     /// The backend: `webgpu`, `vulkan`, `vulkan-cpu` (a software
     /// rasterizer), `metal` or `dx12` (IDL `RenderTier`).
     fn tier(&self) -> &str;
@@ -58,6 +63,10 @@ pub trait Capture {
     /// frames after it are the snapshot's. 0 keeps nothing.
     fn save_state(&mut self) -> u64 {
         0
+    }
+    /// Refuse an incompatible presentation checkpoint before the world changes.
+    fn validate_restore(&self, _state: u64) -> og_core::Result<()> {
+        Ok(())
     }
     /// Brings back what [`Capture::save_state`] answered `state` for (0, or
     /// a state no longer kept: the renderer starts that state afresh).

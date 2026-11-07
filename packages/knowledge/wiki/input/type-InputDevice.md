@@ -31,4 +31,4 @@ enum InputDevice {
 }
 ```
 
-<sub>Module `input` line 12</sub>
+<sub>Module `input` line 51</sub>

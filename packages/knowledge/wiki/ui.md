@@ -687,6 +687,10 @@ module ui {
 | [`SceneViewportDesc`](ui/type-SceneViewportDesc.md) | desc struct |  | The viewport element (docs/ui.md §3.3): a camera's view of a scene layer shown in the layout (a character on a turntable, an item to inspect). |
 | [`SceneViewportInfo`](ui/type-SceneViewportInfo.md) | struct |  | What the pointer does in a viewport this tick. |
 | [`og.ui.sceneViewport`](ui/fn-sceneViewport.md) | function | `(id: string, desc?: SceneViewportDesc): SceneViewportInfo` | A viewport: a camera's render target shown in the layout, its drag, wheel and pointer ray handed back so a menu can orbit, pick and rotate. |
+| [`UiSource`](ui/type-UiSource.md) | interface |  | A store's stable checkpoint identity. |
+| [`UiCollectionDesc`](ui/type-UiCollectionDesc.md) | struct |  | A keyed collection's identity rule. |
+| [`UiScope`](ui/type-UiScope.md) | interface |  | Named presentation stores for one world, following the svelte/store contract. |
+| [`og.ui.scope`](ui/fn-scope.md) | function | `(world: World, id: string): UiScope` | The entry to named svelte/store-compatible presentation data. |
 | [`UiDocEvent`](ui/type-UiDocEvent.md) | struct |  | Something a document did (docs/ui.md §2.1): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back i… |
 | [`UiDocResponse`](ui/type-UiDocResponse.md) | struct |  | What mounting a document answers: its events this tick (and, for a screen, those of its builds code did not see), its root's path, and for a component its props after its two-way writes. |
 | [`UiLayer`](ui/type-UiLayer.md) | struct |  | A layer of the stack (docs/ui.md §2.1), as its screen declares it. |

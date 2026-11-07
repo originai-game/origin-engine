@@ -3,6 +3,7 @@
 mod creation;
 #[cfg_attr(feature = "publish", allow(unused_imports))]
 pub(crate) use creation::assemble;
+pub(crate) use creation::run_ui_registration;
 pub(crate) use creation::{Assembled, extract_layouts, versioned};
 pub use creation::{
     antialias_name, create, destroy, point_shadows_name, render_desc, render_options,
@@ -52,7 +53,8 @@ use std::rc::Rc;
 #[derive(Clone, Debug)]
 pub struct Dispatch {
     /// 0 system, 1 command, 2 facts, 3 a run condition (answers `=true`
-    /// or `=false`), 4 a hook (payload: the entity), 5 the platform pump.
+    /// or `=false`), 4 a hook (payload: the entity), 5 the platform pump,
+    /// 6 named UI registration (world reads only).
     pub kind: u32,
     pub engine: u32,
     /// The callback id the runtime's table holds the function under.
@@ -314,6 +316,8 @@ pub(crate) struct GameDecl {
     pub render: Value,
     /// GameDesc.start, called once before the first tick.
     pub start: Option<u32>,
+    /// GameDesc.ui, called after start and after a hot-reload restore.
+    pub ui_setup: Option<u32>,
     /// GameDesc.look: applied before start runs; empty is none.
     pub look: String,
     /// GameDesc.saveVersion: the game's save version, written into every
@@ -668,6 +672,7 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
             .unwrap_or_default(),
         render: desc["render"].clone(),
         start: desc["start"].as_u64().map(|n| n as u32),
+        ui_setup: desc["ui"].as_u64().map(|n| n as u32),
         look: desc["look"].as_str().unwrap_or_default().to_string(),
         save_version: num("saveVersion", 1).max(1),
         migrations: desc["migrations"]

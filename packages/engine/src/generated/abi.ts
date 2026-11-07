@@ -35,6 +35,8 @@ export interface HostAbi<A, V> {
   og_engine_read_resource(world: number, resource: string): Uint8Array;
   /** Overwrite a resource with packed bytes followed by the layout epoch they were made with (as og_engine_read_resource answers): how the runtime flushes a handle's field writes, once before the next engine call and at the end of every system. Read-only fields keep their value. A Result; refused for a stale epoch, a wrong size, an invalid value or a resource the running system did not declare among its writes. */
   og_engine_write_resource_bytes(world: number, resource: string, bytes: Uint8Array): string;
+  /** Apply a binary UI source/computation patch batch. Replies are binary results in request order. Source values and the dependency graph belong to this engine; the TypeScript runtime executes requested computation IDs outside the engine lock. */
+  og_engine_ui_patch(world: number, bytes: Uint8Array): Uint8Array;
   /** The platform calls (IDL `platform`) made since the last call, oldest first, as JSON `[{ request, method, args, tick }]`. The host answers each but `telemetry` (one-way) with og_platform_answer. */
   og_platform_take(engine: number): string;
   /** Answer one platform call: JSON `{ ok: true, data }` or `{ ok: false, error: { code, message, retryable } }`. It is applied at the start of the next tick (og.platform sends PlatformAnswered). False for an unknown, one-way or answered request, or a malformed answer. */
@@ -53,6 +55,8 @@ export interface HostAbi<A, V> {
   og_reflect_define_component(name: string, fields: string): string;
   /** `defineResource` */
   og_reflect_define_resource(name: string, fields: string): string;
+  /** `defineEvent` */
+  og_reflect_define_event(name: string, fields: string): string;
   /** `SaveEdit.version` */
   og_save_edit_get_version(save_edit: number): number;
   /** `SaveEdit.types` */
@@ -221,6 +225,12 @@ export interface HostAbi<A, V> {
   og_procgen_bsp(desc: string | undefined): string;
   /** `og.procgen.wfc` */
   og_procgen_wfc(desc: string | undefined): string;
+  /** `og.input.intent` */
+  og_input_intent(world: number, event: string, payload: string): string;
+  /** `og.input.takeIntents` */
+  og_input_take_intents(world: number): string;
+  /** `og.input.replayIntent` */
+  og_input_replay_intent(world: number, intent: string): string;
   /** `og.input.defineAction` */
   og_input_define_action(world: number, desc: string | undefined): string;
   /** `og.input.actions` */
@@ -623,6 +633,8 @@ export interface HostAbi<A, V> {
   og_tilemap_cell_at(world: number, entity: number, point: string): string;
   /** `og.tilemap.cellCenter` */
   og_tilemap_cell_center(world: number, entity: number, x: number, y: number): string;
+  /** `og.audio.playFeedback` */
+  og_audio_play_feedback(world: number, sound: number, desc: string | undefined): string;
   /** `og.audio.createSound` */
   og_audio_create_sound(world: number, desc: string | undefined): string;
   /** `og.audio.outputLatency` */
@@ -1335,6 +1347,7 @@ export interface HostAbi<A, V> {
 export const SYMBOLS: readonly string[] = [
   "og_reflect_define_component",
   "og_reflect_define_resource",
+  "og_reflect_define_event",
   "og_save_edit_get_version",
   "og_save_edit_types",
   "og_save_edit_records",
@@ -1419,6 +1432,9 @@ export const SYMBOLS: readonly string[] = [
   "og_procgen_poisson_disk",
   "og_procgen_bsp",
   "og_procgen_wfc",
+  "og_input_intent",
+  "og_input_take_intents",
+  "og_input_replay_intent",
   "og_input_define_action",
   "og_input_actions",
   "og_input_action",
@@ -1620,6 +1636,7 @@ export const SYMBOLS: readonly string[] = [
   "og_tilemap_get_tile",
   "og_tilemap_cell_at",
   "og_tilemap_cell_center",
+  "og_audio_play_feedback",
   "og_audio_create_sound",
   "og_audio_output_latency",
   "og_nav_grid",
@@ -1987,6 +2004,7 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_resource_layout",
   "og_engine_read_resource",
   "og_engine_write_resource_bytes",
+  "og_engine_ui_patch",
   "og_platform_take",
   "og_platform_answer",
   "og_platform_set_host",

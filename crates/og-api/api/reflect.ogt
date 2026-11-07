@@ -118,7 +118,14 @@ module reflect {
     param fields F "The layout, as for defineComponent."
     returns ResourceType.F "The token `world.resource` and system declarations take."
   }
+
+  fn defineEvent {
+    doc "Declare a reflected gameplay event. Its stable name and packed field layout identify recorded intents; changing that layout refuses old intent recordings."
+    generic F Fields
+    param name String "The event's unique name, PascalCase."
+    param fields F "The payload layout, as for defineComponent."
+    returns EventType.F "The token world.events, world.emit and input.intent take."
+  }
 }
 
 # ── world ─────────────────────────────────────────────────────────────────
-

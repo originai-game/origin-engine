@@ -526,6 +526,9 @@ impl Probe {
     }
 
     fn load(&mut self, world: &mut World, saved: &Saved) -> og_core::Result<()> {
+        if let Some(c) = self.capture.as_ref() {
+            c.validate_restore(saved.render)?;
+        }
         world.restore(&saved.world)?;
         if let Some(c) = self.capture.as_mut() {
             c.restore_state(saved.render);
@@ -542,7 +545,7 @@ impl Probe {
     /// again": each call with the same description on the same world goes
     /// on from the frames it has, and the last answers them all.
     pub fn sweep(&mut self, world: &mut World, desc: &SweepDesc) -> og_core::Result<Option<Value>> {
-        if self.capture.is_none() {
+        if !self.capture.as_ref().is_some_and(|c| c.has_renderer()) {
             return Ok(None);
         }
         let Some(e) = self.names.resolve(world, &desc.id) else {

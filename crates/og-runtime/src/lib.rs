@@ -336,6 +336,17 @@ pub fn shared_ui(engine: u32) -> Option<og_ui::SharedUi> {
     engine::engine(engine).ok()?.state.borrow().ui.clone()
 }
 
+/// The binary, host-neutral retained UI protocol.
+pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
+    match shared_ui(world) {
+        Some(ui) => ui.lock().apply_reactive(bytes),
+        None => og_ui::reactive::wire::encode(&serde_json::json!({
+            "ok": false, "reason": "og.ui: world has no UI"
+        }))
+        .expect("bounded error reply"),
+    }
+}
+
 // The lifecycle members under their binding names, so a host's
 // `Lifecycle` impl reads like its module impls.
 

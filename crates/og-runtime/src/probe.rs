@@ -35,6 +35,10 @@ pub(crate) struct RuntimeCapture {
 }
 
 impl Capture for RuntimeCapture {
+    fn has_renderer(&self) -> bool {
+        self.render.borrow().backend.is_some()
+    }
+
     fn tier(&self) -> &str {
         &self.tier
     }
@@ -65,7 +69,19 @@ impl Capture for RuntimeCapture {
             .map_or(0, |mut rs| super::presentation::save(&mut rs))
     }
 
+    fn validate_restore(&self, state: u64) -> og_core::Result<()> {
+        let rs = self
+            .render
+            .try_borrow()
+            .map_err(|e| og_core::Error::new(og_core::ErrorKind::Access, e.to_string()))?;
+        super::presentation::validate_restore(&rs, state)
+            .map_err(|e| og_core::Error::new(og_core::ErrorKind::Invalid, e))
+    }
+
     fn restore_state(&mut self, state: u64) {
+        if let Some(link) = og_audio::link(self.engine) {
+            link.clear_feedback();
+        }
         if let Ok(mut rs) = self.render.try_borrow_mut() {
             super::presentation::restore(&mut rs, state);
         }
@@ -419,6 +435,12 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         .collect();
     let mut probe = eng.probe.borrow_mut();
     probe.set_engine_version(format!("origin-engine {}", env!("CARGO_PKG_VERSION")));
+    // UI checkpoints also exist in headless runs, before a renderer attaches.
+    probe.set_capture(Box::new(RuntimeCapture {
+        render: eng.render.clone(),
+        tier: "none".into(),
+        engine: eng.id,
+    }));
     // A world.restore asked for during a tick applies as the tick ends.
     probe.set_after_tick(Box::new(move |world| {
         super::trace::after_tick(id, world);
@@ -642,17 +664,17 @@ pub(crate) fn set_reloader(eng: &Rc<Engine>) {
 /// After a reload: the runtime takes the rebuilt bundle's view (layouts,
 /// systems, commands, facts) when the probe swapped the world, and drops it
 /// when the probe kept the old bundle.
-pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
+pub(crate) fn after_reload(eng: &Engine, swapped: bool) -> Result<(), String> {
     super::e6::after_reload(eng.id, swapped);
     if swapped && let Ok(mut rs) = eng.render.try_borrow_mut() {
         rs.interp.forget();
         rs.motion.forget();
     }
     let Some(a) = eng.state.borrow_mut().reloaded.take() else {
-        return;
+        return Ok(());
     };
     if !swapped {
-        return;
+        return Ok(());
     }
     let new_commands: Vec<(String, String, String)> = {
         let st = eng.state.borrow();
@@ -713,6 +735,7 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
     // place, the UI's state kept (docs/ui.md §6).
     let failed = super::modules::docs::refresh(eng);
     eng.state.borrow_mut().warnings.extend(failed);
+    super::engine::run_ui_registration(eng, a.game.ui_setup)
 }
 
 /// One JSON-RPC call through the probe, with the runtime's additions to

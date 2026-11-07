@@ -42,7 +42,7 @@ module ai {
 | [`og.Perception`](ai/record-Perception.md) | component |  | What an agent sees and hears. |
 | [`og.Perceivable`](ai/record-Perceivable.md) | component |  | Something agents of other teams can see. |
 | [`og.AiChanged`](ai/record-AiChanged.md) | event |  | An agent's state or running node changed (systems read it the tick after). |
-| [`og.AiActionStarted`](ai/record-AiActionStarted.md) | event |  | A game action (`action <name> args` in a behaviour) started: play it (a reload, a door, a line of dialogue) and call og.ai.finish when it is over; until then the node runs. |
+| [`og.AiActionStarted`](ai/record-AiActionStarted.md) | event |  | A game action (`action <name> args` in a behaviour) started: play its animation (such as a reload), open its door or speak its dialogue, then call og.ai.finish when it ends; until then the node runs. |
 | [`og.AiActionStopped`](ai/record-AiActionStopped.md) | event |  | A game action stopped: the game finished it (og.ai.finish), or the behaviour moved on first (stop playing it). |
 | [`BehaviourInfo`](ai/type-BehaviourInfo.md) | struct |  | A loaded behaviour. |
 | [`NoiseDesc`](ai/type-NoiseDesc.md) | desc struct |  | A noise agents may hear next tick. |

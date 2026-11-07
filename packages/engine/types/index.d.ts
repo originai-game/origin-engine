@@ -15,6 +15,31 @@ export type Result<T> =
   | { readonly ok: true; readonly value: T }
   | { readonly ok: false; readonly reason: string };
 
+/** A checkpointed readable store with the svelte/store subscription contract. */
+export interface UiReadable<T> {
+  readonly source: UiSource;
+  subscribe(run: (value: T) => void, invalidate?: () => void): () => void;
+}
+/** Setters return errors as values in addition to reporting them on the scope. */
+export interface UiWritable<T> extends UiReadable<T> {
+  set(value: T): Result<void>;
+  update(updater: (value: T) => T): Result<void>;
+}
+/** First-subscriber start and last-subscriber cleanup; synchronous only. */
+export type UiStart<T> = (set: (value: T) => void, update: (fn: (value: T) => T) => void) => void | (() => void);
+export type UiStores = UiReadable<unknown> | readonly UiReadable<unknown>[];
+export type UiStoreValues<S> = S extends UiReadable<infer T> ? T
+  : { [K in keyof S]: S[K] extends UiReadable<infer T> ? T : never };
+export type UiDerive<S extends UiStores, T> = (values: UiStoreValues<S>) => T;
+/** A collection store. Templates render it with a mandatory-key each block. */
+export interface UiCollection<T> extends UiReadable<readonly T[]> {
+  keys(): readonly string[];
+  row(key: string): Result<T>;
+  insert(row: T, before?: string): Result<void>;
+  remove(key: string): Result<void>;
+  move(key: string, before?: string): Result<void>;
+  patch(key: string, fields: Partial<T>): Result<void>;
+}
 /** A column kind: what one field of a component or resource stores. */
 export type ColumnKind = keyof ColumnKinds;
 
@@ -1303,6 +1328,15 @@ export declare function defineComponent<F extends Fields>(name: string, fields: 
  */
 export declare function defineResource<F extends Fields>(name: string, fields: F): ResourceType<F>;
 
+/**
+ * Declare a reflected gameplay event. Its stable name and packed field layout identify recorded intents; changing that layout refuses old intent recordings.
+ *
+ * @param name The event's unique name, PascalCase.
+ * @param fields The payload layout, as for defineComponent.
+ * @returns The token world.events, world.emit and input.intent take.
+ */
+export declare function defineEvent<F extends Fields>(name: string, fields: F): EventType<FieldValues<F>>;
+
 // ── world ───────────────────────────────────────────────────────
 // The world: an archetype ECS. Entities are generational handles; components are columns in engine memory.
 // Structural changes (spawn, despawn, insert, remove) invalidate typed views; the API refuses a stale view.
@@ -2159,6 +2193,13 @@ export type FactsFn = (world: World) => unknown;
 export type StartFn = (world: World) => void;
 
 /**
+ * Register named presentation stores. Called after start and after hot-reload restore, never per tick. World reads may choose initial values; world writes and gameplay side effects are refused. Existing IDs keep values, kept callbacks are replaced, and removed IDs are disposed. Document mounts await the Svelte parser IR.
+ *
+ * @param world The world, read only during registration.
+ */
+export type UiSetupFn = (world: World) => void;
+
+/**
  * A game: its tick, scenes, systems and commands.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -2247,6 +2288,12 @@ export interface GameDesc {
    */
   readonly start?: StartFn | null;
   /**
+   * Register retained UI after start and after a hot-reload restore. The engine checks world_hash before and after. Duplicate IDs, incompatible store types and gameplay writes fail registration as errors; ui never reruns start. Fresh-process restore runs start, then ui, then restores named presentation values.
+   *
+   * @default null
+   */
+  readonly ui?: UiSetupFn | null;
+  /**
    * How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer.
    *
    * @default {}
@@ -2260,7 +2307,7 @@ export interface GameDesc {
    */
   readonly saveVersion?: number;
   /**
-   * The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order, so a save of any earlier version arrives at the current one (rename a field, transform values with the old record in hand, drop or split a type, add an entity). The engine's own migrations run before them, on what an older engine wrote of its state: a save from 0.7.7 restores with its game data, engine components and og.Rng as this build has them, and og.ui's state upgraded; that state had no motion channels, so an element on screen at the save (a toast, a dialog) plays its entrance again after the restore (presentation only: the restored UI state differs from one this build ran only in when that entrance began, and every restore of the save plays it alike).
+   * The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order (rename a field, transform values with the old record in hand, drop or split a type, add an entity). The save envelope must be og-save:3; earlier envelope formats are refused with both versions in the error, never converted.
    *
    * @default []
    */
@@ -3026,6 +3073,37 @@ export declare const MAX_POINTERS: 5;
 
 /** The most gamepads og.Gamepad reads: pads 0 to 7. */
 export declare const MAX_GAMEPADS: 8;
+
+
+/**
+ * One deterministic input, independent of presentation checkpoints. Replay it between ticks, when world.time.tick equals tick.
+ */
+export interface RecordedIntent {
+  /** The simulation boundary at which the input was sent. */
+  readonly tick: number;
+  /** The reflected event name. */
+  readonly name: string;
+  /** The schema layout hash as an exact decimal u64. */
+  readonly layoutHash: string;
+  /** The reflected packed field bytes, each 0 to 255. */
+  readonly payload: readonly number[];
+}
+
+
+
+/**
+ * An engine gameplay intent: apply scale at the next tick boundary. UI pause layers send this through the same recorded intent path as game controls.
+ *
+ * The payload of the `PauseIntent` event (token `og.PauseIntent`).
+ */
+export interface PauseIntent {
+  /**
+   * Simulation time scale; zero pauses.
+   *
+   * @range 0..10
+   */
+  readonly scale: number;
+}
 
 /**
  * A kind of input device: the set a glyph is drawn from, the device used last, and what a pad is. og.ui's UiDevice has the same values.
@@ -20791,6 +20869,28 @@ export interface SoundEnded {
   readonly reason: number;
 }
 
+/**
+ * Presentation-only one-shot parameters.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface AudioFeedbackDesc {
+  /**
+   * Linear gain.
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly volume?: number;
+  /**
+   * Playback rate, strictly greater than zero.
+   *
+   * @default 1
+   */
+  readonly playbackRate?: number;
+}
+
+
 
 
 // ── nav ─────────────────────────────────────────────────────────
@@ -21937,7 +22037,7 @@ export interface AiChanged {
 }
 
 /**
- * A game action (`action <name> args` in a behaviour) started: play it (a reload, a door, a line of dialogue) and call og.ai.finish when it is over; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded.
+ * A game action (`action <name> args` in a behaviour) started: play its animation (such as a reload), open its door or speak its dialogue, then call og.ai.finish when it ends; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded.
  *
  * The payload of the `AiActionStarted` event (token `og.AiActionStarted`).
  */
@@ -39282,6 +39382,73 @@ export interface SceneViewportInfo {
 }
 
 
+/** A store's stable checkpoint identity. Stores are created in a named scope. */
+export interface UiSource {
+  /** The owning scope. */
+  readonly scope: string;
+  /** The store ID within that scope. */
+  readonly id: string;
+}
+
+/** A keyed collection's identity rule. The key is data, never the row index. */
+export interface UiCollectionDesc {
+  /** The row field containing a nonempty string key; empty means id. */
+  readonly key?: string;
+}
+
+/**
+ * Named presentation stores for one world, following the svelte/store contract. Svelte template documents own structure; this scope supplies data. Re-register the same IDs on reload to preserve source values.
+ */
+export interface UiScope {
+  /** The stable scope ID. */
+  readonly id: string;
+  /**
+   * Create a named writable store with subscribe, set and update. Re-registration preserves its checkpointed value. Failures are reported by takeErrors; setters also return Result.
+   *
+   * @param id An explicit, nonempty stable store ID.
+   * @param initial The initial serializable value, used only for a new store.
+   */
+  writable<T extends unknown>(id: string, initial: T): UiWritable<T>;
+  /**
+   * Create a named readable store. start runs when its first subscriber arrives and its cleanup runs when the last leaves. No promises, timers or wall-clock work in a tick.
+   *
+   * @param id The stable store ID.
+   * @param initial The initial serializable value.
+   * @param start The synchronous start/stop notifier.
+   */
+  readable<T extends unknown>(id: string, initial: T, start?: UiStart<T>): UiReadable<T>;
+  /**
+   * Derive a store synchronously from one store or a tuple of stores. Inputs are explicit and settle before subscribers run; undeclared reads and reentrant writes report errors in every build. Failure preserves the last good value, or the optional initial fallback; without either it reports an error and yields undefined.
+   *
+   * @param id The stable derived store ID, also its callback reload identity.
+   * @param stores One named store or a readonly tuple of named stores from this world.
+   * @param compute A pure synchronous function of the input values.
+   * @param initial An optional fallback if the first computation fails.
+   */
+  derived<S extends UiStores, T extends unknown>(id: string, stores: S, compute: UiDerive<S, T>, initial?: T): UiReadable<T>;
+  /**
+   * Read a store by subscribing and immediately unsubscribing, as svelte/store get does.
+   *
+   * @param store The named store.
+   */
+  get<T extends unknown>(store: UiReadable<T>): T;
+  /**
+   * The engine-specific store: ordered rows with stable string keys, plus insert, remove, move and field patch. Duplicate keys and key-changing patches are refused. Re-registration keeps data and order.
+   *
+   * @param id The stable collection ID.
+   * @param items Initial rows, used only for a new collection.
+   * @param desc The key field.
+   */
+  collection<T extends unknown>(id: string, items: readonly T[], desc?: UiCollectionDesc): UiCollection<T>;
+  /**
+   * Drain operation and scheduler errors naming scope and store. Errors are reported in publish too; the scheduler never throws into the engine.
+   */
+  takeErrors(): readonly string[];
+  /** Remove the scope's stores and subscriptions and run start/stop cleanups. */
+  dispose(): Result<void>;
+}
+
+
 /**
  * Something a document did (docs/ui.md §2.1): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`.
  */
@@ -45018,6 +45185,10 @@ export declare namespace og {
     function wfc(desc?: WfcDesc): Result<WfcResult>;
   }
   /**
+   * An engine gameplay intent: apply scale at the next tick boundary. UI pause layers send this through the same recorded intent path as game controls.
+   */
+  const PauseIntent: EventType<PauseIntent>;
+  /**
    * The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods.
    * Key sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code i is bit i % 32 of word i / 32. Button masks: left 1, middle 2, right 4.
    */
@@ -45067,6 +45238,27 @@ export declare namespace og {
    * Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick.
    */
   namespace input {
+    /**
+     * Send a reflected gameplay intent for the next tick and record its name, packed payload and layout hash. UI controls use this boundary instead of writing gameplay state. Inside a system, declare the event among its writes.
+     *
+     * @param world The game world.
+     * @param event The reflected event type supplies the stable name and schema.
+     * @param payload The event's fields.
+     */
+    function intent<E extends AnyEvent>(world: World, event: E, payload: Value<E>): Result<void>;
+    /**
+     * Drain accepted intents in delivery order for recording. Call regularly; no presentation state is included.
+     *
+     * @param world The game world.
+     */
+    function takeIntents(world: World): readonly RecordedIntent[];
+    /**
+     * Deliver recorded input between ticks without UI state. Refuse an unknown event, layout hash mismatch, invalid payload or wrong tick as an error value without changing the world.
+     *
+     * @param world The game world.
+     * @param intent The recorded input.
+     */
+    function replayIntent(world: World, intent: RecordedIntent): Result<void>;
     /**
      * Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it.
      *
@@ -47057,6 +47249,15 @@ export declare namespace og {
    */
   namespace audio {
     /**
+     * Play a presentation-only one-shot on the UI bus in this tick (the next tick when called between ticks). Creates no world entity or event, changes no simulation hash, and is not saved or replayed on restore. Silently unheard when no audio sink is attached. Use AudioSource for gameplay audio.
+     *
+     * @param world The world whose presentation audio sink plays it.
+     * @param sound A loaded sound.
+     * @param desc Volume and playback rate.
+     * @returns Refused for an unloaded sound or invalid volume/playbackRate.
+     */
+    function playFeedback(world: World, sound: Sound, desc?: AudioFeedbackDesc): Result<void>;
+    /**
      * Make a sound from PCM the game computed: it plays, loops and pitches as a loaded one (AudioSource.sound, AudioEvent.sounds), always resident, stored as 16-bit PCM, and og.load.soundInfo reports it. Between ticks or inside a system alike; the handle is the next one the bank gives, so a game that makes its sounds in the same order on every launch (in GameDesc.start) names the same handles in its saves.
      *
      * @param world The world that owns the sound.
@@ -47274,7 +47475,7 @@ export declare namespace og {
   /** An agent's state or running node changed (systems read it the tick after). */
   const AiChanged: EventType<AiChanged>;
   /**
-   * A game action (`action <name> args` in a behaviour) started: play it (a reload, a door, a line of dialogue) and call og.ai.finish when it is over; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded.
+   * A game action (`action <name> args` in a behaviour) started: play its animation (such as a reload), open its door or speak its dialogue, then call og.ai.finish when it ends; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded.
    */
   const AiActionStarted: EventType<AiActionStarted>;
   /**
@@ -49602,6 +49803,13 @@ export declare namespace og {
      * @param desc What it shows and its camera.
      */
     function sceneViewport(id: string, desc?: SceneViewportDesc): SceneViewportInfo;
+    /**
+     * The entry to named svelte/store-compatible presentation data. Rust owns values and the dependency graph. No Svelte compiler, runes, TS elements or asynchronous primitives. Document mounting awaits the Svelte parser IR; this entry does not target the old screen dialect. See docs/ui.md for a worked example and If you know Svelte.
+     *
+     * @param world The world that owns the presentation checkpoint.
+     * @param id An explicit, nonempty stable scope name.
+     */
+    function scope(world: World, id: string): UiScope;
     /**
      * Mount a screen document (`type screen`, loaded with og.load.document) as a layer of the stack, pushed when it is not on it, with its viewmodel for this tick, and build it here: code fills its slots after this call (og.ui.openSlot). Its bindings read the viewmodel every tick, a Capitalised root (`Wallet.gold`) the resource as of the last tick; two-way controls write into it (each write is a `set` event). Layers code does not mount are built at the frame's end with the viewmodel they have.
      *

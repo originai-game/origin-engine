@@ -37,10 +37,16 @@ pub const GENERICS: &[(&str, usize)] = &[
     ("OneOf", 2),
     ("ComponentType", 1),
     ("ResourceType", 1),
+    ("EventType", 1),
     ("ScreenProps", 1),
     ("ScreenResponse", 1),
     ("ComponentProps", 1),
     ("ComponentResponse", 1),
+    ("UiReadable", 1),
+    ("UiWritable", 1),
+    ("UiStart", 1),
+    ("UiDerive", 2),
+    ("UiCollection", 1),
 ];
 
 /// Built-in meta types: the reflection tokens game code passes around.
@@ -52,6 +58,7 @@ pub const META: &[&str] = &[
     "AnyReflected",
     "ScreenName",
     "ComponentName",
+    "UiStores",
 ];
 
 /// The typed arrays a column may use, with the scalar each element holds.

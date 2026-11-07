@@ -338,8 +338,8 @@ impl Ui {
                 return Err(bad("invalid virtual list extents".into()));
             }
         }
+        self.restore_docs_state(&docs).map_err(bad)?;
         self.state = s;
-        self.restore_docs_state(&docs);
         self.kept = Default::default();
         Ok(())
     }
@@ -408,7 +408,7 @@ impl Ui {
                     state: s,
                     ..Ui::default()
                 };
-                ui.restore_docs_state(&docs);
+                ui.restore_docs_state(&docs).map_err(bad)?;
                 Ok(ui.save_state())
             }
             v => Err(bad(format!(

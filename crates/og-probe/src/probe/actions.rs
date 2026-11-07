@@ -34,7 +34,7 @@ impl Probe {
                 // No renderer is a host configuration, not a fault: the
                 // step notes the frame it did not take and the run goes on
                 // exactly as it would with one (rendering never feeds back).
-                let Some(capture) = self.capture.as_mut() else {
+                let Some(capture) = self.capture.as_mut().filter(|c| c.has_renderer()) else {
                     let file = path.unwrap_or_else(|| format!("screenshot-{tick:06}.png"));
                     self.note(
                         tick,

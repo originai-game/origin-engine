@@ -273,7 +273,7 @@ impl<'a> Validator<'a, '_> {
             }
             match g.bound.name() {
                 "Fields" | "AnyComponent" | "AnyResource" | "AnyEvent" | "AnyReflected"
-                | "ScreenName" | "ComponentName" => {}
+                | "ScreenName" | "ComponentName" | "Json" | "UiStores" => {}
                 other => self.error(
                     g.line,
                     format!(
@@ -898,7 +898,7 @@ impl<'a> Validator<'a, '_> {
                         );
                     }
                 }
-                "ComponentType" | "ResourceType" => {
+                "ComponentType" | "ResourceType" | "EventType" => {
                     let a = args[0].name();
                     if !generic(a).is_some_and(|g| g.bound.name() == "Fields") {
                         self.error(

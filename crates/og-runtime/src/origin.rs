@@ -243,6 +243,9 @@ pub(crate) fn shift(eng: &Engine, world: &mut World, d: DVec3) -> Result<(), Str
     let parent = world.id_by_name("og.Parent").ok();
     world.shift(&fields(world), d, parent).map_err(err)?;
     hooks(eng, world, d)?;
+    if let Some(ui) = &eng.state.borrow().ui {
+        ui.lock().shift_world(d.as_vec3());
+    }
     if let Ok(mut rs) = eng.render.try_borrow_mut() {
         rs.shift(d);
     }

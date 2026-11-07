@@ -77,14 +77,28 @@ mechanical and lists every line it is not, each with its section of the
   no native addon; a feature that seems to need one is an engine request.
 - `assets/` holds sources; `og cook` writes `cooked/`. Never edit or
   commit `cooked/`, `dist/` or `og-out/`.
-- State lives in components and resources, never in module-level
-  variables: a module variable is outside the snapshot, so saves,
-  restores, hot reload and replays silently lose it.
+- Simulation state lives in components and resources; UI state lives
+  in named scope stores. Module-level values are outside the snapshot,
+  so saves, restores, hot reload and replays lose them.
 - Tuning values (speeds, costs, timings) go in components or resources
   with reflected ranges, not literals in systems: they show in the
   inspector and Tune, and the default invariants check their ranges.
 - Splitting `src/` by feature (player, enemies, ui) with one file per
   system group keeps hot reload fast and diffs small.
+
+Put gameplay initialization in `GameDesc.start` and named UI store
+registration in `GameDesc.ui`. The engine calls `ui` after `start` and
+again after a hot-reload restore, never per tick. It does not rerun
+`start` on reload. Read the world in `ui` to choose initial values, but
+do not write gameplay state there. Registration refuses gameplay writes
+and checks that `world_hash` is unchanged. A kept store ID retains its
+value and receives its new callback. New IDs use their initial values;
+removed IDs lose their subscriptions. Duplicate IDs and incompatible
+types are errors. UI values travel in the presentation checkpoint,
+outside `world_hash`. Send gameplay actions through `og.input.intent`
+with a reflected event type so recorded input can replay them without
+the presentation checkpoint. A fresh-process restore runs `start`, then
+`ui`, then restores saved values by ID.
 
 <a id="guide-start-5"></a>
 ### `start §5` The guides

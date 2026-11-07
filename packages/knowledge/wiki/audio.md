@@ -56,6 +56,8 @@ module audio {
 | [`og.MusicBeat`](audio/record-MusicBeat.md) | event |  | A beat of a Music clock, sent in the tick whose interval holds it (systems read it the tick after). |
 | [`og.SoundStarted`](audio/record-SoundStarted.md) | event |  | A source started, sent in the tick it happens (systems read it the tick after). |
 | [`og.SoundEnded`](audio/record-SoundEnded.md) | event |  | A sound ended, sent in the tick it happens (systems read it the tick after). |
+| [`AudioFeedbackDesc`](audio/type-AudioFeedbackDesc.md) | desc struct |  | Presentation-only one-shot parameters. |
+| [`og.audio.playFeedback`](audio/fn-playFeedback.md) | function | `(world: World, sound: Sound, desc?: AudioFeedbackDesc): Result<void>` | Play a presentation-only one-shot on the UI bus in this tick (the next tick when called between ticks). |
 | [`og.audio.createSound`](audio/fn-createSound.md) | function | `(world: World, desc?: SoundDesc): Result<Sound>` | Make a sound from PCM the game computed: it plays, loops and pitches as a loaded one (AudioSource.sound, AudioEvent.sounds), always resident, stored as 16-bit PCM, and og.load.soundInfo reports it. |
 | [`og.audio.outputLatency`](audio/fn-outputLatency.md) | function | `(world: World): number` | How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's lat… |
 

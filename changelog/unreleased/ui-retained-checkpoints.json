@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "World.snapshot, World.restore, Engine.hash, GameDesc.ui, input.intent",
+      "change": "UI stores, collections, document state, interaction state and motion clocks are presentation checkpoints, no longer hashed ECS state blocks. Simulation hashes therefore change even for games whose UI has not changed. Saves require og-save:3 with a separate UI checkpoint; earlier formats are refused, never converted. GameDesc.ui registers named presentation state after start and on hot reload, never per tick; gameplay writes during registration are refused. UI feedback plays outside the ECS and snapshot. Pause layers emit og.PauseIntent through the general reflected intent path, applied at the next tick boundary.",
+      "fix": "Regenerate simulation hash baselines for the new engine version. Keep gameplay initialization in start and named scope store registration in ui. Declare gameplay actions with defineEvent and deliver them through input.intent. Record with input.takeIntents and replay with input.replayIntent; mismatched layout hashes are refused. Document mounts, models, actions and snippets require the separate Svelte document API head.",
+      "find": ["world.snapshot", "world.restore", "world_hash", "og.game"]
+    }
+  ]
+}

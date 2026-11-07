@@ -108,6 +108,14 @@ pub struct KeyUp {
     pub at: f32,
 }
 
+/// A recorded request to change simulation time at the next tick boundary.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.PauseIntent")]
+pub struct PauseIntent {
+    #[reflect(min = 0, max = 10)]
+    pub scale: f32,
+}
+
 /// A pointer button went down (IDL `input.PointerDown`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
 #[reflect(name = "og.PointerDown")]
@@ -316,6 +324,7 @@ pub fn register(world: &mut World) -> og_core::Result<()> {
     world.register::<TextInput>()?;
     world.register::<A11yAction>()?;
     world.register::<PointerLock>()?;
+    world.register::<PauseIntent>()?;
     Ok(())
 }
 
@@ -513,6 +522,7 @@ impl Input {
             InjectedInput::Gamepad(_)
             | InjectedInput::Text { .. }
             | InjectedInput::A11y { .. }
+            | InjectedInput::Intent { .. }
             | InjectedInput::PointerLock { .. } => {}
             InjectedInput::Pointer {
                 action,

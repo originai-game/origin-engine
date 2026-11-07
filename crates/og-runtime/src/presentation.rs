@@ -33,6 +33,50 @@ struct Checkpoint {
     motion: crate::motion::present::MotionCheckpoint,
     /// The renderer's ([`super::RenderBackend::save_state`]).
     renderer: u64,
+    ui: Option<UiCheckpoint>,
+}
+
+/// Portable UI presentation state, carried beside the simulation snapshot.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub(crate) struct UiCheckpoint {
+    state: Vec<u8>,
+    world: Vec<u8>,
+}
+
+impl UiCheckpoint {
+    pub(crate) fn save(ui: &og_ui::SharedUi) -> Self {
+        let ui = ui.lock();
+        Self {
+            state: ui.save_state(),
+            world: ui.save_world_state(),
+        }
+    }
+
+    pub(crate) fn validate(&self) -> Result<(), String> {
+        let mut ui = og_ui::Ui::default();
+        ui.restore_state(&self.state)
+            .map_err(|e| e.reason().to_owned())?;
+        ui.restore_world_state(&self.world)
+            .map_err(|e| e.reason().to_owned())
+    }
+
+    pub(crate) fn restore(&self, ui: &og_ui::SharedUi) -> Result<(), String> {
+        self.validate_for(ui)?;
+        let mut ui = ui.lock();
+        ui.restore_state(&self.state)
+            .map_err(|e| e.reason().to_owned())?;
+        ui.restore_world_state(&self.world)
+            .map_err(|e| e.reason().to_owned())
+    }
+
+    pub(crate) fn validate_for(&self, current: &og_ui::SharedUi) -> Result<(), String> {
+        let mut ui = og_ui::Ui::default();
+        ui.inherit_store_registrations(&current.lock());
+        ui.restore_state(&self.state)
+            .map_err(|e| e.reason().to_owned())?;
+        ui.restore_world_state(&self.world)
+            .map_err(|e| e.reason().to_owned())
+    }
 }
 
 /// The checkpoints kept, newest last, by id (0 is none).
@@ -53,12 +97,22 @@ pub(crate) fn save(rs: &mut RenderState) -> u64 {
             particles: rs.particle_history.clone(),
             motion: rs.motion.checkpoint(),
             renderer,
+            ui: rs.ui.as_ref().map(UiCheckpoint::save),
         },
     ));
     while c.kept.len() > KEPT {
         c.kept.pop_front();
     }
     c.next
+}
+
+pub(crate) fn validate_restore(rs: &RenderState, id: u64) -> Result<(), String> {
+    if let Some((_, checkpoint)) = rs.checkpoints.kept.iter().find(|(k, _)| *k == id)
+        && let (Some(saved), Some(current)) = (&checkpoint.ui, &rs.ui)
+    {
+        saved.validate_for(current)?;
+    }
+    Ok(())
 }
 
 /// Brings back checkpoint `id` with the snapshot it was taken with; 0, or
@@ -72,13 +126,25 @@ pub(crate) fn restore(rs: &mut RenderState, id: u64) {
         .kept
         .iter()
         .find(|(k, _)| *k == id)
-        .map(|(_, c)| (c.particles.clone(), c.motion.clone(), c.renderer));
+        .map(|(_, c)| {
+            (
+                c.particles.clone(),
+                c.motion.clone(),
+                c.renderer,
+                c.ui.clone(),
+            )
+        });
     match kept {
-        Some((particles, motion, renderer)) => {
+        Some((particles, motion, renderer, ui)) => {
             rs.particle_history = particles;
             rs.motion.restore(&motion);
             if let Some(b) = rs.backend.as_mut() {
                 b.restore_state(renderer);
+            }
+            if let (Some(saved), Some(current)) = (ui, &rs.ui) {
+                saved
+                    .restore(current)
+                    .expect("presentation checkpoint preflight passed");
             }
         }
         None => {
@@ -116,6 +182,11 @@ pub(crate) fn hash(rs: &RenderState) -> u64 {
             put(&t.clock.time.to_bits().to_le_bytes());
             put(&t.clock.scale.to_bits().to_le_bytes());
         }
+    }
+    if let Some(ui) = &rs.ui {
+        let saved = UiCheckpoint::save(ui);
+        put(&saved.state);
+        put(&saved.world);
     }
     h
 }

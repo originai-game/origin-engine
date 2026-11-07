@@ -31,6 +31,46 @@ use og_ecs::World;
 use std::time::Instant;
 use support::*;
 
+#[test]
+fn presentation_feedback_is_audible_without_world_state_or_voice_collisions() {
+    let bank = SoundBank::new();
+    let sound = insert(&bank, "feedback", 1, &synth(24_000, 1, sine(731.0, 0.2)));
+    let (mut world, link) = world_with(&bank, |_| {});
+    let (mut control, _) = world_with(&bank, |_| {});
+    world.spawn((AudioSource::new(sound),)).unwrap();
+    control.spawn((AudioSource::new(sound),)).unwrap();
+    link.attach();
+    let mut mixer = Mixer::for_link(&link, RATE, og_audio::Clock::Driven);
+    let before = world.world_hash();
+    link.play_feedback(0, sound, 0.7, 1.3).unwrap();
+    assert_eq!(world.world_hash(), before);
+    world.step().unwrap();
+    control.step().unwrap();
+    assert_eq!(world.world_hash(), control.world_hash());
+    mixer.pump(&link);
+    let mut pcm = vec![0.0; 1602];
+    mixer.render(&mut pcm);
+    assert!(pcm.iter().any(|sample| sample.abs() > 0.01));
+    assert_eq!(
+        mixer.voice_count(),
+        2,
+        "world voice 1 and feedback voice 1 coexist, including past Live"
+    );
+
+    link.play_feedback(1, sound, 1.0, 1.0).unwrap();
+    link.clear_feedback();
+    world.step().unwrap();
+    control.step().unwrap();
+    assert_eq!(world.world_hash(), control.world_hash());
+    mixer.pump(&link);
+    mixer.render(&mut pcm);
+    assert_eq!(
+        mixer.voice_count(),
+        2,
+        "restore discarded the unheard third voice"
+    );
+}
+
 /// Ticks a world, pumping the sink after each tick.
 fn run(world: &mut World, sink: &mut HeadlessSink, ticks: u64) {
     for _ in 0..ticks {

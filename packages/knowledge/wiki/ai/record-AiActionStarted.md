@@ -6,7 +6,7 @@ Module [`ai`](../ai.md) · [index](../index.md)
 
 ### `og.AiActionStarted` (event)
 
-A game action (`action <name> args` in a behaviour) started: play it (a reload, a door, a line of dialogue) and call og.ai.finish when it is over; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded.
+A game action (`action <name> args` in a behaviour) started: play its animation (such as a reload), open its door or speak its dialogue, then call og.ai.finish when it ends; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded.
 
 Token `og.AiActionStarted`, registered under the schema name `og.AiActionStarted`; its value type is `AiActionStarted`.
 
@@ -19,7 +19,7 @@ Token `og.AiActionStarted`, registered under the schema name `og.AiActionStarted
 
 ```ogt
 event AiActionStarted {
-  doc "A game action (`action <name> args` in a behaviour) started: play it (a reload, a door, a line of dialogue) and call og.ai.finish when it is over; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded."
+  doc "A game action (`action <name> args` in a behaviour) started: play its animation (such as a reload), open its door or speak its dialogue, then call og.ai.finish when it ends; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded."
   field entity Entity "The agent."
   field node u32 "The action's node, an index into BehaviourInfo.nodes."
   field name String "The action's name (at most 63 bytes)."

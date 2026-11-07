@@ -38,6 +38,7 @@ ui-hud.ogt
 ui-world.ogt
 ui-core-draw.ogt
 ui-world-primitives.ogt
+ui-reactive.ogt
 ui-core-documents.ogt
 systems.ogt
 commands.ogt

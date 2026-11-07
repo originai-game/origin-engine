@@ -238,6 +238,25 @@ pub fn og_rng_fork(world: u32, label: String) -> u32 {
 
 // ── audio ───────────────────────────────────────────────────────────────────
 
+pub fn og_audio_play_feedback(world: u32, sound: f64, desc: Option<String>) -> String {
+    result((|| {
+        let eng = engine(world)?;
+        assets::sound_index(&eng, sound).ok_or("feedback sound is not loaded")?;
+        let tick = if let Some(frame) = running(world) {
+            // SAFETY: the frame is published while its system runs.
+            unsafe { frame.ctx() }.time().tick
+        } else {
+            eng.world()?.time().tick
+        };
+        let desc = parse(desc.as_deref())?;
+        let volume = desc["volume"].as_f64().unwrap_or(1.0) as f32;
+        let pitch = desc["playbackRate"].as_f64().unwrap_or(1.0) as f32;
+        let link = og_audio::link(world).ok_or("world has no audio sink")?;
+        link.play_feedback(tick, sound as u64, volume, pitch)?;
+        Ok(Value::Null)
+    })())
+}
+
 /// `og.audio.outputLatency`: og.Audio's `outputLatency`, which the host's
 /// sink reports between ticks (`set_audio_latency`). Inside a system og.Audio
 /// must be among its reads or writes (refused and logged once otherwise: 0).

@@ -2,18 +2,18 @@
 //! the world, or the part of it a game keeps, as text a game puts in the
 //! platform store, and back.
 //!
-//! The text is `og-save:2:` and the base64 of a deflated payload: `OGSV`,
-//! a `u32` version (2), the `u64` tick it was taken at, the `u64` FNV-1a
-//! of the snapshot (a damaged save is refused) and the `u32` save version
-//! of the game that wrote it (GameDesc.saveVersion), then the world
+//! The text is `og-save:3:` and the base64 of a deflated payload: `OGSV`,
+//! a `u32` version (3), the `u64` tick it was taken at, the `u64` FNV-1a
+//! of the body (a damaged save is refused) and the `u32` save version
+//! of the game that wrote it (GameDesc.saveVersion), then the length-prefixed world
 //! snapshot (og-ecs's format, which carries every type's name, layout hash
 //! and field table, so a save from a build whose types changed is refused
 //! naming them, or mapped field by field with `migrate`; the session's
 //! types below may differ without either, as the host's replace them,
 //! and so may an engine type that only gained fields since the save,
 //! which take their declared defaults: [`engine_owned`]).
-//! Format 1 (`og-save:1:`, engines to 0.7.7) has no save version: it reads
-//! as version 1.
+//! The body ends with a portable UI presentation checkpoint, outside the
+//! simulation hash. Other envelope versions are refused without conversion.
 //!
 //! A restore first upgrades the engine's own state in the save
 //! ([`super::save_migrations`]: og.ui's block 9 → 11 ...), so an engine
@@ -44,7 +44,7 @@ use std::cell::RefCell;
 
 const PREFIX: &str = "og-save:";
 const MAGIC: &[u8; 4] = b"OGSV";
-const VERSION: u32 = 2;
+const VERSION: u32 = 3;
 /// og-ecs's selection format: the snapshot's `u32` after its magic.
 const SELECTION: u32 = 5;
 /// The largest save inflated: far over any world the 64 KiB store holds.
@@ -74,12 +74,14 @@ fn engine_owned(name: &str) -> bool {
 pub(crate) struct Pending {
     snapshot: Vec<u8>,
     migrate: bool,
+    ui: Option<super::presentation::UiCheckpoint>,
 }
 
 /// What a save's text holds.
 #[derive(Debug)]
 struct Save {
     snapshot: Vec<u8>,
+    ui: Option<super::presentation::UiCheckpoint>,
     tick: u64,
     /// The game's save version when it was written.
     version: u32,
@@ -172,21 +174,42 @@ pub fn og_world_snapshot(world: u32, desc: Option<String>) -> String {
         }
     };
     match taken {
-        Ok((bytes, tick)) => ok(Value::String(encode(&bytes, tick, version))),
+        Ok((bytes, tick)) => {
+            let ui = (!is_selection(&bytes))
+                .then(|| {
+                    eng.state
+                        .borrow()
+                        .ui
+                        .as_ref()
+                        .map(super::presentation::UiCheckpoint::save)
+                })
+                .flatten();
+            ok(Value::String(encode(&bytes, tick, version, ui.as_ref())))
+        }
         Err(e) => refuse(e),
     }
 }
 
 /// The save text of a world snapshot, of the game's save version `version`.
-fn encode(snapshot: &[u8], tick: u64, version: u32) -> String {
-    let hash = og_core::hash::hash_bytes(snapshot);
-    let mut payload = Vec::with_capacity(snapshot.len() + 28);
+fn encode(
+    snapshot: &[u8],
+    tick: u64,
+    version: u32,
+    ui: Option<&super::presentation::UiCheckpoint>,
+) -> String {
+    let ui = serde_json::to_vec(&ui).expect("UI checkpoint contains bytes only");
+    let mut body = Vec::with_capacity(snapshot.len() + ui.len() + 4);
+    body.extend_from_slice(&(snapshot.len() as u32).to_le_bytes());
+    body.extend_from_slice(snapshot);
+    body.extend_from_slice(&ui);
+    let hash = og_core::hash::hash_bytes(&body);
+    let mut payload = Vec::with_capacity(body.len() + 28);
     payload.extend_from_slice(MAGIC);
     payload.extend_from_slice(&VERSION.to_le_bytes());
     payload.extend_from_slice(&tick.to_le_bytes());
     payload.extend_from_slice(&hash.to_le_bytes());
     payload.extend_from_slice(&version.to_le_bytes());
-    payload.extend_from_slice(snapshot);
+    payload.extend_from_slice(&body);
     let deflated = miniz_oxide::deflate::compress_to_vec(&payload, 6);
     format!("{PREFIX}{VERSION}:{}", og_probe::base64::encode(&deflated))
 }
@@ -200,14 +223,14 @@ pub fn save_snapshot_bytes(save: &str) -> Result<Vec<u8>, String> {
 /// What a save holds.
 fn decode_save(save: &str) -> Result<Save, String> {
     let not_a_save = || {
-        "this is not a save: world.restore takes the text world.snapshot returned (`og-save:2:...`), as it was stored".to_string()
+        "this is not a save: world.restore takes the text world.snapshot returned (`og-save:3:...`), as it was stored".to_string()
     };
     let rest = save.trim().strip_prefix(PREFIX).ok_or_else(not_a_save)?;
     let (format, body) = rest.split_once(':').ok_or_else(not_a_save)?;
     let format: u32 = format.parse().map_err(|_| not_a_save())?;
-    if format > VERSION || format == 0 {
+    if format != VERSION {
         return Err(format!(
-            "this save is format {format}, from a newer engine; this one reads formats 1 and {VERSION}: update the engine the game runs on"
+            "save format {format} is incompatible with engine save format {VERSION}; save migration is not supported"
         ));
     }
     let deflated = unbase64(body).ok_or_else(|| {
@@ -218,24 +241,29 @@ fn decode_save(save: &str) -> Result<Save, String> {
             "the save's text is damaged (it does not inflate): store and read it back unchanged"
                 .to_string()
         })?;
-    // Format 1 has no save version: version 1, the first a game has.
-    let header = if format == 1 { 24 } else { 28 };
+    let header = 28;
     if payload.len() < header || &payload[..4] != MAGIC || payload[4..8] != format.to_le_bytes() {
         return Err(not_a_save());
     }
-    let snapshot = &payload[header..];
+    let body = &payload[header..];
     let hash = u64::from_le_bytes(payload[16..24].try_into().expect("8 bytes"));
-    if og_core::hash::hash_bytes(snapshot) != hash {
+    if og_core::hash::hash_bytes(body) != hash {
         return Err("the save's text is damaged (its checksum does not match): store and read it back unchanged".into());
+    }
+    let size = body.get(..4).ok_or_else(not_a_save)?;
+    let size = u32::from_le_bytes(size.try_into().expect("4 bytes")) as usize;
+    let end = size.checked_add(4).ok_or_else(not_a_save)?;
+    let snapshot = body.get(4..end).ok_or_else(not_a_save)?;
+    let ui: Option<super::presentation::UiCheckpoint> = serde_json::from_slice(&body[end..])
+        .map_err(|e| format!("invalid UI presentation checkpoint: {e}"))?;
+    if let Some(ui) = &ui {
+        ui.validate()?;
     }
     Ok(Save {
         snapshot: snapshot.to_vec(),
+        ui,
         tick: u64::from_le_bytes(payload[8..16].try_into().expect("8 bytes")),
-        version: if format == 1 {
-            1
-        } else {
-            u32::from_le_bytes(payload[24..28].try_into().expect("4 bytes"))
-        },
+        version: u32::from_le_bytes(payload[24..28].try_into().expect("4 bytes")),
         steps: Vec::new(),
     })
 }
@@ -319,7 +347,7 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
         .and_then(|d| d["migrate"].as_bool())
         .unwrap_or(false);
     let current = eng.state.borrow().save_version;
-    let snapshot = match upgraded(&save, current) {
+    let (snapshot, ui) = match upgraded(&save, current) {
         Ok(s) => {
             // What the engine's migrations did, in the log (`og run` prints it).
             if !s.steps.is_empty() {
@@ -328,7 +356,7 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
                     "text": format!("world.restore: the engine upgraded the save: {}", s.steps.join("; ")),
                 }));
             }
-            s.snapshot
+            (s.snapshot, s.ui)
         }
         Err(e) => return refuse(e),
     };
@@ -339,14 +367,26 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
             return refuse(refusal(e, migrate));
         }
         if running(world).is_some() || eng.probe.try_borrow_mut().is_err() {
-            eng.state.borrow_mut().pending_restore = Some(Pending { snapshot, migrate });
+            eng.state.borrow_mut().pending_restore = Some(Pending {
+                snapshot,
+                migrate,
+                ui,
+            });
             return ok(Value::Null);
         }
         let w = match eng.world() {
             Ok(w) => w,
             Err(e) => return refuse(e),
         };
-        return match apply(&eng, w, &Pending { snapshot, migrate }) {
+        return match apply(
+            &eng,
+            w,
+            &Pending {
+                snapshot,
+                migrate,
+                ui,
+            },
+        ) {
             Ok(()) => ok(Value::Null),
             Err(e) => refuse(e),
         };
@@ -358,7 +398,11 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
         // A save that holds a lazy record the world has not registered
         // (super::lazy): registered and checked as the tick ends.
         if super::lazy::snapshot_needs(&eng, &snapshot) {
-            eng.state.borrow_mut().pending_restore = Some(Pending { snapshot, migrate });
+            eng.state.borrow_mut().pending_restore = Some(Pending {
+                snapshot,
+                migrate,
+                ui,
+            });
             return ok(Value::Null);
         }
         // SAFETY: the frame is published while its system runs.
@@ -371,7 +415,11 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
             Ok(session_differs) => migrate || session_differs,
             Err(e) => return refuse(refusal(e, migrate)),
         };
-        eng.state.borrow_mut().pending_restore = Some(Pending { snapshot, migrate });
+        eng.state.borrow_mut().pending_restore = Some(Pending {
+            snapshot,
+            migrate,
+            ui,
+        });
         return ok(Value::Null);
     }
     let w = match eng.world() {
@@ -385,11 +433,23 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
     };
     // A command runs inside the probe's tick: the restore waits for its end.
     let Ok(mut probe) = eng.probe.try_borrow_mut() else {
-        eng.state.borrow_mut().pending_restore = Some(Pending { snapshot, migrate });
+        eng.state.borrow_mut().pending_restore = Some(Pending {
+            snapshot,
+            migrate,
+            ui,
+        });
         return ok(Value::Null);
     };
     let from = w.time().tick;
-    let result = apply(&eng, w, &Pending { snapshot, migrate });
+    let result = apply(
+        &eng,
+        w,
+        &Pending {
+            snapshot,
+            migrate,
+            ui,
+        },
+    );
     probe.shift_schedule(from, w.time().tick);
     match result {
         Ok(()) => ok(Value::Null),
@@ -406,6 +466,7 @@ struct Open {
     edit: SnapshotEdit,
     tick: u64,
     version: u32,
+    ui: Option<super::presentation::UiCheckpoint>,
 }
 
 thread_local! {
@@ -433,6 +494,7 @@ pub fn og_world_open_save(world: u32, save: String) -> String {
         edit,
         tick: s.tick,
         version: s.version,
+        ui: s.ui,
     };
     let handle = OPEN.with(|o| {
         let mut o = o.borrow_mut();
@@ -667,7 +729,7 @@ pub fn og_save_edit_spawn(edit: u32, desc: Option<String>) -> String {
 pub fn og_save_edit_text(edit: u32) -> String {
     answer(with_open(edit, |o| {
         let version = engine(o.engine)?.state.borrow().save_version;
-        Ok(encode(&o.edit.to_bytes(), o.tick, version))
+        Ok(encode(&o.edit.to_bytes(), o.tick, version, o.ui.as_ref()))
     }))
 }
 
@@ -748,6 +810,7 @@ pub(crate) fn restore_session(
     let pending = Pending {
         snapshot: snapshot.to_vec(),
         migrate: false,
+        ui: None,
     };
     apply_keeping(eng, world, &pending, keep)
 }
@@ -854,6 +917,9 @@ fn apply_selection(eng: &Engine, world: &mut World, pending: &Pending) -> Result
 /// The runtime's own view of the world after a restore: names, views, the
 /// platform clock, the renderer's history.
 fn refresh(eng: &Engine, world: &World, from: u64, to: u64) {
+    if let Some(link) = og_audio::link(eng.id) {
+        link.clear_feedback();
+    }
     {
         let mut st = eng.state.borrow_mut();
         st.names.clear();
@@ -883,6 +949,9 @@ fn apply_keeping(
 ) -> Result<(), String> {
     if is_selection(&pending.snapshot) {
         return apply_selection(eng, world, pending);
+    }
+    if let (Some(saved), Some(ui)) = (&pending.ui, &eng.state.borrow().ui) {
+        saved.validate_for(ui)?;
     }
     let from = world.time().tick;
     // Nothing for a frame to blend from until the next tick.
@@ -921,6 +990,9 @@ fn apply_keeping(
     }
     let to = world.time().tick;
     refresh(eng, world, from, to);
+    if let (Some(saved), Some(ui)) = (&pending.ui, &eng.state.borrow().ui) {
+        saved.restore(ui)?;
+    }
     Ok(())
 }
 
@@ -939,8 +1011,8 @@ mod tests {
 
     #[test]
     fn a_save_decodes_to_its_snapshot_and_other_text_is_refused_with_the_fix() {
-        let save = encode(b"OGWS world bytes", 42, 3);
-        assert!(save.starts_with("og-save:2:"));
+        let save = encode(b"OGWS world bytes", 42, 3, None);
+        assert!(save.starts_with("og-save:3:"));
         let read = decode_save(&save).unwrap();
         assert_eq!(read.snapshot, b"OGWS world bytes");
         assert_eq!(
@@ -954,11 +1026,11 @@ mod tests {
         );
         assert!(decode("{\"chimes\":1}").unwrap_err().contains("not a save"));
         assert!(
-            decode("og-save:3:AAAA")
+            decode("og-save:4:AAAA")
                 .unwrap_err()
-                .contains("newer engine")
+                .contains("save format 4 is incompatible with engine save format 3")
         );
-        assert!(decode("og-save:1:@@@").unwrap_err().contains("damaged"));
-        assert!(decode("og-save:1:AAAA").unwrap_err().contains("damaged"));
+        assert!(decode("og-save:3:@@@").unwrap_err().contains("damaged"));
+        assert!(decode("og-save:3:AAAA").unwrap_err().contains("damaged"));
     }
 }

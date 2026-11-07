@@ -52,6 +52,9 @@ impl Lifecycle for NodeHost {
     ) -> String {
         rt::og_engine_write_resource_bytes(world, resource, &bytes)
     }
+    fn og_engine_ui_patch(&self, world: u32, bytes: Self::Bytes) -> Self::Bytes {
+        crate::NodeBytes(rt::og_engine_ui_patch(world, &bytes))
+    }
     fn og_host_begin_bundle(&self) {
         rt::og_host_begin_bundle()
     }
@@ -93,6 +96,9 @@ impl ReflectApi for NodeHost {
     }
     fn og_reflect_define_resource(&self, name: String, fields: String) -> String {
         rt::og_reflect_define_resource(name, fields)
+    }
+    fn og_reflect_define_event(&self, name: String, fields: String) -> String {
+        rt::og_reflect_define_event(name, fields)
     }
 }
 
@@ -464,6 +470,15 @@ impl ProcgenApi for NodeHost {
 }
 
 impl InputApi for NodeHost {
+    fn og_input_intent(&self, world: u32, event: String, payload: String) -> String {
+        rt::og_input_intent(world, event, payload)
+    }
+    fn og_input_take_intents(&self, world: u32) -> String {
+        rt::og_input_take_intents(world)
+    }
+    fn og_input_replay_intent(&self, world: u32, intent: String) -> String {
+        rt::og_input_replay_intent(world, intent)
+    }
     fn og_input_define_action(&self, world: u32, desc: Option<String>) -> String {
         rt::og_input_define_action(world, desc)
     }

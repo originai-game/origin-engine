@@ -79,6 +79,11 @@ pub fn og_engine_write_resource_bytes(world: u32, resource: String, bytes: Vec<u
 }
 
 #[wasm_bindgen]
+pub fn og_engine_ui_patch(world: u32, bytes: Vec<u8>) -> Vec<u8> {
+    <Host as Lifecycle>::og_engine_ui_patch(&Host, world, bytes)
+}
+
+#[wasm_bindgen]
 pub fn og_platform_take(engine: u32) -> String {
     <Host as Lifecycle>::og_platform_take(&Host, engine)
 }
@@ -121,6 +126,11 @@ pub fn og_reflect_define_component(name: String, fields: String) -> String {
 #[wasm_bindgen]
 pub fn og_reflect_define_resource(name: String, fields: String) -> String {
     <Host as ReflectApi>::og_reflect_define_resource(&Host, name, fields)
+}
+
+#[wasm_bindgen]
+pub fn og_reflect_define_event(name: String, fields: String) -> String {
+    <Host as ReflectApi>::og_reflect_define_event(&Host, name, fields)
 }
 
 #[wasm_bindgen]
@@ -541,6 +551,21 @@ pub fn og_procgen_bsp(desc: Option<String>) -> String {
 #[wasm_bindgen]
 pub fn og_procgen_wfc(desc: Option<String>) -> String {
     <Host as ProcgenApi>::og_procgen_wfc(&Host, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_input_intent(world: u32, event: String, payload: String) -> String {
+    <Host as InputApi>::og_input_intent(&Host, world, event, payload)
+}
+
+#[wasm_bindgen]
+pub fn og_input_take_intents(world: u32) -> String {
+    <Host as InputApi>::og_input_take_intents(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_input_replay_intent(world: u32, intent: String) -> String {
+    <Host as InputApi>::og_input_replay_intent(&Host, world, intent)
 }
 
 #[wasm_bindgen]
@@ -1546,6 +1571,11 @@ pub fn og_tilemap_cell_at(world: u32, entity: f64, point: String) -> String {
 #[wasm_bindgen]
 pub fn og_tilemap_cell_center(world: u32, entity: f64, x: u32, y: u32) -> String {
     <Host as TilemapApi>::og_tilemap_cell_center(&Host, world, entity, x, y)
+}
+
+#[wasm_bindgen]
+pub fn og_audio_play_feedback(world: u32, sound: f64, desc: Option<String>) -> String {
+    <Host as AudioApi>::og_audio_play_feedback(&Host, world, sound, desc)
 }
 
 #[wasm_bindgen]

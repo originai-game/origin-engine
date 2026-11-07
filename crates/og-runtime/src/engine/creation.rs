@@ -101,6 +101,7 @@ const REGISTERED_BY_MODULES: &[&str] = &[
     "og.Pointers",
     "og.Gamepad",
     "og.PointerLock",
+    "og.PauseIntent",
 ];
 
 /// An engine record's schema at the version its module registers, so the
@@ -346,7 +347,7 @@ pub(crate) fn assemble(
 
     // The modules' systems before the game's (physics' collider recording,
     // the UI's begin), then the game's, then the modules' after them.
-    let ui = super::modules::new_ui(game.tick, previous.as_ref().map(|p| p.0));
+    let ui = super::modules::new_ui(game.tick, previous.as_ref().map(|p| p.0))?;
     let (physics, actions) = super::modules::mount_front(&mut world, engine_id, profile, &ui)?;
     let record_names: Vec<String> = layouts
         .keys()
@@ -706,6 +707,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         scene_instances: Vec::new(),
         game_spawned: Default::default(),
         start: a.game.start,
+        ui_setup: Some(a.game.ui_setup),
         start_failed: None,
         project,
         boot_look: (!a.game.look.is_empty()).then(|| a.game.look.clone()),
@@ -725,6 +727,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
             .collect(),
         warnings: a.warnings,
         outputs: Vec::new(),
+        recorded_intents: Vec::new(),
         reloaded: None,
         profile,
         physics: Some(a.mounted.physics.clone()),
@@ -826,17 +829,42 @@ pub(super) fn run_start(eng: &Engine) -> Result<(), String> {
             .push(json!({ "tick": 0, "warning": true, "text": text }));
         st.warnings.push(text);
     }
-    let Some(start) = eng.state.borrow_mut().start.take() else {
-        return Ok(());
-    };
-    before_structural(eng);
-    if let Err(e) = call(eng, 1, start, "[]".into()) {
-        let text =
-            format!("GameDesc.start threw, so the world is half-built and does not run: {e}");
-        eng.state.borrow_mut().start_failed = Some(text.clone());
-        return Err(text);
+    let start = eng.state.borrow_mut().start.take();
+    if let Some(start) = start {
+        before_structural(eng);
+        if let Err(e) = call(eng, 1, start, "[]".into()) {
+            let text =
+                format!("GameDesc.start threw, so the world is half-built and does not run: {e}");
+            eng.state.borrow_mut().start_failed = Some(text.clone());
+            return Err(text);
+        }
+    }
+    let ui_setup = eng.state.borrow_mut().ui_setup.take();
+    if let Some(callback) = ui_setup {
+        run_ui_registration(eng, callback)?;
     }
     Ok(())
+}
+
+pub(crate) fn run_ui_registration(eng: &Engine, callback: Option<u32>) -> Result<(), String> {
+    if callback.is_none() && hooks().is_none() {
+        return Ok(());
+    }
+    let before = eng.world()?.world_hash();
+    // An absent callback on reload is still a registration pass: it disposes
+    // the presentation IDs removed with the old GameDesc.ui.
+    let result = call(eng, 6, callback.unwrap_or(u32::MAX), String::new());
+    let after = eng.world()?.world_hash();
+    let result = if before == after {
+        result.map(|_| ())
+    } else {
+        Err("registration changed world_hash; UI setup may only read gameplay state".into())
+    };
+    result.map_err(|reason| {
+        let reason = format!("GameDesc.ui: {reason}");
+        eng.state.borrow_mut().start_failed = Some(reason.clone());
+        reason
+    })
 }
 
 /// Spawns GameDesc.scene once its bundle is ready; a failed bundle is a

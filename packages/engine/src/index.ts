@@ -58,6 +58,9 @@ export const defineComponent: typeof Api.defineComponent = (name, fields) =>
 export const defineResource: typeof Api.defineResource = (name, fields) =>
   defineRecord("resource", name, fields as unknown as Record<string, FieldSpec>) as never;
 
+export const defineEvent: typeof Api.defineEvent = (name, fields) =>
+  defineRecord("event", name, fields as unknown as Record<string, FieldSpec>) as never;
+
 export const defineSystem: typeof Api.defineSystem = (name, desc, run) =>
   defineSystemImpl(name, desc as never, run) as never;
 

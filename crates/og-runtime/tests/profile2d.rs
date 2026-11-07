@@ -154,28 +154,33 @@ fn base64_encode(bytes: &[u8]) -> String {
     out
 }
 
-/// The world snapshot inside a save (save.rs: `OGSV`, version 2, tick,
-/// hash, the game's save version, then the snapshot) and the tick it was
-/// taken at.
+/// The simulation bytes and tick, excluding the save's UI checkpoint.
 fn snapshot_of(save: &str) -> (Vec<u8>, u64) {
     let payload = miniz_oxide::inflate::decompress_to_vec(&base64_decode(
-        save.strip_prefix("og-save:2:").expect("a save"),
+        save.strip_prefix("og-save:3:").expect("a save"),
     ))
     .expect("a deflated save");
     assert_eq!(&payload[..4], b"OGSV");
     let tick = u64::from_le_bytes(payload[8..16].try_into().unwrap());
-    (payload[28..].to_vec(), tick)
+    (
+        og_runtime::save_snapshot_bytes(save).expect("a world snapshot"),
+        tick,
+    )
 }
 
-/// A save of format 1 (engines to 0.7.7): still read, as save version 1.
+/// A current save envelope with no presentation checkpoint.
 fn save_of(snapshot: &[u8], tick: u64) -> String {
+    let mut body = (snapshot.len() as u32).to_le_bytes().to_vec();
+    body.extend_from_slice(snapshot);
+    body.extend_from_slice(b"null");
     let mut payload = b"OGSV".to_vec();
-    payload.extend_from_slice(&1u32.to_le_bytes());
+    payload.extend_from_slice(&3u32.to_le_bytes());
     payload.extend_from_slice(&tick.to_le_bytes());
-    payload.extend_from_slice(&og_core::hash::hash_bytes(snapshot).to_le_bytes());
-    payload.extend_from_slice(snapshot);
+    payload.extend_from_slice(&og_core::hash::hash_bytes(&body).to_le_bytes());
+    payload.extend_from_slice(&1u32.to_le_bytes());
+    payload.extend_from_slice(&body);
     format!(
-        "og-save:1:{}",
+        "og-save:3:{}",
         base64_encode(&miniz_oxide::deflate::compress_to_vec(&payload, 6))
     )
 }

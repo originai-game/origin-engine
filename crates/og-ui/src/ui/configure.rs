@@ -74,6 +74,7 @@ impl Ui {
             draws: Default::default(),
             dressable: Default::default(),
             docs: Default::default(),
+            reactive: Default::default(),
             actions: Default::default(),
             world: Default::default(),
         }

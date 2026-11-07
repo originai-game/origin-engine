@@ -19,9 +19,6 @@ use og_ui::{
     WorldAnchorDesc, WorldOcclusion, WorldPanelDesc, WorldTarget, WorldView,
 };
 
-/// The state block that carries world-space UI's state.
-pub const UI_WORLD_STATE: &str = "og.ui.world";
-
 /// What the UI's end reads to place world-space UI.
 pub(crate) struct Feed {
     camera: Option<(og_ecs::SchemaId, crate::codec::Layout)>,
@@ -93,33 +90,6 @@ impl Feed {
             })
             .collect();
         ui.set_world_poses(&poses);
-    }
-}
-
-/// World-space UI's state as world state.
-pub(crate) struct WorldState(pub SharedUi);
-
-impl StateBlock for WorldState {
-    fn save(&self, out: &mut Vec<u8>) {
-        out.extend_from_slice(&self.0.lock().save_world_state());
-    }
-
-    fn decode(&self, bytes: &[u8]) -> og_core::Result<Box<dyn Any + Send>> {
-        Ui::default().restore_world_state(bytes)?;
-        Ok(Box::new(bytes.to_vec()))
-    }
-
-    fn apply(&mut self, decoded: Option<Box<dyn Any + Send>>) {
-        let bytes = decoded
-            .and_then(|d| d.downcast::<Vec<u8>>().ok())
-            .map(|b| *b)
-            .unwrap_or_default();
-        let _ = self.0.lock().restore_world_state(&bytes);
-    }
-
-    /// The world-space pools' instances are at places in the world.
-    fn shift(&mut self, s: &og_ecs::Shift) {
-        self.0.lock().shift_world(s.d.as_vec3());
     }
 }
 

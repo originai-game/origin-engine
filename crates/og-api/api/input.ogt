@@ -7,6 +7,45 @@ module input {
 
   const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
   const MAX_GAMEPADS u32 8 "The most gamepads og.Gamepad reads: pads 0 to 7."
+
+  fn intent {
+    doc "Send a reflected gameplay intent for the next tick and record its name, packed payload and layout hash. UI controls use this boundary instead of writing gameplay state. Inside a system, declare the event among its writes."
+    generic E AnyEvent
+    param world World "The game world."
+    param event E "The reflected event type supplies the stable name and schema."
+    param payload Value.E "The event's fields."
+    returns Result.Void
+  }
+
+  struct RecordedIntent {
+    doc "One deterministic input, independent of presentation checkpoints. Replay it between ticks, when world.time.tick equals tick."
+    field tick f64 "The simulation boundary at which the input was sent."
+    field name String "The reflected event name."
+    field layoutHash String "The schema layout hash as an exact decimal u64."
+    field payload List.u32 "The reflected packed field bytes, each 0 to 255."
+  }
+
+  fn takeIntents {
+    doc "Drain accepted intents in delivery order for recording. Call regularly; no presentation state is included."
+    param world World "The game world."
+    returns List.RecordedIntent
+  }
+
+  fn replayIntent {
+    doc "Deliver recorded input between ticks without UI state. Refuse an unknown event, layout hash mismatch, invalid payload or wrong tick as an error value without changing the world."
+    param world World "The game world."
+    param intent RecordedIntent "The recorded input."
+    returns Result.Void
+  }
+
+  event PauseIntent {
+    doc "An engine gameplay intent: apply scale at the next tick boundary. UI pause layers send this through the same recorded intent path as game controls."
+    field scale f32 "Simulation time scale; zero pauses." {
+      min 0
+      max 10
+    }
+  }
+
   # ── actions (docs/design.md §3; og-input's actions.rs) ──────────────────
 
   enum InputDevice {
@@ -1212,4 +1251,3 @@ module input {
 }
 
 # ── camera ────────────────────────────────────────────────────────────────
-

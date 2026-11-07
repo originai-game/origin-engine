@@ -100,13 +100,22 @@ pub(crate) fn snapshot(engine: u32, world: &og_ecs::World) {
 }
 
 /// The layers code did not build this tick, built with the engine's
-/// bindings (before the frame ends); then the game's time scale follows
-/// the pausing layers.
-pub(crate) fn end_of_frame(engine: u32, ui: &mut Ui, ctx: &og_ecs::SystemContext<'_>) {
+/// bindings (before the frame ends). Pausing sends recorded input for the
+/// next tick; it does not change simulation time from presentation code.
+pub(crate) fn end_of_frame(
+    engine: u32,
+    ui: &mut Ui,
+    ctx: &og_ecs::SystemContext<'_>,
+) -> og_core::Result<()> {
     ui.build_layers(&env(engine));
     if let Some(scale) = ui.pause_time_scale(ctx.time_scale().scale) {
-        let _ = ctx.set_time_scale(scale);
+        let eng = super::super::engine::engine(engine)
+            .map_err(|e| og_core::Error::new(og_core::ErrorKind::Invalid, e))?;
+        let bytes = og_core::reflect::to_bytes(&og_input::PauseIntent { scale })?;
+        crate::api::send_intent(&eng, Some(ctx), "og.PauseIntent", &bytes)
+            .map_err(|e| og_core::Error::new(og_core::ErrorKind::Invalid, e))?;
     }
+    Ok(())
 }
 
 fn hash_of(eng: &Engine, id: &str) -> u64 {

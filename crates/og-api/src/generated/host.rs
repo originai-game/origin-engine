@@ -53,6 +53,8 @@ pub trait Lifecycle: Wire {
     fn og_engine_read_resource(&self, world: u32, resource: String) -> Self::Bytes;
     /// Overwrite a resource with packed bytes followed by the layout epoch they were made with (as og_engine_read_resource answers): how the runtime flushes a handle's field writes, once before the next engine call and at the end of every system. Read-only fields keep their value. A Result; refused for a stale epoch, a wrong size, an invalid value or a resource the running system did not declare among its writes.
     fn og_engine_write_resource_bytes(&self, world: u32, resource: String, bytes: Self::Bytes) -> String;
+    /// Apply a binary UI source/computation patch batch. Replies are binary results in request order. Source values and the dependency graph belong to this engine; the TypeScript runtime executes requested computation IDs outside the engine lock.
+    fn og_engine_ui_patch(&self, world: u32, bytes: Self::Bytes) -> Self::Bytes;
     /// The platform calls (IDL `platform`) made since the last call, oldest first, as JSON `[{ request, method, args, tick }]`. The host answers each but `telemetry` (one-way) with og_platform_answer.
     fn og_platform_take(&self, engine: u32) -> String;
     /// Answer one platform call: JSON `{ ok: true, data }` or `{ ok: false, error: { code, message, retryable } }`. It is applied at the start of the next tick (og.platform sends PlatformAnswered). False for an unknown, one-way or answered request, or a malformed answer.
@@ -75,6 +77,8 @@ pub trait ReflectApi: Wire {
     fn og_reflect_define_component(&self, name: String, fields: String) -> String;
     /// `defineResource`
     fn og_reflect_define_resource(&self, name: String, fields: String) -> String;
+    /// `defineEvent`
+    fn og_reflect_define_event(&self, name: String, fields: String) -> String;
 }
 
 /// `world`: packages/knowledge/wiki/world.md.
@@ -275,6 +279,12 @@ pub trait ProcgenApi: Wire {
 
 /// `input`: packages/knowledge/wiki/input.md.
 pub trait InputApi: Wire {
+    /// `og.input.intent`
+    fn og_input_intent(&self, world: u32, event: String, payload: String) -> String;
+    /// `og.input.takeIntents`
+    fn og_input_take_intents(&self, world: u32) -> String;
+    /// `og.input.replayIntent`
+    fn og_input_replay_intent(&self, world: u32, intent: String) -> String;
     /// `og.input.defineAction`
     fn og_input_define_action(&self, world: u32, desc: Option<String>) -> String;
     /// `og.input.actions`
@@ -713,6 +723,8 @@ pub trait TilemapApi: Wire {
 
 /// `audio`: packages/knowledge/wiki/audio.md.
 pub trait AudioApi: Wire {
+    /// `og.audio.playFeedback`
+    fn og_audio_play_feedback(&self, world: u32, sound: f64, desc: Option<String>) -> String;
     /// `og.audio.createSound`
     fn og_audio_create_sound(&self, world: u32, desc: Option<String>) -> String;
     /// `og.audio.outputLatency`
@@ -1506,6 +1518,7 @@ impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi +
 pub const SYMBOLS: &[&str] = &[
     "og_reflect_define_component",
     "og_reflect_define_resource",
+    "og_reflect_define_event",
     "og_save_edit_get_version",
     "og_save_edit_types",
     "og_save_edit_records",
@@ -1590,6 +1603,9 @@ pub const SYMBOLS: &[&str] = &[
     "og_procgen_poisson_disk",
     "og_procgen_bsp",
     "og_procgen_wfc",
+    "og_input_intent",
+    "og_input_take_intents",
+    "og_input_replay_intent",
     "og_input_define_action",
     "og_input_actions",
     "og_input_action",
@@ -1791,6 +1807,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_tilemap_get_tile",
     "og_tilemap_cell_at",
     "og_tilemap_cell_center",
+    "og_audio_play_feedback",
     "og_audio_create_sound",
     "og_audio_output_latency",
     "og_nav_grid",

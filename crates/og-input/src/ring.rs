@@ -301,6 +301,7 @@ pub fn encode_slot(event: &InjectedInput) -> [u8; SLOT_WORDS * 4] {
             return slot;
         }
         InjectedInput::Text { .. } | InjectedInput::A11y { .. } => unreachable!("encoded above"),
+        InjectedInput::Intent { .. } => unreachable!("intents use the recorded input path"),
     };
     set_word(&mut slot, 0, kind);
     set_word(&mut slot, 1, action);
@@ -346,7 +347,7 @@ pub fn new_ring() -> Vec<u8> {
 /// ring is full (the event is dropped) or `ring` is not [`BYTE_LEN`] long.
 /// For native hosts and tests; the web shell writes from TypeScript.
 pub fn write(ring: &mut [u8], event: &InjectedInput) -> bool {
-    if ring.len() != BYTE_LEN {
+    if ring.len() != BYTE_LEN || matches!(event, InjectedInput::Intent { .. }) {
         return false;
     }
     // A text (or a path) longer than a slot takes several, the later ones

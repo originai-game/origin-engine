@@ -38,6 +38,31 @@ export type Result<T> =
   | { readonly ok: true; readonly value: T }
   | { readonly ok: false; readonly reason: string };
 
+/** A checkpointed readable store with the svelte/store subscription contract. */
+export interface UiReadable<T> {
+  readonly source: UiSource;
+  subscribe(run: (value: T) => void, invalidate?: () => void): () => void;
+}
+/** Setters return errors as values in addition to reporting them on the scope. */
+export interface UiWritable<T> extends UiReadable<T> {
+  set(value: T): Result<void>;
+  update(updater: (value: T) => T): Result<void>;
+}
+/** First-subscriber start and last-subscriber cleanup; synchronous only. */
+export type UiStart<T> = (set: (value: T) => void, update: (fn: (value: T) => T) => void) => void | (() => void);
+export type UiStores = UiReadable<unknown> | readonly UiReadable<unknown>[];
+export type UiStoreValues<S> = S extends UiReadable<infer T> ? T
+  : { [K in keyof S]: S[K] extends UiReadable<infer T> ? T : never };
+export type UiDerive<S extends UiStores, T> = (values: UiStoreValues<S>) => T;
+/** A collection store. Templates render it with a mandatory-key each block. */
+export interface UiCollection<T> extends UiReadable<readonly T[]> {
+  keys(): readonly string[];
+  row(key: string): Result<T>;
+  insert(row: T, before?: string): Result<void>;
+  remove(key: string): Result<void>;
+  move(key: string, before?: string): Result<void>;
+  patch(key: string, fields: Partial<T>): Result<void>;
+}
 /** A column kind: what one field of a component or resource stores. */
 export type ColumnKind = keyof ColumnKinds;
 
@@ -507,7 +532,7 @@ impl<'a> Gen<'a, '_> {
             let gs: Vec<String> = f
                 .generics
                 .iter()
-                .map(|g| format!("{} extends {}", g.name, g.bound.name()))
+                .map(|g| format!("{} extends {}", g.name, self.ty(&g.bound, &[])))
                 .collect();
             format!("<{}>", gs.join(", "))
         };
@@ -664,7 +689,10 @@ impl<'a> Gen<'a, '_> {
                 format!("[{}]", vec![one; n].join(", "))
             }
             "ComponentType" | "ResourceType" | "ScreenProps" | "ScreenResponse"
-            | "ComponentProps" | "ComponentResponse" => format!("{name}<{}>", arg(0)),
+            | "ComponentProps" | "ComponentResponse" | "UiReadable" | "UiWritable" | "UiStart"
+            | "UiCollection" => format!("{name}<{}>", arg(0)),
+            "EventType" => format!("EventType<FieldValues<{}>>", arg(0)),
+            "UiDerive" => format!("UiDerive<{}, {}>", arg(0), arg(1)),
             other => other.to_string(),
         }
     }
@@ -789,7 +817,7 @@ pub(crate) fn signature(ix: &Index<'_>, f: &Function) -> String {
         let gs: Vec<String> = f
             .generics
             .iter()
-            .map(|g| format!("{} extends {}", g.name, g.bound.name()))
+            .map(|generic| format!("{} extends {}", generic.name, g.ty(&generic.bound, &[])))
             .collect();
         format!("<{}>", gs.join(", "))
     };

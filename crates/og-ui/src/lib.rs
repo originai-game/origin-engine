@@ -45,6 +45,7 @@ mod nav;
 pub mod paint;
 pub mod paint_entry;
 mod probe;
+pub mod reactive;
 mod recognize;
 mod rich;
 pub mod rive;

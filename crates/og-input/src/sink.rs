@@ -67,6 +67,52 @@ impl InputLayer {
         InputLayer::default()
     }
 
+    /// Validate recorded bytes before delivering anything to the world.
+    pub fn inject_intent(
+        &mut self,
+        world: &mut World,
+        name: &str,
+        layout_hash: u64,
+        payload: &[u8],
+    ) -> og_core::Result<()> {
+        let id = world.id_by_name(name)?;
+        let schema = world.schema(id)?;
+        Self::validate_intent(schema, layout_hash, payload)?;
+        world.send_bytes(id, payload)?;
+        self.accepted += 1;
+        Ok(())
+    }
+
+    pub fn validate_intent(
+        schema: &og_core::Schema,
+        layout_hash: u64,
+        payload: &[u8],
+    ) -> og_core::Result<()> {
+        if schema.layout_hash() != layout_hash {
+            return Err(og_core::Error::new(
+                og_core::ErrorKind::Invalid,
+                format!(
+                    "intent '{}' layout hash {layout_hash} differs from registered {}",
+                    schema.name,
+                    schema.layout_hash()
+                ),
+            ));
+        }
+        schema.check_packed(payload)?;
+        if schema.name == "og.PauseIntent" {
+            let intent = og_core::reflect::from_bytes::<crate::PauseIntent>(payload)?;
+            if !intent.scale.is_finite()
+                || !(0.0..=og_core::time::MAX_TIME_SCALE).contains(&intent.scale)
+            {
+                return Err(og_core::Error::new(
+                    og_core::ErrorKind::Invalid,
+                    "PauseIntent.scale is outside 0..=10",
+                ));
+            }
+        }
+        Ok(())
+    }
+
     /// Injects every event a ring holds (see [`ring::drain`]), oldest first.
     /// The caller stores [`RingReport::read`] back into the ring.
     pub fn drain_ring(&mut self, world: &mut World, ring: &[u8]) -> RingReport {
@@ -119,6 +165,15 @@ impl InputSink for InputLayer {
         };
         let mut events = Vec::new();
         match event {
+            InjectedInput::Intent {
+                name,
+                layout_hash,
+                payload,
+            } => {
+                return self
+                    .inject_intent(world, name, *layout_hash, payload)
+                    .is_ok();
+            }
             InjectedInput::Text { text, composing } => {
                 for e in crate::resource::TextInput::split(text, *composing) {
                     if world.send(e).is_err() {

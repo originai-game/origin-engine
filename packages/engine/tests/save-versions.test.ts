@@ -1,6 +1,6 @@
 // Saves that survive game and engine updates: a game's own save version and
 // migrations (GameDesc.saveVersion, .migrations, SaveEdit), the engine's
-// migrations of its own state (a save from 0.7.7 restores on this build),
+// refusal of obsolete engine envelopes,
 // and selections (SnapshotDesc.with / .resources).
 //
 // Ways it could fail, and the check that catches each:
@@ -9,8 +9,7 @@
 // - a failing migration half-applied → `unchanged` and its reason
 // - a migrated world that is not the one the new version builds → its hash
 // - a save of a newer game version taken as if it were current → refused
-// - an engine upgrade refusing an old save (og.ui's block 9 → 11) → the
-//   0.7.7 fixture restores, record for record as this build runs that game
+// - an obsolete engine envelope mutating the world → explicit refusal
 // - a selection that touches what it did not save → the untagged entity
 import { beforeAll, expect, test } from "bun:test";
 import { og, defineComponent, defineResource, defineSystem, u32 } from "@origingame/engine";
@@ -21,9 +20,8 @@ import { fileURLToPath } from "node:url";
 
 declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
 import { loadNativeHost } from "../src/node/index.ts";
-import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
+import { createEngine, type GameToken } from "../src/runtime.ts";
 import game, { Run, Wallet, start } from "./fixtures/saves/game.ts";
-import { asSaved } from "./support/saved-defaults.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const tmp = mkdtempSync(join(tmpdir(), "og-save-versions-"));
@@ -94,59 +92,19 @@ test("a save of a newer game version is refused by the older game", () => {
   expect(r.unchanged).toBeTrue();
 });
 
-/** Every type's records in a world, as a save holds them. */
-function records(engine: Engine): Record<string, unknown> {
-  const snap = engine.world.snapshot();
-  if (!snap.ok) throw new Error(snap.reason);
-  const edit = engine.world.openSave(snap.value);
-  if (!edit.ok) throw new Error(edit.reason);
-  const out: Record<string, unknown> = {};
-  for (const t of edit.value.types()) out[t.name] = edit.value.records(t.name);
-  edit.value.close();
-  return out;
-}
-
-test("a save from engine 0.7.7 restores on this build without migrate, as this build runs that game", () => {
-  const fixture = JSON.parse(readFileSync(join(here, "fixtures", "saves", "0.7.7.json"), "utf8")) as {
-    tick: number;
-    run: { score: number; volume: number; presses: number };
-    gold: number[];
-  };
+test("an old engine save is refused without conversion or mutation", () => {
   const save = readFileSync(join(here, "fixtures", "saves", "0.7.7.save"), "utf8");
   const made = createEngine(game as unknown as GameToken);
   if (!made.ok) throw new Error(made.reason);
-  const old = made.value;
-  old.advance(1);
-  // On the build before the engine's migrations: "state block 'og.ui': UI state: version 9, expected 11".
-  expect<unknown>(old.world.restore(save)).toEqual({ ok: true, value: null });
-  expect(old.world.tick).toBe(fixture.tick);
-  const run = old.world.resource(Run);
-  expect(run.ok && { ...run.value }).toEqual(fixture.run);
-  const gold = fixture.gold.map((_, i) => {
-    const v = old.world.get(old.world.find(`coin-${i}`)!, Wallet);
-    return v.ok ? v.value.gold : -1;
-  });
-  expect(gold).toEqual(fixture.gold);
-
-  // This build running the same game to the same tick holds the same
-  // records: game components and resources, og.Transform, the bodies,
-  // og.Rng's streams, og.Time; the engine defaults that moved since 0.7.7
-  // at the values the save keeps (support/saved-defaults.ts).
-  const fresh = createEngine(game as unknown as GameToken);
-  if (!fresh.ok) throw new Error(fresh.reason);
-  fresh.value.advance(fixture.tick);
-  asSaved(fresh.value);
-  expect(records(old)).toEqual(records(fresh.value));
-
-  // And it goes on deterministically: a second restore of the same save
-  // runs to the same world.
-  const again = createEngine(game as unknown as GameToken);
-  if (!again.ok) throw new Error(again.reason);
-  again.value.advance(1);
-  expect(again.value.world.restore(save).ok).toBeTrue();
-  old.advance(30);
-  again.value.advance(30);
-  expect(again.value.hash()).toBe(old.hash());
+  const engine = made.value;
+  try {
+    const before = engine.hash();
+    expect(engine.world.restore(save)).toEqual({
+      ok: false,
+      reason: "save format 1 is incompatible with engine save format 3; save migration is not supported",
+    });
+    expect(engine.hash()).toBe(before);
+  } finally { engine.destroy(); }
 });
 
 test("a selection saves and restores only the tagged entities and the chosen resources", () => {

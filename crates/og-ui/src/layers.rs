@@ -502,6 +502,7 @@ impl Ui {
         json!({
             "next": d.layers.next,
             "heldScale": d.layers.held_scale,
+            "stores": self.reactive.save(),
             "layers": d.layers.layers.iter().map(|l| json!({
                 "serial": l.serial, "screen": l.screen, "vm": l.vm, "focus": l.focus.to_string(), "wasTop": l.was_top,
             })).collect::<Vec<_>>(),
@@ -510,7 +511,12 @@ impl Ui {
         })
     }
 
-    pub(crate) fn restore_docs_state(&mut self, v: &Value) {
+    pub(crate) fn restore_docs_state(&mut self, v: &Value) -> Result<(), String> {
+        if let Some(stores) = v.get("stores") {
+            self.reactive.restore(stores)?;
+        } else {
+            self.reactive = Default::default();
+        }
         let d = &mut self.docs;
         let key = |v: &Value| v.as_str().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
         d.layers.next = v["next"].as_u64().unwrap_or(0) as u32;
@@ -556,6 +562,7 @@ impl Ui {
                     .collect()
             })
             .unwrap_or_default();
+        Ok(())
     }
 }
 

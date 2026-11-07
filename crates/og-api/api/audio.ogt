@@ -694,6 +694,28 @@ module audio {
     field reason u32 "Why: SOUND_FINISHED (0), SOUND_STOPPED (1), SOUND_REMOVED (2), SOUND_REPLACED (3), SOUND_CULLED (4) or SOUND_RETRIGGERED (5)."
   }
 
+  struct AudioFeedbackDesc {
+    doc "Presentation-only one-shot parameters."
+    desc true
+    field volume f32 "Linear gain." {
+      default 1
+      min 0
+    }
+    field playbackRate f32 "Playback rate, strictly greater than zero." {
+      default 1
+    }
+  }
+
+  fn playFeedback {
+    doc "Play a presentation-only one-shot on the UI bus in this tick (the next tick when called between ticks). Creates no world entity or event, changes no simulation hash, and is not saved or replayed on restore. Silently unheard when no audio sink is attached. Use AudioSource for gameplay audio."
+    param world World "The world whose presentation audio sink plays it."
+    param sound Sound "A loaded sound."
+    param desc AudioFeedbackDesc "Volume and playback rate." {
+      optional true
+    }
+    returns Result.Void "Refused for an unloaded sound or invalid volume/playbackRate."
+  }
+
   fn createSound {
     doc "Make a sound from PCM the game computed: it plays, loops and pitches as a loaded one (AudioSource.sound, AudioEvent.sounds), always resident, stored as 16-bit PCM, and og.load.soundInfo reports it. Between ticks or inside a system alike; the handle is the next one the bank gives, so a game that makes its sounds in the same order on every launch (in GameDesc.start) names the same handles in its saves."
     param world World "The world that owns the sound."
@@ -710,4 +732,3 @@ module audio {
 }
 
 # ── nav ───────────────────────────────────────────────────────────────────
-

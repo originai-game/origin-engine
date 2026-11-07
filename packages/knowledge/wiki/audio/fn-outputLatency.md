@@ -31,4 +31,4 @@ fn outputLatency {
 }
 ```
 
-<sub>Module `audio` line 704</sub>
+<sub>Module `audio` line 726</sub>

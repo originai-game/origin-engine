@@ -93,6 +93,12 @@ pub fn og_engine_write_resource_bytes(env: Env, world: u32, resource: String, by
     <Host as Lifecycle>::og_engine_write_resource_bytes(&Host, world, resource, bytes)
 }
 
+#[napi(js_name = "og_engine_ui_patch")]
+pub fn og_engine_ui_patch(env: Env, world: u32, bytes: crate::NodeBytes) -> crate::NodeBytes {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_ui_patch(&Host, world, bytes)
+}
+
 #[napi(js_name = "og_platform_take")]
 pub fn og_platform_take(env: Env, engine: u32) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -145,6 +151,12 @@ pub fn og_reflect_define_component(env: Env, name: String, fields: String) -> St
 pub fn og_reflect_define_resource(env: Env, name: String, fields: String) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as ReflectApi>::og_reflect_define_resource(&Host, name, fields)
+}
+
+#[napi(js_name = "og_reflect_define_event")]
+pub fn og_reflect_define_event(env: Env, name: String, fields: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ReflectApi>::og_reflect_define_event(&Host, name, fields)
 }
 
 #[napi(js_name = "og_save_edit_get_version")]
@@ -649,6 +661,24 @@ pub fn og_procgen_bsp(env: Env, desc: Option<String>) -> String {
 pub fn og_procgen_wfc(env: Env, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as ProcgenApi>::og_procgen_wfc(&Host, desc)
+}
+
+#[napi(js_name = "og_input_intent")]
+pub fn og_input_intent(env: Env, world: u32, event: String, payload: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_intent(&Host, world, event, payload)
+}
+
+#[napi(js_name = "og_input_take_intents")]
+pub fn og_input_take_intents(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_take_intents(&Host, world)
+}
+
+#[napi(js_name = "og_input_replay_intent")]
+pub fn og_input_replay_intent(env: Env, world: u32, intent: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_replay_intent(&Host, world, intent)
 }
 
 #[napi(js_name = "og_input_define_action")]
@@ -1855,6 +1885,12 @@ pub fn og_tilemap_cell_at(env: Env, world: u32, entity: f64, point: String) -> S
 pub fn og_tilemap_cell_center(env: Env, world: u32, entity: f64, x: u32, y: u32) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as TilemapApi>::og_tilemap_cell_center(&Host, world, entity, x, y)
+}
+
+#[napi(js_name = "og_audio_play_feedback")]
+pub fn og_audio_play_feedback(env: Env, world: u32, sound: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AudioApi>::og_audio_play_feedback(&Host, world, sound, desc)
 }
 
 #[napi(js_name = "og_audio_create_sound")]

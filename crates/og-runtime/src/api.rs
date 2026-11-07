@@ -17,6 +17,7 @@ use serde_json::{Value, json};
 mod actions;
 mod commands;
 mod controls;
+mod intents;
 mod loading;
 mod reactive;
 mod render;
@@ -26,6 +27,7 @@ pub use actions::*;
 pub use commands::*;
 use controls::vec3;
 pub use controls::*;
+pub use intents::*;
 pub use loading::*;
 pub use reactive::*;
 pub use render::*;
@@ -223,6 +225,10 @@ pub fn og_reflect_define_component(name: String, fields: String) -> String {
 
 pub fn og_reflect_define_resource(name: String, fields: String) -> String {
     define_record(name, &fields, RecordKind::Resource)
+}
+
+pub fn og_reflect_define_event(name: String, fields: String) -> String {
+    define_record(name, &fields, RecordKind::Event)
 }
 
 // ── world ───────────────────────────────────────────────────────────────────

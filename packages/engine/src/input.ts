@@ -4,6 +4,7 @@
 // index.ts.
 
 import type { HostAbi } from "./generated/abi.ts";
+import type { RecordedIntent, Result } from "@origingame/engine";
 import { boundHost } from "./runtime.ts";
 
 type W = { readonly id: number };
@@ -18,6 +19,11 @@ const parse = <T>(text: string): T => JSON.parse(text) as T;
 const json = (value: unknown): string | undefined => (value === undefined ? undefined : JSON.stringify(value));
 
 export const input = Object.freeze({
+  intent: (world: W, event: { readonly name: string }, payload: unknown): Result<void> =>
+    parse(abi().og_input_intent(world.id, event.name, JSON.stringify(payload ?? {}))),
+  takeIntents: (world: W): readonly RecordedIntent[] => parse(abi().og_input_take_intents(world.id)),
+  replayIntent: (world: W, intent: RecordedIntent): Result<void> =>
+    parse(abi().og_input_replay_intent(world.id, JSON.stringify(intent))),
   defineAction: (world: W, desc?: unknown) => parse(abi().og_input_define_action(world.id, json(desc))),
   actions: (world: W) => parse(abi().og_input_actions(world.id)),
   action: (world: W, name: string) => parse(abi().og_input_action(world.id, name)),

@@ -122,6 +122,8 @@ impl Op {
 pub const FLAG_LOOP: u8 = 1;
 /// `flags` bit: the voice is spatial (informational; gain and pan are already applied).
 pub const FLAG_SPATIAL: u8 = 2;
+/// A presentation-only voice, in a separate namespace from world voices.
+pub const FLAG_PRESENTATION: u8 = 4;
 
 /// Bytes per encoded command.
 pub const COMMAND_BYTES: usize = 56;

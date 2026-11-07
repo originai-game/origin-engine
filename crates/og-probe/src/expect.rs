@@ -784,7 +784,7 @@ impl Probe {
             }
             Expect::Timings { path, op, value } => {
                 // What the renderer measures, without one: unchecked.
-                if self.capture.is_none()
+                if !self.capture.as_ref().is_some_and(|c| c.has_renderer())
                     && ["triangles", "render", "passes"]
                         .contains(&path.split('.').next().unwrap_or(""))
                 {
@@ -814,7 +814,9 @@ impl Probe {
                     return Ok(self.record(r));
                 };
                 // The renderer's observation (render.lod), without one: unchecked.
-                if self.capture.is_none() && path.split('.').next() == Some("render") {
+                if !self.capture.as_ref().is_some_and(|c| c.has_renderer())
+                    && path.split('.').next() == Some("render")
+                {
                     r.status = Status::Unchecked;
                     r.reason = format!("no renderer, {path} unchecked");
                     return Ok(self.record(r));
@@ -870,7 +872,7 @@ impl Probe {
         width: u32,
         height: u32,
     ) -> Option<Rgba> {
-        let Some(capture) = self.capture.as_mut() else {
+        let Some(capture) = self.capture.as_mut().filter(|c| c.has_renderer()) else {
             r.status = Status::Unchecked;
             r.reason = "no renderer, frame unchecked".into();
             return None;

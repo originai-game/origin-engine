@@ -70,6 +70,9 @@ impl StreamApi for WebHost {
 }
 
 impl AudioApi for WebHost {
+    fn og_audio_play_feedback(&self, world: u32, sound: f64, desc: Option<String>) -> String {
+        rt::og_audio_play_feedback(world, sound, desc)
+    }
     fn og_audio_output_latency(&self, world: u32) -> f64 {
         rt::og_audio_output_latency(world)
     }

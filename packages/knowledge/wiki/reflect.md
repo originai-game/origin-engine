@@ -45,6 +45,7 @@ module reflect {
 | [`list()`](#column-list) | column kind |  | A list of at most `capacity` values of one number column (`f32`, `f64`, `u32`, `i32`) or handle column (`Asset`, `Entity`, `Post`, ...), stored inline: a count, then the elements, zeros past the coun… |
 | [`defineComponent`](reflect/fn-defineComponent.md) | function | `<F extends Fields>(name: string, fields: F): ComponentType<F>` | Declare a component: plain data stored per entity in engine memory, one column per field. |
 | [`defineResource`](reflect/fn-defineResource.md) | function | `<F extends Fields>(name: string, fields: F): ResourceType<F>` | Declare a resource: a reflected singleton, such as a tuning table. |
+| [`defineEvent`](reflect/fn-defineEvent.md) | function | `<F extends Fields>(name: string, fields: F): EventType<FieldValues<F>>` | Declare a reflected gameplay event. |
 
 ## Column kinds
 

@@ -34,6 +34,11 @@ module input {
 |---|---|---|---|
 | [`MAX_POINTERS`](#const-MAX_POINTERS) | constant |  | The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4. |
 | [`MAX_GAMEPADS`](#const-MAX_GAMEPADS) | constant |  | The most gamepads og.Gamepad reads: pads 0 to 7. |
+| [`og.input.intent`](input/fn-intent.md) | function | `<E extends AnyEvent>(world: World, event: E, payload: Value<E>): Result<void>` | Send a reflected gameplay intent for the next tick and record its name, packed payload and layout hash. |
+| [`RecordedIntent`](input/type-RecordedIntent.md) | struct |  | One deterministic input, independent of presentation checkpoints. |
+| [`og.input.takeIntents`](input/fn-takeIntents.md) | function | `(world: World): readonly RecordedIntent[]` | Drain accepted intents in delivery order for recording. |
+| [`og.input.replayIntent`](input/fn-replayIntent.md) | function | `(world: World, intent: RecordedIntent): Result<void>` | Deliver recorded input between ticks without UI state. |
+| [`og.PauseIntent`](input/record-PauseIntent.md) | event |  | An engine gameplay intent: apply scale at the next tick boundary. |
 | [`InputDevice`](input/type-InputDevice.md) | enum |  | A kind of input device: the set a glyph is drawn from, the device used last, and what a pad is. |
 | [`ActionKind`](input/type-ActionKind.md) | enum |  | What an action gives. |
 | [`TouchZone`](input/type-TouchZone.md) | desc struct |  | Where on the play surface a touch binding's touches must start, in fractions of it from the top left; a zone of no size is all of it. |

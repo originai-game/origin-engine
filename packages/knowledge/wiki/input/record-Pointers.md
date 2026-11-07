@@ -132,7 +132,7 @@ resource Pointers {
 }
 ```
 
-<sub>Module `input` line 839</sub>
+<sub>Module `input` line 878</sub>
 
 <a id="member-Pointers-down"></a>
 
@@ -160,7 +160,7 @@ fn down {
 }
 ```
 
-<sub>Module `input` line 908</sub>
+<sub>Module `input` line 947</sub>
 
 <a id="member-Pointers-pressed"></a>
 
@@ -188,7 +188,7 @@ fn pressed {
 }
 ```
 
-<sub>Module `input` line 913</sub>
+<sub>Module `input` line 952</sub>
 
 <a id="member-Pointers-released"></a>
 
@@ -216,7 +216,7 @@ fn released {
 }
 ```
 
-<sub>Module `input` line 918</sub>
+<sub>Module `input` line 957</sub>
 
 <a id="member-Pointers-position"></a>
 
@@ -244,7 +244,7 @@ fn position {
 }
 ```
 
-<sub>Module `input` line 923</sub>
+<sub>Module `input` line 962</sub>
 
 <a id="member-Pointers-start"></a>
 
@@ -272,7 +272,7 @@ fn start {
 }
 ```
 
-<sub>Module `input` line 928</sub>
+<sub>Module `input` line 967</sub>
 
 <a id="member-Pointers-count"></a>
 
@@ -295,4 +295,4 @@ fn count {
 }
 ```
 
-<sub>Module `input` line 933</sub>
+<sub>Module `input` line 972</sub>

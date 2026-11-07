@@ -13,6 +13,7 @@ import type * as Api from "@origingame/engine";
 import type { Dispatcher, HostAbi } from "./generated/abi.ts";
 import { SYMBOLS, checkEntities } from "./generated/abi.ts";
 import { noPlatform, type PlatformAnswer, type PlatformCall, type PlatformHost, type PlatformLink, type PlatformNotice } from "./platform-local.ts";
+import { UiReactor } from "./ui/reactive.ts";
 
 // ── host binding ──────────────────────────────────────────────────────────
 
@@ -60,6 +61,32 @@ export const ARRAYS = {
 
 let host: HostBinding | null = null;
 const queue: Array<(abi: HostAbi<Uint32Array, unknown>) => void> = [];
+let uiRegistrationErrors: string[] | null = null;
+const uiRegistrationReads = new Set([
+  "og_engine_ui_patch", "og_engine_resource_layout", "og_engine_read_resource",
+  "og_world_resource", "og_world_get", "og_world_has", "og_world_find",
+  "og_world_name_of", "og_world_alive", "og_world_get_tick",
+]);
+const abiReturns = new Map(bindings.calls.filter(call => "symbol" in call)
+  .map(call => [call.symbol, call.returns]));
+
+function registrationBoundary(abi: HostAbi<Uint32Array, unknown>): HostAbi<Uint32Array, unknown> {
+  return new Proxy(abi, {
+    get(target, property, receiver) {
+      if (!uiRegistrationErrors || typeof property !== "string" || uiRegistrationReads.has(property)) {
+        return Reflect.get(target, property, receiver);
+      }
+      return () => {
+        const reason = `GameDesc.ui may only register presentation data and read the world: ${property} is not allowed`;
+        uiRegistrationErrors?.push(reason);
+        if (abiReturns.get(property)?.startsWith("Result<")) return JSON.stringify(refused(reason));
+        // Void/property APIs have no Result to return. The dispatcher catches
+        // this and returns the registration failure to both hosts as a value.
+        throw new Error(reason);
+      };
+    },
+  });
+}
 
 /** Bind the runtime to a host and flush the declarations made so far. */
 export function bindHost(binding: HostBinding): void {
@@ -69,7 +96,7 @@ export function bindHost(binding: HostBinding): void {
   }
   // Entity arguments are checked here, so null or undefined is refused
   // naming the call on both hosts alike (generated/abi.ts).
-  host = { ...binding, abi: checkEntities(binding.abi) };
+  host = { ...binding, abi: registrationBoundary(checkEntities(binding.abi)) };
   publishBuild = null;
   binding.abi.og_host_set_dispatcher(dispatch);
   for (const declare of queue.splice(0)) declare(binding.abi);
@@ -152,11 +179,12 @@ function fieldList(fields: Readonly<Record<string, FieldSpec>>): unknown[] {
   }));
 }
 
-export function defineRecord(kind: "component" | "resource", name: string, fields: Record<string, FieldSpec>): Token {
+export function defineRecord(kind: Token["kind"], name: string, fields: Record<string, FieldSpec>): Token {
   const token: Token = Object.freeze({ kind, name, fields: Object.freeze({ ...fields }) });
   declare((a) => {
     if (kind === "component") a.og_reflect_define_component(name, JSON.stringify(fieldList(fields)));
-    else a.og_reflect_define_resource(name, JSON.stringify(fieldList(fields)));
+    else if (kind === "resource") a.og_reflect_define_resource(name, JSON.stringify(fieldList(fields)));
+    else a.og_reflect_define_event(name, JSON.stringify(fieldList(fields)));
   });
   return token;
 }
@@ -313,6 +341,7 @@ export interface GameDescIn {
   readonly maxCatchUp?: number;
   readonly facts?: Function | null;
   readonly start?: Function | null;
+  readonly ui?: Function | null;
   readonly render?: Readonly<Record<string, unknown>>;
   readonly look?: string;
   readonly saveVersion?: number;
@@ -340,6 +369,7 @@ export function defineGame(desc: GameDescIn = {}): GameToken {
   for (const [name, fn] of Object.entries(desc.commands ?? {})) commands[name] = callback(fn);
   const facts = desc.facts ? callback(desc.facts) : null;
   const start = desc.start ? callback(desc.start) : null;
+  const ui = desc.ui ? callback(desc.ui) : null;
   const token = Object.freeze({ tick: desc.tick ?? 60, systems: Object.freeze(list) });
   gameLooks.set(token, desc.look ?? "");
   const migrations = [...(desc.migrations ?? [])];
@@ -362,6 +392,7 @@ export function defineGame(desc: GameDescIn = {}): GameToken {
       maxCatchUp: desc.maxCatchUp ?? 4,
       facts,
       start,
+      ui,
       render: desc.render ?? {},
       look: desc.look ?? "",
       saveVersion: desc.saveVersion ?? null,
@@ -571,6 +602,10 @@ function learnBuild(engine: number): void {
  * build lets the engine refuse it, which logs it once per system.
  */
 function checkAccess(access: "read" | "write", name: string): boolean {
+  if (access === "write" && uiRegistrationErrors) {
+    uiRegistrationErrors.push(`GameDesc.ui cannot write '${name}'; gameplay setup belongs in start`);
+    return false;
+  }
   const r = running;
   if (!r) return true;
   const s = r.system;
@@ -1155,7 +1190,9 @@ export class WorldImpl {
         edit.close();
       }
     }
-    return structural(parse(abi().og_world_restore(this.id, save, json(desc))));
+    const restored = structural(parse<Result<void>>(abi().og_world_restore(this.id, save, json(desc))));
+    if (restored.ok) uiReactors.get(this.id)?.flush();
+    return restored;
   }
 
   prefabOf(entity: number): unknown {
@@ -1336,6 +1373,16 @@ export class SaveEditImpl {
 }
 
 const worlds = new Map<number, WorldImpl>();
+const uiReactors = new Map<number, UiReactor>();
+
+function uiReactor(world: WorldImpl): UiReactor {
+  let reactor = uiReactors.get(world.id);
+  if (!reactor) {
+    reactor = new UiReactor(bytes => abi().og_engine_ui_patch(world.id, bytes));
+    uiReactors.set(world.id, reactor);
+  }
+  return reactor;
+}
 
 function worldFor(id: number): WorldImpl {
   let w = worlds.get(id);
@@ -1355,7 +1402,7 @@ function message(e: unknown): string {
 
 const engines = new Map<number, Engine>();
 
-/** What the engine calls: kind 0 a system, 1 a command, 2 facts, 3 a run condition, 4 a hook, 5 the platform between ticks. */
+/** Dispatch kinds: system, command, facts, condition, hook, platform, UI registration. */
 const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payload) => {
   if (kind === 5) {
     try {
@@ -1373,6 +1420,16 @@ const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payloa
   engineCalls++;
   inGame++;
   try {
+    if (kind === 6) {
+      const errors: string[] = [];
+      const outerRegistration = uiRegistrationErrors;
+      uiRegistrationErrors = errors;
+      try {
+        const result = uiReactor(world).registerPresentation(() => { fn?.(world); });
+        if (!result.ok) errors.push(result.reason);
+        return errors.join("\n");
+      } finally { uiRegistrationErrors = outerRegistration; }
+    }
     if (kind === 0) {
       const system = systems.get(id);
       if (!system || !fn) return `the dispatcher has no system with callback id ${id}: the bundle declared ${systems.size} system(s); was the engine built from another bundle?`;
@@ -1694,6 +1751,8 @@ export class Engine {
 
   destroy(): boolean {
     epoch++;
+    for (const scope of uiReactors.get(this.id)?.scopes.values() ?? []) scope.dispose();
+    uiReactors.delete(this.id);
     engines.delete(this.id);
     worlds.delete(this.id);
     engineGames.delete(this.id);
@@ -1982,6 +2041,8 @@ export const physics = Object.freeze({
 
 export const audio = Object.freeze({
   outputLatency: (world: WorldImpl) => (checkAccess("read", "og.Audio"), abi().og_audio_output_latency(world.id)),
+  playFeedback: (world: WorldImpl, sound: number, desc?: unknown) =>
+    parse(abi().og_audio_play_feedback(world.id, sound, json(desc))),
   createSound: (world: WorldImpl, desc?: unknown) => {
     const d = desc !== null && typeof desc === "object" ? { ...(desc as Record<string, unknown>) } : desc;
     if (d !== null && typeof d === "object" && ArrayBuffer.isView((d as Record<string, unknown>).samples)) {
@@ -2009,6 +2070,7 @@ function within<T>(open: () => void, build: () => void): T {
 }
 
 export const ui = Object.freeze({
+  scope: (world: WorldImpl, id: string): Api.UiScope => uiReactor(world).scope(id),
   configure: (world: WorldImpl, desc?: unknown) => parse(abi().og_ui_configure(world.id, json(desc))),
   viewport: (world: WorldImpl) => parse(abi().og_ui_viewport(world.id)),
   theme: (world: WorldImpl) => parse(abi().og_ui_theme(world.id)),

@@ -1143,6 +1143,7 @@ impl Probe {
                 | InjectedInput::Gamepad(_)
                 | InjectedInput::Text { .. }
                 | InjectedInput::A11y { .. }
+                | InjectedInput::Intent { .. }
                 | InjectedInput::PointerLock { .. } => {}
             }
         }
