@@ -38,6 +38,7 @@ impl RenderScene {
             material_revisions: Vec::new(),
             material_serial: 0,
             material_aliases: Vec::new(),
+            material_copies: Vec::new(),
             fonts: Vec::new(),
             font_revisions: Vec::new(),
             instances: Vec::new(),
@@ -1495,6 +1496,21 @@ impl RenderScene {
         self.material_revisions[i] += 1;
         self.material_serial += 1;
         self.material_slots.remove(i, true);
+        // Its aliases end for good: a later material in the slot is another.
+        if let Some(a) = self.material_aliases.get_mut(i) {
+            *a = None;
+        }
+        for c in self
+            .material_copies
+            .get_mut(i)
+            .map(std::mem::take)
+            .unwrap_or_default()
+        {
+            let a = &mut self.material_aliases[c as usize];
+            if a.is_some_and(|(o, _, _)| o as usize == i) {
+                *a = None;
+            }
+        }
         true
     }
 
@@ -1516,6 +1532,7 @@ impl RenderScene {
         self.gltf_materials[i] = Some(material);
         self.material_revisions[i] += 1;
         self.material_serial += 1;
+        self.restamp_aliases(i);
         true
     }
 
@@ -1534,33 +1551,101 @@ impl RenderScene {
         self.gltf_materials[i] = None;
         self.material_revisions[i] += 1;
         self.material_serial += 1;
+        self.restamp_aliases(i);
         true
     }
 
-    /// Draws `copy` in the batches of `of` while neither changes: two
+    /// Draws `copy` in the batches of `of` while the two draw the same: two
     /// materials of one value (models that each hold their own copy of one
-    /// glTF material) draw in one instanced batch. Copy-on-write: any edit
-    /// of either (a `set_*`, a shader, a removed texture or the removal of
-    /// either) ends it, and each draws as its own from that frame on, so an
-    /// edit of one never shows on the other. False, and nothing changes,
-    /// unless both are live and draw the same now (equal values, no
-    /// material shader).
+    /// glTF material) draw in one instanced batch. Copy-on-write: an edit
+    /// of either that leaves them different (a `set_*`, a shader or a
+    /// shader parameter) parts them, and each draws as its own from that
+    /// frame on, so an edit of one never shows on the other; the same edit
+    /// of the other joins them again. A removed texture parts them until an
+    /// edit finds them alike; the removal of either ends it. False, and
+    /// nothing changes, unless both are live and draw the same now (equal
+    /// values, the same material shader with equal parameters, or none).
     pub fn alias_material(&mut self, copy: MaterialHandle, of: MaterialHandle) -> bool {
+        match self.alias_pair(copy, of) {
+            Some((c, o)) if self.draws_alike(c, o) => {
+                self.record_alias(c, o);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// As [`RenderScene::alias_material`], also while the two differ now:
+    /// `copy` then draws in the batches of `of` from the first edit that
+    /// leaves them drawing the same. A model loaded after the game edited
+    /// the copies loaded before it (one loaded while the game runs) so
+    /// batches with them once the game gives it the same edit. False, and
+    /// nothing changes, unless both are live.
+    pub fn alias_material_when_alike(&mut self, copy: MaterialHandle, of: MaterialHandle) -> bool {
+        let Some((c, o)) = self.alias_pair(copy, of) else {
+            return false;
+        };
+        self.record_alias(c, o);
+        true
+    }
+
+    /// `copy` and the material `of` draws as, when both are live and differ.
+    fn alias_pair(&self, copy: MaterialHandle, of: MaterialHandle) -> Option<(usize, usize)> {
         let live = |h: MaterialHandle| self.material_slots.live(h.index(), h.generation());
         if !live(copy) || !live(of) {
-            return false;
+            return None;
         }
         let (c, o) = (copy.index(), self.drawn_material(of.index()));
-        let unshaded = |i: usize| self.material_shaders.get(i).is_none_or(Option::is_none);
-        if c == o || self.materials[c] != self.materials[o] || !unshaded(c) || !unshaded(o) {
-            return false;
-        }
+        (c != o).then_some((c, o))
+    }
+
+    /// Material `c` aliased to `o`, holding now while the two draw the same.
+    fn record_alias(&mut self, c: usize, o: usize) {
         if self.material_aliases.len() <= c {
             self.material_aliases.resize(c + 1, None);
         }
-        let revisions = &self.material_revisions;
-        self.material_aliases[c] = Some((o as u32, revisions[c], revisions[o]));
-        true
+        let stamps = if self.draws_alike(c, o) {
+            (self.material_revisions[c], self.material_revisions[o])
+        } else {
+            // No revision is ever this: drawn_material parts them.
+            (u64::MAX, u64::MAX)
+        };
+        self.material_aliases[c] = Some((o as u32, stamps.0, stamps.1));
+        if self.material_copies.len() <= o {
+            self.material_copies.resize(o + 1, Vec::new());
+        }
+        self.material_copies[o].push(c as u32);
+    }
+
+    /// Whether materials `a` and `b` draw the same: equal values and the
+    /// same shader with equal parameters (or neither has one).
+    fn draws_alike(&self, a: usize, b: usize) -> bool {
+        let shader = |i: usize| self.material_shaders.get(i).copied().flatten();
+        shader(a) == shader(b) && self.materials[a] == self.materials[b]
+    }
+
+    /// After an edit of material `i` (its value, shader or a parameter):
+    /// each alias it is in holds from now while the two draw the same and
+    /// is parted while they differ ([`RenderScene::alias_material`]).
+    fn restamp_aliases(&mut self, i: usize) {
+        let restamp = |s: &mut Self, c: usize, o: usize| {
+            let stamps = if s.draws_alike(c, o) {
+                (s.material_revisions[c], s.material_revisions[o])
+            } else {
+                // No revision is ever this: drawn_material parts them.
+                (u64::MAX, u64::MAX)
+            };
+            s.material_aliases[c] = Some((o as u32, stamps.0, stamps.1));
+        };
+        if let Some(Some((o, _, _))) = self.material_aliases.get(i).copied() {
+            restamp(self, i, o as usize);
+        }
+        for k in 0..self.material_copies.get(i).map_or(0, Vec::len) {
+            let c = self.material_copies[i][k] as usize;
+            if self.material_aliases[c].is_some_and(|(o, _, _)| o as usize == i) {
+                restamp(self, c, i);
+            }
+        }
     }
 
     /// The material index material `i`'s instances batch under: the one
@@ -1904,6 +1989,7 @@ impl RenderScene {
         self.material_shaders[i] = shader.map(|s| (s, self.shaders[s.index()].defaults()));
         self.material_revisions[i] += 1;
         self.material_serial += 1;
+        self.restamp_aliases(i);
         true
     }
 
@@ -1912,7 +1998,9 @@ impl RenderScene {
     /// shader or the shader no such parameter. Leaves the material's
     /// revision: the renderer writes changed parameters into the material's
     /// uniform in place (a new buffer and bind group per change cost the
-    /// browser's GPU process about 1 ms each).
+    /// browser's GPU process about 1 ms each). A change parts the material
+    /// from the copies it batches with ([`RenderScene::alias_material`])
+    /// until they hold the same parameters again.
     pub fn set_shader_param(
         &mut self,
         material: MaterialHandle,
@@ -1935,6 +2023,7 @@ impl RenderScene {
         }
         params[slot] = v;
         self.material_serial += 1;
+        self.restamp_aliases(i);
         true
     }
 

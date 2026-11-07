@@ -633,6 +633,101 @@ mod tests {
         assert_ne!(scene.standard_material(b).unwrap().color, Vec3::X);
     }
 
+    /// Copies a game edits alike (one glTF's material per model, each given
+    /// the same material shader and parameters) batch together again once
+    /// both carry the edit, in either order: a shader or a parameter on one
+    /// alone parts them, and each keeps its own parameters.
+    #[test]
+    fn aliased_materials_edited_alike_batch_together_again() {
+        let mut scene = RenderScene::new();
+        let mesh = scene.add_mesh(MeshData::default());
+        let [a, b] =
+            [0; 2].map(|_| scene.add_standard_material(crate::StandardMaterial::default()));
+        assert!(scene.alias_material(b, a));
+        for m in [a, b, b] {
+            scene.add_instance(mesh, m, Mat4::IDENTITY);
+        }
+        let shader = scene.add_shader(crate::MaterialShader {
+            name: "tint".into(),
+            code: "fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32> { return c * p.k; }".into(),
+            params: vec![crate::ShaderParam {
+                name: "k".into(),
+                kind: crate::ParamKind::Vec4,
+                default: [1.0; 4],
+            }],
+            mode: crate::ShaderMode::Hooks,
+        });
+        let mut kept = SortedInstances::default();
+        let mut runs = |s: &RenderScene| {
+            let sorted = kept
+                .update(s, 1, info, 2, |_, _| None, |_| false, |_| false)
+                .unwrap();
+            let runs: Vec<_> = sorted.runs.iter().map(|r| (r.material, r.count)).collect();
+            kept.restore(sorted.transforms, sorted.spheres);
+            runs
+        };
+        let together = vec![(a.index(), 3)];
+        let apart = vec![(a.index(), 1), (b.index(), 2)];
+        assert!(scene.set_material_shader(a, Some(shader)));
+        assert_eq!(runs(&scene), apart, "a shader on one alone");
+        assert!(scene.set_material_shader(b, Some(shader)));
+        assert_eq!(runs(&scene), together);
+        // The copy first, then the one it is aliased to.
+        assert!(scene.set_shader_param(b, "k", &[0.5, 0.5, 0.5, 1.0]));
+        assert_eq!(runs(&scene), apart, "a parameter on one alone");
+        assert_eq!(scene.material_shader(a).unwrap().1[0], [1.0; 4]);
+        assert!(scene.set_shader_param(a, "k", &[0.5, 0.5, 0.5, 1.0]));
+        assert_eq!(runs(&scene), together);
+        // A value edit, the other way round.
+        let rough = crate::StandardMaterial {
+            roughness: 0.9,
+            ..Default::default()
+        };
+        assert!(scene.set_standard_material(a, rough));
+        assert_eq!(runs(&scene), apart);
+        assert!(scene.set_standard_material(b, rough));
+        assert_eq!(runs(&scene), together);
+    }
+
+    /// A copy loaded after the game edited its original (a model loaded
+    /// while the game runs, as a web boot loads a garden cell by cell)
+    /// batches with it once it carries the same edit.
+    #[test]
+    fn a_copy_loaded_after_its_original_was_edited_joins_it_once_edited_alike() {
+        let mut scene = RenderScene::new();
+        let mesh = scene.add_mesh(MeshData::default());
+        let shader = scene.add_shader(crate::MaterialShader {
+            name: "tint".into(),
+            code: "fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32> { return c * p.k; }".into(),
+            params: vec![crate::ShaderParam {
+                name: "k".into(),
+                kind: crate::ParamKind::Vec4,
+                default: [1.0; 4],
+            }],
+            mode: crate::ShaderMode::Hooks,
+        });
+        let a = scene.add_standard_material(crate::StandardMaterial::default());
+        assert!(scene.set_material_shader(a, Some(shader)));
+        let b = scene.add_standard_material(crate::StandardMaterial::default());
+        assert!(!scene.alias_material(b, a), "they differ now");
+        assert!(scene.alias_material_when_alike(b, a));
+        for m in [a, b, b] {
+            scene.add_instance(mesh, m, Mat4::IDENTITY);
+        }
+        let mut kept = SortedInstances::default();
+        let mut runs = |s: &RenderScene| {
+            let sorted = kept
+                .update(s, 1, info, 2, |_, _| None, |_| false, |_| false)
+                .unwrap();
+            let runs: Vec<_> = sorted.runs.iter().map(|r| (r.material, r.count)).collect();
+            kept.restore(sorted.transforms, sorted.spheres);
+            runs
+        };
+        assert_eq!(runs(&scene), vec![(a.index(), 1), (b.index(), 2)]);
+        assert!(scene.set_material_shader(b, Some(shader)));
+        assert_eq!(runs(&scene), vec![(a.index(), 3)]);
+    }
+
     /// Kept, refreshed or rebuilt, a frame's sorted instances are a fresh
     /// build's, bit for bit, and only what changed is computed again.
     #[test]
