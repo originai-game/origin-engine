@@ -316,7 +316,7 @@ pub struct Semantics {
 impl crate::Ui {
     /// Gives the element built just before (a container just closed, or a
     /// widget) a role, a name, a value and states for the accessibility
-    /// tree (docs/ui.md §11: a component's accessibility role). Answers
+    /// tree (docs/ui.md §2: a component's accessibility role). Answers
     /// false, with a frame warning, when there is no element before it or
     /// the role is none of [`ROLES`].
     pub fn semantics(&mut self, s: &Semantics) -> bool {

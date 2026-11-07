@@ -20,7 +20,7 @@ fn walk(dir: &Path, rel: &str, out: &mut Vec<(String, PathBuf)>) -> std::io::Res
                 continue;
             }
             // An installed kit's `sheet/` is a review project of its own
-            // (docs/ui.md §17.3), `og ui sheet` cooks it apart.
+            // (docs/ui.md §6), `og ui sheet` cooks it apart.
             if name == "sheet" && dir.join("extension.json").is_file() {
                 continue;
             }

@@ -16,7 +16,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `saturation` | `number` | `1` | ≥ 0 | `ratio` | — | Multiplies the saturation. |
 | `brightness` | `number` | `1` | ≥ 0 | `ratio` | — | Multiplies the brightness. |
 | `tint` | `Paint \| null` | `null` | — | — | — | Over the blur, by its alpha; null is the theme's panel at 60 % (with a glass weight, the weight's tint). |
-| `glass` | `GlassWeight` | `"none"` | — | — | — | One of flat glass's weights (docs/ui.md §5.3): it sets the blur, 200 % saturation, the tint (unless tint is given), a 0.5 px hairline inside the edge and CSS mixing, in the theme's scheme; under reduced transparency the solid raised surface, under high contrast solid with a strong 1 px edge. none is the fields as given. |
+| `glass` | `GlassWeight` | `"none"` | — | — | — | One of flat glass's weights (docs/ui.md §3.3): it sets the blur, 200 % saturation, the tint (unless tint is given), a 0.5 px hairline inside the edge and CSS mixing, in the theme's scheme; under reduced transparency the solid raised surface, under high contrast solid with a strong 1 px edge. none is the fields as given. |
 | `elevation` | `Elevation` | `"none"` | — | — | — | The soft shadow outside it, as the design language's shadows (with a glass weight, raised by default). |
 | `edge` | `number` | `0` | ≥ 0 | `cssPx` | — | A hairline just inside the edge (CSS inset 0 0 0 <edge>px); 0 is none, or the weight's. |
 | `edgeColor` | `Paint \| null` | `null` | — | — | — | The hairline's colour; null is the weight's (or the theme's line). |
@@ -43,7 +43,7 @@ struct BackdropEffect {
     unit ratio
   }
   field tint Option.Paint "Over the blur, by its alpha; null is the theme's panel at 60 % (with a glass weight, the weight's tint)."
-  field glass GlassWeight "One of flat glass's weights (docs/ui.md §5.3): it sets the blur, 200 % saturation, the tint (unless tint is given), a 0.5 px hairline inside the edge and CSS mixing, in the theme's scheme; under reduced transparency the solid raised surface, under high contrast solid with a strong 1 px edge. none is the fields as given."
+  field glass GlassWeight "One of flat glass's weights (docs/ui.md §3.3): it sets the blur, 200 % saturation, the tint (unless tint is given), a 0.5 px hairline inside the edge and CSS mixing, in the theme's scheme; under reduced transparency the solid raised surface, under high contrast solid with a strong 1 px edge. none is the fields as given."
   field elevation Elevation "The soft shadow outside it, as the design language's shadows (with a glass weight, raised by default)."
   field edge f32 "A hairline just inside the edge (CSS inset 0 0 0 <edge>px); 0 is none, or the weight's." {
     min 0

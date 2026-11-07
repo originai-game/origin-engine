@@ -710,7 +710,7 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
     let failed = super::timeline::refresh(eng);
     eng.state.borrow_mut().warnings.extend(failed);
     // And a UI document or style whose cooked output changed applies in
-    // place, the UI's state kept (docs/ui.md §16.3).
+    // place, the UI's state kept (docs/ui.md §6).
     let failed = super::modules::docs::refresh(eng);
     eng.state.borrow_mut().warnings.extend(failed);
 }

@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `ParticlesDesc` (desc struct)
 
-UI particles from an element (docs/ui.md §5.5): confetti, sparks, coin streams, rarity bursts. Drawn over it on its layer, clipped by its clip, seeded so a replay throws the same. Nothing under reduced motion.
+UI particles from an element (docs/ui.md §3.3): confetti, sparks, coin streams, rarity bursts. Drawn over it on its layer, clipped by its clip, seeded so a replay throws the same. Nothing under reduced motion.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -34,7 +34,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct ParticlesDesc {
-  doc "UI particles from an element (docs/ui.md §5.5): confetti, sparks, coin streams, rarity bursts. Drawn over it on its layer, clipped by its clip, seeded so a replay throws the same. Nothing under reduced motion."
+  doc "UI particles from an element (docs/ui.md §3.3): confetti, sparks, coin streams, rarity bursts. Drawn over it on its layer, clipped by its clip, seeded so a replay throws the same. Nothing under reduced motion."
   desc true
   field rate f32 "Particles a second while it is built." {
     min 0

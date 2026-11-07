@@ -137,7 +137,7 @@ fn find_dir() -> Option<PathBuf> {
         std::fs::read_dir(&p)
             .ok()?
             .flatten()
-            .any(|e| e.path().join("style.ogt").is_file())
+            .any(|e| e.path().join("style.ogt").is_file() || e.file_name() == "shared")
             .then_some(p)
     };
     // A checkout's packages/engine has the checkout's packs two levels up.

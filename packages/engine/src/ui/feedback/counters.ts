@@ -1,5 +1,5 @@
 // og.ui.numberCounter and og.ui.formatNumber: numbers that count (docs/ui.md
-// §9 formatting, Appendix E "Count-ups, rolling digits, escalating
+// §6 formatting, Appendix E "Count-ups, rolling digits, escalating
 // cascades"). Read against Cookie Clicker's and Melvor Idle's numbers past
 // trillions (letter notation that never runs out), Balatro's chip count
 // and the odometers of racing and casino games: a change counts on an ease

@@ -4,7 +4,7 @@ version 1
 # AgX at lower exposure, grey fog and a strong vignette: a lit stage.
 name "Muted theatrical lighting"
 mood "dark"
-ui "scifi"
+ui "default"
 RenderSettings {
   toneMapping agx
   exposure 0.8

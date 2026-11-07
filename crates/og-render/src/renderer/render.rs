@@ -5193,7 +5193,7 @@ impl Renderer {
         // The passes after the graph's are timed as its own are, each listed
         // only in a frame where it drew: the viewport views, the UI layers,
         // and the overlay with the glass and the lines drawn among it, so
-        // the UI's budget (`docs/ui.md` §15.1) reads from `gpuPasses`.
+        // the UI's budget (`docs/ui.md` §6.3) reads from `gpuPasses`.
         let mut timings = Timings {
             clock,
             pass_ms,

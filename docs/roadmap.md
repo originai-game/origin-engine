@@ -155,7 +155,7 @@ with no generated code.
 
 Ranked: per-frame cost follows the node count, not the change (the tree is
 rebuilt and compared every tick; find_overlaps, the accessibility tree and
-the probe list run in every build); no perf tests for `docs/ui.md` §15.1's
+the probe list run in every build); no perf tests for `docs/ui.md` §6.3's
 budgets; numbers and dates not formatted through og.i18n; no password or
 input-type hint; no variable-height virtualization; colour emoji are
 cooked images (`font { color true }`), not run-time glyphs; no

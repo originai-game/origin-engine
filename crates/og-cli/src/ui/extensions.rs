@@ -149,7 +149,7 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
             .is_some_and(|k| !k.iter().all(|w| lower_word(w)))
     {
         return Err(format!(
-            "{}: invalid extension manifest (docs/ui.md §17.1)",
+            "{}: invalid extension manifest (docs/ui.md §5)",
             path.display()
         ));
     }

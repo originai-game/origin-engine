@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `UiActionDesc` (struct)
 
-A named UI action (docs/ui.md §8.2) bound to og-input's controls: a component asks for an action, not a key.
+A named UI action (docs/ui.md §2.1) bound to og-input's controls: a component asks for an action, not a key.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
@@ -21,7 +21,7 @@ A named UI action (docs/ui.md §8.2) bound to og-input's controls: a component a
 
 ```ogt
 struct UiActionDesc {
-  doc "A named UI action (docs/ui.md §8.2) bound to og-input's controls: a component asks for an action, not a key."
+  doc "A named UI action (docs/ui.md §2.1) bound to og-input's controls: a component asks for an action, not a key."
   field name String "Its name: confirm, back, tabNext, tabPrev, details, or the game's own."
   field keys List.String "Key codes (KeyboardEvent.code: `Enter`, `KeyE`)."
   field buttons List.String "Standard-mapping pad buttons (GamepadButton's names: `a`, `rightBumper`)."

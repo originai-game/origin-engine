@@ -170,7 +170,7 @@ density's gutter (or `margin`), moved by `offset`.
 A **screen** (`type screen`) or a **component** (`type component`) is an
 `.ogt` document: an element tree with props, slots, parts, state groups,
 transitions, timelines, breakpoint overrides, list templates and bindings
-(docs/ui.md §10). `UiDocument::parse(source, text)` reads and validates one
+(docs/ui.md §2.1). `UiDocument::parse(source, text)` reads and validates one
 against the reflected props below (`doc::schema`, the one schema: the
 parser, `ui:set`, the probe's `schema`, `og.ui.documentSchema` and this
 table all read it, and `tests/documents.rs` holds this table equal to
@@ -216,7 +216,7 @@ timeline bought {                 # defined as <name>/<timeline>: shop/bought
 }
 fixture rich "{\"gold\": 1250000, \"items\": []}"   # a viewmodel to preview or push with (ui:push:shop:rich)
 panel Shop {                      # the one root element: <kind> [id] { … }
-  width: 520px                    # a style prop is a CSS declaration (docs/ui.md §10.4)
+  width: 520px                    # a style prop is a CSS declaration (docs/ui.md §3.2)
   part frame
   label Gold {
     text bind gold compact        # bind <expression> [format [digits]]
@@ -282,7 +282,7 @@ comments, quoted strings for anything that is not a word: paths with `/`,
 expressions with spaces); an element's look and layout are CSS declarations,
 its interaction states pseudo-classes (`:hover`, `:active`,
 `:focus-visible`, `:disabled`) and its breakpoints `@media` blocks
-(`src/doc/css.rs`, docs/ui.md §10.4). `og ui migrate` writes a version 1
+(`src/doc/css.rs`, docs/ui.md §3.2). `og ui migrate` writes a version 1
 document as version 2.
 Element ids are unique among siblings (paths name elements by them); an
 element without one is `<kind>#<n>` among its same-kind siblings.
@@ -306,7 +306,7 @@ host's (`Env::lookup`: the resource as of the last tick's end). Expressions:
 paths, numbers, strings, `true false null`, `! -`, `* / % + -`,
 `< <= > >= == !=`, `&& ||`, `a ? b : c`, parentheses. Bindings are read every
 tick after the game's systems; an unchanged value leaves its element's
-layout and drawing kept (docs/ui.md §6.3).
+layout and drawing kept (docs/ui.md §2).
 
 Formats (`bind <expr> <format> [digits]`, or `{path, format[, digits]}` in a
 template), by the language og-i18n sets:
@@ -414,7 +414,7 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `background` | paint | all | Its fill. |
 | `radius` | number | all | Its corner radius, CSS px. |
 | `frame` | panel \| card \| button \| buttonHover \| buttonPressed \| buttonDisabled \| field \| slot \| tooltip \| hud \| track \| fill | all | The style frame its background takes. |
-| `rive` | name | column, row, stack, grid, panel, scroll, slot | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive("ui/chest.riv#Chest")`, docs/ui.md §11.2): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
+| `rive` | name | column, row, stack, grid, panel, scroll, slot | The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive("ui/chest.riv#Chest")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick. |
 | `aspect` | number | all | Width over height (0: none). |
 | `fade` | number | scroll | How far, CSS px, its edges fade where its content runs on past them (a cut row reads as more, not as a clip); 0: none. |
 | `fadeInto` | paint | scroll | The colour its fade runs into: the ground it sits on (default panel). |
@@ -1254,13 +1254,13 @@ between ticks; `frameTheme`, `frameViewport`, `breakpoint`, `hasIcon`,
 small widgets written in TypeScript over those calls and the toast service
 `og.ui.toast`. Whole screens are not templates: a game ejects a screen
 document (`og ui eject <screen>`, `packages/engine/src/ui/screens/`) and fills
-its slots with components and patterns (docs/ui.md §11). `templates/ui-kit`
+its slots with components and patterns (docs/ui.md §2). `templates/ui-kit`
 shows the components, the patterns and the genre showcases, and is the
 reference source of `references/<tier>/kit-*.png`; the `screens` guide
 (`og api show screens`) tells an agent which to pick and how to check it.
 
 **The component library** (`packages/engine/src/ui/containers` and
-`ui/data`, merged into `og.ui`, docs/ui.md §11): `host false` components
+`ui/data`, merged into `og.ui`, docs/ui.md §2): `host false` components
 built from the public calls only (open/close with `ElementDesc.focusable`
 and `part`, `props`, `setDraw`, `semantics`, `animate`, `memory`, `gesture`,
 the modal layer). Containers and navigation: `card`, `scrollArea`,

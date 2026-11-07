@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.viewFrame`
 
-A viewport in a frame (docs/ui.md §5.5, Foundations): og.ui.sceneViewport in a style-dressed slot that turns with a drag (keeping the fling's speed for a moment), tilts within its limits, zooms with the wheel or a pinch, and turns by 15° per Left or Right while it has the focus (Tab, a pad). Until the target has a texture it shows a placeholder with a spinner. Draw the scene into a target of view.pixelWidth × view.pixelHeight with the yaw, pitch and zoom it answers; a target of another shape covers the frame, cropped, never squashed. Parts: `ViewFrame.frame[focused]`, `ViewFrame.hint`. Role image (its label), its turn as its value. Probe: `<id>`, `<id>/Box/Picture/View`, `<id>/Box/HintRow/Hint`.
+A viewport in a frame (docs/ui.md §3.3, Foundations): og.ui.sceneViewport in a style-dressed slot that turns with a drag (keeping the fling's speed for a moment), tilts within its limits, zooms with the wheel or a pinch, and turns by 15° per Left or Right while it has the focus (Tab, a pad). Until the target has a texture it shows a placeholder with a spinner. Draw the scene into a target of view.pixelWidth × view.pixelHeight with the yaw, pitch and zoom it answers; a target of another shape covers the frame, cropped, never squashed. Parts: `ViewFrame.frame[focused]`, `ViewFrame.hint`. Role image (its label), its turn as its value. Probe: `<id>`, `<id>/Box/Picture/View`, `<id>/Box/HintRow/Hint`.
 
 ```ts
 og.ui.viewFrame(id: string, desc?: ViewFrameDesc): ViewFrameResult
@@ -23,7 +23,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn viewFrame {
-  doc "A viewport in a frame (docs/ui.md §5.5, Foundations): og.ui.sceneViewport in a style-dressed slot that turns with a drag (keeping the fling's speed for a moment), tilts within its limits, zooms with the wheel or a pinch, and turns by 15° per Left or Right while it has the focus (Tab, a pad). Until the target has a texture it shows a placeholder with a spinner. Draw the scene into a target of view.pixelWidth × view.pixelHeight with the yaw, pitch and zoom it answers; a target of another shape covers the frame, cropped, never squashed. Parts: `ViewFrame.frame[focused]`, `ViewFrame.hint`. Role image (its label), its turn as its value. Probe: `<id>`, `<id>/Box/Picture/View`, `<id>/Box/HintRow/Hint`."
+  doc "A viewport in a frame (docs/ui.md §3.3, Foundations): og.ui.sceneViewport in a style-dressed slot that turns with a drag (keeping the fling's speed for a moment), tilts within its limits, zooms with the wheel or a pinch, and turns by 15° per Left or Right while it has the focus (Tab, a pad). Until the target has a texture it shows a placeholder with a spinner. Draw the scene into a target of view.pixelWidth × view.pixelHeight with the yaw, pitch and zoom it answers; a target of another shape covers the frame, cropped, never squashed. Parts: `ViewFrame.frame[focused]`, `ViewFrame.hint`. Role image (its label), its turn as its value. Probe: `<id>`, `<id>/Box/Picture/View`, `<id>/Box/HintRow/Hint`."
   host false
   param id String "Its id."
   param desc ViewFrameDesc "The target, its camera and its turn."

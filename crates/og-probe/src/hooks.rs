@@ -312,7 +312,7 @@ pub struct UiElement {
     pub width: f32,
     pub height: f32,
     /// What the UI module knows of it beyond the above, each an optional
-    /// field of its JSON (docs/ui.md §16.1): `layer` (the screen whose
+    /// field of its JSON (docs/ui.md §6): `layer` (the screen whose
     /// layer it is in), `source` (`ui/shop.ogt:42`, the document line that
     /// built it), `bindings` (`[{prop, expr, value}]`), `visualStates`
     /// (`{group: state}`), `edits` (`{prop: value}`, the probe's
@@ -366,7 +366,7 @@ pub trait UiTree {
     }
 
     /// The UI's state beyond its elements, as optional fields of
-    /// `dump_ui` (docs/ui.md §16.1): `layers` (the layer stack, bottom
+    /// `dump_ui` (docs/ui.md §6): `layers` (the layer stack, bottom
     /// first), `motion` (every element in a visual state or with motion
     /// in flight), `actions` (the UI actions, the device used last, the
     /// action bar), `documents` (the documents loaded), `edits` (the

@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `WorldPanelDesc` (desc struct)
 
-A world panel (docs/ui.md §14): a UI tree drawn into a render target that a mesh shows (a terminal, a cockpit screen, a shop sign), reached by the pointer through a ray onto its quad.
+A world panel (docs/ui.md §1): a UI tree drawn into a render target that a mesh shows (a terminal, a cockpit screen, a shop sign), reached by the pointer through a ray onto its quad.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -26,7 +26,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct WorldPanelDesc {
-  doc "A world panel (docs/ui.md §14): a UI tree drawn into a render target that a mesh shows (a terminal, a cockpit screen, a shop sign), reached by the pointer through a ray onto its quad."
+  doc "A world panel (docs/ui.md §1): a UI tree drawn into a render target that a mesh shows (a terminal, a cockpit screen, a shop sign), reached by the pointer through a ray onto its quad."
   desc true
   field target Option.Texture "The colour of an og.render.renderTarget made with format rgba16float (RenderTargetInfo.texture); give the mesh's material it as map (lit) or emissiveMap with colour black (unlit). It shows the frame after the UI drew it. Null: laid out and hit, drawn nowhere."
   field width f32 "Its layout width; the target's pixels spread over it." {

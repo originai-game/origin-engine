@@ -2,7 +2,7 @@
 //!
 //! - `ui-vector` (native: cooked by og-cook): an SVG emblem tessellated and
 //!   drawn at three sizes and turned.
-//! - `ui-rive` (native, `docs/ui.md` §11.2): rive-runtime's test artboards
+//! - `ui-rive` (native, `docs/ui.md` §3.3): rive-runtime's test artboards
 //!   (`tests/fixtures/rive`) converted by og-cook and drawn by og-ui's Rive
 //!   player: a circle on its artboard's ground; a nested artboard at its
 //!   container's opacity; two rectangles keyed by a cubic value

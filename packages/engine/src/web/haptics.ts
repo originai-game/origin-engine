@@ -1,4 +1,4 @@
-// The UI's haptic patterns on the page (docs/ui.md §7.8): each frame
+// The UI's haptic patterns on the page (docs/ui.md §3.1): each frame
 // answer's `haptics` (the patterns the style's feedback played, already at
 // the player's strength, og.ui.setHaptics) rumbles every connected pad
 // that has a vibration actuator and vibrates a phone. A pattern is a list

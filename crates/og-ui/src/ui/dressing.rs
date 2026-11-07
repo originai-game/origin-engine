@@ -237,7 +237,7 @@ impl Ui {
     }
 
     /// What part `part` draws for a widget whose own colour for its state
-    /// is `fill`: its dressing, else the tokens (docs/ui.md §12.3), moved
+    /// is `fill`: its dressing, else the tokens (docs/ui.md §3.2), moved
     /// between its states by how far into hover and press it is.
     pub(crate) fn part_draw(
         &self,

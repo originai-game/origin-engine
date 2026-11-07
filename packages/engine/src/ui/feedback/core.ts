@@ -1,4 +1,4 @@
-// What the feedback, HUD and world components (docs/ui.md §11, U6c) share:
+// What the feedback, HUD and world components (docs/ui.md §2, U6c) share:
 // parts a style dresses, colours from the frame's style, fills, strokes
 // and effects in the UI pass's types, text over the game, motion by the
 // tick, edges kept in the UI's memory (so a snapshot carries them), and
@@ -381,7 +381,7 @@ export const ut = (n: number): number => Math.round(n * scale() * textScale());
 /** A length of a 1280×720 design at this surface. */
 export const u = (n: number): number => Math.round(n * scale());
 
-/** The smallest text the checks allow here (docs/ui.md §15.2: 18 px at 1080p on desktop). */
+/** The smallest text the checks allow here (docs/ui.md §6.1: 18 px at 1080p on desktop). */
 export function minText(): number {
   const v = frame().viewport;
   if (v.coarsePointer) return 12;

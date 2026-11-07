@@ -1,7 +1,6 @@
 type look
 version 1
 ---
-# The fixture's look: the scifi UI style (its fonts draw the HUD), the
-# frame's defaults otherwise.
+# The fixture uses the core default UI, independent of genre packs.
 name "Vehicle terrain"
-ui "scifi"
+ui "default"

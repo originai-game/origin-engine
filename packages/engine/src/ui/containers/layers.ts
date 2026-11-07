@@ -1,4 +1,4 @@
-// Floating containers (docs/ui.md §11, Containers and navigation): dialogs
+// Floating containers (docs/ui.md §2, Containers and navigation): dialogs
 // and confirms, popovers, menus and context menus, and sheets. Each sits
 // on the modal layer (a focus scope: focus moves in, stays in, and comes
 // back when it closes; Back and a press outside dismiss it unless locked)

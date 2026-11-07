@@ -968,7 +968,7 @@ impl Probe {
         dump
     }
 
-    /// `dump_ui:layers`: the layer stack alone (docs/ui.md §16.1).
+    /// `dump_ui:layers`: the layer stack alone (docs/ui.md §6).
     pub fn dump_layers(&self, world: &World) -> Value {
         let layers = self
             .ui

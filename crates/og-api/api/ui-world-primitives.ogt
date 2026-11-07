@@ -1,4 +1,4 @@
-  # ── world-space UI (docs/ui.md §14, §5.5) ───────────────────────────────
+  # ── world-space UI (docs/ui.md §1, §3.3) ───────────────────────────────
 
   struct WorldTarget {
     doc "What an anchored element or a world panel is placed on: an entity (its world pose, down og.Parent) or a world point."
@@ -45,7 +45,7 @@
   }
 
   struct WorldAnchorDesc {
-    doc "An element anchored in the world (docs/ui.md §14): laid out at its own size and placed each tick on its target's point projected with the tick's camera. A nameplate, an interaction prompt, a speech bubble, a waypoint."
+    doc "An element anchored in the world (docs/ui.md §1): laid out at its own size and placed each tick on its target's point projected with the tick's camera. A nameplate, an interaction prompt, a speech bubble, a waypoint."
     desc true
     field target WorldTarget "What it sits on."
     field offset Vector3 "Added to the point in world units (above a head: 0, 2, 0)."
@@ -131,7 +131,7 @@
   }
 
   struct WorldPanelDesc {
-    doc "A world panel (docs/ui.md §14): a UI tree drawn into a render target that a mesh shows (a terminal, a cockpit screen, a shop sign), reached by the pointer through a ray onto its quad."
+    doc "A world panel (docs/ui.md §1): a UI tree drawn into a render target that a mesh shows (a terminal, a cockpit screen, a shop sign), reached by the pointer through a ray onto its quad."
     desc true
     field target Option.Texture "The colour of an og.render.renderTarget made with format rgba16float (RenderTargetInfo.texture); give the mesh's material it as map (lit) or emissiveMap with colour black (unlit). It shows the frame after the UI drew it. Null: laid out and hit, drawn nowhere."
     field width f32 "Its layout width; the target's pixels spread over it." {
@@ -243,7 +243,7 @@
   }
 
   struct MassTemplateDesc {
-    doc "A mass element template (docs/ui.md §14): declared once, then instanced thousands of times a frame with a few values each. No instance is laid out; its motion is the timeline, evaluated on the GPU."
+    doc "A mass element template (docs/ui.md §1): declared once, then instanced thousands of times a frame with a few values each. No instance is laid out; its motion is the timeline, evaluated on the GPU."
     desc true
     field kind MassKind "What it draws."
     field space MassSpace "Where instances' positions are."
@@ -358,7 +358,7 @@
   }
 
   struct ParticlesDesc {
-    doc "UI particles from an element (docs/ui.md §5.5): confetti, sparks, coin streams, rarity bursts. Drawn over it on its layer, clipped by its clip, seeded so a replay throws the same. Nothing under reduced motion."
+    doc "UI particles from an element (docs/ui.md §3.3): confetti, sparks, coin streams, rarity bursts. Drawn over it on its layer, clipped by its clip, seeded so a replay throws the same. Nothing under reduced motion."
     desc true
     field rate f32 "Particles a second while it is built." {
       min 0
@@ -431,7 +431,7 @@
   }
 
   struct MetaDesc {
-    doc "A meta layer (docs/ui.md §14): full screen, over the scene and under the screen's elements, never taking input."
+    doc "A meta layer (docs/ui.md §1): full screen, over the scene and under the screen's elements, never taking input."
     desc true
     field kind MetaKind "What it draws."
     field color Option.Paint "Vignette and tint: its ink; null is a deep red."
@@ -475,7 +475,7 @@
   }
 
   struct SceneViewportDesc {
-    doc "The viewport element (docs/ui.md §5.5): a camera's view of a scene layer shown in the layout (a character on a turntable, an item to inspect). Draw it with an og.CameraView into a render target on its own layers, with its own lights; this element shows the target and passes input in."
+    doc "The viewport element (docs/ui.md §3.3): a camera's view of a scene layer shown in the layout (a character on a turntable, an item to inspect). Draw it with an og.CameraView into a render target on its own layers, with its own lights; this element shows the target and passes input in."
     desc true
     field texture Option.Texture "The target's colour (RenderTargetInfo.texture)."
     field width Option.Size "Its width; null is 320 CSS px."

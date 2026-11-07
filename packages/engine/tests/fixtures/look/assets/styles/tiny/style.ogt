@@ -1,7 +1,7 @@
 type style
 version 3
 ---
-# Upgraded to version 2 by og style upgrade: its version 1 values kept, the new tokens derived from its palette and scheme (docs/ui.md §12).
+# Upgraded to version 2 by og style upgrade: its version 1 values kept, the new tokens derived from its palette and scheme (docs/ui.md §3).
 name "tiny"
 scheme dark
 palette {

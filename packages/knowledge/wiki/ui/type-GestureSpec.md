@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `GestureSpec` (desc struct)
 
-Tap, double tap and long press on any element (docs/ui.md §8.5), answered by Response (tapped, doubleTapped, longPressed, longPress), og.ui.gesture and the frame's motion events. Nested elements compete for one press: of those that declare a gesture, the highest priority wins it, the innermost of equals. A tap waits for a double tap only where one is declared; a long press that fires takes the press, so its release clicks nothing; travel past the slop (a drag, a scroll) fails all three. The zero value recognises nothing.
+Tap, double tap and long press on any element (docs/ui.md §2.1), answered by Response (tapped, doubleTapped, longPressed, longPress), og.ui.gesture and the frame's motion events. Nested elements compete for one press: of those that declare a gesture, the highest priority wins it, the innermost of equals. A tap waits for a double tap only where one is declared; a long press that fires takes the press, so its release clicks nothing; travel past the slop (a drag, a scroll) fails all three. The zero value recognises nothing.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -22,7 +22,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct GestureSpec {
-  doc "Tap, double tap and long press on any element (docs/ui.md §8.5), answered by Response (tapped, doubleTapped, longPressed, longPress), og.ui.gesture and the frame's motion events. Nested elements compete for one press: of those that declare a gesture, the highest priority wins it, the innermost of equals. A tap waits for a double tap only where one is declared; a long press that fires takes the press, so its release clicks nothing; travel past the slop (a drag, a scroll) fails all three. The zero value recognises nothing."
+  doc "Tap, double tap and long press on any element (docs/ui.md §2.1), answered by Response (tapped, doubleTapped, longPressed, longPress), og.ui.gesture and the frame's motion events. Nested elements compete for one press: of those that declare a gesture, the highest priority wins it, the innermost of equals. A tap waits for a double tap only where one is declared; a long press that fires takes the press, so its release clicks nothing; travel past the slop (a drag, a scroll) fails all three. The zero value recognises nothing."
   desc true
   field tap bool "Recognise a tap."
   field doubleTap bool "Recognise a double tap (its tap then waits for the double tap's window)."

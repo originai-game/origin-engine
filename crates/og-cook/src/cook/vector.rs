@@ -1,4 +1,4 @@
-//! Vectors (`.ogt` of `type vector`, `docs/ui.md` §5.1): an SVG subset
+//! Vectors (`.ogt` of `type vector`, `docs/ui.md` §3.3): an SVG subset
 //! cooked to triangles that og-render's UI pass draws with an analytic
 //! antialiased edge (`og_render::UiVectorData`).
 //!

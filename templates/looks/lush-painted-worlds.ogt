@@ -4,7 +4,7 @@ version 1
 # Light brush strokes over a bright, blooming scene.
 name "Lush painted worlds"
 mood "warm"
-ui "fantasy"
+ui "default"
 Stylise {
   paintRadius 2
   paintAnisotropy 0.5

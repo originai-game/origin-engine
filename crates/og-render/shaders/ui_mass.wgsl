@@ -1,4 +1,4 @@
-// Mass elements (src/ui/mass.rs, docs/ui.md §14): one instance per
+// Mass elements (src/ui/mass.rs, docs/ui.md §1): one instance per
 // element, `quads` quads each. The vertex stage projects the element's
 // point, evaluates its template's timeline at its age, formats its number
 // or picks its string, and places the quad; the fragment stage draws a

@@ -63,7 +63,7 @@ impl Ui {
         a.t
     }
 
-    /// Each element's map onto the screen (docs/ui.md §6.1): its layout
+    /// Each element's map onto the screen (docs/ui.md §2): its layout
     /// animation, its drag and pinch, its transition's movement and its own
     /// transform, about its box, composed with its parent's; its opacity
     /// multiplied down the tree; inert where a transition moves it, a state
@@ -130,7 +130,7 @@ impl Ui {
         }
     }
 
-    /// The frame's draw commands with their maps (docs/ui.md §6.1): each
+    /// The frame's draw commands with their maps (docs/ui.md §2): each
     /// element's in its layout box, mapped by its world (an axis-aligned
     /// map is baked into the command, a turn or skew is left for the
     /// overlay); a scroll container's bars after its content; leaving
@@ -151,7 +151,7 @@ impl Ui {
         // Focus rings waiting for the subtree they draw over (`ring_over`).
         let mut rings: Vec<(usize, Vec<(DrawCmd, Affine)>)> = Vec::new();
         // Elements whose commands and ancestors' fills are as last frame
-        // (docs/ui.md §6.3): their commands are last frame's.
+        // (docs/ui.md §2): their commands are last frame's.
         let mut same = vec![false; self.nodes.len()];
         let mut next = crate::id::KeyMap::<(usize, Vec<DrawCmd>)>::with_capacity_and_hasher(
             order.len(),

@@ -25,7 +25,7 @@ use std::sync::{Arc, Mutex};
 
 pub use og_render::GlyphKey;
 
-/// The OpenType features a type step turns on (docs/ui.md §15.5.4): small
+/// The OpenType features a type step turns on (docs/ui.md §6.3.4): small
 /// caps, capitals to small caps, tabular and lining figures, case-sensitive
 /// forms. A run with any of them is shaped with the font file, so its glyphs
 /// and advances are the feature's; the font's import names the same

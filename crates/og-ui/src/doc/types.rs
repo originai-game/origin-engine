@@ -1,4 +1,4 @@
-//! A document's TypeScript declaration (docs/ui.md §10.5): its props, the
+//! A document's TypeScript declaration (docs/ui.md §2.1): its props, the
 //! events it can send and its slots, as one `.d.ts` that adds the document
 //! to the engine's `UiScreens` or `UiComponents` registry. Then
 //! `og.ui.screen("shop", vm)` type-checks `vm` against the contract and

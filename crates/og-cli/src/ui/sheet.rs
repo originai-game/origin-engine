@@ -67,7 +67,7 @@ fn sheet(args: &[&str]) -> Result<(), String> {
             let demo = scratch.join("sheet");
             if !demo.join("project.ogt").is_file() || declared_screens(&demo)?.is_empty() {
                 return Err(format!(
-                    "kit `{name}` needs sheet/project.ogt with fixed ui screen entries (docs/ui.md §17.3)"
+                    "kit `{name}` needs sheet/project.ogt with fixed ui screen entries (docs/ui.md §6)"
                 ));
             }
             // Installed as a game installs it, so its pages load the kit's documents from

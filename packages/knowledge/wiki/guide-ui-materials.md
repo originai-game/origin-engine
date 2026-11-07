@@ -34,18 +34,14 @@ Slot::frame[rarity=legendary] {
 ```
 
 <a id="guide-ui-materials-3"></a>
-### `ui-materials §3` On an element, in code
+### `ui-materials §3` Custom draw parameters
 
-Load it with og.load.uiMaterial and give the element a custom layer
-material through og.ui.setDraw; the element's children are drawn
-offscreen and composited through it.
-
-```ts
-const foil = og.load.uiMaterial(world, "ui-kits/materials/foil.ogt");
-og.ui.column("Card", desc, () => {
-  if (foil.ok) og.ui.setDraw({ layer: { material: "custom", custom: foil.value, params: [0.7] } });
-});
-```
+Keep the element's structure in its document and static material defaults
+in the style. A custom draw callback can load a material with
+og.load.uiMaterial and apply a custom layer through og.ui.setDraw.
+The element's children are drawn offscreen and composited through it.
+Declare the callback's data dependencies; do not build a TypeScript tree
+to attach a material.
 
 - Animate a parameter by passing a new value each tick (a burn's
   `progress` from 0 to 1 over the exit, on the style's exit curve) or from
@@ -62,7 +58,7 @@ og.ui.column("Card", desc, () => {
 live without a cook; write the value kept into the `param` line. Judge a
 material on a plain ground by the card it finishes (screens §5), not over
 a busy backdrop. `og ui sheet materials` shows each preset on a card in
-two styles.
+the core default's light and dark schemes.
 
 <a id="guide-ui-materials-5"></a>
 ### `ui-materials §5` A new material

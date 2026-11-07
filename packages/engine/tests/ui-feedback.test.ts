@@ -1,4 +1,4 @@
-// The feedback components (docs/ui.md §11, U6c) on the native host, read
+// The feedback components (docs/ui.md §2, U6c) on the native host, read
 // through dump_ui and the accessibility fields: what each shows, when it
 // leaves, what a screen reader is told, and the number notations.
 //

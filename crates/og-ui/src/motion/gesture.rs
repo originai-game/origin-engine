@@ -1,4 +1,4 @@
-//! Gestures on any element (docs/ui.md §7.6): a drag with an axis lock and
+//! Gestures on any element (docs/ui.md §3.1): a drag with an axis lock and
 //! bounds, rubber-banding past them, a flick's momentum onto snap points,
 //! swipe to dismiss, drop targets, and pinch and rotate with two touches.
 //! Run in [`crate::Ui::end`] with the tick's input (the press was taken

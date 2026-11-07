@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `VirtualCursorDesc` (desc struct)
 
-A pad's virtual cursor (docs/ui.md §8.3). The zero value moves at 900 units a second, takes a quarter second from a fine start to full speed, has a half-strength magnet and scrolls 1200 units a second.
+A pad's virtual cursor (docs/ui.md §2.1). The zero value moves at 900 units a second, takes a quarter second from a fine start to full speed, has a half-strength magnet and scrolls 1200 units a second.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -19,7 +19,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct VirtualCursorDesc {
-  doc "A pad's virtual cursor (docs/ui.md §8.3). The zero value moves at 900 units a second, takes a quarter second from a fine start to full speed, has a half-strength magnet and scrolls 1200 units a second."
+  doc "A pad's virtual cursor (docs/ui.md §2.1). The zero value moves at 900 units a second, takes a quarter second from a fine start to full speed, has a half-strength magnet and scrolls 1200 units a second."
   desc true
   field speed f32 "Units a second at full tilt; 0 is 900." {
     unit cssPx

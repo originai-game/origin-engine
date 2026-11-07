@@ -1,8 +1,8 @@
-// og.ui.starBar: a level's score toward its stars (docs/ui.md §11, Appendix
+// og.ui.starBar: a level's score toward its stars (docs/ui.md §2, Appendix
 // B: puzzle HUD goals). The game holds the score; which stars were already
 // shown lit is the component's own memory, so a crossing pops once. Split
 // out of goals.ts unchanged when goalChips moved into the puzzle kit
-// (docs/ui.md §17).
+// (docs/ui.md §5).
 
 import type * as Api from "@origingame/engine";
 import { clamp, fill, frame, glow, grouped, grow, hex, kit, line, mix, over, paint, pct, px, role, shadow, solid, spring, st, still, symbol, text, u, vgrad, vstate } from "./core.ts";

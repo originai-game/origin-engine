@@ -4,7 +4,7 @@ A driven `og.Vehicle` (a raycast car, grip 1.2, drift grip 0.6) on cooked
 terrain (`assets/terrain/hills.ogt`, generated from its own numbers: height
 0 to 6 m, two colour layers, a `SHAPE_HEIGHTFIELD` collider, the road
 flattened with `og.terrain.edit` under an asphalt slab), with a HUD speed
-readout (`og.ui`, the look's `ui "scifi"`), a chase camera that eases after
+readout (`og.ui`, the look's `ui "default"`), a chase camera that eases after
 the car, tyre smoke while the rear slides (`assets/fx/smoke.ogt`), a ring of
 24 skid-mark decals, and an engine tone whose pitch follows the speed
 (`og.audio.createSound`). It bundles these on purpose: it is the

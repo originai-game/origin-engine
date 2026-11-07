@@ -1,4 +1,4 @@
-// The key-binding row (docs/ui.md §11, the settings tree's controls page):
+// The key-binding row (docs/ui.md §2, the settings tree's controls page):
 // an action's bindings on a device, shown as og.input's glyphs, each slot
 // captured with og.input's startCapture/capture/applyCapture, a conflict
 // answered inline with og.input's conflict report (swap, replace, cancel).

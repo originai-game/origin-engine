@@ -1,4 +1,4 @@
-// Key-value rows and stat-compare rows (docs/ui.md §11, Data): a
+// Key-value rows and stat-compare rows (docs/ui.md §2, Data): a
 // character sheet's stats, an item's properties, and the comparison an
 // equip screen shows (Attack 120 → 138, +18), the change carried by a
 // mark and a sign as well as its colour (XAG 103).

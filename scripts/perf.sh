@@ -3,7 +3,7 @@
 # times (crates/og-tests/perf/<tier>-<adapter>/) and og-runtime's
 # extraction cost (crates/og-runtime/perf/<cpu>/), release profile, each
 # against this machine's committed baseline with a 15 % tolerance; og-ui's
-# CPU budgets (docs/ui.md §15.1) and the TypeScript side of them
+# CPU budgets (docs/ui.md §6.3) and the TypeScript side of them
 # (packages/engine/tests/ui-perf.test.ts on the release addon) and the
 # wall-clock room stall (packages/engine/tests/rooms.test.ts). The
 # release test binaries are built first with no GPU slot; then one test runs

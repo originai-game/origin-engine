@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `TextRole` (enum)
 
-A text's role in the hierarchy (docs/ui.md §12.2): its type step, font and weight come from the style's type tokens for the role.
+A text's role in the hierarchy (docs/ui.md §3.1): its type step, font and weight come from the style's type tokens for the role.
 
 A string: one of the variants below. The zero value is `"body"`.
 
@@ -22,7 +22,7 @@ A string: one of the variants below. The zero value is `"body"`.
 
 ```ogt
 enum TextRole {
-  doc "A text's role in the hierarchy (docs/ui.md §12.2): its type step, font and weight come from the style's type tokens for the role."
+  doc "A text's role in the hierarchy (docs/ui.md §3.1): its type step, font and weight come from the style's type tokens for the role."
   variant body "Running text (the default)."
   variant display "The largest: a title screen's name, a victory banner. A heading."
   variant title "A screen's or a dialog's title. A heading."

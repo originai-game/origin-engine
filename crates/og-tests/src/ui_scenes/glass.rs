@@ -1,4 +1,4 @@
-//! Flat glass (`docs/ui.md` §5.3, og-render's `ui::glass`): the design
+//! Flat glass (`docs/ui.md` §3.3, og-render's `ui::glass`): the design
 //! language's three weights with their hairlines and shadows over a
 //! bright, a dark and a busy backdrop, a dialog over the blurred scrim with
 //! flat controls on it, and the two fallbacks.
@@ -88,7 +88,7 @@ const DARK: Tokens = Tokens {
     // sRGB-encoded values (CSS); the UI pass blends flat fills in linear
     // light, where 13 % white over dark glass reads about three times as
     // strong, so the scene takes the value that draws as CSS's does there
-    // (docs/ui.md §5.3's palette notes).
+    // (docs/ui.md §3.3's palette notes).
     control: ([255, 255, 255], 0.05),
     accent: [0xff, 0xb2, 0x24],
     accent_fg: [0x1d, 0x13, 0x00],
@@ -198,7 +198,7 @@ impl Painter<'_> {
             rgba(t.control.0, t.control.1)
         };
         // The current item carries the scheme's fg (an amber label on it is
-        // a palette pair the ui-scale stream fixes, docs/ui.md §5.3); the
+        // a palette pair the ui-scale stream fixes, docs/ui.md §3.3); the
         // amber one is a neighbour.
         self.flat([bar[0] + 6.0, bar[1] + 6.0, 96.0, 40.0], 6.0, current, 3);
         for (i, label) in ["Play", "Library", "Store", "Friends"].iter().enumerate() {

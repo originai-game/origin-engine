@@ -32,7 +32,7 @@ impl Ui {
         crate::layers::build_without_host(self);
         self.build_toasts();
         self.building = false;
-        // Breakpoint and orientation variants (docs/ui.md §6.2), before
+        // Breakpoint and orientation variants (docs/ui.md §2), before
         // anything is laid out.
         self.apply_variants();
         self.apply_part_appearances();

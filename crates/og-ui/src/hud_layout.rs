@@ -1,4 +1,4 @@
-//! The player's HUD layout (docs/ui.md §8.4): elements whose props say
+//! The player's HUD layout (docs/ui.md §2.1): elements whose props say
 //! [`Customize`] (a HUD group, a touch stick or button) can be moved,
 //! scaled and faded by the player in an edit mode, each placement kept per
 //! player under the element's key. The game saves the layout in its
@@ -524,7 +524,7 @@ impl Ui {
         }
     }
 
-    /// The HUD edit mode's panel (docs/ui.md §8.4): the selected element's
+    /// The HUD edit mode's panel (docs/ui.md §2.1): the selected element's
     /// name, size and opacity steps, Next (the next element, for keys and
     /// pads), Reset and Done. Build it while [`Ui::hud_edit`] is on; Done
     /// turns the edit mode off. Presses on it edit nothing behind it.

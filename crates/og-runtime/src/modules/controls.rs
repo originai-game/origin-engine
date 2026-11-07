@@ -1,6 +1,6 @@
 //! og.ui's controls (`api/ui-controls.ogt`): the switch, the checkbox, the
 //! radio group, the segmented control, the slider, the number stepper and
-//! the dropdown, each og-ui's native control (docs/ui.md §11), their descs
+//! the dropdown, each og-ui's native control (docs/ui.md §2), their descs
 //! read from the JSON the API passes.
 
 use super::*;

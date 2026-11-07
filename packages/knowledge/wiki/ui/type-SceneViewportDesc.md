@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `SceneViewportDesc` (desc struct)
 
-The viewport element (docs/ui.md §5.5): a camera's view of a scene layer shown in the layout (a character on a turntable, an item to inspect). Draw it with an og.CameraView into a render target on its own layers, with its own lights; this element shows the target and passes input in.
+The viewport element (docs/ui.md §3.3): a camera's view of a scene layer shown in the layout (a character on a turntable, an item to inspect). Draw it with an og.CameraView into a render target on its own layers, with its own lights; this element shows the target and passes input in.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -25,7 +25,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct SceneViewportDesc {
-  doc "The viewport element (docs/ui.md §5.5): a camera's view of a scene layer shown in the layout (a character on a turntable, an item to inspect). Draw it with an og.CameraView into a render target on its own layers, with its own lights; this element shows the target and passes input in."
+  doc "The viewport element (docs/ui.md §3.3): a camera's view of a scene layer shown in the layout (a character on a turntable, an item to inspect). Draw it with an og.CameraView into a render target on its own layers, with its own lights; this element shows the target and passes input in."
   desc true
   field texture Option.Texture "The target's colour (RenderTargetInfo.texture)."
   field width Option.Size "Its width; null is 320 CSS px."

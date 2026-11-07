@@ -255,22 +255,29 @@ test("style art is a nine-slice with its insets and one cell per state", () => {
 });
 
 test("a generated style's art requests become one brief per slot, in its shape language, finish and palette", () => {
-  // templates/styles/gilded/art-requests.json, written by og style new: six
-  // frames, the button and the primary, three ornaments (ornament rich), the icon set.
-  const file = join(import.meta.dir, "..", "..", "..", "templates", "styles", "gilded", "art-requests.json");
-  const requests = JSON.parse(readFileSync(file, "utf8"));
+  const requests = {
+    style: "fixture", look: "ornate", premise: "a card game",
+    choices: { scheme: "dark", seed: "#c08040", shape: "notch", ornament: "rich", motion: "calm", finish: "bevel" },
+    palette: { primary: "#c08040", panel: "#181820" },
+    slots: [
+      ...["panel", "card", "field", "slot", "tooltip", "hud"].map(name => ({ name: `fixture/${name}`, kind: "styleFrame" })),
+      ...["button", "button-primary"].map(name => ({ name: `fixture/${name}`, kind: "styleButton" })),
+      ...["corner", "divider", "flourish"].map(name => ({ name: `fixture/${name}`, kind: "ornament" })),
+      { name: "fixture/icons", kind: "iconSet" },
+    ],
+  };
   const briefs = styleArtBriefs(presetLook("16bit-pixel"), requests);
   expect(briefs.map((b) => b.slot)).toEqual([
-    "gilded/panel", "gilded/card", "gilded/field", "gilded/slot", "gilded/tooltip", "gilded/hud",
-    "gilded/button", "gilded/button-primary", "gilded/corner", "gilded/divider", "gilded/flourish", "gilded/icons",
+    "fixture/panel", "fixture/card", "fixture/field", "fixture/slot", "fixture/tooltip", "fixture/hud",
+    "fixture/button", "fixture/button-primary", "fixture/corner", "fixture/divider", "fixture/flourish", "fixture/icons",
   ]);
-  const button = briefs.find((b) => b.slot === "gilded/button-primary")!.brief;
+  const button = briefs.find((b) => b.slot === "fixture/button-primary")!.brief;
   expect(button.kind).toBe("styleButton");
   expect(button.ui?.nineSlice?.states).toEqual(["normal", "hover", "pressed", "disabled", "focused"]);
   expect(button.prompt).toContain("square notched corners");
   expect(button.prompt).toContain("primary");
   expect(button.prompt).toContain(requests.palette.primary);
-  const corner = briefs.find((b) => b.slot === "gilded/corner")!.brief;
+  const corner = briefs.find((b) => b.slot === "fixture/corner")!.brief;
   expect(corner.kind).toBe("ornament");
   expect(corner.prompt).toContain("rich ornament");
   expect(() => styleArtBriefs(presetLook("16bit-pixel"), { ...requests, slots: [{ name: "x/y", kind: "frame" }] })).toThrow("not an art kind");

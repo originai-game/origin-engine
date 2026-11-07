@@ -1,4 +1,4 @@
-//! The layer stack (docs/ui.md §8.1): a game's UI is a stack of screens,
+//! The layer stack (docs/ui.md §2.1): a game's UI is a stack of screens,
 //! each a document of `type screen` declaring its layer (HUD, menu, modal,
 //! popover, toast, tooltip, system), its input mode, its default focus and
 //! focus memory, what Back does, whether it pauses the game and what

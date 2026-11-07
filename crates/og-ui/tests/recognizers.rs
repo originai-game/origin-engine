@@ -1,4 +1,4 @@
-//! Tap, double tap and long press (docs/ui.md §8.5), explicit focus moves
+//! Tap, double tap and long press (docs/ui.md §2.1), explicit focus moves
 //! and focus groups (§8.3), and the pointer's shape (§6.1), driven tick by
 //! tick.
 //!

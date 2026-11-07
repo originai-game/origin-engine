@@ -1,4 +1,4 @@
-//! Timelines and choreography (docs/ui.md §7.4): keyframed tracks over
+//! Timelines and choreography (docs/ui.md §3.1): keyframed tracks over
 //! element props with an ease or a spring per key, event tracks (a sound, a
 //! haptic, a burst, a state change, a callback), and the operators that
 //! compose timelines into one play: `sequence`, `parallel`, `stagger` (by

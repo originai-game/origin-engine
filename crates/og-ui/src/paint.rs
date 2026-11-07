@@ -1,4 +1,4 @@
-//! What an element draws with (`docs/ui.md` §5): its shape, layered fills
+//! What an element draws with (`docs/ui.md` §3.3): its shape, layered fills
 //! and strokes, effects, opacity and blend, how it clips its children, and
 //! whether its subtree draws offscreen through a material. Every value is
 //! data: colours are style tokens resolved at draw time ([`ColorRef`]) or
@@ -917,7 +917,7 @@ impl ElementDraw {
     /// [`ElementDraw::leave`] for a draw whose strokes were drawn with its
     /// fills ([`ElementDraw::strokes`] after [`ElementDraw::enter`]): a
     /// style part's border, under its label, so the two batch on their
-    /// levels (docs/ui.md §5.7).
+    /// levels (docs/ui.md §3.3).
     pub(crate) fn leave_stroked(&self, at: &Placed) -> Vec<DrawCmd> {
         let mut out = Vec::new();
         if self.clip == Clip::Shape {

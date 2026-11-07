@@ -1,4 +1,4 @@
-// The component library's foundations and controls (docs/ui.md §11, U6a)
+// The component library's foundations and controls (docs/ui.md §2, U6a)
 // on the native host, driven as a player drives them: a tap, a drag, a
 // key, a pad, a hold. Each test names the wrong implementation it would
 // catch.

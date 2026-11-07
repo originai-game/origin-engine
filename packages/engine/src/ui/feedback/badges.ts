@@ -1,5 +1,5 @@
 // og.ui.countBadge: the count, dot or word on the corner of an icon, a tab
-// or a button (docs/ui.md §11 "badges"). Read against the mail and friend
+// or a button (docs/ui.md §2 "badges"). Read against the mail and friend
 // badges of Genshin Impact's and Fortnite's menus and the platforms' app
 // badges: a pill straddling the corner, cut from what it sits on by a ring
 // of the ground colour, 99+ past its max, a pop when the count rises.

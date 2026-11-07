@@ -1,4 +1,4 @@
-//! The component catalogue (docs/ui.md §16): every element kind a screen
+//! The component catalogue (docs/ui.md §6): every element kind a screen
 //! or component document can use, with its props as a document writes them
 //! (a CSS property or an attribute) and the states it takes, as one guide
 //! (`crates/og-api/guides/components.md`) that `og api gen` writes from

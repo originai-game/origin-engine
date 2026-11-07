@@ -1,4 +1,4 @@
-// og.ui.notifications: the toast and notification stack (docs/ui.md §11,
+// og.ui.notifications: the toast and notification stack (docs/ui.md §2,
 // Appendix E "Toast and notification queues"). Read against Xbox's
 // achievement toast (a medal well that pops, then the text), Steam's
 // corner popups, Destiny 2's reward toasts and Fortnite's stacked item

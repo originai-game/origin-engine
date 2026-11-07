@@ -1,4 +1,4 @@
-//! A virtual cursor for pads (docs/ui.md §8.3): a screen built for the
+//! A virtual cursor for pads (docs/ui.md §2.1): a screen built for the
 //! pointer (a map, a shop grid, a strategy HUD) played on a pad. The left
 //! stick moves a cursor that slows and sticks over controls (the magnet),
 //! the pad's A presses where it points as a mouse button would, the right
@@ -101,7 +101,7 @@ fn tilt(s: Vec2) -> Option<(Vec2, f32)> {
 }
 
 impl Ui {
-    /// A pad's virtual cursor this tick (docs/ui.md §8.3), declared every
+    /// A pad's virtual cursor this tick (docs/ui.md §2.1), declared every
     /// tick like [`Ui::set_players`] and read from the next: pad 0's left
     /// stick moves it instead of the focus, its A presses where it points
     /// (as the mouse's button: drags, sliders and long presses work), its

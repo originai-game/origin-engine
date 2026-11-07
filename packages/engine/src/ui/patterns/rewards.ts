@@ -1,4 +1,4 @@
-// Rewards: pick one of N (docs/ui.md §11 genre patterns, Appendix D: pick
+// Rewards: pick one of N (docs/ui.md §2 genre patterns: pick
 // one of N, reroll, banish). The rewards are cards dealt in face up; a
 // press takes one, or selects it when the choice confirms or takes
 // several. What is armed (banishing) is the component's own state

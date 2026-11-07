@@ -394,7 +394,7 @@ impl Ui {
         let amounts = self.state_amounts(i, &r);
         let hover = p.panel_hover.fade(0.6).over(p.control.over(p.panel));
         // A selected tile is lifted a step above a raised one: told apart
-        // by tone and lift, not only by its rim (docs/ui.md §15.5); a
+        // by tone and lift, not only by its rim (docs/ui.md §6.3); a
         // pack's is one step up, on `controlStrong`, with the accent
         // hairline (dress::pack_grammar, the grammar of chips and tabs).
         let lifted = |k: f32| crate::ui::mix_srgba(p.selection, p.ink, k);

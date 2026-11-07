@@ -6,7 +6,7 @@ version 1
 # grey and violet bands (tests/evidence/art/samples/NOTES.md).
 name "Gothic ornamental linework"
 mood "dark"
-ui "fantasy"
+ui "default"
 Stylise {
   ink true
   inkThreshold 0.08

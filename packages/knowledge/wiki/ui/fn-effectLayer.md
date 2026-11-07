@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.effectLayer`
 
-A layer (docs/ui.md §5.4): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hit's glitch, a locked tile in grey), the material's parameters set from one amount. Its children keep their input and accessibility. Part: `Layer.frame`. Probe: `<id>` and its children.
+A layer (docs/ui.md §3.3): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hit's glitch, a locked tile in grey), the material's parameters set from one amount. Its children keep their input and accessibility. Part: `Layer.frame`. Probe: `<id>` and its children.
 
 ```ts
 og.ui.effectLayer(id: string, desc: EffectLayerDesc, build: UiBuild): void
@@ -24,7 +24,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn effectLayer {
-  doc "A layer (docs/ui.md §5.4): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hit's glitch, a locked tile in grey), the material's parameters set from one amount. Its children keep their input and accessibility. Part: `Layer.frame`. Probe: `<id>` and its children."
+  doc "A layer (docs/ui.md §3.3): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hit's glitch, a locked tile in grey), the material's parameters set from one amount. Its children keep their input and accessibility. Part: `Layer.frame`. Probe: `<id>` and its children."
   host false
   param id String "Its id."
   param desc EffectLayerDesc "The material and its amount."

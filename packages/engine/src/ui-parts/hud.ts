@@ -1,7 +1,7 @@
 // @origingame/engine/ui-parts/hud: the helpers the engine's HUD components
 // are written with (parts a style dresses, the frame's tokens and roles,
 // fills, strokes and effects, motion by the tick, HUD placement in the safe
-// area), public for kits (docs/ui.md §17.5). A kit's HUD component imports
+// area), public for kits (docs/ui.md §4). A kit's HUD component imports
 // these instead of engine internals; each is built from og.ui's public
 // members and keeps no state outside the UI's memory, so it behaves the
 // same on the web and native hosts.

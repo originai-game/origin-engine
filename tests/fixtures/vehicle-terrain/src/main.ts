@@ -63,6 +63,10 @@ function engineTone(world: World) {
 }
 
 function build(world: World): void {
+  og.ui.configure(world, {
+    font: must(og.load.font(world, "fonts/InstrumentSans-Regular.ttf")),
+    monoFont: must(og.load.font(world, "fonts/PTMono-Regular.ttf")),
+  });
   const info = must(og.terrain.load(world, "terrain/hills.ogt"));
   const hills = must(world.spawn({ name: "hills" }));
   must(world.insert(hills, og.Terrain, { data: info.data }));

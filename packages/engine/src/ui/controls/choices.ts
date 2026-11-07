@@ -1,4 +1,4 @@
-// Choices (docs/ui.md §11, Controls): the option cycler of a console
+// Choices (docs/ui.md §2, Controls): the option cycler of a console
 // settings screen and the stepping the choice controls share. The switch,
 // the checkbox, the radio group and the segmented control are og-ui's
 // native controls (natives.ts).

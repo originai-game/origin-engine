@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.text`
 
-Text in a role (docs/ui.md §11, Foundations): the style's type step, font and weight for display, title, heading, body, label, caption or numeric (monospaced figures), in a tone, cut after maxLines with an ellipsis (the probe and a screen reader still read it whole). Display, title and heading are headings to a screen reader (a style's flourish frames them). It grows with the player's text size and wraps between CJK characters by kinsoku. Probe: the element `<id>`, kind label, its whole text.
+Text in a role (docs/ui.md §2, Foundations): the style's type step, font and weight for display, title, heading, body, label, caption or numeric (monospaced figures), in a tone, cut after maxLines with an ellipsis (the probe and a screen reader still read it whole). Display, title and heading are headings to a screen reader (a style's flourish frames them). It grows with the player's text size and wraps between CJK characters by kinsoku. Probe: the element `<id>`, kind label, its whole text.
 
 ```ts
 og.ui.text(id: string, value: string, desc?: TextBlockDesc): void
@@ -24,7 +24,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn text {
-  doc "Text in a role (docs/ui.md §11, Foundations): the style's type step, font and weight for display, title, heading, body, label, caption or numeric (monospaced figures), in a tone, cut after maxLines with an ellipsis (the probe and a screen reader still read it whole). Display, title and heading are headings to a screen reader (a style's flourish frames them). It grows with the player's text size and wraps between CJK characters by kinsoku. Probe: the element `<id>`, kind label, its whole text."
+  doc "Text in a role (docs/ui.md §2, Foundations): the style's type step, font and weight for display, title, heading, body, label, caption or numeric (monospaced figures), in a tone, cut after maxLines with an ellipsis (the probe and a screen reader still read it whole). Display, title and heading are headings to a screen reader (a style's flourish frames them). It grows with the player's text size and wraps between CJK characters by kinsoku. Probe: the element `<id>`, kind label, its whole text."
   host false
   param id String "Its id."
   param value String "The text (a string-table message, og.i18n.t)."

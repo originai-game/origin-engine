@@ -1,4 +1,4 @@
-// Foundations (docs/ui.md §11): the icon, the image and art slot, the
+// Foundations (docs/ui.md §2): the icon, the image and art slot, the
 // decorative shape and the framed viewport. Each draws from the style: an
 // icon the set lacks is a drawn mark, art not yet there is a placeholder of
 // the style's soft fills and the kind's silhouette, never a grey box.

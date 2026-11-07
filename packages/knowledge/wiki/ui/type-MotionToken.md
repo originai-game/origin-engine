@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `MotionToken` (enum)
 
-A named motion of the style (docs/ui.md §7.7): components use these, so a style's personality changes every motion at once.
+A named motion of the style (docs/ui.md §3.1): components use these, so a style's personality changes every motion at once.
 
 A string: one of the variants below. The zero value is `"ui"`.
 
@@ -21,7 +21,7 @@ A string: one of the variants below. The zero value is `"ui"`.
 
 ```ogt
 enum MotionToken {
-  doc "A named motion of the style (docs/ui.md §7.7): components use these, so a style's personality changes every motion at once."
+  doc "A named motion of the style (docs/ui.md §3.1): components use these, so a style's personality changes every motion at once."
   variant ui "The control spring: hover, press, toggles."
   variant panel "Panels, sheets and drawers."
   variant emphasis "Rewards, results and level-ups."

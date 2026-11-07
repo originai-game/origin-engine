@@ -1,4 +1,4 @@
-//! A style dresses widgets' parts (docs/ui.md §12.3), plays its feedback
+//! A style dresses widgets' parts (docs/ui.md §3.2), plays its feedback
 //! sets (§7.8) and moves every state on its motion tokens.
 //!
 //! Ways these could fail, each covered below:

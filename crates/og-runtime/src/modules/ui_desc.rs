@@ -427,7 +427,7 @@ fn theme_json(theme: Theme, sizes: og_ui::Density, style: &str) -> String {
     .to_string()
 }
 
-/// The style's tokens (docs/ui.md §12.2) as og.ui.theme answers them
+/// The style's tokens (docs/ui.md §3.1) as og.ui.theme answers them
 /// (`UiTheme.tokens`): type by role and breakpoint, the space, size,
 /// radius and stroke scales, elevation, the shape language per element
 /// class, the springs, the rarity, team and series colours, and each UI

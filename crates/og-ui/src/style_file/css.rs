@@ -1,4 +1,4 @@
-//! The CSS dialect of styles (`version 3`, docs/ui.md §12.1): a part
+//! The CSS dialect of styles (`version 3`, docs/ui.md §3): a part
 //! dressing is a selector block, its part a pseudo-element, its variants
 //! classes and its states pseudo-classes (`Button::base.primary:hover {`,
 //! `Slot::frame[rarity=epic] {`); the colour and length tokens are custom
@@ -94,7 +94,7 @@ fn dress_hint(name: &str) -> &'static str {
         "border-image" => "a part's nine-slice is `-og-slice: <x> <y> <w> <h> <insets>`",
         "filter" | "backdrop-filter" => "effects are `-og-effect: drop-shadow …`, `outer-glow …`",
         "transform" => "a part's press and hover are `-og-press` and `-og-hover`",
-        _ => "the dressing properties: docs/ui.md §12.3",
+        _ => "the dressing properties: docs/ui.md §3.2",
     }
 }
 

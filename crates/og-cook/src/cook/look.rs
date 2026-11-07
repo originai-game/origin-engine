@@ -235,6 +235,7 @@ pub(super) fn builtin_files(
         }
     }
     if let Some(ui) = &look.ui
+        && ui != "default"
         && let Ok(id) = resolve_style(ui, &|id| root.join(id).is_file())
     {
         let files = style_files(&id);
@@ -589,6 +590,9 @@ fn handle_path(at: &str, column: &str, exts: &[&str], values: &[Value]) -> Resul
 /// linear; `known` answers whether the bundle has an asset id.
 fn check(look: &mut LookFile, known: &dyn Fn(&str) -> bool) -> Result<(), String> {
     let mut missing: Vec<String> = Vec::new();
+    if look.ui.as_deref() == Some("default") {
+        look.ui = None;
+    }
     if let Some(name) = &look.ui {
         // The blob names the style by its bundle id, resolved here.
         let id = resolve_style(name, known)?;
@@ -780,6 +784,7 @@ pub(super) fn look_dependencies(s: &Source, root: &Path, known: &dyn Fn(&str) ->
             let mut refs: Vec<String> = look
                 .ui
                 .iter()
+                .filter(|u| u.as_str() != "default")
                 .map(|u| resolve_style(u, known).unwrap_or_else(|_| u.clone()))
                 .collect();
             for b in &look.blocks {

@@ -105,7 +105,7 @@ export const widgets = {
   setNavigation: (on: boolean): void => abi().og_ui_set_navigation(on),
   setPlayers: (count: number): void => abi().og_ui_set_players(count),
   focus: (pad: number): string => abi().og_ui_focus(pad),
-  // A pad's virtual cursor and the player's HUD layout (docs/ui.md §8.3, §8.4).
+  // A pad's virtual cursor and the player's HUD layout (docs/ui.md §2.1, §2.1).
   setVirtualCursor: (desc: Api.VirtualCursorDesc | null): void =>
     abi().og_ui_set_virtual_cursor(JSON.stringify(desc ?? null)),
   virtualCursor: (): Api.VirtualCursor | null => parse(abi().og_ui_virtual_cursor()),
@@ -125,7 +125,7 @@ export const widgets = {
   tick: (): number => abi().og_ui_tick(),
   counter: (id: string, value: number, desc?: Api.CounterDesc): number => abi().og_ui_counter(id, value, json(desc)),
   burst: (desc?: Api.BurstDesc): void => abi().og_ui_burst(json(desc)),
-  // World-space UI (docs/ui.md §14, §5.5).
+  // World-space UI (docs/ui.md §1, §3.3).
   openWorldAnchor: (id: string, desc?: Api.WorldAnchorDesc): Api.AnchorInfo =>
     parse(abi().og_ui_open_world_anchor(id, json(desc))),
   openWorldPanel: (id: string, desc?: Api.WorldPanelDesc): Api.PanelInfo =>
@@ -145,7 +145,7 @@ export const widgets = {
     parse(abi().og_ui_screen_transition(id, screen, json(desc))),
   previewViewport: (world: Api.World, viewport: Api.Viewport | null): void =>
     abi().og_ui_preview_viewport(worldId(world), JSON.stringify(viewport ?? null)),
-  // The element model and motion (docs/ui.md §6, §7).
+  // The element model and motion (docs/ui.md §2, §3.1).
   props: (desc?: Api.ElementProps): boolean => abi().og_ui_props(json(desc)),
   defineTimeline: (name: string, timeline?: Api.UiTimeline): void => abi().og_ui_define_timeline(name, json(timeline)),
   play: (path: string, choreo: Api.Choreo, desc?: Api.PlayDesc): number => abi().og_ui_play(path, JSON.stringify(choreo), json(desc)),
@@ -165,7 +165,7 @@ export const widgets = {
   motionEvents: (): Api.UiMotionEvent[] => parse(abi().og_ui_motion_events()),
   overlaps: (): Api.UiOverlap[] => parse(abi().og_ui_overlaps()),
   layoutStats: (): Api.UiLayoutStats => parse(abi().og_ui_layout_stats()),
-  // Documents, the layer stack, actions and glyphs (docs/ui.md §8, §9, §10).
+  // Documents, the layer stack, actions and glyphs (docs/ui.md §2.1, §2.1, §2.1).
   screen: (name: string, vm?: unknown): Api.UiDocResponse => parse(abi().og_ui_screen(name, json(vm))),
   component: (id: string, name: string, props?: unknown): Api.UiDocResponse =>
     parse(abi().og_ui_component(id, name, json(props))),

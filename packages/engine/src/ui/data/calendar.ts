@@ -1,4 +1,4 @@
-// The calendar (docs/ui.md §11, Data): a month of days for daily
+// The calendar (docs/ui.md §2, Data): a month of days for daily
 // rewards, events, seasons and booking a match. Dates are `YYYY-MM-DD`
 // strings; the game passes today in (the engine reads no clock inside
 // the tick), and the names of the months and weekdays in its language.

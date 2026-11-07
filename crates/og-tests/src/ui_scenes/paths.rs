@@ -1,4 +1,4 @@
-//! `ui-paths` (`docs/ui.md` §5.1): run-time vector paths
+//! `ui-paths` (`docs/ui.md` §3.3): run-time vector paths
 //! ([`UiGeometry::Path`]), nothing cooked, in the cells of [`super::cell`].
 //!
 //! - Row 0: a heart of cubics; a ring whose inner circle runs the other

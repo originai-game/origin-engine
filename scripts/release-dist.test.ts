@@ -69,7 +69,7 @@ describe("vfx archives", () => {
 
   test("never ride in an engine archive", () => {
     const root = scratch("og-vfx-dist-");
-    mkdirSync(join(root, "engine/extensions/racing"), { recursive: true });
+    mkdirSync(join(root, "engine/extensions/materials"), { recursive: true });
     writeFileSync(join(root, "engine/package.json"), JSON.stringify({ files: ["src", "extensions"] }));
     mkdirSync(join(root, "overlay"));
     expect(() => checkPacksOutside(root, ["spark-pack"])).not.toThrow();

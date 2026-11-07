@@ -277,7 +277,7 @@ impl Ui {
             }
             "art" => {
                 // An art slot: its art fitted by its spec, or the style's
-                // placeholder for its kind (docs/ui.md §13.1).
+                // placeholder for its kind (docs/ui.md §3.3).
                 self.art_spec(&path, &r);
                 let spec = self
                     .docs

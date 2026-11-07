@@ -4,7 +4,7 @@ version 1
 # A tilt-shift depth of field, a vignette and AgX: a tabletop model.
 name "Miniature dioramas"
 mood "bright"
-ui "cartoon"
+ui "default"
 PostEffects {
   depthOfField true
   dofFocusDistance 12

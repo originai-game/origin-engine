@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.push`
 
-Push a screen onto the layer stack (docs/ui.md §8.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it.
+Push a screen onto the layer stack (docs/ui.md §2.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it.
 
 ```ts
 og.ui.push<S extends ScreenName>(world: World, screen: S, vm?: ScreenProps<S> | null): Result<number>
@@ -24,7 +24,7 @@ Binding symbol `og_ui_push` · publish builds: kept
 
 ```ogt
 fn push {
-  doc "Push a screen onto the layer stack (docs/ui.md §8.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it."
+  doc "Push a screen onto the layer stack (docs/ui.md §2.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it."
   generic S ScreenName
   param world World "The world."
   param screen S "The screen's name."

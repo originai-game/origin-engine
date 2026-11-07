@@ -1,4 +1,4 @@
-//! `og.ui`'s documents, layer stack and actions (docs/ui.md §8, §9, §10,
+//! `og.ui`'s documents, layer stack and actions (docs/ui.md §2.1, §2.1, §2.1,
 //! §16): `og.load.document` reads a cooked `og.UiDocument` into the world's
 //! UI; `og.ui.screen`, `component` and `openSlot` mount documents in the
 //! frame; `push`, `pop`, `replace` and `clear` manage the layer stack from
@@ -596,7 +596,7 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine_id: u32) {
         "ui",
         og_probe::CommandDesc {
             usage: USAGE.into(),
-            doc: "adjust the UI live (docs/ui.md §16.2): set any prop of a document element (presentation only, marked in dump_ui as an edit; ui:save writes the edits into the documents' .ogt), force a state group's state (an empty state lets it go), play or seek a document timeline on an element (seek holds it there), push a screen with a fixture of its document (its first by default), pop the top layer, drop edits, fire a UI action".into(),
+            doc: "adjust the UI live (docs/ui.md §6): set any prop of a document element (presentation only, marked in dump_ui as an edit; ui:save writes the edits into the documents' .ogt), force a state group's state (an empty state lets it go), play or seek a document timeline on an element (seek holds it there), push a screen with a fixture of its document (its first by default), pop the top layer, drop edits, fire a UI action".into(),
         },
         move |_world, args| command(engine_id, args),
     );

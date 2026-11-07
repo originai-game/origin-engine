@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "kind": "kit",
-  "name": "sports",
-  "version": "1.0.0",
-  "description": "sports UI components and screen documents",
-  "entry": "index.ts",
-  "types": "types.ts"
-}

@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `ArtSlotDesc` (desc struct)
 
-An art slot (docs/ui.md §13): where a generated or authored image goes, and what it shows until it is there.
+An art slot (docs/ui.md §3.3): where a generated or authored image goes, and what it shows until it is there.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -27,7 +27,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct ArtSlotDesc {
-  doc "An art slot (docs/ui.md §13): where a generated or authored image goes, and what it shows until it is there."
+  doc "An art slot (docs/ui.md §3.3): where a generated or authored image goes, and what it shows until it is there."
   desc true
   field texture Option.Texture "The art; null shows the placeholder."
   field kind String "Its kind (Appendix F: keyArt, portrait, itemIcon, cardArt, banner…): the placeholder's silhouette is the kind's. A portrait, bust, character, splash, avatar, banner or keyArt waits as head and shoulders on a wash of two hues, a body (a paperdoll's figure) as a whole standing figure with no box; any other kind as an icon of its name in the style's set, else `image`."

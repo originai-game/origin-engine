@@ -6,7 +6,7 @@ version 1
 # (64 colours in 6-step ramps, ArtPalette) keeps its own colours.
 name "16-bit-inspired pixel art"
 mood "bright"
-ui "pixel"
+ui "default"
 antialias off
 Stylise {
   pixelHeight 224

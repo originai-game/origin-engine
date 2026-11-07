@@ -1,4 +1,4 @@
-//! World-space UI (`docs/ui.md` §14): anchored elements, world panels,
+//! World-space UI (`docs/ui.md` §1): anchored elements, world panels,
 //! mass elements and meta UI.
 //!
 //! - **Anchored elements** ([`Ui::world_anchor`]): an element (a subtree

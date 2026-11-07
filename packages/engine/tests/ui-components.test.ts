@@ -1,5 +1,5 @@
 // The component library's containers, navigation and data components
-// (docs/ui.md §11) on the native host, driven as a player drives them: a
+// (docs/ui.md §2) on the native host, driven as a player drives them: a
 // tap, a key, a bumper, Back. Each test names the wrong implementation it
 // would catch.
 import { expect, test } from "bun:test";

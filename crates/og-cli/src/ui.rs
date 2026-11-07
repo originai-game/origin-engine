@@ -1,4 +1,4 @@
-//! `og ui check` and `og ui preview` (docs/ui.md §16.4, §16.5): a project's
+//! `og ui check` and `og ui preview` (docs/ui.md §6, §6): a project's
 //! screens laid out over styles × breakpoints × locales × text scale on
 //! the native host (packages/engine/src/node/ui-run.ts), each cell driven
 //! by a command script. `check` reports every rule of ui-check.ts with the
@@ -10,24 +10,24 @@
 //! and style and index.json (default `<project>/og-out/ui-preview`), or with
 //! `--film` a filmstrip of a motion at chosen times.
 //!
-//! `og ui slots [project] [--json]` (docs/ui.md §13.3) lists every art
+//! `og ui slots [project] [--json]` (docs/ui.md §3.3) lists every art
 //! slot of the game, read from its documents without running it: each
 //! `art` element's path, kind, aspect, focal point, safe rectangle and fit,
 //! whether its art is set or it still draws the style's placeholder, and
 //! what its spec gets wrong with the fix (exit 3 on one). `--json` prints
 //! them as one array, what the art pipeline reads.
 //!
-//! `og ui migrate <file|dir>... [--check]` (docs/ui.md §10.4, §12.1)
+//! `og ui migrate <file|dir>... [--check]` (docs/ui.md §3.2, §3)
 //! rewrites every version 1 screen and component document under the paths
 //! as version 2 (CSS declarations in place of style props) and every
 //! version 2 style as version 3 (selector blocks, custom properties), line
 //! for line with its comments, after checking the two read the same;
 //! `--check` writes nothing and exits 1 when one still needs it.
 //!
-//! `og ui eject <screen> [project] [--force]` (docs/ui.md §11) copies one
+//! `og ui eject <screen> [project] [--force]` (docs/ui.md §2) copies one
 //! of the library's screen documents (the engine package's
 //! `src/ui/screens/<screen>.ogt`, one or more for every screen type of
-//! docs/ui.md Appendix B) into the game's `assets/ui/<screen>.ogt`, where
+//! docs/ui.md §2) into the game's `assets/ui/<screen>.ogt`, where
 //! `og.load.document(world, "ui/<screen>.ogt")` loads it and the game edits
 //! it as its own file. It refuses to overwrite one already there without
 //! `--force`; an unknown name exits 1 with the closest names. `og ui eject

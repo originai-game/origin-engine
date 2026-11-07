@@ -1,8 +1,8 @@
 use super::*;
 
-/// `og ui add racing` installs an editable copy of the kit; `og ui eject
-/// racing/race-results` then copies the installed copy's document (the
-/// game's edit with it) into assets/ui/racing/, with no second copy of the
+/// `og ui add <directory>` installs an editable copy of a fixture kit;
+/// eject then copies the installed copy's document (the game's edit with
+/// it) into assets/ui/fixture/, with no second copy of the
 /// kit's code, manifest, skill or sheet, and refuses to overwrite it
 /// without --force.
 ///
@@ -23,19 +23,23 @@ fn ui_eject_takes_the_installed_kit_document_and_only_its_companions() {
         let out = og().args(args).arg(&dir).output().unwrap();
         (out.status.code(), text(&out))
     };
-    let (code, out) = run(&["ui", "add", "racing"]);
+    let source = scratch_root();
+    std::fs::create_dir_all(&source).unwrap();
+    std::fs::write(source.join("extension.json"), r#"{"format":1,"kind":"kit","name":"fixture","version":"1.0.0","description":"Document copy fixture"}"#).unwrap();
+    std::fs::write(source.join("results.ogt"), "type screen\nversion 2\n---\nname results\ncolumn root {\n  label title {\n    text \"Pos\"\n  }\n}\n").unwrap();
+    let (code, out) = run(&["ui", "add", source.to_str().unwrap()]);
     assert_eq!(code, Some(0), "{out}");
-    let installed = dir.join("assets/ui-kits/racing/race-results.ogt");
+    let installed = dir.join("assets/ui-kits/fixture/results.ogt");
     let edited = std::fs::read_to_string(&installed)
         .unwrap()
         .replace("text \"Pos\"", "text \"Position\"");
     std::fs::write(&installed, &edited).unwrap();
 
-    let (code, out) = run(&["ui", "eject", "racing/race-results"]);
+    let (code, out) = run(&["ui", "eject", "fixture/results"]);
     assert_eq!(code, Some(0), "{out}");
-    let ejected = dir.join("assets/ui/racing");
+    let ejected = dir.join("assets/ui/fixture");
     assert_eq!(
-        std::fs::read_to_string(ejected.join("race-results.ogt")).unwrap(),
+        std::fs::read_to_string(ejected.join("results.ogt")).unwrap(),
         edited
     );
     for kit_only in [
@@ -51,18 +55,19 @@ fn ui_eject_takes_the_installed_kit_document_and_only_its_companions() {
             "{kit_only} was ejected beside the document"
         );
     }
-    let (code, out) = run(&["ui", "eject", "racing/race-results"]);
+    let (code, out) = run(&["ui", "eject", "fixture/results"]);
     assert_eq!(code, Some(1), "{out}");
     assert_eq!(
-        std::fs::read_to_string(ejected.join("race-results.ogt")).unwrap(),
+        std::fs::read_to_string(ejected.join("results.ogt")).unwrap(),
         edited
     );
+    std::fs::remove_dir_all(source).unwrap();
 }
 
 /// `og ui add materials` installs the material presets (each a `type
 /// ui-material` naming its WGSL beside it), and the game cooks every one:
 /// the source is read relative to the material file, as a kit's relative
-/// references are promised to survive installation (docs/ui.md §17.1). Each
+/// references are promised to survive installation (docs/ui.md §5). Each
 /// cooked material carries its code and its parameters in `param` order.
 ///
 /// Ways it could fail: `source` read only from `assets/` (every preset

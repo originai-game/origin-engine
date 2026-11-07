@@ -1,4 +1,4 @@
-//! Part dressings (docs/ui.md §12.3): a component names its parts
+//! Part dressings (docs/ui.md §3.2): a component names its parts
 //! (`Button.base`, `Meter.fill`, `ShopCard.frame`) and a version 2 style
 //! dresses any of them, by variant and state, with a selector:
 //!
@@ -564,7 +564,7 @@ pub struct Dressing {
     /// empty: a style made in memory, the default style's).
     pub source: String,
     /// The lines of its blocks in that file (two blocks of one selector
-    /// merge), for `pick` and `dump_ui` (docs/ui.md §16.1).
+    /// merge), for `pick` and `dump_ui` (docs/ui.md §6).
     pub lines: Vec<usize>,
 }
 
@@ -608,7 +608,7 @@ pub fn intern(s: &str) -> &'static str {
     n
 }
 
-/// What a widget's element is to its style (docs/ui.md §12.3): the
+/// What a widget's element is to its style (docs/ui.md §3.2): the
 /// component and part a dressing's selector names, the variant and state
 /// flags and the attributes it matches against, the element class whose
 /// shape language and the elevation level it draws with when no dressing
@@ -954,7 +954,7 @@ fn surface(class: ElementClass) -> bool {
 }
 
 /// What an undressed part's outline is drawn with: the style's stroke
-/// widths in its line colours, by class and state (docs/ui.md §12.3: a
+/// widths in its line colours, by class and state (docs/ui.md §3.2: a
 /// part no style dressed is drawn from the tokens).
 pub fn token_strokes(part: &PartRef, theme: &Theme) -> Vec<Stroke> {
     let t = &theme.tokens;
@@ -981,7 +981,7 @@ pub fn token_strokes(part: &PartRef, theme: &Theme) -> Vec<Stroke> {
         C::Field if mark_box(part) => Vec::new(),
         C::Field if part.has("invalid") => vec![stroke(thin, tok("danger", 1.0))],
         C::Field => vec![stroke(thin, tok("line", 1.0))],
-        // One selection grammar (docs/ui.md §15.5): a pack's selected chip,
+        // One selection grammar (docs/ui.md §6.3): a pack's selected chip,
         // slot or tab is an accent hairline on a ground one step up, its
         // words in the accent ink ([`pack_grammar`]).
         C::Slot | C::Chip | C::Tab if selected_grammar(part, theme) => {
@@ -1132,7 +1132,7 @@ impl Resolved {
         })
     }
 
-    /// What the part draws in the UI pass (docs/ui.md §12.3): the
+    /// What the part draws in the UI pass (docs/ui.md §3.2): the
     /// dressing's paints, strokes, effects, blend, mask and material over
     /// the corner of its shape; each of fills, strokes and effects a style
     /// did not dress comes from the tokens ([`token_strokes`],

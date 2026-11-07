@@ -1,5 +1,5 @@
 // og.ui.progressBar, og.ui.progressRing and og.ui.skeletonGroup: progress
-// and loading (docs/ui.md §11 "progress and spinners, skeletons"). Read
+// and loading (docs/ui.md §2 "progress and spinners, skeletons"). Read
 // against the download and install bars of console stores (a buffer ahead
 // of the fill, the value in words at the end), Material's indeterminate
 // ring (the arc grows and shrinks as it turns, so it reads as working at

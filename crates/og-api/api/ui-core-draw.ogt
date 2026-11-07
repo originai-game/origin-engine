@@ -1,4 +1,4 @@
-  # ── element draws (docs/ui.md §5): shapes, paints, effects, masks, layers ──
+  # ── element draws (docs/ui.md §3.3): shapes, paints, effects, masks, layers ──
 
   handle VectorArt "A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill."
   handle UiMaterial "A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through."
@@ -314,7 +314,7 @@
       unit ratio
     }
     field tint Option.Paint "Over the blur, by its alpha; null is the theme's panel at 60 % (with a glass weight, the weight's tint)."
-    field glass GlassWeight "One of flat glass's weights (docs/ui.md §5.3): it sets the blur, 200 % saturation, the tint (unless tint is given), a 0.5 px hairline inside the edge and CSS mixing, in the theme's scheme; under reduced transparency the solid raised surface, under high contrast solid with a strong 1 px edge. none is the fields as given."
+    field glass GlassWeight "One of flat glass's weights (docs/ui.md §3.3): it sets the blur, 200 % saturation, the tint (unless tint is given), a 0.5 px hairline inside the edge and CSS mixing, in the theme's scheme; under reduced transparency the solid raised surface, under high contrast solid with a strong 1 px edge. none is the fields as given."
     field elevation Elevation "The soft shadow outside it, as the design language's shadows (with a glass weight, raised by default)."
     field edge f32 "A hairline just inside the edge (CSS inset 0 0 0 <edge>px); 0 is none, or the weight's." {
       min 0
@@ -457,7 +457,7 @@
   }
 
   struct SemanticsDesc {
-    doc "What a component tells the accessibility tree about an element it built from containers (docs/ui.md §11): a role other than its kind's, a name, a value and states. Absent fields leave what the element's kind gives it."
+    doc "What a component tells the accessibility tree about an element it built from containers (docs/ui.md §2): a role other than its kind's, a name, a value and states. Absent fields leave what the element's kind gives it."
     desc true
     field role String "Its role: button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, tabpanel, radiogroup, progressbar, meter, timer, status, alert, log (a feed whose new lines are read: a killfeed, subtitles), dialog, alertdialog, tooltip, separator, group, region, navigation, toolbar, menu, menubar, menuitem, menuitemcheckbox, menuitemradio, list, listitem, tree, treeitem, table, grid, row, rowheader, columnheader, cell, gridcell, figure or scrollbar; empty keeps its kind's."
     field name Option.String "Its accessible name; null keeps what it shows."
@@ -487,7 +487,7 @@
   }
 
   fn setDraw {
-    doc "Draws the element added last (a container just opened, or the last control) with desc: shapes beyond rectangles, layered gradient, image and vector fills, strokes with their own paints, shadows, glows, glass, clipping to its shape, masks, blend modes and materials (docs/ui.md §5). Call it right after the element's open or control; immediate mode, so every tick it is drawn."
+    doc "Draws the element added last (a container just opened, or the last control) with desc: shapes beyond rectangles, layered gradient, image and vector fills, strokes with their own paints, shadows, glows, glass, clipping to its shape, masks, blend modes and materials (docs/ui.md §3.3). Call it right after the element's open or control; immediate mode, so every tick it is drawn."
     param desc DrawDesc "What it draws with."
     returns Void
   }

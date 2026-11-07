@@ -7,7 +7,7 @@ version 1
 # the drained hills pastel), a near-black sky and a blood-red haze.
 name "Heavy ink and shadow"
 mood "dark"
-ui "fantasy"
+ui "default"
 MaterialStyle {
   toon true
   shadowDarkness 1

@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `WorldAnchorDesc` (desc struct)
 
-An element anchored in the world (docs/ui.md §14): laid out at its own size and placed each tick on its target's point projected with the tick's camera. A nameplate, an interaction prompt, a speech bubble, a waypoint.
+An element anchored in the world (docs/ui.md §1): laid out at its own size and placed each tick on its target's point projected with the tick's camera. A nameplate, an interaction prompt, a speech bubble, a waypoint.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -40,7 +40,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct WorldAnchorDesc {
-  doc "An element anchored in the world (docs/ui.md §14): laid out at its own size and placed each tick on its target's point projected with the tick's camera. A nameplate, an interaction prompt, a speech bubble, a waypoint."
+  doc "An element anchored in the world (docs/ui.md §1): laid out at its own size and placed each tick on its target's point projected with the tick's camera. A nameplate, an interaction prompt, a speech bubble, a waypoint."
   desc true
   field target WorldTarget "What it sits on."
   field offset Vector3 "Added to the point in world units (above a head: 0, 2, 0)."

@@ -48,6 +48,8 @@ mod screen_layers;
 mod slots;
 #[path = "../style.rs"]
 mod style;
+#[path = "../style_contract.rs"]
+mod style_contract;
 #[path = "../support/mod.rs"]
 mod support;
 #[path = "../text.rs"]

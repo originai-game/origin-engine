@@ -4,7 +4,7 @@ version 1
 # Visible facets, broad colour fields, a soft vignette and AgX.
 name "Faceted low-poly"
 mood "soft"
-ui "storybook"
+ui "default"
 MaterialStyle {
   flatShading true
 }

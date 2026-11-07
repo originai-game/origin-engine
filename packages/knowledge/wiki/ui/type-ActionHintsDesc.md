@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `ActionHintsDesc` (desc struct)
 
-The action bar (docs/ui.md §8.2): the actions the top layer accepts, each its glyph and its hint, at an edge.
+The action bar (docs/ui.md §2.1): the actions the top layer accepts, each its glyph and its hint, at an edge.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -19,7 +19,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct ActionHintsDesc {
-  doc "The action bar (docs/ui.md §8.2): the actions the top layer accepts, each its glyph and its hint, at an edge."
+  doc "The action bar (docs/ui.md §2.1): the actions the top layer accepts, each its glyph and its hint, at an edge."
   desc true
   field hints List.ActionHint "The hints, as og.ui.actionBar answers them."
   field anchor Anchor "The edge it sits on." {

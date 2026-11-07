@@ -1,4 +1,4 @@
-// What the containers and data components (docs/ui.md §11, U6b) share:
+// What the containers and data components (docs/ui.md §2, U6b) share:
 // the frame's tokens, colours mixed from the style's palette, interactive
 // surfaces a style dresses by part and state, chevrons and glyph caps
 // drawn as shapes (so they mirror under a right-to-left locale), and the
@@ -46,7 +46,7 @@ export function paint(c: Rgba, alpha = 1): Api.Paint {
   return { color: { r: c.r, g: c.g, b: c.b }, alpha: Math.max(0, Math.min(1, c.a * alpha)) };
 }
 
-/** A data series' colour from the style's chart series (docs/ui.md §12.2), cycling. */
+/** A data series' colour from the style's chart series (docs/ui.md §3.1), cycling. */
 export function series(k: number): Rgba {
   const list = (frame().theme.tokens as { series?: string[] } | null)?.series ?? [];
   return list.length > 0 ? hex(list[((k % list.length) + list.length) % list.length]!) : role(k % 2 === 0 ? "primary" : "info");
@@ -137,7 +137,7 @@ export function parentOf(path: string): string {
   return k < 0 ? "" : path.slice(0, k);
 }
 
-/** Props for the element just built as a layer over its parent's content (a badge, a ring, a fade): absolute, declared to overlap the parent's subtree on purpose (docs/ui.md §6.2). */
+/** Props for the element just built as a layer over its parent's content (a badge, a ring, a fade): absolute, declared to overlap the parent's subtree on purpose (docs/ui.md §2). */
 export function over(p: Api.ElementProps): void {
   kit.props(overProps(p));
 }
@@ -277,7 +277,7 @@ export function surface(id: string, d: SurfaceDesc, build: () => void): Api.Resp
     r = kit.close() as Api.Response;
   }
   keep(id, r);
-  // Its states (docs/ui.md §7.3): og-ui derives interaction from input, the game gives selection
+  // Its states (docs/ui.md §3.1): og-ui derives interaction from input, the game gives selection
   // and expansion; every change moves on the style's motion (its reduced fallback under reduced
   // motion). The part's selector flags above stay for a style's dressings.
   const states: Api.StateGroup[] = [];
@@ -433,7 +433,7 @@ export function wholeWords(id: string, value: string, d: { width: number; height
 }
 
 /**
- * A key cap or pad button glyph for an action hint (docs/ui.md §8.2),
+ * A key cap or pad button glyph for an action hint (docs/ui.md §2.1),
  * drawn from the glyph's text: a keyboard key as a rounded cap, a pad face
  * button as a disc, a bumper or trigger as a pill.
  */

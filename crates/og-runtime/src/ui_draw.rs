@@ -1,5 +1,5 @@
 //! `og.ui.setDraw` and the assets an element draws with, `og.load.vector`
-//! and `og.load.uiMaterial` (`docs/ui.md` §5): the IDL's DrawDesc read
+//! and `og.load.uiMaterial` (`docs/ui.md` §3.3): the IDL's DrawDesc read
 //! into og-ui's [`ElementDraw`]. Colours given as theme tokens stay tokens,
 //! resolved through the style when the frame is drawn.
 
@@ -266,7 +266,7 @@ pub fn og_ui_set_draw(desc: Option<String>) {
 }
 
 /// A LayerDesc's material and parameters as og-render takes them (a meta
-/// layer's material, `docs/ui.md` §14); `None` for a value that is not one.
+/// layer's material, `docs/ui.md` §1); `None` for a value that is not one.
 pub(crate) fn layer_material(
     v: &Value,
 ) -> Option<(

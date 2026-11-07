@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.overlaps`
 
-The last frame's undeclared overlaps between elements (docs/ui.md §6.2), with both paths.
+The last frame's undeclared overlaps between elements (docs/ui.md §2), with both paths.
 
 ```ts
 og.ui.overlaps(): readonly UiOverlap[]
@@ -18,7 +18,7 @@ Binding symbol `og_ui_overlaps` · publish builds: kept
 
 ```ogt
 fn overlaps {
-  doc "The last frame's undeclared overlaps between elements (docs/ui.md §6.2), with both paths."
+  doc "The last frame's undeclared overlaps between elements (docs/ui.md §2), with both paths."
   returns List.UiOverlap
 }
 ```

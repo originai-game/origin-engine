@@ -1,5 +1,5 @@
 // Virtualised lists and grids with their empty, loading and error states,
-// and the sortable, filterable table (docs/ui.md §11, Data; §15.1: a
+// and the sortable, filterable table (docs/ui.md §2, Data; §6.3: a
 // 10,000-row table scrolls within budget). Only the rows in view are
 // built (og.ui.openList); sorting and filtering run once per change of
 // the rows, the sort or the filter, never per tick: the order is cached by

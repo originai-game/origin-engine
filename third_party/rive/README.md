@@ -1,6 +1,6 @@
 # Rive format and runtime semantics
 
-The Rive import (`docs/ui.md` §11.2) reads `.riv` files at cook time and
+The Rive import (`docs/ui.md` §3.3) reads `.riv` files at cook time and
 never embeds the Rive runtime. What it takes from rive-runtime
 (https://github.com/rive-app/rive-runtime, revision
 `4f864426617abcac999a4d642f764b5623b9cb76`, MIT, `LICENSE` here):

@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `FocusGroup` (desc struct)
 
-A container whose focusable controls are one group for keys and pads (docs/ui.md §8.3): arrows move among its members first. At its edge a group that wraps goes round to its far side; one that does not leaves for the nearest control outside that way (the group around it first) and stays put when there is none. The zero value neither wraps nor remembers.
+A container whose focusable controls are one group for keys and pads (docs/ui.md §2.1): arrows move among its members first. At its edge a group that wraps goes round to its far side; one that does not leaves for the nearest control outside that way (the group around it first) and stays put when there is none. The zero value neither wraps nor remembers.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -17,7 +17,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct FocusGroup {
-  doc "A container whose focusable controls are one group for keys and pads (docs/ui.md §8.3): arrows move among its members first. At its edge a group that wraps goes round to its far side; one that does not leaves for the nearest control outside that way (the group around it first) and stays put when there is none. The zero value neither wraps nor remembers."
+  doc "A container whose focusable controls are one group for keys and pads (docs/ui.md §2.1): arrows move among its members first. At its edge a group that wraps goes round to its far side; one that does not leaves for the nearest control outside that way (the group around it first) and stays put when there is none. The zero value neither wraps nor remembers."
   desc true
   field wrap bool "At its edge the focus wraps round inside it."
   field memory bool "Focus coming into it from outside lands on the member it last had."

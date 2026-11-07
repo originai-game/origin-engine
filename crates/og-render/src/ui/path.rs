@@ -1,4 +1,4 @@
-//! Vector paths at run time (`docs/ui.md` §5.1): [`UiPath`], contours of
+//! Vector paths at run time (`docs/ui.md` §3.3): [`UiPath`], contours of
 //! lines and quadratic and cubic Béziers drawn as a [`super::UiGeometry::Path`]
 //! with nothing cooked, so a path can change every frame (a chart, a morph,
 //! an imported animation's shapes).

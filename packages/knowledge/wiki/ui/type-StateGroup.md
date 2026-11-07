@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `StateGroup` (struct)
 
-A visual state group (docs/ui.md §7.3): one of its states is current, and moving between them animates every value that changes. A group named interaction is derived from input: normal, hover, pressed, focused and disabled (a state the group lacks falls back: pressed to hover to normal, focused to hover). Other groups take their state from ElementProps.state, a timeline's state event or og.ui.forceState; the first state is the default.
+A visual state group (docs/ui.md §3.1): one of its states is current, and moving between them animates every value that changes. A group named interaction is derived from input: normal, hover, pressed, focused and disabled (a state the group lacks falls back: pressed to hover to normal, focused to hover). Other groups take their state from ElementProps.state, a timeline's state event or og.ui.forceState; the first state is the default.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
@@ -16,7 +16,7 @@ A visual state group (docs/ui.md §7.3): one of its states is current, and movin
 
 ```ogt
 struct StateGroup {
-  doc "A visual state group (docs/ui.md §7.3): one of its states is current, and moving between them animates every value that changes. A group named interaction is derived from input: normal, hover, pressed, focused and disabled (a state the group lacks falls back: pressed to hover to normal, focused to hover). Other groups take their state from ElementProps.state, a timeline's state event or og.ui.forceState; the first state is the default."
+  doc "A visual state group (docs/ui.md §3.1): one of its states is current, and moving between them animates every value that changes. A group named interaction is derived from input: normal, hover, pressed, focused and disabled (a state the group lacks falls back: pressed to hover to normal, focused to hover). Other groups take their state from ElementProps.state, a timeline's state event or og.ui.forceState; the first state is the default."
   field name String "Its name."
   field states List.VisualState "Its states."
   field transitions List.StateTransition "Its transitions; a pair without one moves on the element's motion, else the style's ui spring."

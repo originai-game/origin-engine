@@ -1,6 +1,0 @@
-type look
-version 1
----
-# Names the built-in cartoon style so the cook bundles it (@styles/cartoon/); the sheet loads it itself.
-name "gacha sheet cartoon"
-ui "cartoon"

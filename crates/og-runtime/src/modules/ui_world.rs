@@ -1,4 +1,4 @@
-//! og.ui's world-space members (`docs/ui.md` §14, §5.5) and what the
+//! og.ui's world-space members (`docs/ui.md` §1, §3.3) and what the
 //! engine hands og-ui for them each tick: the camera anchored elements
 //! project with and world panels' rays start from, the poses of the
 //! entities they sit on, the frame's own mass elements in the overlay, and

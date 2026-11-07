@@ -286,12 +286,12 @@ impl Ui {
             self.burst_shapes(anchor, &desc, since);
             return;
         }
-        // A preset of the element's particles (docs/ui.md §5.5): it fires
+        // A preset of the element's particles (docs/ui.md §3.3): it fires
         // once, `delay` after the element first appears.
         self.burst_particles(anchor, &desc, since);
     }
 
-    /// A version 1 style's burst, as its game shipped (docs/ui.md §12.1):
+    /// A version 1 style's burst, as its game shipped (docs/ui.md §3):
     /// eight rays shrinking to dots and a round spark beyond each, drawn on
     /// the element from `delay` after `since`, none under reduced motion.
     fn burst_shapes(&mut self, i: usize, desc: &BurstDesc, since: u64) {

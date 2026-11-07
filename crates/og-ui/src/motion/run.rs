@@ -1076,7 +1076,7 @@ impl Ui {
         self.state.motion.groups.get(&gk).map(|g| g.state.clone())
     }
 
-    /// Any number on a spring or an ease (docs/ui.md §7.1: every value is
+    /// Any number on a spring or an ease (docs/ui.md §3.1: every value is
     /// animatable): `id` names it under the open element; call it every
     /// tick with the target, it answers the value this tick. A retarget
     /// keeps its value and velocity. Under reduced motion it jumps.

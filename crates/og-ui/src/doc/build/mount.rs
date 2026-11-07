@@ -105,7 +105,7 @@ impl Ui {
     }
 
     /// Registers a Rive artboard by its id (`ui/chest.riv#Chest`, as og-cook
-    /// converted it, docs/ui.md §11.2): an element whose `-og-frame` is
+    /// converted it, docs/ui.md §3.3): an element whose `-og-frame` is
     /// `rive("<id>")` plays it. One of the same id is replaced (a hot
     /// reload): an element playing the old one goes on from where it was
     /// when it fits the new one, else starts it again.

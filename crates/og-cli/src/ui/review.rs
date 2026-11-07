@@ -1,4 +1,4 @@
-//! `og ui review <kit>` (docs/ui.md §16.6): every page of a kit's review
+//! `og ui review <kit>` (docs/ui.md §6): every page of a kit's review
 //! sheet × state fixture × style, at 1920×1080 and on a phone both ways,
 //! 100 % and 150 % text, in the game's locale, Chinese, Arabic and the
 //! pseudo-locale; labelled contact sheets and the measures as read.
@@ -120,7 +120,7 @@ fn review(args: &[&str]) -> Result<ExitCode, String> {
     };
     if screens.is_empty() {
         return Err(format!(
-            "kit `{name}` needs sheet/project.ogt with fixed ui screen entries (docs/ui.md §17.3)"
+            "kit `{name}` needs sheet/project.ogt with fixed ui screen entries (docs/ui.md §6)"
         ));
     }
     extensions::install(kit, &demo)?;

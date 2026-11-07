@@ -339,7 +339,7 @@ row!(
 
 /// The UI document blob: `text` holds the document the cook validated
 /// against og-ui's reflected props (`og_ui::UiDocument::parse`), parsed
-/// again at load (docs/ui.md §10.1).
+/// again at load (docs/ui.md §2.1).
 pub struct Document;
 impl BlobKind for Document {
     const NAME: &'static str = "og.UiDocument";
@@ -392,7 +392,7 @@ row!(
     }
 );
 
-/// The custom UI material blob (`docs/ui.md` §5.4): `text` holds the
+/// The custom UI material blob (`docs/ui.md` §3.3): `text` holds the
 /// material file the cook compiled for every back end (`crate::shader`),
 /// its code inlined.
 pub struct UiMaterial;
@@ -455,7 +455,7 @@ impl BlobKind for Vector {
 }
 
 row!(
-    /// The root of a Rive artboard blob (`docs/ui.md` §11.2): the bytes of
+    /// The root of a Rive artboard blob (`docs/ui.md` §3.3): the bytes of
     /// the converted artboard in `artboard` (og-ui's `rive::encode`).
     RiveArtboardMeta, "og.RiveArtboard", 1 {
         bytes: u32,

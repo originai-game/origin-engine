@@ -31,7 +31,7 @@ import { fileURLToPath } from "node:url";
 
 /**
  * The kinds of asset a brief is written for: the game's own (sprite to icon),
- * then the UI's art slots (docs/ui.md §13, Appendix F; `UI_KINDS` has each
+ * then the UI's art slots (docs/ui.md §3.3; `UI_KINDS` has each
  * one's spec), the names og-ui's `SlotKind` gives them.
  */
 export const ART_KINDS = [
@@ -60,7 +60,7 @@ const MOOD_WORDS: Readonly<Record<Mood, string>> = {
 /** How a UI slot fills its rectangle with the art (og-ui's `Fit`). */
 export type UiFit = "cover" | "contain" | "fill" | "nineSlice" | "tile";
 
-/** What an art slot of a UI kind is (docs/ui.md §13.1): og-ui's `SlotKind::info`, held equal by og-ui's tests. */
+/** What an art slot of a UI kind is (docs/ui.md §3.3): og-ui's `SlotKind::info`, held equal by og-ui's tests. */
 export interface UiKindSpec {
   /** The sentence that opens the prompt; `{subject}` is the subject. */
   readonly about: string;
@@ -236,7 +236,7 @@ export interface BriefOptions {
   readonly insets?: readonly [number, number, number, number];
 }
 
-/** What a UI kind's art must hold to fit its slot (docs/ui.md §13.3). */
+/** What a UI kind's art must hold to fit its slot (docs/ui.md §3.3). */
 export interface UiParams {
   /** The aspect drawn, `w:h`. */
   readonly aspect: string;
@@ -1180,7 +1180,7 @@ function main(argv: string[]): number {
 /**
  * The art a generated UI style asks for: `art-requests.json`, written by
  * `og style new` beside its `style.ogt` (og-ui's `style_gen::art_requests_json`,
- * docs/ui.md §12.5 and §13.3).
+ * docs/ui.md §3.3).
  */
 export interface StyleArtRequests {
   /** The style's slug. */

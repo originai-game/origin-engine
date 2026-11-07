@@ -11,20 +11,19 @@ style with its documents.
 
 1. List the screens the game needs from the brief: title, the HUD, pause,
    settings, results, and the genre's own (inventory, shop, deck).
-2. For each, start from what exists: a genre kit's component or screen
-   (§2), else a library screen (`og ui eject --list`), else og.ui's
-   generic components. Write a screen from primitives only when none fits.
-3. Fill it with the game's data through its viewmodel; never edit text
+2. Start from a library screen (`og ui eject --list`) or compose core
+   controls in a screen document. No genre kits are bundled during the rebuild.
+3. Fill it with the game's named data inputs; never edit text
    into a document that the game should bind.
 4. Dress it with the look's style (§3), then preview and check (§5)
    at every breakpoint the create block's `platform` implies.
 
 ## 2. Genre kits
 
-A kit is a directory with an `extension.json`, TypeScript components
-registered with `registerUiExtension` and screen documents. What each
-bundled kit draws, and how to use, change, review and make one: kits §1
-to kits §5; the shader finishes of the `materials` kit: ui-materials §1.
+A kit is a directory with an `extension.json`, screen and component
+documents, and typed data helpers registered with `registerUiExtension`.
+Genre kits are not yet built. For local kits, see kits §1 to kits §5;
+the retained shader finishes are documented in ui-materials §1.
 
 - `og ui add <kit>` installs an editable copy under `assets/ui-kits/<kit>`;
   the game imports the installed `index.ts`. Edit the copy freely; an
@@ -32,8 +31,8 @@ to kits §5; the shader finishes of the `materials` kit: ui-materials §1.
 - `og ui eject <kit>/<screen>` copies one screen document with its
   companions into `assets/ui/`, where the game owns it.
 - A kit never adds members to `og.ui`; its components are the namespace
-  the kit exports. State a component keeps lives in the world's UI
-  memory, not module variables (determinism §1).
+  the kit exports. UI state lives in named scope sources and core
+  interaction state, not module globals (determinism §1).
 - New components of the game's own register with `registerUiExtension`
   the same way, so they are dressed by styles like the kit's.
 
@@ -44,6 +43,10 @@ slug) sets tokens (colours, type, radii, spacing, motion), part dressings,
 sounds and haptics for every component. The look's `ui "<slug>"` picks it;
 `og style list` names the bundled ones.
 
+Creation offers only `ui "default"` during the rebuild. This selects the
+core style and adds no pack assets. No genre style packs are bundled yet;
+local styles and `og style new` remain available.
+
 - Change a style by ejecting it (`og style eject <slug>`) and editing the
   copy, or by `og style add`. Never restyle components one by one in code:
   a style change then misses them.
@@ -52,7 +55,7 @@ sounds and haptics for every component. The look's `ui "<slug>"` picks it;
 - Hand-painted frames go through `og style pack <dir>` (nine-patches named
   `<part>.9.png`), which writes the atlas and slice lines.
 - In a pack, `style.ogt` is the data, in the CSS dialect (docs/ui.md
-  §12.7): palette custom properties set colour (`--primary: #d4993a`),
+  §3.2): palette custom properties set colour (`--primary: #d4993a`),
   `typography` sets text roles, selector blocks paint named parts and
   states (`Button::base.primary:hover { -og-fill: var(--primary-hover) }`). Edit it directly and run `og cook`; never regenerate a pack.
   `choices.json` only seeds `og style new` and overwrites nothing.
@@ -63,14 +66,15 @@ sounds and haptics for every component. The look's `ui "<slug>"` picks it;
   (`og ui eject --list`), edit it under `assets/ui/` and keep game data in
   its viewmodel.
 
-## 4. Documents and code
+## 4. Structure and data
 
-- Static structure (layout, parts, slots, states, motion) belongs in
+- All structure (layout, parts, slots, states, motion) belongs in
   `type screen` and `type component` documents: Tune edits them live and
   saves back, `og dev` reloads them in place keeping UI state.
-- Code builds what depends on data at run time (a list of the player's
-  items) and binds the rest. A screen written wholly in code loses live
-  editing and the checks' element paths.
+- Code prepares named stores and keyed collections. The Svelte template
+  reader and retained `svelte/store` API are landing separately; use their generated
+  signatures once available. Named callbacks are limited to custom draw
+  and components a document cannot express, with declared dependencies.
 - Every word is a string key with an English fallback; no literal player
   text in code (§6).
 

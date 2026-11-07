@@ -16,7 +16,7 @@
 //! moves nothing: every draw path checks for a slice, an ornament or a
 //! motion value first, so a style without art draws flat.
 //!
-//! Version 2 (docs/ui.md §12) adds the tokens of [`crate::tokens`] (carried
+//! Version 2 (docs/ui.md §3) adds the tokens of [`crate::tokens`] (carried
 //! in [`Theme::tokens`], not yet drawn from) and dresses parts by selector
 //! (`crate::dress`): its dressings of the twelve parts above fill the same
 //! [`Art`], so a style upgraded by [`upgrade_style`] draws as before.
@@ -199,7 +199,7 @@ impl StyleFile {
 
     /// Binds its dressings' vector fills to the loaded vectors (`handle`
     /// of an asset id; `None` leaves that fill unbound, drawing nothing):
-    /// the style's asset binding of docs/ui.md §13.
+    /// the style's asset binding of docs/ui.md §3.3.
     pub fn bind_vectors(&mut self, handle: impl Fn(&str) -> Option<crate::paint::UiVectorHandle>) {
         for d in &mut self.dressings {
             for (at, asset) in &d.draw.vectors {
@@ -935,7 +935,7 @@ pub(crate) fn upgrade_style_v2(text: &str) -> Result<String, String> {
     doc.body = out;
     let text2 = doc.to_text().map_err(|e| e.to_string())?.replacen(
         "---\n",
-        "---\n# Upgraded to version 2 by og style upgrade: its version 1 values kept, the new tokens derived from its palette and scheme (docs/ui.md §12).\n",
+        "---\n# Upgraded to version 2 by og style upgrade: its version 1 values kept, the new tokens derived from its palette and scheme (docs/ui.md §3).\n",
         1,
     );
     let new =

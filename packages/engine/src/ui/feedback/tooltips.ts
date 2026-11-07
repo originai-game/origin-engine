@@ -1,4 +1,4 @@
-// og.ui.tooltipCard: rich tooltips (docs/ui.md §5.6, §11, Appendix D
+// og.ui.tooltipCard: rich tooltips (docs/ui.md §3.3, §2
 // "Compare tooltips with stat deltas", "Nested, pinnable tooltips with
 // keyword links"). Read against Diablo IV's item cards (a title in the
 // rarity's colour, stat rows, the equipped item beside it with up and

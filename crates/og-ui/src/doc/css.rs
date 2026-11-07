@@ -1,4 +1,4 @@
-//! The CSS dialect of documents (`version 2`, docs/ui.md §10.4): an
+//! The CSS dialect of documents (`version 2`, docs/ui.md §3.2): an
 //! element's look and layout as CSS declarations (`width: stretch;
 //! max-width: 640px`), its interaction states as pseudo-classes (`:hover {
 //! … }`), breakpoints as `@media phone { … }`, tokens as `var(--panel)` and
@@ -1295,7 +1295,7 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                 Conv::Kebab => match one(&t, name)? {
                     Tok::Func(f, a) if prop == "frame" && f == "rive" => {
                         // One argument: the artboard's id, relative to
-                        // assets/ (`ui/chest.riv#Chest`, docs/ui.md §11.2).
+                        // assets/ (`ui/chest.riv#Chest`, docs/ui.md §3.3).
                         let id = match a.as_slice() {
                             [v] => match v.as_slice() {
                                 [Tok::Str(s)] => Some(s.as_str()),
@@ -1410,7 +1410,7 @@ fn hint_for(name: &str) -> String {
         .filter(|c| c.contains(name) || name.contains(c.trim_start_matches("-og-")))
         .collect();
     if near.is_empty() {
-        " (the properties: docs/ui.md §10.4)".into()
+        " (the properties: docs/ui.md §3.2)".into()
     } else {
         format!(" (did you mean {}?)", near.join(", "))
     }

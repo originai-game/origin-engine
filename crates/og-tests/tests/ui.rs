@@ -217,7 +217,7 @@ fn ui_paths_fill_by_their_rule_and_take_every_mode() {
     check("the 14 px heart", px(&r, 1067, 67), ink([255, 241, 118]));
 }
 
-/// World-space UI (`docs/ui.md` §14, `ui_scenes::world`): occluders hide a
+/// World-space UI (`docs/ui.md` §1, `ui_scenes::world`): occluders hide a
 /// panel behind the wall and keep the one against the sky; the bars draw
 /// their back, ghost and fill where their values put them; the mass
 /// elements' numbers and names draw at all.

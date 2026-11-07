@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `ReducedMotion` (enum)
 
-What an animation does under reduced motion (docs/ui.md §7.7).
+What an animation does under reduced motion (docs/ui.md §3.1).
 
 A string: one of the variants below. The zero value is `"fade"`.
 
@@ -18,7 +18,7 @@ A string: one of the variants below. The zero value is `"fade"`.
 
 ```ogt
 enum ReducedMotion {
-  doc "What an animation does under reduced motion (docs/ui.md §7.7)."
+  doc "What an animation does under reduced motion (docs/ui.md §3.1)."
   variant fade "Movement and scale jump; opacity and colour fade quickly (the default)."
   variant none "Everything jumps."
   variant keep "Plays as authored: motion that carries meaning, kept small."

@@ -107,6 +107,10 @@ rm -rf "$here/knowledge/scripts/sync-rules.ts" "$here/knowledge/scaffold/templat
 rm -rf "$here/styles"
 for pack in "$here"/../../templates/styles/*/; do
   name=$(basename "$pack")
+  case "$name" in
+    shared|cjk) ;;
+    *) [ -f "$pack/extension.json" ] || continue ;;
+  esac
   mkdir -p "$here/styles/$name"
   # Preserve nested assets and each extension's authoring skill, not art sources.
   # Name the top-level entries rather than excluding by pattern: macOS bsdtar
@@ -114,7 +118,7 @@ for pack in "$here"/../../templates/styles/*/; do
   (cd "$pack" && find . -mindepth 1 -maxdepth 1 ! -name '.*' ! -name art -print0 | xargs -0 tar -cf -) |
     (cd "$here/styles/$name" && tar -xf -)
 done
-[ -f "$here/styles/fantasy/style.ogt" ] || { echo "pack: templates/styles was not copied into styles/" >&2; exit 1; }
+[ -f "$here/styles/shared/LICENSES.md" ] || { echo "pack: shared style assets were not copied into styles/" >&2; exit 1; }
 # The on-demand sheet project is data, not a gate or a hard-coded runtime template.
 rm -rf "$here/ui-sheet"
 mkdir -p "$here/ui-sheet"

@@ -69,7 +69,7 @@ impl Viewport {
         }
     }
 
-    /// This surface in og-ui units of `unit` CSS px (docs/ui.md §15.2):
+    /// This surface in og-ui units of `unit` CSS px (docs/ui.md §6.1):
     /// its size, safe area and covered region over `unit`, and `unit`
     /// times as many device pixels to each, so what is laid out on it and
     /// drawn `unit` times larger lands on the same device pixels.
@@ -704,10 +704,10 @@ pub struct UiFrame {
     /// The focused text control, for the host: where an input method's
     /// window goes, and the selection a copy takes (`None`: no text focus).
     pub text_input: Option<TextTarget>,
-    /// Overlaps no element declared (docs/ui.md §6.2), for `og ui check`.
+    /// Overlaps no element declared (docs/ui.md §2), for `og ui check`.
     pub overlaps: Vec<Overlap>,
     /// The paths of the elements whose props say dense (a dense HUD's
-    /// readouts, docs/ui.md §15.2), each covering its subtree, for `og ui
+    /// readouts, docs/ui.md §6.1), each covering its subtree, for `og ui
     /// check`.
     pub dense: Vec<String>,
     /// The paths of the scroll containers that scroll sideways and of the
@@ -717,11 +717,11 @@ pub struct UiFrame {
     /// What motion did this frame: timeline events (sounds, haptics,
     /// callbacks), plays that ended, swipes, snaps and drops.
     pub events: Vec<UiEvent>,
-    /// Elements built, rebuilt and laid out (docs/ui.md §6.3).
+    /// Elements built, rebuilt and laid out (docs/ui.md §2).
     pub stats: LayoutStats,
     /// Elements in visual states and the animations in flight, for `dump_ui`.
     pub motion: Vec<crate::motion::run::MotionDump>,
-    /// The og-ui unit, CSS px per unit (docs/ui.md §15.2): `viewport`,
+    /// The og-ui unit, CSS px per unit (docs/ui.md §6.1): `viewport`,
     /// `elements`, `a11y`, `text_input` and `overlaps` are in units (the
     /// game's coordinates); `items` are already in CSS px. A host that hands
     /// a rectangle to the page (an input method's window, the accessibility

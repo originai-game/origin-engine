@@ -1,13 +1,12 @@
-// The materials kit's review sheet (docs/ui.md §17.3): one card per preset
+// The materials kit's review sheet (docs/ui.md §6): one card per preset
 // of ../../*.ogt, each a column drawn offscreen and composited through its
 // material (og.ui.setDraw's layer). The kit is installed as a game installs
 // it, so the cards load `ui-kits/materials/<preset>.ogt`.
 //
-// Commands: style:<fantasy|scifi>, burn:<0–1> (the burn card's progress).
+// Commands: scheme:<light|dark>, burn:<0–1> (the burn card's progress).
 
-import { og, defineSystem, type UiMaterial, type World } from "@origingame/engine";
+import { og, defineSystem, type UiMaterial } from "@origingame/engine";
 
-const STYLES = ["fantasy", "scifi"] as const;
 const PRESETS = ["foil", "holo", "burn", "rarity"] as const;
 const state = { burn: 0.45, materials: {} as Record<string, UiMaterial> };
 
@@ -49,12 +48,6 @@ const Sheet = defineSystem("Sheet", { reads: [og.Camera] }, () => {
   });
 });
 
-function setStyle(world: World, name: string): void {
-  const loaded = og.load.style(world, `@styles/${name}/style.ogt`);
-  if (!loaded.ok) throw new Error(loaded.reason);
-  og.ui.configure(world, { style: loaded.value });
-}
-
 export default og.game({
   tick: 60,
   seed: 1,
@@ -62,7 +55,18 @@ export default og.game({
   start(world) {
     const camera = world.resource(og.Camera);
     if (camera.ok) camera.value.background = { r: 0.08, g: 0.09, b: 0.11 };
-    setStyle(world, "fantasy");
+    const font = og.load.font(world, "fonts/InstrumentSans-Regular.ttf");
+    const icons = og.load.texture(world, "icons/ink-icons.png");
+    if (!font.ok) throw new Error(font.reason);
+    if (!icons.ok) throw new Error(icons.reason);
+    og.ui.configure(world, {
+      scheme: "light", font: font.value,
+      icons: { texture: icons.value, columns: 8, rows: 4, names: [
+        "heart", "star", "coin", "lock", "pause", "gear", "sword", "shield", "potion", "gem", "key",
+        "map", "bolt", "clock", "trophy", "home", "plus", "close", "check", "play", "back", "bag",
+        "bomb", "crown", "flag", "apple", "leaf", "fire", "drop", "skull", "music", "person",
+      ] },
+    });
     for (const p of PRESETS) {
       const m = og.load.uiMaterial(world, `ui-kits/materials/${p}.ogt`);
       if (!m.ok) throw new Error(m.reason);
@@ -70,11 +74,11 @@ export default og.game({
     }
   },
   commands: {
-    style: (world, args) => setStyle(world, STYLES.includes(args[0] as never) ? args[0]! : "fantasy"),
+    scheme: (world, args) => og.ui.configure(world, { scheme: args[0] === "dark" ? "dark" : "light" }),
     burn: (_world, args) => { state.burn = Math.min(1, Math.max(0, Number(args[0] ?? 0.45))); },
   },
   commandHelp: {
-    style: { usage: `<${STYLES.join("|")}>`, doc: "The style pack the cards are dressed in." },
+    scheme: { usage: "<light|dark>", doc: "The core default's colour scheme." },
     burn: { usage: "<0–1>", doc: "The burn card's progress." },
   },
 });

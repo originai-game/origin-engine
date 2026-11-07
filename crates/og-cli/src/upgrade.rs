@@ -17,8 +17,6 @@
 //! Exit status: 0 done (nothing left to edit by hand), 3 done with places
 //! to edit by hand (`manual`), 1 failed (nothing written), 2 usage.
 
-mod kits;
-
 use crate::project::{self, Project};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
@@ -203,27 +201,11 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
                 continue;
             }
             if b["codemod"]["kind"] == "ui-kits" {
-                let moved = kits::kits(&b["codemod"]);
-                for (file, text, touched) in &mut texts {
-                    if !file
-                        .extension()
-                        .is_some_and(|e| matches!(e.to_str(), Some("ts" | "tsx" | "js" | "mjs")))
-                    {
-                        continue;
-                    }
-                    let (migrated, o) = kits::migrate(text, &moved);
-                    if o.count > 0 {
-                        *text = migrated;
-                        *touched = true;
-                        codemods.push(json!({ "version": version, "member": member, "file": rel(file), "from": "og.ui", "to": o.kits.join(", "), "count": o.count }));
-                    }
-                    for (line, code, fix) in o.manual {
-                        manual.push(json!({
-                            "version": version, "member": member, "change": b["change"], "fix": fix,
-                            "file": rel(file), "line": line, "text": code,
-                        }));
-                    }
-                }
+                review.push(json!({
+                    "version": version, "member": member,
+                    "change": "The ui-kits codemod and its target kits were removed.",
+                    "fix": "Compose the UI with public core controls; no automatic kit rewrite is available."
+                }));
                 continue;
             }
             if let (Some(from_s), Some(to_s)) =
@@ -342,7 +324,7 @@ fn archive_legacy_ramp(text: &str) -> Option<String> {
         }
         if i + 1 == first {
             out.push_str(
-                "# Legacy ramp archived by og upgrade; edit typography (docs/ui.md §17.4).\n",
+                "# Legacy ramp archived by og upgrade; edit typography (docs/ui.md §3).\n",
             );
         }
         if i + 1 >= first && i + 1 < end {
@@ -384,7 +366,7 @@ fn hero_line(body: &og_core::ogt::Block) -> Option<String> {
     let weight = num(display, 3)?;
     let face = display.values.get(4)?.as_word()?;
     Some(format!(
-        "  # Added by og upgrade: what displayXl2 drew before typography (docs/ui.md §17.4).\n  hero {size} {line} {tracking} {weight} {face}\n"
+        "  # Added by og upgrade: what displayXl2 drew before typography (docs/ui.md §3).\n  hero {size} {line} {tracking} {weight} {face}\n"
     ))
 }
 

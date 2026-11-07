@@ -121,8 +121,3 @@ required-features = ["cook"]
 [[test]]
 name = "tests"
 path = "tests/it/main.rs"
-
-[[test]]
-name = "kit-documents"
-path = "../../packages/engine/extensions/tests/documents.rs"
-required-features = ["kit-tests"]

@@ -1,6 +1,6 @@
 //! From a laid-out frame to og-render's overlay ([`og_render::Overlay`]):
 //! the UI pass's analytic shapes ([`og_render::UiShape`]), MSDF text, the
-//! UI's clip shapes and offscreen layers (`docs/ui.md` §5).
+//! UI's clip shapes and offscreen layers (`docs/ui.md` §3.3).
 //!
 //! Every rectangle, bar, half disc, image and glass panel is a UI shape:
 //! a signed distance evaluated per pixel, so its edge is exact at any

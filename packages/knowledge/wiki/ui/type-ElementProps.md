@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `ElementProps` (desc struct)
 
-Everything an element carries beyond its box (docs/ui.md §6.1): set with og.ui.props right after the element. The zero value is an element in the flow, unmoved and opaque, with no motion.
+Everything an element carries beyond its box (docs/ui.md §2): set with og.ui.props right after the element. The zero value is an element in the flow, unmoved and opaque, with no motion.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -27,7 +27,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `container` | `boolean` | `false` | — | — | — | Its container queries read its own width. |
 | `variants` | `readonly UiVariant[]` | `[]` | — | — | — | Prop overrides by breakpoint, orientation and width; later ones win. |
 | `overlaps` | `readonly string[]` | `[]` | — | — | — | Paths of elements it overlaps on purpose (an ancestor path covers its subtree; `*` covers everything, for what follows the pointer across the screen: a targeting arc, a dragged ghost). Undeclared overlaps are reported (og.ui.overlaps). |
-| `dense` | `boolean` | `false` | — | — | — | Its text and its subtree's are a dense HUD's readouts (strategy, MMO, simulation: docs/ui.md §15.2): og ui check holds them to 12 px at 1080p instead of 18, still growing with the player's text scale and passing the contrast rule. Never for menus, body text or controls. |
+| `dense` | `boolean` | `false` | — | — | — | Its text and its subtree's are a dense HUD's readouts (strategy, MMO, simulation: docs/ui.md §6.1): og ui check holds them to 12 px at 1080p instead of 18, still growing with the player's text scale and passing the contrast rule. Never for menus, body text or controls. |
 | `match` | `string` | `""` | — | — | — | A shared-element key: the element with the same key on the screen being left morphs into this one. |
 | `drag` | `DragSpec \| null` | `null` | — | — | — | It moves with a drag. |
 | `pinch` | `PinchSpec \| null` | `null` | — | — | — | Two touches scale and turn it. |
@@ -48,7 +48,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct ElementProps {
-  doc "Everything an element carries beyond its box (docs/ui.md §6.1): set with og.ui.props right after the element. The zero value is an element in the flow, unmoved and opaque, with no motion."
+  doc "Everything an element carries beyond its box (docs/ui.md §2): set with og.ui.props right after the element. The zero value is an element in the flow, unmoved and opaque, with no motion."
   desc true
   field transform UiTransform "Its transform after layout."
   field opacity f32 "Its opacity, multiplied down the tree." {
@@ -71,7 +71,7 @@ struct ElementProps {
   field container bool "Its container queries read its own width."
   field variants List.UiVariant "Prop overrides by breakpoint, orientation and width; later ones win."
   field overlaps List.String "Paths of elements it overlaps on purpose (an ancestor path covers its subtree; `*` covers everything, for what follows the pointer across the screen: a targeting arc, a dragged ghost). Undeclared overlaps are reported (og.ui.overlaps)."
-  field dense bool "Its text and its subtree's are a dense HUD's readouts (strategy, MMO, simulation: docs/ui.md §15.2): og ui check holds them to 12 px at 1080p instead of 18, still growing with the player's text scale and passing the contrast rule. Never for menus, body text or controls."
+  field dense bool "Its text and its subtree's are a dense HUD's readouts (strategy, MMO, simulation: docs/ui.md §6.1): og ui check holds them to 12 px at 1080p instead of 18, still growing with the player's text scale and passing the contrast rule. Never for menus, body text or controls."
   field match String "A shared-element key: the element with the same key on the screen being left morphs into this one."
   field drag Option.DragSpec "It moves with a drag."
   field pinch Option.PinchSpec "Two touches scale and turn it."

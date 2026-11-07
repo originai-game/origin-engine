@@ -1,4 +1,4 @@
-// og.ui.banner and og.ui.ribbon: announcements and ribbons (docs/ui.md §11
+// og.ui.banner and og.ui.ribbon: announcements and ribbons (docs/ui.md §2
 // "banners and ribbons", Appendix E "Map and fog reveals, region title
 // cards", "Celebrations"). Read against Elden Ring's place names (a thin
 // rule drawing out under a serif title that fades up and away), Bloons TD

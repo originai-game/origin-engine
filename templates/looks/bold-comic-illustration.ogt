@@ -5,7 +5,7 @@ version 1
 # shade printed as four-colour process dots a pixel out of register.
 name "Bold comic illustration"
 mood "high-contrast"
-ui "fantasy"
+ui "default"
 MaterialStyle {
   toon true
   outlineWidth 3

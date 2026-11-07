@@ -211,7 +211,7 @@ impl Srgba {
     };
 }
 
-/// The colour roles a style declares of its own (docs/ui.md §12.2): a
+/// The colour roles a style declares of its own (docs/ui.md §3.1): a
 /// game's corruption, sanity or faction colours beside the palette's named
 /// roles, read by name like any role ([`Theme::color`]: `{ token }`,
 /// `[color=]`, a dressing's paints, `UiTheme.palette`). Fixed capacity, so
@@ -411,7 +411,7 @@ impl Breakpoint {
     }
 }
 
-/// The largest player text scale (docs/ui.md §15.2): 150 %, the bar every
+/// The largest player text scale (docs/ui.md §6.1): 150 %, the bar every
 /// screen is held to, until 200 % returns as its own batch (the owner,
 /// 2026-11-04). A larger UiDesc.textScale lays out at this.
 pub const MAX_TEXT_SCALE: f32 = 1.5;
@@ -421,7 +421,7 @@ pub const MAX_TEXT_SCALE: f32 = 1.5;
 pub struct Theme {
     pub scheme: Scheme,
     pub palette: Palette,
-    /// The style's own colour roles (docs/ui.md §12.2), read with the
+    /// The style's own colour roles (docs/ui.md §3.1), read with the
     /// palette's by [`Theme::color`]; the default style declares none.
     pub roles: Roles,
     pub space: Space,
@@ -443,7 +443,7 @@ pub struct Theme {
     /// ([`Theme::to_reduced_transparency`]). A game reads it to flatten
     /// its own (IDL `UiTheme.reducedTransparency`).
     pub reduced_transparency: bool,
-    /// The player's text scale (docs/ui.md §15.2), 1 to 2: every text size
+    /// The player's text scale (docs/ui.md §6.1), 1 to 2: every text size
     /// and leading grows by it (the type ramp here and each role's step,
     /// [`crate::Ui::type_step`]), and control, row and header heights by
     /// the leading body text gains ([`Theme::sizes`]), so layout grows
@@ -457,7 +457,7 @@ pub struct Theme {
     /// The og-ui unit a game pins (IDL `UiDesc.unitScale`), 1 to 2; 0 (the
     /// default) is auto: [`Theme::auto_unit`] of the play surface.
     pub unit_pin: f32,
-    /// The og-ui unit in effect, in CSS px (docs/ui.md §15.2): the UI lays
+    /// The og-ui unit in effect, in CSS px (docs/ui.md §6.1): the UI lays
     /// out in units (a viewport of the surface's size over it) and draws
     /// at it, so every length (the style's, a component's, a game's own
     /// `px`) grows by it and the player's text scale multiplies over it.
@@ -471,7 +471,7 @@ pub struct Theme {
     /// drawn from. A version 1 style and the default style have the set
     /// [`crate::tokens::StyleTokens::derive`] makes of their values.
     pub tokens: crate::tokens::StyleTokens,
-    /// The style's motion personality (docs/ui.md §7.7): named springs,
+    /// The style's motion personality (docs/ui.md §3.1): named springs,
     /// enter and exit eases, stagger, overshoot, the reduced-motion
     /// fallback. A style file's motion block fills it.
     pub motion: crate::motion::MotionTokens,
@@ -644,7 +644,7 @@ impl Theme {
         t
     }
 
-    /// The og-ui unit of a play surface (docs/ui.md §15.2): on a mouse or
+    /// The og-ui unit of a play surface (docs/ui.md §6.1): on a mouse or
     /// pad surface its 1080p-equivalent height (the shorter of the height
     /// and the width's 16:9 height, as `og ui check` reads its text sizes)
     /// over 720, 1 to 2, so the smallest step that is 12 px at 720p is

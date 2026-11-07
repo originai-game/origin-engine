@@ -1,7 +1,7 @@
 // og.ui.hudTimer: a round, match or countdown timer, read against the round
 // timers of fighting games and battle royales (tenths in the last ten
 // seconds, a tick each second, red and pulsing at the end). Split out of
-// scores.ts unchanged when the genre HUDs moved into kits (docs/ui.md §17).
+// scores.ts unchanged when the genre HUDs moved into kits (docs/ui.md §5).
 
 import type * as Api from "@origingame/engine";
 import { a11y, absolute, anchorOf, box, chip, clamp01, countdown, edge, frame, groups, hudPlace, kit, leaf, lit, msToTicks, pct, pop, pulse, px, role, sel, solid, sound, text, token, ts, u } from "./core.ts";

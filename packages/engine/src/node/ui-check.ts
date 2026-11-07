@@ -1,4 +1,4 @@
-// `og ui check` (docs/ui.md §16.5): what can be read off a laid-out UI,
+// `og ui check` (docs/ui.md §6): what can be read off a laid-out UI,
 // as facts with a path, never as verdicts. One checker, called by `og ui check`
 // (ui-run.ts, over a screen set × breakpoints × locales) and by playtests (`checkUi`, from
 // `@origingame/engine/ui-check`, on the frames a `dump_ui:<name>.uicheck.json`
@@ -182,7 +182,7 @@ export interface UiRule {
   id: string;
   /** A fact the checker reports as a finding, or a number it reports as a measure. */
   kind: "finding" | "measure";
-  /** docs/ui.md §16.5's words. */
+  /** docs/ui.md §6's words. */
   title: string;
   status: RuleStatus;
   /** For partial and not checkable rules: what is missing and which phase brings it. */
@@ -780,7 +780,7 @@ export function measureFrame(frame: UiFrameSnapshot, cell: UiCell, opts: Measure
 }
 
 /**
- * The layout's numbers, for `og ui review` (docs/ui.md §16.6): what text
+ * The layout's numbers, for `og ui review` (docs/ui.md §6): what text
  * draws past its box (`overflow`), what its clip takes (`clip`), how far each
  * edge is from the `grid` (CSS px), and the gaps between siblings in a row or
  * column (`gap`). Every value is reported as read, with no threshold: the

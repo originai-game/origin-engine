@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `UiOverlap` (struct)
 
-Two elements overlapping where neither declared it (docs/ui.md §6.2).
+Two elements overlapping where neither declared it (docs/ui.md §2).
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
@@ -17,7 +17,7 @@ Two elements overlapping where neither declared it (docs/ui.md §6.2).
 
 ```ogt
 struct UiOverlap {
-  doc "Two elements overlapping where neither declared it (docs/ui.md §6.2)."
+  doc "Two elements overlapping where neither declared it (docs/ui.md §2)."
   field path String "The element placed over the other (absolute, anchored or floating), or the later of two siblings in the flow."
   field other String "The other element."
   field rect UiRect "Where they overlap."

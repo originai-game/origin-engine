@@ -1,4 +1,4 @@
-// What the world components (docs/ui.md §14, U6c) share beyond the HUD
+// What the world components (docs/ui.md §1, U6c) share beyond the HUD
 // core: a reaction's colour, mass templates declared once per engine, the
 // ground plane projected with og.Camera, and a world element that draws
 // shapes in screen pixels round a ground point.

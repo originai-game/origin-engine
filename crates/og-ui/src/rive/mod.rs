@@ -1,4 +1,4 @@
-//! Rive artboards (`docs/ui.md` §11.2), converted from a `.riv` at cook
+//! Rive artboards (`docs/ui.md` §3.3), converted from a `.riv` at cook
 //! time (og-cook's `riv`), never by the Rive runtime: an [`Artboard`] is
 //! its objects as [`Node`]s (transforms, paths and their vertices, paints
 //! and their colours, nested artboards) and its animations as keyframe

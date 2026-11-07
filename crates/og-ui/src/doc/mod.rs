@@ -1,4 +1,4 @@
-//! Documents (docs/ui.md §10): a screen (`type screen`) or a component
+//! Documents (docs/ui.md §2.1): a screen (`type screen`) or a component
 //! (`type component`) as `.ogt` text, an element tree with props, slots,
 //! parts, state groups, transitions, timelines, breakpoint overrides,
 //! list templates, conditions, triggers and bindings. [`UiDocument::parse`]
@@ -38,7 +38,7 @@ pub enum DocKind {
     Component,
 }
 
-/// The kinds of layer a screen declares (docs/ui.md §8.1).
+/// The kinds of layer a screen declares (docs/ui.md §2.1).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LayerKind {
     Hud,
@@ -542,7 +542,7 @@ fn parse_paint(vals: &[Value]) -> Result<Paint, String> {
         "a paint: token <role> (a palette role or one the style declares) or \"#rrggbb[aa]\"";
     match vals {
         [Value::Word(t), Value::Word(role)] if t == "token" => {
-            // A palette role, or one the style declares (docs/ui.md §12.2):
+            // A palette role, or one the style declares (docs/ui.md §3.1):
             // a name the style lacks draws as a missing token.
             if crate::Palette::NAMES.contains(&role.as_str())
                 || (role.starts_with(|c: char| c.is_ascii_lowercase())

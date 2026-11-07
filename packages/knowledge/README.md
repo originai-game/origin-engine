@@ -76,8 +76,7 @@ break, with a `changelog.json` breaking entry):
   `icon`. `options.references` are the game's accepted assets (paths or
   URLs), passed on after the style's preview; `options.metres` is the
   asset's size (a prop 1, a character 2, a texture's tile 2 by default).
-  After those eight come the UI's art-slot kinds (docs/ui.md §13, Appendix
-  F), each specified in `UI_KINDS` (`UiKindSpec`: aspects, transparency,
+  After those eight come the UI's art-slot kinds (docs/ui.md §3.3), each specified in `UI_KINDS` (`UiKindSpec`: aspects, transparency,
   tiling, focal point, safe rectangle, fit, legible size, nine-slice and
   states): `keyArt`, `capsule`, `logo`, `appIcon`, `characterSplash`,
   `fullBody`, `bust`, `vnSprite`, `eventCg`, `itemIcon`, `abilityIcon`,

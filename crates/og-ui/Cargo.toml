@@ -51,10 +51,6 @@ image = { workspace = true }
 og-tests = { path = "../og-tests" }
 pollster = { workspace = true }
 
-[[test]]
-name = "style-packs"
-path = "../../templates/styles/tests/packs.rs"
-required-features = ["kit-tests"]
 
 # The default style's generator (scripts/gen-theme.sh runs it).
 [[example]]

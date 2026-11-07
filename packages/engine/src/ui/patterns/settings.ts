@@ -1,4 +1,4 @@
-// The settings tree (docs/ui.md §11 genre patterns, Appendix B row 2, roadmap G1-7). Read against B-settings and the
+// The settings tree (docs/ui.md §2 genre patterns row 2, roadmap G1-7). Read against B-settings and the
 // settings of Forza Horizon, Destiny 2 and The Last of Us Part II (the pages as tabs over a column of rows, each its name
 // and its control at the end, a detail panel with the focused entry's description, Apply, Revert and Defaults at the
 // foot, a display change kept only when confirmed before a countdown runs out). The settings are data: pages of typed

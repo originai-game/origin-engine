@@ -1,8 +1,8 @@
-// Navigation (docs/ui.md §11): tabs with bumpers, the carousel with snap,
+// Navigation (docs/ui.md §2): tabs with bumpers, the carousel with snap,
 // breadcrumbs, pagination, the action bar and the radial wheel. Each
 // draws its parts as the style dresses them (`Tabs.tab[selected]`,
 // `Carousel.dot[current]`, `Radial.slice[hover]`) and asks for UI actions
-// (tabPrev, tabNext, confirm, back), never keys (docs/ui.md §8.2).
+// (tabPrev, tabNext, confirm, back), never keys (docs/ui.md §2.1).
 
 import type * as Api from "@origingame/engine";
 import {
@@ -439,7 +439,7 @@ export function pagination(id: string, desc: Api.PaginationDesc): Api.PageResult
 // ── action bar ──────────────────────────────────────────────────────────
 
 /**
- * The action bar (docs/ui.md §8.2): the actions the top layer accepts,
+ * The action bar (docs/ui.md §2.1): the actions the top layer accepts,
  * each its glyph on the device used last (a key cap, a pad's face button,
  * a bumper's pill) and its hint, at a safe-area edge. The hints come from
  * og.ui.actionBar (the top screen document's `actions`), or `hints` given

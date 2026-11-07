@@ -224,7 +224,7 @@ commands:
                       project's assets/ui-kits and assets/ui); `style-literal-ok` on a line skips it
   ui eject <screen> [project] [--force] | ui eject --list [project]
                       copy one of the library's screen documents (the engine package's
-                      src/ui/screens/, one for every screen type of docs/ui.md Appendix B) into
+                      src/ui/screens/, one for every screen type of docs/ui.md §2) into
                       assets/ui/<screen>.ogt to edit as the game's own; refuses to overwrite one
                       there without --force; --list prints each with its Appendix B row
   ui types [project]  write .og/types/ui/<name>.d.ts for every screen and component document:

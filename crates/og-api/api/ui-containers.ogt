@@ -1,5 +1,5 @@
   # ── the component library: containers, navigation and data ─────────────
-  # (docs/ui.md §11; TypeScript over the calls above, in
+  # (docs/ui.md §2; TypeScript over the calls above, in
   # packages/engine/src/ui/containers and ui/data). Each draws named parts a
   # style dresses (`Card.frame[selected]`, `Menu.item[hover]`), takes the
   # pointer, a touch, keys and a pad, says its role to the accessibility
@@ -453,7 +453,7 @@
   }
 
   struct ActionHintsDesc {
-    doc "The action bar (docs/ui.md §8.2): the actions the top layer accepts, each its glyph and its hint, at an edge."
+    doc "The action bar (docs/ui.md §2.1): the actions the top layer accepts, each its glyph and its hint, at an edge."
     desc true
     field hints List.ActionHint "The hints, as og.ui.actionBar answers them."
     field anchor Anchor "The edge it sits on." {

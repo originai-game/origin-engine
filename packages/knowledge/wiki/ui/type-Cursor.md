@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `Cursor` (enum)
 
-The pointer's shape over an element (CSS cursor, docs/ui.md §6.1), inherited by its subtree.
+The pointer's shape over an element (CSS cursor, docs/ui.md §2), inherited by its subtree.
 
 A string: one of the variants below. The zero value is `"auto"`.
 
@@ -34,7 +34,7 @@ A string: one of the variants below. The zero value is `"auto"`.
 
 ```ogt
 enum Cursor {
-  doc "The pointer's shape over an element (CSS cursor, docs/ui.md §6.1), inherited by its subtree."
+  doc "The pointer's shape over an element (CSS cursor, docs/ui.md §2), inherited by its subtree."
   variant auto "Its parent's; with none set above it, a text control's I-beam, a draggable element's open hand (closed while dragged), a link's hand, else the arrow."
   variant default "The arrow."
   variant pointer "The hand (a link)."

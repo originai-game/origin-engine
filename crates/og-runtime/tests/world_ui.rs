@@ -1,4 +1,4 @@
-//! og.ui's world-space members through the engine (`docs/ui.md` §14): the
+//! og.ui's world-space members through the engine (`docs/ui.md` §1): the
 //! UI's end hands og-ui the tick's og.Camera and the pose of the entity an
 //! anchor sits on, so the anchor lands where og.camera.worldToScreen puts
 //! that entity and follows the camera when it moves; mass elements a system

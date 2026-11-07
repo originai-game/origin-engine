@@ -1,4 +1,4 @@
-// The built-in UI materials (UiBuiltin, docs/ui.md §5.4), after
+// The built-in UI materials (UiBuiltin, docs/ui.md §3.3), after
 // ui_common.wgsl and ui_material.wgsl: one `material` that switches on the
 // layer's kind. Parameters are the layer's four vectors a, b, c, d; time is
 // the UI clock.

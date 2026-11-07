@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "kind": "kit",
-  "name": "liveops",
-  "version": "1.0.0",
-  "description": "liveops UI components and screen documents",
-  "entry": "index.ts",
-  "types": "types.ts"
-}

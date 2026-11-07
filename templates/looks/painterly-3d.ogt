@@ -4,7 +4,7 @@ version 1
 # Anisotropic brush strokes with pigment pooling and a little bleed over the lit scene, on a woven canvas (the engine's @canvas/linen).
 name "Painterly 3D"
 mood "warm"
-ui "fantasy"
+ui "default"
 Stylise {
   paintRadius 3
   paintAnisotropy 0.7

@@ -263,7 +263,7 @@ pub struct IconDesc {
     pub label: Option<String>,
 }
 
-/// An art slot ([`Ui::art`], docs/ui.md §13).
+/// An art slot ([`Ui::art`], docs/ui.md §3.3).
 #[derive(Clone, Debug, PartialEq)]
 pub struct ArtDesc {
     pub spec: crate::slot::SlotSpec,

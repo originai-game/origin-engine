@@ -1,4 +1,4 @@
-//! Art slots (docs/ui.md §13.1, §13.2): every image in a screen is a slot
+//! Art slots (docs/ui.md §3.3, §3.3): every image in a screen is a slot
 //! with a spec the art pipeline reads, so generated art has a specified
 //! place. A [`SlotSpec`] is plain data: a name, a [`SlotKind`], the aspect
 //! (or the aspects allowed), a focal point cropping keeps, a safe

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "kind": "kit",
-  "name": "story",
-  "version": "1.0.0",
-  "description": "story UI components and screen documents",
-  "entry": "index.ts",
-  "types": "types.ts"
-}

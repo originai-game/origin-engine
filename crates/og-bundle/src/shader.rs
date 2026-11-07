@@ -58,7 +58,7 @@ pub fn post_text(post: &og_render::PostShader) -> String {
     entries_text(POST_TYPE, &post.code, &post.params, ShaderMode::Hooks)
 }
 
-/// The `.ogt` type of a custom UI material (`docs/ui.md` §5.4, og-render's
+/// The `.ogt` type of a custom UI material (`docs/ui.md` §3.3, og-render's
 /// `UiMaterialShader`): the same `code`/`source` and `param` lines (at most
 /// four), the code defining
 /// `fn material(m: MaterialInput, p: Params) -> vec4<f32>`, the colour a

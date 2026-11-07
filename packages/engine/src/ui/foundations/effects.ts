@@ -1,4 +1,4 @@
-// Foundations (docs/ui.md §11): the particle emitter and the effect layer.
+// Foundations (docs/ui.md §2): the particle emitter and the effect layer.
 // Both are decoration: they take no input and say nothing to a screen
 // reader; the emitter stops under reduced motion, the layer's sweep stands
 // still.

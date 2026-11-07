@@ -1,4 +1,4 @@
-//! Mass elements (`docs/ui.md` §14): damage numbers, overhead bars,
+//! Mass elements (`docs/ui.md` §1): damage numbers, overhead bars,
 //! nameplate text, loot labels and status icons at thousands per frame.
 //!
 //! A [`UiMassTemplate`] is declared once: what each element draws (a
@@ -363,7 +363,7 @@ pub struct UiMassBatch {
 }
 
 /// A depth test against the scene for what uses clip rectangle `rect` of
-/// [`crate::Overlay::clips`] (`docs/ui.md` §14: anchored elements): the
+/// [`crate::Overlay::clips`] (`docs/ui.md` §1: anchored elements): the
 /// frame's view depth around `at` (CSS px) against `depth` (world units
 /// along the camera's forward axis), five taps; where the scene is nearer
 /// by more than `bias`, what uses the rectangle draws at `alpha` (0: not

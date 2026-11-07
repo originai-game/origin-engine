@@ -1,4 +1,4 @@
-//! Data binding and formatting (docs/ui.md §9): what a document reads from
+//! Data binding and formatting (docs/ui.md §2.1): what a document reads from
 //! its viewmodel and how it shows it.
 //!
 //! - A **viewmodel** is JSON ([`serde_json::Value`]): an object passed from

@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.animate`
 
-Any number on a spring or an ease (docs/ui.md §7.1: every value is animatable): call it every tick with the target and it answers this tick's value. A retarget keeps its value and velocity; under reduced motion it jumps.
+Any number on a spring or an ease (docs/ui.md §3.1: every value is animatable): call it every tick with the target and it answers this tick's value. A retarget keeps its value and velocity; under reduced motion it jumps.
 
 ```ts
 og.ui.animate(id: string, target: number, transition: Transition): number
@@ -24,7 +24,7 @@ Binding symbol `og_ui_animate` · publish builds: kept
 
 ```ogt
 fn animate {
-  doc "Any number on a spring or an ease (docs/ui.md §7.1: every value is animatable): call it every tick with the target and it answers this tick's value. A retarget keeps its value and velocity; under reduced motion it jumps."
+  doc "Any number on a spring or an ease (docs/ui.md §3.1: every value is animatable): call it every tick with the target and it answers this tick's value. A retarget keeps its value and velocity; under reduced motion it jumps."
   param id String "Its id under the open element."
   param target f32 "Where it is going."
   param transition Transition "How it moves."

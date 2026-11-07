@@ -1,4 +1,4 @@
-/** Host-neutral kit namespaces beside the frozen og.ui API (docs/ui.md §17). */
+/** Host-neutral kit namespaces beside the frozen og.ui API (docs/ui.md §5). */
 const extensions = new Set<string>();
 
 /** Register an explicitly imported kit, preserving its own function signatures. */

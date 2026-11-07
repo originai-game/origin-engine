@@ -1,4 +1,4 @@
-//! The element model (docs/ui.md §6.1): what every element carries beyond
+//! The element model (docs/ui.md §2): what every element carries beyond
 //! its box ([`crate::Element`]): a transform applied after layout, opacity,
 //! `z` inside its layer, absolute or anchored placement, hit slop, drag and
 //! drop, the grid and stack walks, per-breakpoint and container variants,
@@ -456,7 +456,7 @@ pub struct DropSpec {
     pub accept: Vec<String>,
 }
 
-/// Where keys and pads move the focus from this element (docs/ui.md §8.3),
+/// Where keys and pads move the focus from this element (docs/ui.md §2.1),
 /// over the spatial pick: each a path (a full one, `Hud/Bag`, or a
 /// sibling's id), empty to leave that move to the layout. A path naming a
 /// focus group lands on its remembered member (or its first); one naming
@@ -488,7 +488,7 @@ impl NavLinks {
 }
 
 /// A container whose focusable controls are one group for keys and pads
-/// (docs/ui.md §8.3): arrows move among its members first. At its edge a
+/// (docs/ui.md §2.1): arrows move among its members first. At its edge a
 /// group that wraps goes round to its far side; one that does not leaves
 /// it for the nearest control outside that way, and stays put when there
 /// is none. The zero value neither wraps nor remembers.
@@ -500,7 +500,7 @@ pub struct FocusGroup {
     pub memory: bool,
 }
 
-/// Tap, double tap and long press on any element (docs/ui.md §8.5),
+/// Tap, double tap and long press on any element (docs/ui.md §2.1),
 /// recognised from the press, its travel and the ticks it is held, in the
 /// UI state. Nested elements' recognisers compete for one press: of those
 /// that declare a gesture, the highest `priority` wins it (ties: the
@@ -528,7 +528,7 @@ impl GestureSpec {
     }
 }
 
-/// The pointer's shape over an element (CSS `cursor`, docs/ui.md §6.1),
+/// The pointer's shape over an element (CSS `cursor`, docs/ui.md §2),
 /// inherited by its subtree. `Auto` takes its parent's, and with none set
 /// above it a text control's I-beam, a draggable element's open hand (a
 /// closed one while dragged), a link's hand, else the arrow.
@@ -636,7 +636,7 @@ impl Cursor {
 }
 
 /// An element the player can move, scale and fade in a HUD layout editor
-/// (docs/ui.md §8.4): a HUD group, a touch stick or button. Its placement
+/// (docs/ui.md §2.1): a HUD group, a touch stick or button. Its placement
 /// is kept per player under `key` ([`crate::Ui::hud_layout`]); the zero
 /// value allows all three, from half to twice its size and down to a fifth
 /// of its opacity.
@@ -679,7 +679,7 @@ impl Customize {
     }
 }
 
-/// An animatable value of an element (docs/ui.md §7.1). Colours are sRGB
+/// An animatable value of an element (docs/ui.md §3.1). Colours are sRGB
 /// components 0–1 and alpha; rotation and skew radians.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Prop {
@@ -839,7 +839,7 @@ pub struct Patch {
     pub values: Values,
 }
 
-/// A prop override under a condition (docs/ui.md §6.2: breakpoint
+/// A prop override under a condition (docs/ui.md §2: breakpoint
 /// variants and container queries). Later variants win.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Variant {
@@ -971,7 +971,7 @@ impl Props {
 }
 
 /// An overlap between two elements that neither declared
-/// ([`crate::UiFrame::overlaps`], docs/ui.md §6.2): `og ui check` reports
+/// ([`crate::UiFrame::overlaps`], docs/ui.md §2): `og ui check` reports
 /// it with both paths.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Overlap {
@@ -985,7 +985,7 @@ pub struct Overlap {
     pub in_flow: bool,
 }
 
-/// What a frame rebuilt and laid out (docs/ui.md §6.3).
+/// What a frame rebuilt and laid out (docs/ui.md §2).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct LayoutStats {
     /// Elements built this tick.
@@ -1186,7 +1186,7 @@ impl Ui {
         }
     }
 
-    /// Overlaps nothing declared (docs/ui.md §6.2): an absolute, anchored
+    /// Overlaps nothing declared (docs/ui.md §2): an absolute, anchored
     /// or floating-group element over another element's drawing, and
     /// siblings in the flow over each other.
     pub(crate) fn find_overlaps(&self, order: &[usize]) -> Vec<Overlap> {
@@ -1477,7 +1477,7 @@ impl Ui {
 }
 
 impl Ui {
-    /// Opens a container with the element model's props (docs/ui.md §6.1):
+    /// Opens a container with the element model's props (docs/ui.md §2):
     /// its children follow until [`Ui::close`].
     pub fn open_with(&mut self, id: impl Into<crate::Id>, el: crate::Element, props: Props) {
         self.open(id, el);

@@ -124,9 +124,9 @@ agent in a sandbox read the same.
   line: `bun <knowledge>/scripts/brief.ts <kind> "<subject>" [--project
   <dir> | --look <slug>] [--reference <path>]... [--metres <n>] [--json]`.
 
-**The UI kinds** (docs/ui.md §13.3): `ART_KINDS`
+**The UI kinds** (docs/ui.md §3.3): `ART_KINDS`
 continues, after the eight above and in this order, by the art-slot kinds of
-docs/ui.md Appendix F, named as og-ui's `SlotKind` (`crates/og-ui/src/slot.rs`):
+docs/ui.md §3.3, named as og-ui's `SlotKind` (`crates/og-ui/src/slot.rs`):
 `keyArt`, `capsule`, `logo`, `appIcon`, `characterSplash`, `fullBody`,
 `bust`, `vnSprite`, `eventCg`, `itemIcon`, `abilityIcon`, `cardArt`,
 `cardFrame`, `unitPortrait`, `levelThumb`, `songJacket`, `saveThumb`,
@@ -168,7 +168,7 @@ optional `ui`.
   art on its largest, and scenes on `logicalHeight` (180 when unset), drawn
   at the whole multiple nearest 1024 as for sprites. `logo` is the one kind
   whose prompt asks for lettering; `cosmeticPreview` is rendered from a
-  viewport (docs/ui.md §5.5), and its brief describes the framing only.
+  viewport (docs/ui.md §3.3), and its brief describes the framing only.
 
 Its callers are the platform's asset production (`producing-game-assets`,
 mounted from origin-agent) and the game agent, which sends every asset
@@ -332,7 +332,7 @@ generates art.
    dressing gets an `authored` slice and its measured `tone`, and each
    ornament line its region. The UI draws from the density nearest at or
    above its device pixels per CSS px, and 3× above that (docs/ui.md
-   §12.6). `art/sheet.png` (every piece at 2×) and `art/report.json` (what
+   §3.3). `art/sheet.png` (every piece at 2×) and `art/report.json` (what
    was packed from what, with the provenance) are for review, and the
    cook never bundles `art/`.
 

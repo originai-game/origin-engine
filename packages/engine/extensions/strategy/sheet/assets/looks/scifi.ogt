@@ -1,6 +1,0 @@
-type look
-version 1
----
-# Names the built-in scifi style so the cook bundles it (@styles/scifi/); the sheet loads it itself.
-name "strategy sheet scifi"
-ui "scifi"

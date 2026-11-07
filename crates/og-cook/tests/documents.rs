@@ -1,4 +1,4 @@
-//! UI documents through the cook and back (docs/ui.md §10.1): a screen
+//! UI documents through the cook and back (docs/ui.md §2.1): a screen
 //! (`type screen`) cooks to an `og.UiDocument` blob whose text og-ui parses
 //! into the same document, and a document that does not validate against
 //! og-ui's reflected props is refused with its line.
@@ -85,7 +85,7 @@ fn css_tokens_survive_cooking_and_unresolved_names_fail() {
     }
 }
 
-/// An installed kit (docs/ui.md §17.1) cooks with the game: its documents
+/// An installed kit (docs/ui.md §5) cooks with the game: its documents
 /// are the game's assets under `ui-kits/<kit>/`, and its review sheet, a
 /// project of its own, is left out.
 #[test]

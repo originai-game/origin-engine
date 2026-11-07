@@ -1,7 +1,7 @@
 // @origingame/engine/ui-parts/screen: the helpers the engine's screen
 // patterns are written with (surfaces, buttons, symbols, art slots, price
 // tags, a phone's room, the component's memory), public for kits
-// (docs/ui.md §17.5). A kit's screen component imports these instead of
+// (docs/ui.md §4). A kit's screen component imports these instead of
 // engine internals; each is built from og.ui's public members and keeps no
 // state outside the UI's memory, so it behaves the same on the web and
 // native hosts.

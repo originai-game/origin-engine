@@ -1671,7 +1671,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::ui_scenes::layers();
             Ok(())
         },
-        // Flat glass (docs/ui.md §5.3, src/ui_scenes/glass.rs): its weights,
+        // Flat glass (docs/ui.md §3.3, src/ui_scenes/glass.rs): its weights,
         // hairline, shadows, scrim and fallbacks on three backdrops.
         "ui-glass-bright" | "ui-glass-dark" | "ui-glass-busy" | "ui-glass-dialog"
         | "ui-glass-fallback" => |g, name| {
@@ -1686,13 +1686,13 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::ui_scenes::text_effects(load_font)?;
             Ok(())
         },
-        // World-space UI (docs/ui.md §14, src/ui_scenes.rs): mass elements
+        // World-space UI (docs/ui.md §1, src/ui_scenes.rs): mass elements
         // (numbers, nameplates, bars, icons) and occluders over a 3D scene.
         "ui-world" => |g, _| {
             g.scene = crate::ui_scenes::world(load_font, |s| sprite_textures(s)[1])?;
             Ok(())
         },
-        // A world panel (docs/ui.md §14): a UI layer drawn into a render
+        // A world panel (docs/ui.md §1): a UI layer drawn into a render
         // target on a quad, read the frame after.
         "ui-panel" => |g, _| {
             g.scene = crate::ui_scenes::panel();

@@ -1,4 +1,4 @@
-//! The reflection of element props (docs/ui.md §10.1, AGENTS.md: reflection
+//! The reflection of element props (docs/ui.md §2.1, AGENTS.md: reflection
 //! is the single schema): every element kind a document can name and every
 //! prop it takes, with its value type and what it does. The parser
 //! validates against it, the probe exports it (`dump_ui`'s `schema`), `ui:set`
@@ -162,7 +162,7 @@ pub const KINDS: &[KindSpec] = &[
     KindSpec {
         name: "art",
         container: false,
-        doc: "An art slot (docs/ui.md §13): a spec the art pipeline reads, its texture once there is one.",
+        doc: "An art slot (docs/ui.md §3.3): a spec the art pipeline reads, its texture once there is one.",
     },
     KindSpec {
         name: "icon",
@@ -307,7 +307,7 @@ pub const PROPS: &[PropSpec] = &[
         "rive",
         Ty::Name,
         ["column", "row", "stack", "grid", "panel", "scroll", "slot"],
-        "The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive(\"ui/chest.riv#Chest\")`, docs/ui.md §11.2): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick."
+        "The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive(\"ui/chest.riv#Chest\")`, docs/ui.md §3.3): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick."
     ),
     p!("aspect", Ty::Num, "Width over height (0: none)."),
     p!(

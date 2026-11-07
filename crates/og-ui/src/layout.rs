@@ -326,7 +326,7 @@ pub struct Element {
     /// The frame its background takes (`None`: a plain fill). Without
     /// a style, or a style without that part, the background is the fill.
     pub frame: Option<crate::style_file::StylePart>,
-    /// What it is to the style (docs/ui.md §12.3): the component, part,
+    /// What it is to the style (docs/ui.md §3.2): the component, part,
     /// variant and state a dressing's selector matches, the element class
     /// whose corner and the level whose shadows it takes. With one, its
     /// background is drawn as the style dresses the part, or from the

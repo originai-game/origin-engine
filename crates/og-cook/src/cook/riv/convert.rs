@@ -1,5 +1,5 @@
 //! A read `.riv` ([`super::read`]) as og-ui artboards
-//! ([`og_ui::rive::Artboard`]), phase 1 of `docs/ui.md` §11.2: artboards,
+//! ([`og_ui::rive::Artboard`]), phase 1 of `docs/ui.md` §3.3: artboards,
 //! groups, shapes and their paths (points, rectangle, ellipse, triangle,
 //! polygon, star), fills and strokes of solid colours and gradients,
 //! linear animations keying transform, opacity, colour and the paths'

@@ -1,4 +1,4 @@
-//! Springs defined by perceptual duration and bounce (docs/ui.md §7.2), the
+//! Springs defined by perceptual duration and bounce (docs/ui.md §3.1), the
 //! eases, transitions and motion tokens, and one animated channel: a value
 //! with its velocity that keeps both when its target moves.
 
@@ -172,7 +172,7 @@ impl Transition {
     }
 }
 
-/// What an animation does under reduced motion (docs/ui.md §7.7).
+/// What an animation does under reduced motion (docs/ui.md §3.1).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Reduced {
     /// Movement and scale jump; opacity and colour fade quickly (the default).
@@ -184,7 +184,7 @@ pub enum Reduced {
     Keep,
 }
 
-/// A style's motion personality (docs/ui.md §7.7, §12.2): named springs,
+/// A style's motion personality (docs/ui.md §3.1, §3.1): named springs,
 /// entrance and exit eases and durations, the stagger and its cap, the
 /// overshoot it allows, and its reduced-motion fallback.
 /// [`MotionTokens::default`] is the engine's crisp default, which a
@@ -232,7 +232,7 @@ impl Default for MotionTokens {
 }
 
 impl MotionTokens {
-    /// The motion a style's tokens give (docs/ui.md §7.7): its four named
+    /// The motion a style's tokens give (docs/ui.md §3.1): its four named
     /// springs at the same damping ratio and response, its enter and exit
     /// eases over its `base` and `fast` durations, its stagger, and its
     /// overshoot (a fraction of the move) as the most bounce a spring may
@@ -298,7 +298,7 @@ impl MotionTokens {
     }
 }
 
-/// One animated value (docs/ui.md §7.2): where it is, how fast it moves
+/// One animated value (docs/ui.md §3.1): where it is, how fast it moves
 /// (units per second), where it is going, and since which tick.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(crate) struct Channel {

@@ -1,4 +1,4 @@
-//! A `.riv` through the cook (docs/ui.md §11.2): each artboard its
+//! A `.riv` through the cook (docs/ui.md §3.3): each artboard its
 //! settings choose cooks to an `og.RiveArtboard` blob, id
 //! `<file>.riv#<artboard>`, that og-ui decodes; what the import does not
 //! convert fails the cook with the feature named.

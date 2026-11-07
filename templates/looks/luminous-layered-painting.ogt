@@ -4,7 +4,7 @@ version 1
 # Five depth bands tinted from a dark foreground to a glowing distance, with bloom.
 name "Luminous layered environments"
 mood "cold"
-ui "fantasy"
+ui "default"
 Stylise {
   depthBands 5
   depthBandsNear 3

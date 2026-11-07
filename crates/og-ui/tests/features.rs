@@ -1,4 +1,4 @@
-//! OpenType features of a type step (docs/ui.md §15.5.4): a run with
+//! OpenType features of a type step (docs/ui.md §6.3.4): a run with
 //! features is shaped with its font file, so it draws the feature's glyphs,
 //! and it is measured exactly as it is drawn.
 //!

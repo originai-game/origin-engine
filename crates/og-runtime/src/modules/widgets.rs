@@ -373,7 +373,7 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap
         overlay,
         &|key| shifts.get(&key).copied(),
     );
-    // Mass elements no element owns (docs/ui.md §14), under the UI.
+    // Mass elements no element owns (docs/ui.md §1), under the UI.
     world_frame.emit(og_render::UI_OVERLAY_LAYER, overlay);
     crate::extract::draw_other_pages(overlay, first_text, &rs.ui_pages);
     // Icons on a strict art palette (super::art): the icon atlas is a

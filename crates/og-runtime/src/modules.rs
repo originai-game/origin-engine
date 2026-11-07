@@ -73,7 +73,7 @@ pub use docs::{
     og_ui_set_device, og_ui_set_prop,
 };
 mod motion;
-/// og.ui's world-space members (docs/ui.md §14).
+/// og.ui's world-space members (docs/ui.md §1).
 pub(crate) mod ui_world;
 pub use motion::{
     og_ui_animate, og_ui_define_timeline, og_ui_force_state, og_ui_gesture, og_ui_layout_stats,
@@ -222,7 +222,7 @@ pub(crate) fn mount_back(
             let (warnings, missing) = {
                 let mut ui = shared.lock();
                 docs::end_of_frame(engine_id, &mut ui, ctx);
-                // The tick's camera and anchored entities (docs/ui.md §14).
+                // The tick's camera and anchored entities (docs/ui.md §1).
                 feed.before_end(ctx, &mut ui);
                 BUILDING.with(|b| b.set(None));
                 let frame = ui.end();

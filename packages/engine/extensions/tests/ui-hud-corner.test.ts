@@ -16,8 +16,6 @@ import { beforeAll, expect, test } from "bun:test";
 import { og, defineSystem } from "@origingame/engine";
 import { loadNativeHost } from "../../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../../src/runtime.ts";
-import { shooter } from "@origingame/engine/extensions/shooter/index.ts";
-import { strategy } from "@origingame/engine/extensions/strategy/index.ts";
 
 beforeAll(() => {
   loadNativeHost();
@@ -30,11 +28,11 @@ const HUDS: Record<string, () => void> = {
   action: () => {
     og.ui.statBar("HP", { value: 80, max: 100, label: "HP", showValue: true, anchor: "topLeft" });
     og.ui.hudTimer("Clock", { seconds: 80, label: "Time", anchor: "top" });
-    strategy.resourceBar("Res", { items: [{ key: "coins", name: "Coins", amount: 1200 }], anchor: "topRight" });
-    shooter.ammoCounter("Ammo", { magazine: 12, reserve: 90, anchor: "bottomRight" });
+    og.ui.statBar("Res", { value: 1200, max: 2000, label: "Coins", showValue: true, anchor: "topRight" });
+    og.ui.statBar("Ammo", { value: 12, max: 90, label: "Ammo", showValue: true, anchor: "bottomRight" });
   },
-  strategy: () => {
-    strategy.resourceBar("Res", { items: [{ key: "gold", name: "Gold", amount: 123456, rate: 12 }, { key: "gems", name: "Gems", amount: 40 }], anchor: "topLeft" });
+  resources: () => {
+    og.ui.statBar("Res", { value: 123456, max: 200000, label: "Gold", showValue: true, anchor: "topLeft" });
     og.ui.hudTimer("Clock", { seconds: 40, label: "Wave", anchor: "topRight" });
   },
   timer: () => {

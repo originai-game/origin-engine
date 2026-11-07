@@ -1,10 +1,10 @@
   # ── the component library: genre patterns ──────────────────────────────
-  # (docs/ui.md §11 and Appendix D; TypeScript over the calls above, in
+  # (docs/ui.md §2; TypeScript over the calls above, in
   # packages/engine/src/ui/patterns). Each pattern draws named parts a
   # style dresses (`Inventory.item[rarity=epic][lifted]`), takes its
   # viewmodel as a desc and answers what the player did for the game to
   # apply, works with the pointer, a finger, keys and a pad, declares its
-  # state groups (§7.3, forced with `ui:state:<path>.<group>=<state>`), moves
+  # state groups (§3.2, forced with `ui:state:<path>.<group>=<state>`), moves
   # on the style's springs, plays its sounds and names its role. Every word
   # it shows is the game's (its labels are desc fields).
 
@@ -233,7 +233,7 @@
     field hudDone bool "The HUD editor's Done was pressed."
   }
   fn settingsTree {
-    doc "A game's settings as data (docs/ui.md Appendix B row 2, roadmap G1-7): the title, the pages as tabs (the tab actions step them), the shown page's entries as rows, each its name (a changed one marked) and its control at the end (a switch, a slider with its reading, a segmented control or a dropdown, og.ui.keyBindingRow for a binding by physical key code shown by the layout's label, a button, or the game's own control in a custom row), a heading where its section changes; whole rows scroll. At the end a detail panel with the hovered or focused entry's name and description. At the foot Defaults, Revert and Apply (Apply the primary, both quiet with nothing pending). After applying a display change the confirm dialog asks to keep it, its seconds counting down on a ring, Keep and Revert; at 0 it reverts. The HUD page mounts og.ui.hudLayoutEditor (the component, not a copy) while og.ui.hudEdit() is on, and Edit HUD to turn it on. On a phone in portrait the tabs are chips that scroll, the detail is the row's description under its name, and the foot's buttons span the width."
+    doc "A game's settings as data (docs/ui.md §2, roadmap G1-7): the title, the pages as tabs (the tab actions step them), the shown page's entries as rows, each its name (a changed one marked) and its control at the end (a switch, a slider with its reading, a segmented control or a dropdown, og.ui.keyBindingRow for a binding by physical key code shown by the layout's label, a button, or the game's own control in a custom row), a heading where its section changes; whole rows scroll. At the end a detail panel with the hovered or focused entry's name and description. At the foot Defaults, Revert and Apply (Apply the primary, both quiet with nothing pending). After applying a display change the confirm dialog asks to keep it, its seconds counting down on a ring, Keep and Revert; at 0 it reverts. The HUD page mounts og.ui.hudLayoutEditor (the component, not a copy) while og.ui.hudEdit() is on, and Edit HUD to turn it on. On a phone in portrait the tabs are chips that scroll, the detail is the row's description under its name, and the foot's buttons span the width."
     doc "Parts: Settings.tab[selected], Settings.section, Settings.row[changed][disabled], Settings.detail, Settings.foot, Settings.confirm, Settings.ring. Sounds: tab on a tab, toggle on a switch, confirm on Apply and Keep, back on Revert. Accessibility: the tabs a tablist, each row a group named by its entry (and changed), the confirm an alertdialog whose countdown is a timer. Probe ids: <id>/Tabs/Row/<page>, <id>/Body/Page/Rows/<entry> (its control <entry>/Control), <id>/Foot/Apply, <id>/Foot/Revert, <id>/Foot/Defaults, <id>/Scrim/Confirm/Buttons/Keep, <id>/Scrim/Confirm/Buttons/Revert, <id>/Body/Page/Hud/Edit, <id>/Body/Page/Hud/Editor."
     host false
     param world World "The world (the bindings' action map and capture are world state)."

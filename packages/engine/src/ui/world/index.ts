@@ -1,4 +1,4 @@
-// The world components (docs/ui.md §14, U6c), merged into og.ui by the
+// The world components (docs/ui.md §1, U6c), merged into og.ui by the
 // package entry. Each is declared in crates/og-api/api.ogt (module `ui`,
 // `host false`) and built only from og.ui's public members: world anchors
 // for tags, mass elements for what comes by the thousand, and the ground

@@ -1,7 +1,7 @@
-  # ── documents, layers and actions (docs/ui.md §8, §9, §10, §16) ─────────
+  # ── documents, layers and actions (docs/ui.md §2.1, §6) ─────────
 
   struct UiDocEvent {
-    doc "Something a document did (docs/ui.md §10.2): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`."
+    doc "Something a document did (docs/ui.md §2.1): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`."
     field mount String "The document's mount: the screen's name, or a component instance's path."
     field path String "The element's path."
     field kind String "click, changed, select, emit, action, set, back, or activate and deactivate (a layer became or stopped being the active one)."
@@ -17,7 +17,7 @@
   }
 
   struct UiLayer {
-    doc "A layer of the stack (docs/ui.md §8.1), as its screen declares it."
+    doc "A layer of the stack (docs/ui.md §2.1), as its screen declares it."
     field serial u32 "Its number, unique for the UI's life: what push answered."
     field screen String "The screen's name; also its layer's id, the first segment of its elements' paths."
     field kind String "hud, menu, modal, popover, toast, tooltip or system."
@@ -42,7 +42,7 @@
   }
 
   struct UiActionDesc {
-    doc "A named UI action (docs/ui.md §8.2) bound to og-input's controls: a component asks for an action, not a key."
+    doc "A named UI action (docs/ui.md §2.1) bound to og-input's controls: a component asks for an action, not a key."
     field name String "Its name: confirm, back, tabNext, tabPrev, details, or the game's own."
     field keys List.String "Key codes (KeyboardEvent.code: `Enter`, `KeyE`)."
     field buttons List.String "Standard-mapping pad buttons (GamepadButton's names: `a`, `rightBumper`)."
@@ -111,7 +111,7 @@
   }
 
   fn push {
-    doc "Push a screen onto the layer stack (docs/ui.md §8.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it."
+    doc "Push a screen onto the layer stack (docs/ui.md §2.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it."
     generic S ScreenName
     param world World "The world."
     param screen S "The screen's name."
@@ -228,7 +228,7 @@
   }
 
   fn documentSchema {
-    doc "The reflected schema documents are validated against (docs/ui.md §10): every element kind and every prop, with its value type, the kinds it applies to and whether a control writes it back."
+    doc "The reflected schema documents are validated against (docs/ui.md §2.1): every element kind and every prop, with its value type, the kinds it applies to and whether a control writes it back."
     returns Json
   }
 

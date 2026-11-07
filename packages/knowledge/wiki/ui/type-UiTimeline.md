@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `UiTimeline` (desc struct)
 
-Keyframed tracks and events (docs/ui.md §7.4).
+Keyframed tracks and events (docs/ui.md §3.1).
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -19,7 +19,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct UiTimeline {
-  doc "Keyframed tracks and events (docs/ui.md §7.4)."
+  doc "Keyframed tracks and events (docs/ui.md §3.1)."
   desc true
   field tracks List.TimelineTrack "Its tracks."
   field events List.TimelineEvent "Its events."

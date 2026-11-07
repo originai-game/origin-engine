@@ -24,7 +24,7 @@ version 1
 ---
 extends "faceted-low-poly"
 mood "warm"
-ui "fantasy"
+ui "default"
 PostEffects {
   vignetteIntensity 0.3
 }

@@ -1,4 +1,4 @@
-// What the HUD components (docs/ui.md §11 "HUD", Appendix C) share beyond
+// What the HUD components (docs/ui.md §2 "HUD") share beyond
 // the feedback core: where a component opens (its own anchored group in
 // the safe area, or in place), the HUD chip every readout sits on, meter
 // colours by kind and level, and a stable id for a list item.

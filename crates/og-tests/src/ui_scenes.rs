@@ -20,7 +20,7 @@
 //!   (`glass.rs`).
 //! - `ui-paths`: run-time vector paths, filled by both rules, under a
 //!   gradient, stroked, shadowed, morphed and transformed (`paths.rs`).
-//! - `ui-world` (`docs/ui.md` §14): mass elements (damage numbers,
+//! - `ui-world` (`docs/ui.md` §1): mass elements (damage numbers,
 //!   nameplates faded behind a wall, bars with a ghost, icons, a compact
 //!   score) and two occluded panels over a lit 3D scene.
 

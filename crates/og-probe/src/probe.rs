@@ -395,7 +395,7 @@ pub fn stamp_of(event: &Value) -> f32 {
 /// `time`): the clock, its rate, and the time scale the world keeps in
 /// og.TimeScale (scale, hitStop, scaledDt, scaledElapsed).
 /// A resource's fields as JSON by name (a UI viewmodel's reflected root,
-/// docs/ui.md §9): `None` for a name that is no resource of the world.
+/// docs/ui.md §2.1): `None` for a name that is no resource of the world.
 pub fn resource_json(world: &World, name: &str) -> Option<Value> {
     let id = world
         .id_by_name(name)

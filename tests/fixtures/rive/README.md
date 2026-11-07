@@ -1,7 +1,7 @@
 # Rive import
 
 Rive files converted at cook time into og-ui artboards (`docs/ui.md`
-§11.2). Asset-only: no game, no reference frame.
+§3.3). Asset-only: no game, no reference frame.
 
 `assets/` holds nine files from rive-runtime's unit tests
 (`tests/unit_tests/assets`, revision `4f864426617a`, MIT, `LICENSE`), of

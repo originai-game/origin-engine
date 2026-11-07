@@ -1,4 +1,4 @@
-//! Gesture recognisers and focus groups (docs/ui.md §8.3, §8.5).
+//! Gesture recognisers and focus groups (docs/ui.md §2.1, §2.1).
 //!
 //! **Tap, double tap and long press** are recognised at the start of a
 //! frame against the last frame's recognisers ([`crate::GestureSpec`] on

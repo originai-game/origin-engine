@@ -1,4 +1,4 @@
-//! Art slots (docs/ui.md §13): every kind's defaults are a sound spec, a
+//! Art slots (docs/ui.md §3.3): every kind's defaults are a sound spec, a
 //! wrong spec is refused with its fix, and the art brief
 //! (packages/knowledge/scripts/brief.ts, `UI_KINDS`) asks for the same
 //! aspects, focal points, safe areas and fits og-ui's kinds declare.

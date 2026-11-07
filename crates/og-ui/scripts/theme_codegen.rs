@@ -414,7 +414,7 @@ pub fn generate(tokens: &str) -> Result<String, String> {
 
 const HEAD: &str = r##"//! The engine's default style: the colour roles of a game UI and the values
 //! of the design language the engine shares with origin-agent
-//! (`packages/design`, docs/ui.md §12.1): the neutral ladder, a
+//! (`packages/design`, docs/ui.md §3): the neutral ladder, a
 //! neutral primary set apart by fill and weight (2026-11-02), hue only where
 //! it means something, flat glass on floating chrome only, and borderless
 //! controls told apart by tone.
@@ -721,7 +721,7 @@ fn timing(k: &str) -> Vec<&str> {
 
 const TIMING_HEAD: &str = r#"/// The timing table's own numbers (the design language's `motion.timing`;
 /// its other rows name the durations, eases and springs above). A style's
-/// motion block overrides each (docs/ui.md §7.7).
+/// motion block overrides each (docs/ui.md §3.1).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Timing {
     /// How much a pad's virtual cursor slows and settles over a control, 0–1.
@@ -751,7 +751,7 @@ pub struct Spring {
 
 "#;
 
-const DRESS_HEAD: &str = r#"/// The default style's part dressings (docs/ui.md §12.3), in a style
+const DRESS_HEAD: &str = r#"/// The default style's part dressings (docs/ui.md §3.2), in a style
 /// file's grammar: flat glass on floating chrome only (`thick` on what
 /// carries text over the game, `regular` on HUD capsules and hints), its
 /// own hairline and no second border; content flat (cards keep their

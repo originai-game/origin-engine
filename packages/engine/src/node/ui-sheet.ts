@@ -1,5 +1,5 @@
 // The contact sheet and filmstrip images of `og ui preview` (docs/ui.md
-// §16.4): cells scaled to one height, laid out in a grid, each labelled in
+// §6): cells scaled to one height, laid out in a grid, each labelled in
 // a 5x7 pixel font of its own (uppercase, digits and a little punctuation),
 // so a sheet needs no font file and is the same bytes on every machine.
 import type { Image } from "./png.ts";

@@ -1,4 +1,4 @@
-//! Mounting a document (docs/ui.md §10.2): its tree is built into the
+//! Mounting a document (docs/ui.md §2.1): its tree is built into the
 //! immediate-mode [`Ui`] where it is mounted, every tick, so documents and
 //! code mix in one tree. Props are resolved in order (the line, the
 //! matching `at` blocks, a probe edit), bindings are evaluated against the

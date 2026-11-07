@@ -1,4 +1,4 @@
-// Text fields (docs/ui.md §11, Controls): the field and the area framed
+// Text fields (docs/ui.md §2, Controls): the field and the area framed
 // with a label, an icon, a suffix, a clear button and a helper, error or
 // counter line; the search box with its suggestions. The editing is
 // og.ui.textField's (IME, selection, clipboard, undo); the frame is this

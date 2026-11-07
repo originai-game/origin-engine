@@ -2,26 +2,17 @@
 
 Generic screen documents built from og-ui's public elements. Copy one with
 `og ui eject <screen>` and edit it in `assets/ui/<screen>.ogt`.
-Genre screens belong to `extensions/<kit>`: install with `og ui add <kit>`
-and copy with `og ui eject <kit>/<screen>` (for example `rpg/inventory`).
-The full Appendix B catalogue is `extensions/tests/screen-catalogue.md`.
+Genre kits are being rebuilt and are not bundled yet. Local kits install
+with `og ui add <directory>` and their documents can be copied with
+`og ui eject <kit>/<screen>`. The rebuild catalogue and acceptance contract
+are in `docs/ui.md` §4 and §6.
 
 Each document says at its top what its viewmodel holds (its `props`), the
-events it emits to code, and which slot takes which og.ui component or
-pattern. Code loads and mounts it:
-
-```ts
-import { rpg } from "@origingame/engine/extensions/rpg/index.ts";
-
-og.load.document(world, "ui/rpg/inventory.ogt");    // once
-og.ui.push(world, "inventory", vm);             // onto the layer stack
-const r = og.ui.screen("inventory", vm);        // each tick it is up, to fill its slots
-if (og.ui.openSlot("inventory/Grid")) {         // <screen>/<slot id>
-  rpg.inventoryGrid(/* … */);
-  og.ui.close();
-}
-for (const e of r.events) if (e.kind === "emit" && e.name === "sort") sort(vm);
-```
+events it emits to code, and its named slots. Structure belongs in these
+documents, look in CSS and tokens, and data in named sources. The retained
+authoring API mounts documents once with named inputs and uses keyed
+collections for lists. Its signatures are pending the core API landing;
+the generated API describes currently implemented calls.
 
 Every word a document shows is a string key with an English fallback
 (`key "screen.inventory.title"`, `text "Inventory"`): a game's string
@@ -31,10 +22,10 @@ shows the fallback. Each has a `fixture default` viewmodel, so
 pattern fills a slot and draws its own title, tabs or actions, the
 document leaves those to it (pass the pattern an empty `title`).
 
-`og ui eject --list` prints these generic screens. The kits lane cooks
-them together with the genre screens against the full Appendix B catalogue.
+`og ui eject --list` prints these generic screens. Core document tests
+cook them independently of genre kits and style packs.
 
-| Appendix B row | Documents |
+| Purpose | Documents |
 |---|---|
 | Boot, splash, title, main menu, mode select | `splash`, `title`, `main-menu`, `mode-select` |
 | Settings (graphics, audio, controls and remapping, accessibility, language, HUD layout editor) | `settings`, `hud-editor` |

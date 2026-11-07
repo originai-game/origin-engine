@@ -2,7 +2,7 @@ type project
 version 1
 ---
 # The materials kit's review sheet: `og ui sheet materials` renders each
-# page at desktop and phone, 100 % and 150 % (docs/ui.md §17.3): one card
+# page at desktop and phone, 100 % and 150 % (docs/ui.md §6): one card
 # per preset, over the style's plain ground, at fixed parameters.
 name "Materials kit sheet"
 id "materials-sheet"
@@ -12,6 +12,6 @@ profile "2d"
 tick 60
 seed 1
 ui {
-  screen "cards-fantasy" "style:fantasy"
-  screen "cards-scifi" "style:scifi"
+  screen "cards-light" "scheme:light"
+  screen "cards-dark" "scheme:dark"
 }

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "kind": "kit",
-  "name": "puzzle",
-  "version": "1.0.0",
-  "description": "Puzzle and casual level maps and level goals, built from common components",
-  "entry": "index.ts",
-  "types": "types.ts"
-}

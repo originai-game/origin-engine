@@ -1,4 +1,4 @@
-//! UI particles (`docs/ui.md` §5.5): emitters attached to an element and
+//! UI particles (`docs/ui.md` §3.3): emitters attached to an element and
 //! clipped by its layer (confetti, sparks, coin streams, rarity bursts),
 //! drawn as og-render's particle mass elements, each particle a few values
 //! (where it starts, where it flies, its spin, colour and start tick) whose

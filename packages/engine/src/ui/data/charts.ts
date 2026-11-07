@@ -1,4 +1,4 @@
-// Charts (docs/ui.md §11, Data): line, area, bar (grouped or stacked),
+// Charts (docs/ui.md §2, Data): line, area, bar (grouped or stacked),
 // radar, pie and donut. Marks are drawn with og.ui.setDraw (paths, filled
 // paths, arcs, polygons) in the style's series colours (§12.2); the axes,
 // the legend and the tooltip are labels and parts a style dresses

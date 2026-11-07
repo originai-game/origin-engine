@@ -371,7 +371,7 @@ impl Ui {
             damping: crate::theme::TIMING.press_damping,
             response_ms: t.durations_ms.instant,
         });
-        // Each spring is a motion channel (docs/ui.md §7.2): a retarget
+        // Each spring is a motion channel (docs/ui.md §3.1): a retarget
         // keeps its value and velocity, so an interrupted hover never jumps.
         let step = |ui: &mut Ui, name: &str, spring: crate::theme::Spring, target: f32| -> f32 {
             let k = child_key(key, name);

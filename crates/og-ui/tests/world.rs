@@ -1,4 +1,4 @@
-//! World-space UI (`docs/ui.md` §14, `src/world.rs`), without a renderer:
+//! World-space UI (`docs/ui.md` §1, `src/world.rs`), without a renderer:
 //! anchored elements land on their projected points, scale with distance,
 //! declutter by priority and clamp to the edge with an arrow; occlusion
 //! asks the renderer for a depth test; mass elements pool, age out and

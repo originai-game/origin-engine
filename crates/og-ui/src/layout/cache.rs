@@ -157,7 +157,7 @@ impl TextCache {
     }
 
     /// Keeps `t`'s measurements through this frame's sweep: a node that
-    /// kept its layout (docs/ui.md §6.3) did not measure, but still uses them.
+    /// kept its layout (docs/ui.md §2) did not measure, but still uses them.
     fn touch(&mut self, t: &TextContent) {
         let frame = self.frame;
         if let Some(list) = self.widths.get_mut(&t.text) {
@@ -211,7 +211,7 @@ impl<V> Sweep for std::collections::HashMap<String, Vec<Kept<V>>> {
 }
 
 /// Last frame's nodes and which of this frame's subtrees have the same
-/// layout inputs (docs/ui.md §6.3): a clean subtree given the same size
+/// layout inputs (docs/ui.md §2): a clean subtree given the same size
 /// keeps its layout (copied from last frame) instead of being laid out.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct LayoutCache {

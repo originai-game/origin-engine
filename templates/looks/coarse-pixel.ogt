@@ -6,7 +6,7 @@ version 1
 # keeps its own colours, so its far layer is not flattened into one mass.
 name "Coarse minimal pixel art"
 mood "dark"
-ui "pixel"
+ui "default"
 antialias off
 Stylise {
   pixelHeight 90

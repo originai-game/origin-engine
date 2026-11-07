@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `NavLinks` (desc struct)
 
-Explicit focus moves from an element (docs/ui.md §8.3), over the spatial pick: each a path (a full one, `Hud/Bag`, or a sibling's id); empty leaves that move to the layout. A path to a focus group lands on its remembered member (or its first); one to any other container, on its first focusable control.
+Explicit focus moves from an element (docs/ui.md §2.1), over the spatial pick: each a path (a full one, `Hud/Bag`, or a sibling's id); empty leaves that move to the layout. A path to a focus group lands on its remembered member (or its first); one to any other container, on its first focusable control.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -21,7 +21,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct NavLinks {
-  doc "Explicit focus moves from an element (docs/ui.md §8.3), over the spatial pick: each a path (a full one, `Hud/Bag`, or a sibling's id); empty leaves that move to the layout. A path to a focus group lands on its remembered member (or its first); one to any other container, on its first focusable control."
+  doc "Explicit focus moves from an element (docs/ui.md §2.1), over the spatial pick: each a path (a full one, `Hud/Bag`, or a sibling's id); empty leaves that move to the layout. A path to a focus group lands on its remembered member (or its first); one to any other container, on its first focusable control."
   desc true
   field up String "Where Up goes."
   field down String "Where Down goes."

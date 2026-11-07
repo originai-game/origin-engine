@@ -1,4 +1,4 @@
-//! A version 2 style's tokens (docs/ui.md §12.2): the named values every
+//! A version 2 style's tokens (docs/ui.md §3.1): the named values every
 //! component draws from, beside the 33 palette roles of [`crate::Palette`].
 //!
 //! - **Colour**: rarity tiers, eight team colours, damage and element

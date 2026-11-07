@@ -182,7 +182,7 @@ impl Ui {
     }
 
     /// Draws the element added last (a container just opened) with `draw`
-    /// (`docs/ui.md` §5): its shape, fills, strokes, effects, opacity,
+    /// (`docs/ui.md` §3.3): its shape, fills, strokes, effects, opacity,
     /// blend, how it clips its children and whether its subtree draws
     /// offscreen through a material; over its background.
     pub fn set_draw(&mut self, draw: crate::paint::ElementDraw) {
@@ -204,7 +204,7 @@ impl Ui {
     /// the dressing's fills, strokes, effects, material, blend and mask
     /// replace the draw's (each list the dressing sets), and its atlas art
     /// replaces the whole draw; the draw's shape stays, so a ring, a star
-    /// or a segment keeps its geometry in every style (docs/ui.md §12.3).
+    /// or a segment keeps its geometry in every style (docs/ui.md §3.2).
     pub fn set_draw_dressable(&mut self, draw: crate::paint::ElementDraw) {
         if let Some(last) = self.nodes.len().checked_sub(1) {
             self.draws.insert(last, draw);

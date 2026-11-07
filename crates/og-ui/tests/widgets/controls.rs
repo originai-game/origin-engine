@@ -162,7 +162,7 @@ fn a_grid_out_of_view_builds_only_its_own_rows() {
     assert!(last - first <= 20, "built cells {first}..{last}");
 }
 
-/// Small controls' reach (docs/ui.md §8.1): on a touch screen a control's
+/// Small controls' reach (docs/ui.md §2.1): on a touch screen a control's
 /// box grows to the 44 px touch target, and where two reaches overlap the
 /// nearest box wins; a box around them (a panel behind) never takes a
 /// press from a reach, a sibling's own box does; `hitSlop` reaches on any

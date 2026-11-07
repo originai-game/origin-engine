@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.documentSchema`
 
-The reflected schema documents are validated against (docs/ui.md §10): every element kind and every prop, with its value type, the kinds it applies to and whether a control writes it back.
+The reflected schema documents are validated against (docs/ui.md §2.1): every element kind and every prop, with its value type, the kinds it applies to and whether a control writes it back.
 
 ```ts
 og.ui.documentSchema(): unknown
@@ -18,7 +18,7 @@ Binding symbol `og_ui_document_schema` · publish builds: kept
 
 ```ogt
 fn documentSchema {
-  doc "The reflected schema documents are validated against (docs/ui.md §10): every element kind and every prop, with its value type, the kinds it applies to and whether a control writes it back."
+  doc "The reflected schema documents are validated against (docs/ui.md §2.1): every element kind and every prop, with its value type, the kinds it applies to and whether a control writes it back."
   returns Json
 }
 ```

@@ -1,4 +1,4 @@
-// The on-screen keyboard (docs/ui.md §11, Appendix D): a floating panel at
+// The on-screen keyboard (docs/ui.md §2): a floating panel at
 // the screen's bottom for pads and touch, the text with its caret, a
 // candidate bar while composing (an IME's), and rows of keys a pad walks
 // (focus wraps by rows) and a finger presses. Letters with shift and caps,

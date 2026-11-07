@@ -1,4 +1,4 @@
-//! Flat glass's presets (`docs/ui.md` §5.3): the three weights, their
+//! Flat glass's presets (`docs/ui.md` §3.3): the three weights, their
 //! elevations, the scrim and the two fallbacks as [`UiMode::Backdrop`]s and
 //! tints, from the design language's material values (seeded from the
 //! platform's `docs/design-language.md` §Materials and its tokens; a style

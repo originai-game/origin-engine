@@ -195,7 +195,7 @@ module ui {
     doc "A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an alpha. Neither is white."
     desc true
     field token Option.ThemeColor "A semantic colour of the theme."
-    field role Option.String "A colour role the style declares of its own (its `roles` block, docs/ui.md §12.2: a game's corruption or faction colour) by name, when no token is given; a name the style lacks draws magenta."
+    field role Option.String "A colour role the style declares of its own (its `roles` block, docs/ui.md §3.1: a game's corruption or faction colour) by name, when no token is given; a name the style lacks draws magenta."
     field color Option.Color "An sRGB colour as authored, when no token or role is given."
     field alpha f32 "The opacity." {
       default 1
@@ -238,7 +238,7 @@ module ui {
       unit cssPx
     }
     field frame Option.StylePart "The style frame its background takes (a HUD element, a card); null is a plain fill. Without a style the fill is drawn either way."
-    field part Option.String "The part its style dresses it as, a selector with its variant, state and attributes (`ShopCard.frame[rarity=epic][selected]`): the style's most specific matching `dress` blocks draw it, and a part the style does not dress draws from the tokens (docs/ui.md §12.3). Overrides frame; null keeps frame's."
+    field part Option.String "The part its style dresses it as, a selector with its variant, state and attributes (`ShopCard.frame[rarity=epic][selected]`): the style's most specific matching `dress` blocks draw it, and a part the style does not dress draws from the tokens (docs/ui.md §3.2). Overrides frame; null keeps frame's."
     field partClass Option.String "The element class whose corner, outline and elevation an undressed part takes from the tokens: panel, dialog, card, tooltip, button, field, chip, badge, tab, slot, bar, hud, avatar. Null: a decoration (a scrim, a sweep, a node's art), which takes nothing from the tokens, only what a style dresses it with; a part that is a card or a panel names its class."
     field aspect f32 "Width over height (0: none): with the height left to fit, it is as tall as its laid-out width over this; with a fixed height and the width left to fit, as wide as the height times it." {
       min 0
@@ -458,13 +458,13 @@ module ui {
     field contrast Contrast "Standard or high contrast. The page's prefers-contrast: more takes high contrast too (Viewport.highContrast)."
     field primaryColor Option.Color "An sRGB colour as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's."
     field reducedMotion bool "Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion)."
-    field textScale f32 "The player's text size (a settings screen's slider, kept with the other settings): every text size and leading is multiplied by it and the layout grows around the text (control, row and header heights by the leading body text gains), never clipping it. 1 is the style's sizes, 1.5 the largest (a larger one lays out at 1.5): docs/ui.md §15.2 holds every screen to 1.5, 200 % deferred." {
+    field textScale f32 "The player's text size (a settings screen's slider, kept with the other settings): every text size and leading is multiplied by it and the layout grows around the text (control, row and header heights by the leading body text gains), never clipping it. 1 is the style's sizes, 1.5 the largest (a larger one lays out at 1.5): docs/ui.md §6.1 holds every screen to 1.5, 200 % deferred." {
       default 1
       min 1
       max 2
       unit ratio
     }
-    field unitScale f32 "The og-ui unit in CSS px (docs/ui.md §15.2): the UI lays out in units (og.ui.viewport and og.ui.frameViewport are the surface over it) and draws them at it, so every length grows with the surface (the style's text, space, radii and controls, and a game's own px, alike) and the player's textScale multiplies over it. 0 is auto: on a mouse or pad surface its 1080p-equivalent height (the shorter of the height and the width's 16:9 height) over 720, 1 to 2, so a 1280x720 layout fills a 1080p window with body text at 21 CSS px and the smallest step at 18; a touch surface keeps CSS px (1). A value of 1 to 2 pins it (a game that lays out for one size)." {
+    field unitScale f32 "The og-ui unit in CSS px (docs/ui.md §6.1): the UI lays out in units (og.ui.viewport and og.ui.frameViewport are the surface over it) and draws them at it, so every length grows with the surface (the style's text, space, radii and controls, and a game's own px, alike) and the player's textScale multiplies over it. 0 is auto: on a mouse or pad surface its 1080p-equivalent height (the shorter of the height and the width's 16:9 height) over 720, 1 to 2, so a 1280x720 layout fills a 1080p window with body text at 21 CSS px and the smallest step at 18; a touch surface keeps CSS px (1). A value of 1 to 2 pins it (a game that lays out for one size)." {
       default 0
       min 0
       max 2
@@ -552,20 +552,20 @@ module ui {
   struct UiTheme {
     doc "The style values the UI draws with, read-only."
     field scheme Scheme "The palette in use."
-    field palette Map.String "Each ThemeColor, then each colour role the style declares of its own (docs/ui.md §12.2), as `#rrggbb` or `#rrggbbaa` (sRGB as authored)."
+    field palette Map.String "Each ThemeColor, then each colour role the style declares of its own (docs/ui.md §3.1), as `#rrggbb` or `#rrggbbaa` (sRGB as authored)."
     field space Map.f32 "The spacing scale by name (xxs, xs, sm, md, lg, xl, xxl, xl3), in CSS pixels."
     field radius Map.f32 "The corner radii by name (small, control, bar, panel), in CSS pixels."
     field typeRamp Map.TypeStep "Each TypeStepName's step."
     field sizes ControlSizes "The control sizes of the density in effect."
     field durationsMs Map.f32 "The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds."
     field style String "The configured style's name; empty for the default style."
-    field styleVersion u32 "The configured style file's version: 1 for a version-1 style, whose game keeps the controls and dialogs it shipped with (docs/ui.md §12.1); 2 for a version-2 style and the default style."
+    field styleVersion u32 "The configured style file's version: 1 for a version-1 style, whose game keeps the controls and dialogs it shipped with (docs/ui.md §3); 2 for a version-2 style and the default style."
     field contrast Contrast "The variant in effect: high when the game asked for it or the page prefers more contrast."
     field reducedMotion bool "Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement."
     field textScale f32 "The player's text scale in effect (UiDesc.textScale, 1 to 1.5): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this."
     field unit f32 "The og-ui unit in effect, in CSS px (UiDesc.unitScale; auto: 1 to 2 by the surface): what every length the UI reads and gives is in, og.ui.bounds and og.ui.viewport too. Only what leaves the UI for the page is CSS px: the probe's dump_ui and og.render's screen sprites; a game drawing its own screen sprites beside the UI multiplies by it."
     field reducedTransparency bool "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
-    field tokens Json "The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric button, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
+    field tokens Json "The style's tokens (docs/ui.md §3.1), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric button, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
   }
 
   callback UiBuild {
@@ -580,7 +580,7 @@ module ui {
   }
 
   fn viewport {
-    doc "This tick's play surface as the UI lays out on it: the render target's size, safe area and covered region in og-ui units (CSS pixels over UiTheme.unit, docs/ui.md §15.2: 1 on touch and up to 720p, so CSS pixels there) and device pixels per unit, from what the host reports."
+    doc "This tick's play surface as the UI lays out on it: the render target's size, safe area and covered region in og-ui units (CSS pixels over UiTheme.unit, docs/ui.md §6.1: 1 on touch and up to 720p, so CSS pixels there) and device pixels per unit, from what the host reports."
     param world World "The world."
     returns Viewport
   }
@@ -1559,7 +1559,7 @@ module ui {
   }
 
   struct VirtualCursorDesc {
-    doc "A pad's virtual cursor (docs/ui.md §8.3). The zero value moves at 900 units a second, takes a quarter second from a fine start to full speed, has a half-strength magnet and scrolls 1200 units a second."
+    doc "A pad's virtual cursor (docs/ui.md §2.1). The zero value moves at 900 units a second, takes a quarter second from a fine start to full speed, has a half-strength magnet and scrolls 1200 units a second."
     desc true
     field speed f32 "Units a second at full tilt; 0 is 900." {
       unit cssPx
@@ -1625,7 +1625,7 @@ module ui {
   }
 
   fn setHudEdit {
-    doc "Turns the HUD edit mode on or off (docs/ui.md §8.4; kept until changed). While it is on, elements with ElementProps.customize stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. Build og.ui.hudLayoutEditor for steps, Next, Reset and Done."
+    doc "Turns the HUD edit mode on or off (docs/ui.md §2.1; kept until changed). While it is on, elements with ElementProps.customize stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. Build og.ui.hudLayoutEditor for steps, Next, Reset and Done."
     param on bool "On or off."
     returns Void
   }
@@ -1691,7 +1691,7 @@ module ui {
   }
 
   fn hudLayoutEditor {
-    doc "The HUD edit mode's panel (docs/ui.md §8.4): the selected element's key, size and opacity steps, Next (the next element: how keys and pads choose one), Reset (the selected one, or all with none selected) and Done, which turns the edit mode off. Build it where it fits, while og.ui.hudEdit().on; presses on it edit nothing behind it. Its children are `Title`, `Selected`, `Size/Less`, `Size/More`, `Opacity/Less`, `Opacity/More`, `Actions/Next`, `Actions/Reset`, `Actions/Done`."
+    doc "The HUD edit mode's panel (docs/ui.md §2.1): the selected element's key, size and opacity steps, Next (the next element: how keys and pads choose one), Reset (the selected one, or all with none selected) and Done, which turns the edit mode off. Build it where it fits, while og.ui.hudEdit().on; presses on it edit nothing behind it. Its children are `Title`, `Selected`, `Size/Less`, `Size/More`, `Opacity/Less`, `Opacity/More`, `Actions/Next`, `Actions/Reset`, `Actions/Done`."
     param id String "Its id."
     param desc HudEditorDesc "Its labels."
     returns HudEditorResult
@@ -1742,7 +1742,7 @@ module ui {
   }
 
   fn feedback {
-    doc "Play a UI event's feedback from the style (docs/ui.md §7.8): one sound of its set, at random and never the one it played last, at a volume and pitch from the set's ranges, and its haptic pattern at the player's strength (setHaptics). Widgets play their own events (press, focus, select, confirm, back, open, close, tab, toggleOn, toggleOff, sliderTick); game code plays the rest: scrollTick, typewriter, counterTick, notification, warning, error, success, reward and the reveals revealCommon to revealMythic. The choices come from the UI state, so a replay plays the same. An unknown event or one the style leaves silent plays nothing."
+    doc "Play a UI event's feedback from the style (docs/ui.md §3.1): one sound of its set, at random and never the one it played last, at a volume and pitch from the set's ranges, and its haptic pattern at the player's strength (setHaptics). Widgets play their own events (press, focus, select, confirm, back, open, close, tab, toggleOn, toggleOff, sliderTick); game code plays the rest: scrollTick, typewriter, counterTick, notification, warning, error, success, reward and the reveals revealCommon to revealMythic. The choices come from the UI state, so a replay plays the same. An unknown event or one the style leaves silent plays nothing."
     param event String "The event's name."
     param rise f32 "A rising cascade's step, 0 to 1, walking the set's pitch range up (a counter's ticks); below 0 picks the pitch at random."
     returns Void

@@ -1,5 +1,5 @@
   # ── the component library: foundations and controls ─────────────────────
-  # (docs/ui.md §11; TypeScript over the calls above, in
+  # (docs/ui.md §2; TypeScript over the calls above, in
   # packages/engine/src/ui/foundations and ui/controls). Each control is an
   # interactive part a style dresses by its state (`Button.base[primary][hover]`,
   # `Toggle.track[on]`, `Slider.knob[focused]`), moving between its §7.3 state
@@ -10,7 +10,7 @@
   # says its role to the accessibility tree and plays the style's sounds.
 
   enum TextRole {
-    doc "A text's role in the hierarchy (docs/ui.md §12.2): its type step, font and weight come from the style's type tokens for the role."
+    doc "A text's role in the hierarchy (docs/ui.md §3.1): its type step, font and weight come from the style's type tokens for the role."
     variant body "Running text (the default)."
     variant display "The largest: a title screen's name, a victory banner. A heading."
     variant title "A screen's or a dialog's title. A heading."
@@ -46,7 +46,7 @@
   }
 
   fn text {
-    doc "Text in a role (docs/ui.md §11, Foundations): the style's type step, font and weight for display, title, heading, body, label, caption or numeric (monospaced figures), in a tone, cut after maxLines with an ellipsis (the probe and a screen reader still read it whole). Display, title and heading are headings to a screen reader (a style's flourish frames them). It grows with the player's text size and wraps between CJK characters by kinsoku. Probe: the element `<id>`, kind label, its whole text."
+    doc "Text in a role (docs/ui.md §2, Foundations): the style's type step, font and weight for display, title, heading, body, label, caption or numeric (monospaced figures), in a tone, cut after maxLines with an ellipsis (the probe and a screen reader still read it whole). Display, title and heading are headings to a screen reader (a style's flourish frames them). It grows with the player's text size and wraps between CJK characters by kinsoku. Probe: the element `<id>`, kind label, its whole text."
     host false
     param id String "Its id."
     param value String "The text (a string-table message, og.i18n.t)."
@@ -124,7 +124,7 @@
   }
 
   struct ArtSlotDesc {
-    doc "An art slot (docs/ui.md §13): where a generated or authored image goes, and what it shows until it is there."
+    doc "An art slot (docs/ui.md §3.3): where a generated or authored image goes, and what it shows until it is there."
     desc true
     field texture Option.Texture "The art; null shows the placeholder."
     field kind String "Its kind (Appendix F: keyArt, portrait, itemIcon, cardArt, banner…): the placeholder's silhouette is the kind's. A portrait, bust, character, splash, avatar, banner or keyArt waits as head and shoulders on a wash of two hues, a body (a paperdoll's figure) as a whole standing figure with no box; any other kind as an icon of its name in the style's set, else `image`."
@@ -207,7 +207,7 @@
   }
 
   fn shapeBox {
-    doc "A decorative shape drawn by the UI pass (docs/ui.md §5.1) in the style's colours: a pip, a gem, a star, a ring, a backdrop blob. It takes no input and is decoration to a screen reader. Part: `Shape.<kind>` (a style dresses `Shape.star` with art). Probe: `<id>`."
+    doc "A decorative shape drawn by the UI pass (docs/ui.md §3.3) in the style's colours: a pip, a gem, a star, a ring, a backdrop blob. It takes no input and is decoration to a screen reader. Part: `Shape.<kind>` (a style dresses `Shape.star` with art). Probe: `<id>`."
     host false
     param id String "Its id."
     param desc ShapeBoxDesc "Its outline and paints."
@@ -262,7 +262,7 @@
   }
 
   struct ViewFrameDesc {
-    doc "A framed 3D view (docs/ui.md §5.5): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad."
+    doc "A framed 3D view (docs/ui.md §3.3): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad."
     desc true
     field texture Option.Texture "The render target's colour; null shows the placeholder (loading)."
     field width Option.Size "Its width; null grows."
@@ -319,7 +319,7 @@
   }
 
   fn viewFrame {
-    doc "A viewport in a frame (docs/ui.md §5.5, Foundations): og.ui.sceneViewport in a style-dressed slot that turns with a drag (keeping the fling's speed for a moment), tilts within its limits, zooms with the wheel or a pinch, and turns by 15° per Left or Right while it has the focus (Tab, a pad). Until the target has a texture it shows a placeholder with a spinner. Draw the scene into a target of view.pixelWidth × view.pixelHeight with the yaw, pitch and zoom it answers; a target of another shape covers the frame, cropped, never squashed. Parts: `ViewFrame.frame[focused]`, `ViewFrame.hint`. Role image (its label), its turn as its value. Probe: `<id>`, `<id>/Box/Picture/View`, `<id>/Box/HintRow/Hint`."
+    doc "A viewport in a frame (docs/ui.md §3.3, Foundations): og.ui.sceneViewport in a style-dressed slot that turns with a drag (keeping the fling's speed for a moment), tilts within its limits, zooms with the wheel or a pinch, and turns by 15° per Left or Right while it has the focus (Tab, a pad). Until the target has a texture it shows a placeholder with a spinner. Draw the scene into a target of view.pixelWidth × view.pixelHeight with the yaw, pitch and zoom it answers; a target of another shape covers the frame, cropped, never squashed. Parts: `ViewFrame.frame[focused]`, `ViewFrame.hint`. Role image (its label), its turn as its value. Probe: `<id>`, `<id>/Box/Picture/View`, `<id>/Box/HintRow/Hint`."
     host false
     param id String "Its id."
     param desc ViewFrameDesc "The target, its camera and its turn."
@@ -354,7 +354,7 @@
   }
 
   fn emitter {
-    doc "An ambient particle emitter (docs/ui.md §5.5) laid over its parent's area: sparkles on a rare card, embers on a forge, snow over a winter menu, confetti on a win. It takes no input, is decoration to a screen reader, and stops under reduced motion. Built on og.ui.particles; every particle is the engine's, seeded and in the snapshot. Probe: `<id>`."
+    doc "An ambient particle emitter (docs/ui.md §3.3) laid over its parent's area: sparkles on a rare card, embers on a forge, snow over a winter menu, confetti on a win. It takes no input, is decoration to a screen reader, and stops under reduced motion. Built on og.ui.particles; every particle is the engine's, seeded and in the snapshot. Probe: `<id>`."
     host false
     param id String "Its id."
     param desc EmitterDesc "Its look and rate."
@@ -380,7 +380,7 @@
   }
 
   fn effectLayer {
-    doc "A layer (docs/ui.md §5.4): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hit's glitch, a locked tile in grey), the material's parameters set from one amount. Its children keep their input and accessibility. Part: `Layer.frame`. Probe: `<id>` and its children."
+    doc "A layer (docs/ui.md §3.3): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hit's glitch, a locked tile in grey), the material's parameters set from one amount. Its children keep their input and accessibility. Part: `Layer.frame`. Probe: `<id>` and its children."
     host false
     param id String "Its id."
     param desc EffectLayerDesc "The material and its amount."

@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `PresenceSpec` (desc struct)
 
-How an element arrives or leaves (docs/ui.md §7.5): the values it enters from or exits to, and how it moves between them and its own.
+How an element arrives or leaves (docs/ui.md §3.1): the values it enters from or exits to, and how it moves between them and its own.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -20,7 +20,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct PresenceSpec {
-  doc "How an element arrives or leaves (docs/ui.md §7.5): the values it enters from or exits to, and how it moves between them and its own."
+  doc "How an element arrives or leaves (docs/ui.md §3.1): the values it enters from or exits to, and how it moves between them and its own."
   desc true
   field values List.PropValue "Where it starts (entering) or ends (leaving)."
   field kind Option.TransitionKind "A transition kind's values in place of values: what the kind enters from and exits to."

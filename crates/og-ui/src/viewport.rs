@@ -1,4 +1,4 @@
-//! The viewport element (`docs/ui.md` §5.5): a camera's view of a scene
+//! The viewport element (`docs/ui.md` §3.3): a camera's view of a scene
 //! layer (a character on a turntable, an item to inspect, a car in a
 //! garage) shown in the layout like an image, sized by it, and taking
 //! input through: a press or a drag inside it becomes a ray into that

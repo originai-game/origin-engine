@@ -1,4 +1,4 @@
-  # ── components: world (docs/ui.md §14, on anchored and mass elements) ──
+  # ── components: world (docs/ui.md §1, on anchored and mass elements) ──
   # Tags on a unit or a point (nameplates, prompts, waypoints, loot labels,
   # speech) open a world anchor and so draw under the screen's elements,
   # follow the camera, fade behind the scene and declutter. Thousands of

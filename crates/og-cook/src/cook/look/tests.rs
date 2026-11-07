@@ -187,8 +187,8 @@ fn checks_fields_against_the_records() {
             .unwrap_err()
             .contains("styles/x/style.ogt")
     );
-    let l = one("ui \"pixel\"\n", &["@styles/pixel/style.ogt"]).unwrap();
-    assert_eq!(l.ui.as_deref(), Some("@styles/pixel/style.ogt"));
+    let l = one("ui \"default\"\n", &[]).unwrap();
+    assert_eq!(l.ui, None, "core default requires no style asset");
     let l = one(
         "ui \"pixel\"\n",
         &["styles/pixel/style.ogt", "@styles/pixel/style.ogt"],
@@ -200,7 +200,7 @@ fn checks_fields_against_the_records() {
         "the game's own wins"
     );
     let e = one("ui \"velvet\"\n", &[]).unwrap_err();
-    assert!(e.contains("velvet") && e.contains("pixel, scifi"), "{e}");
+    assert!(e.contains("velvet") && e.contains("neither assets/"), "{e}");
     assert!(
         one("skin \"skins/x/skin.ogt\"\n", &[])
             .unwrap_err()
@@ -398,51 +398,32 @@ fn the_built_ins_are_the_template_assets() {
     assert_eq!(builtin("canvas/paper"), None);
 }
 
-/// A checkout reads its own packs from disk (nothing is compiled into
-/// `og`): a pack's cooked files, its densities included, are what a game
-/// naming it gets; its licences are `og style eject`'s only; its `art/`
-/// sources are neither.
+/// Shared fonts remain available even when no genre style is installed.
 #[test]
-fn a_built_in_style_is_its_packs_files_read_from_the_checkout() {
+fn shared_style_assets_are_read_from_the_checkout() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles");
     assert_eq!(
         styles_dir().map(|d| d.canonicalize().unwrap()),
         Some(dir.canonicalize().unwrap())
     );
-    let ids: Vec<&str> = style_files("@styles/fantasy/style.ogt")
-        .into_iter()
-        .map(|(id, _)| id)
-        .collect();
-    for want in [
-        "style.ogt",
-        "atlas.png",
-        "atlas@2x.png",
-        "atlas@3x.png",
-        "Cinzel-Bold.ttf",
-    ] {
-        assert!(
-            ids.contains(&format!("@styles/fantasy/{want}").as_str()),
-            "{ids:?}"
-        );
-    }
+    let ids: Vec<&str> = styles().iter().map(StyleFile::id).collect();
+    assert!(ids.contains(&"@styles/shared/Cinzel-Bold.ttf"));
     assert!(
         !ids.iter()
             .any(|id| id.contains("/art/") || id.ends_with(".md") || id.ends_with("OFL.txt")),
         "{ids:?}"
     );
-    let style = style_files("@styles/fantasy/style.ogt")
-        .into_iter()
-        .find(|(id, _)| *id == "@styles/fantasy/style.ogt")
-        .unwrap()
-        .1;
-    assert_eq!(style, std::fs::read(dir.join("fantasy/style.ogt")).unwrap());
+    let font = styles()
+        .iter()
+        .find(|f| f.id() == "@styles/shared/Cinzel-Bold.ttf")
+        .unwrap();
+    assert_eq!(
+        font.bytes(),
+        std::fs::read(dir.join("shared/Cinzel-Bold.ttf")).unwrap()
+    );
     let licences: Vec<&str> = style_licences().iter().map(|f| f.id()).collect();
     assert!(
-        licences.contains(&"@styles/fantasy/LICENSES.md"),
-        "{licences:?}"
-    );
-    assert!(
-        licences.contains(&"@styles/fantasy/art-requests.json"),
+        licences.contains(&"@styles/shared/LICENSES.md"),
         "{licences:?}"
     );
 }
@@ -452,63 +433,52 @@ fn a_built_in_style_is_its_packs_files_read_from_the_checkout() {
 /// does not carry megabytes of outlines it never draws.
 #[test]
 fn a_styles_chinese_companions_ride_with_a_chinese_game_only() {
-    let look = (
-        "looks/x.ogt",
-        "type look\nversion 1\n---\nui \"storybook\"\n",
-    );
+    let choices = og_ui::style_gen::StyleChoices::for_look_from("fixture", "", "", &[]);
+    let style = og_ui::style_gen::generate(&choices).unwrap();
     let cjk = |files: &[(&str, &str)]| -> Vec<&'static str> {
         let root = project(files);
-        builtin_files(look.0, look.1, &root)
+        companion_files(&style.text, &shown_cjk(&root))
             .into_iter()
             .map(|(id, _)| id)
             .filter(|id| id.starts_with("@styles/cjk/"))
             .collect()
     };
-    let english = cjk(&[
-        look,
-        (
-            "strings/en.ogt",
-            "type strings\nversion 1\n---\nlocale \"en\"\n",
-        ),
-    ]);
+    let english = cjk(&[(
+        "strings/en.ogt",
+        "type strings\nversion 1\n---\nlocale \"en\"\n",
+    )]);
     assert!(english.is_empty(), "{english:?}");
-    let chinese = cjk(&[
-        look,
-        (
-            "strings/zh.ogt",
-            "type strings\nversion 1\n---\nlocale \"zh-CN\"\n",
-        ),
-    ]);
+    let chinese = cjk(&[(
+        "strings/zh.ogt",
+        "type strings\nversion 1\n---\nlocale \"zh-CN\"\n",
+    )]);
     assert_eq!(
         chinese,
         [
             "@styles/cjk/NotoSansSC-Regular.ttf",
             "@styles/cjk/NotoSansSC-Regular.ttf.ogt",
-            "@styles/cjk/NotoSerifSC-SemiBold.ttf",
-            "@styles/cjk/NotoSerifSC-SemiBold.ttf.ogt",
+            "@styles/cjk/NotoSansSC-Bold.ttf",
+            "@styles/cjk/NotoSansSC-Bold.ttf.ogt",
         ]
     );
 }
 
-/// A generated seed style draws with the packs' fonts and icons
-/// (`@styles/fantasy/Cinzel-Bold.ttf`): a game that names it gets
+/// A generated style draws with shared fonts and icons: a game gets
 /// them in its bundle, whatever its languages, with their settings.
 #[test]
 fn a_seed_styles_shared_fonts_and_icons_ride_with_the_game() {
-    let look = ("looks/x.ogt", "type look\nversion 1\n---\nui \"gilded\"\n");
-    let root = project(&[look]);
-    let ids: Vec<&str> = builtin_files(look.0, look.1, &root)
+    let choices = og_ui::style_gen::StyleChoices::for_look_from("fixture", "", "", &[]);
+    let style = og_ui::style_gen::generate(&choices).unwrap();
+    let ids: Vec<&str> = shared_files(&style.text)
         .into_iter()
         .map(|(id, _)| id)
         .collect();
     for id in [
-        "@styles/gilded/style.ogt",
-        "@styles/gilded/sfx-tap.ogt",
-        "@styles/fantasy/Cinzel-Bold.ttf",
-        "@styles/fantasy/Cinzel-Bold.ttf.ogt",
-        "@styles/fantasy/Newsreader-Medium.ttf",
-        "@styles/fantasy/icons.png",
-        "@styles/fantasy/icons.png.ogt",
+        "@styles/shared/InstrumentSans-Regular.ttf",
+        "@styles/shared/InstrumentSans-Regular.ttf.ogt",
+        "@styles/shared/PTMono-Regular.ttf",
+        "@styles/shared/ink-icons.png",
+        "@styles/shared/ink-icons.png.ogt",
     ] {
         assert!(ids.contains(&id), "{id}: {ids:?}");
     }
@@ -516,7 +486,7 @@ fn a_seed_styles_shared_fonts_and_icons_ride_with_the_game() {
         !ids.iter().any(|id| id.starts_with("@styles/cjk/")),
         "{ids:?}"
     );
-    assert!(!ids.contains(&"@styles/fantasy/atlas.png"), "{ids:?}");
+    assert!(!ids.contains(&"@styles/shared/Cinzel-Bold.ttf"), "{ids:?}");
 }
 
 #[test]

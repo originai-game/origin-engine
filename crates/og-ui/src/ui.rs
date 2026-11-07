@@ -177,7 +177,7 @@ impl Hit {
 /// the point, unless points it holds only by its reach (hit slop, the touch
 /// minimum) lie over it, where the nearest box wins. A box around those
 /// reaches (a dialog's backdrop, a panel, a scroller) never takes the
-/// point from them; a sibling's own box does (docs/ui.md §8.1).
+/// point from them; a sibling's own box does (docs/ui.md §2.1).
 pub(crate) fn pick_hit(hits: &[Hit], x: f32, y: f32, eligible: impl Fn(&Hit) -> bool) -> u64 {
     let mut reached: Vec<(&Hit, f32)> = Vec::new();
     for h in hits
@@ -353,7 +353,7 @@ pub(crate) struct State {
     pub pad_stick: [(u8, u64); 3],
     /// Motion in flight: channels, states, plays, ghosts, gestures.
     pub motion: crate::motion::state::MotionState,
-    /// Last frame's focus groups by key (docs/ui.md §8.3).
+    /// Last frame's focus groups by key (docs/ui.md §2.1).
     pub groups: IdMap<u64, crate::recognize::GroupState>,
     /// Last frame's explicit focus moves by control key: the key each of
     /// up, down, left, right, next and prev lands on (a control's or a
@@ -364,9 +364,9 @@ pub(crate) struct State {
     pub recognizers: IdMap<u64, (crate::element::GestureSpec, u64)>,
     /// The press being recognised and a tap waiting for its double.
     pub tap: crate::recognize::TapState,
-    /// A pad's virtual cursor (docs/ui.md §8.3).
+    /// A pad's virtual cursor (docs/ui.md §2.1).
     pub vcursor: crate::vcursor::VCursorState,
-    /// The players' HUD layouts and the edit mode (docs/ui.md §8.4).
+    /// The players' HUD layouts and the edit mode (docs/ui.md §2.1).
     pub hud: crate::hud_layout::HudState,
 }
 
@@ -498,7 +498,7 @@ pub struct Ui {
     pub(crate) drag_paths: IdMap<u64, String>,
     pub(crate) drop_accepts: IdMap<u64, Vec<String>>,
     /// Last frame's input hash of each element and its subtree, with its
-    /// layout, for reuse (docs/ui.md §6.3).
+    /// layout, for reuse (docs/ui.md §2).
     pub(crate) kept: crate::layout::LayoutCache,
     /// This frame's counts (into `UiFrame::stats`).
     pub(crate) stats: LayoutStats,
@@ -510,9 +510,9 @@ pub struct Ui {
     /// The draws of [`Ui::set_draw_dressable`]: a component's own look for
     /// a part, which a style that dresses the part restyles.
     pub(crate) dressable: std::collections::HashSet<usize>,
-    /// Documents, their mounts and the layer stack (docs/ui.md §8.1, §10).
+    /// Documents, their mounts and the layer stack (docs/ui.md §2.1, §2.1).
     pub(crate) docs: crate::doc::build::DocHost,
-    /// Named UI actions and the last device (docs/ui.md §8.2).
+    /// Named UI actions and the last device (docs/ui.md §2.1).
     pub(crate) actions: crate::actions::Actions,
     /// World-space UI (`crate::world`): anchors, panels, mass elements,
     /// particles, meta layers.

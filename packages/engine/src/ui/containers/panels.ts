@@ -1,5 +1,5 @@
 // Panels and cards, the scroll area, the accordion and split views
-// (docs/ui.md §11, Containers). Frames are parts a style dresses
+// (docs/ui.md §2, Containers). Frames are parts a style dresses
 // (`Card.frame[selected]`, `Accordion.header[expanded]`, `Split.divider`),
 // drawn from the tokens (the element class's shape, stroke and elevation)
 // where it does not; only decoration (chevrons, rings, fades) is drawn

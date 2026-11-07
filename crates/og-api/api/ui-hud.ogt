@@ -1,4 +1,4 @@
-  # ── components: HUD (docs/ui.md §11, Appendix C) ───────────────────────
+  # ── components: HUD (docs/ui.md §2) ───────────────────────
   # Every HUD component builds in place (inside the game's own anchor or
   # row), or opens its own anchored group in the safe area when its desc
   # names an anchor: that group's id is the component's with Hud after it,

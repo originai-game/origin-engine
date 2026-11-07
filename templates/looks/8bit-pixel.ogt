@@ -9,7 +9,7 @@ version 1
 # colours, so its flat fields stay flat instead of turning to a checker.
 name "8-bit-inspired pixel art"
 mood "bright"
-ui "pixel"
+ui "default"
 antialias off
 Stylise {
   pixelHeight 192

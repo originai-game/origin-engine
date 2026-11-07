@@ -18,7 +18,7 @@
 //! mask <gradient> | mask image <x> <y> <w> <h>
 //! ornament corner|divider|flourish…
 //! ornamentTint <colour>
-//! sound <event> "<asset>"                               (an event of docs/ui.md §7.8: press, confirm, toggleOn…)
+//! sound <event> "<asset>"                               (an event of docs/ui.md §3.1: press, confirm, toggleOn…)
 //! ```
 //!
 //! where a paint is
@@ -50,7 +50,7 @@ use og_core::ogt::{Entry, Value};
 /// What a dressing's atlas regions are cut from: the atlas's size in
 /// texels (`None`: the style has no `atlas` line) and the style's scale.
 /// It also carries the colour roles the style declares of its own
-/// (`roles { … }`, docs/ui.md §12.2), which a paint names like a palette
+/// (`roles { … }`, docs/ui.md §3.1), which a paint names like a palette
 /// role.
 #[derive(Clone, Copy, Debug)]
 pub struct AtlasContext {

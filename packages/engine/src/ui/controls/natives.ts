@@ -1,5 +1,5 @@
 // The controls og-ui implements natively (crates/og-ui/src/widgets/controls,
-// docs/ui.md §11): the switch, the checkbox, the radio group, the segmented
+// docs/ui.md §2): the switch, the checkbox, the radio group, the segmented
 // control, the slider, the number stepper and the dropdown. One set, which
 // documents, the inspector and TypeScript all call; each is one host call
 // with its desc as JSON.

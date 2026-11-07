@@ -152,7 +152,7 @@ fn the_default_dressings_put_glass_on_floating_chrome_only() {
     }
 }
 
-/// The og-ui unit (docs/ui.md §15.2) zooms the whole UI: a 1080p window
+/// The og-ui unit (docs/ui.md §6.1) zooms the whole UI: a 1080p window
 /// lays out on 1280×720 units and draws them at 1.5 CSS px, so a fixed
 /// 300 px box a game writes is 450 CSS px wide, body text draws at 21 px
 /// and the caption step at 19.5, a pointer at the CSS point lands on the

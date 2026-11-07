@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `MassTemplateDesc` (desc struct)
 
-A mass element template (docs/ui.md §14): declared once, then instanced thousands of times a frame with a few values each. No instance is laid out; its motion is the timeline, evaluated on the GPU.
+A mass element template (docs/ui.md §1): declared once, then instanced thousands of times a frame with a few values each. No instance is laid out; its motion is the timeline, evaluated on the GPU.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -42,7 +42,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct MassTemplateDesc {
-  doc "A mass element template (docs/ui.md §14): declared once, then instanced thousands of times a frame with a few values each. No instance is laid out; its motion is the timeline, evaluated on the GPU."
+  doc "A mass element template (docs/ui.md §1): declared once, then instanced thousands of times a frame with a few values each. No instance is laid out; its motion is the timeline, evaluated on the GPU."
   desc true
   field kind MassKind "What it draws."
   field space MassSpace "Where instances' positions are."

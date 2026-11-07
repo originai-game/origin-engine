@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `UiDocEvent` (struct)
 
-Something a document did (docs/ui.md §10.2): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`.
+Something a document did (docs/ui.md §2.1): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@ Something a document did (docs/ui.md §10.2): a click, a changed control, a list
 
 ```ogt
 struct UiDocEvent {
-  doc "Something a document did (docs/ui.md §10.2): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`."
+  doc "Something a document did (docs/ui.md §2.1): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`."
   field mount String "The document's mount: the screen's name, or a component instance's path."
   field path String "The element's path."
   field kind String "click, changed, select, emit, action, set, back, or activate and deactivate (a layer became or stopped being the active one)."

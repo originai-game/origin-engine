@@ -1,0 +1,19 @@
+{
+  "breaking": [
+    {
+      "member": "genre UI kits",
+      "change": "Removed the 15 old genre kits and their documents, sheets, fixtures, and pack-only tests. The nine replacement kits are not yet built. The materials extension and VFX packs remain available.",
+      "fix": "Compose with core UI controls and game-owned documents until the replacement kits are available. See docs/ui.md for the authoring and acceptance contract."
+    },
+    {
+      "member": "creation ui and bundled style packs",
+      "change": "Removed the 14 old style packs. Creation ui accepts only default; all 37 look presets select the asset-free core default. Shared and CJK assets remain available for game-owned styles.",
+      "fix": "Use ui default for creation, or author a game-owned style with og style new and select its asset path in the look. Do not select a removed built-in pack."
+    },
+    {
+      "member": "og upgrade ui-kits codemod",
+      "change": "Removed the codemod that rewrote game code to the deleted genre kits. Its dispatcher reports manual review rather than writing imports to missing kits.",
+      "fix": "Compose the required UI from core controls; there is no automatic rewrite to the replacement kits."
+    }
+  ]
+}

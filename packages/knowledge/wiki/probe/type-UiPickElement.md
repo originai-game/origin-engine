@@ -6,7 +6,7 @@ Module [`probe`](../probe.md) · [index](../index.md)
 
 ### `UiPickElement` (struct)
 
-The UI element under a point (docs/ui.md §16.1): the topmost one that shows something or takes input; a layout container that draws nothing lets the point through.
+The UI element under a point (docs/ui.md §6): the topmost one that shows something or takes input; a layout container that draws nothing lets the point through.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
@@ -23,7 +23,7 @@ The UI element under a point (docs/ui.md §16.1): the topmost one that shows som
 
 ```ogt
 struct UiPickElement {
-  doc "The UI element under a point (docs/ui.md §16.1): the topmost one that shows something or takes input; a layout container that draws nothing lets the point through."
+  doc "The UI element under a point (docs/ui.md §6): the topmost one that shows something or takes input; a layout container that draws nothing lets the point through."
   field id String "Its id."
   field path String "Its full path, as dump_ui and touch_move_to name it."
   field kind String "What made it: label, button, panel, icon, a kit's own kind."

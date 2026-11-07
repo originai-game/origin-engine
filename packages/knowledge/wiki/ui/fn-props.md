@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.props`
 
-Give the element built just before (any widget, or a container just closed) the element model's props: transform, opacity, z, placement, grid, variants, overlaps, motion, states, presence, gestures (docs/ui.md §6, §7). Call it right after the element.
+Give the element built just before (any widget, or a container just closed) the element model's props: transform, opacity, z, placement, grid, variants, overlaps, motion, states, presence, gestures (docs/ui.md §2, §3.1). Call it right after the element.
 
 ```ts
 og.ui.props(desc?: ElementProps): boolean
@@ -22,7 +22,7 @@ Binding symbol `og_ui_props` · publish builds: kept
 
 ```ogt
 fn props {
-  doc "Give the element built just before (any widget, or a container just closed) the element model's props: transform, opacity, z, placement, grid, variants, overlaps, motion, states, presence, gestures (docs/ui.md §6, §7). Call it right after the element."
+  doc "Give the element built just before (any widget, or a container just closed) the element model's props: transform, opacity, z, placement, grid, variants, overlaps, motion, states, presence, gestures (docs/ui.md §2, §3.1). Call it right after the element."
   param desc ElementProps "Its props."
   returns bool "False when no element was built before it."
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// The pseudo-locale of a game's string tables (docs/ui.md §15.3):
+// The pseudo-locale of a game's string tables (docs/ui.md §6.1):
 // `assets/strings/qps-ploc.ogt`, every message of the base table with its
 // Latin letters accented, 40 % longer and in brackets, so a run in it shows
 // which words overflow their box and which never came from a table (they

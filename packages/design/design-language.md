@@ -11,10 +11,10 @@ already differs.
 
 **Where it binds.** The language binds the engine's **default style** alone
 (`crates/og-ui/src/theme.rs`, generated from `tokens.json`; docs/ui.md
-§12.1) and origin-agent. A game may draw in the default style, a built-in
+§3) and origin-agent. A game may draw in the default style, a built-in
 pack or a style of its own (generated or hand-made, a look's `ui` line);
 the engine requires none of them. A game's style may restyle, re-dress, re-shape
-or replace anything here above the accessibility floor of docs/ui.md §15.2.
+or replace anything here above the accessibility floor of docs/ui.md §6.1.
 
 **Carriers.** og-ui reads the generated constants (palette, space, radii,
 type ramp, densities, durations, springs, eases, press scale) and the
@@ -196,7 +196,7 @@ big title (`SectionHeader eyebrow="10月11日星期日" title="今日"`).
 `density.pad`) for a gamepad across a room. Lengths are og-ui units: on a
 mouse or pad surface one unit grows with the surface's CSS height against
 a 720 base (1 to 2), so 14 px body text is 21 px on a 1080p window and the
-smallest step, 12 px, is 18 px there (docs/ui.md §15.2); touch surfaces keep
+smallest step, 12 px, is 18 px there (docs/ui.md §6.1); touch surfaces keep
 CSS px. The player's text scale (1 to 2) multiplies over it.
 
 ## Shape, elevation, material
@@ -475,7 +475,7 @@ From origingame d25f1f15 (2026-11-02):
 
 - `fg-muted` #5f5f66 → #46464c (light) and #aeaeb2 → #c8c8cd (dark): it held
   3.0–3.8 on a selected row and 3.85–4.29 on a thick menu over a scene of
-  the other scheme (docs/ui.md §5.3).
+  the other scheme (docs/ui.md §3.3).
 - `fg-subtle` (dark) #98989d → #9e9ea3: a field's placeholder on `fill`.
 - `accent-ink` (light) #8f5600 → #7a4800: "Undo" on a light toast over warm
   light read 4.26.

@@ -1,4 +1,4 @@
-  # ── components: feedback (docs/ui.md §11, Appendix E) ─────────────────
+  # ── components: feedback (docs/ui.md §2) ─────────────────
   # Built only from the public primitives (open, setDraw, props, label,
   # icon, particles, anchors), each with named parts a style dresses
   # (`Notification.card[achievement]`), a viewmodel, state groups the

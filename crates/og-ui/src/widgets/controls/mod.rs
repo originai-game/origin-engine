@@ -1,4 +1,4 @@
-//! The controls (docs/ui.md §11, Controls): the switch, the checkbox, the
+//! The controls (docs/ui.md §2, Controls): the switch, the checkbox, the
 //! radio group, the segmented control, the slider, the number stepper and
 //! the dropdown, one native set the TypeScript API, the documents and the
 //! inspector all call. What they share lives here: one interactive part
@@ -34,7 +34,7 @@ pub use ranges::{
     NumberResult, NumberStepperDesc, SliderMark, ValueFormat, ValueSliderDesc, ValueSliderResult,
 };
 
-/// The smallest touch target on a coarse pointer (docs/ui.md §16.5, XAG).
+/// The smallest touch target on a coarse pointer (docs/ui.md §6, XAG).
 const TOUCH: f32 = 44.0;
 
 // ── colour, as the controls mix it ──────────────────────────────────────────

@@ -4,7 +4,7 @@ version 1
 # Hard shadow bands, cool-tinted shadows, outlines that thin with distance.
 name "Anime cel-shaded 3D"
 mood "bright"
-ui "cyber"
+ui "default"
 MaterialStyle {
   toon true
   shadowTint "#2a3060"

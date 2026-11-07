@@ -118,7 +118,7 @@ pub fn text_effects(
     }
 }
 
-/// `ui-world` (`docs/ui.md` §14, og-render's `ui::mass`): mass elements and
+/// `ui-world` (`docs/ui.md` §1, og-render's `ui::mass`): mass elements and
 /// occluders over a lit 3D scene. The camera looks down -z from (0, 2, 12)
 /// at a wall 4 m wide and 4 m tall at z = 0 (centred on the screen); the
 /// mass elements' tick is 100.
@@ -434,7 +434,7 @@ pub fn world(
     Ok(scene)
 }
 
-/// `ui-panel` (`docs/ui.md` §14, world panels): a UI layer drawn into a
+/// `ui-panel` (`docs/ui.md` §1, world panels): a UI layer drawn into a
 /// render target instead of the overlay, the target the emissive map of a
 /// 3 × 2 m quad turned 25° about y in front of the camera. The panel's
 /// rect, 480 × 320 CSS px, is on the screen at (760, 380), where nothing

@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `ViewFrameDesc` (desc struct)
 
-A framed 3D view (docs/ui.md §5.5): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad.
+A framed 3D view (docs/ui.md §3.3): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -32,7 +32,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct ViewFrameDesc {
-  doc "A framed 3D view (docs/ui.md §5.5): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad."
+  doc "A framed 3D view (docs/ui.md §3.3): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad."
   desc true
   field texture Option.Texture "The render target's colour; null shows the placeholder (loading)."
   field width Option.Size "Its width; null grows."

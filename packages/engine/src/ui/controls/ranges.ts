@@ -1,4 +1,4 @@
-// Ranges (docs/ui.md §11, Controls): the range slider, two knobs on one
+// Ranges (docs/ui.md §2, Controls): the range slider, two knobs on one
 // track. The slider and the number stepper are og-ui's native controls
 // (natives.ts).
 

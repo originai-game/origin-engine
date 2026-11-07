@@ -1,4 +1,4 @@
-//! The CPU budgets of docs/ui.md §15.1 for menus, measured per tick on the
+//! The CPU budgets of docs/ui.md §6.3 for menus, measured per tick on the
 //! reference machines in release (the perf lane: `scripts/perf.sh`, or
 //! `cargo test -p og-ui --release --test tests perf_ -- --ignored
 //! --nocapture`). A tick is what a host pays: `begin`, the build, `end`

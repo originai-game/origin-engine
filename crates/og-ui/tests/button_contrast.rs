@@ -2,7 +2,7 @@
 //! light and dark themes, at rest, hovered and pressed, on each ground a
 //! button sits on (the screen's `backdrop`, a `well` well, a `panel` panel,
 //! a `panelRaised` dialog): live text holds 3:1, an error under it (4.5:1,
-//! WCAG 1.4.3's, is what the art director judges toward, docs/ui.md §16.5;
+//! WCAG 1.4.3's, is what the art director judges toward, docs/ui.md §6;
 //! each ratio is printed). Read from the frame og-ui draws: the label's text
 //! command over the button's fill quad over the ground's quad, composited
 //! in linear light as the renderer blends.

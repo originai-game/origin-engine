@@ -366,7 +366,7 @@ impl Ui {
         self.nodes[i].probe_text = desc.label.unwrap_or_else(|| name.to_owned());
     }
 
-    /// An art slot (docs/ui.md §13): its texture fitted as its spec says
+    /// An art slot (docs/ui.md §3.3): its texture fitted as its spec says
     /// (cover around the focal point, contain, a nine-slice…), cut to its
     /// mask, with the style's treatments (a vignette, a frame, a rarity
     /// glow); until the art is there, a placeholder drawn from the style

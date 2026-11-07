@@ -139,7 +139,7 @@ impl Ui {
     }
 
     /// The og-ui unit a frame on the CSS `viewport` would lay out in (the
-    /// game's pin, else the surface's: docs/ui.md §15.2).
+    /// game's pin, else the surface's: docs/ui.md §6.1).
     pub fn unit_for(&self, viewport: &Viewport) -> f32 {
         surface_unit(&self.configured, viewport)
     }
@@ -341,7 +341,7 @@ impl Ui {
 
     /// The style's part dressings (its [`crate::StyleFile::dressings`],
     /// bound to its loaded assets): what every part of the UI is drawn
-    /// with where a dressing's selector matches it (docs/ui.md §12.3).
+    /// with where a dressing's selector matches it (docs/ui.md §3.2).
     /// Until a game sets them the theme's version 1 art makes them, or for
     /// a theme without art the default style's ([`crate::default_dressings`]).
     pub fn set_dressings(&mut self, dressings: Vec<crate::dress::Dressing>) {
@@ -383,7 +383,7 @@ impl Ui {
     }
 
     /// The player's haptic strength: 0 turns haptics off, 1 plays the
-    /// style's patterns as set (docs/ui.md §7.8).
+    /// style's patterns as set (docs/ui.md §3.1).
     pub fn set_haptics(&mut self, intensity: f32) {
         self.haptics = if intensity.is_finite() {
             intensity.clamp(0.0, 1.0)
@@ -463,7 +463,7 @@ impl Ui {
     /// Starts a frame with a root of your own (its size is the viewport; the
     /// safe area is added to its padding; its background covers the whole viewport).
     pub fn begin_with(&mut self, input: InputFrame, viewport: Viewport, root: Element) {
-        // The og-ui unit (docs/ui.md §15.2): the frame lays out in units of
+        // The og-ui unit (docs/ui.md §6.1): the frame lays out in units of
         // it on the surface's size over it and draws it times larger
         // (`end`), so every length grows with the surface; input comes in
         // in units too.
@@ -494,7 +494,7 @@ impl Ui {
         self.theme = effective_theme(self.configured, &viewport).to_unit(unit);
         // The style's atlas at the density this surface draws at.
         self.theme.art.atlas = self.configured.art.atlas_for(viewport.dpr());
-        // Last frame's nodes are kept to compare against (docs/ui.md §6.3).
+        // Last frame's nodes are kept to compare against (docs/ui.md §2).
         if !self.building {
             std::mem::swap(&mut self.kept.prev, &mut self.nodes);
             std::mem::swap(&mut self.prev_kinds, &mut self.kinds);
@@ -605,7 +605,7 @@ impl Ui {
         self.feedback(event.event());
     }
 
-    /// Plays a UI event's feedback (docs/ui.md §7.8): the sound of the
+    /// Plays a UI event's feedback (docs/ui.md §3.1): the sound of the
     /// style's set for it and its haptic, in the tick of the input that
     /// caused it. Widgets queue their own events (press, focus, toggles,
     /// tabs, slider steps, dialogs, toasts); game code queues the rest
@@ -769,7 +769,7 @@ impl Ui {
     }
 
     /// The style's type step for `role` at this frame's breakpoint
-    /// (docs/ui.md §12.2): its size, line height and tracking; Chinese,
+    /// (docs/ui.md §3.1): its size, line height and tracking; Chinese,
     /// Japanese and Korean text a line height half again its size.
     pub fn type_step(&self, role: crate::tokens::TypeRole) -> TypeStep {
         let tok = self.theme.tokens.typography.get(role, self.breakpoint());

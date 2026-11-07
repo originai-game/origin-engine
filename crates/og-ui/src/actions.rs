@@ -1,4 +1,4 @@
-//! Named UI actions and their glyphs (docs/ui.md §8.2). An action
+//! Named UI actions and their glyphs (docs/ui.md §2.1). An action
 //! (`confirm`, `back`, `tabNext`, `tabPrev`, `details`, or one the game
 //! defines) is bound to og-input's controls, key codes and standard-mapping
 //! pad buttons, or follows an og-input gameplay action

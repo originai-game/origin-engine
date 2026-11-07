@@ -1,5 +1,5 @@
 // og.ui.subtitles: subtitles and captions to the Xbox Accessibility
-// Guidelines' 104 (docs/ui.md §11, §15.2). Read against The Last of Us
+// Guidelines' 104 (docs/ui.md §2, §6.1). Read against The Last of Us
 // Part II's and Forza's subtitle settings (size presets, background
 // opacity, speaker names in colour, direction arrows) and XAG 104 itself:
 // at the bottom centre of the safe area, at most two lines of speech,

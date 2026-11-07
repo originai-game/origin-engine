@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `UiLayoutStats` (struct)
 
-What the last frame rebuilt and laid out (docs/ui.md §6.3).
+What the last frame rebuilt and laid out (docs/ui.md §2).
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
@@ -17,7 +17,7 @@ What the last frame rebuilt and laid out (docs/ui.md §6.3).
 
 ```ogt
 struct UiLayoutStats {
-  doc "What the last frame rebuilt and laid out (docs/ui.md §6.3)."
+  doc "What the last frame rebuilt and laid out (docs/ui.md §2)."
   field elements u32 "Elements built."
   field rebuilt u32 "Elements whose inputs changed since the tick before (or are new)."
   field laidOut u32 "Elements laid out; the rest kept their last layout."

@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `UiProp` (enum)
 
-An animatable value of an element (docs/ui.md §7.1): a state, a timeline key, a presence or og.ui.animate moves it. Colours are sRGB components 0 to 1; rotation and skew are radians.
+An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. Colours are sRGB components 0 to 1; rotation and skew are radians.
 
 A string: one of the variants below. The zero value is `"x"`.
 
@@ -35,7 +35,7 @@ A string: one of the variants below. The zero value is `"x"`.
 
 ```ogt
 enum UiProp {
-  doc "An animatable value of an element (docs/ui.md §7.1): a state, a timeline key, a presence or og.ui.animate moves it. Colours are sRGB components 0 to 1; rotation and skew are radians."
+  doc "An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. Colours are sRGB components 0 to 1; rotation and skew are radians."
   variant x "Its horizontal offset, CSS px (the transform's x)."
   variant y "Its vertical offset, CSS px."
   variant scaleX "Its horizontal scale (1: unscaled)."

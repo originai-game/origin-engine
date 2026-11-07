@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `UiLayer` (struct)
 
-A layer of the stack (docs/ui.md §8.1), as its screen declares it.
+A layer of the stack (docs/ui.md §2.1), as its screen declares it.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
@@ -27,7 +27,7 @@ A layer of the stack (docs/ui.md §8.1), as its screen declares it.
 
 ```ogt
 struct UiLayer {
-  doc "A layer of the stack (docs/ui.md §8.1), as its screen declares it."
+  doc "A layer of the stack (docs/ui.md §2.1), as its screen declares it."
   field serial u32 "Its number, unique for the UI's life: what push answered."
   field screen String "The screen's name; also its layer's id, the first segment of its elements' paths."
   field kind String "hud, menu, modal, popover, toast, tooltip or system."

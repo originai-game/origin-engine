@@ -45,7 +45,7 @@ fn project() -> &'static Path {
             std::fs::create_dir_all(p.parent().unwrap()).unwrap();
             std::fs::write(p, bytes).unwrap();
         };
-        let font = repo().join("templates/styles/fantasy/Newsreader-Medium.ttf");
+        let font = repo().join("templates/styles/shared/Newsreader-Medium.ttf");
         write("styles/mini/Body.ttf", &std::fs::read(font).unwrap());
         write(
             "styles/mini/Body.ttf.ogt",
@@ -70,7 +70,7 @@ fn project() -> &'static Path {
             )
             .as_bytes(),
         );
-        let font = repo().join("templates/styles/fantasy/Cinzel-Bold.ttf");
+        let font = repo().join("templates/styles/shared/Cinzel-Bold.ttf");
         write("styles/copied/Body.ttf", &std::fs::read(font).unwrap());
         write(
             "styles/copied/Body.ttf.ogt",

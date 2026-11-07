@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `MetaDesc` (desc struct)
 
-A meta layer (docs/ui.md §14): full screen, over the scene and under the screen's elements, never taking input.
+A meta layer (docs/ui.md §1): full screen, over the scene and under the screen's elements, never taking input.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -25,7 +25,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct MetaDesc {
-  doc "A meta layer (docs/ui.md §14): full screen, over the scene and under the screen's elements, never taking input."
+  doc "A meta layer (docs/ui.md §1): full screen, over the scene and under the screen's elements, never taking input."
   desc true
   field kind MetaKind "What it draws."
   field color Option.Paint "Vignette and tint: its ink; null is a deep red."

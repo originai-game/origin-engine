@@ -8,7 +8,7 @@ version 1
 # still visibly at 8; tests/evidence/art/samples/NOTES.md).
 name "Rubber-hose animation"
 mood "high-contrast"
-ui "cartoon"
+ui "default"
 MaterialStyle {
   toon true
   outlineWidth 3

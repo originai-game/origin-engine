@@ -1,4 +1,4 @@
-// What the controls (docs/ui.md §11, U6a) share: one interactive part
+// What the controls (docs/ui.md §2, U6a) share: one interactive part
 // (`control`) that a style dresses by its interaction state, whose motion
 // is a §7.3 state group (so a style's springs move it and the probe can
 // force each state), with its accessibility and a touch target of at least
@@ -22,7 +22,7 @@ export function forward(adjust: number): number {
   return rtl() ? -adjust : adjust;
 }
 
-/** The smallest touch target on a coarse pointer (docs/ui.md §16.5, XAG). */
+/** The smallest touch target on a coarse pointer (docs/ui.md §6, XAG). */
 export const TOUCH = 44;
 
 /** An element's interaction state, as its `interaction` group says (last tick; a probe-forced state included). */

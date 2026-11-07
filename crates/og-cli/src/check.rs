@@ -747,9 +747,9 @@ impl Target {
             serde_json::json!({
                 "@origingame/engine": [typescript_path(&pkg.join("types/index.d.ts"))],
                 "@origingame/engine/playtest": [typescript_path(&pkg.join("src/playtest.ts"))],
-                // og ui check's rules over a playtest's frames (docs/ui.md §16.5).
+                // og ui check's rules over a playtest's frames (docs/ui.md §6).
                 "@origingame/engine/ui-check": [typescript_path(&pkg.join("src/node/ui-check.ts"))],
-                // What a UI kit is written with, and the bundled kits (docs/ui.md §17.5).
+                // What a UI kit is written with, and the bundled kits (docs/ui.md §4).
                 "@origingame/engine/ui-extensions": [typescript_path(&pkg.join("src/ui-extensions.ts"))],
                 "@origingame/engine/ui-parts/*": [typescript_path(&pkg.join("src/ui-parts/*.ts"))],
                 "@origingame/engine/extensions/*": [typescript_path(&pkg.join("extensions/*"))],

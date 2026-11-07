@@ -47,7 +47,7 @@ impl UiDocument {
     /// Parses and validates a document (`source`: its asset id, for errors
     /// and the write-back). Every error has its line and its fix.
     ///
-    /// A document is `version 2`, the CSS dialect (docs/ui.md §10.4); a
+    /// A document is `version 2`, the CSS dialect (docs/ui.md §3.2); a
     /// version 1 text is refused with the command that migrates it.
     pub fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>> {
         match header_version(text) {
@@ -60,7 +60,7 @@ impl UiDocument {
                 Self::build(source, text, doc)
             }
             Some(1) => Err(vec![format!(
-                "{source}: a version 1 document: `og ui migrate {source}` writes it in the CSS dialect (version 2, docs/ui.md §10.4)"
+                "{source}: a version 1 document: `og ui migrate {source}` writes it in the CSS dialect (version 2, docs/ui.md §3.2)"
             )]),
             _ => {
                 let doc =

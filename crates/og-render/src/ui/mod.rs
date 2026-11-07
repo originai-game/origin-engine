@@ -1,4 +1,4 @@
-//! The UI pass (`docs/ui.md` §5): analytic primitives drawn in the overlay's
+//! The UI pass (`docs/ui.md` §3.3): analytic primitives drawn in the overlay's
 //! order, after every post effect. Every shape is a signed distance
 //! function evaluated per pixel (`shaders/ui.wgsl`), so edges are exact at
 //! any scale and transform; every paint, stroke and effect of a shape is
@@ -326,7 +326,7 @@ pub enum UiMode {
     },
 }
 
-/// The rest of a backdrop's material (`docs/ui.md` §5.3), all off at its
+/// The rest of a backdrop's material (`docs/ui.md` §3.3), all off at its
 /// zero value, which draws the plain frosted backdrop: flat glass as the
 /// design language composes it (a light tint over a blur with raised
 /// saturation, a hairline edge, a soft shadow), drawn by the backdrop's
@@ -522,7 +522,7 @@ pub const UI_MATERIAL_PARAMS: usize = 4;
 /// height]`, CSS px) instead of the overlay, and the [`UiShape`]s whose
 /// paint is [`UiPaint::Layer`] of it composite it through `material`.
 ///
-/// With a `target` (a world panel, `docs/ui.md` §14) the layer draws into
+/// With a `target` (a world panel, `docs/ui.md` §1) the layer draws into
 /// that render target's colour instead, `rect` stretched over the whole
 /// target wherever it is on (or off) the screen, and composites nowhere:
 /// a mesh's material samples the target (the frame after, since the UI

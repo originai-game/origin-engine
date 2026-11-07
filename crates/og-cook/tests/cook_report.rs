@@ -27,6 +27,11 @@ fn every_asset_type_reports_its_figures_and_its_budgets_flag_it() {
     let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-report");
     let _ = std::fs::remove_dir_all(&root);
     support::stage_template(&root.join("assets"));
+    std::fs::write(
+        root.join("assets/core-style.ogt"),
+        include_str!("../../og-ui/tests/fixtures/core-style.ogt"),
+    )
+    .unwrap();
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
     let cooked = root.join("cooked");
@@ -76,8 +81,8 @@ fn every_asset_type_reports_its_figures_and_its_budgets_flag_it() {
         polygons > 0 && nav["vertices"].as_u64() >= Some(polygons * 3 / 2),
         "{nav}"
     );
-    let style = &asset(&json, "@styles/storybook/style.ogt")["style"];
-    assert_eq!(style["name"], "storybook");
+    let style = &asset(&json, "core-style.ogt")["style"];
+    assert_eq!(style["name"], "core-test");
     for a in json["assets"].as_array().unwrap() {
         assert!(a.get("unread").is_none(), "{a}");
         assert_eq!(a["flags"], serde_json::json!([]), "{a}");

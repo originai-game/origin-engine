@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `Choreo` (union)
 
-Timelines composed into one play (docs/ui.md §7.4).
+Timelines composed into one play (docs/ui.md §3.1).
 
 Tagged by `kind`.
 
@@ -20,7 +20,7 @@ Tagged by `kind`.
 
 ```ogt
 union Choreo {
-  doc "Timelines composed into one play (docs/ui.md §7.4)."
+  doc "Timelines composed into one play (docs/ui.md §3.1)."
   tag kind
   case play ChoreoPlay "One timeline."
   case sequence ChoreoSteps "One after another."

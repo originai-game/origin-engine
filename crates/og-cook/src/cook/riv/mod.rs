@@ -1,4 +1,4 @@
-//! Rive import (`docs/ui.md` §11.2): a `.riv` converted at cook time into
+//! Rive import (`docs/ui.md` §3.3): a `.riv` converted at cook time into
 //! og-ui data, one component per artboard. The Rive runtime is not
 //! embedded; the format is read from its documentation and rive-runtime's
 //! generated tables (MIT, `third_party/rive/`, `scripts/gen-rive-defs.py`).

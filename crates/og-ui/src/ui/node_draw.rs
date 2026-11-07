@@ -147,7 +147,7 @@ impl Ui {
     }
 
     /// The element's background, then (after `between`, what its draw
-    /// paints over the background: `docs/ui.md` §5) its content and
+    /// paints over the background: `docs/ui.md` §3.3) its content and
     /// selection markers, without focus rings. Returns how many commands
     /// the background took.
     pub(super) fn node_commands(

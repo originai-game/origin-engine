@@ -1380,8 +1380,8 @@ mod tests {
             ("styles/cjk/ZCOOLKuaiLe-Regular.ttf", 'Y'),
             ("styles/cjk/ZCOOLKuaiLe-Regular.ttf", '?'),
             ("styles/shared/ChakraPetch-BoldItalic.ttf", 'A'),
-            ("styles/fantasy/Cinzel-Bold.ttf", 'A'),
-            ("styles/fantasy/Newsreader-Medium.ttf", 'V'),
+            ("styles/shared/Cinzel-Bold.ttf", 'A'),
+            ("styles/shared/Newsreader-Medium.ttf", 'V'),
         ] {
             let bytes = std::fs::read(format!("{fonts}/{file}")).expect("the font");
             let face = ttf_parser::Face::parse(&bytes, 0).expect("parses");

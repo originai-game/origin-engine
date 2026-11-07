@@ -30,7 +30,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `background` | `Paint \| null` | `null` | — | — | — | Its fill; null draws none. |
 | `radius` | `number` | `0` | — | `cssPx` | — | Corner radius. |
 | `frame` | `StylePart \| null` | `null` | — | — | — | The style frame its background takes (a HUD element, a card); null is a plain fill. Without a style the fill is drawn either way. |
-| `part` | `string \| null` | `null` | — | — | — | The part its style dresses it as, a selector with its variant, state and attributes (`ShopCard.frame[rarity=epic][selected]`): the style's most specific matching `dress` blocks draw it, and a part the style does not dress draws from the tokens (docs/ui.md §12.3). Overrides frame; null keeps frame's. |
+| `part` | `string \| null` | `null` | — | — | — | The part its style dresses it as, a selector with its variant, state and attributes (`ShopCard.frame[rarity=epic][selected]`): the style's most specific matching `dress` blocks draw it, and a part the style does not dress draws from the tokens (docs/ui.md §3.2). Overrides frame; null keeps frame's. |
 | `partClass` | `string \| null` | `null` | — | — | — | The element class whose corner, outline and elevation an undressed part takes from the tokens: panel, dialog, card, tooltip, button, field, chip, badge, tab, slot, bar, hud, avatar. Null: a decoration (a scrim, a sweep, a node's art), which takes nothing from the tokens, only what a style dresses it with; a part that is a card or a panel names its class. |
 | `aspect` | `number` | `0` | ≥ 0 | — | — | Width over height (0: none): with the height left to fit, it is as tall as its laid-out width over this; with a fixed height and the width left to fit, as wide as the height times it. |
 
@@ -60,7 +60,7 @@ struct ElementDesc {
     unit cssPx
   }
   field frame Option.StylePart "The style frame its background takes (a HUD element, a card); null is a plain fill. Without a style the fill is drawn either way."
-  field part Option.String "The part its style dresses it as, a selector with its variant, state and attributes (`ShopCard.frame[rarity=epic][selected]`): the style's most specific matching `dress` blocks draw it, and a part the style does not dress draws from the tokens (docs/ui.md §12.3). Overrides frame; null keeps frame's."
+  field part Option.String "The part its style dresses it as, a selector with its variant, state and attributes (`ShopCard.frame[rarity=epic][selected]`): the style's most specific matching `dress` blocks draw it, and a part the style does not dress draws from the tokens (docs/ui.md §3.2). Overrides frame; null keeps frame's."
   field partClass Option.String "The element class whose corner, outline and elevation an undressed part takes from the tokens: panel, dialog, card, tooltip, button, field, chip, badge, tab, slot, bar, hud, avatar. Null: a decoration (a scrim, a sweep, a node's art), which takes nothing from the tokens, only what a style dresses it with; a part that is a card or a panel names its class."
   field aspect f32 "Width over height (0: none): with the height left to fit, it is as tall as its laid-out width over this; with a fixed height and the width left to fit, as wide as the height times it." {
     min 0

@@ -1,4 +1,4 @@
-// The UI pass's common code (src/ui/mod.rs, docs/ui.md §5): the frame
+// The UI pass's common code (src/ui/mod.rs, docs/ui.md §3.3): the frame
 // uniform and the tables every UI and overlay module reads (clip shapes,
 // gradients, polyline points), the signed distance functions of the
 // shapes, the shadow integrals, OKLab gradients and the instance's vertex

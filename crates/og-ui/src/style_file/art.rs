@@ -82,7 +82,7 @@ impl StylePart {
         1 << self.class().index()
     }
 
-    /// The part dressing (docs/ui.md §12.3) this version 1 class is:
+    /// The part dressing (docs/ui.md §3.2) this version 1 class is:
     /// `Panel.frame`, `Card.frame`, `Button.base` and its states
     /// `[hover]`, `[pressed]`, `[disabled]`, `Field.frame`, `Slot.frame`,
     /// `Tooltip.frame`, `Hud.frame`, `Meter.track`, `Meter.fill`.
@@ -473,7 +473,7 @@ pub struct Art {
     /// Sound handles by [`UiSound`] (0: silent).
     pub sounds: [u64; 6],
     /// A version 1 style: a game shipped with it keeps the screens it
-    /// drew (docs/ui.md §12.1): its dialogs' titles the ramp's xl in the
+    /// drew (docs/ui.md §3): its dialogs' titles the ramp's xl in the
     /// body face, its ramp untracked, its grid's selection an underline,
     /// and the templates (`UiTheme.styleVersion`) their version 1 layouts.
     /// A version 2 style says so with `screens 1` (what og style upgrade

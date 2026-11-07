@@ -1,4 +1,4 @@
-// What the genre patterns (docs/ui.md §11, U6d) share beyond the
+// What the genre patterns (docs/ui.md §2, U6d) share beyond the
 // containers' base: rarity tiers told by colour and pips, art slots with a
 // placeholder drawn from the style and the slot's kind, symbols drawn as
 // shapes (a lock, a star, a coin, a gem, a crown: no style's font is asked
@@ -287,7 +287,7 @@ export function symbol(id: string, kind: SymbolKind, size: number, color: Rgba, 
 export interface Slot {
   /** The art; 0 or absent draws the placeholder. */
   texture?: Api.Texture | null | undefined;
-  /** The slot's kind (docs/ui.md Appendix F): its placeholder's silhouette. */
+  /** The slot's kind (docs/ui.md §3.3): its placeholder's silhouette. */
   kind?: string | undefined;
   /** Width over height; 0 is the element's own. */
   aspect?: number | undefined;
@@ -322,7 +322,7 @@ const KIND_SYMBOL: Record<string, SymbolKind> = {
 export const FIGURE_KINDS: ReadonlySet<string> = new Set(["portrait", "bust", "character", "splash", "avatar", "banner", "keyArt", "body"]);
 
 /**
- * A slot's placeholder, drawn in the open slot (docs/ui.md §13.1): a
+ * A slot's placeholder, drawn in the open slot (docs/ui.md §3.3): a
  * gradient of two hues (the tier's or the primary's, and a second turned
  * from it), a light at the focal point, and the kind's silhouette standing
  * on it: a figure for a portrait, bust, character or key art, else the
@@ -437,7 +437,7 @@ function standingFigure(s: Slot, tier: Rgba | null): void {
 }
 
 /**
- * An art slot (docs/ui.md §13): the game's texture covering the slot
+ * An art slot (docs/ui.md §3.3): the game's texture covering the slot
  * around its focal point, or a placeholder drawn from the style and the
  * kind (a wash in the tier's colour or the primary, a soft light, the
  * kind's silhouette), never a flat grey box. Its part is
@@ -678,7 +678,7 @@ export function safeHeight(): number {
  * and on every touch breakpoint (their CSS px are already a finger's),
  * growing with a desktop surface to 1.5 at 1920×1080 and 2 at 2560×1440
  * (an ultrawide by its height), so a pattern keeps its proportions and the
- * text read in play stays over the 18 px docs/ui.md §15.2 asks at 1080p.
+ * text read in play stays over the 18 px docs/ui.md §6.1 asks at 1080p.
  */
 export function scale(): number {
   const v = frame().viewport;

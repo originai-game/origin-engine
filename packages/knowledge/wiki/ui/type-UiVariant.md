@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `UiVariant` (struct)
 
-A prop override under a condition (docs/ui.md §6.2: breakpoint variants and container queries). Later variants win.
+A prop override under a condition (docs/ui.md §2: breakpoint variants and container queries). Later variants win.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
@@ -15,7 +15,7 @@ A prop override under a condition (docs/ui.md §6.2: breakpoint variants and con
 
 ```ogt
 struct UiVariant {
-  doc "A prop override under a condition (docs/ui.md §6.2: breakpoint variants and container queries). Later variants win."
+  doc "A prop override under a condition (docs/ui.md §2: breakpoint variants and container queries). Later variants win."
   field when UiQuery "When it applies."
   field set UiPatch "What it changes."
 }

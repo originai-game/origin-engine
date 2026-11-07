@@ -1,4 +1,4 @@
-// `og ui check` and `og ui preview` (docs/ui.md §16.4, §16.5): a game's
+// `og ui check` and `og ui preview` (docs/ui.md §6, §6): a game's
 // screens laid out over a matrix of cells (styles × breakpoints × locales ×
 // text scale), each cell an engine of its own on the native host driven by
 // a command script as `og run --commands` drives one, its UI frame read

@@ -24,7 +24,7 @@ type Frame = {
   /**
    * A version-1 style (UiTheme.styleVersion): a game shipped with it keeps
    * the screens it shipped with, so a template lays its screen out as it
-   * did then and adds no rows, rules or marks since (docs/ui.md §12.1).
+   * did then and adds no rows, rules or marks since (docs/ui.md §3).
    */
   v1: boolean;
 };

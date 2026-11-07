@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "kind": "kit",
-  "name": "rhythm",
-  "version": "1.0.0",
-  "description": "rhythm UI components and screen documents",
-  "entry": "index.ts",
-  "types": "types.ts"
-}

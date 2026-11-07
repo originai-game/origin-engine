@@ -175,12 +175,9 @@ fn every_thread_count_cooks_the_same_bytes() {
         files(&dir.join("cooked"))
     };
     let reference = cook(&base.join("reference"), 1);
-    // Fifteen outputs (timelines/intro.ogt with its .srt among them, and
-    // the intro's music, audio/sting.ogt), the eleven of the built-in
-    // storybook style its look's preset names (its style and seven sounds,
-    // the two shared fonts and the icon sheet it draws with), the manifest
-    // and the cook times, plus the asset graph sidecar.
-    assert_eq!(reference.len(), 29, "{:?}", reference.keys());
+    // Fifteen outputs (including the intro timeline and music), plus the
+    // manifest, cook times and asset graph. Core default adds no assets.
+    assert_eq!(reference.len(), 18, "{:?}", reference.keys());
     let runs = if std::env::var_os("OG_GATE_ALL").is_some() {
         10
     } else {

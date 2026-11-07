@@ -34,8 +34,8 @@
 //      mount.ts --package into a stand-in origin-agent knowledge/ tree, then --check
 //   8. a project with an MP3 sound (fixtures/tone.mp3): og run cooks it, plays
 //      it (og.AudioPlayback's playhead at 0.5 s) and the mix is not silent
-//   9. a look naming the built-in fantasy style: og cook reads it from the
-//      engine's styles/ and the bundle adds that pack only to the demo's own
+//   9. core default needs no style pack; a generated style cooks with
+//      shared fonts and icons read from the installed engine's styles/
 //  10. no effect pack in a game that installs none: the demo's cook and build carry no file of a bundled
 //      vfx pack, packages/vfx-packs/ or the fixture pack (tests/fixtures/vfx-release); that pack, once
 //      og vfx add installs it, is in the cook
@@ -341,32 +341,30 @@ function host(): void {
       if (rms < 0.2) step.fail(`the mixer's last 0.5 s is near silent (RMS ${rms.toFixed(3)})`);
       log(`   tone.mp3: cursor ${playback.cursor} of ${playback.loopEnd} frames at 0.5 s, mix RMS ${rms.toFixed(3)}`);
 
-      // 9. A built-in style, read from the dist's engine/styles/ (og
-      // compiles none in): a look naming fantasy cooks that pack, its three
-      // densities, and no other pack. The demo already cooks what its own
-      // look names (the template's look extends a preset with a pack, and
-      // packs read templates/styles/shared/'s fonts and icons), so "no other"
-      // is against the demo's cook without the fantasy look.
-      step = new Step("9 a built-in UI style from the engine's styles/");
-      if (!existsSync(join(enginePkg, "styles", "fantasy", "atlas@3x.png"))) step.fail(`${enginePkg} carries no styles/fantasy/atlas@3x.png`);
+      // 9. Core default is asset-free. A generated game-owned style still
+      // resolves its shared dependencies from the installed archive.
+      step = new Step("9 core default and generated UI style dependencies");
+      if (!existsSync(join(enginePkg, "styles", "shared", "InstrumentSans-Regular.ttf"))) step.fail(`${enginePkg} carries no shared UI fonts`);
       const packs = (): Set<string> => {
         og(step, demo, "cook", ".");
         const cooked = readFileSync(join(demo, "cooked", ".cook.ogt"), "utf8");
         return new Set([...cooked.matchAll(/@styles\/([a-z0-9-]+)\//g)].map(m => m[1]!));
       };
       const before = packs();
-      if (before.has("fantasy")) step.fail(`the demo cooks fantasy before a look names it: ${[...before].join(", ")}`);
+      if (before.size) step.fail(`core default cooked style assets: ${[...before].join(", ")}`);
       mkdirSync(join(demo, "assets", "looks"), { recursive: true });
-      writeFileSync(join(demo, "assets", "looks", "fantasy-ui.ogt"), "type look\nversion 1\n---\nui \"fantasy\"\n");
+      og(step, demo, "style", "new", "install-check", "--project", ".");
+      writeFileSync(join(demo, "assets", "looks", "generated-ui.ogt"), "type look\nversion 1\n---\nui \"styles/install-check/style.ogt\"\n");
       const after = packs();
       const cooked = readFileSync(join(demo, "cooked", ".cook.ogt"), "utf8");
-      for (const f of ["style.ogt", "atlas.png", "atlas@2x.png", "atlas@3x.png"]) {
-        if (!cooked.includes(`@styles/fantasy/${f}`)) step.fail(`the cook has no @styles/fantasy/${f}`);
+      for (const f of ["InstrumentSans-Regular.ttf", "PTMono-Regular.ttf", "ink-icons.png"]) {
+        if (!cooked.includes(`@styles/shared/${f}`)) step.fail(`the cook has no @styles/shared/${f}`);
       }
-      const others = [...after].filter(p => p !== "fantasy" && !before.has(p));
-      if (others.length) step.fail(`a look naming fantasy cooked other packs too: ${others.join(", ")} (the demo alone cooks ${[...before].join(", ") || "none"})`);
-      log(`   fantasy cooked beside the demo's own ${[...before].join(", ") || "none"}`);
-      rmSync(join(demo, "assets", "looks", "fantasy-ui.ogt"));
+      const others = [...after].filter(p => p !== "shared" && p !== "cjk");
+      if (others.length) step.fail(`a generated style cooked unrelated packs: ${others.join(", ")}`);
+      log("   core default is asset-free; generated style resolved shared assets");
+      rmSync(join(demo, "assets", "looks", "generated-ui.ogt"));
+      rmSync(join(demo, "assets", "styles", "install-check"), { recursive: true });
 
       // 10. Effect packs ship apart from games (docs/vfx-packs.md §5): a game with none installed cooks and
       // builds no file of a bundled vfx pack (the dist's engine/extensions/<pack> of kind vfx), of

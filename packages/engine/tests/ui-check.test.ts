@@ -1,4 +1,4 @@
-// `og ui check`'s rules (src/node/ui-check.ts, docs/ui.md §16.5), each on a
+// `og ui check`'s rules (src/node/ui-check.ts, docs/ui.md §6), each on a
 // frame that shows the fact and on the same frame put right: every finding
 // names its rule, paths, what was found and the prop that sets it. The
 // measures (contrast, text size, touch targets, text scale, primary

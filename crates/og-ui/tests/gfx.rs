@@ -1085,7 +1085,7 @@ fn a_middle_squeezed_six_times_keeps_its_outline_as_dark_as_the_art() {
     );
 }
 
-/// An element's skew reaches the UI pass whole (docs/ui.md §5, §6.1): a
+/// An element's skew reaches the UI pass whole (docs/ui.md §3.3, §2): a
 /// box's background (an old rounded quad) and an element draw's ellipse,
 /// both skewed 30° along x about their centres, cover the parallelogram,
 /// not their upright boxes, and a turn keeps the draw's exact shape.

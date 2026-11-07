@@ -4,7 +4,7 @@ version 1
 # Pixels that glow: bloom over an eight-tone grid.
 name "Luminous high-contrast pixel art"
 mood "dark"
-ui "cyber"
+ui "default"
 antialias off
 Stylise {
   pixelHeight 216

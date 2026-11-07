@@ -24,7 +24,7 @@ fn once<T>(p: &P, slot: &mut Option<T>, v: T) -> Result<(), String> {
     Ok(())
 }
 
-/// Parses a UI style. Version 2 (docs/ui.md §12):
+/// Parses a UI style. Version 2 (docs/ui.md §3):
 ///
 /// ```text
 /// type style
@@ -914,7 +914,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
         }
         file.dressings = v1_dressings(&theme.art);
     }
-    // The motion code reads the style's motion tokens (docs/ui.md §7.7).
+    // The motion code reads the style's motion tokens (docs/ui.md §3.1).
     theme.motion = crate::motion::MotionTokens::from_style(&theme.tokens);
     theme.type_ramp = theme
         .tokens
@@ -941,7 +941,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
 }
 
 /// `roles { corruption "#7a2fd0" … }`: the colour roles a style declares
-/// of its own (docs/ui.md §12.2), beside the palette's. Each is a name in
+/// of its own (docs/ui.md §3.1), beside the palette's. Each is a name in
 /// lowerCamelCase that no palette role or colour token has, and one colour.
 fn parse_roles(p: &P) -> Result<crate::style::Roles, String> {
     let block = p.block()?;

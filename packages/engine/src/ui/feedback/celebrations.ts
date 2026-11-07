@@ -1,5 +1,5 @@
 // og.ui.celebration and og.ui.starRating: the celebration set (docs/ui.md
-// §11, Appendix E "Celebrations (confetti, banners, podium, level up)").
+// §6, Appendix E "Celebrations (confetti, banners, podium, level up)").
 // Read against Candy Crush and Royal Match's results (three stars landing
 // in turn, the middle one larger, a burst and a rising pitch each), Diablo
 // and WoW's level-up flourishes (a ring of light, rays turning behind the

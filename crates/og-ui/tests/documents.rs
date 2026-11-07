@@ -1,5 +1,5 @@
-//! Documents (docs/ui.md §10), bindings (§9), the layer stack and UI
-//! actions (§8), through og-ui's public API: a shop screen parsed and
+//! Documents (docs/ui.md §2.1), bindings (§2.1), the layer stack and UI
+//! actions (§2.1), through og-ui's public API: a shop screen parsed and
 //! validated, mounted over a HUD with a viewmodel, its bindings formatted,
 //! its controls writing back, Back and focus memory, a probe edit saved
 //! back into the text, and the stack carried by a snapshot.

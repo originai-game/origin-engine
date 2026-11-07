@@ -1,4 +1,4 @@
-// Trees and pan-and-zoom graphs (docs/ui.md §11, Data): a file-like tree
+// Trees and pan-and-zoom graphs (docs/ui.md §2, Data): a file-like tree
 // of expandable items, and a canvas of nodes and links for skill and tech
 // trees, run maps and flowcharts.
 

@@ -1,4 +1,4 @@
-// Pickers (docs/ui.md §11, Controls): the colour picker, a saturation and
+// Pickers (docs/ui.md §2, Controls): the colour picker, a saturation and
 // brightness square, a hue strip, an opacity strip, swatches and a hex
 // field. The dropdown is og-ui's native control (natives.ts).
 

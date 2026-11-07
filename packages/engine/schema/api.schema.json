@@ -6523,7 +6523,7 @@
         },
         {
           "name": "style",
-          "doc": "Load a cooked UI style (an `.ogt` of `type style`: every palette role, the radii, type ramp, durations, and its art: the atlas and its nine-slice frames, ornaments, fonts, icons, motion and sounds; the grammar is og-ui's `parse_style`) for UiDesc.style. Version 3, the CSS dialect (docs/ui.md §12.7, what `og style upgrade`, `og style new` and `og ui migrate` write and every built-in style is), has the tokens (rarity, team, damage and chart colours each with its cue, the type scale per breakpoint, the space, size, radius and stroke scales, elevation, the shape language, motion springs and eases, sounds and haptics per UI event; colours and lengths as custom properties, `--panel-raised: #211a15`) and dresses parts with selector blocks (`Button::base.primary:active { -og-slice: … }`). Versions 1 and 2 still load. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`.",
+          "doc": "Load a cooked UI style (an `.ogt` of `type style`: every palette role, the radii, type ramp, durations, and its art: the atlas and its nine-slice frames, ornaments, fonts, icons, motion and sounds; the grammar is og-ui's `parse_style`) for UiDesc.style. Version 3, the CSS dialect (docs/ui.md §3.2, what `og style upgrade`, `og style new` and `og ui migrate` write and every built-in style is), has the tokens (rarity, team, damage and chart colours each with its cue, the type scale per breakpoint, the space, size, radius and stroke scales, elevation, the shape language, motion springs and eases, sounds and haptics per UI event; colours and lengths as custom properties, `--panel-raised: #211a15`) and dresses parts with selector blocks (`Button::base.primary:active { -og-slice: … }`). Versions 1 and 2 still load. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`.",
           "params": [
             {
               "name": "world",
@@ -6544,7 +6544,7 @@
         },
         {
           "name": "document",
-          "doc": "Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents: version 2, CSS declarations for an element's look and layout, docs/ui.md §10.4; `og ui migrate` writes a version 1 document as version 2) into the world's UI, where og.ui.screen, og.ui.push and og.ui.component name it by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document.",
+          "doc": "Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props; the grammar is og-ui's README §Documents: version 2, CSS declarations for an element's look and layout, docs/ui.md §3.2; `og ui migrate` writes a version 1 document as version 2) into the world's UI, where og.ui.screen, og.ui.push and og.ui.component name it by its `name` line; its timelines are defined as `<name>/<timeline>`. Loading one of the same name again replaces it in place, the UI's state kept; `og dev` does this for an edited document.",
           "params": [
             {
               "name": "world",
@@ -11823,7 +11823,7 @@
         },
         {
           "name": "viewport",
-          "doc": "This tick's play surface as the UI lays out on it: the render target's size, safe area and covered region in og-ui units (CSS pixels over UiTheme.unit, docs/ui.md §15.2: 1 on touch and up to 720p, so CSS pixels there) and device pixels per unit, from what the host reports.",
+          "doc": "This tick's play surface as the UI lays out on it: the render target's size, safe area and covered region in og-ui units (CSS pixels over UiTheme.unit, docs/ui.md §6.1: 1 on touch and up to 720p, so CSS pixels there) and device pixels per unit, from what the host reports.",
           "params": [
             {
               "name": "world",
@@ -13208,7 +13208,7 @@
         },
         {
           "name": "setHudEdit",
-          "doc": "Turns the HUD edit mode on or off (docs/ui.md §8.4; kept until changed). While it is on, elements with ElementProps.customize stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. Build og.ui.hudLayoutEditor for steps, Next, Reset and Done.",
+          "doc": "Turns the HUD edit mode on or off (docs/ui.md §2.1; kept until changed). While it is on, elements with ElementProps.customize stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. Build og.ui.hudLayoutEditor for steps, Next, Reset and Done.",
           "params": [
             {
               "name": "on",
@@ -13325,7 +13325,7 @@
         },
         {
           "name": "hudLayoutEditor",
-          "doc": "The HUD edit mode's panel (docs/ui.md §8.4): the selected element's key, size and opacity steps, Next (the next element: how keys and pads choose one), Reset (the selected one, or all with none selected) and Done, which turns the edit mode off. Build it where it fits, while og.ui.hudEdit().on; presses on it edit nothing behind it. Its children are `Title`, `Selected`, `Size/Less`, `Size/More`, `Opacity/Less`, `Opacity/More`, `Actions/Next`, `Actions/Reset`, `Actions/Done`.",
+          "doc": "The HUD edit mode's panel (docs/ui.md §2.1): the selected element's key, size and opacity steps, Next (the next element: how keys and pads choose one), Reset (the selected one, or all with none selected) and Done, which turns the edit mode off. Build it where it fits, while og.ui.hudEdit().on; presses on it edit nothing behind it. Its children are `Title`, `Selected`, `Size/Less`, `Size/More`, `Opacity/Less`, `Opacity/More`, `Actions/Next`, `Actions/Reset`, `Actions/Done`.",
           "params": [
             {
               "name": "id",
@@ -13366,7 +13366,7 @@
         },
         {
           "name": "feedback",
-          "doc": "Play a UI event's feedback from the style (docs/ui.md §7.8): one sound of its set, at random and never the one it played last, at a volume and pitch from the set's ranges, and its haptic pattern at the player's strength (setHaptics). Widgets play their own events (press, focus, select, confirm, back, open, close, tab, toggleOn, toggleOff, sliderTick); game code plays the rest: scrollTick, typewriter, counterTick, notification, warning, error, success, reward and the reveals revealCommon to revealMythic. The choices come from the UI state, so a replay plays the same. An unknown event or one the style leaves silent plays nothing.",
+          "doc": "Play a UI event's feedback from the style (docs/ui.md §3.1): one sound of its set, at random and never the one it played last, at a volume and pitch from the set's ranges, and its haptic pattern at the player's strength (setHaptics). Widgets play their own events (press, focus, select, confirm, back, open, close, tab, toggleOn, toggleOff, sliderTick); game code plays the rest: scrollTick, typewriter, counterTick, notification, warning, error, success, reward and the reveals revealCommon to revealMythic. The choices come from the UI state, so a replay plays the same. An unknown event or one the style leaves silent plays nothing.",
           "params": [
             {
               "name": "event",
@@ -14207,7 +14207,7 @@
         },
         {
           "name": "text",
-          "doc": "Text in a role (docs/ui.md §11, Foundations): the style's type step, font and weight for display, title, heading, body, label, caption or numeric (monospaced figures), in a tone, cut after maxLines with an ellipsis (the probe and a screen reader still read it whole). Display, title and heading are headings to a screen reader (a style's flourish frames them). It grows with the player's text size and wraps between CJK characters by kinsoku. Probe: the element `<id>`, kind label, its whole text.",
+          "doc": "Text in a role (docs/ui.md §2, Foundations): the style's type step, font and weight for display, title, heading, body, label, caption or numeric (monospaced figures), in a tone, cut after maxLines with an ellipsis (the probe and a screen reader still read it whole). Display, title and heading are headings to a screen reader (a style's flourish frames them). It grows with the player's text size and wraps between CJK characters by kinsoku. Probe: the element `<id>`, kind label, its whole text.",
           "params": [
             {
               "name": "id",
@@ -14309,7 +14309,7 @@
         },
         {
           "name": "shapeBox",
-          "doc": "A decorative shape drawn by the UI pass (docs/ui.md §5.1) in the style's colours: a pip, a gem, a star, a ring, a backdrop blob. It takes no input and is decoration to a screen reader. Part: `Shape.<kind>` (a style dresses `Shape.star` with art). Probe: `<id>`.",
+          "doc": "A decorative shape drawn by the UI pass (docs/ui.md §3.3) in the style's colours: a pip, a gem, a star, a ring, a backdrop blob. It takes no input and is decoration to a screen reader. Part: `Shape.<kind>` (a style dresses `Shape.star` with art). Probe: `<id>`.",
           "params": [
             {
               "name": "id",
@@ -14372,7 +14372,7 @@
         },
         {
           "name": "viewFrame",
-          "doc": "A viewport in a frame (docs/ui.md §5.5, Foundations): og.ui.sceneViewport in a style-dressed slot that turns with a drag (keeping the fling's speed for a moment), tilts within its limits, zooms with the wheel or a pinch, and turns by 15° per Left or Right while it has the focus (Tab, a pad). Until the target has a texture it shows a placeholder with a spinner. Draw the scene into a target of view.pixelWidth × view.pixelHeight with the yaw, pitch and zoom it answers; a target of another shape covers the frame, cropped, never squashed. Parts: `ViewFrame.frame[focused]`, `ViewFrame.hint`. Role image (its label), its turn as its value. Probe: `<id>`, `<id>/Box/Picture/View`, `<id>/Box/HintRow/Hint`.",
+          "doc": "A viewport in a frame (docs/ui.md §3.3, Foundations): og.ui.sceneViewport in a style-dressed slot that turns with a drag (keeping the fling's speed for a moment), tilts within its limits, zooms with the wheel or a pinch, and turns by 15° per Left or Right while it has the focus (Tab, a pad). Until the target has a texture it shows a placeholder with a spinner. Draw the scene into a target of view.pixelWidth × view.pixelHeight with the yaw, pitch and zoom it answers; a target of another shape covers the frame, cropped, never squashed. Parts: `ViewFrame.frame[focused]`, `ViewFrame.hint`. Role image (its label), its turn as its value. Probe: `<id>`, `<id>/Box/Picture/View`, `<id>/Box/HintRow/Hint`.",
           "params": [
             {
               "name": "id",
@@ -14393,7 +14393,7 @@
         },
         {
           "name": "emitter",
-          "doc": "An ambient particle emitter (docs/ui.md §5.5) laid over its parent's area: sparkles on a rare card, embers on a forge, snow over a winter menu, confetti on a win. It takes no input, is decoration to a screen reader, and stops under reduced motion. Built on og.ui.particles; every particle is the engine's, seeded and in the snapshot. Probe: `<id>`.",
+          "doc": "An ambient particle emitter (docs/ui.md §3.3) laid over its parent's area: sparkles on a rare card, embers on a forge, snow over a winter menu, confetti on a win. It takes no input, is decoration to a screen reader, and stops under reduced motion. Built on og.ui.particles; every particle is the engine's, seeded and in the snapshot. Probe: `<id>`.",
           "params": [
             {
               "name": "id",
@@ -14414,7 +14414,7 @@
         },
         {
           "name": "effectLayer",
-          "doc": "A layer (docs/ui.md §5.4): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hit's glitch, a locked tile in grey), the material's parameters set from one amount. Its children keep their input and accessibility. Part: `Layer.frame`. Probe: `<id>` and its children.",
+          "doc": "A layer (docs/ui.md §3.3): its subtree, built by `build`, drawn offscreen and composited through a material (a card dissolving as it is spent, a shine passing over a rare item, a hologram panel, a hit's glitch, a locked tile in grey), the material's parameters set from one amount. Its children keep their input and accessibility. Part: `Layer.frame`. Probe: `<id>` and its children.",
           "params": [
             {
               "name": "id",
@@ -14441,7 +14441,7 @@
         },
         {
           "name": "pushButton",
-          "doc": "A button (docs/ui.md §11, Controls): primary, secondary, ghost (outlined), quiet (text) or danger, small, medium or large, with icons, a badge, a loading spinner and a disabled reason. It lifts under the pointer and the focus and sinks as it is pressed (its interaction group, on the style's motion), and the style dresses it as `Button.base[<variant>][hover|pressed|focused|disabled][selected]` (a version 1 style's button art included), its label in the ink that reads on its fill. A click is a press and a release inside it, Enter, Space or the pad's A while it has the focus. Role button (pressed while selected, busy while loading). Probe: `<id>`, `<id>/Label`, `<id>/Icon`, `<id>/Badge`.",
+          "doc": "A button (docs/ui.md §2, Controls): primary, secondary, ghost (outlined), quiet (text) or danger, small, medium or large, with icons, a badge, a loading spinner and a disabled reason. It lifts under the pointer and the focus and sinks as it is pressed (its interaction group, on the style's motion), and the style dresses it as `Button.base[<variant>][hover|pressed|focused|disabled][selected]` (a version 1 style's button art included), its label in the ink that reads on its fill. A click is a press and a release inside it, Enter, Space or the pad's A while it has the focus. Role button (pressed while selected, busy while loading). Probe: `<id>`, `<id>/Label`, `<id>/Icon`, `<id>/Badge`.",
           "params": [
             {
               "name": "id",
@@ -14860,7 +14860,7 @@
         },
         {
           "name": "keyBindingRow",
-          "doc": "A key-binding row (the settings tree's controls page, docs/ui.md §11): the action's name and a slot per binding on a device (keyboard and mouse, or a pad, the device used last by default) showing its glyphs from og.input (keys as caps, pad buttons as their family's discs, composites as their parts). A press on a slot (Enter, A) starts og.input.startCapture for it: the slot pulses `Press a key…` with the cancel hint until the player presses something (Escape, the pad's back or the timeout cancels). A capture with no conflict is applied at once; one that shares a control asks inline (`W is used by Move forward`: Swap, Replace, Cancel) with og.input's conflict report. A locked action shows a lock and takes no press; a rebound one shows a reset. Plays select, confirm, cancel and error. Parts: `Rebind.row[capturing][conflict][locked]`, `Rebind.slot[empty][capturing][conflict][hover|pressed|focused|disabled]`, `Rebind.conflict`; the caps are the action bar's `ActionBar.glyph[key|face|shoulder]`, the reset an icon button (`Button.base[quiet][icon]`). A group named by the action, slots as buttons named `<action>, <slot>: <binding>`. Probe: `<id>/Main/Bound/Slots/Slot#i`, `<id>/Conflict/Swap`, `<id>/Conflict/Replace`, `<id>/Conflict/Cancel`, `<id>/Main/Bound/Reset` (once rebound). Where its slots and Reset do not fit beside each other at their least width (200 % text, a narrow column), the row stacks them, the first slot over the second, so every row of a list stacks alike; a key cluster (W A S D) keeps its order right to left.",
+          "doc": "A key-binding row (the settings tree's controls page, docs/ui.md §2): the action's name and a slot per binding on a device (keyboard and mouse, or a pad, the device used last by default) showing its glyphs from og.input (keys as caps, pad buttons as their family's discs, composites as their parts). A press on a slot (Enter, A) starts og.input.startCapture for it: the slot pulses `Press a key…` with the cancel hint until the player presses something (Escape, the pad's back or the timeout cancels). A capture with no conflict is applied at once; one that shares a control asks inline (`W is used by Move forward`: Swap, Replace, Cancel) with og.input's conflict report. A locked action shows a lock and takes no press; a rebound one shows a reset. Plays select, confirm, cancel and error. Parts: `Rebind.row[capturing][conflict][locked]`, `Rebind.slot[empty][capturing][conflict][hover|pressed|focused|disabled]`, `Rebind.conflict`; the caps are the action bar's `ActionBar.glyph[key|face|shoulder]`, the reset an icon button (`Button.base[quiet][icon]`). A group named by the action, slots as buttons named `<action>, <slot>: <binding>`. Probe: `<id>/Main/Bound/Slots/Slot#i`, `<id>/Conflict/Swap`, `<id>/Conflict/Replace`, `<id>/Conflict/Cancel`, `<id>/Main/Bound/Reset` (once rebound). Where its slots and Reset do not fit beside each other at their least width (200 % text, a narrow column), the row stacks them, the first slot over the second, so every row of a list stacks alike; a key cluster (W A S D) keeps its order right to left.",
           "params": [
             {
               "name": "world",
@@ -14887,7 +14887,7 @@
         },
         {
           "name": "onScreenKeyboard",
-          "doc": "An on-screen keyboard for pads and touch (docs/ui.md §11, Appendix D: search and names with a pad): a panel at the screen's bottom with the text being typed and its caret, a candidate bar while composing, and keys a pad walks with focus wrapping by rows (Y erases, LB and RB move the caret, Back closes) and a finger presses (a key pops its letter above the finger on a press). Letters (shift for one, double tap for caps), symbols, a number pad and the Japanese kana table, with composition for an IME: typed kana (or letters with compose) stay underlined in KeyboardResult.composition until a candidate (the game's, plus the katakana) or Enter commits them. Plays press, select and back sounds. Parts: `Keyboard.panel`, `Keyboard.key[wide][action][active][primary][hover|pressed|focused|disabled]` (primary: the enter key; disabled: a gap in the kana table), `Keyboard.preview`, `Keyboard.candidates`, `Keyboard.candidate[hover|pressed|focused]`, `Keyboard.popup`. A dialog named by its title; keys are buttons named by what they type. Probe: `<id>/Panel/Content/Keys/Row#r/Key#k`, `<id>/Panel/Content/Preview`, `<id>/Panel/Content/Candidates/Candidate#i`.",
+          "doc": "An on-screen keyboard for pads and touch (docs/ui.md §2: search and names with a pad): a panel at the screen's bottom with the text being typed and its caret, a candidate bar while composing, and keys a pad walks with focus wrapping by rows (Y erases, LB and RB move the caret, Back closes) and a finger presses (a key pops its letter above the finger on a press). Letters (shift for one, double tap for caps), symbols, a number pad and the Japanese kana table, with composition for an IME: typed kana (or letters with compose) stay underlined in KeyboardResult.composition until a candidate (the game's, plus the katakana) or Enter commits them. Plays press, select and back sounds. Parts: `Keyboard.panel`, `Keyboard.key[wide][action][active][primary][hover|pressed|focused|disabled]` (primary: the enter key; disabled: a gap in the kana table), `Keyboard.preview`, `Keyboard.candidates`, `Keyboard.candidate[hover|pressed|focused]`, `Keyboard.popup`. A dialog named by its title; keys are buttons named by what they type. Probe: `<id>/Panel/Content/Keys/Row#r/Key#k`, `<id>/Panel/Content/Preview`, `<id>/Panel/Content/Candidates/Candidate#i`.",
           "params": [
             {
               "name": "id",
@@ -14983,7 +14983,7 @@
         },
         {
           "name": "settingsTree",
-          "doc": "A game's settings as data (docs/ui.md Appendix B row 2, roadmap G1-7): the title, the pages as tabs (the tab actions step them), the shown page's entries as rows, each its name (a changed one marked) and its control at the end (a switch, a slider with its reading, a segmented control or a dropdown, og.ui.keyBindingRow for a binding by physical key code shown by the layout's label, a button, or the game's own control in a custom row), a heading where its section changes; whole rows scroll. At the end a detail panel with the hovered or focused entry's name and description. At the foot Defaults, Revert and Apply (Apply the primary, both quiet with nothing pending). After applying a display change the confirm dialog asks to keep it, its seconds counting down on a ring, Keep and Revert; at 0 it reverts. The HUD page mounts og.ui.hudLayoutEditor (the component, not a copy) while og.ui.hudEdit() is on, and Edit HUD to turn it on. On a phone in portrait the tabs are chips that scroll, the detail is the row's description under its name, and the foot's buttons span the width.\nParts: Settings.tab[selected], Settings.section, Settings.row[changed][disabled], Settings.detail, Settings.foot, Settings.confirm, Settings.ring. Sounds: tab on a tab, toggle on a switch, confirm on Apply and Keep, back on Revert. Accessibility: the tabs a tablist, each row a group named by its entry (and changed), the confirm an alertdialog whose countdown is a timer. Probe ids: <id>/Tabs/Row/<page>, <id>/Body/Page/Rows/<entry> (its control <entry>/Control), <id>/Foot/Apply, <id>/Foot/Revert, <id>/Foot/Defaults, <id>/Scrim/Confirm/Buttons/Keep, <id>/Scrim/Confirm/Buttons/Revert, <id>/Body/Page/Hud/Edit, <id>/Body/Page/Hud/Editor.",
+          "doc": "A game's settings as data (docs/ui.md §2, roadmap G1-7): the title, the pages as tabs (the tab actions step them), the shown page's entries as rows, each its name (a changed one marked) and its control at the end (a switch, a slider with its reading, a segmented control or a dropdown, og.ui.keyBindingRow for a binding by physical key code shown by the layout's label, a button, or the game's own control in a custom row), a heading where its section changes; whole rows scroll. At the end a detail panel with the hovered or focused entry's name and description. At the foot Defaults, Revert and Apply (Apply the primary, both quiet with nothing pending). After applying a display change the confirm dialog asks to keep it, its seconds counting down on a ring, Keep and Revert; at 0 it reverts. The HUD page mounts og.ui.hudLayoutEditor (the component, not a copy) while og.ui.hudEdit() is on, and Edit HUD to turn it on. On a phone in portrait the tabs are chips that scroll, the detail is the row's description under its name, and the foot's buttons span the width.\nParts: Settings.tab[selected], Settings.section, Settings.row[changed][disabled], Settings.detail, Settings.foot, Settings.confirm, Settings.ring. Sounds: tab on a tab, toggle on a switch, confirm on Apply and Keep, back on Revert. Accessibility: the tabs a tablist, each row a group named by its entry (and changed), the confirm an alertdialog whose countdown is a timer. Probe ids: <id>/Tabs/Row/<page>, <id>/Body/Page/Rows/<entry> (its control <entry>/Control), <id>/Foot/Apply, <id>/Foot/Revert, <id>/Foot/Defaults, <id>/Scrim/Confirm/Buttons/Keep, <id>/Scrim/Confirm/Buttons/Revert, <id>/Body/Page/Hud/Edit, <id>/Body/Page/Hud/Editor.",
           "params": [
             {
               "name": "world",
@@ -15016,7 +15016,7 @@
         },
         {
           "name": "props",
-          "doc": "Give the element built just before (any widget, or a container just closed) the element model's props: transform, opacity, z, placement, grid, variants, overlaps, motion, states, presence, gestures (docs/ui.md §6, §7). Call it right after the element.",
+          "doc": "Give the element built just before (any widget, or a container just closed) the element model's props: transform, opacity, z, placement, grid, variants, overlaps, motion, states, presence, gestures (docs/ui.md §2, §3.1). Call it right after the element.",
           "params": [
             {
               "name": "desc",
@@ -15246,7 +15246,7 @@
         },
         {
           "name": "animate",
-          "doc": "Any number on a spring or an ease (docs/ui.md §7.1: every value is animatable): call it every tick with the target and it answers this tick's value. A retarget keeps its value and velocity; under reduced motion it jumps.",
+          "doc": "Any number on a spring or an ease (docs/ui.md §3.1: every value is animatable): call it every tick with the target and it answers this tick's value. A retarget keeps its value and velocity; under reduced motion it jumps.",
           "params": [
             {
               "name": "id",
@@ -15293,7 +15293,7 @@
         },
         {
           "name": "overlaps",
-          "doc": "The last frame's undeclared overlaps between elements (docs/ui.md §6.2), with both paths.",
+          "doc": "The last frame's undeclared overlaps between elements (docs/ui.md §2), with both paths.",
           "params": [],
           "returns": "List<UiOverlap>",
           "publish": true
@@ -16092,7 +16092,7 @@
         },
         {
           "name": "setDraw",
-          "doc": "Draws the element added last (a container just opened, or the last control) with desc: shapes beyond rectangles, layered gradient, image and vector fills, strokes with their own paints, shadows, glows, glass, clipping to its shape, masks, blend modes and materials (docs/ui.md §5). Call it right after the element's open or control; immediate mode, so every tick it is drawn.",
+          "doc": "Draws the element added last (a container just opened, or the last control) with desc: shapes beyond rectangles, layered gradient, image and vector fills, strokes with their own paints, shadows, glows, glass, clipping to its shape, masks, blend modes and materials (docs/ui.md §3.3). Call it right after the element's open or control; immediate mode, so every tick it is drawn.",
           "params": [
             {
               "name": "desc",
@@ -16346,7 +16346,7 @@
         },
         {
           "name": "push",
-          "doc": "Push a screen onto the layer stack (docs/ui.md §8.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it.",
+          "doc": "Push a screen onto the layer stack (docs/ui.md §2.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it.",
           "generics": [
             {
               "name": "S",
@@ -16652,7 +16652,7 @@
         },
         {
           "name": "documentSchema",
-          "doc": "The reflected schema documents are validated against (docs/ui.md §10): every element kind and every prop, with its value type, the kinds it applies to and whether a control writes it back.",
+          "doc": "The reflected schema documents are validated against (docs/ui.md §2.1): every element kind and every prop, with its value type, the kinds it applies to and whether a control writes it back.",
           "params": [],
           "returns": "Json",
           "publish": true
@@ -46309,7 +46309,7 @@
               "type": "null"
             }
           ],
-          "description": "A colour role the style declares of its own (its `roles` block, docs/ui.md §12.2: a game's corruption or faction colour) by name, when no token is given; a name the style lacks draws magenta.",
+          "description": "A colour role the style declares of its own (its `roles` block, docs/ui.md §3.1: a game's corruption or faction colour) by name, when no token is given; a name the style lacks draws magenta.",
           "default": null
         },
         "color": {
@@ -46503,7 +46503,7 @@
               "type": "null"
             }
           ],
-          "description": "The part its style dresses it as, a selector with its variant, state and attributes (`ShopCard.frame[rarity=epic][selected]`): the style's most specific matching `dress` blocks draw it, and a part the style does not dress draws from the tokens (docs/ui.md §12.3). Overrides frame; null keeps frame's.",
+          "description": "The part its style dresses it as, a selector with its variant, state and attributes (`ShopCard.frame[rarity=epic][selected]`): the style's most specific matching `dress` blocks draw it, and a part the style does not dress draws from the tokens (docs/ui.md §3.2). Overrides frame; null keeps frame's.",
           "default": null
         },
         "partClass": {
@@ -47502,7 +47502,7 @@
         },
         "textScale": {
           "type": "number",
-          "description": "The player's text size (a settings screen's slider, kept with the other settings): every text size and leading is multiplied by it and the layout grows around the text (control, row and header heights by the leading body text gains), never clipping it. 1 is the style's sizes, 1.5 the largest (a larger one lays out at 1.5): docs/ui.md §15.2 holds every screen to 1.5, 200 % deferred.",
+          "description": "The player's text size (a settings screen's slider, kept with the other settings): every text size and leading is multiplied by it and the layout grows around the text (control, row and header heights by the leading body text gains), never clipping it. 1 is the style's sizes, 1.5 the largest (a larger one lays out at 1.5): docs/ui.md §6.1 holds every screen to 1.5, 200 % deferred.",
           "default": 1,
           "minimum": 1,
           "maximum": 2,
@@ -47510,7 +47510,7 @@
         },
         "unitScale": {
           "type": "number",
-          "description": "The og-ui unit in CSS px (docs/ui.md §15.2): the UI lays out in units (og.ui.viewport and og.ui.frameViewport are the surface over it) and draws them at it, so every length grows with the surface (the style's text, space, radii and controls, and a game's own px, alike) and the player's textScale multiplies over it. 0 is auto: on a mouse or pad surface its 1080p-equivalent height (the shorter of the height and the width's 16:9 height) over 720, 1 to 2, so a 1280x720 layout fills a 1080p window with body text at 21 CSS px and the smallest step at 18; a touch surface keeps CSS px (1). A value of 1 to 2 pins it (a game that lays out for one size).",
+          "description": "The og-ui unit in CSS px (docs/ui.md §6.1): the UI lays out in units (og.ui.viewport and og.ui.frameViewport are the surface over it) and draws them at it, so every length grows with the surface (the style's text, space, radii and controls, and a game's own px, alike) and the player's textScale multiplies over it. 0 is auto: on a mouse or pad surface its 1080p-equivalent height (the shorter of the height and the width's 16:9 height) over 720, 1 to 2, so a 1280x720 layout fills a 1080p window with body text at 21 CSS px and the smallest step at 18; a touch surface keeps CSS px (1). A value of 1 to 2 pins it (a game that lays out for one size).",
           "default": 0,
           "minimum": 0,
           "maximum": 2,
@@ -47832,7 +47832,7 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Each ThemeColor, then each colour role the style declares of its own (docs/ui.md §12.2), as `#rrggbb` or `#rrggbbaa` (sRGB as authored)."
+          "description": "Each ThemeColor, then each colour role the style declares of its own (docs/ui.md §3.1), as `#rrggbb` or `#rrggbbaa` (sRGB as authored)."
         },
         "space": {
           "type": "object",
@@ -47874,7 +47874,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The configured style file's version: 1 for a version-1 style, whose game keeps the controls and dialogs it shipped with (docs/ui.md §12.1); 2 for a version-2 style and the default style."
+          "description": "The configured style file's version: 1 for a version-1 style, whose game keeps the controls and dialogs it shipped with (docs/ui.md §3); 2 for a version-2 style and the default style."
         },
         "contrast": {
           "$ref": "#/$defs/Contrast",
@@ -47897,7 +47897,7 @@
           "description": "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
         },
         "tokens": {
-          "description": "The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric button, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
+          "description": "The style's tokens (docs/ui.md §3.1), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric button, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
         }
       },
       "required": [
@@ -49578,7 +49578,7 @@
     "VirtualCursorDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A pad's virtual cursor (docs/ui.md §8.3). The zero value moves at 900 units a second, takes a quarter second from a fine start to full speed, has a half-strength magnet and scrolls 1200 units a second.",
+      "description": "A pad's virtual cursor (docs/ui.md §2.1). The zero value moves at 900 units a second, takes a quarter second from a fine start to full speed, has a half-strength magnet and scrolls 1200 units a second.",
       "type": "object",
       "properties": {
         "speed": {
@@ -51848,7 +51848,7 @@
     "ActionHintsDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "The action bar (docs/ui.md §8.2): the actions the top layer accepts, each its glyph and its hint, at an edge.",
+      "description": "The action bar (docs/ui.md §2.1): the actions the top layer accepts, each its glyph and its hint, at an edge.",
       "type": "object",
       "properties": {
         "hints": {
@@ -53937,7 +53937,7 @@
     "TextRole": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
-      "description": "A text's role in the hierarchy (docs/ui.md §12.2): its type step, font and weight come from the style's type tokens for the role.",
+      "description": "A text's role in the hierarchy (docs/ui.md §3.1): its type step, font and weight come from the style's type tokens for the role.",
       "type": "string",
       "enum": [
         "body",
@@ -54201,7 +54201,7 @@
     "ArtSlotDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "An art slot (docs/ui.md §13): where a generated or authored image goes, and what it shows until it is there.",
+      "description": "An art slot (docs/ui.md §3.3): where a generated or authored image goes, and what it shows until it is there.",
       "type": "object",
       "properties": {
         "texture": {
@@ -54546,7 +54546,7 @@
     "ViewFrameDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A framed 3D view (docs/ui.md §5.5): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad.",
+      "description": "A framed 3D view (docs/ui.md §3.3): a camera's render target in the layout, turned by a drag, the wheel, keys and a pad.",
       "type": "object",
       "properties": {
         "texture": {
@@ -57233,7 +57233,7 @@
     "UiProp": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
-      "description": "An animatable value of an element (docs/ui.md §7.1): a state, a timeline key, a presence or og.ui.animate moves it. Colours are sRGB components 0 to 1; rotation and skew are radians.",
+      "description": "An animatable value of an element (docs/ui.md §3.1): a state, a timeline key, a presence or og.ui.animate moves it. Colours are sRGB components 0 to 1; rotation and skew are radians.",
       "type": "string",
       "enum": [
         "x",
@@ -57367,7 +57367,7 @@
     "MotionToken": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
-      "description": "A named motion of the style (docs/ui.md §7.7): components use these, so a style's personality changes every motion at once.",
+      "description": "A named motion of the style (docs/ui.md §3.1): components use these, so a style's personality changes every motion at once.",
       "type": "string",
       "enum": [
         "ui",
@@ -57389,7 +57389,7 @@
     "ReducedMotion": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
-      "description": "What an animation does under reduced motion (docs/ui.md §7.7).",
+      "description": "What an animation does under reduced motion (docs/ui.md §3.1).",
       "type": "string",
       "enum": [
         "fade",
@@ -58090,7 +58090,7 @@
     "UiVariant": {
       "x-og-kind": "struct",
       "x-og-module": "ui",
-      "description": "A prop override under a condition (docs/ui.md §6.2: breakpoint variants and container queries). Later variants win.",
+      "description": "A prop override under a condition (docs/ui.md §2: breakpoint variants and container queries). Later variants win.",
       "type": "object",
       "properties": {
         "when": {
@@ -58456,7 +58456,7 @@
     "PresenceSpec": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "How an element arrives or leaves (docs/ui.md §7.5): the values it enters from or exits to, and how it moves between them and its own.",
+      "description": "How an element arrives or leaves (docs/ui.md §3.1): the values it enters from or exits to, and how it moves between them and its own.",
       "type": "object",
       "properties": {
         "values": {
@@ -58569,7 +58569,7 @@
     "StateGroup": {
       "x-og-kind": "struct",
       "x-og-module": "ui",
-      "description": "A visual state group (docs/ui.md §7.3): one of its states is current, and moving between them animates every value that changes. A group named interaction is derived from input: normal, hover, pressed, focused and disabled (a state the group lacks falls back: pressed to hover to normal, focused to hover). Other groups take their state from ElementProps.state, a timeline's state event or og.ui.forceState; the first state is the default.",
+      "description": "A visual state group (docs/ui.md §3.1): one of its states is current, and moving between them animates every value that changes. A group named interaction is derived from input: normal, hover, pressed, focused and disabled (a state the group lacks falls back: pressed to hover to normal, focused to hover). Other groups take their state from ElementProps.state, a timeline's state event or og.ui.forceState; the first state is the default.",
       "type": "object",
       "properties": {
         "name": {
@@ -58622,7 +58622,7 @@
     "NavLinks": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "Explicit focus moves from an element (docs/ui.md §8.3), over the spatial pick: each a path (a full one, `Hud/Bag`, or a sibling's id); empty leaves that move to the layout. A path to a focus group lands on its remembered member (or its first); one to any other container, on its first focusable control.",
+      "description": "Explicit focus moves from an element (docs/ui.md §2.1), over the spatial pick: each a path (a full one, `Hud/Bag`, or a sibling's id); empty leaves that move to the layout. A path to a focus group lands on its remembered member (or its first); one to any other container, on its first focusable control.",
       "type": "object",
       "properties": {
         "up": {
@@ -58661,7 +58661,7 @@
     "FocusGroup": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A container whose focusable controls are one group for keys and pads (docs/ui.md §8.3): arrows move among its members first. At its edge a group that wraps goes round to its far side; one that does not leaves for the nearest control outside that way (the group around it first) and stays put when there is none. The zero value neither wraps nor remembers.",
+      "description": "A container whose focusable controls are one group for keys and pads (docs/ui.md §2.1): arrows move among its members first. At its edge a group that wraps goes round to its far side; one that does not leaves for the nearest control outside that way (the group around it first) and stays put when there is none. The zero value neither wraps nor remembers.",
       "type": "object",
       "properties": {
         "wrap": {
@@ -58680,7 +58680,7 @@
     "GestureSpec": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "Tap, double tap and long press on any element (docs/ui.md §8.5), answered by Response (tapped, doubleTapped, longPressed, longPress), og.ui.gesture and the frame's motion events. Nested elements compete for one press: of those that declare a gesture, the highest priority wins it, the innermost of equals. A tap waits for a double tap only where one is declared; a long press that fires takes the press, so its release clicks nothing; travel past the slop (a drag, a scroll) fails all three. The zero value recognises nothing.",
+      "description": "Tap, double tap and long press on any element (docs/ui.md §2.1), answered by Response (tapped, doubleTapped, longPressed, longPress), og.ui.gesture and the frame's motion events. Nested elements compete for one press: of those that declare a gesture, the highest priority wins it, the innermost of equals. A tap waits for a double tap only where one is declared; a long press that fires takes the press, so its release clicks nothing; travel past the slop (a drag, a scroll) fails all three. The zero value recognises nothing.",
       "type": "object",
       "properties": {
         "tap": {
@@ -58732,7 +58732,7 @@
     "Customize": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "An element the player can move, scale and fade in the HUD edit mode (docs/ui.md §8.4): a HUD group, a touch stick or button. Its placement is kept per player under key (og.ui.hudLayout). The zero value allows all three, from half to twice its size and down to a fifth of its opacity.",
+      "description": "An element the player can move, scale and fade in the HUD edit mode (docs/ui.md §2.1): a HUD group, a touch stick or button. Its placement is kept per player under key (og.ui.hudLayout). The zero value allows all three, from half to twice its size and down to a fifth of its opacity.",
       "type": "object",
       "properties": {
         "key": {
@@ -58783,7 +58783,7 @@
     "Cursor": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
-      "description": "The pointer's shape over an element (CSS cursor, docs/ui.md §6.1), inherited by its subtree.",
+      "description": "The pointer's shape over an element (CSS cursor, docs/ui.md §2), inherited by its subtree.",
       "type": "string",
       "enum": [
         "auto",
@@ -58831,7 +58831,7 @@
     "ElementProps": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "Everything an element carries beyond its box (docs/ui.md §6.1): set with og.ui.props right after the element. The zero value is an element in the flow, unmoved and opaque, with no motion.",
+      "description": "Everything an element carries beyond its box (docs/ui.md §2): set with og.ui.props right after the element. The zero value is an element in the flow, unmoved and opaque, with no motion.",
       "type": "object",
       "properties": {
         "transform": {
@@ -58922,7 +58922,7 @@
         },
         "dense": {
           "type": "boolean",
-          "description": "Its text and its subtree's are a dense HUD's readouts (strategy, MMO, simulation: docs/ui.md §15.2): og ui check holds them to 12 px at 1080p instead of 18, still growing with the player's text scale and passing the contrast rule. Never for menus, body text or controls.",
+          "description": "Its text and its subtree's are a dense HUD's readouts (strategy, MMO, simulation: docs/ui.md §6.1): og ui check holds them to 12 px at 1080p instead of 18, still growing with the player's text scale and passing the contrast rule. Never for menus, body text or controls.",
           "default": false
         },
         "match": {
@@ -59612,7 +59612,7 @@
     "UiTimeline": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "Keyframed tracks and events (docs/ui.md §7.4).",
+      "description": "Keyframed tracks and events (docs/ui.md §3.1).",
       "type": "object",
       "properties": {
         "tracks": {
@@ -59763,7 +59763,7 @@
     "Choreo": {
       "x-og-kind": "union",
       "x-og-module": "ui",
-      "description": "Timelines composed into one play (docs/ui.md §7.4).",
+      "description": "Timelines composed into one play (docs/ui.md §3.1).",
       "x-og-tag": "kind",
       "oneOf": [
         {
@@ -60151,7 +60151,7 @@
     "UiOverlap": {
       "x-og-kind": "struct",
       "x-og-module": "ui",
-      "description": "Two elements overlapping where neither declared it (docs/ui.md §6.2).",
+      "description": "Two elements overlapping where neither declared it (docs/ui.md §2).",
       "type": "object",
       "properties": {
         "path": {
@@ -60182,7 +60182,7 @@
     "UiLayoutStats": {
       "x-og-kind": "struct",
       "x-og-module": "ui",
-      "description": "What the last frame rebuilt and laid out (docs/ui.md §6.3).",
+      "description": "What the last frame rebuilt and laid out (docs/ui.md §2).",
       "type": "object",
       "properties": {
         "elements": {
@@ -65059,7 +65059,7 @@
         },
         "glass": {
           "$ref": "#/$defs/GlassWeight",
-          "description": "One of flat glass's weights (docs/ui.md §5.3): it sets the blur, 200 % saturation, the tint (unless tint is given), a 0.5 px hairline inside the edge and CSS mixing, in the theme's scheme; under reduced transparency the solid raised surface, under high contrast solid with a strong 1 px edge. none is the fields as given.",
+          "description": "One of flat glass's weights (docs/ui.md §3.3): it sets the blur, 200 % saturation, the tint (unless tint is given), a 0.5 px hairline inside the edge and CSS mixing, in the theme's scheme; under reduced transparency the solid raised surface, under high contrast solid with a strong 1 px edge. none is the fields as given.",
           "default": "none"
         },
         "elevation": {
@@ -65384,7 +65384,7 @@
             },
             "glass": {
               "$ref": "#/$defs/GlassWeight",
-              "description": "One of flat glass's weights (docs/ui.md §5.3): it sets the blur, 200 % saturation, the tint (unless tint is given), a 0.5 px hairline inside the edge and CSS mixing, in the theme's scheme; under reduced transparency the solid raised surface, under high contrast solid with a strong 1 px edge. none is the fields as given."
+              "description": "One of flat glass's weights (docs/ui.md §3.3): it sets the blur, 200 % saturation, the tint (unless tint is given), a 0.5 px hairline inside the edge and CSS mixing, in the theme's scheme; under reduced transparency the solid raised surface, under high contrast solid with a strong 1 px edge. none is the fields as given."
             },
             "elevation": {
               "$ref": "#/$defs/Elevation",
@@ -65807,7 +65807,7 @@
     "SemanticsDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "What a component tells the accessibility tree about an element it built from containers (docs/ui.md §11): a role other than its kind's, a name, a value and states. Absent fields leave what the element's kind gives it.",
+      "description": "What a component tells the accessibility tree about an element it built from containers (docs/ui.md §2): a role other than its kind's, a name, a value and states. Absent fields leave what the element's kind gives it.",
       "type": "object",
       "properties": {
         "role": {
@@ -66052,7 +66052,7 @@
     "WorldAnchorDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "An element anchored in the world (docs/ui.md §14): laid out at its own size and placed each tick on its target's point projected with the tick's camera. A nameplate, an interaction prompt, a speech bubble, a waypoint.",
+      "description": "An element anchored in the world (docs/ui.md §1): laid out at its own size and placed each tick on its target's point projected with the tick's camera. A nameplate, an interaction prompt, a speech bubble, a waypoint.",
       "type": "object",
       "properties": {
         "target": {
@@ -66296,7 +66296,7 @@
     "WorldPanelDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A world panel (docs/ui.md §14): a UI tree drawn into a render target that a mesh shows (a terminal, a cockpit screen, a shop sign), reached by the pointer through a ray onto its quad.",
+      "description": "A world panel (docs/ui.md §1): a UI tree drawn into a render target that a mesh shows (a terminal, a cockpit screen, a shop sign), reached by the pointer through a ray onto its quad.",
       "type": "object",
       "properties": {
         "target": {
@@ -66551,7 +66551,7 @@
     "MassTemplateDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A mass element template (docs/ui.md §14): declared once, then instanced thousands of times a frame with a few values each. No instance is laid out; its motion is the timeline, evaluated on the GPU.",
+      "description": "A mass element template (docs/ui.md §1): declared once, then instanced thousands of times a frame with a few values each. No instance is laid out; its motion is the timeline, evaluated on the GPU.",
       "type": "object",
       "properties": {
         "kind": {
@@ -66852,7 +66852,7 @@
     "ParticlesDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "UI particles from an element (docs/ui.md §5.5): confetti, sparks, coin streams, rarity bursts. Drawn over it on its layer, clipped by its clip, seeded so a replay throws the same. Nothing under reduced motion.",
+      "description": "UI particles from an element (docs/ui.md §3.3): confetti, sparks, coin streams, rarity bursts. Drawn over it on its layer, clipped by its clip, seeded so a replay throws the same. Nothing under reduced motion.",
       "type": "object",
       "properties": {
         "rate": {
@@ -66994,7 +66994,7 @@
     "MetaDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A meta layer (docs/ui.md §14): full screen, over the scene and under the screen's elements, never taking input.",
+      "description": "A meta layer (docs/ui.md §1): full screen, over the scene and under the screen's elements, never taking input.",
       "type": "object",
       "properties": {
         "kind": {
@@ -67083,7 +67083,7 @@
     "SceneViewportDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "The viewport element (docs/ui.md §5.5): a camera's view of a scene layer shown in the layout (a character on a turntable, an item to inspect). Draw it with an og.CameraView into a render target on its own layers, with its own lights; this element shows the target and passes input in.",
+      "description": "The viewport element (docs/ui.md §3.3): a camera's view of a scene layer shown in the layout (a character on a turntable, an item to inspect). Draw it with an og.CameraView into a render target on its own layers, with its own lights; this element shows the target and passes input in.",
       "type": "object",
       "properties": {
         "texture": {
@@ -67269,7 +67269,7 @@
     "UiDocEvent": {
       "x-og-kind": "struct",
       "x-og-module": "ui",
-      "description": "Something a document did (docs/ui.md §10.2): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`.",
+      "description": "Something a document did (docs/ui.md §2.1): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`.",
       "type": "object",
       "properties": {
         "mount": {
@@ -67332,7 +67332,7 @@
     "UiLayer": {
       "x-og-kind": "struct",
       "x-og-module": "ui",
-      "description": "A layer of the stack (docs/ui.md §8.1), as its screen declares it.",
+      "description": "A layer of the stack (docs/ui.md §2.1), as its screen declares it.",
       "type": "object",
       "properties": {
         "serial": {
@@ -67431,7 +67431,7 @@
     "UiActionDesc": {
       "x-og-kind": "struct",
       "x-og-module": "ui",
-      "description": "A named UI action (docs/ui.md §8.2) bound to og-input's controls: a component asks for an action, not a key.",
+      "description": "A named UI action (docs/ui.md §2.1) bound to og-input's controls: a component asks for an action, not a key.",
       "type": "object",
       "properties": {
         "name": {
@@ -67842,7 +67842,7 @@
     "UiPickElement": {
       "x-og-kind": "struct",
       "x-og-module": "probe",
-      "description": "The UI element under a point (docs/ui.md §16.1): the topmost one that shows something or takes input; a layout container that draws nothing lets the point through.",
+      "description": "The UI element under a point (docs/ui.md §6): the topmost one that shows something or takes input; a layout container that draws nothing lets the point through.",
       "type": "object",
       "properties": {
         "id": {

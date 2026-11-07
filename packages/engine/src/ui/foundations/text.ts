@@ -1,4 +1,4 @@
-// Foundations (docs/ui.md §11): text in a role, prose, the separator and
+// Foundations (docs/ui.md §2): text in a role, prose, the separator and
 // space by the style's scale. A text's role picks its type step and font
 // from the style, so a style's typography (and the player's text size)
 // moves every text at once; a tone picks its ink by meaning.

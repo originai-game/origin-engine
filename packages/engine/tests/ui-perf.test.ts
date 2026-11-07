@@ -1,4 +1,4 @@
-// The UI's CPU budget on the TypeScript side (docs/ui.md §15.1): the dense
+// The UI's CPU budget on the TypeScript side (docs/ui.md §6.3): the dense
 // menu of crates/og-ui/tests/perf.rs (a shop of 48 cards, 300 elements, 40
 // in a spring at every tick) built through og.ui by a system, so the tick
 // pays every TS↔engine crossing: one host call per widget, its desc as JSON.

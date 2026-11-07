@@ -1,6 +1,6 @@
 //! `og style art <pack> [--art <dir>] [--check]`: a style pack's painted
 //! art, from the requests it writes to the atlases it packs (docs/art.md
-//! §2.7, docs/ui.md §12.6).
+//! §2.7, docs/ui.md §3.3).
 //!
 //! The command never paints and never reaches the network. It does three
 //! things, each rerunnable:

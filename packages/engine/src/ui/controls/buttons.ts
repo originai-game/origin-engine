@@ -1,4 +1,4 @@
-// Buttons (docs/ui.md §11, Controls): every variant with icons, a badge, a
+// Buttons (docs/ui.md §2, Controls): every variant with icons, a badge, a
 // loading state and a disabled reason; the icon button; hold-to-confirm
 // with its toggle alternative (XAG 107). Each is a `Button.base` part a
 // style dresses by variant and state (a version 1 style's button art too),

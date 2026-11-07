@@ -1,4 +1,4 @@
-//! The element model and motion (docs/ui.md §6, §7), driven tick by tick.
+//! The element model and motion (docs/ui.md §2, §3.1), driven tick by tick.
 //!
 //! Ways these could fail, each covered below:
 //! - a transform moves the drawing but not the hit test or the probe's

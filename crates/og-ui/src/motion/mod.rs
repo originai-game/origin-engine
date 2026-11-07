@@ -1,4 +1,4 @@
-//! Motion by the tick (docs/ui.md §7): springs by perceptual duration and
+//! Motion by the tick (docs/ui.md §3.1): springs by perceptual duration and
 //! bounce that keep their velocity when retargeted ([`spring`]), visual
 //! state groups, timelines with keyframes and event tracks and the
 //! choreography that composes them ([`timeline`]), presence (enter and
@@ -25,7 +25,7 @@ pub use timeline::{
 use crate::element::{Prop, Values};
 use crate::theme::{EASE_EXIT, EASE_OUT};
 
-/// How an element arrives or leaves (docs/ui.md §7.5): the values it
+/// How an element arrives or leaves (docs/ui.md §3.1): the values it
 /// enters from or exits to, and how it moves between them and its own.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PresenceSpec {
@@ -81,7 +81,7 @@ pub struct StateTransition {
     pub transition: Transition,
 }
 
-/// A visual state group (docs/ui.md §7.3): one of its states is current,
+/// A visual state group (docs/ui.md §3.1): one of its states is current,
 /// and moving between them animates every value that changes. A group
 /// named `interaction` is derived from input: `normal`, `hover`,
 /// `pressed`, `focused` and `disabled` (a state the group lacks falls back:
@@ -163,7 +163,7 @@ pub enum TransitionKind {
     Pop,
     /// Tears in: the content draws through og-render's glitch material
     /// (slices pushed sideways, their colours split), weaker as it fades in
-    /// and stronger as it fades out (docs/ui.md §7.5). Short whatever the
+    /// and stronger as it fades out (docs/ui.md §3.1). Short whatever the
     /// style's base duration ([`TransitionKind::duration_ms`]); its
     /// strength is the style's (`motion { enter glitch 0.8 }`).
     /// Deterministic: its slices come from the element's id and the

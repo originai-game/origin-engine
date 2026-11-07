@@ -1,4 +1,4 @@
-// The world components (docs/ui.md §14, U6c) on the native host with the
+// The world components (docs/ui.md §1, U6c) on the native host with the
 // default og.Camera (at the origin, looking down -z), read through dump_ui.
 //
 // Ways they could fail, each covered below:

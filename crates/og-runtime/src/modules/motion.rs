@@ -1,4 +1,4 @@
-//! `og.ui`'s element model and motion (docs/ui.md §6, §7): the JSON of
+//! `og.ui`'s element model and motion (docs/ui.md §2, §3.1): the JSON of
 //! `ElementProps`, `UiTimeline`, `Choreo` and `Transition` read into
 //! og-ui's types, and the calls that take them.
 

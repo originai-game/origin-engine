@@ -28,8 +28,8 @@ fn look_project(ui: &str, chinese: bool) -> PathBuf {
     dir
 }
 
-/// `og style eject scifi keeper` writes the built-in style's whole pack
-/// (templates/styles/scifi, byte for byte) into the game's
+/// `og style eject fixture keeper` writes a supplied style's whole pack
+/// (byte for byte) into the game's
 /// assets/styles/keeper/, refuses to overwrite it without --force, and the
 /// ejected style cooks to the built-in's blobs (only the cook stamp in the
 /// header differs): the same palette, atlas, icons and fonts. Its `cjk`
@@ -40,9 +40,41 @@ fn look_project(ui: &str, chinese: bool) -> PathBuf {
 /// (an id resolved elsewhere, a font's import settings lost).
 #[test]
 fn style_eject_writes_the_built_in_pack_that_cooks_the_same() {
+    let styles = scratch_root();
+    let template = styles.join("fixture");
+    std::fs::create_dir_all(&template).unwrap();
+    let style = include_str!("../../../og-ui/tests/fixtures/core-style.ogt").replace(
+        "fonts {\n}",
+        "fonts {\n  body \"Body.ttf\"\n  cjk \"@styles/cjk/NotoSansSC-Regular.ttf\"\n}",
+    );
+    std::fs::write(template.join("style.ogt"), style).unwrap();
+    std::fs::write(template.join("LICENSES.md"), "Fixture font: SIL OFL 1.1").unwrap();
+    std::fs::copy(
+        repo().join("templates/styles/shared/InstrumentSans-Regular.ttf"),
+        template.join("Body.ttf"),
+    )
+    .unwrap();
+    std::fs::copy(
+        repo().join("templates/styles/shared/InstrumentSans-Regular.ttf.ogt"),
+        template.join("Body.ttf.ogt"),
+    )
+    .unwrap();
+    std::fs::create_dir_all(styles.join("cjk")).unwrap();
+    for name in ["NotoSansSC-Regular.ttf", "NotoSansSC-Regular.ttf.ogt"] {
+        std::fs::copy(
+            repo().join("templates/styles/cjk").join(name),
+            styles.join("cjk").join(name),
+        )
+        .unwrap();
+    }
+    let command = || {
+        let mut cmd = og();
+        cmd.env("OG_STYLES_DIR", &styles);
+        cmd
+    };
     let mine = look_project("styles/keeper/style.ogt", true);
-    let out = og()
-        .args(["style", "eject", "scifi", "keeper", "--project"])
+    let out = command()
+        .args(["style", "eject", "fixture", "keeper", "--project"])
         .arg(&mine)
         .output()
         .unwrap();
@@ -52,7 +84,6 @@ fn style_eject_writes_the_built_in_pack_that_cooks_the_same() {
         "{}",
         text(&out)
     );
-    let template = repo().join("templates/styles/scifi");
     let ejected = mine.join("assets/styles/keeper");
     fn names(d: &Path) -> Vec<String> {
         let mut v: Vec<String> = std::fs::read_dir(d)
@@ -86,14 +117,14 @@ fn style_eject_writes_the_built_in_pack_that_cooks_the_same() {
         }
         assert!(
             std::fs::read(ejected.join(&f)).unwrap() == std::fs::read(template.join(&f)).unwrap(),
-            "{f} differs from templates/styles/scifi"
+            "{f} differs from the source pack"
         );
     }
 
     // An existing pack is kept unless --force.
     std::fs::write(ejected.join("style.ogt"), "edited").unwrap();
-    let again = og()
-        .args(["style", "eject", "scifi", "keeper", "--project"])
+    let again = command()
+        .args(["style", "eject", "fixture", "keeper", "--project"])
         .arg(&mine)
         .output()
         .unwrap();
@@ -103,22 +134,29 @@ fn style_eject_writes_the_built_in_pack_that_cooks_the_same() {
         std::fs::read_to_string(ejected.join("style.ogt")).unwrap(),
         "edited"
     );
-    let forced = og()
-        .args(["style", "eject", "scifi", "keeper", "--force", "--project"])
+    let forced = command()
+        .args([
+            "style",
+            "eject",
+            "fixture",
+            "keeper",
+            "--force",
+            "--project",
+        ])
         .arg(&mine)
         .output()
         .unwrap();
     assert_eq!(forced.status.code(), Some(0), "{}", text(&forced));
 
-    let builtin = look_project("scifi", true);
+    let builtin = look_project("fixture", true);
     for dir in [&mine, &builtin] {
-        let out = og().arg("cook").arg(dir).output().unwrap();
+        let out = command().arg("cook").arg(dir).output().unwrap();
         assert_eq!(out.status.code(), Some(0), "{}", text(&out));
     }
     let a = og_cook::runtime::Bundle::open(&mine.join("cooked")).unwrap();
     let b = og_cook::runtime::Bundle::open(&builtin.join("cooked")).unwrap();
     assert!(
-        a.output("@styles/scifi/style.ogt").is_err(),
+        a.output("@styles/fixture/style.ogt").is_err(),
         "the ejected style replaces the built-in in the bundle"
     );
     // The blob header's cook stamp (bytes 32..40) hashes the source id.
@@ -130,21 +168,14 @@ fn style_eject_writes_the_built_in_pack_that_cooks_the_same() {
         v[32..40].fill(0);
         v
     };
-    for f in [
-        "style.ogt",
-        "atlas.png",
-        "icons.png",
-        "IBMPlexSans-Regular.ttf",
-        "IBMPlexSans-Light.ttf",
-        "IBMPlexMono-Regular.ttf",
-    ] {
+    for f in ["style.ogt", "Body.ttf"] {
         assert!(
             unstamped(&a, &format!("styles/keeper/{f}"))
-                == unstamped(&b, &format!("@styles/scifi/{f}")),
+                == unstamped(&b, &format!("@styles/fixture/{f}")),
             "{f}: the ejected copy cooks differently from the built-in"
         );
     }
-    // scifi names one CJK face for body and display alike.
+    // The fixture names one CJK companion.
     let id = "@styles/cjk/NotoSansSC-Regular.ttf";
     assert!(
         unstamped(&a, id) == unstamped(&b, id),
@@ -152,6 +183,7 @@ fn style_eject_writes_the_built_in_pack_that_cooks_the_same() {
     );
     let _ = std::fs::remove_dir_all(&mine);
     let _ = std::fs::remove_dir_all(&builtin);
+    let _ = std::fs::remove_dir_all(&styles);
 }
 
 /// `og style art` takes a generated style from its requests to painted

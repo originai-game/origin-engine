@@ -1,6 +1,6 @@
 //! Devices and glyphs: what a prompt draws for a control. One table for
 //! gameplay actions ([`crate::ActionMap::glyph`]) and og-ui's UI actions
-//! (docs/ui.md §8.2), so a key, a pad button or a stick is named the same
+//! (docs/ui.md §2.1), so a key, a pad button or a stick is named the same
 //! way everywhere and switches live with the device used last. A key's
 //! glyph is the player's keyboard layout's printed key ([`set_key_labels`]).
 

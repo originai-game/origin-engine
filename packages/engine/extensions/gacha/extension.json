@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "kind": "kit",
-  "name": "gacha",
-  "version": "1.0.0",
-  "description": "Gacha banners and the summon sequence from charge to reveal and summary, built from common components",
-  "entry": "index.ts",
-  "types": "types.ts"
-}

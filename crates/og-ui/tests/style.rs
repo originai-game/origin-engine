@@ -371,7 +371,7 @@ fn css_tokens_work_in_paint_lengths_and_aliases_and_reject_cycles() {
     );
 }
 
-/// A dressing's draw lines (docs/ui.md §5, §12.3): stops without an offset
+/// A dressing's draw lines (docs/ui.md §3.3, §3.2): stops without an offset
 /// share the space between their neighbours, colours are tokens or
 /// literals, an atlas region is cut in the atlas's texels, a later block of
 /// one selector replaces the fills it sets and keeps the rest, and a line
