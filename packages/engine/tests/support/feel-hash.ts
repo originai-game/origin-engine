@@ -110,7 +110,7 @@ const replayed = engine.hash();
 engine.destroy();
 
 // The named curves have mathematical goldens as well as host-equal hashes.
-const curves = ["expo.in", "expo.out", "expo.inOut", "back.inOut"] as const;
+const curves = ["expo.in", "expo.out", "expo.inOut", "back.inOut", "cubic-bezier(0,1,0,1)", "steps(4,jump-start)"] as const;
 const goldenEngine = must(createEngine(og.game({}) as unknown as GameToken));
 const gw = goldenEngine.world;
 const targets = curves.map((ease) => {

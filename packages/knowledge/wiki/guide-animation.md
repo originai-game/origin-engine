@@ -128,6 +128,14 @@ reverses alternate cycles. Eases use GSAP names: `none`, `power1.out`,
 `power2.inOut`, `back.out`, `expo.in`, `elastic.out`, `bounce.out`.
 The named curves follow GSAP 3.15.0 maths in deterministic f32 arithmetic;
 there are no custom JS ease functions or callbacks in saved world state.
+The same `Ease` string accepts `cubic-bezier(0.17,0.85,0.63,0.08)` and
+`steps(4,jump-start)`. The shared parser validates four finite Bézier
+controls with x in [0,1], or a positive integer step count and known jump
+position (jump-none needs at least 2). Invalid tween text returns an error
+value naming the text and constraints; invalid timeline text fails the cook.
+Temporarily, camera `blendEase`, `soloEase` and `blendCurve` store named
+curve codes only; their TypeScript field types reject parameterized strings.
+The reflected timing-payload migration will remove this restriction.
 
 UI tween transitions and eased keyframes use the same `Ease` names and
 sampler. Replace the old UI `linear` with `none`. The old `out`, `exit`

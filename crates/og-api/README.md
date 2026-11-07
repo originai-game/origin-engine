@@ -121,7 +121,7 @@ Godot, Unreal, three.js). The wiki prints it as "Also known as:" and
 | `handle` | `handle Name "doc"` | a generational handle |
 | `struct` | `struct Name { doc; desc true; field ... }` | plain data; `desc true` makes every field optional with a default |
 | `field` | `field name Type "doc" { default ...; min; max; step; unit; label; tunable; readonly; optional }` | a field |
-| `enum` | `enum Name { variant name "doc" }` | string variants; the first is the zero value |
+| `enum` | `enum Name { variant name "doc"; pattern "fn(${string})" "doc" }` | fixed string variants plus optional template-string alternatives; the first fixed variant is the zero value |
 | `union` | `union Name { tag key; case name [Payload] "doc" }` | a tagged union; the payload is a struct |
 | `interface` | `interface Name { extends Base; publish bool; prop name Type "doc"; fn ... }` | an object with members |
 | `callback` | `callback Name { param ...; returns Type }` | a function game code supplies |
@@ -129,6 +129,15 @@ Godot, Unreal, three.js). The wiki prints it as "Also known as:" and
 | `component` / `resource` / `event` | `component Name { field ... }`, resources also `fn ...` | reflected records registered by name |
 
 ### Types
+
+String enums may add `pattern "prefix(${string})" "documentation"`.
+Each `${string}` hole accepts arbitrary text; the receiving parser must
+validate its contents. Literals cannot contain backticks, backslashes,
+dollar signs or newlines. Generators emit TypeScript template-string
+unions and anchored JSON Schema patterns, escaping regex punctuation.
+Patterns do not allocate numeric enum codes: enum columns and explicit
+defaults still accept fixed variants only. Both hosts pass strings to the
+same runtime parser, without a host-specific pattern implementation.
 
 Type expressions are words in a dotted prefix form, because `.ogt` words
 cannot hold `<`: built-in generics have fixed arities, so `Map.List.Entity`

@@ -575,6 +575,9 @@ fn type_item(out: &mut String, ix: &Index<'_>, item: &Item) {
             for v in &e.variants {
                 let _ = writeln!(out, "| `\"{}\"` | {} |", v.name, cell(&v.doc.join(" ")));
             }
+            for p in &e.patterns {
+                let _ = writeln!(out, "| `{}` | {} |", p.name, cell(&p.doc.join(" ")));
+            }
             out.push('\n');
             quote(out, ix, &block(src, e.line), e.line, None);
         }

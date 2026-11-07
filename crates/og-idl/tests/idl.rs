@@ -18,6 +18,64 @@ fn api() -> og_idl::Api {
 }
 
 #[test]
+fn enum_patterns_are_typed_documented_and_regex_escaped() {
+    let source = r#"type api
+version 1
+---
+package "@origingame/pattern-test"
+doc "Pattern fixture."
+module test {
+  doc "Patterns."
+  struct FieldOptions {
+    doc "Field metadata."
+    desc true
+  }
+  enum Choice {
+    doc "A choice."
+    variant plain "Fixed."
+    pattern "a.b(${string})[${string}]" "Two arbitrary text slots."
+  }
+}
+"#;
+    let api = og_idl::parse(source).unwrap();
+    let files = og_idl::generate(&api);
+    let dts = &files
+        .iter()
+        .find(|f| f.path.ends_with("types/index.d.ts"))
+        .unwrap()
+        .contents;
+    assert!(dts.contains("export type Choice = \"plain\" | `a.b(${string})[${string}]`;"));
+    let schema: serde_json::Value = serde_json::from_str(
+        &files
+            .iter()
+            .find(|f| f.path.ends_with("schema/api.schema.json"))
+            .unwrap()
+            .contents,
+    )
+    .unwrap();
+    assert_eq!(
+        schema["$defs"]["Choice"]["anyOf"][1]["pattern"],
+        r"^a\.b\([\s\S]*\)\[[\s\S]*\]$"
+    );
+    assert!(
+        og_idl::generate_wiki(&api)
+            .iter()
+            .any(|f| f.contents.contains("Two arbitrary text slots."))
+    );
+    for invalid in [
+        "literal",
+        "a(${number})",
+        "a(`${string})",
+        "a(${string})${bad}",
+    ] {
+        assert!(
+            og_idl::parse(&source.replace("a.b(${string})[${string}]", invalid)).is_err(),
+            "{invalid}"
+        );
+    }
+}
+
+#[test]
 fn the_repository_idl_is_valid_and_covers_the_design() {
     let api = api();
     let modules: Vec<&str> = api.modules.iter().map(|m| m.name.as_str()).collect();

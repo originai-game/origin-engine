@@ -546,6 +546,9 @@ track marker {
         }
         for curve in [
             "cubic-bezier(-0.1, 0, 1, 1)",
+            "cubic-bezier(0, 1, 0)",
+            "steps(0)",
+            "steps(4, sideways)",
             "steps(1, jump-none)",
             "linear",
             "ease-in",
@@ -554,7 +557,7 @@ track marker {
             assert!(
                 Timeline::parse(&text, &mut read)
                     .unwrap_err()
-                    .contains("ease")
+                    .contains(curve)
             );
         }
         for keyword in ["linear", "ease-in"] {

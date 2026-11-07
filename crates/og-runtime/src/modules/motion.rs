@@ -194,7 +194,7 @@ fn ease(v: &Value, bezier: &Value) -> Option<Ease> {
     if v.is_null() {
         Some(Ease::CubicBezier(og_ui::theme::EASE_OUT))
     } else {
-        Ease::from_name(v.as_str()?)
+        Ease::from_text(v.as_str()?)
     }
 }
 

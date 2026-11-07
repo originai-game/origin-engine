@@ -354,6 +354,9 @@ pub struct Enum {
     /// other engines' names, read by `og api find` only.
     pub aliases: Vec<String>,
     pub variants: Vec<Variant>,
+    /// Template string alternatives with `${string}` holes. These extend
+    /// string arguments, not the fixed variants of numeric enum columns.
+    pub patterns: Vec<Variant>,
     pub line: usize,
 }
 

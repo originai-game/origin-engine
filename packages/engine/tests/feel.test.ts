@@ -169,6 +169,27 @@ test("from captures before delay; fromTo and repeat keep explicit spans through 
   engine.destroy();
 });
 
+test("invalid timing functions return their text and validation rules", () => {
+  const engine = start(og.game({}));
+  const entity = must(engine.world.spawn({}));
+  const invalid = [
+    ["cubic-bezier(0,1,0)", "four finite controls"],
+    ["cubic-bezier(-0.1,1,0,1)", "x1,x2 in [0,1]"],
+    ["steps(0)", "integer n >= 1"],
+    ["steps(4,sideways)", "jump-start/jump-end"],
+    ["steps(1,jump-none)", "n > 1"],
+  ] as const;
+  for (const [ease, rule] of invalid) {
+    const result = og.tween.to(engine.world, { entity, field: "position.x", to: [1], ease });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toContain(ease);
+      expect(result.reason).toContain(rule);
+    }
+  }
+  engine.destroy();
+});
+
 test("a hit stop holds physics and scaled tweens while systems keep ticking, and a restore resumes it", () => {
   const game = og.game({
     resources: [Log],

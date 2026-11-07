@@ -335,16 +335,33 @@ impl Loader {
             doc: self.inline(node, 1),
             aliases: Vec::new(),
             variants: Vec::new(),
+            patterns: Vec::new(),
             line: node.line,
         };
         for child in children(node) {
             match child.key.as_str() {
                 "doc" => e.doc.extend(self.doc_line(child)),
                 "aliases" => e.aliases.extend(self.doc_line(child)),
-                "variant" => {
-                    if let Some(name) = self.name(child, "variant") {
+                "variant" | "pattern" => {
+                    let name = if child.key == "pattern" {
+                        match child.values.first() {
+                            Some(Value::String(s)) => Some(s.clone()),
+                            _ => {
+                                self.error(child.line, "pattern needs a quoted template string");
+                                None
+                            }
+                        }
+                    } else {
+                        self.name(child, "variant")
+                    };
+                    if let Some(name) = name {
                         let doc = self.doc(child, 1);
-                        e.variants.push(Variant {
+                        let alternatives = if child.key == "pattern" {
+                            &mut e.patterns
+                        } else {
+                            &mut e.variants
+                        };
+                        alternatives.push(Variant {
                             name,
                             doc,
                             line: child.line,
@@ -354,7 +371,7 @@ impl Loader {
                 other => self.error(
                     child.line,
                     format!(
-                        "unknown key `{other}` in enum `{}`: expected doc or variant",
+                        "unknown key `{other}` in enum `{}`: expected doc, variant or pattern",
                         e.name
                     ),
                 ),

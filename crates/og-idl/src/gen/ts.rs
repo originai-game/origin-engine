@@ -219,7 +219,7 @@ impl<'a> Gen<'a, '_> {
             .collect();
         for c in columns.into_iter().filter(|c| !c.list) {
             self.jsdoc("  ", &c.doc, &[]);
-            let value = self.ty(&c.value, &[]);
+            let value = self.column_ty(&c.value);
             let stride = if c.capacity {
                 "number".to_string()
             } else {
@@ -268,11 +268,15 @@ impl<'a> Gen<'a, '_> {
                     for v in &e.variants {
                         doc.push(format!("- `\"{}\"`: {}", v.name, v.doc.join(" ")));
                     }
+                    for p in &e.patterns {
+                        doc.push(format!("- `{}`: {}", p.name, p.doc.join(" ")));
+                    }
                     self.jsdoc("", &doc, &[]);
                     let variants: Vec<String> = e
                         .variants
                         .iter()
                         .map(|v| format!("\"{}\"", v.name))
+                        .chain(e.patterns.iter().map(|p| format!("`{}`", p.name)))
                         .collect();
                     self.line(&format!(
                         "export type {} = {};",
@@ -334,7 +338,7 @@ impl<'a> Gen<'a, '_> {
                     ));
                 }
                 Item::Column(c) => {
-                    let value = self.ty(&c.value, &[]);
+                    let value = self.column_ty(&c.value);
                     let tags = vec![
                         format!(
                             "A `{}` field: stored in a `{}` with stride {}.",
@@ -404,7 +408,7 @@ impl<'a> Gen<'a, '_> {
             } else {
                 ""
             };
-            let ty = self.ty(&f.ty, &[]);
+            let ty = self.column_ty(&f.ty);
             self.line(&format!("  {ro}{}: {ty};", f.name));
         }
         for m in &r.methods {
@@ -643,6 +647,24 @@ impl<'a> Gen<'a, '_> {
         self.line(&format!("{indent} */"));
     }
 
+    /// Numeric enum columns store fixed variant indices, never text payloads.
+    fn column_ty(&self, ty: &TypeRef) -> String {
+        if let Some((element, _)) = self.ix.list(ty) {
+            return format!("readonly {}[]", paren(&self.column_ty(element)));
+        }
+        if let Some(TypeDecl::Enum(e)) = self.ix.decl(ty.name())
+            && !e.patterns.is_empty()
+        {
+            return e
+                .variants
+                .iter()
+                .map(|v| format!("\"{}\"", v.name))
+                .collect::<Vec<_>>()
+                .join(" | ");
+        }
+        self.ty(ty, &[])
+    }
+
     /// An IDL type expression in TypeScript.
     fn ty(&self, ty: &TypeRef, generics: &[Generic]) -> String {
         let (name, args) = match ty {
@@ -735,6 +757,13 @@ pub fn exports_ts(ix: &Index<'_>) -> String {
             let value = default_json(ix, &c.value, None)
                 .unwrap_or_else(|| panic!("column `{}` has no default value", c.name));
             let value = match ix.decl(c.value.name()) {
+                Some(TypeDecl::Enum(e)) if !e.patterns.is_empty() => {
+                    format!(
+                        "{} as Api.ColumnKinds[\"{}\"][\"value\"]",
+                        compact(&value),
+                        c.name
+                    )
+                }
                 Some(TypeDecl::Enum(_) | TypeDecl::Handle(_)) => {
                     format!("{} as Api.{}", compact(&value), c.value.name())
                 }

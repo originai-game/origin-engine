@@ -34,6 +34,8 @@ A string: one of the variants below. The zero value is `"power1.out"`.
 | `"bounce.in"` | Bounces before leaving. |
 | `"bounce.out"` | Bounces at the end: drops, landings. |
 | `"bounce.inOut"` | Bounces at both ends. |
+| `cubic-bezier(${string})` | Four finite controls x1,y1,x2,y2; x1 and x2 must be in [0,1]. Validated by the shared timing parser. |
+| `steps(${string})` | Positive integer count and optional start/end/jump-start/jump-end/jump-none/jump-both; jump-none requires count > 1. Discrete jumps, not interpolated ramps. |
 
 ```ogt
 enum Ease {
@@ -60,6 +62,8 @@ enum Ease {
   variant bounce.in "Bounces before leaving."
   variant bounce.out "Bounces at the end: drops, landings."
   variant bounce.inOut "Bounces at both ends."
+  pattern "cubic-bezier(${string})" "Four finite controls x1,y1,x2,y2; x1 and x2 must be in [0,1]. Validated by the shared timing parser."
+  pattern "steps(${string})" "Positive integer count and optional start/end/jump-start/jump-end/jump-none/jump-both; jump-none requires count > 1. Discrete jumps, not interpolated ramps."
 }
 ```
 

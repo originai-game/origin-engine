@@ -131,6 +131,13 @@ test.skipIf(STALE_WASM)("tweens, presets, hit stop, slow motion and camera feel 
   for (let i = 0; i < goldens.length; i++) {
     for (let j = 0; j < 4; j++) expect(node.curveSamples[i]![j]!).toBeCloseTo(goldens[i]![j]!, 5);
   }
+  // x=u³, y=1−(1−u)³; independent analytic inverse, not the engine solver.
+  for (const [i, tick] of [0, 1, 10, 17, 43, 59, 60].entries()) {
+    const p = tick / 60;
+    expect(node.curveSamples[i]![4]!).toBeCloseTo(1 - (1 - Math.cbrt(p)) ** 3, 5);
+    // Before the first tick the tween has not written its start value.
+    expect(node.curveSamples[i]![5]!).toBe(tick === 0 ? 0 : Math.min(1, (Math.floor(p * 4) + 1) / 4));
+  }
   // The snapshot taken inside the hit stop replays into the same world.
   expect(node.replayed).toBe(node.end);
   expect(web.replayed).toBe(web.end);

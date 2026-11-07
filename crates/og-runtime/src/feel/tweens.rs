@@ -65,9 +65,9 @@ fn has(eng: &Engine, e: u64, index: u32) -> Result<bool, String> {
 fn ease_of(v: &Value, default: Ease) -> Result<Ease, String> {
     match v.as_str() {
         None => Ok(default),
-        Some(n) => Ease::from_name(n).ok_or_else(|| {
+        Some(n) => Ease::from_text(n).ok_or_else(|| {
             format!(
-                "ease '{n}' is not one of {}",
+                "invalid ease '{n}': expected a GSAP name ({}), cubic-bezier(x1,y1,x2,y2) with four finite controls and x1,x2 in [0,1], or steps(n[,position]) with integer n >= 1 and position start/end/jump-start/jump-end/jump-none/jump-both (jump-none requires n > 1)",
                 og_tween::EASE_NAMES.join(", ")
             )
         }),

@@ -1,0 +1,7 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"Ease","summary":"Typed cubic-bezier() and steps() strings share the deterministic timing parser on both hosts. Invalid tween text returns an error value; invalid timeline text is refused by the cook."},
+    {"member":"og-idl","summary":"String enums support documented pattern alternatives with ${string} holes, emitted as TypeScript template literals and JSON Schema patterns. Numeric enum columns and explicit defaults retain fixed variants only."}
+  ]
+}

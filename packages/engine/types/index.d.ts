@@ -303,7 +303,7 @@ export interface ColumnKinds {
   /** A Tween handle field. */
   Tween: { readonly array: Uint32Array; readonly stride: 2; readonly value: Tween };
   /** An Ease field: the variant's index. */
-  Ease: { readonly array: Uint32Array; readonly stride: 1; readonly value: Ease };
+  Ease: { readonly array: Uint32Array; readonly stride: 1; readonly value: "power1.out" | "none" | "power1.in" | "power1.inOut" | "power2.in" | "power2.out" | "power2.inOut" | "power3.in" | "power3.out" | "power3.inOut" | "expo.in" | "expo.out" | "expo.inOut" | "back.in" | "back.out" | "back.inOut" | "elastic.in" | "elastic.out" | "elastic.inOut" | "bounce.in" | "bounce.out" | "bounce.inOut" };
   /** A TilemapAsset handle field. */
   TilemapAsset: { readonly array: Uint32Array; readonly stride: 2; readonly value: TilemapAsset };
   /** An AudioBus field: the variant's index. */
@@ -5494,7 +5494,7 @@ export interface VirtualCamera {
    *
    * @default "power2.inOut"
    */
-  blendEase: Ease;
+  blendEase: "power1.out" | "none" | "power1.in" | "power1.inOut" | "power2.in" | "power2.out" | "power2.inOut" | "power3.in" | "power3.out" | "power3.inOut" | "expo.in" | "expo.out" | "expo.inOut" | "back.in" | "back.out" | "back.inOut" | "elastic.in" | "elastic.out" | "elastic.inOut" | "bounce.in" | "bounce.out" | "bounce.inOut";
   /**
    * Keep a sphere of `radius` clear of colliders between the look point and where it sits: it pulls in towards the look point at once and eases back out over damping. Against the colliders as the tick started (og.physics' query view): it never moves a body.
    */
@@ -5577,7 +5577,7 @@ export interface CameraBrain {
    *
    * @default "power2.inOut"
    */
-  blendEase: Ease;
+  blendEase: "power1.out" | "none" | "power1.in" | "power1.inOut" | "power2.in" | "power2.out" | "power2.inOut" | "power3.in" | "power3.out" | "power3.inOut" | "expo.in" | "expo.out" | "expo.inOut" | "back.in" | "back.out" | "back.inOut" | "elastic.in" | "elastic.out" | "elastic.inOut" | "bounce.in" | "bounce.out" | "bounce.inOut";
   /**
    * A shot that outranks every priority while it is set (a cutscene or a dialogue close-up): an entity with an og.VirtualCamera, live even when it is not enabled; 0 releases it and the brain blends back to the highest priority. Anything else is ignored. og.story sets it for a dialogue line's `shot` and a timeline's shot track for its keys.
    */
@@ -5594,7 +5594,7 @@ export interface CameraBrain {
    *
    * @default "power2.inOut"
    */
-  soloEase: Ease;
+  soloEase: "power1.out" | "none" | "power1.in" | "power1.inOut" | "power2.in" | "power2.out" | "power2.inOut" | "power3.in" | "power3.out" | "power3.inOut" | "expo.in" | "expo.out" | "expo.inOut" | "back.in" | "back.out" | "back.inOut" | "elastic.in" | "elastic.out" | "elastic.inOut" | "bounce.in" | "bounce.out" | "bounce.inOut";
   /**
    * The live camera (0: none).
    *
@@ -5626,7 +5626,7 @@ export interface CameraBrain {
    *
    * @readonly written by the engine
    */
-  readonly blendCurve: Ease;
+  readonly blendCurve: "power1.out" | "none" | "power1.in" | "power1.inOut" | "power2.in" | "power2.out" | "power2.inOut" | "power3.in" | "power3.out" | "power3.inOut" | "expo.in" | "expo.out" | "expo.inOut" | "back.in" | "back.out" | "back.inOut" | "elastic.in" | "elastic.out" | "elastic.inOut" | "bounce.in" | "bounce.out" | "bounce.inOut";
   /**
    * A held pose to blend from: its position, in world space (a floating-origin rebase shifts it).
    *
@@ -19030,8 +19030,10 @@ export declare function Tween(value?: Tween, options?: FieldOptions): FieldSpec<
  * - `"bounce.in"`: Bounces before leaving.
  * - `"bounce.out"`: Bounces at the end: drops, landings.
  * - `"bounce.inOut"`: Bounces at both ends.
+ * - `cubic-bezier(${string})`: Four finite controls x1,y1,x2,y2; x1 and x2 must be in [0,1]. Validated by the shared timing parser.
+ * - `steps(${string})`: Positive integer count and optional start/end/jump-start/jump-end/jump-none/jump-both; jump-none requires count > 1. Discrete jumps, not interpolated ramps.
  */
-export type Ease = "power1.out" | "none" | "power1.in" | "power1.inOut" | "power2.in" | "power2.out" | "power2.inOut" | "power3.in" | "power3.out" | "power3.inOut" | "expo.in" | "expo.out" | "expo.inOut" | "back.in" | "back.out" | "back.inOut" | "elastic.in" | "elastic.out" | "elastic.inOut" | "bounce.in" | "bounce.out" | "bounce.inOut";
+export type Ease = "power1.out" | "none" | "power1.in" | "power1.inOut" | "power2.in" | "power2.out" | "power2.inOut" | "power3.in" | "power3.out" | "power3.inOut" | "expo.in" | "expo.out" | "expo.inOut" | "back.in" | "back.out" | "back.inOut" | "elastic.in" | "elastic.out" | "elastic.inOut" | "bounce.in" | "bounce.out" | "bounce.inOut" | `cubic-bezier(${string})` | `steps(${string})`;
 
 /**
  * An Ease field: the variant's index.
@@ -19040,7 +19042,7 @@ export type Ease = "power1.out" | "none" | "power1.in" | "power1.inOut" | "power
  * @param value The field's default; omitted, the column's zero value.
  * @param options Range, unit, label, docs and the tunable flag.
  */
-export declare function Ease(value?: Ease, options?: FieldOptions): FieldSpec<"Ease">;
+export declare function Ease(value?: "power1.out" | "none" | "power1.in" | "power1.inOut" | "power2.in" | "power2.out" | "power2.inOut" | "power3.in" | "power3.out" | "power3.inOut" | "expo.in" | "expo.out" | "expo.inOut" | "back.in" | "back.out" | "back.inOut" | "elastic.in" | "elastic.out" | "elastic.inOut" | "bounce.in" | "bounce.out" | "bounce.inOut", options?: FieldOptions): FieldSpec<"Ease">;
 
 /**
  * One tween of one field.

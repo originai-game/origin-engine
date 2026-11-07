@@ -359,6 +359,18 @@ impl<'a> Validator<'a, '_> {
             self.error(e.line, format!("enum `{}` has no variants", e.name));
         }
         let mut seen = BTreeSet::new();
+        for p in &e.patterns {
+            let literal = p.name.replace("${string}", "");
+            if !p.name.contains("${string}") || literal.contains(['`', '\\', '$', '\n', '\r']) {
+                self.error(p.line, "enum patterns require ${string} holes and literals without backticks, backslashes, dollar signs or newlines");
+            }
+            if !seen.insert(p.name.as_str()) {
+                self.error(p.line, format!("duplicate pattern `{}`", p.name));
+            }
+            self.doc(&p.doc, p.line, || {
+                format!("pattern `{}.{}`", e.name, p.name)
+            });
+        }
         for v in &e.variants {
             self.name(
                 variant_name,

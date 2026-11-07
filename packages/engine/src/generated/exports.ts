@@ -149,7 +149,7 @@ export const Rig2D = ((value = 0 as Api.Rig2D, options) => spec("Rig2D", value, 
 
 // tween
 export const Tween = ((value = 0 as Api.Tween, options) => spec("Tween", value, options)) as typeof Api.Tween;
-export const Ease = ((value = "power1.out" as Api.Ease, options) => spec("Ease", value, options)) as typeof Api.Ease;
+export const Ease = ((value = "power1.out" as Api.ColumnKinds["Ease"]["value"], options) => spec("Ease", value, options)) as typeof Api.Ease;
 
 // tilemap
 export const TilemapAsset = ((value = 0 as Api.TilemapAsset, options) => spec("TilemapAsset", value, options)) as typeof Api.TilemapAsset;

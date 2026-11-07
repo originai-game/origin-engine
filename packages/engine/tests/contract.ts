@@ -8,6 +8,16 @@ import { PROBE_VERSION } from "@origingame/engine";
 const Counter = defineComponent("Counter", { n: u32(0), alive: bool(true), at: Vector3({ x: 0, y: 1, z: 0 }) });
 const Tuning = defineResource("Tuning", { speed: f32(4, { min: 0, max: 20, unit: "m", tunable: true }) });
 
+function timing(w: World, entity: Entity): void {
+  og.tween.to(w, { entity, ease: "cubic-bezier(0.17,0.85,0.63,0.08)" });
+  og.tween.to(w, { entity, ease: "steps(4,jump-start)" });
+  // @ts-expect-error a misspelled named curve is not a timing function
+  og.tween.to(w, { entity, ease: "power2.ot" });
+  // @ts-expect-error until camera curve payloads migrate, its enum column stores names only
+  w.insert(entity, og.VirtualCamera, { blendEase: "cubic-bezier(0,1,0,1)" });
+}
+void timing;
+
 // Columns map to the typed array their column kind declares.
 defineSystem("Count", { reads: [Tuning], writes: [Counter] }, (q, time, world) => {
   for (const a of q.archetypes()) {

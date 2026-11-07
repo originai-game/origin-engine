@@ -362,10 +362,37 @@ fn def_json(ix: &Index<'_>, m: &Module, item: &Item) -> Option<Json> {
             for v in &e.variants {
                 variants.set(&v.name, Json::str(joined(&v.doc)));
             }
-            base("enum", &e.doc)
-                .with("type", Json::str("string"))
-                .with("enum", strings(e.variants.iter().map(|v| v.name.as_str())))
-                .with("x-og-variants", variants)
+            let mut schema = base("enum", &e.doc).with("type", Json::str("string"));
+            let values = strings(e.variants.iter().map(|v| v.name.as_str()));
+            if e.patterns.is_empty() {
+                schema.set("enum", values);
+            } else {
+                let mut alternatives = vec![Json::obj().with("enum", values)];
+                for p in &e.patterns {
+                    let parts: Vec<String> = p
+                        .name
+                        .split("${string}")
+                        .map(|s| {
+                            s.chars()
+                                .map(|c| {
+                                    if ".*+?^$()[]{}|\\".contains(c) {
+                                        format!("\\{c}")
+                                    } else {
+                                        c.to_string()
+                                    }
+                                })
+                                .collect()
+                        })
+                        .collect();
+                    alternatives.push(Json::obj().with(
+                        "pattern",
+                        Json::str(format!("^{}$", parts.join("[\\s\\S]*"))),
+                    ));
+                }
+                schema.set("anyOf", Json::Arr(alternatives));
+            }
+            schema.set("x-og-variants", variants);
+            schema
         }
         Item::Union(u) => {
             let cases = u

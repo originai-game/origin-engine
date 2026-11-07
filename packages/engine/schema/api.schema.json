@@ -40658,29 +40658,39 @@
       "x-og-module": "tween",
       "description": "An easing curve from the start (0) to the end (1). In starts slow, out ends slow, inOut both. back overshoots, elastic rings, bounce bounces at the end.",
       "type": "string",
-      "enum": [
-        "power1.out",
-        "none",
-        "power1.in",
-        "power1.inOut",
-        "power2.in",
-        "power2.out",
-        "power2.inOut",
-        "power3.in",
-        "power3.out",
-        "power3.inOut",
-        "expo.in",
-        "expo.out",
-        "expo.inOut",
-        "back.in",
-        "back.out",
-        "back.inOut",
-        "elastic.in",
-        "elastic.out",
-        "elastic.inOut",
-        "bounce.in",
-        "bounce.out",
-        "bounce.inOut"
+      "anyOf": [
+        {
+          "enum": [
+            "power1.out",
+            "none",
+            "power1.in",
+            "power1.inOut",
+            "power2.in",
+            "power2.out",
+            "power2.inOut",
+            "power3.in",
+            "power3.out",
+            "power3.inOut",
+            "expo.in",
+            "expo.out",
+            "expo.inOut",
+            "back.in",
+            "back.out",
+            "back.inOut",
+            "elastic.in",
+            "elastic.out",
+            "elastic.inOut",
+            "bounce.in",
+            "bounce.out",
+            "bounce.inOut"
+          ]
+        },
+        {
+          "pattern": "^cubic-bezier\\([\\s\\S]*\\)$"
+        },
+        {
+          "pattern": "^steps\\([\\s\\S]*\\)$"
+        }
       ],
       "x-og-variants": {
         "power1.out": "Gentle ease out: the default for most motion.",
