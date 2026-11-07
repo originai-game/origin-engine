@@ -451,7 +451,14 @@ impl Ui {
             },
         );
         let building = std::mem::replace(&mut self.docs.building, layer.serial);
-        let mut r = self.mount_doc(doc.clone(), layer.screen.clone(), &root_id, &mut vm, env);
+        let mut r = self.mount_doc(
+            doc.clone(),
+            layer.screen.clone(),
+            &root_id,
+            &mut vm,
+            env,
+            Default::default(),
+        );
         self.docs.building = building;
         self.docs.accepts = accepts;
         lead.append(&mut r.events);

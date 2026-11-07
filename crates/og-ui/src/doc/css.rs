@@ -149,6 +149,26 @@ pub const STYLE: &[(&str, &str)] = &[
     ("fit", "object-fit"),
 ];
 
+/// Reflected fields affected even when a winning declaration is invalid.
+pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
+    let alias = match name {
+        "display" => Some("visible"),
+        "-og-control-size" => Some("size"),
+        _ => None,
+    };
+    let target = match name {
+        "grid-row" => "grid-column",
+        "min-width" | "max-width" => "width",
+        "min-height" | "max-height" => "height",
+        _ => name,
+    };
+    alias.into_iter().chain(
+        STYLE
+            .iter()
+            .filter_map(move |(prop, css)| (*css == target).then_some(*prop)),
+    )
+}
+
 fn conv(prop: &str) -> Conv {
     match prop {
         "width" | "height" => Conv::Size,
@@ -261,7 +281,7 @@ fn neutral(key: &str) -> Option<&'static str> {
 }
 
 /// CSS that is not part of the subset, and what to write instead.
-fn unsupported(name: &str) -> Option<&'static str> {
+pub(crate) fn unsupported(name: &str) -> Option<&'static str> {
     Some(match name {
         "display" => "an element's display is its kind: `row Name {`, `column`, `stack` or `grid`",
         "flex" | "flex-grow" | "flex-shrink" | "flex-basis" => {

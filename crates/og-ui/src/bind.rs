@@ -34,8 +34,14 @@ use std::collections::BTreeMap;
 pub enum InteractionState {
     Hover,
     Active,
+    Focus,
     FocusVisible,
+    FocusWithin,
     Disabled,
+    Checked,
+    Selected,
+    Invalid,
+    PlaceholderShown,
 }
 
 /// What the host gives a binding beyond its viewmodel.
@@ -43,6 +49,13 @@ pub trait Env {
     /// A node-scoped CSS selector read; never an authored store root.
     fn interaction(&self, state: InteractionState) -> bool {
         let _ = state;
+        false
+    }
+    /// The matched selector compound's document index, resolved through the
+    /// current instantiated ancestry, including keyed rows and mount identity.
+    /// Missing identities never fall back to the styled target's state.
+    fn interaction_at(&self, node: usize, state: InteractionState) -> bool {
+        let _ = (node, state);
         false
     }
     /// A viewmodel root the viewmodel itself lacks: a reflected resource
@@ -189,6 +202,11 @@ pub enum Expr {
     Lit(Value),
     Path(String),
     Interaction(InteractionState),
+    InteractionAt {
+        node: usize,
+        state: InteractionState,
+    },
+    HasToken(Box<Expr>, String),
     Translate(Box<Expr>, Vec<(String, Expr)>),
     Format(Format, Box<Expr>),
     Not(Box<Expr>),
@@ -459,7 +477,7 @@ impl Expr {
     /// Every path it reads, in order (a document's static structure).
     pub fn paths(&self, out: &mut Vec<String>) {
         match self {
-            Expr::Lit(_) | Expr::Interaction(_) => {}
+            Expr::Lit(_) | Expr::Interaction(_) | Expr::InteractionAt { .. } => {}
             Expr::Path(p) => out.push(p.clone()),
             Expr::Translate(key, args) => {
                 key.paths(out);
@@ -467,7 +485,7 @@ impl Expr {
                     value.paths(out);
                 }
             }
-            Expr::Not(a) | Expr::Neg(a) | Expr::Format(_, a) => a.paths(out),
+            Expr::Not(a) | Expr::Neg(a) | Expr::Format(_, a) | Expr::HasToken(a, _) => a.paths(out),
             Expr::Bin(_, a, b) => {
                 a.paths(out);
                 b.paths(out);
@@ -486,6 +504,14 @@ impl Expr {
             Expr::Lit(v) => v.clone(),
             Expr::Path(p) => scope.get(p),
             Expr::Interaction(state) => Value::Bool(scope.env.interaction(*state)),
+            Expr::InteractionAt { node, state } => {
+                Value::Bool(scope.env.interaction_at(*node, *state))
+            }
+            Expr::HasToken(value, token) => Value::Bool(
+                text(&value.eval(scope))
+                    .split_ascii_whitespace()
+                    .any(|value| value == token),
+            ),
             Expr::Translate(key, params) => {
                 let key = text(&key.eval(scope));
                 let message = scope.env.translate(&key).unwrap_or_else(|| key.clone());
@@ -1382,6 +1408,9 @@ mod tests {
             fn interaction(&self, state: InteractionState) -> bool {
                 state == self.0
             }
+            fn interaction_at(&self, node: usize, state: InteractionState) -> bool {
+                node == 7 && state == InteractionState::Hover
+            }
         }
         let vm = Value::Null;
         let env = NodeEnv(InteractionState::FocusVisible);
@@ -1396,6 +1425,22 @@ mod tests {
         );
         assert_eq!(
             Expr::Interaction(InteractionState::Hover).eval(&scope),
+            Value::Bool(false)
+        );
+        assert_eq!(
+            Expr::InteractionAt {
+                node: 7,
+                state: InteractionState::Hover
+            }
+            .eval(&scope),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            Expr::InteractionAt {
+                node: 8,
+                state: InteractionState::FocusVisible
+            }
+            .eval(&scope),
             Value::Bool(false)
         );
         scope.env = &NoEnv;

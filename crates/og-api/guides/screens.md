@@ -83,8 +83,27 @@ local styles and `og style new` remain available.
   pure number formatters, and `t(key, { named: expression })`. Assignments,
   arbitrary calls, scripts, runes, and raw HTML are errors.
 - Style reactive state with `class:active={$step == 'brightness'}` and
-  `.active` rules. Interaction selectors are `:hover`, `:active`,
-  `:focus-visible`, and `:disabled`. Use named `@media` breakpoints.
+  `.active` rules. The selector grammar includes types, IDs, classes,
+  attributes, descendant and child combinators, `:not()`, `:is()`, and `:where()`.
+  `:where()` contributes zero specificity. `:not()` and `:is()` take the
+  highest specificity of their arguments. `:has()` and sibling combinators
+  (`+` and `~`) fail cooking.
+  Interaction selectors name `:hover`, `:active`, `:focus`,
+  `:focus-visible`, `:focus-within`, `:disabled`, `:checked`, `:selected`,
+  `:invalid`, and `:placeholder-shown`. Ancestor selectors read that
+  ancestor's interaction identity, not the styled child's state.
+  Use named `@media` breakpoints.
+- Declare custom properties in any scoped rule, such as
+  `.card { --spacing: 12px; gap: var(--spacing); }`. Declarations win by
+  `!important`, specificity, then source order. Custom properties inherit
+  from the instantiated parent, including through component mounts.
+  They substitute on the declaring element before inheritance: changing
+  `--a` in a child does not recompute an inherited `--b: var(--a)`.
+  Recursive `var()` accepts fallbacks, including an empty fallback.
+  Cycles invalidate the participating properties at computed-value time
+  and report their names. A winning declaration with an invalid value
+  does not revive a lower-priority declaration. Unshadowed engine tokens
+  resolve from the active style. `::part` declarations use the same cascade.
 - Declare motion with scoped `@keyframes` and
   a rule such as `#Card { animation: reveal 300ms ease-out forwards; }`.
   Frames need explicit 0% and

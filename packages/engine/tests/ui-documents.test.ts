@@ -20,10 +20,17 @@ test("cooked documents render typed spans and preserve game translations on both
   <text id="Base">{t("card.base")}</text>
   <text id="Rich" spans={spans}>{body}</text>
   <text id="Plain">{body}</text>
+  <panel id="Inherited" class={classes}/>
+  <column id="Branch"><panel id="Nested"/></column>
+  <panel id="Sibling"/>
 </column>
 <style>
-#Root { width: 600px; }
-#Rich::part(emphasis)[large=true] { font: var(--text-xl3); color: var(--danger); }
+#Root { width: 600px; --size: 32px; --saved: var(--size); --ramp: var(--text-xl3); }
+#Rich::part(emphasis)[large=true] { font: var(--ramp); color: var(--danger); }
+.chosen { --size: 80px; width: var(--saved) !important; }
+#Inherited { width: 100px; height: 12px; }
+#Branch { --size: 44px; }
+#Nested, #Sibling { width: var(--size); height: 12px; }
 </style>`);
     writeFileSync(join(root, "assets/base.en.ogt"), 'type strings\nversion 1\n---\nlocale "en"\nstring "card.title" "Base title"\nstring "card.base" "Base fallback"\n');
     writeFileSync(join(root, "assets/game.en.ogt"), 'type strings\nversion 1\n---\nlocale "en"\nstring "card.title" "Game title"\n');
@@ -34,7 +41,7 @@ test("cooked documents render typed spans and preserve game translations on both
       return JSON.parse(new TextDecoder().decode(result.stdout));
     };
     const node = run("node");
-    expect(node).toMatchObject({ title: "Game title", base: "Base fallback", body: "A🦊B <b>C</b>", larger: true, restored: true });
+    expect(node).toMatchObject({ title: "Game title", base: "Base fallback", body: "A🦊B <b>C</b>", larger: true, restored: true, widths: [32, 44, 32] });
     expect(run("web")).toEqual(node);
   } finally {
     rmSync(root, { recursive: true, force: true });

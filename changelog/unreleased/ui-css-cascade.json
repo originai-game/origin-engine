@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "UI document scoped CSS",
+      "change": "Resolve lexical custom properties per mounted element with computed-value inheritance, recursive var() fallbacks, cycle diagnostics, !important, parsed selectors and CSS specificity. Text ::part styles share the cascade. Ancestor interaction predicates carry the matched document node identity.",
+      "fix": "Recook documents. Use scoped --name declarations and var(--name, fallback); invalid winning values no longer revive lower-priority declarations. :has() and unsupported selector syntax fail cooking."
+    }
+  ]
+}

@@ -707,7 +707,7 @@ button.active { opacity: 1; }
         let choice = doc.nodes.iter().find(|n| n.id == "Choice").unwrap();
         assert_eq!(choice.rules.len(), 3);
         assert_eq!(
-            choice.rules.last().unwrap().2[0].value,
+            choice.rules.last().unwrap().props[0].value,
             PropValue::Lit(Lit::Num(0.4)),
             "ID specificity beats a later class rule"
         );

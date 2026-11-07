@@ -81,6 +81,139 @@ fn tick(ui: &mut Ui, input: InputFrame) {
 }
 
 #[test]
+fn lexical_css_inherits_computed_values_and_cascades_before_substitution() {
+    let source = r#"<meta name="screen" content="cascade" data-layer="hud">
+<column id="Root" class="parent">
+  <button id="Child" class="size">Child</button>
+  <button id="Fallback">Fallback</button>
+  <button id="Invalid">Invalid</button>
+  <column id="Branch"><button id="Nested">Nested</button></column>
+  <button id="Sibling">Sibling</button>
+  <Badge id="Component"/>
+  <Badge id="Override"/>
+  <text id="Rich" spans={spans}>ABC</text>
+  <text id="Plain">ABC</text>
+</column>
+<style>
+.parent { --width: 32px !important; --saved: var(--width); --a: var(--b); --b: var(--a); --ramp: var(--text-xl3); }
+#Root { --width: 73px; width: 300px; }
+.size { --width: 97px; width: var(--saved); }
+:where(#Child) { width: 122px; }
+#Fallback { width: var(--a, 58px); }
+#Invalid { opacity: 0.25; }
+#Invalid { opacity: var(--missing); }
+#Branch { --width: 44px; }
+#Nested, #Sibling { width: var(--width); }
+#Override { --width: 66px; }
+#Rich::part(emphasis) { font: var(--ramp); }
+</style>"#;
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(UiDocument::parse("cascade.svelte", source).unwrap());
+    ui.define_document(
+        UiDocument::parse(
+            "badge.svelte",
+            r#"<meta name="component" content="Badge">
+<button id="Badge">Badge</button><style>#Badge { width: var(--width); }</style>"#,
+        )
+        .unwrap(),
+    );
+    ui.push_screen(
+        "cascade",
+        json!({"spans":[{"name":"emphasis","position":0,"length":3,"properties":{}}]}),
+    )
+    .unwrap();
+    for _ in 0..3 {
+        tick(&mut ui, InputFrame::default());
+    }
+    for (path, width) in [
+        ("Child", 32.0),
+        ("Fallback", 58.0),
+        ("Branch/Nested", 44.0),
+        ("Sibling", 32.0),
+        ("Component", 32.0),
+        ("Override", 66.0),
+    ] {
+        assert_eq!(
+            ui.frame()
+                .element(&format!("cascade/Root/{path}"))
+                .unwrap()
+                .width,
+            width,
+            "{path}"
+        );
+    }
+    assert!(
+        ui.frame().element("cascade/Root/Rich").unwrap().height
+            > ui.frame().element("cascade/Root/Plain").unwrap().height
+    );
+    assert!(
+        ui.frame()
+            .warnings
+            .iter()
+            .any(|e| e.contains("--a") && e.contains("cycle"))
+    );
+    assert!(
+        ui.frame()
+            .warnings
+            .iter()
+            .any(|e| e.contains("opacity") && e.contains("--missing"))
+    );
+}
+
+#[test]
+fn ancestor_selectors_read_the_matched_nodes_state() {
+    use og_ui::bind::{Env, InteractionState};
+    struct States(usize, InteractionState);
+    impl Env for States {
+        fn interaction(&self, _: InteractionState) -> bool {
+            true
+        }
+        fn interaction_at(&self, node: usize, state: InteractionState) -> bool {
+            node == self.0 && state == self.1
+        }
+    }
+    for (name, state) in [
+        ("hover", InteractionState::Hover),
+        ("active", InteractionState::Active),
+        ("focus", InteractionState::Focus),
+        ("focus-visible", InteractionState::FocusVisible),
+        ("focus-within", InteractionState::FocusWithin),
+        ("disabled", InteractionState::Disabled),
+        ("checked", InteractionState::Checked),
+        ("selected", InteractionState::Selected),
+        ("invalid", InteractionState::Invalid),
+        ("placeholder-shown", InteractionState::PlaceholderShown),
+    ] {
+        let source = format!(
+            r#"<meta name="component" content="states">
+<column id="Card" class="card"><text id="Title">Title</text></column>
+<style>text {{ width: 22px; }} .card:{name} > text:not(:where(.excluded)) {{ width: 44px; }}</style>"#
+        );
+        let doc = UiDocument::parse("states.svelte", &source).unwrap();
+        let card = doc.nodes.iter().position(|node| node.id == "Card").unwrap();
+        let title = doc
+            .nodes
+            .iter()
+            .position(|node| node.id == "Title")
+            .unwrap();
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.define_document(doc);
+        for (node, expected) in [(card, 44.0), (title, 22.0)] {
+            for _ in 0..2 {
+                ui.begin(InputFrame::default(), viewport());
+                ui.component("Card", "states", &mut Value::Null, &States(node, state));
+                ui.end();
+            }
+            assert_eq!(
+                ui.frame().element("Card/Title").unwrap().width,
+                expected,
+                "{name}, node {node}"
+            );
+        }
+    }
+}
+
+#[test]
 fn scoped_css_motion_uses_shared_curves_emits_sound_and_restores() {
     let mut ui = Ui::new(UiDesc::default());
     let source = r#"<meta name="screen" content="motion" data-layer="hud">
@@ -264,21 +397,22 @@ fn length_tokens_follow_the_active_style_in_layout_and_states() {
             "hover, style factor {factor}"
         );
     }
-    let bad = source.replace("--radius-lg", "--radius-missing");
-    assert!(
-        UiDocument::parse("bad.ogt", &bad)
-            .unwrap_err()
-            .join("\n")
-            .contains("--radius-missing")
-    );
-    let bad = source.replace("--panel", "--missing-colour");
-    let doc = UiDocument::parse("bad.ogt", &bad).unwrap();
-    assert!(
-        doc.validate_tokens(&[Theme::default()])
-            .unwrap_err()
-            .join("\n")
-            .contains("--missing-colour")
-    );
+    for (original, missing) in [
+        ("--radius-lg", "--radius-missing"),
+        ("--panel", "--missing-colour"),
+    ] {
+        let doc = UiDocument::parse("bad.svelte", &source.replace(original, missing)).unwrap();
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.define_document(doc);
+        ui.push_screen("tokens", Value::Null).unwrap();
+        tick(&mut ui, InputFrame::default());
+        assert!(
+            ui.frame()
+                .warnings
+                .iter()
+                .any(|error| error.contains(missing) && error.contains("computed-value"))
+        );
+    }
 }
 
 fn key(code: &'static str) -> InputFrame {
@@ -440,7 +574,7 @@ fn css_outside_the_subset_is_an_error_that_names_the_fix() {
     assert!(err("  margin: 4px").contains("gap"));
     assert!(err("  gap: 12").contains("12px"));
     assert!(err("  font-size: 14px").contains("var(--text-"));
-    assert!(err("  padding: 4px !important").contains("!important"));
+    assert!(err("  padding: 4px !urgent").contains("declaration"));
     // A Rive frame takes one `<file>.riv#<Artboard>` id.
     for bad in [
         "rive(\"ui/chest.riv\", \"Chest\")",

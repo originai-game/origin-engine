@@ -9,6 +9,7 @@ pub struct SpanRule {
     pub query: AtQuery,
     pub condition: Option<Expr>,
     pub style: TextSpanStyle,
+    pub declarations: Vec<super::StyleDeclaration>,
     /// A type-ramp role resolved from the active theme, never frozen at cook time.
     pub step: Option<String>,
 }
@@ -82,8 +83,37 @@ pub(super) fn parse(selector: &str, body: &str) -> Result<SpanRule, String> {
         query: AtQuery::default(),
         condition: None,
         style: TextSpanStyle::default(),
+        declarations: super::variables::declarations(body)?,
         step: None,
     };
+    let mut literal = String::new();
+    for declaration in &rule.declarations {
+        let name = declaration.name.as_str();
+        if name.starts_with("--") {
+            continue;
+        }
+        if !matches!(
+            name,
+            "font-weight"
+                | "font-style"
+                | "text-decoration-line"
+                | "-og-text-motion"
+                | "color"
+                | "font"
+                | "font-family"
+        ) {
+            return Err(format!("unsupported text span property {name}"));
+        }
+        if !declaration.value.has_variables() {
+            let value = declaration.value.substitute(&mut |_| None)?;
+            literal.push_str(&format!("{name}: {value};"));
+        }
+    }
+    apply_body(&mut rule, &literal)?;
+    Ok(rule)
+}
+
+fn apply_body(rule: &mut SpanRule, body: &str) -> Result<(), String> {
     for (name, value) in css::split_decls(body)? {
         match name.as_str() {
             "font-weight" => {
@@ -155,5 +185,45 @@ pub(super) fn parse(selector: &str, body: &str) -> Result<SpanRule, String> {
             }
         }
     }
-    Ok(rule)
+    Ok(())
+}
+
+pub(crate) fn resolve(
+    rules: &[&SpanRule],
+    span: &TextSpan,
+    inherited: &super::variables::Computed,
+    theme: &Theme,
+) -> (TextSpanStyle, super::build::cascade::Cascade) {
+    let rules: Vec<_> = rules
+        .iter()
+        .filter(|rule| rule.matches(span))
+        .map(|rule| super::StyleRule {
+            query: AtQuery::default(),
+            condition: None,
+            props: Vec::new(),
+            declarations: rule.declarations.clone(),
+            line: 0,
+        })
+        .collect();
+    let mut cascade = super::build::cascade::resolve_values(&rules, inherited, theme, |_| true);
+    let mut rule = SpanRule {
+        name: span.name.clone(),
+        attributes: Vec::new(),
+        query: AtQuery::default(),
+        condition: None,
+        style: TextSpanStyle::default(),
+        declarations: Vec::new(),
+        step: None,
+    };
+    for (name, value, _) in cascade.values.drain(..) {
+        if let Err(error) = apply_body(&mut rule, &format!("{name}: {value};")) {
+            cascade.diagnostics.push(format!(
+                "::part({}): {name} invalid at computed-value time: {error}",
+                span.name
+            ));
+        }
+    }
+    let mut style = TextSpanStyle::default();
+    rule.apply(theme, &mut style);
+    (style, cascade)
 }

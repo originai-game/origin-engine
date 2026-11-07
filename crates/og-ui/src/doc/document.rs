@@ -26,7 +26,7 @@ impl UiDocument {
                 .props
                 .iter()
                 .chain(node.at.iter().flat_map(|(_, props)| props))
-                .chain(node.rules.iter().flat_map(|(_, _, props)| props))
+                .chain(node.rules.iter().flat_map(|rule| &rule.props))
             {
                 if let PropValue::Lit(Lit::Paint(paint)) = &prop.value {
                     check(paint, prop.line);
@@ -70,10 +70,21 @@ impl UiDocument {
                     .props
                     .iter_mut()
                     .chain(n.at.iter_mut().flat_map(|(_, ps)| ps.iter_mut()))
-                    .chain(n.rules.iter_mut().flat_map(|(_, _, ps)| ps.iter_mut()))
+                    .chain(n.rules.iter_mut().flat_map(|rule| rule.props.iter_mut()))
                 {
                     p.line = 0;
                     p.source.clear();
+                }
+                for rule in &mut n.rules {
+                    rule.line = 0;
+                    for declaration in &mut rule.declarations {
+                        declaration.source.clear();
+                    }
+                }
+                for rule in &mut n.span_rules {
+                    for declaration in &mut rule.declarations {
+                        declaration.source.clear();
+                    }
                 }
                 for t in &mut n.triggers {
                     t.line = 0;
@@ -204,7 +215,7 @@ impl UiDocument {
                 .props
                 .iter()
                 .chain(n.at.iter().flat_map(|a| &a.1))
-                .chain(n.rules.iter().flat_map(|(_, _, props)| props))
+                .chain(n.rules.iter().flat_map(|rule| &rule.props))
             {
                 if p.spec == spec
                     && let PropValue::Lit(Lit::Str(id)) = &p.value
@@ -231,11 +242,11 @@ impl UiDocument {
         for (_, v, _) in &n.args {
             value(v, out);
         }
-        for (_, condition, props) in &n.rules {
-            if let Some(condition) = condition {
+        for rule in &n.rules {
+            if let Some(condition) = &rule.condition {
                 condition.paths(out);
             }
-            for p in props {
+            for p in &rule.props {
                 value(&p.value, out);
             }
         }

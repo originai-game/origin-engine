@@ -8,11 +8,13 @@ pub mod build;
 pub mod catalogue;
 pub mod css;
 pub mod schema;
+pub mod selectors;
 mod spans;
 mod stylesheet;
 mod svelte;
 mod syntax;
 pub mod types;
+pub mod variables;
 mod writeback;
 
 use crate::bind::{Expr, Format, Template};
@@ -217,6 +219,26 @@ pub struct PropSet {
     pub source: String,
 }
 
+/// One authored CSS declaration. Values remain token streams until the
+/// winning declaration's variables are resolved against its mounted parent.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StyleDeclaration {
+    pub name: String,
+    pub value: variables::Value,
+    pub source: String,
+    pub important: bool,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct StyleRule {
+    pub query: AtQuery,
+    pub condition: Option<Expr>,
+    /// Cook-time reflected values available without custom-property substitution.
+    pub props: Vec<PropSet>,
+    pub declarations: Vec<StyleDeclaration>,
+    pub line: usize,
+}
+
 impl PropSet {
     pub fn name(&self) -> &'static str {
         PROPS[self.spec].name
@@ -341,7 +363,7 @@ pub struct DocNode {
     /// Breakpoint and orientation overrides, in order (later wins).
     pub at: Vec<(AtQuery, Vec<PropSet>)>,
     /// Scoped CSS rules in cascade order, with their reactive match condition.
-    pub rules: Vec<(AtQuery, Option<Expr>, Vec<PropSet>)>,
+    pub rules: Vec<StyleRule>,
     /// Scoped rich-text part rules, in cascade order.
     pub span_rules: Vec<SpanRule>,
     pub groups: Vec<DocGroup>,

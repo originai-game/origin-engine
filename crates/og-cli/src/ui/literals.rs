@@ -285,7 +285,7 @@ pub fn scan_doc(file: &str, doc: &UiDocument) -> Vec<Finding> {
             .props
             .iter()
             .chain(n.at.iter().flat_map(|(_, p)| p.iter()))
-            .chain(n.rules.iter().flat_map(|(_, _, p)| p.iter()));
+            .chain(n.rules.iter().flat_map(|rule| rule.props.iter()));
         for p in sets {
             match &p.value {
                 PropValue::Lit(Lit::Paint(Paint::Color(_))) => {

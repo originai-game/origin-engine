@@ -136,7 +136,7 @@ fn rejects_legacy_documents_and_invalid_template_expressions() {
 }
 
 #[test]
-fn css_tokens_survive_cooking_and_unresolved_names_fail() {
+fn css_tokens_cook_symbolically_and_missing_values_fail_when_computed() {
     let source = format!(
         "{SCREEN}<style>#Shop {{ border-radius: var(--radius-lg); background: var(--panel); }}</style>"
     );
@@ -162,8 +162,28 @@ fn css_tokens_survive_cooking_and_unresolved_names_fail() {
         )
         .unwrap();
         let report = cook_project(&root, &options).unwrap();
-        assert!(!report.ok());
-        assert!(format!("{:?}", report.errors()).contains(missing));
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let out = bundle.output("ui/shop.svelte").unwrap();
+        let bytes = std::fs::read(root.join("cooked").join(&out.file)).unwrap();
+        let text = bundle.document_text("ui/shop.svelte", &bytes).unwrap();
+        let mut ui = og_ui::Ui::new(og_ui::UiDesc::default());
+        ui.define_document(og_ui::UiDocument::parse("ui/shop.svelte", &text).unwrap());
+        ui.push_screen("shop", serde_json::json!({"gold": 1}))
+            .unwrap();
+        ui.begin(
+            og_ui::InputFrame::default(),
+            og_ui::Viewport::new(640.0, 480.0),
+        );
+        ui.end();
+        assert!(
+            ui.frame()
+                .warnings
+                .iter()
+                .any(|error| error.contains(missing) && error.contains("computed-value")),
+            "{:?}",
+            ui.frame().warnings
+        );
     }
 }
 

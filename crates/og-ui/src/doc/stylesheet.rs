@@ -1,8 +1,9 @@
 //! Scoped selectors lower once to matching document nodes and reactive predicates.
+use super::selectors::Selector;
 use super::syntax::{Attr, Error};
 use super::*;
-use crate::bind::{InteractionState, Op};
 
+#[derive(Clone)]
 struct Rule {
     selector: String,
     body: String,
@@ -31,8 +32,16 @@ pub(super) fn apply(
         }
     }
     rules.retain(|rule| !rule.selector.starts_with("@keyframes "));
-    rules.sort_by_key(|r| (specificity(&r.selector), r.order));
+    let mut parsed = Vec::new();
     for rule in rules {
+        for selector in Selector::parse_list(&rule.selector).map_err(|e| (rule.at, e))? {
+            let mut rule = rule.clone();
+            rule.selector = selector.source.clone();
+            parsed.push((selector, rule));
+        }
+    }
+    parsed.sort_by_key(|(selector, rule)| (selector.specificity(), rule.order));
+    for (_, rule) in parsed {
         if let Some((parent, selector)) = rule.selector.split_once("::part(") {
             let span = super::spans::parse(selector, &rule.body).map_err(|e| (rule.at, e))?;
             let parent = if parent.is_empty() { "text" } else { parent };
@@ -53,18 +62,41 @@ pub(super) fn apply(
             }
             continue;
         }
-        let declarations = css::split_decls(&rule.body).map_err(|e| (rule.at, e))?;
+        let declarations = variables::declarations(&rule.body).map_err(|e| (rule.at, e))?;
         let animation = declarations
             .iter()
             .rev()
-            .find(|(name, _)| name == "animation")
-            .map(|(_, value)| animation(value, &keyframes, rule.at))
+            .find(|decl| decl.name == "animation")
+            .map(|decl| animation(&decl.source, &keyframes, rule.at))
             .transpose()?;
-        let body = declarations
-            .iter()
-            .filter(|(name, _)| name != "animation")
-            .map(|(name, value)| format!("{name}: {value};"))
-            .collect::<String>();
+        let declarations: Vec<_> = declarations
+            .into_iter()
+            .filter(|d| d.name != "animation")
+            .collect();
+        let mut body = String::new();
+        for declaration in &declarations {
+            let name = declaration.name.as_str();
+            if name.starts_with("--") {
+                continue;
+            }
+            if css::targets(name).next().is_none() {
+                return Err((
+                    rule.at,
+                    format!(
+                        "unsupported CSS property {name}: {}",
+                        css::unsupported(name)
+                            .unwrap_or("use a property listed in the document CSS reference")
+                    ),
+                ));
+            }
+            if !declaration.value.has_variables() {
+                let value = declaration
+                    .value
+                    .substitute(&mut |_| None)
+                    .map_err(|error| (rule.at, error))?;
+                body.push_str(&format!("{name}: {value};"));
+            }
+        }
         let entries = css::declarations(&body, syntax::location(&doc.text, rule.at).0)
             .map_err(|e| (rule.at, e))?;
         for (i, _, _) in elements {
@@ -112,9 +144,13 @@ pub(super) fn apply(
                     line: syntax::location(&doc.text, rule.at).0,
                 });
             }
-            doc.nodes[*i]
-                .rules
-                .push((rule.query.clone(), condition, props));
+            doc.nodes[*i].rules.push(StyleRule {
+                query: rule.query.clone(),
+                condition,
+                props,
+                declarations: declarations.clone(),
+                line: syntax::location(&doc.text, rule.at).0,
+            });
         }
     }
     Ok(())
@@ -158,7 +194,16 @@ fn animation(
         duration_ms: ms,
         ..Default::default()
     };
-    for frame in frames {
+    for frame in frames.into_iter().flat_map(|frame| {
+        frame
+            .selector
+            .split(',')
+            .map(|selector| Rule {
+                selector: selector.trim().into(),
+                ..frame.clone()
+            })
+            .collect::<Vec<_>>()
+    }) {
         let offset = match frame.selector.as_str() {
             "from" => Some(0.0),
             "to" => Some(1.0),
@@ -320,38 +365,19 @@ fn read_rules(text: &str, base: usize, query: AtQuery, out: &mut Vec<Rule>) -> R
             }
             read_rules(body, base + open + 1, q, out)?;
         } else {
-            for selector in selector.split(',') {
-                out.push(Rule {
-                    selector: selector.trim().into(),
-                    body: body.into(),
-                    query: query.clone(),
-                    at: base + start,
-                    body_at: base + open + 1,
-                    order: out.len(),
-                });
-            }
+            out.push(Rule {
+                selector: selector.trim().into(),
+                body: body.into(),
+                query: query.clone(),
+                at: base + start,
+                body_at: base + open + 1,
+                order: out.len(),
+            });
         }
     }
     Ok(())
 }
 
-fn specificity(selector: &str) -> (usize, usize, usize) {
-    (
-        selector.matches('#').count(),
-        selector.matches(['.', '[', ':']).count(),
-        selector
-            .split_whitespace()
-            .filter(|s| s.starts_with(char::is_alphabetic))
-            .count(),
-    )
-}
-fn and(a: Expr, b: Expr) -> Expr {
-    match (&a, &b) {
-        (Expr::Lit(serde_json::Value::Bool(true)), _) => b,
-        (_, Expr::Lit(serde_json::Value::Bool(true))) => a,
-        _ => Expr::Bin(Op::And, Box::new(a), Box::new(b)),
-    }
-}
 fn matches(
     doc: &UiDocument,
     elements: &[(usize, String, Vec<Attr>)],
@@ -359,137 +385,12 @@ fn matches(
     selector: &str,
     at: usize,
 ) -> Result<Option<Expr>, Error> {
-    let words = selector.split_whitespace().collect::<Vec<_>>();
-    fn chain(
-        doc: &UiDocument,
-        elements: &[(usize, String, Vec<Attr>)],
-        index: usize,
-        words: &[&str],
-        at: usize,
-    ) -> Result<Option<Expr>, Error> {
-        let Some((last, rest)) = words.split_last() else {
-            return Ok(Some(Expr::Lit(true.into())));
-        };
-        let Some((_, tag, attrs)) = elements.iter().find(|(i, _, _)| *i == index) else {
-            return Ok(None);
-        };
-        let Some(own) = compound(tag, attrs, last, at)? else {
-            return Ok(None);
-        };
-        if rest.is_empty() {
-            return Ok(Some(own));
-        }
-        let direct = rest.last() == Some(&">");
-        let rest = if direct {
-            &rest[..rest.len() - 1]
-        } else {
-            rest
-        };
-        let mut parent = doc.nodes[index].parent;
-        let mut ancestor = None;
-        while parent != NONE {
-            if let Some(c) = chain(doc, elements, parent, rest, at)? {
-                ancestor = Some(match ancestor {
-                    None => c,
-                    Some(a) => Expr::Bin(Op::Or, Box::new(a), Box::new(c)),
-                });
-            }
-            if direct {
-                break;
-            }
-            parent = doc.nodes[parent].parent;
-        }
-        Ok(ancestor.map(|a| and(own, a)))
-    }
-    chain(doc, elements, index, &words, at)
-}
-fn compound(tag: &str, attrs: &[Attr], selector: &str, at: usize) -> Result<Option<Expr>, Error> {
-    let end = selector
-        .find(['#', '.', '[', ':'])
-        .unwrap_or(selector.len());
-    let kind = &selector[..end];
-    if !kind.is_empty() && kind != "*" && kind != tag {
-        return Ok(None);
-    }
-    let mut rest = &selector[end..];
-    let mut condition = Expr::Lit(true.into());
-    while !rest.is_empty() {
-        let prefix = rest.chars().next().unwrap();
-        rest = &rest[1..];
-        if prefix == '[' {
-            let end = rest
-                .find(']')
-                .ok_or((at, "close attribute selector with ]".into()))?;
-            let (name, expected) = rest[..end]
-                .split_once('=')
-                .map_or((rest[..end].trim(), None), |(a, b)| {
-                    (a.trim(), Some(b.trim().trim_matches(['\'', '"'])))
-                });
-            let Some(attr) = attrs.iter().find(|a| a.name == name) else {
-                return Ok(None);
-            };
-            if let Some(value) = expected {
-                if attr.bound {
-                    condition = and(
-                        condition,
-                        Expr::Bin(
-                            Op::Eq,
-                            Box::new(super::svelte::expression(&attr.value, attr.at)?),
-                            Box::new(Expr::Lit(value.into())),
-                        ),
-                    );
-                } else if attr.value != value {
-                    return Ok(None);
-                }
-            }
-            rest = &rest[end + 1..];
-            continue;
-        }
-        let end = rest.find(['#', '.', '[', ':']).unwrap_or(rest.len());
-        let name = &rest[..end];
-        rest = &rest[end..];
-        match prefix {
-            '#' => {
-                if !attrs.iter().any(|a| a.name == "id" && a.value == name) {
-                    return Ok(None);
-                }
-            }
-            '.' => {
-                let fixed = attrs.iter().any(|a| {
-                    a.name == "class" && !a.bound && a.value.split_whitespace().any(|c| c == name)
-                });
-                if !fixed {
-                    let Some(attr) = attrs.iter().find(|a| a.name == format!("class:{name}"))
-                    else {
-                        return Ok(None);
-                    };
-                    condition = and(condition, super::svelte::expression(&attr.value, attr.at)?);
-                }
-            }
-            ':' => {
-                let state = match name {
-                    "hover" => InteractionState::Hover,
-                    "active" => InteractionState::Active,
-                    "focus-visible" => InteractionState::FocusVisible,
-                    "disabled" => InteractionState::Disabled,
-                    _ => {
-                        return Err((
-                            at,
-                            format!(
-                                "unsupported pseudo-class :{name}; use hover, active, focus-visible or disabled"
-                            ),
-                        ));
-                    }
-                };
-                condition = and(condition, Expr::Interaction(state));
-            }
-            _ => {
-                return Err((
-                    at,
-                    format!("unsupported selector {selector}; use a supported scoped selector"),
-                ));
-            }
-        }
-    }
-    Ok(Some(condition))
+    let parsed = Selector::parse_list(selector).map_err(|e| (at, e))?;
+    let condition = parsed[0]
+        .condition(doc, elements, index)
+        .map_err(|e| (at, e))?;
+    Ok(match condition {
+        Expr::Lit(serde_json::Value::Bool(false)) => None,
+        condition => Some(condition),
+    })
 }

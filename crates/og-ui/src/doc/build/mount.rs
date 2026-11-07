@@ -221,12 +221,13 @@ impl Ui {
         let mount = format!("{}/{id}", self.path_of(self.parent()));
         let game = self.game_input();
         let accepts = std::mem::replace(&mut self.docs.accepts, game);
-        let r = self.mount_doc(doc, mount, id, props, env);
+        let r = self.mount_doc(doc, mount, id, props, env, Arc::default());
         self.docs.accepts = accepts;
         r
     }
 
     /// Builds `doc` here with root id `id`.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn mount_doc(
         &mut self,
         doc: Arc<UiDocument>,
@@ -234,6 +235,7 @@ impl Ui {
         id: &str,
         vm: &mut Value,
         env: &dyn Env,
+        inherited: Arc<super::super::variables::Computed>,
     ) -> DocResponse {
         let root = doc.root;
         let mut b = Build {
@@ -243,6 +245,7 @@ impl Ui {
             env,
             locals: Vec::new(),
             row_key: String::new(),
+            inherited,
             events: Vec::new(),
             writes: Vec::new(),
         };

@@ -67,8 +67,8 @@ pub(super) fn edit(
                     target
                         .rules
                         .iter()
-                        .filter(|(_, condition, _)| condition.is_none())
-                        .flat_map(|(_, _, props)| props),
+                        .filter(|rule| rule.condition.is_none())
+                        .flat_map(|rule| &rule.props),
                 )
                 .rev()
                 .find(|p| p.name() == name)
@@ -154,7 +154,7 @@ mod tests {
             doc.nodes[title]
                 .rules
                 .iter()
-                .flat_map(|(_, _, props)| props)
+                .flat_map(|rule| &rule.props)
                 .rev()
                 .find(|p| p.name() == name)
                 .unwrap()
@@ -169,7 +169,7 @@ mod tests {
             doc.nodes[other]
                 .rules
                 .iter()
-                .all(|(_, _, props)| props.iter().all(|p| p.name() != "x"))
+                .all(|rule| rule.props.iter().all(|p| p.name() != "x"))
         );
         let before = doc.clone();
         assert!(doc.set_prop(amount, "value", "not-a-number").is_err());

@@ -436,7 +436,7 @@ fn structured_rich_text_draws_wraps_and_restores_mid_motion() {
 #[test]
 #[ignore = "requires GPU"]
 fn css_radius_token_changes_pixels_when_the_active_style_changes() {
-    let source = "<meta name=\"screen\" content=\"tokens\" data-layer=\"hud\"><column id=\"Box\"/><style>#Box { width: 96px; height: 64px; translate: 16px 16px; background: #ffffff; border-radius: var(--radius-lg); }</style>";
+    let source = "<meta name=\"screen\" content=\"tokens\" data-layer=\"hud\"><column id=\"Box\"/><style>#Box { --corner: var(--radius-lg); width: 96px; height: 64px; translate: 16px 16px; background: #ffffff; border-radius: var(--corner); }</style>";
     let mut ui = Ui::new(UiDesc::default());
     ui.define_document(UiDocument::parse("tokens.ogt", source).unwrap());
     ui.push_screen("tokens", serde_json::Value::Null).unwrap();

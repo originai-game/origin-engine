@@ -48,6 +48,8 @@ enum V {
 #[derive(Default)]
 struct Resolved {
     vals: Vec<(usize, V)>,
+    cascade: cascade::Cascade,
+    span_styles: Vec<(crate::TextSpan, crate::TextSpanStyle)>,
 }
 
 impl Resolved {
@@ -214,6 +216,7 @@ struct Build<'a> {
     /// `(name, value, the viewmodel path it came from)`.
     locals: Vec<(String, Value, Option<String>)>,
     row_key: String,
+    inherited: Arc<super::variables::Computed>,
     events: Vec<DocEvent>,
     writes: Vec<(String, Value)>,
 }
@@ -314,6 +317,7 @@ impl Ui {
                     .iter()
                     .filter_map(|(index, value)| lit(self, value).map(|v| (*index, v)))
                     .collect(),
+                ..Default::default()
             };
             let mut ramp = self.theme.type_ramp;
             let step = r
@@ -346,7 +350,14 @@ impl Ui {
 
     /// Resolves a node's props: its lines, its matching `at` blocks, then
     /// the probe's edits of `path`.
-    fn resolve(&self, b: &Build<'_>, n: &DocNode, path: &str, built: &mut Built) -> Resolved {
+    fn resolve(
+        &self,
+        b: &Build<'_>,
+        n: &DocNode,
+        path: &str,
+        built: &mut Built,
+        inherited: &super::variables::Computed,
+    ) -> Resolved {
         let mut r = Resolved::default();
         let bp = self.breakpoint();
         let vp = self.viewport();
@@ -363,14 +374,14 @@ impl Ui {
                 sets.extend(props.iter());
             }
         }
-        for (q, condition, props) in &n.rules {
-            if (q.breakpoints.is_empty() || q.breakpoints.contains(&bp))
+        r.cascade = cascade::resolve(&n.rules, inherited, self.theme(), |rule| {
+            let q = &rule.query;
+            (q.breakpoints.is_empty() || q.breakpoints.contains(&bp))
                 && q.orientation.is_none_or(|o| o == orientation)
-                && condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
-            {
-                sets.extend(props);
-            }
-        }
+                && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
+        });
+        sets.retain(|prop| !r.cascade.unset.contains(&prop.spec));
+        sets.extend(&r.cascade.props);
         for p in sets {
             let ty = PROPS[p.spec].ty;
             if let Some(v) = b.value(self, ty, &p.value) {
@@ -393,6 +404,38 @@ impl Ui {
             if let Some(v) = b.value(self, PROPS[e.spec].ty, &e.value) {
                 r.vals.push((e.spec, v));
                 built.edits.push((e.prop.clone(), e.source.clone()));
+            }
+        }
+        if let Some(V::Spans(Ok(spans))) = r.get("spans") {
+            let rules: Vec<_> = n
+                .span_rules
+                .iter()
+                .filter(|rule| {
+                    (rule.query.breakpoints.is_empty() || rule.query.breakpoints.contains(&bp))
+                        && rule.query.orientation.is_none_or(|o| o == orientation)
+                        && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
+                })
+                .collect();
+            let resolved: Vec<_> = spans
+                .iter()
+                .map(|span| {
+                    let (style, cascade) =
+                        super::spans::resolve(&rules, span, &r.cascade.computed, self.theme());
+                    (span.clone(), style, cascade)
+                })
+                .collect();
+            for (span, style, cascade) in resolved {
+                r.span_styles.push((span, style));
+                r.cascade.reads.extend(cascade.reads);
+                // Part variables inherit the text element's computed map. Only
+                // names not declared on this text depend on its parent map.
+                r.cascade.inherited_reads.extend(
+                    cascade
+                        .inherited_reads
+                        .into_iter()
+                        .filter(|name| !r.cascade.local_names.contains(name)),
+                );
+                r.cascade.diagnostics.extend(cascade.diagnostics);
             }
         }
         r
@@ -765,6 +808,7 @@ pub fn slot_json(s: &crate::slot::SlotSpec) -> Value {
     })
 }
 
+pub mod cascade;
 mod mount;
 mod nodes;
 pub use mount::{Built, DocEvent, DocHost, DocResponse, Edit};

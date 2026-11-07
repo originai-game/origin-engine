@@ -77,7 +77,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `customize-key` | `name` | With customize: its name in the saved HUD layout (default: its path). |
 | `-og-reduced-motion:` | `fade \| none \| keep` | Its reduced-motion fallback. |
 
-Style interaction with `#Buy:hover { scale: 1.04 }`, `:active`, `:focus-visible`, and `:disabled`. Bind game state with `class:active={$selected}` and style `.active`. CSS motion uses shared timing values; markup contains no state blocks or timelines.
+Style interaction with `#Buy:hover { scale: 1.04 }`. The screens guide lists state selectors and their scoped cascade. Bind game state with `class:active={$selected}` and style `.active`. Custom properties inherit computed values from the mounted parent; `var(--name, fallback)` resolves after specificity and `!important`. CSS motion uses shared timing values; markup contains no state blocks or timelines.
 
 ## 2. `column`: Children top to bottom
 

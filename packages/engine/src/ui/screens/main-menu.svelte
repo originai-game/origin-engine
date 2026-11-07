@@ -36,7 +36,7 @@
 #Background { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
 #MenuMenu { width: fit-content; min-width: 420px; height: stretch; padding: 48px; gap: 12px; justify-content: center; }
 @media phonePortrait phoneLandscape {
-#MenuMenu { padding: 24px; width: stretch; }
+#MenuMenu { padding: 24px; width: stretch; min-width: 0; }
 }
 @media phoneLandscape {
 #MenuMenu { padding: 12px; gap: 4px; }

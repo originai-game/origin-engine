@@ -108,14 +108,21 @@ impl Ui {
                 });
                 let mount = format!("{}/{id}", self.path_of(self.parent()));
                 let before = vm.clone();
-                let r = self.mount_doc(cdoc, mount, id, &mut vm, b.env);
+                let mut built = Built::default();
+                let rp = self.resolve(b, n, &mount, &mut built, &b.inherited);
+                self.warnings.extend(
+                    rp.cascade
+                        .diagnostics
+                        .iter()
+                        .map(|error| format!("{}:{} ({mount}): {error}", doc.source, n.line)),
+                );
+                let r =
+                    self.mount_doc(cdoc, mount, id, &mut vm, b.env, rp.cascade.computed.clone());
                 // The instance's own element props apply to its root.
-                if !n.props.is_empty()
+                if !rp.vals.is_empty()
                     && let Some(&last) = Some(&self.last_closed)
                     && last != NONE
                 {
-                    let mut built = Built::default();
-                    let rp = self.resolve(b, n, &r.path, &mut built);
                     let el = Ui::box_of(&rp, self.nodes[last].el);
                     let props = self.props_of(b, n, self.nodes[last].key, &rp, &mut built);
                     self.nodes[last].el = el;
@@ -166,7 +173,13 @@ impl Ui {
             mount: b.mount.clone(),
             ..Built::default()
         };
-        let r = self.resolve(b, n, &path, &mut built);
+        let r = self.resolve(b, n, &path, &mut built, &b.inherited);
+        self.warnings.extend(
+            r.cascade
+                .diagnostics
+                .iter()
+                .map(|error| format!("{}:{} ({path}): {error}", doc.source, n.line)),
+        );
         if r.has("visible") && !r.flag("visible") {
             return None;
         }
@@ -213,7 +226,9 @@ impl Ui {
                     self.nodes[at].props = props;
                 }
                 "list" | "cells" => {
+                    let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
                     self.build_virtual(b, n, kind, &id, &r, props, &path);
+                    b.inherited = inherited;
                     self.docs.built.push(built);
                     self.fire(b, n, key, &path, resp);
                     return Some(path);
@@ -243,9 +258,11 @@ impl Ui {
                 self.docs.slots.entry(short).or_insert(at);
             }
             self.docs.built.push(built);
+            let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
             for &c in &n.children {
                 self.build_node(b, c, None);
             }
+            b.inherited = inherited;
             resp = self.close();
             self.fire(b, n, key, &path, resp);
             return Some(path);
@@ -290,21 +307,6 @@ impl Ui {
                             return None;
                         }
                     };
-                    let orientation = if self.viewport().width >= self.viewport().height {
-                        crate::element::Orientation::Landscape
-                    } else {
-                        crate::element::Orientation::Portrait
-                    };
-                    let rules: Vec<_> = n
-                        .span_rules
-                        .iter()
-                        .filter(|rule| {
-                            (rule.query.breakpoints.is_empty()
-                                || rule.query.breakpoints.contains(&self.breakpoint()))
-                                && rule.query.orientation.is_none_or(|o| o == orientation)
-                                && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
-                        })
-                        .collect();
                     resp = self
                         .rich_text_spans(
                             id.as_str(),
@@ -319,13 +321,11 @@ impl Ui {
                                 font: desc.font,
                             },
                             |span| {
-                                let mut style = crate::TextSpanStyle::default();
-                                for rule in &rules {
-                                    if rule.matches(span) {
-                                        rule.apply(&t, &mut style);
-                                    }
-                                }
-                                style
+                                r.span_styles
+                                    .iter()
+                                    .find(|(attribute, _)| attribute == span)
+                                    .map(|(_, style)| style.clone())
+                                    .unwrap_or_default()
                             },
                         )
                         .response;
@@ -590,6 +590,7 @@ impl Ui {
                                 .filter(|(s, _)| PROPS[*s].name == name)
                                 .cloned()
                                 .collect(),
+                            ..Default::default()
                         },
                         el,
                     );
