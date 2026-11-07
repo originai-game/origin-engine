@@ -3958,6 +3958,36 @@ pub fn og_destruction_capabilities(env: Env, world: u32) -> String {
     <Host as DestructionApi>::og_destruction_capabilities(&Host, world)
 }
 
+#[napi(js_name = "og_destruction_carve2d")]
+pub fn og_destruction_carve2d(env: Env, world: u32, entity: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DestructionApi>::og_destruction_carve2d(&Host, world, entity, desc)
+}
+
+#[napi(js_name = "og_destruction_fill2d")]
+pub fn og_destruction_fill2d(env: Env, world: u32, entity: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DestructionApi>::og_destruction_fill2d(&Host, world, entity, desc)
+}
+
+#[napi(js_name = "og_destruction_explode2d")]
+pub fn og_destruction_explode2d(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DestructionApi>::og_destruction_explode2d(&Host, world, desc)
+}
+
+#[napi(js_name = "og_destruction_fracture2d")]
+pub fn og_destruction_fracture2d(env: Env, world: u32, entity: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DestructionApi>::og_destruction_fracture2d(&Host, world, entity, desc)
+}
+
+#[napi(js_name = "og_destruction_cell2d")]
+pub fn og_destruction_cell2d(env: Env, world: u32, entity: f64, point: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DestructionApi>::og_destruction_cell2d(&Host, world, entity, point)
+}
+
 #[napi(js_name = "og_vfx_spawn")]
 pub fn og_vfx_spawn(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

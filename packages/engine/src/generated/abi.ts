@@ -1311,6 +1311,16 @@ export interface HostAbi<A, V> {
   og_destruction_material(world: number, kind: number): string;
   /** `og.destruction.capabilities` */
   og_destruction_capabilities(world: number): string;
+  /** `og.destruction.carve2d` */
+  og_destruction_carve2d(world: number, entity: number, desc: string | undefined): string;
+  /** `og.destruction.fill2d` */
+  og_destruction_fill2d(world: number, entity: number, desc: string | undefined): string;
+  /** `og.destruction.explode2d` */
+  og_destruction_explode2d(world: number, desc: string | undefined): string;
+  /** `og.destruction.fracture2d` */
+  og_destruction_fracture2d(world: number, entity: number, desc: string | undefined): string;
+  /** `og.destruction.cell2d` */
+  og_destruction_cell2d(world: number, entity: number, point: string): string;
   /** `og.vfx.spawn` */
   og_vfx_spawn(world: number, desc: string | undefined): string;
   /** `og.vfx.info` */
@@ -1950,6 +1960,11 @@ export const SYMBOLS: readonly string[] = [
   "og_destruction_info",
   "og_destruction_material",
   "og_destruction_capabilities",
+  "og_destruction_carve2d",
+  "og_destruction_fill2d",
+  "og_destruction_explode2d",
+  "og_destruction_fracture2d",
+  "og_destruction_cell2d",
   "og_vfx_spawn",
   "og_vfx_info",
   "og_host_set_dispatcher",
@@ -2209,6 +2224,22 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_destruction_info(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.destruction.info", "entity", entity);
       return abi.og_destruction_info(world, entity);
+    },
+    og_destruction_carve2d(world: number, entity: number, desc: string | undefined) {
+      if (typeof entity !== "number") notEntity("og.destruction.carve2d", "entity", entity);
+      return abi.og_destruction_carve2d(world, entity, desc);
+    },
+    og_destruction_fill2d(world: number, entity: number, desc: string | undefined) {
+      if (typeof entity !== "number") notEntity("og.destruction.fill2d", "entity", entity);
+      return abi.og_destruction_fill2d(world, entity, desc);
+    },
+    og_destruction_fracture2d(world: number, entity: number, desc: string | undefined) {
+      if (typeof entity !== "number") notEntity("og.destruction.fracture2d", "entity", entity);
+      return abi.og_destruction_fracture2d(world, entity, desc);
+    },
+    og_destruction_cell2d(world: number, entity: number, point: string) {
+      if (typeof entity !== "number") notEntity("og.destruction.cell2d", "entity", entity);
+      return abi.og_destruction_cell2d(world, entity, point);
     },
   };
 }

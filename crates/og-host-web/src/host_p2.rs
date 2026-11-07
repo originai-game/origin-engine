@@ -181,4 +181,19 @@ impl DestructionApi for WebHost {
     fn og_destruction_capabilities(&self, world: u32) -> String {
         rt::og_destruction_capabilities(world)
     }
+    fn og_destruction_carve2d(&self, world: u32, entity: f64, desc: Option<String>) -> String {
+        rt::og_destruction_carve2d(world, entity, desc)
+    }
+    fn og_destruction_fill2d(&self, world: u32, entity: f64, desc: Option<String>) -> String {
+        rt::og_destruction_fill2d(world, entity, desc)
+    }
+    fn og_destruction_explode2d(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_destruction_explode2d(world, desc)
+    }
+    fn og_destruction_fracture2d(&self, world: u32, entity: f64, desc: Option<String>) -> String {
+        rt::og_destruction_fracture2d(world, entity, desc)
+    }
+    fn og_destruction_cell2d(&self, world: u32, entity: f64, point: String) -> String {
+        rt::og_destruction_cell2d(world, entity, point)
+    }
 }

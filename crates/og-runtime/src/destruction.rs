@@ -194,6 +194,11 @@ pub(crate) fn set_physics(engine: u32, physics: &og_physics::PhysicsSystem) {
     PHYSICS.with(|m| m.borrow_mut().insert(engine, physics.clone()));
 }
 
+/// The physics of an engine (og.destruction2d registers its meshes there).
+pub(crate) fn physics(engine: u32) -> Option<og_physics::PhysicsSystem> {
+    PHYSICS.with(|m| m.borrow().get(&engine).cloned())
+}
+
 /// How often (in ticks) a loose island at rest is solved on what holds it.
 const REST_EVERY: u64 = 6;
 /// The most blocks of no-tension masonry that fly loose as one piece: one

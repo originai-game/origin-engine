@@ -145,6 +145,20 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::destruction::RESOURCE,
         enable: crate::destruction::enable,
     },
+    // og.destruction2d: its system and state block once a game names any
+    // of og.PixelTerrain, og.PixelPiece or og.PixelDetached.
+    Lazy {
+        name: crate::destruction2d::TERRAIN,
+        enable: crate::destruction2d::enable,
+    },
+    Lazy {
+        name: crate::destruction2d::PIECE,
+        enable: crate::destruction2d::enable,
+    },
+    Lazy {
+        name: crate::destruction2d::DETACHED,
+        enable: crate::destruction2d::enable,
+    },
     // G2-6: time groups, read by the modules that scale an entity's dt.
     // Naming either registers both (TOGETHER).
     Lazy {
@@ -379,6 +393,7 @@ const TOGETHER: &[&[&str]] = &[
     &crate::feel::vcam::RECORDS,
     &crate::weather::RECORDS,
     &crate::destruction::RECORDS,
+    &crate::destruction2d::RECORDS,
     &crate::vfx::RECORDS,
     &[
         crate::stream::cells::CELL,

@@ -23,4 +23,4 @@ struct DestructionCapabilities {
 }
 ```
 
-<sub>Module `destruction` line 248</sub>
+<sub>Module `destruction` line 250</sub>

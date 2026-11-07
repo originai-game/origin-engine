@@ -15,6 +15,19 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **2D destructible pixel terrain.** og.PixelTerrain is ground of cells
+  (Worms, Noita): og.destruction.carve2d digs, fill2d builds (ground or
+  bedrock), explode2d blows a hole and throws the ring round it as Voronoi
+  pieces, fracture2d breaks a piece or a terrain into Voronoi pieces, and
+  cell2d reads a cell. Each chunk collides as its smoothed outline (a
+  static SHAPE_TRIMESH collider on a generated mesh, rebuilt only where a
+  change touched it); ground no longer joined to bedrock or the bottom row
+  falls as an og.PixelPiece (a dynamic convex body), reported by
+  og.PixelDetached (cause CAUSE_CARVE, CAUSE_EXPLOSION or CAUSE_FRACTURE).
+  The cells, pieces and queued changes are world state (snapshots,
+  restores, replays, the world hash); the drawn texture is remade from the
+  cells on a frame after they change. The records are lazy: a world that
+  never names them saves and hashes as before.
 - **Emitter expressiveness.** `type particles` emitters gain curves over
   life for the speed (`speedOverLife`) and the spin (`spinOverLife`), a
   curve over each cycle for the rate (`rateOverTime`), up to four

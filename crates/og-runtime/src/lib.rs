@@ -39,6 +39,7 @@ mod baked;
 mod codec;
 mod describe;
 mod destruction;
+mod destruction2d;
 #[cfg(not(feature = "publish"))]
 mod determinism;
 mod display;
@@ -123,6 +124,10 @@ pub use codec::{Kind, Layout, RecordKind};
 pub use destruction::{
     og_destruction_capabilities, og_destruction_damage, og_destruction_explode,
     og_destruction_fracture, og_destruction_info, og_destruction_material,
+};
+pub use destruction2d::{
+    og_destruction_carve2d, og_destruction_cell2d, og_destruction_explode2d, og_destruction_fill2d,
+    og_destruction_fracture2d,
 };
 pub use display::{
     lose_device, og_render_display, og_render_reset_display, og_render_set_display,

@@ -48,4 +48,4 @@ struct ExplosionDesc {
 }
 ```
 
-<sub>Module `destruction` line 183</sub>
+<sub>Module `destruction` line 185</sub>

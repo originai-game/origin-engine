@@ -739,6 +739,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     };
     super::feel::camera_frame(world, rs, aspect);
     super::feel::extract(world, rs, &mut h);
+    crate::destruction2d::extract(world, rs, &mut h);
     super::skeleton2d::extract(world, rs, &mut h);
 
     // Characters the fonts lack, rendered from their files before any

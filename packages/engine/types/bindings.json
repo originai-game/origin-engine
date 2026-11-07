@@ -7878,6 +7878,156 @@
     },
     {
       "id": 102,
+      "name": "PixelTerrain",
+      "schema": "og.PixelTerrain",
+      "module": "destruction",
+      "fields": [
+        {
+          "name": "width",
+          "column": "u32",
+          "default": 256
+        },
+        {
+          "name": "height",
+          "column": "u32",
+          "default": 128
+        },
+        {
+          "name": "cellSize",
+          "column": "f32",
+          "default": 0.0625
+        },
+        {
+          "name": "chunk",
+          "column": "u32",
+          "default": 32
+        },
+        {
+          "name": "ground",
+          "column": "f32",
+          "default": 0.5
+        },
+        {
+          "name": "bedrock",
+          "column": "u32",
+          "default": 1
+        },
+        {
+          "name": "seed",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "color",
+          "column": "Color",
+          "default": {
+            "r": 0.30,
+            "g": 0.18,
+            "b": 0.09
+          }
+        },
+        {
+          "name": "bedrockColor",
+          "column": "Color",
+          "default": {
+            "r": 0.10,
+            "g": 0.10,
+            "b": 0.11
+          }
+        },
+        {
+          "name": "grain",
+          "column": "f32",
+          "default": 0.15
+        },
+        {
+          "name": "layer",
+          "column": "i32",
+          "default": 0
+        },
+        {
+          "name": "friction",
+          "column": "f32",
+          "default": 0.6
+        },
+        {
+          "name": "density",
+          "column": "f32",
+          "default": 1000
+        },
+        {
+          "name": "layers",
+          "column": "u32",
+          "default": 1
+        },
+        {
+          "name": "mask",
+          "column": "u32",
+          "default": 4294967295
+        },
+        {
+          "name": "tolerance",
+          "column": "f32",
+          "default": 0.5
+        },
+        {
+          "name": "minPiece",
+          "column": "u32",
+          "default": 4
+        },
+        {
+          "name": "maxPieces",
+          "column": "u32",
+          "default": 64
+        },
+        {
+          "name": "solid",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "name": "PixelPiece",
+      "schema": "og.PixelPiece",
+      "module": "destruction",
+      "fields": [
+        {
+          "name": "terrain",
+          "column": "Entity",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "width",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "height",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "cells",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "tick",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 104,
       "name": "Vfx",
       "schema": "og.Vfx",
       "module": "vfx",
@@ -13324,6 +13474,43 @@
     },
     {
       "id": 58,
+      "name": "PixelDetached",
+      "schema": "og.PixelDetached",
+      "module": "destruction",
+      "fields": [
+        {
+          "name": "terrain",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "piece",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "cells",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "point",
+          "type": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "cause",
+          "type": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 59,
       "name": "VfxEvent",
       "schema": "og.VfxEvent",
       "module": "vfx",
@@ -26900,6 +27087,136 @@
     {
       "id": 631,
       "kind": "fn",
+      "path": "og.destruction.carve2d",
+      "symbol": "og_destruction_carve2d",
+      "module": "destruction",
+      "name": "carve2d",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "Carve2dDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 632,
+      "kind": "fn",
+      "path": "og.destruction.fill2d",
+      "symbol": "og_destruction_fill2d",
+      "module": "destruction",
+      "name": "fill2d",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "Fill2dDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 633,
+      "kind": "fn",
+      "path": "og.destruction.explode2d",
+      "symbol": "og_destruction_explode2d",
+      "module": "destruction",
+      "name": "explode2d",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "Explosion2dDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 634,
+      "kind": "fn",
+      "path": "og.destruction.fracture2d",
+      "symbol": "og_destruction_fracture2d",
+      "module": "destruction",
+      "name": "fracture2d",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "Fracture2dDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 635,
+      "kind": "fn",
+      "path": "og.destruction.cell2d",
+      "symbol": "og_destruction_cell2d",
+      "module": "destruction",
+      "name": "cell2d",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "point",
+          "type": "Vector3",
+          "optional": false
+        }
+      ],
+      "returns": "Result<u32>",
+      "publish": true
+    },
+    {
+      "id": 636,
+      "kind": "fn",
       "path": "og.vfx.spawn",
       "symbol": "og_vfx_spawn",
       "module": "vfx",
@@ -26920,7 +27237,7 @@
       "publish": true
     },
     {
-      "id": 632,
+      "id": 637,
       "kind": "fn",
       "path": "og.vfx.info",
       "symbol": "og_vfx_info",

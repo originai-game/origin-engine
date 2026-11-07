@@ -394,6 +394,8 @@ pub(crate) struct RenderState {
     pub atmo: super::atmosphere::AtmoState,
     /// The effect materials loaded (`super::effect`).
     pub effects: super::effect::EffectState,
+    /// The pixel terrains' and pieces' textures (`super::destruction2d`).
+    pub pixel: super::destruction2d::PixelRender,
     /// The environment maps loaded (`super::environment`).
     pub env: super::environment::EnvState,
     /// The terrains loaded (`super::terrain`).
@@ -469,6 +471,7 @@ impl RenderState {
             feel: Default::default(),
             atmo: Default::default(),
             effects: Default::default(),
+            pixel: Default::default(),
             env: Default::default(),
             terrain: Default::default(),
             hierarchy: Hierarchy::default(),

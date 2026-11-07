@@ -19302,7 +19302,7 @@
     },
     {
       "name": "destruction",
-      "doc": "Props that break: walls, crates, pillars, glass. A model cooked with a `fracture { }` block (at the top of a `type model`, or in a glTF's import settings) is cut by the cook into Voronoi chunks bonded where they touch, and the chunks resting on its floor are anchored to the world. Give the entity that draws it (its og.Model) an og.Destructible: hits, og.destruction.damage and og.destruction.explode wear the bonds down, a broken bond splits the prop into islands, an island anchored to the world stays put and every other island falls as one rigid body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight, so a wall shot out at its foot comes down.\n**Deterministic.** Damage, bonds, islands and the stress solver are fixed f32 arithmetic in the tick (og.destruction runs after the game's systems and before og.physics), the chunks are world entities and the bonds' health is in a state block: snapshots, restores, replays and the world hash cover the whole fracture, on both hosts.\n**What a game sees.** og.Fractured, the tick after, for every island that breaks loose (play a sound by its volume, shake the camera); each loose chunk is an entity with og.Chunk (its body is a dynamic og.RigidBody: query it, push it, despawn it). Its look: the og.Destructible's `breakFx` emitter bursts where each island breaks loose and `hitFx` at each damaging hit, each the material's own (dust for stone, splinters for wood, shards and glints for glass, a few sparks only for metal). Budgets (og.Destruction): a loose island (a body and the chunks it carries) smaller than `debrisVolume` despawns after `debrisLifetime`, and past `maxChunks` loose chunks the oldest islands go first.\n3D profile only. The chunks of a dynamic prop (a crate with an og.RigidBody) fly with its velocity; a prop without a body, or with a static one, stands on its anchors.",
+      "doc": "Props that break: walls, crates, pillars, glass. A model cooked with a `fracture { }` block (at the top of a `type model`, or in a glTF's import settings) is cut by the cook into Voronoi chunks bonded where they touch, and the chunks resting on its floor are anchored to the world. Give the entity that draws it (its og.Model) an og.Destructible: hits, og.destruction.damage and og.destruction.explode wear the bonds down, a broken bond splits the prop into islands, an island anchored to the world stays put and every other island falls as one rigid body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight, so a wall shot out at its foot comes down.\n**Deterministic.** Damage, bonds, islands and the stress solver are fixed f32 arithmetic in the tick (og.destruction runs after the game's systems and before og.physics), the chunks are world entities and the bonds' health is in a state block: snapshots, restores, replays and the world hash cover the whole fracture, on both hosts.\n**What a game sees.** og.Fractured, the tick after, for every island that breaks loose (play a sound by its volume, shake the camera); each loose chunk is an entity with og.Chunk (its body is a dynamic og.RigidBody: query it, push it, despawn it). Its look: the og.Destructible's `breakFx` emitter bursts where each island breaks loose and `hitFx` at each damaging hit, each the material's own (dust for stone, splinters for wood, shards and glints for glass, a few sparks only for metal). Budgets (og.Destruction): a loose island (a body and the chunks it carries) smaller than `debrisVolume` despawns after `debrisLifetime`, and past `maxChunks` loose chunks the oldest islands go first.\n**2D: pixel terrain.** An og.PixelTerrain is ground made of cells, Worms and Noita style: og.destruction.carve2d digs a round hole, fill2d builds ground back (or bedrock, which nothing carves), explode2d blows a hole and throws the ground round it as pieces, fracture2d breaks a piece (or a terrain with no bedrock) into Voronoi pieces. Each chunk of it collides as its smoothed outline (a static og.Collider per chunk, rebuilt only where a change touched it), ground cut loose from the bedrock and the bottom row falls as an og.PixelPiece (a dynamic body), and og.PixelDetached reports each. The cells, the pieces and the queued changes are world state, carried by snapshots, restores, replays and the world hash on both hosts; the drawn image is made from them each frame they change.\nProps (og.Destructible) are the 3D profile's. The chunks of a dynamic prop (a crate with an og.RigidBody) fly with its velocity; a prop without a body, or with a static one, stands on its anchors.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -19314,7 +19314,14 @@
         "ExplosionDesc",
         "DestructibleInfo",
         "DestructibleMaterial",
-        "DestructionCapabilities"
+        "DestructionCapabilities",
+        "PixelTerrain",
+        "PixelPiece",
+        "PixelDetached",
+        "Carve2dDesc",
+        "Fill2dDesc",
+        "Explosion2dDesc",
+        "Fracture2dDesc"
       ],
       "consts": [
         {
@@ -19333,7 +19340,7 @@
           "name": "CAUSE_EXPLOSION",
           "type": "u32",
           "value": 2,
-          "doc": "Fractured.cause: og.destruction.explode."
+          "doc": "Fractured.cause: og.destruction.explode; PixelDetached.cause: og.destruction.explode2d."
         },
         {
           "name": "CAUSE_STRESS",
@@ -19381,7 +19388,13 @@
           "name": "CAUSE_FRACTURE",
           "type": "u32",
           "value": 5,
-          "doc": "Fractured.cause: og.destruction.fracture."
+          "doc": "Fractured.cause: og.destruction.fracture; PixelDetached.cause: og.destruction.fracture2d."
+        },
+        {
+          "name": "CAUSE_CARVE",
+          "type": "u32",
+          "value": 6,
+          "doc": "PixelDetached.cause: og.destruction.carve2d cut it loose."
         }
       ],
       "functions": [
@@ -19508,6 +19521,135 @@
             }
           ],
           "returns": "DestructionCapabilities",
+          "publish": true
+        },
+        {
+          "name": "carve2d",
+          "doc": "Empty a round hole in an og.PixelTerrain, this tick (applied by og.destruction2d after the game's systems, in the order called): the chunks it touches collide as their new outline before this tick's physics step, and what it cuts loose falls.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "An entity with og.PixelTerrain."
+            },
+            {
+              "name": "desc",
+              "type": "Carve2dDesc",
+              "optional": true,
+              "doc": "Where and how big."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity without og.PixelTerrain, or a point or radius that is not finite.",
+          "publish": true
+        },
+        {
+          "name": "fill2d",
+          "doc": "Make a round patch of an og.PixelTerrain solid (ground, or bedrock), this tick, as carve2d. Bedrock stays bedrock.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "An entity with og.PixelTerrain."
+            },
+            {
+              "name": "desc",
+              "type": "Fill2dDesc",
+              "optional": true,
+              "doc": "Where, how big and what with."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity without og.PixelTerrain, or a point or radius that is not finite.",
+          "publish": true
+        },
+        {
+          "name": "explode2d",
+          "doc": "A blast on every og.PixelTerrain in reach, this tick, as carve2d: a hole of `radius`, the ring of ground `debris` wide round it cut into Voronoi pieces and thrown outwards, the islands it cuts loose and the pieces already in reach pushed outwards. Push other bodies with og.physics.applyImpulse.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "Explosion2dDesc",
+              "optional": true,
+              "doc": "Its centre, reach and push."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a point or a size that is not finite.",
+          "publish": true
+        },
+        {
+          "name": "fracture2d",
+          "doc": "Break an og.PixelPiece (or every cell of an og.PixelTerrain but its bedrock) into Voronoi pieces, this tick, as carve2d: each piece is an og.PixelPiece moving as what it broke from moved; the piece broken is despawned.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "An entity with og.PixelPiece or og.PixelTerrain."
+            },
+            {
+              "name": "desc",
+              "type": "Fracture2dDesc",
+              "optional": true,
+              "doc": "How many pieces."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity with neither.",
+          "publish": true
+        },
+        {
+          "name": "cell2d",
+          "doc": "The cell of an og.PixelTerrain under a world point, as the last tick left it: 0 empty, 255 bedrock, any other ground (fill2d writes 1). Outside the terrain, 0.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "An entity with og.PixelTerrain."
+            },
+            {
+              "name": "point",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "A world point (its xy)."
+            }
+          ],
+          "returns": "Result<u32>",
+          "returnsDoc": "Refused for an entity without og.PixelTerrain, or one og.destruction2d has not yet filled (the tick after it is added).",
           "publish": true
         }
       ],
@@ -75294,6 +75436,373 @@
         "maxVisualDebris",
         "visualDebrisContacts"
       ],
+      "additionalProperties": false
+    },
+    "PixelTerrain": {
+      "x-og-kind": "component",
+      "x-og-module": "destruction",
+      "description": "Destructible 2D ground of square cells (Worms, Noita): solid ground, bedrock or empty. Its og.Transform's position is the bottom-left corner of its cell (0, 0), x right and y up (its rotation and scale are not used). The first tick it is seen it is filled: `bedrock` rows at the bottom, then ground up to `ground` of its height; carve2d, fill2d, explode2d and fracture2d change it from then on, in the tick (og.destruction2d runs after the game's systems, before og.physics).\nIt collides chunk by chunk: each `chunk` × `chunk` block of cells with any solid in it is an entity with a static og.Collider (SHAPE_TRIMESH, an outline in 2D) of its cells' outline, smoothed within `tolerance` cells, so a body rolls along a carved slope rather than bumping down steps. A change rebuilds only the chunks it touched. Solid cells no longer joined (through their four sides) to bedrock or to the bottom row fall: each such island of at least `minPiece` cells becomes an og.PixelPiece, smaller ones vanish.\nDrawn as one sprite of its cells, one texel a cell: ground in `color` with a per-cell `grain`, bedrock in `bedrockColor`, empty clear; the image is remade from the cells only on a frame after they changed. Changing width, height or chunk starts it over (filled again); despawning it takes its colliders with it (its pieces stay).",
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its cells across.",
+          "default": 256,
+          "minimum": 1,
+          "maximum": 4096
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its cells up.",
+          "default": 128,
+          "minimum": 1,
+          "maximum": 4096
+        },
+        "cellSize": {
+          "type": "number",
+          "description": "A cell's side.",
+          "default": 0.0625,
+          "minimum": 0.001,
+          "x-og-unit": "m"
+        },
+        "chunk": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The side of the blocks of cells that collide and rebuild together: smaller rebuilds less per carve and makes more colliders.",
+          "default": 32,
+          "minimum": 4,
+          "maximum": 256
+        },
+        "ground": {
+          "type": "number",
+          "description": "How much of its height is ground (bedrock included) when it is first filled; 0 starts it empty, to build with fill2d.",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "bedrock": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The rows of bedrock at its bottom when it is first filled: never carved, and what the ground must stay joined to (as to the bottom row) to stand.",
+          "default": 1
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The seed of its grain and of the pieces explode2d and fracture2d cut.",
+          "default": 0
+        },
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The ground's colour.",
+          "default": {
+            "r": 0.30,
+            "g": 0.18,
+            "b": 0.09
+          }
+        },
+        "bedrockColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The bedrock's colour.",
+          "default": {
+            "r": 0.10,
+            "g": 0.10,
+            "b": 0.11
+          }
+        },
+        "grain": {
+          "type": "number",
+          "description": "How much each ground cell's brightness varies, fixed per cell by the seed (pieces keep the grain of the ground they were).",
+          "default": 0.15,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "layer": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Its sprite's draw order (its pieces' too); higher draws on top.",
+          "default": 0
+        },
+        "friction": {
+          "type": "number",
+          "description": "Its colliders' and its pieces' friction.",
+          "default": 0.6,
+          "minimum": 0
+        },
+        "density": {
+          "type": "number",
+          "description": "Its pieces' density (per square metre in 2D).",
+          "default": 1000,
+          "minimum": 1,
+          "x-og-unit": "kgPerM3"
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its colliders' and pieces' collision layers, as og.Collider.layers.",
+          "default": 1
+        },
+        "mask": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The layers they collide with, as og.Collider.mask.",
+          "default": 4294967295
+        },
+        "tolerance": {
+          "type": "number",
+          "description": "How far, in cells, the collision outline may cut across the cells' stair steps.",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 4
+        },
+        "minPiece": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "An island cut loose with fewer cells vanishes instead of falling as an og.PixelPiece.",
+          "default": 4
+        },
+        "maxPieces": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most og.PixelPiece entities of this terrain at once: past it the oldest despawn.",
+          "default": 64,
+          "minimum": 1,
+          "maximum": 1024
+        },
+        "solid": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Written: its solid cells (ground and bedrock).",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "PixelPiece": {
+      "x-og-kind": "component",
+      "x-og-module": "destruction",
+      "description": "A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody whose og.Collider is the convex hull of its cells (SHAPE_CONVEX, a polygon in 2D), drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away.",
+      "type": "object",
+      "properties": {
+        "terrain": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.PixelTerrain it was part of.",
+          "default": 0,
+          "readOnly": true
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its cells across.",
+          "default": 0,
+          "readOnly": true
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its cells up.",
+          "default": 0,
+          "readOnly": true
+        },
+        "cells": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its solid cells.",
+          "default": 0,
+          "readOnly": true
+        },
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick it broke loose.",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "PixelDetached": {
+      "x-og-kind": "event",
+      "x-og-module": "destruction",
+      "description": "Cells of an og.PixelTerrain (or of an og.PixelPiece fracture2d broke) broke loose during the tick, read the tick after: one for each piece, in the order they were cut, for its sound, its dust, its score.",
+      "type": "object",
+      "properties": {
+        "terrain": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.PixelTerrain."
+        },
+        "piece": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.PixelPiece it became; 0 for an island under minPiece, which vanished."
+        },
+        "cells": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its cells."
+        },
+        "point": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Its centre.",
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
+        },
+        "cause": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "What broke it loose: CAUSE_CARVE, CAUSE_EXPLOSION or CAUSE_FRACTURE."
+        }
+      },
+      "required": [
+        "terrain",
+        "piece",
+        "cells",
+        "point",
+        "cause"
+      ],
+      "additionalProperties": false
+    },
+    "Carve2dDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "destruction",
+      "description": "A round hole for og.destruction.carve2d.",
+      "type": "object",
+      "properties": {
+        "point": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Its centre, in world space (its xy).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "radius": {
+          "type": "number",
+          "description": "Its radius: every cell whose centre is within it is emptied (bedrock stays).",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Fill2dDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "destruction",
+      "description": "A round patch of ground for og.destruction.fill2d.",
+      "type": "object",
+      "properties": {
+        "point": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Its centre, in world space (its xy).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "radius": {
+          "type": "number",
+          "description": "Its radius: every cell whose centre is within it is made solid.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "bedrock": {
+          "type": "boolean",
+          "description": "Fill with bedrock (never carved) instead of ground.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Explosion2dDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "destruction",
+      "description": "A blast for og.destruction.explode2d.",
+      "type": "object",
+      "properties": {
+        "point": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Its centre, in world space (its xy).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "radius": {
+          "type": "number",
+          "description": "The hole it blows in every og.PixelTerrain in reach.",
+          "default": 1.5,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "debris": {
+          "type": "number",
+          "description": "The width of the ring of ground round the hole that it breaks into pieces and throws (0 none): the ground there is cut into Voronoi pieces of about pieceCells cells, each an og.PixelPiece.",
+          "default": 0.4,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "pieceCells": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "About how many cells each thrown piece has.",
+          "default": 24,
+          "minimum": 4
+        },
+        "speed": {
+          "type": "number",
+          "description": "How fast it throws the pieces it cuts and the islands it cuts loose outwards, at its centre, falling linearly to nothing at radius plus debris; the og.PixelPiece entities already in reach take the same push on their og.Velocity.",
+          "default": 8,
+          "minimum": 0,
+          "x-og-unit": "mps"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Fracture2dDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "destruction",
+      "description": "How og.destruction.fracture2d breaks a piece.",
+      "type": "object",
+      "properties": {
+        "pieces": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many Voronoi pieces (fewer when some are under the terrain's minPiece cells).",
+          "default": 8,
+          "minimum": 1,
+          "maximum": 256
+        }
+      },
       "additionalProperties": false
     },
     "VfxAsset": {

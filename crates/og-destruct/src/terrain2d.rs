@@ -27,7 +27,7 @@ pub const BEDROCK: Cell = 255;
 
 /// A grid of cells in square chunks, with the chunks a change touched
 /// marked dirty until their outline is taken.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct PixelTerrain {
     width: u32,
     height: u32,

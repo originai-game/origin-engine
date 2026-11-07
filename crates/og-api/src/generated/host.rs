@@ -1473,6 +1473,16 @@ pub trait DestructionApi: Wire {
     fn og_destruction_material(&self, world: u32, kind: u32) -> String;
     /// `og.destruction.capabilities`
     fn og_destruction_capabilities(&self, world: u32) -> String;
+    /// `og.destruction.carve2d`
+    fn og_destruction_carve2d(&self, world: u32, entity: f64, desc: Option<String>) -> String;
+    /// `og.destruction.fill2d`
+    fn og_destruction_fill2d(&self, world: u32, entity: f64, desc: Option<String>) -> String;
+    /// `og.destruction.explode2d`
+    fn og_destruction_explode2d(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.destruction.fracture2d`
+    fn og_destruction_fracture2d(&self, world: u32, entity: f64, desc: Option<String>) -> String;
+    /// `og.destruction.cell2d`
+    fn og_destruction_cell2d(&self, world: u32, entity: f64, point: String) -> String;
 }
 
 /// `vfx`: packages/knowledge/wiki/vfx.md.
@@ -2121,6 +2131,11 @@ pub const SYMBOLS: &[&str] = &[
     "og_destruction_info",
     "og_destruction_material",
     "og_destruction_capabilities",
+    "og_destruction_carve2d",
+    "og_destruction_fill2d",
+    "og_destruction_explode2d",
+    "og_destruction_fracture2d",
+    "og_destruction_cell2d",
     "og_vfx_spawn",
     "og_vfx_info",
 ];

@@ -82,6 +82,11 @@ export const destruction = Object.freeze({
   info: (world: W, entity: number) => parse(abi().og_destruction_info(world.id, entity)),
   material: (world: W, kind: number) => parse(abi().og_destruction_material(world.id, kind)),
   capabilities: (world: W) => parse(abi().og_destruction_capabilities(world.id)),
+  carve2d: (world: W, entity: number, desc?: unknown) => parse(abi().og_destruction_carve2d(world.id, entity, json(desc))),
+  fill2d: (world: W, entity: number, desc?: unknown) => parse(abi().og_destruction_fill2d(world.id, entity, json(desc))),
+  explode2d: (world: W, desc?: unknown) => parse(abi().og_destruction_explode2d(world.id, json(desc))),
+  fracture2d: (world: W, entity: number, desc?: unknown) => parse(abi().og_destruction_fracture2d(world.id, entity, json(desc))),
+  cell2d: (world: W, entity: number, point: unknown) => parse(abi().og_destruction_cell2d(world.id, entity, JSON.stringify(point))),
 });
 
 // og.motion (IDL `motion`): goals for humanoids; the model draws them.

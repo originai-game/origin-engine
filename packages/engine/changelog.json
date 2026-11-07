@@ -1014,6 +1014,42 @@
       {
         "member": "og.Sprite.material, shader `mode sprite`, sprite_texel",
         "summary": "A sprite draws through a material shader's hooks: og.Sprite.material takes a material from og.render.shaderMaterial, the same shader asset, material and og.render.setShaderParam a mesh uses. vertex_offset moves the quad's corners, surface_color changes its colour before the 2D light (an alpha of 0 cuts it: a dissolve), surface_emissive adds light after it. A shader of the new `mode sprite` runs on sprites only and may call `sprite_texel(uv)` to read its texture anywhere (distortion, chromatic splits); the cook validates it against the sprite module. Sprites of one material, texture and blend are one draw. A hooks shader that calls a lit-only helper draws its sprites plain and is named in dump_render's new spriteShaderErrors. 0 is none: existing sprites draw as before."
+      },
+      {
+        "member": "og.PixelTerrain",
+        "summary": "Destructible 2D ground of cells (Worms, Noita style): filled at its first tick (bedrock rows, then ground), collides chunk by chunk as its smoothed outline (static SHAPE_TRIMESH colliders on generated meshes), drawn as one sprite of its cells."
+      },
+      {
+        "member": "og.PixelPiece",
+        "summary": "Ground an og.PixelTerrain lost (cut loose, thrown by a blast, broken off): a dynamic body colliding as the convex hull of its cells, drawn as its cells."
+      },
+      {
+        "member": "og.PixelDetached",
+        "summary": "Sent for each piece of an og.PixelTerrain that breaks loose: its terrain, its og.PixelPiece (0 when under minPiece), cells, centre and cause."
+      },
+      {
+        "member": "og.destruction.carve2d",
+        "summary": "Empty a round hole in an og.PixelTerrain this tick; what it cuts loose falls."
+      },
+      {
+        "member": "og.destruction.fill2d",
+        "summary": "Make a round patch of an og.PixelTerrain solid (ground or bedrock) this tick."
+      },
+      {
+        "member": "og.destruction.explode2d",
+        "summary": "A blast on every og.PixelTerrain in reach: a hole, the ring round it thrown as Voronoi pieces, loose pieces pushed outwards."
+      },
+      {
+        "member": "og.destruction.fracture2d",
+        "summary": "Break an og.PixelPiece (or an og.PixelTerrain's non-bedrock cells) into Voronoi pieces."
+      },
+      {
+        "member": "og.destruction.cell2d",
+        "summary": "The og.PixelTerrain cell under a world point (0 empty, 255 bedrock, other ground)."
+      },
+      {
+        "member": "og.destruction.CAUSE_CARVE",
+        "summary": "PixelDetached.cause for ground carve2d cut loose."
       }
     ],
     "fixed": [

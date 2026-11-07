@@ -46,4 +46,4 @@ struct DamageDesc {
 }
 ```
 
-<sub>Module `destruction` line 157</sub>
+<sub>Module `destruction` line 159</sub>

@@ -3306,6 +3306,31 @@ pub fn og_destruction_capabilities(world: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_destruction_carve2d(world: u32, entity: f64, desc: Option<String>) -> String {
+    <Host as DestructionApi>::og_destruction_carve2d(&Host, world, entity, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_destruction_fill2d(world: u32, entity: f64, desc: Option<String>) -> String {
+    <Host as DestructionApi>::og_destruction_fill2d(&Host, world, entity, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_destruction_explode2d(world: u32, desc: Option<String>) -> String {
+    <Host as DestructionApi>::og_destruction_explode2d(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_destruction_fracture2d(world: u32, entity: f64, desc: Option<String>) -> String {
+    <Host as DestructionApi>::og_destruction_fracture2d(&Host, world, entity, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_destruction_cell2d(world: u32, entity: f64, point: String) -> String {
+    <Host as DestructionApi>::og_destruction_cell2d(&Host, world, entity, point)
+}
+
+#[wasm_bindgen]
 pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> String {
     <Host as VfxApi>::og_vfx_spawn(&Host, world, desc)
 }
