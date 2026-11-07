@@ -128,6 +128,7 @@ export class Browser {
         [
           chrome,
           "--headless=new", "--no-first-run", "--no-default-browser-check", `--user-data-dir=${profile}`,
+          "--disable-features=MacAppCodeSignClone",
           // References are English: the host's UI language must not pick the locale.
           "--lang=en-US", "--accept-lang=en-US",
           `--window-size=${o.width ?? 1280},${o.height ?? 720}`, "--hide-scrollbars",

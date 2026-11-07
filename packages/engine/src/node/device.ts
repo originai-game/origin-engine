@@ -446,6 +446,7 @@ async function launchChrome(width: number, height: number): Promise<Driver> {
       ...(flag("--headed") ? [] : ["--headless=new"]),
       "--no-first-run",
       "--no-default-browser-check",
+      "--disable-features=MacAppCodeSignClone",
       `--user-data-dir=${profile}`,
       `--window-size=${width},${height}`,
       "--hide-scrollbars",
