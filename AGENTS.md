@@ -201,5 +201,8 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - A file split moves code verbatim (only `mod`, `use` and visibility edits)
   and is reviewed with `git diff --color-moved`.
 - Reports carry their numbers and frame paths; evidence is committed only when
-  a test reads it. Breaking changes get a `changelog.json` entry; platform asks
-  are drafted in the report and collected by the coordinator for the release.
+  a test reads it. Breaking changes get a `changelog.json` entry, and every
+  change a game sees goes under its `unreleased` in the same commit;
+  `CHANGELOG.md` is written at release by whoever cuts it, never in a merge
+  (`docs/release.md` §3). Platform asks are drafted in the report and
+  collected by the coordinator for the release.

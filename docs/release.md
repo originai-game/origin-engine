@@ -145,9 +145,9 @@ says which. A patch bump (`0.x.y`) is everything compatible: new members
 off by default (a game that does not set them draws and runs exactly as
 before, which the reference frames hold), variants appended to an enum,
 fixes, frames and speed. Either way `CHANGELOG.md` has one line per IDL
-member added, changed or removed, written at the merge that changes
-`api/<module>.ogt`; a compatible but large release may still take a minor
-when the owner names it. Every occurrence of the version is written by
+member added, changed or removed, written at release (below), not at the
+merges; a compatible but large release may still take a minor when the
+owner names it. Every occurrence of the version is written by
 `scripts/release.sh bump` and held equal by `packages/knowledge`'s test
 (`scripts/release.sh check`): the four `package.json`
 (`optionalDependencies` included), `scaffold/origin-engine.json`,
@@ -164,17 +164,33 @@ not older: no mismatch (`og doctor` says ok, the others say nothing).
 (null outside a project).
 
 **`changelog.json`** (in the engine package, schema 1) is the machine
-reading of `CHANGELOG.md` the platform builds its "new engine version"
-card from: `{schema, about, unreleased, versions: [{version, date, kind:
-"patch"|"minor", simulation: "unchanged"|"changed", breaking: [{member,
-change, fix, find?: [identifier], codemod?: {from, to}}], added: [{member,
-summary}], fixed: [string]}]}`, newest first. Each merge that adds a
-`CHANGELOG.md` line adds its entry under `unreleased`; `release.sh bump`
+contract the platform builds its "new engine version" card from, and the
+source of `og upgrade`'s codemods: `{schema, about, unreleased, versions:
+[{version, date, kind: "patch"|"minor", simulation: "unchanged"|"changed",
+breaking: [{member, change, fix, find?: [identifier], codemod?: {from,
+to}}], added: [{member, summary}], fixed: [string]}]}`, newest first. It is written per merge:
+each merge that adds, changes or removes an IDL member, breaks something
+a game relied on, or fixes something a game sees adds its entry under
+`unreleased` in the same commit; `release.sh bump`
 moves `unreleased` into `versions` as the new version, dated, its `kind`
 from the numbers, and refuses a patch whose `unreleased` has a breaking
 entry. `simulation` says whether a game's ticks may differ from the
 version before (the replay gate below holds a patch's `unchanged`); the
 versions before 0.6.1 were never measured and say `changed`.
+
+**`CHANGELOG.md`** is the prose for readers, written once per release by
+whoever cuts it; a merge never edits it (concurrent landings conflicted on
+one Unreleased list). Before `release.sh bump <version>`, the release
+writer replaces `## Unreleased` with `## <version>`: one line per IDL
+member added, changed or removed, each break with its fix, and the fixes a
+game sees. The sources are `changelog.json`'s `unreleased` (the breaks,
+additions, fixes and `simulation` the merges recorded), the IDL diff since
+the last tag (`git diff v<last> -- crates/og-api/api/
+packages/engine/types/index.d.ts`, each member read with `og api show
+<member>`), and `git log v<last>..` for what neither names. Lines left
+under `## Unreleased` from before this rule are folded in the same way.
+`release.sh bump` refuses a version whose `## <version>` heading is
+missing.
 
 **`og upgrade [project] [--to <v>] [--dry-run] [--json]`** moves a game to
 the installed engine (or `--to`, a version in its changelog): it rewrites
@@ -222,7 +238,7 @@ purpose still sets `simulation: "changed"` in the same merge.
 
 ```sh
 scripts/release.sh check              # every occurrence of the version equals packages/engine's
-scripts/release.sh bump <version>     # every occurrence of the version, CHANGELOG.md's heading
+scripts/release.sh bump <version>     # every occurrence of the version, changelog.json's unreleased; checks CHANGELOG.md's heading
 scripts/release.sh pack               # on the Mac: OG_RELEASE=1 pack.sh --linux-x64, create-game, design as tarballs (build intermediates), then archive
 # on studio-win, Git Bash, the same commit: OG_RELEASE=1 sh packages/engine/scripts/build.sh --native && sh packages/engine/scripts/pack.sh --native
 #   then copy packages/engine/dist/pack/origingame-engine-win32-x64-<v>.tgz into the Mac's dist/release/<v>/

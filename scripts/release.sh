@@ -70,7 +70,7 @@ cmd_bump() {
   bun scripts/release-bump.ts "$v" || return 1
   cargo update --workspace --offline -q || { og_err "release: cargo update --workspace failed (Cargo.lock)"; return 1; }
   if ! grep -q "^## $v" CHANGELOG.md; then
-    og_err "release: CHANGELOG.md has no \"## $v\" heading; write the entry (one line per IDL member added, changed or removed)"
+    og_err "release: CHANGELOG.md has no \"## $v\" heading; write it now from changelog.json's unreleased, the IDL diff since the last tag and git log (docs/release.md §3)"
     return 1
   fi
   og_say "release: bumped to $v; Cargo.lock updated"

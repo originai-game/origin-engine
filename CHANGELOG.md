@@ -10,8 +10,10 @@ edits to upgrade, and the section says which. A patch bump (0.x.y) is
 everything compatible: new members that are off by default (an existing
 game draws and runs as before), variants appended to an enum, fixes,
 frames and speed. Either way every IDL member added, changed or removed
-is one line here, written at the merge that changes
-`crates/og-api/api/<module>.ogt`.
+is one line here. This file is written at release by whoever cuts it,
+from `packages/engine/changelog.json`'s `unreleased`, the IDL diff since
+the last tag and `git log`; a merge records its change in
+`changelog.json` and leaves this file alone (docs/release.md §3).
 
 ## Unreleased
 
