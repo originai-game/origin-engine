@@ -245,11 +245,14 @@ pub fn move_asset(root: &Path, from: &str, to: &str) -> Result<MoveReport, Strin
             before.clone()
         };
         if before != after {
+            // Project-relative with `/` on every OS, as asset ids are.
             report.rewritten.push(
                 path.strip_prefix(&root)
                     .unwrap()
-                    .to_string_lossy()
-                    .into_owned(),
+                    .components()
+                    .map(|c| c.as_os_str().to_string_lossy())
+                    .collect::<Vec<_>>()
+                    .join("/"),
             );
         }
         if before != after || moves.contains_key(&path) {

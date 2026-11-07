@@ -25,10 +25,14 @@ def build():
     discovered = {}
     env = dict(os.environ, OG_RENDERER='none')
     env.pop('OG_GPU_REPORT_DIR', None)
-    loader = 'DYLD_FALLBACK_LIBRARY_PATH' if sys.platform == 'darwin' else 'LD_LIBRARY_PATH'
+    # Windows finds DLLs on PATH only, and keeps the toolchain's std DLL (proc-macro
+    # test binaries link it) in the sysroot's bin/, not the reported libdir.
+    loader = {'darwin': 'DYLD_FALLBACK_LIBRARY_PATH', 'win32': 'PATH'}.get(sys.platform, 'LD_LIBRARY_PATH')
     libraries = [str(Path(meta['target-directory']) / p) for p in meta['linked-paths']]
     libraries.extend(str(Path(meta['target-directory']) / p / 'deps') for p in meta['base-output-directories'])
     libraries.append(meta['platforms']['host']['libdir']['path'])
+    if sys.platform == 'win32':
+        libraries.append(str(Path(meta['platforms']['host']['libdir']['path']).parents[3] / 'bin'))
     env[loader] = os.pathsep.join(libraries + [env.get(loader, '')])
     for binary_id, binary in binaries.items():
         result = subprocess.run([binary['binary-path'], '--list', '--format=json', '-Zunstable-options'],
@@ -44,6 +48,23 @@ def build():
             tests.append({'name': record['name'], 'source': record.get('source_path'), 'gpu': gpu})
         discovered[binary_id] = {'binary': binary, 'tests': tests}
     (LOGS / 'discovered.json').write_text(json.dumps(discovered, indent=2))
+
+
+def selection(binary_id, tests, gpu):
+    """The binary's tests of one kind, as the shortest exact filterset.
+
+    Discovery lists every test of the binary, so the whole binary, or all but
+    the other kind, selects the same tests as naming them. Naming every CPU test
+    exceeded Windows' 32 KiB command line (WinError 206 on studio-win).
+    """
+    def names(kind):
+        return '|'.join(re.escape(t['name']).replace('/', r'\/') for t in tests if t['gpu'] == kind)
+    mine, other = names(gpu), names(not gpu)
+    if not other:
+        return f'binary_id(={binary_id})'
+    if len(other) < len(mine):
+        return f'(binary_id(={binary_id}) & not test(/^(?:{other})$/))'
+    return f'(binary_id(={binary_id}) & test(/^(?:{mine})$/))'
 
 
 def run(kind):
@@ -62,8 +83,7 @@ def run(kind):
             continue
         (GREEN / key).unlink(missing_ok=True)
         keys.append(key)
-        names = '|'.join(re.escape(t['name']).replace('/', r'\/') for t in tests)
-        groups.append(f'(binary_id(={binary_id}) & test(/^(?:{names})$/))')
+        groups.append(selection(binary_id, entry['tests'], kind == 'gpu'))
     if not groups:
         return 3
     reports = LOGS / f'{kind}-gpu-reports'

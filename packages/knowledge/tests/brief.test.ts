@@ -8,7 +8,7 @@
 import { afterAll, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { ART_KINDS, artBrief, audioBrief, authoredArt, readAudioChoices, SFX_PRESETS, colourName, MOODS, parsePalette, presetLook, readLook, RIG_TEMPLATES, rigParts, styleArtBriefs, UI_KINDS, uiAllows, type BriefLook } from "../scripts/brief.ts";
 
 const temps: string[] = [];
@@ -122,7 +122,8 @@ test("references: the style's preview first, then the accepted assets in order",
   const look = presetLook("monochrome-pixel");
   const b = artBrief(look, "sprite", "a bat", { references: ["assets/sprites/hero.png", "assets/sprites/door.png"] });
   expect(b.references.map((r) => r.role)).toEqual(["style", "accepted", "accepted"]);
-  expect(b.references[0]!.path.endsWith("previews/monochrome-pixel.webp")).toBe(true);
+  // A native path: `\` separators on Windows.
+  expect(b.references[0]!.path.replaceAll(sep, "/").endsWith("previews/monochrome-pixel.webp")).toBe(true);
   expect(b.references.slice(1).map((r) => r.path)).toEqual(["assets/sprites/hero.png", "assets/sprites/door.png"]);
   // monochrome-pixel's palette is the built-in @palettes/handheld4: four colours, strict.
   expect(look.palette?.id).toBe("@palettes/handheld4");
@@ -157,7 +158,7 @@ test("readLook follows project.ogt's look through the game's own looks to the pr
   expect(look.art.ArtPixels).toEqual({ unit: 20, rotation: "nearest", spriteSizes: [16, 32, 48], logicalHeight: 224, snap: true });
   expect(look.art.ArtLine).toEqual({ width: 1, place: "inside" });
   expect(look.palette?.colours.map((c) => c.hex)).toEqual(["#102030", "#f0e0d0"]);
-  expect(look.preview?.endsWith("previews/16bit-pixel.webp")).toBe(true);
+  expect(look.preview?.replaceAll(sep, "/").endsWith("previews/16bit-pixel.webp")).toBe(true);
   // A 1 m prop at 20 px per metre snaps up to the cell of 32.
   const b = artBrief(look, "prop", "a barrel");
   expect(b.image?.grid).toEqual({ width: 32, height: 32, scale: 32 });

@@ -16,11 +16,13 @@ class Locks(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.jobs = []
+        self.named = {}
         self.addCleanup(self.stop_jobs)
         self.script = self.root / 'build.sh'
         self.script.write_text('''#!/bin/sh
 set -eu
 . "$LOCK"
+echo $$ > "$ROOT/$1.pid"
 case "$2" in
   gate) og_lock_acquire "$ROOT/gate" "$1" ;;
   one) og_gpu_acquire "$1" ;;
@@ -33,10 +35,17 @@ touch "$ROOT/$1.acquired"
 while [ ! -f "$ROOT/$1.release" ]; do sleep 0.05; done
 ''')
 
+    @staticmethod
+    def kill(job):
+        # Windows: Popen.kill ends sh alone, and its sleep keeps the log open.
+        if os.name == 'nt':
+            subprocess.run(['taskkill', '/T', '/F', '/PID', str(job.pid)], capture_output=True)
+        job.kill()
+
     def stop_jobs(self):
         for job in self.jobs:
             if job.poll() is None:
-                job.kill()
+                self.kill(job)
             job.wait()
 
     def wait(self, predicate):
@@ -53,13 +62,22 @@ while [ ! -f "$ROOT/$1.release" ]; do sleep 0.05; done
                                             OG_GPU_ROOT=str(self.root / 'gpu'), OG_GPU_SLOTS=str(slots),
                                             OG_LOCK_OWNER=''))
         self.jobs.append(job)
+        self.named[name] = job
         return job
 
+    def pid(self, job):
+        # The shell's own $$: under Git Bash it is not the Windows PID Popen knows.
+        name = next(n for n, j in self.named.items() if j is job)
+        self.wait(lambda: (self.root / f'{name}.pid').exists() and (self.root / f'{name}.pid').read_text().strip())
+        return (self.root / f'{name}.pid').read_text().strip()
+
     def queued(self, job):
+        pid = self.pid(job)
+
         def present():
             for p in self.root.rglob('*.ticket'):
                 try:
-                    if p.read_text().startswith(f'{job.pid} '):
+                    if p.read_text().startswith(f'{pid} '):
                         return True
                 except FileNotFoundError:
                     pass  # An earlier waiter acquired its lock during the scan.
@@ -91,7 +109,7 @@ while [ ! -f "$ROOT/$1.release" ]; do sleep 0.05; done
                 self.assertEqual((self.root / 'order').read_text().splitlines(), ['holder', 'first', 'second', 'third'])
                 self.assertIn('position 3', (self.root / 'third.log').read_text())
                 for p in self.root.glob('*'):
-                    if p.suffix in ('.acquired', '.release') or p.name == 'order':
+                    if p.suffix in ('.acquired', '.release', '.pid') or p.name == 'order':
                         p.unlink()
 
     def test_all_slots_blocks_later_single_waiters(self):
@@ -126,7 +144,7 @@ while [ ! -f "$ROOT/$1.release" ]; do sleep 0.05; done
         self.acquired('second')
         exclusive = self.start('measurement', 'exclusive')
         barrier = self.root / 'gpu' / 'admission' / 'og-gate.lock' / 'owner'
-        self.wait(lambda: barrier.exists() and barrier.read_text().startswith(f'{exclusive.pid} '))
+        self.wait(lambda: barrier.exists() and barrier.read_text().startswith(f'{self.pid(exclusive)} '))
         later = self.start('later', 'shared')
         self.queued(later)
         self.assertFalse((self.root / 'measurement.acquired').exists())
@@ -142,11 +160,11 @@ while [ ! -f "$ROOT/$1.release" ]; do sleep 0.05; done
     def test_dead_reader_and_measurement_do_not_block_admission(self):
         reader = self.start('reader', 'shared')
         self.acquired('reader')
-        reader.kill()
+        self.kill(reader)
         reader.wait()
         exclusive = self.start('measurement', 'exclusive')
         self.acquired('measurement')
-        exclusive.kill()
+        self.kill(exclusive)
         exclusive.wait()
         later = self.start('later', 'shared')
         self.acquired('later')
@@ -161,14 +179,14 @@ while [ ! -f "$ROOT/$1.release" ]; do sleep 0.05; done
                 self.queued(dead)
                 live = self.start('live', kind)
                 self.queued(live)
-                dead.kill()
+                self.kill(dead)
                 dead.wait()
-                holder.kill()
+                self.kill(holder)
                 holder.wait()
                 self.acquired('live')
                 self.release('live', live)
                 for p in self.root.glob('*'):
-                    if p.suffix in ('.acquired', '.release'):
+                    if p.suffix in ('.acquired', '.release', '.pid'):
                         p.unlink()
 
 

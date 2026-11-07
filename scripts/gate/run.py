@@ -21,6 +21,20 @@ NEEDS = {
     'web-reference': ('wasm-opt', 'rust-build'),
     'check-conformance': (),
 }
+
+
+def stop_group(proc, sig):
+    """End a step and its compiler/test children."""
+    if os.name == 'nt':
+        # Git Bash on studio-win: Windows has no process groups; taskkill ends the tree.
+        subprocess.run(['taskkill', '/T', '/F', '/PID', str(proc.pid)], capture_output=True)
+        return
+    try:
+        os.killpg(proc.pid, sig)
+    except ProcessLookupError:
+        pass
+
+
 QUICK = ('fmt', 'clippy', 'rust-build', 'rust-cpu', 'rust-gpu', 'drift', 'bun-quick')
 FULL = QUICK + ('wasm-build', 'wasm-opt', 'size-gate', 'bun-test', 'fixtures', 'doc-tests', 'browser')
 
@@ -106,15 +120,12 @@ def main():
     finally:
         # Each step has its own process group, including its compiler/test children.
         for proc, log, _ in active.values():
-            try:
-                os.killpg(proc.pid, signal.SIGTERM)
-            except ProcessLookupError:
-                pass
+            stop_group(proc, signal.SIGTERM)
         for proc, log, _ in active.values():
             try:
                 proc.wait(timeout=10)
             except subprocess.TimeoutExpired:
-                os.killpg(proc.pid, signal.SIGKILL)
+                stop_group(proc, getattr(signal, 'SIGKILL', signal.SIGTERM))
                 proc.wait()
             log.close()
         summary = '\n'.join(completed[s] for s in NEEDS if s in completed) + '\n'

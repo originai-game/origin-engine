@@ -340,6 +340,7 @@ impl Drop for NativeBundle {
 
 pub fn bundle_native(project: &Project, package: &Path) -> Result<NativeBundle, String> {
     static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    #[cfg_attr(not(unix), expect(unused_mut))]
     let mut builder = std::fs::DirBuilder::new();
     #[cfg(unix)]
     {

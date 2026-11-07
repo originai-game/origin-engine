@@ -1,6 +1,6 @@
 import { existsSync, realpathSync } from "node:fs";
 import { isBuiltin } from "node:module";
-import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
+import { dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
 
 declare const Bun: {
   Transpiler: new (options: { loader: "ts" | "tsx" }) => {
@@ -46,7 +46,7 @@ export class ImportGraph {
       }
       pending.push(...await edges);
     }
-    return new Set([...visited].map(file => relative(this.root, file)));
+    return new Set([...visited].map(file => this.relative(file)));
   }
 
   private async imports(file: string): Promise<readonly string[]> {
@@ -82,15 +82,20 @@ export class ImportGraph {
       const resolved = Bun.resolveSync(imported.path, dirname(file));
       if (!isAbsolute(resolved)) continue;
       const dependency = realpathSync(resolved);
-      if (this.local(dependency) && !relative(this.root, dependency).split("/").includes("node_modules")) {
+      if (this.local(dependency) && !this.relative(dependency).split("/").includes("node_modules")) {
         dependencies.add(dependency);
       }
     }
     return [...dependencies];
   }
 
+  /** The root-relative path with `/` separators on every OS, as git and the gate's records name it. */
+  private relative(file: string): string {
+    return relative(this.root, file).split(sep).join("/");
+  }
+
   private local(file: string): boolean {
-    const path = relative(this.root, file);
+    const path = this.relative(file);
     return path !== ".." && !path.startsWith("../") && !isAbsolute(path);
   }
 }

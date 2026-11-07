@@ -15,6 +15,7 @@ fn check_project() -> (PathBuf, PathBuf) {
     (dir, game)
 }
 
+#[cfg(unix)]
 const TS2322: &str =
     "src/main.ts(1,7): error TS2322: Type 'string' is not assignable to type 'number'.\n";
 

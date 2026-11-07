@@ -1,5 +1,5 @@
 import { realpathSync } from "node:fs";
-import { isAbsolute, relative, resolve } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import { ImportGraph } from "./import-graph.ts";
 
 declare const Bun: {
@@ -17,10 +17,11 @@ export async function affected(root: string, entry: string, suites: readonly str
   // Resolve first: a revision must never become a Git option or pathspec.
   const revision = git("rev-parse", "--verify", "--end-of-options", `${base}^{tree}`).trim();
   const worktree = realpathSync(git("rev-parse", "--show-toplevel").trim());
+  // Root-relative with `/` separators on every OS, as ImportGraph names its inputs.
   const changed = new Set([
     ...git("diff", "--name-only", "--no-renames", "-z", revision, "--").split("\0"),
     ...git("ls-files", "--others", "--exclude-standard", "--full-name", "-z").split("\0"),
-  ].filter(Boolean).map(file => relative(root, resolve(worktree, file))));
+  ].filter(Boolean).map(file => relative(root, resolve(worktree, file)).split(sep).join("/")));
   if (changed.size === 0) return { selected: [], reason: "no changed inputs" };
   // Assets, resolver configuration, native code and paths outside this project
   // can affect every run. Unknown inputs never justify skipping a suite.

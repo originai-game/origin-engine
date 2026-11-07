@@ -9,7 +9,7 @@ set -eu
 here="$(cd "$(dirname "$0")/.." && pwd)"
 root="$(cd "$here/../.." && pwd)"
 target="${CARGO_TARGET_DIR:-$root/target}"
-case "$target" in /*) ;; *) target="$root/$target" ;; esac
+case "$target" in /*|[A-Za-z]:[/\\]*) ;; *) target="$root/$target" ;; esac
 # Release at opt-level 3 (rav1d's loops run every frame; z halves its speed),
 # simd128 everywhere the fallback runs (every browser with VideoFrame has it).
 RUSTFLAGS="-C target-feature=+simd128" cargo build --release -q --target wasm32-wasip1 \

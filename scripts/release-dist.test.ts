@@ -37,11 +37,12 @@ describe("vfx archives", () => {
     expect(readFileSync(join(a, "vfx/spark-pack.tar.gz")).equals(readFileSync(join(b, "vfx/spark-pack.tar.gz")))).toBe(true);
     expect(second).toEqual(first);
     expect(first["spark-pack"]).toMatchObject({ url: "https://origingame.ai/downloads/engine/1.2.3/vfx/spark-pack.tar.gz", version: "1.0.0", minEngine: "0.7.0" });
-    const list = spawnSync("tar", ["-tvzf", join(a, "vfx/spark-pack.tar.gz")], { encoding: "utf8" });
+    // Relative to its directory: GNU tar (Git Bash) reads `C:\...` as a remote host.
+    const list = spawnSync("tar", ["-tvzf", "spark-pack.tar.gz"], { cwd: join(a, "vfx"), encoding: "utf8" });
     expect(list.status).toBe(0);
-    const names = spawnSync("tar", ["-tzf", join(a, "vfx/spark-pack.tar.gz")], { encoding: "utf8" }).stdout.trim().split("\n");
+    const names = spawnSync("tar", ["-tzf", "spark-pack.tar.gz"], { cwd: join(a, "vfx"), encoding: "utf8" }).stdout.trim().split("\n");
     expect(names).toEqual(["spark-pack/", "spark-pack/burst.ogt", "spark-pack/extension.json", "spark-pack/glint.ogt", "spark-pack/spark.png", "spark-pack/sparks.ogt"]);
-    for (const line of list.stdout.trim().split("\n")) expect(line).toMatch(/^(drwxr-xr-x|-rw-r--r--) +0 root +root /);
+    for (const line of list.stdout.trim().split("\n")) expect(line).toMatch(/^(drwxr-xr-x|-rw-r--r--) +(0 root +root|root\/root) /); // bsdtar, GNU tar
     // uid, gid and mtime in every header (at 108, 116, 136) are 0.
     const tar = gunzipSync(readFileSync(join(a, "vfx/spark-pack.tar.gz")));
     for (let at = 0, n = 0; n < names.length; n++) {
@@ -61,7 +62,9 @@ describe("vfx archives", () => {
     expect(sums).toContain(`${vfx["spark-pack"]!.sha256}  vfx/spark-pack.tar.gz\n`);
     expect(sums).toContain("  manifest.json\n");
     // Every line verifies from the version's directory, as publish checks them.
-    expect(spawnSync("shasum", ["-a", "256", "-c", "SHA256SUMS"], { cwd: dir }).status).toBe(0);
+    // Git Bash on Windows has sha256sum, and shasum only as a Perl script.
+    const check = process.platform === "win32" ? ["sha256sum", "-c", "SHA256SUMS"] : ["shasum", "-a", "256", "-c", "SHA256SUMS"];
+    expect(spawnSync(check[0]!, check.slice(1), { cwd: dir }).status).toBe(0);
   });
 
   test("never ride in an engine archive", () => {

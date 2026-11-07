@@ -24,7 +24,7 @@
 set -eu
 root="$(cd "$(dirname "$0")/.." && pwd)"
 target="${CARGO_TARGET_DIR:-$root/target}"
-case "$target" in /*) ;; *) target="$root/$target" ;; esac
+case "$target" in /*|[A-Za-z]:[/\\]*) ;; *) target="$root/$target" ;; esac
 dir="$target/wasm-mt"
 if [ "${1:-}" = --target-dir ]; then
   printf '%s\n' "$dir"

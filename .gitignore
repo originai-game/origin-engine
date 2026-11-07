@@ -5,6 +5,7 @@ target/
 tests/install/node_modules/
 .spike-out/
 .DS_Store
+__pycache__/
 .amp/portals/*
 /dist/
 templates/styles/*/art/sheet.png

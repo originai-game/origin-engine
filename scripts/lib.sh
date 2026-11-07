@@ -5,10 +5,15 @@
 
 OG_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OG_TARGET_DIR="${CARGO_TARGET_DIR:-$OG_ROOT/target}"
-case "$OG_TARGET_DIR" in /*) ;; *) OG_TARGET_DIR="$OG_ROOT/$OG_TARGET_DIR" ;; esac
+# Absolute is `/...`, or `C:/...` under Git Bash when a Windows parent (the
+# gate's Python) hands bash its PWD in Windows form.
+case "$OG_TARGET_DIR" in /*|[A-Za-z]:[/\\]*) ;; *) OG_TARGET_DIR="$OG_ROOT/$OG_TARGET_DIR" ;; esac
 # Test harnesses (gfx diffs, perf reports) write here; CI uploads it on failure.
 export OG_EVIDENCE_DIR="${OG_EVIDENCE_DIR:-$OG_TARGET_DIR/evidence}"
 export OG_WASM_OUT="$OG_TARGET_DIR/og-wasm"
+# The gate's Python reads cargo's and git's UTF-8 as UTF-8 under any locale
+# (studio-win's is GBK); a UTF-8 locale (macOS, Linux) already does.
+export PYTHONUTF8=1
 # shellcheck source=lock.sh
 . "$OG_ROOT/scripts/lock.sh"
 
@@ -118,7 +123,7 @@ og_worktree_tree() {
   local idx="$OG_GATE_STATE/index" real
   mkdir -p "$OG_GATE_STATE" || return 1
   real="$(git -C "$OG_ROOT" rev-parse --git-path index 2>/dev/null)" || return 1
-  case "$real" in /*) ;; *) real="$OG_ROOT/$real" ;; esac
+  case "$real" in /*|[A-Za-z]:[/\\]*) ;; *) real="$OG_ROOT/$real" ;; esac
   # Starting from the real index makes git re-hash only what changed.
   cp "$real" "$idx" 2>/dev/null || rm -f "$idx"
   GIT_INDEX_FILE="$idx" git -C "$OG_ROOT" add -A . >/dev/null 2>&1 || return 1

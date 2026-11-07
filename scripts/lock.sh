@@ -20,7 +20,7 @@
 og_gpu_root="${OG_GPU_ROOT:-$HOME/.cache/og-gate}"
 og_gpu_impl() {
   cat <<'OG_GPU_IMPL'
-og_gpu_lock_version=5
+og_gpu_lock_version=6
 
 # Process birth, not command text, identifies an owner after PID reuse.
 # Keep the human-readable owner file compatible with older lanes.
@@ -28,6 +28,14 @@ og_process_identity() {
   kill -0 "$1" 2>/dev/null || return 1
   case "$(ps -p "$1" -o stat= 2>/dev/null)" in *Z*) return 1 ;; esac
   og_birth="$(LC_ALL=C ps -p "$1" -o lstart= 2>/dev/null | tr -d '[:space:]')"
+  # Git Bash and Cygwin (studio-win) have no `ps -o`: their /proc/PID/stat
+  # gives the state and the start time (fields 3 and 22, after the
+  # parenthesised command). Where ps answers (macOS, Linux) it is not read.
+  if [ -z "$og_birth" ] && [ -r "/proc/$1/stat" ]; then
+    og_stat="$(sed 's/^.*) //' "/proc/$1/stat" 2>/dev/null)"
+    case "$og_stat" in Z*) return 1 ;; esac
+    og_birth="$(printf '%s\n' "$og_stat" | cut -d' ' -f20)"
+  fi
   [ -n "$og_birth" ] || return 1
   printf '%s:%s\n' "$1" "$og_birth"
 }

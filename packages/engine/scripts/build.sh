@@ -45,7 +45,7 @@ set -eu
 here="$(cd "$(dirname "$0")/.." && pwd)"
 root="$(cd "$here/../.." && pwd)"
 target="${CARGO_TARGET_DIR:-$root/target}"
-case "$target" in /*) ;; *) target="$root/$target" ;; esac
+case "$target" in /*|[A-Za-z]:[/\\]*) ;; *) target="$root/$target" ;; esac
 cd "$root"
 . "$root/scripts/lock.sh"
 gate_wasm="${OG_WASM_OUT:-$target/og-wasm}"

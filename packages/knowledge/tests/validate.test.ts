@@ -6,7 +6,7 @@
 import { afterAll, expect, test } from "bun:test";
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { defaultRoots, payload, packs, type Roots } from "../scripts/lib.ts";
 import { bundle, validate } from "../scripts/validate.ts";
 
@@ -92,7 +92,8 @@ test("a template without a required file or project key is refused", () => {
     rmSync(join(r.template, "tsconfig.json"));
     edit(join(r.template, "project.ogt"), (s) => s.replace(/^seed .*$/m, ""));
   });
-  expect(p.sort()).toEqual([
+  // The template path is native: `\` separators on Windows.
+  expect(p.map((s) => s.replaceAll(sep, "/")).sort()).toEqual([
     "game-scaffold/origin-engine-ts/project.ogt: no `seed`",
     "game-scaffold/origin-engine-ts/tsconfig.json: the template has no tsconfig.json (../template/tsconfig.json); scaffold/README.md says every project starts with it",
   ]);
