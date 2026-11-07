@@ -105,7 +105,8 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   a lane you did not take, never `git worktree add` a fresh one.
 - **Concurrent gates, bounded work.** `scripts/check.sh` takes shared admission
   and a checkout-local output lock. CPU steps take no machine work lock;
-  each gate defaults to two steps with two Cargo/nextest jobs each. Rendering
+  each gate runs two steps, and each step's Cargo/nextest jobs share the
+  cores among the gates admitted at its start (at least two). Rendering
   steps take FIFO GPU slots through `scripts/lock.sh`. Measurements take
   exclusive admission, drain active gates, then acquire GPU slots separately.
   Never hold all GPU slots while waiting for a child gate to acquire one.

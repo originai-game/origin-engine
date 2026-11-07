@@ -260,7 +260,10 @@ child reuse its parent's resources. The versioned implementation in
 `~/.cache/og-gate/gpu-lock.sh` applies to newly started callers.
 
 `OG_GATE_JOBS` bounds concurrent steps (default 2), and `OG_GATE_THREADS`
-bounds Cargo and nextest jobs per step (default 2). Both must be positive.
+bounds Cargo and nextest jobs per step. Unset, `scripts/check.sh` derives
+it at start: the performance cores (`nproc` off macOS) divided by the live
+gates in admission times `OG_GATE_JOBS`, at least 2, so a lone gate on an
+idle machine takes most of the cores. Both must be positive.
 The DAG starts a step only after its prerequisites complete. CPU tests
 hold no GPU slot; rendering tests reuse the same compiled binaries.
 
