@@ -30,4 +30,4 @@ fn minimap {
 }
 ```
 
-<sub>Module `ui` line 1490</sub>
+<sub>Module `ui` line 1510</sub>

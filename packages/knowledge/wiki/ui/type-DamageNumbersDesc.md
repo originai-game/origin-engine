@@ -37,4 +37,4 @@ struct DamageNumbersDesc {
 }
 ```
 
-<sub>Module `ui` line 6512</sub>
+<sub>Module `ui` line 6532</sub>

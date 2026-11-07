@@ -36,7 +36,30 @@ impl Ui {
     /// build: call [`Ui::list_item`] for each of `first..last`, then
     /// [`Ui::close`]. Fillers keep the scroll range of all `count` rows.
     pub fn open_list(&mut self, id: impl Into<Id>, desc: ListDesc) -> ListRange {
-        let id = id.into();
+        self.open_list_inner(id.into(), desc, None)
+    }
+
+    /// Notify a keyed container of patched rows before opening it. Order
+    /// changes arrive through open_keyed_list/grid's authoritative key slice.
+    pub fn invalidate_keyed_items(&mut self, id: impl Into<Id>, keys: &[String]) {
+        let key = self.key_for(id.into().as_str());
+        if let Some(v) = self.state.virtual_lists.get_mut(&key) {
+            v.invalidate(keys);
+        }
+    }
+
+    /// Measured rows with persistent collection keys. `row_height` estimates
+    /// unbuilt rows; keys, not `count`, determine their number and identity.
+    pub fn open_keyed_list(
+        &mut self,
+        id: impl Into<Id>,
+        keys: &[String],
+        desc: ListDesc,
+    ) -> ListRange {
+        self.open_list_inner(id.into(), desc, Some(keys))
+    }
+
+    fn open_list_inner(&mut self, id: Id, desc: ListDesc, keys: Option<&[String]>) -> ListRange {
         let row = if desc.row_height > 0.0 {
             desc.row_height
         } else {
@@ -51,6 +74,28 @@ impl Ui {
             .saturating_sub(1)
             .min(count);
         let last = ((((off + view) / stride).ceil().max(0.0)) as u32 + 1).min(count);
+        let (first, last, top, rest) = if let Some(keys) = keys {
+            let width = self
+                .hit(key)
+                .map(|h| h.full)
+                .or_else(|| self.prev_rect(key))
+                .map_or(self.viewport.width, |r| r.width);
+            let (range, top, rest) =
+                self.keyed_range(key, keys, 1, row, desc.gap, width, view, false);
+            (range.first, range.last, top, rest)
+        } else {
+            self.state.virtual_lists.remove(&key);
+            (
+                first,
+                last,
+                first as f32 * stride - desc.gap,
+                if count > last {
+                    (count - last) as f32 * stride - desc.gap
+                } else {
+                    -1.0
+                },
+            )
+        };
         self.open(
             id,
             Element {
@@ -67,12 +112,65 @@ impl Ui {
         let list = self.parent();
         self.nodes[list].aux = [row, 0.0, -1.0];
         if first > 0 {
-            self.filler(first as f32 * stride - desc.gap, Size::grow());
+            self.filler(top, Size::grow());
         }
         // The bottom filler goes in when the list closes.
-        let rest = (count - last) as f32 * stride - desc.gap;
-        self.nodes[list].aux[2] = if count > last { rest } else { -1.0 };
+        self.nodes[list].aux[2] = rest;
         ListRange { first, last }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn keyed_range(
+        &mut self,
+        container: u64,
+        keys: &[String],
+        columns: usize,
+        estimate: f32,
+        gap: f32,
+        width: f32,
+        view: f32,
+        grid: bool,
+    ) -> (ListRange, f32, f32) {
+        let prefix = if grid { "Cell#" } else { "Row#" };
+        let measurements: Vec<_> = self
+            .kept
+            .prev
+            .iter()
+            .filter_map(|n| {
+                let parent = self.kept.prev.get(n.parent)?;
+                if parent.key != container {
+                    return None;
+                }
+                let key =
+                    n.id.strip_prefix(prefix)?
+                        .replace("%23", "#")
+                        .replace("%2F", "/")
+                        .replace("%25", "%");
+                Some((key, n.rect.height))
+            })
+            .collect();
+        let old = self.state.scroll.get(&container).copied().unwrap_or(0.0);
+        let v = self.state.virtual_lists.entry(container).or_default();
+        v.grid = grid;
+        let off = v.update(
+            keys,
+            &measurements,
+            columns,
+            estimate,
+            gap.max(0.0),
+            width,
+            view.max(0.0),
+            old,
+        );
+        self.state.scroll.insert(container, off);
+        let range = v.range(off);
+        let top = v.offset(range.first as usize) - gap;
+        let rest = if (range.last as usize) < keys.len() {
+            v.total() - v.offset(range.last as usize)
+        } else {
+            -1.0
+        };
+        (range, top, rest)
     }
 
     fn filler(&mut self, h: f32, w: Size) {
@@ -109,13 +207,24 @@ impl Ui {
         let t = self.theme;
         let list = self.parent();
         let h = self.nodes[list].aux[0];
+        let keyed = self
+            .state
+            .virtual_lists
+            .get(&self.nodes[list].key)
+            .and_then(|v| v.keys.get(index as usize))
+            .map(|k| crate::virtualize::item_id(k, false));
+        let height = if keyed.is_some() {
+            Size::fit()
+        } else {
+            Size::Fixed(h)
+        };
         let i = self.push(
             "row",
-            crate::ui_idi("Row", index),
+            keyed.map_or_else(|| crate::ui_idi("Row", index), Id::from),
             Element {
                 direction: Direction::Row,
                 width: Size::grow(),
-                height: Size::Fixed(h),
+                height,
                 padding: Insets::xy(t.space.md, 0.0),
                 gap: t.space.sm,
                 cross: Cross::Center,
@@ -267,7 +376,21 @@ impl Ui {
     /// Opens a virtualised grid (a wrapping, scrolling row of equal cells):
     /// call [`Ui::grid_item`] for each of `first..last`, then [`Ui::close_list`].
     pub fn open_grid(&mut self, id: impl Into<Id>, desc: GridDesc) -> ListRange {
-        let id = id.into();
+        self.open_grid_inner(id.into(), desc, None)
+    }
+
+    /// Measured grid cells, keyed independently of their position. Each row
+    /// occupies its tallest cell; `cell_height` estimates unbuilt cells.
+    pub fn open_keyed_grid(
+        &mut self,
+        id: impl Into<Id>,
+        keys: &[String],
+        desc: GridDesc,
+    ) -> ListRange {
+        self.open_grid_inner(id.into(), desc, Some(keys))
+    }
+
+    fn open_grid_inner(&mut self, id: Id, desc: GridDesc, keys: Option<&[String]>) -> ListRange {
         let t = self.theme;
         let floor = self.min_target();
         let asked = if desc.cell_width > 0.0 {
@@ -324,9 +447,26 @@ impl Ui {
             .min(rows);
         let last_row = ((((off + view) / stride).ceil().max(0.0)) as u32 + 1).min(rows);
         let width = if desc.columns > 0 && matches!(desc.width, Size::Fit { .. }) {
-            Size::Fixed(columns as f32 * stride - gap + desc.padding.horizontal() + gutter)
+            Size::Fixed(columns as f32 * (cw + gap) - gap + desc.padding.horizontal() + gutter)
         } else {
             desc.width
+        };
+        let (first, last, top, rest) = if let Some(keys) = keys {
+            let (range, top, rest) =
+                self.keyed_range(key, keys, columns as usize, ch, gap, cw, view, true);
+            (range.first, range.last, top, rest)
+        } else {
+            self.state.virtual_lists.remove(&key);
+            (
+                (first_row * columns).min(desc.count),
+                (last_row * columns).min(desc.count),
+                first_row as f32 * stride - gap,
+                if rows > last_row {
+                    (rows - last_row) as f32 * stride - gap
+                } else {
+                    -1.0
+                },
+            )
         };
         self.open(
             id,
@@ -343,17 +483,10 @@ impl Ui {
         );
         let grid = self.parent();
         self.nodes[grid].aux = [cw, ch, -1.0];
-        if first_row > 0 {
-            self.filler(first_row as f32 * stride - gap, Size::Percent(1.0));
+        if first > 0 {
+            self.filler(top, Size::Percent(1.0));
         }
-        let first = (first_row * columns).min(desc.count);
-        let last = (last_row * columns).min(desc.count);
-        let rest_rows = rows - last_row;
-        self.nodes[grid].aux[2] = if rest_rows > 0 {
-            rest_rows as f32 * stride - gap
-        } else {
-            -1.0
-        };
+        self.nodes[grid].aux[2] = rest;
         ListRange { first, last }
     }
 
@@ -366,13 +499,24 @@ impl Ui {
         let t = self.theme;
         let grid = self.parent();
         let [cw, ch, _] = self.nodes[grid].aux;
+        let keyed = self
+            .state
+            .virtual_lists
+            .get(&self.nodes[grid].key)
+            .and_then(|v| v.keys.get(index as usize))
+            .map(|k| crate::virtualize::item_id(k, true));
+        let height = if keyed.is_some() {
+            Size::fit()
+        } else {
+            Size::Fixed(ch)
+        };
         let i = self.push(
             "cell",
-            crate::ui_idi("Cell", index),
+            keyed.map_or_else(|| crate::ui_idi("Cell", index), Id::from),
             Element {
                 direction: Direction::Column,
                 width: Size::Fixed(cw),
-                height: Size::Fixed(ch),
+                height,
                 align: Align::Center,
                 cross: Cross::Center,
                 padding: Insets::all(t.space.xs),

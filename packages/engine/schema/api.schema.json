@@ -12629,6 +12629,60 @@
           "publish": true
         },
         {
+          "name": "openKeyedList",
+          "doc": "Open a variable-height list. Ordered unique keys determine row identity and count; rowHeight estimates unbuilt rows. Build listItem(i), its content and close() for first..last, then closeList(). Measurements follow keys through edits; scroll anchors to the item in view. Keyboard/gamepad navigation builds offscreen rows. Measurements and scroll restore with the UI snapshot.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "keys",
+              "type": "List<String>",
+              "optional": false,
+              "doc": "Ordered persistent keys, never recycled indexes."
+            },
+            {
+              "name": "desc",
+              "type": "ListDesc",
+              "optional": true,
+              "doc": "The viewport, gap and estimated height; count is ignored."
+            }
+          ],
+          "returns": "ListRange",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "openKeyedGrid",
+          "doc": "Open a variable-height grid with persistent keys. Each row occupies its tallest cell; cellHeight estimates unbuilt cells. Build gridItem(i), content and close() for first..last, then closeList(). Keys, anchoring, focus and snapshots follow openKeyedList.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "keys",
+              "type": "List<String>",
+              "optional": false,
+              "doc": "Ordered persistent unique keys."
+            },
+            {
+              "name": "desc",
+              "type": "GridDesc",
+              "optional": true,
+              "doc": "Columns, viewport and estimated cell height; count is ignored."
+            }
+          ],
+          "returns": "ListRange",
+          "publish": true,
+          "host": false
+        },
+        {
           "name": "listItem",
           "doc": "Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`.",
           "params": [
@@ -48697,6 +48751,14 @@
           ],
           "description": "The selected row (controlStrong), for og.ui.list.",
           "default": null
+        },
+        "changedKeys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "For openKeyedList: keys patched this tick whose old measurements must be discarded.",
+          "default": []
         }
       },
       "additionalProperties": false
@@ -48867,6 +48929,14 @@
           ],
           "description": "The selected cell, for og.ui.grid.",
           "default": null
+        },
+        "changedKeys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "For openKeyedGrid: keys patched this tick whose old measurements must be discarded.",
+          "default": []
         }
       },
       "additionalProperties": false

@@ -284,6 +284,7 @@ pub(crate) struct State {
     /// The press that focused a field: where it landed, to place the caret.
     pub focus_click: Option<f32>,
     pub scroll: IdMap<u64, f32>,
+    pub virtual_lists: std::collections::BTreeMap<u64, crate::virtualize::Virtualizer>,
     /// Horizontal scroll offsets.
     pub scroll_x: IdMap<u64, f32>,
     /// Each scroll container's ranges and scrollbar lengths, last frame.

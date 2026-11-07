@@ -962,6 +962,7 @@ module ui {
     field height Option.Size "Its height (it scrolls inside); null grows."
     field padding Insets "Space inside."
     field selected Option.u32 "The selected row (controlStrong), for og.ui.list."
+    field changedKeys List.String "For openKeyedList: keys patched this tick whose old measurements must be discarded."
   }
 
   struct ListRange {
@@ -998,6 +999,7 @@ module ui {
     field height Option.Size "Its height; null grows."
     field padding Insets "Space inside."
     field selected Option.u32 "The selected cell, for og.ui.grid."
+    field changedKeys List.String "For openKeyedGrid: keys patched this tick whose old measurements must be discarded."
   }
 
   struct ToastDesc {
@@ -1363,6 +1365,24 @@ module ui {
     doc "Open a virtualised grid and learn which cells to build: gridItem(i) and close() for each, then closeList()."
     param id String "Its id."
     param desc GridDesc "Cell count, size and columns."
+    returns ListRange
+  }
+
+  fn openKeyedList {
+    doc "Open a variable-height list. Ordered unique keys determine row identity and count; rowHeight estimates unbuilt rows. Build listItem(i), its content and close() for first..last, then closeList(). Measurements follow keys through edits; scroll anchors to the item in view. Keyboard/gamepad navigation builds offscreen rows. Measurements and scroll restore with the UI snapshot."
+    host false
+    param id String "Its id."
+    param keys List.String "Ordered persistent keys, never recycled indexes."
+    param desc ListDesc "The viewport, gap and estimated height; count is ignored."
+    returns ListRange
+  }
+
+  fn openKeyedGrid {
+    doc "Open a variable-height grid with persistent keys. Each row occupies its tallest cell; cellHeight estimates unbuilt cells. Build gridItem(i), content and close() for first..last, then closeList(). Keys, anchoring, focus and snapshots follow openKeyedList."
+    host false
+    param id String "Its id."
+    param keys List.String "Ordered persistent unique keys."
+    param desc GridDesc "Columns, viewport and estimated cell height; count is ignored."
     returns ListRange
   }
 

@@ -1,6 +1,150 @@
 use super::*;
 
 #[test]
+fn keyed_rows_measure_anchor_navigate_and_restore() {
+    let mut rig = Rig::new((0..100).map(|n| format!("item{n}")).collect::<Vec<_>>());
+    let b = &mut |ui: &mut Ui, keys: &mut Vec<String>| {
+        let range = ui.open_keyed_list(
+            "Rows",
+            keys,
+            ListDesc {
+                row_height: 40.0,
+                width: Size::Fixed(240.0),
+                height: Some(Size::Fixed(150.0)),
+                gap: 3.0,
+                ..Default::default()
+            },
+        );
+        assert!(range.last - range.first < 15, "only a window is built");
+        for i in range.first..range.last {
+            ui.list_item(i, false);
+            let n: usize = keys[i as usize]
+                .trim_start_matches("item")
+                .parse()
+                .unwrap_or(0);
+            ui.spacer("Content", Some(Size::Fixed(31.0 + (n % 3) as f32 * 23.0)));
+            ui.close();
+        }
+        ui.close_list();
+    };
+    rig.idle(4, b);
+    assert_ne!(
+        rig.ui.frame().element("Rows/Row#item0").unwrap().height,
+        rig.ui.frame().element("Rows/Row#item1").unwrap().height
+    );
+    rig.ui.navigate(Nav::Next);
+    rig.idle(1, b);
+    for i in 1..25 {
+        let input = if i % 2 == 0 {
+            InputFrame {
+                keys: vec![UiKey::Down],
+                ..Default::default()
+            }
+        } else {
+            InputFrame {
+                gamepad: GamepadFrame {
+                    pressed: GamepadFrame::DOWN,
+                    ..Default::default()
+                },
+                ..Default::default()
+            }
+        };
+        rig.step(input, b);
+        assert_eq!(rig.ui.focus_path(0), format!("Rows/Row#item{i}"));
+    }
+    rig.idle(3, b);
+    let anchor = rig
+        .ui
+        .frame()
+        .elements
+        .iter()
+        .filter(|e| e.parent == "Rows" && e.id.starts_with("Row#") && e.y >= 0.0)
+        .min_by(|a, b| a.y.total_cmp(&b.y))
+        .unwrap()
+        .clone();
+    rig.state.insert(0, "inserted".into());
+    rig.state.swap(1, 3);
+    rig.state.remove(5);
+    rig.idle(3, b);
+    assert!(
+        (rig.ui.frame().element(&anchor.path).unwrap().y - anchor.y).abs() < 0.01,
+        "edits above the viewport preserve the visible item's position"
+    );
+    assert_eq!(
+        rig.ui.focus_path(0),
+        "Rows/Row#item24",
+        "focus belongs to the key"
+    );
+    let saved = rig.ui.save_state();
+    rig.idle(1, b);
+    let expected = rig.ui.frame().items.clone();
+    let mut restored = Rig::new(rig.state.clone());
+    restored.ui.restore_state(&saved).unwrap();
+    restored.idle(1, b);
+    assert_eq!(
+        restored.ui.frame().items,
+        expected,
+        "fresh UI restores measured extents"
+    );
+}
+
+#[test]
+fn keyed_grid_uses_tallest_cells_and_reaches_unbuilt_end() {
+    let mut rig = Rig::new((0..41).map(|n| n.to_string()).collect::<Vec<_>>());
+    let b = &mut |ui: &mut Ui, keys: &mut Vec<String>| {
+        let range = ui.open_keyed_grid(
+            "Cells",
+            keys,
+            GridDesc {
+                columns: 2,
+                cell_width: 100.0,
+                cell_height: 60.0,
+                width: Size::fit(),
+                height: Some(Size::Fixed(180.0)),
+                gap: 4.0,
+                ..Default::default()
+            },
+        );
+        for i in range.first..range.last {
+            ui.grid_item(i, false);
+            ui.spacer(
+                "Content",
+                Some(Size::Fixed(if i % 2 == 0 { 35.0 } else { 81.0 })),
+            );
+            ui.close();
+        }
+        ui.close_list();
+    };
+    rig.idle(4, b);
+    let short = rig.ui.frame().element("Cells/Cell#0").unwrap();
+    let tall = rig.ui.frame().element("Cells/Cell#1").unwrap();
+    let next = rig.ui.frame().element("Cells/Cell#2").unwrap();
+    assert_eq!(short.y, tall.y);
+    assert!((next.y - (tall.y + tall.height + 4.0)).abs() < 0.01);
+    assert!(rig.ui.frame().element("Cells/Cell#40").is_none());
+    rig.ui.navigate(Nav::Next);
+    rig.idle(1, b);
+    rig.step(
+        InputFrame {
+            keys: vec![UiKey::End],
+            ..Default::default()
+        },
+        b,
+    );
+    rig.idle(3, b);
+    assert_eq!(rig.ui.focus_path(0), "Cells/Cell#40");
+    assert!(rig.ui.frame().element("Cells/Cell#40").unwrap().y < 180.0);
+    rig.step(
+        InputFrame {
+            keys: vec![UiKey::Home],
+            ..Default::default()
+        },
+        b,
+    );
+    assert_eq!(rig.ui.focus_path(0), "Cells/Cell#0");
+}
+
+#[test]
 fn toasts_stack_three_leave_on_time_and_replay_after_a_restore() {
     let mut rig = Rig::new(());
     let b = &mut |_: &mut Ui, _: &mut ()| {};

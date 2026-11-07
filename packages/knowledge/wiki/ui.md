@@ -150,6 +150,8 @@ module ui {
 | [`og.ui.scrollState`](ui/fn-scrollState.md) | function | `(path: string): ScrollState \| null` | A scroll container's offset, view and whole content, by its full path (og.ui.lastPath after closing it): what a component virtualises its rows by, since og.ui.bounds is cut to the view and a row scro… |
 | [`og.ui.openList`](ui/fn-openList.md) | function | `(id: string, desc?: ListDesc): ListRange` | Open a virtualised list (a scroll column) and learn which rows to build: listItem(i) and close() for each, then closeList(). |
 | [`og.ui.openGrid`](ui/fn-openGrid.md) | function | `(id: string, desc?: GridDesc): ListRange` | Open a virtualised grid and learn which cells to build: gridItem(i) and close() for each, then closeList(). |
+| [`og.ui.openKeyedList`](ui/fn-openKeyedList.md) | function | `(id: string, keys: readonly string[], desc?: ListDesc): ListRange` | Open a variable-height list. |
+| [`og.ui.openKeyedGrid`](ui/fn-openKeyedGrid.md) | function | `(id: string, keys: readonly string[], desc?: GridDesc): ListRange` | Open a variable-height grid with persistent keys. |
 | [`og.ui.listItem`](ui/fn-listItem.md) | function | `(index: number, selected: boolean): Response` | Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). |
 | [`og.ui.gridItem`](ui/fn-gridItem.md) | function | `(index: number, selected: boolean): Response` | Open cell `index` of the open grid (`Cell#index`): a slot on control, focusable; its content follows until close(). |
 | [`og.ui.closeList`](ui/fn-closeList.md) | function | `(): Response` | Close a list or grid opened with openList or openGrid. |
@@ -734,7 +736,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 6878</sub>
+<sub>Module `ui` line 6898</sub>
 
 ```ogt
 column UiMaterial {
@@ -745,4 +747,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 6885</sub>
+<sub>Module `ui` line 6905</sub>

@@ -76,6 +76,10 @@ export const widgets = {
   scrollState: (path: string): Api.ScrollState | null => parse(abi().og_ui_scroll_state(path)),
   openList: (id: string, desc?: Api.ListDesc): Api.ListRange => parse(abi().og_ui_open_list(id, json(desc))),
   openGrid: (id: string, desc?: Api.GridDesc): Api.ListRange => parse(abi().og_ui_open_grid(id, json(desc))),
+  openKeyedList: (id: string, keys: readonly string[], desc?: Api.ListDesc): Api.ListRange =>
+    parse(abi().og_ui_open_list(id, json({ ...desc, keys }))),
+  openKeyedGrid: (id: string, keys: readonly string[], desc?: Api.GridDesc): Api.ListRange =>
+    parse(abi().og_ui_open_grid(id, json({ ...desc, keys }))),
   listItem: (index: number, selected: boolean): Api.Response => parse(abi().og_ui_list_item(index, selected)),
   gridItem: (index: number, selected: boolean): Api.Response => parse(abi().og_ui_grid_item(index, selected)),
   closeList: (): Api.Response => parse(abi().og_ui_close_list()),

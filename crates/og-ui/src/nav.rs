@@ -244,6 +244,24 @@ impl Ui {
         {
             return Some(k);
         }
+        if let Some((container, index)) = self.virtual_item(from.key) {
+            let v = &self.state.virtual_lists[&container];
+            let delta = match nav {
+                Nav::Down => v.columns as isize,
+                Nav::Up => -(v.columns as isize),
+                Nav::Next | Nav::Right => 1,
+                Nav::Prev | Nav::Left => -1,
+                _ => 0,
+            };
+            if let Some(next) = index.checked_add_signed(delta)
+                && let Some(key) = v.keys.get(next)
+            {
+                return Some(crate::id::child_key(
+                    container,
+                    &crate::virtualize::item_id(key, v.grid),
+                ));
+            }
+        }
         if matches!(nav, Nav::Next | Nav::Prev) {
             let n = cands.len();
             return Some(if nav == Nav::Next {
@@ -465,6 +483,28 @@ impl Ui {
     /// ([`TYPE_SELECT_ROLES`]). A move clears the letters. Adjustable
     /// members and text fields keep these keys.
     pub(crate) fn apply_list_keys(&mut self, input: &InputFrame) {
+        if (!self.state.nav_off || self.state.scope != 0)
+            && let Some((container, mut index)) = self.virtual_item(self.state.focus)
+        {
+            let v = &self.state.virtual_lists[&container];
+            let mut moved = false;
+            for key in &input.keys {
+                index = match key {
+                    UiKey::Home => 0,
+                    UiKey::End => v.keys.len().saturating_sub(1),
+                    UiKey::PageUp | UiKey::PageDown => v.page(index, *key == UiKey::PageDown),
+                    _ => continue,
+                };
+                moved = true;
+            }
+            if moved && let Some(key) = v.keys.get(index) {
+                self.state.focus =
+                    crate::id::child_key(container, &crate::virtualize::item_id(key, v.grid));
+                self.state.focus_visible = true;
+                self.scroll_into_view(self.state.focus);
+                return;
+            }
+        }
         let Some(from) = self.hit(self.state.focus).copied() else {
             return;
         };
@@ -805,7 +845,24 @@ impl Ui {
     }
 
     /// Scrolls the containers around `key` so it is in their view.
+    fn virtual_item(&self, key: u64) -> Option<(u64, usize)> {
+        self.state.virtual_lists.iter().find_map(|(&container, v)| {
+            v.keys
+                .iter()
+                .position(|k| {
+                    crate::id::child_key(container, &crate::virtualize::item_id(k, v.grid)) == key
+                })
+                .map(|i| (container, i))
+        })
+    }
+
     fn scroll_into_view(&mut self, key: u64) {
+        if let Some((container, index)) = self.virtual_item(key) {
+            let off = self.state.scroll.get(&container).copied().unwrap_or(0.0);
+            let next = self.state.virtual_lists[&container].reveal(index, off);
+            self.state.scroll.insert(container, next);
+            return;
+        }
         let Some(h) = self.hit(key).copied() else {
             return;
         };

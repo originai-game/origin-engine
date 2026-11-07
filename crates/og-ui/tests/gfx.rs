@@ -78,6 +78,108 @@ fn css_radius_token_changes_pixels_when_the_active_style_changes() {
 
 #[test]
 #[ignore = "requires GPU"]
+fn keyed_virtual_content_is_measured_and_clipped_on_gpu() {
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width: 240,
+        height: 160,
+        ..Default::default()
+    })
+    .expect("a headless adapter");
+    for grid in [false, true] {
+        let mut ui = Ui::new(UiDesc {
+            theme: Theme {
+                unit_pin: 1.0,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        let keys: Vec<String> = (0..50).map(|i| i.to_string()).collect();
+        for _ in 0..4 {
+            ui.begin(InputFrame::default(), Viewport::new(240.0, 160.0));
+            let range = if grid {
+                ui.open_keyed_grid(
+                    "Items",
+                    &keys,
+                    GridDesc {
+                        columns: 2,
+                        cell_width: 100.0,
+                        width: Size::Fixed(220.0),
+                        height: Some(Size::Fixed(128.0)),
+                        ..Default::default()
+                    },
+                )
+            } else {
+                ui.open_keyed_list(
+                    "Items",
+                    &keys,
+                    ListDesc {
+                        row_height: 40.0,
+                        width: Size::Fixed(220.0),
+                        height: Some(Size::Fixed(128.0)),
+                        ..Default::default()
+                    },
+                )
+            };
+            for i in range.first..range.last {
+                if grid {
+                    ui.grid_item(i, false);
+                } else {
+                    ui.list_item(i, false);
+                }
+                ui.open(
+                    "Paint",
+                    Element {
+                        width: Size::Fixed(64.0),
+                        height: Size::Fixed(if i % 2 == 0 { 24.0 } else { 56.0 }),
+                        background: Some(Srgba::WHITE),
+                        ..Default::default()
+                    },
+                );
+                ui.close();
+                ui.close();
+            }
+            ui.close_list();
+            ui.end();
+        }
+        let mut overlay = og_render::Overlay::new(240.0, 160.0, 1.0);
+        ui.frame().emit(&EmitDesc::default(), &mut overlay);
+        let mut scene = RenderScene::new();
+        scene.overlay = Some(overlay);
+        scene.environment.background = Background::Color(Vec3::ZERO);
+        scene.post.tonemap = Tonemap::None;
+        renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+        let image = renderer.read_offscreen().unwrap();
+        let white = image
+            .pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| p[0] > 240 && p[1] > 240 && p[2] > 240)
+            .count();
+        assert!(white > 3000, "variable content was painted");
+        assert!(
+            image.pixels[(140 * 240 + 40) * 4] < 10,
+            "content below the scroll viewport is clipped"
+        );
+        let path = out_dir().join(if grid {
+            "keyed-grid.png"
+        } else {
+            "keyed-list.png"
+        });
+        image::save_buffer(
+            &path,
+            &image.pixels,
+            image.width,
+            image.height,
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+        println!("{}", path.display());
+    }
+}
+
+#[test]
+#[ignore = "requires GPU"]
 fn sample_screen_matches_its_reference_frame() {
     let (shot, s) = with_test_font(sample_screen_shot);
     let frame = shot.ui.frame();

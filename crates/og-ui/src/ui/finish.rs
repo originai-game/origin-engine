@@ -438,6 +438,9 @@ impl Ui {
         self.state
             .scroll
             .retain(|k, _| present.get(k).is_some_and(|&i| self.nodes[i].el.scroll));
+        self.state
+            .virtual_lists
+            .retain(|k, _| present.contains_key(k));
         for (k, v) in self.state.scroll.iter_mut() {
             *v = v.clamp(0.0, self.nodes[present[k]].max_scroll());
         }

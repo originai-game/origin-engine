@@ -19,6 +19,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `height` | `Size \| null` | `null` | — | — | — | Its height (it scrolls inside); null grows. |
 | `padding` | `Insets` | `{ left: 0, top: 0, right: 0, bottom: 0 }` | — | — | — | Space inside. |
 | `selected` | `number \| null` | `null` | — | — | — | The selected row (controlStrong), for og.ui.list. |
+| `changedKeys` | `readonly string[]` | `[]` | — | — | — | For openKeyedList: keys patched this tick whose old measurements must be discarded. |
 
 ```ogt
 struct ListDesc {
@@ -36,6 +37,7 @@ struct ListDesc {
   field height Option.Size "Its height (it scrolls inside); null grows."
   field padding Insets "Space inside."
   field selected Option.u32 "The selected row (controlStrong), for og.ui.list."
+  field changedKeys List.String "For openKeyedList: keys patched this tick whose old measurements must be discarded."
 }
 ```
 

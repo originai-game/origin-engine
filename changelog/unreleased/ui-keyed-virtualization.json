@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.ui.openKeyedList / og.ui.openKeyedGrid",
+      "summary": "Virtual lists and grids accept ordered stable string keys, measure built rows, retain keyed extents and anchor scrolling across inserts, removals and reorders. Row and cell heights are estimates; grid rows use their tallest cell. Keyboard and gamepad navigation reveals unbuilt rows. changedKeys invalidates patched measurements, and UI snapshots preserve the keyed extent index. The equal-height list and grid APIs remain available."
+    }
+  ]
+}

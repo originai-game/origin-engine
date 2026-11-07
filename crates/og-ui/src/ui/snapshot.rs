@@ -292,7 +292,11 @@ impl Ui {
             b.extend_from_slice(&bytes);
         }
         // The layer stack, its viewmodels and the documents' states.
-        text(&mut b, &self.docs_state().to_string());
+        let mut docs = self.docs_state();
+        if !s.virtual_lists.is_empty() {
+            docs["virtualLists"] = serde_json::to_value(&s.virtual_lists).expect("finite extents");
+        }
+        text(&mut b, &docs.to_string());
         b
     }
 
@@ -317,7 +321,7 @@ impl Ui {
         if version != STATE_VERSION {
             return Err(bad(format!("version {version}, expected {STATE_VERSION}")));
         }
-        let s = r
+        let mut s = r
             .state(STATE_VERSION)
             .ok_or_else(|| bad("truncated or malformed".into()))?;
         let docs: serde_json::Value = r
@@ -327,8 +331,16 @@ impl Ui {
         if r.at != bytes.len() {
             return Err(bad("trailing bytes".into()));
         }
+        if let Some(lists) = docs.get("virtualLists") {
+            s.virtual_lists = serde_json::from_value(lists.clone())
+                .map_err(|_| bad("malformed virtual lists".into()))?;
+            if !s.virtual_lists.values().all(|v| v.valid_snapshot()) {
+                return Err(bad("invalid virtual list extents".into()));
+            }
+        }
         self.state = s;
         self.restore_docs_state(&docs);
+        self.kept = Default::default();
         Ok(())
     }
 }

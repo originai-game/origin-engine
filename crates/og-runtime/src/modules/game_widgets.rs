@@ -133,17 +133,23 @@ fn range_json(r: ListRange) -> String {
 pub fn og_ui_open_list(id: String, desc: Option<String>) -> String {
     let d = desc_of(desc);
     let r = with_ui("og.ui.openList", |ui| {
-        ui.open_list(
-            id.as_str(),
-            ListDesc {
-                count: idx(&d["count"]).unwrap_or(0),
-                row_height: f(&d, "rowHeight", 0.0),
-                gap: f(&d, "gap", 0.0),
-                width: size_or(&d["width"], Size::fit()),
-                height: size(&d["height"]),
-                padding: insets(&d["padding"]),
-            },
-        )
+        let changed: Vec<String> =
+            serde_json::from_value(d["changedKeys"].clone()).unwrap_or_default();
+        ui.invalidate_keyed_items(id.as_str(), &changed);
+        let desc = ListDesc {
+            count: idx(&d["count"]).unwrap_or(0),
+            row_height: f(&d, "rowHeight", 0.0),
+            gap: f(&d, "gap", 0.0),
+            width: size_or(&d["width"], Size::fit()),
+            height: size(&d["height"]),
+            padding: insets(&d["padding"]),
+        };
+        if let Some(keys) = d.get("keys") {
+            let keys: Vec<String> = serde_json::from_value(keys.clone()).unwrap_or_default();
+            ui.open_keyed_list(id.as_str(), &keys, desc)
+        } else {
+            ui.open_list(id.as_str(), desc)
+        }
     });
     range_json(r.unwrap_or_default())
 }
@@ -151,19 +157,25 @@ pub fn og_ui_open_list(id: String, desc: Option<String>) -> String {
 pub fn og_ui_open_grid(id: String, desc: Option<String>) -> String {
     let d = desc_of(desc);
     let r = with_ui("og.ui.openGrid", |ui| {
-        ui.open_grid(
-            id.as_str(),
-            GridDesc {
-                count: idx(&d["count"]).unwrap_or(0),
-                cell_width: f(&d, "cellWidth", 0.0),
-                cell_height: f(&d, "cellHeight", 0.0),
-                columns: idx(&d["columns"]).unwrap_or(0),
-                gap: f(&d, "gap", 0.0),
-                width: size_or(&d["width"], Size::fit()),
-                height: size(&d["height"]),
-                padding: insets(&d["padding"]),
-            },
-        )
+        let changed: Vec<String> =
+            serde_json::from_value(d["changedKeys"].clone()).unwrap_or_default();
+        ui.invalidate_keyed_items(id.as_str(), &changed);
+        let desc = GridDesc {
+            count: idx(&d["count"]).unwrap_or(0),
+            cell_width: f(&d, "cellWidth", 0.0),
+            cell_height: f(&d, "cellHeight", 0.0),
+            columns: idx(&d["columns"]).unwrap_or(0),
+            gap: f(&d, "gap", 0.0),
+            width: size_or(&d["width"], Size::fit()),
+            height: size(&d["height"]),
+            padding: insets(&d["padding"]),
+        };
+        if let Some(keys) = d.get("keys") {
+            let keys: Vec<String> = serde_json::from_value(keys.clone()).unwrap_or_default();
+            ui.open_keyed_grid(id.as_str(), &keys, desc)
+        } else {
+            ui.open_grid(id.as_str(), desc)
+        }
     });
     range_json(r.unwrap_or_default())
 }

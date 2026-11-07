@@ -21,6 +21,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `height` | `Size \| null` | `null` | — | — | — | Its height; null grows. |
 | `padding` | `Insets` | `{ left: 0, top: 0, right: 0, bottom: 0 }` | — | — | — | Space inside. |
 | `selected` | `number \| null` | `null` | — | — | — | The selected cell, for og.ui.grid. |
+| `changedKeys` | `readonly string[]` | `[]` | — | — | — | For openKeyedGrid: keys patched this tick whose old measurements must be discarded. |
 
 ```ogt
 struct GridDesc {
@@ -44,7 +45,8 @@ struct GridDesc {
   field height Option.Size "Its height; null grows."
   field padding Insets "Space inside."
   field selected Option.u32 "The selected cell, for og.ui.grid."
+  field changedKeys List.String "For openKeyedGrid: keys patched this tick whose old measurements must be discarded."
 }
 ```
 
-<sub>Module `ui` line 980</sub>
+<sub>Module `ui` line 981</sub>

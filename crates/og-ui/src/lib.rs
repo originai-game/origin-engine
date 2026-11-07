@@ -63,6 +63,7 @@ pub mod theme;
 pub mod particles;
 mod ui;
 pub mod viewport;
+mod virtualize;
 mod widgets;
 pub mod world;
 

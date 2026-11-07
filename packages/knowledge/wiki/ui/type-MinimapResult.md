@@ -19,4 +19,4 @@ struct MinimapResult {
 }
 ```
 
-<sub>Module `ui` line 6222</sub>
+<sub>Module `ui` line 6242</sub>

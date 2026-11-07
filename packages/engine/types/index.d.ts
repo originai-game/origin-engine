@@ -25177,6 +25177,12 @@ export interface ListDesc {
    * @default null
    */
   readonly selected?: number | null;
+  /**
+   * For openKeyedList: keys patched this tick whose old measurements must be discarded.
+   *
+   * @default []
+   */
+  readonly changedKeys?: readonly string[];
 }
 
 /** The rows (or cells) to build this tick: first up to, not including, last. */
@@ -25263,6 +25269,12 @@ export interface GridDesc {
    * @default null
    */
   readonly selected?: number | null;
+  /**
+   * For openKeyedGrid: keys patched this tick whose old measurements must be discarded.
+   *
+   * @default []
+   */
+  readonly changedKeys?: readonly string[];
 }
 
 /**
@@ -25828,6 +25840,8 @@ export interface ScrollState {
    */
   readonly contentHeight: number;
 }
+
+
 
 
 
@@ -48171,6 +48185,22 @@ export declare namespace og {
      * @param desc Cell count, size and columns.
      */
     function openGrid(id: string, desc?: GridDesc): ListRange;
+    /**
+     * Open a variable-height list. Ordered unique keys determine row identity and count; rowHeight estimates unbuilt rows. Build listItem(i), its content and close() for first..last, then closeList(). Measurements follow keys through edits; scroll anchors to the item in view. Keyboard/gamepad navigation builds offscreen rows. Measurements and scroll restore with the UI snapshot.
+     *
+     * @param id Its id.
+     * @param keys Ordered persistent keys, never recycled indexes.
+     * @param desc The viewport, gap and estimated height; count is ignored.
+     */
+    function openKeyedList(id: string, keys: readonly string[], desc?: ListDesc): ListRange;
+    /**
+     * Open a variable-height grid with persistent keys. Each row occupies its tallest cell; cellHeight estimates unbuilt cells. Build gridItem(i), content and close() for first..last, then closeList(). Keys, anchoring, focus and snapshots follow openKeyedList.
+     *
+     * @param id Its id.
+     * @param keys Ordered persistent unique keys.
+     * @param desc Columns, viewport and estimated cell height; count is ignored.
+     */
+    function openKeyedGrid(id: string, keys: readonly string[], desc?: GridDesc): ListRange;
     /**
      * Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`.
      *
