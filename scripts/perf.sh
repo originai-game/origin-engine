@@ -2,7 +2,9 @@
 # The perf suite (docs/ci.md §What runs where; `make perf`): og-tests' frame
 # times (crates/og-tests/perf/<tier>-<adapter>/) and og-runtime's
 # extraction cost (crates/og-runtime/perf/<cpu>/), release profile, each
-# against this machine's committed baseline with a 15 % tolerance. The
+# against this machine's committed baseline with a 15 % tolerance; og-ui's
+# CPU budgets (docs/ui.md §15.1) and the TypeScript side of them
+# (packages/engine/tests/ui-perf.test.ts on the release addon). The
 # release test binaries are built first with no GPU slot; then one test runs
 # at a time (cargo test's parallel threads skew each other's frame times)
 # under every GPU slot (og_gpu_acquire_all, scripts/lock.sh), held for this
@@ -41,13 +43,19 @@ fi
 og_admission_acquire exclusive "scripts/perf.sh ($PWD)" || exit 1
 og_lock_acquire "$OG_TARGET_DIR" "scripts/perf.sh ($PWD)" || exit 1
 t0="$(date +%s)"
-cargo test -p og-tests -p og-runtime -p og-audio --release --no-run 2>&1 | tee "$out/perf.log"
+cargo test -p og-tests -p og-runtime -p og-audio -p og-ui --release --no-run 2>&1 | tee "$out/perf.log"
 rc="${PIPESTATUS[0]}"
+if [ "$rc" = 0 ]; then
+  (cd packages/engine && OG_RELEASE=1 sh scripts/build.sh --native) 2>&1 | tee -a "$out/perf.log"
+  rc="${PIPESTATUS[0]}"
+fi
 if [ "$rc" = 0 ]; then
   og_gpu_acquire_all "scripts/perf.sh ($PWD)" || exit 1
   og_say "perf: holding every GPU slot"
-  cargo test -p og-tests -p og-runtime -p og-audio --release --no-fail-fast -- --ignored perf --nocapture --test-threads=1 2>&1 | tee -a "$out/perf.log"
+  cargo test -p og-tests -p og-runtime -p og-audio -p og-ui --release --no-fail-fast -- --ignored perf --nocapture --test-threads=1 2>&1 | tee -a "$out/perf.log"
   rc="${PIPESTATUS[0]}"
+  (cd packages/engine && OG_PERF=1 bun test tests/ui-perf.test.ts) 2>&1 | tee -a "$out/perf.log"
+  [ "${PIPESTATUS[0]}" = 0 ] || rc=1
   og_lock_release
 fi
 og_say "perf: cargo test exited $rc after $(( $(date +%s) - t0 )) s"
