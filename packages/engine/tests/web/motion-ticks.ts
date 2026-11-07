@@ -21,10 +21,9 @@
 // - both runs' og.motion schedule equals native's: `dump_motion`'s `taken`
 //   (the tick each batch was taken at, and its due tick) and each agent's
 //   frames shown, starved and warming up.
-// The presentation hash itself parts from native's at the first batch's
-// frames: the model's GPU floats are the backend compiler's (wgpu's Metal
-// shaders and Chrome's differ in the last bits); it is reported, not
-// checked.
+// Presentation hashes are compared within the web host only: the model's
+// GPU floats are the backend compiler's, so across hosts they are not
+// expected to match.
 //
 // --realtime <s> instead plays the course paced like a page (a frame every
 // 16 ms, the wall time since the last as its elapsed) for <s> seconds and
@@ -227,11 +226,6 @@ try {
       const b = JSON.stringify(schedule(ran.motion));
       if (a !== b) fail(`${name}: og.motion's schedule is not native's:\n  web    ${a}\n  native ${b}`);
       else console.log(`ok   ${name}: world hashes on ${native.length} ticks and og.motion's schedule (${batches} batches taken at their due ticks, every agent's frames) equal native's`);
-      // The model's GPU arithmetic is the backend compiler's (Dawn's Metal
-      // shaders differ from wgpu's in the last bits), so the poses, and the
-      // presentation hash, part from native's at the first batch's frames.
-      const pose = run.ticks.findIndex((t, i) => t.presentation !== native[i]?.presentation);
-      console.log(`     ${name}: presentation hashes equal native's to tick ${pose < 0 ? "the end" : run.ticks[pose]!.tick - 1} (GPU arithmetic differs by backend compiler)`);
     }
     result["native"] = native.length;
     result["schedule"] = schedule(ran.motion);
