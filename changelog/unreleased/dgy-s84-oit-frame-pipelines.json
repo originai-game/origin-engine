@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "web: order-independent transparency",
+      "summary": "The blended surfaces' order-independent transparency pipelines and their resolve are frame pipelines, as the materials' lit pipelines are, so the web host makes them asynchronously. They were made at once when the transparent pass first ran. With an empty driver shader cache one of those tasks held Chrome's GPU process for 16 s, its watchdog killed it, and the game lost its WebGPU device (2 of 12 first visits in a garden of 1072 cells; 0 of 24 since). While they compile, the passes that draw with them skip those draws for a frame or two, as for any frame pipeline. Native hosts are unchanged."
+    }
+  ]
+}

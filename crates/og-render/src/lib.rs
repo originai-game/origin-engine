@@ -164,9 +164,11 @@ thread_local! {
 }
 
 /// Fork s60: `hook(true)` before the renderer makes its frame pipelines
-/// (the materials' lit, shadow and prepass pipelines, the particles',
-/// [`Renderer::warm`]'s) or encodes the passes it draws again every frame
-/// (which make their pipelines when they first set them, deferred.rs), and
+/// (the materials' lit, shadow and prepass pipelines, the blended
+/// surfaces' order-independent transparency ones and its resolve, the
+/// particles', [`Renderer::warm`]'s) or encodes the passes it draws again
+/// every frame (which make their pipelines when they first set them,
+/// deferred.rs), and
 /// `hook(false)` after, on this thread; `None` (the default) calls nothing.
 /// The web host makes the render pipelines asked for in between with
 /// `createRenderPipelineAsync` and, in those passes, skips the draws of one
