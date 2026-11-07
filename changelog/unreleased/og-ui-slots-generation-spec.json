@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "og ui slots --json",
+      "summary": "Each art slot is a whole generation spec: mask, transparency, tiling, legible size, nine-slice insets, multi-cell split, states and its set, with the first member whose art is set as the reference to match."
+    },
+    {
+      "member": "art props itemCells, slice, artSet",
+      "summary": "`itemCells` is an item icon's grid cells (it sets the aspect when no `ratio` is given), `slice` a nine-slice's insets, and `artSet` the set the slot is generated with (the kind's name by default)."
+    }
+  ]
+}

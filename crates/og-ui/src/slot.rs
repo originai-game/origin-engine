@@ -459,6 +459,9 @@ pub struct SlotSpec {
     pub insets: Option<[f32; 4]>,
     /// The states drawn (style buttons).
     pub states: Vec<String>,
+    /// The set it is drawn with, so one generation keeps their look
+    /// consistent: the kind's name unless the document names another.
+    pub set: String,
 }
 
 impl SlotSpec {
@@ -488,7 +491,60 @@ impl SlotSpec {
             cells: (kind == SlotKind::ItemIcon).then_some([1, 1]),
             insets: i.nine_slice.then_some([0.25; 4]),
             states: i.states.iter().map(|s| s.to_string()).collect(),
+            set: kind.name().into(),
         }
+    }
+
+    /// An `art` element's spec: the kind's defaults, then its props as
+    /// `word` and `nums` give them (`kind`, `ratio`, `focal`, `safe`,
+    /// `fit`, `itemCells`, `slice`, `artSet`; cells without a ratio are
+    /// drawn at their own aspect). A prop of the wrong shape
+    /// keeps the default; [`SlotSpec::validate`] names what is wrong.
+    pub fn from_props(
+        path: &str,
+        word: impl Fn(&str) -> Option<String>,
+        nums: impl Fn(&str) -> Option<Vec<f32>>,
+    ) -> SlotSpec {
+        let kind = word("kind")
+            .and_then(|k| SlotKind::from_name(&k))
+            .unwrap_or(SlotKind::ALL[0]);
+        let mut s = SlotSpec::new(path, kind);
+        if let Some(n) = nums("ratio").filter(|n| n.len() == 2) {
+            s.aspect = SlotAspect::One(Aspect::new(n[0] as u16, n[1] as u16));
+        }
+        if let Some(n) = nums("focal").filter(|n| n.len() == 2) {
+            s.focal = [n[0], n[1]];
+        }
+        if let Some(n) = nums("safe").filter(|n| n.len() == 4) {
+            s.safe = Some([n[0], n[1], n[2], n[3]]);
+        }
+        if let Some(f) = word("fit") {
+            s.fit = match f.as_str() {
+                "contain" => Fit::Contain,
+                "fill" => Fit::Fill,
+                "nineSlice" => Fit::NineSlice,
+                "tile" => Fit::Tile,
+                _ => Fit::Cover,
+            };
+        }
+        if let Some(n) = nums("itemCells").filter(|n| n.len() == 2) {
+            s.cells = Some([n[0] as u8, n[1] as u8]);
+            if nums("ratio").is_none() {
+                s.aspect = SlotAspect::One(Aspect::new(n[0] as u16, n[1] as u16));
+            }
+        }
+        if let Some(n) = nums("slice") {
+            s.insets = match n[..] {
+                [a] => Some([a; 4]),
+                [x, y] => Some([x, y, x, y]),
+                [l, t, r, b] => Some([l, t, r, b]),
+                _ => s.insets,
+            };
+        }
+        if let Some(w) = word("artSet") {
+            s.set = w;
+        }
+        s
     }
 
     /// Every problem with the spec, each with its fix; empty when it is sound.
@@ -683,7 +739,7 @@ pub struct DocumentSlot {
 }
 
 /// Every `art` element of `doc`, in document order, with its spec read
-/// from its literal props (`kind`, `ratio`, `focal`, `safe`, `fit`).
+/// from its literal props ([`SlotSpec::from_props`]).
 pub fn document_slots(doc: &crate::doc::UiDocument) -> Vec<DocumentSlot> {
     use crate::doc::{NodeKind, PropValue};
     let mut out = Vec::new();
@@ -718,28 +774,7 @@ pub fn document_slots(doc: &crate::doc::UiDocument) -> Vec<DocumentSlot> {
         let nums = |name: &str| -> Option<Vec<f32>> {
             lit(name)?.iter().map(|w| w.parse().ok()).collect()
         };
-        let kind = lit("kind")
-            .and_then(|w| w.first().and_then(|k| SlotKind::from_name(k)))
-            .unwrap_or(SlotKind::ALL[0]);
-        let mut spec = SlotSpec::new(&path, kind);
-        if let Some(r) = nums("ratio").filter(|r| r.len() == 2) {
-            spec.aspect = SlotAspect::One(Aspect::new(r[0] as u16, r[1] as u16));
-        }
-        if let Some(f) = nums("focal").filter(|f| f.len() == 2) {
-            spec.focal = [f[0], f[1]];
-        }
-        if let Some(r) = nums("safe").filter(|r| r.len() == 4) {
-            spec.safe = Some([r[0], r[1], r[2], r[3]]);
-        }
-        if let Some(f) = lit("fit").and_then(|w| w.first().cloned()) {
-            spec.fit = match f.as_str() {
-                "contain" => Fit::Contain,
-                "fill" => Fit::Fill,
-                "nineSlice" => Fit::NineSlice,
-                "tile" => Fit::Tile,
-                _ => Fit::Cover,
-            };
-        }
+        let spec = SlotSpec::from_props(&path, |p| lit(p)?.into_iter().next(), nums);
         out.push(DocumentSlot {
             path,
             line: n.line,

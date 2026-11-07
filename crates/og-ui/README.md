@@ -526,6 +526,9 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `focal` | x y | art | The point cropping keeps, 0–1. |
 | `safe` | 4 numbers | art | Where text or controls lie over it: x0 y0 x1 y1, 0–1. |
 | `fit` | cover \| contain \| fill \| nineSlice \| tile | art | How the art fills the slot. |
+| `itemCells` | x y | art | An item icon's grid cells, columns and rows (1 1, 1 2, 2 3 or 2 4). |
+| `slice` | insets | art | A nine-slice's insets as fractions of the art: all, x y, or left top right bottom. |
+| `artSet` | name | art | The set it is generated with for a consistent look (the kind's name by default). |
 | `rowHeight` | number | list | Every row's height, CSS px. |
 | `cellWidth` | number | cells | A cell's width, CSS px. |
 | `cellHeight` | number | cells | A cell's height, CSS px. |

@@ -738,6 +738,24 @@ pub const PROPS: &[PropSpec] = &[
         ["art"],
         "How the art fills the slot."
     ),
+    p!(
+        "itemCells",
+        Ty::Num2,
+        ["art"],
+        "An item icon's grid cells, columns and rows (1 1, 1 2, 2 3 or 2 4)."
+    ),
+    p!(
+        "slice",
+        Ty::Insets,
+        ["art"],
+        "A nine-slice's insets as fractions of the art: all, x y, or left top right bottom."
+    ),
+    p!(
+        "artSet",
+        Ty::Name,
+        ["art"],
+        "The set it is generated with for a consistent look (the kind's name by default)."
+    ),
     // Virtualised containers.
     p!(
         "rowHeight",

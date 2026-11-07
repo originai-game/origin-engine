@@ -280,3 +280,78 @@ export default og.game({});
         "gold is a string now: the numbers are the wrong ones"
     );
 }
+
+/// `og ui slots --json` gives each art slot its whole generation spec:
+/// the kind's facts (transparency, legible size), the multi-cell split,
+/// the nine-slice insets and the set it is drawn with, whose reference is
+/// the first member with its art set, in any of the project's screens.
+///
+/// Ways it could fail: `itemCells`, `slice` or `artSet` read by the
+/// builder but not by `og ui slots` (two parsers drifting), a reference
+/// that names a member still on its placeholder, or a set split per file.
+#[test]
+fn ui_slots_json_gives_each_slot_its_generation_spec_and_set() {
+    let dir = scratch_root();
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::create_dir_all(dir.join("assets/ui")).unwrap();
+    std::fs::write(dir.join("src/main.ts"), "export default 0;\n").unwrap();
+    std::fs::write(
+        dir.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    let screen = |name: &str, body: &str| {
+        std::fs::write(
+            dir.join(format!("assets/ui/{name}.ogt")),
+            format!("type screen\nversion 2\n---\nname \"{name}\"\ncolumn Root {{\n{body}}}\n"),
+        )
+        .unwrap();
+    };
+    screen(
+        "bag",
+        "  art Sword {\n    kind itemIcon\n    itemCells 2 3\n  }\n  art Frame {\n    kind styleFrame\n    object-fit: nine-slice\n    slice 0.2 0.3\n    artSet \"hud\"\n  }\n",
+    );
+    screen(
+        "shop",
+        "  art Shield {\n    kind itemIcon\n    texture 7\n  }\n",
+    );
+    let out = og()
+        .args(["ui", "slots", "--json"])
+        .arg(&dir)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    let rows: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    let slot = |path: &str| {
+        rows.as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["path"] == path)
+            .cloned()
+            .unwrap_or_else(|| panic!("no {path} in {rows}"))
+    };
+    let sword = slot("bag/Root/Sword");
+    assert_eq!(sword["cells"], serde_json::json!([2, 3]), "{sword}");
+    assert_eq!(sword["transparent"], true);
+    assert_eq!(sword["mask"], "alpha");
+    assert_eq!(sword["art"], "placeholder");
+    assert_eq!(sword["set"]["name"], "itemIcon");
+    assert_eq!(
+        sword["set"]["members"],
+        serde_json::json!(["bag/Root/Sword", "shop/Root/Shield"])
+    );
+    assert_eq!(sword["set"]["reference"], "shop/Root/Shield");
+    assert_eq!(sword["source"], "ui/bag.ogt:6");
+    let frame = slot("bag/Root/Frame");
+    assert_eq!(
+        frame["insets"],
+        serde_json::json!([0.2, 0.3, 0.2, 0.3]),
+        "{frame}"
+    );
+    assert_eq!(frame["cells"], serde_json::Value::Null);
+    assert_eq!(
+        frame["set"],
+        serde_json::json!({ "name": "hud", "members": ["bag/Root/Frame"], "reference": null })
+    );
+    assert_eq!(frame["problems"], serde_json::json!([]), "{frame}");
+}

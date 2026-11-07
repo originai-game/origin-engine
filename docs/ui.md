@@ -1185,7 +1185,14 @@ buttons, ornaments, icon sets).
 ### 13.3 The art brief
 
 `og ui slots` lists every slot of a game with its spec and whether its art
-is set or it still draws the placeholder. The art brief
+is set or it still draws the placeholder. With `--json` each slot is a
+whole generation spec: its kind, aspect, focal point, safe area, fit,
+mask, transparency, tiling, legible size, nine-slice insets (`slice`),
+multi-cell split (`itemCells`, which sets the aspect when no `ratio` is
+given), states, the source file and line, and its set (`artSet`, the
+kind's name by default): every slot in the game drawn with one look, and
+as reference the first member whose art is set, so a generator matches
+it. The art brief
 (`packages/knowledge/scripts/brief.ts`, a public contract) has the UI kinds
 above, each with its aspect, focal point and safe area, the look's conform
 rules (`docs/art.md` §2.3), and, for style art, the nine-slice insets and

@@ -208,6 +208,12 @@ fn style_art_packs_painted_slots_at_three_densities() {
         primary["dress"][1], "Button.base[primary][hover]",
         "{primary}"
     );
+    // The card's own 20 px of 96, not a quarter: a request's insets win,
+    // so the spec's default must not be written into one.
+    assert_eq!(
+        slot("arena/card")["insets"],
+        serde_json::json!([0.208, 0.208, 0.208, 0.208])
+    );
     let panel = slot("arena/panel");
     assert_eq!(panel["size"], serde_json::json!([96, 96]));
     assert_eq!(panel["pixels"], serde_json::json!([288, 288]));

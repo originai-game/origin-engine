@@ -690,7 +690,14 @@ fn qualify(doc: &str, tl: &str) -> String {
 
 /// An art slot's spec as JSON (the probe's `slot`, the art brief's input).
 pub fn slot_json(s: &crate::slot::SlotSpec) -> Value {
-    use crate::slot::SlotAspect;
+    use crate::slot::{Mask, SlotAspect, Treatment};
+    let i = s.kind.info();
+    // Four places, so 0.2 reads 0.2 and not its f32's 0.20000000298.
+    let short = |v: &[f32]| -> Vec<f64> {
+        v.iter()
+            .map(|x| (f64::from(*x) * 1e4).round() / 1e4)
+            .collect()
+    };
     let aspect = |a: &crate::slot::Aspect| json!([a.w, a.h]);
     json!({
         "name": s.name,
@@ -701,8 +708,8 @@ pub fn slot_json(s: &crate::slot::SlotSpec) -> Value {
             SlotAspect::Range(a, b) => json!({ "min": aspect(a), "max": aspect(b) }),
             SlotAspect::Free => json!("free"),
         },
-        "focal": s.focal,
-        "safe": s.safe,
+        "focal": short(&s.focal),
+        "safe": s.safe.map(|r| short(&r)),
         "fit": match s.fit {
             crate::slot::Fit::Cover => "cover",
             crate::slot::Fit::Contain => "contain",
@@ -710,6 +717,29 @@ pub fn slot_json(s: &crate::slot::SlotSpec) -> Value {
             crate::slot::Fit::NineSlice => "nineSlice",
             crate::slot::Fit::Tile => "tile",
         },
+        "transparent": i.transparent,
+        "mask": match s.mask {
+            Mask::None => json!("none"),
+            Mask::Round(r) => json!({ "round": r }),
+            Mask::Circle => json!("circle"),
+            Mask::Squircle => json!("squircle"),
+            Mask::Hexagon => json!("hexagon"),
+            Mask::Shape(c) => json!({ "shape": c.name() }),
+            Mask::Alpha => json!("alpha"),
+        },
+        "treatments": s.treatments.iter().map(|t| match t {
+            Treatment::Vignette => "vignette",
+            Treatment::Duotone => "duotone",
+            Treatment::Frame => "frame",
+            Treatment::RarityGlow => "rarityGlow",
+        }).collect::<Vec<_>>(),
+        "tiling": i.tiling || s.fit == crate::slot::Fit::Tile,
+        "insets": s.insets.map(|r| short(&r)),
+        "cells": s.cells,
+        "states": s.states,
+        "legiblePx": i.legible_px,
+        "generated": i.generated,
+        "set": s.set,
     })
 }
 

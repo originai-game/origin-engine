@@ -327,11 +327,26 @@ fn slots(args: &[&str]) -> ExitCode {
         }
     }
     if json {
+        // A set is every slot drawn with one look; its reference is the
+        // first member whose art is set, the image a generator matches.
+        let set = |name: &str| {
+            let members: Vec<&str> = rows
+                .iter()
+                .filter(|(_, s, _)| s.spec.set == name)
+                .map(|(_, s, _)| s.path.as_str())
+                .collect();
+            let reference = rows
+                .iter()
+                .find(|(_, s, _)| s.spec.set == name && s.textured)
+                .map(|(_, s, _)| s.path.as_str());
+            serde_json::json!({ "name": name, "members": members, "reference": reference })
+        };
         let out: Vec<serde_json::Value> = rows
             .iter()
             .map(|(id, s, problems)| {
                 let mut v = og_ui::doc::build::slot_json(&s.spec);
                 if let Some(o) = v.as_object_mut() {
+                    o.insert("set".into(), set(&s.spec.set));
                     o.insert("path".into(), serde_json::json!(s.path));
                     o.insert(
                         "source".into(),

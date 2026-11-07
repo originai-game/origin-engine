@@ -653,30 +653,11 @@ impl Ui {
     }
 
     fn art_spec(&mut self, path: &str, r: &Resolved) {
-        let kind = r
-            .str("kind")
-            .and_then(crate::slot::SlotKind::from_name)
-            .unwrap_or(crate::slot::SlotKind::ALL[0]);
-        let mut s = crate::slot::SlotSpec::new(path, kind);
-        if let Some(n) = r.nums("ratio").filter(|n| n.len() == 2) {
-            s.aspect =
-                crate::slot::SlotAspect::One(crate::slot::Aspect::new(n[0] as u16, n[1] as u16));
-        }
-        if let Some(n) = r.nums("focal").filter(|n| n.len() == 2) {
-            s.focal = [n[0], n[1]];
-        }
-        if let Some(n) = r.nums("safe").filter(|n| n.len() == 4) {
-            s.safe = Some([n[0], n[1], n[2], n[3]]);
-        }
-        if let Some(f) = r.str("fit") {
-            s.fit = match f {
-                "contain" => crate::slot::Fit::Contain,
-                "fill" => crate::slot::Fit::Fill,
-                "nineSlice" => crate::slot::Fit::NineSlice,
-                "tile" => crate::slot::Fit::Tile,
-                _ => crate::slot::Fit::Cover,
-            };
-        }
+        let s = crate::slot::SlotSpec::from_props(
+            path,
+            |p| r.str(p).map(str::to_string),
+            |p| r.nums(p).map(<[f32]>::to_vec),
+        );
         self.docs.arts.push((path.to_string(), s));
     }
 

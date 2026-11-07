@@ -1886,9 +1886,18 @@ pub fn art_requests_json(c: &StyleChoices) -> serde_json::Value {
             "finish": c.finish.name(),
         },
         "palette": palette,
+        // A request without insets takes its part's own, which `og style
+        // art` works out from the part's size; the spec's default quarter
+        // would stand for a choice nobody made.
         "slots": art_requests(c)
             .iter()
-            .map(crate::doc::build::slot_json)
+            .map(|s| {
+                let mut v = crate::doc::build::slot_json(s);
+                if let Some(o) = v.as_object_mut() {
+                    o.remove("insets");
+                }
+                v
+            })
             .collect::<Vec<_>>(),
     })
 }
