@@ -52,16 +52,35 @@ def within(file, paths):
     return any(p == '.' or file == p or file.startswith(p + '/') for p in paths)
 
 
+def inert(file):
+    """A path no build, Rust test or fixture reads: prose (docs/, tasks/),
+    changelog fragments (read by scripts/changelog.ts alone), and Bun test
+    files and their support (packages/<pkg>/tests/*.test.ts and tests/support/;
+    bun-quick and bun-test select those by their import graph). Fixtures
+    under packages/<pkg>/tests/fixtures/ are read by Rust tests and stay out."""
+    parts = file.split('/')
+    if parts[0] in ('docs', 'tasks'):
+        return file.endswith('.md')
+    if parts[:2] == ['changelog', 'unreleased']:
+        return True
+    if len(parts) >= 4 and parts[0] == 'packages' and parts[2] == 'tests':
+        return parts[3] == 'support' or (len(parts) == 4 and file.endswith('.test.ts'))
+    return False
+
+
 def unaffected(key, paths):
     delta = changed(key)
     if delta is None:
         return False
+    if '.' in paths:
+        # A step that reads the whole tree (drift, conformance, web-reference).
+        return not delta
     # Only Rust source paths belong to the Cargo graph. Runtime resources,
     # generated files, manifests, deleted paths, tools and configurations
     # have unproven reachability and force a run rather than a false skip.
     known = crate_inputs([p['name'] for p in metadata()['packages'] if p['id'] in metadata()['workspace_members']])
-    return all(f.endswith('.rs') and Path(f).is_file() and within(f, known)
-               and not within(f, paths) for f in delta)
+    return all(inert(f) or (f.endswith('.rs') and Path(f).is_file() and within(f, known)
+               and not within(f, paths)) for f in delta)
 
 
 def mark(key):
