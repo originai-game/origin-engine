@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "effect packs: effekseer-starter and pixel-scenario bundled, ten effekseer-<contributor> packs downloadable",
+      "summary": "The engine bundles two vfx packs in packages/engine/extensions/: effekseer-starter (38 Effekseer sample effects from nine contributors, type vfx: fire, explosions, hits, slashes, heals, buffs, level-ups, projectiles, impacts, portals, weather, ambient) and pixel-scenario (42 Pixel VFX Forge effects, type vfx2d). The ten per-contributor Effekseer packs (285 effects) are in packages/vfx-packs/ and ship with each release as vfx/<pack>.tar.gz. `og vfx add <pack>` installs any of them into assets/vfx/<pack>/; a game carries a pack only once it is installed. Every pack lists each file's sha256, CC0 or custom licence, source and credit in assets.json, with previews and cost sheets under preview/. `og api find` searches them: the generated `effect-packs` guide (`og api show effect-packs`) lists each pack's tags, keywords and effects."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og vfx import: texture names that differ only in case",
+      "summary": "Two effects imported into one folder that name the same texture in different case (`Star.png`, `star.png`) now share one copy under the first name, or get distinct names when their bytes differ, so every id names its file as it is spelt on disk on case-sensitive and case-insensitive file systems alike."
+    }
+  ]
+}

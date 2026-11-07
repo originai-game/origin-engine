@@ -47,6 +47,7 @@ mod test;
 mod trace;
 mod ui;
 mod upgrade;
+mod vfx_catalogue;
 mod vfx_import;
 
 use std::path::{Path, PathBuf};
