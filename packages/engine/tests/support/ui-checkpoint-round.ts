@@ -72,7 +72,7 @@ function replay(presentation: boolean, confirm: boolean, recorded: readonly Reco
     resources: [Intents],
     systems: [Tick],
     start(world) {
-      const document = og.load.document(world, "pause.ogt");
+      const document = og.load.document(world, "pause.svelte");
       if (!document.ok) throw new Error(document.reason);
       const sound = og.audio.createSound(world, { samples: new Float32Array([0.5, -0.5, 0.25, -0.25]) });
       if (!sound.ok) throw new Error(sound.reason);

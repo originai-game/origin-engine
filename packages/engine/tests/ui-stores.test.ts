@@ -17,17 +17,10 @@ test("focus and hover stay outside simulation while recorded confirmation replay
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "UI checkpoint"\nid "ui-checkpoint"\nentry "main.ts"\n');
   writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
   mkdirSync(join(root, "assets"));
-  writeFileSync(join(root, "assets", "pause.ogt"), `type screen
-version 2
----
-name "boundaryPause"
-layer menu
-pause
-column Root {
-  label Title {
-    text "Paused"
-  }
-}
+  writeFileSync(join(root, "assets", "pause.svelte"), `<meta name="screen" content="boundaryPause" data-layer="menu" data-pause="true">
+<column id="Root">
+  <text id="Title" i18n="pause.title">Paused</text>
+</column>
 `);
   cookProject(root, root);
   const run = (host: string) => {

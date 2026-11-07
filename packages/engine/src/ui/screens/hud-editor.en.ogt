@@ -1,0 +1,5 @@
+type strings
+version 1
+---
+locale "en"
+string "screen.hud-editor.hint" "Drag an element to move it."

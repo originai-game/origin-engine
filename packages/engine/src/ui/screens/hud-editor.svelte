@@ -1,0 +1,28 @@
+<meta name="screen" content="hud-editor" data-layer="modal" data-focus="" data-under="none" data-input="menu" data-pause="true" data-capture="true" data-remember="true" data-back="back">
+<meta name="strings" content="./hud-editor.en.ogt">
+<meta name="prop:showHint" content="bool" data-doc="The hint at the top shows (false once the player has moved something).">
+<meta name="action:back" content="Done">
+<meta name="fixture:default" content="{&quot;showHint&quot;:true}">
+
+<stack id="RootEditor">
+  <panel id="Hint" hidden={!($showHint)}>
+    <text id="Text">{t("screen.hud-editor.hint")}</text>
+  </panel>
+  <column id="EditorEditor">{@render editorEditor?.()}</column>
+</stack>
+
+<style>
+#RootEditor { width: stretch; height: stretch; }
+#Hint { position: absolute; top: 24px; -og-center-x: true; padding: 10px; -og-frame: hud; }
+@media phonePortrait phoneLandscape {
+#Hint { top: 56px; }
+}
+#Text { text-align: center; line-clamp: 2; }
+#EditorEditor { position: absolute; bottom: 24px; -og-center-x: true; }
+@media phonePortrait {
+#EditorEditor { inset-inline-start: 8px; inset-inline-end: 8px; bottom: 40px; }
+}
+@media phoneLandscape {
+#EditorEditor { inset-inline-start: 52px; inset-inline-end: 52px; bottom: 24px; }
+}
+</style>

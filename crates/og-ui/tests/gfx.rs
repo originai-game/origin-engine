@@ -22,6 +22,143 @@ fn reference_dir(tier: &str) -> PathBuf {
 
 #[test]
 #[ignore = "requires GPU"]
+fn core_documents_preserve_screen_pixels() {
+    struct Env {
+        vm: serde_json::Value,
+        messages: std::collections::BTreeMap<String, String>,
+    }
+    impl bind::Env for Env {
+        fn lookup(&self, root: &str) -> Option<serde_json::Value> {
+            self.vm.get(root.trim_start_matches('$')).cloned()
+        }
+        fn translate(&self, key: &str) -> Option<String> {
+            self.messages.get(key).cloned()
+        }
+    }
+    let directory =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../packages/engine/src/ui/screens");
+    let mut failures = Vec::new();
+    for name in [
+        "calibration",
+        "creator-tools",
+        "credits",
+        "game-over",
+        "hud-editor",
+        "leaderboard",
+        "loading",
+        "main-menu",
+        "mode-select",
+        "pause",
+        "results",
+        "save-load",
+        "settings",
+        "splash",
+        "title",
+        "tutorial",
+    ] {
+        let new = UiDocument::parse(
+            &format!("{name}.svelte"),
+            &std::fs::read_to_string(directory.join(format!("{name}.svelte"))).unwrap(),
+        )
+        .unwrap();
+        let table = match og_i18n::StringTable::parse(
+            &std::fs::read_to_string(directory.join(format!("{name}.en.ogt"))).unwrap(),
+        ) {
+            Ok(table) => table,
+            Err(error) => {
+                failures.push(format!("{name}: {error}"));
+                continue;
+            }
+        };
+        let messages: std::collections::BTreeMap<_, _> = table
+            .entries
+            .into_iter()
+            .map(|(k, (v, _))| (k, v))
+            .collect();
+        let base = new
+            .fixtures
+            .first()
+            .map(|(_, v)| v.clone())
+            .unwrap_or_default();
+        let cases: Vec<_> = if name == "calibration" {
+            ["brightness", "offset", "controller"]
+                .into_iter()
+                .map(|step| {
+                    let mut vm = base.clone();
+                    vm["step"] = step.into();
+                    (step.to_string(), vm)
+                })
+                .collect()
+        } else {
+            vec![("default".into(), base)]
+        };
+        for (case, vm) in cases {
+            for (width, height) in [(1280u32, 720u32), (390, 844)] {
+                let mut scene = RenderScene::new();
+                let font = add_test_font(&mut scene);
+                let mut renderer = Renderer::new_blocking(&RenderDesc {
+                    width,
+                    height,
+                    ..Default::default()
+                })
+                .unwrap();
+                let mut ui = ui_with_font(font);
+                ui.set_style_name("conversion");
+                ui.define_document(new.clone());
+                ui.push_screen(name, vm.clone()).unwrap();
+                let env = Env {
+                    vm: vm.clone(),
+                    messages: messages.clone(),
+                };
+                for _ in 0..30 {
+                    ui.begin(
+                        InputFrame::default(),
+                        Viewport::new(width as f32, height as f32),
+                    );
+                    ui.build_layers(&env);
+                    ui.end();
+                }
+                let mut overlay = og_render::Overlay::new(width as f32, height as f32, 1.0);
+                ui.frame().emit(&EmitDesc::default(), &mut overlay);
+                scene.overlay = Some(overlay);
+                scene.post.tonemap = Tonemap::None;
+                renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+                let image = renderer.read_offscreen().unwrap();
+                let filename = format!("{name}-{case}-{width}.png");
+                image::save_buffer(
+                    out_dir().join(&filename),
+                    &image.pixels,
+                    width,
+                    height,
+                    image::ColorType::Rgba8,
+                )
+                .unwrap();
+                let reference =
+                    image::open(reference_dir("metal").join("documents").join(&filename))
+                        .unwrap()
+                        .to_rgba8();
+                assert_eq!(reference.dimensions(), (width, height));
+                let sum: f64 = reference
+                    .as_raw()
+                    .iter()
+                    .zip(&image.pixels)
+                    .enumerate()
+                    .filter(|(i, _)| i % 4 != 3)
+                    .map(|(_, (&a, &b))| (f64::from(a) - f64::from(b)).powi(2))
+                    .sum();
+                let rmse = (sum / (f64::from(width) * f64::from(height) * 3.0)).sqrt() / 255.0;
+                println!("conversion {name} {case} {width}x{height}: RMSE {rmse:.8}");
+                if reference.as_raw() != &image.pixels {
+                    failures.push(format!("{name}/{case}/{width}: {rmse:.8}"));
+                }
+            }
+        }
+    }
+    assert!(failures.is_empty(), "moved frames: {}", failures.join(", "));
+}
+
+#[test]
+#[ignore = "requires GPU"]
 fn document_spans_match_core_pixels_and_restore_motion() {
     let vp = Viewport::new(640.0, 180.0);
     let mut scene = RenderScene::new();

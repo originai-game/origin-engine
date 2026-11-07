@@ -1,0 +1,12 @@
+type strings
+version 1
+---
+locale "en"
+string "screen.results.Amount" "{r_name} ×{r_amount}"
+string "screen.results.Gained" "+{gained, number} XP"
+string "screen.results.LevelValue" "Level {level}"
+string "screen.results.StatValue" "{value}"
+string "screen.results.again" "Play again"
+string "screen.results.best" "Best"
+string "screen.results.continue" "Continue"
+string "screen.results.replay" "Watch replay"

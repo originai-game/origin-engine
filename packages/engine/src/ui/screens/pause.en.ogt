@@ -1,0 +1,13 @@
+type strings
+version 1
+---
+locale "en"
+string "screen.pause.Played" "{played}"
+string "screen.pause.controls" "Controls"
+string "screen.pause.load" "Load"
+string "screen.pause.quit" "Quit game"
+string "screen.pause.quitToMenu" "Quit to menu"
+string "screen.pause.resume" "Resume"
+string "screen.pause.save" "Save"
+string "screen.pause.settings" "Settings"
+string "screen.pause.title" "Paused"

@@ -1,0 +1,7 @@
+type strings
+version 1
+---
+locale "en"
+string "screen.loading.Percent" "{progress}"
+string "screen.loading.continue" "Continue"
+string "screen.loading.tip" "Tip"

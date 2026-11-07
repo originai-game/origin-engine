@@ -1,26 +1,31 @@
 # Screen documents
 
 Generic screen documents built from og-ui's public elements. Copy one with
-`og ui eject <screen>` and edit it in `assets/ui/<screen>.ogt`.
+`og ui eject <screen>` and edit it in `assets/ui/<screen>.svelte`.
 Genre kits are being rebuilt and are not bundled yet. Local kits install
 with `og ui add <directory>` and their documents can be copied with
 `og ui eject <kit>/<screen>`. The rebuild catalogue and acceptance contract
 are in `docs/ui.md` §4 and §6.
 
-Each document says at its top what its viewmodel holds (its `props`), the
-events it emits to code, and its named slots. Structure belongs in these
-documents, look in CSS and tokens, and data in named sources. The retained
-authoring API mounts documents once with named inputs and uses keyed
-collections for lists. Its signatures are pending the core API landing;
-the generated API describes currently implemented calls.
+Each document declares its name, layer, props, actions, and fixtures with
+standard `<meta>` elements. Structure belongs in scriptless Svelte markup,
+look in scoped CSS and tokens, and data in named sources. Bind sources with
+`{$name}`, name actions with `onclick={action}`, and pass named content with
+`{#snippet name()}…{/snippet}` and `{@render name?.()}`. TypeScript builds no
+UI trees. The generated API describes the mount and store signatures.
 
-Every word a document shows is a string key with an English fallback
-(`key "screen.inventory.title"`, `text "Inventory"`): a game's string
-tables (`assets/strings/<locale>.ogt`) translate it, and a missing key
-shows the fallback. Each has a `fixture default` viewmodel, so
-`ui:push:<screen>:default` previews it with no code. Where an og.ui
-pattern fills a slot and draws its own title, tabs or actions, the
-document leaves those to it (pass the pattern an empty `title`).
+Visible words use `t("screen.name.key", { argument: expression })`.
+Each document names a companion English string table with
+`<meta name="strings" content="./screen.en.ogt">`. Eject copies both files.
+Game translations override those base messages. Each screen declares a
+`<meta name="fixture:default" content="…">` JSON fixture for previews.
+
+The conversion preserves the core screen frames except the save/load Auto
+badge tint: CSS resolves the selected parent's background before the child's
+tint. The approved desktop and phone reference changes have RMSE 0.000573
+and 0.000607. Phone control sizes preserve their existing pixels.
+The game-over entrance now targets its title directly; the old relative
+timeline path missed it. Its 300 ms curve and error sound are retained.
 
 `og ui eject --list` prints these generic screens. Core document tests
 cook them independently of genre kits and style packs.
