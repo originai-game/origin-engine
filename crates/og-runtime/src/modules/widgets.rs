@@ -375,18 +375,7 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap
     );
     // Mass elements no element owns (docs/ui.md §14), under the UI.
     world_frame.emit(og_render::UI_OVERLAY_LAYER, overlay);
-    // A multi-page font draws once per page with one layout.
-    let mut more = Vec::new();
-    for t in &overlay.texts[first_text..] {
-        let pages = rs.ui_pages.get(&t.font).cloned().unwrap_or_default();
-        for page in pages.iter().skip(1) {
-            more.push(og_render::Text {
-                font: *page,
-                ..t.clone()
-            });
-        }
-    }
-    overlay.texts.extend(more);
+    crate::extract::draw_other_pages(overlay, first_text, &rs.ui_pages);
     // Icons on a strict art palette (super::art): the icon atlas is a
     // distance field the cook leaves as it is, so its tint is moved to
     // the palette here.

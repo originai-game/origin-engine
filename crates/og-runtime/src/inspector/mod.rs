@@ -1047,17 +1047,7 @@ pub(crate) fn emit(rs: &mut RenderState) {
         .get_or_insert_with(|| og_render::Overlay::new(w.max(1.0), h.max(1.0), 0.0));
     let first = overlay.texts.len();
     frame.emit(&og_ui::EmitDesc { layer: LAYER, time }, overlay);
-    // A multi-page font draws once per page with one layout.
-    let mut more = Vec::new();
-    for t in &overlay.texts[first..] {
-        for page in rs.ui_pages.get(&t.font).into_iter().flatten().skip(1) {
-            more.push(og_render::Text {
-                font: *page,
-                ..t.clone()
-            });
-        }
-    }
-    overlay.texts.extend(more);
+    crate::extract::draw_other_pages(overlay, first, &rs.ui_pages);
 }
 
 /// The gizmo as `dump_inspector` reports it: its mode and space, the

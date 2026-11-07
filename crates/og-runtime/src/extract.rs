@@ -819,9 +819,112 @@ pub(crate) fn add_font(
     FontPages { pages }
 }
 
+/// A multi-page font draws once per page with one layout: each overlay text
+/// from `first` on whose font has more pages (`pages`, by its first) is
+/// drawn again with each, its effects (shadows, outline, gradient fill: the
+/// UI's `text_effects`, by text index) with it.
+pub(crate) fn draw_other_pages(
+    overlay: &mut og_render::Overlay,
+    first: usize,
+    pages: &std::collections::BTreeMap<og_render::FontHandle, Vec<og_render::FontHandle>>,
+) {
+    let effects: std::collections::HashMap<u32, og_render::UiTextEffects> = overlay
+        .ui
+        .text_effects
+        .iter()
+        .filter(|e| e.text as usize >= first)
+        .map(|e| (e.text, e.clone()))
+        .collect();
+    let end = overlay.texts.len();
+    for i in first..end {
+        let t = &overlay.texts[i];
+        let Some(rest) = pages.get(&t.font).and_then(|p| p.get(1..)) else {
+            continue;
+        };
+        let t = t.clone();
+        for &page in rest {
+            let k = overlay.texts.len() as u32;
+            overlay.texts.push(og_render::Text {
+                font: page,
+                ..t.clone()
+            });
+            if let Some(e) = effects.get(&(i as u32)) {
+                overlay.ui.text_effects.push(og_render::UiTextEffects {
+                    text: k,
+                    ..e.clone()
+                });
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A text in a font of two pages is drawn again with the second, with
+    /// the first's shadows and outline; a text in a one-page font, or one
+    /// before `first`, is left alone.
+    #[test]
+    fn a_text_drawn_on_its_fonts_other_pages_keeps_its_effects() {
+        let mut scene = RenderScene::new();
+        let atlas = scene.add_texture(og_render::TextureData {
+            width: 1,
+            height: 1,
+            rgba: vec![0; 4],
+            color_space: og_render::ColorSpace::Linear,
+            mips: og_render::Mips::None,
+        });
+        let font = || og_render::MsdfFont {
+            atlas,
+            distance_range: 4.0,
+            foreground: false,
+            line_height: 1.2,
+            glyphs: Vec::new(),
+            kerning: Vec::new(),
+        };
+        let (a, a2, b) = (
+            scene.add_font(font()),
+            scene.add_font(font()),
+            scene.add_font(font()),
+        );
+        let mut overlay = og_render::Overlay::new(100.0, 100.0, 1.0);
+        let text = og_render::Text::new;
+        overlay.texts = vec![text(a, "before"), text(a, "styled"), text(b, "one page")];
+        let shadow = og_render::UiTextShadow {
+            color: [0.0, 0.0, 0.0, 1.0],
+            offset: og_core::glam::Vec2::new(2.0, 2.0),
+            blur: 3.0,
+        };
+        let effects = |text| og_render::UiTextEffects {
+            text,
+            shadows: vec![shadow],
+            outline: None,
+            fill: None,
+            fill_box: [0.0; 4],
+            transform: [1.0, 0.0, 0.0, 1.0],
+        };
+        overlay.ui.text_effects = vec![effects(0), effects(1)];
+        let pages = BTreeMap::from([(a, vec![a, a2]), (b, vec![b])]);
+        draw_other_pages(&mut overlay, 1, &pages);
+        let drawn: Vec<_> = overlay
+            .texts
+            .iter()
+            .map(|t| (t.font, t.text.as_str()))
+            .collect();
+        assert_eq!(
+            drawn,
+            [
+                (a, "before"),
+                (a, "styled"),
+                (b, "one page"),
+                (a2, "styled")
+            ]
+        );
+        let on: Vec<u32> = overlay.ui.text_effects.iter().map(|e| e.text).collect();
+        assert_eq!(on, [0, 1, 3]);
+        assert_eq!(overlay.ui.text_effects[2].shadows, [shadow]);
+    }
 
     /// A model's impostor is the level after its parts' coarsest finer
     /// than it: chosen by `lod::select` once its error (an atlas texel)

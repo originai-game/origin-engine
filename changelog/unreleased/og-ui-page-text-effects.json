@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.ui text effects (text-shadow, -og-text-outline, a gradient fill)",
+      "summary": "A UI text in a font of several atlas pages (a large charset, or a font with colour glyphs) draws its shadows, outline and gradient fill on the glyphs of every page; those on the second page and after were drawn plain."
+    }
+  ]
+}
