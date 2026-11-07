@@ -543,3 +543,26 @@ fn a_node_out_on_an_arm_of_an_instanced_parent_stays_folded() {
         c.findings
     );
 }
+
+/// A sprite is drawn at its scale's mean under its generator's scale.
+///
+/// Ways it could fail: a constant uneven scale drawn at its longest axis
+/// (its flat size curve taken as 1), or the generator's own scale left
+/// off its children (only ancestors above the generator counted). Either
+/// draws AndrewFM01's 2000 thin lines or Pierre02's fire as quads many
+/// times their area.
+#[test]
+fn a_sprite_is_its_mean_scale_under_its_generators_scale() {
+    let c = run(&project(
+        "<Node><CommonValues><MaxGeneration><Value>10</Value></MaxGeneration></CommonValues>\
+         <ScalingValues><Fixed><Scale><X>0.5</X><Y>0.5</Y><Z>0.5</Z></Scale></Fixed></ScalingValues>\
+         <DrawingValues><Type>0</Type></DrawingValues><Name>G</Name><Children>\
+         <Node><ScalingValues><Fixed><Scale><X>0.25</X><Y>4</Y><Z>1</Z></Scale></Fixed></ScalingValues>\
+         <DrawingValues><Type>2</Type></DrawingValues><Name>S</Name><Children /></Node>\
+         </Children></Node>",
+    ));
+    let e = file(&c, "n0-0.emitter.ogt");
+    // sqrt(0.25 × 4) = 1, times the generator's 0.5.
+    assert_eq!(line(e, "size"), "size 0.5 0.5", "{e}");
+    assert!(!e.contains("sizeOverLife"), "{e}");
+}

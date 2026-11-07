@@ -294,6 +294,10 @@ struct Place {
     offset: Vec3,
     rot: Quat,
     scale: f32,
+    /// The scale the generator and the single nodes below it give the
+    /// drawn node's own size and motion, on top of `scale` (which also
+    /// places the generator's spawn shape, in its parent's space).
+    own: f32,
     /// The deepest node of the chain with many instances (or the node).
     generator: usize,
     /// Instances above the generator per one of it (nested generation).
@@ -317,6 +321,7 @@ fn place(cx: &mut Ctx<'_>, chain: &[&Node]) -> Place {
         offset: Vec3::ZERO,
         rot: Quat::IDENTITY,
         scale: 1.0,
+        own: 1.0,
         generator,
         nested: 1.0,
         deadline: None,
@@ -367,6 +372,9 @@ fn place(cx: &mut Ctx<'_>, chain: &[&Node]) -> Place {
                 let s = at3(&a.scale, 0.0, life);
                 p.scale *= ((s.x.abs() + s.y.abs() + s.z.abs()) / 3.0).max(0.0);
             }
+        } else if i < me && chain[i + 1].bind[2] != 0 && chain[i + 1].bind[2] != 3 {
+            let s = at3(&a.scale, 0.0, a.life.c());
+            p.own *= ((s.x.abs() + s.y.abs() + s.z.abs()) / 3.0).max(0.0);
         }
     }
     // Each from where it is when the element starts.
@@ -465,11 +473,13 @@ fn scale_keys(node: &Node, life: f32) -> (f32, Vec<(f32, [f32; 1])>, bool) {
         let v = at3(&node.scale, t * l, l);
         [v.x.abs(), v.y.abs(), v.z.abs()]
     };
+    // The peak of the size drawn (the axes' mean), so a flat curve is the
+    // size itself and not its longest axis.
     let mut peak: f32 = 0.0;
     let mut square = true;
     for i in 0..=16 {
         let v = s(i as f32 / 16.0);
-        peak = peak.max(v[0]).max(v[1]);
+        peak = peak.max((v[0] * v[1]).sqrt());
         if (v[0] - v[1]).abs() > 0.25 * v[0].max(v[1]).max(1e-4) {
             square = false;
         }
@@ -716,7 +726,7 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
     let mut colors = color_keys(node, life);
     let blend = blend(cx, node);
     let texture = cx.texture(node);
-    let mut base = peak * p.scale;
+    let mut base = peak * p.scale * p.own;
     // A ring's own shape: its lines in the element.
     let mut ring = String::new();
     let shape = match &node.draw {
@@ -794,7 +804,7 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
             );
             let pk = keys.iter().map(|k| k.1[0]).fold(0.0, f32::max).max(1e-4);
             scale = keys.iter().map(|(t, v)| (*t, [v[0] / pk])).collect();
-            base = pk * p.scale;
+            base = pk * p.scale * p.own;
             "ring".into()
         }
         Draw::Model { model: Some(m), .. } => {
@@ -1247,7 +1257,10 @@ fn emitter_file(
     let g = chain[p.generator];
     let life = node.life;
     let lc = life.c().max(1.0);
+    // The spawn shape is in the generator's parent's space (`scale`); the
+    // particles' size and motion are also in the generator's (`own`).
     let s = p.scale;
+    let so = s * p.own;
     let drawn = matches!(role, Role::Drawn { .. });
     if drawn
         && let Draw::Sprite { billboard } = node.draw
@@ -1390,7 +1403,7 @@ fn emitter_file(
         }
     }
     let _ = writeln!(e, "lifetime {}", ns(&[life.min / FPS, life.max / FPS]));
-    let speed = [speed[0] * s, speed[1] * s];
+    let speed = [speed[0] * so, speed[1] * so];
     let _ = writeln!(e, "speed {}", ns(&speed));
     if mo.speed_keys.len() > 1 && !curve::flat(&mo.speed_keys, 0.05) {
         let _ = writeln!(e, "speedOverLife {}", curve_line(&mo.speed_keys));
@@ -1401,7 +1414,7 @@ fn emitter_file(
         let _ = writeln!(e, "subEmitter life \"{child}\"");
     } else {
         let (roll, spin) = spin_z(&node.rotation, lc);
-        let size = peak * s;
+        let size = peak * so;
         let _ = writeln!(e, "size {}", ns(&[size * rel.min, size * rel.max]));
         if !curve::flat(&size_keys, 1e-3) {
             let _ = writeln!(e, "sizeOverLife {}", curve_line(&size_keys));
@@ -1418,7 +1431,7 @@ fn emitter_file(
             let _ = writeln!(e, "angularVelocity {}", ns(&[spin.min, spin.max]));
         }
     }
-    let gravity = mo.accel * (FPS * FPS * s);
+    let gravity = mo.accel * (FPS * FPS * so);
     if gravity.length() > 1e-3 {
         // In the simulation's (world) space: turned as the node's parents are.
         let gl = p.rot * gravity;
@@ -1571,7 +1584,7 @@ fn trail(cx: &mut Ctx<'_>, chain: &[&Node]) {
     let _ = writeln!(
         s,
         "  width {}",
-        ns(&[width[0] * p.scale, width[1] * p.scale])
+        ns(&[width[0] * p.scale * p.own, width[1] * p.scale * p.own])
     );
     let _ = writeln!(s, "  lifetime {}", n(life / FPS));
     let _ = writeln!(s, "  color {}", ns(&[c[0], c[1], c[2], alpha]));
