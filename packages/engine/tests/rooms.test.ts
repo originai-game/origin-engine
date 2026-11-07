@@ -265,7 +265,11 @@ test("quick play matches two engines of one mode in a room of their own; a third
   expect(c!.lockstep.running).toBe(false);
 }, 300_000);
 
-test("a peer frozen past stallTimeout is dropped at one tick, then takes its seat back from the room's world", async () => {
+// Wall time decides this one: a 2.5 s SIGSTOP against a 0.8 s stallTimeout,
+// both peers paced at 60 Hz. A loaded machine slips the pacing and the test
+// times out, so it runs in the perf lane (scripts/perf.sh sets OG_PERF=1,
+// under exclusive admission), not in the gate.
+test.skipIf(!process.env.OG_PERF)("a peer frozen past stallTimeout is dropped at one tick, then takes its seat back from the room's world", async () => {
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
   // Paced at 60 Hz, whatever the machine's speed: the stall from 2 s to 4.5 s, the drop near
   // tick 170 and the rejoin near tick 280 fall well inside 900 ticks (15 s).

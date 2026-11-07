@@ -4,8 +4,8 @@
 # - a fixture several tests read is made once across their processes under
 #   a file lock (og-cook's tests/support: the template and the two rigged
 #   models are cooked once per test build), so those tests run in parallel;
-# - a test that asserts a wall-clock bound takes every slot, so it never
-#   measures while other binaries compile shaders or cook textures;
+# - a test that asserts a wall-clock bound runs in the perf lane
+#   (scripts/perf.sh, under exclusive admission), never in the gate;
 # - GPU-bound binaries share a group, and the longest work starts first.
 
 [test-groups]
@@ -16,16 +16,6 @@ gpu = { max-threads = 4 }
 [[profile.default.overrides]]
 filter = 'package(og-tests) | package(og-tests-cooked) | package(og-ui) | package(og-render)'
 test-group = 'gpu'
-
-[[profile.default.overrides]]
-filter = '''
-test(run_reports_a_dead_game_process_at_once)
-| test(capture_is_bounded_and_cancellable)
-'''
-threads-required = 'num-cpus'
-# Each waits for every slot to drain and holds back the tests queued behind
-# it; last, they drain the run once instead of three times.
-priority = -50
 
 # Determinism runs that step two worlds on two threads take two slots. The
 # 500-body pile reports, never asserts, its seconds, so it needs no more
