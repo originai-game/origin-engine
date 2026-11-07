@@ -94,6 +94,9 @@ pub(crate) struct FrameUniform {
     /// `ssr_tex` holds this camera's reflections (the main camera's; 0 for
     /// views, probe faces and planar reflections).
     pub ssr: [f32; 4],
+    /// x: 1 for three.js's specular ([`crate::Specular::Three`],
+    /// lighting.wgsl `three_specular`), yzw unused.
+    pub shading: [f32; 4],
 }
 
 /// The camera's matrices for one frame.

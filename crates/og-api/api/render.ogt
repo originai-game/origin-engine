@@ -534,6 +534,19 @@ module render {
     value ToneMapping
   }
 
+  enum SpecularModel {
+    doc "Which specular the lit surfaces draw (RenderSettings.specular), as og-render's Specular."
+    variant engine "The engine's: GGX with the uncorrelated Schlick-Smith visibility (k = (r + 1)² / 8) and the image-based light's split sum from the integrated BRDF LUT. The default."
+    variant three "three.js's MeshStandardMaterial and MeshPhysicalMaterial, for a game tuned under three.js: the height-correlated Smith visibility (V_GGX_SmithCorrelated) on the direct light and the clear coat, DFGApprox's analytic split sum in place of the LUT (the clear coat's too), and geometryRoughness, a roughness of at least 0.0525 plus how fast the mesh's normal turns across the pixel, on meshes, scattered copies and custom lit materials (terrain, grass, crowd cards and impostors keep their roughness: their normals are a heightmap's, a dome's or a bake's). At grazing view (a thin card, a strand seen edge-on) about twice the engine's direct highlight, and less of the sky on rough surfaces seen edge-on."
+  }
+
+  column SpecularModel {
+    doc "A SpecularModel field: the variant's index."
+    array Uint32Array
+    stride 1
+    value SpecularModel
+  }
+
   enum GraphicsQuality {
     doc "A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). A settings page (og.ui.settingsTree) offers the three."
     variant medium "The full frame: every quality field at its default."
@@ -693,6 +706,7 @@ module render {
       unit m
       tunable true
     }
+    field specular SpecularModel "The lit surfaces' specular: engine (the default) or three, three.js's, for a game whose look was tuned under three.js (SpecularModel has what each draws). Off by default, so every frame is the engine's unless a game or its look asks: a look's `RenderSettings { specular three }`."
   }
 
   component Interpolation {

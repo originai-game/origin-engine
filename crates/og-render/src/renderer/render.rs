@@ -2460,6 +2460,12 @@ impl Renderer {
                 0.0,
             ],
             ssr: ssr::ScreenSpaceReflections::frame_row(ssr.as_ref()),
+            shading: [
+                f32::from(u8::from(scene.specular == crate::Specular::Three)),
+                0.0,
+                0.0,
+                0.0,
+            ],
         };
         uniform.atmosphere.time[3] = self.previous_time.unwrap_or(uniform.atmosphere.time[0]);
         // The shadow passes' clock, and the scene's origin for the hooks

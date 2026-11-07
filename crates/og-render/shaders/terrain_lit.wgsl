@@ -588,7 +588,7 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, local: vec3<f32>, ground: f32, a
   let r = reflect(-v, n);
   // With the screen-space reflections over it (frame.wgsl ssr_reflected).
   let prefiltered = ssr_reflected(reflected_light(r, p, s.roughness * frame.params.y) * frame.params.x, p, clip);
-  let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
+  let lut = ibl_dfg(textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg, n_dot_v, s.roughness);
   let diffuse_ibl = kd_ibl * irradiance * s.albedo * sky;
   let specular_ibl = prefiltered * (s.f0 * lut.x + lut.y) * sky;  // Karis split sum (pbr_fs.wgsl)
   let view = u32(frame.light_color.w);

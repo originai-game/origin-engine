@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "RenderSettings.specular",
+      "summary": "`engine` (the default, every frame as before) or `three`: the specular three.js's MeshStandardMaterial and MeshPhysicalMaterial draw, for a game whose look was tuned under three.js. The direct light and the clear coat take the height-correlated Smith visibility (V_GGX_SmithCorrelated), the image-based light DFGApprox's split sum in place of the BRDF LUT (the clear coat's too), and meshes, scattered copies and custom lit materials three.js's geometryRoughness (at least 0.0525, plus how fast the mesh's normal turns across the pixel). At grazing view, a thin card or a strand seen edge-on, the direct highlight is about twice the engine's, and rough surfaces seen edge-on reflect less sky. Set it in a look (`RenderSettings { specular three }`) or on og.RenderSettings."
+    }
+  ]
+}

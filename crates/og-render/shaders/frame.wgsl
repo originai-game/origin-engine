@@ -93,6 +93,7 @@ struct Frame {
   // zw unused.
   toon: vec4<f32>,
   ssr: vec4<f32>,             // screen-space reflections (ssr.rs): x 1 when ssr_tex holds this camera's, y intensity
+  shading: vec4<f32>,         // x: 1 for three.js's specular (RenderScene::specular; lighting.wgsl three_specular), yzw unused
 };
 
 // The hemisphere light (three.js HemisphereLight) as irradiance in the IBL's units: added beside the environment's

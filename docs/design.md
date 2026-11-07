@@ -1232,6 +1232,10 @@ hemiIntensity` is HemisphereLight (diffuse-only, darkened by AO);
 `DirectionalLight.shadowBox` replaces the cascades with one fixed box around
 a focus ahead of and below the camera (`shadowFocus`, `shadowFocusDrop`),
 with three.js' `bias` and `normalBias` (`shadowBias`, `shadowNormalBias`).
+`RenderSettings.specular three` is MeshStandardMaterial's specular: the
+height-correlated Smith visibility on the direct light and the clear coat,
+DFGApprox in place of the BRDF LUT, and geometryRoughness on meshes,
+scattered copies and custom lit materials (`og_render::Specular`).
 Post: `PostEffects.aoMethod screen` is depth-only screen-space AO,
 `aoRadiusScale` grows the AO radius with distance, `aoDirect` lets AO darken
 direct and emitted light (above 0 also water surfaces), `sharpen` is a CAS

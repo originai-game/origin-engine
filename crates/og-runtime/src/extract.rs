@@ -522,6 +522,16 @@ pub(crate) fn ao_resolution_setting(r: Option<og_render::AoResolution>) -> &'sta
 /// RenderCapabilities.upscalers.
 pub(crate) const UPSCALERS: &[&str] = &["taau", "fsr3"];
 
+/// The IDL `SpecularModel`'s variants, in order: RenderSettings.specular.
+const SPECULAR_MODELS: &[&str] = &["engine", "three"];
+
+/// The lit shaders' specular for RenderSettings.specular (the engine's
+/// without it).
+pub(crate) fn specular(v: &Value) -> og_render::Specular {
+    [og_render::Specular::Engine, og_render::Specular::Three]
+        [crate::fx::variant(v, SPECULAR_MODELS).min(1)]
+}
+
 /// RenderSettings.upscaler's variant for a quality's upscaler.
 pub(crate) fn upscaler_setting(u: og_render::Upscaler) -> &'static str {
     UPSCALERS[match u {
