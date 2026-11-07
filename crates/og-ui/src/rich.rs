@@ -485,6 +485,56 @@ fn visual_segments(
     out
 }
 
+/// `[size=<px> [<line height px> [<tracking em>]]]`: a span's own size, for
+/// text a page sizes itself (a CSS `font-size`, `line-height` and
+/// `letter-spacing`) between the type roles' steps. Its lengths are CSS px
+/// at text scale 1 and grow by `scale`, the player's text scale the ramp
+/// carries ([`crate::Theme::to_text_scale`]), as every step does. A line
+/// height given sets the CJK line's too (CSS spaces every script by it);
+/// without one, both leadings keep `base`'s ratio to its size, so CJK lines
+/// keep the type scale's taller leading. Tracking given spaces Latin and
+/// CJK alike (CSS `letter-spacing`); without it, `base`'s. `None`: not
+/// one to three numbers, or a size not above 0.
+pub(crate) fn explicit_step(value: &str, base: TypeStep, scale: f32) -> Option<TypeStep> {
+    let mut nums = Vec::with_capacity(3);
+    for w in value.split_whitespace() {
+        nums.push(w.parse::<f32>().ok().filter(|n| n.is_finite())?);
+    }
+    let (&size, line_height, tracking) = match nums.as_slice() {
+        [s] => (s, None, None),
+        [s, lh] => (s, Some(*lh), None),
+        [s, lh, em] => (s, Some(*lh), Some(*em)),
+        _ => return None,
+    };
+    if size <= 0.0 || line_height.is_some_and(|lh| lh < 0.0) {
+        return None;
+    }
+    let scale = if scale.is_finite() && scale > 0.0 {
+        scale
+    } else {
+        1.0
+    };
+    let size = size * scale;
+    let k = if base.size > 0.0 {
+        size / base.size
+    } else {
+        1.0
+    };
+    let (lh, cjk_lh) = match line_height {
+        Some(lh) => (lh * scale, lh * scale),
+        None => (base.line_height * k, base.cjk_line_height * k),
+    };
+    let (em, cjk_em) = tracking.map_or((base.tracking_em, base.cjk_tracking_em), |em| (em, em));
+    Some(TypeStep {
+        size,
+        line_height: lh,
+        tracking_em: em,
+        cjk_line_height: cjk_lh,
+        cjk_tracking_em: cjk_em,
+        ..base
+    })
+}
+
 /// A sine with `+ − × ÷` only (Bhaskara I), for per-glyph motion: the UI
 /// reads no transcendental functions.
 pub(crate) fn sine(x: f32) -> f32 {
@@ -522,9 +572,12 @@ impl Ui {
                 let mut ramp = t.type_ramp;
                 match crate::style_file::ramp_step(&mut ramp, name) {
                     Some(st) => step = *st,
-                    None => self
-                        .warnings
-                        .push(format!("rich text: [size={name}] is not a TypeStepName")),
+                    None => match explicit_step(name, base_step, t.ramp_scale) {
+                        Some(st) => step = st,
+                        None => self.warnings.push(format!(
+                            "rich text: [size={name}] is neither a TypeStepName nor `<px> [<line height px> [<tracking em>]]`"
+                        )),
+                    },
                 }
             }
             let mut color = if s.link.is_some() {

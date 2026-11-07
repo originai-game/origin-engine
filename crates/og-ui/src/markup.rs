@@ -19,6 +19,7 @@
 //! | `[action=<name>]` | the action's glyph on the device used last (its icon, else its key's name on a cap), resolved every frame, inline (self-closing) |
 //! | `[color=<ThemeColor>]` / `[color=#rrggbb[aa]]` | the ink: a token (follows the style) or a colour |
 //! | `[size=<TypeStepName>]` | the type step (`lg`, `xl`, `meta`, `displaySm`…) |
+//! | `[size=<px> [<line height px> [<tracking em>]]]` | a size of its own (a page's CSS `font-size`, `line-height`, `letter-spacing`), grown by the player's text scale; a line height given spaces CJK lines too |
 //! | `[font=body\|display\|mono]` | the font role |
 //! | `[icon=<name>]` | an icon of the icon atlas, one em, inline (self-closing) |
 //! | `[link=<id>]…[/link]` | a link: accent ink, underlined, focusable; its id is a child element and the answer of a click |
