@@ -1,10 +1,10 @@
 //! The `og.tween` state block: every running tween, little-endian, in
 //! handle order, so equal state gives equal bytes.
 
-use crate::{Ease, Group, GroupKind, Lane, Leaf, Node, Running, State, Target};
+use crate::{Ease, Group, GroupKind, Lane, Leaf, Node, Running, State, StepPosition, Target};
 use og_core::{Error, ErrorKind, Result};
 
-const VERSION: u32 = 1;
+const VERSION: u32 = 2;
 
 fn u32_(out: &mut Vec<u8>, v: u32) {
     out.extend_from_slice(&v.to_le_bytes());
@@ -45,6 +45,26 @@ fn leaf(out: &mut Vec<u8>, l: &Leaf) {
     f32_(out, l.duration);
     f32_(out, l.delay);
     u32_(out, l.ease.code());
+    match l.ease {
+        Ease::CubicBezier(controls) => {
+            for v in controls {
+                f32_(out, v);
+            }
+        }
+        Ease::Steps { count, position } => {
+            u32_(out, count);
+            u32_(
+                out,
+                match position {
+                    StepPosition::JumpStart => 0,
+                    StepPosition::JumpEnd => 1,
+                    StepPosition::JumpNone => 2,
+                    StepPosition::JumpBoth => 3,
+                },
+            );
+        }
+        _ => {}
+    }
     out.extend_from_slice(&l.loops.to_le_bytes());
     u32_(out, l.yoyo as u32);
     out.extend_from_slice(&l.elapsed.to_le_bytes());
@@ -151,7 +171,23 @@ impl Reader<'_> {
         let relative = self.u32()? != 0;
         let duration = self.f32()?;
         let delay = self.f32()?;
-        let ease = Ease::from_code(self.u32()?).ok_or_else(|| bad("unknown ease"))?;
+        let ease = match self.u32()? {
+            22 => Ease::CubicBezier([self.f32()?, self.f32()?, self.f32()?, self.f32()?]),
+            23 => Ease::Steps {
+                count: self.u32()?,
+                position: match self.u32()? {
+                    0 => StepPosition::JumpStart,
+                    1 => StepPosition::JumpEnd,
+                    2 => StepPosition::JumpNone,
+                    3 => StepPosition::JumpBoth,
+                    _ => return Err(bad("unknown step position")),
+                },
+            },
+            code => Ease::from_code(code).ok_or_else(|| bad("unknown ease"))?,
+        };
+        if !ease.is_valid() {
+            return Err(bad("invalid ease controls"));
+        }
         let loops = self.i32()?;
         let yoyo = self.u32()? != 0;
         let elapsed = f64::from_le_bytes(self.take(8)?.try_into().expect("8 bytes"));

@@ -1,0 +1,9 @@
+{
+  "simulation": "changed",
+  "breaking": [
+    {"member":"og.tween snapshot","change":"Tween state blocks use version 2 to preserve parameterized easing payloads.","fix":"Start a new recording or snapshot; version 1 tween state blocks cannot be restored."}
+  ],
+  "added": [
+    {"member":"Ease","summary":"Shared cubic Bezier and step timing functions, CSS keyword parsing, deterministic fixed-iteration evaluation, and lossless timeline and snapshot payloads. Named GSAP codes are unchanged."}
+  ]
+}

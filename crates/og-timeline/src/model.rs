@@ -572,12 +572,15 @@ fn flag(e: &Entry) -> Result<bool, String> {
 }
 
 fn ease(e: &Entry) -> Result<Ease, String> {
-    let w = word(e)?;
-    Ease::from_name(w).ok_or_else(|| {
+    let w = match e.values.as_slice() {
+        [Value::Word(w) | Value::String(w)] => w,
+        _ => return Err(at(e, "ease takes a name or a quoted CSS timing function")),
+    };
+    Ease::from_text(w).ok_or_else(|| {
         at(
             e,
             format!(
-                "ease '{w}' is not one of {}",
+                "ease '{w}' is invalid; use {} or a quoted cubic-bezier(x1, y1, x2, y2) with finite controls and x in [0,1], or steps(count, position) with a positive count (jump-none needs at least 2)",
                 og_tween::EASE_NAMES.join(", ")
             ),
         )

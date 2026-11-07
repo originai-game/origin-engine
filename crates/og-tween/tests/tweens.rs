@@ -15,6 +15,56 @@ use og_ecs::{Entity, World, WorldDesc};
 use og_tween::*;
 
 #[test]
+fn css_curves_invert_x_preserve_overshoot_and_step_boundaries() {
+    let curve = Ease::from_css("cubic-bezier(.125, -.5, .75, 1.5)").unwrap();
+    // Exact Bernstein values at parameters 1/4 and 3/4; treating input as
+    // the curve parameter rather than its x coordinate gives wrong values.
+    assert_eq!(curve.apply(89.0 / 512.0), 0.015625);
+    assert_eq!(curve.apply(387.0 / 512.0), 0.984375);
+    let overshoot = Ease::from_css("cubic-bezier(0, -1, 1, 2)").unwrap();
+    assert_eq!(overshoot.apply(0.15625), -0.125);
+    assert_eq!(curve.sample(-0.25, false), 1.0);
+    assert_eq!(curve.sample(1.25, false), 0.5);
+    let tiny = f32::from_bits(1);
+    assert_eq!(Ease::CubicBezier([1.0; 4]).apply(tiny), tiny);
+    assert_eq!(Ease::CubicBezier([1.0, 0.0, 0.0, 1.0]).apply(0.5), 0.5);
+    assert_eq!(
+        Ease::from_css("ease").unwrap(),
+        Ease::CubicBezier([0.25, 0.1, 0.25, 1.0])
+    );
+    for (position, top, bottom) in [
+        ("jump-start", 0.5, 0.25),
+        ("jump-end", 0.25, 0.0),
+        ("jump-none", 1.0 / 3.0, 0.0),
+        ("jump-both", 0.4, 0.2),
+    ] {
+        let curve = Ease::from_css(&format!("steps(4, {position})")).unwrap();
+        assert_eq!(curve.sample(0.25, false), top);
+        assert_eq!(curve.sample(0.25, true), bottom);
+        assert_eq!(curve.sample(0.25 - f32::EPSILON, false), bottom);
+        assert_eq!(curve.sample(0.25 + f32::EPSILON, false), top);
+        assert_eq!(curve.sample(0.0, true), 0.0);
+        assert_eq!(curve.sample(1.0, false), 1.0);
+        assert_eq!(Ease::from_text(&curve.to_text()), Some(curve));
+    }
+    for text in [
+        "steps(0)",
+        "steps(1, jump-none)",
+        "steps(2.5)",
+        "cubic-bezier(-.1, 0, 1, 1)",
+        "cubic-bezier(0, NaN, 1, 1)",
+        "cubic-bezier(0, 0, 1.1, 1)",
+        "cubic-bezier(0, 0, 1)",
+    ] {
+        assert!(Ease::from_css(text).is_none(), "{text}");
+    }
+    for (code, curve) in EASES.into_iter().enumerate() {
+        assert_eq!(curve.code(), code as u32);
+        assert_eq!(Ease::from_code(code as u32), Some(curve));
+    }
+}
+
+#[test]
 fn gsap_names_and_changed_curves_match_asymmetric_mathematical_values() {
     // Independent double-precision evaluations of the documented GSAP 3.15
     // formula, not values produced by Ease::apply. The old Penner curves
@@ -310,6 +360,15 @@ fn a_snapshot_mid_tween_restores_running_tweens() {
                         .duration(0.3)
                         .ease(Ease::BounceOut)
                         .loops(2, true),
+                    Leaf::new(target(w, e, "opacity"), vec![0.8])
+                        .duration(0.3)
+                        .ease(Ease::CubicBezier([0.17, -0.3, 0.71, 1.4])),
+                    Leaf::new(target(w, e, "opacity"), vec![0.4])
+                        .duration(0.3)
+                        .ease(Ease::Steps {
+                            count: 7,
+                            position: StepPosition::JumpBoth,
+                        }),
                 ],
                 0,
             ),
@@ -321,11 +380,13 @@ fn a_snapshot_mid_tween_restores_running_tweens() {
     start(&w, &t);
     steps(&mut w, 20);
     let snap = w.snapshot();
-    steps(&mut w, 60);
     let (mut r, rt, _) = setup();
     r.restore(&snap).unwrap();
     assert_eq!(rt.count(), 1, "the running group came back");
-    steps(&mut r, 60);
-    assert_eq!(r.world_hash(), w.world_hash());
-    assert_eq!(body(&r, e), body(&w, e));
+    for _ in 0..120 {
+        steps(&mut w, 1);
+        steps(&mut r, 1);
+        assert_eq!(r.world_hash(), w.world_hash());
+        assert_eq!(body(&r, e), body(&w, e));
+    }
 }

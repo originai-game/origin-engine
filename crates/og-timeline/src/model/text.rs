@@ -218,7 +218,11 @@ fn key_entry(time: f32, block: Block) -> Entry {
 
 fn ease_entry(b: &mut Block, e: Ease) {
     if e != Ease::Linear {
-        b.push(Entry::new("ease").with(Value::Word(e.name().into())));
+        let value = match e {
+            Ease::CubicBezier(_) | Ease::Steps { .. } => Value::String(e.to_text()),
+            _ => Value::Word(e.name().into()),
+        };
+        b.push(Entry::new("ease").with(value));
     }
 }
 
@@ -529,6 +533,35 @@ track marker {
             "the canonical text reads back to the same timeline:\n{text}"
         );
         assert_eq!(back.to_text(), text);
+    }
+
+    #[test]
+    fn parameterized_easing_survives_timeline_text() {
+        for curve in ["cubic-bezier(0.17, -0.3, 0.71, 1.4)", "steps(7, jump-both)"] {
+            let text = TEXT.replace("ease power2.inOut", &format!("ease \"{curve}\""));
+            let timeline = Timeline::parse(&text, &mut read).unwrap();
+            let canonical = timeline.to_text();
+            assert!(canonical.contains(&format!("ease \"{curve}\"")));
+            assert_eq!(Timeline::parse(&canonical, &mut read).unwrap(), timeline);
+        }
+        for curve in [
+            "cubic-bezier(-0.1, 0, 1, 1)",
+            "steps(1, jump-none)",
+            "linear",
+            "ease-in",
+        ] {
+            let text = TEXT.replace("ease power2.inOut", &format!("ease \"{curve}\""));
+            assert!(
+                Timeline::parse(&text, &mut read)
+                    .unwrap_err()
+                    .contains("ease")
+            );
+        }
+        for keyword in ["linear", "ease-in"] {
+            assert!(Ease::from_css(keyword).is_some());
+            let text = TEXT.replace("ease power2.inOut", &format!("ease {keyword}"));
+            assert!(Timeline::parse(&text, &mut read).is_err());
+        }
     }
 
     #[test]

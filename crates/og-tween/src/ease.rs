@@ -7,9 +7,12 @@
 
 use og_core::math;
 
+mod css;
+pub use css::StepPosition;
+
 /// An easing curve from 0 at t = 0 to 1 at t = 1 (back and elastic leave
 /// the range in between).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Ease {
     #[default]
     Linear,
@@ -34,6 +37,11 @@ pub enum Ease {
     BounceIn,
     BounceOut,
     BounceInOut,
+    CubicBezier([f32; 4]),
+    Steps {
+        count: u32,
+        position: StepPosition,
+    },
 }
 
 /// Every curve, in [`Ease`] order (the code is the index).
@@ -117,9 +125,13 @@ fn bounce_out(t: f32) -> f32 {
 }
 
 impl Ease {
-    /// The code (index in [`EASES`]).
+    /// The wire tag. Tags 22 and 23 require a parameter payload.
     pub fn code(self) -> u32 {
-        self as u32
+        match self {
+            Self::CubicBezier(_) => 22,
+            Self::Steps { .. } => 23,
+            _ => EASES.iter().position(|e| *e == self).expect("named ease") as u32,
+        }
     }
 
     /// The curve of a code, if it is one.
@@ -133,7 +145,11 @@ impl Ease {
     }
 
     pub fn name(self) -> &'static str {
-        EASE_NAMES[self as usize]
+        match self {
+            Self::CubicBezier(_) => "cubic-bezier",
+            Self::Steps { .. } => "steps",
+            _ => EASE_NAMES[self.code() as usize],
+        }
     }
 
     /// The eased value at `t`, clamped to 0..=1 first.
@@ -144,6 +160,7 @@ impl Ease {
         let c4 = 2.0 * PI / 3.0;
         let c5 = 2.0 * PI / 4.5;
         match self {
+            Ease::CubicBezier(_) | Ease::Steps { .. } => self.sample(t, false),
             Ease::Linear => t,
             Ease::QuadIn => t * t,
             Ease::QuadOut => 1.0 - (1.0 - t) * (1.0 - t),

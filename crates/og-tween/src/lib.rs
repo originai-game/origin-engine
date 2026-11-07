@@ -19,7 +19,7 @@ mod ease;
 pub mod presets;
 mod spring;
 
-pub use ease::{EASE_NAMES, EASES, Ease};
+pub use ease::{EASE_NAMES, EASES, Ease, StepPosition};
 pub use spring::{Spring, SpringState};
 
 use og_core::IdMap;
@@ -309,6 +309,9 @@ impl Leaf {
     }
 
     fn check(&self) -> Result<()> {
+        if !self.ease.is_valid() {
+            return Err(invalid("ease needs finite bezier controls with x in 0..=1, or positive steps (jump-none needs at least 2)".into()));
+        }
         let n = self.target.lanes as usize;
         let ok = |v: &[f32]| (v.len() == 1 || v.len() == n) && v.iter().all(|x| x.is_finite());
         if !ok(&self.to) || self.from.as_deref().is_some_and(|f| !ok(f)) {
