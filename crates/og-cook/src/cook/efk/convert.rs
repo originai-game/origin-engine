@@ -352,15 +352,6 @@ fn place(cx: &mut Ctx<'_>, chain: &[&Node]) -> Place {
             }
         }
     }
-    if p.nested > 1.0 {
-        cx.find(
-            chain[me],
-            format!(
-                "nested generation: {} instances above its generator folded into one emitter",
-                n(p.nested)
-            ),
-        );
-    }
     p
 }
 
@@ -657,6 +648,9 @@ fn mesh_or_emitter(cx: &mut Ctx<'_>, chain: &[&Node]) {
                     sch.count.map_or("unlimited".into(), |c| c.to_string())
                 ),
             );
+        }
+        if p.nested > 1.0 {
+            nested_finding(cx, node, p.nested);
         }
         let copies = sch.count.unwrap_or(MAX_COPIES).clamp(1, MAX_COPIES);
         mesh(cx, chain, &p, &sch, copies);
@@ -1041,13 +1035,160 @@ fn direction(v: &[Rng; 3]) -> (Vec3, [f32; 2], f32) {
     (dir, [lo.min(hi), hi], spread.min(180.0))
 }
 
+/// What an emitter file is for.
+#[derive(Clone, Copy)]
+enum Role<'a> {
+    /// Drawn with its node's look; `hosts` parents run it at once at most
+    /// (1 when it is no sub-emitter).
+    Drawn { hosts: f32 },
+    /// A parent that draws nothing: each of its particles (an instance of
+    /// its node) runs `child`'s emission while it lives; written as `leaf`.
+    Parent { child: &'a str, leaf: &'a str },
+}
+
+/// An emitter file written, and where its element goes.
+struct Emitted {
+    id: String,
+    /// The emitter's turn (its +y onto the motion) and the centre of its
+    /// spawn shape, in the place's space before its scale.
+    rot: Quat,
+    center: Vec3,
+    /// It emits as long as it lives.
+    unlimited: bool,
+    /// Its particles' longest life, frames.
+    life: f32,
+}
+
 fn emitter(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule) {
+    let node = chain[chain.len() - 1];
+    let me = chain.len() - 1;
+    // One instanced ancestor above the generator: it is a parent emitter
+    // whose particles each run this node's emission (`subEmitter life`),
+    // where Effekseer spawns this node per instance of it.
+    let outer = (0..p.generator).rev().find(|&i| !single(chain[i]));
+    if let Some(a) = outer {
+        let rest = p.nested / count(chain[a]).map_or(8.0, |c| c as f32);
+        if rest > 1.0 {
+            nested_finding(cx, node, rest);
+        }
+        let child = Place {
+            delay: 0.0,
+            offset: Vec3::ZERO,
+            rot: Quat::IDENTITY,
+            nested: rest,
+            deadline: None,
+            ..*p
+        };
+        // The parent's particles move as it does: only an ancestor between
+        // it and the generator is still placed where it starts.
+        let moving = |n: &Node| {
+            let life = n.life.c();
+            n.location
+                .iter()
+                .any(|l| !l.is_fixed() && l.rate(life).c().abs() > 1e-4)
+        };
+        if !chain[a + 1..p.generator].iter().any(|n| moving(n)) {
+            let me = label(node);
+            cx.findings
+                .retain(|f| !(f.node == me && f.what.starts_with("a moving ancestor")));
+        }
+        let parent_place = place(cx, &chain[..=a]);
+        let parent_sch = schedule(chain[a]);
+        let hosts = peak_alive(chain[a], &parent_sch, 1.0);
+        let c = emitter_file(cx, chain, &child, sch, Role::Drawn { hosts });
+        let mo = motion(cx, chain, p.generator, node.life.c().max(1.0));
+        if direction(&mo.vel).1[1] > 1e-3 && c.rot.angle_between(Quat::IDENTITY) > 0.5 {
+            cx.find(
+                node,
+                "a child of an instanced parent: its motion drawn up the world's y",
+            );
+        }
+        let pe = emitter_file(
+            cx,
+            &chain[..=a],
+            &parent_place,
+            &parent_sch,
+            Role::Parent {
+                child: &c.id,
+                leaf: &leaf(node, "parent.ogt"),
+            },
+        );
+        let life = pe.life + c.life;
+        emitter_element(cx, &parent_place, &parent_sch, &pe, life);
+        return;
+    }
+    if p.nested > 1.0 {
+        nested_finding(cx, chain[me], p.nested);
+    }
+    let e = emitter_file(cx, chain, p, sch, Role::Drawn { hosts: 1.0 });
+    emitter_element(cx, p, sch, &e, e.life);
+}
+
+fn nested_finding(cx: &mut Ctx<'_>, node: &Node, n: f32) {
+    cx.find(
+        node,
+        format!(
+            "nested generation: {} instances above its generator folded into one emitter",
+            self::n(n)
+        ),
+    );
+}
+
+/// How many of a generator's instances live at once at most, times `nested`.
+fn peak_alive(node: &Node, sch: &Schedule, nested: f32) -> f32 {
+    let lc = node.life.c().max(1.0);
+    let alive = match sch.count {
+        None => lc / sch.interval.max(0.1) + 1.0,
+        Some(c) => (c as f32).min(lc / sch.interval.max(1e-3) + 1.0),
+    };
+    alive * nested
+}
+
+/// The emitter's element: its place, turned so the emitter's +y is the
+/// motion; `life` frames its particles (and theirs) last at most.
+fn emitter_element(cx: &mut Ctx<'_>, p: &Place, sch: &Schedule, e: &Emitted, life: f32) {
+    if e.unlimited {
+        cx.looping = true;
+    }
+    let mut place = Place {
+        offset: p.offset + p.rot * (e.center * p.scale),
+        rot: p.rot * e.rot,
+        ..*p
+    };
+    let at = place.delay / FPS;
+    let mut el = format!("emitter \"{}\" {{\n", e.id);
+    element_head(&mut el, at, &place);
+    let span = match sch.count {
+        Some(c) => c.saturating_sub(1) as f32 * sch.interval,
+        None => place
+            .deadline
+            .map_or(cx.end_frame, |d| (d - place.delay).max(0.0)),
+    };
+    if let Some(d) = place.deadline.take()
+        && sch.count.is_none()
+    {
+        let _ = writeln!(el, "  until {}", n((d / FPS).max(at)));
+    }
+    el.push_str("}\n");
+    cx.elements.push(el);
+    cx.end = cx.end.max(at + span / FPS + life / FPS);
+}
+
+fn emitter_file(
+    cx: &mut Ctx<'_>,
+    chain: &[&Node],
+    p: &Place,
+    sch: &Schedule,
+    role: Role<'_>,
+) -> Emitted {
     let node = chain[chain.len() - 1];
     let g = chain[p.generator];
     let life = node.life;
     let lc = life.c().max(1.0);
     let s = p.scale;
-    if let Draw::Sprite { billboard } = node.draw
+    let drawn = matches!(role, Role::Drawn { .. });
+    if drawn
+        && let Draw::Sprite { billboard } = node.draw
         && billboard != 0
         && billboard != 3
     {
@@ -1060,13 +1201,13 @@ fn emitter(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule) {
             },
         );
     }
-    if node.color.random_spread() > 0.1 {
+    if drawn && node.color.random_spread() > 0.1 {
         cx.find(node, "a random colour per particle: its mean used");
     }
     let mo = motion(cx, chain, p.generator, lc);
     let (dir, speed, mut spread) = direction(&mo.vel);
     let (peak, size_keys, square) = scale_keys(node, lc);
-    if !square {
+    if drawn && !square {
         cx.find(node, "a sprite scaled unevenly: drawn square at its mean");
     }
     let start_scale = node.scale[0].start();
@@ -1078,18 +1219,16 @@ fn emitter(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule) {
     } else {
         Rng::fixed(1.0)
     };
-    let colors = color_keys(node, lc);
-    let blend = blend(cx, node);
-    let texture = cx.texture(node);
-
     let mut e = String::from("type particles\nversion 1\n---\n");
     let _ = writeln!(e, "# Effekseer node {}", label(node));
     // How many and when.
-    let peak_alive = match sch.count {
-        None => lc / sch.interval.max(0.1) + 1.0,
-        Some(c) => (c as f32).min(lc / sch.interval.max(1e-3) + 1.0),
-    } * p.nested;
-    let max = (peak_alive * 1.25).ceil().clamp(4.0, 4096.0) as u32;
+    let hosts = match role {
+        Role::Drawn { hosts } => hosts,
+        Role::Parent { .. } => 1.0,
+    };
+    let max = (peak_alive(node, sch, p.nested) * hosts * 1.25)
+        .ceil()
+        .clamp(4.0, 4096.0) as u32;
     let _ = writeln!(e, "maxParticles {max}");
     // Where: the generator's spawn shape, rotated so +y is the direction.
     let mut rot = Quat::from_rotation_arc(Vec3::Y, dir);
@@ -1169,7 +1308,6 @@ fn emitter(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule) {
         None => {
             let _ = writeln!(e, "rate {}", n(FPS / sch.interval.max(0.1) * p.nested));
             e.push_str("duration 1\nlooping true\n");
-            cx.looping = true;
         }
         Some(c) => {
             let per = p.nested.round().max(1.0) as u32;
@@ -1195,22 +1333,28 @@ fn emitter(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule) {
     if mo.speed_keys.len() > 1 && !curve::flat(&mo.speed_keys, 0.05) {
         let _ = writeln!(e, "speedOverLife {}", curve_line(&mo.speed_keys));
     }
-    let size = peak * s;
-    let _ = writeln!(e, "size {}", ns(&[size * rel.min, size * rel.max]));
-    if !curve::flat(&size_keys, 1e-3) {
-        let _ = writeln!(e, "sizeOverLife {}", curve_line(&size_keys));
-    }
-    e.push_str("colorOverLife {\n");
-    for (t, c) in &colors {
-        let _ = writeln!(e, "  key {} {}", n(*t), ns(c));
-    }
-    e.push_str("}\n");
-    let (roll, spin) = spin_z(&node.rotation, lc);
-    if roll.max.abs() > 1e-3 || roll.min.abs() > 1e-3 {
-        let _ = writeln!(e, "rotation {}", ns(&[roll.min, roll.max]));
-    }
-    if spin.max.abs() > 1e-3 || spin.min.abs() > 1e-3 {
-        let _ = writeln!(e, "angularVelocity {}", ns(&[spin.min, spin.max]));
+    if let Role::Parent { child, .. } = role {
+        // Its particles draw nothing; each runs the child's emission.
+        e.push_str("size 0\n");
+        let _ = writeln!(e, "subEmitter life \"{child}\"");
+    } else {
+        let (roll, spin) = spin_z(&node.rotation, lc);
+        let size = peak * s;
+        let _ = writeln!(e, "size {}", ns(&[size * rel.min, size * rel.max]));
+        if !curve::flat(&size_keys, 1e-3) {
+            let _ = writeln!(e, "sizeOverLife {}", curve_line(&size_keys));
+        }
+        e.push_str("colorOverLife {\n");
+        for (t, c) in &color_keys(node, lc) {
+            let _ = writeln!(e, "  key {} {}", n(*t), ns(c));
+        }
+        e.push_str("}\n");
+        if roll.max.abs() > 1e-3 || roll.min.abs() > 1e-3 {
+            let _ = writeln!(e, "rotation {}", ns(&[roll.min, roll.max]));
+        }
+        if spin.max.abs() > 1e-3 || spin.min.abs() > 1e-3 {
+            let _ = writeln!(e, "angularVelocity {}", ns(&[spin.min, spin.max]));
+        }
     }
     let gravity = mo.accel * (FPS * FPS * s);
     if gravity.length() > 1e-3 {
@@ -1218,59 +1362,53 @@ fn emitter(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule) {
         let gl = p.rot * gravity;
         let _ = writeln!(e, "gravity {}", ns(&[gl.x, gl.y, gl.z]));
     }
-    if let Some((id, size)) = &texture {
-        let _ = writeln!(e, "texture \"{id}\"");
-        if let Some(sheet) = sheet_line(cx, node, *size, lc) {
-            e.push_str(&sheet);
+    if drawn {
+        let blend = blend(cx, node);
+        let texture = cx.texture(node);
+        if let Some((id, size)) = &texture {
+            let _ = writeln!(e, "texture \"{id}\"");
+            if let Some(sheet) = sheet_line(cx, node, *size, lc) {
+                e.push_str(&sheet);
+            }
+        }
+        let _ = writeln!(e, "blend {blend}");
+        if let Some(d) = node.render.distortion {
+            let _ = writeln!(e, "distortion {}", n((d * 0.02).clamp(0.002, 0.1)));
+        }
+        if let Some(fx) = effect_file(
+            cx,
+            node,
+            &leaf(node, "effect.ogt"),
+            texture.as_ref(),
+            false,
+            None,
+            blend,
+            false,
+        ) {
+            let _ = writeln!(e, "effect \"{fx}\"");
         }
     }
-    let _ = writeln!(e, "blend {blend}");
-    if let Some(d) = node.render.distortion {
-        let _ = writeln!(e, "distortion {}", n((d * 0.02).clamp(0.002, 0.1)));
-    }
-    if let Some(fx) = effect_file(
-        cx,
-        node,
-        &leaf(node, "effect.ogt"),
-        texture.as_ref(),
-        false,
-        None,
-        blend,
-        false,
-    ) {
-        let _ = writeln!(e, "effect \"{fx}\"");
-    }
-    let id = cx.write(&leaf(node, "emitter.ogt"), OutKind::Emitter, e.into_bytes());
-
-    // The element: the place, turned so the emitter's +y is the motion.
-    let mut place = Place {
-        offset: p.offset + p.rot * (center * s),
-        rot: p.rot * rot,
-        ..*p
+    let name = match role {
+        Role::Drawn { .. } => leaf(node, "emitter.ogt"),
+        Role::Parent { leaf, .. } => leaf.to_string(),
     };
-    let at = place.delay / FPS;
-    let mut el = format!("emitter \"{id}\" {{\n");
-    element_head(&mut el, at, &place);
-    let span = match sch.count {
-        Some(c) => c.saturating_sub(1) as f32 * sch.interval,
-        None => place
-            .deadline
-            .map_or(cx.end_frame, |d| (d - place.delay).max(0.0)),
-    };
-    if let Some(d) = place.deadline.take()
-        && sch.count.is_none()
-    {
-        let _ = writeln!(el, "  until {}", n((d / FPS).max(at)));
+    let id = cx.write(&name, OutKind::Emitter, e.into_bytes());
+    Emitted {
+        id,
+        rot,
+        center,
+        unlimited: sch.count.is_none(),
+        life: life.max,
     }
-    el.push_str("}\n");
-    cx.elements.push(el);
-    cx.end = cx.end.max(at + span / FPS + life.max / FPS);
 }
 
 /// A ribbon or track: a trail where its node's instances go.
 fn trail(cx: &mut Ctx<'_>, chain: &[&Node]) {
     let node = chain[chain.len() - 1];
     let p = place(cx, chain);
+    if p.nested > 1.0 {
+        nested_finding(cx, node, p.nested);
+    }
     let g = chain[p.generator];
     let sch = schedule(g);
     let life = node.life.c().max(1.0);

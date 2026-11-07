@@ -470,14 +470,29 @@ pub struct ParticleEvent {
 /// particles are born where a parent particle was born, died or hit
 /// something, moving at their own start velocity plus `inherit_velocity`
 /// times the parent's (sparks off a bullet's impact, a firework's burst at
-/// the end of its trail). One level deep: a sub-emitter's own
+/// the end of its trail). With `life`, each parent particle instead runs
+/// the child's own emission (its rate, bursts, duration and looping) from
+/// its birth for as long as it lives, born where the parent is at each
+/// tick (a comet's sparks, an effect spawned per instance of another:
+/// Effekseer's child nodes, Unity's Birth sub-emitter, Niagara's
+/// particle-spawned emitters). One level deep: a sub-emitter's own
 /// sub-emitters are not fired.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SubEmitter {
-    pub trigger: ParticleEventKind,
+    pub trigger: SubTrigger,
     pub emitter: EmitterHandle,
+    /// Particles per event (unused with [`SubTrigger::Life`]).
     pub count: u32,
     pub inherit_velocity: f32,
+}
+
+/// When a [`SubEmitter`] fires.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SubTrigger {
+    /// `count` particles at each of the parent's events of this kind.
+    Event(ParticleEventKind),
+    /// The child's emission, run by each parent particle while it lives.
+    Life,
 }
 
 /// The emitter description: an asset. `[min, max]` pairs are uniform random
@@ -1859,6 +1874,21 @@ fn spawn_child(e: &ParticleEmitter, seed: u32, n: u32, at: Vec3, inherited: Vec3
     }
 }
 
+/// A living parent particle for [`SubTrigger::Life`]: its age before the
+/// step (`before`) and after, its position and velocity in the world.
+fn placed(p: &ParticleState, before: f32, local: bool, m: Mat4) -> (f32, f32, Vec3, Vec3) {
+    let (mut at, mut vel) = (
+        Vec3::from_slice(&p.pos_age[..3]),
+        Vec3::from_slice(&p.vel_life[..3]),
+    );
+    if local {
+        at = m.transform_point3(at);
+        vel = m.transform_vector3(vel);
+    }
+    let age = p.pos_age[3].min(p.vel_life[3]);
+    (before.min(age), age, at, vel)
+}
+
 impl CpuParticles {
     /// Steps the system to `sys.tick`; returns the ticks simulated.
     /// `colliders`: what its particles bounce off (empty: nothing). `subs`:
@@ -1915,7 +1945,16 @@ impl CpuParticles {
             }
         }
         let seed = hash_seed(sys.seed);
-        let want = |kind| events.is_some() || firing.iter().any(|f| f.1.trigger == kind);
+        let want = |kind| {
+            events.is_some()
+                || firing
+                    .iter()
+                    .any(|f| f.1.trigger == SubTrigger::Event(kind))
+        };
+        // Parents that run a child's emission while they live: each one's
+        // age before and after the step, where it is and how fast it goes.
+        let lives = firing.iter().any(|f| f.1.trigger == SubTrigger::Life);
+        let mut living: Vec<(f32, f32, Vec3, Vec3)> = Vec::new();
         let (births, deaths, hits) = (
             want(ParticleEventKind::Birth),
             want(ParticleEventKind::Death),
@@ -1944,12 +1983,17 @@ impl CpuParticles {
                     velocity: vel,
                 });
             };
+            living.clear();
             for (slot, p) in self.slots.iter_mut().enumerate() {
+                let before = p.pos_age[3];
                 match slot_spawn(slot as u32, max, step.first, step.count) {
                     Some((n, k)) => {
                         *p = spawn(e, seed, n, k, step, dt, points);
                         if births {
                             report(ParticleEventKind::Birth, n, p);
+                        }
+                        if lives {
+                            living.push(placed(p, 0.0, local, step.transform));
                         }
                     }
                     None if p.alive() => {
@@ -1968,6 +2012,10 @@ impl CpuParticles {
                                 index_of(step, slot as u32, max),
                                 p,
                             );
+                        }
+                        // Its last step too: up to the end of its life.
+                        if lives {
+                            living.push(placed(p, before, local, step.transform));
                         }
                     }
                     None => {}
@@ -1990,7 +2038,27 @@ impl CpuParticles {
                         self.origin,
                     );
                 }
-                for ev in fired.iter().filter(|ev| ev.kind == sub.trigger) {
+                if sub.trigger == SubTrigger::Life {
+                    // Each parent's share of the child's own schedule over
+                    // the ages this step covered.
+                    for &(a0, a1, at, vel) in &living {
+                        let spawned = |age: f32| {
+                            let (c, b) = spawned_before(ce, f64::from(age), f64::INFINITY);
+                            c + b
+                        };
+                        for _ in spawned(a0)..spawned(a1) {
+                            let n = c.born;
+                            c.born += 1;
+                            c.slots[(n % cmax) as usize] =
+                                spawn_child(ce, cseed, n as u32, at, vel * sub.inherit_velocity);
+                        }
+                    }
+                    continue;
+                }
+                for ev in fired
+                    .iter()
+                    .filter(|ev| SubTrigger::Event(ev.kind) == sub.trigger)
+                {
                     for _ in 0..sub.count {
                         let n = c.born;
                         c.born += 1;
@@ -2347,7 +2415,7 @@ mod tests {
     fn a_death_sub_emitter_fires_where_each_particle_dies() {
         let mut e = fountain();
         e.sub_emitters.push(SubEmitter {
-            trigger: ParticleEventKind::Death,
+            trigger: SubTrigger::Event(ParticleEventKind::Death),
             emitter: EmitterHandle(1),
             count: 3,
             inherit_velocity: 0.0,
@@ -2408,5 +2476,84 @@ mod tests {
         let (b, again) = go();
         assert_eq!(events, again);
         assert_eq!(a.children[0].slots, b.children[0].slots);
+    }
+
+    #[test]
+    fn a_life_sub_emitter_runs_its_emission_from_every_living_parent() {
+        // Two parents born at once, moving apart along ±x at 1 m/s for 2 s;
+        // each runs the child's 10 per second for its life: a line of 20
+        // still children behind each, one every 0.1 m.
+        let mut e = ParticleEmitter {
+            shape: EmitterShape::Point,
+            rate: 0.0,
+            bursts: vec![Burst {
+                time: 0.0,
+                count: 2,
+                cycles: 1,
+                interval: 0.0,
+            }],
+            duration: 1.0,
+            looping: false,
+            spread_degrees: 0.0,
+            speed: [0.0, 0.0],
+            lifetime: [2.0, 2.0],
+            gravity: Vec3::ZERO,
+            max_particles: 4,
+            ..Default::default()
+        };
+        e.sub_emitters.push(SubEmitter {
+            trigger: SubTrigger::Life,
+            emitter: EmitterHandle(1),
+            count: 0,
+            inherit_velocity: 0.0,
+        });
+        let child = ParticleEmitter {
+            shape: EmitterShape::Point,
+            rate: 10.0,
+            duration: 5.0,
+            looping: false,
+            speed: [0.0, 0.0],
+            lifetime: [5.0, 5.0],
+            gravity: Vec3::ZERO,
+            max_particles: 64,
+            ..Default::default()
+        };
+        let go = |ticks: u64| {
+            let mut sys = ParticleSystem::new(1, EmitterHandle(0), Mat4::IDENTITY, 3, 0);
+            let mut cpu = CpuParticles::default();
+            for t in 0..ticks {
+                sys.tick = t;
+                // The parents' motion: set by hand, ±x by their slot.
+                cpu.advance(&e, &sys, 60.0, &[], &[], &[Some(&child)], None, None);
+                for (i, p) in cpu.slots.iter_mut().enumerate() {
+                    if t == 0 && p.alive() {
+                        p.vel_life[0] = if i == 0 { 1.0 } else { -1.0 };
+                    }
+                }
+            }
+            cpu
+        };
+        let a = go(150);
+        assert_eq!(a.children[0].born, 40, "20 from each parent's two seconds");
+        let kids: Vec<Vec3> = a.children[0]
+            .slots
+            .iter()
+            .filter(|s| s.alive())
+            .map(|s| Vec3::from_slice(&s.pos_age[..3]))
+            .collect();
+        assert_eq!(kids.len(), 40);
+        // Born where each parent was: as far along x as it had gone.
+        let right = kids.iter().filter(|k| k.x > 1e-3).count();
+        let left = kids.iter().filter(|k| k.x < -1e-3).count();
+        assert_eq!((left, right), (20, 20), "{kids:?}");
+        // One every 0.1 m along each line (a tick's lag where the test
+        // set the parents going).
+        let mut xs: Vec<f32> = kids.iter().filter(|k| k.x > 0.0).map(|k| k.x).collect();
+        xs.sort_by(f32::total_cmp);
+        for w in xs.windows(2) {
+            assert!((w[1] - w[0] - 0.1).abs() < 0.02, "{xs:?}");
+        }
+        assert!(kids.iter().all(|k| k.x.abs() <= 2.05 && k.y.abs() < 1e-4));
+        assert_eq!(a.children[0].slots, go(150).children[0].slots);
     }
 }

@@ -267,9 +267,16 @@ fn mesh_lit_distorting_emitters_with_events_and_sub_emitters() {
     let s = &em.sub_emitters[0];
     assert_eq!(
         (s.trigger, s.count, s.inherit_velocity),
-        (ParticleEventKind::Death, 4, 0.5)
+        (
+            og_render::SubTrigger::Event(ParticleEventKind::Death),
+            4,
+            0.5
+        )
     );
-    assert_eq!(em.sub_emitters[1].trigger, ParticleEventKind::Collision);
+    assert_eq!(
+        em.sub_emitters[1].trigger,
+        og_render::SubTrigger::Event(ParticleEventKind::Collision)
+    );
     assert_eq!(em.sub_emitters[1].inherit_velocity, 0.0);
     let haze = parse_emitter(
         "type particles\nversion 1\n---\ndistortion 0.05\n",

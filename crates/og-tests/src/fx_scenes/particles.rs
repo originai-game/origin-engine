@@ -454,7 +454,7 @@ pub fn particles_lit_scene() -> RenderScene {
         render: ParticleRender::Mesh { mesh: shard },
         lit: true,
         sub_emitters: vec![og_render::SubEmitter {
-            trigger: og_render::ParticleEventKind::Collision,
+            trigger: og_render::SubTrigger::Event(og_render::ParticleEventKind::Collision),
             emitter: dust,
             count: 2,
             inherit_velocity: 0.1,

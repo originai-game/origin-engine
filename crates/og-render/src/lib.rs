@@ -381,7 +381,7 @@ pub use particles::{
     EmitterShape, MAX_CURVE_KEYS, MAX_SUB_EMITTERS, ParticleAlign, ParticleBlend, ParticleClock,
     ParticleCollision, ParticleEmitter, ParticleEvent, ParticleEventKind, ParticleHistory,
     ParticleNoise, ParticleRender, ParticleSimulation, ParticleState, ParticleSystem, ParticleTick,
-    SceneCollider, SheetMode, SimulationSpace, SpriteSheet, SubEmitter, mesh_points,
+    SceneCollider, SheetMode, SimulationSpace, SpriteSheet, SubEmitter, SubTrigger, mesh_points,
 };
 pub use points::Points;
 pub use post_custom::{MAX_CUSTOM_POSTS, PostHandle, PostShader, example_crt, post_module_source};

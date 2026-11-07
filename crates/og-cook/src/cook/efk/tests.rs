@@ -385,3 +385,42 @@ fn effects_imported_into_one_folder_share_their_textures() {
     assert_eq!(snapshot(&out), before);
     let _ = std::fs::remove_dir_all(&root);
 }
+
+#[test]
+fn a_node_under_an_instanced_parent_is_a_life_sub_emitter() {
+    // P spawns 6 instances moving up at 0.1 a frame; each spawns sprites
+    // S, 3 a frame apart, 10 of them. One parent emitter (P's 6, moving,
+    // drawing nothing) whose particles each run S's emission.
+    let c = run(&project(
+        "<Node><CommonValues><MaxGeneration><Value>6</Value></MaxGeneration>\
+         <Life><Center>40</Center><Max>40</Max><Min>40</Min></Life></CommonValues>\
+         <LocationValues><Type>1</Type><PVA><Velocity><Y><Center>0.1</Center><Max>0.1</Max><Min>0.1</Min></Y></Velocity></PVA></LocationValues>\
+         <DrawingValues><Type>0</Type></DrawingValues><Name>P</Name><Children>\
+         <Node><CommonValues><MaxGeneration><Value>10</Value></MaxGeneration>\
+         <GenerationTime><Center>3</Center><Max>3</Max><Min>3</Min></GenerationTime></CommonValues>\
+         <DrawingValues><Type>2</Type></DrawingValues><Name>S</Name><Children /></Node>\
+         </Children></Node>",
+    ));
+    assert!(
+        !c.findings
+            .iter()
+            .any(|f| f.what.starts_with("nested generation")
+                || f.what.starts_with("a moving ancestor")),
+        "{:?}",
+        c.findings
+    );
+    let v = og_bundle::vfx::parse_vfx(&c.vfx).unwrap();
+    assert_eq!(v.references().emitters, ["fx/a.efkproj#n0-0.parent.ogt"]);
+    let parent = file(&c, "n0-0.parent.ogt");
+    assert_eq!(line(parent, "size"), "size 0");
+    assert_eq!(
+        line(parent, "subEmitter"),
+        "subEmitter life \"fx/a.efkproj#n0-0.emitter.ogt\""
+    );
+    // P's own motion: 0.1 a frame up, 6 metres a second.
+    assert_eq!(line(parent, "speed"), "speed 6 6", "{parent}");
+    let child = file(&c, "n0-0.emitter.ogt");
+    assert_eq!(line(child, "burst"), "burst 0 1 10 0.05", "{child}");
+    // Room for every parent's children at once: 6 × 10 × 1.25.
+    assert_eq!(line(child, "maxParticles"), "maxParticles 75", "{child}");
+}

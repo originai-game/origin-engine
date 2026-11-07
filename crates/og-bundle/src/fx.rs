@@ -53,6 +53,7 @@
 //!                                   #   of the screen at most; billboards only
 //! subEmitter death "fx/sparks.ogt" 8 0.3
 //!                                   # <birth | death | collision> "<emitter asset id>" <count>
+//!                                   #   [<inherit velocity>], or life "<emitter asset id>"
 //!                                   #   [<inherit velocity>]; at most 4, one level deep
 //! glow 0                            # sprite mode: strength in the 2D glow buffer
 //! array "fx/smoke.ogt" random       # sprite mode: draw from a texture array (`type texture-array`)
@@ -88,7 +89,9 @@
 //! a model asset (a glTF). `subEmitter` fires another emitter asset at
 //! this one's particle events (where each particle is born, dies or hits a
 //! collider), `count` particles each, moving at their own start velocity
-//! plus `inherit` times the parent's.
+//! plus `inherit` times the parent's; `subEmitter life` has each particle
+//! run the other emitter's own emission (rate, bursts, duration, looping)
+//! from its birth while it lives, born where it is at each tick.
 
 use og_core::ogt::{Document, Entry, Value};
 use og_render::{Attractor, MAX_ATTRACTORS, MAX_SPLINE_POINTS, VectorField};
@@ -96,7 +99,7 @@ use og_render::{
     Burst, CollisionTarget, ColorCurve, ColorLut, Curve, EmitterHandle, EmitterShape,
     MAX_CURVE_KEYS, MAX_SUB_EMITTERS, MeshHandle, ParticleAlign, ParticleBlend, ParticleCollision,
     ParticleEmitter, ParticleEventKind, ParticleRender, SheetMode, SimulationSpace, SubEmitter,
-    TextureArrayHandle, TextureHandle,
+    SubTrigger, TextureArrayHandle, TextureHandle,
 };
 
 /// The built-in meshes `render mesh <name>` names.
@@ -616,18 +619,19 @@ pub fn parse_emitter_linked(
             }
             "subEmitter" => {
                 let trigger = match word(e, 0)? {
-                    "birth" => ParticleEventKind::Birth,
-                    "death" => ParticleEventKind::Death,
-                    "collision" => ParticleEventKind::Collision,
+                    "birth" => SubTrigger::Event(ParticleEventKind::Birth),
+                    "death" => SubTrigger::Event(ParticleEventKind::Death),
+                    "collision" => SubTrigger::Event(ParticleEventKind::Collision),
+                    "life" => SubTrigger::Life,
                     other => {
                         return Err(format!(
-                            "line {line}: subEmitter `{other}` (birth, death, collision)"
+                            "line {line}: subEmitter `{other}` (birth, death, collision, life)"
                         ));
                     }
                 };
                 let usage = || {
                     format!(
-                        "line {line}: subEmitter <birth | death | collision> \"<emitter asset id>\" <count> [<inherit velocity>]"
+                        "line {line}: subEmitter <birth | death | collision> \"<emitter asset id>\" <count> [<inherit velocity>], or subEmitter life \"<emitter asset id>\" [<inherit velocity>]"
                     )
                 };
                 let id = e.values.get(1).and_then(Value::as_str).ok_or_else(usage)?;
@@ -637,12 +641,21 @@ pub fn parse_emitter_linked(
                         .and_then(Value::as_number)
                         .map(|n| n.as_f32())
                 };
-                let count = num(2).ok_or_else(usage)?;
-                if !(1.0..=4096.0).contains(&count) || count.fract() != 0.0 {
-                    return Err(format!(
-                        "line {line}: subEmitter's count is a whole number from 1 to 4096"
-                    ));
-                }
+                // `life` runs the child's own emission: no count.
+                let (count, inherit) = if trigger == SubTrigger::Life {
+                    if e.values.len() > 3 {
+                        return Err(usage());
+                    }
+                    (0.0, num(2))
+                } else {
+                    let count = num(2).ok_or_else(usage)?;
+                    if !(1.0..=4096.0).contains(&count) || count.fract() != 0.0 {
+                        return Err(format!(
+                            "line {line}: subEmitter's count is a whole number from 1 to 4096"
+                        ));
+                    }
+                    (count, num(3))
+                };
                 subs += 1;
                 if subs > MAX_SUB_EMITTERS {
                     return Err(format!(
@@ -656,7 +669,7 @@ pub fn parse_emitter_linked(
                         trigger,
                         emitter: handle,
                         count: count as u32,
-                        inherit_velocity: num(3).unwrap_or(0.0),
+                        inherit_velocity: inherit.unwrap_or(0.0),
                     });
                 }
             }

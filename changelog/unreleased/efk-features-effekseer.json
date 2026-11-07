@@ -7,6 +7,10 @@
     {
       "member": "og.vfx",
       "summary": "A vfx `mesh ring` element takes its own shape: `inner <radius>`, `band <0..1>`, `height <outer> <inner>` (a cone, a tube), `arc <start> <length>`, `segments <n>` and `colors <outer rgba> <band rgba> <inner rgba>`, built at load with u along its arc and v across it. A plain `mesh ring` draws as before. og vfx import writes Effekseer rings this way instead of a .glb per ring node."
+    },
+    {
+      "member": "og.load.emitter",
+      "summary": "`subEmitter life \"<emitter id>\" [<inherit velocity>]`: each particle runs the other emitter's own emission (its rate, bursts, duration and looping) from its birth while it lives, born where the particle is at each tick (Unity's Birth sub-emitter, Niagara's particle-spawned emitters). It runs on the CPU path like the other sub-emitters and is deterministic per tick."
     }
   ],
   "fixed": [
@@ -21,6 +25,10 @@
     {
       "member": "og cook",
       "summary": "A model whose every triangle cooks away (every triangle has no area, or the art contract leaves none) is a cook error that names its primitives. It no longer cooks and then fails at load with 'the model has no mesh'."
+    },
+    {
+      "member": "og vfx import",
+      "summary": "An Effekseer node under an ancestor with many instances becomes a parent emitter that draws nothing, whose particles move as that ancestor does and each run the node's emission (`subEmitter life`). Before, the instances were folded into one emitter at one place. The finding stays only for deeper nesting and for meshes and trails."
     }
   ]
 }
