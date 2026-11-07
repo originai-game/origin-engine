@@ -165,6 +165,12 @@ impl Ui {
                         wash_by: 0.05,
                         lift: 0.0,
                         press: 0.99,
+                        // Closed, Up and Down open it (a popup button's keys).
+                        arrows: if open {
+                            0
+                        } else {
+                            crate::ARROW_UP | crate::ARROW_DOWN
+                        },
                         semantics: Some(Semantics {
                             role: Some("combobox".into()),
                             name: Some(name.clone()),
@@ -204,7 +210,7 @@ impl Ui {
                 );
                 trig_path = trig.path;
                 trig_node = trig.node;
-                toggled = trig.r.clicked && !disabled;
+                toggled = (trig.r.clicked || (!open && trig.r.adjust_y != 0)) && !disabled;
             },
         );
         if toggled {
@@ -451,6 +457,14 @@ impl Ui {
                     name: Some(name.clone()),
                     ..Semantics::default()
                 });
+                // Its rows are one group: Home, End, the page keys and
+                // typeahead move among them, and the arrows wrap.
+                if let Some(p) = ui.props_mut() {
+                    p.focus_group = Some(crate::element::FocusGroup {
+                        wrap: true,
+                        memory: false,
+                    });
+                }
             });
             if let Some(i) = picked {
                 selected = i as i32;

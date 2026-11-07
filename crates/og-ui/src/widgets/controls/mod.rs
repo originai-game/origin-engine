@@ -224,6 +224,9 @@ struct Ctl<'a> {
     focusable: bool,
     /// With focusable: Left and Right are its own while it has the focus.
     adjustable: bool,
+    /// With focusable: the arrows it claims while it has the focus
+    /// ([`crate::ARROW_UP`] …), reported as `adjust` and `adjust_y`.
+    arrows: u8,
     /// Its fill at rest (moving towards `wash` as it is hovered and
     /// pressed); `None` for none.
     fill: Option<C>,
@@ -263,6 +266,7 @@ impl Default for Ctl<'_> {
             disabled: false,
             focusable: true,
             adjustable: false,
+            arrows: 0,
             fill: None,
             wash: None,
             wash_by: 0.1,
@@ -513,6 +517,7 @@ impl Ui {
                 interactive: reach,
                 focusable: reach && d.focusable,
                 adjustable: !disabled && d.adjustable,
+                arrows: if disabled { 0 } else { d.arrows },
                 // A transparent rest still has a fill for the states to move.
                 background: Some(rest.srgba()),
                 radius,

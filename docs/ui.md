@@ -468,7 +468,11 @@ players with coloured rings; explicit neighbour overrides, focus groups
 that wrap or not, focus memory per layer and per group, an optional
 pad-driven virtual cursor for dense screens (a 4X map, an inventory grid),
 and several simultaneous cursors for local multiplayer selection screens.
-Multitouch gestures and the accessibility tree (with its ARIA mirror on
+Inside a focus group Home and End go to its ends and PageUp and PageDown
+as far as one view reaches; in a list's group (role listbox, menu, list,
+tree, tablist) letters typed under a second apart pick a member by name;
+Up and Down open a closed dropdown (rune-kit's keyboard model,
+`third_party/rune-kit`). Multitouch gestures and the accessibility tree (with its ARIA mirror on
 the web) follow the same model.
 
 ### 8.4 Player-customised HUD

@@ -272,6 +272,9 @@ impl Ui {
             u64_(&mut b, *k);
             u32_(&mut b, *id);
         }
+        // The list typeahead (version 17).
+        text(&mut b, &s.typeahead.0);
+        u64_(&mut b, s.typeahead.1);
         // The layer stack, its viewmodels and the documents' states.
         text(&mut b, &self.docs_state().to_string());
         b
@@ -330,7 +333,7 @@ impl Ui {
     /// layouts (a game gives its saved layouts back with
     /// [`Ui::set_hud_layout`]), and the state of version 15 with no touch
     /// control holding a finger (a held stick takes its finger again on
-    /// the next frame).
+    /// the next frame), and the state of version 16 with no typeahead.
     /// Refused for another version, or bytes that do not read as theirs.
     pub fn upgrade_state(bytes: &[u8]) -> og_core::Result<Vec<u8>> {
         let bad = |why: String| {
@@ -353,7 +356,7 @@ impl Ui {
                 };
                 Ok(ui.save_state())
             }
-            11..=15 => {
+            11..=16 => {
                 let s = r.state(version).ok_or_else(|| {
                     bad(format!("truncated or malformed version {version} state"))
                 })?;
@@ -378,7 +381,7 @@ impl Ui {
                 Ok(ui.save_state())
             }
             v => Err(bad(format!(
-                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 15"
+                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 16"
             ))),
         }
     }
@@ -784,6 +787,10 @@ impl Reader<'_> {
             let k = self.u64()?;
             s.touch_owners.insert(k, self.u32()?);
         }
+        if version < 17 {
+            return Some(s);
+        }
+        s.typeahead = (self.string()?, self.u64()?);
         Some(s)
     }
 }
@@ -798,6 +805,9 @@ mod tests {
 
     /// The version 16 block of a state with no touch control holding a finger.
     const V16: usize = 4;
+
+    /// The version 17 block of a state with no typeahead.
+    const V17: usize = 4 + 8;
 
     /// `b` without the `tail` bytes just before its layer stack.
     fn cut_before_docs(b: &[u8], tail: usize) -> Vec<u8> {
@@ -820,7 +830,7 @@ mod tests {
     /// virtual cursor or HUD layouts without the version 14 and 15 blocks
     /// they take before the layer stack.
     fn without_v14_tail(b: &[u8]) -> Vec<u8> {
-        cut_before_docs(b, 3 * 4 + 4 + 8 + 8 + 4 + 1 + 8 + 8 + 8 + V15 + V16)
+        cut_before_docs(b, 3 * 4 + 4 + 8 + 8 + 4 + 1 + 8 + 8 + 8 + V15 + V16 + V17)
     }
 
     /// A version 11 state block (one focus return) restores once upgraded:
@@ -928,7 +938,7 @@ mod tests {
         ui.state.focus = 5;
         ui.state.tick = 31;
         let saved = ui.save_state();
-        let mut v14 = cut_before_docs(&saved, V15 + V16);
+        let mut v14 = cut_before_docs(&saved, V15 + V16 + V17);
         v14[..4].copy_from_slice(&14u32.to_le_bytes());
         let mut fresh = Ui::default();
         assert!(
@@ -950,7 +960,7 @@ mod tests {
         let mut ui = Ui::default();
         ui.state.tick = 12;
         let saved = ui.save_state();
-        let mut v15 = cut_before_docs(&saved, V16);
+        let mut v15 = cut_before_docs(&saved, V16 + V17);
         v15[..4].copy_from_slice(&15u32.to_le_bytes());
         assert!(Ui::default().restore_state(&v15).is_err());
         assert_eq!(Ui::upgrade_state(&v15).expect("version 15 upgrades"), saved);
@@ -958,6 +968,14 @@ mod tests {
         let mut fresh = Ui::default();
         fresh.restore_state(&ui.save_state()).expect("restores");
         assert_eq!(fresh.state.touch_owners.get(&0xabcd), Some(&3));
+        // Version 16 (no typeahead) upgrades too; a typeahead in progress round-trips.
+        let mut v16 = cut_before_docs(&saved, V17);
+        v16[..4].copy_from_slice(&16u32.to_le_bytes());
+        assert_eq!(Ui::upgrade_state(&v16).expect("version 16 upgrades"), saved);
+        ui.state.typeahead = ("ré".into(), 41);
+        let mut fresh = Ui::default();
+        fresh.restore_state(&ui.save_state()).expect("restores");
+        assert_eq!(fresh.state.typeahead, ("ré".into(), 41));
     }
 
     /// The virtual cursor and every player's HUD layout, the edit mode, a

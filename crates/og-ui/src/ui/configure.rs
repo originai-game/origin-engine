@@ -568,6 +568,7 @@ impl Ui {
         self.recognize(&input, hot, grabbed.is_some());
         let intents = self.intents(&input);
         self.apply_nav(&intents);
+        self.apply_list_keys(&input);
         self.apply_a11y(&input.a11y);
         #[cfg(not(target_arch = "wasm32"))]
         self.apply_native_accessibility();

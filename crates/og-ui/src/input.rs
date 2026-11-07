@@ -67,10 +67,13 @@ pub enum UiKey {
     NumpadAdd,
     NumpadSubtract,
     Numpad0,
+    /// In a focus group: as far on as one view reaches.
+    PageUp,
+    PageDown,
 }
 
 impl UiKey {
-    pub const ALL: [UiKey; 35] = [
+    pub const ALL: [UiKey; 37] = [
         UiKey::Backspace,
         UiKey::Delete,
         UiKey::Left,
@@ -106,6 +109,8 @@ impl UiKey {
         UiKey::NumpadAdd,
         UiKey::NumpadSubtract,
         UiKey::Numpad0,
+        UiKey::PageUp,
+        UiKey::PageDown,
     ];
 
     /// Its `KeyboardEvent.code`.
@@ -146,6 +151,8 @@ impl UiKey {
             UiKey::NumpadAdd => "NumpadAdd",
             UiKey::NumpadSubtract => "NumpadSubtract",
             UiKey::Numpad0 => "Numpad0",
+            UiKey::PageUp => "PageUp",
+            UiKey::PageDown => "PageDown",
         }
     }
 }

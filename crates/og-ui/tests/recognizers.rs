@@ -206,6 +206,94 @@ fn a_group_stops_at_its_edge_leaves_it_or_wraps_inside_and_remembers() {
     assert_eq!(f.go(UiKey::Up), "T0");
 }
 
+#[test]
+fn a_list_takes_home_end_the_page_keys_and_typed_letters() {
+    // rune-kit's listbox keys on a dropdown: Down opens it on its value,
+    // Home and End go to the ends, PageDown as far as a view reaches,
+    // letters pick by name and the same letter again cycles.
+    let names = ["Apple", "Avocado", "Banana", "Cherry", "Date"];
+    let mut ui = Ui::new(UiDesc::default());
+    let mut sel = 2;
+    let mut open = false;
+    let mut step = |ui: &mut Ui, input: InputFrame| {
+        ui.begin(input, vp());
+        let r = ui.dropdown(
+            "Fruit",
+            &DropdownDesc {
+                options: names
+                    .iter()
+                    .map(|n| DropdownOption {
+                        label: (*n).into(),
+                        ..DropdownOption::default()
+                    })
+                    .collect(),
+                selected: sel,
+                ..DropdownDesc::default()
+            },
+        );
+        ui.end();
+        sel = r.selected;
+        open = r.open;
+        (open, sel)
+    };
+    // A key, then a still tick: whether it is open, the focused row's path
+    // and the choice.
+    let mut go = |ui: &mut Ui, input: InputFrame| {
+        step(ui, input);
+        let (o, s) = step(ui, InputFrame::default());
+        (o, ui.focus_path(0).to_owned(), s)
+    };
+    let text = |t: &str| InputFrame {
+        text: t.into(),
+        ..InputFrame::default()
+    };
+    go(&mut ui, InputFrame::default());
+    let (o, trig, _) = go(&mut ui, keys(&[UiKey::Tab]));
+    assert!(!o);
+    let (o, on, _) = go(&mut ui, keys(&[UiKey::Down]));
+    assert!(o, "Down opens a closed dropdown");
+    assert_ne!(on, trig, "the focus is in the list");
+    let row = |ui: &Ui| ui.focus_path(0).to_owned();
+    let at_value = row(&ui);
+    go(&mut ui, keys(&[UiKey::End]));
+    let last = row(&ui);
+    assert_ne!(last, at_value, "End leaves the chosen row");
+    go(&mut ui, keys(&[UiKey::Home]));
+    let first = row(&ui);
+    assert_ne!(first, last);
+    go(&mut ui, keys(&[UiKey::PageDown]));
+    assert_eq!(row(&ui), last, "the whole list is in one view");
+    go(&mut ui, keys(&[UiKey::PageUp]));
+    assert_eq!(row(&ui), first);
+    // Letters: "a" from Apple cycles to Avocado, again back to Apple; "c"
+    // after a pause goes to Cherry; Enter chooses it.
+    go(&mut ui, text("a"));
+    let avocado = row(&ui);
+    assert_ne!(avocado, first, "the same letter cycles");
+    go(&mut ui, text("a"));
+    assert_eq!(row(&ui), first, "and wraps round");
+    go(&mut ui, text("c"));
+    assert_eq!(row(&ui), first, "\"aac\" names nothing: it stays");
+    for _ in 0..70 {
+        go(&mut ui, InputFrame::default());
+    }
+    go(&mut ui, text("c"));
+    let (o, _, s) = go(&mut ui, keys(&[UiKey::Enter]));
+    assert!(
+        !o && s == 3,
+        "a second's pause starts a new word: Cherry ({o} {s})"
+    );
+
+    // A group that is not a list keeps its letters for the game.
+    let mut f = Focus::new(Some(FocusGroup::default()), NavLinks::default());
+    assert_eq!(f.go(UiKey::Tab), "T0");
+    f.step(text("t"));
+    f.step(InputFrame::default());
+    assert_eq!(f.focus.as_deref(), Some("T0"), "a toolbar takes no letters");
+    assert_eq!(f.go(UiKey::End), "T2", "but takes End");
+    assert_eq!(f.go(UiKey::Home), "T0");
+}
+
 // ── the cursor ─────────────────────────────────────────────────────────
 
 #[test]

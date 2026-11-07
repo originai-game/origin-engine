@@ -1,0 +1,9 @@
+{
+  "simulation": "changed",
+  "added": [
+    {
+      "member": "og-ui list keys (UiKey.PageUp, UiKey.PageDown)",
+      "summary": "rune-kit's keyboard model (MIT, third_party/rune-kit): inside a focus group Home and End go to its first and last member and PageUp and PageDown as far as one view reaches; in a group whose role is a list's (listbox, menu, list, tree, tablist) letters typed under a second apart pick the first member whose name starts with them, and the same letter again cycles. A dropdown's options are one wrapping group, and Up or Down on its closed trigger opens it. The UI state is version 17 (the typed letters); og.ui saves migrate 16 to 17."
+    }
+  ]
+}

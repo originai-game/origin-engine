@@ -101,6 +101,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(ui_upgrade),
     },
     Migration {
+        target: Target::Block,
+        name: "og.ui",
+        from: 16,
+        to: 17,
+        note: "og-ui foundation: a list's typeahead (the letters typed to jump and when)",
+        run: Some(ui_upgrade),
+    },
+    Migration {
         target: Target::Record,
         name: "og.Gamepad",
         from: 1,

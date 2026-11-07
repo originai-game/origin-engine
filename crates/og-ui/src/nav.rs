@@ -174,6 +174,10 @@ fn toward(from: &Rect, cands: &[(u64, Rect)], dir: Nav) -> Option<u64> {
     best.map(|b| b.1)
 }
 
+/// The roles of a group in which typed letters pick a member (rune-kit's
+/// type-select roles).
+const TYPE_SELECT_ROLES: [&str; 5] = ["menu", "listbox", "list", "tree", "tablist"];
+
 /// A move's slot in [`crate::NavLinks`] and the UI state's links.
 fn link_slot(nav: Nav) -> Option<usize> {
     match nav {
@@ -447,6 +451,137 @@ impl Ui {
                 A11yAct::Increment | A11yAct::Decrement => {}
             }
             self.scroll_into_view(key);
+        }
+    }
+
+    /// A list's keys inside the focus group the focus is in (a dropdown's
+    /// options, a toolbar), ported from rune-kit's
+    /// focus runtime (MIT, third_party/rune-kit): Home and End go to its
+    /// first and last member; PageUp and PageDown to the farthest member
+    /// within a view of the focused one (its scroll's, else the screen's),
+    /// one at least; letters typed within a second of each other go to the
+    /// first member whose name starts with them, and the same letter again
+    /// to the next one that does, in a group whose role is a list's
+    /// ([`TYPE_SELECT_ROLES`]). A move clears the letters. Adjustable
+    /// members and text fields keep these keys.
+    pub(crate) fn apply_list_keys(&mut self, input: &InputFrame) {
+        let Some(from) = self.hit(self.state.focus).copied() else {
+            return;
+        };
+        if from.group == 0 || from.has(HIT_TEXT | HIT_ADJUST) {
+            return;
+        }
+        if self.state.nav_off && self.state.scope == 0 {
+            return;
+        }
+        let cands: Vec<Hit> = self
+            .focusables()
+            .into_iter()
+            .filter(|h| h.group == from.group)
+            .collect();
+        let Some(i) = cands.iter().position(|h| h.key == from.key) else {
+            return;
+        };
+        let last = cands.len() - 1;
+        let mut to = None;
+        for k in &input.keys {
+            let at = to.unwrap_or(i);
+            to = match k {
+                UiKey::Home => Some(0),
+                UiKey::End => Some(last),
+                UiKey::PageUp | UiKey::PageDown => {
+                    let view = self
+                        .hit(from.scroller)
+                        .map_or(self.viewport.height, |s| s.rect.height);
+                    let down = *k == UiKey::PageDown;
+                    let a = cands[at].full;
+                    let reach = |h: &Hit| {
+                        if down {
+                            h.full.bottom() - a.y <= view
+                        } else {
+                            a.bottom() - h.full.y <= view
+                        }
+                    };
+                    let mut j = at;
+                    while let Some(next) = if down {
+                        (j < last).then(|| j + 1)
+                    } else {
+                        j.checked_sub(1)
+                    } && reach(&cands[next])
+                    {
+                        j = next;
+                    }
+                    if j == at {
+                        j = if down {
+                            (at + 1).min(last)
+                        } else {
+                            at.saturating_sub(1)
+                        };
+                    }
+                    Some(j)
+                }
+                UiKey::Up | UiKey::Down | UiKey::Left | UiKey::Right => {
+                    self.state.typeahead.0.clear();
+                    continue;
+                }
+                _ => continue,
+            };
+            self.state.typeahead.0.clear();
+        }
+        let typed: String = input
+            .text
+            .chars()
+            .filter(|c| c.is_alphanumeric())
+            .flat_map(char::to_lowercase)
+            .collect();
+        // Letters pick only in a list's kind of group, never a toolbar's or a
+        // game's, where they are its own keys.
+        let listy = self.frame.elements.iter().any(|e| {
+            TYPE_SELECT_ROLES.contains(&e.role.as_str())
+                && crate::id::key_of_path(&e.path) == from.group
+        });
+        if listy && !typed.is_empty() && !input.ctrl && !input.meta {
+            let tick = self.state.tick;
+            let (buffer, at) = &mut self.state.typeahead;
+            if tick.saturating_sub(*at) > u64::from(self.ticks_per_second) {
+                buffer.clear();
+            }
+            buffer.push_str(&typed);
+            *at = tick;
+            let first = buffer.chars().next().unwrap_or_default();
+            let cycle = buffer.chars().all(|c| c == first);
+            let prefix = if cycle {
+                first.to_string()
+            } else {
+                buffer.clone()
+            };
+            let names: std::collections::HashMap<u64, String> = self
+                .frame
+                .elements
+                .iter()
+                .filter(|e| !e.name.is_empty() || !e.text.is_empty())
+                .map(|e| {
+                    let name = if e.name.is_empty() { &e.text } else { &e.name };
+                    (crate::id::key_of_path(&e.path), name.to_lowercase())
+                })
+                .collect();
+            let n = cands.len();
+            to = (0..n)
+                .map(|k| if cycle { (i + 1 + k) % n } else { k })
+                .find(|&j| {
+                    names
+                        .get(&cands[j].key)
+                        .is_some_and(|s| s.starts_with(&prefix))
+                })
+                .or(to);
+        }
+        if let Some(j) = to
+            && cands[j].key != from.key
+        {
+            self.state.focus = cands[j].key;
+            self.state.focus_visible = true;
+            self.sound(crate::style_file::UiSound::Hover);
+            self.scroll_into_view(self.state.focus);
         }
     }
 

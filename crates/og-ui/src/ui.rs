@@ -309,6 +309,9 @@ pub(crate) struct State {
     /// key: the finger that went down on it, kept while it is down, so
     /// another landing on the control never takes it over.
     pub touch_owners: IdMap<u64, u32>,
+    /// What was typed to jump in the focused list (lowercase) and the tick
+    /// of its last letter: it starts again after a second's pause.
+    pub typeahead: (String, u64),
     /// Intents queued by `Ui::navigate` for the next frame, each with
     /// whether the focus was on nothing when it was queued (then it only
     /// puts the focus on the first control: `Ui::navigate`).
@@ -523,7 +526,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 16;
+const STATE_VERSION: u32 = 17;
 
 /// `theme` with a viewport's preferences: the page's reduced motion turns
 /// its flag on, its contrast preference takes the high-contrast variant,
