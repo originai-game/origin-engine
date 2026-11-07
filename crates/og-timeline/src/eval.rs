@@ -352,7 +352,7 @@ mod tests {
         };
         let x = |t| transform_at(&tr, t).position.unwrap().x;
         assert_eq!(x(0.0), 0.0);
-        // Half way from 1 to 3 (the key at 2 has no position), quadIn: 0.25.
+        // Half way from 1 to 3 (the key at 2 has no position), power1.in: 0.25.
         assert!((x(2.0) - 2.5).abs() < 1e-6);
         assert_eq!(x(9.0), 10.0);
         assert!(transform_at(&tr, 2.0).scale.is_none());
@@ -455,7 +455,7 @@ mod tests {
                 ),
             ],
         };
-        // Halfway from 0 to 4 s, quadIn: 8 × 0.25.
+        // Halfway from 0 to 4 s, power1.in: 8 × 0.25.
         assert_eq!(field_at(&t, "intensity", 2.0, Mix::Lerp), Some(n(&[2.0])));
         assert_eq!(field_at(&t, "intensity", 2.0, Mix::Step), Some(n(&[0.0])));
         assert_eq!(field_at(&t, "intensity", 9.0, Mix::Lerp), Some(n(&[8.0])));

@@ -1193,7 +1193,7 @@ impl Schema {
                     return err(format!("enum field '{at}' declares no variants"));
                 }
                 for (k, v) in f.variants.iter().enumerate() {
-                    if !is_identifier(v, false) {
+                    if !is_identifier(v, true) {
                         return err(format!(
                             "enum field '{at}' has variant '{v}', which is not an identifier"
                         ));
@@ -1855,6 +1855,11 @@ mod reflect_contracts {
             assert!(err.reason().contains(needle), "{}", err.reason());
         };
         base().validate().unwrap();
+        let mut named = base();
+        named.fields[0].variants = vec!["none".into(), "power1.out".into()];
+        named.validate().unwrap();
+        named.fields[0].variants[1] = "power1..out".into();
+        refuse(named, "not an identifier");
         let mut s = base();
         s.fields[0].variants.clear();
         refuse(s, "declares no variants");

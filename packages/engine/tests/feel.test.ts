@@ -113,7 +113,7 @@ test("tweens animate a field, report once, and squash recovers to rest", () => {
     systems: [Watch],
     start: (w: World) => {
       const e = must(w.spawn({ name: "mover", position: { x: 0, y: 1, z: 0 } }));
-      must(og.tween.to(w, { entity: e, field: "position.y", to: [4], duration: 0.5, ease: "linear", tag: 9 }));
+      must(og.tween.to(w, { entity: e, field: "position.y", to: [4], duration: 0.5, ease: "none", tag: 9 }));
     },
   }));
   engine.advance(15);
@@ -139,6 +139,36 @@ test("tweens animate a field, report once, and squash recovers to rest", () => {
   if (!bad.ok) expect(bad.reason).toContain("no field 'nope'");
 });
 
+test("from captures before delay; fromTo and repeat keep explicit spans through restore", () => {
+  const engine = start(og.game({}));
+  const w = engine.world;
+  const e = must(w.spawn({ position: { x: 13, y: 0, z: 0 } }));
+  const x = () => must(w.get(e, og.Transform)).position.x;
+  const h = must(og.tween.from(w, { entity: e, field: "position.x", from: [-3], delay: 0.2, duration: 0.4, ease: "none" }));
+  expect(x()).toBe(13); // The call captures, but does not synchronously write.
+  must(w.set(e, og.Transform, { position: { x: 99, y: 0, z: 0 } }));
+  engine.advance(6);
+  expect(x()).toBe(-3);
+  const snap = engine.probe.snapshot() as { id: string };
+  engine.advance(18);
+  expect(x()).toBeCloseTo(5, 5); // Halfway to 13, not 99 or the delayed -3.
+  engine.advance(12);
+  expect(x()).toBe(13);
+  expect(og.tween.active(w, h)).toBe(false);
+  expect(engine.probe.restore(snap.id)).toBe(true);
+  engine.advance(30);
+  expect(x()).toBe(13);
+  expect(og.tween.fromTo(w, { entity: e, field: "position.x", to: [9] }).ok).toBe(false);
+  const repeated = must(og.tween.fromTo(w, { entity: e, field: "position.x", from: [2], to: [10], duration: 0.2, repeat: 1, yoyo: true, ease: "none" }));
+  engine.advance(12);
+  expect(x()).toBe(10);
+  expect(og.tween.active(w, repeated)).toBe(true);
+  engine.advance(12);
+  expect(x()).toBe(2);
+  expect(og.tween.active(w, repeated)).toBe(false);
+  engine.destroy();
+});
+
 test("a hit stop holds physics and scaled tweens while systems keep ticking, and a restore resumes it", () => {
   const game = og.game({
     resources: [Log],
@@ -148,7 +178,7 @@ test("a hit stop holds physics and scaled tweens while systems keep ticking, and
       w.insert(box, og.RigidBody);
       w.insert(box, og.Collider, { shape: SHAPE_BOX });
       const mover = must(w.spawn({ name: "mover", position: { x: 0, y: 0, z: 0 } }));
-      must(og.tween.to(w, { entity: mover, field: "position.y", to: [10], duration: 2, ease: "linear" }));
+      must(og.tween.to(w, { entity: mover, field: "position.y", to: [10], duration: 2, ease: "none" }));
     },
   });
   const engine = start(game);

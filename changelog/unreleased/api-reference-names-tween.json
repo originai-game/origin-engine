@@ -1,0 +1,13 @@
+{
+  "simulation": "changed",
+  "breaking": [
+    {"member":"Ease","change":"Uses GSAP names: linear→none, quad→power1, cubic→power2, quart→power3, and dotted in/out/inOut suffixes for every family. No old aliases remain. Expo and back.inOut now use GSAP 3.15.0 maths rather than the old Penner formulas.","fix":"Use GSAP names in tween, camera and cutscene keys; expect changed intermediate samples for expo and back.inOut."},
+    {"member":"TweenDesc.repeat","change":"Renamed loops to repeat; still counts extra cycles, with -1 forever.","fix":"Replace loops with repeat in tween descriptions."},
+    {"member":"TweenGroupDesc.repeat","change":"Renamed loops to repeat for sequence and parallel groups.","fix":"Replace loops with repeat in group descriptions."}
+  ],
+  "added": [
+    {"member":"TweenFromDesc","summary":"Explicit starting values and tween timing; destination is captured at the call."},
+    {"member":"og.tween.from","summary":"Captures the current destination before the delay; writes the explicit starting value at the first tween tick, not synchronously."},
+    {"member":"og.tween.fromTo","summary":"Starts a tween with explicit from/to endpoints, rejecting a missing from."}
+  ]
+}

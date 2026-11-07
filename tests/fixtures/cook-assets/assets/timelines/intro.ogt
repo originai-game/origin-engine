@@ -22,7 +22,7 @@ track camera {
     at 1
     target 1.5 1 0
     fov 42
-    ease cubicInOut
+    ease power2.inOut
   }
 }
 track transform "trickster" {
@@ -31,7 +31,7 @@ track transform "trickster" {
   }
   key 5 {
     position 0.5 0 1.5
-    ease cubicInOut
+    ease power2.inOut
   }
 }
 track animation "trickster" {

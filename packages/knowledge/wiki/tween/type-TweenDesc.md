@@ -20,8 +20,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `relative` | `boolean` | `false` | — | — | — | `to` is added to the start value. |
 | `duration` | `number` | `0.3` | ≥ 0 | `s` | — | Seconds from start to end (one cycle). |
 | `delay` | `number` | `0` | ≥ 0 | `s` | — | Seconds before it starts. |
-| `ease` | `Ease` | `"quadOut"` | — | — | — | The curve. |
-| `loops` | `number` | `0` | ≥ -1 | — | — | Extra cycles: 0 plays once, n repeats n more times, -1 forever. |
+| `ease` | `Ease` | `"power1.out"` | — | — | — | The curve. |
+| `repeat` | `number` | `0` | ≥ -1 | — | — | Extra cycles: 0 plays once, n repeats n more times, -1 forever. |
 | `yoyo` | `boolean` | `false` | — | — | — | Every other cycle plays backwards (pulses, bobbing). |
 | `unscaled` | `boolean` | `false` | — | — | — | Advance by real ticks, ignoring Time.scale and hit stop (UI motion). |
 | `tag` | `number` | `0` | — | — | — | A number of yours, carried by og.TweenCompleted. |
@@ -46,7 +46,7 @@ struct TweenDesc {
     unit s
   }
   field ease Ease "The curve."
-  field loops i32 "Extra cycles: 0 plays once, n repeats n more times, -1 forever." {
+  field repeat i32 "Extra cycles: 0 plays once, n repeats n more times, -1 forever." {
     min -1
   }
   field yoyo bool "Every other cycle plays backwards (pulses, bobbing)."

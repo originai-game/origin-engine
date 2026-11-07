@@ -450,7 +450,7 @@ track camera {
   }
   key 6 {
     at 1
-    ease cubicInOut
+    ease power2.inOut
   }
 }
 track transform "crate" {
@@ -587,7 +587,7 @@ track camera {
   key 2 {
     roll 15
     focus 4
-    ease quadInOut
+    ease power1.inOut
   }
 }
 track property "lamp" {
@@ -597,7 +597,7 @@ track property "lamp" {
   }
   key 3 {
     value 9
-    ease cubicOut
+    ease power2.out
   }
 }
 track light "lamp" {

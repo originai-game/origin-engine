@@ -117,3 +117,28 @@ The thresholds actions are held to:
   platformer; a jump without them feels broken at any polish.
 - Ease every tween; linear motion reads as mechanical except for
   constant-speed things (a conveyor, a projectile).
+
+<a id="guide-animation-5"></a>
+### `animation §5` GSAP names, engine targets and capture
+
+Use `og.tween.to`, `og.tween.from` and `og.tween.fromTo` with an entity,
+component and numeric field, not a live JavaScript object or DOM selector.
+`repeat` counts extra cycles: 0 plays once, 1 twice, -1 forever. `yoyo`
+reverses alternate cycles. Eases use GSAP names: `none`, `power1.out`,
+`power2.inOut`, `back.out`, `expo.in`, `elastic.out`, `bounce.out`.
+The named curves follow GSAP 3.15.0 maths in deterministic f32 arithmetic;
+there are no custom JS ease functions or callbacks in saved world state.
+
+Capture is explicit. `to` without `from` reads the starting field after
+its delay. `from` captures its destination at the call, before the delay;
+`fromTo` requires both endpoints. An explicit start is written on the
+first `og.tween` tick and held through the delay, not synchronously at
+the call as GSAP's immediateRender can do. A system calling `from` must
+declare read access to the target component. Captured spans survive
+snapshot/restore and repeats; a later write cannot change the destination.
+
+The cutscene timeline stays a multi-track asset, not a GSAP root timeline:
+camera, captions, audio, animation, events and nested tracks retain their
+ownership and seek rules. It shares the engine's easing curves, but keeps
+absolute-time evaluation; a segment uses the later key's ease and events
+are not retroactive on seek unless authored that way.

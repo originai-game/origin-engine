@@ -62,14 +62,14 @@ const game = og.game({
     const a = must(w.spawn({ name: "a", position: { x: 0, y: 0, z: 0 } }));
     w.insert(a, og.Sprite, { width: 1, height: 1 });
     must(og.tween.sequence(w, [
-      { entity: a, field: "position.y", to: [3], duration: 0.4, ease: "elasticOut", tag: 1 },
-      { entity: a, field: "position.x", to: [2], relative: true, duration: 0.3, ease: "backInOut", delay: 0.1, tag: 2 },
-    ], { loops: 1, tag: 3 }));
-    must(og.tween.to(w, { entity: a, component: og.Sprite, field: "opacity", to: [0.2], duration: 0.25, ease: "bounceOut", loops: -1, yoyo: true }));
+      { entity: a, field: "position.y", to: [3], duration: 0.4, ease: "elastic.out", tag: 1 },
+      { entity: a, field: "position.x", to: [2], relative: true, duration: 0.3, ease: "back.inOut", delay: 0.1, tag: 2 },
+    ], { repeat: 1, tag: 3 }));
+    must(og.tween.to(w, { entity: a, component: og.Sprite, field: "opacity", to: [0.2], duration: 0.25, ease: "bounce.out", repeat: -1, yoyo: true }));
     const b = must(w.spawn({ name: "b", position: { x: 1, y: 1, z: 0 } }));
     must(og.tween.parallel(w, [
-      { entity: b, field: "scale", to: [2, 0.5, 1], duration: 0.5, ease: "quartInOut" },
-      { entity: b, field: "position", to: [-1, 2, 0], duration: 0.7, ease: "expoOut" },
+      { entity: b, field: "scale", to: [2, 0.5, 1], duration: 0.5, ease: "power3.inOut" },
+      { entity: b, field: "position", to: [-1, 2, 0], duration: 0.7, ease: "expo.out" },
     ], { tag: 4 }));
   },
 });
@@ -106,4 +106,37 @@ must(og.time.setScale(w(), 0.5));
 must(engine.advance(40));
 must(og.time.setScale(w(), 1));
 must(engine.advance(60));
-console.log(JSON.stringify({ host: which, hitStop, checkpoints, tally: summary, end: end.hash, replayed: engine.hash() }));
+const replayed = engine.hash();
+engine.destroy();
+
+// The named curves have mathematical goldens as well as host-equal hashes.
+const curves = ["expo.in", "expo.out", "expo.inOut", "back.inOut"] as const;
+const goldenEngine = must(createEngine(og.game({}) as unknown as GameToken));
+const gw = goldenEngine.world;
+const targets = curves.map((ease) => {
+  const entity = must(gw.spawn({ position: { x: 0, y: 0, z: 0 } }));
+  must(og.tween.to(gw, { entity, field: "position.x", to: [1], duration: 1, ease }));
+  return entity;
+});
+const curveSamples: number[][] = [];
+let at = 0;
+for (const tick of [0, 1, 10, 17, 43, 59, 60]) {
+  if (tick > at) must(goldenEngine.advance(tick - at));
+  curveSamples.push(targets.map((entity) => must(gw.get(entity, og.Transform)).position.x));
+  at = tick;
+}
+for (const [i, entity] of targets.entries()) {
+  must(og.tween.fromTo(gw, { entity, field: "position.x", from: [0], to: [1], duration: 1, ease: curves[i] }));
+}
+// Probe either side close to the endpoints, outside the tween's 1µs
+// completion tolerance. Old Penner expo has a discontinuity here.
+must(og.time.setScale(gw, 0.0006));
+must(goldenEngine.advance(1));
+curveSamples.push(targets.map((entity) => must(gw.get(entity, og.Transform)).position.x));
+must(og.time.setScale(gw, 1));
+must(goldenEngine.advance(59));
+must(og.time.setScale(gw, 0.9988));
+must(goldenEngine.advance(1));
+curveSamples.push(targets.map((entity) => must(gw.get(entity, og.Transform)).position.x));
+goldenEngine.destroy();
+console.log(JSON.stringify({ host: which, hitStop, checkpoints, tally: summary, end: end.hash, replayed, curveSamples }));

@@ -415,7 +415,7 @@ module camera {
       unit s
     }
     field blendEase Ease "The curve of the blend to it: position lerped, rotation slerped, fov, roll and focus lerped by the curve's value at the blend's time." {
-      default cubicInOut
+      default power2.inOut
     }
     field collide bool "Keep a sphere of `radius` clear of colliders between the look point and where it sits: it pulls in towards the look point at once and eases back out over damping. Against the colliders as the tick started (og.physics' query view): it never moves a body."
     field radius f32 "The sphere collision keeps clear." {
@@ -461,7 +461,7 @@ module camera {
       tunable true
     }
     field blendEase Ease "The curve of those blends." {
-      default cubicInOut
+      default power2.inOut
     }
     field solo Entity "A shot that outranks every priority while it is set (a cutscene or a dialogue close-up): an entity with an og.VirtualCamera, live even when it is not enabled; 0 releases it and the brain blends back to the highest priority. Anything else is ignored. og.story sets it for a dialogue line's `shot` and a timeline's shot track for its keys."
     field soloBlend f32 "Seconds of the blend to the solo shot when it goes live (0 cuts); below 0 the solo camera's own blendTime and blendEase (then the brain's). A timeline's shot key sets it with solo; og.story sets it to -1." {
@@ -469,7 +469,7 @@ module camera {
       unit s
     }
     field soloEase Ease "The curve of that blend when soloBlend is 0 or more." {
-      default cubicInOut
+      default power2.inOut
     }
     field live Entity "The live camera (0: none)." {
       readonly true

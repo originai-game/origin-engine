@@ -147,7 +147,8 @@ pub use feel::{
     og_tilemap_fill, og_tilemap_get_tile, og_tilemap_neighbours, og_tilemap_resize,
     og_tilemap_set_tile, og_time_group_dt, og_time_hit_stop, og_time_set_group_scale,
     og_time_set_scale, og_tween_active, og_tween_cancel, og_tween_cancel_entity, og_tween_flash,
-    og_tween_parallel, og_tween_sequence, og_tween_squash, og_tween_to,
+    og_tween_from, og_tween_from_to, og_tween_parallel, og_tween_sequence, og_tween_squash,
+    og_tween_to,
 };
 pub use geometry::{
     og_debug_arrow, og_debug_axes, og_debug_box, og_debug_clear, og_debug_enabled, og_debug_line,

@@ -89,7 +89,7 @@ fn mover(engine: u32, group: Option<u32>, unscaled: bool) -> f64 {
         Some(
             json!({
                 "entity": e, "field": "position.x", "from": [0.0], "to": [60.0],
-                "duration": 1.0, "ease": "linear", "unscaled": unscaled,
+                "duration": 1.0, "ease": "none", "unscaled": unscaled,
             })
             .to_string(),
         ),

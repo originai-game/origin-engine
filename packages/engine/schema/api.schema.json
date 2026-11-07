@@ -8308,7 +8308,7 @@
     },
     {
       "name": "tween",
-      "doc": "Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, loops and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled.\nRunning tweens are world state (the og.tween state block): snapshots, restore and the world hash cover them. og.TweenCompleted reports a tween or group that ends on its own; a cancelled one, or one whose entity or component went away, ends silently.\nFeel presets are tweens too: og.tween.squash (squash and stretch that recovers) and og.tween.flash (a hit flash that fades).",
+      "doc": "Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, repeat and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled.\nRunning tweens are world state (the og.tween state block): snapshots, restore and the world hash cover them. og.TweenCompleted reports a tween or group that ends on its own; a cancelled one, or one whose entity or component went away, ends silently.\nFeel presets are tweens too: og.tween.squash (squash and stretch that recovers) and og.tween.flash (a hit flash that fades).",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -8317,6 +8317,7 @@
         "Ease",
         "Ease",
         "TweenDesc",
+        "TweenFromDesc",
         "TweenGroupDesc",
         "TweenCompleted",
         "SquashDesc",
@@ -8346,8 +8347,50 @@
           "publish": true
         },
         {
+          "name": "from",
+          "doc": "Animate from desc.from to the field's value captured at this call, before the delay. The first og.tween tick writes from and holds it through the delay. Unlike GSAP immediateRender, the call itself never writes the field. A system must declare read access to the target component for capture. Snapshot/restore retains the captured endpoint; later writes during the delay cannot change it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "TweenFromDesc",
+              "optional": true,
+              "doc": "The start value and timing."
+            }
+          ],
+          "returns": "Result<Tween>",
+          "returnsDoc": "Refused for an unreadable target or invalid values.",
+          "publish": true
+        },
+        {
+          "name": "fromTo",
+          "doc": "Animate from explicit desc.from to desc.to; both are required. The first og.tween tick writes from, including during the delay. No endpoint is captured from the live field.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "TweenDesc",
+              "optional": true,
+              "doc": "The explicit start, end and timing."
+            }
+          ],
+          "returns": "Result<Tween>",
+          "returnsDoc": "Refused when from is missing or the target or values are invalid.",
+          "publish": true
+        },
+        {
           "name": "sequence",
-          "doc": "Start tweens one after another (each with its own delay, duration and loops); the time one leaves over goes to the next.",
+          "doc": "Start tweens one after another (each with its own delay, duration and repeat); the time one leaves over goes to the next.",
           "params": [
             {
               "name": "world",
@@ -8365,7 +8408,7 @@
               "name": "desc",
               "type": "TweenGroupDesc",
               "optional": true,
-              "doc": "Loops, scaling and the tag."
+              "doc": "Repeat, scaling and the tag."
             }
           ],
           "returns": "Result<Tween>",
@@ -8391,7 +8434,7 @@
               "name": "desc",
               "type": "TweenGroupDesc",
               "optional": true,
-              "doc": "Loops, scaling and the tag."
+              "doc": "Repeat, scaling and the tag."
             }
           ],
           "returns": "Result<Tween>",
@@ -24658,7 +24701,7 @@
         "blendEase": {
           "$ref": "#/$defs/Ease",
           "description": "The curve of the blend to it: position lerped, rotation slerped, fov, roll and focus lerped by the curve's value at the blend's time.",
-          "default": "cubicInOut"
+          "default": "power2.inOut"
         },
         "collide": {
           "type": "boolean",
@@ -24745,7 +24788,7 @@
         "blendEase": {
           "$ref": "#/$defs/Ease",
           "description": "The curve of those blends.",
-          "default": "cubicInOut"
+          "default": "power2.inOut"
         },
         "solo": {
           "$ref": "#/$defs/Entity",
@@ -24761,7 +24804,7 @@
         "soloEase": {
           "$ref": "#/$defs/Ease",
           "description": "The curve of that blend when soloBlend is 0 or more.",
-          "default": "cubicInOut"
+          "default": "power2.inOut"
         },
         "live": {
           "$ref": "#/$defs/Entity",
@@ -24791,7 +24834,7 @@
         "blendCurve": {
           "$ref": "#/$defs/Ease",
           "description": "The current blend's curve.",
-          "default": "quadOut",
+          "default": "power1.out",
           "readOnly": true
         },
         "fromPosition": {
@@ -40160,52 +40203,52 @@
       "description": "An easing curve from the start (0) to the end (1). In starts slow, out ends slow, inOut both. back overshoots, elastic rings, bounce bounces at the end.",
       "type": "string",
       "enum": [
-        "quadOut",
-        "linear",
-        "quadIn",
-        "quadInOut",
-        "cubicIn",
-        "cubicOut",
-        "cubicInOut",
-        "quartIn",
-        "quartOut",
-        "quartInOut",
-        "expoIn",
-        "expoOut",
-        "expoInOut",
-        "backIn",
-        "backOut",
-        "backInOut",
-        "elasticIn",
-        "elasticOut",
-        "elasticInOut",
-        "bounceIn",
-        "bounceOut",
-        "bounceInOut"
+        "power1.out",
+        "none",
+        "power1.in",
+        "power1.inOut",
+        "power2.in",
+        "power2.out",
+        "power2.inOut",
+        "power3.in",
+        "power3.out",
+        "power3.inOut",
+        "expo.in",
+        "expo.out",
+        "expo.inOut",
+        "back.in",
+        "back.out",
+        "back.inOut",
+        "elastic.in",
+        "elastic.out",
+        "elastic.inOut",
+        "bounce.in",
+        "bounce.out",
+        "bounce.inOut"
       ],
       "x-og-variants": {
-        "quadOut": "Gentle ease out: the default for most motion.",
-        "linear": "Constant speed: scrolling, timers, colour cycles.",
-        "quadIn": "Gentle ease in.",
-        "quadInOut": "Gentle in and out.",
-        "cubicIn": "Ease in.",
-        "cubicOut": "Ease out: UI sliding in, things settling.",
-        "cubicInOut": "In and out: camera moves, deliberate motion.",
-        "quartIn": "Strong ease in.",
-        "quartOut": "Strong ease out.",
-        "quartInOut": "Strong in and out.",
-        "expoIn": "Exponential ease in: things falling away, warp-outs.",
-        "expoOut": "Exponential ease out: snappy arrivals.",
-        "expoInOut": "Exponential in and out.",
-        "backIn": "Pulls back first, then goes: anticipation.",
-        "backOut": "Overshoots, then settles: pops, squash recovery, buttons.",
-        "backInOut": "Pulls back and overshoots.",
-        "elasticIn": "Rings before leaving.",
-        "elasticOut": "Rings after arriving: springy, cartoon impacts.",
-        "elasticInOut": "Rings at both ends.",
-        "bounceIn": "Bounces before leaving.",
-        "bounceOut": "Bounces at the end: drops, landings.",
-        "bounceInOut": "Bounces at both ends."
+        "power1.out": "Gentle ease out: the default for most motion.",
+        "none": "Constant speed: scrolling, timers, colour cycles.",
+        "power1.in": "Gentle ease in.",
+        "power1.inOut": "Gentle in and out.",
+        "power2.in": "Ease in.",
+        "power2.out": "Ease out: UI sliding in, things settling.",
+        "power2.inOut": "In and out: camera moves, deliberate motion.",
+        "power3.in": "Strong ease in.",
+        "power3.out": "Strong ease out.",
+        "power3.inOut": "Strong in and out.",
+        "expo.in": "Exponential ease in: things falling away, warp-outs.",
+        "expo.out": "Exponential ease out: snappy arrivals.",
+        "expo.inOut": "Exponential in and out.",
+        "back.in": "Pulls back first, then goes: anticipation.",
+        "back.out": "Overshoots, then settles: pops, squash recovery, buttons.",
+        "back.inOut": "Pulls back and overshoots.",
+        "elastic.in": "Rings before leaving.",
+        "elastic.out": "Rings after arriving: springy, cartoon impacts.",
+        "elastic.inOut": "Rings at both ends.",
+        "bounce.in": "Bounces before leaving.",
+        "bounce.out": "Bounces at the end: drops, landings.",
+        "bounce.inOut": "Bounces at both ends."
       }
     },
     "TweenDesc": {
@@ -40281,9 +40324,9 @@
         "ease": {
           "$ref": "#/$defs/Ease",
           "description": "The curve.",
-          "default": "quadOut"
+          "default": "power1.out"
         },
-        "loops": {
+        "repeat": {
           "type": "integer",
           "minimum": -2147483648,
           "maximum": 2147483647,
@@ -40311,13 +40354,96 @@
       },
       "additionalProperties": false
     },
+    "TweenFromDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "tween",
+      "description": "Tween from an explicit value to the field captured when og.tween.from is called, before any delay. The start value is written on the first og.tween tick, not synchronously during the call.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity whose component is tweened.",
+          "default": 0
+        },
+        "component": {
+          "anyOf": [
+            {
+              "x-og-type": "AnyComponent"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The component token; null is og.Transform.",
+          "default": null
+        },
+        "field": {
+          "type": "string",
+          "description": "The numeric field or lane, as in TweenDesc.",
+          "default": ""
+        },
+        "from": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "The explicit start value: one per lane, or one for all lanes. Held through the delay.",
+          "default": []
+        },
+        "duration": {
+          "type": "number",
+          "description": "Seconds per cycle.",
+          "default": 0.3,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "delay": {
+          "type": "number",
+          "description": "Seconds to hold the start value before interpolating.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "ease": {
+          "$ref": "#/$defs/Ease",
+          "description": "The GSAP-named curve.",
+          "default": "power1.out"
+        },
+        "repeat": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Extra cycles: 0 once, n more, -1 forever.",
+          "default": 0,
+          "minimum": -1
+        },
+        "yoyo": {
+          "type": "boolean",
+          "description": "Alternate cycles play backwards.",
+          "default": false
+        },
+        "unscaled": {
+          "type": "boolean",
+          "description": "Ignore Time.scale and hit stop.",
+          "default": false
+        },
+        "tag": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Carried by TweenCompleted.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
     "TweenGroupDesc": {
       "x-og-kind": "desc",
       "x-og-module": "tween",
       "description": "How a sequence or parallel group runs.",
       "type": "object",
       "properties": {
-        "loops": {
+        "repeat": {
           "type": "integer",
           "minimum": -2147483648,
           "maximum": 2147483647,
@@ -40402,8 +40528,8 @@
         },
         "ease": {
           "$ref": "#/$defs/Ease",
-          "description": "The recovery curve; backOut overshoots a little, elasticOut wobbles.",
-          "default": "backOut"
+          "description": "The recovery curve; back.out overshoots a little, elastic.out wobbles.",
+          "default": "back.out"
         }
       },
       "additionalProperties": false
@@ -40444,8 +40570,8 @@
         },
         "ease": {
           "$ref": "#/$defs/Ease",
-          "description": "The fade's curve; quadIn holds the flash, then drops it.",
-          "default": "quadIn"
+          "description": "The fade's curve; power1.in holds the flash, then drops it.",
+          "default": "power1.in"
         }
       },
       "additionalProperties": false

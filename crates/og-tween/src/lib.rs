@@ -145,7 +145,8 @@ impl Target {
         Ok(t)
     }
 
-    fn read(&self, bytes: &[u8]) -> Option<Vec<f32>> {
+    /// Read the target lanes from a packed component, for call-time capture.
+    pub fn read(&self, bytes: &[u8]) -> Option<Vec<f32>> {
         let w = self.lane.width();
         (0..self.lanes as usize)
             .map(|i| {
@@ -244,7 +245,7 @@ impl Leaf {
         }
     }
 
-    /// A 0.3 s quadOut tween of `target` to `to`.
+    /// A 0.3 s power1.out tween of `target` to `to`.
     pub fn new(target: Target, to: Vec<f32>) -> Leaf {
         Leaf {
             target,

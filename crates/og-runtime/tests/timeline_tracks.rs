@@ -69,7 +69,7 @@ track light "lamp" {
   }
   key 4 {
     intensity 8
-    ease quadIn
+    ease power1.in
   }
 }
 track visibility "crate" {
@@ -355,7 +355,7 @@ fn every_new_track_seeks_as_it_plays_and_a_nested_timeline_runs_on_its_own_time(
     assert_eq!(og_world_get_tick(a.engine), og_world_get_tick(b.engine));
 
     let light = get(&a, "lamp", "og.PointLight");
-    // quadIn over 4 s at 1.25: 8 × 0.3125²; the property track's distance linearly.
+    // power1.in over 4 s at 1.25: 8 × 0.3125²; the property track's distance linearly.
     assert!(close(&light["intensity"], 0.78125), "{light}");
     assert!(close(&light["distance"], 4.5), "{light}");
     assert_eq!(

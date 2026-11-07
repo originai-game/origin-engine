@@ -1908,6 +1908,8 @@ export const camera = Object.freeze({
 
 export const tween = Object.freeze({
   to: (world: WorldImpl, desc?: unknown) => parse(abi().og_tween_to(world.id, json(desc))),
+  from: (world: WorldImpl, desc?: unknown) => parse(abi().og_tween_from(world.id, json(desc))),
+  fromTo: (world: WorldImpl, desc?: unknown) => parse(abi().og_tween_from_to(world.id, json(desc))),
   sequence: (world: WorldImpl, steps: unknown, desc?: unknown) =>
     parse(abi().og_tween_sequence(world.id, JSON.stringify(steps), json(desc))),
   parallel: (world: WorldImpl, tweens: unknown, desc?: unknown) =>

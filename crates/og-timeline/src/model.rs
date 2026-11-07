@@ -22,7 +22,7 @@
 //!   }
 //!   key 6 {
 //!     at 1
-//!     ease cubicInOut
+//!     ease power2.inOut
 //!   }
 //! }
 //! track caption {

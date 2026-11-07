@@ -1006,6 +1006,12 @@ impl TweenApi for NodeHost {
     fn og_tween_to(&self, world: u32, desc: Option<String>) -> String {
         rt::og_tween_to(world, desc)
     }
+    fn og_tween_from(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_tween_from(world, desc)
+    }
+    fn og_tween_from_to(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_tween_from_to(world, desc)
+    }
     fn og_tween_sequence(&self, world: u32, steps: String, desc: Option<String>) -> String {
         rt::og_tween_sequence(world, steps, desc)
     }

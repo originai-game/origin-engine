@@ -2,7 +2,7 @@
 
 # The `tween` module
 
-Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, loops and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled.
+Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, repeat and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled.
 
 Running tweens are world state (the og.tween state block): snapshots, restore and the world hash cover them. og.TweenCompleted reports a tween or group that ends on its own; a cancelled one, or one whose entity or component went away, ends silently.
 
@@ -14,7 +14,7 @@ Feel presets are tweens too: og.tween.squash (squash and stretch that recovers) 
 
 ```ogt
 module tween {
-  doc "Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, loops and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled."
+  doc "Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, repeat and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled."
   doc "Running tweens are world state (the og.tween state block): snapshots, restore and the world hash cover them. og.TweenCompleted reports a tween or group that ends on its own; a cancelled one, or one whose entity or component went away, ends silently."
   doc "Feel presets are tweens too: og.tween.squash (squash and stretch that recovers) and og.tween.flash (a hit flash that fades)."
   # declarations follow, each on its own page
@@ -31,12 +31,15 @@ module tween {
 | [`Ease`](tween/type-Ease.md) | enum |  | An easing curve from the start (0) to the end (1). |
 | [`Ease()`](#column-Ease) | column kind |  | An Ease field: the variant's index. |
 | [`TweenDesc`](tween/type-TweenDesc.md) | desc struct |  | One tween of one field. |
+| [`TweenFromDesc`](tween/type-TweenFromDesc.md) | desc struct |  | Tween from an explicit value to the field captured when og.tween.from is called, before any delay. |
 | [`TweenGroupDesc`](tween/type-TweenGroupDesc.md) | desc struct |  | How a sequence or parallel group runs. |
 | [`og.TweenCompleted`](tween/record-TweenCompleted.md) | event |  | A tween or group ended on its own (read in the tick after). |
 | [`SquashDesc`](tween/type-SquashDesc.md) | desc struct |  | Squash and stretch: the entity's og.Transform.scale jumps to rest times impact and eases back to rest. |
 | [`FlashDesc`](tween/type-FlashDesc.md) | desc struct |  | A hit flash: the entity's og.Sprite (else og.Mesh, else og.Model) flashColor set and its flash faded from amount to 0. |
 | [`og.tween.to`](tween/fn-to.md) | function | `(world: World, desc?: TweenDesc): Result<Tween>` | Start a tween. Systems may call it; it first moves in this tick's og.tween run. |
-| [`og.tween.sequence`](tween/fn-sequence.md) | function | `(world: World, steps: readonly TweenDesc[], desc?: TweenGroupDesc): Result<Tween>` | Start tweens one after another (each with its own delay, duration and loops); the time one leaves over goes to the next. |
+| [`og.tween.from`](tween/fn-from.md) | function | `(world: World, desc?: TweenFromDesc): Result<Tween>` | Animate from desc.from to the field's value captured at this call, before the delay. |
+| [`og.tween.fromTo`](tween/fn-fromTo.md) | function | `(world: World, desc?: TweenDesc): Result<Tween>` | Animate from explicit desc.from to desc.to; both are required. |
+| [`og.tween.sequence`](tween/fn-sequence.md) | function | `(world: World, steps: readonly TweenDesc[], desc?: TweenGroupDesc): Result<Tween>` | Start tweens one after another (each with its own delay, duration and repeat); the time one leaves over goes to the next. |
 | [`og.tween.parallel`](tween/fn-parallel.md) | function | `(world: World, tweens: readonly TweenDesc[], desc?: TweenGroupDesc): Result<Tween>` | Start tweens together; the group ends with the last one. |
 | [`og.tween.cancel`](tween/fn-cancel.md) | function | `(world: World, tween: Tween): boolean` | Stop a tween where it is (no event). |
 | [`og.tween.cancelEntity`](tween/fn-cancelEntity.md) | function | `(world: World, entity: Entity): number` | Stop every tween of an entity (no events), say before starting a new reaction. |

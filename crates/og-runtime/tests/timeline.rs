@@ -62,7 +62,7 @@ track camera {
     at 1
     target 2 1 0
     fov 40
-    ease cubicInOut
+    ease power2.inOut
   }
 }
 track transform "box" {
@@ -71,7 +71,7 @@ track transform "box" {
   }
   key 3 {
     position 3 0 0
-    ease quadIn
+    ease power1.in
   }
   key 6 {
     position 3 2 0
@@ -299,7 +299,7 @@ fn a_hot_reload_keeps_playing_from_the_same_time_with_the_edited_keys() {
     let root = fresh_project("og-runtime-timeline-reload");
     let r = start_in(&root);
     value(og_timeline_play(r.engine, r.timeline));
-    // 2 s in: the box on its way to the key at 3 s (3 0 0), eased quadIn.
+    // 2 s in: the box on its way to the key at 3 s (3 0 0), eased power1.in.
     frame(r.engine, 121);
     let (before, camera) = state(&r);
     assert_eq!(before["time"], json!(2.0), "{before}");
@@ -327,7 +327,7 @@ fn a_hot_reload_keeps_playing_from_the_same_time_with_the_edited_keys() {
     assert_eq!(camera_after["position"], camera["position"]);
     frame(r.engine, 1);
     // The next tick evaluates the edited keys at the time it reached: the
-    // quadIn ease of (0 0 0) to (3 4 0) at (2 + 1/60) / 3.
+    // power1.in ease of (0 0 0) to (3 4 0) at (2 + 1/60) / 3.
     let s = (2.0 + 1.0 / 60.0) / 3.0;
     let k = s * s;
     let moved = get(&r, "box");

@@ -60,14 +60,15 @@ fn screaming(s: &str) -> bool {
 }
 
 /// A variant is a string value everywhere it is generated (a TypeScript
-/// literal, a JSON schema enum, a Rust string), so `-` may join words
-/// (`vulkan-cpu`, as the reference tiers are named).
+/// literal, a JSON schema enum, a Rust string), so `-` and `.` may join
+/// words (`vulkan-cpu`, `power1.out`).
 fn variant_name(s: &str) -> bool {
     let mut c = s.chars();
     matches!(c.next(), Some(ch) if ch.is_ascii_lowercase())
-        && c.all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-')
-        && !s.ends_with('-')
+        && c.all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-' || ch == '.')
+        && !s.ends_with(['-', '.'])
         && !s.contains("--")
+        && !s.contains("..")
 }
 
 impl<'a> Validator<'a, '_> {

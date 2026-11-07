@@ -589,6 +589,10 @@ export interface HostAbi<A, V> {
   og_anim_skeleton2d_boxes(world: number, entity: number): string;
   /** `og.tween.to` */
   og_tween_to(world: number, desc: string | undefined): string;
+  /** `og.tween.from` */
+  og_tween_from(world: number, desc: string | undefined): string;
+  /** `og.tween.fromTo` */
+  og_tween_from_to(world: number, desc: string | undefined): string;
   /** `og.tween.sequence` */
   og_tween_sequence(world: number, steps: string, desc: string | undefined): string;
   /** `og.tween.parallel` */
@@ -1597,6 +1601,8 @@ export const SYMBOLS: readonly string[] = [
   "og_anim_rig2d_info",
   "og_anim_skeleton2d_boxes",
   "og_tween_to",
+  "og_tween_from",
+  "og_tween_from_to",
   "og_tween_sequence",
   "og_tween_parallel",
   "og_tween_cancel",

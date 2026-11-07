@@ -143,7 +143,7 @@ track shot {
   key 0.5 {
     camera "wide"
     blend 0.75
-    ease cubicOut
+    ease power2.out
   }
 }
 "#;
@@ -175,7 +175,7 @@ fn a_shot_track_cooks_to_its_pinned_text_and_a_key_without_a_camera_is_refused()
     let none = text.find("none").expect(text);
     assert!(wide < none, "keys in time order: {text}");
     assert!(
-        text.contains("blend 0.75") && text.contains("ease cubicOut"),
+        text.contains("blend 0.75") && text.contains("ease power2.out"),
         "{text}"
     );
     assert_eq!(
@@ -183,7 +183,7 @@ fn a_shot_track_cooks_to_its_pinned_text_and_a_key_without_a_camera_is_refused()
             use og_cook::format::BlobKind;
             og_cook::format::Timeline::schema_version()
         }),
-        (336, "674449ac599b4ef5".to_string(), 1),
+        (338, "eb323fe751ccfc50".to_string(), 1),
         "{text}"
     );
     let bad = |body: &str| -> String {

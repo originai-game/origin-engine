@@ -12,7 +12,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `loops` | `number` | `0` | ≥ -1 | — | — | Extra runs of the whole group: 0 once, -1 forever; each run replays the spans its tweens resolved in the first. |
+| `repeat` | `number` | `0` | ≥ -1 | — | — | Extra runs of the whole group: 0 once, -1 forever; each run replays the spans its tweens resolved in the first. |
 | `unscaled` | `boolean` | `false` | — | — | — | Advance by real ticks, ignoring Time.scale and hit stop. |
 | `tag` | `number` | `0` | — | — | — | A number of yours, carried by og.TweenCompleted. |
 
@@ -20,7 +20,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct TweenGroupDesc {
   doc "How a sequence or parallel group runs."
   desc true
-  field loops i32 "Extra runs of the whole group: 0 once, -1 forever; each run replays the spans its tweens resolved in the first." {
+  field repeat i32 "Extra runs of the whole group: 0 once, -1 forever; each run replays the spans its tweens resolved in the first." {
     min -1
   }
   field unscaled bool "Advance by real ticks, ignoring Time.scale and hit stop."
@@ -28,4 +28,4 @@ struct TweenGroupDesc {
 }
 ```
 
-<sub>Module `tween` line 75</sub>
+<sub>Module `tween` line 100</sub>

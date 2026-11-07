@@ -671,6 +671,10 @@ pub trait AnimApi: Wire {
 pub trait TweenApi: Wire {
     /// `og.tween.to`
     fn og_tween_to(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.tween.from`
+    fn og_tween_from(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.tween.fromTo`
+    fn og_tween_from_to(&self, world: u32, desc: Option<String>) -> String;
     /// `og.tween.sequence`
     fn og_tween_sequence(&self, world: u32, steps: String, desc: Option<String>) -> String;
     /// `og.tween.parallel`
@@ -1768,6 +1772,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_anim_rig2d_info",
     "og_anim_skeleton2d_boxes",
     "og_tween_to",
+    "og_tween_from",
+    "og_tween_from_to",
     "og_tween_sequence",
     "og_tween_parallel",
     "og_tween_cancel",

@@ -5412,7 +5412,7 @@ export interface VirtualCamera {
   /**
    * The curve of the blend to it: position lerped, rotation slerped, fov, roll and focus lerped by the curve's value at the blend's time.
    *
-   * @default "cubicInOut"
+   * @default "power2.inOut"
    */
   blendEase: Ease;
   /**
@@ -5495,7 +5495,7 @@ export interface CameraBrain {
   /**
    * The curve of those blends.
    *
-   * @default "cubicInOut"
+   * @default "power2.inOut"
    */
   blendEase: Ease;
   /**
@@ -5512,7 +5512,7 @@ export interface CameraBrain {
   /**
    * The curve of that blend when soloBlend is 0 or more.
    *
-   * @default "cubicInOut"
+   * @default "power2.inOut"
    */
   soloEase: Ease;
   /**
@@ -18911,7 +18911,7 @@ export interface Skeleton2DBox {
 
 
 // ── tween ───────────────────────────────────────────────────────
-// Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, loops and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled.
+// Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, repeat and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled.
 // Running tweens are world state (the og.tween state block): snapshots, restore and the world hash cover them. og.TweenCompleted reports a tween or group that ends on its own; a cancelled one, or one whose entity or component went away, ends silently.
 // Feel presets are tweens too: og.tween.squash (squash and stretch that recovers) and og.tween.flash (a hit flash that fades).
 
@@ -18933,30 +18933,30 @@ export declare function Tween(value?: Tween, options?: FieldOptions): FieldSpec<
 
 /**
  * An easing curve from the start (0) to the end (1). In starts slow, out ends slow, inOut both. back overshoots, elastic rings, bounce bounces at the end.
- * - `"quadOut"`: Gentle ease out: the default for most motion.
- * - `"linear"`: Constant speed: scrolling, timers, colour cycles.
- * - `"quadIn"`: Gentle ease in.
- * - `"quadInOut"`: Gentle in and out.
- * - `"cubicIn"`: Ease in.
- * - `"cubicOut"`: Ease out: UI sliding in, things settling.
- * - `"cubicInOut"`: In and out: camera moves, deliberate motion.
- * - `"quartIn"`: Strong ease in.
- * - `"quartOut"`: Strong ease out.
- * - `"quartInOut"`: Strong in and out.
- * - `"expoIn"`: Exponential ease in: things falling away, warp-outs.
- * - `"expoOut"`: Exponential ease out: snappy arrivals.
- * - `"expoInOut"`: Exponential in and out.
- * - `"backIn"`: Pulls back first, then goes: anticipation.
- * - `"backOut"`: Overshoots, then settles: pops, squash recovery, buttons.
- * - `"backInOut"`: Pulls back and overshoots.
- * - `"elasticIn"`: Rings before leaving.
- * - `"elasticOut"`: Rings after arriving: springy, cartoon impacts.
- * - `"elasticInOut"`: Rings at both ends.
- * - `"bounceIn"`: Bounces before leaving.
- * - `"bounceOut"`: Bounces at the end: drops, landings.
- * - `"bounceInOut"`: Bounces at both ends.
+ * - `"power1.out"`: Gentle ease out: the default for most motion.
+ * - `"none"`: Constant speed: scrolling, timers, colour cycles.
+ * - `"power1.in"`: Gentle ease in.
+ * - `"power1.inOut"`: Gentle in and out.
+ * - `"power2.in"`: Ease in.
+ * - `"power2.out"`: Ease out: UI sliding in, things settling.
+ * - `"power2.inOut"`: In and out: camera moves, deliberate motion.
+ * - `"power3.in"`: Strong ease in.
+ * - `"power3.out"`: Strong ease out.
+ * - `"power3.inOut"`: Strong in and out.
+ * - `"expo.in"`: Exponential ease in: things falling away, warp-outs.
+ * - `"expo.out"`: Exponential ease out: snappy arrivals.
+ * - `"expo.inOut"`: Exponential in and out.
+ * - `"back.in"`: Pulls back first, then goes: anticipation.
+ * - `"back.out"`: Overshoots, then settles: pops, squash recovery, buttons.
+ * - `"back.inOut"`: Pulls back and overshoots.
+ * - `"elastic.in"`: Rings before leaving.
+ * - `"elastic.out"`: Rings after arriving: springy, cartoon impacts.
+ * - `"elastic.inOut"`: Rings at both ends.
+ * - `"bounce.in"`: Bounces before leaving.
+ * - `"bounce.out"`: Bounces at the end: drops, landings.
+ * - `"bounce.inOut"`: Bounces at both ends.
  */
-export type Ease = "quadOut" | "linear" | "quadIn" | "quadInOut" | "cubicIn" | "cubicOut" | "cubicInOut" | "quartIn" | "quartOut" | "quartInOut" | "expoIn" | "expoOut" | "expoInOut" | "backIn" | "backOut" | "backInOut" | "elasticIn" | "elasticOut" | "elasticInOut" | "bounceIn" | "bounceOut" | "bounceInOut";
+export type Ease = "power1.out" | "none" | "power1.in" | "power1.inOut" | "power2.in" | "power2.out" | "power2.inOut" | "power3.in" | "power3.out" | "power3.inOut" | "expo.in" | "expo.out" | "expo.inOut" | "back.in" | "back.out" | "back.inOut" | "elastic.in" | "elastic.out" | "elastic.inOut" | "bounce.in" | "bounce.out" | "bounce.inOut";
 
 /**
  * An Ease field: the variant's index.
@@ -19028,7 +19028,7 @@ export interface TweenDesc {
   /**
    * The curve.
    *
-   * @default "quadOut"
+   * @default "power1.out"
    */
   readonly ease?: Ease;
   /**
@@ -19037,7 +19037,7 @@ export interface TweenDesc {
    * @default 0
    * @range -1..
    */
-  readonly loops?: number;
+  readonly repeat?: number;
   /**
    * Every other cycle plays backwards (pulses, bobbing).
    *
@@ -19059,6 +19059,85 @@ export interface TweenDesc {
 }
 
 /**
+ * Tween from an explicit value to the field captured when og.tween.from is called, before any delay. The start value is written on the first og.tween tick, not synchronously during the call.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TweenFromDesc {
+  /**
+   * The entity whose component is tweened.
+   *
+   * @default 0
+   */
+  readonly entity?: Entity;
+  /**
+   * The component token; null is og.Transform.
+   *
+   * @default null
+   */
+  readonly component?: AnyComponent | null;
+  /**
+   * The numeric field or lane, as in TweenDesc.
+   *
+   * @default ""
+   */
+  readonly field?: string;
+  /**
+   * The explicit start value: one per lane, or one for all lanes. Held through the delay.
+   *
+   * @default []
+   */
+  readonly from?: readonly number[];
+  /**
+   * Seconds per cycle.
+   *
+   * @default 0.3
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration?: number;
+  /**
+   * Seconds to hold the start value before interpolating.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly delay?: number;
+  /**
+   * The GSAP-named curve.
+   *
+   * @default "power1.out"
+   */
+  readonly ease?: Ease;
+  /**
+   * Extra cycles: 0 once, n more, -1 forever.
+   *
+   * @default 0
+   * @range -1..
+   */
+  readonly repeat?: number;
+  /**
+   * Alternate cycles play backwards.
+   *
+   * @default false
+   */
+  readonly yoyo?: boolean;
+  /**
+   * Ignore Time.scale and hit stop.
+   *
+   * @default false
+   */
+  readonly unscaled?: boolean;
+  /**
+   * Carried by TweenCompleted.
+   *
+   * @default 0
+   */
+  readonly tag?: number;
+}
+
+/**
  * How a sequence or parallel group runs.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -19070,7 +19149,7 @@ export interface TweenGroupDesc {
    * @default 0
    * @range -1..
    */
-  readonly loops?: number;
+  readonly repeat?: number;
   /**
    * Advance by real ticks, ignoring Time.scale and hit stop.
    *
@@ -19132,9 +19211,9 @@ export interface SquashDesc {
    */
   readonly duration?: number;
   /**
-   * The recovery curve; backOut overshoots a little, elasticOut wobbles.
+   * The recovery curve; back.out overshoots a little, elastic.out wobbles.
    *
-   * @default "backOut"
+   * @default "back.out"
    */
   readonly ease?: Ease;
 }
@@ -19173,12 +19252,14 @@ export interface FlashDesc {
    */
   readonly duration?: number;
   /**
-   * The fade's curve; quadIn holds the flash, then drops it.
+   * The fade's curve; power1.in holds the flash, then drops it.
    *
-   * @default "quadIn"
+   * @default "power1.in"
    */
   readonly ease?: Ease;
 }
+
+
 
 
 
@@ -46706,7 +46787,7 @@ export declare namespace og {
   /** A tween or group ended on its own (read in the tick after). */
   const TweenCompleted: EventType<TweenCompleted>;
   /**
-   * Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, loops and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled.
+   * Tweens: animate any numeric field of a component (og.Transform.position, og.Sprite.color, og.Sprite.opacity, a game's own f32) from its value to a target over time with an easing curve, a delay, repeat and yoyo; chain them in sequences or run them in parallel. Advanced by the engine's og.tween system after the game's systems and before og.anim and physics, by scaled time (slow motion, hit stop) unless unscaled.
    * Running tweens are world state (the og.tween state block): snapshots, restore and the world hash cover them. og.TweenCompleted reports a tween or group that ends on its own; a cancelled one, or one whose entity or component went away, ends silently.
    * Feel presets are tweens too: og.tween.squash (squash and stretch that recovers) and og.tween.flash (a hit flash that fades).
    */
@@ -46720,11 +46801,27 @@ export declare namespace og {
      */
     function to(world: World, desc?: TweenDesc): Result<Tween>;
     /**
-     * Start tweens one after another (each with its own delay, duration and loops); the time one leaves over goes to the next.
+     * Animate from desc.from to the field's value captured at this call, before the delay. The first og.tween tick writes from and holds it through the delay. Unlike GSAP immediateRender, the call itself never writes the field. A system must declare read access to the target component for capture. Snapshot/restore retains the captured endpoint; later writes during the delay cannot change it.
+     *
+     * @param world The world.
+     * @param desc The start value and timing.
+     * @returns Refused for an unreadable target or invalid values.
+     */
+    function from(world: World, desc?: TweenFromDesc): Result<Tween>;
+    /**
+     * Animate from explicit desc.from to desc.to; both are required. The first og.tween tick writes from, including during the delay. No endpoint is captured from the live field.
+     *
+     * @param world The world.
+     * @param desc The explicit start, end and timing.
+     * @returns Refused when from is missing or the target or values are invalid.
+     */
+    function fromTo(world: World, desc?: TweenDesc): Result<Tween>;
+    /**
+     * Start tweens one after another (each with its own delay, duration and repeat); the time one leaves over goes to the next.
      *
      * @param world The world.
      * @param steps The tweens, in order.
-     * @param desc Loops, scaling and the tag.
+     * @param desc Repeat, scaling and the tag.
      */
     function sequence(world: World, steps: readonly TweenDesc[], desc?: TweenGroupDesc): Result<Tween>;
     /**
@@ -46732,7 +46829,7 @@ export declare namespace og {
      *
      * @param world The world.
      * @param tweens The tweens.
-     * @param desc Loops, scaling and the tag.
+     * @param desc Repeat, scaling and the tag.
      */
     function parallel(world: World, tweens: readonly TweenDesc[], desc?: TweenGroupDesc): Result<Tween>;
     /**

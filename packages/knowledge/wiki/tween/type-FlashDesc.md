@@ -16,7 +16,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The flash colour (white for a hit, red for damage taken). |
 | `amount` | `number` | `1` | 0 … 1 | — | — | How far it starts towards the colour. |
 | `duration` | `number` | `0.12` | ≥ 0 | `s` | — | Seconds to fade. |
-| `ease` | `Ease` | `"quadIn"` | — | — | — | The fade's curve; quadIn holds the flash, then drops it. |
+| `ease` | `Ease` | `"power1.in"` | — | — | — | The fade's curve; power1.in holds the flash, then drops it. |
 
 ```ogt
 struct FlashDesc {
@@ -36,10 +36,10 @@ struct FlashDesc {
     min 0
     unit s
   }
-  field ease Ease "The fade's curve; quadIn holds the flash, then drops it." {
-    default quadIn
+  field ease Ease "The fade's curve; power1.in holds the flash, then drops it." {
+    default power1.in
   }
 }
 ```
 
-<sub>Module `tween` line 110</sub>
+<sub>Module `tween` line 135</sub>

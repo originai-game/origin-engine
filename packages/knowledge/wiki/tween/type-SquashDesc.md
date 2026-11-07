@@ -16,7 +16,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `impact` | `Partial<Vector3>` | `{}` | — | — | — | The x, y and z factors at the impact: (1.25, 0.8) squashes (a landing, a hit), (0.8, 1.25) stretches (a jump). z is for 3D models (a squash bulges in x and z: (1.15, 0.85, 1.15)); left out or 0 it stays at rest, so a sprite's { x, y } is unchanged. A component left out takes its default: x 1.25, y 0.8, z 0; under a project's art contract, ArtMotion.squash scales it (0.5 the same, 1 rubber hose: x 1.5, y 0.6). |
 | `rest` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | — | — | — | The scale it recovers to. |
 | `duration` | `number` | `0.18` | ≥ 0 | `s` | — | Seconds to recover. |
-| `ease` | `Ease` | `"backOut"` | — | — | — | The recovery curve; backOut overshoots a little, elasticOut wobbles. |
+| `ease` | `Ease` | `"back.out"` | — | — | — | The recovery curve; back.out overshoots a little, elastic.out wobbles. |
 
 ```ogt
 struct SquashDesc {
@@ -32,10 +32,10 @@ struct SquashDesc {
     min 0
     unit s
   }
-  field ease Ease "The recovery curve; backOut overshoots a little, elasticOut wobbles." {
-    default backOut
+  field ease Ease "The recovery curve; back.out overshoots a little, elastic.out wobbles." {
+    default back.out
   }
 }
 ```
 
-<sub>Module `tween` line 92</sub>
+<sub>Module `tween` line 117</sub>

@@ -8,58 +8,58 @@ Module [`tween`](../tween.md) · [index](../index.md)
 
 An easing curve from the start (0) to the end (1). In starts slow, out ends slow, inOut both. back overshoots, elastic rings, bounce bounces at the end.
 
-A string: one of the variants below. The zero value is `"quadOut"`.
+A string: one of the variants below. The zero value is `"power1.out"`.
 
 | Variant | Doc |
 |---|---|
-| `"quadOut"` | Gentle ease out: the default for most motion. |
-| `"linear"` | Constant speed: scrolling, timers, colour cycles. |
-| `"quadIn"` | Gentle ease in. |
-| `"quadInOut"` | Gentle in and out. |
-| `"cubicIn"` | Ease in. |
-| `"cubicOut"` | Ease out: UI sliding in, things settling. |
-| `"cubicInOut"` | In and out: camera moves, deliberate motion. |
-| `"quartIn"` | Strong ease in. |
-| `"quartOut"` | Strong ease out. |
-| `"quartInOut"` | Strong in and out. |
-| `"expoIn"` | Exponential ease in: things falling away, warp-outs. |
-| `"expoOut"` | Exponential ease out: snappy arrivals. |
-| `"expoInOut"` | Exponential in and out. |
-| `"backIn"` | Pulls back first, then goes: anticipation. |
-| `"backOut"` | Overshoots, then settles: pops, squash recovery, buttons. |
-| `"backInOut"` | Pulls back and overshoots. |
-| `"elasticIn"` | Rings before leaving. |
-| `"elasticOut"` | Rings after arriving: springy, cartoon impacts. |
-| `"elasticInOut"` | Rings at both ends. |
-| `"bounceIn"` | Bounces before leaving. |
-| `"bounceOut"` | Bounces at the end: drops, landings. |
-| `"bounceInOut"` | Bounces at both ends. |
+| `"power1.out"` | Gentle ease out: the default for most motion. |
+| `"none"` | Constant speed: scrolling, timers, colour cycles. |
+| `"power1.in"` | Gentle ease in. |
+| `"power1.inOut"` | Gentle in and out. |
+| `"power2.in"` | Ease in. |
+| `"power2.out"` | Ease out: UI sliding in, things settling. |
+| `"power2.inOut"` | In and out: camera moves, deliberate motion. |
+| `"power3.in"` | Strong ease in. |
+| `"power3.out"` | Strong ease out. |
+| `"power3.inOut"` | Strong in and out. |
+| `"expo.in"` | Exponential ease in: things falling away, warp-outs. |
+| `"expo.out"` | Exponential ease out: snappy arrivals. |
+| `"expo.inOut"` | Exponential in and out. |
+| `"back.in"` | Pulls back first, then goes: anticipation. |
+| `"back.out"` | Overshoots, then settles: pops, squash recovery, buttons. |
+| `"back.inOut"` | Pulls back and overshoots. |
+| `"elastic.in"` | Rings before leaving. |
+| `"elastic.out"` | Rings after arriving: springy, cartoon impacts. |
+| `"elastic.inOut"` | Rings at both ends. |
+| `"bounce.in"` | Bounces before leaving. |
+| `"bounce.out"` | Bounces at the end: drops, landings. |
+| `"bounce.inOut"` | Bounces at both ends. |
 
 ```ogt
 enum Ease {
   doc "An easing curve from the start (0) to the end (1). In starts slow, out ends slow, inOut both. back overshoots, elastic rings, bounce bounces at the end."
-  variant quadOut "Gentle ease out: the default for most motion."
-  variant linear "Constant speed: scrolling, timers, colour cycles."
-  variant quadIn "Gentle ease in."
-  variant quadInOut "Gentle in and out."
-  variant cubicIn "Ease in."
-  variant cubicOut "Ease out: UI sliding in, things settling."
-  variant cubicInOut "In and out: camera moves, deliberate motion."
-  variant quartIn "Strong ease in."
-  variant quartOut "Strong ease out."
-  variant quartInOut "Strong in and out."
-  variant expoIn "Exponential ease in: things falling away, warp-outs."
-  variant expoOut "Exponential ease out: snappy arrivals."
-  variant expoInOut "Exponential in and out."
-  variant backIn "Pulls back first, then goes: anticipation."
-  variant backOut "Overshoots, then settles: pops, squash recovery, buttons."
-  variant backInOut "Pulls back and overshoots."
-  variant elasticIn "Rings before leaving."
-  variant elasticOut "Rings after arriving: springy, cartoon impacts."
-  variant elasticInOut "Rings at both ends."
-  variant bounceIn "Bounces before leaving."
-  variant bounceOut "Bounces at the end: drops, landings."
-  variant bounceInOut "Bounces at both ends."
+  variant power1.out "Gentle ease out: the default for most motion."
+  variant none "Constant speed: scrolling, timers, colour cycles."
+  variant power1.in "Gentle ease in."
+  variant power1.inOut "Gentle in and out."
+  variant power2.in "Ease in."
+  variant power2.out "Ease out: UI sliding in, things settling."
+  variant power2.inOut "In and out: camera moves, deliberate motion."
+  variant power3.in "Strong ease in."
+  variant power3.out "Strong ease out."
+  variant power3.inOut "Strong in and out."
+  variant expo.in "Exponential ease in: things falling away, warp-outs."
+  variant expo.out "Exponential ease out: snappy arrivals."
+  variant expo.inOut "Exponential in and out."
+  variant back.in "Pulls back first, then goes: anticipation."
+  variant back.out "Overshoots, then settles: pops, squash recovery, buttons."
+  variant back.inOut "Pulls back and overshoots."
+  variant elastic.in "Rings before leaving."
+  variant elastic.out "Rings after arriving: springy, cartoon impacts."
+  variant elastic.inOut "Rings at both ends."
+  variant bounce.in "Bounces before leaving."
+  variant bounce.out "Bounces at the end: drops, landings."
+  variant bounce.inOut "Bounces at both ends."
 }
 ```
 

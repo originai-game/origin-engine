@@ -1464,6 +1464,16 @@ pub fn og_tween_to(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_tween_from(world: u32, desc: Option<String>) -> String {
+    <Host as TweenApi>::og_tween_from(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_tween_from_to(world: u32, desc: Option<String>) -> String {
+    <Host as TweenApi>::og_tween_from_to(&Host, world, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_tween_sequence(world: u32, steps: String, desc: Option<String>) -> String {
     <Host as TweenApi>::og_tween_sequence(&Host, world, steps, desc)
 }

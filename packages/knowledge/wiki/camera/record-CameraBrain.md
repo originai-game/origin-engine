@@ -18,15 +18,15 @@ Token `og.CameraBrain`, registered under the schema name `og.CameraBrain`; its v
 |---|---|---|---|---|---|---|
 | `enabled` | `boolean` | `true` | — | — | — | Drive og.Camera; false leaves it to the game (the vcams' state still updates). |
 | `blendTime` | `number` | `1` | ≥ 0 | `s` | tunable | Seconds of a blend to a camera whose blendTime is below 0. |
-| `blendEase` | `Ease` | `"cubicInOut"` | — | — | — | The curve of those blends. |
+| `blendEase` | `Ease` | `"power2.inOut"` | — | — | — | The curve of those blends. |
 | `solo` | `Entity` | `0` | — | — | — | A shot that outranks every priority while it is set (a cutscene or a dialogue close-up): an entity with an og.VirtualCamera, live even when it is not enabled; 0 releases it and the brain blends back to the highest priority. Anything else is ignored. og.story sets it for a dialogue line's `shot` and a timeline's shot track for its keys. |
 | `soloBlend` | `number` | `-1` | — | `s` | — | Seconds of the blend to the solo shot when it goes live (0 cuts); below 0 the solo camera's own blendTime and blendEase (then the brain's). A timeline's shot key sets it with solo; og.story sets it to -1. |
-| `soloEase` | `Ease` | `"cubicInOut"` | — | — | — | The curve of that blend when soloBlend is 0 or more. |
+| `soloEase` | `Ease` | `"power2.inOut"` | — | — | — | The curve of that blend when soloBlend is 0 or more. |
 | `live` | `Entity` | `0` | — | — | read only | The live camera (0: none). |
 | `from` | `Entity` | `0` | — | — | read only | The camera being blended from; 0 when the blend starts from a held pose (an interrupted blend). |
 | `blend` | `number` | `1` | — | — | read only | How far the blend has come, 0 to 1 (1: settled on the live camera); the weight is the curve at this time. |
 | `blendDuration` | `number` | `0` | — | `s` | read only | The current blend's length. |
-| `blendCurve` | `Ease` | `"quadOut"` | — | — | read only | The current blend's curve. |
+| `blendCurve` | `Ease` | `"power1.out"` | — | — | read only | The current blend's curve. |
 | `fromPosition` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only, worldspace `world` | A held pose to blend from: its position, in world space (a floating-origin rebase shifts it). |
 | `fromQuaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | read only | Its rotation. |
 | `fromFov` | `number` | `0` | — | `deg` | read only | Its field of view. |
@@ -53,7 +53,7 @@ resource CameraBrain {
     tunable true
   }
   field blendEase Ease "The curve of those blends." {
-    default cubicInOut
+    default power2.inOut
   }
   field solo Entity "A shot that outranks every priority while it is set (a cutscene or a dialogue close-up): an entity with an og.VirtualCamera, live even when it is not enabled; 0 releases it and the brain blends back to the highest priority. Anything else is ignored. og.story sets it for a dialogue line's `shot` and a timeline's shot track for its keys."
   field soloBlend f32 "Seconds of the blend to the solo shot when it goes live (0 cuts); below 0 the solo camera's own blendTime and blendEase (then the brain's). A timeline's shot key sets it with solo; og.story sets it to -1." {
@@ -61,7 +61,7 @@ resource CameraBrain {
     unit s
   }
   field soloEase Ease "The curve of that blend when soloBlend is 0 or more." {
-    default cubicInOut
+    default power2.inOut
   }
   field live Entity "The live camera (0: none)." {
     readonly true

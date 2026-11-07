@@ -6,7 +6,7 @@ Module [`tween`](../tween.md) · [index](../index.md)
 
 ### `og.tween.sequence`
 
-Start tweens one after another (each with its own delay, duration and loops); the time one leaves over goes to the next.
+Start tweens one after another (each with its own delay, duration and repeat); the time one leaves over goes to the next.
 
 ```ts
 og.tween.sequence(world: World, steps: readonly TweenDesc[], desc?: TweenGroupDesc): Result<Tween>
@@ -16,7 +16,7 @@ og.tween.sequence(world: World, steps: readonly TweenDesc[], desc?: TweenGroupDe
 |---|---|---|---|
 | `world` | `World` | no | The world. |
 | `steps` | `readonly TweenDesc[]` | no | The tweens, in order. |
-| `desc` | `TweenGroupDesc` | yes | Loops, scaling and the tag. |
+| `desc` | `TweenGroupDesc` | yes | Repeat, scaling and the tag. |
 
 **Returns** `Result<Tween>`.
 
@@ -24,14 +24,14 @@ Binding symbol `og_tween_sequence` · publish builds: kept
 
 ```ogt
 fn sequence {
-  doc "Start tweens one after another (each with its own delay, duration and loops); the time one leaves over goes to the next."
+  doc "Start tweens one after another (each with its own delay, duration and repeat); the time one leaves over goes to the next."
   param world World "The world."
   param steps List.TweenDesc "The tweens, in order."
-  param desc TweenGroupDesc "Loops, scaling and the tag." {
+  param desc TweenGroupDesc "Repeat, scaling and the tag." {
     optional true
   }
   returns Result.Tween
 }
 ```
 
-<sub>Module `tween` line 140</sub>
+<sub>Module `tween` line 179</sub>

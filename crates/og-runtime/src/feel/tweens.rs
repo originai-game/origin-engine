@@ -113,7 +113,7 @@ fn leaf_of(eng: &Engine, d: &Value) -> Result<Leaf, String> {
         .ease(ease_of(&d["ease"], Ease::QuadOut)?)
         .relative(on(d, "relative", false))
         .loops(
-            d["loops"].as_i64().unwrap_or(0) as i32,
+            d["repeat"].as_i64().unwrap_or(0) as i32,
             on(d, "yoyo", false),
         );
     if !d["from"].is_null() {
@@ -141,6 +141,48 @@ pub fn og_tween_to(world: u32, desc: Option<String>) -> String {
     }))
 }
 
+pub fn og_tween_from(world: u32, desc: Option<String>) -> String {
+    wire(engine(world).and_then(|eng| {
+        let mut d = parse(desc.as_deref())?;
+        if !d.is_object() {
+            return Err("desc must contain entity, field and from".into());
+        }
+        d["to"] = d["from"].clone();
+        let mut leaf = leaf_of(&eng, &d)?;
+        let entity = Entity::from_bits(leaf.target.entity);
+        let component = SchemaId::from_index(leaf.target.component);
+        let bytes = with_world(
+            &eng,
+            |ctx| ctx.get_bytes(entity, component),
+            |world| world.get_bytes(entity, component),
+        )?;
+        leaf.to = leaf.target.read(&bytes).ok_or("cannot read tween target")?;
+        leaf.relative = false;
+        start(
+            &eng,
+            Node::Leaf(leaf),
+            on(&d, "unscaled", false),
+            d["tag"].as_u64().unwrap_or(0) as u32,
+        )
+    }))
+}
+
+pub fn og_tween_from_to(world: u32, desc: Option<String>) -> String {
+    wire(engine(world).and_then(|eng| {
+        let d = parse(desc.as_deref())?;
+        if d["from"].is_null() {
+            return Err("fromTo requires desc.from and desc.to".into());
+        }
+        let leaf = leaf_of(&eng, &d)?;
+        start(
+            &eng,
+            Node::Leaf(leaf),
+            on(&d, "unscaled", false),
+            d["tag"].as_u64().unwrap_or(0) as u32,
+        )
+    }))
+}
+
 fn group(world: u32, kind: GroupKind, list: &str, desc: Option<String>) -> String {
     wire(engine(world).and_then(|eng| {
         let list = parse(Some(list))?;
@@ -152,7 +194,7 @@ fn group(world: u32, kind: GroupKind, list: &str, desc: Option<String>) -> Strin
             .enumerate()
             .map(|(i, t)| leaf_of(&eng, t).map_err(|e| format!("tween {i}: {e}")))
             .collect::<Result<Vec<_>, _>>()?;
-        let node = Node::group(kind, leaves, d["loops"].as_i64().unwrap_or(0) as i32);
+        let node = Node::group(kind, leaves, d["repeat"].as_i64().unwrap_or(0) as i32);
         start(
             &eng,
             node,

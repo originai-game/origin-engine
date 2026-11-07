@@ -107,12 +107,30 @@ test.skipIf(STALE_WASM)("tweens, presets, hit stop, slow motion and camera feel 
       tally: { done: number; tags: number; frozen: number };
       end: string;
       replayed: string;
+      curveSamples: number[][];
     };
   };
   const [node, web, again] = [run("node"), run("web"), run("node")];
   expect(node.checkpoints.map((c) => c.tick)).toEqual([20, 23, 40, 80, 140]);
   expect(web.checkpoints).toEqual(node.checkpoints);
   expect(again.checkpoints).toEqual(node.checkpoints);
+  expect(web.curveSamples).toEqual(node.curveSamples);
+  // Independent evaluations of the GSAP 3.15.0 formula, at tick/60.
+  const goldens = [
+    [0, 0, 0, 0],
+    [0.0000182692601438, 0.108881673432, 0.0000205071905135, -0.000895292962963],
+    [0.000534593338694, 0.681700118492, 0.00209776957121, -0.044502962963],
+    [0.0023428102759, 0.861057629437, 0.0212290594572, -0.0274043714815],
+    [0.138942370563, 0.997657189724, 0.978770940543, 1.02740437148],
+    [0.891118326568, 0.99998173074, 0.999979492809, 1.00089529296],
+    [1, 1, 1, 1],
+    // p = 1e-5 and 1 - 1e-5.
+    [9.766301925e-9, 6.931222271e-5, 9.766978897e-9, -3.403051937e-10],
+    [0.999930687777, 0.999999990234, 0.999999990233, 1.000000000340],
+  ];
+  for (let i = 0; i < goldens.length; i++) {
+    for (let j = 0; j < 4; j++) expect(node.curveSamples[i]![j]!).toBeCloseTo(goldens[i]![j]!, 5);
+  }
   // The snapshot taken inside the hit stop replays into the same world.
   expect(node.replayed).toBe(node.end);
   expect(web.replayed).toBe(web.end);

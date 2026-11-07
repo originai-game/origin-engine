@@ -16,7 +16,7 @@ og.tween.parallel(world: World, tweens: readonly TweenDesc[], desc?: TweenGroupD
 |---|---|---|---|
 | `world` | `World` | no | The world. |
 | `tweens` | `readonly TweenDesc[]` | no | The tweens. |
-| `desc` | `TweenGroupDesc` | yes | Loops, scaling and the tag. |
+| `desc` | `TweenGroupDesc` | yes | Repeat, scaling and the tag. |
 
 **Returns** `Result<Tween>`.
 
@@ -27,11 +27,11 @@ fn parallel {
   doc "Start tweens together; the group ends with the last one."
   param world World "The world."
   param tweens List.TweenDesc "The tweens."
-  param desc TweenGroupDesc "Loops, scaling and the tag." {
+  param desc TweenGroupDesc "Repeat, scaling and the tag." {
     optional true
   }
   returns Result.Tween
 }
 ```
 
-<sub>Module `tween` line 150</sub>
+<sub>Module `tween` line 189</sub>

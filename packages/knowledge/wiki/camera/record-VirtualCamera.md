@@ -27,7 +27,7 @@ Token `og.VirtualCamera`, registered under the schema name `og.VirtualCamera`; i
 | `focus` | `number` | `0` | ≥ 0 | `m` | tunable | Depth of field: the focus distance it gives og.PostEffects (depthOfField on), handed back when no live camera has one. 0 leaves og.PostEffects alone. |
 | `focusRange` | `number` | `1` | ≥ 0 | `m` | tunable | Depth of field: the range around the focus distance that stays sharp. |
 | `blendTime` | `number` | `-1` | — | `s` | — | Seconds the brain takes to blend to it when it goes live (0 cuts); below 0 uses og.CameraBrain's blendTime and blendEase. |
-| `blendEase` | `Ease` | `"cubicInOut"` | — | — | — | The curve of the blend to it: position lerped, rotation slerped, fov, roll and focus lerped by the curve's value at the blend's time. |
+| `blendEase` | `Ease` | `"power2.inOut"` | — | — | — | The curve of the blend to it: position lerped, rotation slerped, fov, roll and focus lerped by the curve's value at the blend's time. |
 | `collide` | `boolean` | `false` | — | — | — | Keep a sphere of `radius` clear of colliders between the look point and where it sits: it pulls in towards the look point at once and eases back out over damping. Against the colliders as the tick started (og.physics' query view): it never moves a body. |
 | `radius` | `number` | `0.2` | ≥ 0 | `m` | — | The sphere collision keeps clear. |
 | `damping` | `number` | `0.4` | ≥ 0 | `s` | tunable | Roughly how long it takes to ease back out once the way is clear; 0 snaps. |
@@ -93,7 +93,7 @@ component VirtualCamera {
     unit s
   }
   field blendEase Ease "The curve of the blend to it: position lerped, rotation slerped, fov, roll and focus lerped by the curve's value at the blend's time." {
-    default cubicInOut
+    default power2.inOut
   }
   field collide bool "Keep a sphere of `radius` clear of colliders between the look point and where it sits: it pulls in towards the look point at once and eases back out over damping. Against the colliders as the tick started (og.physics' query view): it never moves a body."
   field radius f32 "The sphere collision keeps clear." {

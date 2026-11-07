@@ -1755,6 +1755,18 @@ pub fn og_tween_to(env: Env, world: u32, desc: Option<String>) -> String {
     <Host as TweenApi>::og_tween_to(&Host, world, desc)
 }
 
+#[napi(js_name = "og_tween_from")]
+pub fn og_tween_from(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_from(&Host, world, desc)
+}
+
+#[napi(js_name = "og_tween_from_to")]
+pub fn og_tween_from_to(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TweenApi>::og_tween_from_to(&Host, world, desc)
+}
+
 #[napi(js_name = "og_tween_sequence")]
 pub fn og_tween_sequence(env: Env, world: u32, steps: String, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

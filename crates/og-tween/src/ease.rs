@@ -1,7 +1,9 @@
-//! The easing curves: Robert Penner's set (quad, cubic, quart, expo, back,
-//! elastic, bounce; in, out, in-out) plus linear, with og-core's
-//! deterministic `pow` and `sin`, so a curve gives the same bits on every
-//! host.
+//! Named easing maths matching GSAP 3.15.0, independently implemented:
+//! https://github.com/greensock/GSAP/blob/3.15.0/src/gsap-core.js
+//! Expo's inward curve is t·2^(10(t−1)) + t^6·(1−t); outward and
+//! in-out curves reflect it. Back uses overshoot 1.70158, including in-out
+//! (no Penner 1.525 multiplier). No GSAP source is incorporated here.
+//! og-core's deterministic pow/sin keep evaluations identical across hosts.
 
 use og_core::math;
 
@@ -62,34 +64,39 @@ pub const EASES: [Ease; 22] = [
 
 /// The IDL names, in [`EASES`] order.
 pub const EASE_NAMES: [&str; 22] = [
-    "linear",
-    "quadIn",
-    "quadOut",
-    "quadInOut",
-    "cubicIn",
-    "cubicOut",
-    "cubicInOut",
-    "quartIn",
-    "quartOut",
-    "quartInOut",
-    "expoIn",
-    "expoOut",
-    "expoInOut",
-    "backIn",
-    "backOut",
-    "backInOut",
-    "elasticIn",
-    "elasticOut",
-    "elasticInOut",
-    "bounceIn",
-    "bounceOut",
-    "bounceInOut",
+    "none",
+    "power1.in",
+    "power1.out",
+    "power1.inOut",
+    "power2.in",
+    "power2.out",
+    "power2.inOut",
+    "power3.in",
+    "power3.out",
+    "power3.inOut",
+    "expo.in",
+    "expo.out",
+    "expo.inOut",
+    "back.in",
+    "back.out",
+    "back.inOut",
+    "elastic.in",
+    "elastic.out",
+    "elastic.inOut",
+    "bounce.in",
+    "bounce.out",
+    "bounce.inOut",
 ];
 
 const PI: f32 = std::f32::consts::PI;
 
 fn exp2(x: f32) -> f32 {
     math::pow(2.0, x)
+}
+
+fn expo_in(t: f32) -> f32 {
+    let square = t * t;
+    t * exp2(10.0 * (t - 1.0)) + square * square * square * (1.0 - t)
 }
 
 fn bounce_out(t: f32) -> f32 {
@@ -120,7 +127,7 @@ impl Ease {
         EASES.get(code as usize).copied()
     }
 
-    /// The curve of an IDL name (`quadOut`).
+    /// The curve of an IDL name (`power1.out`).
     pub fn from_name(name: &str) -> Option<Ease> {
         EASE_NAMES.iter().position(|n| *n == name).map(|i| EASES[i])
     }
@@ -133,7 +140,6 @@ impl Ease {
     pub fn apply(self, t: f32) -> f32 {
         let t = if t.is_nan() { 0.0 } else { t.clamp(0.0, 1.0) };
         let c1 = 1.70158f32;
-        let c2 = c1 * 1.525;
         let c3 = c1 + 1.0;
         let c4 = 2.0 * PI / 3.0;
         let c5 = 2.0 * PI / 4.5;
@@ -175,27 +181,13 @@ impl Ease {
                     1.0 - u * u * u * u / 2.0
                 }
             }
-            Ease::ExpoIn => {
-                if t == 0.0 {
-                    0.0
-                } else {
-                    exp2(10.0 * t - 10.0)
-                }
-            }
-            Ease::ExpoOut => {
-                if t == 1.0 {
-                    1.0
-                } else {
-                    1.0 - exp2(-10.0 * t)
-                }
-            }
+            Ease::ExpoIn => expo_in(t),
+            Ease::ExpoOut => 1.0 - expo_in(1.0 - t),
             Ease::ExpoInOut => {
-                if t == 0.0 || t == 1.0 {
-                    t
-                } else if t < 0.5 {
-                    exp2(20.0 * t - 10.0) / 2.0
+                if t < 0.5 {
+                    expo_in(2.0 * t) / 2.0
                 } else {
-                    (2.0 - exp2(-20.0 * t + 10.0)) / 2.0
+                    1.0 - expo_in(2.0 * (1.0 - t)) / 2.0
                 }
             }
             Ease::BackIn => c3 * t * t * t - c1 * t * t,
@@ -206,10 +198,10 @@ impl Ease {
             Ease::BackInOut => {
                 if t < 0.5 {
                     let u = 2.0 * t;
-                    u * u * ((c2 + 1.0) * u - c2) / 2.0
+                    u * u * ((c1 + 1.0) * u - c1) / 2.0
                 } else {
                     let u = 2.0 * t - 2.0;
-                    (u * u * ((c2 + 1.0) * u + c2) + 2.0) / 2.0
+                    (u * u * ((c1 + 1.0) * u + c1) + 2.0) / 2.0
                 }
             }
             Ease::ElasticIn => {

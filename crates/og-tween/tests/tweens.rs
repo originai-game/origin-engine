@@ -14,6 +14,94 @@ use og_core::glam::Vec3;
 use og_ecs::{Entity, World, WorldDesc};
 use og_tween::*;
 
+#[test]
+fn gsap_names_and_changed_curves_match_asymmetric_mathematical_values() {
+    // Independent double-precision evaluations of the documented GSAP 3.15
+    // formula, not values produced by Ease::apply. The old Penner curves
+    // differ substantially at 1/6 and 17/60, despite agreeing at endpoints.
+    let points = [
+        0.0,
+        1.0 / 60.0,
+        1.0 / 6.0,
+        17.0 / 60.0,
+        43.0 / 60.0,
+        59.0 / 60.0,
+        1.0,
+    ];
+    for (name, expected) in [
+        (
+            "expo.in",
+            [
+                0.0,
+                0.0000182692601438,
+                0.000534593338694,
+                0.0023428102759,
+                0.138942370563,
+                0.891118326568,
+                1.0,
+            ],
+        ),
+        (
+            "expo.out",
+            [
+                0.0,
+                0.108881673432,
+                0.681700118492,
+                0.861057629437,
+                0.997657189724,
+                0.99998173074,
+                1.0,
+            ],
+        ),
+        (
+            "expo.inOut",
+            [
+                0.0,
+                0.0000205071905135,
+                0.00209776957121,
+                0.0212290594572,
+                0.978770940543,
+                0.999979492809,
+                1.0,
+            ],
+        ),
+        (
+            "back.inOut",
+            [
+                0.0,
+                -0.000895292962963,
+                -0.044502962963,
+                -0.0274043714815,
+                1.02740437148,
+                1.00089529296,
+                1.0,
+            ],
+        ),
+    ] {
+        let ease = Ease::from_name(name).unwrap();
+        for (t, expected) in points.into_iter().zip(expected) {
+            assert!(
+                (f64::from(ease.apply(t)) - expected).abs() < 0.000001,
+                "{name} at {t}"
+            );
+        }
+    }
+    let near_zero = 1.0 / 1_048_576.0;
+    assert!(Ease::ExpoIn.apply(near_zero) < 0.000000002);
+    assert!(Ease::ExpoOut.apply(1.0 - near_zero) > 0.999999);
+    for (name, value) in [
+        ("none", 0.25),
+        ("power1.out", 0.4375),
+        ("power2.in", 0.015625),
+        ("power3.inOut", 0.03125),
+    ] {
+        assert_eq!(Ease::from_name(name).unwrap().apply(0.25), value);
+    }
+    for old in ["linear", "quadOut", "expoIn", "backInOut"] {
+        assert!(Ease::from_name(old).is_none(), "no alias for {old}");
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
 #[reflect(name = "Body")]
 struct Body {
