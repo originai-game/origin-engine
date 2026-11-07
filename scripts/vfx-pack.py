@@ -3,7 +3,7 @@
 docs/vfx-packs.md).
 
     python3 scripts/vfx-pack.py manifest <pack> --spec <spec.json> [--revision SHA]
-    python3 scripts/vfx-pack.py preview <pack> [--og target/debug/og] [--cover <effect.ogt>]
+    python3 scripts/vfx-pack.py preview <pack> [--og target/debug/og] [--cover <effect.ogt>] [--only <a.ogt,b.ogt>]
 
 `manifest` writes the pack's assets.json (every installed file with its
 sha256 and provenance, every top-level effect with its timing) and the
@@ -319,6 +319,12 @@ def preview(args):
     assets = json.loads((pack / "assets.json").read_text())
     dim = ext.get("tags", {}).get("dim", "3d")
     effects = [e["path"] for e in assets["effects"]]
+    if args.only:
+        # Re-render these effects alone; the pack's other sheets stay.
+        only = set(args.only.split(","))
+        if only - set(effects):
+            sys.exit(f"not effects of the pack: {sorted(only - set(effects))}")
+        effects = [e for e in effects if e in only]
     vfx2d_ids = [f"vfx/{ext['name']}/{e['path']}" for e in assets["effects"] if e["type"] == "vfx2d"]
     root, game, name = scratch_game(pack, og, dim, vfx2d_ids)
     ids = [f"vfx/{name}/{p}" for p in effects]
@@ -380,9 +386,9 @@ def preview(args):
         # empty scene (its own baseline), then the effect.
         device = device_name()
         out = pack / "preview"
-        if out.exists():
+        if out.exists() and not args.only:
             shutil.rmtree(out)
-        out.mkdir()
+        out.mkdir(exist_ok=True)
         rows = []
         for n, (i, rel) in enumerate(zip(ids, effects)):
             tm = timing[i]
@@ -434,11 +440,16 @@ def preview(args):
             print(f"{rel}\tbaseline {base_total:.3f} ms\t+{cost['peakFrameMs']['total']:.3f} ms", flush=True)
         if f"vfx/{name}/{args.cover}" not in timing:
             args.cover = None
-        cover = args.cover or next((e["path"] for e in assets["effects"] if timing[f"vfx/{name}/{e['path']}"]["impact"] is not None), effects[0])
-        cp = plan[f"vfx/{name}/{cover}"]
-        tm = timing[f"vfx/{name}/{cover}"]
-        pick = cp[2] if tm["impact"] is None else cp[min(range(6), key=lambda n: abs(FRACTIONS[n] * tm["show"] - tm["impact"]))]
-        Image.open(f"{pick}.png").convert("RGB").save(out / "cover.png", optimize=True)
+        if args.only and args.cover is None:
+            # The cover is one of the pack's effects, maybe not re-rendered.
+            cover = None
+        else:
+            cover = args.cover or next((e["path"] for e in assets["effects"] if timing[f"vfx/{name}/{e['path']}"]["impact"] is not None), effects[0])
+        if cover is not None:
+            cp = plan[f"vfx/{name}/{cover}"]
+            tm = timing[f"vfx/{name}/{cover}"]
+            pick = cp[2] if tm["impact"] is None else cp[min(range(6), key=lambda n: abs(FRACTIONS[n] * tm["show"] - tm["impact"]))]
+            Image.open(f"{pick}.png").convert("RGB").save(out / "cover.png", optimize=True)
 
         for e in assets["effects"]:
             tm = timing.get(f"vfx/{name}/{e['path']}")
@@ -471,6 +482,7 @@ def main():
     p.add_argument("--og", default=str(Path(__file__).resolve().parent.parent / "target/debug/og"))
     p.add_argument("--cover")
     p.add_argument("--keep", action="store_true")
+    p.add_argument("--only", help="comma-separated effect paths to re-render; the other sheets stay")
     p.add_argument("--skip-failed", action="store_true",
                    help="render the effects that load and list the rest, instead of refusing")
     args = ap.parse_args()

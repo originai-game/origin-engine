@@ -71,7 +71,7 @@ Inside the pack, stored by the library and never installed:
 
 ```sh
 python3 scripts/vfx-pack.py manifest <pack> --spec <spec.json>   # assets.json, catalog fields
-python3 scripts/vfx-pack.py preview <pack> [--cover <effect.ogt>]  # preview/, timing into assets.json
+python3 scripts/vfx-pack.py preview <pack> [--cover <effect.ogt>] [--only <a.ogt,...>]  # preview/, timing into assets.json; --only re-renders those effects and keeps the rest
 ```
 
 The spec names the provenance of each file by glob and each effect's
