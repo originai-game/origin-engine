@@ -32,6 +32,11 @@ fn engine() -> u32 {
             .to_string(),
     ));
     value(og_reflect_define_component(
+        "Fade".into(),
+        json!([{"name": "depth", "kind": "f32", "default": 0.2, "options": {"min": 0.1, "max": 0.3}}])
+            .to_string(),
+    ));
+    value(og_reflect_define_component(
         "Target".into(),
         json!([{"name": "of", "kind": "Entity", "default": 0, "options": {}}]).to_string(),
     ));
@@ -203,5 +208,43 @@ fn the_checks_read_only_written_columns_and_everything_after_a_restore() {
         named(&again, "in range Health.hp")["value"],
         -5.0,
         "{again}"
+    );
+}
+
+#[test]
+fn a_float_field_at_its_declared_bound_is_in_range() {
+    let e = engine();
+    let lake = value(og_world_spawn(e, None)).as_f64().unwrap();
+    // og.Water.depthFade's minimum is 0.01: its f32 holds 0.0099999998.
+    value(og_world_insert(
+        e,
+        lake,
+        "og.Water".into(),
+        Some(json!({"depthFade": 0.01}).to_string()),
+    ));
+    // Fade.depth's maximum 0.3: its f32 holds 0.30000001.
+    value(og_world_insert(
+        e,
+        lake,
+        "Fade".into(),
+        Some(json!({"depth": 0.3}).to_string()),
+    ));
+    value(og_engine_advance(e, 2));
+    let at_bounds = report(e, true);
+    assert_eq!(at_bounds["violations"], json!([]), "{at_bounds}");
+
+    // Past a bound by more than the f32's rounding is still out of range.
+    value(og_world_set(
+        e,
+        lake,
+        "og.Water".into(),
+        json!({"depthFade": 0.0099}).to_string(),
+    ));
+    value(og_engine_advance(e, 1));
+    let r = report(e, true);
+    let range = named(&r, "in range og.Water.depthFade");
+    assert!(
+        (range["value"].as_f64().unwrap() - 0.0099).abs() < 1e-6,
+        "{range}"
     );
 }

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "assertions: the default \"in range\" invariant",
+      "summary": "An f32 field is compared with its declared bounds at f32 precision. A field set to its own minimum or maximum (og.Water.depthFade at 0.01, which its f32 holds as 0.0099999998) no longer breaks \"in range\" on every tick, so `og run` no longer exits with status 1 for it. A value past a bound by more than the f32's rounding still breaks it."
+    }
+  ]
+}
