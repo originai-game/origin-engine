@@ -540,7 +540,9 @@ pub(crate) fn build<'a>(
                             ar / layout.atlas_size.x,
                             ab / layout.atlas_size.y,
                         ],
-                        color: if layout.color {
+                        // A colour page's images keep their colours (those
+                        // in the text's colour mix it in, foreground_mix).
+                        color: if layout.color && !layout.foreground {
                             [1.0, 1.0, 1.0, text.color[3]]
                         } else {
                             text.color

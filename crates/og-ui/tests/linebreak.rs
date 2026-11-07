@@ -105,6 +105,7 @@ fn long_kerned_line_measurement_is_not_quadratic() {
         metrics: FontMetrics::from_msdf(&MsdfFont {
             atlas: TextureHandle::from_slot(1).unwrap(),
             distance_range: 4.0,
+            foreground: false,
             line_height: 1.2,
             glyphs: vec![Glyph {
                 codepoint: '漢',

@@ -708,10 +708,14 @@ pub fn cook(
     }
     // `color true`: the glyphs with a COLR paint come off the distance
     // field and are drawn in colour on pages of their own.
-    let colour = if s.color {
+    let Colour {
+        plain: colour,
+        black,
+        white,
+    } = if s.color {
         colour_glyphs(bytes, &face, &mut glyphs, s)?
     } else {
-        Vec::new()
+        Colour::default()
     };
 
     let page = s.page_size.max(64);
@@ -736,12 +740,14 @@ pub fn cook(
             atlas_h: g.height,
         });
     }
-    // A colour glyph's row points past the field's pages, at its image.
-    let colour_pages = if colour.is_empty() {
-        None
-    } else {
-        let pages = shelf(&colour, page)?;
-        for (i, g) in colour.iter().enumerate() {
+    // A colour glyph's row points past the field's pages, at its image:
+    // the colour pages', then the foreground pages' (its black image).
+    let mut point = |glyphs: &[Glyph], first: u32| -> Result<Option<Shelf>, CookError> {
+        if glyphs.is_empty() {
+            return Ok(None);
+        }
+        let pages = shelf(glyphs, page)?;
+        for (i, g) in glyphs.iter().enumerate() {
             let (p, gx, gy) = pages.place[i];
             let [l, b, r, t] = g.plane.expect("a colour glyph has ink");
             let row = rows
@@ -749,7 +755,7 @@ pub fn cook(
                 .find(|r| r.codepoint == g.codepoint)
                 .expect("a colour glyph is a cooked glyph");
             *row = GlyphRow {
-                page: page_count + p,
+                page: first + p,
                 plane_left: l,
                 plane_bottom: b,
                 plane_right: r,
@@ -761,8 +767,34 @@ pub fn cook(
                 ..*row
             };
         }
-        Some(pages)
+        Ok(Some(pages))
     };
+    let colour_pages = point(&colour, page_count)?;
+    let first_foreground = page_count + colour_pages.as_ref().map_or(0, |c| c.count);
+    // A foreground page holds each glyph twice, side by side: painted with
+    // a black foreground on the left half, white on the right. The white
+    // images are the same sizes, so they pack to the same places.
+    let foreground_pages = point(&black, first_foreground)?.map(|b| {
+        let w = shelf(&white, page).expect("packs as the black images did");
+        debug_assert_eq!(w.place, b.place);
+        let pages = b
+            .pages
+            .iter()
+            .zip(&w.pages)
+            .map(|(l, r)| {
+                let row = (b.width * 4) as usize;
+                l.chunks_exact(row)
+                    .zip(r.chunks_exact(row))
+                    .flat_map(|(a, b)| a.iter().chain(b).copied())
+                    .collect()
+            })
+            .collect();
+        Shelf {
+            width: b.width * 2,
+            pages,
+            ..b
+        }
+    });
     let upem = face.units_per_em() as f32;
     let meta = FontMeta {
         units_per_em: face.units_per_em() as u32,
@@ -805,6 +837,15 @@ pub fn cook(
             w.raw(&format!("color.{i}"), ktx, 16);
         }
     }
+    let mut foreground_bytes = 0;
+    if let Some(c) = &foreground_pages {
+        for (i, px) in c.pages.iter().enumerate() {
+            let h = (px.len() / (c.width as usize * 4)) as u32;
+            let ktx = ktx2::write_rgba8_zlib(c.width, h, px, true, false, format::COOKER_VERSION);
+            foreground_bytes += ktx.len();
+            w.raw(&format!("foreground.{i}"), ktx, 16);
+        }
+    }
     if s.runtime || shaping {
         w.raw("ttf", bytes.to_vec(), 16);
     } else {
@@ -834,6 +875,15 @@ pub fn cook(
             "; {} colour glyph(s) at {} px/em on {} page(s) of {}x{} ({colour_bytes} bytes)",
             colour.len(),
             s.color_px,
+            c.count,
+            c.width,
+            c.height
+        ));
+    }
+    if let Some(c) = &foreground_pages {
+        note.push_str(&format!(
+            "; {} colour glyph(s) in the text's colour on {} page(s) of {}x{} ({foreground_bytes} bytes)",
+            black.len(),
             c.count,
             c.width,
             c.height
@@ -977,6 +1027,18 @@ fn shelf(glyphs: &[Glyph], page: u32) -> Result<Shelf, CookError> {
     })
 }
 
+/// A font's colour glyphs (`font { color true }`).
+#[derive(Default)]
+struct Colour {
+    /// The glyphs drawn in their own colours.
+    plain: Vec<Glyph>,
+    /// The glyphs that use the text's colour (COLR palette entry 0xFFFF),
+    /// painted with a black foreground and, in the same order and sizes,
+    /// a white one: the renderer mixes the two by the text's colour.
+    black: Vec<Glyph>,
+    white: Vec<Glyph>,
+}
+
 /// `font { color true }`: each cooked glyph with a COLR paint drawn in
 /// colour at `color_px` (colr.rs) and taken off the distance field, which
 /// keeps its advance. A font none of whose cooked glyphs is coloured is
@@ -986,10 +1048,10 @@ fn colour_glyphs(
     face: &ttf_parser::Face,
     glyphs: &mut [Glyph],
     s: &FontSettings,
-) -> Result<Vec<Glyph>, CookError> {
+) -> Result<Colour, CookError> {
     let font = skrifa::FontRef::new(bytes).map_err(|e| CookError(format!("font: {e}")))?;
     let palette = colr::palette(&font);
-    let mut out = Vec::new();
+    let mut out = Colour::default();
     for g in glyphs.iter_mut() {
         let gid = if (GLYPH_PUA..GLYPH_PUA + 0x1_0000).contains(&g.codepoint) {
             g.codepoint - GLYPH_PUA
@@ -999,9 +1061,34 @@ fn colour_glyphs(
                 None => continue,
             }
         };
-        let image = colr::render(&font, skrifa::GlyphId::new(gid), s.color_px, &palette)
-            .map_err(|e| CookError(format!("U+{:04X}: {e}", g.codepoint)))?;
-        let Some(image) = image else { continue };
+        let paint = |foreground| {
+            colr::render(
+                &font,
+                skrifa::GlyphId::new(gid),
+                s.color_px,
+                &palette,
+                foreground,
+            )
+            .map_err(|e| CookError(format!("U+{:04X}: {e}", g.codepoint)))
+        };
+        let Some(image) = paint([0.0; 3])? else {
+            continue;
+        };
+        let glyph = |image: colr::ColorImage| Glyph {
+            codepoint: g.codepoint,
+            advance: g.advance,
+            plane: Some(image.plane),
+            width: image.width,
+            height: image.height,
+            pixels: image.rgba,
+        };
+        if image.foreground {
+            let white = paint([1.0; 3])?.expect("painted in black");
+            out.white.push(glyph(white));
+            out.black.push(glyph(image));
+        } else {
+            out.plain.push(glyph(image));
+        }
         *g = Glyph {
             plane: None,
             width: 0,
@@ -1009,16 +1096,8 @@ fn colour_glyphs(
             pixels: Vec::new(),
             ..*g
         };
-        out.push(Glyph {
-            codepoint: g.codepoint,
-            advance: g.advance,
-            plane: Some(image.plane),
-            width: image.width,
-            height: image.height,
-            pixels: image.rgba,
-        });
     }
-    if out.is_empty() {
+    if out.plain.is_empty() && out.black.is_empty() {
         return Err(CookError(
             "color true, but no character of the charset has a COLR colour glyph".into(),
         ));
@@ -1406,5 +1485,80 @@ mod tests {
             "{}",
             e.0
         );
+    }
+
+    /// A colour glyph whose paint uses the text's colour (COLR palette
+    /// entry 0xFFFF) cooks twice onto a foreground page, black on the left
+    /// half and white at the same place on the right, the same alpha in
+    /// both; the font's other colour glyphs keep their page byte for byte.
+    #[test]
+    fn foreground_glyphs_cook_black_and_white_side_by_side() {
+        let bytes = std::fs::read(format!(
+            "{}/../../tests/fixtures/ui-text/assets/fonts/test_glyphs-glyf_colr_1.ttf",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        let settings = |chars: &str| FontSettings {
+            charset: Vec::new(),
+            chars: chars.into(),
+            color: true,
+            ..FontSettings::default()
+        };
+        // U+1FB00: a linear gradient across 0.1..0.9 em, orange (palette
+        // entry 1) at both ends and the foreground at the middle.
+        let (without, _) = cook(&bytes, &settings("\u{1F100}\u{1F600}"), 2, 0).expect("cooks");
+        let (with, notes) =
+            cook(&bytes, &settings("\u{1F100}\u{1F600}\u{1FB00}"), 2, 0).expect("cooks");
+        assert!(
+            notes.note.contains("4 colour glyph(s) at 64 px/em")
+                && notes
+                    .note
+                    .contains("2 colour glyph(s) in the text's colour on 1 page(s)"),
+            "{}",
+            notes.note
+        );
+        let (a, b) = (
+            og_blob::Blob::parse(&without, "test").unwrap(),
+            og_blob::Blob::parse(&with, "test").unwrap(),
+        );
+        assert_eq!(a.raw("color.0").unwrap(), b.raw("color.0").unwrap());
+        assert!(a.raw_opt("foreground.0").is_none() && b.raw_opt("foreground.1").is_none());
+        let meta = b.table::<FontMeta>("meta", row_hash::<FontMeta>()).unwrap()[0];
+        let rows = b
+            .table::<GlyphRow>("glyphs", row_hash::<GlyphRow>())
+            .unwrap();
+        let r = rows.iter().find(|r| r.codepoint == 0x1FB00).unwrap();
+        assert_eq!(r.page, meta.page_count + 1, "past the colour page");
+        let (w, h, rgba) = ktx2::decode_rgba8(b.raw("foreground.0").unwrap(), 0).unwrap();
+        assert!(r.atlas_x + r.atlas_w <= w / 2 && r.atlas_y + r.atlas_h <= h);
+        let px = |x: u32, y: u32| {
+            let i = ((y * w + x) * 4) as usize;
+            [rgba[i], rgba[i + 1], rgba[i + 2], rgba[i + 3]]
+        };
+        for y in r.atlas_y..r.atlas_y + r.atlas_h {
+            for x in r.atlas_x..r.atlas_x + r.atlas_w {
+                assert_eq!(px(x, y)[3], px(x + w / 2, y)[3], "alpha at {x},{y}");
+            }
+        }
+        // The image is 4 px of padding then 0.1..0.9 em at 64 px/em.
+        let y = r.atlas_y + r.atlas_h / 2;
+        let mid = r.atlas_x + r.atlas_w / 2;
+        let near = |p: [u8; 4], q: [u8; 4]| p.iter().zip(q).all(|(&a, b)| a.abs_diff(b) <= 6);
+        assert!(near(px(mid, y), [0, 0, 0, 255]), "{:?}", px(mid, y));
+        assert!(
+            near(px(mid + w / 2, y), [255; 4]),
+            "{:?}",
+            px(mid + w / 2, y)
+        );
+        // A pixel into the ink: 6% of the way to the foreground.
+        let edge = r.atlas_x + 5;
+        for x in [edge, edge + w / 2] {
+            let [r, g, b, a] = px(x, y);
+            assert!(
+                r >= 238 && (150..=170).contains(&g) && b <= 16 && a == 255,
+                "{:?}",
+                px(x, y)
+            );
+        }
     }
 }

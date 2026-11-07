@@ -9,7 +9,8 @@
 // shadow. Prepended by frame.wgsl and lighting.wgsl.
 
 struct SpriteParams {
-  // x: MSDF distance range in atlas pixels (0: a plain sprite), yz: atlas size in pixels.
+  // x: MSDF distance range in atlas pixels (0: a plain sprite, -1: a page
+  // of colour glyph pairs, foreground_mix), yz: atlas size in pixels.
   msdf: vec4<f32>,
 };
 @group(1) @binding(0) var sprite_tex: texture_2d<f32>;
@@ -291,6 +292,26 @@ fn on_outline(uv: vec2<f32>, region: vec4<f32>, outline: vec4<f32>) -> bool {
   return false;
 }
 
+fn fg_encode(c: vec3<f32>) -> vec3<f32> {
+  let x = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
+  return select(1.055 * pow(x, vec3<f32>(1.0 / 2.4)) - 0.055, x * 12.92, x <= vec3<f32>(0.0031308));
+}
+
+fn fg_decode(c: vec3<f32>) -> vec3<f32> {
+  return select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
+}
+
+// A colour glyph in the text's colour (MsdfFont::foreground, a sprite
+// params x of -1): the glyph painted with a black foreground and its
+// white-foreground twin half the page to the right, mixed channel by
+// channel by the text's colour `fg` in sRGB, where the cook painted them:
+// exact wherever the paint is affine in the foreground (fills, gradients,
+// Porter-Duff composites).
+fn foreground_mix(black: vec4<f32>, uv: vec2<f32>, fg: vec3<f32>) -> vec4<f32> {
+  let white = textureSample(sprite_tex, sprite_sampler, uv + vec2<f32>(0.5, 0.0));
+  return vec4<f32>(fg_decode(mix(fg_encode(black.rgb), fg_encode(white.rgb), fg_encode(fg))), black.a);
+}
+
 // The sprite's colour before lighting: texture (through cleanEdge when its
 // filter is, sprite_params.msdf.w), the pixel outline, tint, soft dot,
 // flash. Without an outline or cleanEdge, the texture sampled as ever.
@@ -300,6 +321,9 @@ fn sprite_color(in: SpriteOut) -> vec4<f32> {
     t = clean_edge(in.uv, in.region);
   }
   var c = t * in.color;
+  if (sprite_params.msdf.x < 0.0) {
+    c = foreground_mix(t, in.uv, in.color.rgb) * vec4<f32>(1.0, 1.0, 1.0, in.color.a);
+  }
   if (in.outline.z > 0.0) {
     // The grown quad reaches past the region: clear there.
     if (!in_region(in.uv, in.region)) { c = vec4<f32>(0.0); }

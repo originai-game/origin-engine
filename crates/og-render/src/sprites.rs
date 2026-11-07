@@ -263,6 +263,8 @@ pub(crate) struct FontLayout {
     pub atlas_size: Vec2,
     /// A page of colour glyphs ([`MsdfFont::distance_range`] 0).
     pub color: bool,
+    /// Its glyphs use the text's colour ([`MsdfFont::foreground`]).
+    pub foreground: bool,
 }
 
 impl FontLayout {
@@ -277,6 +279,7 @@ impl FontLayout {
             line_height: font.line_height,
             atlas_size,
             color: font.distance_range == 0.0,
+            foreground: font.foreground,
         }
     }
 
@@ -1011,8 +1014,9 @@ pub(crate) fn build<'a>(
                         ar / font.atlas_size.x,
                         ab / font.atlas_size.y,
                     ],
-                    // A colour page's images keep their colours.
-                    color: if font.color {
+                    // A colour page's images keep their colours (those
+                    // in the text's colour mix it in, foreground_mix).
+                    color: if font.color && !font.foreground {
                         [1.0, 1.0, 1.0, text.color[3]]
                     } else {
                         text.color

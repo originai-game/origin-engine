@@ -79,6 +79,7 @@ fn add(scene: &mut RenderScene, f: &CookedFont) -> UiFont {
     let font = MsdfFont {
         atlas,
         distance_range: m.px_range,
+        foreground: false,
         line_height: m.ascender - m.descender + m.line_gap,
         glyphs: f
             .glyphs

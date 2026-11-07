@@ -312,6 +312,7 @@ pub fn add_font(scene: &mut RenderScene, files: &FontFiles) -> UiFont {
     let font = MsdfFont {
         atlas,
         distance_range: number("atlas", "distanceRange"),
+        foreground: false,
         line_height: number("metrics", "lineHeight"),
         glyphs,
         kerning: Vec::new(),

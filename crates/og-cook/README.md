@@ -447,7 +447,17 @@ for the text's alpha and without glow, outline or shadow, on both hosts.
 Only fonts that ask carry colour pages, and an emoji font is its own asset,
 loaded when a game loads it. A font none of whose cooked characters is
 coloured refuses the setting, as does `runtime true` (run-time glyphs have
-no colour). Palette 0 is used; the text-colour entry (0xFFFF) draws black.
+no colour). Palette 0 is used.
+
+A glyph whose paint uses the text's colour (palette entry 0xFFFF) is
+painted twice, with a black foreground and a white one, side by side on the
+blob's `foreground.<n>` pages (after the colour pages; the row points at the
+black copy, the white one is half the page to the right). og-render mixes
+the two channel by channel by the text's colour in sRGB, where the cook
+painted them, at the text's alpha: exact for fills, gradients and
+Porter-Duff composites, whose result is affine in the foreground (a
+separable blend of the foreground with itself is approximated). Glyphs
+that do not use it stay on the colour pages, byte for byte.
 
 ## Determinism
 

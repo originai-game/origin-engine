@@ -409,6 +409,11 @@ pub struct CookedFont {
     /// Colour glyph pages (`font { color true }`), sRGB with straight alpha:
     /// page `pages.len() + i` of a glyph row is `color_pages[i]`.
     pub color_pages: Vec<TextureData>,
+    /// Colour glyph pages of the glyphs that use the text's colour (COLR
+    /// palette entry 0xFFFF), after `color_pages`: each glyph painted with
+    /// a black foreground at its row's place in the left half, and with a
+    /// white one at the same place in the right half.
+    pub foreground_pages: Vec<TextureData>,
     /// The font file, for a font cooked with a shaped script (og-ui shapes
     /// its words) or with `runtime true` (characters outside the charset
     /// are rendered from it when a text needs them).

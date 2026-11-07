@@ -124,6 +124,12 @@ pub struct MsdfFont {
     /// sprites, untinted but for the text's alpha, without glow, outline
     /// or shadow.
     pub distance_range: f32,
+    /// A page of colour glyphs (distance range 0) that use the text's
+    /// colour (COLR palette entry 0xFFFF): each glyph's image is painted
+    /// with a black foreground, its twin half the page to the right with a
+    /// white one, and the text's colour mixes the two channel by channel
+    /// (in sRGB, as the glyph was painted), at the text's alpha.
+    pub foreground: bool,
     /// Baseline-to-baseline distance in em.
     pub line_height: f32,
     pub glyphs: Vec<Glyph>,

@@ -57,6 +57,7 @@ pub fn load_font(scene: &mut RenderScene) -> Result<og_render::FontHandle, Strin
     Ok(scene.add_font(MsdfFont {
         atlas,
         distance_range: number("distanceRange")?,
+        foreground: false,
         line_height: number("lineHeight")?,
         glyphs,
         kerning: Vec::new(),

@@ -28,6 +28,9 @@ pub struct ColorImage {
     /// The quad around the glyph relative to the pen on the baseline, em,
     /// y up: left, bottom, right, top.
     pub plane: [f32; 4],
+    /// Its paint uses the text's colour (palette entry 0xFFFF), drawn in
+    /// the `foreground` it was rendered with.
+    pub foreground: bool,
 }
 
 /// The largest image edge, in em: a glyph whose paint reaches further is
@@ -50,13 +53,15 @@ pub fn palette(font: &FontRef) -> Vec<[f32; 4]> {
         .unwrap_or_default()
 }
 
-/// Draws glyph `gid` in colour at `em_px` pixels per em; `None` when it has
-/// no colour paint or paints nothing.
+/// Draws glyph `gid` in colour at `em_px` pixels per em, palette entry
+/// 0xFFFF (the text's colour) as `foreground` (sRGB, opaque); `None` when
+/// it has no colour paint or paints nothing.
 pub fn render(
     font: &FontRef,
     gid: GlyphId,
     em_px: f32,
     palette: &[[f32; 4]],
+    foreground: [f32; 3],
 ) -> Result<Option<ColorImage>, String> {
     let Some(glyph) = font.color_glyphs().get(gid) else {
         return Ok(None);
@@ -100,6 +105,8 @@ pub fn render(
         w,
         h,
         palette,
+        foreground,
+        used_foreground: std::cell::Cell::new(false),
         transforms: vec![device],
         clips: Vec::new(),
         layers: vec![(vec![[0.0; 4]; w * h], CompositeMode::SrcOver)],
@@ -119,6 +126,7 @@ pub fn render(
             right as f32 / px,
             top as f32 / px,
         ],
+        foreground: p.used_foreground.get(),
     }))
 }
 
@@ -384,6 +392,9 @@ struct Raster<'a> {
     w: usize,
     h: usize,
     palette: &'a [[f32; 4]],
+    foreground: [f32; 3],
+    /// A brush read palette entry 0xFFFF.
+    used_foreground: std::cell::Cell<bool>,
     transforms: Vec<Affine>,
     clips: Vec<Vec<f32>>,
     layers: Vec<(Vec<[f32; 4]>, CompositeMode)>,
@@ -406,10 +417,12 @@ impl Raster<'_> {
 
     /// The premultiplied colour of palette entry `index` times `alpha`.
     fn color(&self, index: u16, alpha: f32) -> [f32; 4] {
-        // 0xFFFF is the text's colour, which a cooked image cannot follow:
-        // it is drawn black, as an unstyled text is.
+        // 0xFFFF is the text's colour: the cook paints it twice, black and
+        // white, and the renderer mixes the two by the text's colour.
         let c = if index == 0xFFFF {
-            [0.0, 0.0, 0.0, 1.0]
+            self.used_foreground.set(true);
+            let [r, g, b] = self.foreground;
+            [r, g, b, 1.0]
         } else {
             self.palette
                 .get(index as usize)

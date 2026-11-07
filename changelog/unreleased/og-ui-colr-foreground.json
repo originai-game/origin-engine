@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "font { color true }",
+      "summary": "A COLR glyph that uses the text's colour (palette entry 0xFFFF, the foreground) draws in the text's colour at its alpha, through its gradients and composites, instead of black. The cook paints such a glyph with a black and a white foreground side by side on the font blob's new `foreground.<n>` pages, and og-render mixes the two by the text's colour on both hosts. Fonts with no such glyph cook byte for byte as before (crates/og-cook/README.md §Colour glyphs)."
+    }
+  ]
+}

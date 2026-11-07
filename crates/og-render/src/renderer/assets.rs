@@ -645,7 +645,17 @@ impl Renderer {
                 &self.sprite_layout,
                 &gpu.view,
                 &self.trilinear_sampler,
-                [font.distance_range, atlas_size.x, atlas_size.y, 0.0],
+                // -1: a page of colour glyph pairs (foreground_mix).
+                [
+                    if font.foreground {
+                        -1.0
+                    } else {
+                        font.distance_range
+                    },
+                    atlas_size.x,
+                    atlas_size.y,
+                    0.0,
+                ],
             );
             self.cache.fonts.push(GpuFont {
                 layout: FontLayout::new(font, atlas_size),

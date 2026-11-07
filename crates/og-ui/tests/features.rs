@@ -49,6 +49,7 @@ fn font_at(path: &str) -> UiFont {
     let msdf = MsdfFont {
         atlas: TextureHandle::from_slot(1).expect("a handle"),
         distance_range: 4.0,
+        foreground: false,
         line_height: 1.2,
         glyphs,
         kerning: Vec::new(),

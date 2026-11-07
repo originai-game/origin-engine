@@ -257,6 +257,7 @@ pub fn text_layout_hash() -> u64 {
     let handle = scene.add_font(og_render::MsdfFont {
         atlas: og_render::TextureHandle::from_slot(1).unwrap(),
         distance_range: 4.0,
+        foreground: false,
         line_height: 1.2,
         glyphs: Vec::new(),
         kerning: Vec::new(),
@@ -268,6 +269,7 @@ pub fn text_layout_hash() -> u64 {
             metrics: FontMetrics::from_msdf(&og_render::MsdfFont {
                 atlas: og_render::TextureHandle::from_slot(1).unwrap(),
                 distance_range: 4.0,
+                foreground: false,
                 line_height: 1.2,
                 glyphs: Vec::new(),
                 kerning: Vec::new(),

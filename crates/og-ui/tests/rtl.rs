@@ -181,6 +181,7 @@ fn an_arabic_line_is_drawn_as_wide_as_it_was_laid_out() {
     let msdf = MsdfFont {
         atlas,
         distance_range: 4.0,
+        foreground: false,
         line_height: 1.2,
         glyphs,
         kerning: Vec::new(),

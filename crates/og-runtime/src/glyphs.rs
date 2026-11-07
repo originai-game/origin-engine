@@ -427,6 +427,7 @@ mod tests {
         let first = rs.scene.add_font(og_render::MsdfFont {
             atlas,
             distance_range: 16.0,
+            foreground: false,
             line_height: 1.2,
             glyphs: Vec::new(),
             kerning: Vec::new(),

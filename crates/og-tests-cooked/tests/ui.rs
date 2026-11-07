@@ -226,25 +226,20 @@ fn ui_rive_text_draws_its_run_in_its_cooked_font() {
     );
 }
 
-/// COLR colour glyphs (`font { color true }`) drawn through og-ui's text:
-/// the cooked colour page is a font page of its own, its glyphs images in
-/// their gradients' colours, untinted by the label's colour, beside a
-/// plain distance-field glyph of the same font.
-///
-/// Ways this could fail: the colour page goes through the MSDF shader (a
-/// solid-coloured or empty glyph); the label's colour tints the image; the
-/// page's glyphs are drawn on the field page too (a second, wrong glyph);
-/// the gradient is mirrored or its stops misread.
-#[test]
-#[ignore = "requires GPU"]
-fn colour_glyphs_draw_in_their_own_colours() {
+/// The fixture COLR font cooked with `chars` and `color true`, its pages
+/// added as og-runtime adds them (extract::add_font): the field's, the
+/// colour pages (distance range 0), then the foreground pages.
+fn colr_font(
+    name: &str,
+    chars: &str,
+) -> (
+    og_render::RenderScene,
+    Vec<og_render::FontHandle>,
+    og_cook::runtime::CookedFont,
+) {
     use og_cook::runtime::Bundle;
-    use og_render::{
-        ColorSpace, Glyph, Mips, MsdfFont, RenderDesc, RenderScene, RenderTarget, Renderer,
-        TextureData,
-    };
-    use og_ui::*;
-    let root = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-colr");
+    use og_render::{ColorSpace, Glyph, Mips, MsdfFont, RenderScene, TextureData};
+    let root = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name);
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(root.join("assets/fonts")).unwrap();
     std::fs::copy(
@@ -253,12 +248,9 @@ fn colour_glyphs_draw_in_their_own_colours() {
         root.join("assets/fonts/colr.ttf"),
     )
     .unwrap();
-    // U+1F100: a linear gradient red to blue left to right; U+1F600 (a
-    // composite of two squares). No other glyph of the font has ink
-    // outside its colour paint, so the field page is empty.
     std::fs::write(
         root.join("assets/fonts/colr.ttf.ogt"),
-        "type import\nversion 1\n---\nfont {\n  charset\n  chars \"\u{1F100}\u{1F600}\"\n  color true\n}\n",
+        format!("type import\nversion 1\n---\nfont {{\n  charset\n  chars \"{chars}\"\n  color true\n}}\n"),
     )
     .unwrap();
     let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
@@ -272,18 +264,16 @@ fn colour_glyphs_draw_in_their_own_colours() {
             &std::fs::read(cooked.join(&out.file)).unwrap(),
         )
         .unwrap();
-    assert_eq!(f.color_pages.len(), 1);
-    // Each page as og-runtime adds it (extract::add_font): the field's,
-    // then the colour page with a distance range of 0.
     let mut scene = RenderScene::new();
     let m = &f.meta;
     let mut handles = Vec::new();
     let all = f
         .pages
         .iter()
-        .map(|p| (p, false))
-        .chain(f.color_pages.iter().map(|p| (p, true)));
-    for (p, (data, colour)) in all.enumerate() {
+        .map(|p| (p, false, false))
+        .chain(f.color_pages.iter().map(|p| (p, true, false)))
+        .chain(f.foreground_pages.iter().map(|p| (p, true, true)));
+    for (p, (data, colour, foreground)) in all.enumerate() {
         let atlas = scene.add_texture(if colour {
             data.clone()
         } else {
@@ -322,11 +312,26 @@ fn colour_glyphs_draw_in_their_own_colours() {
         handles.push(scene.add_font(MsdfFont {
             atlas,
             distance_range: if colour { 0.0 } else { m.px_range },
+            foreground,
             line_height: m.ascender - m.descender + m.line_gap,
             glyphs,
             kerning: Vec::new(),
         }));
     }
+    (scene, handles, f)
+}
+
+/// `text` as a 128 px og-ui label in `color` on a 400x200 frame, every
+/// page of the font drawn from its layout (og-runtime's widgets): the
+/// frame's sRGB pixels and the label's box (x, y, w, h).
+fn colr_label(
+    mut scene: og_render::RenderScene,
+    handles: &[og_render::FontHandle],
+    text: &str,
+    color: og_ui::Srgba,
+) -> (Vec<u8>, [f32; 4]) {
+    use og_render::{RenderDesc, RenderTarget, Renderer};
+    use og_ui::*;
     let font = UiFont::new(handles[0], scene.font(handles[0]).unwrap());
     let mut ui = Ui::new(UiDesc {
         fonts: Fonts {
@@ -351,11 +356,10 @@ fn colour_glyphs_draw_in_their_own_colours() {
         };
         ui.label(
             "Emoji",
-            "\u{1F100}\u{1F600}",
+            text,
             LabelDesc {
                 step: Some(step),
-                // A label colour that must not tint the images.
-                color: Some(Srgba::rgb(0, 255, 0)),
+                color: Some(color),
                 nowrap: true,
                 ..LabelDesc::default()
             },
@@ -370,7 +374,6 @@ fn colour_glyphs_draw_in_their_own_colours() {
     );
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
     frame.emit(&EmitDesc::default(), &mut overlay);
-    // The other pages draw from the same layout (og-runtime's widgets).
     let more: Vec<_> = overlay
         .texts
         .iter()
@@ -394,43 +397,145 @@ fn colour_glyphs_draw_in_their_own_colours() {
         .expect("render");
     assert_eq!(stats.missing_glyphs, 0);
     let image = renderer.read_offscreen().expect("read back");
-    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-gfx");
-    std::fs::create_dir_all(&dir).unwrap();
-    image::save_buffer(
-        dir.join("ui-colr.png"),
-        &image.pixels,
-        400,
-        200,
-        image::ColorType::Rgba8,
-    )
-    .unwrap();
     let e = frame
         .elements
         .iter()
         .find(|e| e.id.ends_with("Emoji"))
         .expect("the text's element");
+    (image.pixels, [e.x, e.y, e.width, e.height])
+}
+
+/// COLR colour glyphs (`font { color true }`) drawn through og-ui's text:
+/// the cooked colour page is a font page of its own, its glyphs images in
+/// their gradients' colours, untinted by the label's colour, beside a
+/// plain distance-field glyph of the same font.
+///
+/// Ways this could fail: the colour page goes through the MSDF shader (a
+/// solid-coloured or empty glyph); the label's colour tints the image; the
+/// page's glyphs are drawn on the field page too (a second, wrong glyph);
+/// the gradient is mirrored or its stops misread.
+#[test]
+#[ignore = "requires GPU"]
+fn colour_glyphs_draw_in_their_own_colours() {
+    // U+1F100: a linear gradient red to blue left to right; U+1F600 (a
+    // composite of two squares). No other glyph of the font has ink
+    // outside its colour paint, so the field page is empty.
+    let (scene, handles, f) = colr_font("og-colr", "\u{1F100}\u{1F600}");
+    assert_eq!(f.color_pages.len(), 1);
+    assert!(f.foreground_pages.is_empty());
+    // A label colour that must not tint the images.
+    let (pixels, [ex, ey, _, eh]) = colr_label(
+        scene,
+        &handles,
+        "\u{1F100}\u{1F600}",
+        og_ui::Srgba::rgb(0, 255, 0),
+    );
+    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-gfx");
+    std::fs::create_dir_all(&dir).unwrap();
+    image::save_buffer(
+        dir.join("ui-colr.png"),
+        &pixels,
+        400,
+        200,
+        image::ColorType::Rgba8,
+    )
+    .unwrap();
+    let size = 128.0;
     let px = |x: f32, y: f32| {
         let i = ((y as u32 * 400 + x as u32) * 4) as usize;
-        [image.pixels[i], image.pixels[i + 1], image.pixels[i + 2]]
+        [pixels[i], pixels[i + 1], pixels[i + 2]]
     };
     // U+1F100 fills 0.1..0.9 em across: on some row of its box its fifth
     // from the left is red and its fifth from the right blue.
-    let advance = font.metrics.measure("\u{1F100}", size);
-    let (lx, rx) = (e.x + size * 0.26, e.x + size * 0.74);
-    let rows = (e.y.max(0.0) as u32..(e.y + e.height).min(200.0) as u32)
+    let (lx, rx) = (ex + size * 0.26, ex + size * 0.74);
+    let rows = (ey.max(0.0) as u32..(ey + eh).min(200.0) as u32)
         .filter(|&y| {
             let (l, r) = (px(lx, y as f32), px(rx, y as f32));
             l[0] > l[2] + 60 && r[2] > r[0] + 60 && l[1] < 60 && r[1] < 60
         })
         .count();
-    println!("advance {advance}, element {e:?}, gradient rows {rows}");
+    println!("gradient rows {rows}");
     // The glyph is 0.7 em tall.
     assert!(rows as f32 > size * 0.6, "{rows} rows of red to blue");
     // No green anywhere: the label colour never reaches the images.
-    let green = image
-        .pixels
+    let green = pixels
         .chunks(4)
         .filter(|p| p[1] > 150 && p[0] < 100 && p[2] < 100)
         .count();
     assert_eq!(green, 0);
+}
+
+/// COLR palette entry 0xFFFF is the text's colour: a glyph that mixes a
+/// fixed colour with it draws in the label's colour, through gradients,
+/// under each of two label colours, and its fixed colour stays put.
+///
+/// Ways this could fail: the foreground drawn black (the cooked default)
+/// or white (the twin read as the glyph); the twin sampled at the wrong
+/// offset (a neighbour's pixels or a transparent gutter); the mix done in
+/// linear light (a darker mid-tone than the sRGB gradient the cook paints);
+/// the fixed orange tinted by the label.
+#[test]
+#[ignore = "requires GPU"]
+fn foreground_glyphs_draw_in_the_label_colour() {
+    // U+1FB00: a linear gradient across 0.1..0.9 em, orange at both ends
+    // and the foreground at its middle; U+1FB06: the foreground, solid.
+    let text = "\u{1FB00}\u{1FB06}";
+    let size = 128.0;
+    for (name, label) in [("green", [0u8, 200, 60]), ("magenta", [220, 40, 200])] {
+        let (scene, handles, f) = colr_font("og-colr-fg", text);
+        assert_eq!(f.foreground_pages.len(), 1);
+        let (pixels, [ex, ey, _, eh]) = colr_label(
+            scene,
+            &handles,
+            text,
+            og_ui::Srgba::rgb(label[0], label[1], label[2]),
+        );
+        let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-gfx");
+        std::fs::create_dir_all(&dir).unwrap();
+        image::save_buffer(
+            dir.join(format!("ui-colr-fg-{name}.png")),
+            &pixels,
+            400,
+            200,
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+        let px = |x: f32, y: f32| {
+            let i = ((y as u32 * 400 + x as u32) * 4) as usize;
+            [pixels[i], pixels[i + 1], pixels[i + 2]]
+        };
+        let near =
+            |p: [u8; 3], q: [u8; 3], d: u8| p.iter().zip(q).all(|(&a, b)| a.abs_diff(b) <= d);
+        // The glyph is 0.7 em tall (0.25..0.95 em up from the baseline):
+        // count the rows of its box where each probe matches.
+        let rows = |x: f32, want: [u8; 3], d: u8| {
+            (ey.max(0.0) as u32..(ey + eh).min(200.0) as u32)
+                .filter(|&y| near(px(x, y as f32), want, d))
+                .count() as f32
+        };
+        let advance = 1.0 * size;
+        let mid = rows(ex + size * 0.5, label, 8);
+        let solid = rows(ex + advance + size * 0.5, label, 4);
+        let ends = rows(ex + size * 0.12, [255, 165, 0], 24);
+        println!("{name}: mid {mid}, solid {solid}, orange ends {ends}");
+        assert!(
+            mid > size * 0.6,
+            "{name}: {mid} rows of the label colour mid-gradient"
+        );
+        assert!(
+            solid > size * 0.6,
+            "{name}: {solid} rows of the solid foreground"
+        );
+        assert!(
+            ends > size * 0.6,
+            "{name}: {ends} rows of orange at the end"
+        );
+        // A quarter of the way: the sRGB midpoint of orange and the label.
+        let q = |k: usize| ((255.0f32 * [1.0, 0.647, 0.0][k] + f32::from(label[k])) / 2.0) as u8;
+        let quarter = rows(ex + size * 0.3, [q(0), q(1), q(2)], 24);
+        assert!(
+            quarter > size * 0.6,
+            "{name}: {quarter} rows of the sRGB mix"
+        );
+    }
 }

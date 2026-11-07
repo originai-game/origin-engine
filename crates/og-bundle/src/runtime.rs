@@ -948,23 +948,29 @@ impl Bundle {
                 mips: Mips::None,
             });
         }
-        let mut color_pages = Vec::new();
-        while let Some(ktx) = blob.raw_opt(&format!("color.{}", color_pages.len())) {
-            let (width, height, rgba) =
-                ktx2::decode_rgba8(ktx, 0).map_err(|r| invalid(&blob, r))?;
-            color_pages.push(TextureData {
-                width,
-                height,
-                rgba,
-                color_space: ColorSpace::Srgb,
-                mips: Mips::Generate,
-            });
-        }
+        let colour = |prefix: &str| -> Result<Vec<TextureData>, LoadError> {
+            let mut pages = Vec::new();
+            while let Some(ktx) = blob.raw_opt(&format!("{prefix}.{}", pages.len())) {
+                let (width, height, rgba) =
+                    ktx2::decode_rgba8(ktx, 0).map_err(|r| invalid(&blob, r))?;
+                pages.push(TextureData {
+                    width,
+                    height,
+                    rgba,
+                    color_space: ColorSpace::Srgb,
+                    mips: Mips::Generate,
+                });
+            }
+            Ok(pages)
+        };
+        let color_pages = colour("color")?;
+        let foreground_pages = colour("foreground")?;
         let kerning = blob
             .table::<KernRow>("kerning", row_hash::<KernRow>())?
             .into_owned();
         Ok(CookedFont {
             color_pages,
+            foreground_pages,
             id: asset_id(id).to_string(),
             meta,
             glyphs,

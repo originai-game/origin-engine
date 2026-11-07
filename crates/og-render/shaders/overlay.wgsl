@@ -10,8 +10,9 @@
 // a layer (UiLayer) draws them offset by its origin.
 
 struct SpriteParams {
-  // x: MSDF distance range in atlas pixels (0: a plain sprite), yz: atlas
-  // size in pixels; w: the glass pyramid's mip levels (src/glass.rs).
+  // x: MSDF distance range in atlas pixels (0: a plain sprite, -1: a page
+  // of colour glyph pairs, foreground_mix), yz: atlas size in pixels; w:
+  // the glass pyramid's mip levels (src/glass.rs).
   msdf: vec4<f32>,
 };
 @group(1) @binding(0) var sprite_tex: texture_2d<f32>;
@@ -80,9 +81,24 @@ fn finish(rgb: vec3<f32>, a0: f32, at: vec2<f32>, clip: vec4<f32>, shape: u32) -
   return finish_color(rgb, a);
 }
 
+// A colour glyph in the text's colour (MsdfFont::foreground): the glyph
+// painted with a black foreground and its white-foreground twin half the
+// page to the right, mixed channel by channel by the text's colour `fg`
+// in sRGB, where the cook painted them: exact wherever the paint is
+// affine in the foreground (fills, gradients, Porter-Duff composites).
+fn foreground_mix(black: vec4<f32>, uv: vec2<f32>, fg: vec3<f32>) -> vec4<f32> {
+  let white = textureSample(sprite_tex, sprite_sampler, uv + vec2<f32>(0.5, 0.0));
+  return vec4<f32>(decode(mix(encode(black.rgb), encode(white.rgb), encode(fg))), black.a);
+}
+
 @fragment
 fn fs(in: OverlayOut) -> @location(0) vec4<f32> {
-  let c = textureSample(sprite_tex, sprite_sampler, in.uv) * in.color;
+  var c = textureSample(sprite_tex, sprite_sampler, in.uv);
+  if (sprite_params.msdf.x < 0.0) {
+    c = foreground_mix(c, in.uv, in.color.rgb) * vec4<f32>(1.0, 1.0, 1.0, in.color.a);
+  } else {
+    c *= in.color;
+  }
   return finish(c.rgb, c.a, in.position.xy, in.clip, in.clip_shape);
 }
 
