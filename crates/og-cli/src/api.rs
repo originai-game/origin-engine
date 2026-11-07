@@ -58,6 +58,17 @@ fn root_option(rest: &[&str]) -> Result<PathBuf, ExitCode> {
 /// Writes every generated file, or with `wiki` only the wiki pages, and
 /// removes wiki pages the IDL no longer generates (a deleted module's page).
 fn api_gen(root: &Path, wiki: bool) -> ExitCode {
+    // The component catalogue is a guide og-ui's schema writes; the wiki
+    // reads it with the others.
+    let catalogue = root.join(og_ui::doc::catalogue::PATH);
+    let text = og_ui::doc::catalogue::markdown();
+    if std::fs::read_to_string(&catalogue).ok().as_deref() != Some(text.as_str()) {
+        if let Err(e) = std::fs::write(&catalogue, &text) {
+            eprintln!("og api gen: cannot write {}: {e}", catalogue.display());
+            return ExitCode::FAILURE;
+        }
+        println!("wrote {}", og_ui::doc::catalogue::PATH);
+    }
     let api = match og_idl::read(&root.join(og_idl::IDL_PATH)) {
         Ok(api) => api,
         Err(e) => {
@@ -127,7 +138,20 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
 }
 
 fn api_check(root: &Path) -> ExitCode {
-    match og_idl::check(root) {
+    let catalogue = std::fs::read_to_string(root.join(og_ui::doc::catalogue::PATH)).ok();
+    let stale = catalogue.as_deref() != Some(og_ui::doc::catalogue::markdown().as_str());
+    match og_idl::check(root).map(|mut d| {
+        if stale {
+            d.insert(
+                0,
+                og_idl::Drift::Differs {
+                    path: og_ui::doc::catalogue::PATH.into(),
+                    line: 1,
+                },
+            );
+        }
+        d
+    }) {
         Err(e) => {
             eprint!("og api check: {e}");
             ExitCode::FAILURE

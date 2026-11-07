@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og api show components",
+      "summary": "The component catalogue: every element kind a screen or component document can use, one guide section each, with its props as the document writes them (the CSS property and its value forms, or the attribute) and its states. Generated from og-ui's document schema by og api gen and checked by og api check, so og api find returns the kind's section."
+    }
+  ]
+}

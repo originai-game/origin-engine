@@ -1406,6 +1406,15 @@ frame that would work as a screenshot of the game.
 
 ### 16.1 Read
 
+The component catalogue is the `components` guide (`og api show
+components`): every element kind a document can use, one section each,
+with its props as the document writes them (the CSS property and the
+value it takes, or the attribute) and its states. `og api gen` writes it
+from og-ui's document schema (`crates/og-api/guides/components.md`) and
+`og api check` holds it equal, so `og api find "toggle" --kind guide`
+answers with the kind's own section and what a document may use is
+exactly what the parser accepts.
+
 `dump_ui` gives per element: the resolved props (box, transform, paints by
 token), the style part it is drawn as (`part`, with its variant and state
 flags) and the style rules that dress it (`rules`: each selector with its

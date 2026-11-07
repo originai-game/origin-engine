@@ -196,6 +196,54 @@ fn conv(prop: &str) -> Conv {
     }
 }
 
+/// How a declared prop's value is written in CSS (the catalogue's
+/// column); `None` for a prop written with its partner or as an attribute.
+/// `words` are a word prop's values as the element names them.
+pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
+    if let Some(j) = joint_form(css_name(prop)?) {
+        return Some(j.into());
+    }
+    Some(match conv(prop) {
+        Conv::Len => "<n>px".into(),
+        Conv::Num => "<number>".into(),
+        Conv::Angle => "<n>deg | <n>rad | <n>turn".into(),
+        Conv::Paint => "var(--<role>) | #rrggbb[aa]".into(),
+        Conv::Size => "fit-content | stretch | <n>px | <n>% (min-/max- bounds)".into(),
+        Conv::Insets => "1 to 4 lengths (top right bottom left)".into(),
+        Conv::Bool(t, f) => format!("{t} | {f}"),
+        Conv::Kebab => words
+            .iter()
+            .map(|w| kebab(w))
+            .collect::<Vec<_>>()
+            .join(" | "),
+        Conv::Kw(t) => t.iter().map(|(_, c)| *c).collect::<Vec<_>>().join(" | "),
+        Conv::Var(ns) => format!("var(--{ns}-<name>)"),
+        Conv::Str => "\"<text>\"".into(),
+        Conv::Ident => "<name>".into(),
+        Conv::Strs => "\"<a>\" \"<b>\" …".into(),
+        Conv::Tracks => "120px 1fr auto 25% minmax(80px, 200px)".into(),
+        Conv::Transition => {
+            "none | <ms>ms [ease] | -og-spring(<ms>ms, <bounce>) | var(--motion-<name>)".into()
+        }
+        Conv::Presence => "<kind> [<distance>px] [<transition>]".into(),
+        Conv::Origin => "<x>% <y>%".into(),
+        Conv::Rive => "rive(\"<file>.riv#<Artboard>\")".into(),
+        Conv::Joint => return None,
+    })
+}
+
+/// How a property that sets several props at once is written.
+fn joint_form(css: &str) -> Option<&'static str> {
+    Some(match css {
+        "translate" => "<x>px [<y>px]",
+        "scale" => "<both> | <x> <y>",
+        "-og-skew" => "<x>deg [<y>deg]",
+        "grid-column" => "<n> | <n> / span <n> | span <n>",
+        "grid-auto-flow" => "row | column [dense]",
+        _ => return None,
+    })
+}
+
 /// The CSS property an element prop is written as; `None`: an attribute.
 pub fn css_name(prop: &str) -> Option<&'static str> {
     STYLE.iter().find(|(p, _)| *p == prop).map(|(_, c)| *c)

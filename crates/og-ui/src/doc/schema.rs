@@ -142,7 +142,7 @@ pub const KINDS: &[KindSpec] = &[
     KindSpec {
         name: "slot",
         container: true,
-        doc: "A place code fills (og.ui.slot), its box laid out with the document.",
+        doc: "A place code fills (og.ui.openSlot), its box laid out with the document.",
     },
     KindSpec {
         name: "label",

@@ -12,6 +12,7 @@
 //! `ui:save` writes back).
 
 pub mod build;
+pub mod catalogue;
 pub mod css;
 pub mod schema;
 pub mod types;
