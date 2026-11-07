@@ -63,12 +63,6 @@ if [ "$native_only" = 1 ] && [ "${OG_RELEASE:-}" != 1 ] && [ "${OG_GATE:-}" != 1
   echo "build.sh: --native is a release build (OG_RELEASE=1 sh scripts/build.sh --native), or the gate's dev addon and og (OG_GATE=1)" >&2
   exit 2
 fi
-# A release ships only the wasm-opt output the size gate measures: without
-# wasm-opt it stops here, before compiling anything (--native builds no wasm).
-if [ "${OG_RELEASE:-}" = 1 ] && [ "$native_only" != 1 ] && ! command -v wasm-opt >/dev/null 2>&1; then
-  echo "build.sh: OG_RELEASE=1 needs wasm-opt on PATH: a release must not ship un-optimised wasm (dist/web-publish, single and lanes) that the size gate never measured; scripts/install-tools.sh installs it" >&2
-  exit 1
-fi
 if [ "${OG_GATE:-}" != 1 ] && [ "${OG_RELEASE:-}" != 1 ] && [ "$linux_x64" != 1 ] \
     && [ -s "$gate_wasm/dev-all.txt" ] && [ -f "$target/debug/og$exe" ] \
     && { [ -f "$target/debug/libog_host_node.dylib" ] || [ -f "$target/debug/libog_host_node.so" ] || [ -f "$target/debug/og_host_node.dll" ]; }; then
@@ -143,7 +137,6 @@ fi
 gate_modules="$gate_wasm/dev"
 if [ "${OG_RELEASE:-}" = 1 ]; then
   bash "$root/scripts/release-wasm.sh"
-  gate_modules="$gate_wasm/opt"
 elif [ "${OG_GATE:-}" != 1 ]; then
   bash "$root/scripts/release-wasm.sh" --development
 fi

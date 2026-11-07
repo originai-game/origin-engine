@@ -347,9 +347,11 @@ dependency; sccache serves the rest. The toolchain is the pinned one
   the `win` account the Amp runner runs as; restart the runner after
   changing its environment.
 
-The thin-LTO, codegen-units=1 links of `og` and `og-host-node` and
-wasm-opt are not cacheable and dominate a warm pack. Two packs of the same
-commit give byte-identical tarballs.
+The thin-LTO, codegen-units=1 links of `og` and `og-host-node` are not
+cacheable. Web modules ship directly from wasm-bindgen, without a later
+optimization pass. The release size gate measures those exact bytes against
+the unchanged 16 MiB Brotli budget per module. Two packs of the same commit
+give byte-identical tarballs.
 
 **The install test** (`tests/install/`, bun) is what `verify` runs, on
 this machine (darwin-arm64) and in a `node:22-bookworm-slim` container
@@ -440,7 +442,7 @@ Feature work and its order: `docs/roadmap.md`.
 |---|---|---|---|
 | Crates, packages | fmt, clippy, unit and logic tests, drift, package tests | `scripts/check.sh quick` | every landing |
 | GPU frames | gfx references on `metal`, template and package frames | `scripts/check.sh functional`, `kits` | after a batch of landings |
-| Wasm | build, wasm-opt, size, determinism across hosts | `scripts/check.sh --all` | before every release |
+| Wasm | bindgen build and determinism across hosts; shipping-profile build and size check | `scripts/check.sh --all`; `scripts/release-wasm.sh` (also called by pack) | before every release |
 | Browser | the WebGPU reference frames, the kit, the a11y mirror | `scripts/check.sh web-reference` | before every release |
 | Release | pack, the install test from the archives on darwin-arm64 and linux-x64 | `release.sh pack` / `verify` | before every publish |
 | Windows | native MSVC check, clippy, nextest, DX12 frames against Metal, the install test from the packed tarball | studio-win | on the release commit |

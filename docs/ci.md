@@ -50,7 +50,6 @@ installed by `scripts/install-tools.sh` (cargo-nextest when absent).
 | write-fonts (cook-only SFNT shaping tables) | 0.55.0 | `crates/og-cook/Cargo.toml` (exact, default features off; no runtime outlines in layout-only fonts) |
 | wasm-bindgen (crate and CLI), js-sys, web-sys, wasm-bindgen-futures | 0.2.129, 0.3.106, 0.3.106, 0.4.79 | `crates/og-host-web/Cargo.toml` (exact), the CLI from `Cargo.lock` |
 | rav1d (the AV1 decoder: native streams, og-cook's posters, the web fallback; BSD-2-Clause) | 1.1.0, 8-bit only, no assembly | `crates/og-video/Cargo.toml` |
-| binaryen (`wasm-opt`) | 133 | `BINARYEN_VERSION` in `scripts/install-tools.sh` (release archive on Linux and macOS) |
 | bun | 1.4.4 | `BUN_VERSION` in `scripts/install-tools.sh`; `tests/install/Dockerfile` and `tests/install/instabox.ts` install the same for the install test |
 | TypeScript, tsgo (`check-conformance`'s comparison and `og check`'s fallback where tsrs has no package; no project or package depends on it) | 7.0.2 | `TSGO_VERSION` in `crates/og-cli/src/check.rs` (`scripts/tsrs-diff.sh` and `.agents/setup` read it) |
 | tsrs (the type checker: `og check`, the check before `og run`/`test`/`build`/`dev`, `packages/engine`'s `typecheck`, og-idl's declaration test) | 0.18.0-ts7.1.0-dev.20260929 (TypeScript 7.1.0-dev.20260930.4) | `TSRS_VERSION` and the five SRIs in `scripts/install-tools.sh`; `packages/engine/package.json` `optionalDependencies` copy it (`check-conformance` holds them equal). It moves with a tsrs release, all of these in one commit, after `scripts/tsrs-diff.sh` passes on the new binary |
@@ -190,14 +189,15 @@ build concurrently because their Cargo outputs are separate. The shared
 sccache wrapper caches compilation, including build-std; each checkout
 retains its own target directory. Variants sharing a target build serially.
 
-Every functional and browser check uses bindgen-only modules, including
-publish and lanes variants. No gate lane runs wasm-opt or the size gate.
+Every web build ships wasm-bindgen's output directly, including publish,
+lanes and development variants. No gate lane runs the size gate.
 An explicit web-reference run builds the development host and the 3D publish
 and lanes modules its groups load, not the unused 2D publish pair. The gfx
 group separately builds only `og-tests-web`.
 `bash scripts/release-wasm.sh` prepares release wasm and checks its shipping
-size. `release.sh pack` calls it through the package build. Only this release
-path optimizes publish and lanes variants; `opt.txt` lists its size-gate inputs.
+size. `release.sh pack` calls it through the package build. `dev.txt` lists
+the shipping publish and lanes variants measured by the size gate, despite
+the directory's historical `dev` name. They use the `wasm` profile for releases.
 
 The deleted gameplay templates, gallery, art-samples, standalone
 wasm-determinism tool and replay-gate have no gate stage. Retained package
@@ -245,8 +245,7 @@ split, and the lowest such crate is its cause.
 | `bun-quick` | Non-engine package tests, without rebuilding native artifacts. | quick, full |
 | `wasm-build` | Build `scripts/wasm-crates.txt` variants in `wasm-test` for the cross-host, publish and lanes tests. Normal variants share the wasm32 target; lanes variants share `target/wasm-mt`. Outputs go to `target/og-wasm/raw`. | full |
 | `wasm-bindgen` | Bindgen-only modules for all variants in `target/og-wasm/dev`, with glue in `bindgen`. `dev-all.txt` lists every module; `dev.txt` selects publish and lanes variants. | full, web-reference prerequisite |
-| `wasm-opt` | `scripts/wasm-opt.sh` over release publish and lanes variants. `opt.txt` lists optimized size-gate inputs; `opt-all.txt` lists every processed module. Not a `check.sh` step. | release only |
-| `size-gate` | Brotli-11 bytes of each optimized module in `opt.txt`, checked against `wasm_core_brotli_bytes` before packing. | release only |
+| `size-gate` | Brotli-11 bytes of each shipping-profile bindgen module in `dev.txt`, checked against `wasm_core_brotli_bytes` before packing. | release only |
 | `bun-test` | Package tests and typechecks using the dev addon and gate-produced wasm (`OG_GATE=1`), without a second release build. | full |
 | `fixtures` | `og test` for each changed runnable feature fixture and the creation skeleton. | full |
 | `browser` | Browser wire, player, export, device, unsupported-device and og.motion tick tests (`test:browser`). | full |
@@ -291,9 +290,9 @@ scripts/check.sh quick               # the quick lane (make quick)
 scripts/check.sh full                # the full lane, dependency-selected
 scripts/check.sh --all               # the full lane with nothing skipped
 scripts/check.sh quick --only rust-cpu # selected steps and prerequisites
-scripts/check.sh --only bun-test     # includes wasm-build and wasm-bindgen, never wasm-opt
+scripts/check.sh --only bun-test     # includes wasm-build and wasm-bindgen
 OG_GATE_JOBS=1 scripts/check.sh      # one step at a time, in lane order
-bash scripts/release-wasm.sh         # release wasm and its optimized shipping-size check
+bash scripts/release-wasm.sh         # release bindgen wasm and its shipping-size check
 scripts/check.sh --list
 scripts/check.sh web-reference       # the browser tiers (make web-reference); needs Chrome
 make check                           # the same through the Makefile
@@ -303,14 +302,9 @@ The path-aware state is `<target>/og-gate/` (the green trees).
 `<target>/og-wasm-cache/` retains compressed-size results. Never delete
 either to force a step; `--all` bypasses passing-input snapshots.
 
-Bindgen and release wasm-opt products share one machine-local store,
-`OG_WASM_CACHE`: `/Volumes/app/og-wasm-cache` on macrunner, beside
-`SCCACHE_DIR` when set, otherwise `~/.cache/og-wasm-cache`. Keys include
-the module hash, tool versions and flags. Complete bindgen directories and
-optimized files are published by atomic rename, so lanes never read partial
-results. Entries unused for 30 days are pruned. `--all` can reuse these
-immutable products. Release optimization runs at most `OG_GATE_JOBS` variants
-at once, capped by `OG_GATE_THREADS`, dividing that thread budget between them.
+Bindgen outputs stay in each checkout's `target/og-wasm/`. There is no
+machine-wide wasm-output store or post-bindgen optimization pass. sccache
+still shares compiled dependencies between lanes (§The compiler cache).
 
 Each checkout holds its own target lock. Gates briefly register shared
 admission and then execute concurrently, without a machine-wide CPU lock.
@@ -368,9 +362,9 @@ on an orb `~/.cache/sccache`.
   landing runs.
 - **After a batch of landings**: `scripts/check.sh full`. This includes
   bindgen-only wasm, cross-host determinism and browser contracts, never
-  wasm-opt or shipping-size measurements.
+  shipping-size measurements.
 - **Before packing a release**: `bash scripts/release-wasm.sh` builds the
-  variants, optimizes shipping modules and checks their brotli size.
+  shipping-profile variants, runs bindgen and checks their brotli size.
   `scripts/release.sh pack` runs this preparation automatically.
 - Never `--all` after every edit; never touch files or delete
   `target/og-gate/` to force a step.
@@ -458,11 +452,10 @@ this target directory (`<target>/og-wasm/dev-all.txt` and the dev addon
 and `og` exist): the dev addon and `og`, the gate's wasm, and one line
 saying so. It compiles release and its own wasm only with `OG_RELEASE=1`,
 with `--linux-x64`, or when the gate has not built here; a release build
-holds the gate lock. Only `OG_RELEASE=1` runs wasm-opt, through
-`scripts/release-wasm.sh`, including the shipping-size check before packing.
-Its wasm-opt is `scripts/wasm-opt.sh`, so the publish
-wasm an `OG_RELEASE=1` build ships is byte-identical to the module the
-size gate measures. `native/build-profile` records `dev` or `release`;
+holds the gate lock. `OG_RELEASE=1` calls `scripts/release-wasm.sh`, including
+the shipping-size check before packing. The publish and lanes modules it
+copies from `target/og-wasm/dev/` are byte-identical to those the size gate
+measures. `native/build-profile` records `dev` or `release`;
 `scripts/pack.sh` runs `OG_RELEASE=1 build.sh` first and packs only
 `release`.
 
@@ -695,9 +688,9 @@ studio-win first, but its references are re-recorded on macrunner.
 2. Find the growth: `cargo tree -p og-host-web --target
    wasm32-unknown-unknown -e normal` for new dependencies, and
    `scripts/wasm-size-report.sh target/og-wasm/raw/<name>.wasm` for where
-   the bytes are: the module optimised as it ships, then per crate and for
-   the largest functions, each with its brotli beside its raw bytes (the
-   optimised module in `target/og-wasm/opt/` keeps no names). Rank by
+   the bytes are: the bindgen module as it ships, then per crate and for
+   the largest functions, each with its brotli beside its raw bytes.
+   Bindgen retains function names. Rank by
    brotli: generic copies compress to little more than one copy.
 3. Prefer removing the cause: drop or feature-gate the dependency, disable
    default features, move debug-only code behind the non-`publish`

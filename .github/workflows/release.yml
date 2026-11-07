@@ -76,7 +76,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  # The wasm (every variant, wasm-opt), the linux-x64 addon and og, the
+  # The wasm (every bindgen variant), the linux-x64 addon and og, the
   # engine package and create-game, in the gate's container (the same Debian
   # as ci.yml, provisioned the same way) plus zig for the cross-build.
   web:

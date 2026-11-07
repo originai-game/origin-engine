@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Size gate: brotli -q 11 size of the optimized engine wasm against the budget
+# Size gate: brotli -q 11 size of the shipped bindgen wasm against the budget
 # `wasm_core_brotli_bytes` in scripts/budgets.txt (docs/design.md §7).
 #
 #   scripts/size-gate.sh [file.wasm ...]
 #
-# With no arguments it measures every file listed in target/og-wasm/opt.txt,
+# With no arguments it measures every file listed in target/og-wasm/dev.txt,
 # which scripts/release-wasm.sh writes. The budget is per download:
 # a page downloads one engine module, never two, so each measured file (the
 # 3D and 2D publish variants and the 3D and 2D lanes variants:
@@ -12,7 +12,7 @@
 # that matters is the largest of them, not their sum. Writes $OG_EVIDENCE_DIR/size-gate.json
 # (each file with its download, and max_brotli_bytes). A module
 # measured before (same SHA-256 and brotli) takes its recorded size, unless
-# OG_SIZE_GATE_FRESH is set (scripts/check.sh --all sets it).
+# OG_SIZE_GATE_FRESH is set.
 set -u -o pipefail
 # shellcheck source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"
@@ -23,8 +23,8 @@ artifacts="$(og_budget wasm_artifacts)" || exit 1
 files=()
 if [ "$#" -gt 0 ]; then
   files=("$@")
-elif [ -f "$OG_WASM_OUT/opt.txt" ]; then
-  while IFS= read -r f; do [ -n "$f" ] && files+=("$f"); done < "$OG_WASM_OUT/opt.txt"
+elif [ -f "$OG_WASM_OUT/dev.txt" ]; then
+  while IFS= read -r f; do [ -n "$f" ] && files+=("$f"); done < "$OG_WASM_OUT/dev.txt"
 fi
 
 mkdir -p "$OG_EVIDENCE_DIR"

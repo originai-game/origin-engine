@@ -69,6 +69,6 @@ runs:
           ~/.local/lib
         key: og-tools-trixie-${{ hashFiles('Cargo.lock', 'scripts/install-tools.sh') }}
 
-    - name: Tools (wasm-bindgen-cli, wasm-opt, brotli, bun, shellcheck)
+    - name: Tools (wasm-bindgen-cli, brotli, bun, shellcheck)
       shell: bash
       run: scripts/install-tools.sh

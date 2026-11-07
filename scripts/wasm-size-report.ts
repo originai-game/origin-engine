@@ -1,5 +1,5 @@
 // The tables of scripts/wasm-size-report.sh: per crate and per function, of
-// a wasm module that keeps its name section (wasm-opt -g), with each
+// a wasm module that keeps its name section (wasm-bindgen's default), with each
 // group's brotli -q 11 alone beside its raw bytes.
 //
 //   bun scripts/wasm-size-report.ts [-n N] NAMED.wasm
@@ -17,10 +17,8 @@
 // a type, drop glue, a Vec's growth, a sort, a HashMap, is the type's
 // crate; a serde visitor is the deserialiser's crate); names that mention
 // only those are `std`. The binding table's exports (`og_*`, and
-// wasm-bindgen's `og_* multivalue shim` and `externref shim` around them),
-// into which wasm-opt inlined the export's body (the IDL's host functions,
-// mostly og-runtime's code), are `og_host_web (exports)`;
-// functions without a name (wasm-opt's merges of similar functions) are
+// wasm-bindgen's `og_* multivalue shim` and `externref shim` around them)
+// are `og_host_web (exports)`; functions without a name are
 // `[unnamed]`, names without a crate (memcpy, dlmalloc's entry points,
 // wasm-bindgen's intrinsics) `[other]`; the data section is `[data]`.
 import { readFileSync } from "node:fs";
@@ -121,13 +119,13 @@ while (at < wasm.length) {
   at = end;
 }
 if (names.size === 0) {
-  console.error(`${args[0]} has no function names: optimise it with wasm-opt -g (scripts/wasm-size-report.sh does)`);
+  console.error(`${args[0]} has no function names: use a module built without stripping names, then run scripts/wasm-size-report.sh`);
   process.exit(1);
 }
 
 const std = new Set(["core", "alloc", "std", "hashbrown"]);
 // name[hash]: the crate hash has at least six hex digits (a name the linker
-// or wasm-opt made unique ends in [1], [2], ...).
+// made unique ends in [1], [2], ...).
 const crateRe = /([A-Za-z_][A-Za-z0-9_]*)\[[0-9a-f]{6,}\]/g;
 function crateOf(name: string | undefined): string {
   if (name === undefined || /^code\[\d+\]$/.test(name)) return "[unnamed]";

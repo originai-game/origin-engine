@@ -173,7 +173,7 @@ cmd_publish() {
         try { git("merge-base", "--is-ancestor", m.revision, head); } catch { ancestor = false; }
         if (!ancestor) problems.push(`packed from ${m.revision.slice(0, 12)}, which is not an ancestor of HEAD ${head.slice(0, 12)}`);
         else {
-          const inputs = ["crates", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "packages", "templates", ".cargo", "scripts/wasm-crates.txt", "scripts/budgets.txt", "scripts/wasm-opt.sh", "scripts/wasm-lanes.sh", "scripts/release-wasm.sh", "scripts/gate/commands.sh", "scripts/size-gate.sh", "scripts/install-tools.sh", "scripts/lib.sh", "scripts/lock.sh", "scripts/release-bump.ts", "scripts/release-dist.ts"];
+          const inputs = ["crates", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "packages", "templates", ".cargo", "scripts/wasm-crates.txt", "scripts/budgets.txt", "scripts/wasm-lanes.sh", "scripts/release-wasm.sh", "scripts/gate/commands.sh", "scripts/size-gate.sh", "scripts/install-tools.sh", "scripts/lib.sh", "scripts/lock.sh", "scripts/release-bump.ts", "scripts/release-dist.ts"];
           const changed = git("diff", "--name-only", m.revision, head, "--", ...inputs);
           if (changed) problems.push(`packed from ${m.revision.slice(0, 12)}; since then these inputs changed (pack again):\n    ${changed.split("\n").join("\n    ")}`);
         }

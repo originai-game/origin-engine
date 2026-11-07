@@ -3,9 +3,9 @@
 # Changing a number here is a reviewed change: say in the commit what moved
 # and why (docs/ci.md §Updating a budget). Budgets come from docs/design.md §7.
 
-# brotli -q 11 size of each shipping wasm the gate builds (the 3D and 2D
+# brotli -q 11 size of each shipping wasm the release builds (the 3D and 2D
 # publish variants and the 3D and 2D lanes variants, scripts/wasm-crates.txt), after
-# wasm-bindgen and wasm-opt -Oz. Per download: a page downloads one of them,
+# wasm-bindgen. Per download: a page downloads one of them,
 # so each is held to it and the largest is what counts, never the sum
 # (design §7: engine wasm, brotli, <= 16 MB per download; docs/web-export.md
 # §Variants, §Lanes). Raised from 4 MB (4194304) on 2026-11-01, the owner's

@@ -3,7 +3,6 @@
 # (rust-toolchain.toml covers rustc, rustfmt, clippy and the wasm target):
 #
 #   wasm-bindgen-cli  pinned to the wasm-bindgen version in Cargo.lock
-#   wasm-opt          binaryen, pinned by BINARYEN_VERSION
 #   brotli            the size gate's compressor
 #   bun               the TypeScript packages' test runner, pinned by BUN_VERSION
 #   ShellCheck        the gate scripts' linter, pinned by SHELLCHECK_VERSION (an
@@ -18,14 +17,12 @@
 #
 # Each tool is skipped when the right version is already on PATH. Linux x86_64
 # and aarch64 download release binaries into OG_TOOLS_BIN (default
-# ~/.local/bin, appended to $GITHUB_PATH on Actions); binaryen comes from its
-# release archive on macOS as well, brotli from Homebrew there. wasm-bindgen
-# falls back to `cargo install --locked`.
+# ~/.local/bin, appended to $GITHUB_PATH on Actions); brotli comes from
+# Homebrew on macOS. wasm-bindgen falls back to `cargo install --locked`.
 set -eu -o pipefail
 # shellcheck source-path=SCRIPTDIR
 . "$(dirname "$0")/lib.sh"
 
-BINARYEN_VERSION="${BINARYEN_VERSION:-133}"
 BUN_VERSION="${BUN_VERSION:-1.4.4}"
 SCCACHE_VERSION="${SCCACHE_VERSION:-0.19.0}"
 SHELLCHECK_VERSION="${SHELLCHECK_VERSION:-0.11.0}"
@@ -99,30 +96,6 @@ else
     cp "$tmp/cargo/bin/wasm-bindgen" "$BIN/"
   fi
   wasm-bindgen --version
-fi
-
-# binaryen (wasm-opt), from its release archive on every platform (Homebrew's
-# is whatever version is current, so macOS used to drift from the pin)
-if command -v wasm-opt >/dev/null && [ "$(wasm-opt --version | awk '{print $3}')" = "$BINARYEN_VERSION" ]; then
-  og_say "wasm-opt $BINARYEN_VERSION: present"
-else
-  og_say "wasm-opt $BINARYEN_VERSION: installing"
-  case "$os-$arch" in
-    Linux-x86_64) b=x86_64-linux ;; Linux-aarch64) b=aarch64-linux ;;
-    Darwin-x86_64) b=x86_64-macos ;; Darwin-aarch64) b=arm64-macos ;;
-    *) og_err "binaryen: no release archive for $os-$arch"; exit 1 ;;
-  esac
-  tgz="binaryen-version_$BINARYEN_VERSION-$b.tar.gz"
-  base="https://github.com/WebAssembly/binaryen/releases/download/version_$BINARYEN_VERSION"
-  fetch "$base/$tgz" "$tmp/$tgz"
-  fetch "$base/$tgz.sha256" "$tmp/$tgz.sha256"
-  if command -v sha256sum >/dev/null; then (cd "$tmp" && sha256sum -c "$tgz.sha256" >/dev/null)
-  else (cd "$tmp" && shasum -a 256 -c "$tgz.sha256" >/dev/null); fi
-  tar -xzf "$tmp/$tgz" -C "$tmp"
-  rm -rf "$BIN/../lib/binaryen-$BINARYEN_VERSION"; mkdir -p "$BIN/../lib"
-  cp -R "$tmp/binaryen-version_$BINARYEN_VERSION" "$BIN/../lib/binaryen-$BINARYEN_VERSION"
-  ln -sf "$BIN/../lib/binaryen-$BINARYEN_VERSION/bin/wasm-opt" "$BIN/wasm-opt"
-  wasm-opt --version
 fi
 
 # brotli

@@ -94,16 +94,8 @@ og_sha256() {
   else shasum -a 256 "$1" | awk '{print $1}'; fi
 }
 
-# Results keyed by content, kept across gate runs (wasm-opt and size-gate
-# reuse them for a byte-identical input).
+# Compressed sizes keyed by content, kept across size checks in this checkout.
 OG_CONTENT_CACHE="$OG_TARGET_DIR/og-wasm-cache"
-# Immutable wasm products are shared across checkouts, never Cargo targets.
-if [ -z "${OG_WASM_CACHE:-}" ]; then
-  if [ -n "${SCCACHE_DIR:-}" ]; then OG_WASM_CACHE="$(dirname "${SCCACHE_DIR//\\//}")/og-wasm-cache"
-  elif [ -d /Volumes/app ]; then OG_WASM_CACHE=/Volumes/app/og-wasm-cache
-  else OG_WASM_CACHE="$HOME/.cache/og-wasm-cache"; fi
-fi
-export OG_WASM_CACHE
 
 # og_gate_excluded: crate names from scripts/gate-exclude.txt.
 og_gate_excluded() {

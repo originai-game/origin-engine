@@ -123,7 +123,7 @@ function run(cmd: string[]): string {
 }
 
 // Functional frames use wasm-test; explicit timing uses the shipping profile.
-// Then wasm-bindgen for the browser (no wasm-opt: nothing ships). Its own
+// Then wasm-bindgen for the browser. Its own
 // target dir: og-tests-web unifies og-render's features differently from the
 // gate's wasm-build, and cargo keeps one fingerprint per unit whatever its
 // features, so sharing target/wasm32-unknown-unknown would rebuild og-render

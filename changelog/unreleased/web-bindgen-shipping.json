@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "web.build",
+      "summary": "Web releases ship wasm-bindgen output directly, without a Binaryen pass, including the AV1 fallback. Engine modules are larger before compression and slightly larger over Brotli; the per-download 16 MiB Brotli budget is unchanged."
+    }
+  ]
+}

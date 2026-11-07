@@ -44,8 +44,8 @@ debug = false
 [profile.dev.package.objc2]
 debug-assertions = false
 
-# What ships: the wasm the size gate measures, packages/engine packs, the
-# perf lane. Never used for tests, drift or the gate's addon.
+# Native shipping and explicit native performance runs. Never used for
+# tests, drift or the gate's addon; shipping wasm uses profile.wasm below.
 [profile.release]
 opt-level = 3
 lto = "thin"
@@ -61,7 +61,7 @@ codegen-units = 16
 incremental = true
 debug = false
 
-# The wasm every web build ships and the size gate measures: release at
+# Shipping bindgen wasm, measured directly by the size gate: release at
 # opt-level s, with the crates whose loops run every tick or frame at 3 and
 # the crates that run only while loading or when something changes (font
 # shaping, the cooked bundle's decoding and
