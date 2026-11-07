@@ -1,0 +1,12 @@
+type project
+version 1
+---
+# A test fixture, not a template (tests/fixtures/README.md): a farm at dusk,
+# a tilemap, a walking farmer, packed crop sprites and 2D lamps.
+name "Top down"
+id "top-down"
+engine "0.7.7"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1

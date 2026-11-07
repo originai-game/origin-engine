@@ -1,0 +1,12 @@
+type project
+version 1
+---
+# A test fixture, not a template (tests/fixtures/README.md): a night cave,
+# a knight run by a sprite animation graph, pixel terrain, 2D lights.
+name "Side scroller"
+id "side-scroller"
+engine "0.7.7"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
