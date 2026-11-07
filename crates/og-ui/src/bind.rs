@@ -29,8 +29,22 @@
 use serde_json::Value;
 use std::collections::BTreeMap;
 
+/// Internal CSS selector inputs, resolved against a mounted node's input state.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum InteractionState {
+    Hover,
+    Active,
+    FocusVisible,
+    Disabled,
+}
+
 /// What the host gives a binding beyond its viewmodel.
 pub trait Env {
+    /// A node-scoped CSS selector read; never an authored store root.
+    fn interaction(&self, state: InteractionState) -> bool {
+        let _ = state;
+        false
+    }
     /// A viewmodel root the viewmodel itself lacks: a reflected resource
     /// by name (`Wallet.gold` reads the `Wallet` resource).
     fn lookup(&self, root: &str) -> Option<Value> {
@@ -174,6 +188,7 @@ pub fn text(v: &Value) -> String {
 pub enum Expr {
     Lit(Value),
     Path(String),
+    Interaction(InteractionState),
     Translate(Box<Expr>, Vec<(String, Expr)>),
     Not(Box<Expr>),
     Neg(Box<Expr>),
@@ -421,7 +436,7 @@ impl Expr {
     /// Every path it reads, in order (a document's static structure).
     pub fn paths(&self, out: &mut Vec<String>) {
         match self {
-            Expr::Lit(_) => {}
+            Expr::Lit(_) | Expr::Interaction(_) => {}
             Expr::Path(p) => out.push(p.clone()),
             Expr::Translate(key, args) => {
                 key.paths(out);
@@ -447,6 +462,7 @@ impl Expr {
         match self {
             Expr::Lit(v) => v.clone(),
             Expr::Path(p) => scope.get(p),
+            Expr::Interaction(state) => Value::Bool(scope.env.interaction(*state)),
             Expr::Translate(key, params) => {
                 let key = text(&key.eval(scope));
                 let message = scope.env.translate(&key).unwrap_or_else(|| key.clone());
@@ -1282,6 +1298,38 @@ mod tests {
         ] {
             assert!(Expr::parse(bad).is_err(), "accepted {bad}");
         }
+    }
+
+    #[test]
+    fn interaction_inputs_are_internal_and_node_scoped() {
+        struct NodeEnv(InteractionState);
+        impl Env for NodeEnv {
+            fn interaction(&self, state: InteractionState) -> bool {
+                state == self.0
+            }
+        }
+        let vm = Value::Null;
+        let env = NodeEnv(InteractionState::FocusVisible);
+        let mut scope = Scope {
+            vm: &vm,
+            locals: vec![],
+            env: &env,
+        };
+        assert_eq!(
+            Expr::Interaction(InteractionState::FocusVisible).eval(&scope),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            Expr::Interaction(InteractionState::Hover).eval(&scope),
+            Value::Bool(false)
+        );
+        scope.env = &NoEnv;
+        assert_eq!(
+            Expr::Interaction(InteractionState::FocusVisible).eval(&scope),
+            Value::Bool(false)
+        );
+        assert!(matches!(Expr::parse("hover").unwrap(), Expr::Path(_)));
+        assert!(Expr::parse("interaction('hover')").is_err());
     }
 
     #[test]
