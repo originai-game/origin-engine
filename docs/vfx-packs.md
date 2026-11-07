@@ -58,7 +58,7 @@ Inside the pack, stored by the library and never installed:
 - `preview/<effect>.cost.json`: `{ "format": 1, "engine", "device",
   "peakFrameMs": { "total", "sim", "transparent" }, "peakParticles",
   "draws" }`. `total` is the 90th percentile of the effect's GPU frame
-  time over an empty frame (from the fifth tick after the spawn: the first
+  time over the empty frames before it in its own timed run (from the fifth tick after the spawn: the first
   frames upload its textures once); `sim` the particle simulation pass;
   `transparent` the growth of the main pass, which draws blended surfaces,
   sprites and particles after the opaque scene. `peakParticles` is the most
@@ -76,11 +76,21 @@ python3 scripts/vfx-pack.py preview <pack> [--cover <effect.ogt>]  # preview/, t
 
 The spec names the provenance of each file by glob and each effect's
 title, category, element and keywords (the script's docstring has its
-shape). `preview` measures frame times, so it runs under every GPU slot
-(`. scripts/lock.sh; og_gpu_acquire_all <what>`), and needs the native
-addon (`OG_GATE=1 sh packages/engine/scripts/build.sh --native`). It
-installs the pack into a scratch game, measures each effect's length and impact in a headless run,
-then plays them one after another in one `og run` with a trace.
+shape). `preview` needs the native addon (`OG_GATE=1 sh
+packages/engine/scripts/build.sh --native`) and takes its GPU locks itself
+(scripts/lock.sh), each for one `og run`, so run it without a lock of your
+own. It installs the pack into a scratch game, then:
+
+1. measures each effect's length, loop and impact in one headless run (no
+   GPU slot);
+2. takes the six shots and render dumps a few effects per run, each run
+   holding one GPU slot (`og_gpu_acquire`);
+3. times each effect in its own short traced run, an empty scene (that
+   run's baseline) and then the effect, holding every slot
+   (`og_gpu_acquire_all`) for that run only and releasing them before the
+   next effect.
+
+All slots are held for one measured run, never across a pack.
 
 ## 5. The engine's packs: bundled and downloadable
 
@@ -94,6 +104,15 @@ The engine's own effect packs ship two ways (the coordinator, 2026-11-07):
   archive. Each release carries one archive per pack,
   `<version>/vfx/<pack>.tar.gz` (docs/release.md §1), and `og vfx add <pack>`
   fetches it when no directory, bundled pack or installed pack has that name.
+
+Bundled: `pixel-scenario` (the Pixel VFX Forge library, `vfx2d`) and
+`effekseer-starter` (a curated set across the Effekseer contributors).
+Downloadable: `effekseer-<contributor>`, every sample of one contributor.
+A bundled pack's `preview/` stays in Git for the library and out of the
+engine package (`!extensions/*/preview` in its `files`). `og api gen`
+writes every pack's description, tags, keywords and effects into the
+`effect-packs` guide (`crates/og-api/guides/effect-packs.md`, generated and
+drift-checked), so `og api find heal` names the packs and effects that have one.
 
 A pack is one or the other: `scripts/release-dist.ts` refuses an engine
 archive with an `engine/extensions/<pack>` of a downloadable pack's name, or

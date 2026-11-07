@@ -20,14 +20,24 @@ catalog fields of extension.json (minEngine, tags, keywords) from a spec:
                                   "keywords": ["..."]}}
     }
 
-`preview` installs the pack into a scratch game, plays every effect in one
-`og run` on this machine's GPU and writes, per effect, preview/<effect>.png
-(six 960x540 frames in time order, the impact frame among them, 3 x 2),
-preview/<effect>.cost.json (the effect's peak GPU milliseconds over an
-empty frame: the 90th percentile of its frames from the run's trace, and the render dump's draws and particle
-slots at the six frames) and preview/cover.png. Timing (duration, loop,
-impact) comes from a first headless run that watches each effect's events,
-and is written back into assets.json's effects.
+`preview` installs the pack into a scratch game and writes, per effect,
+preview/<effect>.png (six 960x540 frames in time order, the impact frame
+among them, 3 x 2), preview/<effect>.cost.json (the effect's peak GPU
+milliseconds over an empty frame: the 90th percentile of its frames from a
+trace, and the render dump's draws and particle slots at the six frames)
+and preview/cover.png, in three passes:
+
+1. timing (duration, loop, impact), one headless run that watches each
+   effect's events, written back into assets.json's effects; no GPU slot;
+2. the shots and render dumps, a run per CHUNK effects, each run holding
+   one GPU slot (scripts/lock.sh's og_gpu_acquire);
+3. the cost, one short traced run per effect, an empty scene (that run's
+   own baseline) and then the effect, holding every slot
+   (og_gpu_acquire_all) for that run only.
+
+The script takes its locks itself, each for one `og run` (`run`'s `lock`),
+so a pack never holds the GPU across a series and other lanes' GPU work
+runs between its effects. Run it without a lock of your own.
 """
 
 import argparse
@@ -45,7 +55,10 @@ from pathlib import Path
 
 W, H = 960, 540
 TICK = 60
-GAP = 0.6          # seconds of empty scene between effects (the GPU baseline)
+GAP = 0.8          # seconds of empty scene before an effect's timed run spawns it (its baseline)
+BASE_FROM = 0.4    # seconds into a timed run its baseline frames start (after start-up)
+CHUNK = 6          # effects per screenshot run (one GPU slot each)
+LOCK_SH = Path(__file__).resolve().parent / "lock.sh"
 LOOP_SHOW = 2.0    # seconds a looping effect is shown
 WARM = 5           # ticks after a spawn its cost is not counted (one-off uploads)
 FRACTIONS = [0.04, 0.15, 0.3, 0.5, 0.7, 0.9]
@@ -248,9 +261,17 @@ def scratch_game(pack, og, dim, vfx2d):
     return root, game, name
 
 
-def run(og, game, commands, extra, seconds):
+def run(og, game, commands, extra, seconds, lock=None):
+    """One `og run`; with `lock` (suffix, label) it holds one GPU slot
+    (`""`, og_gpu_acquire) or every slot (`"_all"`, og_gpu_acquire_all)
+    for this run only: scripts/lock.sh's own functions, taken by the shell
+    that runs og and released by its exit trap when og ends."""
     cmd = [og, "run", str(game), "--size", f"{W}x{H}", "--json", "--no-check",
            "--commands", ";".join(commands + [f"{seconds:.3f}:quit"])] + extra
+    if lock is not None:
+        suffix, label = lock
+        cmd = ["bash", "-c", f'. "$0" && og_gpu_acquire{suffix} "$1" && shift && "$@"',
+               str(LOCK_SH), label] + cmd
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
     last = [l for l in r.stdout.splitlines() if l.startswith("{")]
     if r.returncode != 0 or not last:
@@ -327,49 +348,59 @@ def preview(args):
             keep = [(i, rel) for i, rel in zip(ids, effects) if i not in missing]
             ids, effects = [k[0] for k in keep], [k[1] for k in keep]
 
-        # Pass 2, on the GPU: shots, render dumps and the trace.
-        t, cmds, plan = 0.5, [], {}
-        for i in ids:
-            tm = timing[i]
-            start = t + GAP
-            times = [f * tm["show"] for f in FRACTIONS]
-            if tm["impact"] is not None:
-                k = min(range(len(times)), key=lambda j: abs(times[j] - tm["impact"]))
-                times[k] = tm["impact"] + 1 / TICK
-                times.sort()
-            cmds.append(f"{start:.3f}:play:{i}")
-            shots = []
-            for n, dt in enumerate(times):
-                at = start + max(dt, 1 / TICK)
-                stem = f"{len(plan):03d}-{n}"
-                cmds.append(f"{at:.3f}:screenshot:{stem}.png")
-                cmds.append(f"{at:.3f}:dump_render:{stem}.json")
-                shots.append(stem)
-            end = start + tm["show"]
-            cmds.append(f"{end:.3f}:clear")
-            plan[i] = {"start": start, "end": end, "shots": shots, "gap": (t, start)}
-            t = end
-        trace = root / "trace.json"
-        run(og, game, cmds, ["--trace", str(trace), "--out", str(root / "out")], t + 0.3)
-        frames = gpu_frames(trace)
+        # Pass 2, one GPU slot per run of a few effects: shots and render dumps.
+        plan = {}
+        for k in range(0, len(ids), CHUNK):
+            out_dir = root / f"out{k // CHUNK:03d}"
+            t, cmds = 0.5, []
+            for i in ids[k:k + CHUNK]:
+                tm = timing[i]
+                start = t + 0.2
+                times = [f * tm["show"] for f in FRACTIONS]
+                if tm["impact"] is not None:
+                    j = min(range(len(times)), key=lambda j: abs(times[j] - tm["impact"]))
+                    times[j] = tm["impact"] + 1 / TICK
+                    times.sort()
+                cmds.append(f"{start:.3f}:play:{i}")
+                shots = []
+                for n, dt in enumerate(times):
+                    at = start + max(dt, 1 / TICK)
+                    stem = f"{len(plan):03d}-{n}"
+                    cmds.append(f"{at:.3f}:screenshot:{stem}.png")
+                    cmds.append(f"{at:.3f}:dump_render:{stem}.json")
+                    shots.append(out_dir / stem)
+                end = start + tm["show"]
+                cmds.append(f"{end:.3f}:clear")
+                plan[i] = shots
+                t = end
+            run(og, game, cmds, ["--out", str(out_dir)], t + 0.3,
+                lock=("", f"vfx-pack preview {name}: shots {k + 1}-{min(k + CHUNK, len(ids))} of {len(ids)}"))
 
+        # Pass 3, every GPU slot for one effect's traced run at a time: an
+        # empty scene (its own baseline), then the effect.
+        device = device_name()
         out = pack / "preview"
         if out.exists():
             shutil.rmtree(out)
         out.mkdir()
-        gaps = [f for f in frames if any(p["gap"][0] * TICK + 6 <= f[0] < p["gap"][1] * TICK for p in plan.values())]
-        base_total = statistics.median([f[1] for f in gaps]) if gaps else 0.0
-        base_main = statistics.median([f[2].get("main", 0.0) for f in gaps]) if gaps else 0.0
-        device = device_name()
         rows = []
-        for i, rel in zip(ids, effects):
-            p = plan[i]
+        for n, (i, rel) in enumerate(zip(ids, effects)):
+            tm = timing[i]
+            start = BASE_FROM + GAP
+            end = start + tm["show"]
+            trace = root / f"trace-{n:03d}.json"
+            run(og, game, [f"{start:.3f}:play:{i}", f"{end:.3f}:clear"], ["--trace", str(trace)], end + 0.1,
+                lock=("_all", f"vfx-pack cost {name}/{rel}"))
+            frames = gpu_frames(trace)
+            base = [f for f in frames if BASE_FROM * TICK <= f[0] < start * TICK]
+            base_total = statistics.median([f[1] for f in base]) if base else 0.0
+            base_main = statistics.median([f[2].get("main", 0.0) for f in base]) if base else 0.0
             sheet = Image.new("RGB", (W * 3, H * 2))
             draws = particles = 0
-            for n, stem in enumerate(p["shots"]):
-                im = Image.open(root / "out" / f"{stem}.png").convert("RGB")
-                sheet.paste(im, ((n % 3) * W, (n // 3) * H))
-                dump = json.loads((root / "out" / f"{stem}.json").read_text())
+            for m, stem in enumerate(plan[i]):
+                im = Image.open(f"{stem}.png").convert("RGB")
+                sheet.paste(im, ((m % 3) * W, (m // 3) * H))
+                dump = json.loads(Path(f"{stem}.json").read_text())
                 draws = max(draws, dump.get("draws", 0))
                 pt = dump.get("particles", {})
                 particles = max(particles, pt.get("capacity", 0) + pt.get("cpu", 0))
@@ -378,7 +409,7 @@ def preview(args):
             sheet.save(target, optimize=True)
             # From the fifth tick: the first frames upload the effect's
             # textures and make its pipelines, once, not per frame.
-            window = [f for f in frames if p["start"] * TICK + WARM <= f[0] <= p["end"] * TICK]
+            window = [f for f in frames if start * TICK + WARM <= f[0] <= end * TICK]
             # The 90th percentile over the effect's frames: its heavy moment
             # without one frame's scheduling noise.
             def p90(xs, default):
@@ -400,13 +431,14 @@ def preview(args):
             }
             (out / (rel[:-4] + ".cost.json")).write_text(json.dumps(cost, indent=2) + "\n")
             rows.append((rel, cost))
+            print(f"{rel}\tbaseline {base_total:.3f} ms\t+{cost['peakFrameMs']['total']:.3f} ms", flush=True)
         if f"vfx/{name}/{args.cover}" not in timing:
             args.cover = None
         cover = args.cover or next((e["path"] for e in assets["effects"] if timing[f"vfx/{name}/{e['path']}"]["impact"] is not None), effects[0])
         cp = plan[f"vfx/{name}/{cover}"]
         tm = timing[f"vfx/{name}/{cover}"]
-        pick = cp["shots"][2] if tm["impact"] is None else cp["shots"][min(range(6), key=lambda n: abs(FRACTIONS[n] * tm["show"] - tm["impact"]))]
-        Image.open(root / "out" / f"{pick}.png").convert("RGB").save(out / "cover.png", optimize=True)
+        pick = cp[2] if tm["impact"] is None else cp[min(range(6), key=lambda n: abs(FRACTIONS[n] * tm["show"] - tm["impact"]))]
+        Image.open(f"{pick}.png").convert("RGB").save(out / "cover.png", optimize=True)
 
         for e in assets["effects"]:
             tm = timing.get(f"vfx/{name}/{e['path']}")
@@ -416,7 +448,7 @@ def preview(args):
             e["durationSeconds"] = round(tm["duration"], 3)
             e["impact"] = tm["impact"] is not None
         (pack / "assets.json").write_text(json.dumps(assets, indent=2) + "\n")
-        print(f"baseline GPU frame {base_total:.3f} ms (main {base_main:.3f} ms) on {device}")
+        print(f"on {device}, each effect over its own run's empty frames")
         for rel, c in rows:
             m = c["peakFrameMs"]
             print(f"{rel}\t+{m['total']:.3f} ms\tsim {m['sim']:.3f}\ttransparent +{m['transparent']:.3f}\tparticles {c['peakParticles']}\tdraws {c['draws']}")
