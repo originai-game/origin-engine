@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Rive import: embedded images",
+      "summary": "A .riv's embedded images now convert (docs/ui.md §11.2): each cooks to its own texture, `<file>.riv#image<n>`, which og.load.document binds when it loads the artboard. An image draws at its pixel size about its origin, follows its node's transform and opacity, and is listed as an element. A hosted image, or one with a blend mode other than normal, is a cook error naming the asset."
+    }
+  ]
+}

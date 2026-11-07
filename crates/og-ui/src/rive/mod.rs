@@ -52,6 +52,36 @@ pub struct Artboard {
     pub play: Option<u32>,
     /// The artboards its [`Kind::Nested`] nodes draw.
     pub nested: Vec<Artboard>,
+    /// The images its [`Kind::Image`] nodes draw.
+    pub images: Vec<Image>,
+}
+
+/// An image an artboard draws: a texture cooked from the `.riv`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Image {
+    /// The texture's asset id, `<file>.riv#image<n>`.
+    pub id: String,
+    /// Its size in pixels: one pixel per Rive unit, as Rive draws it.
+    pub size: Vec2,
+    /// Its texture once loaded ([`Artboard::bind_images`]); not in the
+    /// blob. An unbound image draws nothing.
+    pub texture: Option<og_render::TextureHandle>,
+}
+
+impl Artboard {
+    /// Gives every image of this artboard and the ones it nests its
+    /// texture, by id (the loader's: `None` leaves it undrawn).
+    pub fn bind_images(
+        &mut self,
+        texture: &mut dyn FnMut(&str) -> Option<og_render::TextureHandle>,
+    ) {
+        for i in &mut self.images {
+            i.texture = texture(&i.id);
+        }
+        for n in &mut self.nested {
+            n.bind_images(texture);
+        }
+    }
 }
 
 /// How an artboard's frame is scaled into its box.
@@ -139,6 +169,9 @@ pub enum Kind {
     Gradient { radial: bool, stops: Vec<u32> },
     /// A gradient's stop: [`Values::color`] at [`Values::position`].
     Stop,
+    /// An image ([`Artboard::images`]) at its size, placed by
+    /// [`Values::origin`] (fractions of the image the node sits on).
+    Image { image: u32 },
     /// Another artboard ([`Artboard::nested`]) drawn at this transform, its
     /// animations playing.
     Nested {

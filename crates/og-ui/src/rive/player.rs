@@ -335,6 +335,66 @@ impl Player {
                         );
                     }
                 }
+                Kind::Image { image } => {
+                    let alpha = alpha[d as usize];
+                    if alpha <= 0.0 {
+                        continue;
+                    }
+                    let img = &a.images[*image as usize];
+                    // Rive draws the bitmap one pixel a unit, its origin on
+                    // the node (Image::draw).
+                    let m = screen.mul(&world[d as usize]);
+                    let lo = -pose[d as usize].origin * img.size;
+                    let corners = [
+                        lo,
+                        lo + img.size.with_y(0.0),
+                        lo + img.size,
+                        lo + img.size.with_x(0.0),
+                    ]
+                    .map(|c| {
+                        let (x, y) = m.apply(c.x, c.y);
+                        Vec2::new(x, y)
+                    });
+                    let (x, y) = m.apply(lo.x + img.size.x / 2.0, lo.y + img.size.y / 2.0);
+                    if let Some(texture) = img.texture {
+                        emit(
+                            Some(UiShape {
+                                geometry: UiGeometry::Rect {
+                                    radii: [0.0; 4],
+                                    corner: og_render::UiCorner::Round,
+                                },
+                                center: Vec2::new(x, y),
+                                half: img.size / 2.0,
+                                transform: [m.a, m.b, m.c, m.d],
+                                paint: UiPaint::Image(og_render::UiImage {
+                                    texture,
+                                    uv: [0.0, 0.0, 1.0, 1.0],
+                                    size: img.size,
+                                    tint: [1.0, 1.0, 1.0, alpha],
+                                    fit: og_render::UiFit::Fill,
+                                    focal: Vec2::splat(0.5),
+                                }),
+                                mode: UiMode::Fill,
+                                opacity: 1.0,
+                                blend: UiBlend::Normal,
+                                layer: 0,
+                                clip: None,
+                            }),
+                            None,
+                        );
+                    }
+                    let lo = corners.iter().fold(Vec2::MAX, |m, c| m.min(*c));
+                    let hi = corners.iter().fold(Vec2::MIN, |m, c| m.max(*c));
+                    emit(
+                        None,
+                        Some(RiveElement {
+                            id,
+                            node: d,
+                            bounds: [lo.x, lo.y, hi.x - lo.x, hi.y - lo.y],
+                            opacity: alpha,
+                        }),
+                    );
+                }
                 Kind::Nested { .. } => {
                     let Some((_, p)) = self.nested.iter().find(|(k, _)| *k == d) else {
                         continue;

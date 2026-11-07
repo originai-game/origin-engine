@@ -313,6 +313,8 @@ enum Work<'a> {
     Vector(&'a Source),
     /// A `.riv`'s artboard, by name.
     Rive(&'a Source, String),
+    /// A `.riv`'s embedded image, by asset index.
+    RiveImage(&'a Source, usize),
     Behaviour(&'a Source),
     Dialogue(&'a Source),
     Quest(&'a Source),
@@ -1340,9 +1342,18 @@ pub fn cook_project_with_texture_cache(
                 outs.push((s.rel.clone(), format::Vector::NAME, st, Work::Vector(s)));
             }
             Kind::Rive => match riv::plan(s) {
-                Ok(names) => {
+                Ok((names, images)) => {
+                    for n in images {
+                        let st = stamp(&[b"rive image", &hash, &n.to_le_bytes()]);
+                        outs.push((
+                            format!("{}#image{n}", s.rel),
+                            format::Texture::NAME,
+                            st,
+                            Work::RiveImage(s, n),
+                        ));
+                    }
                     for name in names {
-                        let st = stamp(&[b"rive", &hash, name.as_bytes()]);
+                        let st = stamp(&[b"rive 2", &hash, name.as_bytes()]);
                         outs.push((
                             format!("{}#{name}", s.rel),
                             format::RiveArtboard::NAME,

@@ -175,9 +175,14 @@ fn open(s: &Source) -> Result<(read::RivFile, Vec<String>, Settings), String> {
 }
 
 /// The artboards a `.riv` cooks, by name (each an output
-/// `<file>.riv#<name>`).
-pub(super) fn plan(s: &Source) -> Result<Vec<String>, String> {
-    let (_, names, set) = open(s)?;
+/// `<file>.riv#<name>`), and its embedded images by asset index (each a
+/// texture `<file>.riv#image<n>`).
+pub(super) fn plan(s: &Source) -> Result<(Vec<String>, Vec<usize>), String> {
+    let (file, names, set) = open(s)?;
+    let images = convert::embedded_images(&file)
+        .into_iter()
+        .map(|i| i.0)
+        .collect();
     let chosen = set.artboards.unwrap_or_else(|| names.clone());
     for (i, n) in chosen.iter().enumerate() {
         if n.is_empty() || n.contains('#') {
@@ -192,7 +197,36 @@ pub(super) fn plan(s: &Source) -> Result<Vec<String>, String> {
             ));
         }
     }
-    Ok(chosen)
+    Ok((chosen, images))
+}
+
+/// Cooks a `.riv`'s embedded image `n` into a colour texture.
+pub(super) fn cook_image(
+    s: &Source,
+    n: usize,
+    options: &super::TextureOptions,
+    stamp: u64,
+) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    let file = read::read(&s.bytes).map_err(CookError)?;
+    let bytes = convert::embedded_images(&file)
+        .into_iter()
+        .find(|i| i.0 == n)
+        .map(|i| i.1)
+        .ok_or_else(|| CookError(format!("no embedded image {n}")))?;
+    let img = super::texture::decode(bytes).map_err(|e| CookError(format!("image {n}: {e}")))?;
+    let note = format!("image{n}: {}x{}", img.width, img.height);
+    super::texture::cook(&img, format::kind::COLOR, options, stamp).map(|b| (b, vec![note]))
+}
+
+/// Gives every image of `a` (and the artboards it nests) its asset id
+/// under `rel`.
+fn place_images(a: &mut og_ui::rive::Artboard, rel: &str) {
+    for i in &mut a.images {
+        i.id = format!("{rel}{}", i.id);
+    }
+    for n in &mut a.nested {
+        place_images(n, rel);
+    }
 }
 
 /// Cooks artboard `name` of a `.riv`.
@@ -207,6 +241,7 @@ pub(super) fn cook(
         .position(|n| n == name)
         .expect("planned from the file");
     let mut a = convert::artboard(&file, index).map_err(CookError)?;
+    place_images(&mut a, &s.rel);
     if let Some((_, o)) = set.per.iter().find(|p| p.0 == name) {
         if let Some(m) = &o.machine {
             a.play = a

@@ -59,6 +59,10 @@ const NESTED_SIMPLE_ANIMATION: u16 = 96;
 const CUBIC_VALUE: u16 = 138;
 const KEYFRAME_INTERPOLATOR: u16 = 175;
 const USER_INPUT: u16 = 663;
+const IMAGE: u16 = 100;
+const IMAGE_ASSET: u16 = 105;
+const FILE_ASSET_CONTENTS: u16 = 106;
+const FILE_ASSET: u16 = 103;
 
 /// The objects that are file assets or file-level data the artboards'
 /// converted objects never reference (the ones that are referenced, by an
@@ -75,13 +79,17 @@ const FILE_LEVEL: &[&str] = &[
 #[cfg(test)]
 pub(crate) fn artboards(file: &RivFile) -> Result<Vec<Artboard>, String> {
     let groups = group(file)?;
-    (0..groups.len()).map(|g| convert(&groups, g, 0)).collect()
+    let assets = assets(file);
+    (0..groups.len())
+        .map(|g| convert(&groups, &assets, g, 0))
+        .collect()
 }
 
 /// Artboard `index` of `file` (in file order) converted, with the
 /// artboards it nests; the others are not looked at.
 pub(crate) fn artboard(file: &RivFile, index: usize) -> Result<Artboard, String> {
     let groups = group(file)?;
+    let assets = assets(file);
     if index >= groups.len() {
         return Err(format!(
             "the file has {} artboards, not {}",
@@ -89,7 +97,7 @@ pub(crate) fn artboard(file: &RivFile, index: usize) -> Result<Artboard, String>
             index + 1
         ));
     }
-    convert(&groups, index, 0)
+    convert(&groups, &assets, index, 0)
 }
 
 /// The names of `file`'s artboards, in order.
@@ -98,6 +106,41 @@ pub(crate) fn names(file: &RivFile) -> Vec<String> {
         .iter()
         .filter(|o| o.ty == ARTBOARD)
         .map(|o| o.string(4).unwrap_or("").to_string())
+        .collect()
+}
+
+/// A file asset (images, fonts, audio, …, in file order: the index an
+/// image or a text names it by) and its embedded bytes (none: hosted on
+/// Rive's CDN or supplied by the game at run time).
+struct Asset<'a> {
+    obj: &'a Object,
+    bytes: Option<&'a [u8]>,
+}
+
+fn assets(file: &RivFile) -> Vec<Asset<'_>> {
+    let mut out: Vec<Asset> = Vec::new();
+    for o in &file.objects {
+        if o.ty == FILE_ASSET_CONTENTS {
+            if let Some(a) = out.last_mut() {
+                a.bytes = o.bytes(212);
+            }
+        } else if is_a(o.ty, FILE_ASSET) {
+            out.push(Asset {
+                obj: o,
+                bytes: None,
+            });
+        }
+    }
+    out
+}
+
+/// The file's embedded images, by asset index, with their bytes.
+pub(crate) fn embedded_images(file: &RivFile) -> Vec<(usize, &[u8])> {
+    assets(file)
+        .iter()
+        .enumerate()
+        .filter(|(_, a)| a.obj.ty == IMAGE_ASSET)
+        .filter_map(|(k, a)| Some((k, a.bytes?)))
         .collect()
 }
 
@@ -186,7 +229,7 @@ fn named(o: &Object) -> String {
 }
 
 /// Artboard `g`, its nested artboards converted into it.
-fn convert(groups: &[Group], g: usize, depth: u32) -> Result<Artboard, String> {
+fn convert(groups: &[Group], assets: &[Asset], g: usize, depth: u32) -> Result<Artboard, String> {
     let grp = &groups[g];
     let ab = grp.slots[0].expect("an artboard is its own slot 0");
     let ab_name = ab.string(4).unwrap_or("").to_string();
@@ -376,6 +419,48 @@ fn convert(groups: &[Group], g: usize, depth: u32) -> Result<Artboard, String> {
                 v.position = o.f(39);
                 Kind::Stop
             }
+            IMAGE => {
+                let k = o.u(206) as usize;
+                if o.u(23) != 3 {
+                    return Err(format!(
+                        "{}: an image's blend mode is not converted (normal is)",
+                        at(o)
+                    ));
+                }
+                let asset = assets
+                    .get(k)
+                    .filter(|x| x.obj.ty == IMAGE_ASSET)
+                    .ok_or_else(|| {
+                        format!(
+                            "{}: names image asset {k}, which the file does not have",
+                            at(o)
+                        )
+                    })?;
+                let Some(bytes) = asset.bytes else {
+                    return Err(format!(
+                        "{}: its image '{}' is not embedded in the file (hosted or referenced); export it embedded",
+                        at(o),
+                        asset.obj.string(203).unwrap_or("")
+                    ));
+                };
+                let image = match a.images.iter().position(|i| i.id == format!("#image{k}")) {
+                    Some(i) => i,
+                    None => {
+                        let img = super::super::texture::decode(bytes)
+                            .map_err(|e| format!("{}: its image does not decode: {e}", at(o)))?;
+                        a.images.push(og_ui::rive::Image {
+                            id: format!("#image{k}"),
+                            size: Vec2::new(img.width as f32, img.height as f32),
+                            texture: None,
+                        });
+                        a.images.len() - 1
+                    }
+                };
+                v.origin = Vec2::new(o.f(380), o.f(381));
+                Kind::Image {
+                    image: image as u32,
+                }
+            }
             NESTED_ARTBOARD => {
                 let id = o.u(197);
                 if id as usize >= groups.len() {
@@ -515,7 +600,7 @@ fn convert(groups: &[Group], g: usize, depth: u32) -> Result<Artboard, String> {
                 stops.push(i);
                 false
             }
-            (Kind::Group | Kind::Shape { .. } | Kind::Nested { .. }, k) => {
+            (Kind::Group | Kind::Shape { .. } | Kind::Nested { .. } | Kind::Image { .. }, k) => {
                 !matches!(k, Kind::Artboard { .. } | Kind::Group | Kind::Shape { .. })
             }
             _ => true,
@@ -548,17 +633,20 @@ fn convert(groups: &[Group], g: usize, depth: u32) -> Result<Artboard, String> {
     // Draw order: rive-runtime draws its drawables last added first.
     let mut draws: Vec<u32> = (0..a.nodes.len() as u32)
         .filter(|&i| {
-            matches!(
-                a.nodes[i as usize].kind,
-                Kind::Shape { .. } | Kind::Nested { .. }
-            )
+            match a.nodes[i as usize].kind {
+                Kind::Shape { .. } | Kind::Nested { .. } => true,
+                // A hidden image (drawableFlags' Hidden) is not drawn.
+                Kind::Image { .. } => objects[i as usize].u(129) & 1 == 0,
+                _ => false,
+            }
         })
         .collect();
     draws.sort_by_key(|&i| std::cmp::Reverse(slots[i as usize]));
     a.draws = draws;
     animations(&mut a, grp, &node_of, &interpolators)?;
     for id in nested_ids {
-        a.nested.push(convert(groups, id as usize, depth + 1)?);
+        a.nested
+            .push(convert(groups, assets, id as usize, depth + 1)?);
     }
     let nested = a.nested.clone();
     for n in &a.nodes {
@@ -590,6 +678,8 @@ fn prop_of(key: u16, kind: &Kind, linked: bool) -> Option<Vec<Prop>> {
         (16, _) => one(Prop::ScaleX),
         (17, _) => one(Prop::ScaleY),
         (18, _) => one(Prop::Opacity),
+        (380, Kind::Image { .. }) => one(Prop::OriginX),
+        (381, Kind::Image { .. }) => one(Prop::OriginY),
         (20, Kind::Path { .. }) => one(Prop::Width),
         (21, Kind::Path { .. }) => one(Prop::Height),
         (123, Kind::Path { .. }) => one(Prop::OriginX),
@@ -659,7 +749,8 @@ fn animations(
         if layers > 1 {
             return bad();
         }
-        if layers == 0 {
+        // No layer, or a layer that never leaves its entry: it plays nothing.
+        if layers == 0 || transitions.is_empty() {
             return Ok(());
         }
         let entry = states.iter().position(|s| s.0 == ENTRY_STATE);

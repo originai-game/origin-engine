@@ -148,7 +148,19 @@ fn read_rive(
                     .rive_artboard(&id, bytes.bytes())
                     .map_err(|e| e.to_string())?
             };
-            let artboard = og_ui::rive::decode(&raw).map_err(|e| format!("{id}: {e}"))?;
+            let mut artboard = og_ui::rive::decode(&raw).map_err(|e| format!("{id}: {e}"))?;
+            // Its images are textures the cook made beside it.
+            let mut missing = None;
+            artboard.bind_images(&mut |image| match crate::assets::load_texture(eng, image) {
+                Ok(i) => eng.render.borrow().textures.get(i).copied(),
+                Err(e) => {
+                    missing.get_or_insert(format!("{id}: {image}: {e}"));
+                    None
+                }
+            });
+            if let Some(e) = missing {
+                return Err(e);
+            }
             Ok((id.clone(), hash_of(eng, &id), std::sync::Arc::new(artboard)))
         })
         .collect()

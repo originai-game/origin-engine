@@ -156,3 +156,52 @@ fn an_artboard_survives_its_codec() {
         assert_eq!(og_ui::rive::decode(&og_ui::rive::encode(&a)), Ok(a));
     }
 }
+
+#[test]
+fn an_image_draws_at_its_pixel_size_about_its_origin() {
+    let mut a = convert("custom_image_name.riv")
+        .expect("converts")
+        .remove(0);
+    // One embedded 15 × 15 PNG, its node at the artboard's (0, 0) with the
+    // default origin (0.5, 0.5).
+    assert_eq!(a.images.len(), 1);
+    assert_eq!(a.images[0].id, "#image0");
+    assert_eq!(a.images[0].size, og_core::glam::Vec2::splat(15.0));
+    let texture = og_render::RenderScene::new().add_texture(og_render::TextureData {
+        width: 1,
+        height: 1,
+        rgba: vec![255; 4],
+        color_space: og_render::ColorSpace::Srgb,
+        mips: og_render::Mips::None,
+    });
+    a.bind_images(&mut |id| (id == "#image0").then_some(texture));
+    let p = Player::new(Arc::new(a), None);
+    // Drawn at its own size: the artboard (500 px) in a 500 px box.
+    let shapes = p.draw([0.0, 0.0, 500.0, 500.0], 0.5);
+    let img = shapes
+        .iter()
+        .find(|s| matches!(s.paint, UiPaint::Image(_)))
+        .expect("the image");
+    let UiPaint::Image(i) = img.paint else {
+        unreachable!()
+    };
+    assert_eq!(i.texture, texture);
+    assert_eq!(i.tint[3], 0.5, "at the draw's opacity");
+    assert_eq!(img.center, og_core::glam::Vec2::ZERO);
+    assert_eq!(img.half, og_core::glam::Vec2::splat(7.5));
+    // Drawn at half size the map scales it; its pixels stay its size.
+    let half = p.draw([0.0, 0.0, 250.0, 250.0], 1.0);
+    let img = half
+        .iter()
+        .find(|s| matches!(s.paint, UiPaint::Image(_)))
+        .expect("image");
+    assert_eq!(img.transform, [0.5, 0.0, 0.0, 0.5]);
+    let e = p.elements([0.0, 0.0, 500.0, 500.0]);
+    assert_eq!(e.last().map(|e| e.bounds), Some([-7.5, -7.5, 15.0, 15.0]));
+}
+
+#[test]
+fn a_hosted_image_is_an_error_naming_it() {
+    let e = convert("hosted_image_file.riv").expect_err("hosted");
+    assert!(e.contains("one.png") && e.contains("not embedded"), "{e}");
+}

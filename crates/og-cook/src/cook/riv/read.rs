@@ -63,6 +63,13 @@ impl Object {
             _ => None,
         }
     }
+
+    pub fn bytes(&self, key: u16) -> Option<&[u8]> {
+        match self.get(key)? {
+            Prop::Bytes(v) => Some(v),
+            _ => None,
+        }
+    }
 }
 
 /// A read file: its version and objects.

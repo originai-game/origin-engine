@@ -779,12 +779,15 @@ solid colours and linear and radial gradients, blend modes normal,
 multiply, screen, overlay, soft light and colour dodge, linear animations
 (hold, linear, cubic ease and cubic value keys of transforms, opacity,
 colours and the paths' numbers; one-shot, loop, ping-pong, work areas),
-nested artboards with their simple animations, and a state machine whose
-entry plays one animation. Each artboard cooks to an `og.RiveArtboard`
+nested artboards with their simple animations, embedded images (each
+cooks to its own texture, `<file>.riv#image<n>`, drawn at its pixel size
+about its origin and bound when the artboard loads), and a state machine
+whose entry plays one animation. Each artboard cooks to an `og.RiveArtboard`
 blob; `og_ui::rive::Player` advances it by the tick's step, draws it as UI
-shapes and lists its drawn objects as elements (`Player::elements`). Images,
-text, inner and outer strokes, gradient transforms and every other state
-machine are still cook errors.
+shapes and lists its drawn objects as elements (`Player::elements`). Text,
+hosted (not embedded) images, images with a blend mode other than normal,
+inner and outer strokes, gradient transforms and every other state machine
+are still cook errors.
 
 In documents: a container's `-og-frame: rive("<file>.riv#<Artboard>")`
 (the `rive` prop) plays that artboard in its box over its background.

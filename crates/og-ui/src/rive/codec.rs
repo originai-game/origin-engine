@@ -7,7 +7,7 @@ use crate::motion::codec::{R, W};
 use og_render::UiBlend;
 
 /// The codec's version (in the blob after its magic).
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 const MAGIC: &[u8; 4] = b"OGRV";
 
 /// The bytes of `a`.
@@ -177,6 +177,11 @@ fn artboard(w: &mut W, a: &Artboard) {
     for n in &a.nested {
         artboard(w, n);
     }
+    w.u32(a.images.len() as u32);
+    for i in &a.images {
+        w.str(&i.id);
+        w.vec2(i.size);
+    }
 }
 
 fn kind(w: &mut W, k: &Kind) {
@@ -254,6 +259,10 @@ fn kind(w: &mut W, k: &Kind) {
             list(w, stops);
         }
         Kind::Stop => w.u8(9),
+        Kind::Image { image } => {
+            w.u8(11);
+            w.u32(*image);
+        }
         Kind::Nested {
             artboard,
             animations,
@@ -349,6 +358,7 @@ fn rkind(r: &mut R) -> Option<Kind> {
                 animations,
             }
         }
+        11 => Kind::Image { image: r.u32()? },
         _ => return None,
     })
 }
@@ -464,6 +474,17 @@ fn rartboard(r: &mut R, depth: u32) -> Option<Artboard> {
     for _ in 0..n {
         a.nested.push(rartboard(r, depth + 1)?);
     }
+    let n = r.u32()? as usize;
+    if n > r.bytes.len() {
+        return None;
+    }
+    for _ in 0..n {
+        a.images.push(Image {
+            id: r.str()?,
+            size: Vec2::new(r.f32()?, r.f32()?),
+            texture: None,
+        });
+    }
     Some(a)
 }
 
@@ -491,6 +512,12 @@ pub fn check(a: &Artboard) -> Result<(), String> {
             } => vertices.clone(),
             Kind::Fill { shader, .. } | Kind::Stroke { shader, .. } => vec![*shader],
             Kind::Gradient { stops, .. } => stops.clone(),
+            Kind::Image { image } => {
+                if *image as usize >= a.images.len() {
+                    return bad("an image");
+                }
+                Vec::new()
+            }
             Kind::Nested {
                 artboard,
                 animations,

@@ -28,6 +28,7 @@ fn a_riv_cooks_the_artboards_its_settings_name() {
             "two_artboards.riv",
             "two_artboards.riv.ogt",
             "nested_artboard_opacity.riv",
+            "custom_image_name.riv",
         ],
     );
     let report = cook_project(&root, &CookOptions::default()).unwrap();
@@ -60,6 +61,13 @@ fn a_riv_cooks_the_artboards_its_settings_name() {
             .output("ui/nested_artboard_opacity.riv#Nested artboard")
             .is_ok()
     );
+    // An embedded image is a texture of its own, which the artboard names.
+    let image = load("ui/custom_image_name.riv#My Artboard");
+    assert_eq!(image.images[0].id, "ui/custom_image_name.riv#image0");
+    let tex = bundle
+        .output("ui/custom_image_name.riv#image0")
+        .expect("the image's texture");
+    assert_eq!(tex.ty, "og.Texture");
 }
 
 #[test]
