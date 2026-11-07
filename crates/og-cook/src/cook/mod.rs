@@ -24,6 +24,7 @@ pub use conform::{ConformAction, ConformEntry};
 pub mod cube_source;
 mod e6;
 mod effect;
+pub mod efk;
 mod environment;
 mod fbx;
 mod flipbook;
@@ -475,6 +476,8 @@ pub fn cook_project_with_texture_cache(
     // sheets (`vfx2d.rs`, `animated.rs`).
     vfx2d::expand(&mut sources, &mut consumed);
     animated::expand(&mut sources, &mut consumed);
+    // Effekseer projects become composed effects and what they need (`efk/`).
+    efk::expand(&mut sources, &mut consumed);
     // The `type model` texts, built again under the art contract's face
     // budget once the look is read (below).
     let mut model_texts: BTreeMap<String, String> = BTreeMap::new();
@@ -2266,6 +2269,7 @@ pub fn cook_project_with_texture_cache(
             }
         }
     }
+    efk::warnings(&sources, &mut reports, &mut warnings);
     // The project's look carries the art contract: say which of its
     // resources it sets (conformance to them is docs/art.md §2.3).
     if let Some((id, c)) = &contract

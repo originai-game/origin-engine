@@ -24,6 +24,8 @@ mod consumed_paths;
 mod cook_report;
 #[path = "../documents.rs"]
 mod documents;
+#[path = "../effekseer.rs"]
+mod effekseer;
 #[path = "../environment.rs"]
 mod environment;
 #[path = "../fbx.rs"]

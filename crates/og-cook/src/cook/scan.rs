@@ -121,6 +121,7 @@ pub(super) fn scan_with(
             "cube" => Kind::Lut,
             "tmj" | "ldtk" => Kind::Tilemap,
             "hex" | "gpl" => Kind::Palette,
+            "efkproj" | "efkefc" => Kind::Vfx,
             "ogt" => {
                 let text = String::from_utf8(read(rel, path)?)
                     .map_err(|_| CookError(format!("{}: not UTF-8 text", path.display())))?;

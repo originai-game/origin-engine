@@ -1,0 +1,266 @@
+//! The importer against Effekseer's own samples (CC0, credited in
+//! `third_party/effekseer/`): facts read from their XML by hand.
+
+use super::*;
+
+const SPRITE: &[u8] =
+    include_bytes!("../../../tests/fixtures/effekseer/Simple_Sprite_BillBoard.efkproj");
+const RING: &[u8] = include_bytes!("../../../tests/fixtures/effekseer/Simple_Ring_Shape1.efkproj");
+const RIBBON: &[u8] =
+    include_bytes!("../../../tests/fixtures/effekseer/Simple_Ribbon_Sword.efkproj");
+const EFKEFC: &[u8] = include_bytes!("../../../tests/fixtures/effekseer/iwai-ume.efkefc");
+
+/// A PNG's first bytes, for a texture `w` by `h`.
+fn png(w: u32, h: u32) -> Vec<u8> {
+    let mut b = b"\x89PNG\r\n\x1a\n\0\0\0\x0dIHDR".to_vec();
+    b.extend_from_slice(&w.to_be_bytes());
+    b.extend_from_slice(&h.to_be_bytes());
+    b
+}
+
+fn run(bytes: &[u8]) -> Conversion {
+    let own = |leaf: &str| format!("fx/a.efkproj#{leaf}");
+    let asset = |p: &str| format!("fx/{p}");
+    let read = |_: &str| Some(png(128, 128));
+    convert(
+        bytes,
+        &Links {
+            own: &own,
+            asset: &asset,
+            read: &read,
+        },
+    )
+    .unwrap()
+}
+
+fn file<'a>(c: &'a Conversion, leaf: &str) -> &'a str {
+    let id = format!("fx/a.efkproj#{leaf}");
+    let f = c.files.iter().find(|f| f.id == id).unwrap_or_else(|| {
+        panic!(
+            "no {id} in {:?}",
+            c.files.iter().map(|f| &f.id).collect::<Vec<_>>()
+        )
+    });
+    std::str::from_utf8(&f.bytes).unwrap()
+}
+
+fn line<'a>(text: &'a str, key: &str) -> &'a str {
+    text.lines()
+        .map(str::trim)
+        .find(|l| l.split_whitespace().next() == Some(key))
+        .unwrap_or_else(|| panic!("no `{key}` in\n{text}"))
+}
+
+#[test]
+fn a_billboard_sprite_node_is_an_emitter_of_its_counts_life_size_and_blend() {
+    let c = run(SPRITE);
+    // The vfx parses and names one emitter, the node's.
+    let v = og_bundle::vfx::parse_vfx(&c.vfx).unwrap();
+    assert_eq!(v.references().emitters, ["fx/a.efkproj#n0.emitter.ogt"]);
+    let e = file(&c, "n0.emitter.ogt");
+    // MaxGeneration 100 every 0.1 frames: 600 a second for 100 of them.
+    assert_eq!(line(e, "rate"), "rate 600");
+    assert_eq!(line(e, "duration"), "duration 0.1667");
+    // Life 30 frames at 60 fps.
+    assert_eq!(line(e, "lifetime"), "lifetime 0.5 0.5");
+    // AlphaBlend 2 on the sprite renderer (an older project's place for it).
+    assert_eq!(line(e, "blend"), "blend additive");
+    assert_eq!(line(e, "texture"), "texture \"fx/Texture/Particle01.png\"");
+    // Scale PVA: 1 growing 0.1 a frame, 4 at frame 30.
+    assert_eq!(line(e, "size"), "size 4 4");
+    assert_eq!(line(e, "sizeOverLife"), "sizeOverLife 0 0.25 1 1");
+    // Easing to an end of ±5 per axis: every direction.
+    assert_eq!(line(e, "spread"), "spread 180");
+    // Colour easing from opaque white to transparent.
+    let keys: Vec<&str> = e.lines().filter(|l| l.trim().starts_with("key ")).collect();
+    assert_eq!(keys.first().unwrap().trim(), "key 0 1 1 1 1");
+    assert!(keys.last().unwrap().trim().ends_with(" 0"), "{keys:?}");
+    // The random end colour is said, not dropped.
+    assert!(
+        c.findings
+            .iter()
+            .any(|f| f.what.starts_with("a random colour per particle")),
+        "{:?}",
+        c.findings
+    );
+    // The last spawns 9.9 frames in and lives 0.5 s.
+    assert!(
+        (v.duration - (9.9 / 60.0 + 0.5)).abs() < 1e-3,
+        "{}",
+        v.duration
+    );
+}
+
+#[test]
+fn ring_nodes_are_ring_meshes_at_their_start_times() {
+    let c = run(RING);
+    let v = og_bundle::vfx::parse_vfx(&c.vfx).unwrap();
+    let rings: Vec<_> = v
+        .elements
+        .iter()
+        .filter(|e| matches!(&e.kind, og_bundle::vfx::VfxKind::Mesh { shape: og_bundle::vfx::VfxShape::Model(m), .. } if m.ends_with(".ring.glb")))
+        .collect();
+    assert_eq!(rings.len(), 8, "{}", c.vfx);
+    // `Ring`: life 50 frames, the default outer radius 2 at a fixed scale
+    // of 2; `Ring(Inner)` 60 frames later.
+    assert!((rings[0].life - 50.0 / 60.0).abs() < 1e-3);
+    assert_eq!(rings[0].at, 0.0);
+    assert!((rings[1].at - 1.0).abs() < 1e-4);
+    let og_bundle::vfx::VfxKind::Mesh { scale, blend, .. } = &rings[0].kind else {
+        unreachable!()
+    };
+    assert_eq!(*scale, og_render::EffectValue::Constant(4.0));
+    assert_eq!(*blend, og_render::ParticleBlend::Alpha);
+    // The ring's mesh: inner radius 1 of the outer's 2, its colours across.
+    let glb = &c
+        .files
+        .iter()
+        .find(|f| f.id.ends_with("#n0.ring.glb"))
+        .unwrap()
+        .bytes;
+    let g = gltf::Gltf::from_slice(glb).unwrap();
+    let prim = g.meshes().next().unwrap().primitives().next().unwrap();
+    assert!(prim.get(&gltf::Semantic::Colors(0)).is_some());
+    let pos = prim.get(&gltf::Semantic::Positions).unwrap();
+    assert_eq!(pos.max().unwrap()[0].as_f64().unwrap() as f32, 1.0);
+}
+
+#[test]
+fn a_ribbon_is_a_trail_with_its_texture_and_lifetime() {
+    let c = run(RIBBON);
+    let v = og_bundle::vfx::parse_vfx(&c.vfx).unwrap();
+    let t = v
+        .elements
+        .iter()
+        .find_map(|e| match &e.kind {
+            og_bundle::vfx::VfxKind::Trail {
+                lifetime, effect, ..
+            } => Some((*lifetime, effect.clone())),
+            _ => None,
+        })
+        .expect("a trail");
+    // Life 15 frames: each point of the ribbon lives 0.25 s.
+    assert!((t.0 - 0.25).abs() < 1e-4, "{}", t.0);
+    let fx = file(&c, "n0.effect.ogt");
+    assert!(fx.contains("main \"fx/Texture/SwordLine01.png\""), "{fx}");
+    assert_eq!(t.1.as_deref(), Some("fx/a.efkproj#n0.effect.ogt"));
+}
+
+#[test]
+fn an_efkefc_reads_as_its_project() {
+    // The binary file's EDIT chunk holds the editor's project.
+    let root = xml::read_project(EFKEFC).unwrap();
+    assert!(root.at("Root/Children/Node").is_some());
+    let c = run(EFKEFC);
+    og_bundle::vfx::parse_vfx(&c.vfx).unwrap();
+    assert!(!c.files.is_empty());
+    // A runtime-only export says how to get the project back.
+    let mut stripped = EFKEFC[..8].to_vec();
+    stripped.extend_from_slice(b"BIN_\x00\x00\x00\x00");
+    let e = xml::read_project(&stripped).unwrap_err();
+    assert!(e.contains("no EDIT chunk"), "{e}");
+}
+
+#[test]
+fn findings_ride_in_the_text_and_parse_as_comments() {
+    let c = run(SPRITE);
+    let text = vfx_text(&c);
+    assert!(
+        text.lines()
+            .any(|l| l.starts_with("# effekseer: node 0 \"Node\": a random colour")),
+        "{text}"
+    );
+    og_bundle::vfx::parse_vfx(&text).unwrap();
+}
+
+#[test]
+fn xml_reads_text_entities_and_nesting() {
+    let d = xml::parse_xml("<?xml version=\"1.0\"?>\r\n<A><B>1 &amp; 2</B><C/><D><E>x</E></D></A>")
+        .unwrap();
+    let a = &d.children[0];
+    assert_eq!(a.text_at("B"), Some("1 & 2"));
+    assert!(a.child("C").is_some());
+    assert_eq!(a.text_at("D/E"), Some("x"));
+    assert!(xml::parse_xml("<A><B></A>").is_err());
+}
+
+#[test]
+fn easing_and_curves_follow_effekseer() {
+    use value::{Ease, FCurve};
+    // LeftRightSpeed 0 0 is linear; Effekseer's cubic through the ends.
+    let e = Ease::Cubic([0.0, 0.0, 1.0]);
+    assert!((e.eval(0.3) - 0.3).abs() < 1e-6);
+    // A fast start (StartSpeed 30) is ahead of linear at the middle.
+    let mut x = xml::El::default();
+    x.children.push(xml::El {
+        name: "StartSpeed".into(),
+        text: "30".into(),
+        children: vec![],
+    });
+    let fast = Ease::read(Some(&x));
+    assert!(fast.eval(0.5) > 0.55, "{}", fast.eval(0.5));
+    assert!((fast.eval(1.0) - 1.0).abs() < 1e-4);
+    // An f-curve is linear between its keys, flat beyond.
+    let c = FCurve {
+        keys: vec![(0.0, 1.0), (10.0, 3.0)],
+        ..FCurve::default()
+    };
+    assert_eq!(c.eval(5.0, 20.0), 2.0);
+    assert_eq!(c.eval(15.0, 20.0), 3.0);
+}
+
+/// One node (or a parent and its child) as an `.efkproj`.
+fn project(nodes: &str) -> Vec<u8> {
+    format!(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?><EffekseerProject><Root><Name>Root</Name>\
+         <Children>{nodes}</Children></Root><EndFrame>60</EndFrame></EffekseerProject>"
+    )
+    .into_bytes()
+}
+
+#[test]
+fn rings_spawned_together_keep_the_light_of_those_not_drawn() {
+    // 100 additive rings in one frame at random turns: 4 drawn, each
+    // carrying 25 of them (Effekseer stacks faint rings by the hundred).
+    let c = run(&project(
+        "<Node><CommonValues><MaxGeneration><Value>100</Value></MaxGeneration>\
+         <Life><Center>20</Center><Max>20</Max><Min>20</Min></Life>\
+         <GenerationTime><Center>0</Center><Max>0</Max><Min>0</Min></GenerationTime></CommonValues>\
+         <RotationValues><Type>1</Type><PVA><Rotation><X><Max>180</Max><Min>-180</Min></X></Rotation></PVA></RotationValues>\
+         <RendererCommonValues><AlphaBlend>2</AlphaBlend></RendererCommonValues>\
+         <DrawingValues><Type>4</Type><Ring /></DrawingValues><Name>R</Name><Children /></Node>",
+    ));
+    let colors: Vec<_> = c
+        .vfx
+        .lines()
+        .filter(|l| l.trim().starts_with("color"))
+        .collect();
+    assert_eq!(colors.len(), 4, "{}", c.vfx);
+    assert!(
+        colors.iter().all(|l| l.trim() == "color 25 25 25 1"),
+        "{}",
+        c.vfx
+    );
+}
+
+#[test]
+fn a_ribbon_under_a_turning_parent_orbits_about_its_axis() {
+    // The parent turns 6° a frame about z (one turn a second); the ribbon
+    // sits 2 out along x: an orbit of radius 2 about z, centred on the
+    // parent (the element's y turned onto z).
+    let c = run(&project(
+        "<Node><RotationValues><Type>1</Type><PVA><Velocity><Z><Center>6</Center><Max>6</Max><Min>6</Min></Z></Velocity></PVA></RotationValues>\
+         <DrawingValues><Type>0</Type></DrawingValues><Name>P</Name><Children>\
+         <Node><LocationValues><Fixed><Location><X>2</X></Location></Fixed></LocationValues>\
+         <DrawingValues><Type>3</Type></DrawingValues><Name>T</Name><Children /></Node>\
+         </Children></Node>",
+    ));
+    let trail = &c.vfx[c.vfx.find("trail {").expect("a trail")..];
+    assert_eq!(line(trail, "orbit"), "orbit 2 1", "{}", c.vfx);
+    assert_eq!(line(trail, "rotate"), "rotate 90 0 0", "{}", c.vfx);
+    assert!(
+        !trail.lines().any(|l| l.trim().starts_with("offset")),
+        "{}",
+        c.vfx
+    );
+}
