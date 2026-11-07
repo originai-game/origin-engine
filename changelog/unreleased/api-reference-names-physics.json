@@ -1,0 +1,8 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {"member":"RigidBody.kind","change":"Uses typed dynamic/fixed/kinematic strings instead of BODY_* numeric constants; fixed names Rapier's Fixed semantics.","fix":"Use kind: 'fixed' instead of BODY_STATIC and the corresponding strings for other modes. Kinematic still integrates Velocity and treats Transform writes as teleports."},
+    {"member":"og.physics.castRay","change":"raycast, raycastAll and shapeCast are now castRay, castRayAll and castShape, without aliases.","fix":"Rename the calls; castRayAll remains an engine-owned sorted, capped query. Box sizes remain full extents and applyForce still lasts one tick."},
+    {"member":"Collider.sensor","change":"Collider.sensor and RigidBody.ccd are booleans instead of numeric flags.","fix":"Use true/false. Contact.sensor remains the pair's sensor bitmask."}
+  ]
+}

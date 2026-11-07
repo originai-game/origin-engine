@@ -26,7 +26,7 @@ Token `og.Collider`, registered under the schema name `og.Collider`; its value t
 | `friction` | `number` | `0.5` | 0 … 2 | — | tunable | Coulomb friction (0 is ice, 1 rubber); a pair uses the mean of both colliders. |
 | `restitution` | `number` | `0` | 0 … 1 | — | tunable | Bounciness (0 no bounce, 1 elastic); a pair uses the mean of both colliders. |
 | `density` | `number` | `1` | ≥ 0 | `kgPerM3` | tunable | Density, used when RigidBody.mass is 0. |
-| `sensor` | `number` | `0` | 0 … 1 | — | — | 1 makes this a sensor: it reports SensorEntered and SensorExited and pushes nothing; 0 a solid. |
+| `sensor` | `boolean` | `false` | — | — | — | A sensor reports SensorEntered and SensorExited and pushes nothing; false is a solid. |
 | `layers` | `number` | `1` | — | — | — | The collision layers this collider is on, as bits. |
 | `mask` | `number` | `4294967295` | — | — | — | The layers it collides with, as bits. Two colliders interact when each one's layers meet the other's mask. |
 
@@ -80,10 +80,7 @@ component Collider {
     unit kgPerM3
     tunable true
   }
-  field sensor u32 "1 makes this a sensor: it reports SensorEntered and SensorExited and pushes nothing; 0 a solid." {
-    min 0
-    max 1
-  }
+  field sensor bool "A sensor reports SensorEntered and SensorExited and pushes nothing; false is a solid."
   field layers u32 "The collision layers this collider is on, as bits." {
     default 1
   }
@@ -93,4 +90,4 @@ component Collider {
 }
 ```
 
-<sub>Module `physics` line 78</sub>
+<sub>Module `physics` line 84</sub>

@@ -6,7 +6,7 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `RaycastDesc` (desc struct)
 
-A ray for og.physics.raycast.
+A ray for og.physics.castRay.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -19,7 +19,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct RaycastDesc {
-  doc "A ray for og.physics.raycast."
+  doc "A ray for og.physics.castRay."
   desc true
   field origin Vector3 "Where the ray starts." {
     unit m
@@ -35,4 +35,4 @@ struct RaycastDesc {
 }
 ```
 
-<sub>Module `physics` line 1677</sub>
+<sub>Module `physics` line 1680</sub>

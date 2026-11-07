@@ -5,6 +5,22 @@ and rapier2d (`enhanced-determinism`) as one scheduled system, `og.physics`,
 over the ECS. Game code owns the components; the system steps them and
 writes the dynamic bodies back.
 
+The TypeScript API uses `RigidBody.kind: "dynamic" | "fixed" | "kinematic"`,
+`castRay`, `castRayAll` and `castShape`. `fixed` means Rapier's Fixed;
+`ccd` and `Collider.sensor` are booleans. `Contact.sensor` remains a bitmask
+identifying which collider is a sensor.
+
+These engine contracts differ from Rapier:
+- `Collider.size` and box query sizes are full extents, not half-extents.
+- `applyForce` lasts one tick. Call it each tick for a continuous force;
+  Rapier's accumulated forces persist until reset.
+- `kinematic` follows `Velocity` each tick, with `Transform` writes treated
+  as teleports before that integration. It is not Rapier's position-based
+  mode (no next-position target or inferred velocity), and it does not
+  expose separate position-based and velocity-based body types.
+- `castRayAll` is engine-owned: sorted by distance then entity, capped by
+  `maxHits` and `MAX_RAYCAST_HITS`. It is not a Rapier method alias.
+
 ```rust
 let physics = og_physics::install(&mut world, og_physics::Physics::default())?; // after the systems that move kinematic bodies
 physics.set_mesh(7, og_physics::MeshDesc { positions, indices })?;               // geometry for convex/trimesh colliders

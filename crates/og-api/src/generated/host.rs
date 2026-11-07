@@ -599,14 +599,14 @@ pub trait LoadApi: Wire {
 
 /// `physics`: packages/knowledge/wiki/physics.md.
 pub trait PhysicsApi: Wire {
-    /// `og.physics.raycast`
-    fn og_physics_raycast(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.physics.raycastAll`
-    fn og_physics_raycast_all(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.physics.castRay`
+    fn og_physics_cast_ray(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.physics.castRayAll`
+    fn og_physics_cast_ray_all(&self, world: u32, desc: Option<String>) -> String;
     /// `og.physics.projectPoint`
     fn og_physics_project_point(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.physics.shapeCast`
-    fn og_physics_shape_cast(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.physics.castShape`
+    fn og_physics_cast_shape(&self, world: u32, desc: Option<String>) -> String;
     /// `og.physics.overlap`
     fn og_physics_overlap(&self, world: u32, desc: Option<String>) -> String;
     /// `og.physics.applyForce`
@@ -1744,10 +1744,10 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_image_info",
     "og_load_completions",
     "og_load_replay_completions",
-    "og_physics_raycast",
-    "og_physics_raycast_all",
+    "og_physics_cast_ray",
+    "og_physics_cast_ray_all",
     "og_physics_project_point",
-    "og_physics_shape_cast",
+    "og_physics_cast_shape",
     "og_physics_overlap",
     "og_physics_apply_force",
     "og_physics_apply_impulse",

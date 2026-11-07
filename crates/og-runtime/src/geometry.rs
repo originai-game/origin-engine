@@ -9,7 +9,7 @@
 //! replay carries them. The one piece the tick feeds is the raycast's
 //! record of the drawn meshes as each tick starts ([`before_tick`]), which
 //! answers a raycast from inside a system (a system cannot hand the world's
-//! transforms over, as og.physics.raycast's recorded colliders).
+//! transforms over, as og.physics.castRay's recorded colliders).
 
 use super::api::{add_geometry, uv_repeat};
 use super::assets::{self, index_of};

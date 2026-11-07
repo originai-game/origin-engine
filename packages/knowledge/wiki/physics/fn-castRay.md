@@ -2,16 +2,16 @@
 
 Module [`physics`](../physics.md) · [index](../index.md)
 
-<a id="fn-raycast"></a>
+<a id="fn-castRay"></a>
 
-### `og.physics.raycast`
+### `og.physics.castRay`
 
 The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them.
 
 Also known as: ray, line trace, hit test, mouse picking, Unity Physics.Raycast, Godot intersect_ray, Unreal LineTraceSingle
 
 ```ts
-og.physics.raycast(world: World, desc?: RaycastDesc): Result<RaycastHit | null>
+og.physics.castRay(world: World, desc?: RaycastDesc): Result<RaycastHit | null>
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -21,10 +21,10 @@ og.physics.raycast(world: World, desc?: RaycastDesc): Result<RaycastHit | null>
 
 **Returns** `Result<RaycastHit | null>`: The hit, or null when nothing is hit; refused for a zero direction.
 
-Binding symbol `og_physics_raycast` · publish builds: kept
+Binding symbol `og_physics_cast_ray` · publish builds: kept
 
 ```ogt
-fn raycast {
+fn castRay {
   doc "The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them."
   aliases "ray, line trace, hit test, mouse picking, Unity Physics.Raycast, Godot intersect_ray, Unreal LineTraceSingle"
   param world World "The world."
@@ -33,4 +33,4 @@ fn raycast {
 }
 ```
 
-<sub>Module `physics` line 1822</sub>
+<sub>Module `physics` line 1825</sub>

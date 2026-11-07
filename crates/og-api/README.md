@@ -309,7 +309,7 @@ view tables. Both hosts depend on it; `og-cli` does not.
   between ticks).
 - **Modules** (`runtime/modules.rs`): every world gets physics, the UI and
   audio. The schedule is `og.physics.queries` (records the colliders so
-  `og.physics.raycast` answers inside systems), `og.ui.begin`, the game's
+  `og.physics.castRay` answers inside systems), `og.ui.begin`, the game's
   systems, `og.ui.end`, `og.physics`, `og.audio`; the `og.ui` state block
   carries the UI's interaction state. The host's options choose the physics
   profile (`profile: "2d" | "3d"`, from project.ogt) and may defer

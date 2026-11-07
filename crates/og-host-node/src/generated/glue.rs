@@ -1575,16 +1575,16 @@ pub fn og_load_replay_completions(env: Env, world: u32, completions: String) -> 
     <Host as LoadApi>::og_load_replay_completions(&Host, world, completions)
 }
 
-#[napi(js_name = "og_physics_raycast")]
-pub fn og_physics_raycast(env: Env, world: u32, desc: Option<String>) -> String {
+#[napi(js_name = "og_physics_cast_ray")]
+pub fn og_physics_cast_ray(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as PhysicsApi>::og_physics_raycast(&Host, world, desc)
+    <Host as PhysicsApi>::og_physics_cast_ray(&Host, world, desc)
 }
 
-#[napi(js_name = "og_physics_raycast_all")]
-pub fn og_physics_raycast_all(env: Env, world: u32, desc: Option<String>) -> String {
+#[napi(js_name = "og_physics_cast_ray_all")]
+pub fn og_physics_cast_ray_all(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as PhysicsApi>::og_physics_raycast_all(&Host, world, desc)
+    <Host as PhysicsApi>::og_physics_cast_ray_all(&Host, world, desc)
 }
 
 #[napi(js_name = "og_physics_project_point")]
@@ -1593,10 +1593,10 @@ pub fn og_physics_project_point(env: Env, world: u32, desc: Option<String>) -> S
     <Host as PhysicsApi>::og_physics_project_point(&Host, world, desc)
 }
 
-#[napi(js_name = "og_physics_shape_cast")]
-pub fn og_physics_shape_cast(env: Env, world: u32, desc: Option<String>) -> String {
+#[napi(js_name = "og_physics_cast_shape")]
+pub fn og_physics_cast_shape(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as PhysicsApi>::og_physics_shape_cast(&Host, world, desc)
+    <Host as PhysicsApi>::og_physics_cast_shape(&Host, world, desc)
 }
 
 #[napi(js_name = "og_physics_overlap")]

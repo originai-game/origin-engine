@@ -1189,7 +1189,7 @@ fn spawn_piece(
                 .1
                 .enc(&json!({ "position": jv(position), "quaternion": q }))?,
         ),
-        (l.rigid.0, l.rigid.1.enc(&json!({ "kind": 0 }))?),
+        (l.rigid.0, l.rigid.1.enc(&json!({ "kind": "dynamic" }))?),
         (l.velocity.0, l.velocity.1.enc(&velocity)?),
         (l.collider.0, l.collider.1.enc(&collider)?),
         (l.piece.0, l.piece.1.enc(&piece)?),

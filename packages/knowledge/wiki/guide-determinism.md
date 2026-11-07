@@ -42,10 +42,15 @@ that saves, replays or plays online.
 <a id="guide-determinism-2"></a>
 ### `determinism §2` Physics
 
-- Bodies move through the physics step, never by writing og.Transform of
-  a dynamic body: a written transform teleports it, losing contacts and
-  velocity. Move kinematic bodies by their target, dynamic ones by force,
-  impulse or velocity.
+Physics simulation is world state: the fixed step, seeded inputs and
+snapshotted solver keep moving bodies deterministic across machines.
+
+- Move dynamic bodies by force, impulse or velocity. `applyForce` lasts
+  one tick; apply it each tick for continuous acceleration. Writing
+  og.Transform teleports a body rather than moving it through contacts.
+- A kinematic body integrates og.Velocity each tick. A Transform write
+  teleports it before integration; it is not Rapier's next-position
+  target and does not infer velocity. A fixed body is not solver-driven.
 - Units are metres, kilograms and seconds. A character about 1.8 m tall,
   gravity 9.81 m/s². Objects far outside 0.05 to 100 m behave badly:
   scale the game, not gravity.

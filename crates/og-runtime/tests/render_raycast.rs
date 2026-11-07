@@ -1,4 +1,4 @@
-//! og.render.raycast against a procedural mesh answers the hit og.physics.raycast
+//! og.render.raycast against a procedural mesh answers the hit og.physics.castRay
 //! answers against the collider made from the same geometry (depth S1's
 //! acceptance), at a turned and moved transform, and both follow an
 //! og.render.updateGeometry.
@@ -111,7 +111,7 @@ fn the_mesh_raycast_answers_the_collider_raycast() {
             "og.Mesh",
             json!({ "geometry": geometry, "material": material }),
         ),
-        ("og.RigidBody", json!({ "kind": 1 })),
+        ("og.RigidBody", json!({ "kind": "fixed" })),
         ("og.Collider", json!({ "shape": 5, "mesh": geometry })),
     ] {
         answer(og_world_insert(w, e, name.into(), Some(v.to_string())));

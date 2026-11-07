@@ -213,7 +213,7 @@ module render {
 | [`og.Points`](render/record-Points.md) | component |  | Draws a geometry's vertices as a point cloud at the entity's MatrixWorld, every frame (three.js Points over a BufferGeometry): star fields, scanned surfaces, sparse markers kept as data. |
 | [`RaycastGeometryDesc`](render/type-RaycastGeometryDesc.md) | desc struct |  | Which meshes og.render.raycast tests, as three.js Raycaster's near, far and layers. |
 | [`GeometryHit`](render/type-GeometryHit.md) | struct |  | Where a ray meets a drawn triangle, as three.js Raycaster's intersection. |
-| [`og.render.raycast`](render/fn-raycast.md) | function | `(world: World, ray: Ray, desc?: RaycastGeometryDesc): Result<readonly GeometryHit[]>` | Every drawn triangle a ray crosses, nearest first, as three.js Raycaster.intersectObjects: what is drawn, not the colliders (og.physics.raycast answers those). |
+| [`og.render.raycast`](render/fn-raycast.md) | function | `(world: World, ray: Ray, desc?: RaycastGeometryDesc): Result<readonly GeometryHit[]>` | Every drawn triangle a ray crosses, nearest first, as three.js Raycaster.intersectObjects: what is drawn, not the colliders (og.physics.castRay answers those). |
 | [`og.render.light2dAt`](render/fn-light2dAt.md) | function | `(world: World, point: Vector2, layers?: number): Result<Color>` | The 2D light reaching a point, for game rules (a stealth game's "is the player lit"): the sum of every og.Light2D whose layers share a bit with `layers`, each its color times intensity times its fall… |
 | [`RenderTargetFormat`](render/type-RenderTargetFormat.md) | enum |  | How a render target's colour is stored. |
 | [`RenderTargetFormat()`](#column-RenderTargetFormat) | column kind |  | A RenderTargetFormat field: the variant's index. |

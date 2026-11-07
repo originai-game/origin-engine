@@ -6,7 +6,7 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `RaycastAllDesc` (desc struct)
 
-A ray for og.physics.raycastAll: og.physics.raycast's fields and a cap on the hits.
+A ray for og.physics.castRayAll: og.physics.castRay's fields and a cap on the hits.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -20,7 +20,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct RaycastAllDesc {
-  doc "A ray for og.physics.raycastAll: og.physics.raycast's fields and a cap on the hits."
+  doc "A ray for og.physics.castRayAll: og.physics.castRay's fields and a cap on the hits."
   desc true
   field origin Vector3 "Where the ray starts." {
     unit m
@@ -40,4 +40,4 @@ struct RaycastAllDesc {
 }
 ```
 
-<sub>Module `physics` line 1704</sub>
+<sub>Module `physics` line 1707</sub>

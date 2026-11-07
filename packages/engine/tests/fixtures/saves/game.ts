@@ -43,7 +43,7 @@ export function start(world: World): void {
   }
   const floor = world.spawn({ name: "floor" });
   if (!floor.ok) throw new Error(floor.reason);
-  world.insert(floor.value, og.RigidBody, { kind: 1 });
+  world.insert(floor.value, og.RigidBody, { kind: "fixed" });
   world.insert(floor.value, og.Collider, { size: { x: 40, y: 0.2, z: 4 } });
   const child = world.spawn({ name: "badge", parent: world.find("coin-3")!, position: { x: 0, y: 0.5, z: 0 } });
   if (!child.ok) throw new Error(child.reason);

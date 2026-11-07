@@ -50,7 +50,7 @@ The choices made at creation sit in project.ogt's `create` block: `genre`,
 Never write API from memory of other engines. The answers, in order:
 
 - `og api find <words>`: matching entries, one line each.
-- `og api show <name>`: one entry in full (`og api show og.physics.raycast`).
+- `og api show <name>`: one entry in full (`og api show og.physics.castRay`).
 - `og api show <module>`: a module's overview and its members.
 - `og api show <guide>`: one of the guides of §5.
 - `node_modules/@origingame/engine/types/index.d.ts`: the generated types

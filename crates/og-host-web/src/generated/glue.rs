@@ -1314,13 +1314,13 @@ pub fn og_load_replay_completions(world: u32, completions: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_physics_raycast(world: u32, desc: Option<String>) -> String {
-    <Host as PhysicsApi>::og_physics_raycast(&Host, world, desc)
+pub fn og_physics_cast_ray(world: u32, desc: Option<String>) -> String {
+    <Host as PhysicsApi>::og_physics_cast_ray(&Host, world, desc)
 }
 
 #[wasm_bindgen]
-pub fn og_physics_raycast_all(world: u32, desc: Option<String>) -> String {
-    <Host as PhysicsApi>::og_physics_raycast_all(&Host, world, desc)
+pub fn og_physics_cast_ray_all(world: u32, desc: Option<String>) -> String {
+    <Host as PhysicsApi>::og_physics_cast_ray_all(&Host, world, desc)
 }
 
 #[wasm_bindgen]
@@ -1329,8 +1329,8 @@ pub fn og_physics_project_point(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_physics_shape_cast(world: u32, desc: Option<String>) -> String {
-    <Host as PhysicsApi>::og_physics_shape_cast(&Host, world, desc)
+pub fn og_physics_cast_shape(world: u32, desc: Option<String>) -> String {
+    <Host as PhysicsApi>::og_physics_cast_shape(&Host, world, desc)
 }
 
 #[wasm_bindgen]

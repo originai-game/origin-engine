@@ -120,6 +120,7 @@ pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
         "og.AudioEvent" => og_audio::AudioEvent::schema().version,
         "og.AudioBusFx" => og_audio::AudioBusFx::schema().version,
         "og.RigidBody" => og_physics::RigidBody::schema().version,
+        "og.Collider" => og_physics::Collider::schema().version,
         "og.Physics" => og_physics::Physics::schema().version,
         "og.Joint" => og_physics::Joint::schema().version,
         "og.Vehicle" => og_physics::Vehicle::schema().version,

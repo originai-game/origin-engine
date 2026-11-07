@@ -6,7 +6,7 @@
 //!
 //! The schedule a world gets, in order:
 //!
-//! 1. `og.physics.queries`: records the colliders, so `og.physics.raycast`
+//! 1. `og.physics.queries`: records the colliders, so `og.physics.castRay`
 //!    and friends answer from inside the game's systems;
 //! 2. `og.ui.begin`: opens the UI frame from `og.Input` and the viewport;
 //! 3. the game's systems (declaration order, then `after`/`before`);

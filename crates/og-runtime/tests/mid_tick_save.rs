@@ -140,7 +140,7 @@ fn engine(game: u32) -> u32 {
     spawn(
         json!({ "position": { "x": 0, "y": -0.5, "z": 0 } }),
         &[
-            ("og.RigidBody", json!({ "kind": 1 })),
+            ("og.RigidBody", json!({ "kind": "fixed" })),
             (
                 "og.Collider",
                 json!({ "shape": 0, "size": { "x": 20, "y": 1, "z": 20 } }),

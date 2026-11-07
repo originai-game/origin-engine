@@ -300,7 +300,7 @@ if (hits.length > 0) og.debug.sphere(world, hits[0].point, 0.05);
   `layers`, tested as three.js tests them; `first: true` stops at the
   nearest hit.
 - For gameplay against colliders (ground checks, bullets) use
-  `og.physics.raycast`, which reads the physics world instead
+  `og.physics.castRay`, which reads the physics world instead
   (`og api show physics`).
 
 ## 10. The gaps, named
@@ -341,6 +341,15 @@ if (hits.length > 0) og.debug.sphere(world, hits[0].point, 0.05);
   are no saved AudioNodes or `onended` callbacks. Panner distance and cone
   fields keep Web Audio names; engine HRTF models head shadow and delay,
   not the browser's full pinna response.
+- **Physics uses Rapier names where semantics match.** `RigidBody.kind`
+  takes `dynamic`, `fixed` or `kinematic`; queries use `og.physics.castRay`
+  and `og.physics.castShape`. `og.physics.castRayAll` is an engine extension,
+  sorted by distance then entity and capped. Box sizes remain full extents
+  as in `BoxGeometry`, not Rapier half-extents. `applyForce` lasts one tick,
+  not until reset. A kinematic body integrates `Velocity`; writing its
+  `Transform` teleports it before integration, rather than setting Rapier's
+  next-position target and inferring velocity. There are no separate
+  position-based and velocity-based kinematic modes.
 - **No mutation helpers on values.** `vector.add(v)`, `clone()`,
   `multiplyScalar(s)` and the other in-place methods are the pure `vec3`
   and `quat` functions.

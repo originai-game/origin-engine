@@ -38,7 +38,7 @@ const Watch = defineSystem("MdWatch", { reads: [og.CollisionStarted], writes: [S
   const seen = must(world.resource(Seen));
   const started = world.events(og.CollisionStarted);
   if (started.length > 0) seen.collisions += started.length;
-  const hit = must(og.physics.raycast(world, { origin: { x: 5, y: 5, z: 0 }, direction: { x: 0, y: -1, z: 0 } }));
+  const hit = must(og.physics.castRay(world, { origin: { x: 5, y: 5, z: 0 }, direction: { x: 0, y: -1, z: 0 } }));
   if (hit !== null && hit.entity === world.find("floor")) {
     seen.groundHits += 1;
     seen.groundDistance = hit.distance;
@@ -59,7 +59,7 @@ test("a dynamic box falls, rests on a static collider, and its collision reaches
   expect(seen.groundHits).toBe(180);
   expect(seen.groundDistance).toBeCloseTo(5, 5);
   // Between ticks, a query sees the world as it is.
-  const down = must(og.physics.raycast(engine.world, { origin: { x: 0, y: 10, z: 0 } }));
+  const down = must(og.physics.castRay(engine.world, { origin: { x: 0, y: 10, z: 0 } }));
   expect(down?.entity).toBe(box);
   expect(down!.point.y).toBeCloseTo(t.position.y + 0.5, 3);
   const touching = must(og.physics.overlap(engine.world, { shape: { shape: SHAPE_BOX, size: { x: 0.5, y: 0.5, z: 0.5 } }, position: { x: 0, y: 0.5, z: 0 } }));
@@ -88,11 +88,11 @@ test("a compound of child colliders is one body, and raycastAll and projectPoint
   // It rests on both spheres, its centre at their radius.
   expect(must(w.get(bell, og.Transform)).position.y).toBeCloseTo(0.5, 2);
   // A ray along the floor's top at the spheres' centre height crosses the box, then both spheres.
-  const hits = must(og.physics.raycastAll(w, { origin: { x: -5, y: 0.5, z: 0 }, direction: { x: 1, y: 0, z: 0 } }));
+  const hits = must(og.physics.castRayAll(w, { origin: { x: -5, y: 0.5, z: 0 }, direction: { x: 1, y: 0, z: 0 } }));
   expect(hits.map((h) => h.entity)).toEqual([box, left, right]);
   expect(hits.map((h) => h.body)).toEqual([box, bell, bell]);
   expect(hits[1]!.distance).toBeCloseTo(8.5, 2);
-  expect(must(og.physics.raycastAll(w, { origin: { x: -5, y: 0.5, z: 0 }, direction: { x: 1, y: 0, z: 0 }, maxHits: 1 })).length).toBe(1);
+  expect(must(og.physics.castRayAll(w, { origin: { x: -5, y: 0.5, z: 0 }, direction: { x: 1, y: 0, z: 0 }, maxHits: 1 })).length).toBe(1);
   // A point above the right sphere projects onto its top.
   const p = must(og.physics.projectPoint(w, { point: { x: 6, y: 3, z: 0 } }));
   expect(p?.entity).toBe(right);

@@ -95,6 +95,47 @@ const Jumper = defineSystem("PhysicsJumper", { reads: [og.CharacterEvent], write
   }
 });
 
+test("Rapier names preserve full sizes, sensors and engine kinematics", () => {
+  const engine = start(og.game({ start(world) {
+    must(world.resource(og.Physics)).gravity = { x: 0, y: 0, z: 0 };
+    // Spawn far before near: the all-hit query must sort by distance, not id.
+    for (const [name, x] of [["far", 7], ["near", 4]] as const) {
+      const e = box(world, name, { x, y: 0, z: 0 }, { x: 2, y: 3, z: 4 });
+      must(world.insert(e, og.RigidBody, { kind: "fixed" }));
+      must(world.insert(e, og.Velocity, { linear: { x: 3, y: 0, z: 0 } }));
+    }
+    const sensor = box(world, "sensor", { x: 1, y: 0, z: 0 }, { x: 0.5, y: 2, z: 3 });
+    must(world.set(sensor, og.Collider, { sensor: true }));
+    for (const [name, kind, y] of [["lift", "kinematic", 10], ["ball", "dynamic", 20]] as const) {
+      const e = box(world, name, { x: 0, y, z: 0 }, { x: 1, y: 1, z: 1 });
+      must(world.insert(e, og.RigidBody, { kind, mass: 2, ccd: true }));
+      must(world.insert(e, og.Velocity, { linear: { x: kind === "kinematic" ? 3 : 0, y: 0, z: 0 } }));
+    }
+  } }));
+  const w = engine.world;
+  const near = w.find("near")!;
+  const lift = w.find("lift")!;
+  const ball = w.find("ball")!;
+  const ray = { origin: { x: 0, y: 0, z: 0 }, direction: { x: 2, y: 0, z: 0 } };
+  expect(must(og.physics.castRay(w, ray))?.distance).toBeCloseTo(3, 5);
+  expect(must(og.physics.castRayAll(w, ray)).map(h => h.entity)).toEqual([near, w.find("far")!]);
+  expect(must(og.physics.castRayAll(w, { ...ray, maxHits: 1 })).map(h => h.entity)).toEqual([near]);
+  expect(must(og.physics.castRay(w, { ...ray, filter: { includeSensors: true } }))?.entity).toBe(w.find("sensor")!);
+  expect(must(og.physics.castShape(w, { position: ray.origin, direction: ray.direction, shape: { shape: SHAPE_SPHERE, radius: 0.25 } }))?.distance).toBeCloseTo(2.75, 4);
+  expect(must(w.get(lift, og.RigidBody)).ccd).toBeTrue();
+  expect(must(w.get(near, og.Collider)).sensor).toBeFalse();
+  must(og.physics.applyForce(w, ball, { x: 120, y: 0, z: 0 }));
+  must(engine.advance(10));
+  expect(must(w.get(near, og.Transform)).position.x).toBe(4);
+  expect(must(w.get(lift, og.Transform)).position.x).toBeCloseTo(0.5, 5);
+  // 120 N / 2 kg for one 1/60 s tick gives 1 m/s, not ten ticks of force.
+  expect(must(w.get(ball, og.Velocity)).linear.x).toBeCloseTo(1, 5);
+  must(w.set(lift, og.Transform, { position: { x: 11, y: 10, z: 0 } }));
+  must(engine.advance(1));
+  expect(must(w.get(lift, og.Transform)).position.x).toBeCloseTo(11.05, 4);
+  expect(must(w.get(lift, og.Velocity)).linear.x).toBe(3);
+});
+
 test("every physics component is adopted and steps in 3D", () => {
   const engine = start(og.game({ start: world3d }));
   expect(engine.advance(120).ok).toBeTrue();

@@ -2,14 +2,14 @@
 
 Module [`physics`](../physics.md) · [index](../index.md)
 
-<a id="fn-shapeCast"></a>
+<a id="fn-castShape"></a>
 
-### `og.physics.shapeCast`
+### `og.physics.castShape`
 
-The first collider a shape meets when swept along a direction; the same view of the colliders as raycast.
+The first collider a shape meets when swept along a direction; the same view of the colliders as castRay.
 
 ```ts
-og.physics.shapeCast(world: World, desc?: ShapeCastDesc): Result<ShapeCastHit | null>
+og.physics.castShape(world: World, desc?: ShapeCastDesc): Result<ShapeCastHit | null>
 ```
 
 | Parameter | Type | Optional | Doc |
@@ -19,15 +19,15 @@ og.physics.shapeCast(world: World, desc?: ShapeCastDesc): Result<ShapeCastHit | 
 
 **Returns** `Result<ShapeCastHit | null>`: The hit, or null; refused for a zero direction or an unknown mesh.
 
-Binding symbol `og_physics_shape_cast` · publish builds: kept
+Binding symbol `og_physics_cast_shape` · publish builds: kept
 
 ```ogt
-fn shapeCast {
-  doc "The first collider a shape meets when swept along a direction; the same view of the colliders as raycast."
+fn castShape {
+  doc "The first collider a shape meets when swept along a direction; the same view of the colliders as castRay."
   param world World "The world."
   param desc ShapeCastDesc "The shape, its sweep and the filter."
   returns Result.Option.ShapeCastHit "The hit, or null; refused for a zero direction or an unknown mesh."
 }
 ```
 
-<sub>Module `physics` line 1844</sub>
+<sub>Module `physics` line 1847</sub>

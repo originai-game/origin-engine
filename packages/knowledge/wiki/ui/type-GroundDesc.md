@@ -16,7 +16,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `origin` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | Where the terrain stands: its og.Terrain entity's world position. |
 | `quaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | How the terrain is turned (the zero value: along world x and z). |
 | `scale` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | — | — | — | How the terrain is scaled. |
-| `colliders` | `boolean` | `false` | — | — | — | Also cast straight down against colliders (og.physics.raycast, as the tick began); the highest surface of the two wins. Exclude the unit itself (exclude) or keep units off mask's layers, or the ring climbs onto it. |
+| `colliders` | `boolean` | `false` | — | — | — | Also cast straight down against colliders (og.physics.castRay, as the tick began); the highest surface of the two wins. Exclude the unit itself (exclude) or keep units off mask's layers, or the ring climbs onto it. |
 | `mask` | `number` | `0` | — | — | — | The layers the downward cast considers; 0 every layer. |
 | `exclude` | `Entity \| null` | `null` | — | — | — | An entity the cast ignores (the selected unit). |
 | `reach` | `number` | `50` | ≥ 0.1 | — | — | How far above and below a vertex's own y the cast looks. |
@@ -33,7 +33,7 @@ struct GroundDesc {
   field scale Vector3 "How the terrain is scaled." {
     default 1 1 1
   }
-  field colliders bool "Also cast straight down against colliders (og.physics.raycast, as the tick began); the highest surface of the two wins. Exclude the unit itself (exclude) or keep units off mask's layers, or the ring climbs onto it."
+  field colliders bool "Also cast straight down against colliders (og.physics.castRay, as the tick began); the highest surface of the two wins. Exclude the unit itself (exclude) or keep units off mask's layers, or the ring climbs onto it."
   field mask u32 "The layers the downward cast considers; 0 every layer."
   field exclude Option.Entity "An entity the cast ignores (the selected unit)."
   field reach f32 "How far above and below a vertex's own y the cast looks." {

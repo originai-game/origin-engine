@@ -2,8 +2,8 @@
 //! the inspector, the probe, scene text and the TypeScript IDL show, so the
 //! doc comments are the user-facing documentation.
 //!
-//! Enumerations are `u32` codes (the committed reflection has no enum field
-//! type yet); the codes are the `pub const`s below and are stable.
+//! RigidBody.kind stores stable `u32` codes and reflects public enum names.
+//! Other numeric codes are the `pub const`s below.
 
 use og_core::Reflect;
 use og_core::glam::{Quat, Vec3};
@@ -85,10 +85,10 @@ pub const LOCK_ROTATION_Z: u32 = 32;
 /// an `og.Collider`. In the 2D profile the body moves in the xy plane and
 /// rotates about z.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.RigidBody", version = 2)]
+#[reflect(name = "og.RigidBody", version = 3)]
 pub struct RigidBody {
-    /// 0 dynamic (simulated, written back), 1 static (never moves), 2 kinematic (moved by its Velocity each tick, or by game code through its Transform).
-    #[reflect(min = 0, max = 2, label = "Kind")]
+    /// dynamic (simulated), fixed (not moved by the solver), kinematic (Velocity each tick, Transform teleports).
+    #[reflect(variants = ["dynamic", "fixed", "kinematic"], label = "Kind")]
     pub kind: u32,
     /// Mass in kilograms; 0 derives it from the collider's density and volume.
     #[reflect(min = 0, unit = "kg", tunable)]
@@ -105,9 +105,8 @@ pub struct RigidBody {
     /// Locked axes, a sum of bits: 1/2/4 no translation along x/y/z, 8/16/32 no rotation about x/y/z (2D uses 1, 2 and 32).
     #[reflect(min = 0, max = 63)]
     pub lock: u32,
-    /// 1 enables continuous collision detection (fast, small bodies that must not tunnel); 0 off.
-    #[reflect(min = 0, max = 1)]
-    pub ccd: u32,
+    /// Enable continuous collision detection for fast small bodies that must not tunnel.
+    pub ccd: bool,
     /// Moves the centre of mass from where the collider puts it (its shape's
     /// centre), in the entity's own frame and scaled by og.Transform.scale
     /// like Collider.offset; the inertia stays the shape's. A car's lowered
@@ -136,7 +135,7 @@ impl Default for RigidBody {
             angular_damping: 0.0,
             gravity_scale: 1.0,
             lock: 0,
-            ccd: 0,
+            ccd: false,
             center_of_mass: Vec3::ZERO,
             can_sleep: true,
             sleeping: false,
@@ -213,7 +212,7 @@ pub(crate) fn polygon(shape: u32, hx: f32, hy: f32) -> Vec<[f32; 2]> {
 /// no RigidBody, a static collider at its Transform). Sizes are scaled by
 /// og.Transform.scale.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Collider")]
+#[reflect(name = "og.Collider", version = 2)]
 pub struct Collider {
     /// 0 box, 1 sphere (circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (polygon in 2D), 5 triangle mesh of `mesh` (its outline in 2D), 6 the height field `mesh` (3D: a terrain), 7 a diamond and 8 a hexagon in `size` (both).
     #[reflect(min = 0, max = 8, label = "Shape")]
@@ -244,9 +243,8 @@ pub struct Collider {
     /// Density in kg per cubic metre (per square metre in 2D); ignored when RigidBody.mass is set.
     #[reflect(min = 0, unit = "kg/m3", default = 1, tunable)]
     pub density: f32,
-    /// 1 makes this a sensor: it reports SensorEntered/SensorExited and pushes nothing; 0 a solid.
-    #[reflect(min = 0, max = 1)]
-    pub sensor: u32,
+    /// A sensor reports SensorEntered/SensorExited and pushes nothing; false is a solid.
+    pub sensor: bool,
     /// The collision layers this collider is on (bits).
     #[reflect(default = 1)]
     pub layers: u32,
@@ -268,7 +266,7 @@ impl Default for Collider {
             friction: 0.5,
             restitution: 0.0,
             density: 1.0,
-            sensor: 0,
+            sensor: false,
             layers: 1,
             mask: u32::MAX,
         }
@@ -328,7 +326,10 @@ impl Collider {
     }
     /// The same collider as a sensor.
     pub fn as_sensor(self) -> Collider {
-        Collider { sensor: 1, ..self }
+        Collider {
+            sensor: true,
+            ..self
+        }
     }
     /// The same collider on `layers`, colliding with `mask`.
     pub fn on_layers(self, layers: u32, mask: u32) -> Collider {

@@ -16,13 +16,13 @@ Token `og.RigidBody`, registered under the schema name `og.RigidBody`; its value
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `kind` | `number` | `0` | 0 … 2 | — | label “Kind” | BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by its Velocity each tick, or by game code through its Transform). |
+| `kind` | `RigidBodyType` | `"dynamic"` | — | — | label “Kind” | dynamic is simulated, fixed is not moved by the solver, kinematic follows Velocity and Transform writes. |
 | `mass` | `number` | `0` | ≥ 0 | `kg` | tunable | Mass; 0 derives it from the collider's density and volume. |
 | `linearDamping` | `number` | `0` | 0 … 100 | `perSecond` | tunable | How fast linear velocity decays (0: none). |
 | `angularDamping` | `number` | `0` | 0 … 100 | `perSecond` | tunable | How fast angular velocity decays (0: none). |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies Physics.gravity for this body: 0 floats, 1 is normal. |
 | `lock` | `number` | `0` | 0 … 63 | — | — | Locked axes, a sum of the LOCK_* bits: 1, 2, 4 no translation along x, y, z; 8, 16, 32 no rotation about x, y, z (2D uses 1, 2 and 32). |
-| `ccd` | `number` | `0` | 0 … 1 | — | — | 1 enables continuous collision detection, for fast small bodies that must not tunnel; 0 off. |
+| `ccd` | `boolean` | `false` | — | — | — | Enable continuous collision detection for fast small bodies that must not tunnel. |
 | `centerOfMass` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | tunable | Moves the centre of mass from where the collider puts it (its shape's centre), in the entity's own frame and scaled by og.Transform.scale like Collider.offset; the inertia stays the shape's. A car's lowered below its wheel mounts keeps it on its wheels at full lock; a weight at a toy's base rights it. Needs an og.Collider. |
 | `canSleep` | `boolean` | `true` | — | — | — | Whether the body may sleep when Physics.sleepTicks is set. A body sleeps only with every dynamic body it touches, so false keeps it and what touches it awake (a player's ball, a body game code moves every tick). |
 | `sleeping` | `boolean` | `false` | — | — | — | Written: true while the body sleeps (Physics.sleepTicks). Write false to wake it; physics then writes it back as the body is. |
@@ -32,9 +32,7 @@ component RigidBody {
   doc "A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one."
   doc "Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport)."
   aliases "physics body, Rigidbody, RigidBody3D, dynamic body, kinematic body"
-  field kind u32 "BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by its Velocity each tick, or by game code through its Transform)." {
-    min 0
-    max 2
+  field kind RigidBodyType "dynamic is simulated, fixed is not moved by the solver, kinematic follows Velocity and Transform writes." {
     label "Kind"
   }
   field mass f32 "Mass; 0 derives it from the collider's density and volume." {
@@ -64,10 +62,7 @@ component RigidBody {
     min 0
     max 63
   }
-  field ccd u32 "1 enables continuous collision detection, for fast small bodies that must not tunnel; 0 off." {
-    min 0
-    max 1
-  }
+  field ccd bool "Enable continuous collision detection for fast small bodies that must not tunnel."
   field centerOfMass Vector3 "Moves the centre of mass from where the collider puts it (its shape's centre), in the entity's own frame and scaled by og.Transform.scale like Collider.offset; the inertia stays the shape's. A car's lowered below its wheel mounts keeps it on its wheels at full lock; a weight at a toy's base rights it. Needs an og.Collider." {
     unit m
     tunable true
@@ -79,4 +74,4 @@ component RigidBody {
 }
 ```
 
-<sub>Module `physics` line 28</sub>
+<sub>Module `physics` line 39</sub>

@@ -7,7 +7,7 @@
 // which tests read it.
 //
 //   og run tests/fixtures/vehicle-terrain --commands "0.2:key_down:KeyW;2:key_down:KeyD;3:key_up:KeyD;3.5:quit"
-import { og, defineComponent, defineResource, defineSystem, f32, u32, BODY_DYNAMIC, SHAPE_BOX, SHAPE_HEIGHTFIELD } from "@origingame/engine";
+import { og, defineComponent, defineResource, defineSystem, f32, u32, SHAPE_BOX, SHAPE_HEIGHTFIELD } from "@origingame/engine";
 import type { Entity, Quaternion, Vector3, World } from "@origingame/engine";
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
@@ -79,7 +79,7 @@ function build(world: World): void {
   }
 
   const car = must(world.spawn({ name: "car", position: { x: START.x, y: ground + 1, z: START.z } }));
-  must(world.insert(car, og.RigidBody, { kind: BODY_DYNAMIC, mass: 1000, angularDamping: 0.4, ccd: 1 }));
+  must(world.insert(car, og.RigidBody, { kind: "dynamic", mass: 1000, angularDamping: 0.4, ccd: true }));
   must(world.insert(car, og.Collider, { shape: SHAPE_BOX, size: { x: 1.7, y: 0.25, z: 4 }, friction: 0.05 }));
   must(world.insert(car, og.Velocity, {}));
   must(world.insert(car, og.Vehicle, { wheelBase: 2.6, track: 1.7, wheelRadius: 0.35, mountHeight: -0.3, suspensionRest: 0.3, suspensionTravel: 0.18, suspensionStiffness: 50, suspensionDamping: 4.5, maxSteer: 0.5, rollInfluence: 0.1, engineForce: 6000, maxSpeed: 30, grip: 1.2, driftGrip: 0.6 }));

@@ -32,9 +32,11 @@ use support::beyond::*;
 /// at tick 26; moving the bowl out of contact leaves both splits identical.
 /// The 3D character no longer snaps to the ground while falling (only a
 /// character grounded at the start of its move snaps, as rapier's own
-/// controller does), so it lands where it meets the floor. The 2D pin
-/// remains the one cb1d65bf left.
-const PINNED: [(u32, u64); 2] = [(3, 0x8cf6815b1ab88ae9), (2, 0xd2b61993ef980a1c)];
+/// controller does), so it lands where it meets the floor. The API naming
+/// migration packs ccd and sensor as one-byte bools rather than u32s.
+/// Expanding those two fields back to u32 reproduced both previous pins,
+/// including all physics state blocks; simulation results did not change.
+const PINNED: [(u32, u64); 2] = [(3, 0x4531e49be1eff40f), (2, 0xebf409356ba43ecc)];
 
 /// What G2-3 added to the types the world registers: left out of the
 /// table, as an older engine's trace leaves them.
@@ -105,8 +107,8 @@ fn a_world_using_no_g2_3_feature_hashes_as_before() {
 }
 /// The portable hash after 400 ticks of [`resting`], as 583b9cd5 (the
 /// commit before sleep) left it, except the 3D character's fall onto the
-/// floor, which no longer snaps (see [`PINNED`]).
-const RESTING: [(u32, u64); 2] = [(3, 0x60085b8567f6c671), (2, 0x3dbf5270645d9208)];
+/// floor, which no longer snaps, and the bool packing change (see [`PINNED`]).
+const RESTING: [(u32, u64); 2] = [(3, 0x1eb8ee8560987053), (2, 0x42a8e523a985135e)];
 
 /// Bodies at rest for hundreds of ticks with sleep off: a dynamic box on
 /// the floor, a kinematic platform standing still, and an idle character

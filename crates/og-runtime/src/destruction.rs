@@ -1298,7 +1298,7 @@ fn run(
                             ctx.remove_id(e, l.parent.0)?;
                             set_transform(ctx, l, e, &cp)?;
                         }
-                        let rb = l.rigid.1.enc(None, Some(&json!({ "kind": 0 })))?;
+                        let rb = l.rigid.1.enc(None, Some(&json!({ "kind": "dynamic" })))?;
                         ctx.insert_bytes(e, l.rigid.0, &rb)?;
                         made.insert(root_entity, (lin, ang));
                         fresh_bodies.push(root_entity);
@@ -1835,7 +1835,10 @@ fn spawn_chunk(
         _ => (tick, body),
     };
     match role {
-        Role::Root => parts.push((l.rigid.0, l.rigid.1.enc(None, Some(&json!({ "kind": 0 })))?)),
+        Role::Root => parts.push((
+            l.rigid.0,
+            l.rigid.1.enc(None, Some(&json!({ "kind": "dynamic" })))?,
+        )),
         Role::Child(_) => parts.push((
             l.parent.0,
             l.parent

@@ -2,7 +2,7 @@ query	expected
 keep the hero glued to the ground and let it walk up slopes	og.CharacterController
 knock a crate back when an explosion goes off next to it	og.physics.applyImpulse
 tell when the player walks into a trigger area	og.SensorEntered
-raycast all hits along a ray	og.physics.raycastAll
+raycast all hits along a ray	og.physics.castRayAll
 door hinge joint	JOINT_REVOLUTE | og.Joint
 charcter controler	og.CharacterController
 the screen trembles when the player gets hit	og.camera.shake
@@ -112,7 +112,7 @@ a cape that hangs off a character's shoulders and moves as they walk	og.Garment
 a car with four wheels and suspension	og.Vehicle
 a character goes limp and falls like a dead body	og.Ragdoll
 hang a lantern from a chain that swings	og.Rope
-find what is under the mouse click in 3D using the colliders	og.physics.raycast
+find what is under the mouse click in 3D using the colliders	og.physics.castRay
 everything inside the blast radius	og.physics.overlap
 jelly that wobbles when hit	og.SoftBody
 an object passes through others without bouncing but I still want to know it touched	og.Collider | og.SensorEntered

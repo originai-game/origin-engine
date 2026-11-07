@@ -148,13 +148,13 @@ test("a turned and scaled terrain: sample, bounds, edit and physics follow its e
   expect(box.max.z).toBeCloseTo(93, 3);
   expect(box.max.y).toBeCloseTo(1 + 1.5 * info!.maxHeight, 2);
   // Physics collides with the same turned and scaled surface.
-  const hit = must(og.physics.raycast(w, { origin: { x: 5, y: 50, z: -63 }, direction: { x: 0, y: -1, z: 0 } }));
+  const hit = must(og.physics.castRay(w, { origin: { x: 5, y: 50, z: -63 }, direction: { x: 0, y: -1, z: 0 } }));
   expect(hit?.point.y).toBeCloseTo(expected(5, -63), 1);
   // An edit raises 3 world metres at a world point.
   must(og.terrain.edit(w, data, { ...place, mode: "raise" as never, center: { x: 5, y: 0, z: -63 }, radius: 6, strength: 3, falloff: 0.5 }));
   expect(at(5, -63).height).toBeCloseTo(expected(5, -63) + 3, 1);
   expect(engine.advance(1).ok).toBeTrue();
-  const raised = must(og.physics.raycast(w, { origin: { x: 5, y: 50, z: -63 }, direction: { x: 0, y: -1, z: 0 } }));
+  const raised = must(og.physics.castRay(w, { origin: { x: 5, y: 50, z: -63 }, direction: { x: 0, y: -1, z: 0 } }));
   expect(raised?.point.y).toBeCloseTo(expected(5, -63) + 3, 1);
 });
 
@@ -201,7 +201,7 @@ gpuTest("an edit raises the ground for sample, physics and the renderer", () => 
   expect(edit.maxHeight).toBeGreaterThan(info.maxHeight - 0.1);
   expect(must(og.terrain.sample(w, spot)).height).toBeCloseTo(h0 + 4, 1);
   // Physics: a ray down meets the raised ground.
-  const hit = must(og.physics.raycast(w, { origin: { x: 20, y: 50, z: 20 }, direction: { x: 0, y: -1, z: 0 } }));
+  const hit = must(og.physics.castRay(w, { origin: { x: 20, y: 50, z: 20 }, direction: { x: 0, y: -1, z: 0 } }));
   expect(hit?.point.y).toBeCloseTo(h0 + 4, 1);
   // The renderer: the frame changed around the mound and not at the far corners.
   expect(engine.advance(1).ok).toBeTrue();
@@ -223,7 +223,7 @@ test("terrain edits are world state: a snapshot keeps them and a restore brings 
   const w = engine.world;
   const data = info.data as never;
   const spot = { data, origin: { x: 0, y: 0, z: 0 }, x: 20, z: 20 };
-  const ray = () => must(og.physics.raycast(w, { origin: { x: 20, y: 50, z: 20 }, direction: { x: 0, y: -1, z: 0 } }))?.point.y ?? NaN;
+  const ray = () => must(og.physics.castRay(w, { origin: { x: 20, y: 50, z: 20 }, direction: { x: 0, y: -1, z: 0 } }))?.point.y ?? NaN;
   const h0 = must(og.terrain.sample(w, spot)).height;
   const untouched = engine.probe.snapshot() as { id: string; hash: string };
   must(og.terrain.edit(w, data, { mode: "raise" as never, center: { x: 20, y: 0, z: 20 }, radius: 6, strength: 3 }));
@@ -281,7 +281,7 @@ test("the hole brush cuts the terrain out for sample and physics, and fill close
   const w = engine.world;
   const data = info.data as never;
   const at = (x: number, z: number) => must(og.terrain.sample(w, { data, origin: { x: 0, y: 0, z: 0 }, x, z }));
-  const ray = (x: number, z: number) => must(og.physics.raycast(w, { origin: { x, y: 50, z }, direction: { x: 0, y: -1, z: 0 } }))?.point.y ?? null;
+  const ray = (x: number, z: number) => must(og.physics.castRay(w, { origin: { x, y: 50, z }, direction: { x: 0, y: -1, z: 0 } }))?.point.y ?? null;
   expect(at(20, 20).hole).toBeFalse();
   const before = engine.probe.snapshot() as { id: string; hash: string };
   const cut = must(og.terrain.edit(w, data, { mode: "hole" as never, center: { x: 20, y: 0, z: 20 }, radius: 3, falloff: 0 }));
@@ -371,7 +371,7 @@ test("a stamp carves the ground under its mesh for sample, physics and the hash;
   const w = engine.world;
   const data = info.data as never;
   const at = (x: number, z: number) => must(og.terrain.sample(w, { data, x, z })).height;
-  const ray = (x: number, z: number) => must(og.physics.raycast(w, { origin: { x, y: 50, z }, direction: { x: 0, y: -1, z: 0 } }))?.point.y ?? NaN;
+  const ray = (x: number, z: number) => must(og.physics.castRay(w, { origin: { x, y: 50, z }, direction: { x: 0, y: -1, z: 0 } }))?.point.y ?? NaN;
   const before = engine.probe.snapshot() as { id: string; hash: string };
   // A 20 m tall rock, 4 × 4 m, standing at (20, 20) with its foot 10 m down.
   const rock = must(og.render.boxGeometry(w, { width: 4, height: 20, depth: 4 }));

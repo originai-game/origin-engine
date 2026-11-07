@@ -529,14 +529,14 @@ export interface HostAbi<A, V> {
   og_load_completions(world: number): string;
   /** `og.load.replayCompletions` */
   og_load_replay_completions(world: number, completions: string): string;
-  /** `og.physics.raycast` */
-  og_physics_raycast(world: number, desc: string | undefined): string;
-  /** `og.physics.raycastAll` */
-  og_physics_raycast_all(world: number, desc: string | undefined): string;
+  /** `og.physics.castRay` */
+  og_physics_cast_ray(world: number, desc: string | undefined): string;
+  /** `og.physics.castRayAll` */
+  og_physics_cast_ray_all(world: number, desc: string | undefined): string;
   /** `og.physics.projectPoint` */
   og_physics_project_point(world: number, desc: string | undefined): string;
-  /** `og.physics.shapeCast` */
-  og_physics_shape_cast(world: number, desc: string | undefined): string;
+  /** `og.physics.castShape` */
+  og_physics_cast_shape(world: number, desc: string | undefined): string;
   /** `og.physics.overlap` */
   og_physics_overlap(world: number, desc: string | undefined): string;
   /** `og.physics.applyForce` */
@@ -1573,10 +1573,10 @@ export const SYMBOLS: readonly string[] = [
   "og_load_image_info",
   "og_load_completions",
   "og_load_replay_completions",
-  "og_physics_raycast",
-  "og_physics_raycast_all",
+  "og_physics_cast_ray",
+  "og_physics_cast_ray_all",
   "og_physics_project_point",
-  "og_physics_shape_cast",
+  "og_physics_cast_shape",
   "og_physics_overlap",
   "og_physics_apply_force",
   "og_physics_apply_impulse",

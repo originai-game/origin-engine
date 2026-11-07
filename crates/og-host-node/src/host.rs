@@ -1155,16 +1155,16 @@ impl PhysicsApi for NodeHost {
     fn og_physics_stats(&self, world: u32) -> String {
         rt::og_physics_stats(world)
     }
-    fn og_physics_raycast(&self, world: u32, desc: Option<String>) -> String {
+    fn og_physics_cast_ray(&self, world: u32, desc: Option<String>) -> String {
         rt::og_physics_raycast(world, desc)
     }
-    fn og_physics_raycast_all(&self, world: u32, desc: Option<String>) -> String {
+    fn og_physics_cast_ray_all(&self, world: u32, desc: Option<String>) -> String {
         rt::og_physics_raycast_all(world, desc)
     }
     fn og_physics_project_point(&self, world: u32, desc: Option<String>) -> String {
         rt::og_physics_project_point(world, desc)
     }
-    fn og_physics_shape_cast(&self, world: u32, desc: Option<String>) -> String {
+    fn og_physics_cast_shape(&self, world: u32, desc: Option<String>) -> String {
         rt::og_physics_shape_cast(world, desc)
     }
     fn og_physics_overlap(&self, world: u32, desc: Option<String>) -> String {

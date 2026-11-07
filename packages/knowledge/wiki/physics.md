@@ -26,10 +26,7 @@ module physics {
 
 | Name | Kind | Signature | Summary |
 |---|---|---|---|
-| [`MAX_RAYCAST_HITS`](#const-MAX_RAYCAST_HITS) | constant |  | The most hits og.physics.raycastAll returns. |
-| [`BODY_DYNAMIC`](#const-BODY_DYNAMIC) | constant |  | RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick. |
-| [`BODY_STATIC`](#const-BODY_STATIC) | constant |  | RigidBody.kind: never moves; collides with dynamic bodies. |
-| [`BODY_KINEMATIC`](#const-BODY_KINEMATIC) | constant |  | RigidBody.kind: not moved by the solver. |
+| [`MAX_RAYCAST_HITS`](#const-MAX_RAYCAST_HITS) | constant |  | The most hits og.physics.castRayAll returns. |
 | [`LOCK_TRANSLATION_X`](#const-LOCK_TRANSLATION_X) | constant |  | RigidBody.lock bit: no translation along x. |
 | [`LOCK_TRANSLATION_Y`](#const-LOCK_TRANSLATION_Y) | constant |  | RigidBody.lock bit: no translation along y. |
 | [`LOCK_TRANSLATION_Z`](#const-LOCK_TRANSLATION_Z) | constant |  | RigidBody.lock bit: no translation along z. |
@@ -47,6 +44,8 @@ module physics {
 | [`SHAPE_HEXAGON`](#const-SHAPE_HEXAGON) | constant |  | Collider.shape: a pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3… |
 | [`PROFILE_2D`](#const-PROFILE_2D) | constant |  | Physics.profile: rapier2d, bodies in the xy plane rotating about z. |
 | [`PROFILE_3D`](#const-PROFILE_3D) | constant |  | Physics.profile: rapier3d. |
+| [`RigidBodyType`](physics/type-RigidBodyType.md) | enum |  | A body's simulation mode. |
+| [`RigidBodyType()`](#column-RigidBodyType) | column kind |  | A RigidBodyType field: the variant's index. |
 | [`og.RigidBody`](physics/record-RigidBody.md) | component |  | A body the physics step simulates. |
 | [`og.Collider`](physics/record-Collider.md) | component |  | The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). |
 | [`og.Velocity`](physics/record-Velocity.md) | component |  | Linear and angular velocity. |
@@ -107,21 +106,21 @@ module physics {
 | [`og.Splash`](physics/record-Splash.md) | event |  | Something crossed a water surface (og.WaterSurface or og.WaterLine): for splash particles and sounds. |
 | [`og.Ragdoll`](physics/record-Ragdoll.md) | component |  | A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy pl… |
 | [`QueryFilter`](physics/type-QueryFilter.md) | desc struct |  | Which colliders a scene query considers. |
-| [`RaycastDesc`](physics/type-RaycastDesc.md) | desc struct |  | A ray for og.physics.raycast. |
+| [`RaycastDesc`](physics/type-RaycastDesc.md) | desc struct |  | A ray for og.physics.castRay. |
 | [`RaycastHit`](physics/type-RaycastHit.md) | struct |  | The nearest collider a ray meets. |
-| [`RaycastAllDesc`](physics/type-RaycastAllDesc.md) | desc struct |  | A ray for og.physics.raycastAll: og.physics.raycast's fields and a cap on the hits. |
+| [`RaycastAllDesc`](physics/type-RaycastAllDesc.md) | desc struct |  | A ray for og.physics.castRayAll: og.physics.castRay's fields and a cap on the hits. |
 | [`ProjectPointDesc`](physics/type-ProjectPointDesc.md) | desc struct |  | A point for og.physics.projectPoint. |
 | [`PointProjection`](physics/type-PointProjection.md) | struct |  | Where a point projects onto the nearest collider. |
 | [`ShapeDesc`](physics/type-ShapeDesc.md) | desc struct |  | The shape of a shape cast or an overlap test: the shape fields of a Collider. |
-| [`ShapeCastDesc`](physics/type-ShapeCastDesc.md) | desc struct |  | A shape swept along a direction for og.physics.shapeCast. |
+| [`ShapeCastDesc`](physics/type-ShapeCastDesc.md) | desc struct |  | A shape swept along a direction for og.physics.castShape. |
 | [`ShapeCastHit`](physics/type-ShapeCastHit.md) | struct |  | The first collider a swept shape meets. |
 | [`OverlapDesc`](physics/type-OverlapDesc.md) | desc struct |  | A shape placed in the world for og.physics.overlap. |
 | [`MeshDesc`](physics/type-MeshDesc.md) | desc struct |  | Geometry for convex and triangle-mesh colliders, in the mesh's own space. |
-| [`og.physics.raycast`](physics/fn-raycast.md) | function | `(world: World, desc?: RaycastDesc): Result<RaycastHit \| null>` | The nearest collider along a ray. |
-| [`og.physics.raycastAll`](physics/fn-raycastAll.md) | function | `(world: World, desc?: RaycastAllDesc): Result<readonly RaycastHit[]>` | Every collider along a ray within its reach, one hit each at its first crossing, nearest first (ties in collider entity order, so every host and run list them alike), at most `maxHits`: what a pierci… |
+| [`og.physics.castRay`](physics/fn-castRay.md) | function | `(world: World, desc?: RaycastDesc): Result<RaycastHit \| null>` | The nearest collider along a ray. |
+| [`og.physics.castRayAll`](physics/fn-castRayAll.md) | function | `(world: World, desc?: RaycastAllDesc): Result<readonly RaycastHit[]>` | Every collider along a ray within its reach, one hit each at its first crossing, nearest first (ties in collider entity order, so every host and run list them alike), at most `maxHits`: what a pierci… |
 | [`og.physics.projectPoint`](physics/fn-projectPoint.md) | function | `(world: World, desc?: ProjectPointDesc): Result<PointProjection \| null>` | The nearest point on any collider to a point, within maxDistance: snapping to a surface, the closest cover, whether a point is inside a solid. |
-| [`og.physics.shapeCast`](physics/fn-shapeCast.md) | function | `(world: World, desc?: ShapeCastDesc): Result<ShapeCastHit \| null>` | The first collider a shape meets when swept along a direction; the same view of the colliders as raycast. |
-| [`og.physics.overlap`](physics/fn-overlap.md) | function | `(world: World, desc?: OverlapDesc): Result<readonly Entity[]>` | Every collider overlapping a shape, sorted by entity id; the same view of the colliders as raycast. |
+| [`og.physics.castShape`](physics/fn-castShape.md) | function | `(world: World, desc?: ShapeCastDesc): Result<ShapeCastHit \| null>` | The first collider a shape meets when swept along a direction; the same view of the colliders as castRay. |
+| [`og.physics.overlap`](physics/fn-overlap.md) | function | `(world: World, desc?: OverlapDesc): Result<readonly Entity[]>` | Every collider overlapping a shape, sorted by entity id; the same view of the colliders as castRay. |
 | [`og.physics.applyForce`](physics/fn-applyForce.md) | function | `(world: World, entity: Entity, force: Vector3, point?: Vector3): Result<void>` | Push a dynamic body with a force (N, world axes) over the next physics step, at a world point or its centre of mass: call it every tick for a steady force (thrust, wind, a car's downforce or an anti-… |
 | [`og.physics.applyImpulse`](physics/fn-applyImpulse.md) | function | `(world: World, entity: Entity, impulse: Vector3, point?: Vector3): Result<void>` | Give a dynamic body an impulse (N·s, world axes) at a world point or its centre of mass: a sudden change of momentum (a kick, a hit, a jump: its velocity changes by impulse / mass), applied by the ne… |
 | [`og.physics.applyTorque`](physics/fn-applyTorque.md) | function | `(world: World, entity: Entity, torque: Vector3): Result<void>` | Turn a dynamic body with a torque (N·m about each world axis; 2D uses z) over the next physics step, as applyForce: call it every tick for a steady twist. |
@@ -147,14 +146,30 @@ module physics {
 | [`PhysicsStats`](physics/type-PhysicsStats.md) | struct |  | What the last physics step cost, phase by phase, and where it ran: for finding where physics time goes. |
 | [`og.physics.stats`](physics/fn-stats.md) | function | `(world: World): Result<PhysicsStats>` | What the last physics step cost: each phase's time and whether it ran on the lanes pool. |
 
+## Column kinds
+
+Each is a factory, `RigidBodyType(value?, options?)`, that makes one field of a component or resource layout.
+
+| Column | Value | Typed array | Stride | Doc |
+|---|---|---|---|---|
+| <a id="column-RigidBodyType"></a>`RigidBodyType` | `RigidBodyType` | `Uint32Array` | 1 | A RigidBodyType field: the variant's index. |
+
+```ogt
+column RigidBodyType {
+  doc "A RigidBodyType field: the variant's index."
+  array Uint32Array
+  stride 1
+  value RigidBodyType
+}
+```
+
+<sub>Module `physics` line 32</sub>
+
 ## Constants
 
 | Constant | Type | Value | Doc |
 |---|---|---|---|
-| <a id="const-MAX_RAYCAST_HITS"></a>`MAX_RAYCAST_HITS` | `number` | `256` | The most hits og.physics.raycastAll returns. |
-| <a id="const-BODY_DYNAMIC"></a>`BODY_DYNAMIC` | `number` | `0` | RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick. |
-| <a id="const-BODY_STATIC"></a>`BODY_STATIC` | `number` | `1` | RigidBody.kind: never moves; collides with dynamic bodies. |
-| <a id="const-BODY_KINEMATIC"></a>`BODY_KINEMATIC` | `number` | `2` | RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it. |
+| <a id="const-MAX_RAYCAST_HITS"></a>`MAX_RAYCAST_HITS` | `number` | `256` | The most hits og.physics.castRayAll returns. |
 | <a id="const-LOCK_TRANSLATION_X"></a>`LOCK_TRANSLATION_X` | `number` | `1` | RigidBody.lock bit: no translation along x. |
 | <a id="const-LOCK_TRANSLATION_Y"></a>`LOCK_TRANSLATION_Y` | `number` | `2` | RigidBody.lock bit: no translation along y. |
 | <a id="const-LOCK_TRANSLATION_Z"></a>`LOCK_TRANSLATION_Z` | `number` | `4` | RigidBody.lock bit: no translation along z. |
@@ -203,301 +218,283 @@ module physics {
 | <a id="const-SOFT_MESH"></a>`SOFT_MESH` | `number` | `2` | `SoftBody.shape`: the closed surface of geometry `mesh` (3D only). |
 
 ```ogt
-const MAX_RAYCAST_HITS u32 256 "The most hits og.physics.raycastAll returns."
+const MAX_RAYCAST_HITS u32 256 "The most hits og.physics.castRayAll returns."
 ```
 
 <sub>Module `physics` line 6</sub>
 
 ```ogt
-const BODY_DYNAMIC u32 0 "RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick."
+const LOCK_TRANSLATION_X u32 1 "RigidBody.lock bit: no translation along x."
 ```
 
 <sub>Module `physics` line 7</sub>
 
 ```ogt
-const BODY_STATIC u32 1 "RigidBody.kind: never moves; collides with dynamic bodies."
+const LOCK_TRANSLATION_Y u32 2 "RigidBody.lock bit: no translation along y."
 ```
 
 <sub>Module `physics` line 8</sub>
 
 ```ogt
-const BODY_KINEMATIC u32 2 "RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it."
+const LOCK_TRANSLATION_Z u32 4 "RigidBody.lock bit: no translation along z."
 ```
 
 <sub>Module `physics` line 9</sub>
 
 ```ogt
-const LOCK_TRANSLATION_X u32 1 "RigidBody.lock bit: no translation along x."
+const LOCK_ROTATION_X u32 8 "RigidBody.lock bit: no rotation about x."
 ```
 
 <sub>Module `physics` line 10</sub>
 
 ```ogt
-const LOCK_TRANSLATION_Y u32 2 "RigidBody.lock bit: no translation along y."
+const LOCK_ROTATION_Y u32 16 "RigidBody.lock bit: no rotation about y."
 ```
 
 <sub>Module `physics` line 11</sub>
 
 ```ogt
-const LOCK_TRANSLATION_Z u32 4 "RigidBody.lock bit: no translation along z."
+const LOCK_ROTATION_Z u32 32 "RigidBody.lock bit: no rotation about z (the 2D profile's only rotation)."
 ```
 
 <sub>Module `physics` line 12</sub>
 
 ```ogt
-const LOCK_ROTATION_X u32 8 "RigidBody.lock bit: no rotation about x."
+const SHAPE_BOX u32 0 "Collider.shape: a box of `size` (both profiles)."
 ```
 
 <sub>Module `physics` line 13</sub>
 
 ```ogt
-const LOCK_ROTATION_Y u32 16 "RigidBody.lock bit: no rotation about y."
+const SHAPE_SPHERE u32 1 "Collider.shape: a sphere of `radius` (a circle in 2D)."
 ```
 
 <sub>Module `physics` line 14</sub>
 
 ```ogt
-const LOCK_ROTATION_Z u32 32 "RigidBody.lock bit: no rotation about z (the 2D profile's only rotation)."
+const SHAPE_CAPSULE u32 2 "Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles)."
 ```
 
 <sub>Module `physics` line 15</sub>
 
 ```ogt
-const SHAPE_BOX u32 0 "Collider.shape: a box of `size` (both profiles)."
+const SHAPE_CYLINDER u32 3 "Collider.shape: a cylinder along y of `radius` and `height` (3D only)."
 ```
 
 <sub>Module `physics` line 16</sub>
 
 ```ogt
-const SHAPE_SPHERE u32 1 "Collider.shape: a sphere of `radius` (a circle in 2D)."
+const SHAPE_CONVEX u32 4 "Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D)."
 ```
 
 <sub>Module `physics` line 17</sub>
 
 ```ogt
-const SHAPE_CAPSULE u32 2 "Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles)."
+const SHAPE_TRIMESH u32 5 "Collider.shape: the triangles of `mesh` (for static and kinematic bodies); in 2D the outline of their xy (the edges no two triangles share) as a hollow polyline, which stops what comes from outside."
 ```
 
 <sub>Module `physics` line 18</sub>
 
 ```ogt
-const SHAPE_CYLINDER u32 3 "Collider.shape: a cylinder along y of `radius` and `height` (3D only)."
+const SHAPE_HEIGHTFIELD u32 6 "Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
 ```
 
 <sub>Module `physics` line 19</sub>
 
 ```ogt
-const SHAPE_CONVEX u32 4 "Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D)."
+const SHAPE_DIAMOND u32 7 "Collider.shape: a rhombus whose diagonals are size.x (along x) and size.y (along y), an isometric tile's diamond; in 3D a prism size.z deep (both profiles)."
 ```
 
 <sub>Module `physics` line 20</sub>
 
 ```ogt
-const SHAPE_TRIMESH u32 5 "Collider.shape: the triangles of `mesh` (for static and kinematic bodies); in 2D the outline of their xy (the edges no two triangles share) as a hollow polyline, which stops what comes from outside."
+const SHAPE_HEXAGON u32 8 "Collider.shape: a pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3D a prism size.z deep (both profiles)."
 ```
 
 <sub>Module `physics` line 21</sub>
 
 ```ogt
-const SHAPE_HEIGHTFIELD u32 6 "Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
+const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
 ```
 
 <sub>Module `physics` line 22</sub>
 
 ```ogt
-const SHAPE_DIAMOND u32 7 "Collider.shape: a rhombus whose diagonals are size.x (along x) and size.y (along y), an isometric tile's diamond; in 3D a prism size.z deep (both profiles)."
+const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 ```
 
 <sub>Module `physics` line 23</sub>
 
 ```ogt
-const SHAPE_HEXAGON u32 8 "Collider.shape: a pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3D a prism size.z deep (both profiles)."
-```
-
-<sub>Module `physics` line 24</sub>
-
-```ogt
-const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
-```
-
-<sub>Module `physics` line 25</sub>
-
-```ogt
-const PROFILE_3D u32 3 "Physics.profile: rapier3d."
-```
-
-<sub>Module `physics` line 26</sub>
-
-```ogt
 const JOINT_FIXED u32 0 "`Joint.kind`: the two bodies move as one."
-```
-
-<sub>Module `physics` line 286</sub>
-
-```ogt
-const JOINT_REVOLUTE u32 1 "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
-```
-
-<sub>Module `physics` line 287</sub>
-
-```ogt
-const JOINT_PRISMATIC u32 2 "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
-```
-
-<sub>Module `physics` line 288</sub>
-
-```ogt
-const JOINT_SPRING u32 3 "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
 ```
 
 <sub>Module `physics` line 289</sub>
 
 ```ogt
-const JOINT_ROPE u32 4 "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
+const JOINT_REVOLUTE u32 1 "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
 ```
 
 <sub>Module `physics` line 290</sub>
 
 ```ogt
-const JOINT_BALL u32 5 "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
+const JOINT_PRISMATIC u32 2 "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
 ```
 
 <sub>Module `physics` line 291</sub>
 
 ```ogt
-const MOTOR_NONE u32 0 "`Joint.motor`: no motor."
+const JOINT_SPRING u32 3 "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
 ```
 
 <sub>Module `physics` line 292</sub>
 
 ```ogt
-const MOTOR_VELOCITY u32 1 "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
+const JOINT_ROPE u32 4 "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
 ```
 
 <sub>Module `physics` line 293</sub>
 
 ```ogt
-const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
+const JOINT_BALL u32 5 "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
 ```
 
 <sub>Module `physics` line 294</sub>
 
 ```ogt
+const MOTOR_NONE u32 0 "`Joint.motor`: no motor."
+```
+
+<sub>Module `physics` line 295</sub>
+
+```ogt
+const MOTOR_VELOCITY u32 1 "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
+```
+
+<sub>Module `physics` line 296</sub>
+
+```ogt
+const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
+```
+
+<sub>Module `physics` line 297</sub>
+
+```ogt
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
-```
-
-<sub>Module `physics` line 662</sub>
-
-```ogt
-const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
-```
-
-<sub>Module `physics` line 663</sub>
-
-```ogt
-const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
-```
-
-<sub>Module `physics` line 664</sub>
-
-```ogt
-const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
 <sub>Module `physics` line 665</sub>
 
 ```ogt
-const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
+const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
 <sub>Module `physics` line 666</sub>
 
 ```ogt
-const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
+const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
 <sub>Module `physics` line 667</sub>
 
 ```ogt
+const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
+```
+
+<sub>Module `physics` line 668</sub>
+
+```ogt
+const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
+```
+
+<sub>Module `physics` line 669</sub>
+
+```ogt
+const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
+```
+
+<sub>Module `physics` line 670</sub>
+
+```ogt
 const DRIVE_REAR u32 0 "`Vehicle.drive`: the rear wheels drive."
-```
-
-<sub>Module `physics` line 681</sub>
-
-```ogt
-const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
-```
-
-<sub>Module `physics` line 682</sub>
-
-```ogt
-const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
-```
-
-<sub>Module `physics` line 683</sub>
-
-```ogt
-const VEHICLE_ARCADE u32 0 "`Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed."
 ```
 
 <sub>Module `physics` line 684</sub>
 
 ```ogt
-const VEHICLE_DRIVETRAIN u32 1 "`Vehicle.model`: an engine with a torque curve driving through a gearbox."
+const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
 ```
 
 <sub>Module `physics` line 685</sub>
 
 ```ogt
+const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
+```
+
+<sub>Module `physics` line 686</sub>
+
+```ogt
+const VEHICLE_ARCADE u32 0 "`Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed."
+```
+
+<sub>Module `physics` line 687</sub>
+
+```ogt
+const VEHICLE_DRIVETRAIN u32 1 "`Vehicle.model`: an engine with a torque curve driving through a gearbox."
+```
+
+<sub>Module `physics` line 688</sub>
+
+```ogt
 const SIMULATION_GAMEPLAY u32 0 "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated in the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash carry, and that og.physics.clothPoints, softBodyPoints and garmentPoints read. The default."
-```
-
-<sub>Module `physics` line 987</sub>
-
-```ogt
-const SIMULATION_VISUAL u32 1 "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated by the renderer on the GPU (XPBD in small steps), for looks only, never read back. The tick leaves it unsolved: its points (og.physics.clothPoints, softBodyPoints, garmentPoints) are its rest shape carried rigidly by the entity (a garment's: the skinned pose), SoftBody.volume stays 1 and SoftBody.center is that shape's mean, so gameplay reads a stable proxy and a headless server pays nothing. The drawn motion runs on tick time: frames that skip ticks step those too, up to eight, and a world restored, rolled back or more than eight ticks ahead starts again from the rest shape. It meets the colliders drawn this frame (og.Collider boxes, spheres, capsules and height fields; convex, cylinder and triangle-mesh shapes are passed through) and, with thickness, itself. A visual cloth's or garment's wind is air moving along `wind` at its magnitude in metres a second, meeting each triangle with drag and lift against the triangle's own motion and scaled so a still face square to it feels `wind`; `gust` sends bands of stronger, veering air down it, so it ripples and flaps rather than leaning. Where RenderCapabilities.visualSimulation is false (no compute or no vertex storage) it draws that rest shape."
-```
-
-<sub>Module `physics` line 988</sub>
-
-```ogt
-const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
-```
-
-<sub>Module `physics` line 989</sub>
-
-```ogt
-const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
 <sub>Module `physics` line 990</sub>
 
 ```ogt
-const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
+const SIMULATION_VISUAL u32 1 "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated by the renderer on the GPU (XPBD in small steps), for looks only, never read back. The tick leaves it unsolved: its points (og.physics.clothPoints, softBodyPoints, garmentPoints) are its rest shape carried rigidly by the entity (a garment's: the skinned pose), SoftBody.volume stays 1 and SoftBody.center is that shape's mean, so gameplay reads a stable proxy and a headless server pays nothing. The drawn motion runs on tick time: frames that skip ticks step those too, up to eight, and a world restored, rolled back or more than eight ticks ahead starts again from the rest shape. It meets the colliders drawn this frame (og.Collider boxes, spheres, capsules and height fields; convex, cylinder and triangle-mesh shapes are passed through) and, with thickness, itself. A visual cloth's or garment's wind is air moving along `wind` at its magnitude in metres a second, meeting each triangle with drag and lift against the triangle's own motion and scaled so a still face square to it feels `wind`; `gust` sends bands of stronger, veering air down it, so it ripples and flaps rather than leaning. Where RenderCapabilities.visualSimulation is false (no compute or no vertex storage) it draws that rest shape."
 ```
 
 <sub>Module `physics` line 991</sub>
 
 ```ogt
-const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
+const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
 <sub>Module `physics` line 992</sub>
 
 ```ogt
+const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
+```
+
+<sub>Module `physics` line 993</sub>
+
+```ogt
+const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
+```
+
+<sub>Module `physics` line 994</sub>
+
+```ogt
+const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
+```
+
+<sub>Module `physics` line 995</sub>
+
+```ogt
 const SOFT_SPHERE u32 0 "`SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring)."
 ```
 
-<sub>Module `physics` line 1156</sub>
+<sub>Module `physics` line 1159</sub>
 
 ```ogt
 const SOFT_BOX u32 1 "`SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle)."
 ```
 
-<sub>Module `physics` line 1157</sub>
+<sub>Module `physics` line 1160</sub>
 
 ```ogt
 const SOFT_MESH u32 2 "`SoftBody.shape`: the closed surface of geometry `mesh` (3D only)."
 ```
 
-<sub>Module `physics` line 1158</sub>
+<sub>Module `physics` line 1161</sub>

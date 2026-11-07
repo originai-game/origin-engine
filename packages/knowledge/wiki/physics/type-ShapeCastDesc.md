@@ -6,7 +6,7 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `ShapeCastDesc` (desc struct)
 
-A shape swept along a direction for og.physics.shapeCast.
+A shape swept along a direction for og.physics.castShape.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -21,7 +21,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct ShapeCastDesc {
-  doc "A shape swept along a direction for og.physics.shapeCast."
+  doc "A shape swept along a direction for og.physics.castShape."
   desc true
   field shape ShapeDesc "The swept shape."
   field position Vector3 "Where the sweep starts." {
@@ -39,4 +39,4 @@ struct ShapeCastDesc {
 }
 ```
 
-<sub>Module `physics` line 1776</sub>
+<sub>Module `physics` line 1779</sub>

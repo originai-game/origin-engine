@@ -24,7 +24,7 @@
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { og, defineComponent, defineResource, defineSystem, u32, SHAPE_BOX, SHAPE_SPHERE, BODY_KINEMATIC } from "@origingame/engine";
+import { og, defineComponent, defineResource, defineSystem, u32, SHAPE_BOX, SHAPE_SPHERE } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { createEngine, type GameToken } from "../../src/runtime.ts";
 
@@ -92,13 +92,13 @@ function scene(world: World): void {
   world.insert(ramp.value, og.Collider, { shape: SHAPE_BOX, size: { x: 6, y: 0.4, z: 4 } });
   const paddle = world.spawn({ name: "paddle", position: { x: 0, y: 0.5, z: 2 } });
   if (!paddle.ok) throw new Error(paddle.reason);
-  world.insert(paddle.value, og.RigidBody, { kind: BODY_KINEMATIC });
+  world.insert(paddle.value, og.RigidBody, { kind: "kinematic" });
   world.insert(paddle.value, og.Velocity);
   world.insert(paddle.value, PaddleTag);
   world.insert(paddle.value, og.Collider, { shape: SHAPE_BOX, size: { x: 1, y: 1, z: 3 } });
   const sensor = world.spawn({ name: "sensor", position: { x: 3, y: 0.5, z: 0 } });
   if (!sensor.ok) throw new Error(sensor.reason);
-  world.insert(sensor.value, og.Collider, { shape: SHAPE_BOX, size: { x: 2, y: 1, z: 6 }, sensor: 1 });
+  world.insert(sensor.value, og.Collider, { shape: SHAPE_BOX, size: { x: 2, y: 1, z: 6 }, sensor: true });
   const rng = world.resource(og.Rng);
   if (!rng.ok) throw new Error(rng.reason);
   for (let i = 0; i < bodies; i++) {

@@ -234,7 +234,7 @@ fn builder(
         .position(local)
         .friction(c.friction)
         .restitution(c.restitution)
-        .sensor(c.sensor != 0)
+        .sensor(c.sensor)
         .collision_groups(groups(c))
         .user_data(entity.to_bits() as u128);
     b = if body_mass > 0.0 {
@@ -242,7 +242,7 @@ fn builder(
     } else {
         b.density(c.density)
     };
-    if c.sensor != 0 {
+    if c.sensor {
         // A sensor also notices kinematic and static colliders.
         b = b.active_collision_types(rp::ActiveCollisionTypes::all());
     }
@@ -826,7 +826,7 @@ fn insert_body(
         .angular_damping(body.angular_damping)
         .gravity_scale(body.gravity_scale)
         .locked_axes(rp::LockedAxes::from_bits_truncate((body.lock & 63) as u8))
-        .ccd_enabled(body.ccd != 0)
+        .ccd_enabled(body.ccd)
         // Resting is decided by the rest rule below, not by rapier's sleep.
         .can_sleep(false)
         .user_data(e.to_bits() as u128);

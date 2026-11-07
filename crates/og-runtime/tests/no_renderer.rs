@@ -122,7 +122,7 @@ fn run(renderer: bool, script: &str) -> Run {
         engine,
         [0.0, -0.5, 0.0],
         &[
-            ("og.RigidBody", json!({ "kind": 1 })),
+            ("og.RigidBody", json!({ "kind": "fixed" })),
             (
                 "og.Collider",
                 json!({ "shape": 0, "size": { "x": 20, "y": 1, "z": 20 } }),

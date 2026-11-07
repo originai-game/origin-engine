@@ -76,10 +76,8 @@ export const Font = ((value = 0 as Api.Font, options) => spec("Font", value, opt
 export const Style = ((value = 0 as Api.Style, options) => spec("Style", value, options)) as typeof Api.Style;
 
 // physics
+export const RigidBodyType = ((value = "dynamic" as Api.RigidBodyType, options) => spec("RigidBodyType", value, options)) as typeof Api.RigidBodyType;
 export const MAX_RAYCAST_HITS: typeof Api.MAX_RAYCAST_HITS = 256;
-export const BODY_DYNAMIC: typeof Api.BODY_DYNAMIC = 0;
-export const BODY_STATIC: typeof Api.BODY_STATIC = 1;
-export const BODY_KINEMATIC: typeof Api.BODY_KINEMATIC = 2;
 export const LOCK_TRANSLATION_X: typeof Api.LOCK_TRANSLATION_X = 1;
 export const LOCK_TRANSLATION_Y: typeof Api.LOCK_TRANSLATION_Y = 2;
 export const LOCK_TRANSLATION_Z: typeof Api.LOCK_TRANSLATION_Z = 4;

@@ -6,7 +6,7 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `og.physics.projectPoint`
 
-The nearest point on any collider to a point, within maxDistance: snapping to a surface, the closest cover, whether a point is inside a solid. The same view of the colliders as og.physics.raycast.
+The nearest point on any collider to a point, within maxDistance: snapping to a surface, the closest cover, whether a point is inside a solid. The same view of the colliders as og.physics.castRay.
 
 ```ts
 og.physics.projectPoint(world: World, desc?: ProjectPointDesc): Result<PointProjection | null>
@@ -23,11 +23,11 @@ Binding symbol `og_physics_project_point` · publish builds: kept
 
 ```ogt
 fn projectPoint {
-  doc "The nearest point on any collider to a point, within maxDistance: snapping to a surface, the closest cover, whether a point is inside a solid. The same view of the colliders as og.physics.raycast."
+  doc "The nearest point on any collider to a point, within maxDistance: snapping to a surface, the closest cover, whether a point is inside a solid. The same view of the colliders as og.physics.castRay."
   param world World "The world."
   param desc ProjectPointDesc "The point, its reach, solid or surface, and the filter."
   returns Result.Option.PointProjection "The projection, or null when no collider is within reach; refused for a point that is not finite."
 }
 ```
 
-<sub>Module `physics` line 1837</sub>
+<sub>Module `physics` line 1840</sub>

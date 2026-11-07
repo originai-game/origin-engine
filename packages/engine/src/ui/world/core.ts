@@ -160,7 +160,7 @@ type Res<T> = { ok: true; value: T } | { ok: false; reason: string };
 
 /**
  * The surface `ground` names: a terrain's height (og.terrain.sample) and
- * a downward cast against colliders (og.physics.raycast), the higher of
+ * a downward cast against colliders (og.physics.castRay), the higher of
  * the two, each vertex sampled once a call.
  */
 export function surface(world: Api.World, ground: Api.GroundDesc | null | undefined): Surface {
@@ -179,7 +179,7 @@ export function surface(world: Api.World, ground: Api.GroundDesc | null | undefi
       if (r.ok && r.value.inside) y = r.value.height;
     }
     if (ground.colliders) {
-      const r = physics.raycast(w as never, {
+      const r = physics.castRay(w as never, {
         origin: { x: p.x, y: p.y + reach, z: p.z },
         direction: { x: 0, y: -1, z: 0 },
         maxDistance: reach * 2,

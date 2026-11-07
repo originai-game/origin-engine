@@ -254,7 +254,7 @@ commands:
                       typo), ranked by BM25F over name, summary, members and body fused with
                       static word embeddings, one line each; --json adds the scores
   api show <name>     one API entry in full: signature, fields, doc (og.CharacterController,
-                      og.physics.raycast, BODY_STATIC; og. may be left out); a module shows its
+                      og.physics.castRay, SHAPE_BOX; og. may be left out); a module shows its
                       overview and its members
   api gen [--wiki] [--root <dir>]
                       regenerate the IDL outputs (packages/engine/{types,schema}, the hosts' glue,

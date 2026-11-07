@@ -247,6 +247,8 @@ export interface ColumnKinds {
    * A Style handle field (0 is none): a UI style og.load.style answered, kept for og.ui.configure.
    */
   Style: { readonly array: Uint32Array; readonly stride: 2; readonly value: Style };
+  /** A RigidBodyType field: the variant's index. */
+  RigidBodyType: { readonly array: Uint32Array; readonly stride: 1; readonly value: RigidBodyType };
   /** A WindMotorKind field: the variant's index. */
   WindMotorKind: { readonly array: Uint32Array; readonly stride: 1; readonly value: WindMotorKind };
   /** A SkeletonAsset handle field. */
@@ -12869,21 +12871,8 @@ export interface AssetFailed {
 // The profile is the project's (`profile "2d"` or `"3d"` in project.ogt). In 2D, bodies move in the xy plane and rotate about z; a transform keeps its z. A collider without a RigidBody is static at its transform.
 // The rapier world persists between ticks and is world state: snapshots, restore and the world hash cover the whole simulation. Events sent in tick N are read in tick N + 1.
 
-/** The most hits og.physics.raycastAll returns. */
+/** The most hits og.physics.castRayAll returns. */
 export declare const MAX_RAYCAST_HITS: 256;
-
-/**
- * RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick.
- */
-export declare const BODY_DYNAMIC: 0;
-
-/** RigidBody.kind: never moves; collides with dynamic bodies. */
-export declare const BODY_STATIC: 1;
-
-/**
- * RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it.
- */
-export declare const BODY_KINEMATIC: 2;
 
 /** RigidBody.lock bit: no translation along x. */
 export declare const LOCK_TRANSLATION_X: 1;
@@ -12949,6 +12938,23 @@ export declare const PROFILE_2D: 2;
 export declare const PROFILE_3D: 3;
 
 /**
+ * A body's simulation mode. Fixed has Rapier's meaning; kinematic is the engine's combined Velocity/Transform contract.
+ * - `"dynamic"`: Moved by the solver; Transform and Velocity are written back every tick.
+ * - `"fixed"`: Not moved by the solver; collides with dynamic bodies.
+ * - `"kinematic"`: Velocity moves it each tick; a Transform write teleports it first. Without Velocity it stays at Transform. It pushes dynamic bodies and carries controllers. Unlike Rapier there are no separate position-based and velocity-based modes: Transform is not a next-position target from which velocity is inferred.
+ */
+export type RigidBodyType = "dynamic" | "fixed" | "kinematic";
+
+/**
+ * A RigidBodyType field: the variant's index.
+ *
+ * A `RigidBodyType` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function RigidBodyType(value?: RigidBodyType, options?: FieldOptions): FieldSpec<"RigidBodyType">;
+
+/**
  * A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one.
  * Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport).
  *
@@ -12956,12 +12962,11 @@ export declare const PROFILE_3D: 3;
  */
 export interface RigidBody {
   /**
-   * BODY_DYNAMIC (0, simulated and written back), BODY_STATIC (1, never moves) or BODY_KINEMATIC (2, moved by its Velocity each tick, or by game code through its Transform).
+   * dynamic is simulated, fixed is not moved by the solver, kinematic follows Velocity and Transform writes.
    *
-   * @range 0..2
    * @label Kind
    */
-  kind: number;
+  kind: RigidBodyType;
   /**
    * Mass; 0 derives it from the collider's density and volume.
    *
@@ -13000,12 +13005,8 @@ export interface RigidBody {
    * @range 0..63
    */
   lock: number;
-  /**
-   * 1 enables continuous collision detection, for fast small bodies that must not tunnel; 0 off.
-   *
-   * @range 0..1
-   */
-  ccd: number;
+  /** Enable continuous collision detection for fast small bodies that must not tunnel. */
+  ccd: boolean;
   /**
    * Moves the centre of mass from where the collider puts it (its shape's centre), in the entity's own frame and scaled by og.Transform.scale like Collider.offset; the inertia stays the shape's. A car's lowered below its wheel mounts keeps it on its wheels at full lock; a weight at a toy's base rights it. Needs an og.Collider.
    *
@@ -13102,12 +13103,8 @@ export interface Collider {
    * @tunable
    */
   density: number;
-  /**
-   * 1 makes this a sensor: it reports SensorEntered and SensorExited and pushes nothing; 0 a solid.
-   *
-   * @range 0..1
-   */
-  sensor: number;
+  /** A sensor reports SensorEntered and SensorExited and pushes nothing; false is a solid. */
+  sensor: boolean;
   /**
    * The collision layers this collider is on, as bits.
    *
@@ -15630,7 +15627,7 @@ export interface QueryFilter {
 }
 
 /**
- * A ray for og.physics.raycast.
+ * A ray for og.physics.castRay.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -15685,7 +15682,7 @@ export interface RaycastHit {
 }
 
 /**
- * A ray for og.physics.raycastAll: og.physics.raycast's fields and a cap on the hits.
+ * A ray for og.physics.castRayAll: og.physics.castRay's fields and a cap on the hits.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -15830,7 +15827,7 @@ export interface ShapeDesc {
 }
 
 /**
- * A shape swept along a direction for og.physics.shapeCast.
+ * A shape swept along a direction for og.physics.castShape.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -36670,7 +36667,7 @@ export interface GroundDesc {
    */
   readonly scale?: Vector3;
   /**
-   * Also cast straight down against colliders (og.physics.raycast, as the tick began); the highest surface of the two wins. Exclude the unit itself (exclude) or keep units off mask's layers, or the ring climbs onto it.
+   * Also cast straight down against colliders (og.physics.castRay, as the tick began); the highest surface of the two wins. Exclude the unit itself (exclude) or keep units off mask's layers, or the ring climbs onto it.
    *
    * @default false
    */
@@ -45858,7 +45855,7 @@ export declare namespace og {
      */
     function points(world: World, desc?: PointsDesc): Result<void>;
     /**
-     * Every drawn triangle a ray crosses, nearest first, as three.js Raycaster.intersectObjects: what is drawn, not the colliders (og.physics.raycast answers those). It tests og.Mesh and og.Model entities at their world transforms through a BVH per geometry (built when the geometry is made, loaded or updated), both faces of each triangle, skinned models in their bind pose. Read the world as of the call; inside a system, its transforms as earlier systems left them.
+     * Every drawn triangle a ray crosses, nearest first, as three.js Raycaster.intersectObjects: what is drawn, not the colliders (og.physics.castRay answers those). It tests og.Mesh and og.Model entities at their world transforms through a BVH per geometry (built when the geometry is made, loaded or updated), both faces of each triangle, skinned models in their bind pose. Read the world as of the call; inside a system, its transforms as earlier systems left them.
      *
      * @param world The world asked.
      * @param ray The ray; its direction need not be normalised and must not be zero.
@@ -46299,12 +46296,12 @@ export declare namespace og {
    * A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one.
    * Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport).
    */
-  const RigidBody: ComponentType<{ readonly kind: FieldSpec<"u32">; readonly mass: FieldSpec<"f32">; readonly linearDamping: FieldSpec<"f32">; readonly angularDamping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly lock: FieldSpec<"u32">; readonly ccd: FieldSpec<"u32">; readonly centerOfMass: FieldSpec<"Vector3">; readonly canSleep: FieldSpec<"bool">; readonly sleeping: FieldSpec<"bool"> }, RigidBody>;
+  const RigidBody: ComponentType<{ readonly kind: FieldSpec<"RigidBodyType">; readonly mass: FieldSpec<"f32">; readonly linearDamping: FieldSpec<"f32">; readonly angularDamping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly lock: FieldSpec<"u32">; readonly ccd: FieldSpec<"bool">; readonly centerOfMass: FieldSpec<"Vector3">; readonly canSleep: FieldSpec<"bool">; readonly sleeping: FieldSpec<"bool"> }, RigidBody>;
   /**
    * The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale.
    * Compound colliders: a Collider without a RigidBody on a child entity whose og.Parent chain reaches a RigidBody is part of that body (the nearest such ancestor), placed at its transform relative to the body (the transforms between them composed, the body's scale applied): a table of a top and four legs, a ship of a hull and a mast, are one body. Its mass adds to the body's from its density, or the body's RigidBody.mass is shared among its colliders by theirs; its friction, restitution, layers and sensor flag are its own. Children join in entity order, whatever the query order. Changing a child (its collider, or its transform relative to the body) rebuilds the body, which loses its contacts' warm starts. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children; a collider whose chain reaches no body stays static at its world transform.
    */
-  const Collider: ComponentType<{ readonly shape: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly mesh: FieldSpec<"Geometry">; readonly offset: FieldSpec<"Vector3">; readonly rotation: FieldSpec<"Quaternion">; readonly friction: FieldSpec<"f32">; readonly restitution: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly sensor: FieldSpec<"u32">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32"> }, Collider>;
+  const Collider: ComponentType<{ readonly shape: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly mesh: FieldSpec<"Geometry">; readonly offset: FieldSpec<"Vector3">; readonly rotation: FieldSpec<"Quaternion">; readonly friction: FieldSpec<"f32">; readonly restitution: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly sensor: FieldSpec<"bool">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32"> }, Collider>;
   /**
    * Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body; push one with og.physics.applyForce, applyImpulse, applyTorque or applyTorqueImpulse.
    */
@@ -46428,17 +46425,17 @@ export declare namespace og {
      * @param desc The ray and the filter.
      * @returns The hit, or null when nothing is hit; refused for a zero direction.
      */
-    function raycast(world: World, desc?: RaycastDesc): Result<RaycastHit | null>;
+    function castRay(world: World, desc?: RaycastDesc): Result<RaycastHit | null>;
     /**
-     * Every collider along a ray within its reach, one hit each at its first crossing, nearest first (ties in collider entity order, so every host and run list them alike), at most `maxHits`: what a piercing shot passes through, everything under a cursor. The same view of the colliders as og.physics.raycast; its first hit is raycast's.
+     * Every collider along a ray within its reach, one hit each at its first crossing, nearest first (ties in collider entity order, so every host and run list them alike), at most `maxHits`: what a piercing shot passes through, everything under a cursor. The same view of the colliders as og.physics.castRay; its first hit is castRay's.
      *
      * @param world The world.
      * @param desc The ray, the filter and the cap.
      * @returns The hits, nearest first; empty when nothing is hit; refused for a zero direction.
      */
-    function raycastAll(world: World, desc?: RaycastAllDesc): Result<readonly RaycastHit[]>;
+    function castRayAll(world: World, desc?: RaycastAllDesc): Result<readonly RaycastHit[]>;
     /**
-     * The nearest point on any collider to a point, within maxDistance: snapping to a surface, the closest cover, whether a point is inside a solid. The same view of the colliders as og.physics.raycast.
+     * The nearest point on any collider to a point, within maxDistance: snapping to a surface, the closest cover, whether a point is inside a solid. The same view of the colliders as og.physics.castRay.
      *
      * @param world The world.
      * @param desc The point, its reach, solid or surface, and the filter.
@@ -46446,15 +46443,15 @@ export declare namespace og {
      */
     function projectPoint(world: World, desc?: ProjectPointDesc): Result<PointProjection | null>;
     /**
-     * The first collider a shape meets when swept along a direction; the same view of the colliders as raycast.
+     * The first collider a shape meets when swept along a direction; the same view of the colliders as castRay.
      *
      * @param world The world.
      * @param desc The shape, its sweep and the filter.
      * @returns The hit, or null; refused for a zero direction or an unknown mesh.
      */
-    function shapeCast(world: World, desc?: ShapeCastDesc): Result<ShapeCastHit | null>;
+    function castShape(world: World, desc?: ShapeCastDesc): Result<ShapeCastHit | null>;
     /**
-     * Every collider overlapping a shape, sorted by entity id; the same view of the colliders as raycast.
+     * Every collider overlapping a shape, sorted by entity id; the same view of the colliders as castRay.
      *
      * @param world The world.
      * @param desc The shape, its placement and the filter.

@@ -321,6 +321,12 @@
       "value": "Style"
     },
     {
+      "name": "RigidBodyType",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "RigidBodyType"
+    },
+    {
       "name": "WindMotorKind",
       "array": "Uint32Array",
       "stride": 1,
@@ -2546,8 +2552,8 @@
       "fields": [
         {
           "name": "kind",
-          "column": "u32",
-          "default": 0
+          "column": "RigidBodyType",
+          "default": "dynamic"
         },
         {
           "name": "mass",
@@ -2580,8 +2586,8 @@
         },
         {
           "name": "ccd",
-          "column": "u32",
-          "default": 0
+          "column": "bool",
+          "default": false
         },
         {
           "name": "centerOfMass",
@@ -2682,8 +2688,8 @@
         },
         {
           "name": "sensor",
-          "column": "u32",
-          "default": 0
+          "column": "bool",
+          "default": false
         },
         {
           "name": "layers",
@@ -18575,10 +18581,10 @@
     {
       "id": 240,
       "kind": "fn",
-      "path": "og.physics.raycast",
-      "symbol": "og_physics_raycast",
+      "path": "og.physics.castRay",
+      "symbol": "og_physics_cast_ray",
       "module": "physics",
-      "name": "raycast",
+      "name": "castRay",
       "params": [
         {
           "name": "world",
@@ -18597,10 +18603,10 @@
     {
       "id": 241,
       "kind": "fn",
-      "path": "og.physics.raycastAll",
-      "symbol": "og_physics_raycast_all",
+      "path": "og.physics.castRayAll",
+      "symbol": "og_physics_cast_ray_all",
       "module": "physics",
-      "name": "raycastAll",
+      "name": "castRayAll",
       "params": [
         {
           "name": "world",
@@ -18641,10 +18647,10 @@
     {
       "id": 243,
       "kind": "fn",
-      "path": "og.physics.shapeCast",
-      "symbol": "og_physics_shape_cast",
+      "path": "og.physics.castShape",
+      "symbol": "og_physics_cast_shape",
       "module": "physics",
-      "name": "shapeCast",
+      "name": "castShape",
       "params": [
         {
           "name": "world",

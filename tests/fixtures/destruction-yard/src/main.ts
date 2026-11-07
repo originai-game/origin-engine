@@ -7,7 +7,7 @@
 //
 // The beats are exported (BEATS) so that tests/support/yard-piers.ts plays
 // the same ones on the same ticks as `og run` and the playtest.
-import { og, defineResource, defineSystem, u32, BODY_DYNAMIC, BODY_STATIC, MATERIAL_BRICK, MATERIAL_CONCRETE, MATERIAL_GLASS, SHAPE_BOX, SHAPE_SPHERE } from "@origingame/engine";
+import { og, defineResource, defineSystem, u32, MATERIAL_BRICK, MATERIAL_CONCRETE, MATERIAL_GLASS, SHAPE_BOX, SHAPE_SPHERE } from "@origingame/engine";
 import type { Destructible, Entity, World } from "@origingame/engine";
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
@@ -48,7 +48,7 @@ function build(world: World): void {
     const e = must(world.spawn({ name, position: at }));
     must(world.set(e, og.Transform, { scale: size }));
     must(world.insert(e, og.Mesh, { geometry: box, material: must(og.render.standardMaterial(world, { color, roughness: 0.9 })), castShadow: true }));
-    must(world.insert(e, og.RigidBody, { kind: BODY_STATIC }));
+    must(world.insert(e, og.RigidBody, { kind: "fixed" }));
     must(world.insert(e, og.Collider, { shape: SHAPE_BOX, size: { x: 1, y: 1, z: 1 }, friction: 0.8 }));
   };
   // The slab the chunks land on, its top at y = 0, and the pane's plinth.
@@ -93,7 +93,7 @@ const Watch = defineSystem("Watch", { reads: [og.Fractured, og.Chunk, og.MatrixW
 
 function ball(world: World): void {
   const e = must(world.spawn({ name: "ball", position: { x: PANE.x, y: 1.2, z: 3 } }));
-  must(world.insert(e, og.RigidBody, { kind: BODY_DYNAMIC, mass: 6, ccd: 1 }));
+  must(world.insert(e, og.RigidBody, { kind: "dynamic", mass: 6, ccd: true }));
   must(world.insert(e, og.Collider, { shape: SHAPE_SPHERE, radius: 0.15 }));
   must(world.insert(e, og.Velocity, { linear: { x: 0, y: 1, z: -14 } }));
   const sphere = must(og.render.sphereGeometry(world, { radius: 0.15 }));

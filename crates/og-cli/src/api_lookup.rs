@@ -75,7 +75,7 @@ pub fn show<'a>(all: &'a [Entry], name: &str) -> Vec<&'a Entry> {
     if !exact.is_empty() {
         return exact;
     }
-    // `CharacterController` names `og.CharacterController`; `raycast` names `og.physics.raycast`.
+    // `CharacterController` names `og.CharacterController`; `castRay` names `og.physics.castRay`.
     all.into_iter()
         .filter(|e| bare(&e.name).rsplit('.').next() == Some(want.as_str()))
         .collect()
@@ -396,7 +396,7 @@ mod tests {
             names(&find(&ix, "CharacterController", None))[0],
             "og.CharacterController"
         );
-        assert!(names(&find(&ix, "raycast", Some("fn"))).contains(&"og.physics.raycast"));
+        assert!(names(&find(&ix, "raycast", Some("fn"))).contains(&"og.physics.castRay"));
         // Scores fall from first to last.
         let hits = find(&ix, "ray cast against colliders", None);
         assert!(hits.windows(2).all(|w| w[0].1.score >= w[1].1.score));
@@ -405,14 +405,14 @@ mod tests {
         let text = render(one[0]);
         assert!(text.contains("| `jumpSpeed` |"), "{text}");
         assert!(text.len() < 12_000, "{}", text.len());
-        let ray = render(show(&all, "og.physics.raycast")[0]);
-        assert!(ray.contains("og.physics.raycast(world: World"), "{ray}");
+        let ray = render(show(&all, "og.physics.castRay")[0]);
+        assert!(ray.contains("og.physics.castRay(world: World"), "{ray}");
         assert!(
             !ray.contains("```ogt") && !ray.contains("Binding symbol"),
             "{ray}"
         );
         // A table row (a constant) is an entry too.
-        let c = show(&all, "BODY_STATIC");
+        let c = show(&all, "SHAPE_BOX");
         assert_eq!((c.len(), c[0].kind.as_str()), (1, "const"));
         assert!(show(&all, "NoSuchThing").is_empty());
         // Words only a field's doc carries find the record; a word nothing

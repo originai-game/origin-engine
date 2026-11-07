@@ -280,7 +280,7 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
             w,
             g,
             "og.RigidBody".into(),
-            Some(json!({ "kind": 1 }).to_string()),
+            Some(json!({ "kind": "fixed" }).to_string()),
         ));
         value(og_world_insert(
             w,
@@ -587,7 +587,7 @@ fn a_struck_pillar_falls_to_its_stump() {
         w,
         g,
         "og.RigidBody".into(),
-        Some(json!({ "kind": 1 }).to_string()),
+        Some(json!({ "kind": "fixed" }).to_string()),
     ));
     value(og_world_insert(
         w,
