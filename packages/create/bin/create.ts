@@ -52,7 +52,7 @@ export interface Style {
 
 export function catalogueFile(): string {
   const here = dirname(fileURLToPath(import.meta.url));
-  for (const candidate of [join(here, "..", "looks", "catalogue.json"), join(here, "..", "..", "knowledge", "looks", "catalogue.json")]) {
+  for (const candidate of [join(here, "..", "..", "knowledge", "looks", "catalogue.json"), join(here, "..", "looks", "catalogue.json")]) {
     if (existsSync(candidate)) return candidate;
   }
   throw new Error(`no style catalogue next to ${here}; reinstall the engine distribution`);
@@ -195,6 +195,10 @@ function main(argv: string[]): number {
     premise ??= globalThis.prompt("What is the game, in one line (genre, mood, setting)?") ?? "";
     for (const key of ["genre", "view", "look", "mood", "ui", "platform", "input", "players", "lang", "music"] as const) {
       if (choices[key] !== undefined) continue;
+      if (key !== "look" && key !== "lang" && CREATION_CHOICES[key].length === 1) {
+        choices[key] = CREATION_CHOICES[key][0];
+        continue;
+      }
       const suggested = resolveCreationChoices(premise, parseCreationInput(choices))[key];
       const values = key === "look" ? readCatalogue().map(s => s.slug).join(", ") : key === "lang" ? "comma-separated language tags" : CREATION_CHOICES[key].join(", ");
       for (;;) {

@@ -18,6 +18,21 @@ function files(root: string): string[] {
   return readdirSync(root, { withFileTypes: true }).flatMap(e => e.isDirectory() ? files(join(root, e.name)).map(f => `${e.name}/${f}`) : e.isFile() ? [e.name] : []).sort();
 }
 
+test("no-prompt creation uses source choices even with an outdated packed catalogue", () => {
+  const checkout = join(scratch, "checkout");
+  const source = join(checkout, "packages/create");
+  for (const part of ["bin", "template"]) cpSync(join(pkg, part), join(source, part), { recursive: true });
+  mkdirSync(join(source, "looks"), { recursive: true });
+  mkdirSync(join(checkout, "packages/knowledge/looks"), { recursive: true });
+  const catalogue = readFileSync(join(pkg, "../knowledge/looks/catalogue.json"), "utf8");
+  writeFileSync(join(checkout, "packages/knowledge/looks/catalogue.json"), catalogue);
+  writeFileSync(join(source, "looks/catalogue.json"), catalogue.replaceAll('"ui": "default"', '"ui": "fantasy"'));
+  const r = Bun.spawnSync(["bun", join(source, "bin/create.ts"), "game", "--no-prompt"], { cwd: checkout });
+  expect(r.exitCode, new TextDecoder().decode(r.stderr)).toBe(0);
+  expect(read("checkout/game/project.ogt")).toContain('ui "default"');
+  expect(read("checkout/game/assets/looks/game.ogt")).toContain('ui "default"');
+});
+
 test("packing and creating leave the source skeleton unchanged", () => {
   const template = join(pkg, "template");
   const paths = ["assets/.gitkeep", "gitattributes", "gitignore", "package.json", "project.ogt", "src/main.ts", "tests/smoke.og.ts", "tsconfig.json"];

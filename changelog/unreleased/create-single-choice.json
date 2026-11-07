@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og create",
+      "summary": "Creation in a checkout reads the source catalogue instead of an outdated packed copy, so --no-prompt selects core default after the UI reset. Interactive creation skips fields with only one available choice."
+    }
+  ]
+}
