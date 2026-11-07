@@ -100,15 +100,10 @@ pub trait RenderBackend {
     fn visibility_buffer_refused(&self) -> Option<String> {
         None
     }
-    /// The last frame's main-pass triangles (og-render's
-    /// `FrameStats::triangles`): `ProbeTimings.triangles`.
-    fn triangles(&self) -> u64 {
-        0
-    }
-    /// The last frame's order-independent transparency (og-render's
-    /// `FrameStats::transparency`): the render dump's `transparency`.
-    fn transparency(&self) -> og_render::TransparencyStats {
-        og_render::TransparencyStats::default()
+    /// What the last frame submitted (og-render's `FrameStats`): its
+    /// triangles are `ProbeTimings.triangles`, the rest the render dump's.
+    fn frame_stats(&self) -> og_render::FrameStats {
+        og_render::FrameStats::default()
     }
     /// Reflection probe `id`'s capture read back (og-render's
     /// `Renderer::read_reflection_probe`): native hosts, for `og bake probes`.

@@ -148,11 +148,9 @@ pub(crate) struct State {
     /// The GPU milliseconds per pass of the newest frame the GPU's
     /// timestamps were read back for (`ProbeTimings.gpuPasses`).
     pub gpu_ms: Vec<(String, f64)>,
-    /// The last frame's main-pass triangles (`ProbeTimings.triangles`).
-    pub triangles: u64,
-    /// The last frame's order-independent transparency (`dump_render`'s
-    /// `transparency`).
-    pub transparency: og_render::TransparencyStats,
+    /// What the last frame submitted: its triangles are
+    /// `ProbeTimings.triangles`, the rest `dump_render`'s.
+    pub frame: og_render::FrameStats,
     pub warnings: Vec<String>,
     /// Log lines for `og_engine_take_log`.
     pub log: Vec<Value>,

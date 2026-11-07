@@ -138,13 +138,14 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
         "dump_render",
         og_probe::CommandDesc {
             usage: "dump_render[:path]".into(),
-            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), render time, its order-independent transparency (`transparency`: whether the blended surfaces went through it, the nodes a pixel kept in the linked lists, 0 when weighted, and the pixels that fell back to weighted with how many frames old that count is), how many og.Model entities drew each level of detail, and the fraction between the last two ticks it was drawn at (interpolation, null at the tick), the antialiasing resolved, the frames drawn and the frames TAA's history holds (antialias, frameIndex, taaHistoryFrames), and the material shaders whose sprite pipelines the device refused (spriteShaderErrors: shader and message; their sprites draw plain)".into(),
+            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), its draw calls (`draws`, every pass), blended instances and draws (`transparent`, `transparentDraws`), sprite draws, particle systems with their slots and CPU-simulated live particles (`particles`: systems, capacity, cpu) and trail strips and segments, render time, its order-independent transparency (`transparency`: whether the blended surfaces went through it, the nodes a pixel kept in the linked lists, 0 when weighted, and the pixels that fell back to weighted with how many frames old that count is), how many og.Model entities drew each level of detail, and the fraction between the last two ticks it was drawn at (interpolation, null at the tick), the antialiasing resolved, the frames drawn and the frames TAA's history holds (antialias, frameIndex, taaHistoryFrames), and the material shaders whose sprite pipelines the device refused (spriteShaderErrors: shader and message; their sprites draw plain)".into(),
         },
         0,
         move |_world, _args| {
             let eng = super::engine::engine(engine)?;
             let st = eng.state.borrow();
             let rs = eng.render.borrow();
+            let transparency = st.frame.transparency();
             let mut levels = [0u32; og_render::lod::MAX_LOD_LEVELS];
             for &l in rs.lod_drawn.values() {
                 levels[(l as usize).min(levels.len() - 1)] += 1;
@@ -152,7 +153,23 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
             let last = levels.iter().rposition(|&n| n > 0).map_or(0, |i| i + 1);
             Ok(json!({
                 "kind": "render",
-                "triangles": st.triangles,
+                "triangles": st.frame.triangles,
+                // What the frame cost to submit: draw calls across every
+                // pass, the blended instances and their draws, the particle
+                // systems with their slots (capacity) and the live particles
+                // of those simulated on the CPU, and the trail, ribbon and
+                // beam strips with their segments.
+                "draws": st.frame.draw_calls,
+                "transparent": st.frame.transparent,
+                "transparentDraws": st.frame.transparent_draws,
+                "spriteDraws": st.frame.sprite_draws,
+                "particles": {
+                    "systems": st.frame.particle_systems,
+                    "capacity": st.frame.particle_capacity,
+                    "cpu": st.frame.particles_cpu,
+                },
+                "strips": st.frame.strips,
+                "stripSegments": st.frame.strip_segments,
                 "renderMs": (st.render_ms * 1000.0).round() / 1000.0,
                 "debugView": super::geometry::current_view(&rs),
                 "debugCoverage": super::geometry::debug_coverage(super::geometry::current_view(&rs)),
@@ -162,11 +179,11 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
                 // weighted, as last read back from the GPU (`fallbackLag`
                 // frames old, null before the first).
                 "transparency": {
-                    "oit": st.transparency.oit,
-                    "layers": st.transparency.layers,
-                    "fallbackPixels": st.transparency.fallback_pixels,
-                    "fallbackLag": (st.transparency.fallback_lag != u32::MAX)
-                        .then_some(st.transparency.fallback_lag),
+                    "oit": transparency.oit,
+                    "layers": transparency.layers,
+                    "fallbackPixels": transparency.fallback_pixels,
+                    "fallbackLag": (transparency.fallback_lag != u32::MAX)
+                        .then_some(transparency.fallback_lag),
                 },
                 // The fraction of the way from the tick before the last to
                 // the last the frame was drawn at (RenderSettings.interpolate),
@@ -224,7 +241,7 @@ pub(crate) fn with_probe<T>(
     {
         let st = eng.state.borrow();
         probe.set_timings(st.step_ms, st.render_ms);
-        probe.set_triangles(st.triangles);
+        probe.set_triangles(st.frame.triangles);
     }
     invalidate(moving);
     super::engine::clear_world_queries();

@@ -85,7 +85,7 @@ impl Hooks for Game {
 /// lights.
 type Drawn = Rc<RefCell<Vec<(u64, usize, usize, usize)>>>;
 
-struct Recorder(Drawn);
+struct Recorder(Drawn, og_render::FrameStats);
 
 impl RenderBackend for Recorder {
     fn tier(&self) -> String {
@@ -101,7 +101,19 @@ impl RenderBackend for Recorder {
             scene.effect_meshes.len(),
             scene.lights.len(),
         ));
+        // Stats that follow the scene, so the render dump can be checked
+        // against the frame that made them.
+        self.1 = og_render::FrameStats {
+            draw_calls: 3 + 2 * scene.effect_meshes.len() as u32,
+            particle_systems: scene.particles.len() as u32,
+            particle_capacity: 64 * scene.particles.len() as u32,
+            transparent_draws: scene.effect_meshes.len() as u32,
+            ..Default::default()
+        };
         Ok(())
+    }
+    fn frame_stats(&self) -> og_render::FrameStats {
+        self.1
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
         None
@@ -135,7 +147,11 @@ fn a_spawned_effect_sends_its_events_draws_its_elements_and_ends() {
     let options = json!({ "root": project().to_str().unwrap() }).to_string();
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
     let drawn = Drawn::default();
-    set_render_backend(engine, Some(Box::new(Recorder(drawn.clone())))).unwrap();
+    set_render_backend(
+        engine,
+        Some(Box::new(Recorder(drawn.clone(), Default::default()))),
+    )
+    .unwrap();
     ticks(engine, 1);
 
     let hit = value(og_load_vfx(engine, "fx/hit.ogt".into()));
@@ -154,6 +170,36 @@ fn a_spawned_effect_sends_its_events_draws_its_elements_and_ends() {
         .as_str()
         .unwrap()
         .to_string();
+    // The render dump reports what the backend says the frame cost (the
+    // effect's preview and cost sheets read it): at 0.2 s, its sparks and
+    // its ring.
+    ticks(engine, 12);
+    og_runtime::og_engine_probe_commands(engine, "0:dump_render".into());
+    ticks(engine, 1);
+    let outputs: Value = serde_json::from_str(&og_runtime::og_engine_take_outputs(engine)).unwrap();
+    let dump: Value = outputs
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|o| o["kind"] == "json")
+        .map(|o| serde_json::from_str(o["data"].as_str().unwrap()).unwrap())
+        .expect("a render dump");
+    assert_eq!(
+        (
+            &dump["draws"],
+            &dump["transparentDraws"],
+            &dump["particles"]
+        ),
+        (
+            &json!(5),
+            &json!(1),
+            &json!({ "systems": 1, "capacity": 64, "cpu": 0 })
+        ),
+        "{dump}"
+    );
+    value(og_world_restore(engine, snap.clone(), None));
+    seen.borrow_mut().clear();
+    drawn.borrow_mut().clear();
     ticks(engine, 40);
     let first = seen.borrow().clone();
     let names: Vec<&str> = first.iter().map(|s| s.1.as_str()).collect();

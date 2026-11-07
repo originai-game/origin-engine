@@ -314,8 +314,7 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
     crate::motion::present::present(eng, alpha);
     let mut passes = Vec::new();
     let mut gpu = Vec::new();
-    let mut triangles = 0;
-    let mut transparency = og_render::TransparencyStats::default();
+    let mut frame = og_render::FrameStats::default();
     let notes = {
         let world = eng.world()?;
         let texel_paint = super::art::texel_paint(eng);
@@ -336,8 +335,7 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
             b.render(&rs.scene)?;
             passes = b.pass_timings();
             gpu = b.gpu_timings(false);
-            triangles = b.triangles();
-            transparency = b.transparency();
+            frame = b.frame_stats();
         }
         std::mem::take(&mut rs.notes)
     };
@@ -353,8 +351,7 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
             .collect();
     }
     st.pass_ms = passes;
-    st.triangles = triangles;
-    st.transparency = transparency;
+    st.frame = frame;
     for n in notes {
         if st.ui_warned.insert(n.clone()) {
             st.log

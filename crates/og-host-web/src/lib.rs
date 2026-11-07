@@ -1126,10 +1126,8 @@ mod canvas {
         /// Captures in flight: one per size, at most [`MAX_CAPTURES`],
         /// oldest first.
         pending: Vec<Pending>,
-        /// The last frame's `FrameStats::triangles`.
-        triangles: u64,
-        /// The last frame's `FrameStats::transparency`.
-        transparency: og_render::TransparencyStats,
+        /// What the last frame submitted.
+        stats: og_render::FrameStats,
         /// Display frames drawn so far.
         drawn: u64,
         /// The readback of the last display frame (`og render`'s
@@ -1270,8 +1268,7 @@ mod canvas {
             self.renderer.request_culling_counts();
             match self.renderer.render(scene, &RenderTarget::Surface) {
                 Ok(s) => {
-                    self.triangles = s.triangles;
-                    self.transparency = s.transparency();
+                    self.stats = s;
                 }
                 // Neither case submitted a frame: recover or wait for visibility.
                 Err(og_render::RenderError::DeviceLost(_))
@@ -1324,11 +1321,8 @@ mod canvas {
         fn visibility_buffer_refused(&self) -> Option<String> {
             self.renderer.visibility_buffer_refused().map(str::to_owned)
         }
-        fn triangles(&self) -> u64 {
-            self.triangles
-        }
-        fn transparency(&self) -> og_render::TransparencyStats {
-            self.transparency
+        fn frame_stats(&self) -> og_render::FrameStats {
+            self.stats
         }
         fn post_errors(&self, scene: &RenderScene) -> Vec<(u32, String)> {
             self.renderer
@@ -1486,8 +1480,7 @@ mod canvas {
                 pending: Vec::new(),
                 drawn: 0,
                 kept: None,
-                triangles: 0,
-                transparency: Default::default(),
+                stats: Default::default(),
                 canvas: canvas_kept,
                 losses: 0,
                 recovering: false,
