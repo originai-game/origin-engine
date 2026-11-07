@@ -9,6 +9,10 @@
     {
       "member": "og vfx import",
       "summary": "Effects imported into one folder share their textures: each file is copied once into <out-dir>/textures/ (a different file of the same name under its name with its content's hash), not once per effect; importing again changes nothing."
+    },
+    {
+      "member": "og cook",
+      "summary": "A model whose every triangle cooks away (every triangle has no area, or the art contract leaves none) is a cook error that names its primitives. It no longer cooks and then fails at load with 'the model has no mesh'."
     }
   ]
 }

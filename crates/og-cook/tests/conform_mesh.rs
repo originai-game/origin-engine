@@ -523,3 +523,36 @@ fn a_texture_no_model_claims_is_a_mesh_texture_in_3d_unless_its_own_line_says_ot
             .all(|n| !n.contains("as a mesh's texture"))
     );
 }
+
+#[test]
+fn a_model_whose_triangles_all_cook_away_is_refused() {
+    // Every triangle on one line: no area. Flat shading leaves none of
+    // them, so the model would load with no mesh; the cook says so.
+    let (mut p, n, uv, idx) = sphere(1.0, [0.0; 3], 8, 6);
+    for v in &mut p {
+        *v = [v[0], 0.0, 0.0];
+    }
+    let root = project(
+        "no-area",
+        &[
+            ("project.ogt", PROJECT.as_bytes().to_vec()),
+            (
+                "assets/looks/main.ogt",
+                look("ArtShape {\n  normals flat\n}\n").into_bytes(),
+            ),
+            (
+                "assets/models/line.glb",
+                glb(&(p, n, uv, idx), 1, [1.0; 4], None),
+            ),
+        ],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(
+        report
+            .errors()
+            .iter()
+            .any(|e| e.contains("models/line.glb") && e.contains("nothing left to draw")),
+        "{:?}",
+        report.errors()
+    );
+}

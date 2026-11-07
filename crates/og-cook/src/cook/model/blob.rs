@@ -231,6 +231,9 @@ pub fn cook(
     let lod_meshes = msft_lod(doc, &mut notes);
     let mut changes = Vec::new();
     let mut hulls: Vec<u8> = Vec::new();
+    // Triangle primitives that cooked to no geometry (every triangle
+    // degenerate, or none left by the art contract).
+    let mut emptied: Vec<String> = Vec::new();
     for mesh in doc.meshes() {
         let first = prims.len() as u32;
         for (pi, prim) in mesh.primitives().enumerate() {
@@ -324,7 +327,10 @@ pub fn cook(
                     }
                     prims.push(c.row);
                 }
-                None => notes.push(format!("{what}: no geometry")),
+                None => {
+                    notes.push(format!("{what}: no geometry"));
+                    emptied.push(what);
+                }
             }
         }
         let (name_offset, name_len) = strings.add(mesh.name().unwrap_or(""));
@@ -587,6 +593,19 @@ pub fn cook(
         let mut section = super::conform::mesh::hull_header(l, prims.len());
         section.extend(hulls);
         w.raw("outline", section, 4);
+    }
+    // A model whose triangles all cooked away would load as one with no
+    // mesh: refused here, where its cause is known, not at load.
+    if prims.is_empty() && !emptied.is_empty() {
+        return Err(CookError(format!(
+            "nothing left to draw: {} cooked to no triangles (every triangle has no area{})",
+            emptied.join(", "),
+            if opts.conform.is_some() {
+                ", or none is left by the art contract"
+            } else {
+                ""
+            }
+        )));
     }
     if let Some(c) = &opts.conform {
         notes.extend(super::conform::mesh::notes(c, src, &changes));
