@@ -32291,15 +32291,6 @@ export type GridFlow = "row" | "column";
 export type DragAxis = "both" | "x" | "y" | "lock";
 
 /**
- * A named easing curve.
- * - `"linear"`: Constant speed.
- * - `"out"`: How things arrive: fast, then settling (the default).
- * - `"exit"`: How things leave: slow, then away.
- * - `"inOut"`: Slow at both ends.
- */
-export type EaseName = "linear" | "out" | "exit" | "inOut";
-
-/**
  * A named motion of the style (docs/ui.md §3.1): components use these, so a style's personality changes every motion at once.
  * - `"ui"`: The control spring: hover, press, toggles.
  * - `"panel"`: Panels, sheets and drawers.
@@ -32781,11 +32772,11 @@ export interface TweenSpec {
    */
   readonly durationMs?: number;
   /**
-   * Its curve.
+   * A GSAP-named curve shared with tweens. Omitted: the UI arrival cubic Bézier, not a GSAP approximation.
    *
-   * @default "linear"
+   * @default "power1.out"
    */
-  readonly ease?: EaseName;
+  readonly ease?: Ease;
   /**
    * A cubic Bézier (x1, y1, x2, y2) in place of the named ease (empty: the named one).
    *
@@ -33459,8 +33450,8 @@ export interface ElementProps {
 
 /** A named ease into a key. */
 export interface EaseKey {
-  /** The curve. */
-  readonly ease: EaseName;
+  /** The GSAP-named curve shared with tweens. */
+  readonly ease: Ease;
 }
 
 /** Holds the previous value, then jumps at the key. */

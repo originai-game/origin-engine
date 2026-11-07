@@ -129,6 +129,16 @@ reverses alternate cycles. Eases use GSAP names: `none`, `power1.out`,
 The named curves follow GSAP 3.15.0 maths in deterministic f32 arithmetic;
 there are no custom JS ease functions or callbacks in saved world state.
 
+UI tween transitions and eased keyframes use the same `Ease` names and
+sampler. Replace the old UI `linear` with `none`. The old `out`, `exit`
+and `inOut` were custom cubic Béziers, not GSAP curves: preserve them with
+`bezier: [0.23, 1, 0.32, 1]`, `[0.4, 0, 1, 1]` and
+`[0.65, 0, 0.35, 1]`, respectively. An omitted UI tween curve keeps the
+arrival Bézier. Style roles such as `enter` and `exit` select curves; they
+are not alternative curve names. A style's steps stay stepped in UI motion.
+CSS accepts CSS keywords and timing functions, not GSAP strings. Its
+keywords use the exact standard Béziers, not similarly named GSAP eases.
+
 Capture is explicit. `to` without `from` reads the starting field after
 its delay. `from` captures its destination at the call, before the delay;
 `fromTo` requires both endpoints. An explicit start is written on the

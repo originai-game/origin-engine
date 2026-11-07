@@ -522,7 +522,7 @@ pub(super) fn parse_timeline(ctx: &mut Ctx, e: &Entry) -> Option<Timeline> {
                         continue;
                     };
                     let ease = match k.values.get(2).and_then(Value::as_word) {
-                        None => KeyEase::Ease(Ease::Out),
+                        None => KeyEase::default(),
                         Some("linear") => KeyEase::Linear,
                         Some("hold") => KeyEase::Hold,
                         Some("spring") => KeyEase::Spring(SpringSpec::new(
@@ -531,7 +531,15 @@ pub(super) fn parse_timeline(ctx: &mut Ctx, e: &Entry) -> Option<Timeline> {
                         )),
                         Some("bezier") => match (n(3), n(4), n(5), n(6)) {
                             (Some(a), Some(b), Some(c2), Some(d)) => {
-                                KeyEase::Ease(Ease::Bezier([a, b, c2, d]))
+                                let ease = Ease::CubicBezier([a, b, c2, d]);
+                                if !ease.is_valid() {
+                                    ctx.err(
+                                        k.line,
+                                        "bezier needs finite control points and x in [0,1]",
+                                    );
+                                    continue;
+                                }
+                                KeyEase::Ease(ease)
                             }
                             _ => {
                                 ctx.err(k.line, "bezier takes four numbers");

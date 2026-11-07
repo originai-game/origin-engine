@@ -46,4 +46,4 @@ struct StatusEffect {
 }
 ```
 
-<sub>Module `ui` line 6103</sub>
+<sub>Module `ui` line 6094</sub>

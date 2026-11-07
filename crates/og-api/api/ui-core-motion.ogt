@@ -51,14 +51,6 @@
     variant lock "Either, locked to the first one the drag moves along."
   }
 
-  enum EaseName {
-    doc "A named easing curve."
-    variant linear "Constant speed."
-    variant out "How things arrive: fast, then settling (the default)."
-    variant exit "How things leave: slow, then away."
-    variant inOut "Slow at both ends."
-  }
-
   enum MotionToken {
     doc "A named motion of the style (docs/ui.md §3.1): components use these, so a style's personality changes every motion at once."
     variant ui "The control spring: hover, press, toggles."
@@ -273,7 +265,7 @@
       default 200
       unit ms
     }
-    field ease EaseName "Its curve."
+    field ease Ease "A GSAP-named curve shared with tweens. Omitted: the UI arrival cubic Bézier, not a GSAP approximation."
     field bezier List.f32 "A cubic Bézier (x1, y1, x2, y2) in place of the named ease (empty: the named one)."
   }
 
@@ -517,7 +509,7 @@
 
   struct EaseKey {
     doc "A named ease into a key."
-    field ease EaseName "The curve."
+    field ease Ease "The GSAP-named curve shared with tweens."
   }
 
   struct HoldKey {
@@ -870,4 +862,3 @@
     doc "What the last frame built, rebuilt, laid out and kept."
     returns UiLayoutStats
   }
-

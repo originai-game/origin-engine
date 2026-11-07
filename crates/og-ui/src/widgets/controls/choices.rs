@@ -535,7 +535,7 @@ impl Ui {
                             from: "off".into(),
                             to: "on".into(),
                             transition: if still {
-                                tween(0.0, Ease::Out)
+                                tween(0.0, Ease::CubicBezier(crate::theme::EASE_OUT))
                             } else {
                                 spring(260.0, 0.45)
                             },
@@ -543,7 +543,10 @@ impl Ui {
                         StateTransition {
                             from: "on".into(),
                             to: "off".into(),
-                            transition: tween(if still { 0.0 } else { 90.0 }, Ease::Exit),
+                            transition: tween(
+                                if still { 0.0 } else { 90.0 },
+                                Ease::CubicBezier(crate::theme::EASE_EXIT),
+                            ),
                         },
                     ],
                 );
@@ -634,7 +637,7 @@ impl Ui {
                 from: "off".into(),
                 to: "on".into(),
                 transition: if still {
-                    tween(0.0, Ease::Out)
+                    tween(0.0, Ease::CubicBezier(crate::theme::EASE_OUT))
                 } else {
                     spring(240.0, 0.4)
                 },

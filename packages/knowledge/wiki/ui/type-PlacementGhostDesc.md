@@ -55,4 +55,4 @@ struct PlacementGhostDesc {
 }
 ```
 
-<sub>Module `ui` line 6781</sub>
+<sub>Module `ui` line 6772</sub>

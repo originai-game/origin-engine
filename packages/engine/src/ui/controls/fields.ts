@@ -260,7 +260,7 @@ export function searchBox(id: string, query: string, desc: Api.SearchBoxDesc = {
         insets: { start: 0, top: up ? -(listH + t.xxs) : fieldH + t.xxs },
         z: 20,
         overlaps: [parentOf(parentOf(self))].filter((x) => x),
-        enter: { values: [{ prop: "opacity", value: 0 }, { prop: "y", value: still() ? 0 : up ? 4 : -4 }], transition: { kind: "tween", durationMs: 120, ease: "out" } },
+        enter: { values: [{ prop: "opacity", value: 0 }, { prop: "y", value: still() ? 0 : up ? 4 : -4 }], transition: { kind: "tween", durationMs: 120, bezier: [0.23, 1, 0.32, 1] } },
         reduced: "fade",
       }));
     }
@@ -288,4 +288,3 @@ export function searchBox(id: string, query: string, desc: Api.SearchBoxDesc = {
     focused: focusedAny,
   };
 }
-

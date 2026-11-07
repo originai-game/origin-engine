@@ -10,13 +10,13 @@ A named ease into a key.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `ease` | `EaseName` | `"linear"` | — | — | — | The curve. |
+| `ease` | `Ease` | `"power1.out"` | — | — | — | The GSAP-named curve shared with tweens. |
 
 ```ogt
 struct EaseKey {
   doc "A named ease into a key."
-  field ease EaseName "The curve."
+  field ease Ease "The GSAP-named curve shared with tweens."
 }
 ```
 
-<sub>Module `ui` line 4941</sub>
+<sub>Module `ui` line 4933</sub>

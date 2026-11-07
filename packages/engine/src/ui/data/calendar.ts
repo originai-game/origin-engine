@@ -169,7 +169,7 @@ export function calendar(id: string, desc: Api.CalendarDesc): Api.CalendarResult
     kit.close();
     kit.semantics({ role: "grid", name: heading() });
     if (dir !== 0 && !still()) {
-      kit.props({ enter: { values: [{ prop: "opacity", value: 0 }, { prop: "x", value: 28 * dir * (kit.frameDirection() === "rtl" ? -1 : 1) }], transition: spring("panel") }, exit: { values: [{ prop: "opacity", value: 0 }], transition: { kind: "tween", durationMs: 90, ease: "exit" } } });
+      kit.props({ enter: { values: [{ prop: "opacity", value: 0 }, { prop: "x", value: 28 * dir * (kit.frameDirection() === "rtl" ? -1 : 1) }], transition: spring("panel") }, exit: { values: [{ prop: "opacity", value: 0 }], transition: { kind: "tween", durationMs: 90, bezier: [0.4, 0, 1, 1] } } });
     }
   } finally {
     kit.close();

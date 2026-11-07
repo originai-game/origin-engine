@@ -43,8 +43,8 @@ impl Ui {
                     st.kind,
                     self.theme
                         .tokens
-                        .ease(crate::tokens::EaseName::WidgetEnter)
-                        .at(p),
+                        .ease(crate::tokens::EaseRole::WidgetEnter)
+                        .apply(p),
                     distance,
                     reduced,
                 ));

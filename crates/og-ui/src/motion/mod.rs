@@ -112,25 +112,10 @@ impl StateGroup {
     }
 }
 
-/// A cubic Bézier easing `(x1, y1, x2, y2)` at `x` (0–1): x is solved by
-/// bisection (24 steps), so the result depends only on `+ − × ÷` and comparisons.
+/// A cubic Bézier easing `(x1, y1, x2, y2)` at `x` (0–1), evaluated by
+/// the shared deterministic timing sampler.
 pub fn cubic_bezier(c: [f32; 4], x: f32) -> f32 {
-    let x = x.clamp(0.0, 1.0);
-    let [x1, y1, x2, y2] = c;
-    let at = |p1: f32, p2: f32, t: f32| {
-        let u = 1.0 - t;
-        3.0 * u * u * t * p1 + 3.0 * u * t * t * p2 + t * t * t
-    };
-    let (mut lo, mut hi) = (0.0f32, 1.0f32);
-    for _ in 0..24 {
-        let mid = (lo + hi) / 2.0;
-        if at(x1, x2, mid) < x {
-            lo = mid;
-        } else {
-            hi = mid;
-        }
-    }
-    at(y1, y2, (lo + hi) / 2.0)
+    Ease::CubicBezier(c).apply(x)
 }
 
 /// `motion.easing.out`: how things arrive.

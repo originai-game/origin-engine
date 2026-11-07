@@ -2,8 +2,8 @@
 //! eases, transitions and motion tokens, and one animated channel: a value
 //! with its velocity that keeps both when its target moves.
 
-use super::cubic_bezier;
 use crate::theme::{EASE_EXIT, EASE_OUT};
+pub use og_tween::Ease;
 
 /// A spring as a designer gives it: how long it takes to feel done
 /// (`duration_ms`, perceptual) and how much it overshoots (`bounce`, −1 to
@@ -56,34 +56,6 @@ impl SpringSpec {
             duration_ms: s.response_ms,
             // The inverse of `damping`: an overdamped spring bounces below 0.
             bounce: if z <= 1.0 { 1.0 - z } else { 1.0 / z - 1.0 },
-        }
-    }
-}
-
-/// An easing curve, evaluated with arithmetic only.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum Ease {
-    Linear,
-    /// `motion.easing.out`: how things arrive (the default).
-    #[default]
-    Out,
-    /// `motion.easing.exit`: how things leave.
-    Exit,
-    /// Slow at both ends.
-    InOut,
-    /// A cubic Bézier `(x1, y1, x2, y2)`.
-    Bezier([f32; 4]),
-}
-
-impl Ease {
-    pub fn at(&self, x: f32) -> f32 {
-        let x = x.clamp(0.0, 1.0);
-        match self {
-            Ease::Linear => x,
-            Ease::Out => cubic_bezier(EASE_OUT, x),
-            Ease::Exit => cubic_bezier(EASE_EXIT, x),
-            Ease::InOut => cubic_bezier([0.65, 0.0, 0.35, 1.0], x),
-            Ease::Bezier(c) => cubic_bezier(*c, x),
         }
     }
 }
@@ -218,9 +190,9 @@ impl Default for MotionTokens {
             panel: SpringSpec::new(420.0, 0.1),
             emphasis: SpringSpec::new(520.0, 0.3),
             playful: SpringSpec::new(600.0, 0.45),
-            enter_ease: Ease::Out,
+            enter_ease: Ease::CubicBezier(EASE_OUT),
             enter_ms: crate::theme::DURATIONS_MS.base,
-            exit_ease: Ease::Exit,
+            exit_ease: Ease::CubicBezier(EASE_EXIT),
             exit_ms: crate::theme::DURATIONS_MS.fast,
             stagger_ms: crate::theme::TIMING.cascade_step_ms,
             stagger_cap_ms: crate::theme::TIMING.cascade_cap_ms,
@@ -236,19 +208,15 @@ impl MotionTokens {
     /// springs at the same damping ratio and response, its enter and exit
     /// eases over its `base` and `fast` durations, its stagger, and its
     /// overshoot (a fraction of the move) as the most bounce a spring may
-    /// take. A held ease (`steps`) moves linearly here.
+    /// take. Timing curves, including steps, are preserved unchanged.
     pub fn from_style(t: &crate::tokens::StyleTokens) -> MotionTokens {
-        use crate::tokens::{Ease as StyleEase, EaseName, SpringName};
+        use crate::tokens::{EaseRole, SpringName};
         let spring = |n: SpringName| {
             let s = t.spring(n);
             SpringSpec::new(
                 s.duration_ms,
                 (1.0 - s.to_spring().damping).clamp(-0.95, 1.0),
             )
-        };
-        let ease = |n: EaseName| match t.ease(n) {
-            StyleEase::Bezier(b) => Ease::Bezier(b),
-            StyleEase::Steps(_) => Ease::Linear,
         };
         let m = &t.motion;
         // The damping ratio whose overshoot is `o`, as a bounce.
@@ -265,9 +233,9 @@ impl MotionTokens {
             panel: spring(SpringName::Panel),
             emphasis: spring(SpringName::Emphasis),
             playful: spring(SpringName::Playful),
-            enter_ease: ease(EaseName::Enter),
+            enter_ease: t.ease(EaseRole::Enter),
             enter_ms: m.durations.base,
-            exit_ease: ease(EaseName::Exit),
+            exit_ease: t.ease(EaseRole::Exit),
             exit_ms: m.durations.fast,
             stagger_ms: m.stagger_ms,
             stagger_cap_ms: m.stagger_cap_ms,
@@ -323,26 +291,15 @@ pub(crate) fn pack(t: &Transition, tokens: &MotionTokens) -> (u8, [f32; 6]) {
         Transition::Instant | Transition::Token(_) => (0, [0.0; 6]),
         Transition::Spring(s) => (1, [s.duration_ms, s.bounce, 0.0, 0.0, 0.0, 0.0]),
         Transition::Tween { duration_ms, ease } => {
-            let (e, c) = match ease {
-                Ease::Linear => (0.0, [0.0; 4]),
-                Ease::Out => (1.0, [0.0; 4]),
-                Ease::Exit => (2.0, [0.0; 4]),
-                Ease::InOut => (3.0, [0.0; 4]),
-                Ease::Bezier(c) => (4.0, c),
-            };
-            (2, [duration_ms, e, c[0], c[1], c[2], c[3]])
+            let (e, c) = super::codec::ease_code(ease);
+            (2, [duration_ms, f32::from(e), c[0], c[1], c[2], c[3]])
         }
     }
 }
 
 fn ease_of(mode: &[f32; 6]) -> Ease {
-    match mode[1] as u32 {
-        0 => Ease::Linear,
-        2 => Ease::Exit,
-        3 => Ease::InOut,
-        4 => Ease::Bezier([mode[2], mode[3], mode[4], mode[5]]),
-        _ => Ease::Out,
-    }
+    super::codec::ease_from_code(mode[1] as u8, [mode[2], mode[3], mode[4], mode[5]])
+        .expect("validated channel timing")
 }
 
 impl Channel {
@@ -409,7 +366,7 @@ impl Channel {
                 self.value = if k >= 1.0 {
                     self.target
                 } else {
-                    self.from + (self.target - self.from) * ease_of(&self.mode).at(k)
+                    self.from + (self.target - self.from) * ease_of(&self.mode).apply(k)
                 };
                 self.velocity = (self.value - before) * tps as f32;
                 if k >= 1.0 {

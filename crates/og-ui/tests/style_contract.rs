@@ -106,4 +106,16 @@ fn a_styles_motion_tokens_drive_the_motion_code() {
         }
         assert_eq!(theme.motion.stagger_ms, tokens.motion.stagger_ms);
     }
+    let stepped = CORE_STYLE.replace("ease enter 0.23 1 0.32 1", "ease enter steps 3");
+    let theme = parse_style(&stepped).unwrap().theme;
+    assert_eq!(
+        theme.motion.enter_ease.apply(0.375),
+        1.0 / 3.0,
+        "style steps must not become a linear UI transition"
+    );
+    assert_eq!(
+        theme.motion.exit_ease,
+        Ease::CubicBezier([0.4, 0.0, 1.0, 1.0]),
+        "the style's exit is not a GSAP approximation"
+    );
 }

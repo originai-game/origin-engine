@@ -395,15 +395,60 @@ impl W<'_> {
     }
 }
 
-fn ease_code(e: super::Ease) -> (u8, [f32; 4]) {
+pub(crate) fn ease_code(e: super::Ease) -> (u8, [f32; 4]) {
     use super::Ease;
     match e {
         Ease::Linear => (0, [0.0; 4]),
-        Ease::Out => (1, [0.0; 4]),
-        Ease::Exit => (2, [0.0; 4]),
-        Ease::InOut => (3, [0.0; 4]),
-        Ease::Bezier(c) => (4, c),
+        Ease::CubicBezier(c) => (4, c),
+        Ease::Steps { count, position } => {
+            let position = match position {
+                og_tween::StepPosition::JumpStart => 0.0,
+                og_tween::StepPosition::JumpEnd => 1.0,
+                og_tween::StepPosition::JumpNone => 2.0,
+                og_tween::StepPosition::JumpBoth => 3.0,
+            };
+            // Two exact 16-bit halves avoid rounding counts above 2^24.
+            (
+                28,
+                [(count & 0xffff) as f32, (count >> 16) as f32, position, 0.0],
+            )
+        }
+        named => (5 + named.code() as u8, [0.0; 4]),
     }
+}
+
+pub(crate) fn ease_from_code(code: u8, c: [f32; 4]) -> Option<super::Ease> {
+    use super::Ease;
+    // Existing UI snapshot tags retain their exact curve controls.
+    let ease = match code {
+        0 => Ease::Linear,
+        1 => Ease::CubicBezier(crate::theme::EASE_OUT),
+        2 => Ease::CubicBezier(crate::theme::EASE_EXIT),
+        3 => Ease::CubicBezier([0.65, 0.0, 0.35, 1.0]),
+        4 => Ease::CubicBezier(c),
+        5..=26 => Ease::from_code(u32::from(code - 5))?,
+        28 => {
+            if c[..2]
+                .iter()
+                .any(|n| !(0.0..=65535.0).contains(n) || n.fract() != 0.0)
+            {
+                return None;
+            }
+            let position = match c[2] {
+                0.0 => og_tween::StepPosition::JumpStart,
+                1.0 => og_tween::StepPosition::JumpEnd,
+                2.0 => og_tween::StepPosition::JumpNone,
+                3.0 => og_tween::StepPosition::JumpBoth,
+                _ => return None,
+            };
+            Ease::Steps {
+                count: c[0] as u32 | ((c[1] as u32) << 16),
+                position,
+            }
+        }
+        _ => return None,
+    };
+    ease.is_valid().then_some(ease)
 }
 
 pub(crate) fn prop_index(p: Prop) -> u8 {
@@ -485,7 +530,7 @@ impl R<'_> {
         })
     }
     fn channel(&mut self) -> Option<Channel> {
-        Some(Channel {
+        let channel = Channel {
             value: self.f32()?,
             velocity: self.f32()?,
             target: self.f32()?,
@@ -501,10 +546,18 @@ impl R<'_> {
                 self.f32()?,
             ],
             kind: self.u8()?,
-        })
+        };
+        if channel.kind == 2 {
+            let [_, code, a, b, c, d] = channel.mode;
+            if code != f32::from(code as u8) {
+                return None;
+            }
+            ease_from_code(code as u8, [a, b, c, d])?;
+        }
+        Some(channel)
     }
     fn transition(&mut self) -> Option<Transition> {
-        use super::{Ease, MotionToken, SpringSpec};
+        use super::{MotionToken, SpringSpec};
         Some(match self.u8()? {
             0 => Transition::Instant,
             1 => Transition::Spring(SpringSpec::new(self.f32()?, self.f32()?)),
@@ -512,13 +565,7 @@ impl R<'_> {
                 let duration_ms = self.f32()?;
                 let code = self.u8()?;
                 let c = self.color4()?;
-                let ease = match code {
-                    0 => Ease::Linear,
-                    2 => Ease::Exit,
-                    3 => Ease::InOut,
-                    4 => Ease::Bezier(c),
-                    _ => Ease::Out,
-                };
+                let ease = ease_from_code(code, c)?;
                 Transition::Tween { duration_ms, ease }
             }
             3 => Transition::Token(MotionToken::from_name(&self.str()?)?),

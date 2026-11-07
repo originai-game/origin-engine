@@ -11793,7 +11793,6 @@
         "Position",
         "GridFlow",
         "DragAxis",
-        "EaseName",
         "MotionToken",
         "ReducedMotion",
         "Orientation",
@@ -58128,24 +58127,6 @@
         "lock": "Either, locked to the first one the drag moves along."
       }
     },
-    "EaseName": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "A named easing curve.",
-      "type": "string",
-      "enum": [
-        "linear",
-        "out",
-        "exit",
-        "inOut"
-      ],
-      "x-og-variants": {
-        "linear": "Constant speed.",
-        "out": "How things arrive: fast, then settling (the default).",
-        "exit": "How things leave: slow, then away.",
-        "inOut": "Slow at both ends."
-      }
-    },
     "MotionToken": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
@@ -58925,9 +58906,9 @@
           "x-og-unit": "ms"
         },
         "ease": {
-          "$ref": "#/$defs/EaseName",
-          "description": "Its curve.",
-          "default": "linear"
+          "$ref": "#/$defs/Ease",
+          "description": "A GSAP-named curve shared with tweens. Omitted: the UI arrival cubic Bézier, not a GSAP approximation.",
+          "default": "power1.out"
         },
         "bezier": {
           "type": "array",
@@ -59026,8 +59007,8 @@
               "x-og-unit": "ms"
             },
             "ease": {
-              "$ref": "#/$defs/EaseName",
-              "description": "Its curve."
+              "$ref": "#/$defs/Ease",
+              "description": "A GSAP-named curve shared with tweens. Omitted: the UI arrival cubic Bézier, not a GSAP approximation."
             },
             "bezier": {
               "type": "array",
@@ -59885,8 +59866,8 @@
       "type": "object",
       "properties": {
         "ease": {
-          "$ref": "#/$defs/EaseName",
-          "description": "The curve."
+          "$ref": "#/$defs/Ease",
+          "description": "The GSAP-named curve shared with tweens."
         }
       },
       "required": [
@@ -59957,8 +59938,8 @@
               "const": "ease"
             },
             "ease": {
-              "$ref": "#/$defs/EaseName",
-              "description": "The curve."
+              "$ref": "#/$defs/Ease",
+              "description": "The GSAP-named curve shared with tweens."
             }
           },
           "required": [

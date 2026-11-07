@@ -60,6 +60,83 @@ fn rect(ui: &Ui, path: &str) -> [f32; 4] {
 }
 
 #[test]
+fn shared_curves_drive_ui_channels_and_survive_restore() {
+    use og_tween::StepPosition::*;
+    let cases = [
+        (Ease::QuadIn, 0.015625, 0.140625),
+        (Ease::QuadOut, 0.234375, 0.609375),
+        // x=u³, y=1−(1−u)³: x=1/8 gives u=1/2 and y=7/8.
+        // At x=3/8, 1−(1−cbrt(3/8))³ = 0.9783114881721845.
+        (Ease::CubicBezier([0.0, 1.0, 0.0, 1.0]), 0.875, 0.9783115),
+        (
+            Ease::Steps {
+                count: 3,
+                position: JumpEnd,
+            },
+            0.0,
+            1.0 / 3.0,
+        ),
+        (
+            Ease::Steps {
+                count: 3,
+                position: JumpStart,
+            },
+            1.0 / 3.0,
+            2.0 / 3.0,
+        ),
+        (
+            Ease::Steps {
+                count: 3,
+                position: JumpNone,
+            },
+            0.0,
+            0.5,
+        ),
+        (
+            Ease::Steps {
+                count: 3,
+                position: JumpBoth,
+            },
+            0.25,
+            0.5,
+        ),
+    ];
+    for (ease, eighth, three_eighths) in cases {
+        let mut ui = Ui::new(UiDesc::default());
+        let tick = |ui: &mut Ui, target| {
+            ui.begin(InputFrame::default(), vp());
+            let value = ui.animate(
+                "value",
+                target,
+                Transition::Tween {
+                    duration_ms: 800.0,
+                    ease,
+                },
+            );
+            ui.end();
+            value
+        };
+        tick(&mut ui, 0.0);
+        tick(&mut ui, 1.0);
+        let mut value = 0.0;
+        for _ in 0..6 {
+            value = tick(&mut ui, 1.0);
+        }
+        assert!((value - eighth).abs() < 1e-6, "{ease:?}: {value} at 1/8");
+        let saved = ui.save_state();
+        let continued: Vec<_> = (0..12).map(|_| tick(&mut ui, 1.0)).collect();
+        assert!(
+            (continued[11] - three_eighths).abs() < 1e-6,
+            "{ease:?}: {} at 3/8",
+            continued[11]
+        );
+        ui.restore_state(&saved).unwrap();
+        let replayed: Vec<_> = (0..12).map(|_| tick(&mut ui, 1.0)).collect();
+        assert_eq!(continued, replayed, "{ease:?} resumes bit-identically");
+    }
+}
+
+#[test]
 fn a_stack_overlays_and_undeclared_overlap_is_reported() {
     let mut ui = Ui::new(UiDesc::default());
     let frame = |ui: &mut Ui, declared: bool| {

@@ -423,7 +423,6 @@ module ui {
 | [`Position`](ui/type-Position.md) | enum |  | How an element is placed. |
 | [`GridFlow`](ui/type-GridFlow.md) | enum |  | Which way auto-placed items fill a grid. |
 | [`DragAxis`](ui/type-DragAxis.md) | enum |  | Which way a drag moves its element. |
-| [`EaseName`](ui/type-EaseName.md) | enum |  | A named easing curve. |
 | [`MotionToken`](ui/type-MotionToken.md) | enum |  | A named motion of the style (docs/ui.md §3.1): components use these, so a style's personality changes every motion at once. |
 | [`ReducedMotion`](ui/type-ReducedMotion.md) | enum |  | What an animation does under reduced motion (docs/ui.md §3.1). |
 | [`Orientation`](ui/type-Orientation.md) | enum |  | A screen orientation. |
@@ -741,7 +740,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 6901</sub>
+<sub>Module `ui` line 6892</sub>
 
 ```ogt
 column UiMaterial {
@@ -752,4 +751,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 6908</sub>
+<sub>Module `ui` line 6899</sub>

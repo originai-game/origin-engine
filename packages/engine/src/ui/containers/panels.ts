@@ -275,7 +275,7 @@ export function accordion(id: string, desc: Api.AccordionDesc, build: Api.UiItem
         kit.semantics({ role: "region", name: s.title ?? "" });
         kit.props({
           enter: { values: [{ prop: "opacity", value: 0 }, { prop: "y", value: -8 }], transition: spring("panel") },
-          exit: { values: [{ prop: "opacity", value: 0 }, { prop: "y", value: -6 }], transition: { kind: "tween", durationMs: 120, ease: "exit" } },
+          exit: { values: [{ prop: "opacity", value: 0 }, { prop: "y", value: -6 }], transition: { kind: "tween", durationMs: 120, bezier: [0.4, 0, 1, 1] } },
           reduced: "fade",
         });
       }

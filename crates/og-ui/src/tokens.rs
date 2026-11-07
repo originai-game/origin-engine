@@ -265,8 +265,8 @@ names! {
 }
 
 names! {
-    /// A named ease.
-    EaseName {
+    /// A style role selecting a shared timing curve, not a curve name.
+    EaseRole {
         Standard "standard",
         Enter "enter",
         Exit "exit",
@@ -531,30 +531,13 @@ impl SpringToken {
     }
 }
 
-/// An ease.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Ease {
-    /// A cubic Bézier's control points (x1, y1, x2, y2); `linear` is 0 0 1 1.
-    Bezier([f32; 4]),
-    /// Held on whole steps (pixel styles).
-    Steps(u8),
-}
-
-impl Ease {
-    pub fn at(self, progress: f32) -> f32 {
-        let progress = progress.clamp(0.0, 1.0);
-        match self {
-            Self::Bezier(points) => crate::motion::cubic_bezier(points, progress),
-            Self::Steps(count) => (progress * f32::from(count)).floor() / f32::from(count),
-        }
-    }
-}
+pub use og_tween::Ease;
 
 /// The motion personality.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MotionTokens {
     pub springs: [SpringToken; SpringName::COUNT],
-    pub eases: [Ease; EaseName::COUNT],
+    pub eases: [Ease; EaseRole::COUNT],
     pub durations: Durations,
     /// ms between the entrances of a list's items.
     pub stagger_ms: f32,

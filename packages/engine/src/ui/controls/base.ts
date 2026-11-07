@@ -99,7 +99,7 @@ export function interactionGroup(d: { lift?: number; press?: number; dim?: numbe
     ],
     transitions: [
       // A press lands at once and lets go on the spring: a control answers the finger in the tick it is touched.
-      { from: "*", to: "pressed", transition: { kind: "tween", durationMs: still() ? 0 : 60, ease: "out" } },
+      { from: "*", to: "pressed", transition: { kind: "tween", durationMs: still() ? 0 : 60, bezier: [0.23, 1, 0.32, 1] } },
     ],
   };
 }
@@ -248,7 +248,7 @@ let defined = false;
 export function defineTimelines(): void {
   if (defined) return;
   defined = true;
-  const key = (atMs: number, value: number): Api.TimelineKey => ({ atMs, value, ease: { kind: "ease", ease: "out" } });
+  const key = (atMs: number, value: number): Api.TimelineKey => ({ atMs, value, ease: { kind: "bezier", bezier: [0.23, 1, 0.32, 1] } });
   kit.defineTimeline("og.controls.shake", { tracks: [{ target: "", prop: "x", keys: [key(0, 0), key(45, -6), key(95, 5), key(145, -3), key(195, 2), key(260, 0)] }], events: [], labels: [], durationMs: 260 });
   kit.defineTimeline("og.controls.bump", { tracks: [{ target: "", prop: "scale", keys: [key(0, 1), key(90, 1.06), { atMs: 320, value: 1, ease: { kind: "spring", durationMs: 230, bounce: 0.3 } }] }], events: [], labels: [], durationMs: 320 });
   kit.defineTimeline("og.controls.pop", { tracks: [{ target: "", prop: "scale", keys: [key(0, 0.6), { atMs: 220, value: 1, ease: { kind: "spring", durationMs: 220, bounce: 0.45 } }] }], events: [], labels: [], durationMs: 220 });

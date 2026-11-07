@@ -458,7 +458,10 @@ impl Ui {
             transitions: vec![StateTransition {
                 from: "*".into(),
                 to: "pressed".into(),
-                transition: tween(if still { 0.0 } else { 60.0 }, Ease::Out),
+                transition: tween(
+                    if still { 0.0 } else { 60.0 },
+                    Ease::CubicBezier(crate::theme::EASE_OUT),
+                ),
             }],
         }
     }
@@ -1010,7 +1013,7 @@ impl Ui {
         let k = self.animate_key(
             crate::id::child_key(key, "~open"),
             if visible { 1.0 } else { 0.0 },
-            tween(140.0, Ease::Out),
+            tween(140.0, Ease::CubicBezier(crate::theme::EASE_OUT)),
             Some(0.0),
         );
         let k = if self.still() || !visible { 1.0 } else { k };

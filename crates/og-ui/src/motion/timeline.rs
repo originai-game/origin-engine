@@ -24,7 +24,7 @@ pub enum KeyEase {
 
 impl Default for KeyEase {
     fn default() -> KeyEase {
-        KeyEase::Ease(Ease::Out)
+        KeyEase::Ease(Ease::CubicBezier(crate::theme::EASE_OUT))
     }
 }
 
@@ -140,7 +140,7 @@ fn segment(from: f32, key: Key, x: f32, span: f32, tps: u32) -> f32 {
     };
     match key.ease {
         KeyEase::Linear => from + (key.value - from) * k,
-        KeyEase::Ease(e) => from + (key.value - from) * e.at(k),
+        KeyEase::Ease(e) => from + (key.value - from) * e.apply(k),
         KeyEase::Hold => {
             if k >= 1.0 {
                 key.value

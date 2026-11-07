@@ -291,7 +291,7 @@ impl Ui {
         let period = u64::from(self.ticks_for(ms));
         let phase = (self.state.tick % period) as f32 / period as f32;
         match transition {
-            Some(crate::motion::Transition::Tween { ease, .. }) => ease.at(phase),
+            Some(crate::motion::Transition::Tween { ease, .. }) => ease.apply(phase),
             _ => phase,
         }
     }

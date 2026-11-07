@@ -22,7 +22,7 @@ impl StyleTokens {
     pub fn spring(&self, s: SpringName) -> SpringToken {
         self.motion.springs[s.index()]
     }
-    pub fn ease(&self, e: EaseName) -> Ease {
+    pub fn ease(&self, e: EaseRole) -> Ease {
         self.motion.eases[e.index()]
     }
     pub fn feedback(&self, e: SoundEvent) -> &Feedback {
@@ -227,12 +227,12 @@ impl StyleTokens {
         let motion = MotionTokens {
             springs,
             eases: [
-                Ease::Bezier([0.2, 0.0, 0.0, 1.0]),
-                Ease::Bezier(crate::theme::EASE_OUT),
-                Ease::Bezier(crate::theme::EASE_EXIT),
-                Ease::Bezier([0.34, 1.4, 0.64, 1.0]),
-                Ease::Bezier(crate::theme::EASE_OUT),
-                Ease::Bezier(crate::theme::EASE_EXIT),
+                Ease::CubicBezier([0.2, 0.0, 0.0, 1.0]),
+                Ease::CubicBezier(crate::theme::EASE_OUT),
+                Ease::CubicBezier(crate::theme::EASE_EXIT),
+                Ease::CubicBezier([0.34, 1.4, 0.64, 1.0]),
+                Ease::CubicBezier(crate::theme::EASE_OUT),
+                Ease::CubicBezier(crate::theme::EASE_EXIT),
             ],
             durations: d,
             stagger_ms: art.motion.stagger_ms,
@@ -519,12 +519,16 @@ impl StyleTokens {
                 vec![word(s.name()), num(t.duration_ms), num(t.bounce)],
             ));
         }
-        for n in EaseName::ALL {
+        for n in EaseRole::ALL {
             let mut v = vec![word(n.name())];
             match m.eases[n.index()] {
-                Ease::Bezier([0.0, 0.0, 1.0, 1.0]) => v.push(word("linear")),
-                Ease::Bezier(b) => v.extend(b.map(num)),
-                Ease::Steps(k) => v.extend([word("steps"), num(f32::from(k))]),
+                Ease::Linear => v.push(word("linear")),
+                Ease::CubicBezier(b) => {
+                    v.extend(b.map(|x| {
+                        Value::Number(Number::from_f32(x).expect("finite timing controls"))
+                    }))
+                }
+                ease => v.push(Value::String(ease.to_text())),
             }
             motion.push(line("ease", v));
         }

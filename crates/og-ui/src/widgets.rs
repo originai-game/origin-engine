@@ -12,7 +12,7 @@ use crate::layout::{
 };
 use crate::motion::{TransitionKind, fx};
 use crate::style::{READABLE, Srgba};
-use crate::tokens::EaseName;
+use crate::tokens::EaseRole;
 use crate::ui::{Anim, Response, Toast, Ui};
 use og_core::hash::StableHasher;
 use og_render::TextureHandle;

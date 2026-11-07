@@ -106,8 +106,8 @@ function line(l: Api.SubtitleLine, set: Api.SubtitleSettings, step: Api.TypeStep
     if (bg < 0.5) kit.setDraw({ text: hudText(1.2) });
   }, {
     opacity: fade,
-    enter: { kind: "fade", transition: { kind: "tween", durationMs: 120, ease: "out" } },
-    exit: { kind: "fade", transition: { kind: "tween", durationMs: 160, ease: "exit" } },
+    enter: { kind: "fade", transition: { kind: "tween", durationMs: 120, bezier: [0.23, 1, 0.32, 1] } },
+    exit: { kind: "fade", transition: { kind: "tween", durationMs: 160, bezier: [0.4, 0, 1, 1] } },
     a11y: a11y("text", speaker ? `${speaker}: ${l.text ?? ""}` : (l.text ?? "")),
   });
 }

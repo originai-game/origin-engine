@@ -466,7 +466,7 @@ pub(crate) fn parse_transition(vals: &[Value]) -> Result<Transition, String> {
             duration_ms: num(1)?,
             ease: match w.get(2) {
                 Some(e) => parse_ease(e)?,
-                None => Ease::Out,
+                None => Ease::CubicBezier(crate::theme::EASE_OUT),
             },
         }),
         Some("token") => {
@@ -485,9 +485,9 @@ pub(crate) fn parse_transition(vals: &[Value]) -> Result<Transition, String> {
 fn parse_ease(e: &str) -> Result<Ease, String> {
     Ok(match e {
         "linear" => Ease::Linear,
-        "out" => Ease::Out,
-        "exit" => Ease::Exit,
-        "inOut" => Ease::InOut,
+        "out" => Ease::CubicBezier(crate::theme::EASE_OUT),
+        "exit" => Ease::CubicBezier(crate::theme::EASE_EXIT),
+        "inOut" => Ease::CubicBezier([0.65, 0.0, 0.35, 1.0]),
         other => {
             return Err(format!(
                 "'{other}' is not an ease: linear, out, exit, inOut"

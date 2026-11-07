@@ -494,7 +494,7 @@ pub(crate) fn spring_at(q: &P, at: usize) -> Result<SpringToken, String> {
 /// What the v2 `motion` block sets besides the v1 widget motion.
 pub(crate) struct MotionParse {
     pub springs: [Option<SpringToken>; SpringName::COUNT],
-    pub eases: [Option<Ease>; EaseName::COUNT],
+    pub eases: [Option<Ease>; EaseRole::COUNT],
     pub durations: [Option<f32>; 6],
     pub stagger: Option<f32>,
     pub stagger_cap: Option<f32>,
@@ -508,7 +508,7 @@ impl MotionParse {
     pub fn new() -> MotionParse {
         MotionParse {
             springs: [None; SpringName::COUNT],
-            eases: [None; EaseName::COUNT],
+            eases: [None; EaseRole::COUNT],
             durations: [None; 6],
             stagger: None,
             stagger_cap: None,
@@ -529,29 +529,37 @@ impl MotionParse {
             }
             "ease" => {
                 let w = q.word(0)?;
-                let n = EaseName::from_name(w).ok_or_else(|| {
-                    q.err(&format!("names the ease '{w}' ({})", EaseName::names()))
+                let n = EaseRole::from_name(w).ok_or_else(|| {
+                    q.err(&format!(
+                        "names the ease role '{w}' ({})",
+                        EaseRole::names()
+                    ))
                 })?;
-                let ease = match e.values.get(1).and_then(Value::as_word) {
-                    Some("linear") => Ease::Bezier([0.0, 0.0, 1.0, 1.0]),
+                let text = match e.values.get(1) {
+                    Some(Value::String(s) | Value::Word(s)) => Some(s.as_str()),
+                    _ => None,
+                };
+                let ease = match text {
+                    Some("linear") => Ease::Linear,
                     Some("steps") => {
                         let k = q.num(2)?;
                         if !(1.0..=60.0).contains(&k) || k.fract() != 0.0 {
                             return Err(q.err("takes steps 1 to 60"));
                         }
-                        Ease::Steps(k as u8)
+                        Ease::Steps {
+                            count: k as u32,
+                            position: og_tween::StepPosition::JumpEnd,
+                        }
                     }
-                    Some(w) => {
-                        return Err(q.err(&format!(
-                            "takes four control points, linear or steps <n>, not '{w}'"
-                        )));
-                    }
+                    Some(w) => Ease::from_text(w).ok_or_else(|| {
+                        q.err("takes a timing curve, four control points, linear or steps <n>")
+                    })?,
                     None => {
                         let b = [q.num(1)?, q.num(2)?, q.num(3)?, q.num(4)?];
-                        if !(0.0..=1.0).contains(&b[0]) || !(0.0..=1.0).contains(&b[2]) {
+                        if !Ease::CubicBezier(b).is_valid() {
                             return Err(q.err("takes control points whose x is 0 to 1"));
                         }
-                        Ease::Bezier(b)
+                        Ease::CubicBezier(b)
                     }
                 };
                 self.eases[n.index()] = Some(ease);
@@ -582,17 +590,17 @@ impl MotionParse {
 
     /// The tokens, every one set, every spring within the overshoot.
     pub fn finish(mut self, p: &P, extra: &[(&str, SpringToken)]) -> Result<MotionTokens, String> {
-        self.eases[EaseName::WidgetEnter.index()]
-            .get_or_insert(Ease::Bezier(crate::theme::EASE_OUT));
-        self.eases[EaseName::WidgetExit.index()]
-            .get_or_insert(Ease::Bezier(crate::theme::EASE_EXIT));
+        self.eases[EaseRole::WidgetEnter.index()]
+            .get_or_insert(Ease::CubicBezier(crate::theme::EASE_OUT));
+        self.eases[EaseRole::WidgetExit.index()]
+            .get_or_insert(Ease::CubicBezier(crate::theme::EASE_EXIT));
         let mut missing: Vec<String> = Vec::new();
         for s in SpringName::ALL {
             if self.springs[s.index()].is_none() {
                 missing.push(format!("spring {}", s.name()));
             }
         }
-        for n in EaseName::ALL {
+        for n in EaseRole::ALL {
             if self.eases[n.index()].is_none() {
                 missing.push(format!("ease {}", n.name()));
             }

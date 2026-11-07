@@ -64,7 +64,7 @@ impl Ui {
         {
             let mut f = fx(
                 kind,
-                t.tokens.ease(EaseName::WidgetEnter).at(p.min(1.0)),
+                t.tokens.ease(EaseRole::WidgetEnter).apply(p.min(1.0)),
                 t.space.xl,
                 t.reduced_motion,
             );
@@ -110,9 +110,9 @@ impl Ui {
         let p = a.a;
         let visible = p > 0.0 || show;
         let e = if show {
-            self.theme.tokens.ease(EaseName::WidgetEnter).at(p)
+            self.theme.tokens.ease(EaseRole::WidgetEnter).apply(p)
         } else {
-            1.0 - self.theme.tokens.ease(EaseName::WidgetExit).at(1.0 - p)
+            1.0 - self.theme.tokens.ease(EaseRole::WidgetExit).apply(1.0 - p)
         };
         (
             Presence {
@@ -452,9 +452,9 @@ impl Ui {
                 ((age + 1.0) / enter as f32).min(1.0)
             };
             let e = if toast.leaving != 0 {
-                1.0 - t.tokens.ease(EaseName::WidgetExit).at(1.0 - p)
+                1.0 - t.tokens.ease(EaseRole::WidgetExit).apply(1.0 - p)
             } else {
-                t.tokens.ease(EaseName::WidgetEnter).at(p)
+                t.tokens.ease(EaseRole::WidgetEnter).apply(p)
             };
             let kind = t.art.motion.toast.unwrap_or(if top {
                 TransitionKind::SlideDown

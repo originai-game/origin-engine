@@ -561,7 +561,7 @@ export function floating(
       const b = kit.bounds(`${id}/Panel`);
       const open1 = b !== null && open;
       // A menu or a popover is there to be used at once: a short ease out (a sheet passes its spring).
-      const k = kit.animate("~open", open1 ? 1 : 0, d.spring ? spring(d.spring) : { kind: "tween", durationMs: open ? 140 : 100, ease: open ? "out" : "exit" });
+      const k = kit.animate("~open", open1 ? 1 : 0, d.spring ? spring(d.spring) : { kind: "tween", durationMs: open ? 140 : 100, bezier: open ? [0.23, 1, 0.32, 1] : [0.4, 0, 1, 1] });
       const want = b ? place({ width: b.width, height: b.height }) : { x: 0, y: 0 };
       const at: Placed = { x: want.x, y: want.y, width: b?.width ?? 0, height: b?.height ?? 0, measured: b !== null, openness: still() ? (open ? 1 : 0) : k };
       build(at);

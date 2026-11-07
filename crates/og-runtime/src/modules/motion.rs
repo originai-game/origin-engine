@@ -178,19 +178,23 @@ fn spring(v: &Value) -> SpringSpec {
     SpringSpec::new(f(v, "durationMs", 350.0), f(v, "bounce", 0.0))
 }
 
-fn ease(v: &Value, bezier: &Value) -> Ease {
-    let b: Vec<f32> = list(bezier)
-        .iter()
-        .filter_map(|x| x.as_f64().map(|x| x as f32))
-        .collect();
-    if let [x1, y1, x2, y2] = b[..] {
-        return Ease::Bezier([x1, y1, x2, y2]);
+fn ease(v: &Value, bezier: &Value) -> Option<Ease> {
+    if !list(bezier).is_empty() {
+        let [a, b, c, d] = list(bezier) else {
+            return None;
+        };
+        let curve = Ease::CubicBezier([
+            a.as_f64()? as f32,
+            b.as_f64()? as f32,
+            c.as_f64()? as f32,
+            d.as_f64()? as f32,
+        ]);
+        return curve.is_valid().then_some(curve);
     }
-    match v.as_str() {
-        Some("linear") => Ease::Linear,
-        Some("exit") => Ease::Exit,
-        Some("inOut") => Ease::InOut,
-        _ => Ease::Out,
+    if v.is_null() {
+        Some(Ease::CubicBezier(og_ui::theme::EASE_OUT))
+    } else {
+        Ease::from_name(v.as_str()?)
     }
 }
 
@@ -207,7 +211,7 @@ pub(crate) fn transition(v: &Value) -> Option<Transition> {
         "spring" => Transition::Spring(spring(v)),
         "tween" => Transition::Tween {
             duration_ms: f(v, "durationMs", 200.0),
-            ease: ease(&v["ease"], &v["bezier"]),
+            ease: ease(&v["ease"], &v["bezier"])?,
         },
         "token" => Transition::Token(token(&v["token"])),
         _ => return None,
@@ -377,15 +381,15 @@ pub(crate) fn props(d: &Value) -> Props {
     }
 }
 
-fn key_ease(v: &Value) -> KeyEase {
-    match v["kind"].as_str() {
+fn key_ease(v: &Value) -> Option<KeyEase> {
+    Some(match v["kind"].as_str() {
         Some("linear") => KeyEase::Linear,
-        Some("ease") => KeyEase::Ease(ease(&v["ease"], &Value::Null)),
-        Some("bezier") => KeyEase::Ease(ease(&Value::Null, &v["bezier"])),
+        Some("ease") => KeyEase::Ease(ease(&v["ease"], &Value::Null)?),
+        Some("bezier") => KeyEase::Ease(ease(&Value::Null, &v["bezier"])?),
         Some("spring") => KeyEase::Spring(spring(v)),
         Some("hold") => KeyEase::Hold,
         _ => KeyEase::default(),
-    }
+    })
 }
 
 fn event_kind(theme: &Theme, v: &Value) -> Option<EventKind> {
@@ -420,10 +424,12 @@ pub(crate) fn timeline(theme: &Theme, d: &Value) -> Timeline {
                     prop: prop(&t["prop"])?,
                     keys: list(&t["keys"])
                         .iter()
-                        .map(|k| Key {
-                            at_ms: f(k, "atMs", 0.0),
-                            value: f(k, "value", 0.0),
-                            ease: key_ease(&k["ease"]),
+                        .filter_map(|k| {
+                            Some(Key {
+                                at_ms: f(k, "atMs", 0.0),
+                                value: f(k, "value", 0.0),
+                                ease: key_ease(&k["ease"])?,
+                            })
                         })
                         .collect(),
                 })
@@ -694,7 +700,7 @@ mod tests {
                          "states": [{ "name": "off", "values": [] },
                                     { "name": "on", "values": [{ "prop": "scale", "value": 1.2 }] }],
                          "transitions": [{ "from": "*", "to": "on",
-                                           "transition": { "kind": "tween", "durationMs": 120, "ease": "linear" } }] }],
+                                           "transition": { "kind": "tween", "durationMs": 120, "ease": "none" } }] }],
             "state": [{ "group": "selection", "state": "on" }]
         }"#,
         );
@@ -731,6 +737,21 @@ mod tests {
             })
         );
         assert_eq!(p.state, [("selection".to_owned(), "on".to_owned())]);
+        for (name, expected) in [("power1.in", 0.0625), ("power1.out", 0.4375)] {
+            let p = props(&json!({"motion": {"kind":"tween", "ease":name}}));
+            let Some(Transition::Tween { ease, .. }) = p.motion else {
+                panic!("missing {name}")
+            };
+            assert_eq!(ease.apply(0.25), expected);
+        }
+        for name in ["linear", "out", "exit", "inOut", "ease-out"] {
+            assert!(
+                props(&json!({"motion": {"kind":"tween", "ease":name}}))
+                    .motion
+                    .is_none(),
+                "removed or CSS name {name} is not a GSAP alias"
+            );
+        }
     }
 
     #[test]

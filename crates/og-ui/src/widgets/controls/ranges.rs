@@ -369,7 +369,7 @@ impl Ui {
             }),
             exit: Some(crate::motion::PresenceSpec {
                 values: vec![(Prop::Opacity, 0.0)],
-                transition: tween(90.0, Ease::Exit),
+                transition: tween(90.0, Ease::CubicBezier(crate::theme::EASE_EXIT)),
                 delay_ms: 0.0,
             }),
             reduced: Some(crate::motion::Reduced::Fade),
