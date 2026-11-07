@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "og.motion",
+      "summary": "A drawn character no longer hops back up after landing a jump: a generated clip that takes off again unasked is cut at its landing and the model restarts from there."
+    },
+    {
+      "member": "og.motion",
+      "summary": "Drawn feet step clear of the ground: a step lifts on its arc into a swing too, a stepping foot's moving target is kept clear like a fast swing, and a planted foot out of the leg's reach steps instead of being dragged."
+    }
+  ]
+}

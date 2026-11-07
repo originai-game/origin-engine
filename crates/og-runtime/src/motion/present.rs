@@ -142,6 +142,9 @@ const FOLLOW_SPEED: f32 = 1.5;
 const ON_GROUND: f32 = 0.03;
 /// The slide speeds [`Footing`] counts samples above, m/s.
 const SLIDE: [f32; 2] = [0.1, 0.3];
+/// How long a held foot stays up and still before [`Footing`] counts it
+/// floating, s: longer than a step's rise.
+const FLOATING: f32 = 0.1;
 
 /// The drawn feet as they move in the world, measured on every shown frame
 /// from where they are drawn and nothing else (no contact channel, the
@@ -157,6 +160,8 @@ struct Footing {
     /// highest a foot was over its rest height, m.
     held: (u32, u32, f32),
     floating: bool,
+    /// How long each foot has been up and still, s.
+    up: [f32; 2],
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -207,9 +212,15 @@ impl Footing {
                 self.held.0 += 1;
                 self.floating = false;
             }
-            // Up and not moving across: floating (a foot stepping across
-            // the ground is lifted by the step).
-            if height > ON_GROUND && across < SLIDE[0] && !self.floating {
+            // Up and not moving across for [`FLOATING`] s: floating (a
+            // step's foot rises before it moves across, and a foot moving
+            // across is stepping).
+            self.up[k] = if height > ON_GROUND && across < SLIDE[0] {
+                self.up[k] + dt
+            } else {
+                0.0
+            };
+            if self.up[k] >= FLOATING && !self.floating {
                 self.floating = true;
                 self.held.1 += 1;
             }
@@ -1108,9 +1119,38 @@ fn jump_clip(
     }
     let natural = clip.drawn + elapsed * RATE;
     let flight_frames = c.jump.map(|j| 2.0 * j.v0 / j.gravity.max(1e-3) * RATE);
+    let min = ((MIN_FLIGHT * flight_frames.unwrap_or(0.0)) as usize).max(2);
+    // A clip that lands and takes off again (the model hopping on: a
+    // second jump nobody asked for) is cut at that takeoff, and the model
+    // starts again from the landed frames before it: whatever follows the
+    // jump, in the clip or after it, stands on the ground the simulation
+    // landed on instead of carrying the hop's elevation.
+    let contacts: Vec<[f32; 4]> = clip.frames.iter().map(|f| f.contacts).collect();
+    if c.jump.is_some()
+        && let Some(flight::ClipFlight {
+            touchdown: Some(touchdown),
+            ..
+        }) = flight::clip_flight(&contacts, 0, min)
+        && let Some(again) = flight::clip_flight(&contacts, touchdown, min)
+    {
+        // The landing's absorption ends where the hips are lowest between
+        // touchdown and the hop: the frames after it push off for the hop,
+        // and the model restarts from those before.
+        let lowest = (touchdown..again.takeoff)
+            .min_by(|&i, &j| {
+                let y = |k: usize| clip.frames[k].pose.positions[0][1];
+                y(i).total_cmp(&y(j))
+            })
+            .unwrap_or(again.takeoff);
+        let cut = (lowest + 1).max(clip.drawn.floor() as usize + 2);
+        if cut < clip.frames.len() {
+            clip.frames.truncate(cut);
+            let recent = std::array::from_fn(|i| clip.frames[(cut + i).saturating_sub(4)].pose);
+            motion.restart(s.character, recent);
+            s.requested = None;
+        }
+    }
     let target = c.jump.and_then(|j| {
-        let flight_frames = flight_frames.unwrap_or(0.0);
-        let min = ((MIN_FLIGHT * flight_frames) as usize).max(2);
         let contacts: Vec<[f32; 4]> = clip.frames.iter().map(|f| f.contacts).collect();
         let fl = flight::clip_flight(&contacts, 0, min)?;
         clip.flight = Some(fl);

@@ -366,6 +366,13 @@ impl Planter {
                     && !stepping
                     && GVec3::new(at.x - generated.x, 0.0, at.z - generated.z).length()
                         > STRETCH * length * scale;
+                // Out of reach even with the hips lowered: soft IK would
+                // drag the ankle off where it stands, so it steps instead
+                // (one foot at a time, as a stretch step).
+                let out = floor.is_some()
+                    && !stepping
+                    && (to_model.transform_point(at) - a).length() > length;
+                let behind = behind || out;
                 if !down || behind {
                     plant.anchor = None;
                     plant.last = at;
@@ -386,14 +393,11 @@ impl Planter {
                     let (Some(f), Some(was)) = (floor, was) else {
                         continue;
                     };
-                    let speed = GVec3::new(generated.x - was.x, 0.0, generated.z - was.z).length()
-                        / (dt * scale);
-                    let k = ((speed - SWING_SPEED) / SWING_SPEED).clamp(0.0, 1.0);
-                    let clear = f + SWING_LIFT * scale * k;
-                    if k <= 0.0 || generated.y >= clear {
+                    let lifted = swing_clear(generated, was, f, dt, scale);
+                    if lifted == generated {
                         continue;
                     }
-                    GVec3::new(generated.x, clear, generated.z)
+                    lifted
                 } else {
                     let at = *plant.anchor.get_or_insert_with(|| put_down(generated));
                     plant.last = at;
@@ -413,15 +417,22 @@ impl Planter {
                     }
                 } else {
                     plant.anchor = None;
-                    generated
+                    match (floor, was) {
+                        (Some(f), Some(was)) => swing_clear(generated, was, f, dt, scale),
+                        _ => generated,
+                    }
                 };
                 plant.released += dt;
                 if plant.released >= plant.step - 1e-6 {
                     plant.released = f32::INFINITY;
-                    if !down {
+                    // A step ending in a swing hands the foot to it, still
+                    // lifted clear of the ground if the swing skims it.
+                    if !down && to == generated {
                         continue;
                     }
-                    plant.last = to;
+                    if down {
+                        plant.last = to;
+                    }
                     to
                 } else {
                     stepped(plant.last, to, plant.released / plant.step, floor, scale)
@@ -451,12 +462,32 @@ fn stepped(from: GVec3, to: GVec3, k: f32, ground: Option<f32>, scale: f32) -> G
     };
     let across = ((k - STEP_RISE) / (1.0 - 2.0 * STEP_RISE)).clamp(0.0, 1.0);
     let mut at = from + (to - from) * (across * across * (3.0 - 2.0 * across));
-    if to.y < f + STEP_LIFT * scale {
-        let far = ((from - to).length() / (0.04 * scale)).min(1.0);
-        let up = og_core::math::sin(std::f32::consts::PI * k);
-        at.y = at.y.max(f) + STEP_LIFT * scale * far * up;
-    }
+    // The arc lifts the foot off the ground whether it comes down there or
+    // into a swing above it: a foot moving across is never dragged along
+    // the ground on its way up to a swing.
+    let far = ((from - to).length() / (0.04 * scale)).min(1.0);
+    let up = og_core::math::sin(std::f32::consts::PI * k);
+    let arc = STEP_LIFT * scale * far * up;
+    at.y = if to.y < f + STEP_LIFT * scale {
+        at.y.max(f) + arc
+    } else {
+        at.y.max(f + arc)
+    };
     at
+}
+
+/// A swinging ankle at `generated` (at `was` `dt` s before) over the
+/// ground at `floor`: moving across faster than [`SWING_SPEED`] it is
+/// lifted to at least [`SWING_LIFT`] over it, eased in up to twice that
+/// speed, so a fast swing never skims the ground.
+fn swing_clear(generated: GVec3, was: GVec3, floor: f32, dt: f32, scale: f32) -> GVec3 {
+    let speed = GVec3::new(generated.x - was.x, 0.0, generated.z - was.z).length() / (dt * scale);
+    let k = ((speed - SWING_SPEED) / SWING_SPEED).clamp(0.0, 1.0);
+    let clear = floor + SWING_LIFT * scale * k;
+    if k <= 0.0 || generated.y >= clear {
+        return generated;
+    }
+    GVec3::new(generated.x, clear, generated.z)
 }
 
 /// `target` drawn toward `hip` so a leg of `length` reaches it with soft IK
