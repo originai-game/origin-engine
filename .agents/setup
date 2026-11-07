@@ -94,13 +94,13 @@ step bash -lc 'command -v cargo bun sccache wasm-bindgen wasm-opt node; test -x 
 # Prewarm (the owner, 2026-11-01): the snapshot carries target/ with what an
 # agent's loop builds (clippy over every target, the test binaries the gate's
 # nextest runs, og), so a new orb starts warm and a stale snapshot only
-# rebuilds what changed. Dependencies come from the shared OVH sccache
+# rebuilds what changed. Dependencies come from the local sccache
 # (.agents/environment), so even a cold snapshot build mostly downloads.
 # A failing build on main does not fail setup; a run past the timeout stops
 # here, so setup stays under Amp's 20-minute limit and still publishes.
 # shellcheck disable=SC1091
 source .agents/environment
-# The server may already run from install-tools without the OVH settings.
+# The server may already run from install-tools with other settings.
 sccache --stop-server >/dev/null 2>&1 || true
 exclude=()
 for crate in $(awk '{ sub(/#.*/, "") } NF >= 1 { print $1 }' scripts/gate-exclude.txt); do

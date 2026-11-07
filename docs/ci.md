@@ -335,33 +335,14 @@ installation or authentication. Validate changes with `shellcheck -s bash
 .agents/{setup,resume,environment}`, `time .agents/setup` twice, and the
 tools from a new `bash -lc` shell.
 
-## The shared compiler cache
+## The compiler cache
 
-sccache keeps one cache for orbs, macrunner and studio-win in the OVH
-bucket `origin-engine-sccache` (project originai, region BHS, endpoint
-`https://s3.bhs.io.cloud.ovh.net`). Its S3 user, `origin-engine-sccache-s3`
-(id 947872), reads and writes that bucket only, and objects expire after 30
-days. A cache key includes the compiler binary, so a host reuses what
-another host of its own kind built (another orb, lane or new machine), not
-another platform's objects.
-
-- **Orbs:** `.agents/environment` fetches the key with the OVH API secrets
-  into `/dev/shm` (never the snapshot) and exports the `SCCACHE_*` and
-  `AWS_*` variables. Without those secrets sccache keeps its local disk.
-- **macrunner and studio-win:** sccache's config file names the bucket
-  (`~/Library/Application Support/Mozilla.sccache/config`,
-  `%APPDATA%\Mozilla\sccache\config\config`), and the key is the
-  `[og-sccache]` profile of `~/.aws/credentials`. The server is a resident
-  service started with `AWS_PROFILE=og-sccache`, no `AWS_*` keys and
-  `SCCACHE_IDLE_TIMEOUT=0` (the LaunchAgent `ai.origingame.sccache` on the
-  Mac, the scheduled task `og-sccache` on Windows), because Amp threads
-  carry other `AWS_*` keys that sccache would prefer over the profile; a
-  build only connects to it. `sccache --show-stats` names the cache
-  location. Restart the service only while no `rustc` runs; if a server
-  started from a thread holds the port, stop it with `sccache --stop-server`.
-
-Rotate the key from the OVH API (`/cloud/project/<id>/user/947872/s3Credentials`)
-and rewrite the runners' credentials files; orbs fetch the new one.
+sccache keeps a local disk cache on every host (the owner, 2026-11-07): a
+remote cache in OVH BHS measured 302.7 s for a cleaned `og-cli` rebuild on
+macrunner against 38.9 s from the local disk (about 3.7 s per remote hit),
+so there is none. The persistent lanes on one machine share its cache: on
+macrunner `/Volumes/app/.sccache`, on studio-win `SCCACHE_DIR=E:\sccache`,
+on an orb `~/.cache/sccache`.
 
 ## When to run what
 

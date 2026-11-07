@@ -12,34 +12,5 @@ if [[ -z ${CHROME:-} ]]; then
   done
   unset chrome
 fi
-# sccache shares one cache between orbs, macrunner and studio-win in the OVH
-# bucket origin-engine-sccache (BHS; the owner, 2026-11-07; docs/ci.md
-# §sccache). Its S3 user reads and writes that bucket only; objects expire
-# after 30 days. An orb fetches the key once with the OVH API secrets into
-# tmpfs, never into the snapshot; without them sccache keeps its local disk
-# cache.
-og_sccache_key=/dev/shm/og-sccache-s3
-if [[ ! -s $og_sccache_key && -n ${OVH_APPLICATION_KEY:-} && -n ${OVH_APPLICATION_SECRET:-} && -n ${OVH_CONSUMER_KEY:-} ]]; then
-  og_ovh() { # METHOD PATH: a signed call to the OVH API (ovh-ca)
-    local url="https://ca.api.ovh.com/1.0$2" ts sig
-    ts="$(curl -fsS --max-time 10 https://ca.api.ovh.com/1.0/auth/time)" || return 1
-    sig="\$1\$$(printf '%s' "$OVH_APPLICATION_SECRET+$OVH_CONSUMER_KEY+$1+$url++$ts" | openssl sha1 | awk '{ print $NF }')"
-    curl -fsS --max-time 10 -X "$1" -H "X-Ovh-Application: $OVH_APPLICATION_KEY" \
-      -H "X-Ovh-Consumer: $OVH_CONSUMER_KEY" -H "X-Ovh-Timestamp: $ts" -H "X-Ovh-Signature: $sig" "$url"
-  }
-  og_s3=/cloud/project/60c7ba90c9234a52b94d0aee5a4305d0/user/947872/s3Credentials
-  if og_ak="$(og_ovh GET "$og_s3" | jq -er '.[0].access')" &&
-    og_sk="$(og_ovh POST "$og_s3/$og_ak/secret" | jq -er .secret)"; then
-    (umask 077 && printf '%s %s\n' "$og_ak" "$og_sk" >"$og_sccache_key.$$" && mv "$og_sccache_key.$$" "$og_sccache_key")
-  fi
-  unset -f og_ovh
-  unset og_s3 og_ak og_sk
-fi
-if [[ -s $og_sccache_key ]]; then
-  read -r AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY <"$og_sccache_key"
-  export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
-  export SCCACHE_BUCKET=origin-engine-sccache
-  export SCCACHE_ENDPOINT=https://s3.bhs.io.cloud.ovh.net
-  export SCCACHE_REGION=bhs
-fi
-unset og_sccache_key
+# sccache keeps its local disk cache (the owner, 2026-11-07: no remote cache;
+# docs/ci.md §The compiler cache).
