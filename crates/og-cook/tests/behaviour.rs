@@ -29,14 +29,14 @@ version 1
 name "imp"
 key reach 1
 tree {
-  selector {
-    sequence flee {
+  ReactiveFallback {
+    ReactiveSequence flee {
       check Foe.hp below Tuning.impFleeHp
       flee {
         distance 6
       }
     }
-    sequence bite {
+    ReactiveSequence bite {
       check targetDistance atMost reach
       command bite
     }
@@ -81,7 +81,7 @@ const PATROL: &str = "type behaviour\nversion 1\n---\nname \"patrol\"\nkey lap 0
 
 fn guard(sub: &str) -> String {
     format!(
-        "type behaviour\nversion 1\n---\nname \"guard\"\ntree {{\n  selector {{\n    sequence fight {{\n      check targetDistance atMost 2\n      command bite\n    }}\n    use \"{sub}\"\n  }}\n}}\n"
+        "type behaviour\nversion 1\n---\nname \"guard\"\ntree {{\n  ReactiveFallback {{\n    ReactiveSequence fight {{\n      check targetDistance atMost 2\n      command bite\n    }}\n    use \"{sub}\"\n  }}\n}}\n"
     )
 }
 

@@ -341,7 +341,7 @@ impl AiSystem {
     }
 
     /// Starts an agent's behaviour afresh at its next think, as a new
-    /// behaviour would: a machine in its initial state (its `enter` run
+    /// behaviour would: a machine in its initial state (its `entry` run
     /// again), a tree at its root, every timer and cooldown reset, the
     /// blackboard back to the declared keys, the start point (wander's
     /// centre) where it then stands and what it saw and heard forgotten.
@@ -442,7 +442,7 @@ impl Description {
             Root::Tree(_) => String::new(),
         }
     }
-    /// `selector > sequence chase > chase`.
+    /// `ReactiveFallback > ReactiveSequence chase > chase`.
     pub fn path(&self, b: &Behaviour) -> String {
         self.mem
             .path

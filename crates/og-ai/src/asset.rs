@@ -16,12 +16,12 @@
 //!   point 16 6.5 0
 //! }
 //! tree {
-//!   selector {
-//!     sequence flee {
+//!   ReactiveFallback {
+//!     ReactiveSequence flee {
 //!       check Slime.hp below 20
 //!       flee
 //!     }
-//!     sequence chase {
+//!     ReactiveSequence chase {
 //!       check sees
 //!       chase
 //!     }
@@ -306,7 +306,7 @@ pub enum Kind {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Node {
     pub kind: Kind,
-    /// A label (`sequence chase`) or the node's kind and argument (`patrol beat`).
+    /// A label (`ReactiveSequence chase`) or the node's kind and argument (`patrol beat`).
     pub name: String,
     pub children: Vec<usize>,
     /// The source line.
@@ -840,9 +840,9 @@ impl Parser<'_, '_> {
                 });
                 Ok(self.nodes.len() - 1)
             }
-            "selector" => composite(self, Kind::Selector, e),
-            "sequence" => composite(self, Kind::Sequence, e),
-            "steps" => composite(self, Kind::Steps, e),
+            "ReactiveFallback" => composite(self, Kind::Selector, e),
+            "ReactiveSequence" => composite(self, Kind::Sequence, e),
+            "Sequence" => composite(self, Kind::Steps, e),
             "parallel" => {
                 let all = match e.block.as_ref().and_then(|b| b.get("policy")) {
                     None => true,
@@ -854,8 +854,8 @@ impl Parser<'_, '_> {
                 };
                 composite(self, Kind::Parallel { all }, e)
             }
-            "invert" => decorator(self, Kind::Invert, e),
-            "succeed" => decorator(self, Kind::Succeed, e),
+            "Inverter" => decorator(self, Kind::Invert, e),
+            "ForceSuccess" => decorator(self, Kind::Succeed, e),
             "repeat" => {
                 let times = match e.values.first() {
                     None => 0,
@@ -919,7 +919,7 @@ impl Parser<'_, '_> {
                 None => Err(err(
                     e,
                     format!(
-                        "'{}' is not a node: selector, sequence, steps, parallel, utility, invert, succeed, repeat, cooldown, timeout, check, use, move_to, chase, flee, patrol, wander, wait, stop, set, command or action",
+                        "'{}' is not a node: ReactiveFallback, ReactiveSequence, Sequence, parallel, utility, Inverter, ForceSuccess, repeat, cooldown, timeout, check, use, move_to, chase, flee, patrol, wander, wait, stop, set, command or action",
                         e.key
                     ),
                 )),
@@ -1065,7 +1065,7 @@ impl Behaviour {
         })
     }
 
-    /// The canonical display name of a node path (`selector > sequence chase > chase`).
+    /// The canonical display name of a node path (`ReactiveFallback > ReactiveSequence chase > chase`).
     pub fn node_name(&self, i: usize) -> &str {
         self.nodes.get(i).map_or("", |n| n.name.as_str())
     }
@@ -1312,8 +1312,8 @@ impl Parser<'_, '_> {
                 .unwrap_or(&[])
             {
                 match c.key.as_str() {
-                    "enter" | "exit" => {
-                        let list = if c.key == "enter" {
+                    "entry" | "exit" => {
+                        let list = if c.key == "entry" {
                             &mut state.enter
                         } else {
                             &mut state.exit

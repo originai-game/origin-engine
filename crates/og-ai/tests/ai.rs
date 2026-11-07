@@ -52,27 +52,27 @@ route beat {
   point 8 2 0
 }
 tree {
-  selector {
-    sequence flee {
+  ReactiveFallback {
+    ReactiveSequence flee {
       check Health.hp below 20
       flee {
         distance 6
       }
     }
-    sequence attack {
+    ReactiveSequence attack {
       check sees
       check targetDistance below 1.2
       command bite {
         cooldown 0.5
       }
     }
-    sequence chase {
+    ReactiveSequence chase {
       check sees
       chase {
         speed 3
       }
     }
-    sequence alarm {
+    ReactiveSequence alarm {
       check Game.alarm
       move_to 5 9 0
     }
@@ -211,6 +211,111 @@ fn steps(s: &mut Scene, n: u32) -> Vec<(String, Vec<String>)> {
         cmds.extend(s.ai.take_commands());
     }
     cmds
+}
+
+#[test]
+fn reference_node_names_preserve_reactivity_resume_and_halt() {
+    use og_ai::tree::{Effects, Senses, Status, start, think};
+    use og_ai::{AI_INTERRUPTED, AgentMem};
+
+    fn parse(body: &str) -> Behaviour {
+        Behaviour::parse(&format!(
+            "type behaviour\nversion 1\n---\ntree {{\n{body}\n}}\n"
+        ))
+        .unwrap()
+    }
+    fn tick(b: &Behaviour, mem: &mut AgentMem, tick: u64, flag: bool) -> (Status, Effects) {
+        let resolve = |key: &str, _: &AgentMem| (key == "flag").then_some(Value::Bool(flag));
+        let senses = Senses {
+            plane: Plane::Xy,
+            tick,
+            rate: 60.0,
+            entity: 1,
+            position: Vec3::ZERO,
+            nav_status: 0,
+            nav_target: Vec3::ZERO,
+            stop_distance: 0.1,
+            origin: Vec3::ZERO,
+            resolve: &resolve,
+            locate: &|_| None,
+        };
+        if !mem.started {
+            start(b, mem, Vec3::ZERO, 1.0, tick);
+        }
+        let mut fx = Effects::default();
+        (think(b, mem, &senses, &mut fx), fx)
+    }
+
+    // A reactive sequence rechecks its first condition while its action runs.
+    let b = parse("ReactiveSequence {\n check flag\n action work\n}");
+    let mut mem = AgentMem::default();
+    assert_eq!(tick(&b, &mut mem, 0, true).1.started[0].1, "work");
+    let (status, fx) = tick(&b, &mut mem, 1, false);
+    assert_eq!(status, Status::Failure);
+    assert_eq!(fx.stopped[0].2, AI_INTERRUPTED);
+    assert_eq!(tick(&b, &mut mem, 2, true).1.started[0].1, "work");
+
+    // A Sequence does not repeat the first side effect while waiting, but a
+    // failure restarts it. SequenceWithMemory would skip prepare after failure.
+    let b = parse("Sequence {\n command prepare\n wait 0.05\n check flag\n command done\n}");
+    let mut mem = AgentMem::default();
+    assert_eq!(tick(&b, &mut mem, 0, true).1.commands[0].0, "prepare");
+    assert!(tick(&b, &mut mem, 1, false).1.commands.is_empty());
+    assert_eq!(tick(&b, &mut mem, 3, false).0, Status::Failure);
+    assert_eq!(tick(&b, &mut mem, 4, true).1.commands[0].0, "prepare");
+    assert_eq!(tick(&b, &mut mem, 7, true).1.commands[0].0, "done");
+
+    // A higher-priority branch interrupts and resets the lower Sequence,
+    // including its cursor: returning to it must run prepare again.
+    let b = parse(
+        "ReactiveFallback {\n check flag\n Sequence {\n command prepare\n action work\n }\n}",
+    );
+    let mut mem = AgentMem::default();
+    assert_eq!(tick(&b, &mut mem, 0, false).1.commands[0].0, "prepare");
+    let (status, fx) = tick(&b, &mut mem, 1, true);
+    assert_eq!(status, Status::Success);
+    assert_eq!(fx.stopped[0].2, AI_INTERRUPTED);
+    let (_, fx) = tick(&b, &mut mem, 2, false);
+    assert_eq!(fx.commands[0].0, "prepare");
+    assert_eq!(fx.started[0].1, "work");
+
+    for (name, success, failure) in [
+        ("Inverter", Status::Failure, Status::Success),
+        ("ForceSuccess", Status::Success, Status::Success),
+    ] {
+        let b = parse(&format!("{name} {{\n check flag\n}}"));
+        let mut mem = AgentMem::default();
+        assert_eq!(tick(&b, &mut mem, 0, true).0, success);
+        assert_eq!(tick(&b, &mut mem, 1, false).0, failure);
+        let b = parse(&format!("{name} {{\n action work\n}}"));
+        assert_eq!(
+            tick(&b, &mut AgentMem::default(), 0, false).0,
+            Status::Running
+        );
+    }
+}
+
+#[test]
+fn tick_machine_runs_entry_exit_and_self_transition_once_per_think() {
+    let mut s = scene(
+        "type behaviour\nversion 1\n---\nmachine {\n initial idle\n state idle {\n entry {\n command enter_idle\n }\n exit {\n command leave_idle\n }\n to alert {\n check Game.alarm\n }\n }\n state alert {\n entry {\n command enter_alert\n }\n exit {\n command leave_alert\n }\n to alert {\n after 0.05\n }\n }\n}\n",
+        false,
+    );
+    let names = |commands: Vec<(String, Vec<String>)>| {
+        commands.into_iter().map(|c| c.0).collect::<Vec<_>>()
+    };
+    assert_eq!(names(steps(&mut s, 1)), ["enter_idle"]);
+    s.world
+        .insert_resource(Game {
+            alarm: true,
+            level: 0,
+        })
+        .unwrap();
+    assert_eq!(names(steps(&mut s, 1)), ["leave_idle", "enter_alert"]);
+    let snapshot = s.world.snapshot();
+    assert_eq!(names(steps(&mut s, 3)), ["leave_alert", "enter_alert"]);
+    s.world.restore(&snapshot).unwrap();
+    assert_eq!(names(steps(&mut s, 3)), ["leave_alert", "enter_alert"]);
 }
 
 #[test]
@@ -549,7 +654,7 @@ route beat {
   point 8 2 0
 }
 tree {
-  sequence {
+  ReactiveSequence {
     use "ai/look.ogt"
     patrol beat
   }
@@ -578,8 +683,8 @@ route home {
   point 2 2 0
 }
 tree {
-  selector {
-    sequence {
+  ReactiveFallback {
+    ReactiveSequence {
       check Game.alarm
       patrol home
     }
@@ -608,7 +713,7 @@ tree {
     steps(&mut s, 120);
     assert_eq!(
         path(&s),
-        "selector > use ai/beat.ogt > sequence > patrol beat"
+        "ReactiveFallback > use ai/beat.ogt > ReactiveSequence > patrol beat"
     );
     assert_eq!(s.ai.get(s.guard, "looked"), Some(Value::Num(1.0)));
     assert!(pos(&s, s.guard).x > 3.5, "it walks the beat");
@@ -636,7 +741,7 @@ tree {
     assert!(e.contains("ai/a.ogt → ai/a.ogt"), "{e}");
     // A machine, a missing file, a clashing route, and text without a resolver.
     let machine = "type behaviour\nversion 1\n---\nmachine {\n  state idle {\n    wait 1\n  }\n}\n";
-    let clash = "type behaviour\nversion 1\n---\nroute beat {\n  point 0 0 0\n}\ntree {\n  sequence {\n    patrol beat\n    use \"ai/beat.ogt\"\n  }\n}\n";
+    let clash = "type behaviour\nversion 1\n---\nroute beat {\n  point 0 0 0\n}\ntree {\n  ReactiveSequence {\n    patrol beat\n    use \"ai/beat.ogt\"\n  }\n}\n";
     let mut r = files(&[
         ("ai/m.ogt", machine),
         ("ai/beat.ogt", BEAT),

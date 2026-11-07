@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {"member":"behaviour.ReactiveFallback","change":"Renamed selector to ReactiveFallback, matching its every-tick priority recheck and interruption semantics.","fix":"Rename selector nodes to ReactiveFallback; no alias remains."},
+    {"member":"behaviour.ReactiveSequence","change":"Renamed sequence to ReactiveSequence, matching its every-tick condition recheck.","fix":"Rename sequence nodes to ReactiveSequence, not Sequence."},
+    {"member":"behaviour.Sequence","change":"Renamed steps to Sequence: resumes running children and restarts after failure, success or interruption.","fix":"Rename steps nodes to Sequence; this is not SequenceWithMemory."},
+    {"member":"behaviour.Inverter","change":"Renamed invert to Inverter.","fix":"Rename invert nodes to Inverter."},
+    {"member":"behaviour.ForceSuccess","change":"Renamed succeed to ForceSuccess; running remains running.","fix":"Rename succeed nodes to ForceSuccess."},
+    {"member":"behaviour.machine.entry","change":"Renamed state enter actions to entry; exit and tick-machine timing are unchanged.","fix":"Rename state enter blocks to entry; do not treat the machine as an XState actor."}
+  ]
+}

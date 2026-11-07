@@ -4,6 +4,10 @@
 
 Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour`, perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
 
+BehaviourTree.CPP control names: ReactiveFallback rechecks priority from the first child each think; ReactiveSequence rechecks conditions from the first child; Sequence resumes its running child but restarts after failure or completion (not SequenceWithMemory). A higher-priority branch halts the lower running branch and resets its sequence cursor; game actions receive AI_INTERRUPTED. Inverter flips success/failure, ForceSuccess converts either to success; both preserve running. Command cooldowns remain explicit engine state.
+
+A machine uses entry and exit action blocks. It is a tick machine, not an XState statechart: at most one transition per think, exit then entry (also on a self-transition), then the destination body. Initial entry runs once; snapshot restore preserves it. There are no queued events, parallel states or actors.
+
 An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick.
 
 Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`), and compare them with a literal or with another key or field read each time (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource. og.ai.restart starts a behaviour afresh. Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
@@ -15,6 +19,8 @@ Conditions read blackboard keys (declared, set by actions or og.ai.set, or built
 ```ogt
 module ai {
   doc "Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour`, perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent."
+  doc "BehaviourTree.CPP control names: ReactiveFallback rechecks priority from the first child each think; ReactiveSequence rechecks conditions from the first child; Sequence resumes its running child but restarts after failure or completion (not SequenceWithMemory). A higher-priority branch halts the lower running branch and resets its sequence cursor; game actions receive AI_INTERRUPTED. Inverter flips success/failure, ForceSuccess converts either to success; both preserve running. Command cooldowns remain explicit engine state."
+  doc "A machine uses entry and exit action blocks. It is a tick machine, not an XState statechart: at most one transition per think, exit then entry (also on a self-transition), then the destination body. Initial entry runs once; snapshot restore preserves it. There are no queued events, parallel states or actors."
   doc "An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick."
   doc "Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`), and compare them with a literal or with another key or field read each time (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource. og.ai.restart starts a behaviour afresh. Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard."
   # declarations follow, each on its own page
@@ -45,7 +51,7 @@ module ai {
 | [`og.ai.parse`](ai/fn-parse.md) | function | `(world: World, text: string): Result<BehaviourInfo>` | A behaviour from text, now (tests and generated behaviours; assets go through og cook). |
 | [`og.ai.get`](ai/fn-get.md) | function | `(world: World, entity: Entity, key: string): unknown` | A blackboard value of an agent as of its last think. |
 | [`og.ai.set`](ai/fn-set.md) | function | `(world: World, entity: Entity, key: string, value: unknown): Result<void>` | Set a blackboard value of an agent: a number, a boolean, a point `{x, y, z}` or an entity handle `{entity}`. |
-| [`og.ai.restart`](ai/fn-restart.md) | function | `(world: World, entity: Entity): Result<void>` | Start an agent's behaviour afresh at its next think, as a new behaviour would: a machine in its initial state (its enter actions run again), a tree at its root, every timer and cooldown reset, the bl… |
+| [`og.ai.restart`](ai/fn-restart.md) | function | `(world: World, entity: Entity): Result<void>` | Start an agent's behaviour afresh at its next think, as a new behaviour would: a machine in its initial state (its entry actions run again), a tree at its root, every timer and cooldown reset, the bl… |
 | [`og.ai.finish`](ai/fn-finish.md) | function | `(world: World, entity: Entity, success: boolean, action?: string): boolean` | End an agent's running game actions (og.AiActionStarted): each answers success or failure at the agent's next think and sends og.AiActionStopped. |
 | [`og.ai.noise`](ai/fn-noise.md) | function | `(world: World, desc?: NoiseDesc): Result<void>` | Make a noise agents may hear next tick (a gunshot, a door, a thrown stone). |
 | [`og.ai.describe`](ai/fn-describe.md) | function | `(world: World, entity: Entity): AiDescription \| null` | What an agent is doing: its state, the node it runs and the path to it, its status, its blackboard and its target. |
@@ -67,7 +73,7 @@ column Behaviour {
 }
 ```
 
-<sub>Module `ai` line 8</sub>
+<sub>Module `ai` line 10</sub>
 
 ## Constants
 
@@ -82,22 +88,22 @@ column Behaviour {
 const AI_RUNNING u32 1 "AiAgent.status: the tree or state is still running."
 ```
 
-<sub>Module `ai` line 15</sub>
+<sub>Module `ai` line 17</sub>
 
 ```ogt
 const AI_SUCCESS u32 2 "AiAgent.status: the tree succeeded on the last think."
 ```
 
-<sub>Module `ai` line 16</sub>
+<sub>Module `ai` line 18</sub>
 
 ```ogt
 const AI_FAILURE u32 3 "AiAgent.status: the tree failed on the last think."
 ```
 
-<sub>Module `ai` line 17</sub>
+<sub>Module `ai` line 19</sub>
 
 ```ogt
 const AI_INTERRUPTED u32 4 "AiActionStopped.result: the action stopped before the game finished it (another branch won, the state changed, the agent restarted)."
 ```
 
-<sub>Module `ai` line 18</sub>
+<sub>Module `ai` line 20</sub>

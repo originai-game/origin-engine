@@ -33,21 +33,21 @@ route beat {
   point 4 60 0
 }
 tree {
-  selector {
-    sequence flee {
+  ReactiveFallback {
+    ReactiveSequence flee {
       check Health.hp below 20
       flee {
         distance 6
       }
     }
-    sequence bite {
+    ReactiveSequence bite {
       check sees
       check targetDistance below 1
       command bite {
         cooldown 0.5
       }
     }
-    sequence chase {
+    ReactiveSequence chase {
       check sees
       chase {
         speed 3

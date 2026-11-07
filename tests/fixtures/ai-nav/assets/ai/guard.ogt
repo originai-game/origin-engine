@@ -23,7 +23,7 @@ machine {
     }
   }
   state alert {
-    enter {
+    entry {
       command alarm
     }
     chase {

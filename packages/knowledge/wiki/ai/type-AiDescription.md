@@ -14,7 +14,7 @@ What an agent is doing.
 | `kind` | `string` | `""` | — | — | — | tree or machine. |
 | `state` | `string` | `""` | — | — | — | A machine's state (empty for a tree). |
 | `node` | `string` | `""` | — | — | — | The node it ran last, such as `chase`. |
-| `path` | `string` | `""` | — | — | — | The path to it from the root, such as `selector > sequence chase > chase`. |
+| `path` | `string` | `""` | — | — | — | The path to it from the root, such as `ReactiveFallback > ReactiveSequence chase > chase`. |
 | `status` | `string` | `""` | — | — | — | running, success or failure. |
 | `blackboard` | `unknown` | `null` | — | — | — | Its blackboard, keys to numbers, booleans, points and entity handles. |
 | `sees` | `boolean` | `false` | — | — | — | It sees its target. |
@@ -27,7 +27,7 @@ struct AiDescription {
   field kind String "tree or machine."
   field state String "A machine's state (empty for a tree)."
   field node String "The node it ran last, such as `chase`."
-  field path String "The path to it from the root, such as `selector > sequence chase > chase`."
+  field path String "The path to it from the root, such as `ReactiveFallback > ReactiveSequence chase > chase`."
   field status String "running, success or failure."
   field blackboard Json "Its blackboard, keys to numbers, booleans, points and entity handles."
   field sees bool "It sees its target."
@@ -35,4 +35,4 @@ struct AiDescription {
 }
 ```
 
-<sub>Module `ai` line 180</sub>
+<sub>Module `ai` line 182</sub>

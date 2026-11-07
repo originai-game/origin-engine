@@ -19,21 +19,21 @@ route beat {                     # patrol routes
   point 16 6.5 0
 }
 tree {
-  selector {
-    sequence flee {
+  ReactiveFallback {
+    ReactiveSequence flee {
       check Slime.hp below 20    # a component field of the agent
       flee {
         distance 6
       }
     }
-    sequence attack {
+    ReactiveSequence attack {
       check sees
       check targetDistance below Tuning.slimeReach   # compared with a resource field
       command bite {             # the game's command, with the agent's handle
         cooldown 1
       }
     }
-    sequence chase {
+    ReactiveSequence chase {
       check sees
       chase {
         speed 2
@@ -48,11 +48,11 @@ tree {
 
 | Node | Does |
 |---|---|
-| `selector [label]` | children in order; the first that does not fail decides; re-checked every tick, so a higher branch that becomes true halts a lower one |
-| `sequence [label]` | children in order while they succeed; re-checked from the first every tick |
-| `steps [label]` | a sequence that resumes at its running child |
+| `ReactiveFallback [label]` | children in order; the first that does not fail decides; re-checked every tick, so a higher branch that becomes true halts a lower one |
+| `ReactiveSequence [label]` | children in order while they succeed; re-checked from the first every tick |
+| `Sequence [label]` | resumes at its running child; failure or completion restarts at the first child, unlike SequenceWithMemory |
 | `parallel [label] { policy all\|one; ... }` | every child every tick |
-| `invert`, `succeed`, `repeat N`, `cooldown S`, `timeout S` | decorators of one child |
+| `Inverter`, `ForceSuccess`, `repeat N`, `cooldown S`, `timeout S` | decorators of one child |
 | `check <operand> [is\|not\|below\|above\|atMost\|atLeast <value>]` | a blackboard key, `Component.field` of the agent or `Resource.field` (a `.x/.y/.z` lane of a vector); no operator: truthy. The value is a number, three numbers, `true`/`false`, or a key or field read each time the check runs (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource; an unknown one fails the check with a warning |
 | `move_to <key \| x y z> { speed }` | to a point; succeeds on arrival, fails when unreachable |
 | `chase [key] { speed; reach }` | after an entity key's position (default `target`) |
@@ -62,13 +62,24 @@ tree {
 | `wait S`, `stop`, `set <key> <value>` | |
 | `command <name> [args...] { cooldown }` | queues the game command `name` with the agent's handle first, run before the next tick; fails while cooling down |
 
-A machine replaces the tree:
+These control and decorator names follow BehaviorTree.CPP, not its XML
+format or plugin ABI. Halting a branch resets its running actions and
+sequence cursor; a game action receives `AI_INTERRUPTED`, and starts again
+if that branch is selected later. Commands retain their explicit cooldowns.
+`Inverter` flips success/failure; `ForceSuccess` converts either to success.
+Both preserve running.
+
+A machine replaces the tree. It remains a tick machine, not an XState
+statechart: each think runs at most one transition, then the destination
+body. `entry` runs on initial entry and after a transition (including a
+self-transition); `exit` runs before leaving. There are no queued events,
+parallel states, actors or run-to-completion transitions.
 
 ```text
 machine {
   initial idle
   state idle {
-    enter {
+    entry {
       set mood 1          # instant actions: set, stop, command
     }
     patrol post           # the state's body: nodes, ticked while in it
@@ -96,7 +107,7 @@ Built-in keys, written every think: `self`, `position`, `sees`, `heard`,
   `changes`. A behaviour starts afresh on the agent's first think, when
   `behaviour` changes, and after `og.ai.restart(world, agent)`
   (`AiSystem::restart`), at its next think: a machine in its initial state
-  (its `enter` run again), a tree at its root, timers and cooldowns reset,
+  (its `entry` run again), a tree at its root, timers and cooldowns reset,
   the blackboard back to the declared keys, the start point (wander's
   centre) where it then stands, what it saw and heard forgotten; actions
   without a speed keep the speed it first started with.

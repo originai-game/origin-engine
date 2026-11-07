@@ -21623,6 +21623,8 @@ export interface NavRebuild {
 
 // ── ai ──────────────────────────────────────────────────────────
 // Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour`, perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
+// BehaviourTree.CPP control names: ReactiveFallback rechecks priority from the first child each think; ReactiveSequence rechecks conditions from the first child; Sequence resumes its running child but restarts after failure or completion (not SequenceWithMemory). A higher-priority branch halts the lower running branch and resets its sequence cursor; game actions receive AI_INTERRUPTED. Inverter flips success/failure, ForceSuccess converts either to success; both preserve running. Command cooldowns remain explicit engine state.
+// A machine uses entry and exit action blocks. It is a tick machine, not an XState statechart: at most one transition per think, exit then entry (also on a self-transition), then the destination body. Initial entry runs once; snapshot restore preserves it. There are no queued events, parallel states or actors.
 // An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick.
 // Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`), and compare them with a literal or with another key or field read each time (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource. og.ai.restart starts a behaviour afresh. Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
 
@@ -21946,7 +21948,9 @@ export interface AiDescription {
   readonly state: string;
   /** The node it ran last, such as `chase`. */
   readonly node: string;
-  /** The path to it from the root, such as `selector > sequence chase > chase`. */
+  /**
+   * The path to it from the root, such as `ReactiveFallback > ReactiveSequence chase > chase`.
+   */
   readonly path: string;
   /** running, success or failure. */
   readonly status: string;
@@ -47121,6 +47125,8 @@ export declare namespace og {
   const AiActionStopped: EventType<AiActionStopped>;
   /**
    * Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour`, perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
+   * BehaviourTree.CPP control names: ReactiveFallback rechecks priority from the first child each think; ReactiveSequence rechecks conditions from the first child; Sequence resumes its running child but restarts after failure or completion (not SequenceWithMemory). A higher-priority branch halts the lower running branch and resets its sequence cursor; game actions receive AI_INTERRUPTED. Inverter flips success/failure, ForceSuccess converts either to success; both preserve running. Command cooldowns remain explicit engine state.
+   * A machine uses entry and exit action blocks. It is a tick machine, not an XState statechart: at most one transition per think, exit then entry (also on a self-transition), then the destination body. Initial entry runs once; snapshot restore preserves it. There are no queued events, parallel states or actors.
    * An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick.
    * Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`), and compare them with a literal or with another key or field read each time (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource. og.ai.restart starts a behaviour afresh. Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
    */
@@ -47161,7 +47167,7 @@ export declare namespace og {
      */
     function set(world: World, entity: Entity, key: string, value: unknown): Result<void>;
     /**
-     * Start an agent's behaviour afresh at its next think, as a new behaviour would: a machine in its initial state (its enter actions run again), a tree at its root, every timer and cooldown reset, the blackboard back to the declared keys, wander's centre where it then stands, and what it saw and heard forgotten. Actions without a speed keep the speed it first started with. For a new run or a respawn; an agent that has not thought yet starts afresh anyway.
+     * Start an agent's behaviour afresh at its next think, as a new behaviour would: a machine in its initial state (its entry actions run again), a tree at its root, every timer and cooldown reset, the blackboard back to the declared keys, wander's centre where it then stands, and what it saw and heard forgotten. Actions without a speed keep the speed it first started with. For a new run or a respawn; an agent that has not thought yet starts afresh anyway.
      *
      * @param world The world.
      * @param entity The agent.

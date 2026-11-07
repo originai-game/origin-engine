@@ -47,7 +47,7 @@ pub struct AgentMem {
     /// The behaviour handle the memory is for.
     pub behaviour: u64,
     pub started: bool,
-    /// The machine has run its initial state's `enter`.
+    /// The machine has run its initial state's `entry`.
     pub entered: bool,
     /// The machine's state.
     pub state: u32,
