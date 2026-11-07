@@ -1066,6 +1066,10 @@
       {
         "member": "og.destruction.CAUSE_CARVE",
         "summary": "PixelDetached.cause for ground carve2d cut loose."
+      },
+      {
+        "member": "Rive import (.riv, og_ui::rive)",
+        "summary": "A `.riv` under assets/ (format 7) is converted at cook time, never by the Rive runtime: each artboard its `<file>.riv.ogt` import settings choose (role, name, fit, align, state-machine) cooks to an og.RiveArtboard blob, id `<file>.riv#<Artboard>` (docs/ui.md §11.2). Phase 1 converts artboards, groups, shapes (points paths, rectangles, ellipses, triangles, polygons, stars), fills by both rules, centred strokes, solid, linear and radial paints, six blend modes, linear animations (hold, linear, cubic and value keys; loop, ping-pong, work areas), nested artboards and a state machine whose entry plays one animation. Luau, images, text and other state machines are cook errors that name the feature and object. og_ui::rive::Player plays one on the tick, draws it as UI paths, lists its objects as elements and saves and restores its state."
       }
     ],
     "fixed": [
@@ -1148,6 +1152,10 @@
       {
         "member": "the missing-glyph warning",
         "summary": "A text drawing a character its face lacks (its atlas, and its file at run time) is warned of the same with or without a renderer, once per face and character, on the tick that drew it: og-ui reads each frame's texts against each face's metrics, og.render.text and og.render.floatingText are read when queued. Before, only a frame a GPU drew warned, so a run whose adapter request failed missed it (ui-kit's settings-saved, one run in five), and a character a second face lacked was never named."
+      },
+      {
+        "member": "og.ui.setDraw",
+        "summary": "An element's draw paints over its background, as documented: a rim stroked with setDraw on an element with a background drew under the background quad and showed only at the corners its radius left uncovered."
       }
     ]
   },
