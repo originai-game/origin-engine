@@ -240,6 +240,17 @@ impl Ui {
         let off_fill = mix(self.role("controlStrong"), self.role("ink"), 0.12);
         let on_fill = self.role("primary");
         let knob_fill = self.role("knob");
+        // An undressed knob that all but vanishes into the track it is on (a
+        // neutral style's white on white) turns the inverse ink there, so it
+        // and its tick in the track's colour still read. A style that dresses
+        // the knob chose its look.
+        let knob_on = if !self.dress.dresses("Toggle", "knob")
+            && knob_fill.srgba().contrast(on_fill.srgba()) < 1.5
+        {
+            self.role("inkInverse")
+        } else {
+            knob_fill
+        };
         let name = if desc.label.is_empty() {
             id.as_str().to_owned()
         } else {
@@ -310,7 +321,7 @@ impl Ui {
                         radius: knob / 2.0,
                         align: Align::Center,
                         cross: Cross::Center,
-                        background: Some(knob_fill.srgba()),
+                        background: Some(if on { knob_on } else { knob_fill }.srgba()),
                         part: crate::dress::PartRef::parse(&kpart, ElementClass::Chip).ok(),
                         ..Element::default()
                     },
@@ -351,8 +362,8 @@ impl Ui {
                 let (g, s) = two_state(
                     "selection",
                     on,
-                    vec![(Prop::X, 0.0)],
-                    vec![(Prop::X, travel)],
+                    [vec![(Prop::X, 0.0)], bg_values(knob_fill)].concat(),
+                    [vec![(Prop::X, travel)], bg_values(knob_on)].concat(),
                     Vec::new(),
                 );
                 ui.over(Props {

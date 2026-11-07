@@ -1078,6 +1078,10 @@
     ],
     "fixed": [
       {
+        "member": "og.ui.toggleSwitch, og.ui.dropdown",
+        "summary": "A switch whose knob all but vanishes into the track it is on (contrast under 1.5:1, the neutral default style's white on white) turns the inverse ink while on, so the knob and its tick read. A dropdown's rows are inset a step beyond the focus ring's reach, so a focused end row's ring keeps the list's ground round it and no longer stands for the list's edge."
+      },
+      {
         "member": "og.CharacterController snapDistance",
         "summary": "Ground snapping holds only a controller that was grounded at the start of its move (down slopes and steps), as rapier's own controller does: one falling from a jump or off a ledge now lands where it meets the ground instead of being pulled down to ground within snapDistance in one tick (up to 0.2 m at once by default, a visible drop at every landing)."
       },

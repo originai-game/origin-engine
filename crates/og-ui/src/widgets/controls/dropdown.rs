@@ -227,9 +227,12 @@ impl Ui {
             let content = Element {
                 direction: Direction::Column,
                 width: Size::px(anchor.width),
-                // Rows inset by the focus ring's reach: a focused row's ring stays
-                // inside the list's clip.
-                padding: Insets::all(t.space.xs),
+                // Rows inset a step beyond the focus ring's reach: a focused
+                // end row's ring stays inside the list with its ground round it,
+                // so the ring never stands for the list's edge.
+                padding: Insets::all(
+                    t.tokens.stroke(crate::tokens::StrokeWidth::Focus) + 2.0 * t.space.xxs,
+                ),
                 radius: t.radius.control,
                 background: Some(raised.srgba()),
                 part: crate::dress::PartRef::parse("Dropdown.list", ElementClass::Tooltip).ok(),
