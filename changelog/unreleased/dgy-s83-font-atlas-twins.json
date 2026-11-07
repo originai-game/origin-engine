@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "cooked fonts (type font)",
+      "summary": "A glyph cooked both by its code point and by its glyph id (every face is shaped, so each charset glyph is cooked twice) is one image in the atlas, both rows at it, instead of two. Fonts re-cook once (stamp \"font 9\", including embedded Rive fonts). The ui-text fixture's fonts: Noto Sans SC 13.3 -> 8.5 MB, JP 10.3 -> 7.3 MB, KR 4.0 -> 2.3 MB, Inter 1.12 -> 0.96 MB; a garden's fonts 18.0 -> 10.2 MB. Colour glyph pages are packed as before."
+    }
+  ]
+}

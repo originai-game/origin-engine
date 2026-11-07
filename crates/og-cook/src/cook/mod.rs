@@ -1377,7 +1377,7 @@ pub fn cook_project_with_texture_cache(
                         // The font cook's version and settings, and the
                         // file's bytes (a referenced font's own).
                         let st = stamp(&[
-                            b"rive font 1 font 8",
+                            b"rive font 1 font 9",
                             &hash,
                             &f.index.to_le_bytes(),
                             f.settings.describe().as_bytes(),
@@ -1806,9 +1806,10 @@ pub fn cook_project_with_texture_cache(
                     // for paragraph layout; "font 6": default substitutions
                     // and referenced contextual lookups; "font 7": layout-only
                     // tables without runtime outlines; "font 8": the vertical
-                    // forms (`vert`, `vrt2`) of its characters. Older fonts
-                    // re-cook.
-                    let st = stamp(&[b"font 8", f.describe().as_bytes(), &hash]);
+                    // forms (`vert`, `vrt2`) of its characters; "font 9": a glyph keyed
+                    // by code point and by id is one image in the atlas.
+                    // Older fonts re-cook.
+                    let st = stamp(&[b"font 9", f.describe().as_bytes(), &hash]);
                     outs.push((s.rel.clone(), format::Font::NAME, st, Work::Font(s, f)));
                 }
                 Err(e) => early_errors.push((s.rel.clone(), "font", e)),
