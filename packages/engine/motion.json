@@ -1,8 +1,8 @@
 {
   "file": "motion/model.safetensors",
   "bytes": 35353890,
-  "sha256": "23e42f72837baf44f2aca3b183464c32169a4232a90908a5754799d7092bb159",
-  "key": "motion/23e42f72837baf44f2aca3b183464c32169a4232a90908a5754799d7092bb159.safetensors",
-  "source": "og-motion-train 23be7e5, scripts/export_engine.py: unchanged run3 networks; upright Idle_02 frames 22–25 from library_full.npz, raw and FK lean checked below 5 degrees",
+  "sha256": "ee488c6d72e6e1b547ed583847c24cb4b81ea5563f1359699a3536331216e6fe",
+  "key": "motion/ee488c6d72e6e1b547ed583847c24cb4b81ea5563f1359699a3536331216e6fe.safetensors",
+  "source": "og-motion-train 29e4538, weights/geo8 (the retrain from run3: geo run epoch 8, dec1) through scripts/export_engine.py; upright Idle_02 frames 22–25 and the jump at Regular_Jump frame 24 from library_full.npz, idle raw and FK lean checked below 5 degrees",
   "attribution": "Licensed by NVIDIA Corporation under the NVIDIA Open Model Agreement."
 }

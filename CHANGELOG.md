@@ -98,6 +98,15 @@ is one line here, written at the merge that changes
   model's: no lean, lean-rate or leg bound is applied to any drawn frame.
   `dump_motion` reports the drawn feet's distance ahead of the hips
   (`feetAheadM`).
+- **A retrained motion model.** og.motion ships the retrain from run3
+  (og-motion-train `weights/geo8`, sha256 `ee488c6d…`): beside the jump
+  curriculum it distils rollouts the student drives itself and the decoded
+  feet where the teacher's are planted. Closed loop it reaches its goals as
+  well as before with less skate (9.11 cm, 1.19 cm; was 9.13, 1.20); held-out
+  jumps lean 9° at most and drift 12 cm (was 14° and 28 cm); on the jump
+  review planted feet slide a third as much (0.35 mm mean). The library's
+  `jump` pose is a standing jump's tucked apex, upright with the feet under
+  the hips. Same size, same API; drawn motion changes.
 - **Fixed: a running jump no longer dives.** The model's goals now keep the
   simulation's time and place: the rest of a walk, run or pose the model
   is already in merges into the next goal when less of it is left than the
