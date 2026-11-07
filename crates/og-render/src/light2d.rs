@@ -48,7 +48,8 @@ struct Lights2dUniform {
 struct ShadowUniform {
     /// x: angles, y: rows.
     info: [u32; 4],
-    /// Per row: the light's centre and radius.
+    /// Per row: the light's centre, radius and the distance to its nearest
+    /// edge.
     rows: [[f32; 4]; MAX_LIGHTS_2D],
     /// Per row: its first edge and how many.
     ranges: [[u32; 4]; MAX_LIGHTS_2D],
@@ -63,7 +64,9 @@ pub(crate) struct ShadowEdge {
 }
 
 /// What the frame's shadow rows trace: the edges, each light's row (-1
-/// for a light that casts none) and each row's light and edge range.
+/// for a light that casts none) and each row's light (centre, radius, the
+/// distance to its nearest edge: no blocker is nearer, so it bounds the
+/// soft shadow's blocker search) and edge range.
 #[derive(Debug, Default, PartialEq)]
 pub(crate) struct ShadowEdges {
     pub edges: Vec<ShadowEdge>,
@@ -103,6 +106,7 @@ pub(crate) fn shadow_edges(lights: &[Light2d], occluders: &[Occluder2d]) -> Shad
         }
         let start = out.edges.len() as u32;
         let radius = l.radius.max(1e-3);
+        let mut near = f32::MAX;
         for (id, (o, outline)) in occluders.iter().zip(&outlines).enumerate() {
             if o.layers & l.layers == 0 || contains(outline, l.position) {
                 continue;
@@ -121,6 +125,7 @@ pub(crate) fn shadow_edges(lights: &[Light2d], occluders: &[Occluder2d]) -> Shad
             }
             for i in 0..outline.len() {
                 let (a, b) = edge(i);
+                near = near.min(to_segment(l.position, a, b));
                 out.edges.push(ShadowEdge {
                     ab: [a.x, a.y, b.x, b.y],
                     id: [id as u32, 0, 0, 0],
@@ -129,7 +134,7 @@ pub(crate) fn shadow_edges(lights: &[Light2d], occluders: &[Occluder2d]) -> Shad
         }
         out.row_of.push(out.rows.len() as i32);
         out.rows.push((
-            [l.position.x, l.position.y, radius, 0.0],
+            [l.position.x, l.position.y, radius, near],
             [start, out.edges.len() as u32 - start, 0, 0],
         ));
     }
@@ -158,14 +163,16 @@ struct LightInstance {
     /// x: casts shadows, y: kind (0 point, 1 spot, 2 global), z, w: a
     /// spot's cosines of its outer and inner half-angles.
     flags: [f32; 4],
-    /// xy: the axis, z: height.
+    /// xy: the axis, z: height, w: the shadow row (-1: none).
     direction: [f32; 4],
+    /// x: the distance from the light to its nearest occluder edge.
+    shadow: [f32; 4],
 }
 
 const LIGHT_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: std::mem::size_of::<LightInstance>() as u64,
     step_mode: wgpu::VertexStepMode::Instance,
-    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4],
+    attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4, 3 => Float32x4, 4 => Float32x4],
 };
 
 /// The frame's receiver masks, by strip: mask 1 first, then each other
@@ -409,7 +416,10 @@ impl Light2dRenderer {
                     .iter()
                     .zip(&traced.row_of)
                     .filter(|(l, _)| l.layers & mask != 0)
-                    .map(|(l, &row)| instance(l, row)),
+                    .map(|(l, &row)| {
+                        let near = usize::try_from(row).map_or(f32::MAX, |r| traced.rows[r].0[3]);
+                        instance(l, row, near)
+                    }),
             );
             self.ranges.push(start..instances.len() as u32);
         }
@@ -548,8 +558,9 @@ pub(crate) fn strips_size(size: (u32, u32), strips: u32, max: u32) -> (u32, u32)
     (width * strips, size.1.min(max).max(1))
 }
 
-/// One light's instance, with its shadow row (-1: none).
-fn instance(l: &Light2d, row: i32) -> LightInstance {
+/// One light's instance, with its shadow row (-1: none) and the distance
+/// to its nearest occluder edge.
+fn instance(l: &Light2d, row: i32, near: f32) -> LightInstance {
     let c: Vec3 = l.color * l.intensity;
     let kind = match l.kind {
         Light2dKind::Point => 0.0,
@@ -572,6 +583,7 @@ fn instance(l: &Light2d, row: i32) -> LightInstance {
             inner.cos(),
         ],
         direction: [d.x, d.y, l.height.max(0.0), row as f32],
+        shadow: [near, 0.0, 0.0, 0.0],
     }
 }
 
@@ -812,6 +824,10 @@ mod tests {
         // (its far side, x = 2.5, is 2.5 away).
         assert_eq!(t.rows[0].1[..2], [0, 4]);
         assert!(t.edges[..4].iter().all(|e| e.id[0] == 0));
+        // Its nearest edge, the near side at x = 1.5, bounds the blocker
+        // search; a row with no edges has no blocker anywhere.
+        assert_eq!(t.rows[0].0[3], 1.5);
+        assert_eq!(t.rows[1].0[3], f32::MAX);
         // The second light sits inside the wall that alone could shadow it.
         assert_eq!(t.rows[1].1[..2], [4, 0]);
     }

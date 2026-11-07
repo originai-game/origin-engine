@@ -1116,9 +1116,12 @@ target (`LightSlots`, at most four).
   light (boxes and polygons, concave too). Each texel keeps the first hit
   and the far side of the first occluder, so a pixel inside an occluder is
   not shadowed by it; the cost per light-map pixel does not grow with the
-  occluders. The light pass samples the row with PCSS (blocker search over
-  the light's angular size, then a filter of the penumbra's width). The
-  column wraps at ±π.
+  occluders. The light pass samples the row with PCSS: a blocker search as
+  wide as the light's nearest occluder can shadow (each row carries that
+  distance), where a texel counts only if the pixel's view of the light's
+  disk crosses it. Then the penumbra's box filter is integrated exactly:
+  eight spans, with each transition found by bisection. Point taps drew
+  the penumbra as one flat step per tap. The column wraps at ±π.
 - **Normal maps.** A texture with a `<id>#normal` (`normal auto`, made by
   the cook from the silhouette in `normal2d.rs`, or `normal "file"`) is
   linked by the runtime (`RenderScene::set_texture_normal`). While any

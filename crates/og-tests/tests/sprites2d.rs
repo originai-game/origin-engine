@@ -202,6 +202,149 @@ fn tile_layers_cull_chunks_draw_under_their_layer_repeat_and_animate() {
     );
 }
 
+/// What one column of a 2D penumbra measures, dark to lit: its 10–90 %
+/// width (px, in linear light), the longest run of one 8-bit value inside
+/// it, the runs of 8 px or more there (the steps), the largest drop, and
+/// the largest rise from one pixel to the next as a multiple of the mean
+/// rise across the 10–90 % span (a jump).
+#[derive(Debug)]
+struct Penumbra {
+    width: usize,
+    flat: usize,
+    steps: usize,
+    drop: u8,
+    jump: f32,
+}
+
+/// The column through world x of a 960x540 frame 11.25 units tall, read
+/// down from world y `top` (in the shadow) into the light.
+fn penumbra(img: &RgbaImage, x: f32, top: f32) -> Penumbra {
+    let px = (img.width as f32 / 2.0 + x * 48.0) as u32;
+    let py = (img.height as f32 / 2.0 - top * 48.0).max(0.0) as u32;
+    let col: Vec<u8> = (py..img.height)
+        .map(|y| img.pixels[((y * img.width + px) * 4) as usize])
+        .collect();
+    let lin: Vec<f32> = col
+        .iter()
+        .map(|&v| {
+            let c = v as f32 / 255.0;
+            if c <= 0.04045 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        })
+        .collect();
+    let hi = lin.iter().copied().fold(0.0, f32::max);
+    let first = |f: f32| lin.iter().position(|&v| v >= f * hi).expect("level");
+    let (a, b) = (first(0.1), first(0.9));
+    let mut runs = Vec::new();
+    let mut run = 1;
+    for w in col[a..=b].windows(2) {
+        if w[0] == w[1] {
+            run += 1;
+        } else {
+            runs.push(run);
+            run = 1;
+        }
+    }
+    runs.push(run);
+    let drop = col[a..=b]
+        .windows(2)
+        .map(|w| w[0].saturating_sub(w[1]))
+        .max()
+        .unwrap_or(0);
+    let rise = lin.windows(2).map(|w| w[1] - w[0]).fold(0.0, f32::max);
+    Penumbra {
+        width: b - a,
+        flat: runs.iter().copied().max().unwrap_or(0),
+        steps: runs.iter().filter(|&&r| r >= 8).count(),
+        drop,
+        jump: rise / (0.8 * hi / (b - a).max(1) as f32),
+    }
+}
+
+/// A 2D light's soft shadow is a ramp, not a staircase: one light of
+/// source radius `r` lights a white floor past a thin wall whose lower
+/// side lies on the light's own height, so the shadow's lower edge runs
+/// level through it; columns 1, 6 and 10 units behind the wall cross it.
+/// The geometry gives the full penumbra, 2 r (d - b) / b at distance d
+/// from the light for the blocker at b = 2.85; 10–90 % is 0.8 of it
+/// (31, 166 and 274 px at r = 1; 17 and 27 px at r = 0.1).
+///
+/// Ways this could fail: a fixed handful of filter taps over a penumbra
+/// many shadow-map texels wide (flat steps a tap apart), a blocker search
+/// narrower than the penumbra or too sparse to find its lit end (that end
+/// cut off in a jump, the penumbra short), or a filter that is not
+/// monotonic across the edge.
+#[test]
+#[ignore = "requires GPU"]
+fn a_2d_penumbra_is_a_smooth_ramp() {
+    use og_render::{Light2d, Lighting2d, Occluder2d, RenderDesc};
+    let desc = RenderDesc {
+        width: 960,
+        height: 540,
+        ..scenes::base_desc()
+    };
+    let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
+    // (source radius, [(x, the column's top, its 10–90 % bounds)]).
+    let cases = [
+        (0.1, vec![(3.0, 6.0, (14, 20)), (7.0, 6.0, (23, 32))]),
+        (
+            1.0,
+            vec![
+                (-2.0, 1.5, (26, 37)),
+                (3.0, 6.0, (150, 183)),
+                (7.0, 6.0, (247, 301)),
+            ],
+        ),
+    ];
+    for (r, columns) in cases {
+        let mut scene = flat();
+        scene.camera = Camera::orthographic_2d(Vec2::ZERO, 11.25);
+        scene.add_sprite(Sprite {
+            size: Vec2::new(24.0, 14.0),
+            layer: -5,
+            ..Default::default()
+        });
+        scene.lighting_2d = Some(Lighting2d {
+            ambient: Vec3::ZERO,
+            ..Default::default()
+        });
+        scene.lights_2d.push(Light2d {
+            position: Vec2::new(-6.0, 0.0),
+            radius: 30.0,
+            falloff: 0.1,
+            source_radius: r,
+            ..Default::default()
+        });
+        scene.occluders_2d.push(Occluder2d {
+            center: Vec2::new(-3.0, 1.5),
+            half_size: Vec2::new(0.15, 1.5),
+            ..Default::default()
+        });
+        renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        let img = renderer.read_offscreen().expect("capture");
+        for (x, top, (lo, hi)) in columns {
+            let p = penumbra(&img, x, top);
+            println!("source {r}, {} units behind: {p:?}", x + 3.0);
+            assert!(
+                (lo..=hi).contains(&p.width),
+                "source {r}, x {x}: 10–90 % over {} px, the geometry gives {lo}..{hi}",
+                p.width
+            );
+            assert!(p.drop <= 1, "source {r}, x {x}: not monotonic: {p:?}");
+            assert!(
+                p.flat <= 6 && p.steps == 0,
+                "source {r}, x {x}: banded: {p:?}"
+            );
+            assert!(p.jump <= 8.0, "source {r}, x {x}: a jump: {p:?}");
+        }
+    }
+}
+
 /// R11: a spot light lights its cone along its axis and nothing behind
 /// it; a global light lights every lit pixel; a sprite with a light mask
 /// takes only the lights whose layers share a bit with it.

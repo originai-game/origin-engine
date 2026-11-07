@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.Light2D sourceRadius",
+      "summary": "A shadowed 2D light's soft shadow is a smooth ramp at every sourceRadius. It used to be a staircase: nine point taps over a penumbra many shadow-map texels wide drew flat steps, 26 px wide at sourceRadius 1 six units behind a wall. Its lit end was also cut off in a jump by a blocker search narrower than the penumbra. The PCSS filter is now integrated exactly over the polar shadow map, and the blocker search covers everything the light's nearest occluder can shadow. The 10–90 % width now matches the geometry: 167 px where the geometry gives 166, and 273 px where it gives 274; before the fix it was 149 and 215 px."
+    }
+  ]
+}
