@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.assert sites under og test's resident session",
+      "summary": "A resident session (og test, og run in a project with a session) reported the og.assert sites of every game it had loaded: a project's report listed another project's sometimes and reachable sites as uncovered. Each bundle now hands its own sites to its og.game() token, and an engine reports its game's alone, as a run with OG_SESSION=0 does."
+    }
+  ]
+}

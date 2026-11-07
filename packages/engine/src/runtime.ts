@@ -329,6 +329,11 @@ const gameMigrations = new WeakMap<object, readonly SaveMigrationIn[]>();
 /** The game an engine runs, for its world's restores. */
 const engineGames = new Map<number, object>();
 
+/** The og.game() token engine `id` runs (og.assert reads its game's sites by it). */
+export function engineGame(id: number): object | undefined {
+  return engineGames.get(id);
+}
+
 export function defineGame(desc: GameDescIn = {}): GameToken {
   const list = [...(desc.systems ?? [])];
   const commands: Record<string, number> = {};

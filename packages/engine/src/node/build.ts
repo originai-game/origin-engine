@@ -120,6 +120,21 @@ function projectRoot(entry: string): string {
   }
 }
 
+/**
+ * Gives the bundle's game (`game`, its entry's default export) the og.assert
+ * sites its files listed (src/node/assert-sites.ts) under this module's URL,
+ * and drops them from the list: each imported copy of a bundle is its own
+ * module with its own sites, so a host that loads many games (a resident
+ * session, og ui check's cells) reports each engine's own and keeps none.
+ */
+const ADOPT_SITES = `{
+  const listed = globalThis.__og_assert_sites;
+  const sites = listed?.[import.meta.url] ?? [];
+  if (listed) delete listed[import.meta.url];
+  if (game !== null && typeof game === "object") (globalThis.__og_assert_game_sites ??= new WeakMap()).set(game, sites);
+}
+`;
+
 /** Bundle `entry` (whose default export is `og.game(...)`) into `out`, its source map into `<out>.map`. */
 export async function bundleGame(entry: string, out: string, target: "native" | "web" | "script" = "native", minify = false, maps: MapOptions = {}, cacheInputs?: ReadonlySet<string>): Promise<Bundled> {
   const t0 = performance.now();
@@ -145,7 +160,7 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
         if (!file) throw new Error(`${a.path} is not an export of @origingame/engine`);
         return { path: file, external: target === "native" };
       });
-      build.onResolve({ filter: /^og:worker$/ }, () => ({ path: "worker", namespace: "og" }));
+      build.onResolve({ filter: /^og:(worker|game)$/ }, (a) => ({ path: a.path.slice(3), namespace: "og" }));
       if (cacheInputs) {
         build.onResolve({ filter: /.*/ }, (a) => {
           if (isBuiltin(a.path) || a.path === "bun" || a.path.startsWith("bun:")) return undefined;
@@ -173,14 +188,20 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
         const loader = /\.[cm]?tsx$/.test(a.path) ? "tsx" : /\.[cm]?ts$/.test(a.path) ? "ts" : /x$/.test(a.path) ? "jsx" : "js";
         return { contents: (text.includes("og.assert.") ? placeAssertions(text, file) : text) + state, loader };
       });
-      build.onLoad({ filter: /.*/, namespace: "og" }, () => ({
-        contents: `import { startWorker } from "@origingame/engine/web/worker";\nimport game from ${JSON.stringify(absEntry)};\nstartWorker(game);\n`,
+      // The bundle's entry: the game's own (og:game, native) or the worker that
+      // starts it (og:worker, web), each giving its og.game() token the og.assert
+      // sites of this bundle's files (ADOPT_SITES).
+      build.onLoad({ filter: /.*/, namespace: "og" }, (a) => ({
+        contents:
+          a.path === "worker"
+            ? `import { startWorker } from "@origingame/engine/web/worker";\nimport * as entry from ${JSON.stringify(absEntry)};\nconst game = entry.default;\n${ADOPT_SITES}startWorker(game);\n`
+            : `export * from ${JSON.stringify(absEntry)};\nimport * as entry from ${JSON.stringify(absEntry)};\nconst game = entry.default;\n${ADOPT_SITES}export default game;\n`,
         loader: "ts",
       }));
     },
   };
   const r = await Bun.build({
-    entrypoints: [target === "web" ? "og:worker" : absEntry],
+    entrypoints: [target === "web" ? "og:worker" : target === "native" ? "og:game" : absEntry],
     target: target === "native" ? "bun" : "browser",
     format: "esm",
     minify,

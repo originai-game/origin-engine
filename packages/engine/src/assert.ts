@@ -6,11 +6,14 @@
 // The build (src/node/build.ts) writes each `og.assert.<kind>(` call in the
 // game's own files as `og.assert.<kind>.call("<file>:<line>", ...)`, so the
 // member reads its place from `this`, and lists every such site with its
-// name in `globalThis.__og_assert_sites`, so a site that never runs is in
-// the report too (and a sometimes there is uncovered).
+// name under the bundle's module URL in `globalThis.__og_assert_sites`; the
+// bundle's entry hands them to its og.game() token
+// (`globalThis.__og_assert_game_sites`), so an engine reports the sites of
+// its own game, a site that never runs among them (a sometimes there is
+// uncovered), and never another game's loaded in the same process.
 
 import type { HostAbi } from "./generated/abi.ts";
-import { boundHost, currentCall, isPublishBuild } from "./runtime.ts";
+import { boundHost, currentCall, engineGame, isPublishBuild } from "./runtime.ts";
 
 type Kind = "always" | "sometimes" | "reachable" | "unreachable" | "each";
 
@@ -40,8 +43,11 @@ function abi(): HostAbi<Uint32Array, unknown> | null {
   return boundHost()?.abi ?? null;
 }
 
-function declaredSites(): readonly Declared[] {
-  return ((globalThis as { __og_assert_sites?: Declared[] }).__og_assert_sites ?? []) as readonly Declared[];
+/** The sites of the game `engine` runs (src/node/build.ts's ADOPT_SITES). */
+function declaredSites(engine: number): readonly Declared[] {
+  const game = engineGame(engine);
+  const byGame = (globalThis as { __og_assert_game_sites?: WeakMap<object, readonly Declared[]> }).__og_assert_game_sites;
+  return (game && byGame?.get(game)) || [];
 }
 
 function send(engine: number, record: unknown): number {
@@ -71,7 +77,7 @@ function reportOf(engine: number, world: object, tick: number): Report {
       r.fired.clear();
     }
   }
-  const sites = declaredSites();
+  const sites = declaredSites(engine);
   for (; r.declared < sites.length; r.declared++) {
     const s = sites[r.declared]!;
     send(engine, { ...s, condition: true, key: "", details: null, tick, declared: true });

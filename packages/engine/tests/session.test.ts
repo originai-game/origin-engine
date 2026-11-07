@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createConnection, createServer } from "node:net";
@@ -9,7 +9,7 @@ import { runInSession } from "../src/node/session-client.ts";
 import { ogBin } from "./support/og-bin.ts";
 
 declare const Bun: {
-  spawnSync(args: string[], options: { stdout: "pipe"; stderr: "pipe" }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
+  spawnSync(args: string[], options: { stdout: "pipe"; stderr: "pipe"; env?: typeof process.env }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
   spawn(args: string[], options: { env: typeof process.env; stdout: "ignore" | "pipe"; stderr: "pipe" }): {
     pid: number;
     stdout: ReadableStream<Uint8Array>;
@@ -316,6 +316,60 @@ expect(run.entities).toBe(${entities}); expect(run.hashes[1]).toBe(run.hashes[0]
     rmSync(dir, { recursive: true, force: true });
   }
 }, 30_000);
+
+test.skipIf(process.platform === "win32")("one resident reports each project's og.assert sites as a cold run does, never another project's", async () => {
+  // Before: every bundle the host imported pushed its sites into one list for
+  // the process, so the second project's report listed the first's sites as uncovered.
+  // Its real path: the build places sites in files under the project root as the bundler names them (/private/var on macOS).
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), "og-session-asserts-")));
+  const path = join(dir, "host.sock");
+  const env = { ...process.env, OG_RENDERER: "none" };
+  const project = async (name: string, body: string) => {
+    const root = join(dir, name);
+    mkdirSync(join(root, "src"), { recursive: true });
+    writeFileSync(join(root, "project.ogt"), `type project\nversion 1\n---\nname "${name}"\nentry "src/main.ts"\n`);
+    writeFileSync(join(root, "src/main.ts"), `import { og, defineSystem } from "@origingame/engine";\nlet ticks = 0;\nconst Beat = defineSystem("Beat", { reads: [og.Transform], writes: [] }, () => { ticks++; ${body} });\nexport default og.game({ systems: [Beat], start(world) { world.spawn({ name: "beat" }); } });\n`);
+    const entry = join(root, "game.js");
+    const bundled = await bundleGame(join(root, "src/main.ts"), entry, "native");
+    if (!bundled.ok) throw new Error(bundled.reason);
+    return entry;
+  };
+  const a = await project("alpha", `og.assert.sometimes(ticks > 2, "alpha warms up"); if (ticks < 0) { og.assert.reachable("alpha unreached"); og.assert.sometimes(true, "alpha never gets here"); }`);
+  const b = await project("beta", `og.assert.always(ticks >= 0, "beta counts up"); if (ticks < 0) og.assert.sometimes(true, "beta unreached");`);
+  const argv = (entry: string) => ["--entry", entry, "--no-render", "--seed", "7", "--clock", "1767225600000", "--commands", "0.2:quit", "--json", "--out", join(dir, "out")];
+  type Report = { sites: Array<Record<string, unknown>>; uncovered: Array<Record<string, unknown>> };
+  const report = (stdout: string): Report => {
+    const a = (JSON.parse(stdout.trim().split("\n").at(-1)!) as { assertions: Report }).assertions;
+    return { sites: a.sites, uncovered: a.uncovered };
+  };
+  const cold = (entry: string) => {
+    const r = Bun.spawnSync(["bun", resolve(import.meta.dir!, "../src/node/run.ts"), ...argv(entry)], { stdout: "pipe", stderr: "pipe", env });
+    expect(r.exitCode, new TextDecoder().decode(r.stderr)).toBe(0);
+    return report(new TextDecoder().decode(r.stdout));
+  };
+  const host = Bun.spawn(["bun", resolve(import.meta.dir!, "../src/node/session.ts"), path, "test"], { env, stdout: "ignore", stderr: "pipe" });
+  try {
+    expect(new TextDecoder().decode((await host.stderr.getReader().read()).value)).toContain("listening");
+    const resident = async (entry: string) => {
+      const r = await runInSession(argv(entry), path, "test", undefined, "run", env);
+      expect(r?.exitCode, r?.stderr).toBe(0);
+      expect(r!.stderr).not.toContain("running alone");
+      return report(r!.stdout);
+    };
+    const [alpha, beta] = [cold(a), cold(b)];
+    // Each project's own sites, so the comparison below can fail.
+    expect(alpha.uncovered.map((u) => u.name).sort()).toEqual(["alpha never gets here", "alpha unreached"]);
+    expect(beta.uncovered.map((u) => u.name)).toEqual(["beta unreached"]);
+    // One host, the projects in turn and the first again: each equals its cold run.
+    expect(await resident(a)).toEqual(alpha);
+    expect(await resident(b)).toEqual(beta);
+    expect(await resident(a)).toEqual(alpha);
+  } finally {
+    if (host.exitCode === null) host.kill("SIGTERM");
+    await host.exited;
+    rmSync(dir, { recursive: true, force: true });
+  }
+}, 60_000);
 
 test.skipIf(process.platform === "win32")("CLI races auto-start one resident for bare entries and preserves the cold opt-out", async () => {
   const dir = mkdtempSync(join(tmpdir(), "og-session-autostart-"));

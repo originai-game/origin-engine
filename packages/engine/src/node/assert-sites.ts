@@ -30,7 +30,8 @@ export function placeAssertions(source: string, file: string): string {
   if (out === source) return source;
   // `.call(loc, )` with no arguments (reachable()) is a syntax error in no engine; it is a call with none.
   const fixed = out.replace(/\.call\(("[^"\n]*"), \s*\)/g, ".call($1)");
-  return sites.length === 0 ? fixed : `${fixed}\n;(globalThis.__og_assert_sites ??= []).push(...${JSON.stringify(sites)});\n`;
+  // Listed under the bundle's own module (every file of a bundle shares its import.meta.url), never in one list for the process.
+  return sites.length === 0 ? fixed : `${fixed}\n;((globalThis.__og_assert_sites ??= {})[import.meta.url] ??= []).push(...${JSON.stringify(sites)});\n`;
 }
 
 /** The `index`th argument of the call whose arguments start at `at`, when it is a plain string literal. */
