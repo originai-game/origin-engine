@@ -1029,13 +1029,23 @@ impl CookedModel {
                     false => scene.add_material(self.material(i, &handles)),
                     true => scene.add_standard_material(self.standard_material(i, &handles)),
                 };
-                if let Some(s) = shared.as_deref_mut() {
+                if let Some(s) = shared.as_deref_mut()
+                    && let Some(&born) = scene.standard_material(h)
+                {
                     let same = s
                         .materials
                         .entry(self.materials[i].name.clone())
                         .or_default();
-                    if !same.iter().any(|&o| scene.alias_material(h, o)) {
-                        same.push(h);
+                    // The copy batches with the one loaded with its value,
+                    // also when the game edited that one since (a model
+                    // loaded while the game runs, as a web boot loads a
+                    // garden cell by cell): from the edit that makes them
+                    // alike again.
+                    match same.iter().find(|(_, b)| *b == born) {
+                        Some(&(o, _)) => {
+                            scene.alias_material_when_alike(h, o);
+                        }
+                        None => same.push((h, born)),
                     }
                 }
                 h
@@ -1170,7 +1180,7 @@ const SHARED_MESH_VERTICES: usize = 65_536;
 #[derive(Default)]
 pub struct SharedParts {
     textures: std::collections::HashMap<String, TextureHandle>,
-    materials: std::collections::HashMap<String, Vec<MaterialHandle>>,
+    materials: std::collections::HashMap<String, Vec<(MaterialHandle, StandardMaterial)>>,
     meshes: std::collections::HashMap<u64, Vec<MeshHandle>>,
     lods: std::collections::HashMap<MeshHandle, Vec<(MeshHandle, f32)>>,
 }

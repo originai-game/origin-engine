@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "models sharing a glTF material (og.render.updateMaterial, material shaders and their parameters)",
+      "summary": "Each model's copy of a shared glTF material batches with the others again whenever the game has given them the same edit. Before, the first edit of a copy (a value, a material shader or a shader parameter) parted it from the others for good, so a game that edits every model's materials (seasons, alpha to coverage, a shader) drew each model in a batch of its own. Now an edit that leaves the copies drawing the same (equal values, the same shader with equal parameters) joins them, in either order, and one that makes them differ parts them. A model loaded after the game edited the copies loaded before it (one loaded while the game runs, as a web boot loads cell by cell) joins them from the edit that makes it alike. Each copy keeps its own values and parameters, so an edit of one never shows on another. A garden of 1072 cells: native draws at the gate 4688 -> 3271, web 4687 -> 3270."
+    }
+  ]
+}

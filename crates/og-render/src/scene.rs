@@ -71,9 +71,12 @@ pub struct RenderScene {
     /// over the materials (engine s96).
     material_serial: u64,
     /// Per material: the one it draws in the batches of
-    /// ([`RenderScene::alias_material`]), with both revisions when it was
-    /// set; it holds only while both are unchanged.
+    /// ([`RenderScene::alias_material`]), with both revisions when the two
+    /// last drew the same; it holds only while both are unchanged since.
     material_aliases: Vec<Option<(u32, u64, u64)>>,
+    /// Per material: the copies aliased to it, so an edit of it checks
+    /// them again.
+    material_copies: Vec<Vec<u32>>,
     fonts: Vec<MsdfFont>,
     /// Bumped by [`RenderScene::set_font`].
     font_revisions: Vec<u64>,
