@@ -135,6 +135,7 @@ pub fn add(scene: &mut RenderScene, f: &CookedFont, kern: bool) -> UiFont {
         atlas,
         distance_range: m.px_range,
         foreground: false,
+        silhouette: false,
         line_height: m.ascender - m.descender + m.line_gap,
         glyphs: f
             .glyphs
@@ -258,20 +259,47 @@ fn band(ui: &mut Ui, top: f32, f: impl FnOnce(&mut Ui)) {
 }
 
 /// A colour font's pages in the scene as og-runtime adds them
-/// (extract::add_font): the field's, then the colour pages (a distance
-/// range of 0), then those in the text's colour; the first page's handle
-/// lays the text out, every page draws it.
-fn add_pages(scene: &mut RenderScene, f: &CookedFont) -> Vec<og_render::FontHandle> {
+/// (extract::add_font): the field's; the colour glyphs' silhouettes (their
+/// shadows, glow and outline, drawn first and so under their images); the
+/// colour pages (a distance range of 0); those in the text's colour. The
+/// first page's handle lays the text out, every page draws it.
+pub fn add_pages(scene: &mut RenderScene, f: &CookedFont) -> Vec<og_render::FontHandle> {
     let m = &f.meta;
-    let all = f
+    let (n, c) = (f.pages.len(), f.color_pages.len());
+    let fields = f
+        .color_fields
+        .iter()
+        .enumerate()
+        .map(|(i, d)| (d, n + i))
+        .chain(
+            f.foreground_fields
+                .iter()
+                .enumerate()
+                .map(|(i, d)| (d, n + c + i)),
+        );
+    // (data, the blob page whose rows it draws, colour, foreground, silhouette)
+    let all: Vec<(&TextureData, usize, bool, bool, bool)> = f
         .pages
         .iter()
-        .map(|p| (p, false, false))
-        .chain(f.color_pages.iter().map(|p| (p, true, false)))
-        .chain(f.foreground_pages.iter().map(|p| (p, true, true)));
+        .enumerate()
+        .map(|(i, d)| (d, i, false, false, false))
+        .chain(fields.map(|(d, p)| (d, p, false, false, true)))
+        .chain(
+            f.color_pages
+                .iter()
+                .enumerate()
+                .map(|(i, d)| (d, n + i, true, false, false)),
+        )
+        .chain(
+            f.foreground_pages
+                .iter()
+                .enumerate()
+                .map(|(i, d)| (d, n + c + i, true, true, false)),
+        )
+        .collect();
     let mut handles = Vec::new();
-    for (p, (data, colour, foreground)) in all.enumerate() {
-        let atlas = scene.add_texture(if colour {
+    for (data, p, colour, foreground, silhouette) in all {
+        let atlas = scene.add_texture(if colour || silhouette {
             data.clone()
         } else {
             TextureData {
@@ -306,8 +334,15 @@ fn add_pages(scene: &mut RenderScene, f: &CookedFont) -> Vec<og_render::FontHand
             .collect();
         handles.push(scene.add_font(MsdfFont {
             atlas,
-            distance_range: if colour { 0.0 } else { m.px_range },
+            distance_range: if colour {
+                0.0
+            } else if silhouette {
+                og_bundle::format::COLOR_FIELD_RANGE
+            } else {
+                m.px_range
+            },
             foreground,
+            silhouette,
             line_height: m.ascender - m.descender + m.line_gap,
             glyphs,
             kerning: Vec::new(),

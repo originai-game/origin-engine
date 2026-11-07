@@ -238,7 +238,7 @@ fn colr_font(
     og_cook::runtime::CookedFont,
 ) {
     use og_cook::runtime::Bundle;
-    use og_render::{ColorSpace, Glyph, Mips, MsdfFont, RenderScene, TextureData};
+    use og_render::RenderScene;
     let root = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name);
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(root.join("assets/fonts")).unwrap();
@@ -265,59 +265,7 @@ fn colr_font(
         )
         .unwrap();
     let mut scene = RenderScene::new();
-    let m = &f.meta;
-    let mut handles = Vec::new();
-    let all = f
-        .pages
-        .iter()
-        .map(|p| (p, false, false))
-        .chain(f.color_pages.iter().map(|p| (p, true, false)))
-        .chain(f.foreground_pages.iter().map(|p| (p, true, true)));
-    for (p, (data, colour, foreground)) in all.enumerate() {
-        let atlas = scene.add_texture(if colour {
-            data.clone()
-        } else {
-            TextureData {
-                mips: Mips::None,
-                color_space: ColorSpace::Linear,
-                ..data.clone()
-            }
-        });
-        let glyphs = f
-            .glyphs
-            .iter()
-            .filter_map(|g| {
-                let own = g.page as usize == p;
-                Some(Glyph {
-                    key: g.key()?,
-                    advance: g.advance,
-                    plane_bounds: if own {
-                        [g.plane_left, g.plane_bottom, g.plane_right, g.plane_top]
-                    } else {
-                        [0.0; 4]
-                    },
-                    atlas_bounds: if own {
-                        [
-                            g.atlas_x as f32,
-                            g.atlas_y as f32,
-                            (g.atlas_x + g.atlas_w) as f32,
-                            (g.atlas_y + g.atlas_h) as f32,
-                        ]
-                    } else {
-                        [0.0; 4]
-                    },
-                })
-            })
-            .collect();
-        handles.push(scene.add_font(MsdfFont {
-            atlas,
-            distance_range: if colour { 0.0 } else { m.px_range },
-            foreground,
-            line_height: m.ascender - m.descender + m.line_gap,
-            glyphs,
-            kerning: Vec::new(),
-        }));
-    }
+    let handles = crate::support::text_scenes::add_pages(&mut scene, &f);
     (scene, handles, f)
 }
 
@@ -330,6 +278,7 @@ fn colr_label(
     text: &str,
     color: og_ui::Srgba,
     by_id: Option<&dyn Fn(char) -> (u16, f32)>,
+    effects: Option<(og_render::UiTextEffects, Option<og_render::TextGlow>)>,
 ) -> (Vec<u8>, [f32; 4]) {
     use og_render::{RenderDesc, RenderTarget, Renderer};
     use og_ui::*;
@@ -404,6 +353,16 @@ fn colr_label(
         })
         .collect();
     overlay.texts.extend(more);
+    // The same effects on every page's copy (extract::draw_other_pages).
+    if let Some((fx, glow)) = effects {
+        for (k, t) in overlay.texts.iter_mut().enumerate() {
+            t.glow = glow;
+            overlay.ui.text_effects.push(og_render::UiTextEffects {
+                text: k as u32,
+                ..fx.clone()
+            });
+        }
+    }
     scene.overlay = Some(overlay);
     let mut renderer = Renderer::new_blocking(&RenderDesc {
         width: 400,
@@ -465,8 +424,8 @@ fn colour_glyphs_draw_in_their_own_colours() {
     // A label colour that must not tint the images.
     let green = og_ui::Srgba::rgb(0, 255, 0);
     let (again, again_handles, _) = colr_font("og-colr-ids", label);
-    let (ids, _) = colr_label(again, &again_handles, label, green, Some(&by_id));
-    let (pixels, [ex, ey, _, eh]) = colr_label(scene, &handles, label, green, None);
+    let (ids, _) = colr_label(again, &again_handles, label, green, Some(&by_id), None);
+    let (pixels, [ex, ey, _, eh]) = colr_label(scene, &handles, label, green, None, None);
     let differ = pixels
         .iter()
         .zip(&ids)
@@ -533,6 +492,7 @@ fn foreground_glyphs_draw_in_the_label_colour() {
             text,
             og_ui::Srgba::rgb(label[0], label[1], label[2]),
             None,
+            None,
         );
         let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-gfx");
         std::fs::create_dir_all(&dir).unwrap();
@@ -582,4 +542,223 @@ fn foreground_glyphs_draw_in_the_label_colour() {
             "{name}: {quarter} rows of the sRGB mix"
         );
     }
+}
+
+/// Shadow, glow and an outline on colour glyphs, a plain one (U+F0100,
+/// a red to blue gradient) and one in the text's colour (U+F0B06): drawn
+/// from their silhouettes' fields, round each glyph and under its image.
+///
+/// Ways this could fail: the effects are skipped on colour pages (no
+/// effect pixels); the silhouettes draw after the images (the effect over
+/// the ink); the foreground field, half its page's width, is sampled at
+/// the page's uv (no effect round the second glyph); a page's copy loses
+/// its effects.
+#[test]
+#[ignore = "requires GPU"]
+fn colour_glyphs_draw_their_effects_under_their_images() {
+    use og_render::{TextGlow, UiAlign, UiTextEffects, UiTextOutline, UiTextShadow};
+    let text = "\u{F0100}\u{F0B06}";
+    let magenta = og_ui::Srgba::rgb(220, 40, 200);
+    let draw = |effects| {
+        let (scene, handles, f) = colr_font("og-colr-fx", text);
+        assert_eq!((f.color_fields.len(), f.foreground_fields.len()), (1, 1));
+        colr_label(scene, &handles, text, magenta, None, effects)
+    };
+    let (plain, [ex, _, ew, _]) = draw(None);
+    let at = |p: &[u8], i: usize| [p[i * 4], p[i * 4 + 1], p[i * 4 + 2]];
+    let near = |p: [u8; 3], q: [u8; 3], d: u8| p.iter().zip(q).all(|(&a, b)| a.abs_diff(b) <= d);
+    // The images' pixels: saturated in the plain frame (the gradient and
+    // the magenta glyph; the sky behind is grey), as is every pixel within
+    // 3 (not on the antialiased edge, which the 64 px/em images drawn at
+    // 128 px spread over 2 or 3 pixels).
+    let vivid = |x: i32, y: i32| {
+        (0..400).contains(&x) && (0..200).contains(&y) && {
+            let [r, g, b] = at(&plain, (y * 400 + x) as usize);
+            r.max(g).max(b) - r.min(g).min(b) > 100
+        }
+    };
+    let ink = |i: usize| {
+        let (x, y) = ((i % 400) as i32, (i / 400) as i32);
+        (-3..=3).all(|dy| (-3..=3).all(|dx| vivid(x + dx, y + dy)))
+    };
+    let green = [0.0, 1.0, 0.0, 1.0];
+    let cases: [(&str, UiTextEffects, Option<TextGlow>); 3] = [
+        (
+            "outline",
+            UiTextEffects {
+                outline: Some(UiTextOutline {
+                    width: 6.0,
+                    color: green,
+                    align: UiAlign::Outside,
+                }),
+                ..UiTextEffects::default()
+            },
+            None,
+        ),
+        (
+            "shadow",
+            UiTextEffects {
+                shadows: vec![UiTextShadow {
+                    offset: glam::Vec2::new(10.0, 10.0),
+                    blur: 0.0,
+                    color: green,
+                }],
+                ..UiTextEffects::default()
+            },
+            None,
+        ),
+        (
+            "glow",
+            UiTextEffects::default(),
+            Some(TextGlow {
+                color: green,
+                radius: 6.0,
+            }),
+        ),
+    ];
+    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-gfx");
+    std::fs::create_dir_all(&dir).unwrap();
+    for (name, fx, glow) in cases {
+        let (pixels, _) = draw(Some((fx, glow)));
+        image::save_buffer(
+            dir.join(format!("ui-colr-{name}.png")),
+            &pixels,
+            400,
+            200,
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+        // Effect pixels round each glyph (the label's halves): green over
+        // the grey sky, the glow's faint as it falls off.
+        let left = |i: usize| ((i % 400) as f32) < ex + ew / 2.0;
+        let lit_in = |side: bool| {
+            (0..400 * 200)
+                .filter(|&i| {
+                    let [r, g, b] = at(&pixels, i);
+                    left(i) == side && g > r.max(b).saturating_add(30)
+                })
+                .count()
+        };
+        let (a, b) = (lit_in(true), lit_in(false));
+        // The images on top, unchanged.
+        let inked = (0..400 * 200).filter(|&i| ink(i)).count();
+        let moved = (0..400 * 200)
+            .filter(|&i| ink(i) && !near(at(&pixels, i), at(&plain, i), 6))
+            .count();
+        println!(
+            "{name}: {a} and {b} effect pixels round the glyphs, {moved} of {inked} ink pixels moved"
+        );
+        let least = if name == "glow" { 400 } else { 800 };
+        assert!(a > least && b > least, "{name}: {a} and {b} effect pixels");
+        assert!(
+            inked > 4000 && moved == 0,
+            "{name}: {moved} of {inked} ink pixels moved"
+        );
+    }
+}
+
+/// A world text's outline on colour glyphs (the sprite pipeline's text):
+/// the silhouette page draws the glyphs' shape grown by the outline, all
+/// in its colour, under their images, round the plain glyph and the one
+/// in the text's colour alike; without an outline it draws nothing.
+#[test]
+#[ignore = "requires GPU"]
+fn colour_glyphs_outline_world_text_under_their_images() {
+    use og_render::{
+        Background, Camera, RenderDesc, RenderTarget, Renderer, Text, TextOutline, Tonemap,
+    };
+    let text = "\u{F0100}\u{F0B06}";
+    let draw = |outline: bool| {
+        let (mut scene, handles, _) = colr_font("og-colr-world", text);
+        for &h in &handles {
+            if outline {
+                scene.text_outlines.push(TextOutline {
+                    text: scene.texts.len() as u32,
+                    width: 0.8,
+                    color: [0.0, 1.0, 0.0, 1.0],
+                });
+            }
+            scene.texts.push(Text {
+                position: glam::Vec3::new(-2.0, -0.8, 0.0),
+                size: 1.6,
+                color: [0.85, 0.15, 0.8, 1.0],
+                ..Text::new(h, text)
+            });
+        }
+        scene.camera = Camera::orthographic_2d(glam::Vec2::ZERO, 2.5);
+        scene.environment.background = Background::Color(glam::Vec3::splat(0.2));
+        scene.post.tonemap = Tonemap::None;
+        let mut renderer = Renderer::new_blocking(&RenderDesc {
+            width: 400,
+            height: 200,
+            ..RenderDesc::default()
+        })
+        .expect("a headless adapter");
+        let stats = renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        assert_eq!(stats.missing_glyphs, 0);
+        renderer.read_offscreen().expect("read back").pixels
+    };
+    let (plain, lined) = (draw(false), draw(true));
+    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-gfx");
+    std::fs::create_dir_all(&dir).unwrap();
+    for (name, p) in [("plain", &plain), ("outline", &lined)] {
+        image::save_buffer(
+            dir.join(format!("world-colr-{name}.png")),
+            p,
+            400,
+            200,
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+    }
+    let at = |p: &[u8], i: usize| [p[i * 4], p[i * 4 + 1], p[i * 4 + 2]];
+    let vivid = |x: i32, y: i32| {
+        (0..400).contains(&x) && (0..200).contains(&y) && {
+            let [r, g, b] = at(&plain, (y * 400 + x) as usize);
+            r.max(g).max(b) - r.min(g).min(b) > 100
+        }
+    };
+    let ink = |i: usize| {
+        let (x, y) = ((i % 400) as i32, (i / 400) as i32);
+        (-3..=3).all(|dy| (-3..=3).all(|dx| vivid(x + dx, y + dy)))
+    };
+    let green = |p: &[u8], i: usize| {
+        let [r, g, b] = at(p, i);
+        g > r.max(b).saturating_add(60)
+    };
+    // The glyphs' columns: the plain frame's vivid pixels, split at their
+    // middle.
+    let cols: Vec<usize> = (0..400 * 200)
+        .filter(|&i| vivid((i % 400) as i32, (i / 400) as i32))
+        .map(|i| i % 400)
+        .collect();
+    let mid = (cols.iter().min().unwrap() + cols.iter().max().unwrap()) / 2;
+    let lit = |side: bool| {
+        (0..400 * 200)
+            .filter(|&i| (i % 400 < mid) == side && green(&lined, i))
+            .count()
+    };
+    let (a, b) = (lit(true), lit(false));
+    let inked = (0..400 * 200).filter(|&i| ink(i)).count();
+    let moved = (0..400 * 200)
+        .filter(|&i| {
+            ink(i)
+                && at(&lined, i)
+                    .iter()
+                    .zip(at(&plain, i))
+                    .any(|(&x, y)| x.abs_diff(y) > 6)
+        })
+        .count();
+    let stray = (0..400 * 200).filter(|&i| green(&plain, i)).count();
+    println!(
+        "world: {a} and {b} outline pixels, {moved} of {inked} ink pixels moved, {stray} green without"
+    );
+    assert!(a > 500 && b > 500, "{a} and {b} outline pixels");
+    assert!(
+        inked > 4000 && moved == 0,
+        "{moved} of {inked} ink pixels moved"
+    );
+    assert_eq!(stray, 0, "a silhouette drawn without an outline");
 }

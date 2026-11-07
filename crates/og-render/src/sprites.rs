@@ -265,6 +265,8 @@ pub(crate) struct FontLayout {
     pub color: bool,
     /// Its glyphs use the text's colour ([`MsdfFont::foreground`]).
     pub foreground: bool,
+    /// A colour glyph silhouette page (MsdfFont::silhouette): effects only.
+    pub silhouette: bool,
 }
 
 impl FontLayout {
@@ -280,6 +282,7 @@ impl FontLayout {
             atlas_size,
             color: font.distance_range == 0.0,
             foreground: font.foreground,
+            silhouette: font.silhouette,
         }
     }
 
@@ -972,6 +975,19 @@ pub(crate) fn build<'a>(
             ),
             _ => ([255, 255, 255, 0], 0.0),
         };
+        // A colour glyph silhouette page draws only an outline: the shape
+        // grown by its width, all in the outline's colour, under the
+        // colour images (world text has no shadow or glow).
+        let silhouette_color = match outlines.get(&(i as u32)) {
+            _ if !font.silhouette => None,
+            Some(o) if o.width > 0.0 => Some([
+                o.color[0],
+                o.color[1],
+                o.color[2],
+                o.color[3] * text.color[3],
+            ]),
+            _ => continue,
+        };
         let (sin, cos) = text.rotation.sin_cos();
         let rotate = |v: Vec2| Vec2::new(v.x * cos - v.y * sin, v.x * sin + v.y * cos);
         let origin = text.position.truncate();
@@ -1016,12 +1032,20 @@ pub(crate) fn build<'a>(
                     ],
                     // A colour page's images keep their colours (those
                     // in the text's colour mix it in, foreground_mix).
-                    color: if font.color && !font.foreground {
+                    color: if let Some(c) = silhouette_color {
+                        c
+                    } else if font.color && !font.foreground {
                         [1.0, 1.0, 1.0, text.color[3]]
                     } else {
                         text.color
                     },
-                    flash: outline_color,
+                    // An outline rides on the flash colour, which on a
+                    // colour page would flash its images to it.
+                    flash: if font.color {
+                        [255, 255, 255, 0]
+                    } else {
+                        outline_color
+                    },
                     fx: [if font.color { 0.0 } else { outline }, 0.0, 0.0],
                     ground: NO_GROUND,
                     layer: 0,

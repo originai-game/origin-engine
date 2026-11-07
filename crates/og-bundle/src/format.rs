@@ -917,6 +917,11 @@ row!(
 /// font maps (an icon font's private-use ones included) can name one.
 pub const GLYPH_ID_KEYS: u32 = 0x11_0000;
 
+/// The distance range, in their pixels, of a font blob's colour glyph
+/// silhouettes (`color-field.<n>`, `foreground-field.<n>`): signed
+/// distance fields, every channel `0.5 + d / range`, positive inside.
+pub const COLOR_FIELD_RANGE: f32 = 8.0;
+
 impl GlyphRow {
     /// The glyph's key: its character, or its glyph id (`None`: neither,
     /// a row no cook writes).

@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "font { color true }",
+      "summary": "Colour glyphs draw a text's shadows, glow and outline (overlay text) and its outline (world text), under their images. The cook adds each colour page's silhouette as a signed distance field (`color-field.<n>`, `foreground-field.<n>` in the font blob, about a tenth of the colour pages' bytes); og-runtime draws it as a font page of its own before the colour pages. A font cooked before has no fields and draws its colour glyphs without effects, as before."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "world text outline",
+      "summary": "A world text with an outline in a colour font drew its colour glyphs as solid blocks of the outline's colour (the outline rode on the sprite's flash colour); the images now keep their colours."
+    }
+  ]
+}

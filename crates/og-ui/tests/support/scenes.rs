@@ -313,6 +313,7 @@ pub fn add_font(scene: &mut RenderScene, files: &FontFiles) -> UiFont {
         atlas,
         distance_range: number("atlas", "distanceRange"),
         foreground: false,
+        silhouette: false,
         line_height: number("metrics", "lineHeight"),
         glyphs,
         kerning: Vec::new(),

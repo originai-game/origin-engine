@@ -414,6 +414,13 @@ pub struct CookedFont {
     /// a black foreground at its row's place in the left half, and with a
     /// white one at the same place in the right half.
     pub foreground_pages: Vec<TextureData>,
+    /// The colour glyphs' silhouettes as distance fields (linear, every
+    /// channel the same, range [`crate::format::COLOR_FIELD_RANGE`] in their pixels),
+    /// one per colour page and then one per foreground page, each glyph
+    /// at its row's place (a foreground page's field is its left half):
+    /// what their shadows, glow and outline are drawn from.
+    pub color_fields: Vec<TextureData>,
+    pub foreground_fields: Vec<TextureData>,
     /// The font file, for a font cooked with a shaped script (og-ui shapes
     /// its words) or with `runtime true` (characters outside the charset
     /// are rendered from it when a text needs them).

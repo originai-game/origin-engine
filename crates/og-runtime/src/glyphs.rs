@@ -437,6 +437,7 @@ mod tests {
             atlas,
             distance_range: 16.0,
             foreground: false,
+            silhouette: false,
             line_height: 1.2,
             glyphs: Vec::new(),
             kerning: Vec::new(),

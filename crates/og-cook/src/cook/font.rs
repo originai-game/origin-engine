@@ -777,7 +777,22 @@ pub fn cook(
     // A foreground page holds each glyph twice, side by side: painted with
     // a black foreground on the left half, white on the right. The white
     // images are the same sizes, so they pack to the same places.
+    // Each colour page's silhouette as a distance field, its glyphs at
+    // their places (a foreground page's from its black half): what their
+    // shadows, glow and outline are drawn from.
+    let silhouettes = |c: &Shelf| -> Vec<Vec<u8>> {
+        c.pages
+            .iter()
+            .map(|px| {
+                let h = px.len() / (c.width as usize * 4);
+                colr::silhouette_field(px, c.width as usize, h, colr::FIELD_RANGE)
+            })
+            .collect()
+    };
+    let colour_fields = colour_pages.as_ref().map(silhouettes);
+    let mut foreground_fields = None;
     let foreground_pages = point(&black, first_foreground)?.map(|b| {
+        foreground_fields = Some((b.width, silhouettes(&b)));
         let w = shelf(&white, page).expect("packs as the black images did");
         debug_assert_eq!(w.place, b.place);
         let pages = b
@@ -849,6 +864,24 @@ pub fn cook(
             w.raw(&format!("foreground.{i}"), ktx, 16);
         }
     }
+    // The silhouette fields: linear, without mips, as the distance field's.
+    let mut field_bytes = 0;
+    let fields = [
+        (
+            "color-field",
+            colour_pages.as_ref().map(|c| c.width).zip(colour_fields),
+        ),
+        ("foreground-field", foreground_fields),
+    ];
+    for (name, f) in fields {
+        let Some((fw, pages)) = f else { continue };
+        for (i, px) in pages.iter().enumerate() {
+            let h = (px.len() / (fw as usize * 4)) as u32;
+            let ktx = ktx2::write_rgba8_zlib(fw, h, px, false, false, format::COOKER_VERSION);
+            field_bytes += ktx.len();
+            w.raw(&format!("{name}.{i}"), ktx, 16);
+        }
+    }
     if s.runtime || shaping {
         w.raw("ttf", bytes.to_vec(), 16);
     } else {
@@ -910,6 +943,11 @@ pub fn cook(
              other than black or white",
             names.join(", "),
             worst.iter().max().expect("one")
+        ));
+    }
+    if field_bytes > 0 {
+        note.push_str(&format!(
+            "; their silhouettes' distance field for shadows, glow and outlines ({field_bytes} bytes)"
         ));
     }
     if s.runtime && !shaping {

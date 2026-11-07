@@ -759,19 +759,46 @@ pub(crate) fn add_font(
             })
         })
         .collect();
-    let mut pages =
-        Vec::with_capacity(font.pages.len() + font.color_pages.len() + font.foreground_pages.len());
-    // The distance-field pages, then the colour glyphs' (a plain sRGB
-    // atlas with its mips, drawn as sprites: a distance range of 0), then
-    // those of the colour glyphs in the text's colour.
-    let all = font
+    // The distance-field pages; the colour glyphs' silhouettes (drawing
+    // their shadows, glow and outline, before and so under their images);
+    // the colour glyphs' pages (a plain sRGB atlas with its mips, drawn as
+    // sprites: a distance range of 0); those in the text's colour. Each
+    // entry: its data, the blob page whose rows it draws, and its kind
+    // (colour, foreground, silhouette).
+    let (n, c) = (font.pages.len(), font.color_pages.len());
+    let fields = font
+        .color_fields
+        .iter()
+        .enumerate()
+        .map(|(i, d)| (d, n + i))
+        .chain(
+            font.foreground_fields
+                .iter()
+                .enumerate()
+                .map(|(i, d)| (d, n + c + i)),
+        );
+    let all: Vec<(&og_render::TextureData, usize, bool, bool, bool)> = font
         .pages
         .iter()
-        .map(|d| (d, false, false))
-        .chain(font.color_pages.iter().map(|d| (d, true, false)))
-        .chain(font.foreground_pages.iter().map(|d| (d, true, true)));
-    for (p, (data, colour, foreground)) in all.enumerate() {
-        let atlas = scene.add_texture(if colour {
+        .enumerate()
+        .map(|(i, d)| (d, i, false, false, false))
+        .chain(fields.map(|(d, p)| (d, p, false, false, true)))
+        .chain(
+            font.color_pages
+                .iter()
+                .enumerate()
+                .map(|(i, d)| (d, n + i, true, false, false)),
+        )
+        .chain(
+            font.foreground_pages
+                .iter()
+                .enumerate()
+                .map(|(i, d)| (d, n + c + i, true, true, false)),
+        )
+        .collect();
+    let mut pages = Vec::with_capacity(all.len());
+    for (data, p, colour, foreground, silhouette) in all {
+        let atlas = scene.add_texture(if colour || silhouette {
             data.clone()
         } else {
             og_render::TextureData {
@@ -809,8 +836,15 @@ pub(crate) fn add_font(
             .collect();
         pages.push(scene.add_font(og_render::MsdfFont {
             atlas,
-            distance_range: if colour { 0.0 } else { meta.px_range },
+            distance_range: if colour {
+                0.0
+            } else if silhouette {
+                og_bundle::format::COLOR_FIELD_RANGE
+            } else {
+                meta.px_range
+            },
             foreground,
+            silhouette,
             line_height,
             glyphs,
             kerning: kerning.clone(),
@@ -879,6 +913,7 @@ mod tests {
             atlas,
             distance_range: 4.0,
             foreground: false,
+            silhouette: false,
             line_height: 1.2,
             glyphs: Vec::new(),
             kerning: Vec::new(),

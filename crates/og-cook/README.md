@@ -471,6 +471,15 @@ and the worst difference from the mix in 8-bit levels; the glyph still
 draws as the mix. Glyphs that do not use it stay on the colour pages, byte
 for byte.
 
+Each colour page and foreground page also gets its glyphs' silhouette as a
+distance field (`color-field.<n>`, `foreground-field.<n>`: the exact
+Euclidean distance to the alpha's half-coverage edge, range 8 px, twice
+the 4 px border round each image, so it never reaches a neighbour). og-runtime adds
+each as a font page before the colour pages that draws only the shadows,
+glow and outline of a text (never a fill), so they lie under the images.
+The fields cost about a tenth of the colour pages (the whole COLR test
+font: 67 KB beside 672 KB).
+
 ## Determinism
 
 The same sources, options and **cooker build** give byte-identical `cooked/`

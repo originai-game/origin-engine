@@ -1003,6 +1003,117 @@ fn set_sat(c: [f32; 3], s: f32) -> [f32; 3] {
     c.map(|v| (v - mn) * s / (mx - mn))
 }
 
+/// The distance range of a colour page's silhouette field, in its pixels:
+/// twice the transparent border round each image, so the field reaches
+/// its border and never a neighbour's ink.
+pub const FIELD_RANGE: f32 = og_bundle::format::COLOR_FIELD_RANGE;
+const _: () = assert!(FIELD_RANGE == 2.0 * PAD as f32);
+
+/// A colour page's silhouette as a distance field for its shadows, glow
+/// and outline (og-render's MSDF passes): every channel the signed
+/// distance to the alpha's half-coverage edge, `0.5 + d / range` with `d`
+/// in pixels, positive inside. The distance is the exact Euclidean one to
+/// the nearest pixel across the edge (Felzenszwalb and Huttenlocher's
+/// transform), refined on the edge's own pixels by their coverage.
+pub fn silhouette_field(rgba: &[u8], w: usize, h: usize, range: f32) -> Vec<u8> {
+    let alpha: Vec<f32> = rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|p| f32::from(p[3]) / 255.0)
+        .collect();
+    let inside: Vec<bool> = alpha.iter().map(|&a| a >= 0.5).collect();
+    // Squared distance to the nearest pixel of the other side.
+    let to = |side: bool| {
+        let mut d: Vec<f32> = inside
+            .iter()
+            .map(|&i| if i == side { 0.0 } else { f32::INFINITY })
+            .collect();
+        edt(&mut d, w, h);
+        d
+    };
+    let (to_in, to_out) = (to(true), to(false));
+    let mut out = Vec::with_capacity(w * h * 4);
+    for k in 0..w * h {
+        let a = alpha[k];
+        let d = if a > 0.0 && a < 1.0 && (to_in[k] <= 1.0 && to_out[k] <= 1.0) {
+            // An edge pixel: its coverage places the edge within it.
+            a - 0.5
+        } else if inside[k] {
+            to_out[k].sqrt() - 0.5
+        } else {
+            0.5 - to_in[k].sqrt()
+        };
+        let v = ((0.5 + d / range).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+        out.extend_from_slice(&[v; 4]);
+    }
+    out
+}
+
+/// The squared Euclidean distance transform of `d` (0 on the feature, ∞
+/// elsewhere) in place: rows then columns of the 1D transform.
+fn edt(d: &mut [f32], w: usize, h: usize) {
+    let n = w.max(h);
+    let (mut f, mut out) = (vec![0.0f32; n], vec![0.0f32; n]);
+    let (mut v, mut z) = (vec![0usize; n], vec![0.0f32; n + 1]);
+    for y in 0..h {
+        f[..w].copy_from_slice(&d[y * w..][..w]);
+        edt_1d(&f[..w], &mut out[..w], &mut v, &mut z);
+        d[y * w..][..w].copy_from_slice(&out[..w]);
+    }
+    for x in 0..w {
+        for y in 0..h {
+            f[y] = d[y * w + x];
+        }
+        edt_1d(&f[..h], &mut out[..h], &mut v, &mut z);
+        for y in 0..h {
+            d[y * w + x] = out[y];
+        }
+    }
+}
+
+/// One row of [`edt`]: the lower envelope of the parabolas rooted at each
+/// finite sample.
+fn edt_1d(f: &[f32], d: &mut [f32], v: &mut [usize], z: &mut [f32]) {
+    let n = f.len();
+    let Some(first) = (0..n).find(|&q| f[q].is_finite()) else {
+        d.fill(f32::INFINITY);
+        return;
+    };
+    let mut k = 0;
+    v[0] = first;
+    z[0] = f32::NEG_INFINITY;
+    z[1] = f32::INFINITY;
+    let sq = |q: usize| (q * q) as f32;
+    for q in first + 1..n {
+        if !f[q].is_finite() {
+            continue;
+        }
+        loop {
+            let p = v[k];
+            let s = ((f[q] + sq(q)) - (f[p] + sq(p))) / (2.0 * (q as f32 - p as f32));
+            if s <= z[k] && k > 0 {
+                k -= 1;
+            } else {
+                k += 1;
+                v[k] = q;
+                z[k] = s;
+                z[k + 1] = f32::INFINITY;
+                break;
+            }
+        }
+    }
+    let mut k = 0;
+    for (q, out) in d.iter_mut().enumerate() {
+        while z[k + 1] < q as f32 {
+            k += 1;
+        }
+        let p = v[k];
+        let dq = q as f32 - p as f32;
+        *out = dq * dq + f[p];
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1100,6 +1211,42 @@ mod tests {
             ));
             assert!(e >= 10, "{mode:?}: {e}");
         }
+    }
+
+    /// The silhouette field of a 6x6 opaque square on a 16x16 page: 0.5 at
+    /// its edge, rising a range's fraction per pixel inside and falling
+    /// outside, the same along a row and a column and round a corner by
+    /// the Euclidean distance.
+    #[test]
+    fn a_silhouette_field_is_the_distance_to_its_edge() {
+        let (w, h) = (16, 16);
+        let mut rgba = vec![0u8; w * h * 4];
+        for y in 5..11 {
+            for x in 5..11 {
+                rgba[(y * w + x) * 4 + 3] = 255;
+            }
+        }
+        let f = silhouette_field(&rgba, w, h, 8.0);
+        let d = |x: usize, y: usize| (f32::from(f[(y * w + x) * 4]) / 255.0 - 0.5) * 8.0;
+        // Pixel centres: the edge is at x = 5, so pixel 5 is 0.5 in, 7 is
+        // 2.5 in, 3 is 1.5 out, 1 is 3.5 out.
+        for (x, want) in [(5, 0.5), (7, 2.5), (3, -1.5), (1, -3.5)] {
+            assert!(
+                (d(x, 8) - want).abs() < 0.03,
+                "x {x}: {} for {want}",
+                d(x, 8)
+            );
+            assert!(
+                (d(8, x) - want).abs() < 0.03,
+                "y {x}: {} for {want}",
+                d(8, x)
+            );
+        }
+        // Off the corner (5, 5) by 2 and 2 pixel centres: √8 − ½ out.
+        let corner = -(8.0f32.sqrt() - 0.5);
+        assert!((d(3, 3) - corner).abs() < 0.03, "{} for {corner}", d(3, 3));
+        // Past the range the field holds at 0.
+        assert_eq!(f[0], 0);
     }
 
     #[test]

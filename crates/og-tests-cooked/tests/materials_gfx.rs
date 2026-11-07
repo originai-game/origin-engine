@@ -80,6 +80,7 @@ fn add(scene: &mut RenderScene, f: &CookedFont) -> UiFont {
         atlas,
         distance_range: m.px_range,
         foreground: false,
+        silhouette: false,
         line_height: m.ascender - m.descender + m.line_gap,
         glyphs: f
             .glyphs

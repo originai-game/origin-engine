@@ -499,8 +499,9 @@ pub(crate) fn build<'a>(
         }
         for &(pass, pass_color, effect2, offset) in &passes {
             // A page of colour glyphs draws its images once, untinted but
-            // for the text's alpha: no shadow, glow, outline or gradient.
-            if layout.color && pass != 0.0 {
+            // for the text's alpha, no gradient; their shadows, glow and
+            // outline come from their silhouette page, which draws no fill.
+            if (layout.color && pass != 0.0) || (layout.silhouette && pass == 0.0) {
                 continue;
             }
             // The pen in em, y down from the first baseline.

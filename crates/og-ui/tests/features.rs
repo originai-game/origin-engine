@@ -48,6 +48,7 @@ fn font_at(path: &str) -> UiFont {
         atlas: TextureHandle::from_slot(1).expect("a handle"),
         distance_range: 4.0,
         foreground: false,
+        silhouette: false,
         line_height: 1.2,
         glyphs,
         kerning: Vec::new(),

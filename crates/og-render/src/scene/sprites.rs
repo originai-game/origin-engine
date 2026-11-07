@@ -148,8 +148,8 @@ pub struct MsdfFont {
     pub atlas: TextureHandle,
     /// The distance field's range in atlas pixels (`msdf-atlas-gen -pxrange`);
     /// 0 for a page of colour glyphs (COLR, cooked as images): drawn as
-    /// sprites, untinted but for the text's alpha, without glow, outline
-    /// or shadow.
+    /// sprites, untinted but for the text's alpha; their glow, outline and
+    /// shadow come from a `silhouette` page.
     pub distance_range: f32,
     /// A page of colour glyphs (distance range 0) that use the text's
     /// colour (COLR palette entry 0xFFFF): each glyph's image is painted
@@ -157,6 +157,11 @@ pub struct MsdfFont {
     /// white one, and the text's colour mixes the two channel by channel
     /// (in sRGB, as the glyph was painted), at the text's alpha.
     pub foreground: bool,
+    /// A distance field of colour glyphs' silhouettes (the cook's
+    /// `color-field.<n>` and `foreground-field.<n>`): a page drawn before
+    /// its colour page that draws their shadows, glow and outline, never a
+    /// fill, so the effects lie under the colour images.
+    pub silhouette: bool,
     /// Baseline-to-baseline distance in em.
     pub line_height: f32,
     pub glyphs: Vec<Glyph>,

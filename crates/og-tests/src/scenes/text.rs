@@ -58,6 +58,7 @@ pub fn load_font(scene: &mut RenderScene) -> Result<og_render::FontHandle, Strin
         atlas,
         distance_range: number("distanceRange")?,
         foreground: false,
+        silhouette: false,
         line_height: number("lineHeight")?,
         glyphs,
         kerning: Vec::new(),
