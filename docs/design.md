@@ -764,7 +764,11 @@ Every cluster row carries its own error, its parents' error, the sphere
 both are projected from and its group, and a cluster is drawn when its
 error projects under a pixel and its parents' does not
 (`meshlet::selected`); the cook's per-level chain writes those fields so
-that exactly the level `lod::select` picks is drawn.
+that exactly the level `lod::select` picks is drawn. A game whose frames
+are never culled on the GPU cooks none with project.ogt's `cook { clusters
+false }`: its blobs keep neither table nor stream (a garden of 1072 cells
+ships 36 MB fewer of its 307 brotli'd model MB), and its models draw on
+the per-instance path in every frame.
 
 Per frame (`meshlet_gpu.rs`, `meshlet_cull.wgsl`), after GPU culling
 (`cull_gpu.rs`) has culled and compacted a clustered batch's instances, one

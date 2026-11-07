@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "project.ogt cook { clusters false }",
+      "summary": "Cooks no meshlet clusters into the models: the blobs keep neither the `clusters` table nor the second index stream (`cluster_indices`). For a game whose frames are never culled on the GPU (under the default culling, below 16,384 instances), which never draws them. Such a model draws on the per-instance path in every frame, under any culling, with the same levels and the same simulation mesh. `clusters true` is the default and leaves every cooked byte as it was; turning it off re-cooks the models. A garden of 1072 cells: about 36 MB (brotli) fewer to download."
+    }
+  ]
+}

@@ -414,14 +414,19 @@ impl CookedModel {
             .map_err(|e| bad(format!("primitive {i}: {e}")))?;
             let idx = meshopt_codec::decode_index_buffer(ib, p.index_count as usize)
                 .map_err(|e| bad(format!("primitive {i}: {e}")))?;
-            let cb = &cluster_indices[range(
-                cluster_indices,
-                p.cluster_index_offset,
-                p.cluster_index_size,
-                "cluster index stream",
-            )?];
-            let cluster_idx = meshopt_codec::decode_index_buffer(cb, p.index_count as usize)
-                .map_err(|e| bad(format!("primitive {i}: {e}")))?;
+            // None for a model cooked without clusters (`cook { clusters false }`).
+            let cluster_idx = if p.cluster_index_size == 0 {
+                Vec::new()
+            } else {
+                let cb = &cluster_indices[range(
+                    cluster_indices,
+                    p.cluster_index_offset,
+                    p.cluster_index_size,
+                    "cluster index stream",
+                )?];
+                meshopt_codec::decode_index_buffer(cb, p.index_count as usize)
+                    .map_err(|e| bad(format!("primitive {i}: {e}")))?
+            };
             if idx.iter().chain(&cluster_idx).any(|&v| v >= p.vertex_count) {
                 return Err(bad(format!("primitive {i}: index out of range")));
             }

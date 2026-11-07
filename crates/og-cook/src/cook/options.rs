@@ -22,6 +22,14 @@ pub struct MeshOptions {
     /// import settings turn it off (`model { raycast false }`) for a model
     /// no ray is cast at, saving its bytes (about 13 per triangle).
     pub raycast: bool,
+    /// Cut each level into meshlet clusters (the blob's `clusters` and
+    /// `cluster_indices`, og-render's `meshlet`), which the meshlet path
+    /// draws in a frame culled on the GPU. project.ogt's `cook { clusters
+    /// false }` cooks none, for a game whose frames are not culled on the
+    /// GPU (`Culling.auto` below `GPU_CULLING_MIN_INSTANCES` instances),
+    /// saving their bytes (a garden of 1072 cells: 36 MB of 307 brotli'd);
+    /// its models then draw on the per-instance path in every frame.
+    pub clusters: bool,
     /// Bake each primitive's triangle-mesh collider shape (rapier's mesh
     /// with its BVH, over LOD 0 as the runtime decodes it, or the proxy's
     /// level for a streamed model) into the blob, so a SHAPE_TRIMESH
@@ -50,6 +58,7 @@ impl Default for MeshOptions {
             tangents: true,
             lods: None,
             raycast: true,
+            clusters: true,
             collider: false,
             conform: None,
             impostor: None,
@@ -180,12 +189,13 @@ impl MeshOptions {
 
     pub(super) fn describe(&self) -> String {
         format!(
-            "lods {} ratio {} error {} overdraw {} tangents {} (bitangent up the image) quantize 16/oct16/uv16/rgba8 codec meshopt-v1 flat levels by position (S6)",
+            "lods {} ratio {} error {} overdraw {} tangents {} (bitangent up the image) quantize 16/oct16/uv16/rgba8 codec meshopt-v1 flat levels by position (S6){}",
             self.lod_levels,
             self.lod_ratio,
             self.lod_max_error,
             self.overdraw_threshold,
-            self.tangents
+            self.tangents,
+            if self.clusters { "" } else { " clusters off" }
         )
     }
 }

@@ -11,7 +11,8 @@
 //!
 //! Models keep a second meshopt index stream, `cluster_indices`, for
 //! drawing. It shares the vertices and LOD ranges of `indices` without
-//! changing the simulation mesh's triangle or vertex order.
+//! changing the simulation mesh's triangle or vertex order. A project
+//! cooked with `cook { clusters false }` has neither it nor clusters.
 //!
 //! | blob | root | sections |
 //! |---|---|---|
@@ -217,6 +218,8 @@ row!(
         index_count: u32,
         /// The same triangles in draw-cluster order, meshopt-encoded in
         /// `cluster_indices`; decoded count and LOD ranges match `indices`.
+        /// Size 0, and no clusters, when cooked without them (`cook {
+        /// clusters false }`).
         cluster_index_offset: u32,
         cluster_index_size: u32,
         lod_first: u32,
