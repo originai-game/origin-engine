@@ -415,8 +415,8 @@ publish build compiled for wasm atomics and shared memory, which needs a
 rebuilt std: `scripts/wasm-lanes.sh <cargo args>` runs `cargo build
 --target wasm32-unknown-unknown -Z build-std=panic_abort,std` with
 `RUSTC_BOOTSTRAP=1`, `RUSTFLAGS` adding `+atomics,+bulk-memory` and the
-shared, imported memory (at most 2 GiB, against the single-threaded
-module's 4 GiB) with wasm-bindgen's TLS exports, and
+shared, imported memory (at most 4 GiB, the same wasm32 ceiling as the
+single-threaded module) with wasm-bindgen's TLS exports, and
 `CARGO_ENCODED_RUSTFLAGS` unset (cargo prefers it to `RUSTFLAGS`). It
 builds into `<target>/wasm-mt` (`scripts/wasm-lanes.sh --target-dir`
 prints it), so its flags never invalidate the single-threaded build, and

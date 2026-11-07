@@ -235,9 +235,11 @@ per physics profile. The lanes build needs nightly-only flags
 (`scripts/wasm-lanes.sh`: `RUSTC_BOOTSTRAP=1`, `-Z build-std` with
 `rust-src`, its flags appended to the caller's `RUSTFLAGS`, an inherited
 `CARGO_ENCODED_RUSTFLAGS` unset; docs/ci.md). Its shared memory has a
-maximum of 2 GiB, which the browser reserves up front; the single-threaded
-module may grow to wasm32's 4 GiB where the browser allows, so a game past
-2 GiB of wasm memory runs out of memory on lanes only. A `--publish` build
+maximum of 4 GiB (65,536 wasm pages), matching the single-threaded module's
+wasm32 ceiling where the browser allows. The browser reserves that address
+space up front and commits memory as it grows. wasm-bindgen generates the
+shared-memory initializer from the module's declared maximum; the host
+loader does not impose a separate cap. A `--publish` build
 that would ship lanes but finds the lanes files missing from its profile's
 directory says so in one warning naming the file and ships
 single-threaded; `scripts/build.sh` under the gate (`OG_GATE=1`) stops

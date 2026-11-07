@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "web.lanes",
+      "summary": "Both physics profiles' shared-memory web lanes modules can grow to 4 GiB instead of 2 GiB where the browser allows, matching the single-threaded wasm32 ceiling."
+    }
+  ]
+}

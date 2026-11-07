@@ -13,9 +13,9 @@
 # of Workers sharing the module's memory (wasm-bindgen-rayon). Shared memory
 # needs std rebuilt with atomics (-Z build-std, hence RUSTC_BOOTSTRAP on the
 # stable toolchain rust-toolchain.toml pins, and its rust-src component), a
-# memory imported and shared with a maximum (2 GiB: browsers reserve it but
-# commit what the module grows to; the single-threaded module may grow to
-# 4 GiB, so a game past 2 GiB of wasm memory runs out on lanes only), and the TLS symbols wasm-bindgen's
+# memory imported and shared with a maximum (4 GiB, the same wasm32 ceiling
+# as the single-threaded module: browsers reserve it but commit what the
+# module grows to), and the TLS symbols wasm-bindgen's
 # thread transform reads. Its own target directory (<target>/wasm-mt) keeps
 # these RUSTFLAGS from invalidating the single-threaded wasm32 build; the 3D
 # and 2D lanes modules share it (cargo keys each unit by its features, so
@@ -30,7 +30,7 @@ if [ "${1:-}" = --target-dir ]; then
   printf '%s\n' "$dir"
   exit 0
 fi
-lanes_flags="-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--import-memory -C link-arg=--max-memory=2147483648 -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
+lanes_flags="-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--import-memory -C link-arg=--max-memory=4294967296 -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
 # The caller's RUSTFLAGS stay, with the lanes flags after them. Cargo reads
 # CARGO_ENCODED_RUSTFLAGS before RUSTFLAGS, so one inherited from an outer
 # cargo (a build script, `cargo run` of a tool that builds) would drop the
