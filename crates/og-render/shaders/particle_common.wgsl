@@ -25,7 +25,68 @@ struct Emitter {
   info: vec4<u32>,         // max particles, seed
   noise_origin: array<vec4<f32>, 2>,  // the turbulence's lattice at the render origin: xyz whole cells, then the rest (origin.rs)
   look: vec4<f32>,         // x: 1 lit, y: distortion (fraction of the screen's height), z: 1 a mesh per particle, w: a lit mesh's roughness (1 matte)
+  speed_t: array<vec4<f32>, 2>,  // speed over life (against the velocity)
+  speed_v: array<vec4<f32>, 2>,
+  spin_t: array<vec4<f32>, 2>,   // angular velocity over life
+  spin_v: array<vec4<f32>, 2>,
+  attract: array<vec4<f32>, 4>,  // xyz position (simulation space), w strength
+  attract_r: vec4<f32>,          // each attractor's radius (0: 1 / (1 + d²))
+  field: vec4<f32>,        // x: 0 none, 1 curl, 2 grid; y strength; z frequency (curl) or size (grid); w scroll (curl) or cells (grid)
+  field_origin: array<vec4<f32>, 2>,  // the field's lattice at the render origin: xyz whole cells, then the rest
+  motion: vec4<f32>,       // xyz: the emitter's velocity this tick, w: the fraction a particle inherits
+  counts2: vec4<f32>,      // x: speed keys (0 none), y: spin keys (0 none), z: attractors, w: where a grid's vectors start in mesh_points
 };
+
+// A curve over life (keys `ts`, `vs`, `n` of them) at `t`.
+fn curve_at(ts: array<vec4<f32>, 2>, vs: array<vec4<f32>, 2>, n: u32, t: f32) -> f32 {
+  var v = key4(vs, 0u);
+  for (var i = 1u; i < n; i++) {
+    let t0 = key4(ts, i - 1u);
+    let t1 = key4(ts, i);
+    if (t >= t1) {
+      v = key4(vs, i);
+    } else if (t > t0) {
+      v = mix(key4(vs, i - 1u), key4(vs, i), (t - t0) / max(t1 - t0, 1e-6));
+      break;
+    } else {
+      break;
+    }
+  }
+  return v;
+}
+
+// The area under a curve from 0 to `t` (Curve::integral in particles.rs).
+fn curve_integral(ts: array<vec4<f32>, 2>, vs: array<vec4<f32>, 2>, n: u32, t: f32) -> f32 {
+  if (n == 0u) { return t; }
+  var area = 0.0;
+  var pt = 0.0;
+  var pv = key4(vs, 0u);
+  for (var i = 0u; i < n; i++) {
+    let kt = key4(ts, i);
+    let kv = key4(vs, i);
+    if (kt <= pt) {
+      pv = kv;
+      continue;
+    }
+    if (t <= kt) {
+      let f = max((t - pt) / (kt - pt), 0.0);
+      let v = pv + (kv - pv) * f;
+      return area + max(t - pt, 0.0) * (pv + v) * 0.5;
+    }
+    area += (kt - pt) * (pv + kv) * 0.5;
+    pt = kt;
+    pv = kv;
+  }
+  return area + max(t - pt, 0.0) * pv;
+}
+
+// A particle's rotation at age `age` of `life` (t = age / life):
+// particle_rotation in particles.rs.
+fn particle_rotation(e: Emitter, misc: vec4<f32>, age: f32, life: f32, t: f32) -> f32 {
+  let n = u32(e.counts2.y);
+  if (n == 0u) { return misc.y + misc.z * age; }
+  return misc.y + misc.z * life * curve_integral(e.spin_t, e.spin_v, n, t);
+}
 
 struct ParticleView {
   view_proj: mat4x4<f32>,  // unjittered (collision)

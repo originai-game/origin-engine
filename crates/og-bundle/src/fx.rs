@@ -61,6 +61,18 @@
 //! round false                       # sprite mode: the soft dot's round edge over the texture or layer
 //! effect "fx/fire.ogt"              # an effect material (`type effect`, og_bundle::effect) the
 //!                                   #   billboards or meshes draw with, over the texture and curves
+//! speedOverLife 0 1 1 0.2           # <t> <value> pairs: how fast they move over life (a burst that slows)
+//! spinOverLife 0 1 1 0              # <t> <value> pairs: the angular velocity over life
+//! rateOverTime 0 1 0.8 1 1 0        # <t> <value> pairs over each cycle (t of `duration`): the rate
+//! attractor 0 1 0 6 2               # <x> <y> <z> <strength> [<radius>]: pulls (negative pushes);
+//!                                   #   in the emitter's space; at most 4
+//! field curl 3 0.8 0.2              # curl <strength> [<frequency> <scroll>]: swirling, divergence free
+//! field "fx/wind.png" 2 4           # "<texture>" <strength> <size>: a vector grid the cook bakes from
+//!                                   #   an image N² wide and N high (N to 16): pixel (x + z·N, y from
+//!                                   #   the bottom) is the vector at cell (x, y, z), rgb 0..1 as -1..1
+//! shape spline 0 0 0  1 1 0  2 0 0 [closed]
+//!                                   # 2 to 8 control points of a Catmull-Rom curve, evenly by length
+//! inheritVelocity 0.5               # the share of the emitter's own velocity particles start with
 //! ```
 //!
 //! `array` names a texture array's asset id and picks each particle's layer
@@ -79,6 +91,7 @@
 //! plus `inherit` times the parent's.
 
 use og_core::ogt::{Document, Entry, Value};
+use og_render::{Attractor, MAX_ATTRACTORS, MAX_SPLINE_POINTS, VectorField};
 use og_render::{
     Burst, CollisionTarget, ColorCurve, ColorLut, Curve, EmitterHandle, EmitterShape,
     MAX_CURVE_KEYS, MAX_SUB_EMITTERS, MeshHandle, ParticleAlign, ParticleBlend, ParticleCollision,
@@ -108,6 +121,25 @@ pub struct EmitterLinks<'a> {
     pub emitter: &'a mut dyn FnMut(&str) -> Result<Option<EmitterHandle>, String>,
     /// An `effect` line's effect material (`type effect`).
     pub effect: &'a mut dyn FnMut(&str) -> Result<Option<og_render::EffectMaterialHandle>, String>,
+}
+
+/// The line `og cook` writes in place of `field "<texture>" ...`: the
+/// baked grid (`fieldGrid <cells> <size> <strength>` and the vectors, x
+/// fastest), which the runtime reads back.
+pub const FIELD_GRID: &str = "fieldGrid";
+
+/// `<t> <value>` pairs, 1 to [`MAX_CURVE_KEYS`] of them.
+fn curve(e: &Entry) -> Result<Curve, String> {
+    let v = nums(e)?;
+    if v.is_empty() || v.len() % 2 != 0 || v.len() / 2 > MAX_CURVE_KEYS {
+        return Err(format!(
+            "line {}: {} is 1 to {MAX_CURVE_KEYS} <t> <value> pairs",
+            e.line, e.key
+        ));
+    }
+    Ok(Curve::new(
+        &v.chunks(2).map(|c| (c[0], c[1])).collect::<Vec<_>>(),
+    ))
 }
 
 /// The `.ogt` type of an emitter file.
@@ -191,7 +223,7 @@ pub fn emitter_references(text: &str) -> Vec<String> {
                     "texture" | "array" => e.values.first(),
                     "render" => e.values.get(1),
                     "subEmitter" => e.values.get(1),
-                    "effect" => e.values.first(),
+                    "effect" | "field" => e.values.first(),
                     _ => None,
                 })
                 .filter_map(|v| v.as_str().map(str::to_string))
@@ -297,9 +329,34 @@ pub fn parse_emitter_linked(
                     "box" => EmitterShape::Box {
                         half_extents: glam::Vec3::new(n(1)?, n(2)?, n(3)?),
                     },
+                    "spline" => {
+                        let closed = e.values.last().and_then(Value::as_word) == Some("closed");
+                        let v: Vec<f32> = e.values[1..e.values.len() - closed as usize]
+                            .iter()
+                            .map(|v| v.as_number().map(|n| n.as_f32()))
+                            .collect::<Option<_>>()
+                            .ok_or_else(|| {
+                                format!("line {line}: shape spline <x> <y> <z> ... [closed]")
+                            })?;
+                        let count = v.len() / 3;
+                        if v.len() % 3 != 0 || !(2..=MAX_SPLINE_POINTS).contains(&count) {
+                            return Err(format!(
+                                "line {line}: shape spline takes 2 to {MAX_SPLINE_POINTS} points of <x> <y> <z>"
+                            ));
+                        }
+                        let mut points = [glam::Vec3::ZERO; MAX_SPLINE_POINTS];
+                        for (i, c) in v.chunks(3).enumerate() {
+                            points[i] = glam::Vec3::new(c[0], c[1], c[2]);
+                        }
+                        EmitterShape::Spline {
+                            points,
+                            count: count as u32,
+                            closed,
+                        }
+                    }
                     other => {
                         return Err(format!(
-                            "line {line}: shape `{other}` (point, sphere, cone, box)"
+                            "line {line}: shape `{other}` (point, sphere, cone, box, spline)"
                         ));
                     }
                 };
@@ -639,6 +696,91 @@ pub fn parse_emitter_linked(
                     .and_then(Value::as_str)
                     .ok_or_else(|| format!("line {line}: effect \"<effect asset id>\""))?;
                 em.effect = effect(id).map_err(|r| format!("line {line}: effect {id}: {r}"))?;
+            }
+            "speedOverLife" => em.speed_over_life = Some(curve(e)?),
+            "spinOverLife" => em.spin_over_life = Some(curve(e)?),
+            "rateOverTime" => em.rate_over_time = Some(curve(e)?),
+            "inheritVelocity" => em.inherit_velocity = one(e)?,
+            "attractor" => {
+                let a = match nums(e)?[..] {
+                    [x, y, z, strength] => Attractor {
+                        position: glam::Vec3::new(x, y, z),
+                        strength,
+                        radius: 0.0,
+                    },
+                    [x, y, z, strength, radius] => Attractor {
+                        position: glam::Vec3::new(x, y, z),
+                        strength,
+                        radius: radius.max(0.0),
+                    },
+                    _ => {
+                        return Err(format!(
+                            "line {line}: attractor <x> <y> <z> <strength> [<radius>]"
+                        ));
+                    }
+                };
+                if em.attractors.len() == MAX_ATTRACTORS {
+                    return Err(format!(
+                        "line {line}: at most {MAX_ATTRACTORS} attractor lines"
+                    ));
+                }
+                em.attractors.push(a);
+            }
+            "field" => {
+                if e.values.first().and_then(Value::as_str).is_some() {
+                    return Err(format!(
+                        "line {line}: a field from a texture is baked by `og cook` (load the cooked emitter)"
+                    ));
+                }
+                if word(e, 0)? != "curl" {
+                    return Err(format!(
+                        "line {line}: field curl <strength> [<frequency> <scroll>] | \"<texture>\" <strength> <size>"
+                    ));
+                }
+                let v: Vec<f32> = e.values[1..]
+                    .iter()
+                    .map(|v| v.as_number().map(|n| n.as_f32()))
+                    .collect::<Option<_>>()
+                    .unwrap_or_default();
+                let (strength, frequency, scroll) = match v[..] {
+                    [s] => (s, 0.5, 0.2),
+                    [s, f] => (s, f, 0.2),
+                    [s, f, c] => (s, f, c),
+                    _ => {
+                        return Err(format!(
+                            "line {line}: field curl <strength> [<frequency> <scroll>]"
+                        ));
+                    }
+                };
+                em.field = Some(VectorField::Curl {
+                    strength,
+                    frequency,
+                    scroll,
+                });
+            }
+            FIELD_GRID => {
+                let v = nums(e)?;
+                let [cells, size, strength, ..] = v[..] else {
+                    return Err(format!(
+                        "line {line}: {FIELD_GRID} <cells> <size> <strength> <vectors>"
+                    ));
+                };
+                let vectors: Vec<glam::Vec3> = v[3..]
+                    .chunks(3)
+                    .map(|c| {
+                        glam::Vec3::new(
+                            c[0],
+                            c.get(1).copied().unwrap_or(0.0),
+                            c.get(2).copied().unwrap_or(0.0),
+                        )
+                    })
+                    .collect();
+                em.field = Some(VectorField::Grid {
+                    strength,
+                    size,
+                    cells: cells as u32,
+                    vectors,
+                });
             }
             other => return Err(format!("line {line}: unknown emitter setting `{other}`")),
         }

@@ -385,3 +385,85 @@ fn a_vfx_cooks_and_what_it_names_must_exist() {
     let v = og_bundle::vfx::parse_vfx(&bundle.vfx_text(id, &bytes).unwrap()).unwrap();
     assert_eq!(v.events[0].name, "impact");
 }
+
+/// The expressive emitter lines reach their fields, and `field
+/// "<texture>"` is baked by the cook: the image's pixel (x + z·N, y from
+/// the bottom) becomes cell (x, y, z), so the loaded emitter needs no image.
+///
+/// Ways it could fail: the grid read top-down or with x and z swapped
+/// (the asymmetric pixels below land in the wrong cell), the texture's
+/// bytes left out of the stamp (an edited image not recooked), or a raw
+/// `field "<texture>"` accepted at load as if baked.
+#[test]
+fn an_emitter_bakes_its_field_texture_and_reads_its_curves() {
+    // N = 2: 4 × 2 pixels. Only cell (1, 0, 1) points +x (pixel x 1 + 2, bottom row).
+    let mut img = image::RgbaImage::from_pixel(4, 2, image::Rgba([128, 128, 128, 255]));
+    img.put_pixel(3, 1, image::Rgba([255, 128, 128, 255]));
+    let mut png = Vec::new();
+    img.write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+        .unwrap();
+    let text = "type particles\nversion 1\n---\nshape spline 0 0 0  1 2 0  3 0 1 closed\nspeedOverLife 0 1 1 0.25\nspinOverLife 0 1 1 0\nrateOverTime 0 0.5 1 2\nattractor 0 1 0 5 2\nattractor 1 0 0 -1\ninheritVelocity 0.5\nfield \"fx/wind.png\" 3 4\n";
+    let root = project(
+        "field",
+        &[
+            ("fx/wind.png", png.as_slice()),
+            ("fx/swirl.ogt", text.as_bytes()),
+        ],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let id = "fx/swirl.ogt";
+    let bytes = std::fs::read(root.join("cooked").join(&bundle.output(id).unwrap().file)).unwrap();
+    let baked = bundle.emitter_text(id, &bytes).unwrap();
+    let e = parse_emitter(&baked, &mut |_| Ok(None)).unwrap();
+    let Some(og_render::VectorField::Grid {
+        strength,
+        size,
+        cells,
+        vectors,
+    }) = &e.field
+    else {
+        panic!("{:?}", e.field);
+    };
+    assert_eq!((*strength, *size, *cells, vectors.len()), (3.0, 4.0, 2, 8));
+    let at = |x: usize, y: usize, z: usize| vectors[(z * 2 + y) * 2 + x];
+    assert!(at(1, 0, 1).x > 0.99, "{:?}", at(1, 0, 1));
+    for (i, v) in vectors.iter().enumerate() {
+        if i != 5 {
+            // cell (1, 0, 1)
+            assert!(v.length() < 0.01, "cell {i}: {v:?}");
+        }
+    }
+    assert!(matches!(
+        e.shape,
+        EmitterShape::Spline {
+            count: 3,
+            closed: true,
+            ..
+        }
+    ));
+    assert_eq!(e.attractors.len(), 2);
+    assert_eq!(e.attractors[1].strength, -1.0);
+    assert_eq!(e.inherit_velocity, 0.5);
+    assert_eq!(e.rate_over_time.as_ref().unwrap().eval(0.5), 1.25);
+    assert!(e.speed_over_life.is_some() && e.spin_over_life.is_some());
+    // The raw line is the cook's to bake.
+    let err = parse_emitter(text, &mut |_| Ok(None)).unwrap_err();
+    assert!(err.contains("baked by `og cook`"), "{err}");
+
+    // An edited image recooks.
+    img.put_pixel(3, 1, image::Rgba([128, 255, 128, 255]));
+    let mut png = Vec::new();
+    img.write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+        .unwrap();
+    std::fs::write(root.join("assets/fx/wind.png"), png).unwrap();
+    assert!(cook_project(&root, &CookOptions::default()).unwrap().ok());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let bytes = std::fs::read(root.join("cooked").join(&bundle.output(id).unwrap().file)).unwrap();
+    let e = parse_emitter(&bundle.emitter_text(id, &bytes).unwrap(), &mut |_| Ok(None)).unwrap();
+    let Some(og_render::VectorField::Grid { vectors, .. }) = &e.field else {
+        panic!()
+    };
+    assert!(vectors[5].y > 0.99, "not recooked: {:?}", vectors[5]);
+}

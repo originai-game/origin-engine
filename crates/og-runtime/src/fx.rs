@@ -1929,14 +1929,11 @@ pub(crate) fn load_emitter(eng: &super::engine::Engine, path: &str) -> Result<us
             .iter()
             .map(|s| rs.scene.emitter(s.emitter).cloned())
             .collect();
-        let points = match emitter.shape {
-            og_render::EmitterShape::Mesh { mesh } => rs
-                .scene
-                .mesh(mesh)
-                .map(og_render::mesh_points)
-                .unwrap_or_default(),
-            _ => vec![[0.0; 4]; 2],
+        let mesh = match emitter.shape {
+            og_render::EmitterShape::Mesh { mesh } => rs.scene.mesh(mesh),
+            _ => None,
         };
+        let points = og_render::shape_points(&emitter.shape, mesh);
         (emitter.clone(), subs, points)
     });
     let h = rs.scene.add_emitter(emitter);

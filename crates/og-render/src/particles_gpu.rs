@@ -5,7 +5,7 @@ use crate::deferred::Deferred;
 use crate::particles::{
     CpuParticles, EmitterShape, MAX_CURVE_KEYS, ParticleAlign, ParticleBlend, ParticleEmitter,
     ParticleRender, ParticleState, ParticleSystem, SheetMode, SimulationSpace, TickStep,
-    appearance, array_frames, hash_seed, mesh_points, plan_ticks, sheet_frames,
+    appearance, array_frames, hash_seed, plan_ticks, sheet_frames,
 };
 use crate::scene::{RenderScene, Sprite};
 use crate::sprites::ExtraSprite;
@@ -22,7 +22,7 @@ pub(crate) const NOISE_WGSL: &str = wgsl!("noise.wgsl");
 
 /// Bytes between emitter uniform entries (a multiple of the 256-byte
 /// dynamic offset alignment).
-const EMITTER_STRIDE: u64 = 768;
+const EMITTER_STRIDE: u64 = 1024;
 const PARTICLE_STRIDE: u64 = std::mem::size_of::<ParticleState>() as u64;
 
 pub(crate) const PARTICLE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
@@ -60,6 +60,33 @@ struct EmitterGpu {
     noise_origin: [[f32; 4]; 2],
     /// x: lit, y: distortion, z: a mesh per particle.
     look: [f32; 4],
+    speed_t: [[f32; 4]; 2],
+    speed_v: [[f32; 4]; 2],
+    spin_t: [[f32; 4]; 2],
+    spin_v: [[f32; 4]; 2],
+    attract: [[f32; 4]; 4],
+    attract_r: [f32; 4],
+    /// x: 0 none, 1 curl, 2 grid; y strength; z frequency or size; w
+    /// scroll or cells.
+    field: [f32; 4],
+    field_origin: [[f32; 4]; 2],
+    /// xyz: the emitter's velocity, w: the fraction inherited.
+    motion: [f32; 4],
+    /// x: speed keys, y: spin keys, z: attractors, w: where a grid's
+    /// vectors start in the points buffer.
+    counts2: [f32; 4],
+}
+
+/// A curve's keys as the shader's two times and two values vec4s, and
+/// its key count (0 for none).
+fn curve_gpu(c: Option<&crate::particles::Curve>) -> ([[f32; 4]; 2], [[f32; 4]; 2], f32) {
+    let (mut t, mut v) = ([[0.0; 4]; 2], [[0.0; 4]; 2]);
+    let Some(c) = c else { return (t, v, 0.0) };
+    for (i, (kt, kv)) in c.keys.iter().take(MAX_CURVE_KEYS).enumerate() {
+        t[i / 4][i % 4] = *kt;
+        v[i / 4][i % 4] = *kv;
+    }
+    (t, v, c.keys.len().min(MAX_CURVE_KEYS) as f32)
 }
 
 /// `struct ParticleView` in particle_common.wgsl.
@@ -95,6 +122,7 @@ fn emitter_gpu(
         } => (2.0, angle_degrees.to_radians(), radius),
         EmitterShape::Box { .. } => (3.0, 0.0, 0.0),
         EmitterShape::Mesh { .. } => (4.0, points as f32, 0.0),
+        EmitterShape::Spline { .. } => (5.0, points as f32, 0.0),
     };
     let half = match e.shape {
         EmitterShape::Box { half_extents } => half_extents,
@@ -138,6 +166,29 @@ fn emitter_gpu(
     let max = e.max_particles;
     let (first, count, bursts, time) =
         step.map_or((0, 0, 0, 0.0), |s| (s.first, s.count, s.bursts, s.time));
+    let (speed_t, speed_v, speed_n) = curve_gpu(e.speed_over_life.as_ref());
+    let (spin_t, spin_v, spin_n) = curve_gpu(e.spin_over_life.as_ref());
+    let pulls = crate::particles::placed_attractors(e, transform);
+    let (mut attract, mut attract_r) = ([[0.0; 4]; 4], [0.0; 4]);
+    for (i, a) in pulls.iter().enumerate() {
+        attract[i] = a.position.extend(a.strength).to_array();
+        attract_r[i] = a.radius;
+    }
+    let field = match &e.field {
+        None => [0.0; 4],
+        Some(crate::particles::VectorField::Curl {
+            strength,
+            frequency,
+            scroll,
+        }) => [1.0, *strength, *frequency, *scroll],
+        Some(crate::particles::VectorField::Grid {
+            strength,
+            size,
+            cells,
+            ..
+        }) => [2.0, *strength, *size, *cells as f32],
+    };
+    let velocity = step.map_or(Vec3::ZERO, |s| s.velocity);
     EmitterGpu {
         transform: transform.to_cols_array_2d(),
         shape: [kind, a, b, 0.0],
@@ -198,6 +249,16 @@ fn emitter_gpu(
             matches!(e.render, ParticleRender::Mesh { .. }) as u32 as f32,
             e.roughness,
         ],
+        speed_t,
+        speed_v,
+        spin_t,
+        spin_v,
+        attract,
+        attract_r,
+        field,
+        field_origin: [[0.0; 4]; 2],
+        motion: velocity.extend(e.inherit_velocity).to_array(),
+        counts2: [speed_n, spin_n, pulls.len() as f32, points as f32 * 2.0],
     }
 }
 
@@ -249,6 +310,13 @@ const MESH_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout 
         },
     ],
 };
+
+struct PointsTable {
+    shape: EmitterShape,
+    field: Option<crate::particles::VectorField>,
+    table: Vec<[f32; 4]>,
+    shape_len: usize,
+}
 
 struct GpuSystem {
     buffer: wgpu::Buffer,
@@ -417,7 +485,10 @@ pub(crate) struct ParticleRenderer {
     systems: HashMap<u64, SystemState>,
     scene_id: u64,
     /// Sampled mesh surfaces per emitter index.
-    points: HashMap<usize, (EmitterShape, Vec<[f32; 4]>)>,
+    /// Per emitter: its shape and field, and its shape's table (a mesh's
+    /// or a spline's points) followed by a grid field's vectors, with
+    /// the shape table's length.
+    points: HashMap<usize, PointsTable>,
     frame: u64,
 }
 
@@ -675,26 +746,38 @@ impl ParticleRenderer {
             }
             // The surface table, rebuilt when the emitter's shape changed.
             let fresh = match self.points.get(&sys.emitter.index()) {
-                Some((shape, _)) => *shape != e.shape,
+                Some(t) => t.shape != e.shape || t.field != e.field,
                 None => true,
             };
             if fresh {
-                let table = match e.shape {
-                    EmitterShape::Mesh { mesh } => {
-                        let data = scene.mesh(mesh).ok_or_else(|| {
-                            RenderError::InvalidHandle(format!(
-                                "emitter {}: mesh {}",
-                                sys.emitter.index(),
-                                mesh.index()
-                            ))
-                        })?;
-                        mesh_points(data)
-                    }
-                    _ => vec![[0.0; 4]; 2],
+                let mesh = match e.shape {
+                    EmitterShape::Mesh { mesh } => Some(scene.mesh(mesh).ok_or_else(|| {
+                        RenderError::InvalidHandle(format!(
+                            "emitter {}: mesh {}",
+                            sys.emitter.index(),
+                            mesh.index()
+                        ))
+                    })?),
+                    _ => None,
                 };
-                self.points.insert(sys.emitter.index(), (e.shape, table));
+                let mut table = crate::particles::shape_points(&e.shape, mesh);
+                let shape_len = table.len();
+                if let Some(crate::particles::VectorField::Grid { vectors, .. }) = &e.field {
+                    table.extend(vectors.iter().map(|v| v.extend(0.0).to_array()));
+                }
+                self.points.insert(
+                    sys.emitter.index(),
+                    PointsTable {
+                        shape: e.shape,
+                        field: e.field.clone(),
+                        table,
+                        shape_len,
+                    },
+                );
             }
-            let points = &self.points[&sys.emitter.index()].1;
+            let pt = &self.points[&sys.emitter.index()];
+            // The CPU path reads the shape's table; compute reads the grid after it.
+            let (all_points, points) = (&pt.table[..], &pt.table[..pt.shape_len]);
             let state = self.systems.entry(sys.id).or_insert_with(|| SystemState {
                 emitter: sys.emitter.index(),
                 max: e.max_particles,
@@ -725,6 +808,13 @@ impl ParticleRenderer {
                 SimulationSpace::Local => (Vec3::ZERO, Vec3::ZERO),
             };
             state.cpu.origin = origin;
+            let field_origin = e.field.as_ref().map_or([[0.0; 4]; 2], |f| {
+                let (whole, rest) = crate::particles::field_origin(f, origin);
+                [
+                    [whole[0] as f32, whole[1] as f32, whole[2] as f32, 0.0],
+                    rest.extend(0.0).to_array(),
+                ]
+            });
             let noise_origin = {
                 let (whole, rest) = crate::particles::noise_origin(origin, e.noise.frequency);
                 [
@@ -946,7 +1036,7 @@ impl ParticleRenderer {
                         queue,
                         &wgpu::util::BufferInitDescriptor {
                             label: Some("emitter mesh points"),
-                            contents: bytemuck::cast_slice(points),
+                            contents: bytemuck::cast_slice(all_points),
                             usage: wgpu::BufferUsages::STORAGE,
                         },
                     ),
@@ -991,6 +1081,7 @@ impl ParticleRenderer {
                 ));
                 for g in &mut entries[first_entry as usize..] {
                     g.noise_origin = noise_origin;
+                    g.field_origin = field_origin;
                 }
                 if to_colliders {
                     colliding.push((
@@ -1959,10 +2050,24 @@ fn reach(e: &ParticleEmitter, transform: Mat4, tick_rate: f32) -> (Vec3, Vec3) {
         EmitterShape::Box { half_extents } => half_extents.length(),
         // Unknown without the mesh: the reach below is generous.
         EmitterShape::Mesh { .. } => 2.0,
+        EmitterShape::Spline { points, count, .. } => points[..count as usize]
+            .iter()
+            .map(|p| p.length())
+            .fold(0.0, f32::max),
     } * scale;
     let life = e.max_lifetime() + 1.0 / tick_rate;
     let speed = e.speed[0].abs().max(e.speed[1].abs()) * scale;
-    let pull = e.gravity.length() + e.noise.strength.abs();
+    let field = match &e.field {
+        Some(crate::particles::VectorField::Curl { strength, .. }) => strength.abs(),
+        Some(crate::particles::VectorField::Grid {
+            strength, vectors, ..
+        }) => strength.abs() * vectors.iter().map(|v| v.length()).fold(0.0, f32::max),
+        None => 0.0,
+    };
+    let pull = e.gravity.length()
+        + e.noise.strength.abs()
+        + field
+        + e.attractors.iter().map(|a| a.strength.abs()).sum::<f32>();
     let r = (shape + speed * life + 0.5 * pull * life * life + 0.5).min(500.0);
     let at = transform.w_axis.truncate();
     (at - Vec3::splat(r), at + Vec3::splat(r))

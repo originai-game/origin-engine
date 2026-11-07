@@ -15,6 +15,14 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Emitter expressiveness.** `type particles` emitters gain curves over
+  life for the speed (`speedOverLife`) and the spin (`spinOverLife`), a
+  curve over each cycle for the rate (`rateOverTime`), up to four
+  attractors (`attractor`), a vector field (`field curl ...`, or
+  `field "<texture>" ...` that the cook bakes into a grid), emission
+  along a Catmull-Rom spline (`shape spline ... [closed]`) and a share of
+  the emitter's own velocity (`inheritVelocity`). Compute and the CPU
+  path agree on every one; emitters without them simulate as before.
 - **Flipbooks from animated images.** A `type flipbook` sheet names
   animated GIF, WebP or APNG files with `source "hero_run.gif" { ... }`,
   a clip per file, instead of a texture. The cook keeps the delays as clip

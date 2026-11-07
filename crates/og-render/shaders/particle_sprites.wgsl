@@ -50,7 +50,7 @@ fn expand(@builtin(global_invocation_id) id: vec3<u32>) {
     size = 0.0;
     color = vec4<f32>(0.0);
   }
-  let rotation = p.misc.y + p.misc.z * age;
+  let rotation = particle_rotation(emitter, p.misc, age, p.vel_life.w, t);
   let frames = max(params.frames, 1u);
   let mode = u32(emitter.sheet.w);
   var frame = 0u;

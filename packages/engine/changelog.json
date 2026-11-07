@@ -544,6 +544,10 @@
         "summary": "An effect pack is an extension of `kind vfx` (no code): `og vfx add <name|directory> [project]` installs an editable copy into assets/vfx/<name>/, where its effects name their emitters and materials as `vfx/<name>/<file>`; `og ui list` names installed and bundled packs."
       },
       {
+        "member": "og.load.emitter speedOverLife, spinOverLife, rateOverTime, attractor, field, shape spline, inheritVelocity",
+        "summary": "Emitter expressiveness: curves over life for the speed (`speedOverLife`, against the velocity) and the angular velocity (`spinOverLife`, the rotation its integral), a curve over each cycle for the rate (`rateOverTime`); up to four attractors (`attractor <x> <y> <z> <strength> [<radius>]`, negative pushes); a vector field, curl noise (`field curl`) or a grid the cook bakes from a texture (`field \"<texture>\" <strength> <size>`); emission along a Catmull-Rom spline (`shape spline ... [closed]`); and a share of the emitter's own velocity (`inheritVelocity`). Compute and the CPU path agree on all of them. Emitters without them simulate as before."
+      },
+      {
         "member": "og api find",
         "summary": "`og api find` ranks with BM25F over each entry's name, summary, member names and body (camelCase, snake_case and dotted names split, plurals and -ing/-ed stemmed, a word one or two edits off still matching), from an index `og api gen` ships beside the wiki (wiki/search.tsv); a query takes milliseconds with no service. On the 96-query evaluation set (crates/og-cli/tests/fixtures/api-find-queries.tsv: queries by purpose, partial name and typo) recall@1 rises from 18 to 30 and recall@5 from 38 to 56. `--json` prints the entries with their scores; the line output and `og api show` are unchanged, and `og api show <module>` lists the module's members after its overview. The wiki is split: a module page keeps its overview, values, constants and a contents table (signature and one sentence per item), and every function, record, interface and type has its own page under wiki/<module>/ (ui.md 1.1 MB to 116 KB, render.md 0.6 MB to 54 KB)."
       },

@@ -110,7 +110,7 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
     let across = right * -axis.y + up * axis.x;
     offset = along * (c.y * len) + across * (c.x * size);
   } else {
-    let rot = p.misc.y + p.misc.z * age;
+    let rot = particle_rotation(emitter, p.misc, age, p.vel_life.w, t);
     let cs = cos(rot);
     let sn = sin(rot);
     offset = (right * (c.x * cs - c.y * sn) + up * (c.x * sn + c.y * cs)) * size;
@@ -259,7 +259,7 @@ fn vs_mesh(p: ParticleIn, m: MeshIn) -> ParticleOut {
     // Tumbling about an axis of its own (its random value).
     let a = p.misc.w * 43.758;
     let axis = normalize(vec3<f32>(sin(a), cos(a * 1.7), sin(a * 2.3 + 1.0)) + vec3<f32>(1e-3, 0.0, 0.0));
-    let rot = p.misc.y + p.misc.z * age;
+    let rot = particle_rotation(emitter, p.misc, age, p.vel_life.w, t);
     pos = rotate(pos, axis, rot);
     nrm = rotate(nrm, axis, rot);
   }

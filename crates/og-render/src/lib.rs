@@ -372,6 +372,10 @@ pub use lines::{LineLayer, LineMode, Lines, wire_edges};
 pub use material::{PhysicalExtensions, Side, StandardMaterial, UvTransform};
 pub use metaballs::{FIELDS, MAX_FLUIDS, Metaballs};
 pub use particles::{
+    Attractor, MAX_ATTRACTORS, MAX_FIELD_CELLS, MAX_SPLINE_POINTS, VectorField, shape_points,
+    spline_points,
+};
+pub use particles::{
     Burst, ChildParticles, CollisionTarget, ColorCurve, CpuParticles, Curve, EmitterHandle,
     EmitterShape, MAX_CURVE_KEYS, MAX_SUB_EMITTERS, ParticleAlign, ParticleBlend, ParticleClock,
     ParticleCollision, ParticleEmitter, ParticleEvent, ParticleEventKind, ParticleNoise,

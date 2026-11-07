@@ -30,6 +30,7 @@ mod flipbook;
 mod font;
 mod fracture;
 mod fracture_cache;
+mod fx_field;
 pub mod icons;
 mod index;
 pub mod ktx2_source;
@@ -1268,7 +1269,13 @@ pub fn cook_project_with_texture_cache(
                     })
                     .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
                     .collect();
-                let st = stamp(&[b"emitter", &hash, refs.join("\n").as_bytes()]);
+                let fields = fx_field::stamp(s, &text);
+                let st = stamp(&[
+                    b"emitter",
+                    &hash,
+                    refs.join("\n").as_bytes(),
+                    fields.as_bytes(),
+                ]);
                 outs.push((s.rel.clone(), format::Emitter::NAME, st, Work::Emitter(s)));
             }
             Kind::Effect => {

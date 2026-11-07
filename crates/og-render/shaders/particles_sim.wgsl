@@ -57,7 +57,7 @@ fn shape_sample(r: vec4<f32>) -> Sample {
     s.pos = vec3<f32>(cos(a) * rr, 0.0, sin(a) * rr);
   } else if (kind == 3u) {
     s.pos = (vec3<f32>(r.x, r.y, r.z) * 2.0 - vec3<f32>(1.0)) * emitter.shape2.xyz;
-  } else if (kind == 4u) {
+  } else if (kind == 4u || kind == 5u) {
     let count = u32(emitter.shape.y);
     if (count > 0u) {
       let i = min(u32(r.x * f32(count)), count - 1u);
@@ -82,7 +82,7 @@ fn spawn(n: u32, k: u32) -> Particle {
   var vel = dir * speed;
   if (emitter.ranges2.z < 0.5) {
     pos = (emitter.transform * vec4<f32>(pos, 1.0)).xyz;
-    vel = (emitter.transform * vec4<f32>(vel, 0.0)).xyz;
+    vel = (emitter.transform * vec4<f32>(vel, 0.0)).xyz + emitter.motion.xyz * emitter.motion.w;
   }
   let dt = emitter.ranges2.w;
   let bursts = emitter.spawn.w;
@@ -99,6 +99,67 @@ fn spawn(n: u32, k: u32) -> Particle {
   return p;
 }
 
+// One of the curl's derivatives: d psi_k / d axis, central differences.
+fn curl_d(q: vec3<f32>, whole: vec3<i32>, seed: u32, k: u32, axis: vec3<f32>) -> f32 {
+  let h = 0.05;
+  let s = seed ^ (0x4444u + k * 0x1111u);
+  return (value_noise3_at(q + axis * h, whole, s) - value_noise3_at(q - axis * h, whole, s)) / (2.0 * h);
+}
+
+// Curl noise (curl_noise in particles.rs).
+fn curl_noise(q: vec3<f32>, whole: vec3<i32>, seed: u32) -> vec3<f32> {
+  let x = vec3<f32>(1.0, 0.0, 0.0);
+  let y = vec3<f32>(0.0, 1.0, 0.0);
+  let z = vec3<f32>(0.0, 0.0, 1.0);
+  return vec3<f32>(
+    curl_d(q, whole, seed, 2u, y) - curl_d(q, whole, seed, 1u, z),
+    curl_d(q, whole, seed, 0u, z) - curl_d(q, whole, seed, 2u, x),
+    curl_d(q, whole, seed, 1u, x) - curl_d(q, whole, seed, 0u, y)) * 0.25;
+}
+
+fn grid_at(n: i32, base: u32, c: vec3<i32>) -> vec3<f32> {
+  let w = ((c % n) + vec3<i32>(n)) % n;
+  return mesh_points[base + u32((w.z * n + w.y) * n + w.x)].xyz;
+}
+
+// A grid field's vector at `g` (cells, tiling), trilinear (grid_sample).
+fn grid_sample(g: vec3<f32>) -> vec3<f32> {
+  let n = max(i32(emitter.field.w), 1);
+  let base = u32(emitter.counts2.w);
+  let fl = floor(g);
+  let f = g - fl;
+  let i = vec3<i32>(fl);
+  let x00 = mix(grid_at(n, base, i), grid_at(n, base, i + vec3<i32>(1, 0, 0)), f.x);
+  let x10 = mix(grid_at(n, base, i + vec3<i32>(0, 1, 0)), grid_at(n, base, i + vec3<i32>(1, 1, 0)), f.x);
+  let x01 = mix(grid_at(n, base, i + vec3<i32>(0, 0, 1)), grid_at(n, base, i + vec3<i32>(1, 0, 1)), f.x);
+  let x11 = mix(grid_at(n, base, i + vec3<i32>(0, 1, 1)), grid_at(n, base, i + vec3<i32>(1, 1, 1)), f.x);
+  return mix(mix(x00, x10, f.y), mix(x01, x11, f.y), f.z);
+}
+
+// The attractors' pull and the field at `pos` (forces in particles.rs).
+fn forces(pos: vec3<f32>) -> vec3<f32> {
+  var a = vec3<f32>(0.0);
+  for (var i = 0u; i < u32(emitter.counts2.z); i++) {
+    let at = emitter.attract[i];
+    let d = at.xyz - pos;
+    let dist = length(d);
+    if (dist < 1e-4) { continue; }
+    let r = emitter.attract_r[i];
+    var f = at.w / (1.0 + dist * dist);
+    if (r > 0.0) { f = at.w * max(1.0 - dist / r, 0.0); }
+    a += d * (f / dist);
+  }
+  let kind = u32(emitter.field.x);
+  if (kind == 1u) {
+    let q = pos * emitter.field.z + emitter.field_origin[1].xyz + vec3<f32>(emitter.noise.w * emitter.field.w);
+    a += curl_noise(q, vec3<i32>(emitter.field_origin[0].xyz), emitter.info.y) * emitter.field.y;
+  } else if (kind == 2u) {
+    let g = pos / emitter.field.z * emitter.field.w + emitter.field_origin[1].xyz;
+    a += grid_sample(g) * emitter.field.y;
+  }
+  return a;
+}
+
 fn integrate(p: Particle) -> Particle {
   let dt = emitter.ranges2.w;
   var pos = p.pos_age.xyz;
@@ -112,9 +173,16 @@ fn integrate(p: Particle) -> Particle {
     let n = vec3<f32>(value_noise3_at(q, w, seed ^ 0x1111u), value_noise3_at(q, w, seed ^ 0x2222u), value_noise3_at(q, w, seed ^ 0x3333u)) * 2.0 - vec3<f32>(1.0);
     vel += n * emitter.noise.x * dt;
   }
+  vel += forces(pos) * dt;
   vel *= 1.0 / (1.0 + max(emitter.forces.w, 0.0) * dt);
   let before = pos;
-  pos += vel * dt;
+  var speed_scale = 1.0;
+  let speed_keys = u32(emitter.counts2.x);
+  if (speed_keys > 0u) {
+    let t = clamp(p.pos_age.w / max(p.vel_life.w, 1e-6), 0.0, 1.0);
+    speed_scale = curve_at(emitter.speed_t, emitter.speed_v, speed_keys, t);
+  }
+  pos += vel * (dt * speed_scale);
   if (emitter.collision.w > 0.5) {
     // The scene's colliders, as the CPU path's `collide` meets them: a
     // step from outside to inside reflects the normal part of the

@@ -270,6 +270,8 @@ pub(super) fn run(
         Work::Emitter(s) => {
             let text = std::str::from_utf8(&s.bytes)
                 .map_err(|_| CookError("an emitter is text (UTF-8)".into()))?;
+            let baked = fx_field::bake(s, text).map_err(CookError)?;
+            let text = baked.as_str();
             let missing = std::cell::RefCell::new(Vec::new());
             let check = |id: &str| {
                 if !known.contains(crate::runtime::asset_id(id)) {

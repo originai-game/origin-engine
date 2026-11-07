@@ -81,6 +81,35 @@ impl Curve {
     pub fn eval(&self, t: f32) -> f32 {
         eval_keys(&self.keys, t, |k| k.0, |k| k.1, |a, b, f| a + (b - a) * f)
     }
+
+    /// The area under the curve from 0 to `t` (the curve constant beyond
+    /// its ends): how far a rate or a speed scaled by it has carried by
+    /// `t`. `curve_integral` in particle_common.wgsl, operation for
+    /// operation.
+    pub fn integral(&self, t: f32) -> f32 {
+        let n = self.keys.len().min(MAX_CURVE_KEYS);
+        if n == 0 {
+            return t;
+        }
+        let k = &self.keys[..n];
+        let mut area = 0.0;
+        // Before the first key: its value.
+        let mut prev = (0.0f32, k[0].1);
+        for &(kt, kv) in k {
+            if kt <= prev.0 {
+                prev.1 = kv;
+                continue;
+            }
+            if t <= kt {
+                let f = (t - prev.0) / (kt - prev.0);
+                let v = prev.1 + (kv - prev.1) * f.max(0.0);
+                return area + (t - prev.0).max(0.0) * (prev.1 + v) * 0.5;
+            }
+            area += (kt - prev.0) * (prev.1 + kv) * 0.5;
+            prev = (kt, kv);
+        }
+        area + (t - prev.0).max(0.0) * prev.1
+    }
 }
 
 impl Default for Curve {
@@ -174,6 +203,60 @@ pub enum EmitterShape {
     /// On the surface of a mesh of the scene (area weighted), moving along
     /// its normals.
     Mesh { mesh: MeshHandle },
+    /// Along a Catmull-Rom curve through the first `count` (2 to
+    /// [`MAX_SPLINE_POINTS`]) of `points` (closed back to the first when
+    /// `closed`), evenly by length, moving along its tangent: a sword's
+    /// arc, a ring of a portal, a river of motes.
+    Spline {
+        points: [Vec3; MAX_SPLINE_POINTS],
+        count: u32,
+        closed: bool,
+    },
+}
+
+/// The most control points of an [`EmitterShape::Spline`].
+pub const MAX_SPLINE_POINTS: usize = 8;
+
+/// The most [`Attractor`]s of one emitter.
+pub const MAX_ATTRACTORS: usize = 4;
+
+/// The most cells along a side of a [`VectorField::Grid`].
+pub const MAX_FIELD_CELLS: u32 = 16;
+
+/// A point in the emitter's space that pulls particles towards it (a
+/// negative strength pushes them away): a vortex's eye, a black hole, a
+/// heal gathering motes. With a `radius` the pull falls linearly from
+/// `strength` at the point to 0 at that distance; without (0), it is
+/// `strength / (1 + d²)` at distance `d`. Units per second².
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Attractor {
+    pub position: Vec3,
+    pub strength: f32,
+    pub radius: f32,
+}
+
+/// A field of accelerations the particles move through.
+#[derive(Clone, Debug, PartialEq)]
+pub enum VectorField {
+    /// Curl noise (Bridson et al. 2007): the curl of three smooth noise
+    /// fields, swirling and divergence free, so particles curl round each
+    /// other instead of bunching (smoke, magic wisps, embers).
+    /// `frequency` cells per unit, `scroll` cells per second.
+    Curl {
+        strength: f32,
+        frequency: f32,
+        scroll: f32,
+    },
+    /// A tiling grid of `cells`³ vectors (x fastest, then y, then z),
+    /// `size` units a side, read trilinearly: a wind, a vortex or a flow
+    /// painted in a tool and baked by the cook from a texture (`field
+    /// "<texture>"`).
+    Grid {
+        strength: f32,
+        size: f32,
+        cells: u32,
+        vectors: Vec<Vec3>,
+    },
 }
 
 /// Particles emitted at once: `count` at `time` seconds into each emission
@@ -489,6 +572,25 @@ pub struct ParticleEmitter {
     /// mesh particle with one is drawn as an effect mesh: blended, no
     /// depth written, both faces when the material is double sided.
     pub effect: Option<crate::EffectMaterialHandle>,
+    /// How fast particles move over their life, against their velocity
+    /// (Shuriken's speed modifier): each step moves `velocity × dt ×
+    /// speed_over_life(t)`, the forces still acting on the velocity. `None`
+    /// is 1.
+    pub speed_over_life: Option<Curve>,
+    /// The angular velocity over life, against each particle's own: the
+    /// rotation is its integral (a spin that slows to a stop). `None` is 1.
+    pub spin_over_life: Option<Curve>,
+    /// The emission rate over each cycle (t 0 to 1 of `duration`), against
+    /// `rate`: a stream that swells and dies. `None` is 1.
+    pub rate_over_time: Option<Curve>,
+    /// Points that pull or push the particles (at most [`MAX_ATTRACTORS`]).
+    pub attractors: Vec<Attractor>,
+    /// A field the particles move through.
+    pub field: Option<VectorField>,
+    /// The fraction of the emitter's own velocity (its transform's motion
+    /// from tick to tick) a world-space particle starts with: sparks
+    /// thrown from a swung sword, exhaust from a moving ship.
+    pub inherit_velocity: f32,
 }
 
 impl Default for ParticleEmitter {
@@ -532,6 +634,12 @@ impl Default for ParticleEmitter {
             sub_emitters: Vec::new(),
             events: Vec::new(),
             effect: None,
+            speed_over_life: None,
+            spin_over_life: None,
+            rate_over_time: None,
+            attractors: Vec::new(),
+            field: None,
+            inherit_velocity: 0.0,
         }
     }
 }
@@ -575,6 +683,48 @@ impl ParticleEmitter {
         }
         if self.distortion > 0.0 && self.render != ParticleRender::Billboard {
             return Err("distortion is drawn by billboards (render billboard)".into());
+        }
+        for (name, c) in [
+            ("speed_over_life", &self.speed_over_life),
+            ("spin_over_life", &self.spin_over_life),
+            ("rate_over_time", &self.rate_over_time),
+        ] {
+            if let Some(c) = c
+                && (c.keys.is_empty() || c.keys.len() > MAX_CURVE_KEYS)
+            {
+                return Err(format!(
+                    "{name} has {} keys (1 to {MAX_CURVE_KEYS})",
+                    c.keys.len()
+                ));
+            }
+        }
+        if self.attractors.len() > MAX_ATTRACTORS {
+            return Err(format!(
+                "{} attractors (at most {MAX_ATTRACTORS})",
+                self.attractors.len()
+            ));
+        }
+        if let EmitterShape::Spline { count, .. } = self.shape
+            && !(2..=MAX_SPLINE_POINTS as u32).contains(&count)
+        {
+            return Err(format!(
+                "a spline has {count} points (2 to {MAX_SPLINE_POINTS})"
+            ));
+        }
+        if let Some(VectorField::Grid {
+            size,
+            cells,
+            vectors,
+            ..
+        }) = &self.field
+            && (!(1..=MAX_FIELD_CELLS).contains(cells)
+                || vectors.len() != (*cells as usize).pow(3)
+                || !(size.is_finite() && *size > 0.0))
+        {
+            return Err(format!(
+                "a field grid of {cells}³ cells holds {} vectors over {size} units (1 to {MAX_FIELD_CELLS} cells a side, a positive size)",
+                vectors.len()
+            ));
         }
         if self.sub_emitters.len() > MAX_SUB_EMITTERS {
             return Err(format!(
@@ -752,6 +902,9 @@ pub(crate) struct TickStep {
     /// The seconds of particle time this tick takes: the tick's length
     /// times the system's time scale.
     pub dt: f32,
+    /// The emitter's velocity during this tick (its translation's move
+    /// since the last frame over the ticks between; 0 after a reset).
+    pub velocity: Vec3,
 }
 
 /// How many bursts (summed counts) have fired strictly before `end` seconds
@@ -784,7 +937,16 @@ fn spawned_before(e: &ParticleEmitter, elapsed: f64, stop: f64) -> (u64, u64) {
     if end <= 0.0 {
         return (0, 0);
     }
-    let continuous = (e.rate.max(0.0) as f64 * end).floor() as u64;
+    let continuous = match &e.rate_over_time {
+        None => (e.rate.max(0.0) as f64 * end).floor() as u64,
+        // The rate's integral over whole cycles and the part of the last.
+        Some(c) => {
+            let cycle = |t: f64| f64::from(c.integral((t / duration) as f32).max(0.0)) * duration;
+            let full = (end / duration).floor();
+            let area = full * cycle(duration) + cycle(end - full * duration);
+            (e.rate.max(0.0) as f64 * area).floor() as u64
+        }
+    };
     let bursts = if e.looping {
         let full = (end / duration).floor();
         let per_cycle = bursts_in_cycle(&e.bursts, duration, duration);
@@ -830,6 +992,7 @@ pub(crate) fn tick_step(
         bursts,
         transform,
         dt: (1.0 / tick_rate.max(1e-3)) * clock.scale,
+        velocity: Vec3::ZERO,
     }
 }
 
@@ -884,6 +1047,12 @@ pub(crate) fn plan_ticks(
     let clock = *clock;
     let ticks: Vec<u64> = (from..=sys.tick).collect();
     let n = ticks.len();
+    let velocity = match (reset, prev_transform) {
+        (false, Some(prev)) if n > 0 => {
+            (sys.transform.w_axis - prev.w_axis).truncate() * (tick_rate / n as f32)
+        }
+        _ => Vec3::ZERO,
+    };
     let steps = ticks
         .into_iter()
         .enumerate()
@@ -898,7 +1067,10 @@ pub(crate) fn plan_ticks(
                 }
                 _ => sys.transform,
             };
-            tick_step(e, sys, t, tick_rate, transform, &clock)
+            TickStep {
+                velocity,
+                ..tick_step(e, sys, t, tick_rate, transform, &clock)
+            }
         })
         .collect();
     (reset, steps)
@@ -1025,7 +1197,7 @@ fn shape_sample(shape: &EmitterShape, r: [f32; 4], points: &[[f32; 4]]) -> (Vec3
             (Vec3::new(r[0], r[1], r[2]) * 2.0 - Vec3::ONE) * half_extents,
             Vec3::Y,
         ),
-        EmitterShape::Mesh { .. } => {
+        EmitterShape::Mesh { .. } | EmitterShape::Spline { .. } => {
             let count = points.len() / 2;
             if count == 0 {
                 return (Vec3::ZERO, Vec3::Y);
@@ -1066,7 +1238,7 @@ fn spawn(
     let mut vel = dir * speed;
     if e.space == SimulationSpace::World {
         pos = step.transform.transform_point3(pos);
-        vel = step.transform.transform_vector3(vel);
+        vel = step.transform.transform_vector3(vel) + step.velocity * e.inherit_velocity;
     }
     // Continuous spawns spread over the tick; bursts start at age 0.
     let age = if k < step.bursts {
@@ -1231,11 +1403,209 @@ pub(crate) fn noise_origin(origin: Vec3, frequency: f32) -> ([i32; 3], Vec3) {
     ([x.0, y.0, z.0], Vec3::new(x.1, y.1, z.1))
 }
 
+/// The pull of the attractors (`attractors`: in the simulation space) at
+/// `p`.
+fn attract(attractors: &[Attractor], p: Vec3) -> Vec3 {
+    let mut a = Vec3::ZERO;
+    for at in attractors.iter().take(MAX_ATTRACTORS) {
+        let d = at.position - p;
+        let dist = d.length();
+        if dist < 1e-4 {
+            continue;
+        }
+        let f = if at.radius > 0.0 {
+            at.strength * (1.0 - dist / at.radius).max(0.0)
+        } else {
+            at.strength / (1.0 + dist * dist)
+        };
+        a += d * (f / dist);
+    }
+    a
+}
+
+/// Curl noise at lattice point `q` (`whole` cells added): the curl of
+/// three value noise fields by central differences, about -1 to 1 on each
+/// axis. `curl_noise` in particles_sim.wgsl.
+pub(crate) fn curl_noise(q: Vec3, whole: [i32; 3], seed: u32) -> Vec3 {
+    const H: f32 = 0.05;
+    let psi = |q: Vec3, k: u32| value_noise3_at(q, whole, seed ^ (0x4444 + k * 0x1111));
+    let d = |k: u32, axis: Vec3| (psi(q + axis * H, k) - psi(q - axis * H, k)) / (2.0 * H);
+    Vec3::new(
+        d(2, Vec3::Y) - d(1, Vec3::Z),
+        d(0, Vec3::Z) - d(2, Vec3::X),
+        d(1, Vec3::X) - d(0, Vec3::Y),
+    ) * 0.25
+}
+
+/// A grid field's vector at `g` (in cells, tiling), trilinear.
+pub(crate) fn grid_sample(cells: u32, vectors: &[Vec3], g: Vec3) -> Vec3 {
+    let n = cells.max(1) as i32;
+    let fl = g.floor();
+    let f = g - fl;
+    let at = |dx: i32, dy: i32, dz: i32| {
+        let w = |c: f32, d: i32| (c as i32 + d).rem_euclid(n) as usize;
+        let (x, y, z) = (w(fl.x, dx), w(fl.y, dy), w(fl.z, dz));
+        vectors
+            .get((z * n as usize + y) * n as usize + x)
+            .copied()
+            .unwrap_or(Vec3::ZERO)
+    };
+    let x00 = at(0, 0, 0).lerp(at(1, 0, 0), f.x);
+    let x10 = at(0, 1, 0).lerp(at(1, 1, 0), f.x);
+    let x01 = at(0, 0, 1).lerp(at(1, 0, 1), f.x);
+    let x11 = at(0, 1, 1).lerp(at(1, 1, 1), f.x);
+    x00.lerp(x10, f.y).lerp(x01.lerp(x11, f.y), f.z)
+}
+
+/// Where a field's lattice stands at the render origin `origin`: a curl
+/// field's whole cells and the rest (as [`noise_origin`]), a grid's
+/// offset in cells within one tile.
+pub(crate) fn field_origin(field: &VectorField, origin: Vec3) -> ([i32; 3], Vec3) {
+    match field {
+        VectorField::Curl { frequency, .. } => noise_origin(origin, *frequency),
+        VectorField::Grid { size, cells, .. } => {
+            let at = |o: f32| {
+                let x = f64::from(o) / f64::from(*size);
+                ((x - x.floor()) * f64::from(*cells)) as f32
+            };
+            ([0; 3], Vec3::new(at(origin.x), at(origin.y), at(origin.z)))
+        }
+    }
+}
+
+/// An emitter's attractors in its simulation space at a tick placed by
+/// `transform`: carried into the world for a world-space system.
+pub(crate) fn placed_attractors(e: &ParticleEmitter, transform: Mat4) -> Vec<Attractor> {
+    e.attractors
+        .iter()
+        .take(MAX_ATTRACTORS)
+        .map(|a| match e.space {
+            SimulationSpace::World => Attractor {
+                position: transform.transform_point3(a.position),
+                ..*a
+            },
+            SimulationSpace::Local => *a,
+        })
+        .collect()
+}
+
+/// The acceleration of `pulls` (attractors in the simulation space) and
+/// the field at `p` at `time` seconds.
+fn forces(
+    e: &ParticleEmitter,
+    pulls: &[Attractor],
+    p: Vec3,
+    time: f32,
+    seed: u32,
+    origin: Vec3,
+) -> Vec3 {
+    let mut a = attract(pulls, p);
+    match &e.field {
+        Some(
+            f @ VectorField::Curl {
+                strength,
+                frequency,
+                scroll,
+            },
+        ) => {
+            let (whole, rest) = field_origin(f, origin);
+            let q = p * *frequency + rest + Vec3::splat(time * scroll);
+            a += curl_noise(q, whole, seed) * *strength;
+        }
+        Some(
+            f @ VectorField::Grid {
+                strength,
+                size,
+                cells,
+                vectors,
+            },
+        ) => {
+            let (_, rest) = field_origin(f, origin);
+            let g = p / *size * *cells as f32 + rest;
+            a += grid_sample(*cells, vectors, g) * *strength;
+        }
+        None => {}
+    }
+    a
+}
+
+/// A spline shape's table, as [`mesh_points`]'s: points evenly along the
+/// Catmull-Rom curve through `points[..count]` with its tangent, two
+/// entries a point.
+pub fn spline_points(points: &[Vec3], closed: bool) -> Vec<[f32; 4]> {
+    let n = points.len();
+    let mut out = Vec::with_capacity(MESH_SAMPLE_POINTS * 2);
+    if n < 2 {
+        for _ in 0..MESH_SAMPLE_POINTS {
+            out.push([0.0; 4]);
+            out.push([0.0, 1.0, 0.0, 0.0]);
+        }
+        return out;
+    }
+    let segments = if closed { n } else { n - 1 };
+    let p = |i: isize| {
+        if closed {
+            points[i.rem_euclid(n as isize) as usize]
+        } else {
+            points[i.clamp(0, n as isize - 1) as usize]
+        }
+    };
+    let at = |u: f32| {
+        let s = ((u * segments as f32) as usize).min(segments - 1);
+        let t = u * segments as f32 - s as f32;
+        let i = s as isize;
+        let (p0, p1, p2, p3) = (p(i - 1), p(i), p(i + 1), p(i + 2));
+        let (t2, t3) = (t * t, t * t * t);
+        0.5 * (2.0 * p1
+            + (p2 - p0) * t
+            + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2
+            + (3.0 * p1 - p0 - 3.0 * p2 + p3) * t3)
+    };
+    // Even by length: a dense polyline, then its length's equal steps.
+    const DENSE: usize = 4096;
+    let dense: Vec<Vec3> = (0..=DENSE).map(|i| at(i as f32 / DENSE as f32)).collect();
+    let mut length = vec![0.0f32; DENSE + 1];
+    for i in 1..=DENSE {
+        length[i] = length[i - 1] + (dense[i] - dense[i - 1]).length();
+    }
+    let total = length[DENSE].max(1e-6);
+    for k in 0..MESH_SAMPLE_POINTS {
+        let want = (k as f32 + 0.5) / MESH_SAMPLE_POINTS as f32 * total;
+        let i = length.partition_point(|&l| l < want).clamp(1, DENSE);
+        let f = (want - length[i - 1]) / (length[i] - length[i - 1]).max(1e-9);
+        let pos = dense[i - 1].lerp(dense[i], f);
+        let dir = (dense[i] - dense[i - 1]).normalize_or(Vec3::Y);
+        out.push(pos.extend(1.0).to_array());
+        out.push(dir.extend(0.0).to_array());
+    }
+    out
+}
+
+/// The surface table of an emitter shape that has one (a mesh, its mesh's
+/// `MeshData`; a spline): two entries a point, a placeholder point for
+/// the others.
+pub fn shape_points(shape: &EmitterShape, mesh: Option<&MeshData>) -> Vec<[f32; 4]> {
+    match (shape, mesh) {
+        (EmitterShape::Mesh { .. }, Some(m)) => mesh_points(m),
+        (
+            EmitterShape::Spline {
+                points,
+                count,
+                closed,
+            },
+            _,
+        ) => spline_points(&points[..(*count as usize).min(MAX_SPLINE_POINTS)], *closed),
+        _ => vec![[0.0; 4], [0.0, 1.0, 0.0, 0.0]],
+    }
+}
+
 /// One fixed step of a live particle at `time` seconds; `origin`: the
 /// render origin a world-space system is simulated relative to. Whether it
 /// bounced off a collider.
+#[allow(clippy::too_many_arguments)]
 fn integrate(
     e: &ParticleEmitter,
+    pulls: &[Attractor],
     p: &mut ParticleState,
     dt: f32,
     time: f32,
@@ -1257,9 +1627,11 @@ fn integrate(
             - Vec3::ONE;
         vel += n * e.noise.strength * dt;
     }
+    vel += forces(e, pulls, pos, time, seed, origin) * dt;
     vel *= 1.0 / (1.0 + e.drag.max(0.0) * dt);
     let before = pos;
-    pos += vel * dt;
+    let t = (p.pos_age[3] / p.vel_life[3].max(1e-6)).clamp(0.0, 1.0);
+    pos += vel * (dt * e.speed_over_life.as_ref().map_or(1.0, |c| c.eval(t)));
     let hit = match e.collision {
         Some(c) => collide(colliders, c, before, &mut pos, &mut vel, dt),
         None => false,
@@ -1329,7 +1701,7 @@ fn spawn_child(e: &ParticleEmitter, seed: u32, n: u32, at: Vec3, inherited: Vec3
     let rot = lerp(e.rotation_degrees, r(3)).to_radians();
     let spin = lerp(e.angular_velocity_degrees, r(4)).to_radians();
     let shape = match e.shape {
-        EmitterShape::Mesh { .. } => EmitterShape::Point,
+        EmitterShape::Mesh { .. } | EmitterShape::Spline { .. } => EmitterShape::Point,
         s => s,
     };
     let (offset, dir) = shape_sample(&shape, [r(6), r(7), r(8), r(11)], &[]);
@@ -1409,6 +1781,7 @@ impl CpuParticles {
         let mut fired: Vec<ParticleEvent> = Vec::new();
         for step in &steps {
             let dt = step.dt;
+            let pulls = placed_attractors(e, step.transform);
             fired.clear();
             let mut report = |kind, n: u32, p: &ParticleState| {
                 let (mut at, mut vel) = (
@@ -1436,7 +1809,8 @@ impl CpuParticles {
                         }
                     }
                     None if p.alive() => {
-                        let hit = integrate(e, p, dt, step.time, seed, colliders, self.origin);
+                        let hit =
+                            integrate(e, &pulls, p, dt, step.time, seed, colliders, self.origin);
                         if hit && hits {
                             report(
                                 ParticleEventKind::Collision,
@@ -1461,7 +1835,16 @@ impl CpuParticles {
                 let c = &mut self.children[k];
                 let cmax = ce.max_particles.max(1) as u64;
                 for q in c.slots.iter_mut().filter(|q| q.alive()) {
-                    integrate(ce, q, dt, step.time, cseed, colliders, self.origin);
+                    integrate(
+                        ce,
+                        &ce.attractors,
+                        q,
+                        dt,
+                        step.time,
+                        cseed,
+                        colliders,
+                        self.origin,
+                    );
                 }
                 for ev in fired.iter().filter(|ev| ev.kind == sub.trigger) {
                     for _ in 0..sub.count {
@@ -1508,7 +1891,7 @@ pub(crate) fn appearance(
         c[2] * e.color[2],
         c[3] * e.color[3],
     ];
-    let rotation = p.misc[1] + p.misc[2] * p.pos_age[3];
+    let rotation = particle_rotation(e, p, t);
     let frame = match e.sheet.mode {
         SheetMode::Off => 0,
         SheetMode::OverLife { cycles } => (t * cycles * frames as f32) as u32 % frames,
@@ -1516,6 +1899,17 @@ pub(crate) fn appearance(
         SheetMode::Random => ((p.misc[3] * frames as f32) as u32).min(frames - 1),
     };
     (size, color, rotation, frame)
+}
+
+/// A particle's rotation at life `t`: its start plus its angular velocity
+/// times its age, or with [`ParticleEmitter::spin_over_life`] times the
+/// curve's integral over its life (`particle_rotation` in
+/// particle_common.wgsl).
+pub(crate) fn particle_rotation(e: &ParticleEmitter, p: &ParticleState, t: f32) -> f32 {
+    match &e.spin_over_life {
+        None => p.misc[1] + p.misc[2] * p.pos_age[3],
+        Some(c) => p.misc[1] + p.misc[2] * p.vel_life[3] * c.integral(t),
+    }
 }
 
 /// The frames an array emitter's particles go through: `sheet.frames` of
@@ -1540,6 +1934,203 @@ pub(crate) fn sheet_frames(sheet: &SpriteSheet) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The area under a curve, against the trapezoids by hand: before the
+    /// first key it holds the first value, after the last the last.
+    #[test]
+    fn a_curve_integrates_its_trapezoids_and_holds_its_ends() {
+        let c = Curve::new(&[(0.2, 1.0), (0.6, 3.0), (1.0, 0.0)]);
+        // 0..0.2 at 1: 0.2; 0.2..0.6 from 1 to 3: 0.8; 0.6..1 from 3 to 0: 0.6.
+        for (t, want) in [
+            (0.1, 0.1),
+            (0.2, 0.2),
+            (0.4, 0.2 + 0.2 * 1.5),
+            (0.6, 1.0),
+            (1.0, 1.6),
+            (1.5, 1.6),
+        ] {
+            assert!(
+                (c.integral(t) - want).abs() < 1e-5,
+                "t {t}: {} against {want}",
+                c.integral(t)
+            );
+        }
+        assert!((Curve::constant(2.0).integral(0.3) - 0.6).abs() < 1e-6);
+    }
+
+    fn live(e: &ParticleEmitter, sys: &mut ParticleSystem, ticks: u64) -> Vec<ParticleState> {
+        let mut cpu = CpuParticles::default();
+        let points = shape_points(&e.shape, None);
+        for t in 0..ticks {
+            sys.tick = t;
+            cpu.advance(e, sys, 60.0, &points, &[], &[], None);
+        }
+        cpu.slots.into_iter().filter(|p| p.alive()).collect()
+    }
+
+    /// A rate curve shapes the emission: half the cycle at 0 and half at
+    /// 2 spawns what the flat rate does over the cycle, none of it in the
+    /// first half.
+    #[test]
+    fn a_rate_curve_shapes_when_particles_are_born() {
+        let e = ParticleEmitter {
+            rate: 60.0,
+            duration: 2.0,
+            looping: false,
+            lifetime: [10.0, 10.0],
+            rate_over_time: Some(Curve::new(&[(0.5, 0.0), (0.5, 2.0)])),
+            max_particles: 1024,
+            ..Default::default()
+        };
+        let mut sys = ParticleSystem::new(1, EmitterHandle(0), Mat4::IDENTITY, 1, 0);
+        assert_eq!(
+            live(&e, &mut sys, 60).len(),
+            0,
+            "the curve's first half is 0"
+        );
+        let n = live(&e, &mut sys, 130).len();
+        assert!(
+            (118..=122).contains(&n),
+            "{n} born over the cycle (120 flat)"
+        );
+    }
+
+    /// An attractor gathers particles, a speed curve of 0 holds them where
+    /// they are, a spline sheds them along its curve and a moving emitter
+    /// lends them its velocity.
+    #[test]
+    fn attractors_speed_splines_and_inherited_velocity_move_particles() {
+        let base = ParticleEmitter {
+            shape: EmitterShape::Sphere {
+                radius: 2.0,
+                surface: true,
+            },
+            speed: [0.0, 0.0],
+            gravity: Vec3::ZERO,
+            lifetime: [5.0, 5.0],
+            rate: 0.0,
+            bursts: vec![Burst::once(0.0, 100)],
+            ..Default::default()
+        };
+        let mean_r = |ps: &[ParticleState]| {
+            ps.iter()
+                .map(|p| Vec3::from_slice(&p.pos_age[..3]).length())
+                .sum::<f32>()
+                / ps.len() as f32
+        };
+        let mut sys = ParticleSystem::new(1, EmitterHandle(0), Mat4::IDENTITY, 3, 0);
+        let still = mean_r(&live(&base, &mut sys, 60));
+        let pulled = ParticleEmitter {
+            attractors: vec![Attractor {
+                position: Vec3::ZERO,
+                strength: 4.0,
+                radius: 0.0,
+            }],
+            ..base.clone()
+        };
+        let gathered = mean_r(&live(&pulled, &mut sys, 60));
+        assert!(
+            (still - 2.0).abs() < 1e-3 && gathered < 1.7,
+            "radius {still} still, {gathered} pulled"
+        );
+        let held = ParticleEmitter {
+            speed_over_life: Some(Curve::constant(0.0)),
+            ..pulled
+        };
+        let h = live(&held, &mut sys, 60);
+        assert!((mean_r(&h) - 2.0).abs() < 1e-3, "held at {}", mean_r(&h));
+        // The pull at 2 m is 4 / (1 + 4) = 0.8 m/s², for a second.
+        let speeds: Vec<f32> = h
+            .iter()
+            .map(|p| Vec3::from_slice(&p.vel_life[..3]).length())
+            .collect();
+        assert!(
+            speeds.iter().all(|v| (0.7..0.9).contains(v)),
+            "the pull still builds velocity: {:?}",
+            &speeds[..4]
+        );
+
+        // A spline from (0,0,0) to (4,0,0): every particle is born on the x axis, spread along it.
+        let mut points = [Vec3::ZERO; MAX_SPLINE_POINTS];
+        points[1] = Vec3::new(4.0, 0.0, 0.0);
+        let line = ParticleEmitter {
+            shape: EmitterShape::Spline {
+                points,
+                count: 2,
+                closed: false,
+            },
+            ..base.clone()
+        };
+        let born = live(&line, &mut sys, 1);
+        assert!(
+            born.iter()
+                .all(|p| p.pos_age[1].abs() < 1e-4 && p.pos_age[2].abs() < 1e-4)
+        );
+        let xs: Vec<f32> = born.iter().map(|p| p.pos_age[0]).collect();
+        let (lo, hi) = xs
+            .iter()
+            .fold((f32::MAX, f32::MIN), |a, &x| (a.0.min(x), a.1.max(x)));
+        assert!(lo < 0.5 && hi > 3.5, "spread from {lo} to {hi}");
+
+        // Moving at 6 m/s along x: half of it inherited.
+        let thrown = ParticleEmitter {
+            shape: EmitterShape::Point,
+            rate: 60.0,
+            bursts: Vec::new(),
+            inherit_velocity: 0.5,
+            ..base
+        };
+        let mut cpu = CpuParticles::default();
+        for t in 0..30u64 {
+            sys.tick = t;
+            sys.transform = Mat4::from_translation(Vec3::new(t as f32 * 0.1, 0.0, 0.0));
+            cpu.advance(
+                &thrown,
+                &sys,
+                60.0,
+                &[[0.0; 4], [0.0, 1.0, 0.0, 0.0]],
+                &[],
+                &[],
+                None,
+            );
+        }
+        let vx: Vec<f32> = cpu
+            .slots
+            .iter()
+            .filter(|p| p.alive())
+            .map(|p| p.vel_life[0])
+            .collect();
+        assert!(
+            vx.len() > 20 && vx.iter().skip(2).all(|v| (v - 3.0).abs() < 1e-3),
+            "{vx:?}"
+        );
+    }
+
+    /// Curl noise is divergence free: its divergence by central
+    /// differences is a small fraction of its size (value noise itself,
+    /// the turbulence `noise` adds, is not).
+    #[test]
+    fn curl_noise_has_no_divergence() {
+        let h = 0.01;
+        let (mut div, mut mag) = (0.0f32, 0.0f32);
+        for i in 0..64 {
+            let q = Vec3::new(
+                i as f32 * 0.37,
+                (i % 7) as f32 * 0.61,
+                (i % 5) as f32 * 0.43 + 0.1,
+            );
+            let c = |p: Vec3| curl_noise(p, [0; 3], 9);
+            let d = (c(q + Vec3::X * h).x - c(q - Vec3::X * h).x + c(q + Vec3::Y * h).y
+                - c(q - Vec3::Y * h).y
+                + c(q + Vec3::Z * h).z
+                - c(q - Vec3::Z * h).z)
+                / (2.0 * h);
+            div += d.abs();
+            mag += c(q).length();
+        }
+        assert!(mag > 1.0, "the field is {mag}");
+        assert!(div < 0.15 * mag, "divergence {div} against size {mag}");
+    }
 
     /// A fountain: a burst, then 60 a second, each living a second.
     fn fountain() -> ParticleEmitter {
