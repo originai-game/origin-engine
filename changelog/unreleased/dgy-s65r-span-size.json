@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.ui rich text [size=<px> [<line height px> [<tracking em>]]]",
+      "summary": "A span takes a size of its own, as a page's CSS font-size, line-height and letter-spacing, for text sized between the type roles' steps (`[size=20 30 0.02]…[/size]`). The lengths are px at text scale 1 and grow by the player's text scale like every step. A line height given spaces CJK lines by it too; without one, both leadings keep the paragraph step's ratio, so CJK lines keep the type scale's taller leading. Tracking given spaces Latin and CJK alike. `[size=<TypeStepName>]` is unchanged; anything that is neither still shows as text with a warning."
+    }
+  ]
+}

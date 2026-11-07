@@ -241,3 +241,86 @@ fn a_registered_picture_and_an_actions_glyph_draw_inline() {
         "{w:?}"
     );
 }
+
+/// The draw size and the gap between the two lines' baselines of
+/// `markup` (two lines, broken at `\n`) at the player's text scale `scale`.
+fn sized_lines(scale: f32, markup: &str) -> (f32, f32, TypeStep) {
+    let mut ui = rich_ui();
+    let mut theme = *ui.theme();
+    theme.unit_pin = 1.0;
+    theme.text_scale = scale;
+    // A tight Latin body leading, so the type scale's CJK leading
+    // (at least 1.45 em) is the taller one.
+    for token in &mut theme.tokens.typography.steps[tokens::TypeRole::Body.index()] {
+        token.line_height = token.size + 2.0;
+    }
+    ui.set_theme(theme);
+    for _ in 0..2 {
+        step(&mut ui, InputFrame::default(), markup, Size::Fixed(560.0));
+    }
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let t = texts(&ui);
+    assert!(t.len() >= 2, "two lines: {t:?}");
+    let mut baselines: Vec<f32> = t.iter().map(|x| x.2).collect();
+    baselines.sort_by(f32::total_cmp);
+    baselines.dedup();
+    assert_eq!(baselines.len(), 2, "two baselines: {t:?}");
+    (
+        t[0].4,
+        baselines[1] - baselines[0],
+        ui.theme().type_ramp.body,
+    )
+}
+
+#[test]
+fn an_explicit_span_size_takes_the_players_text_scale() {
+    // `[size=<px> <line height> <tracking>]`, a CSS font-size and
+    // line-height: exact at text scale 1, and grown by the player's text
+    // scale like every step (never fixed px that ignore the setting).
+    for (scale, size, gap) in [(1.0, 20.0, 30.0), (1.5, 30.0, 45.0)] {
+        let (s, g, _) = sized_lines(scale, "[size=20 30 0.1]ab\nab[/size]");
+        assert!((s - size).abs() < 0.01, "Latin size at {scale}: {s}");
+        assert!((g - gap).abs() < 0.6, "Latin leading at {scale}: {g}");
+        // A line height given spaces a CJK line by it too, as CSS does.
+        let (s, g, _) = sized_lines(scale, "[size=20 30]汉字\n汉字[/size]");
+        assert!((s - size).abs() < 0.01, "CJK size at {scale}: {s}");
+        assert!((g - gap).abs() < 0.6, "CJK leading at {scale}: {g}");
+    }
+}
+
+#[test]
+fn an_explicit_span_size_without_a_line_height_keeps_the_cjk_leading() {
+    // Only the size given: both leadings keep the paragraph step's ratio,
+    // so a CJK line keeps the type scale's taller leading.
+    for scale in [1.0, 1.5] {
+        let (s, latin, body) = sized_lines(scale, "[size=20]ab\nab[/size]");
+        let (_, cjk, _) = sized_lines(scale, "[size=20]汉字\n汉字[/size]");
+        let k = 20.0 * scale / body.size;
+        assert!((s - 20.0 * scale).abs() < 0.01, "size at {scale}: {s}");
+        assert!(
+            (latin - body.line_height * k).abs() < 1.0,
+            "Latin at {scale}: {latin} vs {body:?}"
+        );
+        assert!(
+            (cjk - body.cjk_line_height * k).abs() < 1.0,
+            "CJK at {scale}: {cjk} vs {body:?}"
+        );
+        assert!(cjk > latin, "the CJK line stays taller: {cjk} vs {latin}");
+    }
+    // Not a size: kept as text and named.
+    let mut ui = rich_ui();
+    step(
+        &mut ui,
+        InputFrame::default(),
+        "[size=20 x]a[/size]",
+        Size::Fixed(560.0),
+    );
+    assert!(
+        ui.frame()
+            .warnings
+            .iter()
+            .any(|w| w.contains("[size=20 x]")),
+        "{:?}",
+        ui.frame().warnings
+    );
+}
