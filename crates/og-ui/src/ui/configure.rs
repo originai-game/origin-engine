@@ -512,6 +512,9 @@ impl Ui {
         self.building = true;
 
         self.state.tick += 1;
+        // A Rive player whose element was not built last tick is gone.
+        let tick = self.state.tick;
+        self.state.rive.retain(|_, s| s.built + 1 >= tick);
         self.nav = NavFrame::default();
         self.touched.clear();
         self.request_focus = 0;

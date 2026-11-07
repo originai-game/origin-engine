@@ -1283,3 +1283,148 @@ fn a_gradient_mask_fades_as_it_reads() {
         );
     }
 }
+
+/// A Rive artboard that cuts its content to its frame, played in an
+/// element turned 45°, is cut by the turned box: a red square twice the
+/// box's size fills the box's diamond, its tip just inside a turned corner
+/// red, and a point inside the upright box but outside the turned one
+/// stays the ground.
+///
+/// Ways it could fail: the cut taken in screen space from the layout box
+/// (the content cut by its unturned rectangle: the tip missing and the
+/// upright corners red), or no cut (red past the diamond).
+#[test]
+#[ignore = "requires GPU"]
+fn a_turned_rive_frame_is_cut_by_its_turned_box() {
+    use og_ui::rive::*;
+    let vp = Viewport {
+        width: 300.0,
+        height: 300.0,
+        dpr: 1.0,
+        ..Viewport::default()
+    };
+    let node = |parent, kind, values| Node {
+        name: "n".into(),
+        parent,
+        kind,
+        values,
+    };
+    // 100 × 100, its content a 200 × 200 red square about its centre.
+    let board = std::sync::Arc::new(Artboard {
+        name: "Board".into(),
+        size: Vec2::new(100.0, 100.0),
+        fit: Fit::None,
+        clip: true,
+        nodes: vec![
+            node(0, Kind::Artboard { paints: vec![] }, Values::default()),
+            node(
+                0,
+                Kind::Shape {
+                    paths: vec![2],
+                    paints: vec![3],
+                    hidden: false,
+                    blend: og_render::UiBlend::Normal,
+                },
+                Values {
+                    x: 50.0,
+                    y: 50.0,
+                    ..Values::default()
+                },
+            ),
+            node(
+                1,
+                Kind::Path {
+                    outline: Outline::Rect,
+                    closed: true,
+                },
+                Values {
+                    width: 200.0,
+                    height: 200.0,
+                    ..Values::default()
+                },
+            ),
+            node(
+                1,
+                Kind::Fill {
+                    rule: og_render::UiFillRule::NonZero,
+                    shader: 4,
+                    visible: true,
+                },
+                Values::default(),
+            ),
+            node(
+                3,
+                Kind::Solid,
+                Values {
+                    color: 0xFFFF_0000,
+                    ..Values::default()
+                },
+            ),
+        ],
+        draws: vec![1],
+        ..Artboard::default()
+    });
+    let mut ui = Ui::new(UiDesc::default());
+    ui.begin(InputFrame::default(), vp);
+    ui.open(
+        "Stage",
+        Element {
+            width: Size::Fixed(300.0),
+            height: Size::Fixed(300.0),
+            align: Align::Center,
+            cross: Cross::Center,
+            ..Element::default()
+        },
+    );
+    ui.open_with(
+        "Turned",
+        Element {
+            width: Size::Fixed(100.0),
+            height: Size::Fixed(100.0),
+            ..Element::default()
+        },
+        Props {
+            transform: Transform {
+                rotate: 45f32.to_radians(),
+                ..Transform::IDENTITY
+            },
+            ..Props::default()
+        },
+    );
+    ui.set_draw(og_ui::paint::ElementDraw {
+        rive: Some(og_ui::paint::RiveDraw(Player::new(board, None))),
+        ..Default::default()
+    });
+    ui.close();
+    ui.close();
+    ui.end();
+    let mut scene = RenderScene::new();
+    let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    scene.overlay = Some(overlay);
+    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.post.tonemap = Tonemap::None;
+    let desc = RenderDesc {
+        width: 300,
+        height: 300,
+        ..RenderDesc::default()
+    };
+    let (pixels, _) = rendered(&scene, &desc);
+    let red_at = |x: f32, y: f32| {
+        let i = (y as usize * 300 + x as usize) * 4;
+        pixels[i] > 200 && pixels[i + 1] < 40
+    };
+    // The box's centre is the stage's; turned 45°, its corners point up,
+    // down, left and right, 70.7 px out.
+    let c = 150.0;
+    for (x, y) in [(c, c - 66.0), (c + 66.0, c), (c, c + 66.0), (c - 66.0, c)] {
+        assert!(red_at(x, y), "({x}, {y}) just inside a turned corner");
+    }
+    for (x, y) in [(c + 45.0, c - 45.0), (c - 45.0, c + 45.0)] {
+        assert!(
+            !red_at(x, y),
+            "({x}, {y}) inside the upright box, outside the turned one"
+        );
+    }
+    assert!(red_at(c, c), "the centre");
+}

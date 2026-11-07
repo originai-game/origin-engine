@@ -1192,6 +1192,7 @@ impl Resolved {
             },
             layer,
             text: None,
+            rive: None,
         }
     }
 }

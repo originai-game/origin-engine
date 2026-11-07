@@ -57,6 +57,9 @@ enum Conv {
     Presence,
     /// Two fractions as percentages: `50% 100%`.
     Origin,
+    /// A Rive artboard's id as `rive("<file>.riv#<Artboard>")` (its
+    /// property is `-og-frame`, which otherwise names a style part).
+    Rive,
     /// Written with its partner in one property (`translate: <x> <y>`,
     /// `scale: <x> <y>`, `-og-skew`, `grid-column`/`grid-row`,
     /// `grid-auto-flow`).
@@ -106,6 +109,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("background", "background"),
     ("radius", "border-radius"),
     ("frame", "-og-frame"),
+    ("rive", "-og-frame"),
     ("aspect", "aspect-ratio"),
     ("fade", "-og-scroll-fade"),
     ("fadeInto", "-og-scroll-fade-into"),
@@ -181,6 +185,7 @@ fn conv(prop: &str) -> Conv {
         "step" | "fitMin" => Conv::Var("text"),
         "font" => Conv::Var("font"),
         "anchorTo" => Conv::Str,
+        "rive" => Conv::Rive,
         "area" => Conv::Ident,
         "areas" | "overlaps" => Conv::Strs,
         "columns" | "rows" => Conv::Tracks,
@@ -519,6 +524,7 @@ fn value_css(prop: &str, c: Conv, vals: &[Value]) -> Result<String, String> {
         }
         Conv::Var(ns) => Ok(format!("var(--{ns}-{})", kebab(&text_of(one()?)))),
         Conv::Str => Ok(quoted(&text_of(one()?))),
+        Conv::Rive => Ok(format!("rive({})", quoted(&text_of(one()?)))),
         Conv::Ident => {
             let w = text_of(one()?);
             Ok(if is_ident(&w) { w } else { quoted(&w) })
@@ -1243,13 +1249,12 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                                         && !board.is_empty()
                                         && !board.contains('#')
                                 });
-                        if !well_formed {
-                            return Err("-og-frame: rive(\"<file>.riv#<Artboard>\") takes one quoted id relative to assets/, such as rive(\"ui/chest.riv#Chest\")".into());
+                        match id {
+                            Some(id) if well_formed => {
+                                return Ok(vec![e("rive", vec![Value::String(id.to_owned())])]);
+                            }
+                            _ => return Err("-og-frame: rive(\"<file>.riv#<Artboard>\") takes one quoted id relative to assets/, such as rive(\"ui/chest.riv#Chest\")".into()),
                         }
-                        return Err(format!(
-                            "-og-frame: rive(\"{}\") fills a frame with a Rive artboard once the Rive import lands; until then a frame is a style part (panel, card, button …)",
-                            id.unwrap_or_default()
-                        ));
                     }
                     v => vec![Value::Word(camel(want_ident(&v, "a word")?))],
                 },
@@ -1317,7 +1322,9 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
                     }
                     _ => return Err("transform-origin: <x>% <y>%".into()),
                 },
-                Conv::Size | Conv::Insets | Conv::Joint => unreachable!("handled above"),
+                Conv::Size | Conv::Insets | Conv::Joint | Conv::Rive => {
+                    unreachable!("handled above")
+                }
             };
             Ok(vec![e(prop, vals)])
         }

@@ -18,11 +18,13 @@ use serde_json::{Map, Value, json};
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet};
 
-/// A document an engine loaded: its asset id and its cooked output's hash.
+/// A document an engine loaded: its asset id and its cooked output's hash,
+/// and the Rive artboards it plays with theirs.
 #[derive(Clone, Debug)]
 struct Loaded {
     id: String,
     hash: u64,
+    rive: Vec<(String, u64)>,
 }
 
 #[derive(Default)]
@@ -127,6 +129,31 @@ fn read_document(eng: &Engine, id: &str) -> Result<UiDocument, String> {
     UiDocument::parse(id, &text).map_err(|e| e.join("\n"))
 }
 
+/// The Rive artboards a document plays (`-og-frame: rive("<id>")`), read
+/// from their cooked blobs and checked, with their hashes: one missing or
+/// malformed refuses the document.
+fn read_rive(
+    eng: &Engine,
+    doc: &UiDocument,
+) -> Result<Vec<(String, u64, std::sync::Arc<og_ui::rive::Artboard>)>, String> {
+    doc.rive_ids()
+        .into_iter()
+        .map(|id| {
+            let raw = {
+                let assets = eng.assets.borrow();
+                let (bytes, bundle) = assets
+                    .blob(&id)
+                    .map_err(|e| format!("{}: -og-frame: rive(\"{id}\"): {e}", doc.source))?;
+                bundle
+                    .rive_artboard(&id, bytes.bytes())
+                    .map_err(|e| e.to_string())?
+            };
+            let artboard = og_ui::rive::decode(&raw).map_err(|e| format!("{id}: {e}"))?;
+            Ok((id.clone(), hash_of(eng, &id), std::sync::Arc::new(artboard)))
+        })
+        .collect()
+}
+
 fn roots_of(doc: &UiDocument) -> Vec<String> {
     let mut paths = Vec::new();
     for n in &doc.nodes {
@@ -144,20 +171,27 @@ fn roots_of(doc: &UiDocument) -> Vec<String> {
 pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> {
     let id = og_bundle::runtime::asset_id(path).to_string();
     let doc = read_document(eng, &id)?;
+    let rive = read_rive(eng, &doc)?;
     let name = doc.name.clone();
     let hash = hash_of(eng, &id);
+    let hashes: Vec<(String, u64)> = rive.iter().map(|(r, h, _)| (r.clone(), *h)).collect();
     with(eng.id, |d| {
         d.roots.extend(roots_of(&doc));
         match d.loaded.iter_mut().find(|l| l.id == id) {
-            Some(l) => l.hash = hash,
+            Some(l) => (l.hash, l.rive) = (hash, hashes),
             None => d.loaded.push(Loaded {
                 id: id.clone(),
                 hash,
+                rive: hashes,
             }),
         }
     });
     let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
-    ui.lock().define_document(doc);
+    let mut ui = ui.lock();
+    for (r, _, artboard) in rive {
+        ui.define_rive(&r, artboard);
+    }
+    ui.define_document(doc);
     Ok(name)
 }
 
@@ -180,18 +214,25 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
     let Some(ui) = ui else { return failed };
     for l in loaded {
         let now = hash_of(eng, &l.id);
-        if now == l.hash {
+        // An edited .riv reloads its document's artboards too.
+        if now == l.hash && l.rive.iter().all(|(r, h)| hash_of(eng, r) == *h) {
             continue;
         }
-        match read_document(eng, &l.id) {
-            Ok(doc) => {
+        match read_document(eng, &l.id).and_then(|doc| Ok((read_rive(eng, &doc)?, doc))) {
+            Ok((rive, doc)) => {
+                let hashes: Vec<(String, u64)> =
+                    rive.iter().map(|(r, h, _)| (r.clone(), *h)).collect();
                 with(eng.id, |d| {
                     d.roots.extend(roots_of(&doc));
                     if let Some(x) = d.loaded.iter_mut().find(|x| x.id == l.id) {
-                        x.hash = now;
+                        (x.hash, x.rive) = (now, hashes);
                     }
                 });
-                ui.lock().define_document(doc);
+                let mut ui = ui.lock();
+                for (r, _, artboard) in rive {
+                    ui.define_rive(&r, artboard);
+                }
+                ui.define_document(doc);
             }
             Err(e) => failed.push(format!("og dev: {e} (the old document stays)")),
         }

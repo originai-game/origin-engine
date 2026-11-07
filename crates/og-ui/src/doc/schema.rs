@@ -303,6 +303,12 @@ pub const PROPS: &[PropSpec] = &[
         ]),
         "The style frame its background takes."
     ),
+    p!(
+        "rive",
+        Ty::Name,
+        ["column", "row", "stack", "grid", "panel", "scroll", "slot"],
+        "The Rive artboard it plays in its box, `<file>.riv#<Artboard>` relative to assets/ (`-og-frame: rive(\"ui/chest.riv#Chest\")`, docs/ui.md §11.2): loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick."
+    ),
     p!("aspect", Ty::Num, "Width over height (0: none)."),
     p!(
         "fade",

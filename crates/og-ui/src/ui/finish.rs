@@ -740,6 +740,49 @@ impl Ui {
                 height: visible.height,
                 detail: Default::default(),
             });
+            // A Rive frame's drawn objects: children for dump_ui, describe
+            // and pick, their source the artboard's id and the object.
+            if let Some(crate::paint::RiveDraw(player)) =
+                self.draws.get(&i).and_then(|d| d.rive.as_ref())
+            {
+                let board = self.state.rive.get(&n.key).map_or("", |s| s.board.as_str());
+                let file = board.split_once('#').map_or(board, |(f, _)| f);
+                let at = n.world.map_rect(&n.rect);
+                for e in player.elements([at.x, at.y, at.width, at.height]) {
+                    let b = Rect::new(e.bounds[0], e.bounds[1], e.bounds[2], e.bounds[3]);
+                    let shown = b.intersect(&n.clip);
+                    element_keys.push(child_key(n.key, &e.id));
+                    parts.push(None);
+                    let mut detail = serde_json::Map::new();
+                    detail.insert(
+                        "source".into(),
+                        serde_json::json!(format!("{file}#{}", e.id)),
+                    );
+                    detail.insert(
+                        "rive".into(),
+                        serde_json::json!({ "node": e.node, "opacity": e.opacity }),
+                    );
+                    elements.push(UiElement {
+                        path: format!("{}/{}", self.probe_path(i), e.id),
+                        id: e.id,
+                        parent: n.id.clone(),
+                        kind: "rive".into(),
+                        disabled: false,
+                        clipped: shown.width + 0.01 < b.width || shown.height + 0.01 < b.height,
+                        text: String::new(),
+                        role: String::new(),
+                        name: String::new(),
+                        value: String::new(),
+                        states: Vec::new(),
+                        opaque: false,
+                        x: shown.x,
+                        y: shown.y,
+                        width: shown.width,
+                        height: shown.height,
+                        detail,
+                    });
+                }
+            }
             // A rich text's links: children for the probe, controls for input.
             if !n.links.is_empty() {
                 let Content::Rich(rc) = &n.content else {

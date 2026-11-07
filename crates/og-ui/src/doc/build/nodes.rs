@@ -201,6 +201,10 @@ impl Ui {
                     self.open_with(id.as_str(), el, props);
                 }
             }
+            if let Some(id) = r.str("rive") {
+                let at = self.parent();
+                self.play_rive(at, id, &path);
+            }
             if kind == "slot" {
                 let at = self.parent();
                 self.docs.slots.insert(path.clone(), at);

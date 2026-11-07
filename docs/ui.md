@@ -786,6 +786,21 @@ shapes and lists its drawn objects as elements (`Player::elements`). Images,
 text, inner and outer strokes, gradient transforms and every other state
 machine are still cook errors.
 
+In documents: a container's `-og-frame: rive("<file>.riv#<Artboard>")`
+(the `rive` prop) plays that artboard in its box over its background.
+`og.load.document` loads the artboards its document names (one missing
+refuses the document; an edited `.riv` reloads under `og dev`). Each
+element keeps its player in og-ui's state, advanced once per tick from the
+tick after it first builds; a save carries each player's bytes
+(`Player::save`) beside its element, and a restored one is rebuilt
+(`Player::new`, then `restore`) when its element next builds. Bytes that
+do not fit the artboard are reported and kept, not reset, and the frame
+draws nothing until they fit. Its drawn objects are elements of kind
+`rive` under it, their `detail.source` `<file>.riv#<artboard>/<object>`.
+Not yet: a style dressing's `-og-frame: rive(…)`, an artboard used as a
+component by its id with its view-model props and events, and pointer
+input to the artboard.
+
 ## 12. Styles
 
 ### 12.1 What a style is

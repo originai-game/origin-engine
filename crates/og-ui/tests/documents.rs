@@ -391,9 +391,7 @@ fn css_outside_the_subset_is_an_error_that_names_the_fix() {
     assert!(err("  font-size: 14px").contains("var(--text-"));
     assert!(err("  :focus {\n  }").contains(":focus-visible"));
     assert!(err("  padding: 4px !important").contains("!important"));
-    // A Rive frame takes one `<file>.riv#<Artboard>` id (the importer is not in yet).
-    let rive = err("  -og-frame: rive(\"ui/chest.riv#Chest\")");
-    assert!(rive.contains("once the Rive import lands"), "{rive}");
+    // A Rive frame takes one `<file>.riv#<Artboard>` id.
     for bad in [
         "rive(\"ui/chest.riv\", \"Chest\")",
         "rive(\"ui/chest.riv\")",
@@ -422,4 +420,236 @@ fn a_prop_edit_writes_a_css_declaration_into_a_version_2_document() {
     assert!(t.contains("\n  width: stretch; max-width: 640px\n"), "{t}");
     assert!(t.contains("\n    color: #ffcc00\n"), "{t}");
     assert!(!t.contains("\n  gap 12"), "{t}");
+}
+
+/// A Rive artboard of 100 × 50: a 40 × 20 red rectangle `Lid` centred at
+/// x 25 that an animation moves to x 75 over a second, looping.
+fn chest() -> std::sync::Arc<og_ui::rive::Artboard> {
+    use og_ui::rive::*;
+    let node = |name: &str, parent, kind, values| Node {
+        name: name.into(),
+        parent,
+        kind,
+        values,
+    };
+    let key = |seconds, value| Key {
+        seconds,
+        value,
+        color: 0,
+        ease: Ease::Linear,
+    };
+    std::sync::Arc::new(Artboard {
+        name: "Chest".into(),
+        size: og_core::glam::Vec2::new(100.0, 50.0),
+        fit: Fit::None,
+        clip: true,
+        nodes: vec![
+            node(
+                "Chest",
+                0,
+                Kind::Artboard { paints: vec![] },
+                Values::default(),
+            ),
+            node(
+                "Lid",
+                0,
+                Kind::Shape {
+                    paths: vec![2],
+                    paints: vec![3],
+                    hidden: false,
+                    blend: og_render::UiBlend::Normal,
+                },
+                Values {
+                    x: 25.0,
+                    y: 25.0,
+                    ..Values::default()
+                },
+            ),
+            node(
+                "box",
+                1,
+                Kind::Path {
+                    outline: Outline::Rect,
+                    closed: true,
+                },
+                Values {
+                    width: 40.0,
+                    height: 20.0,
+                    ..Values::default()
+                },
+            ),
+            node(
+                "fill",
+                1,
+                Kind::Fill {
+                    rule: og_render::UiFillRule::NonZero,
+                    shader: 4,
+                    visible: true,
+                },
+                Values::default(),
+            ),
+            node(
+                "red",
+                3,
+                Kind::Solid,
+                Values {
+                    color: 0xFFFF_0000,
+                    ..Values::default()
+                },
+            ),
+        ],
+        draws: vec![1],
+        animations: vec![Animation {
+            name: "open".into(),
+            fps: 60,
+            duration: 60,
+            speed: 1.0,
+            looping: Loop::Loop,
+            work: None,
+            tracks: vec![Track {
+                node: 1,
+                prop: Prop::X,
+                keys: vec![key(0.0, 25.0), key(1.0, 75.0)],
+            }],
+        }],
+        play: Some(0),
+        ..Artboard::default()
+    })
+}
+
+const CHEST_SCREEN: &str = "type screen\nversion 2\n---\nname \"loot\"\ncolumn Chest {\n  width: 100px\n  height: 50px\n  -og-frame: rive(\"ui/chest.riv#Chest\")\n}\n";
+
+/// A document element whose frame is a Rive artboard plays it on the tick
+/// in its box: its shapes draw over its background, its objects are
+/// elements with the artboard as their source, and its player is saved
+/// with the UI's state and runs on after a restore as if never stopped.
+///
+/// Ways it could fail: a player advanced per build rather than per tick or
+/// restarted each frame (the lid never moves or jumps), a restore that
+/// starts it again (the restored run lags the unbroken one), refused bytes
+/// silently reset, the write-back losing `rive(…)`.
+#[test]
+fn a_rive_frame_plays_draws_names_its_objects_and_is_saved() {
+    let doc = UiDocument::parse("ui/loot.ogt", CHEST_SCREEN).expect("parses");
+    assert_eq!(doc.rive_ids(), ["ui/chest.riv#Chest"]);
+    let fresh = |board: Option<std::sync::Arc<og_ui::rive::Artboard>>| {
+        let mut ui = ui_with_font(test_font_metrics());
+        if let Some(b) = board {
+            ui.define_rive("ui/chest.riv#Chest", b);
+        }
+        ui.define_document(doc.clone());
+        ui.push_screen("loot", Value::Null).unwrap();
+        ui
+    };
+    // Where the lid is drawn: its shape's centre, x.
+    let lid = |ui: &Ui| -> Vec<f32> {
+        ui.frame()
+            .items
+            .iter()
+            .filter_map(|it| match &it.cmd {
+                DrawCmd::Shape { shape, .. }
+                    if matches!(shape.geometry, og_render::UiGeometry::Path(_)) =>
+                {
+                    Some(shape.center.x)
+                }
+                _ => None,
+            })
+            .collect()
+    };
+    let mut whole = fresh(Some(chest()));
+    tick(&mut whole, InputFrame::default());
+    let at = whole
+        .probe_elements()
+        .into_iter()
+        .find(|e| e.path == "loot/Chest")
+        .expect("the element");
+    let first = lid(&whole);
+    assert_eq!(first.len(), 1, "one shape, drawn once");
+    for _ in 0..30 {
+        tick(&mut whole, InputFrame::default());
+    }
+    let moved = lid(&whole);
+    // 30 ticks of 1/60 s: half way, 25 → 50 in the artboard, at the box's x.
+    assert!(
+        (moved[0] - first[0] - 25.0).abs() < 0.6,
+        "{first:?} → {moved:?}"
+    );
+    let els = whole.probe_elements();
+    let obj = els
+        .iter()
+        .find(|e| e.kind == "rive")
+        .expect("the lid as an element");
+    assert_eq!(obj.path, "loot/Chest/Chest/Lid");
+    assert_eq!(obj.detail["source"], json!("ui/chest.riv#Chest/Lid"));
+    assert!(obj.x >= at.x && obj.x + obj.width <= at.x + at.width + 0.01);
+
+    // Saved, run on, and restored into a UI that knows the artboard: the
+    // next ticks match the unbroken run's.
+    let saved = whole.save_state();
+    for _ in 0..10 {
+        tick(&mut whole, InputFrame::default());
+    }
+    let mut back = fresh(Some(chest()));
+    back.restore_state(&saved).expect("restores");
+    for _ in 0..10 {
+        tick(&mut back, InputFrame::default());
+    }
+    assert_eq!(
+        lid(&back),
+        lid(&whole),
+        "it runs on from where it was saved"
+    );
+
+    // Restored where the artboard is another: an error, nothing drawn, and
+    // the bytes kept for the save rather than reset.
+    let other = std::sync::Arc::new(og_ui::rive::Artboard {
+        animations: Vec::new(),
+        play: None,
+        ..(*chest()).clone()
+    });
+    let mut wrong = fresh(Some(other));
+    wrong.restore_state(&saved).expect("the UI state reads");
+    tick(&mut wrong, InputFrame::default());
+    assert!(lid(&wrong).is_empty(), "not drawn");
+    assert!(
+        wrong
+            .frame()
+            .warnings
+            .iter()
+            .any(|w| w.contains("does not fit")),
+        "reported"
+    );
+    let mut again = fresh(Some(chest()));
+    again.restore_state(&wrong.save_state()).expect("restores");
+    tick(&mut again, InputFrame::default());
+    let mut check = fresh(Some(chest()));
+    check.restore_state(&saved).expect("restores");
+    tick(&mut check, InputFrame::default());
+    assert_eq!(lid(&again), lid(&check), "the refused bytes were kept");
+
+    // No artboard of that id: reported, nothing drawn.
+    let mut none = fresh(None);
+    tick(&mut none, InputFrame::default());
+    assert!(lid(&none).is_empty());
+    assert!(
+        none.frame()
+            .warnings
+            .iter()
+            .any(|w| w.contains("names no Rive artboard"))
+    );
+
+    // An edit writes the frame back in the form it is written in.
+    let mut edited = doc.clone();
+    let chest_node = edited.nodes.iter().position(|n| n.id == "Chest").unwrap();
+    edited
+        .set_prop(chest_node, "rive", "\"ui/chest.riv#Lid\"")
+        .unwrap();
+    assert!(
+        edited
+            .text
+            .contains("\n  -og-frame: rive(\"ui/chest.riv#Lid\")\n"),
+        "{}",
+        edited.text
+    );
+    assert_eq!(edited.rive_ids(), ["ui/chest.riv#Lid"]);
 }

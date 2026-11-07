@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI documents: Rive frames (-og-frame: rive(...))",
+      "summary": "A container's `-og-frame: rive(\"<file>.riv#<Artboard>\")` (the `rive` prop) plays that cooked Rive artboard in its box over its background (docs/ui.md §11.2). og.load.document loads the artboards its document names and refuses one that is missing or malformed; og dev reloads an edited .riv. Each element's player advances once per tick in og-ui's state and is saved with it (UI state version 18; og.ui saves migrate 17 to 18); a restored player is rebuilt from its bytes when its element next builds, and bytes that do not fit the artboard are reported and kept, not reset. The artboard's drawn objects are dump_ui, describe and pick elements of kind rive, their detail.source `<file>.riv#<artboard>/<object>`. An element's draw (paint::ElementDraw) carries the player as `rive`."
+    }
+  ]
+}

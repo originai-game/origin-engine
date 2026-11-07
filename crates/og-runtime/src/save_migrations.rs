@@ -109,6 +109,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(ui_upgrade),
     },
     Migration {
+        target: Target::Block,
+        name: "og.ui",
+        from: 17,
+        to: 18,
+        note: "og-ui foundation: the Rive players documents' elements play (none before)",
+        run: Some(ui_upgrade),
+    },
+    Migration {
         target: Target::Record,
         name: "og.Gamepad",
         from: 1,

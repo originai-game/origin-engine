@@ -359,6 +359,26 @@ impl UiDocument {
         out
     }
 
+    /// The Rive artboards its elements play (`-og-frame: rive("<id>")`), each
+    /// once, in document order: what loading it loads beside it.
+    pub fn rive_ids(&self) -> Vec<String> {
+        let Some((spec, _)) = super::schema::prop("rive") else {
+            return Vec::new();
+        };
+        let mut out: Vec<String> = Vec::new();
+        for n in &self.nodes {
+            for p in n.props.iter().chain(n.at.iter().flat_map(|a| &a.1)) {
+                if p.spec == spec
+                    && let PropValue::Lit(Lit::Str(id)) = &p.value
+                    && !out.contains(id)
+                {
+                    out.push(id.clone());
+                }
+            }
+        }
+        out
+    }
+
     /// Every path a node's bindings read (its own, not its children's).
     pub fn node_paths(&self, n: &DocNode, out: &mut Vec<String>) {
         let value = |v: &PropValue, out: &mut Vec<String>| match v {

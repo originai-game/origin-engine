@@ -90,6 +90,8 @@ pub struct DocHost {
     pub(crate) accepts: bool,
     /// The serial of the layer being built (0 outside one): what its `pop` pops.
     pub(crate) building: u32,
+    /// The Rive artboards elements can play, by id ([`Ui::define_rive`]).
+    pub(crate) rive: BTreeMap<String, Arc<crate::rive::Artboard>>,
 }
 
 impl Ui {
@@ -100,6 +102,93 @@ impl Ui {
             self.define_timeline(&format!("{}/{n}", doc.name), t.clone());
         }
         self.docs.docs.insert(doc.name.clone(), Arc::new(doc));
+    }
+
+    /// Registers a Rive artboard by its id (`ui/chest.riv#Chest`, as og-cook
+    /// converted it, docs/ui.md §11.2): an element whose `-og-frame` is
+    /// `rive("<id>")` plays it. One of the same id is replaced (a hot
+    /// reload): an element playing the old one goes on from where it was
+    /// when it fits the new one, else starts it again.
+    pub fn define_rive(&mut self, id: &str, artboard: Arc<crate::rive::Artboard>) {
+        self.docs.rive.insert(id.to_owned(), artboard);
+    }
+
+    /// Plays the Rive artboard `id` in element `node` (its key `key`) this
+    /// tick: the element's player goes on one tick, a restored one is
+    /// rebuilt from its bytes, a new one starts; the element draws it over
+    /// its background ([`crate::paint::ElementDraw::rive`]).
+    pub(crate) fn play_rive(&mut self, node: usize, id: &str, path: &str) {
+        let key = self.nodes[node].key;
+        let Some(board) = self.docs.rive.get(id).cloned() else {
+            self.warnings.push(format!(
+                "{path}: -og-frame: rive(\"{id}\") names no Rive artboard the UI has; og.load.document loads those its document names"
+            ));
+            return;
+        };
+        let tick = self.state.tick;
+        let dt = 1.0 / self.ticks_per_second.max(1) as f32;
+        let player = match self.state.rive.remove(&key) {
+            Some(crate::ui::RiveSlot {
+                board: b,
+                player: Some(mut p),
+                ..
+            }) if b == id => {
+                if !Arc::ptr_eq(&p.artboard, &board) {
+                    // A hot reload: on from where it was, when that fits.
+                    let mut q = crate::rive::Player::new(board.clone(), None);
+                    p = if q.restore(&p.save()).is_ok() {
+                        q
+                    } else {
+                        crate::rive::Player::new(board, None)
+                    };
+                }
+                p.advance(dt);
+                p
+            }
+            Some(crate::ui::RiveSlot {
+                board: b,
+                player: None,
+                saved,
+                ..
+            }) if b == id => {
+                let mut p = crate::rive::Player::new(board, None);
+                if let Err(e) = p.restore(&saved) {
+                    self.warnings.push(format!(
+                        "{path}: the saved state of Rive artboard {id} does not fit it ({e}); it is kept and not drawn"
+                    ));
+                    self.state.rive.insert(
+                        key,
+                        crate::ui::RiveSlot {
+                            board: b,
+                            player: None,
+                            saved,
+                            built: tick,
+                        },
+                    );
+                    return;
+                }
+                p.advance(dt);
+                p
+            }
+            _ => crate::rive::Player::new(board, None),
+        };
+        self.draws.insert(
+            node,
+            crate::paint::ElementDraw {
+                rive: Some(crate::paint::RiveDraw(player.clone())),
+                ..crate::paint::ElementDraw::default()
+            },
+        );
+        self.dressable.remove(&node);
+        self.state.rive.insert(
+            key,
+            crate::ui::RiveSlot {
+                board: id.to_owned(),
+                player: Some(player),
+                saved: Vec::new(),
+                built: tick,
+            },
+        );
     }
 
     /// A document by name.

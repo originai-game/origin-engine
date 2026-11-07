@@ -719,6 +719,7 @@ impl Reader<'_> {
             clip,
             layer: self.layer(&d["layer"]),
             text: Reader::text(&d["text"]),
+            rive: None,
         }
     }
 }

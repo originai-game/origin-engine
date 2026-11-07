@@ -587,6 +587,31 @@ pub struct ElementDraw {
     pub clip: Clip,
     pub layer: Option<Layer>,
     pub text: Option<TextEffects>,
+    /// A Rive artboard playing in its box: its shapes, made where the
+    /// element is placed, draw after its fills and before its strokes,
+    /// clipped to its clip (and to its box when the artboard cuts its
+    /// content to its frame).
+    pub rive: Option<RiveDraw>,
+}
+
+/// A playing artboard as an element's draw. Two are equal when they play
+/// the same artboard (the one asset, not a copy) at the same times.
+#[derive(Clone, Debug)]
+pub struct RiveDraw(pub crate::rive::Player);
+
+impl PartialEq for RiveDraw {
+    fn eq(&self, other: &RiveDraw) -> bool {
+        fn same(a: &crate::rive::Player, b: &crate::rive::Player) -> bool {
+            std::sync::Arc::ptr_eq(&a.artboard, &b.artboard)
+                && a.playing == b.playing
+                && a.nested.len() == b.nested.len()
+                && a.nested
+                    .iter()
+                    .zip(&b.nested)
+                    .all(|((i, p), (j, q))| i == j && same(p, q))
+        }
+        same(&self.0, &other.0)
+    }
 }
 
 impl Default for ElementDraw {
@@ -601,6 +626,7 @@ impl Default for ElementDraw {
             clip: Clip::None,
             layer: None,
             text: None,
+            rive: None,
         }
     }
 }
@@ -833,6 +859,33 @@ impl ElementDraw {
                 opacity,
                 Blend::Normal,
             ));
+        }
+        if let Some(RiveDraw(player)) = &self.rive {
+            let r = at.rect;
+            // An artboard that cuts its content to its frame cuts it to the
+            // box, in the command's own space, so the item's transform turns
+            // the cut with the element (a screen-space clip would cut a turned
+            // element by its unturned box).
+            let cut = player.artboard.clip;
+            if cut {
+                out.push(DrawCmd::PushClip {
+                    geometry: og_render::UiGeometry::Rect {
+                        radii: [0.0; 4],
+                        corner: og_render::UiCorner::Round,
+                    },
+                    center: (r.x + r.width / 2.0, r.y + r.height / 2.0),
+                    half: (r.width / 2.0, r.height / 2.0),
+                });
+            }
+            for shape in player.draw([r.x, r.y, r.width, r.height], opacity) {
+                out.push(DrawCmd::Shape {
+                    shape: Box::new(shape),
+                    clip: at.clip,
+                });
+            }
+            if cut {
+                out.push(DrawCmd::PopClip);
+            }
         }
         out
     }

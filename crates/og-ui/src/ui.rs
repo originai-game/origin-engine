@@ -233,6 +233,18 @@ pub(crate) struct Toast {
     pub leaving: u64,
 }
 
+/// A Rive artboard an element plays: its id, its player (`None` once
+/// restored: rebuilt from `saved` on the element's next build, refused
+/// bytes kept and reported, never reset), and the tick it was last built
+/// (one not built for a tick is dropped).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct RiveSlot {
+    pub board: String,
+    pub player: Option<crate::rive::Player>,
+    pub saved: Vec<u8>,
+    pub built: u64,
+}
+
 /// What persists between ticks (and in [`Ui::save_state`]).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct State {
@@ -312,6 +324,8 @@ pub(crate) struct State {
     /// What was typed to jump in the focused list (lowercase) and the tick
     /// of its last letter: it starts again after a second's pause.
     pub typeahead: (String, u64),
+    /// The Rive artboards elements play (`-og-frame: rive(…)`), by key.
+    pub rive: IdMap<u64, RiveSlot>,
     /// Intents queued by `Ui::navigate` for the next frame, each with
     /// whether the focus was on nothing when it was queued (then it only
     /// puts the focus on the first control: `Ui::navigate`).
@@ -526,7 +540,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 17;
+const STATE_VERSION: u32 = 18;
 
 /// `theme` with a viewport's preferences: the page's reduced motion turns
 /// its flag on, its contrast preference takes the high-contrast variant,
