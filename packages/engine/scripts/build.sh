@@ -160,7 +160,7 @@ if [ -f "$gate_modules/og_host_web-publish.wasm" ] && [ -f "$gate_wasm/bindgen/o
     mkdir -p "$here/dist/web-publish-2d"
     cp "$gate_wasm/bindgen/og_host_web-publish2d/"* "$here/dist/web-publish-2d/"
     cp "$gate_modules/og_host_web-publish2d.wasm" "$here/dist/web-publish-2d/origin-engine_bg.wasm"
-  elif [ -n "$variant_2d" ]; then
+  elif [ -n "$variant_2d" ] && [ "${OG_WASM_REFERENCE_ONLY:-0}" != 1 ]; then
     echo "build.sh: $gate_modules/og_host_web-publish2d.wasm is missing; prepare all wasm variants again (docs/web-export.md §Variants)" >&2
     # The functional lane runs with the gate's web module stale (OG_WASM_STALE=1,
     # scripts/check.sh): it ships what the last wasm-build produced and skips
@@ -176,6 +176,7 @@ if [ -f "$gate_modules/og_host_web-publish.wasm" ] && [ -f "$gate_wasm/bindgen/o
   lanes_expected="$(awk '{ sub(/#.*/, "") } $1 == "og-host-web" && $3 == "publish" && $4 == "lanes" { print 1 }' "$root/scripts/wasm-crates.txt")"
   for v in "lanes web-publish" "lanes2d web-publish-2d"; do
     set -- $v
+    [ "${OG_WASM_REFERENCE_ONLY:-0}" != 1 ] || [ "$1" != lanes2d ] || continue
     if [ -f "$gate_modules/og_host_web-$1.wasm" ]; then
       cp "$gate_wasm/bindgen/og_host_web-$1/origin-engine-lanes.js" "$here/dist/$2/"
       cp -R "$gate_wasm/bindgen/og_host_web-$1/snippets" "$here/dist/$2/"

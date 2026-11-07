@@ -121,11 +121,14 @@ require_wasm() {
 
 step_wasm_build() {
   if outputs_exist "$OG_WASM_OUT/built.txt" \
+      && [ "$(cat "$OG_WASM_OUT/profile" 2>/dev/null)" = "${OG_WASM_PROFILE:-$WASM_PROFILE_DEFAULT}" ] \
+      && [ "$(cat "$OG_WASM_OUT/reference-only" 2>/dev/null)" = "${OG_WASM_REFERENCE_ONLY:-0}" ] \
       && skip_unchanged wasm-build "wasm-build (reusing $OG_WASM_OUT/raw)" "$(rule_wasm)"; then
     return $SKIP
   fi
   rm -rf "$OG_WASM_OUT"; mkdir -p "$OG_WASM_OUT"; : > "$OG_WASM_OUT/built.txt"
   printf '%s\n' "${OG_WASM_PROFILE:-$WASM_PROFILE_DEFAULT}" > "$OG_WASM_OUT/profile"
+  printf '%s\n' "${OG_WASM_REFERENCE_ONLY:-0}" > "$OG_WASM_OUT/reference-only"
   if ! rustup target list --installed 2>/dev/null | grep -qx "$WASM_TRIPLE"; then
     og_err "rust target $WASM_TRIPLE is not installed (rust-toolchain.toml lists it; run 'rustup target add $WASM_TRIPLE')"
     return 1
@@ -153,6 +156,7 @@ step_wasm_build() {
       continue
     fi
     while read -r vname vfeat; do
+      [ "${OG_WASM_REFERENCE_ONLY:-0}" != 1 ] || [ "$vname" != publish2d ] || continue
       og_say "publish variant $vname: $c (--no-default-features --features $vfeat)"
       wasm_build "$vname" "-$(printf '%s' "$vfeat" | tr ',' '\n' | sed "s|^|$c/|" | paste -sd, -)" "$c" || return 1
     done <<EOF_VARIANTS
@@ -172,6 +176,7 @@ EOF_VARIANTS
     fi
     # One lanes module per game profile (scripts/wasm-crates.txt `lanes`).
     while read -r vname vfeat; do
+      [ "${OG_WASM_REFERENCE_ONLY:-0}" != 1 ] || [ "$vname" != lanes2d ] || continue
       og_say "lanes variant $vname: $c (--no-default-features --features $vfeat, wasm atomics: scripts/wasm-lanes.sh)"
       wasm_build "$vname" "-$(printf '%s' "$vfeat" | tr ',' '\n' | sed "s|^|$c/|" | paste -sd, -)" "$c" || return 1
     done <<EOF_LANES

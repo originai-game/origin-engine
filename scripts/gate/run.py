@@ -67,7 +67,9 @@ def main():
     logs.mkdir(parents=True)
     env = dict(os.environ, GATE_LOGS=str(logs), OG_GATE_LANE=lane,
                FORCE_ALL=str(int(force)), OG_GATE_ALL='1' if lane == 'full' or force else '',
-               OG_WASM_PROFILE='wasm', PYTHONUNBUFFERED='1')
+               OG_WASM_PROFILE='wasm-test', PYTHONUNBUFFERED='1')
+    # Only the publish panic check needs shipping-shaped modules here, in 3D.
+    env['OG_WASM_REFERENCE_ONLY'] = '1' if 'web-reference' in wanted and not wanted.intersection({'bun-test', 'fixtures', 'browser'}) else '0'
     env.pop('OG_WASM_STALE', None)
     # Capture Cargo's authoritative graph once per run, before parallel readers.
     with (logs / 'cargo.json').open('w') as out:

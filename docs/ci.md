@@ -64,7 +64,7 @@ installed by `scripts/install-tools.sh` (cargo-nextest when absent).
 | Mesa lavapipe (CPU rendering in orbs) | minimum 25.0.7 | `.agents/setup`; Debian bookworm-backports supplies Mesa and apt resolves its dependencies |
 
 Every target and profile uses LLVM, including dev, test, build scripts,
-release and wasm; there are no backend overrides. Four frontend threads
+release, wasm-test and wasm; there are no backend overrides. Four frontend threads
 (`-Zthreads=4`) are enabled on every target. Metadata embedding and the
 build-directory layout use Cargo's defaults. Consumers use Cargo's
 artifact messages, not guessed executable paths.
@@ -180,8 +180,11 @@ conservative at the binary's crate closure where shared helper usage is
 unknown. Bun records each test file separately. A failure invalidates its
 record; an unchecked GPU run never creates a passing record.
 
-The three Cargo profiles are `dev`, `release`, and `wasm`. Package overrides
-remain unchanged. Every wasm size check uses shipping-profile bytes, not an
+The Cargo profiles are `dev` (native tests), `release` (native shipping),
+`wasm-test` (functional and browser wasm), and `wasm` (shipping wasm and
+explicit performance runs). `wasm-test` uses opt-level 1, no LTO, 16 codegen
+units, incremental compilation and no debug info. Shipping package overrides
+remain in `wasm`. Every wasm size check uses shipping-profile bytes, not an
 upper-bound development profile. Normal wasm variants and lanes variants
 build concurrently because their Cargo outputs are separate. The shared
 sccache wrapper caches compilation, including build-std; each checkout
@@ -189,6 +192,9 @@ retains its own target directory. Variants sharing a target build serially.
 
 Every functional and browser check uses bindgen-only modules, including
 publish and lanes variants. No gate lane runs wasm-opt or the size gate.
+An explicit web-reference run builds the development host and the 3D publish
+and lanes modules its groups load, not the unused 2D publish pair. The gfx
+group separately builds only `og-tests-web`.
 `bash scripts/release-wasm.sh` prepares release wasm and checks its shipping
 size. `release.sh pack` calls it through the package build. Only this release
 path optimizes publish and lanes variants; `opt.txt` lists its size-gate inputs.
@@ -237,7 +243,7 @@ split, and the lowest such crate is its cause.
 | `doc-tests` | `cargo test --workspace --doc` | full |
 | `drift` | The dev `og api check` checks generated declarations, wiki, schema and Rust glue against the IDL. | quick, full |
 | `bun-quick` | Non-engine package tests, without rebuilding native artifacts. | quick, full |
-| `wasm-build` | Build `scripts/wasm-crates.txt` variants. Normal variants share the wasm32 target; lanes variants share `target/wasm-mt`. Outputs go to `target/og-wasm/raw`. | full |
+| `wasm-build` | Build `scripts/wasm-crates.txt` variants in `wasm-test` for the cross-host, publish and lanes tests. Normal variants share the wasm32 target; lanes variants share `target/wasm-mt`. Outputs go to `target/og-wasm/raw`. | full |
 | `wasm-bindgen` | Bindgen-only modules for all variants in `target/og-wasm/dev`, with glue in `bindgen`. `dev-all.txt` lists every module; `dev.txt` selects publish and lanes variants. | full, web-reference prerequisite |
 | `wasm-opt` | `scripts/wasm-opt.sh` over release publish and lanes variants. `opt.txt` lists optimized size-gate inputs; `opt-all.txt` lists every processed module. Not a `check.sh` step. | release only |
 | `size-gate` | Brotli-11 bytes of each optimized module in `opt.txt`, checked against `wasm_core_brotli_bytes` before packing. | release only |
@@ -561,8 +567,9 @@ on WebGPU, draws its frames as the native harness does
 (`og_tests::gfx::render_built`) and reads the target back. Each frame is
 compared with `crates/og-tests/references/webgpu/`, else `metal`, under
 §Reference frames' rule, and every frame's figures against `metal` are
-kept in the report. It builds in `target/wasm-gfx`, so the gate's
-og-render artifacts stay put.
+kept in the report. It builds only `og-tests-web`, in `wasm-test`, under
+`target/wasm-gfx`, so the gate's og-render artifacts stay put. Explicit
+`--time` or `--perf-out` runs use the shipping `wasm` profile instead.
 
 Options: `--scene a,b` selects scenes, including the cost scenes built but
 not in `SCENES` (`COSTS`: `point-shadows-cube`, `shadows-local-8-cube`,

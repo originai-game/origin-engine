@@ -101,5 +101,33 @@ steps="$(bash "$root/scripts/check.sh" --list)" || exit 1
 case "$steps" in *wasm-opt*|*size-gate*) echo 'FAIL release measurements exposed as gate steps'; exit 1 ;; esac
 echo 'ok   no gate step selects release optimization or size measurements'
 
+# Reference groups load the development host and only the 3D publish pair.
+# Full functional tests still need both physics profiles.
+for reference_only in 0 1; do
+  (
+    . "$root/scripts/lib.sh"
+    . "$root/scripts/gate/commands.sh"
+    OG_WASM_OUT="$scratch/selected-$reference_only"
+    OG_WASM_REFERENCE_ONLY="$reference_only" WASM_PROFILE_DEFAULT=wasm-test
+    WASM_TRIPLE=wasm32-unknown-unknown SKIP=3
+    skip_unchanged() { return 1; }
+    wasm_build() {
+      local dest="$OG_WASM_OUT/${1:-dev}.wasm"
+      printf 'module' > "$dest"
+      printf '%s\n' "$dest" >> "$OG_WASM_OUT/built-${1:-dev}.txt"
+    }
+    step_wasm_build >/dev/null || exit 1
+    expected=5; [ "$reference_only" = 0 ] || expected=3
+    [ "$(wc -l < "$OG_WASM_OUT/built.txt" | tr -d ' ')" = "$expected" ] || exit 1
+    [ -f "$OG_WASM_OUT/dev.wasm" ] && [ -f "$OG_WASM_OUT/publish.wasm" ] && [ -f "$OG_WASM_OUT/lanes.wasm" ] || exit 1
+    if [ "$reference_only" = 1 ]; then
+      [ ! -f "$OG_WASM_OUT/publish2d.wasm" ] && [ ! -f "$OG_WASM_OUT/lanes2d.wasm" ] || exit 1
+    else
+      [ -f "$OG_WASM_OUT/publish2d.wasm" ] && [ -f "$OG_WASM_OUT/lanes2d.wasm" ] || exit 1
+    fi
+  ) || exit 1
+done
+echo 'ok   reference builds omit only the unused 2D publish pair'
+
 [ "$failures" -eq 0 ] || { echo "$failures case(s) failed"; exit 1; }
 echo "every case failed as it should"

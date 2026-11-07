@@ -51,6 +51,16 @@ opt-level = 3
 lto = "thin"
 codegen-units = 1
 
+# Functional wasm: no shipping-size work, no debug info or assertions.
+# Level 1 keeps frame and physics loops within browser test timeouts.
+[profile.wasm-test]
+inherits = "release"
+opt-level = 1
+lto = false
+codegen-units = 16
+incremental = true
+debug = false
+
 # The wasm every web build ships and the size gate measures: release at
 # opt-level s, with the crates whose loops run every tick or frame at 3 and
 # the crates that run only while loading or when something changes (font

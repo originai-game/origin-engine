@@ -6,7 +6,7 @@ cd "$OG_ROOT" || exit 1
 SKIP=3
 SKIP_NOTE="" PASS_NOTE="" RAN="${OG_GATE_RAN:- }"
 WASM_TRIPLE=wasm32-unknown-unknown
-WASM_PROFILE_DEFAULT=wasm
+WASM_PROFILE_DEFAULT=wasm-test
 export OG_GATE=1
 export OG_BUN_TEST_TIMEOUT="${OG_BUN_TEST_TIMEOUT:-30000}"
 

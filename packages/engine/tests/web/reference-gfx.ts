@@ -122,15 +122,16 @@ function run(cmd: string[]): string {
   return new TextDecoder().decode(r.stdout);
 }
 
-// The module: the wasm profile (what ships; the scenes are timed in it),
-// then wasm-bindgen for the browser (no wasm-opt: nothing ships). Its own
+// Functional frames use wasm-test; explicit timing uses the shipping profile.
+// Then wasm-bindgen for the browser (no wasm-opt: nothing ships). Its own
 // target dir: og-tests-web unifies og-render's features differently from the
 // gate's wasm-build, and cargo keeps one fingerprint per unit whatever its
 // features, so sharing target/wasm32-unknown-unknown would rebuild og-render
 // for both every time (scripts/check.sh wasm_build).
 const t0 = performance.now();
 const targetDir = join(process.env.CARGO_TARGET_DIR ? resolve(repo, process.env.CARGO_TARGET_DIR) : join(repo, "target"), "wasm-gfx");
-const messages = run(["cargo", "build", "--profile", "wasm", "--target", "wasm32-unknown-unknown", "--target-dir", targetDir, "-p", "og-tests-web", "--lib", "--message-format=json-render-diagnostics"]);
+const profile = opt("--time") || perfOut ? "wasm" : "wasm-test";
+const messages = run(["cargo", "build", "--profile", profile, "--target", "wasm32-unknown-unknown", "--target-dir", targetDir, "-p", "og-tests-web", "--lib", "--message-format=json-render-diagnostics"]);
 const raw = messages
   .split("\n")
   .filter((l) => l.includes('"reason":"compiler-artifact"') && l.includes("og_tests_web"))

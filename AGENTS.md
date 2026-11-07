@@ -114,12 +114,15 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **Lanes of the gate** (`docs/ci.md` §Lanes): `quick` (fmt, clippy, logic
   tests, drift, package tests) is the loop and what a landing runs;
   `full` adds all Rust and Bun tests, retained UI-pack suites, fixtures,
-  wasm builds, shipping-size checks and browser functional tests. Selection uses dependency inputs; an unclassified change
+  bindgen-only wasm builds and browser functional tests. Optimization and
+  shipping-size checks run only before packing a release. Selection uses
+  dependency inputs; an unclassified change
   runs checks rather than skipping them. Never touch files or delete
   `target/og-gate/` to force a run; use `--all`.
 - **Profiles.** `dev` for everything native in the gate, `release` for what
-  ships natively, `wasm` for every wasm build. Compiling one crate in two
-  profiles in one step is a defect.
+  ships natively, `wasm-test` for functional and browser wasm, `wasm` for
+  release wasm, its size gate and explicit performance runs. Compiling one
+  crate in two profiles in one step is a defect.
 - **Tests never run `cargo`.** Rust tests use `env!("CARGO_BIN_EXE_og")`; bun
   and browser tests use the gate's `og` (`tests/support/og-bin.ts`). Shared
   fixtures are made once under a file lock; what cannot run in parallel is

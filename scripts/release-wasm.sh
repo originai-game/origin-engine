@@ -8,6 +8,9 @@ og_admission_acquire shared "release wasm ($PWD)"
 og_lock_acquire "$OG_TARGET_DIR" "release wasm ($PWD)"
 FORCE_ALL=0 SKIP=3 RAN=" wasm-build "
 WASM_TRIPLE=wasm32-unknown-unknown WASM_PROFILE_DEFAULT=wasm
+export OG_WASM_PROFILE=wasm
+export OG_WASM_REFERENCE_ONLY=0
+[ "${1:-}" != --development ] || export OG_WASM_PROFILE=wasm-test
 export OG_GATE_THREADS="${OG_GATE_THREADS:-4}" OG_GATE_JOBS="${OG_GATE_JOBS:-2}"
 case "$OG_GATE_THREADS:$OG_GATE_JOBS" in *[!0-9:]*|:*|*:) og_err 'invalid wasm job budget'; exit 2 ;; esac
 [ "$OG_GATE_THREADS" -gt 0 ] && [ "$OG_GATE_JOBS" -gt 0 ] || exit 2
