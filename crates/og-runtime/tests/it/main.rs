@@ -65,6 +65,8 @@ mod nav_profiles;
 mod no_renderer;
 #[path = "../painted_2d.rs"]
 mod painted_2d;
+#[path = "../pixel_terrain.rs"]
+mod pixel_terrain;
 #[path = "../prefabs.rs"]
 mod prefabs;
 #[path = "../preview_overlay.rs"]
