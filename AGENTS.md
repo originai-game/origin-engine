@@ -162,9 +162,12 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   checker's element attribution is a claim to check against the pixels.
 - Before calling an unknown option a defect, read the public parser and its
   internal callers (`og run --device` passes `--preflight` itself).
-- Text shaping must not enable runtime rasterization or widen a font's
-  charset; check missing-glyph diagnostics and the cooked payload budget.
-  Freeze the code under test for a cross-host hash run.
+- A text change must not, as a side effect, change other fonts' cooked
+  output, charset or run-time mode. Run-time glyphs (`font { runtime
+  true }`), wider charsets and colour glyphs are features a font declares,
+  chosen for how the text looks and what it costs; check missing-glyph
+  diagnostics, frame cost and the cooked payload budget. Freeze the code
+  under test for a cross-host hash run.
 - Style packs are shipped asset roots: their tests and references live in
   `templates/styles/{tests,references}/<pack>`. After moving fixtures, run
   the cook-report budget and threaded-cook output tests.
