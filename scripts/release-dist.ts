@@ -37,6 +37,14 @@
 //   design/              @origingame/design as packed (when <dir> has it; npm never had it)
 //   node_modules/@tsrs/<tsrs platform>/   the type checker og check finds beside the engine (none on Windows: tsgo)
 //
+// Beside the target archives, one archive per downloadable effect pack
+// (docs/release.md §1, docs/vfx-packs.md §5): every packages/vfx-packs/<name>/
+// with an extension.json, at the version's revision, as `vfx/<name>.tar.gz`
+// (root directory `<name>/`, no preview/, the same bytes on every build:
+// packages/engine/src/node/vfx-pack.ts's packArchive), named in manifest.json's
+// `vfx` and listed in SHA256SUMS. No target archive carries packages/vfx-packs/
+// (checkPacksOutside).
+//
 // The local record `release.json` (the commit, whether the tree was dirty,
 // the source, and the install test's passes) stays beside them for
 // `scripts/release.sh publish` to read; it is not uploaded.
@@ -54,6 +62,7 @@ import { createHash } from "node:crypto";
 import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
+import { MAX_ARCHIVE, archivePath, packArchive, type VfxEntry } from "../packages/engine/src/node/vfx-pack.ts";
 import { installers, pinnedKey } from "../packages/launcher/build.ts";
 
 export const TARGETS = {
@@ -200,8 +209,77 @@ export function checkLayout(dir: string, t: Target): void {
   if (missing.length) die(`${dir} lacks ${missing.join(", ")}`);
 }
 
+/** The downloadable packs in `packs` (packages/vfx-packs/ or a copy): each subdirectory with an extension.json, sorted. */
+export function vfxPacks(packs: string): string[] {
+  if (!existsSync(packs)) return [];
+  return readdirSync(packs, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && existsSync(join(packs, e.name, "extension.json")))
+    .map((e) => e.name)
+    .sort();
+}
+
+/**
+ * Writes `<dir>/vfx/<name>.tar.gz` for each pack in `packs` (replacing
+ * `<dir>/vfx/`) and returns manifest.json's `vfx` section. Throws on a pack
+ * whose manifest is not a vfx pack of its directory's name.
+ */
+export function writeVfxArchives(dir: string, version: string, packs: string): Record<string, VfxEntry> {
+  rmSync(join(dir, "vfx"), { recursive: true, force: true });
+  const out: Record<string, VfxEntry> = {};
+  for (const name of vfxPacks(packs)) {
+    const m = JSON.parse(readFileSync(join(packs, name, "extension.json"), "utf8")) as { kind?: string; name?: string; version?: string; minEngine?: string };
+    if (m.kind !== "vfx" || m.name !== name || !/^\d+\.\d+\.\d+$/.test(m.version ?? "")) throw new Error(`${join(packs, name)}/extension.json is not the vfx pack ${name} at an x.y.z version`);
+    const bytes = packArchive(join(packs, name), name);
+    if (bytes.length > MAX_ARCHIVE) throw new Error(`${archivePath(name)} is ${bytes.length} bytes; og vfx add takes at most ${MAX_ARCHIVE}`);
+    mkdirSync(join(dir, "vfx"), { recursive: true });
+    writeFileSync(join(dir, archivePath(name)), bytes);
+    out[name] = { url: `${DOWNLOADS}/${version}/${archivePath(name)}`, sha256: createHash("sha256").update(bytes).digest("hex"), size: bytes.length, version: m.version!, minEngine: m.minEngine ?? null };
+    say(`${archivePath(name)}  ${bytes.length} bytes  sha256 ${out[name]!.sha256}`);
+  }
+  return out;
+}
+
+/**
+ * A target's layout carries no downloadable pack: no `vfx-packs` directory
+ * in engine/, overlay/ or files/, no engine/extensions/<pack> of a
+ * downloadable pack's name (a pack is bundled or downloadable), and no entry
+ * of the engine package's `files` that reaches packages/vfx-packs/.
+ */
+export function checkPacksOutside(root: string, downloadable: string[]): void {
+  const found: string[] = [];
+  const walk = (rel: string) => {
+    for (const e of readdirSync(join(root, rel), { withFileTypes: true })) {
+      const path = `${rel}/${e.name}`;
+      if (e.name === "vfx-packs") found.push(path);
+      else if (e.isDirectory()) walk(path);
+    }
+  };
+  for (const top of ["engine", "overlay", "files"]) if (existsSync(join(root, top))) walk(top);
+  for (const name of downloadable) if (existsSync(join(root, "engine/extensions", name))) found.push(`engine/extensions/${name} (${name} is a downloadable pack)`);
+  const pkg = join(root, "engine/package.json");
+  const files = existsSync(pkg) ? ((JSON.parse(readFileSync(pkg, "utf8")) as { files?: string[] }).files ?? []) : [];
+  for (const f of files) if (f.includes("vfx-packs") || f.split("/").includes("..")) found.push(`engine/package.json files: ${f}`);
+  if (found.length) throw new Error(`${basename(root)} carries downloadable vfx packs (they ship as vfx/<name>.tar.gz only): ${found.join(", ")}`);
+}
+
+/** packages/vfx-packs/ as the version was built: the checkout's when packed here, else the revision's (none if it has none). */
+function vfxSource(revision: string, here: boolean, work: string): string {
+  if (here) return join(ROOT, "packages/vfx-packs");
+  const to = join(work, "vfx-packs-src");
+  mkdirSync(to, { recursive: true });
+  try {
+    git("cat-file", "-e", `${revision}^{commit}`);
+  } catch {
+    die(`the commit ${revision} is not in this clone: git fetch it, so its packages/vfx-packs/ can be archived`);
+  }
+  if (!git("ls-tree", "-d", "--name-only", revision, "packages/vfx-packs")) return join(to, "packages/vfx-packs");
+  const tar = spawnSync("sh", ["-c", 'git archive "$1" packages/vfx-packs | tar -xf - -C "$2"', "sh", revision, to], { cwd: ROOT, stdio: ["ignore", "ignore", "inherit"] });
+  if (tar.status !== 0) die(`git archive ${revision} packages/vfx-packs failed`);
+  return join(to, "packages/vfx-packs");
+}
+
 /** Assembles one target's layout under `work` and packs it into `<dir>/<archive>`. */
-async function assemble(o: { dir: string; work: string; version: string; revision: string; t: Target; common: string; tsrsTgz: string | null }): Promise<Layout> {
+async function assemble(o: { dir: string; work: string; version: string; revision: string; t: Target; common: string; tsrsTgz: string | null; downloadable: string[] }): Promise<Layout> {
   const { platform, tsrs, exe } = TARGETS[o.t];
   const name = `origin-engine-${o.version}-${o.t}`;
   const root = join(o.work, name);
@@ -240,6 +318,7 @@ async function assemble(o: { dir: string; work: string; version: string; revisio
   const overlayManifest = JSON.parse(readFileSync(join(root, "overlay/origin-engine.json"), "utf8")) as Record<string, unknown>;
   writeFileSync(join(root, "origin-engine.json"), `${JSON.stringify({ ...overlayManifest, build }, null, 2)}\n`);
   checkLayout(root, o.t);
+  checkPacksOutside(root, o.downloadable);
 
   // One portable archive: ustar/pax entries owned by root, no macOS metadata (bsdtar) or xattrs.
   const archive = join(o.dir, archiveName(o.version, o.t));
@@ -288,7 +367,7 @@ function sign(dir: string, version: string, revision: string): boolean {
  * and install.ps1, which move on the site only with a newer release; and
  * SHA256SUMS over all of them, signed. Returns the archives' targets.
  */
-function finish(dir: string, version: string, revision: string, releasedAt: string): { archives: Target[]; signed: boolean } {
+export function finish(dir: string, version: string, revision: string, releasedAt: string, vfx: Record<string, VfxEntry>): { archives: Target[]; signed: boolean } {
   const archives = (Object.keys(TARGETS) as Target[]).filter((t) => existsSync(join(dir, archiveName(version, t))));
   const channel = version.includes("-dev.") ? "dev" : "release";
   const manifest = {
@@ -304,9 +383,10 @@ function finish(dir: string, version: string, revision: string, releasedAt: stri
         return [t, { url: `${DOWNLOADS}/${version}/${archiveName(version, t)}`, sha256: sha256(f), size: statSync(f).size }];
       }),
     ),
+    vfx,
   };
   writeFileSync(join(dir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-  const files = [...archives.map((t) => archiveName(version, t)), "manifest.json"];
+  const files = [...archives.map((t) => archiveName(version, t)), ...Object.keys(vfx).map(archivePath), "manifest.json"];
   rmSync(join(dir, "install.sh"), { force: true });
   rmSync(join(dir, "install.ps1"), { force: true });
   if (channel === "release") {
@@ -339,7 +419,13 @@ function signAgain(dir: string, version: string) {
     const f = archiveName(version, t);
     if (existsSync(join(dir, f)) && before.get(f) !== sha256(join(dir, f))) die(`${f} is not the archive SHA256SUMS named; archive again (and verify) instead`);
   }
-  const { archives, signed } = finish(dir, version, record.revision, releasedAt);
+  // The vfx archives in place, as the last manifest named them.
+  const vfx = (JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")) as { vfx?: Record<string, VfxEntry> }).vfx ?? {};
+  for (const name of Object.keys(vfx)) {
+    const f = archivePath(name);
+    if (!existsSync(join(dir, f)) || before.get(f) !== sha256(join(dir, f)) || vfx[name]!.sha256 !== before.get(f)) die(`${f} is not the archive SHA256SUMS and manifest.json named; archive again (and verify) instead`);
+  }
+  const { archives, signed } = finish(dir, version, record.revision, releasedAt, vfx);
   writeFileSync(recordFile, `${JSON.stringify({ ...record, releasedAt, targets: archives, signed }, null, 2)}\n`);
   say(`${version}: SHA256SUMS over ${archives.length} archive(s), manifest.json${version.includes("-dev.") ? "" : ", install.sh, install.ps1"}${signed ? "; signed" : "; unsigned"}`);
 }
@@ -406,6 +492,8 @@ async function main() {
       copyFileSync(source, join(common, "files", f.path));
     }
     mkdirSync(join(common, "files"), { recursive: true });
+    const vfx = writeVfxArchives(dir, version, vfxSource(revision, here, work));
+    const downloadable = Object.keys(vfx);
 
     const builds: Partial<Record<Target, Layout>> = {};
     for (const t of targets) {
@@ -416,10 +504,10 @@ async function main() {
         tsrsTgz = join(dir, ".tsrs", `tsrs-${tsrs}-${tsrsVersion}.tgz`);
         await fetchTarball(`@tsrs/${tsrs}`, tsrsVersion, tsrsTgz);
       } else if (tsrs) say(`@origingame/engine@${version} names no @tsrs/${tsrs}: the ${t} archive has no tsrs`);
-      builds[t] = await assemble({ dir, work, version, revision, t, common, tsrsTgz });
+      builds[t] = await assemble({ dir, work, version, revision, t, common, tsrsTgz, downloadable });
     }
 
-    const { archives, signed } = finish(dir, version, revision, releasedAt);
+    const { archives, signed } = finish(dir, version, revision, releasedAt, vfx);
     // The local record publish reads; the install test adds its passes (new archives clear them).
     writeFileSync(recordFile, `${JSON.stringify({ version, revision, releasedAt, dirty, source: registry ? "registry" : "build", builtAt: new Date().toISOString(), targets: archives, signed, verified: {} }, null, 2)}\n`);
     if (dirty) say("note: the working tree is dirty; publish refuses these until a clean tree is packed");

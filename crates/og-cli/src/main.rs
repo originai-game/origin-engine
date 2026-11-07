@@ -157,10 +157,17 @@ commands:
                       the texels near the key still drawn (pockets the border does not reach;
                       --holes keys them too, as a sheet's `key ... holes`);
                       --out writes the measured frames side by side (a sheet: its packed texture)
-  vfx add <pack|directory> [project]
+  vfx add <pack|directory> [project] [--any-engine]
                       copy an effect pack (`kind vfx`: type vfx and type vfx2d effects,
                       emitters, effect materials and their textures) into the game's
-                      assets/vfx/<pack>/ to use and change; `og ui list` names the bundled packs
+                      assets/vfx/<pack>/ to use and change: a directory, a pack bundled with
+                      the engine (`og ui list` names them), else one of this engine's
+                      downloadable packs (its release's manifest.json `vfx` names them),
+                      fetched from <downloads>/<version>/vfx/<pack>.tar.gz and refused unless
+                      the release's SHA256SUMS verifies with the engine's key and lists it
+                      (downloads: $ORIGIN_ENGINE_DOWNLOADS, default
+                      https://origingame.ai/downloads/engine); --any-engine installs a pack
+                      whose minEngine is newer than this engine
   vfx import <file.efkproj|file.efkefc> <out-dir> [--root <assets-dir>]
                       convert an Effekseer effect to the engine's own as text to edit:
                       <out-dir>/<name>.ogt (type vfx), <name>/ (emitters, effect materials,

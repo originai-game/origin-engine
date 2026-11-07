@@ -1,8 +1,9 @@
 # Effect packs for the asset library
 
 Effect content (converted Effekseer samples, the Kenney-based starter sets,
-the Pixel VFX Forge library) lives in the platform's asset library, not in
-this repository (owner, 2026-11-07). The engine owns the formats (`type
+the Pixel VFX Forge library) lives in the platform's asset library; the
+engine's own packs ship with its releases, a few bundled and the rest
+downloadable (§5). The engine owns the formats (`type
 vfx`, `type vfx2d`, `type particles`, `type effect`), the `vfx` extension
 kind, `og vfx add`, and the tool that prepares a pack: `scripts/vfx-pack.py`.
 This is the contract agreed with the platform's importer
@@ -80,3 +81,50 @@ shape). `preview` measures frame times, so it runs under every GPU slot
 addon (`OG_GATE=1 sh packages/engine/scripts/build.sh --native`). It
 installs the pack into a scratch game, measures each effect's length and impact in a headless run,
 then plays them one after another in one `og run` with a trace.
+
+## 5. The engine's packs: bundled and downloadable
+
+The engine's own effect packs ship two ways (the coordinator, 2026-11-07):
+
+- **Bundled**: a few, in `packages/engine/extensions/<pack>/` like the UI
+  kits. They are in every engine archive's `engine/extensions/`, `og ui
+  list` names them, and `og vfx add <pack>` copies one without a network.
+- **Downloadable**: the rest, as plain Git files (no LFS) in
+  `packages/vfx-packs/<pack>/`, outside the engine package and every engine
+  archive. Each release carries one archive per pack,
+  `<version>/vfx/<pack>.tar.gz` (docs/release.md §1), and `og vfx add <pack>`
+  fetches it when no directory, bundled pack or installed pack has that name.
+
+A pack is one or the other: `scripts/release-dist.ts` refuses an engine
+archive with an `engine/extensions/<pack>` of a downloadable pack's name, or
+anything of `packages/vfx-packs/`. The downloadable packs of a release are
+the keys of its `manifest.json`'s `vfx`; `packages/vfx-packs/README.md`
+lists the ones on `main`.
+
+`og vfx add <pack> [project] [--any-engine]` for a downloadable pack, with
+`<downloads>` `$ORIGIN_ENGINE_DOWNLOADS` (default
+`https://origingame.ai/downloads/engine`, also a directory or `file://`; the
+launcher's variable) and `<v>` the running engine's version:
+
+1. downloads `<downloads>/<v>/SHA256SUMS` and `SHA256SUMS.minisig` and
+   verifies the signature with the engine's key (docs/release.md §1;
+   `$ORIGIN_ENGINE_PUBKEY` replaces it for a test channel), the launcher's
+   method (`packages/engine/src/node/vfx-pack.ts`, the same code as
+   `packages/launcher/og.ts`'s `verifyMinisign`);
+2. downloads `manifest.json` and checks it against the signed list; the
+   pack must be in its `vfx`, with the same sha256 as the list's
+   `vfx/<pack>.tar.gz` line;
+3. downloads the archive (at most 64 MiB) and checks its sha256;
+4. unpacks it into a fresh temporary directory: only regular files and
+   directories, every path under `<pack>/` with no `..`, `.`, empty or
+   absolute part, no symlink or hard link, at most 256 MiB and 20,000
+   entries; its `extension.json` names the pack and the manifest's version;
+5. installs that directory as a local one (the manifest checks,
+   `minEngine` unless `--any-engine`, into `assets/vfx/<pack>/` through a
+   staging directory), then removes the download.
+
+A failed step refuses with what failed and leaves nothing in the game or the
+temporary directory. Tests: `crates/og-cli/tests/cli/ui.rs`
+(`vfx_add_downloads_a_signed_pack_and_refuses_anything_else`, a release of
+`tests/fixtures/vfx-release` served over HTTP), `scripts/release-dist.test.ts`,
+and the install test's step 10 (tests/install/run.ts).

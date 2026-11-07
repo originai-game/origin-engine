@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og vfx add <pack>, downloadable effect packs",
+      "summary": "An effect pack that is neither a directory nor bundled with the engine (packages/engine/extensions/) nor installed is downloaded from the running engine's release: `og vfx add <pack> [project] [--any-engine]` fetches <downloads>/<version>/SHA256SUMS and its minisign signature, verifies it with the engine's release key (the launcher's), checks manifest.json and vfx/<pack>.tar.gz against the signed sums, unpacks it with regular files only, no `..`, absolute paths or links and a size cap, and installs it into assets/vfx/<pack>/ as a local directory is. A failed check refuses, naming it, and leaves nothing behind. $ORIGIN_ENGINE_DOWNLOADS (default https://origingame.ai/downloads/engine) and $ORIGIN_ENGINE_PUBKEY are the launcher's. Each release carries one vfx/<pack>.tar.gz per packages/vfx-packs/<pack>/ (deterministic, without preview/), listed in SHA256SUMS and in manifest.json's new `vfx` section ({url, sha256, size, version, minEngine}); no engine archive carries them."
+    }
+  ]
+}

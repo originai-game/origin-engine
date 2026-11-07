@@ -33,6 +33,7 @@ gate's evidence directory and runs its smoke test. That check includes
 | [ui-text](ui-text/README.md) | fonts, shaping, icons and locale tables | UI/cook text tests, engine UI tests | og-ui, og-cook, packages/engine | owning tests |
 | [terrain-stream](terrain-stream/README.md) | resident/streamed height samples agree | engine terrain-stream test | og-runtime, packages/engine | owning test |
 | [browser-host](browser-host/README.md) | Player store and reflected probe contracts | web player/wire/export tests | packages/engine, og-runtime | owning tests |
+| [vfx-release](vfx-release/README.md) | downloadable effect packs: a pack, its release archive, signed (not a project) | og-cli `vfx_add_downloads_a_signed_pack_and_refuses_anything_else`; `scripts/release-dist.test.ts`; install test step 10 | og-cli, packages/engine, scripts/release-dist.ts | owning tests |
 
 The inputs of a fixture, as the `fixtures` step keys its cache: the
 fixture's own directory, the native closure of `og` (`og_crate_dirs -p

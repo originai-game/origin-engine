@@ -1589,7 +1589,9 @@ install with `og vfx add <name|directory> [project]` into
 `assets/vfx/<name>`, where their effects name each other as
 `vfx/<name>/<file>`. An existing
 installation is never silently replaced. No network fetch or code execution
-is part of discovery or installation.
+is part of discovery or installation, except one: `og vfx add <name>` of a
+pack that is neither a directory nor bundled downloads it from the
+engine's release, signature-checked (docs/vfx-packs.md §5).
 
 `og ui list [project]` lists installed and bundled extensions, their
 versions, entry/type paths and every document. The installed copy

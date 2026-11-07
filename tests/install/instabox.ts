@@ -22,7 +22,7 @@
 // Vault secrets (vault: false), so nothing of it is worth keeping.
 
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { CommandExitError, Sandbox } from "@insforge/instabox-sdk";
 
@@ -128,6 +128,13 @@ async function main(): Promise<void> {
     await sh(sbx, `rm -rf ${REMOTE} && mkdir -p ${REMOTE}/release ${REMOTE}/fixtures`);
     await upload(sbx, join(HERE, "run.ts"), `${REMOTE}/run.ts`);
     await upload(sbx, join(HERE, "fixtures", "tone.mp3"), `${REMOTE}/fixtures/tone.mp3`);
+    // Step 10's fixture pack, where run.ts looks for it (beside its directory, as in a checkout).
+    const pack = join(HERE, "..", "fixtures", "vfx-release", "spark-pack");
+    await sh(sbx, `mkdir -p ${REMOTE}/../fixtures/vfx-release/spark-pack/preview`);
+    for (const f of readdirSync(pack, { recursive: true, withFileTypes: true }).filter((e) => e.isFile())) {
+      const rel = join(f.parentPath, f.name).slice(pack.length + 1);
+      await upload(sbx, join(pack, rel), `${REMOTE}/../fixtures/vfx-release/spark-pack/${rel}`);
+    }
     for (const name of [`origin-engine-${VERSION}-x86_64-unknown-linux-gnu.tar.gz`, "SHA256SUMS", "SHA256SUMS.minisig"]) {
       const f = join(FROM, name);
       if (!existsSync(f)) throw new Error(`no ${f}`);

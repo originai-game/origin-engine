@@ -12,7 +12,7 @@
 //
 // --core runs steps 1 to 5 and 7's validate only: what every version from
 // 0.5.0 has (a backfilled archive of an older version, docs/release.md §3);
-// 4b, 6, 7's mount, 8 and 9 probe features of later versions.
+// 4b, 6, 7's mount, 8, 9 and 10 probe features of later versions.
 //
 // Steps, in an empty directory with no OG_ENGINE_PACKAGE, OG_NATIVE_ADDON or
 // ORIGIN_OG_BIN in the environment:
@@ -36,6 +36,9 @@
 //      it (og.AudioPlayback's playhead at 0.5 s) and the mix is not silent
 //   9. a look naming the built-in fantasy style: og cook reads it from the
 //      engine's styles/ and the bundle adds that pack only to the demo's own
+//  10. no effect pack in a game that installs none: the demo's cook and build carry no file of a bundled
+//      vfx pack, packages/vfx-packs/ or the fixture pack (tests/fixtures/vfx-release); that pack, once
+//      og vfx add installs it, is in the cook
 //
 // --container builds tests/install/Dockerfile (node 22, bun) and runs this
 // script inside it with --host-only and OG_RENDERER=none (it has no GPU), the
@@ -45,7 +48,7 @@
 
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -365,6 +368,43 @@ function host(): void {
       log(`   fantasy cooked beside the demo's own ${[...before].join(", ") || "none"}`);
       rmSync(join(demo, "assets", "looks", "fantasy-ui.ogt"));
 
+      // 10. Effect packs ship apart from games (docs/vfx-packs.md §5): a game with none installed cooks and
+      // builds no file of a bundled vfx pack (the dist's engine/extensions/<pack> of kind vfx), of
+      // packages/vfx-packs/ (in a checkout) or of the fixture pack tests/fixtures/vfx-release/spark-pack;
+      // the same fixture, installed with og vfx add, is in the cook (the check sees a pack when there is one).
+      step = new Step("10 no effect pack in a game that installs none");
+      const fixture = join(HERE, "..", "fixtures", "vfx-release", "spark-pack");
+      if (!existsSync(join(fixture, "extension.json"))) step.fail(`no fixture pack at ${fixture}`);
+      const packDirs = [fixture];
+      for (const root of [join(enginePkg, "extensions"), join(HERE, "..", "..", "packages", "vfx-packs")]) {
+        if (!existsSync(root)) continue;
+        for (const name of readdirSync(root)) {
+          const m = join(root, name, "extension.json");
+          if (existsSync(m) && (JSON.parse(readFileSync(m, "utf8")) as { kind?: string }).kind === "vfx") packDirs.push(join(root, name));
+        }
+      }
+      const filesOf = (dir: string): string[] => readdirSync(dir, { recursive: true, withFileTypes: true }).filter((e) => e.isFile()).map((e) => join(e.parentPath, e.name));
+      const packBytes = new Map<string, string>();
+      for (const d of packDirs) for (const f of filesOf(d)) packBytes.set(sha256(f), f);
+      const packNames = packDirs.map((d) => d.split(/[\\/]/).at(-1)!);
+      og(step, demo, "cook", ".");
+      const cookText = readFileSync(join(demo, "cooked", ".cook.ogt"), "utf8");
+      const leaks: string[] = [];
+      if (/^asset "vfx\//m.test(cookText)) leaks.push(`.cook.ogt cooks ${[...cookText.matchAll(/^asset "(vfx\/[^"]+)"/gm)].map((m) => m[1]).join(", ")}`);
+      for (const top of ["cooked", "dist"]) {
+        for (const f of filesOf(join(demo, top))) {
+          const rel = f.slice(demo.length + 1);
+          if (rel.includes("vfx-packs") || packNames.some((n) => rel.split(/[\\/]/).includes(n))) leaks.push(rel);
+          const same = packBytes.get(sha256(f));
+          if (same) leaks.push(`${rel} is ${same}`);
+        }
+      }
+      if (leaks.length) step.fail(`a game with no effect pack ships pack files:\n  ${leaks.join("\n  ")}`);
+      og(step, runner, "vfx", "add", fixture, ".");
+      og(step, runner, "cook", ".");
+      if (!readFileSync(join(runner, "cooked", ".cook.ogt"), "utf8").includes('asset "vfx/spark-pack/burst.ogt"')) step.fail("og vfx add of the fixture pack cooked no vfx/spark-pack/burst.ogt: the check above cannot see a pack");
+      log(`   ${packDirs.length} pack(s) checked (${packNames.join(", ")}), ${packBytes.size} file(s): none in demo's cooked/ or dist/; spark-pack cooks once added`);
+
     
     }
 
@@ -384,7 +424,7 @@ function container(): void {
   // The installers as publish builds them; the channel is --from's parent, as /downloads/engine/ holds <version>/.
   const launcher = mkdtempSync(join(tmpdir(), "og-install-launcher-"));
   run(step, ["bun", join(repo, "packages", "launcher", "build.ts"), launcher], repo);
-  const mounts = ["-v", `${HERE}:/install:ro`, "-v", `${launcher}:/launcher:ro`, "-v", `${FROM}:/channel/${VERSION}:ro`];
+  const mounts = ["-v", `${HERE}:/install:ro`, "-v", `${join(repo, "tests", "fixtures", "vfx-release")}:/fixtures/vfx-release:ro`, "-v", `${launcher}:/launcher:ro`, "-v", `${FROM}:/channel/${VERSION}:ro`];
   const inner = ["bun", "/install/run.ts", "--version", VERSION!, "--host-only", "--from", `/channel/${VERSION}`, "--installer", "/launcher/install.sh", ...(CORE ? ["--core"] : []), ...(PUBKEY ? ["--pubkey", PUBKEY] : [])];
   // The container has no GPU: a sandbox without one runs og with OG_RENDERER=none (docs/platform-asks.md
   // #20), so og test runs every suite's checks and leaves the frames unchecked, rather than failing at the adapter.

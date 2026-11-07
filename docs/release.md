@@ -25,8 +25,9 @@ runner, the server, Desktop).
 | Path | What | Cache |
 |---|---|---|
 | `<version>/origin-engine-<version>-<target>.tar.gz` | one target's dist, its root directory `origin-engine-<version>-<target>/` | immutable |
-| `<version>/manifest.json` | `{version, releasedAt, revision, channel: "release"\|"dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig", targets: {<target>: {url, sha256, size}}}` | immutable |
-| `<version>/SHA256SUMS`, `<version>/SHA256SUMS.minisig` | every archive's sha256, signed with the engine's key (below) | immutable |
+| `<version>/vfx/<pack>.tar.gz` | one downloadable effect pack, its root directory `<pack>/` (below) | immutable |
+| `<version>/manifest.json` | `{version, releasedAt, revision, channel: "release"\|"dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig", targets: {<target>: {url, sha256, size}}, vfx: {<pack>: {url, sha256, size, version, minEngine}}}` | immutable |
+| `<version>/SHA256SUMS`, `<version>/SHA256SUMS.minisig` | every archive's sha256 (the targets', the vfx packs' as `vfx/<pack>.tar.gz`), manifest.json's and a release's installers', signed with the engine's key (below) | immutable |
 | `latest/manifest.json` | the newest release (never a dev build) | no-cache |
 | `install.sh`, `install.ps1` | install the `og` launcher (`packages/launcher`) | no-cache |
 
@@ -59,6 +60,24 @@ version's loader (`src/node`, `og check`) looks for those; `build.target`
 is that platform (`linux-x64`, what origin-agent's layout reader uses) and
 `build.triple` the archive's target.
 
+**The downloadable effect packs** (docs/vfx-packs.md §5): every
+`packages/vfx-packs/<pack>/` with an `extension.json`, at the version's
+revision, is archived as `vfx/<pack>.tar.gz` by `release-dist.ts`
+(`packages/engine/src/node/vfx-pack.ts`'s `packArchive`): ustar entries
+under `<pack>/`, sorted, modes 0644 and 0755, owner 0:0, mtime 0, gzip
+with no time or host in its header, so two builds are the same bytes; no
+hidden files and nothing under `preview/` (review evidence, never
+installed). `manifest.json`'s `vfx` names each (`version` and `minEngine`
+from its `extension.json`; `{}` when there is none) and SHA256SUMS lists
+it, so the one signature covers it. They are not in any target archive:
+`packages/vfx-packs/` is outside `@origingame/engine` and its `files`, and
+`release-dist.ts` refuses a layout with a `vfx-packs` directory in
+`engine/`, `overlay/` or `files/`, or an `engine/extensions/<pack>` of a
+downloadable pack's name. A pack is installed with `og vfx add <pack>`,
+which verifies the signed SHA256SUMS as the launcher does (below). The
+few bundled packs are kits' peers in `packages/engine/extensions/` and
+ship inside `engine/`.
+
 **The release key** is a minisign (Ed25519) pair:
 
 ```text
@@ -71,8 +90,9 @@ The secret key is the project secret `OG_ENGINE_MINISIGN_KEY` of
 writes it to a 0600 temporary file for `minisign` and removes it after,
 and it is never a file in this repository. The public key is pinned by
 the launcher (`packages/launcher/og.ts`, whose installers refuse to build
-with another), by the platform's upload endpoint and mirror, and by
-origin-agent's runner. A new key is a new launcher and a note to both.
+with another), by `og vfx add` (`packages/engine/src/node/vfx-pack.ts`; a
+test checks both against this document), by the platform's upload endpoint
+and mirror, and by origin-agent's runner. A new key is a new launcher and a note to both.
 
 **Publishing** is an upload to the platform (`scripts/release.sh
 publish`, §3), which verifies the signature and every sha256, serves the
@@ -287,7 +307,8 @@ request limit; `archive` refuses a larger one).
    `packages/engine/dist/pack/origingame-engine-win32-x64-<v>.tgz` to the
    Mac thread by Amp's thread file transfer. It never compiles the wasm.
 3. On the Mac: copy it into `dist/release/<v>/`, then `scripts/release.sh
-   archive` (all three archives, `manifest.json`, `install.sh`,
+   archive` (all three archives, `vfx/<pack>.tar.gz` for each
+   downloadable effect pack, `manifest.json`, `install.sh`,
    `install.ps1`, `SHA256SUMS`; signed when `OG_ENGINE_MINISIGN_KEY` is
    set), `scripts/release.sh verify` (the full install test, not
    `--core`, host and container), then `scripts/release.sh sign` in a

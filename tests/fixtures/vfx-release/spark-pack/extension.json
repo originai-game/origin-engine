@@ -1,0 +1,8 @@
+{
+  "format": 1,
+  "kind": "vfx",
+  "name": "spark-pack",
+  "version": "1.0.0",
+  "description": "Release fixture: two tiny effects and one texture, for og vfx add's download and the release's vfx archives",
+  "minEngine": "0.7.0"
+}

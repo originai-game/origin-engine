@@ -299,39 +299,93 @@ pub fn add(args: &[&str], kind: &str) -> ExitCode {
                 );
             }
         };
-        let extension = if Path::new(name).join("extension.json").is_file() {
-            read(Path::new(name), false)?
+        let found = if Path::new(name).join("extension.json").is_file() {
+            Some(read(Path::new(name), false)?)
         } else {
             discover(project)?
                 .into_iter()
                 .find(|e| e.manifest.name == name && e.manifest.kind == kind)
-                .ok_or_else(|| {
-                    format!("unknown {kind} extension `{name}` (og ui list names them)")
-                })?
         };
-        if extension.manifest.kind != kind {
-            return Err(format!("`{name}` is not a {kind}"));
+        // Neither a directory nor a bundled or installed pack: a vfx pack is
+        // downloaded from this engine's release, then installed as a local
+        // directory is; the download is removed whatever happens.
+        if found.is_none() && kind == "vfx" && !Path::new(name).exists() {
+            if !project.join("project.ogt").is_file() {
+                return Err(format!("{}: no project.ogt", project.display()));
+            }
+            let download = fetch_vfx(name, project)?;
+            let result = read(&download.join(name), false)
+                .and_then(|extension| add_extension(&extension, name, kind, project, any_engine));
+            let _ = std::fs::remove_dir_all(&download);
+            return result;
         }
-        if let Some(min) = extension.manifest.min_engine.as_deref()
-            && !any_engine
-            && newer(min, env!("CARGO_PKG_VERSION"))
-        {
-            return Err(format!(
-                "`{}` needs engine {min} or newer; this is {} (--any-engine installs it anyway)",
-                extension.manifest.name,
-                env!("CARGO_PKG_VERSION")
-            ));
-        }
-        let target = install(&extension, project)?;
-        println!(
-            "installed {} {} into {}",
-            extension.manifest.name,
-            extension.manifest.version,
-            target.display()
-        );
-        Ok(())
+        let extension = found
+            .ok_or_else(|| format!("unknown {kind} extension `{name}` (og ui list names them)"))?;
+        add_extension(&extension, name, kind, project, any_engine)
     })();
     outcome(result)
+}
+
+/// Downloads vfx pack `name` of this engine's release into a fresh temporary
+/// directory, verified and unpacked (`src/node/vfx-pack.ts` in the engine
+/// package: the signed SHA256SUMS, the archive's sha256, safe paths only);
+/// returns that directory, which holds `<name>/`. Leaves nothing on failure.
+fn fetch_vfx(name: &str, project: &Path) -> Result<PathBuf, String> {
+    let package = crate::project::engine_package(Some(project)).ok_or(crate::project::NO_ENGINE)?;
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos());
+    let download =
+        std::env::temp_dir().join(format!("og-vfx-{name}-{}-{nanos}", std::process::id()));
+    std::fs::create_dir(&download).map_err(|e| format!("{}: {e}", download.display()))?;
+    let out = crate::project::bun(&package, "src/node/vfx-pack.ts")
+        .args(["fetch", name, env!("CARGO_PKG_VERSION")])
+        .arg(&download)
+        .stdin(std::process::Stdio::null())
+        .output();
+    let failed = match out {
+        Ok(out) if out.status.success() => {
+            eprint!("{}", String::from_utf8_lossy(&out.stderr));
+            return Ok(download);
+        }
+        Ok(out) => String::from_utf8_lossy(&out.stderr).trim().to_string(),
+        Err(_) => crate::project::NO_BUN.to_string(),
+    };
+    let _ = std::fs::remove_dir_all(&download);
+    Err(format!(
+        "`{name}` is no bundled or installed vfx pack, and downloading it from engine {}'s release failed: {failed}; nothing written",
+        env!("CARGO_PKG_VERSION")
+    ))
+}
+
+fn add_extension(
+    extension: &Extension,
+    name: &str,
+    kind: &str,
+    project: &Path,
+    any_engine: bool,
+) -> Result<(), String> {
+    if extension.manifest.kind != kind {
+        return Err(format!("`{name}` is not a {kind}"));
+    }
+    if let Some(min) = extension.manifest.min_engine.as_deref()
+        && !any_engine
+        && newer(min, env!("CARGO_PKG_VERSION"))
+    {
+        return Err(format!(
+            "`{}` needs engine {min} or newer; this is {} (--any-engine installs it anyway)",
+            extension.manifest.name,
+            env!("CARGO_PKG_VERSION")
+        ));
+    }
+    let target = install(extension, project)?;
+    println!(
+        "installed {} {} into {}",
+        extension.manifest.name,
+        extension.manifest.version,
+        target.display()
+    );
+    Ok(())
 }
 
 pub fn list(args: &[&str]) -> ExitCode {
