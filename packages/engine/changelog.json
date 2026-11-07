@@ -1079,6 +1079,10 @@
       {
         "member": "Rive import (.riv, og_ui::rive)",
         "summary": "A `.riv` under assets/ (format 7) is converted at cook time, never by the Rive runtime: each artboard its `<file>.riv.ogt` import settings choose (role, name, fit, align, state-machine) cooks to an og.RiveArtboard blob, id `<file>.riv#<Artboard>` (docs/ui.md §11.2). Phase 1 converts artboards, groups, shapes (points paths, rectangles, ellipses, triangles, polygons, stars), fills by both rules, centred strokes, solid, linear and radial paints, six blend modes, linear animations (hold, linear, cubic and value keys; loop, ping-pong, work areas), nested artboards and a state machine whose entry plays one animation. Luau, images, text and other state machines are cook errors that name the feature and object. og_ui::rive::Player plays one on the tick, draws it as UI paths, lists its objects as elements and saves and restores its state."
+      },
+      {
+        "member": "Effekseer import (og cook, og vfx import)",
+        "summary": "An Effekseer effect (`.efkproj`, or the `.efkefc` that wraps the same project) is an asset: the cook converts its node tree into the engine's own `type vfx` with the `type particles` emitters, `type effect` materials and meshes it needs (sprites to emitters with their counts, spawn times, life, size and colour over life, fades, blend, texture, flipbook and UV scroll; rings to ring meshes with Effekseer's UVs and colours across; ribbons and tracks to trails; `.efkmodel` models to meshes), and loads under its own path (`og.load.vfx(world, \"fx/slash.efkproj\")`). `og vfx import <file> <out-dir>` writes the same conversion as `.ogt` text with copies of its textures, to edit. What the engine cannot express (triggers, force fields, f-curve paths, camera-facing rings, nested generation, ...) is a finding per node: a warning of the cook, a line of the import. No Effekseer runtime is embedded; the formats are read as Effekseer's MIT source writes them (third_party/effekseer)."
       }
     ],
     "fixed": [

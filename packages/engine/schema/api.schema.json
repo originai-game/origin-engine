@@ -6858,7 +6858,7 @@
         },
         {
           "name": "vfx",
-          "doc": "Load a composed effect: an `.ogt` of `type vfx` (the og.vfx module's file: a duration, events and a timeline of emitters, effect meshes, trails, beams, lights, decals, flashes, pixel-effect flipbooks, shakes and sounds), with every emitter, effect material, model, flipbook sheet and sound it names. Loaded once per path; play it with og.vfx.spawn or an og.Vfx whose asset is the handle.",
+          "doc": "Load a composed effect: an `.ogt` of `type vfx` (the og.vfx module's file: a duration, events and a timeline of emitters, effect meshes, trails, beams, lights, decals, flashes, pixel-effect flipbooks, shakes and sounds), with every emitter, effect material, model, flipbook sheet and sound it names. An Effekseer effect in assets/ (`.efkproj`, `.efkefc`) is one too: the cook converts its nodes into the engine's own vfx, emitters, effect materials and meshes and warns of what it could not carry; `og vfx import` writes the same conversion as `.ogt` text to edit. Loaded once per path; play it with og.vfx.spawn or an og.Vfx whose asset is the handle.",
           "params": [
             {
               "name": "world",
@@ -6870,7 +6870,7 @@
               "name": "path",
               "type": "String",
               "optional": false,
-              "doc": "The effect's asset id, such as `fx/fireball-impact.ogt`."
+              "doc": "The effect's asset id, such as `fx/fireball-impact.ogt` or `fx/slash.efkproj`."
             }
           ],
           "returns": "Result<VfxAsset>",
