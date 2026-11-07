@@ -759,10 +759,14 @@ motion GPU culling uploads the sorted instances' previous transforms
 (`cull_gpu.rs` `previous`) and compacts them with its survivors, so every
 path gives TAA and motion blur each object's own motion. `debugView lod`
 tints each cluster by its level. The path takes the camera pass's opaque
-batches of clustered meshes under GPU culling (`Culling.auto` turns GPU
-culling on when such a batch exists); skinned, morphed, lightmapped or
-compact meshes, custom shaders, transparent and physical materials, texture
-arrays, runtime geometry without clusters, object-space stylise and
+batches of clustered meshes in a frame culled on the GPU anyway
+(`Culling.auto` from `GPU_CULLING_MIN_INSTANCES` instances or for GPU
+crowds, `Culling.gpu` always); in a smaller frame under `Culling.auto` they
+draw as any mesh, culled on the CPU, at the level og-runtime picked, and
+the cluster pools are made by the first frame that takes the path.
+Skinned, morphed, lightmapped or compact meshes, custom shaders,
+transparent and physical materials, texture arrays, runtime geometry
+without clusters, object-space stylise and
 `Culling.cpu` keep the per-instance path (`meshlet_gpu::takes`;
 `RenderScene.meshlets` turns it off). Shadow maps go through the same
 dispatch: each cascade and local light face is a view whose rows test the

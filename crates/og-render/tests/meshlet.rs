@@ -3,7 +3,8 @@
 use glam::{Mat4, Vec3};
 use og_render::meshlet::{Cluster, ClusterLevel, MeshClusters};
 use og_render::{
-    Camera, InstanceFx, Material, MeshData, RenderDesc, RenderScene, RenderTarget, Renderer, Vertex,
+    Camera, Culling, InstanceFx, Material, MeshData, RenderDesc, RenderScene, RenderTarget,
+    Renderer, Vertex,
 };
 
 #[test]
@@ -57,9 +58,12 @@ fn equal_depth_meshlets_choose_the_same_triangle_across_frames() {
         ..Default::default()
     };
     scene.light.cast_shadows = false;
+    // The meshlet path follows GPU culling, which `Culling::Auto` keeps for
+    // frames of GPU_CULLING_MIN_INSTANCES instances; these are 65.
     let mut renderer = Renderer::new_blocking(&RenderDesc {
         width: 128,
         height: 128,
+        culling: Culling::Gpu,
         ..Default::default()
     })
     .expect("renderer");
