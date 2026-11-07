@@ -1,34 +1,33 @@
-//! Documents (docs/ui.md §2.1): a screen (`type screen`) or a component
-//! (`type component`) as `.ogt` text, an element tree with props, slots,
-//! parts, state groups, transitions, timelines, breakpoint overrides,
-//! list templates, conditions, triggers and bindings. [`UiDocument::parse`]
-//! reads and validates one against the reflected props ([`schema`]); og-cook
-//! cooks it into an `og.UiDocument` blob (the validated text); a [`crate::Ui`]
-//! mounts it ([`crate::Ui::mount`], `build.rs`) every tick, mixing with
-//! immediate-mode code: slots filled by code, events back to code.
-//!
-//! The grammar is the README's §Documents; [`UiDocument::set_prop`] edits
-//! one prop of one element in the text, keeping every other line (what
-//! `ui:save` writes back).
+//! Scriptless Svelte documents and scoped CSS, validated against [`schema`].
+//! [`UiDocument::parse`] produces reflected nodes, expressions, and cascade
+//! rules for the retained builder. The cook stores the validated document
+//! with its base string-table dependencies in an `og.UiDocument` blob.
+//! [`UiDocument::set_prop`] saves probe edits without rewriting other nodes.
 
 pub mod build;
 pub mod catalogue;
 pub mod css;
 pub mod schema;
+mod spans;
+mod stylesheet;
+mod svelte;
+mod syntax;
 pub mod types;
+mod writeback;
 
 use crate::bind::{Expr, Format, Template};
 use crate::element::Prop;
 use crate::layout::Size;
 use crate::motion::{
-    Ease, EventKind, Key, KeyEase, MotionToken, PresenceSpec, SpringSpec, StateTransition,
-    Timeline, TimelineEvent, TimelineTrack, Transition, TransitionKind,
+    Ease, Key, KeyEase, MotionToken, PresenceSpec, SpringSpec, StateTransition, Timeline,
+    TimelineTrack, Transition, TransitionKind,
 };
 use crate::style::Srgba;
-use og_core::ogt::{Document, Entry, Number, Value};
+use og_core::ogt::{Document, Number, Value};
 use schema::{PROPS, Ty};
+pub use spans::SpanRule;
 
-/// The `.ogt` types of documents.
+/// The reflected document kinds declared by metadata.
 pub const SCREEN_TYPE: &str = "screen";
 pub const COMPONENT_TYPE: &str = "component";
 
@@ -343,6 +342,8 @@ pub struct DocNode {
     pub at: Vec<(AtQuery, Vec<PropSet>)>,
     /// Scoped CSS rules in cascade order, with their reactive match condition.
     pub rules: Vec<(AtQuery, Option<Expr>, Vec<PropSet>)>,
+    /// Scoped rich-text part rules, in cascade order.
+    pub span_rules: Vec<SpanRule>,
     pub groups: Vec<DocGroup>,
     pub triggers: Vec<Trigger>,
     /// A component instance's arguments (`use`): its props by name.
@@ -364,10 +365,12 @@ pub struct ContractProp {
 pub struct UiDocument {
     pub kind: DocKind,
     pub name: String,
-    /// The asset id it was read from (`ui/shop.ogt`; empty: in memory).
+    /// The asset id it was read from (`ui/shop.svelte`; empty: in memory).
     pub source: String,
     /// The text as written.
     pub text: String,
+    /// Cooked base string-table asset IDs, resolved relative to this document.
+    pub strings: Vec<String>,
     pub layer: LayerSpec,
     pub props: Vec<ContractProp>,
     pub parts: Vec<String>,
@@ -384,16 +387,6 @@ pub struct UiDocument {
 }
 
 pub(crate) const NONE: usize = usize::MAX;
-
-fn words(e: &Entry) -> Vec<String> {
-    e.values
-        .iter()
-        .map(|v| match v {
-            Value::Number(n) => n.text().to_string(),
-            Value::String(s) | Value::Word(s) => s.clone(),
-        })
-        .collect()
-}
 
 /// Values as written (for the dump and the write-back).
 fn written(vals: &[Value]) -> String {
@@ -678,6 +671,7 @@ pub(crate) fn parse_lit(ty: Ty, vals: &[Value]) -> Result<Lit, String> {
         Ty::Presence => Lit::Presence(parse_presence(vals, true)?),
         Ty::Tracks => Lit::Tracks(vals.iter().map(parse_track).collect::<Result<_, _>>()?),
         Ty::Names => Lit::Strs(vals.iter().filter_map(as_name).collect()),
+        Ty::Spans => return Err("spans takes a read-only expression: spans={$spans}".into()),
     })
 }
 
@@ -744,13 +738,5 @@ pub(crate) fn parse_value(ty: Ty, vals: &[Value]) -> Result<PropValue, String> {
     Ok(PropValue::Lit(parse_lit(ty, vals)?))
 }
 
-/// One parse: the errors, each with its line.
-struct Ctx {
-    errors: Vec<String>,
-    nodes: Vec<DocNode>,
-}
-
 mod document;
-mod parse;
 pub(crate) use document::*;
-use parse::parse_timeline;

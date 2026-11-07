@@ -69,20 +69,54 @@ local styles and `og style new` remain available.
   assets. `og style add ./path` installs a local pack.
 - A results screen is a document, not style: eject it
   (`og ui eject --list`), edit it under `assets/ui/` and keep game data in
-  its viewmodel.
+  its named stores.
 
 <a id="guide-screens-4"></a>
 ### `screens §4` Structure and data
 
-- All structure (layout, parts, slots, states, motion) belongs in
-  `type screen` and `type component` documents: Tune edits them live and
-  saves back, `og dev` reloads them in place keeping UI state.
-- Code prepares named stores and keyed collections. The Svelte template
-  reader and retained `svelte/store` API are landing separately; use their generated
-  signatures once available. Named callbacks are limited to custom draw
-  and components a document cannot express, with declared dependencies.
-- Every word is a string key with an English fallback; no literal player
-  text in code (§6).
+- Write one scriptless `.svelte` file per screen or component. Declare
+  contracts with `<meta>`, structure with core HTML tags, and look in a
+  scoped `<style>` block. TypeScript builds no UI trees.
+- Read a named store with `{$gold}` or `disabled={$gold < 10}`. Use
+  `bind:value={$volume}` for two-way controls. Ordinary attribute bindings
+  never write. `onclick={buy}` names an action supplied by the game.
+- Use `{#if expression}…{:else}…{/if}` and
+  `{#each $items as item (item.id)}…{:else}…{/each}`. Every collection row
+  needs a stable string key. Index keys and executable JavaScript fail cooking.
+- Compose content with `{#snippet name()}…{/snippet}` and
+  `{@render name()}`. Use `{@render name?.()}` for optional content.
+- Expressions allow property access, comparisons, arithmetic, ternaries,
+  pure number formatters, and `t(key, { named: expression })`. Assignments,
+  arbitrary calls, scripts, runes, and raw HTML are errors.
+- Style reactive state with `class:active={$step == 'brightness'}` and
+  `.active` rules. Interaction selectors are `:hover`, `:active`,
+  `:focus-visible`, and `:disabled`. Use named `@media` breakpoints.
+- Declare motion with scoped `@keyframes` and
+  a rule such as `#Card { animation: reveal 300ms ease-out forwards; }`.
+  Frames need explicit 0% and
+  100% endpoints. One animation applies per element. Conditional animations
+  are not supported; mount animated elements with `{#if}` instead.
+  A keyframe's `-og-sound: error` emits the active style's named sound once
+  when playback crosses that frame, at the recorded playback rate.
+- Bind structured rich text with `<text spans={$spans}>{$body}</text>`.
+  Each `TextSpan` has `name`, `position`, `length`, and scalar `properties`.
+  Offsets count Unicode scalars, not bytes or UTF-16 units. Style spans with
+  `text::part(name)` and property selectors such as
+  `text::part(name)[rarity="rare"]`. Later overlapping declarations win per
+  property. Unknown span names remain metadata; the text is never markup.
+- Use `<meta name="screen" content="pause" data-layer="menu"
+  data-focus="Menu/Resume" data-pause="true">` for a screen.
+  Components use `name="component"`. Props use `name="prop:volume"`,
+  `content="number"`, and `data-doc="…"`; actions use `name="action:back"`;
+  fixtures use `name="fixture:default"` with JSON content.
+- A declared input action also exposes a named event: after declaring
+  `action:confirm`, use `onconfirm={start}` to handle it independently of
+  pointer clicks. The handler names a mounted game action, just like `onclick`.
+- Visible words use translation keys. Declare the base string table with
+  `<meta name="strings" content="./pause.en.ogt">`; the cook tracks it as
+  a dependency, and the loader preserves game translations when merging it.
+- Probe edits preserve surrounding markup and save style edits as scoped
+  rules. Diagnostics name the source file, line, column, and correction.
 
 <a id="guide-screens-5"></a>
 ### `screens §5` Thresholds, preview and check

@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "UI screen and component documents",
+      "change": "Replace the OGT screen/component dialect with scriptless .svelte documents: HTML core tags, metadata contracts, scoped CSS, keyed each blocks, named-store expressions, explicit two-way models, actions, snippets, translations, and typed text spans with ::part rules. The old reader and migrator are removed. Cooked documents carry a new version and track string-table dependencies.",
+      "fix": "Author screens and components in .svelte using the screens and components guides, then recook. Core screens and CLI discovery/eject use the new format; eject also copies base messages."
+    }
+  ]
+}

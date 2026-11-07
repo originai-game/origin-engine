@@ -279,7 +279,59 @@ impl Ui {
                         crate::style_file::ramp_step(&mut t.type_ramp.clone(), s).copied()
                     }),
                 };
-                self.label(id.as_str(), &text, desc);
+                if let Some(V::Spans(spans)) = r.get("spans") {
+                    let spans = match spans {
+                        Ok(spans) => spans,
+                        Err(error) => {
+                            self.warnings.push(format!(
+                                "{}:{}: {path}.spans: expected TextSpan[]: {error}",
+                                doc.source, n.line
+                            ));
+                            return None;
+                        }
+                    };
+                    let orientation = if self.viewport().width >= self.viewport().height {
+                        crate::element::Orientation::Landscape
+                    } else {
+                        crate::element::Orientation::Portrait
+                    };
+                    let rules: Vec<_> = n
+                        .span_rules
+                        .iter()
+                        .filter(|rule| {
+                            (rule.query.breakpoints.is_empty()
+                                || rule.query.breakpoints.contains(&self.breakpoint()))
+                                && rule.query.orientation.is_none_or(|o| o == orientation)
+                                && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
+                        })
+                        .collect();
+                    resp = self
+                        .rich_text_spans(
+                            id.as_str(),
+                            &text,
+                            spans,
+                            crate::RichTextDesc {
+                                step: desc.step,
+                                color: desc.color,
+                                align: desc.align,
+                                nowrap: desc.nowrap,
+                                width: desc.width,
+                                font: desc.font,
+                            },
+                            |span| {
+                                let mut style = crate::TextSpanStyle::default();
+                                for rule in &rules {
+                                    if rule.matches(span) {
+                                        rule.apply(&t, &mut style);
+                                    }
+                                }
+                                style
+                            },
+                        )
+                        .response;
+                } else {
+                    self.label(id.as_str(), &text, desc);
+                }
             }
             "button" => {
                 let text = text_of(&r, b);

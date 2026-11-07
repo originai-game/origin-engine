@@ -119,8 +119,8 @@ fn ui_rive_text_draws_its_run_in_its_cooked_font() {
     let ui_font = add(&mut scene, &font, true);
     board.bind_fonts(&mut |f| (f == "ui/hello_world.riv#font0").then(|| ui_font.clone()));
     let doc = UiDocument::parse(
-        "ui/hello.ogt",
-        "type screen\nversion 2\n---\nname \"hello\"\ncolumn Hello {\n  width: 500px\n  height: 500px\n  -og-frame: rive(\"ui/hello_world.riv#New Artboard\")\n}\n",
+        "ui/hello.svelte",
+        "<meta name='screen' content='hello'><column id='Hello'/><style>#Hello { width: 500px; height: 500px; -og-frame: rive(\"ui/hello_world.riv#New Artboard\"); }</style>",
     )
     .unwrap();
     let mut ui = Ui::new(UiDesc {

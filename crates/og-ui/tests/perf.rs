@@ -198,28 +198,16 @@ fn perf_dense_menu_300_elements_40_animating() {
     );
 }
 
-/// Every screen document of the library and the kits (a kit's `.ogt`
-/// beside its `extension.json`), as `(asset id, text)`.
+/// Every core screen document, as `(asset id, text)`.
 fn screens() -> Vec<(String, String)> {
     let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut dirs = vec![repo.join("packages/engine/src/ui/screens")];
-    for kit in std::fs::read_dir(repo.join("packages/engine/extensions")).unwrap() {
-        let kit = kit.unwrap().path();
-        if kit.join("extension.json").is_file() {
-            dirs.push(kit);
-        }
-    }
     let mut out = Vec::new();
-    for d in dirs {
-        for f in std::fs::read_dir(&d).unwrap() {
-            let p = f.unwrap().path();
-            if p.extension().is_some_and(|e| e == "ogt") {
-                let text = std::fs::read_to_string(&p).unwrap();
-                if text.starts_with("type screen\n") {
-                    let stem = p.file_stem().unwrap().to_str().unwrap();
-                    out.push((format!("ui/{stem}.ogt"), text));
-                }
-            }
+    for f in std::fs::read_dir(repo.join("packages/engine/src/ui/screens")).unwrap() {
+        let p = f.unwrap().path();
+        if p.extension().is_some_and(|e| e == "svelte") {
+            let text = std::fs::read_to_string(&p).unwrap();
+            let stem = p.file_stem().unwrap().to_str().unwrap();
+            out.push((format!("ui/{stem}.svelte"), text));
         }
     }
     out.sort();

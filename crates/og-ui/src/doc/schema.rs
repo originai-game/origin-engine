@@ -38,6 +38,8 @@ pub enum Ty {
     Tracks,
     /// Words or strings.
     Names,
+    /// A read-only array of typed narrative ranges, with Unicode scalar offsets.
+    Spans,
 }
 
 impl Ty {
@@ -57,6 +59,7 @@ impl Ty {
             Ty::Presence => "presence",
             Ty::Tracks => "tracks",
             Ty::Names => "names",
+            Ty::Spans => "TextSpan[]",
         }
     }
 }
@@ -502,6 +505,12 @@ pub const PROPS: &[PropSpec] = &[
     ),
     p!("step", Ty::Word(STEPS), ["label"], "The type step."),
     p!("color", Ty::Paint, ["label", "icon"], "Its ink."),
+    p!(
+        "spans",
+        Ty::Spans,
+        ["label"],
+        "Read-only TextSpan[] ranges over plain text; offsets count Unicode scalars. Styles come from ::part(name)."
+    ),
     p!(
         "onScene",
         Ty::Bool,

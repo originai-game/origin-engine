@@ -26,20 +26,20 @@ fn ui_eject_takes_the_installed_kit_document_and_only_its_companions() {
     let source = scratch_root();
     std::fs::create_dir_all(&source).unwrap();
     std::fs::write(source.join("extension.json"), r#"{"format":1,"kind":"kit","name":"fixture","version":"1.0.0","description":"Document copy fixture"}"#).unwrap();
-    std::fs::write(source.join("results.ogt"), "type screen\nversion 2\n---\nname results\ncolumn root {\n  label title {\n    text \"Pos\"\n  }\n}\n").unwrap();
+    std::fs::write(source.join("results.svelte"), "<meta name='screen' content='results'><column id='root'><text id='title'>Pos</text></column>").unwrap();
     let (code, out) = run(&["ui", "add", source.to_str().unwrap()]);
     assert_eq!(code, Some(0), "{out}");
-    let installed = dir.join("assets/ui-kits/fixture/results.ogt");
+    let installed = dir.join("assets/ui-kits/fixture/results.svelte");
     let edited = std::fs::read_to_string(&installed)
         .unwrap()
-        .replace("text \"Pos\"", "text \"Position\"");
+        .replace(">Pos</text>", ">Position</text>");
     std::fs::write(&installed, &edited).unwrap();
 
     let (code, out) = run(&["ui", "eject", "fixture/results"]);
     assert_eq!(code, Some(0), "{out}");
     let ejected = dir.join("assets/ui/fixture");
     assert_eq!(
-        std::fs::read_to_string(ejected.join("results.ogt")).unwrap(),
+        std::fs::read_to_string(ejected.join("results.svelte")).unwrap(),
         edited
     );
     for kit_only in [
@@ -58,7 +58,7 @@ fn ui_eject_takes_the_installed_kit_document_and_only_its_companions() {
     let (code, out) = run(&["ui", "eject", "fixture/results"]);
     assert_eq!(code, Some(1), "{out}");
     assert_eq!(
-        std::fs::read_to_string(ejected.join("results.ogt")).unwrap(),
+        std::fs::read_to_string(ejected.join("results.svelte")).unwrap(),
         edited
     );
     std::fs::remove_dir_all(source).unwrap();
@@ -439,15 +439,15 @@ fn og_check_types_viewmodels_and_events_from_the_documents() {
     .unwrap();
     let shop = |gold: &str| {
         format!(
-            "type screen\nversion 2\n---\nname \"shop\"\nback emit closeShop\nprops {{\n  gold {gold} \"Gold.\"\n  items list \"For sale.\"\n}}\n\
-             fixture rich \"{{\\\"gold\\\": 1, \\\"items\\\": [{{\\\"name\\\": \\\"Sword\\\", \\\"price\\\": 40}}, {{\\\"name\\\": \\\"Shield\\\", \\\"price\\\": 30, \\\"sale\\\": true}}]}}\"\n\
-             column Root {{\n  button Buy {{\n    text \"Buy\"\n    on click emit buy\n  }}\n  use Badge Gold {{\n    value 1\n  }}\n}}\n"
+            "<meta name='screen' content='shop' data-back='closeShop'>\n<meta name='prop:gold' content='{gold}' data-doc='Gold.'>\n<meta name='prop:items' content='list' data-doc='For sale.'>\n\
+             <meta name='fixture:rich' content='{{\"gold\":1,\"items\":[{{\"name\":\"Sword\",\"price\":40}},{{\"name\":\"Shield\",\"price\":30,\"sale\":true}}]}}'>\n\
+             <column id='Root'><button id='Buy' onclick={{buy}}>Buy</button><Badge id='Gold' value={{1}}/></column>"
         )
     };
-    std::fs::write(dir.join("assets/ui/shop.ogt"), shop("number")).unwrap();
+    std::fs::write(dir.join("assets/ui/shop.svelte"), shop("number")).unwrap();
     std::fs::write(
-        dir.join("assets/ui/badge.ogt"),
-        "type component\nversion 2\n---\nname \"Badge\"\nprops {\n  value number \"The number.\"\n}\nrow Root {\n  button Tap {\n    text \"{value}\"\n    on click emit tapped\n  }\n}\n",
+        dir.join("assets/ui/badge.svelte"),
+        "<meta name='component' content='Badge'><meta name='prop:value' content='number' data-doc='The number.'><row id='Root'><button id='Tap' onclick={tapped}>{value}</button></row>",
     )
     .unwrap();
     std::fs::write(
@@ -481,7 +481,7 @@ export default og.game({});
     // The string gold, the item's unknown field, the misspelt event and
     // the component's string prop; nothing else.
     assert_eq!(errors(), [(3, 2322), (4, 2353), (9, 2367), (11, 2322)]);
-    std::fs::write(dir.join("assets/ui/shop.ogt"), shop("string")).unwrap();
+    std::fs::write(dir.join("assets/ui/shop.svelte"), shop("string")).unwrap();
     assert_eq!(
         errors(),
         [(2, 2322), (4, 2322), (4, 2353), (9, 2367), (11, 2322)],
@@ -510,19 +510,16 @@ fn ui_slots_json_gives_each_slot_its_generation_spec_and_set() {
     .unwrap();
     let screen = |name: &str, body: &str| {
         std::fs::write(
-            dir.join(format!("assets/ui/{name}.ogt")),
-            format!("type screen\nversion 2\n---\nname \"{name}\"\ncolumn Root {{\n{body}}}\n"),
+            dir.join(format!("assets/ui/{name}.svelte")),
+            format!("<meta name='screen' content='{name}'>\n<column id='Root'>\n{body}</column>\n"),
         )
         .unwrap();
     };
     screen(
         "bag",
-        "  art Sword {\n    kind itemIcon\n    itemCells 2 3\n  }\n  art Frame {\n    kind styleFrame\n    object-fit: nine-slice\n    slice 0.2 0.3\n    artSet \"hud\"\n  }\n",
+        "<art id='Sword' kind='itemIcon' item-cells='2 3'/>\n<art id='Frame' kind='styleFrame' fit='nineSlice' slice='0.2 0.3' art-set='hud'/>\n",
     );
-    screen(
-        "shop",
-        "  art Shield {\n    kind itemIcon\n    texture 7\n  }\n",
-    );
+    screen("shop", "<art id='Shield' kind='itemIcon' src={7}/>\n");
     let out = og()
         .args(["ui", "slots", "--json"])
         .arg(&dir)
@@ -549,7 +546,7 @@ fn ui_slots_json_gives_each_slot_its_generation_spec_and_set() {
         serde_json::json!(["bag/Root/Sword", "shop/Root/Shield"])
     );
     assert_eq!(sword["set"]["reference"], "shop/Root/Shield");
-    assert_eq!(sword["source"], "ui/bag.ogt:6");
+    assert_eq!(sword["source"], "ui/bag.svelte:3");
     let frame = slot("bag/Root/Frame");
     assert_eq!(
         frame["insets"],

@@ -26,12 +26,23 @@ fn value(p: &PropSpec) -> String {
     format!("`{}`", text.replace('|', "\\|"))
 }
 
-/// How a document writes `p`: its CSS declaration or its attribute line.
+/// How a document writes `p`: its CSS declaration or HTML attribute.
 fn written(p: &PropSpec) -> String {
     match css_name(p.name) {
         Some("grid-column") => "`grid-column:`, `grid-row:`".into(),
         Some(css) => format!("`{css}:`"),
-        None => format!("`{}`", p.name),
+        None => format!(
+            "`{}`",
+            match p.name {
+                "stepBy" => "step".into(),
+                "input" => "value".into(),
+                "key" => "i18n".into(),
+                "name" => "aria-label".into(),
+                "texture" => "src".into(),
+                "tabIndex" => "tabindex".into(),
+                other => super::css::kebab(other),
+            }
+        ),
     }
 }
 
@@ -43,7 +54,7 @@ fn table(out: &mut String, props: &[&PropSpec]) {
     for p in props {
         let w = written(p);
         let two_way = if p.two_way {
-            " Two-way: a binding takes the new value."
+            " Two-way only with an explicit bind: attribute."
         } else {
             ""
         };
@@ -74,33 +85,42 @@ pub fn markdown() -> String {
     let mut out = String::from(
         "<!-- Generated from og-ui's document schema (crates/og-ui/src/doc/schema.rs) by `og api gen`. Do not edit: `og api check` fails on any difference. -->\n\
          # The UI component catalogue\n\n\
-         Every element kind a screen or component document can use, with the props it takes as the document writes them and the states it has. A document uses only what is here: any other kind, property or value is an error that names the form to write. A genre kit's TypeScript members are in the `kits` guide; a style's selectors and tokens in the `screens` guide.\n\n\
-         An element is `<kind> Name { … }`. A prop whose name ends in a colon (`gap:`) is a CSS declaration, `gap: 8px`; one without (`text`) is an attribute line, `text \"Buy\"`.\n\n",
+         Core elements and their reflected properties for scriptless Svelte documents. Unknown elements, properties, and values fail cooking. The `screens` guide describes contracts, bindings, styles, and content composition.\n\n\
+         Write `<button id=\"Buy\" onclick={buy}>Buy</button>`. Put CSS declarations such as `gap: 8px` in a scoped `<style>` block. Bind attributes with `value={$amount}` and writable controls with `bind:value={$amount}`. Use `<text>` for the reflected label kind and `<img>` for image. Named content uses snippets and `{@render name()}`, not legacy slot elements.\n\n",
     );
     let every: Vec<&PropSpec> = PROPS.iter().filter(|p| p.on == On::All).collect();
     out.push_str("## 1. Every element\n\nWhat every kind takes: its box, layout, paint, motion and input.\n\n");
     table(&mut out, &every);
     out.push_str(
-        "\nStates: the pseudo-classes `:hover`, `:active` (pressed), `:focus-visible` and `:disabled` set what changes in that state (`:hover { scale: 1.04 }`), each eased by its `transition`; a state of the game's is a bound group, `state <group> bind <expr> { <state> { … } }`.\n",
+        "\nStyle interaction with `#Buy:hover { scale: 1.04 }`, `:active`, `:focus-visible`, and `:disabled`. Bind game state with `class:active={$selected}` and style `.active`. CSS motion uses shared timing values; markup contains no state blocks or timelines.\n",
     );
-    for (n, k) in KINDS.iter().enumerate() {
+    for (n, k) in KINDS.iter().filter(|k| k.name != "slot").enumerate() {
         let own: Vec<&PropSpec> = PROPS
             .iter()
             .filter(|p| matches!(p.on, On::Kinds(ks) if ks.contains(&k.name)))
             .collect();
         let _ = writeln!(
             out,
-            "\n## {}. `{}`: {}\n\n{} {} `{} Name {{ … }}`.",
+            "\n## {}. `{}`: {}\n\n{} {} `<{} id=\"Name\">…</{}>`.",
             n + 2,
             k.name,
             k.doc.trim_end_matches('.'),
             k.doc,
             if k.container {
-                "A container: its children go inside its block,"
+                "A container with nested children:"
             } else {
-                "A leaf, with no children:"
+                "A leaf; text-bearing controls accept text content:"
             },
-            k.name
+            match k.name {
+                "label" => "text",
+                "image" => "img",
+                other => other,
+            },
+            match k.name {
+                "label" => "text",
+                "image" => "img",
+                other => other,
+            }
         );
         if own.is_empty() {
             out.push_str("\nIt takes every element's props and none of its own.\n");
@@ -125,7 +145,7 @@ mod tests {
         let sections: Vec<&str> = md.split("\n## ").skip(1).collect();
         assert_eq!(
             sections.len(),
-            KINDS.len() + 1,
+            KINDS.iter().filter(|k| k.name != "slot").count() + 1,
             "every element, then each kind"
         );
         let written = |p: &PropSpec| format!("\n| {} |", written(p));
@@ -136,12 +156,18 @@ mod tests {
                 p.name
             );
         }
-        for (k, s) in KINDS.iter().zip(&sections[1..]) {
+        for (k, s) in KINDS
+            .iter()
+            .filter(|k| k.name != "slot")
+            .zip(&sections[1..])
+        {
             assert!(s.contains(&format!("`{}`", k.name)), "{s}");
             for p in PROPS.iter().filter(|p| p.on != On::All) {
                 assert_eq!(
                     s.contains(&written(p)),
-                    p.applies(k.name),
+                    PROPS.iter().any(|other| other.on != On::All
+                        && other.applies(k.name)
+                        && written(other) == written(p)),
                     "{} under {}",
                     p.name,
                     k.name

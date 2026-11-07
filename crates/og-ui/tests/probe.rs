@@ -258,7 +258,7 @@ fn restoring_the_world_and_the_ui_state_replays_the_same_frames() {
 /// rule's line taken from another block, the rules in another order.
 #[test]
 fn pick_answers_the_ui_element_with_its_source_line_and_style_rules() {
-    const SHOP: &str = "type screen\nversion 2\n---\nname \"shop\"\nlayer hud\nprops {\n  gold number \"Gold.\"\n}\ncolumn Root {\n  width: stretch\n  height: stretch\n  padding: 40px\n  button Buy {\n    width: 240px\n    text \"Buy\"\n    variant primary\n  }\n}\n";
+    const SHOP: &str = "<meta name=\"screen\" content=\"shop\" data-layer=\"hud\">\n<column id=\"Root\">\n<button id=\"Buy\" variant=\"primary\">Buy</button>\n</column>\n<style>#Root { width: stretch; height: stretch; padding: 40px; } #Buy { width: 240px; }</style>";
     let mut world = World::new(&WorldDesc {
         tick_rate: 60,
         seed: 1,
@@ -271,7 +271,7 @@ fn pick_answers_the_ui_element_with_its_source_line_and_style_rules() {
     let mut style = parse_style(style_text).expect("core test style");
     style.resolve(style_id, |_| true);
     ui.set_dressings(style.dressings.clone());
-    ui.define_document(UiDocument::parse("ui/shop.ogt", SHOP).expect("shop"));
+    ui.define_document(UiDocument::parse("ui/shop.svelte", SHOP).expect("shop"));
     ui.push_screen("shop", serde_json::json!({ "gold": 3 }))
         .expect("push");
     let ui = SharedUi::new(ui);
@@ -296,10 +296,10 @@ fn pick_answers_the_ui_element_with_its_source_line_and_style_rules() {
     // The button's line in the document, counted from the text itself.
     let line = SHOP
         .lines()
-        .position(|l| l.trim() == "button Buy {")
+        .position(|l| l.starts_with("<button "))
         .unwrap()
         + 1;
-    assert_eq!(p["source"], format!("ui/shop.ogt:{line}"));
+    assert_eq!(p["source"], format!("ui/shop.svelte:{line}"));
     assert_eq!(p["part"], "Button::base.primary");
     let line_of = |head: &str| style_text.lines().position(|l| l == head).unwrap() + 1;
     let rules: Vec<(String, String)> = p["rules"]

@@ -41,6 +41,7 @@ enum V {
     Presence(crate::motion::PresenceSpec),
     Tracks(Vec<Track>),
     Strs(Vec<String>),
+    Spans(Result<Vec<crate::TextSpan>, String>),
 }
 
 /// An element's resolved props, by schema index.
@@ -150,6 +151,7 @@ fn coerce(ui: &Ui, ty: Ty, v: &Value) -> Option<V> {
             Value::Array(a) => V::Strs(a.iter().map(text).collect()),
             _ => V::Strs(vec![text(v)]),
         },
+        Ty::Spans => V::Spans(serde_json::from_value(v.clone()).map_err(|e| e.to_string())),
         Ty::Transition | Ty::Presence | Ty::Tracks => return None,
     })
 }

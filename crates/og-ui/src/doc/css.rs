@@ -1,24 +1,8 @@
-//! The CSS dialect of documents (`version 2`, docs/ui.md §3.2): an
-//! element's look and layout as CSS declarations (`width: stretch;
-//! max-width: 640px`), its interaction states as pseudo-classes (`:hover {
-//! … }`), breakpoints as `@media phone { … }`, tokens as `var(--panel)` and
-//! the game's extensions as `-og-` properties. Its structure and behaviour
-//! (elements, `text`, `variant`, `bind`, `on`, `for`, `if`, `use`, named
-//! state groups, timelines) keep their `.ogt` lines.
-//!
-//! [`lower`] reads a version 2 text into the `.ogt` entries the document
-//! builder reads (each entry on its source line, so errors, the probe's
-//! `source` and the write-back name the version 2 file), [`migrate`] writes
-//! a version 1 text as version 2, keeping its comments and line order, and
-//! [`decl_line`] writes one line of declarations (the write-back). One
-//! table, [`STYLE`], drives all three.
-//!
-//! The subset is strict: a property or value it does not know is an error
-//! that names the form to use; there is no cascade beyond the element's own
-//! declarations (its `@media` blocks and states override them, later wins)
-//! and no `!important`.
+//! CSS declaration values shared by document stylesheets and style packs.
+//! [`STYLE`] maps reflected properties to their CSS spellings; [`decl_line`]
+//! writes probe edits using the same value conversions as the reader.
 
-use og_core::ogt::{self, Block, Document, Entry, Line, Number, Value};
+use og_core::ogt::{self, Block, Entry, Line, Number, Value};
 
 /// How a property's value is written.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -264,14 +248,6 @@ const STATE_VALUES: &[(&str, &str)] = &[
     ("z", "z-index"),
     ("background", "background"),
     ("ink", "color"),
-];
-
-/// The interaction states and their pseudo-classes.
-const PSEUDO: &[(&str, &str)] = &[
-    ("hover", "hover"),
-    ("pressed", "active"),
-    ("focused", "focus-visible"),
-    ("disabled", "disabled"),
 ];
 
 /// The neutral value of an animatable value (a state's `normal` takes it
@@ -1123,6 +1099,21 @@ fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Part>, String>
     if t.is_empty() {
         return Err(format!("{name} has no value"));
     }
+    if name == "display" {
+        let visible = match value.trim() {
+            "none" => false,
+            "initial" => true,
+            _ => {
+                return Err(
+                    "display takes none or initial; the element tag defines its layout".into(),
+                );
+            }
+        };
+        return Ok(vec![e("visible", vec![Value::Word(visible.to_string())])]);
+    }
+    if name == "-og-control-size" {
+        return Ok(vec![e("size", vec![Value::Word(value.trim().into())])]);
+    }
     // A bound declaration: the whole value is the binding.
     if let [Tok::Func(f, a)] = t.as_slice()
         && f == "bind"
@@ -1429,53 +1420,44 @@ enum Part {
     Grid(usize, Option<Value>, Option<Value>),
 }
 
-// ---- reading a version 2 text
-
-#[derive(Clone, Copy, PartialEq, Debug)]
-enum Ctx {
-    Doc,
-    /// An element, `use`, `for`, `if` or `@media`: declarations are props.
-    Tree,
-    /// A named state group: its states and `transition:`.
-    Group,
-    /// A state of a group, or a pseudo-class: declarations are its values.
-    State,
-    /// Anything else (`props`, `actions`, a timeline): `.ogt` lines.
-    Other,
-}
-
 /// A size being joined: its entry's index in the block, its kind, its
 /// `min-` and its `max-`.
 type SizeParts = (usize, Vec<Value>, Option<Value>, Option<Value>);
 
+pub(crate) fn declarations(text: &str, line: usize) -> Result<Vec<Entry>, String> {
+    declarations_at([(line, text)])
+}
+
+pub(crate) fn declarations_at<'a>(
+    lines: impl IntoIterator<Item = (usize, &'a str)>,
+) -> Result<Vec<Entry>, String> {
+    let mut frame = Frame::new(Entry::new("style"));
+    for (line, text) in lines {
+        for (name, value) in split_decls(text)? {
+            for part in lower_decl(&name, &value, false)? {
+                frame.part(part, line)?;
+            }
+        }
+    }
+    frame.finish()?;
+    Ok(frame.entry.block.map_or_else(Vec::new, |b| b.entries))
+}
+
 struct Frame {
-    ctx: Ctx,
     entry: Entry,
-    /// A pseudo-class's state name (`hover`), when this frame is one.
-    pseudo: Option<String>,
     /// Sizes and grid lines, joined at the block's end.
     size: [Option<SizeParts>; 2],
     grid: [Option<usize>; 2],
     grid_parts: [[Option<Value>; 2]; 2],
-    /// The element's pseudo-class states, its interaction group's place
-    /// and transition.
-    states: Vec<Entry>,
-    states_at: Option<usize>,
-    state_transition: Option<Entry>,
 }
 
 impl Frame {
-    fn new(ctx: Ctx, entry: Entry) -> Frame {
+    fn new(entry: Entry) -> Frame {
         Frame {
-            ctx,
             entry,
-            pseudo: None,
             size: [None, None],
             grid: [None, None],
             grid_parts: [[None, None], [None, None]],
-            states: Vec::new(),
-            states_at: None,
-            state_transition: None,
         }
     }
 
@@ -1530,9 +1512,7 @@ impl Frame {
         Ok(())
     }
 
-    /// Joins sizes and grid lines, and the pseudo-class states into the
-    /// interaction group (its `normal` state from the element's own
-    /// values).
+    /// Joins sizes and grid lines.
     fn finish(&mut self) -> Result<(), String> {
         for axis in 0..2 {
             let Some((at, kind, min, max)) = self.size[axis].take() else {
@@ -1563,69 +1543,6 @@ impl Frame {
             self.entry.block.as_mut().unwrap().entries[at].values =
                 vec![a.unwrap_or_else(zero), b.unwrap_or_else(zero)];
         }
-        if self.states.is_empty() {
-            if let Some(t) = &self.state_transition {
-                return Err(format!(
-                    "line {}: -og-state-transition moves between the element's :hover, :active, :focus-visible and :disabled states; it declares none",
-                    t.line
-                ));
-            }
-            return Ok(());
-        }
-        let line = self.states[0].line;
-        // The values any state sets, in order: `normal` returns each to
-        // the element's own, else to its neutral value.
-        let mut keys: Vec<String> = Vec::new();
-        for s in &self.states {
-            for v in s.block.as_ref().map_or(&[][..], |b| &b.entries) {
-                if STATE_VALUES.iter().any(|(k, _)| *k == v.key) && !keys.contains(&v.key) {
-                    keys.push(v.key.clone());
-                }
-            }
-        }
-        let mut normal = Entry::new("normal");
-        normal.line = line;
-        let own = self.entry.block.as_ref().map_or(&[][..], |b| &b.entries);
-        for k in keys {
-            let el = if k == "ink" { "color" } else { k.as_str() };
-            let mine = own
-                .iter()
-                .rev()
-                .find(|e| e.key == el && e.block.is_none())
-                .map(|e| e.values.clone())
-                .filter(|v| !matches!(v.first(), Some(Value::Word(b)) if b == "bind"));
-            let values = match (mine, neutral(&k)) {
-                (Some(v), _) => v,
-                (None, Some(n)) => vec![Value::Number(Number::parse(n).unwrap())],
-                (None, None) => {
-                    return Err(format!(
-                        "line {line}: a state sets {} but the element declares none to return to: declare it on the element",
-                        STATE_VALUES
-                            .iter()
-                            .find(|(s, _)| *s == k)
-                            .map_or("it", |(_, c)| c)
-                    ));
-                }
-            };
-            let mut e = Entry::new(k);
-            e.values = values;
-            e.line = line;
-            normal.block.get_or_insert_with(Block::new).push(e);
-        }
-        normal.block.get_or_insert_with(Block::new);
-        let mut group = Entry::new("state");
-        group.values = vec![Value::Word("interaction".into())];
-        group.line = line;
-        let b = group.block.get_or_insert_with(Block::new);
-        b.push(normal);
-        for s in std::mem::take(&mut self.states) {
-            b.push(s);
-        }
-        if let Some(t) = self.state_transition.take() {
-            b.push(t);
-        }
-        let at = self.states_at.take().unwrap_or(0);
-        self.block().entries.insert(at, group);
         Ok(())
     }
 }
@@ -1694,348 +1611,6 @@ pub(crate) fn split_decls(t: &str) -> Result<Vec<(String, String)>, String> {
     Ok(out)
 }
 
-/// `@media phone, tablet and (orientation: portrait) {`'s `at` words.
-fn media_words(q: &str) -> Result<Vec<Value>, String> {
-    let mut words = Vec::new();
-    let mut rest = q.to_string();
-    if let Some(i) = rest.find("(orientation:") {
-        let end = rest[i..]
-            .find(')')
-            .ok_or("(orientation: portrait|landscape)")?
-            + i;
-        let o = rest[i + "(orientation:".len()..end].trim().to_string();
-        if o != "portrait" && o != "landscape" {
-            return Err(format!("'{o}' is not an orientation: portrait, landscape"));
-        }
-        rest.replace_range(i..=end, "");
-        rest = rest.trim().trim_end_matches("and").trim().to_string();
-        let mut bps = media_names(&rest)?;
-        bps.push(Value::Word(o));
-        words = bps;
-    } else {
-        words.extend(media_names(&rest)?);
-    }
-    if words.is_empty() {
-        return Err("@media <breakpoint>[, <breakpoint>] [and (orientation: …)] {".into());
-    }
-    Ok(words)
-}
-
-fn media_names(s: &str) -> Result<Vec<Value>, String> {
-    s.split(',')
-        .map(str::trim)
-        .filter(|w| !w.is_empty())
-        .map(|w| match w {
-            "phone" | "tablet" | "desktop" | "phone-portrait" | "phone-landscape" => {
-                Ok(Value::Word(camel(w)))
-            }
-            _ if w.contains("max-width") || w.contains("min-width") => Err(
-                "breakpoints are named (the style sets their widths): phone, phone-portrait, phone-landscape, tablet, desktop".into(),
-            ),
-            _ => Err(format!(
-                "'{w}' is not a breakpoint: phone, phone-portrait, phone-landscape, tablet, desktop, (orientation: portrait|landscape)"
-            )),
-        })
-        .collect()
-}
-
-/// The context a block opened in `parent` by `key` reads its lines in.
-fn child_ctx(parent: Ctx, e: &Entry) -> Ctx {
-    match parent {
-        Ctx::Doc | Ctx::Tree => match e.key.as_str() {
-            "state" if parent == Ctx::Tree => Ctx::Group,
-            "for" | "if" | "use" => Ctx::Tree,
-            k if crate::doc::schema::kind(k).is_some() => Ctx::Tree,
-            _ => Ctx::Other,
-        },
-        Ctx::Group => Ctx::State,
-        _ => Ctx::Other,
-    }
-}
-
-/// Reads a version 2 document into the `.ogt` entries of the builder, each
-/// on its source line. Errors are `line N: …`.
-pub(crate) fn lower(text: &str) -> Result<Document, Vec<String>> {
-    let mut lines = text
-        .split('\n')
-        .enumerate()
-        .map(|(i, l)| (i + 1, l.strip_suffix('\r').unwrap_or(l)));
-    let mut head = String::new();
-    for (_, l) in lines.by_ref() {
-        head.push_str(l);
-        head.push('\n');
-        if l.trim() == "---" {
-            break;
-        }
-    }
-    let header = Document::parse(&head).map_err(|e| vec![e.reason().to_string()])?;
-    let mut errors = Vec::new();
-    let mut stack = vec![Frame::new(Ctx::Doc, Entry::new(""))];
-    for (n, raw) in lines {
-        let t = raw.trim();
-        let err = |errors: &mut Vec<String>, why: String| errors.push(format!("line {n}: {why}"));
-        let ctx = stack.last().unwrap().ctx;
-        // A pseudo-class's or a media query's line may end in a comment.
-        let code = comment_of(t).0;
-        if let Some(p) = code.strip_prefix(':') {
-            let Some(name) = p.strip_suffix('{').map(str::trim) else {
-                err(
-                    &mut errors,
-                    "a pseudo-class opens its block: `:hover {`".into(),
-                );
-                continue;
-            };
-            let state = PSEUDO.iter().find(|(_, c)| *c == name).map(|(s, _)| *s);
-            let el = stack.last().is_some_and(|f| {
-                f.ctx == Ctx::Tree
-                    && f.entry.key != "at"
-                    && crate::doc::schema::kind(&f.entry.key).is_some()
-            });
-            match state {
-                Some(s) if el => {
-                    let mut e = Entry::new(s);
-                    e.line = n;
-                    e.block = Some(Block::new());
-                    let mut f = Frame::new(Ctx::State, e);
-                    f.pseudo = Some(s.to_string());
-                    stack.push(f);
-                }
-                Some(_) => {
-                    err(
-                        &mut errors,
-                        format!(":{name} is an element's (not in @media, for, if or use)"),
-                    );
-                    let mut f = Frame::new(Ctx::Other, Entry::new("_"));
-                    f.entry.line = n;
-                    stack.push(f);
-                }
-                None => {
-                    err(
-                        &mut errors,
-                        format!(
-                            "':{name}' is not a state og-ui tracks: :hover, :active, :focus-visible, :disabled; a bound state is `state <group> bind <expr> {{ … }}`"
-                        ),
-                    );
-                    stack.push(Frame::new(Ctx::Other, Entry::new("_")));
-                }
-            }
-            continue;
-        }
-        if let Some(q) = code.strip_prefix("@media") {
-            let Some(q) = q.trim().strip_suffix('{') else {
-                err(&mut errors, "@media <breakpoint> {".into());
-                continue;
-            };
-            let mut e = Entry::new("at");
-            e.line = n;
-            e.block = Some(Block::new());
-            match media_words(q.trim()) {
-                Ok(w) => e.values = w,
-                Err(why) => err(&mut errors, why),
-            }
-            if ctx != Ctx::Tree {
-                err(&mut errors, "@media is an element's".into());
-            }
-            stack.push(Frame::new(Ctx::Tree, e));
-            continue;
-        }
-        if t.starts_with('@') {
-            err(
-                &mut errors,
-                format!(
-                    "'{}' is not supported: @media is the one at-rule",
-                    t.split_whitespace().next().unwrap_or(t)
-                ),
-            );
-            continue;
-        }
-        if is_decl(t) {
-            let decls = match split_decls(t) {
-                Ok(d) => d,
-                Err(why) => {
-                    err(&mut errors, why);
-                    continue;
-                }
-            };
-            let f = stack.last_mut().unwrap();
-            for (name, value) in decls {
-                let r = match f.ctx {
-                    Ctx::Tree if name == "-og-state-transition" => transition_vals(&tokens(&value).unwrap_or_default()).map(|v| {
-                        let mut e = Entry::new("transition");
-                        e.values = vec![Value::Word("any".into()), Value::Word("any".into())];
-                        e.values.extend(v);
-                        e.line = n;
-                        f.state_transition = Some(e);
-                    }),
-                    Ctx::Tree => lower_decl(&name, &value, false).and_then(|parts| {
-                        parts.into_iter().try_for_each(|p| f.part(p, n))
-                    }),
-                    Ctx::State => lower_decl(&name, &value, true).and_then(|parts| {
-                        parts.into_iter().try_for_each(|p| f.part(p, n))
-                    }),
-                    Ctx::Group if name == "transition" => tokens(&value).and_then(|t| {
-                        let (ends, rest) = match t.as_slice() {
-                            [Tok::Ident(a), Tok::Ident(b), rest @ ..]
-                                if !rest.is_empty() && !a.starts_with('-') && a != "all" && a != "none" =>
-                            {
-                                (vec![Value::Word(a.clone()), Value::Word(b.clone())], rest.to_vec())
-                            }
-                            _ => (vec![Value::Word("any".into()), Value::Word("any".into())], t.clone()),
-                        };
-                        let mut e = Entry::new("transition");
-                        e.values = ends;
-                        e.values.extend(transition_vals(&rest)?);
-                        e.line = n;
-                        f.push(e);
-                        Ok(())
-                    }),
-                    Ctx::Group => Err("a state group holds its states and `transition: [<from> <to>] <transition>`".into()),
-                    _ => Err(format!("'{name}: …' is a declaration; declarations go in an element or a state")),
-                };
-                if let Err(why) = r {
-                    err(&mut errors, why);
-                }
-            }
-            continue;
-        }
-        match ogt::parse_line(raw, n) {
-            Err(e) => err(&mut errors, e.reason().to_string()),
-            Ok(Line::Blank) => {}
-            Ok(Line::Close) => {
-                if stack.len() == 1 {
-                    err(&mut errors, "unmatched '}'".into());
-                    continue;
-                }
-                let mut f = stack.pop().unwrap();
-                if let Err(why) = f.finish() {
-                    errors.push(why);
-                }
-                let parent = stack.last_mut().unwrap();
-                if f.pseudo.is_some() {
-                    if parent.states_at.is_none() {
-                        parent.states_at = Some(parent.len());
-                    }
-                    parent.states.push(f.entry);
-                } else if f.entry.key != "_" {
-                    parent.push(f.entry);
-                }
-            }
-            Ok(Line::Entry { entry, opens }) => {
-                if matches!(ctx, Ctx::Tree | Ctx::State) && entry.block.is_none() {
-                    let style = if ctx == Ctx::Tree {
-                        css_name(&entry.key).is_some()
-                    } else {
-                        STATE_VALUES.iter().any(|(k, _)| *k == entry.key)
-                    };
-                    if style {
-                        let how = decl_line(
-                            &[(entry.key.clone(), entry.values.clone())],
-                            ctx == Ctx::State,
-                            &|_| None,
-                        )
-                        .map(|d| format!(": write `{d}`"))
-                        .unwrap_or_default();
-                        err(
-                            &mut errors,
-                            format!("'{}' is a style property{how}", entry.key),
-                        );
-                        continue;
-                    }
-                }
-                if ctx == Ctx::Tree && opens && entry.key == "at" {
-                    err(&mut errors, "a breakpoint is `@media phone {`".into());
-                }
-                if ctx == Ctx::Tree
-                    && opens
-                    && entry.key == "state"
-                    && matches!(entry.values.first(), Some(Value::Word(w)) if w == "interaction")
-                {
-                    err(&mut errors, "the interaction states are pseudo-classes: `:hover {`, `:active {`, `:focus-visible {`, `:disabled {`".into());
-                }
-                if opens {
-                    let c = child_ctx(ctx, &entry);
-                    stack.push(Frame::new(c, entry));
-                } else {
-                    stack.last_mut().unwrap().push(entry);
-                }
-            }
-        }
-    }
-    if stack.len() > 1 {
-        let f = stack.last().unwrap();
-        errors.push(format!(
-            "line {}: block '{}' opened here is not closed",
-            f.entry.line, f.entry.key
-        ));
-    }
-    if !errors.is_empty() {
-        return Err(errors);
-    }
-    let mut root = stack.pop().unwrap();
-    Ok(Document {
-        ty: header.ty,
-        version: header.version,
-        body: root.entry.block.take().unwrap_or_default(),
-    })
-}
-
-/// Gives each lone half of a jointly written pair (`y` without `x`) its
-/// partner as [`migrate`] writes it: the element's own value, else the
-/// neutral one. A state or `at` block reads the element it is in; what
-/// it adds changes nothing drawn (a state that sets `x` to the element's
-/// own `x` leaves it where it is).
-pub(crate) fn partner_neutrals(block: &mut Block) {
-    fn walk(block: &mut Block, own: Option<&[Entry]>) {
-        let pairs = [("x", "y"), ("scaleX", "scaleY"), ("skewX", "skewY")];
-        let mine: Vec<Entry> = own.map_or_else(|| block.entries.clone(), <[Entry]>::to_vec);
-        for (a, b) in pairs {
-            let has =
-                |k: &str, bl: &Block| bl.entries.iter().any(|e| e.key == k && e.block.is_none());
-            for (lone, other, first) in [(b, a, true), (a, b, false)] {
-                if has(lone, block) && !has(other, block) {
-                    let i = block
-                        .entries
-                        .iter()
-                        .position(|e| e.key == lone && e.block.is_none())
-                        .unwrap();
-                    let values = mine
-                        .iter()
-                        .rev()
-                        .find(|e| e.key == other && e.block.is_none())
-                        .map(|e| e.values.clone())
-                        .unwrap_or_else(|| {
-                            vec![Value::Number(
-                                Number::parse(neutral(other).unwrap()).unwrap(),
-                            )]
-                        });
-                    let mut e = Entry::new(other);
-                    e.values = values;
-                    e.line = block.entries[i].line;
-                    block.entries.insert(if first { i } else { i + 1 }, e);
-                }
-            }
-        }
-        let snapshot = block.entries.clone();
-        for e in &mut block.entries {
-            let Some(b) = &mut e.block else { continue };
-            match e.key.as_str() {
-                "at" => walk(b, Some(own.unwrap_or(&snapshot))),
-                "state" => {
-                    for s in &mut b.entries {
-                        if let Some(sb) = &mut s.block {
-                            walk(sb, Some(own.unwrap_or(&snapshot)));
-                        }
-                    }
-                }
-                _ => walk(b, None),
-            }
-        }
-    }
-    walk(block, None);
-}
-
-// ---- writing a version 1 text as version 2
-
 /// A rewritten line with the comment of the line `old` it replaces, at
 /// the comment's column when the new code leaves room for it.
 pub(crate) fn with_comment(code: String, comment: &str, old: &str) -> String {
@@ -2068,304 +1643,6 @@ pub(crate) fn comment_of(line: &str) -> (&str, Option<&str>) {
         i += 1;
     }
     (line.trim_end(), None)
-}
-
-enum Act {
-    Replace(String),
-    Drop,
-}
-
-struct Plan {
-    acts: std::collections::BTreeMap<usize, Act>,
-    /// Lines that move up one level (inside an interaction group that is dropped).
-    dedent: std::collections::BTreeSet<usize>,
-    /// Each block's open line to its close line.
-    close: std::collections::BTreeMap<usize, usize>,
-    errors: Vec<String>,
-}
-
-impl Plan {
-    fn set(&mut self, line: usize, a: Act) {
-        self.acts.insert(line, a);
-    }
-
-    fn drop_block(&mut self, e: &Entry) {
-        let end = self.close.get(&e.line).copied().unwrap_or(e.line);
-        for l in e.line..=end {
-            self.acts.insert(l, Act::Drop);
-        }
-    }
-
-    /// The declarations of a block's props (element props, or state
-    /// values), on their lines: props that share a CSS property move to
-    /// the line of the first.
-    fn decls(&mut self, block: &Block, state: bool, own: &[Entry]) {
-        let style = |k: &str| {
-            if state {
-                STATE_VALUES.iter().any(|(s, _)| *s == k)
-            } else {
-                css_name(k).is_some()
-            }
-        };
-        let props: Vec<&Entry> = block
-            .entries
-            .iter()
-            .filter(|e| e.block.is_none() && style(&e.key))
-            .collect();
-        let joint = |k: &str| -> &'static [&'static str] {
-            match k {
-                "x" | "y" => &["x", "y"],
-                "scaleX" | "scaleY" => &["scaleX", "scaleY"],
-                "skewX" | "skewY" => &["skewX", "skewY"],
-                "flow" | "dense" => &["flow", "dense"],
-                _ => &[],
-            }
-        };
-        let mut placed: Vec<usize> = Vec::new();
-        let partner = |k: &str| -> Option<Vec<Value>> {
-            let el = if k == "ink" { "color" } else { k };
-            own.iter()
-                .rev()
-                .find(|e| e.key == el && e.block.is_none())
-                .map(|e| e.values.clone())
-        };
-        for (i, e) in props.iter().enumerate() {
-            if placed.contains(&i) {
-                continue;
-            }
-            let mut on_line = vec![(e.key.clone(), e.values.clone())];
-            // Its partners: the last of each, later in the block.
-            for k in joint(&e.key).iter().filter(|k| **k != e.key) {
-                if let Some(j) = props.iter().rposition(|p| p.key == *k)
-                    && j > i
-                {
-                    on_line.push((props[j].key.clone(), props[j].values.clone()));
-                    placed.push(j);
-                    self.acts.insert(props[j].line, Act::Drop);
-                }
-            }
-            match decl_line(&on_line, state, &partner) {
-                Ok(d) => self.set(e.line, Act::Replace(d)),
-                Err(why) => self.errors.push(format!("line {}: {why}", e.line)),
-            }
-        }
-    }
-
-    fn tree(&mut self, block: &Block, ctx: Ctx, own: &[Entry]) {
-        match ctx {
-            Ctx::Tree => self.decls(block, false, own),
-            Ctx::State => self.decls(block, true, own),
-            _ => {}
-        }
-        for e in &block.entries {
-            let Some(b) = &e.block else { continue };
-            match (ctx, e.key.as_str()) {
-                (Ctx::Tree, "at") => {
-                    let mut bps = Vec::new();
-                    let mut orient = None;
-                    for v in &e.values {
-                        match text_of(v).as_str() {
-                            o @ ("portrait" | "landscape") => orient = Some(o.to_string()),
-                            w => bps.push(kebab(w)),
-                        }
-                    }
-                    let mut q = bps.join(", ");
-                    if let Some(o) = orient {
-                        q = if q.is_empty() {
-                            format!("(orientation: {o})")
-                        } else {
-                            format!("{q} and (orientation: {o})")
-                        };
-                    }
-                    self.set(e.line, Act::Replace(format!("@media {q} {{")));
-                    self.tree(b, Ctx::Tree, &block.entries);
-                }
-                (Ctx::Tree, "state") if matches!(e.values.first(), Some(Value::Word(w)) if w == "interaction") =>
-                {
-                    self.interaction(e, b, &block.entries);
-                }
-                (Ctx::Tree, "state") => {
-                    for s in &b.entries {
-                        match (&s.block, s.key.as_str()) {
-                            (None, "transition") => {
-                                let w: Vec<String> = s.values.iter().map(text_of).collect();
-                                match transition_css(s.values.get(2..).unwrap_or(&[])) {
-                                    Ok(t) if w.len() > 2 && w[0] == "any" && w[1] == "any" => {
-                                        self.set(s.line, Act::Replace(format!("transition: {t}")));
-                                    }
-                                    Ok(t) if w.len() > 2 => self.set(
-                                        s.line,
-                                        Act::Replace(format!("transition: {} {} {t}", w[0], w[1])),
-                                    ),
-                                    _ => self.errors.push(format!(
-                                        "line {}: transition <from> <to> <transition>",
-                                        s.line
-                                    )),
-                                }
-                            }
-                            (Some(sb), _) => self.tree(sb, Ctx::State, &block.entries),
-                            _ => {}
-                        }
-                    }
-                }
-                (Ctx::Doc | Ctx::Tree, _) => {
-                    let c = child_ctx(ctx, e);
-                    // An element's own values are its block's; `for`, `if`
-                    // and `use` blocks hold the elements of their parent.
-                    self.tree(b, c, &b.entries);
-                }
-                _ => {}
-            }
-        }
-    }
-
-    fn interaction(&mut self, group: &Entry, b: &Block, own: &[Entry]) {
-        self.set(group.line, Act::Drop);
-        if let Some(&end) = self.close.get(&group.line) {
-            self.set(end, Act::Drop);
-            for l in group.line + 1..end {
-                self.dedent.insert(l);
-            }
-        }
-        for s in &b.entries {
-            match (&s.block, s.key.as_str()) {
-                (Some(sb), "normal") => {
-                    for v in &sb.entries {
-                        let el = if v.key == "ink" { "color" } else { v.key.as_str() };
-                        let mine = own.iter().rev().find(|e| e.key == el && e.block.is_none());
-                        let same = match mine {
-                            Some(m) => m.values == v.values,
-                            None => neutral(&v.key).is_some_and(|n| {
-                                v.values.first().and_then(Value::as_number).is_some_and(|x| x.as_f64() == n.parse::<f64>().unwrap())
-                            }),
-                        };
-                        if !same {
-                            self.errors.push(format!(
-                                "line {}: the normal state's {} is not the element's own: declare it on the element by hand",
-                                v.line, v.key
-                            ));
-                        }
-                    }
-                    self.drop_block(s);
-                }
-                (Some(sb), name) => match PSEUDO.iter().find(|(k, _)| *k == name) {
-                    Some((_, p)) => {
-                        self.set(s.line, Act::Replace(format!(":{p} {{")));
-                        self.tree(sb, Ctx::State, own);
-                    }
-                    None => self.errors.push(format!(
-                        "line {}: '{name}' is not an interaction state (normal, hover, pressed, focused, disabled)",
-                        s.line
-                    )),
-                },
-                (None, "transition") => {
-                    let w: Vec<String> = s.values.iter().map(text_of).collect();
-                    match transition_css(s.values.get(2..).unwrap_or(&[])) {
-                        Ok(t) if w.len() > 2 && w[0] == "any" && w[1] == "any" => {
-                            self.set(s.line, Act::Replace(format!("-og-state-transition: {t}")));
-                        }
-                        _ => self.errors.push(format!(
-                            "line {}: an interaction transition other than `any any` is migrated by hand",
-                            s.line
-                        )),
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-}
-
-/// Each block's open line to its close line, read by `.ogt`'s lines.
-fn closes(text: &str) -> std::collections::BTreeMap<usize, usize> {
-    let mut out = std::collections::BTreeMap::new();
-    let mut open = Vec::new();
-    let mut body = false;
-    for (i, l) in text.split('\n').enumerate() {
-        let n = i + 1;
-        if !body {
-            body = l.trim() == "---";
-            continue;
-        }
-        match ogt::parse_line(l, n) {
-            Ok(Line::Entry { opens: true, .. }) => open.push(n),
-            Ok(Line::Close) => {
-                if let Some(o) = open.pop() {
-                    out.insert(o, n);
-                }
-            }
-            _ => {}
-        }
-    }
-    out
-}
-
-/// A version 1 document's text as version 2, line for line: its comments,
-/// blank lines, attributes and structure as written, its style props as
-/// declarations, its `at` blocks as `@media`, its interaction group as
-/// pseudo-classes (the `normal` state is the element's own values).
-pub fn migrate(text: &str) -> Result<String, Vec<String>> {
-    let doc = Document::parse(text).map_err(|e| vec![e.reason().to_string()])?;
-    if doc.version != 1 {
-        return Err(vec![format!(
-            "version {} is not a version 1 document",
-            doc.version
-        )]);
-    }
-    let mut plan = Plan {
-        acts: Default::default(),
-        dedent: Default::default(),
-        close: closes(text),
-        errors: Vec::new(),
-    };
-    plan.tree(&doc.body, Ctx::Doc, &[]);
-    if !plan.errors.is_empty() {
-        return Err(plan.errors);
-    }
-    let mut out = Vec::new();
-    let mut header = true;
-    for (i, l) in text.split('\n').enumerate() {
-        let n = i + 1;
-        if header {
-            if l.trim() == "---" {
-                header = false;
-            }
-            let t = l.trim();
-            out.push(
-                if t.starts_with("version") && t.split_whitespace().nth(1) == Some("1") {
-                    l.replacen('1', "2", 1)
-                } else {
-                    l.to_string()
-                },
-            );
-            continue;
-        }
-        let indent_len = l.len() - l.trim_start().len();
-        let mut indent = &l[..indent_len];
-        if plan.dedent.contains(&n) && indent.len() >= 2 {
-            indent = &indent[..indent.len() - 2];
-        }
-        let (code, comment) = comment_of(l.trim_start());
-        match plan.acts.get(&n) {
-            Some(Act::Drop) => {
-                if let Some(c) = comment
-                    && !code.is_empty()
-                {
-                    out.push(format!("{indent}{c}"));
-                }
-            }
-            Some(Act::Replace(s)) => out.push(match comment {
-                Some(c) => with_comment(format!("{indent}{s}"), c, l),
-                None => format!("{indent}{s}"),
-            }),
-            None => out.push(if code.is_empty() && comment.is_none() {
-                String::new()
-            } else {
-                format!("{indent}{}", l.trim_start())
-            }),
-        }
-    }
-    Ok(out.join("\n"))
 }
 
 #[cfg(test)]

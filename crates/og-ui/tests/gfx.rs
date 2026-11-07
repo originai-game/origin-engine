@@ -22,6 +22,133 @@ fn reference_dir(tier: &str) -> PathBuf {
 
 #[test]
 #[ignore = "requires GPU"]
+fn document_spans_match_core_pixels_and_restore_motion() {
+    let vp = Viewport::new(640.0, 180.0);
+    let mut scene = RenderScene::new();
+    let font = add_test_font(&mut scene);
+    let mut ui = ui_with_font(font);
+    let mut theme = *ui.theme();
+    theme.unit_pin = 1.0;
+    theme.type_ramp.body.size = 26.0;
+    theme.type_ramp.body.line_height = 36.0;
+    ui.set_theme(theme);
+    ui.define_document(
+        UiDocument::parse(
+            "dialogue.svelte",
+            r#"
+<meta name="component" content="dialogue">
+<text id="Line" spans={spans}>{body}</text>
+<style>
+text { width: 560px; }
+text::part(speaker) { color: var(--highlight); font-weight: bold; }
+text::part(motion) { color: var(--danger); -og-text-motion: wave; }
+</style>
+"#,
+        )
+        .unwrap(),
+    );
+    let spans = vec![
+        TextSpan {
+            name: "speaker".into(),
+            position: 0,
+            length: 4,
+            properties: Default::default(),
+        },
+        TextSpan {
+            name: "motion".into(),
+            position: 5,
+            length: 18,
+            properties: Default::default(),
+        },
+    ];
+    let body = "Ada: Keep moving slowly. [b] remains plain text.";
+    let draw = |ui: &mut Ui, document: bool| {
+        ui.begin(InputFrame::default(), vp);
+        if document {
+            ui.component(
+                "Line",
+                "dialogue",
+                &mut serde_json::json!({"body": body, "spans": spans}),
+                &bind::NoEnv,
+            );
+        } else {
+            ui.rich_text_spans(
+                "Line",
+                body,
+                &spans,
+                RichTextDesc {
+                    width: Size::Fixed(560.0),
+                    ..Default::default()
+                },
+                |span| match span.name.as_str() {
+                    "speaker" => TextSpanStyle {
+                        color: Some(paint::ColorRef::token("highlight")),
+                        bold: Some(true),
+                        weight: Some(700),
+                        ..Default::default()
+                    },
+                    "motion" => TextSpanStyle {
+                        color: Some(paint::ColorRef::token("danger")),
+                        motion: Some(markup::SpanFx::Wave),
+                        ..Default::default()
+                    },
+                    _ => Default::default(),
+                },
+            );
+        }
+        ui.end();
+    };
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width: 640,
+        height: 180,
+        ..Default::default()
+    })
+    .unwrap();
+    let mut capture = |ui: &Ui| {
+        let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
+        ui.frame().emit(&EmitDesc::default(), &mut overlay);
+        scene.overlay = Some(overlay);
+        scene.post.tonemap = Tonemap::None;
+        renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+        renderer.read_offscreen().unwrap()
+    };
+    for _ in 0..13 {
+        draw(&mut ui, true);
+    }
+    let saved = ui.save_state();
+    draw(&mut ui, true);
+    let document = capture(&ui);
+    ui.restore_state(&saved).unwrap();
+    draw(&mut ui, false);
+    assert_eq!(
+        document.pixels,
+        capture(&ui).pixels,
+        "document cascade must match core rendering, RMSE 0"
+    );
+    ui.restore_state(&saved).unwrap();
+    draw(&mut ui, true);
+    assert_eq!(document.pixels, capture(&ui).pixels);
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let path = out_dir().join("document-rich-text.png");
+    image::save_buffer(&path, &document.pixels, 640, 180, image::ColorType::Rgba8).unwrap();
+    println!("{}", path.display());
+    theme.reduced_motion = true;
+    theme.palette.danger = Srgba::rgb(64, 218, 182);
+    ui.set_theme(theme);
+    draw(&mut ui, true);
+    let still = capture(&ui);
+    for _ in 0..13 {
+        draw(&mut ui, true);
+    }
+    assert_eq!(still.pixels, capture(&ui).pixels);
+    assert_ne!(document.pixels, still.pixels);
+    let path = out_dir().join("document-rich-text-reduced.png");
+    image::save_buffer(&path, &still.pixels, 640, 180, image::ColorType::Rgba8).unwrap();
+    println!("{}", path.display());
+}
+
+#[test]
+#[ignore = "requires GPU"]
 fn structured_rich_text_draws_wraps_and_restores_mid_motion() {
     let vp = Viewport::new(880.0, 480.0);
     let mut scene = RenderScene::new();
@@ -172,7 +299,7 @@ fn structured_rich_text_draws_wraps_and_restores_mid_motion() {
 #[test]
 #[ignore = "requires GPU"]
 fn css_radius_token_changes_pixels_when_the_active_style_changes() {
-    let source = "type screen\nversion 2\n---\nname tokens\nlayer hud\ncolumn Box {\n width: 96px; height: 64px\n translate: 16px 16px\n background: #ffffff; border-radius: var(--radius-lg)\n}\n";
+    let source = "<meta name=\"screen\" content=\"tokens\" data-layer=\"hud\"><column id=\"Box\"/><style>#Box { width: 96px; height: 64px; translate: 16px 16px; background: #ffffff; border-radius: var(--radius-lg); }</style>";
     let mut ui = Ui::new(UiDesc::default());
     ui.define_document(UiDocument::parse("tokens.ogt", source).unwrap());
     ui.push_screen("tokens", serde_json::Value::Null).unwrap();

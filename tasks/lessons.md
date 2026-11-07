@@ -42,3 +42,12 @@ than silently adopting them. Check the consumer's range representation before
 proposing a span ABI: og-ui uses Unicode scalar indices. Convert upstream
 UTF-16 expectations in tests and include an emoji before a span to catch a
 unit mismatch.
+
+## UI documents: familiar syntax includes familiar semantics
+
+When adopting web markup, IDs must be unique across the document and HTML
+names take precedence where their meaning matches (`img`, `step`, `disabled`).
+Do not carry sibling-local engine IDs into CSS selectors. A translated UI
+also includes interpolated units and counts: use named ICU parameters, not
+translated labels surrounding English string concatenation. Validate these
+contracts at cook time and test the rejected forms.

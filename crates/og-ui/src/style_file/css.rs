@@ -573,25 +573,12 @@ impl Frame {
     /// element's (the documents' dialect).
     fn finish(mut self) -> Result<Entry, String> {
         if let Some(at) = self.appearance_at {
-            let first = 6;
-            let mut text = String::from("type screen\nversion 2\n---\nname \"a\"\ncolumn A {\n");
-            for (_, l) in &self.appearance {
-                text.push_str(l);
-                text.push('\n');
-            }
-            text.push_str("}\n");
-            let doc = crate::doc::css::lower(&text).map_err(|e| e.join("; "))?;
-            let mut block = doc
-                .body
-                .get("column")
-                .and_then(|e| e.block.clone())
-                .unwrap_or_default();
-            for e in &mut block.entries {
-                e.line = self
-                    .appearance
-                    .get(e.line.saturating_sub(first))
-                    .map_or(0, |(n, _)| *n);
-            }
+            let mut block = Block::new();
+            block.entries = crate::doc::css::declarations_at(
+                self.appearance
+                    .iter()
+                    .map(|(line, text)| (*line, text.as_str())),
+            )?;
             let mut e = Entry::new("appearance");
             e.line = self.appearance.first().map_or(0, |(n, _)| *n);
             e.block = Some(block);

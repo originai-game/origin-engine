@@ -284,7 +284,8 @@ pub fn scan_doc(file: &str, doc: &UiDocument) -> Vec<Finding> {
         let sets = n
             .props
             .iter()
-            .chain(n.at.iter().flat_map(|(_, p)| p.iter()));
+            .chain(n.at.iter().flat_map(|(_, p)| p.iter()))
+            .chain(n.rules.iter().flat_map(|(_, _, p)| p.iter()));
         for p in sets {
             match &p.value {
                 PropValue::Lit(Lit::Paint(Paint::Color(_))) => {
@@ -332,7 +333,7 @@ fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
                 collect(&p, out);
             }
         } else if (name.ends_with(".ts") && !name.ends_with(".d.ts") && !name.ends_with(".test.ts"))
-            || name.ends_with(".ogt")
+            || name.ends_with(".svelte")
         {
             out.push(p);
         }
@@ -359,13 +360,9 @@ pub fn scan(paths: &[PathBuf]) -> Result<Vec<Finding>, String> {
         let name = f.to_string_lossy().replace('\\', "/");
         if f.extension().is_some_and(|e| e == "ts") {
             out.extend(scan_ts(&name, &text));
-        } else {
-            let ty = text.lines().next().unwrap_or("");
-            if (ty == "type screen" || ty == "type component")
-                && let Ok(d) = UiDocument::parse(&name, &text)
-            {
-                out.extend(scan_doc(&name, &d));
-            }
+        } else if f.extension().is_some_and(|e| e == "svelte") {
+            let d = UiDocument::parse(&name, &text).map_err(|e| e.join("\n"))?;
+            out.extend(scan_doc(&name, &d));
         }
     }
     Ok(out)
@@ -483,12 +480,12 @@ const s = "#notahex";
     /// zero radius reported.
     #[test]
     fn a_document_reports_literal_paint_and_radius_once() {
-        let text = "type component\nversion 2\n---\nname \"C\"\ncolumn Root {\n  panel A {\n    background: #102030\n    border-radius: 6px\n    @media phone {\n      height: 32px\n    }\n  }\n  panel B {\n    background: var(--panel)\n    border-radius: 0\n  }\n}\n";
-        let doc = UiDocument::parse("c.ogt", text).expect("parses");
-        let found: Vec<(usize, &str)> = scan_doc("c.ogt", &doc)
+        let text = "<meta name=\"component\" content=\"C\">\n<column><panel id=\"A\"/><panel id=\"B\"/></column>\n<style>\n#A { background: #102030; border-radius: 6px; }\n@media phone { #A { height: 32px; } }\n#B { background: var(--panel); border-radius: 0; }\n</style>";
+        let doc = UiDocument::parse("c.svelte", text).expect("parses");
+        let found: Vec<(usize, &str)> = scan_doc("c.svelte", &doc)
             .iter()
             .map(|f| (f.line, f.kind))
             .collect();
-        assert_eq!(found, [(7, "colour"), (8, "radius")]);
+        assert_eq!(found, [(4, "colour"), (4, "radius")]);
     }
 }

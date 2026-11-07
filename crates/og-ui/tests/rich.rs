@@ -202,6 +202,74 @@ fn structured_scalars_overlap_and_literal_text_preserve_unknown_metadata() {
 }
 
 #[test]
+fn document_spans_cascade_by_name_property_and_active_theme() {
+    use serde_json::json;
+    let document = UiDocument::parse(
+        "line.svelte",
+        r#"
+<meta name="component" content="line">
+<text id="Line" spans={spans} class:urgent={urgent}>{body}</text>
+<style>
+text::part(speaker) { color: var(--ink-muted); }
+#Line::part(speaker)[name="Ada"] { color: var(--highlight); font-weight: bold; }
+#Line.urgent::part(speaker)[name="Ada"] { color: var(--success); }
+text::part(speaker)[name="Bo"] { color: var(--danger); }
+text::part(emphasis) { text-decoration-line: underline; }
+</style>
+"#,
+    )
+    .unwrap();
+    let mut ui = rich_ui();
+    ui.define_document(document);
+    let mut values = json!({"body": "Ada 😀 Bo", "urgent": true, "spans": [
+        {"name":"speaker", "position":0, "length":3, "properties":{"name":"Ada"}},
+        {"name":"speaker", "position":6, "length":2, "properties":{"name":"Bo"}}
+    ]});
+    let render = |ui: &mut Ui, values: &mut serde_json::Value| {
+        ui.begin(InputFrame::default(), Viewport::new(600.0, 400.0));
+        ui.component("Paragraph", "line", values, &bind::NoEnv);
+        ui.end();
+    };
+    render(&mut ui, &mut values);
+    let drawn = texts(&ui);
+    let ada = drawn
+        .iter()
+        .find(|s| s.0 == "Ada")
+        .unwrap_or_else(|| panic!("drawn: {drawn:?}; warnings: {:?}", ui.frame().warnings));
+    let bo = drawn.iter().find(|s| s.0 == "Bo").unwrap();
+    assert!(near(ada.3, ui.theme().palette.success));
+    assert!(ada.5 > 0.0);
+    assert!(near(bo.3, ui.theme().palette.danger));
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    values["urgent"] = json!(false);
+    render(&mut ui, &mut values);
+    assert!(near(
+        texts(&ui).iter().find(|s| s.0 == "Ada").unwrap().3,
+        ui.theme().palette.highlight
+    ));
+    let mut theme = *ui.theme();
+    theme.palette.highlight = Srgba::rgb(18, 127, 57);
+    ui.set_theme(theme);
+    render(&mut ui, &mut values);
+    assert!(near(
+        texts(&ui).iter().find(|s| s.0 == "Ada").unwrap().3,
+        theme.palette.highlight
+    ));
+
+    values["spans"][0]["position"] = json!("not a scalar index");
+    render(&mut ui, &mut values);
+    assert!(
+        ui.frame()
+            .warnings
+            .iter()
+            .any(|w| w.contains("line.svelte:")
+                && w.contains("Paragraph.spans")
+                && w.contains("TextSpan[]"))
+    );
+    assert!(!ui.frame().elements.iter().any(|e| e.text == "Ada 😀 Bo"));
+}
+
+#[test]
 fn structured_wrap_motion_restore_and_style_switch_use_existing_paragraph() {
     let mut ui = rich_ui();
     let spans = [attribute("emphasis", 0, 27), attribute("motion", 6, 11)];

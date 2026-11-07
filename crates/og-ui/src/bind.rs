@@ -51,7 +51,7 @@ pub trait Env {
         let _ = root;
         None
     }
-    /// The language formats and plurals follow (a primary subtag).
+    /// The full locale tag formats and plurals follow, including script and region.
     fn language(&self) -> &str {
         "en"
     }
@@ -190,6 +190,7 @@ pub enum Expr {
     Path(String),
     Interaction(InteractionState),
     Translate(Box<Expr>, Vec<(String, Expr)>),
+    Format(Format, Box<Expr>),
     Not(Box<Expr>),
     Neg(Box<Expr>),
     Bin(Op, Box<Expr>, Box<Expr>),
@@ -364,6 +365,28 @@ impl P {
         match t {
             Some(Tok::Num(n)) => Ok(Expr::Lit(Value::from(n))),
             Some(Tok::Str(s)) => Ok(Expr::Lit(Value::String(s))),
+            Some(Tok::Ident(w)) if w.starts_with("format") && self.eat("(") => {
+                let format = match w.as_str() {
+                    "formatNumber" => Format::Grouped(None),
+                    "formatCompact" => Format::Compact(None),
+                    "formatDuration" => Format::Duration,
+                    "formatPercent" => Format::Percent(None),
+                    "formatOrdinal" => Format::Ordinal,
+                    "formatCountdown" => Format::Countdown,
+                    _ => {
+                        return Err(format!(
+                            "unknown formatter '{w}'; use formatNumber, formatCompact, formatDuration, formatPercent, formatOrdinal or formatCountdown"
+                        ));
+                    }
+                };
+                let value = self.expr()?;
+                if !self.eat(")") {
+                    return Err(format!(
+                        "close {w}(expression) with ')'; formatters take one value"
+                    ));
+                }
+                Ok(Expr::Format(format, Box::new(value)))
+            }
             Some(Tok::Ident(w)) if w == "t" && self.eat("(") => {
                 let key = self.expr()?;
                 let mut args = Vec::new();
@@ -444,7 +467,7 @@ impl Expr {
                     value.paths(out);
                 }
             }
-            Expr::Not(a) | Expr::Neg(a) => a.paths(out),
+            Expr::Not(a) | Expr::Neg(a) | Expr::Format(_, a) => a.paths(out),
             Expr::Bin(_, a, b) => {
                 a.paths(out);
                 b.paths(out);
@@ -482,6 +505,11 @@ impl Expr {
                     .collect();
                 Value::String(message.format(scope.env.language(), &args))
             }
+            Expr::Format(format, value) => Value::String(format_value(
+                &value.eval(scope),
+                *format,
+                scope.env.language(),
+            )),
             Expr::Not(a) => Value::Bool(!truthy(&a.eval(scope))),
             Expr::Neg(a) => num(-number(&a.eval(scope)).unwrap_or(f64::NAN)),
             Expr::If(c, a, b) => {
@@ -1257,6 +1285,53 @@ mod tests {
         );
         assert!(Expr::parse("price >").is_err());
         assert!(Expr::parse("price $$ 2").is_err());
+    }
+
+    #[test]
+    fn pure_formatters_read_values_and_the_current_locale() {
+        struct Host(&'static str);
+        impl Env for Host {
+            fn language(&self) -> &str {
+                self.0
+            }
+            fn lookup(&self, root: &str) -> Option<Value> {
+                (root == "$seconds").then(|| json!(3723))
+            }
+        }
+        let vm = json!({"amount":12345,"fraction":0.456});
+        let scope = Scope {
+            vm: &vm,
+            locals: vec![],
+            env: &Host("en"),
+        };
+        for (source, expected) in [
+            ("formatNumber(amount)", "12,345"),
+            ("formatCompact(amount)", "12.3K"),
+            ("formatPercent(fraction)", "46%"),
+            ("formatDuration($seconds)", "1h 2m"),
+        ] {
+            assert_eq!(Expr::parse(source).unwrap().eval(&scope), json!(expected));
+        }
+        let expr = Expr::parse("formatNumber(amount + 2)").unwrap();
+        let mut paths = Vec::new();
+        expr.paths(&mut paths);
+        assert_eq!(paths, ["amount"]);
+        assert_eq!(
+            expr.eval(&Scope {
+                env: &Host("de"),
+                ..scope
+            }),
+            json!("12.347")
+        );
+        for bad in [
+            "formatNumber(amount++)",
+            "formatDuration(set(1))",
+            "formatNumber()",
+            "formatNumber(1, 2)",
+            "formatAnything(1)",
+        ] {
+            assert!(Expr::parse(bad).is_err(), "accepted {bad}");
+        }
     }
 
     #[test]

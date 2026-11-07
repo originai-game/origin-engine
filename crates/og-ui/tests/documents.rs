@@ -16,125 +16,62 @@ use og_ui::*;
 use serde_json::{Value, json};
 use support::*;
 
-pub const SHOP: &str = r#"type screen
-version 2
----
-name "shop"
-layer menu
-pause
-under dim
-focus "Footer/Buy"
-props {
-  gold number "The player's gold."
-  items list "What the shop sells."
-  selected number "The selected item."
-  sound bool "Purchase sounds."
-  volume number "Volume, 0 to 1."
-}
-parts frame
-actions {
-  confirm "Buy"
-  back "Leave"
-}
-timeline bought {
-  track "" scale {
-    key 0 1
-    key 120 1.08 out
-    key 260 1 out
-  }
-}
-fixture rich "{\"gold\": 1250000, \"items\": [{\"name\": \"Sword\", \"price\": 1200, \"owned\": false}, {\"name\": \"Shield\", \"price\": 800, \"owned\": true}], \"selected\": 0, \"sound\": true, \"volume\": 0.5}"
-panel Shop {
-  width: 520px
-  padding: 20px
-  gap: 12px
-  part frame
-  row Header {
-    align-items: center
-    gap: 8px
-    label Title {
-      text "Shop"
-      font: var(--text-xl)
-    }
-    spacer
-    label Gold {
-      text bind gold compact
-    }
-  }
-  column Items {
-    gap: 4px
-    for item in items {
-      row Item {
-        gap: 8px
-        label Name {
-          text bind item.name
-        }
-        label Price {
-          text "{item.price, grouped} gold"
-        }
-        toggle Owned {
-          text "Owned"
-          checked bind item.owned
-        }
-        state selection bind "$index == selected" {
-          off {
-            opacity: 0.7
-          }
-          on {
-            opacity: 1
-          }
-          transition: -og-spring(260ms, 0.2)
-        }
-      }
-    }
-  }
-  slot Preview {
-    height: 40px
-  }
-  slider Volume {
-    value bind volume
-  }
-  row Footer {
-    gap: 8px
-    button Leave {
-      text "Leave"
-      on click pop
-    }
-    button Buy {
-      text "Buy"
-      variant primary
-      disabled bind "gold < items.0.price"
-      on click emit buy
-      on click play bought
-    }
-  }
-}
+pub const SHOP: &str = r#"<meta name="screen" content="shop" data-layer="menu" data-pause="true" data-under="dim" data-focus="Footer/Buy">
+<meta name="prop:gold" content="number" data-doc="The player's gold.">
+<meta name="prop:items" content="list" data-doc="What the shop sells.">
+<meta name="prop:selected" content="string" data-doc="The selected item.">
+<meta name="prop:sound" content="bool" data-doc="Purchase sounds.">
+<meta name="prop:volume" content="number" data-doc="Volume, 0 to 1.">
+<meta name="action:confirm" content="Buy">
+<meta name="action:back" content="Leave">
+<meta name="fixture:rich" content='{"gold":1250000,"items":[{"id":"sword","name":"Sword","price":1200,"owned":false},{"id":"shield","name":"Shield","price":800,"owned":true}],"selected":"sword","sound":true,"volume":0.5}'>
+<panel id="Shop">
+  <row id="Header">
+    <text id="Title">Shop</text>
+    <spacer />
+    <text id="Gold">{formatCompact(gold)}</text>
+  </row>
+  <column id="Items">
+    {#each items as item (item.id)}
+      <row id="Item" class:selected={item.id == selected}>
+        <text id="Name">{item.name}</text>
+        <text id="Price">{formatNumber(item.price)} gold</text>
+        <toggle id="Owned" bind:checked={item.owned}>Owned</toggle>
+      </row>
+    {/each}
+  </column>
+  <column id="Preview">{@render preview?.()}</column>
+  <slider id="Volume" bind:value={volume} />
+  <row id="Footer">
+    <button id="Leave" onclick={leave}>Leave</button>
+    <button id="Buy" variant="primary" disabled={gold < items.0.price} onclick={buy}>Buy</button>
+  </row>
+</panel>
+<style>
+#Shop { width: 520px; padding: 20px; gap: 12px; }
+#Header { align-items: center; gap: 8px; }
+#Title { font: var(--text-xl); }
+#Items { gap: 4px; }
+#Item { gap: 8px; opacity: 0.7; }
+#Item.selected { opacity: 1; }
+#Preview { height: 40px; }
+#Footer { gap: 8px; }
+</style>
 "#;
 
-const HUD: &str = r#"type screen
-version 2
----
-name "hud"
-layer hud
-props {
-  gold number "Gold."
-}
-row Bar {
-  padding: 8px
-  button Menu {
-    text "Menu"
-    on click emit menu
-  }
-  label Gold {
-    text bind gold grouped
-  }
-}
+const HUD: &str = r#"<meta name="screen" content="hud" data-layer="hud">
+<meta name="prop:gold" content="number" data-doc="Gold.">
+<row id="Bar">
+  <button id="Menu" onclick={menu}>Menu</button>
+  <text id="Gold">{formatNumber(gold)}</text>
+</row>
+<style>#Bar { padding: 8px; }</style>
 "#;
 
 fn ui() -> Ui {
     let mut ui = ui_with_font(test_font_metrics());
-    ui.define_document(UiDocument::parse("ui/shop.ogt", SHOP).expect("shop parses"));
-    ui.define_document(UiDocument::parse("ui/hud.ogt", HUD).expect("hud parses"));
+    ui.define_document(UiDocument::parse("ui/shop.svelte", SHOP).expect("shop parses"));
+    ui.define_document(UiDocument::parse("ui/hud.svelte", HUD).expect("hud parses"));
     ui
 }
 
@@ -144,38 +81,64 @@ fn tick(ui: &mut Ui, input: InputFrame) {
 }
 
 #[test]
-fn keyed_document_rows_keep_identity_after_reorder_and_build_the_empty_branch() {
-    use og_ui::bind::Expr;
-    use og_ui::doc::NodeKind;
-
-    let mut document = UiDocument::parse(
-        "rows.ogt",
-        r#"type screen
-version 2
----
-name rows
-column Root {
-  for item in items {
-    button Row {
-      text bind item.name
-      on appear emit appeared
-    }
-  }
-  label Empty {
-    text "No rows"
-  }
+fn scoped_css_motion_uses_shared_curves_emits_sound_and_restores() {
+    let mut ui = Ui::new(UiDesc::default());
+    let source = r#"<meta name="screen" content="motion" data-layer="hud">
+<panel id="Card"/>
+<style>
+#Card { width: 40px; height: 20px; animation: reveal 800ms cubic-bezier(0,1,0,1) forwards; }
+@keyframes reveal {
+  from { translate: 0 0; -og-sound: error; }
+  to { translate: 80px 0; }
 }
+</style>"#;
+    ui.define_document(UiDocument::parse("motion.svelte", source).unwrap());
+    ui.push_screen("motion", Value::Null).unwrap();
+    let mut sounds = 0;
+    for _ in 0..7 {
+        tick(&mut ui, InputFrame::default());
+        sounds += ui
+            .events()
+            .iter()
+            .filter(|e| e.kind == "sound" && e.name == "error")
+            .count();
+    }
+    // x=u³ and y=1-(1-u)³: at 1/8 duration, y=7/8.
+    assert!((ui.frame().element("motion/Card").unwrap().x - 70.0).abs() < 0.001);
+    assert_eq!(sounds, 1);
+    let saved = ui.save_state();
+    let continued: Vec<_> = (0..12)
+        .map(|_| {
+            tick(&mut ui, InputFrame::default());
+            ui.frame().element("motion/Card").unwrap().x
+        })
+        .collect();
+    ui.restore_state(&saved).unwrap();
+    for expected in continued {
+        tick(&mut ui, InputFrame::default());
+        assert_eq!(ui.frame().element("motion/Card").unwrap().x, expected);
+        assert!(
+            ui.events().is_empty(),
+            "restoring does not replay the entrance sound"
+        );
+    }
+}
+
+#[test]
+fn keyed_document_rows_keep_identity_after_reorder_and_build_the_empty_branch() {
+    let document = UiDocument::parse(
+        "rows.svelte",
+        r#"<meta name="screen" content="rows">
+<column id="Root">
+  {#each items as item (item.id)}
+    <button id="Row" onclick={choose}>{item.name}</button>
+  {:else}
+    <text id="Empty">No rows</text>
+  {/each}
+</column>
 "#,
     )
     .unwrap();
-    let empty_node = document.nodes[document.root].children.pop().unwrap();
-    let each = document.nodes[document.root].children[0];
-    let NodeKind::For { key, empty, .. } = &mut document.nodes[each].kind else {
-        panic!("expected each");
-    };
-    *key = Expr::parse("item.id").unwrap();
-    empty.push(empty_node);
-    document.nodes[empty_node].parent = each;
 
     let mut ui = ui_with_font(test_font_metrics());
     ui.define_document(document);
@@ -183,13 +146,6 @@ column Root {
     let b = json!({"id": "shield", "name": "Shield"});
     ui.push_screen("rows", json!({"items": [a, b]})).unwrap();
     tick(&mut ui, InputFrame::default());
-    let appeared = ui.take_doc_events();
-    let keys: Vec<_> = appeared
-        .iter()
-        .filter(|e| e.name == "appeared")
-        .map(|e| e.row_key.as_str())
-        .collect();
-    assert_eq!(keys, ["sword", "shield"]);
     assert!(
         ui.doc_built()
             .iter()
@@ -206,7 +162,6 @@ column Root {
         .filter(|path| path.contains("Row#"))
         .collect();
     assert_eq!(paths, ["rows/Root/Row#shield", "rows/Root/Row#sword"]);
-    assert!(ui.take_doc_events().iter().all(|e| e.name != "appeared"));
 
     ui.set_screen_vm("rows", json!({"items": []}));
     tick(&mut ui, InputFrame::default());
@@ -216,32 +171,33 @@ column Root {
 
 #[test]
 fn length_tokens_follow_the_active_style_in_layout_and_states() {
-    let source = r#"type screen
-version 2
----
-name "tokens"
-layer hud
-column Root {
-  width: stretch; min-width: var(--size-sm); max-width: var(--size-xl)
-  padding: var(--space-xs) 3px var(--space-md) 7px
-  gap: var(--space-sm)
-  background: var(--panel)
-  border-radius: var(--radius-lg)
-  translate: var(--space-xs) var(--space-sm)
-  button Child {
-    text "Token"
-    height: var(--size-lg)
-    border-radius: var(--radius-sm)
-    :hover {
-      border-radius: var(--radius-xl)
-      translate: var(--space-md) 0
-    }
-  }
-  grid Tracks {
-    grid-template-columns: var(--size-sm) minmax(var(--size-xs), var(--size-lg))
-    grid-template-rows: var(--size-md)
-  }
+    let source = r#"<meta name="screen" content="tokens" data-layer="hud">
+<column id="Root">
+  <button id="Child">Token</button>
+  <grid id="Tracks" />
+</column>
+<style>
+#Root {
+  width: stretch; min-width: var(--size-sm); max-width: var(--size-xl);
+  padding: var(--space-xs) 3px var(--space-md) 7px;
+  gap: var(--space-sm);
+  background: var(--panel);
+  border-radius: var(--radius-lg);
+  translate: var(--space-xs) var(--space-sm);
 }
+  #Child {
+    height: var(--size-lg);
+    border-radius: var(--radius-sm);
+  }
+    #Child:hover {
+      border-radius: var(--radius-xl);
+      translate: var(--space-md) 0;
+    }
+  #Tracks {
+    grid-template-columns: var(--size-sm) minmax(var(--size-xs), var(--size-lg));
+    grid-template-rows: var(--size-md);
+  }
+</style>
 "#;
     let mut symbolic = ui_with_font(test_font_metrics());
     symbolic.define_document(UiDocument::parse("tokens.ogt", source).unwrap());
@@ -345,7 +301,7 @@ fn the_active_layer_is_the_top_input_taker_of_a_kind_ordered_stack() {
     let mut ui = ui();
     let screen = |name: &str, layer: &str| {
         format!(
-            "type screen\nversion 2\n---\nname \"{name}\"\nlayer {layer}\ncolumn Root {{\n  button Ok {{\n    text \"Ok\"\n  }}\n}}\n"
+            "<meta name=\"screen\" content=\"{name}\" data-layer=\"{layer}\"><column id=\"Root\"><button id=\"Ok\">Ok</button></column>"
         )
     };
     for (n, l) in [("notice", "toast"), ("confirm", "modal")] {
@@ -436,23 +392,24 @@ fn dump_ui_names_each_elements_layer_source_bindings_and_states() {
     let hud_gold = find("hud/Bar/Gold");
     assert_eq!(shop_gold["layer"], json!("shop"));
     assert_eq!(hud_gold["layer"], json!("hud"));
-    assert_eq!(shop_gold["source"], json!("ui/shop.ogt:42"), "{shop_gold}");
-    assert_eq!(hud_gold["source"], json!("ui/hud.ogt:15"), "{hud_gold}");
+    assert_eq!(
+        shop_gold["source"],
+        json!("ui/shop.svelte:14"),
+        "{shop_gold}"
+    );
+    assert_eq!(hud_gold["source"], json!("ui/hud.svelte:5"), "{hud_gold}");
     assert_eq!(
         shop_gold["bindings"],
-        json!([{ "prop": "text", "expr": "bind gold compact", "value": "1.25M" }]),
+        json!([{ "prop": "text", "expr": "{formatCompact(gold)}", "value": "1.25M" }]),
     );
     assert_eq!(
         find("shop/Shop/Header/Title")["edits"],
         json!({ "text": "\"Bazaar\"" })
     );
-    assert_eq!(find("shop/Shop/Preview")["slot"]["kind"], json!("code"));
-    // The second item is not selected: its state group says so.
-    let second = find("shop/Shop/Items/Item#1");
-    assert_eq!(
-        second["visualStates"]["selection"],
-        json!("off"),
-        "{second}"
+    assert!(
+        ui.doc_built()
+            .iter()
+            .any(|e| e.path == "shop/Shop/Items/Item#shield")
     );
     let extra = ui.probe_extra();
     let layers = extra["layers"].as_array().unwrap();
@@ -465,98 +422,15 @@ fn dump_ui_names_each_elements_layer_source_bindings_and_states() {
     );
 }
 
-/// A version 1 document written as version 2 (`og ui migrate`, docs/ui.md
-/// §10.4): its style props as declarations, its `at` blocks as `@media`, its
-/// interaction group as pseudo-classes, every comment and attribute kept.
-/// The expected text is written by hand from the CSS rules, not from the
-/// migrator. Wrong implementations this catches: padding's sides left in
-/// `.ogt`'s order (left top right bottom) instead of CSS's, a percent not
-/// scaled, `y` written without its `x`, the `normal` state written (or its
-/// values lost), a comment on a moved line dropped, a size range lost.
-#[test]
-fn a_version_1_document_migrates_to_css_declarations() {
-    const V1: &str = r##"type screen
-version 1
----
-name "card"
-column Card {   # the card
-  width grow 0 640
-  height percent 0.25
-  padding 4 8 12 16
-  background token panelRaised
-  motion spring 300 0.1
-  at phone portrait {
-    padding 6 2
-  }
-  label Title {
-    text "Title"
-    step caption
-    color "#ffcc00"
-    maxLines 2
-  }
-  state interaction {
-    normal {
-      y 0
-    }
-    hover {
-      y -4   # lift
-    }
-    transition any any token ui
-  }
-}
-"##;
-    const V2: &str = r##"type screen
-version 2
----
-name "card"
-column Card {   # the card
-  width: stretch; max-width: 640px
-  height: 25%
-  padding: 8px 12px 16px 4px
-  background: var(--panel-raised)
-  transition: -og-spring(300ms, 0.1)
-  @media phone-portrait and (orientation: portrait) {
-    padding: 2px 6px
-  }
-  label Title {
-    text "Title"
-    font: var(--text-caption)
-    color: #ffcc00
-    line-clamp: 2
-  }
-  :hover {
-    translate: 0 -4px # lift
-  }
-  -og-state-transition: var(--motion-ui)
-}
-"##;
-    let v1 = V1.replace("at phone portrait", "at phonePortrait portrait");
-    let out =
-        UiDocument::migrate("ui/card.ogt", &v1).unwrap_or_else(|e| panic!("{}", e.join("\n")));
-    assert_eq!(out, V2);
-    let doc = UiDocument::parse("ui/card.ogt", &out).expect("version 2 parses");
-    assert!(
-        UiDocument::parse_v1("ui/card.ogt", &v1)
-            .unwrap()
-            .nodes
-            .len()
-            == doc.nodes.len()
-    );
-    // A version 1 text is refused with the command that migrates it.
-    let e = UiDocument::parse("ui/card.ogt", &v1)
-        .unwrap_err()
-        .join("\n");
-    assert!(e.contains("og ui migrate ui/card.ogt"), "{e}");
-}
-
-/// The CSS dialect is a strict subset: a property it does not have, a v1
-/// prop line where a declaration belongs, or a value without its unit is
+/// The CSS dialect is a strict subset: an unknown property or a value without its unit is
 /// an error that names the form to write.
 #[test]
 fn css_outside_the_subset_is_an_error_that_names_the_fix() {
     let err = |body: &str| {
-        let t = format!("type screen\nversion 2\n---\nname \"s\"\ncolumn Root {{\n{body}\n}}\n");
-        UiDocument::parse("ui/s.ogt", &t).unwrap_err().join("\n")
+        let t = format!(
+            "<meta name=\"screen\" content=\"s\"><column id=\"Root\"/><style>#Root {{ {body} }}</style>"
+        );
+        UiDocument::parse("ui/s.svelte", &t).unwrap_err().join("\n")
     };
     assert!(
         err("  float: left").contains("display"),
@@ -564,14 +438,8 @@ fn css_outside_the_subset_is_an_error_that_names_the_fix() {
         err("  float: left")
     );
     assert!(err("  margin: 4px").contains("gap"));
-    assert!(
-        err("  width 520").contains("write `width: 520px`"),
-        "{}",
-        err("  width 520")
-    );
     assert!(err("  gap: 12").contains("12px"));
     assert!(err("  font-size: 14px").contains("var(--text-"));
-    assert!(err("  :focus {\n  }").contains(":focus-visible"));
     assert!(err("  padding: 4px !important").contains("!important"));
     // A Rive frame takes one `<file>.riv#<Artboard>` id.
     for bad in [
@@ -584,24 +452,22 @@ fn css_outside_the_subset_is_an_error_that_names_the_fix() {
     }
 }
 
-/// Tune and agent edits write a version 2 document's style props back as
-/// CSS declarations, keeping the props that share the line and every
-/// other line.
+/// Probe edits preserve authored structure and existing stylesheet rules.
 #[test]
-fn a_prop_edit_writes_a_css_declaration_into_a_version_2_document() {
-    const DOC: &str = "type screen\nversion 2\n---\nname \"s\"\ncolumn Root {\n  width: stretch; max-width: 640px\n  translate: 0 -4px # lift\n  label Title {\n    text \"Hi\"\n  }\n}\n";
-    let mut doc = UiDocument::parse("ui/s.ogt", DOC).unwrap();
+fn a_prop_edit_writes_a_css_declaration_into_a_svelte_document() {
+    const DOC: &str = "<meta name=\"screen\" content=\"s\">\n<column id=\"Root\"><text id=\"Title\">Hi</text></column>\n<style>#Root { width: stretch; max-width: 640px; translate: 0 -4px; }</style>\n";
+    let mut doc = UiDocument::parse("ui/s.svelte", DOC).unwrap();
     let root = doc.nodes.iter().position(|n| n.id == "Root").unwrap();
     doc.set_prop(root, "x", "6").unwrap();
     doc.set_prop(root, "gap", "12").unwrap();
     let title = doc.nodes.iter().position(|n| n.id == "Title").unwrap();
     doc.set_prop(title, "color", "\"#ffcc00\"").unwrap();
     let t = &doc.text;
-    assert!(t.contains("\n  translate: 6px -4px"), "{t}");
-    assert!(t.contains("\n  gap: 12px\n"), "{t}");
-    assert!(t.contains("\n  width: stretch; max-width: 640px\n"), "{t}");
-    assert!(t.contains("\n    color: #ffcc00\n"), "{t}");
-    assert!(!t.contains("\n  gap 12"), "{t}");
+    assert!(t.contains("translate: 6px -4px"), "{t}");
+    assert!(t.contains("gap: 12px"), "{t}");
+    assert!(t.contains("width: stretch; max-width: 640px"), "{t}");
+    assert!(t.contains("color: #ffcc00"), "{t}");
+    assert!(t.contains(">Hi</text>"), "{t}");
 }
 
 /// A Rive artboard of 100 × 50: a 40 × 20 red rectangle `Lid` centred at
@@ -699,7 +565,7 @@ fn chest() -> std::sync::Arc<og_ui::rive::Artboard> {
     })
 }
 
-const CHEST_SCREEN: &str = "type screen\nversion 2\n---\nname \"loot\"\ncolumn Chest {\n  width: 100px\n  height: 50px\n  -og-frame: rive(\"ui/chest.riv#Chest\")\n}\n";
+const CHEST_SCREEN: &str = "<meta name=\"screen\" content=\"loot\"><column id=\"Chest\"/><style>#Chest { width: 100px; height: 50px; -og-frame: rive(\"ui/chest.riv#Chest\"); }</style>";
 
 /// A document element whose frame is a Rive artboard plays it on the tick
 /// in its box: its shapes draw over its background, its objects are
@@ -829,9 +695,13 @@ fn a_rive_frame_plays_draws_names_its_objects_and_is_saved() {
     assert!(
         edited
             .text
-            .contains("\n  -og-frame: rive(\"ui/chest.riv#Lid\")\n"),
+            .contains("-og-frame: rive(\"ui/chest.riv#Lid\")"),
         "{}",
         edited.text
     );
-    assert_eq!(edited.rive_ids(), ["ui/chest.riv#Lid"]);
+    // The scoped override preserves the authored rule, so both assets are dependencies.
+    assert_eq!(
+        edited.rive_ids(),
+        ["ui/chest.riv#Chest", "ui/chest.riv#Lid"]
+    );
 }
