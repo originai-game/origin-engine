@@ -155,14 +155,43 @@ setInterval(() => {
         .env("RELEASE_RELOAD", dir.join("release"))
         .env_remove("OG_TSRS")
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
+        .stderr(std::fs::File::create(dir.join("og-dev.err")).unwrap())
         .spawn()
         .unwrap();
-    let mut lines = BufReader::new(child.stdout.take().unwrap()).lines();
+    // Each event within a minute (one takes about a second): a missing one
+    // fails with what og dev said instead of holding the run until
+    // nextest's 360 s timeout (it did once on a loaded gate, 2026-11-07).
+    let (tx, rx) = std::sync::mpsc::channel();
+    let stdout = child.stdout.take().unwrap();
+    std::thread::spawn(move || {
+        for line in BufReader::new(stdout).lines() {
+            let _ = tx.send(line.unwrap());
+        }
+    });
+    let mut seen = Vec::<String>::new();
+    let pid = child.id();
+    let mut next_event = || -> Option<serde_json::Value> {
+        match rx.recv_timeout(std::time::Duration::from_secs(60)) {
+            Ok(line) => {
+                seen.push(line.clone());
+                Some(serde_json::from_str(&line).unwrap())
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => None,
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                // og dev stops its game on a signal; left alone it runs on.
+                let _ = std::process::Command::new("kill")
+                    .arg(pid.to_string())
+                    .status();
+                panic!(
+                    "og dev printed nothing for 60 s; its events: {seen:?}; its stderr: {}",
+                    std::fs::read_to_string(dir.join("og-dev.err")).unwrap_or_default()
+                )
+            }
+        }
+    };
     let (mut ready, mut checked) = (false, false);
     while !ready || !checked {
-        let event: serde_json::Value =
-            serde_json::from_str(&lines.next().expect("og dev ended").unwrap()).unwrap();
+        let event = next_event().expect("og dev ended");
         ready |= event["event"] == "ready";
         if event["event"] == "check" {
             assert_eq!(event["ok"], true, "{event}");
@@ -184,16 +213,14 @@ setInterval(() => {
         std::fs::rename(staged, game.join("src/main.ts")).unwrap();
         let (mut bundled, mut checked) = (false, false);
         while !bundled || !checked {
-            let event: serde_json::Value =
-                serde_json::from_str(&lines.next().expect("og dev ended").unwrap()).unwrap();
+            let event = next_event().expect("og dev ended");
             bundled |= event["event"] == "bundled";
             checked |= event["event"] == "check";
             events.push(event);
         }
         std::fs::write(dir.join("release"), (i + 1).to_string()).unwrap();
         loop {
-            let event: serde_json::Value =
-                serde_json::from_str(&lines.next().expect("og dev ended").unwrap()).unwrap();
+            let event = next_event().expect("og dev ended");
             let reloaded = event["event"] == "reload";
             events.push(event);
             if reloaded {
@@ -201,7 +228,9 @@ setInterval(() => {
             }
         }
     }
-    events.extend(lines.map(|line| serde_json::from_str(&line.unwrap()).unwrap()));
+    while let Some(event) = next_event() {
+        events.push(event);
+    }
     let status = child.wait().unwrap();
     let _ = std::fs::remove_dir_all(&dir);
     let mut pending = None;
